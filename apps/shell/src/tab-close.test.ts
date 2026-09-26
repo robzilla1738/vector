@@ -33,7 +33,7 @@ it("restores a closed group in original order and activates its previous foregro
   let eventSeq = lastEventSeq() + 1;
   const tabCommand = vi.spyOn(bridge, "tabCommand").mockImplementation(async (command: any) => {
     if (command.kind === "close") {
-      useStore.getState().applyEvent({type: "page.removed", seq: eventSeq++, ts: Date.now(), payload: {pageId: command.pageId}});
+      useStore.getState().applyEvent({type: "page.removed", seq: eventSeq++, streamId: "test", ts: Date.now(), payload: {pageId: command.pageId}});
       return applied(command.pageId) as never;
     }
     if (command.kind === "open") return applied(`restored-${command.url.endsWith('/one') ? 'one' : 'three'}`) as never;

@@ -67,6 +67,33 @@ describe("Repo", () => {
     expect(r.eventsSince(0).events.map((e) => e.type)).toEqual(["new"]);
   });
 
+  it("D9: carries a durable streamId and resyncs cursors that cannot be replayed", () => {
+    const r = memRepo();
+    const streamId = r.streamId();
+    expect(r.streamId()).toBe(streamId); // stable for the store's life
+    const s1 = r.appendEvent({ type: "a", payload: {}, ts: Date.now() });
+    const s2 = r.appendEvent({ type: "b", payload: {}, ts: Date.now() });
+    // Replayed events carry the stream identity.
+    const page = r.eventsSince(s1);
+    expect(page.streamId).toBe(streamId);
+    expect(page.events.map((e) => e.streamId)).toEqual([streamId]);
+    // A cursor presenting a foreign stream resyncs.
+    expect(r.eventsSince(s1, 500, undefined, "dead-stream").resync).toBe(true);
+    // A cursor beyond the stream head resyncs.
+    expect(r.eventsSince(s2 + 50).resync).toBe(true);
+    // A cursor whose next events were pruned below the floor resyncs.
+    r.appendEvent({ type: "c", payload: {}, ts: Date.now() });
+    r.db.prepare("DELETE FROM events WHERE seq <= ?").run(s2);
+    expect(r.eventsSince(s1).resync).toBe(true);
+    // …but a cursor at the floor boundary still replays.
+    expect(r.eventsSince(s2).resync).toBeUndefined();
+    // A fresh read (sinceSeq 0) is never a gap.
+    expect(r.eventsSince(0).resync).toBeUndefined();
+    // After a full drain a stale positive cursor still resyncs.
+    r.db.prepare("DELETE FROM events").run();
+    expect(r.eventsSince(2).resync).toBe(true);
+  });
+
   it("persists runs, steps, results, programs, history", () => {
     const r = memRepo();
     r.saveRun(run("r1"));

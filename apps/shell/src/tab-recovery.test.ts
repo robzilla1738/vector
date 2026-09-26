@@ -16,7 +16,7 @@ function setup() {
   vi.spyOn(bridge,'bindTabSpace').mockImplementation(async (_pageId, spaceId) => ({ spaceId, workspaceId: `workspace:${spaceId}` }));
   return {pages,layout};
 }
-function close(pageId: string) { useStore.getState().applyEvent({seq:Date.now(),type:'page.removed',ts:Date.now(),payload:{pageId}}); }
+function close(pageId: string) { useStore.getState().applyEvent({seq:Date.now(),streamId:'test',type:'page.removed',ts:Date.now(),payload:{pageId}}); }
 it('restores space, folder and position without consuming the entry on an open failure', async () => {
   setup();
   const tabCommand = vi.spyOn(bridge,'tabCommand').mockImplementation(async command => applied(command));
@@ -78,8 +78,8 @@ it('restores placement without replacing a newer user selection', async () => {
   close('middle');
   const opening = useStore.getState().reopenClosedTab();
   const restored = {pageId:'restored',title:'Middle',url:'https://example.test/middle',ownedByRuntime:false,viewStatus:'visible'} as PageTarget;
-  useStore.getState().applyEvent({seq:Date.now(),type:'page.added',ts:Date.now(),payload:{page:restored}});
-  useStore.getState().applyEvent({seq:Date.now()+1,type:'page.updated',ts:Date.now(),payload:{pageId:'restored',activePageId:'restored'}});
+  useStore.getState().applyEvent({seq:Date.now(),streamId:'test',type:'page.added',ts:Date.now(),payload:{page:restored}});
+  useStore.getState().applyEvent({seq:Date.now()+1,streamId:'test',type:'page.updated',ts:Date.now(),payload:{pageId:'restored',activePageId:'restored'}});
   await useStore.getState().activate('first');
   finish(applied({kind:'open',url:'https://example.test/middle',activate:true},'restored')); await opening;
   expect(useStore.getState().activePageId).toBe('first');
@@ -93,8 +93,8 @@ it('does not overwrite later selection or live metadata when opening finishes', 
     command.kind === 'open' ? new Promise<TabCommandAck>(resolve => { finish = resolve; }) : applied(command));
   const opening = useStore.getState().newTab('https://example.test/slow');
   const added = {pageId:'slow',title:'Live title',url:'https://example.test/redirected',ownedByRuntime:false,viewStatus:'visible'} as PageTarget;
-  useStore.getState().applyEvent({seq:Date.now(),type:'page.added',ts:Date.now(),payload:{page:added}});
-  useStore.getState().applyEvent({seq:Date.now()+1,type:'page.updated',ts:Date.now(),payload:{pageId:'slow',activePageId:'slow'}});
+  useStore.getState().applyEvent({seq:Date.now(),streamId:'test',type:'page.added',ts:Date.now(),payload:{page:added}});
+  useStore.getState().applyEvent({seq:Date.now()+1,streamId:'test',type:'page.updated',ts:Date.now(),payload:{pageId:'slow',activePageId:'slow'}});
   await useStore.getState().activate('first');
   finish(applied({kind:'open',url:'https://example.test/slow',activate:true},'slow'));
   await opening;
@@ -108,7 +108,7 @@ it('does not resurrect a tab closed before its open response arrives', async () 
     command.kind === 'open' ? new Promise<TabCommandAck>(resolve => { finish = resolve; }) : applied(command));
   const opening = useStore.getState().newTab('https://example.test/slow');
   const added = {pageId:'closing',title:'Closing',url:'https://example.test/slow',ownedByRuntime:false,viewStatus:'visible'} as PageTarget;
-  useStore.getState().applyEvent({seq:Date.now(),type:'page.added',ts:Date.now(),payload:{page:added}});
+  useStore.getState().applyEvent({seq:Date.now(),streamId:'test',type:'page.added',ts:Date.now(),payload:{page:added}});
   close('closing');
   finish(applied({kind:'open',url:'https://example.test/slow',activate:true},'closing')); await opening;
   expect(useStore.getState().pages.some(page=>page.pageId==='closing')).toBe(false);

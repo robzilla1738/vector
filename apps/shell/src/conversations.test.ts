@@ -15,7 +15,7 @@ it("continues the same saved conversation while leaving context assembly to the 
   expect(invoke).toHaveBeenCalledWith("runs.start", expect.objectContaining({ chatId: "chat", pageIds: ["page"] }));
   expect(invoke.mock.calls[0]?.[1]).not.toHaveProperty("context");
   useStore.getState().openConversation("second");
-  useStore.getState().applyEvent({ seq: 1, type: "page.updated", ts: 3, payload: { activePageId: "page" } });
+  useStore.getState().applyEvent({ seq: 1, streamId: "test", type: "page.updated", ts: 3, payload: { activePageId: "page" } });
   expect(useStore.getState().mode).toBe("conversation");
   expect(recentConversations([first,next])).toHaveLength(1);
 });

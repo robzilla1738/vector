@@ -51,8 +51,20 @@ export class AuxClient{
     if(!response.ok)throw new AuxRpcError(`Aux request failed with HTTP ${response.status}.`,'http_error',response.status);
     return (this.validateResults??!HOT_METHODS.has(method))?ResultSchemas[method].parse(body.result) as MethodResult<M>:body.result as MethodResult<M>;
   }
-  async *events(lastSeq=0,options:{signal?:AbortSignal;pollMs?:number}={}):AsyncGenerator<AuxEvent>{
-    let sequence=lastSeq;const pollMs=options.pollMs??400;
-    while(!options.signal?.aborted){const result=await this.call('events.since',{sinceSeq:sequence,limit:500});for(const event of result.events)yield event;sequence=result.lastSeq;if(pollMs)await new Promise<void>(resolve=>{const done=()=>{clearTimeout(timer);options.signal?.removeEventListener('abort',done);resolve();};const timer=setTimeout(done,pollMs);options.signal?.addEventListener('abort',done,{once:true});});}
+  /**
+   * Durable event stream (D9). The first reply pins the stream identity;
+   * subsequent polls present it back so a recreated store cannot silently
+   * resume a stale cursor. On a gap the runtime answers `resync` — the
+   * client is told via `onResync` (refetch a snapshot there), then the
+   * generator continues from the stream head.
+   */
+  async *events(lastSeq=0,options:{signal?:AbortSignal;pollMs?:number;onResync?:(resync:{streamId:string;lastSeq:number})=>void}={}):AsyncGenerator<AuxEvent>{
+    let sequence=lastSeq;let streamId:string|undefined;const pollMs=options.pollMs??400;
+    while(!options.signal?.aborted){
+      const result=await this.call('events.since',{sinceSeq:sequence,limit:500,...(streamId?{streamId}:{})});
+      if(result.resync){options.onResync?.({streamId:result.streamId,lastSeq:result.lastSeq});sequence=result.lastSeq;streamId=result.streamId;}
+      else{streamId??=result.streamId;for(const event of result.events)yield event;sequence=result.lastSeq;}
+      if(pollMs)await new Promise<void>(resolve=>{const done=()=>{clearTimeout(timer);options.signal?.removeEventListener('abort',done);resolve();};const timer=setTimeout(done,pollMs);options.signal?.addEventListener('abort',done,{once:true});});
+    }
   }
 }

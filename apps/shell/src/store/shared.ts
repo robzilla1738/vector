@@ -7,8 +7,14 @@ import type { Workspace } from "./types";
 
 /** Highest runtime event seq applied — refresh() ordering only, never rendered. */
 let eventSeq = 0;
+/** Event-stream identity from the last workspace.get snapshot (D9). */
+let eventStreamId: string | undefined;
 export const lastEventSeq = () => eventSeq;
+export const eventStream = () => eventStreamId;
 export const noteEventSeq = (seq: number) => { if (seq > eventSeq) eventSeq = seq; };
+export const noteStream = (streamId: string | undefined) => { if (streamId) eventStreamId = streamId; };
+/** Drop the cursor — the next workspace.get snapshot re-anchors it. */
+export const resetEventStream = () => { eventSeq = 0; eventStreamId = undefined; };
 export const pageRevisions = new Map<string, number>();
 export const answerSeq = new Map<string, number>();
 /** Tabs this window removed ahead of main's confirmation — late upserts must not resurrect them. */

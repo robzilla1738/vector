@@ -11,12 +11,15 @@ type Listener = (e: AuxEvent) => void;
 export class EventBus {
   private listeners = new Set<Listener>();
   private nextSeq: number;
+  /** Stream identity (D9) — the repo mints it once per store; stable for the bus's life. */
+  readonly streamId: string;
   constructor(private repo: Repo) {
     this.nextSeq = repo.lastSeq() + 1;
+    this.streamId = repo.streamId();
   }
 
   emit(type: string, payload: Record<string, unknown>, runId?: string): AuxEvent {
-    const ev: AuxEvent = { seq: this.nextSeq++, runId, type, payload, ts: Date.now() };
+    const ev: AuxEvent = { seq: this.nextSeq++, streamId: this.streamId, runId, type, payload, ts: Date.now() };
     this.repo.queueEvent(ev);
     for (const l of this.listeners) {
       try {
@@ -33,7 +36,12 @@ export class EventBus {
     return () => this.listeners.delete(l);
   }
 
-  since(seq: number, limit = 500, runId?: string) {
-    return this.repo.eventsSince(seq, limit, runId);
+  /** Stream head — the seq of the newest event. */
+  lastSeq(): number {
+    return this.repo.lastSeq();
+  }
+
+  since(seq: number, limit = 500, runId?: string, streamId?: string) {
+    return this.repo.eventsSince(seq, limit, runId, streamId);
   }
 }

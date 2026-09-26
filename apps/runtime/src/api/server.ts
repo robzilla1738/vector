@@ -22,7 +22,8 @@ export const MAX_BODY_BYTES = 2 * 1024 * 1024;
 export class ApiServer {
   private server: Server;
   private wss: WebSocketServer;
-  private sockets = new Map<WebSocket, ClientContext>();
+  /** backlog buffers live frames while a resuming socket replays its cursor. */
+  private sockets = new Map<WebSocket, { client: ClientContext; backlog?: string[] }>();
   port = 0;
 
   constructor(
@@ -58,7 +59,14 @@ export class ApiServer {
         socket.destroy();
         return;
       }
-      this.wss.handleUpgrade(req, socket, head, (ws) => this.onSocket(ws, client!));
+      // D9 resume: `afterSeq` + `streamId` replay the durable buffer before
+      // the socket goes live; a stale cursor gets a `resync` frame instead.
+      const afterSeqParam = url.searchParams.get("afterSeq");
+      const parsedSeq = afterSeqParam === null ? undefined : Number(afterSeqParam);
+      const afterSeq = parsedSeq !== undefined && Number.isInteger(parsedSeq) && parsedSeq >= 0 ? parsedSeq : undefined;
+      const streamId = url.searchParams.get("streamId") ?? undefined;
+      const resume = afterSeq === undefined ? undefined : { afterSeq, streamId };
+      this.wss.handleUpgrade(req, socket, head, (ws) => this.onSocket(ws, client!, resume));
     });
     this.opts.events.subscribe((e) => this.broadcast(e));
   }
@@ -104,8 +112,10 @@ export class ApiServer {
     }
   }
 
-  private onSocket(ws: WebSocket, client: ClientContext) {
-    this.sockets.set(ws, client);
+  private onSocket(ws: WebSocket, client: ClientContext, resume?: { afterSeq: number; streamId?: string }) {
+    const entry: { client: ClientContext; backlog?: string[] } = { client };
+    if (resume) entry.backlog = [];
+    this.sockets.set(ws, entry);
     ws.on("close", () => this.sockets.delete(ws));
     ws.on("message", async (data) => {
       let msg: unknown;
@@ -118,17 +128,63 @@ export class ApiServer {
       const out = await this.dispatch(msg, client);
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(out));
     });
+    // Stream hello anchors every socket: identity + head at connect.
+    ws.send(JSON.stringify({ kind: "hello", streamId: this.opts.events.streamId, lastSeq: this.opts.events.lastSeq() }));
+    if (resume) this.resume(ws, entry, resume);
+  }
+
+  /**
+   * D9 resume: replay the durable buffer after `afterSeq` through the same
+   * visibility filter as the live stream, then flush live frames buffered
+   * during the replay. A stale cursor (stream mismatch or a gap below the
+   * retained floor) answers one `resync` frame — the client refetches a
+   * snapshot and keeps the socket live for subsequent events. Backlogs
+   * beyond REPLAY_LIMIT resync instead of replaying a flood.
+   */
+  private static readonly REPLAY_LIMIT = 10_000;
+  private resume(ws: WebSocket, entry: { client: ClientContext; backlog?: string[] }, resume: { afterSeq: number; streamId?: string }) {
+    const visible = (e: AuxEvent) =>
+      !entry.client.scope || (!!this.opts.filterEvent && this.opts.filterEvent(entry.client, e));
+    let cursor = resume.afterSeq;
+    let lastSeq = cursor;
+    let replayed = 0;
+    for (;;) {
+      const out = this.opts.events.since(cursor, 2000, undefined, cursor === resume.afterSeq ? resume.streamId : undefined);
+      if (ws.readyState !== ws.OPEN) return;
+      if (out.resync) {
+        ws.send(JSON.stringify({ kind: "resync", streamId: out.streamId, lastSeq: out.lastSeq }));
+        lastSeq = out.lastSeq;
+        break;
+      }
+      for (const e of out.events) if (visible(e)) ws.send(JSON.stringify({ event: e }));
+      lastSeq = out.lastSeq;
+      replayed += out.events.length;
+      if (out.events.length < 2000) break;
+      if (replayed >= ApiServer.REPLAY_LIMIT) {
+        ws.send(JSON.stringify({ kind: "resync", streamId: this.opts.events.streamId, lastSeq: this.opts.events.lastSeq() }));
+        lastSeq = this.opts.events.lastSeq();
+        break;
+      }
+      cursor = out.lastSeq;
+    }
+    const backlog = entry.backlog ?? [];
+    entry.backlog = undefined;
+    for (const frame of backlog) {
+      const seq = (JSON.parse(frame) as { event: AuxEvent }).event.seq;
+      if (seq > lastSeq) ws.send(frame);
+    }
   }
 
   private broadcast(e: AuxEvent) {
     let frame: string | undefined;
-    for (const [ws, client] of this.sockets) {
+    for (const [ws, entry] of this.sockets) {
       if (ws.readyState !== ws.OPEN) continue;
       // Scoped sockets get a filtered stream; with no filter configured they
       // get nothing rather than the global firehose.
-      if (client.scope && (!this.opts.filterEvent || !this.opts.filterEvent(client, e))) continue;
+      if (entry.client.scope && (!this.opts.filterEvent || !this.opts.filterEvent(entry.client, e))) continue;
       frame ??= JSON.stringify({ event: e });
-      ws.send(frame);
+      if (entry.backlog) entry.backlog.push(frame);
+      else ws.send(frame);
     }
   }
 

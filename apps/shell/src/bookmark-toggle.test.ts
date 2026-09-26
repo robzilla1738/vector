@@ -13,7 +13,7 @@ it("shares one pending toggle and preserves the runtime's bookmark list",async()
   await useStore.getState().toggleBookmark("https://example.com/","Example");
   expect(invoke).toHaveBeenCalledTimes(1);
   const bookmarks=[{url:"https://example.com/",title:"Example",folderPath:["Research"]},{url:"https://other.example/",title:"Other window"}];
-  useStore.getState().applyEvent({type:"bookmarks.changed",payload:{bookmarks},seq:1,ts:Date.now()} as AuxEvent);
+  useStore.getState().applyEvent({type:"bookmarks.changed",payload:{bookmarks},seq:1,streamId:"test",ts:Date.now()} as AuxEvent);
   finish({ok:true});await first;
   expect(useStore.getState().bookmarks).toEqual(bookmarks);
   expect(useStore.getState().bookmarkPending).toEqual({});

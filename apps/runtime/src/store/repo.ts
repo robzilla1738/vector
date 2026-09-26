@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { DatabaseSync, StatementSync } from "node:sqlite";
 import type {
   Artifact,
@@ -17,7 +18,7 @@ import type {
 } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
 import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invocations";
-import { commitRelaxed, kvGetJson, kvSetJson } from "./db.js";
+import { commitRelaxed, kvGet, kvGetJson, kvSet, kvSetJson } from "./db.js";
 
 const now = () => Date.now();
 const J = JSON.stringify;
@@ -687,7 +688,28 @@ export class Repo {
   }
 
   // ---- events ----
-  appendEvent(e: Omit<AuxEvent, "seq">): number {
+  private streamIdValue: string | undefined;
+  /**
+   * Durable identity of this store's event stream (D9). Minted once per
+   * database and kept in kv so `afterSeq` cursors survive restarts; a
+   * recreated store mints a fresh id so stale cursors resync instead of
+   * silently resuming. Stores without a kv table get a volatile id.
+   */
+  streamId(): string {
+    if (this.streamIdValue) return this.streamIdValue;
+    const hasKv = !!this.q("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='kv'").get();
+    const existing = hasKv ? kvGet(this.db, "meta:eventStreamId") : undefined;
+    this.streamIdValue = existing ?? randomUUID();
+    if (hasKv && !existing) kvSet(this.db, "meta:eventStreamId", this.streamIdValue);
+    return this.streamIdValue;
+  }
+  /** Oldest retained seq — the replay floor. Cursors below it cannot be honored. */
+  firstSeq(): number | undefined {
+    this.flush();
+    const r = this.q("SELECT MIN(seq) s FROM events").get() as { s: number | null };
+    return r.s ?? undefined;
+  }
+  appendEvent(e: Omit<AuxEvent, "seq" | "streamId">): number {
     const info = this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)")
       .run(e.runId ?? null, e.type, J(e.payload), e.ts);
     const seq = Number(info.lastInsertRowid);
@@ -719,13 +741,30 @@ export class Repo {
     const info = this.q("DELETE FROM events WHERE ts < ?").run(cutoff);
     return Number(info.changes ?? 0);
   }
-  eventsSince(sinceSeq: number, limit = 500, runId?: string): { events: AuxEvent[]; lastSeq: number } {
+  /**
+   * Replay events after `sinceSeq` (D9). Returns `resync: true` — with no
+   * events — when the cursor cannot be honored: a `streamId` the caller
+   * presents that is not this stream, a cursor beyond the stream head, or
+   * a positive cursor whose next events were pruned below the replay
+   * floor (`sinceSeq` 0 is a fresh read, never a gap). On success every
+   * event carries the current `streamId`.
+   */
+  eventsSince(sinceSeq: number, limit = 500, runId?: string, expectedStreamId?: string): { streamId: string; events: AuxEvent[]; lastSeq: number; resync?: true } {
     this.flush();
+    const streamId = this.streamId();
+    const lastSeq = this.lastSeq();
+    const resync = { streamId, events: [] as AuxEvent[], lastSeq, resync: true as const };
+    if (expectedStreamId !== undefined && expectedStreamId !== streamId) return resync;
+    if (sinceSeq > lastSeq) return resync;
+    if (sinceSeq > 0) {
+      const first = this.firstSeq();
+      if (first !== undefined && sinceSeq + 1 < first) return resync;
+    }
     const rows = runId
       ? (this.q("SELECT * FROM events WHERE seq>? AND run_id=? ORDER BY seq LIMIT ?").all(sinceSeq, runId, limit) as any[])
       : (this.q("SELECT * FROM events WHERE seq>? ORDER BY seq LIMIT ?").all(sinceSeq, limit) as any[]);
-    const events = rows.map((r) => ({ seq: r.seq, runId: r.run_id ?? undefined, type: r.type, payload: P(r.payload, {}), ts: r.ts }));
-    return { events, lastSeq: events.length ? events[events.length - 1]!.seq : sinceSeq };
+    const events = rows.map((r) => ({ seq: r.seq, streamId, runId: r.run_id ?? undefined, type: r.type, payload: P(r.payload, {}), ts: r.ts }));
+    return { streamId, events, lastSeq: events.length ? events[events.length - 1]!.seq : sinceSeq };
   }
   lastSeq(): number {
     this.flush();

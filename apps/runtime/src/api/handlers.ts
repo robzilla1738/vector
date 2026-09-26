@@ -2024,9 +2024,9 @@ export function makeInvoker(s: Services) {
         return s.runs.messages.cancel(params.messageId);
       case "runs.events":
       case "events.since": {
-        const p = params as { runId?: string; sinceSeq: number; limit: number };
-        const out = s.events.since(p.sinceSeq, p.limit, p.runId);
-        if (!scope) return out;
+        const p = params as { runId?: string; sinceSeq: number; limit: number; streamId?: string };
+        const out = s.events.since(p.sinceSeq, p.limit, p.runId, p.streamId);
+        if (!scope || out.resync) return out;
         // lastSeq still advances: filtered events were durably read and skipped.
         return { ...out, events: out.events.filter((event) => eventVisible(scope, client.connectionId, event)) };
       }
@@ -2403,6 +2403,7 @@ export function makeInvoker(s: Services) {
             ? s.pages.activePageId
             : null,
           lastSeq: s.repo.lastSeq(),
+          streamId: s.repo.streamId(),
         };
       }
 

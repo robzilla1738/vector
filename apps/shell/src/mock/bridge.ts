@@ -115,7 +115,7 @@ export function installMockBridge(q: URLSearchParams) {
   const eventListeners = new Set<Listener<AuxEvent>>();
   const loadingListeners = new Set<Listener<{ pageId: string; loading: boolean }>>();
   const emit = (type: string, payload: Record<string, unknown>, runId?: string) => {
-    const ev: AuxEvent = { seq: ++seq, type, payload, ts: Date.now(), ...(runId ? { runId } : {}) };
+    const ev: AuxEvent = { seq: ++seq, streamId: "mock", type, payload, ts: Date.now(), ...(runId ? { runId } : {}) };
     for (const l of eventListeners) l(ev);
   };
 
@@ -195,7 +195,7 @@ export function installMockBridge(q: URLSearchParams) {
   const sets = scenario === "set" || withRun ? [SET] : [];
   const members = sets.length ? MEMBERS : [];
 
-  const workspace = () => ({ pages, sets, members, runs, sessions: [{ sessionId: "sess-1", backend: "aux", label: "Aux", status: "connected" }], activePageId, lastSeq: seq });
+  const workspace = () => ({ pages, sets, members, runs, sessions: [{ sessionId: "sess-1", backend: "aux", label: "Aux", status: "connected" }], activePageId, lastSeq: seq, streamId: "mock" });
 
   const page = (id: string) => {
     const p = pages.find((x) => x.pageId === id);

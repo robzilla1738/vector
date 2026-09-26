@@ -8,7 +8,7 @@ import { eventEffects, reduceLibraryEvent, reducePageEvent, reduceRunEvent } fro
 import { createLayoutSlice } from "./store/layout-slice";
 import { loadOrganizationLayout, persistLayout, reloadOrganizationLayout } from "./store/persistence";
 import { createRunsSlice } from "./store/runs-slice";
-import { call, lastEventSeq, noteEventSeq, patchPage, sendTabCommand } from "./store/shared";
+import { call, eventStream, lastEventSeq, noteEventSeq, noteStream, patchPage, sendTabCommand } from "./store/shared";
 import { createTabsSlice } from "./store/tabs-slice";
 import type { Workspace } from "./store/types";
 import { createUiSlice } from "./store/ui-slice";
@@ -60,7 +60,8 @@ export const useStore = create<Workspace>((set, get, api) => ({
       }
       // Events received while the supporting data loaded take precedence over this snapshot.
       if (lastEventSeq() > ws.lastSeq) { void get().refresh(); return; }
-      const { lastSeq, ...snapshot } = ws;
+      const { lastSeq, streamId, ...snapshot } = ws;
+      noteStream(streamId);
       noteEventSeq(lastSeq);
       set((s) => {
         let restored = s.layout;
@@ -115,6 +116,16 @@ export const useStore = create<Workspace>((set, get, api) => ({
   },
 
   applyEvent: (e) => {
+    // D9: once connected, the shell's stream is unfiltered, so every event's
+    // seq must be contiguous and on the snapshot's stream. A new streamId or
+    // a forward hole means an event was lost — resync from a fresh snapshot
+    // instead of applying a hole; replayed seqs (≤ head) are already applied.
+    if (e.streamId && !eventStream()) noteStream(e.streamId);
+    if (get().connected) {
+      if (e.streamId && e.streamId !== eventStream()) { void get().refresh(); return; }
+      if (e.seq <= lastEventSeq()) return;
+      if (lastEventSeq() > 0 && e.seq !== lastEventSeq() + 1) { void get().refresh(); return; }
+    }
     noteEventSeq(e.seq);
     const before = get();
     const next = reduceRunEvent(before, e) ?? reducePageEvent(before, e) ?? reduceLibraryEvent(before, e);

@@ -8,11 +8,12 @@ import { AuxError } from "@aux/contracts";
 const TOKEN = "t0ken-secret";
 let server: ApiServer;
 let events: EventBus;
+let repo: Repo;
 let base: string;
 const seen: { method: string; params: unknown }[] = [];
 
 beforeAll(async () => {
-  const repo = new Repo(openDb(":memory:"));
+  repo = new Repo(openDb(":memory:"));
   events = new EventBus(repo);
   server = new ApiServer({
     token: TOKEN,
@@ -96,16 +97,20 @@ describe("ApiServer over WebSocket", () => {
       ws.onerror = () => reject(new Error("ws failed"));
       ws.onclose = () => reject(new Error("ws closed"));
     });
-  const roundtrip = (ws: WebSocket, frame: string) =>
+  const roundtrip = (ws: WebSocket, frame: string, id: unknown = undefined) =>
     new Promise<Record<string, unknown>>((resolve) => {
-      ws.onmessage = (ev) => resolve(JSON.parse(String(ev.data)) as Record<string, unknown>);
+      // Stream frames (hello/resync/event) are skipped — resolve on the RPC reply.
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(String(ev.data)) as Record<string, unknown>;
+        if (id !== undefined ? msg.id === id : "result" in msg || "error" in msg) resolve(msg);
+      };
       ws.send(frame);
     });
 
   it("accepts the token on the upgrade query and refuses without it", async () => {
     await expect(connect(base.replace("http", "ws") + "/ws")).rejects.toThrow();
     const ws = await connect(`${base.replace("http", "ws")}/ws?token=${TOKEN}`);
-    const ok = await roundtrip(ws, JSON.stringify({ id: 7, method: "pages.list", params: {} }));
+    const ok = await roundtrip(ws, JSON.stringify({ id: 7, method: "pages.list", params: {} }), 7);
     expect(ok.id).toBe(7);
     expect((ok.result as { echo: string }).echo).toBe("pages.list");
     ws.close();
@@ -119,10 +124,13 @@ describe("ApiServer over WebSocket", () => {
     events.emit("task.updated", { task: { taskId: "t1", workspaceId: "workspace" } });
     events.emit("run.updated", { run: { runId: "r1" } }, "r1");
     await new Promise((r) => setTimeout(r, 50));
-    expect(received).toHaveLength(0);
+    expect(received.filter((m) => "event" in m)).toHaveLength(0);
     // RPC still dispatches under the scoped client context.
     const ok = await new Promise<Record<string, unknown>>((resolve) => {
-      ws.onmessage = (ev) => resolve(JSON.parse(String(ev.data)) as Record<string, unknown>);
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(String(ev.data)) as Record<string, unknown>;
+        if (msg.id === 9) resolve(msg);
+      };
       ws.send(JSON.stringify({ id: 9, method: "pages.list", params: {} }));
     });
     expect((ok.result as { echo: string }).echo).toBe("pages.list");
@@ -148,8 +156,9 @@ describe("ApiServer over WebSocket", () => {
       events.emit("task.updated", { task: { taskId: "other", workspaceId: "w1" } });
       events.emit("settings.changed", { category: "calendar" });
       await new Promise((r) => setTimeout(r, 50));
-      expect(received).toHaveLength(1);
-      expect((received[0] as { event: { payload: { task: { taskId: string } } } }).event.payload.task.taskId).toBe("t1");
+      const eventFrames = received.filter((m) => "event" in m);
+      expect(eventFrames).toHaveLength(1);
+      expect((eventFrames[0] as { event: { payload: { task: { taskId: string } } } }).event.payload.task.taskId).toBe("t1");
       ws.close();
     } finally {
       await filtered.close();
@@ -159,15 +168,80 @@ describe("ApiServer over WebSocket", () => {
   it("error frames carry the request id; method is validated against MethodSchemas", async () => {
     const ws = await connect(`${base.replace("http", "ws")}/ws?token=${TOKEN}`);
     const before = seen.length;
-    const unknown = await roundtrip(ws, JSON.stringify({ id: 42, method: "pages.teleport", params: {} }));
+    const unknown = await roundtrip(ws, JSON.stringify({ id: 42, method: "pages.teleport", params: {} }), 42);
     expect(unknown.id).toBe(42);
     expect((unknown.error as { code: string }).code).toBe("not_found");
     expect(seen.length).toBe(before); // never reached invoke
-    const failed = await roundtrip(ws, JSON.stringify({ id: "abc", method: "runs.get", params: { runId: "x" } }));
+    const failed = await roundtrip(ws, JSON.stringify({ id: "abc", method: "runs.get", params: { runId: "x" } }), "abc");
     expect(failed.id).toBe("abc");
     expect((failed.error as { code: string }).code).toBe("not_found");
     const bad = await roundtrip(ws, "{oops");
     expect((bad.error as { code: string }).code).toBe("invalid_params");
+    ws.close();
+  });
+});
+
+describe("event stream resume (D9)", () => {
+  const connect = (url: string) =>
+    new Promise<WebSocket>((resolve, reject) => {
+      const ws = new WebSocket(url);
+      ws.onopen = () => resolve(ws);
+      ws.onerror = () => reject(new Error("ws failed"));
+      ws.onclose = () => reject(new Error("ws closed"));
+    });
+  const frames = (ws: WebSocket, ms = 80) =>
+    new Promise<Record<string, unknown>[]>((resolve) => {
+      const got: Record<string, unknown>[] = [];
+      ws.onmessage = (ev) => got.push(JSON.parse(String(ev.data)) as Record<string, unknown>);
+      setTimeout(() => resolve(got), ms);
+    });
+  const wsBase = () => base.replace("http", "ws");
+
+  it("anchors every socket with a stream hello", async () => {
+    const ws = await connect(`${wsBase()}/ws?token=${TOKEN}`);
+    const [hello] = await frames(ws, 40);
+    expect(hello).toMatchObject({ kind: "hello", streamId: events.streamId });
+    ws.close();
+  });
+
+  it("replays the durable buffer after afterSeq, then continues live without duplicates", async () => {
+    const anchor = events.lastSeq();
+    events.emit("task.updated", { task: { taskId: "replayed" } });
+    const ws = await connect(`${wsBase()}/ws?token=${TOKEN}&afterSeq=${anchor}&streamId=${events.streamId}`);
+    const got = frames(ws);
+    events.emit("task.updated", { task: { taskId: "live" } });
+    const all = await got;
+    const eventFrames = all.filter((m) => "event" in m) as { event: { seq: number; streamId: string; payload: { task: { taskId: string } } } }[];
+    // Exactly the replayed + the live event, in seq order, each carrying streamId.
+    expect(eventFrames.map((f) => f.event.payload.task.taskId)).toEqual(["replayed", "live"]);
+    expect(eventFrames.map((f) => f.event.streamId)).toEqual([events.streamId, events.streamId]);
+    expect(eventFrames[0]!.event.seq).toBe(anchor + 1);
+    ws.close();
+  });
+
+  it("resyncs a resume across a forced gap instead of replaying a hole", async () => {
+    const stale = events.lastSeq();
+    events.emit("task.updated", { task: { taskId: "kept" } });
+    events.lastSeq(); // flush the deferred insert before pruning
+    // Force a gap: retention drops everything at or before the event right
+    // after the client's cursor — the floor moves past what it can replay.
+    repo.db.prepare("DELETE FROM events WHERE seq <= ?").run(stale + 1);
+    const ws = await connect(`${wsBase()}/ws?token=${TOKEN}&afterSeq=${stale}&streamId=${events.streamId}`);
+    const all = await frames(ws);
+    const resync = all.find((m) => m.kind === "resync");
+    expect(resync).toMatchObject({ kind: "resync", streamId: events.streamId });
+    expect(all.filter((m) => "event" in m)).toHaveLength(0);
+    // The socket stays live after resync.
+    events.emit("task.updated", { task: { taskId: "after-resync" } });
+    const tail = await frames(ws);
+    expect(tail.some((m) => "event" in m)).toBe(true);
+    ws.close();
+  });
+
+  it("resyncs a resume presenting a foreign streamId", async () => {
+    const ws = await connect(`${wsBase()}/ws?token=${TOKEN}&afterSeq=1&streamId=not-this-stream`);
+    const all = await frames(ws);
+    expect(all.some((m) => m.kind === "resync" && m.streamId === events.streamId)).toBe(true);
     ws.close();
   });
 });

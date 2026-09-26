@@ -125,8 +125,9 @@ describe("API schemas", () => {
   });
 
   it("validates events", () => {
-    const e = EventSchema.safeParse({ seq: 3, type: "page.updated", payload: { a: 1 }, ts: Date.now() });
+    const e = EventSchema.safeParse({ seq: 3, streamId: "s1", type: "page.updated", payload: { a: 1 }, ts: Date.now() });
     expect(e.success).toBe(true);
-    expect(EventSchema.safeParse({ seq: -1, type: "x", payload: {}, ts: 0 }).success).toBe(false);
+    expect(EventSchema.safeParse({ seq: -1, streamId: "s1", type: "x", payload: {}, ts: 0 }).success).toBe(false);
+    expect(EventSchema.safeParse({ seq: 3, type: "x", payload: {}, ts: 0 }).success).toBe(false);
   });
 });

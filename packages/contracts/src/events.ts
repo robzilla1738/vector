@@ -1,11 +1,17 @@
 import { z } from "zod";
 
 /**
- * Compact event rows with a monotonically increasing sequence number.
- * Subscribers reconnect and request `events.since(lastSeq)`.
+ * Compact event rows with a monotonically increasing sequence number
+ * inside a durable stream (D9). `streamId` identifies the stream
+ * generation — a recreated store mints a new one, so a stale cursor can
+ * never silently resume against reset sequence numbers. Subscribers
+ * reconnect with `events.since(lastSeq, streamId)`; a gap below the
+ * retained floor or a stream mismatch answers `resync` so the client
+ * refetches a snapshot instead of applying a hole.
  */
 export const EventSchema = z.object({
   seq: z.number().int().positive(),
+  streamId: z.string(),
   runId: z.string().optional(),
   type: z.string(),
   payload: z.record(z.string(), z.unknown()),

@@ -28,7 +28,7 @@ it("refreshes the loaded history range instead of dropping older pages",async()=
     const more=Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(button=>button.textContent==="Load more conversations")!;
     await act(async()=>more.click());
     expect(host.querySelectorAll(".history-conversation")).toHaveLength(80);
-    await act(async()=>{receive({seq:1,ts:Date.now(),type:"conversation.changed",payload:{chatId:"chat-0"}});await vi.advanceTimersByTimeAsync(100);});
+    await act(async()=>{receive({seq:1,streamId:"test",ts:Date.now(),type:"conversation.changed",payload:{chatId:"chat-0"}});await vi.advanceTimersByTimeAsync(100);});
     expect(invoke).toHaveBeenLastCalledWith("conversations.list",expect.objectContaining({limit:80}));
     expect(host.querySelectorAll(".history-conversation")).toHaveLength(80);
   } finally {await act(async()=>root.unmount());vi.restoreAllMocks();vi.useRealTimers();useStore.setState(initial,true);}

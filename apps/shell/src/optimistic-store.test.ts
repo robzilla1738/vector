@@ -3,13 +3,14 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { AuxEvent, PageTarget, TabCommandAck } from "@aux/contracts";
 import { bridge } from "./bridge";
 import { patchPageFields, useStore } from "./store";
+import { noteEventSeq, noteStream, resetEventStream } from "./store/shared";
 import { emptyLayout, syncLayout, syncOrder, withSyncedOrder } from "./workspace";
 import { makeRun } from "./mock/fixtures";
 
 const initial = useStore.getState();
 afterEach(() => { vi.restoreAllMocks(); useStore.setState(initial, true); });
 const page = (pageId: string): PageTarget => ({ pageId, title: pageId, url: `https://example.test/${pageId}`, ownedByRuntime: false, viewStatus: "visible", controller: "human" } as PageTarget);
-const event = (type: string, payload: Record<string, unknown>, seq = Date.now()): AuxEvent => ({ type, payload, seq, ts: Date.now() });
+const event = (type: string, payload: Record<string, unknown>, seq = Date.now()): AuxEvent => ({ type, payload, seq, streamId: "test", ts: Date.now() });
 function tabs(...ids: string[]) {
   const layout = { ...emptyLayout(), order: ids, tabSpace: Object.fromEntries(ids.map(id => [id, emptyLayout().activeSpaceId])) };
   useStore.setState({ pages: ids.map(page), layout, activePageId: ids[0] ?? null, closedTabs: [] });
@@ -101,4 +102,28 @@ it("keeps error toasts until dismissed", () => {
     useStore.getState().dismissToast(toast!.id);
     expect(useStore.getState().toasts).toEqual([]);
   } finally { vi.useRealTimers(); }
+});
+
+it("resyncs from a snapshot on a live-stream gap, stream change, or drops replayed seqs", () => {
+  const refresh = vi.fn(async () => {});
+  useStore.setState({ connected: true, refresh, activePageId: null });
+  resetEventStream();
+  noteStream("test");
+  noteEventSeq(10);
+  const apply = useStore.getState().applyEvent;
+  // A forward hole on the unfiltered stream → snapshot resync.
+  apply({ type: "page.updated", payload: { pageId: "p1", activePageId: "p1" }, seq: 12, streamId: "test", ts: Date.now() });
+  expect(refresh).toHaveBeenCalledTimes(1);
+  refresh.mockClear();
+  // The contiguous next event still applies.
+  apply({ type: "page.updated", payload: { pageId: "p1", activePageId: "p1" }, seq: 11, streamId: "test", ts: Date.now() });
+  expect(refresh).not.toHaveBeenCalled();
+  expect(useStore.getState().activePageId).toBe("p1");
+  // A replayed seq is already applied — neither refresh nor re-apply.
+  apply({ type: "page.updated", payload: { pageId: "p2", activePageId: "p2" }, seq: 11, streamId: "test", ts: Date.now() });
+  expect(refresh).not.toHaveBeenCalled();
+  expect(useStore.getState().activePageId).toBe("p1");
+  // A different streamId means the cursor belongs to a dead stream → resync.
+  apply({ type: "page.updated", payload: { pageId: "px" }, seq: 12, streamId: "new-generation", ts: Date.now() });
+  expect(refresh).toHaveBeenCalledTimes(1);
 });

@@ -51,3 +51,29 @@ it("the SDK validates requests always and results unless the method is on the ho
   await expect(strict.call("pages.observe", { pageId: "p1" })).rejects.toThrow(); // not a valid Observation
   expect(bodies).toHaveLength(2);
 });
+
+it("the SDK pins the streamId, surfaces resync via onResync, and continues from the head", async () => {
+  const paramsSeen: Record<string, unknown>[] = [];
+  let calls = 0;
+  const event = (seq: number) => ({ seq, streamId: "s1", type: "task.updated", payload: {}, ts: 1 });
+  const fetch = (async (_url: string, init: { body: string }) => {
+    paramsSeen.push((JSON.parse(init.body) as { params: Record<string, unknown> }).params);
+    calls++;
+    const result =
+      calls === 1 ? { streamId: "s1", events: [event(4)], lastSeq: 4 }
+      : calls === 2 ? { streamId: "s1", events: [], lastSeq: 6, resync: true }
+      : { streamId: "s1", events: [], lastSeq: 6 };
+    return new Response(JSON.stringify({ result }), { status: 200 });
+  }) as unknown as typeof globalThis.fetch;
+  const client = new AuxClient({ port: 1, token: "t" }, { fetch });
+  const resyncs: { streamId: string; lastSeq: number }[] = [];
+  const signal = AbortSignal.timeout(50);
+  const stream = client.events(0, { pollMs: 5, signal, onResync: (r) => resyncs.push(r) });
+  const seen: number[] = [];
+  for await (const e of stream) seen.push(e.seq);
+  expect(seen).toEqual([4]);
+  expect(resyncs).toEqual([{ streamId: "s1", lastSeq: 6 }]);
+  // The first reply pinned s1; later polls present it for mismatch detection.
+  expect(paramsSeen[1]).toMatchObject({ streamId: "s1", sinceSeq: 4 });
+  expect(paramsSeen[2]).toMatchObject({ streamId: "s1", sinceSeq: 6 });
+});

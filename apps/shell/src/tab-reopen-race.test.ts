@@ -16,7 +16,7 @@ function setup() {
   vi.spyOn(bridge,'bindTabSpace').mockImplementation(async (_pageId, spaceId) => ({ spaceId, workspaceId: `workspace:${spaceId}` }));
   return {pages,layout};
 }
-function close(pageId: string) { useStore.getState().applyEvent({seq:Date.now(),type:'page.removed',ts:Date.now(),payload:{pageId}}); }
+function close(pageId: string) { useStore.getState().applyEvent({seq:Date.now(),streamId:'test',type:'page.removed',ts:Date.now(),payload:{pageId}}); }
 const pageOf = (pageId: string, url = 'https://example.test/x'): PageTarget =>
   ({ pageId, title: 'x', url, ownedByRuntime: false, viewStatus: 'visible' } as PageTarget);
 
@@ -31,8 +31,8 @@ it('restores position when the catalog patch lands after the open ack', async ()
   // only via the delayed patch.
   vi.spyOn(bridge,'tabCommand').mockImplementation(async command => {
     if (command.kind === 'open') {
-      useStore.getState().applyEvent({seq:Date.now(),type:'page.added',ts:Date.now(),payload:{page:pageOf(command.pageId!,command.url??'')}});
-      useStore.getState().applyEvent({seq:Date.now(),type:'page.removed',ts:Date.now(),payload:{pageId:command.pageId!}});
+      useStore.getState().applyEvent({seq:Date.now(),streamId:'test',type:'page.added',ts:Date.now(),payload:{page:pageOf(command.pageId!,command.url??'')}});
+      useStore.getState().applyEvent({seq:Date.now(),streamId:'test',type:'page.removed',ts:Date.now(),payload:{pageId:command.pageId!}});
       return applied(command);
     }
     return applied(command);
@@ -40,7 +40,7 @@ it('restores position when the catalog patch lands after the open ack', async ()
   close('middle');
   const opening = useStore.getState().reopenClosedTab();
   // The page's upsert patch arrives after the ack resolves.
-  setTimeout(() => useStore.getState().applyEvent({seq:Date.now(),type:'page.added',ts:Date.now(),payload:{page:pageOf('middle','https://example.test/middle')}}),20);
+  setTimeout(() => useStore.getState().applyEvent({seq:Date.now(),streamId:'test',type:'page.added',ts:Date.now(),payload:{page:pageOf('middle','https://example.test/middle')}}),20);
   await opening;
   const layout = useStore.getState().layout;
   expect(layout.tabFolder.middle).toBe('research');

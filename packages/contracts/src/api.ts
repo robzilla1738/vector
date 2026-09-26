@@ -464,6 +464,8 @@ export const RunsEventsParams = z.object({
   runId: z.string().optional(),
   sinceSeq: z.number().int().nonnegative().default(0),
   limit: z.number().int().positive().max(2000).default(500),
+  /** Stream identity the cursor was issued against — a mismatch answers `resync` (D9). */
+  streamId: z.string().optional(),
 });
 export const RunsAnswerParams = z.object({ runId: id, answer: z.string() });
 export const RunsQueueParams = z.object({
@@ -2081,8 +2083,20 @@ export const ResultSchemas = {
   "safety.grants.list": z.array(StandingGrantSchema),
   "safety.grants.revoke": z.object({ revoked: z.number().int().nonnegative() }),
   "runs.message.cancel": RunMessageSchema,
-  "runs.events": z.object({ events: z.array(EventSchema), lastSeq: z.number() }),
-  "events.since": z.object({ events: z.array(EventSchema), lastSeq: z.number() }),
+  "runs.events": z.object({
+    streamId: z.string(),
+    events: z.array(EventSchema),
+    lastSeq: z.number(),
+    /** The cursor cannot be replayed (stream mismatch or pruned floor) — refetch a snapshot. */
+    resync: z.boolean().optional(),
+  }),
+  "events.since": z.object({
+    streamId: z.string(),
+    events: z.array(EventSchema),
+    lastSeq: z.number(),
+    /** The cursor cannot be replayed (stream mismatch or pruned floor) — refetch a snapshot. */
+    resync: z.boolean().optional(),
+  }),
   "artifacts.list": z.array(ArtifactSchema),
   "artifacts.read": z.object({ artifact: ArtifactSchema, dataBase64: z.string() }),
   "programs.list": z.array(SavedProgramSchema),
@@ -2190,6 +2204,8 @@ export const ResultSchemas = {
     sessions: z.array(BrowserSessionSchema),
     activePageId: z.string().nullable(),
     lastSeq: z.number(),
+    /** Event-stream identity the snapshot is anchored to (D9). */
+    streamId: z.string(),
   }),
   "bench.run": z.object({ reportPath: z.string() }),
   "responses.list": z.array(ResponseRecordSchema),
