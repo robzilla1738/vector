@@ -44,7 +44,7 @@ export {
   snapshotSqlite,
   listImportSources,
 } from "./services/import-sources.js";
-export { RunCoordinator, verifyDoneAgainstObservation } from "./agent/coordinator.js";
+export { RunCoordinator, verifyDoneAgainstObservation, verifyResultCitations, markUnconfirmedWrites, NAV_OPS } from "./agent/coordinator.js";
 export { MockModelClient } from "./agent/mock-client.js";
 export {
   DEFAULT_PLANNER_MODEL,

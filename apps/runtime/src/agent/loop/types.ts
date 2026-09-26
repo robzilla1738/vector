@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { ModelMessage } from "ai";
-import type { SuspensionKind } from "@aux/contracts";
+import type { ResultCitation, SuspensionKind } from "@aux/contracts";
 
 /**
  * The provider-agnostic message type is the SDK's `ModelMessage` — a
@@ -45,7 +45,13 @@ export interface LoopPark {
 
 export type LoopToolResult =
   | { output: unknown }
-  | { park: LoopPark };
+  | { park: LoopPark }
+  /**
+   * Verification v2 — a terminal tool's verified result ends the run. The
+   * loop persists an `{accepted:true}` tool result for pairing, then the
+   * run completes with this record (not raw model text).
+   */
+  | { finish: { result: Record<string, unknown> } };
 
 /** Service surface a loop tool executes against. */
 export interface LoopToolDeps {
@@ -71,6 +77,16 @@ export interface LoopToolDeps {
   fsRoots?: () => string[];
   /** Persisted todo scratchpad (write_todos). */
   writeTodos?: (todos: string[]) => Promise<void> | void;
+  /**
+   * Verification v2 — `submit_result` verify-and-finish. The host checks
+   * every citation's quote against the cited snapshot's rendered text and
+   * marks unconfirmed writes; `ok:false` returns the error to the model so
+   * it can re-cite and retry.
+   */
+  submitResult?: (
+    input: { report: string; citations?: ResultCitation[] },
+    ctx: LoopToolContext,
+  ) => Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; error: string }>;
 }
 
 /** Context a tool executes in: the run, its page, and the runtime surface. */

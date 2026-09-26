@@ -28,7 +28,7 @@ import {
   tryVisionPlan,
 } from "./coordinator-loop.js";
 
-export { verifyDoneAgainstObservation } from "./coordinator-loop.js";
+export { verifyDoneAgainstObservation, verifyResultCitations, markUnconfirmedWrites, NAV_OPS } from "./coordinator-loop.js";
 
 export interface RunControl {
   abort: AbortController;

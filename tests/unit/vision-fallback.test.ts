@@ -47,7 +47,7 @@ const doneOutcome = (stepId: string, op: string): StepOutcome => ({
   // evaluate reports its return value as the step detail (e4 → "4")
   ...(op === "evaluate" ? { detail: stepId.replace(/\D/g, "") } : {}),
   ...(WRITE_LIKE.has(op)
-    ? { receipt: { observed: `${op} dispatched`, remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } }
+    ? { receipt: { observed: `${op} dispatched`, remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false } }
     : {}),
 });
 
@@ -215,7 +215,7 @@ describe("vision fallback", () => {
 describe("no-progress guard", () => {
   const cont = (op: string, id: string) => ({ status: "continue", message: "working", steps: [{ id, op, expression: "1" }] });
 
-  it("does not trip while observation-blind steps succeed, even if final write verification fails", async () => {
+  it("does not trip while observation-blind steps succeed — unobserved writes complete marked unconfirmed", async () => {
     const h = harness({
       structuredPlan: cont("evaluate", "e1"),
       thenPlans: [cont("evaluate", "e2"), cont("evaluate", "e3"), cont("evaluate", "e4"), { status: "done", message: "count is 4", result: { count: 4 } }],
@@ -223,9 +223,10 @@ describe("no-progress guard", () => {
     });
     const run = await h.coordinator.start({ goal: "increment a shadow counter", pageIds: ["p1"] });
     const final = await waitForRun(h.repo, run.runId);
-    expect(final.status).toBe("failed");
-    expect(final.error).toContain("done not verified");
-    expect(final.result).toEqual({ count: 4 });
+    // Verification v2: observation-blind writes with no post-state are
+    // surfaced to the user, not failed — only uncertain dispatches block.
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ count: 4, unconfirmedWrites: ["e1", "e2", "e3", "e4"] });
     expect(h.executeCalls.length).toBe(4);
   });
 

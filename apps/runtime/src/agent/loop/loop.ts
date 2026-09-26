@@ -49,7 +49,7 @@ export interface AgentLoopOptions {
 }
 
 export type AgentLoopOutcome =
-  | { kind: "done"; text: string }
+  | { kind: "done"; text: string; result?: Record<string, unknown> }
   | { kind: "parked"; park: LoopPark; toolCallId: string }
   | { kind: "steered" }
   | { kind: "exhausted" }
@@ -178,11 +178,20 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
 
     const results: { toolCallId: string; toolName: string; output?: unknown; parked?: boolean }[] = [];
     let parked: { call: LoopToolCall; park: LoopPark } | undefined;
+    let finished: Record<string, unknown> | undefined;
     for (const call of toolCalls) {
       const result = await executeOne(call.toolName, call, tools, ctx);
       if ("park" in result) {
         parked = { call, park: result.park };
         results.push({ toolCallId: call.toolCallId, toolName: call.toolName, parked: true });
+        break;
+      }
+      if ("finish" in result) {
+        // Verification v2 — a terminal tool ends the run with its verified
+        // result. The persisted tool result stays an honest acceptance.
+        finished = result.finish.result;
+        results.push({ toolCallId: call.toolCallId, toolName: call.toolName, output: { accepted: true } });
+        opts.onToolCall?.(call, result);
         break;
       }
       results.push({ toolCallId: call.toolCallId, toolName: call.toolName, output: result.output });
@@ -212,6 +221,17 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       return { kind: "parked", park: parked.park, toolCallId: parked.call.toolCallId };
     }
 
+    const toolMessage = toolResultsMessage(results.map((r) => ({ toolCallId: r.toolCallId, toolName: r.toolName, output: r.output })));
+
+    if (finished !== undefined) {
+      // A verified result beats a pending steer — the run is already done;
+      // the interruption lands as its own turn afterwards.
+      messages.push(toolMessage);
+      transcript.append(runId, [toolMessage]);
+      const text = typeof finished.report === "string" ? finished.report : "";
+      return { kind: "done", text, result: finished };
+    }
+
     if (opts.steerCheck?.()) {
       // The step's calls executed but a steer landed — answer the unanswered
       // calls honestly, then hand control back.
@@ -224,7 +244,6 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       return { kind: "steered" };
     }
 
-    const toolMessage = toolResultsMessage(results.map((r) => ({ toolCallId: r.toolCallId, toolName: r.toolName, output: r.output })));
     messages.push(toolMessage);
     transcript.append(runId, [toolMessage]);
   }

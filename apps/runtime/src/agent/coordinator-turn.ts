@@ -296,7 +296,7 @@ export async function tryFinalDecision(
     const verified = verifyDoneAgainstObservation(d.result, observedEvidence(s, verifyObs), s.outcomes, s.run.config?.contextDocumentEvidence, s.run.config?.contextArtifactEvidence, memoryEvidence);
     if (!verified.ok) return "gave_up";
     if(!await saveTerminalFile(s,d.result))return "done";
-    s.self.finish(s.runId, "completed", d.result, undefined, d.message || "Done");
+    s.self.finish(s.runId, "completed", { ...d.result, ...(verified.unconfirmedWrites?.length ? { unconfirmedWrites: verified.unconfirmedWrites } : {}) }, undefined, d.message || "Done");
     return "done";
   } catch (e) {
     if (e instanceof ModelFailureError) throw e;
@@ -766,7 +766,7 @@ export async function settleDonePlan(
     return "return";
   }
   if(!await saveTerminalFile(s,plan.result??{}))return "return";
-  s.self.finish(s.runId, "completed", plan.result, undefined, plan.message || "Done");
+  s.self.finish(s.runId, "completed", { ...plan.result, ...(verified.unconfirmedWrites?.length ? { unconfirmedWrites: verified.unconfirmedWrites } : {}) }, undefined, plan.message || "Done");
   return "return";
 }
 

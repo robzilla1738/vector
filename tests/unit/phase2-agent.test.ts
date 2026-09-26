@@ -284,7 +284,7 @@ function harness(model: ModelClient, opts: { text?: string; extracted?: Record<s
     execute: vi.fn(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
       executed.push(program.steps);
       const steps = program.steps.map((s) => ok(s.op, { stepId: s.id, ...(s.op === "extract" ? { extracted: opts.extracted ?? {} } : {}),
-        ...(isConsequential(s.op) ? { effect: "observed", receipt: { observed: "Fixture action verified", remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } } : {}) }));
+        ...(isConsequential(s.op) ? { effect: "observed", receipt: { observed: "Fixture action verified", remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false } } : {}) }));
       steps.forEach((o, i) => ctx?.onStep?.(o, program.steps[i]!));
       return { status: "completed" as const, steps };
     }),

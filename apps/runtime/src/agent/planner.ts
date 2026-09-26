@@ -263,7 +263,7 @@ function renderOutcome(o: { op: string; status: string; detail?: string; extract
   return line;
 }
 
-function redactObservation(obs: Observation): Observation {
+export function redactObservation(obs: Observation): Observation {
   return {
     ...obs,
     content: {

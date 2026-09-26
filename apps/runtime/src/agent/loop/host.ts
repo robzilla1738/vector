@@ -2,8 +2,9 @@ import { AuxError, type Observation, type Run, type StepOutcome } from "@aux/con
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import type { CoordinatorLoopHost } from "../coordinator-verify.js";
-import { DEFAULT_MAX_MODEL_CALLS, TERMINAL_STATUSES } from "../coordinator-verify.js";
+import { DEFAULT_MAX_MODEL_CALLS, TERMINAL_STATUSES, markUnconfirmedWrites, verifyResultCitations } from "../coordinator-verify.js";
 import { subagentGrants } from "../permissions.js";
+import { redactObservation } from "../planner.js";
 import { guardedExecute } from "../guarded-dispatch.js";
 import { renderObservation } from "../../services/observation-render.js";
 import { runAgentLoop, resumeAgentLoop, type AgentLoopOptions, type AgentLoopOutcome } from "./loop.js";
@@ -90,10 +91,19 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   let activePageId = run.pageIds[0];
   const lastObs = new Map<string, Observation>();
   const outcomes: StepOutcome[] = [];
+  /** Verification v2 — rendered text of every observation the model saw, keyed by each citation handle it can use. */
+  const obsTexts = new Map<string, string>();
+  /** Citation handle → snapshot identity — resolves which page/revision a cited handle points at. */
+  const obsMeta = new Map<string, { pageId: string; revision: number }>();
+  const latestRevision = new Map<string, number>();
+  /** stepId → the page/revision a write dispatched against — a citation on the same page at a later revision confirms it. */
+  const writeDispatches = new Map<string, { pageId: string; revision: number }>();
   let applied = run.config?.messageRevision ?? 0;
   let steerCursor = self.deps.repo.listRunSteers(runId).length;
   let modelCalls = 0;
   const maxModelCalls = run.config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
+  /** One re-observe chance when an uncertain dispatch blocks a done turn. */
+  let blockedOnLedger = false;
 
   const signal = c.dispatchAbort ? AbortSignal.any([c.abort.signal, c.dispatchAbort.signal]) : c.abort.signal;
   const steerPending = () =>
@@ -129,12 +139,27 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     }
   };
 
+  /** Snapshot bookkeeping — every rendered observation gets a durable, citable handle. */
+  const recordObs = (obs: Observation) => {
+    lastObs.set(obs.pageId, obs);
+    const artifactId = self.deps.saveObservation?.(runId, obs);
+    const observationId = artifactId ?? `rev:${obs.revision}`;
+    // The same redacted render the planner shows — secrets never reach the model,
+    // and citation verification checks the text the model actually saw.
+    const text = renderObservation(redactObservation(obs));
+    obsTexts.set(observationId, text);
+    obsTexts.set(`${obs.pageId}@${obs.revision}`, text);
+    obsTexts.set(obs.pageId, text);
+    obsMeta.set(observationId, { pageId: obs.pageId, revision: obs.revision });
+    obsMeta.set(`${obs.pageId}@${obs.revision}`, { pageId: obs.pageId, revision: obs.revision });
+    latestRevision.set(obs.pageId, obs.revision);
+    return { text, observationId, revision: obs.revision };
+  };
+
   const deps: LoopToolDeps = {
     observe: async ({ pageId, scope, subtreeRef }) => {
       const obs = await observePage(pageId, { scope, subtreeRef });
-      lastObs.set(obs.pageId, obs);
-      const artifactId = self.deps.saveObservation?.(runId, obs);
-      return { text: renderObservation(obs), observationId: artifactId ?? `rev:${obs.revision}`, revision: obs.revision };
+      return recordObs(obs);
     },
     act: async ({ pageId, steps }): Promise<LoopToolResult> => {
       const obs = lastObs.get(pageId) ?? (lastObs.set(pageId, await observePage(pageId, {})), lastObs.get(pageId)!);
@@ -150,6 +175,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
             runId, taskId: run.config?.taskId, signal,
             onStep: (outcome, step) => {
               outcomes.push(outcome);
+              writeDispatches.set(outcome.stepId, { pageId, revision: obs.revision });
               self.deps.onStepRecorded?.(runId, outcome, step);
             },
           },
@@ -157,7 +183,9 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         },
       );
       if (gate.kind !== "ran") return { output: { [gate.kind]: gate.reason } };
-      if (gate.result.observation) lastObs.set(pageId, gate.result.observation);
+      // The post-action observation is citable too — a write's post-state is
+      // what a consequential-write citation points at.
+      const post = gate.result.observation ? recordObs(gate.result.observation) : undefined;
       noteUnresolved();
       self.persistCheckpoint(self.get(runId));
       // A safety `ask` parks a suspension inside the gate and fails the step
@@ -185,9 +213,51 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
             ...(outcome.extracted !== undefined ? { extracted: outcome.extracted } : {}),
           })),
           ...(gate.result.error ? { error: gate.result.error } : {}),
-          ...(gate.result.observation ? { observation: renderObservation(gate.result.observation) } : {}),
+          ...(post ? { observation: post.text, observationId: post.observationId, revision: post.revision } : {}),
         },
       };
+    },
+    submitResult: async ({ report, citations }) => {
+      const unresolved = [
+        ...(self.unresolvedByRun.get(runId) ?? []),
+        ...self.durable.unresolved(runId).map((intent) => intent.id),
+      ];
+      if (unresolved.length)
+        return { ok: false as const, error: `${unresolved.length} uncertain dispatch(es) are recorded in the write ledger — resolve them before finishing.` };
+      if (citations?.length) {
+        const check = verifyResultCitations(citations, obsTexts);
+        if (check.missing.length || check.unverified.length) {
+          const problems = [
+            ...check.missing.map((i) => `citation ${i + 1}: no snapshot found for the cited handle`),
+            ...check.unverified.map((i) => `citation ${i + 1}: quote not found in the cited snapshot`),
+          ];
+          return { ok: false as const, error: `Unverifiable citations — ${problems.join("; ")}. Re-observe and quote exactly.` };
+        }
+      }
+      // Verification v2: a write confirms when the model cites an observation
+      // on the same page at a later revision — the post-state it points at.
+      const citedRevisions = (citations ?? []).map((citation) => {
+        const meta = citation.observationId ? obsMeta.get(citation.observationId)
+          : citation.revision !== undefined ? obsMeta.get(`${citation.pageId}@${citation.revision}`)
+          : undefined;
+        const pageId = citation.pageId ?? meta?.pageId;
+        const revision = meta?.revision ?? citation.revision ?? (pageId ? latestRevision.get(pageId) : undefined);
+        return pageId === undefined || revision === undefined ? undefined : { pageId, revision };
+      });
+      for (const stepId of markUnconfirmedWrites(outcomes)) {
+        const dispatch = writeDispatches.get(stepId);
+        const confirmed = dispatch && citedRevisions.some((cited) => cited?.pageId === dispatch.pageId && cited.revision > dispatch.revision);
+        const outcome = outcomes.find((o) => o.stepId === stepId);
+        if (confirmed && outcome?.receipt) {
+          const { unconfirmed: _dropped, ...rest } = outcome.receipt;
+          outcome.receipt = { ...rest, observed: rest.observed ?? "post-state cited in the result" };
+        }
+      }
+      const unconfirmed = outcomes.filter((o) => o.receipt?.unconfirmed === true).map((o) => o.stepId);
+      const result: Record<string, unknown> = { report };
+      if (citations?.length) result.citations = citations;
+      if (unconfirmed.length) result.unconfirmedWrites = unconfirmed;
+      return { ok: true as const, result };
     },
     webFetch: self.deps.agentLoop?.webFetch,
     webSearch: self.deps.agentLoop?.webSearch,
@@ -338,7 +408,29 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       hasResume = false;
 
       if (outcome.kind === "done") {
-        self.finish(runId, "completed", { report: outcome.text }, undefined, "Done");
+        // An uncertain dispatch in the durable ledger blocks completion —
+        // give the model one chance to re-observe or re-dispatch, then stop.
+        const unresolved = [...new Set([
+          ...(self.unresolvedByRun.get(runId) ?? []),
+          ...self.durable.unresolved(runId).map((intent) => intent.id),
+        ])];
+        if (unresolved.length) {
+          if (!blockedOnLedger) {
+            blockedOnLedger = true;
+            transcript.append(runId, [{
+              role: "system",
+              content: `The write ledger still records an uncertain dispatch (${unresolved.join(", ")}). Re-observe the affected page and settle it, or finish with a partial result — you cannot claim these actions completed.`,
+            } as ModelMessage]);
+            continue;
+          }
+          const partial = outcome.result?.report ?? outcome.text;
+          self.finish(runId, "partially_completed",
+            { partial: { report: partial }, unconfirmedWrites: markUnconfirmedWrites(outcomes) },
+            "an uncertain dispatch is recorded in the write ledger",
+            "Couldn't confirm every action — stopped with what I found");
+          return;
+        }
+        self.finish(runId, "completed", outcome.result ?? { report: outcome.text }, undefined, "Done");
         return;
       }
       if (outcome.kind === "parked") {

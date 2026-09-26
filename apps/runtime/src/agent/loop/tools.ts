@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AuxError, ObservationScopeSchema, PlanStepSchema } from "@aux/contracts";
+import { AuxError, ObservationScopeSchema, PlanStepSchema, ResultCitationSchema } from "@aux/contracts";
 import type { LoopTool, LoopToolManifest, LoopToolContext } from "./types.js";
 
 /**
@@ -138,6 +138,26 @@ export function buildToolManifest(): LoopToolManifest {
     execute: () => ({ output: { iso: new Date().toISOString(), unixMs: Date.now() } }),
   };
 
+  const submitResult: LoopTool = {
+    description:
+      "Finish the run with the verified result. `report` is the final answer; `citations` ground it — each cites a " +
+      "snapshot you observed (observationId, or pageId + revision) with a verbatim `quote` copied from that snapshot's " +
+      "text. The verifier checks every quote exists in the cited snapshot; an unverifiable citation rejects the call — " +
+      "re-observe, fix the quote, and resubmit. Paraphrase around quotes is allowed. Must be the only tool call in its turn.",
+    byline: "Aux verified result — citations checked against the cited snapshots",
+    inputSchema: z.object({
+      report: z.string().min(1).max(64_000).describe("The final answer — markdown is fine."),
+      citations: z.array(ResultCitationSchema).max(32).optional(),
+    }),
+    requiresSoloCall: true,
+    execute: async (raw, ctx) => {
+      const input = z.object({ report: z.string().min(1).max(64_000), citations: z.array(ResultCitationSchema).max(32).optional() }).parse(raw);
+      const verdict = await need(ctx.deps.submitResult, "submit_result")(input, ctx);
+      if (!verdict.ok) return { output: new AuxError("invalid_params", verdict.error) };
+      return { finish: { result: verdict.result } };
+    },
+  };
+
   return {
     get_time: getTime,
     snapshot,
@@ -148,5 +168,6 @@ export function buildToolManifest(): LoopToolManifest {
     ask_user_question: askUserQuestion,
     request_action_confirmation: requestActionConfirmation,
     write_todos: writeTodos,
+    submit_result: submitResult,
   };
 }

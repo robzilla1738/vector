@@ -1,19 +1,23 @@
 import {
   PlanChunkSchema,
   CompletedGeneratedFileSchema,
+  ResultCitationSchema,
   type GeneratedResultSpec,
+  type ResultCitation,
   AuxError,
   type Observation,
   type PlanChunk,
   type Run,
   type StepOutcome,
 } from "@aux/contracts";
+import { z } from "zod";
+import { renderObservation } from "../services/observation-render.js";
 import type { ModelClient } from "./model-client.js";
 import { normalizePlannerObject } from "./gateway-client.js";
 import { extractJson } from "./json-text.js";
 import { DEFAULT_MAX_MODEL_CALLS } from "./model-client.js";
 import { isConsequential } from "./permissions.js";
-import { buildVisionPrompt, VISION_SYSTEM } from "./planner.js";
+import { buildVisionPrompt, VISION_SYSTEM, redactObservation } from "./planner.js";
 import { DurableWriteLedger } from "./durable.js";
 import type { CompiledSkill } from "./skills.js";
 import type { CoordinatorDeps } from "./coordinator.js";
@@ -60,6 +64,64 @@ export const OBSERVATION_BLIND_OPS = new Set([
   "expectDownload",
   "screenshot",
 ]);
+
+/** Verification v2 — navigation family ops are never counted as writes. */
+export const NAV_OPS: ReadonlySet<string> = new Set(["navigate", "back", "forward", "reload"]);
+
+/**
+ * Verification v2 — navigation family ops are never counted as writes. A
+ * completed write with no observed post-state is marked `unconfirmed` on its
+ * receipt (the user sees it) — it does not fail the run. Returns the marked
+ * step ids.
+ */
+export function markUnconfirmedWrites(outcomes: StepOutcome[]): string[] {
+  const unconfirmed: string[] = [];
+  for (const o of outcomes) {
+    if (o.status !== "ok" || !isConsequential(o.op) || NAV_OPS.has(o.op)) continue;
+    if (o.receipt?.observed || o.receipt?.remoteConfirmed === true || o.effect === "observed") continue;
+    unconfirmed.push(o.stepId);
+    o.receipt = {
+      remoteConfirmed: false,
+      uncertain: false,
+      dispatchedBeforeTakeover: false,
+      ...o.receipt,
+      unconfirmed: true,
+    };
+  }
+  return unconfirmed;
+}
+
+/** Normalize for quote matching — rendered text reflows; whitespace is not load-bearing. */
+const normalizeQuote = (text: string) => text.replace(/\s+/g, " ").trim().toLowerCase();
+
+/** Look up the rendered text for a citation's snapshot — observationId first, then pageId@revision, then latest pageId. */
+function citationKeys(citation: ResultCitation): string[] {
+  const keys: string[] = [];
+  if (citation.observationId) keys.push(citation.observationId);
+  if (citation.pageId && citation.revision !== undefined) keys.push(`${citation.pageId}@${citation.revision}`);
+  if (citation.pageId) keys.push(citation.pageId);
+  return keys;
+}
+
+/**
+ * Verification v2 — every cited quote must appear verbatim (modulo
+ * whitespace/case) in the rendered text of the cited snapshot. Paraphrase
+ * around the quotes is allowed; only quoted spans are binding. Returns the
+ * indexes of citations whose quote could not be verified.
+ */
+export function verifyResultCitations(
+  citations: ResultCitation[],
+  snapshotTexts: ReadonlyMap<string, string>,
+): { unverified: number[]; missing: number[] } {
+  const unverified: number[] = [];
+  const missing: number[] = [];
+  citations.forEach((citation, index) => {
+    const key = citationKeys(citation).find((k) => snapshotTexts.has(k));
+    if (key === undefined) { missing.push(index); return; }
+    if (!normalizeQuote(snapshotTexts.get(key)!).includes(normalizeQuote(citation.quote))) unverified.push(index);
+  });
+  return { unverified, missing };
+}
 
 function observationGroundText(obs: Observation): string {
   const c = obs.content;
@@ -147,7 +209,12 @@ function groundNumbers(text: string, outcomes: StepOutcome[]): Set<number> {
  * Re-observe challenge. Claims are grounded against the fresh page plus the
  * values and details this run extracted. Long textual claims must appear
  * verbatim; numeric claims must appear as a number somewhere in that evidence
- * (or be the length of an extracted list). Writes need observed or remoteConfirmed.
+ * (or be the length of an extracted list).
+ *
+ * Verification v2 write semantics: navigation-family ops are never writes;
+ * a write confirmed when a later observation/receipt shows the post-state;
+ * writes without one are marked `unconfirmed` (visible, run still completes);
+ * only an uncertain dispatch blocks completion.
  */
 export function verifyDoneAgainstObservation(
   result: unknown,
@@ -156,11 +223,11 @@ export function verifyDoneAgainstObservation(
   documentEvidence?: string,
   artifactEvidence?: string,
   memoryEvidence: readonly { url: string; title: string; text: string }[] = [],
-): { ok: boolean; reason: string } {
-  const writeOutcomes = outcomes.filter((o) => o.status === "ok" && isConsequential(o.op));
-  const writesConfirmed = writeOutcomes.every(
-    (o) => Boolean(o.receipt?.observed) || o.receipt?.remoteConfirmed === true || o.effect === "observed",
-  );
+  snapshotTexts?: ReadonlyMap<string, string>,
+): { ok: boolean; reason: string; unconfirmedWrites?: string[]; unverifiedQuotes?: number[] } {
+  const writeOutcomes = outcomes.filter((o) => o.status === "ok" && isConsequential(o.op) && !NAV_OPS.has(o.op));
+  const uncertainWrites = writeOutcomes.filter((o) => o.effect === "uncertain" || o.receipt?.uncertain === true);
+  const unconfirmedWrites = markUnconfirmedWrites(outcomes);
   const observations = Array.isArray(obs) ? obs : [obs];
   const text = `${observations.map(observationGroundText).join(" ")} ${outcomeGroundText(outcomes)} ${documentEvidence?.toLowerCase() ?? ""} ${artifactEvidence?.toLowerCase() ?? ""} ${memoryEvidence.map(source => `${source.title} ${source.url} ${source.text}`.toLowerCase()).join(" ")}`;
   const citedSources = observations.map(observation => ({url:observation.content.url.toLowerCase(),text:observationGroundText(observation)}));
@@ -196,6 +263,11 @@ export function verifyDoneAgainstObservation(
   const claimsResult={...source};
   delete claimsResult.html;
   delete claimsResult.file;
+  // Citations verify as exact quotes against their cited snapshot — they are
+  // not generic claims (an observationId would never ground as free text).
+  const citationsParsed = source.citations === undefined ? undefined : z.array(ResultCitationSchema).safeParse(source.citations);
+  if (citationsParsed && !citationsParsed.success) return { ok: false, reason: "result citations are malformed" };
+  delete claimsResult.citations;
   if(file?.success)claimsResult.fileContent=generatedFileClaims(file.data.spec);
   const claims = report
     ? [...collectClaims(Object.fromEntries(Object.entries(claimsResult as Record<string, unknown>).filter(([key]) => key !== "report"))), ...reportClaims(report, text, citedSources)]
@@ -205,11 +277,25 @@ export function verifyDoneAgainstObservation(
     c.invalid || (c.numeric ? !numbers.has(toNumber(c.text)) && !text.includes(c.text.toLowerCase()) : (c.strict || c.text.length >= 8) && !text.includes(c.text.toLowerCase())),
   );
   if (ungrounded.length > 0) return { ok: false, reason: `ungrounded claims: ${ungrounded.slice(0, 3).map((c) => c.text).join(", ")}` };
-  if (writeOutcomes.length > 0 && !writesConfirmed) return { ok: false, reason: "write not observed or remoteConfirmed" };
+  let unverifiedQuotes: number[] | undefined;
+  if (citationsParsed?.success && citationsParsed.data.length) {
+    // Default snapshot texts match what the model saw — the redacted render.
+    const texts = snapshotTexts ?? new Map(observations.flatMap((observation) => {
+      const rendered = renderObservation(redactObservation(observation));
+      return [[observation.pageId, rendered], [`${observation.pageId}@${observation.revision}`, rendered]] as [string, string][];
+    }));
+    const checkedCitations = verifyResultCitations(citationsParsed.data, texts);
+    unverifiedQuotes = [...checkedCitations.unverified, ...checkedCitations.missing];
+    if (unverifiedQuotes.length) return { ok: false, reason: `${unverifiedQuotes.length} cited quote(s) were not found in the cited snapshot`, unconfirmedWrites, unverifiedQuotes };
+  }
+  // An uncertain dispatch is the only write state that blocks completion.
+  if (uncertainWrites.length) return { ok: false, reason: "an uncertain dispatch is recorded in the write ledger", unconfirmedWrites, unverifiedQuotes };
   const checked = claims.filter((c) => c.numeric || c.text.length >= 8);
-  if (checked.length > 0) return { ok: true, reason: "grounded" };
-  if (writeOutcomes.length > 0 && writesConfirmed) return { ok: true, reason: "writes-confirmed" };
-  return { ok: true, reason: "grounded" };
+  const base = { unconfirmedWrites: unconfirmedWrites.length ? unconfirmedWrites : undefined, unverifiedQuotes };
+  if (unconfirmedWrites.length) return { ok: true, reason: "writes-unconfirmed", ...base };
+  if (checked.length > 0) return { ok: true, reason: "grounded", ...base };
+  if (writeOutcomes.length > 0) return { ok: true, reason: "writes-confirmed", ...base };
+  return { ok: true, reason: "grounded", ...base };
 }
 
 export async function tryVisionPlan(self: CoordinatorLoopHost, args: {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { EventBus, openDb, Repo, RunCoordinator, verifyDoneAgainstObservation } from "@aux/runtime";
 import type { ModelClient } from "@aux/runtime";
-import type { Observation, PlanStep } from "@aux/contracts";
+import type { Observation, PlanStep, StepOutcome } from "@aux/contracts";
 
 const obs = (text = "visible page heading"): Observation =>
   ({
@@ -80,29 +80,64 @@ describe("verifyDoneAgainstObservation", () => {
       [{ url: "https://example.test/harvest", title: "Coffee harvest", text: "The harvest begins in October." }]).ok).toBe(true);
   });
 
-  it("accepts a write only when observed or remoteConfirmed", () => {
-    const click = {
+  it("marks unconfirmed writes instead of failing — only an uncertain dispatch blocks", () => {
+    const click: StepOutcome = {
       stepId: "c",
       op: "click",
       status: "ok" as const,
       startedAt: 1,
       durationMs: 1,
     };
+    // Verification v2: a write with no observed post-state completes, marked.
     const bare = verifyDoneAgainstObservation({ note: "xyz" }, obs(), [click]);
-    expect(bare).toMatchObject({ ok: false, reason: "write not observed or remoteConfirmed" });
-    expect(verifyDoneAgainstObservation({ note: "visible page heading" }, obs(), [click])).toMatchObject({ ok: false, reason: "write not observed or remoteConfirmed" });
+    expect(bare).toMatchObject({ ok: true, reason: "writes-unconfirmed", unconfirmedWrites: ["c"] });
+    expect(click.receipt).toMatchObject({ unconfirmed: true });
     const observed = verifyDoneAgainstObservation({ note: "xyz" }, obs(), [
-      { ...click, receipt: { observed: "clicked", remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } },
+      { ...click, stepId: "o", receipt: { observed: "clicked", remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false } },
     ]);
-    expect(observed).toMatchObject({ ok: true, reason: "writes-confirmed" });
+    expect(observed).toMatchObject({ ok: true, reason: "writes-confirmed", unconfirmedWrites: undefined });
     const remote = verifyDoneAgainstObservation({ note: "xyz" }, obs(), [
-      { ...click, receipt: { remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false } },
+      { ...click, stepId: "r", receipt: { remoteConfirmed: true, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false } },
     ]);
-    expect(remote).toMatchObject({ ok: true, reason: "writes-confirmed" });
-    expect(verifyDoneAgainstObservation({ note: "visible page heading" }, obs(), [
-      { ...click, receipt: { observed: "first click", remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } },
-      { ...click, stepId: "other" },
-    ])).toMatchObject({ ok: false, reason: "write not observed or remoteConfirmed" });
+    expect(remote).toMatchObject({ ok: true, reason: "writes-confirmed", unconfirmedWrites: undefined });
+    // Only an uncertain dispatch blocks completion.
+    const uncertain = { ...click, stepId: "u", effect: "uncertain" as const, receipt: { remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: false } };
+    expect(verifyDoneAgainstObservation({ note: "xyz" }, obs(), [uncertain])).toMatchObject({ ok: false, reason: expect.stringContaining("uncertain dispatch") });
+    // Navigation family ops are never writes for verification.
+    for (const op of ["navigate", "back", "forward", "reload"]) {
+      expect(verifyDoneAgainstObservation({ note: "xyz" }, obs(), [{ ...click, stepId: op, op }])).toMatchObject({ ok: true, unconfirmedWrites: undefined });
+    }
+  });
+
+  it("verifies citations against the cited snapshot's rendered text", () => {
+    const page = obs();
+    const quote = "visible page heading";
+    expect(verifyDoneAgainstObservation(
+      { report: "visible page heading", citations: [{ pageId: "p1", quote }] },
+      page, [],
+    )).toMatchObject({ ok: true });
+    // A quote absent from the cited snapshot fails.
+    expect(verifyDoneAgainstObservation(
+      { note: "x", citations: [{ pageId: "p1", quote: "fabricated quote" }] },
+      page, [],
+    )).toMatchObject({ ok: false, unverifiedQuotes: [0] });
+    // A citation handle that matches nothing fails.
+    expect(verifyDoneAgainstObservation(
+      { note: "x", citations: [{ observationId: "obs-nope", quote }] },
+      page, [],
+    )).toMatchObject({ ok: false, unverifiedQuotes: [0] });
+    // Multiple citations — all must verify.
+    expect(verifyDoneAgainstObservation(
+      { note: "x", citations: [{ pageId: "p1", quote }, { pageId: "p1", quote: "fabricated" }] },
+      page, [],
+    )).toMatchObject({ ok: false, unverifiedQuotes: [1] });
+    // pageId@revision handles resolve too.
+    expect(verifyDoneAgainstObservation(
+      { note: "x", citations: [{ pageId: "p1", revision: 1, quote }] },
+      page, [],
+    )).toMatchObject({ ok: true });
+    // Malformed citations fail honestly.
+    expect(verifyDoneAgainstObservation({ note: "x", citations: [{ quote: "" }] }, page, [])).toMatchObject({ ok: false, reason: "result citations are malformed" });
   });
 });
 
@@ -244,7 +279,7 @@ describe("successful click repeats still dispatch", () => {
               clicks.push(s.id);
             }
             const outcome = { stepId: s.id, op: s.op, status: "ok" as const, startedAt: Date.now(), durationMs: 1,
-              receipt: { observed: `Count ${count}`, remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false } };
+              receipt: { observed: `Count ${count}`, remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false } };
             ctx?.onStep?.(outcome, s);
             steps.push(outcome);
           }

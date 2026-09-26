@@ -36,6 +36,9 @@ export {
   TERMINAL_STATUSES,
   tryVisionPlan,
   verifyDoneAgainstObservation,
+  verifyResultCitations,
+  markUnconfirmedWrites,
+  NAV_OPS,
 } from "./coordinator-verify.js";
 export type { CoordinatorLoopHost } from "./coordinator-verify.js";
 

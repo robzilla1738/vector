@@ -360,6 +360,8 @@ export const ActionReceiptSchema = z.object({
   observed: z.string().optional(),
   remoteConfirmed: z.boolean().default(false),
   uncertain: z.boolean().default(false),
+  /** Verification v2 — the write finished without an observed post-state; surfaced, not failed. */
+  unconfirmed: z.boolean().optional(),
   dispatchedBeforeTakeover: z.boolean().default(false),
   identity: z
     .object({
@@ -371,6 +373,20 @@ export const ActionReceiptSchema = z.object({
     .optional(),
 });
 export type ActionReceipt = z.infer<typeof ActionReceiptSchema>;
+
+/** Verification v2 — a cited observation snapshot plus a verbatim quote span from it. */
+export const ResultCitationSchema = z
+  .object({
+    /** `observationId`/`revision` handle the snapshot tool returned — one of these or pageId is required. */
+    observationId: z.string().min(1).optional(),
+    pageId: z.string().min(1).optional(),
+    revision: z.number().int().nonnegative().optional(),
+    /** Verbatim span from the cited observation — paraphrase outside quotes is fine. */
+    quote: z.string().trim().min(1).max(4_000),
+  })
+  .strict()
+  .refine((c) => c.observationId !== undefined || c.pageId !== undefined, "a citation needs observationId or pageId");
+export type ResultCitation = z.infer<typeof ResultCitationSchema>;
 
 export const StepOutcomeSchema = z.object({
   stepId: z.string(),

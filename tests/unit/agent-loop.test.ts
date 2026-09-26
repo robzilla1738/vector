@@ -103,6 +103,51 @@ describe("runAgentLoop (S5)", () => {
     expect(messages[1]).toMatchObject({ role: "tool" });
   });
 
+  it("ends via submit_result with the verified result, pairing the tool call honestly", async () => {
+    const { transcript } = fixture();
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: { report: "verified answer", citations: [{ pageId: "page-1", quote: "x" }] },
+        }],
+      },
+      { text: "unreached" },
+    ]);
+    const seen: unknown[] = [];
+    const deps: LoopToolDeps = {
+      submitResult: async (input) => { seen.push(input); return { ok: true, result: { report: input.report, verified: true } }; },
+    };
+    const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
+    expect(outcome).toMatchObject({ kind: "done", text: "verified answer", result: { report: "verified answer", verified: true } });
+    expect(seen[0]).toMatchObject({ report: "verified answer" });
+    // The terminal call's result is the honest {accepted:true} — pairing holds.
+    const toolMsg = transcript.load("run-1").find((m) => m.role === "tool");
+    expect(JSON.stringify(toolMsg?.content)).toMatch(/accepted/);
+  });
+
+  it("keeps looping when submit_result verification rejects — the error is the model's to fix", async () => {
+    const { transcript } = fixture();
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: { report: "done", citations: [{ pageId: "page-1", quote: "fabricated" }] },
+        }],
+      },
+      { text: "gave up the cite" },
+    ]);
+    const deps: LoopToolDeps = {
+      submitResult: async () => ({ ok: false, error: "citation 1: quote not found in the cited snapshot" }),
+    };
+    const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
+    expect(outcome).toMatchObject({ kind: "done", text: "gave up the cite" });
+    const toolMsg = transcript.load("run-1").find((m) => m.role === "tool");
+    expect(JSON.stringify(toolMsg?.content)).toMatch(/quote not found/);
+  });
+
   it("surfaces tool input validation failures to the model instead of throwing", async () => {
     const { transcript } = fixture();
     const model = new MockModelClient().scriptToolSteps([
@@ -264,7 +309,7 @@ const pageObs = (): Observation =>
 
 function coordinatorHarness(
   model: MockModelClient,
-  execute?: (program: { steps: PlanStep[] }, ctx?: { runId?: string }) => { status: string; steps: StepOutcome[] },
+  execute?: (program: { steps: PlanStep[] }, ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void }) => { status: string; steps: StepOutcome[]; observation?: Observation },
 ) {
   const db = openDb(":memory:");
   cleanup.push(() => db.close());
@@ -371,5 +416,136 @@ describe("runToolLoop (S5 host integration)", () => {
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(h.pages.execute).toHaveBeenCalled();
+  });
+
+  it("completes via submit_result with verified snapshot citations", async () => {
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "s1", toolName: "snapshot", input: {} }] },
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: {
+            report: "The order page is open.",
+            citations: [{ pageId: "p1", quote: "Order page" }],
+          },
+        }],
+      },
+    ]);
+    const h = coordinatorHarness(model);
+    const run = await h.coordinator.start({ goal: "summarize the page", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "The order page is open.", citations: [{ pageId: "p1", quote: "Order page" }] });
+    // The terminal call's tool result persisted for transcript pairing.
+    const transcript = new TranscriptStore(h.db).load(run.runId);
+    const toolMsg = transcript.find((m) => m.role === "tool" && JSON.stringify(m.content).includes("submit_result"));
+    expect(JSON.stringify(toolMsg?.content)).toMatch(/accepted/);
+  });
+
+  it("rejects an unverifiable citation so the model can re-cite and resubmit", async () => {
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "s1", toolName: "snapshot", input: {} }] },
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: { report: "done", citations: [{ pageId: "p1", quote: "fabricated quote" }] },
+        }],
+      },
+      {
+        toolCalls: [{
+          toolCallId: "f2",
+          toolName: "submit_result",
+          input: { report: "done", citations: [{ pageId: "p1", quote: "Order page" }] },
+        }],
+      },
+    ]);
+    const h = coordinatorHarness(model);
+    const run = await h.coordinator.start({ goal: "summarize", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "done" });
+    const transcript = new TranscriptStore(h.db).load(run.runId);
+    const rejected = transcript.find((m) => m.role === "tool" && JSON.stringify(m.content).includes("Unverifiable citations"));
+    expect(rejected).toBeTruthy();
+  });
+
+  it("confirms a write when the model cites a later post-state observation; marks it unconfirmed otherwise", async () => {
+    const postObs = { ...pageObs(), revision: 2 } as Observation;
+    const execConfirmed = (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
+      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1 }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "completed", steps, observation: postObs };
+    };
+    const cited = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
+        }],
+      },
+    ]);
+    const h = coordinatorHarness(cited, execConfirmed);
+    const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).not.toMatchObject({ unconfirmedWrites: ["s1"] });
+
+    // Same write without a post-state citation completes marked unconfirmed.
+    const bare = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: { report: "clicked" },
+        }],
+      },
+    ]);
+    const h2 = coordinatorHarness(bare, (program, ctx) => {
+      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1 }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "completed", steps };
+    });
+    const run2 = await h2.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final2 = await settle(h2.repo, run2.runId);
+    expect(final2.status).toBe("completed");
+    expect(final2.result).toMatchObject({ unconfirmedWrites: ["s1"] });
+  });
+
+  it("blocks submit_result while an uncertain dispatch is in the ledger", async () => {
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: { report: "done" },
+        }],
+      },
+      { text: "blocked" },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({
+        stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1,
+        effect: "uncertain" as const,
+        receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "completed", steps };
+    });
+    const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    const transcript = new TranscriptStore(h.db).load(run.runId);
+    // submit_result rejected while the uncertain dispatch stood…
+    const rejected = transcript.find((m) => m.role === "tool" && JSON.stringify(m.content).includes("uncertain dispatch"));
+    expect(rejected).toBeTruthy();
+    // …and the run could not reach completed — it stopped partially with the
+    // write surfaced, never claiming success.
+    expect(final.status).toBe("partially_completed");
+    expect(final.result).toMatchObject({ unconfirmedWrites: ["s1"] });
   });
 });

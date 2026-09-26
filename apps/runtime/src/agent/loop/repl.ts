@@ -285,6 +285,7 @@ class ReplSession {
         case "openTab": {
           const result = await this.deps.openTab(String(parsed.url ?? ""));
           if ("park" in result) return fail("tab open needs a decision", { park: result.park });
+          if ("finish" in result) return ok(result.finish.result);
           const tab = result.output as ReplTab;
           return ok(tab);
         }
@@ -312,11 +313,13 @@ class ReplSession {
           const step = PlanStepSchema.parse(parsed.step);
           const result = await this.deps.step(String(parsed.pageId ?? ""), step);
           if ("park" in result) return fail("step needs a decision", { park: result.park });
+          if ("finish" in result) return ok(result.finish.result);
           return ok(result.output);
         }
         case "fetch": {
           const result = await this.deps.fetch(String(parsed.url ?? ""));
           if ("park" in result) return fail("fetch needs a decision", { park: result.park });
+          if ("finish" in result) return ok(result.finish.result);
           return ok(result.output);
         }
         case "display":

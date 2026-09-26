@@ -247,6 +247,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
           // network evidence may claim remote business-system confirmation.
           remoteConfirmed: false,
           uncertain: mutating && postconditions.length === 0,
+          unconfirmed: false,
           dispatchedBeforeTakeover: false,
           identity: {
             pageId: page.identity.pageId,
@@ -290,7 +291,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         ...(authorization ? { authorization } : {}),
         ...(before ? { before } : {}),
         ...(takenOver ? { effect: "uncertain" as const, receipt: {
-          remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true,
+          remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: true,
         } } : {}),
       };
     }

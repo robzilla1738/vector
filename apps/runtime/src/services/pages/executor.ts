@@ -272,6 +272,7 @@ export class ProgramExecutor {
                 observed: s.detail,
                 remoteConfirmed: false,
                 uncertain: true,
+                unconfirmed: false,
                 dispatchedBeforeTakeover: true,
               };
             }
