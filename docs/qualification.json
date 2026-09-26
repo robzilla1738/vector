@@ -1,5 +1,6 @@
 {
   "s3-submit-confirmation": "passed",
   "s4-webmcp": "passed",
-  "s4-paint-lease": "passed"
+  "s4-paint-lease": "passed",
+  "s7-shell-events": "passed"
 }

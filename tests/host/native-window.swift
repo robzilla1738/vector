@@ -104,6 +104,59 @@ func buttonLabels() -> [String] {
   return labels
 }
 
+func hasName(_ needle: String) -> Bool {
+  var visited = 0
+  func matches(_ element: AXUIElement) -> Bool {
+    for key in [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute] {
+      var value: CFTypeRef?
+      if AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success,
+        let value = value as? String, value.contains(needle) { return true }
+    }
+    return false
+  }
+  func visit(_ element: AXUIElement, depth: Int) -> Bool {
+    visited += 1
+    if depth > 18 || visited > 4000 { return false }
+    var role: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+    if (role as? String) == (kAXMenuBarRole as String) { return false }
+    if matches(element) { return true }
+    var children: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString,
+                                       &children) == .success,
+      let children = children as? [AXUIElement] else { return false }
+    return children.contains { visit($0, depth: depth + 1) }
+  }
+  return visit(AXUIElementCreateApplication(pid), depth: 0)
+}
+
+func namedElements() -> [String] {
+  var names: [String] = []
+  var visited = 0
+  func visit(_ element: AXUIElement, depth: Int) {
+    visited += 1
+    if depth > 18 || visited > 4000 || names.count >= 80 { return }
+    var role: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+    if (role as? String) == (kAXMenuBarRole as String) { return }
+    for key in [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute] {
+      var value: CFTypeRef?
+      if AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success,
+        let value = value as? String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty && trimmed.count <= 200 && !names.contains(trimmed) { names.append(trimmed) }
+      }
+    }
+    var children: CFTypeRef?
+    if AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
+      let children = children as? [AXUIElement] {
+      for child in children { visit(child, depth: depth + 1) }
+    }
+  }
+  visit(AXUIElementCreateApplication(pid), depth: 0)
+  return names
+}
+
 func hasStaticText(_ needle: String) -> Bool {
   var visited = 0
   func visit(_ element: AXUIElement, depth: Int) -> Bool {
@@ -281,6 +334,12 @@ if action == "press-button" {
 } else if action == "has-text" {
   guard CommandLine.arguments.count == 4 else { fail("Use has-text PID phrase.") }
   print(hasStaticText(CommandLine.arguments[3]) ? "true" : "false")
+} else if action == "has-name" {
+  guard CommandLine.arguments.count == 4 else { fail("Use has-name PID phrase.") }
+  print(hasName(CommandLine.arguments[3]) ? "true" : "false")
+} else if action == "names" {
+  let data = try! JSONEncoder().encode(namedElements())
+  print(String(data: data, encoding: .utf8)!)
 } else if action == "focused" {
   guard let focus = focusedElement(), let data = try? JSONEncoder().encode(focus),
     let text = String(data: data, encoding: .utf8) else { fail("Cannot read focused Aux element.") }
@@ -338,7 +397,7 @@ if action == "texts" {
   let data = try! JSONEncoder().encode(staticTexts())
   print(String(data: data, encoding: .utf8)!)
 } else if action == "press-button" || action == "click-button" || action == "click-at" || action == "has-button" || action == "buttons" ||
-  action == "has-text" || action == "focused" || action == "window" {
+  action == "has-text" || action == "has-name" || action == "names" || action == "focused" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "escape" ||
   action == "type-return" || action == "move" {

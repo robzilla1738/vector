@@ -43,8 +43,9 @@ const uiOnly = process.argv.includes("--ui-only");
 const submitConfirmation = process.argv.includes("--submit-confirmation");
 const webmcpJourney = process.argv.includes("--webmcp");
 const paintLease = process.argv.includes("--paint-lease");
+const shellEvents = process.argv.includes("--shell-events");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -128,6 +129,14 @@ function changedFraction(aPath, bPath, fraction = 0.45) {
 
 try {
   fixture = createServer((request, response) => {
+    if (shellEvents && request.url === "/slow") {
+      setTimeout(() => {
+        if (response.writableEnded || response.destroyed) return;
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+        response.end("<!doctype html><title>Slow ready</title><p>slow ready</p>");
+      }, 5_000);
+      return;
+    }
     if (paintLease) {
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
       const label = request.url === "/plain" ? "plain" : request.url === "/cover" ? "cover" : "agent";
@@ -222,6 +231,32 @@ else {
     const plainFrames = Number(plainText.match(/plain frames (\d+)/)?.[1] ?? 0);
     record("background agent tab frame count", { agentFrames, plainFrames, viewStatus: agentRow?.viewStatus });
     assert.ok(agentFrames >= 15, `Background agent tab produced ${agentFrames} frames; plain background tab produced ${plainFrames}`);
+    report.passed = true;
+  } else if (shellEvents) {
+    if (rpcOnly) throw new Error("Shell loading events need the native accessibility tree.");
+    await until("a visible Aux browser window", () => {
+      try { return JSON.parse(native("window")); } catch { return null; }
+    });
+    native("activate");
+    await rpc("settings.set", { tabLayout: "horizontal" });
+    assert.equal((await rpc("settings.get")).tabLayout, "horizontal");
+    await delay(400);
+    const opened = rpc("pages.open", { url: `${origin}/slow`, activate: true });
+    let sawLoading = false;
+    try {
+      await until("the horizontal tab loading name", () => native("has-name", "Loading") === "true", 8_000);
+      sawLoading = true;
+    } catch (error) {
+      const page = await opened.catch(() => null);
+      throw new Error(`${error.message}; page: ${JSON.stringify(page)}; names: ${native("names")}; texts: ${native("texts")}`);
+    }
+    const page = await opened;
+    await until("the slow page to finish", async () => {
+      const pages = await rpc("pages.list");
+      return pages.some((item) => item.pageId === page.pageId && item.url.startsWith(`${origin}/slow`) && !item.loading);
+    }, 15_000);
+    await until("the loading name to clear", () => native("has-name", "Loading") === "false", 8_000);
+    record("horizontal tab shows Loading while a slow navigation is in flight", { pageId: page.pageId, sawLoading });
     report.passed = true;
   } else if (webmcpJourney) {
     if (rpcOnly) throw new Error("WebMCP confirmation needs the native accessibility tree.");

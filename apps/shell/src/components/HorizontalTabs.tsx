@@ -34,7 +34,7 @@ const HorizontalTabControls = memo(function HorizontalTabControls({ pageId, acti
   if (!page) return null;
   const title = useStore(state => tabLabel(state.layout, page));
   return <>
-    <button ref={node => onTabNode(pageId, node)} className="horizontal-tab-select" role="tab" tabIndex={focusable ? 0 : -1} data-active={active} aria-selected={selecting ? selected : active}
+    <button ref={node => onTabNode(pageId, node)} className="horizontal-tab-select" role="tab" tabIndex={focusable ? 0 : -1} data-active={active} aria-selected={selecting ? selected : active} aria-label={page.loading ? `Loading ${title}`.trim() : undefined}
       onClick={event => { if (!onSelect(pageId, event)) void useStore.getState().activate(pageId).catch(errToast); }} onKeyDown={event => {
         if (event.nativeEvent.isComposing || onSelectionKey(event)) return;
         if ((event.key === " " || event.key === "Enter") && (event.metaKey || event.ctrlKey || event.shiftKey)) { event.preventDefault(); onSelect(pageId, event); return; }
