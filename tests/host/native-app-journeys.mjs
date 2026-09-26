@@ -42,8 +42,9 @@ const rpcOnly = process.argv.includes("--rpc-only");
 const uiOnly = process.argv.includes("--ui-only");
 const submitConfirmation = process.argv.includes("--submit-confirmation");
 const webmcpJourney = process.argv.includes("--webmcp");
+const paintLease = process.argv.includes("--paint-lease");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok(!(submitConfirmation && webmcpJourney), "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -127,6 +128,23 @@ function changedFraction(aPath, bPath, fraction = 0.45) {
 
 try {
   fixture = createServer((request, response) => {
+    if (paintLease) {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+      const label = request.url === "/plain" ? "plain" : request.url === "/cover" ? "cover" : "agent";
+      response.end(`<!doctype html><title>${label}</title><body><p id="n">${label} frames 0</p><script>
+let frames = 0;
+const node = document.getElementById("n");
+function paint() {
+  frames += 1;
+  const text = "${label} frames " + frames;
+  document.title = text;
+  node.textContent = text;
+  requestAnimationFrame(paint);
+}
+requestAnimationFrame(paint);
+</script></body>`);
+      return;
+    }
     if (webmcpJourney) {
       if (request.method === "POST" && request.url === "/write") { webmcpWrites++; response.writeHead(204).end(); return; }
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
@@ -185,7 +203,27 @@ else {
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
   record("Profile runtime is authenticated and raw debugging is disabled", { sessions: connection.sessions?.length });
 
-  if (webmcpJourney) {
+  if (paintLease) {
+    const cover = await rpc("pages.open", { url: `${origin}/cover`, activate: true });
+    const agent = await rpc("pages.open", { url: `${origin}/agent`, background: true, ownedByRuntime: true, activate: false });
+    const plain = await rpc("pages.open", { url: `${origin}/plain`, background: true, ownedByRuntime: false, activate: false });
+    await until("paint-lease pages to load", async () => {
+      const pages = await rpc("pages.list");
+      return [cover, agent, plain].every((page) => pages.some((item) => item.pageId === page.pageId && !item.loading));
+    });
+    await rpc("pages.activate", { pageId: cover.pageId });
+    const before = await rpc("pages.list");
+    const agentRow = before.find((item) => item.pageId === agent.pageId);
+    assert.notEqual(agentRow?.viewStatus, "visible", "The agent tab must stay off the visible stage");
+    await delay(2500);
+    const agentText = JSON.stringify(await rpc("pages.observe", { pageId: agent.pageId }));
+    const plainText = JSON.stringify(await rpc("pages.observe", { pageId: plain.pageId }));
+    const agentFrames = Number(agentText.match(/agent frames (\d+)/)?.[1] ?? 0);
+    const plainFrames = Number(plainText.match(/plain frames (\d+)/)?.[1] ?? 0);
+    record("background agent tab frame count", { agentFrames, plainFrames, viewStatus: agentRow?.viewStatus });
+    assert.ok(agentFrames >= 15, `Background agent tab produced ${agentFrames} frames; plain background tab produced ${plainFrames}`);
+    report.passed = true;
+  } else if (webmcpJourney) {
     if (rpcOnly) throw new Error("WebMCP confirmation needs the native accessibility tree.");
     assert.equal(runtimeCapabilities.features?.webmcpTools, true, "The runtime must expose WebMCP tools");
     assert.ok(runtimeCapabilities.methods?.includes("pages.webmcp"), "pages.webmcp must be a runtime method");

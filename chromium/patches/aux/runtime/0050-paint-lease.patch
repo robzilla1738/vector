@@ -1,0 +1,89 @@
+diff --git a/chrome/browser/ui/aux/page_identity.h b/chrome/browser/ui/aux/page_identity.h
+--- a/chrome/browser/ui/aux/page_identity.h
++++ b/chrome/browser/ui/aux/page_identity.h
+@@ -8,6 +8,7 @@
+ #include <map>
+ #include <string>
+ 
++#include "base/functional/callback_helpers.h"
+ #include "content/public/browser/web_contents_user_data.h"
+ 
+ class Profile;
+@@ -51,12 +52,17 @@
+   friend class content::WebContentsUserData<PageIdentity>;
+   PageIdentity(content::WebContents* contents, std::string id);
+   void Persist(Profile* profile, content::WebContents* contents);
++  // Hidden agent tabs keep producing frames. The runner drops the capturer
++  // count when this identity goes away. stay_hidden leaves page visibility
++  // hidden; stay_awake is off so this does not hold a sleep wake lock.
++  void AcquirePaintLease();
+ 
+   std::string id_;
+   std::string space_id_;
+   std::string workspace_id_;
+   bool persisted_ = false;
+   bool runtime_owned_ = false;
++  base::ScopedClosureRunner paint_lease_;
+   WEB_CONTENTS_USER_DATA_KEY_DECL();
+ };
+ 
+diff --git a/chrome/browser/ui/aux/page_identity.cc b/chrome/browser/ui/aux/page_identity.cc
+--- a/chrome/browser/ui/aux/page_identity.cc
++++ b/chrome/browser/ui/aux/page_identity.cc
+@@ -11,6 +11,7 @@
+ #include "chrome/browser/sessions/session_service_factory.h"
+ #include "components/sessions/content/session_tab_helper.h"
+ #include "content/public/browser/web_contents.h"
++#include "ui/gfx/geometry/size.h"
+ 
+ namespace aux {
+ namespace {
+@@ -106,20 +107,35 @@
+   }
+   if (PageIdentity* previous = FromWebContents(from)) {
+     CreateForWebContents(to, previous->id());
+-    FromWebContents(to)->runtime_owned_ = previous->runtime_owned_;
+-    FromWebContents(to)->space_id_ = previous->space_id_;
+-    FromWebContents(to)->workspace_id_ = previous->workspace_id_;
++    PageIdentity* created = FromWebContents(to);
++    created->runtime_owned_ = previous->runtime_owned_;
++    created->space_id_ = previous->space_id_;
++    created->workspace_id_ = previous->workspace_id_;
++    if (created->runtime_owned_) {
++      created->AcquirePaintLease();
++    }
+   }
+ }
+ 
++void PageIdentity::AcquirePaintLease() {
++  if (paint_lease_) {
++    return;
++  }
++  paint_lease_ = GetWebContents().IncrementCapturerCount(
++      gfx::Size(), /*stay_hidden=*/true, /*stay_awake=*/false,
++      /*is_activity=*/false);
++}
++
+ void PageIdentity::MarkRuntimeOwned(Profile* profile,
+                                     content::WebContents* contents) {
+   GetOrCreate(profile, contents);
+   PageIdentity* identity = FromWebContents(contents);
+   if (identity->runtime_owned_) {
++    identity->AcquirePaintLease();
+     return;
+   }
+   identity->runtime_owned_ = true;
++  identity->AcquirePaintLease();
+   if (!profile || profile->IsOffTheRecord()) {
+     return;
+   }
+@@ -152,6 +168,9 @@
+       FromWebContents(contents)->space_id_ = space->second;
+       FromWebContents(contents)->workspace_id_ = workspace->second;
+     }
++    if (FromWebContents(contents)->runtime_owned_) {
++      FromWebContents(contents)->AcquirePaintLease();
++    }
+   }
+ }
+ 
