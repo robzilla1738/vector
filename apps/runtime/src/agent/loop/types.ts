@@ -65,6 +65,8 @@ export interface LoopToolDeps {
   webSearch?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
   /** The code-mode REPL: eval guest code against the persistent per-run session. */
   repl?: (input: { code: string; deadlineMs?: number }, ctx: LoopToolContext) => Promise<LoopToolResult>;
+  /** Auto-recall (06-Z): query content memory for the task — hits land as one durable system message. */
+  recall?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<{ title: string; url: string; text: string }[]>;
   /** Session/workspace file roots — fs tools stay inside them (S4 upload roots). */
   fsRoots?: () => string[];
   /** Persisted todo scratchpad (write_todos). */

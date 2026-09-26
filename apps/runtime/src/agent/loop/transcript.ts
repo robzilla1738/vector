@@ -57,6 +57,26 @@ export class TranscriptStore {
     return rows.map((row) => JSON.parse(row.message) as ModelMessage);
   }
 
+  /** Message rows with their seqs — same order as `load`, so index i ↔ entries[i].seq. */
+  entries(runId: string): { seq: number; message: ModelMessage }[] {
+    const rows = this.db.prepare(`SELECT seq, message FROM run_transcript WHERE run_id=? AND kind='message' ORDER BY seq`).all(runId) as { seq: number; message: string }[];
+    return rows.map((row) => ({ seq: row.seq, message: JSON.parse(row.message) as ModelMessage }));
+  }
+
+  /** Persist a compaction rewrite — specific message rows replaced in one transaction. */
+  rewrite(runId: string, updates: { seq: number; message: ModelMessage }[]): void {
+    if (!updates.length) return;
+    try {
+      this.db.exec("BEGIN");
+      const stmt = this.db.prepare(`UPDATE run_transcript SET message=? WHERE run_id=? AND seq=? AND kind='message'`);
+      for (const update of updates) stmt.run(JSON.stringify(update.message), runId, update.seq);
+      this.db.exec("COMMIT");
+    } catch (e) {
+      this.db.exec("ROLLBACK");
+      throw e;
+    }
+  }
+
   /** One open park per run — parking again superseded by a newer row is impossible. */
   park(runId: string, parked: ParkedCall, at = Date.now()): void {
     const open = this.openPark(runId);

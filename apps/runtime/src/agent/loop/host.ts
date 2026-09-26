@@ -26,6 +26,8 @@ export interface AgentLoopHostDeps {
   /** decide()-gated web backends — main.ts builds them from AgentWebTools + decideDeps. */
   webFetch?: LoopToolDeps["webFetch"];
   webSearch?: LoopToolDeps["webSearch"];
+  /** Auto-recall backend (06-Z) — main.ts queries content memory under the run's workspace policy. */
+  recall?: LoopToolDeps["recall"];
   /** Code-mode REPL backends (S5 deliverable 3). */
   repl?: {
     /** decide() on opening a tab — parks like webFetch on `ask`; the host opens only on `output`. */
@@ -181,6 +183,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     },
     webFetch: self.deps.agentLoop?.webFetch,
     webSearch: self.deps.agentLoop?.webSearch,
+    recall: self.deps.agentLoop?.recall,
     writeTodos: (todos) => {
       self.deps.repo.saveCheckpoint(`run:${runId}`, "loop_todos", { todos });
     },

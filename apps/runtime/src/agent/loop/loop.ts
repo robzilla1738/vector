@@ -12,6 +12,7 @@ import type {
 import { parkAnswerOutput, toolResultsMessage } from "./types.js";
 import { TranscriptStore } from "./transcript.js";
 import { buildSystemPrompt } from "./prompt.js";
+import { budgetToolOutputs, compactMessages, pruneMedia, transcriptBytes, TRANSCRIPT_COMPACT_BYTES } from "./context.js";
 
 /**
  * The durable agent loop (S5): the model calls tools; each round trip is one
@@ -105,9 +106,45 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     Object.entries(tools).map(([name, tool]) => [name, { description: `${tool.description}\n\n(${tool.byline})`, inputSchema: tool.inputSchema }]),
   );
 
+  // Auto-recall (06-Z): query content memory for the task once, durably. The
+  // system message lands before any assistant turn, so every later step shares
+  // the same cache prefix.
+  if (opts.deps.recall && messages.length === 1 && messages[0]?.role === "user" && typeof messages[0].content === "string") {
+    try {
+      const hits = await opts.deps.recall(messages[0].content, { runId, threadId: opts.threadId, turnId: opts.turnId ?? runId });
+      if (hits?.length) {
+        const recallMessage = {
+          role: "system",
+          content: `Auto-recalled memory (verify against the live page before citing):\n${hits
+            .map((hit) => `- ${hit.title} — ${hit.url}\n  ${hit.text}`)
+            .join("\n")}`,
+        } as ModelMessage;
+        messages.push(recallMessage);
+        transcript.append(runId, [recallMessage]);
+      }
+    } catch {
+      /* recall is best-effort — a memory failure never blocks the run */
+    }
+  }
+
   for (let index = 0; index < maxSteps; index++) {
     if (opts.signal?.aborted) return { kind: "failed", error: new AuxError("cancelled", "cancelled") };
     if (opts.steerCheck?.()) return { kind: "steered" };
+
+    // Deterministic compaction (06-Z): when the serialized history passes the
+    // cap, the oldest half shrinks to placeholders — persisted so a restart
+    // rebuilds the same compact context.
+    if (transcriptBytes(messages) > TRANSCRIPT_COMPACT_BYTES) {
+      const compacted = compactMessages(messages);
+      if (compacted) {
+        const entries = transcript.entries(runId);
+        transcript.rewrite(
+          runId,
+          compacted.changed.map((i) => ({ seq: entries[i]!.seq, message: compacted.messages[i]! })),
+        );
+        messages.splice(0, messages.length, ...compacted.messages);
+      }
+    }
 
     let step;
     try {
@@ -151,6 +188,12 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       results.push({ toolCallId: call.toolCallId, toolName: call.toolName, output: result.output });
       opts.onToolCall?.(call, result);
     }
+
+    // Media pruning + the per-turn tool budget (06-Z): embedded payloads
+    // shrink to markers before they persist, and aggregate output past 40 KB
+    // truncates with an honest note.
+    for (const result of results) if ("output" in result) result.output = pruneMedia(result.output);
+    results.splice(0, results.length, ...budgetToolOutputs(results));
 
     if (parked) {
       // Calls after the parked one never ran; honest placeholders keep the

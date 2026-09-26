@@ -602,6 +602,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       );
       return { output: await web.search(query, engine) };
     },
+    // Auto-recall (06-Z): search protected page memory under the run's workspace policy.
+    recall: async (query, ctx) => {
+      const ws = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
+      if (!ws || !contentMemory) return [];
+      const hits = await contentMemory.search(ws, query, 5);
+      return hits.map((hit) => ({ title: hit.title, url: hit.url, text: hit.snippet }));
+    },
     repl: {
       // Opening a tab navigates somewhere new — same egress decision as a fetch.
       openTab: async (url, ctx) => {
