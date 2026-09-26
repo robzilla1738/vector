@@ -70,7 +70,8 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     await load();
   });
   const clearData=()=>chosenPage&&action(chosenPage.pageId,async()=>{
-    if(await bridge.clearSiteData(chosenPage.pageId))setNotice("Cookies and stored website data cleared. Reload the site's open tabs. Cached files and permission decisions remain.");
+    if(!await bridge.clearSiteData(chosenPage.pageId))throw new Error("Website data could not be cleared. Try again after the page finishes loading.");
+    setNotice("Cookies and stored website data cleared. Reload the site's open tabs. Cached files and permission decisions remain.");
   });
   const terms = `${search} ${/site|permission/i.test(query) ? "" : query}`.trim().toLowerCase();
   const sites = Object.entries(decisions).sort(([a], [b]) => a.localeCompare(b)).filter(([origin, permissions]) =>
