@@ -18,7 +18,7 @@
  *   auxctl doctor
  */
 import { readFileSync } from "node:fs";
-import { agentApiDocs, AgentApiManifest } from "@aux/contracts";
+import { agentApiDocs, AgentApiManifest, supportedAgentApi } from "@aux/contracts";
 import { rpc, events, readDescriptor } from "./client.js";
 
 const out = (v: unknown) => process.stdout.write(JSON.stringify(v, null, 2) + "\n");
@@ -101,9 +101,11 @@ async function main() {
   routines alerts · routines compare <leftRunId> <rightRunId>
   backup list · backup retention
   get <method> [params-json]             raw method call
+  api [path [params-json]]               manifest catalog / typed path call
+  api-docs [--mode included|model|lookup] manifest-generated agent API docs
+  guide                                  external-agent quick reference
   js <code|@file> [--session id]          run restricted QuickJS code mode
   js-reset [--session id]                 discard a code-mode session
-  api-docs [--mode included|model|lookup] manifest-generated agent API docs
   events | bench | doctor
 `);
       return;
@@ -560,6 +562,73 @@ async function main() {
     case "api-docs": {
       const mode = flags.mode === "lookup" || flags.mode === "included" ? flags.mode : "model";
       process.stdout.write(agentApiDocs({ surface: "cli" }, mode) + "\n");
+      return;
+    }
+
+    case "api": {
+      const catalog = supportedAgentApi({ surface: "cli" });
+      const [path, paramsJson] = args;
+      if (!path) {
+        out(catalog.map((item) => ({ path: item.path, method: item.method, summary: item.summary })));
+        return;
+      }
+      const item = catalog.find((entry) => entry.path === path);
+      if (!item) fail(`unknown api path ${path} — run \`auxctl api\` for the catalog`);
+      out(await rpc(item!.method, paramsJson ? readJson(paramsJson) : {}));
+      return;
+    }
+
+    case "guide": {
+      process.stdout.write(`aux guide — driving Aux from an external agent
+
+Aux is a running browser, not a library. Its local runtime owns pages, tasks
+and the durable event stream; agents talk to it over the loopback RPC API
+(documented in docs/AUX-EXTERNAL-AGENTS.md).
+
+== Connect ==
+
+  auxctl doctor                 confirm the runtime is up (port + token live in
+                                <dataDir>/runtime.json; every call needs that
+                                bearer token or a scoped connection token)
+  auxctl api                    the generated agent surface — manifest paths,
+                                RPC method, one-line summary
+  auxctl api <path> [json]      call one path with typed params
+  auxctl api-docs               model-facing doc lines, same manifest
+  auxctl api describe is auxctl api <path>: the input schema is MethodSchemas
+                                for the printed method (see docs/AGENT-API.md)
+
+  MCP clients (Codex, Claude Code) get the same surface as aux_* tools —
+  create a scoped connection in Settings → External agents and merge the
+  shown config; scoped authority follows the attached task/workspace.
+
+== The loop ==
+
+  1. auxctl pages                        open tabs and their stable pageIds
+  2. auxctl observe <pageId>             compact observation; refs r1..rN valid
+                                        until documentEpoch changes
+  3. auxctl exec <pageId> <steps-json>   typed program: click/fill/navigate/
+                                        extract/waitFor … (no fixed sleeps —
+                                        waitFor + expect conditions)
+  4. auxctl task receipt <taskId>        evidence, human review, unresolved
+                                        actions and model costs for a saved task
+
+== Rules that bite ==
+
+  - Scoped connections only see pages attached to their task (plus run and
+    preview-grant pages). Attach tabs in Aux or via a task-bound turn tab
+    (aux.agent.turn.open) instead of trying to widen scope.
+  - mutations go through pages.execute programs; a step's expect[] verifies
+    before the next step — don't chain blind clicks.
+  - event stream: /ws?token=…&afterSeq=N&streamId=S resumes after a durable
+    cursor; a 'resync' frame means the cursor fell behind the retained
+    floor or the store was recreated — refetch a snapshot, then continue
+    from the frame's lastSeq. The SDK (AuxClient.events) and
+    'auxctl events --follow' already speak this.
+  - receipts are the authority boundary: agents record evidence; humans
+    accept criteria in Aux. A verified criterion is not an accepted one.
+
+Full protocol doc: docs/AUX-EXTERNAL-AGENTS.md
+`);
       return;
     }
 
