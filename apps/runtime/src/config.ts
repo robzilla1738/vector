@@ -54,7 +54,7 @@ export function loadDotEnv(env: NodeJS.ProcessEnv, files: string[]): NodeJS.Proc
   return merged;
 }
 
-/** The files startRuntime consults: dataDir, cwd, then parent folders (pnpm dev cwd is apps/desktop). */
+/** The files startRuntime consults: dataDir, cwd, then parent folders. */
 export function dotEnvCandidates(env: NodeJS.ProcessEnv, cwd = process.cwd()): string[] {
   const dataDir = resolveDataDirectory(env);
   const out: string[] = [];

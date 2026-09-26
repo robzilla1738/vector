@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw
 from scipy.interpolate import splprep, splev
 
 ROOT = Path(__file__).resolve().parent.parent
-BRAND = ROOT / 'apps/desktop/brand'
+BRAND = ROOT / 'assets/brand'
 PUBLIC = ROOT / 'apps/shell/public'
 source = Image.open(BRAND / 'aux-approved-source.png').convert('RGBA')
 rgb = np.array(source)[:, :, :3]

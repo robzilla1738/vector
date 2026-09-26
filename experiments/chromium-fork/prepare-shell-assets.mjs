@@ -1,13 +1,13 @@
 // Stage the current production Aux renderer for the isolated Chromium WebUI.
-// Run after `pnpm --filter @aux/desktop build`, never against the mock preview.
+// Run after `pnpm --filter @aux/shell build`, never against the mock preview.
 import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 
 const repo = resolve(import.meta.dirname, '../..');
-const source = resolve(process.env.AUX_SHELL_DIST ?? join(repo, 'apps/desktop/dist/renderer'));
-const rendererSource = join(repo, 'apps/desktop/renderer/src');
+const source = resolve(process.env.AUX_SHELL_DIST ?? join(repo, 'apps/shell/dist'));
+const rendererSource = join(repo, 'apps/shell/src');
 const stageRoot = resolve(process.env.AUX_SHELL_STAGE_ROOT ?? join(tmpdir(), 'aux-chromium-shell'));
 const mime = {
   '.css': 'text/css', '.html': 'text/html', '.js': 'text/javascript',
@@ -29,7 +29,7 @@ function assertCurrentBuild() {
   const index = join(source, 'index.html');
   const viteManifest = join(source, '.vite/manifest.json');
   if (!existsSync(index) || !existsSync(viteManifest)) {
-    throw new Error('Production Aux renderer is missing; build @aux/desktop first');
+    throw new Error('Production Aux renderer is missing; build @aux/shell first');
   }
   const builtAt = statSync(viteManifest).mtimeMs;
   for (const path of filesAt(rendererSource)) {

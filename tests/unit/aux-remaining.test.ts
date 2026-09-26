@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readCssGraph } from "./read-css-graph.js";
@@ -105,12 +105,6 @@ it("keeps the compact and mid-width conversation breakpoints", () => {
   expect(compact).toContain(".sidebar.collapsed");
   expect(css).toContain(".empty-state {");
   expect(css).toContain(".navigation-error {");
-});
-
-it("does not share the retained profile partition with the private process", () => {
-  const privateMain = readFileSync(join(process.cwd(), "apps/desktop/main/private-main.ts"), "utf8");
-  expect(privateMain).not.toContain(SESSION_PARTITIONS.browsing);
-  expect(privateMain).toMatch(/no runtime child[\s\S]*extension loader/);
 });
 
 it("defaults task resource access to reference and never journals read-only programs", () => {

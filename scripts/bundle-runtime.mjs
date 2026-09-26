@@ -1,24 +1,24 @@
 #!/usr/bin/env node
-/** Build the same self-contained Aux Runtime payload for Electron and Chromium. */
+/** Build the self-contained Aux Runtime payload for Chromium. */
 import { cpSync, mkdirSync, readdirSync, rmSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const desktopDir = join(root, "apps", "desktop");
+const runtimeDir = join(root, "apps", "runtime");
 
 export async function bundleRuntime(rtOut, target) {
   // The runtime ships as one esbuild bundle (workspace packages and registry
   // deps inlined, lazy SDK imports split into chunks) plus playwright-core,
   // which stays external for its dynamic requires and assets. It lives in
   // vendor/ and resolves through package.json "imports" because
-  // electron-builder drops node_modules from extraResources.
+  // The native runtime bundle does not ship node_modules.
   rmSync(rtOut, { recursive: true, force: true });
   mkdirSync(rtOut, { recursive: true });
 
-  const desktopRequire = createRequire(join(desktopDir, "package.json"));
-  const { build, transformSync } = desktopRequire("esbuild");
+  const runtimeRequire = createRequire(join(runtimeDir, "package.json"));
+  const { build, transformSync } = runtimeRequire("esbuild");
   const runtimeBuild = await build({
     entryPoints: [
       join(root, "apps/runtime/dist/main.js"),

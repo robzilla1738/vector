@@ -8,8 +8,8 @@ const [reference, destination] = process.argv.slice(2).map(path => resolve(path)
 if (!reference || !destination || destination.startsWith(reference)) {
   throw new Error("Usage: node scripts/inspect-aside-design.mjs <Aside bundle> <separate output directory>");
 }
-const requireDesktop = createRequire(new URL("../apps/desktop/package.json", import.meta.url));
-const postcss = createRequire(requireDesktop.resolve("vite"))("postcss");
+const requireShell = createRequire(new URL("../apps/shell/package.json", import.meta.url));
+const postcss = createRequire(requireShell.resolve("vite"))("postcss");
 const files = (await readdir(reference, { recursive: true, withFileTypes: true }))
   .filter(entry => entry.isFile()).map(entry => join(entry.parentPath, entry.name)).sort();
 const manifest = [];

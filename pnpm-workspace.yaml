@@ -5,14 +5,9 @@ packages:
   - "tests"
 
 allowBuilds:
-  electron: true
-  electron-builder: true
   esbuild: true
-  electron-winstaller: false
 
 onlyBuiltDependencies:
-  - electron
-  - electron-builder
   - esbuild
 
 # One version of the shared toolchain across every workspace package.

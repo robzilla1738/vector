@@ -7,8 +7,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const source = join(root, "apps/desktop/brand/aux-icon-1024.png");
-const output = join(root, "apps/desktop/icon.icns");
+const source = join(root, "assets/brand/aux-icon-1024.png");
+const output = join(root, "assets/brand/Aux.icns");
 if (process.platform !== "darwin") throw new Error("Use macOS sips and iconutil to build the ICNS asset.");
 const properties = execFileSync("sips", ["-g", "pixelWidth", "-g", "pixelHeight", "-g", "hasAlpha", source], { encoding: "utf8" });
 if (!/pixelWidth: 1024\b/.test(properties) || !/pixelHeight: 1024\b/.test(properties) || !/hasAlpha: yes\b/.test(properties)) throw new Error("The Aux icon master must be a transparent 1024 × 1024 PNG.");
@@ -30,7 +30,7 @@ try {
   renameSync(`${output}.next`, output);
   // The runtime dock icon never renders above 512px.
   copyFileSync(join(iconset, "icon_512x512.png"), join(root, "apps/shell/public/aux-icon.png"));
-  cpSync(iconset, join(root, "apps/desktop/brand/Aux.iconset"), { recursive: true });
+  cpSync(iconset, join(root, "assets/brand/Aux.iconset"), { recursive: true });
   console.log(`Built ${output} from ${source}`);
 } finally {
   rmSync(work, { recursive: true, force: true });

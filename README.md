@@ -7,13 +7,13 @@ Start with the [implementation handoff](docs/HANDOFF.md), [roadmap](docs/ROADMAP
 and [evidence ledger](docs/EVIDENCE.md). Historical [UI implementation](docs/archive/2026-09-24-b0-reset/ui/COMPONENT-TRANSPLANT.md) and [host proof](docs/archive/2026-09-24-b0-reset/M1-HOST-COMPARISON.md) records are archived.
 The roadmap's September 25 amendment makes the **native Chromium development build** the current handoff goal. The app is working for the [verified native journeys](docs/evidence/native-aux-live-2026-09-25.md), but product integration remains incomplete. Preserve the Aux liquid-glass material and both Aside layouts. Final DMG, release signing/notarization, full release qualification and takeover packaging are deferred; real data migration is not authorized.
 
-Aux's native development app is a Chromium `//chrome` fork at version `154.0.8037.58`, built locally as `out/AuxDev/Aux.app` in the stable source checkout. Its real shell, runtime, and scoped native journeys pass. Quick Ask, native Profiles management, and other product gates remain. `pnpm dev` still launches the Electron preview, **not** AuxDev. Follow the [native runbook](experiments/chromium-fork/CONTINUATION.md) to continue the Chromium app. Prior hosted jobs were blocked by billing; see [CI operations](docs/ci.md). No signed or external release is claimed.
+Aux's native development app is a Chromium `//chrome` fork at version `154.0.8037.58`, built locally as `out/AuxDev/Aux.app` in the stable source checkout. Its real shell, runtime, and scoped native journeys pass. Quick Ask, native Profiles management, and other product gates remain. `pnpm dev` opens the scripted shell preview; it does not launch AuxDev. Follow the [native runbook](experiments/chromium-fork/CONTINUATION.md) to continue the Chromium app. Prior hosted jobs were blocked by billing; see [CI operations](docs/ci.md). No signed or external release is claimed.
 
-For the standalone and Electron runtime, `AUX_*` is the configuration namespace. Process environment overrides
+For the Aux runtime, `AUX_*` is the configuration namespace. Process environment overrides
 `.env` files. Runtime data uses `Aux Browser/aux-state.sqlite` under the OS data
 root. Legacy Vector data directories and databases are left in place untouched —
 they are not read, merged, or adopted; select a different directory with
-`AUX_DATA_DIR` if one is present in a custom location. The native Chromium app uses its own `Application Support/Aux` product directory. The Electron preview's Profile roots remain separate.
+`AUX_DATA_DIR` if one is present in a custom location. The native Chromium app uses its own `Application Support/Aux` product directory. Old Electron data is read only by the offline migration path.
 
 A local agent-first browser with one desktop window, workspace, permission
 model, and agent contract. Chromium is the sole web engine — embedded in the
@@ -33,24 +33,18 @@ dragging. Existing Aux colors and explicit preferences are preserved.
 
 
 
-Run `AUX_LOAD_DOTENV=0 pnpm dev` for the **Electron preview**. `pnpm preview` opens a
-separate persistent Aux Preview profile. For native AuxDev, follow the [local Mac handoff](docs/HANDOFF.md) and [runbook](experiments/chromium-fork/CONTINUATION.md).
-The Electron-specific instructions below remain useful while its tests are being ported. See the
-[private build handoff](docs/AUX-PRIVATE-BUILD.md)
-and [archived first review walkthrough](docs/archive/2026-09-24-b0-reset/AUX-FIRST-REVIEW.md) for browsing, tasks,
-development, cloud setup and the known compatibility limits. The current handoff separates implemented Electron behavior, partial Chromium integration, and remaining external qualification. The reviewed roadmap replaces the six-batch transplant plan.
+Run `pnpm dev` for the scripted shell preview. For native AuxDev, follow the [local Mac handoff](docs/HANDOFF.md) and [runbook](experiments/chromium-fork/CONTINUATION.md). The [archived first review walkthrough](docs/archive/2026-09-24-b0-reset/AUX-FIRST-REVIEW.md) describes the retired Electron host.
 
 ## Quickstart
 
 ```bash
 pnpm install
 pnpm build
-pnpm dev            # desktop product (fixtures + Electron shell)
+pnpm dev            # scripted shell preview
 pnpm fixtures       # fixture sites only (http://127.0.0.1:4810–4812)
-pnpm test           # unit + integration suites
-pnpm test:e2e       # Electron end-to-end
+pnpm test           # unit suite
 pnpm bench          # browser-layer timings on the records fixture
-pnpm package:local  # desktop application
+python3 chromium/aux-chromium build  # native AuxDev app
 ```
 
 Configuration is optional — copy `.env.example` to `.env` (in the
@@ -102,7 +96,7 @@ fixture state reset before every task) is recorded per run in
 
 ## Using the app
 
-The shell (`apps/desktop`, documented in [docs/ui/shell.md](docs/ui/shell.md))
+The shell (`apps/shell`, documented in [docs/ui/shell.md](docs/ui/shell.md))
 retains the [archived visual direction](docs/archive/2026-09-24-b0-reset/AUX-DESIGN-DIRECTION.md) where consistent with the reviewed roadmap, including
 Aux branding and capabilities. It uses Geist/Geist Mono, Central Icons, native
 macOS material, a fully hidden sidebar that grows back as the same glass
@@ -134,7 +128,7 @@ column, and a resizable agent panel. The [old parity audit](docs/archive/2026-09
 ## Layout
 
 ```
-apps/desktop     Electron main + React renderer (native WebContentsView tabs)
+apps/shell       React WebUI over native Chromium tabs
 apps/runtime     the authoritative runtime: pages, programs, runs, sets, API
 packages/contracts      zod schemas shared by every surface
 packages/chromium-driver  `BrowserDriver`/`DriverPage` — the Chromium/CDP drivers
@@ -142,7 +136,7 @@ packages/cli            `auxctl` CLI over the loopback API
 packages/mcp            MCP stdio server over the loopback API
 packages/sdk            typed client for the loopback API
 fixtures/               deterministic test sites (records, forms, interaction-lab)
-tests/                  unit, integration, e2e, benchmarks
+tests/                  unit, integration, native journeys, benchmarks
 scripts/                dev, fixtures, Chromium discovery, packaging
 ```
 

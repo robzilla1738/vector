@@ -1,7 +1,6 @@
 import { afterEach, expect, it } from "vitest";
 import { DurableWriteLedger, EventBus, makeInvoker, openDb, Repo, TaskEvidenceService, TaskService, type PageService, type Services } from "@aux/runtime";
 import { TaskReceiptSchema } from "@aux/contracts";
-import { isShellDocument } from "../../apps/desktop/main/shell-origin.js";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => cleanup.splice(0).forEach(fn => fn()));
@@ -146,14 +145,6 @@ it("blocks decisions during active work", () => {
   const f = fixture(); f.run("running"); const id = f.note().evidenceId;
   expect(() => f.review(id)).toThrow("Stop active task runs");
   expect(f.evidence.receipt(f.task.taskId).status).toBe("in_progress");
-});
-
-it("recognizes only the shell document as desktop UI", () => {
-  expect(isShellDocument("file:///app/renderer/index.html", "/app/renderer/index.html")).toBe(true);
-  expect(isShellDocument("file:///tmp/untrusted.html", "/app/renderer/index.html")).toBe(false);
-  expect(isShellDocument("https://untrusted.test/", "/app/renderer/index.html")).toBe(false);
-  expect(isShellDocument("http://localhost:5173/", "/app/renderer/index.html", "http://localhost:5173/")).toBe(true);
-  expect(isShellDocument("http://localhost:5173/other", "/app/renderer/index.html", "http://localhost:5173/")).toBe(false);
 });
 
 it("imports exact local document snapshots only through desktop authority and requires fresh idle revisions", async () => {
