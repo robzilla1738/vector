@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { bridge, hostKind, type BrowserExtension } from "../bridge";
+import { bridge, inNativeHost, type BrowserExtension } from "../bridge";
 import { useStore } from "../store";
 import { I } from "./icons";
 import { NativeMenu } from "./NativeDialog";
@@ -14,7 +14,7 @@ export function ExtensionActions() {
   const [items, setItems] = useState<BrowserExtension[]>([]);
   const [error, setError] = useState("");
   const close = useCallback(() => setOpen(false), []);
-  if (hostKind !== "chromium" || bridge.privateMode || !available) return null;
+  if (!inNativeHost || bridge.privateMode || !available) return null;
 
   async function show() {
     setError("");

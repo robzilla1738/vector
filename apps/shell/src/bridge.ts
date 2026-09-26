@@ -401,8 +401,7 @@ type W = Window & { aux?: AuxBridge; auxHostProof?: { host?: string }; __auxMock
 const w = window as unknown as W;
 
 export const bridge: AuxBridge = w.aux ?? stub;
-export const hostKind = w.__auxMock ? "mock" :
-  w.aux && w.auxHostProof?.host === "chromium-fork" && location.protocol === "chrome:" && location.hostname === "aux" ? "chromium" : "preview";
-export const inNativeHost = hostKind === "chromium";
+export const inNativeHost = !!w.aux && w.auxHostProof?.host === "chromium-fork" &&
+  location.protocol === "chrome:" && location.hostname === "aux";
 /** scripted bridge for visual development and screenshots */
 export const inMock = !!w.__auxMock;

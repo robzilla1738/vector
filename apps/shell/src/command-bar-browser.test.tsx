@@ -5,7 +5,6 @@ import { afterEach, expect, it, vi } from "vitest";
 
 vi.mock("./bridge", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./bridge")>()),
-  hostKind: "chromium",
   inNativeHost: true,
 }));
 import { bridge } from "./bridge";

@@ -35,7 +35,7 @@ import { bridge } from "../bridge";
 import { recentConversations } from "../conversations";
 import { rememberSiteControlsOpener } from "../site-controls-opener";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
-import { hostKind, type AutocompleteMatch } from "../bridge";
+import { inNativeHost, inMock, type AutocompleteMatch } from "../bridge";
 import { commandCandidateKey, mergeCommandResults } from "../command-results";
 import type { ProviderSuggestion, Suggestion } from "./command-provider-types";
 import { commandTabRows } from "./command-tab-rows";
@@ -249,7 +249,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     return baseIntent;
   }, [baseIntent, scopeFlip, hero, raw, entryMode, searchEngine]);
   const typedSomething = !(hero && entryMode === "ask") && editing && raw.length > 0 && raw !== pageAddress;
-  const browserAutocomplete = hostKind === "chromium" || hostKind === "mock";
+  const browserAutocomplete = inNativeHost || inMock;
 
   useEffect(() => {
     if (!editing || providerBuilder) return;
@@ -429,8 +429,8 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         case "navigate":
         case "search": {
           const url =
-            i.kind === "search" && !i.engine && hostKind === "chromium"
-              ? await bridge.resolveSearch!(i.query)
+            i.kind === "search" && !i.engine && inNativeHost
+              ? await bridge.resolveSearch!(i.query).catch(() => i.url)
               : i.url;
           if (!alt && page) await useStore.getState().navigatePage(page.pageId, url);
           else await newTab(url);

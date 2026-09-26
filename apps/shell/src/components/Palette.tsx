@@ -7,7 +7,7 @@ import { savePagePdf, printCurrentPage } from "../page-export";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useShortcutLabels } from "../use-shortcut-label";
 import { useStore, call, toast, errToast, tabCommand } from "../store";
-import { bridge, hostKind } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 import { detectIntent } from "../intent";
 import { canSplitPage, hostOf, tabLabel } from "../workspace";
 import { FavIcon } from "./SiteTile";
@@ -193,8 +193,8 @@ export function Palette() {
           t: intent.kind === "navigate" ? `Open ${intent.display}` : `Search for “${intent.query}”`,
           k: "↵",
           run: async () => {
-            const url = intent.kind === "search" && hostKind === "chromium"
-              ? await bridge.resolveSearch!(intent.query) : intent.url;
+            const url = intent.kind === "search" && inNativeHost
+              ? await bridge.resolveSearch!(intent.query).catch(() => intent.url) : intent.url;
             if (activePage) await useStore.getState().navigatePage(activePage.pageId, url);
             else await newTab(url);
           },

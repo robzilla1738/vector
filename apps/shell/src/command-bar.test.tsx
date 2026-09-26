@@ -2,7 +2,11 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("./bridge", async importOriginal => ({ ...await importOriginal<typeof import("./bridge")>(), inNativeHost: true }));
+const nativeFlag = vi.hoisted(() => ({ value: true }));
+vi.mock("./bridge", async importOriginal => ({
+  ...await importOriginal<typeof import("./bridge")>(),
+  get inNativeHost() { return nativeFlag.value; },
+}));
 import { bridge } from "./bridge";
 import { CommandBar } from "./components/CommandBar";
 import { useStore } from "./store";
@@ -41,6 +45,7 @@ let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 
 beforeEach(() => {
+  nativeFlag.value = true;
   useStore.setState({
     pages: [{ ...page }], activePageId: "p1", bookmarks: [], closedTabs: [],
     programs: [], runs: [], settings: {},
@@ -68,6 +73,8 @@ describe("CommandBar keyboard contract", () => {
 
   it("Enter on typed search navigates through the tab command", async () => {
     const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack);
+    const requiredBridge = bridge as typeof bridge & { resolveSearch: (query: string) => Promise<string> };
+    vi.spyOn(requiredBridge, "resolveSearch").mockResolvedValue("https://duckduckgo.com/?q=how+do+browsers+restore+sessions");
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
     await act(async () => input.focus());
@@ -122,6 +129,7 @@ describe("CommandBar keyboard contract", () => {
   });
 
   it("requests indexed local history as soon as a usable query is typed", async () => {
+    nativeFlag.value = false;
     const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
@@ -131,6 +139,7 @@ describe("CommandBar keyboard contract", () => {
   });
 
   it("remote suggestions honor the preference and privacy gate", async () => {
+    nativeFlag.value = false;
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify(["x", ["extra suggestion"]])));
     useStore.setState({ settings: { searchSuggestions: true, searchEngine: "https://duckduckgo.com/?q=%s" } } as never);
     await act(async () => root.render(<CommandBar />));
@@ -147,6 +156,7 @@ describe("CommandBar keyboard contract", () => {
   });
 
   it("never paints a late remote suggestion for an earlier query", async () => {
+    nativeFlag.value = false;
     const replies:((response:Response)=>void)[]=[];
     const fetchMock=vi.spyOn(globalThis,"fetch").mockImplementation(()=>new Promise(resolve=>replies.push(resolve)));
     useStore.setState({settings:{searchSuggestions:true,searchEngine:"https://duckduckgo.com/?q=%s"}} as never);

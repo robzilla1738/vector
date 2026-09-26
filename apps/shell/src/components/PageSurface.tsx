@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
-import { bridge, hostKind } from "../bridge";
+import { bridge, inMock, inNativeHost } from "../bridge";
 import { MockPage } from "./surfaces";
 import "./PageSurface.css";
 
@@ -18,7 +18,7 @@ export function PageSurface({ page }: { page: PageTarget }) {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (hostKind !== "chromium") return;
+    if (!inNativeHost) return;
     let current = true;
     setState(null);
     void bridge
@@ -41,13 +41,13 @@ export function PageSurface({ page }: { page: PageTarget }) {
     };
   }, [page.pageId, page.documentEpoch, attempt]);
 
-  if (hostKind === "mock" && MockPage)
+  if (inMock && MockPage)
     return (
       <div className="page-surface mock">
         <MockPage page={page} />
       </div>
     );
-  if (hostKind !== "chromium") return null;
+  if (!inNativeHost) return null;
 
   const resolved = state?.pageId === page.pageId && state.documentEpoch === page.documentEpoch ? state : null;
   if (resolved?.contentId)

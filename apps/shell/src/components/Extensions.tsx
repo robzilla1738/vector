@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { bridge, hostKind, type BrowserExtension } from "../bridge";
+import { bridge, inNativeHost, type BrowserExtension } from "../bridge";
 import { storeExtensionId } from "../store-extension-id";
 import { NativeDialog } from "./NativeDialog";
 
 export function Extensions() {
-  const storeHost = hostKind === "chromium";
+  const storeHost = inNativeHost;
   const [items, setItems] = useState<BrowserExtension[]>([]);
   const [storeInput, setStoreInput] = useState("");
   const [removeTarget, setRemoveTarget] = useState<BrowserExtension | null>(null);
