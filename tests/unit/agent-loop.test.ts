@@ -255,7 +255,7 @@ describe("runAgentLoop (S5)", () => {
     ]);
     const outcome = await runAgentLoop({ ...baseOpts(transcript), model });
     expect(outcome).toMatchObject({ kind: "done", text: "real answer" });
-    const nudge = transcript.load("run-1").find((m) => m.role === "system" && String(m.content).includes("function-call markup"));
+    const nudge = transcript.load("run-1").find((m) => m.role === "user" && String(m.content).includes("function-call markup"));
     expect(nudge).toBeTruthy();
   });
 

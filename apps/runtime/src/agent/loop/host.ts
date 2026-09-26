@@ -492,9 +492,9 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           if (!blockedOnLedger) {
             blockedOnLedger = true;
             transcript.append(runId, [{
-              role: "system",
+              role: "user",
               content: `The write ledger still records an uncertain dispatch (${unresolved.join(", ")}). Re-observe the affected page and settle it, or finish with a partial result — you cannot claim these actions completed.`,
-            } as ModelMessage]);
+            }]);
             continue;
           }
           const partial = outcome.result?.report ?? outcome.text;

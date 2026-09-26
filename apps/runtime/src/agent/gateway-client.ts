@@ -326,7 +326,9 @@ export class GatewayModelClient implements ModelClient {
       maxRetries: 0 as const,
       maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens, this.capabilities()),
       ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? "medium" as const } : {}),
-      ...(anthropic ? { allowSystemInMessages: true as const } : { system: opts.system }),
+      // Gateway rejects a `system` message. `instructions` is the supported channel.
+      // Direct Anthropic still needs a system message so the cache breakpoint can sit on it.
+      ...(anthropic ? { allowSystemInMessages: true as const } : { instructions: opts.system }),
       messages: cachedMessages,
       providerOptions: {
         ...gateway,
@@ -548,8 +550,12 @@ export class GatewayModelClient implements ModelClient {
     }));
     const providerExecuted = ((lastStep?.toolCalls ?? []) as { toolCallId: string; providerExecuted?: boolean }[])
       .filter((call) => call.providerExecuted).map((call) => call.toolCallId);
+    // The response can end on a tool message. Replaying that plus the loop's
+    // own tool result sends the provider two outputs for one call.
+    const responseMessages = res.response.messages ?? [];
+    const assistant = [...responseMessages].reverse().find((message) => message.role === "assistant");
     return {
-      message: res.response.messages.at(-1) ?? { role: "assistant", content: [] },
+      message: assistant ?? { role: "assistant", content: calls.map((call) => ({ type: "tool-call" as const, toolCallId: call.toolCallId, toolName: call.toolName, input: call.input })) },
       toolCalls: calls,
       text: res.text || undefined,
       finishReason: res.finishReason === "tool-calls" ? "tool-calls" : res.finishReason,

@@ -99,6 +99,23 @@ async function executeOne(
   }
 }
 
+/** The provider pairs each tool result with a tool-call part. A text-only assistant message plus a result is a duplicate or an orphan output. */
+function assistantWithToolCalls(message: ModelMessage, calls: LoopToolCall[]): ModelMessage {
+  const content = message.role === "assistant" && Array.isArray(message.content)
+    ? [...message.content]
+    : message.role === "assistant" && typeof message.content === "string" && message.content
+      ? [{ type: "text" as const, text: message.content }]
+      : [];
+  const present = new Set(content.flatMap((part) =>
+    part && typeof part === "object" && "type" in part && part.type === "tool-call" && "toolCallId" in part
+      ? [String(part.toolCallId)]
+      : []));
+  for (const call of calls) {
+    if (!present.has(call.toolCallId)) content.push({ type: "tool-call", toolCallId: call.toolCallId, toolName: call.toolName, input: call.input });
+  }
+  return { role: "assistant", content };
+}
+
 export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOutcome> {
   const { model, tools, transcript, runId } = opts;
   if (!model.toolCallStep) {
@@ -119,7 +136,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       const hits = await opts.deps.recall(messages[0].content, { runId, threadId: opts.threadId, turnId: opts.turnId ?? runId });
       if (hits?.length) {
         const recallMessage = {
-          role: "system",
+          role: "user" as const,
           content: `Auto-recalled memory (verify against the live page before citing):\n${hits
             .map((hit) => `- ${hit.title} — ${hit.url}\n  ${hit.text}`)
             .join("\n")}`,
@@ -169,8 +186,9 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", error instanceof Error ? error.message : String(error)) };
     }
 
-    messages.push(step.message);
-    transcript.append(runId, [step.message]);
+    const assistant = assistantWithToolCalls(step.message, step.toolCalls);
+    messages.push(assistant);
+    transcript.append(runId, [assistant]);
     await opts.onStep?.({ index, step });
 
     const toolCalls = step.toolCalls.filter((call) => !step.providerExecuted?.includes(call.toolCallId));
@@ -178,7 +196,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       // A model that serialises calls into text instead of emitting real tool
       // calls leaks provider markup — nudge once instead of taking it as the answer.
       if (step.text && LEAKED_TOOL_MARKUP.test(step.text)) {
-        const nudge: ModelMessage = { role: "system",
+        const nudge: ModelMessage = { role: "user",
           content: "Your last message contained raw function-call markup instead of real tool calls — it was not executed. Issue the actual tool call (submit_result to finish), not its markup." };
         messages.push(nudge);
         transcript.append(runId, [nudge]);

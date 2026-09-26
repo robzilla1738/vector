@@ -212,7 +212,7 @@ for (const name of adapterNames) {
         suspensions: out.suspensions ?? null, interventions: out.interventions ?? null, ledgerDuplicates: out.ledgerDuplicates ?? null };
       rows.push(row);
       console.log(
-        `${score ? "PASS" : "FAIL"} ${task.id.padEnd(22)} t${trial} ${String(wallMs).padStart(7)} ms  calls=${out.modelCalls ?? "?"}  tokens=${out.tokens ?? "?"}  answer=${JSON.stringify(out.answer)?.slice(0, 80)}${oracle && !oracle.pass ? `  oracle=${oracle.reason}` : ""}${out.error ? `  error=${out.error.slice(0, 120)}` : ""}`,
+        `${score ? "PASS" : "FAIL"} ${task.id.padEnd(22)} t${trial} ${String(wallMs).padStart(7)} ms  calls=${out.modelCalls ?? "?"}  tokens=${out.tokens ?? "?"}  answer=${JSON.stringify(out.answer)?.slice(0, 80)}${out.message ? `  message=${String(out.message).slice(0, 160)}` : ""}${oracle && !oracle.pass ? `  oracle=${oracle.reason}` : ""}${out.error ? `  error=${out.error.slice(0, 120)}` : ""}`,
       );
     }
   } finally {
@@ -324,6 +324,7 @@ async function runtimeAdapter(_name, cfg = {}) {
           answer: r.result == null ? null : extractAnswer(r.result),
           status: r.status,
           message: r.statusMessage,
+          ...(r.error ? { error: r.error } : {}),
           engine: r.config?.implementation ?? null,
           modelCalls,
           ...metrics,
