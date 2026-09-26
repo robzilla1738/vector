@@ -20,7 +20,7 @@ export default defineConfig({
         esbuild: { jsx: "automatic" },
         test: {
           name: "unit",
-          include: ["tests/unit/**/*.test.ts", "apps/desktop/renderer/src/**/*.test.{ts,tsx}"],
+          include: ["tests/unit/**/*.test.ts", "apps/shell/src/**/*.test.{ts,tsx}"],
           pool: "forks",
           testTimeout: 30_000,
           hookTimeout: 30_000,

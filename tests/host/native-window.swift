@@ -165,7 +165,10 @@ if action == "has-button" {
   guard app.activate(options: []) else {
     fail("Cannot activate the launched Aux browser window.")
   }
-  usleep(80_000)
+  for _ in 0..<20 {
+    if NSWorkspace.shared.frontmostApplication?.processIdentifier == pid { break }
+    usleep(100_000)
+  }
   guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
     fail("Aux is not the frontmost app; refusing to send input elsewhere.")
   }

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 import { trafficLights } from "../../apps/desktop/main/traffic-lights";
 
-const tokens = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../apps/desktop/renderer/src/tokens.css"), "utf8");
+const tokens = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../apps/shell/src/tokens.css"), "utf8");
 
 it("keeps the macOS window buttons on the toolbar row", () => {
   expect(tokens).toMatch(/--toolbar-h:\s*40px/);

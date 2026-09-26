@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const renderer = join(root, "apps/desktop/renderer/src");
+const renderer = join(root, "apps/shell/src");
 const nativeRoot = resolve(process.env.AUX_CHROMIUM_SRC ?? join(process.env.HOME, "aux-chromium-stable/chromium/src"));
 const registry = join(nativeRoot, "chrome/browser/ui/aux/method_registry.cc");
 if (!existsSync(registry)) throw new Error(`Native method registry unavailable: ${registry}`);

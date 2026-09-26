@@ -51,7 +51,7 @@ it("reserves global image spend before provider dispatch and saves only validate
   const dir = mkdtempSync(join(tmpdir(), "aux-image-provider-"));
   const db = openDb(":memory:");
   const repo = new Repo(db);
-  const ledger = new SpendLedger(join(dir, "ledger.sqlite"));
+  const ledger = new SpendLedger(join(dir, "ledger.sqlite"), { AUX_PROGRAM_SPEND_CAP_USD: "50" });
   cleanup.push(() => { ledger.close(); db.close(); rmSync(dir, { recursive: true, force: true }); });
   const artifacts = new ArtifactStore(join(dir, "artifacts"), repo, new EventBus(repo));
   let calls = 0;

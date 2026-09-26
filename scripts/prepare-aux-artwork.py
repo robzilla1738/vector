@@ -9,7 +9,7 @@ from scipy.interpolate import splprep, splev
 
 ROOT = Path(__file__).resolve().parent.parent
 BRAND = ROOT / 'apps/desktop/brand'
-PUBLIC = ROOT / 'apps/desktop/renderer/public'
+PUBLIC = ROOT / 'apps/shell/public'
 source = Image.open(BRAND / 'aux-approved-source.png').convert('RGBA')
 rgb = np.array(source)[:, :, :3]
 a = np.array(source)[:, :, 3]

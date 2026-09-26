@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { MethodSchemas } from "@aux/contracts";
 import { RENDERER_METHODS, SMOKE_HARNESS_METHODS, rendererMayInvoke } from "../../apps/desktop/main/renderer-methods.js";
 
-const rendererRoot = join(dirname(fileURLToPath(import.meta.url)), "../../apps/desktop/renderer/src");
+const rendererRoot = join(dirname(fileURLToPath(import.meta.url)), "../../apps/shell/src");
 
 /** Method names written in the renderer, excluding tests and the mock bridge. */
 function methodsNamedInRenderer(): string[] {
@@ -48,7 +48,7 @@ describe("renderer runtime method gate", () => {
     for (const method of SMOKE_HARNESS_METHODS) {
       expect(renderer.has(method), `${method} is called by the renderer — it belongs in RENDERER_METHODS`).toBe(false);
     }
-    const smokeRoot = join(rendererRoot, "../../../../tests/smoke");
+    const smokeRoot = join(rendererRoot, "../../../tests/smoke");
     const literal = /aux\.invoke\(['"]([A-Za-z0-9.]+)['"]/g;
     const invoked = new Map<string, string>();
     for (const name of readdirSync(smokeRoot)) {

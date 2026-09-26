@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { expect, it } from "vitest";
 import { MethodSchemas } from "@aux/contracts";
 
-const renderer = join(process.cwd(), "apps/desktop/renderer/src");
+const renderer = join(process.cwd(), "apps/shell/src");
 const sources = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
   const path = join(dir, entry.name);
   if (entry.isDirectory()) return entry.name === "mock" ? [] : sources(path);
@@ -42,16 +42,10 @@ it("lists the runtime methods the renderer uses that the mock bridge does not im
 const UNMOCKED = [
   "artifacts.list", "bookmarks.folders.remove", "bookmarks.folders.rename", "bookmarks.markRead",
   "bookmarks.offline.get", "bookmarks.offline.set", "bookmarks.readingList", "chrome.attach",
-  "chrome.detach", "chrome.tabs", "cloud.cleanupOrphan", "cloud.commands", "cloud.create", "cloud.delete",
-  "cloud.downloadResultArtifact", "cloud.environments", "cloud.exportWorkspace", "cloud.files",
-  "cloud.forgetMissing", "cloud.handoff", "cloud.handoffAndStart", "cloud.importTaskResult",
-  "cloud.inventory", "cloud.openPreview", "cloud.openTerminal", "cloud.preserveTaskResult", "cloud.readFile",
-  "cloud.reconnectStatus", "cloud.refresh", "cloud.refreshCommand", "cloud.resume", "cloud.runCommand",
-  "cloud.startService", "cloud.stop", "cloud.stopCommand", "cloud.syncProject", "cloud.taskResult",
-  "development.githubStatus", "development.operationsStatus", "development.prepareIncidentFix",
+  "chrome.detach", "chrome.tabs",
   "github.probe", "import.cancel", "import.preview", "import.run", "import.status",
   "installation.backupRetention", "installation.deleteBackup", "installation.listBackups", "installation.setBackupRetention",
-  "installation.stageRestore", "pages.console", "pages.list", "pages.network", "pages.openLive",
+  "installation.stageRestore", "pages.list", "pages.openLive",
   "routines.compare", "routines.export", "routines.fromResult", "routines.import",
   "routines.outcome", "routines.reconcile", "routines.run", "routines.update",
   "runs.steer", "sentry.probe",

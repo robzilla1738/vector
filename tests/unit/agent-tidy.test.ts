@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { PageTarget, TidyProposal } from "@aux/contracts";
 import { proposeTabTidy } from "../../apps/runtime/src/agent/tidy.js";
 import type { ModelClient } from "../../apps/runtime/src/agent/model-client.js";
-import { applyTidyProposal, revertTidyProposal } from "../../apps/desktop/renderer/src/tidy-layout.js";
-import { emptyLayout } from "../../apps/desktop/renderer/src/workspace.js";
+import { applyTidyProposal, revertTidyProposal } from "../../apps/shell/src/tidy-layout.js";
+import { emptyLayout } from "../../apps/shell/src/workspace.js";
 
 const pages = [1, 2, 3, 4].map(index => ({
   pageId: `p${index}`, url: `https://example.com/private/${index}?token=secret`, title: `Research ${index}`,

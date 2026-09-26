@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
-import type { AuxBridge, MigrationReview } from "../../apps/desktop/renderer/src/bridge";
-import { applyReviewedMigration } from "../../apps/desktop/renderer/src/migration-import";
+import type { AuxBridge, MigrationReview } from "../../apps/shell/src/bridge";
+import { applyReviewedMigration } from "../../apps/shell/src/migration-import";
 
 const review: MigrationReview = {
   status: "ready",

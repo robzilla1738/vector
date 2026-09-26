@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AUX_FEATURES, AUX_FEATURE_REQUIREMENTS, AuxError, auxFeatureEnabled, auxFeatureForBridgeMethod, auxFeatureForMethod, auxFeatureStage, deriveAuxFeatureStages, requireAuxFeature, requireAuxMethod } from "@aux/contracts";
+import { AUX_FEATURES, AuxError, auxFeatureEnabled, auxFeatureForBridgeMethod, auxFeatureForMethod, auxFeatureStage, requireAuxFeature, requireAuxMethod } from "@aux/contracts";
+import { AUX_FEATURE_REQUIREMENTS, deriveAuxFeatureStages } from "../../packages/contracts/src/feature-requirements";
 
 describe("AuxFeature staging", () => {
   it("registers every product feature with an owning batch", () => {
@@ -9,7 +10,8 @@ describe("AuxFeature staging", () => {
 
   it("keeps unqualified native features closed", () => {
     expect(auxFeatureStage("spaces", "chromium-fork")).toBe("off");
-    expect(() => requireAuxMethod("spaces.import", "chromium-fork")).toThrowError(AuxError);
+    expect(() => requireAuxMethod("spaces.create", "chromium-fork")).toThrowError(AuxError);
+    expect(() => requireAuxMethod("spaces.import", "chromium-fork")).not.toThrow();
     expect(auxFeatureStage("passwordManager", "chromium-fork")).toBe("off");
     expect(auxFeatureStage("vault", "electron")).toBe("on");
     expect(auxFeatureStage("vault", "chromium-fork")).toBe("off");

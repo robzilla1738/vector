@@ -236,6 +236,64 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
+  apps/shell:
+    dependencies:
+      '@aux/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@aux/filter-lists':
+        specifier: workspace:*
+        version: link:../../packages/filter-lists
+      '@fontsource-variable/geist':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource-variable/geist-mono':
+        specifier: 5.3.0
+        version: 5.3.0
+      react:
+        specifier: 19.2.1
+        version: 19.2.1
+      react-dom:
+        specifier: 19.2.1
+        version: 19.2.1(react@19.2.1)
+      react-markdown:
+        specifier: 10.1.0
+        version: 10.1.0(@types/react@19.2.2)(react@19.2.1)(supports-color@7.2.0)
+      remark-gfm:
+        specifier: 4.0.1
+        version: 4.0.1(supports-color@7.2.0)
+      zod:
+        specifier: 'catalog:'
+        version: 4.5.4
+      zustand:
+        specifier: 5.0.15
+        version: 5.0.15(@types/react@19.2.2)(react@19.2.1)(use-sync-external-store@1.7.0(react@19.2.1))
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.3.0
+      '@types/react':
+        specifier: 19.2.2
+        version: 19.2.2
+      '@types/react-dom':
+        specifier: 19.2.1
+        version: 19.2.1(@types/react@19.2.2)
+      '@vitejs/plugin-react':
+        specifier: 5.0.4
+        version: 5.0.4(supports-color@7.2.0)(vite@7.3.6(@types/node@24.3.0)(jiti@2.7.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 26.1.0(supports-color@7.2.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vite:
+        specifier: 7.3.6
+        version: 7.3.6(@types/node@24.3.0)(jiti@2.7.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.3.0)(jiti@2.7.0)(jsdom@26.1.0(supports-color@7.2.0))(supports-color@7.2.0)
+
   packages/chromium-driver:
     dependencies:
       '@aux/contracts':
@@ -4498,7 +4556,7 @@ snapshots:
     dependencies:
       '@types/http-cache-semantics': 4.2.0
       '@types/keyv': 3.1.4
-      '@types/node': 24.13.4
+      '@types/node': 25.9.8
       '@types/responselike': 1.0.3
 
   '@types/chai@5.2.3':
@@ -4520,7 +4578,7 @@ snapshots:
 
   '@types/fs-extra@9.0.13':
     dependencies:
-      '@types/node': 24.13.4
+      '@types/node': 25.9.8
 
   '@types/geojson@7946.0.16': {}
 
@@ -4538,7 +4596,7 @@ snapshots:
 
   '@types/keyv@3.1.4':
     dependencies:
-      '@types/node': 24.13.4
+      '@types/node': 25.9.8
 
   '@types/mdast@4.0.4':
     dependencies:
@@ -4578,7 +4636,7 @@ snapshots:
 
   '@types/responselike@1.0.3':
     dependencies:
-      '@types/node': 24.13.4
+      '@types/node': 25.9.8
 
   '@types/tough-cookie@4.0.5': {}
 

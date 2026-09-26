@@ -6,7 +6,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 
 const chromium = import.meta.dirname;
 const repo = resolve(chromium, '..');
-const dist = resolve(repo, 'apps/desktop/dist/renderer');
+const dist = resolve(repo, 'apps/shell/dist');
 const pinned = resolve(chromium, 'shell-assets');
 const source = resolve(process.env.AUX_CHROMIUM_SRC ?? join(process.env.HOME, 'aux-chromium-stable/chromium/src'));
 const destination = resolve(source, 'chrome/browser/resources/aux/assets');
@@ -44,6 +44,9 @@ function manifestFor(root) {
   }
   if (html.includes('aux-host.js')) throw new Error('Legacy proof bootstrap is not a production shell');
   const assets = entries.map(path => {
+    if (/^assets\/(?:MockPage|xterm)-/.test(path)) {
+      throw new Error(`Development-only shell chunk reached native assets: ${path}`);
+    }
     const ext = path.slice(path.lastIndexOf('.'));
     if (!allowed.has(ext)) throw new Error(`Unsupported shell MIME type: ${path}`);
     const data = readFileSync(join(root, path));
@@ -89,8 +92,8 @@ const output = process.argv[3] ? resolve(process.argv[3]) : mode === 'capture' ?
 if (mode === 'capture') {
   if (!existsSync(join(dist, '.vite/manifest.json'))) throw new Error('Build the Chromium renderer first');
   const builtAt = statSync(join(dist, '.vite/manifest.json')).mtimeMs;
-  for (const path of files(join(repo, 'apps/desktop/renderer/src'))) {
-    if (/\.(css|tsx?)$/.test(path) && statSync(join(repo, 'apps/desktop/renderer/src', path)).mtimeMs > builtAt) {
+  for (const path of files(join(repo, 'apps/shell/src'))) {
+    if (/\.(css|tsx?)$/.test(path) && statSync(join(repo, 'apps/shell/src', path)).mtimeMs > builtAt) {
       throw new Error(`Renderer build is stale: ${path}`);
     }
   }

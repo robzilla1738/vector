@@ -25,7 +25,7 @@ for(const surface of ledger.surfaces){
   }
   if(surface.status==='qualified' && (!surface.visualEvidence?.length || !surface.functionalEvidence?.length || surface.remaining?.length || /pending|unproven|not run/i.test(surface.nativeHostVerification)))errors.push(`${surface.id}: qualification lacks evidence or retains open gates`);
 }
-const directory='apps/desktop/renderer/src/components';
+const directory='apps/shell/src/components';
 for(const file of await readdir(resolve(root,directory))){
   if(file.endsWith('.tsx') && !file.includes('.test.') && !files.has(`${directory}/${file}`))errors.push(`Untracked component: ${file}`);
 }

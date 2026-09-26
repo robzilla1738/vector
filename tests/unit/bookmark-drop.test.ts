@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookmarkTabsFromDrop } from "../../apps/desktop/renderer/src/bookmark-drop";
+import { bookmarkTabsFromDrop } from "../../apps/shell/src/bookmark-drop";
 
 describe("bookmark drop", () => {
   const pages = [

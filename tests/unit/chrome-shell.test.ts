@@ -7,7 +7,7 @@ import {
   isUrlLike,
   nativePageId,
   toUrl,
-} from "../../apps/desktop/renderer/src/chrome";
+} from "../../apps/shell/src/chrome";
 
 describe("Aux Home native aliases", () => {
   it.each(["", "about:blank", "chrome://newtab", "chrome://newtab/", "chrome://new-tab-page/"])("keeps %s in the Aux shell", url => {

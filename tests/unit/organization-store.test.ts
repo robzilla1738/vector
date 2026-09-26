@@ -4,12 +4,12 @@ import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
 import { OrganizationLayoutSchema } from "../../packages/contracts/src/organization";
 import { OrganizationHostStore } from "../../apps/desktop/main/organization-store";
-import { OrganizationPersistence } from "../../apps/desktop/renderer/src/store/organization-persistence";
+import { OrganizationPersistence } from "../../apps/shell/src/store/organization-persistence";
 import {
   fromOrganizationLayout,
   toOrganizationLayout,
-} from "../../apps/desktop/renderer/src/store/organization-layout";
-import { emptyLayout } from "../../apps/desktop/renderer/src/workspace";
+} from "../../apps/shell/src/store/organization-layout";
+import { emptyLayout } from "../../apps/shell/src/workspace";
 
 const directories: string[] = [];
 const directory = () => {

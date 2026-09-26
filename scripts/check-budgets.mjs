@@ -23,7 +23,7 @@ const report = (name, actual, limit, unit) => {
 };
 
 if (mode === "bundle") {
-  const dist = join(root, "apps/desktop/dist/renderer");
+  const dist = join(root, "apps/shell/dist");
   const manifest = JSON.parse(readFileSync(join(dist, ".vite/manifest.json"), "utf8"));
   const size = (file) => statSync(join(dist, file)).size;
   // Everything the shell must download before its first interactive paint:

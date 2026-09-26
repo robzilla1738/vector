@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stageAvoiding } from "../../apps/desktop/renderer/src/stage-obstruction";
+import { stageAvoiding } from "../../apps/shell/src/stage-obstruction";
 
 describe("stage beside a menu", () => {
   const stage = { x: 280, y: 0, width: 1000, height: 800 };

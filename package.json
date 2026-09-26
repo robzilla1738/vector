@@ -14,7 +14,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:electron": "node scripts/dev.mjs",
     "fixtures": "node scripts/fixtures.mjs",
-    "typecheck": "tsc -b tsconfig.json && tsc -p apps/desktop/tsconfig.renderer.json",
+    "typecheck": "tsc -b tsconfig.json && tsc -p apps/shell/tsconfig.json",
     "test": "vitest run --project unit",
     "test:integration": "vitest run --project integration --no-file-parallelism",
     "test:unit": "vitest run --project unit",

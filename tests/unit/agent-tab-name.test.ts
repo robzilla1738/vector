@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PageTarget } from "@aux/contracts";
 import { suggestTabName } from "../../apps/runtime/src/agent/tab-name.js";
 import type { ModelClient } from "../../apps/runtime/src/agent/model-client.js";
-import { emptyLayout, parseLayout, syncLayout, tabLabel } from "../../apps/desktop/renderer/src/workspace.js";
+import { emptyLayout, parseLayout, syncLayout, tabLabel } from "../../apps/shell/src/workspace.js";
 
 const page = { pageId: "p1", url: "https://example.com/private/report?token=secret", title: "Quarterly report — Example",
   documentEpoch: 3, viewStatus: "visible", controller: "none", ownedByRuntime: false } as PageTarget;

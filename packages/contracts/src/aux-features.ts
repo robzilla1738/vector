@@ -1,7 +1,4 @@
 import { AuxError } from "./errors.js";
-import { RuntimeMethodPolicy } from "./runtime-method-policy.js";
-import { HostMethods, type HostMethodId } from "./host-methods.js";
-import type { MethodName } from "./api.js";
 
 export type AuxFeatureStage = "off" | "preview" | "on";
 export type AuxFeatureHost = "electron" | "chromium-fork";
@@ -39,37 +36,6 @@ export const AUX_FEATURES = {
 
 export type AuxFeature = keyof typeof AUX_FEATURES;
 export type AuxFeatureOverrides = Partial<Record<AuxFeature, AuxFeatureStage>>;
-export type AuxFeatureJourneyId = `feature:${AuxFeature}`;
-export type AuxFeatureMethodId = HostMethodId | MethodName;
-
-/** Required methods come from the two exhaustive method manifests. */
-export const AUX_FEATURE_REQUIREMENTS = Object.fromEntries(
-  (Object.keys(AUX_FEATURES) as AuxFeature[]).map(feature => [feature, {
-    requires: [
-      ...(Object.entries(HostMethods) as [HostMethodId, (typeof HostMethods)[HostMethodId]][])
-        .filter(([, method]) => method.feature === feature).map(([id]) => id),
-      ...(Object.entries(RuntimeMethodPolicy) as [MethodName, (typeof RuntimeMethodPolicy)[MethodName]][])
-        .filter(([, method]) => method.feature === feature).map(([id]) => id),
-    ] as AuxFeatureMethodId[],
-    journey: `feature:${feature}` as AuxFeatureJourneyId,
-  }]),
-) as unknown as Readonly<Record<AuxFeature, { requires: readonly AuxFeatureMethodId[]; journey: AuxFeatureJourneyId }>>;
-
-export function deriveAuxFeatureStages(
-  implementedMethods: readonly string[],
-  passingJourneys: Readonly<Record<string, string>>,
-  sourceCommit: string,
-): Record<AuxFeature, AuxFeatureStage> {
-  const implemented = new Set(implementedMethods);
-  return Object.fromEntries((Object.keys(AUX_FEATURE_REQUIREMENTS) as AuxFeature[])
-    .map(feature => {
-      const { requires, journey } = AUX_FEATURE_REQUIREMENTS[feature];
-      const stage: AuxFeatureStage = requires.every(id => implemented.has(id))
-        ? passingJourneys[journey] === sourceCommit ? "on" : "preview"
-        : "off";
-      return [feature, stage];
-    })) as Record<AuxFeature, AuxFeatureStage>;
-}
 
 /** Legacy Electron remains usable during migration; the fork starts closed. */
 export const AUX_FEATURE_DEFAULTS: Readonly<Record<AuxFeatureHost, AuxFeatureOverrides>> = {
@@ -107,11 +73,6 @@ export function requireAuxFeature(
   }
 }
 
-export function auxFeatureForMethod(method: string): AuxFeature | undefined {
-  const policy = RuntimeMethodPolicy[method as keyof typeof RuntimeMethodPolicy];
-  return policy?.feature === "core" ? undefined : policy?.feature;
-}
-
 const BRIDGE_FEATURE_METHODS: Readonly<Record<string, AuxFeature>> = {
   extensions: "extensions", installStoreExtension: "extensions",
   checkStoreExtensionUpdate: "extensions", reloadExtension: "extensions",
@@ -133,14 +94,4 @@ const BRIDGE_FEATURE_METHODS: Readonly<Record<string, AuxFeature>> = {
 
 export function auxFeatureForBridgeMethod(method: string): AuxFeature | undefined {
   return BRIDGE_FEATURE_METHODS[method];
-}
-
-export function requireAuxMethod(
-  method: string,
-  host: AuxFeatureHost,
-  profileOverrides?: AuxFeatureOverrides,
-  hostOverrides?: AuxFeatureOverrides,
-): void {
-  const feature = auxFeatureForMethod(method);
-  if (feature) requireAuxFeature(feature, host, profileOverrides, hostOverrides);
 }

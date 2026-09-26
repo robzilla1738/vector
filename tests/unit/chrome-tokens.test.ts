@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 import { readCssGraph } from "./read-css-graph.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const tokens = readFileSync(join(here, "../../apps/desktop/renderer/src/tokens.css"), "utf8");
-const styles = readCssGraph(join(here, "../../apps/desktop/renderer/src/styles.css"));
-const sharedUi = readFileSync(join(here, "../../apps/desktop/renderer/src/components/ui.css"), "utf8");
+const tokens = readFileSync(join(here, "../../apps/shell/src/tokens.css"), "utf8");
+const styles = readCssGraph(join(here, "../../apps/shell/src/styles.css"));
+const sharedUi = readFileSync(join(here, "../../apps/shell/src/components/ui.css"), "utf8");
 const css = tokens + "\n" + styles;
 
 function block(theme: "dark" | "light"): string {
@@ -90,7 +90,8 @@ describe("shipped stylesheet — native macOS chrome", () => {
   it("keeps native material visible and provides a solid menu fallback", () => {
     expect(styles).toContain(':root[data-sidebar-appearance="translucent"] .app-body { background: transparent; }');
     expect(styles).toContain(':root[data-sidebar-appearance="translucent"] .main-col { background: var(--page-shell-background, color-mix(in srgb, var(--bg-0) var(--content-opacity, 95%), transparent)); }');
-    expect(styles).toContain(':root[data-sidebar-appearance="translucent"] .sidebar.expanded { background: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent); }');
+    expect(styles).toContain('--window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);');
+    expect(styles).toContain(':is(.sidebar.expanded, .sidebar.peek, .chat-sidebar, .rail)');
     expect(tokens).toMatch(/--surface-menu:\s*var\(--bg-2\)/);
     expect(tokens).toMatch(/--hairline:\s*0\.5px/);
     expect(tokens).toMatch(/--squircle-factor:\s*1\.4/);
@@ -205,22 +206,22 @@ describe("shipped stylesheet — native macOS chrome", () => {
 });
 
 describe("session chrome — search, preview, close, settings, attachments", () => {
-  const commandBar = readFileSync(join(here, "../../apps/desktop/renderer/src/components/CommandBar.tsx"), "utf8");
-  const commandTabRows = readFileSync(join(here, "../../apps/desktop/renderer/src/components/command-tab-rows.tsx"), "utf8");
-  const conversation = readFileSync(join(here, "../../apps/desktop/renderer/src/components/Conversation.tsx"), "utf8");
-  const images = readFileSync(join(here, "../../apps/desktop/renderer/src/components/ConversationImages.tsx"), "utf8");
+  const commandBar = readFileSync(join(here, "../../apps/shell/src/components/CommandBar.tsx"), "utf8");
+  const commandTabRows = readFileSync(join(here, "../../apps/shell/src/components/command-tab-rows.tsx"), "utf8");
+  const conversation = readFileSync(join(here, "../../apps/shell/src/components/Conversation.tsx"), "utf8");
+  const images = readFileSync(join(here, "../../apps/shell/src/components/ConversationImages.tsx"), "utf8");
   const superellipse = styles.indexOf("corner-shape: superellipse(var(--squircle-factor))");
 
   it("uses tokenized rounded suggestions within the address popover", () => {
     expect(styles).toContain(".cmdbar, .cb-pop, .main-col");
     expect(styles).toMatch(/\.cb-pop\s*\{[^}]*border-radius:\s*var\(--r-xl\)/);
-    expect(readFileSync("apps/desktop/renderer/src/components/SearchResultRow.css", "utf8")).toMatch(/\.search-result-row\s*\{[^}]*border-radius:\s*var\(--r-lg\);/);
+    expect(readFileSync("apps/shell/src/components/SearchResultRow.css", "utf8")).toMatch(/\.search-result-row\s*\{[^}]*border-radius:\s*var\(--r-lg\);/);
     expect(styles).toContain("--cb-radius: var(--r-xl)");
     expect(styles).toContain("--cb-radius: var(--r-2xl)");
   });
 
   it("draws the search suggestion enter mark as the circular accent send control and leaves other hints as text keys", () => {
-    expect(commandBar).toContain('trailing={s.hint === "↵" ? <span className="cb-go" aria-hidden="true">{I.send}</span> : s.hint ? <kbd>{s.hint}</kbd> : null}');
+    expect(commandBar).toMatch(/trailing=\{\s*s\.hint === "↵"\s*\?\s*\(\s*<span className="cb-go" aria-hidden="true">/);
     expect(commandBar).toContain('hint: "Ask"');
     expect(commandTabRows).toContain('hint: "Switch"');
     expect(styles).toContain(".cb-go { display: grid; place-items: center; width: var(--control-h); height: var(--control-h); flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");

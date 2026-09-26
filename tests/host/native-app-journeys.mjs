@@ -212,6 +212,7 @@ try {
     native("move", awayX, centerY);
     await rpc("settings.set", { tabLayout: "vertical", sidebarAppearance: "translucent", sidebarMaterial: "liquid-glass" });
     assert.equal((await rpc("settings.get")).tabLayout, "vertical");
+    await until("the native shell controls", () => native("has-button", "Show sidebar") === "true");
     // A fresh Profile starts with the sidebar hidden. The first chord pins it.
     native("toggle-sidebar");
     try {
