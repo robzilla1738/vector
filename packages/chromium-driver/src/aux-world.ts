@@ -157,6 +157,25 @@ function installAuxWorld(collect: (args: unknown) => unknown) {
       const el = live(ref);
       return el && g.__auxStore.cssPath ? g.__auxStore.cssPath(el) : null;
     },
+    /**
+     * Before-state for setter steps (S4): value/checked/selected of the ref's
+     * control. Credential and payment controls report "{redacted}", matching
+     * the observation mask — before-state lands in the step ledger.
+     */
+    state: (ref: string): Record<string, unknown> | string => {
+      const el = live(ref);
+      if (!el) return "gone";
+      const tag = el.tagName;
+      const type = String(el.type ?? el.getAttribute?.("type") ?? "").toLowerCase();
+      const autocomplete = String(el.getAttribute?.("autocomplete") ?? "").toLowerCase();
+      const protectedCtl = type === "password" || /current-password|new-password|one-time-code|cc-number|cc-csc|cc-exp/.test(autocomplete);
+      if (tag === "SELECT")
+        return { selected: Array.from(el.selectedOptions ?? []).map((o: any) => o.label ?? o.value).join("|") };
+      if (type === "checkbox" || type === "radio") return { checked: !!el.checked };
+      if (tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable)
+        return { value: protectedCtl ? (el.value || el.innerText ? "{redacted}" : "") : (el.isContentEditable ? el.innerText : el.value) ?? "" };
+      return {};
+    },
   };
 }
 

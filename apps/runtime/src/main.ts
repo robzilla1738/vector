@@ -63,7 +63,7 @@ import { runBench } from "./services/bench.js";
 import { compileAndAuthorize } from "./agent/action-compiler.js";
 import { attachBidiRuntime } from "./services/bidi.js";
 import { VaultService } from "./services/vault.js";
-import { DurableWriteLedger } from "./agent/durable.js";
+import { DurableWriteLedger, PageClaimStore } from "./agent/durable.js";
 import { modelCallCost } from "./agent/model-client.js";
 import { ApprovalStore } from "./safety/approval.js";
 import { SafetyAuditStore } from "./safety/audit.js";
@@ -106,6 +106,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const safetyAudit = new SafetyAuditStore(repo.db);
   const approvals = new ApprovalStore(repo.db, (event) => safetyAudit.record(event));
   const suspensions = new SuspensionStore(repo.db, (event) => safetyAudit.record(event));
+  // Shared claim ledger — the page dialog decision reads it before `runs`
+  // exists, so it lives here and flows into RunService deps.
+  const pageClaims = new PageClaimStore(repo.db);
   const decideDeps: DecideDeps = {
     approvals,
     journal: new DecisionJournal(repo.db),
@@ -413,6 +416,45 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       if (r.status === "failed") throw new AuxError("step_failed", r.error ?? `operation ${opName} failed`);
       return r.result;
     },
+    downloadsDir: config.downloadsDir,
+    // Un-armed dialogs are decided by decide() against the page's active
+    // claim (S4): deny dismisses, allow keeps the default handling, ask
+    // parks the run's suspension and leaves the dialog open until it resumes.
+    decideDialog: async ({ pageId, type, message }) => {
+      const claim = pageClaims.activeForPage(pageId);
+      if (!claim) return undefined;
+      const run = repo.getRun(claim.runId);
+      const decision = await decide(EffectRequestSchema.parse({
+        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+        scope: run?.config?.taskId
+          ? { kind: "task", id: run.config.taskId }
+          : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+        actor: "builtin_agent",
+        effect: "write",
+        category: "dialog",
+        action: `dialog.${type}`,
+        origin: (() => { try { return new URL(pages.get(pageId).url).origin; } catch { return claim.pageId; } })(),
+        dataClasses: [],
+        provenance: "page",
+        invocationDigest: createHash("sha256").update(JSON.stringify(["dialog", pageId, type, message])).digest("hex"),
+        turnId: claim.runId,
+        threadId: run?.config?.chatId ?? claim.runId,
+        runId: claim.runId,
+        requestedAt: Date.now(),
+      }), decideDeps, { phase: "dispatch" });
+      if (decision.status === "deny") return "dismiss";
+      if (decision.status === "ask") {
+        suspensions.park({
+          runId: claim.runId,
+          threadId: run?.config?.chatId ?? claim.runId,
+          turnId: claim.runId,
+          kind: decision.suspension.kind,
+          request: decision.suspension,
+        });
+        return "leave";
+      }
+      return undefined;
+    },
   });
   attachBidiRuntime({
     navigate: (context, url) => {
@@ -501,6 +543,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     memoryPipeline,
     operations,
     durableWrites,
+    pageClaims,
   });
 
   const extractingRuns = new Set<string>();
@@ -826,9 +869,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   repo.markRunningInvocationsInterrupted();
   // Suspensions parked by runs that did not survive the restart expire; a
   // still-parked suspension belongs to a resumable run and resurfaces for UI.
-  suspensions.expireOrphans(new Set(
+  const liveRunIds = new Set(
     repo.listRuns(200).filter(run => ["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
-      .map(run => run.runId)));
+      .map(run => run.runId));
+  suspensions.expireOrphans(liveRunIds);
+  // The same for durable page claims: a dead run cannot still own a tab.
+  runs.pageClaims.releaseOrphans(liveRunIds);
 
   // bring back the tabs that were open when the app last quit
   await pages.restoreTabs().catch(() => {});

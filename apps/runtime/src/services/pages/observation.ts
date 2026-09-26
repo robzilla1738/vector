@@ -91,7 +91,12 @@ export class ObservationService {
     if (req.sinceRevision === undefined) return undefined;
     const base = lp.history.find((h) => h.revision === req.sinceRevision);
     if (!base || base.epoch !== current.epoch || base.shape !== current.shape) return undefined;
-    return structuralDelta(base, current.elements, current.text);
+    const delta = structuralDelta(base, current.elements, current.text);
+    // Diffs by default, but only when they are the smaller view (S4): a delta
+    // at least half the size of the full tree costs a second trip for no gain.
+    const fullSize = current.text.length + [...current.elements.values()].reduce((n, el) => n + JSON.stringify(el).length, 0);
+    if (JSON.stringify(delta).length * 2 >= fullSize) return undefined;
+    return delta;
   }
 
   /**

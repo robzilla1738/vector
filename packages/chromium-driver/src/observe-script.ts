@@ -16,6 +16,12 @@ export interface ObserveScriptArgs {
   refStart: number;
   /** add to this frame's live ref map instead of replacing it (expandRef) */
   mergeRefs?: boolean;
+  /**
+   * Element-collection filter (S4): `interactive` keeps only elements the
+   * agent can act on (default); `all` refs every shown element; `viewport`
+   * is `interactive` restricted to elements intersecting the viewport.
+   */
+  filter?: "interactive" | "all" | "viewport";
 }
 
 export interface ObserveScriptResult {
@@ -351,12 +357,16 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
   const tableEls: any[] = [];
   const shadowHosts: any[] = [];
   let mainEl: any = null;
+  const collectAll = args.filter === "all";
   const visit = (container: any, light: boolean) => {
     if (!container) return;
     const tw = doc.createTreeWalker(container, 1 /* SHOW_ELEMENT */);
     for (let el: any = tw.nextNode(); el; el = tw.nextNode()) {
       const tag = el.tagName as string;
-      if ((CANDIDATE_TAGS.has(tag) || el.hasAttribute("role") || el.hasAttribute("tabindex") || el.hasAttribute("contenteditable")) && el.matches(INTERACTIVE_SELECTOR))
+      const interactive = (CANDIDATE_TAGS.has(tag) || el.hasAttribute("role") || el.hasAttribute("tabindex") || el.hasAttribute("contenteditable")) && el.matches(INTERACTIVE_SELECTOR);
+      // `all` refs containers too, but skips the host of a shadow root's own
+      // bookkeeping noise: deep document structures stay interactive-first.
+      if (interactive || (collectAll && !SKIP_TEXT.has(tag) && tag !== "HTML" && tag !== "HEAD"))
         elements.push(el);
       if (light) {
         if ((tag === "H1" || tag === "H2" || tag === "H3") && headingEls.length < 12) headingEls.push(el);
@@ -394,7 +404,7 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     const r = rectOf(el);
     (r.bottom > 0 && r.top < vh && r.right > 0 && r.left < vw ? inView : offView).push(el);
   }
-  const ordered = inView.concat(offView);
+  const ordered = args.filter === "viewport" ? inView : inView.concat(offView);
 
   // Live ref map (speed P0-3 / plan A7): the driver resolves `rN` with one
   // map lookup instead of a css/xpath/role search, and falls back to the

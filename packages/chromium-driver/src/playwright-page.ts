@@ -14,7 +14,7 @@ import { collectObservation, type ObserveScriptArgs, type ObserveScriptResult } 
 import { parseTarget, RefRegistry } from "./ref-registry.js";
 import { locatorAttempts, selectUniqueLocator } from "./locator-resolve.js";
 import { bodyCapturePolicy, defaultResponseCaptureOptions, type ResponseCaptureOptions } from "./response-capture.js";
-import { RequestTracker, SETTLED_CONDITION_MS, SETTLED_QUIET_MS, settledProbe } from "./readiness.js";
+import { READINESS_POLICIES, RequestTracker, SETTLED_CONDITION_MS, settledProbe, type ReadinessPolicy } from "./readiness.js";
 import { AuxWorld } from "./aux-world.js";
 import type { DriverPage, DriverPageEvents, PageIdentity, ScreenshotResult, WaitOutcome } from "./types.js";
 
@@ -56,6 +56,7 @@ export class PlaywrightDriverPage implements DriverPage {
   private frameKeys: FrameKeys = { keyToFrame: new Map() };
   private documentEpoch = 0;
   private dialogHandler: { action: "accept" | "dismiss"; promptText?: string } | null = null;
+  private downloadDir?: string;
   private lastDialog: { type: string; message: string } | null = null;
   private consoleLines: { level: string; message: string; atMs: number }[] = [];
   private externalDownloadWaiters: {
@@ -180,14 +181,25 @@ export class PlaywrightDriverPage implements DriverPage {
     });
     this.on("download", (download: Download) => {
       const info = { suggestedFilename: download.suggestedFilename(), path: undefined as string | undefined };
-      if (!this.nativeDownloadAuthority) {
-        const waiters = this.externalDownloadWaiters.splice(0);
-        for (const w of waiters) {
-          w.cleanup?.();
-          w.resolve(info);
+      const finish = (path?: string) => {
+        const done = { ...info, path };
+        if (!this.nativeDownloadAuthority) {
+          const waiters = this.externalDownloadWaiters.splice(0);
+          for (const w of waiters) {
+            w.cleanup?.();
+            w.resolve(done);
+          }
         }
+        this.events.onDownload?.(done);
+      };
+      // Downloads wait into session storage (S4): save the artifact under the
+      // configured dir so waiters resolve a durable path, not a temp artifact
+      // that disappears with the context.
+      if (this.downloadDir) {
+        void this.saveDownload(download, this.downloadDir).then(finish, () => finish());
+        return;
       }
-      this.events.onDownload?.(info);
+      finish();
     });
     if (CAPTURE_RESPONSES) {
       this.on("response", (response: Response) => {
@@ -265,7 +277,16 @@ export class PlaywrightDriverPage implements DriverPage {
         return;
       }
       const handler = this.dialogHandler;
-      if (handler?.action === "accept") await dialog.accept(handler.promptText);
+      if (handler?.action === "accept") {
+        await dialog.accept(handler.promptText);
+        return;
+      }
+      // Un-armed dialogs are decided by the runtime (S4): decide() may deny
+      // (dismiss), allow (default handling), or ask (leave open for the
+      // parked run or the human). Absent a decision path, dismiss.
+      const decision = this.events.decideDialog ? await this.events.decideDialog(info) : undefined;
+      if (decision === "accept") await dialog.accept();
+      else if (decision === "leave") return;
       else await dialog.dismiss();
     } catch {
       /* dialog already handled */
@@ -274,6 +295,32 @@ export class PlaywrightDriverPage implements DriverPage {
 
   /** Native Aux downloads complete through the profile session, not Playwright's start event. */
   setNativeDownloadAuthority() { this.nativeDownloadAuthority = true; }
+  /** Session storage dir non-native downloads save into (S4). */
+  setDownloadDir(dir: string) { this.downloadDir = dir; }
+
+  /**
+   * Save a finished download under `dir`: the suggested filename stays
+   * unless it collides, then a `-N` suffix before the extension. Only the
+   * basename is used — a suggested filename is page-controlled text.
+   */
+  private async saveDownload(download: Download, dir: string): Promise<string> {
+    const { mkdir } = await import("node:fs/promises");
+    const { basename, extname, join } = await import("node:path");
+    await mkdir(dir, { recursive: true });
+    const name = basename(download.suggestedFilename() || "download");
+    const stem = name.slice(0, name.length - extname(name).length) || "download";
+    for (let n = 0; n < 100; n++) {
+      const candidate = join(dir, n === 0 ? name : `${stem}-${n}${extname(name)}`);
+      try {
+        await download.saveAs(candidate);
+        return candidate;
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === "EEXIST") continue;
+        throw e;
+      }
+    }
+    throw new AuxError("conflict", "Could not find a free download filename");
+  }
 
   notifyDownloadStarted(info: { id: string; startedAt: number }) {
     for (const waiter of this.externalDownloadWaiters) {
@@ -336,20 +383,25 @@ export class PlaywrightDriverPage implements DriverPage {
    * and no DOM mutation for ~100 ms — or the deadline. Returns whether the
    * page settled. Never throws; a wedged renderer just reports false.
    */
-  async waitForSettled(timeoutMs = SETTLED_CONDITION_MS): Promise<boolean> {
+  async waitForSettled(timeoutMs = SETTLED_CONDITION_MS, policy: ReadinessPolicy = READINESS_POLICIES.networkIdle): Promise<boolean> {
+    if (policy.quietMs === 0 && !policy.networkIdle) {
+      await this.page.waitForLoadState("domcontentloaded", { timeout: timeoutMs });
+      await this.page.waitForLoadState("load", { timeout: Math.min(timeoutMs, 10_000) }).catch(() => {});
+      return true;
+    }
     const world = await this.world;
     if (!world) {
-      const r = await bounded(this.page.evaluate(settledProbe, { timeoutMs, quietMs: SETTLED_QUIET_MS }), timeoutMs + 250);
+      const r = await bounded(this.page.evaluate(settledProbe, { timeoutMs, quietMs: policy.quietMs }), timeoutMs + 250);
       return r === true;
     }
     const deadline = Date.now() + timeoutMs;
     for (;;) {
       const left = Math.max(0, deadline - Date.now());
-      const dom = await bounded(world.call<boolean>(`__aux.settle(${left}, ${SETTLED_QUIET_MS})`, true), left + 250);
+      const dom = await bounded(world.call<boolean>(`__aux.settle(${left}, ${policy.quietMs})`, true), left + 250);
       if (dom !== true) return false;
-      if (this.requests.quiet(SETTLED_QUIET_MS)) return true;
+      if (!policy.networkIdle || this.requests.quiet(policy.quietMs)) return true;
       // requests in flight: wait them out, then re-check the DOM — a completed fetch usually renders
-      while (!this.requests.quiet(SETTLED_QUIET_MS)) {
+      while (!this.requests.quiet(policy.quietMs)) {
         if (Date.now() >= deadline) return false;
         await new Promise((r) => setTimeout(r, Math.min(20, Math.max(1, deadline - Date.now()))));
       }
@@ -583,6 +635,33 @@ export class PlaywrightDriverPage implements DriverPage {
     const loc = await this.resolveActionable(target);
     await loc.selectOption(Array.isArray(value) ? value.map((v) => ({ label: v })) : { label: value }, { timeout: timeoutMs });
   }
+  /** Before-state for setter steps (S4): value/checked/selected, redacted for protected controls. */
+  async fieldState(target: string): Promise<Record<string, unknown> | undefined> {
+    const w = await this.worldRef(target);
+    if (w) {
+      const st = await bounded(w.world.call<Record<string, unknown> | string>(`__aux.state(${JSON.stringify(w.ref)})`), FRAME_PROBE_MS).catch(() => "gone");
+      if (st && typeof st === "object") return st;
+    }
+    const stateOf = (el: HTMLElement | SVGElement) => {
+      const input = el as HTMLInputElement;
+      const tag = el.tagName;
+      const type = String(input.type ?? el.getAttribute("type") ?? "").toLowerCase();
+      const autocomplete = String(el.getAttribute("autocomplete") ?? "").toLowerCase();
+      const protectedCtl = type === "password" || /current-password|new-password|one-time-code|cc-number|cc-csc|cc-exp/.test(autocomplete);
+      if (tag === "SELECT")
+        return { selected: Array.from((el as HTMLSelectElement).selectedOptions ?? []).map((o) => o.label ?? o.value).join("|") };
+      if (type === "checkbox" || type === "radio") return { checked: !!input.checked };
+      if (tag === "INPUT" || tag === "TEXTAREA" || (el as HTMLElement).isContentEditable)
+        return { value: protectedCtl ? (input.value || (el as HTMLElement).innerText ? "{redacted}" : "") : ((el as HTMLElement).isContentEditable ? (el as HTMLElement).innerText : input.value) ?? "" };
+      return {};
+    };
+    const loc = await this.resolveActionable(target);
+    // Locator and ElementHandle evaluate() overloads do not unify; both accept
+    // an element page-function at runtime.
+    return (loc as { evaluate: (fn: typeof stateOf) => Promise<Record<string, unknown>> })
+      .evaluate(stateOf)
+      .catch(() => undefined);
+  }
   async scroll(opts: { target?: string; direction: "up" | "down" | "top" | "bottom"; amount?: number }) {
     const amount = opts.amount ?? 700;
     if (opts.target) {
@@ -766,8 +845,9 @@ export class PlaywrightDriverPage implements DriverPage {
           await this.page.waitForLoadState("load", { timeout: Math.min(timeout, 10_000) }).catch(() => {});
           break;
         case "settled": {
-          const ok = await this.waitForSettled(condition.timeoutMs ?? SETTLED_CONDITION_MS);
-          if (!ok) return { ok: false, timedOut: true, detail: "page did not settle: requests in flight or DOM still changing" };
+          const policy = READINESS_POLICIES[condition.policy ?? "networkIdle"];
+          const ok = await this.waitForSettled(condition.timeoutMs ?? policy.timeoutMs, policy);
+          if (!ok) return { ok: false, timedOut: true, detail: `page did not settle (${condition.policy ?? "networkIdle"}): quiet window not reached` };
           break;
         }
         case "downloadCompleted": {
@@ -956,6 +1036,7 @@ export class PlaywrightDriverPage implements DriverPage {
         frameKey: key,
         refStart: this.refCounter,
         mergeRefs: partial,
+        filter: req?.scope === "all" ? "all" : req?.scope === "viewport" ? "viewport" : "interactive",
       });
       if (!part) continue;
       elementsTotal += part.elementsTotal;

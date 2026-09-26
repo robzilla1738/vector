@@ -37,7 +37,7 @@ import type { PageService } from "./pages.js";
 import type { SetService } from "./sets.js";
 import type { SettingsService } from "./settings.js";
 import { RunCoordinator } from "../agent/coordinator.js";
-import { DurableWriteLedger } from "../agent/durable.js";
+import { DurableWriteLedger, PageClaimStore } from "../agent/durable.js";
 import { runMemberAgent } from "../agent/member-agent.js";
 import type { ResearchBudget, ResearchLimits } from "../scheduler/research-budget.js";
 import { modelCallCost } from "../agent/model-client.js";
@@ -142,7 +142,8 @@ export function budgetSections(sections: { text?: string; priority: number }[], 
 }
 
 export class RunService {
-  readonly pageOwnership = new PageOwnership();
+  readonly pageOwnership: PageOwnership;
+  readonly pageClaims: PageClaimStore;
   readonly coordinator: RunCoordinator;
   readonly images: ConversationImages;
   readonly messages: RunMessageQueue;
@@ -558,6 +559,7 @@ export class RunService {
     memoryPipeline?: import("./memory-pipeline.js").MemoryPipeline;
     operations?: import("./operations.js").OperationService;
     durableWrites?: DurableWriteLedger;
+    pageClaims?: PageClaimStore;
     tracer?: {
       start(
         name: string,
@@ -567,6 +569,13 @@ export class RunService {
     };
   }) {
     this.images = new ConversationImages(deps.repo, deps.artifacts, chatId => deps.events.emit("conversation.context.changed", {chatId}));
+    // Claims are the durable half of ownership (S4): every lease records into
+    // the page_claims ledger so a restart can release what dead runs held.
+    this.pageClaims = deps.pageClaims ?? new PageClaimStore(deps.repo.db);
+    this.pageOwnership = new PageOwnership({
+      claims: this.pageClaims,
+      kindOf: pageId => deps.repo.getPage(pageId)?.ownedByRuntime ? "owned" : "borrowed",
+    });
     this.pool = new WorkerPool({ maxWorkers: deps.settings.maxWorkers(), perOrigin: deps.settings.perOrigin() }, this.pageOwnership);
     const durableWrites = deps.durableWrites ?? new DurableWriteLedger(deps.repo.db);
     this.coordinator = new RunCoordinator({

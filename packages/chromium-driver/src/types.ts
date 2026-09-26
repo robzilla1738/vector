@@ -27,6 +27,13 @@ export interface DriverPageEvents {
   onLoading?: (loading: boolean) => void;
   onDestroyed?: (reason: "closed" | "crashed" | "detached") => void;
   onDialog?: (info: { type: string; message: string }) => void;
+  /**
+   * Decide how an un-armed dialog resolves (S4): the runtime answers through
+   * its safety decision function. `accept`/`dismiss` handles it; `leave`
+   * keeps it open (a parked suspension or the user resolves it). Absent or
+   * returning undefined falls back to dismiss.
+   */
+  decideDialog?: (info: { type: string; message: string }) => Promise<"accept" | "dismiss" | "leave" | undefined>;
   onConsole?: (info: { level: string; message: string; atMs?: number }) => void;
   onDownload?: (info: { suggestedFilename: string; path?: string }) => void;
   onPopup?: (targetId: string | null, url: string) => void;
@@ -84,6 +91,12 @@ export interface DriverPage {
   check(target: string, timeoutMs?: number): Promise<void>;
   uncheck(target: string, timeoutMs?: number): Promise<void>;
   select(target: string, value: string | string[], timeoutMs?: number): Promise<void>;
+  /**
+   * Form-control before-state for setter steps (S4): `{value|checked|selected}`
+   * or undefined when the target is not a readable control. Protected
+   * controls report "{redacted}", never the raw value.
+   */
+  fieldState?(target: string): Promise<Record<string, unknown> | undefined>;
   scroll(opts: { target?: string; direction: "up" | "down" | "top" | "bottom"; amount?: number }): Promise<void>;
   dragTo(target: string, to: string, timeoutMs?: number): Promise<void>;
   clickPoint(x: number, y: number, button?: "left" | "right" | "middle"): Promise<void>;
@@ -93,6 +106,8 @@ export interface DriverPage {
   waitForDownload(timeoutMs?: number, signal?: AbortSignal): Promise<{ suggestedFilename: string; path?: string }>;
   /** Desktop profile downloads report terminal results through the native session. */
   setNativeDownloadAuthority?(): void;
+  /** Session storage dir non-native downloads are saved into (S4). */
+  setDownloadDir?(dir: string): void;
   notifyDownloadStarted?(info: { id: string; startedAt: number }): void;
   notifyDownload?(info: { id: string; startedAt: number; suggestedFilename: string; path?: string; state: string }): void;
   handleDialog(action: "accept" | "dismiss", promptText?: string): Promise<void>;

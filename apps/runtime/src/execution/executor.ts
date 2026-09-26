@@ -4,6 +4,7 @@ import {
   type Condition,
   type FinalReviewArtifact,
   type ObservationContent,
+  type ObservationScope,
   type Program,
   type ProgramResult,
   type Step,
@@ -24,7 +25,7 @@ export interface ExecContext {
   onEmit?: (label: string | undefined, value: unknown) => void;
   onNode?: (info: { kind: string; id: string; detail?: string }) => void;
   observe?: (req: {
-    scope?: "full" | "forms" | "links" | "tables" | "subtree";
+    scope?: ObservationScope;
     subtreeRef?: string;
   }) => Promise<unknown>;
   callOperation?: (name: string, args: Record<string, unknown>) => Promise<unknown>;
@@ -65,6 +66,9 @@ export interface ExecContext {
   pageOrigin?: string;
 }
 
+/** Ops whose target state is recorded as the ledger's before-state (S4). */
+const SETTER_OPS = new Set(["fill", "type", "check", "uncheck", "select"]);
+
 /** `javascript:` and `vbscript:` navigations run script in the current page. */
 function isActiveScriptUrl(url: string): boolean {
   try {
@@ -88,6 +92,15 @@ function assertEvalAllowed(step: Step, allowEval: boolean) {
     throw new AuxError("invalid_params", `step ${step.id}: page JS (evaluate/expression) is disabled for this program source`);
   }
 }
+
+/**
+ * 01's named retry policy (S4): `target_detached` resolution failures get one
+ * re-resolve after an `interactive` settle — the code is raised before any
+ * input reaches the page, so a retry can never replay a dispatched write
+ * ("never replay uncertain input"). `ref_stale` is deliberately absent: it
+ * marks a real document-epoch change that only a fresh observation fixes.
+ */
+const RETRYABLE_RESOLUTION_CODES = new Set(["target_detached"]);
 
 async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promise<Record<string, unknown> | undefined> {
   switch (s.op) {
@@ -186,13 +199,26 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
     const startedAt = Date.now();
     let dispatched = false;
     let authorization: AuthorizationProvenance | void = undefined;
+    // Before-state for setter steps: read the control before dispatch so the
+    // ledger records what the write replaced (S4). A failed read never blocks.
+    let before: Record<string, unknown> | undefined;
     try {
       ctx.checkValid?.();
       assertEvalAllowed(step, ctx.allowEval ?? false);
       authorization = await ctx.authorizeStep?.(step);
       ctx.checkValid?.();
+      if (SETTER_OPS.has(step.op) && page.fieldState && "target" in step && step.target) {
+        before = await page.fieldState(String(step.target)).catch(() => undefined);
+      }
+      ctx.checkValid?.();
       dispatched = true;
-      const detail = await runStep(page, step, ctx);
+      const detail = await runStep(page, step, ctx).catch(async (e) => {
+        const code = e instanceof AuxError ? e.code : undefined;
+        if (!code || !RETRYABLE_RESOLUTION_CODES.has(code) || ctx.signal?.aborted) throw e;
+        await page.waitFor({ kind: "settled", policy: "interactive" }).catch(() => ({ ok: false, timedOut: false }));
+        ctx.checkValid?.();
+        return runStep(page, step, ctx);
+      });
       // verify post-conditions
       if (step.expect) {
         for (const cond of step.expect as Condition[]) {
@@ -211,6 +237,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         startedAt,
         durationMs: Date.now() - startedAt,
         ...(authorization ? { authorization } : {}),
+        ...(before ? { before } : {}),
         effect: postconditions.length ? "observed" : mutating ? "uncertain" : "observed",
         receipt: {
           observed: postconditions.length
@@ -261,6 +288,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         durationMs: Date.now() - startedAt,
         error: { code, message: e instanceof Error ? e.message : String(e) },
         ...(authorization ? { authorization } : {}),
+        ...(before ? { before } : {}),
         ...(takenOver ? { effect: "uncertain" as const, receipt: {
           remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true,
         } } : {}),

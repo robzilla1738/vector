@@ -1,6 +1,7 @@
 import {
   AuxError,
   type AuxErrorCode,
+  type ObservationScope,
   type Predicate,
   type Program,
   type ProgramNode,
@@ -22,7 +23,7 @@ export interface NodeContext {
   onEmit?: (label: string | undefined, value: unknown) => void;
   onNode?: (info: { kind: string; id: string; detail?: string }) => void;
   observe?: (req: {
-    scope?: "full" | "forms" | "links" | "tables" | "subtree";
+    scope?: ObservationScope;
     subtreeRef?: string;
   }) => Promise<unknown>;
   callOperation?: (name: string, args: Record<string, unknown>) => Promise<unknown>;

@@ -56,6 +56,7 @@ export class PageRegistry {
     if (driver && target.backend === "aux" && this.deps.native.available()) {
       driver.setNativeDownloadAuthority?.();
     }
+    if (driver && this.deps.downloadsDir) driver.setDownloadDir?.(this.deps.downloadsDir);
     if (driver) this.wireDriverEvents(lp);
     this.persist(lp);
     return lp;
@@ -86,6 +87,9 @@ export class PageRegistry {
         lp.lastDialog = info;
         this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, dialog: info });
       },
+      decideDialog: this.deps.decideDialog
+        ? (info) => this.deps.decideDialog!({ pageId: lp.target.pageId, ...info })
+        : undefined,
       onConsole: (info) => {
       lp.consoleLines.push({ level: info.level, message: info.message, atMs: info.atMs ?? Date.now() });
       if (lp.consoleLines.length > 200) lp.consoleLines.splice(0, lp.consoleLines.length - 200);

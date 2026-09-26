@@ -101,14 +101,17 @@ describe("sinceRevision deltas", () => {
   });
 
   it("reports added, removed and changed refs plus text lines against the caller's revision", async () => {
+    // A large enough tree that the small delta stays under half its size —
+    // the gate falls back to a full observation when a diff is not cheaper.
     const h = harness();
     const page = await h.pages.open({ url: "about:blank", background: true, ownedByRuntime: true });
+    h.set(content(["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10"].map((r) => el(r))));
     const first = await h.pages.observe(page.pageId, {});
-    h.set(content([el("r1", { name: "Renamed", focused: true }), el("r3")], "hello\nnew line"));
+    h.set(content([el("r1", { name: "Renamed", focused: true }), ...["r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11"].map((r) => el(r))], "hello\nnew line"));
     const next = await h.pages.observe(page.pageId, { sinceRevision: first.revision });
     expect(next.delta).toMatchObject({
       sinceRevision: first.revision,
-      added: [expect.objectContaining({ ref: "r3" })],
+      added: [expect.objectContaining({ ref: "r11" })],
       removed: ["r2"],
       changed: [{ ref: "r1", fields: { name: "Renamed", focused: true } }],
       textDelta: { added: ["new line"], removed: [] },
@@ -116,9 +119,9 @@ describe("sinceRevision deltas", () => {
     expect(JSON.stringify(next.delta)).not.toContain("selector");
     const compact = wireObservation(next, "compact") as { observation: { text: string; refs: { ref: string }[]; sinceRevision?: number } };
     expect(compact.observation.sinceRevision).toBe(first.revision);
-    expect(compact.observation.text).toContain("added:\n  r3 button");
+    expect(compact.observation.text).toContain("added:\n  r11 button");
     expect(compact.observation.text).toContain("removed: r2");
-    expect(compact.observation.refs.map((r) => r.ref).sort()).toEqual(["r1", "r3"]);
+    expect(compact.observation.refs.map((r) => r.ref)).not.toContain("r2");
   });
 
   it("returns a full observation (no delta) after a navigation or when the base aged out", async () => {

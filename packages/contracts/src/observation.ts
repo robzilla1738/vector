@@ -146,6 +146,26 @@ export const ObservationDeltaSchema = z
   .passthrough();
 export type ObservationDelta = z.infer<typeof ObservationDeltaSchema>;
 
+/**
+ * Element-collection scope (S4): `interactive` keeps only elements the agent
+ * can act on; `all` refs every shown element; `viewport` is `interactive`
+ * restricted to elements inside the viewport. `full` is the all-sections
+ * default and collects like `interactive` — its text section already covers
+ * the page. `forms`, `links` and `tables` bias the wire toward that content.
+ * `subtree` reads below `subtreeRef`.
+ */
+export const ObservationScopeSchema = z.enum([
+  "full",
+  "all",
+  "interactive",
+  "viewport",
+  "forms",
+  "links",
+  "tables",
+  "subtree",
+]);
+export type ObservationScope = z.infer<typeof ObservationScopeSchema>;
+
 export const ObservationSchema = z.object({
   protocolVersion: z.literal(1).optional(),
   observationId: z.string(),
@@ -155,7 +175,7 @@ export const ObservationSchema = z.object({
   documentEpoch: z.number(),
   revision: z.number(),
   observedAt: z.number(),
-  scope: z.enum(["full", "forms", "links", "tables", "subtree"]),
+  scope: ObservationScopeSchema,
   content: ObservationContentSchema,
   /** Human/model-readable field-level diff vs the previous revision. */
   changesSince: z.array(z.string()).optional(),
@@ -191,7 +211,7 @@ export const ObservationFormatSchema = z.enum(["full", "compact"]);
 export type ObservationFormat = z.infer<typeof ObservationFormatSchema>;
 
 export const ObservationRequestSchema = z.object({
-  scope: z.enum(["full", "forms", "links", "tables", "subtree"]).default("full"),
+  scope: ObservationScopeSchema.default("full"),
   subtreeRef: z.string().optional(),
   maxElements: z.number().int().positive().default(120),
   maxTextChars: z.number().int().positive().default(6000),

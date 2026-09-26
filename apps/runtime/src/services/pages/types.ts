@@ -85,6 +85,14 @@ export interface PageServiceDeps {
   /** Shared write journal. Direct execute journals here when `ctx.journaled` is unset. */
   durableWrites?: DurableWriteLedger;
   safetyGate?: SafetyDispatchGate;
+  /**
+   * Un-armed dialog resolution through decide() (S4): `accept`/`dismiss`
+   * handles the dialog; `leave` keeps it open for a parked suspension or
+   * the human. Absent → the driver dismisses.
+   */
+  decideDialog?: (input: { pageId: string; type: string; message: string }) => Promise<"accept" | "dismiss" | "leave" | undefined>;
   /** Session storage, attachment, and workspace roots an `upload` step may read from. */
   uploadRoots?: (input: { taskId?: string; runId?: string; pageId?: string }) => string[];
+  /** Session storage dir downloads save into (S4) — waiters resolve a real path. */
+  downloadsDir?: string;
 }

@@ -16,6 +16,31 @@ export const SETTLED_CONDITION_MS = 2_000;
 /** DOM and network must be quiet for this long. */
 export const SETTLED_QUIET_MS = 100;
 
+/**
+ * 01's readiness heuristic as named policies (S4): every wait in the driver
+ * and the executor's retry loop picks one by name rather than carrying
+ * ad-hoc timeout/quiet values.
+ */
+export interface ReadinessPolicy {
+  /** overall deadline for the wait */
+  timeoutMs: number;
+  /** DOM and (when enabled) network must stay quiet this long */
+  quietMs: number;
+  /** require in-flight fetch/XHR to drain; false = DOM quiet only */
+  networkIdle: boolean;
+}
+
+export const READINESS_POLICIES = {
+  /** Document parsed and loaded — no quiet requirement (fastest). */
+  load: { timeoutMs: 10_000, quietMs: 0, networkIdle: false },
+  /** Rendered frames and a DOM-quiet window; requests may still be in flight. */
+  interactive: { timeoutMs: SETTLED_CONDITION_MS, quietMs: SETTLED_QUIET_MS, networkIdle: false },
+  /** Frames + DOM quiet + no in-flight fetch/XHR for quietMs. */
+  networkIdle: { timeoutMs: SETTLED_CONDITION_MS, quietMs: SETTLED_QUIET_MS, networkIdle: true },
+} as const satisfies Record<string, ReadinessPolicy>;
+
+export type ReadinessPolicyName = keyof typeof READINESS_POLICIES;
+
 interface TrackedRequest {
   resourceType(): string;
   frame(): unknown;

@@ -1,4 +1,5 @@
 import { AuxError } from "@aux/contracts";
+import type { PageClaimStore } from "../agent/durable.js";
 
 export interface PageOwner {
   pageId: string;
@@ -22,10 +23,23 @@ export class PageOwnership {
   private owners = new Map<string, PageOwner>();
   private waiters = new Map<string, Waiter[]>();
 
+  constructor(private deps: {
+    /** Durable claim record (S4) — acquire/release both write through. */
+    claims?: PageClaimStore;
+    /** owned = a tab the runtime created; borrowed = an existing session tab it drives. */
+    kindOf?: (pageId: string) => "owned" | "borrowed";
+  } = {}) {}
+
+  /** The ledger key for a claim: the run id when the owner has one, else its actor+member handle. */
+  private claimKey(owner: PageOwner): string {
+    return owner.runId ?? `${owner.actor}:${owner.memberId ?? owner.connectionId ?? "self"}`;
+  }
+
   tryAcquire(owner: PageOwner): () => void {
     const current = this.owners.get(owner.pageId);
     if (current) throw new AuxError("conflict", `Page ${owner.pageId} is in use by ${current.actor}${current.runId ? ` (${current.runId})` : ""}`);
     this.owners.set(owner.pageId, owner);
+    this.deps.claims?.claim({ pageId: owner.pageId, runId: this.claimKey(owner), kind: this.deps.kindOf?.(owner.pageId) ?? "borrowed" });
     return this.releaseFor(owner);
   }
 
@@ -78,12 +92,18 @@ export class PageOwnership {
           continue;
         }
         if (!queue.length) this.waiters.delete(owner.pageId);
+        // Ownership handed to a waiter: the ledger claim follows the handoff —
+        // the page never sat unclaimed between owners. The outgoing claim
+        // closes first so a run's active claims match what it really holds.
         this.owners.set(owner.pageId, next.owner);
+        this.deps.claims?.release(owner.pageId);
+        this.deps.claims?.claim({ pageId: next.owner.pageId, runId: this.claimKey(next.owner), kind: this.deps.kindOf?.(next.owner.pageId) ?? "borrowed" });
         next.resolve(this.releaseFor(next.owner));
         return;
       }
       this.waiters.delete(owner.pageId);
       this.owners.delete(owner.pageId);
+      this.deps.claims?.release(owner.pageId);
     };
   }
 }

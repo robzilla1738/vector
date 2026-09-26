@@ -24,10 +24,10 @@ export function renderObservation(obs: Observation): string {
   // for it because the full view lacked what it needed; dumping everything
   // back re-buries the signal.
   const want = {
-    fields: scope === "full" || scope === "forms" || scope === "subtree",
-    elements: scope === "full" || scope === "subtree",
-    tables: scope === "full" || scope === "tables" || scope === "subtree",
-    text: scope === "full" || scope === "subtree",
+    fields: scope === "full" || scope === "all" || scope === "forms" || scope === "subtree",
+    elements: scope === "full" || scope === "all" || scope === "interactive" || scope === "viewport" || scope === "subtree",
+    tables: scope === "full" || scope === "all" || scope === "tables" || scope === "subtree",
+    text: scope === "full" || scope === "all" || scope === "subtree",
   };
   if (scope === "links" && c.links.length) {
     lines.push("links:");
@@ -76,7 +76,7 @@ export function renderObservation(obs: Observation): string {
     for (const ch of obs.changesSince) lines.push(`  ${ch}`);
   }
   if (c.truncated)
-    lines.push(`[truncated — ${c.stats.elementsTotal} elements total, showing ${c.stats.elementsShown}; request scope="subtree" or forms/links/tables]`);
+    lines.push(`[truncated — ${c.stats.elementsTotal} elements total, showing ${c.stats.elementsShown}; request scope="subtree", "viewport", or forms/links/tables]`);
   return lines.join("\n");
 }
 

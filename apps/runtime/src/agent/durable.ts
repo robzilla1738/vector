@@ -204,3 +204,100 @@ export function settleWrite(
   else if (settled.outcome === "not_applied") ledger.abortUndispatched(intentId, settled.reason ?? "not dispatched");
   else ledger.fail(intentId);
 }
+
+/**
+ * Durable page claims (S4, 01-A/06-AI): which automated unit of work holds a
+ * tab. `kind` distinguishes tabs the runtime created (`owned`) from tabs it
+ * drives that belong to the browsing session (`borrowed`). Claims release
+ * when the owner releases its PageOwnership lease; a restart releases every
+ * claim whose run did not survive.
+ */
+export interface PageClaim {
+  claimId: string;
+  pageId: string;
+  runId: string;
+  kind: "owned" | "borrowed";
+  status: "active" | "released";
+  createdAt: number;
+  releasedAt?: number;
+}
+
+type ClaimRow = {
+  claim_id: string; page_id: string; run_id: string; kind: string;
+  status: string; created_at: number; released_at: number | null;
+};
+
+function rowToClaim(row: ClaimRow): PageClaim {
+  return {
+    claimId: row.claim_id, pageId: row.page_id, runId: row.run_id,
+    kind: row.kind as PageClaim["kind"], status: row.status as PageClaim["status"],
+    createdAt: row.created_at, ...(row.released_at != null ? { releasedAt: row.released_at } : {}),
+  };
+}
+
+const CLAIM_SELECT = `SELECT claim_id,page_id,run_id,kind,status,created_at,released_at FROM page_claims`;
+
+export class PageClaimStore {
+  constructor(private readonly db: DatabaseSync) {
+    db.exec(`CREATE TABLE IF NOT EXISTS page_claims(
+      claim_id TEXT PRIMARY KEY, page_id TEXT NOT NULL, run_id TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK(kind IN ('owned','borrowed')),
+      status TEXT NOT NULL CHECK(status IN ('active','released')),
+      created_at INTEGER NOT NULL, released_at INTEGER);
+      CREATE INDEX IF NOT EXISTS idx_page_claims_page ON page_claims(page_id, status);
+      CREATE INDEX IF NOT EXISTS idx_page_claims_run ON page_claims(run_id, status);`);
+  }
+
+  /** Record a claim; one active claim per (run,page) — re-acquiring reuses it. */
+  claim(opts: { pageId: string; runId: string; kind: PageClaim["kind"]; now?: number }): PageClaim {
+    const now = opts.now ?? Date.now();
+    const existing = this.db
+      .prepare(`${CLAIM_SELECT} WHERE page_id=? AND run_id=? AND status='active' ORDER BY created_at DESC LIMIT 1`)
+      .get(opts.pageId, opts.runId) as ClaimRow | undefined;
+    if (existing) return rowToClaim(existing);
+    const claim: PageClaim = {
+      claimId: randomUUID(), pageId: opts.pageId, runId: opts.runId,
+      kind: opts.kind, status: "active", createdAt: now,
+    };
+    this.db.prepare(`INSERT INTO page_claims(claim_id,page_id,run_id,kind,status,created_at) VALUES(?,?,?,?,?,?)`)
+      .run(claim.claimId, claim.pageId, claim.runId, claim.kind, claim.status, now);
+    return claim;
+  }
+
+  /** Release every active claim on a page (the controller changed or the lease ended). */
+  release(pageId: string, now = Date.now()): number {
+    return Number(this.db.prepare(`UPDATE page_claims SET status='released', released_at=? WHERE page_id=? AND status='active'`)
+      .run(now, pageId).changes);
+  }
+
+  /** Release every claim a run holds (run finished). */
+  releaseRun(runId: string, now = Date.now()): number {
+    return Number(this.db.prepare(`UPDATE page_claims SET status='released', released_at=? WHERE run_id=? AND status='active'`)
+      .run(now, runId).changes);
+  }
+
+  activeForPage(pageId: string): PageClaim | undefined {
+    const row = this.db.prepare(`${CLAIM_SELECT} WHERE page_id=? AND status='active' ORDER BY created_at DESC LIMIT 1`)
+      .get(pageId) as ClaimRow | undefined;
+    return row ? rowToClaim(row) : undefined;
+  }
+
+  activeForRun(runId: string): PageClaim[] {
+    const rows = this.db.prepare(`${CLAIM_SELECT} WHERE run_id=? AND status='active' ORDER BY created_at`)
+      .all(runId) as ClaimRow[];
+    return rows.map(rowToClaim);
+  }
+
+  /** Restart recovery: claims whose owner did not survive release without touching the page. */
+  releaseOrphans(liveRunIds: ReadonlySet<string>, now = Date.now()): number {
+    const rows = this.db.prepare(`${CLAIM_SELECT} WHERE status='active'`).all() as ClaimRow[];
+    let count = 0;
+    for (const row of rows) {
+      if (!liveRunIds.has(row.run_id)) {
+        this.db.prepare(`UPDATE page_claims SET status='released', released_at=? WHERE claim_id=?`).run(now, row.claim_id);
+        count += 1;
+      }
+    }
+    return count;
+  }
+}

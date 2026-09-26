@@ -128,12 +128,14 @@ export {
 } from "./agent/permissions.js";
 export {
   DurableWriteLedger,
+  PageClaimStore,
   stepSignature,
   beginConsequentialWrite,
   settleWrite,
   writeOutcome,
   taskLogicalActionId,
   type WriteIntent,
+  type PageClaim,
 } from "./agent/durable.js";
 export { CoordinatorLease, coordinatorOwnerId, COORDINATOR_LEASE_TTL_MS } from "./agent/coordinator-lease.js";
 export { SpaceService } from "./services/spaces.js";

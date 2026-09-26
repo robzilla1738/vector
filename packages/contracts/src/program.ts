@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type ObservationScope, ObservationScopeSchema } from "./observation.js";
 import { AuthorizationProvenanceSchema, CredentialSelectorSchema } from "./safety.js";
 
 /**
@@ -35,6 +36,8 @@ const safeConditions = [
   z.object({
     /** quiescence: 2 frames + no in-flight fetch/XHR + no DOM mutation for ~100ms (bounded, default 2s) */
     kind: z.literal("settled"),
+    /** named readiness policy — `networkIdle` (default), `interactive` (DOM quiet only), or `load` (parse+load). */
+    policy: z.enum(["load", "interactive", "networkIdle"]).optional(),
     timeoutMs: z.number().int().positive().optional(),
   }),
   z.object({
@@ -273,7 +276,7 @@ export type ProgramNode =
       body: ProgramNode[];
     }
   | { kind: "until"; body: ProgramNode[]; until: Predicate; maxIterations: number; deadlineMs?: number }
-  | { kind: "observe"; scope?: "full" | "forms" | "links" | "tables" | "subtree"; subtreeRef?: string; saveAs?: string }
+  | { kind: "observe"; scope?: ObservationScope; subtreeRef?: string; saveAs?: string }
   | { kind: "assert"; check: Predicate; message?: string }
   | { kind: "emit"; value?: Value; label?: string }
   | { kind: "checkpoint"; name?: string }
@@ -309,7 +312,7 @@ export const ProgramNodeSchema: z.ZodType<ProgramNode> = z.lazy(() =>
     }),
     z.object({
       kind: z.literal("observe"),
-      scope: z.enum(["full", "forms", "links", "tables", "subtree"]).optional(),
+      scope: ObservationScopeSchema.optional(),
       subtreeRef: z.string().optional(),
       saveAs: z.string().optional(),
     }),
@@ -380,6 +383,8 @@ export const StepOutcomeSchema = z.object({
     .object({ code: z.string(), message: z.string() })
     .optional(),
   extracted: z.record(z.string(), z.unknown()).optional(),
+  /** Form-control before-state for setter steps (S4) — the ledger's record of what the write replaced. */
+  before: z.record(z.string(), z.unknown()).optional(),
   artifactIds: z.array(z.string()).optional(),
   /** VEC-016 lifecycle. */
   effect: z

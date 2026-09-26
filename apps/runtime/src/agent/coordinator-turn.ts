@@ -8,6 +8,7 @@ import {
   AuxError,
   type FinalDecision,
   type Observation,
+  type ObservationScope,
   type PlanChunk,
   type TaskPlanChunk,
   type RepairChunk,
@@ -77,7 +78,7 @@ export type TurnState = {
   visionUsed: boolean;
   lastActionFailed: boolean;
   doneChallenged: boolean;
-  pendingObs?: { scope?: "full" | "forms" | "links" | "tables" | "subtree"; subtreeRef?: string };
+  pendingObs?: { scope?: ObservationScope; subtreeRef?: string };
   carriedObs?: Observation;
   /** One unguessable fence per run keeps the prompt prefix identical across turns (prompt caching). */
   fenceToken?: string;
@@ -373,7 +374,7 @@ export type PlanAttempt = {
   visionPlanned: boolean;
   early?: EarlyDispatcher;
   reuse: ReturnType<typeof tryReuseSkill>;
-  nextObserveReq: () => { scope?: "full" | "forms" | "links" | "tables" | "subtree"; subtreeRef?: string };
+  nextObserveReq: () => { scope?: ObservationScope; subtreeRef?: string };
   onStepRecorded: (outcome: StepOutcome, step: Step) => void;
 };
 

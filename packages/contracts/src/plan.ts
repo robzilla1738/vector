@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ObservationScopeSchema } from "./observation.js";
 import { PlanStepSchema } from "./program.js";
 
 /**
@@ -20,7 +21,7 @@ export const PlanChunkSchema = z.object({
   /** Ask for a new observation instead of executing (e.g. wrong/stale scope). */
   observationRequest: z
     .object({
-      scope: z.enum(["full", "forms", "links", "tables", "subtree"]).optional(),
+      scope: ObservationScopeSchema.optional(),
       subtreeRef: z.string().optional(),
       note: z.string().optional(),
     })

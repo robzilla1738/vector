@@ -37,6 +37,38 @@ it("seeds new numbers from the page-wide counter so frames never collide", () =>
   expect(r.nextRef).toBe(41);
 });
 
+it("interactive filter collects only actionable elements; all refs containers too (S4)", () => {
+  document.body.innerHTML = '<div class="wrapper"><button id="b">B</button><section class="panel"><a href="/x">link</a></section></div>';
+  const interactive = observe();
+  expect(interactive.elements.map((e) => e.tag).sort()).toEqual(["a", "button"]);
+  const all = observe({ filter: "all" });
+  const tags = all.elements.map((e) => e.tag);
+  expect(tags).toContain("div");
+  expect(tags).toContain("section");
+  expect(tags).toContain("button");
+  expect(all.elements.length).toBeGreaterThan(interactive.elements.length);
+});
+
+it("viewport filter drops interactive elements outside the viewport (S4)", () => {
+  document.body.innerHTML = '<button id="in">IN</button><button id="out">OUT</button>';
+  vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
+    const off = this.id === "out";
+    return { x: 0, y: off ? 5000 : 0, left: 0, top: off ? 5000 : 0, right: 120, bottom: off ? 5032 : 32, width: 120, height: 32, toJSON: () => ({}) } as DOMRect;
+  });
+  const r = observe({ filter: "viewport" });
+  expect(r.elements.map((e) => e.name)).toEqual(["IN"]);
+});
+
+it("viewport scope leaves offscreen elements out while interactive still lists them", () => {
+  document.body.innerHTML = '<button id="in">IN</button><button id="out">OUT</button>';
+  vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(function (this: Element) {
+    const off = this.id === "out";
+    return { x: 0, y: off ? 5000 : 0, left: 0, top: off ? 5000 : 0, right: 120, bottom: off ? 5032 : 32, width: 120, height: 32, toJSON: () => ({}) } as DOMRect;
+  });
+  expect(observe().elements.map((e) => e.name).sort()).toEqual(["IN", "OUT"]);
+  expect(observe({ filter: "viewport" }).elements.map((e) => e.name)).toEqual(["IN"]);
+});
+
 it("links form fields to their element refs", () => {
   document.body.innerHTML = '<label>Title<input name="title"></label><textarea name="notes"></textarea>';
   const r = observe();
