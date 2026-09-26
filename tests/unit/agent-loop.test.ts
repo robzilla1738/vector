@@ -247,16 +247,60 @@ describe("runAgentLoop (S5)", () => {
     expect(outcome).toMatchObject({ kind: "failed" });
   });
 
-  it("nudges instead of accepting leaked function-call markup as the answer", async () => {
+  it("executes leaked submit_result markup in the same model turn", async () => {
     const { transcript } = fixture();
     const model = new MockModelClient().scriptToolSteps([
-      { text: '<atem:function_calls><atem:invoke name="default.submit_result"><atem:parameter name="report">x</atem:parameter></atem:invoke></atem:function_calls>' },
+      { text: '<atem:function_calls><atem:invoke name="default.submit_result"><atem:parameter name="report">Jordan Lee</atem:parameter><atem:parameter name="citations">[{"observationId": "art_1", "quote": "Jordan Lee"}]</atem:parameter></atem:invoke></atem:function_calls>' },
+      { text: "should not be called" },
+    ]);
+    const seen: unknown[] = [];
+    const outcome = await runAgentLoop({
+      ...baseOpts(transcript, {
+        submitResult: async (input) => {
+          seen.push(input);
+          return { ok: true, result: { report: input.report, citations: input.citations } };
+        },
+      }),
+      model,
+    });
+    expect(outcome).toMatchObject({ kind: "done", text: "Jordan Lee" });
+    expect(seen).toEqual([{ report: "Jordan Lee", citations: [{ observationId: "art_1", quote: "Jordan Lee" }] }]);
+    expect(transcript.load("run-1").some((m) => String(m.content).includes("should not be called"))).toBe(false);
+  });
+
+  it("nudges when leaked markup is not a complete tool call", async () => {
+    const { transcript } = fixture();
+    const model = new MockModelClient().scriptToolSteps([
+      { text: '<atem:function_calls>not an invoke</atem:function_calls>' },
       { text: "real answer" },
     ]);
     const outcome = await runAgentLoop({ ...baseOpts(transcript), model });
     expect(outcome).toMatchObject({ kind: "done", text: "real answer" });
     const nudge = transcript.load("run-1").find((m) => m.role === "user" && String(m.content).includes("function-call markup"));
     expect(nudge).toBeTruthy();
+  });
+
+  it("runs the work in a turn before submit_result, even when submit is listed first", async () => {
+    const { transcript } = fixture();
+    const order: string[] = [];
+    const model = new MockModelClient().scriptToolSteps([
+      {
+        toolCalls: [
+          { toolCallId: "f1", toolName: "submit_result", input: { report: "fetched" } },
+          { toolCallId: "w1", toolName: "webfetch", input: { url: "https://example.com/a" } },
+        ],
+      },
+      { text: "should not be called" },
+    ]);
+    const outcome = await runAgentLoop({
+      ...baseOpts(transcript, {
+        webFetch: async (url) => { order.push(`fetch:${url}`); return { output: { title: "Example" } }; },
+        submitResult: async (input) => { order.push(`submit:${input.report}`); return { ok: true, result: { report: input.report } }; },
+      }),
+      model,
+    });
+    expect(outcome).toMatchObject({ kind: "done", text: "fetched" });
+    expect(order).toEqual(["fetch:https://example.com/a", "submit:fetched"]);
   });
 
   it("caps runaway loops at maxSteps", async () => {
@@ -295,6 +339,7 @@ describe("buildSystemPrompt (S5 conditional docs)", () => {
     expect(withPage).toMatch(/snapshot/);
     expect(withoutPage).not.toMatch(/Page tools/);
     expect(withPage).toMatch(/webfetch/);
+    expect(withPage).toMatch(/same turn/);
     expect(withoutPage).not.toMatch(/Web tools/);
     // suspensions are always documented
     expect(withoutPage).toMatch(/ask_user_question/);
@@ -575,6 +620,35 @@ describe("runToolLoop (S5 host integration)", () => {
     // write surfaced, never claiming success.
     expect(final.status).toBe("partially_completed");
     expect(final.result).toMatchObject({ unconfirmedWrites: ["s1"] });
+  });
+
+  it("reconciles a ledger-uncertain dispatch when a later snapshot is cited", async () => {
+    const postObs = { ...pageObs(), revision: 2 } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
+        }],
+      },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({
+        stepId: s.id, op: s.op, status: "failed" as const, startedAt: 1, durationMs: 1,
+        error: { code: "condition_timeout", message: "timed out" },
+        effect: "uncertain" as const,
+        receipt: { remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: false },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "failed", steps, observation: postObs };
+    });
+    const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "clicked" });
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "confirmed" });
   });
 
   it("settles an uncertain write when the model cites a post-dispatch observation", async () => {

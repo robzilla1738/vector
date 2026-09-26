@@ -129,8 +129,12 @@ export function authorizeProgram(
 ): { ok: true } | { ok: false; denied: string; effect: EffectClass } {
   const allowed = sanitizeGrants(resolveGrants(grants)).map(parseGrant).filter((g): g is PermissionGrant => g != null);
   for (const step of steps) {
-    const effect = classifyStep(step.op);
+    let effect = classifyStep(step.op);
     let effectOrigin = origin;
+    // back/forward/reload stay on this page. A same-origin navigate is the
+    // same transition as clicking one of its links, which a user run may
+    // already do. Crossing to another origin stays egress.
+    if (step.op === "back" || step.op === "forward" || step.op === "reload") effect = "read";
     if (effect === "egress" && "url" in step && typeof step.url === "string") {
       try {
         // Opaque pages (about:blank) have origin "null", which is not a URL base.
@@ -139,6 +143,7 @@ export function authorizeProgram(
         try { destination = new URL(step.url); }
         catch { destination = new URL(step.url, origin || undefined); }
         effectOrigin = destination.origin;
+        if (origin && destination.origin === origin) effect = "read";
       } catch {
         return { ok: false, denied: `permission denied for ${step.op} (invalid destination)`, effect };
       }

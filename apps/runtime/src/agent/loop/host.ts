@@ -248,13 +248,17 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       // A cited post-state settles effect-level uncertainty the same way it
       // confirms an unconfirmed write: the quote is verbatim-verified against
       // a snapshot taken after the dispatch, so the model cannot invent it.
+      // Clearing the in-memory receipt is not enough — the durable intent
+      // stays `uncertain` until it is reconciled, and that is what blocks
+      // the next submit.
+      const confirmedPages = new Set<string>();
       for (const outcome of outcomes) {
         const uncertain = outcome.receipt?.uncertain === true || outcome.receipt?.dispatchedBeforeTakeover === true
           || outcome.effect === "uncertain" || outcome.effect === "dispatched";
         if (!uncertain) continue;
         const dispatch = writeDispatches.get(outcome.stepId);
         const confirmed = dispatch && citedRevisions.some((cited) => cited?.pageId === dispatch.pageId && cited.revision > dispatch.revision);
-        if (!confirmed) continue;
+        if (!confirmed || !dispatch) continue;
         outcome.receipt = {
           remoteConfirmed: false,
           unconfirmed: false,
@@ -264,6 +268,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           observed: outcome.receipt?.observed ?? "post-state cited in the result",
         };
         if (outcome.effect === "uncertain" || outcome.effect === "dispatched") outcome.effect = "observed";
+        confirmedPages.add(dispatch.pageId);
+      }
+      for (const intent of self.durable.unresolved(runId)) {
+        if (!confirmedPages.has(intent.pageId)) continue;
+        self.durable.reconcile(intent.id, "applied", "post-state cited in the result");
       }
       noteUnresolved();
       const unresolved = [

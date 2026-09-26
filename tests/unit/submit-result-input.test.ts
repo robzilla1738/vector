@@ -30,6 +30,35 @@ it("accepts citations the model sent as a JSON string", async () => {
   });
 });
 
+it("parses citations whose JSON contains a raw tab", async () => {
+  const seen: unknown[] = [];
+  const tool = buildToolManifest().submit_result;
+  if (!tool) throw new Error("submit_result is missing from the manifest");
+  const citations = `[{"observationId": "art_1", "quote": "Jordan\tLee"}]`;
+  await tool.execute(
+    { report: "Jordan Lee", citations },
+    ctx(async (input) => {
+      seen.push(input);
+      return { ok: true, result: { report: input.report } };
+    }),
+  );
+  expect(seen).toEqual([{ report: "Jordan Lee", citations: [{ observationId: "art_1", quote: "Jordan\tLee" }] }]);
+});
+
+it("parses a submit_result payload that arrived as one JSON string", async () => {
+  const seen: unknown[] = [];
+  const tool = buildToolManifest().submit_result;
+  if (!tool) throw new Error("submit_result is missing from the manifest");
+  await tool.execute(
+    JSON.stringify({ report: "in review", citations: [{ observationId: "art_2", quote: "in review" }] }),
+    ctx(async (input) => {
+      seen.push(input);
+      return { ok: true, result: { report: input.report } };
+    }),
+  );
+  expect(seen).toEqual([{ report: "in review", citations: [{ observationId: "art_2", quote: "in review" }] }]);
+});
+
 it("wraps one citation object and numeric revision strings", async () => {
   const seen: unknown[] = [];
   const tool = buildToolManifest().submit_result;

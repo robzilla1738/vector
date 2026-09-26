@@ -13,6 +13,7 @@ import { parkAnswerOutput, toolResultsMessage } from "./types.js";
 import { TranscriptStore } from "./transcript.js";
 import { buildSystemPrompt } from "./prompt.js";
 import { budgetToolOutputs, compactMessages, pruneMedia, transcriptBytes, TRANSCRIPT_COMPACT_BYTES } from "./context.js";
+import { parseLooseJson } from "./tools.js";
 
 /**
  * The durable agent loop (S5): the model calls tools; each round trip is one
@@ -61,6 +62,49 @@ const DEFAULT_MAX_LOOP_STEPS = 24;
 
 /** Provider markup a model leaks when it serialises calls into text rather than emitting real tool calls. */
 const LEAKED_TOOL_MARKUP = /<(?:atem|antml)[:\w-]*(?:function_calls|invoke|tool_call)|<invoke\s+name="[\w.]+"/i;
+
+/** Muse serialises a real call as `<atem:invoke name="default.submit_result">`. Run it instead of spending another turn. */
+function parseLeakedToolCalls(text: string): LoopToolCall[] {
+  const calls: LoopToolCall[] = [];
+  const invokeRe = /<(?:atem|antml):invoke\s+name="([^"]+)">([\s\S]*?)<\/(?:atem|antml):invoke>/gi;
+  for (const invoke of text.matchAll(invokeRe)) {
+    const rawName = invoke[1]?.trim() ?? "";
+    const toolName = rawName.includes(".") ? rawName.slice(rawName.lastIndexOf(".") + 1) : rawName;
+    if (!toolName) continue;
+    const input: Record<string, unknown> = {};
+    const paramRe = /<(?:atem|antml):parameter\s+name="([^"]+)">([\s\S]*?)<\/(?:atem|antml):parameter>/gi;
+    for (const param of invoke[2]?.matchAll(paramRe) ?? []) {
+      const key = param[1]?.trim() ?? "";
+      if (!key) continue;
+      input[key] = looseParameter(param[2] ?? "");
+    }
+    calls.push({ toolCallId: `leaked-${calls.length + 1}`, toolName, input });
+  }
+  return calls;
+}
+
+function looseParameter(raw: string): unknown {
+  const text = raw.trim();
+  if (text.startsWith("{") || text.startsWith("[")) {
+    try {
+      return parseLooseJson(text);
+    } catch {
+      return text;
+    }
+  }
+  return text;
+}
+
+function withoutLeakedMarkup(message: ModelMessage): ModelMessage {
+  if (message.role !== "assistant" || !Array.isArray(message.content)) return message;
+  const content = message.content.flatMap((part) => {
+    if (!part || typeof part !== "object" || !("type" in part) || part.type !== "text" || !("text" in part) || typeof part.text !== "string") return [part];
+    if (!LEAKED_TOOL_MARKUP.test(part.text)) return [part];
+    const text = part.text.replace(/<(?:atem|antml):function_calls>[\s\S]*?<\/(?:atem|antml):function_calls>/gi, "").trim();
+    return text ? [{ ...part, text }] : [];
+  });
+  return { ...message, content };
+}
 
 /** Tool calls in a message that still have no following tool result — an in-flight interrupted step. */
 function unansweredToolCalls(messages: ModelMessage[]): LoopToolCall[] {
@@ -186,15 +230,21 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", error instanceof Error ? error.message : String(error)) };
     }
 
-    const assistant = assistantWithToolCalls(step.message, step.toolCalls);
+    let toolCalls = step.toolCalls.filter((call) => !step.providerExecuted?.includes(call.toolCallId));
+    let assistant = assistantWithToolCalls(step.message, toolCalls);
+    if (!toolCalls.length && step.text && LEAKED_TOOL_MARKUP.test(step.text)) {
+      const recovered = parseLeakedToolCalls(step.text);
+      if (recovered.length) {
+        toolCalls = recovered;
+        assistant = withoutLeakedMarkup(assistantWithToolCalls(step.message, recovered));
+      }
+    }
     messages.push(assistant);
     transcript.append(runId, [assistant]);
     await opts.onStep?.({ index, step });
 
-    const toolCalls = step.toolCalls.filter((call) => !step.providerExecuted?.includes(call.toolCallId));
     if (!toolCalls.length) {
-      // A model that serialises calls into text instead of emitting real tool
-      // calls leaks provider markup — nudge once instead of taking it as the answer.
+      // Markup that is not a complete invoke still gets one correction.
       if (step.text && LEAKED_TOOL_MARKUP.test(step.text)) {
         const nudge: ModelMessage = { role: "user",
           content: "Your last message contained raw function-call markup instead of real tool calls — it was not executed. Issue the actual tool call (submit_result to finish), not its markup." };
@@ -212,10 +262,16 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       deps: opts.deps,
     };
 
+    // submit_result finishes the turn. Run the work first so a same-turn
+    // answer still performs the actions it reports.
+    const ordered = [
+      ...toolCalls.filter((call) => call.toolName !== "submit_result"),
+      ...toolCalls.filter((call) => call.toolName === "submit_result"),
+    ];
     const results: { toolCallId: string; toolName: string; output?: unknown; parked?: boolean }[] = [];
     let parked: { call: LoopToolCall; park: LoopPark } | undefined;
     let finished: Record<string, unknown> | undefined;
-    for (const call of toolCalls) {
+    for (const call of ordered) {
       const result = await executeOne(call.toolName, call, tools, ctx);
       if ("park" in result) {
         parked = { call, park: result.park };
@@ -241,9 +297,10 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     results.splice(0, results.length, ...budgetToolOutputs(results));
 
     if (parked) {
-      // Calls after the parked one never ran; honest placeholders keep the
-      // transcript valid (every tool call must eventually have a result).
-      for (const call of toolCalls.slice(results.length)) {
+      // Calls that never ran still need a result so the transcript stays paired.
+      const answered = new Set(results.map((result) => result.toolCallId));
+      for (const call of toolCalls) {
+        if (answered.has(call.toolCallId)) continue;
         results.push({
           toolCallId: call.toolCallId, toolName: call.toolName,
           output: { interrupted: true, detail: "a suspension ended this step; the call was not executed — re-issue if still needed." },

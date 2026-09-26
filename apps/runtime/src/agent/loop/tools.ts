@@ -15,16 +15,46 @@ const need = <T>(value: T | undefined, name: string): T => {
   return value;
 };
 
+/**
+ * JSON.parse that tolerates the raw tabs and newlines models leave inside
+ * string values. A strict parse rejects those, and the tool call is then
+ * retried for the rest of the turn.
+ */
+export function parseLooseJson(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    const escaped = text.replace(/[\u0000-\u001F]/g, (ch) => {
+      if (ch === "\n") return "\\n";
+      if (ch === "\r") return "\\r";
+      if (ch === "\t") return "\\t";
+      return "";
+    });
+    return JSON.parse(escaped) as unknown;
+  }
+}
+
 /** Models often send `citations` as a JSON string or one object. The schema is an array. */
 export function normalizeSubmitResultInput(raw: unknown): unknown {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
-  const input = { ...(raw as Record<string, unknown>) };
+  let value = raw;
+  if (typeof value === "string") {
+    const text = value.trim();
+    if (!text.startsWith("{") && !text.startsWith("[")) return raw;
+    try {
+      value = parseLooseJson(text);
+    } catch {
+      return raw;
+    }
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const input = { ...(value as Record<string, unknown>) };
   let citations = input.citations;
   if (typeof citations === "string") {
     const text = citations.trim();
     if (text.startsWith("[") || text.startsWith("{")) {
       try {
-        citations = JSON.parse(text) as unknown;
+        citations = parseLooseJson(text);
       } catch {
         /* the schema reports the unparsed string */
       }
@@ -66,7 +96,8 @@ export function buildToolManifest(): LoopToolManifest {
     description:
       "Act on the page: a batch of program steps compiled, authorized through decide(), executed and journaled to the " +
       "durable ledger. Steps run in order and report partial failures. Setter steps (fill/type/check/uncheck/select) " +
-      "record the control's prior value. Do not repeat a step the ledger marks uncertain — re-observe and re-plan.",
+      "record the control's prior value. Do not repeat a step the ledger marks uncertain — re-observe and re-plan. " +
+      "When the snapshot's links differ only by an id, navigate to the matching href instead of paging click by click.",
     byline: "Aux actuation · decide() + durable write ledger",
     inputSchema: z.object({
       steps: z.array(PlanStepSchema).min(1).max(16).describe("Program steps, executed in order."),
@@ -389,16 +420,16 @@ export function buildToolManifest(): LoopToolManifest {
       "text. The verifier checks every quote exists in the cited snapshot; an unverifiable citation rejects the call — " +
       "re-observe, fix the quote, and resubmit. Paraphrase around quotes is allowed. If a write is marked uncertain in " +
       "the write ledger, cite a snapshot taken after the write on the same page — the cited post-state settles it. " +
-      "Must be the only tool call in its turn.",
+      "It may share a turn with the act or repl that does the work; it runs after those calls. " +
+      "When the answer depends on a result you have not seen yet, it is the only call on the next turn.",
     byline: "Aux verified result — citations checked against the cited snapshots",
     inputSchema: z.object({
       report: z.string().min(1).max(64_000).describe(
         "The final answer. Give exactly what the task asked for — a bare name, number, status, filename, or short " +
         "confirmation — not a narrative of the steps you took. Longer prose only when the task asks for a report."
       ),
-      citations: z.array(ResultCitationSchema).max(32).optional(),
+      citations: z.array(ResultCitationSchema).max(32).optional().describe("Array of citation objects. Never a JSON string."),
     }),
-    requiresSoloCall: true,
     execute: async (raw, ctx) => {
       const input = z.object({ report: z.string().min(1).max(64_000), citations: z.array(ResultCitationSchema).max(32).optional() }).parse(normalizeSubmitResultInput(raw));
       const verdict = await need(ctx.deps.submitResult, "submit_result")(input, ctx);

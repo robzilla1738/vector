@@ -224,6 +224,21 @@ describe("Gate D permissions and durable writes", () => {
     expect(authorizeProgram([{ id: "nav", op: "navigate", url: "https://elsewhere.test" }], grants, "null").ok).toBe(false);
   });
 
+  it("allows same-origin navigate on a user run and still denies a different origin", () => {
+    const grants = ["effect:read", "effect:write"];
+    expect(authorizeProgram(
+      [{ id: "nav", op: "navigate", url: "http://127.0.0.1:4810/records/rec-11" }],
+      grants,
+      "http://127.0.0.1:4810",
+    ).ok).toBe(true);
+    expect(authorizeProgram(
+      [{ id: "nav", op: "navigate", url: "https://elsewhere.test/records" }],
+      grants,
+      "http://127.0.0.1:4810",
+    )).toMatchObject({ ok: false, effect: "egress" });
+    expect(authorizeProgram([{ id: "b", op: "back" }], grants, "http://127.0.0.1:4810").ok).toBe(true);
+  });
+
   it("honours origin and expiresAt on structured grants (H2-C4)", () => {
     const click = [{ id: "c", op: "click", target: "r1" }] satisfies Program["steps"];
     const scoped = [{ effect: "write" as const, origin: "https://app.test", scope: "*", expiresAt: 0 }];

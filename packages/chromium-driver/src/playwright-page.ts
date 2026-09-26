@@ -22,7 +22,7 @@ const DEFAULT_STEP_TIMEOUT = 15_000;
 const DEFAULT_CONDITION_TIMEOUT = 10_000;
 const FRAME_PROBE_MS = 2_000;
 const FRAME_OBSERVE_MS = 10_000;
-/** Upper bound a read/act waits for a main-frame navigation started by earlier input to commit. */
+/** Upper bound a read waits for a click-started navigation to commit. */
 const NAVIGATION_COMMIT_MS = 10_000;
 
 /** Race a promise against a timeout — resolves undefined on timeout.
@@ -121,6 +121,25 @@ export class PlaywrightDriverPage implements DriverPage {
     if (!pending) return;
     await bounded(pending.done, NAVIGATION_COMMIT_MS).catch(() => {});
     if (this.pendingNavigation === pending) this.pendingNavigation = null;
+  }
+
+  /**
+   * CDP input returns before the renderer runs the click. A round trip flushes
+   * it, and a navigation that then starts is awaited to commit — otherwise the
+   * observation after the click walks a document that is being replaced and
+   * comes back empty.
+   */
+  private async settleClickNavigation(): Promise<void> {
+    await this.page.evaluate(() => 0).catch(() => {});
+    const started = Date.now();
+    while (!this.pendingNavigation && Date.now() - started < 100) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    const pending = this.pendingNavigation;
+    if (!pending) return;
+    await bounded(pending.done, NAVIGATION_COMMIT_MS).catch(() => {});
+    if (this.pendingNavigation === pending) this.pendingNavigation = null;
+    await this.page.waitForLoadState("domcontentloaded", { timeout: NAVIGATION_COMMIT_MS }).catch(() => {});
   }
 
   private wireEvents() {
@@ -573,9 +592,13 @@ export class PlaywrightDriverPage implements DriverPage {
   // ---------- actions ----------
 
   async click(target: string, button: "left" | "right" | "middle" = "left", timeoutMs = DEFAULT_STEP_TIMEOUT) {
-    if (await this.rawPointer(target, button, 1)) return;
+    if (await this.rawPointer(target, button, 1)) {
+      await this.settleClickNavigation();
+      return;
+    }
     const loc = await this.resolveActionable(target);
     await loc.click({ button, timeout: timeoutMs, noWaitAfter: true });
+    await this.settleClickNavigation();
   }
   async dblclick(target: string, timeoutMs = DEFAULT_STEP_TIMEOUT) {
     if (await this.rawPointer(target, "left", 2)) return;
