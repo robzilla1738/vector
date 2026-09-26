@@ -83,3 +83,21 @@ form task and intermittent provider tool-call markup leaks; the planner's are
 structural (it cannot open modals or re-observe after acting). The S14
 qualification bar (§line 155: ≥30% fewer calls than the planner baseline on
 multi-step tasks) is also not yet met; call-count reduction is open work.
+
+### S5 loop call-count rerun — 2026-09-26 afternoon
+
+Same 50×3 fixture corpus and model, loop only, at `bfc70693`. The planner row
+above is the baseline; it was not rerun. Report:
+`tests/benchmarks/reports/tasks-local-2026-09-26T16-26-47-494Z.json`.
+Spend is the ledger delta for this run, $0.2121.
+
+| Adapter | Engine | pass@1 | pass@3 | mean calls | multi-step mean calls | mean tokens | spend | p50 | p95 | flaky |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `aux-loop` | `agent-loop` | **95.3%** (47/47/49 of 50, sd 0.94) | **98.0%** | 2.640 | 4.246 (n=69) | 79.9K | $0.2121 | 3.8 s | 21.5 s | 3 |
+
+**Decision:** pass@1 still beats the planner (46.0%). Mean calls 2.640 do not
+beat 1.707, and the multi-step mean 4.246 does not beat 1.653 (30% under the
+planner's 2.362). The deletion clause is **not satisfied — the planner stays**.
+Rows that finished without a 16-call uncertain block still average about 3.2
+model calls on multi-step tasks. That floor is the navigate-then-act-then-submit
+shape, not a retry loop.
