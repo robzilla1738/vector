@@ -1449,6 +1449,13 @@ bool ValidateNode107(const base::Value& value) {
 bool ValidateNode108(const base::Value& value) {
   if (!value.is_dict()) return false;
   const auto& dict = value.GetDict();
+  if (!dict.empty()) return false;
+  return true;
+}
+
+bool ValidateNode109(const base::Value& value) {
+  if (!value.is_dict()) return false;
+  const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("since")) {
     if (!ValidateNode44(*field)) return false;
   }
@@ -1461,7 +1468,7 @@ bool ValidateNode108(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode109(const base::Value& value) {
+bool ValidateNode110(const base::Value& value) {
   if (!value.is_dict()) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("url")) {
@@ -1473,13 +1480,6 @@ bool ValidateNode109(const base::Value& value) {
   for (auto entry : dict) {
     if (!(entry.first == "url" || entry.first == "visitedAt")) return false;
   }
-  return true;
-}
-
-bool ValidateNode110(const base::Value& value) {
-  if (!value.is_dict()) return false;
-  const auto& dict = value.GetDict();
-  if (!dict.empty()) return false;
   return true;
 }
 
@@ -1849,6 +1849,7 @@ bool ValidateNode139(const base::Value& value) {
   return true;
 }
 constexpr MethodInfo kMethods[] = {
+  {MethodId::kCapabilities, "capabilities", "browser", "core", "aux-webui", true},
   {MethodId::kDefaultBrowser, "defaultBrowser", "browser", "core", "aux-webui", true},
   {MethodId::kSetDefaultBrowser, "setDefaultBrowser", "browser", "core", "aux-webui", true},
   {MethodId::kTabCommand, "tabCommand", "browser", "core", "aux-webui", true},
@@ -1906,6 +1907,7 @@ constexpr MethodInfo kMethods[] = {
   {MethodId::kNativeCosmeticAppend, "native.cosmeticAppend", "runtime", "contentBlocking", "authenticated-runtime", true},
   {MethodId::kNativeCosmeticCommit, "native.cosmeticCommit", "runtime", "contentBlocking", "authenticated-runtime", true},
   {MethodId::kNativeBookmarksInvoke, "native.bookmarksInvoke", "runtime", "core", "authenticated-runtime", true},
+  {MethodId::kNativeCapabilities, "native.capabilities", "runtime", "core", "authenticated-runtime", true},
   {MethodId::kNativeHistoryClear, "native.historyClear", "runtime", "core", "authenticated-runtime", true},
   {MethodId::kNativeHistoryRemove, "native.historyRemove", "runtime", "core", "authenticated-runtime", true},
   {MethodId::kNativeSearchEngineGet, "native.searchEngineGet", "runtime", "searchEngines", "authenticated-runtime", true},
@@ -1942,6 +1944,7 @@ std::span<const MethodInfo> Methods() { return kMethods; }
 bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error) {
   bool valid = false;
   switch (id) {
+    case MethodId::kCapabilities: valid = ValidateNode0(args); break;
     case MethodId::kDefaultBrowser: valid = ValidateNode0(args); break;
     case MethodId::kSetDefaultBrowser: valid = ValidateNode0(args); break;
     case MethodId::kTabCommand: valid = ValidateNode1(args); break;
@@ -1999,14 +2002,15 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kNativeCosmeticAppend: valid = ValidateNode102(args); break;
     case MethodId::kNativeCosmeticCommit: valid = ValidateNode105(args); break;
     case MethodId::kNativeBookmarksInvoke: valid = ValidateNode106(args); break;
-    case MethodId::kNativeHistoryClear: valid = ValidateNode108(args); break;
-    case MethodId::kNativeHistoryRemove: valid = ValidateNode109(args); break;
-    case MethodId::kNativeSearchEngineGet: valid = ValidateNode110(args); break;
+    case MethodId::kNativeCapabilities: valid = ValidateNode108(args); break;
+    case MethodId::kNativeHistoryClear: valid = ValidateNode109(args); break;
+    case MethodId::kNativeHistoryRemove: valid = ValidateNode110(args); break;
+    case MethodId::kNativeSearchEngineGet: valid = ValidateNode108(args); break;
     case MethodId::kNativeSearchEngineSet: valid = ValidateNode111(args); break;
-    case MethodId::kNativeSearchSuggestionsGet: valid = ValidateNode110(args); break;
+    case MethodId::kNativeSearchSuggestionsGet: valid = ValidateNode108(args); break;
     case MethodId::kNativeSearchSuggestionsSet: valid = ValidateNode112(args); break;
     case MethodId::kNativeZapInstallStylesheet: valid = ValidateNode113(args); break;
-    case MethodId::kNativeListPages: valid = ValidateNode110(args); break;
+    case MethodId::kNativeListPages: valid = ValidateNode108(args); break;
     case MethodId::kNativeTabCommand: valid = ValidateNode119(args); break;
     case MethodId::kNativeMovePage: valid = ValidateNode120(args); break;
     case MethodId::kNativeFocusPage: valid = ValidateNode122(args); break;
@@ -2022,9 +2026,9 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kNativeReadSecret: valid = ValidateNode135(args); break;
     case MethodId::kNativeCaptureReadablePage: valid = ValidateNode136(args); break;
     case MethodId::kNativeFillSavedPassword: valid = ValidateNode137(args); break;
-    case MethodId::kNativeCdpReset: valid = ValidateNode110(args); break;
+    case MethodId::kNativeCdpReset: valid = ValidateNode108(args); break;
     case MethodId::kNativeCdpDispatch: valid = ValidateNode139(args); break;
-    case MethodId::kNativeCdpVersion: valid = ValidateNode110(args); break;
+    case MethodId::kNativeCdpVersion: valid = ValidateNode108(args); break;
   }
   if (!valid && error) *error = "Invalid arguments for generated Aux host method";
   return valid;

@@ -3,6 +3,7 @@ import { SavedResults } from "../services/saved-results.js";
 import { BROWSING_CONTEXT_MARKER, BrowsingMemory } from "../services/browsing-memory.js";
 import { ContentMemoryStore } from "../services/content-memory.js";
 import { CommandSeatbeltPermitSchema, EventTypes, MethodSchemas, newProgramId, originOfAddress, RoutineShareEnvelopeSchema, RoutineShareSchema, taskMatchesQuery, AuxError, requireAuxMethod, type AuxFeatureHost, type AuxFeatureOverrides, type CloudEnvironment, type CloudTaskResult, type Condition, type MethodName, type Task } from "@aux/contracts";
+import { RuntimeAuthorization } from "./authorization.generated.js";
 import {readFile,rm} from 'node:fs/promises';
 import {createHash,randomUUID} from 'node:crypto';
 import type { PageService } from "../services/pages.js";
@@ -67,6 +68,7 @@ function cloudArtifactMediaType(filename:string){const value=filename.toLowerCas
 export interface Services {
   featureHost?: AuxFeatureHost;
   featureProfileId?: string;
+  featureStages?: Promise<AuxFeatureOverrides>;
   pages: PageService;
   sets: SetService;
   runs: RunService;
@@ -249,20 +251,16 @@ export function makeInvoker(s: Services) {
   async function invoke(method: string, rawParams: unknown, client: { external: boolean; connectionId?: string; scope?: AgentConnectionScope; codeMode?: true } = { external: true }): Promise<unknown> {
     const schema = MethodSchemas[method as MethodName];
     if (!schema) throw new AuxError("not_found", `unknown method ${method}`);
+    const policy = RuntimeAuthorization[method as MethodName];
+    if (client.external && policy.auth === "aux-webui") {
+      throw new AuxError("permission_denied", `${method} is managed in Aux.`);
+    }
     const host = s.featureHost ?? "electron";
-    const profileId = s.featureProfileId ?? "default";
-    const overrides = s.repo.getSetting<AuxFeatureOverrides>(`auxFeatures:${host}:${profileId}`) ?? {};
-    requireAuxMethod(method, host, overrides);
+    requireAuxMethod(method, host, await s.featureStages);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params: any = schema.parse(rawParams ?? {});
 
     const scope = client.external ? client.scope : undefined;
-    if (client.external && method.startsWith("conversations.images.")) throw new AuxError("permission_denied", "Image context is managed in Aux.");
-    if (client.external && method.startsWith("customization.")) throw new AuxError("permission_denied", "Page customization is managed by the Aux browser UI.");
-    if (client.external && method.startsWith("command.ranking.")) throw new AuxError("permission_denied", "Command ranking belongs to the Aux browser UI.");
-    if (client.external && method.startsWith("spaces.")) {
-      throw new AuxError("permission_denied", "Browser spaces are managed in Aux.");
-    }
     if (scope) {
       if (method === "agent.js.run" || method === "agent.js.reset") {
         // The code-mode host calls this same invoker with the same client.
@@ -1821,6 +1819,7 @@ export function makeInvoker(s: Services) {
         const backends = [...new Set(s.repo.listPages({ includeDetached: true }).map((p) => p.backend))];
         return {
           version: 1,
+          featureStages: await s.featureStages,
           methods: Object.keys(MethodSchemas).sort(),
           entities: ["pages", "sets", "runs", "programs", "operations", "datasets", "responses", "artifacts", "observations", "spans"],
           programForms: { steps: true, nodes: true },

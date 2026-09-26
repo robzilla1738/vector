@@ -13,26 +13,29 @@ const check = spawnSync('node', ['scripts/gen-host-bindings.mjs', '--check'],
 if (check.status !== 0) process.exit(check.status ?? 1);
 const pinned = readFileSync(join(root, 'chromium/generated/aux_host_methods.sha256'), 'utf8').trim();
 if (!/^[a-f0-9]{64}$/.test(pinned)) throw new Error('Invalid host manifest hash');
+const commit = spawnSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'});
+if (commit.status !== 0 || !/^[a-f0-9]{40}$/.test(commit.stdout.trim())) {
+  throw new Error('Cannot identify the source commit for feature qualification');
+}
 const generated = ['BUILD.gn', 'aux_host_methods.h', 'aux_host_methods.cc'];
 const output = join(source, 'chrome/browser/ui/aux/generated');
 mkdirSync(output, {recursive: true});
 for (const file of generated) {
   const from = join(root, 'chromium/generated', file);
   const to = join(output, file);
-  cpSync(from, to);
-  if (createHash('sha256').update(readFileSync(from)).digest('hex') !==
+  const bytes = readFileSync(from);
+  const expected = file === 'aux_host_methods.h'
+    ? Buffer.from(bytes.toString('utf8').replace('__AUX_SOURCE_COMMIT__', commit.stdout.trim()))
+    : bytes;
+  writeFileSync(to, expected);
+  if (createHash('sha256').update(expected).digest('hex') !==
       createHash('sha256').update(readFileSync(to)).digest('hex')) {
     throw new Error(`Staging changed ${file}`);
   }
 }
 const featureSource = join(root, 'chromium/generated/aux_feature_stages.ts');
 const featureTarget = join(source, 'chrome/browser/resources/aux_host/aux_feature_stages.ts');
-const commit = spawnSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'});
-if (commit.status !== 0 || !/^[a-f0-9]{40}$/.test(commit.stdout.trim())) {
-  throw new Error('Cannot identify the source commit for feature qualification');
-}
-writeFileSync(featureTarget, readFileSync(featureSource, 'utf8')
-    .replace("'__AUX_SOURCE_COMMIT__'", JSON.stringify(commit.stdout.trim())));
+cpSync(featureSource, featureTarget);
 if (!readFileSync(featureTarget, 'utf8').includes('featureStagesFor')) {
   throw new Error('Feature stage binding was not staged');
 }

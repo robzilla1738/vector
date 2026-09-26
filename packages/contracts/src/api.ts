@@ -5,6 +5,7 @@ import { z } from "zod";
 import { ApprovalDecisionSchema, EffectSchema, FinalReviewArtifactSchema, OriginRuleSchema, PendingApprovalSchema, SendRecordSchema, StandingGrantSchema } from "./safety.js";
 import { CommandEscalationDecisionSchema, CommandEscalationRequestSchema } from "./command-seatbelt.js";
 import { CommandRankingEntrySchema, CommandRankingSourceSchema } from "./command-ranking.js";
+import { RuntimeMethodPolicy } from "./runtime-method-policy.js";
 
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "./search-engine.js";
 export const SearchEngineTemplateSchema = z.string().trim().max(2048).refine(isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR);
@@ -1078,6 +1079,17 @@ export const MethodSchemas = {
 } as const;
 
 export type MethodName = keyof typeof MethodSchemas;
+
+/** One schema and one explicit feature/auth policy for each API method. */
+export const MethodDefinitions = Object.fromEntries(
+  (Object.keys(MethodSchemas) as MethodName[]).map(name => [name, {
+    schema: MethodSchemas[name], ...RuntimeMethodPolicy[name],
+  }]),
+) as { readonly [M in MethodName]: {
+  schema: (typeof MethodSchemas)[M];
+  feature: (typeof RuntimeMethodPolicy)[M]["feature"];
+  auth: (typeof RuntimeMethodPolicy)[M]["auth"];
+} };
 
 /** Wire shapes for the result column — used for typing, validated server-side. */
 export const ResultSchemas = {

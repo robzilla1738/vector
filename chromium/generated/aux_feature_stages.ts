@@ -19,7 +19,11 @@ const requirements = {
       "bindTabSpace",
       "migrateTabSpaces",
       "organizationSnapshot",
-      "organizationCommit"
+      "organizationCommit",
+      "spaces.list",
+      "spaces.import",
+      "spaces.create",
+      "spaces.update"
     ],
     "journey": "feature:spaces"
   },
@@ -44,7 +48,9 @@ const requirements = {
     "journey": "feature:tidy"
   },
   "aiTidy": {
-    "requires": [],
+    "requires": [
+      "agent.tidy.propose"
+    ],
     "journey": "feature:aiTidy"
   },
   "splitView": {
@@ -72,7 +78,9 @@ const requirements = {
     "journey": "feature:titleRules"
   },
   "aiTabNaming": {
-    "requires": [],
+    "requires": [
+      "agent.tabName.suggest"
+    ],
     "journey": "feature:aiTabNaming"
   },
   "smartDownloadNames": {
@@ -148,7 +156,12 @@ const requirements = {
     "journey": "feature:regionCapture"
   },
   "inlineAssist": {
-    "requires": [],
+    "requires": [
+      "agent.inlineAssist.capture",
+      "agent.inlineAssist.draft",
+      "agent.inlineAssist.apply",
+      "agent.inlineAssist.cancel"
+    ],
     "journey": "feature:inlineAssist"
   },
   "reader": {
@@ -223,7 +236,13 @@ const requirements = {
     "journey": "feature:agentRecovery"
   },
   "subagents": {
-    "requires": [],
+    "requires": [
+      "sets.create",
+      "sets.get",
+      "sets.list",
+      "sets.map",
+      "sets.results"
+    ],
     "journey": "feature:subagents"
   },
   "steerAndTakeover": {
@@ -239,7 +258,12 @@ const requirements = {
     "journey": "feature:tasksInbox"
   },
   "safetyCore": {
-    "requires": [],
+    "requires": [
+      "safety.approvals.pending",
+      "safety.approvals.decide",
+      "safety.grants.list",
+      "safety.grants.revoke"
+    ],
     "journey": "feature:safetyCore"
   },
   "durableJournal": {
@@ -247,11 +271,44 @@ const requirements = {
     "journey": "feature:durableJournal"
   },
   "skills": {
-    "requires": [],
+    "requires": [
+      "plugins.inspect",
+      "plugins.install",
+      "plugins.list",
+      "plugins.assets",
+      "plugins.skills.grant",
+      "plugins.skills.grants",
+      "plugins.skills.revoke",
+      "plugins.skills.read",
+      "plugins.uninstall"
+    ],
     "journey": "feature:skills"
   },
   "automations": {
-    "requires": [],
+    "requires": [
+      "routines.list",
+      "routines.suggest",
+      "routines.get",
+      "routines.create",
+      "routines.fromResult",
+      "routines.update",
+      "routines.pause",
+      "routines.archive",
+      "routines.run",
+      "routines.runs",
+      "routines.outcome",
+      "routines.reconcile",
+      "routines.due",
+      "routines.ingestEvent",
+      "routines.alerts",
+      "routines.inbox",
+      "routines.inboxRead",
+      "routines.compare",
+      "routines.export",
+      "routines.exportSkill",
+      "routines.importSkill",
+      "routines.import"
+    ],
     "journey": "feature:automations"
   },
   "goals": {
@@ -271,7 +328,17 @@ const requirements = {
     "journey": "feature:outboundMcp"
   },
   "connectors": {
-    "requires": [],
+    "requires": [
+      "calendar.connections.list",
+      "calendar.auth.start",
+      "calendar.connections.revoke",
+      "calendar.events.list",
+      "calendar.taskGrants.list",
+      "calendar.taskGrants.create",
+      "calendar.taskGrants.revoke",
+      "calendar.taskEvents.list",
+      "connectors.catalog"
+    ],
     "journey": "feature:connectors"
   },
   "reports": {
@@ -292,21 +359,90 @@ const requirements = {
     "journey": "feature:activeHtml"
   },
   "devWorkflows": {
-    "requires": [],
+    "requires": [
+      "development.projects",
+      "development.inspect",
+      "development.githubStatus",
+      "development.operationsStatus",
+      "development.incidentReport",
+      "development.prepareIncidentFix",
+      "development.files",
+      "development.readFile",
+      "development.writeFile",
+      "development.createFile",
+      "development.renameFile",
+      "development.deleteFile",
+      "development.commands",
+      "development.runCommand",
+      "development.requestCommandEscalation",
+      "development.commandEscalations.pending",
+      "development.commandEscalations.decide",
+      "development.openPreview",
+      "development.stopCommand",
+      "development.review",
+      "development.commit"
+    ],
     "journey": "feature:devWorkflows"
   },
   "zapAndUserCss": {
     "requires": [
-      "native.zapInstallStylesheet"
+      "native.zapInstallStylesheet",
+      "zap.list",
+      "zap.grant",
+      "zap.update",
+      "zap.revoke",
+      "customization.zap.pick",
+      "customization.zap.list",
+      "customization.zap.add",
+      "customization.zap.remove",
+      "customization.css.get",
+      "customization.css.set",
+      "customization.css.effective",
+      "customization.css.apply"
     ],
     "journey": "feature:zapAndUserCss"
   },
   "cloudEnvironments": {
-    "requires": [],
+    "requires": [
+      "cloud.environments",
+      "cloud.create",
+      "cloud.runCommand",
+      "cloud.startService",
+      "cloud.commands",
+      "cloud.refreshCommand",
+      "cloud.stopCommand",
+      "cloud.refresh",
+      "cloud.resume",
+      "cloud.files",
+      "cloud.readFile",
+      "cloud.taskResult",
+      "cloud.handoff",
+      "cloud.handoffAndStart",
+      "cloud.importTaskResult",
+      "cloud.preserveTaskResult",
+      "cloud.downloadResultArtifact",
+      "cloud.openTerminal",
+      "cloud.openPreview",
+      "cloud.exportWorkspace",
+      "cloud.inventory",
+      "cloud.cleanupOrphan",
+      "cloud.forgetMissing",
+      "cloud.syncProject",
+      "cloud.stop",
+      "cloud.delete",
+      "cloud.reconnectStatus"
+    ],
     "journey": "feature:cloudEnvironments"
   },
   "memory": {
-    "requires": [],
+    "requires": [
+      "memory.pipeline.policy",
+      "memory.pipeline.setPolicy",
+      "memory.pipeline.extractRun",
+      "memory.pipeline.overview",
+      "memory.pipeline.search",
+      "memory.pipeline.forget"
+    ],
     "journey": "feature:memory"
   },
   "unifiedRecall": {
@@ -334,7 +470,25 @@ const requirements = {
   "vault": {
     "requires": [
       "native.storeSecret",
-      "native.readSecret"
+      "native.readSecret",
+      "vault.status",
+      "vault.list",
+      "vault.save",
+      "vault.lock",
+      "vault.unlock",
+      "vault.grant",
+      "vault.renewGrant",
+      "vault.expiredGrants",
+      "vault.revoke",
+      "vault.history",
+      "vault.grants",
+      "vault.generate",
+      "vault.itemsForOrigin",
+      "vault.fill",
+      "vault.export",
+      "vault.import",
+      "vault.update",
+      "vault.secretMatches"
     ],
     "journey": "feature:vault"
   },
@@ -400,13 +554,13 @@ const requirements = {
     "journey": "feature:onboarding"
   }
 } as const;
+const runtimeMethods = ["agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","spaces.list","spaces.import","spaces.create","spaces.update","development.projects","development.inspect","development.githubStatus","development.operationsStatus","development.incidentReport","development.prepareIncidentFix","development.files","development.readFile","development.writeFile","development.createFile","development.renameFile","development.deleteFile","development.commands","development.runCommand","development.requestCommandEscalation","development.commandEscalations.pending","development.commandEscalations.decide","development.openPreview","development.stopCommand","development.review","development.commit","cloud.environments","cloud.create","cloud.runCommand","cloud.startService","cloud.commands","cloud.refreshCommand","cloud.stopCommand","cloud.refresh","cloud.resume","cloud.files","cloud.readFile","cloud.taskResult","cloud.handoff","cloud.handoffAndStart","cloud.importTaskResult","cloud.preserveTaskResult","cloud.downloadResultArtifact","cloud.openTerminal","cloud.openPreview","cloud.exportWorkspace","cloud.inventory","cloud.cleanupOrphan","cloud.forgetMissing","cloud.syncProject","cloud.stop","cloud.delete","cloud.reconnectStatus","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.suggest","routines.get","routines.create","routines.fromResult","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.extractRun","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results","safety.approvals.pending","safety.approvals.decide","safety.grants.list","safety.grants.revoke"] as const;
 const qualification: Record<string, string> = {};
-const sourceCommit = '__AUX_SOURCE_COMMIT__';
 export type FeatureStage = 'off' | 'preview' | 'on';
-export function featureStagesFor(methods: readonly string[]): Record<keyof typeof requirements, FeatureStage> {
-  const implemented = new Set(methods);
+export function featureStagesFor(methods: readonly string[], sourceCommit: string): Record<keyof typeof requirements, FeatureStage> {
+  const implemented = new Set<string>([...methods, ...runtimeMethods]);
   return Object.fromEntries(Object.entries(requirements).map(([feature, spec]) => {
-    if (spec.requires.length === 0 || !spec.requires.every(method => implemented.has(method))) return [feature, 'off'];
+    if (!spec.requires.every(method => implemented.has(method))) return [feature, 'off'];
     return [feature, qualification[spec.journey] === sourceCommit ? 'on' : 'preview'];
   })) as Record<keyof typeof requirements, FeatureStage>;
 }

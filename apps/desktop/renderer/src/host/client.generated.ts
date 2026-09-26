@@ -11,6 +11,7 @@ export function createHostClient(port: HostPort) {
     return port.subscribe(event, payload => callback(HostEvents[event].payload.parse(payload) as HostEventPayload<E>));
   }
   return {
+    capabilities: (...args: HostMethodArgs<"capabilities">) => call("capabilities", args),
     defaultBrowser: (...args: HostMethodArgs<"defaultBrowser">) => call("defaultBrowser", args),
     setDefaultBrowser: (...args: HostMethodArgs<"setDefaultBrowser">) => call("setDefaultBrowser", args),
     tabCommand: (...args: HostMethodArgs<"tabCommand">) => call("tabCommand", args),

@@ -1,4 +1,7 @@
 import { AuxError } from "./errors.js";
+import { RuntimeMethodPolicy } from "./runtime-method-policy.js";
+import { HostMethods, type HostMethodId } from "./host-methods.js";
+import type { MethodName } from "./api.js";
 
 export type AuxFeatureStage = "off" | "preview" | "on";
 export type AuxFeatureHost = "electron" | "chromium-fork";
@@ -36,11 +39,42 @@ export const AUX_FEATURES = {
 
 export type AuxFeature = keyof typeof AUX_FEATURES;
 export type AuxFeatureOverrides = Partial<Record<AuxFeature, AuxFeatureStage>>;
+export type AuxFeatureJourneyId = `feature:${AuxFeature}`;
+export type AuxFeatureMethodId = HostMethodId | MethodName;
 
-/** Legacy Electron remains usable during migration; the new fork starts closed. */
+/** Required methods come from the two exhaustive method manifests. */
+export const AUX_FEATURE_REQUIREMENTS = Object.fromEntries(
+  (Object.keys(AUX_FEATURES) as AuxFeature[]).map(feature => [feature, {
+    requires: [
+      ...(Object.entries(HostMethods) as [HostMethodId, (typeof HostMethods)[HostMethodId]][])
+        .filter(([, method]) => method.feature === feature).map(([id]) => id),
+      ...(Object.entries(RuntimeMethodPolicy) as [MethodName, (typeof RuntimeMethodPolicy)[MethodName]][])
+        .filter(([, method]) => method.feature === feature).map(([id]) => id),
+    ] as AuxFeatureMethodId[],
+    journey: `feature:${feature}` as AuxFeatureJourneyId,
+  }]),
+) as unknown as Readonly<Record<AuxFeature, { requires: readonly AuxFeatureMethodId[]; journey: AuxFeatureJourneyId }>>;
+
+export function deriveAuxFeatureStages(
+  implementedMethods: readonly string[],
+  passingJourneys: Readonly<Record<string, string>>,
+  sourceCommit: string,
+): Record<AuxFeature, AuxFeatureStage> {
+  const implemented = new Set(implementedMethods);
+  return Object.fromEntries((Object.keys(AUX_FEATURE_REQUIREMENTS) as AuxFeature[])
+    .map(feature => {
+      const { requires, journey } = AUX_FEATURE_REQUIREMENTS[feature];
+      const stage: AuxFeatureStage = requires.every(id => implemented.has(id))
+        ? passingJourneys[journey] === sourceCommit ? "on" : "preview"
+        : "off";
+      return [feature, stage];
+    })) as Record<AuxFeature, AuxFeatureStage>;
+}
+
+/** Legacy Electron remains usable during migration; the fork starts closed. */
 export const AUX_FEATURE_DEFAULTS: Readonly<Record<AuxFeatureHost, AuxFeatureOverrides>> = {
   electron: { passwordManager: "off", passkeys: "off", codeMode: "off", fourLayerTabApi: "off", webMcp: "off", outboundMcp: "off", updates: "off", crashReporting: "off" },
-  "chromium-fork": { spaces: "on" },
+  "chromium-fork": {},
 };
 
 export function auxFeatureStage(
@@ -73,23 +107,9 @@ export function requireAuxFeature(
   }
 }
 
-/** API families with a single feature owner. Methods without a mapping are core browser operations. */
-const METHOD_FEATURE_PREFIXES: readonly [string, AuxFeature][] = [
-  ["safety.", "safetyCore"],
-  ["vault.", "vault"], ["routines.", "automations"],
-  ["plugins.", "skills"], ["cloud.", "cloudEnvironments"],
-  ["projects.", "devWorkflows"], ["development.", "devWorkflows"], ["calendar.", "connectors"],
-  ["connectors.", "connectors"], ["customization.", "zapAndUserCss"],
-  ["spaces.", "spaces"], ["sets.", "subagents"],
-  ["zap.", "zapAndUserCss"],
-  ["memory.", "memory"], ["reports.", "reports"],
-];
-
 export function auxFeatureForMethod(method: string): AuxFeature | undefined {
-  if (method === "agent.tidy.propose") return "aiTidy";
-  if (method === "agent.tabName.suggest") return "aiTabNaming";
-  if (method.startsWith("agent.inlineAssist.")) return "inlineAssist";
-  return METHOD_FEATURE_PREFIXES.find(([prefix]) => method.startsWith(prefix))?.[1];
+  const policy = RuntimeMethodPolicy[method as keyof typeof RuntimeMethodPolicy];
+  return policy?.feature === "core" ? undefined : policy?.feature;
 }
 
 const BRIDGE_FEATURE_METHODS: Readonly<Record<string, AuxFeature>> = {

@@ -1,4 +1,4 @@
-import { AuxError, ZapInstallReceiptSchema, type ZapStylesheetInstall, type ZapInstallReceipt, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck, type OutboundMcpServer, type McpStdioLaunchPermit, type McpOAuthToken, type ChromiumContentBlockReceipt, type ChromiumCookieBannerReceipt, type CookieBannerRule } from "@aux/contracts";
+import { AuxError, HostCapabilitiesSchema, ZapInstallReceiptSchema, type HostCapabilities, type ZapStylesheetInstall, type ZapInstallReceipt, type RpcChannel, type CommandSeatbeltPrepare, type CommandSeatbeltPermit, type LocalProject, type ProjectInspection, type ProjectFile, type ProjectCommand, type ProjectReviewContext, type ProjectReviewSummary, type ProjectCommitRequest, type ProjectCommitResult, type ProjectCommandTask, type LocalPreviewCheck, type ProjectGithubStatus, type ProjectIncidentReport, type TabCommandEnvelope, type TabCommandAck, type OutboundMcpServer, type McpStdioLaunchPermit, type McpOAuthToken, type ChromiumContentBlockReceipt, type ChromiumCookieBannerReceipt, type CookieBannerRule } from "@aux/contracts";
 
 export interface ContentBlockBegin {
   profileId: string; generation: number; hostsDigest: string; hostCount: number;
@@ -19,6 +19,7 @@ import { CredentialHandoffResultSchema, type CredentialHandoffRequest, type Cred
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge {
+  capabilities?(): Promise<HostCapabilities>;
   /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
   bookmarksInvoke?(method: string, params: unknown): Promise<unknown>;
   contentBlockBegin?(request: ContentBlockBegin): Promise<{ accepted: true }>;
@@ -88,6 +89,9 @@ export interface NativeBridge {
 
 export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
+  async capabilities(): Promise<HostCapabilities> {
+    return HostCapabilitiesSchema.parse(await this.channel.call("native.capabilities", {}));
+  }
   contentBlockBegin(request: ContentBlockBegin) {
     return this.channel.call<{ accepted: true }>("native.contentBlockBegin", request);
   }

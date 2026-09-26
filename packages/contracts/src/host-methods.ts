@@ -59,9 +59,14 @@ const contentBase = z.object({ profileId: str, generation: number, allowedSiteHo
 const cosmeticRule = z.object({ domains: z.array(str), selector: str }).strict();
 const nativePage = z.object({ pageId: str, windowId: str.optional(), marker: str, url: str,
   title: str, active: bool, showBlankDocument: bool.optional(), cdpTargetId: str.optional() }).strict();
+export const HostCapabilitiesSchema = z.object({
+  buildId: str, sourceCommit: str.length(40), methods: z.array(str),
+}).strict();
+export type HostCapabilities = z.infer<typeof HostCapabilitiesSchema>;
 
 /** Methods already handled by the native WebUI. Missing bridge members remain absent. */
 export const HostMethods = {
+  capabilities: shell("core", noArgs, HostCapabilitiesSchema),
   defaultBrowser: shell("core", noArgs, z.object({ isDefault: bool }).strict()),
   setDefaultBrowser: shell("core", noArgs, z.object({ isDefault: bool }).strict()),
   tabCommand: {
@@ -142,6 +147,7 @@ export const HostMethods = {
     private: bool, generation: number, rulesDigest: str, installedRules: number,
     phase: z.literal("document_start"), futureDocuments: z.literal(true) }).strict()),
   "native.bookmarksInvoke": runtime("core", z.object({ method: str, params: z.unknown() }).strict(), z.unknown()),
+  "native.capabilities": runtime("core", z.object({}).strict(), HostCapabilitiesSchema),
   "native.historyClear": runtime("core", z.object({ since: number.optional(), before: number.optional() }).strict(), z.object({ removed: number }).strict()),
   "native.historyRemove": runtime("core", z.object({ url: str, visitedAt: number }).strict(), z.object({ removed: bool }).strict()),
   "native.searchEngineGet": runtime("searchEngines", z.object({}).strict(), str),

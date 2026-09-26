@@ -5,6 +5,7 @@ export * from "./errors.js";
 export * from "./safety.js";
 export * from "./aux-features.js";
 export * from "./host-methods.js";
+export * from "./runtime-method-policy.js";
 export * from "./observation.js";
 export * from "./program.js";
 export * from "./plan.js";

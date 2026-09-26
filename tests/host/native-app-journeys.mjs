@@ -151,6 +151,9 @@ try {
     return workspace?.sessions?.some(session => session.sessionId === "aux" && session.status === "connected") ? workspace : null;
   }, 30_000).catch(error => { throw new Error(`${error.message}; runtime sessions: ${JSON.stringify(lastRuntimeStatus ?? [])}; browser log: ${startupLog}`); });
   assert.ok(connection);
+  const runtimeCapabilities = await rpc("runtime.describe");
+  assert.equal(runtimeCapabilities.featureStages?.spaces, "preview",
+    "The runtime must derive Space preview from the native method manifest and unqualified journey");
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
   record("Profile runtime is authenticated and raw debugging is disabled", { sessions: connection.sessions?.length });
 

@@ -28,6 +28,7 @@ import { PrivacyCheckpoint } from "./store/privacy-checkpoint.js";
 import { Repo } from "./store/repo.js";
 import { EventBus } from "./events.js";
 import { ChannelNativeBridge, NullNativeBridge, type NativeBridge } from "./native.js";
+import { featureStagesFor } from "./api/feature-stages.generated.js";
 import { NativeCdpBroker } from "./native-cdp-broker.js";
 import { PageService, type DriverSet } from "./services/pages.js";
 import { SetService } from "./services/sets.js";
@@ -124,6 +125,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     channel = new RpcChannel(transport, "runtime->shell");
   }
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
+  const featureStages = env.AUX_HOST_SOCKET
+    ? native.capabilities!().then(capabilities =>
+        featureStagesFor(capabilities.methods, capabilities.sourceCommit))
+      .catch(error => {
+        process.stderr.write(`[runtime] native capabilities unavailable: ${String(error)}\n`);
+        return featureStagesFor([], "");
+      })
+    : undefined;
   const blocking = env.AUX_HOST_SOCKET
     ? new ContentBlockingService(config.dataDir, native, env.AUX_BROWSER_PROFILE_ID ?? "default") : null;
   const blockingBoot = blocking?.boot();
@@ -143,12 +152,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   }
   const zap = new ZapService(repo, native, env.AUX_BROWSER_PROFILE_ID ?? "default");
   // Register before service boot so the host can preload styles before restoring tabs.
-  channel?.onMethod("zap.snapshot", params => {
+  channel?.onMethod("zap.snapshot", async params => {
     const profileId = ZapSnapshotParamsSchema.parse(params).profileId;
     const host = env.AUX_HOST_SOCKET ? "chromium-fork" : "electron";
-    const overrides = repo.getSetting<import("@aux/contracts").AuxFeatureOverrides>(`auxFeatures:${host}:${profileId}`) ?? {};
+    const stages = await featureStages;
     const snapshot = zap.snapshot(profileId);
-    return auxFeatureEnabled("zapAndUserCss", host, overrides) ? snapshot : [];
+    return auxFeatureEnabled("zapAndUserCss", host, stages) ? snapshot : [];
   });
   settings.attachNative(native);
 
@@ -420,6 +429,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const invoke = makeInvoker({
     featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : "electron",
     featureProfileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+    featureStages,
     native,
     zap,
     contentMemory,
