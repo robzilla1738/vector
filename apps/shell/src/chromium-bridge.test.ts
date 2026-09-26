@@ -35,7 +35,8 @@ describe("Chromium Aux shell bridge", () => {
   });
 
   it("routes native commands and event subscriptions through the host port", async () => {
-    const request = vi.fn(async () => ({ status: "applied", pageId: "page-1" }));
+    const request = vi.fn(async (method: string) =>
+      method === "resolveSearch" ? "https://search.test/?q=aux" : { commandId: "cmd-1", status: "applied", catalogVersion: 1, pageId: "page-1" });
     const unsubscribe = vi.fn();
     const subscribe = vi.fn((_event: string, _callback: (...args: unknown[]) => void) => unsubscribe);
     const target = fakeWindow("chrome://aux/", {
@@ -44,7 +45,7 @@ describe("Chromium Aux shell bridge", () => {
       profileId: "profile-1",
       platform: "darwin",
       privateMode: false,
-      featureStages: { extensions: "on" },
+      featureStages: { extensions: "on", searchEngines: "on" },
       request,
       subscribe,
     });
@@ -52,11 +53,11 @@ describe("Chromium Aux shell bridge", () => {
     expect(target.aux?.windowId).toBe("win-1");
     expect(target.auxHostProof?.host).toBe("chromium-fork");
     const command = { kind: "open", url: "https://example.test/" };
-    expect(await target.aux?.tabCommand(command)).toEqual({ status: "applied", pageId: "page-1" });
+    expect(await target.aux?.tabCommand(command)).toEqual({ commandId: "cmd-1", status: "applied", catalogVersion: 1, pageId: "page-1" });
     expect(request).toHaveBeenCalledWith("tabCommand", [command]);
     const callback = vi.fn();
     target.aux?.onTabsPatch(callback)();
-    expect(subscribe).toHaveBeenCalledWith("onTabsPatch", callback);
+    expect(subscribe).toHaveBeenCalledWith("onTabsPatch", expect.any(Function));
     expect(unsubscribe).toHaveBeenCalledOnce();
     await target.aux?.resolveSearch?.("aux browser");
     expect(request).toHaveBeenCalledWith("resolveSearch", ["aux browser"]);
@@ -72,7 +73,7 @@ describe("Chromium Aux shell bridge", () => {
     const request = vi.fn(async (method: string) =>
       method === "showExtensionAction" || method === "removeExtension"
         ? true
-        : { key: "abcdefghijklmnopabcdefghijklmnop" },
+        : { key: "abcdefghijklmnopabcdefghijklmnop", id: "abcdefghijklmnopabcdefghijklmnop", name: "Fixture", version: "1.0.0", permissions: [], enabled: true, loaded: true, managed: false, source: "store" },
     );
     const target = fakeWindow("chrome://aux/", {
       host: "chromium-fork",
@@ -117,10 +118,10 @@ it("builds the move-tab destinations from the Profile catalog without hidden age
       { windowId: "empty", activePageId: null, order: [] },
     ],
     tabs: [
-      { pageId: "a", windowId: "current", title: "Current" },
-      { pageId: "b", windowId: "other", title: "Other window" },
-      { pageId: "agent", windowId: "other", title: "Agent", runtimeOwned: true },
-      { pageId: "popup", windowId: "other", title: "Popup", popup: true },
+      { pageId: "a", windowId: "current", url: "https://a.test/", title: "Current", loading: false, muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, runtimeOwned: false, generation: 1, createdAt: 0, lastActiveAt: 0 },
+      { pageId: "b", windowId: "other", url: "https://b.test/", title: "Other window", loading: false, muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, runtimeOwned: false, generation: 1, createdAt: 0, lastActiveAt: 0 },
+      { pageId: "agent", windowId: "other", url: "https://c.test/", title: "Agent", runtimeOwned: true, loading: false, muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false, crashed: false, generation: 1, createdAt: 0, lastActiveAt: 0 },
+      { pageId: "popup", windowId: "other", url: "https://d.test/", title: "Popup", popup: true, loading: false, muted: false, audible: false, canGoBack: false, canGoForward: false, crashed: false, runtimeOwned: false, generation: 1, createdAt: 0, lastActiveAt: 0 },
     ],
   }));
   const target = fakeWindow("chrome://aux/", {

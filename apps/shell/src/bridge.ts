@@ -3,8 +3,14 @@
  * we expose a stub so the UI renders for visual development; in
  * `--mode mock` main.tsx installs a scripted bridge before this module reads
  * window.aux (see mock/bridge.ts).
+ *
+ * Method and event members come from the generated host client
+ * (`host/client.generated.ts`, emitted by scripts/gen-host-bindings.mjs from
+ * packages/contracts/src/host-methods.ts). Members the adapter composes
+ * locally are declared in ComposedBridgeMembers below.
  */
-import type { AuxEvent, MethodName, MethodResult, RpcArgs, Download, LocalProject, RepositorySelection, ProjectInspection, ProjectCommand, ProjectFile, LocalPreviewCheck, ProjectCommandContext, ProjectServiceStackRequest, ProjectFileHistory, ProjectFileVersionSnapshot, ProjectReviewSummary, ProjectCommitRequest, ProjectCommitResult, AgentConnection, AgentConnectionScope, TabCommand, TabCommandAck, TabCatalogSnapshot, TabPatch, TabPlacement, OrganizationSnapshot, OrganizationCommit } from "@aux/contracts";
+import type { MethodName, MethodResult, RpcArgs, TabCatalogSnapshot, TabPatch } from "@aux/contracts";
+import type { createHostClient } from "./host/client.generated";
 
 export type TabsSinceResult = { kind: "patches"; patches: TabPatch[] } | { kind: "snapshot"; snapshot: TabCatalogSnapshot };
 
@@ -50,185 +56,26 @@ export interface AutocompleteMatch {
   description?: string;
 }
 
-export interface AuxBridge {
-  browserProfiles():Promise<BrowserProfile[]>;
-  defaultBrowser():Promise<{isDefault:boolean}>;
-  autofill(pageId:string):Promise<number>;
-  vaultFill(pageId:string,itemId:string):Promise<boolean>;
-  vaultSave(pageId:string,origin:string):Promise<{ok:boolean;updated:boolean}>;
-  vaultDismiss(pageId:string,origin:string):Promise<boolean>;
-  vaultExport(passphrase:string):Promise<{path:string}|null>;
-  vaultImport(passphrase:string):Promise<{added:number;skipped:number}|null>;
-  onVaultOffer(cb:(offer:VaultOffer)=>void):()=>void;
-  setDefaultBrowser():Promise<{isDefault:boolean}>;
-  createBrowserProfile(name:string):Promise<BrowserProfile>;
-  renameBrowserProfile(id:string,name:string):Promise<BrowserProfile[]>;
-  archiveBrowserProfile(id:string,archived:boolean):Promise<BrowserProfile[]>;
-  deleteBrowserProfile(id:string):Promise<BrowserProfile[]>;
-  openBrowserProfile(id:string):Promise<boolean>;
-  openBrowserProfileUrl(id:string,url:string):Promise<boolean>;
-  onPageAction(cb: (action: import("@aux/contracts").PageQuickAction) => void): () => void;
-  quickAskShortcut(enabled?:boolean):Promise<{enabled:boolean;registered:boolean;error:string}>;
-  quickAskMode: boolean;
-  quickAsk(action:"open"|"expand"|"dismiss"|"status"):Promise<boolean>;
-  onQuickAskState(cb:(compact:boolean)=>void):()=>void;
-  privateMode: boolean;
+/** Bridge members composed by the adapter instead of dispatched as host methods. */
+export interface ComposedBridgeMembers {
   windowId: string;
   platform: string;
+  privateMode: boolean;
+  quickAskMode: boolean;
+  /** Keep the shell painted above the native page; applied natively on mount. */
+  overlay(open: boolean): Promise<boolean>;
+  /** Other browser windows, derived from the tab catalog. */
+  windows(): Promise<{ id: string; title: string; tabCount: number }[]>;
   /** push saved binding overrides to main (menus + page interception) */
   setShortcutOverrides(overrides: unknown): Promise<unknown>;
   invoke<M extends MethodName>(method: M, ...params: RpcArgs<M>): Promise<MethodResult<M>>;
-  onEvent(cb: (e: AuxEvent) => void): () => void;
-  onRuntimeStatus(cb: (status: { connected: boolean; detail?: string }) => void): () => void;
-  onShortcut(cb: (s: { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean; commandId?: string }) => void): () => void;
-  /** Pointer is at the top of a loaded native page, where the shell cannot see the hover. */
-  onToolbarEdge(cb: (near: boolean) => void): () => void;
-  /** Pointer is on the left edge of a loaded page, where a hidden sidebar can open. */
-  onSidebarEdge(cb: (near: boolean) => void): () => void;
-  onDownload(cb: (d: unknown) => void): () => void;
-  retryDownload(id:string):Promise<void>;
-  tabAudio():Promise<Record<string,{muted:boolean;audible:boolean}>>;
-  tabsUnsavedWork(tabs:{pageId:string;url:string}[]):Promise<Record<string,"clean"|"dirty"|"unknown">>;
-  setTabMuted(pageId:string,muted:boolean):Promise<void>;
-  /** typed human tab commands (§7.2) — actuated in main, no runtime round trip */
-  tabCommand(command:TabCommand,catalogVersion?:number):Promise<TabCommandAck>;
-  bindTabSpace(pageId:string,spaceId:string):Promise<{spaceId:string;workspaceId:string}>;
-  migrateTabSpaces(assignments:{pageId:string;spaceId:string}[]):Promise<{migrated:number}>;
-  tabsSnapshot():Promise<TabCatalogSnapshot>;
-  organizationSnapshot():Promise<OrganizationSnapshot>;
-  organizationCommit(input:OrganizationCommit):Promise<OrganizationSnapshot>;
-  migrationReview():Promise<MigrationReview>;
-  migrationBegin(input:MigrationToken&{confirmed:true}):Promise<MigrationReview|MigrationProgress>;
-  migrationBatch(input:MigrationToken&{section:"folders"|"bookmarks"|"tabs";offset:number}):Promise<MigrationProgress>;
-  migrationFinish(input:MigrationToken):Promise<MigrationReview>;
-  migrationRollback(input:MigrationToken&{confirmed:true}):Promise<MigrationReview>;
-  onOrganizationChanged(cb:(revision:number)=>void):()=>void;
-  tabsSince(version:number):Promise<TabsSinceResult>;
-  onTabsPatch(cb:(patch:TabPatch)=>void):()=>void;
-  /** workspace placement relayed by main when a `move` lands in this window */
-  onTabsPlacement(cb:(payload:{pageId:string;windowId:string;placement:TabPlacement})=>void):()=>void;
-  onAudio(cb:(state:{pageId:string;muted:boolean;audible:boolean;removed?:boolean})=>void):()=>void;
-  downloadFolder():Promise<{path:string;custom:boolean;error?:string}>;
-  chooseDownloadFolder(reset?:boolean):Promise<{path:string;custom:boolean;error?:string}>;
-  downloadsSnapshot(): Promise<Download[]>;
-  controlDownload(id: string, action: "pause" | "resume" | "cancel"): Promise<void>;
-  onLoading(cb: (s: { pageId: string; loading: boolean }) => void): () => void;
-  /** Opaque Webium SurfaceEmbed content ID for a page in this Profile and window. */
-  surfaceContentId(pageId: string): Promise<string | null>;
-  /** Chromium AutocompleteController order, before Aux provider ranking. */
-  autocomplete(query: string): Promise<AutocompleteMatch[]>;
-  /** Resolve a query using the current Chromium Profile default search provider. */
-  resolveSearch?(query: string): Promise<string>;
-  overlay(open: boolean): Promise<boolean>;
-  onPageCursor(cb: (cursor: string) => void): () => void;
-  focusShell(): Promise<void>;
-  preview(pageId: string): Promise<string | null>;
-  createResultPreview(html: string): Promise<string>;
-  releaseResultPreview(url: string): Promise<boolean>;
-  /** Keep a hidden page laid out and stream JPEG frames until unwatch. */
-  watchPreview(pageId: string): Promise<boolean>;
-  unwatchPreview(pageId: string): Promise<boolean>;
-  /** JPEG bytes of the watched page, sent only when the picture changed. */
-  onPreviewFrame(cb: (frame: { pageId: string; image: Uint8Array }) => void): () => void;
-  contextMenu(pageId: string | null): Promise<boolean>;
-  openExternal(url: string): Promise<unknown>;
-  registerCloudPreview(url:string,token:string):Promise<boolean>;
-  revealPath(p: string): Promise<boolean>;
-  openPath(p: string): Promise<string>;
-  saveWorkbook(content:string,format?:"snapshot"|"csv"):Promise<string|null>;
-  saveFile(name: string, content: string): Promise<string | null>;
-  saveCloudExport(sourcePath:string,suggestedName:string):Promise<string|null>;
-  saveStoredArtifact(artifactId:string,suggestedName:string):Promise<string|null>;
-  savePagePdf(pageId: string): Promise<string | null>;
-  printPage(pageId: string): Promise<boolean>;
-  devTools(pageId: string): Promise<boolean>;
-  readArticle(pageId:string):Promise<ReaderArticle>;
-  navigationMenu(pageId:string,direction:"back"|"forward"):Promise<boolean>;
-  hardReload(pageId: string): Promise<boolean>;
-  closeWindow(): Promise<boolean>;
-  windows(): Promise<{ id: string; title: string; tabCount: number }[]>;
-  selectRepository(): Promise<RepositorySelection | null>;
-  createProject(id: string): Promise<LocalProject>;
-  createBlankProject(name:string):Promise<LocalProject>;
-  checkLocalPreview(id:string,url:string):Promise<LocalPreviewCheck>;
-  projectFileHistory(id:string,name:string):Promise<ProjectFileHistory>;
-  readProjectFileVersion(id:string,name:string,versionId:string):Promise<ProjectFileVersionSnapshot>;
-  listProjectFiles(id:string):Promise<string[]>;
-  createProjectFile(id:string,name:string):Promise<ProjectFile>;
-  readProjectFile(id:string,name:string):Promise<ProjectFile>;
-  saveProjectFile(id:string,name:string,hash:string,content:string):Promise<ProjectFile&{recoveryPath:string}>;
-  renameProjectFile(id:string,name:string,nextName:string,hash:string):Promise<ProjectFile&{recoveryPath:string}>;
-  deleteProjectFile(id:string,name:string,hash:string):Promise<{name:string;recoveryPath:string}|null>;
-  openProjectFileExternal(id:string,name:string,context:ProjectCommandContext):Promise<boolean>;
-  prepareProjectReview(id:string,context:ProjectCommandContext):Promise<ProjectReviewSummary>;
-  commitProject(id:string,request:ProjectCommitRequest,context:ProjectCommandContext):Promise<ProjectCommitResult|null>;
-  listProjectCommands(id: string): Promise<ProjectCommand[]>;
-  runProjectCommand(id: string, command: string, context: ProjectCommandContext,mode?:"command"|"service"): Promise<ProjectCommand|null>;
-  stopProjectCommand(projectId: string, id: string): Promise<ProjectCommand>;
-  runProjectServiceStack(id:string,request:ProjectServiceStackRequest,context:ProjectCommandContext):Promise<ProjectCommand[]|null>;
-  stopProjectServiceStack(projectId:string,stackId:string):Promise<ProjectCommand[]>;
-  listProjects(): Promise<LocalProject[]>;
-  inspectProject(id: string): Promise<ProjectInspection>;
-  pickEvidenceImage(): Promise<{ filename: string; dataUrl: string } | null>;
-  pickEvidenceDocument(): Promise<{ filename: string; content: string } | null>;
-  openFile(): Promise<string | null>;
-  openPluginDirectory(): Promise<string | null>;
-  agentConfig(input:{name:string;client:"codex"|"claude";scope:AgentConnectionScope}): Promise<{ command: string; args: string[]; env: Record<string, string>; connection: AgentConnection }>;
-  agentConnections():Promise<AgentConnection[]>;
-  agentClients():Promise<{client:"codex"|"claude";installed:boolean;version?:string;error?:string}[]>;
-  revokeAgentConnection(connectionId:string):Promise<AgentConnection>;
-  dictationStatus():Promise<{available:boolean;language?:string;reason?:string}>;
-  startDictation(id:string):Promise<boolean>;
-  stopDictation(id:string):Promise<boolean>;
-  cancelDictation(id:string):Promise<void>;
-  onDictation(callback:(event:{sessionId:string;type:"recording"|"finishing"|"transcript"|"final"|"error";text?:string;message?:string})=>void):()=>void;
-  extensions():Promise<BrowserExtension[]>;
-  installStoreExtension(id:string):Promise<BrowserExtension>;
-  checkStoreExtensionUpdate(id:string):Promise<BrowserExtension>;
-  reloadExtension(id:string):Promise<BrowserExtension>;
-  showExtensionAction(id:string):Promise<boolean>;
-  installUnpackedExtension():Promise<BrowserExtension|null>;
-  updateUnpackedExtension(key:string):Promise<BrowserExtension|null>;
-  setExtensionEnabled(key:string,enabled:boolean):Promise<BrowserExtension>;
-  removeExtension(key:string):Promise<boolean>;
-  dataDir(): Promise<string>;
-  exportDiagnostics():Promise<string|null>;
-  exportRuntimeBackup():Promise<{path:string;bytes:number;sha256:string;artifactFiles:number;missingArtifacts:number}|null>;
-  exportMigrationLayout(layoutJson:string):Promise<{path:string}|null>;
-  stageRuntimeRestore():Promise<{staged:true;schemaVersion:number;bytes:number;sha256:string;artifactFiles:number;missingArtifacts:number}|null>;
-  cancelRuntimeRestore():Promise<{cancelled:true}>;
-  runtimeRestoreStatus():Promise<{pending:boolean;lastAppliedAt?:number}>;
-  healthSummary():Promise<BrowserHealthSummary>;
-  clearHealth():Promise<BrowserHealthSummary>;
-  httpAuthRequests():Promise<HttpAuthRequest[]>;
-  respondHttpAuth(id:string,credentials:{username:string;password:string}|null):Promise<boolean>;
-  onHttpAuthChanged(cb:()=>void):()=>void;
-  clearSiteData(pageId: string): Promise<boolean>;
-  siteInfo(pageId: string): Promise<BrowserSiteInfo>;
-  siteZoom(origin?: string): Promise<{origin: string; percentage: number}[]>;
-  onSiteZoomChanged(cb: () => void): () => void;
-  sitePermissions(): Promise<Record<string, Record<string, "allow" | "deny">>>;
-  clearSitePermission(origin: string, permission?: string): Promise<boolean>;
-  privacy(): Promise<{ trackerBlock: boolean; blocked: number; allowedHosts?: string[]; httpsUpgrade?: boolean }>;
-  setTrackerBlock(enabled: boolean): Promise<{ trackerBlock: boolean; blocked: number }>;
-  setHttpsUpgrade(enabled: boolean): Promise<boolean>;
-  setSiteTrackers(pageId: string, allowed: boolean): Promise<{ hostname: string; allowed: boolean }>;
-  removeAllowedHost(hostname: string): Promise<string[]>;
-  filterLists(): Promise<FilterListStatus>;
-  updateFilters(): Promise<FilterListStatus>;
-  addFilterSource(name: string, url: string, kind?: "hosts" | "cookie_banner"): Promise<FilterSourceStatus[]>;
-  removeFilterSource(id: string): Promise<FilterSourceStatus[]>;
-  setFilterSourceEnabled(id: string, enabled: boolean): Promise<FilterSourceStatus[]>;
-  proceedInsecure(url: string): Promise<boolean>;
-  useHttp(pageId: string, url: string): Promise<boolean>;
-  translatePage(pageId: string): Promise<{ lang: string; count: number; truncated: boolean }>;
-  showOriginal(pageId: string): Promise<number>;
-  onTranslationChanged(cb: (payload: { pageId: string; lang?: string | null; count?: number; truncated?: boolean; pending?: boolean; error?: string }) => void): () => void;
-  setAppearance(theme: "system" | "dark" | "light", translucent?: boolean, windowControls?: boolean, material?: "liquid-glass" | "titlebar" | "sidebar" | "under-window"): Promise<boolean>;
 }
+
+export type AuxBridge = ReturnType<typeof createHostClient> & ComposedBridgeMembers;
 
 const noop = () => () => {};
 const stub: AuxBridge = {
+  capabilities:async()=>{throw new Error("Aux capabilities require the native browser.");},
   browserProfiles:async()=>[],
   openBrowserProfileUrl:async()=>false,
   defaultBrowser:async()=>({isDefault:false}),
@@ -267,7 +114,6 @@ const stub: AuxBridge = {
   retryDownload: async()=>{throw new Error("Download retry requires Aux desktop");},
   tabAudio:async()=>({}),
   tabsUnsavedWork:async()=>({}),
-  setTabMuted:async()=>{throw new Error("Tab audio requires Aux desktop");},
   tabCommand:async()=>({commandId:"",status:"rejected",catalogVersion:0,error:{code:"no_bridge",message:"Tab commands require Aux desktop"}}),
   bindTabSpace:async()=>{throw new Error("Space binding requires Aux desktop");},
   migrateTabSpaces:async()=>({migrated:0}),
@@ -292,22 +138,16 @@ const stub: AuxBridge = {
   autocomplete: async () => [],
   resolveSearch: async () => { throw new Error("Profile search requires the native browser."); },
   overlay: async () => true,
-  onPageCursor: noop,
-  focusShell: async () => {},
+  focusShell: async () => null,
   preview: async () => null,
   createResultPreview: async () => { throw new Error("Interactive previews require Aux desktop."); },
   releaseResultPreview: async () => true,
-  watchPreview: async () => false,
-  unwatchPreview: async () => true,
-  onPreviewFrame: noop,
   contextMenu: async () => true,
   openExternal: async (url) => window.open(url, "_blank"),
-  registerCloudPreview:async()=>{throw new Error('Protected cloud previews require Aux desktop');},
   revealPath: async () => true,
   openPath: async () => "",
   saveFile: async () => null,
   saveWorkbook: async () => null,
-  saveCloudExport:async()=>{throw new Error('Cloud export requires Aux desktop');},
   saveStoredArtifact:async()=>{throw new Error('Artifact export requires Aux desktop');},
   savePagePdf: async () => { throw new Error("PDF export requires the desktop browser"); },
   printPage: async () => true,
@@ -319,38 +159,16 @@ const stub: AuxBridge = {
   windows: async () => [],
   openFile: async () => null,
   openPluginDirectory: async () => null,
-    selectRepository: async () => null,
-    createProject: async () => { throw new Error("Local projects require Aux desktop"); },
-    createBlankProject: async () => { throw new Error("Local projects require Aux desktop"); },
-    checkLocalPreview: async () => {throw new Error('Preview checks require Aux desktop');},
-    projectFileHistory: async () => {throw new Error('File recovery requires Aux desktop');},
-    readProjectFileVersion: async () => {throw new Error('File recovery requires Aux desktop');},
-    listProjectFiles: async () => [],
-    createProjectFile: async () => {throw new Error("File creation requires Aux desktop");},
-    readProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
-    saveProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
-    renameProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
-    deleteProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
-    openProjectFileExternal: async () => {throw new Error('External editing requires Aux desktop');},
-    prepareProjectReview: async () => {throw new Error('Project review requires Aux desktop');},
-    commitProject: async () => {throw new Error('Local commits require Aux desktop');},
-    listProjectCommands: async () => [],
-    runProjectCommand: async () => { throw new Error("Local commands require Aux desktop"); },
-    stopProjectCommand: async () => { throw new Error("Local commands require Aux desktop"); },
-    runProjectServiceStack: async () => { throw new Error("Local service stacks require Aux desktop"); },
-    stopProjectServiceStack: async () => { throw new Error("Local service stacks require Aux desktop"); },
-    listProjects: async () => [],
-    inspectProject: async () => { throw new Error("Local projects require Aux desktop"); },
-    pickEvidenceImage: async () => null,
-    pickEvidenceDocument: async () => null,
+  pickEvidenceImage: async () => null,
+  pickEvidenceDocument: async () => null,
   agentConfig: async () => { throw new Error("Agent connection setup requires the Aux desktop app"); },
-  agentConnections: async()=>[],
+  agentConnections:async()=>[],
   agentClients:async()=>[],
   revokeAgentConnection: async()=>{throw new Error("Agent connection setup requires the Aux desktop app");},
   dictationStatus:async()=>({available:false,reason:"Dictation requires the Aux macOS app."}),
   startDictation:async()=>false,
   stopDictation:async()=>false,
-  cancelDictation:async()=>{},
+  cancelDictation:async()=>null,
   onDictation:()=>()=>{},
   extensions:async()=>[],
   installStoreExtension:async()=>{throw new Error("Store installation requires Aux Browser");},
@@ -395,6 +213,7 @@ const stub: AuxBridge = {
   showOriginal: async () => 0,
   onTranslationChanged: () => () => {},
   setAppearance: async () => true,
+  setShortcuts: async () => false,
 };
 
 type W = Window & { aux?: AuxBridge; auxHostProof?: { host?: string }; __auxMock?: boolean };

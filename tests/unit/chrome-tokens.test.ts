@@ -231,8 +231,8 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   });
 
   it("keeps a conversation page card live and offers Open in tab and Split view", () => {
-    expect(conversation).toContain("bridge.watchPreview(pageId)");
-    expect(conversation).toContain("bridge.onPreviewFrame");
+    expect(conversation).toContain("bridge.preview(pageId)");
+    expect(conversation).toContain("window.setTimeout(pull, 700)");
     expect(conversation).toContain("img.current.src = image");
     expect(conversation).toContain(">Open in tab</span>");
     const menu = conversation.slice(conversation.indexOf("conversation-preview-menu"));

@@ -90,7 +90,15 @@ const requirements = {
     "journey": "feature:tabLifecycle"
   },
   "profiles": {
-    "requires": [],
+    "requires": [
+      "browserProfiles",
+      "createBrowserProfile",
+      "renameBrowserProfile",
+      "archiveBrowserProfile",
+      "deleteBrowserProfile",
+      "openBrowserProfile",
+      "openBrowserProfileUrl"
+    ],
     "journey": "feature:profiles"
   },
   "privateWindows": {
@@ -116,7 +124,9 @@ const requirements = {
     "journey": "feature:appleScript"
   },
   "commandBar": {
-    "requires": [],
+    "requires": [
+      "autocomplete"
+    ],
     "journey": "feature:commandBar"
   },
   "searchRanking": {
@@ -138,11 +148,17 @@ const requirements = {
     "journey": "feature:homeAsk"
   },
   "quickAsk": {
-    "requires": [],
+    "requires": [
+      "quickAskShortcut",
+      "quickAsk"
+    ],
     "journey": "feature:quickAsk"
   },
   "conversation": {
-    "requires": [],
+    "requires": [
+      "pickEvidenceImage",
+      "pickEvidenceDocument"
+    ],
     "journey": "feature:conversation"
   },
   "selectionAsk": {
@@ -164,12 +180,16 @@ const requirements = {
   },
   "reader": {
     "requires": [
+      "readArticle",
       "native.captureReadablePage"
     ],
     "journey": "feature:reader"
   },
   "aiTranslate": {
-    "requires": [],
+    "requires": [
+      "translatePage",
+      "showOriginal"
+    ],
     "journey": "feature:aiTranslate"
   },
   "summarize": {
@@ -270,6 +290,7 @@ const requirements = {
   },
   "skills": {
     "requires": [
+      "openPluginDirectory",
       "plugins.inspect",
       "plugins.install",
       "plugins.list",
@@ -318,7 +339,12 @@ const requirements = {
     "journey": "feature:hooks"
   },
   "inboundAgents": {
-    "requires": [],
+    "requires": [
+      "agentConfig",
+      "agentConnections",
+      "agentClients",
+      "revokeAgentConnection"
+    ],
     "journey": "feature:inboundAgents"
   },
   "outboundMcp": {
@@ -346,7 +372,10 @@ const requirements = {
     "journey": "feature:reports"
   },
   "documentArtifacts": {
-    "requires": [],
+    "requires": [
+      "saveWorkbook",
+      "saveStoredArtifact"
+    ],
     "journey": "feature:documentArtifacts"
   },
   "activeHtml": {
@@ -455,7 +484,9 @@ const requirements = {
       "reloadExtension",
       "showExtensionAction",
       "setExtensionEnabled",
-      "removeExtension"
+      "removeExtension",
+      "installUnpackedExtension",
+      "updateUnpackedExtension"
     ],
     "journey": "feature:extensions"
   },
@@ -467,6 +498,12 @@ const requirements = {
   },
   "vault": {
     "requires": [
+      "autofill",
+      "vaultFill",
+      "vaultSave",
+      "vaultDismiss",
+      "vaultExport",
+      "vaultImport",
       "native.storeSecret",
       "native.readSecret",
       "vault.status",
@@ -515,12 +552,17 @@ const requirements = {
     "journey": "feature:contentBlocking"
   },
   "httpsFirst": {
-    "requires": [],
+    "requires": [
+      "setHttpsUpgrade"
+    ],
     "journey": "feature:httpsFirst"
   },
   "sitePermissions": {
     "requires": [
-      "siteInfo"
+      "siteInfo",
+      "clearSiteData",
+      "sitePermissions",
+      "clearSitePermission"
     ],
     "journey": "feature:sitePermissions"
   },
@@ -544,7 +586,13 @@ const requirements = {
     "journey": "feature:crashReporting"
   },
   "electronMigration": {
-    "requires": [],
+    "requires": [
+      "exportRuntimeBackup",
+      "exportMigrationLayout",
+      "stageRuntimeRestore",
+      "cancelRuntimeRestore",
+      "runtimeRestoreStatus"
+    ],
     "journey": "feature:electronMigration"
   },
   "onboarding": {

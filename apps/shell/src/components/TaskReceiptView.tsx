@@ -3,7 +3,7 @@ import { useState } from "react";
 import { bridge } from "../bridge";
 import { call } from "../store";
 import { taskReceiptMarkdown } from "../task-receipt-export";
-import type { TaskReceipt, ProjectCommand, MethodName, RpcArgs, RpcMap } from "@aux/contracts";
+import type { TaskReceipt, MethodName, RpcArgs } from "@aux/contracts";
 
 const STATUS = { in_progress: "In progress", uncertain: "Outcome uncertain", accepted: "Accepted by you", not_met: "Criteria not met", needs_review: "Needs review" };
 
@@ -15,25 +15,6 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
   const editable = !readOnly && !!submit;
   const historical = receipt.currentTaskRevision !== undefined && receipt.currentTaskRevision !== receipt.taskRevision;
   const [document, setDocument] = useState<{ criterionId: string; filename: string; content: string } | null>(null);
-  const [commandPicker,setCommandPicker]=useState<{criterionId:string;commands:ProjectCommand[];selectedId:string}|null>(null);
-  async function pickCommands(criterionId:string){
-    setImporting(true);setImportError('');
-    try{
-      const details=await call('tasks.get',{taskId:receipt.taskId});
-      if(details.task.revision!==receipt.taskRevision)throw new Error('Reload this task before attaching command evidence.');
-      const ids=[...new Set(details.task.resources.flatMap(resource=>resource.kind==='repository'&&resource.projectId?[resource.projectId]:[]))];
-      const commands=(await Promise.all(ids.map(id=>bridge.listProjectCommands(id)))).flat().filter(command=>!['running','stopping'].includes(command.state)).sort((a,b)=>b.startedAt-a.startedAt);
-      setCommandPicker({criterionId,commands,selectedId:commands[0]?.commandId??''});
-    }catch(error){setImportError(String(error));}finally{setImporting(false);}
-  }
-  async function saveCommand(){
-    const command=commandPicker?.commands.find(item=>item.commandId===commandPicker.selectedId);
-    if(!command||!commandPicker||!submit)return;
-    setImporting(true);
-    // Main resolves commandId to the finished command record before forwarding.
-    try{if(await submit('tasks.importCommandEvidence',{taskId:receipt.taskId,expectedRevision:receipt.taskRevision,criterionId:commandPicker.criterionId,projectId:command.projectId,commandId:command.commandId} as RpcMap['tasks.importCommandEvidence']['params']))setCommandPicker(null);}
-    finally{setImporting(false);}
-  }
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
   async function pickDocument(criterionId: string) {
@@ -123,16 +104,8 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
         <div className="row">
           <button className="btn sm" disabled={!note.trim()} onClick={() => void submit?.("tasks.recordEvidence", { ...base, criterionId: criterion.criterionId, summary: note })}>Add note</button>
           <button className="btn sm" disabled={!pageId} onClick={() => void submit?.("tasks.captureEvidence", { ...base, criterionId: criterion.criterionId, pageId: pageId as string })}>Capture current page</button>
-          <button className="btn sm" disabled={active||importing||!!commandPicker} onClick={()=>void pickCommands(criterion.criterionId)}>Import command result</button>
           <button className="btn sm" disabled={active || importing || !!document} onClick={() => void pickDocument(criterion.criterionId)}>Import document</button>
         </div>
-        {commandPicker?.criterionId===criterion.criterionId&&<section className="field" aria-label="Command evidence preview">
-          {commandPicker.commands.length?<><label className="field">Finished command<select aria-label="Finished command" value={commandPicker.selectedId} onChange={event=>setCommandPicker({...commandPicker,selectedId:event.target.value})}>{commandPicker.commands.map(command=><option key={command.commandId} value={command.commandId}>{command.state} · {new Date(command.startedAt).toLocaleString()} · {command.command.slice(0,80)}</option>)}</select></label>
-          {commandPicker.commands.filter(command=>command.commandId===commandPicker.selectedId).map(command=><div key={command.commandId}><pre className="evidence-text">{command.command}{'\n'}{command.cwd}{'\n'}{command.output}</pre><p className="hint">{command.state} · Exit {command.exitCode??'not recorded'}{command.truncated?' · Output truncated':''}</p></div>)}
-          <p className="hint">Save this historical result for your review. It does not prove the current checkout or criterion; later local changes are not monitored. Command text and output may contain sensitive information.</p>
-          <button className="btn sm" disabled={importing||active} onClick={()=>void saveCommand()}>Save command evidence</button></>:<p>No finished commands in this task's attached projects.</p>}
-          <button className="btn sm" disabled={importing} onClick={()=>setCommandPicker(null)}>Cancel command import</button>
-        </section>}
         {document?.criterionId === criterion.criterionId && <section className="document-preview field" aria-label="Document preview">
           <strong>{document.filename}</strong>
           <span className="hint">{new TextEncoder().encode(document.content).length.toLocaleString()} bytes of saved text · Up to 512 KB</span>

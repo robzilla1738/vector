@@ -1,5 +1,5 @@
 import { GenerateResultParamsSchema, GeneratedResultSpecSchema, type GeneratedResult, type GeneratedResultSpec } from "@aux/contracts";
-import { projectFixture } from "./project";
+import { HostMethods } from "@aux/contracts/host-methods";
 import { workFixtures } from "./work";
 import { connectorFixtures } from "./connectors";
 import { steppedZoomLevel } from "@aux/contracts/page-zoom";
@@ -56,7 +56,7 @@ export function installMockBridge(q: URLSearchParams) {
   const organizationListeners = new Set<(revision:number)=>void>();
   let history = [...HISTORY];
   const zoomLevels = new Map<string, number>();
-  const zoomListeners = new Set<() => void>();
+  const zoomListeners = new Set<(payload: Record<string, never>) => void>();
   let spaces: BrowserSpace[] = [{ ...DEFAULT_SPACE, workspaceId: `workspace:${DEFAULT_SPACE.id}`, archived: false }];
   let pluginSkillGrants: PluginSkillGrant[] = [];
   const scenario = q.get("scenario") ?? "browsing";
@@ -789,7 +789,7 @@ export function installMockBridge(q: URLSearchParams) {
       const requested = p.reset ? 0 : p.direction === "in" || p.direction === "out" ? steppedZoomLevel(current, p.direction)
         : typeof p.level === "number" ? p.level : current + Number(p.delta ?? 0);
       const level = Math.max(Math.log(0.25) / Math.log(1.2), Math.min(Math.log(5) / Math.log(1.2), requested));
-      zoomLevels.set(id, level); if (p.reset || p.direction || p.level !== undefined || p.delta !== undefined) for (const listener of zoomListeners) listener(); return { level };
+      zoomLevels.set(id, level); if (p.reset || p.direction || p.level !== undefined || p.delta !== undefined) for (const listener of zoomListeners) listener({}); return { level };
     },
     "artifacts.read": async p => {
       const generated=generatedVersions.get(String(p.artifactId));
@@ -953,7 +953,6 @@ export function installMockBridge(q: URLSearchParams) {
     retryDownload: async()=>{throw new Error("Download retry requires Aux desktop");},
     tabAudio:async()=>({}),
     tabsUnsavedWork:async(tabs:{pageId:string;url:string}[])=>Object.fromEntries(tabs.map(tab=>[tab.pageId,"clean" as const])),
-    setTabMuted:async()=>{throw new Error("Tab audio requires Aux desktop");},
     // Mock tab commands reuse the local page list — the real surface is the
     // main-owned catalog; visual dev only needs the pages themselves to move.
     tabCommand:async(command)=>{
@@ -1024,6 +1023,9 @@ export function installMockBridge(q: URLSearchParams) {
     onDownload: () => () => {},
     onLoading: (cb) => (loadingListeners.add(cb), () => loadingListeners.delete(cb)),
     surfaceContentId: async () => null,
+    capabilities: async () => ({ buildId: "mock", sourceCommit: "mock", methods: Object.keys(HostMethods) }),
+    resolveSearch: async query => DEFAULT_SEARCH_ENGINE.replace("%s", encodeURIComponent(query)),
+    setShortcuts: async () => true,
     autocomplete: async query => {
       const term = query.trim().toLowerCase();
       if (!term) return [];
@@ -1038,22 +1040,16 @@ export function installMockBridge(q: URLSearchParams) {
       ];
     },
     overlay: async () => true,
-    onPageCursor: () => () => {},
-    focusShell: async () => {},
+    focusShell: async () => null,
     preview: async () => null,
     createResultPreview: async () => { throw new Error("Interactive previews require Aux desktop."); },
     releaseResultPreview: async () => true,
-    watchPreview: async () => false,
-    unwatchPreview: async () => true,
-    onPreviewFrame: () => () => {},
     contextMenu: async () => true,
     openExternal: async () => true,
-    registerCloudPreview:async()=>true,
     revealPath: async () => true,
     openPath: async () => "",
     saveFile: async () => null,
     saveWorkbook: async () => null,
-    saveCloudExport:async()=>null,
     saveStoredArtifact:async()=>null,
     savePagePdf: async () => { throw new Error("PDF export requires the desktop browser"); },
     printPage: async () => true,
@@ -1076,29 +1072,7 @@ export function installMockBridge(q: URLSearchParams) {
     closeWindow: async () => true,
     openFile: async () => null,
     openPluginDirectory: async () => null,
-    selectRepository: async () => null,
-    createProject: async () => { throw new Error("Local projects require Aux desktop"); },
-    createBlankProject: async () => { throw new Error("Local projects require Aux desktop"); },
-    checkLocalPreview: async () => {throw new Error('Preview checks require Aux desktop');},
-    projectFileHistory: async () => {throw new Error('File recovery requires Aux desktop');},
-    readProjectFileVersion: async () => {throw new Error('File recovery requires Aux desktop');},
-    listProjectFiles: async () => [],
-    createProjectFile: async () => {throw new Error("File creation requires Aux desktop");},
-    readProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
-    saveProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
-    renameProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
-    deleteProjectFile: async () => {throw new Error('File editing requires Aux desktop');},
-    openProjectFileExternal: async () => {throw new Error('External editing requires Aux desktop');},
-    prepareProjectReview: async () => {throw new Error('Project review requires Aux desktop');},
-    commitProject: async () => {throw new Error('Local commits require Aux desktop');},
-    listProjectCommands: async () => [],
-    runProjectCommand: async () => { throw new Error("Local commands require Aux desktop"); },
-    stopProjectCommand: async () => { throw new Error("Local commands require Aux desktop"); },
-    runProjectServiceStack: async () => { throw new Error("Local service stacks require Aux desktop"); },
-    stopProjectServiceStack: async () => { throw new Error("Local service stacks require Aux desktop"); },
-    listProjects: async () => [],
-    inspectProject: async () => { throw new Error("Local projects require Aux desktop"); },
-    ...(scenario === "work" ? projectFixture() : {}),
+
     pickEvidenceImage: async () => {
       const canvas = document.createElement("canvas"); canvas.width = 800; canvas.height = 500;
       const ctx = canvas.getContext("2d")!; ctx.fillStyle = "#dbe7fa"; ctx.fillRect(0, 0, 800, 500);
@@ -1118,7 +1092,7 @@ export function installMockBridge(q: URLSearchParams) {
       dictationEvent({sessionId,type:"transcript",text:"Compare these pages and summarize the differences."});return true;
     },
     stopDictation:async sessionId=>{dictationEvent({sessionId,type:"final",text:"Compare these pages and summarize the differences."});return true;},
-    cancelDictation:async()=>{},
+    cancelDictation:async()=>null,
     onDictation:callback=>{dictationListeners.add(callback);return()=>{dictationListeners.delete(callback);};},
     extensions:async()=>extensions,
     installStoreExtension:async id=>{
@@ -1167,7 +1141,7 @@ export function installMockBridge(q: URLSearchParams) {
         if (origin === site) zoomLevels.delete(pageId);
         else if (level) sizes.set(site, Math.round(100 * 1.2 ** level));
       }
-      if (origin) for (const listener of zoomListeners) listener();
+      if (origin) for (const listener of zoomListeners) listener({});
       return [...sizes].map(([origin, percentage]) => ({origin, percentage}));
     },
     sitePermissions: async () => ({}),

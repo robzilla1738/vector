@@ -73,35 +73,22 @@ function LivePage({ pageId }: { pageId: string }) {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let gone = false;
-    let objectUrl = "";
     const show = (image: string) => {
       if (gone || !img.current) return;
       img.current.src = image;
       setReady(current => current || true);
     };
     let timer = 0;
-    const stopFrames = bridge.onPreviewFrame(frame => {
-      if (frame.pageId !== pageId || !frame.image?.byteLength || gone) return;
-      const previous = objectUrl;
-      objectUrl = URL.createObjectURL(new Blob([frame.image as Uint8Array<ArrayBuffer>], { type: "image/jpeg" }));
-      show(objectUrl);
-      if (previous) URL.revokeObjectURL(previous);
-    });
-    void bridge.watchPreview(pageId).catch(() => {
-      const pull = () => {
-        if (gone) return;
-        void bridge.preview(pageId).then(url => { if (url) show(url); }).catch(() => {}).finally(() => {
-          if (!gone) timer = window.setTimeout(pull, 700);
-        });
-      };
-      pull();
-    });
+    const pull = () => {
+      if (gone) return;
+      void bridge.preview(pageId).then(url => { if (url) show(url); }).catch(() => {}).finally(() => {
+        if (!gone) timer = window.setTimeout(pull, 700);
+      });
+    };
+    pull();
     return () => {
       gone = true;
       window.clearTimeout(timer);
-      stopFrames();
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      void bridge.unwatchPreview(pageId).catch(() => {});
     };
   }, [pageId]);
   return <>

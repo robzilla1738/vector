@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { OrganizationCommitSchema, OrganizationSnapshotSchema } from "./organization.js";
-import { TabCatalogSnapshotSchema, TabCommandAckSchema, TabCommandEnvelopeSchema, TabCommandSchema, TabPatchSchema } from "./tabs.js";
+import { TabCatalogSnapshotSchema, TabCommandAckSchema, TabCommandEnvelopeSchema, TabCommandSchema, TabPatchSchema, TabPlacementSchema } from "./tabs.js";
 import { NativeMethods } from "./bridge.js";
+import { DownloadSchema, PageQuickActionSchema } from "./entities.js";
+import { AgentClientSchema, AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
 import { CredentialHandoffRequestSchema, CredentialHandoffResultSchema } from "./safety.js";
 import { ZapStylesheetInstallSchema, ZapInstallReceiptSchema } from "./zap.js";
 import { EventSchema } from "./events.js";
@@ -27,7 +29,7 @@ const number = z.number();
 const nullableString = str.nullable();
 const noResult = z.union([z.undefined(), z.null()]);
 const token = z.object({ contentHash: str, manifestSha256: str }).strict();
-const migrationProgress = z.object({ status: str, folders: number, bookmarks: number, tabs: number }).strict();
+const migrationProgress = z.object({ status: z.literal("importing"), folders: number, bookmarks: number, tabs: number }).strict();
 const migrationReview = z.object({
   status: z.enum(["ready", "interrupted", "applied"]), contentHash: str, manifestSha256: str,
   tabs: number, bookmarks: number, bookmarkFolders: number, spaces: number, vaultPending: bool,
@@ -59,6 +61,27 @@ const contentBase = z.object({ profileId: str, generation: number, allowedSiteHo
 const cosmeticRule = z.object({ domains: z.array(str), selector: str }).strict();
 const nativePage = z.object({ pageId: str, windowId: str.optional(), marker: str, url: str,
   title: str, active: bool, showBlankDocument: bool.optional(), cdpTargetId: str.optional() }).strict();
+const browserProfile = z.object({ id: str, name: str, current: bool, archived: bool.optional() }).strict();
+const autocompleteMatch = z.object({ id: str, type: z.enum(["history", "bookmark", "search", "typed"]),
+  title: str, url: str, description: str.optional() }).strict();
+const httpAuthRequest = z.object({ id: str, origin: str, proxy: bool, realm: str, retry: bool }).strict();
+const downloadFolderResult = z.object({ path: str, custom: bool, error: str.optional() }).strict();
+export type HostReaderNode = string | { tag: string; href?: string; sourceId?: string; children: HostReaderNode[] };
+const readerNode: z.ZodType<HostReaderNode> = z.lazy(() => z.union([str,
+  z.object({ tag: str, href: str.optional(), sourceId: str.optional(),
+    children: z.array(readerNode) }).strict()]));
+const stats = z.object({ p50: number, p95: number, max: number }).strict();
+const healthSummary = z.object({
+  recordingSince: number.optional(), latestAt: number.optional(), samples: number, sessions: number,
+  observedMinutes: number, spanDays: number, sevenDaySpan: bool, startupMs: number.optional(),
+  cpuPercent: stats, memoryMb: stats, eventLoopLagMs: stats,
+  maxWindows: number, maxPages: number, maxSuspendedPages: number,
+  swallowed: z.record(str, number).optional(),
+  pageCrashes: number, pageUnresponsive: number, suspensionFailures: number,
+}).strict();
+const runtimeBackup = z.object({ path: str, bytes: number, sha256: str,
+  artifactFiles: number, missingArtifacts: number }).strict();
+const stagedRestore = runtimeBackup.extend({ staged: z.literal(true), schemaVersion: number });
 export const HostCapabilitiesSchema = z.object({
   buildId: str, sourceCommit: str.length(40), methods: z.array(str),
 }).strict();
@@ -133,6 +156,80 @@ export const HostMethods = {
   showExtensionAction: shell("extensions", z.tuple([str]), bool),
   setExtensionEnabled: shell("extensions", z.tuple([str, bool]), extension),
   removeExtension: shell("extensions", z.tuple([str]), bool),
+  installUnpackedExtension: shell("extensions", noArgs, extension.nullable()),
+  updateUnpackedExtension: shell("extensions", z.tuple([str]), extension.nullable()),
+  // Profiles
+  browserProfiles: shell("profiles", noArgs, z.array(browserProfile)),
+  createBrowserProfile: shell("profiles", z.tuple([str]), browserProfile),
+  renameBrowserProfile: shell("profiles", z.tuple([str, str]), z.array(browserProfile)),
+  archiveBrowserProfile: shell("profiles", z.tuple([str, bool]), z.array(browserProfile)),
+  deleteBrowserProfile: shell("profiles", z.tuple([str]), z.array(browserProfile)),
+  openBrowserProfile: shell("profiles", z.tuple([str]), bool),
+  openBrowserProfileUrl: shell("profiles", z.tuple([str, str]), bool),
+  // Credential vault
+  autofill: shell("vault", z.tuple([str]), number),
+  vaultFill: shell("vault", z.tuple([str, str]), bool),
+  vaultSave: shell("vault", z.tuple([str, str]), z.object({ ok: bool, updated: bool }).strict()),
+  vaultDismiss: shell("vault", z.tuple([str, str]), bool),
+  vaultExport: shell("vault", z.tuple([str]), z.object({ path: str }).strict().nullable()),
+  vaultImport: shell("vault", z.tuple([str]), z.object({ added: number, skipped: number }).strict().nullable()),
+  // Quick Ask
+  quickAskShortcut: shell("quickAsk", z.tuple([bool.optional()]),
+    z.object({ enabled: bool, registered: bool, error: str }).strict()),
+  quickAsk: shell("quickAsk", z.tuple([z.enum(["open", "expand", "dismiss", "status"])]), bool),
+  // Downloads and tab audio
+  downloadFolder: shell("core", noArgs, downloadFolderResult),
+  chooseDownloadFolder: shell("core", z.tuple([bool.optional()]), downloadFolderResult),
+  downloadsSnapshot: shell("core", noArgs, z.array(DownloadSchema)),
+  controlDownload: shell("core", z.tuple([str, z.enum(["pause", "resume", "cancel"])]), noResult),
+  retryDownload: shell("core", z.tuple([str]), noResult),
+  tabAudio: shell("core", noArgs, z.record(str, z.object({ muted: bool, audible: bool }).strict())),
+  tabsUnsavedWork: shell("core", z.tuple([z.array(z.object({ pageId: str, url: str }).strict())]),
+    z.record(str, z.enum(["clean", "dirty", "unknown"]))),
+  // Page surfaces and menus
+  preview: shell("core", z.tuple([str]), nullableString),
+  contextMenu: shell("core", z.tuple([z.union([str, z.null()])]), bool),
+  navigationMenu: shell("core", z.tuple([str, z.enum(["back", "forward"])]), bool),
+  autocomplete: shell("commandBar", z.tuple([str]), z.array(autocompleteMatch)),
+  readArticle: shell("reader", z.tuple([str]), z.object({ title: str, byline: str, site: str,
+    url: str, minutes: number, content: readerNode }).strict()),
+  // Files and system services
+  openExternal: shell("core", z.tuple([str]), z.unknown()),
+  revealPath: shell("core", z.tuple([str]), bool),
+  openPath: shell("core", z.tuple([str]), str),
+  saveFile: shell("core", z.tuple([str, str]), nullableString),
+  saveWorkbook: shell("documentArtifacts", z.tuple([str, z.enum(["snapshot", "csv"]).optional()]), nullableString),
+  saveStoredArtifact: shell("documentArtifacts", z.tuple([str, str]), nullableString),
+  openPluginDirectory: shell("skills", noArgs, nullableString),
+  pickEvidenceImage: shell("conversation", noArgs, z.object({ filename: str, dataUrl: str }).strict().nullable()),
+  pickEvidenceDocument: shell("conversation", noArgs, z.object({ filename: str, content: str }).strict().nullable()),
+  // External agents
+  agentConfig: shell("inboundAgents", z.tuple([AgentConnectionCreateParams]), z.object({
+    command: str, args: z.array(str), env: z.record(str, str), connection: AgentConnectionSchema }).strict()),
+  agentConnections: shell("inboundAgents", noArgs, z.array(AgentConnectionSchema)),
+  agentClients: shell("inboundAgents", noArgs, z.array(z.object({
+    client: AgentClientSchema, installed: bool, version: str.optional(), error: str.optional() }).strict())),
+  revokeAgentConnection: shell("inboundAgents", z.tuple([str]), AgentConnectionSchema),
+  // Diagnostics, backup and restore
+  exportDiagnostics: shell("core", noArgs, nullableString),
+  exportRuntimeBackup: shell("electronMigration", noArgs, runtimeBackup.nullable()),
+  exportMigrationLayout: shell("electronMigration", z.tuple([str]), z.object({ path: str }).strict().nullable()),
+  stageRuntimeRestore: shell("electronMigration", noArgs, stagedRestore.nullable()),
+  cancelRuntimeRestore: shell("electronMigration", noArgs, z.object({ cancelled: z.literal(true) }).strict()),
+  runtimeRestoreStatus: shell("electronMigration", noArgs, z.object({ pending: bool, lastAppliedAt: number.optional() }).strict()),
+  healthSummary: shell("core", noArgs, healthSummary),
+  clearHealth: shell("core", noArgs, healthSummary),
+  // HTTP auth and site controls
+  httpAuthRequests: shell("core", noArgs, z.array(httpAuthRequest)),
+  respondHttpAuth: shell("core", z.tuple([str, z.object({ username: str, password: str }).strict().nullable()]), bool),
+  clearSiteData: shell("sitePermissions", z.tuple([str]), bool),
+  sitePermissions: shell("sitePermissions", noArgs, z.record(str, z.record(str, z.enum(["allow", "deny"])))),
+  clearSitePermission: shell("sitePermissions", z.tuple([str, str.optional()]), bool),
+  setHttpsUpgrade: shell("httpsFirst", z.tuple([bool]), bool),
+  proceedInsecure: shell("core", z.tuple([str]), bool),
+  useHttp: shell("core", z.tuple([str, str]), bool),
+  translatePage: shell("aiTranslate", z.tuple([str]), z.object({ lang: str, count: number, truncated: bool }).strict()),
+  showOriginal: shell("aiTranslate", z.tuple([str]), number),
   "native.contentBlockBegin": runtime("contentBlocking", contentBase.extend({ hostsDigest: str, hostCount: number }), accepted),
   "native.contentBlockAppend": runtime("contentBlocking", z.object({ profileId: str, generation: number,
     offset: number, hosts: z.array(str) }).strict(), accepted),
@@ -198,6 +295,21 @@ export const HostEvents = {
   onShortcut: event("commandRegistry", z.object({ key: str, meta: bool, shift: bool,
     alt: bool, ctrl: bool.optional(), commandId: str.optional() }).strict()),
   onSiteZoomChanged: event("pageZoom", z.object({}).strict()),
+  onRuntimeStatus: event("core", z.object({ connected: bool, detail: str.optional() }).strict()),
+  onLoading: event("core", z.object({ pageId: str, loading: bool }).strict()),
+  onAudio: event("core", z.object({ pageId: str, muted: bool, audible: bool,
+    removed: bool.optional() }).strict()),
+  onDownload: event("core", DownloadSchema),
+  onTabsPlacement: event("core", z.object({ pageId: str, windowId: str,
+    placement: TabPlacementSchema }).strict()),
+  onPageAction: event("extensions", PageQuickActionSchema),
+  onVaultOffer: event("vault", z.object({ pageId: str, username: str, origin: str,
+    kind: z.enum(["save", "update"]), itemId: str.optional(), locked: bool.optional() }).strict()),
+  onQuickAskState: event("quickAsk", bool),
+  onHttpAuthChanged: event("core", z.object({}).strict()),
+  onTranslationChanged: event("aiTranslate", z.object({ pageId: str, lang: nullableString.optional(),
+    count: number.optional(), truncated: bool.optional(), pending: bool.optional(),
+    error: str.optional() }).strict()),
 } as const;
 
 export type HostEventId = keyof typeof HostEvents;

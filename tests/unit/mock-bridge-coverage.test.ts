@@ -50,7 +50,7 @@ const UNMOCKED = [
   "routines.outcome", "routines.reconcile", "routines.run", "routines.update",
   "runs.steer", "sentry.probe",
   "sentry.projects", "tasks.captureEvidence", "tasks.create",
-  "tasks.importCommandEvidence", "tasks.importDocumentEvidence", "tasks.promote",
+  "tasks.importDocumentEvidence", "tasks.promote",
   "tasks.reconcileAction", "tasks.reconcileOperation", "tasks.recordEvidence", "tasks.replaceAgent",
   "tasks.reviewCriterion", "tasks.start", "tasks.update", "tasks.verifyCriterion", "vault.expiredGrants",
   "vault.generate", "vault.grant", "vault.grants", "vault.history", "vault.itemsForOrigin", "vault.list",
