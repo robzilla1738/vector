@@ -1023,7 +1023,6 @@ export function installMockBridge(q: URLSearchParams) {
     controlDownload: async () => { throw new Error("No live download in this preview"); },
     onDownload: () => () => {},
     onLoading: (cb) => (loadingListeners.add(cb), () => loadingListeners.delete(cb)),
-    setStage: async () => true,
     surfaceContentId: async () => null,
     autocomplete: async query => {
       const term = query.trim().toLowerCase();
@@ -1039,15 +1038,7 @@ export function installMockBridge(q: URLSearchParams) {
       ];
     },
     overlay: async () => true,
-    windowDrag: () => {},
-    sidebarGlass: async () => true,
-    toolbarGlass: async () => true,
-    toolbarTone: async () => "dark",
-    toolbarOverlay: async () => true,
-    trafficLights: async () => true,
-    forwardPagePointer: () => {},
     onPageCursor: () => () => {},
-    sidebarPeek: async () => true,
     focusShell: async () => {},
     preview: async () => null,
     createResultPreview: async () => { throw new Error("Interactive previews require Aux desktop."); },

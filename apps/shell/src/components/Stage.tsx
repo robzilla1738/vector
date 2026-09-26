@@ -5,7 +5,7 @@ import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
 import { forwardRef, lazy, memo, Suspense, useRef, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
-import { bridge, hostKind } from "../bridge";
+import { bridge } from "../bridge";
 import { useStore, call, errToast, tabCommand } from "../store";
 
 import { TranslationBar } from "./TranslationBar";
@@ -107,8 +107,8 @@ export const Stage = memo(forwardRef<HTMLDivElement>(function Stage(_props, ref)
         )}
         {mode === "focus" && page?.viewStatus === "crashed" && <PageRecovery key={page.pageId} page={page} />}
         {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && <StartPage />}
-        {showingPage && page && !splitVisible && hostKind !== "electron" && <Suspense fallback={<div className="stage-message">Opening page…</div>}><PageSurface page={page} /></Suspense>}
-        {splitVisible && <Suspense fallback={null}><SplitDivider pages={hostKind !== "electron" ? [page!, companion!] : undefined} /></Suspense>}
+        {showingPage && page && !splitVisible && <Suspense fallback={<div className="stage-message">Opening page…</div>}><PageSurface page={page} /></Suspense>}
+        {splitVisible && <Suspense fallback={null}><SplitDivider pages={[page!, companion!]} /></Suspense>}
         {mode === "conversation" && <PaneBoundary label="This conversation"><Conversation /></PaneBoundary>}
         {mode === "overview" && <Overview />}
         {mode === "table" && <ResultsTable />}

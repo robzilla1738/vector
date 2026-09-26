@@ -35,7 +35,6 @@ const eventMethods = new Set([
   "onVaultOffer", "onDictation",
 ]);
 
-const fireAndForgetMethods = new Set(["forwardPagePointer", "windowDrag"]);
 
 /** Install before App is imported so the existing AuxBridge is the real host. */
 export function installChromiumBridge(target: ChromiumWindow = window as ChromiumWindow): boolean {
@@ -96,12 +95,6 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
         });
       };
       const bridgeFeature = auxFeatureForBridgeMethod(key);
-      if (fireAndForgetMethods.has(key)) {
-        return (...args: unknown[]) => {
-          if (bridgeFeature) requireAuxFeature(bridgeFeature, "chromium-fork", port.featureStages);
-          void port.request(key, args).catch(error => console.error(`Aux host ${key} failed`, error));
-        };
-      }
       return async (...args: unknown[]) => {
         if (bridgeFeature) requireAuxFeature(bridgeFeature, "chromium-fork", port.featureStages);
         if (key === "invoke" && typeof args[0] === "string") {

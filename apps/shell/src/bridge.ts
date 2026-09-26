@@ -8,13 +8,6 @@ import type { AuxEvent, MethodName, MethodResult, RpcArgs, Download, LocalProjec
 
 export type TabsSinceResult = { kind: "patches"; patches: TabPatch[] } | { kind: "snapshot"; snapshot: TabCatalogSnapshot };
 
-export interface StageBounds {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 export interface BrowserProfile { id:string;name:string;current:boolean;archived?:boolean }
 export interface MigrationReview {
   status:"ready"|"interrupted"|"applied";
@@ -120,8 +113,6 @@ export interface AuxBridge {
   downloadsSnapshot(): Promise<Download[]>;
   controlDownload(id: string, action: "pause" | "resume" | "cancel"): Promise<void>;
   onLoading(cb: (s: { pageId: string; loading: boolean }) => void): () => void;
-  /** position the visible native page; `radius` rounds the view to match the stage card */
-  setStage(pageId: string | null, bounds: StageBounds, split?: string | null, radius?: number, ratio?: number): Promise<boolean>;
   /** Opaque Webium SurfaceEmbed content ID for a page in this Profile and window. */
   surfaceContentId(pageId: string): Promise<string | null>;
   /** Chromium AutocompleteController order, before Aux provider ranking. */
@@ -129,17 +120,7 @@ export interface AuxBridge {
   /** Resolve a query using the current Chromium Profile default search provider. */
   resolveSearch?(query: string): Promise<string>;
   overlay(open: boolean): Promise<boolean>;
-  /** Keep the shell painted above the native page so the address bar can slide over it. `ticket` drops stale replies. */
-  windowDrag(phase: "start" | "move" | "end", point?: { x: number; y: number }): void;
-  sidebarGlass(bounds: StageBounds | null): Promise<boolean>;
-  toolbarGlass(visible: boolean): Promise<boolean>;
-  toolbarTone(): Promise<"light" | "dark">;
-  toolbarOverlay(open: boolean, ticket: number): Promise<boolean>;
-  /** macOS window buttons. Hidden only while a flush page would draw through them. */
-  trafficLights(visible: boolean): Promise<boolean>;
-  forwardPagePointer(message: unknown): void;
   onPageCursor(cb: (cursor: string) => void): () => void;
-  sidebarPeek(open: boolean): Promise<boolean>;
   focusShell(): Promise<void>;
   preview(pageId: string): Promise<string | null>;
   createResultPreview(html: string): Promise<string>;
@@ -307,20 +288,11 @@ const stub: AuxBridge = {
   chooseDownloadFolder: async()=>{throw new Error("Download folders require Aux desktop");},
   downloadsSnapshot: async () => [],
   controlDownload: async () => { throw new Error("Download control requires Aux desktop"); },
-  setStage: async () => true,
   surfaceContentId: async () => null,
   autocomplete: async () => [],
   resolveSearch: async () => { throw new Error("Profile search requires the native browser."); },
   overlay: async () => true,
-  windowDrag: () => {},
-  sidebarGlass: async () => true,
-  toolbarGlass: async () => true,
-  toolbarTone: async () => "dark",
-  toolbarOverlay: async () => true,
-  trafficLights: async () => true,
-  forwardPagePointer: () => {},
   onPageCursor: noop,
-  sidebarPeek: async () => true,
   focusShell: async () => {},
   preview: async () => null,
   createResultPreview: async () => { throw new Error("Interactive previews require Aux desktop."); },
@@ -430,9 +402,7 @@ const w = window as unknown as W;
 
 export const bridge: AuxBridge = w.aux ?? stub;
 export const hostKind = w.__auxMock ? "mock" :
-  w.aux && w.auxHostProof?.host === "chromium-fork" && location.protocol === "chrome:" && location.hostname === "aux" ? "chromium" :
-  w.aux ? "electron" : "preview";
-/** Native pages are hosted by Electron today and Chromium in the candidate. */
-export const inNativeHost = hostKind === "electron" || hostKind === "chromium";
+  w.aux && w.auxHostProof?.host === "chromium-fork" && location.protocol === "chrome:" && location.hostname === "aux" ? "chromium" : "preview";
+export const inNativeHost = hostKind === "chromium";
 /** scripted bridge for visual development and screenshots */
 export const inMock = !!w.__auxMock;

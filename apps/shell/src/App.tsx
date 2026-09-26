@@ -21,11 +21,8 @@ import { isHomeAddress, nativePageId } from "./chrome";
 import { useToolbarReveal } from "./toolbar-reveal";
 import { isTab, tabsInSpace } from "./workspace";
 import { bookmarkWebUrl } from "./bookmark-files";
-import { Sidebar } from "./components/Sidebar";
-import { ChatSidebar } from "./components/ChatSidebar";
 import { Toolbar } from "./components/Toolbar";
 import { Stage } from "./components/Stage";
-import { AgentRail } from "./components/AgentRail";
 import { I } from "./components/icons";
 import { Toasts } from "./components/Toasts";
 import { applyUiFontSize } from "./ui-font-size";
@@ -46,6 +43,9 @@ const HorizontalTabs = deferSurface(async () => { const module = await import(".
 const HttpAuthPrompt = deferSurface(async () => { const module = await import("./components/HttpAuthPrompt"); return {default:module.HttpAuthPrompt}; }, "Sign-in prompt", true, true);
 const VaultOfferBanner = deferSurface(async () => { const module = await import("./components/VaultOfferBanner"); return {default:module.VaultOfferBanner}; }, "Password offer", true, true);
 const FindBar = deferSurface(async () => { const module = await import("./components/FindBar"); return {default:module.FindBar}; }, "Find in page", true, true);
+const Sidebar = deferSurface(async () => { const module = await import("./components/Sidebar"); return {default:module.Sidebar}; }, "Sidebar", true, true);
+const ChatSidebar = deferSurface(async () => { const module = await import("./components/ChatSidebar"); return {default:module.ChatSidebar}; }, "Sidebar", true, true);
+const AgentRail = deferSurface(async () => { const module = await import("./components/AgentRail"); return {default:module.AgentRail}; }, "Assistant", true, true);
 
 /** Only the fields that decide native-view placement — title/favicon churn must not re-render the shell. */
 const placementFields = (page?: PageTarget) => page && { pageId: page.pageId, url: page.url, backend: page.backend, viewStatus: page.viewStatus, navigationError: page.navigationError, showBlankDocument: page.showBlankDocument };
@@ -54,7 +54,7 @@ type Shortcut = { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl
 type StoreState = ReturnType<typeof useStore.getState>;
 
 export function App() {
-  useEffect(() => preloadWhenIdle([Conversation, AnswerPreview, Palette, Downloads, SiteControls, FindBar]), []);
+  useEffect(() => preloadWhenIdle([Conversation, AnswerPreview, Palette, Downloads, SiteControls, FindBar, Sidebar, ChatSidebar, AgentRail]), []);
   useEffect(()=>{
     if(bridge.privateMode)return;
     const changed=(event:StorageEvent)=>{
@@ -465,7 +465,7 @@ export function App() {
             </div>
           </div>
         </div>
-        {!bridge.privateMode && <PaneBoundary label="The assistant"><AgentRail /></PaneBoundary>}
+        {!bridge.privateMode && railOpen && <PaneBoundary label="The assistant"><AgentRail /></PaneBoundary>}
       </div>
       {overlay === "palette" && !bridge.privateMode && <Palette />}
       {(overlay === "history" || overlay === "bookmarks" || overlay === "clear-history") && <Library key={overlay} initialView={overlay === "bookmarks" ? "bookmarks" : "history"} confirmClear={overlay === "clear-history"} />}

@@ -1,4 +1,3 @@
-import { useWindowDrag } from "../use-window-drag";
 import { ChatSessions } from "./ChatSessions";
 import { TabPreview, useSidebarTabPreview } from "./TabPreview";
 import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
@@ -404,7 +403,6 @@ const SidebarChats = memo(function SidebarChats() {
 /* ------------------------------------------------------------------ */
 
 export const Sidebar = memo(function Sidebar() {
-  const windowDrag = useWindowDrag();
   const key = useShortcutLabels();
   const sidebarPref = useStore((s) => s.sidebar);
   const sections = useStore(s => s.sidebarSections);
@@ -776,7 +774,6 @@ export const Sidebar = memo(function Sidebar() {
     <>
       <aside
         ref={floatingPanel}
-        {...windowDrag}
         className={`sidebar ${sidebar === "expanded" ? "expanded" : "fully-hidden"}${peek ? " peek" : ""}`}
         inert={!sidebarVisible ? true : undefined}
         aria-hidden={!sidebarVisible}
