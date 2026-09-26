@@ -1,5 +1,6 @@
 import { GenerateResultParamsSchema, GeneratedResultSpecSchema, type GeneratedResult, type GeneratedResultSpec } from "@aux/contracts";
 import { HostMethods } from "@aux/contracts/host-methods";
+import { createMockHost } from "../host/mock.generated";
 import { workFixtures } from "./work";
 import { connectorFixtures } from "./connectors";
 import { steppedZoomLevel } from "@aux/contracts/page-zoom";
@@ -22,7 +23,7 @@ import { textContextShares } from "@aux/contracts/text-context";
  *   ?scenario=generated     versioned office or chart result (&generatedKind=csv|xlsx|docx|pptx|chart)
  *   ?scenario=many          45 tabs
  *   ?scenario=disconnected  runtime unreachable → degraded banner
- *   ?scenario=connectors    reviewed Calendar, GitHub and MCP settings
+ *   ?scenario=connectors    reviewed Calendar and MCP settings
  *   &theme=dark|light  &layout=horizontal|vertical  &sidebar=expanded|rail
  *   &live=1 (stream new steps)
  */
@@ -913,7 +914,9 @@ export function installMockBridge(q: URLSearchParams) {
     })();
   }
 
+  const { emitEvent: _emitHostEvent, ...hostDefaults } = createMockHost();
   const bridge: AuxBridge = {
+    ...hostDefaults,
     browserProfiles:async()=>[],
     createBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
     renameBrowserProfile:async()=>[],
