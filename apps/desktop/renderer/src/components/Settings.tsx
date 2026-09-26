@@ -32,6 +32,7 @@ import { MigrationImport } from "./MigrationImport";
 import { ReviewedConnectors } from "./ReviewedConnectors";
 import { searchSettings, type SettingsDestination } from "../settings-search";
 import { moveListFocus } from "../keyboard-list";
+import { useFeature } from "../use-feature";
 
 /** what settings.get returns in place of the real key */
 const KEY_MASK = "••••••••";
@@ -96,9 +97,18 @@ const categoryDescriptions: Record<string, string> = {
 type ConnectionTab = "Models" | "Services" | "Agents" | "Vault" | "Plugins";
 const connectionCategories = ["Models", "Connections", "External agents", "Vault"];
 export function Settings() {
+  const memoryAvailable = useFeature("memory");
+  const permissionsAvailable = useFeature("sitePermissions");
+  const vaultAvailable = useFeature("vault");
+  const extensionsAvailable = useFeature("extensions");
   const [initialCategory] = useState(() => useStore.getState().settingsCategory);
-  const [category, setCategory] = useState(connectionCategories.includes(initialCategory) ? "Connections" : initialCategory);
-  const [connectionTab, setConnectionTab] = useState<ConnectionTab>(initialCategory === "External agents" ? "Agents" : initialCategory === "Connections" ? "Services" : initialCategory === "Vault" ? "Vault" : "Models");
+  const [category, setCategory] = useState(() =>
+    (initialCategory === "Memory" && !memoryAvailable) ||
+    (initialCategory === "Site permissions" && !permissionsAvailable) ||
+    (initialCategory === "Extensions" && !extensionsAvailable) ||
+    (initialCategory === "Vault" && !vaultAvailable)
+      ? "General" : connectionCategories.includes(initialCategory) ? "Connections" : initialCategory);
+  const [connectionTab, setConnectionTab] = useState<ConnectionTab>(initialCategory === "External agents" ? "Agents" : initialCategory === "Connections" ? "Services" : initialCategory === "Vault" && vaultAvailable ? "Vault" : "Models");
   const [subview, setSubview] = useState<string | null>(null);
   const subviewOrigin = useRef<HTMLButtonElement | null>(null);
   function openCategory(name: string) {
@@ -108,7 +118,11 @@ export function Settings() {
   }
   const [query, setQuery] = useState("");
   const searching = !!query.trim();
-  const results = searchSettings(query);
+  const results = searchSettings(query).filter(result =>
+    (memoryAvailable || result.category !== "Memory") &&
+    (permissionsAvailable || result.category !== "Site permissions") &&
+    (vaultAvailable || result.category !== "Vault") &&
+    (extensionsAvailable || result.category !== "Extensions"));
   const visible = (name: string) => !searching && (connectionCategories.includes(name)
     ? category === "Connections" && connectionTab === (name === "Models" ? "Models" : name === "External agents" ? "Agents" : name === "Vault" ? "Vault" : "Services")
     : category === name && !subview);
@@ -335,7 +349,7 @@ export function Settings() {
           }
         }}/>{query && <button className="icon-btn" aria-label="Clear settings search" onClick={() => { setQuery(""); dialogRef.current?.querySelector<HTMLInputElement>('[aria-label="Search settings"]')?.focus(); }}>{I.close}</button>}</div>
         <span>Preferences</span>
-        <div className="settings-category-list">{["General", "Appearance", "Memory", "Connections", "Site permissions", "Agent permissions", "Extensions"].map(name => <button key={name} data-category={name} aria-current={!searching && category === name ? "page" : undefined} onClick={() => { openCategory(name); setQuery(""); if (scrollRef.current) scrollRef.current.scrollTop = 0; }}><span className="settings-category-icon">{({ General: I.gear, Appearance: I.sun, Memory: I.chats, Models: I.model, Connections:I.globe, "Site permissions": I.globe, "Agent permissions": I.lock, "External agents": I.chats, Extensions: I.extension } as Record<string, React.ReactNode>)[name]}</span>{name}</button>)}</div>
+        <div className="settings-category-list">{["General", "Appearance", ...(memoryAvailable ? ["Memory"] : []), "Connections", ...(permissionsAvailable ? ["Site permissions"] : []), "Agent permissions", ...(extensionsAvailable ? ["Extensions"] : [])].map(name => <button key={name} data-category={name} aria-current={!searching && category === name ? "page" : undefined} onClick={() => { openCategory(name); setQuery(""); if (scrollRef.current) scrollRef.current.scrollTop = 0; }}><span className="settings-category-icon">{({ General: I.gear, Appearance: I.sun, Memory: I.chats, Models: I.model, Connections:I.globe, "Site permissions": I.globe, "Agent permissions": I.lock, "External agents": I.chats, Extensions: I.extension } as Record<string, React.ReactNode>)[name]}</span>{name}</button>)}</div>
       </nav>
       <div className="settings-content">
         <div className="drawer-head">
@@ -347,7 +361,7 @@ export function Settings() {
         </div>
 
         {!searching && category === "Connections" && <div className="settings-connection-tabs" role="tablist" aria-label="Connection types" onKeyDown={event => moveListFocus(event, '[role="tab"]', false)}>
-          {(["Models", "Services", "Vault", "Agents", "Plugins"] as const).map(tab => <button key={tab} role="tab" id={`connection-tab-${tab}`} aria-controls={`connection-panel-${tab}`} aria-selected={connectionTab === tab} tabIndex={connectionTab === tab ? 0 : -1} onClick={() => setConnectionTab(tab)}>{tab}</button>)}
+          {(["Models", "Services", ...(vaultAvailable ? ["Vault"] as const : []), "Agents", "Plugins"] as const).map(tab => <button key={tab} role="tab" id={`connection-tab-${tab}`} aria-controls={`connection-panel-${tab}`} aria-selected={connectionTab === tab} tabIndex={connectionTab === tab ? 0 : -1} onClick={() => setConnectionTab(tab)}>{tab}</button>)}
         </div>}
         <div role="group" className="settings-scroll" ref={scrollRef} tabIndex={0} aria-label={searching ? "Settings search results" : `${category} settings`}>
         {searching && <div className="settings-search-results">
@@ -360,7 +374,7 @@ export function Settings() {
         </div>}
 
         {visible("Memory") && <section tabIndex={-1}><MemorySettings /></section>}
-        <section tabIndex={-1} hidden={!visible("Site permissions")}><SitePermissions query="" /></section>
+        {permissionsAvailable && <section tabIndex={-1} hidden={!visible("Site permissions")}><SitePermissions query="" /></section>}
         <section id="connection-panel-Models" role="tabpanel" aria-labelledby="connection-tab-Models" hidden={!visible("Models")}><div className="drawer-section">AI model</div>
         <output className="field" data-block>{probe?.ok ? `${providerNames[provider]} is ready.` : localCompatible ? "Local model endpoint configured. Save a model and test the connection before your first run." : hasKey ? `${providerNames[provider]} key configured. Save a model and test the connection before your first run.` : "Agent setup needed. Browsing, saved tasks, and evidence review are available without a model."}</output>
         <Field label="Model provider" hint="Switching providers changes where task context and screenshots are sent. Each provider keeps its own key and model choices; there is no automatic fallback to another provider.">
@@ -461,10 +475,10 @@ export function Settings() {
         <Field label="Sentry token" hint={String(settings.sentryCredentialError??(settings.sentryCredential===KEY_MASK?'Saved with OS encryption.':'Use a token with organization, project, and event read access.'))}><div className="row"><input className="grow" type="password" aria-label="Sentry token" autoComplete="off" value={sentryToken} placeholder={settings.sentryCredential===KEY_MASK?'Token saved — enter a new token to replace':'Enter a Sentry token'} onChange={event=>{setSentryToken(event.target.value);setSentryError('');}}/><button className="btn sm" disabled={sentryBusy||!sentryToken.trim()} onClick={()=>{setSentryBusy(true);void set({sentryCredential:sentryToken.trim()}).then(ok=>{if(ok)setSentryToken('');}).finally(()=>setSentryBusy(false));}}>Save token</button>{settings.sentryCredential===KEY_MASK&&<button className="btn sm" disabled={sentryBusy} onClick={()=>{setSentryBusy(true);void set({sentryCredential:''}).then(ok=>{if(ok){setSentryProjects([]);toast('Sentry disconnected');}}).finally(()=>setSentryBusy(false));}}>Disconnect</button>}</div></Field>
         <div className="field"><button className="btn sm" disabled={sentryBusy||settings.sentryCredential!==KEY_MASK||!!sentryToken.trim()} onClick={()=>{setSentryBusy(true);setSentryError('');void call('sentry.probe',{}).then(refresh).catch(error=>setSentryError(error instanceof Error?error.message:String(error))).finally(()=>setSentryBusy(false));}}>{sentryBusy?'Checking…':'Check connection'}</button>{sentryError&&<span className="hint err" role="alert">{sentryError}</span>}</div>
         {settings.sentryCredential===KEY_MASK&&!!settings.sentryProbe&&<><Field label="Sentry organization"><select aria-label="Sentry organization" value={String(settings.sentryOrganization??'')} onChange={event=>{const value=event.target.value;void set({sentryOrganization:value,sentryProject:''}).then(ok=>{if(ok)void loadSentryProjects(value);});}}><option value="">Select organization</option>{(settings.sentryProbe as SentryProbe).organizations.map(org=><option key={org.id} value={org.slug}>{org.name}</option>)}</select></Field>{settings.sentryOrganization&&<Field label="Sentry project" hint="The selected project is used for task-scoped unresolved issue health."><div className="row"><select className="grow" aria-label="Sentry project" value={String(settings.sentryProject??'')} onFocus={()=>{if(!visibleSentryProjects.length&&!sentryBusy)void loadSentryProjects();}} onChange={event=>void set({sentryProject:event.target.value})}><option value="">Select project</option>{visibleSentryProjects.map(project=><option key={project.id} value={project.slug}>{project.name}{project.platform?` · ${project.platform}`:''}</option>)}</select><button className="btn sm" disabled={sentryBusy} onClick={()=>void loadSentryProjects()}>Refresh</button></div></Field>}</>}
-        </section><section tabIndex={-1} id="connection-panel-Vault" role="tabpanel" aria-labelledby="connection-tab-Vault" hidden={!visible("Vault")}><VaultSettings /></section>
+        </section>{vaultAvailable && <section tabIndex={-1} id="connection-panel-Vault" role="tabpanel" aria-labelledby="connection-tab-Vault" hidden={!visible("Vault")}><VaultSettings /></section>}
         <section tabIndex={-1} id="connection-panel-Agents" role="tabpanel" aria-labelledby="connection-tab-Agents" hidden={!visible("External agents")}><ExternalAgents /></section>
         <section tabIndex={-1} id="connection-panel-Plugins" role="tabpanel" aria-labelledby="connection-tab-Plugins" hidden={!(category === "Connections" && connectionTab === "Plugins")}><PluginsPanel /></section>
-        <section tabIndex={-1} hidden={!visible("Extensions")}><Extensions /></section>
+        {extensionsAvailable && <section tabIndex={-1} hidden={!visible("Extensions")}><Extensions /></section>}
 
         <section className="appearance-preferences" hidden={!visible("Appearance")}><div className="drawer-section">Appearance</div>
         <Field compact label="Theme">

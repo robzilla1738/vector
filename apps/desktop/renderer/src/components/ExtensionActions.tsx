@@ -3,16 +3,18 @@ import { bridge, hostKind, type BrowserExtension } from "../bridge";
 import { useStore } from "../store";
 import { I } from "./icons";
 import { NativeMenu } from "./NativeDialog";
+import { useFeature } from "../use-feature";
 
 /** User-initiated extension actions are dispatched through Chromium's toolbar
  * model, which owns popup permissions and the extension process. */
 export function ExtensionActions() {
+  const available = useFeature("extensions");
   const anchor = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<BrowserExtension[]>([]);
   const [error, setError] = useState("");
   const close = useCallback(() => setOpen(false), []);
-  if (hostKind !== "chromium" || bridge.privateMode) return null;
+  if (hostKind !== "chromium" || bridge.privateMode || !available) return null;
 
   async function show() {
     setError("");

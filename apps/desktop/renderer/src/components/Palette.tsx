@@ -13,6 +13,7 @@ import { canSplitPage, hostOf, tabLabel } from "../workspace";
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 import { openLocalFile } from "../open-local-file";
+import { useFeature } from "../use-feature";
 
 interface Cmd {
   id: string;
@@ -46,6 +47,11 @@ const SECTION: Record<Cmd["section"], string> = {
 
 /** ⌘K — commands, tabs, sets, bookmarks, and the same intent routing as the command bar. */
 export function Palette() {
+  const canTranslate = useFeature("aiTranslate");
+  const canVault = useFeature("vault");
+  const canSplit = useFeature("splitView");
+  const canSpaces = useFeature("spaces");
+  const canSubagents = useFeature("subagents");
   const setOverlay = useStore((s) => s.setOverlay);
   const setMode = useStore((s) => s.setMode);
   const pages = useStore((s) => s.pages);
@@ -238,7 +244,7 @@ export function Palette() {
         if (!activePage) return;
         await bridge.autofill(activePage.pageId);
       } }] : []),
-      ...(activePage?.backend === "aux" ? [
+      ...(canTranslate && activePage?.backend === "aux" ? [
         { id: "translate", section: "window" as const, t: "Translate this page", d: "Sends visible page text to your model provider", icon: I.globe, run: async () => {
           if (!activePage || !activePage.url.startsWith("http")) return;
           useStore.getState().setTranslationPending(activePage.pageId);
@@ -250,7 +256,7 @@ export function Palette() {
           await bridge.showOriginal(activePage.pageId);
         } }] : []),
       ] : []),
-      ...(activePage?.backend === "aux" && !bridge.privateMode ? [{ id: "vault-fill", section: "window" as const, t: "Fill sign-in…", d: "Fill this login form with a vault credential", icon: I.lock, keep: true, run: async () => {
+      ...(canVault && activePage?.backend === "aux" && !bridge.privateMode ? [{ id: "vault-fill", section: "window" as const, t: "Fill sign-in…", d: "Fill this login form with a vault credential", icon: I.lock, keep: true, run: async () => {
         if (!activePage || !activePage.url.startsWith("http")) return;
         let origin: string;
         try { origin = new URL(activePage.url).origin; } catch { return; }
@@ -258,8 +264,8 @@ export function Palette() {
         setQ("");
       } }] : []),
       { id: "pin", section: "window", t: "Pin this site to the space", icon: I.pin, run: async () => { if (activePage && activePage.url.startsWith("http")) useStore.getState().togglePin({ url: activePage.url, title: activePage.title || hostOf(activePage.url) }); } },
-      ...(canSplitPage(activePage) ? [{ id: "split", section: "window" as const, t: "Split view with page…", d: "two pages side by side", icon: I.split, keep: true, run: async () => { setSplitPick(true); setQ(""); } }] : []),
-      ...(splitPageId ? [{ id: "unsplit", section: "window" as const, t: "Close split view", icon: I.split, run: () => useStore.getState().setSplitPage(null) }] : []),
+      ...(canSplit && canSplitPage(activePage) ? [{ id: "split", section: "window" as const, t: "Split view with page…", d: "two pages side by side", icon: I.split, keep: true, run: async () => { setSplitPick(true); setQ(""); } }] : []),
+      ...(canSplit && splitPageId ? [{ id: "unsplit", section: "window" as const, t: "Close split view", icon: I.split, run: () => useStore.getState().setSplitPage(null) }] : []),
       { id: "open", section: "window", t: "Open file…", k: key("open-file"), icon: I.folder, run: openLocalFile },
       ...(activePage?.backend === "aux" ? [{ id: "pdf", section: "window" as const, t: "Save page as PDF…", k: key("save-pdf"), icon: I.downloadSm, run: async () => savePagePdf(activePageId) }] : []),
       { id: "print", section: "window", t: "Print…", k: key("print"), icon: I.print, run: async () => printCurrentPage(activePageId) },
@@ -273,11 +279,11 @@ export function Palette() {
       { id: "detach", section: "chrome", t: "Detach Chrome", icon: I.unplug, run: async () => { await call("chrome.detach"); toast("Chrome detached"); } },
       ...(activePage?.backend === "chrome" ? [{ id: "live", section: "chrome" as const, t: "Open live in Chrome", icon: I.external, run: async () => { await call("pages.openLive", { pageId: activePage.pageId }); } }] : []),
     ];
-    for (const s of layout.spaces) {
+    for (const s of canSpaces ? layout.spaces : []) {
       if (s.id !== layout.activeSpaceId) w.push({ id: `space-${s.id}`, section: "spaces", t: `Switch to ${s.name}`, icon: <span className="space-dot" data-space={s.color} />, run: () => useStore.getState().switchSpace(s.id) });
     }
-    w.push({ id: "space-new", section: "spaces", t: "New space", icon: I.plusSm, run: () => useStore.getState().addSpace(`Space ${layout.spaces.length + 1}`) });
-    for (const s of sets) w.push({ id: `set-${s.setId}`, section: "sets", t: s.name, d: `${s.memberIds.length} members`, icon: I.layersSm, run: async () => { await refreshResults(s.setId); setMode("table"); } });
+    if (canSpaces) w.push({ id: "space-new", section: "spaces", t: "New space", icon: I.plusSm, run: () => useStore.getState().addSpace(`Space ${layout.spaces.length + 1}`) });
+    for (const s of canSubagents ? sets : []) w.push({ id: `set-${s.setId}`, section: "sets", t: s.name, d: `${s.memberIds.length} members`, icon: I.layersSm, run: async () => { await refreshResults(s.setId); setMode("table"); } });
     for (const b of commandOnly ? [] : term ? bookmarks : bookmarks.slice(0, 30)) w.push({ id: `bm-${b.url}`, section: "bookmarks", t: b.title || b.url, d: hostOf(b.url), icon: <FavIcon url={b.url} size="sm" />, run: () => newTab(b.url) });
 
     const saved:Cmd[]=[];
@@ -312,7 +318,7 @@ export function Palette() {
     const exact = rest.filter(c => [c.t.replace(/[…]+$/g, ""), ...(c.aliases ?? [])].some(label => label.toLocaleLowerCase() === term.toLocaleLowerCase()));
     const combined=[...exact,...out,...saved,...rest.filter(c=>!exact.includes(c))];
     return combined.filter(command=>filter==="all"||commandOnly||(filter==="tabs"?command.section==="tabs":filter==="work"?["chats","tasks","skills","memory","results"].includes(command.section):["bookmarks","history"].includes(command.section)));
-  }, [q, filter, matches, prepared, drafts, runs, pages, sets, bookmarks, activePageId, splitPageId, railOpen, chromeConnected, chromeTabs, vaultItems, splitPick, activePage, lastClosed, layout, hasPage, settings.searchEngine, key, setMode, setOverlay, refreshResults, startRun, newTab, activate]);
+  }, [q, filter, matches, prepared, drafts, runs, pages, sets, bookmarks, activePageId, splitPageId, railOpen, chromeConnected, chromeTabs, vaultItems, splitPick, activePage, lastClosed, layout, hasPage, settings.searchEngine, key, setMode, setOverlay, refreshResults, startRun, newTab, activate, canTranslate, canVault, canSplit, canSpaces, canSubagents]);
 
   useEffect(() => setSel(0), [q, filter, chromeTabs, vaultItems, splitPick]);
   const previousCommands=useRef<string[]>([]);
