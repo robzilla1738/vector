@@ -6,7 +6,7 @@ Updated September 26, 2026. This is the runbook for the **stable Chromium 154 Au
 
 | Item | Current location / condition |
 | --- | --- |
-| Source | `/Users/rcourson/aux-chromium-stable/chromium/src` at pinned Chromium `154.0.8037.58` plus Aux patches 0001–0051 |
+| Source | `/Users/rcourson/aux-chromium-stable/chromium/src` at pinned Chromium `154.0.8037.58` plus Aux patches 0001–0052 |
 | App | `out/AuxDev/Aux.app`, component development build with bundled Aux Runtime |
 | Patch source of truth | [`chromium/patches/series`](../../chromium/patches/series) and its ordered patch files in this repository |
 | Shell assets | [`chromium/shell-assets`](../../chromium/shell-assets), staged into `chrome/browser/resources/aux/assets` |
@@ -57,7 +57,7 @@ For a renderer batch, run the focused tests, `pnpm typecheck`, `pnpm lint`, `pnp
 
 ## Current next work and constraints
 
-The next product batch is S7 downloads (`downloadFolder`, `chooseDownloadFolder`, `downloadsSnapshot`, `controlDownload`, `retryDownload`) as patch 0052, then one AuxDev build, `node scripts/check-bridge-coverage.mjs`, and one real downloads journey. Coverage was 63 missing members after patch 0051. Do not mark S7 done before that count is zero. Do not copy this repository's generated host-method headers onto the Chromium checkout.
+S7 downloads (`downloadFolder`, `chooseDownloadFolder`, `downloadsSnapshot`, `controlDownload`, `retryDownload`) are recorded in patch 0052 and compile in AuxDev. Coverage is 58 missing members after this batch. The disposable native download journey passed snapshot, cancel, retry, folder selection, and default restoration with Codex-driven UI actions; the harness is not yet unattended. Implement the remaining S7 native services in focused batches, each with a live journey. Do not mark S7 done before the count is zero. Patch 0052 records the generated host-validator refresh; do not overwrite the checkout with `stage-host-bindings` without recording its changes in the ordered series.
 
 Native Quick Ask and the Profiles management screen remain gated off. Several feature families still need native bridge services and live journeys; extension, passkey, import, agent, both-layout accessibility, and glass checks are incomplete. The owner confirmed the corrected right-only assistant corners and selected the expanded left panel's blur as the reference. Keep both Aside layouts and the shared liquid-glass material while integrating.
 

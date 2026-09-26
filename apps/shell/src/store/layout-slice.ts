@@ -1,6 +1,7 @@
 import { splitRatio } from "@aux/contracts/split-layout";
 import { normalizeTabName } from "@aux/contracts/tab-name-rule";
 import { bridge } from "../bridge";
+import { featureStage } from "../use-feature";
 import { errToast, toast } from "../store";
 import { assignFolder, assignSpace, canSplitPage, createFolder, createSpace, reconcileSpaces, rememberActiveTab, removeFolder, removeSpace, renameFolder, renameSpace, reorderGroup, reorderInSpace, reorderPin, setActiveSpace, splitForPage, tabsInSpace, toggleFolder, togglePin, updateFolder } from "../workspace";
 import { initialLayout, persistLayout } from "./persistence";
@@ -71,7 +72,7 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
       ? tabsInSpace(layout, state.pages, layout.activeSpaceId)[0]?.pageId ?? null : state.activePageId;
     persistLayout(layout);
     set({ layout, activePageId, splitPageId: splitForPage(layout, state.pages, activePageId) });
-    if (!bridge.privateMode) for (const page of targets) void bridge.bindTabSpace(page.pageId, spaceId).catch(errToast);
+    if (!bridge.privateMode && featureStage("spaces") === "on") for (const page of targets) void bridge.bindTabSpace(page.pageId, spaceId).catch(errToast);
     if (activePageId && activePageId !== state.activePageId) void sendTabCommand(get, { kind: "activate", pageId: activePageId }).catch(errToast);
     if (beforeId !== undefined) syncCatalogOrder(layout.order, state.pages, state.catalogVersion);
   },
@@ -101,7 +102,7 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
       if (activePageId && activePageId !== s.activePageId) void sendTabCommand(get, { kind: "activate", pageId: activePageId }).catch(errToast);
       return { layout, activePageId, splitPageId: splitForPage(layout, s.pages, activePageId) };
     });
-    if (!bridge.privateMode) void bridge.bindTabSpace(pageId, spaceId).catch(errToast);
+    if (!bridge.privateMode && featureStage("spaces") === "on") void bridge.bindTabSpace(pageId, spaceId).catch(errToast);
   },
   syncBrowserSpaces: (spaces) => {
     const previous = get().layout.activeSpaceId;

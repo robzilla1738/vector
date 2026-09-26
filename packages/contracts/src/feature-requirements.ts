@@ -6,10 +6,17 @@ import type { MethodName } from "./api.js";
 export type AuxFeatureJourneyId = `feature:${AuxFeature}`;
 export type AuxFeatureMethodId = HostMethodId | MethodName;
 
+// Window appearance is needed by the base shell before the full layouts
+// journey qualifies. Keep it in that journey's native capability check.
+const sharedRequirements: Partial<Record<AuxFeature, readonly AuxFeatureMethodId[]>> = {
+  layouts: ["setAppearance"],
+};
+
 /** Server-side qualification inputs; the renderer receives only baked stages. */
 export const AUX_FEATURE_REQUIREMENTS = Object.fromEntries(
   (Object.keys(AUX_FEATURES) as AuxFeature[]).map(feature => [feature, {
     requires: [
+      ...(sharedRequirements[feature] ?? []),
       ...(Object.entries(HostMethods) as [HostMethodId, (typeof HostMethods)[HostMethodId]][])
         .filter(([, method]) => method.feature === feature).map(([id]) => id),
       ...(Object.entries(RuntimeMethodPolicy) as [MethodName, (typeof RuntimeMethodPolicy)[MethodName]][])

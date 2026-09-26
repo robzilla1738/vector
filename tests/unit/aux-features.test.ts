@@ -27,6 +27,9 @@ describe("AuxFeature staging", () => {
     expect(deriveAuxFeatureStages(methods, {}, "a").spaces).toBe("preview");
     expect(deriveAuxFeatureStages(methods, { [journey]: "b" }, "a").spaces).toBe("preview");
     expect(deriveAuxFeatureStages(methods, { [journey]: "a" }, "a").spaces).toBe("on");
+    expect(AUX_FEATURE_REQUIREMENTS.layouts.requires).toContain("setAppearance");
+    expect(deriveAuxFeatureStages([], {}, "a").layouts).toBe("off");
+    expect(deriveAuxFeatureStages(["setAppearance"], {}, "a").layouts).toBe("preview");
   });
 
   it("returns a typed registry error for disabled runtime and bridge features", () => {

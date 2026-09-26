@@ -3,12 +3,13 @@ import type { ClosedTab } from "../closed-tabs";
 import { createEntryWriter } from "../conversation-drafts";
 import { toast } from "../store";
 import { type Layout, emptyLayout, parseLayout } from "../workspace";
+import { featureStage } from "../use-feature";
 import type { OrganizationPersistence } from "./organization-persistence";
 
 export const LAYOUT_KEY = `aux.layout.v1:${bridge.windowId}`;
 export const CLOSED_TABS_KEY = `aux.closed-tabs.v1:${bridge.windowId}`;
 export const storage = typeof localStorage !== "undefined" ? localStorage : null;
-const ephemeralOrganization = bridge.privateMode || bridge.quickAskMode;
+const ephemeralOrganization = bridge.privateMode || bridge.quickAskMode || featureStage("spaces") !== "on";
 export let layoutTimer: ReturnType<typeof setTimeout> | undefined;
 export const persistClosedTabs = (tabs: ClosedTab[]) => {
   if (bridge.privateMode) return;

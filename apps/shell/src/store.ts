@@ -12,6 +12,7 @@ import { call, eventStream, lastEventSeq, noteEventSeq, noteStream, patchPage, s
 import { createTabsSlice } from "./store/tabs-slice";
 import type { Workspace } from "./store/types";
 import { createUiSlice } from "./store/ui-slice";
+import { featureStage } from "./use-feature";
 
 export type { CommandSlot, Mode, Overlay, RailView, RunModelStats, SidebarMode } from "./store/types";
 export { isLive, LIVE_RUN } from "./store/types";
@@ -33,7 +34,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
   ...createRunsSlice(set, get, api),
 
   refresh: async () => {
-    if (!bridge.privateMode && !bridge.quickAskMode && !organizationHydrated) {
+    if (!bridge.privateMode && !bridge.quickAskMode && featureStage("spaces") === "on" && !organizationHydrated) {
       try {
         const layout = await loadOrganizationLayout();
         if (!organizationHydrated) { set({ layout }); organizationHydrated = true; }
@@ -50,7 +51,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
         call("downloads.list").catch(() => [] as Download[]),
         call("programs.list").catch(() => [] as SavedProgram[]),
       ]);
-      if (!bridge.privateMode && !bridge.quickAskMode) {
+      if (!bridge.privateMode && !bridge.quickAskMode && featureStage("spaces") === "on") {
         const layout = get().layout;
         const legacySpaces = layout.spaces.filter(space => !space.workspaceId);
         const spaces = await call("spaces.import", { spaces: legacySpaces.map(space => ({
@@ -108,6 +109,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
       const message = error instanceof Error ? error.message : String(error);
       if (message !== lastRefreshError) {
         console.error("Aux workspace refresh failed:", error);
+        get().toast(`Couldn’t reconnect to the Aux runtime: ${message}`, "error");
         lastRefreshError = message;
       }
       set({ connected: false });

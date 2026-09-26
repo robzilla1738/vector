@@ -24,7 +24,7 @@ const option = name => {
   return index < 0 ? undefined : process.argv[index + 1];
 };
 if (process.argv.includes("--list")) {
-  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only]" }, null, 2));
+  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --downloads]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state" }, null, 2));
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native Aux.app journeys require macOS.");
@@ -44,8 +44,9 @@ const submitConfirmation = process.argv.includes("--submit-confirmation");
 const webmcpJourney = process.argv.includes("--webmcp");
 const paintLease = process.argv.includes("--paint-lease");
 const shellEvents = process.argv.includes("--shell-events");
+const downloadsJourney = process.argv.includes("--downloads");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -65,6 +66,7 @@ let origin;
 let clicks = 0;
 let posts = 0;
 let webmcpWrites = 0;
+let downloadRequests = 0;
 let rpcToken;
 let rpcPort;
 let lastRuntimeStatus;
@@ -129,6 +131,23 @@ function changedFraction(aPath, bPath, fraction = 0.45) {
 
 try {
   fixture = createServer((request, response) => {
+    if (downloadsJourney && request.url === "/download-file") {
+      downloadRequests++;
+      response.writeHead(200, { "content-type": "application/octet-stream", "content-disposition": "attachment; filename=aux-download-fixture.bin", "cache-control": "no-store" });
+      const chunk = Buffer.alloc(64 * 1024, 65);
+      let count = 0;
+      const timer = setInterval(() => {
+        if (response.destroyed || ++count > 600) { clearInterval(timer); if (!response.destroyed) response.end(); return; }
+        response.write(chunk);
+      }, 100);
+      response.on("close", () => clearInterval(timer));
+      return;
+    }
+    if (downloadsJourney && request.url === "/download-page") {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+      response.end('<!doctype html><title>Download fixture</title><script>setTimeout(() => { location.href = "/download-file" }, 500)</script>');
+      return;
+    }
     if (shellEvents && request.url === "/slow") {
       setTimeout(() => {
         if (response.writableEnded || response.destroyed) return;
@@ -231,6 +250,41 @@ else {
     const plainFrames = Number(plainText.match(/plain frames (\d+)/)?.[1] ?? 0);
     record("background agent tab frame count", { agentFrames, plainFrames, viewStatus: agentRow?.viewStatus });
     assert.ok(agentFrames >= 15, `Background agent tab produced ${agentFrames} frames; plain background tab produced ${plainFrames}`);
+    report.passed = true;
+  } else if (downloadsJourney) {
+    if (rpcOnly) throw new Error("Downloads need the native accessibility tree.");
+    await until("a visible Aux browser window", () => {
+      try { return JSON.parse(native("window")); } catch { return null; }
+    });
+    await rpc("pages.open", { url: `${origin}/download-page`, activate: true });
+    await until("fixture download request", () => downloadRequests === 1);
+    const window = JSON.parse(native("window"));
+    console.log("Open Downloads with Command-Shift-J in the disposable Aux window.");
+    try {
+      await until("Downloads panel", () => native("has-name", "Search downloads") === "true", 120_000);
+    } catch (error) {
+      capture(window.id, "downloads-panel-stuck");
+      throw new Error(`${error.message}; names: ${native("names")}`);
+    }
+    capture(window.id, "downloads-panel-open");
+    assert.equal(native("has-name", "Couldn’t refresh downloads"), "false");
+    assert.equal(native("has-name", "layouts is preview"), "false", "Base appearance must not call a gated layout method");
+    await until("download row and native controls", () =>
+      native("has-text", "aux-download-fixture.bin") === "true" && native("has-button", "Cancel") === "true");
+    console.log("Cancel the fixture download in the Downloads panel.");
+    await until("cancelled download", () => native("has-button", "Retry") === "true", 120_000);
+    console.log("Retry the cancelled fixture download in the Downloads panel.");
+    await until("retry request", () => downloadRequests === 2, 120_000);
+    record("native download appears, cancels, and retries from its saved URL", { downloadRequests });
+    const chosenFolder = join(disposable, "download-target");
+    mkdirSync(chosenFolder);
+    console.log("Open Save location, then choose the disposable folder:", chosenFolder);
+    await until("default download location", () => native("has-name", "Save to") === "true", 120_000);
+    await until("custom download location", () => native("has-name", chosenFolder) === "true", 120_000);
+    assert.equal(native("has-button", "Use default"), "true");
+    console.log("Restore the default download location.");
+    await until("default download location restored", () => native("has-button", "Use default") === "false", 120_000);
+    record("native download folder picker saves a disposable folder and restores the default", { chosenFolder: "disposable/download-target" });
     report.passed = true;
   } else if (shellEvents) {
     if (rpcOnly) throw new Error("Shell loading events need the native accessibility tree.");

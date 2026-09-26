@@ -2211,7 +2211,7 @@ constexpr MethodInfo kMethods[] = {
   {MethodId::kAddFilterSource, "addFilterSource", "browser", "contentBlocking", "aux-webui", true},
   {MethodId::kRemoveFilterSource, "removeFilterSource", "browser", "contentBlocking", "aux-webui", true},
   {MethodId::kSetFilterSourceEnabled, "setFilterSourceEnabled", "browser", "contentBlocking", "aux-webui", true},
-  {MethodId::kSetAppearance, "setAppearance", "browser", "layouts", "aux-webui", true},
+  {MethodId::kSetAppearance, "setAppearance", "browser", "core", "aux-webui", true},
   {MethodId::kSetShortcuts, "setShortcuts", "browser", "core", "aux-webui", true},
   {MethodId::kExtensions, "extensions", "browser", "extensions", "aux-webui", true},
   {MethodId::kInstallStoreExtension, "installStoreExtension", "browser", "extensions", "aux-webui", true},

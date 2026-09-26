@@ -144,7 +144,7 @@ export const HostMethods = {
   addFilterSource: shell("contentBlocking", z.tuple([str, str, z.enum(["hosts", "cookie_banner"]).optional()]), z.array(filterSource)),
   removeFilterSource: shell("contentBlocking", z.tuple([str]), z.array(filterSource)),
   setFilterSourceEnabled: shell("contentBlocking", z.tuple([str, bool]), z.array(filterSource)),
-  setAppearance: shell("layouts", z.tuple([z.enum(["system", "dark", "light"]), bool.optional(), bool.optional(),
+  setAppearance: shell("core", z.tuple([z.enum(["system", "dark", "light"]), bool.optional(), bool.optional(),
     z.enum(["liquid-glass", "titlebar", "sidebar", "under-window"]).optional()]), bool),
   setShortcuts: shell("core", z.tuple([z.array(z.object({
     commandId: str.max(64), key: str.min(1).max(32), meta: bool, ctrl: bool,
