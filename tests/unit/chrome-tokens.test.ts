@@ -30,7 +30,7 @@ describe("shipped stylesheet — native macOS chrome", () => {
   it("defines surface, ink, accent, and agent tokens in both appearances", () => {
     for (const theme of ["dark", "light"] as const) {
       const b = block(theme);
-      for (const t of ["--bg-0", "--ink-0", "--accent", "--agent", "--engine", "--ok", "--warn", "--err", "--wait", "--diff-add", "--find-match", "--ring"]) expect(b, `${theme} ${t}`).toMatch(new RegExp(`${t}\\s*:`));
+      for (const t of ["--bg-0", "--ink-0", "--accent", "--agent", "--ok", "--warn", "--err", "--wait", "--diff-add", "--find-match", "--ring"]) expect(b, `${theme} ${t}`).toMatch(new RegExp(`${t}\\s*:`));
     }
     expect(tokens).toMatch(/--surface-panel:\s*var\(--bg-1\)/);
     expect(styles).toContain(".app.native-host .main-col.has-page { --page-shell-background: transparent; --stage-bg: transparent; }");

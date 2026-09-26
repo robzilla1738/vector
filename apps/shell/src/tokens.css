@@ -66,7 +66,6 @@
   --r-pin-tray: 11px;
   --r-tab: 12px;
   --r-peek: 16px;
-  --r-chat-pill: 24px;
   --t-none: 0ms;
   --t-disclosure-fade: 160ms;
   --t-disclosure: 220ms;
@@ -100,7 +99,6 @@
   --ico-lg: 20px;
   --fav: 16px;
   --dot: 6px;
-  --pip: 6px;
 
   --control-h: 28px;
   --control-h-lg: 32px;
@@ -200,8 +198,6 @@
   --agent: var(--ink-0);
   --agent-soft: var(--bg-3);
   --agent-line: var(--line-strong);
-  --engine: var(--ink-1);
-  --engine-soft: var(--bg-3);
 
   --shadow-card: 0 0 0 var(--hairline) var(--line), 0 4px 6px -1px var(--shadow-tint), 0 2px 4px -2px var(--shadow-tint);
   --shadow-pop: 0 0 0 var(--hairline) var(--line), 0 20px 25px -5px var(--shadow-tint), 0 8px 10px -6px var(--shadow-tint);
@@ -320,8 +316,6 @@
   --agent: var(--ink-0);
   --agent-soft: var(--bg-3);
   --agent-line: var(--line-strong);
-  --engine: var(--ink-1);
-  --engine-soft: var(--bg-3);
 
   --shadow-card: 0 0 0 var(--hairline) var(--line), 0 4px 6px -1px var(--shadow-tint), 0 2px 4px -2px var(--shadow-tint);
   --shadow-pop: 0 0 0 var(--hairline) var(--line), 0 20px 25px -5px var(--shadow-tint), 0 8px 10px -6px var(--shadow-tint);
