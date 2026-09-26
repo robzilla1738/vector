@@ -61,6 +61,8 @@ import { ZapService } from "./services/zap.js";
 import { ContentBlockingService } from "./services/content-blocking.js";
 import { runBench } from "./services/bench.js";
 import { compileAndAuthorize } from "./agent/action-compiler.js";
+import { AgentWebTools, permittedWebUrl } from "./agent/web-tools.js";
+import type { AgentLoopHostDeps } from "./agent/loop/host.js";
 import { attachBidiRuntime } from "./services/bidi.js";
 import { VaultService } from "./services/vault.js";
 import { DurableWriteLedger, PageClaimStore } from "./agent/durable.js";
@@ -527,6 +529,81 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   });
   const state = new StateService({ repo, pages, operations });
 
+  /**
+   * Built-in loop web tools (S5): every destination goes through decide() as
+   * builtin_agent — `allow` runs cookie-free, `ask` parks the run's suspension
+   * (the loop resumes with the answer), `deny` throws a refusal. Redirect hops
+   * are headless-decided: an approval cannot park mid-fetch, so asks collapse.
+   */
+  const decideLoopEgress = async (
+    ctx: { runId: string; threadId: string; turnId: string },
+    dest: URL, action: string, headless: boolean,
+  ) => {
+    const run = repo.getRun(ctx.runId);
+    return decide(EffectRequestSchema.parse({
+      profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+      scope: run?.config?.taskId
+        ? { kind: "task", id: run.config.taskId }
+        : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+      actor: "builtin_agent",
+      effect: "egress",
+      category: "read",
+      action,
+      origin: dest.origin,
+      destination: dest.href.slice(0, 2048),
+      dataClasses: [],
+      provenance: "template",
+      invocationDigest: createHash("sha256").update(JSON.stringify(["loop.egress", dest.href, action])).digest("hex"),
+      turnId: ctx.runId,
+      threadId: ctx.threadId,
+      runId: ctx.runId,
+      requestedAt: Date.now(),
+    }), decideDeps, { phase: "dispatch", headless });
+  };
+  const loopEgressGate = async (
+    ctx: { runId: string; threadId: string; turnId: string },
+    url: string, action: string,
+  ): Promise<URL | { park: import("./agent/loop/types.js").LoopPark }> => {
+    const decision = await decideLoopEgress(ctx, permittedWebUrl(url), action, false);
+    if (decision.status === "deny") {
+      throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
+    }
+    if (decision.status === "ask") {
+      suspensions.park({
+        runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.runId,
+        kind: decision.suspension.kind, request: decision.suspension,
+      });
+      return {
+        park: {
+          kind: decision.suspension.kind,
+          instruction: decision.suspension.instruction,
+          ...(decision.suspension.approvalId ? { approvalId: decision.suspension.approvalId } : {}),
+        },
+      };
+    }
+    return permittedWebUrl(url);
+  };
+  const agentLoop: AgentLoopHostDeps = {
+    webFetch: async (url, ctx) => {
+      const gated = await loopEgressGate(ctx, url, "agent.web.fetch");
+      if ("park" in gated) return { park: gated.park };
+      const web = new AgentWebTools(
+        async (hop) => (await decideLoopEgress(ctx, hop, "agent.web.fetch.hop", true)).status === "allow",
+      );
+      return { output: await web.fetch(gated.href) };
+    },
+    webSearch: async (query, ctx) => {
+      const engine = settings.searchEngine();
+      if (!engine) throw new AuxError("backend_unavailable", "Profile search engine is unavailable.");
+      const gated = await loopEgressGate(ctx, engine.replaceAll("%s", encodeURIComponent(query)), "agent.web.search");
+      if ("park" in gated) return { park: gated.park };
+      const web = new AgentWebTools(
+        async (hop) => (await decideLoopEgress(ctx, hop, "agent.web.search.hop", true)).status === "allow",
+      );
+      return { output: await web.search(query, engine) };
+    },
+  };
+
   const runs = new RunService({
     repo,
     events,
@@ -544,6 +621,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     operations,
     durableWrites,
     pageClaims,
+    agentLoop,
   });
 
   const extractingRuns = new Set<string>();

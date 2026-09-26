@@ -54,6 +54,7 @@ export {
   modelCallCost,
   type ModelClient,
 } from "./agent/model-client.js";
+export type { ToolCallStepResult, ToolStepToolCall } from "./agent/model-client.js";
 export { GatewayModelClient } from "./agent/gateway-client.js";
 export {
   SpendLedger,
@@ -138,6 +139,22 @@ export {
   type PageClaim,
 } from "./agent/durable.js";
 export { CoordinatorLease, coordinatorOwnerId, COORDINATOR_LEASE_TTL_MS } from "./agent/coordinator-lease.js";
+export { runAgentLoop, resumeAgentLoop, type AgentLoopOptions, type AgentLoopOutcome } from "./agent/loop/loop.js";
+export { runToolLoop, type AgentLoopHostDeps } from "./agent/loop/host.js";
+export { TranscriptStore, type ParkedCall } from "./agent/loop/transcript.js";
+export { buildToolManifest } from "./agent/loop/tools.js";
+export { buildSystemPrompt, CONDITIONAL_DOCS, type ConditionalDoc, type PromptContext } from "./agent/loop/prompt.js";
+export { SYSTEM_PROMPT } from "./agent/loop/system-prompt.js";
+export type {
+  LoopTool,
+  LoopToolManifest,
+  LoopToolDeps,
+  LoopToolContext,
+  LoopToolCall,
+  LoopToolResult,
+  LoopPark,
+  ModelMessage,
+} from "./agent/loop/types.js";
 export { SpaceService } from "./services/spaces.js";
 export {
   backupRetention,

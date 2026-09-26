@@ -560,6 +560,8 @@ export class RunService {
     operations?: import("./operations.js").OperationService;
     durableWrites?: DurableWriteLedger;
     pageClaims?: PageClaimStore;
+    /** S5 tool-loop backends (decide()-gated web tools) — main.ts wires them. */
+    agentLoop?: import("../agent/loop/host.js").AgentLoopHostDeps;
     tracer?: {
       start(
         name: string,
@@ -646,6 +648,7 @@ export class RunService {
       calendar: deps.calendar,
       operations: deps.operations,
       pageOwnership: this.pageOwnership,
+      agentLoop: deps.agentLoop,
     });
     this.setRunner = new SetRunner({
       repo: deps.repo,
@@ -744,7 +747,7 @@ export class RunService {
 
   private recordModelCall(input: {
     runId: string;
-    role: "planner" | "repair" | "vision" | "probe" | "final";
+    role: "planner" | "repair" | "vision" | "probe" | "final" | "agent";
     modelId: string;
     durationMs: number;
     inputTokens?: number;
@@ -833,6 +836,8 @@ export class RunService {
     pageIds?: string[];
     setId?: string;
     modelId?: string;
+    /** S5 A/B: "agent-loop" runs the durable tool-call loop; default is the planner. */
+    engine?: "agent" | "agent-loop";
     maxSteps?: number;
     maxTokens?: number;
     maxCostUsd?: number;
@@ -1031,6 +1036,7 @@ export class RunService {
       goal: prior.goal,
       pageIds: replacementPageId ? [replacementPageId] : prior.pageIds,
       modelId: prior.config?.modelId,
+      engine: prior.config?.implementation === "agent-loop" ? "agent-loop" : undefined,
       maxSteps: prior.config?.maxSteps,
       maxTokens: prior.config?.maxTokens,
       maxCostUsd: prior.config?.maxCostUsd,

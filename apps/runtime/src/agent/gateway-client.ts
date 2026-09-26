@@ -7,6 +7,7 @@ import {
   JSONParseError,
   NoObjectGeneratedError,
   streamText,
+  tool,
   TypeValidationError,
   UnsupportedFunctionalityError,
 } from "ai";
@@ -15,7 +16,7 @@ import { z } from "zod";
 import { AuxError, TaskPlanChunkSchema } from "@aux/contracts";
 import { clampOutputTokens, MODEL_REGISTRY, modelAcceptsImages, modelCapabilities, type ModelCapability } from "@aux/contracts/model-registry";
 import { extractJson } from "./json-text.js";
-import { DEFAULT_PLANNER_MODEL, modelCallCost, usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult } from "./model-client.js";
+import { DEFAULT_PLANNER_MODEL, modelCallCost, usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult, type ToolCallStepResult } from "./model-client.js";
 import { estimatedPromptTokens, projectedModelCostUsd, SpendLedger } from "../store/spend-ledger.js";
 
 /** Per-call ceiling — a hung gateway must not stall a run until runs.cancel. */
@@ -356,6 +357,60 @@ export class GatewayModelClient implements ModelClient {
       messages: imageReferenceMessage(opts.prompt, images),
     }));
     return { text: res.text, ...attempt(started, res) };
+  }
+
+  /**
+   * One step of the v2 tool-call loop (S5). Manifest tools carry no `execute`,
+   * so `generateText` returns after the model turn with client-side tool
+   * calls for the loop to dispatch — every side effect is journaled by the
+   * caller, never hidden inside the SDK loop.
+   */
+  async toolCallStep(opts: {
+    modelId: string;
+    system: string;
+    messages: ModelMessage[];
+    tools: Record<string, { description?: string; inputSchema: z.ZodType }>;
+    signal?: AbortSignal;
+    providerOptions?: Record<string, Record<string, unknown>>;
+    maxOutputTokens?: number;
+    reasoning?: CallOpts["reasoning"];
+  }): Promise<ToolCallStepResult> {
+    const started = Date.now();
+    const tools = Object.fromEntries(
+      Object.entries(opts.tools).map(([name, spec]) => [
+        name,
+        // No execute: client-side tools — the SDK returns the calls and stops.
+        tool({ ...(spec.description ? { description: spec.description } : {}), inputSchema: spec.inputSchema }),
+      ]),
+    );
+    const maxOut = clampOutputTokens(opts.modelId, opts.maxOutputTokens ?? 4000);
+    const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, JSON.stringify(opts.messages).slice(0, 120_000)), maxOut, () => generateText({
+      model: this.resolveModel(opts.modelId),
+      abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
+      maxRetries: 0,
+      maxOutputTokens: maxOut,
+      ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? "medium" as const } : {}),
+      providerOptions: { ...gatewayProviderOptions(this.only, opts.modelId), ...opts.providerOptions },
+      system: opts.system,
+      messages: opts.messages,
+      tools,
+    }));
+    const lastStep = res.steps.at(-1);
+    const calls = (lastStep?.toolCalls ?? res.toolCalls ?? []).map((call) => ({
+      toolCallId: call.toolCallId,
+      toolName: call.toolName,
+      input: call.input,
+    }));
+    const providerExecuted = ((lastStep?.toolCalls ?? []) as { toolCallId: string; providerExecuted?: boolean }[])
+      .filter((call) => call.providerExecuted).map((call) => call.toolCallId);
+    return {
+      message: res.response.messages.at(-1) ?? { role: "assistant", content: [] },
+      toolCalls: calls,
+      text: res.text || undefined,
+      finishReason: res.finishReason === "tool-calls" ? "tool-calls" : res.finishReason,
+      ...(providerExecuted.length ? { providerExecuted } : {}),
+      ...attempt(started, res),
+    };
   }
 
   async listModels(): Promise<{ id: string; name?: string }[]> {

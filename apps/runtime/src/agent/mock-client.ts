@@ -1,5 +1,6 @@
 import type { z } from "zod";
-import { FALLBACK_MODELS, type ModelClient, type StructuredCallResult, type TextCallResult } from "./model-client.js";
+import type { ModelMessage } from "ai";
+import { FALLBACK_MODELS, type ModelClient, type StructuredCallResult, type TextCallResult, type ToolCallStepResult } from "./model-client.js";
 
 type StructuredHandler = (prompt: string) => unknown | MeteredPlan;
 
@@ -65,6 +66,39 @@ export class MockModelClient implements ModelClient {
 
   async generateText(): Promise<TextCallResult> {
     return { text: "mock", durationMs: this.latencyMs };
+  }
+
+  /**
+   * Scripted tool-loop steps (S5): each handler sees the message history and
+   * returns tool calls or the final text — the same seam the real client
+   * fills with `generateText` + client-side tools.
+   */
+  toolSteps: { toolCalls?: { toolCallId: string; toolName: string; input?: unknown }[]; text?: string }[] = [];
+  scriptToolSteps(steps: MockModelClient["toolSteps"]) {
+    this.toolSteps = [...steps];
+    return this;
+  }
+
+  async toolCallStep(_opts: {
+    modelId: string; system: string; messages: ModelMessage[];
+    tools: Record<string, { description?: string; inputSchema: z.ZodType }>;
+  }): Promise<ToolCallStepResult> {
+    if (this.latencyMs) await new Promise((r) => setTimeout(r, this.latencyMs));
+    const scripted = this.toolSteps.length > 1 ? this.toolSteps.shift()! : this.toolSteps[0] ?? { text: "done (mock)" };
+    const calls = (scripted.toolCalls ?? []).map((c, i) => ({ toolCallId: c.toolCallId || `call-${i + 1}`, toolName: c.toolName, input: c.input ?? {} }));
+    const content = [
+      ...(scripted.text ? [{ type: "text" as const, text: scripted.text }] : []),
+      ...calls.map((c) => ({ type: "tool-call" as const, toolCallId: c.toolCallId, toolName: c.toolName, input: c.input })),
+    ];
+    return {
+      durationMs: this.latencyMs,
+      message: { role: "assistant", content } as ModelMessage,
+      toolCalls: calls,
+      text: scripted.text,
+      finishReason: calls.length ? "tool-calls" : "stop",
+      inputTokens: this.inputTokens,
+      outputTokens: this.outputTokens,
+    };
   }
 
   async listModels() {

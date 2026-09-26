@@ -312,7 +312,7 @@ export type Artifact = z.infer<typeof ArtifactSchema>;
 export const ModelCallSchema = z.object({
   callId: z.string(),
   runId: z.string().optional(),
-  role: z.enum(["planner", "repair", "vision", "probe", "final", "guardian"]),
+  role: z.enum(["planner", "repair", "vision", "probe", "final", "guardian", "agent"]),
   modelId: z.string(),
   providerMetadata: z.record(z.string(), z.unknown()).optional(),
   durationMs: z.number(),

@@ -1,0 +1,209 @@
+import { AuxError } from "@aux/contracts";
+import type { ModelClient, ToolCallStepResult } from "../model-client.js";
+import type {
+  LoopToolCall,
+  LoopToolContext,
+  LoopToolDeps,
+  LoopToolManifest,
+  LoopToolResult,
+  LoopPark,
+  ModelMessage,
+} from "./types.js";
+import { parkAnswerOutput, toolResultsMessage } from "./types.js";
+import { TranscriptStore } from "./transcript.js";
+import { buildSystemPrompt } from "./prompt.js";
+
+/**
+ * The durable agent loop (S5): the model calls tools; each round trip is one
+ * billed `toolCallStep`; tool results append to the run's durable transcript
+ * before the next call. Suspending tools park the run — the parked call's
+ * eventual tool result IS the resolution, so a resume loses no executed
+ * side effects and replaying is never needed.
+ */
+export interface AgentLoopOptions {
+  model: Pick<ModelClient, "toolCallStep">;
+  modelId: string;
+  tools: LoopToolManifest;
+  transcript: TranscriptStore;
+  runId: string;
+  threadId: string;
+  turnId?: string;
+  /** Base prompt; defaults to the assembled system prompt + conditional docs. */
+  system?: string;
+  deps: LoopToolDeps;
+  /** Active page — a getter lets the host retarget mid-run (detached fallback). */
+  pageId?: string | (() => string | undefined);
+  signal?: AbortSignal;
+  /** Step cap for this invocation — the run-level budget lives in the host. */
+  maxSteps?: number;
+  /** New steer pending → stop before the next model call (or after in-flight tools). */
+  steerCheck?: () => boolean;
+  /** Called after each model step is persisted — usage/billing/reporting. */
+  onStep?: (info: { index: number; step: ToolCallStepResult }) => void | Promise<void>;
+  /** Called after each tool executes — status/byline reporting. */
+  onToolCall?: (call: LoopToolCall, result: LoopToolResult) => void;
+  /** Per-provider options merged into the client's defaults (prompt caching keys). */
+  providerOptions?: Record<string, Record<string, unknown>>;
+  maxOutputTokens?: number;
+}
+
+export type AgentLoopOutcome =
+  | { kind: "done"; text: string }
+  | { kind: "parked"; park: LoopPark; toolCallId: string }
+  | { kind: "steered" }
+  | { kind: "exhausted" }
+  | { kind: "failed"; error: AuxError };
+
+const DEFAULT_MAX_LOOP_STEPS = 24;
+
+/** Tool calls in a message that still have no following tool result — an in-flight interrupted step. */
+function unansweredToolCalls(messages: ModelMessage[]): LoopToolCall[] {
+  const last = messages.at(-1);
+  if (last?.role !== "assistant" || !Array.isArray(last.content)) return [];
+  const calls = last.content.filter((part): part is { type: "tool-call"; toolCallId: string; toolName: string; input: unknown } =>
+    typeof part === "object" && part !== null && (part as { type?: string }).type === "tool-call",
+  );
+  return calls.map((part) => ({ toolCallId: part.toolCallId, toolName: part.toolName, input: part.input }));
+}
+
+/** An interrupted step's unanswered calls get honest placeholders — never silent drops. */
+function interruptedResults(calls: LoopToolCall[], reason: string): { toolCallId: string; toolName: string; output: unknown }[] {
+  return calls.map((call) => ({
+    toolCallId: call.toolCallId, toolName: call.toolName,
+    output: { interrupted: true, detail: reason },
+  }));
+}
+
+async function executeOne(
+  toolName: string,
+  call: LoopToolCall,
+  tools: LoopToolManifest,
+  ctx: LoopToolContext,
+): Promise<LoopToolResult> {
+  const tool = tools[toolName];
+  if (!tool) return { output: new AuxError("capability_unsupported", `Unknown tool: ${toolName}`) };
+  if (tool.requiresSoloCall && ctx.callCount > 1) {
+    return { output: new AuxError("invalid_params", `${toolName} must be the only tool call in its turn. Re-issue it alone.`) };
+  }
+  try {
+    return await tool.execute(call.input, ctx);
+  } catch (error) {
+    if (ctx.signal?.aborted) throw error;
+    return { output: error instanceof Error ? error : new Error(String(error)) };
+  }
+}
+
+export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOutcome> {
+  const { model, tools, transcript, runId } = opts;
+  if (!model.toolCallStep) {
+    return { kind: "failed", error: new AuxError("capability_unsupported", "The configured model client does not support tool calling.") };
+  }
+  const messages = transcript.load(runId);
+  const system = opts.system ?? buildSystemPrompt({ hasPage: !!opts.pageId, webEnabled: !!(opts.deps.webFetch || opts.deps.webSearch) });
+  const maxSteps = Math.max(1, opts.maxSteps ?? DEFAULT_MAX_LOOP_STEPS);
+  const sdkTools = Object.fromEntries(
+    Object.entries(tools).map(([name, tool]) => [name, { description: `${tool.description}\n\n(${tool.byline})`, inputSchema: tool.inputSchema }]),
+  );
+
+  for (let index = 0; index < maxSteps; index++) {
+    if (opts.signal?.aborted) return { kind: "failed", error: new AuxError("cancelled", "cancelled") };
+    if (opts.steerCheck?.()) return { kind: "steered" };
+
+    let step;
+    try {
+      step = await model.toolCallStep({
+        modelId: opts.modelId,
+        system,
+        messages,
+        tools: sdkTools,
+        signal: opts.signal,
+        providerOptions: opts.providerOptions,
+        maxOutputTokens: opts.maxOutputTokens,
+      });
+    } catch (error) {
+      if (opts.steerCheck?.()) return { kind: "steered" };
+      return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", error instanceof Error ? error.message : String(error)) };
+    }
+
+    messages.push(step.message);
+    transcript.append(runId, [step.message]);
+    await opts.onStep?.({ index, step });
+
+    const toolCalls = step.toolCalls.filter((call) => !step.providerExecuted?.includes(call.toolCallId));
+    if (!toolCalls.length) return { kind: "done", text: step.text ?? "" };
+
+    const ctx: LoopToolContext = {
+      runId, threadId: opts.threadId, turnId: opts.turnId ?? runId,
+      pageId: typeof opts.pageId === "function" ? opts.pageId() : opts.pageId,
+      signal: opts.signal, callCount: toolCalls.length,
+      deps: opts.deps,
+    };
+
+    const results: { toolCallId: string; toolName: string; output?: unknown; parked?: boolean }[] = [];
+    let parked: { call: LoopToolCall; park: LoopPark } | undefined;
+    for (const call of toolCalls) {
+      const result = await executeOne(call.toolName, call, tools, ctx);
+      if ("park" in result) {
+        parked = { call, park: result.park };
+        results.push({ toolCallId: call.toolCallId, toolName: call.toolName, parked: true });
+        break;
+      }
+      results.push({ toolCallId: call.toolCallId, toolName: call.toolName, output: result.output });
+      opts.onToolCall?.(call, result);
+    }
+
+    if (parked) {
+      // Calls after the parked one never ran; honest placeholders keep the
+      // transcript valid (every tool call must eventually have a result).
+      for (const call of toolCalls.slice(results.length)) {
+        results.push({
+          toolCallId: call.toolCallId, toolName: call.toolName,
+          output: { interrupted: true, detail: "a suspension ended this step; the call was not executed — re-issue if still needed." },
+        });
+      }
+      transcript.park(runId, {
+        toolCallId: parked.call.toolCallId,
+        toolName: parked.call.toolName,
+        pendingResults: results.map((r) => (r.parked ? { toolCallId: r.toolCallId, toolName: r.toolName, parked: true } : { toolCallId: r.toolCallId, toolName: r.toolName, output: r.output })),
+      });
+      return { kind: "parked", park: parked.park, toolCallId: parked.call.toolCallId };
+    }
+
+    if (opts.steerCheck?.()) {
+      // The step's calls executed but a steer landed — answer the unanswered
+      // calls honestly, then hand control back.
+      const toolMessage = toolResultsMessage([
+        ...results.map((r) => ({ toolCallId: r.toolCallId, toolName: r.toolName, output: r.output })),
+        ...interruptedResults(unansweredToolCalls(messages).filter((c) => !results.some((r) => r.toolCallId === c.toolCallId)), "interrupted by a user steer"),
+      ]);
+      messages.push(toolMessage);
+      transcript.append(runId, [toolMessage]);
+      return { kind: "steered" };
+    }
+
+    const toolMessage = toolResultsMessage(results.map((r) => ({ toolCallId: r.toolCallId, toolName: r.toolName, output: r.output })));
+    messages.push(toolMessage);
+    transcript.append(runId, [toolMessage]);
+  }
+  return { kind: "exhausted" };
+}
+
+/**
+ * Resume a parked run: the suspension's answer becomes the parked call's
+ * tool result (joined with the results captured before parking), then the
+ * loop continues. The host calls this after the suspension resolves.
+ */
+export async function resumeAgentLoop(opts: AgentLoopOptions, answer: unknown): Promise<AgentLoopOutcome> {
+  const { transcript, runId } = opts;
+  const parked = transcript.openPark(runId);
+  if (!parked) return { kind: "failed", error: new AuxError("not_found", "This run has no parked tool call to resume.") };
+  const message = toolResultsMessage(
+    parked.pendingResults.map((part) =>
+      "parked" in part
+        ? { toolCallId: part.toolCallId, toolName: part.toolName, output: parkAnswerOutput(answer) }
+        : { toolCallId: part.toolCallId, toolName: part.toolName, output: part.output },
+    ),
+  );
+  transcript.resolvePark(runId, message);
+  return runAgentLoop(opts);
+}

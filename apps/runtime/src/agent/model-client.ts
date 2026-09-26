@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { ModelMessage } from "ai";
 import { DEFAULT_PLANNER_MODEL_ID, MODEL_REGISTRY, modelPickerEntries, registryCostUsd } from "@aux/contracts/model-registry";
 
 /** Usage of one provider round trip. Every attempt a client makes is reported, including hidden retries. */
@@ -20,6 +21,23 @@ export interface StructuredCallResult<T> extends ModelAttempt {
 
 export interface TextCallResult extends ModelAttempt {
   text: string;
+}
+
+/** One model round trip in the agent loop (S5): assistant message + client-side tool calls. */
+export interface ToolStepToolCall {
+  toolCallId: string;
+  toolName: string;
+  input: unknown;
+}
+
+export interface ToolCallStepResult extends ModelAttempt {
+  /** Assistant message to append to the transcript verbatim (tool-call parts included). */
+  message: ModelMessage;
+  toolCalls: ToolStepToolCall[];
+  text?: string;
+  finishReason?: string;
+  /** Tool calls the provider executed in-band; the loop must not re-run them. */
+  providerExecuted?: string[];
 }
 
 const ATTEMPTS = Symbol.for("aux.modelAttempts");
@@ -108,6 +126,25 @@ export interface ModelClient {
     maxOutputTokens?: number;
     reasoning?: "low" | "medium" | "xhigh";
   }): Promise<TextCallResult>;
+
+  /**
+   * One step of the v2 tool-call loop (S5): the model sees the durable
+   * transcript plus the client-side tool specs and returns either text or
+   * tool calls. Tools carry no `execute` — the loop itself dispatches them
+   * so side effects are journaled per call and suspensions park durably.
+   * Optional: clients without tool support leave it unset and the loop
+   * reports capability_unsupported.
+   */
+  toolCallStep?(opts: {
+    modelId: string;
+    system: string;
+    messages: ModelMessage[];
+    tools: Record<string, { description?: string; inputSchema: z.ZodType }>;
+    signal?: AbortSignal;
+    providerOptions?: Record<string, Record<string, unknown>>;
+    maxOutputTokens?: number;
+    reasoning?: "low" | "medium" | "xhigh";
+  }): Promise<ToolCallStepResult>;
 
   listModels(): Promise<{ id: string; name?: string; inputUsdPerMTok?: number; outputUsdPerMTok?: number }[]>;
 }

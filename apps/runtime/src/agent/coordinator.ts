@@ -19,6 +19,7 @@ import { SuspensionStore } from "../safety/suspensions.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
 import { PageOwnership } from "../scheduler/page-ownership.js";
 import type { CompiledSkill } from "./skills.js";
+import { runToolLoop, type AgentLoopHostDeps } from "./loop/host.js";
 import {
   DEFAULT_MAX_MODEL_CALLS,
   DEFAULT_MAX_STEPS,
@@ -53,7 +54,7 @@ export interface CoordinatorDeps {
   routeModel?: (category: AgentModelCategory) => AgentModelRoute;
   recordModelCall: (c: {
     runId: string;
-    role: "planner" | "repair" | "vision" | "probe" | "final";
+    role: "planner" | "repair" | "vision" | "probe" | "final" | "agent";
     modelId: string;
     durationMs: number;
     inputTokens?: number;
@@ -81,6 +82,8 @@ export interface CoordinatorDeps {
   calendar?: import("../services/calendar-connections.js").CalendarConnectionService;
   operations?: import("../services/operations.js").OperationService;
   pageOwnership?: PageOwnership;
+  /** S5 tool loop backends (decide()-gated web tools, provider cache options) — main.ts wires them. */
+  agentLoop?: AgentLoopHostDeps;
 }
 
 /** Run lifecycle and control; the agent loop itself lives in `runCoordinatorLoop`. */
@@ -154,6 +157,12 @@ export class RunCoordinator {
     contextBrowsingMemory?: boolean;
     chatId?: string;
     retryOfRunId?: string;
+    /**
+     * Execution engine (S5 A/B): "agent" keeps the planner loop;
+     * "agent-loop" runs the durable tool-call loop. The corpus gate decides
+     * which survives — never ship both permanently.
+     */
+    engine?: "agent" | "agent-loop";
     /** routine-declared account boundary stamped on the run */
     accountLabels?: string[];
     subagentProfile?: "explorer" | "read_only" | "default";
@@ -207,7 +216,7 @@ export class RunCoordinator {
         subagentProfile: opts.subagentProfile,
         calendarGrantIds,
         retryOfRunId: opts.retryOfRunId,
-        implementation: opts.modelId ? `agent:${opts.modelId}` : "agent",
+        implementation: opts.engine === "agent-loop" ? "agent-loop" : opts.modelId ? `agent:${opts.modelId}` : "agent",
       },
       createdAt: Date.now(),
     };
@@ -425,11 +434,15 @@ export class RunCoordinator {
     if (!obs) throw new AuxError("target_detached", "observation empty");
   }
 
-  /** observe → plan → authorize → dispatch → verify, until a terminal status. */
+  /**
+   * Run body — the planner loop (observe → plan → authorize → dispatch →
+   * verify) or the S5 tool loop when the run's engine is `agent-loop`.
+   */
   private async loop(runId: string) {
     try {
       await this.acquirePages(runId);
-      await runCoordinatorLoop(this, runId);
+      if (this.get(runId).config?.implementation === "agent-loop") await runToolLoop(this, runId);
+      else await runCoordinatorLoop(this, runId);
     } finally {
       this.releasePages(runId);
     }
