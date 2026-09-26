@@ -1,12 +1,12 @@
 # Native Aux development continuation
 
-Updated September 25, 2026. This is the runbook for the **stable Chromium 154 AuxDev checkout**. Read [the current handoff](../../docs/HANDOFF.md), [evidence ledger](../../docs/EVIDENCE.md), and [patch README](../../chromium/README.md) before changing it. The original `Aux Host Proof` checkout, checkpoint files and `apply-shell-proof.py` in this directory are historical experiments; do not apply them to AuxDev.
+Updated September 26, 2026. This is the runbook for the **stable Chromium 154 AuxDev checkout**. Read [the current handoff](../../docs/HANDOFF.md), [evidence ledger](../../docs/EVIDENCE.md), and [patch README](../../chromium/README.md) before changing it. The original `Aux Host Proof` checkout, checkpoint files and `apply-shell-proof.py` in this directory are historical experiments; do not apply them to AuxDev.
 
 ## Paths and state
 
 | Item | Current location / condition |
 | --- | --- |
-| Source | `/Users/rcourson/aux-chromium-stable/chromium/src` at pinned Chromium `154.0.8037.58` plus Aux patches 0001–0046 |
+| Source | `/Users/rcourson/aux-chromium-stable/chromium/src` at pinned Chromium `154.0.8037.58` plus Aux patches 0001–0051 |
 | App | `out/AuxDev/Aux.app`, component development build with bundled Aux Runtime |
 | Patch source of truth | [`chromium/patches/series`](../../chromium/patches/series) and its ordered patch files in this repository |
 | Shell assets | [`chromium/shell-assets`](../../chromium/shell-assets), staged into `chrome/browser/resources/aux/assets` |
@@ -18,7 +18,7 @@ The native source checkout is dirty **by design** because the ordered Aux patche
 ## Inspect before building
 
 ```sh
-cd /Users/rcourson/Code/web
+cd /Users/rcourson/Documents/Vibe/web
 git status --short --branch
 tail -6 chromium/patches/series
 ps -axo pid,etime,command | rg 'siso ninja|autoninja|AuxDev/Aux.app/Contents/MacOS/Aux'
@@ -56,6 +56,8 @@ Run these only when native/runtime changes touch their assertions or a handoff g
 For a renderer batch, run the focused tests, `pnpm typecheck`, `pnpm lint`, `pnpm format:check` as relevant, and the existing bundle budget gate. Record the exact local command, outcome, app/build identity and limits in [EVIDENCE.md](../../docs/EVIDENCE.md). A passing targeted test or earlier hosted SHA does not qualify the whole roadmap.
 
 ## Current next work and constraints
+
+The next product batch is S7 downloads (`downloadFolder`, `chooseDownloadFolder`, `downloadsSnapshot`, `controlDownload`, `retryDownload`) as patch 0052, then one AuxDev build, `node scripts/check-bridge-coverage.mjs`, and one real downloads journey. Coverage was 63 missing members after patch 0051. Do not mark S7 done before that count is zero. Do not copy this repository's generated host-method headers onto the Chromium checkout.
 
 Native Quick Ask and the Profiles management screen remain gated off. Several feature families still need native bridge services and live journeys; extension, passkey, import, agent, both-layout accessibility, and glass checks are incomplete. The owner confirmed the corrected right-only assistant corners and selected the expanded left panel's blur as the reference. Keep both Aside layouts and the shared liquid-glass material while integrating.
 

@@ -1,6 +1,6 @@
 # Aux evidence ledger
 
-Updated September 25, 2026. This ledger records what the current code or a recorded run proves. Requirements and acceptance criteria live in [ROADMAP.md](ROADMAP.md). Historical detail is retained under [archive/](archive/README.md); archived completion claims do not transfer to the new Chromium host.
+Updated September 26, 2026. This ledger records what the current code or a recorded run proves. Requirements and acceptance criteria live in [ROADMAP.md](ROADMAP.md). Historical detail is retained under [archive/](archive/README.md); archived completion claims do not transfer to the new Chromium host.
 
 ## Labels
 
