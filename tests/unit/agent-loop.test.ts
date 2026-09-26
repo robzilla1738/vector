@@ -247,6 +247,18 @@ describe("runAgentLoop (S5)", () => {
     expect(outcome).toMatchObject({ kind: "failed" });
   });
 
+  it("nudges instead of accepting leaked function-call markup as the answer", async () => {
+    const { transcript } = fixture();
+    const model = new MockModelClient().scriptToolSteps([
+      { text: '<atem:function_calls><atem:invoke name="default.submit_result"><atem:parameter name="report">x</atem:parameter></atem:invoke></atem:function_calls>' },
+      { text: "real answer" },
+    ]);
+    const outcome = await runAgentLoop({ ...baseOpts(transcript), model });
+    expect(outcome).toMatchObject({ kind: "done", text: "real answer" });
+    const nudge = transcript.load("run-1").find((m) => m.role === "system" && String(m.content).includes("function-call markup"));
+    expect(nudge).toBeTruthy();
+  });
+
   it("caps runaway loops at maxSteps", async () => {
     const { transcript } = fixture();
     const model = new MockModelClient().scriptToolSteps([

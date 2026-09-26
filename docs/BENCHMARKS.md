@@ -57,7 +57,29 @@ Transport: `--transport http` adds the loopback API (auth, zod, JSON) to every c
 ## Tasks (`pnpm bench:tasks`)
 
 Runs three trials per task by default with a fixture reset before each task and
-reports pass@1, pass@k and flaky tasks. The last published run is 2026-09-15 (one
-trial, `alibaba/qwen3.8-27b`): `aux` 6/8, `aux-mcp` 8/8, `playwright-mcp` 8/8. It
-predates planner memory, grounded completion checks and the compact MCP catalog;
-re-run before quoting a current number.
+reports pass@1, pass@k and flaky tasks.
+
+### S5 planner-versus-loop A/B gate — 2026-09-26
+
+50-task fixture corpus (records, forms, interaction, modal, attachment,
+embedded-frame) × 3 trials, model `meta/muse-spark-1.3-contributor`, both
+adapters on the same build (`015df813` plus the answer-extraction,
+uncertain-settle and terse-answer fixes committed alongside this row). Report:
+`tests/benchmarks/reports/tasks-local-2026-09-26T12-52-46-585Z.json`. Spend is
+the recorded `actual_nanos` from the shared AI Gateway spend ledger attributed
+per call timestamp.
+
+| Adapter | Engine | pass@1 | pass@3 | mean calls | mean tokens | spend | p50 | p95 | flaky |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `aux` | `agent` (legacy planner) | 46.0% (23/50, sd 0) | 46.0% | 1.7 | 5.1K | $0.0575 | 4.1 s | 33.0 s | — |
+| `aux-loop` | `agent-loop` (durable loop v2) | **90.0%** (45/50, sd 0) | **98.0%** | 4.4 | 130.4K | $0.2338 | 8.1 s | 28.1 s | 11 |
+
+**Decision (ROADMAP S5 item 10):** v2 beats the planner on pass@1 by 44 points
+but uses ~2.6× more model calls and ~25× the tokens, so the deletion clause
+("matches or beats on pass@1 *with fewer calls*") is **not satisfied — the
+planner stays** (`AUX_RUN_ENGINE` selects the engine). The durable loop's
+remaining fails are dominated by uncertain-dispatch write blocks on the rich
+form task and intermittent provider tool-call markup leaks; the planner's are
+structural (it cannot open modals or re-observe after acting). The S14
+qualification bar (§line 155: ≥30% fewer calls than the planner baseline on
+multi-step tasks) is also not yet met; call-count reduction is open work.

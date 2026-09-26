@@ -364,7 +364,10 @@ export function buildToolManifest(): LoopToolManifest {
       "Must be the only tool call in its turn.",
     byline: "Aux verified result — citations checked against the cited snapshots",
     inputSchema: z.object({
-      report: z.string().min(1).max(64_000).describe("The final answer — markdown is fine."),
+      report: z.string().min(1).max(64_000).describe(
+        "The final answer. Give exactly what the task asked for — a bare name, number, status, filename, or short " +
+        "confirmation — not a narrative of the steps you took. Longer prose only when the task asks for a report."
+      ),
       citations: z.array(ResultCitationSchema).max(32).optional(),
     }),
     requiresSoloCall: true,

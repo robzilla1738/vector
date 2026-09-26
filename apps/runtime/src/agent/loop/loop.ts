@@ -59,6 +59,9 @@ export type AgentLoopOutcome =
 
 const DEFAULT_MAX_LOOP_STEPS = 24;
 
+/** Provider markup a model leaks when it serialises calls into text rather than emitting real tool calls. */
+const LEAKED_TOOL_MARKUP = /<(?:atem|antml)[:\w-]*(?:function_calls|invoke|tool_call)|<invoke\s+name="[\w.]+"/i;
+
 /** Tool calls in a message that still have no following tool result — an in-flight interrupted step. */
 function unansweredToolCalls(messages: ModelMessage[]): LoopToolCall[] {
   const last = messages.at(-1);
@@ -170,7 +173,18 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     await opts.onStep?.({ index, step });
 
     const toolCalls = step.toolCalls.filter((call) => !step.providerExecuted?.includes(call.toolCallId));
-    if (!toolCalls.length) return { kind: "done", text: step.text ?? "" };
+    if (!toolCalls.length) {
+      // A model that serialises calls into text instead of emitting real tool
+      // calls leaks provider markup — nudge once instead of taking it as the answer.
+      if (step.text && LEAKED_TOOL_MARKUP.test(step.text)) {
+        const nudge: ModelMessage = { role: "system",
+          content: "Your last message contained raw function-call markup instead of real tool calls — it was not executed. Issue the actual tool call (submit_result to finish), not its markup." };
+        messages.push(nudge);
+        transcript.append(runId, [nudge]);
+        continue;
+      }
+      return { kind: "done", text: step.text ?? "" };
+    }
 
     const ctx: LoopToolContext = {
       runId, threadId: opts.threadId, turnId: opts.turnId ?? runId,

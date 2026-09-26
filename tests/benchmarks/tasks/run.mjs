@@ -517,8 +517,8 @@ function extractAnswer(result) {
   if (result == null) return null;
   if (typeof result !== "object") return result;
   const keys = Object.keys(result);
-  if (keys.length === 1) return result[keys[0]];
-  for (const k of ["answer", "result", "value", "count", "status", "owner", "title", "name", "report"]) if (k in result) return result[k];
+  if (keys.length === 1) return extractAnswer(result[keys[0]]);
+  for (const k of ["answer", "result", "value", "count", "status", "owner", "title", "name", "report", "partial"]) if (k in result) return extractAnswer(result[k]);
   return result;
 }
 
