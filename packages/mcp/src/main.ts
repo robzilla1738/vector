@@ -17,8 +17,6 @@ const server = new McpServer({ name: "aux", version: "0.1.0" });
 
 const resourceUri=(path:string)=>`aux://${path}`;
 const scopedKind=process.env.AUX_MCP_SCOPE_KIND;
-/** Project (development/cloud) tools need a task/workspace scope and an explicit opt-in the desktop sets when the scope has projects. */
-const projectTools=(scopedKind==='task'||scopedKind==='workspace')&&process.env.AUX_MCP_PROJECT_TOOLS==='1';
 
 const RO = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const WRITE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } as const;
@@ -406,40 +404,6 @@ server.registerTool("aux_calendar_task_events", {
 }, async (params: unknown) => {
   try { return text(await rpc("calendar.taskEvents.list", params)); } catch (error) { return err(error); }
 });
-
-const developmentTools = [
-  ['aux_development_projects','development.projects','List only managed checkouts attached to the authorized saved task.','ro'],
-  ['aux_development_inspect','development.inspect','Inspect one attached checkout and compare it with its saved baseline.','ro'],
-  ['aux_development_github_status','development.githubStatus','Use the explicitly connected GitHub account to inspect the attached checkout repository, permissions, remote commit presence and current commit status. This is read-only and does not push or create a pull request.','ro'],
-  ['aux_development_operations_status','development.operationsStatus','Read the selected Vercel deployment and Sentry unresolved-issue health for an attached project. This is read-only and cannot deploy, roll back, resolve, assign, or delete.','ro'],
-  ['aux_development_incident_report','development.incidentReport','Create a durable local incident snapshot from an authorized task page or verified project preview, checkout changes, recent project commands, browser console and network responses. Query values are redacted. This records evidence; it does not prove root cause or resolution.','w'],
-  ['aux_development_files','development.files','List tracked and untracked, non-ignored files in one attached checkout.','ro'],
-  ['aux_development_read_file','development.readFile','Read one listed UTF-8 checkout file up to 256 KB. Returns a SHA-256 required for conflict-safe saving.','ro'],
-  ['aux_development_write_file','development.writeFile','Propose replacing one listed file at its expected SHA-256. Aux shows a native content preview for human approval, preserves recovery data, and rejects outside changes.','d'],
-  ['aux_development_create_file','development.createFile','Propose a new non-ignored text file inside an attached checkout. Aux shows a native content preview for human approval and never replaces an existing path.','w'],
-  ['aux_development_rename_file','development.renameFile','Propose renaming one file inside an attached checkout at its expected SHA-256. Aux requires native human approval, refuses replacement, and keeps recovery data.','d'],
-  ['aux_development_delete_file','development.deleteFile','Propose deleting one file from an attached checkout at its expected SHA-256. Aux requires native human approval and keeps a recovery copy outside the checkout.','d'],
-  ['aux_development_commands','development.commands','Read saved command and service records for one attached checkout.','ro'],
-  ['aux_development_run_command','development.runCommand','Propose an exact local command or service in an attached checkout. Aux requires native human approval; execution is not sandboxed and receives no model credentials.','d'],
-  ['aux_development_open_preview','development.openPreview','Propose checking and opening a localhost preview for an attached checkout. Aux requires native human approval, sends a cookie-free loopback check, and grants this connection access only to the opened preview tab for the current Aux runtime session.','w'],
-  ['aux_development_stop_command','development.stopCommand','Stop a command or service that belongs to the attached checkout.','d'],
-  ['aux_development_review','development.review','Write a durable local Markdown handoff containing the fresh diff, untracked names, recent command evidence and last preview check. This does not commit, push, publish or create a pull request.','w'],
-  ['aux_development_commit','development.commit','Propose one local commit of the exact reviewed snapshot. Aux requires native human approval and explicit author identity; hooks, signing, credential helpers and network protocols stay disabled. This does not push, publish or create a pull request.','w'],
-  ['aux_cloud_environments','cloud.environments','List durable Vercel Sandbox environments belonging to the authorized task, including lifecycle, region, preview, expiry, snapshot and resource usage. Environment creation, stop and deletion remain desktop-only.','ro'],
-  ['aux_cloud_command_history','cloud.commands','Read and reconcile the bounded durable command history for one task-owned Vercel Sandbox environment.','w'],
-  ['aux_cloud_run_command','cloud.runCommand','Propose an exact command in an existing task-owned Vercel Sandbox. Aux must be open and requires native human approval before dispatch; the result is durable and uncertain outcomes are never retried automatically.','d'],
-  ['aux_cloud_start_service','cloud.startService','Propose an exact bounded service in an existing task-owned Vercel Sandbox. Aux must be open and requires native human approval before dispatch.','d'],
-  ['aux_cloud_refresh_command','cloud.refreshCommand','Refresh the provider status and bounded logs for one durable task-owned cloud command without dispatching work.','ro'],
-  ['aux_cloud_stop_command','cloud.stopCommand','Stop a running command or service that belongs to the authorized task and environment. This does not stop or delete the environment.','d'],
-  ['aux_cloud_files','cloud.files','List one bounded directory inside the task-owned remote workspace. Paths remain rooted in the sandbox workspace.','ro'],
-  ['aux_cloud_read_file','cloud.readFile','Read one bounded UTF-8 file inside the task-owned remote workspace.','ro'],
-  ['aux_cloud_task_result','cloud.taskResult','Read and validate the detached cloud worker result against the exact authorized task revision and uploaded source tree. The result is evidence for human review, not automatic acceptance.','ro'],
-] as const;
-if(projectTools)for(const [name,method,description,annotation] of developmentTools){
-  server.registerTool(name,{description,annotations:ANNOTATIONS[annotation],inputSchema:MethodSchemas[method].shape},async(params:unknown)=>{
-    try{return text(await rpc(method,params));}catch(error){return err(error);}
-  });
-}
 
 /** One manifest-backed dispatcher keeps tools/list bounded as the typed API grows. */
 const mcpApi = supportedAgentApi({ surface: "mcp" }).filter(item => item.method !== "agent.js.run" && item.method !== "agent.js.reset");

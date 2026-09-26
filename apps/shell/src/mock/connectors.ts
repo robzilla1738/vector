@@ -15,12 +15,7 @@ const serverId = "81818181-8181-4818-8818-818181818181";
 const calendarScope = "https://www.googleapis.com/auth/calendar.readonly" as const;
 
 /** Interactive, synthetic review state for the browser-only design preview. */
-export function connectorFixtures(
-  workspaceId: string,
-  tasks: () => Promise<Task[]>,
-  enabled: boolean,
-  githubConnected: () => boolean = () => enabled,
-) {
+export function connectorFixtures(workspaceId: string, tasks: () => Promise<Task[]>, enabled: boolean) {
   const now = Date.now();
   let calendarConnected = enabled;
   let grants: CalendarTaskGrant[] = [];
@@ -86,14 +81,6 @@ export function connectorFixtures(
             },
           ]
         : []),
-      {
-        kind: "github",
-        connectorId: "github",
-        label: "GitHub",
-        ...(githubConnected() ? { account: "reviewer" } : {}),
-        state: githubConnected() ? "checked" : "disconnected",
-        authority: "saved_credential_and_task_project",
-      },
       ...servers.map((item) => ({
         kind: "mcp" as const,
         connectorId: `mcp:${item.serverId}`,
@@ -118,18 +105,6 @@ export function connectorFixtures(
               grantId: item.grantId,
               authority: "calendar_task_grant" as const,
             })),
-          ...(githubConnected()
-            ? task.resources
-                .filter((item) => item.kind === "repository" && item.projectId && item.access !== "reference")
-                .map((item) => ({
-                  kind: "github" as const,
-                  connectorId: "github" as const,
-                  taskId: task.taskId,
-                  taskRevision: task.revision,
-                  projectId: item.projectId!,
-                  authority: "task_project_resource" as const,
-                }))
-            : []),
           ...tools
             .filter(
               (item) =>

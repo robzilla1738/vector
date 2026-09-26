@@ -313,35 +313,3 @@ describe("Gate F MCP stdio session", () => {
     expect(payload.message).not.toContain("Revoked token");
   });
 });
-
-describe("MCP project tool gating", () => {
-  async function toolNames(env: Record<string, string>) {
-    const dir = mkdtempSync(join(tmpdir(), "aux-mcp-gate-"));
-    writeFileSync(join(dir, "runtime.json"), JSON.stringify({ port: 1, token: "t", pid: process.pid }));
-    const child = spawn(process.execPath, [join(process.cwd(), "packages/mcp/dist/main.js")], {
-      env: { ...process.env, AUX_DATA_DIR: dir, AUX_MCP_TOKEN: "t", ...env },
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    try {
-      const mcp = new McpStdio(child);
-      await mcp.call("initialize", { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "gate", version: "0" } });
-      mcp.write({ jsonrpc: "2.0", method: "notifications/initialized" });
-      const listed = await mcp.call("tools/list");
-      return ((listed.result as { tools: { name: string }[] }).tools ?? []).map((t) => t.name);
-    } finally {
-      child.kill();
-      rmSync(dir, { recursive: true, force: true });
-    }
-  }
-
-  it("exposes development and cloud tools only to opted-in task or workspace scopes", async () => {
-    const task = await toolNames({ AUX_MCP_SCOPE_KIND: "task" });
-    expect(task).toContain("aux_task_create");
-    expect(task.some((n) => n.startsWith("aux_development_"))).toBe(false);
-    const projects = await toolNames({ AUX_MCP_SCOPE_KIND: "task", AUX_MCP_PROJECT_TOOLS: "1" });
-    expect(projects).toContain("aux_development_files");
-    expect(projects).toContain("aux_cloud_environments");
-    const unscoped = await toolNames({ AUX_MCP_PROJECT_TOOLS: "1" });
-    expect(unscoped.some((n) => n.startsWith("aux_cloud_"))).toBe(false);
-  }, 20_000);
-});

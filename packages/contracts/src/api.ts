@@ -1,19 +1,41 @@
-import { GenerateResultParamsSchema, GeneratedResultSchema, GeneratedResultSummarySchema } from "./generated-results.js";
-import { ZapApplyResultSchema, ZapGrantParamsSchema, ZapRevokeParamsSchema, ZapSitePolicySchema, ZapUpdateParamsSchema } from "./zap.js";
+import {
+  GenerateResultParamsSchema,
+  GeneratedResultSchema,
+  GeneratedResultSummarySchema,
+} from "./generated-results.js";
+import {
+  ZapApplyResultSchema,
+  ZapGrantParamsSchema,
+  ZapRevokeParamsSchema,
+  ZapSitePolicySchema,
+  ZapUpdateParamsSchema,
+} from "./zap.js";
 import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
-import { ApprovalDecisionSchema, EffectSchema, FinalReviewArtifactSchema, OriginRuleSchema, PendingApprovalSchema, SendRecordSchema, StandingGrantSchema } from "./safety.js";
-import { CommandEscalationDecisionSchema, CommandEscalationRequestSchema } from "./command-seatbelt.js";
+import {
+  ApprovalDecisionSchema,
+  EffectSchema,
+  FinalReviewArtifactSchema,
+  OriginRuleSchema,
+  PendingApprovalSchema,
+  SendRecordSchema,
+  StandingGrantSchema,
+} from "./safety.js";
 import { CommandRankingEntrySchema, CommandRankingSourceSchema } from "./command-ranking.js";
 import { RuntimeMethodPolicy } from "./runtime-method-policy.js";
 
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "./search-engine.js";
-export const SearchEngineTemplateSchema = z.string().trim().max(2048).refine(isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR);
+export const SearchEngineTemplateSchema = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR);
 
 import {
   ArtifactSchema,
   BackendSchema,
-  BookmarkSchema, BookmarkFolderPathSchema,
+  BookmarkSchema,
+  BookmarkFolderPathSchema,
   BrowserSessionSchema,
   ConversationSummarySchema,
   DownloadSchema,
@@ -33,33 +55,144 @@ import {
 import { EventSchema } from "./events.js";
 import { TidyProposalParamsSchema, TidyProposalSchema } from "./tidy.js";
 import { TabNameSuggestParamsSchema, TabNameSuggestionSchema } from "./tab-name.js";
-import { InlineAssistApplyParamsSchema, InlineAssistApplySchema, InlineAssistCancelParamsSchema, InlineAssistCaptureParamsSchema, InlineAssistCaptureSchema, InlineAssistDraftParamsSchema, InlineAssistDraftSchema } from "./inline-assist.js";
-import { CompactObservationSchema, ElementRefSchema, ObservationFormatSchema, ObservationSchema, ObservationRequestSchema } from "./observation.js";
-import { ConditionSchema, ProgramNodeSchema, ProgramSchema, ProgramResultSchema, StepSchema } from "./program.js";
+import {
+  InlineAssistApplyParamsSchema,
+  InlineAssistApplySchema,
+  InlineAssistCancelParamsSchema,
+  InlineAssistCaptureParamsSchema,
+  InlineAssistCaptureSchema,
+  InlineAssistDraftParamsSchema,
+  InlineAssistDraftSchema,
+} from "./inline-assist.js";
+import {
+  CompactObservationSchema,
+  ElementRefSchema,
+  ObservationFormatSchema,
+  ObservationSchema,
+  ObservationRequestSchema,
+} from "./observation.js";
+import {
+  ConditionSchema,
+  ProgramNodeSchema,
+  ProgramSchema,
+  ProgramResultSchema,
+  StepSchema,
+} from "./program.js";
 import { StateQuerySchema } from "./state.js";
-import { TaskSchema, TaskCreateParams, TaskPromoteParams, TaskUpdateParams, WorkspaceSchema, WorkspaceMemorySchema, WorkspaceMemoryItemSchema, BrowsingMemoryPolicySchema, WorkspaceBrowsingMemorySchema, ContentMemoryPolicySchema, ContentMemoryMatchSchema, ContentMemoryDocumentSchema, EvidenceCommandParams, EvidenceNoteParams, EvidenceCaptureParams, EvidenceDocumentParams, CriterionReviewParams, TaskReconcileParams, TaskReconcileOperationParams,
-  TaskEvidenceSchema, CriterionReviewSchema, TaskReceiptSchema, TaskVerifyCriterionParams, CriterionVerificationSchema, TaskReplaceAgentParams } from "./tasks.js";
+import {
+  TaskSchema,
+  TaskCreateParams,
+  TaskPromoteParams,
+  TaskUpdateParams,
+  WorkspaceSchema,
+  WorkspaceMemorySchema,
+  WorkspaceMemoryItemSchema,
+  BrowsingMemoryPolicySchema,
+  WorkspaceBrowsingMemorySchema,
+  ContentMemoryPolicySchema,
+  ContentMemoryMatchSchema,
+  ContentMemoryDocumentSchema,
+  EvidenceNoteParams,
+  EvidenceCaptureParams,
+  EvidenceDocumentParams,
+  CriterionReviewParams,
+  TaskReconcileParams,
+  TaskReconcileOperationParams,
+  TaskEvidenceSchema,
+  CriterionReviewSchema,
+  TaskReceiptSchema,
+  TaskVerifyCriterionParams,
+  CriterionVerificationSchema,
+  TaskReplaceAgentParams,
+} from "./tasks.js";
 import { AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
-import { OutboundMcpRegisterParams, OutboundMcpGrantParams, OutboundMcpServerSchema, OutboundMcpGrantSchema, OutboundMcpToolSchema, OutboundMcpCallResultSchema, OutboundMcpBundleInspectionSchema } from "./outbound-mcp.js";
-import { SiteOriginSchema, ZapSelectorSchema, ZapPickResultSchema, ZapRuleSchema, SiteCssSchema, EffectiveSiteCssSchema } from "./customization.js";
-import { MemoryPipelinePolicySchema, MemoryPipelineOverviewSchema, MemoryPipelineForgetParams, MemoryPipelineForgetResultSchema, MemoryClaimSchema } from "./memory-pipeline.js";
-import { SubagentGroupCreateParams, SubagentGroupSchema, SubagentGroupViewSchema, SubagentSpawnParams, SubagentSchema, SubagentMessageParams } from "./subagents.js";
-import { CalendarConnectionSchema, CalendarEventSchema, CalendarEventsQuerySchema, CalendarTaskEventsQuerySchema, CalendarTaskGrantSchema } from "./calendar.js";
+import {
+  OutboundMcpRegisterParams,
+  OutboundMcpGrantParams,
+  OutboundMcpServerSchema,
+  OutboundMcpGrantSchema,
+  OutboundMcpToolSchema,
+  OutboundMcpCallResultSchema,
+  OutboundMcpBundleInspectionSchema,
+} from "./outbound-mcp.js";
+import {
+  SiteOriginSchema,
+  ZapSelectorSchema,
+  ZapPickResultSchema,
+  ZapRuleSchema,
+  SiteCssSchema,
+  EffectiveSiteCssSchema,
+} from "./customization.js";
+import {
+  MemoryPipelinePolicySchema,
+  MemoryPipelineOverviewSchema,
+  MemoryPipelineForgetParams,
+  MemoryPipelineForgetResultSchema,
+  MemoryClaimSchema,
+} from "./memory-pipeline.js";
+import {
+  SubagentGroupCreateParams,
+  SubagentGroupSchema,
+  SubagentGroupViewSchema,
+  SubagentSpawnParams,
+  SubagentSchema,
+  SubagentMessageParams,
+} from "./subagents.js";
+import {
+  CalendarConnectionSchema,
+  CalendarEventSchema,
+  CalendarEventsQuerySchema,
+  CalendarTaskEventsQuerySchema,
+  CalendarTaskGrantSchema,
+} from "./calendar.js";
 import { ConnectorCatalogSchema } from "./connectors.js";
 import {
-  VaultAccessRecordSchema, VaultEncryptedExportParams, VaultEncryptedImportParams, VaultTransferPackageSchema, VaultGenerateParams, VaultGrantParams, VaultGrantSchema, VaultHumanFillParams, VaultItemSchema, VaultItemsForOriginParams, VaultLockParams, VaultRenewGrantParams, VaultSaveParams, VaultSecretMatchParams, VaultStatusSchema, VaultUnlockParams, VaultUpdateParams,
+  VaultAccessRecordSchema,
+  VaultEncryptedExportParams,
+  VaultEncryptedImportParams,
+  VaultTransferPackageSchema,
+  VaultGenerateParams,
+  VaultGrantParams,
+  VaultGrantSchema,
+  VaultHumanFillParams,
+  VaultItemSchema,
+  VaultItemsForOriginParams,
+  VaultLockParams,
+  VaultRenewGrantParams,
+  VaultSaveParams,
+  VaultSecretMatchParams,
+  VaultStatusSchema,
+  VaultUnlockParams,
+  VaultUpdateParams,
 } from "./vault.js";
 import {
-  RoutineAlertSchema, RoutineCompareSchema, RoutineCreateParams, RoutineFromResultParams, RoutineInboxItemSchema, RoutineSourceEventSchema, RoutineRunParams, RoutineRunSchema, RoutineRunOutcomeSchema, RoutineSchema, RoutineShareEnvelopeSchema, RoutineShareSchema, RoutineSuggestionSchema, RoutineUpdateParams, PluginSchema, PluginAssetSchema, PluginSkillGrantParams, PluginSkillGrantSchema, PluginSkillReadParams, PluginSkillReadSchema,
+  RoutineAlertSchema,
+  RoutineCompareSchema,
+  RoutineCreateParams,
+  RoutineFromResultParams,
+  RoutineInboxItemSchema,
+  RoutineSourceEventSchema,
+  RoutineRunParams,
+  RoutineRunSchema,
+  RoutineRunOutcomeSchema,
+  RoutineSchema,
+  RoutineShareEnvelopeSchema,
+  RoutineShareSchema,
+  RoutineSuggestionSchema,
+  RoutineUpdateParams,
+  PluginSchema,
+  PluginAssetSchema,
+  PluginSkillGrantParams,
+  PluginSkillGrantSchema,
+  PluginSkillReadParams,
+  PluginSkillReadSchema,
 } from "./routines.js";
 import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema } from "./spaces.js";
 import { GoalCreateParams, GoalSchema } from "./goals.js";
 import { HookCreateParams, HookInvocationSchema, HookSchema } from "./hooks.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
-import {CloudEnvironmentSchema,CloudCommandRecordSchema,CloudCommandResultSchema,CloudFileEntrySchema,CloudFileSchema,CloudTerminalSessionSchema,CloudPreviewSessionSchema,CloudWorkspaceExportSchema,CloudProviderInventorySchema,CloudReconnectStatusSchema,CloudTaskResultSchema,CloudResultArtifactExportSchema,PreservedCloudResultSchema} from './cloud.js';
-import { AgentModelRouteSchema } from './model-registry.js';
-import { SiteReadParamsSchema, SiteReadResultSchema } from './site-adapters.js';
-import {LocalProjectSchema,ProjectInspectionSchema,ProjectCommandSchema,ProjectFileSchema,ProjectReviewSummarySchema,ProjectCommitRequestSchema,ProjectCommitResultSchema,LocalPreviewCheckSchema,ProjectGithubStatusSchema,ProjectIncidentReportSchema,ProjectEffectNameSchema} from "./local-projects.js";
+import { AgentModelRouteSchema } from "./model-registry.js";
+import { SiteReadParamsSchema, SiteReadResultSchema } from "./site-adapters.js";
 
 const id = z.string().min(1);
 
@@ -105,29 +238,47 @@ export const PagesExecuteParams = z.object({
   taskId: z.string().min(1).optional(),
   expectedRevision: z.number().int().positive().optional(),
   returnObservation: ReturnObservationSchema.optional(),
-  safety: z.object({
-    turnId: id.optional(), threadId: id.optional(), turnToolCallCount: z.number().int().nonnegative().optional(),
-    steps: z.record(z.string(), z.object({
-      approvalId: id.optional(), review: FinalReviewArtifactSchema.optional(),
-      sensitiveData: z.boolean().optional(), restrictedRetry: z.boolean().optional(),
-    }).strict()).optional(),
-  }).strict().optional(),
+  safety: z
+    .object({
+      turnId: id.optional(),
+      threadId: id.optional(),
+      turnToolCallCount: z.number().int().nonnegative().optional(),
+      steps: z
+        .record(
+          z.string(),
+          z
+            .object({
+              approvalId: id.optional(),
+              review: FinalReviewArtifactSchema.optional(),
+              sensitiveData: z.boolean().optional(),
+              restrictedRetry: z.boolean().optional(),
+            })
+            .strict(),
+        )
+        .optional(),
+    })
+    .strict()
+    .optional(),
 });
 export const PagesCuaExecuteParams = PagesExecuteParams.extend({
   program: ProgramSchema.extend({ documentEpoch: z.number().int().nonnegative() }),
-  expectedViewport: z.object({ width: z.number().positive(), height: z.number().positive(), scale: z.number().positive() }).strict(),
+  expectedViewport: z
+    .object({ width: z.number().positive(), height: z.number().positive(), scale: z.number().positive() })
+    .strict(),
 }).strict();
 /**
  * Human/owner reconciliation of a direct (non-run) write on a page whose outcome
  * is uncertain. Scoped agent connections cannot call it: an agent must not
  * vouch for its own uncertain effect.
  */
-export const PagesReconcileWriteParams = z.object({
-  pageId: z.string().min(1),
-  intentId: z.string().min(1).optional(),
-  outcome: z.enum(["applied", "not_applied"]),
-  evidence: z.string().min(1).max(4000),
-}).strict();
+export const PagesReconcileWriteParams = z
+  .object({
+    pageId: z.string().min(1),
+    intentId: z.string().min(1).optional(),
+    outcome: z.enum(["applied", "not_applied"]),
+    evidence: z.string().min(1).max(4000),
+  })
+  .strict();
 /** Named observation keys (`title`, `r12`) or CSS extract specs. */
 export const ExtractFieldSchema = z.union([
   z.string().min(1),
@@ -142,19 +293,38 @@ export const PagesExtractParams = z.object({
   pageId: id,
   fields: z.array(ExtractFieldSchema).optional(),
 });
-export const PagesElementInfoParams = z.object({ pageId: id, x: z.number().finite().nonnegative(), y: z.number().finite().nonnegative(), expectedDocumentEpoch: z.number().int().nonnegative().optional() }).strict();
-export const PagesAccessibilityHtmlParams = z.object({ pageId: id, maxElements: z.number().int().positive().max(1000).optional(), maxTextChars: z.number().int().positive().max(50000).optional() }).strict();
+export const PagesElementInfoParams = z
+  .object({
+    pageId: id,
+    x: z.number().finite().nonnegative(),
+    y: z.number().finite().nonnegative(),
+    expectedDocumentEpoch: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+export const PagesAccessibilityHtmlParams = z
+  .object({
+    pageId: id,
+    maxElements: z.number().int().positive().max(1000).optional(),
+    maxTextChars: z.number().int().positive().max(50000).optional(),
+  })
+  .strict();
 /** Deliberately declarative: no authored JavaScript enters the logged-in page. */
-export const PagesReadParams = z.object({
-  pageId: id,
-  query: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("title") }),
-    z.object({ kind: z.literal("url") }),
-    z.object({ kind: z.literal("text") }),
-    z.object({ kind: z.literal("count"), selector: z.string().min(1).max(2000) }),
-    z.object({ kind: z.literal("attribute"), selector: z.string().min(1).max(2000), name: z.string().min(1).max(200) }),
-  ]),
-}).strict();
+export const PagesReadParams = z
+  .object({
+    pageId: id,
+    query: z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("title") }),
+      z.object({ kind: z.literal("url") }),
+      z.object({ kind: z.literal("text") }),
+      z.object({ kind: z.literal("count"), selector: z.string().min(1).max(2000) }),
+      z.object({
+        kind: z.literal("attribute"),
+        selector: z.string().min(1).max(2000),
+        name: z.string().min(1).max(200),
+      }),
+    ]),
+  })
+  .strict();
 export const PagesWaitForParams = z.object({
   pageId: id,
   condition: ConditionSchema,
@@ -188,10 +358,22 @@ export const PagesFindParams = z.object({
   forward: z.boolean().default(true),
   findNext: z.boolean().default(false),
 });
-export const PagesStopFindParams = z.object({ pageId: id, action: z.enum(["clear", "keep"]).default("clear") });
-export const PagesZoomParams = z.object({ pageId: id, level: z.number().optional(), delta: z.number().optional(), reset: z.boolean().optional(), direction: z.enum(["in", "out"]).optional() });
+export const PagesStopFindParams = z.object({
+  pageId: id,
+  action: z.enum(["clear", "keep"]).default("clear"),
+});
+export const PagesZoomParams = z.object({
+  pageId: id,
+  level: z.number().optional(),
+  delta: z.number().optional(),
+  reset: z.boolean().optional(),
+  direction: z.enum(["in", "out"]).optional(),
+});
 export const PagesTakeoverParams = z.object({ pageId: id });
-export const PagesPickElementParams = z.object({ pageId: id, timeoutMs: z.number().int().min(1_000).max(120_000).optional() });
+export const PagesPickElementParams = z.object({
+  pageId: id,
+  timeoutMs: z.number().int().min(1_000).max(120_000).optional(),
+});
 export const ElementPickSchema = z.object({
   tag: z.string().max(100),
   id: z.string().max(500).optional(),
@@ -204,9 +386,14 @@ export const ElementPickSchema = z.object({
   rect: z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() }),
 });
 export type ElementPick = z.infer<typeof ElementPickSchema>;
-export const PagesPickElementResult = z.object({ picked: z.boolean(), element: ElementPickSchema.optional() });
+export const PagesPickElementResult = z.object({
+  picked: z.boolean(),
+  element: ElementPickSchema.optional(),
+});
 export const PagesResumeParams = z.object({ pageId: id });
-export const PagesOpenLiveParams = z.object({ pageId: id }).describe("focus a borrowed Chrome tab in real Chrome");
+export const PagesOpenLiveParams = z
+  .object({ pageId: id })
+  .describe("focus a borrowed Chrome tab in real Chrome");
 
 /** sets.* */
 export const SetsCreateParams = z.object({
@@ -228,7 +415,9 @@ export const SetsMapParams = z.object({
       steps: z.array(StepSchema).min(1).max(200).optional(),
       nodes: z.array(ProgramNodeSchema).min(1).max(400).optional(),
     })
-    .refine((p) => (p.steps?.length ?? 0) > 0 || (p.nodes?.length ?? 0) > 0, { message: "steps or nodes required" })
+    .refine((p) => (p.steps?.length ?? 0) > 0 || (p.nodes?.length ?? 0) > 0, {
+      message: "steps or nodes required",
+    })
     .optional(),
   programId: z.string().optional(),
   goal: z.string().optional(),
@@ -241,7 +430,10 @@ export const SetsMapParams = z.object({
   deadlineMs: z.number().int().min(1000).max(3_600_000).optional(),
   maxCostUsd: z.number().positive().max(1000).optional(),
 });
-export const SetsResultsParams = z.object({ setId: id, status: z.enum(["ok", "partial", "error"]).optional() });
+export const SetsResultsParams = z.object({
+  setId: id,
+  status: z.enum(["ok", "partial", "error"]).optional(),
+});
 
 /** runs.* */
 export const RunsStartParams = z.object({
@@ -306,14 +498,21 @@ export const ConversationContextSchema = z.object({
 });
 export type ConversationContext = z.infer<typeof ConversationContextSchema>;
 export const RunsContextGetParams = z.object({ chatId: id });
-export const RunsContextSetParams = z.object({
-  chatId: id,
-  historyEnabled: z.boolean().optional(),
-  runId: id.optional(),
-  included: z.boolean().optional(),
-}).refine(value => value.historyEnabled !== undefined || (value.runId && value.included !== undefined), { message: "historyEnabled or runId/included is required" });
+export const RunsContextSetParams = z
+  .object({
+    chatId: id,
+    historyEnabled: z.boolean().optional(),
+    runId: id.optional(),
+    included: z.boolean().optional(),
+  })
+  .refine((value) => value.historyEnabled !== undefined || (value.runId && value.included !== undefined), {
+    message: "historyEnabled or runId/included is required",
+  });
 export const PreparedConversationSchema = z.object({
-  chatId: id, title: z.string(), attachmentCount: z.number().int().positive(), updatedAt: z.number().finite(),
+  chatId: id,
+  title: z.string(),
+  attachmentCount: z.number().int().positive(),
+  updatedAt: z.number().finite(),
 });
 export type PreparedConversation = z.infer<typeof PreparedConversationSchema>;
 export const ConversationsListParams = z.object({
@@ -338,22 +537,45 @@ export const ConversationAttachmentSchema = z.object({
   included: z.boolean(),
 });
 export type ConversationAttachment = z.infer<typeof ConversationAttachmentSchema>;
-export const ConversationAttachmentsSchema = z.object({ chatId: id, attachments: z.array(ConversationAttachmentSchema) });
+export const ConversationAttachmentsSchema = z.object({
+  chatId: id,
+  attachments: z.array(ConversationAttachmentSchema),
+});
 export const ConversationAttachmentAddParams = z.object({
   chatId: id,
   sourceArtifactId: id.optional(),
-  filename: z.string().min(1).max(255).regex(/^[^/\\\x00-\x1f]+\.(txt|md|csv|json|docx|xlsx|pdf)$/i),
-  content: z.string().max(512 * 1024).refine(value => !value.includes("\0") && new TextEncoder().encode(value).length <= 512 * 1024, "Use a UTF-8 text document up to 512 KB"),
+  filename: z
+    .string()
+    .min(1)
+    .max(255)
+    .regex(/^[^/\\\x00-\x1f]+\.(txt|md|csv|json|docx|xlsx|pdf)$/i),
+  content: z
+    .string()
+    .max(512 * 1024)
+    .refine(
+      (value) => !value.includes("\0") && new TextEncoder().encode(value).length <= 512 * 1024,
+      "Use a UTF-8 text document up to 512 KB",
+    ),
 });
 export const ConversationAttachmentControlParams = z.object({ chatId: id, attachmentId: id });
-export const ConversationAttachmentToggleParams = ConversationAttachmentControlParams.extend({ included: z.boolean() });
+export const ConversationAttachmentToggleParams = ConversationAttachmentControlParams.extend({
+  included: z.boolean(),
+});
 export const ConversationImageSchema = z.object({
-  imageId:id, artifactId:id, filename:z.string(), width:z.number().int().positive(), height:z.number().int().positive(),
-  byteLength:z.number().int().nonnegative(), sourceUrl:z.string().optional(), sourcePage:PageContextRefSchema.optional(), createdAt:z.number(), included:z.boolean(),
+  imageId: id,
+  artifactId: id,
+  filename: z.string(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  byteLength: z.number().int().nonnegative(),
+  sourceUrl: z.string().optional(),
+  sourcePage: PageContextRefSchema.optional(),
+  createdAt: z.number(),
+  included: z.boolean(),
 });
 export type ConversationImage = z.infer<typeof ConversationImageSchema>;
-const ConversationImagesSchema = z.object({chatId:id,images:z.array(ConversationImageSchema)});
-const ConversationImageControl = z.object({chatId:id,imageId:id});
+const ConversationImagesSchema = z.object({ chatId: id, images: z.array(ConversationImageSchema) });
+const ConversationImageControl = z.object({ chatId: id, imageId: id });
 export const ConversationArtifactSchema = z.object({
   artifactId: id,
   runId: id,
@@ -365,14 +587,32 @@ export const ConversationArtifactSchema = z.object({
   turnGoal: z.string().max(400),
   sourceArtifactIds: z.array(id).optional(),
   revision: z.number().int().positive().optional(),
-  generatedKind: z.enum(["csv","xlsx","docx","pptx","chart"]).optional(),
+  generatedKind: z.enum(["csv", "xlsx", "docx", "pptx", "chart"]).optional(),
   included: z.boolean(),
 });
 export type ConversationArtifact = z.infer<typeof ConversationArtifactSchema>;
-export const SavedResultSchema = z.object({ artifactId:id,runId:id,chatId:id,filename:z.string(),mediaType:z.string(),byteLength:z.number(),createdAt:z.number(),conversationTitle:z.string(),turnGoal:z.string(),revision:z.number().int().positive().optional() });
+export const SavedResultSchema = z.object({
+  artifactId: id,
+  runId: id,
+  chatId: id,
+  filename: z.string(),
+  mediaType: z.string(),
+  byteLength: z.number(),
+  createdAt: z.number(),
+  conversationTitle: z.string(),
+  turnGoal: z.string(),
+  revision: z.number().int().positive().optional(),
+});
 export type SavedResult = z.infer<typeof SavedResultSchema>;
-export const ConversationArtifactsSchema = z.object({ chatId: id, artifacts: z.array(ConversationArtifactSchema) });
-export const ConversationArtifactToggleParams = z.object({ chatId: id, artifactId: id, included: z.boolean() });
+export const ConversationArtifactsSchema = z.object({
+  chatId: id,
+  artifacts: z.array(ConversationArtifactSchema),
+});
+export const ConversationArtifactToggleParams = z.object({
+  chatId: id,
+  artifactId: id,
+  included: z.boolean(),
+});
 export const BrowserConversationSourceSchema = z.object({
   kind: z.literal("browser").optional(),
   sourceId: id,
@@ -400,14 +640,37 @@ export const CalendarConversationSourceSchema = z.object({
   observedAt: z.number(),
 });
 export const MemoryConversationSourceSchema = z.object({
-  kind: z.literal("memory"), sourceId: id, runId: id, memoryId: id, workspaceId: id,
-  pageId: id, profileId: id, documentEpoch: z.number().int().nonnegative(),
-  url: z.string().url().max(4000), title: z.string().max(1000), observedAt: z.number(),
+  kind: z.literal("memory"),
+  sourceId: id,
+  runId: id,
+  memoryId: id,
+  workspaceId: id,
+  pageId: id,
+  profileId: id,
+  documentEpoch: z.number().int().nonnegative(),
+  url: z.string().url().max(4000),
+  title: z.string().max(1000),
+  observedAt: z.number(),
 });
-export const ConversationSourceSchema = z.union([BrowserConversationSourceSchema, CalendarConversationSourceSchema, MemoryConversationSourceSchema]);
+export const ConversationSourceSchema = z.union([
+  BrowserConversationSourceSchema,
+  CalendarConversationSourceSchema,
+  MemoryConversationSourceSchema,
+]);
 export type ConversationSource = z.infer<typeof ConversationSourceSchema>;
-export const ConversationSourcesSchema = z.object({ chatId: id, sources: z.array(ConversationSourceSchema).max(200) });
-export const ConversationWorkspaceSchema = z.object({ memoryPreview: z.string().optional(), browsingPreview: z.string().optional(), chatId: id, taskId: id.optional(), assigned: z.boolean().optional(), workspace: WorkspaceSchema.nullable(), memory: WorkspaceMemorySchema.nullable() });
+export const ConversationSourcesSchema = z.object({
+  chatId: id,
+  sources: z.array(ConversationSourceSchema).max(200),
+});
+export const ConversationWorkspaceSchema = z.object({
+  memoryPreview: z.string().optional(),
+  browsingPreview: z.string().optional(),
+  chatId: id,
+  taskId: id.optional(),
+  assigned: z.boolean().optional(),
+  workspace: WorkspaceSchema.nullable(),
+  memory: WorkspaceMemorySchema.nullable(),
+});
 export const ConversationWorkspaceSetParams = z.object({ chatId: id, workspaceId: id.nullable() });
 
 /** artifacts.* */
@@ -460,27 +723,30 @@ export const SettingsSetParams = z.object({
   modelCredential: ModelCredentialSchema.optional(),
   compatibleEndpoint: z.string().trim().max(2048).optional(),
   gatewayApiKey: z.string().optional(),
-  githubCredential: z.string().max(1000).optional(),
-  vercelCredential: z.string().max(1000).optional(),
-  vercelTeamId: z.string().max(200).optional(),
-  vercelProjectId: z.string().max(200).optional(),
-  sentryCredential: z.string().max(1000).optional(),
-  sentryOrganization: z.string().max(200).optional(),
-  sentryProject: z.string().max(200).optional(),
   plannerModel: z.string().optional(),
   recoveryModel: z.string().optional(),
   visionModel: z.string().optional(),
-  agentModelRoutes: z.object({
-    fast: AgentModelRouteSchema.optional(), standard: AgentModelRouteSchema.optional(),
-    deep: AgentModelRouteSchema.optional(), visual: AgentModelRouteSchema.optional(),
-  }).strict().optional(),
+  agentModelRoutes: z
+    .object({
+      fast: AgentModelRouteSchema.optional(),
+      standard: AgentModelRouteSchema.optional(),
+      deep: AgentModelRouteSchema.optional(),
+      visual: AgentModelRouteSchema.optional(),
+    })
+    .strict()
+    .optional(),
   searchEngine: SearchEngineTemplateSchema.optional(),
   /** `kw query` engines — user entries merge over the built-in list. */
-  searchEngines: z.array(z.object({
-    keyword: z.string().trim().min(1).max(16),
-    name: z.string().trim().min(1).max(60),
-    template: SearchEngineTemplateSchema,
-  })).max(32).optional(),
+  searchEngines: z
+    .array(
+      z.object({
+        keyword: z.string().trim().min(1).max(16),
+        name: z.string().trim().min(1).max(60),
+        template: SearchEngineTemplateSchema,
+      }),
+    )
+    .max(32)
+    .optional(),
   /** Remote search suggestions — off by default; never queried in private mode or for probable-private addresses. */
   searchSuggestions: z.boolean().optional(),
   /** Personal info offered to page forms on explicit request. Credentials and payment are never stored here. */
@@ -528,48 +794,112 @@ export const HistoryListParams = z.object({
   before: z.object({ visitedAt: z.number().finite().nonnegative(), url: z.string().min(1) }).optional(),
 });
 /** Chromium HistoryService is authoritative; these internal messages maintain a derived FTS index. */
-export const HistoryProjectionVisitSchema = z.object({
-  url: z.string().url().max(8192),
-  title: z.string().max(4096),
-  visitedAt: z.number().int().nonnegative(),
-}).strict();
-export const HistoryProjectSnapshotParams = z.object({
-  profileId: z.string().min(1).max(200),
-  sourceGeneration: z.string().min(1).max(200),
-  sequence: z.number().int().nonnegative(),
-  batchIndex: z.number().int().nonnegative(),
-  complete: z.boolean(),
-  visits: z.array(HistoryProjectionVisitSchema).max(1000),
-}).strict();
-export const HistoryProjectDeltaParams = z.object({
-  profileId: z.string().min(1).max(200),
-  sourceGeneration: z.string().min(1).max(200),
-  sequence: z.number().int().nonnegative(),
-  upserts: z.array(HistoryProjectionVisitSchema).max(1000).default([]),
-  removals: z.array(HistoryProjectionVisitSchema.pick({ url: true, visitedAt: true })).max(1000).default([]),
-  titleUpdates: z.array(HistoryProjectionVisitSchema.pick({ url: true, title: true })).max(1000).default([]),
-  clearRange: z.object({ since: z.number().int().nonnegative().optional(), before: z.number().int().nonnegative().optional() }).optional(),
-}).strict();
+export const HistoryProjectionVisitSchema = z
+  .object({
+    url: z.string().url().max(8192),
+    title: z.string().max(4096),
+    visitedAt: z.number().int().nonnegative(),
+  })
+  .strict();
+export const HistoryProjectSnapshotParams = z
+  .object({
+    profileId: z.string().min(1).max(200),
+    sourceGeneration: z.string().min(1).max(200),
+    sequence: z.number().int().nonnegative(),
+    batchIndex: z.number().int().nonnegative(),
+    complete: z.boolean(),
+    visits: z.array(HistoryProjectionVisitSchema).max(1000),
+  })
+  .strict();
+export const HistoryProjectDeltaParams = z
+  .object({
+    profileId: z.string().min(1).max(200),
+    sourceGeneration: z.string().min(1).max(200),
+    sequence: z.number().int().nonnegative(),
+    upserts: z.array(HistoryProjectionVisitSchema).max(1000).default([]),
+    removals: z
+      .array(HistoryProjectionVisitSchema.pick({ url: true, visitedAt: true }))
+      .max(1000)
+      .default([]),
+    titleUpdates: z
+      .array(HistoryProjectionVisitSchema.pick({ url: true, title: true }))
+      .max(1000)
+      .default([]),
+    clearRange: z
+      .object({
+        since: z.number().int().nonnegative().optional(),
+        before: z.number().int().nonnegative().optional(),
+      })
+      .optional(),
+  })
+  .strict();
 const WebBookmarkSchema = z.object({
-  url: z.string().url().max(8192).refine(value => { try { const url=new URL(value); return ["http:","https:"].includes(url.protocol)&&!url.username&&!url.password; } catch { return false; } }, "Use a web address without credentials."),
-  title: z.string().max(1000), folderPath: BookmarkFolderPathSchema.optional(),
+  url: z
+    .string()
+    .url()
+    .max(8192)
+    .refine((value) => {
+      try {
+        const url = new URL(value);
+        return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password;
+      } catch {
+        return false;
+      }
+    }, "Use a web address without credentials."),
+  title: z.string().max(1000),
+  folderPath: BookmarkFolderPathSchema.optional(),
 });
 const BookmarkNodeIdSchema = z.string().regex(/^[1-9]\d{0,18}$/);
-export const BookmarkAddParams = z.object({ url: z.string().url(), title: z.string(), folderPath: BookmarkFolderPathSchema.optional(), readingList: z.boolean().optional(), forceNew: z.boolean().optional() });
+export const BookmarkAddParams = z.object({
+  url: z.string().url(),
+  title: z.string(),
+  folderPath: BookmarkFolderPathSchema.optional(),
+  readingList: z.boolean().optional(),
+  forceNew: z.boolean().optional(),
+});
 /** Toggle the reading-list flag on a bookmark; creates the bookmark when absent (title then required). */
-export const BookmarkReadingListParams = z.object({ url: z.string().url().max(8192), nodeId: BookmarkNodeIdSchema.optional(), readingList: z.boolean(), title: z.string().max(1000).optional() });
-export const BookmarkMarkReadParams = z.object({ url: z.string().url().max(8192), nodeId: BookmarkNodeIdSchema.optional(), read: z.boolean() });
+export const BookmarkReadingListParams = z.object({
+  url: z.string().url().max(8192),
+  nodeId: BookmarkNodeIdSchema.optional(),
+  readingList: z.boolean(),
+  title: z.string().max(1000).optional(),
+});
+export const BookmarkMarkReadParams = z.object({
+  url: z.string().url().max(8192),
+  nodeId: BookmarkNodeIdSchema.optional(),
+  read: z.boolean(),
+});
 /** Serialized reader-extract article; stored opaque and capped so list copies stay small. */
-export const BookmarkOfflineSetParams = z.object({ url: z.string().url().max(8192), article: z.string().min(2).max(512 * 1024) });
+export const BookmarkOfflineSetParams = z.object({
+  url: z.string().url().max(8192),
+  article: z
+    .string()
+    .min(2)
+    .max(512 * 1024),
+});
 export const BookmarkOfflineGetParams = z.object({ url: z.string().url().max(8192) });
 export const BookmarkUpdateParams = BookmarkAddParams.extend({
   nodeId: BookmarkNodeIdSchema.optional(),
   originalUrl: z.string().url(),
-  url: z.string().max(8192).url().refine(value => { try { const url=new URL(value); return ["http:","https:"].includes(url.protocol)&&!url.username&&!url.password; } catch { return false; } }, "Use a web address without credentials."),
+  url: z
+    .string()
+    .max(8192)
+    .url()
+    .refine((value) => {
+      try {
+        const url = new URL(value);
+        return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password;
+      } catch {
+        return false;
+      }
+    }, "Use a web address without credentials."),
   title: z.string().trim().min(1).max(1000),
   expected: z.object({ title: z.string(), folderPath: BookmarkFolderPathSchema.optional() }),
 });
-export const BookmarkRemoveParams = z.object({ url: z.string().url(), nodeId: BookmarkNodeIdSchema.optional() });
+export const BookmarkRemoveParams = z.object({
+  url: z.string().url(),
+  nodeId: BookmarkNodeIdSchema.optional(),
+});
 
 export const PageWindowMoveParams = z.object({
   pageId: id,
@@ -587,25 +917,65 @@ export const EventsSinceParams = RunsEventsParams;
 export const WorkspaceGetParams = z.object({});
 
 /** Host-neutral QuickJS code mode. A session is scoped to one authenticated caller. */
-export const AgentJsRunParams = z.object({
-  code: z.string().min(1).max(100_000),
-  sessionId: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/).default("default"),
-  deadlineMs: z.number().int().min(100).max(30_000).default(10_000),
-}).strict();
+export const AgentJsRunParams = z
+  .object({
+    code: z.string().min(1).max(100_000),
+    sessionId: z
+      .string()
+      .regex(/^[a-zA-Z0-9_-]{1,64}$/)
+      .default("default"),
+    deadlineMs: z.number().int().min(100).max(30_000).default(10_000),
+  })
+  .strict();
 export const AgentJsResetParams = AgentJsRunParams.pick({ sessionId: true });
 export const AgentJsResult = z.object({ value: z.unknown(), durationMs: z.number().nonnegative() });
-export const AgentWebContextSchema = z.object({ taskId: id.optional(), expectedRevision: z.number().int().positive().optional() });
-export const AgentWebPageSchema = z.object({ url: z.string().url(), title: z.string(), text: z.string(),
-  links: z.array(z.object({ title: z.string(), url: z.string().url() })), contentType: z.string() });
-export const AgentTurnContextSchema = z.object({ taskId: id, expectedRevision: z.number().int().positive(), turnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/) });
+export const AgentWebContextSchema = z.object({
+  taskId: id.optional(),
+  expectedRevision: z.number().int().positive().optional(),
+});
+export const AgentWebPageSchema = z.object({
+  url: z.string().url(),
+  title: z.string(),
+  text: z.string(),
+  links: z.array(z.object({ title: z.string(), url: z.string().url() })),
+  contentType: z.string(),
+});
+export const AgentTurnContextSchema = z.object({
+  taskId: id,
+  expectedRevision: z.number().int().positive(),
+  turnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+});
 
 /** browser-data import */
 export const ImportCategorySchema = z.enum(["bookmarks", "history", "tabs"]);
 export type ImportCategory = z.infer<typeof ImportCategorySchema>;
-const ImportCategoryPreviewSchema = z.object({ category: ImportCategorySchema, available: z.boolean(), count: z.number().int().optional(), bytes: z.number().optional(), blocker: z.string().optional() });
-const ImportSourcePreviewSchema = z.object({ id: z.string(), label: z.string(), profiles: z.array(z.string()), categories: z.array(ImportCategoryPreviewSchema) });
-const ImportCategoryResultSchema = z.object({ source: z.string(), label: z.string(), category: ImportCategorySchema, state: z.enum(["running", "done", "skipped", "error"]), imported: z.number().int(), skipped: z.number().int(), detail: z.string().optional() });
-const ImportReportSchema = z.object({ jobId: z.string(), cancelled: z.boolean(), results: z.array(ImportCategoryResultSchema) });
+const ImportCategoryPreviewSchema = z.object({
+  category: ImportCategorySchema,
+  available: z.boolean(),
+  count: z.number().int().optional(),
+  bytes: z.number().optional(),
+  blocker: z.string().optional(),
+});
+const ImportSourcePreviewSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  profiles: z.array(z.string()),
+  categories: z.array(ImportCategoryPreviewSchema),
+});
+const ImportCategoryResultSchema = z.object({
+  source: z.string(),
+  label: z.string(),
+  category: ImportCategorySchema,
+  state: z.enum(["running", "done", "skipped", "error"]),
+  imported: z.number().int(),
+  skipped: z.number().int(),
+  detail: z.string().optional(),
+});
+const ImportReportSchema = z.object({
+  jobId: z.string(),
+  cancelled: z.boolean(),
+  results: z.array(ImportCategoryResultSchema),
+});
 export type ImportSourcePreview = z.infer<typeof ImportSourcePreviewSchema>;
 export type ImportCategoryResult = z.infer<typeof ImportCategoryResultSchema>;
 export type ImportReport = z.infer<typeof ImportReportSchema>;
@@ -621,19 +991,25 @@ export const MethodSchemas = {
   "agent.inlineAssist.cancel": InlineAssistCancelParamsSchema,
   "agent.web.fetch": AgentWebContextSchema.extend({ url: z.string().url().max(8192) }).strict(),
   "agent.web.search": AgentWebContextSchema.extend({ query: z.string().trim().min(1).max(500) }).strict(),
-  "agent.images.generate": AgentWebContextSchema.extend({ prompt: z.string().trim().min(1).max(4000) }).strict(),
-  "agent.turn.open": AgentTurnContextSchema.extend({ url: z.string().url().max(8192), skipIfActive: z.boolean().default(true) }).strict(),
+  "agent.images.generate": AgentWebContextSchema.extend({
+    prompt: z.string().trim().min(1).max(4000),
+  }).strict(),
+  "agent.turn.open": AgentTurnContextSchema.extend({
+    url: z.string().url().max(8192),
+    skipIfActive: z.boolean().default(true),
+  }).strict(),
   "agent.turn.end": AgentTurnContextSchema.strict(),
   "agent.turn.clipboard.write": AgentTurnContextSchema.extend({ text: z.string().max(256_000) }).strict(),
   "agent.turn.clipboard.read": AgentTurnContextSchema.strict(),
-  "agent.turn.clipboard.paste": AgentTurnContextSchema.extend({ pageId: id, target: z.string().min(1).max(2000), documentEpoch: z.number().int().nonnegative().optional() }).strict(),
+  "agent.turn.clipboard.paste": AgentTurnContextSchema.extend({
+    pageId: id,
+    target: z.string().min(1).max(2000),
+    documentEpoch: z.number().int().nonnegative().optional(),
+  }).strict(),
   "sites.read": SiteReadParamsSchema,
   "tasks.recordEvidence": EvidenceNoteParams,
   "tasks.captureEvidence": EvidenceCaptureParams,
   "tasks.importDocumentEvidence": EvidenceDocumentParams,
-  "tasks.importCommandEvidence": EvidenceCommandParams,
-  "tasks.prepareLocalCommand": z.object({taskId:z.string().min(1),expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
-  "tasks.confirmProjectInvocation": z.object({taskId:z.string().min(1),expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),invocationId:z.string().min(1),name:ProjectEffectNameSchema}).strict(),
   "tasks.reviewCriterion": CriterionReviewParams,
   "tasks.reconcileAction": TaskReconcileParams,
   "tasks.reconcileOperation": TaskReconcileOperationParams,
@@ -643,95 +1019,92 @@ export const MethodSchemas = {
   "workspaces.create": z.object({ name: z.string().trim().min(1).max(100) }),
   "spaces.list": z.object({}),
   "spaces.import": z.object({ spaces: z.array(SpaceInputSchema).max(500) }),
-  "spaces.create": z.object({ name: z.string().trim().min(1).max(100), color: SpaceColorSchema, grain: SpaceGrainSchema.default(0) }),
-  "spaces.update": z.object({ id: id, name: z.string().trim().min(1).max(100).optional(), color: SpaceColorSchema.optional(), grain: SpaceGrainSchema.optional(), archived: z.boolean().optional() }),
+  "spaces.create": z.object({
+    name: z.string().trim().min(1).max(100),
+    color: SpaceColorSchema,
+    grain: SpaceGrainSchema.default(0),
+  }),
+  "spaces.update": z.object({
+    id: id,
+    name: z.string().trim().min(1).max(100).optional(),
+    color: SpaceColorSchema.optional(),
+    grain: SpaceGrainSchema.optional(),
+    archived: z.boolean().optional(),
+  }),
   "workspaces.list": z.object({}),
   "workspaces.browsingMemory.get": z.object({ workspaceId: id }),
   "workspaces.browsingMemory.set": z.object({ workspaceId: id, policy: BrowsingMemoryPolicySchema }),
-  "workspaces.browsingMemory.record": z.object({ workspaceId: id, pageId: id, expectedDocumentEpoch: z.number().int().nonnegative() }),
+  "workspaces.browsingMemory.record": z.object({
+    workspaceId: id,
+    pageId: id,
+    expectedDocumentEpoch: z.number().int().nonnegative(),
+  }),
   "workspaces.browsingMemory.forget": z.object({ workspaceId: id, memoryId: id.optional() }),
   "workspaces.contentMemory.policy": z.object({ workspaceId: id }),
   "workspaces.contentMemory.setPolicy": z.object({ workspaceId: id, policy: ContentMemoryPolicySchema }),
-  "workspaces.contentMemory.capture": z.object({ workspaceId: id, pageId: id, expectedDocumentEpoch: z.number().int().nonnegative(), expectedUrl: z.string().url().max(8192) }),
+  "workspaces.contentMemory.capture": z.object({
+    workspaceId: id,
+    pageId: id,
+    expectedDocumentEpoch: z.number().int().nonnegative(),
+    expectedUrl: z.string().url().max(8192),
+  }),
   "workspaces.contentMemory.search": z.object({ workspaceId: id, query: z.string().trim().min(1).max(200) }),
   "workspaces.contentMemory.get": z.object({ workspaceId: id, memoryId: id }),
   "workspaces.contentMemory.forget": z.object({ workspaceId: id, memoryId: id.optional() }),
   "workspaces.memory.get": z.object({ workspaceId: id }),
-  "workspaces.memory.search": z.object({query:z.string().trim().min(1).max(1000)}),
-  "workspaces.memory.set": z.object({ workspaceId: id, expectedRevision: z.number().int().nonnegative(), content: z.string().max(16_000), enabled:z.boolean().optional(), items:z.array(WorkspaceMemoryItemSchema).max(40).optional(), excludedOrigins:z.array(z.string().max(2048)).max(100).optional() }),
+  "workspaces.memory.search": z.object({ query: z.string().trim().min(1).max(1000) }),
+  "workspaces.memory.set": z.object({
+    workspaceId: id,
+    expectedRevision: z.number().int().nonnegative(),
+    content: z.string().max(16_000),
+    enabled: z.boolean().optional(),
+    items: z.array(WorkspaceMemoryItemSchema).max(40).optional(),
+    excludedOrigins: z.array(z.string().max(2048)).max(100).optional(),
+  }),
   "tasks.create": TaskCreateParams,
   "tasks.promote": TaskPromoteParams,
   "tasks.update": TaskUpdateParams,
   "tasks.get": z.object({ taskId: id }),
-  "tasks.list": z.object({ query:z.string().trim().max(1000).optional(), workspaceId: id.optional(), includeArchived: z.boolean().default(false), limit: z.number().int().min(1).max(500).default(100) }),
-  "tasks.archive": z.object({ taskId: id, expectedRevision: z.number().int().positive(), archived: z.boolean() }),
-  "tasks.start": RunsStartParams.omit({ goal: true, setId: true }).extend({ taskId: id, expectedRevision: z.number().int().positive() }),
-  "development.projects": z.object({taskId:id,expectedRevision:z.number().int().positive()}).strict(),
-  "development.inspect": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
-  "development.githubStatus": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
-  "development.operationsStatus": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
-  "development.incidentReport": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),pageId:id}).strict(),
-  "development.prepareIncidentFix": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),pageId:id}).strict(),
-  "development.files": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
-  "development.readFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024)}).strict(),
-  "development.writeFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024),expectedHash:z.string().regex(/^[a-f0-9]{64}$/),content:z.string().max(256*1024)}).strict(),
-  "development.createFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024),content:z.string().max(256*1024)}).strict(),
-  "development.renameFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024),nextName:z.string().min(1).max(1024),expectedHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict(),
-  "development.deleteFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),name:z.string().min(1).max(1024),expectedHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict(),
-  "development.commands": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
-  "development.runCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),command:z.string().min(1).max(8000),mode:z.enum(['command','service']).default('command')}).strict(),
-  "development.requestCommandEscalation": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),command:z.string().min(1).max(8000),justification:z.string().trim().min(1).max(2000),prefixRule:z.string().trim().min(1).max(200).optional()}).strict(),
-  "development.commandEscalations.pending": z.object({}).strict(),
-  "development.commandEscalations.decide": z.object({decision:CommandEscalationDecisionSchema}).strict(),
-  "development.openPreview": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),url:z.string().min(1).max(2048)}).strict(),
-  "development.stopCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),commandId:z.string().uuid()}).strict(),
-  "development.review": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).strict(),
-  "development.commit": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid()}).extend(ProjectCommitRequestSchema.shape).strict(),
-  "cloud.environments": z.object({taskId:id,expectedRevision:z.number().int().positive()}).strict(),
-  "cloud.create": z.object({taskId:id,expectedRevision:z.number().int().positive(),projectId:z.string().uuid(),runtime:z.enum(['universal','node24','node22','python3.13']).default('universal'),region:z.string().regex(/^[a-z]{3}\d$/).default('iad1'),port:z.number().int().min(1024).max(65535).default(3000),timeoutMinutes:z.number().int().min(5).max(45).default(15),cleanupHours:z.number().int().min(1).max(72).default(24)}).strict(),
-  "cloud.runCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),executable:z.string().regex(/^[A-Za-z0-9._/+:-]{1,200}$/),args:z.array(z.string().max(2000)).max(100).default([])}).strict(),
-  "cloud.startService": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),executable:z.string().regex(/^[A-Za-z0-9._/+:-]{1,200}$/),args:z.array(z.string().max(2000)).max(100).default([]),timeoutMinutes:z.number().int().min(5).max(45).default(15)}).strict(),
-  "cloud.commands": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.refreshCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),commandId:z.string().uuid()}).strict(),
-  "cloud.stopCommand": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),commandId:z.string().uuid()}).strict(),
-  "cloud.refresh": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.resume": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.files": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),path:z.string().max(1024).default('')}).strict(),
-  "cloud.readFile": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),path:z.string().min(1).max(1024)}).strict(),
-  "cloud.taskResult": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.handoff": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.handoffAndStart": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),executable:z.string().regex(/^[A-Za-z0-9._/+:-]{1,200}$/),args:z.array(z.string().max(2000)).max(100).default([]),timeoutMinutes:z.number().int().min(5).max(45).default(15)}).strict(),
-  "cloud.importTaskResult": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.preserveTaskResult": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.downloadResultArtifact": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),artifactPath:z.string().min(1).max(1024),expectedResultUpdatedAt:z.number().int().nonnegative()}).strict(),
-  "cloud.openTerminal": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.openPreview": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.exportWorkspace": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.inventory": z.object({taskId:id,expectedRevision:z.number().int().positive()}).strict(),
-  "cloud.cleanupOrphan": z.object({taskId:id,expectedRevision:z.number().int().positive(),remoteName:z.string().regex(/^aux-[A-Za-z0-9-]{1,100}$/),expectedUpdatedAt:z.number().int().nonnegative()}).strict(),
-  "cloud.forgetMissing": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid(),expectedUpdatedAt:z.number().int().nonnegative()}).strict(),
-  "cloud.syncProject": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.stop": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.delete": z.object({taskId:id,expectedRevision:z.number().int().positive(),environmentId:z.string().uuid()}).strict(),
-  "cloud.reconnectStatus": z.object({taskId:id,expectedRevision:z.number().int().positive()}).strict(),
+  "tasks.list": z.object({
+    query: z.string().trim().max(1000).optional(),
+    workspaceId: id.optional(),
+    includeArchived: z.boolean().default(false),
+    limit: z.number().int().min(1).max(500).default(100),
+  }),
+  "tasks.archive": z.object({
+    taskId: id,
+    expectedRevision: z.number().int().positive(),
+    archived: z.boolean(),
+  }),
+  "tasks.start": RunsStartParams.omit({ goal: true, setId: true }).extend({
+    taskId: id,
+    expectedRevision: z.number().int().positive(),
+  }),
   "installation.createBackup": z.object({}).strict(),
   "installation.listBackups": z.object({}).strict(),
-  "installation.deleteBackup": z.object({name:z.string().min(1).max(200),expectedSha256:z.string().regex(/^[a-f0-9]{64}$/)}).strict(),
+  "installation.deleteBackup": z
+    .object({ name: z.string().min(1).max(200), expectedSha256: z.string().regex(/^[a-f0-9]{64}$/) })
+    .strict(),
   "installation.backupRetention": z.object({}).strict(),
-  "installation.setBackupRetention": z.object({keep:z.union([z.literal(3),z.literal(5),z.literal(10),z.literal(20)])}).strict(),
-  "installation.stageRestore": z.object({path:z.string().min(1).max(4096)}).strict(),
+  "installation.setBackupRetention": z
+    .object({ keep: z.union([z.literal(3), z.literal(5), z.literal(10), z.literal(20)]) })
+    .strict(),
+  "installation.stageRestore": z.object({ path: z.string().min(1).max(4096) }).strict(),
   "installation.cancelRestore": z.object({}).strict(),
   "vault.status": z.object({}),
-  "vault.list": z.object({includeRevoked:z.boolean().default(false)}),
+  "vault.list": z.object({ includeRevoked: z.boolean().default(false) }),
   "vault.save": VaultSaveParams,
   "vault.lock": VaultLockParams,
   "vault.unlock": VaultUnlockParams,
   "vault.grant": VaultGrantParams,
   "vault.renewGrant": VaultRenewGrantParams,
   "vault.expiredGrants": z.object({}).strict(),
-  "vault.revoke": z.object({itemId:id.optional(),grantId:id.optional()}).strict().refine(value=>!!value.itemId||!!value.grantId, "Choose a vault item or grant to revoke"),
-  "vault.history": z.object({itemId:id.optional(),limit:z.number().int().min(1).max(200).default(50)}),
-  "vault.grants": z.object({taskId:id.optional(),origin:z.string().url().optional()}),
+  "vault.revoke": z
+    .object({ itemId: id.optional(), grantId: id.optional() })
+    .strict()
+    .refine((value) => !!value.itemId || !!value.grantId, "Choose a vault item or grant to revoke"),
+  "vault.history": z.object({ itemId: id.optional(), limit: z.number().int().min(1).max(200).default(50) }),
+  "vault.grants": z.object({ taskId: id.optional(), origin: z.string().url().optional() }),
   "vault.generate": VaultGenerateParams,
   "vault.itemsForOrigin": VaultItemsForOriginParams,
   "vault.fill": VaultHumanFillParams,
@@ -739,10 +1112,17 @@ export const MethodSchemas = {
   "vault.import": VaultEncryptedImportParams,
   "vault.update": VaultUpdateParams,
   "vault.secretMatches": VaultSecretMatchParams,
-  "routines.list": z.object({workspaceId:id.optional(),query:z.string().trim().max(200).optional(),includeArchived:z.boolean().default(false),limit:z.number().int().min(1).max(200).default(50)}),
+  "routines.list": z.object({
+    workspaceId: id.optional(),
+    query: z.string().trim().max(200).optional(),
+    includeArchived: z.boolean().default(false),
+    limit: z.number().int().min(1).max(200).default(50),
+  }),
   "goals.create": GoalCreateParams,
   "goals.get": z.object({ goalId: z.string().uuid() }).strict(),
-  "goals.list": z.object({ workspaceId: id.optional(), limit: z.number().int().min(1).max(200).default(100) }).strict(),
+  "goals.list": z
+    .object({ workspaceId: id.optional(), limit: z.number().int().min(1).max(200).default(100) })
+    .strict(),
   "goals.start": z.object({ goalId: z.string().uuid(), pageIds: z.array(id).min(1).max(8) }).strict(),
   "goals.pause": z.object({ goalId: z.string().uuid() }).strict(),
   "goals.resume": z.object({ goalId: z.string().uuid() }).strict(),
@@ -750,43 +1130,89 @@ export const MethodSchemas = {
   "hooks.register": HookCreateParams,
   "hooks.get": z.object({ hookId: z.string().uuid() }).strict(),
   "hooks.list": z.object({ workspaceId: id }).strict(),
-  "hooks.approve": z.object({ hookId: z.string().uuid(), expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  "hooks.approve": z
+    .object({ hookId: z.string().uuid(), expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) })
+    .strict(),
   "hooks.revoke": z.object({ hookId: z.string().uuid() }).strict(),
-  "hooks.invocations": z.object({ hookId: z.string().uuid(), limit: z.number().int().min(1).max(200).default(100) }).strict(),
-  "routines.suggest": z.object({workspaceId:id.optional(),text:z.string().max(4000).optional(),pageUrl:z.string().max(2048).optional(),limit:z.number().int().min(1).max(20).default(5)}).strict(),
-  "routines.get": z.object({routineId:id}),
+  "hooks.invocations": z
+    .object({ hookId: z.string().uuid(), limit: z.number().int().min(1).max(200).default(100) })
+    .strict(),
+  "routines.suggest": z
+    .object({
+      workspaceId: id.optional(),
+      text: z.string().max(4000).optional(),
+      pageUrl: z.string().max(2048).optional(),
+      limit: z.number().int().min(1).max(20).default(5),
+    })
+    .strict(),
+  "routines.get": z.object({ routineId: id }),
   "routines.create": RoutineCreateParams,
   "routines.fromResult": RoutineFromResultParams,
   "routines.update": RoutineUpdateParams,
-  "routines.pause": z.object({routineId:id,expectedRevision:z.number().int().positive(),paused:z.boolean()}),
-  "routines.archive": z.object({routineId:id,expectedRevision:z.number().int().positive(),archived:z.boolean()}),
+  "routines.pause": z.object({
+    routineId: id,
+    expectedRevision: z.number().int().positive(),
+    paused: z.boolean(),
+  }),
+  "routines.archive": z.object({
+    routineId: id,
+    expectedRevision: z.number().int().positive(),
+    archived: z.boolean(),
+  }),
   "routines.run": RoutineRunParams,
-  "routines.runs": z.object({routineId:id,limit:z.number().int().min(1).max(100).default(30)}),
-  "routines.outcome": z.object({routineRunId:id}),
-  "routines.reconcile": z.object({routineRunId:id,outcome:z.enum(["applied","not_applied"]),note:z.string().trim().min(1).max(1000)}).strict(),
-  "routines.due": z.object({now:z.number().optional()}),
+  "routines.runs": z.object({ routineId: id, limit: z.number().int().min(1).max(100).default(30) }),
+  "routines.outcome": z.object({ routineRunId: id }),
+  "routines.reconcile": z
+    .object({
+      routineRunId: id,
+      outcome: z.enum(["applied", "not_applied"]),
+      note: z.string().trim().min(1).max(1000),
+    })
+    .strict(),
+  "routines.due": z.object({ now: z.number().optional() }),
   "routines.ingestEvent": RoutineSourceEventSchema,
-  "routines.alerts": z.object({limit:z.number().int().min(1).max(100).default(30)}),
-  "routines.inbox": z.object({workspaceId:id.optional(),limit:z.number().int().min(1).max(100).default(50),unreadOnly:z.boolean().default(false)}).strict(),
-  "routines.inboxRead": z.object({routineRunId:id}).strict(),
-  "routines.compare": z.object({leftRunId:id,rightRunId:id}).strict(),
+  "routines.alerts": z.object({ limit: z.number().int().min(1).max(100).default(30) }),
+  "routines.inbox": z
+    .object({
+      workspaceId: id.optional(),
+      limit: z.number().int().min(1).max(100).default(50),
+      unreadOnly: z.boolean().default(false),
+    })
+    .strict(),
+  "routines.inboxRead": z.object({ routineRunId: id }).strict(),
+  "routines.compare": z.object({ leftRunId: id, rightRunId: id }).strict(),
   "routines.export": z.object({ routineIds: z.array(id).min(1).max(500).optional() }).strict(),
   "routines.exportSkill": z.object({ routineId: id }).strict(),
   "routines.importSkill": z.object({ path: z.string().trim().min(1).max(4096), workspaceId: id }).strict(),
-  "routines.import": z.object({
-    routines: z.array(RoutineShareSchema).max(500).optional(),
-    path: z.string().trim().min(1).max(4096).optional(),
-    workspaceId: id.optional(),
-  }).strict().refine(value => (value.routines === undefined) !== (value.path === undefined), { message: "Pass routines or a file path, not both" }),
+  "routines.import": z
+    .object({
+      routines: z.array(RoutineShareSchema).max(500).optional(),
+      path: z.string().trim().min(1).max(4096).optional(),
+      workspaceId: id.optional(),
+    })
+    .strict()
+    .refine((value) => (value.routines === undefined) !== (value.path === undefined), {
+      message: "Pass routines or a file path, not both",
+    }),
   "zap.list": z.object({}).strict(),
   "zap.grant": ZapGrantParamsSchema,
   "zap.update": ZapUpdateParamsSchema,
   "zap.revoke": ZapRevokeParamsSchema,
 
   "plugins.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
-  "plugins.install": z.object({ path: z.string().trim().min(1).max(4096), workspaceId: id,
-    expectedDigest: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict(),
-  "plugins.list": z.object({ workspaceId: id.optional(), includeUninstalled: z.boolean().default(false) }).strict(),
+  "plugins.install": z
+    .object({
+      path: z.string().trim().min(1).max(4096),
+      workspaceId: id,
+      expectedDigest: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
+    })
+    .strict(),
+  "plugins.list": z
+    .object({ workspaceId: id.optional(), includeUninstalled: z.boolean().default(false) })
+    .strict(),
   "plugins.assets": z.object({ pluginId: id }).strict(),
   "plugins.skills.grant": PluginSkillGrantParams,
   "plugins.skills.grants": z.object({ pluginId: id }).strict(),
@@ -799,14 +1225,23 @@ export const MethodSchemas = {
   "mcp.servers.register": OutboundMcpRegisterParams,
   "mcp.bundles.inspect": z.object({ path: z.string().trim().min(1).max(4096) }).strict(),
   "mcp.servers.list": z.object({ workspaceId: id }).strict(),
-  "mcp.servers.approve": z.object({ serverId: z.string().uuid(), expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  "mcp.servers.approve": z
+    .object({ serverId: z.string().uuid(), expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) })
+    .strict(),
   "mcp.servers.revoke": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.tools.list": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.grants.create": OutboundMcpGrantParams,
   "mcp.grants.list": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.grants.revoke": z.object({ grantId: z.string().uuid() }).strict(),
-  "mcp.tools.call": z.object({ grantId: z.string().uuid(), arguments: z.record(z.string(), z.unknown()),
-    context: z.object({ workspaceId: id, taskId: id.optional(), revision: z.number().int().positive().optional() }).strict() }).strict(),
+  "mcp.tools.call": z
+    .object({
+      grantId: z.string().uuid(),
+      arguments: z.record(z.string(), z.unknown()),
+      context: z
+        .object({ workspaceId: id, taskId: id.optional(), revision: z.number().int().positive().optional() })
+        .strict(),
+    })
+    .strict(),
   "memory.pipeline.policy": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.setPolicy": MemoryPipelinePolicySchema,
   "memory.pipeline.extractRun": z.object({ workspaceId: id, runId: id }).strict(),
@@ -824,12 +1259,26 @@ export const MethodSchemas = {
   "calendar.connections.revoke": z.object({ connectionId: z.string().uuid() }).strict(),
   "calendar.events.list": CalendarEventsQuerySchema,
   "calendar.taskGrants.list": z.object({ taskId: z.string().uuid() }).strict(),
-  "calendar.taskGrants.create": z.object({ taskId: z.string().uuid(), expectedRevision: z.number().int().positive(), connectionId: z.string().uuid() }).strict(),
+  "calendar.taskGrants.create": z
+    .object({
+      taskId: z.string().uuid(),
+      expectedRevision: z.number().int().positive(),
+      connectionId: z.string().uuid(),
+    })
+    .strict(),
   "calendar.taskGrants.revoke": z.object({ taskId: z.string().uuid(), grantId: z.string().uuid() }).strict(),
   "calendar.taskEvents.list": CalendarTaskEventsQuerySchema,
-  "connectors.catalog": z.object({ workspaceId: id, taskId: z.string().uuid().optional(),
-    expectedRevision: z.number().int().positive().optional() }).strict().refine(value =>
-      (value.taskId === undefined) === (value.expectedRevision === undefined), "Task and revision must be supplied together."),
+  "connectors.catalog": z
+    .object({
+      workspaceId: id,
+      taskId: z.string().uuid().optional(),
+      expectedRevision: z.number().int().positive().optional(),
+    })
+    .strict()
+    .refine(
+      (value) => (value.taskId === undefined) === (value.expectedRevision === undefined),
+      "Task and revision must be supplied together.",
+    ),
   "pages.list": PagesListParams,
   "pages.open": PagesOpenParams,
   "pages.close": PagesCloseParams,
@@ -859,14 +1308,29 @@ export const MethodSchemas = {
   "pages.zoom": PagesZoomParams,
   "pages.takeover": PagesTakeoverParams,
   "pages.pickElement": PagesPickElementParams,
-  "customization.zap.pick": z.object({ pageId: id, expectedDocumentEpoch: z.number().int().nonnegative(), timeoutMs: z.number().int().min(1000).max(120000).optional() }).strict(),
+  "customization.zap.pick": z
+    .object({
+      pageId: id,
+      expectedDocumentEpoch: z.number().int().nonnegative(),
+      timeoutMs: z.number().int().min(1000).max(120000).optional(),
+    })
+    .strict(),
   "customization.zap.list": z.object({ origin: SiteOriginSchema }).strict(),
-  "customization.zap.add": z.object({ pageId: id, expectedDocumentEpoch: z.number().int().nonnegative(), origin: SiteOriginSchema, selector: ZapSelectorSchema }).strict(),
+  "customization.zap.add": z
+    .object({
+      pageId: id,
+      expectedDocumentEpoch: z.number().int().nonnegative(),
+      origin: SiteOriginSchema,
+      selector: ZapSelectorSchema,
+    })
+    .strict(),
   "customization.zap.remove": z.object({ ruleId: z.string().uuid() }).strict(),
   "customization.css.get": z.object({ origin: SiteOriginSchema }).strict(),
   "customization.css.set": z.object({ origin: SiteOriginSchema, css: SiteCssSchema.shape.css }).strict(),
   "customization.css.effective": z.object({ origin: SiteOriginSchema }).strict(),
-  "customization.css.apply": z.object({ pageId: id, expectedDocumentEpoch: z.number().int().nonnegative() }).strict(),
+  "customization.css.apply": z
+    .object({ pageId: id, expectedDocumentEpoch: z.number().int().nonnegative() })
+    .strict(),
   "pages.resume": PagesResumeParams,
   "pages.openLive": PagesOpenLiveParams,
   "sets.create": SetsCreateParams,
@@ -875,35 +1339,58 @@ export const MethodSchemas = {
   "sets.map": SetsMapParams,
   "sets.results": SetsResultsParams,
   "runs.start": RunsStartParams,
-  "runs.retry": RunsControlParams.extend({pageId:id.optional()}),
+  "runs.retry": RunsControlParams.extend({ pageId: id.optional() }),
   "runs.get": RunsGetParams,
   "runs.list": RunsListParams,
   "runs.context.get": RunsContextGetParams,
   "runs.context.set": RunsContextSetParams,
   "conversations.list": ConversationsListParams,
   "conversations.prepared": z.object({}),
-  "conversations.get": z.object({chatId:id}),
+  "conversations.get": z.object({ chatId: id }),
   "conversations.rename": ConversationRenameParams,
   "conversations.archive": ConversationArchiveParams,
   "conversations.delete": ConversationDeleteParams,
-  "conversations.images.get": z.object({chatId:id}),
-  "conversations.images.add": z.object({chatId:id,filename:z.string().trim().min(1).max(255).default("Page capture.png"),dataUrl:z.string().max(4_200_000),sourceUrl:z.string().max(8192).optional(),sourcePage:PageContextRefSchema.optional()}),
+  "conversations.images.get": z.object({ chatId: id }),
+  "conversations.images.add": z.object({
+    chatId: id,
+    filename: z.string().trim().min(1).max(255).default("Page capture.png"),
+    dataUrl: z.string().max(4_200_000),
+    sourceUrl: z.string().max(8192).optional(),
+    sourcePage: PageContextRefSchema.optional(),
+  }),
   "conversations.images.read": ConversationImageControl,
-  "conversations.images.toggle": ConversationImageControl.extend({included:z.boolean()}),
+  "conversations.images.toggle": ConversationImageControl.extend({ included: z.boolean() }),
   "conversations.images.remove": ConversationImageControl,
   "conversations.attachments.get": z.object({ chatId: id }),
   "conversations.attachments.read": ConversationAttachmentControlParams,
   "conversations.attachments.add": ConversationAttachmentAddParams,
-  "conversations.attachments.page": z.object({ chatId: id, pageId: id, expectedDocumentEpoch: z.number().int().nonnegative() }),
+  "conversations.attachments.page": z.object({
+    chatId: id,
+    pageId: id,
+    expectedDocumentEpoch: z.number().int().nonnegative(),
+  }),
   "conversations.attachments.toggle": ConversationAttachmentToggleParams,
   "conversations.attachments.remove": ConversationAttachmentControlParams,
   "results.generate": GenerateResultParamsSchema,
-  "results.generated.get": z.object({artifactId:id}),
-  "results.generated.versions": z.object({artifactId:id}),
-  "results.search": z.object({query:z.string().trim().min(1).max(300),limit:z.number().int().min(1).max(30).default(12)}),
-  "results.read": z.object({artifactId:id}),
-  "results.available": z.object({drafts:z.array(z.object({artifactId:id,chatId:id})).max(100)}),
-  "results.saveVersion": z.object({chatId:id,sourceArtifactId:id,content:z.string().max(262144).refine(value=>!value.includes("\0")&&new TextEncoder().encode(value).length<=262144,"Use text without null characters, up to 256 KB")}),
+  "results.generated.get": z.object({ artifactId: id }),
+  "results.generated.versions": z.object({ artifactId: id }),
+  "results.search": z.object({
+    query: z.string().trim().min(1).max(300),
+    limit: z.number().int().min(1).max(30).default(12),
+  }),
+  "results.read": z.object({ artifactId: id }),
+  "results.available": z.object({ drafts: z.array(z.object({ artifactId: id, chatId: id })).max(100) }),
+  "results.saveVersion": z.object({
+    chatId: id,
+    sourceArtifactId: id,
+    content: z
+      .string()
+      .max(262144)
+      .refine(
+        (value) => !value.includes("\0") && new TextEncoder().encode(value).length <= 262144,
+        "Use text without null characters, up to 256 KB",
+      ),
+  }),
   "conversations.artifacts.get": z.object({ chatId: id }),
   "conversations.artifacts.toggle": ConversationArtifactToggleParams,
   "conversations.sources.get": z.object({ chatId: id }),
@@ -920,7 +1407,17 @@ export const MethodSchemas = {
   "safety.approvals.pending": z.object({ threadId: id }),
   "safety.approvals.decide": z.object({ decision: ApprovalDecisionSchema, expectedTurnId: id }).strict(),
   "safety.grants.list": z.object({ profileId: id }),
-  "safety.grants.revoke": z.object({ profileId: id, scope: z.object({ kind: z.enum(["workspace", "task"]), id }).strict().optional(), effect: EffectSchema.optional(), grantId: id.optional() }).strict(),
+  "safety.grants.revoke": z
+    .object({
+      profileId: id,
+      scope: z
+        .object({ kind: z.enum(["workspace", "task"]), id })
+        .strict()
+        .optional(),
+      effect: EffectSchema.optional(),
+      grantId: id.optional(),
+    })
+    .strict(),
   "runs.message.cancel": z.object({ messageId: id }),
   "runs.events": RunsEventsParams,
   "events.since": EventsSinceParams,
@@ -951,36 +1448,55 @@ export const MethodSchemas = {
   "chrome.openLive": ChromeOpenLiveParams,
   "models.list": z.object({}),
   "models.probe": ModelsProbeParams,
-  "translate.page": z.object({ texts: z.array(z.string().max(4000)).min(1).max(400), target: z.string().min(2).max(40).optional(), context: z.string().max(200).optional() }).strict(),
-  "translate.text": z.object({ text: z.string().min(1).max(12000), context: z.string().max(200).optional(), target: z.string().min(2).max(40).optional() }).strict(),
-  "github.probe": z.object({}),
-  "vercel.probe": z.object({}),
-  "vercel.projects": z.object({teamId:z.string().max(200).optional()}).strict(),
-  "sentry.probe": z.object({}),
-  "sentry.projects": z.object({organization:z.string().min(1).max(200)}).strict(),
+  "translate.page": z
+    .object({
+      texts: z.array(z.string().max(4000)).min(1).max(400),
+      target: z.string().min(2).max(40).optional(),
+      context: z.string().max(200).optional(),
+    })
+    .strict(),
+  "translate.text": z
+    .object({
+      text: z.string().min(1).max(12000),
+      context: z.string().max(200).optional(),
+      target: z.string().min(2).max(40).optional(),
+    })
+    .strict(),
+
   "settings.get": SettingsGetParams,
   "settings.set": SettingsSetParams,
   "command.ranking.list": z.object({}).strict(),
-  "command.ranking.record": z.object({
-    query: z.string().trim().min(1).max(160),
-    candidateKey: z.string().min(1).max(300),
-    source: CommandRankingSourceSchema,
-  }).strict(),
+  "command.ranking.record": z
+    .object({
+      query: z.string().trim().min(1).max(160),
+      candidateKey: z.string().min(1).max(300),
+      source: CommandRankingSourceSchema,
+    })
+    .strict(),
   "command.ranking.clear": z.object({}).strict(),
   "browser.recovery.list": z.object({}),
-  "browser.recovery.retry": z.object({pageId:id}),
+  "browser.recovery.retry": z.object({ pageId: id }),
   "history.list": HistoryListParams,
   "history.projectSnapshot": HistoryProjectSnapshotParams,
   "history.projectDelta": HistoryProjectDeltaParams,
-  "history.clear": z.object({
-    since: z.number().finite().nonnegative().optional(),
-    before: z.number().finite().nonnegative().optional(),
-  }).strict().refine(value => value.since === undefined || value.before === undefined || value.since <= value.before, "History range must end after it starts"),
+  "history.clear": z
+    .object({
+      since: z.number().finite().nonnegative().optional(),
+      before: z.number().finite().nonnegative().optional(),
+    })
+    .strict()
+    .refine(
+      (value) => value.since === undefined || value.before === undefined || value.since <= value.before,
+      "History range must end after it starts",
+    ),
   "history.remove": z.object({ url: z.string().min(1), visitedAt: z.number().finite().nonnegative() }),
   "bookmarks.list": z.object({}),
   "bookmarks.folders.list": z.object({}),
   "bookmarks.folders.create": z.object({ path: BookmarkFolderPathSchema.min(1) }),
-  "bookmarks.folders.rename": z.object({ path: BookmarkFolderPathSchema.min(1), name: z.string().trim().min(1).max(200) }),
+  "bookmarks.folders.rename": z.object({
+    path: BookmarkFolderPathSchema.min(1),
+    name: z.string().trim().min(1).max(200),
+  }),
   "bookmarks.folders.remove": z.object({ path: BookmarkFolderPathSchema.min(1) }),
   "bookmarks.add": BookmarkAddParams,
   "bookmarks.readingList": BookmarkReadingListParams,
@@ -989,17 +1505,38 @@ export const MethodSchemas = {
   "bookmarks.offline.get": BookmarkOfflineGetParams,
   "bookmarks.update": BookmarkUpdateParams,
   "bookmarks.move": z.object({
-    bookmarks: z.array(z.object({ url: z.string().min(1).max(8192), nodeId: BookmarkNodeIdSchema.optional(), folderPath: BookmarkFolderPathSchema })).min(1).max(10000),
+    bookmarks: z
+      .array(
+        z.object({
+          url: z.string().min(1).max(8192),
+          nodeId: BookmarkNodeIdSchema.optional(),
+          folderPath: BookmarkFolderPathSchema,
+        }),
+      )
+      .min(1)
+      .max(10000),
     folderPath: BookmarkFolderPathSchema,
     createFolder: z.boolean().optional(),
   }),
-  "bookmarks.import": z.object({ bookmarks: z.array(WebBookmarkSchema).max(10000), folders: z.array(BookmarkFolderPathSchema.min(1)).max(10000).optional() }),
-  "bookmarks.saveFolder": z.object({ name:z.string().trim().min(1).max(200), bookmarks:z.array(WebBookmarkSchema.omit({folderPath:true})).min(1).max(10000) }),
+  "bookmarks.import": z.object({
+    bookmarks: z.array(WebBookmarkSchema).max(10000),
+    folders: z.array(BookmarkFolderPathSchema.min(1)).max(10000).optional(),
+  }),
+  "bookmarks.saveFolder": z.object({
+    name: z.string().trim().min(1).max(200),
+    bookmarks: z
+      .array(WebBookmarkSchema.omit({ folderPath: true }))
+      .min(1)
+      .max(10000),
+  }),
   "bookmarks.remove": BookmarkRemoveParams,
   "downloads.list": z.object({}),
   "downloads.remove": z.object({ ids: z.array(z.string().min(1).max(200)).min(1).max(200) }),
   "workspace.get": WorkspaceGetParams,
-  "bench.run": z.object({ task: z.string().optional(), repeats: z.number().int().positive().max(200).optional() }),
+  "bench.run": z.object({
+    task: z.string().optional(),
+    repeats: z.number().int().positive().max(200).optional(),
+  }),
 
   /** runtime-vnext: responses, state index, datasets, operations, traces */
   "responses.list": z.object({
@@ -1072,7 +1609,11 @@ export const MethodSchemas = {
   /** §10.3 — compile a candidate impl from a run's persisted step trace. */
   "operations.compile": z.object({ runId: id, siteKey: z.string().optional(), name: z.string().optional() }),
   "programs.validate": z.object({ program: ProgramSchema }),
-  "traces.list": z.object({ since: z.number().optional(), runId: z.string().optional(), limit: z.number().int().positive().max(2000).optional() }),
+  "traces.list": z.object({
+    since: z.number().optional(),
+    runId: z.string().optional(),
+    limit: z.number().int().positive().max(2000).optional(),
+  }),
   "traces.summary": z.object({ runId: id }),
   "traces.counters": z.object({}),
   "runtime.describe": z.object({}),
@@ -1082,14 +1623,20 @@ export type MethodName = keyof typeof MethodSchemas;
 
 /** One schema and one explicit feature/auth policy for each API method. */
 export const MethodDefinitions = Object.fromEntries(
-  (Object.keys(MethodSchemas) as MethodName[]).map(name => [name, {
-    schema: MethodSchemas[name], ...RuntimeMethodPolicy[name],
-  }]),
-) as { readonly [M in MethodName]: {
-  schema: (typeof MethodSchemas)[M];
-  feature: (typeof RuntimeMethodPolicy)[M]["feature"];
-  auth: (typeof RuntimeMethodPolicy)[M]["auth"];
-} };
+  (Object.keys(MethodSchemas) as MethodName[]).map((name) => [
+    name,
+    {
+      schema: MethodSchemas[name],
+      ...RuntimeMethodPolicy[name],
+    },
+  ]),
+) as {
+  readonly [M in MethodName]: {
+    schema: (typeof MethodSchemas)[M];
+    feature: (typeof RuntimeMethodPolicy)[M]["feature"];
+    auth: (typeof RuntimeMethodPolicy)[M]["auth"];
+  };
+};
 
 /** Wire shapes for the result column — used for typing, validated server-side. */
 export const ResultSchemas = {
@@ -1103,7 +1650,12 @@ export const ResultSchemas = {
   "agent.inlineAssist.cancel": z.object({ cancelled: z.literal(true) }),
   "agent.web.fetch": AgentWebPageSchema,
   "agent.web.search": AgentWebPageSchema,
-  "agent.images.generate": z.object({ artifactId: id, mediaType: z.string(), size: z.number().int().positive(), modelId: z.string() }),
+  "agent.images.generate": z.object({
+    artifactId: id,
+    mediaType: z.string(),
+    size: z.number().int().positive(),
+    modelId: z.string(),
+  }),
   "agent.turn.open": PageTargetSchema,
   "agent.turn.end": z.object({ closed: z.array(id) }),
   "agent.turn.clipboard.write": z.object({ bytes: z.number().int().nonnegative() }),
@@ -1113,9 +1665,6 @@ export const ResultSchemas = {
   "tasks.recordEvidence": TaskEvidenceSchema,
   "tasks.captureEvidence": TaskEvidenceSchema,
   "tasks.importDocumentEvidence": TaskEvidenceSchema,
-  "tasks.importCommandEvidence": TaskEvidenceSchema,
-  "tasks.prepareLocalCommand": TaskSchema,
-  "tasks.confirmProjectInvocation": TaskSchema,
   "tasks.reviewCriterion": CriterionReviewSchema,
   "tasks.reconcileAction": z.object({ ok: z.literal(true) }),
   "tasks.reconcileOperation": z.object({ ok: z.literal(true) }),
@@ -1134,75 +1683,83 @@ export const ResultSchemas = {
   "workspaces.browsingMemory.forget": WorkspaceBrowsingMemorySchema,
   "workspaces.contentMemory.policy": ContentMemoryPolicySchema,
   "workspaces.contentMemory.setPolicy": ContentMemoryPolicySchema,
-  "workspaces.contentMemory.capture": z.object({ memoryId: id, capturedAt: z.number(), title: z.string(), url: z.string().url() }),
+  "workspaces.contentMemory.capture": z.object({
+    memoryId: id,
+    capturedAt: z.number(),
+    title: z.string(),
+    url: z.string().url(),
+  }),
   "workspaces.contentMemory.search": z.array(ContentMemoryMatchSchema),
   "workspaces.contentMemory.get": ContentMemoryDocumentSchema.nullable(),
   "workspaces.contentMemory.forget": z.object({ forgotten: z.number().int().nonnegative() }),
   "workspaces.memory.get": WorkspaceMemorySchema,
-  "workspaces.memory.search": z.array(z.object({workspaceId:id,name:z.string(),excerpt:z.string(),enabled:z.boolean()})),
+  "workspaces.memory.search": z.array(
+    z.object({ workspaceId: id, name: z.string(), excerpt: z.string(), enabled: z.boolean() }),
+  ),
   "workspaces.memory.set": WorkspaceMemorySchema,
   "tasks.create": TaskSchema,
   "tasks.promote": TaskSchema,
   "tasks.update": TaskSchema,
   "tasks.archive": TaskSchema,
   "tasks.list": z.array(TaskSchema),
-  "tasks.get": z.object({ task: TaskSchema, revisions: z.array(TaskSchema), runs: z.array(z.object({ run: RunSchema, currentRevision: z.boolean() })), children:z.array(z.object({task:TaskSchema,depth:z.number().int().min(1).max(4),latestRun:z.object({runId:z.string(),status:z.string(),taskRevision:z.number().int().positive().optional()}).optional(),cloudAuthority:z.object({environmentId:z.string().uuid(),remoteName:z.string()}).optional(),receiptStatus:z.enum(['in_progress','uncertain','accepted','not_met','needs_review']).optional()})).default([]) }),
+  "tasks.get": z.object({
+    task: TaskSchema,
+    revisions: z.array(TaskSchema),
+    runs: z.array(z.object({ run: RunSchema, currentRevision: z.boolean() })),
+    children: z
+      .array(
+        z.object({
+          task: TaskSchema,
+          depth: z.number().int().min(1).max(4),
+          latestRun: z
+            .object({
+              runId: z.string(),
+              status: z.string(),
+              taskRevision: z.number().int().positive().optional(),
+            })
+            .optional(),
+          cloudAuthority: z.object({ environmentId: z.string().uuid(), remoteName: z.string() }).optional(),
+          receiptStatus: z
+            .enum(["in_progress", "uncertain", "accepted", "not_met", "needs_review"])
+            .optional(),
+        }),
+      )
+      .default([]),
+  }),
   "tasks.start": RunSchema,
-  "development.projects": z.array(LocalProjectSchema),
-  "development.inspect": ProjectInspectionSchema,
-  "development.githubStatus": ProjectGithubStatusSchema,
-  "development.operationsStatus": z.object({checkedAt:z.number(),vercel:z.object({project:z.object({id:z.string(),name:z.string(),framework:z.string().nullable(),updatedAt:z.number(),teamId:z.string().nullable()}),deployments:z.array(z.object({id:z.string(),name:z.string(),url:z.string().url(),state:z.string(),target:z.string().nullable(),createdAt:z.number(),readyAt:z.number().nullable()}))}).optional(),sentry:z.object({organization:z.string(),project:z.object({id:z.string(),name:z.string(),slug:z.string(),platform:z.string().nullable(),organization:z.string()}),issues:z.array(z.object({id:z.string(),shortId:z.string(),title:z.string(),level:z.string(),status:z.string(),count:z.number(),users:z.number(),firstSeen:z.string(),lastSeen:z.string(),permalink:z.string()}))}).optional(),unavailable:z.array(z.string())}),
-  "development.incidentReport": ProjectIncidentReportSchema,
-  "development.prepareIncidentFix": ProjectIncidentReportSchema,
-  "development.files": z.array(z.string()),
-  "development.readFile": ProjectFileSchema,
-  "development.writeFile": ProjectFileSchema.extend({recoveryPath:z.string()}).nullable(),
-  "development.createFile": ProjectFileSchema.extend({recoveryPath:z.string().optional()}).nullable(),
-  "development.renameFile": ProjectFileSchema.extend({recoveryPath:z.string()}).nullable(),
-  "development.deleteFile": z.object({name:z.string(),recoveryPath:z.string()}).nullable(),
-  "development.commands": z.array(ProjectCommandSchema),
-  "development.runCommand": ProjectCommandSchema.nullable(),
-  "development.requestCommandEscalation": CommandEscalationRequestSchema,
-  "development.commandEscalations.pending": z.array(CommandEscalationRequestSchema),
-  "development.commandEscalations.decide": z.object({ok:z.literal(true)}),
-  "development.openPreview": z.object({check:LocalPreviewCheckSchema,page:PageTargetSchema.optional()}).nullable(),
-  "development.stopCommand": ProjectCommandSchema,
-  "development.review": ProjectReviewSummarySchema,
-  "development.commit": ProjectCommitResultSchema.nullable(),
-  "cloud.environments": z.array(CloudEnvironmentSchema),
-  "cloud.create": CloudEnvironmentSchema,
-  "cloud.runCommand": CloudCommandResultSchema,
-  "cloud.startService": CloudCommandRecordSchema,
-  "cloud.commands": z.array(CloudCommandRecordSchema),
-  "cloud.refreshCommand": CloudCommandRecordSchema,
-  "cloud.stopCommand": CloudCommandRecordSchema,
-  "cloud.refresh": CloudEnvironmentSchema,
-  "cloud.resume": CloudEnvironmentSchema,
-  "cloud.files": z.array(CloudFileEntrySchema),
-  "cloud.readFile": CloudFileSchema,
-  "cloud.taskResult": CloudTaskResultSchema.nullable(),
-  "cloud.handoff": CloudEnvironmentSchema,
-  "cloud.handoffAndStart": z.object({environment:CloudEnvironmentSchema,command:CloudCommandRecordSchema}),
-  "cloud.importTaskResult": z.object({evidence:z.array(TaskEvidenceSchema),imported:z.number().int().nonnegative()}),
-  "cloud.preserveTaskResult": z.object({result:PreservedCloudResultSchema,preserved:z.boolean()}),
-  "cloud.downloadResultArtifact": CloudResultArtifactExportSchema,
-  "cloud.openTerminal": CloudTerminalSessionSchema,
-  "cloud.openPreview": CloudPreviewSessionSchema,
-  "cloud.exportWorkspace": CloudWorkspaceExportSchema,
-  "cloud.inventory": CloudProviderInventorySchema,
-  "cloud.cleanupOrphan": z.object({remoteName:z.string(),deleted:z.literal(true)}),
-  "cloud.forgetMissing": CloudEnvironmentSchema,
-  "cloud.syncProject": CloudEnvironmentSchema,
-  "cloud.stop": CloudEnvironmentSchema,
-  "cloud.delete": CloudEnvironmentSchema,
-  "cloud.reconnectStatus": CloudReconnectStatusSchema,
-  "installation.createBackup": z.object({path:z.string(),createdAt:z.number(),bytes:z.number().int().nonnegative(),schemaVersion:z.number().int().positive(),sha256:z.string().regex(/^[a-f0-9]{64}$/),artifactFiles:z.number().int().nonnegative(),missingArtifacts:z.number().int().nonnegative()}),
-  "installation.listBackups": z.array(z.object({path:z.string(),name:z.string(),createdAt:z.number(),bytes:z.number().int().nonnegative(),schemaVersion:z.number().int().positive(),sha256:z.string().regex(/^[a-f0-9]{64}$/),artifactFiles:z.number().int().nonnegative(),missingArtifacts:z.number().int().nonnegative()})),
-  "installation.deleteBackup": z.object({deleted:z.literal(true)}),
-  "installation.backupRetention": z.object({keep:z.number().int().positive()}),
-  "installation.setBackupRetention": z.object({keep:z.number().int().positive()}),
-  "installation.stageRestore": z.object({staged:z.literal(true),schemaVersion:z.number().int().positive(),bytes:z.number().int().nonnegative(),sha256:z.string().regex(/^[a-f0-9]{64}$/),artifactFiles:z.number().int().nonnegative(),missingArtifacts:z.number().int().nonnegative()}),
-  "installation.cancelRestore": z.object({cancelled:z.literal(true)}),
+  "installation.createBackup": z.object({
+    path: z.string(),
+    createdAt: z.number(),
+    bytes: z.number().int().nonnegative(),
+    schemaVersion: z.number().int().positive(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    artifactFiles: z.number().int().nonnegative(),
+    missingArtifacts: z.number().int().nonnegative(),
+  }),
+  "installation.listBackups": z.array(
+    z.object({
+      path: z.string(),
+      name: z.string(),
+      createdAt: z.number(),
+      bytes: z.number().int().nonnegative(),
+      schemaVersion: z.number().int().positive(),
+      sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      artifactFiles: z.number().int().nonnegative(),
+      missingArtifacts: z.number().int().nonnegative(),
+    }),
+  ),
+  "installation.deleteBackup": z.object({ deleted: z.literal(true) }),
+  "installation.backupRetention": z.object({ keep: z.number().int().positive() }),
+  "installation.setBackupRetention": z.object({ keep: z.number().int().positive() }),
+  "installation.stageRestore": z.object({
+    staged: z.literal(true),
+    schemaVersion: z.number().int().positive(),
+    bytes: z.number().int().nonnegative(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    artifactFiles: z.number().int().nonnegative(),
+    missingArtifacts: z.number().int().nonnegative(),
+  }),
+  "installation.cancelRestore": z.object({ cancelled: z.literal(true) }),
   "vault.status": VaultStatusSchema,
   "vault.list": z.array(VaultItemSchema),
   "vault.save": VaultItemSchema,
@@ -1211,7 +1768,7 @@ export const ResultSchemas = {
   "vault.grant": VaultGrantSchema,
   "vault.renewGrant": VaultGrantSchema,
   "vault.expiredGrants": z.array(VaultGrantSchema),
-  "vault.revoke": z.object({ok:z.literal(true)}),
+  "vault.revoke": z.object({ ok: z.literal(true) }),
   "vault.history": z.array(VaultAccessRecordSchema),
   "vault.grants": z.array(VaultGrantSchema),
   "vault.generate": z.object({ password: z.string() }),
@@ -1236,7 +1793,7 @@ export const ResultSchemas = {
   "hooks.revoke": HookSchema,
   "hooks.invocations": z.array(HookInvocationSchema),
   "routines.suggest": z.array(RoutineSuggestionSchema),
-  "routines.get": z.object({routine:RoutineSchema,runs:z.array(RoutineRunSchema)}),
+  "routines.get": z.object({ routine: RoutineSchema, runs: z.array(RoutineRunSchema) }),
   "routines.create": RoutineSchema,
   "routines.fromResult": RoutineSchema,
   "routines.update": RoutineSchema,
@@ -1250,11 +1807,19 @@ export const ResultSchemas = {
   "routines.ingestEvent": z.array(RoutineRunSchema),
   "routines.alerts": z.array(RoutineAlertSchema),
   "routines.inbox": z.array(RoutineInboxItemSchema),
-  "routines.inboxRead": z.object({readAt:z.number().int().nonnegative()}),
+  "routines.inboxRead": z.object({ readAt: z.number().int().nonnegative() }),
   "routines.compare": RoutineCompareSchema,
   "routines.export": RoutineShareEnvelopeSchema,
-  "routines.exportSkill": z.object({ filename: z.literal("SKILL.md"), content: z.string().max(64_000) }).strict(),
-  "routines.importSkill": z.object({ imported: z.number().int().nonnegative(), skipped: z.number().int().nonnegative(), routineIds: z.array(id) }).strict(),
+  "routines.exportSkill": z
+    .object({ filename: z.literal("SKILL.md"), content: z.string().max(64_000) })
+    .strict(),
+  "routines.importSkill": z
+    .object({
+      imported: z.number().int().nonnegative(),
+      skipped: z.number().int().nonnegative(),
+      routineIds: z.array(id),
+    })
+    .strict(),
   "routines.import": z.object({
     ok: z.boolean(),
     imported: z.number().int().nonnegative(),
@@ -1315,14 +1880,29 @@ export const ResultSchemas = {
   "subagents.sendMessage": RunMessageSchema,
   "subagents.getGroup": SubagentGroupViewSchema,
   "subagents.cancel": SubagentSchema,
-  "calendar.connections.list": z.object({ available: z.boolean(), reason: z.string().optional(), connections: z.array(CalendarConnectionSchema) }),
+  "calendar.connections.list": z.object({
+    available: z.boolean(),
+    reason: z.string().optional(),
+    connections: z.array(CalendarConnectionSchema),
+  }),
   "calendar.auth.start": z.object({ url: z.string().url(), expiresAt: z.number().int().nonnegative() }),
-  "calendar.connections.revoke": z.object({ ok: z.literal(true), providerRevocation: z.enum(["confirmed", "pending"]) }),
-  "calendar.events.list": z.object({ events: z.array(CalendarEventSchema), nextPageToken: z.string().optional(), fetchedAt: z.number().int().nonnegative() }),
+  "calendar.connections.revoke": z.object({
+    ok: z.literal(true),
+    providerRevocation: z.enum(["confirmed", "pending"]),
+  }),
+  "calendar.events.list": z.object({
+    events: z.array(CalendarEventSchema),
+    nextPageToken: z.string().optional(),
+    fetchedAt: z.number().int().nonnegative(),
+  }),
   "calendar.taskGrants.list": z.array(CalendarTaskGrantSchema),
   "calendar.taskGrants.create": CalendarTaskGrantSchema,
   "calendar.taskGrants.revoke": z.object({ ok: z.literal(true) }),
-  "calendar.taskEvents.list": z.object({ events: z.array(CalendarEventSchema), nextPageToken: z.string().optional(), fetchedAt: z.number().int().nonnegative() }),
+  "calendar.taskEvents.list": z.object({
+    events: z.array(CalendarEventSchema),
+    nextPageToken: z.string().optional(),
+    fetchedAt: z.number().int().nonnegative(),
+  }),
   "connectors.catalog": ConnectorCatalogSchema,
   "pages.list": z.array(PageTargetSchema),
   "pages.open": PageTargetSchema,
@@ -1349,9 +1929,24 @@ export const ResultSchemas = {
     revision: z.number(),
     fields: z.record(z.string(), z.unknown()),
   }),
-  "pages.elementInfo": z.object({ pageId: id, documentEpoch: z.number().int().nonnegative(), revision: z.number().int().positive(), element: ElementRefSchema.nullable() }),
-  "pages.accessibilityHtml": z.object({ pageId: id, documentEpoch: z.number().int().nonnegative(), revision: z.number().int().positive(), text: z.string() }),
-  "pages.read": z.object({ pageId: id, documentEpoch: z.number().int().nonnegative(), revision: z.number().int().positive(), value: z.unknown() }),
+  "pages.elementInfo": z.object({
+    pageId: id,
+    documentEpoch: z.number().int().nonnegative(),
+    revision: z.number().int().positive(),
+    element: ElementRefSchema.nullable(),
+  }),
+  "pages.accessibilityHtml": z.object({
+    pageId: id,
+    documentEpoch: z.number().int().nonnegative(),
+    revision: z.number().int().positive(),
+    text: z.string(),
+  }),
+  "pages.read": z.object({
+    pageId: id,
+    documentEpoch: z.number().int().nonnegative(),
+    revision: z.number().int().positive(),
+    value: z.unknown(),
+  }),
   "pages.waitFor": z.object({
     ok: z.boolean(),
     timedOut: z.boolean(),
@@ -1403,7 +1998,12 @@ export const ResultSchemas = {
   "sets.results": z.array(ResultRecordSchema),
   "runs.start": RunSchema,
   "runs.retry": RunSchema,
-  "runs.get": z.object({ run: RunSchema, steps: z.array(StepRecordSchema), modelCalls: z.number(), usage: ModelUsageSummarySchema }),
+  "runs.get": z.object({
+    run: RunSchema,
+    steps: z.array(StepRecordSchema),
+    modelCalls: z.number(),
+    usage: ModelUsageSummarySchema,
+  }),
   "runs.list": z.array(RunSchema),
   "runs.context.get": ConversationContextSchema,
   "runs.context.set": ConversationContextSchema,
@@ -1415,11 +2015,17 @@ export const ResultSchemas = {
   "conversations.delete": z.object({ ok: z.literal(true), deletedRuns: z.number().int().nonnegative() }),
   "conversations.images.get": ConversationImagesSchema,
   "conversations.images.add": ConversationImagesSchema,
-  "conversations.images.read": z.object({image:ConversationImageSchema,dataUrl:z.string()}),
+  "conversations.images.read": z.object({ image: ConversationImageSchema, dataUrl: z.string() }),
   "conversations.images.toggle": ConversationImagesSchema,
   "conversations.images.remove": ConversationImagesSchema,
   "conversations.attachments.get": ConversationAttachmentsSchema,
-  "conversations.attachments.read": z.object({ attachment: ConversationAttachmentSchema, content: z.string(), contextCharacters: z.number().int().nonnegative(), contextText: z.string().optional(), contextTotalCharacters: z.number().int().nonnegative().optional() }),
+  "conversations.attachments.read": z.object({
+    attachment: ConversationAttachmentSchema,
+    content: z.string(),
+    contextCharacters: z.number().int().nonnegative(),
+    contextText: z.string().optional(),
+    contextTotalCharacters: z.number().int().nonnegative().optional(),
+  }),
   "conversations.attachments.add": ConversationAttachmentsSchema,
   "conversations.attachments.page": ConversationAttachmentsSchema,
   "conversations.attachments.toggle": ConversationAttachmentsSchema,
@@ -1428,9 +2034,29 @@ export const ResultSchemas = {
   "results.generated.get": GeneratedResultSchema,
   "results.generated.versions": z.array(GeneratedResultSummarySchema),
   "results.search": z.array(SavedResultSchema),
-  "results.read": z.object({artifactId:id,chatId:id,filename:z.string(),mediaType:z.string(),content:z.string(),createdAt:z.number(),revision:z.number().int().positive().optional(),parentArtifactId:id.optional(),rootArtifactId:id.optional()}),
+  "results.read": z.object({
+    artifactId: id,
+    chatId: id,
+    filename: z.string(),
+    mediaType: z.string(),
+    content: z.string(),
+    createdAt: z.number(),
+    revision: z.number().int().positive().optional(),
+    parentArtifactId: id.optional(),
+    rootArtifactId: id.optional(),
+  }),
   "results.available": z.array(id),
-  "results.saveVersion": z.object({artifactId:id,chatId:id,filename:z.string(),mediaType:z.string(),content:z.string(),createdAt:z.number(),revision:z.number().int().positive(),parentArtifactId:id,rootArtifactId:id}),
+  "results.saveVersion": z.object({
+    artifactId: id,
+    chatId: id,
+    filename: z.string(),
+    mediaType: z.string(),
+    content: z.string(),
+    createdAt: z.number(),
+    revision: z.number().int().positive(),
+    parentArtifactId: id,
+    rootArtifactId: id,
+  }),
   "conversations.artifacts.get": ConversationArtifactsSchema,
   "conversations.artifacts.toggle": ConversationArtifactsSchema,
   "conversations.sources.get": ConversationSourcesSchema,
@@ -1460,7 +2086,9 @@ export const ResultSchemas = {
   "sessions.list": z.array(BrowserSessionSchema),
   "chrome.attach": BrowserSessionSchema,
   "chrome.detach": z.object({ ok: z.boolean() }),
-  "chrome.tabs": z.array(z.object({ targetId: z.string(), url: z.string(), title: z.string(), type: z.string() })),
+  "chrome.tabs": z.array(
+    z.object({ targetId: z.string(), url: z.string(), title: z.string(), type: z.string() }),
+  ),
   "chrome.importCookies": z.object({
     ok: z.boolean(),
     source: z.enum(["attached", "profile"]),
@@ -1478,7 +2106,13 @@ export const ResultSchemas = {
   }),
   "import.preview": z.object({ sources: z.array(ImportSourcePreviewSchema) }),
   "import.run": z.object({ jobId: z.string() }),
-  "import.status": z.object({ jobId: z.string(), done: z.boolean(), cancelled: z.boolean(), progress: z.array(ImportCategoryResultSchema), report: ImportReportSchema.optional() }),
+  "import.status": z.object({
+    jobId: z.string(),
+    done: z.boolean(),
+    cancelled: z.boolean(),
+    progress: z.array(ImportCategoryResultSchema),
+    report: ImportReportSchema.optional(),
+  }),
   "import.cancel": z.object({ ok: z.boolean() }),
   "chrome.openLive": z.object({ ok: z.boolean() }),
   "models.list": z.object({
@@ -1494,20 +2128,29 @@ export const ResultSchemas = {
     vision: z.boolean().optional(),
     error: z.string().optional(),
   }),
-  "github.probe": z.object({login:z.string(),accountId:z.number().int(),name:z.string().nullable(),avatarUrl:z.string().url(),scopes:z.array(z.string()),checkedAt:z.number()}),
-  "vercel.probe": z.object({user:z.object({id:z.string(),name:z.string(),email:z.string()}),teams:z.array(z.object({id:z.string(),name:z.string(),slug:z.string()})),checkedAt:z.number()}),
-  "vercel.projects": z.array(z.object({id:z.string(),name:z.string(),framework:z.string().nullable(),updatedAt:z.number(),teamId:z.string().nullable()})),
-  "sentry.probe": z.object({organizations:z.array(z.object({id:z.string(),name:z.string(),slug:z.string(),regionUrl:z.string().url()})),checkedAt:z.number()}),
-  "sentry.projects": z.array(z.object({id:z.string(),name:z.string(),slug:z.string(),platform:z.string().nullable(),organization:z.string()})),
+
   "settings.get": z.record(z.string(), z.unknown()),
   "settings.set": z.object({ ok: z.boolean() }),
   "command.ranking.list": z.array(CommandRankingEntrySchema),
   "command.ranking.record": CommandRankingEntrySchema,
   "command.ranking.clear": z.object({ removed: z.number().int().nonnegative() }),
-  "browser.recovery.list": z.array(z.object({pageId:id,url:z.string(),title:z.string(),windowId:id,error:z.string().optional(),retrying:z.boolean()})),
-  "browser.recovery.retry": z.object({ok:z.boolean(),pageId:id}),
+  "browser.recovery.list": z.array(
+    z.object({
+      pageId: id,
+      url: z.string(),
+      title: z.string(),
+      windowId: id,
+      error: z.string().optional(),
+      retrying: z.boolean(),
+    }),
+  ),
+  "browser.recovery.retry": z.object({ ok: z.boolean(), pageId: id }),
   "history.list": z.array(HistoryEntrySchema),
-  "history.projectSnapshot": z.object({ accepted: z.boolean(), committed: z.boolean(), nextBatchIndex: z.number().int().nonnegative() }),
+  "history.projectSnapshot": z.object({
+    accepted: z.boolean(),
+    committed: z.boolean(),
+    nextBatchIndex: z.number().int().nonnegative(),
+  }),
   "history.projectDelta": z.object({ accepted: z.boolean(), sequence: z.number().int().nonnegative() }),
   "history.clear": z.object({ ok: z.boolean(), removed: z.number().int().nonnegative() }),
   "history.remove": z.object({ removed: z.boolean() }),
@@ -1529,9 +2172,11 @@ export const ResultSchemas = {
   "downloads.list": z.array(DownloadSchema),
   "downloads.remove": z.object({ removed: z.array(z.string()) }),
   "workspace.get": z.object({
-    restoringTabs:z.boolean().optional(),
-    pendingRestoreTabs:z.array(z.object({pageId:id,windowId:id})).optional(),
-    tabPlacements: z.record(z.string(), PageWindowMoveParams.pick({ spaceId: true, folder: true })).optional(),
+    restoringTabs: z.boolean().optional(),
+    pendingRestoreTabs: z.array(z.object({ pageId: id, windowId: id })).optional(),
+    tabPlacements: z
+      .record(z.string(), PageWindowMoveParams.pick({ spaceId: true, folder: true }))
+      .optional(),
     pages: z.array(PageTargetSchema),
     sets: z.array(PageSetSchema),
     members: z.array(SetMemberSchema),
@@ -1570,4 +2215,6 @@ export type MethodResult<M extends MethodName> = z.output<(typeof ResultSchemas)
 /** Request/response pair for every runtime API method — the typed IPC surface. */
 export type RpcMap = { [M in MethodName]: { params: MethodParams<M>; result: MethodResult<M> } };
 /** Positional params for `call(method, ...params)`: optional when the method takes none. */
-export type RpcArgs<M extends MethodName> = {} extends RpcMap[M]["params"] ? [params?: RpcMap[M]["params"]] : [params: RpcMap[M]["params"]];
+export type RpcArgs<M extends MethodName> = {} extends RpcMap[M]["params"]
+  ? [params?: RpcMap[M]["params"]]
+  : [params: RpcMap[M]["params"]];

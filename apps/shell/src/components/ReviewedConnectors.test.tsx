@@ -46,14 +46,6 @@ const entries = [
     authority: "calendar_account",
   },
   {
-    kind: "github",
-    connectorId: "github",
-    label: "GitHub",
-    account: "reviewer",
-    state: "checked",
-    authority: "saved_credential_and_task_project",
-  },
-  {
     kind: "mcp",
     connectorId: `mcp:${serverId}`,
     serverId,
@@ -103,28 +95,18 @@ it("reviews Calendar grants and revocation against the runtime catalog", async (
     if (method === "connectors.catalog")
       return {
         entries,
-        access: [
-          {
-            kind: "github",
-            connectorId: "github",
-            taskId,
-            taskRevision: 2,
-            projectId,
-            authority: "task_project_resource",
-          },
-          ...(granted
-            ? [
-                {
-                  kind: "calendar",
-                  connectorId: `calendar:${connectionId}`,
-                  taskId,
-                  taskRevision: 2,
-                  grantId,
-                  authority: "calendar_task_grant",
-                },
-              ]
-            : []),
-        ],
+        access: granted
+          ? [
+              {
+                kind: "calendar",
+                connectorId: `calendar:${connectionId}`,
+                taskId,
+                taskRevision: 2,
+                grantId,
+                authority: "calendar_task_grant",
+              },
+            ]
+          : [],
       };
     if (method === "calendar.taskGrants.create") {
       granted = true;
@@ -160,7 +142,7 @@ it("reviews Calendar grants and revocation against the runtime catalog", async (
   expect(container.textContent).toContain("No access for this task revision.");
 });
 
-it("shows GitHub and MCP authority and opens their management surfaces", async () => {
+it("shows MCP authority and opens its management surface", async () => {
   const onManage = vi.fn();
   openTask.mockResolvedValue(undefined);
   rpc.mockImplementation(async (method: string) => {
@@ -170,14 +152,6 @@ it("shows GitHub and MCP authority and opens their management surfaces", async (
       return {
         entries,
         access: [
-          {
-            kind: "github",
-            connectorId: "github",
-            taskId,
-            taskRevision: 2,
-            projectId,
-            authority: "task_project_resource",
-          },
           {
             kind: "mcp",
             connectorId: `mcp:${serverId}`,
@@ -195,13 +169,6 @@ it("shows GitHub and MCP authority and opens their management surfaces", async (
   await act(async () => root.render(<ReviewedConnectors onManage={onManage} />));
   await flush();
   await flush();
-  selectConnector("GitHub");
-  expect(container.textContent).toContain("Project Web app · revision 2");
-  expect(container.textContent).toContain("reference-only project does not grant access");
-  await act(async () => button("Manage task projects").click());
-  expect(openTask).toHaveBeenCalledWith(taskId);
-  act(() => button("Manage GitHub connection").click());
-  expect(onManage).toHaveBeenCalledWith("github");
   selectConnector("Research tools");
   expect(container.textContent).toContain("search · Space-wide grant");
   act(() => button("Review server and tool grants").click());

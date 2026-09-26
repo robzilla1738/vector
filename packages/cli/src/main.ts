@@ -100,12 +100,6 @@ async function main() {
   routines list [--workspace id] · routines get <id> · routines runs <id>
   routines alerts · routines compare <leftRunId> <rightRunId>
   backup list · backup retention
-  dev projects <taskId> <revision> · dev inspect|files|commands <taskId> <revision> <projectId>
-  dev read <taskId> <revision> <projectId> <path>
-  dev github|operations|review <taskId> <revision> <projectId>
-  cloud list <taskId> <revision> · cloud reconnect <taskId> <revision>
-  cloud commands|files|result <taskId> <revision> <environmentId> [path]
-  cloud read <taskId> <revision> <environmentId> <path>
   get <method> [params-json]             raw method call
   js <code|@file> [--session id]          run restricted QuickJS code mode
   js-reset [--session id]                 discard a code-mode session
@@ -128,7 +122,14 @@ async function main() {
     case "open": {
       const url = args[0];
       if (!url) fail("usage: auxctl open <url> [--chrome] [--background]");
-      out(await rpc("pages.open", { url, backend: flags.chrome ? "chrome" : "aux", background: !!flags.background, activate: flags.activate !== "false" && !flags.background }));
+      out(
+        await rpc("pages.open", {
+          url,
+          backend: flags.chrome ? "chrome" : "aux",
+          background: !!flags.background,
+          activate: flags.activate !== "false" && !flags.background,
+        }),
+      );
       return;
     }
     case "pages":
@@ -157,10 +158,13 @@ async function main() {
     case "shot": {
       const pageId = args[0];
       if (!pageId) fail("usage: auxctl shot <pageId> [--artifact]");
-      const r = await rpc<{ dataUrl?: string; artifactId?: string; width: number; height: number }>("pages.capture", {
-        pageId,
-        format: flags.artifact ? "artifact" : "dataUrl",
-      });
+      const r = await rpc<{ dataUrl?: string; artifactId?: string; width: number; height: number }>(
+        "pages.capture",
+        {
+          pageId,
+          format: flags.artifact ? "artifact" : "dataUrl",
+        },
+      );
       if (r.dataUrl) out({ ...r, dataUrl: r.dataUrl.slice(0, 120) + "…" });
       else out(r);
       return;
@@ -181,7 +185,13 @@ async function main() {
     case "run": {
       const goal = args.join(" ");
       if (!goal) fail('usage: auxctl run "<goal>" [--page id] [--set id]');
-      out(await rpc("runs.start", { goal, pageId: flags.page as string | undefined, setId: flags.set as string | undefined }));
+      out(
+        await rpc("runs.start", {
+          goal,
+          pageId: flags.page as string | undefined,
+          setId: flags.set as string | undefined,
+        }),
+      );
       return;
     }
     case "run-status": {
@@ -211,27 +221,49 @@ async function main() {
       if (sub === "create") {
         const [name, ...urls] = args.slice(1);
         if (!name) fail("usage: auxctl set create <name> <url...>");
-        out(await rpc("sets.create", { name, source: urls.length ? "urls" : "manual", urls: urls.length ? urls : undefined }));
+        out(
+          await rpc("sets.create", {
+            name,
+            source: urls.length ? "urls" : "manual",
+            urls: urls.length ? urls : undefined,
+          }),
+        );
       } else if (sub === "list") {
         out(await rpc("sets.list"));
       } else if (sub === "map") {
         const setId = args[1];
         if (!setId) fail("usage: auxctl set map <setId> --program <json|@file> | --goal <text>");
-        const program = flags.program ? (readJson(flags.program as string) as { steps: unknown[] }) : undefined;
-        out(await rpc("sets.map", { setId, program, goal: flags.goal as string | undefined, concurrency: flags.concurrency ? Number(flags.concurrency) : undefined }));
+        const program = flags.program
+          ? (readJson(flags.program as string) as { steps: unknown[] })
+          : undefined;
+        out(
+          await rpc("sets.map", {
+            setId,
+            program,
+            goal: flags.goal as string | undefined,
+            concurrency: flags.concurrency ? Number(flags.concurrency) : undefined,
+          }),
+        );
       } else fail("usage: auxctl set create|list|map …");
       return;
     }
     case "results": {
       const setId = args[0];
       if (!setId) fail("usage: auxctl results <setId>");
-      out(await rpc("sets.results", { setId, status: flags.status as "ok" | "partial" | "error" | undefined }));
+      out(
+        await rpc("sets.results", { setId, status: flags.status as "ok" | "partial" | "error" | undefined }),
+      );
       return;
     }
 
     case "events": {
       if (flags.follow === undefined && !flags.since) {
-        out(await rpc("events.since", { sinceSeq: Number(flags.since ?? 0), limit: Number(flags.limit ?? 200) }));
+        out(
+          await rpc("events.since", {
+            sinceSeq: Number(flags.since ?? 0),
+            limit: Number(flags.limit ?? 200),
+          }),
+        );
         return;
       }
       let since = Number(flags.since ?? 0);
@@ -248,7 +280,10 @@ async function main() {
       return;
     case "artifact": {
       if (!args[0]) fail("usage: auxctl artifact <artifactId>");
-      const r = await rpc<{ artifact: { path: string; mediaType: string; size: number }; dataBase64: string }>("artifacts.read", { artifactId: args[0] });
+      const r = await rpc<{
+        artifact: { path: string; mediaType: string; size: number };
+        dataBase64: string;
+      }>("artifacts.read", { artifactId: args[0] });
       if (flags.raw) process.stdout.write(Buffer.from(r.dataBase64, "base64"));
       else out(r.artifact);
       return;
@@ -260,8 +295,12 @@ async function main() {
       else if (sub === "tabs") out(await rpc("chrome.tabs"));
       else if (sub === "open-live") out(await rpc("chrome.openLive", { pageId: args[1] }));
       else if (sub === "detach") out(await rpc("chrome.detach"));
-      else if (sub === "import-cookies") out(await rpc("chrome.importCookies", { source: flags.source ?? "auto" }));
-      else fail("usage: auxctl chrome attach|tabs|open-live|detach|import-cookies [--source auto|attached|profile]");
+      else if (sub === "import-cookies")
+        out(await rpc("chrome.importCookies", { source: flags.source ?? "auto" }));
+      else
+        fail(
+          "usage: auxctl chrome attach|tabs|open-live|detach|import-cookies [--source auto|attached|profile]",
+        );
       return;
     }
 
@@ -300,7 +339,15 @@ async function main() {
 
     case "task": {
       const sub = args[0];
-      if (sub === "list") out(await rpc("tasks.list", { workspaceId: flags.workspace, includeArchived: !!flags.archived, query: typeof flags.query === "string" ? flags.query : undefined, limit: flags.limit ? Number(flags.limit) : 100 }));
+      if (sub === "list")
+        out(
+          await rpc("tasks.list", {
+            workspaceId: flags.workspace,
+            includeArchived: !!flags.archived,
+            query: typeof flags.query === "string" ? flags.query : undefined,
+            limit: flags.limit ? Number(flags.limit) : 100,
+          }),
+        );
       else if (sub === "get") {
         if (!args[1]) fail("usage: auxctl task get <taskId>");
         out(await rpc("tasks.get", { taskId: args[1] }));
@@ -309,65 +356,75 @@ async function main() {
         const definition = readJson(args[2]!) as Record<string, unknown>;
         out(await rpc("tasks.create", { ...definition, workspaceId: args[1] }));
       } else if (sub === "update") {
-        if (!args[1] || !args[2] || !args[3]) fail("usage: auxctl task update <taskId> <revision> <patch-json|@file>");
-        out(await rpc("tasks.update", { ...(readJson(args[3]!) as Record<string, unknown>), taskId: args[1], expectedRevision: Number(args[2]) }));
+        if (!args[1] || !args[2] || !args[3])
+          fail("usage: auxctl task update <taskId> <revision> <patch-json|@file>");
+        out(
+          await rpc("tasks.update", {
+            ...(readJson(args[3]!) as Record<string, unknown>),
+            taskId: args[1],
+            expectedRevision: Number(args[2]),
+          }),
+        );
       } else if (sub === "archive" || sub === "restore") {
         if (!args[1] || !args[2]) fail(`usage: auxctl task ${sub} <taskId> <revision>`);
-        out(await rpc("tasks.archive", { taskId: args[1], expectedRevision: Number(args[2]), archived: sub === "archive" }));
+        out(
+          await rpc("tasks.archive", {
+            taskId: args[1],
+            expectedRevision: Number(args[2]),
+            archived: sub === "archive",
+          }),
+        );
       } else if (sub === "receipt") {
         if (!args[1]) fail("usage: auxctl task receipt <taskId> [revision]");
-        out(await rpc("tasks.receipt", { taskId: args[1], ...(args[2] ? { revision: Number(args[2]) } : {}) }));
+        out(
+          await rpc("tasks.receipt", { taskId: args[1], ...(args[2] ? { revision: Number(args[2]) } : {}) }),
+        );
       } else if (sub === "start") {
         if (!args[1] || !args[2]) fail("usage: auxctl task start <taskId> <revision> [--pages id,id]");
-        const pageIds = typeof flags.pages === "string" ? flags.pages.split(",").map(value => value.trim()).filter(Boolean) : [];
+        const pageIds =
+          typeof flags.pages === "string"
+            ? flags.pages
+                .split(",")
+                .map((value) => value.trim())
+                .filter(Boolean)
+            : [];
         out(await rpc("tasks.start", { taskId: args[1], expectedRevision: Number(args[2]), pageIds }));
       } else if (sub === "verify") {
-        if (!args[1] || !args[2] || !args[3]) fail("usage: auxctl task verify <taskId> <revision> <criterionId>");
-        out(await rpc("tasks.verifyCriterion", { taskId: args[1], expectedRevision: Number(args[2]), criterionId: args[3] }));
+        if (!args[1] || !args[2] || !args[3])
+          fail("usage: auxctl task verify <taskId> <revision> <criterionId>");
+        out(
+          await rpc("tasks.verifyCriterion", {
+            taskId: args[1],
+            expectedRevision: Number(args[2]),
+            criterionId: args[3],
+          }),
+        );
       } else if (sub === "replace") {
         if (!args[1] || !args[2]) fail("usage: auxctl task replace <taskId> <revision> [--pages id,id]");
-        const pageIds = typeof flags.pages === "string" ? flags.pages.split(",").map(value => value.trim()).filter(Boolean) : [];
+        const pageIds =
+          typeof flags.pages === "string"
+            ? flags.pages
+                .split(",")
+                .map((value) => value.trim())
+                .filter(Boolean)
+            : [];
         out(await rpc("tasks.replaceAgent", { taskId: args[1], expectedRevision: Number(args[2]), pageIds }));
       } else if (sub === "journal") {
         if (!args[1]) fail("usage: auxctl task journal <taskId> [revision]");
-        const receipt = await rpc<{ unresolvedActions: unknown[]; unresolvedOperations: unknown[]; verifications: unknown[] }>("tasks.receipt", { taskId: args[1], ...(args[2] ? { revision: Number(args[2]) } : {}) });
-        out({ unresolvedActions: receipt.unresolvedActions, unresolvedOperations: receipt.unresolvedOperations, verifications: receipt.verifications });
-      } else fail("usage: auxctl task list|get|create|update|archive|restore|receipt|start|verify|replace|journal …");
-      return;
-    }
-
-    case "dev": {
-      const [sub, taskId, revision, projectId, path] = args;
-      if (!sub || !taskId || !revision) fail("usage: auxctl dev <action> <taskId> <revision> [projectId] [path]");
-      const base = { taskId, expectedRevision: Number(revision) };
-      if (sub === "projects") out(await rpc("development.projects", base));
-      else {
-        if (!projectId) fail(`usage: auxctl dev ${sub} <taskId> <revision> <projectId>${sub === "read" ? " <path>" : ""}`);
-        const methods: Record<string, string> = { inspect: "development.inspect", files: "development.files", commands: "development.commands", github: "development.githubStatus", operations: "development.operationsStatus", review: "development.review", read: "development.readFile" };
-        const method = methods[sub!];
-        if (!method) fail("usage: auxctl dev projects|inspect|files|read|commands|github|operations|review …");
-        if (sub === "read" && !path) fail("usage: auxctl dev read <taskId> <revision> <projectId> <path>");
-        out(await rpc(method!, { ...base, projectId, ...(sub === "read" ? { name: path } : {}) }));
-      }
-      return;
-    }
-
-    case "cloud": {
-      const [sub, taskId, revision, environmentId, path] = args;
-      if (!sub || !taskId || !revision) fail("usage: auxctl cloud <action> <taskId> <revision> [environmentId] [path]");
-      const base = { taskId, expectedRevision: Number(revision) };
-      if (sub === "list") out(await rpc("cloud.environments", base));
-      else if (sub === "reconnect") out(await rpc("cloud.reconnectStatus", base));
-      else {
-        if (!environmentId) fail(`usage: auxctl cloud ${sub} <taskId> <revision> <environmentId>${sub === "read" ? " <path>" : " [path]"}`);
-        if (sub === "commands") out(await rpc("cloud.commands", { ...base, environmentId }));
-        else if (sub === "files") out(await rpc("cloud.files", { ...base, environmentId, path: path ?? "" }));
-        else if (sub === "read") {
-          if (!path) fail("usage: auxctl cloud read <taskId> <revision> <environmentId> <path>");
-          out(await rpc("cloud.readFile", { ...base, environmentId, path }));
-        } else if (sub === "result") out(await rpc("cloud.taskResult", { ...base, environmentId }));
-        else fail("usage: auxctl cloud list|reconnect|commands|files|read|result …");
-      }
+        const receipt = await rpc<{
+          unresolvedActions: unknown[];
+          unresolvedOperations: unknown[];
+          verifications: unknown[];
+        }>("tasks.receipt", { taskId: args[1], ...(args[2] ? { revision: Number(args[2]) } : {}) });
+        out({
+          unresolvedActions: receipt.unresolvedActions,
+          unresolvedOperations: receipt.unresolvedOperations,
+          verifications: receipt.verifications,
+        });
+      } else
+        fail(
+          "usage: auxctl task list|get|create|update|archive|restore|receipt|start|verify|replace|journal …",
+        );
       return;
     }
 
@@ -377,8 +434,10 @@ async function main() {
       return;
     case "op-invoke": {
       const [siteKey, name, pageId] = args;
-      if (!siteKey || !name) fail("usage: auxctl op-invoke <siteKey> <name> [pageId] [--inputs <json|@file>]");
-      const inputs = typeof flags.inputs === "string" ? (readJson(flags.inputs) as Record<string, unknown>) : undefined;
+      if (!siteKey || !name)
+        fail("usage: auxctl op-invoke <siteKey> <name> [pageId] [--inputs <json|@file>]");
+      const inputs =
+        typeof flags.inputs === "string" ? (readJson(flags.inputs) as Record<string, unknown>) : undefined;
       out(await rpc("operations.invoke", { siteKey, name, pageId, inputs }));
       return;
     }
@@ -398,14 +457,31 @@ async function main() {
       const [entity, whereJson] = args;
       if (!entity) fail("usage: auxctl state <entity> [where-json|@file] [--page pageId] [--run runId]");
       const where = whereJson ? (readJson(whereJson) as unknown[]) : undefined;
-      out(await rpc("state.query", { entity, scope: { pageIds: flags.page ? [flags.page] : undefined, runId: flags.run }, where }));
+      out(
+        await rpc("state.query", {
+          entity,
+          scope: { pageIds: flags.page ? [flags.page] : undefined, runId: flags.run },
+          where,
+        }),
+      );
       return;
     }
     case "responses":
-      out(await rpc("responses.list", { pageId: args[0], urlIncludes: flags.url, limit: flags.limit ? Number(flags.limit) : undefined }));
+      out(
+        await rpc("responses.list", {
+          pageId: args[0],
+          urlIncludes: flags.url,
+          limit: flags.limit ? Number(flags.limit) : undefined,
+        }),
+      );
       return;
     case "traces":
-      out(await rpc("traces.list", { runId: args[0] ?? flags.run, since: flags.since ? Number(flags.since) : undefined }));
+      out(
+        await rpc("traces.list", {
+          runId: args[0] ?? flags.run,
+          since: flags.since ? Number(flags.since) : undefined,
+        }),
+      );
       return;
     case "datasets":
       out(await rpc("state.datasets", { runId: flags.run, pageId: flags.page }));
@@ -426,21 +502,26 @@ async function main() {
       else if (sub === "list") out(await rpc("vault.list", { includeRevoked: !!flags.revoked }));
       else if (sub === "grants") out(await rpc("vault.grants", {}));
       else if (sub === "expired") out(await rpc("vault.expiredGrants", {}));
-      else if (sub === "history") out(await rpc("vault.history", { limit: flags.limit ? Number(flags.limit) : 50 }));
+      else if (sub === "history")
+        out(await rpc("vault.history", { limit: flags.limit ? Number(flags.limit) : 50 }));
       else fail("usage: auxctl vault status|list|grants|expired|history");
       return;
     }
 
     case "routines": {
       const sub = args[0];
-      if (sub === "list") out(await rpc("routines.list", { workspaceId: flags.workspace, includeArchived: !!flags.archived }));
+      if (sub === "list")
+        out(await rpc("routines.list", { workspaceId: flags.workspace, includeArchived: !!flags.archived }));
       else if (sub === "get") {
         if (!args[1]) fail("usage: auxctl routines get <routineId>");
         out(await rpc("routines.get", { routineId: args[1] }));
       } else if (sub === "runs") {
         if (!args[1]) fail("usage: auxctl routines runs <routineId>");
-        out(await rpc("routines.runs", { routineId: args[1], limit: flags.limit ? Number(flags.limit) : 30 }));
-      } else if (sub === "alerts") out(await rpc("routines.alerts", { limit: flags.limit ? Number(flags.limit) : 30 }));
+        out(
+          await rpc("routines.runs", { routineId: args[1], limit: flags.limit ? Number(flags.limit) : 30 }),
+        );
+      } else if (sub === "alerts")
+        out(await rpc("routines.alerts", { limit: flags.limit ? Number(flags.limit) : 30 }));
       else if (sub === "compare") {
         if (!args[1] || !args[2]) fail("usage: auxctl routines compare <leftRunId> <rightRunId>");
         out(await rpc("routines.compare", { leftRunId: args[1], rightRunId: args[2] }));
@@ -467,12 +548,12 @@ async function main() {
       const source = args[0];
       if (!source) fail("usage: auxctl js <code|@file> [--session id]");
       const code = source!.startsWith("@") ? readFileSync(source!.slice(1), "utf8") : source!;
-      const method = AgentApiManifest.find(item => item.path === "js.run")!.method;
+      const method = AgentApiManifest.find((item) => item.path === "js.run")!.method;
       out(await rpc(method, { code, sessionId: flags.session || "default" }));
       return;
     }
     case "js-reset": {
-      const method = AgentApiManifest.find(item => item.path === "js.reset")!.method;
+      const method = AgentApiManifest.find((item) => item.path === "js.reset")!.method;
       out(await rpc(method, { sessionId: flags.session || "default" }));
       return;
     }
@@ -483,7 +564,9 @@ async function main() {
     }
 
     case "bench":
-      out(await rpc("bench.run", { task: args[0], repeats: flags.repeats ? Number(flags.repeats) : undefined }));
+      out(
+        await rpc("bench.run", { task: args[0], repeats: flags.repeats ? Number(flags.repeats) : undefined }),
+      );
       return;
 
     default:

@@ -1,6 +1,5 @@
 export * from "./ids.js";
 export * from "./environment.js";
-export * from "./cloud.js";
 export * from "./errors.js";
 export * from "./safety.js";
 export * from "./aux-features.js";
@@ -42,9 +41,6 @@ export * from "./ipc-channel.js";
 export * from "./model-providers.js";
 export * from "./model-registry.js";
 export * from "./site-adapters.js";
-
-export * from "./local-projects.js";
-export * from "./command-seatbelt.js";
 
 export { textContextShares } from "./text-context.js";
 

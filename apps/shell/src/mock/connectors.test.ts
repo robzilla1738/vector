@@ -13,29 +13,13 @@ const task = TaskSchema.parse({
   state: "open",
   createdAt: 1,
   updatedAt: 1,
-  resources: [
-    {
-      resourceId: "repo",
-      kind: "repository",
-      projectId: "22222222-2222-4222-8222-222222222222",
-      locator: "/synthetic/repo",
-      label: "Repo",
-      access: "read",
-    },
-  ],
 });
 
 it("keeps preview connector access bound to reviewed task grants and revocation", async () => {
-  let github = true;
-  const handlers = connectorFixtures(
-    workspaceId,
-    async () => [task],
-    true,
-    () => github,
-  );
+  const handlers = connectorFixtures(workspaceId, async () => [task], true);
   const query = { workspaceId, taskId: task.taskId, expectedRevision: task.revision };
   const first = ConnectorCatalogSchema.parse(await handlers["connectors.catalog"](query));
-  expect(first.access.map((item) => item.kind).sort()).toEqual(["github", "mcp"]);
+  expect(first.access.map((item) => item.kind).sort()).toEqual(["mcp"]);
   const calendar = first.entries.find((item) => item.kind === "calendar");
   if (calendar?.kind !== "calendar") throw new Error("Preview Calendar account is unavailable");
   const grant = await handlers["calendar.taskGrants.create"]({
@@ -47,9 +31,8 @@ it("keeps preview connector access bound to reviewed task grants and revocation"
     ConnectorCatalogSchema.parse(await handlers["connectors.catalog"](query))
       .access.map((item) => item.kind)
       .sort(),
-  ).toEqual(["calendar", "github", "mcp"]);
+  ).toEqual(["calendar", "mcp"]);
   await handlers["calendar.taskGrants.revoke"]({ taskId: task.taskId, grantId: grant.grantId });
-  github = false;
   const after = ConnectorCatalogSchema.parse(await handlers["connectors.catalog"](query));
   expect(after.access.map((item) => item.kind)).toEqual(["mcp"]);
   const mcp = after.access.find((item) => item.kind === "mcp");

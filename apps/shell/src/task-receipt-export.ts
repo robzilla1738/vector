@@ -14,8 +14,7 @@ export function taskReceiptMarkdown(receipt: TaskReceipt, includeSnapshots = fal
       "Evidence freshness and run outcomes are assessed at export time. This is not a reconstruction of status at the time this revision was saved.", ""] : []),
     "This is a dated review snapshot. User acceptance records a human assessment, not independent verification. Captured evidence is historical; unresolved actions are not confirmed outcomes.", "",
     "## Objective", "", text(receipt.objective), ""];
-  if(receipt.cloudResults.length){lines.push('## Preserved cloud results','');for(const result of receipt.cloudResults){lines.push(`### ${result.status.replaceAll('_',' ')} · ${time(result.resultUpdatedAt)}`,'',text(result.summary),'',`Source tree: ${result.sourceTree}`,`Environment: ${text(result.environmentId)}`,...(result.localRequest?[`Local ${result.localRequest.kind} requested: ${text(result.localRequest.prompt)}`]:[]),...result.artifacts.map(item=>`- ${text(item.label)}: ${item.bytes} bytes · SHA-256 ${item.sha256}`),'');}}
-  if(receipt.childTasks.length){lines.push('## Coordinated task outcomes','');for(const child of receipt.childTasks)lines.push(`${'  '.repeat(Math.max(0,child.depth-1))}- ${text(child.title)} — revision ${child.revision}; ${status[child.status]}${child.state==='archived'?'; archived':''}${child.cloudEnvironment?`; cloud ${text(child.cloudEnvironment)}`:''}; ${child.modelCalls} model calls; $${child.knownCostUsd.toFixed(4)} ${child.costComplete?'recorded cost':'known cost'}`);lines.push('','Parent acceptance requires every descendant receipt to be accepted.','');}
+  if(receipt.childTasks.length){lines.push('## Coordinated task outcomes','');for(const child of receipt.childTasks)lines.push(`${'  '.repeat(Math.max(0,child.depth-1))}- ${text(child.title)} — revision ${child.revision}; ${status[child.status]}${child.state==='archived'?'; archived':''}; ${child.modelCalls} model calls; $${child.knownCostUsd.toFixed(4)} ${child.costComplete?'recorded cost':'known cost'}`);lines.push('','Parent acceptance requires every descendant receipt to be accepted.','');}
   lines.push("## Criteria and evidence", "");
   for (const item of receipt.criteria) {
     lines.push(`### ${text(item.criterion.description)}`, "", `Status: ${item.status === "accepted" ? "Accepted by you" : item.status.replaceAll("_", " ")}`,
@@ -29,11 +28,6 @@ export function taskReceiptMarkdown(receipt: TaskReceipt, includeSnapshots = fal
         `Observed: ${time(record.observedAt)} · Recorded: ${time(record.recordedAt)}`,
         `Task revision: ${record.taskRevision} · Run sequence: ${record.runSequence}`,
         stale ? `**Stale evidence:** ${text(reason ?? "The subject has changed.")}` : "Evidence is not marked stale in this receipt.");
-      if (record.kind==='command_snapshot') lines.push(`Command: ${text(record.source.commandId??'')} · Project: ${text(record.source.projectId??'')}`,
-        `Outcome: ${text(record.source.commandState??'')} · Exit: ${record.source.exitCode??'not recorded'} · Output truncated: ${record.source.truncated===true}`,
-        record.source.executionTaskId?`Execution task: ${text(record.source.executionTaskId)} · Revision ${record.source.executionTaskRevision}`:"No task binding was recorded at execution.",
-        `Snapshot SHA-256: ${record.source.sha256}`,
-        'Historical command result; later checkout changes and local commands are not monitored. Successful exit does not prove task acceptance.');
       if (record.source.url) lines.push(`Source URL: ${text(record.source.url)}`);
       if (record.source.pageId) lines.push(`Page: ${text(record.source.pageId)}`);
       if (record.source.documentEpoch !== undefined) lines.push(`Document epoch: ${record.source.documentEpoch}`);

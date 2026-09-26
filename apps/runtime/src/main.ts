@@ -14,7 +14,16 @@ import { randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { EventTypes, AuxError, OriginRuleSchema, ZapSnapshotParamsSchema, auxFeatureEnabled, isElementRef, normalizeAuxEnvironment, type Step } from "@aux/contracts";
+import {
+  EventTypes,
+  AuxError,
+  OriginRuleSchema,
+  ZapSnapshotParamsSchema,
+  auxFeatureEnabled,
+  isElementRef,
+  normalizeAuxEnvironment,
+  type Step,
+} from "@aux/contracts";
 import { RpcChannel, type Transport } from "@aux/contracts";
 import {
   AttachedChromeDriver,
@@ -58,7 +67,6 @@ import { ApprovalStore } from "./safety/approval.js";
 import { SafetyAuditStore } from "./safety/audit.js";
 import { SafetyDispatchGate } from "./safety/dispatch.js";
 import { createGuardianJudge } from "./safety/guardian-model.js";
-import { markCloudDesktopClosed } from "./services/cloud-environments.js";
 import { connectHostSocket, type HostSocketTransport } from "./host-socket.js";
 
 export interface RuntimeHandle {
@@ -72,38 +80,61 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // `.env` in the data dir, then in the cwd — real environment variables
   // always win. The README promised this; nothing loaded it before.
   const configured = normalizeAuxEnvironment(processEnv);
-  const env = configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
+  const env =
+    configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
   const repo = new Repo(openDb(config.dbPath));
   if (env.AUX_HOST_SOCKET && env.AUX_BROWSER_PROFILE_ID) repo.requireChromiumHistory();
-  const privacyCheckpoint = new PrivacyCheckpoint(config.dbPath, error =>
-    process.stderr.write(`[runtime] privacy checkpoint failed: ${error.message}\n`));
+  const privacyCheckpoint = new PrivacyCheckpoint(config.dbPath, (error) =>
+    process.stderr.write(`[runtime] privacy checkpoint failed: ${error.message}\n`),
+  );
   repo.pruneEvents();
-  setTimeout(() => { try { repo.pruneRetention(); } catch { /* retried next start */ } }, 10_000).unref();
+  setTimeout(() => {
+    try {
+      repo.pruneRetention();
+    } catch {
+      /* retried next start */
+    }
+  }, 10_000).unref();
   const events = new EventBus(repo);
   const settings = new SettingsService(repo, config.settingsPath, env);
   const durableWrites = new DurableWriteLedger(repo.db);
   const safetyAudit = new SafetyAuditStore(repo.db);
-  const approvals = new ApprovalStore(repo.db, event => safetyAudit.record(event));
-  const safetyGate = env.AUX_HOST_SOCKET ? new SafetyDispatchGate({
-    approvals,
-    managedRules: () => OriginRuleSchema.array().parse(repo.getSetting("managedOriginPolicies") ?? []),
-    userRules: () => settings.originPolicies(),
-    localCeiling: action => settings.safetyCeiling(action.effect),
-    audit: event => safetyAudit.record({ ...event }),
-    judge: createGuardianJudge({
-      model: () => settings.model(), modelId: () => settings.plannerModel(),
-      recordAttempt: (attempt, modelId, error) => repo.saveModelCall({
-        callId: randomUUID(), role: "guardian", modelId, durationMs: attempt.durationMs,
-        inputTokens: attempt.inputTokens, outputTokens: attempt.outputTokens,
-        providerMetadata: attempt.providerMetadata,
-        ...modelCallCost(modelId, attempt), ...(error ? { error } : {}), createdAt: Date.now(),
-      }),
-    }),
-  }) : undefined;
+  const approvals = new ApprovalStore(repo.db, (event) => safetyAudit.record(event));
+  const safetyGate = env.AUX_HOST_SOCKET
+    ? new SafetyDispatchGate({
+        approvals,
+        managedRules: () => OriginRuleSchema.array().parse(repo.getSetting("managedOriginPolicies") ?? []),
+        userRules: () => settings.originPolicies(),
+        localCeiling: (action) => settings.safetyCeiling(action.effect),
+        audit: (event) => safetyAudit.record({ ...event }),
+        judge: createGuardianJudge({
+          model: () => settings.model(),
+          modelId: () => settings.plannerModel(),
+          recordAttempt: (attempt, modelId, error) =>
+            repo.saveModelCall({
+              callId: randomUUID(),
+              role: "guardian",
+              modelId,
+              durationMs: attempt.durationMs,
+              inputTokens: attempt.inputTokens,
+              outputTokens: attempt.outputTokens,
+              providerMetadata: attempt.providerMetadata,
+              ...modelCallCost(modelId, attempt),
+              ...(error ? { error } : {}),
+              createdAt: Date.now(),
+            }),
+        }),
+      })
+    : undefined;
   const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
-  setTimeout(() => { void minimizeLegacyObservationArtifacts(repo, config.artifactsDir).catch(error =>
-    process.stderr.write(`[runtime] observation artifact maintenance failed: ${error instanceof Error ? error.message : String(error)}\n`)); }, 10_000).unref();
+  setTimeout(() => {
+    void minimizeLegacyObservationArtifacts(repo, config.artifactsDir).catch((error) =>
+      process.stderr.write(
+        `[runtime] observation artifact maintenance failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      ),
+    );
+  }, 10_000).unref();
 
   // ---- channel to the native browser host ----
   let channel: RpcChannel | null = null;
@@ -126,33 +157,47 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   }
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
   const featureStages = env.AUX_HOST_SOCKET
-    ? native.capabilities!().then(capabilities =>
-        featureStagesFor(capabilities.methods, capabilities.sourceCommit))
-      .catch(error => {
-        process.stderr.write(`[runtime] native capabilities unavailable: ${String(error)}\n`);
-        return featureStagesFor([], "");
-      })
+    ? native.capabilities!()
+        .then((capabilities) => featureStagesFor(capabilities.methods, capabilities.sourceCommit))
+        .catch((error) => {
+          process.stderr.write(`[runtime] native capabilities unavailable: ${String(error)}\n`);
+          return featureStagesFor([], "");
+        })
     : undefined;
   const blocking = env.AUX_HOST_SOCKET
-    ? new ContentBlockingService(config.dataDir, native, env.AUX_BROWSER_PROFILE_ID ?? "default") : null;
+    ? new ContentBlockingService(config.dataDir, native, env.AUX_BROWSER_PROFILE_ID ?? "default")
+    : null;
   const blockingBoot = blocking?.boot();
   if (blocking) {
-    for (const method of ["blocking.status", "blocking.privacy", "blocking.update", "blocking.add",
-      "blocking.remove", "blocking.setSourceEnabled", "blocking.setEnabled",
-      "blocking.setSiteAllowed", "blocking.removeAllowedHost"]) {
-      channel?.onMethod(method, params => blockingBoot!.then(() => blocking.handle(method, params)));
+    for (const method of [
+      "blocking.status",
+      "blocking.privacy",
+      "blocking.update",
+      "blocking.add",
+      "blocking.remove",
+      "blocking.setSourceEnabled",
+      "blocking.setEnabled",
+      "blocking.setSiteAllowed",
+      "blocking.removeAllowedHost",
+    ]) {
+      channel?.onMethod(method, (params) => blockingBoot!.then(() => blocking.handle(method, params)));
     }
-    void blockingBoot?.then(() => blocking.maintain()).catch(error =>
-      process.stderr.write(`[runtime] content blocking unavailable: ${String(error)}\n`));
-    const filterTimer = setInterval(() => {
-      void blocking.maintain().catch(error =>
-        process.stderr.write(`[runtime] filter refresh failed: ${String(error)}\n`));
-    }, 60 * 60 * 1000);
+    void blockingBoot
+      ?.then(() => blocking.maintain())
+      .catch((error) => process.stderr.write(`[runtime] content blocking unavailable: ${String(error)}\n`));
+    const filterTimer = setInterval(
+      () => {
+        void blocking
+          .maintain()
+          .catch((error) => process.stderr.write(`[runtime] filter refresh failed: ${String(error)}\n`));
+      },
+      60 * 60 * 1000,
+    );
     filterTimer.unref?.();
   }
   const zap = new ZapService(repo, native, env.AUX_BROWSER_PROFILE_ID ?? "default");
   // Register before service boot so the host can preload styles before restoring tabs.
-  channel?.onMethod("zap.snapshot", async params => {
+  channel?.onMethod("zap.snapshot", async (params) => {
     const profileId = ZapSnapshotParamsSchema.parse(params).profileId;
     const host = env.AUX_HOST_SOCKET ? "chromium-fork" : "electron";
     const stages = await featureStages;
@@ -163,7 +208,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   // Register api.invoke immediately — the renderer can call before services
   // finish booting; calls wait on the invoker promise instead of failing.
-  type InvokeFn = (m: string, p: unknown, client?: { external: boolean; connectionId?: string; scope?: import("@aux/contracts").AgentConnectionScope }) => Promise<unknown>;
+  type InvokeFn = (
+    m: string,
+    p: unknown,
+    client?: {
+      external: boolean;
+      connectionId?: string;
+      scope?: import("@aux/contracts").AgentConnectionScope;
+    },
+  ) => Promise<unknown>;
   let resolveInvoker: (fn: InvokeFn) => void;
   const invokerReady = new Promise<InvokeFn>((r) => (resolveInvoker = r));
   channel?.onMethod("api.invoke", (p) => {
@@ -181,7 +234,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // pages.open attempts a lazy reconnect and, on success, restores it
   const watchDriver = (d: BrowserDriver, sessionId: "aux" | "chrome", label: string) => {
     d.onDisconnected = () => {
-      repo.upsertSession({ sessionId, backend: d.backend, label, status: "degraded", detail: "backend connection dropped — reconnecting on next use" });
+      repo.upsertSession({
+        sessionId,
+        backend: d.backend,
+        label,
+        status: "degraded",
+        detail: "backend connection dropped — reconnecting on next use",
+      });
       events.emit("session.changed", { backend: d.backend, status: "degraded" });
     };
     d.onReconnected = () => {
@@ -189,13 +248,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       events.emit("session.changed", { backend: d.backend, status: "connected" });
     };
   };
-  const nativeCdp = env.AUX_HOST_SOCKET && channel
-    ? await NativeCdpBroker.start(channel)
-    : null;
+  const nativeCdp = env.AUX_HOST_SOCKET && channel ? await NativeCdpBroker.start(channel) : null;
   let auxRecovery: ConnectionRecovery | undefined;
-  const hostCdp = nativeCdp?.endpoint() ?? (env.AUX_INTERNAL_CDP === "1" && channel
-    ? await channel.call<string>("cdp.capability", {}, 15_000).catch(() => null)
-    : config.hostCdp);
+  const hostCdp =
+    nativeCdp?.endpoint() ??
+    (env.AUX_INTERNAL_CDP === "1" && channel
+      ? await channel.call<string>("cdp.capability", {}, 15_000).catch(() => null)
+      : config.hostCdp);
   if (hostCdp) {
     const d = new ManagedChromiumDriver(hostCdp, {
       trustedPages: native.listPages ? async () => (await native.listPages!()).pages : undefined,
@@ -256,10 +315,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const tracer = new Tracer(repo.db, { traceDir: join(config.dataDir, "traces") });
   const responses = new ResponseStore({ repo, events, artifacts });
   const vault = new VaultService(repo, native);
-  const contentMemory = native.available() && env.AUX_BROWSER_PROFILE_ID
-    ? new ContentMemoryStore(repo, native, env.AUX_BROWSER_PROFILE_ID, Date.now, events) : undefined;
-  const memoryPipeline = native.available() && env.AUX_BROWSER_PROFILE_ID
-    ? new MemoryPipeline(repo, native, join(config.dataDir, "space-memory"), env.AUX_BROWSER_PROFILE_ID) : undefined;
+  const contentMemory =
+    native.available() && env.AUX_BROWSER_PROFILE_ID
+      ? new ContentMemoryStore(repo, native, env.AUX_BROWSER_PROFILE_ID, Date.now, events)
+      : undefined;
+  const memoryPipeline =
+    native.available() && env.AUX_BROWSER_PROFILE_ID
+      ? new MemoryPipeline(repo, native, join(config.dataDir, "space-memory"), env.AUX_BROWSER_PROFILE_ID)
+      : undefined;
   // pages↔operations are mutually dependent — late-bind via a lazy ref
   let operations!: OperationService;
   const pages = new PageService({
@@ -335,8 +398,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         return s;
       });
 
-  const calendar = new CalendarConnectionService({ repo, native, clientId: env.AUX_GOOGLE_CALENDAR_CLIENT_ID, profileId: env.AUX_BROWSER_PROFILE_ID,
-    onChange: () => events.emit("settings.changed", { category: "calendar" }) });
+  const calendar = new CalendarConnectionService({
+    repo,
+    native,
+    clientId: env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
+    profileId: env.AUX_BROWSER_PROFILE_ID,
+    onChange: () => events.emit("settings.changed", { category: "calendar" }),
+  });
   operations = new OperationService({
     repo,
     events,
@@ -372,19 +440,32 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   });
 
   const extractingRuns = new Set<string>();
-  events.subscribe(event => {
+  events.subscribe((event) => {
     if (event.type !== EventTypes.RunUpdated || !memoryPipeline) return;
     const run = event.payload.run;
-    if (!run || typeof run !== "object" || !("status" in run) || run.status !== "completed" ||
-      !("runId" in run) || typeof run.runId !== "string" || extractingRuns.has(run.runId)) return;
-    const workspaceId = "config" in run && run.config && typeof run.config === "object" &&
-      "contextWorkspaceId" in run.config ? run.config.contextWorkspaceId : undefined;
+    if (
+      !run ||
+      typeof run !== "object" ||
+      !("status" in run) ||
+      run.status !== "completed" ||
+      !("runId" in run) ||
+      typeof run.runId !== "string" ||
+      extractingRuns.has(run.runId)
+    )
+      return;
+    const workspaceId =
+      "config" in run && run.config && typeof run.config === "object" && "contextWorkspaceId" in run.config
+        ? run.config.contextWorkspaceId
+        : undefined;
     if (typeof workspaceId !== "string" || !memoryPipeline.policy(workspaceId).enabled) return;
     const runId = run.runId;
     extractingRuns.add(runId);
-    void memoryPipeline.extractRun(workspaceId, runId).then(result => {
-      if (result.extracted) events.emit("workspace.memory.updated", { workspaceId, runId });
-    }).catch(() => events.emit("memory.pipeline.failed", { workspaceId, runId }))
+    void memoryPipeline
+      .extractRun(workspaceId, runId)
+      .then((result) => {
+        if (result.extracted) events.emit("workspace.memory.updated", { workspaceId, runId });
+      })
+      .catch(() => events.emit("memory.pipeline.failed", { workspaceId, runId }))
       .finally(() => extractingRuns.delete(runId));
   });
 
@@ -465,15 +546,26 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   });
   // Authenticated Chromium host messages are internal; the loopback API still
   // denies these projection methods to external and scoped clients.
-  channel?.onMethod("history.projectSnapshot", params => invoke("history.projectSnapshot", params, { external: false }));
-  channel?.onMethod("history.projectDelta", params => invoke("history.projectDelta", params, { external: false }));
+  channel?.onMethod("history.projectSnapshot", (params) =>
+    invoke("history.projectSnapshot", params, { external: false }),
+  );
+  channel?.onMethod("history.projectDelta", (params) =>
+    invoke("history.projectDelta", params, { external: false }),
+  );
   // Native notification/page-change/Calendar adapters submit provenance here;
   // external and scoped API clients cannot mint automation events.
-  channel?.onMethod("routines.ingestEvent", params => invoke("routines.ingestEvent", params, { external: false }));
+  channel?.onMethod("routines.ingestEvent", (params) =>
+    invoke("routines.ingestEvent", params, { external: false }),
+  );
 
   // ---- loopback API ----
   const token = config.apiToken || randomUUID();
-  const api = new ApiServer({ token, invoke, events, authorizeScopedToken: scopedToken => agentConnections.authorize(scopedToken) });
+  const api = new ApiServer({
+    token,
+    invoke,
+    events,
+    authorizeScopedToken: (scopedToken) => agentConnections.authorize(scopedToken),
+  });
   const port = await api.listen(config.apiPort);
   // the bearer token lives here — owner-only, and re-chmod'd because
   // writeFileSync's mode applies only when the file is first created
@@ -498,15 +590,27 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     const str = (v: unknown) => (v === undefined || v === null ? undefined : String(v));
     const truthy = (v: unknown) => v === true || v === "true";
     switch (type) {
-      case "view.navigated": return pages.onNativeNavigated(str(pl.pageId)!, str(pl.url)!);
-      case "view.titleChanged": return pages.onNativeTitle(str(pl.pageId)!, str(pl.title) ?? "");
-      case "view.faviconChanged": return pages.onNativeFavicon(str(pl.pageId)!, str(pl.favicon) ?? "");
-      case "view.windowFocused": return pages.onNativeWindowFocused(str(pl.pageId)!, str(pl.windowId)!);
-      case "view.navState": return pages.onNativeNavState(str(pl.pageId)!, truthy(pl.canGoBack), truthy(pl.canGoForward));
-      case "view.loading": return pages.onNativeLoading(str(pl.pageId)!, truthy(pl.loading));
-      case "view.navigationError": return pages.onNativeNavigationError(str(pl.pageId)!, pl.error as { url: string; code: number; message: string } | null);
-      case "view.crashed": return pages.onNativeCrashed(str(pl.pageId)!);
-      case "view.takeover": return pages.onNativeTakeover(str(pl.pageId)!);
+      case "view.navigated":
+        return pages.onNativeNavigated(str(pl.pageId)!, str(pl.url)!);
+      case "view.titleChanged":
+        return pages.onNativeTitle(str(pl.pageId)!, str(pl.title) ?? "");
+      case "view.faviconChanged":
+        return pages.onNativeFavicon(str(pl.pageId)!, str(pl.favicon) ?? "");
+      case "view.windowFocused":
+        return pages.onNativeWindowFocused(str(pl.pageId)!, str(pl.windowId)!);
+      case "view.navState":
+        return pages.onNativeNavState(str(pl.pageId)!, truthy(pl.canGoBack), truthy(pl.canGoForward));
+      case "view.loading":
+        return pages.onNativeLoading(str(pl.pageId)!, truthy(pl.loading));
+      case "view.navigationError":
+        return pages.onNativeNavigationError(
+          str(pl.pageId)!,
+          pl.error as { url: string; code: number; message: string } | null,
+        );
+      case "view.crashed":
+        return pages.onNativeCrashed(str(pl.pageId)!);
+      case "view.takeover":
+        return pages.onNativeTakeover(str(pl.pageId)!);
       case "view.downloadStarted":
         return pages.onNativeDownloadStarted(str(pl.pageId), {
           id: str(pl.id) ?? `dl_${Date.now()}`,
@@ -531,39 +635,57 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         });
       case "view.popup":
         // a native window/tab appeared outside pages.open (window.open allowed)
-        void pages.registerExternal({
-          pageId: str(pl.pageId),
-          windowId: str(pl.windowId),
-          marker: str(pl.marker)!,
-          url: str(pl.url) ?? "about:blank",
-          title: str(pl.title),
-          backend: "aux",
-          active: pl.activate === true,
-          showBlankDocument: pl.showBlankDocument === true,
-        }).then(page => pl.activate === true ? pages.activate(page.pageId) : undefined).catch(() => {});
+        void pages
+          .registerExternal({
+            pageId: str(pl.pageId),
+            windowId: str(pl.windowId),
+            marker: str(pl.marker)!,
+            url: str(pl.url) ?? "about:blank",
+            title: str(pl.title),
+            backend: "aux",
+            active: pl.activate === true,
+            showBlankDocument: pl.showBlankDocument === true,
+          })
+          .then((page) => (pl.activate === true ? pages.activate(page.pageId) : undefined))
+          .catch(() => {});
         return;
-      case "view.removed": return pages.onNativeRemoved(str(pl.pageId)!, true, pl.discarded === true);
+      case "view.removed":
+        return pages.onNativeRemoved(str(pl.pageId)!, true, pl.discarded === true);
       // Main-owned tab catalog patches — presence/focus/placement truth for
       // human tabs; field convergence still rides view.* above (§7.1/§7.2).
-      case "tabs.catalog": return pages.syncCatalog(payload as Parameters<typeof pages.syncCatalog>[0]);
+      case "tabs.catalog":
+        return pages.syncCatalog(payload as Parameters<typeof pages.syncCatalog>[0]);
       case "native.bookmarksChanged": {
-        void invoke("bookmarks.list", {}, { external: false }).then(bookmarks => {
-          events.emit("bookmarks.changed", { bookmarks });
-        }).catch(error => console.error("Chromium bookmarks refresh failed", error));
+        void invoke("bookmarks.list", {}, { external: false })
+          .then((bookmarks) => {
+            events.emit("bookmarks.changed", { bookmarks });
+          })
+          .catch((error) => console.error("Chromium bookmarks refresh failed", error));
         return;
       }
-      case "app.closing": return pages.shuttingDown();
+      case "app.closing":
+        return pages.shuttingDown();
     }
   });
 
   let closed = false;
   const browsingMemory = new BrowsingMemory(repo);
-  const memoryExpiry = setInterval(() => { try { browsingMemory.prune(); } catch (error) { console.error("Browsing memory cleanup failed", error); } }, 60_000);
-  const pruneContent = () => { try {
-    const pruned = contentMemory?.prune();
-    for (const workspaceId of pruned?.workspaceIds ?? []) runs.redactForgottenArticleOutputs(workspaceId);
-    if (pruned?.workspaceIds.length) privacyCheckpoint.request();
-  } catch (error) { console.error("Page-content memory cleanup failed", error); } };
+  const memoryExpiry = setInterval(() => {
+    try {
+      browsingMemory.prune();
+    } catch (error) {
+      console.error("Browsing memory cleanup failed", error);
+    }
+  }, 60_000);
+  const pruneContent = () => {
+    try {
+      const pruned = contentMemory?.prune();
+      for (const workspaceId of pruned?.workspaceIds ?? []) runs.redactForgottenArticleOutputs(workspaceId);
+      if (pruned?.workspaceIds.length) privacyCheckpoint.request();
+    } catch (error) {
+      console.error("Page-content memory cleanup failed", error);
+    }
+  };
   pruneContent();
   const contentExpiry = setInterval(pruneContent, 60_000);
   memoryExpiry.unref();
@@ -579,7 +701,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     process.off("uncaughtException", onUncaughtException);
     await runs.messages.stop();
     runs.coordinator.markInterrupted();
-    try { markCloudDesktopClosed(repo); } catch { /* local records only */ }
     await api.close().catch(() => {});
     await invoke.dispose().catch(() => {});
     await auxRecovery?.stop();
@@ -603,9 +724,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const describeFault = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
   const onUnhandledRejection = (reason: unknown) => {
     if (closed) return;
-    console.error("[aux-runtime] unhandled rejection:", reason instanceof Error ? reason.stack ?? reason.message : reason);
+    console.error(
+      "[aux-runtime] unhandled rejection:",
+      reason instanceof Error ? (reason.stack ?? reason.message) : reason,
+    );
     try {
-      const failed = runs.coordinator.failActive(`runtime fault — unhandled rejection: ${describeFault(reason)}`);
+      const failed = runs.coordinator.failActive(
+        `runtime fault — unhandled rejection: ${describeFault(reason)}`,
+      );
       if (failed.length) console.error(`[aux-runtime] marked ${failed.length} active run(s) failed`);
     } catch {
       /* the ledger itself may be the thing that failed */
@@ -650,10 +776,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
 const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isDirectRun || normalizeAuxEnvironment(process.env).AUX_RUNTIME_AUTOSTART === "1") {
-  startRuntime().then((h) => {
-    console.log(`[aux-runtime] api=http://127.0.0.1:${h.port}`);
-  }).catch((e) => {
-    console.error("[aux-runtime] failed:", e);
-    process.exit(1);
-  });
+  startRuntime()
+    .then((h) => {
+      console.log(`[aux-runtime] api=http://127.0.0.1:${h.port}`);
+    })
+    .catch((e) => {
+      console.error("[aux-runtime] failed:", e);
+      process.exit(1);
+    });
 }

@@ -2,17 +2,34 @@ import { z } from "zod";
 import { AcceptanceCriterionSchema, TaskReceiptSchema } from "./tasks.js";
 
 const text = z.string().trim().min(1);
-const timezone = z.string().min(1).max(80).refine(value => {
-  try { new Intl.DateTimeFormat("en-US", { timeZone: value }); return true; } catch { return false; }
-}, "Choose a valid IANA time zone");
-const siteOrigin = z.string().url().max(8192).refine(value => {
-  const url = new URL(value);
-  return (url.protocol === "http:" || url.protocol === "https:") && url.origin === value;
-}, "Choose an exact http(s) origin");
-const siteUrl = z.string().url().max(8192).refine(value => {
-  const url = new URL(value);
-  return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password;
-}, "Choose an http(s) page without embedded credentials");
+const timezone = z
+  .string()
+  .min(1)
+  .max(80)
+  .refine((value) => {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: value });
+      return true;
+    } catch {
+      return false;
+    }
+  }, "Choose a valid IANA time zone");
+const siteOrigin = z
+  .string()
+  .url()
+  .max(8192)
+  .refine((value) => {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && url.origin === value;
+  }, "Choose an exact http(s) origin");
+const siteUrl = z
+  .string()
+  .url()
+  .max(8192)
+  .refine((value) => {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password;
+  }, "Choose an http(s) page without embedded credentials");
 export const RoutineParameterSchema = z.object({
   name: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,40}$/),
   label: text.max(80),
@@ -20,27 +37,87 @@ export const RoutineParameterSchema = z.object({
 });
 export const RoutineTriggerSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("manual") }).strict(),
-  z.object({
-    kind: z.literal("schedule"),
-    timezone,
-    hour: z.number().int().min(0).max(23),
-    minute: z.number().int().min(0).max(59),
-    days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
-  }).strict(),
-  z.object({
-    kind: z.literal("monitor"),
-    timezone,
-    intervalMinutes: z.number().int().min(5).max(24 * 60),
-  }).strict(),
+  z
+    .object({
+      kind: z.literal("schedule"),
+      timezone,
+      hour: z.number().int().min(0).max(23),
+      minute: z.number().int().min(0).max(59),
+      days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("monitor"),
+      timezone,
+      intervalMinutes: z
+        .number()
+        .int()
+        .min(5)
+        .max(24 * 60),
+    })
+    .strict(),
   z.object({ kind: z.literal("site_notification"), origin: siteOrigin }).strict(),
-  z.object({ kind: z.literal("page_change"), url: siteUrl, minimumIntervalMinutes: z.number().int().min(5).max(24 * 60).default(5) }).strict(),
-  z.object({ kind: z.literal("calendar_event"), grantId: z.string().uuid(), calendarId: text.max(1024).optional(), beforeMinutes: z.number().int().min(0).max(24 * 60).default(0) }).strict(),
+  z
+    .object({
+      kind: z.literal("page_change"),
+      url: siteUrl,
+      minimumIntervalMinutes: z
+        .number()
+        .int()
+        .min(5)
+        .max(24 * 60)
+        .default(5),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("calendar_event"),
+      grantId: z.string().uuid(),
+      calendarId: text.max(1024).optional(),
+      beforeMinutes: z
+        .number()
+        .int()
+        .min(0)
+        .max(24 * 60)
+        .default(0),
+    })
+    .strict(),
 ]);
 /** Accepted only on the trusted host channel; page content and notification body never enter this payload. */
 export const RoutineSourceEventSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("site_notification"), origin: siteOrigin, eventId: text.max(1024), permissionGranted: z.literal(true), observedAt: z.number().int().nonnegative() }).strict(),
-  z.object({ kind: z.literal("page_change"), eventId: text.max(1024), pageId: text.max(200), url: siteUrl, documentEpoch: z.number().int().nonnegative(), contentSha256: z.string().regex(/^[a-f0-9]{64}$/), observedAt: z.number().int().nonnegative() }).strict(),
-  z.object({ kind: z.literal("calendar_event"), grantId: z.string().uuid(), connectionId: z.string().uuid(), calendarId: text.max(1024), eventId: text.max(1024), startAt: z.number().int().nonnegative(), observedAt: z.number().int().nonnegative() }).strict(),]);
+  z
+    .object({
+      kind: z.literal("site_notification"),
+      origin: siteOrigin,
+      eventId: text.max(1024),
+      permissionGranted: z.literal(true),
+      observedAt: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("page_change"),
+      eventId: text.max(1024),
+      pageId: text.max(200),
+      url: siteUrl,
+      documentEpoch: z.number().int().nonnegative(),
+      contentSha256: z.string().regex(/^[a-f0-9]{64}$/),
+      observedAt: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("calendar_event"),
+      grantId: z.string().uuid(),
+      connectionId: z.string().uuid(),
+      calendarId: text.max(1024),
+      eventId: text.max(1024),
+      startAt: z.number().int().nonnegative(),
+      observedAt: z.number().int().nonnegative(),
+    })
+    .strict(),
+]);
 export const RoutineDefinitionSchema = z.object({
   title: text.max(200),
   objective: text.max(10000),
@@ -57,20 +134,35 @@ export const RoutineDefinitionSchema = z.object({
   description: z.string().trim().max(2000).optional(),
   icon: z.string().trim().max(200).optional(),
   /** Context matches only suggest this Skill; they never start it or grant effects. */
-  autoInject: z.object({
-    keywords: z.array(text.max(80)).max(20).default([]),
-    urls: z.array(z.string().url().max(2048)).max(20).default([]),
-  }).strict().default({ keywords: [], urls: [] }),
-  successCriteria: z.array(AcceptanceCriterionSchema).max(20).refine(items => new Set(items.map(item => item.criterionId)).size === items.length, "Criterion IDs must be unique").default([]),
+  autoInject: z
+    .object({
+      keywords: z.array(text.max(80)).max(20).default([]),
+      urls: z.array(z.string().url().max(2048)).max(20).default([]),
+    })
+    .strict()
+    .default({ keywords: [], urls: [] }),
+  successCriteria: z
+    .array(AcceptanceCriterionSchema)
+    .max(20)
+    .refine(
+      (items) => new Set(items.map((item) => item.criterionId)).size === items.length,
+      "Criterion IDs must be unique",
+    )
+    .default([]),
   reviewRequired: z.boolean().default(true),
-  cloudCapable: z.boolean().default(false),
   consecutive: z.boolean().default(false),
   spendCapUsd: z.number().positive().max(50).optional(),
   trigger: RoutineTriggerSchema.default({ kind: "manual" }),
   paused: z.boolean().default(false),
 });
 /** Portable definition only: source tasks, grants, and schedules need local review. */
-export const RoutineShareSchema = RoutineDefinitionSchema.omit({ workspaceId: true, sourceTaskId: true, sourceTaskRevision: true, sourceRunId: true, calendarGrantIds: true }).extend({
+export const RoutineShareSchema = RoutineDefinitionSchema.omit({
+  workspaceId: true,
+  sourceTaskId: true,
+  sourceTaskRevision: true,
+  sourceRunId: true,
+  calendarGrantIds: true,
+}).extend({
   workspaceName: text.optional(),
 });
 export const RoutineShareEnvelopeSchema = z.object({
@@ -80,7 +172,10 @@ export const RoutineShareEnvelopeSchema = z.object({
 export const RoutineSuggestionSchema = z.object({
   routineId: text,
   title: text.max(200),
-  reasons: z.array(z.enum(["keyword", "url"])).min(1).max(2),
+  reasons: z
+    .array(z.enum(["keyword", "url"]))
+    .min(1)
+    .max(2),
 });
 /** Thin plugin: a named bundle of existing capabilities (portable routines). */
 export const AuxPluginManifestSchema = z.object({
@@ -124,20 +219,26 @@ export const PluginSkillGrantSchema = z.object({
   createdAt: z.number().int().nonnegative(),
   revokedAt: z.number().int().nonnegative().optional(),
 });
-export const PluginSkillGrantParams = PluginSkillGrantSchema.pick({ assetId: true, scope: true }).extend({
-  expectedDigest: PluginSkillGrantSchema.shape.assetDigest,
-}).strict();
-export const PluginSkillReadParams = z.object({
-  grantId: z.string().uuid(),
-  taskId: text,
-  expectedRevision: z.number().int().positive(),
-}).strict();
-export const PluginSkillReadSchema = z.object({
-  grant: PluginSkillGrantSchema,
-  name: text.max(200),
-  content: z.string().max(64_000),
-  digest: PluginSkillGrantSchema.shape.assetDigest,
-}).strict();
+export const PluginSkillGrantParams = PluginSkillGrantSchema.pick({ assetId: true, scope: true })
+  .extend({
+    expectedDigest: PluginSkillGrantSchema.shape.assetDigest,
+  })
+  .strict();
+export const PluginSkillReadParams = z
+  .object({
+    grantId: z.string().uuid(),
+    taskId: text,
+    expectedRevision: z.number().int().positive(),
+  })
+  .strict();
+export const PluginSkillReadSchema = z
+  .object({
+    grant: PluginSkillGrantSchema,
+    name: text.max(200),
+    content: z.string().max(64_000),
+    digest: PluginSkillGrantSchema.shape.assetDigest,
+  })
+  .strict();
 export const RoutineSchema = RoutineDefinitionSchema.extend({
   routineId: text,
   revision: z.number().int().positive(),
@@ -159,7 +260,17 @@ export const RoutineRunSchema = z.object({
   revision: z.number().int().positive(),
   occurrenceId: text.optional(),
   occurrenceIdentity: text.optional(),
-  status: z.enum(["queued", "running", "waiting_input", "completed", "failed", "cancelled", "missed", "needs_review", "uncertain"]),
+  status: z.enum([
+    "queued",
+    "running",
+    "waiting_input",
+    "completed",
+    "failed",
+    "cancelled",
+    "missed",
+    "needs_review",
+    "uncertain",
+  ]),
   reason: z.string().max(1000).optional(),
   chatId: z.string().optional(),
   runId: z.string().optional(),
@@ -180,33 +291,51 @@ export const RoutineUpdateParams = RoutineDefinitionSchema.partial().extend({
   routineId: text,
   expectedRevision: z.number().int().positive(),
 });
-export const RoutineFromResultParams = z.object({
-  taskId: text,
-  runId: text.optional(),
-  title: text.max(200).optional(),
-  parameters: z.array(RoutineParameterSchema).max(20).optional(),
-  trigger: RoutineTriggerSchema.optional(),
-  reviewRequired: z.boolean().optional(),
-  cloudCapable: z.boolean().optional(),
-}).strict();
-export const RoutineRunParams = z.object({
-  routineId: text,
-  expectedRevision: z.number().int().positive(),
-  parameters: z.record(z.string(), z.string().max(4000)).default({}),
-}).strict();
+export const RoutineFromResultParams = z
+  .object({
+    taskId: text,
+    runId: text.optional(),
+    title: text.max(200).optional(),
+    parameters: z.array(RoutineParameterSchema).max(20).optional(),
+    trigger: RoutineTriggerSchema.optional(),
+    reviewRequired: z.boolean().optional(),
+  })
+  .strict();
+export const RoutineRunParams = z
+  .object({
+    routineId: text,
+    expectedRevision: z.number().int().positive(),
+    parameters: z.record(z.string(), z.string().max(4000)).default({}),
+  })
+  .strict();
 export const RoutineAlertSchema = z.object({
   routineRunId: text,
   routineId: text,
   title: text.max(200),
   status: RoutineRunSchema.shape.status,
   reason: z.string().max(1000).optional(),
-  triggerKind: z.enum(["manual", "schedule", "monitor", "site_notification", "page_change", "calendar_event"]),  createdAt: z.number(),
+  triggerKind: z.enum([
+    "manual",
+    "schedule",
+    "monitor",
+    "site_notification",
+    "page_change",
+    "calendar_event",
+  ]),
+  createdAt: z.number(),
 });
 export const RoutineInboxItemSchema = z.object({
   run: RoutineRunSchema,
   title: text.max(200),
   workspaceId: text,
-  triggerKind: z.enum(["manual", "schedule", "monitor", "site_notification", "page_change", "calendar_event"]),
+  triggerKind: z.enum([
+    "manual",
+    "schedule",
+    "monitor",
+    "site_notification",
+    "page_change",
+    "calendar_event",
+  ]),
   readAt: z.number().int().nonnegative().optional(),
 });
 export const RoutineCompareSchema = z.object({
@@ -242,10 +371,19 @@ export type RoutineOccurrence = z.infer<typeof RoutineOccurrenceSchema>;
 export function routineOccurrenceIdentity(routineId: string, timezone: string, scheduledFor: number): string {
   // A repeated wall-clock minute at the fall DST boundary is one scheduled
   // occurrence. The spring gap has no matching minute and is never invented.
-  const fields = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
-  }).formatToParts(new Date(scheduledFor)).map(part => [part.type, part.value]));
+  const fields = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(new Date(scheduledFor))
+      .map((part) => [part.type, part.value]),
+  );
   return `${routineId}:${timezone}:${fields.year}-${fields.month}-${fields.day}T${fields.hour}:${fields.minute}`;
 }
 

@@ -2,7 +2,6 @@ import "./ReviewedConnectors.css";
 import { useEffect, useState } from "react";
 import type { ConnectorCatalog, ConnectorEntry, Task, Workspace } from "@aux/contracts";
 import { call } from "../store";
-import { openSavedTask } from "../task-navigation";
 
 type Kind = ConnectorEntry["kind"];
 type Review = {
@@ -23,18 +22,12 @@ function stateLabel(entry: ConnectorEntry) {
     case "active":
     case "approved":
       return "Connected";
-    case "saved":
-      return "Token saved";
-    case "checked":
-      return "Account checked";
     case "needs_reauth":
       return "Reconnect required";
     case "pending":
       return "Source review needed";
     case "revoked":
       return "Revoked";
-    case "disconnected":
-      return "Not connected";
   }
 }
 
@@ -246,12 +239,7 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                 >
                   <span className="reviewed-connectors-name">{item.label}</span>
                   <span className="reviewed-connectors-sub">
-                    {item.kind === "mcp"
-                      ? "MCP server"
-                      : item.kind === "calendar"
-                        ? "Calendar account"
-                        : "GitHub"}{" "}
-                    · {stateLabel(item)}
+                    {item.kind === "mcp" ? "MCP server" : "Calendar account"} · {stateLabel(item)}
                   </span>
                 </button>
               ))}
@@ -316,46 +304,6 @@ export function ReviewedConnectors({ onManage }: { onManage: (kind: Kind) => voi
                         ))}
                       <button className="btn sm ghost" onClick={() => onManage("calendar")}>
                         Manage Calendar accounts
-                      </button>
-                    </>
-                  )}
-                  {entry.kind === "github" && (
-                    <>
-                      <p className="hint">
-                        {entry.account
-                          ? `Account @${entry.account}`
-                          : "Account identity has not been checked."}{" "}
-                        Saved credentials stay in OS storage.
-                      </p>
-                      <p className="hint">
-                        GitHub can read repository status only for a local project attached to the current
-                        task with read or write access. A reference-only project does not grant access.
-                      </p>
-                      {task &&
-                        access
-                          .filter((item) => item.kind === "github")
-                          .map((item) => (
-                            <div className="reviewed-connectors-grant" key={item.projectId}>
-                              <span>
-                                Project{" "}
-                                {task.resources.find((resource) => resource.projectId === item.projectId)
-                                  ?.label ?? item.projectId}{" "}
-                                · revision {item.taskRevision}
-                              </span>
-                            </div>
-                          ))}
-                      {task && (
-                        <button
-                          className="btn sm ghost"
-                          onClick={() =>
-                            void openSavedTask(task.taskId).catch((reason) => setError(errorText(reason)))
-                          }
-                        >
-                          Manage task projects
-                        </button>
-                      )}
-                      <button className="btn sm ghost" onClick={() => onManage("github")}>
-                        Manage GitHub connection
                       </button>
                     </>
                   )}

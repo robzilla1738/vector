@@ -385,32 +385,6 @@ const requirements = {
     ],
     "journey": "feature:activeHtml"
   },
-  "devWorkflows": {
-    "requires": [
-      "development.projects",
-      "development.inspect",
-      "development.githubStatus",
-      "development.operationsStatus",
-      "development.incidentReport",
-      "development.prepareIncidentFix",
-      "development.files",
-      "development.readFile",
-      "development.writeFile",
-      "development.createFile",
-      "development.renameFile",
-      "development.deleteFile",
-      "development.commands",
-      "development.runCommand",
-      "development.requestCommandEscalation",
-      "development.commandEscalations.pending",
-      "development.commandEscalations.decide",
-      "development.openPreview",
-      "development.stopCommand",
-      "development.review",
-      "development.commit"
-    ],
-    "journey": "feature:devWorkflows"
-  },
   "zapAndUserCss": {
     "requires": [
       "native.zapInstallStylesheet",
@@ -428,38 +402,6 @@ const requirements = {
       "customization.css.apply"
     ],
     "journey": "feature:zapAndUserCss"
-  },
-  "cloudEnvironments": {
-    "requires": [
-      "cloud.environments",
-      "cloud.create",
-      "cloud.runCommand",
-      "cloud.startService",
-      "cloud.commands",
-      "cloud.refreshCommand",
-      "cloud.stopCommand",
-      "cloud.refresh",
-      "cloud.resume",
-      "cloud.files",
-      "cloud.readFile",
-      "cloud.taskResult",
-      "cloud.handoff",
-      "cloud.handoffAndStart",
-      "cloud.importTaskResult",
-      "cloud.preserveTaskResult",
-      "cloud.downloadResultArtifact",
-      "cloud.openTerminal",
-      "cloud.openPreview",
-      "cloud.exportWorkspace",
-      "cloud.inventory",
-      "cloud.cleanupOrphan",
-      "cloud.forgetMissing",
-      "cloud.syncProject",
-      "cloud.stop",
-      "cloud.delete",
-      "cloud.reconnectStatus"
-    ],
-    "journey": "feature:cloudEnvironments"
   },
   "memory": {
     "requires": [
@@ -600,7 +542,7 @@ const requirements = {
     "journey": "feature:onboarding"
   }
 } as const;
-const runtimeMethods = ["agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","spaces.create","spaces.update","development.projects","development.inspect","development.githubStatus","development.operationsStatus","development.incidentReport","development.prepareIncidentFix","development.files","development.readFile","development.writeFile","development.createFile","development.renameFile","development.deleteFile","development.commands","development.runCommand","development.requestCommandEscalation","development.commandEscalations.pending","development.commandEscalations.decide","development.openPreview","development.stopCommand","development.review","development.commit","cloud.environments","cloud.create","cloud.runCommand","cloud.startService","cloud.commands","cloud.refreshCommand","cloud.stopCommand","cloud.refresh","cloud.resume","cloud.files","cloud.readFile","cloud.taskResult","cloud.handoff","cloud.handoffAndStart","cloud.importTaskResult","cloud.preserveTaskResult","cloud.downloadResultArtifact","cloud.openTerminal","cloud.openPreview","cloud.exportWorkspace","cloud.inventory","cloud.cleanupOrphan","cloud.forgetMissing","cloud.syncProject","cloud.stop","cloud.delete","cloud.reconnectStatus","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.suggest","routines.get","routines.create","routines.fromResult","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.extractRun","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results","safety.approvals.pending","safety.approvals.decide","safety.grants.list","safety.grants.revoke"] as const;
+const runtimeMethods = ["agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","spaces.create","spaces.update","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.suggest","routines.get","routines.create","routines.fromResult","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.extractRun","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results","safety.approvals.pending","safety.approvals.decide","safety.grants.list","safety.grants.revoke"] as const;
 const qualification: Record<string, string> = {};
 export type FeatureStage = 'off' | 'preview' | 'on';
 export function featureStagesFor(methods: readonly string[], sourceCommit: string): Record<keyof typeof requirements, FeatureStage> {

@@ -173,11 +173,6 @@ export function installMockBridge(q: URLSearchParams) {
     gatewayApiKey: "••••••••",
     effectGrants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   };
-  if (scenario === "connectors") {
-    settings.githubCredential = "••••••••";
-    settings.githubProbe = { login: "reviewer", accountId: 1, name: "Preview Reviewer",
-      avatarUrl: "https://example.test/avatar.png", scopes: ["repo"], checkedAt: Date.now() };
-  }
 
   if (withRun) {
     activePageId = "page-1";
@@ -255,7 +250,7 @@ export function installMockBridge(q: URLSearchParams) {
   const work = workFixtures(`workspace:${DEFAULT_SPACE.id}`, scenario === "work" || scenario === "connectors",
     scenario === "connectors");
   const connectors = connectorFixtures(`workspace:${DEFAULT_SPACE.id}`, () => work["tasks.list"](),
-    scenario === "connectors", () => settings.githubCredential === "••••••••");
+    scenario === "connectors");
   const handlers = {
     "agent.inlineAssist.capture": async p => {
       const source = pages.find(item => item.pageId === p.pageId);

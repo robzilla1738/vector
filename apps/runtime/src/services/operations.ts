@@ -1,19 +1,29 @@
 import { createHash, randomUUID } from "node:crypto";
-import { AuxError, type CalendarTaskEventsQuery, type Observation, type Predicate, type Program, type ProgramResult, type ProjectEffectName, type ProjectGithubStatus, type Step } from "@aux/contracts";
+import {
+  AuxError,
+  type CalendarTaskEventsQuery,
+  type Observation,
+  type Predicate,
+  type Program,
+  type ProgramResult,
+  type Step,
+} from "@aux/contracts";
 import { compileAndAuthorize } from "../agent/action-compiler.js";
 import { beginConsequentialWrite, settleWrite, type DurableWriteLedger } from "../agent/durable.js";
-import { DEFAULT_GRANTS, grantAllows, parseGrant, resolveGrants, type GrantSource } from "../agent/permissions.js";
+import {
+  DEFAULT_GRANTS,
+  grantAllows,
+  parseGrant,
+  resolveGrants,
+  type GrantSource,
+} from "../agent/permissions.js";
 import { agentMayEgress } from "../agent/policy.js";
 import { evalPredicate } from "../execution/interpreter.js";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 import type { PageService } from "./pages.js";
 import type { CalendarConnectionService } from "./calendar-connections.js";
-import type { SettingsService } from "./settings.js";
-import type { NativeBridge } from "../native.js";
-import { TaskService } from "./tasks.js";
 import { operationInputFingerprint } from "@aux/contracts/operation-input-stats";
-import { PROJECT_EFFECT_ACCESS } from "./project-effects.js";
 
 export interface OperationRow {
   operationId: string;
@@ -54,34 +64,13 @@ const KIND_COST: Record<string, number> = {
 };
 
 const STATE_RANK: Record<string, number> = { validated: 0, candidate: 1, shadow: 2, quarantined: 9 };
-const MAX_REQUEST_RESPONSE_BYTES=1024*1024;
-const SECRET_HEADER=/^(authorization|proxy-authorization|cookie|set-cookie)$/i;
+const MAX_REQUEST_RESPONSE_BYTES = 1024 * 1024;
+const SECRET_HEADER = /^(authorization|proxy-authorization|cookie|set-cookie)$/i;
 const CONNECTOR_SITE = "aux.connector.google-calendar";
+const reservedSystemSite = (siteKey: string) => siteKey.startsWith("aux.connector.");
 const CONNECTOR_NAME = "events.list";
 const CONNECTOR_OPERATION_ID = "aux-connector-google-calendar-events-list";
 const CONNECTOR_IMPL_ID = "aux-connector-google-calendar-readonly";
-const GITHUB_CONNECTOR_SITE = "aux.connector.github";
-const GITHUB_CONNECTOR_NAME = "repository.status";
-const GITHUB_CONNECTOR_OPERATION_ID = "aux-connector-github-repository-status";
-const GITHUB_CONNECTOR_IMPL_ID = "aux-connector-github-repository-readonly";
-const PROJECT_SITE = "aux.project";
-const reservedSystemSite = (siteKey: string) => siteKey.startsWith("aux.connector.") || siteKey === PROJECT_SITE;
-const PROJECT_EFFECT: Record<ProjectEffectName, "write" | "destructive" | "egress"> = {
-  "file.write": "write", "file.create": "write", "file.rename": "write", "file.delete": "destructive",
-  "command.start": "destructive", "command.stop": "destructive", "commit.create": "write",
-  "preview.open": "egress", "incident.report": "write",
-};
-const PROJECT_AUDIT_FIELDS: Record<ProjectEffectName, readonly string[]> = {
-  "file.write": ["name", "expectedHash", "contentSha256", "contentBytes"],
-  "file.create": ["name", "contentSha256", "contentBytes"],
-  "file.rename": ["name", "nextName", "expectedHash"],
-  "file.delete": ["name", "expectedHash"],
-  "command.start": ["mode", "commandSha256", "commandBytes", "effectiveProfileSha256", "escalationRequestId"],
-  "command.stop": ["commandId"],
-  "commit.create": ["expectedPatchHash", "expectedTree", "messageSha256"],
-  "preview.open": ["urlSha256"],
-  "incident.report": ["pageId", "pageUrlSha256", "consoleCount", "networkCount"],
-};
 
 /**
  * Error codes that mean the impl never got to act — nothing was dispatched,
@@ -125,141 +114,121 @@ export class OperationService {
     },
   ) {}
 
-  private connectorOperation(spec: { site: string; name: string; operationId: string; implId: string;
-    description: string; provider: string; method: string }) {
+  private connectorOperation(spec: {
+    site: string;
+    name: string;
+    operationId: string;
+    implId: string;
+    description: string;
+    provider: string;
+    method: string;
+  }) {
     const existing = this.deps.repo.getOperation(spec.site, spec.name);
     if (existing && (existing.operationId !== spec.operationId || existing.effectClass !== "read"))
       throw new AuxError("conflict", "The reserved connector operation key is already in use.");
-    if (!existing) this.deps.repo.saveOperation({ operationId: spec.operationId, siteKey: spec.site,
-      name: spec.name, description: spec.description, effectClass: "read" });
-    const impl = this.deps.repo.listImplementations(spec.operationId).find(item => item.implId === spec.implId);
-    if (impl && (impl.kind !== "connector-read" || impl.state !== "validated" ||
-      impl.executable !== JSON.stringify({ provider: spec.provider, method: spec.method })))
+    if (!existing)
+      this.deps.repo.saveOperation({
+        operationId: spec.operationId,
+        siteKey: spec.site,
+        name: spec.name,
+        description: spec.description,
+        effectClass: "read",
+      });
+    const impl = this.deps.repo
+      .listImplementations(spec.operationId)
+      .find((item) => item.implId === spec.implId);
+    if (
+      impl &&
+      (impl.kind !== "connector-read" ||
+        impl.state !== "validated" ||
+        impl.executable !== JSON.stringify({ provider: spec.provider, method: spec.method }))
+    )
       throw new AuxError("conflict", "The reserved connector implementation changed.");
     if (!impl)
-      this.deps.repo.saveImplementation({ implId: spec.implId, operationId: spec.operationId,
-        kind: "connector-read", executable: JSON.stringify({ provider: spec.provider, method: spec.method }), state: "validated" });
+      this.deps.repo.saveImplementation({
+        implId: spec.implId,
+        operationId: spec.operationId,
+        kind: "connector-read",
+        executable: JSON.stringify({ provider: spec.provider, method: spec.method }),
+        state: "validated",
+      });
   }
 
   /** A sealed provider route. Task authority is rechecked immediately before and after the network read. */
-  async invokeCalendarTaskEvents(input: CalendarTaskEventsQuery, opts: { runId?: string; signal?: AbortSignal } = {}) {
+  async invokeCalendarTaskEvents(
+    input: CalendarTaskEventsQuery,
+    opts: { runId?: string; signal?: AbortSignal } = {},
+  ) {
     const calendar = this.deps.calendar;
     if (!calendar) throw new AuxError("backend_unavailable", "Calendar connector is unavailable.");
     const run = opts.runId ? this.deps.repo.getRun(opts.runId) : undefined;
-    if (opts.runId && (!run || !["planning", "running"].includes(run.status) || run.config?.taskId !== input.taskId))
+    if (
+      opts.runId &&
+      (!run || !["planning", "running"].includes(run.status) || run.config?.taskId !== input.taskId)
+    )
       throw new AuxError("permission_denied", "This run cannot read Calendar events for that task.");
-    const grant = calendar.taskGrants(input.taskId).find(item => item.grantId === input.grantId &&
-      (!run || item.taskRevision === run.config?.taskRevision));
-    if (!grant) throw new AuxError("permission_denied", "That Calendar account is not granted to this task revision.");
+    const grant = calendar
+      .taskGrants(input.taskId)
+      .find(
+        (item) => item.grantId === input.grantId && (!run || item.taskRevision === run.config?.taskRevision),
+      );
+    if (!grant)
+      throw new AuxError("permission_denied", "That Calendar account is not granted to this task revision.");
     if (opts.signal?.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
-    this.connectorOperation({ site: CONNECTOR_SITE, name: CONNECTOR_NAME, operationId: CONNECTOR_OPERATION_ID,
-      implId: CONNECTOR_IMPL_ID, description: "Read events from one task-granted Google Calendar account",
-      provider: "google-calendar", method: "events.list" });
-    const invocationId = newId("inv"), startedAt = Date.now();
+    this.connectorOperation({
+      site: CONNECTOR_SITE,
+      name: CONNECTOR_NAME,
+      operationId: CONNECTOR_OPERATION_ID,
+      implId: CONNECTOR_IMPL_ID,
+      description: "Read events from one task-granted Google Calendar account",
+      provider: "google-calendar",
+      method: "events.list",
+    });
+    const invocationId = newId("inv"),
+      startedAt = Date.now();
     const record = (status: string, error?: string, effectOutcome = "not-applicable", endedAt?: number) =>
-      this.deps.repo.saveInvocation({ invocationId, operationId: CONNECTOR_OPERATION_ID, implId: CONNECTOR_IMPL_ID,
-        runId: opts.runId, inputs: input, status, effectOutcome, routeReason: "task-granted Google Calendar read", startedAt, endedAt, error });
+      this.deps.repo.saveInvocation({
+        invocationId,
+        operationId: CONNECTOR_OPERATION_ID,
+        implId: CONNECTOR_IMPL_ID,
+        runId: opts.runId,
+        inputs: input,
+        status,
+        effectOutcome,
+        routeReason: "task-granted Google Calendar read",
+        startedAt,
+        endedAt,
+        error,
+      });
     record("running");
     try {
       const result = await calendar.taskEvents(input, opts.signal);
       if (opts.signal?.aborted) throw new AuxError("cancelled", "Calendar read was cancelled.");
       record("completed", undefined, "observed", Date.now());
-      this.deps.events.emit("operation.invoked", { invocationId, operation: `${CONNECTOR_SITE}/${CONNECTOR_NAME}`, kind: "connector-read", status: "completed" });
+      this.deps.events.emit("operation.invoked", {
+        invocationId,
+        operation: `${CONNECTOR_SITE}/${CONNECTOR_NAME}`,
+        kind: "connector-read",
+        status: "completed",
+      });
       return { invocationId, result };
     } catch (error) {
-      const safe = error instanceof AuxError ? error : new AuxError("backend_unavailable", "Calendar read failed.");
-      record(safe.code === "cancelled" ? "interrupted" : "failed", safe.message, "not-applicable", Date.now());
-      this.deps.events.emit("operation.invoked", { invocationId, operation: `${CONNECTOR_SITE}/${CONNECTOR_NAME}`, kind: "connector-read", status: "failed", error: safe.message });
+      const safe =
+        error instanceof AuxError ? error : new AuxError("backend_unavailable", "Calendar read failed.");
+      record(
+        safe.code === "cancelled" ? "interrupted" : "failed",
+        safe.message,
+        "not-applicable",
+        Date.now(),
+      );
+      this.deps.events.emit("operation.invoked", {
+        invocationId,
+        operation: `${CONNECTOR_SITE}/${CONNECTOR_NAME}`,
+        kind: "connector-read",
+        status: "failed",
+        error: safe.message,
+      });
       throw safe;
-    }
-  }
-
-  /** GitHub shares the sealed connector journal; the task's reviewed project remains its only resource grant. */
-  async invokeGithubProjectStatus(input: { taskId: string; taskRevision: number; projectId: string },
-    deps: { settings: SettingsService; native: Pick<NativeBridge, "githubProject" | "recordGithubStatus"> }): Promise<ProjectGithubStatus> {
-    const tasks = new TaskService(this.deps.repo, this.deps.events);
-    const check = () => tasks.prepareProjectAccess(input.taskId, input.taskRevision, input.projectId);
-    check();
-    const github = deps.settings.githubConnector();
-    if (!github.connected) throw new AuxError("needs_input", "Connect GitHub in Settings before checking this repository.");
-    const checkCredential = () => {
-      const current = deps.settings.githubConnector();
-      if (!current.connected || current.credentialVersion !== github.credentialVersion)
-        throw new AuxError("conflict", "The GitHub connection changed during this check. Try again.");
-    };
-    if (!deps.native.githubProject || !deps.native.recordGithubStatus)
-      throw new AuxError("backend_unavailable", "GitHub project checks require the Aux desktop app.");
-    this.connectorOperation({ site: GITHUB_CONNECTOR_SITE, name: GITHUB_CONNECTOR_NAME,
-      operationId: GITHUB_CONNECTOR_OPERATION_ID, implId: GITHUB_CONNECTOR_IMPL_ID,
-      description: "Read GitHub status for a task-attached local project", provider: "github", method: "repository.status" });
-    const invocationId = newId("inv"), startedAt = Date.now();
-    const inputs = { taskId: input.taskId, taskRevision: input.taskRevision, projectId: input.projectId };
-    const record = (status: string, error?: string, effectOutcome = "not-applicable", endedAt?: number) =>
-      this.deps.repo.saveInvocation({ invocationId, operationId: GITHUB_CONNECTOR_OPERATION_ID, implId: GITHUB_CONNECTOR_IMPL_ID,
-        inputs, status, effectOutcome, routeReason: "saved GitHub credential and task-attached project", startedAt, endedAt, error });
-    record("running");
-    try {
-      const identity = await deps.native.githubProject(input.projectId);
-      check(); checkCredential();
-      const status = await deps.settings.githubRepository(identity);
-      check(); checkCredential();
-      const result = await deps.native.recordGithubStatus(input.projectId, status);
-      check(); checkCredential();
-      record("completed", undefined, "observed", Date.now());
-      this.deps.events.emit("operation.invoked", { invocationId, operation: `${GITHUB_CONNECTOR_SITE}/${GITHUB_CONNECTOR_NAME}`,
-        kind: "connector-read", status: "completed" });
-      return result;
-    } catch (error) {
-      const safe = error instanceof AuxError ? error : new AuxError("backend_unavailable", "GitHub repository check failed.");
-      record("failed", safe.message, "not-applicable", Date.now());
-      this.deps.events.emit("operation.invoked", { invocationId, operation: `${GITHUB_CONNECTOR_SITE}/${GITHUB_CONNECTOR_NAME}`,
-        kind: "connector-read", status: "failed", error: safe.message });
-      throw safe;
-    }
-  }
-
-  /** Task-scoped native project effects use one sealed, durable dispatch route. */
-  async invokeProjectEffect<T>(input: {
-    name: ProjectEffectName; taskId: string; taskRevision: number; projectId: string;
-    audit: Record<string, string | number | boolean | undefined>; execute: (invocationId: string) => Promise<T | null>;
-  }): Promise<T | null> {
-    const tasks = new TaskService(this.deps.repo, this.deps.events);
-    const access = PROJECT_EFFECT_ACCESS[input.name];
-    if (access === "command") tasks.prepareLocalCommand(input.taskId, input.taskRevision, input.projectId);
-    else tasks.prepareProjectAccess(input.taskId, input.taskRevision, input.projectId, access === "write");
-    const operationId = `aux-project-${input.name.replace(".", "-")}`;
-    const implId = `${operationId}-native`;
-    const existing = this.deps.repo.getOperation(PROJECT_SITE, input.name);
-    if (existing && (existing.operationId !== operationId || existing.effectClass !== PROJECT_EFFECT[input.name]))
-      throw new AuxError("conflict", "A reserved project operation key is in use.");
-    if (!existing) this.deps.repo.saveOperation({ operationId, siteKey: PROJECT_SITE, name: input.name,
-      description: "Task-scoped native project effect", effectClass: PROJECT_EFFECT[input.name] });
-    const implementation = this.deps.repo.listImplementations(operationId).find(impl => impl.implId === implId);
-    if (implementation && (implementation.kind !== "native-project" || implementation.state !== "validated" || implementation.executable !== "{}"))
-      throw new AuxError("conflict", "The reserved native project route changed.");
-    if (!implementation)
-      this.deps.repo.saveImplementation({ implId, operationId, kind: "native-project", executable: "{}", state: "validated" });
-    const invocationId = newId("inv"), startedAt = Date.now();
-    const audit = Object.fromEntries(PROJECT_AUDIT_FIELDS[input.name].flatMap(key =>
-      input.audit[key] === undefined ? [] : [[key, input.audit[key]]]));
-    const inputs = { ...audit, taskId: input.taskId, taskRevision: input.taskRevision, projectId: input.projectId };
-    const record = (status: string, effectOutcome: string, error?: string) => this.deps.repo.saveInvocation({
-      invocationId, operationId, implId, inputs, status, effectOutcome, routeReason: "task-attached native project operation",
-      startedAt, endedAt: status === "running" ? undefined : Date.now(), error,
-    });
-    record("running", "unknown");
-    try {
-      const result = await input.execute(invocationId);
-      record(result === null ? "denied" : "completed", result === null ? "not-dispatched" : "observed");
-      this.deps.events.emit("operation.invoked", { invocationId, operation: `${PROJECT_SITE}/${input.name}`,
-        kind: "native-project", status: result === null ? "denied" : "completed" });
-      return result;
-    } catch (error) {
-      const message = error instanceof Error ? error.message.slice(0, 1000) : "Native project operation failed.";
-      record("failed", "unknown", message);
-      this.deps.events.emit("operation.invoked", { invocationId, operation: `${PROJECT_SITE}/${input.name}`,
-        kind: "native-project", status: "failed", error: message });
-      throw error;
     }
   }
 
@@ -277,7 +246,8 @@ export class OperationService {
     effectClass?: "read" | "write" | "destructive";
     guards?: Record<string, unknown>;
   }) {
-    if (reservedSystemSite(opts.siteKey)) throw new AuxError("permission_denied", "System operations are managed by Aux.");
+    if (reservedSystemSite(opts.siteKey))
+      throw new AuxError("permission_denied", "System operations are managed by Aux.");
     const existing = this.deps.repo.getOperation(opts.siteKey, opts.name);
     const operationId = existing?.operationId ?? newId("op");
     this.deps.repo.saveOperation({
@@ -326,13 +296,32 @@ export class OperationService {
     guards?: Record<string, unknown>;
     validated?: boolean;
   }) {
-    if (reservedSystemSite(opts.siteKey)) throw new AuxError("permission_denied", "System operations are managed by Aux.");
-    let destination:URL;try{destination=new URL(opts.url);}catch{throw new AuxError('invalid_params','Session request URL must be an absolute HTTP(S) URL.');}
-    if(!['http:','https:'].includes(destination.protocol)||destination.username||destination.password)throw new AuxError('permission_denied','Session request URL must be HTTP(S) and cannot contain credentials.');
-    if(destination.host!==opts.siteKey)throw new AuxError('permission_denied',`Session request host ${destination.host} does not match operation site ${opts.siteKey}.`);
-    for(const [name,value] of Object.entries(opts.headers??{})){
-      if(SECRET_HEADER.test(name))throw new AuxError('permission_denied',`Do not save ${name} in an operation. Session credentials stay inside the browser.`);
-      if(/[\r\n]/.test(name)||/[\r\n]/.test(value))throw new AuxError('invalid_params','Session request headers cannot contain line breaks.');
+    if (reservedSystemSite(opts.siteKey))
+      throw new AuxError("permission_denied", "System operations are managed by Aux.");
+    let destination: URL;
+    try {
+      destination = new URL(opts.url);
+    } catch {
+      throw new AuxError("invalid_params", "Session request URL must be an absolute HTTP(S) URL.");
+    }
+    if (!["http:", "https:"].includes(destination.protocol) || destination.username || destination.password)
+      throw new AuxError(
+        "permission_denied",
+        "Session request URL must be HTTP(S) and cannot contain credentials.",
+      );
+    if (destination.host !== opts.siteKey)
+      throw new AuxError(
+        "permission_denied",
+        `Session request host ${destination.host} does not match operation site ${opts.siteKey}.`,
+      );
+    for (const [name, value] of Object.entries(opts.headers ?? {})) {
+      if (SECRET_HEADER.test(name))
+        throw new AuxError(
+          "permission_denied",
+          `Do not save ${name} in an operation. Session credentials stay inside the browser.`,
+        );
+      if (/[\r\n]/.test(name) || /[\r\n]/.test(value))
+        throw new AuxError("invalid_params", "Session request headers cannot contain line breaks.");
     }
     const existing = this.deps.repo.getOperation(opts.siteKey, opts.name);
     const operationId = existing?.operationId ?? newId("op");
@@ -351,7 +340,12 @@ export class OperationService {
       implId,
       operationId,
       kind: "session-request",
-      executable: JSON.stringify({ method: opts.method ?? "GET", url: opts.url, body: opts.body, headers: opts.headers }),
+      executable: JSON.stringify({
+        method: opts.method ?? "GET",
+        url: opts.url,
+        body: opts.body,
+        headers: opts.headers,
+      }),
       state: opts.validated ? "validated" : "candidate",
     });
     this.deps.events.emit("operation.saved", { operationId, siteKey: opts.siteKey, name: opts.name, implId });
@@ -366,10 +360,14 @@ export class OperationService {
    */
   compileFromRun(opts: { runId: string; siteKey?: string; name?: string }) {
     const steps = this.deps.repo.listSteps(opts.runId).filter((s) => s.outcome?.status === "ok");
-    if (!steps.length) throw new AuxError("not_found", `run ${opts.runId} has no successful steps to compile`);
+    if (!steps.length)
+      throw new AuxError("not_found", `run ${opts.runId} has no successful steps to compile`);
     const pageIds = [...new Set(steps.map((s) => s.pageId).filter(Boolean))] as string[];
     if (pageIds.length !== 1) {
-      throw new AuxError("invalid_params", `run ${opts.runId} touched ${pageIds.length} pages — only single-page runs compile`);
+      throw new AuxError(
+        "invalid_params",
+        `run ${opts.runId} touched ${pageIds.length} pages — only single-page runs compile`,
+      );
     }
     const pageId = pageIds[0]!;
     const siteKey = opts.siteKey ?? this.siteKeyOf(pageId);
@@ -388,9 +386,15 @@ export class OperationService {
     const impl = impls.find((i) => i.implId === saved.implId);
     if (impl) {
       this.deps.repo.saveImplementation({
-        implId: impl.implId, operationId: impl.operationId, kind: impl.kind,
-        executable: impl.executable, state: impl.state,
-        evidence: [...(impl.evidence ?? []), { kind: "trace", runId: opts.runId, steps: translated.length, compiledAt: Date.now() }],
+        implId: impl.implId,
+        operationId: impl.operationId,
+        kind: impl.kind,
+        executable: impl.executable,
+        state: impl.state,
+        evidence: [
+          ...(impl.evidence ?? []),
+          { kind: "trace", runId: opts.runId, steps: translated.length, compiledAt: Date.now() },
+        ],
         stats: impl.stats,
       });
     }
@@ -411,14 +415,16 @@ export class OperationService {
   }
 
   forget(siteKey: string, name: string) {
-    if (reservedSystemSite(siteKey)) throw new AuxError("permission_denied", "System operations are managed by Aux.");
+    if (reservedSystemSite(siteKey))
+      throw new AuxError("permission_denied", "System operations are managed by Aux.");
     const op = this.get(siteKey, name);
     this.deps.repo.deleteOperation(op.operationId);
     return { ok: true as const };
   }
 
   setImplState(implId: string, state: "candidate" | "validated" | "shadow" | "quarantined") {
-    if (implId === CONNECTOR_IMPL_ID) throw new AuxError("permission_denied", "Connector implementations are managed by Aux.");
+    if (implId === CONNECTOR_IMPL_ID)
+      throw new AuxError("permission_denied", "Connector implementations are managed by Aux.");
     this.deps.repo.setImplState(implId, state);
     return { ok: true };
   }
@@ -438,7 +444,9 @@ export class OperationService {
     ctx: { pageId?: string; allowPageOpen?: boolean; observed?: { obs?: Observation } },
   ): Promise<RouteDecision> {
     // fetch a fresh observation once, only if a browser-program impl needs it
-    const needsObs = op.guards["controls"] != null && impls.some((i) => i.kind === "browser-program" && i.state !== "quarantined");
+    const needsObs =
+      op.guards["controls"] != null &&
+      impls.some((i) => i.kind === "browser-program" && i.state !== "quarantined");
     let elements: { ref: string; role?: string; name?: string; text?: string }[] | undefined;
     if (needsObs && ctx.pageId) {
       try {
@@ -488,10 +496,14 @@ export class OperationService {
         // direct HTTP — eligible whenever the runtime can reach the site;
         // session-bound APIs additionally require guards.session
         if (op.guards["session"] === "required") {
-          const host=this.siteKeyOf(ctx.pageId);
-          if(!host){eligible=false;why='requires a live signed-in page';}
-          else if(host!==op.siteKey){eligible=false;why=`session page is on ${host}, not ${op.siteKey}`;}
-          else why='live same-site browser session available';
+          const host = this.siteKeyOf(ctx.pageId);
+          if (!host) {
+            eligible = false;
+            why = "requires a live signed-in page";
+          } else if (host !== op.siteKey) {
+            eligible = false;
+            why = `session page is on ${host}, not ${op.siteKey}`;
+          } else why = "live same-site browser session available";
         }
       } else if (impl.kind === "connector-read") {
         eligible = false;
@@ -558,8 +570,16 @@ export class OperationService {
     runId?: string;
     implId?: string; // explicit override — bypasses route selection
     requestKey?: string; // §16.4 idempotency key
-  }): Promise<{ invocationId: string; status: string; route: RouteDecision; result?: ProgramResult | unknown; error?: string; deduplicated?: boolean }> {
-    if (reservedSystemSite(opts.siteKey)) throw new AuxError("permission_denied", "Use the task-scoped system route for this operation.");
+  }): Promise<{
+    invocationId: string;
+    status: string;
+    route: RouteDecision;
+    result?: ProgramResult | unknown;
+    error?: string;
+    deduplicated?: boolean;
+  }> {
+    if (reservedSystemSite(opts.siteKey))
+      throw new AuxError("permission_denied", "Use the task-scoped system route for this operation.");
     const op = this.deps.repo.getOperation(opts.siteKey, opts.name);
     if (!op) throw new AuxError("not_found", `no operation ${opts.siteKey}/${opts.name}`);
 
@@ -571,7 +591,11 @@ export class OperationService {
         return {
           invocationId: prior.invocationId,
           status: prior.status,
-          route: { implId: prior.implId, reason: `idempotent replay of ${prior.invocationId}`, candidates: [] },
+          route: {
+            implId: prior.implId,
+            reason: `idempotent replay of ${prior.invocationId}`,
+            candidates: [],
+          },
           error: prior.error,
           deduplicated: true,
         };
@@ -585,7 +609,13 @@ export class OperationService {
     if (opts.implId) {
       const impl = impls.find((i) => i.implId === opts.implId);
       if (!impl) throw new AuxError("not_found", `no impl ${opts.implId} on ${opts.name}`);
-      route = { implId: impl.implId, kind: impl.kind, reason: "explicit impl override", candidates: [], ranked: [{ implId: impl.implId, kind: impl.kind, state: impl.state }] };
+      route = {
+        implId: impl.implId,
+        kind: impl.kind,
+        reason: "explicit impl override",
+        candidates: [],
+        ranked: [{ implId: impl.implId, kind: impl.kind, state: impl.state }],
+      };
     } else {
       route = await this.selectRoute(op, impls, { pageId: opts.pageId, observed });
     }
@@ -593,9 +623,17 @@ export class OperationService {
     if (!ladder.length) {
       const invocationId = newId("inv");
       this.deps.repo.saveInvocation({
-        invocationId, operationId: op.operationId, runId: opts.runId, requestKey: opts.requestKey,
-        inputs: opts.inputs, status: "failed", effectOutcome: "not-applicable",
-        routeReason: route.reason, startedAt: Date.now(), endedAt: Date.now(), error: route.reason,
+        invocationId,
+        operationId: op.operationId,
+        runId: opts.runId,
+        requestKey: opts.requestKey,
+        inputs: opts.inputs,
+        status: "failed",
+        effectOutcome: "not-applicable",
+        routeReason: route.reason,
+        startedAt: Date.now(),
+        endedAt: Date.now(),
+        error: route.reason,
       });
       return { invocationId, status: "failed", route, error: route.reason };
     }
@@ -624,18 +662,33 @@ export class OperationService {
       // status 'running' + effect 'unknown' for restart reconciliation
       const record = (status: string, error?: string, effectOutcome = "unknown", endedAt?: number) =>
         this.deps.repo.saveInvocation({
-          invocationId, operationId: op.operationId, implId: impl.implId, runId: opts.runId,
-          requestKey: opts.requestKey, inputs: opts.inputs, status, effectOutcome,
-          routeReason: attemptReason, startedAt, endedAt, error,
+          invocationId,
+          operationId: op.operationId,
+          implId: impl.implId,
+          runId: opts.runId,
+          requestKey: opts.requestKey,
+          inputs: opts.inputs,
+          status,
+          effectOutcome,
+          routeReason: attemptReason,
+          startedAt,
+          endedAt,
+          error,
         });
       record("running");
       let intentId: string | undefined;
       const journalWrites = op.effectClass !== "read" && !!this.deps.durableWrites;
       if (journalWrites) {
-        const inputKey = opts.requestKey ?? createHash("sha256").update(JSON.stringify(opts.inputs ?? {})).digest("hex").slice(0, 24);
-        const logicalActionId = i === 0
-          ? `operation:${opts.siteKey}/${opts.name}:${inputKey}`
-          : `operation:${opts.siteKey}/${opts.name}:${inputKey}:retry:${i}`;
+        const inputKey =
+          opts.requestKey ??
+          createHash("sha256")
+            .update(JSON.stringify(opts.inputs ?? {}))
+            .digest("hex")
+            .slice(0, 24);
+        const logicalActionId =
+          i === 0
+            ? `operation:${opts.siteKey}/${opts.name}:${inputKey}`
+            : `operation:${opts.siteKey}/${opts.name}:${inputKey}:retry:${i}`;
         const journal = beginConsequentialWrite(this.deps.durableWrites, {
           runId: opts.runId ?? `operation:${opts.siteKey}/${opts.name}`,
           pageId: opts.pageId ?? `operation:${opts.siteKey}`,
@@ -645,13 +698,22 @@ export class OperationService {
         });
         if (journal.skip) {
           record("failed", journal.reason, "not-dispatched", Date.now());
-          return { invocationId, status: "failed", route: { ...route, implId: impl.implId, kind: impl.kind }, error: journal.reason };
+          return {
+            invocationId,
+            status: "failed",
+            route: { ...route, implId: impl.implId, kind: impl.kind },
+            error: journal.reason,
+          };
         }
         intentId = journal.intentId;
       }
       try {
         // a fallback runs after a failed attempt touched the page — it observes afresh
-        const result = await this.executeImpl(impl, { ...opts, journaled: journalWrites || undefined, observation: i === 0 ? observed.obs : undefined }, op.guards);
+        const result = await this.executeImpl(
+          impl,
+          { ...opts, journaled: journalWrites || undefined, observation: i === 0 ? observed.obs : undefined },
+          op.guards,
+        );
         const failed = result && typeof result === "object" && (result as ProgramResult).status === "failed";
 
         // postcondition: guards.verify predicate over {result, extracted, inputs}
@@ -687,38 +749,67 @@ export class OperationService {
         }
         if (newState !== impl.state || JSON.stringify(stats) !== JSON.stringify(impl.stats ?? {})) {
           this.deps.repo.saveImplementation({
-            implId: impl.implId, operationId: impl.operationId, kind: impl.kind,
-            executable: impl.executable, state: newState, evidence: impl.evidence, stats,
+            implId: impl.implId,
+            operationId: impl.operationId,
+            kind: impl.kind,
+            executable: impl.executable,
+            state: newState,
+            evidence: impl.evidence,
+            stats,
           });
-          impl.state = newState; impl.stats = stats;
+          impl.state = newState;
+          impl.stats = stats;
         }
 
         const status = !failed && effectOutcome !== "unverified" ? "completed" : "failed";
         const errMsg = verifyError ?? (failed ? (result as ProgramResult).error : undefined);
         record(status, errMsg, failed ? "unknown" : effectOutcome, Date.now());
         this.deps.events.emit("operation.invoked", {
-          invocationId, operation: `${opts.siteKey}/${opts.name}`, kind: impl.kind, status, attempt: i,
+          invocationId,
+          operation: `${opts.siteKey}/${opts.name}`,
+          kind: impl.kind,
+          status,
+          attempt: i,
         });
 
         // §9.6 — a landed write invalidates page-held state; reads don't
         if (!failed && effectOutcome !== "unverified" && op.effectClass !== "read" && opts.pageId) {
           this.deps.repo.markDatasetsStale(opts.pageId);
-          this.deps.events.emit("page.invalidated", { pageId: opts.pageId, by: `operation:${opts.siteKey}/${opts.name}` });
+          this.deps.events.emit("page.invalidated", {
+            pageId: opts.pageId,
+            by: `operation:${opts.siteKey}/${opts.name}`,
+          });
         }
 
         if (status === "completed") {
           settleWrite(this.deps.durableWrites, intentId, true);
           return {
-            invocationId, status,
-            route: { ...route, implId: impl.implId, kind: impl.kind, reason: fellBack ? `${route.reason} → fell back to ${impl.kind}` : route.reason },
-            result, error: verifyError,
+            invocationId,
+            status,
+            route: {
+              ...route,
+              implId: impl.implId,
+              kind: impl.kind,
+              reason: fellBack ? `${route.reason} → fell back to ${impl.kind}` : route.reason,
+            },
+            result,
+            error: verifyError,
           };
         }
         // failed result — steps may have dispatched; fall back only when safe
         settleWrite(this.deps.durableWrites, intentId, false);
         lastError = errMsg ?? "execution failed";
-        if (op.effectClass === "read" && i < ladder.length - 1) { fellBack = true; continue; }
-        return { invocationId, status: "failed", route: { ...route, implId: impl.implId, kind: impl.kind }, result, error: lastError };
+        if (op.effectClass === "read" && i < ladder.length - 1) {
+          fellBack = true;
+          continue;
+        }
+        return {
+          invocationId,
+          status: "failed",
+          route: { ...route, implId: impl.implId, kind: impl.kind },
+          result,
+          error: lastError,
+        };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         const pre = isPreDispatchError(e);
@@ -728,7 +819,12 @@ export class OperationService {
         }
         record("failed", msg, pre ? "not-dispatched" : "unknown", Date.now());
         this.deps.events.emit("operation.invoked", {
-          invocationId, operation: `${opts.siteKey}/${opts.name}`, kind: impl.kind, status: "failed", attempt: i, error: msg,
+          invocationId,
+          operation: `${opts.siteKey}/${opts.name}`,
+          kind: impl.kind,
+          status: "failed",
+          attempt: i,
+          error: msg,
         });
         lastError = msg;
         // §11.5 — never blindly re-issue a possibly-dispatched mutation
@@ -737,19 +833,30 @@ export class OperationService {
         fellBack = true;
       }
     }
-    return { invocationId: lastInvocationId, status: "failed", route, error: lastError ?? "all routes failed" };
+    return {
+      invocationId: lastInvocationId,
+      status: "failed",
+      route,
+      error: lastError ?? "all routes failed",
+    };
   }
 
   /** Execute one implementation against the invoke context. */
   private async executeImpl(
     impl: ImplRow,
-    opts: { pageId?: string; runId?: string; inputs?: Record<string, unknown>; journaled?: boolean; observation?: Observation },
-    guards:Record<string,unknown>,
+    opts: {
+      pageId?: string;
+      runId?: string;
+      inputs?: Record<string, unknown>;
+      journaled?: boolean;
+      observation?: Observation;
+    },
+    guards: Record<string, unknown>,
   ): Promise<unknown> {
     if (impl.kind === "browser-program") {
       if (!opts.pageId) throw new AuxError("invalid_params", "browser-program impl requires pageId");
       const saved = JSON.parse(impl.executable) as Omit<Program, "pageId">;
-      const obs = opts.observation ?? await this.deps.pages.observe(opts.pageId, {});
+      const obs = opts.observation ?? (await this.deps.pages.observe(opts.pageId, {}));
       const live = this.deps.pages.get(opts.pageId);
       const prepared = compileAndAuthorize({
         pageId: opts.pageId,
@@ -767,11 +874,27 @@ export class OperationService {
         nodes: saved.nodes,
         inputs: { ...saved.inputs, ...opts.inputs },
       };
-      return this.deps.pages.execute(program, { runId: opts.runId, allowEval: false, journaled: opts.journaled });
+      return this.deps.pages.execute(program, {
+        runId: opts.runId,
+        allowEval: false,
+        journaled: opts.journaled,
+      });
     }
     if (impl.kind === "session-request") {
-      const req = JSON.parse(impl.executable) as { method: string; url: string; body?: unknown; headers?: Record<string, string> };
-      return this.runSessionRequest(req, opts.inputs ?? {}, opts.pageId, opts.runId, guards['session']==='required', opts.journaled);
+      const req = JSON.parse(impl.executable) as {
+        method: string;
+        url: string;
+        body?: unknown;
+        headers?: Record<string, string>;
+      };
+      return this.runSessionRequest(
+        req,
+        opts.inputs ?? {},
+        opts.pageId,
+        opts.runId,
+        guards["session"] === "required",
+        opts.journaled,
+      );
     }
     throw new AuxError("backend_unavailable", `unknown impl kind ${impl.kind}`);
   }
@@ -787,25 +910,39 @@ export class OperationService {
     inputs: Record<string, unknown>,
     pageId?: string,
     runId?: string,
-    requireSession=false,
+    requireSession = false,
     journaled?: boolean,
   ) {
-    const sub = (s: string) => s.replace(/\{input:([A-Za-z0-9_.]+)\}/g, (_m, k: string) => encodeURIComponent(String(inputs[k] ?? "")));
+    const sub = (s: string) =>
+      s.replace(/\{input:([A-Za-z0-9_.]+)\}/g, (_m, k: string) =>
+        encodeURIComponent(String(inputs[k] ?? "")),
+      );
     const url = sub(req.url);
     const body = req.body === undefined ? undefined : JSON.parse(sub(JSON.stringify(req.body)));
 
     const destination = new URL(url);
-    if (!["http:", "https:"].includes(destination.protocol)) throw new AuxError("permission_denied", "request protocol denied");
-    const grants = resolveGrants(this.deps.grants).map(parseGrant).filter(g => g !== null);
-    const effect = ["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase()) ? "read" : req.method.toUpperCase() === "DELETE" ? "destructive" : "write";
+    if (!["http:", "https:"].includes(destination.protocol))
+      throw new AuxError("permission_denied", "request protocol denied");
+    const grants = resolveGrants(this.deps.grants)
+      .map(parseGrant)
+      .filter((g) => g !== null);
+    const effect = ["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase())
+      ? "read"
+      : req.method.toUpperCase() === "DELETE"
+        ? "destructive"
+        : "write";
     for (const needed of [effect, "egress"] as const) {
-      if (!grants.some(g => grantAllows(g, needed, destination.origin, Date.now()))) {
+      if (!grants.some((g) => grantAllows(g, needed, destination.origin, Date.now()))) {
         throw new AuxError("permission_denied", `agent ${needed} denied for ${url}`);
       }
     }
     let pageOrigin: string | undefined;
     if (pageId) {
-      try { pageOrigin = new URL(this.deps.pages.get(pageId).url).origin; } catch { /* no live session */ }
+      try {
+        pageOrigin = new URL(this.deps.pages.get(pageId).url).origin;
+      } catch {
+        /* no live session */
+      }
     }
 
     // In-page execution requires the exact origin; the browser session
@@ -827,15 +964,24 @@ export class OperationService {
         // not from model output — a trusted source
         { runId, allowEval: true, journaled },
       );
-      const r = (result as ProgramResult).extracted?.response as { status: number; ok: boolean; body: string;truncated?:boolean } | undefined;
+      const r = (result as ProgramResult).extracted?.response as
+        { status: number; ok: boolean; body: string; truncated?: boolean } | undefined;
       if (!r) throw new AuxError("step_failed", `in-page request ${req.method} ${url} returned no result`);
       let json: unknown;
-      try { json = JSON.parse(r.body); } catch { json = r.body; }
+      try {
+        json = JSON.parse(r.body);
+      } catch {
+        json = r.body;
+      }
       if (!r.ok) throw new AuxError("step_failed", `${req.method} ${url} → ${r.status}`, json);
-      return r.truncated?{value:json,truncated:true}:json;
+      return r.truncated ? { value: json, truncated: true } : json;
     }
 
-    if(requireSession)throw new AuxError('permission_denied','This operation requires a live page on the exact destination origin. Aux did not export or replay browser credentials.');
+    if (requireSession)
+      throw new AuxError(
+        "permission_denied",
+        "This operation requires a live page on the exact destination origin. Aux did not export or replay browser credentials.",
+      );
 
     let pageHost: string | undefined;
     if (pageId) {
@@ -857,7 +1003,9 @@ export class OperationService {
       headers: { ...req.headers, ...(body !== undefined ? { "content-type": "application/json" } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-    const bytes=new Uint8Array(await res.arrayBuffer());const truncated=bytes.byteLength>MAX_REQUEST_RESPONSE_BYTES;const text=new TextDecoder().decode(bytes.slice(0,MAX_REQUEST_RESPONSE_BYTES));
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const truncated = bytes.byteLength > MAX_REQUEST_RESPONSE_BYTES;
+    const text = new TextDecoder().decode(bytes.slice(0, MAX_REQUEST_RESPONSE_BYTES));
     let json: unknown;
     try {
       json = JSON.parse(text);
@@ -865,6 +1013,6 @@ export class OperationService {
       json = text;
     }
     if (!res.ok) throw new AuxError("step_failed", `${req.method} ${url} → ${res.status}`, json);
-    return truncated?{value:json,truncated:true}:json;
+    return truncated ? { value: json, truncated: true } : json;
   }
 }

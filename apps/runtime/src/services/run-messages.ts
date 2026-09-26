@@ -1,4 +1,12 @@
-import { AuxError, EventTypes, newRunId, taskConversationId, type PageContextRef, type Run, type RunMessage } from "@aux/contracts";
+import {
+  AuxError,
+  EventTypes,
+  newRunId,
+  taskConversationId,
+  type PageContextRef,
+  type Run,
+  type RunMessage,
+} from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import { TaskService } from "./tasks.js";
@@ -33,14 +41,16 @@ export class RunMessageQueue {
     private signalSteer: (runId: string) => void,
   ) {
     this.sendJournal = new SendJournal(repo.db);
-    this.unsubscribe = events.subscribe(event => {
+    this.unsubscribe = events.subscribe((event) => {
       if (event.type !== EventTypes.RunUpdated) return;
       const run = event.payload.run as Run | undefined;
       if (run?.config?.chatId && !active.has(run.status)) this.schedule(run.config.chatId);
     });
   }
 
-  list(chatId: string): RunMessage[] { return this.repo.listRunMessages(chatId); }
+  list(chatId: string): RunMessage[] {
+    return this.repo.listRunMessages(chatId);
+  }
   messageStatus(nonce: string): SendRecord | undefined {
     const message = this.repo.getRunMessage(nonce);
     if (message) this.syncJournal(message);
@@ -51,43 +61,80 @@ export class RunMessageQueue {
     const message = this.repo.transaction(() => {
       const previous = this.repo.getRunMessage(input.messageId);
       if (previous) {
-        if (previous.mode !== "queue" || previous.chatId !== input.chatId || previous.targetRunId !== input.runId || previous.text !== input.text
-          || previous.expectedRevision !== input.expectedRevision
-          || JSON.stringify(previous.pageIds) !== JSON.stringify(input.pageIds)
-          || JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs)) {
+        if (
+          previous.mode !== "queue" ||
+          previous.chatId !== input.chatId ||
+          previous.targetRunId !== input.runId ||
+          previous.text !== input.text ||
+          previous.expectedRevision !== input.expectedRevision ||
+          JSON.stringify(previous.pageIds) !== JSON.stringify(input.pageIds) ||
+          JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs)
+        ) {
           throw new AuxError("conflict", "This message ID already belongs to another follow-up.");
         }
         return previous;
       }
       const target = this.repo.getRun(input.runId);
-      if (!target || target.config?.chatId !== input.chatId) throw new AuxError("not_found", "The conversation run was not found.");
-      if (target.config.contextMemoryRevoked) throw new AuxError("permission_denied", "This turn used a forgotten saved article. Start a new turn with current sources.");
+      if (!target || target.config?.chatId !== input.chatId)
+        throw new AuxError("not_found", "The conversation run was not found.");
+      if (target.config.contextMemoryRevoked)
+        throw new AuxError(
+          "permission_denied",
+          "This turn used a forgotten saved article. Start a new turn with current sources.",
+        );
       if (target.config?.taskId) {
         const tasks = new TaskService(this.repo, this.events);
         const task = tasks.get(target.config.taskId);
-        if (task.revision !== target.config.taskRevision || task.state === "archived"
-          || (task.conversationId ?? taskConversationId(task.taskId)) !== input.chatId) {
+        if (
+          task.revision !== target.config.taskRevision ||
+          task.state === "archived" ||
+          (task.conversationId ?? taskConversationId(task.taskId)) !== input.chatId
+        ) {
           throw new AuxError("conflict", "This saved task changed. Review it before queueing a follow-up.");
         }
-        tasks.requireLocalAuthority(task.taskId, task.revision);
       }
-      if (this.repo.getConversation(input.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before queueing a message.");
-      if ((target.config?.messageRevision ?? 0) !== input.expectedRevision) throw new AuxError("conflict", "This run changed. Review it before queueing another message.");
-      if (this.repo.pendingRunMessageCount(input.chatId) >= 50) throw new AuxError("conflict", "This conversation already has 50 waiting messages. Let some finish or remove one.");
-      if (new Set(input.pageIds).size !== input.pageIds.length || !input.pageIds.length
-        || new Set(input.contextPageRefs.map(ref => ref.pageId)).size !== input.contextPageRefs.length
-        || input.contextPageRefs.some(ref => !input.pageIds.includes(ref.pageId))) {
+      if (this.repo.getConversation(input.chatId)?.archived)
+        throw new AuxError("conflict", "Restore this conversation before queueing a message.");
+      if ((target.config?.messageRevision ?? 0) !== input.expectedRevision)
+        throw new AuxError("conflict", "This run changed. Review it before queueing another message.");
+      if (this.repo.pendingRunMessageCount(input.chatId) >= 50)
+        throw new AuxError(
+          "conflict",
+          "This conversation already has 50 waiting messages. Let some finish or remove one.",
+        );
+      if (
+        new Set(input.pageIds).size !== input.pageIds.length ||
+        !input.pageIds.length ||
+        new Set(input.contextPageRefs.map((ref) => ref.pageId)).size !== input.contextPageRefs.length ||
+        input.contextPageRefs.some((ref) => !input.pageIds.includes(ref.pageId))
+      ) {
         throw new AuxError("invalid_params", "Queued browser context must contain distinct selected pages.");
       }
-      if (target.config?.taskId && (JSON.stringify(input.pageIds) !== JSON.stringify(target.pageIds)
-        || JSON.stringify(input.contextPageRefs) !== JSON.stringify(target.config.contextPageRefs ?? []))) {
-        throw new AuxError("conflict", "The selected browser context changed. Update it through the saved task after this run finishes.");
+      if (
+        target.config?.taskId &&
+        (JSON.stringify(input.pageIds) !== JSON.stringify(target.pageIds) ||
+          JSON.stringify(input.contextPageRefs) !== JSON.stringify(target.config.contextPageRefs ?? []))
+      ) {
+        throw new AuxError(
+          "conflict",
+          "The selected browser context changed. Update it through the saved task after this run finishes.",
+        );
       }
       const at = Date.now();
-      return this.repo.insertRunMessage({ messageId: input.messageId, chatId: input.chatId, targetRunId: input.runId,
-        deliveryRunId: newRunId(), mode: "queue", status: "accepted", text: input.text,
-        pageIds: input.pageIds, contextPageRefs: input.contextPageRefs,
-        expectedRevision: input.expectedRevision, createdAt: at, updatedAt: at });
+      return this.repo.insertRunMessage({
+        messageId: input.messageId,
+        chatId: input.chatId,
+        targetRunId: input.runId,
+        deliveryRunId: newRunId(),
+        mode: "queue",
+        status: "accepted",
+        text: input.text,
+        pageIds: input.pageIds,
+        contextPageRefs: input.contextPageRefs,
+        expectedRevision: input.expectedRevision,
+        createdAt: at,
+        updatedAt: at,
+      });
     });
     this.changed(message);
     this.schedule(message.chatId);
@@ -98,48 +145,86 @@ export class RunMessageQueue {
     const { message, created } = this.repo.transaction(() => {
       const previous = this.repo.getRunMessage(input.messageId);
       if (previous) {
-        if (previous.mode !== "steer" || previous.chatId !== input.chatId || previous.targetRunId !== input.runId
-          || previous.text !== input.text || previous.expectedRevision !== input.expectedRevision
-          || JSON.stringify(previous.pageIds) !== JSON.stringify(input.pageIds)
-          || JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs)) {
+        if (
+          previous.mode !== "steer" ||
+          previous.chatId !== input.chatId ||
+          previous.targetRunId !== input.runId ||
+          previous.text !== input.text ||
+          previous.expectedRevision !== input.expectedRevision ||
+          JSON.stringify(previous.pageIds) !== JSON.stringify(input.pageIds) ||
+          JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs)
+        ) {
           throw new AuxError("conflict", "This message ID already belongs to another correction.");
         }
         return { message: previous, created: false };
       }
       const target = this.repo.getRun(input.runId);
-      if (!target || target.config?.chatId !== input.chatId) throw new AuxError("not_found", "The conversation run was not found.");
+      if (!target || target.config?.chatId !== input.chatId)
+        throw new AuxError("not_found", "The conversation run was not found.");
       if (target.config?.taskId) {
         const tasks = new TaskService(this.repo, this.events);
         const task = tasks.get(target.config.taskId);
-        if (task.revision !== target.config.taskRevision || task.state === "archived"
-          || (task.conversationId ?? taskConversationId(task.taskId)) !== input.chatId) {
+        if (
+          task.revision !== target.config.taskRevision ||
+          task.state === "archived" ||
+          (task.conversationId ?? taskConversationId(task.taskId)) !== input.chatId
+        ) {
           throw new AuxError("conflict", "This saved task changed. Review it before steering this run.");
         }
-        tasks.requireLocalAuthority(task.taskId, task.revision);
       }
-      if (!active.has(target.status) || !this.canSteer(input.runId)) throw new AuxError("conflict", "This run has finished. Send a follow-up instead.");
-      if (this.repo.getConversation(input.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before correcting it.");
-      if ((target.config?.messageRevision ?? 0) !== input.expectedRevision) throw new AuxError("conflict", "This run changed. Review it before steering again.");
+      if (!active.has(target.status) || !this.canSteer(input.runId))
+        throw new AuxError("conflict", "This run has finished. Send a follow-up instead.");
+      if (this.repo.getConversation(input.chatId)?.archived)
+        throw new AuxError("conflict", "Restore this conversation before correcting it.");
+      if ((target.config?.messageRevision ?? 0) !== input.expectedRevision)
+        throw new AuxError("conflict", "This run changed. Review it before steering again.");
       const corrections = this.repo.listRunSteers(input.runId);
-      if (corrections.length >= 32 || corrections.reduce((size, correction) => size + correction.text.length, 0) + input.text.length > 20_000) {
-        throw new AuxError("conflict", "This run has reached its correction limit. Stop it and start a follow-up.");
+      if (
+        corrections.length >= 32 ||
+        corrections.reduce((size, correction) => size + correction.text.length, 0) + input.text.length >
+          20_000
+      ) {
+        throw new AuxError(
+          "conflict",
+          "This run has reached its correction limit. Stop it and start a follow-up.",
+        );
       }
-      if (input.pageIds.length !== target.pageIds.length || input.pageIds.some((pageId, index) => pageId !== target.pageIds[index])
-        || JSON.stringify(input.contextPageRefs) !== JSON.stringify(target.config?.contextPageRefs ?? [])) {
-        throw new AuxError("conflict", "The selected browser context changed. Update it after this run finishes.");
+      if (
+        input.pageIds.length !== target.pageIds.length ||
+        input.pageIds.some((pageId, index) => pageId !== target.pageIds[index]) ||
+        JSON.stringify(input.contextPageRefs) !== JSON.stringify(target.config?.contextPageRefs ?? [])
+      ) {
+        throw new AuxError(
+          "conflict",
+          "The selected browser context changed. Update it after this run finishes.",
+        );
       }
       const at = Date.now();
-      const inserted = this.repo.insertRunMessage({ messageId: input.messageId, chatId: input.chatId, targetRunId: input.runId,
-        deliveryRunId: newRunId(), mode: "steer", status: "delivered", text: input.text,
-        pageIds: input.pageIds, contextPageRefs: input.contextPageRefs,
-        expectedRevision: input.expectedRevision, createdAt: at, updatedAt: at });
+      const inserted = this.repo.insertRunMessage({
+        messageId: input.messageId,
+        chatId: input.chatId,
+        targetRunId: input.runId,
+        deliveryRunId: newRunId(),
+        mode: "steer",
+        status: "delivered",
+        text: input.text,
+        pageIds: input.pageIds,
+        contextPageRefs: input.contextPageRefs,
+        expectedRevision: input.expectedRevision,
+        createdAt: at,
+        updatedAt: at,
+      });
       target.config = { ...target.config, messageRevision: input.expectedRevision + 1 };
       this.repo.saveRun(target);
       return { message: inserted, created: true };
     });
     if (created) {
       this.changed(message);
-      this.events.emit(EventTypes.RunUpdated, { run: this.repo.getRun(message.targetRunId)! }, message.targetRunId);
+      this.events.emit(
+        EventTypes.RunUpdated,
+        { run: this.repo.getRun(message.targetRunId)! },
+        message.targetRunId,
+      );
       this.signalSteer(message.targetRunId);
     }
     return message;
@@ -148,7 +233,8 @@ export class RunMessageQueue {
   cancel(messageId: string): RunMessage {
     const message = this.repo.getRunMessage(messageId);
     if (!message) throw new AuxError("not_found", "Queued message not found.");
-    if (message.status === "delivered" || this.repo.getRun(message.deliveryRunId)) throw new AuxError("conflict", "This message already started. Stop its run instead.");
+    if (message.status === "delivered" || this.repo.getRun(message.deliveryRunId))
+      throw new AuxError("conflict", "This message already started. Stop its run instead.");
     if (message.status === "cancelled") return message;
     const cancelled = this.repo.updateRunMessage(messageId, "cancelled");
     this.changed(cancelled);
@@ -175,32 +261,54 @@ export class RunMessageQueue {
 
   private changed(message: RunMessage) {
     this.syncJournal(message);
-    this.events.emit("conversation.messages.changed", { chatId: message.chatId, messageId: message.messageId, status: message.status });
+    this.events.emit("conversation.messages.changed", {
+      chatId: message.chatId,
+      messageId: message.messageId,
+      status: message.status,
+    });
   }
 
   private syncJournal(message: RunMessage): void {
-    const record = this.sendJournal.queue({ nonce: message.messageId, threadId: message.chatId,
-      turnId: message.targetRunId, text: message.text }, message.createdAt);
-    if (message.status === "cancelled") { if (record.state !== "cancelled") this.sendJournal.cancel(record.nonce); return; }
+    const record = this.sendJournal.queue(
+      { nonce: message.messageId, threadId: message.chatId, turnId: message.targetRunId, text: message.text },
+      message.createdAt,
+    );
+    if (message.status === "cancelled") {
+      if (record.state !== "cancelled") this.sendJournal.cancel(record.nonce);
+      return;
+    }
     if (record.state === "cancelled" || record.state === "failed") return;
     const accepted = this.sendJournal.acceptLocal(record.nonce, message.deliveryRunId, message.updatedAt);
-    if (message.status === "delivered" && accepted.state !== "acknowledged") this.sendJournal.acknowledge(record.nonce, message.deliveryRunId, message.updatedAt);
-    else if (message.status === "needs_attention" && accepted.state !== "parked") this.sendJournal.park(record.nonce, message.updatedAt);
+    if (message.status === "delivered" && accepted.state !== "acknowledged")
+      this.sendJournal.acknowledge(record.nonce, message.deliveryRunId, message.updatedAt);
+    else if (message.status === "needs_attention" && accepted.state !== "parked")
+      this.sendJournal.park(record.nonce, message.updatedAt);
   }
 
   private schedule(chatId: string) {
     if (this.stopped) return;
-    if (this.draining.has(chatId)) { this.rerun.add(chatId); return; }
+    if (this.draining.has(chatId)) {
+      this.rerun.add(chatId);
+      return;
+    }
     this.draining.add(chatId);
     setImmediate(() => {
-      if (this.stopped) { this.draining.delete(chatId); return; }
-      const work = this.drain(chatId).catch(() => {
-      this.events.emit("conversation.messages.error", { chatId, message: "Queued message delivery could not be checked." });
-      }).finally(() => {
-        this.inFlight.delete(work);
+      if (this.stopped) {
         this.draining.delete(chatId);
-        if (this.rerun.delete(chatId)) this.schedule(chatId);
-      });
+        return;
+      }
+      const work = this.drain(chatId)
+        .catch(() => {
+          this.events.emit("conversation.messages.error", {
+            chatId,
+            message: "Queued message delivery could not be checked.",
+          });
+        })
+        .finally(() => {
+          this.inFlight.delete(work);
+          this.draining.delete(chatId);
+          if (this.rerun.delete(chatId)) this.schedule(chatId);
+        });
       this.inFlight.add(work);
     });
   }
@@ -211,7 +319,8 @@ export class RunMessageQueue {
       if (!message || message.status === "needs_attention") return;
       const delivered = this.repo.getRun(message.deliveryRunId);
       if (delivered) {
-        if (message.status !== "delivered") this.changed(this.repo.updateRunMessage(message.messageId, "delivered"));
+        if (message.status !== "delivered")
+          this.changed(this.repo.updateRunMessage(message.messageId, "delivered"));
         if (active.has(delivered.status)) return;
         continue;
       }

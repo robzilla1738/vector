@@ -83,7 +83,7 @@ describe("API schemas", () => {
       "vault.status", "vault.save", "vault.grant", "vault.renewGrant", "vault.expiredGrants",
       "routines.list", "routines.fromResult", "routines.alerts", "routines.compare",
       "installation.listBackups", "installation.backupRetention",
-      "tasks.verifyCriterion", "tasks.replaceAgent", "cloud.reconnectStatus", "development.prepareIncidentFix",
+      "tasks.verifyCriterion", "tasks.replaceAgent",
     ]) {
       expect(MethodSchemas).toHaveProperty(m);
     }
