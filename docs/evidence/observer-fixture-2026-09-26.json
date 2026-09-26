@@ -1,0 +1,85 @@
+{
+  "measuredAt": "2026-09-26T18:30:46.294Z",
+  "kind": "fixture-observation",
+  "apcSource": null,
+  "rows": [
+    {
+      "caseId": "records",
+      "observer": "aux",
+      "available": true,
+      "durationMs": 18,
+      "chars": 2806,
+      "approxTokens": 702,
+      "factsFound": 2,
+      "factCount": 2
+    },
+    {
+      "caseId": "records",
+      "observer": "accessibilityHtml",
+      "available": true,
+      "durationMs": 2,
+      "chars": 1646,
+      "approxTokens": 412,
+      "factsFound": 2,
+      "factCount": 2
+    },
+    {
+      "caseId": "records",
+      "observer": "apc",
+      "available": false,
+      "reason": "Native APC capture was not supplied"
+    },
+    {
+      "caseId": "detail",
+      "observer": "aux",
+      "available": true,
+      "durationMs": 12,
+      "chars": 850,
+      "approxTokens": 213,
+      "factsFound": 2,
+      "factCount": 2
+    },
+    {
+      "caseId": "detail",
+      "observer": "accessibilityHtml",
+      "available": true,
+      "durationMs": 1,
+      "chars": 676,
+      "approxTokens": 169,
+      "factsFound": 0,
+      "factCount": 2
+    },
+    {
+      "caseId": "detail",
+      "observer": "apc",
+      "available": false,
+      "reason": "Native APC capture was not supplied"
+    },
+    {
+      "caseId": "form",
+      "observer": "aux",
+      "available": true,
+      "durationMs": 14,
+      "chars": 1562,
+      "approxTokens": 391,
+      "factsFound": 2,
+      "factCount": 2
+    },
+    {
+      "caseId": "form",
+      "observer": "accessibilityHtml",
+      "available": true,
+      "durationMs": 1,
+      "chars": 977,
+      "approxTokens": 245,
+      "factsFound": 1,
+      "factCount": 2
+    },
+    {
+      "caseId": "form",
+      "observer": "apc",
+      "available": false,
+      "reason": "Native APC capture was not supplied"
+    }
+  ]
+}

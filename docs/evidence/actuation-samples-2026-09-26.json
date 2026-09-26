@@ -1,0 +1,362 @@
+{
+  "measuredAt": "2026-09-26T18:45:34.012Z",
+  "origin": "http://127.0.0.1:62444",
+  "samples": [
+    {
+      "name": "cdp-navigate",
+      "rows": [
+        {
+          "ms": 202,
+          "status": "completed"
+        },
+        {
+          "ms": 203,
+          "status": "completed"
+        },
+        {
+          "ms": 205,
+          "status": "completed"
+        },
+        {
+          "ms": 207,
+          "status": "completed"
+        },
+        {
+          "ms": 205,
+          "status": "completed"
+        }
+      ],
+      "p50": 205
+    },
+    {
+      "name": "actor-navigate",
+      "rows": [
+        {
+          "ms": 1218,
+          "actionMs": 1025,
+          "durationMs": 1026,
+          "ok": true
+        },
+        {
+          "ms": null,
+          "error": "reset pages.navigate: internal: An internal error occurred."
+        },
+        {
+          "ms": null,
+          "error": "reset pages.navigate: internal: An internal error occurred."
+        },
+        {
+          "ms": 1212,
+          "actionMs": 1024,
+          "durationMs": 1025,
+          "ok": true
+        },
+        {
+          "ms": null,
+          "error": "reset pages.navigate: internal: An internal error occurred."
+        }
+      ],
+      "p50": 1218
+    },
+    {
+      "name": "cdp-click",
+      "rows": [
+        {
+          "ms": 2111,
+          "status": "completed"
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        }
+      ],
+      "p50": 2111
+    },
+    {
+      "name": "actor-click",
+      "rows": [
+        {
+          "ms": 97,
+          "actionMs": 0,
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "ms": 102,
+          "actionMs": 0,
+          "durationMs": 1,
+          "ok": false
+        },
+        {
+          "ms": 103,
+          "actionMs": 0,
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "ms": 102,
+          "actionMs": 0,
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "ms": 103,
+          "actionMs": 0,
+          "durationMs": 0,
+          "ok": false
+        }
+      ],
+      "p50": 102
+    },
+    {
+      "name": "cdp-type",
+      "rows": [
+        {
+          "ms": 2730,
+          "status": "completed"
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        }
+      ],
+      "p50": 2730
+    },
+    {
+      "name": "actor-type",
+      "rows": [
+        {
+          "ms": 97,
+          "actionMs": 0,
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "ms": 103,
+          "actionMs": 0,
+          "durationMs": 1,
+          "ok": false
+        },
+        {
+          "ms": 103,
+          "actionMs": 0,
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "ms": 102,
+          "actionMs": 0,
+          "durationMs": 0,
+          "ok": false
+        },
+        {
+          "ms": 103,
+          "actionMs": 0,
+          "durationMs": 0,
+          "ok": false
+        }
+      ],
+      "p50": 103
+    },
+    {
+      "name": "cdp-select",
+      "rows": [
+        {
+          "ms": 1420,
+          "status": "completed"
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        }
+      ],
+      "p50": 1420
+    },
+    {
+      "name": "actor-select",
+      "rows": [
+        {
+          "ms": null,
+          "error": "The operation was aborted due to timeout"
+        },
+        {
+          "ms": null,
+          "error": "The operation was aborted due to timeout"
+        },
+        {
+          "ms": null,
+          "error": "The operation was aborted due to timeout"
+        },
+        {
+          "ms": null,
+          "error": "The operation was aborted due to timeout"
+        },
+        {
+          "ms": null,
+          "error": "The operation was aborted due to timeout"
+        }
+      ],
+      "p50": null
+    },
+    {
+      "name": "cdp-login",
+      "rows": [
+        {
+          "ms": 1492,
+          "status": "completed"
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        }
+      ],
+      "p50": 1492
+    },
+    {
+      "name": "actor-login-type",
+      "rows": [
+        {
+          "ms": 93,
+          "actionMs": 0,
+          "durationMs": 1,
+          "ok": false
+        },
+        {
+          "ms": 107,
+          "actionMs": 0,
+          "durationMs": 2,
+          "ok": false
+        },
+        {
+          "ms": 105,
+          "actionMs": 0,
+          "durationMs": 2,
+          "ok": false
+        },
+        {
+          "ms": 103,
+          "actionMs": 0,
+          "durationMs": 1,
+          "ok": false
+        },
+        {
+          "ms": 103,
+          "actionMs": 0,
+          "durationMs": 1,
+          "ok": false
+        }
+      ],
+      "p50": 103
+    },
+    {
+      "name": "cdp-otp",
+      "rows": [
+        {
+          "ms": 1525,
+          "status": "completed"
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        },
+        {
+          "ms": null,
+          "error": "pages.execute: conflict: The state changed before this action completed."
+        }
+      ],
+      "p50": 1525
+    },
+    {
+      "name": "actor-otp-type",
+      "rows": [
+        {
+          "ms": 93,
+          "actionMs": 0,
+          "durationMs": 1,
+          "ok": false
+        },
+        {
+          "ms": 105,
+          "actionMs": 0,
+          "durationMs": 1,
+          "ok": false
+        },
+        {
+          "ms": 106,
+          "actionMs": 0,
+          "durationMs": 2,
+          "ok": false
+        },
+        {
+          "ms": 105,
+          "actionMs": 0,
+          "durationMs": 2,
+          "ok": false
+        },
+        {
+          "ms": 105,
+          "actionMs": 0,
+          "durationMs": 2,
+          "ok": false
+        }
+      ],
+      "p50": 105
+    }
+  ]
+}
