@@ -223,10 +223,13 @@ CREATE TABLE criterion_reviews(seq INTEGER PRIMARY KEY AUTOINCREMENT, review_id 
 CREATE INDEX idx_criterion_reviews ON criterion_reviews(task_id,task_revision,criterion_id,seq);
 CREATE TABLE agent_connections(
   connection_id TEXT PRIMARY KEY, name TEXT NOT NULL, client TEXT NOT NULL,
-  scope_kind TEXT NOT NULL CHECK(scope_kind IN ('workspace','task')),
-  workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id), task_id TEXT REFERENCES tasks(task_id), token_hash TEXT NOT NULL UNIQUE,
-  created_at INTEGER NOT NULL, last_used_at INTEGER, revoked_at INTEGER,
-  CHECK((scope_kind='workspace' AND task_id IS NULL) OR (scope_kind='task' AND task_id IS NOT NULL))
+  scope_kind TEXT NOT NULL CHECK(scope_kind IN ('workspace','task','session')),
+  workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id), task_id TEXT REFERENCES tasks(task_id),
+  session_id TEXT, token_hash TEXT NOT NULL UNIQUE,
+  created_at INTEGER NOT NULL, last_used_at INTEGER, revoked_at INTEGER, expires_at INTEGER,
+  CHECK((scope_kind='workspace' AND task_id IS NULL AND session_id IS NULL)
+     OR (scope_kind='task' AND task_id IS NOT NULL)
+     OR (scope_kind='session' AND session_id IS NOT NULL))
 );
 CREATE INDEX idx_agent_connections_scope ON agent_connections(workspace_id,task_id,revoked_at);
 CREATE TABLE calendar_connections(
@@ -358,7 +361,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 23;
+export const SCHEMA_VERSION = 24;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -589,6 +592,30 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
     return (db.prepare("PRAGMA table_info(run_messages)").all() as { name: string }[]).some(c => c.name === "resends_nonce")
       ? []
       : [`ALTER TABLE run_messages ADD COLUMN resends_nonce TEXT`];
+  },
+  // v23 → v24: scoped tokens gain session scope + expiry; the CHECK on
+  // scope_kind must be rebuilt since SQLite cannot alter constraints.
+  23: (db) => {
+    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='agent_connections'").get()) return [];
+    return [
+      `CREATE TABLE agent_connections_new(
+        connection_id TEXT PRIMARY KEY, name TEXT NOT NULL, client TEXT NOT NULL,
+        scope_kind TEXT NOT NULL CHECK(scope_kind IN ('workspace','task','session')),
+        workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id), task_id TEXT REFERENCES tasks(task_id),
+        session_id TEXT, token_hash TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL, last_used_at INTEGER, revoked_at INTEGER, expires_at INTEGER,
+        CHECK((scope_kind='workspace' AND task_id IS NULL AND session_id IS NULL)
+           OR (scope_kind='task' AND task_id IS NOT NULL)
+           OR (scope_kind='session' AND session_id IS NOT NULL))
+      )`,
+      `INSERT INTO agent_connections_new
+        (connection_id,name,client,scope_kind,workspace_id,task_id,session_id,token_hash,created_at,last_used_at,revoked_at,expires_at)
+        SELECT connection_id,name,client,scope_kind,workspace_id,task_id,NULL,token_hash,created_at,last_used_at,revoked_at,NULL
+        FROM agent_connections`,
+      `DROP TABLE agent_connections`,
+      `ALTER TABLE agent_connections_new RENAME TO agent_connections`,
+      `CREATE INDEX idx_agent_connections_scope ON agent_connections(workspace_id,task_id,revoked_at)`,
+    ];
   },
 };
 

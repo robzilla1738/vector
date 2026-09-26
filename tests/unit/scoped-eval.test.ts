@@ -175,3 +175,61 @@ it("rejects a task revision that changes while a page program waits to dispatch"
   await expect(f.invoke("pages.execute",{...program,taskId:f.task.taskId,expectedRevision:1},
     {external:true,connectionId:"c1",scope:f.scope})).rejects.toMatchObject({code:"conflict"});
 });
+
+function eventFixture() {
+  const db = openDb(":memory:"); cleanup.push(() => db.close());
+  const repo = new Repo(db), events = new EventBus(repo), tasks = new TaskService(repo, events);
+  const workspace = tasks.createWorkspace("Scoped");
+  const task = tasks.create({ workspaceId: workspace.workspaceId, title: "Read", objective: "Read the page",
+    criteria: [{ criterionId: "c", description: "Read", verification: "manual" }],
+    resources: [{ resourceId: "page", kind: "page", locator: "p1", label: "Tab" }] });
+  const otherWorkspace = tasks.createWorkspace("Other");
+  const otherTask = tasks.create({ workspaceId: otherWorkspace.workspaceId, title: "Elsewhere", objective: "Elsewhere",
+    criteria: [{ criterionId: "c", description: "Elsewhere", verification: "manual" }] });
+  const pages = {
+    get: () => ({ controller: "none" }),
+    list: () => [
+      { pageId: "p1", sessionId: "sess-1" },
+      { pageId: "p2", sessionId: "sess-2" },
+    ],
+  } as unknown as PageService;
+  const settings = { effectGrants: () => [], searchEngine: () => "", originPolicies: () => [], safetyCeiling: () => "ask" as const };
+  const invoke = makeInvoker({ repo, events, pages, settings } as unknown as Services);
+  repo.saveRun({ runId: "r1", goal: "read p1", status: "running", pageIds: ["p1"], config: { taskId: task.taskId }, createdAt: Date.now() });
+  repo.saveRun({ runId: "r2", goal: "other", status: "running", pageIds: ["p2"], config: { taskId: otherTask.taskId }, createdAt: Date.now() });
+  return { invoke, events, tasks, task, workspace, otherTask };
+}
+
+it("scopes events.since and the event predicate to the connection's scope", async () => {
+  const f = eventFixture();
+  const emit = f.events;
+  const base = ((await f.invoke("events.since", { sinceSeq: 0, limit: 500 }, { external: true })) as { lastSeq: number }).lastSeq;
+  emit.emit("task.updated", { task: { taskId: f.task.taskId, workspaceId: f.workspace.workspaceId } });
+  emit.emit("task.updated", { task: { taskId: f.otherTask.taskId, workspaceId: f.otherTask.workspaceId } });
+  emit.emit("settings.changed", { category: "calendar" });
+  emit.emit("workspace.memory.updated", { workspaceId: f.workspace.workspaceId });
+  emit.emit("page.emitted", { pageId: "p1" });
+  emit.emit("page.emitted", { pageId: "p2" });
+  emit.emit("run.updated", { run: { runId: "r2", pageIds: ["p2"], config: { taskId: f.otherTask.taskId } } }, "r2");
+  emit.emit("step.finished", { runId: "r1" }, "r1");
+  emit.emit("settings.changed", { category: "calendar" }); // trailing out-of-scope event
+
+  const all = (await f.invoke("events.since", { sinceSeq: base, limit: 50 }, { external: true })) as { events: { seq: number; type: string }[] };
+  expect(all.events.length).toBe(9);
+
+  const scoped = async (scope: object) =>
+    ((await f.invoke("events.since", { sinceSeq: base, limit: 50 }, { external: true, connectionId: "c1", scope: scope as never })) as { events: { type: string }[] }).events;
+
+  const ws = await scoped({ kind: "workspace", workspaceId: f.workspace.workspaceId });
+  expect(ws.map((e) => e.type)).toEqual(["task.updated", "workspace.memory.updated", "page.emitted", "step.finished"]);
+  // Bare workspaceId does not widen a task scope to sibling tasks.
+  const ts = await scoped({ kind: "task", workspaceId: f.workspace.workspaceId, taskId: f.task.taskId });
+  expect(ts.map((e) => e.type)).toEqual(["task.updated", "page.emitted", "step.finished"]);
+  const ss = await scoped({ kind: "session", workspaceId: f.workspace.workspaceId, sessionId: "sess-1" });
+  expect(ss.map((e) => e.type)).toEqual(["task.updated", "workspace.memory.updated", "page.emitted", "step.finished"]);
+  // lastSeq advances past filtered events — the trailing settings event is out
+  // of scope but the cursor still moves past it.
+  const tail = (await f.invoke("events.since", { sinceSeq: base, limit: 50 }, { external: true, connectionId: "c1",
+    scope: { kind: "task", workspaceId: f.workspace.workspaceId, taskId: f.task.taskId } })) as { lastSeq: number };
+  expect(tail.lastSeq).toBe(all.events.at(-1)!.seq);
+});

@@ -27,3 +27,35 @@ it("persists task-scoped connections as hashes and revokes their tokens immediat
   expect(service.list()[0]?.revokedAt).toEqual(expect.any(Number));
   expect(() => service.create({ name: "Wrong task", client: "claude", scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: "missing" } })).toThrow("does not belong");
 });
+
+it("creates session-scoped connections only for existing browser sessions", () => {
+  const db = openDb(":memory:"); cleanup.push(() => db.close());
+  const repo = new Repo(db), tasks = new TaskService(repo, new EventBus(repo));
+  const workspace = tasks.createWorkspace("Session workspace");
+  const service = new AgentConnectionService(repo);
+  expect(() => service.create({ name: "No session", client: "codex",
+    scope: { kind: "session", workspaceId: workspace.workspaceId, sessionId: "missing" } })).toThrow("session does not exist");
+  repo.upsertSession({ sessionId: "sess-1", backend: "chrome", label: "Chrome", status: "connected" });
+  const created = service.create({ name: "Cloud driver", client: "codex",
+    scope: { kind: "session", workspaceId: workspace.workspaceId, sessionId: "sess-1" } });
+  expect(service.authorize(created.token)).toMatchObject({
+    scope: { kind: "session", workspaceId: workspace.workspaceId, sessionId: "sess-1" },
+  });
+  expect(service.list()[0]?.scope).toEqual(created.connection.scope);
+});
+
+it("enforces token expiry at create and authorize time, including cached entries", async () => {
+  const db = openDb(":memory:"); cleanup.push(() => db.close());
+  const repo = new Repo(db), tasks = new TaskService(repo, new EventBus(repo));
+  const workspace = tasks.createWorkspace("Expiry workspace");
+  const service = new AgentConnectionService(repo);
+  const scope = { kind: "workspace" as const, workspaceId: workspace.workspaceId };
+  expect(() => service.create({ name: "Already dead", client: "codex", scope,
+    expiresAt: Date.now() - 1 })).toThrow("in the future");
+  const created = service.create({ name: "Short-lived", client: "codex", scope,
+    expiresAt: Date.now() + 40 });
+  expect(service.authorize(created.token)?.connectionId).toBe(created.connection.connectionId);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  // The cached entry must not outlive the expiry.
+  expect(service.authorize(created.token)).toBeNull();
+});

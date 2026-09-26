@@ -47,7 +47,7 @@ import { TaskEvidenceService } from "../services/task-evidence.js";
 import { summarizeModelUsage } from "../services/model-usage.js";
 import type { AgentConnectionService } from "../services/agent-connections.js";
 import type { CalendarConnectionService } from "../services/calendar-connections.js";
-import type { AgentConnectionScope } from "@aux/contracts";
+import type { AgentConnectionScope, AuxEvent } from "@aux/contracts";
 import type { NativeBridge } from "../native.js";
 import {
   cancelRuntimeRestore,
@@ -301,6 +301,13 @@ export function makeInvoker(s: Services) {
     scope.kind === "task"
       ? tasks.descendants(scope.taskId)
       : tasks.list({ workspaceId: scope.workspaceId, includeArchived: true, limit: 500 });
+  const sessionPageIds = (sessionId: string): Set<string> =>
+    new Set(
+      s.pages
+        .list()
+        .filter((page) => page.sessionId === sessionId)
+        .map((page) => page.pageId),
+    );
   const requireScopedTask = (scope: AgentConnectionScope, taskId: string) => {
     const task = tasks.get(taskId);
     const allowed =
@@ -313,9 +320,9 @@ export function makeInvoker(s: Services) {
   // Pages a scope's tasks authorize. Building the set reads every task's
   // details, so it is cached per scope: dropped on any task or run event and
   // rebuilt at most once a second otherwise. Preview grants are read live.
-  const taskPages = new Map<string, { at: number; pages: Set<string> }>();
+  const taskPages = new Map<string, { at: number; taskIds: Set<string>; pages: Set<string> }>();
   s.events.subscribe((event) => {
-    if (event.type.startsWith("task.") || event.type.startsWith("run.")) taskPages.clear();
+    if (event.type.startsWith("task.") || event.type.startsWith("run.") || event.type.startsWith("page.")) taskPages.clear();
   });
   const turnTabs = new AgentTurnTabs(s.pages, (page) => {
     s.repo.upsertPage({ ...page, ownedByRuntime: false });
@@ -326,24 +333,107 @@ export function makeInvoker(s: Services) {
     const key = JSON.stringify(scope);
     let cached = taskPages.get(key);
     if (!cached || Date.now() - cached.at > 1_000) {
-      cached = {
-        at: Date.now(),
-        pages: new Set(
-          scopedTasks(scope).flatMap((task) => {
-            const resources = task.resources
-              .filter((resource) => resource.kind === "page")
-              .map((resource) => resource.locator);
-            const runs = tasks
-              .details(task.taskId)
-              .runs.filter((item) => item.currentRevision)
-              .flatMap((item) => item.run.pageIds);
-            return [...resources, ...runs];
-          }),
-        ),
-      };
+      cached =
+        scope.kind === "session"
+          ? { at: Date.now(), taskIds: new Set(scopedTasks(scope).map((task) => task.taskId)), pages: sessionPageIds(scope.sessionId) }
+          : {
+              at: Date.now(),
+              taskIds: new Set(scopedTasks(scope).map((task) => task.taskId)),
+              pages: new Set(
+                scopedTasks(scope).flatMap((task) => {
+                  const resources = task.resources
+                    .filter((resource) => resource.kind === "page")
+                    .map((resource) => resource.locator);
+                  const runs = tasks
+                    .details(task.taskId)
+                    .runs.filter((item) => item.currentRevision)
+                    .flatMap((item) => item.run.pageIds);
+                  return [...resources, ...runs];
+                }),
+              ),
+            };
       taskPages.set(key, cached);
     }
     return connectionId ? new Set([...cached.pages, ...turnTabs.pageIds(connectionId)]) : cached.pages;
+  };
+  /** Task ids a scope covers (workspace/session → workspace tasks; task → subtree). */
+  const scopedTaskIds = (scope: AgentConnectionScope): Set<string> => {
+    scopedPageIds(scope); // fills the shared index
+    return taskPages.get(JSON.stringify(scope))?.taskIds ?? new Set();
+  };
+  const taskWorkspace = new Map<string, { at: number; workspaceId?: string }>();
+  const runRefs = new Map<string, { at: number; taskId?: string; pageIds: string[] }>();
+  const taskWorkspaceId = (taskId: string): string | undefined => {
+    const hit = taskWorkspace.get(taskId);
+    if (hit && Date.now() - hit.at < 60_000) return hit.workspaceId;
+    const row = s.repo.db.prepare("SELECT workspace_id FROM tasks WHERE task_id=?").get(taskId) as
+      | { workspace_id: string }
+      | undefined;
+    taskWorkspace.set(taskId, { at: Date.now(), workspaceId: row?.workspace_id });
+    return row?.workspace_id;
+  };
+  const runScopeRefs = (runId: string): { taskId?: string; pageIds: string[] } | undefined => {
+    const hit = runRefs.get(runId);
+    if (hit && Date.now() - hit.at < 1_000) return hit;
+    const row = s.repo.db.prepare("SELECT page_ids, config FROM runs WHERE run_id=?").get(runId) as
+      | { page_ids: string; config: string | null }
+      | undefined;
+    if (!row) return undefined;
+    let taskId: string | undefined;
+    try {
+      taskId = (JSON.parse(row.config ?? "{}") as { taskId?: string }).taskId;
+    } catch {
+      /* malformed config — no task ref */
+    }
+    let pageIds: string[] = [];
+    try {
+      pageIds = JSON.parse(row.page_ids) as string[];
+    } catch {
+      /* malformed */
+    }
+    const refs = { at: Date.now(), taskId, pageIds };
+    runRefs.set(runId, refs);
+    return refs;
+  };
+  /**
+   * Whether a durable event is inside a scoped connection's view. Events carry
+   * heterogeneous references — resolve task/page/workspace/run refs (the run
+   * object on run.* events resolves inline; runId-only refs hit the store with
+   * a small cache). Events with no resolvable reference are owner-level signals
+   * and stay invisible to scoped clients; task scopes never widen to the
+   * workspace on a bare workspaceId match.
+   */
+  const eventVisible = (scope: AgentConnectionScope, connectionId: string | undefined, event: AuxEvent): boolean => {
+    const pages = scopedPageIds(scope, connectionId);
+    const taskIds = scopedTaskIds(scope);
+    const p = (event.payload ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+    const runObj = (p.run ?? undefined) as { runId?: string; pageIds?: string[]; config?: { taskId?: string } } | undefined;
+    const taskObj = (p.task ?? undefined) as { taskId?: string; workspaceId?: string } | undefined;
+    const seenTaskIds = new Set<string>();
+    const workspaceIds = new Set<string>();
+    const taskHit = (taskId: string | undefined): boolean => {
+      if (!taskId || seenTaskIds.has(taskId)) return false;
+      seenTaskIds.add(taskId);
+      if (taskIds.has(taskId)) return true;
+      const ws = taskWorkspaceId(taskId);
+      if (ws) workspaceIds.add(ws);
+      return false;
+    };
+    const runHit = (refs: { taskId?: string; pageIds?: string[] } | undefined): boolean => {
+      if (!refs) return false;
+      return refs.pageIds?.some((id) => pages.has(id)) || taskHit(refs.taskId);
+    };
+    if (str(p.workspaceId)) workspaceIds.add(str(p.workspaceId)!);
+    if (taskObj?.workspaceId) workspaceIds.add(taskObj.workspaceId);
+    if (taskHit(str(p.taskId)) || taskHit(taskObj?.taskId)) return true;
+    if (runHit(runObj ? { taskId: runObj.config?.taskId, pageIds: runObj.pageIds } : undefined)) return true;
+    for (const runId of [event.runId, str(p.runId)]) {
+      if (runId && runHit(runScopeRefs(runId))) return true;
+    }
+    const pageId = str(p.pageId);
+    if (pageId && pages.has(pageId)) return true;
+    return scope.kind !== "task" && workspaceIds.has(scope.workspaceId);
   };
   const requireScopedPage = (scope: AgentConnectionScope, pageId: string, connectionId?: string) => {
     if (!scopedPageIds(scope, connectionId).has(pageId))
@@ -398,7 +488,7 @@ export function makeInvoker(s: Services) {
         throw new AuxError("permission_denied", "This scoped connection cannot expand its own authority");
       }
       if (method === "tasks.create") {
-        if (scope.kind === "workspace") {
+        if (scope.kind === "workspace" || scope.kind === "session") {
           if (params.workspaceId !== scope.workspaceId)
             throw new AuxError(
               "permission_denied",
@@ -507,6 +597,8 @@ export function makeInvoker(s: Services) {
           "workspace.get",
           "runs.list",
           "runtime.describe",
+          "events.since",
+          "runs.events",
         ].includes(method)
       ) {
         throw new AuxError("permission_denied", "This method is outside the connection's task scope");
@@ -1933,7 +2025,10 @@ export function makeInvoker(s: Services) {
       case "runs.events":
       case "events.since": {
         const p = params as { runId?: string; sinceSeq: number; limit: number };
-        return s.events.since(p.sinceSeq, p.limit, p.runId);
+        const out = s.events.since(p.sinceSeq, p.limit, p.runId);
+        if (!scope) return out;
+        // lastSeq still advances: filtered events were durably read and skipped.
+        return { ...out, events: out.events.filter((event) => eventVisible(scope, client.connectionId, event)) };
       }
 
       // artifacts
@@ -2500,6 +2595,8 @@ export function makeInvoker(s: Services) {
     }
   }
   return Object.assign(invoke, {
+    eventVisible: (scope: AgentConnectionScope, connectionId: string | undefined, event: AuxEvent) =>
+      eventVisible(scope, connectionId, event),
     dispose: async () => {
       turnTabs.dispose();
       await turnTabs.endAll();

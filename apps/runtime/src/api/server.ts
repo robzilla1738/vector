@@ -22,24 +22,43 @@ export const MAX_BODY_BYTES = 2 * 1024 * 1024;
 export class ApiServer {
   private server: Server;
   private wss: WebSocketServer;
-  private sockets = new Set<WebSocket>();
+  private sockets = new Map<WebSocket, ClientContext>();
   port = 0;
 
   constructor(
-    private opts: { token: string; invoke: InvokeFn; events: EventBus; authorizeScopedToken?: (token: string) => ClientContext | null },
+    private opts: {
+      token: string;
+      invoke: InvokeFn;
+      events: EventBus;
+      authorizeScopedToken?: (token: string) => ClientContext | null;
+      filterEvent?: (client: ClientContext, event: AuxEvent) => boolean;
+    },
   ) {
     this.server = createServer((req, res) => void this.handle(req, res));
     this.wss = new WebSocketServer({ noServer: true, maxPayload: MAX_BODY_BYTES });
     this.server.on("upgrade", (req, socket, head) => {
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
-      // Scoped connectors use request/response RPC only. The global event stream
-      // cannot be safely filtered without changing event payload contracts.
-      const authed = this.masterBearer(req) || url.searchParams.get("token") === this.opts.token;
-      if (url.pathname !== "/ws" || !authed) {
+      if (url.pathname !== "/ws") {
         socket.destroy();
         return;
       }
-      this.wss.handleUpgrade(req, socket, head, (ws) => this.onSocket(ws));
+      // The master token can arrive as a bearer header or (for browser clients
+      // that cannot set headers) the ?token= query form. Scoped tokens use the
+      // same two paths; their sockets receive the stream filtered to scope.
+      const queryToken = url.searchParams.get("token");
+      const bearer = /^Bearer ([^\s]+)$/.exec(req.headers.authorization ?? "")?.[1];
+      let client: ClientContext | null = null;
+      if (this.masterBearer(req) || queryToken === this.opts.token) {
+        client = { external: true };
+      } else {
+        const candidate = bearer ?? queryToken;
+        if (candidate) client = this.opts.authorizeScopedToken?.(candidate) ?? null;
+      }
+      if (!client) {
+        socket.destroy();
+        return;
+      }
+      this.wss.handleUpgrade(req, socket, head, (ws) => this.onSocket(ws, client!));
     });
     this.opts.events.subscribe((e) => this.broadcast(e));
   }
@@ -85,8 +104,8 @@ export class ApiServer {
     }
   }
 
-  private onSocket(ws: WebSocket) {
-    this.sockets.add(ws);
+  private onSocket(ws: WebSocket, client: ClientContext) {
+    this.sockets.set(ws, client);
     ws.on("close", () => this.sockets.delete(ws));
     ws.on("message", async (data) => {
       let msg: unknown;
@@ -96,14 +115,21 @@ export class ApiServer {
         ws.send(JSON.stringify({ error: { code: "invalid_params", message: "bad JSON" } }));
         return;
       }
-      const out = await this.dispatch(msg, { external: true });
+      const out = await this.dispatch(msg, client);
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(out));
     });
   }
 
   private broadcast(e: AuxEvent) {
-    const frame = JSON.stringify({ event: e });
-    for (const ws of this.sockets) if (ws.readyState === ws.OPEN) ws.send(frame);
+    let frame: string | undefined;
+    for (const [ws, client] of this.sockets) {
+      if (ws.readyState !== ws.OPEN) continue;
+      // Scoped sockets get a filtered stream; with no filter configured they
+      // get nothing rather than the global firehose.
+      if (client.scope && (!this.opts.filterEvent || !this.opts.filterEvent(client, e))) continue;
+      frame ??= JSON.stringify({ event: e });
+      ws.send(frame);
+    }
   }
 
   private async handle(req: IncomingMessage, res: ServerResponse) {
@@ -151,7 +177,7 @@ export class ApiServer {
   }
 
   async close() {
-    for (const ws of this.sockets) ws.close();
+    for (const ws of this.sockets.keys()) ws.close();
     await new Promise((r) => this.server.close(() => r(undefined)));
   }
 }

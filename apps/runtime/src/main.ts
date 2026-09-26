@@ -950,6 +950,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     invoke,
     events,
     authorizeScopedToken: (scopedToken) => agentConnections.authorize(scopedToken),
+    filterEvent: (client, event) =>
+      client.scope ? invoke.eventVisible(client.scope, client.connectionId, event) : true,
   });
   const port = await api.listen(config.apiPort);
   // the bearer token lives here — owner-only, and re-chmod'd because

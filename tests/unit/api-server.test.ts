@@ -7,14 +7,16 @@ import { AuxError } from "@aux/contracts";
 
 const TOKEN = "t0ken-secret";
 let server: ApiServer;
+let events: EventBus;
 let base: string;
 const seen: { method: string; params: unknown }[] = [];
 
 beforeAll(async () => {
   const repo = new Repo(openDb(":memory:"));
+  events = new EventBus(repo);
   server = new ApiServer({
     token: TOKEN,
-    events: new EventBus(repo),
+    events,
     invoke: async (method, params) => {
       seen.push({ method, params });
       if (method === "runs.get") throw new AuxError("not_found", "no run");
@@ -102,12 +104,56 @@ describe("ApiServer over WebSocket", () => {
 
   it("accepts the token on the upgrade query and refuses without it", async () => {
     await expect(connect(base.replace("http", "ws") + "/ws")).rejects.toThrow();
-    await expect(connect(base.replace("http", "ws") + "/ws?token=scoped")).rejects.toThrow();
     const ws = await connect(`${base.replace("http", "ws")}/ws?token=${TOKEN}`);
     const ok = await roundtrip(ws, JSON.stringify({ id: 7, method: "pages.list", params: {} }));
     expect(ok.id).toBe(7);
     expect((ok.result as { echo: string }).echo).toBe("pages.list");
     ws.close();
+  });
+
+  it("connects scoped tokens and filters their event stream to scope", async () => {
+    const ws = await connect(`${base.replace("http", "ws")}/ws?token=scoped`);
+    const received: Record<string, unknown>[] = [];
+    ws.onmessage = (ev) => received.push(JSON.parse(String(ev.data)) as Record<string, unknown>);
+    // The test server has no filterEvent — a scoped socket must see nothing.
+    events.emit("task.updated", { task: { taskId: "t1", workspaceId: "workspace" } });
+    events.emit("run.updated", { run: { runId: "r1" } }, "r1");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(received).toHaveLength(0);
+    // RPC still dispatches under the scoped client context.
+    const ok = await new Promise<Record<string, unknown>>((resolve) => {
+      ws.onmessage = (ev) => resolve(JSON.parse(String(ev.data)) as Record<string, unknown>);
+      ws.send(JSON.stringify({ id: 9, method: "pages.list", params: {} }));
+    });
+    expect((ok.result as { echo: string }).echo).toBe("pages.list");
+    ws.close();
+  });
+
+  it("delivers only in-scope events to a filtered scoped socket", async () => {
+    const filtered = new ApiServer({
+      token: TOKEN,
+      events,
+      invoke: async () => ({}),
+      authorizeScopedToken: (token) =>
+        token === "scoped" ? { external: true, connectionId: "c1", scope: { kind: "task", workspaceId: "w1", taskId: "t1" } } : null,
+      filterEvent: (_client, event) =>
+        (event.payload as { task?: { taskId?: string } }).task?.taskId === "t1",
+    });
+    const port = await filtered.listen(0);
+    try {
+      const ws = await connect(`ws://127.0.0.1:${port}/ws?token=scoped`);
+      const received: Record<string, unknown>[] = [];
+      ws.onmessage = (ev) => received.push(JSON.parse(String(ev.data)) as Record<string, unknown>);
+      events.emit("task.updated", { task: { taskId: "t1", workspaceId: "w1" } });
+      events.emit("task.updated", { task: { taskId: "other", workspaceId: "w1" } });
+      events.emit("settings.changed", { category: "calendar" });
+      await new Promise((r) => setTimeout(r, 50));
+      expect(received).toHaveLength(1);
+      expect((received[0] as { event: { payload: { task: { taskId: string } } } }).event.payload.task.taskId).toBe("t1");
+      ws.close();
+    } finally {
+      await filtered.close();
+    }
   });
 
   it("error frames carry the request id; method is validated against MethodSchemas", async () => {
