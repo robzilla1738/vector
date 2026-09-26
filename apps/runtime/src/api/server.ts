@@ -24,7 +24,18 @@ export class ApiServer {
   private wss: WebSocketServer;
   /** backlog buffers live frames while a resuming socket replays its cursor. */
   private sockets = new Map<WebSocket, { client: ClientContext; backlog?: string[] }>();
+  /**
+   * Readiness gate (06-T): the port binds before the service tree finishes
+   * building so early callers get a real answer instead of ECONNREFUSED —
+   * 503 {ready:false} on /health, 503 not_ready everywhere else — until
+   * bootstrap completes and setReady() flips the gate.
+   */
+  private ready = false;
   port = 0;
+
+  setReady() {
+    this.ready = true;
+  }
 
   constructor(
     private opts: {
@@ -38,6 +49,10 @@ export class ApiServer {
     this.server = createServer((req, res) => void this.handle(req, res));
     this.wss = new WebSocketServer({ noServer: true, maxPayload: MAX_BODY_BYTES });
     this.server.on("upgrade", (req, socket, head) => {
+      if (!this.ready) {
+        socket.destroy();
+        return;
+      }
       const url = new URL(req.url ?? "/", "http://127.0.0.1");
       if (url.pathname !== "/ws") {
         socket.destroy();
@@ -63,7 +78,8 @@ export class ApiServer {
       // the socket goes live; a stale cursor gets a `resync` frame instead.
       const afterSeqParam = url.searchParams.get("afterSeq");
       const parsedSeq = afterSeqParam === null ? undefined : Number(afterSeqParam);
-      const afterSeq = parsedSeq !== undefined && Number.isInteger(parsedSeq) && parsedSeq >= 0 ? parsedSeq : undefined;
+      const afterSeq =
+        parsedSeq !== undefined && Number.isInteger(parsedSeq) && parsedSeq >= 0 ? parsedSeq : undefined;
       const streamId = url.searchParams.get("streamId") ?? undefined;
       const resume = afterSeq === undefined ? undefined : { afterSeq, streamId };
       this.wss.handleUpgrade(req, socket, head, (ws) => this.onSocket(ws, client!, resume));
@@ -72,7 +88,8 @@ export class ApiServer {
   }
 
   listen(port = 0): Promise<number> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      this.server.once("error", reject);
       this.server.listen(port, "127.0.0.1", () => {
         this.port = (this.server.address() as { port: number }).port;
         resolve(this.port);
@@ -87,7 +104,7 @@ export class ApiServer {
   private client(req: IncomingMessage): ClientContext | null {
     if (this.masterBearer(req)) return { external: true };
     const match = /^Bearer ([^\s]+)$/.exec(req.headers.authorization ?? "");
-    return match ? this.opts.authorizeScopedToken?.(match[1]!) ?? null : null;
+    return match ? (this.opts.authorizeScopedToken?.(match[1]!) ?? null) : null;
   }
 
   /**
@@ -129,7 +146,13 @@ export class ApiServer {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(out));
     });
     // Stream hello anchors every socket: identity + head at connect.
-    ws.send(JSON.stringify({ kind: "hello", streamId: this.opts.events.streamId, lastSeq: this.opts.events.lastSeq() }));
+    ws.send(
+      JSON.stringify({
+        kind: "hello",
+        streamId: this.opts.events.streamId,
+        lastSeq: this.opts.events.lastSeq(),
+      }),
+    );
     if (resume) this.resume(ws, entry, resume);
   }
 
@@ -142,14 +165,23 @@ export class ApiServer {
    * beyond REPLAY_LIMIT resync instead of replaying a flood.
    */
   private static readonly REPLAY_LIMIT = 10_000;
-  private resume(ws: WebSocket, entry: { client: ClientContext; backlog?: string[] }, resume: { afterSeq: number; streamId?: string }) {
+  private resume(
+    ws: WebSocket,
+    entry: { client: ClientContext; backlog?: string[] },
+    resume: { afterSeq: number; streamId?: string },
+  ) {
     const visible = (e: AuxEvent) =>
       !entry.client.scope || (!!this.opts.filterEvent && this.opts.filterEvent(entry.client, e));
     let cursor = resume.afterSeq;
     let lastSeq = cursor;
     let replayed = 0;
     for (;;) {
-      const out = this.opts.events.since(cursor, 2000, undefined, cursor === resume.afterSeq ? resume.streamId : undefined);
+      const out = this.opts.events.since(
+        cursor,
+        2000,
+        undefined,
+        cursor === resume.afterSeq ? resume.streamId : undefined,
+      );
       if (ws.readyState !== ws.OPEN) return;
       if (out.resync) {
         ws.send(JSON.stringify({ kind: "resync", streamId: out.streamId, lastSeq: out.lastSeq }));
@@ -161,7 +193,13 @@ export class ApiServer {
       replayed += out.events.length;
       if (out.events.length < 2000) break;
       if (replayed >= ApiServer.REPLAY_LIMIT) {
-        ws.send(JSON.stringify({ kind: "resync", streamId: this.opts.events.streamId, lastSeq: this.opts.events.lastSeq() }));
+        ws.send(
+          JSON.stringify({
+            kind: "resync",
+            streamId: this.opts.events.streamId,
+            lastSeq: this.opts.events.lastSeq(),
+          }),
+        );
         lastSeq = this.opts.events.lastSeq();
         break;
       }
@@ -195,14 +233,28 @@ export class ApiServer {
       res.end(JSON.stringify(body));
     };
 
-    if (url.pathname === "/health") return send(200, { ok: true, service: "aux-runtime" });
+    // Minimal unauthenticated probe — also the readiness signal. Everything
+    // else 503s until the service tree is built (06-T readiness gate).
+    if (url.pathname === "/health") {
+      return this.ready
+        ? send(200, { ok: true, service: "aux-runtime", ready: true })
+        : send(503, { ok: false, service: "aux-runtime", ready: false });
+    }
+    if (!this.ready) {
+      return send(503, { error: { code: "not_ready", message: "aux runtime is still starting" } });
+    }
     const client = this.client(req);
-    if (!client) return send(401, { error: { code: "unauthorized", message: "missing, revoked, or invalid bearer token" } });
+    if (!client)
+      return send(401, {
+        error: { code: "unauthorized", message: "missing, revoked, or invalid bearer token" },
+      });
 
     if (url.pathname === "/rpc" && req.method === "POST") {
       const declared = Number(req.headers["content-length"] ?? 0);
       if (declared > MAX_BODY_BYTES) {
-        return send(413, { error: { code: "invalid_params", message: `body exceeds ${MAX_BODY_BYTES} bytes` } });
+        return send(413, {
+          error: { code: "invalid_params", message: `body exceeds ${MAX_BODY_BYTES} bytes` },
+        });
       }
       const chunks: Buffer[] = [];
       let size = 0;
@@ -221,7 +273,10 @@ export class ApiServer {
       } catch {
         return send(400, { error: toErrorPayload(new AuxError("invalid_params", "bad JSON")) });
       }
-      const method = payload && typeof payload === "object" && "method" in payload ? (payload as { method: unknown }).method : undefined;
+      const method =
+        payload && typeof payload === "object" && "method" in payload
+          ? (payload as { method: unknown }).method
+          : undefined;
       const unknownMethod = typeof method !== "string" || !(method in MethodSchemas);
       const out = await this.dispatch(payload, client);
       if (unknownMethod) {

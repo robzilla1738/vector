@@ -13,6 +13,7 @@ beforeAll(async () => {
   events = new EventBus(repo);
   server = new ApiServer({ token: TOKEN, events, invoke: async () => ({}) });
   port = await server.listen(0);
+  server.setReady();
 });
 afterAll(async () => {
   await server.close();

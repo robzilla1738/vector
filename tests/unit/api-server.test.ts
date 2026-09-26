@@ -23,9 +23,17 @@ beforeAll(async () => {
       if (method === "runs.get") throw new AuxError("not_found", "no run");
       return { echo: method, params };
     },
-    authorizeScopedToken: token => token === "scoped" ? { external: true, connectionId: "connection", scope: { kind: "workspace", workspaceId: "workspace" } } : null,
+    authorizeScopedToken: (token) =>
+      token === "scoped"
+        ? {
+            external: true,
+            connectionId: "connection",
+            scope: { kind: "workspace", workspaceId: "workspace" },
+          }
+        : null,
   });
   const port = await server.listen(0);
+  server.setReady();
   base = `http://127.0.0.1:${port}`;
 });
 afterAll(async () => {
@@ -143,11 +151,14 @@ describe("ApiServer over WebSocket", () => {
       events,
       invoke: async () => ({}),
       authorizeScopedToken: (token) =>
-        token === "scoped" ? { external: true, connectionId: "c1", scope: { kind: "task", workspaceId: "w1", taskId: "t1" } } : null,
+        token === "scoped"
+          ? { external: true, connectionId: "c1", scope: { kind: "task", workspaceId: "w1", taskId: "t1" } }
+          : null,
       filterEvent: (_client, event) =>
         (event.payload as { task?: { taskId?: string } }).task?.taskId === "t1",
     });
     const port = await filtered.listen(0);
+    filtered.setReady();
     try {
       const ws = await connect(`ws://127.0.0.1:${port}/ws?token=scoped`);
       const received: Record<string, unknown>[] = [];
@@ -158,7 +169,9 @@ describe("ApiServer over WebSocket", () => {
       await new Promise((r) => setTimeout(r, 50));
       const eventFrames = received.filter((m) => "event" in m);
       expect(eventFrames).toHaveLength(1);
-      expect((eventFrames[0] as { event: { payload: { task: { taskId: string } } } }).event.payload.task.taskId).toBe("t1");
+      expect(
+        (eventFrames[0] as { event: { payload: { task: { taskId: string } } } }).event.payload.task.taskId,
+      ).toBe("t1");
       ws.close();
     } finally {
       await filtered.close();
@@ -172,7 +185,11 @@ describe("ApiServer over WebSocket", () => {
     expect(unknown.id).toBe(42);
     expect((unknown.error as { code: string }).code).toBe("not_found");
     expect(seen.length).toBe(before); // never reached invoke
-    const failed = await roundtrip(ws, JSON.stringify({ id: "abc", method: "runs.get", params: { runId: "x" } }), "abc");
+    const failed = await roundtrip(
+      ws,
+      JSON.stringify({ id: "abc", method: "runs.get", params: { runId: "x" } }),
+      "abc",
+    );
     expect(failed.id).toBe("abc");
     expect((failed.error as { code: string }).code).toBe("not_found");
     const bad = await roundtrip(ws, "{oops");
@@ -211,7 +228,9 @@ describe("event stream resume (D9)", () => {
     const got = frames(ws);
     events.emit("task.updated", { task: { taskId: "live" } });
     const all = await got;
-    const eventFrames = all.filter((m) => "event" in m) as { event: { seq: number; streamId: string; payload: { task: { taskId: string } } } }[];
+    const eventFrames = all.filter((m) => "event" in m) as {
+      event: { seq: number; streamId: string; payload: { task: { taskId: string } } };
+    }[];
     // Exactly the replayed + the live event, in seq order, each carrying streamId.
     expect(eventFrames.map((f) => f.event.payload.task.taskId)).toEqual(["replayed", "live"]);
     expect(eventFrames.map((f) => f.event.streamId)).toEqual([events.streamId, events.streamId]);
@@ -250,7 +269,12 @@ describe("token file permissions", () => {
   it("creates the data dir 0700 and runtime.json 0600", async () => {
     const parent = mkdtempSync(join(tmpdir(), "aux-perm-"));
     const dataDir = join(parent, "data");
-    const env = { ...process.env, AUX_DATA_DIR: dataDir, AUX_STANDALONE: "0", AUX_IPC: "0" } as NodeJS.ProcessEnv;
+    const env = {
+      ...process.env,
+      AUX_DATA_DIR: dataDir,
+      AUX_STANDALONE: "0",
+      AUX_IPC: "0",
+    } as NodeJS.ProcessEnv;
     loadConfig(env);
     expect(statSync(dataDir).mode & 0o777).toBe(0o700);
     const rt = await startRuntime(env);

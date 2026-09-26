@@ -35,7 +35,8 @@ import {
   type BrowserDriver,
 } from "@aux/chromium-driver";
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
-import { openDb } from "./store/db.js";
+import { openDb, SCHEMA_VERSION } from "./store/db.js";
+import { bootstrapWatchdog, isAddrInUse, resolvePortInUse } from "./lifecycle.js";
 import { PrivacyCheckpoint } from "./store/privacy-checkpoint.js";
 import { Repo } from "./store/repo.js";
 import { EventBus } from "./events.js";
@@ -108,6 +109,69 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     }
   }, 10_000).unref();
   const events = new EventBus(repo);
+
+  // ---- loopback API, bound early behind the readiness gate ----
+  // 06-T: the port binds before the service tree finishes building so early
+  // callers get a real 503 readiness answer instead of ECONNREFUSED; the
+  // bootstrap watchdog exits if the tree stalls before setReady().
+  type InvokeFn = (
+    m: string,
+    p: unknown,
+    client?: {
+      external: boolean;
+      connectionId?: string;
+      scope?: import("@aux/contracts").AgentConnectionScope;
+    },
+  ) => Promise<unknown>;
+  let resolveInvoker: (fn: InvokeFn) => void;
+  const invokerReady = new Promise<InvokeFn>((r) => (resolveInvoker = r));
+  let invokeRef: ReturnType<typeof makeInvoker> | undefined;
+  let agentConnections: AgentConnectionService | undefined;
+  const disarmWatchdog = bootstrapWatchdog();
+  const token = config.apiToken || randomUUID();
+  const api = new ApiServer({
+    token,
+    invoke: (method, params, client) => invokerReady.then((fn) => fn(method, params, client)),
+    events,
+    authorizeScopedToken: (scopedToken) => agentConnections?.authorize(scopedToken) ?? null,
+    filterEvent: (client, event) =>
+      client.scope ? (invokeRef?.eventVisible(client.scope, client.connectionId, event) ?? false) : true,
+  });
+  try {
+    await api.listen(config.apiPort);
+  } catch (error) {
+    if (!isAddrInUse(error)) throw error;
+    // Versioned takeover: replace only a strictly older daemon; a busy older
+    // peer gets the idle wait, and a wedged peer is reclaimed only after its
+    // pid verifies as our runtime.
+    const outcome = await resolvePortInUse({ dataDir: config.dataDir, ourSchema: SCHEMA_VERSION });
+    process.stderr.write(`[runtime] ${outcome.action}: ${outcome.reason}\n`);
+    if (outcome.action === "peer-serves" || outcome.action === "defer") {
+      throw new Error(`runtime port takeover declined: ${outcome.reason}`);
+    }
+    await api.listen(config.apiPort);
+  }
+  const port = api.port;
+  // the bearer token lives here — owner-only, and re-chmod'd because
+  // writeFileSync's mode applies only when the file is first created
+  const runtimeFile = join(config.dataDir, "runtime.json");
+  writeFileSync(
+    runtimeFile,
+    JSON.stringify({
+      port,
+      token,
+      pid: process.pid,
+      version: { schema: SCHEMA_VERSION },
+      startedAt: Date.now(),
+    }),
+    { mode: 0o600 },
+  );
+  try {
+    chmodSync(runtimeFile, 0o600);
+  } catch {
+    /* non-POSIX fs */
+  }
+
   const settings = new SettingsService(repo, config.settingsPath, env);
   const durableWrites = new DurableWriteLedger(repo.db);
   const safetyAudit = new SafetyAuditStore(repo.db);
@@ -157,32 +221,42 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     const run = input.runId ? repo.getRun(input.runId) : undefined;
     const taskId = run?.config?.taskId;
     const upper = input.method.toUpperCase();
-    const category = ["GET", "HEAD", "OPTIONS"].includes(upper) ? "read" : upper === "DELETE" ? "delete" : "send";
-    const decision = await decide(EffectRequestSchema.parse({
-      profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-      scope: taskId
-        ? { kind: "task", id: taskId }
-        : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
-      actor: "builtin_agent",
-      effect: "egress",
-      category,
-      action: `operation.request.${upper}`,
-      origin: input.url.origin,
-      destination: input.url.href.slice(0, 2048),
-      dataClasses: [],
-      provenance: "template",
-      invocationDigest: createHash("sha256")
-        .update(JSON.stringify(["operation.request", input.url.href, upper]))
-        .digest("hex"),
-      turnId: input.runId ?? "runtime",
-      threadId: run?.config?.chatId ?? "runtime",
-      ...(input.runId ? { runId: input.runId } : {}),
-      requestedAt: Date.now(),
-    }), decideDeps, { phase: "dispatch", headless: true });
+    const category = ["GET", "HEAD", "OPTIONS"].includes(upper)
+      ? "read"
+      : upper === "DELETE"
+        ? "delete"
+        : "send";
+    const decision = await decide(
+      EffectRequestSchema.parse({
+        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+        scope: taskId
+          ? { kind: "task", id: taskId }
+          : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+        actor: "builtin_agent",
+        effect: "egress",
+        category,
+        action: `operation.request.${upper}`,
+        origin: input.url.origin,
+        destination: input.url.href.slice(0, 2048),
+        dataClasses: [],
+        provenance: "template",
+        invocationDigest: createHash("sha256")
+          .update(JSON.stringify(["operation.request", input.url.href, upper]))
+          .digest("hex"),
+        turnId: input.runId ?? "runtime",
+        threadId: run?.config?.chatId ?? "runtime",
+        ...(input.runId ? { runId: input.runId } : {}),
+        requestedAt: Date.now(),
+      }),
+      decideDeps,
+      { phase: "dispatch", headless: true },
+    );
     if (decision.status !== "allow")
       throw new AuxError(
         "permission_denied",
-        decision.status === "deny" ? decision.guidance : "Egress requires an approval that must be granted in Aux.",
+        decision.status === "deny"
+          ? decision.guidance
+          : "Egress requires an approval that must be granted in Aux.",
         decision.status === "deny" ? { refusalId: decision.refusalId } : undefined,
       );
   };
@@ -267,17 +341,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   // Register api.invoke immediately — the renderer can call before services
   // finish booting; calls wait on the invoker promise instead of failing.
-  type InvokeFn = (
-    m: string,
-    p: unknown,
-    client?: {
-      external: boolean;
-      connectionId?: string;
-      scope?: import("@aux/contracts").AgentConnectionScope;
-    },
-  ) => Promise<unknown>;
-  let resolveInvoker: (fn: InvokeFn) => void;
-  const invokerReady = new Promise<InvokeFn>((r) => (resolveInvoker = r));
   channel?.onMethod("api.invoke", (p) => {
     const { method, params, desktopUser } = p as { method: string; params: unknown; desktopUser?: boolean };
     return invokerReady.then((fn) => fn(method, params, { external: desktopUser !== true }));
@@ -407,11 +470,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const roots = [config.artifactsDir, config.downloadsDir, config.previewsDir];
       if (taskId) {
         try {
-          const row = repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as { json: string } | undefined;
+          const row = repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as
+            { json: string } | undefined;
           const task = row ? TaskSchema.parse(JSON.parse(row.json)) : undefined;
           for (const resource of task?.resources ?? [])
             if (resource.kind === "file" || resource.kind === "repository") roots.push(resource.locator);
-        } catch { /* task deleted — session roots still apply */ }
+        } catch {
+          /* task deleted — session roots still apply */
+        }
       }
       return roots;
     },
@@ -431,24 +497,36 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const claim = pageClaims.activeForPage(pageId);
       if (!claim) return undefined;
       const run = repo.getRun(claim.runId);
-      const decision = await decide(EffectRequestSchema.parse({
-        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-        scope: run?.config?.taskId
-          ? { kind: "task", id: run.config.taskId }
-          : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
-        actor: "builtin_agent",
-        effect: "write",
-        category: "dialog",
-        action: `dialog.${type}`,
-        origin: (() => { try { return new URL(pages.get(pageId).url).origin; } catch { return claim.pageId; } })(),
-        dataClasses: [],
-        provenance: "page",
-        invocationDigest: createHash("sha256").update(JSON.stringify(["dialog", pageId, type, message])).digest("hex"),
-        turnId: claim.runId,
-        threadId: run?.config?.chatId ?? claim.runId,
-        runId: claim.runId,
-        requestedAt: Date.now(),
-      }), decideDeps, { phase: "dispatch" });
+      const decision = await decide(
+        EffectRequestSchema.parse({
+          profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+          scope: run?.config?.taskId
+            ? { kind: "task", id: run.config.taskId }
+            : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+          actor: "builtin_agent",
+          effect: "write",
+          category: "dialog",
+          action: `dialog.${type}`,
+          origin: (() => {
+            try {
+              return new URL(pages.get(pageId).url).origin;
+            } catch {
+              return claim.pageId;
+            }
+          })(),
+          dataClasses: [],
+          provenance: "page",
+          invocationDigest: createHash("sha256")
+            .update(JSON.stringify(["dialog", pageId, type, message]))
+            .digest("hex"),
+          turnId: claim.runId,
+          threadId: run?.config?.chatId ?? claim.runId,
+          runId: claim.runId,
+          requestedAt: Date.now(),
+        }),
+        decideDeps,
+        { phase: "dispatch" },
+      );
       if (decision.status === "deny") return "dismiss";
       if (decision.status === "ask") {
         suspensions.park({
@@ -542,32 +620,41 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
    */
   const decideLoopEgress = async (
     ctx: { runId: string; threadId: string; turnId: string },
-    dest: URL, action: string, headless: boolean,
+    dest: URL,
+    action: string,
+    headless: boolean,
   ) => {
     const run = repo.getRun(ctx.runId);
-    return decide(EffectRequestSchema.parse({
-      profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
-      scope: run?.config?.taskId
-        ? { kind: "task", id: run.config.taskId }
-        : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
-      actor: "builtin_agent",
-      effect: "egress",
-      category: "read",
-      action,
-      origin: dest.origin,
-      destination: dest.href.slice(0, 2048),
-      dataClasses: [],
-      provenance: "template",
-      invocationDigest: createHash("sha256").update(JSON.stringify(["loop.egress", dest.href, action])).digest("hex"),
-      turnId: ctx.runId,
-      threadId: ctx.threadId,
-      runId: ctx.runId,
-      requestedAt: Date.now(),
-    }), decideDeps, { phase: "dispatch", headless });
+    return decide(
+      EffectRequestSchema.parse({
+        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+        scope: run?.config?.taskId
+          ? { kind: "task", id: run.config.taskId }
+          : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+        actor: "builtin_agent",
+        effect: "egress",
+        category: "read",
+        action,
+        origin: dest.origin,
+        destination: dest.href.slice(0, 2048),
+        dataClasses: [],
+        provenance: "template",
+        invocationDigest: createHash("sha256")
+          .update(JSON.stringify(["loop.egress", dest.href, action]))
+          .digest("hex"),
+        turnId: ctx.runId,
+        threadId: ctx.threadId,
+        runId: ctx.runId,
+        requestedAt: Date.now(),
+      }),
+      decideDeps,
+      { phase: "dispatch", headless },
+    );
   };
   const loopEgressGate = async (
     ctx: { runId: string; threadId: string; turnId: string },
-    url: string, action: string,
+    url: string,
+    action: string,
   ): Promise<URL | { park: import("./agent/loop/types.js").LoopPark }> => {
     const decision = await decideLoopEgress(ctx, permittedWebUrl(url), action, false);
     if (decision.status === "deny") {
@@ -575,8 +662,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     }
     if (decision.status === "ask") {
       suspensions.park({
-        runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.runId,
-        kind: decision.suspension.kind, request: decision.suspension,
+        runId: ctx.runId,
+        threadId: ctx.threadId,
+        turnId: ctx.runId,
+        kind: decision.suspension.kind,
+        request: decision.suspension,
       });
       return {
         park: {
@@ -631,8 +721,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
     if (decision.status === "ask") {
       suspensions.park({
-        runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.runId,
-        kind: decision.suspension.kind, request: decision.suspension,
+        runId: ctx.runId,
+        threadId: ctx.threadId,
+        turnId: ctx.runId,
+        kind: decision.suspension.kind,
+        request: decision.suspension,
       });
       return {
         park: {
@@ -656,7 +749,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     webSearch: async (query, ctx) => {
       const engine = settings.searchEngine();
       if (!engine) throw new AuxError("backend_unavailable", "Profile search engine is unavailable.");
-      const gated = await loopEgressGate(ctx, engine.replaceAll("%s", encodeURIComponent(query)), "agent.web.search");
+      const gated = await loopEgressGate(
+        ctx,
+        engine.replaceAll("%s", encodeURIComponent(query)),
+        "agent.web.search",
+      );
       if ("park" in gated) return { park: gated.park };
       const web = new AgentWebTools(
         async (hop) => (await decideLoopEgress(ctx, hop, "agent.web.search.hop", true)).status === "allow",
@@ -671,12 +768,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       return hits.map((hit) => ({ title: hit.title, url: hit.url, text: hit.snippet }));
     },
     // 06-X history_search / memory_search — the same projections the shell uses.
-    historySearch: async (query, limit) => repo.listHistory(query, Math.min(Math.max(1, Math.floor(limit)), 50)),
+    historySearch: async (query, limit) =>
+      repo.listHistory(query, Math.min(Math.max(1, Math.floor(limit)), 50)),
     memorySearch: async (query, ctx) => {
       const ws = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
       if (!ws || !contentMemory) return [];
       const hits = await contentMemory.search(ws, query, 8);
-      return hits.map((hit) => ({ title: hit.title, url: hit.url, text: hit.snippet, capturedAt: hit.capturedAt }));
+      return hits.map((hit) => ({
+        title: hit.title,
+        url: hit.url,
+        text: hit.snippet,
+        capturedAt: hit.capturedAt,
+      }));
     },
     // 06-X notification — a durable notice on the run's event stream.
     notify: async ({ text }, ctx) => {
@@ -740,7 +843,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         replGroups.set(ctx.runId, groupId);
       }
       const profile = SubagentProfileSchema.safeParse(input.profile ?? "default");
-      if (!profile.success) throw new AuxError("invalid_params", "profile must be explorer, read_only or default.");
+      if (!profile.success)
+        throw new AuxError("invalid_params", "profile must be explorer, read_only or default.");
       const agent = await subagents.spawn({
         groupId,
         goal: input.goal,
@@ -805,7 +909,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     if (ws && current.workspaceId !== ws)
       throw new AuxError("permission_denied", "This routine belongs to another Space.");
     const patch = Object.fromEntries(
-      Object.entries(input).filter(([key, value]) => key !== "routineId" && key !== "expectedRevision" && value !== undefined),
+      Object.entries(input).filter(
+        ([key, value]) => key !== "routineId" && key !== "expectedRevision" && value !== undefined,
+      ),
     );
     if (!Object.keys(patch).length) throw new AuxError("invalid_params", "Name one field to update.");
     const expectedRevision = input.expectedRevision ?? current.revision;
@@ -889,7 +995,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   };
   const chromeTabs = async () => drivers.chrome?.listTargets() ?? [];
   const cookies = new CookieService({ drivers: () => drivers, native });
-  const agentConnections = new AgentConnectionService(repo);
+  agentConnections = new AgentConnectionService(repo);
 
   const invoke = makeInvoker({
     featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : "electron",
@@ -943,29 +1049,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     invoke("routines.ingestEvent", params, { external: false }),
   );
 
-  // ---- loopback API ----
-  const token = config.apiToken || randomUUID();
-  const api = new ApiServer({
-    token,
-    invoke,
-    events,
-    authorizeScopedToken: (scopedToken) => agentConnections.authorize(scopedToken),
-    filterEvent: (client, event) =>
-      client.scope ? invoke.eventVisible(client.scope, client.connectionId, event) : true,
-  });
-  const port = await api.listen(config.apiPort);
-  // the bearer token lives here — owner-only, and re-chmod'd because
-  // writeFileSync's mode applies only when the file is first created
-  const runtimeFile = join(config.dataDir, "runtime.json");
-  writeFileSync(runtimeFile, JSON.stringify({ port, token, pid: process.pid }), { mode: 0o600 });
-  try {
-    chmodSync(runtimeFile, 0o600);
-  } catch {
-    /* non-POSIX fs */
-  }
-
   // ---- channel surface for the shell ----
+  // The loopback port has been bound since bootstrap began; flipping the
+  // readiness gate is the last step — callers were 503'd until now.
+  invokeRef = invoke;
   resolveInvoker!(invoke);
+  api.setReady();
+  disarmWatchdog();
   const dueTimer = setInterval(() => {
     void invoke("routines.due", {}, { external: false }).catch(() => undefined);
   }, 60_000);
@@ -1150,8 +1240,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // Suspensions parked by runs that did not survive the restart expire; a
   // still-parked suspension belongs to a resumable run and resurfaces for UI.
   const liveRunIds = new Set(
-    repo.listRuns(200).filter(run => ["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
-      .map(run => run.runId));
+    repo
+      .listRuns(200)
+      .filter((run) => ["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
+      .map((run) => run.runId),
+  );
   suspensions.expireOrphans(liveRunIds);
   // The same for durable page claims: a dead run cannot still own a tab.
   runs.pageClaims.releaseOrphans(liveRunIds);
