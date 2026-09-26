@@ -44,3 +44,4 @@ aux/shell/0043-modal-surface-bounds.patch
 aux/shell/0044-shortcut-registry.patch
 aux/shell/0045-native-file-dialog-window.patch
 aux/shell/0046-native-pdf-export.patch
+aux/shell/0047-method-registry.patch
