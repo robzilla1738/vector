@@ -21,7 +21,7 @@ export { RpcChannel, memoryTransportPair, type Transport } from "@aux/contracts"
 export { PageService, type DriverSet, type ExecuteResult } from "./services/pages.js";
 export { SetService } from "./services/sets.js";
 export { RunService, substituteParameters } from "./services/runs.js";
-export { makeInvoker, type Services } from "./api/handlers.js";
+export { makeInvoker, type Services } from "./api/invoke.js";
 export { SettingsService } from "./services/settings.js";
 export { ArtifactStore } from "./services/artifacts.js";
 export {

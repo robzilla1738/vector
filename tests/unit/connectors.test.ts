@@ -9,7 +9,7 @@ import { TaskService } from "../../apps/runtime/src/services/tasks.js";
 import { EventBus } from "../../apps/runtime/src/events.js";
 import { openDb } from "../../apps/runtime/src/store/db.js";
 import { Repo } from "../../apps/runtime/src/store/repo.js";
-import { makeInvoker, type Services } from "../../apps/runtime/src/api/handlers.js";
+import { makeInvoker, type Services } from "../../apps/runtime/src/api/invoke.js";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
 
 const databases: ReturnType<typeof openDb>[] = [];

@@ -56,7 +56,7 @@ import { ResponseStore } from "./services/responses.js";
 import { OperationService } from "./services/operations.js";
 import { StateService } from "./services/state.js";
 import { Tracer } from "./services/tracing.js";
-import { makeInvoker } from "./api/handlers.js";
+import { makeInvoker } from "./api/invoke.js";
 import { ApiServer } from "./api/server.js";
 import { AgentConnectionService } from "./services/agent-connections.js";
 import { CalendarConnectionService } from "./services/calendar-connections.js";

@@ -4,7 +4,7 @@ import { openDb } from "../../apps/runtime/src/store/db.js";
 import { Repo } from "../../apps/runtime/src/store/repo.js";
 import { EventBus } from "../../apps/runtime/src/events.js";
 import { TaskService } from "../../apps/runtime/src/services/tasks.js";
-import { makeInvoker, type Services } from "../../apps/runtime/src/api/handlers.js";
+import { makeInvoker, type Services } from "../../apps/runtime/src/api/invoke.js";
 import { RunCoordinator } from "../../apps/runtime/src/agent/coordinator.js";
 import { OperationService } from "../../apps/runtime/src/services/operations.js";
 import type { ModelClient } from "../../apps/runtime/src/agent/model-client.js";

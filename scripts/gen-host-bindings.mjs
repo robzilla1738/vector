@@ -2,7 +2,7 @@
 /** Generate native and renderer bindings from the reviewed host method manifest. */
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,8 +18,12 @@ const apiMethods = Object.keys(MethodSchemas);
 if (JSON.stringify(apiMethods) !== JSON.stringify(Object.keys(RuntimeMethodPolicy))) {
   throw new Error("Runtime method policy must list every MethodSchemas entry in order");
 }
-const handlerSource = readFileSync(join(root, "apps/runtime/src/api/handlers.ts"), "utf8");
-const handlerCases = new Set([...handlerSource.matchAll(/case\s+["']([^"']+)["']\s*:/g)].map(match => match[1]));
+const methodsDir = join(root, "apps/runtime/src/api/methods");
+const handlerSource = readdirSync(methodsDir)
+  .filter((file) => file.endsWith(".ts") && file !== "context.ts" && file !== "index.ts")
+  .map((file) => readFileSync(join(methodsDir, file), "utf8"))
+  .join("\n");
+const handlerCases = new Set([...handlerSource.matchAll(/"([^"']+)"\s*:\s*h_/g)].map(match => match[1]));
 if (apiMethods.some(method => !handlerCases.has(method))) {
   throw new Error(`Runtime API has schemas without handlers: ${apiMethods.filter(method => !handlerCases.has(method)).join(", ")}`);
 }

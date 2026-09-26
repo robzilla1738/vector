@@ -1,0 +1,131 @@
+import type { MethodCtx, MethodHandler } from "./context.js";
+import type { MethodName } from "@aux/contracts";
+import { AuxError, taskMatchesQuery } from "@aux/contracts";
+
+async function h_tasks_receipt(ctx: MethodCtx): Promise<unknown> {
+  const { params, taskEvidence } = ctx;
+  return taskEvidence.receipt(params.taskId, params.revision);
+}
+async function h_tasks_verifyCriterion(ctx: MethodCtx): Promise<unknown> {
+  const { params, taskEvidence } = ctx;
+  return taskEvidence.verifyCriterion(params);
+}
+async function h_tasks_replaceAgent(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, requireScopedPage, s, scope, tasks } = ctx;
+  const details = tasks.details(params.taskId);
+  for (const { run } of details.runs) {
+    if (["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
+      s.runs.cancel(run.runId);
+  }
+  const pageIds = params.pageIds ?? (params.pageId ? [params.pageId] : []);
+  if (scope && Array.isArray(pageIds))
+    for (const pageId of pageIds) requireScopedPage(scope, pageId, client.connectionId);
+  return s.runs.start({
+    ...tasks.prepareRun(params.taskId, params.expectedRevision, params.context),
+    pageIds,
+    modelId: params.modelId,
+  });
+}
+async function h_tasks_recordEvidence(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, taskEvidence } = ctx;
+  return taskEvidence.recordNote(params, client.external ? "external_client" : "desktop_user");
+}
+async function h_tasks_importDocumentEvidence(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, taskEvidence } = ctx;
+  if (client.external)
+    throw new AuxError("permission_denied", "Document import requires the Aux desktop interface");
+  return taskEvidence.importDocument(params);
+}
+async function h_tasks_captureEvidence(ctx: MethodCtx): Promise<unknown> {
+  const { params, taskEvidence } = ctx;
+  return taskEvidence.capture(params);
+}
+async function h_tasks_reviewCriterion(ctx: MethodCtx): Promise<unknown> {
+  const { client, method, params, taskEvidence } = ctx;
+  if (client.external)
+    throw new AuxError(
+      "permission_denied",
+      "Human review and reconciliation require the Aux desktop interface",
+    );
+  return method === "tasks.reviewCriterion"
+    ? taskEvidence.review(params)
+    : method === "tasks.reconcileAction"
+      ? taskEvidence.reconcile(params)
+      : taskEvidence.reconcileOperation(params);
+}
+async function h_tasks_create(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, tasks } = ctx;
+  if (
+    client.external &&
+    Array.isArray(params.resources) &&
+    params.resources.some((resource: { access?: string }) => resource.access === "write")
+  ) {
+    throw new AuxError("permission_denied", "Write access on task resources can only be set in Aux.");
+  }
+  return tasks.create(params);
+}
+async function h_tasks_promote(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, tasks } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Save a conversation as a task in Aux.");
+  return tasks.promote(params);
+}
+async function h_tasks_get(ctx: MethodCtx): Promise<unknown> {
+  const { params, taskEvidence, tasks } = ctx;
+  const details = tasks.details(params.taskId);
+  return {
+    ...details,
+    children: details.children.map((child) => ({
+      ...child,
+      receiptStatus: taskEvidence.receipt(child.task.taskId).status,
+    })),
+  };
+}
+async function h_tasks_list(ctx: MethodCtx): Promise<unknown> {
+  const { params, scope, scopedTasks, tasks } = ctx;
+  return scope
+    ? scopedTasks(scope)
+        .filter(
+          (task) => (params.includeArchived || task.state === "open") && taskMatchesQuery(task, params.query),
+        )
+        .slice(0, params.limit)
+    : tasks.list(params);
+}
+async function h_tasks_update(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, tasks } = ctx;
+  if (
+    client.external &&
+    Array.isArray(params.resources) &&
+    params.resources.some((resource: { access?: string }) => resource.access === "write")
+  ) {
+    throw new AuxError("permission_denied", "Write access on task resources can only be set in Aux.");
+  }
+  return tasks.update(params);
+}
+async function h_tasks_archive(ctx: MethodCtx): Promise<unknown> {
+  const { params, tasks } = ctx;
+  return tasks.archive(params.taskId, params.expectedRevision, params.archived);
+}
+async function h_tasks_start(ctx: MethodCtx): Promise<unknown> {
+  const { params, s, tasks } = ctx;
+  const { taskId, expectedRevision, ...options } = params;
+  return s.runs.start({ ...options, ...tasks.prepareRun(taskId, expectedRevision, options.context) });
+}
+
+export const tasksMethods: Partial<Record<MethodName, MethodHandler>> = {
+  "tasks.receipt": h_tasks_receipt,
+  "tasks.verifyCriterion": h_tasks_verifyCriterion,
+  "tasks.replaceAgent": h_tasks_replaceAgent,
+  "tasks.recordEvidence": h_tasks_recordEvidence,
+  "tasks.importDocumentEvidence": h_tasks_importDocumentEvidence,
+  "tasks.captureEvidence": h_tasks_captureEvidence,
+  "tasks.reviewCriterion": h_tasks_reviewCriterion,
+  "tasks.reconcileAction": h_tasks_reviewCriterion,
+  "tasks.reconcileOperation": h_tasks_reviewCriterion,
+  "tasks.create": h_tasks_create,
+  "tasks.promote": h_tasks_promote,
+  "tasks.get": h_tasks_get,
+  "tasks.list": h_tasks_list,
+  "tasks.update": h_tasks_update,
+  "tasks.archive": h_tasks_archive,
+  "tasks.start": h_tasks_start,
+};
