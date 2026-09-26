@@ -18,6 +18,7 @@ import { clampOutputTokens, MODEL_REGISTRY, modelAcceptsImages, modelCapabilitie
 import { extractJson } from "./json-text.js";
 import { attemptsOf, DEFAULT_PLANNER_MODEL, modelCallCost, usageFields, withAttempts, type ModelAttempt, type ModelClient, type StructuredCallResult, type TextCallResult, type ToolCallStepResult } from "./model-client.js";
 import { estimatedPromptTokens, projectedModelCostUsd, SpendLedger } from "../store/spend-ledger.js";
+import { ANTHROPIC_CACHE_CONTROL, anthropicCachedMessages, openAiSessionCache } from "./prompt-cache.js";
 
 /** Per-call ceiling — a hung gateway must not stall a run until runs.cancel. */
 export const DEFAULT_MODEL_CALL_TIMEOUT_MS = 90_000;
@@ -210,6 +211,8 @@ type CallOpts = {
   maxOutputTokens?: number;
   maxAttempts?: number;
   reasoning?: "minimal" | "low" | "medium" | "high" | "xhigh";
+  sessionId?: string;
+  providerOptions?: Record<string, Record<string, unknown>>;
 };
 
 const RETRY_SYSTEM = "\n\nRespond with ONLY the JSON object — no <think> tags, no reasoning, no prose, no markdown fences.";
@@ -307,14 +310,33 @@ export class GatewayModelClient implements ModelClient {
       throw new AuxError("capability_unsupported", "Choose an image-capable model to use these image references. This model accepts text only.");
   }
 
-  private sdkOptions(opts: CallOpts, maxOutputTokens: number) {
+  /** Gateway keeps `caching: "auto"`. Direct Anthropic and OpenAI get their own cache markers. */
+  private directRequest(opts: Omit<CallOpts, "prompt"> & { messages: ModelMessage[] }, maxOutputTokens: number) {
+    const model = this.resolveModel(opts.modelId);
+    const provider = this.gateway ? undefined : (model as { provider?: string }).provider;
+    const anthropic = provider === "anthropic";
+    const cachedMessages = anthropic ? anthropicCachedMessages(opts.system, opts.messages) : opts.messages;
+    const gateway = this.gateway
+      ? gatewayProviderOptions(this.only, opts.modelId, this.capabilities(), opts.reasoning as "low" | "medium" | "xhigh" | undefined)
+      : undefined;
+    const session = provider === "openai" && opts.sessionId ? openAiSessionCache(opts.sessionId) : undefined;
     return {
-      model: this.resolveModel(opts.modelId),
+      model,
       abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
-      maxRetries: 0,
+      maxRetries: 0 as const,
       maxOutputTokens: clampOutputTokens(opts.modelId, maxOutputTokens, this.capabilities()),
       ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? "medium" as const } : {}),
-      providerOptions: this.gateway ? gatewayProviderOptions(this.only, opts.modelId, this.capabilities(), opts.reasoning as "low" | "medium" | "xhigh" | undefined) : undefined,
+      ...(anthropic ? { allowSystemInMessages: true as const } : { system: opts.system }),
+      messages: cachedMessages,
+      providerOptions: {
+        ...gateway,
+        ...session,
+        ...opts.providerOptions,
+        ...(gateway?.openai || session?.openai || opts.providerOptions?.openai
+          ? { openai: { ...gateway?.openai, ...session?.openai, ...opts.providerOptions?.openai } }
+          : {}),
+      } as Parameters<typeof generateText>[0]["providerOptions"],
+      cacheTools: anthropic,
     };
   }
 
@@ -331,12 +353,13 @@ export class GatewayModelClient implements ModelClient {
     // still use structured output.
     if (!schemaNeedsJsonFallback(opts.schema)) {
       try {
-        const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, z.toJSONSchema(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000, () => generateObject({
-          ...this.sdkOptions(opts, opts.maxOutputTokens ?? 2000),
-          schema: opts.schema,
-          system: opts.system,
-          messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls),
-        }));
+        const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, z.toJSONSchema(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000, () => {
+          const { cacheTools: _cacheTools, ...request } = this.directRequest(
+            { ...opts, messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls) },
+            opts.maxOutputTokens ?? 2000,
+          );
+          return generateObject({ ...request, schema: opts.schema });
+        });
         return { object: res.object, ...attempt(started, res) };
       } catch (e) {
         if (opts.signal?.aborted) throw e;
@@ -366,11 +389,11 @@ export class GatewayModelClient implements ModelClient {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
     const reservation = this.spendLedger?.reserve("aux-runtime", opts.modelId, projectedModelCostUsd(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, schemaHint(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000, this.capabilities()));
-    const stream = streamText({
-      ...this.sdkOptions(opts, opts.maxOutputTokens ?? 2000),
-      system: `${opts.system}${schemaHint(opts.schema)}`,
-      messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls),
-    });
+    const { cacheTools: _cacheTools, ...request } = this.directRequest(
+      { ...opts, system: `${opts.system}${schemaHint(opts.schema)}`, messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls) },
+      opts.maxOutputTokens ?? 2000,
+    );
+    const stream = streamText(request);
     let text = "";
     let usage: unknown;
     let providerMetadata: unknown;
@@ -436,6 +459,7 @@ export class GatewayModelClient implements ModelClient {
     signal?: AbortSignal;
     maxOutputTokens?: number;
     reasoning?: CallOpts["reasoning"];
+    sessionId?: string;
   }): Promise<TextCallResult> {
     return this.withFailover(opts, (o) => this.generateTextInner(o));
   }
@@ -449,15 +473,18 @@ export class GatewayModelClient implements ModelClient {
     signal?: AbortSignal;
     maxOutputTokens?: number;
     reasoning?: CallOpts["reasoning"];
+    sessionId?: string;
   }): Promise<TextCallResult> {
     const started = Date.now();
     const images = [...(opts.imageDataUrls ?? []), ...(opts.imageDataUrl ? [opts.imageDataUrl] : [])];
     this.requireVision(opts.modelId, images);
-    const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system ?? "", opts.prompt) + images.length * 8192, opts.maxOutputTokens ?? 1200, () => generateText({
-      ...this.sdkOptions({ ...opts, system: opts.system ?? "" }, opts.maxOutputTokens ?? 1200),
-      system: opts.system,
-      messages: imageReferenceMessage(opts.prompt, images),
-    }));
+    const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system ?? "", opts.prompt) + images.length * 8192, opts.maxOutputTokens ?? 1200, () => {
+      const { cacheTools: _cacheTools, ...request } = this.directRequest(
+        { ...opts, system: opts.system ?? "", messages: imageReferenceMessage(opts.prompt, images) },
+        opts.maxOutputTokens ?? 1200,
+      );
+      return generateText(request);
+    });
     return { text: res.text, ...attempt(started, res) };
   }
 
@@ -476,6 +503,7 @@ export class GatewayModelClient implements ModelClient {
     providerOptions?: Record<string, Record<string, unknown>>;
     maxOutputTokens?: number;
     reasoning?: CallOpts["reasoning"];
+    sessionId?: string;
   }): Promise<ToolCallStepResult> {
     return this.withFailover(opts, (o) => this.toolCallStepInner(o));
   }
@@ -489,25 +517,27 @@ export class GatewayModelClient implements ModelClient {
     providerOptions?: Record<string, Record<string, unknown>>;
     maxOutputTokens?: number;
     reasoning?: CallOpts["reasoning"];
+    sessionId?: string;
   }): Promise<ToolCallStepResult> {
     const started = Date.now();
-    const tools = Object.fromEntries(
-      Object.entries(opts.tools).map(([name, spec]) => [
-        name,
-        // No execute: client-side tools — the SDK returns the calls and stops.
-        tool({ ...(spec.description ? { description: spec.description } : {}), inputSchema: spec.inputSchema }),
-      ]),
-    );
+    const names = Object.keys(opts.tools);
     const maxOut = clampOutputTokens(opts.modelId, opts.maxOutputTokens ?? 4000, this.capabilities());
+    const { cacheTools, ...request } = this.directRequest(opts, maxOut);
+    const lastTool = names.at(-1);
+    const tools = Object.fromEntries(
+      names.map((name) => {
+        const spec = opts.tools[name]!;
+        return [name, tool({
+          ...(spec.description ? { description: spec.description } : {}),
+          inputSchema: spec.inputSchema,
+          ...(cacheTools && name === lastTool
+            ? { providerOptions: { anthropic: { cacheControl: ANTHROPIC_CACHE_CONTROL } } }
+            : {}),
+        })];
+      }),
+    );
     const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, JSON.stringify(opts.messages).slice(0, 120_000)), maxOut, () => generateText({
-      model: this.resolveModel(opts.modelId),
-      abortSignal: withCallTimeout(opts.signal, this.callTimeoutMs),
-      maxRetries: 0,
-      maxOutputTokens: maxOut,
-      ...(opts.modelId === DEFAULT_PLANNER_MODEL ? { reasoning: opts.reasoning ?? "medium" as const } : {}),
-      providerOptions: { ...gatewayProviderOptions(this.only, opts.modelId, this.capabilities(), opts.reasoning as "low" | "medium" | "xhigh" | undefined), ...opts.providerOptions },
-      system: opts.system,
-      messages: opts.messages,
+      ...request,
       tools,
     }));
     const lastStep = res.steps.at(-1);

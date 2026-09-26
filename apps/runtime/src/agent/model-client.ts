@@ -104,6 +104,8 @@ export interface ModelClient {
     reasoning?: "low" | "medium" | "xhigh";
     /** Bound provider attempts for shared-budget callers; 1 disables corrective retries. */
     maxAttempts?: number;
+    /** OpenAI prompt-cache key. Direct Anthropic caching does not use it. */
+    sessionId?: string;
   }): Promise<StructuredCallResult<T>>;
 
   /**
@@ -122,6 +124,7 @@ export interface ModelClient {
     signal?: AbortSignal;
     maxOutputTokens?: number;
     reasoning?: "low" | "medium" | "xhigh";
+    sessionId?: string;
     onText: (delta: string) => void;
   }): Promise<StructuredCallResult<T>>;
 
@@ -135,6 +138,7 @@ export interface ModelClient {
     signal?: AbortSignal;
     maxOutputTokens?: number;
     reasoning?: "low" | "medium" | "xhigh";
+    sessionId?: string;
   }): Promise<TextCallResult>;
 
   /**
@@ -154,6 +158,8 @@ export interface ModelClient {
     providerOptions?: Record<string, Record<string, unknown>>;
     maxOutputTokens?: number;
     reasoning?: "low" | "medium" | "xhigh";
+    /** Conversation id. Direct OpenAI calls send it as `prompt_cache_key`. */
+    sessionId?: string;
   }): Promise<ToolCallStepResult>;
 
   listModels(): Promise<{ id: string; name?: string; inputUsdPerMTok?: number; outputUsdPerMTok?: number }[]>;

@@ -379,6 +379,9 @@ describe("runToolLoop (S5 host integration)", () => {
     const transcript = new TranscriptStore(h.db).load(run.runId);
     expect(transcript[0]).toMatchObject({ role: "user" });
     expect(String(transcript[0]!.content)).toMatch(/read the page/);
+    expect(String(transcript[1]!.content)).toMatch(/Current page snapshot/);
+    expect(String(transcript[1]!.content)).toMatch(/Order page/);
+    expect(h.pages.observe).toHaveBeenCalledTimes(1);
     expect(h.modelCalls[0]).toMatchObject({ role: "agent" });
   });
 

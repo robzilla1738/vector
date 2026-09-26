@@ -161,6 +161,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
         tools: sdkTools,
         signal: opts.signal,
         providerOptions: opts.providerOptions,
+        sessionId: opts.threadId,
         maxOutputTokens: opts.maxOutputTokens,
       });
     } catch (error) {

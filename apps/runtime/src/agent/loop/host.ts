@@ -405,6 +405,25 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   };
   deps.repl = ({ code, deadlineMs }) => replPool.eval(replDeps, code, { pageId: activePageId, deadlineMs });
 
+  // The planner sees the page inside its first call. Seed that same snapshot
+  // so a read can finish in one submit_result instead of a snapshot round trip.
+  if (activePageId && transcript.count(runId) === 1) {
+    try {
+      const seeded = recordObs(await observePage(activePageId, {}));
+      transcript.append(runId, [{
+        role: "user",
+        content: [
+          "Current page snapshot. This observation is already recorded — answer from it when it contains the answer, and do not call snapshot again unless the page changes.",
+          `observationId: ${seeded.observationId}`,
+          `revision: ${seeded.revision}`,
+          seeded.text,
+        ].join("\n"),
+      }]);
+    } catch {
+      /* the page is not observable yet; the model can snapshot */
+    }
+  }
+
   self.setStatus(runId, "running", "Working…");
   const startedAt = Date.now();
   self.deps.repo.saveRun({ ...self.get(runId), startedAt });
