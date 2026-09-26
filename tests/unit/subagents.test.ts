@@ -141,3 +141,42 @@ it("cancels a child whose launch fails after the run was persisted", async () =>
     expect(f.service.view(group.groupId).agents[0]?.state).toBe("failed");
   } finally { f.close(); }
 });
+
+it("waitFor resolves when a cell reaches a terminal state and reports pending while active", async () => {
+  const f = fixture();
+  try {
+    const group = f.service.createGroup({ parentRunId: f.parent.runId, tokenBudget: 2000, costBudgetUsd: 0.5,
+      timeBudgetMs: 60_000 });
+    const agent = await f.service.spawn({ groupId: group.groupId, goal: "Watch me", pageIds: ["one"],
+      profile: "default", tokenAllocation: 1000, costAllocationUsd: 0.2 });
+    expect(f.service.get(agent.agentId).state).toBe("running");
+    const pending = await f.service.waitFor(agent.agentId, 60);
+    expect(pending.pending).toBe(true);
+    f.service.sendMessage(agent.agentId, agent.runId!, "steer me");
+    expect(f.messages.at(-1)).toMatchObject({ text: "steer me" });
+    const done = f.repo.getRun(agent.runId!)!;
+    done.status = "completed"; done.result = { answer: 42 }; f.repo.saveRun(done);
+    f.events.emit(EventTypes.RunUpdated, { run: done }, done.runId);
+    const settled = await f.service.waitFor(agent.agentId, 2000);
+    expect(settled.state).toBe("completed");
+    expect(settled.result).toEqual({ answer: 42 });
+    expect(() => f.service.sendMessage(agent.agentId, agent.runId!, "late note")).toThrow(/turn changed|state changed/);
+  } finally { f.close(); }
+});
+
+it("waitFor surfaces the child run's failure", async () => {
+  const f = fixture();
+  try {
+    const group = f.service.createGroup({ parentRunId: f.parent.runId, tokenBudget: 2000, costBudgetUsd: 0.5,
+      timeBudgetMs: 60_000 });
+    const agent = await f.service.spawn({ groupId: group.groupId, goal: "Break", pageIds: ["one"],
+      profile: "default", tokenAllocation: 1000, costAllocationUsd: 0.2 });
+    const failed = f.repo.getRun(agent.runId!)!;
+    failed.status = "failed";
+    failed.failure = { category: "unknown", message: "it broke", retryable: false, action: "edit_request" };
+    f.repo.saveRun(failed);
+    f.events.emit(EventTypes.RunUpdated, { run: failed }, failed.runId);
+    const settled = await f.service.waitFor(agent.agentId, 2000);
+    expect(settled.error).toBe("it broke");
+  } finally { f.close(); }
+});

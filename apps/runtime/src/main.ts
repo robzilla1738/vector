@@ -20,6 +20,7 @@ import {
   EffectRequestSchema,
   OriginRuleSchema,
   TaskSchema,
+  SubagentProfileSchema,
   ZapSnapshotParamsSchema,
   auxFeatureEnabled,
   isElementRef,
@@ -44,6 +45,7 @@ import { NativeCdpBroker } from "./native-cdp-broker.js";
 import { PageService, type DriverSet } from "./services/pages.js";
 import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
+import { SubagentService } from "./services/subagents.js";
 import { handlePageTakeover } from "./services/page-takeover.js";
 import { ArtifactStore } from "./services/artifacts.js";
 import { minimizeLegacyObservationArtifacts } from "./services/observation-artifact-migration.js";
@@ -641,6 +643,49 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     agentLoop,
   });
 
+  // Subagent cells (06-Y): the service is shared with the RPC invoker; the
+  // REPL spawns cells under a lazily created group per parent run.
+  const subagents = new SubagentService(repo, events, runs);
+  const replGroups = new Map<string, string>();
+  agentLoop.subagents = {
+    spawnCell: async (input, ctx) => {
+      const run = repo.getRun(ctx.runId);
+      if (!run) throw new AuxError("not_found", "The parent run does not exist.");
+      let groupId = replGroups.get(ctx.runId);
+      if (!groupId) {
+        const group = subagents.createGroup({
+          parentRunId: ctx.runId,
+          tokenBudget: Math.min(Math.max(1_000, run.config?.maxTokens ?? 200_000), 1_000_000),
+          costBudgetUsd: Math.min(run.config?.maxCostUsd ?? 5, 50),
+          timeBudgetMs: Math.min(Math.max(1_000, run.config?.deadlineMs ?? 600_000), 86_400_000),
+        });
+        groupId = group.groupId;
+        replGroups.set(ctx.runId, groupId);
+      }
+      const profile = SubagentProfileSchema.safeParse(input.profile ?? "default");
+      if (!profile.success) throw new AuxError("invalid_params", "profile must be explorer, read_only or default.");
+      const agent = await subagents.spawn({
+        groupId,
+        goal: input.goal,
+        profile: profile.data,
+        pageIds: input.pageIds?.length ? input.pageIds : run.pageIds,
+        tokenAllocation: 50_000,
+        costAllocationUsd: 1,
+        maxModelCalls: 8,
+      });
+      return { cellId: agent.agentId };
+    },
+    waitCell: (cellId, timeoutMs) => subagents.waitFor(cellId, timeoutMs),
+    sendCell: async (cellId, text) => {
+      const agent = subagents.get(cellId);
+      if (!agent.runId) throw new AuxError("conflict", "This cell has not started yet.");
+      subagents.sendMessage(cellId, agent.runId, text);
+    },
+    cancelCell: async (cellId) => {
+      subagents.cancel(cellId);
+    },
+  };
+
   const extractingRuns = new Set<string>();
   events.subscribe((event) => {
     if (event.type !== EventTypes.RunUpdated || !memoryPipeline) return;
@@ -727,6 +772,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     events,
     repo,
     agentConnections,
+    subagents,
     calendar,
     responses,
     operations,

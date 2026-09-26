@@ -37,6 +37,13 @@ export interface AgentLoopHostDeps {
     /** Artifact dir for REPL output overflow and captures. */
     outputDir?: string;
   };
+  /** Subagent cells for the REPL spawn/wait/send/stop surface (06-Y). */
+  subagents?: {
+    spawnCell?: (input: { goal: string; profile?: string; pageIds?: string[] }, ctx: { runId: string; threadId: string; turnId: string }) => Promise<{ cellId: string }>;
+    waitCell?: ReplHostDeps["waitCell"];
+    sendCell?: ReplHostDeps["sendCell"];
+    cancelCell?: ReplHostDeps["cancelCell"];
+  };
   /** Provider prompt-cache options merged into each model step (S5 deliverable 1). */
   providerOptions?: Record<string, Record<string, unknown>>;
 }
@@ -259,6 +266,26 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       if (!insideRoots(path)) throw new AuxError("permission_denied", "fs writes stay inside session storage roots.");
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, content);
+    },
+    spawnCell: (input) => {
+      const spawn = self.deps.agentLoop?.subagents?.spawnCell;
+      if (!spawn) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
+      return spawn(input, { runId, threadId, turnId: runId });
+    },
+    waitCell: (cellId, timeoutMs) => {
+      const wait = self.deps.agentLoop?.subagents?.waitCell;
+      if (!wait) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
+      return wait(cellId, timeoutMs);
+    },
+    sendCell: (cellId, text) => {
+      const send = self.deps.agentLoop?.subagents?.sendCell;
+      if (!send) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
+      return send(cellId, text);
+    },
+    cancelCell: (cellId) => {
+      const cancel = self.deps.agentLoop?.subagents?.cancelCell;
+      if (!cancel) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
+      return cancel(cellId);
     },
   };
   deps.repl = ({ code, deadlineMs }) => replPool.eval(replDeps, code, { pageId: activePageId, deadlineMs });

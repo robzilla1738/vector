@@ -116,7 +116,9 @@ export function buildToolManifest(): LoopToolManifest {
       "(page.click(ref), page.fill(ref, text), page.navigate(url), page.waitFor({…}) and friends — every one " +
       "compiles to a governed step through decide() and the write ledger), snapshot(scope), tabs(), " +
       "openTab(url)/closeTab(id) for owned background tabs, annotatedScreenshot(), display(value), sleep(ms), " +
-      "cookie-free fetch(url), and fs confined to session roots. Guest state persists across calls; modules, " +
+      "cookie-free fetch(url), fs confined to session roots, and subagent cells: spawn({goal, profile?, pageIds?}) " +
+      "returns {cellId}, wait(cellId) yields until the cell finishes or the deadline lapses, send(cellId, text) " +
+      "steers a running cell, stop(cellId) cancels it. Guest state persists across calls; modules, " +
       "eval/Function, process and WebAssembly are denied. Results must be JSON data, ≤16 KB (larger output spills to a file).",
     byline: "Aux code mode — page ops still pass authorization and the ledger",
     inputSchema: z.object({

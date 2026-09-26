@@ -74,8 +74,8 @@ describe("context management — per-turn tool budget", () => {
     const bounded = budgetToolOutputs(results);
     expect(bounded[0]!.output).toBe("small");
     expect(bounded[1]!.output).toBe("x".repeat(TURN_TOOL_BUDGET_BYTES - 20)); // fits under the cap
-    expect((bounded[2]!.output as Record<string, unknown>).truncated).toBe(true);
-    expect((bounded[2]!.output as Record<string, unknown>).bytes).toBeGreaterThan(0);
+    expect((bounded[2]!.output as unknown as Record<string, unknown>).truncated).toBe(true);
+    expect((bounded[2]!.output as unknown as Record<string, unknown>).bytes).toBeGreaterThan(0);
     expect(bounded).toHaveLength(3); // every call keeps its slot
   });
 });

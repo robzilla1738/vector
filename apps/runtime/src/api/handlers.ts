@@ -99,6 +99,8 @@ export interface Services {
   repo: Repo;
   agentConnections?: AgentConnectionService;
   mcpTransportProvider?: McpTransportProvider;
+  /** Shared with the agent loop's REPL cell surface — created once in main.ts. */
+  subagents?: SubagentService;
   calendar?: CalendarConnectionService;
   native?: NativeBridge;
   contentMemory?: ContentMemoryStore;
@@ -137,7 +139,7 @@ function browserImporter(s: Services): BrowserImporter {
 /** Validates params against MethodSchemas and dispatches to services. */
 export function makeInvoker(s: Services) {
   const outboundMcp = new OutboundMcpService(s.repo, s.mcpTransportProvider);
-  const subagents = new SubagentService(s.repo, s.events, s.runs);
+  const subagents = s.subagents ?? new SubagentService(s.repo, s.events, s.runs);
   const customization = new SiteCustomization(s.repo.db, s.featureProfileId ?? "default");
   const commandRanking = new CommandRankingStore(s.repo, s.featureProfileId ?? "default");
   const tasks = new TaskService(s.repo, s.events);

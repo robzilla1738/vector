@@ -61,6 +61,13 @@ export interface ReplHostDeps {
   fsRead(path: string): Promise<string>;
   fsWrite(path: string, content: string): Promise<void>;
   webmcp?(pageId: string, action: unknown): Promise<unknown>;
+  /** Subagent cells (06-Y): spawn under this run's group, then wait/send/stop. */
+  spawnCell?(input: { goal: string; profile?: string; pageIds?: string[] }): Promise<{ cellId: string }>;
+  /** Yield until the cell reaches a terminal state or the remaining deadline lapses. */
+  waitCell?(cellId: string, timeoutMs: number): Promise<{ state: string; runId?: string; pending?: boolean; result?: unknown; error?: string }>;
+  /** Steer a running cell with new instructions. */
+  sendCell?(cellId: string, text: string): Promise<void>;
+  cancelCell?(cellId: string): Promise<void>;
 }
 
 const MAX_HEAP_BYTES = 128 * 1024 * 1024;
@@ -193,7 +200,10 @@ const fs = Object.freeze({
   readFile: (path) => __aux_invoke("fsRead", { path }),
   writeFile: (path, content) => __aux_invoke("fsWrite", { path, content }),
 });
-const wait = () => { throw new Error("wait(cell) needs the subagent service — not available in this build."); };
+const spawn = (spec) => __aux_invoke("spawnCell", spec);
+const wait = (cellId) => __aux_invoke("waitCell", { cellId, ms: 120000 });
+const send = (cellId, text) => __aux_invoke("sendCell", { cellId, text });
+const stop = (cellId) => __aux_invoke("cancelCell", { cellId });
 const console = Object.freeze({
   log: (...args) => display(args.map(String).join(" ")),
   warn: (...args) => display("warn: " + args.map(String).join(" ")),
@@ -324,6 +334,33 @@ class ReplSession {
           if (!this.deps.webmcp)
             return fail(new AuxError("capability_unsupported", "WebMCP is not exposed for this page."));
           return ok(await this.deps.webmcp(String(parsed.pageId ?? ""), parsed.action));
+        }
+        case "spawnCell": {
+          if (!this.deps.spawnCell)
+            return fail(new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."));
+          const spec = (parsed && typeof parsed === "object" ? parsed : {}) as { goal?: unknown; profile?: unknown; pageIds?: unknown };
+          return ok(await this.deps.spawnCell({
+            goal: String(spec.goal ?? ""),
+            ...(typeof spec.profile === "string" ? { profile: spec.profile } : {}),
+            ...(Array.isArray(spec.pageIds) ? { pageIds: spec.pageIds.map(String) } : {}),
+          }));
+        }
+        case "waitCell": {
+          if (!this.deps.waitCell)
+            return fail(new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."));
+          const remaining = Math.max(0, this.deadline - Date.now());
+          const ms = Math.min(Math.max(0, Number(parsed.ms) || 0), remaining);
+          return ok(await this.deps.waitCell(String(parsed.cellId ?? ""), ms));
+        }
+        case "sendCell": {
+          if (!this.deps.sendCell)
+            return fail(new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."));
+          return ok(await this.deps.sendCell(String(parsed.cellId ?? ""), String(parsed.text ?? "")));
+        }
+        case "cancelCell": {
+          if (!this.deps.cancelCell)
+            return fail(new AuxError("capability_unsupported", "Subagent cells are unavailable for this run."));
+          return ok(await this.deps.cancelCell(String(parsed.cellId ?? "")));
         }
         default:
           return fail(new AuxError("invalid_params", `Unknown REPL call: ${name}`));

@@ -192,7 +192,7 @@ describe("code-mode REPL", () => {
     const waited = out(
       await pool.eval(deps(), `try { wait({}); "no" } catch (e) { e.message }`, { pageId: "p1" }),
     );
-    expect(String(waited.value)).toMatch(/subagent/);
+    expect(String(waited.value)).toMatch(/subagent/i);
   });
 
   it("writes captures to outputDir and returns the artifact path", async () => {
@@ -213,5 +213,42 @@ describe("code-mode REPL", () => {
     );
     expect(String(result.value)).toMatch(/capture-1\.png$/);
     expect(existsSync(String(result.value))).toBe(true);
+  });
+
+  it("spawn/wait/send/stop reach the cell deps", async () => {
+    const spawnCell = vi.fn(async () => ({ cellId: "cell-1" }));
+    const waitCell = vi.fn(async () => ({ state: "completed", runId: "run-cell", result: { answer: 7 } }));
+    const sendCell = vi.fn(async () => {});
+    const cancelCell = vi.fn(async () => {});
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const d = deps({ spawnCell, waitCell, sendCell, cancelCell });
+    const spawned = out(
+      await pool.eval(d, `spawn({ goal: "find the pricing", profile: "explorer", pageIds: ["p1"] })`, { pageId: "p1" }),
+    );
+    expect(spawned.value).toEqual({ cellId: "cell-1" });
+    expect(spawnCell).toHaveBeenCalledWith({ goal: "find the pricing", profile: "explorer", pageIds: ["p1"] });
+    const waited = out(await pool.eval(d, `wait("cell-1")`, { pageId: "p1" }));
+    expect(waited.value).toEqual({ state: "completed", runId: "run-cell", result: { answer: 7 } });
+    await pool.eval(d, `send("cell-1", "also check taxes"); stop("cell-1")`, { pageId: "p1" });
+    expect(sendCell).toHaveBeenCalledWith("cell-1", "also check taxes");
+    expect(cancelCell).toHaveBeenCalledWith("cell-1");
+  });
+
+  it("wait is capped by the remaining eval deadline", async () => {
+    const waitCell = vi.fn(async (_id: string, ms: number) => ({ state: "running", pending: true, ms }));
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(await pool.eval(deps({ waitCell }), `wait("cell-1")`, { pageId: "p1", deadlineMs: 500 }));
+    expect((result.value as { ms: number }).ms).toBeLessThanOrEqual(500);
+  });
+
+  it("cells fail honestly when no subagent backend is wired", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const spawned = out(
+      await pool.eval(deps(), `try { spawn({ goal: "x" }); "no" } catch (e) { e.message }`, { pageId: "p1" }),
+    );
+    expect(String(spawned.value)).toMatch(/unavailable|unsupported/i);
   });
 });

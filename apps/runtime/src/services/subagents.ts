@@ -42,6 +42,31 @@ export class SubagentService {
 
   groupIdForAgent(agentId: string): string { return this.agent(agentId).groupId; }
 
+  /** Read one agent — the REPL cell surface and status views use this. */
+  get(agentId: string): Subagent { return this.agent(agentId); }
+
+  /**
+   * Await a cell's terminal state — the yield/resume primitive behind the
+   * agent loop's `wait(cell)`. Polls the durable row (the reconcile listener
+   * flips state on run updates) and returns the child run's outcome.
+   */
+  async waitFor(agentId: string, timeoutMs: number): Promise<{ state: Subagent["state"]; runId?: string; pending?: boolean; result?: Record<string, unknown>; error?: string }> {
+    const deadline = Date.now() + Math.max(0, timeoutMs);
+    while (true) {
+      const agent = this.agent(agentId);
+      const run = agent.runId ? this.repo.getRun(agent.runId) : undefined;
+      if (!ACTIVE.has(agent.state))
+        return {
+          state: agent.state,
+          ...(agent.runId ? { runId: agent.runId } : {}),
+          ...(run?.result !== undefined ? { result: run.result as Record<string, unknown> } : {}),
+          ...(run?.failure?.message ? { error: run.failure.message } : {}),
+        };
+      if (Date.now() >= deadline) return { state: agent.state, ...(agent.runId ? { runId: agent.runId } : {}), pending: true };
+      await new Promise((resolve) => setTimeout(resolve, Math.min(200, Math.max(25, deadline - Date.now()))));
+    }
+  }
+
   private agents(groupId: string): Subagent[] {
     return (this.repo.db.prepare("SELECT agent_id FROM subagents WHERE group_id=? ORDER BY created_at,agent_id")
       .all(groupId) as { agent_id: string }[]).map(row => this.agent(row.agent_id));
