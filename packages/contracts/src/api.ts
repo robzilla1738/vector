@@ -474,8 +474,14 @@ export const RunsQueueParams = z.object({
   pageIds: z.array(id).min(1).max(9),
   contextPageRefs: z.array(PageContextRefSchema).max(9),
   expectedRevision: z.number().int().nonnegative(),
+  /** This send supersedes an earlier cancelled/failed message — the nonce chain (04-A). */
+  resendsMessageId: z.string().uuid().optional(),
 });
-export const RunsSteerParams = RunsQueueParams.extend({ expectedTurnId: id });
+export const RunsSteerParams = RunsQueueParams.extend({
+  expectedTurnId: id,
+  /** Client-declared idempotency id — must equal messageId when sent. */
+  clientUserMessageId: z.string().uuid().optional(),
+});
 export const RunsListParams = z.object({
   limit: z.number().int().positive().max(500).default(50),
   before: z.object({ createdAt: z.number().finite(), runId: z.string().min(1) }).optional(),

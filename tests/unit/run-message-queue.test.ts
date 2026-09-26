@@ -99,3 +99,30 @@ describe("durable conversation queue", () => {
     await messages.stop();
   });
 });
+
+describe("resend nonce chain", () => {
+  it("chains a resend onto the superseded message and enforces nonce equality", async () => {
+    const db = openDb(":memory:"); databases.push(db);
+    const repo = new Repo(db);
+    const events = new EventBus(repo);
+    const current: Run = { runId: "run-current", goal: "First task", status: "running", pageIds: ["p1"],
+      config: { chatId: "chat-1", messageRevision: 0 }, createdAt: 1 };
+    repo.saveRun(current);
+    const queue = new RunMessageQueue(repo, events, async () => { throw new Error("unexpected delivery"); },
+      () => true, () => {});
+    const input = (messageId: string, resendsMessageId?: string) => ({ messageId, runId: current.runId, chatId: "chat-1",
+      text: "Follow up", pageIds: ["p1"], contextPageRefs: [{ pageId: "p1", url: "https://example.test/", documentEpoch: 1 }],
+      expectedRevision: 0, ...(resendsMessageId ? { resendsMessageId } : {}) });
+    const first = queue.queue(input("11111111-1111-4111-8111-111111111111"));
+    const resent = queue.queue(input("22222222-2222-4222-8222-222222222222", first.messageId));
+    expect(resent.resendsNonce).toBe(first.messageId);
+    // The journal chains the two nonces under the first as root.
+    expect(queue.messageStatus(resent.messageId)).toMatchObject({ supersedes: first.messageId, rootNonce: first.messageId });
+    // Idempotent replay returns the same row; a different resend target conflicts.
+    expect(queue.queue(input("22222222-2222-4222-8222-222222222222", first.messageId)).messageId).toBe(resent.messageId);
+    expect(() => queue.queue(input("22222222-2222-4222-8222-222222222222", first.deliveryRunId))).toThrow(/already belongs/);
+    // A resend of a missing message fails honestly.
+    expect(() => queue.queue(input("33333333-3333-4333-8333-333333333333", "99999999-9999-4999-8999-999999999999"))).toThrow(/not found/i);
+    await queue.stop();
+  });
+});

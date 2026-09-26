@@ -117,7 +117,7 @@ export function resetGuards(s: TurnState): void {
 export function userInstructions(s: TurnState): string | undefined {
   const parts = [
     s.run.config?.instructions,
-    ...s.steers.map((correction, index) => `User correction ${index + 1}: ${correction}`),
+    ...s.steers.map((correction) => `<interrupted_request>\nUser correction: ${correction}\n</interrupted_request>`),
     ...(s.answers ?? []).map((a) => `Answer to your question "${a.question.slice(0, 300)}": ${a.answer}`),
   ].filter((p): p is string => !!p?.trim());
   return parts.length ? parts.join("\n\n") : undefined;

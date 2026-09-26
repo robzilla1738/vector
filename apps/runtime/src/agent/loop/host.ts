@@ -59,13 +59,14 @@ function taskMessage(run: Run): ModelMessage {
   return { role: "user", content: parts.join("\n\n") };
 }
 
-function steerMessage(texts: string[]): ModelMessage {
+/** 06-AA interruptSteer rewrite — the interrupting user turn is wrapped so the model treats it as an interruption, not a fresh request. */
+export function steerMessage(texts: string[]): ModelMessage {
   return {
     role: "user",
     content: [
       "The user interrupted this turn with a correction. Apply it from here — do not repeat work already journaled.",
-      ...texts.map((text, index) => `Correction ${index + 1}: ${text}`),
-    ].join("\n"),
+      ...texts.map((text) => `<interrupted_request>\n${text}\n</interrupted_request>`),
+    ].join("\n\n"),
   };
 }
 

@@ -65,6 +65,7 @@ CREATE TABLE run_messages(
   status TEXT NOT NULL CHECK(status IN ('accepted','delivering','delivered','needs_attention','cancelled')),
   text TEXT NOT NULL, page_ids TEXT NOT NULL DEFAULT '[]', context_page_refs TEXT NOT NULL DEFAULT '[]',
   expected_revision INTEGER NOT NULL DEFAULT 0,
+  resends_nonce TEXT,
   error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE INDEX idx_run_messages_chat ON run_messages(chat_id,created_at,message_id);
 CREATE INDEX idx_run_messages_status ON run_messages(status,created_at,message_id);
@@ -357,7 +358,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 22;
+export const SCHEMA_VERSION = 23;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -582,6 +583,13 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       created_at INTEGER NOT NULL, revoked_at INTEGER)`,
     `CREATE INDEX idx_plugin_skill_grants_asset ON plugin_skill_grants(asset_id,revoked_at)`,
   ],
+  // v22 → v23: resend nonce chain on conversation messages (04-A).
+  22: (db) => {
+    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='run_messages'").get()) return [];
+    return (db.prepare("PRAGMA table_info(run_messages)").all() as { name: string }[]).some(c => c.name === "resends_nonce")
+      ? []
+      : [`ALTER TABLE run_messages ADD COLUMN resends_nonce TEXT`];
+  },
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */

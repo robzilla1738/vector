@@ -207,6 +207,8 @@ export const RunMessageSchema = z.object({
   pageIds: z.array(z.string().min(1)).max(9),
   contextPageRefs: z.array(PageContextRefSchema).max(9),
   expectedRevision: z.number().int().nonnegative(),
+  /** This message supersedes an earlier message id (resend nonce chain). */
+  resendsNonce: z.string().min(1).optional(),
   error: z.string().optional(),
   createdAt: z.number().int().nonnegative(),
   updatedAt: z.number().int().nonnegative(),

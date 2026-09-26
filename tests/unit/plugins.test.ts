@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
-import { EventBus, openDb, PluginService, Repo, RoutineService, TaskService } from "@aux/runtime";
+import { EventBus, openDb, PluginService, Repo, RoutineService, SCHEMA_VERSION, TaskService } from "@aux/runtime";
 
 const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
@@ -202,7 +202,7 @@ it("migrates an existing v21 profile before accepting Skill grants", async () =>
   old.close();
   const db = openDb(path);
   cleanup.push(() => db.close());
-  expect((db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version).toBe(22);
+  expect((db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version).toBe(SCHEMA_VERSION);
   expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='plugin_skill_grants'").get()).toBeDefined();
 });
 

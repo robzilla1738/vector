@@ -196,6 +196,33 @@ describe("B5 safety core", () => {
     expect(JSON.stringify(payload)).not.toContain("secret-value");
   });
 
+  it("links resend nonces into an ordered chain and recovers the draft", async () => {
+    const db = new DatabaseSync(":memory:");
+    try {
+      const journal = new SendJournal(db);
+      const first = journal.queue({ nonce: "nonce-a", threadId: "thread", turnId: "turn", text: "hello" }, 100);
+      expect(first.rootNonce ?? undefined).toBeUndefined();
+      const second = journal.resend("nonce-a", 200);
+      expect(second.nonce).not.toBe("nonce-a");
+      expect(second).toMatchObject({ supersedes: "nonce-a", rootNonce: "nonce-a", text: "hello", state: "queued" });
+      const third = journal.resend(second.nonce, 300);
+      expect(third).toMatchObject({ supersedes: second.nonce, rootNonce: "nonce-a" });
+      expect(journal.chain(third.nonce).map(r => r.nonce)).toEqual(["nonce-a", second.nonce, third.nonce]);
+      expect(journal.chain("nonce-a")).toHaveLength(3);
+      expect(journal.draft("nonce-a")).toMatchObject({ nonce: "nonce-a", text: "hello", state: "queued" });
+      journal.cancel(third.nonce);
+      expect(journal.draft(third.nonce)).toMatchObject({ state: "cancelled" });
+      // A delivered send cannot be resent and has no recoverable draft.
+      journal.queue({ nonce: "nonce-b", threadId: "thread", turnId: "turn", text: "hi" });
+      expect(journal.acceptLocal("nonce-b", "ack-b").state).toBe("accepted");
+      expect(() => journal.resend("nonce-b")).toThrow(/delivered/);
+      expect(journal.draft("nonce-b")).toBeUndefined();
+      // Journal rows keep the chain across reopen.
+      const reopened = new SendJournal(db);
+      expect(reopened.chain(third.nonce).map(r => r.nonce)).toEqual(["nonce-a", second.nonce, third.nonce]);
+    } finally { db.close(); }
+  });
+
   it("enforces a deadline even when work ignores cancellation", async () => {
     await expect(withDeadline(() => new Promise<never>(() => {}), 5)).rejects.toThrow("deadline_exceeded");
     await expect(withDeadline(async signal => {

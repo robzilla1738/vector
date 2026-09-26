@@ -1884,6 +1884,10 @@ export function makeInvoker(s: Services) {
         if (client.external) throw new AuxError("permission_denied", "Steer conversation runs in Aux.");
         if (params.expectedTurnId !== params.runId)
           throw new AuxError("conflict", "The active turn changed. Review it before steering.");
+        if (params.clientUserMessageId && params.clientUserMessageId !== params.messageId)
+          throw new AuxError("conflict", "clientUserMessageId must match the message id it sends.");
+        if (s.repo.getRun(params.runId)?.config?.subagentProfile)
+          throw new AuxError("conflict", "Subagent turns take instructions through subagents.sendMessage, not user steering.");
         return s.runs.messages.steer(params);
       case "runs.messages.list":
         if (client.external)

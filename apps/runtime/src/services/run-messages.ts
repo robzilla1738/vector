@@ -22,6 +22,8 @@ export type QueueMessageInput = {
   pageIds: string[];
   contextPageRefs: PageContextRef[];
   expectedRevision: number;
+  /** This send supersedes an earlier message id — the nonce chain (04-A). */
+  resendsMessageId?: string;
 };
 
 /** Serialized user follow-ups. A stable delivery run ID makes restart replay idempotent. */
@@ -67,6 +69,7 @@ export class RunMessageQueue {
           previous.targetRunId !== input.runId ||
           previous.text !== input.text ||
           previous.expectedRevision !== input.expectedRevision ||
+          previous.resendsNonce !== input.resendsMessageId ||
           JSON.stringify(previous.pageIds) !== JSON.stringify(input.pageIds) ||
           JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs)
         ) {
@@ -77,6 +80,11 @@ export class RunMessageQueue {
       const target = this.repo.getRun(input.runId);
       if (!target || target.config?.chatId !== input.chatId)
         throw new AuxError("not_found", "The conversation run was not found.");
+      if (input.resendsMessageId) {
+        const superseded = this.repo.getRunMessage(input.resendsMessageId);
+        if (!superseded || superseded.chatId !== input.chatId)
+          throw new AuxError("not_found", "The message this send supersedes was not found.");
+      }
       if (target.config.contextMemoryRevoked)
         throw new AuxError(
           "permission_denied",
@@ -132,6 +140,7 @@ export class RunMessageQueue {
         pageIds: input.pageIds,
         contextPageRefs: input.contextPageRefs,
         expectedRevision: input.expectedRevision,
+        ...(input.resendsMessageId ? { resendsNonce: input.resendsMessageId } : {}),
         createdAt: at,
         updatedAt: at,
       });
@@ -151,6 +160,7 @@ export class RunMessageQueue {
           previous.targetRunId !== input.runId ||
           previous.text !== input.text ||
           previous.expectedRevision !== input.expectedRevision ||
+          previous.resendsNonce !== input.resendsMessageId ||
           JSON.stringify(previous.pageIds) !== JSON.stringify(input.pageIds) ||
           JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs)
         ) {
@@ -161,6 +171,11 @@ export class RunMessageQueue {
       const target = this.repo.getRun(input.runId);
       if (!target || target.config?.chatId !== input.chatId)
         throw new AuxError("not_found", "The conversation run was not found.");
+      if (input.resendsMessageId) {
+        const superseded = this.repo.getRunMessage(input.resendsMessageId);
+        if (!superseded || superseded.chatId !== input.chatId)
+          throw new AuxError("not_found", "The message this send supersedes was not found.");
+      }
       if (target.config?.taskId) {
         const tasks = new TaskService(this.repo, this.events);
         const task = tasks.get(target.config.taskId);
@@ -211,6 +226,7 @@ export class RunMessageQueue {
         pageIds: input.pageIds,
         contextPageRefs: input.contextPageRefs,
         expectedRevision: input.expectedRevision,
+        ...(input.resendsMessageId ? { resendsNonce: input.resendsMessageId } : {}),
         createdAt: at,
         updatedAt: at,
       });
@@ -270,7 +286,8 @@ export class RunMessageQueue {
 
   private syncJournal(message: RunMessage): void {
     const record = this.sendJournal.queue(
-      { nonce: message.messageId, threadId: message.chatId, turnId: message.targetRunId, text: message.text },
+      { nonce: message.messageId, threadId: message.chatId, turnId: message.targetRunId, text: message.text,
+        ...(message.resendsNonce ? { supersedes: message.resendsNonce } : {}) },
       message.createdAt,
     );
     if (message.status === "cancelled") {

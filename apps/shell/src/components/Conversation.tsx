@@ -509,12 +509,16 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
         const mode = effectiveLiveMode === "answer" ? "steer" : effectiveLiveMode;
         const attempt = queueAttempt(id, last.runId, text.trim(), mode, queueAttemptRef.current);
         queueAttemptRef.current = attempt;
+        const resends = resendOf.current;
         const message = await call(mode === "steer" ? "runs.steer" : "runs.queue", { messageId: attempt.messageId, runId: last.runId, chatId: id,
           text: attempt.text, pageIds: last.pageIds, contextPageRefs: last.config?.contextPageRefs ?? [],
-          expectedRevision: last.config?.messageRevision ?? 0, expectedTurnId: last.runId });
+          expectedRevision: last.config?.messageRevision ?? 0, expectedTurnId: last.runId,
+          ...(mode === "steer" ? { clientUserMessageId: attempt.messageId } : {}),
+          ...(resends ? { resendsMessageId: resends } : {}) });
         setQueuedMessages(items => items.some(item => item.messageId === message.messageId) ? items : [...items, message]);
         if (readText() === text) setText("");
         queueAttemptRef.current = null;
+        resendOf.current = null;
         try { localStorage.removeItem(`${QUEUE_ATTEMPT_PREFIX}${id}`); } catch { /* Already acknowledged in runtime. */ }
         scrolling.jumpToLatest();
       } else {
@@ -563,6 +567,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     finally { setReopening(false); }
   };
   const queueChange = useRef<string | null>(null);
+  const resendOf = useRef<string | null>(null);
   const [queueBusy, setQueueBusy] = useState<string | null>(null);
   const cancelQueued = async (message: RunMessage, edit = false) => {
     if (queueChange.current || archived) return;
@@ -576,6 +581,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
         const state = useStore.getState();
         const prior = chatId ? state.conversationDrafts[draftKey(chatId)] ?? "" : state.agentDraft;
         const next = prior.trim() ? `${prior}\n\n${message.text}` : message.text;
+        resendOf.current = cancelled.messageId;
         if (chatId) state.setConversationDraft(chatId, next); else state.setAgentDraft(next);
         setLiveSendMode("queue");
         requestAnimationFrame(() => conversationRoot.current?.querySelector<HTMLTextAreaElement>('.conversation-input textarea')?.focus());

@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ModelClient } from "@aux/runtime";
-import { EventBus, openDb, Repo, RunCoordinator } from "@aux/runtime";
-import type { Observation, PlanStep } from "@aux/contracts";
+import type { ModelClient, Services } from "@aux/runtime";
+import { EventBus, makeInvoker, openDb, Repo, RunCoordinator, steerMessage } from "@aux/runtime";
+import type { Observation, PlanStep, Run } from "@aux/contracts";
 import { RunMessageQueue } from "../../apps/runtime/src/services/run-messages.js";
 import { PageOwnership } from "../../apps/runtime/src/scheduler/page-ownership.js";
+import { userInstructions, type TurnState } from "../../apps/runtime/src/agent/coordinator-turn.js";
 
 const databases: ReturnType<typeof openDb>[] = [];
 afterEach(() => { for (const db of databases.splice(0)) db.close(); });
@@ -131,7 +132,7 @@ describe("run steering", () => {
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("needs_input"));
     messages.steer(steer(run.runId));
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("completed"));
-    expect(prompts[1]).toContain("User correction 1: Use the updated requirement");
+    expect(prompts[1]).toContain("<interrupted_request>\nUser correction: Use the updated requirement\n</interrupted_request>");
     expect(prompts[1]).not.toContain("Answer to your question");
     await messages.stop();
   });
@@ -185,5 +186,41 @@ describe("run steering", () => {
     expect(execute).toHaveBeenCalledTimes(1);
     expect(repo.getRun(run.runId)?.error).toMatch(/uncertain/i);
     await messages.stop();
+  });
+});
+
+describe("steering v2", () => {
+  it("rewrites the interrupting user turn as <interrupted_request> for both engines", () => {
+    const loopMessage = steerMessage(["Focus the pricing page"]);
+    expect(loopMessage.role).toBe("user");
+    expect(loopMessage.content).toContain("<interrupted_request>\nFocus the pricing page\n</interrupted_request>");
+    const s = { run: { config: {} }, steers: ["Use the new requirement"], answers: [] } as unknown as TurnState;
+    expect(userInstructions(s)).toContain("<interrupted_request>\nUser correction: Use the new requirement\n</interrupted_request>");
+  });
+
+  it("rejects mismatched clientUserMessageId and non-steerable subagent turns at the API boundary", async () => {
+    const db = openDb(":memory:"); databases.push(db);
+    const repo = new Repo(db);
+    const events = new EventBus(repo);
+    const child: Run = { runId: "child-run", goal: "cell", status: "running", pageIds: ["page"], createdAt: 1,
+      config: { chatId: "agent-1", subagentProfile: "default", messageRevision: 0 } };
+    const parent: Run = { runId: "parent-run", goal: "task", status: "running", pageIds: ["page"], createdAt: 1,
+      config: { chatId: "chat", messageRevision: 0 } };
+    repo.saveRun(child); repo.saveRun(parent);
+    const steer = vi.fn();
+    const invoke = makeInvoker({ repo, events, runs: { messages: { steer } } } as unknown as Services);
+    const params = (runId: string, extra: Record<string, unknown> = {}) => ({
+      messageId: "11111111-1111-4111-8111-111111111111", runId, chatId: runId === "child-run" ? "agent-1" : "chat",
+      text: "Adjust", pageIds: ["page"], contextPageRefs: refs, expectedRevision: 0, expectedTurnId: runId, ...extra });
+    const internal = { external: false };
+    await expect(invoke("runs.steer", params("child-run"), internal)).rejects.toThrow(/subagents\.sendMessage/);
+    expect(steer).not.toHaveBeenCalled();
+    await expect(invoke("runs.steer", params("parent-run", { clientUserMessageId: "99999999-9999-4999-8999-999999999999" }), internal))
+      .rejects.toThrow(/clientUserMessageId/);
+    expect(steer).not.toHaveBeenCalled();
+    await invoke("runs.steer", params("parent-run", { clientUserMessageId: "11111111-1111-4111-8111-111111111111" }), internal);
+    expect(steer).toHaveBeenCalledTimes(1);
+    await invoke("runs.steer", params("parent-run", { messageId: "22222222-2222-4222-8222-222222222222" }), internal);
+    expect(steer).toHaveBeenCalledTimes(2);
   });
 });

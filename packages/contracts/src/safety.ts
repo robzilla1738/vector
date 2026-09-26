@@ -114,7 +114,12 @@ export const CredentialHandoffResultSchema = z.object({
 }).strict();
 export type CredentialHandoffResult = z.infer<typeof CredentialHandoffResultSchema>;
 
-export const TurnSteerSchema = z.object({ expectedTurnId: id, message: z.string().trim().min(1).max(20_000) }).strict();
+export const TurnSteerSchema = z.object({
+  expectedTurnId: id,
+  /** The client's user-message id for this steer — the send-journal nonce. */
+  clientUserMessageId: id.optional(),
+  message: z.string().trim().min(1).max(20_000),
+}).strict();
 export const McpElicitationSchema = z.object({ method: z.literal("elicitation/create"), params: z.object({ message: z.string().min(1).max(4000), requestedSchema: z.record(z.string(), z.unknown()) }).strict() }).strict();
 export const ServerRequestResolvedSchema = z.object({ method: z.literal("serverRequest/resolved"), params: z.object({ requestId: id, outcome: z.enum(["accepted", "declined", "cancelled", "expired"]) }).strict() }).strict();
 
@@ -125,6 +130,10 @@ export const SendRecordSchema = z.object({
   text: z.string().min(1).max(20_000),
   state: z.enum(["queued", "offline", "sending", "accepted", "acknowledged", "parked", "failed", "cancelled"]),
   acceptanceId: id.optional(),
+  /** Nonce chain — this send supersedes an earlier nonce for the same logical message. */
+  supersedes: id.optional(),
+  /** First nonce of the chain this send belongs to. */
+  rootNonce: id.optional(),
   errorCode: id.optional(),
   createdAt: z.number().int().nonnegative(),
   updatedAt: z.number().int().nonnegative(),

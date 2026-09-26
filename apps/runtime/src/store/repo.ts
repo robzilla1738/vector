@@ -392,6 +392,7 @@ export class Repo {
       pageIds: P(row.page_ids as string, [] as string[]),
       contextPageRefs: P(row.context_page_refs as string, [] as RunMessage["contextPageRefs"]),
       expectedRevision: row.expected_revision as number,
+      ...(row.resends_nonce ? { resendsNonce: row.resends_nonce as string } : {}),
       ...(row.error ? { error: row.error as string } : {}),
       createdAt: row.created_at as number,
       updatedAt: row.updated_at as number,
@@ -399,10 +400,10 @@ export class Repo {
   }
 
   insertRunMessage(message: RunMessage): RunMessage {
-    this.q(`INSERT OR IGNORE INTO run_messages(message_id,chat_id,target_run_id,delivery_run_id,mode,status,text,page_ids,context_page_refs,expected_revision,error,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(message.messageId, message.chatId, message.targetRunId, message.deliveryRunId,
+    this.q(`INSERT OR IGNORE INTO run_messages(message_id,chat_id,target_run_id,delivery_run_id,mode,status,text,page_ids,context_page_refs,expected_revision,resends_nonce,error,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(message.messageId, message.chatId, message.targetRunId, message.deliveryRunId,
       message.mode, message.status, message.text, J(message.pageIds), J(message.contextPageRefs), message.expectedRevision,
-      message.error ?? null, message.createdAt, message.updatedAt);
+      message.resendsNonce ?? null, message.error ?? null, message.createdAt, message.updatedAt);
     return this.getRunMessage(message.messageId)!;
   }
 

@@ -140,7 +140,7 @@ export {
 } from "./agent/durable.js";
 export { CoordinatorLease, coordinatorOwnerId, COORDINATOR_LEASE_TTL_MS } from "./agent/coordinator-lease.js";
 export { runAgentLoop, resumeAgentLoop, type AgentLoopOptions, type AgentLoopOutcome } from "./agent/loop/loop.js";
-export { runToolLoop, type AgentLoopHostDeps } from "./agent/loop/host.js";
+export { runToolLoop, steerMessage, type AgentLoopHostDeps } from "./agent/loop/host.js";
 export { ReplPool, REPL_MAX_DEADLINE_MS, type ReplHostDeps, type ReplTab } from "./agent/loop/repl.js";
 export {
   TURN_TOOL_BUDGET_BYTES,

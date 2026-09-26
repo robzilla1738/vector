@@ -9,6 +9,10 @@ export interface SendRecord {
   text: string;
   state: SendState;
   acceptanceId?: string;
+  /** This send supersedes an earlier nonce for the same logical message (04-A nonce chain). */
+  supersedes?: string;
+  /** First nonce of the chain this send belongs to. */
+  rootNonce?: string;
   errorCode?: string;
   createdAt: number;
   updatedAt: number;
@@ -25,7 +29,7 @@ export type MessageTransport = {
 };
 
 const SELECT = `SELECT nonce,thread_id AS threadId,turn_id AS turnId,text,state,acceptance_id AS acceptanceId,
-  error_code AS errorCode,created_at AS createdAt,updated_at AS updatedAt FROM safety_send_journal`;
+  supersedes,root_nonce AS rootNonce,error_code AS errorCode,created_at AS createdAt,updated_at AS updatedAt FROM safety_send_journal`;
 
 /** One nonce per logical message; durable before network dispatch. */
 export class SendJournal {
@@ -34,25 +38,61 @@ export class SendJournal {
     db.exec(`CREATE TABLE IF NOT EXISTS safety_send_journal(
       nonce TEXT PRIMARY KEY, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL, text TEXT NOT NULL,
       digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed','cancelled')),
-      acceptance_id TEXT, error_code TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+      acceptance_id TEXT, supersedes TEXT, root_nonce TEXT, error_code TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
       CREATE INDEX IF NOT EXISTS idx_safety_send_turn ON safety_send_journal(turn_id,created_at);
       CREATE INDEX IF NOT EXISTS idx_safety_send_state ON safety_send_journal(state,created_at);`);
+    const columns = new Set((db.prepare("PRAGMA table_info(safety_send_journal)").all() as { name: string }[]).map(c => c.name));
+    if (!columns.has("supersedes")) db.exec("ALTER TABLE safety_send_journal ADD COLUMN supersedes TEXT");
+    if (!columns.has("root_nonce")) db.exec("ALTER TABLE safety_send_journal ADD COLUMN root_nonce TEXT");
     this.recoverInterrupted();
   }
 
-  queue(input: { nonce?: string; threadId: string; turnId: string; text: string }, now = Date.now()): SendRecord {
+  queue(input: { nonce?: string; threadId: string; turnId: string; text: string; supersedes?: string }, now = Date.now()): SendRecord {
     if (!input.threadId || !input.turnId || !input.text.trim()) throw new Error("A send needs a thread, turn, and message");
     const nonce = input.nonce ?? randomUUID();
     const digest = createHash("sha256").update(JSON.stringify([input.threadId, input.turnId, input.text])).digest("hex");
     const existing = this.db.prepare(`SELECT digest FROM safety_send_journal WHERE nonce=?`).get(nonce) as { digest: string } | undefined;
     if (existing && existing.digest !== digest) throw new Error("Nonce belongs to a different message");
-    if (!existing) this.db.prepare(`INSERT INTO safety_send_journal(nonce,thread_id,turn_id,text,digest,state,created_at,updated_at)
-      VALUES(?,?,?,?,?,'queued',?,?)`).run(nonce, input.threadId, input.turnId, input.text, digest, now, now);
+    if (!existing) {
+      const prior = input.supersedes ? this.messageStatus(input.supersedes) : undefined;
+      this.db.prepare(`INSERT INTO safety_send_journal(nonce,thread_id,turn_id,text,digest,state,supersedes,root_nonce,created_at,updated_at)
+        VALUES(?,?,?,?,?,'queued',?,?,?,?)`).run(nonce, input.threadId, input.turnId, input.text, digest,
+        input.supersedes ?? null, input.supersedes ? prior?.rootNonce ?? input.supersedes : null, now, now);
+    }
     return this.messageStatus(nonce)!;
   }
 
+  /** A resend links a fresh nonce to the original — the chain survives in order. */
+  resend(originalNonce: string, now = Date.now()): SendRecord {
+    const original = this.messageStatus(originalNonce);
+    if (!original) throw new Error("Unknown message nonce");
+    if (["accepted", "acknowledged"].includes(original.state)) throw new Error("This message was already delivered");
+    return this.queue({ threadId: original.threadId, turnId: original.turnId, text: original.text, supersedes: original.nonce }, now);
+  }
+
+  /** Ordered lineage for one logical send — root nonce first. */
+  chain(nonce: string): SendRecord[] {
+    const record = this.messageStatus(nonce);
+    if (!record) return [];
+    const root = record.rootNonce ?? record.nonce;
+    const rows = this.db.prepare(`SELECT nonce FROM safety_send_journal WHERE nonce=? OR root_nonce=? ORDER BY created_at,nonce`).all(root, root) as { nonce: string }[];
+    return rows.map(row => this.messageStatus(row.nonce)!).sort((a, b) => (a.nonce === root ? -1 : b.nonce === root ? 1 : 0));
+  }
+
+  /** Text a composer restores when an unsettled send is recovered (draftRecovery). */
+  draft(nonce: string): { nonce: string; text: string; state: SendState } | undefined {
+    const record = this.messageStatus(nonce);
+    if (!record || ["accepted", "acknowledged"].includes(record.state)) return undefined;
+    return { nonce: record.nonce, text: record.text, state: record.state };
+  }
+
   messageStatus(nonce: string): SendRecord | undefined {
-    return this.db.prepare(`${SELECT} WHERE nonce=?`).get(nonce) as unknown as SendRecord | undefined;
+    const row = this.db.prepare(`${SELECT} WHERE nonce=?`).get(nonce) as Record<string, unknown> | undefined;
+    if (!row) return undefined;
+    // SQLite NULL → absent optional field (SendRecordSchema's optional() accepts undefined only).
+    for (const key of ["acceptanceId", "supersedes", "rootNonce", "errorCode"])
+      if (row[key] === null) delete row[key];
+    return row as unknown as SendRecord;
   }
 
   list(threadId: string): SendRecord[] {
