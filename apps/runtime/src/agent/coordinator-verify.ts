@@ -290,6 +290,8 @@ export interface CoordinatorLoopHost {
   setStatus(runId: string, status: Run["status"], message?: string): void;
   persistCheckpoint(run: Run): void;
   finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]): void;
+  /** Claim one extra page for a live run (agent-loop REPL openTab) — caller keeps the release. */
+  claimPage(runId: string, pageId: string): Promise<() => void>;
   waitIfPaused(c: { abort: AbortController; paused: boolean }, runId: string): Promise<void>;
   waitForAnswer(c: { answerWaiter?: { resolve: (answer: string) => void } }, runId: string): Promise<string>;
   ownsPages(runId: string): boolean;

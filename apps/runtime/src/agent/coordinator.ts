@@ -473,6 +473,12 @@ export class RunCoordinator {
 
   ownsPages(runId: string): boolean { return this.pageReleases.has(runId); }
 
+  async claimPage(runId: string, pageId: string): Promise<() => void> {
+    const control = this.controls.get(runId);
+    if (!control) throw new AuxError("cancelled", "run has ended");
+    return this.pageOwnership.acquire({ pageId, actor: "coordinator", runId }, control.abort.signal);
+  }
+
   failActive(reason: string): string[] {
     const failed: string[] = [];
     for (const run of this.deps.repo.listRuns(200)) {

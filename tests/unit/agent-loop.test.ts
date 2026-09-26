@@ -357,4 +357,19 @@ describe("runToolLoop (S5 host integration)", () => {
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
   });
+
+  it("runs code-mode page ops through the governed act path", async () => {
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "c1", toolName: "repl", input: { code: `page.click("r1")` } }] },
+      { text: "clicked" },
+    ]);
+    const h = coordinatorHarness(model, (program) => ({
+      status: "completed",
+      steps: program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1 })),
+    }));
+    const run = await h.coordinator.start({ goal: "click the button", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(h.pages.execute).toHaveBeenCalled();
+  });
 });

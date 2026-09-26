@@ -63,6 +63,8 @@ export interface LoopToolDeps {
    */
   webFetch?: (url: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
   webSearch?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
+  /** The code-mode REPL: eval guest code against the persistent per-run session. */
+  repl?: (input: { code: string; deadlineMs?: number }, ctx: LoopToolContext) => Promise<LoopToolResult>;
   /** Session/workspace file roots — fs tools stay inside them (S4 upload roots). */
   fsRoots?: () => string[];
   /** Persisted todo scratchpad (write_todos). */

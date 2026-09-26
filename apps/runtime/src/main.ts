@@ -602,6 +602,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       );
       return { output: await web.search(query, engine) };
     },
+    repl: {
+      // Opening a tab navigates somewhere new — same egress decision as a fetch.
+      openTab: async (url, ctx) => {
+        const gated = await loopEgressGate(ctx, url, "agent.tab.open");
+        if ("park" in gated) return { park: gated.park };
+        return { output: { url: gated.href } };
+      },
+      fsRoots: () => [config.artifactsDir, config.downloadsDir, config.previewsDir],
+      outputDir: config.artifactsDir,
+    },
   };
 
   const runs = new RunService({

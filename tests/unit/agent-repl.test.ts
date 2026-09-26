@@ -1,0 +1,217 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdtempSync, readFileSync, rmSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { AuxError } from "@aux/contracts";
+import { ReplPool, type ReplHostDeps, type LoopToolResult } from "@aux/runtime";
+
+const cleanup: (() => void)[] = [];
+afterEach(() => {
+  for (const fn of cleanup.splice(0).reverse()) fn();
+});
+
+function deps(overrides: Partial<ReplHostDeps> = {}): ReplHostDeps {
+  return {
+    runId: "run-1",
+    tabs: async () => [{ pageId: "p1", url: "http://x.test", title: "X", active: true, owned: false }],
+    openTab: async (url) => ({ output: { pageId: "p2", url, title: "new", active: false, owned: true } }),
+    closeTab: async () => {},
+    useTab: async (pageId) => ({ pageId, url: "u", title: "t", active: false, owned: true }),
+    observe: async () => ({ text: "obs text" }),
+    capture: async () => ({
+      width: 10,
+      height: 10,
+      elements: [{ ref: "r1", rect: { x: 0, y: 0, w: 1, h: 1 } }],
+    }),
+    step: async () => ({ output: { status: "completed", steps: [{ op: "click", status: "ok" }] } }),
+    fetch: async (url) => ({ output: { url, text: "body" } }),
+    fsRead: async (path) => `read:${path}`,
+    fsWrite: async () => {},
+    ...overrides,
+  };
+}
+
+const out = (result: LoopToolResult) =>
+  ("output" in result ? result.output : result) as Record<string, unknown>;
+
+describe("code-mode REPL", () => {
+  it("evaluates guest code and returns marshaled data", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(await pool.eval(deps(), `1 + 1`, { pageId: "p1" }));
+    expect(result.value).toBe(2);
+  });
+
+  it("persists guest state across calls in the same run", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    await pool.eval(deps(), `var memo = 21; "stored"`, { pageId: "p1" });
+    const second = out(await pool.eval(deps(), `memo * 2`, { pageId: "p1" }));
+    expect(second.value).toBe(42);
+  });
+
+  it("compiles page.* ops to governed steps on the current page", async () => {
+    const step = vi.fn(async () => ({ output: { status: "completed" } })) as unknown as ReplHostDeps["step"];
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(await pool.eval(deps({ step }), `page.click("r1")`, { pageId: "p1" }));
+    expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "click", target: "r1" }));
+    expect(result.value).toMatchObject({ status: "completed" });
+  });
+
+  it("yields the loop park when a page op is gated by a safety ask", async () => {
+    const step = vi.fn(async () => ({
+      park: { kind: "approval" as const, instruction: "Approve the click?", approvalId: "ap-1" },
+    }));
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = await pool.eval(deps({ step }), `page.click("r1")`, { pageId: "p1" });
+    expect(result).toEqual({
+      park: { kind: "approval", instruction: "Approve the click?", approvalId: "ap-1" },
+    });
+  });
+
+  it("openTab returns the new tab and switches the current page", async () => {
+    const step = vi.fn(async () => ({ output: { status: "completed" } })) as unknown as ReplHostDeps["step"];
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(
+      await pool.eval(deps({ step }), `const t = openTab("http://a.test"); page.hover("r9"); t.pageId`, {
+        pageId: "p1",
+      }),
+    );
+    expect(result.value).toBe("p2");
+    // The page op after openTab targeted the new tab.
+    expect(step).toHaveBeenCalledWith("p2", expect.objectContaining({ op: "hover", target: "r9" }));
+  });
+
+  it("denies modules, eval, process and host internals", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    for (const bad of [
+      `import "x"`,
+      `export {}`,
+      `require("fs")`,
+      `eval("1")`,
+      `new Function("return 1")()`,
+      `process.env`,
+      `WebAssembly`,
+      `__aux_call`,
+      `__aux_page = "evil"`,
+    ]) {
+      await expect(pool.eval(deps(), bad, { pageId: "p1" })).rejects.toThrowError(AuxError);
+    }
+  });
+
+  it("rejects unmarshalable results (functions, circular)", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    await expect(pool.eval(deps(), `(() => 1)`, { pageId: "p1" })).rejects.toThrow(/marshalable/);
+    await expect(pool.eval(deps(), `const o = {}; o.self = o; o`, { pageId: "p1" })).rejects.toThrow(
+      /marshalable/,
+    );
+  });
+
+  it("spills >16KB output to an artifact file inside outputDir", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "aux-repl-"));
+    cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(
+      await pool.eval(deps({ outputDir: dir }), `JSON.stringify("x".repeat(40000))`, { pageId: "p1" }),
+    );
+    expect(result.truncated).toBe(true);
+    const file = String(result.outputFile);
+    expect(file.startsWith(dir)).toBe(true);
+    expect(JSON.parse(readFileSync(file, "utf8")).value.length).toBe(40002);
+  });
+
+  it("truncates when no outputDir is configured", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(await pool.eval(deps(), `"y".repeat(40000)`, { pageId: "p1" }));
+    expect(result.truncated).toBe(true);
+    expect(String(result.preview).length).toBeLessThanOrEqual(16 * 1024 + 100);
+  });
+
+  it("display() and console.log collect into the output", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(
+      await pool.eval(deps(), `display({k: 1}); console.log("hi", 5); "done"`, { pageId: "p1" }),
+    );
+    expect(result.value).toBe("done");
+    expect(result.displayed).toEqual([{ k: 1 }, "hi 5"]);
+  });
+
+  it("fetch routes through the egress dep and parks on ask", async () => {
+    const fetchDep = vi.fn(async () => ({
+      park: { kind: "approval" as const, instruction: "Allow fetching x?", approvalId: "ap-9" },
+    }));
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = await pool.eval(deps({ fetch: fetchDep }), `fetch("http://x.test")`, { pageId: "p1" });
+    expect(result).toEqual({
+      park: { kind: "approval", instruction: "Allow fetching x?", approvalId: "ap-9" },
+    });
+  });
+
+  it("tabs, fs and snapshot reach their deps", async () => {
+    const d = deps();
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(
+      await pool.eval(
+        d,
+        `JSON.stringify({ tabs: tabs().length, obs: snapshot().text, file: fs.readFile("notes.txt") })`,
+        { pageId: "p1" },
+      ),
+    );
+    expect(JSON.parse(String(result.value))).toEqual({ tabs: 1, obs: "obs text", file: "read:notes.txt" });
+  });
+
+  it("sleep pauses the guest and the deadline interrupts runaway code", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const slept = out(await pool.eval(deps(), `sleep(5); "awake"`, { pageId: "p1" }));
+    expect(slept.value).toBe("awake");
+    await expect(pool.eval(deps(), `while (true) {}`, { pageId: "p1", deadlineMs: 80 })).rejects.toThrow(
+      /interrupt|deadline/i,
+    );
+  });
+
+  it("unknown host calls and WebMCP fail honestly", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(
+      await pool.eval(deps(), `try { page.webmcp("list"); "no" } catch (e) { "webmcp: " + e.message }`, {
+        pageId: "p1",
+      }),
+    );
+    expect(String(result.value)).toMatch(/not exposed|unavailable|failed/i);
+    const waited = out(
+      await pool.eval(deps(), `try { wait({}); "no" } catch (e) { e.message }`, { pageId: "p1" }),
+    );
+    expect(String(waited.value)).toMatch(/subagent/);
+  });
+
+  it("writes captures to outputDir and returns the artifact path", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "aux-repl-cap-"));
+    cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64");
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(
+      await pool.eval(
+        deps({
+          outputDir: dir,
+          capture: async () => ({ dataUrl: `data:image/png;base64,${png}`, width: 2, height: 2 }),
+        }),
+        `annotatedScreenshot().file`,
+        { pageId: "p1" },
+      ),
+    );
+    expect(String(result.value)).toMatch(/capture-1\.png$/);
+    expect(existsSync(String(result.value))).toBe(true);
+  });
+});

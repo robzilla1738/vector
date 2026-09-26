@@ -111,6 +111,24 @@ export function buildToolManifest(): LoopToolManifest {
     },
   };
 
+  const repl: LoopTool = {
+    description: "Run JavaScript in this run's persistent code-mode REPL. The guest surface: page.* page actions " +
+      "(page.click(ref), page.fill(ref, text), page.navigate(url), page.waitFor({…}) and friends — every one " +
+      "compiles to a governed step through decide() and the write ledger), snapshot(scope), tabs(), " +
+      "openTab(url)/closeTab(id) for owned background tabs, annotatedScreenshot(), display(value), sleep(ms), " +
+      "cookie-free fetch(url), and fs confined to session roots. Guest state persists across calls; modules, " +
+      "eval/Function, process and WebAssembly are denied. Results must be JSON data, ≤16 KB (larger output spills to a file).",
+    byline: "Aux code mode — page ops still pass authorization and the ledger",
+    inputSchema: z.object({
+      code: z.string().min(1).max(64_000).describe("Synchronous-looking JavaScript for the REPL session."),
+      deadlineMs: z.number().int().positive().optional().describe("Max run time for this call; capped at 120000."),
+    }),
+    execute: async (raw, ctx) => {
+      const input = z.object({ code: z.string().min(1).max(64_000), deadlineMs: z.number().int().positive().optional() }).parse(raw);
+      return need(ctx.deps.repl, "repl")(input, ctx);
+    },
+  };
+
   const getTime: LoopTool = {
     description: "Current wall-clock time (ISO and epoch ms).",
     byline: "Aux clock",
@@ -122,6 +140,7 @@ export function buildToolManifest(): LoopToolManifest {
     get_time: getTime,
     snapshot,
     act,
+    repl,
     webfetch,
     websearch,
     ask_user_question: askUserQuestion,
