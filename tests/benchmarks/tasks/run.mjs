@@ -277,12 +277,13 @@ async function adapterAvailability(name, cfg) {
   return { ok: true };
 }
 
-/** Starts a runtime and drives runs.start. */
-async function startRuntimeFor() {
+/** Starts a runtime and drives runs.start. cfg.env merges over process.env (e.g. AUX_RUN_ENGINE for the A/B gate). */
+async function startRuntimeFor(cfg = {}) {
   const { startRuntime } = await import(pathToFileURL(runtimeEntry).href);
   const dataDir = mkdtempSync(join(tmpdir(), "aux-tasks-"));
   const rt = await startRuntime({
     ...process.env,
+    ...cfg.env,
     AUX_DATA_DIR: dataDir,
     AUX_ELECTRON_CDP: "",
     AUX_API_TOKEN: "tasks",
@@ -291,8 +292,8 @@ async function startRuntimeFor() {
   return { rt, dataDir };
 }
 
-async function runtimeAdapter() {
-  const { rt, dataDir } = await startRuntimeFor();
+async function runtimeAdapter(_name, cfg = {}) {
+  const { rt, dataDir } = await startRuntimeFor(cfg);
   const rpc = (m, p = {}) => rt.invoke(m, p);
   return {
     dataDir,
@@ -323,6 +324,7 @@ async function runtimeAdapter() {
           answer: r.result == null ? null : extractAnswer(r.result),
           status: r.status,
           message: r.statusMessage,
+          engine: r.config?.implementation ?? null,
           modelCalls,
           ...metrics,
           routeReason,
@@ -516,7 +518,7 @@ function extractAnswer(result) {
   if (typeof result !== "object") return result;
   const keys = Object.keys(result);
   if (keys.length === 1) return result[keys[0]];
-  for (const k of ["answer", "result", "value", "count", "status", "owner", "title", "name"]) if (k in result) return result[k];
+  for (const k of ["answer", "result", "value", "count", "status", "owner", "title", "name", "report"]) if (k in result) return result[k];
   return result;
 }
 

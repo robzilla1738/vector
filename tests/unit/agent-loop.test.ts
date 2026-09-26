@@ -561,4 +561,57 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(final.status).toBe("partially_completed");
     expect(final.result).toMatchObject({ unconfirmedWrites: ["s1"] });
   });
+
+  it("settles an uncertain write when the model cites a post-dispatch observation", async () => {
+    const postObs = { ...pageObs(), revision: 2 } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
+        }],
+      },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({
+        stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1,
+        effect: "uncertain" as const,
+        receipt: { remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: false },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "completed", steps, observation: postObs };
+    });
+    const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "clicked" });
+  });
+
+  it("never counts navigation as an uncertain write", async () => {
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "n1", op: "navigate", url: "http://x.test/next" }] } }] },
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: { report: "navigated" },
+        }],
+      },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({
+        stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1,
+        effect: "uncertain" as const,
+        receipt: { remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: false },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "completed", steps };
+    });
+    const run = await h.coordinator.start({ goal: "go to the next page", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "navigated" });
+  });
 });

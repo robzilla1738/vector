@@ -424,6 +424,11 @@ export class SettingsService {
   /** Snapshot + live-catalog merged capability list, refreshed by listModels(). */
   private mergedCatalog: readonly ModelCapability[] = MODEL_REGISTRY;
   registryModels(): readonly ModelCapability[] { return this.mergedCatalog; }
+  /** S5 A/B gate: AUX_RUN_ENGINE selects the run engine — explicit opts still win. */
+  runEngine(): "agent" | "agent-loop" | undefined {
+    const v = this.env.AUX_RUN_ENGINE;
+    return v === "agent-loop" || v === "agent" ? v : undefined;
+  }
   budgetLimits(): { runUsd?: number; dayUsd?: number; routineUsd?: number } {
     const b = this.get("budgets") as Settings["budgets"] | undefined;
     const pos = (v: unknown) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : undefined; };

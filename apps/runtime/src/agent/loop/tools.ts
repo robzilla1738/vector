@@ -359,7 +359,9 @@ export function buildToolManifest(): LoopToolManifest {
       "Finish the run with the verified result. `report` is the final answer; `citations` ground it — each cites a " +
       "snapshot you observed (observationId, or pageId + revision) with a verbatim `quote` copied from that snapshot's " +
       "text. The verifier checks every quote exists in the cited snapshot; an unverifiable citation rejects the call — " +
-      "re-observe, fix the quote, and resubmit. Paraphrase around quotes is allowed. Must be the only tool call in its turn.",
+      "re-observe, fix the quote, and resubmit. Paraphrase around quotes is allowed. If a write is marked uncertain in " +
+      "the write ledger, cite a snapshot taken after the write on the same page — the cited post-state settles it. " +
+      "Must be the only tool call in its turn.",
     byline: "Aux verified result — citations checked against the cited snapshots",
     inputSchema: z.object({
       report: z.string().min(1).max(64_000).describe("The final answer — markdown is fine."),

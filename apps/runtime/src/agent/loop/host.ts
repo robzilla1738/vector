@@ -2,7 +2,7 @@ import { AuxError, type Observation, type Run, type StepOutcome } from "@aux/con
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve, sep } from "node:path";
 import type { CoordinatorLoopHost } from "../coordinator-verify.js";
-import { DEFAULT_MAX_MODEL_CALLS, TERMINAL_STATUSES, markUnconfirmedWrites, verifyResultCitations } from "../coordinator-verify.js";
+import { DEFAULT_MAX_MODEL_CALLS, NAV_OPS, TERMINAL_STATUSES, markUnconfirmedWrites, verifyResultCitations } from "../coordinator-verify.js";
 import { subagentGrants } from "../permissions.js";
 import { redactObservation } from "../planner.js";
 import { guardedExecute } from "../guarded-dispatch.js";
@@ -120,7 +120,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     self.unresolvedByRun.set(
       runId,
       outcomes
-        .filter((o) => o.receipt?.uncertain === true || o.receipt?.dispatchedBeforeTakeover === true || o.effect === "uncertain" || o.effect === "dispatched")
+        // NAV_OPS never count as writes — same exclusion verifyDone applies.
+        .filter((o) => !NAV_OPS.has(o.op) && (o.receipt?.uncertain === true || o.receipt?.dispatchedBeforeTakeover === true || o.effect === "uncertain" || o.effect === "dispatched"))
         .map((o) => o.stepId),
     );
   };
@@ -224,12 +225,6 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       };
     },
     submitResult: async ({ report, citations }) => {
-      const unresolved = [
-        ...(self.unresolvedByRun.get(runId) ?? []),
-        ...self.durable.unresolved(runId).map((intent) => intent.id),
-      ];
-      if (unresolved.length)
-        return { ok: false as const, error: `${unresolved.length} uncertain dispatch(es) are recorded in the write ledger — resolve them before finishing.` };
       if (citations?.length) {
         const check = verifyResultCitations(citations, obsTexts);
         if (check.missing.length || check.unverified.length) {
@@ -250,6 +245,33 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         const revision = meta?.revision ?? citation.revision ?? (pageId ? latestRevision.get(pageId) : undefined);
         return pageId === undefined || revision === undefined ? undefined : { pageId, revision };
       });
+      // A cited post-state settles effect-level uncertainty the same way it
+      // confirms an unconfirmed write: the quote is verbatim-verified against
+      // a snapshot taken after the dispatch, so the model cannot invent it.
+      for (const outcome of outcomes) {
+        const uncertain = outcome.receipt?.uncertain === true || outcome.receipt?.dispatchedBeforeTakeover === true
+          || outcome.effect === "uncertain" || outcome.effect === "dispatched";
+        if (!uncertain) continue;
+        const dispatch = writeDispatches.get(outcome.stepId);
+        const confirmed = dispatch && citedRevisions.some((cited) => cited?.pageId === dispatch.pageId && cited.revision > dispatch.revision);
+        if (!confirmed) continue;
+        outcome.receipt = {
+          remoteConfirmed: false,
+          unconfirmed: false,
+          ...outcome.receipt,
+          uncertain: false,
+          dispatchedBeforeTakeover: false,
+          observed: outcome.receipt?.observed ?? "post-state cited in the result",
+        };
+        if (outcome.effect === "uncertain" || outcome.effect === "dispatched") outcome.effect = "observed";
+      }
+      noteUnresolved();
+      const unresolved = [
+        ...(self.unresolvedByRun.get(runId) ?? []),
+        ...self.durable.unresolved(runId).map((intent) => intent.id),
+      ];
+      if (unresolved.length)
+        return { ok: false as const, error: `${unresolved.length} uncertain dispatch(es) are recorded in the write ledger — take a fresh snapshot of the affected page, then resubmit citing that post-state observation.` };
       for (const stepId of markUnconfirmedWrites(outcomes)) {
         const dispatch = writeDispatches.get(stepId);
         const confirmed = dispatch && citedRevisions.some((cited) => cited?.pageId === dispatch.pageId && cited.revision > dispatch.revision);

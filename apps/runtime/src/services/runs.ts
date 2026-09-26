@@ -999,6 +999,8 @@ export class RunService {
       subagentProfile: opts.subagentProfile,
       calendarGrantIds: opts.calendarGrantIds,
       maxModelCalls: opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
+      // S5 A/B gate: explicit engine wins; AUX_RUN_ENGINE is the corpus default.
+      engine: opts.engine ?? this.deps.settings.runEngine?.(),
     });
   }
 

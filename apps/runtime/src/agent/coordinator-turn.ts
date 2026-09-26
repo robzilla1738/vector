@@ -34,6 +34,7 @@ import { emptyRepairState, noteRepair, type RepairState } from "./repair.js";
 import { AnswerDeltaEmitter } from "./answer-delta.js";
 import {
   MODEL_ERROR_LIMIT,
+  NAV_OPS,
   NO_PROGRESS_LIMIT,
   OBSERVATION_BLIND_OPS,
   PLAN_REPEAT_LIMIT,
@@ -849,10 +850,12 @@ export async function dispatchPlan(
     s.outcomes
       .filter(
         (o) =>
-          o.receipt?.uncertain === true ||
+          // NAV_OPS never count as writes — same exclusion verifyDone applies.
+          !NAV_OPS.has(o.op) &&
+          (o.receipt?.uncertain === true ||
           o.receipt?.dispatchedBeforeTakeover === true ||
           o.effect === "uncertain" ||
-          o.effect === "dispatched",
+          o.effect === "dispatched"),
       )
       .map((o) => o.stepId),
   );
