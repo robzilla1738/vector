@@ -9,6 +9,7 @@ import { guardedExecute } from "../guarded-dispatch.js";
 import { renderObservation } from "../../services/observation-render.js";
 import { runAgentLoop, resumeAgentLoop, type AgentLoopOptions, type AgentLoopOutcome } from "./loop.js";
 import { ReplPool, type ReplHostDeps, type ReplTab } from "./repl.js";
+import type { WebmcpOutcome } from "../webmcp.js";
 import { permittedWebUrl } from "../web-tools.js";
 import { TranscriptStore } from "./transcript.js";
 import { buildToolManifest } from "./tools.js";
@@ -33,6 +34,12 @@ export interface AgentLoopHostDeps {
   repl?: {
     /** decide() on opening a tab — parks like webFetch on `ask`; the host opens only on `output`. */
     openTab?: (url: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
+    /** Document script tools. Writes return `{status:"ask"}` until the person allows them. */
+    webmcp?: (
+      pageId: string,
+      action: { op: "tools" } | { op: "call"; name: string; input?: unknown },
+      ctx: { runId: string; threadId: string; turnId: string },
+    ) => Promise<WebmcpOutcome>;
     /** Session storage roots the guest `fs` is confined to. */
     fsRoots?: () => string[];
     /** Artifact dir for REPL output overflow and captures. */
@@ -411,6 +418,27 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       if (!cancel) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
       return cancel(cellId);
     },
+    webmcp: async (pageId, action) => {
+      const gate = self.deps.agentLoop?.repl?.webmcp;
+      if (!gate) throw new AuxError("capability_unsupported", "WebMCP is not exposed for this page.");
+      const request = action && typeof action === "object" ? (action as { op?: string; name?: string; input?: unknown }) : {};
+      const outcome = await gate(
+        pageId,
+        request.op === "call" ? { op: "call", name: String(request.name ?? ""), input: request.input } : { op: "tools" },
+        { runId, threadId, turnId: runId },
+      );
+      if (outcome.status === "ask") {
+        return {
+          park: {
+            kind: "approval",
+            instruction: outcome.instruction,
+            approvalId: outcome.approvalId,
+          },
+        };
+      }
+      if (outcome.status === "tools") return outcome.tools;
+      return { result: outcome.result, success: outcome.success };
+    },
   };
   deps.repl = ({ code, deadlineMs }) => replPool.eval(replDeps, code, { pageId: activePageId, deadlineMs });
 
@@ -439,6 +467,19 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   run.startedAt = startedAt;
 
   const modelId = () => run.config?.modelId ?? self.deps.defaultModel();
+  let pageExposesWebmcp = false;
+  if (activePageId && self.deps.agentLoop?.repl?.webmcp) {
+    try {
+      const listed = await self.deps.agentLoop.repl.webmcp(
+        activePageId,
+        { op: "tools" },
+        { runId, threadId, turnId: runId },
+      );
+      pageExposesWebmcp = listed.status === "tools" && listed.tools.length > 0;
+    } catch {
+      pageExposesWebmcp = false;
+    }
+  }
   const makeOpts = (): AgentLoopOptions => ({
     model,
     modelId: modelId(),
@@ -473,6 +514,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       });
     },
     providerOptions: self.deps.agentLoop?.providerOptions,
+    webmcp: pageExposesWebmcp,
   });
 
   try {

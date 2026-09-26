@@ -343,6 +343,10 @@ describe("buildSystemPrompt (S5 conditional docs)", () => {
     expect(withoutPage).not.toMatch(/Web tools/);
     // suspensions are always documented
     expect(withoutPage).toMatch(/ask_user_question/);
+    expect(withPage).not.toMatch(/page\.webmcp\.tools/);
+    const withTools = buildSystemPrompt({ hasPage: true, webEnabled: true, webmcp: true });
+    expect(withTools).toMatch(/page\.webmcp\.tools\(\)/);
+    expect(withTools).toMatch(/page\.webmcp\.call\(name, input\)/);
   });
 });
 

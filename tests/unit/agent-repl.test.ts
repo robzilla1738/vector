@@ -144,6 +144,24 @@ describe("code-mode REPL", () => {
     expect(result.displayed).toEqual([{ k: 1 }, "hi 5"]);
   });
 
+  it("lists and calls page.webmcp tools and parks a write", async () => {
+    const webmcp = vi.fn(async (_pageId: string, action: { op?: string; name?: string }) => {
+      if (action?.op === "call") {
+        return { park: { kind: "approval" as const, instruction: "Allow this action before it runs.", approvalId: "ap-w" } };
+      }
+      return [{ name: "read_count", readOnly: true }];
+    });
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const listed = out(await pool.eval(deps({ webmcp }), `JSON.stringify(page.webmcp.tools())`, { pageId: "p1" }));
+    expect(JSON.parse(String(listed.value))).toEqual([{ name: "read_count", readOnly: true }]);
+    const parked = await pool.eval(deps({ webmcp }), `page.webmcp.call("add_write", { n: 1 })`, { pageId: "p1" });
+    expect(parked).toEqual({
+      park: { kind: "approval", instruction: "Allow this action before it runs.", approvalId: "ap-w" },
+    });
+    expect(webmcp).toHaveBeenLastCalledWith("p1", { op: "call", name: "add_write", input: { n: 1 } });
+  });
+
   it("fetch routes through the egress dep and parks on ask", async () => {
     const fetchDep = vi.fn(async () => ({
       park: { kind: "approval" as const, instruction: "Allow fetching x?", approvalId: "ap-9" },
@@ -184,7 +202,7 @@ describe("code-mode REPL", () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
     const result = out(
-      await pool.eval(deps(), `try { page.webmcp("list"); "no" } catch (e) { "webmcp: " + e.message }`, {
+      await pool.eval(deps(), `try { page.webmcp.tools(); "no" } catch (e) { "webmcp: " + e.message }`, {
         pageId: "p1",
       }),
     );

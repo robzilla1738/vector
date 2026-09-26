@@ -1,0 +1,573 @@
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -2885,6 +2885,25 @@
+                                   base::JoinString(blink_settings, ","));
+ }
+ 
++// Disable wins when both switches are set, so a private renderer stays off
++// even if the browser command line already enabled WebMCP.
++void AppendBlinkRuntimeFeature(base::CommandLine* command_line,
++                               const char* switch_name,
++                               std::string_view feature) {
++  const std::string existing = command_line->GetSwitchValueASCII(switch_name);
++  if (existing.empty()) {
++    command_line->AppendSwitchASCII(switch_name, feature);
++    return;
++  }
++  for (std::string_view piece : base::SplitStringPiece(
++           existing, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
++    if (piece == feature) {
++      return;
++    }
++  }
++  command_line->AppendSwitchASCII(switch_name, existing + "," + std::string(feature));
++}
++
+ }  // namespace
+ 
+ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
+@@ -2970,6 +2989,16 @@
+     if (process) {
+       Profile* profile =
+           Profile::FromBrowserContext(process->GetBrowserContext());
++      // WebMCP is experimental in Blink: the base feature does not expose
++      // document.modelContext. Turn the runtime feature on only for a normal
++      // Profile. Private windows get the disable switch instead.
++      if (profile->IsOffTheRecord()) {
++        AppendBlinkRuntimeFeature(command_line, switches::kDisableBlinkFeatures,
++                                  "WebMCP");
++      } else {
++        AppendBlinkRuntimeFeature(command_line, switches::kEnableBlinkFeatures,
++                                  "WebMCP");
++      }
+       PrefService* prefs = profile->GetPrefs();
+       PrefService* local_state = g_browser_process->local_state();
+       // Currently this pref is only registered if applied via a policy.
+diff --git a/content/browser/renderer_host/model_context_user_data.h b/content/browser/renderer_host/model_context_user_data.h
+--- a/content/browser/renderer_host/model_context_user_data.h
++++ b/content/browser/renderer_host/model_context_user_data.h
+@@ -146,6 +146,13 @@
+     return script_tools_;
+   }
+ 
++  // Browser-initiated execution of a tool this document registered. Does not
++  // go through a cross-document caller.
++  void ExecuteOwnedTool(
++      const std::string& name,
++      const std::string& input_arguments,
++      blink::mojom::ModelContext::ExecuteScriptToolCallback callback);
++
+  private:
+   friend class DocumentUserData<ModelContextUserData>;
+   friend class ModelContextPageUserData;
+diff --git a/content/browser/renderer_host/model_context_user_data.cc b/content/browser/renderer_host/model_context_user_data.cc
+--- a/content/browser/renderer_host/model_context_user_data.cc
++++ b/content/browser/renderer_host/model_context_user_data.cc
+@@ -6,6 +6,8 @@
+ 
+ #include <algorithm>
+ 
++#include "base/functional/bind.h"
++#include "base/unguessable_token.h"
+ #include "content/browser/bad_message.h"
+ #include "content/browser/renderer_host/frame_tree_node.h"
+ #include "content/browser/renderer_host/page_impl.h"
+@@ -13,6 +15,9 @@
+ #include "content/browser/renderer_host/render_frame_host_manager.h"
+ #include "content/browser/site_instance_impl.h"
+ #include "content/public/browser/browser_thread.h"
++#include "content/public/browser/document_script_tools.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
+ #include "third_party/blink/public/common/features.h"
+ #include "url/origin.h"
+ 
+@@ -79,6 +84,27 @@
+   }
+   user_data = ModelContextUserData::GetOrCreateForCurrentDocument(rfh);
+   user_data->receiver_.Bind(std::move(receiver));
++}
++
++void ModelContextUserData::ExecuteOwnedTool(
++    const std::string& name,
++    const std::string& input_arguments,
++    blink::mojom::ModelContext::ExecuteScriptToolCallback callback) {
++  if (!IsWebMCPEnabled(render_frame_host()) ||
++      !model_context_remote_.is_bound()) {
++    std::move(callback).Run(std::nullopt, false);
++    return;
++  }
++  const auto it = std::find_if(
++      script_tools_.begin(), script_tools_.end(),
++      [&](const blink::mojom::ScriptToolPtr& tool) { return tool->name == name; });
++  if (it == script_tools_.end()) {
++    std::move(callback).Run(std::nullopt, false);
++    return;
++  }
++  model_context_remote_->ExecuteScriptTool(base::UnguessableToken::Create(),
++                                           name, input_arguments,
++                                           std::move(callback));
+ }
+ 
+ void ModelContextUserData::BindModelContext(
+@@ -520,6 +546,108 @@
+ 
+ base::WeakPtr<ModelContextPageUserData> ModelContextPageUserData::GetWeakPtr() {
+   return weak_factory_.GetWeakPtr();
++}
++
++namespace {
++
++DocumentScriptTool ToolInfo(const blink::mojom::ScriptTool& tool) {
++  DocumentScriptTool info;
++  info.name = tool.name;
++  info.description = tool.description;
++  if (tool.title) {
++    info.title = tool.title;
++  }
++  if (tool.annotations) {
++    info.read_only = tool.annotations->read_only;
++    info.consequential = tool.annotations->consequential;
++  }
++  return info;
++}
++
++ModelContextUserData* UserDataForFrame(RenderFrameHost* frame) {
++  return frame ? ModelContextUserData::GetForCurrentDocument(frame) : nullptr;
++}
++
++}  // namespace
++
++std::vector<DocumentScriptTool> ListDocumentScriptTools(
++    WebContents* web_contents) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  std::vector<DocumentScriptTool> tools;
++  if (!web_contents) {
++    return tools;
++  }
++  RenderFrameHost* main = web_contents->GetPrimaryMainFrame();
++  if (!main) {
++    return tools;
++  }
++  main->ForEachRenderFrameHostWithAction([&](RenderFrameHost* frame) {
++    if (frame->GetMainFrame() != main) {
++      return RenderFrameHost::FrameIterationAction::kSkipChildren;
++    }
++    ModelContextUserData* data = UserDataForFrame(frame);
++    if (!data) {
++      return RenderFrameHost::FrameIterationAction::kContinue;
++    }
++    for (const auto& tool : data->script_tools()) {
++      tools.push_back(ToolInfo(*tool));
++    }
++    return RenderFrameHost::FrameIterationAction::kContinue;
++  });
++  return tools;
+ }
+ 
++void ExecuteDocumentScriptTool(
++    WebContents* web_contents,
++    const std::string& name,
++    const std::string& input_arguments,
++    base::OnceCallback<void(std::optional<std::string> result, bool success)>
++        callback) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!web_contents) {
++    std::move(callback).Run(std::nullopt, false);
++    return;
++  }
++  RenderFrameHost* main = web_contents->GetPrimaryMainFrame();
++  if (!main) {
++    std::move(callback).Run(std::nullopt, false);
++    return;
++  }
++  ModelContextUserData* owner = nullptr;
++  main->ForEachRenderFrameHostWithAction([&](RenderFrameHost* frame) {
++    if (owner || frame->GetMainFrame() != main) {
++      return owner ? RenderFrameHost::FrameIterationAction::kStop
++                   : RenderFrameHost::FrameIterationAction::kSkipChildren;
++    }
++    ModelContextUserData* data = UserDataForFrame(frame);
++    if (!data) {
++      return RenderFrameHost::FrameIterationAction::kContinue;
++    }
++    for (const auto& tool : data->script_tools()) {
++      if (tool->name == name) {
++        owner = data;
++        return RenderFrameHost::FrameIterationAction::kStop;
++      }
++    }
++    return RenderFrameHost::FrameIterationAction::kContinue;
++  });
++  if (!owner) {
++    std::move(callback).Run(std::nullopt, false);
++    return;
++  }
++  owner->ExecuteOwnedTool(
++      name, input_arguments,
++      base::BindOnce(
++          [](base::OnceCallback<void(std::optional<std::string>, bool)> callback,
++             const std::optional<std::string>& result, bool success) {
++            std::move(callback).Run(result, success);
++          },
++          std::move(callback)));
++}
++
++DocumentScriptTool::DocumentScriptTool() = default;
++DocumentScriptTool::DocumentScriptTool(DocumentScriptTool&&) = default;
++DocumentScriptTool& DocumentScriptTool::operator=(DocumentScriptTool&&) = default;
++DocumentScriptTool::~DocumentScriptTool() = default;
++
+ }  // namespace content
+diff --git a/content/public/browser/BUILD.gn b/content/public/browser/BUILD.gn
+--- a/content/public/browser/BUILD.gn
++++ b/content/public/browser/BUILD.gn
+@@ -162,6 +162,7 @@
+     "document_picture_in_picture_window_controller.h",
+     "document_ref.cc",
+     "document_ref.h",
++    "document_script_tools.h",
+     "document_service.h",
+     "document_service_internal.cc",
+     "document_service_internal.h",
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -57,6 +57,8 @@
+     "secret_store_mac.mm",
+     "tab_catalog.cc",
+     "tab_catalog.h",
++    "webmcp.cc",
++    "webmcp.h",
+     "zap_controller.cc",
+     "zap_controller.h",
+   ]
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -80,7 +80,8 @@
+                     "native.fillSavedPassword", "native.zapInstallStylesheet",
+                     "native.cosmeticCommit", "native.findInPage",
+                     "native.contentBlockCommit", "native.historyClear",
+-                    "native.historyRemove"});
++                    "native.historyRemove", "native.webmcpList",
++                    "native.webmcpCall"});
+   register_runtime(AuxRuntimeMethodGroup::kWorker,
+                    {"native.storeSecret", "native.readSecret"});
+ }
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -53,6 +53,7 @@
+ #include "chrome/browser/ui/aux/readable_capture.h"
+ #include "chrome/browser/ui/aux/secret_store_mac.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/webmcp.h"
+ #include "chrome/browser/ui/aux/native_find.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
+ #include "chrome/browser/ui/browser_commands.h"
+@@ -623,6 +624,24 @@
+                                  state));
+                          return;
+                        }
++                       if (owner && (method == "native.webmcpList" ||
++                                     method == "native.webmcpCall")) {
++                         auto done = base::BindOnce(
++                             [](std::shared_ptr<NativeReplyState> state,
++                                base::DictValue reply) {
++                               state->reply = std::move(reply);
++                               state->ready.Signal();
++                             },
++                             state);
++                         if (method == "native.webmcpList") {
++                           aux::ListWebmcpTools(owner->profile_, params,
++                                                std::move(done));
++                         } else {
++                           aux::CallWebmcpTool(owner->profile_, params,
++                                               std::move(done));
++                         }
++                         return;
++                       }
+                        if (owner && (method == "native.historyClear" ||
+                                      method == "native.historyRemove")) {
+                          owner->HandleHistoryMutation(
+diff --git a/chrome/browser/ui/aux/generated/aux_host_methods.h b/chrome/browser/ui/aux/generated/aux_host_methods.h
+--- a/chrome/browser/ui/aux/generated/aux_host_methods.h
++++ b/chrome/browser/ui/aux/generated/aux_host_methods.h
+@@ -10,7 +10,7 @@
+ inline constexpr std::string_view kManifestHash = "93ca36e5534b0ce6a535a41def6d5bc697a7816a678777832be9acd38f7eed88";
+ inline constexpr std::string_view kSourceCommit = "e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83";
+ 
+-enum class MethodId { kCapabilities, kDefaultBrowser, kSetDefaultBrowser, kTabCommand, kBindTabSpace, kMigrateTabSpaces, kTabsSnapshot, kOrganizationSnapshot, kOrganizationCommit, kMigrationReview, kMigrationBegin, kMigrationBatch, kMigrationFinish, kMigrationRollback, kTabsSince, kSurfaceContentId, kResolveSearch, kFocusShell, kCreateResultPreview, kReleaseResultPreview, kSavePagePdf, kPrintPage, kDevTools, kHardReload, kCloseWindow, kOpenFile, kDictationStatus, kStartDictation, kStopDictation, kCancelDictation, kDataDir, kSiteInfo, kSiteZoom, kPrivacy, kSetTrackerBlock, kSetSiteTrackers, kRemoveAllowedHost, kFilterLists, kUpdateFilters, kAddFilterSource, kRemoveFilterSource, kSetFilterSourceEnabled, kSetAppearance, kSetShortcuts, kExtensions, kInstallStoreExtension, kCheckStoreExtensionUpdate, kReloadExtension, kShowExtensionAction, kSetExtensionEnabled, kRemoveExtension, kNativeContentBlockBegin, kNativeContentBlockAppend, kNativeContentBlockCommit, kNativeCosmeticBegin, kNativeCosmeticAppend, kNativeCosmeticCommit, kNativeBookmarksInvoke, kNativeCapabilities, kNativeHistoryClear, kNativeHistoryRemove, kNativeSearchEngineGet, kNativeSearchEngineSet, kNativeSearchSuggestionsGet, kNativeSearchSuggestionsSet, kNativeZapInstallStylesheet, kNativeListPages, kNativeTabCommand, kNativeMovePage, kNativeFocusPage, kNativeRecoverPage, kNativeStopPage, kNativeAcquireStage, kNativeReleaseStage, kNativeFindInPage, kNativeStopFind, kNativeSetZoom, kNativeSetCookies, kNativeStoreSecret, kNativeReadSecret, kNativeCaptureReadablePage, kNativeFillSavedPassword, kNativeCdpReset, kNativeCdpDispatch, kNativeCdpVersion };
++enum class MethodId { kCapabilities, kDefaultBrowser, kSetDefaultBrowser, kTabCommand, kBindTabSpace, kMigrateTabSpaces, kTabsSnapshot, kOrganizationSnapshot, kOrganizationCommit, kMigrationReview, kMigrationBegin, kMigrationBatch, kMigrationFinish, kMigrationRollback, kTabsSince, kSurfaceContentId, kResolveSearch, kFocusShell, kCreateResultPreview, kReleaseResultPreview, kSavePagePdf, kPrintPage, kDevTools, kHardReload, kCloseWindow, kOpenFile, kDictationStatus, kStartDictation, kStopDictation, kCancelDictation, kDataDir, kSiteInfo, kSiteZoom, kPrivacy, kSetTrackerBlock, kSetSiteTrackers, kRemoveAllowedHost, kFilterLists, kUpdateFilters, kAddFilterSource, kRemoveFilterSource, kSetFilterSourceEnabled, kSetAppearance, kSetShortcuts, kExtensions, kInstallStoreExtension, kCheckStoreExtensionUpdate, kReloadExtension, kShowExtensionAction, kSetExtensionEnabled, kRemoveExtension, kNativeContentBlockBegin, kNativeContentBlockAppend, kNativeContentBlockCommit, kNativeCosmeticBegin, kNativeCosmeticAppend, kNativeCosmeticCommit, kNativeBookmarksInvoke, kNativeCapabilities, kNativeHistoryClear, kNativeHistoryRemove, kNativeSearchEngineGet, kNativeSearchEngineSet, kNativeSearchSuggestionsGet, kNativeSearchSuggestionsSet, kNativeZapInstallStylesheet, kNativeListPages, kNativeTabCommand, kNativeMovePage, kNativeFocusPage, kNativeRecoverPage, kNativeStopPage, kNativeAcquireStage, kNativeReleaseStage, kNativeFindInPage, kNativeStopFind, kNativeSetZoom, kNativeSetCookies, kNativeStoreSecret, kNativeReadSecret, kNativeCaptureReadablePage, kNativeFillSavedPassword, kNativeCdpReset, kNativeCdpDispatch, kNativeCdpVersion, kNativeWebmcpList, kNativeWebmcpCall };
+ struct MethodInfo { MethodId id; std::string_view name; std::string_view owner; std::string_view feature; std::string_view trusted; bool profile_scoped; };
+ std::optional<MethodId> LookupMethod(std::string_view name);
+ std::span<const MethodInfo> Methods();
+diff --git a/chrome/browser/ui/aux/generated/aux_host_methods.cc b/chrome/browser/ui/aux/generated/aux_host_methods.cc
+--- a/chrome/browser/ui/aux/generated/aux_host_methods.cc
++++ b/chrome/browser/ui/aux/generated/aux_host_methods.cc
+@@ -1845,6 +1845,36 @@
+   } else return false;
+   for (auto entry : dict) {
+     if (!(entry.first == "pageId" || entry.first == "message")) return false;
++  }
++  return true;
++}
++
++bool ValidateNode140(const base::Value& value) {
++  if (!value.is_dict()) return false;
++  const auto& dict = value.GetDict();
++  if (const base::Value* field = dict.Find("pageId")) {
++    if (!ValidateNode46(*field)) return false;
++  } else return false;
++  for (auto entry : dict) {
++    if (!(entry.first == "pageId")) return false;
++  }
++  return true;
++}
++
++bool ValidateNode141(const base::Value& value) {
++  if (!value.is_dict()) return false;
++  const auto& dict = value.GetDict();
++  if (const base::Value* field = dict.Find("pageId")) {
++    if (!ValidateNode46(*field)) return false;
++  } else return false;
++  if (const base::Value* field = dict.Find("name")) {
++    if (!ValidateNode46(*field)) return false;
++  } else return false;
++  if (const base::Value* field = dict.Find("input")) {
++    if (!ValidateNode46(*field)) return false;
++  } else return false;
++  for (auto entry : dict) {
++    if (!(entry.first == "pageId" || entry.first == "name" || entry.first == "input")) return false;
+   }
+   return true;
+ }
+@@ -1934,6 +1964,8 @@
+   {MethodId::kNativeCdpReset, "native.cdpReset", "runtime", "fourLayerTabApi", "authenticated-runtime", true},
+   {MethodId::kNativeCdpDispatch, "native.cdpDispatch", "runtime", "fourLayerTabApi", "authenticated-runtime", true},
+   {MethodId::kNativeCdpVersion, "native.cdpVersion", "runtime", "fourLayerTabApi", "authenticated-runtime", true},
++  {MethodId::kNativeWebmcpList, "native.webmcpList", "runtime", "core", "authenticated-runtime", true},
++  {MethodId::kNativeWebmcpCall, "native.webmcpCall", "runtime", "core", "authenticated-runtime", true},
+ };
+ }  // namespace
+ std::optional<MethodId> LookupMethod(std::string_view name) {
+@@ -2029,6 +2061,8 @@
+     case MethodId::kNativeCdpReset: valid = ValidateNode108(args); break;
+     case MethodId::kNativeCdpDispatch: valid = ValidateNode139(args); break;
+     case MethodId::kNativeCdpVersion: valid = ValidateNode108(args); break;
++    case MethodId::kNativeWebmcpList: valid = ValidateNode140(args); break;
++    case MethodId::kNativeWebmcpCall: valid = ValidateNode141(args); break;
+   }
+   if (!valid && error) *error = "Invalid arguments for generated Aux host method";
+   return valid;
+diff --git a/content/public/browser/document_script_tools.h b/content/public/browser/document_script_tools.h
+new file mode 100644
+--- /dev/null
++++ b/content/public/browser/document_script_tools.h
+@@ -0,0 +1,46 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CONTENT_PUBLIC_BROWSER_DOCUMENT_SCRIPT_TOOLS_H_
++#define CONTENT_PUBLIC_BROWSER_DOCUMENT_SCRIPT_TOOLS_H_
++
++#include <optional>
++#include <string>
++#include <vector>
++
++#include "base/functional/callback.h"
++#include "content/common/content_export.h"
++
++namespace content {
++
++class WebContents;
++
++// A script tool registered on a document via WebMCP. Missing annotations mean
++// the tool is not read-only.
++struct CONTENT_EXPORT DocumentScriptTool {
++  DocumentScriptTool();
++  DocumentScriptTool(DocumentScriptTool&&);
++  DocumentScriptTool& operator=(DocumentScriptTool&&);
++  ~DocumentScriptTool();
++
++  std::string name;
++  std::string description;
++  std::optional<std::string> title;
++  bool read_only = false;
++  bool consequential = false;
++};
++
++CONTENT_EXPORT std::vector<DocumentScriptTool> ListDocumentScriptTools(
++    WebContents* web_contents);
++
++CONTENT_EXPORT void ExecuteDocumentScriptTool(
++    WebContents* web_contents,
++    const std::string& name,
++    const std::string& input_arguments,
++    base::OnceCallback<void(std::optional<std::string> result, bool success)>
++        callback);
++
++}  // namespace content
++
++#endif  // CONTENT_PUBLIC_BROWSER_DOCUMENT_SCRIPT_TOOLS_H_
+diff --git a/chrome/browser/ui/aux/webmcp.h b/chrome/browser/ui/aux/webmcp.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/webmcp.h
+@@ -0,0 +1,26 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_WEBMCP_H_
++#define CHROME_BROWSER_UI_AUX_WEBMCP_H_
++
++#include "base/functional/callback_forward.h"
++#include "base/values.h"
++
++class Profile;
++
++namespace aux {
++
++// Lists or calls document-owned WebMCP tools for one page. Replies with the
++// native `{result}` / `{error:{code,message}}` shape. Must run on the UI thread.
++void ListWebmcpTools(Profile* profile,
++                     const base::DictValue& params,
++                     base::OnceCallback<void(base::DictValue)> callback);
++void CallWebmcpTool(Profile* profile,
++                    const base::DictValue& params,
++                    base::OnceCallback<void(base::DictValue)> callback);
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_WEBMCP_H_
+diff --git a/chrome/browser/ui/aux/webmcp.cc b/chrome/browser/ui/aux/webmcp.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/webmcp.cc
+@@ -0,0 +1,122 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/webmcp.h"
++
++#include <optional>
++#include <string>
++
++#include "base/functional/bind.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "content/public/browser/document_script_tools.h"
++#include "content/public/browser/web_contents.h"
++
++namespace aux {
++namespace {
++
++base::DictValue Fault(std::string code, std::string message) {
++  base::DictValue error;
++  error.Set("code", std::move(code));
++  error.Set("message", std::move(message));
++  base::DictValue reply;
++  reply.Set("error", std::move(error));
++  return reply;
++}
++
++base::DictValue Result(base::DictValue result) {
++  base::DictValue reply;
++  reply.Set("result", std::move(result));
++  return reply;
++}
++
++content::WebContents* PageContents(Profile* profile,
++                                   const base::DictValue& params,
++                                   base::DictValue* fault) {
++  if (!profile || profile->IsOffTheRecord()) {
++    *fault = Fault("capability_unsupported",
++                   "WebMCP is not available in a private window");
++    return nullptr;
++  }
++  const std::string* page_id = params.FindString("pageId");
++  if (!page_id || page_id->empty()) {
++    *fault = Fault("invalid_argument", "WebMCP requires a page");
++    return nullptr;
++  }
++  TabCatalog* catalog = TabCatalog::GetForProfile(profile);
++  content::WebContents* contents = catalog ? catalog->FindPage(*page_id) : nullptr;
++  if (!contents) {
++    *fault = Fault("not_found", "Page is not open");
++    return nullptr;
++  }
++  if (contents->GetBrowserContext()->IsOffTheRecord()) {
++    *fault = Fault("capability_unsupported",
++                   "WebMCP is not available in a private window");
++    return nullptr;
++  }
++  return contents;
++}
++
++}  // namespace
++
++void ListWebmcpTools(Profile* profile,
++                     const base::DictValue& params,
++                     base::OnceCallback<void(base::DictValue)> callback) {
++  base::DictValue fault;
++  content::WebContents* contents = PageContents(profile, params, &fault);
++  if (!contents) {
++    std::move(callback).Run(std::move(fault));
++    return;
++  }
++  base::ListValue tools;
++  for (const content::DocumentScriptTool& tool :
++       content::ListDocumentScriptTools(contents)) {
++    base::DictValue item;
++    item.Set("name", tool.name);
++    item.Set("description", tool.description);
++    if (tool.title) {
++      item.Set("title", *tool.title);
++    }
++    item.Set("readOnly", tool.read_only);
++    item.Set("consequential", tool.consequential);
++    tools.Append(std::move(item));
++  }
++  base::DictValue result;
++  result.Set("tools", std::move(tools));
++  std::move(callback).Run(Result(std::move(result)));
++}
++
++void CallWebmcpTool(Profile* profile,
++                    const base::DictValue& params,
++                    base::OnceCallback<void(base::DictValue)> callback) {
++  base::DictValue fault;
++  content::WebContents* contents = PageContents(profile, params, &fault);
++  if (!contents) {
++    std::move(callback).Run(std::move(fault));
++    return;
++  }
++  const std::string* name = params.FindString("name");
++  const std::string* input = params.FindString("input");
++  if (!name || name->empty() || !input) {
++    std::move(callback).Run(Fault("invalid_argument", "WebMCP call requires a tool name and input"));
++    return;
++  }
++  content::ExecuteDocumentScriptTool(
++      contents, *name, *input,
++      base::BindOnce(
++          [](base::OnceCallback<void(base::DictValue)> callback,
++             std::optional<std::string> tool_result, bool success) {
++            base::DictValue result;
++            if (tool_result) {
++              result.Set("result", *tool_result);
++            } else {
++              result.Set("result", base::Value());
++            }
++            result.Set("success", success);
++            std::move(callback).Run(Result(std::move(result)));
++          },
++          std::move(callback)));
++}
++
++}  // namespace aux

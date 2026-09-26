@@ -177,6 +177,7 @@ export const RuntimeMethodPolicy = {
   "pages.stop": { feature: "core", auth: "standard" },
   "pages.observe": { feature: "core", auth: "standard" },
   "pages.execute": { feature: "core", auth: "handler-guarded" },
+  "pages.webmcp": { feature: "core", auth: "handler-guarded" },
   "pages.cuaExecute": { feature: "core", auth: "standard" },
   "pages.reconcileWrite": { feature: "core", auth: "handler-guarded" },
   "pages.extract": { feature: "core", auth: "standard" },

@@ -10,7 +10,8 @@ import type { LoopPark, LoopToolResult } from "./types.js";
  * compile to PlanSteps and flow through the same `act` dep (guardedExecute →
  * decide() → durable ledger), `tabs`/`openTab`/`closeTab`, `snapshot()`,
  * `annotatedScreenshot()`, `display()`, `sleep`, restricted `fs`, and a
- * cookie-free `fetch` routed through decide(). Nothing on the host side can
+ * cookie-free `fetch` routed through decide(), and `page.webmcp.tools()` /
+ * `.call()` for document script tools. Nothing on the host side can
  * be called outside the exposed names — the raw bridge is deleted from the
  * guest global after bootstrap.
  *
@@ -60,6 +61,7 @@ export interface ReplHostDeps {
   fetch(url: string): Promise<LoopToolResult>;
   fsRead(path: string): Promise<string>;
   fsWrite(path: string, content: string): Promise<void>;
+  /** `{park}` when a write-annotated tool is waiting on the person. */
   webmcp?(pageId: string, action: unknown): Promise<unknown>;
   /** Subagent cells (06-Y): spawn under this run's group, then wait/send/stop. */
   spawnCell?(input: { goal: string; profile?: string; pageIds?: string[] }): Promise<{ cellId: string }>;
@@ -186,8 +188,10 @@ for (const op of __aux_step_ops) {
   };
 }
 page.use = (pageId) => { const t = __aux_invoke("useTab", { pageId }); __aux_page = t.pageId; return t; };
-page.webmcp = (action) => __aux_invoke("webmcp", { pageId: __aux_page, action });
-Object.freeze(page.webmcp);
+page.webmcp = Object.freeze({
+  tools: () => __aux_invoke("webmcp", { pageId: __aux_page, action: { op: "tools" } }),
+  call: (name, input) => __aux_invoke("webmcp", { pageId: __aux_page, action: { op: "call", name, input } }),
+});
 const tabs = () => __aux_invoke("tabs");
 const openTab = (url) => { const t = __aux_invoke("openTab", { url }); __aux_page = t.pageId; return t; };
 const closeTab = (pageId) => __aux_invoke("closeTab", { pageId });
@@ -336,7 +340,11 @@ class ReplSession {
         case "webmcp": {
           if (!this.deps.webmcp)
             return fail(new AuxError("capability_unsupported", "WebMCP is not exposed for this page."));
-          return ok(await this.deps.webmcp(String(parsed.pageId ?? ""), parsed.action));
+          const value = await this.deps.webmcp(String(parsed.pageId ?? ""), parsed.action);
+          if (value && typeof value === "object" && "park" in value) {
+            return fail("webmcp needs a decision", { park: (value as { park: LoopPark }).park });
+          }
+          return ok(value);
         }
         case "spawnCell": {
           if (!this.deps.spawnCell)

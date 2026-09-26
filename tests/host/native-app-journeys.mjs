@@ -41,7 +41,9 @@ assert.equal(bundleId, "dev.aux.browser", "The native journey must target the Au
 const rpcOnly = process.argv.includes("--rpc-only");
 const uiOnly = process.argv.includes("--ui-only");
 const submitConfirmation = process.argv.includes("--submit-confirmation");
+const webmcpJourney = process.argv.includes("--webmcp");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
+assert.ok(!(submitConfirmation && webmcpJourney), "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -60,6 +62,7 @@ let fixture;
 let origin;
 let clicks = 0;
 let posts = 0;
+let webmcpWrites = 0;
 let rpcToken;
 let rpcPort;
 let lastRuntimeStatus;
@@ -83,7 +86,7 @@ async function rpc(method, params = {}) {
     const response = await fetch(`http://127.0.0.1:${rpcPort}/rpc`, {
       method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${rpcToken}` },
       body: JSON.stringify({ id: 1, method, params }),
-      signal: AbortSignal.timeout(method === "pages.open" ? 60_000 : method === "pages.execute" ? 30_000 : 10_000),
+      signal: AbortSignal.timeout(method === "pages.open" ? 60_000 : method === "pages.execute" || method === "pages.webmcp" ? 30_000 : 10_000),
     });
     const body = await response.json();
     if (body.error) throw new Error(`${method}: ${body.error.code}: ${body.error.message}`);
@@ -124,6 +127,23 @@ function changedFraction(aPath, bPath, fraction = 0.45) {
 
 try {
   fixture = createServer((request, response) => {
+    if (webmcpJourney) {
+      if (request.method === "POST" && request.url === "/write") { webmcpWrites++; response.writeHead(204).end(); return; }
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+      response.end(`<!doctype html><title>Aux WebMCP fixture</title><main><h1>WebMCP fixture</h1><p id="status">tools pending</p></main><script>
+const status = document.getElementById("status");
+const tools = document.modelContext;
+if (!tools || !tools.registerTool) { status.textContent = "webmcp missing"; }
+else {
+  let writes = 0;
+  Promise.all([
+    tools.registerTool({ name: "read_count", description: "Read the write count", inputSchema: { type: "object" }, annotations: { readOnlyHint: true }, execute: async () => String(writes) }),
+    tools.registerTool({ name: "add_write", description: "Record one write", inputSchema: { type: "object" }, annotations: { readOnlyHint: false, consequentialHint: true }, execute: async () => { await fetch("/write", { method: "POST" }); writes += 1; return String(writes); } })
+  ]).then(() => { status.textContent = "tools ready"; }).catch((error) => { status.textContent = "tools failed " + error; });
+}
+</script>`);
+      return;
+    }
     if (submitConfirmation) {
       if (request.method === "POST" && request.url === "/submit") { posts++; response.writeHead(204).end(); return; }
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
@@ -165,7 +185,80 @@ try {
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
   record("Profile runtime is authenticated and raw debugging is disabled", { sessions: connection.sessions?.length });
 
-  if (submitConfirmation) {
+  if (webmcpJourney) {
+    if (rpcOnly) throw new Error("WebMCP confirmation needs the native accessibility tree.");
+    assert.equal(runtimeCapabilities.features?.webmcpTools, true, "The runtime must expose WebMCP tools");
+    assert.ok(runtimeCapabilities.methods?.includes("pages.webmcp"), "pages.webmcp must be a runtime method");
+    await rpc("settings.set", { effectGrants: ["effect:read", "effect:write"] });
+    const page = await rpc("pages.open", { url: `${origin}/webmcp`, activate: true });
+    await until("the WebMCP fixture to load", async () => {
+      const pages = await rpc("pages.list");
+      return pages.some((item) => item.pageId === page.pageId && item.url.startsWith(`${origin}/webmcp`) && !item.loading);
+    });
+    await until("the WebMCP fixture to register tools", async () => {
+      const observed = JSON.stringify(await rpc("pages.observe", { pageId: page.pageId }));
+      if (observed.includes("webmcp missing") || observed.includes("tools failed")) {
+        throw new Error(`WebMCP did not register: ${observed}`);
+      }
+      return observed.includes("tools ready");
+    }, 30_000);
+    const listed = await rpc("pages.webmcp", { pageId: page.pageId, op: "tools" });
+    assert.equal(listed.op, "tools");
+    const readTool = listed.tools.find((tool) => tool.name === "read_count");
+    const writeTool = listed.tools.find((tool) => tool.name === "add_write");
+    assert.equal(readTool?.readOnly, true);
+    assert.equal(readTool?.consequential, false);
+    assert.equal(writeTool?.readOnly, false);
+    assert.equal(writeTool?.consequential, true);
+    const read = await rpc("pages.webmcp", { pageId: page.pageId, op: "call", name: "read_count", input: "{}" });
+    assert.deepEqual(read, { op: "call", result: "0", success: true });
+    assert.equal(webmcpWrites, 0, "A read tool must not post");
+    await assert.rejects(
+      rpc("pages.webmcp", { pageId: page.pageId, op: "call", name: "add_write", input: "{}" }),
+      /needs_input/,
+    );
+    assert.equal(webmcpWrites, 0, "A write tool must not post before the person allows it");
+    await until("a visible Aux browser window", () => {
+      try { return JSON.parse(native("window")); } catch { return null; }
+    });
+    native("activate");
+    try {
+      await until("the Allow confirmation", () => native("has-button", "Allow") === "true");
+    } catch (error) {
+      throw new Error(`${error.message}; visible buttons: ${native("buttons")}; runtime banner: ${native("has-text", "Runtime reconnecting")}`);
+    }
+    assert.equal(native("press-button", "Allow"), "true", "Accessibility press must activate Allow");
+    const click = JSON.parse(native("click-button", "Allow"));
+    await delay(600);
+    if (native("has-button", "Allow") === "true") {
+      const usedRaw = Math.abs(click.x - click.rawX) < 1 && Math.abs(click.y - click.rawY) < 1;
+      native("click-at", usedRaw ? click.flippedX : click.rawX, usedRaw ? click.flippedY : click.rawY);
+    }
+    try {
+      await until("the confirmation to close", () => native("has-button", "Allow") === "false", 8_000);
+    } catch (error) {
+      let shot = "";
+      try {
+        const window = JSON.parse(native("window"));
+        capture(window.id, "webmcp-confirmation-stuck");
+        shot = " screenshot saved";
+      } catch (captureError) {
+        shot = ` screenshot failed: ${captureError instanceof Error ? captureError.message : captureError}`;
+      }
+      throw new Error(`${error.message}; click: ${JSON.stringify(click)}; writes: ${webmcpWrites}; focused: ${native("focused")}; texts: ${native("texts")};${shot}`);
+    }
+    const wrote = await rpc("pages.webmcp", { pageId: page.pageId, op: "call", name: "add_write", input: "{}" });
+    assert.deepEqual(wrote, { op: "call", result: "1", success: true });
+    await until("one WebMCP write", () => webmcpWrites === 1);
+    await assert.rejects(
+      rpc("pages.webmcp", { pageId: page.pageId, op: "call", name: "add_write", input: "{}" }),
+      /needs_input/,
+    );
+    await delay(500);
+    assert.equal(webmcpWrites, 1, "A further write without a new acceptance must not post again");
+    record("WebMCP read runs immediately and a write posts once after Allow", { webmcpWrites });
+    report.passed = true;
+  } else if (submitConfirmation) {
     if (rpcOnly) throw new Error("Submit confirmation needs the native accessibility tree.");
     await rpc("settings.set", { effectGrants: ["effect:read", "effect:write"] });
     const page = await rpc("pages.open", { url: `${origin}/submit`, activate: true });

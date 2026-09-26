@@ -70,6 +70,7 @@ import { AgentWebTools, permittedWebUrl } from "./agent/web-tools.js";
 import type { AgentLoopHostDeps } from "./agent/loop/host.js";
 import { BashSeatbelt } from "./agent/loop/bash.js";
 import type { LoopPark } from "./agent/loop/types.js";
+import { runWebmcp, webmcpTurn } from "./agent/webmcp.js";
 import { attachBidiRuntime } from "./services/bidi.js";
 import { VaultService } from "./services/vault.js";
 import { DurableWriteLedger, PageClaimStore } from "./agent/durable.js";
@@ -798,6 +799,58 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         const gated = await loopEgressGate(ctx, url, "agent.tab.open");
         if ("park" in gated) return { park: gated.park };
         return { output: { url: gated.href } };
+      },
+      webmcp: async (pageId, action, ctx) => {
+        const page = pages.get(pageId);
+        let origin = "";
+        try {
+          origin = new URL(page.url).origin;
+        } catch {
+          origin = "";
+        }
+        const run = repo.getRun(ctx.runId);
+        const name = action.op === "call" ? action.name : "list";
+        const outcome = await runWebmcp(
+          native,
+          action.op === "call"
+            ? { pageId, op: "call", name: action.name, input: JSON.stringify(action.input ?? {}) }
+            : { pageId, op: "tools" },
+          {
+            profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+            scope: run?.config?.taskId
+              ? { kind: "task", id: run.config.taskId }
+              : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+            actor: "code_mode",
+            ...webmcpTurn(pageId, name),
+            runId: ctx.runId,
+          },
+          decideDeps,
+          origin,
+        );
+        if (outcome.status === "ask") {
+          events.emit("safety.confirmation", {
+            approvalId: outcome.approvalId,
+            turnId: outcome.turnId,
+            threadId: outcome.threadId,
+            instruction: outcome.instruction,
+            action: outcome.action,
+            origin: outcome.origin,
+          });
+          suspensions.park({
+            runId: ctx.runId,
+            threadId: outcome.threadId,
+            turnId: outcome.turnId,
+            kind: "approval",
+            request: {
+              kind: "approval",
+              approvalId: outcome.approvalId,
+              instruction: outcome.instruction,
+              guidance:
+                "Pause this action and request approval from the user. Do not dispatch or retry while approval is pending.",
+            },
+          });
+        }
+        return outcome;
       },
       fsRoots: () => [config.artifactsDir, config.downloadsDir, config.previewsDir],
       outputDir: config.artifactsDir,

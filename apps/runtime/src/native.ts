@@ -14,6 +14,10 @@ import {
   type ChromiumContentBlockReceipt,
   type ChromiumCookieBannerReceipt,
   type CookieBannerRule,
+  WebmcpCallResultSchema,
+  WebmcpToolSchema,
+  type WebmcpCallResult,
+  type WebmcpTool,
 } from "@aux/contracts";
 
 export interface ContentBlockBegin {
@@ -88,6 +92,8 @@ export interface NativeBridge {
   searchSuggestionsSet?(enabled: boolean): Promise<boolean>;
   /** Install a Profile/site stylesheet before new documents, and report active-document application. */
   installZapStylesheet?(request: ZapStylesheetInstall): Promise<ZapInstallReceipt>;
+  webmcpList?(pageId: string): Promise<{ tools: WebmcpTool[] }>;
+  webmcpCall?(pageId: string, name: string, input: string): Promise<WebmcpCallResult>;
   listPages?(): Promise<{
     pages: {
       pageId: string;
@@ -196,6 +202,12 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   async installZapStylesheet(request: ZapStylesheetInstall): Promise<ZapInstallReceipt> {
     return ZapInstallReceiptSchema.parse(await this.channel.call("native.zapInstallStylesheet", request));
+  }
+  async webmcpList(pageId: string) {
+    return { tools: WebmcpToolSchema.array().parse((await this.channel.call<{ tools: unknown }>("native.webmcpList", { pageId })).tools) };
+  }
+  async webmcpCall(pageId: string, name: string, input: string) {
+    return WebmcpCallResultSchema.parse(await this.channel.call("native.webmcpCall", { pageId, name, input }));
   }
   listPages() {
     return this.channel.call<{

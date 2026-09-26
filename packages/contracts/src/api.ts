@@ -22,6 +22,7 @@ import {
   StandingGrantSchema,
 } from "./safety.js";
 import { CommandRankingEntrySchema, CommandRankingSourceSchema } from "./command-ranking.js";
+import { WebmcpToolSchema } from "./webmcp.js";
 import { RuntimeMethodPolicy } from "./runtime-method-policy.js";
 
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "./search-engine.js";
@@ -233,6 +234,19 @@ export const ReturnObservationSchema = z.object({
   maxTextChars: z.number().int().positive().optional(),
 });
 export type ReturnObservation = z.infer<typeof ReturnObservationSchema>;
+export const PagesWebmcpParams = z
+  .object({
+    pageId: id,
+    op: z.enum(["tools", "call"]),
+    name: z.string().min(1).max(200).optional(),
+    /** JSON text passed to the tool. Omitted calls use `{}`. */
+    input: z.string().max(100_000).optional(),
+  })
+  .strict();
+export const PagesWebmcpResult = z.discriminatedUnion("op", [
+  z.object({ op: z.literal("tools"), tools: z.array(WebmcpToolSchema) }).strict(),
+  z.object({ op: z.literal("call"), result: z.string().nullable(), success: z.boolean() }).strict(),
+]);
 export const PagesExecuteParams = z.object({
   program: ProgramSchema,
   taskId: z.string().min(1).optional(),
@@ -1299,6 +1313,7 @@ export const MethodSchemas = {
   "pages.stop": PagesCloseParams,
   "pages.observe": PagesObserveParams,
   "pages.execute": PagesExecuteParams,
+  "pages.webmcp": PagesWebmcpParams,
   "pages.cuaExecute": PagesCuaExecuteParams,
   "pages.reconcileWrite": PagesReconcileWriteParams,
   "pages.extract": PagesExtractParams,
@@ -1923,6 +1938,7 @@ export const ResultSchemas = {
   "pages.reload": PageTargetSchema,
   "pages.stop": PageTargetSchema,
   "pages.observe": z.union([ObservationSchema, z.object({ observation: CompactObservationSchema })]),
+  "pages.webmcp": PagesWebmcpResult,
   "pages.execute": ProgramResultSchema.extend({
     /** present when the request carried returnObservation; full or compact per its format */
     observation: z.union([ObservationSchema, CompactObservationSchema]).optional(),

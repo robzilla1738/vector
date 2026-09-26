@@ -194,6 +194,7 @@ bool ValidateNode165(const base::Value& value);
 bool ValidateNode166(const base::Value& value);
 bool ValidateNode167(const base::Value& value);
 bool ValidateNode168(const base::Value& value);
+bool ValidateNode169(const base::Value& value);
 bool ValidateNode0(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
@@ -2149,6 +2150,24 @@ bool ValidateNode168(const base::Value& value) {
   }
   return true;
 }
+
+bool ValidateNode169(const base::Value& value) {
+  if (!(value.is_dict())) return false;
+  const auto& dict = value.GetDict();
+  if (const base::Value* field = dict.Find("pageId")) {
+    if (!ValidateNode46(*field)) return false;
+  } else return false;
+  if (const base::Value* field = dict.Find("name")) {
+    if (!ValidateNode46(*field)) return false;
+  } else return false;
+  if (const base::Value* field = dict.Find("input")) {
+    if (!ValidateNode46(*field)) return false;
+  } else return false;
+  for (auto entry : dict) {
+    if (!(entry.first == "pageId" || entry.first == "name" || entry.first == "input")) return false;
+  }
+  return true;
+}
 constexpr MethodInfo kMethods[] = {
   {MethodId::kCapabilities, "capabilities", "browser", "core", "aux-webui", true},
   {MethodId::kDefaultBrowser, "defaultBrowser", "browser", "core", "aux-webui", true},
@@ -2295,6 +2314,8 @@ constexpr MethodInfo kMethods[] = {
   {MethodId::kNativeCdpReset, "native.cdpReset", "runtime", "fourLayerTabApi", "authenticated-runtime", true},
   {MethodId::kNativeCdpDispatch, "native.cdpDispatch", "runtime", "fourLayerTabApi", "authenticated-runtime", true},
   {MethodId::kNativeCdpVersion, "native.cdpVersion", "runtime", "fourLayerTabApi", "authenticated-runtime", true},
+  {MethodId::kNativeWebmcpList, "native.webmcpList", "runtime", "core", "authenticated-runtime", true},
+  {MethodId::kNativeWebmcpCall, "native.webmcpCall", "runtime", "core", "authenticated-runtime", true},
 };
 }  // namespace
 std::optional<MethodId> LookupMethod(std::string_view name) {
@@ -2450,6 +2471,8 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kNativeCdpReset: valid = ValidateNode139(args); break;
     case MethodId::kNativeCdpDispatch: valid = ValidateNode168(args); break;
     case MethodId::kNativeCdpVersion: valid = ValidateNode139(args); break;
+    case MethodId::kNativeWebmcpList: valid = ValidateNode152(args); break;
+    case MethodId::kNativeWebmcpCall: valid = ValidateNode169(args); break;
   }
   if (!valid && error) *error = "Invalid arguments for generated Aux host method";
   return valid;

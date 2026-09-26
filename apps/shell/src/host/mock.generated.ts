@@ -501,6 +501,13 @@ const RESULTS: Record<string, unknown> = {
   "native.cdpDispatch": null,
   "native.cdpVersion": {
     "version": "mock-version"
+  },
+  "native.webmcpList": {
+    "tools": []
+  },
+  "native.webmcpCall": {
+    "result": null,
+    "success": false
   }
 };
 

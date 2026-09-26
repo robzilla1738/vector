@@ -1,6 +1,6 @@
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
-import { AuxError } from "@aux/contracts";
+import { AuxError, OriginRuleSchema } from "@aux/contracts";
 import type { Condition } from "@aux/contracts";
 import { DurableWriteLedger } from "../../agent/durable.js";
 import type { PageService } from "../../services/pages.js";
@@ -10,6 +10,7 @@ import {
   programHasConsequentialSteps,
 } from "../../services/pages/executor.js";
 import { wireObservation } from "../../services/observation-wire.js";
+import { runWebmcp, webmcpTurn } from "../../agent/webmcp.js";
 
 async function h_pages_list(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s, scope, scopedPageIds } = ctx;
@@ -166,6 +167,67 @@ async function h_pages_execute(ctx: MethodCtx): Promise<unknown> {
     ? wireObservation(observation, format as "full" | "compact" | undefined)
     : undefined;
   return { ...result, observation: wire && "observation" in wire ? wire.observation : wire };
+}
+async function h_pages_webmcp(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s, scope, approvals, decisions, safetyAudit, withExternalPage } = ctx;
+  if (scope) throw new AuxError("permission_denied", "Scoped connections cannot call site tools.");
+  const request = params as { pageId: string; op: "tools" | "call"; name?: string; input?: string };
+  const toolName = request.name ?? "";
+  if (request.op === "call" && !toolName) {
+    throw new AuxError("invalid_params", "WebMCP call requires a tool name.");
+  }
+  if (request.input !== undefined) {
+    try {
+      JSON.parse(request.input);
+    } catch {
+      throw new AuxError("invalid_params", "WebMCP input must be JSON.");
+    }
+  }
+  const page = s.pages.get(request.pageId);
+  let origin = "";
+  try {
+    origin = new URL(page.url).origin;
+  } catch {
+    origin = "";
+  }
+  return withExternalPage(request.pageId, async () => {
+    const outcome = await runWebmcp(
+      s.native,
+      request.op === "call"
+        ? { pageId: request.pageId, op: "call", name: toolName, input: request.input ?? "{}" }
+        : { pageId: request.pageId, op: "tools" },
+      {
+        profileId: s.featureProfileId ?? "default",
+        scope: { kind: "workspace", id: "default" },
+        actor: client.external ? "external_token" : "user",
+        ...webmcpTurn(request.pageId, toolName || "list"),
+        ...(ctx.externalRunId ? { runId: ctx.externalRunId } : {}),
+      },
+      {
+        approvals,
+        journal: decisions,
+        managedRules: () => OriginRuleSchema.array().parse(s.repo.getSetting("managedOriginPolicies") ?? []),
+        userRules: () => s.settings.originPolicies(),
+        localCeiling: (action) => s.settings.safetyCeiling(action.effect),
+        settingsGrants: () => s.settings.effectGrants(),
+        audit: (event) => safetyAudit.record({ ...event }),
+      },
+      origin,
+    );
+    if (outcome.status === "ask") {
+      s.events.emit("safety.confirmation", {
+        approvalId: outcome.approvalId,
+        turnId: outcome.turnId,
+        threadId: outcome.threadId,
+        instruction: outcome.instruction,
+        action: outcome.action,
+        origin: outcome.origin,
+      });
+      throw new AuxError("needs_input", outcome.instruction);
+    }
+    if (outcome.status === "tools") return { op: "tools", tools: outcome.tools };
+    return { op: "call", result: outcome.result, success: outcome.success };
+  });
 }
 async function h_pages_extract(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
@@ -336,6 +398,7 @@ export const pagesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "pages.observe": h_pages_observe,
   "pages.cuaExecute": h_pages_cuaExecute,
   "pages.execute": h_pages_execute,
+  "pages.webmcp": h_pages_webmcp,
   "pages.extract": h_pages_extract,
   "pages.elementInfo": h_pages_elementInfo,
   "pages.accessibilityHtml": h_pages_accessibilityHtml,

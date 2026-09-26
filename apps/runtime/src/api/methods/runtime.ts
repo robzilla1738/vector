@@ -64,7 +64,7 @@ async function h_runtime_describe(ctx: MethodCtx): Promise<unknown> {
       checkpointResume: false,
       programCheckpoints: true,
       invocationIdempotency: true,
-      webmcpTools: false,
+      webmcpTools: typeof s.native?.webmcpList === "function",
       bidi: true,
       crashReview: true,
     },

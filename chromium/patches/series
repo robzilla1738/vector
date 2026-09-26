@@ -46,3 +46,4 @@ aux/shell/0045-native-file-dialog-window.patch
 aux/shell/0046-native-pdf-export.patch
 aux/shell/0047-method-registry.patch
 aux/runtime/0048-native-capabilities.patch
+aux/runtime/0049-enable-webmcp.patch

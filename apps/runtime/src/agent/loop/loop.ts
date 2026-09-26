@@ -48,6 +48,8 @@ export interface AgentLoopOptions {
   onToolCall?: (call: LoopToolCall, result: LoopToolResult) => void;
   /** Per-provider options merged into the client's defaults (prompt caching keys). */
   providerOptions?: Record<string, Record<string, unknown>>;
+  /** Include the WebMCP conditional doc when this page has registered tools. */
+  webmcp?: boolean;
   maxOutputTokens?: number;
 }
 
@@ -166,7 +168,11 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     return { kind: "failed", error: new AuxError("capability_unsupported", "The configured model client does not support tool calling.") };
   }
   const messages = transcript.load(runId);
-  const system = opts.system ?? buildSystemPrompt({ hasPage: !!opts.pageId, webEnabled: !!(opts.deps.webFetch || opts.deps.webSearch) });
+  const system = opts.system ?? buildSystemPrompt({
+    hasPage: !!opts.pageId,
+    webEnabled: !!(opts.deps.webFetch || opts.deps.webSearch),
+    webmcp: opts.webmcp === true,
+  });
   const maxSteps = Math.max(1, opts.maxSteps ?? DEFAULT_MAX_LOOP_STEPS);
   const sdkTools = Object.fromEntries(
     Object.entries(tools).map(([name, tool]) => [name, { description: `${tool.description}\n\n(${tool.byline})`, inputSchema: tool.inputSchema }]),

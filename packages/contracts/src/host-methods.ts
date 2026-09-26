@@ -5,6 +5,7 @@ import { NativeMethods } from "./bridge.js";
 import { DownloadSchema, PageQuickActionSchema } from "./entities.js";
 import { AgentClientSchema, AgentConnectionCreateParams, AgentConnectionSchema } from "./agent-connections.js";
 import { CredentialHandoffRequestSchema, CredentialHandoffResultSchema } from "./safety.js";
+import { WebmcpCallResultSchema, WebmcpToolSchema } from "./webmcp.js";
 import { ZapStylesheetInstallSchema, ZapInstallReceiptSchema } from "./zap.js";
 import { EventSchema } from "./events.js";
 import type { AuxFeature } from "./aux-features.js";
@@ -272,6 +273,8 @@ export const HostMethods = {
   "native.cdpReset": runtime("fourLayerTabApi", z.object({}).strict(), z.unknown()),
   "native.cdpDispatch": runtime("fourLayerTabApi", z.object({ pageId: str, message: str }).strict(), z.unknown()),
   "native.cdpVersion": runtime("fourLayerTabApi", z.object({}).strict(), z.object({ version: str }).strict()),
+  "native.webmcpList": runtime("core", z.object({ pageId: str }).strict(), z.object({ tools: z.array(WebmcpToolSchema) }).strict()),
+  "native.webmcpCall": runtime("core", z.object({ pageId: str, name: str, input: str }).strict(), WebmcpCallResultSchema),
 } as const;
 
 export type HostMethodId = keyof typeof HostMethods;

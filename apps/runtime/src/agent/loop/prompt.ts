@@ -48,7 +48,7 @@ export const CONDITIONAL_DOCS: ConditionalDoc[] = [
     id: "webmcp",
     requiredFor: (ctx) => ctx.webmcp === true,
     doc: `## Site tools (WebMCP)
-This page exposes site-authored tools through WebMCP. Write-capable site tools require approval like any other consequential action; read-only tools run directly.`,
+This page exposes site-authored tools. Call \`page.webmcp.tools()\` to list them and \`page.webmcp.call(name, input)\` to run one. Write-capable site tools require approval like any other consequential action; read-only tools run directly.`,
   },
 ];
 
