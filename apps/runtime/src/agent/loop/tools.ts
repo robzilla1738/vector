@@ -15,6 +15,34 @@ const need = <T>(value: T | undefined, name: string): T => {
   return value;
 };
 
+/** Models often send `citations` as a JSON string or one object. The schema is an array. */
+export function normalizeSubmitResultInput(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const input = { ...(raw as Record<string, unknown>) };
+  let citations = input.citations;
+  if (typeof citations === "string") {
+    const text = citations.trim();
+    if (text.startsWith("[") || text.startsWith("{")) {
+      try {
+        citations = JSON.parse(text) as unknown;
+      } catch {
+        /* the schema reports the unparsed string */
+      }
+    }
+  }
+  if (citations && typeof citations === "object" && !Array.isArray(citations)) citations = [citations];
+  if (Array.isArray(citations)) {
+    citations = citations.map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+      const citation = { ...(item as Record<string, unknown>) };
+      if (typeof citation.revision === "string" && /^\d+$/.test(citation.revision)) citation.revision = Number(citation.revision);
+      return citation;
+    });
+  }
+  if (citations !== input.citations) input.citations = citations;
+  return input;
+}
+
 export function buildToolManifest(): LoopToolManifest {
   const snapshot: LoopTool = {
     description:
@@ -372,7 +400,7 @@ export function buildToolManifest(): LoopToolManifest {
     }),
     requiresSoloCall: true,
     execute: async (raw, ctx) => {
-      const input = z.object({ report: z.string().min(1).max(64_000), citations: z.array(ResultCitationSchema).max(32).optional() }).parse(raw);
+      const input = z.object({ report: z.string().min(1).max(64_000), citations: z.array(ResultCitationSchema).max(32).optional() }).parse(normalizeSubmitResultInput(raw));
       const verdict = await need(ctx.deps.submitResult, "submit_result")(input, ctx);
       if (!verdict.ok) return { output: new AuxError("invalid_params", verdict.error) };
       return { finish: { result: verdict.result } };
