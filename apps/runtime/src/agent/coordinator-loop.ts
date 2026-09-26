@@ -28,6 +28,7 @@ import {
 } from "./coordinator-turn.js";
 import { ModelFailureError } from "./model-failure.js";
 import { isConsequential } from "./permissions.js";
+import { withDeadline } from "../safety/policies.js";
 
 export {
   DEFAULT_MAX_MODEL_CALLS,
@@ -40,6 +41,14 @@ export type { CoordinatorLoopHost } from "./coordinator-verify.js";
 
 /** Bound on the out-of-time final answer: a quarter of the deadline, 1-15 s. */
 const deadlineFinalMs = (deadlineMs = 0) => Math.min(15_000, Math.max(1_000, deadlineMs / 4));
+
+/** A controller whose lifetime follows `signal`, so run controls keep their AbortController shape. */
+function controllerFor(signal: AbortSignal): AbortController {
+  const controller = new AbortController();
+  if (signal.aborted) controller.abort(signal.reason);
+  else signal.addEventListener("abort", () => controller.abort(signal.reason), { once: true });
+  return controller;
+}
 
 /** Out of budget: one final answer from the evidence before failing. Never asks a human. */
 async function finalBeforeFailing(s: TurnState, reason: string): Promise<boolean> {
@@ -185,11 +194,10 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     else giveUpRepair(s, e instanceof Error ? e.message : String(e));
   } finally {
     if (c.deadlineHit && self.ownsPages(runId) && !TERMINAL_STATUSES.has(self.get(runId).status)) {
-      const deadline = new AbortController();
-      const timer = setTimeout(() => deadline.abort(), deadlineFinalMs(run.config?.deadlineMs));
-      s.c = { ...c, abort: deadline, answerWaiter: undefined };
-      await finalBeforeFailing(s, `run deadline exceeded (${run.config?.deadlineMs}ms)`).catch(() => false);
-      clearTimeout(timer);
+      await withDeadline(async (signal) => {
+        s.c = { ...c, abort: controllerFor(signal), answerWaiter: undefined };
+        await finalBeforeFailing(s, `run deadline exceeded (${run.config?.deadlineMs}ms)`);
+      }, deadlineFinalMs(run.config?.deadlineMs), c.abort.signal).catch(() => false);
     }
     if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
       const partial = partialResult(s.outcomes);

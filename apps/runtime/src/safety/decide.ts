@@ -19,7 +19,7 @@ import {
   type SafetyAction,
   type Step,
 } from "@aux/contracts";
-import { classifyStep, isConsequential } from "../agent/permissions.js";
+import { classifyStep, grantAllows, isConsequential, parseGrant, resolveGrants, type EffectClass, type GrantInput } from "../agent/permissions.js";
 import { ApprovalStore, type LocalCeiling } from "./approval.js";
 import { confirmationLevelForAction, decideConfirmation } from "./confirmation.js";
 import { reviewGuardian, type GuardianJudge, type UntrustedOutput } from "./guardian.js";
@@ -31,6 +31,7 @@ export const REFUSAL = {
   originPolicyDenied: "origin_policy_denied",
   authorizationDenied: "authorization_denied",
   guardianDenied: "guardian_denied",
+  evaluateUnreachable: "evaluate_unreachable",
 } as const;
 
 export type DecisionSource =
@@ -40,6 +41,7 @@ export type DecisionSource =
   | "standing_grant"
   | "approval"
   | "guardian"
+  | "trusted_source"
   | "default";
 
 export interface DecisionRecord {
@@ -85,6 +87,8 @@ export interface DecideDeps {
   managedRules: () => readonly OriginRule[];
   userRules: () => readonly OriginRule[];
   localCeiling: (action: SafetyAction) => LocalCeiling;
+  /** Session-level effect grants (settings.permission sheet) — standing grants by another name. */
+  settingsGrants?: () => readonly GrantInput[];
   audit: (decision: OriginPolicyAudit | Record<string, unknown>) => void;
   judge?: GuardianJudge;
   now?: () => number;
@@ -101,6 +105,9 @@ export interface DecideContext {
   untrusted?: readonly UntrustedOutput[];
   /** No UI is attached: any `ask` collapses to a deny-with-refusal. */
   headless?: boolean;
+  /** The program came from a trusted source (runtime-authored). Only this
+   * unlocks `evaluate` — model and MCP callers can never reach page JS. */
+  trustedEval?: boolean;
 }
 
 /** Deterministic op → category mapping. Semantic subcategories assert at plan time; dispatch maps mechanically. */
@@ -238,16 +245,46 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
     url: `${exact}/`, effect: parsed.effect, action: parsed.action,
     managed: deps.managedRules(), user: deps.userRules(), audit: deps.audit, now: at,
   }) : recipientPolicy;
-  const authorize = (policy: OriginPolicyDecision, consume: boolean, requiresApproval: boolean, approvalOnly: boolean) =>
-    deps.approvals.authorize({
+  const authorize = (policy: OriginPolicyDecision, consume: boolean, requiresApproval: boolean, approvalOnly: boolean) => {
+    const result = deps.approvals.authorize({
       action, policy,
       // A permissive local ceiling never substitutes for action-time consent.
       ceiling: requiresApproval && deps.localCeiling(action) === "always" ? "ask" : deps.localCeiling(action),
       approvalOnly,
       sessionId: context.sessionId, approvalId: context.approvalId, consume, now: at,
     });
+    // Session-level effect grants are standing consent: they authorize only
+    // what ApprovalStore could not, and never substitute for action-time
+    // confirmation (approvalOnly stays exclusive to review artifacts).
+    if (result.status === "ask" && !approvalOnly && exact && deps.settingsGrants) {
+      const needed = ["read", "write", "destructive", "egress"].includes(parsed.effect) ? parsed.effect as EffectClass : null;
+      const granted = needed && resolveGrants(deps.settingsGrants()).map(parseGrant)
+        .some(grant => grant != null && grantAllows(grant, needed, exact, at));
+      if (granted) return { status: "authorized" as const, provenance: { authorizedBy: "standing" as const, grantId: `settings:${needed}` } };
+    }
+    return result;
+  };
   const policySource = (policy: OriginPolicyDecision): DecisionSource =>
     policy.source === "managed" ? "managed_policy" : policy.source === "user" ? "user_rule" : "default";
+
+  // Page JS is never reachable by model or MCP callers. Runtime-authored
+  // programs (allowEval) still honor explicit deny rules before running.
+  if (parsed.category === "evaluate") {
+    if (context.trustedEval !== true) {
+      return finish(deny(deps.journal, parsed, REFUSAL.evaluateUnreachable, "origin_resolver",
+        "Page JavaScript is not available to agent callers. Use page, extraction, or operation tools instead.", at));
+    }
+    const evalPolicy = evaluate();
+    // Only an explicit rule stops trusted runtime eval — the unruled default
+    // deny exists for model callers, which never reach this branch.
+    if (evalPolicy.reason === "explicit_deny") {
+      return finish(deny(deps.journal, parsed, REFUSAL.originPolicyDenied, policySource(evalPolicy),
+        "Origin policy denied this action. " + DENIED_GUIDANCE, at));
+    }
+    return finish(allow(deps.journal, parsed,
+      { authorizedBy: "policy", policySource: evalPolicy.source === "managed" ? "managed" : evalPolicy.source === "user" ? "user" : "default" },
+      "trusted_source", at));
+  }
 
   const policy = evaluate();
   if (policy.access === "deny") {

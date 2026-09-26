@@ -56,6 +56,25 @@ function fakePage(failOn: Record<string, unknown> = {}) {
 }
 
 describe("executeProgram", () => {
+  it("denies uploads outside session, attachment, and workspace roots", async () => {
+    const { page, calls } = fakePage();
+    const upload = (files: string[], uploadRoots?: string[]) =>
+      executeProgram(page, { pageId: "p1", steps: [{ id: "u1", op: "upload", target: "r1", files }] }, { uploadRoots });
+    for (const [files, roots] of [
+      [["/etc/passwd"], ["/tmp/aux-session"]],
+      [["/tmp/aux-session/../secrets.txt"], ["/tmp/aux-session"]],
+      [["/tmp/aux-session/note.txt"], undefined],
+    ] as [string[], string[] | undefined][]) {
+      const res = await upload(files, roots);
+      expect(res.status).toBe("failed");
+      expect(res.steps[0]?.error?.code).toBe("permission_denied");
+    }
+    expect(calls).toHaveLength(0);
+    const res = await upload(["/tmp/aux-session/note.txt", "/tmp/aux-session/deep/file.pdf"], ["/tmp/aux-session"]);
+    expect(res.status).toBe("completed");
+    expect(calls).toEqual(["upload:r1:2"]);
+  });
+
   it("runs steps in order and reports outcomes", async () => {
     const { page, calls } = fakePage();
     const program: Program = {

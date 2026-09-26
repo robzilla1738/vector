@@ -47,7 +47,7 @@ export const AUX_ERROR_REGISTRY = {
   cancelled: { id: "AUX-E5003", domain: "runtime", retryable: false, payloadAllowlist: [], origin: "client", userRecovery: "Start a new action if needed.", modelGuidance: "Respect the cancellation.", publicMessage: "The action was cancelled." },
   model_error: { id: "AUX-E3001", domain: "model", retryable: true, payloadAllowlist: ["status"], origin: "provider", userRecovery: "Check the model connection and retry.", modelGuidance: "Retry only after the provider is available.", publicMessage: "The model request failed." },
   model_output_invalid: { id: "AUX-E3002", domain: "model", retryable: false, payloadAllowlist: [], origin: "provider", userRecovery: "Try a new request.", modelGuidance: "Produce a valid structured response.", publicMessage: "The model response was invalid." },
-  needs_input: { id: "AUX-E4001", domain: "authorization", retryable: false, payloadAllowlist: ["requestId"], origin: "runtime", userRecovery: "Answer the pending request in Aux.", modelGuidance: "Do not retry until the user responds.", publicMessage: "Your input is needed to continue." },
+  needs_input: { id: "AUX-E4001", domain: "authorization", retryable: false, payloadAllowlist: ["requestId", "suspensionKind"], origin: "runtime", userRecovery: "Answer the pending request in Aux.", modelGuidance: "Do not retry until the user responds.", publicMessage: "Your input is needed to continue." },
   conflict: { id: "AUX-E5004", domain: "runtime", retryable: true, payloadAllowlist: ["revision"], origin: "runtime", userRecovery: "Refresh the current state.", modelGuidance: "Read current state before another write.", publicMessage: "The state changed before this action completed." },
   permission_denied: { id: "AUX-E4002", domain: "authorization", retryable: false, payloadAllowlist: ["effect", "origin"], origin: "runtime", userRecovery: "Review the denied action and its permission.", modelGuidance: "Do not retry while denied; request authorization or use a permitted path.", publicMessage: "The action is not authorized." },
   assertion_failed: { id: "AUX-E6001", domain: "operation", retryable: false, payloadAllowlist: ["assertion"], origin: "runtime", userRecovery: "Review the expected result.", modelGuidance: "Observe and report the unmet condition.", publicMessage: "The expected result was not observed." },
@@ -85,6 +85,7 @@ export function toErrorPayload(e: unknown): { code: AuxErrorCode; errorId: strin
     }
     if (key === "effect") return ["read", "write", "destructive", "egress", "credential", "external_tool"].includes(value);
     if (key === "stage") return ["off", "preview", "on"].includes(value);
+    if (key === "suspensionKind") return ["ask-user-question", "approval", "action-confirmation", "handoff"].includes(value);
     if (key === "host") return ["electron", "chromium-fork"].includes(value);
     if (key === "feature") return /^[a-z][A-Za-z0-9]{0,50}$/.test(value);
     // Opaque IDs may be user supplied. Do not include them in a public error.

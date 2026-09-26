@@ -10,14 +10,16 @@ import { createMcpTransportProvider } from "./services/mcp-transport-provider.js
  * the Chromium host over an authenticated local socket, or run standalone.
  * The same runtime and versioned agent API serve each native host.
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   EventTypes,
   AuxError,
+  EffectRequestSchema,
   OriginRuleSchema,
+  TaskSchema,
   ZapSnapshotParamsSchema,
   auxFeatureEnabled,
   isElementRef,
@@ -65,8 +67,9 @@ import { DurableWriteLedger } from "./agent/durable.js";
 import { modelCallCost } from "./agent/model-client.js";
 import { ApprovalStore } from "./safety/approval.js";
 import { SafetyAuditStore } from "./safety/audit.js";
-import { DecisionJournal } from "./safety/decide.js";
+import { decide, DecisionJournal, type DecideDeps } from "./safety/decide.js";
 import { SafetyDispatchGate } from "./safety/dispatch.js";
+import { SuspensionStore } from "./safety/suspensions.js";
 import { createGuardianJudge } from "./safety/guardian-model.js";
 import { connectHostSocket, type HostSocketTransport } from "./host-socket.js";
 
@@ -102,14 +105,20 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const durableWrites = new DurableWriteLedger(repo.db);
   const safetyAudit = new SafetyAuditStore(repo.db);
   const approvals = new ApprovalStore(repo.db, (event) => safetyAudit.record(event));
+  const suspensions = new SuspensionStore(repo.db, (event) => safetyAudit.record(event));
+  const decideDeps: DecideDeps = {
+    approvals,
+    journal: new DecisionJournal(repo.db),
+    managedRules: () => OriginRuleSchema.array().parse(repo.getSetting("managedOriginPolicies") ?? []),
+    userRules: () => settings.originPolicies(),
+    localCeiling: (action) => settings.safetyCeiling(action.effect),
+    settingsGrants: () => settings.effectGrants(),
+    audit: (event) => safetyAudit.record({ ...event }),
+  };
   const safetyGate = env.AUX_HOST_SOCKET
     ? new SafetyDispatchGate({
-        approvals,
-        journal: new DecisionJournal(repo.db),
-        managedRules: () => OriginRuleSchema.array().parse(repo.getSetting("managedOriginPolicies") ?? []),
-        userRules: () => settings.originPolicies(),
-        localCeiling: (action) => settings.safetyCeiling(action.effect),
-        audit: (event) => safetyAudit.record({ ...event }),
+        ...decideDeps,
+        suspensions,
         judge: createGuardianJudge({
           model: () => settings.model(),
           modelId: () => settings.plannerModel(),
@@ -129,6 +138,44 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         }),
       })
     : undefined;
+  /**
+   * Runtime-side egress (operation session requests) goes through the same
+   * decide() boundary as page effects. There is no approval UI mid-request,
+   * so asks collapse to deny-with-refusal; grants and rules are the consent.
+   */
+  const decideEgress = async (input: { url: URL; method: string; runId?: string }) => {
+    const run = input.runId ? repo.getRun(input.runId) : undefined;
+    const taskId = run?.config?.taskId;
+    const upper = input.method.toUpperCase();
+    const category = ["GET", "HEAD", "OPTIONS"].includes(upper) ? "read" : upper === "DELETE" ? "delete" : "send";
+    const decision = await decide(EffectRequestSchema.parse({
+      profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+      scope: taskId
+        ? { kind: "task", id: taskId }
+        : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+      actor: "builtin_agent",
+      effect: "egress",
+      category,
+      action: `operation.request.${upper}`,
+      origin: input.url.origin,
+      destination: input.url.href.slice(0, 2048),
+      dataClasses: [],
+      provenance: "template",
+      invocationDigest: createHash("sha256")
+        .update(JSON.stringify(["operation.request", input.url.href, upper]))
+        .digest("hex"),
+      turnId: input.runId ?? "runtime",
+      threadId: run?.config?.chatId ?? "runtime",
+      ...(input.runId ? { runId: input.runId } : {}),
+      requestedAt: Date.now(),
+    }), decideDeps, { phase: "dispatch", headless: true });
+    if (decision.status !== "allow")
+      throw new AuxError(
+        "permission_denied",
+        decision.status === "deny" ? decision.guidance : "Egress requires an approval that must be granted in Aux.",
+        decision.status === "deny" ? { refusalId: decision.refusalId } : undefined,
+      );
+  };
   const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
   setTimeout(() => {
     void minimizeLegacyObservationArtifacts(repo, config.artifactsDir).catch((error) =>
@@ -344,6 +391,20 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     recordStep: (s) => repo.saveStep(s),
     grants: () => settings.effectGrants(),
     grantsForRun: () => settings.effectGrantsForRun(),
+    // Upload reads are confined to runtime-owned storage plus paths the user
+    // attached to the task (file/repository resource locators).
+    uploadRoots: ({ taskId }) => {
+      const roots = [config.artifactsDir, config.downloadsDir, config.previewsDir];
+      if (taskId) {
+        try {
+          const row = repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as { json: string } | undefined;
+          const task = row ? TaskSchema.parse(JSON.parse(row.json)) : undefined;
+          for (const resource of task?.resources ?? [])
+            if (resource.kind === "file" || resource.kind === "repository") roots.push(resource.locator);
+        } catch { /* task deleted — session roots still apply */ }
+      }
+      return roots;
+    },
     callOperation: async (name, args, pageId) => {
       const slash = name.indexOf("/");
       const siteKey = slash > 0 ? name.slice(0, slash) : new URL(pages.get(pageId).url).host;
@@ -414,6 +475,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     translateSteps,
     durableWrites,
     calendar,
+    decideEgress,
     grants: () => settings.effectGrants(),
     egressAllowlist: () =>
       (env.AUX_EGRESS_ALLOWLIST ?? "")
@@ -762,6 +824,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // to 'interrupted' with unknown effect — never assumed applied or not.
   runs.coordinator.markInterrupted();
   repo.markRunningInvocationsInterrupted();
+  // Suspensions parked by runs that did not survive the restart expire; a
+  // still-parked suspension belongs to a resumable run and resurfaces for UI.
+  suspensions.expireOrphans(new Set(
+    repo.listRuns(200).filter(run => ["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
+      .map(run => run.runId)));
 
   // bring back the tabs that were open when the app last quit
   await pages.restoreTabs().catch(() => {});

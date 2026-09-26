@@ -95,11 +95,11 @@ function pageFromHtml(url: URL, html: string, contentType: string): WebPage {
 }
 
 export class AgentWebTools {
-  constructor(private allowOrigin: (url: URL) => boolean, private transport: WebTransport = nodeWebTransport, private allowPrivateNetwork = false) {}
+  constructor(private allowOrigin: (url: URL) => boolean | Promise<boolean>, private transport: WebTransport = nodeWebTransport, private allowPrivateNetwork = false) {}
   async fetch(rawUrl: string): Promise<WebPage> {
     let url = permittedWebUrl(rawUrl, this.allowPrivateNetwork);
     for (let redirects = 0; redirects <= 3; redirects++) {
-      if (!this.allowOrigin(url)) throw new AuxError("permission_denied", `Web egress is not granted for ${url.origin}.`);
+      if (!await this.allowOrigin(url)) throw new AuxError("permission_denied", `Web egress is not granted for ${url.origin}.`);
       const response = await this.transport(url, this.allowPrivateNetwork);
       if (response.status >= 300 && response.status < 400) {
         if (!response.location || redirects === 3) throw new AuxError("conflict", "Web redirect limit exceeded.");

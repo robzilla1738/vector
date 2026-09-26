@@ -3,11 +3,13 @@ import { SavedResults } from "../services/saved-results.js";
 import { BROWSING_CONTEXT_MARKER, BrowsingMemory } from "../services/browsing-memory.js";
 import { ContentMemoryStore } from "../services/content-memory.js";
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import {
   EventTypes,
   MethodSchemas,
   newProgramId,
   originOfAddress,
+  OriginRuleSchema,
   RoutineShareEnvelopeSchema,
   RoutineShareSchema,
   taskMatchesQuery,
@@ -65,6 +67,8 @@ import { ZapService } from "../services/zap.js";
 import { TranslateService } from "../services/translate.js";
 import { ApprovalStore } from "../safety/approval.js";
 import { SafetyAuditStore } from "../safety/audit.js";
+import { SuspensionStore } from "../safety/suspensions.js";
+import { decide, DecisionJournal } from "../safety/decide.js";
 import { AgentCodeMode } from "../agent/code-mode.js";
 import { proposeTabTidy } from "../agent/tidy.js";
 import { suggestTabName } from "../agent/tab-name.js";
@@ -195,6 +199,60 @@ export function makeInvoker(s: Services) {
   const translate = new TranslateService(s.settings);
   const safetyAudit = new SafetyAuditStore(s.repo.db);
   const approvals = new ApprovalStore(s.repo.db, (event) => safetyAudit.record(event));
+  const suspensions = new SuspensionStore(s.repo.db, (event) => safetyAudit.record(event));
+  const decisions = new DecisionJournal(s.repo.db);
+  /**
+   * RPC-callable egress goes through decide() like page effects. RPC callers
+   * have no approval UI, so asks collapse to a deny-with-refusal; standing
+   * grants and origin rules (managed in Aux) are the consent path.
+   */
+  const decideEgress = async (input: {
+    url: URL;
+    action: string;
+    taskId?: string;
+    connectionId?: string;
+    threadId?: string;
+  }) => {
+    const threadId = input.threadId ?? `rpc:${input.connectionId ?? "internal"}`;
+    const decision = await decide(
+      {
+        profileId: s.featureProfileId ?? "default",
+        scope: input.taskId
+          ? { kind: "task" as const, id: input.taskId }
+          : { kind: "workspace" as const, id: "rpc" },
+        actor: "external_token",
+        effect: "egress",
+        category: "external_tool",
+        action: input.action,
+        origin: input.url.origin,
+        destination: input.url.href.slice(0, 2048),
+        dataClasses: [],
+        provenance: "template",
+        invocationDigest: createHash("sha256")
+          .update(JSON.stringify([input.action, input.url.href]))
+          .digest("hex"),
+        turnId: threadId,
+        threadId,
+        requestedAt: Date.now(),
+      },
+      {
+        approvals,
+        journal: decisions,
+        managedRules: () => OriginRuleSchema.array().parse(s.repo.getSetting("managedOriginPolicies") ?? []),
+        userRules: () => s.settings.originPolicies(),
+        localCeiling: (action) => s.settings.safetyCeiling(action.effect),
+        settingsGrants: () => s.settings.effectGrants(),
+        audit: (event) => safetyAudit.record({ ...event }),
+      },
+      { phase: "dispatch", headless: true },
+    );
+    if (decision.status !== "allow")
+      throw new AuxError(
+        "permission_denied",
+        decision.status === "deny" ? decision.guidance : "Egress requires an approval that must be granted in Aux.",
+      );
+    return decision;
+  };
   const substituteRoutine = (objective: string, parameters: Record<string, string>) =>
     objective.replace(/\{\{([A-Za-z][A-Za-z0-9_]{0,40})\}\}/g, (_, name: string) => parameters[name] ?? "");
   const routines =
@@ -595,10 +653,17 @@ export function makeInvoker(s: Services) {
         return s.pages.cancelInlineAssist(params);
       case "agent.web.fetch":
       case "agent.web.search": {
+        let threadId: string | undefined;
+        if (params.taskId)
+          threadId = tasks.details(params.taskId).task.conversationId ?? `task:${params.taskId}`;
+        // Every hop — the entry URL and each redirect — passes decide() and
+        // the egress grants before a cookieless request leaves the runtime.
         const web = new AgentWebTools(
-          (url) =>
-            authorizeProgram([{ id: "web-egress", op: "navigate", url: url.href }], s.settings.effectGrants())
-              .ok,
+          async (url) => {
+            await decideEgress({ url, action: method, taskId: params.taskId, connectionId: client.connectionId, threadId });
+            return authorizeProgram([{ id: "web-egress", op: "navigate", url: url.href }], s.settings.effectGrants())
+              .ok;
+          },
         );
         if (method === "agent.web.fetch") return web.fetch(params.url);
         const engine =
@@ -607,6 +672,12 @@ export function makeInvoker(s: Services) {
         return web.search(params.query, engine);
       }
       case "agent.images.generate": {
+        await decideEgress({
+          url: new URL("https://ai-gateway.vercel.sh"),
+          action: "agent.images.generate",
+          taskId: params.taskId,
+          connectionId: client.connectionId,
+        });
         const permitted = authorizeProgram(
           [{ id: "image-egress", op: "navigate", url: "https://ai-gateway.vercel.sh" }],
           s.settings.effectGrants(),
@@ -634,6 +705,13 @@ export function makeInvoker(s: Services) {
         if (task.revision !== params.expectedRevision)
           throw new AuxError("conflict", "Task revision changed; refresh it before opening a turn tab.");
         const url = permittedWebUrl(params.url);
+        await decideEgress({
+          url,
+          action: "agent.turn.open",
+          taskId: params.taskId,
+          connectionId: client.connectionId,
+          threadId: task.conversationId ?? `task:${params.taskId}`,
+        });
         if (
           !authorizeProgram([{ id: "turn-egress", op: "navigate", url: url.href }], s.settings.effectGrants())
             .ok
@@ -1817,11 +1895,26 @@ export function makeInvoker(s: Services) {
         if (client.external)
           throw new AuxError("permission_denied", "Approval requests are available in Aux.");
         return approvals.pending(params.threadId);
-      case "safety.approvals.decide":
+      case "safety.approvals.decide": {
         if (client.external)
           throw new AuxError("permission_denied", "Only the Aux interface can decide an approval.");
         approvals.decideLocal(params.decision, params.expectedTurnId);
+        const approved = params.decision.decision === "accept" || params.decision.decision === "acceptForSession";
+        const resolved = suspensions.resolveByApprovalId(params.decision.approvalId, approved ? "answered" : "cancelled");
+        // The parked run waits on an answer — wake it with the decision so the
+        // planner sees consent (retries through decide() and is authorized) or
+        // refusal (chooses a different action) instead of a silent timeout.
+        if (resolved) {
+          try {
+            s.runs.coordinator.answer(resolved.runId, approved
+              ? "The user approved the requested action."
+              : "The user declined the requested action. Do not retry it; choose a different action.");
+          } catch {
+            /* the run ended between park and decision */
+          }
+        }
         return { ok: true };
+      }
       case "safety.grants.list":
         if (client.external) throw new AuxError("permission_denied", "Safety grants are managed in Aux.");
         return approvals.listGrants(params.profileId);

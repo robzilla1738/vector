@@ -1,5 +1,4 @@
 import { ConfirmationRequestSchema, type ConfirmationRequest } from "@aux/contracts";
-import type { DatabaseSync } from "node:sqlite";
 
 export type ConfirmationResult =
   | { status: "not_required" }
@@ -17,23 +16,6 @@ export function confirmationLevelForAction(input: {
   if (input.policyLevel === "handoff") return "handoff";
   if (input.sensitiveData) return "action";
   return input.policyLevel;
-}
-
-/** One durable recovery attempt per run and challenge origin, then stop. */
-export class ChallengeRecoveryGate {
-  constructor(private readonly db: DatabaseSync) {
-    db.exec(`CREATE TABLE IF NOT EXISTS safety_challenge_recovery(
-      run_id TEXT NOT NULL, origin TEXT NOT NULL, attempts INTEGER NOT NULL, updated_at INTEGER NOT NULL,
-      PRIMARY KEY(run_id,origin))`);
-  }
-
-  attempt(runId: string, origin: string, now = Date.now()): "recover_once" | "stop" {
-    if (!runId || !origin) return "stop";
-    this.db.prepare(`INSERT INTO safety_challenge_recovery(run_id,origin,attempts,updated_at) VALUES(?,?,1,?)
-      ON CONFLICT(run_id,origin) DO UPDATE SET attempts=attempts+1,updated_at=excluded.updated_at`).run(runId, origin, now);
-    const row = this.db.prepare("SELECT attempts FROM safety_challenge_recovery WHERE run_id=? AND origin=?").get(runId, origin) as { attempts: number };
-    return row.attempts === 1 ? "recover_once" : "stop";
-  }
 }
 
 /** Final confirmation is a terminal, single-tool-call turn with a reviewable artifact. */

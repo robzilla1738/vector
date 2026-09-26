@@ -14,6 +14,7 @@ import {
   type Run,
   type Step,
   type StepOutcome,
+  type SuspensionKind,
 } from "@aux/contracts";
 import type { z } from "zod";
 import { agentModelRoute, type AgentModelCategory } from "@aux/contracts/model-registry";
@@ -122,10 +123,45 @@ export function userInstructions(s: TurnState): string | undefined {
 }
 
 /** Ask the human and record the answer; false when the run was cancelled while waiting. */
-export async function awaitHumanAnswer(s: TurnState, question: string): Promise<boolean> {
+export async function awaitHumanAnswer(s: TurnState, question: string, kind: SuspensionKind = "ask-user-question"): Promise<boolean> {
+  const run = s.self.get(s.runId);
+  const suspension = s.self.suspensions.park({
+    runId: s.runId,
+    threadId: run.config?.chatId ?? s.runId,
+    turnId: s.runId,
+    kind,
+    request: { kind, instruction: question, guidance: "Wait for the user to answer; do not dispatch or retry while parked." },
+  });
+  return waitForSuspension(s, suspension.suspensionId, question);
+}
+
+/** A safety `ask` already parked a typed suspension at the gate — wait on that
+ * record (approval/confirmation/handoff ids intact) rather than superseding it
+ * with a fresh ask-user-question suspension. An `action-confirmation` ask is
+ * model-directed (the plan lacked a typed review artifact), so it feeds the
+ * planner's guidance instead of waiting on a human answer. */
+async function awaitSuspendedInput(s: TurnState, question: string): Promise<boolean> {
+  const pending = s.self.suspensions.pending(s.runId);
+  if (!pending) return awaitHumanAnswer(s, question);
+  if (pending.kind === "action-confirmation") {
+    s.self.suspensions.resolve(pending.suspensionId, "answered");
+    s.lastError = pending.request.instruction;
+    s.lastActionFailed = true;
+    return true;
+  }
+  return waitForSuspension(s, pending.suspensionId, pending.request.instruction || question);
+}
+
+async function waitForSuspension(s: TurnState, suspensionId: string, question: string): Promise<boolean> {
   s.self.setStatus(s.runId, "needs_input", question);
   const raw = await s.self.waitForAnswer(s.c, s.runId);
-  if (s.c.abort.signal.aborted) return false;
+  if (s.c.abort.signal.aborted) {
+    s.self.suspensions.resolve(suspensionId, "cancelled");
+    return false;
+  }
+  // resolve() is a no-op when the approval path already settled this row —
+  // the recorded state (answered on accept, cancelled on decline) stands.
+  s.self.suspensions.resolve(suspensionId, "answered");
   if (hasNewSteer(s)) return true;
   const answer = raw.slice(0, HUMAN_ANSWER_MAX_CHARS);
   (s.answers ??= []).push({ question, answer });
@@ -663,6 +699,8 @@ async function runTerminalSteps(s: TurnState, plan: PlanChunk, obs: Observation,
   if (g.kind !== "ran") return noteUnauthorized(s, g.reason);
   s.stepsRun += g.program.steps?.length ?? 0;
   if (g.result.status === "cancelled") return "return";
+  const needsInput = g.result.steps.find((o) => o.error?.code === "needs_input");
+  if (needsInput) return (await awaitSuspendedInput(s, needsInput.error?.message ?? "This action needs your input.")) ? "continue" : "return";
   if (g.result.status === "failed") return recoverFailedChunk(s, g.result.error);
   const values: Record<string, unknown> = {};
   for (const o of g.result.steps) if (o.status === "ok" && o.extracted) Object.assign(values, o.extracted);
@@ -851,6 +889,8 @@ export async function dispatchPlan(
     }
   }
   if (result.status === "cancelled") return "return";
+  const needsInput = result.steps.find((o) => o.error?.code === "needs_input");
+  if (needsInput) return (await awaitSuspendedInput(s, needsInput.error?.message ?? "This action needs your input.")) ? "continue" : "return";
   if (result.status !== "failed") s.repairState = emptyRepairState();
   if (result.status !== "failed") return "continue";
   return recoverFailedChunk(s, result.error);
@@ -882,6 +922,8 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
       if (g.kind === "skipped") throw new AuxError("conflict", g.reason);
       if (g.kind === "ran") {
         s.stepsRun += g.program.steps?.length ?? repair.object.steps.length;
+        const needsInput = g.result.steps.find((o) => o.error?.code === "needs_input");
+        if (needsInput) return (await awaitSuspendedInput(s, needsInput.error?.message ?? "This action needs your input.")) ? "continue" : "return";
         if (g.result.status === "completed") {
           s.lastError = undefined;
           s.repairState = emptyRepairState();

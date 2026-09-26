@@ -50,7 +50,7 @@ it("runs representative form, popup, upload, download and rich-text steps withou
     steps: [
       { id: "n1", op: "navigate", url: "https://app.test/compose" },
       { id: "d0", op: "dialog", action: "accept" },
-      { id: "u1", op: "upload", target: "r-file", files: ["/tmp/note.txt"] },
+      { id: "u1", op: "upload", target: "r-file", files: ["/tmp/aux-session/note.txt"] },
       { id: "f1", op: "fill", target: "r-title", value: "Prepared message" },
       { id: "t1", op: "type", target: "r-body", value: "Hello from Aux" },
       { id: "s1", op: "select", target: "r-account", value: "work" },
@@ -60,6 +60,7 @@ it("runs representative form, popup, upload, download and rich-text steps withou
     ],
   }, {
     pageOrigin: "https://app.test",
+    uploadRoots: ["/tmp/aux-session"],
     fillSavedPassword: async request => { calls.push(`native-fill:${request.passwordSelector}`); return { status: "filled" }; },
   });
   expect(result.status).toBe("completed");

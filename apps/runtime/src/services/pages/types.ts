@@ -85,4 +85,6 @@ export interface PageServiceDeps {
   /** Shared write journal. Direct execute journals here when `ctx.journaled` is unset. */
   durableWrites?: DurableWriteLedger;
   safetyGate?: SafetyDispatchGate;
+  /** Session storage, attachment, and workspace roots an `upload` step may read from. */
+  uploadRoots?: (input: { taskId?: string; runId?: string; pageId?: string }) => string[];
 }

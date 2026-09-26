@@ -107,6 +107,8 @@ export class OperationService {
       translateSteps?: (pageId: string, steps: Step[]) => Step[];
       fetchJson?: (url: string, init?: RequestInit) => Promise<unknown>;
       egressAllowlist?: () => string[];
+      /** decide() at the request boundary — deny/ask stops the transport, allow is journaled. */
+      decideEgress?: (input: { url: URL; method: string; runId?: string }) => Promise<void>;
       /** User-started invokes; defaults to USER_RUN_GRANTS like runs.start. */
       grants?: GrantSource;
       durableWrites?: DurableWriteLedger;
@@ -923,6 +925,7 @@ export class OperationService {
     const destination = new URL(url);
     if (!["http:", "https:"].includes(destination.protocol))
       throw new AuxError("permission_denied", "request protocol denied");
+    await this.deps.decideEgress?.({ url: destination, method: req.method, runId });
     const grants = resolveGrants(this.deps.grants)
       .map(parseGrant)
       .filter((g) => g !== null);

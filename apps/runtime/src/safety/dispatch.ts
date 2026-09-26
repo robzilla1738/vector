@@ -5,6 +5,7 @@ import { ApprovalStore, type LocalCeiling } from "./approval.js";
 import { decide, DecisionJournal, effectRequestForStep } from "./decide.js";
 import type { GuardianJudge, UntrustedOutput } from "./guardian.js";
 import type { OriginPolicyAudit } from "./origin-policy.js";
+import type { SuspensionStore } from "./suspensions.js";
 
 export interface StepSafetyContext {
   profileId: string;
@@ -20,11 +21,15 @@ export interface StepSafetyContext {
   sensitiveData?: boolean;
   restrictedRetry?: boolean;
   untrusted?: readonly UntrustedOutput[];
+  /** Trusted-source programs (allowEval) may evaluate; the flag travels with the program, not the step. */
+  trustedEval?: boolean;
 }
 
 export interface SafetyDispatchDeps {
   approvals: ApprovalStore;
   journal: DecisionJournal;
+  /** Durable parking for ask decisions; without it the run still gets needs_input. */
+  suspensions?: SuspensionStore;
   managedRules: () => readonly OriginRule[];
   userRules: () => readonly OriginRule[];
   localCeiling: (action: SafetyAction) => LocalCeiling;
@@ -67,13 +72,23 @@ export class SafetyDispatchGate {
       sensitiveData: input.context.sensitiveData,
       restrictedRetry: input.context.restrictedRetry,
       untrusted: input.context.untrusted,
+      trustedEval: input.context.trustedEval === true,
     });
     if (decision.status === "allow") return decision.authorizedBy;
     if (decision.status === "deny") {
       throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
     }
     const { suspension } = decision;
+    if (this.deps.suspensions && input.context.runId) {
+      this.deps.suspensions.park({
+        runId: input.context.runId,
+        threadId: input.context.threadId,
+        turnId: input.context.turnId,
+        kind: suspension.kind,
+        request: suspension,
+      });
+    }
     throw new AuxError("needs_input", suspension.instruction || suspension.guidance,
-      suspension.approvalId ? { requestId: suspension.approvalId } : undefined);
+      { suspensionKind: suspension.kind, ...(suspension.approvalId ? { requestId: suspension.approvalId } : {}) });
   }
 }

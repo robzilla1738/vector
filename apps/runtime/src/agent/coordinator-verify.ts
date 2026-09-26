@@ -282,6 +282,7 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
 export interface CoordinatorLoopHost {
   deps: CoordinatorDeps;
   durable: DurableWriteLedger;
+  suspensions: import("../safety/suspensions.js").SuspensionStore;
   skills: CompiledSkill[];
   unresolvedByRun: Map<string, string[]>;
   controls: Map<string, { abort: AbortController; paused: boolean; dispatchAbort?: AbortController; interruptPlanning?: () => void; deadlineHit?: boolean; answerWaiter?: { resolve: (answer: string) => void }; span?: { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void } }>;

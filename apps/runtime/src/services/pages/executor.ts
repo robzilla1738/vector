@@ -98,6 +98,7 @@ export class ProgramExecutor {
               context: {
                 profileId: this.pages.deps.profileId ?? "default",
                 scope: taskId ? { kind: "task", id: taskId } : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+                ...(ctx.runId ? { runId: ctx.runId } : {}),
                 turnId: ctx.runId ?? ctx.safety?.turnId ?? `direct:${pageId}`,
                 threadId: run?.config?.chatId ?? ctx.safety?.threadId ?? `page:${pageId}`,
                 sessionId: lp.target.sessionId ?? undefined,
@@ -106,6 +107,7 @@ export class ProgramExecutor {
                 turnToolCallCount: ctx.safety?.turnToolCallCount,
                 sensitiveData: metadata?.sensitiveData,
                 restrictedRetry: metadata?.restrictedRetry,
+                trustedEval: ctx.allowEval === true,
               },
             });
             if (provenance) authorized = provenance;
@@ -216,6 +218,11 @@ export class ProgramExecutor {
           allowEval: ctx.allowEval ?? false,
           pageOrigin: origin,
           taskId: ctx.taskId ?? (ctx.runId ? this.pages.deps.repo.getRun(ctx.runId)?.config?.taskId : undefined),
+          uploadRoots: ctx.uploadRoots ?? this.pages.deps.uploadRoots?.({
+            taskId: ctx.taskId ?? this.pages.deps.repo.getRun(ctx.runId ?? "")?.config?.taskId,
+            runId: ctx.runId,
+            pageId,
+          }),
           fillSavedPassword: this.pages.deps.nativePasswordFillEnabled && this.pages.deps.native.fillSavedPassword
             ? request => secureCredentialHandoff(request, {
                 fillSavedPassword: validated => this.pages.deps.native.fillSavedPassword!(validated),

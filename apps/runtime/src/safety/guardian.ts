@@ -12,9 +12,6 @@ const RANK = { none: 0, low: 1, medium: 2, high: 3 } as const;
 
 /** Text from pages and tools is data. This envelope must be preserved through every model hop. */
 export type UntrustedOutput = { trust: "untrusted"; source: "page" | "tool" | "mcp"; content: string; sourceId?: string };
-export function untrustedOutput(source: UntrustedOutput["source"], content: string, sourceId?: string): UntrustedOutput {
-  return { trust: "untrusted", source, content, ...(sourceId ? { sourceId } : {}) };
-}
 
 export type GuardianJudge = (input: { action: SafetyAction; untrusted: readonly UntrustedOutput[] }) => Promise<GuardianFinding[]>;
 

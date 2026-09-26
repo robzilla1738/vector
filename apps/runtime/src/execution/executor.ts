@@ -11,6 +11,7 @@ import {
 } from "@aux/contracts";
 import type { DriverPage } from "@aux/chromium-driver";
 import { readFile, stat } from "node:fs/promises";
+import { resolve, sep } from "node:path";
 import { isConsequential } from "../agent/permissions.js";
 
 export interface ExecContext {
@@ -43,6 +44,8 @@ export interface ExecContext {
   beforeJournal?: () => void;
   /** Recheck live target origin and current grants immediately before dispatch. */
   authorizeStep?: (step: Step) => Promise<AuthorizationProvenance | void>;
+  /** Roots an `upload` step may read files from — session storage, attachments, workspace roots. */
+  uploadRoots?: string[];
   safety?: { turnId?: string; threadId?: string; turnToolCallCount?: number;
     steps?: Record<string, { approvalId?: string; review?: FinalReviewArtifact; sensitiveData?: boolean; restrictedRetry?: boolean }> };
   /** saved task that authorized this run, used to scope vault grants */
@@ -119,7 +122,18 @@ async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promis
     case "scroll": return void (await page.scroll({ target: s.target, direction: s.direction, amount: s.amount }));
     case "dragTo": return void (await page.dragTo(s.target, s.to, s.timeoutMs));
     case "clickPoint": return void (await page.clickPoint(s.x, s.y, s.button));
-    case "upload": return void (await page.uploadFiles(s.target, s.files, s.timeoutMs));
+    case "upload": {
+      // Files leave the machine toward a page — only session storage,
+      // attachments, and task workspace roots are readable.
+      const roots = (ctx.uploadRoots ?? []).map(root => resolve(root));
+      for (const file of s.files) {
+        const path = resolve(file);
+        const inside = roots.some(root => path === root || path.startsWith(root.endsWith(sep) ? root : root + sep));
+        if (!inside) throw new AuxError("permission_denied",
+          `Uploads are limited to session storage, attachments, and workspace roots: ${file}`);
+      }
+      return void (await page.uploadFiles(s.target, s.files, s.timeoutMs));
+    }
     case "waitFor": {
       const res = await page.waitFor(s.condition);
       if (!res.ok) throw new AuxError("condition_timeout", res.detail ?? `condition ${s.condition.kind} failed`);

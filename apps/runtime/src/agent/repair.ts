@@ -4,16 +4,17 @@
  */
 import { AuxError } from "@aux/contracts";
 
-export const REPAIR_CLASSES = ["stale", "timeout", "miss", "model", "auth", "generic"] as const;
+export const REPAIR_CLASSES = ["stale", "timeout", "miss", "model", "auth", "suspended", "generic"] as const;
 export type RepairClass = (typeof REPAIR_CLASSES)[number];
 
-/** Attempts allowed in that class before the run gives up. Auth never auto-repairs. */
+/** Attempts allowed in that class before the run gives up. Auth and parked suspensions never auto-repair. */
 export const REPAIR_BUDGETS: Readonly<Record<RepairClass, number>> = {
   stale: 4,
   timeout: 3,
   miss: 3,
   model: 2,
   auth: 0,
+  suspended: 0,
   generic: 3,
 };
 
@@ -22,7 +23,7 @@ export interface RepairState {
 }
 
 export function emptyRepairState(): RepairState {
-  return { counts: { stale: 0, timeout: 0, miss: 0, model: 0, auth: 0, generic: 0 } };
+  return { counts: { stale: 0, timeout: 0, miss: 0, model: 0, auth: 0, suspended: 0, generic: 0 } };
 }
 
 export function classifyRepair(error: unknown): RepairClass {
@@ -50,9 +51,13 @@ export function classifyRepair(error: unknown): RepairClass {
   ) {
     return "timeout";
   }
+  if (text.includes("needs_input")) {
+    // A parked suspension is not an authorization failure: the run waits for
+    // the human rather than repairing around the block.
+    return "suspended";
+  }
   if (
     text.includes("permission_denied") ||
-    text.includes("needs_input") ||
     /\bdenied\b/.test(text)
   ) {
     return "auth";

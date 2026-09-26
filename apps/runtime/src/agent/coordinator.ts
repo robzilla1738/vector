@@ -15,6 +15,7 @@ import type { ModelClient } from "./model-client.js";
 import type { AgentModelCategory, AgentModelRoute } from "@aux/contracts/model-registry";
 import type { GrantSource } from "./permissions.js";
 import { DurableWriteLedger } from "./durable.js";
+import { SuspensionStore } from "../safety/suspensions.js";
 import { CoordinatorLease, coordinatorOwnerId } from "./coordinator-lease.js";
 import { PageOwnership } from "../scheduler/page-ownership.js";
 import type { CompiledSkill } from "./skills.js";
@@ -75,6 +76,7 @@ export interface CoordinatorDeps {
   };
   grants?: GrantSource;
   durableWrites?: DurableWriteLedger;
+  suspensions?: SuspensionStore;
   vault?: import("../services/vault.js").VaultService;
   calendar?: import("../services/calendar-connections.js").CalendarConnectionService;
   operations?: import("../services/operations.js").OperationService;
@@ -88,6 +90,7 @@ export class RunCoordinator {
   skills: CompiledSkill[] = [];
   unresolvedByRun = new Map<string, string[]>();
   durable: DurableWriteLedger;
+  suspensions: SuspensionStore;
   deps: CoordinatorDeps;
   private leases: CoordinatorLease;
   private leaseOwner = coordinatorOwnerId();
@@ -98,6 +101,7 @@ export class RunCoordinator {
   constructor(deps: CoordinatorDeps) {
     this.deps = deps;
     this.durable = deps.durableWrites ?? new DurableWriteLedger(deps.repo.db);
+    this.suspensions = deps.suspensions ?? new SuspensionStore(deps.repo.db);
     this.leases = new CoordinatorLease(deps.repo.db);
     this.pageOwnership = deps.pageOwnership ?? new PageOwnership();
   }
@@ -341,6 +345,7 @@ export class RunCoordinator {
     run.config = { ...run.config, modelCalls: this.deps.repo.listModelCalls(runId).length };
     this.deps.repo.saveRun(run);
     this.persistCheckpoint(run);
+    this.suspensions.resolveRun(runId, "cancelled");
     if (status === "completed" && run.config?.chatId &&
       ((typeof result?.report === "string" && result.report.trim()) || (typeof result?.html === "string" && result.html.trim()))) {
       try {

@@ -10,6 +10,8 @@ import {
   effectRequestForStep,
   type DecideDeps,
 } from "../../apps/runtime/src/safety/decide.js";
+import { EffectRequestSchema, type EffectRequest } from "@aux/contracts";
+import { AgentWebTools, type WebTransport } from "../../apps/runtime/src/agent/web-tools.js";
 
 const databases: ReturnType<typeof openDb>[] = [];
 afterEach(() => { for (const db of databases.splice(0)) db.close(); });
@@ -63,18 +65,31 @@ describe("S3 decide()", () => {
     expect(decisions(db)).toEqual([{ status: "deny", source: "origin_resolver" }]);
   });
 
-  it("denies page-JS evaluation by default even on an https origin", async () => {
+  it("keeps evaluate unreachable for agent callers but allows trusted-source programs", async () => {
     const { db, deps } = fixture();
-    const evalStep: Step = { id: "e1", op: "evaluate", expression: "1+1" };
-    const request = effectRequestForStep({
-      step: evalStep, origin: "https://shop.test/checkout",
-      profileId: "p1", scope: { kind: "task", id: "t1" },
-      turnId: "turn-1", threadId: "thread-1",
-      digest: createHash("sha256").update(JSON.stringify(evalStep)).digest("hex"), at: 500,
-    });
-    const decision = await decide(request, deps, { phase: "dispatch" });
-    expect(decision).toMatchObject({ status: "deny", refusalId: "origin_policy_denied" });
-    expect(decisions(db)).toEqual([{ status: "deny", source: "default" }]);
+    const evalRequest = (origin = "https://shop.test/checkout") => {
+      const evalStep: Step = { id: "e1", op: "evaluate", expression: "1+1" };
+      return effectRequestForStep({
+        step: evalStep, origin,
+        profileId: "p1", scope: { kind: "task", id: "t1" },
+        turnId: "turn-1", threadId: "thread-1",
+        digest: createHash("sha256").update(JSON.stringify(evalStep)).digest("hex"), at: 500,
+      });
+    };
+    // Model/MCP callers get a named refusal — no approval can unlock evaluate.
+    const denied = await decide(evalRequest(), deps, { phase: "dispatch" });
+    expect(denied).toMatchObject({ status: "deny", refusalId: "evaluate_unreachable" });
+    // Trusted-source programs run, journaled with trusted provenance.
+    const allowed = await decide(evalRequest(), deps, { phase: "dispatch", trustedEval: true });
+    expect(allowed).toMatchObject({ status: "allow", authorizedBy: { authorizedBy: "policy" } });
+    // An explicit deny rule still stops trusted eval.
+    const ruled = await decide(evalRequest(), { ...deps, userRules: () => [{ origin: "https://shop.test/", effects: { destructive: "deny" }, access: "ask" }] }, { phase: "dispatch", trustedEval: true });
+    expect(ruled).toMatchObject({ status: "deny", refusalId: "origin_policy_denied" });
+    expect(decisions(db)).toEqual([
+      { status: "deny", source: "origin_resolver" },
+      { status: "allow", source: "trusted_source" },
+      { status: "deny", source: "user_rule" },
+    ]);
   });
 
   it("issues an approval suspension when consent is required and no grant exists", async () => {
@@ -127,5 +142,49 @@ describe("S3 decide()", () => {
     const { deps, request } = fixture([{ origin: "https://shop.test/", access: "deny" }]);
     const decision = await decide(request, deps, { phase: "dispatch" });
     expect(decision).toMatchObject({ status: "deny", refusalId: "origin_policy_denied" });
+  });
+
+  it("routes runtime web egress through decide() on every redirect hop", async () => {
+    const { db, deps } = fixture();
+    const egressRequest = (url: URL): EffectRequest => EffectRequestSchema.parse({
+      profileId: "p1", scope: { kind: "task", id: "t1" },
+      actor: "external_token", effect: "egress", category: "external_tool",
+      action: "agent.web.fetch", origin: url.origin,
+      destination: url.href.slice(0, 2048), dataClasses: [], provenance: "template",
+      invocationDigest: createHash("sha256").update(JSON.stringify(["agent.web.fetch", url.href])).digest("hex"),
+      turnId: "rpc:c1", threadId: "rpc:c1", requestedAt: 600,
+    });
+    const hops: string[] = [];
+    const transport: WebTransport = async (url) => {
+      hops.push(url.href);
+      return url.hostname === "first.test"
+        ? { status: 302, location: "https://second.test/page", contentType: "text/html", body: "" }
+        : { status: 200, contentType: "text/plain", body: "hello" };
+    };
+    const web = new AgentWebTools(async (url) => {
+      const decision = await decide(egressRequest(url), { ...deps, localCeiling: () => "always" }, { phase: "dispatch", headless: true });
+      return decision.status === "allow";
+    }, transport);
+    const page = await web.fetch("https://first.test/start");
+    expect(page.url).toBe("https://second.test/page");
+    // Both the entry URL and the redirect target produced journaled decisions.
+    expect(decisions(db)).toEqual([
+      { status: "allow", source: "default" },
+      { status: "allow", source: "default" },
+    ]);
+    expect(db.prepare("SELECT DISTINCT origin FROM safety_decisions").all().map(row => (row as { origin: string }).origin).sort())
+      .toEqual(["https://first.test", "https://second.test"]);
+
+    // A denied destination never reaches the transport.
+    const denied = new AgentWebTools(async (url) => {
+      const decision = await decide(
+        egressRequest(new URL(url.href.replace(url.hostname, "blocked.test"))),
+        { ...deps, userRules: () => [{ origin: "https://blocked.test/", access: "deny" }] },
+        { phase: "dispatch", headless: true },
+      );
+      return decision.status === "allow";
+    }, transport);
+    await expect(denied.fetch("https://first.test/other")).rejects.toThrow(/not granted|permission/i);
+    expect(hops).toHaveLength(2);
   });
 });

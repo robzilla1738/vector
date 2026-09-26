@@ -29,7 +29,8 @@ function fixture(onDispatch?: (ctx: {beforeJournal?:()=>void}, tasks:TaskService
   let operationCalls = 0;
   const operations = { invoke: async () => { operationCalls++; return { status: "completed" }; } };
   const grants = ["effect:read"];
-  const settings = { effectGrants: () => grants, searchEngine: () => "https://search.example.com/?q=%s" };
+  const settings = { effectGrants: () => grants, searchEngine: () => "https://search.example.com/?q=%s",
+    originPolicies: () => [], safetyCeiling: () => "ask" as const };
   const invoke = makeInvoker({ repo, events, pages, runs: { pageOwnership }, operations, settings } as unknown as Services);
   return { invoke, seen, programs, siteReads, tasks, task, workspace, page, grants, pageOwnership, operationCalls: () => operationCalls, scope: { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId } };
 }
