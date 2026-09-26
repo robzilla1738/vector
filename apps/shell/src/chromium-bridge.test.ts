@@ -107,6 +107,29 @@ describe("Chromium Aux shell bridge", () => {
       ["removeExtension", [id]],
     ]);
   });
+
+  it("sends a runtime approval decision through the desktop invoke channel", async () => {
+    const request = vi.fn(async () => ({ ok: true }));
+    const target = fakeWindow("chrome://aux/", {
+      host: "chromium-fork",
+      windowId: "win-1",
+      profileId: "profile-1",
+      platform: "darwin",
+      privateMode: false,
+      request,
+      subscribe: vi.fn(() => () => {}),
+    });
+    expect(installChromiumBridge(target)).toBe(true);
+    const decision = {
+      decision: { decision: "accept", approvalId: "ap-1" },
+      expectedTurnId: "turn-1",
+    };
+    const aux = target.aux as unknown as {
+      invoke(method: string, params: unknown): Promise<unknown>;
+    };
+    expect(await aux.invoke("safety.approvals.decide", decision)).toEqual({ ok: true });
+    expect(request).toHaveBeenCalledWith("invoke", ["safety.approvals.decide", decision]);
+  });
 });
 
 it("builds the move-tab destinations from the Profile catalog without hidden agent tabs", async () => {

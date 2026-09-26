@@ -245,13 +245,14 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
     url: `${exact}/`, effect: parsed.effect, action: parsed.action,
     managed: deps.managedRules(), user: deps.userRules(), audit: deps.audit, now: at,
   }) : recipientPolicy;
+  let suppliedApprovalId = context.approvalId;
   const authorize = (policy: OriginPolicyDecision, consume: boolean, requiresApproval: boolean, approvalOnly: boolean) => {
     const result = deps.approvals.authorize({
       action, policy,
       // A permissive local ceiling never substitutes for action-time consent.
       ceiling: requiresApproval && deps.localCeiling(action) === "always" ? "ask" : deps.localCeiling(action),
       approvalOnly,
-      sessionId: context.sessionId, approvalId: context.approvalId, consume, now: at,
+      sessionId: context.sessionId, approvalId: suppliedApprovalId, consume, now: at,
     });
     // Session-level effect grants are standing consent: they authorize only
     // what ApprovalStore could not, and never substitute for action-time
@@ -307,16 +308,30 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
   }
 
   const requiresApproval = level === "action" || level === "preapprovable";
-  if (requiresApproval) {
+  if (requiresApproval && !context.approvalId) {
     const confirmation = decideConfirmation({
       level, action, review: context.review, turnToolCallCount: context.turnToolCallCount ?? 0,
     });
     if (confirmation.status === "invalid") {
-      return finish(ask(deps.journal, parsed, {
-        kind: "action-confirmation",
-        instruction: `Produce a final confirmation turn with a review artifact (${confirmation.reason}).`,
-        guidance: "End the turn after calling exactly one tool that carries a typed review artifact for this action.",
-      }, "default", at));
+      // A direct page program has no model turn to attach a review artifact.
+      // The person confirms it. The same action can then run once on that acceptance.
+      if (context.turnToolCallCount === undefined) {
+        suppliedApprovalId = deps.approvals.acceptedFor(action, policy.approvalLifetime, at);
+        if (!suppliedApprovalId) {
+          const approvalId = deps.approvals.issue(action, policy.approvalLifetime, at);
+          return finish(ask(deps.journal, parsed, {
+            kind: "approval", approvalId,
+            instruction: "Allow this action before it runs.",
+            guidance: ASK_GUIDANCE,
+          }, "approval", at));
+        }
+      } else {
+        return finish(ask(deps.journal, parsed, {
+          kind: "action-confirmation",
+          instruction: `Produce a final confirmation turn with a review artifact (${confirmation.reason}).`,
+          guidance: "End the turn after calling exactly one tool that carries a typed review artifact for this action.",
+        }, "default", at));
+      }
     }
   }
 

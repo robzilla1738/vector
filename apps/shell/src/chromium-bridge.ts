@@ -80,7 +80,8 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
     },
     invoke: async <M extends MethodName>(method: M, ...params: RpcArgs<M>): Promise<MethodResult<M>> => {
       requireAuxMethod(method, "chromium-fork", port.featureStages);
-      return port.request(method, params) as Promise<MethodResult<M>>;
+      // The browser forwards this name to the runtime as the signed-in desktop user.
+      return port.request("invoke", [method, params[0] ?? {}]) as Promise<MethodResult<M>>;
     },
   };
   target.auxHostProof = { host: "chromium-fork" };

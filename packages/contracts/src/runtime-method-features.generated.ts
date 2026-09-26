@@ -91,8 +91,6 @@ export const RuntimeMethodFeatures = {
   "sets.list": "subagents",
   "sets.map": "subagents",
   "sets.results": "subagents",
-  "safety.approvals.pending": "safetyCore",
-  "safety.approvals.decide": "safetyCore",
   "safety.grants.list": "safetyCore",
   "safety.grants.revoke": "safetyCore"
 } as const satisfies Partial<Record<MethodName, AuxFeature>>;

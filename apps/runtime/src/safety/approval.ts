@@ -53,6 +53,16 @@ export class ApprovalStore {
     return approvalId;
   }
 
+  /** An acceptance the person already gave for this exact action, still unused. */
+  acceptedFor(actionInput: SafetyAction, lifetime: "turn" | "thread", now = Date.now()): string | undefined {
+    const action = SafetyActionSchema.parse(actionInput);
+    const row = this.db.prepare(`SELECT approval_id AS approvalId FROM safety_approval_requests
+      WHERE fingerprint=? AND thread_id=? AND lifetime=? AND state='accepted' AND expires_at>?
+        AND (lifetime='thread' OR turn_id=?)
+      ORDER BY decided_at DESC LIMIT 1`).get(fingerprint(action, lifetime), action.threadId, lifetime, now, action.turnId) as { approvalId: string } | undefined;
+    return row?.approvalId;
+  }
+
   pending(threadId: string, now = Date.now()): Array<{ approvalId: string; action: SafetyAction; expiresAt: number }> {
     const rows = this.db.prepare(`SELECT approval_id AS approvalId,action_json AS actionJson,expires_at AS expiresAt
       FROM safety_approval_requests WHERE thread_id=? AND state='pending' AND expires_at>? ORDER BY created_at`)

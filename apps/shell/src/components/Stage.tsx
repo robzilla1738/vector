@@ -75,13 +75,17 @@ export const Stage = memo(forwardRef<HTMLDivElement>(function Stage(_props, ref)
   const mode = useStore((s) => s.mode);
   const companion = useStore(s => s.pages.find(item => item.pageId === s.splitPageId));
   const overlay = useStore(s => s.overlay);
+  const confirming = useStore(s => !!s.confirmation);
   const hasUrl = !!page && (!!page.showBlankDocument || (!isHomeAddress(page.url)));
   const loading = !!page?.loading && !page.navigationError && page.viewStatus !== "crashed";
 
   const splitVisible = mode === "focus" && page && companion && companion.pageId !== page.pageId
-    && [page, companion].every(item => nativePageId({mode,overlay,activePageId:item.pageId,...item}));
-  // A scrim replaces the page. A floating toolbar would lay that surface under the window buttons.
-  const showingPage = mode === "focus" && !isScrimOverlay(overlay) && hasUrl && page?.backend !== "chrome" && page?.viewStatus !== "crashed" && !page?.navigationError;
+    && [page, companion].every(item => nativePageId({mode,overlay,confirming,activePageId:item.pageId,...item}));
+  // A scrim or an action confirmation replaces the page so the dialog is the thing that can be clicked.
+  const showingPage = !!page && nativePageId({
+    mode, overlay, confirming, activePageId: page.pageId, url: page.url, backend: page.backend,
+    viewStatus: page.viewStatus, navigationError: page.navigationError, showBlankDocument: page.showBlankDocument,
+  }) === page.pageId;
 
   return (
     <div inert={overlay === "tasks" || overlay === "settings"} className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`} data-controller={page?.controller ?? "none"}>

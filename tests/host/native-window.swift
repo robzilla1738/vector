@@ -126,7 +126,153 @@ func hasStaticText(_ needle: String) -> Bool {
   return visit(AXUIElementCreateApplication(pid), depth: 0)
 }
 
-if action == "has-button" {
+func axPoint(_ element: AXUIElement, _ attribute: String) -> CGPoint? {
+  var raw: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(element, attribute as CFString, &raw) == .success,
+    let raw, CFGetTypeID(raw) == AXValueGetTypeID() else { return nil }
+  let value = unsafeBitCast(raw, to: AXValue.self)
+  var point = CGPoint.zero
+  guard AXValueGetType(value) == .cgPoint, AXValueGetValue(value, .cgPoint, &point) else { return nil }
+  return point
+}
+
+func axSize(_ element: AXUIElement) -> CGSize? {
+  var raw: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &raw) == .success,
+    let raw, CFGetTypeID(raw) == AXValueGetTypeID() else { return nil }
+  let value = unsafeBitCast(raw, to: AXValue.self)
+  var size = CGSize.zero
+  guard AXValueGetType(value) == .cgSize, AXValueGetValue(value, .cgSize, &size) else { return nil }
+  return size
+}
+
+func findButton(_ label: String) -> AXUIElement? {
+  let application = AXUIElementCreateApplication(pid)
+  func visit(_ element: AXUIElement, depth: Int) -> AXUIElement? {
+    if depth > 18 { return nil }
+    var roleValue: CFTypeRef?
+    var titleValue: CFTypeRef?
+    var descriptionValue: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+    AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleValue)
+    AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descriptionValue)
+    let title = titleValue as? String ?? ""
+    let description = descriptionValue as? String ?? ""
+    if (roleValue as? String) == (kAXButtonRole as String) &&
+        (title == label || description == label) { return element }
+    var childrenValue: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenValue) == .success,
+      let children = childrenValue as? [AXUIElement] else { return nil }
+    for child in children {
+      if let found = visit(child, depth: depth + 1) { return found }
+    }
+    return nil
+  }
+  return visit(application, depth: 0)
+}
+
+struct ClickRecord: Encodable {
+  let ok: Bool
+  let x: Double
+  let y: Double
+  let width: Double
+  let height: Double
+  let rawX: Double
+  let rawY: Double
+  let flippedX: Double
+  let flippedY: Double
+  let windowX: Double
+  let windowY: Double
+  let windowW: Double
+  let windowH: Double
+}
+
+func postClick(_ point: CGPoint) {
+  let move = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)
+  let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left)
+  let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left)
+  move?.post(tap: .cghidEventTap)
+  usleep(40_000)
+  down?.post(tap: .cghidEventTap)
+  usleep(40_000)
+  up?.post(tap: .cghidEventTap)
+}
+
+func screenWindow() -> CGRect? {
+  let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+  let frames = windows.compactMap { window -> CGRect? in
+    guard (window[kCGWindowOwnerPID as String] as? Int32) == pid,
+      (window[kCGWindowLayer as String] as? Int) == 0,
+      let bounds = window[kCGWindowBounds as String] as? [String: Any],
+      let width = bounds["Width"] as? Double, width >= 600,
+      let height = bounds["Height"] as? Double, height >= 400 else { return nil }
+    return CGRect(x: bounds["X"] as? Double ?? 0, y: bounds["Y"] as? Double ?? 0, width: width, height: height)
+  }
+  return frames.max(by: { $0.width * $0.height < $1.width * $1.height })
+}
+
+func clickButton(_ label: String) -> ClickRecord? {
+  guard let element = findButton(label),
+    let origin = axPoint(element, kAXPositionAttribute),
+    let size = axSize(element), size.width > 1, size.height > 1 else { return nil }
+  _ = app.activate(options: [])
+  let screenHeight = NSScreen.screens.map(\.frame.maxY).max() ?? 0
+  let raw = CGPoint(x: origin.x + size.width / 2, y: origin.y + size.height / 2)
+  let flipped = CGPoint(x: raw.x, y: screenHeight - raw.y)
+  let window = screenWindow() ?? .zero
+  let rawInside = window.contains(raw)
+  let flippedInside = window.contains(flipped)
+  let point = rawInside && !flippedInside ? raw : flippedInside ? flipped : raw
+  postClick(point)
+  return ClickRecord(ok: true, x: point.x, y: point.y, width: size.width, height: size.height,
+                     rawX: raw.x, rawY: raw.y, flippedX: flipped.x, flippedY: flipped.y,
+                     windowX: window.origin.x, windowY: window.origin.y, windowW: window.width, windowH: window.height)
+}
+
+func pressButton(_ label: String) -> Bool {
+  let application = AXUIElementCreateApplication(pid)
+  var visited = 0
+  func visit(_ element: AXUIElement, depth: Int) -> Bool {
+    visited += 1
+    if depth > 18 || visited > 4000 { return false }
+    var roleValue: CFTypeRef?
+    var titleValue: CFTypeRef?
+    var descriptionValue: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+    AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleValue)
+    AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descriptionValue)
+    let title = titleValue as? String ?? ""
+    let description = descriptionValue as? String ?? ""
+    if (roleValue as? String) == (kAXButtonRole as String) &&
+        (title == label || description == label) {
+      AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+      return AXUIElementPerformAction(element, kAXPressAction as CFString) == .success
+    }
+    var childrenValue: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenValue) == .success,
+      let children = childrenValue as? [AXUIElement] else { return false }
+    return children.contains { visit($0, depth: depth + 1) }
+  }
+  return visit(application, depth: 0)
+}
+
+if action == "press-button" {
+  guard CommandLine.arguments.count == 4 else { fail("Use press-button PID label.") }
+  print(pressButton(CommandLine.arguments[3]) ? "true" : "false")
+} else if action == "click-button" {
+  guard CommandLine.arguments.count == 4 else { fail("Use click-button PID label.") }
+  guard let click = clickButton(CommandLine.arguments[3]),
+    let data = try? JSONEncoder().encode(click),
+    let text = String(data: data, encoding: .utf8) else { fail("Cannot click that button.") }
+  print(text)
+} else if action == "click-at" {
+  guard CommandLine.arguments.count == 5,
+    let x = Double(CommandLine.arguments[3]),
+    let y = Double(CommandLine.arguments[4]) else { fail("Use click-at PID x y.") }
+  _ = app.activate(options: [])
+  postClick(CGPoint(x: x, y: y))
+  print("true")
+} else if action == "has-button" {
   guard CommandLine.arguments.count == 4 else { fail("Use has-button PID label.") }
   print(hasButton(CommandLine.arguments[3]) ? "true" : "false")
 } else if action == "buttons" {
@@ -160,8 +306,42 @@ if action == "has-button" {
     fail("Cannot encode Aux window bounds.")
   }
   print(text)
+}
+
+func staticTexts() -> [String] {
+  var texts: [String] = []
+  var visited = 0
+  func visit(_ element: AXUIElement, depth: Int) {
+    visited += 1
+    if depth > 18 || visited > 4000 || texts.count >= 40 { return }
+    var role: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+    if (role as? String) == (kAXStaticTextRole as String) {
+      var value: CFTypeRef?
+      if AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value) == .success,
+        let value = value as? String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty && trimmed.count <= 200 { texts.append(trimmed) }
+      }
+    }
+    var children: CFTypeRef?
+    if AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
+      let children = children as? [AXUIElement] {
+      for child in children { visit(child, depth: depth + 1) }
+    }
+  }
+  visit(AXUIElementCreateApplication(pid), depth: 0)
+  return texts
+}
+
+if action == "texts" {
+  let data = try! JSONEncoder().encode(staticTexts())
+  print(String(data: data, encoding: .utf8)!)
+} else if action == "press-button" || action == "click-button" || action == "click-at" || action == "has-button" || action == "buttons" ||
+  action == "has-text" || action == "focused" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
-  action == "next-tab" || action == "focus-address" || action == "escape" || action == "move" {
+  action == "next-tab" || action == "focus-address" || action == "escape" ||
+  action == "type-return" || action == "move" {
   guard app.activate(options: []) else {
     fail("Cannot activate the launched Aux browser window.")
   }
@@ -175,8 +355,8 @@ if action == "has-button" {
   if action != "move" && action != "activate" {
     // Aux declares Command-S for the sidebar, Command-L for the address,
     // and Control-Tab for next tab. Stock Chromium accepts the latter two.
-    let key: CGKeyCode = action == "next-tab" ? 48 : action == "focus-address" ? 37 : action == "escape" ? 53 : 1
-    let flags: CGEventFlags = action == "next-tab" ? .maskControl : action == "escape" ? [] : .maskCommand
+    let key: CGKeyCode = action == "next-tab" ? 48 : action == "focus-address" ? 37 : action == "escape" || action == "type-return" ? (action == "type-return" ? 36 : 53) : 1
+    let flags: CGEventFlags = action == "next-tab" ? .maskControl : action == "escape" || action == "type-return" ? [] : .maskCommand
     let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true)
     let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false)
     down?.flags = flags

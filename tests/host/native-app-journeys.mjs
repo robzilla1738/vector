@@ -40,6 +40,7 @@ const bundleId = execFileSync("/usr/libexec/PlistBuddy", ["-c", "Print :CFBundle
 assert.equal(bundleId, "dev.aux.browser", "The native journey must target the Aux identity");
 const rpcOnly = process.argv.includes("--rpc-only");
 const uiOnly = process.argv.includes("--ui-only");
+const submitConfirmation = process.argv.includes("--submit-confirmation");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
@@ -58,6 +59,7 @@ let child;
 let fixture;
 let origin;
 let clicks = 0;
+let posts = 0;
 let rpcToken;
 let rpcPort;
 let lastRuntimeStatus;
@@ -81,7 +83,7 @@ async function rpc(method, params = {}) {
     const response = await fetch(`http://127.0.0.1:${rpcPort}/rpc`, {
       method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${rpcToken}` },
       body: JSON.stringify({ id: 1, method, params }),
-      signal: AbortSignal.timeout(method === "pages.open" ? 60_000 : 10_000),
+      signal: AbortSignal.timeout(method === "pages.open" ? 60_000 : method === "pages.execute" ? 30_000 : 10_000),
     });
     const body = await response.json();
     if (body.error) throw new Error(`${method}: ${body.error.code}: ${body.error.message}`);
@@ -122,6 +124,12 @@ function changedFraction(aPath, bPath, fraction = 0.45) {
 
 try {
   fixture = createServer((request, response) => {
+    if (submitConfirmation) {
+      if (request.method === "POST" && request.url === "/submit") { posts++; response.writeHead(204).end(); return; }
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+      response.end(`<!doctype html><title>Aux submit fixture</title><main><h1>Submit fixture</h1><form id="order" method="post" action="/submit"><button id="send" type="submit">Send</button></form><script>document.getElementById("order").addEventListener("submit",event=>{event.preventDefault();fetch("/submit",{method:"POST"})})</script></main>`);
+      return;
+    }
     if (request.url === "/click") { clicks++; response.writeHead(204).end(); return; }
     const color = request.url?.startsWith("/blue") ? "#164b72" : "#7c344b";
     const name = color === "#164b72" ? "Blue" : "Red";
@@ -157,6 +165,55 @@ try {
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
   record("Profile runtime is authenticated and raw debugging is disabled", { sessions: connection.sessions?.length });
 
+  if (submitConfirmation) {
+    if (rpcOnly) throw new Error("Submit confirmation needs the native accessibility tree.");
+    await rpc("settings.set", { effectGrants: ["effect:read", "effect:write"] });
+    const page = await rpc("pages.open", { url: `${origin}/submit`, activate: true });
+    await until("the submit fixture to load", async () => {
+      const pages = await rpc("pages.list");
+      return pages.some(item => item.pageId === page.pageId && item.url.startsWith(`${origin}/submit`) && !item.loading);
+    });
+    const program = { pageId: page.pageId, steps: [{ id: "submit-form", op: "click", target: "css:#send" }] };
+    await assert.rejects(rpc("pages.execute", { program }), /needs_input/);
+    assert.equal(posts, 0, "The form must not submit before the person allows it");
+    await until("a visible Aux browser window", () => {
+      try { return JSON.parse(native("window")); } catch { return null; }
+    });
+    native("activate");
+    try {
+      await until("the Allow confirmation", () => native("has-button", "Allow") === "true");
+    } catch (error) {
+      throw new Error(`${error.message}; visible buttons: ${native("buttons")}; runtime banner: ${native("has-text", "Runtime reconnecting")}`);
+    }
+    assert.equal(native("press-button", "Allow"), "true", "Accessibility press must activate Allow");
+    const click = JSON.parse(native("click-button", "Allow"));
+    await delay(600);
+    if (native("has-button", "Allow") === "true") {
+      const usedRaw = Math.abs(click.x - click.rawX) < 1 && Math.abs(click.y - click.rawY) < 1;
+      native("click-at", usedRaw ? click.flippedX : click.rawX, usedRaw ? click.flippedY : click.rawY);
+    }
+    try {
+      await until("the confirmation to close", () => native("has-button", "Allow") === "false", 8_000);
+    } catch (error) {
+      let shot = "";
+      try {
+        const window = JSON.parse(native("window"));
+        capture(window.id, "confirmation-stuck");
+        shot = " screenshot saved";
+      } catch (captureError) {
+        shot = ` screenshot failed: ${captureError instanceof Error ? captureError.message : captureError}`;
+      }
+      throw new Error(`${error.message}; click: ${JSON.stringify(click)}; posts: ${posts}; focused: ${native("focused")}; texts: ${native("texts")};${shot}`);
+    }
+    const sent = await rpc("pages.execute", { program });
+    assert.equal(sent.status, "completed", JSON.stringify(sent));
+    await until("one form submit", () => posts === 1);
+    await assert.rejects(rpc("pages.execute", { program }), /needs_input/);
+    await delay(500);
+    assert.equal(posts, 1, "A further attempt without a new acceptance must not submit again");
+    record("fixture submit shows a shell confirmation and dispatches once", { posts });
+    report.passed = true;
+  } else {
   const red = await rpc("pages.open", { url: `${origin}/red`, activate: true });
   const blue = await rpc("pages.open", { url: `${origin}/blue`, activate: true });
   assert.ok(red.pageId && blue.pageId && red.pageId !== blue.pageId);
@@ -298,6 +355,7 @@ try {
   record("closing a tab reconciles runtime and native catalog", { remaining: red.pageId });
   }
   report.passed = true;
+  }
 } catch (error) {
   report.steps.push({ name: "terminal failure", passed: false, detail: String(error) });
   process.exitCode = 1;

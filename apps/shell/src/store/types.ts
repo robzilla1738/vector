@@ -67,6 +67,8 @@ export interface Workspace {
   /** bumps when the non-reactive page preview cache changes (see pagePreview) */
   previewVersion: number;
   prompt: { runId: string; question: string } | null;
+  /** A page action waiting for the person at the browser. */
+  confirmation: { approvalId: string; turnId: string; instruction: string; action: string; origin: string } | null;
   runAnswerDrafts: Record<string, RunAnswerDraft>;
   setRunAnswerDraft(runId:string,question:string,text:string):void;
   runAnswerPending: Record<string, boolean>;
@@ -196,5 +198,5 @@ export type DraftKeys = "conversationContexts" | "setConversationContext" | "con
 export type BookmarkKeys = "bookmarks" | "bookmarkPending" | "toggleBookmark" | "toggleReadingList" | "downloads" | "applyDownload";
 export type LayoutKeys = "layout" | "tidyUndo" | "splitPageId" | "setSplitPage" | "setSplitRatio" | "reorderTabs" | "reorderGroup" | "moveTabToSpace" | "moveTabs" | "setTabName" | "addSpace" | "editSpace" | "deleteSpace" | "restoreSpace" | "syncBrowserSpaces" | "refreshSpaces" | "switchSpace" | "togglePin" | "reorderPin" | "addFolder" | "renameFolder" | "updateFolder" | "deleteFolder" | "toggleFolder" | "moveTabToFolder";
 export type TabKeys = "pages" | "activePageId" | "closedTabs" | "reopeningTab" | "tabAudio" | "catalogVersion" | "applyTabsPatch" | "syncTabsSnapshot" | "applyTabsPlacement" | "resyncTabs" | "activate" | "navigatePage" | "newTab" | "openBackgroundTab" | "reopenClosedTab" | "duplicateTab" | "closingTabs" | "closeTabs" | "closeTab" | "moveTabToWindow" | "moveTabsToWindow" | "previewVersion" | "restoringTabs" | "pendingRestoreIds";
-export type RunKeys = "sets" | "members" | "runs" | "sessions" | "programs" | "conversationId" | "openConversation" | "openConversationDraft" | "activeSetId" | "results" | "steps" | "modelStats" | "observations" | "prompt" | "runAnswerPending" | "retryingRuns" | "settings" | "pendingTurns" | "answerStreams" | "startRun" | "retryRun" | "answerRun" | "returnControl" | "loadRun" | "refreshResults";
+export type RunKeys = "sets" | "members" | "runs" | "sessions" | "programs" | "conversationId" | "openConversation" | "openConversationDraft" | "activeSetId" | "results" | "steps" | "modelStats" | "observations" | "prompt" | "confirmation" | "runAnswerPending" | "retryingRuns" | "settings" | "pendingTurns" | "answerStreams" | "startRun" | "retryRun" | "answerRun" | "returnControl" | "loadRun" | "refreshResults";
 export type Slice<K extends keyof Workspace> = StateCreator<Workspace, [], [], Pick<Workspace, K>>;

@@ -51,6 +51,33 @@ describe("S3 decide()", () => {
     expect(categoryForOp("screenshot")).toBe("read");
   });
 
+  it("asks the person to allow a direct page action, then dispatches that approval once", async () => {
+    const { deps, request } = fixture();
+    const pending = await decide(request, deps, { phase: "preflight" });
+    expect(pending).toMatchObject({ status: "ask", suspension: { kind: "approval", instruction: "Allow this action before it runs." } });
+    const approvalId = pending.status === "ask" ? pending.suspension.approvalId : undefined;
+    expect(approvalId).toBeTruthy();
+    deps.approvals.decideLocal({ decision: "accept", approvalId: approvalId! }, "turn-1");
+    const allowed = await decide(request, deps, { phase: "dispatch", approvalId });
+    expect(allowed).toMatchObject({ status: "allow", authorizedBy: { authorizedBy: "approval", approvalId } });
+    await expect(decide(request, deps, { phase: "dispatch", approvalId })).resolves.toMatchObject({ status: "ask" });
+  });
+
+  it("runs a direct page action once after the person allows it, without the caller presenting the approval", async () => {
+    const { deps, request } = fixture();
+    const pending = await decide(request, deps, { phase: "preflight" });
+    const approvalId = pending.status === "ask" ? pending.suspension.approvalId : undefined;
+    expect(approvalId).toBeTruthy();
+    deps.approvals.decideLocal({ decision: "accept", approvalId: approvalId! }, "turn-1");
+    await expect(decide(request, deps, { phase: "preflight" })).resolves.toMatchObject({
+      status: "allow", authorizedBy: { authorizedBy: "approval", approvalId },
+    });
+    await expect(decide(request, deps, { phase: "dispatch" })).resolves.toMatchObject({
+      status: "allow", authorizedBy: { authorizedBy: "approval", approvalId },
+    });
+    await expect(decide(request, deps, { phase: "dispatch" })).resolves.toMatchObject({ status: "ask" });
+  });
+
   it("asks for action-time confirmation on unruled consequential ops and journals the source", async () => {
     const { db, deps, request } = fixture();
     const decision = await decide(request, deps, { phase: "dispatch", turnToolCallCount: 0 });

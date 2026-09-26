@@ -20,6 +20,19 @@ const upsertBy = <T, K extends keyof T>(items: T[], item: T, key: K) =>
 
 export const reduceRunEvent: Reducer = (state, e) => {
   switch (e.type) {
+    case "safety.confirmation": {
+      const { approvalId, turnId, instruction, action, origin } = e.payload;
+      if (typeof approvalId !== "string" || typeof turnId !== "string" || typeof instruction !== "string") return {};
+      return {
+        confirmation: {
+          approvalId,
+          turnId,
+          instruction,
+          action: typeof action === "string" ? action : "action",
+          origin: typeof origin === "string" ? origin : "",
+        },
+      };
+    }
     case "run.updated":
     case "run.status": {
       const run = e.payload.run as Run | undefined;

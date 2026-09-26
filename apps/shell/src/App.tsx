@@ -41,6 +41,7 @@ const SiteCustomization = deferSurface(async () => { const module = await import
 const QuickAsk = deferSurface(async () => { const module = await import("./components/QuickAsk"); return {default:module.QuickAsk}; }, "Quick Ask", true, true);
 const HorizontalTabs = deferSurface(async () => { const module = await import("./components/HorizontalTabs"); return {default:module.HorizontalTabs}; }, "Tabs", true, true);
 const HttpAuthPrompt = deferSurface(async () => { const module = await import("./components/HttpAuthPrompt"); return {default:module.HttpAuthPrompt}; }, "Sign-in prompt", true, true);
+const ActionConfirmation = deferSurface(async () => { const module = await import("./components/ActionConfirmation"); return {default:module.ActionConfirmation}; }, "Action confirmation", true, true);
 const VaultOfferBanner = deferSurface(async () => { const module = await import("./components/VaultOfferBanner"); return {default:module.VaultOfferBanner}; }, "Password offer", true, true);
 const FindBar = deferSurface(async () => { const module = await import("./components/FindBar"); return {default:module.FindBar}; }, "Find in page", true, true);
 const Sidebar = deferSurface(async () => { const module = await import("./components/Sidebar"); return {default:module.Sidebar}; }, "Sidebar", true, true);
@@ -166,7 +167,8 @@ export function App() {
   const toolbarReveal = useToolbarReveal(pageChrome, sidebarPeek);
   const [toolbarHole, setToolbarHole] = useState(false);
   const [toolbarReady, setToolbarReady] = useState(false);
-  const nativeShowing = !!nativePageId({ mode, overlay, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
+  const confirming = useStore(s => !!s.confirmation);
+  const nativeShowing = !!nativePageId({ mode, overlay, confirming, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
   const floatingSidebar = !horizontal && sidebar !== "expanded" && sidebarPeek;
   const [peekCovering, setPeekCovering] = useState(false);
   useEffect(() => {
@@ -473,6 +475,7 @@ export function App() {
       {overlay === "site" && <SiteControls />}
       {overlay === "zap" && <SiteCustomization key={`${activePageId}:${activePage?.url}:${activePageEpoch}`} />}
       <HttpAuthPrompt />
+      <ActionConfirmation />
       {vaultOffer && <VaultOfferBanner />}
       <Toasts top={sidebar === "hidden" || sidebar === "rail"} />
       <BrowsingMemoryWatch />

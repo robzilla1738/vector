@@ -64,6 +64,7 @@ describe("overlay → native-view visibility", () => {
 
   it("shows the native page only in focus with no scrim", () => {
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url })).toBe(page);
+    expect(nativePageId({ mode: "focus", overlay: null, activePageId: page, url, confirming: true })).toBeNull();
     expect(nativePageId({ mode: "overview", overlay: null, activePageId: page, url })).toBeNull();
     expect(nativePageId({ mode: "table", overlay: null, activePageId: page, url })).toBeNull();
     expect(nativePageId({ mode: "focus", overlay: null, activePageId: null, url })).toBeNull();

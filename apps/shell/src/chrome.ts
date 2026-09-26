@@ -60,9 +60,11 @@ export function nativePageId(input: {
   viewStatus?: string;
   navigationError?: unknown;
   showBlankDocument?: boolean;
+  /** A page-action confirmation covers the stage the way a scrim does. */
+  confirming?: boolean;
 }): string | null {
   if (input.mode !== "focus" || input.viewStatus === "crashed" || input.navigationError) return null;
-  if (isScrimOverlay(input.overlay)) return null;
+  if (input.confirming || isScrimOverlay(input.overlay)) return null;
   if (!input.activePageId) return null;
   const url = input.url?.trim() ?? "";
   if (isHomeAddress(url) && !input.showBlankDocument) return null;

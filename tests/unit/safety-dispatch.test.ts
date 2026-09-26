@@ -51,6 +51,49 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
 }
 
 describe("B5 live dispatch gate", () => {
+  it("does not click a direct page action until the person allows it, then clicks once", async () => {
+    const db = openDb(":memory:"); databases.push(db);
+    const repo = new Repo(db);
+    const approvals = new ApprovalStore(db);
+    const confirmations: string[] = [];
+    const calls: string[] = [];
+    const gate = new SafetyDispatchGate({
+      approvals, journal: new DecisionJournal(db), managedRules: () => [], userRules: () => [],
+      localCeiling: () => "ask", audit: () => {},
+      onConfirmation: (confirmation) => confirmations.push(confirmation.approvalId),
+    });
+    const driver: BrowserDriver = {
+      backend: "aux", connect: async () => {}, disconnect: async () => {}, isConnected: () => true,
+      listTargets: async () => [], createTarget: async () => "target-1",
+      attach: async (_targetId, pageId) => ({
+        identity: { pageId, targetId: "target-1", backend: "aux" },
+        url: () => "https://shop.test/form", title: async () => "Form", isAttached: () => true,
+        navigate: async () => {}, click: async () => { calls.push("click"); },
+        observe: async () => ({ url: "https://shop.test/form", title: "Form", viewport: { width: 800, height: 600, scale: 1 },
+          scroll: { x: 0, y: 0, maxY: 0 }, frames: [{ frame: "main", url: "https://shop.test/form", sameOrigin: true }],
+          text: "Form", headings: [], elements: [], formFields: [], tables: [], links: [], dialogs: [], console: [],
+          truncated: false, stats: { elementsTotal: 0, elementsShown: 0, textChars: 4, approxTokens: 1 } }),
+        setEvents: () => {}, dispose: async () => {},
+      }) as unknown as DriverPage,
+    };
+    const pages = new PageService({ repo, events: new EventBus(repo), native: new NullNativeBridge(),
+      drivers: () => ({ aux: driver, chrome: null }), grants: ["effect:read", "effect:write"],
+      profileId: "profile-1", safetyGate: gate });
+    const page = await pages.open({ url: "https://shop.test/form", background: true, ownedByRuntime: true });
+    const program = { pageId: page.pageId, steps: [{ id: "submit-form", op: "click" as const, target: "css:#send" }] };
+    await expect(pages.execute(program)).rejects.toMatchObject({ code: "needs_input" });
+    expect(calls).toEqual([]);
+    expect(confirmations).toHaveLength(1);
+    approvals.decideLocal({ decision: "accept", approvalId: confirmations[0]! }, `direct:${page.pageId}`);
+    const result = await pages.execute(program);
+    expect(result.steps[0]).toMatchObject({ status: "ok" });
+    expect(calls).toEqual(["click"]);
+    expect(confirmations).toHaveLength(1);
+    await expect(pages.execute(program)).rejects.toMatchObject({ code: "needs_input" });
+    expect(calls).toEqual(["click"]);
+    expect(confirmations).toHaveLength(2);
+  });
+
   it("requires a one-time credential approval even when the origin rule says none", async () => {
     const db = openDb(":memory:"); databases.push(db);
     const approvals = new ApprovalStore(db);

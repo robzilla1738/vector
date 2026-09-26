@@ -199,6 +199,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     ? new SafetyDispatchGate({
         ...decideDeps,
         suspensions,
+        onConfirmation: (confirmation) => events.emit("safety.confirmation", confirmation),
         judge: createGuardianJudge({
           model: () => settings.model(),
           modelId: () => settings.plannerModel(),

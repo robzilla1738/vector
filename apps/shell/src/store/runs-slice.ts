@@ -41,6 +41,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
   modelStats: {},
   observations: {},
   prompt: null,
+  confirmation: null,
   runAnswerPending: {},
   retryingRuns: {},
   settings: {},

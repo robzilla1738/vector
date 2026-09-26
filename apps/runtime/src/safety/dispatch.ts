@@ -35,6 +35,15 @@ export interface SafetyDispatchDeps {
   localCeiling: (action: SafetyAction) => LocalCeiling;
   audit: (decision: OriginPolicyAudit | Record<string, unknown>) => void;
   judge?: GuardianJudge;
+  /** User-facing confirmation. Fired when an approval is waiting on the shell. */
+  onConfirmation?: (confirmation: {
+    approvalId: string;
+    turnId: string;
+    threadId: string;
+    instruction: string;
+    action: string;
+    origin: string;
+  }) => void;
 }
 
 /** One safety decision for preflight, then a fresh decision at the actual dispatch boundary. */
@@ -79,6 +88,16 @@ export class SafetyDispatchGate {
       throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
     }
     const { suspension } = decision;
+    if (suspension.kind === "approval" && suspension.approvalId) {
+      this.deps.onConfirmation?.({
+        approvalId: suspension.approvalId,
+        turnId: input.context.turnId,
+        threadId: input.context.threadId,
+        instruction: suspension.instruction,
+        action: input.step.op,
+        origin: input.origin,
+      });
+    }
     if (this.deps.suspensions && input.context.runId) {
       this.deps.suspensions.park({
         runId: input.context.runId,
