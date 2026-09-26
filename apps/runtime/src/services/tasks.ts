@@ -425,7 +425,9 @@ export class TaskService {
     if (!attached && !previewGranted)
       throw new AuxError("permission_denied", "Attach this page to the saved task before using it");
     if (write) {
-      this.requireIdle(taskId);
+      // The external session run is this connection's presence record, not a
+      // competing planner run. It must not block the page program it anchors.
+      this.requireIdle(taskId, "external-agent");
       this.requireResolved(taskId);
     }
     return task;
@@ -441,13 +443,16 @@ export class TaskService {
       throw new AuxError("conflict", "Task revision changed; refresh before continuing");
   }
 
-  private requireIdle(taskId: string) {
+  private requireIdle(taskId: string, exceptImplementation?: string) {
+    const except = exceptImplementation
+      ? "AND coalesce(json_extract(config,'$.implementation'),'') != ?"
+      : "";
     if (
       this.repo.db
         .prepare(
-          `SELECT 1 FROM runs WHERE json_extract(config,'$.taskId')=? AND status IN ${ACTIVE_RUNS} LIMIT 1`,
+          `SELECT 1 FROM runs WHERE json_extract(config,'$.taskId')=? AND status IN ${ACTIVE_RUNS} ${except} LIMIT 1`,
         )
-        .get(taskId)
+        .get(...(exceptImplementation ? [taskId, exceptImplementation] : [taskId]))
     ) {
       throw new AuxError(
         "conflict",

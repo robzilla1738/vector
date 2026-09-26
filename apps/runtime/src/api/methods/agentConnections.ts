@@ -24,7 +24,10 @@ async function h_agentConnections_revoke(ctx: MethodCtx): Promise<unknown> {
     throw new AuxError("permission_denied", "Connections can only be revoked in Aux Settings");
   if (!s.agentConnections)
     throw new AuxError("backend_unavailable", "Agent connection management is unavailable");
-  return s.agentConnections.revoke(params.connectionId);
+  const revoked = s.agentConnections.revoke(params.connectionId);
+  // S6.7 — revoking the token ends its session run, same as a cancelled agent.
+  s.externalSessions?.end(params.connectionId, "cancelled", "Connection revoked");
+  return revoked;
 }
 
 export const agentConnectionsMethods: Partial<Record<MethodName, MethodHandler>> = {

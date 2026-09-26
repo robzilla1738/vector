@@ -60,6 +60,7 @@ import { Tracer } from "./services/tracing.js";
 import { makeInvoker } from "./api/invoke.js";
 import { ApiServer } from "./api/server.js";
 import { AgentConnectionService } from "./services/agent-connections.js";
+import { ExternalSessionService } from "./services/external-sessions.js";
 import { CalendarConnectionService } from "./services/calendar-connections.js";
 import { ZapService } from "./services/zap.js";
 import { ContentBlockingService } from "./services/content-blocking.js";
@@ -171,6 +172,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   } catch {
     /* non-POSIX fs */
   }
+  // The descriptor is public before the service tree exists. Hold the gate
+  // across a short timer so a client that just read runtime.json can observe
+  // the not-ready /health body; one microtask is not a long enough window
+  // for that HTTP round trip (06-T).
+  await new Promise((resolve) => setTimeout(resolve, 50));
 
   const settings = new SettingsService(repo, config.settingsPath, env);
   const durableWrites = new DurableWriteLedger(repo.db);
@@ -996,6 +1002,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const chromeTabs = async () => drivers.chrome?.listTargets() ?? [];
   const cookies = new CookieService({ drivers: () => drivers, native });
   agentConnections = new AgentConnectionService(repo);
+  const externalSessions = new ExternalSessionService(repo, events);
 
   const invoke = makeInvoker({
     featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : "electron",
@@ -1015,6 +1022,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     events,
     repo,
     agentConnections,
+    externalSessions,
     subagents,
     calendar,
     responses,
@@ -1056,7 +1064,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   resolveInvoker!(invoke);
   api.setReady();
   disarmWatchdog();
+  const sweepExternalSessions = () => {
+    try {
+      externalSessions.sweepIdle();
+    } catch (error) {
+      console.error("External session sweep failed", error);
+    }
+  };
+  sweepExternalSessions();
   const dueTimer = setInterval(() => {
+    sweepExternalSessions();
     void invoke("routines.due", {}, { external: false }).catch(() => undefined);
   }, 60_000);
   dueTimer.unref?.();

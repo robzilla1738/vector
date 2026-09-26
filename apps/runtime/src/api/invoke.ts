@@ -171,6 +171,13 @@ export function makeInvoker(s: Services) {
         for (const pageId of params.pageIds) requireScopedPage(scope, pageId, client.connectionId);
     }
 
+    // S6.7 — a scoped connection's work lands on its first-class session run:
+    // presence in Tasks, and the runId that stamps approvals/effect decisions.
+    const externalRunId =
+      scope && client.connectionId
+        ? s.externalSessions?.ensure({ connectionId: client.connectionId, scope })
+        : undefined;
+
     const withExternalPage = async <T>(
       pageId: string,
       action: () => Promise<T>,
@@ -187,6 +194,7 @@ export function makeInvoker(s: Services) {
           })
         : undefined;
       try {
+        if (externalRunId && client.connectionId) s.externalSessions?.notePage(client.connectionId, pageId);
         if (automated && s.pages.get(pageId).controller === "human")
           throw new AuxError(
             "conflict",
@@ -206,6 +214,7 @@ export function makeInvoker(s: Services) {
       scope,
       host,
       invoke,
+      externalRunId,
       withExternalPage,
     };
 

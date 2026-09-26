@@ -56,6 +56,8 @@ export interface Services {
   events: EventBus;
   repo: Repo;
   agentConnections?: AgentConnectionService;
+  /** S6.7 — scoped connections own first-class session runs. */
+  externalSessions?: import("../../services/external-sessions.js").ExternalSessionService;
   mcpTransportProvider?: McpTransportProvider;
   /** Shared with the agent loop's REPL cell surface — created once in main.ts. */
   subagents?: SubagentService;
@@ -113,6 +115,8 @@ export interface MethodCtx extends MethodDeps {
   scope?: AgentConnectionScope;
   host: NonNullable<Services["featureHost"]>;
   invoke: InvokeFn;
+  /** S6.7 session run for scoped external connections — approval/provenance anchor. */
+  externalRunId?: string;
   withExternalPage: <T>(
     pageId: string,
     action: () => Promise<T>,
@@ -201,6 +205,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     taskId?: string;
     connectionId?: string;
     threadId?: string;
+    runId?: string;
   }) => {
     const threadId = input.threadId ?? `rpc:${input.connectionId ?? "internal"}`;
     const decision = await decide(
@@ -222,6 +227,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
           .digest("hex"),
         turnId: threadId,
         threadId,
+        ...(input.runId ? { runId: input.runId } : {}),
         requestedAt: Date.now(),
       },
       {

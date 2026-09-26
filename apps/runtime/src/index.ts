@@ -8,6 +8,7 @@ export { RoutineService, nextScheduledTime, previousScheduledTime } from "./serv
 export { PluginService } from "./services/plugins.js";
 export { TaskEvidenceService } from "./services/task-evidence.js";
 export { AgentConnectionService } from "./services/agent-connections.js";
+export { ExternalSessionService, EXTERNAL_SESSION_IDLE_MS } from "./services/external-sessions.js";
 export { OutboundMcpService, type McpTransportProvider } from "./services/outbound-mcp.js";
 export { ConnectorCatalogService } from "./services/connectors.js";
 export { createMcpTransportProvider } from "./services/mcp-transport-provider.js";

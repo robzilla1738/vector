@@ -147,6 +147,8 @@ export const RunSchema = z.object({
       messageRevision: z.number().int().nonnegative().optional(),
       /** Queued user message that started this run, if any. */
       messageId: z.string().optional(),
+      /** Scoped external agent connection that owns this run (S6.7). */
+      externalConnectionId: z.string().optional(),
       /** explicitly selected workspace memory revision used for this turn */
       contextWorkspaceId: z.string().optional(),
       contextWorkspaceRevision: z.number().int().nonnegative().optional(),

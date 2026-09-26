@@ -152,6 +152,7 @@ async function h_pages_execute(ctx: MethodCtx): Promise<unknown> {
           allowEval: !scope && !client.codeMode,
           taskId: p.taskId,
           taskRevision: p.expectedRevision,
+          ...(ctx.externalRunId ? { runId: ctx.externalRunId } : {}),
           safety: p.safety,
           beforeJournal: validateBeforeJournal,
           checkValid: validateDuringExecution,

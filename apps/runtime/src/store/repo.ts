@@ -335,7 +335,7 @@ export class Repo {
       this.q(
         `INSERT INTO runs(run_id,goal,status,page_ids,set_id,config,status_message,result,error,failure,started_at,ended_at,created_at)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
-         ON CONFLICT(run_id) DO UPDATE SET status=excluded.status,config=excluded.config,status_message=excluded.status_message,result=excluded.result,error=excluded.error,failure=excluded.failure,started_at=excluded.started_at,ended_at=excluded.ended_at`,
+         ON CONFLICT(run_id) DO UPDATE SET status=excluded.status,page_ids=excluded.page_ids,config=excluded.config,status_message=excluded.status_message,result=excluded.result,error=excluded.error,failure=excluded.failure,started_at=excluded.started_at,ended_at=excluded.ended_at`,
       ).run(r.runId, r.goal, r.status, J(r.pageIds), r.setId ?? null, r.config ? J(r.config) : null, r.statusMessage ?? null, r.result ? J(r.result) : null, r.error ?? null, r.failure ? J(r.failure) : null, r.startedAt ?? null, r.endedAt ?? null, r.createdAt);
       const chatId = r.config?.chatId ?? r.runId;
       const taskRow = r.config?.taskId ? this.q("SELECT json FROM tasks WHERE task_id=?").get(r.config.taskId) as { json: string } | undefined : undefined;

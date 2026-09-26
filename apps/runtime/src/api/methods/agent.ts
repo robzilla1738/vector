@@ -85,6 +85,7 @@ async function h_agent_web_fetch(ctx: MethodCtx): Promise<unknown> {
       taskId: params.taskId,
       connectionId: client.connectionId,
       threadId,
+      runId: ctx.externalRunId,
     });
     return authorizeProgram([{ id: "web-egress", op: "navigate", url: url.href }], s.settings.effectGrants())
       .ok;
@@ -102,6 +103,7 @@ async function h_agent_images_generate(ctx: MethodCtx): Promise<unknown> {
     action: "agent.images.generate",
     taskId: params.taskId,
     connectionId: client.connectionId,
+    runId: ctx.externalRunId,
   });
   const permitted = authorizeProgram(
     [{ id: "image-egress", op: "navigate", url: "https://ai-gateway.vercel.sh" }],
@@ -131,6 +133,7 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
     taskId: params.taskId,
     connectionId: client.connectionId,
     threadId: task.conversationId ?? `task:${params.taskId}`,
+    runId: ctx.externalRunId,
   });
   if (!authorizeProgram([{ id: "turn-egress", op: "navigate", url: url.href }], s.settings.effectGrants()).ok)
     throw new AuxError("permission_denied", `Web egress is not granted for ${url.origin}.`);
