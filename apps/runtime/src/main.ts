@@ -11,7 +11,7 @@ import { createMcpTransportProvider } from "./services/mcp-transport-provider.js
  * The same runtime and versioned agent API serve each native host.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { chmodSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -65,6 +65,8 @@ import { runBench } from "./services/bench.js";
 import { compileAndAuthorize } from "./agent/action-compiler.js";
 import { AgentWebTools, permittedWebUrl } from "./agent/web-tools.js";
 import type { AgentLoopHostDeps } from "./agent/loop/host.js";
+import { BashSeatbelt } from "./agent/loop/bash.js";
+import type { LoopPark } from "./agent/loop/types.js";
 import { attachBidiRuntime } from "./services/bidi.js";
 import { VaultService } from "./services/vault.js";
 import { DurableWriteLedger, PageClaimStore } from "./agent/durable.js";
@@ -585,6 +587,62 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     }
     return permittedWebUrl(url);
   };
+  /**
+   * Recipient-scoped decide() (06-X): effects addressed at a local service, not
+   * a page origin — `routine_update` and `bash network`. Recipient requests
+   * always confirm at action time; an `ask` parks the run's suspension and the
+   * loop resumes into the answer like any gated tool.
+   */
+  const decideLoopRecipient = async (
+    ctx: { runId: string; threadId: string; turnId: string },
+    input: { action: string; recipient: string; digestParts: unknown[] },
+  ) => {
+    const run = repo.getRun(ctx.runId);
+    return decide(
+      EffectRequestSchema.parse({
+        profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+        scope: run?.config?.taskId
+          ? { kind: "task", id: run.config.taskId }
+          : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+        actor: "builtin_agent",
+        effect: "external_tool",
+        category: "external_tool",
+        action: input.action,
+        recipient: input.recipient,
+        dataClasses: [],
+        provenance: "template",
+        invocationDigest: createHash("sha256").update(JSON.stringify(input.digestParts)).digest("hex"),
+        turnId: ctx.runId,
+        threadId: ctx.threadId,
+        runId: ctx.runId,
+        requestedAt: Date.now(),
+      }),
+      decideDeps,
+      { phase: "dispatch" },
+    );
+  };
+  const recipientGate = async (
+    ctx: { runId: string; threadId: string; turnId: string },
+    input: { action: string; recipient: string; digestParts: unknown[] },
+  ): Promise<"allow" | { park: LoopPark }> => {
+    const decision = await decideLoopRecipient(ctx, input);
+    if (decision.status === "deny")
+      throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
+    if (decision.status === "ask") {
+      suspensions.park({
+        runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.runId,
+        kind: decision.suspension.kind, request: decision.suspension,
+      });
+      return {
+        park: {
+          kind: decision.suspension.kind,
+          instruction: decision.suspension.instruction,
+          ...(decision.suspension.approvalId ? { approvalId: decision.suspension.approvalId } : {}),
+        },
+      };
+    }
+    return "allow";
+  };
   const agentLoop: AgentLoopHostDeps = {
     webFetch: async (url, ctx) => {
       const gated = await loopEgressGate(ctx, url, "agent.web.fetch");
@@ -610,6 +668,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       if (!ws || !contentMemory) return [];
       const hits = await contentMemory.search(ws, query, 5);
       return hits.map((hit) => ({ title: hit.title, url: hit.url, text: hit.snippet }));
+    },
+    // 06-X history_search / memory_search — the same projections the shell uses.
+    historySearch: async (query, limit) => repo.listHistory(query, Math.min(Math.max(1, Math.floor(limit)), 50)),
+    memorySearch: async (query, ctx) => {
+      const ws = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
+      if (!ws || !contentMemory) return [];
+      const hits = await contentMemory.search(ws, query, 8);
+      return hits.map((hit) => ({ title: hit.title, url: hit.url, text: hit.snippet, capturedAt: hit.capturedAt }));
+    },
+    // 06-X notification — a durable notice on the run's event stream.
+    notify: async ({ text }, ctx) => {
+      events.emit(EventTypes.RunNotice, { text }, ctx.runId);
     },
     repl: {
       // Opening a tab navigates somewhere new — same egress decision as a fetch.
@@ -684,6 +754,66 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     cancelCell: async (cellId) => {
       subagents.cancel(cellId);
     },
+  };
+
+  // 06-X bash under the macOS seatbelt: writes confined to the same session
+  // roots the REPL fs uses, network off by default — `network: true` takes the
+  // recipient-scoped decide() (always confirms, can park).
+  const bashScratch = join(config.artifactsDir, "bash-tmp");
+  mkdirSync(bashScratch, { recursive: true });
+  const bashSeatbelt = new BashSeatbelt({
+    writableRoots: () => [config.artifactsDir, config.downloadsDir, config.previewsDir],
+    scratchDir: bashScratch,
+    // Reads stay broad for tool usability, minus the runtime data dir (API
+    // token, cookies, history DBs) and OS credential stores; /Users is denied
+    // by the profile itself and the session roots are re-allowed after it.
+    extraDenyRead: () => [
+      config.dataDir,
+      join(config.dataDir, "runtime.json"),
+      "/private/var/db/dslocal",
+      "/private/var/db/shadow",
+      "/private/etc/sudoers",
+    ],
+    networkGate: (command, ctx) =>
+      recipientGate(ctx, {
+        action: "agent.bash.network",
+        recipient: "process:network",
+        digestParts: ["agent.bash.network", command],
+      }),
+  });
+  agentLoop.bash = async (input, ctx) => {
+    const result = await bashSeatbelt.run(input, ctx);
+    return "park" in result ? result : { output: result };
+  };
+  // 06-X routine_update: a model-proposed automation change confirms with the
+  // user (recipient-scoped decide()), then lands through the routines API —
+  // workspace-scoped to the run and optimistic-concurrency protected.
+  agentLoop.routineUpdate = async (input, ctx) => {
+    const run = repo.getRun(ctx.runId);
+    const current = (await invoke("routines.get", { routineId: input.routineId }, { external: false })) as {
+      workspaceId: string;
+      revision: number;
+    };
+    const ws = run?.config?.contextWorkspaceId;
+    if (ws && current.workspaceId !== ws)
+      throw new AuxError("permission_denied", "This routine belongs to another Space.");
+    const patch = Object.fromEntries(
+      Object.entries(input).filter(([key, value]) => key !== "routineId" && key !== "expectedRevision" && value !== undefined),
+    );
+    if (!Object.keys(patch).length) throw new AuxError("invalid_params", "Name one field to update.");
+    const expectedRevision = input.expectedRevision ?? current.revision;
+    const gated = await recipientGate(ctx, {
+      action: "agent.routine.update",
+      recipient: `routine:${input.routineId}`,
+      digestParts: ["agent.routine.update", input.routineId, expectedRevision, patch],
+    });
+    if (gated !== "allow") return gated;
+    const updated = await invoke(
+      "routines.update",
+      { routineId: input.routineId, expectedRevision, ...patch },
+      { external: false },
+    );
+    return { output: updated };
   };
 
   const extractingRuns = new Set<string>();

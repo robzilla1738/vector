@@ -45,6 +45,12 @@ export interface AgentLoopHostDeps {
     sendCell?: ReplHostDeps["sendCell"];
     cancelCell?: ReplHostDeps["cancelCell"];
   };
+  /** Remaining 06-X manifest tools — seatbelt bash, history/memory, routines, notices. */
+  bash?: LoopToolDeps["bash"];
+  historySearch?: LoopToolDeps["historySearch"];
+  memorySearch?: LoopToolDeps["memorySearch"];
+  routineUpdate?: LoopToolDeps["routineUpdate"];
+  notify?: LoopToolDeps["notify"];
   /** Provider prompt-cache options merged into each model step (S5 deliverable 1). */
   providerOptions?: Record<string, Record<string, unknown>>;
 }
@@ -262,6 +268,22 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     webFetch: self.deps.agentLoop?.webFetch,
     webSearch: self.deps.agentLoop?.webSearch,
     recall: self.deps.agentLoop?.recall,
+    fsRoots: () => fsRoots(),
+    fileRead: async (path) => {
+      if (!insideRoots(path)) throw new AuxError("permission_denied", "read_file stays inside session storage roots.");
+      return readFileSync(path, "utf8");
+    },
+    fileWrite: async (path, content) => {
+      if (!insideRoots(path)) throw new AuxError("permission_denied", "write_file stays inside session storage roots.");
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, content);
+    },
+    bash: self.deps.agentLoop?.bash,
+    historySearch: self.deps.agentLoop?.historySearch,
+    memorySearch: self.deps.agentLoop?.memorySearch,
+    subagents: self.deps.agentLoop?.subagents,
+    routineUpdate: self.deps.agentLoop?.routineUpdate,
+    notify: self.deps.agentLoop?.notify,
     writeTodos: (todos) => {
       self.deps.repo.saveCheckpoint(`run:${runId}`, "loop_todos", { todos });
     },

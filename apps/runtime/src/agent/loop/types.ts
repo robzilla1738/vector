@@ -75,6 +75,35 @@ export interface LoopToolDeps {
   recall?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<{ title: string; url: string; text: string }[]>;
   /** Session/workspace file roots — fs tools stay inside them (S4 upload roots). */
   fsRoots?: () => string[];
+  /** Confined file tools (read_file/write_file/edit_file) — the host enforces the root guard. */
+  fileRead?: (path: string) => Promise<string>;
+  fileWrite?: (path: string, content: string) => Promise<void>;
+  /** `bash` under the seatbelt — network off by default; `{park}` propagates a gate ask. */
+  bash?: (
+    input: { command: string; timeoutMs?: number; workdir?: string; network?: boolean },
+    ctx: { runId: string; threadId: string; turnId: string },
+  ) => Promise<LoopToolResult>;
+  /** Browser-history search (06-X history_search). */
+  historySearch?: (query: string, limit: number) => Promise<{ url: string; title: string; pageId?: string; visitedAt: number }[]>;
+  /** Protected page-memory search under the run's workspace policy (06-X memory_search). */
+  memorySearch?: (
+    query: string,
+    ctx: { runId: string; threadId: string; turnId: string },
+  ) => Promise<{ title: string; url: string; text: string; capturedAt: number }[]>;
+  /** Subagent cells (06-Y): spawn/wait/send/cancel for the manifest tools. */
+  subagents?: {
+    spawnCell?: (input: { goal: string; profile?: string; pageIds?: string[] }, ctx: { runId: string; threadId: string; turnId: string }) => Promise<{ cellId: string }>;
+    waitCell?: (cellId: string, timeoutMs: number) => Promise<{ state: string; runId?: string; pending?: boolean; result?: unknown; error?: string }>;
+    sendCell?: (cellId: string, text: string) => Promise<void>;
+    cancelCell?: (cellId: string) => Promise<void>;
+  };
+  /** `routine_update` — recipient-scoped decide() first; `{park}` propagates the ask. */
+  routineUpdate?: (
+    input: { routineId: string; title?: string; description?: string; objective?: string; trigger?: unknown; paused?: boolean; expectedRevision?: number },
+    ctx: { runId: string; threadId: string; turnId: string },
+  ) => Promise<LoopToolResult>;
+  /** `notification` — a durable notice on the run's event stream. */
+  notify?: (input: { text: string }, ctx: { runId: string; threadId: string; turnId: string }) => Promise<void>;
   /** Persisted todo scratchpad (write_todos). */
   writeTodos?: (todos: string[]) => Promise<void> | void;
   /**

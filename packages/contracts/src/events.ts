@@ -35,6 +35,8 @@ export const EventTypes = {
   DownloadFinished: "download.finished",
   DownloadsRemoved: "downloads.removed",
   SessionChanged: "session.changed",
+  /** A model-posted durable notice on a run — the `notification` loop tool. */
+  RunNotice: "run.notice",
   SettingsChanged: "settings.changed",
   Preview: "page.preview",
   RoutineUpdated: "routine.updated",

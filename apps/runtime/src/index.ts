@@ -153,6 +153,7 @@ export {
 } from "./agent/loop/context.js";
 export { TranscriptStore, type ParkedCall } from "./agent/loop/transcript.js";
 export { buildToolManifest } from "./agent/loop/tools.js";
+export { BashSeatbelt, type BashSeatbeltInput, type BashSeatbeltResult, type BashRunner, type BashGate } from "./agent/loop/bash.js";
 export { buildSystemPrompt, CONDITIONAL_DOCS, type ConditionalDoc, type PromptContext } from "./agent/loop/prompt.js";
 export { SYSTEM_PROMPT } from "./agent/loop/system-prompt.js";
 export type {

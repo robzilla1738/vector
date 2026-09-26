@@ -138,6 +138,222 @@ export function buildToolManifest(): LoopToolManifest {
     execute: () => ({ output: { iso: new Date().toISOString(), unixMs: Date.now() } }),
   };
 
+  const readFile: LoopTool = {
+    description: "Read a UTF-8 text file inside the session roots (artifacts, downloads, workspace).",
+    byline: "Aux confined fs",
+    inputSchema: z.object({ path: z.string().min(1).max(4_096) }),
+    execute: async (raw, ctx) => {
+      const { path } = z.object({ path: z.string().min(1).max(4_096) }).parse(raw);
+      return { output: await need(ctx.deps.fileRead, "read_file")(path) };
+    },
+  };
+
+  const writeFile: LoopTool = {
+    description: "Write a UTF-8 text file inside the session roots, creating parent directories.",
+    byline: "Aux confined fs",
+    inputSchema: z.object({
+      path: z.string().min(1).max(4_096),
+      content: z.string().max(1_000_000),
+    }),
+    execute: async (raw, ctx) => {
+      const input = z.object({ path: z.string().min(1).max(4_096), content: z.string().max(1_000_000) }).parse(raw);
+      await need(ctx.deps.fileWrite, "write_file")(input.path, input.content);
+      return { output: { written: input.path } };
+    },
+  };
+
+  const editFile: LoopTool = {
+    description:
+      "Replace text in a file inside the session roots. `oldText` must occur exactly once unless `all` is set; " +
+      "fail honestly when it is absent or ambiguous so the edit can be re-read and retried.",
+    byline: "Aux confined fs",
+    inputSchema: z.object({
+      path: z.string().min(1).max(4_096),
+      oldText: z.string().min(1).max(200_000),
+      newText: z.string().max(200_000),
+      all: z.boolean().optional().describe("Replace every occurrence instead of requiring exactly one."),
+    }),
+    execute: async (raw, ctx) => {
+      const input = z
+        .object({
+          path: z.string().min(1).max(4_096),
+          oldText: z.string().min(1).max(200_000),
+          newText: z.string().max(200_000),
+          all: z.boolean().optional(),
+        })
+        .parse(raw);
+      const read = need(ctx.deps.fileRead, "edit_file");
+      const write = need(ctx.deps.fileWrite, "edit_file");
+      const current = await read(input.path);
+      const occurrences = current.split(input.oldText).length - 1;
+      if (!occurrences) throw new AuxError("not_found", "oldText is not in the file — re-read it and retry.");
+      if (!input.all && occurrences > 1)
+        throw new AuxError("conflict", `oldText occurs ${occurrences} times — quote more context or pass all: true.`);
+      const next = input.all ? current.split(input.oldText).join(input.newText) : current.replace(input.oldText, input.newText);
+      await write(input.path, next);
+      return { output: { edited: input.path, replacements: input.all ? occurrences : 1 } };
+    },
+  };
+
+  const bash: LoopTool = {
+    description:
+      "Run a shell command under the macOS seatbelt: writes stay inside the session roots, user files and " +
+      "credential stores cannot be read, and the network is off by default (network: true asks the user first). " +
+      "stdout/stderr are capped at 64 KB; the command times out after timeoutMs (max 120000).",
+    byline: "Aux seatbelt — confined fs, no cookies, network off by default",
+    inputSchema: z.object({
+      command: z.string().min(1).max(8_192).describe("The command line, run via /bin/sh -c inside the seatbelt."),
+      timeoutMs: z.number().int().positive().optional(),
+      workdir: z.string().max(4_096).optional().describe("Working directory — must be inside the session roots."),
+      network: z.boolean().optional().describe("Allow outbound network — requires user approval first."),
+    }),
+    execute: async (raw, ctx) => {
+      const input = z
+        .object({
+          command: z.string().min(1).max(8_192),
+          timeoutMs: z.number().int().positive().optional(),
+          workdir: z.string().max(4_096).optional(),
+          network: z.boolean().optional(),
+        })
+        .parse(raw);
+      return need(ctx.deps.bash, "bash")(input, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId });
+    },
+  };
+
+  const historySearch: LoopTool = {
+    description: "Search browser history by title/URL text — returns the most recent matching visits.",
+    byline: "Aux history",
+    inputSchema: z.object({
+      query: z.string().min(1).max(500),
+      limit: z.number().int().positive().max(50).optional(),
+    }),
+    execute: async (raw, ctx) => {
+      const input = z.object({ query: z.string().min(1).max(500), limit: z.number().int().positive().max(50).optional() }).parse(raw);
+      return { output: { entries: await need(ctx.deps.historySearch, "history_search")(input.query, input.limit ?? 10) } };
+    },
+  };
+
+  const memorySearch: LoopTool = {
+    description:
+      "Search this workspace's protected page memory — pages you were allowed to remember. " +
+      "Returns ranked snippets; empty when recall is off for this workspace.",
+    byline: "Aux content memory",
+    inputSchema: z.object({ query: z.string().min(1).max(500) }),
+    execute: async (raw, ctx) => {
+      const { query } = z.object({ query: z.string().min(1).max(500) }).parse(raw);
+      return { output: { memories: await need(ctx.deps.memorySearch, "memory_search")(query, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId }) } };
+    },
+  };
+
+  const subagent: LoopTool = {
+    description:
+      "Spawn a subagent cell under this run — an independent durable agent with its own goal. " +
+      "Returns {cellId}; check in with subagent_wait, steer with subagent_send, cancel with subagent_stop.",
+    byline: "Aux subagent cells",
+    inputSchema: z.object({
+      goal: z.string().min(1).max(8_000).describe("The cell's objective."),
+      profile: z.enum(["default", "explorer", "read_only"]).optional(),
+      pageIds: z.array(z.string().min(1).max(200)).max(8).optional().describe("Pages to hand the cell — default: this run's pages."),
+    }),
+    execute: async (raw, ctx) => {
+      const input = z
+        .object({
+          goal: z.string().min(1).max(8_000),
+          profile: z.enum(["default", "explorer", "read_only"]).optional(),
+          pageIds: z.array(z.string().min(1).max(200)).max(8).optional(),
+        })
+        .parse(raw);
+      const spawn = ctx.deps.subagents?.spawnCell;
+      if (!spawn) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
+      return { output: await spawn(input, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId }) };
+    },
+  };
+
+  const subagentWait: LoopTool = {
+    description: "Wait for a subagent cell to finish or the timeout to lapse; returns its state, result or error.",
+    byline: "Aux subagent cells",
+    inputSchema: z.object({
+      cellId: z.string().min(1).max(200),
+      timeoutMs: z.number().int().positive().max(120_000).optional(),
+    }),
+    execute: async (raw, ctx) => {
+      const input = z.object({ cellId: z.string().min(1).max(200), timeoutMs: z.number().int().positive().max(120_000).optional() }).parse(raw);
+      const wait = ctx.deps.subagents?.waitCell;
+      if (!wait) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
+      return { output: await wait(input.cellId, input.timeoutMs ?? 60_000) };
+    },
+  };
+
+  const subagentSend: LoopTool = {
+    description: "Steer a running subagent cell with new instructions.",
+    byline: "Aux subagent cells",
+    inputSchema: z.object({
+      cellId: z.string().min(1).max(200),
+      message: z.string().min(1).max(8_000),
+    }),
+    execute: async (raw, ctx) => {
+      const input = z.object({ cellId: z.string().min(1).max(200), message: z.string().min(1).max(8_000) }).parse(raw);
+      const send = ctx.deps.subagents?.sendCell;
+      if (!send) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
+      await send(input.cellId, input.message);
+      return { output: { sent: input.cellId } };
+    },
+  };
+
+  const subagentStop: LoopTool = {
+    description: "Cancel a subagent cell.",
+    byline: "Aux subagent cells",
+    inputSchema: z.object({ cellId: z.string().min(1).max(200) }),
+    execute: async (raw, ctx) => {
+      const { cellId } = z.object({ cellId: z.string().min(1).max(200) }).parse(raw);
+      const cancel = ctx.deps.subagents?.cancelCell;
+      if (!cancel) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
+      await cancel(cellId);
+      return { output: { stopped: cellId } };
+    },
+  };
+
+  const routineUpdate: LoopTool = {
+    description:
+      "Propose a change to an automation routine in this workspace — title, description, objective, trigger or " +
+      "paused state. The user confirms every change before it lands; an approval lets the same call run once.",
+    byline: "Aux routines — confirmed before landing",
+    inputSchema: z.object({
+      routineId: z.string().min(1).max(200),
+      title: z.string().min(1).max(200).optional(),
+      description: z.string().max(2_000).optional(),
+      objective: z.string().max(4_000).optional(),
+      trigger: z.unknown().optional().describe("RoutineTrigger payload, e.g. {kind:'schedule', cron:'0 9 * * *'}."),
+      paused: z.boolean().optional(),
+      expectedRevision: z.number().int().positive().optional().describe("Optimistic-concurrency guard — omit to apply to the current revision."),
+    }),
+    execute: async (raw, ctx) => {
+      const input = z
+        .object({
+          routineId: z.string().min(1).max(200),
+          title: z.string().min(1).max(200).optional(),
+          description: z.string().max(2_000).optional(),
+          objective: z.string().max(4_000).optional(),
+          trigger: z.unknown().optional(),
+          paused: z.boolean().optional(),
+          expectedRevision: z.number().int().positive().optional(),
+        })
+        .parse(raw);
+      return need(ctx.deps.routineUpdate, "routine_update")(input, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId });
+    },
+  };
+
+  const notification: LoopTool = {
+    description: "Post a durable notice on this run's event stream — the user sees it in the task view.",
+    byline: "Aux run notice",
+    inputSchema: z.object({ text: z.string().min(1).max(2_000) }),
+    execute: async (raw, ctx) => {
+      const { text } = z.object({ text: z.string().min(1).max(2_000) }).parse(raw);
+      await ctx.deps.notify?.({ text }, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId });
+      return { output: { posted: true } };
+    },
+  };
+
   const submitResult: LoopTool = {
     description:
       "Finish the run with the verified result. `report` is the final answer; `citations` ground it — each cites a " +
@@ -168,6 +384,18 @@ export function buildToolManifest(): LoopToolManifest {
     ask_user_question: askUserQuestion,
     request_action_confirmation: requestActionConfirmation,
     write_todos: writeTodos,
+    read_file: readFile,
+    write_file: writeFile,
+    edit_file: editFile,
+    bash,
+    history_search: historySearch,
+    memory_search: memorySearch,
+    subagent,
+    subagent_wait: subagentWait,
+    subagent_send: subagentSend,
+    subagent_stop: subagentStop,
+    routine_update: routineUpdate,
+    notification,
     submit_result: submitResult,
   };
 }
