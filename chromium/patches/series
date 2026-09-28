@@ -113,3 +113,4 @@ aux/runtime/0112-command-bar-capability.patch
 aux/runtime/0113-command-bar-first-results.patch
 aux/runtime/0114-profile-history-import.patch
 aux/runtime/0115-atomic-profile-storage-root.patch
+aux/runtime/0116-atomic-sqlite-profile-factor.patch

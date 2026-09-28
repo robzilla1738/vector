@@ -558,6 +558,9 @@ const RESULTS: Record<string, unknown> = {
   "native.profileStorageRoot": {
     "value": "mock-value"
   },
+  "native.profileStorageFactor": {
+    "value": "mock-value"
+  },
   "native.captureReadablePage": {
     "url": "https://example.com/",
     "title": "mock-title",
