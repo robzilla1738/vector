@@ -57,6 +57,9 @@ CREATE TABLE runs(
   run_id TEXT PRIMARY KEY, goal TEXT NOT NULL, status TEXT NOT NULL,
   page_ids TEXT NOT NULL DEFAULT '[]', set_id TEXT REFERENCES page_sets(set_id), config TEXT, status_message TEXT,
   result TEXT, error TEXT, failure TEXT, started_at REAL, ended_at REAL, created_at REAL NOT NULL);
+CREATE TABLE run_lookup(run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
+  config TEXT NOT NULL DEFAULT '{}');
+CREATE INDEX idx_run_lookup_task ON run_lookup(json_extract(config,'$.taskId'));
 CREATE TABLE run_messages(
   message_id TEXT PRIMARY KEY, chat_id TEXT NOT NULL,
   target_run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
@@ -214,7 +217,6 @@ CREATE TABLE tasks(task_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENC
 CREATE INDEX idx_tasks_workspace ON tasks(workspace_id,state,updated_at);
 CREATE TABLE task_revisions(task_id TEXT NOT NULL REFERENCES tasks(task_id), revision INTEGER NOT NULL, json TEXT NOT NULL,
   PRIMARY KEY(task_id,revision));
-CREATE INDEX idx_runs_task ON runs(json_extract(config,'$.taskId'));
 CREATE TABLE task_evidence(seq INTEGER PRIMARY KEY AUTOINCREMENT, evidence_id TEXT NOT NULL UNIQUE,
   task_id TEXT NOT NULL REFERENCES tasks(task_id), task_revision INTEGER NOT NULL, criterion_id TEXT NOT NULL, json TEXT NOT NULL);
 CREATE INDEX idx_task_evidence ON task_evidence(task_id,task_revision,criterion_id,seq);
@@ -361,7 +363,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 24;
+export const SCHEMA_VERSION = 25;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -617,6 +619,24 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       `CREATE INDEX idx_agent_connections_scope ON agent_connections(workspace_id,task_id,revoked_at)`,
     ];
   },
+  // v24 → v25: move SQL lookup metadata out of the run's sensitive config.
+  24: (db) => [
+    `CREATE TABLE IF NOT EXISTS run_lookup(run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
+      config TEXT NOT NULL DEFAULT '{}')`,
+    ...(db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='runs'").get() ? [`INSERT OR REPLACE INTO run_lookup(run_id,config)
+      SELECT run_id,json_object(
+        'chatId',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId'),
+        'taskId',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.taskId'),
+        'taskRevision',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.taskRevision'),
+        'implementation',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.implementation'),
+        'externalConnectionId',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.externalConnectionId'),
+        'contextWorkspaceId',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextWorkspaceId'),
+        'contextMemoryRevoked',json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextMemoryRevoked'),
+        'contextImageArtifactIds',json(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextImageArtifactIds')))
+      FROM runs`] : []),
+    `DROP INDEX IF EXISTS idx_runs_task`,
+    `CREATE INDEX IF NOT EXISTS idx_run_lookup_task ON run_lookup(json_extract(config,'$.taskId'))`,
+  ],
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */

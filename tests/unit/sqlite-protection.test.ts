@@ -3,13 +3,14 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { openDb, Repo } from "@aux/runtime";
+import { EventBus, openDb, Repo, TaskService } from "@aux/runtime";
 import type { SafetyAction } from "@aux/contracts";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
 import { SafetyAuditStore } from "../../apps/runtime/src/safety/audit.js";
 import { SendJournal } from "../../apps/runtime/src/safety/send-journal.js";
 import { compactProtectedSqlite, migrateSensitiveTable, SENSITIVE_SQLITE_COLUMNS, SqliteColumnCipher } from
   "../../apps/runtime/src/store/sqlite-protection.js";
+import { usageReport } from "../../apps/runtime/src/services/usage-report.js";
 
 function fixture() {
   const db = openDb(":memory:");
@@ -390,6 +391,71 @@ it("protects queued and steered run messages while preserving queue status queri
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 
+it("protects run and step content while retaining metadata lookups across restart", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-runs-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    legacy.saveRun({ runId: "old", goal: "private goal amber", status: "completed", pageIds: [],
+      config: { chatId: "chat", taskId: "task", context: "private context amber",
+        contextImageArtifactIds: ["image"] }, statusMessage: "private status amber",
+      result: { answer: "private answer amber" }, error: "private error amber",
+      failure: { category: "unknown", message: "private failure amber", retryable: false, action: "none" },
+      createdAt: 1 });
+    legacy.saveStep({ stepId: "old-step", runId: "old", op: "download",
+      inputs: { downloadId: "old-download", text: "private input amber" },
+      expected: "private expected amber", outcome: { stepId: "old-step", op: "download",
+        status: "ok", startedAt: 1, durationMs: 1, detail: "private outcome amber" }, startedAt: 1 });
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "runs")).toBe(6);
+    expect(migrateSensitiveTable(db, cipher, "steps")).toBe(3);
+    const protectedRepo = new Repo(db, cipher);
+    expect(protectedRepo.getRun("old")?.result?.answer).toBe("private answer amber");
+    expect(protectedRepo.listRuns(1, { query: "goal amber" })[0]?.runId).toBe("old");
+    expect(protectedRepo.listConversations(1, { query: "answer amber" })[0]?.chatId).toBe("chat");
+    expect(protectedRepo.downloadStep("old-download")?.expected).toBe("private expected amber");
+    expect(db.prepare("SELECT run_id FROM run_lookup WHERE json_extract(config,'$.taskId')='task'").get())
+      .toMatchObject({ run_id: "old" });
+    protectedRepo.saveRun({ runId: "new", goal: "private goal coral", status: "running", pageIds: [],
+      config: { chatId: "chat", taskId: "task", context: "private context coral" }, createdAt: 2 });
+    protectedRepo.saveStep({ stepId: "new-step", runId: "new", op: "type",
+      inputs: { value: "private input coral" }, startedAt: 2 });
+    expect(protectedRepo.conversationRuns("chat").map(run => run.runId)).toEqual(["new", "old"]);
+    const tasks = new TaskService(protectedRepo, new EventBus(protectedRepo));
+    const workspace = tasks.createWorkspace("Fixture");
+    const task = tasks.create({ workspaceId: workspace.workspaceId, title: "Fixture task",
+      objective: "Check the run", criteria: [{ criterionId: "check", description: "Run checked",
+        verification: "manual" }] });
+    protectedRepo.saveRun({ runId: "task-run", goal: "private task goal jade", status: "completed",
+      pageIds: [], config: { taskId: task.taskId, taskRevision: 1 }, createdAt: 3 });
+    expect(tasks.details(task.taskId).runs[0]?.run.goal).toBe("private task goal jade");
+    protectedRepo.saveModelCall({ callId: "call", runId: "task-run", role: "agent", modelId: "model",
+      durationMs: 1, createdAt: 4 });
+    expect(usageReport(db, { asOf: 4 }, 5, protectedRepo).byRun[0]?.title).toBe("private task goal jade");
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private goal amber")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private goal amber")).toBe(true);
+      expect(!existsSync(path) || !readFileSync(path).includes("private input amber")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopened = new Repo(db, await SqliteColumnCipher.create(secrets.secrets, "profile-one", true));
+    expect(reopened.getRun("new")?.config?.context).toBe("private context coral");
+    expect(reopened.listSteps("old")[0]?.outcome?.detail).toBe("private outcome amber");
+    db.prepare("UPDATE runs SET goal='tampered plaintext' WHERE run_id='old'").run();
+    expect(() => reopened.getRun("old")).toThrow(/plaintext/);
+    db.prepare("UPDATE steps SET inputs='tampered plaintext' WHERE step_id='old-step'").run();
+    expect(() => reopened.listSteps("old")).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
 it("protects safety approvals, send journal and audit records across restart", async () => {
   const directory = mkdtempSync(join(tmpdir(), "aux-protected-safety-"));
   const file = join(directory, "state.sqlite");
@@ -502,5 +568,44 @@ it("protects operation implementations and reconciliation notes", async () => {
       .toBe("private reconciliation coral");
     db.prepare("UPDATE operation_implementations SET executable='tampered plaintext' WHERE impl_id='old-impl'").run();
     expect(() => reopened.listImplementations("operation")).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+it("protects step inputs and preserves paged download lookup", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-steps-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    legacy.saveStep({ stepId: "target", runId: "run", op: "download",
+      inputs: { downloadId: "private-download-amber" }, expected: "private expected amber",
+      outcome: { stepId: "target", op: "download", status: "ok", startedAt: 1, durationMs: 1,
+        after: { note: "private outcome amber" } }, startedAt: 1 });
+    for (let i = 0; i < 260; i++) legacy.saveStep({ stepId: `other-${i}`, runId: "run", op: "download",
+      inputs: { downloadId: `other-${i}` }, startedAt: 2 + i });
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "steps")).toBe(263);
+    const protectedRepo = new Repo(db, cipher);
+    expect(protectedRepo.downloadStep("private-download-amber")?.expected).toBe("private expected amber");
+    protectedRepo.saveStep({ stepId: "new", runId: "run", op: "download",
+      inputs: { downloadId: "private-download-coral" }, startedAt: 300 });
+    expect(protectedRepo.downloadStep("private-download-coral")?.stepId).toBe("new");
+    expect(protectedRepo.listStepsByOpForRuns(["run"], "download")).toHaveLength(262);
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private-download-amber")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private-download-amber")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopened = new Repo(db, await SqliteColumnCipher.create(secrets.secrets, "profile-one", true));
+    expect(reopened.downloadStep("private-download-amber")?.stepId).toBe("target");
+    db.prepare("UPDATE steps SET inputs='tampered plaintext' WHERE step_id='target'").run();
+    expect(() => reopened.downloadStep("private-download-amber")).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });

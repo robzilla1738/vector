@@ -387,7 +387,7 @@ export class RoutineService {
       : (() => {
           const row = this.repo.db
             .prepare(
-              "SELECT run_id FROM runs WHERE json_extract(config,'$.taskId')=? ORDER BY created_at DESC LIMIT 1",
+              "SELECT r.run_id FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? ORDER BY r.created_at DESC LIMIT 1",
             )
             .get(input.taskId) as { run_id: string } | undefined;
           return row ? this.repo.getRun(row.run_id) : undefined;

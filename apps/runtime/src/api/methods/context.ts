@@ -158,15 +158,13 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
   const revokeWorkspaceContext = (workspaceId: string, browsingOnly: boolean) => {
     const rows = s.repo.db
       .prepare(
-        `SELECT run_id AS runId, config FROM runs
+        `SELECT run_id AS runId FROM runs
       WHERE status IN ('queued','planning','running','paused','needs_input')
-      AND json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextWorkspaceId')=?`,
+      AND json_extract(CASE WHEN json_valid((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id)) THEN (SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id) ELSE '{}' END,'$.contextWorkspaceId')=?`,
       )
-      .all(workspaceId) as { runId: string; config: string | null }[];
+      .all(workspaceId) as { runId: string }[];
     for (const row of rows) {
-      const config = row.config
-        ? (JSON.parse(row.config) as { context?: string; contextBrowsingMemory?: boolean })
-        : {};
+      const config = s.repo.getRun(row.runId)?.config ?? {};
       // Older run snapshots predate the structured provenance flag.
       if (
         !browsingOnly ||
@@ -182,15 +180,13 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
   const revokeArticleRuns = (workspaceId: string, memoryId?: string) => {
     const rows = s.repo.db
       .prepare(
-        `SELECT run_id AS runId, config FROM runs
+        `SELECT run_id AS runId FROM runs
       WHERE status IN ('queued','planning','running','paused','needs_input')
-      AND json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextWorkspaceId')=?`,
+      AND json_extract(CASE WHEN json_valid((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id)) THEN (SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id) ELSE '{}' END,'$.contextWorkspaceId')=?`,
       )
-      .all(workspaceId) as { runId: string; config: string | null }[];
+      .all(workspaceId) as { runId: string }[];
     for (const row of rows) {
-      const ids = row.config
-        ? (JSON.parse(row.config) as { contextMemoryIds?: string[] }).contextMemoryIds
-        : undefined;
+      const ids = s.repo.getRun(row.runId)?.config?.contextMemoryIds;
       if (ids?.length && (!memoryId || ids.includes(memoryId)))
         s.runs.cancel(
           row.runId,
@@ -388,21 +384,10 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
   const runScopeRefs = (runId: string): { taskId?: string; pageIds: string[] } | undefined => {
     const hit = runRefs.get(runId);
     if (hit && Date.now() - hit.at < 1_000) return hit;
-    const row = s.repo.db.prepare("SELECT page_ids, config FROM runs WHERE run_id=?").get(runId) as
-      { page_ids: string; config: string | null } | undefined;
+    const row = s.repo.getRun(runId);
     if (!row) return undefined;
-    let taskId: string | undefined;
-    try {
-      taskId = (JSON.parse(row.config ?? "{}") as { taskId?: string }).taskId;
-    } catch {
-      /* malformed config — no task ref */
-    }
-    let pageIds: string[] = [];
-    try {
-      pageIds = JSON.parse(row.page_ids) as string[];
-    } catch {
-      /* malformed */
-    }
+    const taskId = row.config?.taskId;
+    const pageIds = row.pageIds;
     const refs = { at: Date.now(), taskId, pageIds };
     runRefs.set(runId, refs);
     return refs;

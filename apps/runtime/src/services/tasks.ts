@@ -187,7 +187,7 @@ export class TaskService {
       if (
         this.repo.db
           .prepare(
-            `SELECT 1 FROM runs WHERE (json_extract(config,'$.chatId')=? OR run_id=?) AND status IN ${ACTIVE_RUNS} LIMIT 1`,
+            `SELECT 1 FROM runs WHERE (json_extract((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id),'$.chatId')=? OR run_id=?) AND status IN ${ACTIVE_RUNS} LIMIT 1`,
           )
           .get(chatId, chatId)
       )
@@ -195,12 +195,12 @@ export class TaskService {
       if (
         this.repo.db
           .prepare(
-            "SELECT 1 FROM action_intents a JOIN runs r ON r.run_id=a.run_id WHERE (json_extract(r.config,'$.chatId')=? OR r.run_id=?) AND a.status IN ('pending','uncertain') LIMIT 1",
+            "SELECT 1 FROM action_intents a JOIN runs r ON r.run_id=a.run_id LEFT JOIN run_lookup rl ON rl.run_id=r.run_id WHERE (json_extract(rl.config,'$.chatId')=? OR r.run_id=?) AND a.status IN ('pending','uncertain') LIMIT 1",
           )
           .get(chatId, chatId) ||
         this.repo.db
           .prepare(
-            "SELECT 1 FROM operation_invocations o JOIN runs r ON r.run_id=o.run_id WHERE (json_extract(r.config,'$.chatId')=? OR r.run_id=?) AND (o.status IN ('running','interrupted') OR o.effect_outcome='unknown') LIMIT 1",
+            "SELECT 1 FROM operation_invocations o JOIN runs r ON r.run_id=o.run_id LEFT JOIN run_lookup rl ON rl.run_id=r.run_id WHERE (json_extract(rl.config,'$.chatId')=? OR r.run_id=?) AND (o.status IN ('running','interrupted') OR o.effect_outcome='unknown') LIMIT 1",
           )
           .get(chatId, chatId)
       )
@@ -287,7 +287,7 @@ export class TaskService {
         .all(taskId) as { json: string }[]
     ).map((row) => TaskSchema.parse(JSON.parse(row.json)));
     const rows = this.repo.db
-      .prepare("SELECT run_id FROM runs WHERE json_extract(config,'$.taskId')=? ORDER BY created_at DESC")
+      .prepare("SELECT r.run_id FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? ORDER BY r.created_at DESC")
       .all(taskId) as { run_id: string }[];
     const runs = rows.map((row) => {
       const run = this.repo.getRun(row.run_id)!;
@@ -298,7 +298,7 @@ export class TaskService {
       .map((child) => {
         const row = this.repo.db
           .prepare(
-            "SELECT run_id FROM runs WHERE json_extract(config,'$.taskId')=? ORDER BY created_at DESC LIMIT 1",
+            "SELECT r.run_id FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? ORDER BY r.created_at DESC LIMIT 1",
           )
           .get(child.taskId) as { run_id: string } | undefined;
         const run = row ? this.repo.getRun(row.run_id) : undefined;
@@ -448,12 +448,12 @@ export class TaskService {
 
   private requireIdle(taskId: string, exceptImplementation?: string) {
     const except = exceptImplementation
-      ? "AND coalesce(json_extract(config,'$.implementation'),'') != ?"
+      ? "AND coalesce(json_extract(l.config,'$.implementation'),'') != ?"
       : "";
     if (
       this.repo.db
         .prepare(
-          `SELECT 1 FROM runs WHERE json_extract(config,'$.taskId')=? AND status IN ${ACTIVE_RUNS} ${except} LIMIT 1`,
+          `SELECT 1 FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? AND r.status IN ${ACTIVE_RUNS} ${except} LIMIT 1`,
         )
         .get(...(exceptImplementation ? [taskId, exceptImplementation] : [taskId]))
     ) {
@@ -467,8 +467,8 @@ export class TaskService {
   private requireResolved(taskId: string, exceptInvocationId = "") {
     const unresolved = this.repo.db
       .prepare(
-        `SELECT a.id FROM action_intents a LEFT JOIN runs r ON r.run_id=a.run_id
-      WHERE coalesce(a.task_id,json_extract(r.config,'$.taskId'))=? AND a.status IN ('pending','uncertain') LIMIT 1`,
+        `SELECT a.id FROM action_intents a LEFT JOIN runs r ON r.run_id=a.run_id LEFT JOIN run_lookup rl ON rl.run_id=r.run_id
+      WHERE coalesce(a.task_id,json_extract(rl.config,'$.taskId'))=? AND a.status IN ('pending','uncertain') LIMIT 1`,
       )
       .get(taskId);
     if (unresolved)
@@ -478,8 +478,8 @@ export class TaskService {
       );
     const operation = this.repo.db
       .prepare(
-        `SELECT i.invocation_id FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id LEFT JOIN runs r ON r.run_id=i.run_id
-      WHERE coalesce(json_extract(r.config,'$.taskId'),json_extract(i.inputs,'$.taskId'))=? AND o.effect_class!='read'
+        `SELECT i.invocation_id FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id LEFT JOIN runs r ON r.run_id=i.run_id LEFT JOIN run_lookup rl ON rl.run_id=r.run_id
+      WHERE coalesce(json_extract(rl.config,'$.taskId'),json_extract(i.inputs,'$.taskId'))=? AND o.effect_class!='read'
       AND i.invocation_id!=? AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown') LIMIT 1`,
       )
       .get(taskId, exceptInvocationId);

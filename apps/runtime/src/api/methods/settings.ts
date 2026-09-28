@@ -63,5 +63,5 @@ export const settingsMethods: Partial<Record<MethodName, MethodHandler>> = {
 
 async function h_usage_report(ctx: MethodCtx): Promise<unknown> {
   if (ctx.client.external) throw new AuxError("permission_denied", "Usage details are available in Aux Settings.");
-  return usageReport(ctx.s.repo.db, MethodSchemas["usage.report"].parse(ctx.params));
+  return usageReport(ctx.s.repo.db, MethodSchemas["usage.report"].parse(ctx.params), Date.now(), ctx.s.repo);
 }

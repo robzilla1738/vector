@@ -52,22 +52,24 @@ export class SavedResults {
     if (!term) return [];
     const rows = this.repo.db.prepare(`SELECT a.artifact_id AS artifactId, a.run_id AS runId,
       a.path, a.media_type AS mediaType, a.size AS byteLength, a.created_at AS createdAt,
-      c.chat_id AS chatId, c.title AS conversationTitle, r.goal AS turnGoal, rv.revision
-      FROM artifacts a JOIN runs r ON r.run_id=a.run_id
-      JOIN conversations c ON c.chat_id=coalesce(json_extract(r.config,'$.chatId'),r.run_id)
+      c.chat_id AS chatId, c.title AS conversationTitle, rv.revision
+      FROM artifacts a JOIN runs r ON r.run_id=a.run_id LEFT JOIN run_lookup rl ON rl.run_id=r.run_id
+      JOIN conversations c ON c.chat_id=coalesce(json_extract(rl.config,'$.chatId'),r.run_id)
       LEFT JOIN result_versions rv ON rv.artifact_id=a.artifact_id
       WHERE c.archived=0 AND a.status='complete' AND a.size<=262144
       AND a.media_type IN ('text/plain','text/markdown','text/csv','application/json','text/html')
       AND instr(a.path,'-observation-r')=0
-      AND (instr(lower(a.path),?)>0 OR instr(lower(c.title),?)>0 OR instr(lower(r.goal),?)>0)
-      ORDER BY a.created_at DESC, a.artifact_id`).iterate(term, term, term) as Iterable<{artifactId:string;runId:string;path:string;mediaType:string;byteLength:number;createdAt:number;chatId:string;conversationTitle:string;turnGoal:string;revision:number|null}>;
+      ORDER BY a.created_at DESC, a.artifact_id`).iterate() as Iterable<{artifactId:string;runId:string;path:string;mediaType:string;byteLength:number;createdAt:number;chatId:string;conversationTitle:string;revision:number|null}>;
     const matches = [];
     for (const {path, ...row} of rows) {
+      const turnGoal = this.repo.getRun(row.runId)?.goal;
+      if (!turnGoal || !(path.toLocaleLowerCase().includes(term) ||
+        row.conversationTitle.toLocaleLowerCase().includes(term) || turnGoal.toLocaleLowerCase().includes(term))) continue;
       if (row.mediaType === "application/json") {
         try { const content = Buffer.from(this.artifacts.read(row.artifactId).dataBase64,"base64").toString("utf8"); if (!isTextResultContent(row.mediaType,content)) continue; }
         catch { continue; }
       }
-      matches.push({...row,revision:row.revision??undefined, filename:resultFilename(row.artifactId,path)});
+      matches.push({...row,turnGoal,revision:row.revision??undefined, filename:resultFilename(row.artifactId,path)});
       if(matches.length>=limit) break;
     }
     return matches;

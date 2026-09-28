@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { UsageReportResult } from "@aux/contracts";
+import type { Repo } from "../store/repo.js";
 
 type Bucket = UsageReportResult["total"];
 type RawBucket = { calls: number; recordedUsd: number | null; unpricedCalls: number; estimatedCalls: number };
@@ -23,6 +24,7 @@ export function usageReport(
   db: DatabaseSync,
   input: { asOf?: number; offset?: number; limit?: number } = {},
   now = Date.now(),
+  repo?: Repo,
 ): UsageReportResult {
   const asOf = Math.min(input.asOf ?? now, now);
   const offset = input.offset ?? 0;
@@ -48,18 +50,18 @@ export function usageReport(
   ).map((row) => ({ day: row.day, ...bucket(row) }));
   const rows = db
     .prepare(
-      `SELECT m.run_id AS runId, COALESCE(MAX(r.goal), 'Other model calls') AS title,
+      `SELECT m.run_id AS runId, MAX(r.goal) AS storedTitle,
       MAX(m.created_at) AS lastAt, ${aggregate.replaceAll("cost_usd", "m.cost_usd").replaceAll("cost_estimated", "m.cost_estimated")}
       FROM model_calls m LEFT JOIN runs r ON r.run_id=m.run_id
       WHERE m.created_at<=? GROUP BY m.run_id ORDER BY lastAt DESC, runId LIMIT ? OFFSET ?`,
     )
-    .all(asOf, limit + 1, offset) as (RawBucket & { runId: string | null; title: string; lastAt: number })[];
+    .all(asOf, limit + 1, offset) as (RawBucket & { runId: string | null; storedTitle: string | null; lastAt: number })[];
   return {
     asOf,
     total,
     byRun: rows
       .slice(0, limit)
-      .map((row) => ({ runId: row.runId, title: row.title, lastAt: row.lastAt, ...bucket(row) })),
+      .map((row) => ({ runId: row.runId, title: (row.runId && repo?.getRun(row.runId)?.goal) ?? (repo ? "Other model calls" : row.storedTitle) ?? "Other model calls", lastAt: row.lastAt, ...bucket(row) })),
     byModel,
     byDay,
     nextOffset: rows.length > limit ? offset + limit : null,

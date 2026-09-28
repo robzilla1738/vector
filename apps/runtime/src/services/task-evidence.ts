@@ -174,9 +174,9 @@ export class TaskEvidenceService {
     this.current(p.taskId, p.expectedRevision, undefined, true);
     const action = this.repo.db
       .prepare(
-        `SELECT a.id,a.status FROM action_intents a LEFT JOIN runs r ON r.run_id=a.run_id
-      WHERE a.id=? AND coalesce(a.task_id,json_extract(r.config,'$.taskId'))=?
-      AND coalesce(a.task_revision,json_extract(r.config,'$.taskRevision'))=?`,
+        `SELECT a.id,a.status FROM action_intents a LEFT JOIN runs r ON r.run_id=a.run_id LEFT JOIN run_lookup rl ON rl.run_id=r.run_id
+      WHERE a.id=? AND coalesce(a.task_id,json_extract(rl.config,'$.taskId'))=?
+      AND coalesce(a.task_revision,json_extract(rl.config,'$.taskRevision'))=?`,
       )
       .get(p.intentId, p.taskId, p.expectedRevision) as { id: string; status: string } | undefined;
     if (!action || !["pending", "uncertain"].includes(action.status))
@@ -355,9 +355,9 @@ export class TaskEvidenceService {
     const operation = this.repo.db
       .prepare(
         `SELECT i.invocation_id AS invocationId,i.run_id AS runId,o.effect_class AS effectClass
-      FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id LEFT JOIN runs r ON r.run_id=i.run_id
-      WHERE i.invocation_id=? AND coalesce(json_extract(r.config,'$.taskId'),json_extract(i.inputs,'$.taskId'))=?
-      AND coalesce(json_extract(r.config,'$.taskRevision'),json_extract(i.inputs,'$.taskRevision'))=? AND o.effect_class!='read'
+      FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id LEFT JOIN runs r ON r.run_id=i.run_id LEFT JOIN run_lookup rl ON rl.run_id=r.run_id
+      WHERE i.invocation_id=? AND coalesce(json_extract(rl.config,'$.taskId'),json_extract(i.inputs,'$.taskId'))=?
+      AND coalesce(json_extract(rl.config,'$.taskRevision'),json_extract(i.inputs,'$.taskRevision'))=? AND o.effect_class!='read'
       AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown')`,
       )
       .get(p.invocationId, p.taskId, p.expectedRevision) as
@@ -473,8 +473,8 @@ export class TaskEvidenceService {
     const unresolvedActions = this.repo.db
       .prepare(
         `SELECT a.id AS intentId,a.run_id AS runId,a.page_id AS pageId,a.status
-      FROM action_intents a LEFT JOIN runs r ON r.run_id=a.run_id WHERE coalesce(a.task_id,json_extract(r.config,'$.taskId'))=?
-      AND coalesce(a.task_revision,json_extract(r.config,'$.taskRevision'))<=?
+      FROM action_intents a LEFT JOIN runs r ON r.run_id=a.run_id LEFT JOIN run_lookup rl ON rl.run_id=r.run_id WHERE coalesce(a.task_id,json_extract(rl.config,'$.taskId'))=?
+      AND coalesce(a.task_revision,json_extract(rl.config,'$.taskRevision'))<=?
       AND a.status IN ('pending','uncertain') ORDER BY a.created_at,a.id`,
       )
       .all(taskId, task.revision) as unknown as TaskReceipt["unresolvedActions"];
@@ -482,9 +482,9 @@ export class TaskEvidenceService {
       .prepare(
         `SELECT i.invocation_id AS invocationId,i.run_id AS runId,
       o.site_key||'/'||o.name AS operation,o.effect_class AS effectClass,i.status,i.effect_outcome AS effectOutcome,i.started_at AS startedAt,i.error
-      FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id LEFT JOIN runs r ON r.run_id=i.run_id
-      WHERE coalesce(json_extract(r.config,'$.taskId'),json_extract(i.inputs,'$.taskId'))=?
-      AND coalesce(json_extract(r.config,'$.taskRevision'),json_extract(i.inputs,'$.taskRevision'))<=? AND o.effect_class!='read'
+      FROM operation_invocations i JOIN operations o ON o.operation_id=i.operation_id LEFT JOIN runs r ON r.run_id=i.run_id LEFT JOIN run_lookup rl ON rl.run_id=r.run_id
+      WHERE coalesce(json_extract(rl.config,'$.taskId'),json_extract(i.inputs,'$.taskId'))=?
+      AND coalesce(json_extract(rl.config,'$.taskRevision'),json_extract(i.inputs,'$.taskRevision'))<=? AND o.effect_class!='read'
       AND (i.status IN ('running','interrupted') OR i.effect_outcome='unknown') ORDER BY i.started_at,i.invocation_id`,
       )
       .all(taskId, task.revision) as (Omit<TaskReceipt["unresolvedOperations"][number], "runId" | "error"> & {
@@ -705,11 +705,11 @@ export class TaskEvidenceService {
     criteria: Task["criteria"],
   ): { linkedRunFound: boolean; criteria: TaskReceipt["criteria"] } {
     const row = runId
-      ? (this.repo.db.prepare("SELECT rowid AS sequence,config FROM runs WHERE run_id=?").get(runId) as
-          { sequence: number; config: string | null } | undefined)
+      ? (this.repo.db.prepare("SELECT rowid AS sequence FROM runs WHERE run_id=?").get(runId) as
+          { sequence: number } | undefined)
       : undefined;
     if (row) {
-      const config = row.config ? (JSON.parse(row.config) as { taskId?: string; taskRevision?: number }) : {};
+      const config = this.repo.getRun(runId!)?.config ?? {};
       if (config.taskId !== taskId || config.taskRevision !== revision)
         throw new AuxError(
           "conflict",
@@ -768,7 +768,7 @@ export class TaskEvidenceService {
   private runSequence(taskId: string): number {
     return Number(
       this.repo.db
-        .prepare("SELECT coalesce(max(rowid),0) AS seq FROM runs WHERE json_extract(config,'$.taskId')=?")
+        .prepare("SELECT coalesce(max(r.rowid),0) AS seq FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=?")
         .get(taskId)?.seq,
     );
   }

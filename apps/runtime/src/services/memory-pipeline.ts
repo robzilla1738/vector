@@ -258,16 +258,23 @@ export class MemoryPipeline {
 
   sources(workspaceId: string) {
     this.requireSpace(workspaceId);
-    const candidates = this.repo.db.prepare(`SELECT run_id AS runId, goal, ended_at AS endedAt FROM runs
-      WHERE status='completed' AND json_extract(config,'$.contextWorkspaceId')=?
-      AND (json_extract(result,'$.report') IS NOT NULL OR json_extract(result,'$.answer') IS NOT NULL
-        OR json_extract(result,'$.text') IS NOT NULL)
-      AND run_id NOT IN (SELECT run_id FROM memory_pipeline_watermarks WHERE workspace_id=?)
-      ORDER BY ended_at DESC LIMIT 100`).all(workspaceId, workspaceId) as { runId: string; goal: string; endedAt: number }[];
-    return candidates.filter(source => {
-      const run = this.repo.getRun(source.runId);
-      return run && this.sourceEligible(workspaceId, run);
-    }).slice(0, 20);
+    const sources: { runId: string; goal: string; endedAt: number }[] = [];
+    let offset = 0;
+    for (;;) {
+      const candidates = this.repo.db.prepare(`SELECT run_id AS runId FROM runs
+        WHERE status='completed' AND json_extract((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id),'$.contextWorkspaceId')=?
+        AND run_id NOT IN (SELECT run_id FROM memory_pipeline_watermarks WHERE workspace_id=?)
+        ORDER BY ended_at DESC,run_id DESC LIMIT 100 OFFSET ?`).all(workspaceId, workspaceId, offset) as { runId: string }[];
+      for (const candidate of candidates) {
+        const run = this.repo.getRun(candidate.runId);
+        if (run && (run.result?.report || run.result?.answer || run.result?.text)
+          && this.sourceEligible(workspaceId, run))
+          sources.push({ runId: run.runId, goal: run.goal, endedAt: run.endedAt! });
+        if (sources.length >= 20) return sources;
+      }
+      if (candidates.length < 100) return sources;
+      offset += candidates.length;
+    }
   }
 
   async inbox(workspaceId: string): Promise<MemoryClaim[]> {

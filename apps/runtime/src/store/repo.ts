@@ -24,6 +24,13 @@ import type { SqliteColumnCipher } from "./sqlite-protection.js";
 const now = () => Date.now();
 const J = JSON.stringify;
 const P = <T>(s: string | null | undefined, fb: T): T => (s ? (JSON.parse(s) as T) : fb);
+const RUN_LOOKUP_KEYS = ["chatId", "taskId", "taskRevision", "implementation", "externalConnectionId",
+  "contextWorkspaceId", "contextMemoryRevoked", "contextImageArtifactIds"] as const;
+const runLookupConfig = (config: Run["config"]): string => {
+  const source = (config ?? {}) as Record<string, unknown>;
+  return J(Object.fromEntries(RUN_LOOKUP_KEYS.filter(key => source[key] !== undefined)
+    .map(key => [key, source[key]])));
+};
 
 /**
  * Free text → FTS5 MATCH: every word becomes a quoted prefix term AND-ed
@@ -357,7 +364,16 @@ export class Repo {
         `INSERT INTO runs(run_id,goal,status,page_ids,set_id,config,status_message,result,error,failure,started_at,ended_at,created_at)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(run_id) DO UPDATE SET status=excluded.status,page_ids=excluded.page_ids,config=excluded.config,status_message=excluded.status_message,result=excluded.result,error=excluded.error,failure=excluded.failure,started_at=excluded.started_at,ended_at=excluded.ended_at`,
-      ).run(r.runId, r.goal, r.status, J(r.pageIds), r.setId ?? null, r.config ? J(r.config) : null, r.statusMessage ?? null, r.result ? J(r.result) : null, r.error ?? null, r.failure ? J(r.failure) : null, r.startedAt ?? null, r.endedAt ?? null, r.createdAt);
+      ).run(r.runId,
+        this.protectField("runs", r.runId, "goal", r.goal), r.status, J(r.pageIds), r.setId ?? null,
+        this.protectField("runs", r.runId, "config", r.config ? J(r.config) : null),
+        this.protectField("runs", r.runId, "status_message", r.statusMessage ?? null),
+        this.protectField("runs", r.runId, "result", r.result ? J(r.result) : null),
+        this.protectField("runs", r.runId, "error", r.error ?? null),
+        this.protectField("runs", r.runId, "failure", r.failure ? J(r.failure) : null),
+        r.startedAt ?? null, r.endedAt ?? null, r.createdAt);
+      this.q(`INSERT INTO run_lookup(run_id,config) VALUES(?,?)
+        ON CONFLICT(run_id) DO UPDATE SET config=excluded.config`).run(r.runId, runLookupConfig(r.config));
       const chatId = r.config?.chatId ?? r.runId;
       const taskRow = r.config?.taskId ? this.q("SELECT json FROM tasks WHERE task_id=?").get(r.config.taskId) as { json: string } | undefined : undefined;
       let title = r.goal.slice(0, 160);
@@ -375,26 +391,50 @@ export class Repo {
     return r ? this.rowToRun(r) : undefined;
   }
   activeConversationRun(chatId: string): Run | undefined {
-    const row = this.q(`SELECT * FROM runs WHERE json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId')=?
-      AND status IN ('queued','planning','running','paused','needs_input') ORDER BY created_at DESC,run_id DESC LIMIT 1`).get(chatId) as Record<string, unknown> | undefined;
+    const row = this.q(`SELECT r.* FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+      WHERE json_extract(l.config,'$.chatId')=?
+      AND r.status IN ('queued','planning','running','paused','needs_input')
+      ORDER BY r.created_at DESC,r.run_id DESC LIMIT 1`).get(chatId) as Record<string, unknown> | undefined;
     return row ? this.rowToRun(row) : undefined;
   }
   listRuns(limit = 50, options: { before?: { createdAt: number; runId: string }; chatId?: string; query?: string; groupByChat?: boolean; includeArchived?: boolean } = {}): Run[] {
+    const term = options.query?.trim().toLocaleLowerCase();
+    if (term) {
+      const matching: Run[] = [];
+      const chats = new Set<string>();
+      let before = options.before;
+      while (matching.length < limit) {
+        const batch = this.listRuns(256, { ...options, query: undefined, groupByChat: false, before });
+        if (!batch.length) break;
+        for (const run of batch) {
+          const chatId = run.config?.chatId ?? run.runId;
+          if (chats.has(chatId)) continue;
+          if (!(run.goal + " " + (run.statusMessage ?? "")).toLocaleLowerCase().includes(term)) continue;
+          if (options.groupByChat) {
+            chats.add(chatId);
+            const latest = this.listRuns(1, { chatId, includeArchived: true })[0];
+            if (latest) matching.push(latest);
+          } else matching.push(run);
+          if (matching.length >= limit) break;
+        }
+        if (batch.length < 256) break;
+        const last = batch[batch.length - 1]!;
+        before = { createdAt: last.createdAt, runId: last.runId };
+      }
+      return matching;
+    }
     const where: string[] = [];
     const values: (string | number)[] = [];
     if (options.groupByChat) where.push("chat_rank = 1");
     if (options.chatId) { where.push("chat_key = ?"); values.push(options.chatId); }
     if (!options.chatId && !options.includeArchived) where.push("chat_key NOT IN (SELECT chat_id FROM conversations WHERE archived=1)");
-    if (options.query?.trim()) {
-      where.push("chat_key IN (SELECT chat_key FROM keyed WHERE instr(lower(goal || ' ' || coalesce(status_message, '')), lower(?)) > 0)");
-      values.push(options.query.trim());
-    }
     if (options.before) {
       where.push("(created_at < ? OR (created_at = ? AND run_id < ?))");
       values.push(options.before.createdAt, options.before.createdAt, options.before.runId);
     }
     return (this.q(`WITH keyed AS (
-      SELECT *, coalesce(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END, '$.chatId'), run_id) AS chat_key FROM runs
+      SELECT r.*, coalesce(json_extract(l.config, '$.chatId'), r.run_id) AS chat_key
+      FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
     ), ranked AS (
       SELECT *, row_number() OVER (PARTITION BY chat_key ORDER BY created_at DESC, run_id DESC) AS chat_rank FROM keyed
     ) SELECT * FROM ${options.groupByChat ? "ranked" : "keyed"}
@@ -482,26 +522,42 @@ export class Repo {
   }
 
   listConversations(limit = 40, options: { workspaceId?: string; before?: { updatedAt: number; chatId: string }; query?: string; archived?: boolean } = {}): ConversationSummary[] {
+    const term = options.query?.trim().toLocaleLowerCase();
+    if (term) {
+      const matches: ConversationSummary[] = [];
+      let before = options.before;
+      while (matches.length < limit) {
+        const batch = this.listConversations(256, { ...options, query: undefined, before });
+        if (!batch.length) break;
+        for (const conversation of batch) {
+          const runs = this.conversationRuns(conversation.chatId);
+          if (conversation.title.toLocaleLowerCase().includes(term) || runs.some(run =>
+            `${run.goal} ${run.statusMessage ?? ""} ${run.result?.answer ?? ""}`.toLocaleLowerCase().includes(term)))
+            matches.push(conversation);
+          if (matches.length >= limit) break;
+        }
+        if (batch.length < 256) break;
+        const last = batch[batch.length - 1]!;
+        before = { updatedAt: last.updatedAt, chatId: last.chatId };
+      }
+      return matches;
+    }
     const where = ["c.archived=?"];
     const values: (string | number)[] = [options.archived ? 1 : 0];
     if (options.workspaceId !== undefined) {
       where.push("EXISTS (SELECT 1 FROM kv scope WHERE scope.key='setting:conversationWorkspace:'||c.chat_id AND scope.value=?)");
       values.push(J(options.workspaceId));
     }
-    if (options.query?.trim()) {
-      where.push(`(instr(lower(c.title),lower(?))>0 OR EXISTS (
-        SELECT 1 FROM runs qr WHERE coalesce(json_extract(CASE WHEN json_valid(qr.config) THEN qr.config ELSE '{}' END,'$.chatId'),qr.run_id)=c.chat_id
-        AND instr(lower(qr.goal||' '||coalesce(qr.status_message,'')||' '||coalesce(json_extract(CASE WHEN json_valid(qr.result) THEN qr.result ELSE '{}' END,'$.answer'),'')),lower(?))>0))`);
-      values.push(options.query.trim(), options.query.trim());
-    }
     if (options.before) {
       where.push("(c.updated_at<? OR (c.updated_at=? AND c.chat_id<?))");
       values.push(options.before.updatedAt, options.before.updatedAt, options.before.chatId);
     }
     const rows = this.q(`SELECT c.*, (
-      SELECT run_id FROM runs r WHERE coalesce(json_extract(CASE WHEN json_valid(r.config) THEN r.config ELSE '{}' END,'$.chatId'),r.run_id)=c.chat_id
-      ORDER BY created_at DESC,run_id DESC LIMIT 1) latest_run_id,
-      (SELECT count(*) FROM runs r WHERE coalesce(json_extract(CASE WHEN json_valid(r.config) THEN r.config ELSE '{}' END,'$.chatId'),r.run_id)=c.chat_id) turn_count
+      SELECT r.run_id FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+      WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=c.chat_id
+      ORDER BY r.created_at DESC,r.run_id DESC LIMIT 1) latest_run_id,
+      (SELECT count(*) FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+        WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=c.chat_id) turn_count
       FROM conversations c WHERE ${where.join(" AND ")} ORDER BY c.updated_at DESC,c.chat_id DESC LIMIT ?`).all(...values, limit) as any[];
     return rows.flatMap(row => {
       const latestRun = this.getRun(row.latest_run_id);
@@ -526,7 +582,8 @@ export class Repo {
         AND coalesce(json_extract(snapshot,'$.removed'),0)=0
     ) SELECT chat_id AS chatId, min(filename) AS title, count(*) AS attachmentCount, max(created_at) AS updatedAt
       FROM visible WHERE NOT EXISTS (
-        SELECT 1 FROM runs r WHERE coalesce(json_extract(CASE WHEN json_valid(r.config) THEN r.config ELSE '{}' END,'$.chatId'),r.run_id)=visible.chat_id
+        SELECT 1 FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+        WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=visible.chat_id
       ) GROUP BY chat_id ORDER BY updatedAt DESC,chat_id DESC`).all() as {chatId:string;title:string;attachmentCount:number;updatedAt:number}[];
   }
 
@@ -556,11 +613,14 @@ export class Repo {
   }
 
   conversationRuns(chatId: string): Run[] {
-    return (this.q(`SELECT * FROM runs WHERE coalesce(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId'),run_id)=? ORDER BY created_at DESC,run_id DESC`).all(chatId) as any[]).map(row => this.rowToRun(row));
+    return (this.q(`SELECT r.* FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+      WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=?
+      ORDER BY r.created_at DESC,r.run_id DESC`).all(chatId) as any[]).map(row => this.rowToRun(row));
   }
 
   deleteConversation(chatId: string): { deletedRuns: number; artifactPaths: string[] } {
-    const owned = `SELECT run_id FROM runs WHERE coalesce(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId'),run_id)=?`;
+    const owned = `SELECT r.run_id FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+      WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=?`;
     const runIds = (this.q(owned).all(chatId) as {run_id:string}[]).map(row => row.run_id);
     const artifactPaths = (this.q(`SELECT path FROM artifacts WHERE run_id IN (${owned})`).all(chatId) as { path: string }[]).map(row => row.path);
     const images = this.getSetting<{artifactId:string}[]>(`conversationImages:${chatId}`) ?? [];
@@ -585,10 +645,15 @@ export class Repo {
   }
   private rowToRun(r: any): Run {
     return {
-      runId: r.run_id, goal: r.goal, status: r.status, pageIds: P(r.page_ids, []),
-      setId: r.set_id ?? undefined, config: P(r.config, undefined as never),
-      statusMessage: r.status_message ?? undefined, result: P(r.result, undefined as never),
-      error: r.error ?? undefined, failure: P(r.failure, undefined as never), startedAt: r.started_at ?? undefined, endedAt: r.ended_at ?? undefined,
+      runId: r.run_id, goal: this.revealField("runs", r.run_id, "goal", r.goal)!,
+      status: r.status, pageIds: P(r.page_ids, []),
+      setId: r.set_id ?? undefined,
+      config: P(this.revealField("runs", r.run_id, "config", r.config), undefined as never),
+      statusMessage: this.revealField("runs", r.run_id, "status_message", r.status_message) ?? undefined,
+      result: P(this.revealField("runs", r.run_id, "result", r.result), undefined as never),
+      error: this.revealField("runs", r.run_id, "error", r.error) ?? undefined,
+      failure: P(this.revealField("runs", r.run_id, "failure", r.failure), undefined as never),
+      startedAt: r.started_at ?? undefined, endedAt: r.ended_at ?? undefined,
       createdAt: r.created_at,
     };
   }
@@ -597,13 +662,18 @@ export class Repo {
         `INSERT INTO steps(step_id,run_id,page_id,op,inputs,expected,outcome,started_at) VALUES(?,?,?,?,?,?,?,?)
          ON CONFLICT(step_id) DO UPDATE SET outcome=excluded.outcome`,
       )
-      .run(s.stepId, s.runId, s.pageId ?? null, s.op, s.inputs ? J(s.inputs) : null, s.expected ?? null, s.outcome ? J(s.outcome) : null, s.startedAt);
+      .run(s.stepId, s.runId, s.pageId ?? null, s.op,
+        this.protectField("steps", s.stepId, "inputs", s.inputs ? J(s.inputs) : null),
+        this.protectField("steps", s.stepId, "expected", s.expected ?? null),
+        this.protectField("steps", s.stepId, "outcome", s.outcome ? J(s.outcome) : null), s.startedAt);
   }
   private stepFromRow(r: Record<string, unknown>): StepRecord {
     return {
       stepId: r.step_id as string, runId: r.run_id as string, pageId: (r.page_id as string | null) ?? undefined, op: r.op as string,
-      inputs: P(r.inputs as string | null, undefined as never), expected: (r.expected as string | null) ?? undefined,
-      outcome: P(r.outcome as string | null, undefined as never), startedAt: r.started_at as number,
+      inputs: P(this.revealField("steps", r.step_id as string, "inputs", r.inputs as string | null), undefined as never),
+      expected: this.revealField("steps", r.step_id as string, "expected", r.expected as string | null) ?? undefined,
+      outcome: P(this.revealField("steps", r.step_id as string, "outcome", r.outcome as string | null), undefined as never),
+      startedAt: r.started_at as number,
     };
   }
   listSteps(runId: string): StepRecord[] {
@@ -611,6 +681,20 @@ export class Repo {
     return (this.q("SELECT * FROM steps WHERE run_id=? ORDER BY started_at,rowid").all(runId) as Record<string, unknown>[]).map(r => this.stepFromRow(r));
   }
   downloadStep(downloadId: string): StepRecord | undefined {
+    if (this.columnCipher) {
+      let before: number | undefined;
+      for (;;) {
+        const rows = this.q(`SELECT rowid AS aux_rowid,* FROM steps WHERE op='download'
+          ${before === undefined ? "" : "AND rowid<?"} ORDER BY rowid DESC LIMIT 256`)
+          .all(...(before === undefined ? [] : [before])) as (Record<string, unknown> & { aux_rowid: number })[];
+        for (const row of rows) {
+          const step = this.stepFromRow(row);
+          if (step.inputs?.downloadId === downloadId) return step;
+        }
+        if (rows.length < 256) return undefined;
+        before = rows.at(-1)!.aux_rowid;
+      }
+    }
     const row = this.q("SELECT * FROM steps WHERE op='download' AND json_extract(inputs,'$.downloadId')=? ORDER BY rowid DESC LIMIT 1")
       .get(downloadId) as Record<string, unknown> | undefined;
     return row ? this.stepFromRow(row) : undefined;
@@ -1415,7 +1499,8 @@ export class Repo {
         v.invocationId, v.operationId, v.implId ?? null, v.runId ?? null, v.requestKey ?? null, J(v.inputs ?? {}),
         v.status, v.effectOutcome ?? "unknown", v.routeReason ?? null, v.startedAt, v.endedAt ?? null, v.error ?? null,
       );
-    if (v.runId && this.q("SELECT 1 FROM runs WHERE run_id=? AND json_extract(config,'$.contextMemoryRevoked')=1").get(v.runId))
+    if (v.runId && this.q(`SELECT 1 FROM run_lookup WHERE run_id=?
+      AND json_extract(config,'$.contextMemoryRevoked')=1`).get(v.runId))
       redactSettledRunInvocations(this.db, v.runId);
   }
 

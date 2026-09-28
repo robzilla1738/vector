@@ -336,9 +336,9 @@ export class RunService {
 
   /** Withdraw saved answers and run-owned artifacts when any selected article is deleted. */
   redactForgottenArticleOutputs(workspaceId: string): number {
-    const rows = this.deps.repo.db.prepare("SELECT run_id AS runId,config FROM runs").all() as { runId: string; config: string | null }[];
-    const runs = rows.map(row => ({ runId: row.runId,
-      config: (row.config ? JSON.parse(row.config) : {}) as NonNullable<Run["config"]> }));
+    const rows = this.deps.repo.db.prepare("SELECT run_id AS runId FROM runs").all() as { runId: string }[];
+    const runs = rows.map(row => this.deps.repo.getRun(row.runId)!).map(run => ({ runId: run.runId,
+      config: (run.config ?? {}) as NonNullable<Run["config"]> }));
     const owners = new Map((this.deps.repo.db.prepare("SELECT artifact_id AS artifactId,run_id AS runId FROM artifacts")
       .all() as { artifactId: string; runId: string }[]).map(row => [row.artifactId, row.runId]));
     for (const run of runs) for (const artifactId of run.config.revokedArtifactIds ?? [])
@@ -491,7 +491,7 @@ export class RunService {
       throw new AuxError("not_found", "Conversation not found.");
     if (runs.some(run => !TERMINAL_RUN_STATUSES.has(run.status))) throw new AuxError("conflict", "Stop or wait for this conversation before deleting it.");
     if (this.deps.repo.taskForConversation(chatId) || runs.some(run => run.config?.taskId)) throw new AuxError("conflict", "This conversation belongs to a saved task. Delete or archive it from the task workflow.");
-    const owned = `SELECT run_id FROM runs WHERE coalesce(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.chatId'),run_id)=?`;
+    const owned = `SELECT run_id FROM runs WHERE coalesce(json_extract(CASE WHEN json_valid((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id)) THEN (SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id) ELSE '{}' END,'$.chatId'),run_id)=?`;
     const unresolved = this.deps.repo.db.prepare(`SELECT 1 FROM action_intents WHERE run_id IN (${owned}) AND status IN ('pending','uncertain') LIMIT 1`).get(chatId);
     if (unresolved) throw new AuxError("conflict", "Reconcile this conversation's unresolved action before deleting it.");
     const unresolvedInvocation = this.deps.repo.db.prepare(`SELECT 1 FROM operation_invocations WHERE run_id IN (${owned}) AND (status IN ('running','interrupted') OR effect_outcome='unknown') LIMIT 1`).get(chatId);
@@ -881,11 +881,11 @@ export class RunService {
       const taskId = this.deps.repo.taskForConversation(opts.chatId);
       if (taskId && taskId !== opts.taskId) throw new AuxError("conflict", "Continue this conversation through its saved task to preserve task scope.");
       if (this.deps.repo.getConversation(opts.chatId)?.archived) throw new AuxError("conflict", "Restore this conversation before continuing it.");
-      const prior = this.deps.repo.db.prepare("SELECT run_id, status, config FROM runs WHERE json_extract(config,'$.chatId')=? OR run_id=?").all(opts.chatId, opts.chatId) as { run_id: string; status: Run["status"]; config: string | null }[];
+      const prior = this.deps.repo.db.prepare("SELECT run_id, status FROM runs WHERE json_extract((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id),'$.chatId')=? OR run_id=?").all(opts.chatId, opts.chatId) as { run_id: string; status: Run["status"] }[];
       if (prior.some(run => !TERMINAL_RUN_STATUSES.has(run.status))) throw new AuxError("conflict", "This conversation is still working. Answer, stop, or wait for its current turn.");
-      if (prior.some(run => { const config = run.config ? JSON.parse(run.config) : {}; return config.taskId && config.taskId !== opts.taskId; })) throw new AuxError("conflict", "Continue this conversation through its saved task to preserve task scope.");
-      const uncertain = this.deps.repo.db.prepare(`SELECT a.id FROM action_intents a JOIN runs r ON r.run_id=a.run_id
-        WHERE (json_extract(r.config,'$.chatId')=? OR r.run_id=?) AND a.status IN ('pending','uncertain') LIMIT 1`).get(opts.chatId, opts.chatId);
+      if (prior.some(run => { const config = this.deps.repo.getRun(run.run_id)?.config; return config?.taskId && config.taskId !== opts.taskId; })) throw new AuxError("conflict", "Continue this conversation through its saved task to preserve task scope.");
+      const uncertain = this.deps.repo.db.prepare(`SELECT a.id FROM action_intents a JOIN runs r ON r.run_id=a.run_id LEFT JOIN run_lookup rl ON rl.run_id=r.run_id
+        WHERE (json_extract(rl.config,'$.chatId')=? OR r.run_id=?) AND a.status IN ('pending','uncertain') LIMIT 1`).get(opts.chatId, opts.chatId);
       if (uncertain) throw new AuxError("conflict", "This conversation has an unresolved action. Reconcile its outcome before continuing.");
     }
     if (opts.chatId && opts.taskId && opts.contextWorkspaceId) {

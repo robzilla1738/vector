@@ -45,7 +45,7 @@ export class ExternalSessionService {
     const row = this.repo.db
       .prepare(
         `SELECT run_id AS runId FROM runs
-         WHERE json_extract(config,'$.externalConnectionId')=?
+         WHERE json_extract((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id),'$.externalConnectionId')=?
          AND status IN (${ACTIVE_SQL}) ORDER BY created_at DESC LIMIT 1`,
       )
       .get(connectionId) as { runId: string } | undefined;
@@ -149,9 +149,9 @@ export class ExternalSessionService {
   private storedActiveIds(): string[] {
     const rows = this.repo.db
       .prepare(
-        `SELECT DISTINCT json_extract(config,'$.externalConnectionId') AS id FROM runs
+        `SELECT DISTINCT json_extract((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id),'$.externalConnectionId') AS id FROM runs
          WHERE status IN (${ACTIVE_SQL})
-         AND json_extract(config,'$.externalConnectionId') IS NOT NULL`,
+         AND json_extract((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id),'$.externalConnectionId') IS NOT NULL`,
       )
       .all() as { id: string }[];
     return rows.map((row) => row.id);

@@ -16,6 +16,7 @@ function track(db: DatabaseSync) { connections.push(db); return db; }
 function version(db: DatabaseSync) { return (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version; }
 /** A test that rewinds user_version must also remove tables that did not exist at that version. */
 const addedTables: [number, string[]][] = [
+  [25, ["run_lookup"]],
   [22, ["plugin_skill_grants"]],
   [21, ["site_zap_rules", "site_user_css"]],
   [20, ["subagents", "subagent_groups"]],
@@ -48,6 +49,23 @@ afterEach(() => {
 });
 
 describe("schema versioning", () => {
+  it("backfills only indexed run metadata when migrating v24", () => {
+    const { path } = fixture();
+    const old = track(openDb(path));
+    new Repo(old).saveRun({ runId: "run", goal: "private goal", status: "completed", pageIds: [],
+      config: { chatId: "chat", taskId: "task", context: "private context",
+        contextImageArtifactIds: ["image"] }, createdAt: 1 });
+    rewindProfile(old, 24);
+    old.exec("CREATE INDEX idx_runs_task ON runs(json_extract(config,'$.taskId'))");
+    old.close();
+    const upgraded = track(openDb(path));
+    const projection = upgraded.prepare("SELECT config FROM run_lookup WHERE run_id='run'").get() as { config: string };
+    expect(JSON.parse(projection.config)).toMatchObject({ chatId: "chat", taskId: "task", contextImageArtifactIds: ["image"] });
+    expect(projection.config).not.toContain("private context");
+    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='idx_runs_task'").get()).toBeUndefined();
+    expect(upgraded.prepare("SELECT name FROM sqlite_schema WHERE name='idx_run_lookup_task'").get()).toBeDefined();
+    expect(new Repo(upgraded).conversationRuns("chat").map(run => run.runId)).toEqual(["run"]);
+  });
   it("migrates v12 profiles to the safety approval and send journal tables", () => {
     const { path } = fixture();
     const old = track(openDb(path));
@@ -237,13 +255,13 @@ describe("schema versioning", () => {
       "routine_runs", "coordinator_leases", "criterion_verifications", "history_fts", "plugins",
       "history_projection_staging", "safety_approval_requests", "safety_standing_grants", "safety_send_journal",
       "command_escalation_requests", "command_escalation_grants", "plugin_assets", "plugin_skill_grants", "goals", "hooks", "hook_invocations",
-      "site_user_css", "site_zap_rules",
+      "site_user_css", "site_zap_rules", "run_lookup",
     ]) {
       expect(tables.map(row => row.name)).toContain(table);
     }
     expect(tables.map(row => row.name)).not.toContain("journal_imports");
     expect(tables.map(row => row.name)).not.toContain("observations");
-    for (const index of ["idx_conversations_state_updated", "idx_runs_task", "idx_tasks_workspace", "idx_action_intents_unresolved", "idx_action_intents_task_unresolved", "idx_events_run", "idx_artifacts_run", "idx_respmeta_run"]) {
+    for (const index of ["idx_conversations_state_updated", "idx_run_lookup_task", "idx_tasks_workspace", "idx_action_intents_unresolved", "idx_action_intents_task_unresolved", "idx_events_run", "idx_artifacts_run", "idx_respmeta_run"]) {
       expect(db.prepare("SELECT name FROM sqlite_schema WHERE type='index' AND name=?").get(index)).toBeDefined();
     }
     db.prepare("INSERT INTO kv VALUES (?, ?)").run("synthetic", "retained");

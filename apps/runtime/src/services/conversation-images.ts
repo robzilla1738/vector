@@ -65,7 +65,7 @@ export class ConversationImages {
     this.mutable(chatId);const records=this.records(chatId);const record=records.find(item=>item.imageId===imageId&&!item.removed);
     if(!record)throw new AuxError("not_found","Image snapshot not found in this conversation.");
     // Earlier runs retain the exact snapshot for inspection and retry.
-    const used=this.repo.db.prepare(`SELECT 1 FROM runs, json_each(json_extract(CASE WHEN json_valid(config) THEN config ELSE '{}' END,'$.contextImageArtifactIds')) images WHERE images.value=? LIMIT 1`).get(record.artifactId);
+    const used=this.repo.db.prepare(`SELECT 1 FROM runs, json_each(json_extract(CASE WHEN json_valid((SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id)) THEN (SELECT config FROM run_lookup WHERE run_lookup.run_id=runs.run_id) ELSE '{}' END,'$.contextImageArtifactIds')) images WHERE images.value=? LIMIT 1`).get(record.artifactId);
     if (used) { record.removed=true;record.included=false;this.repo.setSetting(key(chatId),records); }
     else {
       const artifact=this.repo.getArtifact(record.artifactId);
