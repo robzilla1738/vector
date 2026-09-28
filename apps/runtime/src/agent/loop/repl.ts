@@ -285,10 +285,12 @@ page.labeledValue = (label) => {
   if (!wanted) throw new Error("A field label is required");
   const observation = __aux_invoke("observe", { pageId: __aux_page });
   const lines = String(observation.text || "").split("\\n");
-  const matches = lines.filter((line) => line.toLowerCase().includes(wanted));
+  const aliases = [wanted, wanted.replace(/\\breference\\b/g, "ref")];
+  const matches = lines.filter((line) => aliases.some((alias) => line.toLowerCase().includes(alias)));
   if (matches.length !== 1) throw new Error("Expected one line containing field label " + label + "; found " + matches.length);
   const line = matches[0];
-  const rest = line.slice(line.toLowerCase().indexOf(wanted) + wanted.length).replace(/^[\\s:–—-]+/, "").trim();
+  const matched = aliases.find((alias) => line.toLowerCase().includes(alias));
+  const rest = line.slice(line.toLowerCase().indexOf(matched) + matched.length).replace(/^[\\s:–—-]+/, "").trim();
   const value = rest.split(/\\.\\s+/)[0].replace(/[.。]$/, "").trim();
   if (!value) throw new Error("Field " + label + " has no visible value");
   return { value, citation: { observationId: observation.observationId, quote: line.trim() }, observationId: observation.observationId };

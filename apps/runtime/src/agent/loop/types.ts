@@ -71,6 +71,8 @@ export interface LoopToolDeps {
   webSearch?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
   /** The code-mode REPL: eval guest code against the persistent per-run session. */
   repl?: (input: { code: string; deadlineMs?: number }, ctx: LoopToolContext) => Promise<LoopToolResult>;
+  /** Recovery may read a labeled value only while a modal visibly occludes the background. */
+  canRecoverDialogValue?: (label: string) => boolean;
   /** Auto-recall (06-Z): query content memory for the task — hits land as one durable user message. */
   recall?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<{ title: string; url: string; text: string }[]>;
   /** Session/workspace file roots — fs tools stay inside them (S4 upload roots). */

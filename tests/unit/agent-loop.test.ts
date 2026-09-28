@@ -89,7 +89,7 @@ describe("runAgentLoop (S5)", () => {
       seen.push(Object.keys(tools));
       turn++;
       const toolCalls = turn === 1
-        ? [{ toolCallId: "g1", toolName: "goal_program", input: { code: "page.navigateMatching('rec-14')" } }]
+        ? [{ toolCallId: "g1", toolName: "goal_program", input: { code: "page.navigateMatching('rec-14')", answerLabel: "" } }]
         : [{ toolCallId: "s1", toolName: "submit_result", input: { report: "fallback" } }];
       return { message: { role: "assistant", content: [] } as ModelMessage, toolCalls, durationMs: 0 };
     };
@@ -497,7 +497,7 @@ describe("runToolLoop (S5 host integration)", () => {
       ],
     } } as Observation;
     const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{
-      toolCallId: "g1", toolName: "goal_program", input: { code: 'page.navigateMatching("rec-14"); page.clickByName("Details", "button"); page.submitLabeledValue("Internal ref")' },
+      toolCallId: "g1", toolName: "goal_program", input: { code: 'page.navigateMatching("rec-14"); page.clickByName("Details", "button"); var s=snapshot(); var m=s.text.match(/Internal reference: ([^\\n]+)/); if(!m) throw new Error("label absent"); submitResult(m[1], [{observationId:s.observationId, quote:m[0]}])', answerLabel: "Internal reference", answerScope: "dialog" },
     }] }]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);
@@ -507,7 +507,10 @@ describe("runToolLoop (S5 host integration)", () => {
         ? { ...current, revision: 2, content: { ...current.content, url: "http://x.test/records/rec-14", text: "Record rec-14", elements: [
           { ref: "r3", tag: "button", role: "button", name: "Details", frame: "main" },
         ] } } as Observation
-        : { ...current, revision: 3, content: { ...current.content, text: "Internal ref rec-14." } } as Observation;
+        : { ...current, revision: 3, content: { ...current.content, text: "Internal ref rec-14.", elements: [
+          { ref: "r3", tag: "button", role: "button", name: "Details", frame: "main", occluded: true },
+          { ref: "r4", tag: "button", role: "button", name: "Close", frame: "main" },
+        ] } } as Observation;
       const steps = program.steps.map((step) => ({ stepId: step.id, op: step.op, status: "ok" as const, startedAt: 1, durationMs: 1,
         receipt: { remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false }, effect: "observed" as const }));
       for (const [index, step] of program.steps.entries()) ctx?.onStep?.(steps[index]!, step);

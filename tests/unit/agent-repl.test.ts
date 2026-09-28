@@ -136,6 +136,17 @@ describe("code-mode REPL", () => {
     expect(submitResult).toHaveBeenCalledWith({ report: "rec-13", citations: [{ observationId: "obs-3", quote: "Created by the user. Internal ref rec-13." }] });
   });
 
+  it("matches an unambiguous reference/ref label synonym", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const submitResult = vi.fn(async (input: { report: string }) => ({ ok: true as const, result: { report: input.report } }));
+    const result = await pool.eval(deps({
+      observe: async () => ({ text: "Created by fixture. Internal ref rec-15.", observationId: "obs-ref", revision: 3 }),
+      submitResult,
+    }), `page.submitLabeledValue("Internal reference")`, { pageId: "p1" });
+    expect(result).toMatchObject({ finish: { result: { report: "rec-15" } } });
+  });
+
   it("navigates only a route resolved from observed links", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

@@ -359,6 +359,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
 
   // ---- code-mode REPL (S5 deliverable 3) ----
   const replPool = new ReplPool();
+  let beforeModalClickText: string | undefined;
   /** Tabs this run opened via openTab — pageId → ownership release. */
   const openedTabs = new Map<string, () => void>();
   const replTab = (pageId: string): ReplTab => {
@@ -467,7 +468,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         .map((el) => ({ ref: el.ref, name: el.name ?? el.text?.slice(0, 80), rect: el.rect }));
       return { ...shot, elements };
     },
-    step: (pageId, step) => deps.act!({ pageId, steps: [step as import("@aux/contracts").Step] }),
+    step: (pageId, step) => {
+      if (step && typeof step === "object" && "op" in step && step.op === "click")
+        beforeModalClickText = lastObs.get(pageId)?.content.text;
+      return deps.act!({ pageId, steps: [step as import("@aux/contracts").Step] });
+    },
     fetch: async (url) => {
       const fetchDep = self.deps.agentLoop?.webFetch;
       if (!fetchDep) throw new AuxError("capability_unsupported", "fetch is unavailable — no web egress backend for this run.");
@@ -529,6 +534,15 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     },
   };
   deps.repl = ({ code, deadlineMs }) => replPool.eval(replDeps, code, { pageId: activePageId, deadlineMs });
+  deps.canRecoverDialogValue = (label) => {
+    const obs = activePageId ? lastObs.get(activePageId) : undefined;
+    const aliases = [label.toLowerCase(), label.toLowerCase().replace(/\breference\b/g, "ref")];
+    const newlyVisible = !!obs && aliases.some((alias) => alias && obs.content.text.toLowerCase().includes(alias)
+      && !beforeModalClickText?.toLowerCase().includes(alias));
+    return newlyVisible && !!obs && obs.content.elements.some((element) => element.occluded)
+      && obs.content.elements.some((element) => !element.occluded && element.role === "button"
+        && /^(close|dismiss)$/i.test(element.name?.trim() ?? ""));
+  };
 
   // The planner sees the page inside its first call. Seed that same snapshot
   // so a read can finish in one submit_result instead of a snapshot round trip.
