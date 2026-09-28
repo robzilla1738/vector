@@ -105,6 +105,8 @@ it("sanitizes protected article recall and authenticates the same Profile before
   const restored = new Repo(openDb(dbPath), cipher);
   expect(restored.getRun("article")?.config?.contextMemoryRevoked).toBe(true);
   expect(restored.getRun("article")?.config?.context).toBeUndefined();
+  expect(restored.db.prepare("SELECT json_extract(config,'$.contextMemoryRevoked') AS revoked FROM run_lookup WHERE run_id='article'").get())
+    .toMatchObject({ revoked: 1 });
   expect(restored.getSetting("conversationAttachments:chat")).toEqual([
     { sourceArtifactId: "unrelated", filename: "retained.txt" },
   ]);
