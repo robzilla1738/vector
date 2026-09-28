@@ -919,7 +919,7 @@ else {
   }, 30_000).catch(error => { throw new Error(`${error.message}; runtime sessions: ${JSON.stringify(lastRuntimeStatus ?? [])}; browser log: ${startupLog}`); });
   assert.ok(connection);
   const runtimeCapabilities = await rpc("runtime.describe");
-  if (browserImportUiJourney || browserImportFormatsJourney || browserImportAttachedJourney || protectedStartupJourney) {
+  if (browserImportUiJourney || browserImportFormatsJourney || browserImportAttachedJourney || protectedStartupJourney || runtimeBackupRestoreJourney) {
     assert.equal(runtimeCapabilities.featureStages?.spaces, "preview", "Unrequalified candidate stages must remain preview");
   } else assert.equal(runtimeCapabilities.featureStages?.spaces, "on",
     "The runtime must derive qualified Spaces from the native method manifest");

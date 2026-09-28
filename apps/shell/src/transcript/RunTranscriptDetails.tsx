@@ -43,7 +43,8 @@ export function RunTranscriptDetails({ run }: { run: Run }) {
 
   const artifacts = projection?.items.filter((item): item is ArtifactItem => item.kind === "artifact") ?? [];
   const citations = projection?.items.filter((item) => item.kind === "citation") ?? [];
-  const recovery = projection?.items.find((item) => item.kind === "recovery");
+  // RunPanel already owns the actionable failure card when a typed failure exists.
+  const recovery = run.failure ? undefined : projection?.items.find((item) => item.kind === "recovery");
 
   async function open(artifact: ArtifactItem) {
     if (!artifacts.some((item) => item.artifactId === artifact.artifactId)) return;
