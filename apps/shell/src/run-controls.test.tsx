@@ -60,14 +60,14 @@ it("loads saved page evidence only when opened and offers retry on failure",asyn
   const invoke=vi.spyOn(bridge,"invoke").mockRejectedValue(new Error("Snapshot unavailable"));
   try {
     await act(async()=>root.render(<RunPanel runId="evidence" conversation/>));
-    expect(invoke).not.toHaveBeenCalled();
+    expect(invoke.mock.calls.filter(([method])=>method==="artifacts.read")).toHaveLength(0);
     const button=(text:string)=>Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(item=>item.textContent?.includes(text))!;
     await act(async()=>button("Work history").click());
-    expect(invoke).not.toHaveBeenCalled();
+    expect(invoke.mock.calls.filter(([method])=>method==="artifacts.read")).toHaveLength(0);
     await act(async()=>button("Page").click());
     expect(invoke).toHaveBeenCalledWith("artifacts.read",{artifactId:"saved-page"});
     expect(host.querySelector('[role="alert"]')?.textContent).toContain("Snapshot unavailable");
     await act(async()=>button("Retry").click());
-    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(invoke.mock.calls.filter(([method])=>method==="artifacts.read")).toHaveLength(2);
   } finally {await act(async()=>root.unmount());vi.restoreAllMocks();useStore.setState(original,true);}
 });

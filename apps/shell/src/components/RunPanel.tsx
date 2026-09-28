@@ -10,6 +10,7 @@ import { StepTimeline, fmtMs } from "./StepTimeline";
 import { I } from "./icons";
 import { openSavedTask } from "../task-navigation";
 import { AnswerMarkdown } from "./AnswerMarkdown";
+import { RunTranscriptDetails } from "../transcript/RunTranscriptDetails";
 
 import { STATUS_LABEL } from "../run-status";
 
@@ -279,6 +280,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
       )}
 
       <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button> : null} />
+      <RunTranscriptDetails run={run} />
 
       {(calls != null || stats || !conversation) && <details className="run-provenance">
         <summary>Run details</summary>

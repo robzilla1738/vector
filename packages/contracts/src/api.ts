@@ -24,6 +24,7 @@ import {
 import { CommandRankingEntrySchema, CommandRankingSourceSchema } from "./command-ranking.js";
 import { WebmcpToolSchema } from "./webmcp.js";
 import { RuntimeMethodPolicy } from "./runtime-method-policy.js";
+import { RunTranscriptProjectionSchema } from "./transcript.js";
 
 import { isSearchEngineTemplate, SEARCH_ENGINE_TEMPLATE_ERROR } from "./search-engine.js";
 export const SearchEngineTemplateSchema = z
@@ -2142,6 +2143,7 @@ export const ResultSchemas = {
     steps: z.array(StepRecordSchema),
     modelCalls: z.number(),
     usage: ModelUsageSummarySchema,
+    transcript: RunTranscriptProjectionSchema.optional(),
   }),
   "runs.list": z.array(RunSchema),
   "runs.context.get": ConversationContextSchema,

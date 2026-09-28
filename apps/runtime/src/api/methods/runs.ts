@@ -2,6 +2,7 @@ import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError, MethodSchemas } from "@aux/contracts";
 import { summarizeModelUsage } from "../../services/model-usage.js";
+import { projectRunTranscript } from "../../services/run-transcript.js";
 
 async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
@@ -32,6 +33,7 @@ async function h_runs_get(ctx: MethodCtx): Promise<unknown> {
     steps: s.repo.listSteps(run.runId),
     modelCalls: calls.length,
     usage: summarizeModelUsage(calls),
+    transcript: projectRunTranscript(run, s.artifacts.list({ runId: run.runId })),
   };
 }
 async function h_runs_list(ctx: MethodCtx): Promise<unknown> {
