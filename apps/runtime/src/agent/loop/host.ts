@@ -192,12 +192,22 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         const redacted = name ? String(redactForModel(name)) : "";
         return redacted && !redacted.startsWith("{handle:") ? [redacted.slice(0, 80)] : [];
       });
+      const click = steps.length === 1 && steps[0]?.op === "click" ? steps[0] : undefined;
+      const clickedLink = click && "target" in click
+        ? safeObs.content.elements.find((element) => element.ref === click.target && element.href)
+        : undefined;
+      let expectedNavigationUrlHash: string | undefined;
+      if (clickedLink?.href) {
+        try { expectedNavigationUrlHash = observationLineHash(new URL(clickedLink.href, safeObs.content.url).href); }
+        catch { /* An invalid href cannot provide reconciliation proof. */ }
+      }
       const gate = await guardedExecute(
         { pages: self.deps.pages, durable: self.durable, grants: subagentGrants(run.config?.subagentProfile, self.deps.grants) },
         {
           runId, pageId, steps,
           observation: obs.content, url: obs.content.url,
           beforeText: renderObservation(safeObs), actionLabels,
+          expectedNavigationUrlHash,
           documentEpoch: obs.documentEpoch, revision: obs.revision,
           taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
           isCurrent: () => !steerPending() && !signal.aborted,
@@ -293,6 +303,27 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         return { ok: false as const, error: "That line was already visible before the write and does not prove its effect." };
       const labels = intent.summary?.actionLabels ?? [];
       if (!labels.length) return { ok: false as const, error: "The ledger has no redacted action label to bind this evidence; leave the effect uncertain." };
+      const navigationHash = intent.summary?.expectedNavigationUrlHash;
+      if (intent.summary.ops[0] === "click" && navigationHash && quote.startsWith("url: ")) {
+        if (text.split("\n").find((line) => line.startsWith("url: "))?.trim() !== quote)
+          return { ok: false as const, error: "Cite the observed page URL, not page content mentioning a URL." };
+        const url = quote.slice(5).trim();
+        let actualHash: string;
+        try { actualHash = observationLineHash(new URL(url).href); }
+        catch { return { ok: false as const, error: "The cited URL is invalid." }; }
+        if (actualHash !== navigationHash)
+          return { ok: false as const, error: "The new URL does not match the clicked link's recorded destination." };
+        if (!effect.trim()) return { ok: false as const, error: "Describe the observed navigation effect." };
+        self.durable.reconcile(intent.id, "applied", JSON.stringify({ observationId: key, quote: redactForModel(quote), effect: redactForModel(effect.trim()) }));
+        for (const outcome of outcomes) {
+          const dispatch = writeDispatches.get(outcome.stepId);
+          if (dispatch?.pageId !== intent.pageId) continue;
+          if (outcome.receipt) outcome.receipt = { ...outcome.receipt, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false, observed: quote };
+          if (outcome.effect === "uncertain" || outcome.effect === "dispatched") outcome.effect = "observed";
+        }
+        noteUnresolved();
+        return { ok: true as const, intentId: intent.id, status: "confirmed" as const };
+      }
       const completedClickWords: Record<string, string> = {
         save: "saved", submit: "submitted", create: "created", delete: "deleted", update: "updated",
         approve: "approved", send: "sent", publish: "published", apply: "applied", remove: "removed",

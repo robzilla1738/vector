@@ -795,6 +795,41 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("does not confirm the click completed"))).toBe(true);
   });
 
+  it("reconciles an uncertain link click only from its recorded destination URL", async () => {
+    const before = { ...pageObs(), content: { ...pageObs().content,
+      url: "http://x.test/records", elements: [{ ref: "r2", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
+    } } as Observation;
+    const after = { ...before, revision: 2, content: { ...before.content,
+      url: "http://x.test/records?page=2", text: "Record 15\nurl: http://x.test/records?page=3",
+    } } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r2" }] } }] },
+      { toolCalls: [{ toolCallId: "r1", toolName: "reconcile_action", input: {
+        citation: { pageId: "p1", revision: 2, quote: "url: http://x.test/records?page=3" }, effect: "Navigated to page 3",
+      } }] },
+      { toolCalls: [{ toolCallId: "r2", toolName: "reconcile_action", input: {
+        citation: { pageId: "p1", revision: 2, quote: "url: http://x.test/records?page=2" }, effect: "Navigated to page 2",
+      } }] },
+      { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "page 2" } }] },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "failed" as const,
+        startedAt: 1, durationMs: 1, error: { code: "condition_timeout", message: "timed out" },
+        effect: "uncertain" as const,
+        receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "failed", steps, observation: after };
+    });
+    h.pages.observe.mockImplementation(async () => before);
+    const run = await h.coordinator.start({ goal: "open page 2", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "confirmed" });
+    const transcript = new TranscriptStore(h.db).load(run.runId);
+    expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("Cite the observed page URL"))).toBe(true);
+  });
+
   it("does not settle an uncertain write from a post-dispatch page title alone", async () => {
     const postObs = { ...pageObs(), revision: 2 } as Observation;
     const model = new MockModelClient().scriptToolSteps([

@@ -22,6 +22,7 @@ export type GuardedDispatchOpts = {
   beforeText?: string;
   /** Action target labels from the redacted observation, with no control values. */
   actionLabels?: string[];
+  expectedNavigationUrlHash?: string;
   url: string;
   /** epoch the compiled program must still match */
   documentEpoch: number;
@@ -70,6 +71,7 @@ export async function guardedExecute(deps: GuardedDispatchDeps, opts: GuardedDis
     steps: collectProgramSteps(program),
     beforeText: opts.beforeText,
     actionLabels: opts.actionLabels,
+    expectedNavigationUrlHash: opts.expectedNavigationUrlHash,
     taskId: opts.taskId,
     taskRevision: opts.taskRevision,
   });
