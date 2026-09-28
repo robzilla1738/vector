@@ -301,3 +301,41 @@ it("protects result and dataset observations through migration and restart", asy
     expect(() => reopened.getDataset("old-dataset")).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
+
+it("protects sequenced event payloads for immediate and deferred writes", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-events-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    const oldSeq = legacy.appendEvent({ type: "private.event", payload: { text: "private event amber" }, ts: 1 });
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "events")).toBe(1);
+    const protectedRepo = new Repo(db, cipher);
+    const nextSeq = protectedRepo.appendEvent({ type: "private.event", payload: { text: "private event violet" }, ts: 2 });
+    protectedRepo.queueEvent({ seq: nextSeq + 1, streamId: protectedRepo.streamId(),
+      type: "private.event", payload: { text: "private event coral" }, ts: 3 });
+    expect(protectedRepo.eventsSince(0).events.map(event => event.payload)).toEqual([
+      { text: "private event amber" }, { text: "private event violet" }, { text: "private event coral" },
+    ]);
+    expect(oldSeq).toBeLessThan(nextSeq);
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private event amber")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private event amber")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopened = new Repo(db, await SqliteColumnCipher.create(secrets.secrets, "profile-one", true));
+    expect(reopened.eventsSince(oldSeq).events.map(event => event.payload)).toEqual([
+      { text: "private event violet" }, { text: "private event coral" },
+    ]);
+    db.prepare("UPDATE events SET payload='tampered plaintext' WHERE seq=?").run(oldSeq);
+    expect(() => reopened.eventsSince(0)).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});

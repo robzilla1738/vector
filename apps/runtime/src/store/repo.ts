@@ -49,12 +49,12 @@ export class Repo {
   constructor(readonly db: DatabaseSync, private readonly columnCipher?: SqliteColumnCipher) {}
   requireChromiumHistory() { this.chromiumHistoryRequired = true; }
 
-  private protectField(table: string, id: string, column: string, value: string | null): string | null {
+  private protectField(table: string, id: string | number, column: string, value: string | null): string | null {
     return value === null || !this.columnCipher ? value
       : this.columnCipher.encrypt(table, JSON.stringify([id]), column, value);
   }
 
-  private revealField(table: string, id: string, column: string, value: string | null): string | null {
+  private revealField(table: string, id: string | number, column: string, value: string | null): string | null {
     return value === null || !this.columnCipher ? value
       : this.columnCipher.decrypt(table, JSON.stringify([id]), column, value);
   }
@@ -764,16 +764,23 @@ export class Repo {
     return r.s ?? undefined;
   }
   appendEvent(e: Omit<AuxEvent, "seq" | "streamId">): number {
-    const info = this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)")
-      .run(e.runId ?? null, e.type, J(e.payload), e.ts);
-    const seq = Number(info.lastInsertRowid);
+    const seq = this.columnCipher ? this.transaction(() => {
+      const info = this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)")
+        .run(e.runId ?? null, e.type, "", e.ts);
+      const id = Number(info.lastInsertRowid);
+      this.q("UPDATE events SET payload=? WHERE seq=?")
+        .run(this.protectField("events", id, "payload", J(e.payload)), id);
+      return id;
+    }) : Number(this.q("INSERT INTO events(run_id,type,payload,ts) VALUES(?,?,?,?)")
+      .run(e.runId ?? null, e.type, J(e.payload), e.ts).lastInsertRowid);
     if (seq % 64 === 0) this.pruneEvents();
     return seq;
   }
   /** Deferred append with a caller-assigned seq (the EventBus numbers events in memory). */
   queueEvent(e: AuxEvent) {
     this.defer(`event:${e.seq}`, () => {
-      this.q("INSERT INTO events(seq,run_id,type,payload,ts) VALUES(?,?,?,?,?)").run(e.seq, e.runId ?? null, e.type, J(e.payload), e.ts);
+      this.q("INSERT INTO events(seq,run_id,type,payload,ts) VALUES(?,?,?,?,?)")
+        .run(e.seq, e.runId ?? null, e.type, this.protectField("events", e.seq, "payload", J(e.payload)), e.ts);
       if (e.seq % 64 === 0) this.pruneEvents();
     });
   }
@@ -817,7 +824,8 @@ export class Repo {
     const rows = runId
       ? (this.q("SELECT * FROM events WHERE seq>? AND run_id=? ORDER BY seq LIMIT ?").all(sinceSeq, runId, limit) as any[])
       : (this.q("SELECT * FROM events WHERE seq>? ORDER BY seq LIMIT ?").all(sinceSeq, limit) as any[]);
-    const events = rows.map((r) => ({ seq: r.seq, streamId, runId: r.run_id ?? undefined, type: r.type, payload: P(r.payload, {}), ts: r.ts }));
+    const events = rows.map((r) => ({ seq: r.seq, streamId, runId: r.run_id ?? undefined, type: r.type,
+      payload: P(this.revealField("events", r.seq, "payload", r.payload), {}), ts: r.ts }));
     return { streamId, events, lastSeq: events.length ? events[events.length - 1]!.seq : sinceSeq };
   }
   lastSeq(): number {
