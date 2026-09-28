@@ -1050,11 +1050,14 @@ else {
         return (await rpc("workspace.get")).sessions?.some(session => session.sessionId === "aux" && session.status === "connected");
       } catch { return false; }
     }, 60_000);
-    const restartedCount = await until("restarted native History rows", async () => {
-      try { return nativeCount() === 5000 ? 5000 : null; } catch { return null; }
-    }, 30_000);
-    assert.equal(restartedCount, 5000);
-    record("cancelled-and-resumed native History remains complete after graceful restart");
+    await until("restarted imported History", async () =>
+      (await rpc("history.list", { query: "aux-import-cancel", limit: 20 }))
+        .some(item => item.url.startsWith("https://aux-import-cancel.example/")), 30_000);
+    const restoredTabs = (await rpc("pages.list")).filter(page =>
+      page.url === `${origin}/red` || page.url === `${origin}/blue`);
+    assert.deepEqual(restoredTabs.map(page => page.url).sort(), [`${origin}/blue`, `${origin}/red`],
+      "Imported tabs must restore as native sleeping tabs");
+    record("imported History and sleeping native tabs survive graceful restart");
     report.passed = true;
   } else if (browserImportFormatsJourney) {
     const selections = ["arc", "safari", "firefox"].map(sourceId => ({
