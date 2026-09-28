@@ -39,7 +39,7 @@ import { createGateway } from "@ai-sdk/gateway";
 import { generateText, jsonSchema, stepCountIs, tool, wrapLanguageModel } from "ai";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { abReadiness, candidateReadiness, corpusFingerprint, summarizeIntents } from "./report-integrity.mjs";
+import { abReadiness, candidateReadiness, corpusFingerprint, modelAttribution, summarizeIntents } from "./report-integrity.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../../..");
@@ -325,7 +325,7 @@ for (const name of adapterNames) {
   const engines = new Set(rows.map((r) => r.engine));
   const readiness = candidateReadiness({ suiteName, selectedIds: tasks.map((task) => task.id),
     allIds: suite.tasks.map((task) => task.id), trials, adapterName: name, rows,
-    engine: engines.size === 1 ? [...engines][0] : null,
+    engine: engines.size === 1 ? [...engines][0] : null, model: modelId,
     budget: budgets.size === 1 ? [...budgets][0] : null });
   report.adapters[name] = { ...report.adapters[name], summary, rows, readiness,
     spendLedgerAfter: spendLedger.summary() };
@@ -410,7 +410,8 @@ async function runtimeAdapter(_name, cfg = {}) {
           message: r.statusMessage,
           ...(r.error ? { error: r.error } : {}),
           engine: r.config?.implementation ?? null,
-          runtimeModel: r.config?.modelId ?? null,
+          requestedRuntimeModel: r.config?.modelId ?? modelId,
+          runtimeModel: metrics.runtimeModel,
           modelCallBudget: r.config?.maxModelCalls ?? null,
           runId,
           modelCalls,
@@ -452,6 +453,7 @@ async function metricsForRun(rpc, runId) {
     let suspensions = 0;
     let takeovers = 0;
     let ledgerDuplicates = 0;
+    const attribution = modelAttribution(list);
     for (const e of list) {
       const p = e.payload ?? {};
       if (e.type === "model.call") total += (p.inputTokens ?? 0) + (p.outputTokens ?? 0);
@@ -459,9 +461,11 @@ async function metricsForRun(rpc, runId) {
       if (e.type === "page.takeover") takeovers++;
       if (e.type === "step.finished" && /No new action was executed/.test(JSON.stringify(p.error ?? ""))) ledgerDuplicates++;
     }
-    return { tokens: total || null, suspensions, interventions: suspensions + takeovers, ledgerDuplicates };
+    return { tokens: total || null, suspensions, interventions: suspensions + takeovers, ledgerDuplicates,
+      ...attribution };
   } catch {
-    return { tokens: null, suspensions: null, interventions: null, ledgerDuplicates: null };
+    return { tokens: null, suspensions: null, interventions: null, ledgerDuplicates: null,
+      runtimeModel: null, modelCallEvents: null, modelIds: [] };
   }
 }
 

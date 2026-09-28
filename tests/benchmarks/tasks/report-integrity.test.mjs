@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { abReadiness, candidateReadiness, corpusFingerprint, coverage, summarizeIntents } from "./report-integrity.mjs";
+import { abReadiness, candidateReadiness, corpusFingerprint, coverage, modelAttribution, summarizeIntents } from "./report-integrity.mjs";
 
+const model = "meta/muse-spark-1.3-contributor";
 const ids = Array.from({ length: 50 }, (_, i) => `L${i + 1}`);
 const rows = ids.flatMap((id) => [1, 2, 3].map((trial) => ({ id, trial, score: 1,
-  modelCalls: 1, durableIntents: { unresolved: 0, ids: [] } })));
+  modelCalls: 1, modelCallEvents: 1, runtimeModel: model,
+  durableIntents: { unresolved: 0, ids: [] } })));
 const ready = (changes = {}) => candidateReadiness({ suiteName: "local", selectedIds: ids, allIds: ids,
-  trials: 3, adapterName: "aux-loop", rows, engine: "agent-loop", budget: 16, ...changes });
+  trials: 3, adapterName: "aux-loop", rows, engine: "agent-loop", budget: 16, model, ...changes });
 
 test("corpus fingerprint changes with answer and oracle definitions", () => {
   const corpus = { tasks: [{ id: "L01", expected: { value: "a" }, oracle: null }] };
@@ -23,7 +25,18 @@ test("gate candidate requires full scored coverage, known engine, and known budg
   assert.equal(ready({ engine: "agent" }).ready, false);
   assert.equal(ready({ budget: null }).ready, false);
   assert.equal(ready({ rows: [{ ...rows[0], durableIntents: null }, ...rows.slice(1)] }).ready, false);
+  assert.equal(ready({ rows: [{ ...rows[0], runtimeModel: null }, ...rows.slice(1)] }).ready, false);
+  assert.equal(ready({ rows: [{ ...rows[0], modelCallEvents: 0 }, ...rows.slice(1)] }).ready, false);
   assert.equal(coverage(rows, ids, 3), true);
+});
+
+test("observed model-call events resolve the default model and reject mixed routes", () => {
+  const call = (modelId) => ({ type: "model.call", payload: { modelId } });
+  assert.deepEqual(modelAttribution([{ type: "run.status", payload: {} }, call(model), call(model)]),
+    { runtimeModel: model, modelCallEvents: 2, modelIds: [model] });
+  assert.equal(modelAttribution([call(model), call("openai/other")]).runtimeModel, null);
+  assert.equal(modelAttribution([call(model), call(undefined)]).runtimeModel, null);
+  assert.equal(modelAttribution([]).runtimeModel, null);
 });
 
 test("durable receipt summary exposes statuses without evidence or values", () => {
@@ -44,4 +57,21 @@ test("A/B eligibility rejects unequal effective budgets and missing planner", ()
     "aux-loop": adapter("agent-loop", 60) } }).ready, false);
   assert.equal(abReadiness({ ...report, adapters: { "aux-loop": report.adapters["aux-loop"] } }).ready, false);
   assert.equal(abReadiness({ ...report, complete: false }).ready, false);
+});
+
+test("synthetic 50×3 A/B report is ready only with matching observed model and budgets", () => {
+  const adapter = (name, engine, budget, adapterRows = rows) => ({
+    rows: adapterRows.map((row) => ({ ...row, engine, modelCallBudget: budget })),
+    readiness: candidateReadiness({ suiteName: "local", selectedIds: ids, allIds: ids,
+      trials: 3, adapterName: name, rows: adapterRows, engine, budget, model }),
+  });
+  const report = { suite: "local", model, complete: true, valid: true, adapters: {
+    aux: adapter("aux", "agent", 16), "aux-loop": adapter("aux-loop", "agent-loop", 16),
+  } };
+  assert.equal(abReadiness(report).ready, true);
+  const mixed = [{ ...rows[0], runtimeModel: "openai/other" }, ...rows.slice(1)];
+  assert.equal(abReadiness({ ...report, adapters: { ...report.adapters,
+    "aux-loop": adapter("aux-loop", "agent-loop", 16, mixed) } }).ready, false);
+  assert.equal(abReadiness({ ...report, adapters: { ...report.adapters,
+    "aux-loop": adapter("aux-loop", "agent-loop", 8) } }).ready, false);
 });

@@ -18,14 +18,25 @@ export function coverage(rows, taskIds, trials) {
   return seen.size === expected.size;
 }
 
+/** Use emitted attempts, not the requested run config, to name the served model. */
+export function modelAttribution(events) {
+  const calls = events.filter((event) => event.type === "model.call");
+  const modelIds = [...new Set(calls.map((event) => event.payload?.modelId))];
+  const runtimeModel = calls.length && modelIds.length === 1 &&
+    typeof modelIds[0] === "string" && modelIds[0].length ? modelIds[0] : null;
+  return { runtimeModel, modelCallEvents: calls.length, modelIds };
+}
+
 /** A gate candidate still needs a separately reviewed comparable baseline. */
-export function candidateReadiness({ suiteName, selectedIds, allIds, trials, adapterName, rows, engine, budget }) {
+export function candidateReadiness({ suiteName, selectedIds, allIds, trials, adapterName, rows, engine, budget, model }) {
   const fullCorpus = selectedIds.length === allIds.length && selectedIds.every((id, i) => id === allIds[i]);
   const completeCoverage = coverage(rows, selectedIds, trials);
   const receiptCoverage = rows.every((row) => row.durableIntents &&
     Number.isSafeInteger(row.durableIntents.unresolved) &&
     Array.isArray(row.durableIntents.ids) &&
     Number.isSafeInteger(row.modelCalls));
+  const modelCoverage = typeof model === "string" && model.length > 0 && rows.every((row) =>
+    row.runtimeModel === model && row.modelCalls > 0 && row.modelCallEvents === row.modelCalls);
   const expectedEngine = adapterName === "aux" ? "agent" : adapterName === "aux-loop" ? "agent-loop" : null;
   const engineMatches = expectedEngine !== null && (engine === expectedEngine ||
     (expectedEngine === "agent" && typeof engine === "string" && engine.startsWith("agent:")));
@@ -35,9 +46,10 @@ export function candidateReadiness({ suiteName, selectedIds, allIds, trials, ada
   if (trials < 3) reasons.push("fewer than three trials");
   if (!completeCoverage) reasons.push("missing, duplicate, or unscored task/trial rows");
   if (!receiptCoverage) reasons.push("model-call or durable receipt attribution is missing");
+  if (!modelCoverage) reasons.push("served model or model-call event attribution is missing or mismatched");
   if (!engineMatches) reasons.push("engine identity is missing or mismatched");
   if (typeof budget !== "number" || !Number.isSafeInteger(budget) || budget <= 0) reasons.push("effective model-call budget is unknown");
-  return { ready: reasons.length === 0, reasons, fullCorpus, completeCoverage, receiptCoverage, engineMatches };
+  return { ready: reasons.length === 0, reasons, fullCorpus, completeCoverage, receiptCoverage, modelCoverage, engineMatches };
 }
 
 /** This only checks whether a single report can support an A/B comparison. */
