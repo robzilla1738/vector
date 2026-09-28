@@ -316,7 +316,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       })) return { ok: false as const, error: "The new line does not show the intended action's effect." };
       if (!effect.trim() || !quote.toLowerCase().includes(effect.trim().toLowerCase()))
         return { ok: false as const, error: "The claimed effect must appear verbatim in the new post-state line." };
-      self.durable.reconcile(intent.id, "applied", JSON.stringify({ observationId: key, quote, effect: effect.trim() }));
+      self.durable.reconcile(intent.id, "applied", JSON.stringify({
+        observationId: key,
+        quote: redactForModel(quote),
+        effect: redactForModel(effect.trim()),
+      }));
       for (const outcome of outcomes) {
         const dispatch = writeDispatches.get(outcome.stepId);
         if (dispatch?.pageId !== intent.pageId) continue;
