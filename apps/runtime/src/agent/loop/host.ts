@@ -128,6 +128,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   const maxModelCalls = run.config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
   /** One re-observe chance when an uncertain dispatch blocks a done turn. */
   let blockedOnLedger = false;
+  let blockedOnRepl = false;
 
   const signal = c.dispatchAbort ? AbortSignal.any([c.abort.signal, c.dispatchAbort.signal]) : c.abort.signal;
   const steerPending = () =>
@@ -560,7 +561,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       return { result: outcome.result, success: outcome.success };
     },
   };
-  deps.repl = ({ code, deadlineMs }) => replPool.eval(replDeps, code, { pageId: activePageId, deadlineMs });
+  deps.repl = ({ code, deadlineMs, yieldTimeMs }) => replPool.eval(replDeps, code, { pageId: activePageId, deadlineMs, yieldTimeMs });
+  deps.replWait = ({ cellId, yieldTimeMs, terminate }) => replPool.wait(runId, cellId, yieldTimeMs, terminate);
   deps.canRecoverDialogValue = (label) => {
     const obs = activePageId ? lastObs.get(activePageId) : undefined;
     const aliases = [label.toLowerCase(), label.toLowerCase().replace(/\breference\b/g, "ref")];
@@ -698,6 +700,15 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       hasResume = false;
 
       if (outcome.kind === "done") {
+        if (replPool.hasOpen(runId)) {
+          if (!blockedOnRepl) {
+            blockedOnRepl = true;
+            transcript.append(runId, [{ role: "user", content: "A REPL script is still open. Call repl_wait with its cell ID to receive its actual result, or terminate it. Do not claim this run completed while the cell is open." }]);
+            continue;
+          }
+          self.finish(runId, "failed", undefined, "REPL cell still open; its result was not joined", "A script was still running");
+          return;
+        }
         // An uncertain dispatch in the durable ledger blocks completion —
         // give the model one chance to re-observe or re-dispatch, then stop.
         const unresolved = [...new Set([

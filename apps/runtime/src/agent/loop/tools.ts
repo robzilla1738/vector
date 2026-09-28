@@ -179,15 +179,29 @@ export function buildToolManifest(): LoopToolManifest {
       "cookie-free fetch(url), fs confined to session roots, and subagent cells: spawn({goal, profile?, pageIds?}) " +
       "returns {cellId}, wait(cellId) yields until the cell finishes or the deadline lapses, send(cellId, text) " +
       "steers a running cell, stop(cellId) cancels it. Guest state persists across calls; modules, " +
-      "eval/Function, process and WebAssembly are denied. All exposed calls are synchronous-looking: do not use await. Results must be JSON data, ≤16 KB (larger output spills to a file).",
+      "eval/Function, process and WebAssembly are denied. All exposed calls are synchronous-looking: do not use await. Set yieldTimeMs to return a cell ID for a long script, then call repl_wait before starting another script or finishing. Results must be JSON data, ≤16 KB (larger output spills to a file).",
     byline: "Aux code mode — page ops still pass authorization and the ledger",
     inputSchema: z.object({
       code: z.string().min(1).max(64_000).describe("Synchronous-looking JavaScript for the REPL session."),
       deadlineMs: z.number().int().positive().optional().describe("Max run time for this call; capped at 120000."),
+      yieldTimeMs: z.number().int().min(0).max(120_000).optional().describe("Return a cell ID if the script is still running after this many milliseconds."),
     }),
     execute: async (raw, ctx) => {
-      const input = z.object({ code: z.string().min(1).max(64_000), deadlineMs: z.number().int().positive().optional() }).parse(raw);
+      const input = z.object({ code: z.string().min(1).max(64_000), deadlineMs: z.number().int().positive().optional(),
+        yieldTimeMs: z.number().int().min(0).max(120_000).optional() }).parse(raw);
       return need(ctx.deps.repl, "repl")(input, ctx);
+    },
+  };
+
+  const replWait: LoopTool = {
+    description: "Resume a yielded REPL cell. Returns its result when finished, or the same cell ID while running. terminate stops the guest and prevents further effects from that script.",
+    byline: "Aux code mode — yielded script continuation",
+    inputSchema: z.object({ cellId: z.string().uuid(), yieldTimeMs: z.number().int().min(0).max(120_000).optional(),
+      terminate: z.boolean().optional() }),
+    execute: async (raw, ctx) => {
+      const input = z.object({ cellId: z.string().uuid(), yieldTimeMs: z.number().int().min(0).max(120_000).optional(),
+        terminate: z.boolean().optional() }).parse(raw);
+      return need(ctx.deps.replWait, "repl_wait")(input, ctx);
     },
   };
 
@@ -501,6 +515,7 @@ export function buildToolManifest(): LoopToolManifest {
     snapshot,
     act,
     repl,
+    repl_wait: replWait,
     goal_program: goalProgram,
     webfetch,
     websearch,

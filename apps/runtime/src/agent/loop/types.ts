@@ -70,7 +70,8 @@ export interface LoopToolDeps {
   webFetch?: (url: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
   webSearch?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
   /** The code-mode REPL: eval guest code against the persistent per-run session. */
-  repl?: (input: { code: string; deadlineMs?: number }, ctx: LoopToolContext) => Promise<LoopToolResult>;
+  repl?: (input: { code: string; deadlineMs?: number; yieldTimeMs?: number }, ctx: LoopToolContext) => Promise<LoopToolResult>;
+  replWait?: (input: { cellId: string; yieldTimeMs?: number; terminate?: boolean }, ctx: LoopToolContext) => Promise<LoopToolResult>;
   /** Recovery may read a labeled value only while a modal visibly occludes the background. */
   canRecoverDialogValue?: (label: string) => boolean;
   /** Explicit requested label from a goal that names a dialog-only value. */

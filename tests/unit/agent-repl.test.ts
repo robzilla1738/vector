@@ -124,6 +124,31 @@ describe("code-mode REPL", () => {
     }
   });
 
+  it("yields a long script and resumes its result from the same cell", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const yielded = out(await pool.eval(deps(), `sleep(30); 42`, { pageId: "p1", yieldTimeMs: 0 }));
+    expect(yielded).toMatchObject({ running: true, cellId: expect.any(String) });
+    await expect(pool.eval(deps(), `1 + 1`, { pageId: "p1" })).rejects.toThrow(/repl_wait/);
+    await expect(pool.wait("another-run", String(yielded.cellId))).rejects.toThrow(/belongs to this run/);
+    const resumed = out(await pool.wait("run-1", String(yielded.cellId), 100));
+    expect(resumed.value).toBe(42);
+    await expect(pool.wait("run-1", String(yielded.cellId), 0)).rejects.toThrow(/No REPL cell/);
+  });
+
+  it("terminates a yielded script before its next page effect", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const step = vi.fn(async () => ({ output: { status: "completed" } }));
+    const yielded = out(await pool.eval(deps({ step }), `sleep(40); page.click("r1")`, { pageId: "p1", yieldTimeMs: 0 }));
+    expect(yielded).toMatchObject({ running: true, cellId: expect.any(String) });
+    expect(out(await pool.wait("run-1", String(yielded.cellId), 0, true))).toMatchObject({ terminated: true });
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(out(await pool.wait("run-1", String(yielded.cellId), 0))).toMatchObject({ terminated: true });
+    expect(step).not.toHaveBeenCalled();
+    expect(out(await pool.eval(deps({ step }), `1 + 1`, { pageId: "p1" })).value).toBe(2);
+  });
+
   it("resolves a named control and gives consecutive actions distinct step ids", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

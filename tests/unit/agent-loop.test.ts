@@ -80,6 +80,22 @@ describe("TranscriptStore (S5)", () => {
 });
 
 describe("runAgentLoop (S5)", () => {
+  it("joins a yielded REPL cell through repl_wait before accepting its verified result", async () => {
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    const cellId = "123e4567-e89b-42d3-a456-426614174000";
+    const repl = vi.fn(async () => ({ output: { running: true, cellId } }));
+    const replWait = vi.fn(async () => ({ finish: { result: { report: "done" } } }));
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "c1", toolName: "repl", input: { code: "sleep(40); submitResult('done')", yieldTimeMs: 0 } }] },
+      { toolCalls: [{ toolCallId: "c2", toolName: "repl_wait", input: { cellId } }] },
+    ]);
+    const outcome = await runAgentLoop({ ...baseOpts(transcript, { repl, replWait }), model });
+    expect(outcome).toMatchObject({ kind: "done", result: { report: "done" } });
+    expect(repl).toHaveBeenCalledOnce();
+    expect(replWait).toHaveBeenCalledOnce();
+    expect(transcript.load("run-1").filter((message) => message.role === "tool")).toHaveLength(2);
+  });
   it("offers a complete goal program on the first page turn, then all tools after a safe fallback", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);

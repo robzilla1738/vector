@@ -1,4 +1,5 @@
 import { newAsyncContext, type QuickJSAsyncContext, type QuickJSHandle } from "quickjs-emscripten";
+import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { AuxError, PlanStepSchema, ResultCitationSchema, type ResultCitation } from "@aux/contracts";
@@ -344,6 +345,7 @@ class ReplSession {
   private artifacts = 0;
   private finished?: Record<string, unknown>;
   private readonly lexicals = new Set<string>();
+  private cancelled = false;
 
   private constructor(
     private context: QuickJSAsyncContext,
@@ -357,7 +359,7 @@ class ReplSession {
     context.runtime.setMaxStackSize(MAX_STACK_BYTES);
     const session = new ReplSession(context, deps, initialPageId);
     context.runtime.setInterruptHandler(
-      () => Date.now() >= session.deadline || deps.signal?.aborted === true,
+      () => session.cancelled || Date.now() >= session.deadline || deps.signal?.aborted === true,
     );
     session.deadline = Date.now() + 30_000; // bootstrap window; eval resets it per call
     const bridge = context.newAsyncifiedFunction("__aux_call", (nameHandle, paramsHandle) =>
@@ -402,7 +404,7 @@ class ReplSession {
       );
     if (this.finished)
       return fail(new AuxError("conflict", "This verified result ended the run; no further REPL effects are allowed."));
-    if (Date.now() >= this.deadline || this.deps.signal?.aborted)
+    if (this.cancelled || Date.now() >= this.deadline || this.deps.signal?.aborted)
       return fail(new AuxError("cancelled", "REPL deadline or run abort reached."));
     try {
       const parsed = params ? JSON.parse(params) : {};
@@ -634,14 +636,26 @@ class ReplSession {
   dispose() {
     this.context.dispose();
   }
+
+  cancel() { this.cancelled = true; }
 }
 
 /** Persistent REPL sessions keyed by run — one QuickJS context each. */
 export class ReplPool {
   private sessions = new Map<string, ReplSession>();
+  private cells = new Map<string, { runId: string; completion: Promise<{ value?: LoopToolResult; error?: unknown }>;
+    settled: boolean; terminated: boolean }>();
 
   private dispose(runId: string) {
-    this.sessions.get(runId)?.dispose();
+    const session = this.sessions.get(runId);
+    if (session) {
+      const active = [...this.cells.values()].filter((cell) => cell.runId === runId && !cell.settled);
+      if (active.length) {
+        session.cancel();
+        void Promise.all(active.map((cell) => cell.completion)).then(() => session.dispose());
+      } else session.dispose();
+    }
+    for (const [id, cell] of this.cells) if (cell.runId === runId) this.cells.delete(id);
     this.sessions.delete(runId);
   }
 
@@ -649,10 +663,14 @@ export class ReplPool {
     for (const runId of this.sessions.keys()) this.dispose(runId);
   }
 
+  hasOpen(runId: string): boolean {
+    return [...this.cells.values()].some((cell) => cell.runId === runId);
+  }
+
   async eval(
     deps: ReplHostDeps,
     code: string,
-    opts?: { pageId?: string; deadlineMs?: number },
+    opts?: { pageId?: string; deadlineMs?: number; yieldTimeMs?: number },
   ): Promise<LoopToolResult> {
     for (const [runId, session] of this.sessions) {
       if (Date.now() - session.touchedAt > IDLE_MS) {
@@ -667,6 +685,39 @@ export class ReplPool {
       session = await ReplSession.create(deps, opts?.pageId);
       this.sessions.set(deps.runId, session);
     }
-    return session.eval(code, opts?.deadlineMs);
+    if (this.cells.size && [...this.cells.values()].some((cell) => cell.runId === deps.runId))
+      throw new AuxError("conflict", "A REPL cell is still open; use repl_wait before starting another script.");
+    if (opts?.yieldTimeMs === undefined) return session.eval(code, opts?.deadlineMs);
+    const id = randomUUID();
+    const cell = { runId: deps.runId, completion: Promise.resolve({} as { value?: LoopToolResult; error?: unknown }),
+      settled: false, terminated: false };
+    cell.completion = session.eval(code, opts.deadlineMs).then(
+      (value) => ({ value }), (error) => ({ error }),
+    ).then((result) => { cell.settled = true; return result; });
+    this.cells.set(id, cell);
+    const outcome = await this.wait(deps.runId, id, opts.yieldTimeMs);
+    return outcome;
+  }
+
+  async wait(runId: string, cellId: string, yieldTimeMs = 30_000, terminate = false): Promise<LoopToolResult> {
+    const cell = this.cells.get(cellId);
+    if (!cell || cell.runId !== runId) throw new AuxError("not_found", "No REPL cell with that ID belongs to this run.");
+    if (terminate && !cell.settled) {
+      cell.terminated = true;
+      this.sessions.get(runId)?.cancel();
+    }
+    if (cell.terminated && !cell.settled) return { output: { cellId, terminated: true } };
+    let timerId: ReturnType<typeof setTimeout>;
+    const timer = new Promise<undefined>((resolve) => { timerId = setTimeout(() => resolve(undefined), Math.max(0, Math.min(yieldTimeMs, REPL_MAX_DEADLINE_MS))); });
+    const result = await Promise.race([cell.completion, timer]);
+    clearTimeout(timerId!);
+    if (!result) return { output: { cellId, running: true } };
+    this.cells.delete(cellId);
+    if (cell.terminated) {
+      this.dispose(runId);
+      return { output: { cellId, terminated: true } };
+    }
+    if (result.error) throw result.error;
+    return result.value!;
   }
 }
