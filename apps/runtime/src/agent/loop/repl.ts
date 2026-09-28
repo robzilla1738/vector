@@ -281,7 +281,12 @@ page.clickByName = (name, role) => {
   if (rendered) label = rendered[1];
   else if (label.includes('" href=')) label = label.slice(0, label.indexOf('" href='));
   const target = __aux_invoke("findRef", { pageId: __aux_page, name: label, role });
-  return target.navigationUrl ? page.navigate(target.navigationUrl) : page.click(target.ref);
+  return page.click(target.ref);
+};
+page.followLinkByName = (name) => {
+  const target = __aux_invoke("findRef", { pageId: __aux_page, name: String(name).trim(), role: "link" });
+  if (!target.navigationUrl) throw new Error("The named link has no observed same-origin route; use a governed click if its click behavior is required.");
+  return page.navigate(target.navigationUrl);
 };
 page.navigateMatching = (targetId) => {
   const route = __aux_invoke("findRoute", { pageId: __aux_page, targetId });

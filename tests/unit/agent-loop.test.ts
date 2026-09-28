@@ -562,12 +562,12 @@ describe("runToolLoop (S5 host integration)", () => {
     const transcript = new TranscriptStore(h.db).load(run.runId);
     expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("Action outcome uncertain"))).toBe(true);
   });
-  it("opens an observed same-origin pagination link without a write intent", async () => {
+  it("explicitly navigates an observed same-origin pagination link without a write intent", async () => {
     let current = { ...pageObs(), content: { ...pageObs().content,
       url: "http://x.test/records", elements: [{ ref: "r17", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
     } } as Observation;
     const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
-      code: 'page.clickByName("2"); const s = snapshot(); submitResult(s.text, [{observationId:s.observationId, quote:"url: http://x.test/records?page=2"}])', answerLabel: "",
+      code: 'page.followLinkByName("2"); const s = snapshot(); submitResult(s.text, [{observationId:s.observationId, quote:"url: http://x.test/records?page=2"}])', answerLabel: "",
     } }] }]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);

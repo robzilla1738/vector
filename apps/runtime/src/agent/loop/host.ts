@@ -478,9 +478,9 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           ? `Named control "${name}" is ambiguous (${matches.length} matches); use a specific name or ref.`
           : `No control named "${name}" is in the current observation.`);
       const target = matches[0]!;
-      // Following a same-origin href is navigation. Do not dispatch its click
-      // handler, which can carry an unrelated write and an uncertain receipt
-      // when the document unloads before the click acknowledgment arrives.
+      // Expose an observed route for the explicit followLinkByName operation.
+      // clickByName still dispatches a click because href alone does not reveal
+      // target=_blank, download, or handler semantics.
       if (target.role === "link" && target.href) {
         try {
           const base = new URL(observation.content.url);

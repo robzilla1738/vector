@@ -171,13 +171,22 @@ describe("code-mode REPL", () => {
     expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "click", target: "r10" }));
   });
 
-  it("follows a uniquely observed same-origin link by navigation instead of a click", async () => {
+  it("follows a link only when navigation is explicitly requested", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
     const findRef = vi.fn(async () => ({ ref: "r17", navigationUrl: "http://x.test/records?page=2" }));
     const step = vi.fn(async () => ({ output: { status: "completed" } }));
-    await pool.eval(deps({ findRef, step }), `page.clickByName("2")`, { pageId: "p1" });
-    expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "navigate", url: "http://x.test/records?page=2" }));
+    await pool.eval(deps({ findRef, step }), `page.followLinkByName("2"); page.clickByName("2")`, { pageId: "p1" });
+    expect(step).toHaveBeenNthCalledWith(1, "p1", expect.objectContaining({ op: "navigate", url: "http://x.test/records?page=2" }));
+    expect(step).toHaveBeenNthCalledWith(2, "p1", expect.objectContaining({ op: "click", target: "r17" }));
+  });
+
+  it("refuses explicit route navigation when the named link has no same-origin href", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const step = vi.fn(async () => ({ output: { status: "completed" } }));
+    await expect(pool.eval(deps({ findRef: async () => ({ ref: "r3" }), step }), `page.followLinkByName("Download")`, { pageId: "p1" })).rejects.toThrow(/no observed same-origin route/);
+    expect(step).not.toHaveBeenCalled();
   });
 
   it("extracts one labeled value with its observed quote and can submit it", async () => {
