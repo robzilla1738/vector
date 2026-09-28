@@ -340,7 +340,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       const citedObs = obsRecords.get(key);
       const labelWords = labels.map((label) => label.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu)?.[0]).filter(Boolean) as string[];
       const newModalHeading = citedObs?.content.headings.find((heading) =>
-        !intent.summary?.beforeHeadingHashes?.includes(observationLineHash(heading))
+        // Some observers index hidden dialog headings before the dialog opens.
+        // The rendered text, not the heading index, must show the heading only
+        // after this click; pair it with the fresh modal and quoted content.
+        !intent.summary?.beforeLineHashes.includes(observationLineHash(heading))
+        && citedObs.content.text.split("\n").some((line) => line.trim() === heading.trim())
         && labelWords.some((word) => heading.toLocaleLowerCase().includes(word)));
       if (intent.summary.ops[0] === "click" && intent.summary.modalWasOpen === false
         && citedObs && modalVisible(citedObs) && newModalHeading

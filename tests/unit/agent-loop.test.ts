@@ -986,9 +986,15 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("does not confirm the click completed"))).toBe(true);
   });
 
-  it.each([true, false])("reconciles a Details click only when a new modal is visibly open (%s)", async (modalOpen) => {
+  it.each([
+    { modalOpen: true, headingVisibleBefore: false, shouldReconcile: true },
+    { modalOpen: false, headingVisibleBefore: false, shouldReconcile: false },
+    { modalOpen: true, headingVisibleBefore: true, shouldReconcile: false },
+  ])("reconciles Details only from a newly visible modal heading and content (%o)", async ({ modalOpen, headingVisibleBefore, shouldReconcile }) => {
     const before = { ...pageObs(), content: { ...pageObs().content,
-      text: "Record 15", headings: ["Record 15"],
+      text: headingVisibleBefore ? "Record 15\nRecord details" : "Record 15",
+      // The heading index includes hidden dialogs even before they render.
+      headings: ["Record 15", "Record details"],
       elements: [{ ref: "r5", tag: "button", role: "button", name: "Details…", frame: "main" }],
     } } as Observation;
     const after = { ...before, revision: 2, content: { ...before.content,
@@ -1019,8 +1025,8 @@ describe("runToolLoop (S5 host integration)", () => {
     h.pages.observe.mockImplementation(async () => before);
     const run = await h.coordinator.start({ goal: "open Details and read internal ref", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     const final = await settle(h.repo, run.runId);
-    expect(final.status === "completed").toBe(modalOpen);
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: modalOpen ? "confirmed" : "uncertain" });
+    expect(final.status === "completed").toBe(shouldReconcile);
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldReconcile ? "confirmed" : "uncertain" });
   });
 
   it("reconciles an uncertain link click only from its recorded destination URL", async () => {
