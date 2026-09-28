@@ -7,9 +7,8 @@ import type { ModelMessage } from "./types.js";
  * - `pruneMedia` strips large embedded media (data URLs) out of tool outputs
  *   before they persist — the artifact already lives on disk via outputDir.
  * - `budgetToolOutputs` caps the aggregate tool-result bytes in one step.
- * - `compactMessages` rewrites the oldest half of an oversized transcript to
- *   placeholders, keeping the task message and a verbatim tail; the store
- *   persists the rewrite so a restart sees the same context.
+ * - `compactMessages` rewrites old output to placeholders, keeping the task
+ *   and newest exchange verbatim; the store persists this before another call.
  */
 
 /** One model step's tool results may carry at most this much output. */
@@ -23,7 +22,7 @@ const PRUNE_MIN_BYTES = 1_024;
 const COMPACT_PART_BYTES = 1_024;
 const COMPACT_TEXT_CHARS = 400;
 
-const bytes = (value: unknown): number => JSON.stringify(value ?? null)?.length ?? 0;
+const bytes = (value: unknown): number => Buffer.byteLength(JSON.stringify(value ?? null) ?? "", "utf8");
 
 /** True for embedded media strings — data: URIs are the only unambiguous case. */
 function isMediaString(value: string): boolean {
@@ -100,18 +99,16 @@ function compactPart(part: MessagePart): MessagePart {
 }
 
 /**
- * Deterministic compaction: the task message (index 0) and the newest
- * KEEP_TAIL messages stay verbatim; everything between shrinks to
- * placeholders. Returns the compacted array plus the indexes that changed
- * so the caller can persist the rewrite — or null when nothing shrank.
+ * Deterministic compaction: keep the task and newest exchange verbatim. First
+ * shrink older history; if still over budget, shrink the older part of the
+ * tail. Returns changed indexes for one durable transaction.
  */
 export function compactMessages(messages: ModelMessage[]): { messages: ModelMessage[]; changed: number[] } | null {
   const tailStart = Math.max(1, messages.length - TRANSCRIPT_KEEP_TAIL);
-  if (tailStart <= 1) return null; // nothing between task and tail
   const next = [...messages];
   const changed: number[] = [];
-  for (let i = 1; i < tailStart; i++) {
-    const message = messages[i]!;
+  const compactAt = (i: number) => {
+    const message = next[i]!;
     const content = message.content;
     let compacted: unknown = content;
     if (typeof content === "string" && content.length > COMPACT_TEXT_CHARS) {
@@ -123,7 +120,12 @@ export function compactMessages(messages: ModelMessage[]): { messages: ModelMess
       next[i] = { ...message, content: compacted } as ModelMessage;
       changed.push(i);
     }
-  }
+  };
+  for (let i = 1; i < tailStart; i++) compactAt(i);
+  // An eight-message tail can itself exceed the context cap after several
+  // large tool results. Keep only the newest assistant/result exchange exact.
+  if (transcriptBytes(next) > TRANSCRIPT_COMPACT_BYTES)
+    for (let i = tailStart; i < messages.length - 2; i++) compactAt(i);
   if (!changed.length) return null;
   // Guard against compaction that fails to shrink below the trigger — callers
   // treat that as "nothing more we can do", not a loop of rewrites.

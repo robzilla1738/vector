@@ -3,6 +3,7 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 
 import { basename, dirname, resolve, sep } from "node:path";
 import type { CoordinatorLoopHost } from "../coordinator-verify.js";
 import { DEFAULT_MAX_MODEL_CALLS, TERMINAL_STATUSES, markUnconfirmedWrites, verifyResultCitations } from "../coordinator-verify.js";
+import { attemptsOf } from "../model-client.js";
 import { classifyStep, subagentGrants } from "../permissions.js";
 import { observationLineHash } from "../durable.js";
 import { redactObservation } from "../planner.js";
@@ -695,6 +696,24 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         ...(step.providerMetadata ? { providerMetadata: step.providerMetadata } : {}),
         ...(step.error ? { error: step.error } : {}),
       });
+    },
+    onModelFailure: ({ error }) => {
+      // The Gateway may have tried other candidates before the final failure.
+      // Those attempts and the final request all count against the durable
+      // run cap, even though no assistant message was returned.
+      for (const attempt of attemptsOf(error)) {
+        modelCalls++;
+        self.deps.recordModelCall({
+          runId, role: "agent", modelId: attempt.modelId ?? modelId(),
+          durationMs: attempt.durationMs, inputTokens: attempt.inputTokens, outputTokens: attempt.outputTokens,
+          ...(attempt.cachedInputTokens ? { cachedInputTokens: attempt.cachedInputTokens } : {}),
+          ...(attempt.providerMetadata ? { providerMetadata: attempt.providerMetadata } : {}),
+          error: attempt.error ?? "model attempt failed before a usable response",
+        });
+      }
+      modelCalls++;
+      self.deps.recordModelCall({ runId, role: "agent", modelId: modelId(), durationMs: 0,
+        error: error instanceof Error ? error.message : String(error) });
     },
     providerOptions: self.deps.agentLoop?.providerOptions,
     webmcp: pageExposesWebmcp,

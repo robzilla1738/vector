@@ -44,6 +44,8 @@ export interface AgentLoopOptions {
   beforeModelCall?: () => void | Promise<void>;
   /** Called after each model step is persisted — usage/billing/reporting. */
   onStep?: (info: { index: number; step: ToolCallStepResult }) => void | Promise<void>;
+  /** A dispatched provider request failed; persist every attempted call before returning. */
+  onModelFailure?: (info: { index: number; error: unknown }) => void | Promise<void>;
   /** Called after each tool executes — status/byline reporting. */
   onToolCall?: (call: LoopToolCall, result: LoopToolResult) => void;
   /** Per-provider options merged into the client's defaults (prompt caching keys). */
@@ -234,10 +236,17 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
         messages.splice(0, messages.length, ...compacted.messages);
       }
     }
+    if (transcriptBytes(messages) > TRANSCRIPT_COMPACT_BYTES)
+      return { kind: "failed", error: new AuxError("model_error", "Context remains above the 192 KB limit after durable compaction; no model call was made.") };
+
+    try {
+      await opts.beforeModelCall?.();
+    } catch (error) {
+      return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", error instanceof Error ? error.message : String(error)) };
+    }
 
     let step;
     try {
-      await opts.beforeModelCall?.();
       step = await model.toolCallStep({
         modelId: opts.modelId,
         system,
@@ -250,6 +259,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
         maxOutputTokens: opts.maxOutputTokens,
       });
     } catch (error) {
+      await opts.onModelFailure?.({ index, error });
       if (opts.steerCheck?.()) return { kind: "steered" };
       return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", error instanceof Error ? error.message : String(error)) };
     }

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { AuxError } from "@aux/contracts";
 import { mkdtempSync, rmSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -452,6 +453,38 @@ describe("runAgentLoop (S5)", () => {
     expect(outcome).toMatchObject({ kind: "failed", error: { code: "permission_denied" } });
     expect(transcript.count("run-1")).toBe(0); // no assistant step was billed or persisted
   });
+
+  it("compacts an oversized recent tail durably before the next model call", async () => {
+    const { transcript, db } = fixture();
+    transcript.append("run-1", [userTask, ...Array.from({ length: 10 }, (_, i) => ({
+      role: "user" as const, content: `${i}: ${"é".repeat(18_000)}`,
+    }))]);
+    let sentBytes = 0;
+    const model: NonNullable<AgentLoopOptions["model"]["toolCallStep"]> = async ({ messages }) => {
+      sentBytes = Buffer.byteLength(JSON.stringify(messages), "utf8");
+      return { message: { role: "assistant", content: "done" } as ModelMessage,
+        toolCalls: [], text: "done", durationMs: 0 };
+    };
+    const outcome = await runAgentLoop({ ...baseOpts(new TranscriptStore(db)), model: { toolCallStep: model } });
+    expect(outcome).toMatchObject({ kind: "done" });
+    expect(sentBytes).toBeLessThanOrEqual(192 * 1024);
+    const persisted = new TranscriptStore(db).load("run-1");
+    expect(String(persisted[1]!.content)).toContain("compacted");
+    expect(String(persisted[10]!.content)).toContain("é");
+  });
+
+  it("fails before billing when even durable compaction cannot fit the task", async () => {
+    const { transcript } = fixture();
+    transcript.append("run-1", [{ role: "user", content: "x".repeat(200_000) }]);
+    let calls = 0;
+    const outcome = await runAgentLoop({ ...baseOpts(transcript), model: { toolCallStep: async () => {
+      calls++;
+      throw new Error("unreachable");
+    } } });
+    expect(outcome).toMatchObject({ kind: "failed", error: { code: "model_error" } });
+    expect(calls).toBe(0);
+    expect(transcript.load("run-1")[0]!.content).toHaveLength(200_000);
+  });
 });
 
 describe("buildSystemPrompt (S5 conditional docs)", () => {
@@ -518,13 +551,16 @@ function coordinatorHarness(
     livePageIds: () => ["p1"],
     get: () => ({ viewStatus: "visible", documentEpoch: 1, url: "http://x.test/order" }),
   };
-  const modelCalls: { role: string }[] = [];
+  const modelCalls: { role: string; modelId: string; error?: string }[] = [];
   const coordinator = new RunCoordinator({
     repo, events, pages: pages as never,
     model: () => model,
     defaultModel: () => "test/agent",
     recoveryModel: () => undefined,
-    recordModelCall: (call: { role: string }) => modelCalls.push(call),
+    recordModelCall: (call: { runId: string; role: string; modelId: string; durationMs: number; error?: string }) => {
+      modelCalls.push(call);
+      repo.saveModelCall({ callId: randomUUID(), ...call, role: call.role as "agent", createdAt: Date.now() });
+    },
     grants: ["effect:read", "effect:write", "effect:egress"],
   });
   return { db, repo, coordinator, pages, modelCalls };
@@ -540,6 +576,27 @@ async function settle(repo: Repo, runId: string) {
 }
 
 describe("runToolLoop (S5 host integration)", () => {
+  it("persists failed failover attempts against the run budget without a tool replay", async () => {
+    const model = new MockModelClient();
+    model.toolCallStep = async () => {
+      const error = new Error("provider unavailable");
+      Object.defineProperty(error, Symbol.for("aux.modelAttempts"), { value: [{
+        durationMs: 5, modelId: "test/fallback", inputTokens: 12,
+        error: "first route failed",
+      }] });
+      throw error;
+    };
+    const h = coordinatorHarness(model);
+    const run = await h.coordinator.start({ goal: "read", pageIds: ["p1"], chatId: "chat-1",
+      engine: "agent-loop", maxModelCalls: 2 });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("failed");
+    expect(h.repo.listModelCalls(run.runId)).toHaveLength(2);
+    expect(h.repo.listModelCalls(run.runId).map((call) => call.modelId)).toEqual(["test/fallback", "test/agent"]);
+    expect(h.repo.listModelCalls(run.runId).every((call) => !!call.error)).toBe(true);
+    expect(h.pages.execute).not.toHaveBeenCalled();
+  });
+
   it("finishes a corroborated record route and dialog in one goal-program model call", async () => {
     let current = { ...pageObs(), content: { ...pageObs().content,
       url: "http://x.test/records", text: "Records",
