@@ -112,6 +112,28 @@ it("maps Arc Spaces and pinned tabs into bookmark folders", () => {
   expect(skipped).toBe(1);
 });
 
+it("imports Arc root sidebar data when the reviewed browser Profile is Default", async () => {
+  const root = tmp();
+  const profile = join(root, "Default");
+  mkdirSync(profile);
+  writeFileSync(join(profile, "Bookmarks"), JSON.stringify({ roots: {
+    bookmark_bar: { type: "folder", children: [] }, other: { type: "folder", children: [] },
+    synced: { type: "folder", children: [] },
+  } }));
+  writeFileSync(join(root, "StorableSidebar.json"), JSON.stringify({ sidebar: { containers: [{
+    spaces: [{ id: "space", title: "Arc Work" }],
+    items: [{ id: "tab", spaceID: "space", data: { tab: { savedURL: "https://arc.example/", customTitle: "Arc" } } }],
+  }] } }));
+  const repo = fixtureRepo();
+  const importer = new BrowserImporter({ repo, emit: () => {}, sources: () => [{
+    id: "arc", label: "Arc", profiles: [{ id: "Default", dir: profile }],
+    hasSidebarMetadata: true, sidebarDir: root,
+  }] });
+  const report = await importer.runNow({ selections: [{ sourceId: "arc", profileId: "Default", categories: ["bookmarks"] }] });
+  expect(report.results[0]).toMatchObject({ state: "done", imported: 1 });
+  expect(repo.listBookmarks()).toContainEqual(expect.objectContaining({ url: "https://arc.example/", folderPath: ["Arc Work"] }));
+});
+
 it("reads Firefox bookmarks with folder chains and history visits", () => {
   const profile = firefoxProfile();
   const bookmarks = readFirefoxBookmarks(profile);

@@ -16,6 +16,8 @@ export const ACTIVE_PROTECTED_TABLES = [
   "safety_approval_requests",
   "safety_send_journal",
   "safety_audit",
+  "operation_implementations",
+  "operation_reconciliations",
 ] as const;
 
 /** Complete the protected migration before constructing any repository service. */

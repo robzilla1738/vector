@@ -60,7 +60,7 @@ const option = name => {
   return index < 0 ? undefined : process.argv[index + 1];
 };
 if (process.argv.includes("--list")) {
-  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --link-peek | --space-theme | --space-theme-advanced | --reader-peek | --tab-preview-focus | --tab-name-ui | --downloads | --site-controls | --tab-audio | --unsaved-work | --file-handoff | --http-auth | --http-auth-cancel | --reader | --translation | --eyedropper | --file-io | --workbook-export | --artifact-export | --agent-connections | --page-action | --profiles | --profile-confirmation | --popover | --menu-primitives | --toast-primitives | --selector-bookmark | --selector-site-permissions | --selector-context | --selector-downloads | --selector-results | --selector-task-resources | --selector-search | --selector-closed | --selector-reading | --quick-ask-focus | --settings-focus | --settings-search | --settings-route | --settings-internal-url | --settings-section-rail | --agent-grants | --privacy-history-panel | --settings-focus-jump | --library-focus | --appearance-prefs | --search-engine-prefs | --edge-leeway | --navigation-recovery | --certificate-recovery | --http-fallback | --http-fallback-dialog]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state", siteControls: "--site-controls needs an operator to open site controls, clear the disposable fixture's website data, reset its seeded blocked notification decision, and close the dialog before the storage check", tabAudio: "--tab-audio needs an operator to open Tab overview and select the disposable fixture tab; the harness checks mute and unmute", unsavedWork: "--unsaved-work needs an operator to open Tab overview and press Select duplicates; the harness checks that the edited fixture tab is kept", fileHandoff: "--file-handoff needs an operator to open Downloads; the harness opens and reveals a disposable text file", httpAuth: "--http-auth needs an operator to enter fixture-user / fixture-pass in the Aux sign-in prompt; the harness verifies the protected page loads", httpAuthCancel: "--http-auth-cancel needs an operator to cancel the disposable challenge; the harness verifies no protected content loads", preview: "--preview needs an operator to open Tab overview; the harness checks a captured background tab thumbnail", navigationMenu: "--navigation-menu needs an operator to focus Back, press ArrowDown, and choose the Red history entry", contextMenu: "--context-menu needs an operator to open the shell context menu and choose Reload", pageAction: "--page-action needs an operator to choose Summarize page from the native shell context menu", reader: "--reader needs an operator to open Reader view for a local article", eyeDropper: "--eyedropper needs an operator to select a color with the macOS sampler", fileIo: "--file-io needs an operator to export the fixture bookmark through Library to the printed path", workbookExport: "--workbook-export needs an operator to invoke the Aux shell workbook method and save to the printed path", artifactExport: "--artifact-export needs an operator to create a disposable stored image and save it through the Aux shell method", agentConnections: "--agent-connections needs an operator to create and revoke a disposable scoped connection through the Aux native shell", profiles: "--profiles needs an operator to create, rename, archive, restore, and explicitly delete only the generated disposable Profile", profileConfirmation: "--profile-confirmation checks a named native delete confirmation and cancellation without deleting the disposable Profile", popover: "--popover checks browser-context search, choices and Escape dismissal in a disposable chat", menuPrimitives: "--menu-primitives checks shared vertical Space and Browser tools menus with Escape dismissal in a disposable Profile", toastPrimitives: "--toast-primitives checks the no-data autofill info Toast and its timed dismissal in a disposable Profile", selectorBookmark: "--selector-bookmark checks add/remove toolbar state on a disposable local page", selectorSitePermissions: "--selector-site-permissions checks open-site selection in Aux Settings on a disposable local page", selectorContext: "--selector-context checks the open-tab choices in a disposable conversation", selectorDownloads: "--selector-downloads checks live progress, cancel, and retry in a disposable download shelf", selectorResults: "--selector-results checks the disposable set-results table surface", selectorTaskResources: "--selector-task-resources checks a task page reference after local navigation", selectorSearch: "--selector-search checks that a background local tab appears as a live search suggestion", selectorClosed: "--selector-closed checks a disposable closed tab in Library", selectorReading: "--selector-reading checks two disposable Reading List rows and a read-state change", quickAskFocus: "--quick-ask-focus checks the composer receives focus in the disposable Quick Ask window", settingsFocus: "--settings-focus checks Settings category, search result, and search-field focus in a disposable Profile", settingsSearch: "--settings-search checks Plugins, Google Calendar, and a generated Appearance field in Settings search", settingsRoute: "--settings-route checks native Settings section navigation", settingsInternalUrl: "--settings-internal-url checks an internal Settings URL stays in the top shell", settingsSectionRail: "--settings-section-rail checks three available grouped Settings destinations", agentGrants: "--agent-grants checks a disposable Write grant on and off", privacyHistoryPanel: "--privacy-history-panel checks the clear-history control is in Privacy & Security and cancellation leaves history intact", settingsFocusJump: "--settings-focus-jump checks one indexed search destination", libraryFocus: "--library-focus checks Library search-to-bookmark focus in a disposable Profile", appearancePrefs: "--appearance-prefs needs an operator to choose a light theme and title-bar material in a disposable Profile", searchEnginePrefs: "--search-engine-prefs checks a disposable search engine choice across restart", edgeLeeway: "--edge-leeway automatically checks native floating-sidebar entry and exit leeway over a guest page" }, null, 2));
+  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --protected-startup | --browser-import-ui | --browser-import-formats | --link-peek | --space-theme | --space-theme-advanced | --reader-peek | --tab-preview-focus | --tab-name-ui | --downloads | --site-controls | --tab-audio | --unsaved-work | --file-handoff | --http-auth | --http-auth-cancel | --reader | --translation | --eyedropper | --file-io | --workbook-export | --artifact-export | --agent-connections | --page-action | --profiles | --profile-confirmation | --popover | --menu-primitives | --toast-primitives | --selector-bookmark | --selector-site-permissions | --selector-context | --selector-downloads | --selector-results | --selector-task-resources | --selector-search | --selector-closed | --selector-reading | --quick-ask-focus | --settings-focus | --settings-search | --settings-route | --settings-internal-url | --settings-section-rail | --agent-grants | --privacy-history-panel | --settings-focus-jump | --library-focus | --appearance-prefs | --search-engine-prefs | --edge-leeway | --navigation-recovery | --certificate-recovery | --http-fallback | --http-fallback-dialog]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state", siteControls: "--site-controls needs an operator to open site controls, clear the disposable fixture's website data, reset its seeded blocked notification decision, and close the dialog before the storage check", tabAudio: "--tab-audio needs an operator to open Tab overview and select the disposable fixture tab; the harness checks mute and unmute", unsavedWork: "--unsaved-work needs an operator to open Tab overview and press Select duplicates; the harness checks that the edited fixture tab is kept", fileHandoff: "--file-handoff needs an operator to open Downloads; the harness opens and reveals a disposable text file", httpAuth: "--http-auth needs an operator to enter fixture-user / fixture-pass in the Aux sign-in prompt; the harness verifies the protected page loads", httpAuthCancel: "--http-auth-cancel needs an operator to cancel the disposable challenge; the harness verifies no protected content loads", preview: "--preview needs an operator to open Tab overview; the harness checks a captured background tab thumbnail", navigationMenu: "--navigation-menu needs an operator to focus Back, press ArrowDown, and choose the Red history entry", contextMenu: "--context-menu needs an operator to open the shell context menu and choose Reload", pageAction: "--page-action needs an operator to choose Summarize page from the native shell context menu", reader: "--reader needs an operator to open Reader view for a local article", eyeDropper: "--eyedropper needs an operator to select a color with the macOS sampler", fileIo: "--file-io needs an operator to export the fixture bookmark through Library to the printed path", workbookExport: "--workbook-export needs an operator to invoke the Aux shell workbook method and save to the printed path", artifactExport: "--artifact-export needs an operator to create a disposable stored image and save it through the Aux shell method", agentConnections: "--agent-connections needs an operator to create and revoke a disposable scoped connection through the Aux native shell", profiles: "--profiles needs an operator to create, rename, archive, restore, and explicitly delete only the generated disposable Profile", profileConfirmation: "--profile-confirmation checks a named native delete confirmation and cancellation without deleting the disposable Profile", popover: "--popover checks browser-context search, choices and Escape dismissal in a disposable chat", menuPrimitives: "--menu-primitives checks shared vertical Space and Browser tools menus with Escape dismissal in a disposable Profile", toastPrimitives: "--toast-primitives checks the no-data autofill info Toast and its timed dismissal in a disposable Profile", selectorBookmark: "--selector-bookmark checks add/remove toolbar state on a disposable local page", selectorSitePermissions: "--selector-site-permissions checks open-site selection in Aux Settings on a disposable local page", selectorContext: "--selector-context checks the open-tab choices in a disposable conversation", selectorDownloads: "--selector-downloads checks live progress, cancel, and retry in a disposable download shelf", selectorResults: "--selector-results checks the disposable set-results table surface", selectorTaskResources: "--selector-task-resources checks a task page reference after local navigation", selectorSearch: "--selector-search checks that a background local tab appears as a live search suggestion", selectorClosed: "--selector-closed checks a disposable closed tab in Library", selectorReading: "--selector-reading checks two disposable Reading List rows and a read-state change", quickAskFocus: "--quick-ask-focus checks the composer receives focus in the disposable Quick Ask window", settingsFocus: "--settings-focus checks Settings category, search result, and search-field focus in a disposable Profile", settingsSearch: "--settings-search checks Plugins, Google Calendar, and a generated Appearance field in Settings search", settingsRoute: "--settings-route checks native Settings section navigation", settingsInternalUrl: "--settings-internal-url checks an internal Settings URL stays in the top shell", settingsSectionRail: "--settings-section-rail checks three available grouped Settings destinations", agentGrants: "--agent-grants checks a disposable Write grant on and off", privacyHistoryPanel: "--privacy-history-panel checks the clear-history control is in Privacy & Security and cancellation leaves history intact", settingsFocusJump: "--settings-focus-jump checks one indexed search destination", libraryFocus: "--library-focus checks Library search-to-bookmark focus in a disposable Profile", appearancePrefs: "--appearance-prefs needs an operator to choose a light theme and title-bar material in a disposable Profile", searchEnginePrefs: "--search-engine-prefs checks a disposable search engine choice across restart", edgeLeeway: "--edge-leeway automatically checks native floating-sidebar entry and exit leeway over a guest page" }, null, 2));
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native Aux.app journeys require macOS.");
@@ -130,6 +130,7 @@ const workspacesUiJourney = process.argv.includes("--workspaces-ui");
 const memoryInboxUiJourney = process.argv.includes("--memory-inbox-ui");
 const memoryPreviewUiJourney = process.argv.includes("--memory-preview-ui");
 const browserImportUiJourney = process.argv.includes("--browser-import-ui");
+const browserImportFormatsJourney = process.argv.includes("--browser-import-formats");
 const protectedStartupJourney = process.argv.includes("--protected-startup");
 const receiptBeforeUiJourney = process.argv.includes("--receipt-before-ui");
 const receiptUndoUiJourney = process.argv.includes("--receipt-undo-ui");
@@ -222,7 +223,7 @@ const healthDiagnosticsJourney = process.argv.includes("--health-diagnostics");
 const unpackedExtensionJourney = process.argv.includes("--unpacked-extension");
 const runtimeBackupRestoreJourney = process.argv.includes("--runtime-backup-restore");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, protectedStartupJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -811,6 +812,47 @@ else {
     report.importSourceHashes = Object.fromEntries(importSourceFiles.map(path =>
       [path.slice(importHome.length + 1), createHash("sha256").update(readFileSync(path)).digest("hex")]));
   }
+  if (browserImportFormatsJourney) {
+    const arcRoot = join(importHome, "Library/Application Support/Arc/User Data");
+    const arcProfile = join(arcRoot, "Default");
+    mkdirSync(arcProfile, { recursive: true });
+    const arcSidebar = join(arcRoot, "StorableSidebar.json");
+    writeFileSync(arcSidebar, JSON.stringify({ sidebar: { containers: [{
+      spaces: [{ id: "work", title: "Work" }],
+      items: [{ id: "tab", spaceID: "work", data: { tab: {
+        savedURL: "https://aux-import-arc.example/bookmark", customTitle: "Arc fixture",
+      } } }],
+    }] } }));
+    const arcHistory = join(arcProfile, "History");
+    const arcDb = new DatabaseSync(arcHistory);
+    arcDb.exec("CREATE TABLE urls(id INTEGER PRIMARY KEY,url TEXT,title TEXT); CREATE TABLE visits(id INTEGER PRIMARY KEY,url INTEGER,visit_time INTEGER);");
+    arcDb.prepare("INSERT INTO urls VALUES(1,?,?)").run("https://aux-import-arc.example/history", "Arc history");
+    arcDb.prepare("INSERT INTO visits VALUES(1,1,?)").run((Date.now() - 3_600_000 + 11_644_473_600_000) * 1000);
+    arcDb.close();
+    const safariDir = join(importHome, "Library/Safari");
+    mkdirSync(safariDir, { recursive: true });
+    const safariBookmarks = join(safariDir, "Bookmarks.plist");
+    writeFileSync(safariBookmarks, `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>Children</key><array><dict><key>Title</key><string>Safari fixture</string><key>URLString</key><string>https://aux-import-safari.example/bookmark</string></dict></array></dict></plist>`);
+    const safariHistory = join(safariDir, "History.db");
+    const safariDb = new DatabaseSync(safariHistory);
+    safariDb.exec("CREATE TABLE history_items(id INTEGER PRIMARY KEY,url TEXT); CREATE TABLE history_visits(id INTEGER PRIMARY KEY,history_item INTEGER,title TEXT,visit_time REAL);");
+    safariDb.prepare("INSERT INTO history_items VALUES(1,?)").run("https://aux-import-safari.example/history");
+    safariDb.prepare("INSERT INTO history_visits VALUES(1,1,?,?)").run("Safari history", Date.now() / 1000 - 978_307_200 - 3600);
+    safariDb.close();
+    const firefoxDir = join(importHome, "Library/Application Support/Firefox/Profiles/fixture.default-release");
+    mkdirSync(firefoxDir, { recursive: true });
+    const firefoxPlaces = join(firefoxDir, "places.sqlite");
+    const ffDb = new DatabaseSync(firefoxPlaces);
+    ffDb.exec("CREATE TABLE moz_places(id INTEGER PRIMARY KEY,url TEXT,title TEXT); CREATE TABLE moz_bookmarks(id INTEGER PRIMARY KEY,type INTEGER,fk INTEGER,parent INTEGER,position INTEGER,title TEXT); CREATE TABLE moz_historyvisits(id INTEGER PRIMARY KEY,place_id INTEGER,visit_date INTEGER);");
+    ffDb.prepare("INSERT INTO moz_places VALUES(1,?,?),(2,?,?)")
+      .run("https://aux-import-firefox.example/bookmark", "Firefox fixture", "https://aux-import-firefox.example/history", "Firefox history");
+    ffDb.prepare("INSERT INTO moz_bookmarks VALUES(11,1,1,3,0,?)").run("Firefox fixture");
+    ffDb.prepare("INSERT INTO moz_historyvisits VALUES(1,2,?)").run((Date.now() - 3_600_000) * 1000);
+    ffDb.close();
+    importSourceFiles.push(arcSidebar, arcHistory, safariBookmarks, safariHistory, firefoxPlaces);
+    report.importSourceHashes = Object.fromEntries(importSourceFiles.map(path =>
+      [path.slice(importHome.length + 1), createHash("sha256").update(readFileSync(path)).digest("hex")]));
+  }
   if (!rpcOnly) execFileSync("xcrun", ["swiftc", script, "-o", windowTool], { timeout: 120_000 });
   child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
     "--use-mock-keychain", "--password-store=basic",
@@ -822,7 +864,7 @@ else {
     ...(settingsCookieControlsJourney ? ["--host-resolver-rules=MAP localhost 127.0.0.1", "--no-proxy-server"] : []),
     ...(settingsHttpsFirstJourney ? [`--host-resolver-rules=MAP aux-s9-off.notarealdomain-auxprobe.com 127.0.0.1:${tcpFixture.address().port}, MAP aux-s9-on.notarealdomain-auxprobe.com 127.0.0.1:${tcpFixture.address().port}`, "--no-proxy-server", "--disable-features=HttpsFirstBalancedModeAutoEnable,HttpsFirstModeV2ForEngagedSites,HttpsFirstModeV2ForTypicallySecureUsers"] : []),
     ...(httpFallbackJourney ? ["--disable-features=HttpsFirstDialogUi"] : [])], {
-    cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", ...(browserImportUiJourney ? { HOME: importHome } : {}) }, stdio: ["ignore", "ignore", "pipe"],
+    cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", ...(browserImportUiJourney || browserImportFormatsJourney ? { HOME: importHome } : {}) }, stdio: ["ignore", "ignore", "pipe"],
   });
   const startupLog = join(output, "browser-stderr.log");
   child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
@@ -840,7 +882,7 @@ else {
   }, 30_000).catch(error => { throw new Error(`${error.message}; runtime sessions: ${JSON.stringify(lastRuntimeStatus ?? [])}; browser log: ${startupLog}`); });
   assert.ok(connection);
   const runtimeCapabilities = await rpc("runtime.describe");
-  if (browserImportUiJourney || protectedStartupJourney) {
+  if (browserImportUiJourney || browserImportFormatsJourney || protectedStartupJourney) {
     assert.equal(runtimeCapabilities.featureStages?.spaces, "preview", "Unrequalified candidate stages must remain preview");
   } else assert.equal(runtimeCapabilities.featureStages?.spaces, "on",
     "The runtime must derive qualified Spaces from the native method manifest");
@@ -862,7 +904,8 @@ else {
     const migrated = inspect();
     assert.ok(migrated.error?.startsWith("auxenc:v1:"), "Legacy model error must migrate before services start");
     assert.deepEqual(migrated.markers, ["datasets", "events", "model_calls", "page_sets", "programs",
-      "response_metadata", "results", "run_messages", "safety_approval_requests", "safety_audit",
+      "response_metadata", "results", "run_messages", "operation_implementations", "operation_reconciliations",
+      "safety_approval_requests", "safety_audit",
       "safety_send_journal", "set_members"].map(table => `protected_sqlite_v1:${table}`).sort());
     assert.equal(readFileSync(databasePath).includes("private startup marker"), false);
     record("native Keychain startup migrates adapted SQLite rows before runtime readiness", { tables: migrated.markers.length });
@@ -887,6 +930,66 @@ else {
     assert.equal(inspect().error, migrated.error, "Protected row must remain stable across native restart");
     assert.ok(Array.isArray(await rpc("workspaces.list", {})));
     record("protected SQLite row and authenticated runtime survive native restart");
+    report.passed = true;
+  } else if (browserImportFormatsJourney) {
+    const selections = ["arc", "safari", "firefox"].map(sourceId => ({
+      sourceId,
+      profileId: sourceId === "arc" ? "Default" : sourceId === "safari" ? "Safari" : "fixture.default-release",
+      categories: ["bookmarks", "history"],
+    }));
+    const preview = await rpc("import.preview");
+    assert.deepEqual(preview.sources.filter(source => source.id !== "chrome-attached").map(source => source.id),
+      ["arc", "safari", "firefox"]);
+    for (const selection of selections) {
+      const source = preview.sources.find(item => item.id === selection.sourceId);
+      const reviewed = source?.profileCategories.find(item => item.profileId === selection.profileId);
+      assert.deepEqual(reviewed?.categories.map(category => [category.category, category.available]),
+        [["bookmarks", true], ["history", true]]);
+    }
+    record("isolated Arc, Safari and Firefox Profiles offer only their reviewed categories");
+    const run = await rpc("import.run", { selections });
+    const done = await until("three-source native import", async () => {
+      const status = await rpc("import.status", { jobId: run.jobId });
+      return status.done ? status : null;
+    }, 60_000);
+    assert.deepEqual(done.report.results.map(result => [result.source, result.category, result.state, result.imported]),
+      ["arc", "safari", "firefox"].flatMap(source => [[source, "bookmarks", "done", 1], [source, "history", "done", 1]]));
+    const bookmarkUrls = (await rpc("bookmarks.list")).map(item => item.url).filter(url => url.includes("aux-import-"));
+    const historyUrls = (await rpc("history.list", { query: "aux-import", limit: 20 })).map(item => item.url);
+    assert.deepEqual(bookmarkUrls.sort(), ["arc", "safari", "firefox"].map(source => `https://aux-import-${source}.example/bookmark`).sort());
+    assert.deepEqual(historyUrls.sort(), ["arc", "safari", "firefox"].map(source => `https://aux-import-${source}.example/history`).sort());
+    record("native bookmark and History stores contain one item from each reviewed format");
+    const retry = await rpc("import.run", { selections });
+    const retryDone = await until("idempotent format retry", async () => {
+      const status = await rpc("import.status", { jobId: retry.jobId });
+      return status.done ? status : null;
+    }, 60_000);
+    assert.ok(retryDone.report.results.every(result => result.imported === 0 && result.skipped === 1));
+    assert.deepEqual(Object.fromEntries(importSourceFiles.map(path =>
+      [path.slice(importHome.length + 1), createHash("sha256").update(readFileSync(path)).digest("hex")])),
+      report.importSourceHashes);
+    record("retry skips all six imported items and leaves source stores unchanged");
+    console.log("Quit this disposable Aux window from the Aux menu, then the journey will relaunch the same Profile.");
+    if (child.exitCode === null) await new Promise((resolveExit, rejectExit) => {
+      const timeout = setTimeout(() => rejectExit(new Error("Timed out waiting for graceful Aux quit")), 180_000);
+      child.once("exit", () => { clearTimeout(timeout); resolveExit(); });
+    });
+    child.stderr.destroy();
+    child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
+      "--use-mock-keychain", "--password-store=basic"], {
+      cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", HOME: importHome }, stdio: ["ignore", "ignore", "pipe"],
+    });
+    child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
+    await until("restarted imported Profile runtime", async () => {
+      try {
+        const descriptor = JSON.parse(readFileSync(runtimeFile, "utf8"));
+        rpcPort = descriptor.port; rpcToken = descriptor.token;
+        return (await rpc("workspace.get")).sessions?.some(session => session.sessionId === "aux" && session.status === "connected");
+      } catch { return false; }
+    }, 60_000);
+    assert.deepEqual((await rpc("bookmarks.list")).map(item => item.url).filter(url => url.includes("aux-import-")).sort(), bookmarkUrls.sort());
+    assert.deepEqual((await rpc("history.list", { query: "aux-import", limit: 20 })).map(item => item.url).sort(), historyUrls.sort());
+    record("Arc, Safari and Firefox native destinations survive graceful restart");
     report.passed = true;
   } else if (browserImportUiJourney) {
     if (rpcOnly) throw new Error("The browser import acceptance needs the real Settings UI.");

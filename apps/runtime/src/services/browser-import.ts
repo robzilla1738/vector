@@ -110,7 +110,7 @@ export class BrowserImporter {
     if (source.id === "firefox") return { items: readFirefoxBookmarks(profile.dir), skipped: 0 };
     const items = readChromiumBookmarks(profile.dir);
     if (source.id === "arc" && source.hasSidebarMetadata) {
-      const sidebar = readArcSidebar(profile.dir);
+      const sidebar = readArcSidebar(source.sidebarDir ?? profile.dir);
       const seen = new Set(items.map(i => i.url));
       return { items: [...items, ...sidebar.bookmarks.filter(i => !seen.has(i.url))], skipped: sidebar.skipped };
     }

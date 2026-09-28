@@ -29,6 +29,8 @@ export interface ImportSource {
   /** Why this source cannot be used right now (permission, missing store). */
   blocker?: string;
   hasSidebarMetadata?: boolean;
+  /** Arc keeps StorableSidebar.json at the User Data root, above Default. */
+  sidebarDir?: string;
 }
 
 export interface ImportHistoryRow {
@@ -107,6 +109,7 @@ export function listImportSources(): ImportSource[] {
         label: "Arc",
         profiles: profiles.length ? profiles : [{ id: "Default", dir: ARC_DIR }],
         hasSidebarMetadata: existsSync(join(ARC_DIR, "StorableSidebar.json")),
+        sidebarDir: ARC_DIR,
       });
     }
   }
