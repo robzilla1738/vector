@@ -23,6 +23,8 @@ export type GuardedDispatchOpts = {
   /** Action target labels from the redacted observation, with no control values. */
   actionLabels?: string[];
   expectedNavigationUrlHash?: string;
+  modalWasOpen?: boolean;
+  beforeHeadingHashes?: string[];
   url: string;
   /** epoch the compiled program must still match */
   documentEpoch: number;
@@ -72,11 +74,17 @@ export async function guardedExecute(deps: GuardedDispatchDeps, opts: GuardedDis
     beforeText: opts.beforeText,
     actionLabels: opts.actionLabels,
     expectedNavigationUrlHash: opts.expectedNavigationUrlHash,
+    modalWasOpen: opts.modalWasOpen,
+    beforeHeadingHashes: opts.beforeHeadingHashes,
     taskId: opts.taskId,
     taskRevision: opts.taskRevision,
   });
   if (write.skip) return { kind: "skipped", reason: write.reason! };
-  const result = await deps.pages.execute(program, { ...opts.exec, journaled: true, journalIntentId:write.intentId }, opts.returnObservation ? { returnObservation: opts.returnObservation } : {});
+  const result = await deps.pages.execute(program, { ...opts.exec,
+    // Navigation has no durable write intent. Let the executor classify it
+    // normally instead of claiming a pre-journaled write without an ID.
+    ...(write.intentId ? { journaled: true, journalIntentId: write.intentId } : {}),
+  }, opts.returnObservation ? { returnObservation: opts.returnObservation } : {});
   settleWrite(deps.durable, write.intentId, result);
   return { kind: "ran", result, program };
 }

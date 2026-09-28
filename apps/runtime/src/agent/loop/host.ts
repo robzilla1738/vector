@@ -117,6 +117,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   const obsTexts = new Map<string, string>();
   /** Citation handle → snapshot identity — resolves which page/revision a cited handle points at. */
   const obsMeta = new Map<string, { pageId: string; revision: number }>();
+  const obsRecords = new Map<string, Observation>();
   const obsAt = new Map<string, number>();
   /** stepId → the page/revision a write dispatched against — a citation on the same page at a later revision confirms it. */
   const writeDispatches = new Map<string, { pageId: string; revision: number }>();
@@ -138,6 +139,9 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   const noteUnresolved = () => {
     self.unresolvedByRun.set(runId, self.durable.unresolved(runId).map((intent) => intent.id));
   };
+  const modalVisible = (obs: Observation) => obs.content.elements.some((element) => element.occluded)
+    && obs.content.elements.some((element) => !element.occluded && element.role === "button"
+      && /^(close|dismiss|cancel|done)$/i.test((element.name ?? "").trim()));
 
   /** observe with the same detached-target fallback the planner loop uses. */
   const observePage = async (pageId: string, req: { scope?: import("@aux/contracts").ObservationScope; subtreeRef?: string }): Promise<Observation> => {
@@ -166,12 +170,15 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     const observationId = artifactId ?? `rev:${obs.revision}`;
     // The same redacted render the planner shows — secrets never reach the model,
     // and citation verification checks the text the model actually saw.
-    const text = renderObservation(redactObservation(obs));
+    const safeObs = redactObservation(obs);
+    const text = renderObservation(safeObs);
     obsTexts.set(observationId, text);
     obsTexts.set(`${obs.pageId}@${obs.revision}`, text);
     obsTexts.set(obs.pageId, text);
     obsMeta.set(observationId, { pageId: obs.pageId, revision: obs.revision });
     obsMeta.set(`${obs.pageId}@${obs.revision}`, { pageId: obs.pageId, revision: obs.revision });
+    obsRecords.set(observationId, safeObs);
+    obsRecords.set(`${obs.pageId}@${obs.revision}`, safeObs);
     obsAt.set(observationId, Date.now());
     obsAt.set(`${obs.pageId}@${obs.revision}`, Date.now());
     return { text, observationId, revision: obs.revision };
@@ -209,6 +216,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           observation: obs.content, url: obs.content.url,
           beforeText: renderObservation(safeObs), actionLabels,
           expectedNavigationUrlHash,
+          modalWasOpen: modalVisible(safeObs),
+          beforeHeadingHashes: safeObs.content.headings.map(observationLineHash),
           documentEpoch: obs.documentEpoch, revision: obs.revision,
           taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
           isCurrent: () => !steerPending() && !signal.aborted,
@@ -318,6 +327,26 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           return { ok: false as const, error: "The new URL does not match the clicked link's recorded destination." };
         if (!effect.trim()) return { ok: false as const, error: "Describe the observed navigation effect." };
         self.durable.reconcile(intent.id, "applied", JSON.stringify({ observationId: key, quote: redactForModel(quote), effect: redactForModel(effect.trim()) }));
+        for (const outcome of outcomes) {
+          const dispatch = writeDispatches.get(outcome.stepId);
+          if (dispatch?.pageId !== intent.pageId) continue;
+          if (outcome.receipt) outcome.receipt = { ...outcome.receipt, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false, observed: quote };
+          if (outcome.effect === "uncertain" || outcome.effect === "dispatched") outcome.effect = "observed";
+        }
+        noteUnresolved();
+        return { ok: true as const, intentId: intent.id, status: "confirmed" as const };
+      }
+      const citedObs = obsRecords.get(key);
+      const labelWords = labels.map((label) => label.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu)?.[0]).filter(Boolean) as string[];
+      const newModalHeading = citedObs?.content.headings.find((heading) =>
+        !intent.summary?.beforeHeadingHashes?.includes(observationLineHash(heading))
+        && labelWords.some((word) => heading.toLocaleLowerCase().includes(word)));
+      if (intent.summary.ops[0] === "click" && intent.summary.modalWasOpen === false
+        && citedObs && modalVisible(citedObs) && newModalHeading
+        && citedObs.content.text.split("\n").some((line) => line.trim() === quote)) {
+        self.durable.reconcile(intent.id, "applied", JSON.stringify({
+          observationId: key, quote: redactForModel(quote), effect: redactForModel(`Opened dialog: ${newModalHeading}`),
+        }));
         for (const outcome of outcomes) {
           const dispatch = writeDispatches.get(outcome.stepId);
           if (dispatch?.pageId !== intent.pageId) continue;

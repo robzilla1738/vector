@@ -517,7 +517,9 @@ describe("runToolLoop (S5 host integration)", () => {
     }] }]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);
-    h.pages.execute.mockImplementation(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
+    h.pages.execute.mockImplementation(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void;
+      journaled?: boolean; journalIntentId?: string }) => {
+      if (ctx?.journaled && !ctx.journalIntentId) throw new Error("A pre-journaled browser write requires its durable intent ID");
       const op = program.steps[0]?.op;
       current = op === "navigate"
         ? { ...current, revision: 2, content: { ...current.content, url: "http://x.test/records/rec-14", text: "Record rec-14", elements: [
@@ -571,7 +573,9 @@ describe("runToolLoop (S5 host integration)", () => {
     } }] }]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);
-    h.pages.execute.mockImplementation(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
+    h.pages.execute.mockImplementation(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void;
+      journaled?: boolean; journalIntentId?: string }) => {
+      if (ctx?.journaled && !ctx.journalIntentId) throw new Error("A pre-journaled browser write requires its durable intent ID");
       current = { ...current, revision: 2, content: { ...current.content,
         url: "http://x.test/records?page=2", text: "Page 2 records",
       } } as Observation;
@@ -856,6 +860,43 @@ describe("runToolLoop (S5 host integration)", () => {
     const transcript = new TranscriptStore(h.db).load(run.runId);
     expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("already visible before"))).toBe(true);
     expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("does not confirm the click completed"))).toBe(true);
+  });
+
+  it.each([true, false])("reconciles a Details click only when a new modal is visibly open (%s)", async (modalOpen) => {
+    const before = { ...pageObs(), content: { ...pageObs().content,
+      text: "Record 15", headings: ["Record 15"],
+      elements: [{ ref: "r5", tag: "button", role: "button", name: "Details…", frame: "main" }],
+    } } as Observation;
+    const after = { ...before, revision: 2, content: { ...before.content,
+      text: "Record 15\nRecord details\nCreated by the fixture seed. Internal ref rec-15.",
+      headings: ["Record 15", "Record details"],
+      elements: modalOpen ? [
+        { ref: "r5", tag: "button", role: "button", name: "Details…", frame: "main", occluded: true },
+        { ref: "r9", tag: "button", role: "button", name: "Close", frame: "main" },
+      ] : before.content.elements,
+    } } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r5" }] } }] },
+      { toolCalls: [{ toolCallId: "r1", toolName: "reconcile_action", input: {
+        citation: { pageId: "p1", revision: 2, quote: "Created by the fixture seed. Internal ref rec-15." },
+        effect: "Opened the Record details dialog",
+      } }] },
+      { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "rec-15" } }] },
+      { text: "Cannot prove the dialog opened." },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "failed" as const,
+        startedAt: 1, durationMs: 1, error: { code: "condition_timeout", message: "timed out" },
+        effect: "uncertain" as const, receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "failed", steps, observation: after };
+    });
+    h.pages.observe.mockImplementation(async () => before);
+    const run = await h.coordinator.start({ goal: "open Details and read internal ref", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status === "completed").toBe(modalOpen);
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: modalOpen ? "confirmed" : "uncertain" });
   });
 
   it("reconciles an uncertain link click only from its recorded destination URL", async () => {

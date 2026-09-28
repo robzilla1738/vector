@@ -18,7 +18,8 @@ export interface WriteIntent {
   status: "pending" | "confirmed" | "uncertain" | "not_applied";
   createdAt: number;
   /** Only operation names and hashes of redacted pre-dispatch lines are retained. */
-  summary?: { ops: string[]; actionLabels?: string[]; beforeLineHashes: string[]; expectedNavigationUrlHash?: string };
+  summary?: { ops: string[]; actionLabels?: string[]; beforeLineHashes: string[]; expectedNavigationUrlHash?: string;
+    modalWasOpen?: boolean; beforeHeadingHashes?: string[] };
 }
 
 const SELECT = `SELECT id, run_id AS runId, page_id AS pageId,
@@ -165,6 +166,8 @@ export function beginConsequentialWrite(
     actionLabels?: string[];
     /** Hash of the unique clicked link's resolved destination, never its raw URL. */
     expectedNavigationUrlHash?: string;
+    modalWasOpen?: boolean;
+    beforeHeadingHashes?: string[];
   },
 ): { skip: boolean; intentId?: string; reason?: string } {
   if (!ledger) return { skip: false };
@@ -188,6 +191,8 @@ export function beginConsequentialWrite(
       ops: opts.steps.filter((step) => isWriteIntentStep(step.op)).map((step) => step.op),
       actionLabels: opts.actionLabels?.filter((label) => label && !label.includes("{handle}")),
       expectedNavigationUrlHash: opts.expectedNavigationUrlHash,
+      modalWasOpen: opts.modalWasOpen,
+      beforeHeadingHashes: opts.beforeHeadingHashes,
       beforeLineHashes: [...new Set((opts.beforeText ?? "").split("\n").map((line) => line.trim())
         .filter(Boolean).map(observationLineHash))],
     },
