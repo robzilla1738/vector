@@ -128,6 +128,7 @@ const hooksCommandUiJourney = process.argv.includes("--hooks-command-ui");
 const workspacesUiJourney = process.argv.includes("--workspaces-ui");
 const memoryInboxUiJourney = process.argv.includes("--memory-inbox-ui");
 const memoryPreviewUiJourney = process.argv.includes("--memory-preview-ui");
+const browserImportUiJourney = process.argv.includes("--browser-import-ui");
 const receiptBeforeUiJourney = process.argv.includes("--receipt-before-ui");
 const receiptUndoUiJourney = process.argv.includes("--receipt-undo-ui");
 const receiptRunUndoUiJourney = process.argv.includes("--receipt-run-undo-ui");
@@ -219,7 +220,7 @@ const healthDiagnosticsJourney = process.argv.includes("--health-diagnostics");
 const unpackedExtensionJourney = process.argv.includes("--unpacked-extension");
 const runtimeBackupRestoreJourney = process.argv.includes("--runtime-backup-restore");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -228,10 +229,15 @@ mkdirSync(output, { recursive: true });
 const disposable = mkdtempSync("/tmp/aux-native-journey-");
 const profile = join(disposable, "profile");
 const runtimeFile = join(profile, "Default/Aux Runtime Data/runtime.json");
+const nativeHeader = resolve(app, "../../../chrome/browser/ui/aux/generated/aux_host_methods.h");
+const nativeSourceCommit = existsSync(nativeHeader)
+  ? readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1]
+  : undefined;
 const script = join(root, "tests/host/native-window.swift");
 const windowTool = join(disposable, "native-window");
 const report = { schema: 1, scope: "Native Aux.app, disposable Profile, loopback fixture; no public debugging port", app,
   sourceSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  ...(nativeSourceCommit ? { nativeSourceCommit } : {}),
   startedAt: new Date().toISOString(), rpcOnly, uiOnly, steps: [], captures: [], passed: false };
 let child;
 let fixture;
@@ -773,6 +779,27 @@ else {
     mkdirSync(join(profile, "Default"), { recursive: true });
     writeFileSync(join(profile, "Default/Preferences"), JSON.stringify({ download: { default_directory: target } }));
   }
+  const importHome = join(disposable, "fixture-home");
+  const importSourceFiles = [];
+  if (browserImportUiJourney) {
+    for (const [name, suffix] of [["Default", "default"], ["Profile 1", "work"]]) {
+      const dir = join(importHome, "Library/Application Support/Google/Chrome", name);
+      mkdirSync(dir, { recursive: true });
+      const bookmarks = join(dir, "Bookmarks");
+      writeFileSync(bookmarks, JSON.stringify({ roots: { bookmark_bar: { type: "folder", children: [
+        { type: "url", name: `${suffix} fixture`, url: `https://aux-import-${suffix}.example/bookmark` },
+      ] }, other: { type: "folder", children: [] }, synced: { type: "folder", children: [] } } }));
+      const history = join(dir, "History");
+      const db = new DatabaseSync(history);
+      db.exec("CREATE TABLE urls(id INTEGER PRIMARY KEY, url TEXT, title TEXT); CREATE TABLE visits(id INTEGER PRIMARY KEY, url INTEGER, visit_time INTEGER);");
+      db.prepare("INSERT INTO urls(id,url,title) VALUES(1,?,?)").run(`https://aux-import-${suffix}.example/history`, `${suffix} history`);
+      db.prepare("INSERT INTO visits(id,url,visit_time) VALUES(1,1,?)").run((Date.now() - 3_600_000 + 11_644_473_600_000) * 1000);
+      db.close();
+      importSourceFiles.push(bookmarks, history);
+    }
+    report.importSourceHashes = Object.fromEntries(importSourceFiles.map(path =>
+      [path.slice(importHome.length + 1), createHash("sha256").update(readFileSync(path)).digest("hex")]));
+  }
   if (!rpcOnly) execFileSync("xcrun", ["swiftc", script, "-o", windowTool], { timeout: 120_000 });
   child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
     "--use-mock-keychain", "--password-store=basic",
@@ -784,7 +811,7 @@ else {
     ...(settingsCookieControlsJourney ? ["--host-resolver-rules=MAP localhost 127.0.0.1", "--no-proxy-server"] : []),
     ...(settingsHttpsFirstJourney ? [`--host-resolver-rules=MAP aux-s9-off.notarealdomain-auxprobe.com 127.0.0.1:${tcpFixture.address().port}, MAP aux-s9-on.notarealdomain-auxprobe.com 127.0.0.1:${tcpFixture.address().port}`, "--no-proxy-server", "--disable-features=HttpsFirstBalancedModeAutoEnable,HttpsFirstModeV2ForEngagedSites,HttpsFirstModeV2ForTypicallySecureUsers"] : []),
     ...(httpFallbackJourney ? ["--disable-features=HttpsFirstDialogUi"] : [])], {
-    cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"],
+    cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", ...(browserImportUiJourney ? { HOME: importHome } : {}) }, stdio: ["ignore", "ignore", "pipe"],
   });
   const startupLog = join(output, "browser-stderr.log");
   child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
@@ -802,13 +829,85 @@ else {
   }, 30_000).catch(error => { throw new Error(`${error.message}; runtime sessions: ${JSON.stringify(lastRuntimeStatus ?? [])}; browser log: ${startupLog}`); });
   assert.ok(connection);
   const runtimeCapabilities = await rpc("runtime.describe");
-  assert.equal(runtimeCapabilities.featureStages?.spaces, "on",
+  if (browserImportUiJourney) {
+    assert.equal(runtimeCapabilities.featureStages?.spaces, "preview", "Unrequalified candidate stages must remain preview");
+  } else assert.equal(runtimeCapabilities.featureStages?.spaces, "on",
     "The runtime must derive qualified Spaces from the native method manifest");
   if (settingsContentBlockingJourney || siteBlockingExceptionJourney || siteBlockingPrivateJourney || settingsCustomListJourney) assert.equal(runtimeCapabilities.featureStages?.contentBlocking, "on", "Native content blocking must be qualified in the runtime capability manifest");
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
   record("Profile runtime is authenticated and raw debugging is disabled", { sessions: connection.sessions?.length });
 
-  if (runtimeBackupRestoreJourney) {
+  if (browserImportUiJourney) {
+    if (rpcOnly) throw new Error("The browser import acceptance needs the real Settings UI.");
+    const preview = await rpc("import.preview");
+    assert.deepEqual(preview.sources.filter(source => source.id !== "chrome-attached").map(source => source.id), ["chrome"],
+      "Isolated HOME must expose only the disposable Chrome fixture");
+    const chrome = preview.sources.find(source => source.id === "chrome");
+    assert.deepEqual(chrome.profileCategories.map(item => item.profileId), ["Default", "Profile 1"]);
+    record("source preview stays inside isolated disposable HOME", { profiles: chrome.profiles });
+    console.log("In Aux Settings → General → Import browser data, review Chrome's two Profiles. Select only Default History and Profile 1 Bookmarks, then choose Import selected (2).");
+    await until("reviewed Profile import in native history and bookmarks", async () => {
+      const bookmarks = await rpc("bookmarks.list");
+      const history = await rpc("history.list", { query: "aux-import", limit: 20 });
+      return bookmarks.some(item => item.url === "https://aux-import-work.example/bookmark") &&
+        history.some(item => item.url === "https://aux-import-default.example/history");
+    }, 300_000);
+    const bookmarks = await rpc("bookmarks.list");
+    const history = await rpc("history.list", { query: "aux-import", limit: 20 });
+    assert.deepEqual(bookmarks.filter(item => item.url.includes("aux-import-")).map(item => item.url),
+      ["https://aux-import-work.example/bookmark"]);
+    assert.deepEqual(history.filter(item => item.url.includes("aux-import-")).map(item => item.url),
+      ["https://aux-import-default.example/history"]);
+    assert.equal(native("has-text", "Import finished"), "true", "Settings must report completion");
+    record("native Settings imported exactly the two reviewed source/Profile/category pairs", {});
+    const retry = await rpc("import.run", { selections: [
+      { sourceId: "chrome", profileId: "Default", categories: ["history"] },
+      { sourceId: "chrome", profileId: "Profile 1", categories: ["bookmarks"] },
+    ] });
+    const retryStatus = await until("idempotent retry", async () => {
+      const status = await rpc("import.status", { jobId: retry.jobId });
+      return status.done ? status : null;
+    });
+    assert.deepEqual(retryStatus.report.results.map(result => result.imported), [0, 0]);
+    assert.deepEqual(retryStatus.report.results.map(result => result.skipped), [1, 1]);
+    record("reviewed retry skips existing native bookmark and history visit", {});
+    await assert.rejects(rpc("import.run", { selections: [
+      { sourceId: "chrome", profileId: "Owner Profile", categories: ["history"] },
+    ] }), /invalid_params/);
+    const sourceHashes = Object.fromEntries(importSourceFiles.map(path =>
+      [path.slice(importHome.length + 1), createHash("sha256").update(readFileSync(path)).digest("hex")]));
+    assert.deepEqual(sourceHashes, report.importSourceHashes, "Source browser stores must remain unchanged");
+    record("source files are unchanged and an unreviewed Profile is refused", {});
+    console.log("Quit this disposable Aux window from the Aux menu, then the journey will relaunch the same Profile.");
+    if (child.exitCode === null) await new Promise((resolveExit, rejectExit) => {
+      const timeout = setTimeout(() => rejectExit(new Error("Timed out waiting for graceful Aux quit")), 180_000);
+      child.once("exit", () => { clearTimeout(timeout); resolveExit(); });
+    });
+    child.stderr.destroy();
+    const nativeHistoryDb = new DatabaseSync(join(profile, "Default/History"), { readOnly: true });
+    report.nativeAfterFirstExit = nativeHistoryDb.prepare(
+      "SELECT url, visit_count FROM urls WHERE url LIKE 'https://aux-import-%' ORDER BY url").all();
+    nativeHistoryDb.close();
+    child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
+      "--use-mock-keychain", "--password-store=basic"], {
+      cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", HOME: importHome }, stdio: ["ignore", "ignore", "pipe"],
+    });
+    child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
+    await until("restarted Profile runtime", async () => {
+      try {
+        const descriptor = JSON.parse(readFileSync(runtimeFile, "utf8"));
+        rpcPort = descriptor.port; rpcToken = descriptor.token;
+        return (await rpc("workspace.get")).sessions?.some(session => session.sessionId === "aux" && session.status === "connected");
+      } catch { return false; }
+    }, 60_000);
+    await until("imported history projection after restart", async () =>
+      (await rpc("history.list", { query: "aux-import", limit: 20 })).some(item =>
+        item.url === "https://aux-import-default.example/history"), 60_000);
+    assert.deepEqual((await rpc("bookmarks.list")).filter(item => item.url.includes("aux-import-")).map(item => item.url),
+      ["https://aux-import-work.example/bookmark"]);
+    record("selected native history and bookmark survive full Aux restart", {});
+    report.passed = true;
+  } else if (runtimeBackupRestoreJourney) {
     await rpc("settings.set", { tabLayout: "vertical" });
     const dataDir = join(profile, "Default/Aux Runtime Data");
     const marker = `Post backup ${Date.now()}`;
@@ -4933,6 +5032,24 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
   report.passed = true;
   }
 } catch (error) {
+  if (browserImportUiJourney) {
+    const inspect = (path, sql) => {
+      if (!existsSync(path)) return { exists: false };
+      try {
+        const db = new DatabaseSync(path, { readOnly: true });
+        const rows = db.prepare(sql).all();
+        db.close();
+        return { exists: true, rows };
+      } catch (cause) { return { exists: true, error: String(cause) }; }
+    };
+    report.importRestartDiagnostics = {
+      native: inspect(join(profile, "Default/History"),
+        "SELECT url, visit_count FROM urls WHERE url LIKE 'https://aux-import-%' ORDER BY url"),
+      runtime: inspect(join(profile, "Default/Aux Runtime Data/aux-state.sqlite"),
+        "SELECT url, visited_at FROM history WHERE url LIKE 'https://aux-import-%' ORDER BY url"),
+      count: await rpc("history.count").catch(cause => String(cause)),
+    };
+  }
   report.steps.push({ name: "terminal failure", passed: false, detail: String(error), ...(settingsHttpsFirstJourney ? { httpPlainRequests, tlsHelloRequests } : {}) });
   process.exitCode = 1;
 } finally {
@@ -4942,6 +5059,22 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     child.kill("SIGTERM");
     await Promise.race([new Promise(resolveExit => child.once("exit", resolveExit)), delay(5000)]);
     if (child.exitCode === null) child.kill("SIGKILL");
+  }
+  if (browserImportUiJourney && !report.passed) {
+    const historyDb = join(profile, "Default/History");
+    if (existsSync(historyDb)) {
+      try {
+        const db = new DatabaseSync(historyDb, { readOnly: true });
+        report.importRestartDiagnostics = {
+          ...report.importRestartDiagnostics,
+          nativeAfterExit: db.prepare("SELECT url, visit_count FROM urls WHERE url LIKE 'https://aux-import-%' ORDER BY url").all(),
+        };
+        db.close();
+      } catch (cause) {
+        report.importRestartDiagnostics = { ...report.importRestartDiagnostics, nativeAfterExitError: String(cause) };
+      }
+      writeFileSync(join(output, "manifest.json"), `${JSON.stringify(report, null, 2)}\n`);
+    }
   }
   child?.stderr.destroy();
   fixture?.closeAllConnections();
