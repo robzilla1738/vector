@@ -19,6 +19,7 @@ import type {
 import { AuxError } from "@aux/contracts";
 import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invocations";
 import { commitRelaxed, kvGet, kvGetJson, kvSet, kvSetJson } from "./db.js";
+import type { SqliteColumnCipher } from "./sqlite-protection.js";
 
 const now = () => Date.now();
 const J = JSON.stringify;
@@ -45,7 +46,7 @@ export class Repo {
   private deferred = new Map<string, { write: () => void; late: boolean }>();
   private flushTimer: NodeJS.Immediate | null = null;
 
-  constructor(readonly db: DatabaseSync) {}
+  constructor(readonly db: DatabaseSync, private readonly columnCipher?: SqliteColumnCipher) {}
   requireChromiumHistory() { this.chromiumHistoryRequired = true; }
 
   /** Prepared once per SQL text; SQLite re-prepares a cached statement itself after a schema change. */
@@ -676,20 +677,33 @@ export class Repo {
     return { artifactId: r.artifact_id, runId: r.run_id ?? undefined, pageId: r.page_id ?? undefined, path: r.path, mediaType: r.media_type, size: r.size, status: r.status, createdAt: r.created_at };
   }
   saveModelCall(c: ModelCall) {
+    const rowId = JSON.stringify([c.callId]);
+    const protect = (column: string, value: string | null) =>
+      value === null || !this.columnCipher ? value : this.columnCipher.encrypt("model_calls", rowId, column, value);
     this.q(
         `INSERT INTO model_calls(call_id,run_id,role,model_id,provider_metadata,duration_ms,input_tokens,output_tokens,cost_usd,cost_estimated,error,created_at)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
-      .run(c.callId, c.runId ?? null, c.role, c.modelId, c.providerMetadata ? J(c.providerMetadata) : null, c.durationMs, c.inputTokens ?? null, c.outputTokens ?? null, c.costUsd ?? null, c.costEstimated ? 1 : 0, c.error ?? null, c.createdAt);
+      .run(c.callId, c.runId ?? null, c.role, c.modelId,
+        protect("provider_metadata", c.providerMetadata ? J(c.providerMetadata) : null),
+        c.durationMs, c.inputTokens ?? null, c.outputTokens ?? null, c.costUsd ?? null,
+        c.costEstimated ? 1 : 0, protect("error", c.error ?? null), c.createdAt);
   }
   listModelCalls(runId: string): ModelCall[] {
-    return (this.q("SELECT * FROM model_calls WHERE run_id=? ORDER BY created_at").all(runId) as any[]).map((r) => ({
-      callId: r.call_id, runId: r.run_id ?? undefined, role: r.role, modelId: r.model_id,
-      providerMetadata: P(r.provider_metadata, undefined as never), durationMs: r.duration_ms,
-      inputTokens: r.input_tokens ?? undefined, outputTokens: r.output_tokens ?? undefined,
-      costUsd: r.cost_usd ?? undefined, costEstimated: !!r.cost_estimated, error: r.error ?? undefined,
-      createdAt: r.created_at,
-    }));
+    return (this.q("SELECT * FROM model_calls WHERE run_id=? ORDER BY created_at").all(runId) as any[]).map((r) => {
+      const rowId = JSON.stringify([r.call_id]);
+      const reveal = (column: string, value: string | null) =>
+        value === null || !this.columnCipher ? value : this.columnCipher.decrypt("model_calls", rowId, column, value);
+      return {
+        callId: r.call_id, runId: r.run_id ?? undefined, role: r.role, modelId: r.model_id,
+        providerMetadata: P(reveal("provider_metadata", r.provider_metadata), undefined as never),
+        durationMs: r.duration_ms,
+        inputTokens: r.input_tokens ?? undefined, outputTokens: r.output_tokens ?? undefined,
+        costUsd: r.cost_usd ?? undefined, costEstimated: !!r.cost_estimated,
+        error: reveal("error", r.error) ?? undefined,
+        createdAt: r.created_at,
+      };
+    });
   }
 
   // ---- events ----
