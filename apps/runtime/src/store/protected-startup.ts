@@ -12,6 +12,7 @@ export const ACTIVE_PROTECTED_TABLES = [
   "results",
   "datasets",
   "events",
+  "run_messages",
 ] as const;
 
 /** Complete the protected migration before constructing any repository service. */
