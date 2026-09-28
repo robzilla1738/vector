@@ -4,7 +4,7 @@ This is the source inventory and migration plan for the S12 STORE outcome. It is
 
 ## Current source and native boundary
 
-Atomic `native.profileStorageRoot` and `native.profileStorageFactor` provisioning and a scoped native restart/migration journey passed on September 28; see the [native manifest](../release/test-artifacts/native-store-protected-startup-2026-09-28-a/manifest.json). Device authentication, reviewed recovery transfer, the remaining SQLite inventory, and full STORE qualification are pending. The native build identifies source `aa996397`; runtime-only changes were staged afterward at `ee578997`.
+Atomic `native.profileStorageRoot` and `native.profileStorageFactor` provisioning and scoped native restart/migration journeys passed on September 28; see the [combined-runtime 14-table native manifest](../release/test-artifacts/native-store-protected-startup-2026-09-28-b/manifest.json). Device authentication, reviewed recovery transfer, the remaining SQLite inventory, and full STORE qualification are pending. The native build identifies source `aa996397`; runtime-only changes were staged afterward through integrated `bfc71328`.
 
 `apps/runtime/src/store/protected-startup.ts` activates only these fully adapted columns before repository services start:
 
@@ -16,8 +16,11 @@ Atomic `native.profileStorageRoot` and `native.profileStorageFactor` provisionin
 | `results`, `datasets` | `source_url`, `values_json`, `evidence`, `error`; `source`, `schema_json`, `values_json`, `provenance` |
 | `run_messages` | `text`, `context_page_refs`, `error` |
 | `safety_approval_requests`, `safety_send_journal`, `safety_audit` | `action_json`; `text`, `digest`, `error_code`; `payload` |
+| `operation_implementations`, `operation_reconciliations` | `executable`, `evidence`, `stats`; `note` |
 
 Each registered table is migrated transactionally with stable primary-key AAD; a marker rejects later plaintext, invalid ciphertext, or unavailable key material. The current database is compacted after a migration changes rows. Historical backups and exported copies are not rewritten by this startup process.
+
+Schema v25 and source adapters now also support protecting `runs` and `steps`, using a durable `run_lookup` metadata projection for direct SQL consumers. Conversation titles and filtered `kv` values have source adapters and migration checks. **None of these four families is in `ACTIVE_PROTECTED_TABLES` yet.** Before activation, review the retained `run_lookup` fields, and make portable backup creation and restore page-recall sanitization decrypt/re-encrypt protected run/KV rows without exposing retained JSON. An unadapted sanitizer currently reads `runs.config` and `setting:conversationAttachments:*` as plaintext. `conversations.title` and legacy `setting:gatewayApiKey` can duplicate sensitive data until the reviewed migration is activated; older offline backups remain outside current-file compaction.
 
 - `space-memory/` generations are encrypted files. Current writes use a Profile Keychain root, a derived `space-memory` store key, a disposable Keychain generation factor, and random wrapped data keys per file. Legacy generations remain readable for migration. Forget retires the previous factor before removing the previous generation. Historical offline copies plus their historical factor and root remain readable if someone saved them earlier.
 - `content_memory.ciphertext` contains encrypted page text. Current candidate writes use the same hierarchy under the `page-memory` domain. Legacy `v1` rows are migrated transactionally; the old `pageMemoryKey` is retired after migration. Explicit Forget, origin exclusion and retention pruning rotate the factor and re-encrypt retained rows.

@@ -1,5 +1,7 @@
 # Native Aux.app journeys
 
+The accepted S7 importer outcome uses three focused flags. `--browser-import-ui` asks an operator to select exact Chrome Profile/category pairs in Settings, then checks native destinations and restart. `--browser-import-formats` uses an isolated discovery root with Arc, Safari and Firefox fixtures; it checks each source/category, source hashes, idempotence and restart. `--browser-import-attached` launches a separate disposable headless Chrome CDP Profile, verifies borrowed tabs transfer into Aux without changing Chrome, then cancels a 5,000-visit History import, retries, isolates a corrupt second Profile, checks native History after normal Aux Quit and verifies History and sleeping imported tabs after restart. The last passing [attached import manifest](../release/test-artifacts/native-s7-browser-import-attached-2026-09-28-f/manifest.json) records the result. The fixture override changes only import discovery; Aux retains its real process `HOME` for native Profile/Keychain startup. No owner browser Profile is read.
+
 `tests/host/native-app-journeys.mjs` runs the browser core and Aside layout journeys against an **Aux.app**, including the current `out/AuxDev/Aux.app` development build. It starts a fresh Profile in a short `/tmp` path, serves two loopback pages, and uses that Profile's owner-only runtime token. It never enables a public DevTools port or attaches to an existing Profile. The official static app and DMG are deferred.
 
 ```sh
