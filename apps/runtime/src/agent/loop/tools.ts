@@ -171,8 +171,8 @@ export function buildToolManifest(): LoopToolManifest {
   };
 
   const repl: LoopTool = {
-    description: "Run JavaScript in this run's persistent code-mode REPL. The guest surface: page.* page actions " +
-      "(page.click(ref), page.clickByName(name, role?), page.fill(ref, text), page.navigate(url), page.waitFor({…}) and friends — every one " +
+    description: "Run a whole browsing workflow in one persistent JavaScript REPL call. When the script sees the final evidence, call submitResult(report, citations) inside it to finish the run without another model call. The guest surface: page.* page actions " +
+      "(page.click(ref), page.clickByName(name, role?), page.labeledValue(label), page.submitLabeledValue(label), page.fill(ref, text), page.navigate(url), page.waitFor({…}) and friends — every action " +
       "compiles to a governed step through decide() and the write ledger), snapshot(scope), tabs(), " +
       "openTab(url)/closeTab(id) for owned background tabs, page.bookmark() to save the current page after a write decision, annotatedScreenshot(), display(value), sleep(ms), " +
       "submitResult(report, citations) to finish inside the script after inspecting live observations — same verified citation and write-ledger checks as submit_result, " +

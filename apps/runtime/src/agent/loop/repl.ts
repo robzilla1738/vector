@@ -274,6 +274,23 @@ page.clickByName = (name, role) => {
   const target = __aux_invoke("findRef", { pageId: __aux_page, name, role });
   return page.click(target.ref);
 };
+page.labeledValue = (label) => {
+  const wanted = String(label || "").trim().toLowerCase();
+  if (!wanted) throw new Error("A field label is required");
+  const observation = __aux_invoke("observe", { pageId: __aux_page });
+  const lines = String(observation.text || "").split("\\n");
+  const matches = lines.filter((line) => line.toLowerCase().includes(wanted));
+  if (matches.length !== 1) throw new Error("Expected one line containing field label " + label + "; found " + matches.length);
+  const line = matches[0];
+  const rest = line.slice(line.toLowerCase().indexOf(wanted) + wanted.length).replace(/^[\\s:–—-]+/, "").trim();
+  const value = rest.split(/\\.\\s+/)[0].replace(/[.。]$/, "").trim();
+  if (!value) throw new Error("Field " + label + " has no visible value");
+  return { value, citation: { observationId: observation.observationId, quote: line.trim() }, observationId: observation.observationId };
+};
+page.submitLabeledValue = (label) => {
+  const found = page.labeledValue(label);
+  return submitResult(found.value, [found.citation]);
+};
 page.webmcp = Object.freeze({
   tools: () => __aux_invoke("webmcp", { pageId: __aux_page, action: { op: "tools" } }),
   call: (name, input) => __aux_invoke("webmcp", { pageId: __aux_page, action: { op: "call", name, input } }),

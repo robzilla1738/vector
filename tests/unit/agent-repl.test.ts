@@ -122,6 +122,31 @@ describe("code-mode REPL", () => {
     expect((step.mock.calls[0]![1] as { id: string }).id).not.toBe((step.mock.calls[1]![1] as { id: string }).id);
   });
 
+  it("extracts one labeled value with its observed quote and can submit it", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const submitResult = vi.fn(async (input: { report: string; citations?: { observationId?: string; quote: string }[] }) => ({
+      ok: true as const, result: { report: input.report, citations: input.citations },
+    }));
+    const result = await pool.eval(deps({
+      observe: async () => ({ text: "Created by the user. Internal ref rec-13.\nAttachment: notes.txt", observationId: "obs-3", revision: 3 }),
+      submitResult,
+    }), `page.submitLabeledValue("Internal ref")`, { pageId: "p1" });
+    expect(result).toMatchObject({ finish: { result: { report: "rec-13" } } });
+    expect(submitResult).toHaveBeenCalledWith({ report: "rec-13", citations: [{ observationId: "obs-3", quote: "Created by the user. Internal ref rec-13." }] });
+  });
+
+  it("refuses ambiguous labeled values instead of choosing a row", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const submitResult = vi.fn(async () => ({ ok: true as const, result: { report: "wrong" } }));
+    await expect(pool.eval(deps({
+      observe: async () => ({ text: "Owner: Jordan Lee\nOwner: Priya Patel", observationId: "obs-4", revision: 4 }),
+      submitResult,
+    }), `page.submitLabeledValue("Owner")`, { pageId: "p1" })).rejects.toThrow(/2/);
+    expect(submitResult).not.toHaveBeenCalled();
+  });
+
   it("yields the loop park when a page op is gated by a safety ask", async () => {
     const step = vi.fn(async () => ({
       park: { kind: "approval" as const, instruction: "Approve the click?", approvalId: "ap-1" },
