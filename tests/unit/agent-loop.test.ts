@@ -612,7 +612,7 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(rejected).toBeTruthy();
   });
 
-  it("completes a confirmed write with or without a post-state citation", async () => {
+  it("marks a completed write unconfirmed until its effect is actually observed", async () => {
     const postObs = { ...pageObs(), revision: 2 } as Observation;
     const execConfirmed = (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
       const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1 }));
@@ -633,7 +633,7 @@ describe("runToolLoop (S5 host integration)", () => {
     const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
-    expect(final.result).not.toMatchObject({ unconfirmedWrites: ["s1"] });
+    expect(final.result).toMatchObject({ unconfirmedWrites: ["s1"] });
 
     // The completed executor receipt confirms the write independently.
     const bare = new MockModelClient().scriptToolSteps([
@@ -654,7 +654,7 @@ describe("runToolLoop (S5 host integration)", () => {
     const run2 = await h2.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     const final2 = await settle(h2.repo, run2.runId);
     expect(final2.status).toBe("completed");
-    expect(final2.result).toMatchObject({ report: "clicked" });
+    expect(final2.result).toMatchObject({ unconfirmedWrites: ["s1"] });
   });
 
   it("blocks submit_result while an uncertain dispatch is in the ledger", async () => {

@@ -271,7 +271,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       ];
       if (unresolved.length)
         return { ok: false as const, error: `${unresolved.length} uncertain dispatch(es) are recorded in the write ledger (${self.durable.unresolved(runId).map((intent) => intent.id).join(", ")}) — use reconcile_action with a fresh snapshot proving the intended effect before submitting.` };
-      const unconfirmed = outcomes.filter((o) => o.receipt?.unconfirmed === true).map((o) => o.stepId);
+      const unconfirmed = markUnconfirmedWrites(outcomes);
       const result: Record<string, unknown> = { report };
       if (citations?.length) result.citations = citations;
       if (unconfirmed.length) result.unconfirmedWrites = unconfirmed;
