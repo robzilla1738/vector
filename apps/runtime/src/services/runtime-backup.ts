@@ -6,6 +6,7 @@ import {dirname,isAbsolute,join,relative,resolve,sep} from 'node:path';
 import {SCHEMA_VERSION} from '../store/db.js';
 import type {Repo} from '../store/repo.js';
 import {sanitizePortablePageRecall} from '@aux/contracts/portable-page-recall';
+import {SENSITIVE_SQLITE_COLUMNS,protectedKvKey,type SqliteColumnCipher} from '../store/sqlite-protection.js';
 import {minimizeLegacyObservationArtifacts,minimizedObservationArtifactBytes} from './observation-artifact-migration.js';
 
 const MAX_BACKUP_BYTES=2*1024*1024*1024,MAX_ARTIFACT_BYTES=1024*1024*1024,MAX_ARTIFACTS=10_000;
@@ -45,6 +46,40 @@ export async function deleteRuntimeBackup(dataDir:string,name:string,expectedSha
 type ManifestArtifact={artifactId:string;relativePath:string;bytes:number;sha256:string};
 type BackupManifest={formatVersion:1;createdAt:number;schemaVersion:number;database:{bytes:number;sha256:string};artifacts:ManifestArtifact[];missingArtifacts:number};
 
+/** Authenticate every protected value before publishing a copy or pending restore. */
+function authenticateProtectedCopy(db:DatabaseSync,cipher?:SqliteColumnCipher){
+  const markers=db.prepare("SELECT key FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%'").all() as {key:string}[];
+  if(!markers.length)return;
+  if(!cipher)throw new Error('This protected backup requires the original Profile key or reviewed recovery.');
+  const proof=db.prepare("SELECT value FROM aux_meta WHERE key='portable_profile_proof_v1'").get() as {value:string}|undefined;
+  if(proof&&cipher.decrypt('aux_meta',JSON.stringify(['portable_profile_proof_v1']),'value',proof.value)!=='aux-portable-profile-v1')
+    throw new Error('The protected backup belongs to another Profile.');
+  for(const {key} of markers){
+    const table=key.slice('protected_sqlite_v1:'.length);
+    if(table==='kv_filtered'){
+      for(const row of db.prepare('SELECT key,value FROM kv').all() as {key:string;value:string}[])
+        if(protectedKvKey(row.key))cipher.decrypt('kv',JSON.stringify([row.key]),'value',row.value);
+      continue;
+    }
+    const columns=SENSITIVE_SQLITE_COLUMNS[table];
+    if(!columns||table==='kv')throw new Error('The backup contains an unknown protected storage plan.');
+    const info=db.prepare(`PRAGMA table_info(${table})`).all() as {name:string;pk:number}[];
+    const identity=info.filter(item=>item.pk>0).sort((a,b)=>a.pk-b.pk).map(item=>item.name);
+    if(!identity.length||columns.some(column=>!info.some(item=>item.name===column)))
+      throw new Error('The protected backup schema is invalid.');
+    const rows=db.prepare(`SELECT ${[...new Set([...identity,...columns])].join(',')} FROM ${table}`).all() as Record<string,unknown>[];
+    for(const row of rows){
+      const id=JSON.stringify(identity.map(column=>row[column]));
+      for(const column of columns){
+        const value=row[column];
+        if(value===null||value===undefined)continue;
+        if(typeof value!=='string')throw new Error('The protected backup contains a non-text value.');
+        cipher.decrypt(table,id,column,value);
+      }
+    }
+  }
+}
+
 async function digest(path:string){return new Promise<string>((ok,fail)=>{const hash=createHash('sha256'),stream=createReadStream(path);stream.on('data',chunk=>hash.update(chunk));stream.on('error',fail);stream.on('end',()=>ok(hash.digest('hex')));});}
 function validateDatabase(path:string){const db=new DatabaseSync(path,{readOnly:true});try{const version=(db.prepare('PRAGMA user_version').get() as {user_version:number}).user_version;if(version<1||version>SCHEMA_VERSION)throw new Error(`This backup uses unsupported database schema ${version}.`);if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE name='aux_meta'").get()||(db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as {value:string}|undefined)?.value!=='aux')throw new Error('The selected file is not an Aux database.');const check=db.prepare('PRAGMA quick_check').get() as {'quick_check':string};if(check['quick_check']!=='ok')throw new Error('The selected backup failed SQLite integrity checking.');for(const table of ['kv','pages','runs','tasks','artifacts'])if(!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(table))throw new Error(`The selected file is missing the ${table} table.`);if(db.prepare("SELECT 1 FROM sqlite_schema WHERE (type IN ('trigger','view') OR upper(coalesce(sql,'')) LIKE '%VIRTUAL TABLE%') AND name NOT LIKE 'history_fts%' LIMIT 1").get())throw new Error('The selected backup contains unsupported executable database schema.');return version;}finally{db.close();}}
 function safeRelative(value:unknown){if(typeof value!=='string'||!value||value.length>1024||isAbsolute(value))throw new Error('The backup contains an invalid artifact path.');const normalized=value.replaceAll('\\','/');if(normalized.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('The backup contains an unsafe artifact path.');return normalized;}
@@ -55,14 +90,14 @@ export async function createRuntimeBackup(repo:Repo,dataDir:string,opts:{maxBack
   const backups=join(dataDir,'backups');await mkdir(backups,{recursive:true,mode:0o700});await mkdir(resolve(dataDir,'artifacts'),{recursive:true,mode:0o700});const createdAt=Date.now(),root=join(backups,`${BACKUP_PREFIX}${new Date(createdAt).toISOString().replace(/[:.]/g,'-')}-${randomUUID().slice(0,8)}`),database=join(root,'state.sqlite'),artifactRoot=await realpath(resolve(dataDir,'artifacts'));await mkdir(root,{recursive:true,mode:0o700});
   try{
     await minimizeLegacyObservationArtifacts(repo,artifactRoot);
-    repo.db.prepare('VACUUM INTO ?').run(database);await chmod(database,0o600);const sanitized=new DatabaseSync(database);try{sanitized.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();sanitizePortablePageRecall(sanitized);sanitized.exec('VACUUM');}finally{sanitized.close();}opts.interrupt?.();const databaseInfo=await stat(database);if(!databaseInfo.isFile())throw new Error('The runtime database backup is invalid or exceeds 2 GB.');if(databaseInfo.size>maxBytes)throw new Error('Not enough free space for a complete runtime backup. Free disk space and try again.');const schemaVersion=validateDatabase(database);
+    repo.db.prepare('VACUUM INTO ?').run(database);await chmod(database,0o600);const sanitized=new DatabaseSync(database);try{authenticateProtectedCopy(sanitized,repo.columnCipher);sanitized.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();sanitizePortablePageRecall(sanitized,repo.columnCipher);if(repo.columnCipher&&sanitized.prepare("SELECT 1 FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%' LIMIT 1").get())sanitized.prepare("INSERT INTO aux_meta(key,value) VALUES('portable_profile_proof_v1',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(repo.columnCipher.encrypt('aux_meta',JSON.stringify(['portable_profile_proof_v1']),'value','aux-portable-profile-v1'));sanitized.exec('VACUUM');}finally{sanitized.close();}opts.interrupt?.();const databaseInfo=await stat(database);if(!databaseInfo.isFile())throw new Error('The runtime database backup is invalid or exceeds 2 GB.');if(databaseInfo.size>maxBytes)throw new Error('Not enough free space for a complete runtime backup. Free disk space and try again.');const schemaVersion=validateDatabase(database);
     const snapshot=new DatabaseSync(database,{readOnly:true});let rows:{artifact_id:string;path:string}[];try{rows=snapshot.prepare("SELECT artifact_id,path FROM artifacts WHERE status='complete' ORDER BY created_at").all() as {artifact_id:string;path:string}[];}finally{snapshot.close();}if(rows.length>MAX_ARTIFACTS)throw new Error(`The runtime has more than ${MAX_ARTIFACTS} artifact records; remove old task data before creating a portable backup.`);const artifacts:ManifestArtifact[]=[];let missingArtifacts=0,totalBytes=databaseInfo.size,artifactBytes=0;
     for(const row of rows){try{const source=await realpath(row.path),rel=relative(artifactRoot,source);if(!rel||rel==='..'||rel.startsWith(`..${sep}`))throw new Error('outside artifact root');const info=await lstat(source);if(info.isSymbolicLink()||!info.isFile())throw new Error('not regular');if(artifactBytes+info.size>MAX_ARTIFACT_BYTES)throw new Error('Aux artifact backups are limited to 1 GB. Remove old artifacts and try again.');if(totalBytes+info.size>maxBytes)throw new Error('Not enough free space for a complete runtime backup. Free disk space and try again.');const relativePath=safeRelative(rel),target=join(root,'artifacts',relativePath);await mkdir(dirname(target),{recursive:true,mode:0o700});await copyFile(source,target);await chmod(target,0o600);artifacts.push({artifactId:row.artifact_id,relativePath,bytes:info.size,sha256:await digest(target)});artifactBytes+=info.size;totalBytes+=info.size;}catch(error){if(error instanceof Error&&(error.message.includes('limited to 1 GB')||error.message.includes('Not enough free space')))throw error;missingArtifacts++;}}
     const manifest:BackupManifest={formatVersion:1,createdAt,schemaVersion,database:{bytes:databaseInfo.size,sha256:await digest(database)},artifacts,missingArtifacts};await writeFile(join(root,'manifest.json'),JSON.stringify(manifest,null,2)+'\n',{encoding:'utf8',mode:0o600});const entries=(await readdir(backups,{withFileTypes:true})).filter(item=>item.isDirectory()&&item.name.startsWith(BACKUP_PREFIX)).map(item=>item.name).sort().reverse();for(const name of entries.slice(keep))await rm(join(backups,name),{recursive:true,force:true});return{path:root,createdAt,bytes:totalBytes,schemaVersion,sha256:manifest.database.sha256,artifactFiles:artifacts.length,missingArtifacts};
   }catch(error){await rm(root,{recursive:true,force:true});throw error;}
 }
 
-export async function stageRuntimeRestore(dataDir:string,sourcePath:string){
+export async function stageRuntimeRestore(dataDir:string,sourcePath:string,cipher?:SqliteColumnCipher){
   const root=await realpath(sourcePath),rootInfo=await lstat(root);
   if(rootInfo.isSymbolicLink()||!rootInfo.isDirectory())throw new Error('Choose an Aux runtime backup folder.');
   const manifest=await readManifest(root),sourceDatabase=await realpath(join(root,'state.sqlite'));
@@ -86,8 +121,9 @@ export async function stageRuntimeRestore(dataDir:string,sourcePath:string){
     let omittedArtifacts:Set<string>;
     let artifactRows:Map<string,{pageId:string|null;mediaType:string;path:string}>;
     try{
+      authenticateProtectedCopy(staged,cipher);
       staged.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();
-      omittedArtifacts=sanitizePortablePageRecall(staged);
+      omittedArtifacts=sanitizePortablePageRecall(staged,cipher);
       const rows=staged.prepare('SELECT artifact_id AS artifactId,page_id AS pageId,media_type AS mediaType,path FROM artifacts').all() as
         {artifactId:string;pageId:string|null;mediaType:string;path:string}[];
       artifactRows=new Map(rows.map(row=>[row.artifactId,row]));
