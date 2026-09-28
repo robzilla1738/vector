@@ -30,11 +30,18 @@ export function ImportDataSetting() {
   const [jobId, setJobId] = useState("");
   const [progress, setProgress] = useState<ImportCategoryResult[]>([]);
   const [done, setDone] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const jobRef = useRef("");
 
   useEffect(() => bridge.onEvent((event: AuxEvent) => {
     if (event.type !== "import.progress" || event.payload.jobId !== jobRef.current) return;
-    if (event.payload.done === true) { setDone(true); setLoading(false); return; }
+    if (event.payload.done === true) {
+      setDone(true); setLoading(false); setStopping(false);
+      setCancelled(event.payload.cancelled === true);
+      if (typeof event.payload.error === "string") setError(event.payload.error);
+      return;
+    }
     if (typeof event.payload.source === "string" && typeof event.payload.category === "string") {
       const entry = event.payload as unknown as ImportCategoryResult;
       if (entry.state === "running") {
@@ -46,7 +53,7 @@ export function ImportDataSetting() {
   }), []);
 
   const loadPreview = async () => {
-    setLoading(true); setError(""); setDone(false); setProgress([]);
+    setLoading(true); setError(""); setDone(false); setCancelled(false); setStopping(false); setProgress([]);
     try {
       const result = await call("import.preview", {});
       const next: Selection = {};
@@ -75,7 +82,7 @@ export function ImportDataSetting() {
     }));
   const run = async () => {
     if (!preview || !selected.length) return;
-    setLoading(true); setError(""); setDone(false); setProgress([]);
+    setLoading(true); setError(""); setDone(false); setCancelled(false); setStopping(false); setProgress([]);
     try {
       const { jobId: id } = await call("import.run", { selections: selected });
       jobRef.current = id;
@@ -83,13 +90,17 @@ export function ImportDataSetting() {
       // Catch up on progress emitted before the subscription learned the id.
       const status = await call("import.status", { jobId: id });
       if (status.progress.length) setProgress(status.progress);
-      if (status.done) { setDone(true); setLoading(false); }
+      if (status.done) {
+        setDone(true); setLoading(false);
+        setCancelled(status.cancelled);
+        if (status.error) setError(status.error);
+      }
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); setLoading(false); }
   };
 
   const cancel = async () => {
     if (!jobRef.current) return;
-    try { await call("import.cancel", { jobId: jobRef.current }); } catch { /* job may already be done */ }
+    try { await call("import.cancel", { jobId: jobRef.current }); setStopping(true); } catch { /* job may already be done */ }
   };
 
   const running = !!jobId && !done;
@@ -125,7 +136,7 @@ export function ImportDataSetting() {
     </div>)}
     <div className="row">
       {!running && <button className="btn sm" disabled={!selected.length || loading} onClick={() => void run()}>Import selected ({selected.reduce((count, item) => count + item.categories.length, 0)})</button>}
-      {running && <button className="btn sm ghost" onClick={() => void cancel()}>Cancel import</button>}
+      {running && <button className="btn sm ghost" disabled={stopping} onClick={() => void cancel()}>{stopping ? "Stopping…" : "Cancel import"}</button>}
       <button className="btn sm ghost" disabled={running} onClick={() => void loadPreview()}>Refresh</button>
       {error && <span className="hint err">{error}</span>}
     </div>
@@ -137,7 +148,12 @@ export function ImportDataSetting() {
             ? <span className="hint err">{entry.detail ?? "Failed"}</span>
             : `${entry.imported.toLocaleString()} imported${entry.skipped ? ` · ${entry.skipped.toLocaleString()} skipped` : ""}${entry.detail ? ` · ${entry.detail}` : ""}`}
       </li>)}
-      {done && <li className="hint">Import finished{progress.some(e => e.state === "error") ? " — some sources could not be read; the rest were imported." : "."}</li>}
+      {done && <li className="hint">{cancelled ? "Import stopped — completed items remain available; the rest were not attempted."
+        : error ? "Import stopped with an error; completed items remain available."
+          : progress.some(e => e.state === "error" || (e.category === "tabs" && e.skipped > 0))
+            ? "Import finished — some items could not be imported; the rest are available."
+            : "Import finished."}</li>}
     </ul>}
+    {done && progress.length === 0 && <p className="hint">{cancelled ? "Import stopped before any items were added." : error ? "Import stopped before any items were added." : "Import finished."}</p>}
   </div>;
 }

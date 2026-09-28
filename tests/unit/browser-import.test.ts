@@ -202,6 +202,9 @@ it("opens live tabs from an attached Chrome and reports partial failures", async
   const report = await importer.runNow({ selections: [{ sourceId: "chrome-attached", categories: ["tabs"] }] });
   expect(opened).toEqual(["https://one.example/", "https://two.example/"]);
   expect(report.results[0]).toMatchObject({ source: "chrome-attached", state: "done", imported: 2, skipped: 1 });
+  expect(report.results[0]?.detail).toContain("1 tab could not open");
+  importer.cancel(report.jobId);
+  expect(importer.status(report.jobId)).toMatchObject({ done: true, cancelled: false });
 });
 
 it("cancel stops a running history import between batches", async () => {

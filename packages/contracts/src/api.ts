@@ -2263,6 +2263,7 @@ export const ResultSchemas = {
     cancelled: z.boolean(),
     progress: z.array(ImportCategoryResultSchema),
     report: ImportReportSchema.optional(),
+    error: z.string().optional(),
   }),
   "import.cancel": z.object({ ok: z.boolean() }),
   "chrome.openLive": z.object({ ok: z.boolean() }),

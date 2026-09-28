@@ -44,3 +44,27 @@ it("sends only the source, Profile and categories the user checked", async () =>
     await act(async () => root.unmount());
   }
 });
+
+it("shows a stopped import as partial work rather than success", async () => {
+  rpc.mockReset();
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "import.preview") return { sources: [{ id: "chrome-attached", label: "Attached Chrome", profiles: [],
+      categories: [{ category: "tabs", available: true, count: 2 }], profileCategories: [] }] };
+    if (method === "import.run") return { jobId: "partial" };
+    if (method === "import.status") return { jobId: "partial", done: true, cancelled: true,
+      progress: [{ source: "chrome-attached", label: "Attached Chrome", category: "tabs", state: "done", imported: 1, skipped: 1 }] };
+    throw new Error(`Unexpected ${method}`);
+  });
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<ImportDataSetting />));
+    await act(async () => host.querySelector("button")!.click());
+    await act(async () => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+    await act(async () => [...host.querySelectorAll("button")].find(button => button.textContent?.startsWith("Import selected"))!.click());
+    expect(host.textContent).toContain("Import stopped — completed items remain available");
+    expect(host.textContent).toContain("1 imported");
+  } finally {
+    await act(async () => root.unmount());
+  }
+});

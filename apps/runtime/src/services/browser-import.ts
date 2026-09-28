@@ -71,6 +71,7 @@ interface ImportJob {
   done: boolean;
   progress: ImportCategoryResult[];
   report?: ImportReport;
+  error?: string;
 }
 
 const ATTACHED_TABS_SOURCE = "chrome-attached";
@@ -186,12 +187,12 @@ export class BrowserImporter {
 
   status(jobId: string) {
     const job = this.job(jobId);
-    return { jobId, done: job.done, cancelled: job.cancelled, progress: job.progress, report: job.report };
+    return { jobId, done: job.done, cancelled: job.cancelled, progress: job.progress, report: job.report, error: job.error };
   }
 
   cancel(jobId: string) {
     const job = this.job(jobId);
-    job.cancelled = true;
+    if (!job.done) job.cancelled = true;
     return { ok: true };
   }
 
@@ -209,8 +210,9 @@ export class BrowserImporter {
     }
     void this.execute(job, selections).catch(error => {
       job.done = true;
+      job.error = error instanceof Error ? error.message : String(error);
       job.report = { jobId: job.id, cancelled: job.cancelled, results: job.progress };
-      this.deps.emit("import.progress", { jobId: job.id, done: true, error: error instanceof Error ? error.message : String(error) });
+      this.deps.emit("import.progress", { jobId: job.id, done: true, error: job.error });
     });
     return { jobId: job.id };
   }
@@ -249,6 +251,7 @@ export class BrowserImporter {
 
   private async execute(job: ImportJob, selections: { source?: ImportSource; profile?: ImportProfileRef; categories: ImportCategory[] }[]): Promise<ImportReport> {
     for (const { source, profile, categories } of selections) {
+      if (job.cancelled) break;
       if (!source || !profile) continue;
       for (const category of ["bookmarks", "history"] as const) {
         if (!categories.includes(category)) continue;
@@ -344,13 +347,17 @@ export class BrowserImporter {
       return { ...base, state: targets.length ? "done" : "skipped", imported: 0, skipped: 0, detail: targets.length ? "No http(s) tabs to open." : "No Chrome is attached." };
     }
     let imported = 0;
+    let firstFailure: string | undefined;
     for (const page of pages.slice(0, 50)) {
       if (job.cancelled) break;
       try {
         await this.deps.openTab(page.url, page.title);
         imported++;
-      } catch { /* keep going — partial results are the point */ }
+      } catch (error) { firstFailure ??= error instanceof Error ? error.message : String(error); }
     }
-    return { ...base, state: "done", imported, skipped: pages.length - imported, detail: `${pages.length} live tab${pages.length === 1 ? "" : "s"}` };
+    const skipped = pages.length - imported;
+    return { ...base, state: imported ? "done" : job.cancelled ? "skipped" : "error", imported, skipped,
+      detail: firstFailure ? `${skipped} tab${skipped === 1 ? "" : "s"} could not open: ${firstFailure.slice(0, 200)}`
+        : `${pages.length} live tab${pages.length === 1 ? "" : "s"}` };
   }
 }
