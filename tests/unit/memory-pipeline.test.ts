@@ -94,11 +94,13 @@ it("forgets a claim that exists only in an older revision and preserves the pre-
     await f.pipeline.revert(f.workspace.workspaceId, earlier.revisionId);
     expect(await f.pipeline.search(f.workspace.workspaceId, "violet")).toEqual([]);
     expect((await f.pipeline.history(f.workspace.workspaceId))[0]?.summary).toContain("violet");
+    expect((await f.pipeline.history(f.workspace.workspaceId))[0]?.sourceRunIds).toContain("run-two");
     expect(await f.pipeline.forget({ workspaceId: f.workspace.workspaceId, sourceRunId: "run-two" }))
       .toEqual({ forgotten: 1, remaining: 1 });
     const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
     for (const revision of await restarted.history(f.workspace.workspaceId)) {
       expect(revision.summary).not.toContain("violet");
+      expect(revision.sourceRunIds).not.toContain("run-two");
       await restarted.revert(f.workspace.workspaceId, revision.revisionId);
       expect(await restarted.search(f.workspace.workspaceId, "violet")).toEqual([]);
     }

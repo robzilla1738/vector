@@ -284,7 +284,8 @@ export class MemoryPipeline {
     if (!this.policy(workspaceId).enabled) return [];
     const { history } = await this.readClaims(workspaceId);
     return [...history].reverse().map(revision => ({ revisionId: revision.revisionId,
-      capturedAt: revision.capturedAt, claimCount: revision.claims.length, summary: this.summary(revision.claims) }));
+      capturedAt: revision.capturedAt, claimCount: revision.claims.length, summary: this.summary(revision.claims),
+      sourceRunIds: [...new Set(revision.claims.map(claim => claim.sourceRunId))] }));
   }
 
   async revert(workspaceId: string, revisionId: string) {

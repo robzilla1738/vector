@@ -6,7 +6,7 @@ import { useConfirm } from "../../ui/confirm";
 import { SettingsField } from "../primitives";
 
 type Source = { runId: string; goal: string; endedAt: number };
-type Revision = { revisionId: string; capturedAt: number; claimCount: number; summary: string };
+type Revision = { revisionId: string; capturedAt: number; claimCount: number; summary: string; sourceRunIds: string[] };
 
 export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
   const [enabled, setEnabled] = useState(false);
@@ -20,7 +20,11 @@ export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
   const [error, setError] = useState("");
   const [preview, setPreview] = useState(false);
   const { confirm, confirmation } = useConfirm();
-  const sourcesWithNotes = [...new Set([...inbox, ...claims].map(note => note.sourceRunId))];
+  const sourcesWithNotes = [...new Set([
+    ...inbox.map(note => note.sourceRunId),
+    ...claims.map(note => note.sourceRunId),
+    ...history.flatMap(revision => revision.sourceRunIds),
+  ])];
 
   async function forget(request: { claimId?: string; sourceRunId?: string; all?: true }, description: string) {
     if (!await confirm({ title: "Forget Space memory?", description,

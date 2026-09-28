@@ -99,7 +99,7 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
     if (method === "memory.pipeline.inbox") return pending ? [note] : [];
     if (method === "memory.pipeline.claims") return approved ? [note] : [];
     if (method === "memory.pipeline.history") return approved ? [{ revisionId: "11669024-a817-444b-bafa-7622510e51a3",
-      capturedAt: 1, claimCount: 1, summary: note.text }] : [];
+      capturedAt: 1, claimCount: 1, summary: note.text, sourceRunIds: ["run-1"] }] : [];
     if (method === "memory.pipeline.extractRun") { pending = true; return { extracted: 1 }; }
     if (method === "memory.pipeline.review") { pending = false; approved = params.decision === "accept"; return { accepted: approved, remaining: 0 }; }
     if (method === "memory.pipeline.forget") { approved = false; return { forgotten: 1, remaining: 0 }; }
@@ -138,6 +138,71 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
   });
   expect(rpc).toHaveBeenCalledWith("memory.pipeline.forget", { workspaceId, claimId: note.claimId });
   expect(container.textContent).toContain("0 pending notes · 0 approved notes");
+});
+
+it("offers UI-confirmed Forget for a source present only in history", async () => {
+  const workspaceId = "space-1";
+  const sourceRunId = "older-run";
+  let historical = true;
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "memory.pipeline.policy") return { workspaceId, enabled: true };
+    if (method === "memory.pipeline.overview") return { workspaceId, enabled: true,
+      summary: "", claimCount: 0, sourceCount: 0 };
+    if (method === "memory.pipeline.history") return historical ? [{
+      revisionId: "11669024-a817-444b-bafa-7622510e51a4", capturedAt: 1,
+      claimCount: 1, summary: "", sourceRunIds: [sourceRunId],
+    }] : [];
+    if (["memory.pipeline.sources", "memory.pipeline.inbox", "memory.pipeline.claims"].includes(method)) return [];
+    if (method === "memory.pipeline.forget") { historical = false; return { forgotten: 1, remaining: 0 }; }
+    throw new Error(`Unexpected ${method}`);
+  });
+  await act(async () => root.render(<SpaceMemory workspaceId={workspaceId} />));
+  expect(container.textContent).toContain("Forget run older-run");
+  await act(async () => button("Forget run older-run").click());
+  await act(async () => {
+    const cancel = [...document.querySelectorAll<HTMLButtonElement>('dialog button')]
+      .find(item => item.textContent?.trim() === "Keep memory");
+    cancel!.click();
+  });
+  expect(rpc).not.toHaveBeenCalledWith("memory.pipeline.forget", { workspaceId, sourceRunId });
+  await act(async () => button("Forget run older-run").click());
+  await act(async () => {
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>('dialog button')]
+      .find(item => item.textContent?.trim() === "Forget permanently");
+    confirm!.click();
+  });
+  expect(rpc).toHaveBeenCalledWith("memory.pipeline.forget", { workspaceId, sourceRunId });
+  expect(container.textContent).not.toContain("Forget run older-run");
+});
+
+it("requires UI confirmation before forgetting all pending and historical notes", async () => {
+  const workspaceId = "space-1";
+  const note = { claimId: "11669024-a817-444b-bafa-7622510e51a5", sourceRunId: "pending-run",
+    text: "A pending Space note.", capturedAt: 1 };
+  let forgotten = false;
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "memory.pipeline.policy") return { workspaceId, enabled: true };
+    if (method === "memory.pipeline.overview") return { workspaceId, enabled: true,
+      summary: "", claimCount: 0, sourceCount: 0 };
+    if (method === "memory.pipeline.history") return forgotten ? [] : [{
+      revisionId: "11669024-a817-444b-bafa-7622510e51a6", capturedAt: 1,
+      claimCount: 1, summary: "", sourceRunIds: ["older-run"],
+    }];
+    if (method === "memory.pipeline.inbox") return forgotten ? [] : [note];
+    if (["memory.pipeline.sources", "memory.pipeline.claims"].includes(method)) return [];
+    if (method === "memory.pipeline.forget") { forgotten = true; return { forgotten: 2, remaining: 0 }; }
+    throw new Error(`Unexpected ${method}`);
+  });
+  await act(async () => root.render(<SpaceMemory workspaceId={workspaceId} />));
+  await act(async () => button("Forget all Space memory").click());
+  expect(rpc).not.toHaveBeenCalledWith("memory.pipeline.forget", { workspaceId, all: true });
+  await act(async () => {
+    const confirm = [...document.querySelectorAll<HTMLButtonElement>('dialog button')]
+      .find(item => item.textContent?.trim() === "Forget permanently");
+    confirm!.click();
+  });
+  expect(rpc).toHaveBeenCalledWith("memory.pipeline.forget", { workspaceId, all: true });
+  expect(container.textContent).not.toContain("A pending Space note.");
 });
 
 it("shows the gated memory preview without an unusable toggle", async () => {
