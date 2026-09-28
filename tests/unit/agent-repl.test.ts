@@ -80,6 +80,17 @@ describe("code-mode REPL", () => {
     expect(second.value).toBe(42);
   });
 
+  it("accepts model-style await on synchronous host calls without changing strings", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const step = vi.fn(async () => ({ output: { status: "completed" } }));
+    const result = out(await pool.eval(deps({
+      step, observe: async () => ({ text: "await snapshot() remains text", observationId: "o1", revision: 1 }),
+    }), `await page.navigate("http://x.test/next"); const s = await snapshot(); s.text`, { pageId: "p1" }));
+    expect(step).toHaveBeenCalledOnce();
+    expect(result.value).toBe("await snapshot() remains text");
+  });
+
   it("compiles page.* ops to governed steps on the current page", async () => {
     const step = vi.fn(async () => ({ output: { status: "completed" } })) as unknown as ReplHostDeps["step"];
     const pool = new ReplPool();

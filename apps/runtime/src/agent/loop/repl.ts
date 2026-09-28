@@ -106,6 +106,52 @@ function checkSource(code: string): void {
 }
 
 /**
+ * Model-generated code often uses `await` with the exposed bridge calls.
+ * Those calls already suspend QuickJS until the host returns and therefore
+ * return ordinary values. Remove only awaits immediately before known bridge
+ * calls, outside strings and comments, so a script remains synchronous.
+ */
+function normalizeBridgeAwaits(code: string): string {
+  const bridgeCall = /^(?:page\.[A-Za-z]+|snapshot|annotatedScreenshot|tabs|openTab|closeTab|display|sleep|fetch|spawn|wait|send|stop|submitResult|fs\.(?:readFile|writeFile))\s*\(/;
+  let output = "";
+  let i = 0;
+  let quote = "";
+  while (i < code.length) {
+    const char = code[i]!;
+    if (quote) {
+      output += char;
+      if (char === "\\") { output += code[++i] ?? ""; }
+      else if (char === quote) quote = "";
+      i++;
+      continue;
+    }
+    if (code.startsWith("//", i)) {
+      const end = code.indexOf("\n", i);
+      const next = end < 0 ? code.length : end;
+      output += code.slice(i, next);
+      i = next;
+      continue;
+    }
+    if (code.startsWith("/*", i)) {
+      const end = code.indexOf("*/", i + 2);
+      const next = end < 0 ? code.length : end + 2;
+      output += code.slice(i, next);
+      i = next;
+      continue;
+    }
+    if (char === "'" || char === '"' || char === "`") { quote = char; output += char; i++; continue; }
+    if (code.startsWith("await", i) && (i === 0 || !/[\w$]/.test(code[i - 1]!)) && !/[\w$]/.test(code[i + 5] ?? "")) {
+      let next = i + 5;
+      while (/\s/.test(code[next] ?? "")) next++;
+      if (bridgeCall.test(code.slice(next))) { i = next; continue; }
+    }
+    output += char;
+    i++;
+  }
+  return output;
+}
+
+/**
  * Marshalability is proven inside the guest: `context.dump` mirrors guest
  * objects host-side and explodes on cycles, so the result is JSON.stringify'd
  * in QuickJS and only the string crosses the boundary.
@@ -414,6 +460,7 @@ class ReplSession {
 
   async eval(code: string, deadlineMs?: number): Promise<LoopToolResult> {
     checkSource(code);
+    code = normalizeBridgeAwaits(code);
     let release!: () => void;
     const previous = this.queue;
     this.queue = new Promise<void>((resolve) => {

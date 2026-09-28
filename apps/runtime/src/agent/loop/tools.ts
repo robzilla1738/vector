@@ -179,7 +179,7 @@ export function buildToolManifest(): LoopToolManifest {
       "cookie-free fetch(url), fs confined to session roots, and subagent cells: spawn({goal, profile?, pageIds?}) " +
       "returns {cellId}, wait(cellId) yields until the cell finishes or the deadline lapses, send(cellId, text) " +
       "steers a running cell, stop(cellId) cancels it. Guest state persists across calls; modules, " +
-      "eval/Function, process and WebAssembly are denied. Results must be JSON data, ≤16 KB (larger output spills to a file).",
+      "eval/Function, process and WebAssembly are denied. All exposed calls are synchronous-looking: do not use await. Results must be JSON data, ≤16 KB (larger output spills to a file).",
     byline: "Aux code mode — page ops still pass authorization and the ledger",
     inputSchema: z.object({
       code: z.string().min(1).max(64_000).describe("Synchronous-looking JavaScript for the REPL session."),
