@@ -1380,17 +1380,22 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       console.error("Browsing memory cleanup failed", error);
     }
   }, 60_000);
-  const pruneContent = () => {
+  let contentPruning = false;
+  const pruneContent = async () => {
+    if (contentPruning) return;
+    contentPruning = true;
     try {
-      const pruned = contentMemory?.prune();
+      const pruned = await contentMemory?.prune();
       for (const workspaceId of pruned?.workspaceIds ?? []) runs.redactForgottenArticleOutputs(workspaceId);
       if (pruned?.workspaceIds.length) privacyCheckpoint.request();
     } catch (error) {
       console.error("Page-content memory cleanup failed", error);
+    } finally {
+      contentPruning = false;
     }
   };
-  pruneContent();
-  const contentExpiry = setInterval(pruneContent, 60_000);
+  void pruneContent();
+  const contentExpiry = setInterval(() => { void pruneContent(); }, 60_000);
   memoryExpiry.unref();
   contentExpiry.unref();
   const shutdown = async () => {

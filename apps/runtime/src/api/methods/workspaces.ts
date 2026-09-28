@@ -67,7 +67,7 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
   if (method === "workspaces.contentMemory.policy") return store.policy(params.workspaceId);
   if (method === "workspaces.contentMemory.setPolicy") {
     const prior = store.policy(params.workspaceId);
-    const result = store.setPolicy(params.workspaceId, params.policy);
+    const result = await store.setPolicy(params.workspaceId, params.policy);
     if (
       !result.enabled ||
       result.retentionDays < prior.retentionDays ||
@@ -87,7 +87,7 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
     return { memoryId, profileId, workspaceId, pageId, documentEpoch, url, title, capturedAt, text };
   }
   if (method === "workspaces.contentMemory.forget") {
-    const forgotten = store.forget(params.workspaceId, params.memoryId);
+    const forgotten = await store.forget(params.workspaceId, params.memoryId);
     revokeArticleRuns(params.workspaceId, params.memoryId);
     s.runs.redactForgottenArticleOutputs(params.workspaceId);
     s.checkpointDeletedData?.();
