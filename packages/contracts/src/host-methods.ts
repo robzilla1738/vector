@@ -279,6 +279,9 @@ export const HostMethods = {
   "native.bookmarksInvoke": runtime("core", z.object({ method: str, params: z.unknown() }).strict(), z.unknown()),
   "native.capabilities": runtime("core", z.object({}).strict(), HostCapabilitiesSchema),
   "native.historyClear": runtime("core", z.object({ since: number.optional(), before: number.optional() }).strict(), z.object({ removed: number }).strict()),
+  "native.historyImport": runtime("core", z.object({ visits: z.array(z.object({
+    url: str, title: z.string().max(1000), visitedAt: z.number().int().nonnegative(),
+  }).strict()).min(1).max(500) }).strict(), z.object({ added: z.number().int(), skipped: z.number().int() }).strict()),
   "native.historyRemove": runtime("core", z.object({ url: str, visitedAt: number,
     expectedTitle: z.string().max(4096).optional() }).strict(), z.object({ removed: bool }).strict()),
   "native.searchEngineGet": runtime("searchEngines", z.object({}).strict(), str),

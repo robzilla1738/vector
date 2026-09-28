@@ -84,6 +84,7 @@ export interface NativeBridge {
   cosmeticCommit?(request: CosmeticCommit): Promise<ChromiumCookieBannerReceipt>;
   /** Chromium HistoryService owns writes once a native history projection is active. */
   historyClear?(range: { since?: number; before?: number }): Promise<{ removed: number }>;
+  historyImport?(visits: { url: string; title: string; visitedAt: number }[]): Promise<{ added: number; skipped: number }>;
   historyRemove?(url: string, visitedAt: number, expectedTitle?: string): Promise<{ removed: boolean }>;
   /** The Chromium Profile's TemplateURLService is the selected engine authority. */
   searchEngineGet?(): Promise<string>;
@@ -184,6 +185,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   historyClear(range: { since?: number; before?: number }) {
     return this.channel.call<{ removed: number }>("native.historyClear", range);
+  }
+  historyImport(visits: { url: string; title: string; visitedAt: number }[]) {
+    return this.channel.call<{ added: number; skipped: number }>("native.historyImport", { visits });
   }
   historyRemove(url: string, visitedAt: number, expectedTitle?: string) {
     return this.channel.call<{ removed: boolean }>("native.historyRemove", { url, visitedAt,
