@@ -39,6 +39,7 @@ import { createGateway } from "@ai-sdk/gateway";
 import { generateText, jsonSchema, stepCountIs, tool, wrapLanguageModel } from "ai";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { abReadiness, candidateReadiness, corpusFingerprint, summarizeIntents } from "./report-integrity.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../../..");
@@ -171,9 +172,11 @@ if (suiteName === "local" || suiteName === "heldout") {
 let tasks = suite.tasks;
 if (only) tasks = tasks.filter((t) => t.id.includes(only));
 if (limit) tasks = tasks.slice(0, limit);
+if (!tasks.length) throw new Error("Task selection is empty");
 process.env.AUX_PROGRAM_SPEND_CAP_USD ??= "50";
 const { SpendLedger, estimatedPromptTokens, projectedModelCostUsd } = await import(pathToFileURL(runtimeEntry).href);
 const spendLedger = new SpendLedger();
+const ledgerBefore = spendLedger.summary();
 // A run-level forecast is a planning check; each actual Gateway request is
 // reserved separately by the runtime client or MCP model middleware below.
 const forecastUsd = Number(flag("projected-usd", String(tasks.length * trials * adapterNames.length * 0.05)));
@@ -190,6 +193,11 @@ const report = {
   timeoutMs,
   trials,
   maxModelCalls: maxStepsFlag ? maxToolSteps : "product default",
+  corpus: { fingerprintSha256: corpusFingerprint(suite), totalTasks: suite.tasks.length,
+    selectedTaskIds: tasks.map((task) => task.id), selection: { only, limit },
+    multiStepTaskIds: tasks.filter((task) => task.multiStep).map((task) => task.id) },
+  spendLedger: { forecastUsd, before: ledgerBefore, after: null,
+    attribution: "shared-ledger window; concurrent calls from other processes may be included" },
   valid: true,
   complete: false,
   adapters: {},
@@ -197,6 +205,8 @@ const report = {
 mkdirSync(reportsDir, { recursive: true });
 const outPath = join(reportsDir, `tasks-${suite.suite}-${report.startedAt.replace(/[:.]/g, "-")}.json`);
 const saveReport = () => {
+  report.spendLedger.after = spendLedger.summary();
+  report.abReadiness = abReadiness(report);
   writeFileSync(`${outPath}.tmp`, JSON.stringify(report, null, 2));
   renameSync(`${outPath}.tmp`, outPath);
 };
@@ -220,7 +230,10 @@ for (const name of adapterNames) {
   console.log(`\n== ${name} (${cfg.kind}) — ${tasks.length} task(s) × ${trials} trial(s), model ${modelId}`);
   const adapter = cfg.kind === "runtime" ? await runtimeAdapter(name, cfg) : await mcpAdapter(name, cfg);
   const rows = [];
-  report.adapters[name] = { rows };
+  const adapterLedgerBefore = spendLedger.summary();
+  report.adapters[name] = { rows, configuredEngine: cfg.env?.AUX_RUN_ENGINE ?? (cfg.kind === "runtime" ? "agent" : null),
+    configuredModel: modelId, configuredMaxModelCalls: maxStepsFlag ? maxToolSteps : "product default",
+    spendLedgerBefore: adapterLedgerBefore };
   saveReport();
   let invalidReason = null;
   try {
@@ -250,6 +263,7 @@ for (const name of adapterNames) {
       const status = out.status ?? (out.error ? "failed" : "completed");
       const score = scoreRun(status, answerScore, oracle);
       const row = { id: task.id, family: task.family, trial, score, answerScore, oracle, wallMs, ...out, status,
+        multiStep: task.multiStep === true, write: task.write === true,
         suspensions: out.suspensions ?? null, interventions: out.interventions ?? null, ledgerDuplicates: out.ledgerDuplicates ?? null };
       rows.push(row);
       saveReport();
@@ -261,7 +275,8 @@ for (const name of adapterNames) {
     await adapter.close().catch(() => {});
   }
   if (invalidReason) {
-    report.adapters[name] = { invalid: invalidReason, rows };
+    report.adapters[name] = { ...report.adapters[name], invalid: invalidReason, rows,
+      spendLedgerAfter: spendLedger.summary() };
     report.valid = false;
     invalidAdapters++;
     saveReport();
@@ -288,8 +303,12 @@ for (const name of adapterNames) {
     wallMsP50: walls[Math.floor(walls.length / 2)] ?? null,
     wallMsP95: walls.length ? walls[Math.min(walls.length - 1, Math.floor(walls.length * 0.95))] : null,
     wallMsMean: walls.length ? Math.round(walls.reduce((a, b) => a + b, 0) / walls.length) : null,
-    modelCallsMean: mean(rows.map((r) => r.modelCalls)),
+    modelCallsMean: mean(rows.map((r) => r.modelCalls), 3),
+    multiStepModelCallsMean: mean(rows.filter((r) => r.multiStep).map((r) => r.modelCalls), 3),
     tokensMean: mean(rows.map((r) => r.tokens)),
+    durableIntents: rows.reduce((n, r) => n + (r.durableIntents?.ids.length ?? 0), 0),
+    unresolvedDurableIntents: rows.reduce((n, r) => n + (r.durableIntents?.unresolved ?? 0), 0),
+    ledgerDuplicates: rows.reduce((n, r) => n + (r.ledgerDuplicates ?? 0), 0),
     errors: rows.filter((r) => r.error).length,
     oracleFailures: rows.filter((r) => r.oracle && !r.oracle.pass).length,
     families: Object.fromEntries([...new Set(tasks.map((t) => t.family ?? "unclassified"))].map((family) => {
@@ -302,11 +321,18 @@ for (const name of adapterNames) {
       }];
     })),
   };
-  report.adapters[name] = { summary, rows };
+  const budgets = new Set(rows.map((r) => r.modelCallBudget));
+  const engines = new Set(rows.map((r) => r.engine));
+  const readiness = candidateReadiness({ suiteName, selectedIds: tasks.map((task) => task.id),
+    allIds: suite.tasks.map((task) => task.id), trials, adapterName: name, rows,
+    engine: engines.size === 1 ? [...engines][0] : null,
+    budget: budgets.size === 1 ? [...budgets][0] : null });
+  report.adapters[name] = { ...report.adapters[name], summary, rows, readiness,
+    spendLedgerAfter: spendLedger.summary() };
   saveReport();
   console.log(`-- ${name}: pass@1 ${(summary.passAt1 * 100).toFixed(1)}% (per trial ${perTrial.join("/")} of ${tasks.length}, sd ${summary.passedStdDev}), pass@${trials} ${(summary.passAtK * 100).toFixed(1)}%, flaky [${summary.flaky.join(", ")}], p50 ${summary.wallMsP50} ms, p95 ${summary.wallMsP95} ms, mean ${summary.modelCallsMean} model calls, ${summary.tokensMean} tokens`);
 }
-report.complete = invalidAdapters === 0;
+report.complete = invalidAdapters === 0 && adapterNames.every((name) => report.adapters[name]?.summary);
 saveReport();
 } catch (error) {
   report.valid = false;
@@ -377,14 +403,19 @@ async function runtimeAdapter(_name, cfg = {}) {
         const r = rec.run ?? rec;
         const modelCalls = r.config?.modelCalls ?? (rec.modelCalls ?? null);
         const metrics = await metricsForRun(rpc, runId);
+        const durableIntents = await durableIntentsForRun(dataDir, runId);
         return {
           answer: r.result == null ? null : extractAnswer(r.result),
           status: r.status,
           message: r.statusMessage,
           ...(r.error ? { error: r.error } : {}),
           engine: r.config?.implementation ?? null,
+          runtimeModel: r.config?.modelId ?? null,
+          modelCallBudget: r.config?.maxModelCalls ?? null,
+          runId,
           modelCalls,
           ...metrics,
+          durableIntents,
           routeReason,
           backend: page.backend ?? page.identity?.backend,
         };
@@ -396,6 +427,21 @@ async function runtimeAdapter(_name, cfg = {}) {
       await rt.close();
     },
   };
+}
+
+async function durableIntentsForRun(dataDir, runId) {
+  try {
+    const { openDb, loadConfig } = await import(pathToFileURL(runtimeEntry).href);
+    const db = openDb(loadConfig({ ...process.env, AUX_DATA_DIR: dataDir }).dbPath);
+    try {
+      const intents = db.prepare("SELECT id, status FROM action_intents WHERE run_id=? ORDER BY created_at,id").all(runId);
+      return summarizeIntents(intents);
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    throw new Error(`benchmark receipt attribution failed: ${String(error?.message ?? error)}`);
+  }
 }
 
 async function metricsForRun(rpc, runId) {
@@ -573,8 +619,11 @@ export function scoreRun(status, answerScore, oracle) {
 
 function benchmarkInfrastructureFailure(error) {
   if (!error) return null;
-  return /unauthenticated request to ai gateway|invalid ai.gateway.api.key/i.test(String(error))
-    ? "AI Gateway authentication failed" : null;
+  if (/unauthenticated request to ai gateway|invalid ai.gateway.api.key/i.test(String(error)))
+    return "AI Gateway authentication failed";
+  if (/benchmark receipt attribution failed/i.test(String(error)))
+    return "Durable receipt attribution failed";
+  return null;
 }
 
 function extractAnswer(result) {
@@ -708,9 +757,9 @@ async function resetSuiteState(suite) {
   }
 }
 
-function mean(xs) {
+function mean(xs, decimals = 1) {
   const v = xs.filter((x) => typeof x === "number" && Number.isFinite(x));
-  return v.length ? +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) : null;
+  return v.length ? +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(decimals) : null;
 }
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
