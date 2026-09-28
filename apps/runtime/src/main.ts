@@ -43,6 +43,7 @@ import {
 } from "@aux/chromium-driver";
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb, SCHEMA_VERSION } from "./store/db.js";
+import { prepareProtectedDatabase } from "./store/protected-startup.js";
 import { bootstrapWatchdog, isAddrInUse, resolvePortInUse } from "./lifecycle.js";
 import { PrivacyCheckpoint } from "./store/privacy-checkpoint.js";
 import { Repo } from "./store/repo.js";
@@ -96,6 +97,7 @@ import { SafetyDispatchGate } from "./safety/dispatch.js";
 import { SuspensionStore } from "./safety/suspensions.js";
 import { createGuardianJudge } from "./safety/guardian-model.js";
 import { connectHostSocket, type HostSocketTransport } from "./host-socket.js";
+import { startupHostChannel } from "./startup-host-channel.js";
 
 export interface RuntimeHandle {
   port: number;
@@ -112,7 +114,26 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
   await applyPendingRuntimeRestore(config.dataDir, config.dbPath);
-  const repo = new Repo(openDb(config.dbPath));
+  const db = openDb(config.dbPath);
+  let channel: RpcChannel | null = null;
+  let hostSocket: HostSocketTransport | null = null;
+  let releaseHostStartup: (() => void) | undefined;
+  let columnCipher: Awaited<ReturnType<typeof prepareProtectedDatabase>> | undefined;
+  try {
+    if (env.AUX_HOST_SOCKET) {
+      hostSocket = await connectHostSocket(env.AUX_HOST_SOCKET, env.AUX_HOST_TOKEN ?? "");
+      const startup = startupHostChannel(hostSocket);
+      channel = startup.channel;
+      releaseHostStartup = startup.release;
+      const native = new ChannelNativeBridge(channel);
+      columnCipher = await prepareProtectedDatabase(db, native, env.AUX_BROWSER_PROFILE_ID ?? "");
+    }
+  } catch (error) {
+    db.close();
+    hostSocket?.close();
+    throw error;
+  }
+  const repo = new Repo(db, columnCipher);
   const workspaceFolders = new WorkspaceFolderService(repo, () => [config.dataDir]);
   const folderRootsForRun = (runId?: string, access: "read" | "write" = "write") => {
     const workspaceId = runId ? repo.getRun(runId)?.config?.contextWorkspaceId : undefined;
@@ -300,12 +321,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   }, 10_000).unref();
 
   // ---- channel to the native browser host ----
-  let channel: RpcChannel | null = null;
-  let hostSocket: HostSocketTransport | null = null;
-  if (env.AUX_HOST_SOCKET) {
-    hostSocket = await connectHostSocket(env.AUX_HOST_SOCKET, env.AUX_HOST_TOKEN ?? "");
-    channel = new RpcChannel(hostSocket, "runtime->chromium-host");
-  } else if (env.AUX_IPC === "1" && typeof process.send === "function") {
+  if (!env.AUX_HOST_SOCKET && env.AUX_IPC === "1" && typeof process.send === "function") {
     const transport: Transport = {
       send: (m) => {
         try {
@@ -1257,8 +1273,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // readiness gate is the last step — callers were 503'd until now.
   invokeRef = invoke;
   resolveInvoker!(invoke);
-  api.setReady();
-  disarmWatchdog();
   const sweepExternalSessions = () => {
     try {
       externalSessions.sweepIdle();
@@ -1370,6 +1384,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         return pages.shuttingDown();
     }
   });
+
+  releaseHostStartup?.();
+  api.setReady();
+  disarmWatchdog();
 
   let closed = false;
   const browsingMemory = new BrowsingMemory(repo);
