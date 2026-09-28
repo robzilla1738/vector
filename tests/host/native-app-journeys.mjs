@@ -864,7 +864,7 @@ else {
     ...(settingsCookieControlsJourney ? ["--host-resolver-rules=MAP localhost 127.0.0.1", "--no-proxy-server"] : []),
     ...(settingsHttpsFirstJourney ? [`--host-resolver-rules=MAP aux-s9-off.notarealdomain-auxprobe.com 127.0.0.1:${tcpFixture.address().port}, MAP aux-s9-on.notarealdomain-auxprobe.com 127.0.0.1:${tcpFixture.address().port}`, "--no-proxy-server", "--disable-features=HttpsFirstBalancedModeAutoEnable,HttpsFirstModeV2ForEngagedSites,HttpsFirstModeV2ForTypicallySecureUsers"] : []),
     ...(httpFallbackJourney ? ["--disable-features=HttpsFirstDialogUi"] : [])], {
-    cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", ...(browserImportUiJourney || browserImportFormatsJourney ? { HOME: importHome } : {}) }, stdio: ["ignore", "ignore", "pipe"],
+    cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", ...(browserImportUiJourney || browserImportFormatsJourney ? { AUX_IMPORT_SOURCE_HOME: importHome } : {}) }, stdio: ["ignore", "ignore", "pipe"],
   });
   const startupLog = join(output, "browser-stderr.log");
   child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
@@ -977,7 +977,7 @@ else {
     child.stderr.destroy();
     child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
       "--use-mock-keychain", "--password-store=basic"], {
-      cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", HOME: importHome }, stdio: ["ignore", "ignore", "pipe"],
+      cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", AUX_IMPORT_SOURCE_HOME: importHome }, stdio: ["ignore", "ignore", "pipe"],
     });
     child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
     await until("restarted imported Profile runtime", async () => {
@@ -995,10 +995,10 @@ else {
     if (rpcOnly) throw new Error("The browser import acceptance needs the real Settings UI.");
     const preview = await rpc("import.preview");
     assert.deepEqual(preview.sources.filter(source => source.id !== "chrome-attached").map(source => source.id), ["chrome"],
-      "Isolated HOME must expose only the disposable Chrome fixture");
+      "Isolated import source root must expose only the disposable Chrome fixture");
     const chrome = preview.sources.find(source => source.id === "chrome");
     assert.deepEqual(chrome.profileCategories.map(item => item.profileId), ["Default", "Profile 1"]);
-    record("source preview stays inside isolated disposable HOME", { profiles: chrome.profiles });
+    record("source preview stays inside isolated disposable import root", { profiles: chrome.profiles });
     console.log("In Aux Settings → General → Import browser data, review Chrome's two Profiles. Select only Default History and Profile 1 Bookmarks, then choose Import selected (2).");
     await until("reviewed Profile import in native history and bookmarks", async () => {
       const bookmarks = await rpc("bookmarks.list");
@@ -1044,7 +1044,7 @@ else {
     nativeHistoryDb.close();
     child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
       "--use-mock-keychain", "--password-store=basic"], {
-      cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", HOME: importHome }, stdio: ["ignore", "ignore", "pipe"],
+      cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", AUX_IMPORT_SOURCE_HOME: importHome }, stdio: ["ignore", "ignore", "pipe"],
     });
     child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
     await until("restarted Profile runtime", async () => {
@@ -5186,6 +5186,14 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
   report.passed = true;
   }
 } catch (error) {
+  if (browserImportFormatsJourney) {
+    report.importStartupDiagnostics = {
+      runtimeFileExists: existsSync(runtimeFile),
+      runtimeFileMode: existsSync(runtimeFile) ? statSync(runtimeFile).mode & 0o777 : null,
+      browserExitCode: child?.exitCode ?? null,
+      workspace: await rpc("workspace.get").then(value => ({ sessions: value?.sessions?.map(({ sessionId, status, detail }) => ({ sessionId, status, detail })) })).catch(cause => String(cause)),
+    };
+  }
   if (browserImportUiJourney) {
     const inspect = (path, sql) => {
       if (!existsSync(path)) return { exists: false };

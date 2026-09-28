@@ -39,7 +39,9 @@ export interface ImportHistoryRow {
   visitedAt: number;
 }
 
-const HOME = homedir();
+// A fixture may relocate read-only import discovery without changing the app's
+// actual HOME (which also affects native Profile/Keychain startup on macOS).
+const HOME = process.env.AUX_IMPORT_SOURCE_HOME ?? homedir();
 
 const CHROMIUM_SOURCES: { id: ImportSourceId; label: string; dir: string }[] = [
   { id: "chrome", label: "Chrome", dir: join(HOME, "Library/Application Support/Google/Chrome") },
