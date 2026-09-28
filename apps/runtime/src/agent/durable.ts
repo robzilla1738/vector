@@ -4,6 +4,9 @@ import type { DatabaseSync } from "node:sqlite";
 import { openDb } from "../store/db.js";
 import { classifyStep } from "./permissions.js";
 
+const NAVIGATION_OPS = new Set(["navigate", "back", "forward", "reload"]);
+const isWriteIntentStep = (op: string) => classifyStep(op) !== "read" && !NAVIGATION_OPS.has(op);
+
 export interface WriteIntent {
   id: string;
   runId: string;
@@ -143,7 +146,7 @@ export function taskLogicalActionId(taskId: string, revision: number, signature:
   return `task:${taskId}:r${revision}:${signature}`;
 }
 
-/** Persist a write/egress intent. `skip` means do not dispatch. */
+/** Persist a state-changing intent. Navigation remains decided but is not a write. */
 export function beginConsequentialWrite(
   ledger: DurableWriteLedger | undefined,
   opts: {
@@ -164,8 +167,7 @@ export function beginConsequentialWrite(
 ): { skip: boolean; intentId?: string; reason?: string } {
   if (!ledger) return { skip: false };
   const writes = opts.steps.some((s) => {
-    const effect = classifyStep(s.op);
-    return effect !== "read";
+    return isWriteIntentStep(s.op);
   });
   if (!writes) return { skip: false };
   const signature = stepSignature(opts.steps);
@@ -181,7 +183,7 @@ export function beginConsequentialWrite(
     taskId: opts.taskId,
     taskRevision: opts.taskRevision,
     summary: {
-      ops: opts.steps.filter((step) => classifyStep(step.op) !== "read").map((step) => step.op),
+      ops: opts.steps.filter((step) => isWriteIntentStep(step.op)).map((step) => step.op),
       actionLabels: opts.actionLabels?.filter((label) => label && !label.includes("{handle}")),
       beforeLineHashes: [...new Set((opts.beforeText ?? "").split("\n").map((line) => line.trim())
         .filter(Boolean).map(observationLineHash))],
@@ -198,7 +200,8 @@ const PRE_DISPATCH_CODES = new Set([
 
 export interface WriteResultLike {
   status: string;
-  steps?: Array<{ op: string; status: string; error?: { code: string; message?: string } }>;
+  steps?: Array<{ op: string; status: string; error?: { code: string; message?: string };
+    receipt?: { uncertain?: boolean; dispatchedBeforeTakeover?: boolean } }>;
 }
 
 /**
@@ -208,6 +211,8 @@ export interface WriteResultLike {
  * - otherwise an input may have reached the site: `uncertain`
  */
 export function writeOutcome(result: WriteResultLike): { outcome: "confirmed" | "not_applied" | "uncertain"; reason?: string } {
+  if (result.steps?.some((step) => isWriteIntentStep(step.op)
+    && (step.receipt?.uncertain || step.receipt?.dispatchedBeforeTakeover))) return { outcome: "uncertain" };
   if (result.status === "completed") return { outcome: "confirmed" };
   // without step outcomes nothing proves the input stayed in this process
   if (!result.steps?.length) return { outcome: "uncertain" };

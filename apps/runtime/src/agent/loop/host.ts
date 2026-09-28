@@ -2,7 +2,7 @@ import { AuxError, type Observation, type Run, type StepOutcome } from "@aux/con
 import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve, sep } from "node:path";
 import type { CoordinatorLoopHost } from "../coordinator-verify.js";
-import { DEFAULT_MAX_MODEL_CALLS, NAV_OPS, TERMINAL_STATUSES, markUnconfirmedWrites, verifyResultCitations } from "../coordinator-verify.js";
+import { DEFAULT_MAX_MODEL_CALLS, TERMINAL_STATUSES, markUnconfirmedWrites, verifyResultCitations } from "../coordinator-verify.js";
 import { classifyStep, subagentGrants } from "../permissions.js";
 import { observationLineHash } from "../durable.js";
 import { redactObservation } from "../planner.js";
@@ -133,15 +133,9 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   const steerPending = () =>
     c.paused || (self.deps.repo.getRun(runId)?.config?.messageRevision ?? 0) !== applied;
 
-  /** Track uncertain writes for checkpoint/finish the same way the planner does. */
+  /** The durable ledger, not a transient "dispatched" step label, decides uncertainty. */
   const noteUnresolved = () => {
-    self.unresolvedByRun.set(
-      runId,
-      outcomes
-        // NAV_OPS never count as writes — same exclusion verifyDone applies.
-        .filter((o) => !NAV_OPS.has(o.op) && (o.receipt?.uncertain === true || o.receipt?.dispatchedBeforeTakeover === true || o.effect === "uncertain" || o.effect === "dispatched"))
-        .map((o) => o.stepId),
-    );
+    self.unresolvedByRun.set(runId, self.durable.unresolved(runId).map((intent) => intent.id));
   };
 
   /** observe with the same detached-target fallback the planner loop uses. */
@@ -543,6 +537,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       && obs.content.elements.some((element) => !element.occluded && element.role === "button"
         && /^(close|dismiss)$/i.test(element.name?.trim() ?? ""));
   };
+  deps.dialogAnswerLabel = () => /\b(?:report|return|give|tell me)\s+(?:the\s+)?(.{2,80}?)\s+(?:shown|displayed)\s+(?:inside|in)\s+(?:the|a)\s+dialog\b/i
+    .exec(run.goal)?.[1]?.trim();
 
   // The planner sees the page inside its first call. Seed that same snapshot
   // so a read can finish in one submit_result instead of a snapshot round trip.

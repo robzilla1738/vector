@@ -12,6 +12,7 @@ it("keeps a post-dispatch failure uncertain", () => {
   expect(writeOutcome({ status: "failed", steps: [step("click", "failed", "condition_timeout")] }).outcome).toBe("uncertain");
   expect(writeOutcome({ status: "failed", steps: [step("fill", "ok"), step("click", "failed", "target_detached")] }).outcome).toBe("uncertain");
   expect(writeOutcome({ status: "failed", steps: [] }).outcome).toBe("uncertain");
+  expect(writeOutcome({ status: "completed", steps: [{ op: "click", status: "ok", receipt: { uncertain: true } }] }).outcome).toBe("uncertain");
 });
 
 it("confirms writes that all dispatched when only a later read failed", () => {

@@ -122,6 +122,16 @@ describe("code-mode REPL", () => {
     expect((step.mock.calls[0]![1] as { id: string }).id).not.toBe((step.mock.calls[1]![1] as { id: string }).id);
   });
 
+  it("strips a copied rendered link suffix before the fresh named-control lookup", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const findRef = vi.fn(async () => ({ ref: "r10" }));
+    const step = vi.fn(async () => ({ output: { status: "completed" } }));
+    await pool.eval(deps({ findRef, step }), `page.clickByName('Record 15 — Alpha project" href=/records/rec-15')`, { pageId: "p1" });
+    expect(findRef).toHaveBeenCalledWith("p1", "Record 15 — Alpha project", undefined);
+    expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "click", target: "r10" }));
+  });
+
   it("extracts one labeled value with its observed quote and can submit it", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

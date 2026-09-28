@@ -273,7 +273,13 @@ for (const op of __aux_step_ops) {
 }
 page.use = (pageId) => { const t = __aux_invoke("useTab", { pageId }); __aux_page = t.pageId; return t; };
 page.clickByName = (name, role) => {
-  const target = __aux_invoke("findRef", { pageId: __aux_page, name, role });
+  // A model may copy the rendered link line rather than only its quoted name.
+  // Strip renderer syntax, then still require the host's fresh unique lookup.
+  let label = String(name).trim();
+  const rendered = label.match(/^(?:r\\d+\\s+\\w+\\s+)?"([^"]+)"(?:\\s+href=.*)?$/);
+  if (rendered) label = rendered[1];
+  else if (label.includes('" href=')) label = label.slice(0, label.indexOf('" href='));
+  const target = __aux_invoke("findRef", { pageId: __aux_page, name: label, role });
   return page.click(target.ref);
 };
 page.navigateMatching = (targetId) => {

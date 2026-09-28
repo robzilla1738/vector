@@ -497,7 +497,7 @@ describe("runToolLoop (S5 host integration)", () => {
       ],
     } } as Observation;
     const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{
-      toolCallId: "g1", toolName: "goal_program", input: { code: 'page.navigateMatching("rec-14"); page.clickByName("Details", "button"); var s=snapshot(); var m=s.text.match(/Internal reference: ([^\\n]+)/); if(!m) throw new Error("label absent"); submitResult(m[1], [{observationId:s.observationId, quote:m[0]}])', answerLabel: "Internal reference", answerScope: "dialog" },
+      toolCallId: "g1", toolName: "goal_program", input: { code: 'page.navigateMatching("rec-14"); page.clickByName("Details", "button"); var s=snapshot(); var m=s.text.match(/Internal reference: ([^\\n]+)/); if(!m) throw new Error("label absent"); submitResult(m[1], [{observationId:s.observationId, quote:m[0]}])', answerLabel: "" },
     }] }]);
     const h = coordinatorHarness(model);
     h.pages.observe.mockImplementation(async () => current);
@@ -512,11 +512,11 @@ describe("runToolLoop (S5 host integration)", () => {
           { ref: "r4", tag: "button", role: "button", name: "Close", frame: "main" },
         ] } } as Observation;
       const steps = program.steps.map((step) => ({ stepId: step.id, op: step.op, status: "ok" as const, startedAt: 1, durationMs: 1,
-        receipt: { remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false }, effect: "observed" as const }));
+        receipt: { remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false }, effect: "dispatched" as const }));
       for (const [index, step] of program.steps.entries()) ctx?.onStep?.(steps[index]!, step);
       return { status: "completed", steps, observation: current };
     });
-    const run = await h.coordinator.start({ goal: "Find rec-14, open its detail page and Details dialog, then report Internal ref", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const run = await h.coordinator.start({ goal: "Find rec-14, open its detail page and Details dialog, then report the internal reference shown inside the dialog only.", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "rec-14" });
@@ -724,15 +724,17 @@ describe("runToolLoop (S5 host integration)", () => {
         }],
       },
       { text: "blocked" },
+      { text: "still blocked" },
     ]);
     const h = coordinatorHarness(model, (program, ctx) => {
       const steps = program.steps.map((s) => ({
-        stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1,
+        stepId: s.id, op: s.op, status: "failed" as const, startedAt: 1, durationMs: 1,
+        error: { code: "condition_timeout", message: "timed out" },
         effect: "uncertain" as const,
         receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true },
       }));
       for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
-      return { status: "completed", steps };
+      return { status: "failed", steps };
     });
     const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     const final = await settle(h.repo, run.runId);
@@ -740,10 +742,9 @@ describe("runToolLoop (S5 host integration)", () => {
     // submit_result rejected while the uncertain dispatch stood…
     const rejected = transcript.find((m) => m.role === "tool" && JSON.stringify(m.content).includes("uncertain dispatch"));
     expect(rejected).toBeTruthy();
-    // …and the run could not reach completed — it stopped partially with the
-    // write surfaced, never claiming success.
-    expect(final.status).toBe("partially_completed");
-    expect(final.result).toMatchObject({ unconfirmedWrites: ["s1"] });
+    // …and it cannot claim success while the durable intent stays uncertain.
+    expect(final.status).not.toBe("completed");
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "uncertain" });
   });
 
   it("rejects same-page boilerplate and reconciles only a new effect line", async () => {

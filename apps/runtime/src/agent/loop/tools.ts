@@ -206,13 +206,14 @@ export function buildToolManifest(): LoopToolManifest {
       if (!/\b(?:submitResult|submitLabeledValue)\s*\(/.test(input.code))
         return { output: new AuxError("invalid_params", "Goal program needs a verified terminal submitResult or page.submitLabeledValue call; use ordinary tools on the next turn if the answer cannot be derived safely.") };
       const run = need(ctx.deps.repl, "goal_program");
+      const recoveryLabel = ctx.deps.dialogAnswerLabel?.() ?? (input.answerScope === "dialog" ? input.answerLabel : "");
       try {
         const result = await run(input, ctx);
-        if ("finish" in result || "park" in result || !input.answerLabel || input.answerScope !== "dialog" || !ctx.deps.canRecoverDialogValue?.(input.answerLabel)) return result;
+        if ("finish" in result || "park" in result || !recoveryLabel || !ctx.deps.canRecoverDialogValue?.(recoveryLabel)) return result;
       } catch (error) {
-        if (!input.answerLabel || input.answerScope !== "dialog" || !ctx.deps.canRecoverDialogValue?.(input.answerLabel)) throw error;
+        if (!recoveryLabel || !ctx.deps.canRecoverDialogValue?.(recoveryLabel)) throw error;
       }
-      return run({ code: `page.submitLabeledValue(${JSON.stringify(input.answerLabel)})`, deadlineMs: input.deadlineMs }, ctx);
+      return run({ code: `page.submitLabeledValue(${JSON.stringify(recoveryLabel)})`, deadlineMs: input.deadlineMs }, ctx);
     },
   };
 
