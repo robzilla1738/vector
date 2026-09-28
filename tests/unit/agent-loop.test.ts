@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import {
   MockModelClient,
+  DurableWriteLedger,
   TranscriptStore,
   buildSystemPrompt,
   buildToolManifest,
@@ -611,7 +612,7 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(rejected).toBeTruthy();
   });
 
-  it("confirms a write when the model cites a later post-state observation; marks it unconfirmed otherwise", async () => {
+  it("completes a confirmed write with or without a post-state citation", async () => {
     const postObs = { ...pageObs(), revision: 2 } as Observation;
     const execConfirmed = (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
       const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1 }));
@@ -634,7 +635,7 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(final.status).toBe("completed");
     expect(final.result).not.toMatchObject({ unconfirmedWrites: ["s1"] });
 
-    // Same write without a post-state citation completes marked unconfirmed.
+    // The completed executor receipt confirms the write independently.
     const bare = new MockModelClient().scriptToolSteps([
       { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
       {
@@ -653,7 +654,7 @@ describe("runToolLoop (S5 host integration)", () => {
     const run2 = await h2.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     const final2 = await settle(h2.repo, run2.runId);
     expect(final2.status).toBe("completed");
-    expect(final2.result).toMatchObject({ unconfirmedWrites: ["s1"] });
+    expect(final2.result).toMatchObject({ report: "clicked" });
   });
 
   it("blocks submit_result while an uncertain dispatch is in the ledger", async () => {
@@ -689,7 +690,55 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(final.result).toMatchObject({ unconfirmedWrites: ["s1"] });
   });
 
-  it("reconciles a ledger-uncertain dispatch when a later snapshot is cited", async () => {
+  it("rejects same-page boilerplate and reconciles only a new effect line", async () => {
+    const postObs = { ...pageObs(), revision: 2 } as Observation;
+    postObs.content.text = "Order page\nNotifications 1\nSaving...\nSaved";
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
+      {
+        toolCalls: [{
+          toolCallId: "f1",
+          toolName: "submit_result",
+          input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
+        }],
+      },
+      { toolCalls: [{ toolCallId: "r1", toolName: "reconcile_action", input: {
+        citation: { pageId: "p1", revision: 2, quote: "Order page" }, effect: "Order page",
+      } }] },
+      { toolCalls: [{ toolCallId: "r3", toolName: "reconcile_action", input: {
+        citation: { pageId: "p1", revision: 2, quote: "Notifications 1" }, effect: "Notifications 1",
+      } }] },
+      { toolCalls: [{ toolCallId: "r4", toolName: "reconcile_action", input: {
+        citation: { pageId: "p1", revision: 2, quote: "Saving..." }, effect: "Saving...",
+      } }] },
+      { toolCalls: [{ toolCallId: "r2", toolName: "reconcile_action", input: {
+        citation: { pageId: "p1", revision: 2, quote: "Saved" }, effect: "Saved",
+      } }] },
+      { toolCalls: [{ toolCallId: "f2", toolName: "submit_result", input: {
+        report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Saved" }],
+      } }] },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({
+        stepId: s.id, op: s.op, status: "failed" as const, startedAt: 1, durationMs: 1,
+        error: { code: "condition_timeout", message: "timed out" },
+        effect: "uncertain" as const,
+        receipt: { remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: false },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "failed", steps, observation: postObs };
+    });
+    const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "clicked" });
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "confirmed" });
+    const transcript = new TranscriptStore(h.db).load(run.runId);
+    expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("already visible before"))).toBe(true);
+    expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("does not confirm the click completed"))).toBe(true);
+  });
+
+  it("does not settle an uncertain write from a post-dispatch page title alone", async () => {
     const postObs = { ...pageObs(), revision: 2 } as Observation;
     const model = new MockModelClient().scriptToolSteps([
       { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
@@ -713,36 +762,22 @@ describe("runToolLoop (S5 host integration)", () => {
     });
     const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     const final = await settle(h.repo, run.runId);
-    expect(final.status).toBe("completed");
-    expect(final.result).toMatchObject({ report: "clicked" });
-    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "confirmed" });
+    expect(final.status).not.toBe("completed");
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "uncertain" });
   });
 
-  it("settles an uncertain write when the model cites a post-dispatch observation", async () => {
-    const postObs = { ...pageObs(), revision: 2 } as Observation;
-    const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
-      {
-        toolCalls: [{
-          toolCallId: "f1",
-          toolName: "submit_result",
-          input: { report: "clicked", citations: [{ pageId: "p1", revision: 2, quote: "Order page" }] },
-        }],
-      },
-    ]);
-    const h = coordinatorHarness(model, (program, ctx) => {
-      const steps = program.steps.map((s) => ({
-        stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1,
-        effect: "uncertain" as const,
-        receipt: { remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: false },
-      }));
-      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
-      return { status: "completed", steps, observation: postObs };
+  it("rehydrates the pending action summary from the durable ledger after restart", () => {
+    const { db } = fixture();
+    const first = new DurableWriteLedger(db);
+    const { intent } = first.begin({ runId: "run-1", pageId: "p1", documentEpoch: 1, signature: "click-save",
+      summary: { ops: ["click"], actionLabels: ["Save"], beforeLineHashes: ["pre-action-line-hash"] } });
+    first.fail(intent.id);
+    const restarted = new DurableWriteLedger(db);
+    expect(restarted.getById(intent.id)).toMatchObject({
+      status: "uncertain", createdAt: expect.any(Number),
+      summary: { ops: ["click"], actionLabels: ["Save"], beforeLineHashes: ["pre-action-line-hash"] },
     });
-    const run = await h.coordinator.start({ goal: "click save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
-    const final = await settle(h.repo, run.runId);
-    expect(final.status).toBe("completed");
-    expect(final.result).toMatchObject({ report: "clicked" });
+    expect(restarted.unresolved("run-1")).toHaveLength(1);
   });
 
   it("never counts navigation as an uncertain write", async () => {

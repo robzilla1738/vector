@@ -426,7 +426,7 @@ export function buildToolManifest(): LoopToolManifest {
       "snapshot you observed (observationId, or pageId + revision) with a verbatim `quote` copied from that snapshot's " +
       "text. The verifier checks every quote exists in the cited snapshot; an unverifiable citation rejects the call — " +
       "re-observe, fix the quote, and resubmit. Paraphrase around quotes is allowed. If a write is marked uncertain in " +
-      "the write ledger, cite a snapshot taken after the write on the same page — the cited post-state settles it. " +
+      "the write ledger, use reconcile_action with a fresh effect line before submitting. " +
       "It may share a turn with the act or repl that does the work; it runs after those calls. " +
       "When the answer depends on a result you have not seen yet, it is the only call on the next turn.",
     byline: "Aux verified result — citations checked against the cited snapshots",
@@ -442,6 +442,20 @@ export function buildToolManifest(): LoopToolManifest {
       const verdict = await need(ctx.deps.submitResult, "submit_result")(input, ctx);
       if (!verdict.ok) return { output: new AuxError("invalid_params", verdict.error) };
       return { finish: { result: verdict.result } };
+    },
+  };
+
+  const reconcileAction: LoopTool = {
+    description: "Settle one uncertain page write after observing its actual effect. Cite one exact full line from a fresh snapshot of the affected page that was absent before dispatch; describe the specific intended effect shown by that line. An unchanged title or generic page text is not proof. Omit intentId only when this run has exactly one unresolved intent. Do not replay the write.",
+    byline: "Aux durable write reconciliation — fresh effect evidence",
+    inputSchema: z.object({
+      intentId: z.string().optional(),
+      citation: ResultCitationSchema,
+      effect: z.string().min(1).max(500),
+    }).strict(),
+    execute: async (raw, ctx) => {
+      const input = z.object({ intentId: z.string().optional(), citation: ResultCitationSchema, effect: z.string().min(1).max(500) }).strict().parse(raw);
+      return { output: await need(ctx.deps.reconcileAction, "reconcile_action")(input) };
     },
   };
 
@@ -479,6 +493,7 @@ export function buildToolManifest(): LoopToolManifest {
     routine_update: routineUpdate,
     notification,
     goal_update: goalUpdate,
+    reconcile_action: reconcileAction,
     submit_result: submitResult,
   };
 }

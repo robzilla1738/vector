@@ -18,6 +18,10 @@ export type GuardedDispatchOpts = {
   pageId: string;
   steps: Step[];
   observation: ObservationContent;
+  /** Already-redacted pre-dispatch render for evidence-bound reconciliation. */
+  beforeText?: string;
+  /** Action target labels from the redacted observation, with no control values. */
+  actionLabels?: string[];
   url: string;
   /** epoch the compiled program must still match */
   documentEpoch: number;
@@ -64,6 +68,8 @@ export async function guardedExecute(deps: GuardedDispatchDeps, opts: GuardedDis
     documentEpoch: prepared.program.documentEpoch ?? opts.documentEpoch,
     revision: opts.revision,
     steps: collectProgramSteps(program),
+    beforeText: opts.beforeText,
+    actionLabels: opts.actionLabels,
     taskId: opts.taskId,
     taskRevision: opts.taskRevision,
   });

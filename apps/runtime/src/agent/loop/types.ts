@@ -119,6 +119,10 @@ export interface LoopToolDeps {
     input: { report: string; citations?: ResultCitation[] },
     ctx: LoopToolContext,
   ) => Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; error: string }>;
+  /** Settle one uncertain page write only from a newly observed effect line. */
+  reconcileAction?: (input: { intentId?: string; citation: ResultCitation; effect: string }) => Promise<
+    { ok: true; intentId: string; status: "confirmed" } | { ok: false; error: string }
+  >;
 }
 
 /** Context a tool executes in: the run, its page, and the runtime surface. */

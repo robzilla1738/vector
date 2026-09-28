@@ -13,11 +13,27 @@ export interface WriteIntent {
   taskId?: string;
   taskRevision?: number;
   status: "pending" | "confirmed" | "uncertain" | "not_applied";
+  createdAt: number;
+  /** Only operation names and hashes of redacted pre-dispatch lines are retained. */
+  summary?: { ops: string[]; actionLabels?: string[]; beforeLineHashes: string[] };
 }
 
 const SELECT = `SELECT id, run_id AS runId, page_id AS pageId,
   document_epoch AS documentEpoch, idempotency_key AS idempotencyKey, task_id AS taskId,
-  task_revision AS taskRevision, status FROM action_intents`;
+  task_revision AS taskRevision, status, created_at AS createdAt FROM action_intents`;
+
+export const observationLineHash = (line: string): string =>
+  createHash("sha256").update(line.trim()).digest("hex");
+
+function withSummary(db: DatabaseSync, intent: WriteIntent | undefined): WriteIntent | undefined {
+  if (!intent) return undefined;
+  const row = db.prepare("SELECT evidence FROM action_transitions WHERE intent_id=? AND status='pending' ORDER BY seq LIMIT 1")
+    .get(intent.id) as { evidence: string | null } | undefined;
+  if (row?.evidence) {
+    try { intent.summary = JSON.parse(row.evidence) as WriteIntent["summary"]; } catch { /* old ledger row */ }
+  }
+  return intent;
+}
 
 export class DurableWriteLedger {
   private readonly db: DatabaseSync;
@@ -38,6 +54,7 @@ export class DurableWriteLedger {
     runId: string; pageId: string; documentEpoch: number;
     signature: string; revision?: number; logicalActionId?: string;
     taskId?: string; taskRevision?: number;
+    summary?: WriteIntent["summary"];
   }): { intent: WriteIntent; duplicate: boolean } {
     const idempotencyKey = opts.logicalActionId
       ? createHash("sha256").update(JSON.stringify(["logical-action", opts.logicalActionId])).digest("hex")
@@ -53,10 +70,10 @@ export class DurableWriteLedger {
         .get(idempotencyKey, opts.runId, opts.pageId,opts.taskId??null) as unknown as WriteIntent | undefined;
       if (existing) {
         this.db.exec("COMMIT");
-        return { intent: existing, duplicate: true };
+        return { intent: withSummary(this.db, existing)!, duplicate: true };
       }
       const intent: WriteIntent = { id: randomUUID(), runId: opts.runId, pageId: opts.pageId,
-        documentEpoch: opts.documentEpoch, idempotencyKey, taskId: opts.taskId, taskRevision: opts.taskRevision, status: "pending" };
+        documentEpoch: opts.documentEpoch, idempotencyKey, taskId: opts.taskId, taskRevision: opts.taskRevision, status: "pending", createdAt: Date.now(), summary: opts.summary };
       this.insert(intent);
       this.db.exec("COMMIT");
       return { intent, duplicate: false };
@@ -80,19 +97,24 @@ export class DurableWriteLedger {
   }
 
   get(idempotencyKey: string): WriteIntent | undefined {
-    return this.db.prepare(`${SELECT} WHERE idempotency_key=?`).get(idempotencyKey) as unknown as WriteIntent | undefined;
+    return withSummary(this.db, this.db.prepare(`${SELECT} WHERE idempotency_key=?`).get(idempotencyKey) as unknown as WriteIntent | undefined);
+  }
+
+  getById(id: string): WriteIntent | undefined {
+    return withSummary(this.db, this.db.prepare(`${SELECT} WHERE id=?`).get(id) as unknown as WriteIntent | undefined);
   }
 
   unresolved(runId: string): WriteIntent[] {
-    return this.db.prepare(`${SELECT} WHERE run_id=? AND status IN ('pending','uncertain') ORDER BY created_at,id`)
-      .all(runId) as unknown as WriteIntent[];
+    return (this.db.prepare(`${SELECT} WHERE run_id=? AND status IN ('pending','uncertain') ORDER BY created_at,id`)
+      .all(runId) as unknown as WriteIntent[]).map((intent) => withSummary(this.db, intent)!);
   }
 
   private insert(intent: WriteIntent): void {
-    const now = Date.now();
+    const now = intent.createdAt;
     this.db.prepare(`INSERT INTO action_intents(id,idempotency_key,run_id,page_id,document_epoch,task_id,task_revision,status,created_at)
       VALUES(?,?,?,?,?,?,?,?,?)`).run(intent.id, intent.idempotencyKey, intent.runId, intent.pageId, intent.documentEpoch, intent.taskId ?? null, intent.taskRevision ?? null, intent.status, now);
-    this.db.prepare("INSERT INTO action_transitions(intent_id,status,recorded_at) VALUES(?,?,?)").run(intent.id, intent.status, now);
+    this.db.prepare("INSERT INTO action_transitions(intent_id,status,recorded_at,evidence) VALUES(?,?,?,?)")
+      .run(intent.id, intent.status, now, intent.summary ? JSON.stringify(intent.summary) : null);
   }
 
   private transition(id: string, status: WriteIntent["status"], evidence?: string): void {
@@ -134,6 +156,10 @@ export function beginConsequentialWrite(
     logicalActionId?: string;
     taskId?: string;
     taskRevision?: number;
+    /** Redacted rendered observation taken immediately before dispatch. */
+    beforeText?: string;
+    /** Labels resolved from the redacted pre-dispatch observation. */
+    actionLabels?: string[];
   },
 ): { skip: boolean; intentId?: string; reason?: string } {
   if (!ledger) return { skip: false };
@@ -154,6 +180,12 @@ export function beginConsequentialWrite(
     logicalActionId,
     taskId: opts.taskId,
     taskRevision: opts.taskRevision,
+    summary: {
+      ops: opts.steps.filter((step) => classifyStep(step.op) !== "read").map((step) => step.op),
+      actionLabels: opts.actionLabels?.filter((label) => label && !label.includes("{handle}")),
+      beforeLineHashes: [...new Set((opts.beforeText ?? "").split("\n").map((line) => line.trim())
+        .filter(Boolean).map(observationLineHash))],
+    },
   });
   if (began.duplicate) return { skip: true, reason: `Action ${began.intent.id} is ${began.intent.status}; reconcile its outcome before dispatch. No new action was executed.` };
   return { skip: false, intentId: began.intent.id };

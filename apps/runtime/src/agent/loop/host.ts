@@ -4,7 +4,9 @@ import { basename, dirname, resolve, sep } from "node:path";
 import type { CoordinatorLoopHost } from "../coordinator-verify.js";
 import { DEFAULT_MAX_MODEL_CALLS, NAV_OPS, TERMINAL_STATUSES, markUnconfirmedWrites, verifyResultCitations } from "../coordinator-verify.js";
 import { subagentGrants } from "../permissions.js";
+import { observationLineHash } from "../durable.js";
 import { redactObservation } from "../planner.js";
+import { redactForModel } from "../policy.js";
 import { guardedExecute } from "../guarded-dispatch.js";
 import { renderObservation } from "../../services/observation-render.js";
 import { runAgentLoop, resumeAgentLoop, type AgentLoopOptions, type AgentLoopOutcome } from "./loop.js";
@@ -114,7 +116,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   const obsTexts = new Map<string, string>();
   /** Citation handle → snapshot identity — resolves which page/revision a cited handle points at. */
   const obsMeta = new Map<string, { pageId: string; revision: number }>();
-  const latestRevision = new Map<string, number>();
+  const obsAt = new Map<string, number>();
   /** stepId → the page/revision a write dispatched against — a citation on the same page at a later revision confirms it. */
   const writeDispatches = new Map<string, { pageId: string; revision: number }>();
   let applied = run.config?.messageRevision ?? 0;
@@ -174,7 +176,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     obsTexts.set(obs.pageId, text);
     obsMeta.set(observationId, { pageId: obs.pageId, revision: obs.revision });
     obsMeta.set(`${obs.pageId}@${obs.revision}`, { pageId: obs.pageId, revision: obs.revision });
-    latestRevision.set(obs.pageId, obs.revision);
+    obsAt.set(observationId, Date.now());
+    obsAt.set(`${obs.pageId}@${obs.revision}`, Date.now());
     return { text, observationId, revision: obs.revision };
   };
 
@@ -185,11 +188,21 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     },
     act: async ({ pageId, steps }): Promise<LoopToolResult> => {
       const obs = lastObs.get(pageId) ?? (lastObs.set(pageId, await observePage(pageId, {})), lastObs.get(pageId)!);
+      const safeObs = redactObservation(obs);
+      const actionLabels = steps.flatMap((step) => {
+        const target = "target" in step ? step.target : undefined;
+        if (typeof target !== "string") return [];
+        const name = safeObs.content.elements.find((element) => element.ref === target)?.name
+          ?? safeObs.content.formFields.find((field) => field.ref === target)?.label;
+        const redacted = name ? String(redactForModel(name)) : "";
+        return redacted && !redacted.startsWith("{handle:") ? [redacted.slice(0, 80)] : [];
+      });
       const gate = await guardedExecute(
         { pages: self.deps.pages, durable: self.durable, grants: subagentGrants(run.config?.subagentProfile, self.deps.grants) },
         {
           runId, pageId, steps,
           observation: obs.content, url: obs.content.url,
+          beforeText: renderObservation(safeObs), actionLabels,
           documentEpoch: obs.documentEpoch, revision: obs.revision,
           taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
           isCurrent: () => !steerPending() && !signal.aborted,
@@ -250,66 +263,66 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           return { ok: false as const, error: `Unverifiable citations — ${problems.join("; ")}. Re-observe and quote exactly.` };
         }
       }
-      // Verification v2: a write confirms when the model cites an observation
-      // on the same page at a later revision — the post-state it points at.
-      const citedRevisions = (citations ?? []).map((citation) => {
-        const meta = citation.observationId ? obsMeta.get(citation.observationId)
-          : citation.revision !== undefined ? obsMeta.get(`${citation.pageId}@${citation.revision}`)
-          : undefined;
-        const pageId = citation.pageId ?? meta?.pageId;
-        const revision = meta?.revision ?? citation.revision ?? (pageId ? latestRevision.get(pageId) : undefined);
-        return pageId === undefined || revision === undefined ? undefined : { pageId, revision };
-      });
-      // A cited post-state settles effect-level uncertainty the same way it
-      // confirms an unconfirmed write: the quote is verbatim-verified against
-      // a snapshot taken after the dispatch, so the model cannot invent it.
-      // Clearing the in-memory receipt is not enough — the durable intent
-      // stays `uncertain` until it is reconciled, and that is what blocks
-      // the next submit.
-      const confirmedPages = new Set<string>();
-      for (const outcome of outcomes) {
-        const uncertain = outcome.receipt?.uncertain === true || outcome.receipt?.dispatchedBeforeTakeover === true
-          || outcome.effect === "uncertain" || outcome.effect === "dispatched";
-        if (!uncertain) continue;
-        const dispatch = writeDispatches.get(outcome.stepId);
-        const confirmed = dispatch && citedRevisions.some((cited) => cited?.pageId === dispatch.pageId && cited.revision > dispatch.revision);
-        if (!confirmed || !dispatch) continue;
-        outcome.receipt = {
-          remoteConfirmed: false,
-          unconfirmed: false,
-          ...outcome.receipt,
-          uncertain: false,
-          dispatchedBeforeTakeover: false,
-          observed: outcome.receipt?.observed ?? "post-state cited in the result",
-        };
-        if (outcome.effect === "uncertain" || outcome.effect === "dispatched") outcome.effect = "observed";
-        confirmedPages.add(dispatch.pageId);
-      }
-      for (const intent of self.durable.unresolved(runId)) {
-        if (!confirmedPages.has(intent.pageId)) continue;
-        self.durable.reconcile(intent.id, "applied", "post-state cited in the result");
-      }
-      noteUnresolved();
+      // An uncertain effect is settled only by reconcile_action, which checks
+      // fresh evidence against the persisted pre-dispatch state.
       const unresolved = [
         ...(self.unresolvedByRun.get(runId) ?? []),
         ...self.durable.unresolved(runId).map((intent) => intent.id),
       ];
       if (unresolved.length)
-        return { ok: false as const, error: `${unresolved.length} uncertain dispatch(es) are recorded in the write ledger — take a fresh snapshot of the affected page, then resubmit citing that post-state observation.` };
-      for (const stepId of markUnconfirmedWrites(outcomes)) {
-        const dispatch = writeDispatches.get(stepId);
-        const confirmed = dispatch && citedRevisions.some((cited) => cited?.pageId === dispatch.pageId && cited.revision > dispatch.revision);
-        const outcome = outcomes.find((o) => o.stepId === stepId);
-        if (confirmed && outcome?.receipt) {
-          const { unconfirmed: _dropped, ...rest } = outcome.receipt;
-          outcome.receipt = { ...rest, observed: rest.observed ?? "post-state cited in the result" };
-        }
-      }
+        return { ok: false as const, error: `${unresolved.length} uncertain dispatch(es) are recorded in the write ledger (${self.durable.unresolved(runId).map((intent) => intent.id).join(", ")}) — use reconcile_action with a fresh snapshot proving the intended effect before submitting.` };
       const unconfirmed = outcomes.filter((o) => o.receipt?.unconfirmed === true).map((o) => o.stepId);
       const result: Record<string, unknown> = { report };
       if (citations?.length) result.citations = citations;
       if (unconfirmed.length) result.unconfirmedWrites = unconfirmed;
       return { ok: true as const, result };
+    },
+    reconcileAction: async ({ intentId, citation, effect }) => {
+      const pending = self.durable.unresolved(runId);
+      const selectedId = intentId ?? (pending.length === 1 ? pending[0]!.id : undefined);
+      const intent = selectedId ? self.durable.getById(selectedId) : undefined;
+      if (!intent || intent.runId !== runId || !["pending", "uncertain"].includes(intent.status))
+        return { ok: false as const, error: "No unresolved intent with that ID belongs to this run." };
+      const key = citation.observationId ?? `${citation.pageId}@${citation.revision}`;
+      const meta = obsMeta.get(key);
+      const text = obsTexts.get(key);
+      const observedAt = obsAt.get(key);
+      if (!meta || !text || observedAt === undefined || meta.pageId !== intent.pageId || observedAt < intent.createdAt)
+        return { ok: false as const, error: "Cite a fresh observation of the affected page after the write." };
+      const quote = citation.quote.trim();
+      if (!quote || !text.split("\n").some((line) => line.trim() === quote))
+        return { ok: false as const, error: "Evidence must be one exact rendered line from the cited observation." };
+      if (intent.summary?.beforeLineHashes.includes(observationLineHash(quote)))
+        return { ok: false as const, error: "That line was already visible before the write and does not prove its effect." };
+      const labels = intent.summary?.actionLabels ?? [];
+      if (!labels.length) return { ok: false as const, error: "The ledger has no redacted action label to bind this evidence; leave the effect uncertain." };
+      const completedClickWords: Record<string, string> = {
+        save: "saved", submit: "submitted", create: "created", delete: "deleted", update: "updated",
+        approve: "approved", send: "sent", publish: "published", apply: "applied", remove: "removed",
+        add: "added", confirm: "confirmed", complete: "completed", place: "placed", cancel: "cancelled",
+      };
+      if (intent.summary?.ops.includes("click")) {
+        const completed = labels.some((label) => {
+          const word = completedClickWords[label.trim().toLowerCase().split(/\s+/)[0]!];
+          return word && new RegExp(`\\b${word}\\b`, "i").test(quote);
+        });
+        if (!completed) return { ok: false as const, error: "The new line does not confirm the click completed." };
+      }
+      if (!labels.some((label) => {
+        const stem = label.trim().toLowerCase().split(/\s+/)[0]!.replace(/e$/, "");
+        return stem.length >= 3 && quote.toLowerCase().includes(stem);
+      })) return { ok: false as const, error: "The new line does not show the intended action's effect." };
+      if (!effect.trim() || !quote.toLowerCase().includes(effect.trim().toLowerCase()))
+        return { ok: false as const, error: "The claimed effect must appear verbatim in the new post-state line." };
+      self.durable.reconcile(intent.id, "applied", JSON.stringify({ observationId: key, quote, effect: effect.trim() }));
+      for (const outcome of outcomes) {
+        const dispatch = writeDispatches.get(outcome.stepId);
+        if (dispatch?.pageId !== intent.pageId) continue;
+        if (outcome.receipt) outcome.receipt = { ...outcome.receipt, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false, observed: quote };
+        if (outcome.effect === "uncertain" || outcome.effect === "dispatched") outcome.effect = "observed";
+      }
+      noteUnresolved();
+      return { ok: true as const, intentId: intent.id, status: "confirmed" as const };
     },
     webFetch: self.deps.agentLoop?.webFetch,
     webSearch: self.deps.agentLoop?.webSearch,
@@ -636,7 +649,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
             blockedOnLedger = true;
             transcript.append(runId, [{
               role: "user",
-              content: `The write ledger still records an uncertain dispatch (${unresolved.join(", ")}). Re-observe the affected page and settle it, or finish with a partial result — you cannot claim these actions completed.`,
+              content: `The write ledger still records an uncertain dispatch (${unresolved.join(", ")}). Take a fresh snapshot and use reconcile_action only if a new line proves the intended effect. Otherwise finish with a partial result; you cannot claim these actions completed.`,
             }]);
             continue;
           }
