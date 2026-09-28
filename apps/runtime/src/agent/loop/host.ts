@@ -412,6 +412,24 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     },
     observe: async (pageId, scope) =>
       deps.observe!({ pageId, scope: scope as import("@aux/contracts").ObservationScope | undefined }),
+    findRef: async (pageId, name, role) => {
+      if (!run.pageIds.includes(pageId) && !openedTabs.has(pageId))
+        throw new AuxError("permission_denied", "Named control lookup requires a tab claimed by this run.");
+      const wanted = name.trim().toLocaleLowerCase();
+      if (!wanted) throw new AuxError("invalid_params", "A control name is required.");
+      const observation = await observePage(pageId, {});
+      recordObs(observation);
+      const candidates = observation.content.elements.filter((element) =>
+        !role || element.role?.toLocaleLowerCase() === role.toLocaleLowerCase());
+      const label = (element: (typeof candidates)[number]) => (element.name ?? element.text ?? "").trim().toLocaleLowerCase();
+      const exact = candidates.filter((element) => label(element) === wanted);
+      const matches = exact.length ? exact : candidates.filter((element) => label(element).includes(wanted));
+      if (matches.length !== 1)
+        throw new AuxError("invalid_params", matches.length
+          ? `Named control "${name}" is ambiguous (${matches.length} matches); use a specific name or ref.`
+          : `No control named "${name}" is in the current observation.`);
+      return { ref: matches[0]!.ref };
+    },
     capture: async (pageId) => {
       const shot = await self.deps.pages.capture(pageId);
       const elements = (lastObs.get(pageId)?.content.elements ?? [])

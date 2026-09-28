@@ -543,10 +543,10 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.pages.execute).toHaveBeenCalled();
   });
 
-  it("finishes a live REPL read with a verified citation in one model call", async () => {
+  it("finishes a named page action and verified read in one model call", async () => {
     const model = new MockModelClient().scriptToolSteps([{
       toolCalls: [{ toolCallId: "r1", toolName: "repl", input: {
-        code: `const s = snapshot(); submitResult("Order page", [{ observationId: s.observationId, quote: "Order page" }])`,
+        code: `page.clickByName("Save", "button"); const s = snapshot(); submitResult("Order page", [{ observationId: s.observationId, quote: "Order page" }])`,
       } }],
     }]);
     const h = coordinatorHarness(model);
@@ -555,6 +555,7 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "Order page" });
     expect(h.modelCalls).toHaveLength(1);
+    expect(h.pages.execute).toHaveBeenCalled();
   });
 
   it("completes via submit_result with verified snapshot citations", async () => {

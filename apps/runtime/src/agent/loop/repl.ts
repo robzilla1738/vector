@@ -48,6 +48,8 @@ export interface ReplHostDeps {
   /** Switch the REPL's current page — only tabs the run claims or opened. */
   useTab(pageId: string): Promise<ReplTab>;
   observe(pageId: string, scope?: string): Promise<unknown>;
+  /** Resolve one uniquely named control from a fresh governed observation. */
+  findRef?(pageId: string, name: string, role?: string): Promise<{ ref: string }>;
   /** Capture plus the last observation's ref geometry — the annotation data (pixel overlays land with native support). */
   capture(
     pageId: string,
@@ -151,6 +153,32 @@ function normalizeBridgeAwaits(code: string): string {
   return output;
 }
 
+/** Top-level lexical names persist in QuickJS across calls; detect collisions before evaluating. */
+function topLevelLexicals(code: string): string[] {
+  const names: string[] = [];
+  let depth = 0;
+  let quote = "";
+  for (let i = 0; i < code.length;) {
+    const char = code[i]!;
+    if (quote) {
+      if (char === "\\") i += 2;
+      else { if (char === quote) quote = ""; i++; }
+      continue;
+    }
+    if (code.startsWith("//", i)) { const end = code.indexOf("\n", i); i = end < 0 ? code.length : end; continue; }
+    if (code.startsWith("/*", i)) { const end = code.indexOf("*/", i + 2); i = end < 0 ? code.length : end + 2; continue; }
+    if (char === "'" || char === '"' || char === "`") { quote = char; i++; continue; }
+    if (char === "{") { depth++; i++; continue; }
+    if (char === "}") { depth = Math.max(0, depth - 1); i++; continue; }
+    if (depth === 0 && (i === 0 || !/[\w$]/.test(code[i - 1]!))) {
+      const declaration = /^(?:let|const)\s+([A-Za-z_$][\w$]*)\b/.exec(code.slice(i));
+      if (declaration) { names.push(declaration[1]!); i += declaration[0].length; continue; }
+    }
+    i++;
+  }
+  return names;
+}
+
 /**
  * Marshalability is proven inside the guest: `context.dump` mirrors guest
  * objects host-side and explodes on cycles, so the result is JSON.stringify'd
@@ -198,6 +226,7 @@ const __aux_step_ops = ${JSON.stringify([
   "dialog",
 ])};
 let __aux_page = null;
+let __aux_step_counter = 0;
 const __aux_invoke = (name, params) => {
   const response = JSON.parse(__aux_bridge(name, JSON.stringify(params ?? {})));
   if (!response.ok) {
@@ -234,13 +263,17 @@ const __aux_step_fields = ${JSON.stringify({
 const page = {};
 for (const op of __aux_step_ops) {
   page[op] = (...args) => {
-    const step = { id: "repl-" + Date.now().toString(36), op };
+    const step = { id: "repl-" + Date.now().toString(36) + "-" + (++__aux_step_counter), op };
     const named = __aux_step_fields[op];
     for (let i = 0; i < named.length && i < args.length; i++) if (args[i] !== undefined) step[named[i]] = args[i];
     return __aux_invoke("step", { pageId: __aux_page, step });
   };
 }
 page.use = (pageId) => { const t = __aux_invoke("useTab", { pageId }); __aux_page = t.pageId; return t; };
+page.clickByName = (name, role) => {
+  const target = __aux_invoke("findRef", { pageId: __aux_page, name, role });
+  return page.click(target.ref);
+};
 page.webmcp = Object.freeze({
   tools: () => __aux_invoke("webmcp", { pageId: __aux_page, action: { op: "tools" } }),
   call: (name, input) => __aux_invoke("webmcp", { pageId: __aux_page, action: { op: "call", name, input } }),
@@ -279,6 +312,7 @@ class ReplSession {
   touchedAt = Date.now();
   private artifacts = 0;
   private finished?: Record<string, unknown>;
+  private readonly lexicals = new Set<string>();
 
   private constructor(
     private context: QuickJSAsyncContext,
@@ -369,6 +403,11 @@ class ReplSession {
               parsed.scope === undefined ? undefined : String(parsed.scope),
             ),
           );
+        case "findRef":
+          if (!this.deps.findRef)
+            return fail(new AuxError("capability_unsupported", "Named control lookup is unavailable in this run."));
+          return ok(await this.deps.findRef(String(parsed.pageId ?? ""), String(parsed.name ?? ""),
+            parsed.role === undefined ? undefined : String(parsed.role)));
         case "capture": {
           const shot = await this.deps.capture(String(parsed.pageId ?? ""));
           if (shot.dataUrl && this.deps.outputDir) {
@@ -461,6 +500,9 @@ class ReplSession {
   async eval(code: string, deadlineMs?: number): Promise<LoopToolResult> {
     checkSource(code);
     code = normalizeBridgeAwaits(code);
+    const declared = topLevelLexicals(code);
+    const scoped = declared.some((name) => this.lexicals.has(name));
+    const source = scoped ? `{\n${code}\n}` : code;
     let release!: () => void;
     const previous = this.queue;
     this.queue = new Promise<void>((resolve) => {
@@ -472,12 +514,13 @@ class ReplSession {
     this.touchedAt = started;
     this.finished = undefined;
     try {
-      const result = await this.context.evalCodeAsync(code);
+      const result = await this.context.evalCodeAsync(source);
       if (this.finished) {
         try { this.context.unwrapResult(result).dispose(); } catch { /* accepted result is already terminal */ }
         return { finish: { result: this.finished } };
       }
       const valueHandle = this.context.unwrapResult(result); // guest exceptions throw here (park marker included)
+      if (!scoped) for (const name of declared) this.lexicals.add(name);
       this.context.setProp(this.context.global, "__aux_pending_result", valueHandle);
       valueHandle.dispose();
       let marshalled: unknown;

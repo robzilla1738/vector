@@ -80,6 +80,16 @@ describe("code-mode REPL", () => {
     expect(second.value).toBe(42);
   });
 
+  it("scopes a repeated top-level let declaration without rerunning the earlier cell", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    await pool.eval(deps(), `let s = 1; s`, { pageId: "p1" });
+    const second = out(await pool.eval(deps(), `let s = 2; s`, { pageId: "p1" }));
+    expect(second.value).toBe(2);
+    const original = out(await pool.eval(deps(), `s`, { pageId: "p1" }));
+    expect(original.value).toBe(1); // the prior handle remains available
+  });
+
   it("accepts model-style await on synchronous host calls without changing strings", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
@@ -98,6 +108,18 @@ describe("code-mode REPL", () => {
     const result = out(await pool.eval(deps({ step }), `page.click("r1")`, { pageId: "p1" }));
     expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "click", target: "r1" }));
     expect(result.value).toMatchObject({ status: "completed" });
+  });
+
+  it("resolves a named control and gives consecutive actions distinct step ids", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const findRef = vi.fn(async (_pageId: string, _name: string, _role?: string) => ({ ref: "r7" }));
+    const step = vi.fn(async (_pageId: string, _step: unknown) => ({ output: { status: "completed" } }));
+    await pool.eval(deps({ findRef, step }), `page.clickByName("Details", "button"); page.click("r8")`, { pageId: "p1" });
+    expect(findRef).toHaveBeenCalledWith("p1", "Details", "button");
+    expect(step).toHaveBeenCalledTimes(2);
+    expect(step.mock.calls[0]![1]).toMatchObject({ op: "click", target: "r7" });
+    expect((step.mock.calls[0]![1] as { id: string }).id).not.toBe((step.mock.calls[1]![1] as { id: string }).id);
   });
 
   it("yields the loop park when a page op is gated by a safety ask", async () => {
