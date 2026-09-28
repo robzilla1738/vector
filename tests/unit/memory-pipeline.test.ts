@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { createCipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { EventBus, MemoryPipeline, openDb, Repo, TaskService } from "@aux/runtime";
@@ -14,6 +15,11 @@ function fixture() {
   const native = {
     async storeSecret(name: string, value: string) { if (value) secrets.set(name, value); else secrets.delete(name); return { ok: true as const }; },
     async readSecret(name: string) { return { value: secrets.get(name) }; },
+    async profileStorageRoot() {
+      const name = `aux_root_v1_${createHash("sha256").update("profile-one").digest("hex").slice(0, 24)}`;
+      if (!secrets.has(name)) secrets.set(name, randomBytes(32).toString("base64"));
+      return { value: secrets.get(name)! };
+    },
   };
   const pipeline = new MemoryPipeline(repo, native, directory, "profile-one");
   const save = (runId: string, report: string) => repo.saveRun({ runId, goal: "Research", status: "completed", pageIds: [],
@@ -117,8 +123,8 @@ it("rebuilds derived claims on Forget, erases old keys, and stays forgotten afte
     await f.pipeline.extractRun(f.workspace.workspaceId, "run-two");
     for (const note of await f.pipeline.inbox(f.workspace.workspaceId))
       await f.pipeline.review(f.workspace.workspaceId, note.claimId, "accept");
-    expect(f.secrets.size).toBe(1);
-    const oldKey = [...f.secrets.keys()][0]!;
+    expect(f.secrets.size).toBe(2);
+    const oldKey = [...f.secrets.keys()].find(name => name.startsWith("mem_"))!;
     const forgotten = await f.pipeline.forget({ workspaceId: f.workspace.workspaceId, sourceRunId: "run-one" });
     expect(forgotten).toEqual({ forgotten: 1, remaining: 1 });
     expect(f.secrets.has(oldKey)).toBe(false);
@@ -131,6 +137,41 @@ it("rebuilds derived claims on Forget, erases old keys, and stays forgotten afte
   } finally { f.close(); }
 });
 
+it("migrates legacy encrypted generations without exposing or restoring forgotten claims", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.pipeline.setPolicy(workspaceId, true);
+    const pathPart = (value: string) => createHash("sha256").update(value).digest("hex").slice(0, 24);
+    const directory = join(f.directory, pathPart("profile-one"), pathPart(workspaceId));
+    const generation = `g-${randomUUID()}`;
+    const keyName = "mem_abc123";
+    const key = randomBytes(32);
+    mkdirSync(join(directory, generation), { recursive: true });
+    await f.native.storeSecret(keyName, key.toString("base64"));
+    const claim = { claimId: randomUUID(), sourceRunId: "legacy-run",
+      text: "A legacy amber fixture belongs to this Space.", capturedAt: 1 };
+    const legacySeal = (name: string, value: unknown) => {
+      const iv = randomBytes(12);
+      const cipher = createCipheriv("aes-256-gcm", key, iv);
+      cipher.setAAD(Buffer.from(`profile-one\0${workspaceId}\0${name}`));
+      return Buffer.concat([iv, cipher.update(JSON.stringify(value)), cipher.final(), cipher.getAuthTag()]);
+    };
+    for (const [name, value] of Object.entries({ "claims.json.enc": [claim],
+      "inbox.json.enc": [], "history.json.enc": [{ revisionId: randomUUID(), capturedAt: 1, claims: [claim] }] }))
+      writeFileSync(join(directory, generation, name), legacySeal(name, value));
+    writeFileSync(join(directory, "manifest.json"), JSON.stringify({ generation, keyName }));
+    expect(await f.pipeline.search(workspaceId, "amber")).toHaveLength(1);
+    await f.pipeline.forget({ workspaceId, all: true });
+    expect(JSON.parse(readFileSync(join(directory, "manifest.json"), "utf8")).version).toBe(2);
+    expect(f.secrets.has(keyName)).toBe(false);
+    expect([...f.secrets.keys()].some(name => name.startsWith("aux_root_v1_"))).toBe(true);
+    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    expect(await restarted.search(workspaceId, "amber")).toEqual([]);
+    expect((await restarted.history(workspaceId)).every(revision => !revision.sourceRunIds.includes("legacy-run"))).toBe(true);
+  } finally { f.close(); }
+});
+
 it("keeps the prior generation readable if credential erasure fails", async () => {
   const f = fixture();
   try {
@@ -138,7 +179,7 @@ it("keeps the prior generation readable if credential erasure fails", async () =
     f.save("run-one", "The copper fixture is still required after a failed erasure.");
     await f.pipeline.extractRun(f.workspace.workspaceId, "run-one");
     await f.pipeline.review(f.workspace.workspaceId, (await f.pipeline.inbox(f.workspace.workspaceId))[0]!.claimId, "accept");
-    const originalKey = [...f.secrets.keys()][0]!;
+    const originalKey = [...f.secrets.keys()].find(name => name.startsWith("mem_"))!;
     const failingNative = {
       ...f.native,
       async storeSecret(name: string, value: string) {
@@ -149,7 +190,7 @@ it("keeps the prior generation readable if credential erasure fails", async () =
     const pipeline = new MemoryPipeline(f.repo, failingNative, f.directory, "profile-one");
     await expect(pipeline.forget({ workspaceId: f.workspace.workspaceId, all: true })).rejects.toThrow(/credential store/);
     expect(await f.pipeline.search(f.workspace.workspaceId, "copper fixture")).toHaveLength(1);
-    expect(f.secrets.size).toBe(1);
+    expect(f.secrets.size).toBe(2);
   } finally { f.close(); }
 });
 

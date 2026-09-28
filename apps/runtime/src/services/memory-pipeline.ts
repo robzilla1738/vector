@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
+import { createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -9,17 +9,20 @@ import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/co
 import type { Run } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
+import { ProtectedStore } from "./protected-store.js";
 
 const exec = promisify(execFile);
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
-type Manifest = { generation: string; keyName: string };
+type Manifest = { generation: string; keyName: string; version?: 2 };
 type Revision = { revisionId: string; capturedAt: number; claims: MemoryClaim[] };
 type Secrets = Pick<NativeBridge, "storeSecret" | "readSecret">;
 
 /** Opt-in, encrypted, git-backed Space memory. All derived views are rebuilt from source claims. */
 export class MemoryPipeline {
+  private protectedStore: ProtectedStore;
   constructor(private repo: Repo, private secrets: Secrets, private baseDir: string, private profileId: string) {
     if (!profileId) throw new Error("Memory pipeline requires a Profile identity.");
+    this.protectedStore = new ProtectedStore(secrets, profileId);
     repo.db.exec(`CREATE TABLE IF NOT EXISTS memory_pipeline_leases(
       workspace_id TEXT PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS memory_pipeline_watermarks(
@@ -104,7 +107,8 @@ export class MemoryPipeline {
     }
     if (!value || typeof value !== "object" ||
       !/^g-[a-f0-9-]{36}$/.test((value as Manifest).generation) ||
-      !/^mem_[a-f0-9_]{1,59}$/.test((value as Manifest).keyName))
+      !/^mem_[a-f0-9_]{1,59}$/.test((value as Manifest).keyName) ||
+      ((value as Manifest).version !== undefined && (value as Manifest).version !== 2))
       throw new Error("Space memory manifest is invalid.");
     return value as Manifest;
   }
@@ -112,19 +116,13 @@ export class MemoryPipeline {
   private async key(manifest: Manifest): Promise<Buffer> {
     const value = (await this.secrets.readSecret(manifest.keyName)).value;
     if (!value) throw new Error("Space memory key is unavailable. Restore the original OS credential store or forget this memory.");
-    const key = Buffer.from(value, "base64");
-    if (key.length !== 32 || key.toString("base64") !== value) throw new Error("Space memory key is invalid.");
-    return key;
+    const factor = Buffer.from(value, "base64");
+    if (factor.length !== 32 || factor.toString("base64") !== value) throw new Error("Space memory key is invalid.");
+    return manifest.version === 2 ? this.protectedStore.generationKey("space-memory", factor) : factor;
   }
 
-  private seal(key: Buffer, workspaceId: string, filename: string, plaintext: string) {
-    const iv = randomBytes(12);
-    const cipher = createCipheriv("aes-256-gcm", key, iv);
-    cipher.setAAD(Buffer.from(`${this.profileId}\0${workspaceId}\0${filename}`));
-    return Buffer.concat([iv, cipher.update(plaintext, "utf8"), cipher.final(), cipher.getAuthTag()]);
-  }
-
-  private open(key: Buffer, workspaceId: string, filename: string, bytes: Buffer) {
+  private open(key: Buffer, workspaceId: string, filename: string, bytes: Buffer, version?: 2) {
+    if (version === 2) return this.protectedStore.open(key, "space-memory", `${workspaceId}/${filename}`, bytes.toString("utf8")).toString("utf8");
     if (bytes.length < 29) throw new Error("Space memory file is incomplete.");
     const decipher = createDecipheriv("aes-256-gcm", key, bytes.subarray(0, 12));
     decipher.setAAD(Buffer.from(`${this.profileId}\0${workspaceId}\0${filename}`));
@@ -139,16 +137,16 @@ export class MemoryPipeline {
     const key = await this.key(prior);
     const filename = "claims.json.enc";
     const bytes = await readFile(join(directory, prior.generation, filename));
-    const parsed = JSON.parse(this.open(key, workspaceId, filename, bytes));
+    const parsed = JSON.parse(this.open(key, workspaceId, filename, bytes, prior.version));
     if (!Array.isArray(parsed)) throw new Error("Space memory claims are invalid.");
     let inbox: MemoryClaim[] = [];
     try { inbox = MemoryPipelineInboxSchema.parse(JSON.parse(this.open(key, workspaceId, "inbox.json.enc",
-      await readFile(join(directory, prior.generation, "inbox.json.enc"))))); }
+      await readFile(join(directory, prior.generation, "inbox.json.enc")), prior.version))); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
     let history: Revision[] = [];
     try {
       const revisions = JSON.parse(this.open(key, workspaceId, "history.json.enc",
-        await readFile(join(directory, prior.generation, "history.json.enc"))));
+        await readFile(join(directory, prior.generation, "history.json.enc")), prior.version));
       if (!Array.isArray(revisions) || revisions.length > 20) throw new Error("Space memory history is invalid.");
       history = revisions.map((revision: Revision) => ({ revisionId: revision.revisionId,
         capturedAt: revision.capturedAt, claims: MemoryPipelineInboxSchema.parse(revision.claims) }));
@@ -183,22 +181,24 @@ export class MemoryPipeline {
     await this.init(directory);
     const generation = `g-${randomUUID()}`;
     const keyName = `mem_${sha(this.profileId).slice(0, 10)}_${sha(workspaceId).slice(0, 10)}_${generation.slice(2, 10)}`;
-    const key = randomBytes(32);
+    const factor = randomBytes(32);
+    const key = await this.protectedStore.generationKey("space-memory", factor, !prior || prior.version !== 2);
     const target = join(directory, generation);
     let priorKeyRetired = false;
     try {
-      await this.secrets.storeSecret(keyName, key.toString("base64"));
-      if ((await this.secrets.readSecret(keyName)).value !== key.toString("base64"))
+      await this.secrets.storeSecret(keyName, factor.toString("base64"));
+      if ((await this.secrets.readSecret(keyName)).value !== factor.toString("base64"))
         throw new Error("Space memory key could not be confirmed.");
       await mkdir(join(target, "rollouts"), { recursive: true, mode: 0o700 });
-      const put = (name: string, value: string) => writeFile(join(target, name), this.seal(key, workspaceId, name, value), { mode: 0o600 });
+      const put = (name: string, value: string) => writeFile(join(target, name),
+        this.protectedStore.seal(key, "space-memory", `${workspaceId}/${name}`, Buffer.from(value)), { mode: 0o600 });
       await put("claims.json.enc", JSON.stringify(claims));
       await put("inbox.json.enc", JSON.stringify(inbox));
       await put("history.json.enc", JSON.stringify(history));
       await put("summary.md.enc", this.summary(claims));
       await put("handbook.md.enc", claims.map(claim => `## ${claim.claimId}\nSource run: ${claim.sourceRunId}\n${claim.text}`).join("\n\n"));
       for (const claim of claims) await put(`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim));
-      const manifest: Manifest = { generation, keyName };
+      const manifest: Manifest = { generation, keyName, version: 2 };
       const temp = join(directory, `manifest-${randomUUID()}.tmp`);
       await writeFile(temp, JSON.stringify(manifest), { mode: 0o600 });
       await rename(temp, join(directory, "manifest.json"));
