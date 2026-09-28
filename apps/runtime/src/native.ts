@@ -136,6 +136,8 @@ export interface NativeBridge {
   /** Persist a secret via Electron safeStorage (plan A22). */
   storeSecret(name: string, value: string): Promise<{ ok: true }>;
   readSecret(name: string): Promise<{ value?: string }>;
+  /** Atomically create or read the current native Profile's protected-storage root. */
+  profileStorageRoot?(args: { version: 1 }): Promise<{ value: string }>;
   /** Native host signs a one-use, default-deny launch capability for a reviewed MCP server. */
   prepareMcpStdioLaunch?(server: OutboundMcpServer): Promise<McpStdioLaunchPermit>;
   /** Native host owns OAuth consent/refresh and returns only an ephemeral token for this exact server. */
@@ -276,6 +278,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   readSecret(name: string) {
     return this.channel.call<{ value?: string }>("native.readSecret", { name });
+  }
+  profileStorageRoot(args: { version: 1 }) {
+    return this.channel.call<{ value: string }>("native.profileStorageRoot", args);
   }
   prepareMcpStdioLaunch(server: OutboundMcpServer) {
     return this.channel.call<McpStdioLaunchPermit>("native.prepareMcpStdioLaunch", { server }, 30_000);

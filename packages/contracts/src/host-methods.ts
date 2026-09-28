@@ -304,6 +304,8 @@ export const HostMethods = {
   "native.setCookies": runtime("core", NativeMethods["native.setCookies"], z.object({ ok: bool, count: number }).strict()),
   "native.storeSecret": runtime("vault", NativeMethods["native.storeSecret"], z.object({ ok: z.literal(true) }).strict()),
   "native.readSecret": runtime("vault", NativeMethods["native.readSecret"], z.object({ value: str.optional() }).strict()),
+  "native.profileStorageRoot": runtime("core", z.object({ version: z.literal(1) }).strict(),
+    z.object({ value: str }).strict()),
   "native.captureReadablePage": runtime("reader", NativeMethods["native.captureReadablePage"], z.object({ url: str, title: str, text: str }).strict()),
   "native.fillSavedPassword": runtime("passwordManager", CredentialHandoffRequestSchema, CredentialHandoffResultSchema),
   "native.cdpReset": runtime("fourLayerTabApi", z.object({}).strict(), z.unknown()),

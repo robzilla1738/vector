@@ -555,6 +555,9 @@ const RESULTS: Record<string, unknown> = {
     "ok": true
   },
   "native.readSecret": {},
+  "native.profileStorageRoot": {
+    "value": "mock-value"
+  },
   "native.captureReadablePage": {
     "url": "https://example.com/",
     "title": "mock-title",

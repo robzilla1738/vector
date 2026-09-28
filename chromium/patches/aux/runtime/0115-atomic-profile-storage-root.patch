@@ -1,0 +1,111 @@
+--- a/chrome/browser/ui/aux/secret_store_mac.h
++++ b/chrome/browser/ui/aux/secret_store_mac.h
+@@ -22,6 +22,12 @@
+                 const std::string& name,
+                 std::optional<std::string>* value,
+                 std::string* error);
++// Atomic across Aux Runtime processes: only a missing item may be created.
++// Locked/unavailable Keychain state never generates a replacement root.
++bool ProfileStorageRoot(const base::FilePath& profile_path,
++                        const std::string& profile_id,
++                        std::string* value,
++                        std::string* error);
+ 
+ }  // namespace aux
+ 
+--- a/chrome/browser/ui/aux/secret_store_mac.mm
++++ b/chrome/browser/ui/aux/secret_store_mac.mm
+@@ -7,6 +7,10 @@
+ #import <Security/Security.h>
+ 
+ #include "base/apple/scoped_cftyperef.h"
++#include "base/base64.h"
++#include "base/rand_util.h"
++#include "base/strings/string_number_conversions.h"
++#include "crypto/sha2.h"
+ 
+ namespace aux {
+ namespace {
+@@ -132,4 +136,51 @@
+   return true;
+ }
+ 
++bool ProfileStorageRoot(const base::FilePath& profile_path,
++                        const std::string& profile_id,
++                        std::string* value,
++                        std::string* error) {
++  const std::string name = "aux_root_v1_" +
++      base::HexEncodeLower(crypto::SHA256HashString(profile_id)).substr(0, 24);
++  auto query = Query(profile_path, name);
++  if (!query) {
++    *error = "Cannot prepare the Profile storage root in Keychain";
++    return false;
++  }
++  std::optional<std::string> existing;
++  if (!ReadSecret(profile_path, name, &existing, error)) {
++    return false;  // A locked or unavailable Keychain must not mint a new root.
++  }
++  if (!existing) {
++    const auto bytes = base::RandBytesAsVector(32);
++    const std::string candidate = base::Base64Encode(bytes);
++    base::apple::ScopedCFTypeRef<CFDataRef> data(
++        CFDataCreate(kCFAllocatorDefault,
++                     reinterpret_cast<const UInt8*>(candidate.data()),
++                     candidate.size()));
++    if (!data) {
++      *error = "Cannot prepare the Profile storage root";
++      return false;
++    }
++    CFDictionarySetValue(query.get(), kSecValueData, data.get());
++    const OSStatus status = SecItemAdd(query.get(), nullptr);
++    if (status != errSecSuccess && status != errSecDuplicateItem) {
++      *error = "Cannot create the Profile storage root in Keychain";
++      return false;
++    }
++    if (!ReadSecret(profile_path, name, &existing, error) || !existing) {
++      *error = "Cannot confirm the Profile storage root in Keychain";
++      return false;
++    }
++  }
++  std::string decoded;
++  if (!base::Base64Decode(*existing, &decoded) || decoded.size() != 32 ||
++      base::Base64Encode(decoded) != *existing) {
++    *error = "The Profile storage root in Keychain is invalid";
++    return false;
++  }
++  *value = *existing;
++  return true;
++}
++
+ }  // namespace aux
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -727,6 +727,16 @@
+       }
+       reply.Set("result", std::move(result));
+     }
++  } else if (native_method && native_params &&
++             *native_method == "native.profileStorageRoot") {
++    std::string value;
++    if (native_params->FindInt("version") == 1 &&
++        aux::ProfileStorageRoot(profile_path_, profile_id_, &value,
++                                &native_error)) {
++      base::DictValue result;
++      result.Set("value", value);
++      reply.Set("result", std::move(result));
++    }
+   } else if (native_method && native_params) {
+     base::DictValue dispatched =
+         DispatchNative(*native_method, native_params->Clone());
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -123,7 +123,8 @@
+                     "native.historyRemove", "native.webmcpList",
+                     "native.webmcpCall"});
+   register_runtime(AuxRuntimeMethodGroup::kWorker,
+-                   {"native.storeSecret", "native.readSecret"});
++                   {"native.storeSecret", "native.readSecret",
++                    "native.profileStorageRoot"});
+ }
+ 
+ AuxShellMethodGroup AuxMethodRegistry::ShellGroup(
