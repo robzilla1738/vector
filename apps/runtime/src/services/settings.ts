@@ -504,6 +504,7 @@ export class SettingsService {
         only: only?.length ? only : undefined,
         models: () => this.mergedCatalog,
         candidatesFor: (id) => this.candidatesForModel(id),
+        allowedModelId: this.env.AUX_BENCH_MODEL_PIN || undefined,
       });
     }
     return this.gatewayClient;

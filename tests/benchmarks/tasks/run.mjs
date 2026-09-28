@@ -58,6 +58,7 @@ const limit = Number(flag("limit", "0")) || 0;
 const only = flag("only", null);
 const timeoutMs = Number(flag("timeout", suiteName === "local" || suiteName === "heldout" ? "180000" : "900000"));
 const modelId = flag("model", process.env.AUX_PLANNER_MODEL || "meta/muse-spark-1.3-contributor");
+const authorizedFixtureModel = "meta/muse-spark-1.3-contributor";
 // runtime adapter: product default budget unless --max-steps is given; MCP loops keep a 40-step cap
 const maxStepsFlag = flag("max-steps", null);
 const maxToolSteps = Number(maxStepsFlag ?? "40");
@@ -145,6 +146,10 @@ if (has("validate")) {
 
 if (!process.env.AI_GATEWAY_API_KEY) {
   console.error("AI_GATEWAY_API_KEY is not set (put it in .env); task runs need a planner model.");
+  process.exit(2);
+}
+if (modelId !== authorizedFixtureModel) {
+  console.error(`This fixture benchmark key is authorized only for ${authorizedFixtureModel}.`);
   process.exit(2);
 }
 
@@ -339,6 +344,7 @@ async function startRuntimeFor(cfg = {}) {
     AUX_ELECTRON_CDP: "",
     AUX_API_TOKEN: "tasks",
     AUX_PLANNER_MODEL: modelId,
+    AUX_BENCH_MODEL_PIN: modelId,
   });
   return { rt, dataDir };
 }

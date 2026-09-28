@@ -23,6 +23,17 @@ const textResult = (text: string) => ({
 });
 
 describe("route chains", () => {
+  it("settings passes the benchmark model pin into its gateway client", async () => {
+    const repo = new Repo(openDb(":memory:"));
+    const settings = new SettingsService(repo, join(mkdtempSync(join(tmpdir(), "aux-pin-")), "settings.json"), {
+      AI_GATEWAY_API_KEY: "fixture-key", AUX_PLANNER_MODEL: MUSE, AUX_BENCH_MODEL_PIN: MUSE,
+    });
+    const client = settings.model();
+    expect(client).toBeTruthy();
+    await expect(client!.generateText({ modelId: LUNA, prompt: "must not dispatch" }))
+      .rejects.toMatchObject({ code: "permission_denied" });
+  });
+
   it("normalizes a single route, a chain, and garbage", () => {
     expect(normalizeRouteChain({ modelId: "a/m", reasoning: "low" })).toEqual([{ modelId: "a/m", reasoning: "low" }]);
     expect(
@@ -62,6 +73,28 @@ describe("route chains", () => {
 });
 
 describe("runtime failover", () => {
+  it("a benchmark model pin refuses a 429 fallback to another model", async () => {
+    const resolved: string[] = [];
+    const client = new GatewayModelClient("fixture", {
+      model: (id) => { resolved.push(id); return new MockLanguageModelV4({ doGenerate: async () => { throw apiError(429); } }); },
+      candidatesFor: () => [{ modelId: MUSE, reasoning: "medium" }, { modelId: LUNA, reasoning: "low" }],
+      allowedModelId: MUSE,
+    });
+    await expect(client.generateText({ modelId: MUSE, prompt: "hi", maxOutputTokens: 32 })).rejects.toThrow(/429/);
+    expect(resolved).toEqual([MUSE]);
+  });
+
+  it("a benchmark model pin rejects another requested model before dispatch", async () => {
+    const resolved: string[] = [];
+    const client = new GatewayModelClient("fixture", {
+      model: (id) => { resolved.push(id); return new MockLanguageModelV4({ doGenerate: textResult("unreached") }); },
+      allowedModelId: MUSE,
+    });
+    await expect(client.generateText({ modelId: LUNA, prompt: "hi", maxOutputTokens: 32 }))
+      .rejects.toMatchObject({ code: "permission_denied" });
+    expect(resolved).toEqual([]);
+  });
+
   it("isFailoverStatus sees 429/5xx through wrapper chains, not 4xx", () => {
     expect(isFailoverStatus(apiError(429))).toBe(true);
     expect(isFailoverStatus(apiError(503))).toBe(true);

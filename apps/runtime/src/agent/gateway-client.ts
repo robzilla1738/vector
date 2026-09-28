@@ -227,6 +227,8 @@ export class GatewayModelClient implements ModelClient {
   private readonly registryModels: () => readonly ModelCapability[];
   /** Route chain per requested model — runtime failover on 429/5xx (S5.9). */
   private readonly candidatesFor: ((modelId: string) => readonly AgentModelRoute[]) | undefined;
+  /** Benchmark authorization: only this model may receive requests, even after 429/5xx. */
+  private readonly allowedModelId: string | undefined;
 
   constructor(apiKey: string, opts: {
     callTimeoutMs?: number;
@@ -235,6 +237,7 @@ export class GatewayModelClient implements ModelClient {
     spendLedger?: SpendLedger;
     models?: () => readonly ModelCapability[];
     candidatesFor?: (modelId: string) => readonly AgentModelRoute[];
+    allowedModelId?: string;
   } = {}) {
     if (!apiKey) throw new AuxError("invalid_params", "AI_GATEWAY_API_KEY is required");
     this.gateway = opts.model ? undefined : createGateway({ apiKey });
@@ -244,6 +247,7 @@ export class GatewayModelClient implements ModelClient {
     this.spendLedger = opts.spendLedger ?? (this.gateway ? new SpendLedger() : undefined);
     this.registryModels = opts.models ?? (() => MODEL_REGISTRY);
     this.candidatesFor = opts.candidatesFor;
+    this.allowedModelId = opts.allowedModelId;
   }
 
   private capabilities() { return this.registryModels(); }
@@ -260,10 +264,14 @@ export class GatewayModelClient implements ModelClient {
     R extends ModelAttempt & { retries?: ModelAttempt[]; resolvedModelId?: string },
     O extends { modelId: string; reasoning?: CallOpts["reasoning"]; signal?: AbortSignal },
   >(opts: O, invoke: (o: O) => Promise<R>): Promise<R> {
+    if (this.allowedModelId && opts.modelId !== this.allowedModelId)
+      throw new AuxError("permission_denied", `Model ${opts.modelId} is outside this benchmark's authorized model pin.`);
     const chain = this.candidatesFor?.(opts.modelId) ?? [];
     const at = chain.findIndex((c) => c.modelId === opts.modelId);
     const seq: readonly AgentModelRoute[] =
-      at >= 0 ? chain.slice(at) : [{ modelId: opts.modelId, reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium" }];
+      this.allowedModelId
+        ? [{ modelId: this.allowedModelId, reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium" }]
+        : at >= 0 ? chain.slice(at) : [{ modelId: opts.modelId, reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium" }];
     const prior: ModelAttempt[] = [];
     for (let i = 0; i < seq.length; i++) {
       const c = seq[i]!;
