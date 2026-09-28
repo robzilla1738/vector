@@ -410,12 +410,14 @@ export class Repo {
       deliveryRunId: row.delivery_run_id as string,
       mode: row.mode as RunMessage["mode"],
       status: row.status as RunMessage["status"],
-      text: row.text as string,
+      text: this.revealField("run_messages", row.message_id as string, "text", row.text as string)!,
       pageIds: P(row.page_ids as string, [] as string[]),
-      contextPageRefs: P(row.context_page_refs as string, [] as RunMessage["contextPageRefs"]),
+      contextPageRefs: P(this.revealField("run_messages", row.message_id as string,
+        "context_page_refs", row.context_page_refs as string), [] as RunMessage["contextPageRefs"]),
       expectedRevision: row.expected_revision as number,
       ...(row.resends_nonce ? { resendsNonce: row.resends_nonce as string } : {}),
-      ...(row.error ? { error: row.error as string } : {}),
+      ...(row.error ? { error: this.revealField("run_messages", row.message_id as string,
+        "error", row.error as string)! } : {}),
       createdAt: row.created_at as number,
       updatedAt: row.updated_at as number,
     };
@@ -424,8 +426,13 @@ export class Repo {
   insertRunMessage(message: RunMessage): RunMessage {
     this.q(`INSERT OR IGNORE INTO run_messages(message_id,chat_id,target_run_id,delivery_run_id,mode,status,text,page_ids,context_page_refs,expected_revision,resends_nonce,error,created_at,updated_at)
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(message.messageId, message.chatId, message.targetRunId, message.deliveryRunId,
-      message.mode, message.status, message.text, J(message.pageIds), J(message.contextPageRefs), message.expectedRevision,
-      message.resendsNonce ?? null, message.error ?? null, message.createdAt, message.updatedAt);
+      message.mode, message.status,
+      this.protectField("run_messages", message.messageId, "text", message.text),
+      J(message.pageIds),
+      this.protectField("run_messages", message.messageId, "context_page_refs", J(message.contextPageRefs)),
+      message.expectedRevision, message.resendsNonce ?? null,
+      this.protectField("run_messages", message.messageId, "error", message.error ?? null),
+      message.createdAt, message.updatedAt);
     return this.getRunMessage(message.messageId)!;
   }
 
@@ -467,7 +474,8 @@ export class Repo {
   }
 
   updateRunMessage(messageId: string, status: RunMessage["status"], error?: string): RunMessage {
-    this.q("UPDATE run_messages SET status=?,error=?,updated_at=? WHERE message_id=?").run(status, error ?? null, now(), messageId);
+    this.q("UPDATE run_messages SET status=?,error=?,updated_at=? WHERE message_id=?")
+      .run(status, this.protectField("run_messages", messageId, "error", error ?? null), now(), messageId);
     const message = this.getRunMessage(messageId);
     if (!message) throw new AuxError("not_found", "Conversation message not found.");
     return message;

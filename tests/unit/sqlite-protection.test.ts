@@ -339,3 +339,49 @@ it("protects sequenced event payloads for immediate and deferred writes", async 
     expect(() => reopened.eventsSince(0)).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
+
+it("protects queued and steered run messages while preserving queue status queries", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-run-messages-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    legacy.saveRun({ runId: "run", goal: "fixture", status: "running", pageIds: [], createdAt: 1 });
+    const old = { messageId: "message-old", chatId: "run", targetRunId: "run", deliveryRunId: "delivery-old",
+      mode: "queue" as const, status: "accepted" as const, text: "private message maroon", pageIds: ["page"],
+      contextPageRefs: [{ pageId: "page", url: "https://private.example/maroon", documentEpoch: 1 }],
+      expectedRevision: 0, error: "private queue error maroon", createdAt: 1, updatedAt: 1 };
+    legacy.insertRunMessage(old);
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "run_messages")).toBe(3);
+    const protectedRepo = new Repo(db, cipher);
+    expect(protectedRepo.nextRunMessage("run")?.text).toBe("private message maroon");
+    expect(protectedRepo.getRunMessage("message-old")?.contextPageRefs[0]?.url)
+      .toBe("https://private.example/maroon");
+    const steered = protectedRepo.insertRunMessage({ ...old, messageId: "message-steer",
+      deliveryRunId: "delivery-steer", mode: "steer", status: "delivered", text: "private steer silver",
+      error: undefined, createdAt: 2, updatedAt: 2 });
+    expect(steered.text).toBe("private steer silver");
+    expect(protectedRepo.listRunSteers("run").map(message => message.messageId)).toEqual(["message-steer"]);
+    expect(protectedRepo.pendingRunMessageCount("run")).toBe(1);
+    expect(protectedRepo.updateRunMessage("message-old", "needs_attention", "private new error maroon").error)
+      .toBe("private new error maroon");
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private message maroon")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private message maroon")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopened = new Repo(db, await SqliteColumnCipher.create(secrets.secrets, "profile-one", true));
+    expect(reopened.listRunMessages("run").map(message => message.text))
+      .toEqual(["private message maroon", "private steer silver"]);
+    db.prepare("UPDATE run_messages SET text='tampered plaintext' WHERE message_id='message-old'").run();
+    expect(() => reopened.getRunMessage("message-old")).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
