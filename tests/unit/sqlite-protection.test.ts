@@ -128,7 +128,7 @@ it("opens migrated model calls after an on-disk restart with the same Profile fa
     expect(readFileSync(oldBackup).includes("legacy private error")).toBe(true);
     expect(readFileSync(newBackup).includes("legacy private error")).toBe(false);
     expect(readFileSync(file).includes("legacy private error")).toBe(false);
-    if (existsSync(`${file}-wal`)) expect(readFileSync(`${file}-wal`).includes("legacy private error")).toBe(false);
+    expect(!existsSync(`${file}-wal`) || !readFileSync(`${file}-wal`).includes("legacy private error")).toBe(true);
     db.close();
     db = openDb(file);
     const reopened = await SqliteColumnCipher.create(secrets.secrets, "profile-one", true);
@@ -136,5 +136,47 @@ it("opens migrated model calls after an on-disk restart with the same Profile fa
       .toEqual(["legacy private error", "durable private error"]);
     const raw = db.prepare("SELECT error FROM model_calls WHERE call_id='durable'").get() as { error: string };
     expect(raw.error).not.toContain("private error");
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+it("protects page sets and members across migration, writes, backups and restart", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-sets-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    legacy.saveSet({ setId: "set-old", name: "private set saffron", source: "urls", memberIds: ["member-old"],
+      resultSchema: [{ name: "private schema mauve" }], createdAt: 1 });
+    legacy.saveMember({ memberId: "member-old", setId: "set-old", ordinal: 0,
+      url: "https://private.example/iris", recordKey: "private key iris",
+      label: "private label iris", status: "failed", error: "private error iris" });
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "page_sets")).toBe(2);
+    expect(migrateSensitiveTable(db, cipher, "set_members")).toBe(4);
+    const protectedRepo = new Repo(db, cipher);
+    expect(protectedRepo.getSet("set-old")?.resultSchema?.[0]?.name).toBe("private schema mauve");
+    expect(protectedRepo.listMembers("set-old")[0]?.url).toBe("https://private.example/iris");
+    protectedRepo.saveSet({ setId: "set-new", name: "private set cobalt", source: "manual",
+      memberIds: ["member-new"], createdAt: 2 });
+    protectedRepo.saveMember({ memberId: "member-new", setId: "set-new", ordinal: 0,
+      label: "private label cobalt", status: "queued" });
+    expect(protectedRepo.listSets().map(set => set.name)).toEqual(["private set cobalt", "private set saffron"]);
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private set saffron")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private set saffron")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopened = new Repo(db, await SqliteColumnCipher.create(secrets.secrets, "profile-one", true));
+    expect(reopened.getMember("member-old")?.error).toBe("private error iris");
+    expect(reopened.getSet("set-new")?.name).toBe("private set cobalt");
+    db.prepare("UPDATE set_members SET label='tampered plaintext' WHERE member_id='member-old'").run();
+    expect(() => reopened.getMember("member-old")).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });

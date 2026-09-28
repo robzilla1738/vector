@@ -49,6 +49,16 @@ export class Repo {
   constructor(readonly db: DatabaseSync, private readonly columnCipher?: SqliteColumnCipher) {}
   requireChromiumHistory() { this.chromiumHistoryRequired = true; }
 
+  private protectField(table: string, id: string, column: string, value: string | null): string | null {
+    return value === null || !this.columnCipher ? value
+      : this.columnCipher.encrypt(table, JSON.stringify([id]), column, value);
+  }
+
+  private revealField(table: string, id: string, column: string, value: string | null): string | null {
+    return value === null || !this.columnCipher ? value
+      : this.columnCipher.decrypt(table, JSON.stringify([id]), column, value);
+  }
+
   /** Prepared once per SQL text; SQLite re-prepares a cached statement itself after a schema change. */
   private q(sql: string): StatementSync {
     let s = this.statements.get(sql);
@@ -272,17 +282,19 @@ export class Repo {
         `INSERT INTO page_sets(set_id,name,source,member_ids,result_schema,program_id,created_at) VALUES(?,?,?,?,?,?,?)
          ON CONFLICT(set_id) DO UPDATE SET name=excluded.name,member_ids=excluded.member_ids,result_schema=excluded.result_schema,program_id=excluded.program_id`,
       )
-      .run(s.setId, s.name, s.source, J(s.memberIds), s.resultSchema ? J(s.resultSchema) : null, s.programId ?? null, s.createdAt);
+      .run(s.setId, this.protectField("page_sets", s.setId, "name", s.name), s.source, J(s.memberIds),
+        this.protectField("page_sets", s.setId, "result_schema", s.resultSchema ? J(s.resultSchema) : null),
+        s.programId ?? null, s.createdAt);
   }
   getSet(setId: string): PageSet | undefined {
     const r = this.q("SELECT * FROM page_sets WHERE set_id=?").get(setId) as any;
     if (!r) return undefined;
     return {
       setId: r.set_id,
-      name: r.name,
+      name: this.revealField("page_sets", r.set_id, "name", r.name)!,
       source: r.source,
       memberIds: P(r.member_ids, []),
-      resultSchema: P(r.result_schema, undefined as never),
+      resultSchema: P(this.revealField("page_sets", r.set_id, "result_schema", r.result_schema), undefined as never),
       programId: r.program_id ?? undefined,
       createdAt: r.created_at,
     };
@@ -290,10 +302,10 @@ export class Repo {
   listSets(): PageSet[] {
     return (this.q("SELECT * FROM page_sets ORDER BY created_at DESC").all() as any[]).map((r) => ({
       setId: r.set_id,
-      name: r.name,
+      name: this.revealField("page_sets", r.set_id, "name", r.name)!,
       source: r.source,
       memberIds: P(r.member_ids, []),
-      resultSchema: P(r.result_schema, undefined as never),
+      resultSchema: P(this.revealField("page_sets", r.set_id, "result_schema", r.result_schema), undefined as never),
       programId: r.program_id ?? undefined,
       createdAt: r.created_at,
     }));
@@ -304,29 +316,37 @@ export class Repo {
          VALUES(?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(member_id) DO UPDATE SET page_id=excluded.page_id,status=excluded.status,result_id=excluded.result_id,error=excluded.error`,
       )
-      .run(m.memberId, m.setId, m.ordinal, m.url ?? null, m.recordKey ?? null, m.label ?? null, m.pageId ?? null, m.status, m.resultId ?? null, m.error ?? null);
+      .run(m.memberId, m.setId, m.ordinal,
+        this.protectField("set_members", m.memberId, "url", m.url ?? null),
+        this.protectField("set_members", m.memberId, "record_key", m.recordKey ?? null),
+        this.protectField("set_members", m.memberId, "label", m.label ?? null),
+        m.pageId ?? null, m.status, m.resultId ?? null,
+        this.protectField("set_members", m.memberId, "error", m.error ?? null));
   }
   listMembers(setId: string): SetMember[] {
     return (this.q("SELECT * FROM set_members WHERE set_id=? ORDER BY ordinal").all(setId) as any[]).map((r) => ({
       memberId: r.member_id,
       setId: r.set_id,
       ordinal: r.ordinal,
-      url: r.url ?? undefined,
-      recordKey: r.record_key ?? undefined,
-      label: r.label ?? undefined,
+      url: this.revealField("set_members", r.member_id, "url", r.url) ?? undefined,
+      recordKey: this.revealField("set_members", r.member_id, "record_key", r.record_key) ?? undefined,
+      label: this.revealField("set_members", r.member_id, "label", r.label) ?? undefined,
       pageId: r.page_id ?? undefined,
       status: r.status,
       resultId: r.result_id ?? undefined,
-      error: r.error ?? undefined,
+      error: this.revealField("set_members", r.member_id, "error", r.error) ?? undefined,
     }));
   }
   getMember(memberId: string): SetMember | undefined {
     const r = this.q("SELECT * FROM set_members WHERE member_id=?").get(memberId) as any;
     if (!r) return undefined;
     return {
-      memberId: r.member_id, setId: r.set_id, ordinal: r.ordinal, url: r.url ?? undefined,
-      recordKey: r.record_key ?? undefined, label: r.label ?? undefined, pageId: r.page_id ?? undefined,
-      status: r.status, resultId: r.result_id ?? undefined, error: r.error ?? undefined,
+      memberId: r.member_id, setId: r.set_id, ordinal: r.ordinal,
+      url: this.revealField("set_members", r.member_id, "url", r.url) ?? undefined,
+      recordKey: this.revealField("set_members", r.member_id, "record_key", r.record_key) ?? undefined,
+      label: this.revealField("set_members", r.member_id, "label", r.label) ?? undefined,
+      pageId: r.page_id ?? undefined, status: r.status, resultId: r.result_id ?? undefined,
+      error: this.revealField("set_members", r.member_id, "error", r.error) ?? undefined,
     };
   }
 
@@ -677,30 +697,24 @@ export class Repo {
     return { artifactId: r.artifact_id, runId: r.run_id ?? undefined, pageId: r.page_id ?? undefined, path: r.path, mediaType: r.media_type, size: r.size, status: r.status, createdAt: r.created_at };
   }
   saveModelCall(c: ModelCall) {
-    const rowId = JSON.stringify([c.callId]);
-    const protect = (column: string, value: string | null) =>
-      value === null || !this.columnCipher ? value : this.columnCipher.encrypt("model_calls", rowId, column, value);
     this.q(
         `INSERT INTO model_calls(call_id,run_id,role,model_id,provider_metadata,duration_ms,input_tokens,output_tokens,cost_usd,cost_estimated,error,created_at)
          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(c.callId, c.runId ?? null, c.role, c.modelId,
-        protect("provider_metadata", c.providerMetadata ? J(c.providerMetadata) : null),
+        this.protectField("model_calls", c.callId, "provider_metadata", c.providerMetadata ? J(c.providerMetadata) : null),
         c.durationMs, c.inputTokens ?? null, c.outputTokens ?? null, c.costUsd ?? null,
-        c.costEstimated ? 1 : 0, protect("error", c.error ?? null), c.createdAt);
+        c.costEstimated ? 1 : 0, this.protectField("model_calls", c.callId, "error", c.error ?? null), c.createdAt);
   }
   listModelCalls(runId: string): ModelCall[] {
     return (this.q("SELECT * FROM model_calls WHERE run_id=? ORDER BY created_at").all(runId) as any[]).map((r) => {
-      const rowId = JSON.stringify([r.call_id]);
-      const reveal = (column: string, value: string | null) =>
-        value === null || !this.columnCipher ? value : this.columnCipher.decrypt("model_calls", rowId, column, value);
       return {
         callId: r.call_id, runId: r.run_id ?? undefined, role: r.role, modelId: r.model_id,
-        providerMetadata: P(reveal("provider_metadata", r.provider_metadata), undefined as never),
+        providerMetadata: P(this.revealField("model_calls", r.call_id, "provider_metadata", r.provider_metadata), undefined as never),
         durationMs: r.duration_ms,
         inputTokens: r.input_tokens ?? undefined, outputTokens: r.output_tokens ?? undefined,
         costUsd: r.cost_usd ?? undefined, costEstimated: !!r.cost_estimated,
-        error: reveal("error", r.error) ?? undefined,
+        error: this.revealField("model_calls", r.call_id, "error", r.error) ?? undefined,
         createdAt: r.created_at,
       };
     });
