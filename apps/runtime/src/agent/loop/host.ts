@@ -603,6 +603,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     },
   };
   deps.repl = ({ code, deadlineMs, yieldTimeMs }) => replPool.eval(replDeps, code, { pageId: activePageId, deadlineMs, yieldTimeMs });
+  deps.replProgress = async () => {
+    if (!activePageId) return undefined;
+    const observed = recordObs(await observePage(activePageId, {}));
+    return { pageId: activePageId, ...observed };
+  };
   deps.replWait = ({ cellId, yieldTimeMs, terminate }) => replPool.wait(runId, cellId, yieldTimeMs, terminate);
   deps.canRecoverDialogValue = (label) => {
     const obs = activePageId ? lastObs.get(activePageId) : undefined;

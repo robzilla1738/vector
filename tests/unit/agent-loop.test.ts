@@ -80,6 +80,42 @@ describe("TranscriptStore (S5)", () => {
 });
 
 describe("runAgentLoop (S5)", () => {
+  it("returns fresh citable progress when a first-turn script fails after changing the page", async () => {
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    const repl = vi.fn(async () => { throw new Error("Record link name was ambiguous"); });
+    const replProgress = vi.fn(async () => ({ pageId: "page-1", observationId: "obs-after-nav", revision: 2,
+      text: "url: http://x.test/records?page=2\nr10 link \"Record 15\" href=/records/rec-15" }));
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
+        code: 'page.followLinkByName("2"); submitResult("done")', answerLabel: "",
+      } }] },
+      { text: "I am on page 2." },
+    ]);
+    await runAgentLoop({ ...baseOpts(transcript, { repl, replProgress }), model });
+    expect(repl).toHaveBeenCalledOnce();
+    expect(replProgress).toHaveBeenCalledOnce();
+    const toolResult = transcript.load("run-1").find((message) => message.role === "tool");
+    expect(JSON.stringify(toolResult)).toContain("obs-after-nav");
+    expect(JSON.stringify(toolResult)).toContain("records?page=2");
+    expect(JSON.stringify(toolResult)).toContain("Record link name was ambiguous");
+  });
+
+  it("preserves the original script error when a progress observation fails", async () => {
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: { code: 'submitResult("done")', answerLabel: "" } }] },
+      { text: "The page could not be observed." },
+    ]);
+    await runAgentLoop({ ...baseOpts(transcript, {
+      repl: async () => { throw new Error("original script failure"); },
+      replProgress: async () => { throw new Error("snapshot unavailable"); },
+    }), model });
+    const toolResult = transcript.load("run-1").find((message) => message.role === "tool");
+    expect(JSON.stringify(toolResult)).toContain("original script failure");
+    expect(JSON.stringify(toolResult)).not.toContain("snapshot unavailable");
+  });
   it("joins a yielded REPL cell through repl_wait before accepting its verified result", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);
@@ -589,6 +625,37 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(final.status).toBe("completed");
     expect(h.pages.execute).toHaveBeenCalledWith(expect.objectContaining({ steps: [expect.objectContaining({ op: "navigate", url: "http://x.test/records?page=2" })] }), expect.anything(), expect.anything());
     expect(h.db.prepare("SELECT count(*) AS n FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ n: 0 });
+  });
+  it("shows the reached page after a later GoalProgram lookup fails", async () => {
+    let current = { ...pageObs(), content: { ...pageObs().content,
+      url: "http://x.test/records", elements: [{ ref: "r17", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
+    } } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
+        code: 'page.followLinkByName("2"); page.followLinkByName("Missing"); submitResult("done")', answerLabel: "",
+      } }] },
+      { text: "Page 2 reached; the remaining link needs inspection." },
+    ]);
+    const h = coordinatorHarness(model);
+    h.pages.observe.mockImplementation(async () => current);
+    h.pages.execute.mockImplementation(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
+      current = { ...current, revision: 2, content: { ...current.content,
+        url: "http://x.test/records?page=2", text: "Record 15", elements: [
+          { ref: "r10", tag: "a", role: "link", name: "Record 15", href: "/records/rec-15", frame: "main" },
+        ],
+      } } as Observation;
+      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const, startedAt: 1, durationMs: 1 }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "completed", steps, observation: current };
+    });
+    const run = await h.coordinator.start({ goal: "find record 15", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    await settle(h.repo, run.runId);
+    expect(h.pages.execute).toHaveBeenCalledOnce();
+    const transcript = new TranscriptStore(h.db).load(run.runId);
+    const toolResult = transcript.find((message) => message.role === "tool");
+    expect(JSON.stringify(toolResult)).toContain("http://x.test/records?page=2");
+    expect(JSON.stringify(toolResult)).toContain("Record 15");
+    expect(JSON.stringify(toolResult)).toContain("No control named");
   });
   it("completes a text turn and seeds the task into the durable transcript", async () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "ship it" }]);

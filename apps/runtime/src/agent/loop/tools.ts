@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AuxError, ObservationScopeSchema, PlanStepSchema, ResultCitationSchema } from "@aux/contracts";
-import type { LoopTool, LoopToolManifest, LoopToolContext } from "./types.js";
+import type { LoopTool, LoopToolManifest, LoopToolContext, LoopToolResult } from "./types.js";
 
 /**
  * The built-in loop's tool manifest (S5/06-X): one definition shared by the
@@ -221,13 +221,28 @@ export function buildToolManifest(): LoopToolManifest {
         return { output: new AuxError("invalid_params", "Goal program needs a verified terminal submitResult or page.submitLabeledValue call; use ordinary tools on the next turn if the answer cannot be derived safely.") };
       const run = need(ctx.deps.repl, "goal_program");
       const recoveryLabel = ctx.deps.dialogAnswerLabel?.() ?? (input.answerScope === "dialog" ? input.answerLabel : "");
+      const failureWithProgress = async (error: unknown): Promise<LoopToolResult> => {
+        const message = error instanceof Error ? error.message : String(error);
+        if (ctx.signal?.aborted || !ctx.deps.replProgress) return { output: { error: message } };
+        try {
+          const current = await ctx.deps.replProgress();
+          if (!current) return { output: { error: message } };
+          return { output: { error: message, currentObservation: {
+            pageId: current.pageId, observationId: current.observationId, revision: current.revision,
+            text: current.text.slice(0, 4_096), truncated: current.text.length > 4_096,
+          }, guidance: "Continue from this fresh page state. Do not repeat an action whose outcome is uncertain; reconcile it with evidence first." } };
+        } catch {
+          return { output: { error: message } };
+        }
+      };
       try {
         const result = await run(input, ctx);
         if ("finish" in result || "park" in result || !recoveryLabel || !ctx.deps.canRecoverDialogValue?.(recoveryLabel)) return result;
       } catch (error) {
-        if (!recoveryLabel || !ctx.deps.canRecoverDialogValue?.(recoveryLabel)) throw error;
+        if (!recoveryLabel || !ctx.deps.canRecoverDialogValue?.(recoveryLabel)) return failureWithProgress(error);
       }
-      return run({ code: `page.submitLabeledValue(${JSON.stringify(recoveryLabel)})`, deadlineMs: input.deadlineMs }, ctx);
+      try { return await run({ code: `page.submitLabeledValue(${JSON.stringify(recoveryLabel)})`, deadlineMs: input.deadlineMs }, ctx); }
+      catch (error) { return failureWithProgress(error); }
     },
   };
 
