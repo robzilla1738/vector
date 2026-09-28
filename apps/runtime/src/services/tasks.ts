@@ -226,9 +226,7 @@ export class TaskService {
         .run(task.taskId, task.workspaceId, task.revision, task.state, now, JSON.stringify(task));
       this.saveRevision(task);
       this.repo.setSetting(`conversationWorkspace:${chatId}`, task.workspaceId);
-      this.repo.db
-        .prepare("UPDATE conversations SET title=? WHERE chat_id=?")
-        .run(task.title.slice(0, 160), chatId);
+      this.repo.setConversationTitle(chatId, task.title.slice(0, 160));
       created = true;
       return task;
     });
@@ -369,13 +367,10 @@ export class TaskService {
       this.repo.db
         .prepare("UPDATE calendar_task_grants SET revoked_at=? WHERE task_id=? AND revoked_at IS NULL")
         .run(next.updatedAt, taskId);
-      this.repo.db
-        .prepare("UPDATE conversations SET title=?,archived=? WHERE chat_id=?")
-        .run(
-          next.title.slice(0, 160),
-          next.state === "archived" ? 1 : 0,
-          next.conversationId ?? taskConversationId(taskId),
-        );
+      const chatId = next.conversationId ?? taskConversationId(taskId);
+      this.repo.setConversationTitle(chatId, next.title.slice(0, 160));
+      this.repo.db.prepare("UPDATE conversations SET archived=? WHERE chat_id=?")
+        .run(next.state === "archived" ? 1 : 0, chatId);
       this.saveRevision(next);
       return next;
     });

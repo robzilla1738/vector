@@ -18,8 +18,9 @@ import type {
 } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
 import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invocations";
-import { commitRelaxed, kvGet, kvGetJson, kvSet, kvSetJson } from "./db.js";
+import { commitRelaxed, kvGet, kvSet } from "./db.js";
 import type { SqliteColumnCipher } from "./sqlite-protection.js";
+import { protectedKvKey } from "./sqlite-protection.js";
 
 const now = () => Date.now();
 const J = JSON.stringify;
@@ -64,6 +65,27 @@ export class Repo {
   private revealField(table: string, id: string | number, column: string, value: string | null): string | null {
     return value === null || !this.columnCipher ? value
       : this.columnCipher.decrypt(table, JSON.stringify([id]), column, value);
+  }
+
+  private getKvJson<T>(key: string): T | undefined {
+    const raw = kvGet(this.db, key);
+    if (raw === undefined) return undefined;
+    const value = this.columnCipher && protectedKvKey(key) ? this.revealField("kv", key, "value", raw)! : raw;
+    return JSON.parse(value) as T;
+  }
+
+  private setKvJson(key: string, value: unknown): void {
+    const raw = J(value);
+    if (typeof raw !== "string") throw new Error("KV value must be JSON serializable.");
+    kvSet(this.db, key, this.columnCipher && protectedKvKey(key)
+      ? this.protectField("kv", key, "value", raw)! : raw);
+  }
+
+  /** Enumerate keys only; values remain behind the protected settings reader. */
+  settingKeys(prefix: string): string[] {
+    const full = `setting:${prefix}`;
+    return (this.q("SELECT key FROM kv WHERE substr(key,1,length(?))=? ORDER BY key").all(full, full) as { key: string }[])
+      .map(row => row.key.slice("setting:".length));
   }
 
   /** Prepared once per SQL text; SQLite re-prepares a cached statement itself after a schema change. */
@@ -383,7 +405,7 @@ export class Repo {
       this.q(`INSERT INTO conversations(chat_id,title,archived,created_at,updated_at) VALUES(?,?,0,?,?)
         ON CONFLICT(chat_id) DO UPDATE SET title=CASE WHEN ? THEN excluded.title ELSE conversations.title END,
           updated_at=max(conversations.updated_at,excluded.updated_at)`)
-        .run(chatId, title, r.createdAt, r.createdAt, r.config?.taskId ? 1 : 0);
+        .run(chatId, this.protectField("conversations", chatId, "title", title), r.createdAt, r.createdAt, r.config?.taskId ? 1 : 0);
     });
   }
   getRun(runId: string): Run | undefined {
@@ -523,15 +545,17 @@ export class Repo {
 
   listConversations(limit = 40, options: { workspaceId?: string; before?: { updatedAt: number; chatId: string }; query?: string; archived?: boolean } = {}): ConversationSummary[] {
     const term = options.query?.trim().toLocaleLowerCase();
-    if (term) {
+    if (term || options.workspaceId !== undefined) {
       const matches: ConversationSummary[] = [];
       let before = options.before;
       while (matches.length < limit) {
-        const batch = this.listConversations(256, { ...options, query: undefined, before });
+        const batch = this.listConversations(256, { ...options, query: undefined, workspaceId: undefined, before });
         if (!batch.length) break;
         for (const conversation of batch) {
-          const runs = this.conversationRuns(conversation.chatId);
-          if (conversation.title.toLocaleLowerCase().includes(term) || runs.some(run =>
+          if (options.workspaceId !== undefined &&
+            this.getSetting<string>(`conversationWorkspace:${conversation.chatId}`) !== options.workspaceId) continue;
+          const runs = term ? this.conversationRuns(conversation.chatId) : [];
+          if (!term || conversation.title.toLocaleLowerCase().includes(term) || runs.some(run =>
             `${run.goal} ${run.statusMessage ?? ""} ${run.result?.answer ?? ""}`.toLocaleLowerCase().includes(term)))
             matches.push(conversation);
           if (matches.length >= limit) break;
@@ -544,10 +568,6 @@ export class Repo {
     }
     const where = ["c.archived=?"];
     const values: (string | number)[] = [options.archived ? 1 : 0];
-    if (options.workspaceId !== undefined) {
-      where.push("EXISTS (SELECT 1 FROM kv scope WHERE scope.key='setting:conversationWorkspace:'||c.chat_id AND scope.value=?)");
-      values.push(J(options.workspaceId));
-    }
     if (options.before) {
       where.push("(c.updated_at<? OR (c.updated_at=? AND c.chat_id<?))");
       values.push(options.before.updatedAt, options.before.updatedAt, options.before.chatId);
@@ -561,34 +581,44 @@ export class Repo {
       FROM conversations c WHERE ${where.join(" AND ")} ORDER BY c.updated_at DESC,c.chat_id DESC LIMIT ?`).all(...values, limit) as any[];
     return rows.flatMap(row => {
       const latestRun = this.getRun(row.latest_run_id);
-      return latestRun ? [{ chatId: row.chat_id, taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id), title: row.title, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: row.turn_count, latestRun }] : [];
+      return latestRun ? [{ chatId: row.chat_id, taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id), title: this.revealField("conversations", row.chat_id, "title", row.title)!, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: row.turn_count, latestRun }] : [];
     });
   }
 
   preparedConversations(): {chatId:string;title:string;attachmentCount:number;updatedAt:number}[] {
-    // Only metadata is read: unsent snapshots must not disappear because there is no run yet.
-    return this.q(`WITH snapshots AS (
-      SELECT substr(kv.key,length('setting:conversationAttachments:')+1) chat_id, item.value snapshot
-      FROM kv, json_each(CASE WHEN json_valid(kv.value) THEN kv.value ELSE '[]' END) item
-      WHERE kv.key LIKE 'setting:conversationAttachments:%'
-      UNION ALL
-      SELECT substr(kv.key,length('setting:conversationImages:')+1), item.value
-      FROM kv, json_each(CASE WHEN json_valid(kv.value) THEN kv.value ELSE '[]' END) item
-      WHERE kv.key LIKE 'setting:conversationImages:%'
-    ), visible AS (
-      SELECT chat_id,json_extract(snapshot,'$.filename') filename,
-        coalesce(json_extract(snapshot,'$.createdAt'),0) created_at FROM snapshots
-      WHERE json_valid(snapshot) AND json_type(snapshot,'$.filename')='text'
-        AND coalesce(json_extract(snapshot,'$.removed'),0)=0
-    ) SELECT chat_id AS chatId, min(filename) AS title, count(*) AS attachmentCount, max(created_at) AS updatedAt
-      FROM visible WHERE NOT EXISTS (
-        SELECT 1 FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
-        WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=visible.chat_id
-      ) GROUP BY chat_id ORDER BY updatedAt DESC,chat_id DESC`).all() as {chatId:string;title:string;attachmentCount:number;updatedAt:number}[];
+    const prepared = new Map<string, {chatId:string;title:string;attachmentCount:number;updatedAt:number}>();
+    for (const prefix of ["conversationAttachments:", "conversationImages:"]) {
+      for (const key of this.settingKeys(prefix)) {
+        const chatId = key.slice(prefix.length);
+        let snapshots: unknown;
+        try { snapshots = this.getSetting<unknown>(key); }
+        catch (error) { if (error instanceof SyntaxError) continue; throw error; }
+        if (!Array.isArray(snapshots)) continue;
+        for (const item of snapshots) {
+          if (!item || typeof item !== "object") continue;
+          const snapshot = item as {filename?: unknown;removed?: unknown;createdAt?: unknown};
+          if (typeof snapshot.filename !== "string" || snapshot.removed) continue;
+          const createdAt = typeof snapshot.createdAt === "number" ? snapshot.createdAt : 0;
+          const current = prepared.get(chatId);
+          if (current) {
+            current.attachmentCount++;
+            if (snapshot.filename < current.title) current.title = snapshot.filename;
+            current.updatedAt = Math.max(current.updatedAt, createdAt);
+          } else prepared.set(chatId, { chatId, title: snapshot.filename, attachmentCount: 1, updatedAt: createdAt });
+        }
+      }
+    }
+    return [...prepared.values()].filter(item => !this.q(`SELECT 1 FROM runs r JOIN run_lookup l ON l.run_id=r.run_id
+      WHERE coalesce(json_extract(l.config,'$.chatId'),r.run_id)=? LIMIT 1`).get(item.chatId))
+      .sort((a,b) => b.updatedAt-a.updatedAt || b.chatId.localeCompare(a.chatId));
   }
 
   getConversation(chatId: string): ConversationSummary | undefined {
     return this.listConversationById(chatId);
+  }
+  getConversationTitle(chatId: string): string | undefined {
+    const row = this.q("SELECT title FROM conversations WHERE chat_id=?").get(chatId) as { title: string } | undefined;
+    return row ? this.revealField("conversations", chatId, "title", row.title)! : undefined;
   }
   taskForConversation(chatId: string): string | undefined {
     return (this.q("SELECT task_id FROM tasks WHERE json_extract(json,'$.conversationId')=? LIMIT 1").get(chatId) as { task_id: string } | undefined)?.task_id;
@@ -599,12 +629,16 @@ export class Repo {
     if (!row) return undefined;
     const turns = this.listRuns(500, { chatId });
     const latestRun = turns[0];
-    return latestRun ? { chatId, taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id), title: row.title, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: turns.length, latestRun } : undefined;
+    return latestRun ? { chatId, taskId: latestRun.config?.taskId ?? this.taskForConversation(row.chat_id), title: this.revealField("conversations", chatId, "title", row.title)!, archived: !!row.archived, createdAt: row.created_at, updatedAt: row.updated_at, turnCount: turns.length, latestRun } : undefined;
   }
 
   renameConversation(chatId: string, title: string): ConversationSummary | undefined {
-    this.q("UPDATE conversations SET title=? WHERE chat_id=?").run(title, chatId);
+    this.setConversationTitle(chatId, title);
     return this.listConversationById(chatId);
+  }
+
+  setConversationTitle(chatId: string, title: string): void {
+    this.q("UPDATE conversations SET title=? WHERE chat_id=?").run(this.protectField("conversations", chatId, "title", title), chatId);
   }
 
   archiveConversation(chatId: string, archived: boolean): ConversationSummary | undefined {
@@ -1190,7 +1224,7 @@ export class Repo {
          ON CONFLICT(id) DO UPDATE SET state=excluded.state,size=excluded.size,total_bytes=excluded.total_bytes,ended_at=excluded.ended_at`,
       )
       .run(d.id, d.pageId ?? null, d.filename, d.path, d.state, d.size, d.totalBytes ?? null, d.startedAt, d.endedAt ?? null);
-    if(d.sourceUrl)kvSetJson(this.db, `download-source:${d.id}`, d.sourceUrl);
+    if(d.sourceUrl)this.setKvJson(`download-source:${d.id}`, d.sourceUrl);
   }
   /** Removes inactive history records only; downloaded files are never touched. */
   removeFinishedDownloads(ids: string[]): string[] {
@@ -1207,7 +1241,7 @@ export class Repo {
   listDownloads(limit = 100): Download[] {
     return (this.q("SELECT * FROM downloads ORDER BY started_at DESC LIMIT ?").all(limit) as any[]).map((r) => ({
       id: r.id,
-      sourceUrl: kvGetJson<string>(this.db, `download-source:${r.id}`) ?? undefined,
+      sourceUrl: this.getKvJson<string>(`download-source:${r.id}`) ?? undefined,
       pageId: r.page_id ?? undefined,
       filename: r.filename,
       path: r.path,
@@ -1221,13 +1255,13 @@ export class Repo {
 
   // ---- settings ----
   getSetting<T>(key: string): T | undefined {
-    return kvGetJson<T>(this.db, `setting:${key}`);
+    return this.getKvJson<T>(`setting:${key}`);
   }
   hasSetting(key: string): boolean {
     return this.q("SELECT 1 FROM kv WHERE key=?").get(`setting:${key}`) !== undefined;
   }
   setSetting(key: string, value: unknown) {
-    kvSetJson(this.db, `setting:${key}`, value);
+    this.setKvJson(`setting:${key}`, value);
   }
   deleteSetting(key: string): void {
     this.q("DELETE FROM kv WHERE key=?").run(`setting:${key}`);
@@ -1540,11 +1574,11 @@ export class Repo {
 
   /** Persist a program checkpoint env — latest per (pageId, name) wins. */
   saveCheckpoint(pageId: string, name: string, env: Record<string, unknown>) {
-    kvSetJson(this.db, `ckpt:${pageId}:${name}`, { ...env, savedAt: Date.now() });
+    this.setKvJson(`ckpt:${pageId}:${name}`, { ...env, savedAt: Date.now() });
   }
   loadCheckpoint(pageId: string, name: string) {
-    return kvGetJson<{ inputs?: Record<string, unknown>; vars?: Record<string, unknown>; emitted?: unknown[]; savedAt?: number }>(
-      this.db, `ckpt:${pageId}:${name}`,
+    return this.getKvJson<{ inputs?: Record<string, unknown>; vars?: Record<string, unknown>; emitted?: unknown[]; savedAt?: number }>(
+      `ckpt:${pageId}:${name}`,
     );
   }
 }

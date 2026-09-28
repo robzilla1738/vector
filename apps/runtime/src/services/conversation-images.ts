@@ -15,8 +15,14 @@ export class ConversationImages {
     if(this.repo.getConversation(chatId)?.archived)throw new AuxError("conflict","Restore this conversation before changing its images.");
   }
   privateArtifactIds():Set<string> {
-    const rows=this.repo.db.prepare(`SELECT json_extract(images.value,'$.artifactId') AS id FROM kv, json_each(CASE WHEN json_valid(kv.value) THEN kv.value ELSE '[]' END) images WHERE kv.key LIKE 'setting:conversationImages:%'`).all() as {id:string}[];
-    return new Set(rows.map(row=>row.id));
+    const ids = new Set<string>();
+    for (const settingKey of this.repo.settingKeys("conversationImages:")) {
+      let snapshots: Record[] | undefined;
+      try { snapshots = this.repo.getSetting<Record[]>(settingKey); }
+      catch (error) { if (error instanceof SyntaxError) continue; throw error; }
+      for (const image of snapshots ?? []) if (image.artifactId) ids.add(image.artifactId);
+    }
+    return ids;
   }
   list(chatId:string) {
     return {chatId,images:this.records(chatId).filter(item=>!item.removed).map(({sha256,removed,...item})=>item)};

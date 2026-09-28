@@ -56,6 +56,9 @@ function validateSource(db: DatabaseSync): number {
   const version = Number((db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version);
   if (!Number.isInteger(version) || version < 1 || version > SCHEMA_VERSION) throw new Error(`Unsupported Electron Aux database schema ${version}.`);
   if (!table(db, "aux_meta") || (db.prepare("SELECT value FROM aux_meta WHERE key='schema'").get() as { value?: string } | undefined)?.value !== "aux") throw new Error("This is not an Aux runtime database.");
+  if (db.prepare("SELECT 1 FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%' LIMIT 1").get() ||
+    (db.prepare("SELECT value FROM kv WHERE key='setting:browserSpaces'").get() as { value?: string } | undefined)?.value?.startsWith("auxenc:"))
+    throw new Error("This protected Aux database needs reviewed recovery before import into another Profile.");
   if ((db.prepare("PRAGMA quick_check").get() as { quick_check: string }).quick_check !== "ok") throw new Error("The source database failed integrity checking.");
   for (const name of ["kv", "pages", "tabs", "bookmarks", "workspaces", "artifacts"]) if (!table(db, name)) throw new Error(`The source database is missing ${name}.`);
   if (db.prepare("SELECT 1 FROM sqlite_schema WHERE (type IN ('trigger','view') OR upper(coalesce(sql,'')) LIKE '%VIRTUAL TABLE%') AND name NOT LIKE 'history_fts%' LIMIT 1").get()) throw new Error("The source database contains unsupported executable schema.");

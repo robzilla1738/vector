@@ -5,6 +5,10 @@ import { ProtectedStore } from "../services/protected-store.js";
 
 const PREFIX = "auxenc:v1:";
 const NAME = /^[a-z][a-z0-9_]*$/;
+const KV_MARKER = "protected_sqlite_v1:kv_filtered";
+const KV_PLAN = JSON.stringify({ column: "value", plaintext: ["meta:eventStreamId", "counter:%"] });
+/** Event stream identity and tracing counters have SQL arithmetic readers. All other KV values are protected. */
+export const protectedKvKey = (key: string): boolean => key !== "meta:eventStreamId" && !key.startsWith("counter:");
 type Secrets = Pick<NativeBridge, "readSecret" | "storeSecret"> & {
   profileStorageRoot?: (args: { version: 1 }) => Promise<{ value: string }>;
   profileStorageFactor?: (args: { version: 1; purpose: "sqlite" }) => Promise<{ value: string }>;
@@ -117,6 +121,7 @@ export class SqliteColumnCipher {
 
 /** Transactional table conversion. Call only after that table's SQL adapters are installed. */
 export function migrateSensitiveTable(db: DatabaseSync, cipher: SqliteColumnCipher, table: string): number {
+  if (table === "kv") throw new Error("KV requires its filtered migration plan.");
   const columns = SENSITIVE_SQLITE_COLUMNS[table] ?? [];
   if (!NAME.test(table) || !columns.length || columns.some(column => !NAME.test(column)))
     throw new Error("Protected database table or column is not registered.");
@@ -160,6 +165,41 @@ export function migrateSensitiveTable(db: DatabaseSync, cipher: SqliteColumnCiph
     }
     db.prepare("INSERT INTO aux_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
       .run(marker, JSON.stringify(columns));
+    db.exec("COMMIT");
+  } catch (error) {
+    if (db.isTransaction) db.exec("ROLLBACK");
+    throw error;
+  }
+  return changed;
+}
+
+/** Transactionally seal every KV value except the two explicitly retained operational families. */
+export function migrateSensitiveKv(db: DatabaseSync, cipher: SqliteColumnCipher): number {
+  let changed = 0;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const marked = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(KV_MARKER) as { value: string } | undefined;
+    if (marked && marked.value !== KV_PLAN) throw new Error("Protected KV inventory changed without a new migration version.");
+    const rows = db.prepare("SELECT key,value FROM kv ORDER BY key").all() as { key: string; value: string }[];
+    for (const row of rows) {
+      if (!protectedKvKey(row.key)) {
+        if (cipher.isEncrypted(row.value)) throw new Error("Operational KV value unexpectedly uses a protected envelope.");
+        continue;
+      }
+      const id = JSON.stringify([row.key]);
+      if (cipher.isEncrypted(row.value)) {
+        cipher.decrypt("kv", id, "value", row.value);
+        continue;
+      }
+      if (marked) throw new Error("Protected KV value was written as plaintext after migration.");
+      const encrypted = cipher.encrypt("kv", id, "value", row.value);
+      if (cipher.decrypt("kv", id, "value", encrypted) !== row.value)
+        throw new Error("Protected KV value could not be verified.");
+      db.prepare("UPDATE kv SET value=? WHERE key=?").run(encrypted, row.key);
+      changed++;
+    }
+    db.prepare("INSERT INTO aux_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+      .run(KV_MARKER, KV_PLAN);
     db.exec("COMMIT");
   } catch (error) {
     if (db.isTransaction) db.exec("ROLLBACK");

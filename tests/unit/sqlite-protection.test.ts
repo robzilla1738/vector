@@ -8,7 +8,7 @@ import type { SafetyAction } from "@aux/contracts";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
 import { SafetyAuditStore } from "../../apps/runtime/src/safety/audit.js";
 import { SendJournal } from "../../apps/runtime/src/safety/send-journal.js";
-import { compactProtectedSqlite, migrateSensitiveTable, SENSITIVE_SQLITE_COLUMNS, SqliteColumnCipher } from
+import { compactProtectedSqlite, migrateSensitiveKv, migrateSensitiveTable, SENSITIVE_SQLITE_COLUMNS, SqliteColumnCipher } from
   "../../apps/runtime/src/store/sqlite-protection.js";
 import { usageReport } from "../../apps/runtime/src/services/usage-report.js";
 
@@ -50,15 +50,20 @@ it("migrates a table atomically with stable AAD and refuses tampered or plaintex
     const cipher = await SqliteColumnCipher.create(f.secrets, "profile-one", false);
     f.db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("one", "private amber");
     f.db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("two", "private violet");
-    expect(migrateSensitiveTable(f.db, cipher, "kv")).toBe(2);
+    f.db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("meta:eventStreamId", "stream-id");
+    f.db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("counter:requests", "3");
+    expect(() => migrateSensitiveTable(f.db, cipher, "kv")).toThrow(/filtered/);
+    expect(migrateSensitiveKv(f.db, cipher)).toBe(2);
     const first = (f.db.prepare("SELECT value FROM kv WHERE key='one'").get() as { value: string }).value;
     expect(first).not.toContain("amber");
     expect(cipher.decrypt("kv", JSON.stringify(["one"]), "value", first)).toBe("private amber");
     expect(() => cipher.decrypt("kv", JSON.stringify(["two"]), "value", first)).toThrow();
-    expect(migrateSensitiveTable(f.db, cipher, "kv")).toBe(0);
+    expect(migrateSensitiveKv(f.db, cipher)).toBe(0);
+    expect(f.db.prepare("SELECT value FROM kv WHERE key='meta:eventStreamId'").get()).toMatchObject({ value: "stream-id" });
+    expect(f.db.prepare("SELECT value FROM kv WHERE key='counter:requests'").get()).toMatchObject({ value: "3" });
     f.db.prepare("UPDATE kv SET value='plain again' WHERE key='one'").run();
     f.db.prepare("UPDATE kv SET value='auxenc:v1:bad' WHERE key='two'").run();
-    expect(() => migrateSensitiveTable(f.db, cipher, "kv")).toThrow();
+    expect(() => migrateSensitiveKv(f.db, cipher)).toThrow();
     expect(f.db.prepare("SELECT value FROM kv WHERE key='one'").get()).toMatchObject({ value: "plain again" });
   } finally { f.close(); }
 });
@@ -414,6 +419,7 @@ it("protects run and step content while retaining metadata lookups across restar
     const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
     expect(migrateSensitiveTable(db, cipher, "runs")).toBe(6);
     expect(migrateSensitiveTable(db, cipher, "steps")).toBe(3);
+    expect(migrateSensitiveTable(db, cipher, "conversations")).toBe(1);
     const protectedRepo = new Repo(db, cipher);
     expect(protectedRepo.getRun("old")?.result?.answer).toBe("private answer amber");
     expect(protectedRepo.listRuns(1, { query: "goal amber" })[0]?.runId).toBe("old");
@@ -453,6 +459,64 @@ it("protects run and step content while retaining metadata lookups across restar
     expect(() => reopened.getRun("old")).toThrow(/plaintext/);
     db.prepare("UPDATE steps SET inputs='tampered plaintext' WHERE step_id='old-step'").run();
     expect(() => reopened.listSteps("old")).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+it("protects conversation titles and KV text across search, restart, backups and tamper", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-conversations-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    legacy.saveRun({ runId: "run", goal: "private goal violet", status: "completed", pageIds: [],
+      config: { chatId: "chat" }, result: { answer: "private answer violet" }, createdAt: 1 });
+    legacy.renameConversation("chat", "private title violet");
+    legacy.setSetting("providerModels", { custom: "private provider violet" });
+    legacy.setSetting("conversationWorkspace:chat", "workspace-violet");
+    legacy.setSetting("conversationAttachments:draft", [{ filename: "private draft violet", createdAt: 3 }]);
+    legacy.saveCheckpoint("page", "plan", { inputs: { text: "private checkpoint violet" } });
+    db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("meta:eventStreamId", "stream");
+    db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("counter:models", "7");
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "runs")).toBeGreaterThanOrEqual(2);
+    expect(migrateSensitiveTable(db, cipher, "conversations")).toBe(1);
+    expect(migrateSensitiveKv(db, cipher)).toBeGreaterThanOrEqual(4);
+    const protectedRepo = new Repo(db, cipher);
+    expect(protectedRepo.getConversation("chat")?.title).toBe("private title violet");
+    expect(protectedRepo.listConversations(1, { query: "title violet" })[0]?.chatId).toBe("chat");
+    expect(protectedRepo.listConversations(1, { workspaceId: "workspace-violet" })[0]?.chatId).toBe("chat");
+    expect(protectedRepo.preparedConversations()[0]?.title).toBe("private draft violet");
+    expect(protectedRepo.getSetting<{custom:string}>("providerModels")?.custom).toBe("private provider violet");
+    expect(protectedRepo.loadCheckpoint("page", "plan")?.inputs?.text).toBe("private checkpoint violet");
+    for (let i = 0; i < 260; i++) protectedRepo.saveRun({ runId: `other-${i}`,
+      goal: `other conversation ${i}`, status: "completed", pageIds: [], createdAt: i + 10 });
+    expect(protectedRepo.listConversations(1, { query: "title violet" })[0]?.chatId).toBe("chat");
+    expect(protectedRepo.listConversations(1, { workspaceId: "workspace-violet" })[0]?.chatId).toBe("chat");
+    protectedRepo.setSetting("providerModels", { custom: "private provider coral" });
+    protectedRepo.renameConversation("chat", "private title coral");
+    expect(db.prepare("SELECT value FROM kv WHERE key='counter:models'").get()).toMatchObject({ value: "7" });
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private title violet")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private title violet")).toBe(true);
+      expect(!existsSync(path) || !readFileSync(path).includes("private provider violet")).toBe(true);
+      expect(!existsSync(path) || !readFileSync(path).includes("private checkpoint violet")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopened = new Repo(db, await SqliteColumnCipher.create(secrets.secrets, "profile-one", true));
+    expect(reopened.getConversation("chat")?.title).toBe("private title coral");
+    expect(reopened.getSetting<{custom:string}>("providerModels")?.custom).toBe("private provider coral");
+    db.prepare("UPDATE conversations SET title='tampered plaintext' WHERE chat_id='chat'").run();
+    expect(() => reopened.getConversation("chat")).toThrow(/plaintext/);
+    db.prepare("UPDATE kv SET value='tampered plaintext' WHERE key='setting:providerModels'").run();
+    expect(() => reopened.getSetting("providerModels")).toThrow(/plaintext/);
+    expect(() => migrateSensitiveKv(db, cipher)).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 

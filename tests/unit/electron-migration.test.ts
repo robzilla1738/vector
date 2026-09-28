@@ -93,6 +93,16 @@ it("refuses an existing unmarked output directory", async () => {
   f.db.close();
 });
 
+it("refuses protected copied databases before interpreting encrypted browser Spaces", async () => {
+  const f = fixture();
+  f.db.prepare("UPDATE kv SET value='auxenc:v1:sealed' WHERE key='setting:browserSpaces'").run();
+  f.db.prepare("INSERT INTO aux_meta(key,value) VALUES('protected_sqlite_v1:kv_filtered','sealed')").run();
+  await expect(prepareElectronMigration({ sourceDataDir: f.source, destinationDir: f.output,
+    layoutJson: f.layoutJson })).rejects.toThrow(/reviewed recovery/);
+  expect(existsSync(f.output)).toBe(false);
+  f.db.close();
+});
+
 it("rejects a conflicting bundle and never copies unsafe URLs", async () => {
   const f = fixture();
   f.db.prepare("INSERT INTO pages(page_id,backend,target_id,url,title,created_at,active_at) VALUES('p2','aux','x','file:///private','Local',1,1)").run();

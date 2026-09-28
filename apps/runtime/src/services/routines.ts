@@ -913,7 +913,7 @@ export class RoutineService {
         title: definition.title,
         workspaceId: row.workspace_id,
         triggerKind: definition.trigger.kind,
-        ...(row.read_at ? { readAt: Number(JSON.parse(row.read_at)) } : {}),
+        ...(row.read_at ? { readAt: this.repo.getSetting<number>(`routineInboxRead:${row.routine_run_id}`) } : {}),
       };
     });
   }
