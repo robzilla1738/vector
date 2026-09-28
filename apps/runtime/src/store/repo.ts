@@ -656,7 +656,15 @@ export class Repo {
            preconditions=excluded.preconditions,postconditions=excluded.postconditions,
            use_count=excluded.use_count,last_used_at=excluded.last_used_at`,
       )
-      .run(p.programId, p.name, p.description ?? null, p.version, p.siteKey, J(p.parameters), p.stepsJson, p.preconditions ? J(p.preconditions) : null, p.postconditions ? J(p.postconditions) : null, p.useCount, p.lastUsedAt ?? null, p.createdAt);
+      .run(p.programId,
+        this.protectField("programs", p.programId, "name", p.name),
+        this.protectField("programs", p.programId, "description", p.description ?? null),
+        p.version, this.protectField("programs", p.programId, "site_key", p.siteKey),
+        this.protectField("programs", p.programId, "parameters", J(p.parameters)),
+        this.protectField("programs", p.programId, "steps_json", p.stepsJson),
+        this.protectField("programs", p.programId, "preconditions", p.preconditions ? J(p.preconditions) : null),
+        this.protectField("programs", p.programId, "postconditions", p.postconditions ? J(p.postconditions) : null),
+        p.useCount, p.lastUsedAt ?? null, p.createdAt);
   }
   getProgram(programId: string): SavedProgram | undefined {
     const r = this.q("SELECT * FROM programs WHERE program_id=?").get(programId) as any;
@@ -670,9 +678,15 @@ export class Repo {
   }
   private rowToProgram(r: any): SavedProgram {
     return {
-      programId: r.program_id, name: r.name, description: r.description ?? undefined, version: r.version,
-      siteKey: r.site_key, parameters: P(r.parameters, []), stepsJson: r.steps_json,
-      preconditions: P(r.preconditions, undefined as never), postconditions: P(r.postconditions, undefined as never),
+      programId: r.program_id,
+      name: this.revealField("programs", r.program_id, "name", r.name)!,
+      description: this.revealField("programs", r.program_id, "description", r.description) ?? undefined,
+      version: r.version,
+      siteKey: this.revealField("programs", r.program_id, "site_key", r.site_key)!,
+      parameters: P(this.revealField("programs", r.program_id, "parameters", r.parameters), []),
+      stepsJson: this.revealField("programs", r.program_id, "steps_json", r.steps_json)!,
+      preconditions: P(this.revealField("programs", r.program_id, "preconditions", r.preconditions), undefined as never),
+      postconditions: P(this.revealField("programs", r.program_id, "postconditions", r.postconditions), undefined as never),
       useCount: r.use_count, lastUsedAt: r.last_used_at ?? undefined, createdAt: r.created_at,
     };
   }

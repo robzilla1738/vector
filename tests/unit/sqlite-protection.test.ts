@@ -180,3 +180,41 @@ it("protects page sets and members across migration, writes, backups and restart
     expect(() => reopened.getMember("member-old")).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
+
+it("protects saved programs and their execution text across migration and restart", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-programs-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    legacy.saveProgram({ programId: "old", name: "private name jade", description: "private description jade",
+      version: 1, siteKey: "https://private.example/jade", parameters: ["private parameter jade"],
+      stepsJson: '[{"op":"type","value":"private step jade"}]',
+      preconditions: ["private precondition jade"], postconditions: ["private postcondition jade"],
+      useCount: 0, createdAt: 1 });
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "programs")).toBe(7);
+    const protectedRepo = new Repo(db, cipher);
+    expect(protectedRepo.getProgram("old")?.stepsJson).toContain("private step jade");
+    protectedRepo.saveProgram({ programId: "new", name: "private name coral", version: 1,
+      siteKey: "https://private.example/coral", parameters: [], stepsJson: "[]", useCount: 0, createdAt: 2 });
+    expect(protectedRepo.listPrograms().map(program => program.name)).toEqual(["private name coral", "private name jade"]);
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private step jade")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private step jade")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopened = new Repo(db, await SqliteColumnCipher.create(secrets.secrets, "profile-one", true));
+    expect(reopened.getProgram("old")?.preconditions).toEqual(["private precondition jade"]);
+    expect(reopened.getProgram("new")?.name).toBe("private name coral");
+    db.prepare("UPDATE programs SET steps_json='tampered plaintext' WHERE program_id='old'").run();
+    expect(() => reopened.getProgram("old")).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
