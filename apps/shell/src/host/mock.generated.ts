@@ -490,6 +490,10 @@ const RESULTS: Record<string, unknown> = {
   "native.historyClear": {
     "removed": 0
   },
+  "native.historyImport": {
+    "added": 0,
+    "skipped": 0
+  },
   "native.historyRemove": {
     "removed": false
   },

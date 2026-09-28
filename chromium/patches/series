@@ -111,3 +111,4 @@ aux/runtime/0110-battery-saver-grain.patch
 aux/runtime/0111-organization-space-theme.patch
 aux/runtime/0112-command-bar-capability.patch
 aux/runtime/0113-command-bar-first-results.patch
+aux/runtime/0114-profile-history-import.patch
