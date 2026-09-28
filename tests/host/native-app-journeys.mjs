@@ -939,7 +939,7 @@ else {
     assert.ok(existsSync(chromeBinary), "The isolated attached-tabs journey needs installed Google Chrome");
     const chromeProfile = join(disposable, "attached-chrome");
     attachedChrome = spawn(chromeBinary, [`--user-data-dir=${chromeProfile}`, "--headless=new", "--remote-debugging-port=0",
-      "--no-first-run", "--no-default-browser-check", "--disable-extensions", `${origin}/red`, `${origin}/blue`],
+      "--no-first-run", "--no-default-browser-check", "--disable-extensions", `${origin}/red`],
       { cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"] });
     attachedChrome.stderr.on("data", chunk => appendFileSync(join(output, "attached-chrome-stderr.log"), chunk));
     const chromePortFile = join(chromeProfile, "DevToolsActivePort");
@@ -948,6 +948,8 @@ else {
       const port = Number(readFileSync(chromePortFile, "utf8").split("\n")[0]);
       return Number.isInteger(port) && port > 0 ? port : null;
     });
+    const created = await fetch(`http://127.0.0.1:${chromePort}/json/new?${encodeURIComponent(`${origin}/blue`)}`, { method: "PUT" });
+    assert.equal(created.status, 200, "A second disposable Chrome tab must be available for import");
     await rpc("chrome.attach", { port: chromePort });
     const preview = await rpc("import.preview");
     assert.deepEqual(preview.sources.map(source => source.id), ["chrome-attached"],
