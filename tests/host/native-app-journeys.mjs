@@ -785,8 +785,30 @@ else {
     writeFileSync(join(profile, "Default/Preferences"), JSON.stringify({ download: { default_directory: target } }));
   }
   const importHome = join(disposable, "fixture-home");
-  if (browserImportAttachedJourney) mkdirSync(importHome, { recursive: true });
   const importSourceFiles = [];
+  if (browserImportAttachedJourney) {
+    const chromeRoot = join(importHome, "Library/Application Support/Google/Chrome");
+    const defaultProfile = join(chromeRoot, "Default");
+    const corruptProfile = join(chromeRoot, "Profile 1");
+    mkdirSync(defaultProfile, { recursive: true });
+    mkdirSync(corruptProfile, { recursive: true });
+    const historyPath = join(defaultProfile, "History");
+    const source = new DatabaseSync(historyPath);
+    source.exec("CREATE TABLE urls(id INTEGER PRIMARY KEY,url TEXT,title TEXT); CREATE TABLE visits(id INTEGER PRIMARY KEY,url INTEGER,visit_time INTEGER); BEGIN IMMEDIATE;");
+    const insertUrl = source.prepare("INSERT INTO urls(id,url,title) VALUES(?,?,?)");
+    const insertVisit = source.prepare("INSERT INTO visits(id,url,visit_time) VALUES(?,?,?)");
+    for (let i = 1; i <= 5000; i++) {
+      insertUrl.run(i, `https://aux-import-cancel.example/${i}`, `Cancel fixture ${i}`);
+      insertVisit.run(i, i, (Date.now() - i * 1000 + 11_644_473_600_000) * 1000);
+    }
+    source.exec("COMMIT");
+    source.close();
+    const corruptHistory = join(corruptProfile, "History");
+    writeFileSync(corruptHistory, "This is not a SQLite browser History store.");
+    importSourceFiles.push(historyPath, corruptHistory);
+    report.importSourceHashes = Object.fromEntries(importSourceFiles.map(path =>
+      [path.slice(importHome.length + 1), createHash("sha256").update(readFileSync(path)).digest("hex")]));
+  }
   if (protectedStartupJourney) {
     const databasePath = join(profile, "Default/Aux Runtime Data/aux-state.sqlite");
     mkdirSync(join(profile, "Default/Aux Runtime Data"), { recursive: true });
@@ -952,7 +974,7 @@ else {
     assert.equal(created.status, 200, "A second disposable Chrome tab must be available for import");
     await rpc("chrome.attach", { port: chromePort });
     const preview = await rpc("import.preview");
-    assert.deepEqual(preview.sources.map(source => source.id), ["chrome-attached"],
+    assert.deepEqual(preview.sources.map(source => source.id), ["chrome", "chrome-attached"],
       "The attached-tab journey must not inspect the owner's installed browser Profiles");
     const attached = preview.sources.find(source => source.id === "chrome-attached");
     assert.equal(attached?.categories[0]?.category, "tabs");
@@ -975,6 +997,54 @@ else {
       .map(tab => tab.url).sort(), sourceTabs.map(tab => tab.url).sort(), "Borrowed Chrome tabs must remain untouched");
     await rpc("chrome.detach");
     record("two live tabs open in native Aux while borrowed Chrome tabs stay unchanged");
+    const selection = { sourceId: "chrome", profileId: "Default", categories: ["history"] };
+    const cancelledRun = await rpc("import.run", { selections: [selection] });
+    await rpc("import.cancel", { jobId: cancelledRun.jobId });
+    const stopped = await until("cancelled native history import", async () => {
+      const status = await rpc("import.status", { jobId: cancelledRun.jobId });
+      return status.done ? status : null;
+    }, 60_000);
+    assert.equal(stopped.cancelled, true);
+    assert.ok(stopped.report.results[0].imported < 5000, "Cancel must stop before all source rows are attempted");
+    record("cancelled native History import reports partial work without completing the source");
+    const resumedRun = await rpc("import.run", { selections: [selection,
+      { sourceId: "chrome", profileId: "Profile 1", categories: ["history"] }] });
+    const resumed = await until("resumed import and corrupt-source report", async () => {
+      const status = await rpc("import.status", { jobId: resumedRun.jobId });
+      return status.done ? status : null;
+    }, 90_000);
+    assert.deepEqual(resumed.report.results.map(result => result.state), ["done", "error"]);
+    const importedDb = new DatabaseSync(join(profile, "Default/History"), { readOnly: true });
+    const importedCount = importedDb.prepare("SELECT COUNT(*) AS count FROM urls WHERE url LIKE 'https://aux-import-cancel.example/%'").get().count;
+    importedDb.close();
+    assert.equal(importedCount, 5000, "Retry after cancel must complete without duplicate native URLs");
+    assert.deepEqual(Object.fromEntries(importSourceFiles.map(path =>
+      [path.slice(importHome.length + 1), createHash("sha256").update(readFileSync(path)).digest("hex")])),
+      report.importSourceHashes, "Both source History stores must remain unchanged");
+    record("retry completes native History while a corrupt Profile reports an independent error");
+    console.log("Quit this disposable Aux window from the Aux menu, then the journey will relaunch the same Profile.");
+    if (child.exitCode === null) await new Promise((resolveExit, rejectExit) => {
+      const timeout = setTimeout(() => rejectExit(new Error("Timed out waiting for graceful Aux quit")), 180_000);
+      child.once("exit", () => { clearTimeout(timeout); resolveExit(); });
+    });
+    child.stderr.destroy();
+    child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
+      "--use-mock-keychain", "--password-store=basic"], {
+      cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", AUX_IMPORT_SOURCE_HOME: importHome }, stdio: ["ignore", "ignore", "pipe"],
+    });
+    child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
+    await until("restarted attached-import Profile runtime", async () => {
+      try {
+        const descriptor = JSON.parse(readFileSync(runtimeFile, "utf8"));
+        rpcPort = descriptor.port; rpcToken = descriptor.token;
+        return (await rpc("workspace.get")).sessions?.some(session => session.sessionId === "aux" && session.status === "connected");
+      } catch { return false; }
+    }, 60_000);
+    const restartedDb = new DatabaseSync(join(profile, "Default/History"), { readOnly: true });
+    const restartedCount = restartedDb.prepare("SELECT COUNT(*) AS count FROM urls WHERE url LIKE 'https://aux-import-cancel.example/%'").get().count;
+    restartedDb.close();
+    assert.equal(restartedCount, 5000);
+    record("cancelled-and-resumed native History remains complete after graceful restart");
     report.passed = true;
   } else if (browserImportFormatsJourney) {
     const selections = ["arc", "safari", "firefox"].map(sourceId => ({
