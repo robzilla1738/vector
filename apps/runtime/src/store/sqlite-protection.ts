@@ -44,7 +44,7 @@ export const SENSITIVE_SQLITE_COLUMNS: Readonly<Record<string, readonly string[]
   action_transitions: ["evidence"],
   safety_approval_requests: ["action_json"],
   safety_standing_grants: ["origin", "recipient"],
-  safety_send_journal: ["text", "error_code"],
+  safety_send_journal: ["text", "digest", "error_code"],
   safety_challenge_recovery: ["origin"],
   safety_audit: ["payload"],
   command_escalation_requests: ["body"],

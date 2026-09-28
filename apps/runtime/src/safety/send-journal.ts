@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import type { SqliteColumnCipher } from "../store/sqlite-protection.js";
 
 export type SendState = "queued" | "offline" | "sending" | "accepted" | "acknowledged" | "parked" | "failed" | "cancelled";
 export interface SendRecord {
@@ -34,7 +35,7 @@ const SELECT = `SELECT nonce,thread_id AS threadId,turn_id AS turnId,text,state,
 /** One nonce per logical message; durable before network dispatch. */
 export class SendJournal {
   private readonly inFlight = new Map<string, Promise<SendRecord>>();
-  constructor(private readonly db: DatabaseSync) {
+  constructor(private readonly db: DatabaseSync, private readonly columnCipher?: SqliteColumnCipher) {
     db.exec(`CREATE TABLE IF NOT EXISTS safety_send_journal(
       nonce TEXT PRIMARY KEY, thread_id TEXT NOT NULL, turn_id TEXT NOT NULL, text TEXT NOT NULL,
       digest TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('queued','offline','sending','accepted','acknowledged','parked','failed','cancelled')),
@@ -52,11 +53,16 @@ export class SendJournal {
     const nonce = input.nonce ?? randomUUID();
     const digest = createHash("sha256").update(JSON.stringify([input.threadId, input.turnId, input.text])).digest("hex");
     const existing = this.db.prepare(`SELECT digest FROM safety_send_journal WHERE nonce=?`).get(nonce) as { digest: string } | undefined;
-    if (existing && existing.digest !== digest) throw new Error("Nonce belongs to a different message");
+    const savedDigest = existing && this.columnCipher
+      ? this.columnCipher.decrypt("safety_send_journal", JSON.stringify([nonce]), "digest", existing.digest)
+      : existing?.digest;
+    if (savedDigest && savedDigest !== digest) throw new Error("Nonce belongs to a different message");
     if (!existing) {
       const prior = input.supersedes ? this.messageStatus(input.supersedes) : undefined;
       this.db.prepare(`INSERT INTO safety_send_journal(nonce,thread_id,turn_id,text,digest,state,supersedes,root_nonce,created_at,updated_at)
-        VALUES(?,?,?,?,?,'queued',?,?,?,?)`).run(nonce, input.threadId, input.turnId, input.text, digest,
+        VALUES(?,?,?,?,?,'queued',?,?,?,?)`).run(nonce, input.threadId, input.turnId,
+        this.columnCipher?.encrypt("safety_send_journal", JSON.stringify([nonce]), "text", input.text) ?? input.text,
+        this.columnCipher?.encrypt("safety_send_journal", JSON.stringify([nonce]), "digest", digest) ?? digest,
         input.supersedes ?? null, input.supersedes ? prior?.rootNonce ?? input.supersedes : null, now, now);
     }
     return this.messageStatus(nonce)!;
@@ -89,6 +95,16 @@ export class SendJournal {
   messageStatus(nonce: string): SendRecord | undefined {
     const row = this.db.prepare(`${SELECT} WHERE nonce=?`).get(nonce) as Record<string, unknown> | undefined;
     if (!row) return undefined;
+    return this.decodeRow(row);
+  }
+
+  private decodeRow(row: Record<string, unknown>): SendRecord {
+    const nonce = row.nonce as string;
+    if (this.columnCipher) {
+      row.text = this.columnCipher.decrypt("safety_send_journal", JSON.stringify([nonce]), "text", row.text as string);
+      if (row.errorCode !== null) row.errorCode = this.columnCipher.decrypt("safety_send_journal",
+        JSON.stringify([nonce]), "error_code", row.errorCode as string);
+    }
     // SQLite NULL → absent optional field (SendRecordSchema's optional() accepts undefined only).
     for (const key of ["acceptanceId", "supersedes", "rootNonce", "errorCode"])
       if (row[key] === null) delete row[key];
@@ -96,7 +112,8 @@ export class SendJournal {
   }
 
   list(threadId: string): SendRecord[] {
-    return this.db.prepare(`${SELECT} WHERE thread_id=? ORDER BY created_at,nonce`).all(threadId) as unknown as SendRecord[];
+    return (this.db.prepare(`${SELECT} WHERE thread_id=? ORDER BY created_at,nonce`).all(threadId) as Record<string, unknown>[])
+      .map(row => this.decodeRow(row));
   }
 
   /** An uncertain send is never replayed without an authoritative negative lookup. */
@@ -177,7 +194,8 @@ export class SendJournal {
   }
 
   settleTurn(turnId: string): { status: "settled" | "pending" | "needs_attention"; pending: string[] } {
-    const records = this.db.prepare(`${SELECT} WHERE turn_id=? ORDER BY created_at,nonce`).all(turnId) as unknown as SendRecord[];
+    const records = (this.db.prepare(`${SELECT} WHERE turn_id=? ORDER BY created_at,nonce`).all(turnId) as Record<string, unknown>[])
+      .map(row => this.decodeRow(row));
     const pending = records.filter(record => record.state !== "acknowledged" && record.state !== "cancelled").map(record => record.nonce);
     const status = records.some(record => record.state === "parked" || record.state === "failed")
       ? "needs_attention" : pending.length ? "pending" : "settled";
@@ -188,7 +206,9 @@ export class SendJournal {
   fail(nonce: string, errorCode: string, now = Date.now()): SendRecord {
     const current = this.messageStatus(nonce);
     if (!current || !["parked", "offline", "queued"].includes(current.state)) throw new Error("Only an unsent or parked message can fail");
-    this.db.prepare("UPDATE safety_send_journal SET state='failed',error_code=?,updated_at=? WHERE nonce=?").run(errorCode, now, nonce);
+    this.db.prepare("UPDATE safety_send_journal SET state='failed',error_code=?,updated_at=? WHERE nonce=?")
+      .run(this.columnCipher?.encrypt("safety_send_journal", JSON.stringify([nonce]), "error_code", errorCode)
+        ?? errorCode, now, nonce);
     return this.messageStatus(nonce)!;
   }
 

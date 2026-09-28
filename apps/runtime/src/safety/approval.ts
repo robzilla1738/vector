@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { ApprovalDecisionSchema, SafetyActionSchema, type ApprovalDecision, type AuthorizationProvenance, type SafetyAction, type StandingGrant } from "@aux/contracts";
+import type { SqliteColumnCipher } from "../store/sqlite-protection.js";
 import type { OriginPolicyDecision } from "./origin-policy.js";
 
 export type LocalCeiling = "never" | "ask" | "always";
@@ -23,7 +24,8 @@ type GrantRow = { grant_id: string; profile_id: string; scope_kind: string; scop
 
 /** Local, durable authorization store. Call `authorize` again immediately before dispatch. */
 export class ApprovalStore {
-  constructor(private readonly db: DatabaseSync, private readonly audit: (event: Record<string, unknown>) => void = () => {}) {
+  constructor(private readonly db: DatabaseSync, private readonly audit: (event: Record<string, unknown>) => void = () => {},
+    private readonly columnCipher?: SqliteColumnCipher) {
     db.exec(`CREATE TABLE IF NOT EXISTS safety_approval_requests(
       approval_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, action_json TEXT NOT NULL, turn_id TEXT NOT NULL, thread_id TEXT NOT NULL,
       lifetime TEXT NOT NULL CHECK(lifetime IN ('turn','thread')), expires_at INTEGER NOT NULL,
@@ -48,7 +50,9 @@ export class ApprovalStore {
     // Thread approvals still expire; they may be used by the same thread for one dispatch.
     const expiresAt = now + (lifetime === "turn" ? 30 * 60_000 : 24 * 60 * 60_000);
     this.db.prepare(`INSERT INTO safety_approval_requests(approval_id,fingerprint,action_json,turn_id,thread_id,lifetime,expires_at,state,created_at)
-      VALUES(?,?,?,?,?,?,?,'pending',?)`).run(approvalId, fingerprint(action, lifetime), JSON.stringify(action), action.turnId, action.threadId, lifetime, expiresAt, now);
+      VALUES(?,?,?,?,?,?,?,'pending',?)`).run(approvalId, fingerprint(action, lifetime),
+      this.columnCipher?.encrypt("safety_approval_requests", JSON.stringify([approvalId]), "action_json", JSON.stringify(action))
+        ?? JSON.stringify(action), action.turnId, action.threadId, lifetime, expiresAt, now);
     this.audit({ kind: "approval_issued", approvalId, action: action.action, effect: action.effect, at: now });
     return approvalId;
   }
@@ -67,7 +71,9 @@ export class ApprovalStore {
     const rows = this.db.prepare(`SELECT approval_id AS approvalId,action_json AS actionJson,expires_at AS expiresAt
       FROM safety_approval_requests WHERE thread_id=? AND state='pending' AND expires_at>? ORDER BY created_at`)
       .all(threadId, now) as { approvalId: string; actionJson: string; expiresAt: number }[];
-    return rows.map(row => ({ approvalId: row.approvalId, action: SafetyActionSchema.parse(JSON.parse(row.actionJson)), expiresAt: row.expiresAt }));
+    return rows.map(row => ({ approvalId: row.approvalId, action: SafetyActionSchema.parse(JSON.parse(
+      this.columnCipher?.decrypt("safety_approval_requests", JSON.stringify([row.approvalId]), "action_json", row.actionJson)
+        ?? row.actionJson)), expiresAt: row.expiresAt }));
   }
 
   /** The native approval UI sends an ID and expected turn; the saved action is authoritative. */
@@ -76,7 +82,9 @@ export class ApprovalStore {
     const row = this.db.prepare("SELECT action_json AS actionJson,turn_id AS turnId FROM safety_approval_requests WHERE approval_id=?")
       .get(decision.approvalId) as { actionJson: string; turnId: string } | undefined;
     if (!row || row.turnId !== expectedTurnId) throw new Error("Stale or unknown approval turn");
-    this.recordLocalDecision(decision, SafetyActionSchema.parse(JSON.parse(row.actionJson)), now);
+    this.recordLocalDecision(decision, SafetyActionSchema.parse(JSON.parse(
+      this.columnCipher?.decrypt("safety_approval_requests", JSON.stringify([decision.approvalId]), "action_json", row.actionJson)
+        ?? row.actionJson)), now);
   }
 
   /** Only a trusted native UI handler may call this method. Never expose it as a model tool. */
@@ -86,8 +94,11 @@ export class ApprovalStore {
     this.db.exec("BEGIN IMMEDIATE");
     try {
       const row = this.db.prepare("SELECT * FROM safety_approval_requests WHERE approval_id=?").get(decision.approvalId) as {
-        fingerprint: string; turn_id: string; thread_id: string; lifetime: "turn" | "thread"; expires_at: number; state: string;
+        fingerprint: string; action_json: string; turn_id: string; thread_id: string;
+        lifetime: "turn" | "thread"; expires_at: number; state: string;
       } | undefined;
+      if (row && this.columnCipher) this.columnCipher.decrypt("safety_approval_requests",
+        JSON.stringify([decision.approvalId]), "action_json", row.action_json);
       if (!row || row.state !== "pending" || row.expires_at <= now || row.fingerprint !== fingerprint(action, row.lifetime)
         || row.turn_id !== action.turnId || row.thread_id !== action.threadId) throw new Error("Forged, expired, or stale approval");
       const state = decision.decision === "decline" || decision.decision === "acceptWithAmendment" ? "declined"
@@ -165,8 +176,11 @@ export class ApprovalStore {
       }
       if (input.approvalId) {
         const row = this.db.prepare("SELECT * FROM safety_approval_requests WHERE approval_id=?").get(input.approvalId) as {
-          fingerprint: string; turn_id: string; thread_id: string; lifetime: "turn" | "thread"; expires_at: number; state: string;
+          fingerprint: string; action_json: string; turn_id: string; thread_id: string;
+          lifetime: "turn" | "thread"; expires_at: number; state: string;
         } | undefined;
+        if (row && this.columnCipher) this.columnCipher.decrypt("safety_approval_requests",
+          JSON.stringify([input.approvalId]), "action_json", row.action_json);
         if (row?.state === "accepted" && row.expires_at > now && row.fingerprint === fingerprint(action, row.lifetime)
           && (row.lifetime === "thread" || row.turn_id === action.turnId) && row.thread_id === action.threadId) {
           if (input.consume !== false) this.db.prepare("UPDATE safety_approval_requests SET state='consumed' WHERE approval_id=? AND state='accepted'").run(input.approvalId);

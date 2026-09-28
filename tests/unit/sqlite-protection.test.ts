@@ -4,6 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { openDb, Repo } from "@aux/runtime";
+import type { SafetyAction } from "@aux/contracts";
+import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
+import { SafetyAuditStore } from "../../apps/runtime/src/safety/audit.js";
+import { SendJournal } from "../../apps/runtime/src/safety/send-journal.js";
 import { compactProtectedSqlite, migrateSensitiveTable, SENSITIVE_SQLITE_COLUMNS, SqliteColumnCipher } from
   "../../apps/runtime/src/store/sqlite-protection.js";
 
@@ -383,5 +387,68 @@ it("protects queued and steered run messages while preserving queue status queri
       .toEqual(["private message maroon", "private steer silver"]);
     db.prepare("UPDATE run_messages SET text='tampered plaintext' WHERE message_id='message-old'").run();
     expect(() => reopened.getRunMessage("message-old")).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+it("protects safety approvals, send journal and audit records across restart", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-safety-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  const action: SafetyAction = { profileId: "profile-one", scope: { kind: "task", id: "task" },
+    effect: "write", action: "submit", invocationDigest: "a".repeat(64),
+    origin: "https://safety-amber.private.example", turnId: "turn", threadId: "thread", requestedAt: 100 };
+  try {
+    const oldApproval = new ApprovalStore(db).issue(action, "turn", 100);
+    const oldJournal = new SendJournal(db);
+    oldJournal.queue({ nonce: "old-send", threadId: "thread", turnId: "turn", text: "private send amber" }, 100);
+    oldJournal.fail("old-send", "private error amber", 101);
+    new SafetyAuditStore(db).record({ kind: "authorization_decision", origin: "https://safety-amber.private.example", at: 102 });
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "safety_approval_requests")).toBe(1);
+    expect(migrateSensitiveTable(db, cipher, "safety_send_journal")).toBe(3);
+    expect(migrateSensitiveTable(db, cipher, "safety_audit")).toBe(1);
+    const approvals = new ApprovalStore(db, () => {}, cipher);
+    const journal = new SendJournal(db, cipher);
+    const audit = new SafetyAuditStore(db, cipher);
+    expect(approvals.pending("thread", 103).map(row => row.approvalId)).toEqual([oldApproval]);
+    expect(journal.messageStatus("old-send")?.errorCode).toBe("private error amber");
+    expect(journal.queue({ nonce: "old-send", threadId: "thread", turnId: "turn", text: "private send amber" }).state)
+      .toBe("failed");
+    expect(() => journal.queue({ nonce: "old-send", threadId: "thread", turnId: "turn", text: "changed" }))
+      .toThrow(/different message/);
+    const newApproval = approvals.issue({ ...action, turnId: "turn-new" }, "turn", 104);
+    approvals.decideLocal({ approvalId: newApproval, decision: "accept" }, "turn-new", 105);
+    expect(approvals.authorize({ action: { ...action, turnId: "turn-new" },
+      policy: { access: "allow", confirmation: "action", approvalLifetime: "turn", grantLifetime: "session",
+        source: "user", reason: "matched_rule", origin: "https://private.example", effect: "write" },
+      ceiling: "ask", approvalId: newApproval, now: 106 }).status).toBe("authorized");
+    journal.queue({ nonce: "new-send", threadId: "thread", turnId: "turn-new", text: "private send coral" }, 107);
+    expect(journal.draft("new-send")?.text).toBe("private send coral");
+    audit.record({ kind: "authorization_decision", origin: "https://safety-coral.private.example", at: 108 });
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private send amber")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private send amber")).toBe(true);
+      expect(!existsSync(path) || !readFileSync(path).includes("safety-amber")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopenedCipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", true);
+    expect(new SendJournal(db, reopenedCipher).draft("new-send")?.text).toBe("private send coral");
+    expect(new SendJournal(db, reopenedCipher).list("thread").map(record => record.text))
+      .toEqual(["private send amber", "private send coral"]);
+    expect(new ApprovalStore(db, () => {}, reopenedCipher).pending("thread", 103)[0]?.action.origin)
+      .toBe("https://safety-amber.private.example");
+    const savedAudit = db.prepare("SELECT seq,payload FROM safety_audit ORDER BY seq LIMIT 1").get() as
+      { seq: number; payload: string };
+    expect(JSON.parse(reopenedCipher.decrypt("safety_audit", JSON.stringify([savedAudit.seq]), "payload", savedAudit.payload)))
+      .toMatchObject({ origin: "https://safety-amber.private.example" });
+    db.prepare("UPDATE safety_approval_requests SET action_json='tampered plaintext' WHERE approval_id=?").run(oldApproval);
+    expect(() => new ApprovalStore(db, () => {}, reopenedCipher).pending("thread", 103)).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
