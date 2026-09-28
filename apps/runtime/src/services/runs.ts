@@ -399,7 +399,7 @@ export class RunService {
     const taskId = this.deps.repo.taskForConversation(chatId);
     const workspaceId = this.deps.repo.getSetting<unknown>(`conversationWorkspace:${chatId}`);
     if (typeof workspaceId !== "string") return { chatId, taskId, workspace: null, memory: null, assigned: workspaceId === null };
-    const workspace = this.deps.repo.db.prepare("SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces WHERE workspace_id=?").get(workspaceId) as { workspaceId: string; name: string; createdAt: number } | undefined;
+    const workspace = this.deps.repo.getWorkspace(workspaceId);
     if (!workspace) {
       this.deps.repo.db.prepare("DELETE FROM kv WHERE key=?").run(`setting:conversationWorkspace:${chatId}`);
       return { chatId, taskId, workspace: null, memory: null };

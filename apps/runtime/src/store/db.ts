@@ -215,6 +215,10 @@ CREATE TABLE workspaces(workspace_id TEXT PRIMARY KEY, name TEXT NOT NULL, creat
 CREATE TABLE tasks(task_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id), revision INTEGER NOT NULL,
   state TEXT NOT NULL CHECK(state IN ('open','archived')), updated_at INTEGER NOT NULL, json TEXT NOT NULL);
 CREATE INDEX idx_tasks_workspace ON tasks(workspace_id,state,updated_at);
+CREATE TABLE task_lookup(task_id TEXT PRIMARY KEY REFERENCES tasks(task_id) ON DELETE CASCADE,
+  conversation_id TEXT, source_origin TEXT);
+CREATE INDEX idx_task_lookup_conversation ON task_lookup(conversation_id);
+CREATE INDEX idx_task_lookup_source ON task_lookup(source_origin,conversation_id);
 CREATE TABLE task_revisions(task_id TEXT NOT NULL REFERENCES tasks(task_id), revision INTEGER NOT NULL, json TEXT NOT NULL,
   PRIMARY KEY(task_id,revision));
 CREATE TABLE task_evidence(seq INTEGER PRIMARY KEY AUTOINCREMENT, evidence_id TEXT NOT NULL UNIQUE,
@@ -363,7 +367,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 25;
+export const SCHEMA_VERSION = 26;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -636,6 +640,20 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       FROM runs`] : []),
     `DROP INDEX IF EXISTS idx_runs_task`,
     `CREATE INDEX IF NOT EXISTS idx_run_lookup_task ON run_lookup(json_extract(config,'$.taskId'))`,
+  ],
+  // v25 → v26: task identity and source metadata remain queryable after task JSON is sealed.
+  25: (db) => [
+    `CREATE TABLE IF NOT EXISTS task_lookup(task_id TEXT PRIMARY KEY REFERENCES tasks(task_id) ON DELETE CASCADE,
+      conversation_id TEXT, source_origin TEXT)`,
+    ...(db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='tasks'").get() ? [
+      `INSERT OR REPLACE INTO task_lookup(task_id,conversation_id,source_origin)
+       SELECT task_id,
+         json_extract(CASE WHEN json_valid(json) THEN json ELSE '{}' END,'$.conversationId'),
+         json_extract(CASE WHEN json_valid(json) THEN json ELSE '{}' END,'$.sourceOrigin')
+       FROM tasks`,
+    ] : []),
+    `CREATE INDEX IF NOT EXISTS idx_task_lookup_conversation ON task_lookup(conversation_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_task_lookup_source ON task_lookup(source_origin,conversation_id)`,
   ],
 };
 

@@ -67,6 +67,50 @@ export class Repo {
       : this.columnCipher.decrypt(table, JSON.stringify([id]), column, value);
   }
 
+  protectRecordField(table: string, identity: readonly (string | number)[], column: string, value: string): string {
+    return this.columnCipher ? this.columnCipher.encrypt(table, JSON.stringify(identity), column, value) : value;
+  }
+
+  revealRecordField(table: string, identity: readonly (string | number)[], column: string, value: string): string {
+    return this.columnCipher ? this.columnCipher.decrypt(table, JSON.stringify(identity), column, value) : value;
+  }
+
+  getWorkspace(workspaceId: string): {workspaceId:string;name:string;createdAt:number} | undefined {
+    const row = this.q("SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces WHERE workspace_id=?")
+      .get(workspaceId) as {workspaceId:string;name:string;createdAt:number} | undefined;
+    return row ? { ...row, name: this.revealRecordField("workspaces", [workspaceId], "name", row.name) } : undefined;
+  }
+
+  listWorkspaces(): {workspaceId:string;name:string;createdAt:number}[] {
+    return (this.q("SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces ORDER BY created_at,workspace_id")
+      .all() as {workspaceId:string;name:string;createdAt:number}[])
+      .map(row => ({ ...row, name: this.revealRecordField("workspaces", [row.workspaceId], "name", row.name) }));
+  }
+
+  insertWorkspace(workspaceId: string, name: string, createdAt: number): void {
+    this.q("INSERT INTO workspaces VALUES(?,?,?)")
+      .run(workspaceId, this.protectRecordField("workspaces", [workspaceId], "name", name), createdAt);
+  }
+
+  renameWorkspace(workspaceId: string, name: string): void {
+    this.q("UPDATE workspaces SET name=? WHERE workspace_id=?")
+      .run(this.protectRecordField("workspaces", [workspaceId], "name", name), workspaceId);
+  }
+
+  taskJson(taskId: string, raw: string): string {
+    return this.revealRecordField("tasks", [taskId], "json", raw);
+  }
+
+  protectTaskJson(taskId: string, raw: string): string {
+    return this.protectRecordField("tasks", [taskId], "json", raw);
+  }
+
+  saveTaskLookup(taskId: string, conversationId?: string, sourceOrigin?: string): void {
+    this.q(`INSERT INTO task_lookup(task_id,conversation_id,source_origin) VALUES(?,?,?)
+      ON CONFLICT(task_id) DO UPDATE SET conversation_id=excluded.conversation_id,source_origin=excluded.source_origin`)
+      .run(taskId, conversationId ?? null, sourceOrigin ?? null);
+  }
+
   private getKvJson<T>(key: string): T | undefined {
     const raw = kvGet(this.db, key);
     if (raw === undefined) return undefined;
@@ -400,7 +444,8 @@ export class Repo {
       const taskRow = r.config?.taskId ? this.q("SELECT json FROM tasks WHERE task_id=?").get(r.config.taskId) as { json: string } | undefined : undefined;
       let title = r.goal.slice(0, 160);
       if (taskRow) {
-        try { title = String((JSON.parse(taskRow.json) as { title?: string }).title || title).slice(0, 160); } catch { /* retain run goal */ }
+        const taskJson = this.taskJson(r.config!.taskId!, taskRow.json);
+        try { title = String((JSON.parse(taskJson) as { title?: string }).title || title).slice(0, 160); } catch { /* retain run goal */ }
       }
       this.q(`INSERT INTO conversations(chat_id,title,archived,created_at,updated_at) VALUES(?,?,0,?,?)
         ON CONFLICT(chat_id) DO UPDATE SET title=CASE WHEN ? THEN excluded.title ELSE conversations.title END,
@@ -621,7 +666,7 @@ export class Repo {
     return row ? this.revealField("conversations", chatId, "title", row.title)! : undefined;
   }
   taskForConversation(chatId: string): string | undefined {
-    return (this.q("SELECT task_id FROM tasks WHERE json_extract(json,'$.conversationId')=? LIMIT 1").get(chatId) as { task_id: string } | undefined)?.task_id;
+    return (this.q("SELECT task_id FROM task_lookup WHERE conversation_id=? LIMIT 1").get(chatId) as { task_id: string } | undefined)?.task_id;
   }
 
   private listConversationById(chatId: string): ConversationSummary | undefined {

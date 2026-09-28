@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { EventBus, openDb, Repo, TaskService } from "@aux/runtime";
+import { EventBus, openDb, Repo, SpaceService, TaskEvidenceService, TaskService } from "@aux/runtime";
 import type { SafetyAction } from "@aux/contracts";
 import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
 import { SafetyAuditStore } from "../../apps/runtime/src/safety/audit.js";
@@ -517,6 +517,81 @@ it("protects conversation titles and KV text across search, restart, backups and
     db.prepare("UPDATE kv SET value='tampered plaintext' WHERE key='setting:providerModels'").run();
     expect(() => reopened.getSetting("providerModels")).toThrow(/plaintext/);
     expect(() => migrateSensitiveKv(db, cipher)).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+it("protects Space and Task text with evidence while retaining task binding", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-tasks-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    const events = new EventBus(legacy);
+    const tasks = new TaskService(legacy, events);
+    const evidence = new TaskEvidenceService(legacy, events);
+    const workspace = tasks.createWorkspace("private Space umber");
+    legacy.saveRun({ runId: "prior", goal: "private run umber", status: "completed", pageIds: [],
+      config: { chatId: "chat" }, createdAt: 1 });
+    const task = tasks.promote({ chatId: "chat", expectedRunId: "prior", workspaceId: workspace.workspaceId,
+      title: "private task umber", objective: "private objective umber",
+      criteria: [{ criterionId: "check", description: "private criterion umber", verification: "manual" }] });
+    const base = { taskId: task.taskId, expectedRevision: 1, criterionId: "check" };
+    const note = evidence.recordNote({ ...base, summary: "private evidence umber" }, "desktop_user");
+    evidence.review({ ...base, evidenceIds: [note.evidenceId], outcome: "accepted",
+      note: "private review umber" });
+    evidence.verifyCriterion(base);
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    for (const table of ["runs", "conversations", "kv", "events"]) {
+      if (table === "kv") migrateSensitiveKv(db, cipher);
+      else migrateSensitiveTable(db, cipher, table);
+    }
+    for (const table of ["workspaces", "tasks", "task_revisions", "task_evidence", "criterion_reviews", "criterion_verifications"])
+      expect(migrateSensitiveTable(db, cipher, table)).toBeGreaterThan(0);
+    const protectedRepo = new Repo(db, cipher);
+    const protectedTasks = new TaskService(protectedRepo, new EventBus(protectedRepo));
+    const protectedEvidence = new TaskEvidenceService(protectedRepo, new EventBus(protectedRepo));
+    expect(protectedTasks.workspaces()[0]?.name).toBe("private Space umber");
+    const spaces = new SpaceService(protectedRepo, new EventBus(protectedRepo));
+    const createdSpace = spaces.create("private Space teal", "blue").find(space => space.name === "private Space teal")!;
+    spaces.update(createdSpace.id, { name: "private Space coral" });
+    expect(spaces.list().find(space => space.id === createdSpace.id)?.name).toBe("private Space coral");
+    expect(protectedTasks.get(task.taskId).objective).toBe("private objective umber");
+    expect(protectedTasks.details(task.taskId).revisions[0]?.criteria[0]?.description).toBe("private criterion umber");
+    expect(protectedRepo.taskForConversation("chat")).toBe(task.taskId);
+    expect(protectedEvidence.receipt(task.taskId).criteria[0]?.review?.note).toBe("private review umber");
+    expect(protectedEvidence.receipt(task.taskId).verifications[0]?.verificationId).toBeTruthy();
+    const updated = protectedTasks.update({ taskId: task.taskId, expectedRevision: 1,
+      title: "private task coral", objective: "private objective coral" });
+    expect(updated.revision).toBe(2);
+    expect(protectedTasks.list({ query: "objective coral" })[0]?.taskId).toBe(task.taskId);
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private objective umber")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private objective umber")).toBe(true);
+      expect(!existsSync(path) || !readFileSync(path).includes("private evidence umber")).toBe(true);
+      expect(!existsSync(path) || !readFileSync(path).includes("private review umber")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopened = new Repo(db, await SqliteColumnCipher.create(secrets.secrets, "profile-one", true));
+    const restartedTasks = new TaskService(reopened, new EventBus(reopened));
+    const restartedEvidence = new TaskEvidenceService(reopened, new EventBus(reopened));
+    expect(restartedTasks.get(task.taskId).objective).toBe("private objective coral");
+    expect(restartedEvidence.receipt(task.taskId, 1).criteria[0]?.evidence[0]?.record.summary)
+      .toBe("private evidence umber");
+    const rawEvidence = (db.prepare("SELECT json FROM task_evidence WHERE evidence_id=?").get(note.evidenceId) as { json: string }).json;
+    expect(JSON.parse(cipher.decrypt("task_evidence", JSON.stringify([note.evidenceId]), "json", rawEvidence)).summary)
+      .toBe("private evidence umber");
+    expect(() => cipher.decrypt("task_evidence", JSON.stringify(["other-evidence"]), "json", rawEvidence)).toThrow();
+    db.prepare("UPDATE tasks SET json='tampered plaintext' WHERE task_id=?").run(task.taskId);
+    expect(() => restartedTasks.get(task.taskId)).toThrow(/plaintext/);
+    db.prepare("UPDATE criterion_reviews SET json='tampered plaintext' WHERE task_id=?").run(task.taskId);
+    expect(() => migrateSensitiveTable(db, cipher, "criterion_reviews")).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 

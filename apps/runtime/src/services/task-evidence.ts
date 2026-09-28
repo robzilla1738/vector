@@ -33,7 +33,7 @@ import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invoca
 import { isConsequential } from "../agent/permissions.js";
 
 type Actor = "desktop_user" | "external_client";
-type EvidenceRow = { seq: number; json: string };
+type EvidenceRow = { seq: number; evidence_id: string; json: string };
 const ACTIVE = new Set(["queued", "planning", "running", "paused", "needs_input"]);
 
 export class TaskEvidenceService {
@@ -162,7 +162,8 @@ export class TaskEvidenceService {
         .prepare(
           "INSERT INTO criterion_reviews(review_id,task_id,task_revision,criterion_id,json) VALUES(?,?,?,?,?)",
         )
-        .run(record.reviewId, record.taskId, record.taskRevision, record.criterionId, JSON.stringify(record));
+        .run(record.reviewId, record.taskId, record.taskRevision, record.criterionId,
+          this.repo.protectRecordField("criterion_reviews", [record.reviewId], "json", JSON.stringify(record)));
       return record;
     });
     this.events.emit("task.reviewed", { taskId: p.taskId, reviewId: review.reviewId });
@@ -452,7 +453,7 @@ export class TaskEvidenceService {
         record.taskId,
         record.taskRevision,
         record.criterionId,
-        JSON.stringify(record),
+        this.repo.protectRecordField("criterion_verifications", [record.verificationId], "json", JSON.stringify(record)),
         record.recordedAt,
       );
     this.events.emit("task.criterion_verified", {
@@ -594,10 +595,11 @@ export class TaskEvidenceService {
       });
       const reviewRow = this.repo.db
         .prepare(
-          "SELECT json FROM criterion_reviews WHERE task_id=? AND task_revision=? AND criterion_id=? ORDER BY seq DESC LIMIT 1",
+          "SELECT review_id,json FROM criterion_reviews WHERE task_id=? AND task_revision=? AND criterion_id=? ORDER BY seq DESC LIMIT 1",
         )
-        .get(taskId, task.revision, criterion.criterionId) as { json: string } | undefined;
-      const review = reviewRow ? CriterionReviewSchema.parse(JSON.parse(reviewRow.json)) : undefined;
+        .get(taskId, task.revision, criterion.criterionId) as { review_id: string; json: string } | undefined;
+      const review = reviewRow ? CriterionReviewSchema.parse(JSON.parse(this.repo.revealRecordField(
+        "criterion_reviews", [reviewRow.review_id], "json", reviewRow.json))) : undefined;
       let status: TaskReceipt["criteria"][number]["status"] = evidence.length ? "needs_review" : "unverified";
       if (review) {
         const stale = review.evidenceIds.some(
@@ -687,11 +689,12 @@ export class TaskEvidenceService {
       verifications: (
         this.repo.db
           .prepare(
-            "SELECT json FROM criterion_verifications WHERE task_id=? AND task_revision=? ORDER BY recorded_at DESC LIMIT 100",
+            "SELECT verification_id,json FROM criterion_verifications WHERE task_id=? AND task_revision=? ORDER BY recorded_at DESC LIMIT 100",
           )
-          .all(taskId, task.revision) as { json: string }[]
+          .all(taskId, task.revision) as { verification_id: string; json: string }[]
       ).flatMap((row) => {
-        const parsed = CriterionVerificationSchema.safeParse(JSON.parse(row.json));
+        const parsed = CriterionVerificationSchema.safeParse(JSON.parse(this.repo.revealRecordField(
+          "criterion_verifications", [row.verification_id], "json", row.json)));
         return parsed.success ? [parsed.data] : [];
       }),
     };
@@ -727,11 +730,12 @@ export class TaskEvidenceService {
       });
       const reviews = this.repo.db
         .prepare(
-          "SELECT json FROM criterion_reviews WHERE task_id=? AND task_revision=? AND criterion_id=? ORDER BY seq DESC",
+          "SELECT review_id,json FROM criterion_reviews WHERE task_id=? AND task_revision=? AND criterion_id=? ORDER BY seq DESC",
         )
-        .all(taskId, revision, criterion.criterionId) as { json: string }[];
+        .all(taskId, revision, criterion.criterionId) as { review_id: string; json: string }[];
       const review = reviews
-        .map((item) => CriterionReviewSchema.parse(JSON.parse(item.json)))
+        .map((item) => CriterionReviewSchema.parse(JSON.parse(this.repo.revealRecordField(
+          "criterion_reviews", [item.review_id], "json", item.json))))
         .find(
           (item) =>
             rows.length > 0 &&
@@ -802,10 +806,11 @@ export class TaskEvidenceService {
     return (
       this.repo.db
         .prepare(
-          "SELECT seq,json FROM task_evidence WHERE task_id=? AND task_revision=? AND (? IS NULL OR criterion_id=?) ORDER BY seq",
+          "SELECT seq,evidence_id,json FROM task_evidence WHERE task_id=? AND task_revision=? AND (? IS NULL OR criterion_id=?) ORDER BY seq",
         )
         .all(taskId, revision, criterionId ?? null, criterionId ?? null) as EvidenceRow[]
-    ).map((row) => ({ seq: row.seq, record: TaskEvidenceSchema.parse(JSON.parse(row.json)) }));
+    ).map((row) => ({ seq: row.seq, record: TaskEvidenceSchema.parse(JSON.parse(this.repo.revealRecordField(
+      "task_evidence", [row.evidence_id], "json", row.json))) }));
   }
 
   private saveEvidence(record: TaskEvidence): TaskEvidence {
@@ -819,7 +824,7 @@ export class TaskEvidenceService {
         validated.taskId,
         validated.taskRevision,
         validated.criterionId,
-        JSON.stringify(validated),
+        this.repo.protectRecordField("task_evidence", [validated.evidenceId], "json", JSON.stringify(validated)),
       );
     this.events.emit("task.evidence_recorded", {
       taskId: validated.taskId,

@@ -31,19 +31,13 @@ export class TaskService {
     const workspace = { workspaceId: randomUUID(), name: name.trim(), createdAt: Date.now() };
     if (!workspace.name || workspace.name.length > 100)
       throw new AuxError("invalid_params", "Workspace name must contain 1–100 characters");
-    this.repo.db
-      .prepare("INSERT INTO workspaces VALUES(?,?,?)")
-      .run(workspace.workspaceId, workspace.name, workspace.createdAt);
+    this.repo.insertWorkspace(workspace.workspaceId, workspace.name, workspace.createdAt);
     this.events.emit("workspace.created", { workspace });
     return workspace;
   }
 
   workspaces(): Workspace[] {
-    return this.repo.db
-      .prepare(
-        "SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces ORDER BY created_at,workspace_id",
-      )
-      .all() as unknown as Workspace[];
+    return this.repo.listWorkspaces();
   }
 
   workspaceMemory(workspaceId: string): WorkspaceMemory {
@@ -161,7 +155,9 @@ export class TaskService {
     this.repo.transaction(() => {
       this.repo.db
         .prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?)")
-        .run(task.taskId, task.workspaceId, task.revision, task.state, now, JSON.stringify(task));
+        .run(task.taskId, task.workspaceId, task.revision, task.state, now,
+          this.repo.protectTaskJson(task.taskId, JSON.stringify(task)));
+      this.repo.saveTaskLookup(task.taskId, task.conversationId, task.sourceOrigin);
       this.saveRevision(task);
     });
     this.events.emit("task.created", { task });
@@ -223,7 +219,9 @@ export class TaskService {
       };
       this.repo.db
         .prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?)")
-        .run(task.taskId, task.workspaceId, task.revision, task.state, now, JSON.stringify(task));
+        .run(task.taskId, task.workspaceId, task.revision, task.state, now,
+          this.repo.protectTaskJson(task.taskId, JSON.stringify(task)));
+      this.repo.saveTaskLookup(task.taskId, task.conversationId, task.sourceOrigin);
       this.saveRevision(task);
       this.repo.setSetting(`conversationWorkspace:${chatId}`, task.workspaceId);
       this.repo.setConversationTitle(chatId, task.title.slice(0, 160));
@@ -257,7 +255,7 @@ export class TaskService {
     const row = this.repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as
       { json: string } | undefined;
     if (!row) throw new AuxError("not_found", "Task does not exist");
-    return TaskSchema.parse(JSON.parse(row.json));
+    return TaskSchema.parse(JSON.parse(this.repo.taskJson(taskId, row.json)));
   }
 
   list(
@@ -266,13 +264,13 @@ export class TaskService {
     return (
       this.repo.db
         .prepare(
-          "SELECT json FROM tasks WHERE (? IS NULL OR workspace_id=?) AND (? OR state='open') ORDER BY updated_at DESC,task_id LIMIT 500",
+          "SELECT task_id,json FROM tasks WHERE (? IS NULL OR workspace_id=?) AND (? OR state='open') ORDER BY updated_at DESC,task_id LIMIT 500",
         )
         .all(opts.workspaceId ?? null, opts.workspaceId ?? null, opts.includeArchived ? 1 : 0) as {
-        json: string;
+        task_id: string; json: string;
       }[]
     )
-      .map((row) => TaskSchema.parse(JSON.parse(row.json)))
+      .map((row) => TaskSchema.parse(JSON.parse(this.repo.taskJson(row.task_id, row.json))))
       .filter((task) => taskMatchesQuery(task, opts.query))
       .slice(0, opts.limit ?? 100);
   }
@@ -281,9 +279,10 @@ export class TaskService {
     const task = this.get(taskId);
     const revisions = (
       this.repo.db
-        .prepare("SELECT json FROM task_revisions WHERE task_id=? ORDER BY revision")
-        .all(taskId) as { json: string }[]
-    ).map((row) => TaskSchema.parse(JSON.parse(row.json)));
+        .prepare("SELECT revision,json FROM task_revisions WHERE task_id=? ORDER BY revision")
+        .all(taskId) as { revision: number; json: string }[]
+    ).map((row) => TaskSchema.parse(JSON.parse(this.repo.revealRecordField(
+      "task_revisions", [taskId, row.revision], "json", row.json))));
     const rows = this.repo.db
       .prepare("SELECT r.run_id FROM run_lookup l JOIN runs r ON r.run_id=l.run_id WHERE json_extract(l.config,'$.taskId')=? ORDER BY r.created_at DESC")
       .all(taskId) as { run_id: string }[];
@@ -359,9 +358,11 @@ export class TaskService {
       });
       const result = this.repo.db
         .prepare("UPDATE tasks SET revision=?,state=?,updated_at=?,json=? WHERE task_id=? AND revision=?")
-        .run(next.revision, next.state, next.updatedAt, JSON.stringify(next), taskId, expectedRevision);
+        .run(next.revision, next.state, next.updatedAt,
+          this.repo.protectTaskJson(taskId, JSON.stringify(next)), taskId, expectedRevision);
       if (result.changes !== 1)
         throw new AuxError("conflict", "Task was changed by another client; refresh it before editing");
+      this.repo.saveTaskLookup(taskId, next.conversationId, next.sourceOrigin);
       // A task revision may change its objective or resources. Its prior
       // provider authority must not silently carry into the new definition.
       this.repo.db
@@ -488,6 +489,7 @@ export class TaskService {
   private saveRevision(task: Task) {
     this.repo.db
       .prepare("INSERT INTO task_revisions VALUES(?,?,?)")
-      .run(task.taskId, task.revision, JSON.stringify(task));
+      .run(task.taskId, task.revision, this.repo.protectRecordField(
+        "task_revisions", [task.taskId, task.revision], "json", JSON.stringify(task)));
   }
 }

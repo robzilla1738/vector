@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { BrowserSpaceSchema, AuxError, type BrowserSpace, type SpaceInput, type Workspace } from "@aux/contracts";
+import { BrowserSpaceSchema, AuxError, type BrowserSpace, type SpaceInput } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 
@@ -11,7 +11,7 @@ export class SpaceService {
 
   list(): BrowserSpace[] {
     const saved = BrowserSpaceSchema.array().parse(this.repo.getSetting(SPACE_KEY) ?? []);
-    const workspaces = this.repo.db.prepare("SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces ORDER BY created_at,workspace_id").all() as unknown as Workspace[];
+    const workspaces = this.repo.listWorkspaces();
     const mapped = new Set(saved.map(space => space.workspaceId));
     return [
       ...saved.map(space => ({ ...space, name: workspaces.find(workspace => workspace.workspaceId === space.workspaceId)?.name ?? space.name })),
@@ -29,7 +29,7 @@ export class SpaceService {
       for (const input of inputs) {
         if (spaces.some(space => space.id === input.id)) continue;
         const workspaceId = randomUUID();
-        this.repo.db.prepare("INSERT INTO workspaces VALUES(?,?,?)").run(workspaceId, input.name, Date.now());
+        this.repo.insertWorkspace(workspaceId, input.name, Date.now());
         spaces.push({ ...input, workspaceId, archived: false });
         changed = true;
       }
@@ -54,7 +54,7 @@ export class SpaceService {
       }
       Object.assign(current, patch);
       if (patch.theme === null) delete current.theme;
-      if (patch.name) this.repo.db.prepare("UPDATE workspaces SET name=? WHERE workspace_id=?").run(patch.name, current.workspaceId);
+      if (patch.name) this.repo.renameWorkspace(current.workspaceId, patch.name);
       this.repo.setSetting(SPACE_KEY, spaces);
       return spaces;
     });
