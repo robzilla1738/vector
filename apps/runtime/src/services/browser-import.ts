@@ -305,7 +305,9 @@ export class BrowserImporter {
       let batches = 0;
       for (const read of this.historyBatches(source, profile)) {
         if (job.cancelled) return { ...base, state: "done", imported, skipped, detail: "Stopped by cancel." };
-        const batch = read.filter(row => safeImportUrl(row.url));
+        const batch = read.filter(row => safeImportUrl(row.url) && Number.isSafeInteger(row.visitedAt) &&
+          row.visitedAt >= 0 && row.visitedAt <= Date.now() + 86_400_000)
+          .map(row => ({ ...row, title: row.title.slice(0, 1000) }));
         skipped += read.length - batch.length;
         if (!batch.length) continue;
         let r: { added: number; skipped: number };
