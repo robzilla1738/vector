@@ -1,4 +1,5 @@
 import { ConnectionRecovery } from "./connection-recovery.js";
+import { developmentAcceptanceStages } from "./api/development-acceptance.js";
 import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore } from "./services/content-memory.js";
 import { MemoryPipeline } from "./services/memory-pipeline.js";
@@ -337,7 +338,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
   const featureStages = env.AUX_HOST_SOCKET
     ? native.capabilities!()
-        .then((capabilities) => featureStagesFor(capabilities.methods, capabilities.sourceCommit))
+        .then((capabilities) => developmentAcceptanceStages(
+          featureStagesFor(capabilities.methods, capabilities.sourceCommit),
+          config.dataDir, capabilities.sourceCommit, env.AUX_DEV_ACCEPTANCE_TOKEN))
         .catch((error) => {
           process.stderr.write(`[runtime] native capabilities unavailable: ${String(error)}\n`);
           return featureStagesFor([], "");
