@@ -110,6 +110,20 @@ describe("code-mode REPL", () => {
     expect(result.value).toMatchObject({ status: "completed" });
   });
 
+  it("stops a script after a skipped or uncertain governed action", async () => {
+    for (const output of [
+      { skipped: "prior write intent is uncertain" },
+      { status: "completed", uncertainIntentIds: ["intent-1"] },
+      { status: "failed", error: "target detached" },
+    ]) {
+      const pool = new ReplPool();
+      cleanup.push(() => pool.disposeAll());
+      const step = vi.fn(async () => ({ output }));
+      await expect(pool.eval(deps({ step }), `page.click("r1"); page.click("r2")`, { pageId: "p1" })).rejects.toThrow(/Action (skipped|outcome uncertain|failed)/);
+      expect(step).toHaveBeenCalledOnce();
+    }
+  });
+
   it("resolves a named control and gives consecutive actions distinct step ids", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

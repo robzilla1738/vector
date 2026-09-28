@@ -253,6 +253,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
             ...(outcome.extracted !== undefined ? { extracted: outcome.extracted } : {}),
           })),
           ...(gate.result.error ? { error: gate.result.error } : {}),
+          ...(self.durable.unresolved(runId).length
+            ? { uncertainIntentIds: self.durable.unresolved(runId).map((intent) => intent.id) } : {}),
           ...(post ? { observation: post.text, observationId: post.observationId, revision: post.revision } : {}),
         },
       };

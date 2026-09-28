@@ -523,6 +523,29 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.modelCalls).toHaveLength(1);
     expect(h.pages.execute).toHaveBeenCalledTimes(2);
   });
+  it("stops a goal program at its first uncertain action before the next click", async () => {
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
+        code: 'page.click("r1"); page.click("r1"); submitResult("saved")', answerLabel: "",
+      } }] },
+      { text: "The click outcome is uncertain." },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "failed" as const,
+        startedAt: 1, durationMs: 1, error: { code: "condition_timeout", message: "timed out" },
+        effect: "uncertain" as const, receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: true },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "failed", steps };
+    });
+    const run = await h.coordinator.start({ goal: "save", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).not.toBe("completed");
+    expect(h.pages.execute).toHaveBeenCalledOnce();
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: "uncertain" });
+    const transcript = new TranscriptStore(h.db).load(run.runId);
+    expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("Action outcome uncertain"))).toBe(true);
+  });
   it("completes a text turn and seeds the task into the durable transcript", async () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "ship it" }]);
     const h = coordinatorHarness(model);

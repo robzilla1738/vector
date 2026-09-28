@@ -457,6 +457,16 @@ class ReplSession {
           const result = await this.deps.step(String(parsed.pageId ?? ""), step);
           if ("park" in result) return fail("step needs a decision", { park: result.park });
           if ("finish" in result) return ok(result.finish.result);
+          const output = result.output;
+          if (output && typeof output === "object") {
+            const action = output as Record<string, unknown>;
+            const refusal = ["skipped", "rejected", "denied"].find((key) => typeof action[key] === "string");
+            if (refusal) return fail(new AuxError("conflict", `Action ${refusal}: ${action[refusal]}`));
+            if (Array.isArray(action.uncertainIntentIds) && action.uncertainIntentIds.length)
+              return fail(new AuxError("conflict", `Action outcome uncertain (${action.uncertainIntentIds.join(", ")}); reconcile before another action.`));
+            if (typeof action.status === "string" && action.status !== "completed")
+              return fail(new AuxError("conflict", `Action ${action.status}: ${String(action.error ?? "inspect step outcomes before continuing")}`));
+          }
           return ok(result.output);
         }
         case "fetch": {
