@@ -1,8 +1,8 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterAll, expect, it } from "vitest";
+import { afterAll, expect, it, vi } from "vitest";
 import {
   BrowserImporter,
   Repo,
@@ -152,7 +152,7 @@ it("runs a preview + partial-result import over injected sources", async () => {
   expect(chrome.categories.find(c => c.category === "bookmarks")).toMatchObject({ available: true, count: 2 });
   expect(chrome.categories.find(c => c.category === "history")).toMatchObject({ available: true });
 
-  const report = await importer.runNow({ sources: ["chrome"] });
+  const report = await importer.runNow({ selections: [{ sourceId: "chrome", profileId: "Default", categories: ["bookmarks", "history"] }] });
   const bookmarks = report.results.find(r => r.category === "bookmarks")!;
   const history = report.results.find(r => r.category === "history")!;
   expect(bookmarks).toMatchObject({ state: "done", imported: 2 });
@@ -177,7 +177,7 @@ it("opens live tabs from an attached Chrome and reports partial failures", async
     ],
     openTab: async url => { if (url.includes("fail")) throw new Error("no"); opened.push(url); },
   });
-  const report = await importer.runNow({ categories: ["tabs"] });
+  const report = await importer.runNow({ selections: [{ sourceId: "chrome-attached", categories: ["tabs"] }] });
   expect(opened).toEqual(["https://one.example/", "https://two.example/"]);
   expect(report.results[0]).toMatchObject({ source: "chrome-attached", state: "done", imported: 2, skipped: 1 });
 });
@@ -190,7 +190,7 @@ it("cancel stops a running history import between batches", async () => {
     emit: () => {},
     sources: () => [{ id: "chrome", label: "Chrome", profiles: [{ id: "Default", dir: profile }] }],
   });
-  const { jobId } = importer.start({ sources: ["chrome"], categories: ["history"] });
+  const { jobId } = importer.start({ selections: [{ sourceId: "chrome", profileId: "Default", categories: ["history"] }] });
   importer.cancel(jobId);
   await new Promise(resolve => setTimeout(resolve, 100));
   const status = importer.status(jobId);
@@ -200,4 +200,65 @@ it("cancel stops a running history import between batches", async () => {
   const imported = repo.listHistory(undefined, 2000).length;
   expect(imported).toBeGreaterThan(0);
   expect(imported).toBeLessThan(1500);
+});
+
+it("imports only the reviewed source, Profile and categories", async () => {
+  const first = chromiumProfile();
+  const second = chromiumProfile();
+  const other = chromiumProfile();
+  const repo = fixtureRepo();
+  const importer = new BrowserImporter({
+    repo,
+    emit: () => {},
+    sources: () => [
+      { id: "chrome", label: "Chrome", profiles: [{ id: "Personal", dir: first }, { id: "Work", dir: second }] },
+      { id: "edge", label: "Edge", profiles: [{ id: "Default", dir: other }] },
+    ],
+  });
+  const preview = await importer.preview();
+  expect(preview.sources.find(source => source.id === "chrome")?.profileCategories).toHaveLength(2);
+  const report = await importer.runNow({ selections: [
+    { sourceId: "chrome", profileId: "Work", categories: ["history"] },
+    { sourceId: "edge", profileId: "Default", categories: ["bookmarks"] },
+  ] });
+  expect(report.results.map(result => [result.source, result.label, result.category])).toEqual([
+    ["chrome", "Chrome (Work)", "history"],
+    ["edge", "Edge (Default)", "bookmarks"],
+  ]);
+  expect(repo.listHistory("a.example")).toHaveLength(2);
+  expect(repo.listBookmarks()).toHaveLength(2);
+  await expect(importer.runNow({ selections: [{ sourceId: "chrome", profileId: "missing", categories: ["history"] }] }))
+    .rejects.toThrow("selected browser Profile is unavailable");
+  await expect(importer.runNow({ selections: [{ sourceId: "chrome", profileId: "Work", categories: ["tabs"] }] }))
+    .rejects.toThrow("selected import category is unavailable");
+});
+
+it("sends selected data to the native Profile when Chromium owns history and bookmarks", async () => {
+  const profile = chromiumProfile();
+  const bookmarkPath = join(profile, "Bookmarks");
+  const bookmarks = JSON.parse(readFileSync(bookmarkPath, "utf8"));
+  bookmarks.roots.bookmark_bar.children.push({ type: "url", name: "Unsafe", url: "https://user:secret@bad.example/" });
+  writeFileSync(bookmarkPath, JSON.stringify(bookmarks));
+  const sourceHistory = new DatabaseSync(join(profile, "History"));
+  sourceHistory.prepare("INSERT INTO urls(id,url,title) VALUES(3,'https://user:secret@bad.example/','Unsafe')").run();
+  sourceHistory.prepare("INSERT INTO visits(id,url,visit_time) VALUES(4,3,?)").run((1_700_000_300_000 + CHROME_EPOCH) * 1000);
+  sourceHistory.close();
+  const repo = fixtureRepo();
+  const bookmarksInvoke = vi.fn(async (_method: string, params: unknown) => ({
+    added: (params as { bookmarks: unknown[] }).bookmarks.length, skipped: 0,
+  }));
+  const historyImport = vi.fn(async (visits: { url: string; title: string; visitedAt: number }[]) => ({ added: visits.length, skipped: 0 }));
+  const importer = new BrowserImporter({
+    repo,
+    emit: () => {},
+    native: { available: () => true, bookmarksInvoke, historyImport } as never,
+    sources: () => [{ id: "chrome", label: "Chrome", profiles: [{ id: "Default", dir: profile }] }],
+  });
+  const report = await importer.runNow({ selections: [{ sourceId: "chrome", profileId: "Default", categories: ["bookmarks", "history"] }] });
+  expect(report.results.map(result => result.imported)).toEqual([2, 3]);
+  expect(report.results.map(result => result.skipped)).toEqual([1, 1]);
+  expect(bookmarksInvoke).toHaveBeenCalledWith("bookmarks.import", { bookmarks: expect.any(Array) });
+  expect(historyImport).toHaveBeenCalledTimes(1);
+  expect(repo.listBookmarks()).toHaveLength(0);
+  expect(repo.listHistory()).toHaveLength(0);
 });

@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { AuxError } from "@aux/contracts";
+import { AuxError, type ImportSelection } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
+import type { NativeBridge } from "../native.js";
 import {
   listImportSources,
   readArcSidebar,
@@ -41,6 +42,7 @@ export interface ImportSourcePreview {
   label: string;
   profiles: string[];
   categories: ImportCategoryPreview[];
+  profileCategories: { profileId: string; categories: ImportCategoryPreview[] }[];
 }
 
 export interface ImportCategoryResult {
@@ -60,9 +62,7 @@ export interface ImportReport {
 }
 
 export interface ImportRunOptions {
-  sources?: string[];
-  categories?: ImportCategory[];
-  profile?: string;
+  selections: ImportSelection[];
 }
 
 interface ImportJob {
@@ -80,11 +80,22 @@ const HISTORY_FILES: Record<string, string[]> = {
   firefox: ["places.sqlite"],
 };
 
+function safeImportUrl(value: string): boolean {
+  if (value.length > 8192) return false;
+  try {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
 export class BrowserImporter {
   private jobs = new Map<string, ImportJob>();
 
   constructor(private deps: {
     repo: Repo;
+    native?: NativeBridge;
     emit: (type: string, payload: Record<string, unknown>) => void;
     /** Live tab list of the attached Chrome, when one is connected. */
     chromeTabs?: () => Promise<{ url: string; title: string; type: string }[]>;
@@ -116,15 +127,12 @@ export class BrowserImporter {
     return this.deps.sources ? this.deps.sources() : listImportSources();
   }
 
-  async preview(): Promise<{ sources: ImportSourcePreview[] }> {
-    const sources: ImportSourcePreview[] = [];
-    for (const source of this.sources()) {
-      const profile = source.profiles[0];
+  private previewCategories(source: ImportSource, profile: ImportProfileRef): ImportCategoryPreview[] {
       const categories: ImportCategoryPreview[] = [];
-      const bookmarksFile = profile && (source.id === "safari" ? join(profile.dir, "Bookmarks.plist") : source.id === "firefox" ? join(profile.dir, "places.sqlite") : join(profile.dir, "Bookmarks"));
-      const bookmarkAvailable = !!profile && (source.id === "firefox" ? existsSync(bookmarksFile!) : existsSync(bookmarksFile!) || !!source.hasSidebarMetadata);
+      const bookmarksFile = source.id === "safari" ? join(profile.dir, "Bookmarks.plist") : source.id === "firefox" ? join(profile.dir, "places.sqlite") : join(profile.dir, "Bookmarks");
+      const bookmarkAvailable = existsSync(bookmarksFile) || !!source.hasSidebarMetadata;
       let bookmarkCount: number | undefined;
-      if (bookmarkAvailable && profile && source.id !== "firefox") {
+      if (bookmarkAvailable && source.id !== "firefox") {
         try {
           bookmarkCount = this.bookmarkItems(source, profile).items.length;
         } catch { /* count is a hint — availability still stands */ }
@@ -136,21 +144,30 @@ export class BrowserImporter {
         blocker: source.blocker,
       });
       const historyFiles = HISTORY_FILES[source.id] ?? ["History"];
-      const historyAvailable = !!profile && historyFiles.some(f => existsSync(join(profile.dir, f)));
+      const historyAvailable = historyFiles.some(f => existsSync(join(profile.dir, f)));
       categories.push({
         category: "history",
         available: historyAvailable,
-        bytes: historyAvailable ? sourceStoreSize(profile!, historyFiles) : undefined,
+        bytes: historyAvailable ? sourceStoreSize(profile, historyFiles) : undefined,
         blocker: source.blocker,
       });
-      sources.push({ id: source.id, label: source.label, profiles: source.profiles.map(p => p.id), categories });
+      return categories;
+  }
+
+  async preview(): Promise<{ sources: ImportSourcePreview[] }> {
+    const sources: ImportSourcePreview[] = [];
+    for (const source of this.sources()) {
+      const profileCategories = source.profiles.map(profile => ({ profileId: profile.id, categories: this.previewCategories(source, profile) }));
+      sources.push({ id: source.id, label: source.label, profiles: source.profiles.map(p => p.id),
+        categories: profileCategories[0]?.categories ?? [], profileCategories });
     }
     const liveTabs = this.deps.chromeTabs ? await this.deps.chromeTabs().catch(() => []) : [];
-    const pages = liveTabs.filter(t => t.type === "page" && /^https?:\/\//.test(t.url));
+    const pages = liveTabs.filter(t => t.type === "page" && safeImportUrl(t.url));
     sources.push({
       id: ATTACHED_TABS_SOURCE,
       label: "Attached Chrome",
       profiles: [],
+      profileCategories: [],
       categories: [{
         category: "tabs",
         available: pages.length > 0,
@@ -180,6 +197,7 @@ export class BrowserImporter {
 
   /** Start an import in the background; progress flows as import.progress events. */
   start(opts: ImportRunOptions): { jobId: string } {
+    const selections = this.resolveSelections(opts);
     const job: ImportJob = { id: `imp_${randomUUID().slice(0, 12)}`, cancelled: false, done: false, progress: [] };
     this.jobs.set(job.id, job);
     if (this.jobs.size > 20) {
@@ -189,7 +207,7 @@ export class BrowserImporter {
         if (this.jobs.size <= 20) break;
       }
     }
-    void this.execute(job, opts).catch(error => {
+    void this.execute(job, selections).catch(error => {
       job.done = true;
       job.report = { jobId: job.id, cancelled: job.cancelled, results: job.progress };
       this.deps.emit("import.progress", { jobId: job.id, done: true, error: error instanceof Error ? error.message : String(error) });
@@ -199,19 +217,41 @@ export class BrowserImporter {
 
   /** Run a full import and return its report — the synchronous path tests use. */
   async runNow(opts: ImportRunOptions): Promise<ImportReport> {
+    const selections = this.resolveSelections(opts);
     const job: ImportJob = { id: `imp_${randomUUID().slice(0, 12)}`, cancelled: false, done: false, progress: [] };
     this.jobs.set(job.id, job);
-    return this.execute(job, opts);
+    return this.execute(job, selections);
   }
 
-  private async execute(job: ImportJob, opts: ImportRunOptions): Promise<ImportReport> {
-    const categories = new Set(opts.categories ?? ["bookmarks", "history", "tabs"]);
-    const sources = this.sources().filter(source => !opts.sources?.length || opts.sources.includes(source.id));
+  private resolveSelections(opts: ImportRunOptions): { source?: ImportSource; profile?: ImportProfileRef; categories: ImportCategory[] }[] {
+    if (!opts.selections.length) throw new AuxError("invalid_params", "Choose at least one import source.");
+    const sources = new Map<string, ImportSource>(this.sources().map(source => [source.id, source]));
+    const seen = new Set<string>();
+    return opts.selections.map(selection => {
+      const key = `${selection.sourceId}:${selection.profileId ?? ""}`;
+      if (seen.has(key)) throw new AuxError("invalid_params", "Each browser Profile can be selected only once.");
+      seen.add(key);
+      if (selection.sourceId === ATTACHED_TABS_SOURCE) {
+        if (selection.profileId || selection.categories.length !== 1 || selection.categories[0] !== "tabs")
+          throw new AuxError("invalid_params", "Attached Chrome can import live tabs only.");
+        return { categories: ["tabs" as const] };
+      }
+      const source = sources.get(selection.sourceId);
+      const profile = source?.profiles.find(item => item.id === selection.profileId);
+      if (!source || !profile || source.blocker)
+        throw new AuxError("invalid_params", "The selected browser Profile is unavailable. Refresh the import preview.");
+      const available = this.previewCategories(source, profile);
+      if (selection.categories.some(category => category === "tabs" || !available.some(item => item.category === category && item.available && !item.blocker)))
+        throw new AuxError("invalid_params", "The selected import category is unavailable. Refresh the import preview.");
+      return { source, profile, categories: selection.categories };
+    });
+  }
 
-    for (const source of sources) {
-      const profile = (opts.profile ? source.profiles.find(p => p.id === opts.profile) : undefined) ?? source.profiles[0];
+  private async execute(job: ImportJob, selections: { source?: ImportSource; profile?: ImportProfileRef; categories: ImportCategory[] }[]): Promise<ImportReport> {
+    for (const { source, profile, categories } of selections) {
+      if (!source || !profile) continue;
       for (const category of ["bookmarks", "history"] as const) {
-        if (!categories.has(category) || !profile) continue;
+        if (!categories.includes(category)) continue;
         const result = await this.runCategory(job, source, profile, category);
         job.progress.push(result);
         this.deps.emit("import.progress", { jobId: job.id, ...result });
@@ -220,8 +260,8 @@ export class BrowserImporter {
       if (job.cancelled) break;
     }
 
-    if (categories.has("tabs") && !job.cancelled && (!opts.sources?.length || opts.sources.includes(ATTACHED_TABS_SOURCE))) {
-      const result = await this.importAttachedTabs();
+    if (selections.some(selection => selection.categories.includes("tabs")) && !job.cancelled) {
+      const result = await this.importAttachedTabs(job);
       job.progress.push(result);
       this.deps.emit("import.progress", { jobId: job.id, ...result });
     }
@@ -237,20 +277,45 @@ export class BrowserImporter {
     if (source.blocker) return { ...base, state: "error", imported: 0, skipped: 0, detail: source.blocker };
     try {
       if (category === "bookmarks") {
-        const { items, skipped } = this.bookmarkItems(source, profile);
+        const read = this.bookmarkItems(source, profile);
+        const items = read.items.filter(item => safeImportUrl(item.url));
+        const skipped = read.skipped + read.items.length - items.length;
         if (!items.length && !source.hasSidebarMetadata) {
           return { ...base, state: "skipped", imported: 0, skipped, detail: "Nothing to import." };
         }
-        const result = this.deps.repo.importBookmarks(items.map(i => ({ url: i.url, title: i.title, folderPath: i.folderPath })));
-        if (result.added) this.deps.emit("bookmarks.changed", { bookmarks: this.deps.repo.listBookmarks() });
-        return { ...base, state: "done", imported: result.added, skipped: result.skipped + skipped, detail: items.length ? `${items.length} found` : "Nothing found" };
+        let added = 0, duplicates = 0;
+        if (this.deps.native?.available()) {
+          if (!this.deps.native.bookmarksInvoke)
+            throw new AuxError("backend_unavailable", "Chromium bookmarks import is unavailable.");
+          for (let offset = 0; offset < items.length; offset += 500) {
+            if (job.cancelled) break;
+            const result = await this.deps.native.bookmarksInvoke("bookmarks.import", { bookmarks: items.slice(offset, offset + 500) }) as { added: number; skipped: number };
+            added += result.added;
+            duplicates += result.skipped;
+          }
+        } else {
+          const result = this.deps.repo.importBookmarks(items.map(i => ({ url: i.url, title: i.title, folderPath: i.folderPath })));
+          added = result.added; duplicates = result.skipped;
+          if (added) this.deps.emit("bookmarks.changed", { bookmarks: this.deps.repo.listBookmarks() });
+        }
+        return { ...base, state: "done", imported: added, skipped: duplicates + skipped, detail: items.length ? `${items.length} found` : "Nothing found" };
       }
       let imported = 0;
       let skipped = 0;
       let batches = 0;
-      for (const batch of this.historyBatches(source, profile)) {
+      for (const read of this.historyBatches(source, profile)) {
         if (job.cancelled) return { ...base, state: "done", imported, skipped, detail: "Stopped by cancel." };
-        const r = this.deps.repo.importHistory(batch);
+        const batch = read.filter(row => safeImportUrl(row.url));
+        skipped += read.length - batch.length;
+        if (!batch.length) continue;
+        let r: { added: number; skipped: number };
+        if (this.deps.native?.available()) {
+          if (!this.deps.native.historyImport)
+            throw new AuxError("backend_unavailable", "Chromium history import is unavailable.");
+          r = await this.deps.native.historyImport(batch);
+        } else {
+          r = this.deps.repo.importHistory(batch);
+        }
         imported += r.added;
         skipped += r.skipped;
         batches++;
@@ -266,18 +331,19 @@ export class BrowserImporter {
     }
   }
 
-  private async importAttachedTabs(): Promise<ImportCategoryResult> {
+  private async importAttachedTabs(job: ImportJob): Promise<ImportCategoryResult> {
     const base = { source: ATTACHED_TABS_SOURCE, label: "Attached Chrome", category: "tabs" as const };
     if (!this.deps.chromeTabs || !this.deps.openTab) {
       return { ...base, state: "skipped", imported: 0, skipped: 0, detail: "No Chrome is attached." };
     }
     const targets = await this.deps.chromeTabs();
-    const pages = targets.filter(t => t.type === "page" && /^https?:\/\//.test(t.url));
+    const pages = targets.filter(t => t.type === "page" && safeImportUrl(t.url));
     if (!pages.length) {
       return { ...base, state: targets.length ? "done" : "skipped", imported: 0, skipped: 0, detail: targets.length ? "No http(s) tabs to open." : "No Chrome is attached." };
     }
     let imported = 0;
     for (const page of pages.slice(0, 50)) {
+      if (job.cancelled) break;
       try {
         await this.deps.openTab(page.url, page.title);
         imported++;

@@ -98,6 +98,7 @@ export function browserImporter(s: Services): BrowserImporter {
   if (s.browserImport) return s.browserImport;
   s.browserImport = new BrowserImporter({
     repo: s.repo,
+    native: s.native,
     emit: (type, payload) => s.events.emit(type, payload),
     chromeTabs: async () => (await s.chromeTabs()) as { url: string; title: string; type: string }[],
     openTab: async (url) => {

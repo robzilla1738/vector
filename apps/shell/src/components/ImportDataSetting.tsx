@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { AuxEvent, ImportCategoryResult, ImportSourcePreview } from "@aux/contracts";
+import type { AuxEvent, ImportCategory, ImportCategoryResult, ImportSelection, ImportSourcePreview } from "@aux/contracts";
 import { call } from "../store";
 import { bridge } from "../bridge";
 
 interface PreviewSource extends ImportSourcePreview { }
-type Selection = Record<string, boolean>;
+type Selection = Record<string, Record<string, Partial<Record<ImportCategory, boolean>>>>;
 
 function categoryLabel(category: string): string {
   return category === "bookmarks" ? "Bookmarks" : category === "history" ? "History" : "Open tabs";
@@ -38,10 +38,10 @@ export function ImportDataSetting() {
     if (typeof event.payload.source === "string" && typeof event.payload.category === "string") {
       const entry = event.payload as unknown as ImportCategoryResult;
       if (entry.state === "running") {
-        setProgress(current => [...current.filter(item => !(item.source === entry.source && item.category === entry.category)), entry]);
+        setProgress(current => [...current.filter(item => !(item.label === entry.label && item.category === entry.category)), entry]);
         return;
       }
-      setProgress(current => [...current.filter(item => !(item.source === entry.source && item.category === entry.category)), entry]);
+      setProgress(current => [...current.filter(item => !(item.label === entry.label && item.category === entry.category)), entry]);
     }
   }), []);
 
@@ -51,8 +51,14 @@ export function ImportDataSetting() {
       const result = await call("import.preview", {});
       const next: Selection = {};
       for (const source of result.sources) {
-        for (const entry of source.categories) {
-          if (entry.available && !entry.blocker) next[`${source.id}:${entry.category}`] = true;
+        const profiles = source.profileCategories.length ? source.profileCategories : [{ profileId: "", categories: source.categories }];
+        next[source.id] = {};
+        for (const profile of profiles) {
+          const categories: Partial<Record<ImportCategory, boolean>> = {};
+          for (const entry of profile.categories) {
+            if (entry.available && !entry.blocker) categories[entry.category] = false;
+          }
+          next[source.id]![profile.profileId] = categories;
         }
       }
       setPreview(result.sources);
@@ -61,14 +67,17 @@ export function ImportDataSetting() {
     finally { setLoading(false); }
   };
 
-  const selected = Object.entries(selection).filter(([, on]) => on).map(([key]) => key);
+  const selected: ImportSelection[] = Object.entries(selection).flatMap(([sourceId, profiles]) =>
+    Object.entries(profiles).flatMap(([profileId, entries]) => {
+      const categories = (Object.entries(entries) as [ImportCategory, boolean][])
+        .filter(([, on]) => on).map(([category]) => category);
+      return categories.length ? [{ sourceId, ...(profileId ? { profileId } : {}), categories }] : [];
+    }));
   const run = async () => {
     if (!preview || !selected.length) return;
-    const sources = [...new Set(selected.map(key => key.split(":")[0]!))];
-    const categories = [...new Set(selected.map(key => key.split(":")[1]!))];
     setLoading(true); setError(""); setDone(false); setProgress([]);
     try {
-      const { jobId: id } = await call("import.run", { sources, categories: categories as ("tabs" | "bookmarks" | "history")[] });
+      const { jobId: id } = await call("import.run", { selections: selected });
       jobRef.current = id;
       setJobId(id);
       // Catch up on progress emitted before the subscription learned the id.
@@ -94,25 +103,34 @@ export function ImportDataSetting() {
 
   return <div className="import-setting">
     {preview.map(source => <div className="import-source" key={source.id}>
-      <div className="import-source-head"><strong>{source.label}</strong>{source.profiles.length ? <span className="hint">{source.profiles.join(", ")}</span> : null}</div>
-      {source.categories.map(entry => {
-        const key = `${source.id}:${entry.category}`;
-        const usable = entry.available && !entry.blocker;
-        return <label className="import-row" key={entry.category}>
-          <input type="checkbox" disabled={!usable || running} checked={usable && !!selection[key]} onChange={event => setSelection(current => ({ ...current, [key]: event.target.checked }))} />
-          <span>{categoryLabel(entry.category)}</span>
-          <span className="hint">{entry.blocker ?? availability(entry)}</span>
-        </label>;
-      })}
+      <div className="import-source-head"><strong>{source.label}</strong></div>
+      {(source.profileCategories.length ? source.profileCategories : [{ profileId: "", categories: source.categories }]).map(profile =>
+        <div key={profile.profileId || source.id}>
+          {profile.profileId && <p className="hint">Profile: {profile.profileId}</p>}
+          {profile.categories.map(entry => {
+            const usable = entry.available && !entry.blocker;
+            return <label className="import-row" key={entry.category}>
+              <input type="checkbox" disabled={!usable || running}
+                checked={usable && !!selection[source.id]?.[profile.profileId]?.[entry.category]}
+                onChange={event => setSelection(current => ({ ...current, [source.id]: {
+                  ...current[source.id], [profile.profileId]: {
+                    ...current[source.id]?.[profile.profileId], [entry.category]: event.target.checked,
+                  },
+                } }))} />
+              <span>{categoryLabel(entry.category)}</span>
+              <span className="hint">{entry.blocker ?? availability(entry)}</span>
+            </label>;
+          })}
+        </div>)}
     </div>)}
     <div className="row">
-      {!running && <button className="btn sm" disabled={!selected.length || loading} onClick={() => void run()}>Import selected ({selected.length})</button>}
+      {!running && <button className="btn sm" disabled={!selected.length || loading} onClick={() => void run()}>Import selected ({selected.reduce((count, item) => count + item.categories.length, 0)})</button>}
       {running && <button className="btn sm ghost" onClick={() => void cancel()}>Cancel import</button>}
       <button className="btn sm ghost" disabled={running} onClick={() => void loadPreview()}>Refresh</button>
       {error && <span className="hint err">{error}</span>}
     </div>
     {progress.length > 0 && <ul className="import-report">
-      {progress.map((entry, index) => <li key={`${entry.source}:${entry.category}:${index}`}>
+      {progress.map((entry, index) => <li key={`${entry.label}:${entry.category}:${index}`}>
         <strong>{entry.label} · {categoryLabel(entry.category)}</strong> — {entry.state === "running"
           ? `${entry.imported.toLocaleString()} imported…`
           : entry.state === "error"
