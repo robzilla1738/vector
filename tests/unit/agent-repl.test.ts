@@ -35,6 +35,36 @@ const out = (result: LoopToolResult) =>
   ("output" in result ? result.output : result) as Record<string, unknown>;
 
 describe("code-mode REPL", () => {
+  it("finishes a scripted read through the same verified result callback", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const submitResult = vi.fn(async ({ report, citations }: { report: string; citations?: { observationId?: string; quote: string }[] }) =>
+      report === "Jordan Lee" && citations?.[0]?.observationId === "obs-1" && citations[0].quote === "Jordan Lee"
+        ? { ok: true as const, result: { report, citations } }
+        : { ok: false as const, error: "Unverifiable citation" });
+    const step = vi.fn(async () => ({ output: { status: "completed" } }));
+    const result = await pool.eval(deps({
+      observe: async () => ({ text: "Owner: Jordan Lee", observationId: "obs-1", revision: 2 }),
+      submitResult, step,
+    }), `const s = snapshot(); const owner = s.text.match(/Owner: ([^\\n]+)/)[1]; submitResult(owner, [{observationId:s.observationId, quote:owner}]); page.click("r1")`, { pageId: "p1" });
+    expect(result).toMatchObject({ finish: { result: { report: "Jordan Lee" } } });
+    expect(submitResult).toHaveBeenCalledOnce();
+    expect(step).not.toHaveBeenCalled(); // verified completion fences later effects in the script
+  });
+
+  it("keeps a rejected scripted result open for citation repair", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    let calls = 0;
+    const submitResult = async (input: { report: string }) => ++calls === 1
+      ? { ok: false as const, error: "Unverifiable citation" }
+      : { ok: true as const, result: { report: input.report } };
+    const result = await pool.eval(deps({ submitResult }),
+      `try { submitResult("wrong", []); } catch (e) {} submitResult("correct", [])`, { pageId: "p1" });
+    expect(result).toMatchObject({ finish: { result: { report: "correct" } } });
+    expect(calls).toBe(2);
+  });
+
   it("evaluates guest code and returns marshaled data", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

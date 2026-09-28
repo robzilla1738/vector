@@ -411,7 +411,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       return replTab(pageId);
     },
     observe: async (pageId, scope) =>
-      (await deps.observe!({ pageId, scope: scope as import("@aux/contracts").ObservationScope | undefined })).text,
+      deps.observe!({ pageId, scope: scope as import("@aux/contracts").ObservationScope | undefined }),
     capture: async (pageId) => {
       const shot = await self.deps.pages.capture(pageId);
       const elements = (lastObs.get(pageId)?.content.elements ?? [])
@@ -434,6 +434,10 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, content);
     },
+    submitResult: (input) => deps.submitResult!(input, {
+      runId, threadId, turnId: runId, pageId: activePageId, deps,
+      callCount: 1, goalTurn: 0, signal,
+    }),
     spawnCell: (input) => {
       const spawn = self.deps.agentLoop?.subagents?.spawnCell;
       if (!spawn) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");

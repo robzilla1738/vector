@@ -1,7 +1,8 @@
 import { newAsyncContext, type QuickJSAsyncContext, type QuickJSHandle } from "quickjs-emscripten";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { AuxError, PlanStepSchema } from "@aux/contracts";
+import { AuxError, PlanStepSchema, ResultCitationSchema, type ResultCitation } from "@aux/contracts";
+import { z } from "zod";
 import type { LoopPark, LoopToolResult } from "./types.js";
 
 /**
@@ -63,6 +64,10 @@ export interface ReplHostDeps {
   fetch(url: string): Promise<LoopToolResult>;
   fsRead(path: string): Promise<string>;
   fsWrite(path: string, content: string): Promise<void>;
+  /** Same verified terminal path as the submit_result tool. */
+  submitResult?(input: { report: string; citations?: ResultCitation[] }): Promise<
+    { ok: true; result: Record<string, unknown> } | { ok: false; error: string }
+  >;
   /** `{park}` when a write-annotated tool is waiting on the person. */
   webmcp?(pageId: string, action: unknown): Promise<unknown>;
   /** Subagent cells (06-Y): spawn under this run's group, then wait/send/stop. */
@@ -211,6 +216,7 @@ const spawn = (spec) => __aux_invoke("spawnCell", spec);
 const wait = (cellId) => __aux_invoke("waitCell", { cellId, ms: 120000 });
 const send = (cellId, text) => __aux_invoke("sendCell", { cellId, text });
 const stop = (cellId) => __aux_invoke("cancelCell", { cellId });
+const submitResult = (report, citations) => __aux_invoke("submitResult", { report, citations });
 const console = Object.freeze({
   log: (...args) => display(args.map(String).join(" ")),
   warn: (...args) => display("warn: " + args.map(String).join(" ")),
@@ -226,6 +232,7 @@ class ReplSession {
   deadline = 0;
   touchedAt = Date.now();
   private artifacts = 0;
+  private finished?: Record<string, unknown>;
 
   private constructor(
     private context: QuickJSAsyncContext,
@@ -282,6 +289,8 @@ class ReplSession {
           ...extra,
         }),
       );
+    if (this.finished)
+      return fail(new AuxError("conflict", "This verified result ended the run; no further REPL effects are allowed."));
     if (Date.now() >= this.deadline || this.deps.signal?.aborted)
       return fail(new AuxError("cancelled", "REPL deadline or run abort reached."));
     try {
@@ -347,6 +356,18 @@ class ReplSession {
           return ok(await this.deps.fsRead(String(parsed.path ?? "")));
         case "fsWrite":
           return ok(await this.deps.fsWrite(String(parsed.path ?? ""), String(parsed.content ?? "")));
+        case "submitResult": {
+          if (!this.deps.submitResult)
+            return fail(new AuxError("capability_unsupported", "Verified completion is unavailable in this run."));
+          const input = z.object({
+            report: z.string().min(1).max(64_000),
+            citations: z.array(ResultCitationSchema).max(32).optional(),
+          }).parse(parsed);
+          const result = await this.deps.submitResult(input);
+          if (!result.ok) return fail(new AuxError("invalid_params", result.error));
+          this.finished = result.result;
+          return ok({ accepted: true });
+        }
         case "webmcp": {
           if (!this.deps.webmcp)
             return fail(new AuxError("capability_unsupported", "WebMCP is not exposed for this page."));
@@ -402,8 +423,13 @@ class ReplSession {
     const started = Date.now();
     this.deadline = started + Math.min(deadlineMs ?? REPL_MAX_DEADLINE_MS, REPL_MAX_DEADLINE_MS);
     this.touchedAt = started;
+    this.finished = undefined;
     try {
       const result = await this.context.evalCodeAsync(code);
+      if (this.finished) {
+        try { this.context.unwrapResult(result).dispose(); } catch { /* accepted result is already terminal */ }
+        return { finish: { result: this.finished } };
+      }
       const valueHandle = this.context.unwrapResult(result); // guest exceptions throw here (park marker included)
       this.context.setProp(this.context.global, "__aux_pending_result", valueHandle);
       valueHandle.dispose();
@@ -454,6 +480,7 @@ class ReplSession {
         },
       };
     } catch (error) {
+      if (this.finished) return { finish: { result: this.finished } };
       const message = error instanceof Error ? error.message : String(error);
       if (message.startsWith(PARK_MARKER)) {
         try {

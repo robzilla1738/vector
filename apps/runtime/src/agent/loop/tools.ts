@@ -175,6 +175,7 @@ export function buildToolManifest(): LoopToolManifest {
       "(page.click(ref), page.fill(ref, text), page.navigate(url), page.waitFor({…}) and friends — every one " +
       "compiles to a governed step through decide() and the write ledger), snapshot(scope), tabs(), " +
       "openTab(url)/closeTab(id) for owned background tabs, page.bookmark() to save the current page after a write decision, annotatedScreenshot(), display(value), sleep(ms), " +
+      "submitResult(report, citations) to finish inside the script after inspecting live observations — same verified citation and write-ledger checks as submit_result, " +
       "cookie-free fetch(url), fs confined to session roots, and subagent cells: spawn({goal, profile?, pageIds?}) " +
       "returns {cellId}, wait(cellId) yields until the cell finishes or the deadline lapses, send(cellId, text) " +
       "steers a running cell, stop(cellId) cancels it. Guest state persists across calls; modules, " +
