@@ -1020,10 +1020,11 @@ else {
       try { return db.prepare("SELECT COUNT(*) AS count FROM urls WHERE url LIKE 'https://aux-import-cancel.example/%'").get().count; }
       finally { db.close(); }
     };
-    const importedCount = await until("all resumed native History rows", async () => {
-      try { return nativeCount() === 5000 ? 5000 : null; } catch { return null; }
-    }, 30_000);
-    assert.equal(importedCount, 5000, "Retry after cancel must complete without duplicate native URLs");
+    assert.equal(resumed.report.results[0].imported + resumed.report.results[0].skipped, 5000,
+      "Retry after cancel must account for every source visit");
+    await until("resumed History projection", async () =>
+      (await rpc("history.list", { query: "aux-import-cancel", limit: 20 }))
+        .some(item => item.url.startsWith("https://aux-import-cancel.example/")), 30_000);
     assert.deepEqual(Object.fromEntries(importSourceFiles.map(path =>
       [path.slice(importHome.length + 1), createHash("sha256").update(readFileSync(path)).digest("hex")])),
       report.importSourceHashes, "Both source History stores must remain unchanged");
@@ -1034,6 +1035,9 @@ else {
       child.once("exit", () => { clearTimeout(timeout); resolveExit(); });
     });
     child.stderr.destroy();
+    const nativeAfterQuit = nativeCount();
+    report.nativeHistoryAfterQuit = nativeAfterQuit;
+    assert.equal(nativeAfterQuit, 5000, "A graceful Quit must flush all imported History URLs without duplicates");
     child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
       "--use-mock-keychain", "--password-store=basic"], {
       cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", AUX_IMPORT_SOURCE_HOME: importHome }, stdio: ["ignore", "ignore", "pipe"],
