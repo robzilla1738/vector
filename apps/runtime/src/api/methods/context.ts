@@ -202,8 +202,8 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
   const taskEvidence = new TaskEvidenceService(s.repo, s.events, s.pages, s.native, s.downloadsDir);
   const vault = s.vault ?? new VaultService(s.repo, s.native);
   const translate = new TranslateService(s.settings);
-  const safetyAudit = new SafetyAuditStore(s.repo.db);
-  const approvals = new ApprovalStore(s.repo.db, (event) => safetyAudit.record(event));
+  const safetyAudit = new SafetyAuditStore(s.repo.db, s.repo.columnCipher);
+  const approvals = new ApprovalStore(s.repo.db, (event) => safetyAudit.record(event), s.repo.columnCipher);
   const suspensions = new SuspensionStore(s.repo.db, (event) => safetyAudit.record(event));
   const decisions = new DecisionJournal(s.repo.db);
   /**

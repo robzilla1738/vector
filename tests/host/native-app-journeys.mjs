@@ -15,6 +15,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import JSZip from "jszip";
+import { openDb } from "@aux/runtime";
 
 const root = resolve(import.meta.dirname, "../..");
 const journeys = [
@@ -129,6 +130,7 @@ const workspacesUiJourney = process.argv.includes("--workspaces-ui");
 const memoryInboxUiJourney = process.argv.includes("--memory-inbox-ui");
 const memoryPreviewUiJourney = process.argv.includes("--memory-preview-ui");
 const browserImportUiJourney = process.argv.includes("--browser-import-ui");
+const protectedStartupJourney = process.argv.includes("--protected-startup");
 const receiptBeforeUiJourney = process.argv.includes("--receipt-before-ui");
 const receiptUndoUiJourney = process.argv.includes("--receipt-undo-ui");
 const receiptRunUndoUiJourney = process.argv.includes("--receipt-run-undo-ui");
@@ -781,6 +783,15 @@ else {
   }
   const importHome = join(disposable, "fixture-home");
   const importSourceFiles = [];
+  if (protectedStartupJourney) {
+    const databasePath = join(profile, "Default/Aux Runtime Data/aux-state.sqlite");
+    mkdirSync(join(profile, "Default/Aux Runtime Data"), { recursive: true });
+    const db = openDb(databasePath);
+    try {
+      db.prepare("INSERT INTO model_calls(call_id,run_id,role,model_id,duration_ms,error,created_at) VALUES(?,?,?,?,?,?,?)")
+        .run("legacy-startup", "fixture-run", "agent", "fixture-model", 1, "private startup marker", Date.now());
+    } finally { db.close(); }
+  }
   if (browserImportUiJourney) {
     for (const [name, suffix] of [["Default", "default"], ["Profile 1", "work"]]) {
       const dir = join(importHome, "Library/Application Support/Google/Chrome", name);
@@ -829,7 +840,7 @@ else {
   }, 30_000).catch(error => { throw new Error(`${error.message}; runtime sessions: ${JSON.stringify(lastRuntimeStatus ?? [])}; browser log: ${startupLog}`); });
   assert.ok(connection);
   const runtimeCapabilities = await rpc("runtime.describe");
-  if (browserImportUiJourney) {
+  if (browserImportUiJourney || protectedStartupJourney) {
     assert.equal(runtimeCapabilities.featureStages?.spaces, "preview", "Unrequalified candidate stages must remain preview");
   } else assert.equal(runtimeCapabilities.featureStages?.spaces, "on",
     "The runtime must derive qualified Spaces from the native method manifest");
@@ -837,7 +848,47 @@ else {
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
   record("Profile runtime is authenticated and raw debugging is disabled", { sessions: connection.sessions?.length });
 
-  if (browserImportUiJourney) {
+  if (protectedStartupJourney) {
+    const databasePath = join(profile, "Default/Aux Runtime Data/aux-state.sqlite");
+    const inspect = () => {
+      const db = new DatabaseSync(databasePath, { readOnly: true });
+      try {
+        return {
+          error: db.prepare("SELECT error FROM model_calls WHERE call_id='legacy-startup'").get()?.error,
+          markers: db.prepare("SELECT key FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%' ORDER BY key").all().map(row => row.key),
+        };
+      } finally { db.close(); }
+    };
+    const migrated = inspect();
+    assert.ok(migrated.error?.startsWith("auxenc:v1:"), "Legacy model error must migrate before services start");
+    assert.deepEqual(migrated.markers, ["datasets", "events", "model_calls", "page_sets", "programs",
+      "response_metadata", "results", "run_messages", "safety_approval_requests", "safety_audit",
+      "safety_send_journal", "set_members"].map(table => `protected_sqlite_v1:${table}`).sort());
+    assert.equal(readFileSync(databasePath).includes("private startup marker"), false);
+    record("native Keychain startup migrates adapted SQLite rows before runtime readiness", { tables: migrated.markers.length });
+    console.log("Quit this disposable Aux window from the Aux menu, then the journey will relaunch the same Profile.");
+    if (child.exitCode === null) await new Promise((resolveExit, rejectExit) => {
+      const timeout = setTimeout(() => rejectExit(new Error("Timed out waiting for graceful Aux quit")), 180_000);
+      child.once("exit", () => { clearTimeout(timeout); resolveExit(); });
+    });
+    child.stderr.destroy();
+    child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
+      "--use-mock-keychain", "--password-store=basic"], {
+      cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"],
+    });
+    child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
+    await until("restarted protected Profile runtime", async () => {
+      try {
+        const descriptor = JSON.parse(readFileSync(runtimeFile, "utf8"));
+        rpcPort = descriptor.port; rpcToken = descriptor.token;
+        return (await rpc("workspace.get")).sessions?.some(session => session.sessionId === "aux" && session.status === "connected");
+      } catch { return false; }
+    }, 60_000);
+    assert.equal(inspect().error, migrated.error, "Protected row must remain stable across native restart");
+    assert.ok(Array.isArray(await rpc("workspaces.list", {})));
+    record("protected SQLite row and authenticated runtime survive native restart");
+    report.passed = true;
+  } else if (browserImportUiJourney) {
     if (rpcOnly) throw new Error("The browser import acceptance needs the real Settings UI.");
     const preview = await rpc("import.preview");
     assert.deepEqual(preview.sources.filter(source => source.id !== "chrome-attached").map(source => source.id), ["chrome"],

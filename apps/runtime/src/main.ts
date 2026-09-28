@@ -222,8 +222,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   const settings = new SettingsService(repo, config.settingsPath, env);
   const durableWrites = new DurableWriteLedger(repo.db);
-  const safetyAudit = new SafetyAuditStore(repo.db);
-  const approvals = new ApprovalStore(repo.db, (event) => safetyAudit.record(event));
+  const safetyAudit = new SafetyAuditStore(repo.db, repo.columnCipher);
+  const approvals = new ApprovalStore(repo.db, (event) => safetyAudit.record(event), repo.columnCipher);
   const suspensions = new SuspensionStore(repo.db, (event) => safetyAudit.record(event));
   // Shared claim ledger — the page dialog decision reads it before `runs`
   // exists, so it lives here and flows into RunService deps.

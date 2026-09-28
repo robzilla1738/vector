@@ -42,7 +42,7 @@ export class RunMessageQueue {
     private canSteer: (runId: string) => boolean,
     private signalSteer: (runId: string) => void,
   ) {
-    this.sendJournal = new SendJournal(repo.db);
+    this.sendJournal = new SendJournal(repo.db, repo.columnCipher);
     this.unsubscribe = events.subscribe((event) => {
       if (event.type !== EventTypes.RunUpdated) return;
       const run = event.payload.run as Run | undefined;

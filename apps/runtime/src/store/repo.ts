@@ -46,7 +46,7 @@ export class Repo {
   private deferred = new Map<string, { write: () => void; late: boolean }>();
   private flushTimer: NodeJS.Immediate | null = null;
 
-  constructor(readonly db: DatabaseSync, private readonly columnCipher?: SqliteColumnCipher) {}
+  constructor(readonly db: DatabaseSync, readonly columnCipher?: SqliteColumnCipher) {}
   requireChromiumHistory() { this.chromiumHistoryRequired = true; }
 
   private protectField(table: string, id: string | number, column: string, value: string | null): string | null {
