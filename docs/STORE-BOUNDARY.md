@@ -2,18 +2,31 @@
 
 This is the source inventory and migration plan for the S12 STORE outcome. It is not a qualification record. `state.sqlite`, its WAL, runtime backup snapshots, artifacts, and Git objects must be inspected separately before claiming that sensitive data is protected at rest.
 
-## Candidate source protection
+## Current source and native boundary
 
-The v2 paths below are source-tested. A native build is not yet qualified because atomic `native.profileStorageRoot` provisioning, device authentication, reviewed recovery transfer and a native restart journey are pending.
+Atomic `native.profileStorageRoot` and `native.profileStorageFactor` provisioning and a scoped native restart/migration journey passed on September 28; see the [native manifest](../release/test-artifacts/native-store-protected-startup-2026-09-28-a/manifest.json). Device authentication, reviewed recovery transfer, the remaining SQLite inventory, and full STORE qualification are pending. The native build identifies source `aa996397`; runtime-only changes were staged afterward at `ee578997`.
+
+`apps/runtime/src/store/protected-startup.ts` activates only these fully adapted columns before repository services start:
+
+| Table family | Protected fields |
+| --- | --- |
+| `model_calls`, `events` | `provider_metadata`, `error`; `payload` |
+| `page_sets`, `set_members` | `name`, `result_schema`; `url`, `record_key`, `label`, `error` |
+| `programs`, `response_metadata` | `name`, `description`, `site_key`, `parameters`, `steps_json`, `preconditions`, `postconditions`; `url`, `method`, `content_type` |
+| `results`, `datasets` | `source_url`, `values_json`, `evidence`, `error`; `source`, `schema_json`, `values_json`, `provenance` |
+| `run_messages` | `text`, `context_page_refs`, `error` |
+| `safety_approval_requests`, `safety_send_journal`, `safety_audit` | `action_json`; `text`, `digest`, `error_code`; `payload` |
+
+Each registered table is migrated transactionally with stable primary-key AAD; a marker rejects later plaintext, invalid ciphertext, or unavailable key material. The current database is compacted after a migration changes rows. Historical backups and exported copies are not rewritten by this startup process.
 
 - `space-memory/` generations are encrypted files. Current writes use a Profile Keychain root, a derived `space-memory` store key, a disposable Keychain generation factor, and random wrapped data keys per file. Legacy generations remain readable for migration. Forget retires the previous factor before removing the previous generation. Historical offline copies plus their historical factor and root remain readable if someone saved them earlier.
 - `content_memory.ciphertext` contains encrypted page text. Current candidate writes use the same hierarchy under the `page-memory` domain. Legacy `v1` rows are migrated transactionally; the old `pageMemoryKey` is retired after migration. Explicit Forget, origin exclusion and retention pruning rotate the factor and re-encrypt retained rows.
 - The native vault and Chromium password store keep actual credential secrets outside `state.sqlite`. `vault_items`, grants, account labels, origins and access metadata remain plaintext in SQLite. Calendar and MCP OAuth tokens are Keychain secrets, but their account/server metadata remains in SQLite.
 - SQLite is not SQLCipher. A page or database copy can still expose every plaintext column listed below. The Keychain hierarchy does not encrypt those columns by itself.
 
-## Plaintext column inventory
+## Sensitive column inventory and remaining work
 
-The canonical schema is `apps/runtime/src/store/db.ts` (v24). This table groups every column that can carry user text, observed page content, provider metadata, local paths, secret-adjacent metadata, or an agent transcript. IDs, counters and timestamps are omitted unless their value is a user URL/path or an access token. The accompanying service-owned tables follow the canonical rows.
+The canonical schema is `apps/runtime/src/store/db.ts` (v24). This table groups every column that can carry user text, observed page content, provider metadata, local paths, secret-adjacent metadata, or an agent transcript. The protected fields above are listed here for completeness; the other fields remain plaintext or need a documented retained-metadata decision. IDs, counters and timestamps are omitted unless their value is a user URL/path or an access token. The accompanying service-owned tables follow the canonical rows.
 
 | Store | Columns requiring encryption or an explicit retained metadata decision |
 | --- | --- |
@@ -40,8 +53,8 @@ The canonical schema is `apps/runtime/src/store/db.ts` (v24). This table groups 
 
 1. Define a versioned envelope and exact AAD for each table/column group. Use a Profile root in the OS credential store, HKDF-separated store keys, random data keys, and revocable Keychain factors for deletion domains. Keep root and factors out of model context, logs, screenshots and ordinary JSON exports.
 2. Move SQL filters and indexes off ciphertext before changing columns. Keep only explicitly reviewed metadata in plaintext; use keyed blind indexes where exact matching is needed and bounded in-memory search for text. In particular, replace `json_extract(runs.config/result)` and `history_fts` queries with maintained projections before sealing those fields.
-3. Migrate one table family at a time with a shadow column or table and a `v2` envelope marker. Verify every row's identity/AAD and count, atomically flip readers, then retire old plaintext only after a checkpoint/VACUUM and a backup policy decision. A failed migration leaves the old database and original Keychain secret readable; it never silently drops rows or falls back to plaintext writes.
+3. Migrate one adapted table family at a time within an immediate transaction using the versioned envelope and per-table marker. Verify every row's identity/AAD and count, then compact the current database/WAL after changed rows. Where direct SQL predicates require plaintext, redesign those queries and indexes before adding a table to startup. A failed migration rolls back that table and fails startup; it never silently drops rows or falls back to plaintext writes.
 4. Audit SQLite WAL, free pages, prior `runtime-backup` snapshots, artifact files, Git objects and managed recovery sets. Rotating the current factor blocks current Aux-managed recovery of forgotten generations only if old factors are retired and managed snapshots do not preserve them. An already exported offline ciphertext copy together with its historical valid key cannot be remotely erased.
 5. Recovery creation and import require native device authentication and explicit owner review. Export only a versioned, authenticated, phrase-encrypted package for the selected current data and factors. On import into a second Profile, re-encrypt under its own root and identity. Wrong phrase, tampering, stale managed generation, missing Keychain root/factor and interrupted import have distinct non-destructive states. A remembered old offline package remains restorable outside Aux's managed revocation boundary.
 
-The product should explain the offline-copy limit at recovery creation and Forget confirmation. Owner policy for historical offline exports and the exact retained metadata set must be approved before STORE is called complete.
+The owner approved the recovery boundary: Forget refuses older **Aux-managed** backups and issues a new recovery package, while previously exported files remain restorable with their original phrase. The product must explain that an offline copy and its phrase cannot be revoked at recovery creation and Forget confirmation. The exact retained metadata set remains open before STORE can be called complete.
