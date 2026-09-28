@@ -562,6 +562,30 @@ describe("runToolLoop (S5 host integration)", () => {
     const transcript = new TranscriptStore(h.db).load(run.runId);
     expect(transcript.some((message) => message.role === "tool" && JSON.stringify(message.content).includes("Action outcome uncertain"))).toBe(true);
   });
+  it("opens an observed same-origin pagination link without a write intent", async () => {
+    let current = { ...pageObs(), content: { ...pageObs().content,
+      url: "http://x.test/records", elements: [{ ref: "r17", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
+    } } as Observation;
+    const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
+      code: 'page.clickByName("2"); const s = snapshot(); submitResult(s.text, [{observationId:s.observationId, quote:"url: http://x.test/records?page=2"}])', answerLabel: "",
+    } }] }]);
+    const h = coordinatorHarness(model);
+    h.pages.observe.mockImplementation(async () => current);
+    h.pages.execute.mockImplementation(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
+      current = { ...current, revision: 2, content: { ...current.content,
+        url: "http://x.test/records?page=2", text: "Page 2 records",
+      } } as Observation;
+      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const,
+        startedAt: 1, durationMs: 1 }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "completed", steps, observation: current };
+    });
+    const run = await h.coordinator.start({ goal: "open page 2", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(h.pages.execute).toHaveBeenCalledWith(expect.objectContaining({ steps: [expect.objectContaining({ op: "navigate", url: "http://x.test/records?page=2" })] }), expect.anything(), expect.anything());
+    expect(h.db.prepare("SELECT count(*) AS n FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ n: 0 });
+  });
   it("completes a text turn and seeds the task into the durable transcript", async () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "ship it" }]);
     const h = coordinatorHarness(model);

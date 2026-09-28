@@ -50,7 +50,7 @@ export interface ReplHostDeps {
   useTab(pageId: string): Promise<ReplTab>;
   observe(pageId: string, scope?: string): Promise<unknown>;
   /** Resolve one uniquely named control from a fresh governed observation. */
-  findRef?(pageId: string, name: string, role?: string): Promise<{ ref: string }>;
+  findRef?(pageId: string, name: string, role?: string): Promise<{ ref: string; navigationUrl?: string }>;
   /** Infer one route from exact same-origin links or two sibling record links. */
   findRoute?(pageId: string, targetId: string): Promise<{ url: string }>;
   /** Capture plus the last observation's ref geometry — the annotation data (pixel overlays land with native support). */
@@ -281,7 +281,7 @@ page.clickByName = (name, role) => {
   if (rendered) label = rendered[1];
   else if (label.includes('" href=')) label = label.slice(0, label.indexOf('" href='));
   const target = __aux_invoke("findRef", { pageId: __aux_page, name: label, role });
-  return page.click(target.ref);
+  return target.navigationUrl ? page.navigate(target.navigationUrl) : page.click(target.ref);
 };
 page.navigateMatching = (targetId) => {
   const route = __aux_invoke("findRoute", { pageId: __aux_page, targetId });

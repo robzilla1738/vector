@@ -171,6 +171,15 @@ describe("code-mode REPL", () => {
     expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "click", target: "r10" }));
   });
 
+  it("follows a uniquely observed same-origin link by navigation instead of a click", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const findRef = vi.fn(async () => ({ ref: "r17", navigationUrl: "http://x.test/records?page=2" }));
+    const step = vi.fn(async () => ({ output: { status: "completed" } }));
+    await pool.eval(deps({ findRef, step }), `page.clickByName("2")`, { pageId: "p1" });
+    expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "navigate", url: "http://x.test/records?page=2" }));
+  });
+
   it("extracts one labeled value with its observed quote and can submit it", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

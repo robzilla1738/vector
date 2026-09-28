@@ -477,7 +477,19 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         throw new AuxError("invalid_params", matches.length
           ? `Named control "${name}" is ambiguous (${matches.length} matches); use a specific name or ref.`
           : `No control named "${name}" is in the current observation.`);
-      return { ref: matches[0]!.ref };
+      const target = matches[0]!;
+      // Following a same-origin href is navigation. Do not dispatch its click
+      // handler, which can carry an unrelated write and an uncertain receipt
+      // when the document unloads before the click acknowledgment arrives.
+      if (target.role === "link" && target.href) {
+        try {
+          const base = new URL(observation.content.url);
+          const url = new URL(target.href, base);
+          if ((url.protocol === "http:" || url.protocol === "https:") && url.origin === base.origin)
+            return { ref: target.ref, navigationUrl: url.href };
+        } catch { /* An invalid href remains a governed click. */ }
+      }
+      return { ref: target.ref };
     },
     findRoute: async (pageId, targetId) => {
       if (!run.pageIds.includes(pageId) && !openedTabs.has(pageId))
