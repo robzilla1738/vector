@@ -619,7 +619,11 @@ export class Repo {
          VALUES(?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(result_id) DO UPDATE SET values_json=excluded.values_json,evidence=excluded.evidence,status=excluded.status,error=excluded.error`,
       )
-      .run(r.resultId, r.runId ?? null, r.memberId ?? null, r.pageId ?? null, r.sourceUrl, J(r.values), r.evidence ? J(r.evidence) : null, r.observedAt, r.status, r.error ?? null);
+      .run(r.resultId, r.runId ?? null, r.memberId ?? null, r.pageId ?? null,
+        this.protectField("results", r.resultId, "source_url", r.sourceUrl),
+        this.protectField("results", r.resultId, "values_json", J(r.values)),
+        this.protectField("results", r.resultId, "evidence", r.evidence ? J(r.evidence) : null),
+        r.observedAt, r.status, this.protectField("results", r.resultId, "error", r.error ?? null));
   }
   getResult(resultId: string): ResultRecord | undefined {
     const r = this.q("SELECT * FROM results WHERE result_id=?").get(resultId) as any;
@@ -640,9 +644,12 @@ export class Repo {
   private rowToResult(r: any): ResultRecord {
     return {
       resultId: r.result_id, runId: r.run_id ?? undefined, memberId: r.member_id ?? undefined,
-      pageId: r.page_id ?? undefined, sourceUrl: r.source_url, values: P(r.values_json, {}),
-      evidence: P(r.evidence, undefined as never), observedAt: r.observed_at, status: r.status,
-      error: r.error ?? undefined,
+      pageId: r.page_id ?? undefined,
+      sourceUrl: this.revealField("results", r.result_id, "source_url", r.source_url)!,
+      values: P(this.revealField("results", r.result_id, "values_json", r.values_json), {}),
+      evidence: P(this.revealField("results", r.result_id, "evidence", r.evidence), undefined as never),
+      observedAt: r.observed_at, status: r.status,
+      error: this.revealField("results", r.result_id, "error", r.error) ?? undefined,
     };
   }
 
@@ -1226,7 +1233,11 @@ export class Repo {
          VALUES(?,?,?,?,?,?,?,?,?)
          ON CONFLICT(dataset_id) DO UPDATE SET values_json=excluded.values_json,row_count=excluded.row_count,stale=0`,
       )
-      .run(d.datasetId, d.runId ?? null, d.pageId ?? null, d.source, J(d.schema ?? []), d.rows.length, J(d.rows), d.provenance ?? null, now());
+      .run(d.datasetId, d.runId ?? null, d.pageId ?? null,
+        this.protectField("datasets", d.datasetId, "source", d.source),
+        this.protectField("datasets", d.datasetId, "schema_json", J(d.schema ?? [])),
+        d.rows.length, this.protectField("datasets", d.datasetId, "values_json", J(d.rows)),
+        this.protectField("datasets", d.datasetId, "provenance", d.provenance ?? null), now());
   }
   getDataset(datasetId: string) {
     const r = this.q("SELECT * FROM datasets WHERE dataset_id=?").get(datasetId) as any;
@@ -1247,11 +1258,11 @@ export class Repo {
       datasetId: r.dataset_id as string,
       runId: r.run_id ?? undefined,
       pageId: r.page_id ?? undefined,
-      source: r.source as string,
-      schema: P<any[]>(r.schema_json, []),
-      rows: P<any[]>(r.values_json, []),
+      source: this.revealField("datasets", r.dataset_id, "source", r.source)!,
+      schema: P<any[]>(this.revealField("datasets", r.dataset_id, "schema_json", r.schema_json), []),
+      rows: P<any[]>(this.revealField("datasets", r.dataset_id, "values_json", r.values_json), []),
       rowCount: r.row_count as number,
-      provenance: r.provenance ?? undefined,
+      provenance: this.revealField("datasets", r.dataset_id, "provenance", r.provenance) ?? undefined,
       createdAt: r.created_at as number,
       stale: !!r.stale,
     };

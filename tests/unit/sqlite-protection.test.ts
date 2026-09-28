@@ -257,3 +257,47 @@ it("protects response URLs while preserving paged URL search", async () => {
     expect(() => reopened.getResponse("target")).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
+
+it("protects result and dataset observations through migration and restart", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-observations-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    legacy.saveResult({ resultId: "old-result", runId: "run", sourceUrl: "https://private.example/pearl",
+      values: { note: "private result pearl" }, evidence: { observationId: "private evidence pearl" },
+      observedAt: 1, status: "error", error: "private result error pearl" });
+    legacy.saveDataset({ datasetId: "old-dataset", runId: "run", source: "private source garnet",
+      schema: [{ name: "private schema garnet" }], rows: [{ value: "private row garnet" }],
+      provenance: "private provenance garnet" });
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "results")).toBe(4);
+    expect(migrateSensitiveTable(db, cipher, "datasets")).toBe(4);
+    const protectedRepo = new Repo(db, cipher);
+    expect(protectedRepo.getResult("old-result")?.values).toEqual({ note: "private result pearl" });
+    expect(protectedRepo.listDatasets({ runId: "run" })[0]?.rows).toEqual([{ value: "private row garnet" }]);
+    protectedRepo.saveResult({ resultId: "new-result", runId: "run", sourceUrl: "https://private.example/ruby",
+      values: { note: "private result ruby" }, observedAt: 2, status: "ok" });
+    protectedRepo.saveDataset({ datasetId: "new-dataset", runId: "run", source: "private source ruby",
+      rows: [{ value: "private row ruby" }] });
+    expect(protectedRepo.listResults({ runId: "run", status: "ok" })[0]?.resultId).toBe("new-result");
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private result pearl")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private result pearl")).toBe(true);
+      expect(!existsSync(path) || !readFileSync(path).includes("private row garnet")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopened = new Repo(db, await SqliteColumnCipher.create(secrets.secrets, "profile-one", true));
+    expect(reopened.getResult("old-result")?.error).toBe("private result error pearl");
+    expect(reopened.getDataset("new-dataset")?.rows).toEqual([{ value: "private row ruby" }]);
+    db.prepare("UPDATE datasets SET values_json='tampered plaintext' WHERE dataset_id='old-dataset'").run();
+    expect(() => reopened.getDataset("old-dataset")).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
