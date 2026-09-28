@@ -1,5 +1,7 @@
 import "./Downloads.css";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
+import type { Download } from "@aux/contracts";
 import { useStore, errToast, call, toast } from "../store";
 import { bridge } from "../bridge";
 import { I } from "./icons";
@@ -15,10 +17,65 @@ function fmtSize(bytes: number | undefined): string {
 
 const STATE: Record<string, string> = { started: "Starting", progressing: "Downloading", completed: "Done", interrupted: "Interrupted", cancelled: "Cancelled" };
 
+type DownloadFilter = "all" | "active" | "finished" | "attention";
+
+function downloadMatches(item: Download, query: string, filter: DownloadFilter): boolean {
+  const matches = `${item.filename} ${item.sourceUrl ?? ""}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
+  return matches && (filter === "all" || (filter === "active" && ["started", "progressing"].includes(item.state))
+    || (filter === "finished" && item.state === "completed") || (filter === "attention" && ["interrupted", "cancelled"].includes(item.state)));
+}
+
+const DownloadRow = memo(function DownloadRow({ id, busy, rowError, retried, action, dismissDownloads, onRetried, setOverlay }: {
+  id: string; busy: string | null; rowError?: string; retried: boolean;
+  action(id: string, work: () => Promise<unknown>, fileAction?: boolean): Promise<void>;
+  dismissDownloads(ids: string[]): Promise<void>;
+  onRetried(id: string): void;
+  setOverlay: ReturnType<typeof useStore.getState>["setOverlay"];
+}) {
+  const d = useStore(state => state.downloads.find(item => item.id === id));
+  const sourcePage = useStore(state => state.pages.find(page => page.pageId === d?.pageId
+    && !page.ownedByRuntime && !["crashed", "detached"].includes(page.viewStatus ?? "")));
+  if (!d) return null;
+  const active = d.state === "started" || d.state === "progressing";
+  const pct = active && d.totalBytes ? Math.min(100, Math.round((d.size / d.totalBytes) * 100)) : null;
+  return (
+          <div className={`dl-row ${d.state}${d.paused ? " paused" : ""}`} role="group" aria-label={d.filename}>
+            <span className="dl-ico">{I.downloadSm}</span>
+            <span className="dl-main">
+              <span className="dl-name" title={d.path}>{d.filename}</span>
+              <span className="dl-sub nums">
+                {active ? (pct !== null ? `${fmtSize(d.size)} of ${fmtSize(d.totalBytes)}` : `${fmtSize(d.size)}…`) : fmtSize(d.size)}
+                {" · "}
+                <span className={`dl-state ${d.state}`}>{d.paused ? "Paused" : STATE[d.state] ?? d.state}</span>
+                {d.warning&&<span className="dl-warn">{" · "}{d.warning==="executable"?"Runs code when opened":"Sent over an unencrypted connection"}</span>}
+                {d.state==='interrupted'&&!d.path&&(d.sourceUrl?' · Choose an available folder, then Retry.':' · Download folder unavailable; choose a folder and retry from the page.')}
+              </span>
+              {active && <span className="dl-bar" role="progressbar" aria-label={`${d.paused ? "Paused" : "Downloading"} ${d.filename}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}><span style={{ width: pct !== null ? `${pct}%` : "40%" }} className={pct === null ? "indeterminate" : ""} /></span>}
+            </span>
+            <div className="dl-actions">
+            {d.canCancel && <>
+              {d.paused || d.state === "interrupted" ? <button className="btn sm ghost" disabled={busy !== null || !d.canResume} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "resume"), true)}>Resume</button> : <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "pause"), true)}>Pause</button>}
+              <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "cancel"), true)}>Cancel</button>
+            </>}
+            {!d.canCancel&&d.state!=='completed'&&d.sourceUrl&&<button className="btn sm ghost" title="Start a new download from the saved URL. Expired links or form-generated downloads may need the original page." disabled={busy!==null||retried} onClick={()=>void action(d.id,async()=>{await bridge.retryDownload(d.id);onRetried(d.id);},true)}>{retried?'Retry requested':'Retry'}</button>}
+            {sourcePage && <button className="btn sm ghost" title={`Return to ${sourcePage.title || sourcePage.url}`} onClick={() => void useStore.getState().activate(sourcePage.pageId).then(()=>{if(useStore.getState().overlay==="downloads")setOverlay(null);}).catch(errToast)}>Source page</button>}
+            {d.state === "completed" && (
+              <>
+                <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, async () => { const error = await bridge.openPath(d.path); if (error) throw new Error(`Could not open ${d.filename}: ${error}. The file may have been moved or deleted.`); },true)}>Open</button>
+                <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, async () => {
+                  if (!await bridge.revealPath(d.path)) throw new Error(`Could not reveal ${d.filename}. The file may have been moved or deleted.`);
+                },true)}>Reveal</button>
+              </>
+            )}
+            {canDismissDownload(d) && <button className="icon-btn sm" disabled={busy!==null} aria-label={`Remove ${d.filename} from downloads`} title="Remove from list; keep file" onClick={()=>void dismissDownloads([d.id])}>{I.close}</button>}
+            </div>
+            {rowError&&<p className="dl-error" role="alert">{rowError}</p>}
+          </div>
+  );
+});
+
 /** ⌘⇧J — in-flow shelf under the page with live progress. */
 export function Downloads() {
-  const items = useStore((s) => s.downloads);
-  const pages = useStore(s => s.pages);
   const setOverlay = useStore((s) => s.setOverlay);
   const [query, setQuery] = useState("");
   const [loading,setLoading]=useState(true);
@@ -29,12 +86,11 @@ export function Downloads() {
   const shelfRef=useRef<HTMLDivElement>(null);
   const searchRef=useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<"all" | "active" | "finished" | "attention">("all");
-  const filtered = items.filter(item => {
-    const matches = `${item.filename} ${item.sourceUrl ?? ""}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
-    const stateMatches = filter === "all" || (filter === "active" && ["started", "progressing"].includes(item.state))
-      || (filter === "finished" && item.state === "completed") || (filter === "attention" && ["interrupted", "cancelled"].includes(item.state));
-    return matches && stateMatches;
-  }).sort((a, b) => Number(["started", "progressing"].includes(b.state)) - Number(["started", "progressing"].includes(a.state)) || b.startedAt - a.startedAt);
+  const itemCount = useStore(state => state.downloads.length);
+  const visibleIds = useStore(useShallow(state => state.downloads.filter(item => downloadMatches(item, query, filter))
+    .sort((a, b) => Number(["started", "progressing"].includes(b.state)) - Number(["started", "progressing"].includes(a.state)) || b.startedAt - a.startedAt)
+    .map(item => item.id)));
+  const dismissibleIds = useStore(useShallow(state => state.downloads.filter(item => downloadMatches(item, query, filter) && canDismissDownload(item)).map(item => item.id)));
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -104,7 +160,6 @@ export function Downloads() {
     }
   }
 
-  const dismissible=filtered.filter(canDismissDownload);
   const dismissDownloads=(ids:string[])=>action("clear",async()=>{
     const result=await call("downloads.remove",{ids});
     const removed=new Set(result.removed);
@@ -116,9 +171,9 @@ export function Downloads() {
     <section ref={shelfRef} className="shelf slide-up" aria-label="Downloads">
       <div className="shelf-head">
         <span>Downloads</span>
-        <span className="count nums">{items.length}</span>
+        <span className="count nums">{itemCount}</span>
         <span className="sp" />
-        {!!dismissible.length&&<button className="btn sm ghost" disabled={busy!==null} title="Remove inactive downloads matching this view. Files remain on your computer." onClick={()=>void dismissDownloads(dismissible.map(item=>item.id))}>Clear list</button>}
+        {!!dismissibleIds.length&&<button className="btn sm ghost" disabled={busy!==null} title="Remove inactive downloads matching this view. Files remain on your computer." onClick={()=>void dismissDownloads(dismissibleIds)}>Clear list</button>}
         {!bridge.privateMode&&<button className="btn sm ghost" aria-expanded={showFolder} onClick={()=>setShowFolder(!showFolder)}>Save location</button>}
         <button className="btn sm ghost" disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Refresh</button>
         <button className="icon-btn sm" title="Close (Esc)" aria-label="Close downloads" onClick={() => setOverlay(null)}>{I.close}</button>
@@ -141,45 +196,10 @@ export function Downloads() {
         {(folderError||folder?.error)&&<p className="download-error" role="alert">{folderError||folder?.error} <button className="btn sm ghost" disabled={folderLoading||busy!==null} onClick={()=>setFolderRefresh(value=>value+1)}>Retry location</button></p>}
       </section>}
       <div className="download-list" aria-busy={loading}>
-      {loading&&!items.length&&<output className="shelf-empty" data-block>Loading downloads…</output>}
-      {!loading&&!loadError&&!filtered.length && <div className="shelf-empty">{items.length ? "No downloads match. Try another name or filter." : "No files yet. Your downloads will appear here."}</div>}
-      {filtered.map((d) => {
-        const active = d.state === "started" || d.state === "progressing";
-        const pct = active && d.totalBytes ? Math.min(100, Math.round((d.size / d.totalBytes) * 100)) : null;
-        const sourcePage = pages.find(page => page.pageId === d.pageId && !page.ownedByRuntime && !["crashed", "detached"].includes(page.viewStatus ?? ""));
-        return (
-          <div className={`dl-row ${d.state}${d.paused ? " paused" : ""}`} key={d.id} role="group" aria-label={d.filename}>
-            <span className="dl-ico">{I.downloadSm}</span>
-            <span className="dl-main">
-              <span className="dl-name" title={d.path}>{d.filename}</span>
-              <span className="dl-sub nums">
-                {active ? (pct !== null ? `${fmtSize(d.size)} of ${fmtSize(d.totalBytes)}` : `${fmtSize(d.size)}…`) : fmtSize(d.size)}
-                {" · "}
-                <span className={`dl-state ${d.state}`}>{d.paused ? "Paused" : STATE[d.state] ?? d.state}</span>
-                {d.warning&&<span className="dl-warn">{" · "}{d.warning==="executable"?"Runs code when opened":"Sent over an unencrypted connection"}</span>}
-                {d.state==='interrupted'&&!d.path&&(d.sourceUrl?' · Choose an available folder, then Retry.':' · Download folder unavailable; choose a folder and retry from the page.')}
-              </span>
-              {active && <span className="dl-bar" role="progressbar" aria-label={`${d.paused ? "Paused" : "Downloading"} ${d.filename}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}><span style={{ width: pct !== null ? `${pct}%` : "40%" }} className={pct === null ? "indeterminate" : ""} /></span>}
-            </span>
-            <div className="dl-actions">
-            {d.canCancel && <>
-              {d.paused || d.state === "interrupted" ? <button className="btn sm ghost" disabled={busy !== null || !d.canResume} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "resume"), true)}>Resume</button> : <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "pause"), true)}>Pause</button>}
-              <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.controlDownload(d.id, "cancel"), true)}>Cancel</button>
-            </>}
-            {!d.canCancel&&d.state!=='completed'&&d.sourceUrl&&<button className="btn sm ghost" title="Start a new download from the saved URL. Expired links or form-generated downloads may need the original page." disabled={busy!==null||retried.has(d.id)} onClick={()=>void action(d.id,async()=>{await bridge.retryDownload(d.id);setRetried(current=>new Set([...current,d.id]));},true)}>{retried.has(d.id)?'Retry requested':'Retry'}</button>}
-            {sourcePage && <button className="btn sm ghost" title={`Return to ${sourcePage.title || sourcePage.url}`} onClick={() => void useStore.getState().activate(sourcePage.pageId).then(()=>{if(useStore.getState().overlay==="downloads")setOverlay(null);}).catch(errToast)}>Source page</button>}
-            {d.state === "completed" && (
-              <>
-                <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, async () => { const error = await bridge.openPath(d.path); if (error) throw new Error(`Could not open ${d.filename}: ${error}. The file may have been moved or deleted.`); },true)}>Open</button>
-                <button className="btn sm ghost" disabled={busy !== null} onClick={() => void action(d.id, () => bridge.revealPath(d.path),true)}>Reveal</button>
-              </>
-            )}
-            {canDismissDownload(d) && <button className="icon-btn sm" disabled={busy!==null} aria-label={`Remove ${d.filename} from downloads`} title="Remove from list; keep file" onClick={()=>void dismissDownloads([d.id])}>{I.close}</button>}
-            </div>
-            {rowErrors[d.id]&&<p className="dl-error" role="alert">{rowErrors[d.id]}</p>}
-          </div>
-        );
-      })}
+      {loading&&!itemCount&&<output className="shelf-empty" data-block>Loading downloads…</output>}
+      {!loading&&!loadError&&!visibleIds.length && <div className="shelf-empty">{itemCount ? "No downloads match. Try another name or filter." : "No files yet. Your downloads will appear here."}</div>}
+      {visibleIds.map(id => <DownloadRow key={id} id={id} busy={busy} rowError={rowErrors[id]} retried={retried.has(id)}
+        action={action} dismissDownloads={dismissDownloads} onRetried={id => setRetried(current => new Set([...current, id]))} setOverlay={setOverlay} />)}
       </div>
     </section>
   );

@@ -42,7 +42,12 @@ it("clears only visits inside the confirmed time range and preserves later visit
     const insert = db.prepare("INSERT INTO history(url,title,visited_at) VALUES(?,?,?)");
     for (const time of [9, 10, 19, 20, 21]) insert.run(`https://visit${time}.test`, "Visit", time);
     repo.addBookmark("https://visit10.test", "Saved");
+    expect(repo.countHistory({ since: 10, before: 20 })).toBe(2);
+    expect(repo.countHistory({ before: 20 })).toBe(3);
+    expect(repo.countHistory()).toBe(5);
+    expect(repo.listHistory()).toHaveLength(5);
     expect(repo.clearHistory({ since: 10, before: 20 })).toBe(2);
+    expect(repo.countHistory({ since: 10, before: 20 })).toBe(0);
     expect(repo.listHistory().map(item => item.visitedAt)).toEqual([21, 20, 9]);
     expect(repo.clearHistory({ since: 10, before: 20 })).toBe(0);
     expect(repo.listBookmarks()).toHaveLength(1);
@@ -54,10 +59,13 @@ it("clears only visits inside the confirmed time range and preserves later visit
 
 it("rejects invalid history deletion ranges before they reach storage", () => {
   const schema = MethodSchemas["history.clear"];
+  const countSchema = MethodSchemas["history.count"];
   expect(schema.safeParse({ since: 20, before: 10 }).success).toBe(false);
   expect(schema.safeParse({ since: -1 }).success).toBe(false);
   expect(schema.safeParse({ before: Infinity }).success).toBe(false);
   expect(schema.safeParse({ before: "20" }).success).toBe(false);
   expect(schema.parse({ since: 10, before: 20 })).toEqual({ since: 10, before: 20 });
   expect(schema.parse({})).toEqual({});
+  expect(countSchema.safeParse({ since: 20, before: 10 }).success).toBe(false);
+  expect(countSchema.parse({ since: 10, before: 20 })).toEqual({ since: 10, before: 20 });
 });

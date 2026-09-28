@@ -8,6 +8,11 @@ import { useStore } from "../store";
 import { emptyLayout, tabLabel } from "../workspace";
 import { TabMenu } from "./TabMenu";
 
+vi.mock("../use-feature", async importOriginal => ({
+  ...await importOriginal<typeof import("../use-feature")>(),
+  useFeature: () => true,
+}));
+
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.replaceChildren(); });
 
 it("reviews and applies an AI tab label, then restores the page title", async () => {
@@ -24,15 +29,16 @@ it("reviews and applies an AI tab label, then restores the page title", async ()
   });
   const host = document.createElement("div"); document.body.append(host);
   const root = createRoot(host);
-  const button = (name: string) => [...host.querySelectorAll<HTMLButtonElement>("button")].find(node => node.textContent?.includes(name))!;
+  const menu = () => document.querySelector<HTMLDialogElement>('dialog[aria-label="Tab actions"]')!;
+  const button = (name: string) => [...menu().querySelectorAll<HTMLButtonElement>("button")].find(node => node.textContent?.includes(name))!;
   try {
     await act(async () => root.render(<TabMenu page={page} x={0} y={0} onClose={() => {}} />));
     await act(async () => button("Name tab").click());
-    expect(host.textContent).toContain("AI sees this page title and site domain");
+    expect(menu().textContent).toContain("AI sees this page title and site domain");
     await act(async () => button("Suggest with AI").click());
     expect(invoke).toHaveBeenCalledWith("agent.tabName.suggest", { pageId: page.pageId,
       expectedUrl: page.url, expectedDocumentEpoch: page.documentEpoch });
-    expect(host.querySelector<HTMLInputElement>('[aria-label="Tab label"]')?.value).toBe("Quarterly report");
+    expect(menu().querySelector<HTMLInputElement>('[aria-label="Tab label"]')?.value).toBe("Quarterly report");
     expect(tabLabel(useStore.getState().layout, page)).toBe(page.title);
     await act(async () => button("Save tab label").click());
     expect(tabLabel(useStore.getState().layout, page)).toBe("Quarterly report");
@@ -41,5 +47,27 @@ it("reviews and applies an AI tab label, then restores the page title", async ()
     await act(async () => button("Name tab").click());
     await act(async () => button("Use page title again").click());
     expect(tabLabel(useStore.getState().layout, page)).toBe(page.title);
+  } finally { await act(async () => root.unmount()); }
+});
+
+it("moves focus from destination search to the first matching Space", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 1; });
+  const page = { pageId: "move-tab", url: "https://example.com/", title: "Example",
+    viewStatus: "visible", controller: "none", ownedByRuntime: false } as PageTarget;
+  const layout = emptyLayout();
+  layout.spaces.push({ ...layout.spaces[0]!, id: "other", name: "Other" });
+  useStore.setState({ layout, pages: [page], activePageId: page.pageId });
+  const host = document.createElement("div"); document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<TabMenu page={page} x={0} y={0} onClose={() => {}} />));
+    const menu = document.querySelector<HTMLDialogElement>('dialog[aria-label="Tab actions"]')!;
+    const move = [...menu.querySelectorAll<HTMLButtonElement>("button")].find(node => node.textContent?.includes("Move tab"))!;
+    await act(async () => move.click());
+    const search = menu.querySelector<HTMLInputElement>('[aria-label="Find a folder, Space or window"]')!;
+    expect(document.activeElement).toBe(search);
+    await act(async () => search.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
+    expect(document.activeElement?.textContent).toContain("Other");
   } finally { await act(async () => root.unmount()); }
 });

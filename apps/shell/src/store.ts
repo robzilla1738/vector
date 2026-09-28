@@ -13,6 +13,7 @@ import { createTabsSlice } from "./store/tabs-slice";
 import type { Workspace } from "./store/types";
 import { createUiSlice } from "./store/ui-slice";
 import { featureStage } from "./use-feature";
+import { reconcilePendingArchives } from "./tab-archive";
 
 export type { CommandSlot, Mode, Overlay, RailView, RunModelStats, SidebarMode } from "./store/types";
 export { isLive, LIVE_RUN } from "./store/types";
@@ -24,6 +25,7 @@ export { call, decodeBase64Json, lastEventSeq, pagePreview, pageRevision } from 
  * events apply through per-domain reducers plus one effects pass.
  */
 let organizationHydrated = false;
+let archiveRecoveryNeeded = true;
 let lastRefreshError = "";
 export const useStore = create<Workspace>((set, get, api) => ({
   ...createUiSlice(set, get, api),
@@ -34,10 +36,17 @@ export const useStore = create<Workspace>((set, get, api) => ({
   ...createRunsSlice(set, get, api),
 
   refresh: async () => {
+    if (bridge.privateMode) {
+      // Private windows deliberately have no Aux runtime; their tab catalog is
+      // still native and should refresh without a reconnect loop.
+      try { get().syncTabsSnapshot(await bridge.tabsSnapshot()); }
+      catch { /* Native tab patches can converge after the next window event. */ }
+      return;
+    }
     if (!bridge.privateMode && !bridge.quickAskMode && featureStage("spaces") === "on" && !organizationHydrated) {
       try {
         const layout = await loadOrganizationLayout();
-        if (!organizationHydrated) { set({ layout }); organizationHydrated = true; }
+        if (!organizationHydrated) { set({ layout, tidyUndo: layout.tidyUndo ?? null }); organizationHydrated = true; }
       }
       catch (error) { errToast(error); set({ connected: false }); setTimeout(() => void get().refresh(), 1500); return; }
     }
@@ -56,6 +65,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
         const legacySpaces = layout.spaces.filter(space => !space.workspaceId);
         const spaces = await call("spaces.import", { spaces: legacySpaces.map(space => ({
           id: space.id, name: space.name.slice(0, 100) || "Untitled", color: space.color ?? "slate", grain: space.grain,
+          ...(space.theme ? { theme: space.theme } : {}),
         })) });
         get().syncBrowserSpaces(spaces);
       }
@@ -77,7 +87,10 @@ export const useStore = create<Workspace>((set, get, api) => ({
           if (page.pageId === ws.activePageId) restored = setActiveSpace(restored, placement.spaceId);
         }
         const pendingRestoreIds=(ws.pendingRestoreTabs??[]).map(tab=>tab.pageId);
-        const layout = ws.restoringTabs ? restored : syncLayout(restored, ws.pages, pendingRestoreIds);
+        const synced = ws.restoringTabs ? restored : syncLayout(restored, ws.pages, pendingRestoreIds);
+        const layout = archiveRecoveryNeeded && !ws.restoringTabs
+          ? reconcilePendingArchives(synced, new Set(ws.pages.map(page => page.pageId))) : synced;
+        if (!ws.restoringTabs) archiveRecoveryNeeded = false;
         persistLayout(layout);
         // The catalog snapshot already merged this window's durable active
         // into layout.activeTabs — prefer it over the first tab in the space
@@ -86,7 +99,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
         const activePageId = ws.pages.some(page => page.pageId === ws.activePageId && layout.tabSpace[page.pageId] === layout.activeSpaceId)
           ? ws.activePageId
           : (remembered && ws.pages.some(page => page.pageId === remembered) ? remembered : tabsInSpace(layout, ws.pages, layout.activeSpaceId)[0]?.pageId ?? null);
-        return { ...snapshot, pendingRestoreIds, activePageId, splitPageId: splitForPage(layout, ws.pages, activePageId), restoringTabs: !!ws.restoringTabs, bookmarks, settings, downloads, programs, connected: true, layout };
+        return { ...snapshot, pendingRestoreIds, activePageId, splitPageId: splitForPage(layout, ws.pages, activePageId), restoringTabs: !!ws.restoringTabs, bookmarks, settings, downloads, programs, connected: true, layout, tidyUndo: layout.tidyUndo ?? null };
       });
       lastRefreshError = "";
       if (!bridge.privateMode && !bridge.quickAskMode) setTimeout(() => {
@@ -143,7 +156,7 @@ if (!bridge.privateMode && !bridge.quickAskMode) bridge.onOrganizationChanged(()
   if (!organizationHydrated) return;
   const before = useStore.getState().layout;
   void reloadOrganizationLayout().then(layout => {
-    if (useStore.getState().layout === before) useStore.setState({ layout });
+    if (useStore.getState().layout === before) useStore.setState({ layout, tidyUndo: layout.tidyUndo ?? null });
   }).catch(errToast);
 });
 

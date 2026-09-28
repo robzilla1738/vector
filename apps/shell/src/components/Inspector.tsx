@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { CompactObservation } from "@aux/contracts";
 import { useStore, call } from "../store";
 import { ObservationPanel } from "./ObservationPanel";
-import { DetailPane, EmptyState } from "./ui";
+import { DetailPane, Dialog, EmptyState } from "../ui";
 
 /**
  * Observation drawer — the compact observation of the active page (live), or
@@ -37,8 +37,7 @@ export function Inspector() {
   };
 
   return (
-    <div className="overlay-scrim fade-in" onMouseDown={close}>
-      <div className="drawer slide-in wide" role="dialog" aria-label="Observation" onMouseDown={(e) => e.stopPropagation()}>
+    <Dialog label="Observation" onClose={close} className="aux-observation-dialog">
         <DetailPane className="observation-detail" title="What the agent sees" onClose={close}
           metadata={historical ? "Recorded snapshot · may differ from the live page" : "Current page observation"}
           actions={!historical && activePageId ? <button className="btn sm ghost" onClick={() => setRetry(value => value + 1)}>Refresh</button> : undefined}>
@@ -48,7 +47,6 @@ export function Inspector() {
           {obs && <><ObservationPanel key={`${obs.pageId}:${obs.revision}`} obs={obs} />
             <details className="observation-raw"><summary>Raw observation</summary><pre className="obs-raw selectable">{obs.text}</pre></details></>}
         </DetailPane>
-      </div>
-    </div>
+    </Dialog>
   );
 }

@@ -39,3 +39,12 @@
 .library-edit input { flex: 1; min-width: 0; grid-column:1 / -1; width:100%; }
 
 }
+
+@layer components {
+.library-ranges { display:flex; flex-wrap:wrap; gap:var(--space-1); }
+.library-ranges button[aria-pressed="true"] { background:var(--bg-hover); color:var(--ink-0); }
+.library-edit-field { display:grid; grid-column:1 / -1; gap:var(--space-1); min-width:0; color:var(--ink-2); font-size:var(--fs-xs); }
+.library-edit-folder { grid-column:1; }
+.library-edit-buttons { display:flex; align-items:center; gap:var(--space-2); }
+.library-edit select { width:100%; max-width:none; min-width:0; }
+}

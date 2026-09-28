@@ -11,7 +11,7 @@ async function h_spaces_import(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_spaces_create(ctx: MethodCtx): Promise<unknown> {
   const { params, spaces } = ctx;
-  return spaces.create(params.name, params.color, params.grain);
+  return spaces.create(params.name, params.color, params.grain, params.theme);
 }
 async function h_spaces_update(ctx: MethodCtx): Promise<unknown> {
   const { params, spaces } = ctx;

@@ -1,0 +1,180 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -56,7 +56,8 @@
+   register_shell(AuxShellMethodGroup::kWindow,
+                  {"defaultBrowser", "setDefaultBrowser", "dataDir",
+                   "resolveSearch", "setAppearance", "setShortcuts",
+-                  "focusShell", "openFile", "closeWindow", "openExternal"});
++                  "focusShell", "openFile", "closeWindow", "openExternal",
++                  "revealPath", "openPath"});
+   auto register_runtime = [this](AuxRuntimeMethodGroup group,
+                                  std::initializer_list<std::string_view> names) {
+     for (std::string_view name : names)
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -7,10 +7,13 @@
+ #include <cmath>
+ #include <utility>
+ #include <variant>
++#include <vector>
+ 
+ #include "base/files/file_util.h"
+ #include "base/functional/bind.h"
+ #include "base/memory/ref_counted_memory.h"
++#include "base/strings/string_util.h"
+ #include "base/task/thread_pool.h"
++#include "build/build_config.h"
+ #include "chrome/browser/shell_integration.h"
+ #include "printing/buildflags/buildflags.h"
+@@ -24,6 +27,9 @@
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/buildflags.h"
+ #include "chrome/browser/platform_util.h"
++#include "chrome/browser/download/download_prefs.h"
++#include "components/download/public/common/download_item.h"
++#include "content/public/browser/download_manager.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/devtools/devtools_window.h"
+ #if BUILDFLAG(ENABLE_PRINTING)
+@@ -125,10 +131,139 @@
+ #include <set>
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++namespace {
++
++struct ResolvedOpenPath {
++  base::FilePath path;
++  bool allowed = false;
++  bool directory = false;
++};
++
++// Resolve symlinks before checking roots or file type. Only document-like
++// files under Aux storage or the user's download locations may launch an app.
++ResolvedOpenPath ResolveOpenPath(base::FilePath requested,
++                                 std::vector<base::FilePath> roots,
++                                 std::vector<base::FilePath> completed_downloads,
++                                 bool reveal_only) {
++  const base::FilePath path = base::MakeAbsoluteFilePath(requested);
++  if (path.empty()) return {};
++  if (reveal_only) return {path, true, false};
++  static const auto* blocked = new std::set<std::string>({
++      ".app", ".command", ".sh", ".bash", ".zsh", ".csh", ".fish",
++      ".tool", ".terminal", ".pkg", ".mpkg", ".scpt", ".scptd",
++      ".applescript", ".workflow", ".action", ".jar", ".exe",
++      ".bat", ".cmd", ".msi", ".ps1", ".vbs", ".py", ".rb",
++      ".pl", ".php", ".webloc", ".inetloc", ".fileloc", ".desktop",
++      ".dmg", ".xip", ".mobileconfig", ".appex"});
++  for (base::FilePath component = path; !component.empty() &&
++                                   component != component.DirName();
++       component = component.DirName()) {
++    if (blocked->contains(base::ToLowerASCII(component.Extension()))) return {};
++  }
++  const bool directory = base::DirectoryExists(path);
++  if (!directory) {
++#if BUILDFLAG(IS_POSIX)
++    int permissions = 0;
++    if (!base::GetPosixFilePermissions(path, &permissions) ||
++        (permissions & (base::FILE_PERMISSION_EXECUTE_BY_USER |
++                        base::FILE_PERMISSION_EXECUTE_BY_GROUP |
++                        base::FILE_PERMISSION_EXECUTE_BY_OTHERS))) {
++      return {};
++    }
++#else
++    return {};
++#endif
++  }
++  for (const base::FilePath& download : completed_downloads) {
++    if (base::MakeAbsoluteFilePath(download) == path)
++      return {path, true, false};
++  }
++  for (const base::FilePath& root : roots) {
++    const base::FilePath resolved_root = base::MakeAbsoluteFilePath(root);
++    if (!resolved_root.empty() && resolved_root.IsParent(path))
++      return {path, true, directory};
++  }
++  return {};
++}
++
++}  // namespace
++
+ void WebUIBrowserUI::HandleAuxWindowRequest(
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "openPath" || method == "revealPath") {
++    const bool reveal_only = method == "revealPath";
++    if (list->size() != 1 || !(*list)[0].is_string() ||
++        (*list)[0].GetString().empty() ||
++        (*list)[0].GetString().size() > 8192) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "An absolute file path is required");
++      return;
++    }
++    const base::FilePath requested =
++        base::FilePath::FromUTF8Unsafe((*list)[0].GetString());
++    if (!requested.IsAbsolute()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "An absolute file path is required");
++      return;
++    }
++    Profile* profile = browser_->GetProfile();
++    std::vector<base::FilePath> roots;
++    if (!profile->IsOffTheRecord())
++      roots.push_back(profile->GetPath().Append("Aux Runtime Data"));
++    if (auto* prefs = DownloadPrefs::FromBrowserContext(profile))
++      roots.push_back(prefs->DownloadPath());
++    roots.push_back(DownloadPrefs::GetDefaultDownloadDirectory());
++    std::vector<base::FilePath> completed_downloads;
++    if (auto* manager = profile->GetDownloadManager()) {
++      content::DownloadManager::DownloadVector items;
++      manager->GetAllDownloads(&items);
++      for (download::DownloadItem* item : items) {
++        if (item->GetState() == download::DownloadItem::COMPLETE)
++          completed_downloads.push_back(item->GetTargetFilePath());
++      }
++    }
++    base::ThreadPool::PostTaskAndReplyWithResult(
++        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
++        base::BindOnce(&ResolveOpenPath, requested, std::move(roots),
++                       std::move(completed_downloads), reveal_only),
++        base::BindOnce(
++            [](base::WeakPtr<WebUIBrowserUI> self, bool reveal_only,
++               RequestCallback callback, ResolvedOpenPath resolved) {
++              if (!self) return;
++              if (!resolved.allowed) {
++                std::move(callback).Run(
++                    true, reveal_only ? "false" :
++                          *base::WriteJson(base::Value(
++                              "Aux opens documents from its data and download folders only. Use Reveal to show this file in Finder.")),
++                    "", "");
++                return;
++              }
++              Profile* profile = self->browser_->GetProfile();
++              if (reveal_only) {
++                platform_util::ShowItemInFolder(profile, resolved.path);
++                std::move(callback).Run(true, "true", "", "");
++                return;
++              }
++              platform_util::OpenItem(
++                  profile, resolved.path,
++                  resolved.directory ? platform_util::OPEN_FOLDER
++                                     : platform_util::OPEN_FILE,
++                  base::BindOnce(
++                      [](RequestCallback callback,
++                         platform_util::OpenOperationResult result) {
++                        const char* error = result == platform_util::OPEN_SUCCEEDED
++                            ? "" : result == platform_util::OPEN_FAILED_PATH_NOT_FOUND
++                            ? "File not found" : result == platform_util::OPEN_FAILED_INVALID_TYPE
++                            ? "Not a file or folder" : result == platform_util::OPEN_FAILED_NO_HANLDER_FOR_FILE_TYPE
++                            ? "No application can open this file" : "The file could not be opened";
++                        std::move(callback).Run(
++                            true, *base::WriteJson(base::Value(error)), "", "");
++                      }, std::move(callback)));
++            }, GetWeakPtr(), reveal_only, std::move(callback)));
++    return;
++  }
+   if (method == "openExternal") {
+     if (list->size() != 1 || !(*list)[0].is_string()) {
+       std::move(callback).Run(false, "", "invalid_argument",

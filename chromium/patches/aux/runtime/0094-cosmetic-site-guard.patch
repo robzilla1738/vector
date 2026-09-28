@@ -1,0 +1,25 @@
+--- a/chrome/browser/ui/aux/cosmetic_controller.cc
++++ b/chrome/browser/ui/aux/cosmetic_controller.cc
+@@ -22,6 +22,8 @@
+ #include "chrome/browser/ui/aux/content_blocking_policy.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
++#include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
+ #include "crypto/sha2.h"
+@@ -204,8 +206,11 @@
+   }
+   auto* catalog = TabCatalog::GetForProfile(profile);
+   auto* contents = catalog ? catalog->FindPage(*page_id) : nullptr;
+-  return contents && contents->GetLastCommittedURL() == GURL(*expected_url) &&
+-         contents->GetPrimaryMainFrame()->GetNavigationId() == *navigation_id;
++  const content::NavigationEntry* entry =
++      contents ? contents->GetController().GetLastCommittedEntry() : nullptr;
++  return contents && entry &&
++         contents->GetLastCommittedURL() == GURL(*expected_url) &&
++         entry->GetUniqueID() == *navigation_id;
+ }
+ 
+ base::DictValue Accepted() {

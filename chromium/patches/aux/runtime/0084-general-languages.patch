@@ -1,0 +1,108 @@
+--- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
++++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+@@ -55,6 +55,8 @@
+ #include "components/guest_contents/browser/guest_contents_handle.h"
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/prefs/pref_service.h"
++#include "components/language/core/browser/language_prefs.h"
++#include "components/language/core/browser/pref_names.h"
+ #include "components/spellcheck/spellcheck_buildflags.h"
+ #if BUILDFLAG(ENABLE_SPELLCHECK)
+ #include "components/spellcheck/browser/pref_names.h"
+@@ -138,6 +140,76 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "languagePreferences") {
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Language preferences require a regular profile");
++      return;
++    }
++    auto* prefs = profile->GetPrefs();
++    const auto* selected_pref =
++        prefs->FindPreference(language::prefs::kSelectedLanguages);
++    if (!selected_pref) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "Language preferences are unavailable");
++      return;
++    }
++    language::LanguagePrefs languages(prefs);
++    if (!list->empty()) {
++      if (selected_pref->IsManaged()) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Languages are managed by policy");
++        return;
++      }
++      if (!(*list)[0].is_list()) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Expected a language list");
++        return;
++      }
++      const base::ListValue& input = (*list)[0].GetList();
++      if (input.empty() || input.size() > 20) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Choose between 1 and 20 languages");
++        return;
++      }
++      std::vector<std::string> selected;
++      std::set<std::string> unique;
++      for (const base::Value& entry : input) {
++        if (!entry.is_string() || entry.GetString().empty() ||
++            !unique.insert(entry.GetString()).second) {
++          std::move(callback).Run(false, "", "invalid_argument",
++                                  "Languages must be distinct valid codes");
++          return;
++        }
++        selected.push_back(entry.GetString());
++      }
++      if (l10n_util::KeepAcceptedLanguages(selected) != selected) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Unsupported language code");
++        return;
++      }
++      languages.SetUserSelectedLanguagesList(selected);
++    }
++    std::vector<std::string> selected;
++    std::vector<std::string> effective;
++    languages.GetUserSelectedLanguagesList(&selected);
++    languages.GetAcceptLanguagesList(&effective);
++    base::ListValue selected_json;
++    base::ListValue effective_json;
++    for (const auto& code : selected) selected_json.Append(code);
++    for (const auto& code : effective) effective_json.Append(code);
++    base::ListValue forced_json =
++        prefs->GetList(language::prefs::kForcedLanguages).Clone();
++    base::DictValue result;
++    result.Set("selected", std::move(selected_json));
++    result.Set("effective", std::move(effective_json));
++    result.Set("forced", std::move(forced_json));
++    result.Set("managed", selected_pref->IsManaged());
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
+   if (method == "startupPreferences") {
+     auto* profile = browser_->GetProfile();
+     if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -60,6 +60,7 @@
+                   "surfaceContentId", "hardReload", "printPage", "devTools",
+                   "savePagePdf", "downloadFolder", "chooseDownloadFolder",
+                   "spellCheck",
++                  "languagePreferences",
+                   "startupPreferences",
+                   "downloadsSnapshot", "controlDownload", "retryDownload"});
+   register_shell(AuxShellMethodGroup::kExtensions,
+--- a/chrome/browser/ui/webui_browser/BUILD.gn
++++ b/chrome/browser/ui/webui_browser/BUILD.gn
+@@ -176,6 +176,7 @@
+       "//chrome/browser/extensions:extensions",
+       "//chrome/browser/ui/aux:runtime",
+       "//components/prefs",
++      "//components/language/core/browser",
+       "//components/spellcheck:buildflags",
+       "//components/dom_distiller/content/browser",
+       "//components/dom_distiller/core",

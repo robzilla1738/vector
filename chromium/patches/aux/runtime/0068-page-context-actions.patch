@@ -1,0 +1,91 @@
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -15,6 +15,7 @@
+ #include "base/memory/ref_counted_memory.h"
+ #include "base/strings/string_util.h"
+ #include "base/strings/utf_string_conversions.h"
++#include "base/time/time.h"
+ #include "base/task/thread_pool.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/shell_integration.h"
+@@ -56,6 +57,7 @@
+ #include "chrome/browser/ui/aux/extension_bridge.h"
+ #include "chrome/browser/ui/aux/migration_import.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/shell_events.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
+ #include "chrome/browser/ui/aux/result_preview.h"
+@@ -146,6 +148,8 @@
+   kAuxContextForward = 2,
+   kAuxContextReload = 3,
+   kAuxContextCopyAddress = 4,
++  kAuxContextAskAboutPage = 5,
++  kAuxContextSummarizePage = 6,
+ };
+ 
+ struct ResolvedOpenPath {
+@@ -216,6 +220,13 @@
+   if (command_id == kAuxContextForward) return navigation.CanGoForward();
+   if (command_id == kAuxContextCopyAddress)
+     return contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS();
++  if (command_id == kAuxContextAskAboutPage ||
++      command_id == kAuxContextSummarizePage) {
++    const GURL& url = contents->GetLastCommittedURL();
++    return !browser_->GetProfile()->IsOffTheRecord() &&
++           url.SchemeIsHTTPOrHTTPS() && url.spec().size() <= 2048 &&
++           !url.has_username() && !url.has_password();
++  }
+   return command_id == kAuxContextReload;
+ }
+ 
+@@ -241,6 +252,25 @@
+       writer.WriteText(base::UTF8ToUTF16(contents->GetLastCommittedURL().spec()));
+       break;
+     }
++    case kAuxContextAskAboutPage:
++    case kAuxContextSummarizePage: {
++      const std::string url = contents->GetLastCommittedURL().spec();
++      base::DictValue action;
++      action.Set("pageId", aux_context_page_id_);
++      action.Set("url", url);
++      action.Set("topUrl", url);
++      action.Set("title", base::UTF16ToUTF8(contents->GetTitle().substr(0, 512)));
++      action.Set("capturedAt", static_cast<double>(
++          base::Time::Now().InMillisecondsSinceUnixEpoch()));
++      action.Set("windowId", base::NumberToString(browser_->GetSessionID().id()));
++      action.Set("action", command_id == kAuxContextSummarizePage
++                               ? "summarize" : "ask");
++      action.Set("selection", "");
++      action.Set("truncated", false);
++      if (const auto json = base::WriteJson(base::Value(std::move(action))))
++        aux::EmitShellEvent(browser_->GetProfile(), "onPageAction", *json);
++      break;
++    }
+   }
+ }
+ 
+@@ -279,6 +309,11 @@
+     aux_context_menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
+     aux_context_menu_model_->AddItem(kAuxContextCopyAddress,
+                                     u"Copy page address");
++    aux_context_menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
++    aux_context_menu_model_->AddItem(kAuxContextAskAboutPage,
++                                    u"Ask about this page");
++    aux_context_menu_model_->AddItem(kAuxContextSummarizePage,
++                                    u"Summarize page");
+     aux_context_menu_adapter_ = std::make_unique<views::MenuModelAdapter>(
+         aux_context_menu_model_.get());
+     aux_context_menu_runner_ = std::make_unique<views::MenuRunner>(
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -34,6 +34,7 @@
+   'onOrganizationChanged', 'onShortcut', 'onSiteZoomChanged',
+   'onRuntimeStatus', 'onLoading', 'onAudio', 'onDownload',
+   'onHttpAuthChanged', 'onTabsPlacement', 'onQuickAskState',
++  'onPageAction',
+ ]);
+ type Match = {id: string; type: 'history'|'bookmark'|'search'|'typed'; title: string; url: string; description?: string};
+ let searchbox: PageHandlerRemote|undefined;

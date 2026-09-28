@@ -1,4 +1,4 @@
-import { memo, useRef } from "react";
+import { memo, useRef, type CSSProperties } from "react";
 import { NavigationButtons } from "./NavigationButtons";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
@@ -12,12 +12,12 @@ export const Toolbar = memo(function Toolbar() {
   const sidebar = useStore(s => s.sidebar);
   const horizontal = useStore(s => (s.settings.tabLayout ?? "horizontal") === "horizontal");
   const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
+  const settingsRoute = useStore((s) => s.overlay === "settings");
   const mode = useStore((s) => s.mode);
   const setMode = useStore((s) => s.setMode);
   const railOpen = useStore((s) => s.railOpen);
   const toggleRail = useStore((s) => s.toggleRail);
   const setSidebar = useStore((s) => s.setSidebar);
-  const bookmarks = useStore((s) => s.bookmarks);
   const returnControl = useStore((s) => s.returnControl);
   const takingControl = useRef(false);
   const takeControl = async (pageId: string) => {
@@ -28,19 +28,21 @@ export const Toolbar = memo(function Toolbar() {
     finally { takingControl.current = false; }
   };
   const web = !!page && page.url.startsWith("http");
-  const bookmarked = web && bookmarks.some((b) => b.url === page.url);
+  const bookmarked = useStore((s) => !!page && page.url.startsWith("http") && s.bookmarks.some((b) => b.url === page.url));
 
   const bookmarkPending = useStore(state => !!page && !!state.bookmarkPending[page.url]);
+  const themeColor = web && !page?.navigationError && /^#[0-9a-f]{6}$/.test(page?.themeColor ?? "") ? page!.themeColor : undefined;
   const toggleBookmark = () => {
     if (page && web) void useStore.getState().toggleBookmark(page.url, page.title).catch(errToast);
   };
 
   return (
-    <header className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}>
+    <header className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
+      style={themeColor ? { "--page-toolbar-glass": `color-mix(in srgb, ${themeColor} 14%, var(--toolbar-glass))` } as CSSProperties : undefined}>
       <div className="tb-left">
         {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} onClick={() => setSidebar(sidebar === "expanded" ? "hidden" : "expanded")}>{I.sidebarOpen}</button>}
         <div className="nav-btns">
-          <NavigationButtons page={page} />
+          <NavigationButtons page={page} settingsRoute={settingsRoute} />
         </div>
       </div>
 

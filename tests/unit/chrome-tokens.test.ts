@@ -7,7 +7,8 @@ import { readCssGraph } from "./read-css-graph.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const tokens = readFileSync(join(here, "../../apps/shell/src/tokens.css"), "utf8");
 const styles = readCssGraph(join(here, "../../apps/shell/src/styles.css"));
-const sharedUi = readFileSync(join(here, "../../apps/shell/src/components/ui.css"), "utf8");
+const sharedUi = readFileSync(join(here, "../../apps/shell/src/ui/ui.css"), "utf8");
+const conversationCss = readFileSync(join(here, "../../apps/shell/src/components/Conversation.css"), "utf8");
 const css = tokens + "\n" + styles;
 
 function block(theme: "dark" | "light"): string {
@@ -274,7 +275,7 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     expect(images).toContain('className="conversation-capture-rest"');
     expect(images).toContain(">Image</button>");
     expect(images).toContain(">Capture</button>");
-    expect(styles).toContain(".conversation .capture-triggers { display:none; }");
+    expect(conversationCss).toContain(".conversation .capture-triggers { display:none; }");
     expect(styles).toContain(".conversation .run-msg { display: none; }");
     // Run status (Pause/Stop/state badge) and Work history stay visible in chat panels;
     // hiding them regresses the live-run controls — see .conversation .run-msg above.

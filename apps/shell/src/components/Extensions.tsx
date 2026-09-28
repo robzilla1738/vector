@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { bridge, inNativeHost, type BrowserExtension } from "../bridge";
 import { storeExtensionId } from "../store-extension-id";
-import { NativeDialog } from "./NativeDialog";
+import { Dialog } from "../ui";
 
 export function Extensions() {
   const storeHost = inNativeHost;
@@ -104,9 +104,22 @@ export function Extensions() {
             >
               Install from Store…
             </button>
+            <button
+              className="btn ghost"
+              disabled={busy}
+              onClick={() =>
+                void action(async () => {
+                  const installed = await bridge.installUnpackedExtension();
+                  if (installed) setMessage(`${installed.name} installed from a local folder.`);
+                })
+              }
+            >
+              Install unpacked…
+            </button>
           </div>
           <p className="hint">
-            Store extensions update through Chromium. Use Check for update to request an immediate check.
+            Store extensions update through Chromium. Unpacked extensions stay linked to the folder you choose;
+            use Update after changing its files.
           </p>
         </>
       ) : (
@@ -302,10 +315,10 @@ export function Extensions() {
         ))}
       </div>
       {removeTarget && (
-        <NativeDialog
+        <Dialog
           label={`Remove ${removeTarget.name}?`}
           onClose={() => setRemoveTarget(null)}
-          className="sheet pop-in"
+          className="aux-dialog-surface pop-in"
         >
           <h3>Remove {removeTarget.name}?</h3>
           <p>
@@ -330,7 +343,7 @@ export function Extensions() {
               Remove extension
             </button>
           </div>
-        </NativeDialog>
+        </Dialog>
       )}
     </section>
   );

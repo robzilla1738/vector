@@ -5,7 +5,7 @@ import { bridge, inNativeHost } from "../bridge";
 import { call, errToast, toast } from "../store";
 import { AnswerMarkdown } from "./AnswerMarkdown";
 import { ViewerFrame } from "./ViewerFrame";
-import { ActionMenu } from "./ui";
+import { ActionMenu } from "../ui";
 import { isolatedHtmlDocument } from "../isolated-html";
 
 type Result = { artifactId: string; chatId: string; filename: string; mediaType: string; content: string; createdAt: number; revision?:number;parentArtifactId?:string };

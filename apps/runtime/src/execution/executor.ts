@@ -202,12 +202,16 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
     // Before-state for setter steps: read the control before dispatch so the
     // ledger records what the write replaced (S4). A failed read never blocks.
     let before: Record<string, unknown> | undefined;
+    let pageUrl: string | undefined;
+    let beforeEpoch: number | undefined;
     try {
       ctx.checkValid?.();
       assertEvalAllowed(step, ctx.allowEval ?? false);
       authorization = await ctx.authorizeStep?.(step);
       ctx.checkValid?.();
       if (SETTER_OPS.has(step.op) && page.fieldState && "target" in step && step.target) {
+        pageUrl = page.url();
+        beforeEpoch = (page as unknown as { documentEpoch?: () => number }).documentEpoch?.();
         before = await page.fieldState(String(step.target)).catch(() => undefined);
       }
       ctx.checkValid?.();
@@ -228,6 +232,9 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         }
       }
       ctx.checkValid?.();
+      const after = before && page.fieldState && pageUrl === page.url() && beforeEpoch ===
+        (page as unknown as { documentEpoch?: () => number }).documentEpoch?.() && "target" in step && step.target
+        ? await page.fieldState(String(step.target)).catch(() => undefined) : undefined;
       const postconditions = (step.expect as Condition[] | undefined) ?? [];
       const mutating = isConsequential(step.op);
       const outcome: StepOutcome = {
@@ -238,6 +245,8 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         durationMs: Date.now() - startedAt,
         ...(authorization ? { authorization } : {}),
         ...(before ? { before } : {}),
+        ...(after ? { after } : {}),
+        ...(pageUrl ? { pageUrl } : {}),
         effect: postconditions.length ? "observed" : mutating ? "uncertain" : "observed",
         receipt: {
           observed: postconditions.length
@@ -290,6 +299,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         error: { code, message: e instanceof Error ? e.message : String(e) },
         ...(authorization ? { authorization } : {}),
         ...(before ? { before } : {}),
+        ...(pageUrl ? { pageUrl } : {}),
         ...(takenOver ? { effect: "uncertain" as const, receipt: {
           remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: true,
         } } : {}),

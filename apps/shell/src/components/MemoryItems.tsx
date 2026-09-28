@@ -1,4 +1,5 @@
-import { ActionMenu, Checkbox, DetailPane, ListRow, Select, TextField } from "./ui";
+import "./MemoryItems.css";
+import { ActionMenu, Checkbox, DetailPane, ListRow, Select, TextField } from "../ui";
 import { I } from "./icons";
 import { MemoryExclusions } from "./MemoryExclusions";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";

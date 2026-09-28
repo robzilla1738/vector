@@ -31,5 +31,11 @@ it("bounds recent chats, exposes organization in one menu, and requires confirma
     await act(async () => host.querySelector('.session-disclosure.open')!.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true})));
     expect(host.querySelector('.session-disclosure.open')).toBeNull();
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Actions for Session 0");
+    await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Actions for Session 0"]')!.click());
+    const move = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(button => button.textContent?.includes("Move to project"))!;
+    await act(async () => move.click());
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Project for Session 0");
+    await act(async () => host.querySelector('.session-disclosure.open')!.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true})));
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Actions for Session 0");
   } finally { await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); }
 });

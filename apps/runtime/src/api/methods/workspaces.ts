@@ -1,6 +1,7 @@
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
+import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
 
 async function h_workspaces_create(ctx: MethodCtx): Promise<unknown> {
   const { params, tasks } = ctx;
@@ -11,6 +12,23 @@ async function h_workspaces_list(ctx: MethodCtx): Promise<unknown> {
   return scope
     ? tasks.workspaces().filter((workspace) => workspace.workspaceId === scope.workspaceId)
     : tasks.workspaces();
+}
+async function h_workspaces_folders(ctx: MethodCtx): Promise<unknown> {
+  const { client, method, params, workspaceFolders } = ctx;
+  if (client.external || client.codeMode)
+    throw new AuxError("permission_denied", "Local folder access is managed in Aux Settings.");
+  if (method === "workspaces.folders.inspect") return workspaceFolders.inspect(params.workspaceId, params.path, params.access);
+  if (method === "workspaces.folders.add") return workspaceFolders.add(params.workspaceId, params.path, params.access, params.expectedDigest);
+  if (method === "workspaces.folders.list") return workspaceFolders.list(params.workspaceId);
+  return workspaceFolders.archive(params.workspaceId, params.folderId);
+}
+async function h_command_escalations(ctx: MethodCtx): Promise<unknown> {
+  const { client, method, params, commandEscalations } = ctx;
+  if (client.external || client.codeMode)
+    throw new AuxError("permission_denied", "Command exceptions require review in local Aux Settings.");
+  if (method === "commands.escalations.list") return commandEscalations.list(params.workspaceId);
+  if (method === "commands.escalations.revoke") return commandEscalations.revoke(params.requestId);
+  return commandEscalations.decide(params.requestId, params.decision, params.prefixRule);
 }
 async function h_workspaces_memory_search(ctx: MethodCtx): Promise<unknown> {
   const { client, params, tasks } = ctx;
@@ -88,6 +106,8 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
   )
     throw new AuxError("conflict", "The selected document changed. Select the current page and retry.");
   const policy = store.policy(params.workspaceId);
+  if (memorySensitivityReason(params.expectedUrl, page.title))
+    throw new AuxError("permission_denied", "Sensitive pages cannot be saved to Memory.");
   const origin = new URL(params.expectedUrl).origin;
   if (!policy.enabled || !policy.allowedOrigins.includes(origin))
     throw new AuxError(
@@ -95,6 +115,8 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
       "Allow this site for page-content recall in the selected Space first.",
     );
   const captured = await s.native.captureReadablePage(page.pageId, params.workspaceId, params.expectedUrl);
+  if (memorySensitivityReason(captured.url, captured.title) || memoryContentSensitivityReason(captured.text))
+    throw new AuxError("permission_denied", "Sensitive pages cannot be saved to Memory.");
   const current = s.pages.get(page.pageId);
   if (
     current.documentEpoch !== page.documentEpoch ||
@@ -110,6 +132,10 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
     documentEpoch: page.documentEpoch,
     sessionId: page.sessionId,
     ...captured,
+  }, () => {
+    const live = s.pages.get(page.pageId);
+    return live.documentEpoch === page.documentEpoch && live.sessionId === page.sessionId &&
+      live.url === page.url && live.backend === "aux" && !live.ownedByRuntime;
   });
   s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
   return { memoryId: saved.memoryId, capturedAt: saved.capturedAt, title: saved.title, url: saved.url };
@@ -138,6 +164,13 @@ async function h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown> {
 export const workspacesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "workspaces.create": h_workspaces_create,
   "workspaces.list": h_workspaces_list,
+  "workspaces.folders.inspect": h_workspaces_folders,
+  "workspaces.folders.add": h_workspaces_folders,
+  "workspaces.folders.list": h_workspaces_folders,
+  "workspaces.folders.archive": h_workspaces_folders,
+  "commands.escalations.list": h_command_escalations,
+  "commands.escalations.decide": h_command_escalations,
+  "commands.escalations.revoke": h_command_escalations,
   "workspaces.memory.search": h_workspaces_memory_search,
   "workspaces.browsingMemory.get": h_workspaces_browsingMemory_get,
   "workspaces.browsingMemory.set": h_workspaces_browsingMemory_get,

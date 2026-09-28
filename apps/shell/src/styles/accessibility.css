@@ -1,10 +1,10 @@
 @layer overrides {
 @media (prefers-reduced-transparency: reduce) {
-  .toolbar, .rail-inner, .cb-pop, .palette, .drawer, .menu { backdrop-filter: none !important; background: var(--bg-1) !important; }
-  .sidebar { backdrop-filter: none !important; background: var(--sb-bg) !important; }
+  .toolbar, .rail-inner, .cb-pop, .palette, .aux-observation-dialog, .menu { backdrop-filter: none; background: var(--bg-1); }
+  .sidebar { backdrop-filter: none; background: var(--sb-bg); }
   .app.native-host .main-col.has-page > .toolbar::before { display: none; }
 }
-@media (prefers-reduced-transparency: reduce) { :root .sidebar { background: var(--sb-bg) !important; backdrop-filter: none !important; } }
+@media (prefers-reduced-transparency: reduce) { :root .sidebar { background: var(--sb-bg); backdrop-filter: none; } }
 @media (prefers-reduced-transparency: reduce) { .history-menu { -webkit-backdrop-filter: none; } }
 @media (prefers-reduced-transparency: reduce) { :root .app-body { background: var(--sb-bg); backdrop-filter: none; } }
 @media (prefers-reduced-motion: reduce) { .sidebar, .sidebar-reveal::after { transition: none; } }
@@ -28,8 +28,8 @@
 }
 @media (forced-colors: active) {
   :root { --ink-0: CanvasText; --ink-1: CanvasText; --ink-2: GrayText; --bg-0: Canvas; --bg-1: Canvas; --bg-2: Canvas; --sb-bg: Canvas; --line: CanvasText; --focus-line: Highlight; }
-  .app, .app-body, .sidebar, .chat-sidebar, .rail, .main-col, .toolbar, .menu, .cb-pop, .palette, .drawer, .sheet, .stage-card { background: Canvas; color: CanvasText; backdrop-filter: none; box-shadow: none; }
-  :is(.sidebar, .chat-sidebar, .rail, .menu, .cb-pop, .palette, .drawer, .sheet, .stage-card) { border: 1px solid CanvasText; }
+  .app, .app-body, .sidebar, .chat-sidebar, .rail, .main-col, .toolbar, .menu, .cb-pop, .palette, .aux-native-dialog, .stage-card { background: Canvas; color: CanvasText; backdrop-filter: none; box-shadow: none; }
+  :is(.sidebar, .chat-sidebar, .rail, .menu, .cb-pop, .palette, .aux-native-dialog, .stage-card) { border: 1px solid CanvasText; }
   :is(.tab-row.active, .horizontal-tab:has([data-active="true"]), .horizontal-tab.empty, .menu-item.on, .cb-opt.sel) { outline: 2px solid Highlight; outline-offset: -2px; }
   :is(button, input, select, textarea, [role="tab"], [role="button"], summary):focus-visible { outline: 2px solid Highlight; outline-offset: -2px; box-shadow: none; }
   :is(.cb-provider-scopes button[aria-pressed="true"], .swatch[aria-checked="true"], .swatch[aria-pressed="true"]) { outline: 2px solid Highlight; outline-offset: -2px; }

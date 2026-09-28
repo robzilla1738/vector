@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { ActionMenu, ListRow, StatusBadge } from "./ui";
+import { ActionMenu, Badge, ListRow } from "../ui";
+import { useConfirm } from "../ui/confirm";
 import { bridge, inNativeHost, type BrowserProfile } from "../bridge";
 
 export function BrowserProfiles() {
   const [profiles,setProfiles]=useState<BrowserProfile[]>([]);
   const [editing,setEditing]=useState<string|null>(null);
-  const [confirming,setConfirming]=useState<string|null>(null);
+  const { confirm, confirmation } = useConfirm();
   const [name,setName]=useState("");
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
@@ -37,18 +38,30 @@ export function BrowserProfiles() {
     if(!await bridge.openBrowserProfile(profile.id))throw new Error("This profile could not be opened.");
     setMessage(`Opening ${profile.name} in a separate window…`);
   });
+  const deleteProfile = async (profile: BrowserProfile) => {
+    if (!await confirm({
+      title: `Delete “${profile.name}”?`,
+      description: "This permanently removes its sign-ins, tabs, history, chats, memory and connections on this Mac. This cannot be undone.",
+      confirmLabel: "Delete permanently",
+      cancelLabel: "Keep Profile",
+      danger: true,
+    })) return;
+    await action(async () => {
+      setProfiles(await bridge.deleteBrowserProfile(profile.id));
+      setMessage(`${profile.name} and its browsing data were deleted.`);
+    });
+  };
   const profileRow=(profile:BrowserProfile)=><div className="browser-profile-item" key={profile.id}>
     <ListRow title={profile.name} description={profile.current?"Current Profile":profile.archived?"Archived · data kept on this Mac":"Separate sign-ins and browsing data"} leading={<span className="browser-profile-avatar" aria-hidden="true">{profile.name.slice(0,1).toLocaleUpperCase()}</span>} selected={profile.current} disabled={busy||profile.current||profile.archived} onOpen={()=>openProfile(profile)} trailing={<>
-      {profile.current ? <StatusBadge label="Current"/> : !profile.archived && <button className="btn sm" disabled={busy} onClick={()=>openProfile(profile)}>Open</button>}
+      {profile.current ? <Badge label="Current"/> : !profile.archived && <button className="btn sm" disabled={busy} onClick={()=>openProfile(profile)}>Open</button>}
       <ActionMenu label={`Actions for ${profile.name} Profile`} actions={[
         {label:"Rename",disabled:busy,onSelect:()=>{setEditing(profile.id);setName(profile.name);}},
         ...(!profile.current && profile.id!=="default" ? [
           {label:profile.archived?"Restore":"Archive",disabled:busy,onSelect:()=>void action(async()=>{setProfiles(await bridge.archiveBrowserProfile(profile.id,!profile.archived));if(editing===profile.id)setEditing(null);setMessage(profile.archived?`${profile.name} restored.`:`${profile.name} archived. Its data and any open windows are kept.`);})},
-          {label:"Delete…",disabled:busy,danger:true,onSelect:()=>setConfirming(profile.id)},
+          {label:"Delete…",disabled:busy,danger:true,onSelect:()=>void deleteProfile(profile)},
         ]:[]),
       ]}/>
     </>}/>
-    {confirming===profile.id && <section className="browser-profile-confirmation" aria-label={`Delete ${profile.name} Profile`}><strong>Delete “{profile.name}”?</strong><p>This permanently removes its sign-ins, tabs, history, chats, memory and connections on this Mac. This cannot be undone.</p><div className="row"><button className="btn sm danger" disabled={busy} onClick={()=>void action(async()=>{setProfiles(await bridge.deleteBrowserProfile(profile.id));setConfirming(null);setMessage(`${profile.name} and its browsing data were deleted.`);})}>Delete permanently</button><button className="btn sm ghost" disabled={busy} onClick={()=>setConfirming(null)}>Keep Profile</button></div></section>}
   </div>;
   if(!inNativeHost||bridge.privateMode)return null;
   return <div className="browser-profiles">
@@ -79,5 +92,6 @@ export function BrowserProfiles() {
     </details>}
     {error&&<div role="alert"><p className="hint err">{error}</p><button className="btn sm ghost" disabled={busy} onClick={()=>setRefresh(value=>value+1)}>Refresh profiles</button></div>}
     {message&&<output className="hint" data-block>{message}</output>}
+    {confirmation}
   </div>;
 }

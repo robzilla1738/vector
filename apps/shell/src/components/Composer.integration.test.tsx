@@ -6,6 +6,8 @@ import {HOME_DRAFT_CHAT_KEY,PENDING_CHAT_KEY} from "../conversation-drafts";
 import HomeAsk from "./HomeAsk";
 import { Conversation } from "./Conversation";
 import { BrowserContextPicker } from "./BrowserContextPicker";
+import { BrowserContextTray } from "./BrowserContextTray";
+import { sourceRef } from "../browser-context-sources";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
 import { makePage, makeRun } from "../mock/fixtures";
@@ -70,10 +72,25 @@ it("searches only available browser tabs and returns focus without silently chan
   expect(dialog.textContent).not.toContain('Agent notes');
   expect(dialog.textContent).not.toContain('Broken notes');
   expect(change).not.toHaveBeenCalled();
+  await act(async () => useStore.setState(state => ({ pages: state.pages.map(page => page.pageId === 'work' ? { ...page, title: 'Work notes updated' } : page) })));
+  expect(dialog.textContent).toContain('Work notes updated');
   await act(async () => dialog.querySelector<HTMLButtonElement>('.context-choice')!.click());
   expect(change).toHaveBeenCalledWith('work');
   expect(document.querySelector('dialog')).toBeNull();
   expect(document.activeElement).toBe(trigger);
+});
+
+it("updates a selected source row when its tab changes without replacing the source", async () => {
+  const active = makePage(0, { pageId: "active", title: "Active", url: "https://example.com/active" });
+  const other = makePage(0, { pageId: "other", title: "Original title", url: "https://example.com/other" });
+  useStore.setState({ pages: [active, other], activePageId: active.pageId });
+  const source = sourceRef(other);
+  await act(async () => root.render(<BrowserContextTray primary="active" sources={[source]} onPrimary={vi.fn()} onSources={vi.fn()} disabled={false} />));
+  expect(host.textContent).toContain("Original title");
+  await act(async () => useStore.setState(state => ({ pages: state.pages.map(page => page.pageId === "other" ? { ...page, title: "Updated title" } : page) })));
+  expect(host.textContent).toContain("Updated title");
+  await act(async () => useStore.setState(state => ({ pages: state.pages.map(page => page.pageId === "other" ? { ...page, url: "https://example.com/changed" } : page) })));
+  expect(host.textContent).toContain("Changed");
 });
 
 it("keeps home context controls behind plus and preserves the draft while toggling them", async () => {

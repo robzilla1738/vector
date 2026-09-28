@@ -1,0 +1,34 @@
+diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/profile_library.cc
+--- a/chrome/browser/ui/aux/profile_library.cc
++++ b/chrome/browser/ui/aux/profile_library.cc
+@@ -725,6 +725,30 @@
+ 
+   if (method == "bookmarks.remove") {
+     const bookmarks::BookmarkNode *node = FindBookmark(params, "url");
++    if (const base::DictValue *expected = params.FindDict("expected")) {
++      const std::string *title = expected->FindString("title");
++      std::optional<double> created_at = expected->FindDouble("createdAt");
++      if (!node || !title || !created_at ||
++          base::UTF16ToUTF8(node->GetTitle()) != *title ||
++          static_cast<double>(
++              node->date_added().InMillisecondsSinceUnixEpoch()) !=
++              *created_at) {
++        return Fault("conflict", "This bookmark changed since the run");
++      }
++      if (const base::ListValue *folder = expected->FindList("folderPath")) {
++        if (FolderPath(node) != *folder) {
++          return Fault("conflict", "This bookmark moved since the run");
++        }
++      }
++      if (std::optional<bool> reading = expected->FindBool("readingList")) {
++        std::string meta;
++        const bool current = node->GetMetaInfo(kReadingListKey, &meta) &&
++                             meta == "1";
++        if (current != *reading) {
++          return Fault("conflict", "This bookmark changed reading-list state");
++        }
++      }
++    }
+     if (node) {
+       bookmarks_->Remove(node, bookmarks::metrics::BookmarkEditSource::kUser,
+                          FROM_HERE);

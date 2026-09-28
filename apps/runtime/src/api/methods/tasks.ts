@@ -3,8 +3,42 @@ import type { MethodName } from "@aux/contracts";
 import { AuxError, taskMatchesQuery } from "@aux/contracts";
 
 async function h_tasks_receipt(ctx: MethodCtx): Promise<unknown> {
-  const { params, taskEvidence } = ctx;
-  return taskEvidence.receipt(params.taskId, params.revision);
+  const { client, params, taskEvidence } = ctx;
+  const receipt = taskEvidence.receipt(params.taskId, params.revision);
+  return client.external ? { ...receipt,
+    browserChanges: receipt.browserChanges.map(({ before: _before, after: _after, ...change }) => change),
+    tabChanges: receipt.tabChanges.map(({ url: _url, ...change }) => change),
+    remoteActions: receipt.remoteActions.map(({ browserObserved: _browserObserved, ...change }) => change),
+    bookmarkChanges: receipt.bookmarkChanges.map(({ url: _url, title: _title, ...change }) => change),
+    downloadChanges: receipt.downloadChanges.map(({ filename: _filename, sourceUrl: _sourceUrl,
+      path: _path, ...change }) => change),
+    historyChanges: receipt.historyChanges.map(({ url: _url, title: _title, ...change }) => change),
+  } : receipt;
+}
+async function h_tasks_undoBrowserChange(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, taskEvidence } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Undo requires the Aux desktop interface");
+  return taskEvidence.undoBrowserChange(params);
+}
+async function h_tasks_undoRunBrowserChanges(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, taskEvidence } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Undo requires the Aux desktop interface");
+  return taskEvidence.undoRunBrowserChanges(params);
+}
+async function h_tasks_undoBookmarkChange(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, taskEvidence } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Undo requires the Aux desktop interface");
+  return taskEvidence.undoBookmarkChange(params);
+}
+async function h_tasks_undoDownloadChange(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, taskEvidence } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Download cleanup requires the Aux desktop interface");
+  return taskEvidence.undoDownloadChange(params);
+}
+async function h_tasks_undoHistoryChange(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, taskEvidence } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "History cleanup requires the Aux desktop interface");
+  return taskEvidence.undoHistoryChange(params);
 }
 async function h_tasks_verifyCriterion(ctx: MethodCtx): Promise<unknown> {
   const { params, taskEvidence } = ctx;
@@ -62,7 +96,7 @@ async function h_tasks_create(ctx: MethodCtx): Promise<unknown> {
   ) {
     throw new AuxError("permission_denied", "Write access on task resources can only be set in Aux.");
   }
-  return tasks.create(params);
+  return tasks.create(params, client.external ? "external" : "desktop");
 }
 async function h_tasks_promote(ctx: MethodCtx): Promise<unknown> {
   const { client, params, tasks } = ctx;
@@ -99,7 +133,7 @@ async function h_tasks_update(ctx: MethodCtx): Promise<unknown> {
   ) {
     throw new AuxError("permission_denied", "Write access on task resources can only be set in Aux.");
   }
-  return tasks.update(params);
+  return tasks.update(params, client.external ? "external" : "desktop");
 }
 async function h_tasks_archive(ctx: MethodCtx): Promise<unknown> {
   const { params, tasks } = ctx;
@@ -113,6 +147,11 @@ async function h_tasks_start(ctx: MethodCtx): Promise<unknown> {
 
 export const tasksMethods: Partial<Record<MethodName, MethodHandler>> = {
   "tasks.receipt": h_tasks_receipt,
+  "tasks.undoBrowserChange": h_tasks_undoBrowserChange,
+  "tasks.undoRunBrowserChanges": h_tasks_undoRunBrowserChanges,
+  "tasks.undoBookmarkChange": h_tasks_undoBookmarkChange,
+  "tasks.undoDownloadChange": h_tasks_undoDownloadChange,
+  "tasks.undoHistoryChange": h_tasks_undoHistoryChange,
   "tasks.verifyCriterion": h_tasks_verifyCriterion,
   "tasks.replaceAgent": h_tasks_replaceAgent,
   "tasks.recordEvidence": h_tasks_recordEvidence,

@@ -1,0 +1,206 @@
+diff --git a/chrome/browser/ui/aux/tab_catalog.h b/chrome/browser/ui/aux/tab_catalog.h
+--- a/chrome/browser/ui/aux/tab_catalog.h
++++ b/chrome/browser/ui/aux/tab_catalog.h
+@@ -45,6 +45,9 @@
+   TabCatalog& operator=(const TabCatalog&) = delete;
+ 
+   base::DictValue Snapshot();
++  base::DictValue SleepTab(BrowserWindowInterface* issuer,
++                           const std::string& page_id,
++                           const std::string& expected_url);
+   base::DictValue Command(BrowserWindowInterface* issuer,
+                             const std::string& command_id,
+                             const base::DictValue& command,
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -17,6 +17,10 @@
+ #include "base/time/time.h"
+ #include "base/uuid.h"
++#include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
++#include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
++#include "chrome/browser/resource_coordinator/lifecycle_unit_state.mojom.h"
+ #include "chrome/browser/profiles/profile_keyed_service_factory.h"
+ #include "chrome/browser/profiles/profile_selections.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+@@ -192,6 +194,8 @@
+       return;
+     }
+     PageIdentity::MarkRuntimeOwned(profile_, contents);
++    if (auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents))
++      lifecycle->SetAutoDiscardable(false);
+     Changed();
+   }
+ }
+@@ -281,6 +285,14 @@
+   if (!identity->space_id().empty()) {
+     tab.Set("spaceId", identity->space_id());
+     tab.Set("workspaceId", identity->workspace_id());
++  }
++  if (auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents)) {
++    if (identity->runtime_owned()) lifecycle->SetAutoDiscardable(false);
++    switch (lifecycle->GetTabState()) {
++      case mojom::LifecycleUnitState::FROZEN: tab.Set("lifecycle", "frozen"); break;
++      case mojom::LifecycleUnitState::DISCARDED: tab.Set("lifecycle", "discarded"); break;
++      default: tab.Set("lifecycle", "live"); break;
++    }
+   }
+   tab.Set("generation", generations_[id]);
+   tab.Set("createdAt", static_cast<double>(created_at_.at(id)));
+@@ -388,6 +402,51 @@
+   return ack;
+ }
+ 
++base::DictValue TabCatalog::SleepTab(BrowserWindowInterface* issuer,
++                                      const std::string& page_id,
++                                      const std::string& expected_url) {
++  auto refused = [](std::string reason) {
++    base::DictValue result;
++    result.Set("slept", false);
++    result.Set("reason", std::move(reason));
++    return result;
++  };
++  if (!issuer || !profile_ || profile_->IsOffTheRecord())
++    return refused("Sleeping tabs is unavailable in this window.");
++  BrowserWindowInterface* owner = nullptr;
++  content::WebContents* contents = FindPage(page_id, &owner);
++  if (!contents || owner != issuer ||
++      contents->GetLastCommittedURL().spec() != expected_url ||
++      !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS())
++    return refused("The tab changed or moved. Review it again.");
++  TabStripModel* model = issuer->GetTabStripModel();
++  const int index = model->GetIndexOfWebContents(contents);
++  if (index < 0 || model->GetActiveWebContents() == contents ||
++      contents->IsLoading() || contents->IsCrashed())
++    return refused("Only a loaded background tab can sleep.");
++  const PageIdentity* identity = PageIdentity::FromWebContents(contents);
++  if (!identity) return refused("This tab has no stable identity.");
++  if (identity->runtime_owned()) return refused("Agent-owned tabs stay awake.");
++  if (contents->IsCurrentlyAudible()) return refused("Playing audio keeps this tab awake.");
++  auto capture = MediaCaptureDevicesDispatcher::GetInstance()->GetMediaStreamCaptureIndicator();
++  if (capture->IsCapturingUserMedia(contents) || capture->IsBeingMirrored(contents) ||
++      capture->IsCapturingTab(contents) || capture->IsCapturingWindow(contents) ||
++      capture->IsCapturingDisplay(contents))
++    return refused("Captured tabs stay awake.");
++  if (contents->NeedToFireBeforeUnloadOrUnloadEvents())
++    return refused("This tab has unload handlers and stays awake.");
++  if (model->IsTabPinned(index)) return refused("Pinned tabs stay awake.");
++  auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents);
++  if (!lifecycle || !lifecycle->IsAutoDiscardable() ||
++      lifecycle->GetTabState() != mojom::LifecycleUnitState::ACTIVE ||
++      !lifecycle->DiscardTab(mojom::LifecycleUnitDiscardReason::PROACTIVE))
++    return refused("Chromium kept this tab active.");
++  Changed();
++  base::DictValue result;
++  result.Set("slept", true);
++  return result;
++}
++
+ base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
+                                       const std::string& command_id,
+                                       const base::DictValue& command,
+diff --git a/chrome/browser/ui/aux/methods/tabs_methods.cc b/chrome/browser/ui/aux/methods/tabs_methods.cc
+--- a/chrome/browser/ui/aux/methods/tabs_methods.cc
++++ b/chrome/browser/ui/aux/methods/tabs_methods.cc
+@@ -166,8 +166,12 @@
+  public:
+   using Reply = aux::mojom::ShellHost::RequestCallback;
+ 
++  using Results = base::OnceCallback<void(base::DictValue)>;
++
+   UnsavedWorkRequest(base::WeakPtr<WebUIBrowserUI> ui, Reply callback)
+       : ui_(std::move(ui)), callback_(std::move(callback)) {}
++  UnsavedWorkRequest(base::WeakPtr<WebUIBrowserUI> ui, Results results)
++      : ui_(std::move(ui)), results_(std::move(results)) {}
+ 
+   void Start(const base::ListValue& tabs) {
+     struct Job {
+@@ -244,7 +248,7 @@
+                 content::GlobalRenderFrameHostId frame_id,
+                 int64_t navigation_id,
+                 base::Value result) {
+-    if (!callback_) return;
++    if (!callback_ && !results_) return;
+     Item& item = items_.at(page_id);
+     content::RenderFrameHost* frame = content::RenderFrameHost::FromID(frame_id);
+     if (!frame || frame->GetNavigationId() != navigation_id || !result.is_bool())
+@@ -256,7 +260,7 @@
+   }
+ 
+   void Finish() {
+-    if (!callback_) return;
++    if (!callback_ && !results_) return;
+     timer_.Stop();
+     if (!ui_) return;
+     auto* catalog = aux::TabCatalog::GetForProfile(ui_->browser()->GetProfile());
+@@ -282,11 +286,13 @@
+       result.Set(page_id, !valid || item.unknown || item.pending ? "unknown" :
+                           item.dirty ? "dirty" : "clean");
+     }
+-    std::move(callback_).Run(true, *base::WriteJson(result), "", "");
++    if (results_) std::move(results_).Run(std::move(result));
++    else std::move(callback_).Run(true, *base::WriteJson(result), "", "");
+   }
+ 
+   base::WeakPtr<WebUIBrowserUI> ui_;
+   Reply callback_;
++  Results results_;
+   std::map<std::string, Item> items_;
+   int pending_ = 0;
+   base::OneShotTimer timer_;
+@@ -298,6 +304,41 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "tabSleep") {
++    if (list->size() != 2 || !(*list)[0].is_string() || !(*list)[1].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid sleep request");
++      return;
++    }
++    const std::string page_id = (*list)[0].GetString();
++    const std::string url = (*list)[1].GetString();
++    if (page_id.empty() || page_id.size() > 128 || url.size() > 8192) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid tab or URL");
++      return;
++    }
++    base::ListValue request;
++    base::DictValue tab;
++    tab.Set("pageId", page_id);
++    tab.Set("url", url);
++    request.Append(std::move(tab));
++    auto done = base::BindOnce(
++        [](base::WeakPtr<WebUIBrowserUI> ui, std::string page_id,
++           std::string url, RequestCallback callback, base::DictValue checks) {
++          if (!ui) return;
++          base::DictValue result;
++          const std::string* state = checks.FindString(page_id);
++          if (!state || *state != "clean") {
++            result.Set("slept", false);
++            result.Set("reason", "This tab has unsaved work or could not be checked.");
++          } else {
++            result = aux::TabCatalog::GetForProfile(ui->browser()->GetProfile())
++                         ->SleepTab(ui->browser(), page_id, url);
++          }
++          std::move(callback).Run(true, *base::WriteJson(result), "", "");
++        }, GetWeakPtr(), page_id, url, std::move(callback));
++    std::make_shared<UnsavedWorkRequest>(GetWeakPtr(), std::move(done))
++        ->Start(request);
++    return;
++  }
+   if (method == "tabsUnsavedWork") {
+     if (list->size() != 1 || !(*list)[0].is_list() ||
+         (*list)[0].GetList().size() > 100) {
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -78,7 +78,7 @@
+                  {"organizationSnapshot", "organizationCommit"});
+   register_shell(AuxShellMethodGroup::kTabs,
+                  {"bindTabSpace", "migrateTabSpaces", "tabsSnapshot",
+-                  "tabsSince", "tabCommand", "tabAudio", "tabsUnsavedWork"});
++                  "tabsSince", "tabCommand", "tabAudio", "tabsUnsavedWork", "tabSleep"});
+   register_shell(AuxShellMethodGroup::kHealth,
+                  {"healthSummary", "clearHealth", "exportDiagnostics"});
+   register_shell(AuxShellMethodGroup::kWindow,

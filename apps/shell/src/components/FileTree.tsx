@@ -1,3 +1,4 @@
+import "./FileTree.css";
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { I } from './icons';
 

@@ -174,7 +174,7 @@ export function buildToolManifest(): LoopToolManifest {
     description: "Run JavaScript in this run's persistent code-mode REPL. The guest surface: page.* page actions " +
       "(page.click(ref), page.fill(ref, text), page.navigate(url), page.waitFor({…}) and friends — every one " +
       "compiles to a governed step through decide() and the write ledger), snapshot(scope), tabs(), " +
-      "openTab(url)/closeTab(id) for owned background tabs, annotatedScreenshot(), display(value), sleep(ms), " +
+      "openTab(url)/closeTab(id) for owned background tabs, page.bookmark() to save the current page after a write decision, annotatedScreenshot(), display(value), sleep(ms), " +
       "cookie-free fetch(url), fs confined to session roots, and subagent cells: spawn({goal, profile?, pageIds?}) " +
       "returns {cellId}, wait(cellId) yields until the cell finishes or the deadline lapses, send(cellId, text) " +
       "steers a running cell, stop(cellId) cancels it. Guest state persists across calls; modules, " +
@@ -258,13 +258,16 @@ export function buildToolManifest(): LoopToolManifest {
     description:
       "Run a shell command under the macOS seatbelt: writes stay inside the session roots, user files and " +
       "credential stores cannot be read, and the network is off by default (network: true asks the user first). " +
-      "stdout/stderr are capped at 64 KB; the command times out after timeoutMs (max 120000).",
+      "For a needed exception, set requireEscalated with a justification and optional prefixRule proposal. Each literal shell segment must be reviewed in Settings → Workspaces; no command executes while review is pending. The owner can allow once, amend a safe prefix, or decline. After review, retry the command. stdout/stderr are capped at 64 KB; the command times out after timeoutMs (max 120000).",
     byline: "Aux seatbelt — confined fs, no cookies, network off by default",
     inputSchema: z.object({
       command: z.string().min(1).max(8_192).describe("The command line, run via /bin/sh -c inside the seatbelt."),
       timeoutMs: z.number().int().positive().optional(),
       workdir: z.string().max(4_096).optional().describe("Working directory — must be inside the session roots."),
       network: z.boolean().optional().describe("Allow outbound network — requires user approval first."),
+      requireEscalated: z.boolean().optional().describe("Request an owner-reviewed exception outside the file/network seatbelt."),
+      justification: z.string().min(8).max(2_000).optional().describe("Required with requireEscalated: why the seatbelt cannot perform this command."),
+      prefixRule: z.string().min(1).max(200).optional().describe("Optional proposal for a narrowly reusable command prefix; owner decides."),
     }),
     execute: async (raw, ctx) => {
       const input = z
@@ -273,6 +276,9 @@ export function buildToolManifest(): LoopToolManifest {
           timeoutMs: z.number().int().positive().optional(),
           workdir: z.string().max(4_096).optional(),
           network: z.boolean().optional(),
+          requireEscalated: z.boolean().optional(),
+          justification: z.string().min(8).max(2_000).optional(),
+          prefixRule: z.string().min(1).max(200).optional(),
         })
         .parse(raw);
       return need(ctx.deps.bash, "bash")(input, { runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId });
@@ -438,6 +444,17 @@ export function buildToolManifest(): LoopToolManifest {
     },
   };
 
+  const goalUpdate: LoopTool = {
+    description: "Report this Goal as paused, or report a blocker. A blocked Goal pauses only after you report the exact same blocker on three consecutive model turns. Use submit_result to complete. This cannot change the owner's budget.",
+    byline: "Aux Goal status — owner-controlled budget",
+    inputSchema: z.object({ status: z.enum(["paused", "blocked"]), blocker: z.string().min(1).max(2_000).optional() }).strict(),
+    requiresSoloCall: true,
+    execute: async (raw, ctx) => {
+      const input = z.object({ status: z.enum(["paused", "blocked"]), blocker: z.string().min(1).max(2_000).optional() }).strict().parse(raw);
+      return { output: await need(ctx.deps.goalUpdate, "goal_update")(input, ctx) };
+    },
+  };
+
   return {
     get_time: getTime,
     snapshot,
@@ -460,6 +477,7 @@ export function buildToolManifest(): LoopToolManifest {
     subagent_stop: subagentStop,
     routine_update: routineUpdate,
     notification,
+    goal_update: goalUpdate,
     submit_result: submitResult,
   };
 }

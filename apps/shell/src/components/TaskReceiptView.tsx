@@ -7,10 +7,11 @@ import type { TaskReceipt, MethodName, RpcArgs } from "@aux/contracts";
 
 const STATUS = { in_progress: "In progress", uncertain: "Outcome uncertain", accepted: "Accepted by you", not_met: "Criteria not met", needs_review: "Needs review" };
 
-export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
+export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly = false }: {
   receipt: TaskReceipt; pageId: string | null;
   readOnly?: boolean;
   submit?: <M extends MethodName>(method: M, ...params: RpcArgs<M>) => Promise<boolean>;
+  onChanged?: () => Promise<void>;
 }) {
   const editable = !readOnly && !!submit;
   const historical = receipt.currentTaskRevision !== undefined && receipt.currentTaskRevision !== receipt.taskRevision;
@@ -37,6 +38,21 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
   const [includeSnapshots, setIncludeSnapshots] = useState(false);
   const [exportMessage, setExportMessage] = useState("");
   const [exportError, setExportError] = useState("");
+  const [undoBusy, setUndoBusy] = useState(false);
+  const [undoMessage, setUndoMessage] = useState("");
+  async function undoRun(runId: string) {
+    if (undoBusy || !onChanged) return;
+    setUndoBusy(true); setUndoMessage("");
+    try {
+      const result = await call("tasks.undoRunBrowserChanges", { taskId: receipt.taskId,
+        expectedRevision: receipt.taskRevision, runId });
+      await onChanged();
+      setUndoMessage(`${result.restored} browser ${result.restored === 1 ? "change" : "changes"} undone` +
+        (result.skipped.length ? `; ${result.skipped.length} skipped: ${result.skipped.map(item =>
+          `${item.stepId}: ${item.reason}`).join("; ")}` : "."));
+    } catch (error) { setUndoMessage(error instanceof Error ? error.message : String(error)); }
+    finally { setUndoBusy(false); }
+  }
   async function exportReceipt() {
     setExporting(true); setExportMessage(""); setExportError("");
     try {
@@ -57,6 +73,13 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
   const base = { taskId: receipt.taskId, expectedRevision: receipt.taskRevision };
   const usableEvidence = receipt.criteria.flatMap(item => item.evidence.filter(evidence => !evidence.stale));
   const treeUsage={calls:receipt.modelCalls+receipt.childTasks.reduce((total,child)=>total+child.modelCalls,0),cost:receipt.knownCostUsd+receipt.childTasks.reduce((total,child)=>total+child.knownCostUsd,0),complete:receipt.costComplete&&receipt.childTasks.every(child=>child.costComplete)};
+  const runUndoIds = [...new Set([
+    ...receipt.browserChanges.filter(change => change.status === "ok" && !change.undoneAt && change.before && change.after).map(change => change.runId),
+    ...receipt.tabChanges.filter(change => change.op === "tab.open" && change.status === "ok" && !change.undoneAt).map(change => change.runId),
+    ...receipt.bookmarkChanges.filter(change => change.status === "ok" && !change.undoneAt).map(change => change.runId),
+    ...receipt.downloadChanges.filter(change => change.cleanupAvailable && !change.undoneAt).map(change => change.runId),
+    ...receipt.historyChanges.filter(change => !change.undoneAt).map(change => change.runId),
+  ])];
   return <div className="field">
     <h4>Evidence and receipt</h4>
     {historical && <p className="hint">Earlier revision {receipt.taskRevision} · Current task revision {receipt.currentTaskRevision}. This review does not establish the current task’s outcome. Freshness is assessed now, not reconstructed as of the revision date.</p>}
@@ -122,6 +145,97 @@ export function TaskReceiptView({ receipt, pageId, submit, readOnly = false }: {
         </>}
       </section>;
     })}
+    {!!receipt.browserChanges.length && <section className="field" aria-label="Browser changes">
+      <h4>Browser form changes · {receipt.browserChanges.length}</h4>
+      <p className="hint">These are the values Aux observed before agent input. A failed step may still have changed the page; review its outcome before retrying.</p>
+      {receipt.browserChanges.map(change => <div className="row" key={change.stepId}>
+        <span className="grow"><strong>{change.op}</strong> · {change.status === "ok" ? "completed" : "outcome uncertain"}
+          {change.target ? <> · <code>{change.target}</code></> : null}
+          {change.before && <span> · Before: {change.before.checked !== undefined ? String(change.before.checked)
+            : change.before.selected !== undefined ? change.before.selected : change.before.value ?? "unavailable"}</span>}
+          {!change.before && <span> · Before-state unavailable</span>}
+          {change.after && <span> · After: {change.after.checked !== undefined ? String(change.after.checked)
+            : change.after.selected !== undefined ? change.after.selected : change.after.value ?? "unavailable"}</span>}
+          <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+          {change.undoneAt && <span className="hint"> · Undone {new Date(change.undoneAt).toLocaleString()}</span>}
+        </span>
+        {editable && !historical && !active && change.status === "ok" && !change.undoneAt && change.before && change.after &&
+          <button className="btn sm" disabled={pageId !== change.pageId} title={pageId !== change.pageId ? "Open the original page to undo this edit" : undefined}
+            onClick={() => void submit?.("tasks.undoBrowserChange", { ...base, runId: change.runId, stepId: change.stepId })}>Undo form edit</button>}
+      </div>)}
+    </section>}
+    {!!receipt.tabChanges.length && <section className="field" aria-label="Tab changes">
+      <h4>Agent tab changes · {receipt.tabChanges.length}</h4>
+      {receipt.tabChanges.map(change => <div className="row" key={change.stepId}>
+        <span className="grow">{change.op === "tab.open" ? "Opened" : "Closed"} run-owned tab · {change.status === "ok" ? "completed" : "outcome uncertain"}
+          {change.url && <> · <code>{change.url}</code></>}
+          {change.undoneAt && <> · Undone {new Date(change.undoneAt).toLocaleString()}</>}
+          <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+        </span>
+      </div>)}
+    </section>}
+    {!!receipt.bookmarkChanges.length && <section className="field" aria-label="Bookmark changes">
+      <h4>Agent bookmark changes · {receipt.bookmarkChanges.length}</h4>
+      {receipt.bookmarkChanges.map(change => <div className="row" key={change.stepId}>
+        <span className="grow">Saved bookmark · {change.status === "ok" ? "completed" : "outcome uncertain"}
+          {change.title && <> · {change.title}</>}{change.url && <> · <code>{change.url}</code></>}
+          {change.undoneAt && <> · Undone {new Date(change.undoneAt).toLocaleString()}</>}
+          <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+        </span>
+        {editable && !historical && !active && change.status === "ok" && !change.undoneAt &&
+          <button className="btn sm" onClick={() => void submit?.("tasks.undoBookmarkChange",
+            { ...base, runId: change.runId, stepId: change.stepId })}>Undo bookmark</button>}
+      </div>)}
+    </section>}
+    {!!receipt.downloadChanges.length && <section className="field" aria-label="Download changes">
+      <h4>Downloads during agent runs · {receipt.downloadChanges.length}</h4>
+      <p className="hint">A download occurred in a run-controlled tab. Completed files can be moved to recoverable Trash only while their recorded bytes and identity still match. Started or interrupted downloads need review.</p>
+      {receipt.downloadChanges.map(change => <div className="row" key={change.stepId}>
+        <span className="grow">Download · {change.status}
+          {change.filename && <> · {change.filename}</>}
+          {change.size !== undefined && <> · {change.size.toLocaleString()} bytes</>}
+          {change.path && <> · <code>{change.path}</code></>}
+          {change.undoneAt && <> · Moved to Trash {new Date(change.undoneAt).toLocaleString()}</>}
+          <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+        </span>
+        {editable && !historical && !active && change.cleanupAvailable && !change.undoneAt &&
+          <button className="btn sm" onClick={() => void submit?.("tasks.undoDownloadChange",
+            { ...base, runId: change.runId, stepId: change.stepId })}>Move download to Trash</button>}
+      </div>)}
+    </section>}
+    {!!receipt.historyChanges.length && <section className="field" aria-label="History changes">
+      <h4>History visits during agent runs · {receipt.historyChanges.length}</h4>
+      <p className="hint">These exact visits were recorded by Chromium while an agent controlled the page. Removing a visit cannot be undone. A changed visit is refused.</p>
+      {receipt.historyChanges.map(change => <div className="row" key={change.stepId}>
+        <span className="grow">History visit
+          {change.title && <> · {change.title}</>}
+          {change.url && <> · <code>{change.url}</code></>}
+          {change.visitedAt !== undefined && <> · {new Date(change.visitedAt).toLocaleString()}</>}
+          {change.undoneAt && <> · Removed {new Date(change.undoneAt).toLocaleString()}</>}
+          <span className="hint"> · run {change.runId} · revision {change.taskRevision}</span>
+        </span>
+        {editable && !historical && !active && !change.undoneAt &&
+          <button className="btn sm" onClick={() => void submit?.("tasks.undoHistoryChange",
+            { ...base, runId: change.runId, stepId: change.stepId })}>Remove history visit</button>}
+      </div>)}
+    </section>}
+    {!!receipt.remoteActions.length && <section className="field" aria-label="Consequential page actions">
+      <h4>Consequential page actions · {receipt.remoteActions.length}</h4>
+      <p className="hint">Browser observations show what Aux saw after a step. They do not prove that a remote service committed a change. These actions cannot be reversed by Undo browser changes.</p>
+      {receipt.remoteActions.map(action => <div className="field" key={action.stepId}>
+        <span><strong>{action.op}</strong> · {action.uncertain ? "outcome uncertain" : action.status === "ok" ? "browser step completed" : "step failed"}
+          {action.remoteConfirmed ? " · remote confirmation recorded" : " · no remote confirmation"}</span>
+        {action.browserObserved && <span className="hint">Browser observed: {action.browserObserved}</span>}
+        <span className="hint">Run {action.runId} · revision {action.taskRevision}</span>
+      </div>)}
+    </section>}
+    {editable && onChanged && !historical && !active && !!runUndoIds.length && <section className="field" aria-label="Undo run changes">
+      <h4>Undo a run’s browser changes</h4>
+      <p className="hint">Restores matching form fields, removes unchanged bookmarks and history visits, moves unchanged managed downloads to recoverable Trash, and closes unused background tabs. Changed items are skipped. Removed visits, closed tabs, and remote effects cannot be reconstructed.</p>
+      {runUndoIds.map(runId => <button className="btn sm" key={runId} disabled={undoBusy}
+        onClick={() => void undoRun(runId)}>Undo browser changes in run {runId}</button>)}
+      {undoMessage && <output data-block>{undoMessage}</output>}
+    </section>}
     {receipt.unresolvedActions.length > 0 && <h4>Uncertain actions</h4>}
     {receipt.unresolvedActions.map(action => <section key={action.intentId} className="field" aria-label={`Uncertain action ${action.intentId}`}>
       <p>Action {action.intentId} · {action.status}</p>

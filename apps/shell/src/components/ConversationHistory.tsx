@@ -10,8 +10,9 @@ import { draftKey } from "../conversation-drafts";
 import { AnswerMarkdown } from "./AnswerMarkdown";
 
 import { mergeHistory } from "../run-history";
-import { useDismissable } from "../use-dismissable";
 import { SkeletonRows } from "./Skeleton";
+import { Tabs } from "../ui";
+import { Menu } from "../ui/dialog";
 export { mergeHistory };
 export function cursor(run: Run) { return { createdAt: run.createdAt, runId: run.runId }; }
 export function conversationCursor(item: ConversationSummary) { return { updatedAt: item.updatedAt, chatId: item.chatId }; }
@@ -36,10 +37,12 @@ export function ConversationHistory() {
   const retryAppend = useRef(false);
   const retryRefresh=useRef(false);
   const list = useRef<HTMLDivElement>(null);
+  const firstConversation = useRef<HTMLButtonElement>(null);
   const view = useRef(`${workspaceId ?? "all"}:${archived}:${query}`);
   view.current = `${workspaceId ?? "all"}:${archived}:${query}`;
   const [more, setMore] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
+  const menuAnchor = useRef<HTMLButtonElement>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -95,17 +98,7 @@ export function ConversationHistory() {
     });
     return()=>{off();clearTimeout(timer);};
   },[archived,query,workspaceId]);
-  useEffect(() => {
-    if (!menu) return;
-    const close = (event: PointerEvent) => { if (!(event.target as Element).closest?.(".history-menu, .history-actions")) setMenu(null); };
-    list.current?.querySelector<HTMLButtonElement>(".history-menu button")?.focus();
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
-  }, [menu]);
-  useDismissable(!!menu, () => {
-    list.current?.querySelector<HTMLButtonElement>('.history-actions[aria-expanded="true"]')?.focus();
-    setMenu(null); setDeleting(null);
-  });
+  const closeMenu = () => { setMenu(null); setDeleting(null); };
   const mutate = async (action: "rename" | "archive" | "delete", item: ConversationSummary) => {
     if (pending.current) return;
     pending.current = true;
@@ -137,35 +130,37 @@ export function ConversationHistory() {
     finally { pending.current = false; setSaving(false); }
   };
   return <section className="conversation conversation-history" aria-label="Conversation history">
-    <header className="conversation-head"><h1>Chats</h1><div className="sp"/><div role="group" className="history-segment" aria-label="Conversation state"><button disabled={saving} aria-pressed={!archived} className={!archived ? "active" : ""} onClick={() => setArchived(false)}>Active</button><button disabled={saving} aria-pressed={archived} className={archived ? "active" : ""} onClick={() => setArchived(true)}>Archived</button></div></header>
-    <div className="conversation-history-list" ref={list} onKeyDown={event=>moveListFocus(event,".history-conversation")}>
+    <header className="conversation-head"><h1>Chats</h1><div className="sp"/><Tabs<"active" | "archived"> label="Conversation state" value={archived ? "archived" : "active"} onChange={value => setArchived(value === "archived")}
+      panelId="conversation-history-panel" className="history-segment" items={[{ value: "active", label: "Active", disabled: saving }, { value: "archived", label: "Archived", disabled: saving }]} /></header>
+    <div id="conversation-history-panel" role="tabpanel" aria-labelledby={`conversation-history-panel-${archived ? "archived" : "active"}`} className="conversation-history-list" ref={list} onKeyDown={event=>moveListFocus(event,".history-conversation")}>
       <div className="history-toolbar">
       <label className="history-search">{I.search}
-      <input ref={search} disabled={saving} onKeyDown={event=>{if(event.nativeEvent.isComposing)return;if(event.key==="ArrowDown"){event.preventDefault();list.current?.querySelector<HTMLButtonElement>(".history-conversation")?.focus();}else if(event.key==="Enter" && !loading && rows[0]){event.preventDefault();useStore.getState().openConversation(rows[0].latestRun.runId);}}} aria-label="Search conversations" placeholder="Search chats…" maxLength={500} value={query} onChange={event => setQuery(event.target.value)}/>
+      <input ref={search} disabled={saving} onKeyDown={event=>{if(event.nativeEvent.isComposing)return;if(event.key==="ArrowDown"){event.preventDefault();firstConversation.current?.focus();}else if(event.key==="Enter" && !loading && rows[0]){event.preventDefault();useStore.getState().openConversation(rows[0].latestRun.runId);}}} aria-label="Search conversations" placeholder="Search chats…" maxLength={500} value={query} onChange={event => setQuery(event.target.value)}/>
       </label>
       {space?.workspaceId && <div className="history-space-filter" role="group" aria-label="Conversation Space filter">
         <button className="btn sm ghost" disabled={saving} aria-pressed={!currentSpaceOnly} onClick={() => setCurrentSpaceOnly(false)}>All Spaces</button>
         <button className="btn sm ghost" disabled={saving} aria-pressed={currentSpaceOnly} title={space.name} onClick={() => setCurrentSpaceOnly(true)}>{space.name}</button>
       </div>}
-      <div className="history-view-tools"><div className="history-segment" role="group" aria-label="Chat layout"><button aria-label="Grid view" aria-pressed={viewMode === "grid"} className={viewMode === "grid" ? "active" : ""} onClick={() => setViewMode("grid")}>{I.grid}</button><button aria-label="List view" aria-pressed={viewMode === "list"} className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")}>{I.result}</button></div></div>
+      <div className="history-view-tools"><Tabs<"grid" | "list"> label="Chat layout" value={viewMode} onChange={setViewMode} panelId="conversation-layout-panel" className="history-segment"
+        items={[{ value: "grid", label: I.grid, ariaLabel: "Grid view" }, { value: "list", label: I.result, ariaLabel: "List view" }]} /></div>
       </div>
       {(archived || workspaceId) && <p className="hint history-scope-note">{archived ? "Archived chats stay available until you delete them." : "Searching this Space. Unsent drafts are available in All Spaces."}</p>}
       {!archived && !workspaceId && <ConversationDrafts query={query} exclude={rows.map(row => row.chatId)} />}
       {actionError && <p className="field-error" role="alert">{actionError} <button className="btn sm ghost" onClick={() => setActionError("")}>Dismiss</button></p>}
-      <div className={`history-items ${viewMode}`}>
-      {rows.map(item => <div className="history-conversation-wrap" data-chat-id={item.chatId} key={item.chatId}>
+      <div id="conversation-layout-panel" role="tabpanel" aria-labelledby={`conversation-layout-panel-${viewMode}`} className={`history-items ${viewMode}`}>
+      {rows.map((item, index) => <div className="history-conversation-wrap" data-chat-id={item.chatId} key={item.chatId}>
         {renaming === item.chatId ? <form className="history-rename" onSubmit={event => { event.preventDefault(); if (title.trim()) void mutate("rename", item); }}><input autoFocus aria-label="Conversation title" maxLength={160} value={title} onChange={event => setTitle(event.target.value)}/><button className="btn sm" disabled={saving || !title.trim()}>Save</button><button type="button" className="btn sm ghost" onClick={() => setRenaming(null)}>Cancel</button></form> : <>
-          <button disabled={saving} className="history-conversation" onClick={() => useStore.getState().openConversation(item.latestRun.runId)}><strong>{item.title}</strong><span>{drafts[draftKey(item.chatId)]?.trim() ? `Draft · ${drafts[draftKey(item.chatId)]}` : item.taskId ? "Saved task" : item.latestRun.statusMessage ?? item.latestRun.status.replaceAll("_", " ")}</span><time>{new Date(item.updatedAt).toLocaleString()} · {item.turnCount} {item.turnCount === 1 ? "turn" : "turns"}</time></button>
+          <button ref={index === 0 ? firstConversation : undefined} disabled={saving} className="history-conversation" onClick={() => useStore.getState().openConversation(item.latestRun.runId)}><strong>{item.title}</strong><span>{drafts[draftKey(item.chatId)]?.trim() ? `Draft · ${drafts[draftKey(item.chatId)]}` : item.taskId ? "Saved task" : item.latestRun.statusMessage ?? item.latestRun.status.replaceAll("_", " ")}</span><time>{new Date(item.updatedAt).toLocaleString()} · {item.turnCount} {item.turnCount === 1 ? "turn" : "turns"}</time></button>
           {viewMode === "grid" && <div className="history-card-preview home-excerpt" inert><AnswerMarkdown text={drafts[draftKey(item.chatId)]?.trim() || (typeof item.latestRun.result?.answer === "string" ? item.latestRun.result.answer : item.latestRun.statusMessage || item.latestRun.goal)} /></div>}
-          <button disabled={saving} className="icon-btn history-actions" aria-label={`Conversation actions for ${item.title}`} aria-expanded={menu === item.chatId} onClick={() => { setMenu(value => value === item.chatId ? null : item.chatId); setDeleting(null); }}>{I.more}</button>
+          <button disabled={saving} className="icon-btn history-actions" aria-label={`Conversation actions for ${item.title}`} aria-haspopup="menu" aria-expanded={menu === item.chatId} onClick={event => { menuAnchor.current = event.currentTarget; setMenu(value => value === item.chatId ? null : item.chatId); setDeleting(null); }}>{I.more}</button>
         </>}
-        {menu === item.chatId && <div className="history-menu" role="menu" tabIndex={-1} aria-label="Conversation actions" onKeyDown={event => moveListFocus(event, "button")}>
+        {menu === item.chatId && <Menu className="history-menu" label="Conversation actions" anchor={menuAnchor} returnFocus={menuAnchor} onClose={closeMenu} onMenuKeyDown={event => event.stopPropagation()}>
           {item.taskId ? <button role="menuitem" disabled={saving} onClick={() => void openSavedTask(item.taskId!).catch(errToast)}>{I.layersSm} Open saved task</button> : <>
           <button role="menuitem" disabled={saving} onClick={() => { setTitle(item.title); setRenaming(item.chatId); setMenu(null); }}>{I.pencil} Rename</button>
           <button role="menuitem" disabled={saving} onClick={() => void mutate("archive", item)}>{item.archived ? I.reopen : I.archive} {item.archived ? "Restore" : "Archive"}</button>
-          {deleting === item.chatId ? <div className="history-delete-confirm"><span>Delete permanently?</span><button disabled={saving} onClick={() => void mutate("delete", item)}>Delete</button><button onClick={() => setDeleting(null)}>Cancel</button></div> : <button role="menuitem" disabled={saving} className="danger" onClick={() => setDeleting(item.chatId)}>{I.trash} Delete</button>}
+          {deleting === item.chatId ? <div className="history-delete-confirm" role="group" aria-label="Confirm conversation deletion"><span>Delete permanently?</span><button role="menuitem" disabled={saving} onClick={() => void mutate("delete", item)}>Delete</button><button role="menuitem" onClick={() => setDeleting(null)}>Cancel</button></div> : <button role="menuitem" disabled={saving} className="danger" onClick={() => setDeleting(item.chatId)}>{I.trash} Delete</button>}
           </>}
-        </div>}
+        </Menu>}
       </div>)}
       </div>
       {loading && (rows.length ? <output data-block className="hint">Loading conversations…</output> : <SkeletonRows label="Loading conversations…" rows={5} tall />)}

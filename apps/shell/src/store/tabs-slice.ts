@@ -18,7 +18,7 @@ const tabPlacementFor = (state: Pick<Workspace, "layout" | "pages">, pageId: str
   const page = state.pages.find(item => item.pageId === pageId);
   const tabName = state.layout.tabNames?.[pageId];
   return {
-    space: { id: space.id, name: space.name, color: space.color, grain: space.grain, ...(space.workspaceId ? { workspaceId: space.workspaceId } : {}) },
+    space: { id: space.id, name: space.name, color: space.color, grain: space.grain, ...(space.theme ? { theme: space.theme } : {}), ...(space.workspaceId ? { workspaceId: space.workspaceId } : {}) },
     ...(folder ? { folder: { id: folder.id, name: folder.name, spaceId: folder.spaceId, collapsed: folder.collapsed, ...(folder.color ? { color: folder.color } : {}), ...(folder.emoji ? { emoji: folder.emoji } : {}) } } : {}),
     ...(page && tabName?.url === page.url ? { tabName } : {}),
   };
@@ -37,6 +37,10 @@ const reconcileWindowOrder = (order: string[], catalogOrder: string[], pages: Pi
 
 /** one in-flight catalog resync per shell — gap storms collapse into a single fetch */
 let tabsResyncing = false;
+
+function syncBatterySaverState(active: boolean | undefined) {
+  if (active !== undefined) document.documentElement.dataset.batterySaver = String(active);
+}
 
 export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   pages: [],
@@ -60,6 +64,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     let windowChoseActive = false;
     set((st) => {
       if (patch.baseVersion !== st.catalogVersion) { resyncNeeded = true; return {}; }
+      syncBatterySaverState(patch.batterySaverActive);
       let pages = st.pages;
       let layout = st.layout;
       let layoutDirty = false;
@@ -130,11 +135,12 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     set((st) => {
       // A resync can land an older snapshot after newer patches — keep the newer truth.
       if (snapshot.version < st.catalogVersion) return {};
+      syncBatterySaverState(snapshot.batterySaverActive);
       const tabs = snapshot.tabs.filter(tab => tab.windowId === bridge.windowId);
       const known = new Set(tabs.map(tab => tab.pageId));
       // The catalog is authoritative for this window's human tab set; pages it
       // does not own (runtime workers, other windows) are left to the runtime.
-      const pages = st.pages.filter(page => known.has(page.pageId) || page.ownedByRuntime || (page.windowId ?? "main") !== bridge.windowId);
+      const pages = st.pages.filter(page => known.has(page.pageId) || st.pendingRestoreIds.includes(page.pageId) || page.ownedByRuntime || (page.windowId ?? "main") !== bridge.windowId);
       for (const tab of tabs) {
         const existing = pages.find(page => page.pageId === tab.pageId);
         if (!existing) pages.push(pageFromTab(tab));
@@ -157,7 +163,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     set(s => {
       const page = s.pages.find(item => item.pageId === pageId);
       if (!page) return {};
-      const space: Space = { id: placement.space.id, name: placement.space.name, color: placement.space.color as SpaceColor, grain: placement.space.grain ?? 0, ...(placement.space.workspaceId ? { workspaceId: placement.space.workspaceId } : {}) };
+      const space: Space = { id: placement.space.id, name: placement.space.name, color: placement.space.color as SpaceColor, grain: placement.space.grain ?? 0, ...(placement.space.theme ? { theme: placement.space.theme } : {}), ...(placement.space.workspaceId ? { workspaceId: placement.space.workspaceId } : {}) };
       let layout = s.layout.spaces.some(item => item.id === space.id) ? s.layout
         : { ...s.layout, spaces: [...s.layout.spaces, space], archivedSpaces: s.layout.archivedSpaces?.filter(item => item.id !== space.id) };
       layout = assignSpace(layout, pageId, space.id);
@@ -187,6 +193,12 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   },
 
   activate: async (pageId) => {
+    if (get().pendingRestoreIds.includes(pageId)) {
+      try {
+        await call("browser.recovery.retry", { pageId });
+        set(st => ({ pendingRestoreIds: st.pendingRestoreIds.filter(id => id !== pageId) }));
+      } catch (error) { errToast(error); return; }
+    }
     const spaceId = get().layout.tabSpace[pageId];
     if (spaceId && spaceId !== get().layout.activeSpaceId) {
       if (get().layout.archivedSpaces?.some(space => space.id === spaceId)) await get().restoreSpace(spaceId);

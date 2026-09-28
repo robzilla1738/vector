@@ -579,7 +579,12 @@ export class Repo {
   }
   listSteps(runId: string): StepRecord[] {
     this.flush();
-    return (this.q("SELECT * FROM steps WHERE run_id=? ORDER BY started_at").all(runId) as Record<string, unknown>[]).map(r => this.stepFromRow(r));
+    return (this.q("SELECT * FROM steps WHERE run_id=? ORDER BY started_at,rowid").all(runId) as Record<string, unknown>[]).map(r => this.stepFromRow(r));
+  }
+  downloadStep(downloadId: string): StepRecord | undefined {
+    const row = this.q("SELECT * FROM steps WHERE op='download' AND json_extract(inputs,'$.downloadId')=? ORDER BY rowid DESC LIMIT 1")
+      .get(downloadId) as Record<string, unknown> | undefined;
+    return row ? this.stepFromRow(row) : undefined;
   }
   listStepsByOpForRuns(runIds: readonly string[], op: string): StepRecord[] {
     if (!runIds.length) return [];
@@ -845,6 +850,14 @@ export class Repo {
   removeHistory(url: string, visitedAt: number): boolean {
     return this.q("DELETE FROM history WHERE url=? AND visited_at=?").run(url, visitedAt).changes > 0;
   }
+  countHistory(range: { since?: number; before?: number } = {}): number {
+    const clauses: string[] = [];
+    const values: number[] = [];
+    if (range.since !== undefined) { clauses.push("visited_at >= ?"); values.push(range.since); }
+    if (range.before !== undefined) { clauses.push("visited_at < ?"); values.push(range.before); }
+    const row = this.q(`SELECT COUNT(*) AS count FROM history ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}`).get(...values) as { count: number };
+    return row.count;
+  }
   clearHistory(range: { since?: number; before?: number } = {}): number {
     const clauses: string[] = [];
     const values: number[] = [];
@@ -954,6 +967,14 @@ export class Repo {
     this.transaction(() => {
       this.q("DELETE FROM bookmark_articles WHERE url=?").run(url);
       this.q("DELETE FROM bookmarks WHERE url=?").run(url);
+    });
+  }
+  removeBookmarkIfUnchanged(url: string, title: string, createdAt: number, folderPath: string[], readingList: boolean): boolean {
+    return this.transaction(() => {
+      const removed = this.q("DELETE FROM bookmarks WHERE url=? AND title=? AND created_at=? AND folder_path=? AND reading_list=?")
+        .run(url, title, createdAt, J(folderPath), Number(readingList)).changes;
+      if (removed) this.q("DELETE FROM bookmark_articles WHERE url=?").run(url);
+      return removed === 1;
     });
   }
   listBookmarks(): Bookmark[] {

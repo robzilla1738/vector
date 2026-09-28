@@ -1,4 +1,5 @@
-import { ActionMenu } from "./ui";
+import "./ChatSessions.css";
+import { ActionMenu } from "../ui";
 import { STATUS_LABEL } from "../run-status";
 import { useEffect, useRef, useState } from "react";
 import type { ConversationSummary } from "@aux/contracts";
@@ -10,7 +11,7 @@ import { I } from "./icons";
 /** Shared session organization for both sidebar layouts. Folder entries belong to this browser profile. */
 export function ChatSessions({ compact = false }: { compact?: boolean }) {
   const active = useStore(s => s.mode === "conversation" ? s.conversationId : null);
-  const runs = useStore(s => s.runs);
+  const runRevision = useStore(s => s.runs.map(run => `${run.runId}:${run.status}:${run.endedAt ?? ""}`).join("|"));
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<ConversationSummary[]>([]);
   const [archived, setArchived] = useState(false);
@@ -24,9 +25,11 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const root = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (moving) root.current?.querySelector<HTMLSelectElement>(".session-disclosure.open select")?.focus(); }, [moving]);
-  function dismiss(element: HTMLElement) {
-    element.closest(".session-item")?.querySelector<HTMLButtonElement>(".ui-menu-trigger")?.focus();
+  const projectSelectors = useRef(new Map<string, HTMLSelectElement>());
+  const actionTriggers = useRef(new Map<string, HTMLButtonElement>());
+  useEffect(() => { if (moving) projectSelectors.current.get(moving)?.focus(); }, [moving]);
+  function dismiss(chatId: string) {
+    actionTriggers.current.get(chatId)?.focus();
     setMoving(null); setDeleting(null); setRenaming(null);
   }
   const [error, setError] = useState("");
@@ -60,7 +63,7 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
       finally { if (live) setLoading(false); }
     })(), 100);
     return () => { live = false; clearTimeout(timer); };
-  }, [archived, runs, revision]);
+  }, [archived, runRevision, revision]);
   function organize(work: () => void) {
     try { work(); window.dispatchEvent(new Event("aux-chat-folders")); } catch (reason) { errToast(reason); }
   }
@@ -90,12 +93,12 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
     } catch (error) { errToast(error); }
     finally { pending.current = false; setBusy(false); }
   }
-  const renderChat = (item: ConversationSummary) => <div className={`session-item${active === item.chatId ? " active" : ""}`} key={item.chatId} onKeyDown={event => { if (event.key === "Escape" && (moving === item.chatId || deleting === item.chatId || renaming === item.chatId)) { event.preventDefault(); event.stopPropagation(); dismiss(event.currentTarget); } }}>
+  const renderChat = (item: ConversationSummary) => <div className={`session-item${active === item.chatId ? " active" : ""}`} key={item.chatId} onKeyDown={event => { if (event.key === "Escape" && (moving === item.chatId || deleting === item.chatId || renaming === item.chatId)) { event.preventDefault(); event.stopPropagation(); dismiss(item.chatId); } }}>
     <div className={`session-row${active === item.chatId ? " active" : ""}`}>
       <button className="session-open" aria-current={active === item.chatId ? "page" : undefined} title={item.title} onClick={() => useStore.getState().openConversation(item.latestRun.runId)}>{item.title || "New chat"}</button>
       <div className="session-actions">
         {!["completed", "cancelled"].includes(item.latestRun.status) && <span className={`session-status ${item.latestRun.status}`} role="status" title={STATUS_LABEL[item.latestRun.status]} aria-label={STATUS_LABEL[item.latestRun.status]} />}
-        <ActionMenu label={`Actions for ${item.title || "New chat"}`} actions={[
+        <ActionMenu label={`Actions for ${item.title || "New chat"}`} triggerRef={node => { if (node) actionTriggers.current.set(item.chatId, node); else actionTriggers.current.delete(item.chatId); }} actions={[
           { label: "Rename", icon: I.pencil, disabled: busy, onSelect: () => { setRenaming(item.chatId); setChatName(item.title); setMoving(null); setDeleting(null); } },
           { label: "Move to project", icon: I.folder, disabled: busy, onSelect: () => { setMoving(item.chatId); setDeleting(null); setRenaming(null); } },
           { label: archived ? "Restore chat" : "Archive chat", icon: I.archive, disabled: busy, onSelect: () => { void mutate(item, false); } },
@@ -105,10 +108,10 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
     </div>
     {renaming === item.chatId && <form className="session-editor" onSubmit={event => { event.preventDefault(); void rename(item); }}>
       <input autoFocus aria-label="Conversation name" maxLength={160} value={chatName} onChange={event => setChatName(event.target.value)} />
-      <button className="btn sm" disabled={busy || !chatName.trim()}>Save</button><button className="btn sm ghost" type="button" onClick={event => dismiss(event.currentTarget)}>Cancel</button>
+      <button className="btn sm" disabled={busy || !chatName.trim()}>Save</button><button className="btn sm ghost" type="button" onClick={() => dismiss(item.chatId)}>Cancel</button>
     </form>}
-    <div className={`session-disclosure${moving === item.chatId ? " open" : ""}`} aria-hidden={moving !== item.chatId} inert={moving !== item.chatId}><div><label className="session-move">Project<select aria-label={`Project for ${item.title}`} value={organization.members[item.chatId] && organization.folders.some(f => f.id === organization.members[item.chatId]) ? organization.members[item.chatId] : ""} onChange={event => { organize(() => moveChatToFolder(localStorage, item.chatId, event.target.value)); setMoving(null); }}><option value="">No project</option>{organization.folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label></div></div>
-    <div className={`session-disclosure${deleting === item.chatId ? " open" : ""}`} aria-hidden={deleting !== item.chatId} inert={deleting !== item.chatId}><div><div className="session-confirm" role="group" aria-label={`Delete ${item.title} permanently?`}><span>Delete this chat permanently?</span><button className="btn ghost danger" disabled={busy} onClick={() => void mutate(item, true)}>Delete permanently</button><button className="btn ghost" onClick={event => dismiss(event.currentTarget)}>Cancel</button></div></div></div>
+    <div className={`session-disclosure${moving === item.chatId ? " open" : ""}`} aria-hidden={moving !== item.chatId} inert={moving !== item.chatId}><div><label className="session-move">Project<select ref={node => { if (node) projectSelectors.current.set(item.chatId, node); else projectSelectors.current.delete(item.chatId); }} aria-label={`Project for ${item.title}`} value={organization.members[item.chatId] && organization.folders.some(f => f.id === organization.members[item.chatId]) ? organization.members[item.chatId] : ""} onChange={event => { organize(() => moveChatToFolder(localStorage, item.chatId, event.target.value)); setMoving(null); }}><option value="">No project</option>{organization.folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label></div></div>
+    <div className={`session-disclosure${deleting === item.chatId ? " open" : ""}`} aria-hidden={deleting !== item.chatId} inert={deleting !== item.chatId}><div><div className="session-confirm" role="group" aria-label={`Delete ${item.title} permanently?`}><span>Delete this chat permanently?</span><button className="btn ghost danger" disabled={busy} onClick={() => void mutate(item, true)}>Delete permanently</button><button className="btn ghost" onClick={() => dismiss(item.chatId)}>Cancel</button></div></div></div>
   </div>;
   return <div ref={root} className="chat-sessions" aria-busy={loading}>
     <div className="session-heading"><span>{archived ? "Archived chats" : compact ? "Recent" : "Chats"}</span><ActionMenu label="Chat options" actions={[

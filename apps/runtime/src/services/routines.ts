@@ -84,6 +84,21 @@ function hourMinuteInZone(at: number, timezone: string): { hour: number; minute:
   };
 }
 
+/** The first real instant owns a repeated wall-clock minute. */
+function firstWallClockMinute(at: number, timezone: string, hour: number, minute: number): boolean {
+  const offset = new Intl.DateTimeFormat("en-US", { timeZone: timezone, timeZoneName: "shortOffset" });
+  const offsetAt = (time: number) => offset.formatToParts(new Date(time)).find((part) => part.type === "timeZoneName")?.value;
+  if (offsetAt(at) === offsetAt(at - 180 * 60_000)) return true;
+  const date = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: timezone });
+  const day = date.format(new Date(at));
+  for (let earlier = at - 60_000; earlier >= at - 180 * 60_000; earlier -= 60_000) {
+    if (date.format(new Date(earlier)) !== day) continue;
+    const wall = hourMinuteInZone(earlier, timezone);
+    if (wall.hour === hour && wall.minute === minute) return false;
+  }
+  return true;
+}
+
 export function nextScheduledTime(
   trigger: Extract<RoutineTrigger, { kind: "schedule" }>,
   from: number,
@@ -92,7 +107,8 @@ export function nextScheduledTime(
     const candidate = from + offset * 60_000;
     const day = weekdayInZone(candidate, trigger.timezone);
     const { hour, minute } = hourMinuteInZone(candidate, trigger.timezone);
-    if (trigger.days.includes(day) && hour === trigger.hour && minute === trigger.minute) {
+    if (trigger.days.includes(day) && hour === trigger.hour && minute === trigger.minute &&
+        firstWallClockMinute(candidate, trigger.timezone, hour, minute)) {
       const occurrence = candidate - (candidate % 60_000);
       if (occurrence >= from) return occurrence;
     }
@@ -108,7 +124,8 @@ export function previousScheduledTime(
     const candidate = from - offset * 60_000;
     const day = weekdayInZone(candidate, trigger.timezone);
     const { hour, minute } = hourMinuteInZone(candidate, trigger.timezone);
-    if (trigger.days.includes(day) && hour === trigger.hour && minute === trigger.minute)
+    if (trigger.days.includes(day) && hour === trigger.hour && minute === trigger.minute &&
+        firstWallClockMinute(candidate, trigger.timezone, hour, minute))
       return candidate - (candidate % 60_000);
   }
   throw new AuxError("invalid_params", "Could not compute the previous scheduled occurrence.");
@@ -136,6 +153,38 @@ export class RoutineService {
           .all() as { routine_run_id: string }[]
       ).map((row) => row.routine_run_id),
     );
+    this.events.subscribe((event) => {
+      if (event.type !== "task.updated") return;
+      const task = event.payload.task;
+      if (!task || typeof task !== "object" || !("taskId" in task) ||
+          !("revision" in task) ||
+          typeof task.taskId !== "string" || typeof task.revision !== "number" ||
+          !(("sourceOrigin" in task && ["external", "conversation"].includes(String(task.sourceOrigin))) ||
+            ("conversationId" in task && typeof task.conversationId === "string"))) return;
+      this.pauseForUntrustedTaskRevision(task.taskId, task.revision);
+    });
+    // Recover a task edit committed before a crash or before this service was constructed.
+    const changed = this.repo.db.prepare(`SELECT task_id,revision FROM tasks
+      WHERE json_extract(json,'$.sourceOrigin') IN ('external','conversation')
+        OR json_type(json,'$.conversationId')='text'`).all() as
+      { task_id: string; revision: number }[];
+    for (const task of changed) this.pauseForUntrustedTaskRevision(task.task_id, task.revision);
+  }
+
+  private pauseForUntrustedTaskRevision(taskId: string, taskRevision: number): void {
+    const rows = this.repo.db.prepare(`SELECT * FROM routines WHERE archived_at IS NULL
+      AND json_extract(json,'$.sourceTaskId')=?
+      AND json_extract(json,'$.sourceTaskRevision')<>?`).all(taskId, taskRevision) as
+      Parameters<typeof parseRoutine>[0][];
+    for (const row of rows) {
+      const current = parseRoutine(row);
+      if (current.paused && current.activationReview) continue;
+      const next = RoutineSchema.parse({ ...current, paused: true,
+        activationReview: current.activationReview ?? "untrusted_task",
+        revision: current.revision + 1, updatedAt: Date.now() });
+      this.persist(next);
+      this.events.emit("routine.updated", { routine: next });
+    }
   }
 
   list(
@@ -158,6 +207,27 @@ export class RoutineService {
         limit,
       ) as Parameters<typeof parseRoutine>[0][];
     return rows.map(parseRoutine);
+  }
+
+  /** Current task grants are the only Calendar accounts eligible for polling. */
+  calendarWatches(): { taskId: string; grantId: string; beforeMinutes: number }[] {
+    const rows = this.repo.db.prepare(`SELECT r.* FROM routines r
+      JOIN tasks t ON t.task_id=json_extract(r.json,'$.sourceTaskId')
+      JOIN calendar_task_grants g ON g.grant_id=json_extract(r.json,'$.trigger.grantId')
+      JOIN calendar_connections c ON c.connection_id=g.connection_id
+      WHERE r.archived_at IS NULL AND r.paused=0
+        AND json_extract(r.json,'$.trigger.kind')='calendar_event'
+        AND t.state='open' AND t.revision=g.task_revision
+        AND t.revision=json_extract(r.json,'$.sourceTaskRevision')
+        AND g.task_id=t.task_id AND g.revoked_at IS NULL
+        AND c.revoked_at IS NULL AND c.state='active'`).all() as Parameters<typeof parseRoutine>[0][];
+    return rows.flatMap((row) => {
+      const routine = parseRoutine(row);
+      if (routine.trigger.kind !== "calendar_event" || !routine.sourceTaskId ||
+          !routine.calendarGrantIds.includes(routine.trigger.grantId)) return [];
+      return [{ taskId: routine.sourceTaskId, grantId: routine.trigger.grantId,
+        beforeMinutes: routine.trigger.beforeMinutes }];
+    });
   }
 
   /** Context is a hint to the human; no suggestion can enqueue or start a run. */
@@ -246,17 +316,25 @@ export class RoutineService {
   }
 
   create(
-    input: Omit<RoutineDefinition, "successCriteria" | "calendarGrantIds" | "autoInject"> & {
+    input: Omit<RoutineDefinition, "successCriteria" | "calendarGrantIds" | "autoInject" | "missedRunPolicy" | "presenceGuardExempt" | "activationReview"> & {
       successCriteria?: Routine["successCriteria"];
       calendarGrantIds?: string[];
       autoInject?: Routine["autoInject"];
+      missedRunPolicy?: Routine["missedRunPolicy"];
+      presenceGuardExempt?: boolean;
+      activationReview?: Routine["activationReview"];
     },
   ): Routine {
     this.requireWorkspace(input.workspaceId);
     const source = input.sourceTaskId
       ? this.requireSourceTask(input.sourceTaskId, input.workspaceId)
       : undefined;
+    if (input.sourceRunId && this.repo.getRun(input.sourceRunId)?.config?.taskId !== input.sourceTaskId)
+      throw new AuxError("conflict", "Choose a run from this saved task before making a Skill.");
     const now = Date.now();
+    const activationReview = input.activationReview ??
+      (input.sourceRunId ? "run_result" : source?.sourceOrigin ? "untrusted_task" : undefined);
+    const paused = activationReview ? true : input.sourceTaskId ? (input.paused ?? false) : true;
     const routine: Routine = {
       ...input,
       sourceTaskRevision: source?.revision,
@@ -268,11 +346,15 @@ export class RoutineService {
       successCriteria: input.successCriteria ?? [],
       reviewRequired: input.reviewRequired ?? input.trigger?.kind !== "monitor",
       consecutive: input.consecutive ?? false,
+      presenceGuardExempt: input.presenceGuardExempt ?? false,
+      activationReview,
+      missedRunPolicy: input.missedRunPolicy ?? "record_only",
       trigger: input.trigger ?? { kind: "manual" },
-      paused: input.sourceTaskId ? (input.paused ?? false) : true,
+      paused,
       routineId: randomUUID(),
       revision: 1,
       createdAt: now,
+      activatedAt: paused ? undefined : now,
       updatedAt: now,
     };
     this.requireCalendarGrants(routine);
@@ -340,18 +422,29 @@ export class RoutineService {
       successCriteria: task.criteria ?? [],
       consecutive: false,
       paused: false,
+      activationReview: run ? "run_result" : undefined,
       trigger: input.trigger ?? { kind: "manual" },
       reviewRequired: input.reviewRequired ?? input.trigger?.kind !== "monitor",
     });
   }
 
-  update(input: Partial<RoutineDefinition> & { routineId: string; expectedRevision: number }): Routine {
+  update(input: Partial<RoutineDefinition> & { routineId: string; expectedRevision: number; activationReviewed?: boolean }): Routine {
     const current = this.routine(input.routineId);
     if (current.revision !== input.expectedRevision)
       throw new AuxError("conflict", "This routine changed. Refresh and try again.");
+    if (current.activationReview && input.paused === false) {
+      if (!current.sourceTaskId)
+        throw new AuxError("conflict", "Choose a saved task before resuming this routine.");
+      if (input.activationReviewed !== true || Object.keys(input).some((key) =>
+        !["routineId", "expectedRevision", "paused", "activationReviewed"].includes(key)))
+        throw new AuxError("needs_input", "Review this imported or run-derived Skill in Aux before activating it.");
+    } else if (input.activationReviewed)
+      throw new AuxError("invalid_params", "Activation review applies only when resuming a pending Skill.");
+    const now = Date.now();
+    const { activationReviewed: _activationReviewed, ...patch } = input;
     const next: Routine = {
       ...current,
-      ...input,
+      ...patch,
       parameters: input.parameters ?? current.parameters,
       siteOrigins: input.siteOrigins ?? current.siteOrigins,
       accountLabels: input.accountLabels ?? current.accountLabels,
@@ -366,8 +459,15 @@ export class RoutineService {
         input.sourceRunId ??
         (input.sourceTaskId && input.sourceTaskId !== current.sourceTaskId ? undefined : current.sourceRunId),
       trigger: input.trigger ?? current.trigger,
+      pauseCause: current.pauseCause === "unread_results" && input.paused !== undefined
+        ? undefined : current.pauseCause,
+      activationReview: input.activationReviewed ? undefined : current.activationReview,
+      activatedAt:
+        (current.paused && input.paused === false) || input.trigger
+          ? now
+          : current.activatedAt,
       revision: current.revision + 1,
-      updatedAt: Date.now(),
+      updatedAt: now,
     };
     this.requireWorkspace(next.workspaceId);
     const source = next.sourceTaskId
@@ -378,12 +478,31 @@ export class RoutineService {
     if (input.sourceTaskId !== undefined || input.sourceTaskRevision !== undefined) {
       next.sourceTaskRevision = source?.revision;
       if (input.sourceTaskRevision !== undefined) this.requireCriteriaMatch(next);
+      if (source?.sourceOrigin) {
+        next.paused = true;
+        next.activationReview ??= "untrusted_task";
+      }
     }
     if (!next.sourceTaskId && !next.paused)
       throw new AuxError("conflict", "Choose a saved task before resuming this routine.");
+    if (input.sourceRunId && input.sourceRunId !== current.sourceRunId) {
+      if (this.repo.getRun(input.sourceRunId)?.config?.taskId !== next.sourceTaskId)
+        throw new AuxError("conflict", "Choose a run from this saved task before making a Skill.");
+      next.paused = true;
+      next.activationReview = "run_result";
+    }
+    if (input.activationReviewed) {
+      if (source?.revision !== next.sourceTaskRevision)
+        throw new AuxError("conflict", "The source task changed. Sync this Skill before activation.");
+      if (!next.successCriteria.length)
+        throw new AuxError("conflict", "Sync the source task's success criteria before activation.");
+      this.requireCriteriaMatch(next);
+    }
     this.requireCalendarGrants(next);
     this.requireTriggerAuthority(next);
     this.persist(next);
+    if (current.pauseCause === "unread_results" && input.paused !== undefined)
+      this.repo.setSetting(`routinePresenceAcknowledged:${next.routineId}`, now);
     if (input.trigger) this.repo.deleteSetting(`routinePageDigest:${next.routineId}`);
     this.events.emit("routine.updated", { routine: next });
     return next;
@@ -397,11 +516,13 @@ export class RoutineService {
     const current = this.routine(routineId);
     if (current.revision !== expectedRevision)
       throw new AuxError("conflict", "This routine changed. Refresh and try again.");
+    const now = Date.now();
     const next: Routine = {
       ...current,
       revision: current.revision + 1,
-      updatedAt: Date.now(),
-      archivedAt: archived ? Date.now() : undefined,
+      updatedAt: now,
+      archivedAt: archived ? now : undefined,
+      activatedAt: archived ? current.activatedAt : now,
     };
     this.persist(next);
     this.events.emit("routine.updated", { routine: next });
@@ -479,6 +600,7 @@ export class RoutineService {
         workspaceId: target,
         trigger: { kind: "manual" },
         paused: true,
+        activationReview: "imported",
         reviewRequired: true,
         accountLabels: [],
       });
@@ -591,6 +713,7 @@ export class RoutineService {
 
   async due(now = Date.now()): Promise<RoutineRun[]> {
     this.sync();
+    this.pauseNeglected(now);
     const created: RoutineRun[] = [];
     for (const routine of this.list({ includeArchived: false, limit: 200 })) {
       if (routine.paused || routine.trigger.kind === "manual") continue;
@@ -600,7 +723,12 @@ export class RoutineService {
             "SELECT max(created_at) AS at FROM routine_runs WHERE routine_id=? AND occurrence_identity IS NOT NULL",
           )
           .get(routine.routineId) as { at: number | null };
-        const lowerBound = Math.max(routine.createdAt, last.at ?? 0, now - 14 * 24 * 60 * 60_000);
+        const lowerBound = Math.max(
+          routine.createdAt,
+          routine.activatedAt ?? 0,
+          last.at ?? 0,
+          now - 14 * 24 * 60 * 60_000,
+        );
         const pending: number[] = [];
         let cursor = now;
         for (let count = 0; count < 100; count++) {
@@ -609,15 +737,31 @@ export class RoutineService {
           pending.push(scheduledFor);
           cursor = scheduledFor - 60_000;
         }
-        for (const scheduledFor of pending.reverse()) {
+        const pendingInOrder = pending.reverse();
+        const overdue = pendingInOrder.filter((scheduledFor) => now - scheduledFor > 90_000);
+        const catchUp =
+          routine.missedRunPolicy === "run_once_on_wake" &&
+          !pendingInOrder.some((scheduledFor) => Math.abs(now - scheduledFor) <= 90_000)
+            ? overdue.at(-1)
+            : undefined;
+        for (const scheduledFor of pendingInOrder) {
           const identity = routineOccurrenceIdentity(
             routine.routineId,
             routine.trigger.timezone,
             scheduledFor,
           );
           if (this.hasOccurrence(identity)) continue;
-          if (Math.abs(now - scheduledFor) <= 90_000) {
-            created.push(await this.startOccurrence(routine, identity, scheduledFor));
+          if (Math.abs(now - scheduledFor) <= 90_000 || scheduledFor === catchUp) {
+            const record = await this.startOccurrence(routine, identity, scheduledFor);
+            if (scheduledFor === catchUp && ["needs_review", "running"].includes(record.status)) {
+              record.reason = (
+                `Caught up once after ${overdue.length} missed scheduled occurrence${overdue.length === 1 ? "" : "s"}. ` +
+                (record.status === "needs_review" ? "Review before writes." : "")
+              ).trim();
+              this.updateRun(record);
+              this.events.emit("routine.updated", { routine, run: record });
+            }
+            created.push(record);
           } else {
             created.push(
               this.recordMissed(
@@ -650,12 +794,38 @@ export class RoutineService {
     return created;
   }
 
+  /** Authoritative watch scope and document epoch before native text extraction. */
+  pageChangeTarget(pageId: string, url: string): { documentEpoch: number } | null {
+    const page = this.repo.db
+      .prepare("SELECT epoch FROM pages WHERE page_id=? AND url=? AND detached=0 AND owned=0")
+      .get(pageId, url) as { epoch: number } | undefined;
+    if (!page) return null;
+    const candidates = this.repo.db
+      .prepare(
+        "SELECT * FROM routines WHERE archived_at IS NULL AND paused=0 AND json_extract(json,'$.trigger.kind')='page_change' AND json_extract(json,'$.trigger.url')=?",
+      )
+      .all(url) as Parameters<typeof parseRoutine>[0][];
+    const probe: RoutineSourceEvent = {
+      kind: "page_change",
+      eventId: "preflight",
+      pageId,
+      url,
+      documentEpoch: page.epoch,
+      contentSha256: "0".repeat(64),
+      observedAt: Date.now(),
+    };
+    return candidates.some((row) => this.eventMatches(parseRoutine(row), probe))
+      ? { documentEpoch: page.epoch }
+      : null;
+  }
+
   /** Trusted host observations only. Event bodies and page text are never stored here. */
   async ingestEvent(raw: RoutineSourceEvent, now = Date.now()): Promise<RoutineRun[]> {
     const event = RoutineSourceEventSchema.parse(raw);
     if (event.observedAt > now + 30_000)
       throw new AuxError("invalid_params", "An automation event cannot be from the future.");
     this.sync();
+    this.pauseNeglected(now);
     const created: RoutineRun[] = [];
     const candidates = this.repo.db
       .prepare(
@@ -703,7 +873,7 @@ export class RoutineService {
           ? event.startAt - routine.trigger.beforeMinutes * 60_000
           : event.observedAt;
       if (dueAt > now + 30_000) continue;
-      if (now - dueAt > 5 * 60_000) {
+      if (now - dueAt > (event.kind === "calendar_event" ? 90_000 : 5 * 60_000)) {
         created.push(
           this.recordMissed(
             routine,
@@ -1048,6 +1218,33 @@ export class RoutineService {
     this.events.emit("routine.updated", { routine: paused, run: updated });
   }
 
+  /** Stop unattended model work when several old results remain unread. */
+  private pauseNeglected(now: number): void {
+    const rows = this.repo.db.prepare(
+      "SELECT * FROM routines WHERE archived_at IS NULL AND paused=0 AND json_extract(json,'$.trigger.kind')<>'manual'",
+    ).all() as Parameters<typeof parseRoutine>[0][];
+    for (const row of rows) {
+      const routine = parseRoutine(row);
+      if (routine.presenceGuardExempt) continue;
+      const acknowledged = this.repo.getSetting<number>(`routinePresenceAcknowledged:${routine.routineId}`)
+        ?? routine.activatedAt ?? routine.createdAt;
+      const unattended = this.repo.db.prepare(`SELECT count(DISTINCT rr.routine_run_id) AS unread,
+          min(rr.created_at) AS oldest, count(m.call_id) AS model_calls
+        FROM routine_runs rr
+        LEFT JOIN kv k ON k.key='setting:routineInboxRead:'||rr.routine_run_id
+        LEFT JOIN model_calls m ON m.run_id=rr.run_id
+        WHERE rr.routine_id=? AND rr.occurrence_identity IS NOT NULL
+          AND rr.status='completed' AND rr.created_at>=? AND k.value IS NULL`)
+        .get(routine.routineId, acknowledged) as { unread: number; oldest: number | null; model_calls: number };
+      if (unattended.unread < 3 || unattended.oldest === null ||
+          now - unattended.oldest < 24 * 60 * 60_000 || unattended.model_calls === 0) continue;
+      const paused: Routine = { ...routine, paused: true, pauseCause: "unread_results",
+        revision: routine.revision + 1, updatedAt: now };
+      this.persist(paused);
+      this.events.emit("routine.updated", { routine: paused });
+    }
+  }
+
   private mapRunStatus(record: RoutineRun, run: Run): RoutineRun | undefined {
     const endedAt = run.endedAt ?? Date.now();
     switch (run.status) {
@@ -1150,13 +1347,14 @@ export class RoutineService {
       throw new AuxError("not_found", "Choose a Space for this routine.");
   }
 
-  private requireSourceTask(taskId: string, workspaceId: string, requireOpen = true): { revision: number } {
+  private requireSourceTask(taskId: string, workspaceId: string, requireOpen = true): { revision: number; sourceOrigin?: "external" | "conversation" } {
     const row = this.repo.db
-      .prepare("SELECT workspace_id,state,revision FROM tasks WHERE task_id=?")
-      .get(taskId) as { workspace_id: string; state: string; revision: number } | undefined;
+      .prepare("SELECT workspace_id,state,revision,json FROM tasks WHERE task_id=?")
+      .get(taskId) as { workspace_id: string; state: string; revision: number; json: string } | undefined;
     if (!row || row.workspace_id !== workspaceId || (requireOpen && row.state !== "open"))
       throw new AuxError("conflict", "Choose an open saved task in this Space for the routine.");
-    return { revision: row.revision };
+    const task = JSON.parse(row.json) as { sourceOrigin?: "external" | "conversation"; conversationId?: string };
+    return { revision: row.revision, sourceOrigin: task.sourceOrigin ?? (task.conversationId ? "conversation" : undefined) };
   }
 
   private requireCriteriaMatch(routine: Routine) {

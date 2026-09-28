@@ -102,6 +102,7 @@ try {
   const entry = join(payload, "dist", "main.js");
   writeFileSync(entry, `process.env.AUX_PROGRAM_SPEND_CAP_USD ??= "50";\n${readFileSync(entry, "utf8")}`);
   run(node, ["--check", join(payload, "dist", "main.js")]);
+  run(node, ["--check", join(payload, "dist", "mcp.js")]);
   run(node, ["--check", join(payload, "dist", "privacy-checkpoint-worker.js")]);
 
   const helper = join(appRoot, "Contents", "Helpers", "Aux Runtime");

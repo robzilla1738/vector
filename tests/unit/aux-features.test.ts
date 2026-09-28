@@ -34,7 +34,7 @@ describe("AuxFeature staging", () => {
 
   it("returns a typed registry error for disabled runtime and bridge features", () => {
     expect(auxFeatureForMethod("vault.fill")).toBe("vault");
-    expect(auxFeatureForBridgeMethod("vaultFill")).toBe("vault");
+    expect(auxFeatureForBridgeMethod("vaultFill")).toBe("passwordManager");
     for (const method of ["dictationStatus", "startDictation", "stopDictation", "cancelDictation"]) {
       expect(auxFeatureForBridgeMethod(method)).toBe("dictation");
     }

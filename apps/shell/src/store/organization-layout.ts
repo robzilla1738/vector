@@ -8,6 +8,8 @@ export function toOrganizationLayout(layout: Layout): OrganizationLayout {
       archivedSpaces: layout.archivedSpaces ?? [],
       pins: layout.pins,
       folders: layout.folders,
+      ...(layout.tidyUndo ? { tidyUndo: layout.tidyUndo } : {}),
+      archivedTabs: layout.archivedTabs ?? [],
     },
     window: {
       activeSpaceId: layout.activeSpaceId,
@@ -23,11 +25,21 @@ export function toOrganizationLayout(layout: Layout): OrganizationLayout {
 }
 
 export function fromOrganizationLayout(value: OrganizationLayout): Layout {
+  // Chromium gives a restored window a new session ID. Its window record is
+  // initially empty even though its tabs retain their stable page IDs.
+  const restoredTidy =
+    value.shared.tidyUndo &&
+    value.window.order.length === 0 &&
+    Object.keys(value.window.tabFolder).length === 0
+      ? Object.fromEntries(value.shared.tidyUndo.moved.map(({ pageId, toFolderId }) => [pageId, toFolderId]))
+      : {};
   return {
     ...emptyLayout(),
     ...value.shared,
     ...value.window,
+    tabFolder: { ...restoredTidy, ...value.window.tabFolder },
     tabNames: value.window.tabNames ?? {},
+    tidyUndo: value.shared.tidyUndo,
   };
 }
 
@@ -122,6 +134,15 @@ export function rebaseOrganizationLayout(
       ),
       pins: mergePins(baseShared.pins, localShared.pins, remoteShared.pins),
       folders: mergeItems(baseShared.folders, localShared.folders, remoteShared.folders, (item) => item.id),
+      archivedTabs: mergeItems(
+        baseShared.archivedTabs ?? [],
+        localShared.archivedTabs ?? [],
+        remoteShared.archivedTabs ?? [],
+        (item) => item.archiveId,
+      ),
+      tidyUndo: same(baseShared.tidyUndo, localShared.tidyUndo)
+        ? remoteShared.tidyUndo
+        : localShared.tidyUndo,
     },
     window: {
       activeSpaceId: same(base.window.activeSpaceId, local.window.activeSpaceId)

@@ -1,18 +1,16 @@
 import { createHash, randomUUID } from "node:crypto";
-import { execFile } from "node:child_process";
-import { readFile, stat } from "node:fs/promises";
-import { promisify } from "node:util";
+import { readFile, realpath, stat } from "node:fs/promises";
 import { Client, type Transport } from "@modelcontextprotocol/client";
 import { AuxError, OutboundMcpGrantParams, OutboundMcpGrantSchema, OutboundMcpRegisterParams,
   OutboundMcpServerSchema, OutboundMcpToolSchema, type OutboundMcpGrant, type OutboundMcpServer } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
+import { inspectMcpBundle } from "./mcp-bundle.js";
 
-const runFile = promisify(execFile);
 type ServerRow = { body: string; state: OutboundMcpServer["state"] };
 type GrantRow = { body: string; revoked_at: number | null; consumed_at: number | null };
 export type McpTransportProvider = (server: OutboundMcpServer, signal: AbortSignal) => Promise<Transport>;
 
-/** The native host owns process sandboxing and OAuth. The runtime never spawns or fetches a server itself. */
+/** Reviewed MCP sources, grants, calls, and revocation. */
 export class OutboundMcpService {
   private active = new Map<string, Set<AbortController>>();
 
@@ -24,14 +22,19 @@ export class OutboundMcpService {
     const input = OutboundMcpRegisterParams.parse(raw);
     if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(input.workspaceId))
       throw new AuxError("not_found", "Space does not exist");
-    if (input.source.kind === "bundle") {
-      const inspected = await this.inspectBundle(input.source.path);
-      if (inspected.sha256 !== input.source.sha256 || inspected.format !== input.source.format)
+    const source = input.source.kind === "local"
+      ? { ...input.source, command: await realpath(input.source.command), cwd: await realpath(input.source.cwd) }
+      : input.source.kind === "bundle"
+        ? { ...input.source, path: await realpath(input.source.path) }
+        : input.source;
+    if (source.kind === "bundle") {
+      const inspected = await this.inspectBundle(source.path);
+      if (inspected.sha256 !== source.sha256 || inspected.format !== source.format)
         throw new AuxError("conflict", "Bundle contents changed. Inspect it again.");
     }
     const now = Date.now();
-    const server = OutboundMcpServerSchema.parse({ ...input, serverId: randomUUID(), state: "pending",
-      sourceDigest: createHash("sha256").update(JSON.stringify(input.source)).digest("hex"), createdAt: now, updatedAt: now });
+    const server = OutboundMcpServerSchema.parse({ ...input, source, serverId: randomUUID(), state: "pending",
+      sourceDigest: createHash("sha256").update(JSON.stringify(source)).digest("hex"), createdAt: now, updatedAt: now });
     this.repo.db.prepare("INSERT INTO outbound_mcp_servers(server_id,workspace_id,state,body,created_at,updated_at) VALUES(?,?,?,?,?,?)")
       .run(server.serverId, server.workspaceId, server.state, JSON.stringify(server), now, now);
     return server;
@@ -40,24 +43,13 @@ export class OutboundMcpService {
   async inspectBundle(path: string) {
     const format = path.toLowerCase().endsWith(".mcpb") ? "mcpb" : path.toLowerCase().endsWith(".dxt") ? "dxt" : null;
     if (!format) throw new AuxError("invalid_params", "Choose a .mcpb or .dxt bundle.");
-    const info = await stat(path);
+    const canonicalPath = await realpath(path);
+    const info = await stat(canonicalPath);
     if (!info.isFile() || info.size > 20_000_000) throw new AuxError("invalid_params", "Bundle must be a regular file under 20 MB.");
-    const bytes = await readFile(path);
+    const bytes = await readFile(canonicalPath);
     const sha256 = createHash("sha256").update(bytes).digest("hex");
-    let manifest: unknown;
-    try {
-      const { stdout } = await runFile("/usr/bin/unzip", ["-p", path, "manifest.json"], { timeout: 5000, maxBuffer: 131_072 });
-      manifest = JSON.parse(stdout);
-    } catch { throw new AuxError("invalid_params", "Bundle has no valid manifest.json."); }
-    if (!manifest || typeof manifest !== "object" || Array.isArray(manifest) ||
-      typeof (manifest as Record<string, unknown>).name !== "string" ||
-      !((manifest as Record<string, unknown>).server instanceof Object) ||
-      Array.isArray((manifest as Record<string, unknown>).server))
-      throw new AuxError("invalid_params", "Bundle manifest is incomplete.");
-    if (createHash("sha256").update(await readFile(path)).digest("hex") !== sha256)
-      throw new AuxError("conflict", "Bundle contents changed during inspection.");
-    return { path, sha256, format, name: String((manifest as Record<string, unknown>).name).slice(0, 200),
-      server: (manifest as Record<string, unknown>).server as Record<string, unknown> };
+    const manifest = await inspectMcpBundle(bytes);
+    return { path: canonicalPath, sha256, format, name: manifest.name, server: manifest.server };
   }
 
   get(serverId: string): OutboundMcpServer {
@@ -130,9 +122,12 @@ export class OutboundMcpService {
     return this.getGrant(grantId);
   }
 
-  private async connected<T>(server: OutboundMcpServer, action: (client: Client, signal: AbortSignal) => Promise<T>): Promise<T> {
+  private async connected<T>(server: OutboundMcpServer, action: (client: Client, signal: AbortSignal) => Promise<T>, externalSignal?: AbortSignal): Promise<T> {
     if (!this.transportProvider) throw new AuxError("backend_unavailable", "Supervised MCP transport is unavailable.");
     const controller = new AbortController();
+    const abort = () => controller.abort();
+    if (externalSignal?.aborted) controller.abort();
+    else externalSignal?.addEventListener("abort", abort, { once: true });
     const active = this.active.get(server.serverId) ?? new Set<AbortController>();
     active.add(controller);
     this.active.set(server.serverId, active);
@@ -146,6 +141,7 @@ export class OutboundMcpService {
       await client.connect(transport);
       return await action(client, controller.signal);
     } finally {
+      externalSignal?.removeEventListener("abort", abort);
       active.delete(controller);
       if (!active.size) this.active.delete(server.serverId);
       if (client) await client.close().catch(() => undefined);
@@ -163,7 +159,7 @@ export class OutboundMcpService {
     });
   }
 
-  async callTool(grantId: string, args: Record<string, unknown>, context: { workspaceId: string; taskId?: string; revision?: number }) {
+  async callTool(grantId: string, args: Record<string, unknown>, context: { workspaceId: string; taskId?: string; revision?: number }, externalSignal?: AbortSignal) {
     if (!this.transportProvider) throw new AuxError("backend_unavailable", "Supervised MCP transport is unavailable.");
     const grant = this.getGrant(grantId);
     const server = this.get(grant.serverId);
@@ -201,7 +197,7 @@ export class OutboundMcpService {
         const serialized = JSON.stringify(output);
         return { output: serialized.length > grant.outputTokenLimit * 4 ? "Tool output exceeded the approved limit." : serialized,
           isError: serialized.length > grant.outputTokenLimit * 4 || Boolean(output.isError) };
-      });
+      }, externalSignal);
       this.repo.db.prepare("UPDATE outbound_mcp_calls SET status='completed',ended_at=? WHERE call_id=?")
         .run(Date.now(), callId);
       return { callId, status: "completed" as const, ...result };

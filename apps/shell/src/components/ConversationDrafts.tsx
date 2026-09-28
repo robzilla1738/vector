@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import type { PreparedConversation } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
@@ -7,13 +8,17 @@ import { I } from "./icons";
 
 export function ConversationDrafts({ query = "", limit, compact = false, exclude = [] }: { query?: string; limit?: number; compact?: boolean; exclude?: string[] }) {
   const drafts = useStore(state => state.conversationDrafts);
-  const runs = useStore(state => state.runs);
   const [discarded, setDiscarded] = useState<{ id: string | null; text: string } | null>(null);
   const [prepared, setPrepared] = useState<PreparedConversation[]>([]);
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const draftChatIds = new Set([...Object.keys(drafts).filter(key => key.startsWith("chat:")).map(key => key.slice(5)),
+    ...prepared.map(item => item.chatId)]);
+  // Only a draft's matching run can change its display title.
+  useStore(useShallow(state => state.runs.filter(run => draftChatIds.has(run.config?.chatId ?? run.runId))
+    .map(run => JSON.stringify([run.runId, run.config?.chatId, run.goal]))));
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const update = () => { clearTimeout(timer); timer = setTimeout(() => setRefresh(value => value + 1), 100); };
@@ -31,7 +36,7 @@ export function ConversationDrafts({ query = "", limit, compact = false, exclude
       .catch(() => { if (live) setError("Saved attachment drafts couldn’t be loaded."); });
     return () => { live = false; };
   }, [refresh]);
-  const entries = conversationDraftEntries(drafts, runs, prepared).filter(item => !exclude.includes(item.id ?? "") && `${item.title} ${item.text}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const entries = conversationDraftEntries(drafts, useStore.getState().runs, prepared).filter(item => !exclude.includes(item.id ?? "") && `${item.title} ${item.text}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const shown = limit ? entries.slice(0, limit) : entries;
   const deletePrepared = async (chatId: string) => {
     if (busy) return;

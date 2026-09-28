@@ -36,32 +36,32 @@ function grantScopeLabel(scope: OutboundMcpGrant["scope"], tasks: Task[], worksp
 function ServerSource({ server }: { server: OutboundMcpServer }) {
   const source = server.source;
   return (
-    <dl className="mcp-source-details">
+    <div className="mcp-source-details">
       <div>
-        <dt>Server</dt>
-        <dd>{server.name}</dd>
+        <span className="mcp-source-label">Server</span>
+        <div className="mcp-source-value">{server.name}</div>
       </div>
       <div>
-        <dt>Kind</dt>
-        <dd>
+        <span className="mcp-source-label">Kind</span>
+        <div className="mcp-source-value">
           {source.kind === "local"
             ? "Local command"
             : source.kind === "remote"
               ? "Remote HTTPS"
               : "Local bundle"}
-        </dd>
+        </div>
       </div>
       {source.kind === "local" && (
         <>
           <div>
-            <dt>Executable</dt>
-            <dd>
+            <span className="mcp-source-label">Executable</span>
+            <div className="mcp-source-value">
               <code>{source.command}</code>
-            </dd>
+            </div>
           </div>
           <div>
-            <dt>Arguments</dt>
-            <dd>
+            <span className="mcp-source-label">Arguments</span>
+            <div className="mcp-source-value">
               {source.args.length ? (
                 <ol>
                   {source.args.map((arg, index) => (
@@ -73,57 +73,57 @@ function ServerSource({ server }: { server: OutboundMcpServer }) {
               ) : (
                 "None"
               )}
-            </dd>
+            </div>
           </div>
           <div>
-            <dt>Working directory</dt>
-            <dd>
+            <span className="mcp-source-label">Working directory</span>
+            <div className="mcp-source-value">
               <code>{source.cwd}</code>
-            </dd>
+            </div>
           </div>
         </>
       )}
       {source.kind === "remote" && (
         <>
           <div>
-            <dt>Endpoint</dt>
-            <dd>
+            <span className="mcp-source-label">Endpoint</span>
+            <div className="mcp-source-value">
               <code>{source.url}</code>
-            </dd>
+            </div>
           </div>
           <div>
-            <dt>Authentication</dt>
-            <dd>{source.auth === "oauth" ? "OAuth" : "None"}</dd>
+            <span className="mcp-source-label">Authentication</span>
+            <div className="mcp-source-value">{source.auth === "oauth" ? "OAuth" : "None"}</div>
           </div>
         </>
       )}
       {source.kind === "bundle" && (
         <>
           <div>
-            <dt>Bundle</dt>
-            <dd>
+            <span className="mcp-source-label">Bundle</span>
+            <div className="mcp-source-value">
               <code>{source.path}</code>
-            </dd>
+            </div>
           </div>
           <div>
-            <dt>Format</dt>
-            <dd>{source.format.toUpperCase()}</dd>
+            <span className="mcp-source-label">Format</span>
+            <div className="mcp-source-value">{source.format.toUpperCase()}</div>
           </div>
           <div>
-            <dt>File SHA-256</dt>
-            <dd>
+            <span className="mcp-source-label">File SHA-256</span>
+            <div className="mcp-source-value">
               <code>{source.sha256}</code>
-            </dd>
+            </div>
           </div>
         </>
       )}
       <div>
-        <dt>Source fingerprint</dt>
-        <dd>
+        <span className="mcp-source-label">Source fingerprint</span>
+        <div className="mcp-source-value">
           <code>{server.sourceDigest}</code>
-        </dd>
+        </div>
       </div>
-    </dl>
+    </div>
   );
 }
 
@@ -150,11 +150,22 @@ export function OutboundMcpSettings() {
   const [mode, setMode] = useState<"once" | "standing">("once");
   const [outputTokenLimit, setOutputTokenLimit] = useState("2000");
   const [grantReview, setGrantReview] = useState<GrantReview | null>(null);
+  const [testGrantId, setTestGrantId] = useState("");
+  const [testArguments, setTestArguments] = useState("{}");
+  const [testResult, setTestResult] = useState("");
+  const [oauthStatusRecord, setOauthStatusRecord] = useState<{
+    serverId: string;
+    connected: boolean;
+    expiresAt?: number;
+  } | null>(null);
+  const [pendingOAuth, setPendingOAuth] = useState<{ serverId: string; expiresAt: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
   const selectedServer = servers.find((server) => server.serverId === selectedServerId);
+  const selectedAuth = selectedServer?.source.kind === "remote" ? selectedServer.source.auth : undefined;
+  const oauthStatus = oauthStatusRecord?.serverId === selectedServerId ? oauthStatusRecord : null;
   const availableTasks = tasks.filter((task) => task.workspaceId === workspaceId && task.state === "open");
   const selectedTask = availableTasks.find((task) => task.taskId === taskId);
   const scope =
@@ -166,6 +177,9 @@ export function OutboundMcpSettings() {
   const tokenLimit = Number(outputTokenLimit);
   const validTokenLimit =
     outputTokenLimit.trim() !== "" && Number.isInteger(tokenLimit) && tokenLimit >= 1 && tokenLimit <= 32000;
+  const oauthExpiry = oauthStatus?.expiresAt
+    ? ` · access expires ${new Date(oauthStatus.expiresAt).toLocaleString()}`
+    : "";
 
   useEffect(() => {
     let active = true;
@@ -219,6 +233,40 @@ export function OutboundMcpSettings() {
       active = false;
     };
   }, [selectedServerId]);
+  useEffect(() => {
+    if (selectedServer?.state !== "approved" || selectedAuth !== "oauth") return;
+    let active = true;
+    void call("mcp.oauth.status", { serverId: selectedServer.serverId })
+      .then((status) => {
+        if (active) setOauthStatusRecord({ serverId: selectedServer.serverId, ...status });
+      })
+      .catch((reason) => {
+        if (active) setError(errorText(reason));
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedServer?.serverId, selectedServer?.state, selectedAuth]);
+  useEffect(() => {
+    if (!pendingOAuth) return;
+    const timer = window.setInterval(() => {
+      if (Date.now() >= pendingOAuth.expiresAt) {
+        setPendingOAuth(null);
+        return;
+      }
+      void call("mcp.oauth.status", { serverId: pendingOAuth.serverId })
+        .then((status) => {
+          if (selectedServerId === pendingOAuth.serverId)
+            setOauthStatusRecord({ serverId: pendingOAuth.serverId, ...status });
+          if (status.connected) {
+            setPendingOAuth(null);
+            setMessage("MCP authorization connected.");
+          }
+        })
+        .catch((reason) => setError(errorText(reason)));
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [pendingOAuth, selectedServerId]);
 
   const action = async (work: () => Promise<void>) => {
     setBusy(true);
@@ -300,8 +348,8 @@ export function OutboundMcpSettings() {
       <div className="drawer-section">MCP servers</div>
       <p className="hint">
         Add a server to a Space, review its exact source, then grant individual tools. Server approval alone
-        never grants tool access. Local commands and OAuth connections start only through the supervised
-        native host.
+        never grants tool access. Local commands run with network and file writes blocked. OAuth connections
+        require a native credential.
       </p>
       {!workspaces.length ? (
         <p className="hint">
@@ -385,7 +433,8 @@ export function OutboundMcpSettings() {
               <>
                 <p className="hint">
                   Enter an executable and one argument per line. Aux does not run the command while it is
-                  pending review. Do not put secrets in arguments.
+                  pending review. The approved working directory is readable by the server. Network and file
+                  writes are blocked. Do not put secrets in arguments.
                 </p>
                 <label>
                   Executable path
@@ -415,34 +464,38 @@ export function OutboundMcpSettings() {
             )}
             {sourceKind === "bundle" && (
               <>
+                <p className="hint">
+                  Aux supports self-contained Node bundles with static arguments and bundled files. Python,
+                  UV, binary servers, host settings and environment values are not supported yet.
+                </p>
                 <button className="btn sm" type="button" disabled={busy} onClick={() => void inspectBundle()}>
                   Choose and inspect bundle…
                 </button>
                 {bundle && (
-                  <dl className="mcp-source-details">
+                  <div className="mcp-source-details">
                     <div>
-                      <dt>Bundle</dt>
-                      <dd>
+                      <span className="mcp-source-label">Bundle</span>
+                      <div className="mcp-source-value">
                         <code>{bundle.path}</code>
-                      </dd>
+                      </div>
                     </div>
                     <div>
-                      <dt>Format</dt>
-                      <dd>{bundle.format.toUpperCase()}</dd>
+                      <span className="mcp-source-label">Format</span>
+                      <div className="mcp-source-value">{bundle.format.toUpperCase()}</div>
                     </div>
                     <div>
-                      <dt>SHA-256</dt>
-                      <dd>
+                      <span className="mcp-source-label">SHA-256</span>
+                      <div className="mcp-source-value">
                         <code>{bundle.sha256}</code>
-                      </dd>
+                      </div>
                     </div>
                     <div>
-                      <dt>Manifest server</dt>
-                      <dd>
+                      <span className="mcp-source-label">Manifest server</span>
+                      <div className="mcp-source-value">
                         <code>{JSON.stringify(bundle.server)}</code>
-                      </dd>
+                      </div>
                     </div>
-                  </dl>
+                  </div>
                 )}
               </>
             )}
@@ -497,6 +550,70 @@ export function OutboundMcpSettings() {
                 .
               </p>
               <ServerSource server={selectedServer} />
+              {selectedServer.state === "approved" &&
+                selectedServer.source.kind === "remote" &&
+                selectedServer.source.auth === "oauth" && (
+                  <div className="field">
+                    <strong>OAuth authorization</strong>
+                    <p className="hint">
+                      {oauthStatus?.connected
+                        ? `Connected in this Profile${oauthExpiry}.`
+                        : pendingOAuth?.serverId === selectedServer.serverId
+                          ? "Finish authorization in the window that opened."
+                          : "Connect this reviewed server before loading tools. " +
+                            "Aux stores credentials in the Profile Keychain."}
+                    </p>
+                    <div className="row">
+                      {!oauthStatus?.connected && (
+                        <button
+                          className="btn sm"
+                          disabled={busy || pendingOAuth?.serverId === selectedServer.serverId}
+                          onClick={() =>
+                            void action(async () => {
+                              const result = await call("mcp.oauth.start", {
+                                serverId: selectedServer.serverId,
+                              });
+                              if (result.state === "authorization") {
+                                await bridge.openExternal(result.url);
+                                setPendingOAuth({
+                                  serverId: selectedServer.serverId,
+                                  expiresAt: result.expiresAt,
+                                });
+                                setMessage("Finish MCP authorization in the window that opened.");
+                              } else {
+                                setOauthStatusRecord({
+                                  serverId: selectedServer.serverId,
+                                  ...(await call("mcp.oauth.status", { serverId: selectedServer.serverId })),
+                                });
+                                setMessage("MCP authorization connected.");
+                              }
+                            })
+                          }
+                        >
+                          Connect OAuth
+                        </button>
+                      )}
+                      {oauthStatus?.connected && (
+                        <button
+                          className="btn sm ghost"
+                          disabled={busy}
+                          onClick={() =>
+                            void action(async () => {
+                              setOauthStatusRecord({
+                                serverId: selectedServer.serverId,
+                                ...(await call("mcp.oauth.clear", { serverId: selectedServer.serverId })),
+                              });
+                              setPendingOAuth(null);
+                              setMessage("MCP authorization removed from this Profile.");
+                            })
+                          }
+                        >
+                          Disconnect OAuth
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               {selectedServer.state === "pending" && (
                 <div className="field">
                   <p className="hint">
@@ -664,46 +781,52 @@ export function OutboundMcpSettings() {
                       {grantReview && (
                         <div className="mcp-grant-review">
                           <strong>Confirm this tool grant</strong>
-                          <dl className="mcp-source-details">
+                          <div className="mcp-source-details">
                             <div>
-                              <dt>Server</dt>
-                              <dd>{selectedServer.name}</dd>
+                              <span className="mcp-source-label">Server</span>
+                              <div className="mcp-source-value">{selectedServer.name}</div>
                             </div>
                             <div>
-                              <dt>Server fingerprint</dt>
-                              <dd>
+                              <span className="mcp-source-label">Server fingerprint</span>
+                              <div className="mcp-source-value">
                                 <code>{grantReview.sourceDigest}</code>
-                              </dd>
+                              </div>
                             </div>
                             <div>
-                              <dt>Tool</dt>
-                              <dd>
+                              <span className="mcp-source-label">Tool</span>
+                              <div className="mcp-source-value">
                                 <code>{grantReview.toolName}</code>
-                              </dd>
+                              </div>
                             </div>
                             <div>
-                              <dt>Scope</dt>
-                              <dd>{grantScopeLabel(grantReview.scope, tasks, workspaces)}</dd>
+                              <span className="mcp-source-label">Scope</span>
+                              <div className="mcp-source-value">
+                                {grantScopeLabel(grantReview.scope, tasks, workspaces)}
+                              </div>
                             </div>
                             <div>
-                              <dt>Scope ID</dt>
-                              <dd>
+                              <span className="mcp-source-label">Scope ID</span>
+                              <div className="mcp-source-value">
                                 <code>
                                   {grantReview.scope.kind === "workspace"
                                     ? grantReview.scope.workspaceId
                                     : grantReview.scope.taskId}
                                 </code>
-                              </dd>
+                              </div>
                             </div>
                             <div>
-                              <dt>Duration</dt>
-                              <dd>{grantReview.mode === "once" ? "One call" : "Until revoked"}</dd>
+                              <span className="mcp-source-label">Duration</span>
+                              <div className="mcp-source-value">
+                                {grantReview.mode === "once" ? "One call" : "Until revoked"}
+                              </div>
                             </div>
                             <div>
-                              <dt>Output limit</dt>
-                              <dd>{grantReview.outputTokenLimit.toLocaleString()} tokens</dd>
+                              <span className="mcp-source-label">Output limit</span>
+                              <div className="mcp-source-value">
+                                {grantReview.outputTokenLimit.toLocaleString()} tokens
+                              </div>
                             </div>
-                          </dl>
+                          </div>
                           <button
                             className="btn"
                             disabled={
@@ -754,19 +877,80 @@ export function OutboundMcpSettings() {
                       </span>
                     </div>
                     {!grant.revokedAt && !grant.consumedAt && selectedServer.state === "approved" && (
-                      <button
-                        className="btn sm ghost"
-                        disabled={busy}
-                        onClick={() =>
-                          void action(async () => {
-                            await call("mcp.grants.revoke", { grantId: grant.grantId });
-                            await refreshGrants(selectedServer.serverId);
-                            setMessage("Tool grant revoked.");
-                          })
-                        }
-                      >
-                        Revoke tool
-                      </button>
+                      <div className="mcp-grant-actions">
+                        <button
+                          className="btn sm ghost"
+                          disabled={busy}
+                          onClick={() => {
+                            setTestGrantId(testGrantId === grant.grantId ? "" : grant.grantId);
+                            setTestArguments("{}");
+                            setTestResult("");
+                          }}
+                        >
+                          Call tool…
+                        </button>
+                        <button
+                          className="btn sm ghost"
+                          disabled={busy}
+                          onClick={() =>
+                            void action(async () => {
+                              await call("mcp.grants.revoke", { grantId: grant.grantId });
+                              await refreshGrants(selectedServer.serverId);
+                              setTestGrantId("");
+                              setMessage("Tool grant revoked.");
+                            })
+                          }
+                        >
+                          Revoke tool
+                        </button>
+                      </div>
+                    )}
+                    {testGrantId === grant.grantId && selectedServer.state === "approved" && (
+                      <div className="mcp-tool-test">
+                        <label>
+                          Tool arguments as JSON
+                          <textarea
+                            aria-label="MCP tool arguments"
+                            rows={3}
+                            value={testArguments}
+                            onChange={(event) => setTestArguments(event.target.value)}
+                          />
+                        </label>
+                        <p className="hint">
+                          This call uses the grant shown above. A one-call grant is consumed.
+                        </p>
+                        <button
+                          className="btn sm"
+                          disabled={busy || Boolean(grant.revokedAt || grant.consumedAt)}
+                          onClick={() =>
+                            void action(async () => {
+                              const args: unknown = JSON.parse(testArguments);
+                              if (!args || typeof args !== "object" || Array.isArray(args))
+                                throw new Error("Tool arguments must be a JSON object.");
+                              const context =
+                                grant.scope.kind === "workspace"
+                                  ? { workspaceId: grant.scope.workspaceId }
+                                  : {
+                                      workspaceId: selectedServer.workspaceId,
+                                      taskId: grant.scope.taskId,
+                                      revision: grant.scope.revision,
+                                    };
+                              const result = await call("mcp.tools.call", {
+                                grantId: grant.grantId,
+                                arguments: args as Record<string, unknown>,
+                                context,
+                              });
+                              setTestResult(
+                                `${result.status}${result.isError ? " · error" : ""}\n${result.output}`,
+                              );
+                              await refreshGrants(selectedServer.serverId);
+                            })
+                          }
+                        >
+                          Run approved tool
+                        </button>
+                        {testResult && <pre className="mcp-tool-result">{testResult}</pre>}
+                      </div>
                     )}
                   </div>
                 ))}

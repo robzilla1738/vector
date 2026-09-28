@@ -8,3 +8,9 @@
 .pal-section { font-size: var(--fs-2xs); font-weight: var(--fw-medium); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--ink-2); padding: var(--space-3) var(--space-3) var(--space-1); }
 .pal-empty { padding: var(--space-5); text-align: center; color: var(--ink-2); font-size: var(--fs-sm); }
 }
+
+@layer components {
+.palette-filters { display:flex; align-items:center; gap:var(--space-1); padding:var(--space-2) var(--space-4); }
+.palette-filters button[aria-pressed="true"] { background:var(--bg-hover); color:var(--ink-0); }
+.palette-search-status { margin:0; padding:var(--space-2) var(--space-4); font-size:var(--fs-xs); }
+}

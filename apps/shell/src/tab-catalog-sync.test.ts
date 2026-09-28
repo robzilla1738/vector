@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import type { PageTarget, TabCatalogSnapshot, TabPatch, TabRecord } from "@aux/contracts";
+import { TabRecordSchema, type PageTarget, type TabCatalogSnapshot, type TabPatch, type TabRecord } from "@aux/contracts";
 import { bridge } from "./bridge";
 import { useStore } from "./store";
 import { emptyLayout } from "./workspace";
@@ -40,6 +40,26 @@ it("merges catalog fields onto live pages without clobbering runtime fields", ()
   useStore.getState().applyTabsPatch(patch(4, 3, [{ op: "upsert", tab: record("one", { title: "renamed", loading: true }) }]));
   const page = useStore.getState().pages.find(page => page.pageId === "one")!;
   expect(page).toMatchObject({ title: "renamed", loading: true, controller: "agent", documentEpoch: 7 });
+});
+
+it("carries a page theme color and clears it when the site stops declaring one", () => {
+  setup();
+  expect(TabRecordSchema.safeParse(record("one", { themeColor: "red; background: url(bad)" })).success).toBe(false);
+  useStore.getState().applyTabsPatch(patch(4, 3, [{ op: "upsert", tab: record("one", { themeColor: "#c03955" }) }]));
+  expect(useStore.getState().pages.find(page => page.pageId === "one")?.themeColor).toBe("#c03955");
+  useStore.getState().applyTabsPatch(patch(5, 4, [{ op: "upsert", tab: record("one") }]));
+  expect(useStore.getState().pages.find(page => page.pageId === "one")?.themeColor).toBeUndefined();
+});
+
+it("tracks native battery saver transitions without accepting stale catalog state", () => {
+  setup();
+  document.documentElement.dataset.batterySaver = "false";
+  useStore.getState().syncTabsSnapshot({ ...snapshot(4, [record("one"), record("two")], ["one", "two"], "two"), batterySaverActive: true });
+  expect(document.documentElement.dataset.batterySaver).toBe("true");
+  useStore.getState().applyTabsPatch({ ...patch(5, 4, [{ op: "window", window: { windowId: "main", order: ["one", "two"], activePageId: "two" } }]), batterySaverActive: false });
+  expect(document.documentElement.dataset.batterySaver).toBe("false");
+  useStore.getState().syncTabsSnapshot({ ...snapshot(3, [], [], null), batterySaverActive: true });
+  expect(document.documentElement.dataset.batterySaver).toBe("false");
 });
 
 it("reconciles an older local tab placement to the main-owned Space", () => {

@@ -1,8 +1,9 @@
+import "./HorizontalTabs.css";
 import { isHomeAddress } from "../chrome";
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { errToast, useStore } from "../store";
-import { groupedTabs, tabLabel, tabsInSpace } from "../workspace";
+import { groupedTabs, spaceThemeStyle, tabLabel, tabsInSpace } from "../workspace";
 import { moveListFocus } from "../keyboard-list";
 import { FolderContextMenu, SpaceEditor, SpaceMenu } from "./Sidebar";
 import { TabPreview } from "./TabPreview";
@@ -34,7 +35,7 @@ const HorizontalTabControls = memo(function HorizontalTabControls({ pageId, acti
   if (!page) return null;
   const title = useStore(state => tabLabel(state.layout, page));
   return <>
-    <button ref={node => onTabNode(pageId, node)} className="horizontal-tab-select" role="tab" tabIndex={focusable ? 0 : -1} data-active={active} aria-selected={selecting ? selected : active} aria-label={page.loading ? `Loading ${title}`.trim() : undefined}
+    <button ref={node => onTabNode(pageId, node)} className="horizontal-tab-select" role="tab" tabIndex={focusable ? 0 : -1} data-active={active} aria-selected={selecting ? selected : active} aria-label={page.loading ? `Loading ${title}`.trim() : undefined} aria-description={page.lifecycle === "discarded" || page.lifecycle === "frozen" || page.lifecycle === "placeholder" ? "Sleeping. Reloads when opened." : undefined}
       onClick={event => { if (!onSelect(pageId, event)) void useStore.getState().activate(pageId).catch(errToast); }} onKeyDown={event => {
         if (event.nativeEvent.isComposing || onSelectionKey(event)) return;
         if ((event.key === " " || event.key === "Enter") && (event.metaKey || event.ctrlKey || event.shiftKey)) { event.preventDefault(); onSelect(pageId, event); return; }
@@ -46,7 +47,7 @@ const HorizontalTabControls = memo(function HorizontalTabControls({ pageId, acti
         }
         if (event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); event.stopPropagation(); onMove(pageId, event.key === "ArrowLeft" ? -1 : 1); }
       }}>
-      {page.viewStatus === "crashed" ? I.alert : page.loading ? <output className="spin" aria-label="Loading" /> : isHomeAddress(page.url) ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}
+      {page.viewStatus === "crashed" ? I.alert : page.loading ? <output className="spin" aria-label="Loading" /> : page.lifecycle === "discarded" || page.lifecycle === "frozen" || page.lifecycle === "placeholder" ? <span className="horizontal-sleep-icon" role="img" aria-label="Sleeping tab" title="Sleeping until opened">{I.pause}</span> : isHomeAddress(page.url) ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}
       <span className="horizontal-tab-title">{title}</span>
     </button>
     <TabAudioButton pageId={pageId} title={title} />
@@ -89,7 +90,6 @@ export function HorizontalTabs() {
   useEffect(() => { hidePreview(); }, [activePageId, layout.activeSpaceId, hidePreview]);
   const pins = layout.pins[layout.activeSpaceId] ?? [];
   const space = layout.spaces.find(item => item.id === layout.activeSpaceId);
-  const selection = useTabSelection(tabs, layout.activeSpaceId, activePageId);
   const [menu, setMenu] = useState<{ page: PageTarget; x: number; y: number } | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const dragging = useRef<string | null>(null);
@@ -100,6 +100,12 @@ export function HorizontalTabs() {
     if (node) tabNodes.current.set(id, node);
     else tabNodes.current.delete(id);
   }, []);
+  const focusAfterClose = useCallback(() => {
+    const state = useStore.getState();
+    const fallback = tabsInSpace(state.layout, state.pages, state.layout.activeSpaceId)[0]?.pageId;
+    tabNodes.current.get(state.activePageId ?? fallback ?? "")?.focus();
+  }, []);
+  const selection = useTabSelection(tabs, layout.activeSpaceId, activePageId, focusAfterClose);
   useEffect(() => {
     if (activePageId && mode === "focus") tabNodes.current.get(activePageId)?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [activePageId, mode, layout.order]);
@@ -154,11 +160,12 @@ export function HorizontalTabs() {
         <button className="icon-btn" aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} onClick={() => void useStore.getState().newTab().catch(errToast)}>{I.plus}</button>
       </div>
       <div className="horizontal-tabs-spacer" />
-      <div className="horizontal-space" data-space={space?.color}>
+      <div className="horizontal-space" data-space={space?.color} style={spaceThemeStyle(space)}>
         <button ref={spaceTrigger} className="horizontal-profile" aria-label={`Switch space, current: ${space?.name ?? "Personal"}`} aria-haspopup="menu" aria-expanded={spaceMenuOpen} title="Switch space" onClick={() => setSpaceMenuOpen(open => !open)}>
           {I.person}<span className="horizontal-space-name">{space?.name ?? "Personal"}</span>{I.down}
         </button>
         {spaceMenuOpen && <SpaceMenu
+          anchor={spaceTrigger}
           spaces={layout.spaces}
           archivedSpaces={layout.archivedSpaces ?? []}
           active={layout.activeSpaceId}
@@ -175,7 +182,7 @@ export function HorizontalTabs() {
       </div>
     </div>
     {editingSpace && <SpaceEditor space={editingSpace === "new" ? null : editingSpace} onClose={() => setEditingSpace(null)} returnFocus={spaceTrigger}
-      onSave={(name, color, grain) => editingSpace === "new" ? useStore.getState().addSpace(name, color, grain) : useStore.getState().editSpace(editingSpace.id, name, color, grain)} />}
+      onSave={(name, color, grain, theme) => editingSpace === "new" ? useStore.getState().addSpace(name, color, grain, theme) : useStore.getState().editSpace(editingSpace.id, name, color, grain, theme)} />}
     {groupMenu && folders.some(folder => folder.id === groupMenu.id) && <FolderContextMenu group folder={folders.find(folder => folder.id === groupMenu.id)!} x={groupMenu.x} y={groupMenu.y} onClose={() => setGroupMenu(null)} onRename={() => setRenaming(groupMenu.id)} onDelete={() => { useStore.getState().deleteFolder(groupMenu.id); setGroupMenu(null); }} />}
     {preview && previewPage && !groupMenu && !menu && <TabPreview {...preview} page={previewPage} />}
     {menu && <TabMenu selectedPages={selection.pagesFor(menu.page)} onSelectionDone={selection.clear} page={menu.page} x={menu.x} y={menu.y} onClose={() => setMenu(null)} />}

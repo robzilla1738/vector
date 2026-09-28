@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { PageTarget, TidyProposal } from "@aux/contracts";
+import { OrganizationLayoutSchema, type PageTarget, type TidyProposal } from "@aux/contracts";
 import { proposeTabTidy } from "../../apps/runtime/src/agent/tidy.js";
 import type { ModelClient } from "../../apps/runtime/src/agent/model-client.js";
-import { applyTidyProposal, revertTidyProposal } from "../../apps/shell/src/tidy-layout.js";
-import { emptyLayout } from "../../apps/shell/src/workspace.js";
+import { applyTidyProposal, revertTidyProposal, revertTidyRecord,
+  tidyUndoRecord } from "../../apps/shell/src/tidy-layout.js";
+import { assignFolder, emptyLayout } from "../../apps/shell/src/workspace.js";
+import { fromOrganizationLayout, toOrganizationLayout } from "../../apps/shell/src/store/organization-layout.js";
 
 const pages = [1, 2, 3, 4].map(index => ({
   pageId: `p${index}`, url: `https://example.com/private/${index}?token=secret`, title: `Research ${index}`,
@@ -57,5 +59,36 @@ describe("AI Tidy proposal and guarded layout apply", () => {
       .toThrow(/changed or moved/);
     expect(() => applyTidyProposal(before, [{ ...pages[0]!, controller: "agent" }, ...pages.slice(1)], before.activeSpaceId, proposal))
       .toThrow(/changed or moved/);
+  });
+
+  it("persists a compact group receipt and restores only unchanged Tidy folders after reload", () => {
+    const before = emptyLayout();
+    const proposal: TidyProposal = { pages: pages.map(({ pageId, url, title }) => ({ pageId, url, title })),
+      groups: [{ name: "Reading", pageIds: ["p1", "p2"] }], modelId: "meta/muse-spark-1.3-contributor", createdAt: 1 };
+    const applied = applyTidyProposal(before, pages, before.activeSpaceId, proposal);
+    const receipt = tidyUndoRecord(before, applied);
+    const saved = OrganizationLayoutSchema.parse(toOrganizationLayout({ ...applied, tidyUndo: receipt }));
+    expect(saved.shared.tidyUndo).toEqual(receipt);
+    const restored = fromOrganizationLayout(JSON.parse(JSON.stringify(saved)));
+    expect(restored.tidyUndo).toEqual(receipt);
+    const restarted = fromOrganizationLayout({ ...saved, window: toOrganizationLayout(emptyLayout()).window });
+    expect(restarted.tabFolder.p1).toBe(receipt.created[0]!.id);
+    expect(restarted.tabFolder.p2).toBe(receipt.created[0]!.id);
+    const manuallyMoved = assignFolder(restored, "p1", null);
+    expect(manuallyMoved.tidyUndo).toBeUndefined();
+    const afterMove = fromOrganizationLayout({ ...toOrganizationLayout(manuallyMoved),
+      window: toOrganizationLayout(emptyLayout()).window });
+    expect(afterMove.tabFolder.p1).toBeUndefined();
+    const unrelated = { ...restored, pins: { ...restored.pins, [before.activeSpaceId]:
+      [{ url: "https://unrelated.example", title: "Kept" }] } };
+    const undone = revertTidyRecord(restored.tidyUndo!, unrelated);
+    expect(undone.folders).toEqual(before.folders);
+    expect(undone.tabFolder).toEqual(before.tabFolder);
+    expect(undone.pins).toEqual(unrelated.pins);
+    expect(undone.tidyUndo).toBeUndefined();
+    expect(() => revertTidyRecord(receipt, { ...restored,
+      folders: restored.folders.map(folder => ({ ...folder, name: "Renamed" })) })).toThrow(/folder changed/);
+    expect(() => revertTidyRecord(receipt, { ...restored,
+      tabFolder: { ...restored.tabFolder, p3: receipt.created[0]!.id } })).toThrow(/new tab/);
   });
 });

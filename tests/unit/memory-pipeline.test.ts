@@ -30,8 +30,17 @@ it("extracts completed Space runs only after opt-in and exposes bounded progress
     f.pipeline.setPolicy(f.workspace.workspaceId, true);
     expect((await f.pipeline.extractRun(f.workspace.workspaceId, "run-one")).extracted).toBe(2);
     expect((await f.pipeline.extractRun(f.workspace.workspaceId, "run-one")).extracted).toBe(0);
+    expect(await f.pipeline.sources(f.workspace.workspaceId)).toEqual([]);
+    expect((await f.pipeline.inbox(f.workspace.workspaceId))).toHaveLength(2);
+    expect((await f.pipeline.overview(f.workspace.workspaceId)).claimCount).toBe(0);
+    expect(await f.pipeline.search(f.workspace.workspaceId, "green fixture")).toEqual([]);
+    const [first, second] = await f.pipeline.inbox(f.workspace.workspaceId);
+    await f.pipeline.review(f.workspace.workspaceId, first!.claimId, "discard");
+    await f.pipeline.review(f.workspace.workspaceId, second!.claimId, "accept");
     const overview = await f.pipeline.overview(f.workspace.workspaceId);
-    expect(overview.claimCount).toBe(2);
+    expect(overview.claimCount).toBe(1);
+    expect(await f.pipeline.history(f.workspace.workspaceId)).toMatchObject([{ claimCount: 1 }]);
+    expect(await f.pipeline.inbox(f.workspace.workspaceId)).toEqual([]);
     expect(overview.summary.length).toBeLessThan(10_000);
     expect(await f.pipeline.search(f.workspace.workspaceId, "green fixture")).toHaveLength(1);
     const profileDir = join(f.directory, readdirSync(f.directory)[0]!);
@@ -39,7 +48,60 @@ it("extracts completed Space runs only after opt-in and exposes bounded progress
     const history = execFileSync("git", ["-C", spaceDir, "log", "--all", "-p"], { encoding: "utf8" });
     expect(history).not.toContain("green fixture");
     const manifest = JSON.parse(readFileSync(join(spaceDir, "manifest.json"), "utf8")) as { generation: string };
-    expect(readdirSync(join(spaceDir, manifest.generation))).toEqual(expect.arrayContaining(["summary.md.enc", "handbook.md.enc", "rollouts"]));
+    expect(readdirSync(join(spaceDir, manifest.generation))).toEqual(expect.arrayContaining(["inbox.json.enc", "history.json.enc", "summary.md.enc", "handbook.md.enc", "rollouts"]));
+  } finally { f.close(); }
+});
+
+it("reverts accepted memory and scrubs forgotten claims from every recoverable revision", async () => {
+  const f = fixture();
+  try {
+    f.pipeline.setPolicy(f.workspace.workspaceId, true);
+    f.save("run-one", "The private amber fixture was present in the first report.");
+    f.save("run-two", "The durable violet fixture was present in the second report.");
+    for (const runId of ["run-one", "run-two"]) {
+      await f.pipeline.extractRun(f.workspace.workspaceId, runId);
+      const note = (await f.pipeline.inbox(f.workspace.workspaceId)).find(item => item.sourceRunId === runId)!;
+      await f.pipeline.review(f.workspace.workspaceId, note.claimId, "accept");
+    }
+    const history = await f.pipeline.history(f.workspace.workspaceId);
+    expect(history.map(item => item.claimCount)).toEqual([2, 1]);
+    await f.pipeline.revert(f.workspace.workspaceId, history[1]!.revisionId);
+    expect(await f.pipeline.search(f.workspace.workspaceId, "violet")).toEqual([]);
+    await f.pipeline.revert(f.workspace.workspaceId, history[0]!.revisionId);
+    expect(await f.pipeline.search(f.workspace.workspaceId, "violet")).toHaveLength(1);
+    await f.pipeline.forget({ workspaceId: f.workspace.workspaceId, sourceRunId: "run-one" });
+    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    for (const revision of await restarted.history(f.workspace.workspaceId)) {
+      expect(revision.summary).not.toContain("amber");
+      await restarted.revert(f.workspace.workspaceId, revision.revisionId);
+      expect(await restarted.search(f.workspace.workspaceId, "amber")).toEqual([]);
+    }
+  } finally { f.close(); }
+});
+
+it("forgets a claim that exists only in an older revision and preserves the pre-restore state", async () => {
+  const f = fixture();
+  try {
+    f.pipeline.setPolicy(f.workspace.workspaceId, true);
+    f.save("run-one", "The original amber fixture belongs to this Space.");
+    f.save("run-two", "The current violet fixture belongs to this Space.");
+    for (const runId of ["run-one", "run-two"]) {
+      await f.pipeline.extractRun(f.workspace.workspaceId, runId);
+      const note = (await f.pipeline.inbox(f.workspace.workspaceId)).find(item => item.sourceRunId === runId)!;
+      await f.pipeline.review(f.workspace.workspaceId, note.claimId, "accept");
+    }
+    const earlier = (await f.pipeline.history(f.workspace.workspaceId)).find(revision => revision.claimCount === 1)!;
+    await f.pipeline.revert(f.workspace.workspaceId, earlier.revisionId);
+    expect(await f.pipeline.search(f.workspace.workspaceId, "violet")).toEqual([]);
+    expect((await f.pipeline.history(f.workspace.workspaceId))[0]?.summary).toContain("violet");
+    expect(await f.pipeline.forget({ workspaceId: f.workspace.workspaceId, sourceRunId: "run-two" }))
+      .toEqual({ forgotten: 1, remaining: 1 });
+    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    for (const revision of await restarted.history(f.workspace.workspaceId)) {
+      expect(revision.summary).not.toContain("violet");
+      await restarted.revert(f.workspace.workspaceId, revision.revisionId);
+      expect(await restarted.search(f.workspace.workspaceId, "violet")).toEqual([]);
+    }
   } finally { f.close(); }
 });
 
@@ -51,6 +113,8 @@ it("rebuilds derived claims on Forget, erases old keys, and stays forgotten afte
     f.save("run-two", "The durable violet sentinel belongs to run two.");
     await f.pipeline.extractRun(f.workspace.workspaceId, "run-one");
     await f.pipeline.extractRun(f.workspace.workspaceId, "run-two");
+    for (const note of await f.pipeline.inbox(f.workspace.workspaceId))
+      await f.pipeline.review(f.workspace.workspaceId, note.claimId, "accept");
     expect(f.secrets.size).toBe(1);
     const oldKey = [...f.secrets.keys()][0]!;
     const forgotten = await f.pipeline.forget({ workspaceId: f.workspace.workspaceId, sourceRunId: "run-one" });
@@ -71,6 +135,7 @@ it("keeps the prior generation readable if credential erasure fails", async () =
     f.pipeline.setPolicy(f.workspace.workspaceId, true);
     f.save("run-one", "The copper fixture is still required after a failed erasure.");
     await f.pipeline.extractRun(f.workspace.workspaceId, "run-one");
+    await f.pipeline.review(f.workspace.workspaceId, (await f.pipeline.inbox(f.workspace.workspaceId))[0]!.claimId, "accept");
     const originalKey = [...f.secrets.keys()][0]!;
     const failingNative = {
       ...f.native,
@@ -83,5 +148,74 @@ it("keeps the prior generation readable if credential erasure fails", async () =
     await expect(pipeline.forget({ workspaceId: f.workspace.workspaceId, all: true })).rejects.toThrow(/credential store/);
     expect(await f.pipeline.search(f.workspace.workspaceId, "copper fixture")).toHaveLength(1);
     expect(f.secrets.size).toBe(1);
+  } finally { f.close(); }
+});
+
+it("persists pending notes across restart and never re-extracts discarded or forgotten sources", async () => {
+  const f = fixture();
+  try {
+    f.pipeline.setPolicy(f.workspace.workspaceId, true);
+    f.save("run-one", "The private silver sentinel is awaiting review.");
+    expect(await f.pipeline.sources(f.workspace.workspaceId)).toMatchObject([{ runId: "run-one" }]);
+    await f.pipeline.extractRun(f.workspace.workspaceId, "run-one");
+    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    expect((await restarted.inbox(f.workspace.workspaceId))[0]?.text).toContain("silver sentinel");
+    expect((await restarted.overview(f.workspace.workspaceId)).summary).toBe("");
+    const pending = (await restarted.inbox(f.workspace.workspaceId))[0]!;
+    await restarted.review(f.workspace.workspaceId, pending.claimId, "discard");
+    expect((await restarted.extractRun(f.workspace.workspaceId, "run-one")).extracted).toBe(0);
+    expect(await restarted.inbox(f.workspace.workspaceId)).toEqual([]);
+    expect(await restarted.sources(f.workspace.workspaceId)).toEqual([]);
+  } finally { f.close(); }
+});
+
+it("rejects stale evidence and concurrent consolidation before approving a note", async () => {
+  const f = fixture();
+  try {
+    f.pipeline.setPolicy(f.workspace.workspaceId, true);
+    f.save("run-one", "The verified orange fixture was present in the source report.");
+    f.repo.db.prepare("INSERT INTO memory_pipeline_leases(workspace_id,owner,expires_at) VALUES(?,?,?)")
+      .run(f.workspace.workspaceId, "other-worker", Date.now() + 60_000);
+    await expect(f.pipeline.extractRun(f.workspace.workspaceId, "run-one")).rejects.toThrow(/being updated/);
+    f.repo.db.prepare("DELETE FROM memory_pipeline_leases WHERE workspace_id=?").run(f.workspace.workspaceId);
+    await f.pipeline.extractRun(f.workspace.workspaceId, "run-one");
+    const note = (await f.pipeline.inbox(f.workspace.workspaceId))[0]!;
+    f.save("run-one", "The source report no longer supports that note.");
+    await expect(f.pipeline.review(f.workspace.workspaceId, note.claimId, "accept")).rejects.toThrow(/no longer verifies/);
+    expect((await f.pipeline.overview(f.workspace.workspaceId)).claimCount).toBe(0);
+    expect(await f.pipeline.inbox(f.workspace.workspaceId)).toHaveLength(1);
+  } finally { f.close(); }
+});
+
+it("omits a neutral-URL run when its report contains personal account content", async () => {
+  const f = fixture();
+  try {
+    f.pipeline.setPolicy(f.workspace.workspaceId, true);
+    f.save("account-run", "Your account balance is $4,000. Review the detailed transaction history.");
+    expect(await f.pipeline.sources(f.workspace.workspaceId)).toEqual([]);
+    await expect(f.pipeline.extractRun(f.workspace.workspaceId, "account-run")).rejects.toThrow(/sensitive/);
+    expect((await f.pipeline.overview(f.workspace.workspaceId)).summary).toBe("");
+  } finally { f.close(); }
+});
+
+it("omits sensitive and excluded page sources before extraction", async () => {
+  const f = fixture();
+  try {
+    f.pipeline.setPolicy(f.workspace.workspaceId, true);
+    const page = (pageId: string, url: string, title: string) => f.repo.upsertPage({ pageId, backend: "aux",
+      targetId: pageId, url, title, documentEpoch: 1, lastRevision: 1, viewStatus: "visible",
+      controller: "human", controllerEpoch: 0, ownedByRuntime: false, createdAt: 1, lastActiveAt: 1 });
+    const run = (runId: string, pageId: string) => f.repo.saveRun({ runId, goal: "Research",
+      status: "completed", pageIds: [pageId], config: { contextWorkspaceId: f.workspace.workspaceId },
+      result: { report: "The visible page informed this verified report." }, createdAt: 1, endedAt: 1 });
+    page("bank-page", "https://bank.example/account", "Account");
+    run("bank-run", "bank-page");
+    page("article-page", "https://example.test/article", "Ordinary article");
+    run("article-run", "article-page");
+    expect((await f.pipeline.sources(f.workspace.workspaceId)).map(item => item.runId)).toEqual(["article-run"]);
+    await expect(f.pipeline.extractRun(f.workspace.workspaceId, "bank-run")).rejects.toThrow(/sensitive/);
+    f.repo.setSetting(`workspaceMemory:${f.workspace.workspaceId}`, { excludedOrigins: ["https://example.test"] });
+    expect(await f.pipeline.sources(f.workspace.workspaceId)).toEqual([]);
+    await expect(f.pipeline.extractRun(f.workspace.workspaceId, "article-run")).rejects.toThrow(/excluded/);
   } finally { f.close(); }
 });

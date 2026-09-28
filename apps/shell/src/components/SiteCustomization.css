@@ -10,8 +10,8 @@
     border-radius: var(--r-card);
     background: color-mix(in srgb, var(--bg-1) 86%, transparent);
     box-shadow: var(--shadow-pop);
-    backdrop-filter: blur(28px) saturate(1.35);
-    -webkit-backdrop-filter: blur(28px) saturate(1.35);
+    backdrop-filter: blur(var(--blur-glass-floating)) saturate(1.35);
+    -webkit-backdrop-filter: blur(var(--blur-glass-floating)) saturate(1.35);
   }
   .zap-header {
     display: flex;
@@ -182,11 +182,11 @@
     border-radius: var(--r-control);
   }
   .zap-error {
-    color: var(--warn) !important;
+    color: var(--warn);
     background: var(--warn-soft);
   }
   .zap-notice {
-    color: var(--ink-1) !important;
+    color: var(--ink-1);
     background: var(--bg-2);
   }
   .zap-picking {

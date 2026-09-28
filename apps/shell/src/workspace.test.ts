@@ -7,6 +7,7 @@ import {
   previewSplit,
   rememberActiveTab,
   splitForPage,
+  withSplitPair,
   assignFolder,
   assignSpace,
   createFolder,
@@ -15,6 +16,8 @@ import {
   isPinned,
   moveTab,
   parseLayout,
+  renameSpace,
+  spaceThemeColor,
   removeFolder,
   removeSpace,
   reorderGroup,
@@ -29,6 +32,17 @@ import {
   unfiledTabs,
   updateFolder,
 } from "./workspace";
+
+it("round-trips a custom Space color and rejects malformed stored recipes", () => {
+  const theme = { hue: 195, lightness: 62, intensity: 80, inverted: true };
+  const created = createSpace(emptyLayout(), "Studio", "teal", 50, theme);
+  const restored = parseLayout(JSON.stringify(created));
+  expect(restored.spaces[1]?.theme).toEqual(theme);
+  expect(spaceThemeColor(theme)).toBe("oklch(38% 0.144 195)");
+  expect(renameSpace(restored, restored.spaces[1]!.id, "Studio", "teal", 50, null).spaces[1]?.theme).toBeUndefined();
+  const malicious = JSON.stringify({ ...created, spaces: [created.spaces[0], { ...created.spaces[1], theme: { ...theme, hue: "0);background:red" } }] });
+  expect(parseLayout(malicious).spaces[1]?.theme).toBeUndefined();
+});
 
 const page = (id: string, extra: Partial<PageTarget> = {}): PageTarget => ({
   pageId: id,
@@ -239,6 +253,20 @@ it("offers split view only for available browser-owned pages", () => {
     {viewStatus:"detached"}, {viewStatus:"crashed"}, {url:"about:blank"},
   ] as Partial<PageTarget>[]) expect(canSplitPage(page("unavailable", changes))).toBe(false);
   expect(canSplitPage(page("blank-document", {url:"about:blank",showBlankDocument:true}))).toBe(true);
+});
+
+it("keeps a split visible when either page is selected and clears replaced pairs", () => {
+  const pages = [page("a"), page("b"), page("c")];
+  const base = { ...emptyLayout(), tabSpace: { a: DEFAULT_SPACE.id, b: DEFAULT_SPACE.id, c: DEFAULT_SPACE.id } };
+  const first = withSplitPair(base, "a", "b");
+  expect(splitForPage(first, pages, "a")).toBe("b");
+  expect(splitForPage(first, pages, "b")).toBe("a");
+  const replaced = withSplitPair(first, "a", "c");
+  expect(splitForPage(replaced, pages, "b")).toBeNull();
+  expect(splitForPage(replaced, pages, "c")).toBe("a");
+  const closed = withSplitPair(replaced, "c", null);
+  expect(splitForPage(closed, pages, "a")).toBeNull();
+  expect(splitForPage(closed, pages, "c")).toBeNull();
 });
 
 it("pairs a conversation preview with the current tab when that tab can share the stage", () => {

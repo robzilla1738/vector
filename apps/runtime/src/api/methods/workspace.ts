@@ -3,9 +3,21 @@ import type { MethodName } from "@aux/contracts";
 
 async function h_workspace_get(ctx: MethodCtx): Promise<unknown> {
   const { client, s, scope, scopedPageIds, scopedTasks } = ctx;
-  const pages = scope
+  const livePages = scope
     ? s.pages.list().filter((page) => scopedPageIds(scope, client.connectionId).has(page.pageId))
     : s.pages.list();
+  // Saved tabs without a native target belong in the owner's strip. They are
+  // presentation placeholders; pages.list and scoped clients remain live only.
+  const pages = scope ? livePages : [
+    ...livePages,
+    ...s.pages.recoveryTabs().flatMap((tab) => {
+      if (livePages.some((page) => page.pageId === tab.pageId)) return [];
+      const previous = s.repo.getPage(tab.pageId);
+      return previous ? [{ ...previous, url: tab.url, title: tab.title,
+        windowId: tab.windowId, lifecycle: "placeholder" as const,
+        viewStatus: "hidden" as const, loading: false }] : [];
+    }),
+  ];
   const taskIds = scope ? new Set(scopedTasks(scope).map((task) => task.taskId)) : null;
   const runs = s.runs.coordinator
     .list(50)

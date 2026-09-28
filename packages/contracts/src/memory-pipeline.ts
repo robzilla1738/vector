@@ -3,6 +3,10 @@ import { z } from "zod";
 export const MemoryPipelinePolicySchema = z.object({ workspaceId: z.string().min(1), enabled: z.boolean() }).strict();
 export const MemoryClaimSchema = z.object({ claimId: z.string().uuid(), sourceRunId: z.string().min(1),
   text: z.string().min(1).max(2000), capturedAt: z.number().int().nonnegative() });
+export const MemoryPipelineInboxSchema = z.array(MemoryClaimSchema).max(200);
+export const MemoryPipelineSourceSchema = z.object({ runId: z.string().min(1), goal: z.string(), endedAt: z.number().int().nonnegative() });
+export const MemoryPipelineRevisionSchema = z.object({ revisionId: z.string().uuid(), capturedAt: z.number().int().nonnegative(),
+  claimCount: z.number().int().nonnegative(), summary: z.string().max(2000) });
 export const MemoryPipelineOverviewSchema = z.object({ workspaceId: z.string().min(1), enabled: z.boolean(),
   summary: z.string().max(10_000), claimCount: z.number().int().nonnegative(), sourceCount: z.number().int().nonnegative() });
 export const MemoryPipelineForgetParams = z.object({ workspaceId: z.string().min(1),

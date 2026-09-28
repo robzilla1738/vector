@@ -5,8 +5,8 @@ import { call, toast, useStore } from "../store";
 /**
  * Non-modal "save this sign-in?" card — Chrome-style. The credential itself
  * never reaches the renderer: confirm/dismiss only names the pending offer,
- * and main resolves it against the value captured at submit time. When the
- * vault is locked the card collects the passphrase and unlocks first.
+ * and the browser resolves it against the matching pending offer. When a
+ * legacy vault is locked the card collects the passphrase and unlocks first.
  */
 export function VaultOfferBanner() {
   const offer = useStore(state => state.vaultOffer);
@@ -21,11 +21,13 @@ export function VaultOfferBanner() {
     setError("");
     try {
       if (!save) {
-        await bridge.vaultDismiss(offer.pageId, offer.origin);
+        if (!await bridge.vaultDismiss(offer.pageId, offer.origin, offer.offerId))
+          throw new Error("This sign-in offer is no longer available.");
       } else {
         if (offer.locked) await call("vault.unlock", { passphrase });
-        const result = await bridge.vaultSave(offer.pageId, offer.origin);
-        toast(result.updated ? "Sign-in updated in your vault." : "Sign-in saved to your vault.");
+        const result = await bridge.vaultSave(offer.pageId, offer.origin, offer.offerId);
+        if (!result.ok) throw new Error("This sign-in offer is no longer available.");
+        toast(result.updated ? "Sign-in updated in this browser." : "Sign-in saved in this browser.");
       }
       setOffer(null);
       setPassphrase("");

@@ -18,6 +18,7 @@ import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 import type { ProviderSuggestion } from "./command-provider-types";
 import { commandTabRows } from "./command-tab-rows";
+import { bridge, type BrowserExtension } from "../bridge";
 
 type Store = ReturnType<typeof useStore.getState>;
 interface Domain {
@@ -34,6 +35,7 @@ export interface CommandProviderInput {
   bookmarks: Array<Store["bookmarks"][number] & { id: string }>;
   closed: Array<Store["closedTabs"][number] & { id: string }>;
   history: Array<HistoryEntry & { id: string; lastVisit: number }>;
+  extensions: Array<BrowserExtension & { id: string; title: string }>;
   programs: Array<SavedProgram & { id: string; title: string }>;
   runs: Array<Run & { id: string; title: string }>;
   recentChats: Run[];
@@ -55,6 +57,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
     bookmarks,
     closed,
     history,
+    extensions,
     programs,
     runs,
     recentChats,
@@ -79,7 +82,6 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
       run: () => exec({ kind: "search", query: phrase, url: toUrl(phrase, searchEngine) }),
     });
   }
-  const openUrls = new Set(useStore.getState().pages.map((item) => item.url.replace(/\/$/, "")));
   out.push(...commandTabRows(q, tabs, activate));
   for (const site of rankCandidates(q, domains).slice(0, 2)) {
     out.push({
@@ -92,10 +94,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
       run: () => exec({ kind: "navigate", url: site.url, display: site.title }),
     });
   }
-  for (const item of rankCandidates(q, bookmarks)
-    .filter((bookmark) => !openUrls.has(bookmark.url.replace(/\/$/, "")))
-    .slice(0, 3)) {
-    openUrls.add(item.url.replace(/\/$/, ""));
+  for (const item of rankCandidates(q, bookmarks).slice(0, 3)) {
     out.push({
       id: `bookmark-${item.url}`,
       section: "bookmarks",
@@ -106,14 +105,10 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
       run: () => exec({ kind: "navigate", url: item.url, display: item.title }),
     });
   }
-  for (const item of rankCandidates(
-    q,
-    closed.filter((tab) => !openUrls.has(tab.url.replace(/\/$/, ""))),
-  ).slice(0, 2)) {
-    openUrls.add(item.url.replace(/\/$/, ""));
+  for (const item of rankCandidates(q, closed).slice(0, 2)) {
     out.push({
       id: `closed-${item.pageId}`,
-      section: "recent",
+      section: "closed",
       url: item.url,
       icon: <FavIcon url={item.url} size="sm" />,
       title: item.title || hostOf(item.url),
@@ -122,18 +117,30 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
       run: () => useStore.getState().reopenClosedTab(item.pageId),
     });
   }
-  for (const item of rankCandidates(q, history)
-    .filter((entry) => !openUrls.has(entry.url.replace(/\/$/, "")))
-    .slice(0, 4)) {
-    openUrls.add(item.url.replace(/\/$/, ""));
+  for (const item of rankCandidates(q, history).slice(0, 4)) {
     out.push({
       id: `h-${item.url}`,
-      section: "recent",
+      section: "history",
       url: item.url,
       icon: <FavIcon url={item.url} size="sm" />,
       title: item.title || hostOf(item.url),
       detail: hostOf(item.url),
       run: () => exec({ kind: "navigate", url: item.url, display: item.title }),
+    });
+  }
+  for (const item of rankCandidates(q, extensions).slice(0, 4)) {
+    out.push({
+      id: `extension-${item.key}`,
+      section: "extensions",
+      icon: I.extension,
+      title: item.name,
+      detail: `${item.enabled && item.loaded ? "Open extension" : "Manage extension"} · ${item.version}`,
+      hint: "Open",
+      run: async () => {
+        if (item.enabled && item.loaded && (await bridge.showExtensionAction(item.key))) return;
+        window.history.pushState(null, "", "/settings/extensions");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      },
     });
   }
   for (const item of rankCandidates(q, programs).slice(0, 3)) {

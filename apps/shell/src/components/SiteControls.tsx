@@ -4,7 +4,7 @@ import { useStore } from "../store";
 import { I } from "./icons";
 import { PageZoom } from "./PageZoom";
 import { siteControlsOpener } from "../site-controls-opener";
-import { NativeDialog } from "./NativeDialog";
+import { Dialog } from "../ui";
 import "./SiteControls.css";
 
 const labels: Record<string, string> = {
@@ -175,10 +175,12 @@ export function SiteControls() {
           : {
               icon: I.alert,
               title: "Connection is not secure",
-              detail: "Information sent to this page is not encrypted.",
+              detail: info.url.startsWith("https:")
+                ? "This HTTPS page has a security warning. Information you send may be exposed."
+                : "Information sent to this page is not encrypted.",
             };
   return (
-    <NativeDialog
+    <Dialog
       label={info?.origin ?? "Site controls"}
       onClose={close}
       className="site-controls-card pop-in"
@@ -313,6 +315,6 @@ export function SiteControls() {
           )}
         </>
       )}
-    </NativeDialog>
+    </Dialog>
   );
 }

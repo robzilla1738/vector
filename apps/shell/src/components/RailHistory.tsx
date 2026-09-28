@@ -1,7 +1,7 @@
 import { STATUS_LABEL } from "../run-status";
 import { recentConversations } from "../conversations";
-import { memo, useMemo, useState, useSyncExternalStore } from "react";
-import type { Run } from "@aux/contracts";
+import { memo, useState, useSyncExternalStore } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { isLive, useStore } from "../store";
 import { hostOf } from "../workspace";
 import { VirtualList } from "./VirtualList";
@@ -31,11 +31,13 @@ function Ago({ ts }: { ts: number }) {
 }
 
 /** Memoized so a ticking run only re-renders its own row. */
-const RunRow = memo(function RunRow({ r, selected }: { r: Run; selected: boolean }) {
-  const page = useStore((s) => s.pages.find((p) => p.pageId === r.pageIds[0]));
+const RunRow = memo(function RunRow({ runId }: { runId: string }) {
+  const r = useStore((s) => s.runs.find((run) => run.runId === runId));
+  const page = useStore((s) => s.pages.find((p) => p.pageId === r?.pageIds[0]));
+  if (!r) return null;
   const live = isLive(r);
   return (
-    <button className={`run-row ${selected ? "on" : ""} ${live ? "live" : ""}`} onClick={() => useStore.getState().setRailView({ kind: "run", runId: r.runId })} title={r.goal}>
+    <button className={`run-row ${live ? "live" : ""}`} onClick={() => useStore.getState().setRailView({ kind: "run", runId: r.runId })} title={r.goal}>
       <span className={`run-row-ico ${r.status}`}>{r.status === "completed" ? I.check : r.status === "failed" ? I.alert : r.status === "needs_input" ? I.chat : live ? I.agentSm : I.circle}</span>
       <span className="run-row-main">
         <span className="run-row-title">{r.goal}</span>
@@ -49,48 +51,47 @@ const RunRow = memo(function RunRow({ r, selected }: { r: Run; selected: boolean
   );
 });
 
+const SetRow = memo(function SetRow({ setId }: { setId: string }) {
+  const set = useStore((s) => s.sets.find((item) => item.setId === setId));
+  const members = useStore(useShallow((s) => s.members.filter((member) => member.setId === setId)));
+  const setRailView = useStore((s) => s.setRailView);
+  if (!set) return null;
+  const done = members.filter((member) => member.status === "completed").length;
+  return <button className="run-row" onClick={() => setRailView({ kind: "set", setId })}>
+    <span className="run-row-ico set">{I.layersSm}</span>
+    <span className="run-row-main">
+      <span className="run-row-title">{set.name}</span>
+      <span className="run-row-sub nums">{done}/{members.length || set.memberIds.length} members</span>
+    </span>
+    <span className="mini-grid" aria-hidden>
+      {(members.length ? members : set.memberIds.map((id) => ({ memberId: id, status: "queued" }))).slice(0, 24).map((member) => <i key={member.memberId} className={member.status} />)}
+    </span>
+  </button>;
+});
+
 /** One entry per recent conversation; full history remains searchable from Chats. */
 export function RailHistory() {
-  const runs = useStore((s) => s.runs);
-  const sets = useStore((s) => s.sets);
-  const members = useStore((s) => s.members);
-  const setRailView = useStore((s) => s.setRailView);
   const [q, setQ] = useState("");
-  const conversations = useMemo(() => recentConversations(runs), [runs]);
-  const live = conversations.filter(isLive);
-  const past = useMemo(() => {
+  const live = useStore(useShallow((s) => recentConversations(s.runs).filter(isLive).map((run) => run.runId)));
+  const sets = useStore(useShallow((s) => s.sets.map((set) => set.setId)));
+  const past = useStore(useShallow((s) => {
     const f = q.trim().toLowerCase();
-    const matches = new Set(runs.filter(run => run.goal.toLowerCase().includes(f) || (run.statusMessage ?? "").toLowerCase().includes(f)).map(run => run.config?.chatId ?? run.runId));
-    return conversations.filter(run => !isLive(run) && (!f || matches.has(run.config?.chatId ?? run.runId)));
-  }, [runs, conversations, q]);
+    const matches = new Set(s.runs.filter(run => run.goal.toLowerCase().includes(f) || (run.statusMessage ?? "").toLowerCase().includes(f)).map(run => run.config?.chatId ?? run.runId));
+    return recentConversations(s.runs).filter(run => !isLive(run) && (!f || matches.has(run.config?.chatId ?? run.runId))).map(run => run.runId);
+  }));
 
   return (
     <div className="rail-home">
       {live.length > 0 && (
         <section className="rail-block">
           <div className="rail-label"><span>Live</span><span className="count nums">{live.length}</span></div>
-          {live.map((r) => <RunRow key={r.runId} r={r} selected={false} />)}
+          {live.map((runId) => <RunRow key={runId} runId={runId} />)}
         </section>
       )}
       {sets.length > 0 && (
         <section className="rail-block">
           <div className="rail-label"><span>Sets</span><span className="count nums">{sets.length}</span></div>
-          {sets.map((s) => {
-            const ms = members.filter((m) => m.setId === s.setId);
-            const done = ms.filter((m) => m.status === "completed").length;
-            return (
-              <button key={s.setId} className="run-row" onClick={() => setRailView({ kind: "set", setId: s.setId })}>
-                <span className="run-row-ico set">{I.layersSm}</span>
-                <span className="run-row-main">
-                  <span className="run-row-title">{s.name}</span>
-                  <span className="run-row-sub nums">{done}/{ms.length || s.memberIds.length} members</span>
-                </span>
-                <span className="mini-grid" aria-hidden>
-                  {(ms.length ? ms : s.memberIds.map((id) => ({ memberId: id, status: "queued" }))).slice(0, 24).map((m) => <i key={m.memberId} className={m.status} />)}
-                </span>
-              </button>
-            );
-          })}
+          {sets.map((setId) => <SetRow key={setId} setId={setId} />)}
         </section>
       )}
       <section className="rail-block grow">
@@ -106,13 +107,12 @@ export function RailHistory() {
         {past.length === 0 ? (
           <div className="rail-empty small">{q ? "No recent conversations match." : "Nothing yet. Ask for something below — the agent works in this window, on your tabs."}</div>
         ) : past.length > 30 ? (
-          <VirtualList items={past} rowHeight={56} className="run-list virtual" keyOf={(r) => r.runId} renderRow={(r) => <RunRow r={r} selected={false} />} />
+          <VirtualList items={past} rowHeight={56} className="run-list virtual" keyOf={(runId) => runId} renderRow={(runId) => <RunRow runId={runId} />} />
         ) : (
-          <div className="run-list">{past.map((r) => <RunRow key={r.runId} r={r} selected={false} />)}</div>
+          <div className="run-list">{past.map((runId) => <RunRow key={runId} runId={runId} />)}</div>
         )}
         <button className="btn sm ghost" onClick={() => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); }}>Browse all conversations</button>
       </section>
     </div>
   );
 }
-

@@ -15,6 +15,42 @@ function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}
 }
 
 describe("settings defaults for a real test pass", () => {
+  it("persists the new-tab mode and rejects unsupported choices", async () => {
+    const { dir, settings } = harness();
+    try {
+      expect(settings.all().homeEntryMode).toBeUndefined();
+      await settings.set(MethodSchemas["settings.set"].parse({ homeEntryMode: "ask" }));
+      expect(settings.all().homeEntryMode).toBe("ask");
+      expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).homeEntryMode).toBe("ask");
+      expect(MethodSchemas["settings.set"].safeParse({ homeEntryMode: "unsupported" }).success).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it("persists tab switcher order and rejects unknown modes", async () => {
+    const { dir, settings } = harness();
+    try {
+      expect(settings.all().tabSwitcherOrder).toBe("sidebar");
+      await settings.set(MethodSchemas["settings.set"].parse({ tabSwitcherOrder: "recently-used" }));
+      expect(settings.all().tabSwitcherOrder).toBe("recently-used");
+      expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).tabSwitcherOrder).toBe("recently-used");
+      expect(MethodSchemas["settings.set"].safeParse({ tabSwitcherOrder: "random" }).success).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it("persists the local Skill suggestion cadence and rejects unknown modes", async () => {
+    const { dir, settings } = harness();
+    try {
+      expect(settings.all().routineSuggestionScan).toBe("context");
+      await settings.set(MethodSchemas["settings.set"].parse({ routineSuggestionScan: "five-minutes" }));
+      expect(settings.all().routineSuggestionScan).toBe("five-minutes");
+      expect(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).routineSuggestionScan).toBe("five-minutes");
+      expect(MethodSchemas["settings.set"].safeParse({ routineSuggestionScan: "hourly" }).success).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("persists native material, independent tint and content opacity", async () => {
     const { dir, settings } = harness();
     try {
@@ -50,7 +86,28 @@ describe("settings defaults for a real test pass", () => {
       const patch = MethodSchemas["settings.set"].parse({ agentModelRoutes: { fast: { modelId: "fixture-fast", reasoning: "low" } } });
       await settings.set(patch);
       expect(settings.agentRoute("fast").modelId).toBe("fixture-fast");
+      expect(settings.all().agentModelRouteOverrides).toEqual(patch.agentModelRoutes);
+      await settings.set(MethodSchemas["settings.set"].parse({ agentModelRoutes: {} }));
+      expect(settings.all().agentModelRouteOverrides).toEqual({});
+      expect(settings.agentRoute("fast")).toEqual({ modelId: "fixture-standard", reasoning: "low" });
       expect(MethodSchemas["settings.set"].safeParse({ agentModelRoutes: { fast: { modelId: "x", reasoning: "unsupported" } } }).success).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps model role overrides scoped to their selected provider", async () => {
+    const { dir, settings } = harness();
+    try {
+      await settings.set({ agentModelRoutes: { fast: { modelId: "gateway-fast", reasoning: "low" } } });
+      await settings.set({ modelProvider: "openai" });
+      expect(settings.all().agentModelRouteOverrides).toEqual({});
+      await settings.set({ agentModelRoutes: { fast: { modelId: "openai-fast", reasoning: "low" } } });
+      expect(settings.agentRoute("fast").modelId).toBe("openai-fast");
+      await settings.set({ modelProvider: "gateway" });
+      expect(settings.agentRoute("fast").modelId).toBe("gateway-fast");
+      await settings.set({ modelProvider: "openai" });
+      expect(settings.agentRoute("fast").modelId).toBe("openai-fast");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -69,6 +126,20 @@ describe("settings defaults for a real test pass", () => {
     const { dir, settings } = harness({}, { maxModelCalls: 0 });
     try {
       expect(settings.maxModelCalls()).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("validates and persists user spend caps, including clearing all caps", async () => {
+    const { dir, settings } = harness();
+    try {
+      const patch = MethodSchemas["settings.set"].parse({ budgets: { runUsd: 2.5, dayUsd: 10, routineUsd: 25 } });
+      await settings.set(patch);
+      expect(settings.budgetLimits()).toEqual(patch.budgets);
+      await settings.set(MethodSchemas["settings.set"].parse({ budgets: {} }));
+      expect(settings.budgetLimits()).toEqual({ runUsd: undefined, dayUsd: undefined, routineUsd: undefined });
+      expect(MethodSchemas["settings.set"].safeParse({ budgets: { dayUsd: -1 } }).success).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

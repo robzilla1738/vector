@@ -17,6 +17,20 @@ function setup() {
   return {pages,layout};
 }
 function close(pageId: string) { useStore.getState().applyEvent({seq:Date.now(),streamId:'test',type:'page.removed',ts:Date.now(),payload:{pageId}}); }
+it('keeps a saved placeholder through catalog resync and restores it before selection', async () => {
+  const {pages}=setup();
+  useStore.setState({pages:pages.map(page=>page.pageId==='first'?{...page,lifecycle:'placeholder'}:page),pendingRestoreIds:['first']});
+  const snapshot = {version:1,tabs:[],windows:[]};
+  useStore.getState().syncTabsSnapshot(snapshot as never);
+  expect(useStore.getState().pages.some(page=>page.pageId==='first')).toBe(true);
+  const invoke=vi.spyOn(bridge,'invoke').mockResolvedValue({ok:true,pageId:'first'} as never);
+  const tabCommand=vi.spyOn(bridge,'tabCommand').mockImplementation(async command=>applied(command));
+  await useStore.getState().activate('first');
+  expect(invoke.mock.calls.some(([method,params])=>method==='browser.recovery.retry'&&
+    (params as {pageId:string}).pageId==='first')).toBe(true);
+  expect(tabCommand.mock.calls.map(([command])=>command)).toContainEqual({kind:'activate',pageId:'first'});
+  expect(useStore.getState().pendingRestoreIds).not.toContain('first');
+});
 it('restores space, folder and position without consuming the entry on an open failure', async () => {
   setup();
   const tabCommand = vi.spyOn(bridge,'tabCommand').mockImplementation(async command => applied(command));

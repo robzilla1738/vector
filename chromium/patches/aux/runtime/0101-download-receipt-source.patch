@@ -1,0 +1,26 @@
+diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
+--- a/chrome/browser/ui/aux/shell_events.cc
++++ b/chrome/browser/ui/aux/shell_events.cc
+@@ -20,6 +20,7 @@
+ #include "base/timer/timer.h"
+ #include "base/values.h"
+ #include "base/uuid.h"
++#include "chrome/browser/download/download_prefs.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+ #include "chrome/browser/notifications/notification_display_service.h"
+@@ -475,6 +476,14 @@
+     if (!item->GetURL().is_empty()) {
+       payload.Set("sourceUrl", item->GetURL().spec());
+     }
++    if (!item->GetTabUrl().is_empty()) {
++      payload.Set("tabUrl", item->GetTabUrl().spec());
++    }
++    if (!profile_->IsOffTheRecord()) {
++      if (auto* prefs = DownloadPrefs::FromBrowserContext(profile_)) {
++        payload.Set("downloadRoot", prefs->DownloadPath().AsUTF8Unsafe());
++      }
++    }
+     payload.Set("filename", filename.empty() ? "download" : filename);
+     payload.Set("path", item->GetTargetFilePath().AsUTF8Unsafe());
+     payload.Set("size", static_cast<double>(item->GetReceivedBytes()));

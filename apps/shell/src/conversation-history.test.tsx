@@ -33,3 +33,32 @@ it("refreshes the loaded history range instead of dropping older pages",async()=
     expect(host.querySelectorAll(".history-conversation")).toHaveLength(80);
   } finally {await act(async()=>root.unmount());vi.restoreAllMocks();vi.useRealTimers();useStore.setState(initial,true);}
 });
+
+it("keeps conversation actions in the shared menu and restores focus on Escape", async () => {
+  vi.useFakeTimers();
+  const initial = useStore.getState();
+  const row = { chatId: "chat-menu", title: "Menu chat", archived: false, createdAt: 1000, updatedAt: 1000,
+    turnCount: 1, latestRun: makeRun({ runId: "run-menu", config: { chatId: "chat-menu" } }) };
+  vi.spyOn(bridge, "onEvent").mockReturnValue(() => {});
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async method => method === "conversations.list" ? [row] : []);
+  const host = document.createElement("div"); document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<ConversationHistory />));
+    await act(async () => vi.advanceTimersByTimeAsync(180));
+    const search = host.querySelector<HTMLInputElement>('[aria-label="Search conversations"]')!;
+    await act(async () => search.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })));
+    expect(document.activeElement).toBe(host.querySelector(".history-conversation"));
+    const trigger = host.querySelector<HTMLButtonElement>(".history-actions")!;
+    await act(async () => trigger.click());
+    const menu = document.querySelector<HTMLDialogElement>('dialog[role="menu"][aria-label="Conversation actions"]')!;
+    expect(menu).not.toBeNull();
+    expect(document.activeElement?.textContent).toContain("Rename");
+    await act(async () => menu.querySelector<HTMLButtonElement>("button.danger")!.click());
+    expect(menu.querySelector('[role="group"][aria-label="Confirm conversation deletion"]')).not.toBeNull();
+    expect(invoke).not.toHaveBeenCalledWith("conversations.delete", expect.anything());
+    await act(async () => menu.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(document.querySelector('dialog[role="menu"][aria-label="Conversation actions"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  } finally { await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks(); vi.useRealTimers(); useStore.setState(initial, true); }
+});

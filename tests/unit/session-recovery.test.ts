@@ -3,6 +3,93 @@ import { EventBus, PageService, Repo, openDb } from "@aux/runtime";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
 import type { PageTarget } from "@aux/contracts";
 
+it("restores only the foreground tab when the native catalog starts empty", async () => {
+  const repo = new Repo(openDb(":memory:"));
+  const saved = (pageId: string, active: boolean): PageTarget & { ordinal: number; active: boolean } => ({
+    pageId, windowId: "main", backend: "aux", targetId: `old-${pageId}`,
+    url: `https://example.test/${pageId}`, title: pageId, documentEpoch: 1,
+    lastRevision: 0, viewStatus: "hidden", controller: "none", controllerEpoch: 0,
+    ownedByRuntime: false, createdAt: 1, lastActiveAt: 2, ordinal: active ? 1 : 0, active,
+  });
+  const red = saved("red", false), blue = saved("blue", true);
+  repo.upsertPage(red); repo.upsertPage(blue); repo.saveTabs([red, blue]);
+  const recovered: string[] = [];
+  const makePage = (pageId: string) => ({
+    identity: { pageId, targetId: `new-${pageId}`, backend: "aux" },
+    isAttached: () => true, url: () => `https://example.test/${pageId}`,
+    title: async () => pageId, navigate: async () => {}, setEvents: () => {}, dispose: async () => {},
+  }) as unknown as DriverPage;
+  const driver = { isConnected: () => true, recoverPage: async (_targetId: string, pageId: string) => {
+    recovered.push(pageId); return makePage(pageId);
+  } } as unknown as BrowserDriver;
+  const native = { available: () => true, listPages: async () => ({ pages: [] }),
+    tabCommand: async () => ({ commandId: "", status: "applied" as const, catalogVersion: 0 }),
+    focusPage: async () => ({ ok: true }) } as unknown as ConstructorParameters<typeof PageService>[0]["native"];
+  const pages = new PageService({ repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
+  try {
+    await pages.restoreTabs();
+    expect(recovered).toEqual(["blue"]);
+    expect(pages.recoveryTabs().map(tab => tab.pageId)).toEqual(["red"]);
+  } finally { pages.shuttingDown(); repo.close(); }
+});
+
+it("registers restored background placeholders without attaching until activation", async () => {
+  const db = openDb(":memory:"), repo = new Repo(db);
+  const attached: string[] = [];
+  const driver = { isConnected: () => true, attach: async (_marker: string, pageId: string) => {
+    attached.push(pageId);
+    return { identity: { targetId: `atab-${pageId}`, pageId, backend: "aux" },
+      isAttached: () => true, url: () => `https://example.test/${pageId}`,
+      title: async () => pageId, setEvents: () => {}, dispose: async () => {} } as unknown as DriverPage;
+  } } as unknown as BrowserDriver;
+  const native = { available: () => true, listPages: async () => ({ pages: [
+    { pageId: "red", windowId: "main", marker: "atab-red", url: "https://example.test/red", title: "Red", active: false, lifecycle: "placeholder" },
+    { pageId: "blue", windowId: "main", marker: "atab-blue", url: "https://example.test/blue", title: "Blue", active: true, lifecycle: "live" },
+  ] }), focusPage: async () => ({ ok: true }) } as unknown as ConstructorParameters<typeof PageService>[0]["native"];
+  const pages = new PageService({ repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
+  try {
+    await pages.restoreTabs();
+    expect(attached).toEqual(["blue"]);
+    expect(pages.list().find(page => page.pageId === "red")?.lifecycle).toBe("placeholder");
+    await pages.activate("red");
+    expect(attached).toEqual(["blue", "red"]);
+  } finally { repo.close(); }
+});
+
+it("waits for a late native placeholder instead of reopening its saved URL", async () => {
+  const repo = new Repo(openDb(":memory:"));
+  const saved: PageTarget = { pageId: "red", windowId: "main", backend: "aux", targetId: "old-red",
+    url: "https://example.test/red", title: "Red", documentEpoch: 1, lastRevision: 0,
+    viewStatus: "hidden", controller: "none", controllerEpoch: 0, ownedByRuntime: false,
+    createdAt: 1, lastActiveAt: 2 };
+  repo.upsertPage(saved); repo.saveTabs([{ ...saved, ordinal: 0, active: false }]);
+  const attached: string[] = [];
+  const driver = { isConnected: () => true, attach: async (_marker: string, pageId: string) => {
+    attached.push(pageId);
+    return { identity: { targetId: `atab-${pageId}`, pageId, backend: "aux" }, isAttached: () => true,
+      url: () => `https://example.test/${pageId}`, title: async () => pageId,
+      setEvents: () => {}, dispose: async () => {} } as unknown as DriverPage;
+  }, recoverPage: async () => { throw new Error("unexpected eager restore"); } } as unknown as BrowserDriver;
+  const native = { available: () => true, listPages: async () => ({ pages: [
+    { pageId: "blue", windowId: "main", marker: "atab-blue", url: "https://example.test/blue", title: "Blue", active: true, lifecycle: "live" },
+  ] }), focusPage: async () => ({ ok: true }) } as unknown as ConstructorParameters<typeof PageService>[0]["native"];
+  const pages = new PageService({ repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
+  try {
+    await pages.restoreTabs();
+    expect(attached).toEqual(["blue"]);
+    expect(pages.recoveryTabs().map(tab => tab.pageId)).toEqual(["red"]);
+    await pages.syncCatalog({ version: 1, baseVersion: 0, ts: Date.now(), ops: [{ op: "upsert", tab: {
+      pageId: "red", windowId: "main", url: saved.url, title: "Red", loading: false,
+      muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false,
+      crashed: false, runtimeOwned: false, generation: 0, lifecycle: "placeholder",
+      createdAt: 1, lastActiveAt: 2,
+    } }] });
+    expect(attached).toEqual(["blue"]);
+    expect(pages.recoveryTabs()).toEqual([]);
+    expect(pages.list().find(page => page.pageId === "red")?.lifecycle).toBe("placeholder");
+  } finally { repo.close(); }
+});
+
 it("keeps failed session tabs through later browsing and retries the same durable identity",async()=>{
   const db=openDb(":memory:"),repo=new Repo(db);
   const original:PageTarget={pageId:"saved-tab",windowId:"main",backend:"aux",targetId:"old-target",url:"https://saved.test/",title:"Saved work",documentEpoch:4,lastRevision:0,viewStatus:"visible",controller:"none",controllerEpoch:2,ownedByRuntime:false,createdAt:1,lastActiveAt:2};

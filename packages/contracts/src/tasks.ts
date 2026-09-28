@@ -37,6 +37,8 @@ export const TaskDefinitionSchema = z.object({
 });
 export const TaskSchema = TaskDefinitionSchema.extend({
   conversationId: text.optional(),
+  /** Server-assigned provenance; callers cannot label external text as desktop-authored. */
+  sourceOrigin: z.enum(["external", "conversation"]).optional(),
   taskId: text,
   workspaceId: text,
   parentTaskId: text.optional(),
@@ -229,6 +231,17 @@ export const TaskReconcileParams = z
     note: text.max(4000),
   })
   .strict();
+export const TaskUndoBrowserChangeParams = z.object({
+  taskId: text,
+  expectedRevision: z.number().int().positive(),
+  runId: text,
+  stepId: text,
+}).strict();
+export const TaskUndoRunBrowserChangesParams = z.object({
+  taskId: text,
+  expectedRevision: z.number().int().positive(),
+  runId: text,
+}).strict();
 export const TaskReconcileOperationParams = z
   .object({
     taskId: text,
@@ -285,6 +298,48 @@ export const TaskReceiptSchema = z.object({
   unresolvedActions: z.array(
     z.object({ intentId: text, runId: text, pageId: text, status: z.enum(["pending", "uncertain"]) }),
   ),
+  browserChanges: z.array(z.object({
+    stepId: text, runId: text, pageId: text, taskRevision: z.number().int().positive(),
+    op: z.enum(["fill", "type", "check", "uncheck", "select"]),
+    status: z.enum(["ok", "failed"]),
+    target: z.string().max(200).optional(), startedAt: z.number(),
+    before: z.object({ value: z.string().max(300).optional(), checked: z.boolean().optional(),
+      selected: z.string().max(300).optional() }).strict().optional(),
+    after: z.object({ value: z.string().max(300).optional(), checked: z.boolean().optional(),
+      selected: z.string().max(300).optional() }).strict().optional(),
+    undoneAt: z.number().optional(),
+  })).max(200).default([]),
+  tabChanges: z.array(z.object({
+    stepId: text, runId: text, pageId: text, taskRevision: z.number().int().positive(),
+    op: z.enum(["tab.open", "tab.close"]), status: z.enum(["ok", "failed"]),
+    url: z.string().max(8192).optional(), startedAt: z.number(), undoneAt: z.number().optional(),
+  })).max(200).default([]),
+  remoteActions: z.array(z.object({
+    stepId: text, runId: text, pageId: text, taskRevision: z.number().int().positive(),
+    op: text, status: z.enum(["ok", "failed"]), startedAt: z.number(),
+    effect: z.enum(["planned", "authorized", "dispatched", "observed", "confirmed", "uncertain", "failed"]).optional(),
+    browserObserved: z.string().max(300).optional(), remoteConfirmed: z.boolean(),
+    uncertain: z.boolean(),
+  })).max(200).default([]),
+  bookmarkChanges: z.array(z.object({
+    stepId: text, runId: text, pageId: text, taskRevision: z.number().int().positive(),
+    status: z.enum(["ok", "failed"]), startedAt: z.number(),
+    url: z.string().max(8192).optional(), title: z.string().max(1000).optional(),
+    undoneAt: z.number().optional(),
+  })).max(200).default([]),
+  downloadChanges: z.array(z.object({
+    stepId: text, runId: text, pageId: text, taskRevision: z.number().int().positive(),
+    status: z.enum(["started", "completed", "interrupted"]), startedAt: z.number(),
+    filename: z.string().max(1000).optional(), sourceUrl: z.string().max(8192).optional(),
+    path: z.string().max(4096).optional(), size: z.number().nonnegative().optional(),
+    cleanupAvailable: z.boolean(), undoneAt: z.number().optional(),
+  })).max(200).default([]),
+  historyChanges: z.array(z.object({
+    stepId: text, runId: text, pageId: text, taskRevision: z.number().int().positive(),
+    status: z.literal("ok"), startedAt: z.number(),
+    url: z.string().max(8192).optional(), title: z.string().max(4096).optional(),
+    visitedAt: z.number().optional(), undoneAt: z.number().optional(),
+  })).max(200).default([]),
   unresolvedOperations: z
     .array(
       z.object({

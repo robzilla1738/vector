@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import {
   DurableWriteLedger,
   EventBus,
@@ -42,6 +42,8 @@ function fixture() {
       revision: page.lastRevision,
       observedAt: Date.now(),
     }),
+    undoFormChange: vi.fn(async () => {}),
+    undoOpenedTab: vi.fn(async () => {}),
   } as unknown as PageService;
   const evidence = new TaskEvidenceService(repo, events, pages);
   const invoke = makeInvoker({ repo, events, pages } as Services);
@@ -64,8 +66,132 @@ function fixture() {
       createdAt: Date.now(),
       config: { taskId: task.taskId, taskRevision: 1 },
     });
-  return { db, repo, tasks, task, evidence, page, invoke, base, note, review, run };
+  return { db, repo, tasks, task, evidence, page, pages, invoke, base, note, review, run };
 }
+
+it("undoes a completed form edit once using the recorded page identity and rejects superseded edits", async () => {
+  const f = fixture();
+  f.run();
+  const first = { stepId: "edit-1", runId: "r1", pageId: "p1", op: "fill", inputs: { target: "#quantity", value: "4" }, startedAt: 1,
+    outcome: { stepId: "edit-1", op: "fill", status: "ok" as const, startedAt: 1, durationMs: 1,
+      before: { value: "3" }, after: { value: "4" }, pageUrl: "https://fixture.test/order",
+      receipt: { remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false,
+        identity: { pageId: "p1", documentEpoch: 1 } } } };
+  f.repo.saveStep(first);
+  const external = await f.invoke("tasks.receipt", { taskId: f.task.taskId }) as { browserChanges: unknown[] };
+  expect(JSON.stringify(external.browserChanges)).not.toContain('"value"');
+  const params = { taskId: f.task.taskId, expectedRevision: 1, runId: "r1", stepId: "edit-1" };
+  await expect(f.invoke("tasks.undoBrowserChange", params)).rejects.toMatchObject({ code: "permission_denied" });
+  await expect(f.evidence.undoBrowserChange(params)).resolves.toEqual({ ok: true });
+  expect(f.pages.undoFormChange).toHaveBeenCalledWith({ pageId: "p1", target: "#quantity",
+    url: "https://fixture.test/order", documentEpoch: 1, before: { value: "3" }, after: { value: "4" } });
+  expect(f.evidence.receipt(f.task.taskId).browserChanges[0]?.undoneAt).toBeTypeOf("number");
+  await expect(f.evidence.undoBrowserChange(params)).rejects.toThrow("safe undo record");
+  f.repo.saveStep({ ...first, stepId: "edit-2", startedAt: 2,
+    outcome: { ...first.outcome, stepId: "edit-2", startedAt: 2, before: { value: "4" }, after: { value: "5" } } });
+  f.repo.saveStep(first);
+  await expect(f.evidence.undoBrowserChange(params)).rejects.toThrow("later edit");
+});
+
+it("undoes a run's eligible form edits and owned tab while reporting a closed tab", async () => {
+  const f = fixture();
+  f.run();
+  const outcome = (stepId: string, op: string, startedAt: number, extras: Record<string, unknown> = {}) =>
+    ({ stepId, op, status: "ok" as const, startedAt, durationMs: 1, ...extras });
+  f.repo.saveStep({ stepId: "open", runId: "r1", pageId: "agent-tab", op: "tab.open", startedAt: 1,
+    inputs: { url: "https://fixture.test/agent" }, outcome: outcome("open", "tab.open", 1,
+      { after: { url: "https://fixture.test/agent", documentEpoch: 1, ownedByRuntime: true } }) });
+  f.repo.saveStep({ stepId: "fill", runId: "r1", pageId: "p1", op: "fill", startedAt: 2,
+    inputs: { target: "#quantity", value: "4" }, outcome: outcome("fill", "fill", 2,
+      { before: { value: "3" }, after: { value: "4" }, pageUrl: "https://fixture.test/order",
+        receipt: { remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false,
+          identity: { pageId: "p1", documentEpoch: 1 } } }) });
+  f.repo.saveStep({ stepId: "closed", runId: "r1", pageId: "old-tab", op: "tab.close", startedAt: 3,
+    outcome: outcome("closed", "tab.close", 3) });
+  const result = await f.evidence.undoRunBrowserChanges({ taskId: f.task.taskId, expectedRevision: 1, runId: "r1" });
+  expect(result).toMatchObject({ restored: 2, skipped: [{ stepId: "closed" }] });
+  expect(f.pages.undoOpenedTab).toHaveBeenCalledWith("agent-tab",
+    { url: "https://fixture.test/agent", documentEpoch: 1 });
+  expect(f.evidence.receipt(f.task.taskId).browserChanges[0]?.undoneAt).toBeTypeOf("number");
+  expect(f.evidence.receipt(f.task.taskId).tabChanges.find(change => change.stepId === "open")?.undoneAt).toBeTypeOf("number");
+  f.repo.saveStep({ stepId: "download", runId: "r1", pageId: "p1", op: "download", startedAt: 4,
+    inputs: { downloadId: "d1", sourceUrl: "https://fixture.test/private" },
+    outcome: outcome("download", "download", 4, { before: { existed: false },
+      after: { state: "completed", filename: "private.pdf", path: "/tmp/private.pdf", size: 12,
+        sha256: "a".repeat(64) } }) });
+  const external = await f.invoke("tasks.receipt", { taskId: f.task.taskId }) as { tabChanges: unknown[]; downloadChanges: unknown[] };
+  expect(JSON.stringify(external.tabChanges)).not.toContain("fixture.test/agent");
+  expect(JSON.stringify(external.downloadChanges)).not.toContain("private.pdf");
+  expect(JSON.stringify(external.downloadChanges)).not.toContain("fixture.test/private");
+  await expect(f.invoke("tasks.undoRunBrowserChanges", { taskId: f.task.taskId, expectedRevision: 1, runId: "r1" }))
+    .rejects.toMatchObject({ code: "permission_denied" });
+  await expect(f.invoke("tasks.undoBookmarkChange", { taskId: f.task.taskId, expectedRevision: 1,
+    runId: "r1", stepId: "open" })).rejects.toMatchObject({ code: "permission_denied" });
+  await expect(f.invoke("tasks.undoDownloadChange", { taskId: f.task.taskId, expectedRevision: 1,
+    runId: "r1", stepId: "download" })).rejects.toMatchObject({ code: "permission_denied" });
+  f.repo.saveStep({ stepId: "visit", runId: "r1", pageId: "p1", op: "history.visit", startedAt: 5,
+    inputs: { url: "https://fixture.test/private" }, outcome: outcome("visit", "history.visit", 5,
+      { before: { existed: false }, after: { url: "https://fixture.test/private", title: "Private", visitedAt: 5 } }) });
+  const receipt = await f.invoke("tasks.receipt", { taskId: f.task.taskId }) as { historyChanges: unknown[] };
+  expect(JSON.stringify(receipt.historyChanges)).not.toContain("fixture.test/private");
+  expect(JSON.stringify(receipt.historyChanges)).not.toContain("Private");
+  await expect(f.invoke("tasks.undoHistoryChange", { taskId: f.task.taskId, expectedRevision: 1,
+    runId: "r1", stepId: "visit" })).rejects.toMatchObject({ code: "permission_denied" });
+});
+
+it("undoes same-millisecond edits in insertion order, newest first", async () => {
+  const f = fixture(); f.run();
+  const makeStep = (stepId: string, before: string, after: string) => ({
+    stepId, runId: "r1", pageId: "p1", op: "fill", inputs: { target: "#quantity" }, startedAt: 1,
+    outcome: { stepId, op: "fill", status: "ok" as const, startedAt: 1, durationMs: 1,
+      before: { value: before }, after: { value: after }, pageUrl: "https://fixture.test/order",
+      receipt: { remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false,
+        identity: { pageId: "p1", documentEpoch: 1 } } } });
+  f.repo.saveStep(makeStep("z-first", "2", "3"));
+  f.repo.saveStep(makeStep("a-second", "3", "4"));
+  const result = await f.evidence.undoRunBrowserChanges({ taskId: f.task.taskId, expectedRevision: 1, runId: "r1" });
+  expect(result).toEqual({ restored: 2, skipped: [] });
+  expect(f.pages.undoFormChange).toHaveBeenNthCalledWith(1, expect.objectContaining({ before: { value: "3" } }));
+  expect(f.pages.undoFormChange).toHaveBeenNthCalledWith(2, expect.objectContaining({ before: { value: "2" } }));
+});
+
+it("shows bounded form before-state from the run step ledger without copying arbitrary fields", () => {
+  const f = fixture();
+  f.run();
+  f.repo.saveStep({ stepId: "step-fill", runId: "r1", pageId: "p1", op: "fill",
+    inputs: { target: "#quantity", value: "new value" }, startedAt: 1,
+    outcome: { stepId: "step-fill", op: "fill", status: "ok", startedAt: 1, durationMs: 1,
+      before: { value: "old value", unsafeExtra: "do not copy" } } });
+  f.repo.saveStep({ stepId: "step-password", runId: "r1", pageId: "p1", op: "fill",
+    inputs: { target: "#password" }, startedAt: 2,
+    outcome: { stepId: "step-password", op: "fill", status: "failed", startedAt: 2, durationMs: 1,
+      before: { value: "{redacted}" } } });
+  const changes = f.evidence.receipt(f.task.taskId).browserChanges;
+  expect(changes).toMatchObject([{ stepId: "step-fill", before: { value: "old value" }, status: "ok" },
+    { stepId: "step-password", before: { value: "{redacted}" }, status: "failed" }]);
+  expect(JSON.stringify(changes)).not.toContain("unsafeExtra");
+  expect(JSON.stringify(changes)).not.toContain("new value");
+});
+
+it("separates consequential page actions from reversible changes and redacts observations externally", async () => {
+  const f = fixture(); f.run();
+  f.repo.saveStep({ stepId: "click-submit", runId: "r1", pageId: "p1", op: "click", startedAt: 1,
+    inputs: { target: "#submit" }, outcome: { stepId: "click-submit", op: "click", status: "ok", startedAt: 1,
+      durationMs: 2, effect: "observed", receipt: { remoteConfirmed: false, uncertain: false,
+        dispatchedBeforeTakeover: false, observed: "PRIVATE_ORDER_NUMBER", identity: { pageId: "p1", documentEpoch: 1 } } } });
+  f.repo.saveStep({ stepId: "upload", runId: "r1", pageId: "p1", op: "upload", startedAt: 2,
+    outcome: { stepId: "upload", op: "upload", status: "failed", startedAt: 2,
+      durationMs: 2, effect: "uncertain", receipt: { remoteConfirmed: false, uncertain: true,
+        dispatchedBeforeTakeover: false } } });
+  const owner = f.evidence.receipt(f.task.taskId);
+  expect(owner.remoteActions).toMatchObject([
+    { stepId: "click-submit", browserObserved: "PRIVATE_ORDER_NUMBER", remoteConfirmed: false, uncertain: false },
+    { stepId: "upload", uncertain: true },
+  ]);
+  expect(owner.browserChanges).toHaveLength(0);
+  const external = await f.invoke("tasks.receipt", { taskId: f.task.taskId });
+  expect(JSON.stringify(external)).not.toContain("PRIVATE_ORDER_NUMBER");
+});
 
 it("keeps external claims separate from desktop acceptance and rejects actor spoofing", async () => {
   const f = fixture();

@@ -1,25 +1,14 @@
 ---
 name: Aux roadmap v2
-overview: "An evidence-backed, dependency-ordered roadmap for making Aux the fastest and most capable AI browser with real human oversight. It is built from an audit of the Aux repo and native patch stack, all seven AI Blueprints packages, and the upstream Chromium 154 checkout. On approval, the document is written to docs/ROADMAP.md (v1 archived), HANDOFF.md is updated to point at it, and the change is pushed to PR #24."
-todos:
-  - id: write-roadmap
-    content: Write the approved roadmap to docs/ROADMAP.md and archive v1 to docs/archive/2026-09-25-roadmap-v1/ROADMAP.md, with a pointer line
-    status: pending
-  - id: update-handoff
-    content: Update docs/HANDOFF.md 'Continue from here' to start at S0 and S1 under v2, keeping all constraints and the one-page limit
-    status: pending
-  - id: map-reference-specs
-    content: Add the P-code to corpus 01-07 mapping to docs/reference-specs/README.md and the PROVENANCE.md header
-    status: pending
-  - id: commit-push
-    content: "Commit the docs-only change with [skip ci], push codex/aux-roadmap-build (PR #24), and confirm git status is clean"
-    status: pending
+overview: "Dependency-ordered Aux product roadmap. The proposal basis is historical; the current implementation checkpoint and evidence links appear below."
 isProject: false
 ---
 
 # Aux Roadmap v2: the fastest, most capable AI browser with real oversight
 
-**Basis.** Proposed 2026-09-25 against `codex/aux-roadmap-build` at `37e7ee76`; the last code commit is `d0dba3c9`.
+**Current checkpoint — September 28, 2026.** The working native development app is Chromium 154 AuxDev with ordered patches through 0113, generated host bindings staged from pinned source `970adc61`, and shell manifest `4779bd81`. S11 has passing scoped native journeys for Space themes, split view, Peek, tab lifecycle, command-bar autocomplete, sidebar preview keyboard/pointer/thumbnail pixels, reviewed AI tab naming, and Reader keyboard and pointer Option-click Peek with promotion. `feature:titleRules` and `feature:aiTabNaming` are qualified for this source; the AI affordance is hidden in Private windows. The 50,000-URL native command-bar trend measured p95 30.8 ms on battery using a second-frame proxy, so the M4 ≤30 ms presentation target is **open**; several visual checks also remain. S9 Settings full-document reload and Back/Forward routes passed in the current AuxDev. S12 has several verified slices; a Memory review/Forget change is source-tested but not native-built or qualified, and the feature remains preview. S13 onboarding/import and S14 full qualification remain open; release packaging remains deferred. Continue from this checkpoint using the [handoff](HANDOFF.md), [evidence ledger](EVIDENCE.md), [benchmark record](BENCHMARKS.md), and [native runbook](../experiments/chromium-fork/CONTINUATION.md) for exact scope and next work.
+
+**Proposal basis.** Proposed 2026-09-25 against `codex/aux-roadmap-build` at `37e7ee76`; the last code commit at proposal time was `d0dba3c9`.
 - Native base: Chromium `154.0.8037.58` with ordered patches 0001–0046.
 - Development app: `~/aux-chromium-stable/chromium/src/out/AuxDev/Aux.app`.
 
@@ -121,7 +110,7 @@ isProject: false
 8. **Settings adopts 06's architecture:** 17 routed sections with a generated search index, replacing Aux's 7 categories plus tabs plus sub-views.
 9. **Verification is proportionate.**
    - No ±1 px reference-capture program (v1 §6), and no Electron journey port.
-   - At most 3 checks per stream, and one native journey per native build batch.
+   - Focused checks and live journeys for each coherent native batch, without duplicate tests or repeated benchmarks absent a specific reason.
    - Corpus runs only at the S5 gate and at qualification.
 10. **Dependency-ordered streams replace waves.** There is one native lane, and contracts merge first.
 
@@ -1307,7 +1296,7 @@ flowchart LR
 
 **Depends on:** S1 (patch 0047).
 
-Each item is an incremental patch built on the registry. The native lane batches them, at most 2 builds a day and never two at once.
+Each item is an incremental patch built on the registry. Build AuxDev whenever a coherent batch is ready, with only one native build at a time. Verify each batch with the required build, focused live journeys, and relevant safety checks; avoid duplicate tests and repeated benchmarks without a specific reason.
 
 **Deliverables**
 1. **Events.** Deliver or delete each of the 12 undelivered events:
@@ -1338,7 +1327,7 @@ Each item is an incremental patch built on the registry. The native lane batches
 
 **Verify**
 - The coverage script reaches 0 for in-scope methods.
-- Each batch passes one native journey for that batch (for example, a downloads journey or a site-controls journey). Electron journeys are not ported.
+- Each batch passes the focused native journeys needed for its touched user outcomes (for example, downloads or site controls). Electron journeys are not ported.
 
 **Parallel:** the native lane is serial. The TypeScript consumers are built in parallel.
 
@@ -1758,7 +1747,7 @@ These values come from 05, mapped to Aux tokens:
   - Features switch on only through capabilities and qualification, never by hand.
 - **Verification is proportionate**
   - Run focused tests for the touched modules, plus `pnpm typecheck` / `lint` / `format:check` as relevant.
-  - Run at most one native journey per native build batch.
+  - Run focused live journeys for the touched user outcomes; avoid duplicate journeys and repeated benchmarks without a specific reason.
   - Run full suites only when integrating.
   - Run corpus trials only at the S5 gate and at qualification.
 - **Models:** `meta/muse-spark-1.3-contributor` via AI Gateway, fixture content only. Check the $50 program ledger before every run, and never print credentials.

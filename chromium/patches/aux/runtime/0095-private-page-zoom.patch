@@ -1,0 +1,108 @@
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -27,7 +27,7 @@
+       shell_handlers_.emplace(name, group);
+   };
+   register_shell(AuxShellMethodGroup::kContent,
+-                 {"preview", "readArticle", "siteZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
++                 {"preview", "readArticle", "siteZoom", "privatePageZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
+                   "httpAuthRequests", "respondHttpAuth",
+                   "clearSitePermission", "clearSiteData", "siteDataCount", "httpsUpgrade",
+                   "setHttpsUpgrade", "cookieControls", "setCookieControls",
+--- a/chrome/browser/ui/aux/methods/content_methods.cc
++++ b/chrome/browser/ui/aux/methods/content_methods.cc
+@@ -84,6 +84,7 @@
+ #include "components/prefs/pref_service.h"
+ #include "components/content_settings/core/browser/cookie_settings.h"
+ #include "components/content_settings/core/common/pref_names.h"
++#include "components/zoom/zoom_controller.h"
+ #endif
+ #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
+ #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+@@ -1239,6 +1240,86 @@
+     std::move(callback).Run(true, "true", "", "");
+     return;
+   }
++  if (method == "privatePageZoom") {
++    if (!browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "permission_denied",
++                              "Private page zoom is only available in Private windows");
++      return;
++    }
++    if (list->size() != 2 || !(*list)[0].is_string() || !(*list)[1].is_dict()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid Private page zoom request");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    content::WebContents* contents =
++        catalog->FindPage((*list)[0].GetString(), &owner);
++    if (!contents || owner != browser_) {
++      std::move(callback).Run(false, "", "not_found",
++                              "The page is no longer in this window");
++      return;
++    }
++    auto* zoom_controller = zoom::ZoomController::FromWebContents(contents);
++    if (!zoom_controller) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "Page zoom is unavailable");
++      return;
++    }
++    const base::DictValue& options = (*list)[1].GetDict();
++    const double current = zoom_controller->GetZoomLevel();
++    double next = current;
++    bool requested = false;
++    constexpr double kZoomBase = 1.2;
++    constexpr std::array<int, 16> kZoomPercentages = {
++        25, 33, 50, 67, 75, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400, 500};
++    if (options.FindBool("reset").value_or(false)) {
++      requested = true;
++      next = zoom_controller->GetDefaultZoomLevel();
++    } else if (const std::string* direction = options.FindString("direction")) {
++      if (*direction != "in" && *direction != "out") {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Invalid zoom direction");
++        return;
++      }
++      requested = true;
++      const int current_percent =
++          static_cast<int>(std::round(100.0 * std::pow(kZoomBase, current)));
++      int stepped = *direction == "in" ? 500 : 25;
++      for (int percentage : kZoomPercentages) {
++        if (*direction == "in" && percentage > current_percent) {
++          stepped = percentage;
++          break;
++        }
++        if (*direction == "out" && percentage < current_percent)
++          stepped = percentage;
++      }
++      next = std::log(stepped / 100.0) / std::log(kZoomBase);
++    } else if (const std::optional<double> level = options.FindDouble("level")) {
++      requested = true;
++      next = *level;
++    } else if (const std::optional<double> delta = options.FindDouble("delta")) {
++      requested = true;
++      next += *delta;
++    }
++    if (!std::isfinite(next)) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid page zoom");
++      return;
++    }
++    if (requested) {
++      next = std::clamp(next, std::log(0.25) / std::log(kZoomBase),
++                        std::log(5.0) / std::log(kZoomBase));
++    }
++    if (requested && next != current && !zoom_controller->SetZoomLevel(next)) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "Page zoom is disabled");
++      return;
++    }
++    base::DictValue result;
++    result.Set("level", zoom_controller->GetZoomLevel());
++    std::move(callback).Run(true, *base::WriteJson(result), "", "");
++    return;
++  }
+   if (method == "siteZoom") {
+     if (list->size() > 1 || (!list->empty() && !(*list)[0].is_string())) {
+       std::move(callback).Run(false, "", "invalid_argument", "Invalid saved zoom request");

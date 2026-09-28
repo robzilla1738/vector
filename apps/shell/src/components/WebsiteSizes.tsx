@@ -12,6 +12,7 @@ export function WebsiteSizes() {
   const pending=useRef(false);
   const deferredRefresh=useRef(false);
   const root=useRef<HTMLDivElement>(null);
+  const searchInput=useRef<HTMLInputElement>(null);
   async function load() {
     if(pending.current){deferredRefresh.current=true;return;}
     const current = ++version.current;
@@ -38,7 +39,7 @@ export function WebsiteSizes() {
         if(deferredRefresh.current){deferredRefresh.current=false;void load();}
         requestAnimationFrame(()=>{
           if(!root.current||document.activeElement!==document.body)return;
-          if(trigger?.isConnected)trigger.focus();else (root.current.querySelector("input")??root.current).focus();
+          if(trigger?.isConnected)trigger.focus();else (searchInput.current??root.current).focus();
         });
       }
     }
@@ -46,7 +47,7 @@ export function WebsiteSizes() {
   const matching = sites.filter(site => site.origin.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   return <div ref={root} tabIndex={-1} role="group" aria-label="Saved website sizes" className="website-sizes">
     <p className="hint">Saved page sizes for this profile. Reset applies to open tabs too; cookies and website permissions stay unchanged.</p>
-    {sites.length > 0 && <input aria-label="Search website sizes" placeholder="Find a website…" value={query} onChange={event => setQuery(event.target.value)} />}
+    {sites.length > 0 && <input ref={searchInput} aria-label="Search website sizes" placeholder="Find a website…" value={query} onChange={event => setQuery(event.target.value)} />}
     {loading && <output className="hint" data-block>Loading website sizes…</output>}
     {error && <p role="alert">{error} <button className="btn sm" disabled={loading||!!busy} onClick={() => void load()}>Refresh sizes</button></p>}
     {notice && <output className="hint" data-block>{notice}</output>}

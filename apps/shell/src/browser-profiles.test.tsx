@@ -41,11 +41,18 @@ it("keeps Profile actions in one menu and requires a named confirmation before d
     const item=[...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(node=>node.textContent==='Delete…')!;
     await act(async()=>item.click());
     expect(remove).not.toHaveBeenCalled();
-    const confirmation=host.querySelector('[aria-label="Delete Work Profile"]')!;
+    const confirmation=document.querySelector('dialog[aria-label="Delete “Work”?"]')!;
     expect(confirmation.textContent).toContain('permanently removes');
     await act(async()=>[...confirmation.querySelectorAll('button')].find(node=>node.textContent==='Keep Profile')!.click());
-    expect(host.querySelector('.browser-profile-confirmation')).toBeNull();
+    expect(document.querySelector('dialog[aria-label="Delete “Work”?"]')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('[aria-label="Actions for Work Profile"]'));
     expect(remove).not.toHaveBeenCalled();
+    await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Actions for Work Profile"]')!.click());
+    await act(async()=>[...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(node=>node.textContent==='Delete…')!.click());
+    expect(remove).not.toHaveBeenCalled();
+    await act(async()=>[...document.querySelectorAll<HTMLButtonElement>('dialog[aria-label="Delete “Work”?"] button')].find(node=>node.textContent==='Delete permanently')!.click());
+    expect(remove).toHaveBeenCalledOnce();
+    expect(host.querySelector('[aria-label="Actions for Work Profile"]')).toBeNull();
     await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Actions for Personal Profile"]')!.click());
     expect(document.querySelector('[role="menu"]')?.textContent).toBe('Rename');
   }finally{await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();vi.unstubAllGlobals();}

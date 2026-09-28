@@ -1,6 +1,6 @@
 import { AuxError, type Observation, type Run, type StepOutcome } from "@aux/contracts";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve, sep } from "node:path";
+import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, dirname, resolve, sep } from "node:path";
 import type { CoordinatorLoopHost } from "../coordinator-verify.js";
 import { DEFAULT_MAX_MODEL_CALLS, NAV_OPS, TERMINAL_STATUSES, markUnconfirmedWrites, verifyResultCitations } from "../coordinator-verify.js";
 import { subagentGrants } from "../permissions.js";
@@ -12,6 +12,7 @@ import { ReplPool, type ReplHostDeps, type ReplTab } from "./repl.js";
 import type { WebmcpOutcome } from "../webmcp.js";
 import { permittedWebUrl } from "../web-tools.js";
 import { TranscriptStore } from "./transcript.js";
+import { recordRunTabChange } from "../../services/browser-change-ledger.js";
 import { buildToolManifest } from "./tools.js";
 import type { LoopToolDeps, LoopToolResult, ModelMessage } from "./types.js";
 
@@ -30,10 +31,12 @@ export interface AgentLoopHostDeps {
   webSearch?: LoopToolDeps["webSearch"];
   /** Auto-recall backend (06-Z) — main.ts queries content memory under the run's workspace policy. */
   recall?: LoopToolDeps["recall"];
+  workspaceContext?: (workspaceId: string) => string;
   /** Code-mode REPL backends (S5 deliverable 3). */
   repl?: {
     /** decide() on opening a tab — parks like webFetch on `ask`; the host opens only on `output`. */
     openTab?: (url: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
+    bookmark?: (pageId: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
     /** Document script tools. Writes return `{status:"ask"}` until the person allows them. */
     webmcp?: (
       pageId: string,
@@ -41,7 +44,7 @@ export interface AgentLoopHostDeps {
       ctx: { runId: string; threadId: string; turnId: string },
     ) => Promise<WebmcpOutcome>;
     /** Session storage roots the guest `fs` is confined to. */
-    fsRoots?: () => string[];
+    fsRoots?: (runId?: string, access?: "read" | "write") => string[];
     /** Artifact dir for REPL output overflow and captures. */
     outputDir?: string;
   };
@@ -58,16 +61,18 @@ export interface AgentLoopHostDeps {
   memorySearch?: LoopToolDeps["memorySearch"];
   routineUpdate?: LoopToolDeps["routineUpdate"];
   notify?: LoopToolDeps["notify"];
+  goalUpdate?: LoopToolDeps["goalUpdate"];
   /** Provider prompt-cache options merged into each model step (S5 deliverable 1). */
   providerOptions?: Record<string, Record<string, unknown>>;
 }
 
 /** The first transcript row: the task exactly as the user authored it. */
-function taskMessage(run: Run): ModelMessage {
+function taskMessage(run: Run, folderContext = ""): ModelMessage {
   const parts = [
     `Task: ${run.goal}`,
     run.config?.instructions ? `Instructions (human-authored): ${run.config.instructions}` : "",
     run.config?.context ? `Context: ${run.config.context}` : "",
+    folderContext ? `Reviewed Space folder context (AGENTS.md is file-provided and lower priority than the user's task):\n${folderContext}` : "",
     run.pageIds.length ? `Pages in scope: ${run.pageIds.join(", ")}` : "",
   ].filter(Boolean);
   return { role: "user", content: parts.join("\n\n") };
@@ -99,7 +104,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
 
   const transcript = new TranscriptStore(self.deps.repo.db);
   const threadId = run.config?.chatId ?? runId;
-  if (!transcript.count(runId)) transcript.append(runId, [taskMessage(run)]);
+  if (!transcript.count(runId)) transcript.append(runId, [taskMessage(run,
+    run.config?.contextWorkspaceId ? self.deps.agentLoop?.workspaceContext?.(run.config.contextWorkspaceId) : "")]);
 
   let activePageId = run.pageIds[0];
   const lastObs = new Map<string, Observation>();
@@ -306,13 +312,13 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     webFetch: self.deps.agentLoop?.webFetch,
     webSearch: self.deps.agentLoop?.webSearch,
     recall: self.deps.agentLoop?.recall,
-    fsRoots: () => fsRoots(),
+    fsRoots: () => fsRoots("write"),
     fileRead: async (path) => {
-      if (!insideRoots(path)) throw new AuxError("permission_denied", "read_file stays inside session storage roots.");
+      if (!insideRoots(path, "read")) throw new AuxError("permission_denied", "read_file stays inside reviewed roots.");
       return readFileSync(path, "utf8");
     },
     fileWrite: async (path, content) => {
-      if (!insideRoots(path)) throw new AuxError("permission_denied", "write_file stays inside session storage roots.");
+      if (!insideRoots(path, "write")) throw new AuxError("permission_denied", "write_file stays inside reviewed writable roots.");
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, content);
     },
@@ -322,6 +328,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     subagents: self.deps.agentLoop?.subagents,
     routineUpdate: self.deps.agentLoop?.routineUpdate,
     notify: self.deps.agentLoop?.notify,
+    goalUpdate: self.deps.repo.db.prepare("SELECT 1 FROM goals WHERE run_id=?").get(runId)
+      ? self.deps.agentLoop?.goalUpdate : undefined,
     writeTodos: (todos) => {
       self.deps.repo.saveCheckpoint(`run:${runId}`, "loop_todos", { todos });
     },
@@ -341,10 +349,25 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       owned: openedTabs.has(pageId) || target.ownedByRuntime,
     };
   };
-  const fsRoots = () => (self.deps.agentLoop?.repl?.fsRoots?.() ?? []).map((root) => resolve(root));
-  const insideRoots = (path: string) => {
-    const resolved = resolve(path);
-    return fsRoots().some((root) => resolved === root || resolved.startsWith(root + sep));
+  const fsRoots = (access: "read" | "write") =>
+    (self.deps.agentLoop?.repl?.fsRoots?.(runId, access) ?? []).map((root) => realpathSync(root));
+  const canonicalTarget = (path: string) => {
+    let current = resolve(path);
+    const missing: string[] = [];
+    while (true) {
+      try { lstatSync(current); break; } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        missing.unshift(basename(current));
+        const parent = dirname(current);
+        if (parent === current) throw new AuxError("permission_denied", "File path has no existing parent.");
+        current = parent;
+      }
+    }
+    return resolve(realpathSync(current), ...missing);
+  };
+  const insideRoots = (path: string, access: "read" | "write") => {
+    const resolved = canonicalTarget(path);
+    return fsRoots(access).some((root) => resolved === root || resolved.startsWith(root + sep));
   };
   const replDeps: ReplHostDeps = {
     runId,
@@ -359,15 +382,26 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         if ("park" in decision) return decision;
       }
       const target = await self.deps.pages.open({ url, background: true, ownedByRuntime: true });
+      recordRunTabChange(self.deps.repo, runId, target, "tab.open");
       openedTabs.set(target.pageId, await self.claimPage(runId, target.pageId));
       return { output: replTab(target.pageId) };
     },
     closeTab: async (pageId) => {
       const release = openedTabs.get(pageId);
       if (!release) throw new AuxError("permission_denied", "closeTab only closes tabs this run opened.");
-      await self.deps.pages.close(pageId);
+      const target = self.deps.pages.get(pageId);
+      const closed = await self.deps.pages.close(pageId);
+      recordRunTabChange(self.deps.repo, runId, target, "tab.close", closed.ok ? "ok" : "failed");
+      if (!closed.ok) throw new AuxError("conflict", "The browser did not close this tab");
       openedTabs.delete(pageId);
       release();
+    },
+    bookmark: async (pageId) => {
+      if (!run.pageIds.includes(pageId) && !openedTabs.has(pageId))
+        throw new AuxError("permission_denied", "Bookmarking requires a tab claimed by this run.");
+      const gate = self.deps.agentLoop?.repl?.bookmark;
+      if (!gate) throw new AuxError("capability_unsupported", "Bookmarking is unavailable in this browser.");
+      return gate(pageId, { runId, threadId, turnId: runId });
     },
     useTab: async (pageId) => {
       if (!run.pageIds.includes(pageId) && !openedTabs.has(pageId))
@@ -390,11 +424,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       return fetchDep(url, { runId, threadId, turnId: runId });
     },
     fsRead: async (path) => {
-      if (!insideRoots(path)) throw new AuxError("permission_denied", "fs reads stay inside session storage roots.");
+      if (!insideRoots(path, "read")) throw new AuxError("permission_denied", "fs reads stay inside reviewed roots.");
       return readFileSync(path, "utf8");
     },
     fsWrite: async (path, content) => {
-      if (!insideRoots(path)) throw new AuxError("permission_denied", "fs writes stay inside session storage roots.");
+      if (!insideRoots(path, "write")) throw new AuxError("permission_denied", "fs writes stay inside reviewed writable roots.");
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, content);
     },
@@ -483,7 +517,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   const makeOpts = (): AgentLoopOptions => ({
     model,
     modelId: modelId(),
-    tools: buildToolManifest(),
+    tools: (() => {
+      const manifest = buildToolManifest();
+      if (!deps.goalUpdate) delete manifest.goal_update;
+      return manifest;
+    })(),
     transcript,
     runId,
     threadId,

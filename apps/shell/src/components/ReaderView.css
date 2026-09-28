@@ -1,0 +1,25 @@
+
+@layer components {
+.reader-view { position:absolute; inset:0; z-index:5; display:grid; grid-template-rows:auto minmax(0,1fr); background:var(--bg-0); border-radius:inherit; overflow:hidden; }
+.reader-toolbar { display:flex; position:relative; z-index:3; align-items:center; flex-wrap:wrap; gap:var(--space-2); padding:var(--space-4) var(--space-6); flex-shrink:0; }
+.reader-toolbar select { max-width:140px; padding:5px var(--space-2); border:1px solid var(--line); border-radius:var(--r-md); background:var(--bg-1); color:var(--ink-1); font:inherit; font-size:var(--fs-xs); }
+.reader-notice { flex-basis:100%; margin:0; color:var(--ink-2); font-size:var(--fs-xs); }
+.reader-scroll { overflow:auto; flex:1; min-height:0; user-select:text; }
+.reader-article { max-width:740px; margin:var(--space-8) auto 100px; padding:0 36px; line-height:1.75; letter-spacing:0; overflow-wrap:anywhere; }
+.reader-meta,.reader-byline { color:var(--ink-2); font-family:var(--font-ui); font-size:var(--fs-md); }
+.reader-article>h1 { font-size:2em; line-height:1.18; letter-spacing:-.025em; font-weight:var(--fw-strong); margin:18px 0 var(--space-6); }
+.reader-byline { margin-bottom:var(--space-8); }
+.reader-content { font-family:Georgia,'Times New Roman',serif; }
+.reader-content.reader-sans { font-family:var(--font-ui); }
+.reader-empty .btn { margin-top:var(--space-4); }
+.reader-content p { margin:0 0 1.2em; }
+.reader-content h1,.reader-content h2,.reader-content h3,.reader-content h4 { font-family:var(--font-ui); line-height:1.3; margin:1.5em 0 .7em; }
+.reader-content a { color:inherit; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+.reader-content ul,.reader-content ol { padding-left:1.4em; margin:1em 0; list-style:revert; }
+.reader-content blockquote { margin:1.4em 0; padding-left:1em; border-left:2px solid var(--ink-3); color:var(--ink-1); }
+.reader-content pre { overflow:auto; padding:var(--space-4); background:var(--bg-1); border-radius:var(--r-md); font-size:.8em; }
+.reader-content table { display:block; overflow:auto; border-collapse:collapse; margin:1em 0; }
+.reader-content td,.reader-content th { padding:var(--space-2) var(--space-3); border:1px solid var(--ink-3); }
+.reader-empty { max-width:680px; margin:80px auto; padding:0 var(--space-7); color:var(--ink-2); font-size:var(--fs-lg); }
+.reader-empty h2 { color:var(--ink-0); margin-bottom:var(--space-3); font-size:var(--fs-2xl); font-weight:var(--fw-medium); }
+}

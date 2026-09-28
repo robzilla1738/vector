@@ -1,0 +1,51 @@
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -34,6 +34,7 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
+ #include "components/sessions/core/session_id.h"
+ #include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/reload_type.h"
+ #include "content/public/browser/web_contents.h"
+ #include "url/gurl.h"
+@@ -288,7 +289,10 @@
+     tab.Set("spaceId", identity->space_id());
+     tab.Set("workspaceId", identity->workspace_id());
+   }
+-  if (auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents)) {
++  if (!contents->GetPrimaryMainFrame()->IsRenderFrameLive() &&
++      contents->GetController().GetEntryCount() > 0) {
++    tab.Set("lifecycle", "placeholder");
++  } else if (auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents)) {
+     if (identity->runtime_owned()) lifecycle->SetAutoDiscardable(false);
+     switch (lifecycle->GetTabState()) {
+       case mojom::LifecycleUnitState::FROZEN: tab.Set("lifecycle", "frozen"); break;
+diff --git a/chrome/browser/ui/aux/methods/native_tabs_methods.cc b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+--- a/chrome/browser/ui/aux/methods/native_tabs_methods.cc
++++ b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+@@ -105,6 +105,8 @@
+       page.Set("marker", "atab-" + page_id);
+       page.Set("url", *tab.FindString("url"));
+       page.Set("title", *tab.FindString("title"));
++      if (const std::string* lifecycle = tab.FindString("lifecycle"))
++        page.Set("lifecycle", *lifecycle);
+       bool active = false;
+       for (const base::Value& window_value : *windows) {
+         const base::DictValue& window = window_value.GetDict();
+@@ -115,9 +117,12 @@
+         }
+       }
+       page.Set("active", active);
+-      if (content::WebContents* contents = catalog->FindPage(page_id)) {
+-        page.Set("cdpTargetId",
+-                 content::DevToolsAgentHost::GetOrCreateFor(contents)->GetId());
++      const std::string* lifecycle = tab.FindString("lifecycle");
++      if (!lifecycle || (*lifecycle != "placeholder" && *lifecycle != "discarded")) {
++        if (content::WebContents* contents = catalog->FindPage(page_id)) {
++          page.Set("cdpTargetId",
++                   content::DevToolsAgentHost::GetOrCreateFor(contents)->GetId());
++        }
+       }
+       pages.Append(std::move(page));
+     }

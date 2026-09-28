@@ -118,6 +118,10 @@ export const RoutineSourceEventSchema = z.discriminatedUnion("kind", [
     })
     .strict(),
 ]);
+/** Host-only preflight before Chromium reads a watched document. */
+export const RoutinePageChangeTargetParamsSchema = z
+  .object({ pageId: text.max(200), url: siteUrl })
+  .strict();
 export const RoutineDefinitionSchema = z.object({
   title: text.max(200),
   objective: text.max(10000),
@@ -152,6 +156,9 @@ export const RoutineDefinitionSchema = z.object({
   reviewRequired: z.boolean().default(true),
   consecutive: z.boolean().default(false),
   spendCapUsd: z.number().positive().max(50).optional(),
+  /** A person may exempt this Skill from the unread-results presence guard. */
+  presenceGuardExempt: z.boolean().default(false),
+  missedRunPolicy: z.enum(["record_only", "run_once_on_wake"]).default("record_only"),
   trigger: RoutineTriggerSchema.default({ kind: "manual" }),
   paused: z.boolean().default(false),
 });
@@ -162,6 +169,7 @@ export const RoutineShareSchema = RoutineDefinitionSchema.omit({
   sourceTaskRevision: true,
   sourceRunId: true,
   calendarGrantIds: true,
+  presenceGuardExempt: true,
 }).extend({
   workspaceName: text.optional(),
 });
@@ -243,8 +251,13 @@ export const RoutineSchema = RoutineDefinitionSchema.extend({
   routineId: text,
   revision: z.number().int().positive(),
   createdAt: z.number(),
+  /** Earliest schedule time eligible after creation, resuming, trigger edits, or restore. */
+  activatedAt: z.number().int().nonnegative().optional(),
   updatedAt: z.number(),
   archivedAt: z.number().optional(),
+  pauseCause: z.enum(["unread_results"]).optional(),
+  /** Server-assigned origin requiring a separate, revision-bound activation review. */
+  activationReview: z.enum(["run_result", "imported", "untrusted_task"]).optional(),
 });
 export const RoutineOccurrenceSchema = z.object({
   occurrenceId: text,
@@ -288,6 +301,22 @@ export const RoutineRunOutcomeSchema = z.object({
 });
 export const RoutineCreateParams = RoutineDefinitionSchema;
 export const RoutineUpdateParams = RoutineDefinitionSchema.partial().extend({
+  // A partial edit must not apply create-time defaults to omitted fields. In
+  // particular, changing a trigger must never resume a paused Skill or clear
+  // its reviewed task criteria and account grants.
+  parameters: RoutineDefinitionSchema.shape.parameters.unwrap().optional(),
+  siteOrigins: RoutineDefinitionSchema.shape.siteOrigins.unwrap().optional(),
+  accountLabels: RoutineDefinitionSchema.shape.accountLabels.unwrap().optional(),
+  calendarGrantIds: RoutineDefinitionSchema.shape.calendarGrantIds.unwrap().optional(),
+  autoInject: RoutineDefinitionSchema.shape.autoInject.unwrap().optional(),
+  successCriteria: RoutineDefinitionSchema.shape.successCriteria.unwrap().optional(),
+  reviewRequired: RoutineDefinitionSchema.shape.reviewRequired.unwrap().optional(),
+  consecutive: RoutineDefinitionSchema.shape.consecutive.unwrap().optional(),
+  missedRunPolicy: RoutineDefinitionSchema.shape.missedRunPolicy.unwrap().optional(),
+  presenceGuardExempt: RoutineDefinitionSchema.shape.presenceGuardExempt.unwrap().optional(),
+  trigger: RoutineDefinitionSchema.shape.trigger.unwrap().optional(),
+  paused: RoutineDefinitionSchema.shape.paused.unwrap().optional(),
+  activationReviewed: z.boolean().optional(),
   routineId: text,
   expectedRevision: z.number().int().positive(),
 });
@@ -387,5 +416,5 @@ export function routineOccurrenceIdentity(routineId: string, timezone: string, s
   return `${routineId}:${timezone}:${fields.year}-${fields.month}-${fields.day}T${fields.hour}:${fields.minute}`;
 }
 
-/** A wall-clock minute fires once on fall-back day; a nonexistent spring-forward minute is skipped. */
+/** A wall-clock minute has one identity on fall-back day; a nonexistent spring-forward minute is skipped. */
 export const scheduleOccurrenceIdentity = routineOccurrenceIdentity;

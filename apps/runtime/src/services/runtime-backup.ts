@@ -1,5 +1,5 @@
 import {createHash,randomUUID} from 'node:crypto';
-import {createReadStream} from 'node:fs';
+import {createReadStream,existsSync} from 'node:fs';
 import {chmod,copyFile,lstat,mkdir,readFile,readdir,realpath,rename,rm,stat,writeFile} from 'node:fs/promises';
 import {DatabaseSync} from 'node:sqlite';
 import {dirname,isAbsolute,join,relative,resolve,sep} from 'node:path';
@@ -170,3 +170,126 @@ export async function stageRuntimeRestore(dataDir:string,sourcePath:string){
 }
 
 export async function cancelRuntimeRestore(dataDir:string){await Promise.all([rm(join(dataDir,'pending-runtime-restore.sqlite'),{force:true}),rm(join(dataDir,'pending-runtime-restore-artifacts'),{recursive:true,force:true}),rm(join(dataDir,'pending-runtime-restore.json'),{force:true})]);return{cancelled:true as const};}
+
+type PendingRestore={version:2;createdAt:number;schemaVersion:number;bytes:number;sha256:string;artifactFiles:ManifestArtifact[]};
+
+export async function runtimeRestoreStatus(dataDir:string){
+  let lastAppliedAt:number|undefined;
+  try{
+    const value=JSON.parse(await readFile(join(dataDir,'runtime-restore-status.json'),'utf8')) as {lastAppliedAt?:unknown};
+    if(typeof value.lastAppliedAt==='number'&&Number.isFinite(value.lastAppliedAt))lastAppliedAt=value.lastAppliedAt;
+  }catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+  return{pending:existsSync(join(dataDir,'pending-runtime-restore.json')),...(lastAppliedAt?{lastAppliedAt}:{})};
+}
+
+/** Apply a user-staged restore before opening the runtime's active database. */
+export async function applyPendingRuntimeRestore(dataDir:string,dbPath:string){
+  const metadataPath=join(dataDir,'pending-runtime-restore.json');
+  if(!existsSync(metadataPath))return{applied:false as const};
+  // A separate SQLite database provides a cross-process startup lock, released
+  // by the OS on crash. Never swap a database while another runtime owns it.
+  const lockPath=join(dataDir,'runtime-restore-lock.sqlite');
+  const lock=new DatabaseSync(lockPath);
+  try{
+    await chmod(lockPath,0o600);
+    lock.exec('PRAGMA busy_timeout=5000; BEGIN EXCLUSIVE');
+    if(!existsSync(metadataPath))return{applied:false as const};
+    const descriptorPath=join(dataDir,'runtime.json');
+    try{
+      const descriptor=JSON.parse(await readFile(descriptorPath,'utf8')) as {pid?:unknown};
+      if(Number.isInteger(descriptor.pid)&&Number(descriptor.pid)>0){
+        try{process.kill(Number(descriptor.pid),0);throw new Error('Quit the running Aux runtime before applying a staged restore.');}
+        catch(error){if((error as NodeJS.ErrnoException).code!=='ESRCH')throw error;}
+      }
+    }catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+    const metadata=JSON.parse(await readFile(metadataPath,'utf8')) as Partial<PendingRestore>;
+    if(metadata.version!==2||!Number.isInteger(metadata.createdAt)||!Number.isInteger(metadata.schemaVersion)||
+      !Number.isInteger(metadata.bytes)||typeof metadata.sha256!=='string'||!/^[a-f0-9]{64}$/.test(metadata.sha256)||
+      !Array.isArray(metadata.artifactFiles)||metadata.artifactFiles.length>MAX_ARTIFACTS)
+      throw new Error('The staged runtime restore metadata is invalid.');
+    const pendingDatabase=join(dataDir,'pending-runtime-restore.sqlite');
+    const dbInfo=await lstat(pendingDatabase);
+    if(dbInfo.isSymbolicLink()||!dbInfo.isFile()||dbInfo.size!==metadata.bytes||await digest(pendingDatabase)!==metadata.sha256||
+      validateDatabase(pendingDatabase)!==metadata.schemaVersion)
+      throw new Error('The staged runtime database failed validation.');
+    const alreadySwapped=existsSync(dbPath)&&await digest(dbPath)===metadata.sha256;
+    const stagedRoot=join(dataDir,'pending-runtime-restore-artifacts');
+    const artifactRoot=join(dataDir,'artifacts');
+    await mkdir(artifactRoot,{recursive:true,mode:0o700});
+    const stagedRootInfo=await lstat(stagedRoot);
+    if(stagedRootInfo.isSymbolicLink()||!stagedRootInfo.isDirectory())throw new Error('The staged artifact folder is invalid.');
+    if((await lstat(artifactRoot)).isSymbolicLink())throw new Error('The Aux artifact folder is a symbolic link.');
+    const resolvedStagedRoot=await realpath(stagedRoot),resolvedArtifactRoot=await realpath(artifactRoot);
+    const ids=new Set<string>(),paths=new Set<string>();
+    for(const item of metadata.artifactFiles){
+      if(!item||typeof item.artifactId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(item.artifactId)||
+        !Number.isInteger(item.bytes)||item.bytes<0||typeof item.sha256!=='string'||!/^[a-f0-9]{64}$/.test(item.sha256))
+        throw new Error('The staged restore has invalid artifact metadata.');
+      const rel=safeRelative(item.relativePath);
+      if(ids.has(item.artifactId)||paths.has(rel))throw new Error('The staged restore repeats an artifact.');
+      ids.add(item.artifactId);paths.add(rel);
+      const source=join(stagedRoot,rel),sourceInfo=await lstat(source),resolved=await realpath(source);
+      if(sourceInfo.isSymbolicLink()||relative(resolvedStagedRoot,resolved).startsWith('..')||
+        !sourceInfo.isFile()||sourceInfo.size!==item.bytes||await digest(source)!==item.sha256)
+        throw new Error(`Staged artifact ${item.artifactId} failed validation.`);
+      const target=join(artifactRoot,rel);
+      await mkdir(dirname(target),{recursive:true,mode:0o700});
+      const parent=await realpath(dirname(target));
+      if(relative(resolvedArtifactRoot,parent).startsWith('..'))throw new Error('An artifact destination escapes Aux storage.');
+      try{
+        const current=await lstat(target);
+        if(current.isSymbolicLink()||!current.isFile()||current.size!==item.bytes||await digest(target)!==item.sha256)
+          throw new Error(`Artifact ${item.artifactId} conflicts with existing Aux data.`);
+      }catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+    }
+    // A crash after the atomic database swap can leave the pending marker.
+    // All artifacts must still be present before that marker is retired.
+    if(alreadySwapped){
+      for(const item of metadata.artifactFiles)
+        if(!existsSync(join(artifactRoot,safeRelative(item.relativePath))))
+          throw new Error(`Restored artifact ${item.artifactId} is missing.`);
+      await finishRestore(dataDir,Date.now());
+      return{applied:true as const,recovered:true as const};
+    }
+    const recoveryRoot=join(dataDir,'recovery',`runtime-${new Date().toISOString().replace(/[:.]/g,'-')}-${randomUUID()}`);
+    await mkdir(recoveryRoot,{recursive:true,mode:0o700});
+    if(existsSync(dbPath)){
+      const previous=new DatabaseSync(dbPath);
+      try{
+        previous.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+        previous.prepare('VACUUM INTO ?').run(join(recoveryRoot,'state.sqlite'));
+      }finally{previous.close();}
+      await chmod(join(recoveryRoot,'state.sqlite'),0o600);
+    }
+    for(const item of metadata.artifactFiles){
+      const target=join(artifactRoot,safeRelative(item.relativePath));
+      if(existsSync(target))continue;
+      const temporary=`${target}.${randomUUID()}.tmp`;
+      try{
+        await copyFile(join(stagedRoot,item.relativePath),temporary);
+        await chmod(temporary,0o600);
+        if(await digest(temporary)!==item.sha256)throw new Error(`Artifact ${item.artifactId} changed during restore.`);
+        await rename(temporary,target);
+      }finally{await rm(temporary,{force:true});}
+    }
+    const temporaryDatabase=`${dbPath}.${randomUUID()}.restore`;
+    try{
+      await copyFile(pendingDatabase,temporaryDatabase);
+      await chmod(temporaryDatabase,0o600);
+      if(await digest(temporaryDatabase)!==metadata.sha256)throw new Error('The staged database changed during restore.');
+      await Promise.all([rm(`${dbPath}-wal`,{force:true}),rm(`${dbPath}-shm`,{force:true})]);
+      await rename(temporaryDatabase,dbPath);
+    }finally{await rm(temporaryDatabase,{force:true});}
+    await finishRestore(dataDir,Date.now());
+    return{applied:true as const,recoveryPath:recoveryRoot};
+  }finally{
+    try{lock.exec('ROLLBACK');}catch{/* No transaction after a failed BEGIN. */}
+    lock.close();
+  }
+}
+
+async function finishRestore(dataDir:string,lastAppliedAt:number){
+  const status=join(dataDir,'runtime-restore-status.json');
+  await writeFile(status,JSON.stringify({lastAppliedAt})+'\n',{mode:0o600});
+  await cancelRuntimeRestore(dataDir);
+}

@@ -8,7 +8,7 @@ const cleanup: (() => void)[] = [];
 afterEach(() => { for (const fn of cleanup.splice(0).reverse()) fn(); });
 
 function ctx(deps: LoopToolDeps, extra: Partial<LoopToolContext> = {}): LoopToolContext {
-  return { runId: "run-1", threadId: "chat-1", turnId: "run-1", callCount: 1, deps, ...extra };
+  return { runId: "run-1", threadId: "chat-1", turnId: "run-1", callCount: 1, goalTurn: 1, deps, ...extra };
 }
 
 function rootsFixture() {
@@ -18,6 +18,21 @@ function rootsFixture() {
 }
 
 const manifest = buildToolManifest();
+
+it("limits model Goal updates to pause or blocker reports and forwards the durable turn", async () => {
+  const seen: unknown[] = [];
+  const deps: LoopToolDeps = { goalUpdate: async (input, context) => {
+    seen.push({ ...input, runId: context.runId, turn: context.goalTurn });
+    return { status: "still_active", remaining: 2 };
+  } };
+  expect(manifest["goal_update"]!.requiresSoloCall).toBe(true);
+  expect(await manifest["goal_update"]!.execute({ status: "blocked", blocker: "Login needed" }, ctx(deps, { goalTurn: 7 })))
+    .toEqual({ output: { status: "still_active", remaining: 2 } });
+  expect(seen).toEqual([{ status: "blocked", blocker: "Login needed", runId: "run-1", turn: 7 }]);
+  await expect(manifest["goal_update"]!.execute({ status: "completed" }, ctx(deps))).rejects.toThrow();
+  await expect(manifest["goal_update"]!.execute({ status: "paused", budget: { maxTokens: 99 } }, ctx(deps))).rejects.toThrow();
+  await expect(manifest["goal_update"]!.execute({ status: "paused" }, ctx({}))).rejects.toThrow(/not available/);
+});
 
 describe("S5 manifest — file tools (06-X)", () => {
   const deps = (root: string): LoopToolDeps => ({

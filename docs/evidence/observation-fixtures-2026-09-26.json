@@ -1,0 +1,104 @@
+{
+  "measuredAt": "2026-09-26T22:35:28.073Z",
+  "kind": "fixture-observation",
+  "apcSource": null,
+  "rows": [
+    {
+      "caseId": "records",
+      "observer": "aux",
+      "available": true,
+      "durationMs": 16,
+      "chars": 2806,
+      "approxTokens": 702,
+      "factsFound": 2,
+      "factCount": 2
+    },
+    {
+      "caseId": "records",
+      "observer": "accessibilityHtml",
+      "available": true,
+      "durationMs": 2,
+      "chars": 1646,
+      "approxTokens": 412,
+      "factsFound": 2,
+      "factCount": 2
+    },
+    {
+      "caseId": "records",
+      "observer": "apc",
+      "available": false,
+      "reason": "Native APC capture was not supplied"
+    },
+    {
+      "caseId": "detail",
+      "observer": "aux",
+      "available": true,
+      "durationMs": 13,
+      "chars": 850,
+      "approxTokens": 213,
+      "factsFound": 2,
+      "factCount": 2
+    },
+    {
+      "caseId": "detail",
+      "observer": "accessibilityHtml",
+      "available": true,
+      "durationMs": 1,
+      "chars": 676,
+      "approxTokens": 169,
+      "factsFound": 0,
+      "factCount": 2
+    },
+    {
+      "caseId": "detail",
+      "observer": "apc",
+      "available": false,
+      "reason": "Native APC capture was not supplied"
+    },
+    {
+      "caseId": "form",
+      "observer": "aux",
+      "available": true,
+      "durationMs": 15,
+      "chars": 1562,
+      "approxTokens": 391,
+      "factsFound": 2,
+      "factCount": 2
+    },
+    {
+      "caseId": "form",
+      "observer": "accessibilityHtml",
+      "available": true,
+      "durationMs": 4,
+      "chars": 977,
+      "approxTokens": 245,
+      "factsFound": 1,
+      "factCount": 2
+    },
+    {
+      "caseId": "form",
+      "observer": "apc",
+      "available": false,
+      "reason": "Native APC capture was not supplied"
+    }
+  ],
+  "deltaRows": [
+    {
+      "caseId": "form",
+      "step": "fill-name",
+      "available": true,
+      "deltaChars": 179,
+      "fullChars": 1564,
+      "savingsPct": 88.6
+    },
+    {
+      "caseId": "form",
+      "step": "fill-email",
+      "available": true,
+      "deltaChars": 205,
+      "fullChars": 1570,
+      "savingsPct": 86.9
+    }
+  ],
+  "deltaGatePassed": true
+}

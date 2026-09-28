@@ -60,9 +60,8 @@ it("preserves Chromium order while a scoped tab survives title-and-host dedup", 
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
-  const labels = [...host.querySelectorAll(".cb-opt.browser")].map((item) => item.textContent ?? "");
-  expect(labels[0]).toContain("Release Notes");
-  expect(labels[1]).toContain("Release discussion");
+  expect(host.querySelector(".cb-opt.history")?.textContent).toContain("Release Notes");
+  expect(host.querySelector(".cb-opt.browser")?.textContent).toContain("Release discussion");
   expect(host.querySelector(".cb-opt.tabs")).toBeNull();
   await act(async () =>
     input.dispatchEvent(new KeyboardEvent("keydown", { key: "2", altKey: true, bubbles: true })),

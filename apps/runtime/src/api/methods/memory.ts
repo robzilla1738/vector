@@ -12,6 +12,12 @@ async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
   if (method === "memory.pipeline.policy") return pipeline.policy(params.workspaceId);
   if (method === "memory.pipeline.setPolicy") return pipeline.setPolicy(params.workspaceId, params.enabled);
   if (method === "memory.pipeline.extractRun") return pipeline.extractRun(params.workspaceId, params.runId);
+  if (method === "memory.pipeline.sources") return pipeline.sources(params.workspaceId);
+  if (method === "memory.pipeline.inbox") return pipeline.inbox(params.workspaceId);
+  if (method === "memory.pipeline.claims") return pipeline.claims(params.workspaceId);
+  if (method === "memory.pipeline.history") return pipeline.history(params.workspaceId);
+  if (method === "memory.pipeline.revert") return pipeline.revert(params.workspaceId, params.revisionId);
+  if (method === "memory.pipeline.review") return pipeline.review(params.workspaceId, params.claimId, params.decision);
   if (method === "memory.pipeline.overview") return pipeline.overview(params.workspaceId);
   if (method === "memory.pipeline.search") return pipeline.search(params.workspaceId, params.query);
   const result = await pipeline.forget(params);
@@ -24,6 +30,12 @@ export const memoryMethods: Partial<Record<MethodName, MethodHandler>> = {
   "memory.pipeline.policy": h_memory_pipeline_policy,
   "memory.pipeline.setPolicy": h_memory_pipeline_policy,
   "memory.pipeline.extractRun": h_memory_pipeline_policy,
+  "memory.pipeline.sources": h_memory_pipeline_policy,
+  "memory.pipeline.inbox": h_memory_pipeline_policy,
+  "memory.pipeline.claims": h_memory_pipeline_policy,
+  "memory.pipeline.history": h_memory_pipeline_policy,
+  "memory.pipeline.revert": h_memory_pipeline_policy,
+  "memory.pipeline.review": h_memory_pipeline_policy,
   "memory.pipeline.overview": h_memory_pipeline_policy,
   "memory.pipeline.search": h_memory_pipeline_policy,
   "memory.pipeline.forget": h_memory_pipeline_policy,

@@ -1,0 +1,43 @@
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -18,6 +18,7 @@
+ #include "base/uuid.h"
+ #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
+ #include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
++#include "chrome/browser/performance_manager/public/user_tuning/user_tuning_utils.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
+ #include "chrome/browser/resource_coordinator/lifecycle_unit_state.mojom.h"
+@@ -33,6 +34,7 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
+ #include "components/sessions/core/session_id.h"
++#include "components/performance_manager/public/performance_manager.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/reload_type.h"
+@@ -440,14 +442,22 @@
+   if (contents->NeedToFireBeforeUnloadOrUnloadEvents())
+     return refused("This tab has unload handlers and stays awake.");
+   if (model->IsTabPinned(index)) return refused("Pinned tabs stay awake.");
++  uint64_t estimate_kib = 0;
++  if (performance_manager::PerformanceManager::IsAvailable()) {
++    auto page = performance_manager::PerformanceManager::GetPrimaryPageNodeForWebContents(contents);
++    if (page)
++      estimate_kib = performance_manager::user_tuning::GetDiscardedMemoryEstimateForPage(page.get()).InKiB();
++  }
+   auto* lifecycle = resource_coordinator::TabLifecycleUnitExternal::FromWebContents(contents);
+   if (!lifecycle || !lifecycle->IsAutoDiscardable() ||
+       lifecycle->GetTabState() != mojom::LifecycleUnitState::ACTIVE ||
+-      !lifecycle->DiscardTab(mojom::LifecycleUnitDiscardReason::PROACTIVE))
++      !lifecycle->DiscardTab(mojom::LifecycleUnitDiscardReason::PROACTIVE, estimate_kib))
+     return refused("Chromium kept this tab active.");
+   Changed();
+   base::DictValue result;
+   result.Set("slept", true);
++  if (estimate_kib > 0)
++    result.Set("estimatedSavedBytes", static_cast<double>(estimate_kib) * 1024.0);
+   return result;
+ }
+ 

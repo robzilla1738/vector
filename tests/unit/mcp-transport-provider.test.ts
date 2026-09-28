@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
+import JSZip from "jszip";
 import { createMcpTransportProvider, EventBus, makeInvoker, openDb, OutboundMcpService, Repo, TaskService,
   type Services } from "@aux/runtime";
-import type { McpOAuthToken, McpStdioLaunchPermit, OutboundMcpServer } from "@aux/contracts";
+import type { OutboundMcpServer } from "@aux/contracts";
 
 function fixture(provider: ReturnType<typeof createMcpTransportProvider>) {
   const db = openDb(":memory:"), repo = new Repo(db);
@@ -49,13 +50,14 @@ it("uses the approved HTTPS origin without redirects and no ambient credential",
   } finally { f.db.close(); }
 });
 
-it("fetches a host-owned OAuth token for the exact approved server and rejects a mismatched token", async () => {
+it("fetches an OAuth token only for the approved remote server", async () => {
   const calls: { method: string; url: string; authorization: string | null; redirect: RequestRedirect | undefined }[] = [];
   let current: "valid" | "wrong" = "valid";
-  const native = { mcpOAuthToken: async (server: OutboundMcpServer): Promise<McpOAuthToken> => ({
-    serverId: current === "valid" ? server.serverId : "00000000-0000-0000-0000-000000000000",
-    sourceDigest: server.sourceDigest, token: "ephemeral-token", expiresAt: Date.now() + 30_000 }) };
-  const f = fixture(createMcpTransportProvider(native, protocolFetch(calls)));
+  const oauth = { token: async (server: OutboundMcpServer) => {
+    if (current === "wrong" || server.source.kind !== "remote") throw new Error("credential does not match");
+    return "ephemeral-token";
+  } };
+  const f = fixture(createMcpTransportProvider(oauth, protocolFetch(calls)));
   try {
     const server = await f.approve({ kind: "remote", url: "https://mcp.example.test/api", auth: "oauth" });
     expect(await f.service.listTools(server.serverId)).toMatchObject([{ name: "read" }]);
@@ -65,11 +67,12 @@ it("fetches a host-owned OAuth token for the exact approved server and rejects a
   } finally { f.db.close(); }
 });
 
-it("runs a local server only through the host-issued one-use launcher", async () => {
+it.skipIf(process.platform !== "darwin")("runs a reviewed local server under seatbelt and revokes its grant", async () => {
   const directory = mkdtempSync(join(tmpdir(), "aux-mcp-launch-"));
-  const script = join(directory, "launcher.mjs");
+  const script = join(directory, "server.mjs");
   writeFileSync(script, `
-if (process.argv[2] !== "signed-capability-123") process.exit(33);
+import { writeFileSync } from "node:fs";
+import { connect } from "node:net";
 let input = "";
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", chunk => { input += chunk; let at;
@@ -78,51 +81,102 @@ process.stdin.on("data", chunk => { input += chunk; let at;
     if (!line.trim()) continue;
     const request = JSON.parse(line);
     if (request.id === undefined) continue;
-    const result = request.method === "initialize"
+    let result = request.method === "initialize"
       ? { protocolVersion: request.params.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: "local", version: "1" } }
       : request.method === "tools/list"
         ? { tools: [{ name: "local-read", inputSchema: { type: "object", properties: {} } }] }
         : { content: [{ type: "text", text: "local-done" }] };
+    if (request.method === "tools/call") {
+      let writeDenied = false;
+      try { writeFileSync("sandbox-write", "unsafe"); } catch { writeDenied = true; }
+      const socket = connect(54321, "127.0.0.1");
+      socket.on("error", error => {
+        result = { content: [{ type: "text", text: JSON.stringify({ writeDenied, networkDenied: error.code === "EPERM" }) }] };
+        process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }) + "\\n");
+      });
+      continue;
+    }
     process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }) + "\\n");
   }
-});`);
-  const native = { prepareMcpStdioLaunch: async (server: OutboundMcpServer): Promise<McpStdioLaunchPermit> => ({
-    serverId: server.serverId, sourceDigest: server.sourceDigest, capabilityId: "signed-capability-123",
-    launcherPath: process.execPath, launcherArgs: [script], cwd: directory, expiresAt: Date.now() + 30_000,
-    effectiveProfile: { networkAllowed: false, readableRoots: [directory], writableRoots: [] } }) };
-  const f = fixture(createMcpTransportProvider(native));
+  });`);
+  const alias = join(directory, "reviewed-executable");
+  symlinkSync(process.execPath, alias);
+  const f = fixture(createMcpTransportProvider());
   try {
-    const server = await f.approve({ kind: "local", command: "/not/this/command", args: [], cwd: directory });
+    const server = await f.approve({ kind: "local", command: alias, args: [script], cwd: directory });
+    expect(server.source.kind === "local" && server.source.command).toBe(process.execPath);
+    unlinkSync(alias);
+    symlinkSync("/bin/false", alias);
     expect(await f.service.listTools(server.serverId)).toMatchObject([{ name: "local-read" }]);
     const grant = f.service.grant({ serverId: server.serverId, toolName: "local-read",
       scope: { kind: "workspace", workspaceId: f.workspaceId }, mode: "once", outputTokenLimit: 100 });
     const result = await f.service.callTool(grant.grantId, {}, { workspaceId: f.workspaceId });
     expect(result.status).toBe("completed");
-    expect(result.output).toContain("local-done");
+    expect(result.output).toContain('\\"writeDenied\\":true');
+    expect(result.output).toContain('\\"networkDenied\\":true');
+    f.service.revokeGrant(grant.grantId);
+    await expect(f.service.callTool(grant.grantId, {}, { workspaceId: f.workspaceId })).rejects.toMatchObject({ code: "permission_denied" });
   } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 
-it("fails closed for missing host authority, local URLs, expired permits, and changed bundles", async () => {
+it.skipIf(process.platform !== "darwin")("runs an approved self-contained Node bundle under the same sandbox", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-mcp-archive-"));
+  const zip = new JSZip();
+  zip.file("manifest.json", JSON.stringify({ name: "Packaged tool", server: { type: "node", entry_point: "server.mjs",
+    mcp_config: { command: "node", args: ["${__dirname}/server.mjs", "--config",
+      "${__dirname}/config.json"], env: {} } } }));
+  zip.file("config.json", JSON.stringify({ message: "bundle-done" }));
+  zip.file("server.mjs", `
+import { readFileSync } from "node:fs";
+const config = JSON.parse(readFileSync(process.argv[3], "utf8"));
+let pending = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", chunk => { pending += chunk; let boundary;
+  while ((boundary = pending.indexOf("\\n")) >= 0) {
+    const line = pending.slice(0, boundary); pending = pending.slice(boundary + 1);
+    if (!line.trim()) continue;
+    const request = JSON.parse(line);
+    if (request.id === undefined) continue;
+    const result = request.method === "initialize"
+      ? { protocolVersion: request.params.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: "bundle", version: "1" } }
+      : request.method === "tools/list"
+        ? { tools: [{ name: "packaged-read", inputSchema: { type: "object", properties: {} } }] }
+      : { content: [{ type: "text", text: config.message }] };
+    process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }) + "\\n");
+  }
+});`);
+  const path = join(directory, "packaged.mcpb");
+  const bytes = await zip.generateAsync({ type: "nodebuffer" });
+  writeFileSync(path, bytes);
+  const f = fixture(createMcpTransportProvider());
+  try {
+    const server = await f.approve({ kind: "bundle", path,
+      sha256: createHash("sha256").update(bytes).digest("hex"), format: "mcpb" });
+    expect(await f.service.listTools(server.serverId)).toMatchObject([{ name: "packaged-read" }]);
+    const grant = f.service.grant({ serverId: server.serverId, toolName: "packaged-read",
+      scope: { kind: "workspace", workspaceId: f.workspaceId }, mode: "once", outputTokenLimit: 100 });
+    const result = await f.service.callTool(grant.grantId, {}, { workspaceId: f.workspaceId });
+    expect(result).toMatchObject({ status: "completed", isError: false });
+    expect(result.output).toContain("bundle-done");
+  } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+it("fails closed for unbounded local roots, local URLs, and changed bundles", async () => {
   const f = fixture(createMcpTransportProvider());
   const directory = mkdtempSync(join(tmpdir(), "aux-mcp-deny-"));
   try {
-    const local = await f.approve({ kind: "local", command: "/bin/echo", args: [], cwd: directory });
-    await expect(f.service.listTools(local.serverId)).rejects.toThrow(/Supervised local MCP launch/);
+    const local = await f.approve({ kind: "local", command: "/bin/echo", args: [], cwd: "/" });
+    await expect(createMcpTransportProvider()(local, new AbortController().signal)).rejects.toThrow(/bounded working directory|requires macOS/);
     const oauth = await f.approve({ kind: "remote", url: "https://mcp.example.test/api", auth: "oauth" });
     await expect(f.service.listTools(oauth.serverId)).rejects.toThrow(/OAuth is unavailable/);
     const loopback = await f.approve({ kind: "remote", url: "https://127.0.0.1/api", auth: "none" });
     await expect(f.service.listTools(loopback.serverId)).rejects.toThrow(/public HTTPS/);
-    const expired = createMcpTransportProvider({ prepareMcpStdioLaunch: async server => ({
-      serverId: server.serverId, sourceDigest: server.sourceDigest, capabilityId: "signed-capability-123",
-      launcherPath: process.execPath, launcherArgs: [], cwd: directory, expiresAt: Date.now() - 1,
-      effectiveProfile: { networkAllowed: false, readableRoots: [], writableRoots: [] } }) });
-    await expect(expired(local, new AbortController().signal)).rejects.toThrow(/invalid or expired/);
     const path = join(directory, "bundle.mcpb");
     writeFileSync(path, "one");
     const bundle: OutboundMcpServer = { ...local, source: { kind: "bundle", path,
       sha256: createHash("sha256").update("two").digest("hex"), format: "mcpb" } };
     bundle.sourceDigest = createHash("sha256").update(JSON.stringify(bundle.source)).digest("hex");
-    await expect(expired(bundle, new AbortController().signal)).rejects.toThrow(/changed since approval/);
+    await expect(createMcpTransportProvider()(bundle, new AbortController().signal)).rejects.toThrow(/changed since approval/);
   } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 

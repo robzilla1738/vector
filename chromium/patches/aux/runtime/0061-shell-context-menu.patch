@@ -1,0 +1,181 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -14,6 +14,7 @@
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/webui_browser/shell_host.mojom.h"
+ #include "ui/shell_dialogs/select_file_dialog.h"
++#include "ui/menus/simple_menu_model.h"
+ #endif
+ #include "chrome/browser/ui/side_panel/side_panel_entry_key.h"
+ #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter.h"
+@@ -82,6 +83,7 @@
+                        public aux::mojom::ShellHostFactory,
+                        public aux::mojom::ShellHost,
+                        public ui::SelectFileDialog::Listener,
++                       public ui::SimpleMenuModel::Delegate,
+ #endif
+                        public bookmark_bar::mojom::PageHandlerFactory,
+                        public extensions_bar::mojom::PageHandlerFactory,
+@@ -138,6 +140,8 @@
+   base::WeakPtr<WebUIBrowserUI> GetWeakPtr();
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   bool DispatchAuxShortcut(const std::string& command_id);
++  bool IsCommandIdEnabled(int command_id) const override;
++  void ExecuteCommand(int command_id, int event_flags) override;
+ #endif
+ 
+  private:
+@@ -243,6 +247,10 @@
+   std::unique_ptr<BackForwardMenuModel> aux_navigation_menu_model_;
+   std::unique_ptr<views::MenuModelAdapter> aux_navigation_menu_adapter_;
+   std::unique_ptr<views::MenuRunner> aux_navigation_menu_runner_;
++  std::unique_ptr<ui::SimpleMenuModel> aux_context_menu_model_;
++  std::unique_ptr<views::MenuModelAdapter> aux_context_menu_adapter_;
++  std::unique_ptr<views::MenuRunner> aux_context_menu_runner_;
++  std::string aux_context_page_id_;
+   enum class FileDialogPurpose { kNone, kOpenFile, kSavePdf, kDownloadFolder };
+   FileDialogPurpose file_dialog_purpose_ = FileDialogPurpose::kNone;
+   scoped_refptr<ui::SelectFileDialog> open_file_dialog_;
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -58,7 +58,7 @@
+                  {"defaultBrowser", "setDefaultBrowser", "dataDir",
+                   "resolveSearch", "setAppearance", "setShortcuts",
+                   "focusShell", "openFile", "closeWindow", "openExternal",
+-                  "navigationMenu",
++                  "navigationMenu", "contextMenu",
+                   "revealPath", "openPath"});
+   auto register_runtime = [this](AuxRuntimeMethodGroup group,
+                                  std::initializer_list<std::string_view> names) {
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -13,6 +13,7 @@
+ #include "base/functional/bind.h"
+ #include "base/memory/ref_counted_memory.h"
+ #include "base/strings/string_util.h"
++#include "base/strings/utf_string_conversions.h"
+ #include "base/task/thread_pool.h"
+ #include "build/build_config.h"
+ #include "chrome/browser/shell_integration.h"
+@@ -45,6 +46,7 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/toolbar/back_forward_menu_model.h"
+ #include "ui/display/screen.h"
++#include "ui/base/clipboard/scoped_clipboard_writer.h"
+ #include "ui/views/controls/menu/menu_item_view.h"
+ #include "ui/views/controls/menu/menu_model_adapter.h"
+ #include "ui/views/controls/menu/menu_runner.h"
+@@ -138,6 +140,13 @@
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ namespace {
+ 
++enum AuxContextCommand {
++  kAuxContextBack = 1,
++  kAuxContextForward = 2,
++  kAuxContextReload = 3,
++  kAuxContextCopyAddress = 4,
++};
++
+ struct ResolvedOpenPath {
+   base::FilePath path;
+   bool allowed = false;
+@@ -193,10 +202,96 @@
+ 
+ }  // namespace
+ 
++bool WebUIBrowserUI::IsCommandIdEnabled(int command_id) const {
++  BrowserWindowInterface* owner = nullptr;
++  auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++  auto* contents = catalog
++      ? catalog->FindPage(aux_context_page_id_, &owner) : nullptr;
++  if (!contents || owner != browser_ ||
++      contents != browser_->GetTabStripModel()->GetActiveWebContents())
++    return false;
++  auto& navigation = contents->GetController();
++  if (command_id == kAuxContextBack) return navigation.CanGoBack();
++  if (command_id == kAuxContextForward) return navigation.CanGoForward();
++  if (command_id == kAuxContextCopyAddress)
++    return contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS();
++  return command_id == kAuxContextReload;
++}
++
++void WebUIBrowserUI::ExecuteCommand(int command_id, int event_flags) {
++  if (!IsCommandIdEnabled(command_id)) return;
++  BrowserWindowInterface* owner = nullptr;
++  auto* contents = aux::TabCatalog::GetForProfile(browser_->GetProfile())
++      ->FindPage(aux_context_page_id_, &owner);
++  if (!contents || owner != browser_) return;
++  auto& navigation = contents->GetController();
++  switch (command_id) {
++    case kAuxContextBack:
++      navigation.GoBack();
++      break;
++    case kAuxContextForward:
++      navigation.GoForward();
++      break;
++    case kAuxContextReload:
++      navigation.Reload(content::ReloadType::NORMAL, true);
++      break;
++    case kAuxContextCopyAddress: {
++      ui::ScopedClipboardWriter writer(ui::ClipboardBuffer::kCopyPaste);
++      writer.WriteText(base::UTF8ToUTF16(contents->GetLastCommittedURL().spec()));
++      break;
++    }
++  }
++}
++
+ void WebUIBrowserUI::HandleAuxWindowRequest(
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "contextMenu") {
++    if (list->size() != 1 ||
++        (!(*list)[0].is_none() && !(*list)[0].is_string())) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Expected a page identity or editable target");
++      return;
++    }
++    if ((*list)[0].is_none()) {
++      std::move(callback).Run(true, "false", "", "");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    auto* contents = catalog
++        ? catalog->FindPage((*list)[0].GetString(), &owner) : nullptr;
++    if (!contents || owner != browser_ ||
++        contents != browser_->GetTabStripModel()->GetActiveWebContents()) {
++      std::move(callback).Run(true, "false", "", "");
++      return;
++    }
++    aux_context_menu_runner_.reset();
++    aux_context_menu_adapter_.reset();
++    aux_context_menu_model_.reset();
++    aux_context_page_id_ = (*list)[0].GetString();
++    aux_context_menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
++    aux_context_menu_model_->AddItem(kAuxContextBack, u"Back");
++    aux_context_menu_model_->AddItem(kAuxContextForward, u"Forward");
++    aux_context_menu_model_->AddItem(kAuxContextReload, u"Reload");
++    aux_context_menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
++    aux_context_menu_model_->AddItem(kAuxContextCopyAddress,
++                                    u"Copy page address");
++    aux_context_menu_adapter_ = std::make_unique<views::MenuModelAdapter>(
++        aux_context_menu_model_.get());
++    aux_context_menu_runner_ = std::make_unique<views::MenuRunner>(
++        aux_context_menu_adapter_->CreateMenu(),
++        views::MenuRunner::HAS_MNEMONICS);
++    const gfx::Point cursor = display::Screen::Get()->GetCursorScreenPoint();
++    std::move(callback).Run(true, "true", "", "");
++    aux_context_menu_runner_->RunMenuAt(
++        browser_window()->widget(), nullptr,
++        gfx::Rect(cursor, gfx::Size(1, 1)),
++        views::MenuAnchorPosition::kTopLeft,
++        ui::mojom::MenuSourceType::kMouse);
++    return;
++  }
+   if (method == "navigationMenu") {
+     if (list->size() != 2 || !(*list)[0].is_string() ||
+         !(*list)[1].is_string() ||

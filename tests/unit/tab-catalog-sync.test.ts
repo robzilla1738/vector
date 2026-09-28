@@ -31,6 +31,7 @@ function harness() {
   const events = new EventBus(repo);
   const attached: string[] = [];
   const disposed: string[] = [];
+  let destroyAttached: (() => void) | undefined;
   const driver: BrowserDriver = {
     backend: "aux",
     connect: async () => {},
@@ -57,7 +58,7 @@ function harness() {
         screenshot: async () => ({ buffer: Buffer.alloc(0), width: 0, height: 0, scale: 1 }),
         observe: async () => ({ url: "", title: "", viewport: { width: 0, height: 0, scale: 1 }, scroll: { x: 0, y: 0, maxY: 0 }, frames: [], text: "", headings: [], elements: [], formFields: [], tables: [], links: [], dialogs: [], console: [], truncated: false, stats: { elementsTotal: 0, elementsShown: 0, textChars: 0, approxTokens: 0 } }),
         expandRef: async () => [], extract: async () => ({}), evaluate: async () => null,
-        console: async () => [], setEvents: () => {},
+        console: async () => [], setEvents: (handlers) => { destroyAttached = () => handlers.onDestroyed?.("closed"); },
         dispose: async () => { disposed.push(pageId); },
       };
       return page;
@@ -72,10 +73,18 @@ function harness() {
     responses: new ResponseStore({ repo, events, flushDelayMs: 0 }),
     grants: [],
   });
-  return { pages, events, attached, disposed };
+  return { pages, events, attached, disposed, destroyAttached: () => destroyAttached?.() };
 }
 
 describe("PageService.syncCatalog", () => {
+  it("omits a driver-detached tab before its catalog removal arrives", async () => {
+    const { pages, destroyAttached } = harness();
+    await pages.syncCatalog(patch(1, [upsert(record("one"))]));
+    destroyAttached();
+    expect(pages.list().map(page => page.pageId)).not.toContain("one");
+    expect(pages.list({ includeDetached: true }).map(page => page.pageId)).toContain("one");
+  });
+
   it("registers human-created tabs on the stable marker", async () => {
     const { pages, attached } = harness();
     await pages.syncCatalog(patch(1, [upsert(record("one"))]));
@@ -98,6 +107,12 @@ describe("PageService.syncCatalog", () => {
     expect(() => pages.get("r1")).toThrow();
   });
 
+  it("preserves native runtime ownership when a catalog upsert races the open response", async () => {
+    const { pages } = harness();
+    await pages.syncCatalog(patch(1, [upsert(record("raced", "main", { runtimeOwned: true }))]));
+    expect(pages.get("raced")).toMatchObject({ ownedByRuntime: true, viewStatus: "background" });
+  });
+
   it("returns the in-flight registration when the same tab upserts twice", async () => {
     const { pages, attached } = harness();
     const [a, b] = await Promise.all([
@@ -118,6 +133,20 @@ describe("PageService.syncCatalog", () => {
     const after = pages.get("one");
     expect(after.windowId).toBe("second");
     expect(after.documentEpoch).toBe(before.documentEpoch);
+  });
+
+  it("carries a native failure and clears it only when the catalog reports recovery", async () => {
+    const { pages } = harness();
+    await pages.syncCatalog(patch(1, [upsert(record("one"))]));
+    const error = { url: "https://a.test/one", code: -200,
+      message: "ERR_CERT_COMMON_NAME_INVALID", upgradedFrom: "http://a.test/one" };
+    await pages.syncCatalog(patch(2, [upsert(record("one", "main", { navigationError: error }))]));
+    expect(pages.get("one").navigationError).toEqual(error);
+    expect(pages.get("one").loading).toBe(false);
+    await pages.syncCatalog(patch(3, [upsert(record("one", "main", { navigationError: error }))]));
+    expect(pages.get("one").navigationError).toEqual(error);
+    await pages.syncCatalog(patch(4, [upsert(record("one"))]));
+    expect(pages.get("one").navigationError).toBeNull();
   });
 
   it("detaches removed tabs and honors main's chosen successor", async () => {

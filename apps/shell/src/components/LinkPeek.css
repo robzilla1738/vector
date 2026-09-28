@@ -1,0 +1,9 @@
+@layer components {
+  .link-peek { position:absolute; inset:0; z-index:7; display:grid; grid-template-rows:auto minmax(0,1fr); background:var(--bg-0); }
+  .link-peek-toolbar { display:flex; align-items:center; gap:var(--space-3); min-width:0; padding:var(--space-3) var(--space-5); border-bottom:1px solid var(--line); }
+  .link-peek-label { flex:none; font-weight:var(--fw-strong); }
+  .link-peek-address { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; min-width:0; flex:1; color:var(--ink-2); }
+  .link-peek-page { min-width:0; min-height:0; position:relative; }
+  .link-peek-page .page-surface { width:100%; height:100%; }
+  .link-peek-page > output { display:block; padding:var(--space-6); }
+}

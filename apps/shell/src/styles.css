@@ -7,8 +7,8 @@
 @import "./styles/agent.css";
 @import "./styles/overlays.css";
 @import "./styles/workspace.css";
-@import "./styles/reading.css";
+@import "./styles/loading.css";
 @import "./styles/surfaces.css";
 @import "./styles/accessibility.css";
-@import "./styles/refinements.css";
+@import "./styles/chrome-polish.css";
 @import "./styles/space-grain.css";

@@ -25,6 +25,7 @@ export const PageTargetSchema = z.object({
   sessionId: z.string().optional(),
   url: z.string(),
   title: z.string(),
+  themeColor: z.string().regex(/^#[0-9a-f]{6}$/).optional(),
   /** A site-created blank document must remain visible instead of showing the new-tab surface. */
   showBlankDocument: z.boolean().optional(),
   favicon: z.string().optional(),
@@ -368,6 +369,10 @@ export type Bookmark = z.infer<typeof BookmarkSchema>;
 export const DownloadSchema = z.object({
   id: z.string(),
   sourceUrl: z.string().optional(),
+  /** Chromium's initiating tab URL, used only for fail-closed run attribution. */
+  tabUrl: z.string().optional(),
+  /** The Profile's selected download folder at the time of the native event. */
+  downloadRoot: z.string().optional(),
   pageId: z.string().optional(),
   filename: z.string(),
   path: z.string(),
@@ -386,6 +391,8 @@ export type Download = z.infer<typeof DownloadSchema>;
 
 export const PageQuickActionSchema = z.object({
   pageId: z.string(), url: z.string(), title: z.string(),
+  /** Routes a browser-originated menu action to its owning Aux window. */
+  windowId: z.string().optional(),
   /** Main-frame URL at the moment the browser menu captured the selection. */
   topUrl: z.string().optional(),
   capturedAt: z.number().int().nonnegative().optional(),

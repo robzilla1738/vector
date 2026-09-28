@@ -7,6 +7,8 @@ import { TOOLBAR_ENTRY_MS, TOOLBAR_EXIT_MS, useToolbarReveal } from "./toolbar-r
 
 const events = vi.hoisted(() => ({ edge: null as ((near: boolean) => void) | null }));
 vi.mock("./bridge", () => ({
+  inNativeHost: false,
+  inMock: true,
   bridge: {
     privateMode: false,
     quickAskMode: false,

@@ -1,3 +1,4 @@
+import "./StartPage.css";
 import { SessionRecovery } from "./SessionRecovery";
 import { AuxMark } from "./AuxMark";
 import { useEffect } from "react";

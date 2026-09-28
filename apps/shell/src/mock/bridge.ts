@@ -37,6 +37,12 @@ import { BOOKMARKS, HISTORY, MEMBERS, OBSERVATION, PAST_RUNS, PROGRAMS, RUN_ID, 
 type Listener<T> = (v: T) => void;
 
 export function installMockBridge(q: URLSearchParams) {
+  let spellCheckEnabled = true;
+  let startupPreferences: { mode: "new-tab" | "continue" | "pages" | "continue-and-pages"; urls: string[] } = { mode: "continue", urls: [] };
+  let selectedLanguages = ["en-US", "en"];
+  let automaticPictureInPicture: "ask" | "allow" | "block" = "ask";
+  let keepRuntimeInBackground = false;
+  let defaultPageZoom = 100;
   let recoveryTabs=q.get("recovery")==="1"?[{pageId:"saved-fixture-tab",title:"Saved project research",url:"https://example.com/research",windowId:"main",error:"The browser connection was interrupted while restoring this tab.",retrying:false}]:[];
   let bookmarks: {url:string;title:string;folderPath?:string[]}[] = [...BOOKMARKS];
   const bookmarkFolders: string[][] = [];
@@ -769,6 +775,9 @@ export function installMockBridge(q: URLSearchParams) {
       for (const item of incoming) if (!bookmarks.some(old => old.url === item.url)) { bookmarks.push(item); added++; }
       emit("bookmarks.changed", { bookmarks }); return { added, skipped: incoming.length - added };
     },
+    "history.count": async p => ({ count: history.filter(item =>
+      (p.since === undefined || item.visitedAt >= Number(p.since))
+      && (p.before === undefined || item.visitedAt < Number(p.before))).length }),
     "history.clear": async p => {
       const previous = history.length;
       history = history.filter(item => (p.since !== undefined && item.visitedAt < Number(p.since)) || (p.before !== undefined && item.visitedAt >= Number(p.before)));
@@ -926,13 +935,16 @@ export function installMockBridge(q: URLSearchParams) {
     openBrowserProfileUrl:async()=>false,
     defaultBrowser:async()=>({isDefault:false}),
     setDefaultBrowser:async()=>({isDefault:false}),
+    autofillProfile:async()=>null,
+    setAutofillProfile:async()=>true,
     autofill:async()=>0,
     vaultFill:async()=>false,
     vaultSave:async()=>({ok:false,updated:false}),
     vaultDismiss:async()=>false,
-    vaultExport:async()=>null,
-    vaultImport:async()=>null,
+    passwordExport:async()=>null,
+    passwordImport:async()=>null,
     onVaultOffer:()=>()=>{},
+    onLinkStatus:()=>()=>{},
     privateMode: false,
     windowId: "main",
     platform: "darwin",
@@ -951,6 +963,7 @@ export function installMockBridge(q: URLSearchParams) {
     retryDownload: async()=>{throw new Error("Download retry requires Aux desktop");},
     tabAudio:async()=>({}),
     tabsUnsavedWork:async(tabs:{pageId:string;url:string}[])=>Object.fromEntries(tabs.map(tab=>[tab.pageId,"clean" as const])),
+    tabSleep:async()=>({slept:false,reason:"Native lifecycle unavailable in preview"}),
     // Mock tab commands reuse the local page list — the real surface is the
     // main-owned catalog; visual dev only needs the pages themselves to move.
     tabCommand:async(command)=>{
@@ -1016,6 +1029,12 @@ export function installMockBridge(q: URLSearchParams) {
     onAudio:()=>()=>{},
     downloadFolder: async()=>({path:"~/Downloads",custom:false}),
     chooseDownloadFolder: async()=>{throw new Error("Download folders require Aux desktop");},
+    spellCheck: async enabled=>({enabled:spellCheckEnabled=enabled??spellCheckEnabled,managed:false}),
+    startupPreferences: async next=>({...(startupPreferences=next??startupPreferences),managed:false}),
+    languagePreferences: async next=>({selected:selectedLanguages=next??selectedLanguages,effective:selectedLanguages,forced:[],managed:false}),
+    automaticPictureInPicture: async next=>({mode:automaticPictureInPicture=next??automaticPictureInPicture,managed:false}),
+    keepRuntimeInBackground: async next=>({enabled:keepRuntimeInBackground=next??keepRuntimeInBackground,available:true,managed:false}),
+    defaultPageZoom: async next=>({percentage:defaultPageZoom=next??defaultPageZoom,managed:false}),
     downloadsSnapshot: async () => downloads.filter(item=>item.canCancel),
     controlDownload: async () => { throw new Error("No live download in this preview"); },
     onDownload: () => () => {},
@@ -1142,6 +1161,7 @@ export function installMockBridge(q: URLSearchParams) {
       if (origin) for (const listener of zoomListeners) listener({});
       return [...sizes].map(([origin, percentage]) => ({origin, percentage}));
     },
+    privatePageZoom: async () => { throw new Error("Private page zoom requires Aux desktop"); },
     sitePermissions: async () => ({}),
     clearSitePermission: async () => true,
     privacy: async () => ({ trackerBlock: true, blocked: 0, allowedHosts: [], httpsUpgrade: true }),
@@ -1155,6 +1175,7 @@ export function installMockBridge(q: URLSearchParams) {
     setFilterSourceEnabled: async () => { throw new Error("Content blocking requires the Aux desktop browser."); },
     proceedInsecure: async () => true,
     useHttp: async () => true,
+    httpsUpgrade: async () => ({ enabled: false, available: false, managed: false }),
     setHttpsUpgrade: async () => true,
     translatePage: async () => { throw new Error("Translation is unavailable in the preview."); },
     showOriginal: async () => 0,

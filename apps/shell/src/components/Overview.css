@@ -92,3 +92,19 @@ table.rt code { font-family: var(--font-mono); font-size: var(--fs-xs); color: v
   margin-top: var(--space-1);
 }
 }
+
+@layer components {
+.ov-open:focus-visible { outline: 2px solid var(--focus-line); outline-offset: -2px; border-radius: inherit; }
+.ov-save-folder { display:grid; gap:var(--space-3); max-width:520px; margin-bottom:var(--space-4); padding:var(--space-4); border-radius:var(--r-lg); background:var(--bg-2); }
+.ov-save-folder label { display:grid; gap:var(--space-2); font-size:var(--fs-sm); }
+.ov-save-folder p { margin:0; }
+.ov-save-folder .field-input { width:100%; }
+.ov-progress { margin:var(--space-3) 0; }
+.ov-tools select, .ov-selection select { min-height:30px; padding:var(--space-1) var(--space-2); border:1px solid var(--line); border-radius:var(--r-md); background:var(--bg-2); color:var(--ink-1); font:inherit; font-size:var(--fs-sm); }
+.ov-card.active.selected { box-shadow:0 0 0 2px var(--focus-line); }
+.ov-archive { margin-top:var(--space-5); padding:var(--space-4); border:1px solid var(--line); border-radius:var(--r-lg); background:var(--bg-2); }
+.ov-archive h2 { margin:0 0 var(--space-1); font-size:var(--fs-md); }
+.ov-archive p { margin:0 0 var(--space-3); }
+.ov-archive .row { min-width:0; padding:var(--space-2) 0; border-top:1px solid var(--line); }
+.ov-archive .row span:first-child { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+}

@@ -31,6 +31,7 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   translation: null,
   setTranslation: (translation) => set({ translation }),
   translationPending: null,
+  peekPageId: null,
   setTranslationPending: (translationPending) => set({ translationPending }),
   resultPreview: null,
   inspectorObs: null,
@@ -105,7 +106,9 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
     zoomRequests.set(pageId,token);
     const origin=get().pages.find(page=>page.pageId===pageId);
     try{
-      const result = await call("pages.zoom", { pageId, ...options });
+      const result = bridge.privateMode
+        ? await bridge.privatePageZoom(pageId, options)
+        : await call("pages.zoom", { pageId, ...options });
       const page=get().pages.find(page=>page.pageId===pageId);
       if(zoomRequests.get(pageId)===token&&page&&page.url===origin?.url&&page.documentEpoch===origin?.documentEpoch)
         set(state => ({ zoomLevels: { ...state.zoomLevels, [pageId]: result.level } }));

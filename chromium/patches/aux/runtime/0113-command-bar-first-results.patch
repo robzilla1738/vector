@@ -1,0 +1,17 @@
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -78,7 +78,11 @@ function onAutocompleteResult(result: AutocompleteResult) {
+   if (!pending || result.queryId !== pending.id) return;
+   pending.matches = mapMatches(result);
+   window.clearTimeout(pending.timer);
++  if (pending.matches.some(match => match.type !== 'search')) {
++    finishAutocomplete();
++    return;
++  }
+-  // Searchbox emits local matches first and can follow with native network
+-  // suggestions. Return the last ordered result after a short quiet period.
+-  pending.timer = window.setTimeout(finishAutocomplete, 180);
++  // Keep a short window for Chromium's local History and Bookmark update,
++  // then return without waiting for later network suggestions.
++  pending.timer = window.setTimeout(finishAutocomplete, 40);
+ }

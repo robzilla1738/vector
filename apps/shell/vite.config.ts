@@ -35,7 +35,7 @@ const chromiumHostBootstrap = (): Plugin => ({
   name: "aux-chromium-host-bootstrap",
   apply: "build",
   transformIndexHtml: () => process.env.AUX_CHROMIUM_SHELL_BUILD === "1"
-    ? [{ tag: "script", attrs: { type: "module", src: "./aux_host_bootstrap.js" }, injectTo: "head-prepend" }]
+    ? [{ tag: "script", attrs: { type: "module", src: "/aux_host_bootstrap.js" }, injectTo: "head-prepend" }]
     : [],
 });
 
@@ -54,14 +54,14 @@ const preloadApp = (): Plugin => ({
       const app = chunks.find(chunk => chunk.moduleIds.some(id => id.endsWith("/src/App.tsx")));
       if (!app) return [];
       const entries = new Set(chunks.filter(chunk => chunk.isEntry).map(chunk => chunk.fileName));
-      return [app.fileName, ...app.imports.filter(file => !entries.has(file))].map(file => ({ tag: "link", attrs: { rel: "modulepreload", crossorigin: true, href: `./${file}` }, injectTo: "head" as const }));
+      return [app.fileName, ...app.imports.filter(file => !entries.has(file))].map(file => ({ tag: "link", attrs: { rel: "modulepreload", crossorigin: true, href: `/${file}` }, injectTo: "head" as const }));
     },
   },
 });
 
 export default defineConfig({
   root: import.meta.dirname,
-  base: "./",
+  base: "/",
   resolve: {
     // Emitted .js siblings must not shadow the TypeScript the typechecker ships.
     extensions: [".mjs", ".mts", ".ts", ".tsx", ".jsx", ".js", ".json"],

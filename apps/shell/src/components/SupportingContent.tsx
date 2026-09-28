@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode, type RefObject } from "rea
 import { createPortal } from "react-dom";
 import { requestStageReport } from "../stage-obstruction";
 import { useDismissable } from "../use-dismissable";
-import { DetailPane } from "./ui";
+import { DetailPane } from "../ui";
 import { I } from "./icons";
 import "./SupportingContent.css";
 

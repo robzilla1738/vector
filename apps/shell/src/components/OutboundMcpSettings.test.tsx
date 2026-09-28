@@ -7,7 +7,7 @@ import { OutboundMcpSettings } from "./OutboundMcpSettings";
 
 const rpc = vi.hoisted(() => vi.fn());
 vi.mock("../store", () => ({ call: rpc }));
-vi.mock("../bridge", () => ({ bridge: { openFile: vi.fn() } }));
+vi.mock("../bridge", () => ({ bridge: { openFile: vi.fn(), openExternal: vi.fn() } }));
 
 let container: HTMLDivElement;
 let root: Root;
@@ -42,6 +42,7 @@ beforeEach(() => {
   root = createRoot(container);
   rpc.mockReset();
   vi.mocked(bridge.openFile).mockReset();
+  vi.mocked(bridge.openExternal).mockReset();
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -61,12 +62,22 @@ it("requires exact server-source review and a separate tool, scope and limit gra
       current = { ...current, state: "approved" };
       return current;
     }
+    if (method === "mcp.oauth.status") return { connected: true, expiresAt: Date.now() + 60_000 };
+    if (method === "mcp.oauth.start")
+      return {
+        state: "authorization",
+        url: "https://auth.example.test/authorize",
+        expiresAt: Date.now() + 60_000,
+      };
+    if (method === "mcp.oauth.clear") return { connected: false };
     if (method === "mcp.tools.list")
       return [{ name: "search", description: "Search a fixture", inputSchema: {} }];
     if (method === "mcp.grants.create") {
       grants = [{ ...params, grantId: "grant-1", createdAt: 1 }];
       return grants[0];
     }
+    if (method === "mcp.tools.call")
+      return { callId: "call-1", status: "completed", output: "Fixture result", isError: false };
     if (method === "mcp.grants.revoke") {
       grants = grants.map((grant) => ({ ...(grant as object), revokedAt: 2 }));
       return grants[0];
@@ -88,10 +99,18 @@ it("requires exact server-source review and a separate tool, scope and limit gra
   await flush();
   expect(rpc).toHaveBeenCalledWith("mcp.servers.approve", { serverId, expectedDigest: digest });
 
+  await flush();
+  expect(container.textContent).toContain("Connected in this Profile");
+  await act(async () => button("Disconnect OAuth").click());
+  expect(rpc).toHaveBeenCalledWith("mcp.oauth.clear", { serverId });
+  await act(async () => button("Connect OAuth").click());
+  expect(bridge.openExternal).toHaveBeenCalledWith("https://auth.example.test/authorize");
+
   await act(async () => button("Load available tools").click());
   await flush();
   const tool = container.querySelector<HTMLSelectElement>('select[aria-label="MCP tool"]')!;
   const scope = container.querySelector<HTMLSelectElement>('select[aria-label="MCP tool scope"]')!;
+  const mode = container.querySelector<HTMLSelectElement>('select[aria-label="MCP grant duration"]')!;
   act(() => {
     tool.value = "search";
     tool.dispatchEvent(new Event("change", { bubbles: true }));
@@ -99,6 +118,10 @@ it("requires exact server-source review and a separate tool, scope and limit gra
   act(() => {
     scope.value = "workspace";
     scope.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  act(() => {
+    mode.value = "standing";
+    mode.dispatchEvent(new Event("change", { bubbles: true }));
   });
   act(() => button("Review tool grant").click());
   expect(container.textContent).toContain("Every task in Research");
@@ -109,9 +132,18 @@ it("requires exact server-source review and a separate tool, scope and limit gra
     serverId,
     toolName: "search",
     scope: { kind: "workspace", workspaceId: "workspace-1" },
-    mode: "once",
+    mode: "standing",
     outputTokenLimit: 2000,
   });
+  act(() => button("Call tool…").click());
+  await act(async () => button("Run approved tool").click());
+  await flush();
+  expect(rpc).toHaveBeenCalledWith("mcp.tools.call", {
+    grantId: "grant-1",
+    arguments: {},
+    context: { workspaceId: "workspace-1" },
+  });
+  expect(container.textContent).toContain("Fixture result");
   await act(async () => button("Revoke tool").click());
   await flush();
   expect(rpc).toHaveBeenCalledWith("mcp.grants.revoke", { grantId: "grant-1" });

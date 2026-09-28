@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { bridge, inNativeHost, type BrowserExtension } from "../bridge";
 import { useStore } from "../store";
 import { I } from "./icons";
-import { NativeMenu } from "./NativeDialog";
+import { Menu } from "../ui";
 import { useFeature } from "../use-feature";
 
 /** User-initiated extension actions are dispatched through Chromium's toolbar
@@ -40,7 +40,7 @@ export function ExtensionActions() {
         {I.extension}
       </button>
       {open && (
-        <NativeMenu
+        <Menu
           id="extension-actions-menu"
           label="Extension actions"
           anchor={anchor}
@@ -85,7 +85,7 @@ export function ExtensionActions() {
             {I.gearSm}
             <span>Manage extensions…</span>
           </button>
-        </NativeMenu>
+        </Menu>
       )}
     </>
   );

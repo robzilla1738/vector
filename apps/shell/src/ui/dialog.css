@@ -1,0 +1,64 @@
+@layer components {
+  .aux-native-dialog {
+    color: var(--ink-0);
+    border: 0;
+    margin: auto;
+  }
+  .aux-dialog-surface {
+    width: 384px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    padding: var(--space-5) var(--space-6);
+    background: var(--surface-menu);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow-dialog), var(--line-inset);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    animation: dialog-enter var(--t-quick) var(--ease-out);
+  }
+  .aux-dialog-surface h3 {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--tracking-tight);
+  }
+  .aux-observation-dialog {
+    position: fixed;
+    inset: var(--stage-inset) var(--stage-inset) var(--stage-inset) auto;
+    width: 520px;
+    max-width: calc(100vw - 2 * var(--stage-inset));
+    height: calc(100dvh - 2 * var(--stage-inset));
+    max-height: none;
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-popover);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow-pop), var(--line-inset);
+  }
+  .aux-native-dialog::backdrop {
+    background: rgb(0 0 0 / 0.25);
+  }
+  .aux-native-menu,
+  .aux-native-menu.menu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: var(--space-1);
+  }
+  .aux-native-menu::backdrop {
+    background: transparent;
+  }
+}
+
+@layer overrides {
+  @media (forced-colors: active) {
+    .aux-native-dialog {
+      border: 1px solid CanvasText;
+      background: Canvas;
+      color: CanvasText;
+    }
+  }
+}

@@ -13,6 +13,8 @@ The [native Aux versus same-tag Chromium runner](native-benchmark.md) records
 FirstPaint and input-to-presented-tab-switch UMA samples. It has no published
 result until both benchmark builds complete the 20-trial qualification run.
 
+The separate [native command-bar instrument](../tests/benchmarks/native-command-bar.mjs) measures a 50,000-URL Chromium History fixture in the built Aux WebUI. On September 28, pinned source `970adc61`, AuxDev component build, battery power, and 20 queries, the [raw artifact](../release/test-artifacts/native-s11-command-latency-layout-2026-09-28/manifest.json) records p50 **30.5 ms** (95% bootstrap interval 30.3–30.6) and p95 **30.8 ms** (30.6–32.4). CDP inserts text and the second animation frame approximates presentation. This is a trend, not the M4 ≤30 ms qualification; the target remains open.
+
 The rows below are historical measurements at their named builds. They do not establish v2 native performance or current agent success. New v2 measurements must name the commit, build flavour (component trend or static claim), power state, raw artifact, and p50/p95 bootstrap intervals.
 
 ## Browser layer (`pnpm bench`)

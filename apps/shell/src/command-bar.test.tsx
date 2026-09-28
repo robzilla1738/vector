@@ -103,6 +103,18 @@ describe("CommandBar keyboard contract", () => {
     expect(command.mock.calls.every(([c]) => !(c.kind === "navigate" && String((c as { url?: string }).url).includes("q=git")))).toBe(true);
   });
 
+  it("updates bookmark suggestions when a saved title changes", async () => {
+    useStore.setState({ bookmarks: [{ url: "https://example.com/guide", title: "Original guide", folderPath: [] }] } as never);
+    await act(async () => root.render(<CommandBar />));
+    const input = host.querySelector("input")!;
+    await act(async () => input.focus());
+    await act(async () => type(input, "guide"));
+    expect(host.textContent).toContain("Original guide");
+    await act(async () => useStore.setState({ bookmarks: [{ url: "https://example.com/guide", title: "Updated guide", folderPath: [] }] } as never));
+    expect(host.textContent).toContain("Updated guide");
+    expect(host.textContent).not.toContain("Original guide");
+  });
+
   it("IME composition keys never trigger submission", async () => {
     const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack);
     await act(async () => root.render(<CommandBar />));
@@ -211,13 +223,92 @@ describe("CommandBar keyboard contract", () => {
     await act(async () => input.focus());
     await act(async () => type(input, "git"));
     await act(async () => key(input, "2", { altKey: true }));
-    expect(host.querySelector<HTMLButtonElement>('.cb-provider-scopes button[aria-pressed="true"]')?.textContent).toBe("Tabs");
+    expect(host.querySelector<HTMLButtonElement>('.cb-provider-scopes button[aria-pressed="true"]')?.textContent).toBe("Open Tabs");
     expect(host.textContent).toContain("GitLab project");
     expect(host.textContent).not.toContain("Search for “git”");
     await act(async () => key(input, "Enter"));
     await settle();
     expect(command.mock.calls.some(([c]) => c.kind === "activate" && (c as { pageId?: string }).pageId === "p2")).toBe(true);
     expect(invoke.mock.calls.some(([method]) => method === "command.ranking.record")).toBe(true);
+  });
+
+  it("reopens a closed tab from its scope and returns to all results with Escape", async () => {
+    useStore.setState({ closedTabs: [{ pageId: "closed-guide", title: "Guide", url: "https://example.com/guide", closedAt: Date.now() }] } as never);
+    const reopen = vi.spyOn(useStore.getState(), "reopenClosedTab").mockResolvedValue(undefined);
+    vi.spyOn(bridge, "autocomplete").mockResolvedValue([]);
+    vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+    await act(async () => root.render(<CommandBar />));
+    const input = host.querySelector("input")!;
+    await act(async () => input.focus());
+    await act(async () => type(input, "guide"));
+    await settle();
+    await act(async () => key(input, "3", { altKey: true }));
+    expect(host.querySelector(".cb-opt.closed")?.textContent).toContain("Guide");
+    expect(host.querySelector(".cb-search-keys")?.textContent).toContain("all results");
+    await act(async () => key(input, "Escape"));
+    expect(document.activeElement).toBe(input);
+    expect(host.querySelector<HTMLButtonElement>('.cb-provider-scopes button[aria-pressed="true"]')?.textContent).toBe("All");
+    await act(async () => key(input, "3", { altKey: true }));
+    await act(async () => key(input, "Enter"));
+    await settle();
+    expect(reopen).toHaveBeenCalledWith("closed-guide");
+  });
+
+  it("opens a bookmarked page from its scope even when a matching tab is open", async () => {
+    useStore.setState({
+      pages: [{ ...page }, { ...page, pageId: "p2", title: "Guide", url: "https://example.com/guide" }],
+      bookmarks: [{ url: "https://example.com/guide", title: "Guide", folderPath: ["Reading"] }],
+    } as never);
+    const navigate = vi.spyOn(useStore.getState(), "navigatePage").mockResolvedValue(undefined);
+    vi.spyOn(bridge, "autocomplete").mockResolvedValue([]);
+    vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+    await act(async () => root.render(<CommandBar />));
+    const input = host.querySelector("input")!;
+    await act(async () => input.focus());
+    await act(async () => type(input, "guide"));
+    await settle();
+    await act(async () => key(input, "4", { altKey: true }));
+    expect(host.querySelector(".cb-opt.bookmarks")?.textContent).toContain("Reading");
+    await act(async () => key(input, "Enter"));
+    await settle();
+    expect(navigate).toHaveBeenCalledWith("p1", "https://example.com/guide");
+  });
+
+  it("finds a browser history match in History and opens an extension action", async () => {
+    const nativeWindow = window as Window & { auxChromiumHost?: { featureStages?: { extensions: "on" } } };
+    const priorHost = nativeWindow.auxChromiumHost;
+    nativeWindow.auxChromiumHost = { featureStages: { extensions: "on" } };
+    try {
+    vi.spyOn(bridge, "autocomplete").mockResolvedValue([
+      { id: "visit", type: "history", title: "Guide visit", url: "https://example.com/guide" },
+    ]);
+    vi.spyOn(bridge, "extensions").mockResolvedValue([
+      { key: "guide", name: "Guide tools", version: "1", permissions: [], enabled: true, loaded: true, managed: false, source: "store" },
+    ]);
+    const showAction = vi.spyOn(bridge, "showExtensionAction").mockResolvedValue(true);
+    vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+    const navigate = vi.spyOn(useStore.getState(), "navigatePage").mockResolvedValue(undefined);
+    await act(async () => root.render(<CommandBar />));
+    const input = host.querySelector("input")!;
+    await act(async () => input.focus());
+    await act(async () => type(input, "guide"));
+    await settle();
+    await act(async () => key(input, "5", { altKey: true }));
+    expect(host.querySelector(".cb-opt.history")?.textContent).toContain("Guide visit");
+    await act(async () => key(input, "Enter"));
+    await settle();
+    expect(navigate).toHaveBeenCalledWith("p1", "https://example.com/guide");
+    await act(async () => input.focus());
+    await act(async () => type(input, "guide"));
+    await settle();
+    await act(async () => key(input, "6", { altKey: true }));
+    expect(host.querySelector(".cb-opt.extensions")?.textContent).toContain("Guide tools");
+    await act(async () => key(input, "Enter"));
+    await settle();
+    expect(showAction).toHaveBeenCalledWith("guide");
+    } finally {
+      nativeWindow.auxChromiumHost = priorHost;
+    }
   });
 
   it("keeps the provider picker open while keyboard focus moves through its pills", async () => {

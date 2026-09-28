@@ -25,6 +25,7 @@
     "bench:tasks": "node tests/benchmarks/tasks/run.mjs",
     "lint": "oxlint apps packages tests scripts --max-warnings=390",
     "format:check": "node scripts/check-renderer-format.mjs",
+    "contrast:check": "node scripts/check-glass-contrast.mjs",
     "smoke:native": "node tests/host/native-app-journeys.mjs --list"
   },
   "devDependencies": {

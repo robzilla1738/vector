@@ -9,6 +9,8 @@ import {
   TaskEvidenceSchema,
   TaskReconcileParams,
   TaskReconcileOperationParams,
+  TaskUndoBrowserChangeParams,
+  TaskUndoRunBrowserChangesParams,
   TaskVerifyCriterionParams,
   AuxError,
   type Task,
@@ -21,9 +23,14 @@ import type { Repo } from "../store/repo.js";
 import { summarizeModelUsage } from "./model-usage.js";
 import type { EventBus } from "../events.js";
 import type { PageService } from "./pages.js";
+import type { NativeBridge } from "../native.js";
+import { BrowserBookmarkLedger } from "./browser-bookmark-ledger.js";
+import { BrowserDownloadLedger } from "./browser-download-ledger.js";
+import { BrowserHistoryLedger } from "./browser-history-ledger.js";
 import { TaskService } from "./tasks.js";
 import { DurableWriteLedger } from "../agent/durable.js";
 import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invocations";
+import { isConsequential } from "../agent/permissions.js";
 
 type Actor = "desktop_user" | "external_client";
 type EvidenceRow = { seq: number; json: string };
@@ -34,7 +41,10 @@ export class TaskEvidenceService {
   constructor(
     private repo: Repo,
     private events: EventBus,
-    private pages?: Pick<PageService, "observe" | "get">,
+    private pages?: Pick<PageService, "observe" | "get" | "undoFormChange" | "undoOpenedTab">,
+    private native?: NativeBridge,
+    private downloadsDir?: string,
+    private trashDir?: string,
   ) {
     this.tasks = new TaskService(repo, events);
   }
@@ -197,6 +207,148 @@ export class TaskEvidenceService {
     return { ok: true };
   }
 
+  async undoBrowserChange(input: unknown): Promise<{ ok: true }> {
+    const p = TaskUndoBrowserChangeParams.parse(input);
+    this.current(p.taskId, p.expectedRevision, undefined, true);
+    const details = this.tasks.details(p.taskId);
+    const run = details.runs.find(item => item.run.runId === p.runId &&
+      item.run.config?.taskRevision === p.expectedRevision)?.run;
+    if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
+    const steps = this.repo.listSteps(p.runId);
+    const step = steps.find(item => item.stepId === p.stepId);
+    if (!step || !["fill", "type", "check", "uncheck", "select"].includes(step.op) ||
+      step.outcome?.status !== "ok" || step.outcome.undoneAt || !step.pageId ||
+      typeof step.inputs?.target !== "string" || !step.outcome.pageUrl ||
+      step.outcome.receipt?.identity?.documentEpoch === undefined)
+      throw new AuxError("conflict", "This form edit has no safe undo record");
+    if (steps.some(other => other.pageId === step.pageId && steps.indexOf(other) > steps.indexOf(step) &&
+      other.inputs?.target === step.inputs?.target && other.outcome?.status === "ok" && !other.outcome?.undoneAt))
+      throw new AuxError("conflict", "A later edit touched this control; undo the later edit first");
+    const state = (value: Record<string, unknown> | undefined) => {
+      if (!value || Object.keys(value).length !== 1) return undefined;
+      if (typeof value.value === "string" && value.value !== "{redacted}" && value.value.length <= 300)
+        return { value: value.value };
+      if (typeof value.checked === "boolean") return { checked: value.checked };
+      if (typeof value.selected === "string" && value.selected.length <= 300)
+        return { selected: value.selected };
+      return undefined;
+    };
+    const before = state(step.outcome.before);
+    const after = state(step.outcome.after);
+    if (!before || !after || !this.pages) throw new AuxError("conflict", "The prior or resulting form state was not recorded safely");
+    await this.pages.undoFormChange({ pageId: step.pageId, target: step.inputs.target,
+      url: step.outcome.pageUrl, documentEpoch: step.outcome.receipt.identity.documentEpoch,
+      before, after });
+    this.repo.transaction(() => {
+      const current = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+      if (!current?.outcome || current.outcome.undoneAt) throw new AuxError("conflict", "This form edit was already undone");
+      this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
+    });
+    return { ok: true };
+  }
+
+  async undoRunBrowserChanges(input: unknown): Promise<{ restored: number; skipped: { stepId: string; reason: string }[] }> {
+    const p = TaskUndoRunBrowserChangesParams.parse(input);
+    this.current(p.taskId, p.expectedRevision, undefined, true);
+    const run = this.tasks.details(p.taskId).runs.find(item => item.run.runId === p.runId &&
+      item.run.config?.taskRevision === p.expectedRevision)?.run;
+    if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
+    const steps = this.repo.listSteps(p.runId).reverse();
+    let restored = 0;
+    const skipped: { stepId: string; reason: string }[] = [];
+    for (const step of steps) {
+      if (step.outcome?.status !== "ok" || step.outcome.undoneAt) continue;
+      try {
+        if (["fill", "type", "check", "uncheck", "select"].includes(step.op)) {
+          await this.undoBrowserChange({ ...p, stepId: step.stepId });
+        } else if (step.op === "bookmark.add") {
+          await this.undoBookmarkChange({ ...p, stepId: step.stepId });
+        } else if (step.op === "download") {
+          await this.undoDownloadChange({ ...p, stepId: step.stepId });
+        } else if (step.op === "history.visit") {
+          await this.undoHistoryChange({ ...p, stepId: step.stepId });
+        } else if (step.op === "tab.open" && step.pageId && this.pages) {
+          if (steps.some((later, index) => index < steps.indexOf(step) && later.op === "tab.close" &&
+            later.pageId === step.pageId && later.outcome?.status === "ok")) continue;
+          const after = step.outcome.after;
+          if (typeof after?.url !== "string" || typeof after?.documentEpoch !== "number" ||
+            after.ownedByRuntime !== true)
+            throw new AuxError("conflict", "This tab has no safe run-owned before/after record");
+          await this.pages.undoOpenedTab(step.pageId, { url: after.url, documentEpoch: after.documentEpoch });
+          const current = this.repo.listSteps(p.runId).find(item => item.stepId === step.stepId);
+          if (!current?.outcome || current.outcome.undoneAt) throw new AuxError("conflict", "This tab was already undone");
+          this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
+        } else if (step.op === "tab.close") {
+          skipped.push({ stepId: step.stepId, reason: "A closed tab cannot be safely reconstructed" });
+          continue;
+        } else continue;
+        restored++;
+      } catch (error) {
+        skipped.push({ stepId: step.stepId,
+          reason: (error instanceof Error ? error.message : String(error)).slice(0, 500) });
+      }
+    }
+    return { restored, skipped };
+  }
+
+  async undoBookmarkChange(input: unknown): Promise<{ ok: true }> {
+    const p = TaskUndoBrowserChangeParams.parse(input);
+    this.current(p.taskId, p.expectedRevision, undefined, true);
+    const run = this.tasks.details(p.taskId).runs.find(item => item.run.runId === p.runId &&
+      item.run.config?.taskRevision === p.expectedRevision)?.run;
+    if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
+    const step = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+    if (step?.op !== "bookmark.add" || step.outcome?.status !== "ok" || step.outcome.undoneAt ||
+      step.outcome.before?.existed !== false || !step.outcome.after)
+      throw new AuxError("conflict", "This bookmark has no safe undo record");
+    await new BrowserBookmarkLedger(this.repo, this.native).undo({ after: step.outcome.after });
+    this.repo.transaction(() => {
+      const current = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+      if (!current?.outcome || current.outcome.undoneAt)
+        throw new AuxError("conflict", "This bookmark was already undone");
+      this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
+    });
+    return { ok: true };
+  }
+
+  async undoDownloadChange(input: unknown): Promise<{ ok: true }> {
+    const p = TaskUndoBrowserChangeParams.parse(input);
+    this.current(p.taskId, p.expectedRevision, undefined, true);
+    const run = this.tasks.details(p.taskId).runs.find(item => item.run.runId === p.runId &&
+      item.run.config?.taskRevision === p.expectedRevision)?.run;
+    if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
+    const step = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+    if (step?.op !== "download" || step.outcome?.status !== "ok" || step.outcome.undoneAt)
+      throw new AuxError("conflict", "This download has no safe cleanup record");
+    await new BrowserDownloadLedger(this.repo, this.downloadsDir, this.trashDir).undo(step);
+    this.repo.transaction(() => {
+      const current = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+      if (!current?.outcome || current.outcome.undoneAt)
+        throw new AuxError("conflict", "This download was already cleaned up");
+      this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
+    });
+    return { ok: true };
+  }
+
+  async undoHistoryChange(input: unknown): Promise<{ ok: true }> {
+    const p = TaskUndoBrowserChangeParams.parse(input);
+    this.current(p.taskId, p.expectedRevision, undefined, true);
+    const run = this.tasks.details(p.taskId).runs.find(item => item.run.runId === p.runId &&
+      item.run.config?.taskRevision === p.expectedRevision)?.run;
+    if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
+    const step = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+    if (step?.op !== "history.visit" || step.outcome?.status !== "ok" || step.outcome.undoneAt)
+      throw new AuxError("conflict", "This visit has no safe removal record");
+    await new BrowserHistoryLedger(this.repo, this.native).undo(step);
+    this.repo.transaction(() => {
+      const current = this.repo.listSteps(p.runId).find(item => item.stepId === p.stepId);
+      if (!current?.outcome || current.outcome.undoneAt)
+        throw new AuxError("conflict", "This visit was already removed");
+      this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
+    });
+    return { ok: true };
+  }
+
   reconcileOperation(input: unknown): { ok: true } {
     const p = TaskReconcileOperationParams.parse(input);
     this.current(p.taskId, p.expectedRevision, undefined, true);
@@ -346,6 +498,96 @@ export class TaskEvidenceService {
       ...(runId ? { runId } : {}),
       ...(error ? { error } : {}),
     }));
+    const setterOps = new Set(["fill", "type", "check", "uncheck", "select"]);
+    const browserChanges: TaskReceipt["browserChanges"] = runs.flatMap(({ run }) =>
+      this.repo.listSteps(run.runId).flatMap(step => {
+        const status = step.outcome?.status;
+        if (!setterOps.has(step.op) || (status !== "ok" && status !== "failed")) return [];
+        const boundedState = (raw: Record<string, unknown> | undefined) => raw && {
+          ...(typeof raw.value === "string" ? { value: raw.value.slice(0, 300) } : {}),
+          ...(typeof raw.checked === "boolean" ? { checked: raw.checked } : {}),
+          ...(typeof raw.selected === "string" ? { selected: raw.selected.slice(0, 300) } : {}),
+        };
+        const before = boundedState(step.outcome?.before);
+        const after = boundedState(step.outcome?.after);
+        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
+          taskRevision: run.config!.taskRevision!, op: step.op as TaskReceipt["browserChanges"][number]["op"],
+          status, startedAt: step.startedAt,
+          ...(typeof step.inputs?.target === "string" ? { target: step.inputs.target.slice(0, 200) } : {}),
+          ...(before && Object.keys(before).length ? { before } : {}),
+          ...(after && Object.keys(after).length ? { after } : {}),
+          ...(step.outcome?.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
+        }];
+      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
+    const tabChanges: TaskReceipt["tabChanges"] = runs.flatMap(({ run }) =>
+      this.repo.listSteps(run.runId).flatMap(step => {
+        if (step.op !== "tab.open" && step.op !== "tab.close") return [];
+        const status = step.outcome?.status;
+        if (status !== "ok" && status !== "failed") return [];
+        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
+          taskRevision: run.config!.taskRevision!, op: step.op as "tab.open" | "tab.close", status, startedAt: step.startedAt,
+          ...(typeof step.inputs?.url === "string" ? { url: step.inputs.url.slice(0, 8192) } : {}),
+          ...(step.outcome?.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
+        }];
+      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
+    const remoteActions: TaskReceipt["remoteActions"] = runs.flatMap(({ run }) =>
+      this.repo.listSteps(run.runId).flatMap(step => {
+        if (!isConsequential(step.op) || setterOps.has(step.op) || step.op.startsWith("tab.")) return [];
+        const status = step.outcome?.status;
+        if (status !== "ok" && status !== "failed") return [];
+        const receipt = step.outcome?.receipt;
+        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
+          taskRevision: run.config!.taskRevision!, op: step.op, status, startedAt: step.startedAt,
+          ...(step.outcome?.effect ? { effect: step.outcome.effect } : {}),
+          ...(receipt?.observed ? { browserObserved: receipt.observed.slice(0, 300) } : {}),
+          remoteConfirmed: receipt?.remoteConfirmed === true,
+          uncertain: status === "failed" || receipt?.uncertain === true || receipt?.unconfirmed === true ||
+            receipt?.dispatchedBeforeTakeover === true || step.outcome?.effect === "uncertain",
+        }];
+      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
+    const bookmarkChanges: TaskReceipt["bookmarkChanges"] = runs.flatMap(({ run }) =>
+      this.repo.listSteps(run.runId).flatMap(step => {
+        if (step.op !== "bookmark.add" || !step.outcome ||
+          !["ok", "failed"].includes(step.outcome.status)) return [];
+        const after = step.outcome.after;
+        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
+          taskRevision: run.config!.taskRevision!, status: step.outcome.status as "ok" | "failed",
+          startedAt: step.startedAt,
+          ...(typeof after?.url === "string" ? { url: after.url.slice(0, 8192) } : {}),
+          ...(typeof after?.title === "string" ? { title: after.title.slice(0, 1000) } : {}),
+          ...(step.outcome.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
+        }];
+      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
+    const downloadChanges: TaskReceipt["downloadChanges"] = runs.flatMap(({ run }) =>
+      this.repo.listSteps(run.runId).flatMap(step => {
+        if (step.op !== "download" || !step.outcome) return [];
+        const after = step.outcome.after;
+        const state = after?.state;
+        const status: TaskReceipt["downloadChanges"][number]["status"] =
+          state === "completed" ? "completed" : state === "started" ? "started" : "interrupted";
+        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
+          taskRevision: run.config!.taskRevision!, status, startedAt: step.startedAt,
+          ...(typeof after?.filename === "string" ? { filename: after.filename.slice(0, 1000) } : {}),
+          ...(typeof step.inputs?.sourceUrl === "string" ? { sourceUrl: step.inputs.sourceUrl.slice(0, 8192) } : {}),
+          ...(typeof after?.path === "string" ? { path: after.path.slice(0, 4096) } : {}),
+          ...(typeof after?.size === "number" ? { size: after.size } : {}),
+          cleanupAvailable: status === "completed" && step.outcome.before?.existed === false &&
+            typeof after?.sha256 === "string" && !step.outcome.undoneAt,
+          ...(step.outcome.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
+        }];
+      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
+    const historyChanges: TaskReceipt["historyChanges"] = runs.flatMap(({ run }) =>
+      this.repo.listSteps(run.runId).flatMap(step => {
+        if (step.op !== "history.visit" || step.outcome?.status !== "ok") return [];
+        const after = step.outcome.after;
+        return [{ stepId: step.stepId, runId: run.runId, pageId: step.pageId ?? "unknown",
+          taskRevision: run.config!.taskRevision!, status: "ok" as const, startedAt: step.startedAt,
+          ...(typeof after?.url === "string" ? { url: after.url.slice(0, 8192) } : {}),
+          ...(typeof after?.title === "string" ? { title: after.title.slice(0, 4096) } : {}),
+          ...(typeof after?.visitedAt === "number" ? { visitedAt: after.visitedAt } : {}),
+          ...(step.outcome.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
+        }];
+      })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
     const criteria: TaskReceipt["criteria"] = task.criteria.map((criterion) => {
       const rows = this.evidence(taskId, task.revision, criterion.criterionId);
       const evidence = rows.map(({ record }) => {
@@ -419,6 +661,12 @@ export class TaskEvidenceService {
       status,
       criteria,
       unresolvedActions,
+      browserChanges,
+      tabChanges,
+      remoteActions,
+      bookmarkChanges,
+      downloadChanges,
+      historyChanges,
       unresolvedOperations,
       runs: runs.map(({ run }) => ({
         runId: run.runId,

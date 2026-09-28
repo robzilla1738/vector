@@ -24,7 +24,7 @@ export function SessionRecovery({compact=false}:{compact?:boolean}) {
     let live=true,sequence=0;
     const load=()=>{
       const request=++sequence;
-      void call("browser.recovery.list").then(items=>{if(live&&request===sequence){setTabs(items);setError("");}})
+      void call("browser.recovery.list").then(items=>{if(live&&request===sequence){setTabs(items.filter(tab=>!!tab.error));setError("");}})
         .catch(reason=>{if(live&&request===sequence&&!compact)setError(String(reason));});
     };
     load();

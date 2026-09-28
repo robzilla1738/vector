@@ -123,6 +123,7 @@ def build(flavor: str) -> None:
     output = SRC / "out" / ("AuxDev" if flavor == "dev" else "AuxRelease")
     if not (output / "build.ninja").exists():
         raise SystemExit("Run configure first")
+    run("node", str(ROOT / "stage-host-bindings.mjs"), cwd=REPO)
     run("nice", "-n", "10", "autoninja", "-C", str(output), "chrome", "-j", "8", cwd=SRC)
 
 

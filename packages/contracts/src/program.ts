@@ -401,6 +401,10 @@ export const StepOutcomeSchema = z.object({
   extracted: z.record(z.string(), z.unknown()).optional(),
   /** Form-control before-state for setter steps (S4) — the ledger's record of what the write replaced. */
   before: z.record(z.string(), z.unknown()).optional(),
+  /** Observed state after a successful setter; absent if the page moved or the control could not be read. */
+  after: z.record(z.string(), z.unknown()).optional(),
+  pageUrl: z.string().optional(),
+  undoneAt: z.number().optional(),
   artifactIds: z.array(z.string()).optional(),
   /** VEC-016 lifecycle. */
   effect: z

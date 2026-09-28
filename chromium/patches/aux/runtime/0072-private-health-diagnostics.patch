@@ -1,0 +1,457 @@
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -22,6 +22,7 @@
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/appearance_prefs.h"
++#include "chrome/browser/ui/aux/health_recorder.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_prefs.h"
+ #include "chrome/browser/ui/aux/site_prefs.h"
+@@ -1809,6 +1810,10 @@
+   registry->RegisterStringPref(aux::kAppearanceMaterialPref, "liquid-glass");
+   registry->RegisterDictionaryPref(aux::kOrganizationPref);
+   registry->RegisterBooleanPref(aux::kHttpsUpgradesEnabled, true);
++  registry->RegisterListPref(aux::kHealthSamplesPref);
++  registry->RegisterIntegerPref(aux::kHealthSessionsPref, 0);
++  registry->RegisterIntegerPref(aux::kHealthCrashesPref, 0);
++  registry->RegisterIntegerPref(aux::kHealthHangsPref, 0);
+ #endif
+   // User prefs. Please keep this list alphabetized.
+   AccessibilityLabelsService::RegisterProfilePrefs(registry);
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -22,11 +22,14 @@
+     "credential_fill.cc",
+     "credential_fill.h",
+     "credential_fill_prompt_mac.mm",
++    "health_recorder.cc",
++    "health_recorder.h",
+     "method_registry.cc",
+     "method_registry.h",
+     "methods/native_blocking_methods.cc",
+     "methods/native_cdp_methods.cc",
+     "methods/native_content_methods.cc",
++    "methods/health_methods.cc",
+     "methods/native_credentials_methods.cc",
+     "methods/native_library_methods.cc",
+     "methods/native_page_controls_methods.cc",
+diff --git a/chrome/browser/ui/aux/health_recorder.cc b/chrome/browser/ui/aux/health_recorder.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/health_recorder.cc
+@@ -0,0 +1,210 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/health_recorder.h"
++
++#include <algorithm>
++#include <cmath>
++#include <memory>
++#include <set>
++#include <vector>
++
++#include "base/process/process_metrics.h"
++#include "base/supports_user_data.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "components/prefs/pref_service.h"
++
++namespace aux {
++namespace {
++
++constexpr char kRecorderKey = 0;
++constexpr base::TimeDelta kInterval = base::Minutes(1);
++constexpr base::TimeDelta kRetention = base::Days(7);
++constexpr size_t kMaxSamples = 10080;
++
++double Number(const base::DictValue& row, const char* key) {
++  return row.FindDouble(key).value_or(
++      static_cast<double>(row.FindInt(key).value_or(0)));
++}
++
++base::DictValue Stats(std::vector<double> values) {
++  base::DictValue result;
++  if (values.empty()) {
++    result.Set("p50", 0.0);
++    result.Set("p95", 0.0);
++    result.Set("max", 0.0);
++    return result;
++  }
++  std::sort(values.begin(), values.end());
++  result.Set("p50", values[(values.size() - 1) / 2]);
++  result.Set("p95", values[static_cast<size_t>(
++      std::ceil(values.size() * 0.95) - 1)]);
++  result.Set("max", values.back());
++  return result;
++}
++
++void TrimSamples(base::ListValue& samples, int64_t now_ms) {
++  const int64_t cutoff = now_ms - kRetention.InMilliseconds();
++  while (!samples.empty()) {
++    const base::DictValue* first = samples.front().GetIfDict();
++    if (samples.size() <= kMaxSamples && first &&
++        Number(*first, "at") >= cutoff)
++      break;
++    samples.erase(samples.begin());
++  }
++}
++
++class Recorder : public base::SupportsUserData::Data {
++ public:
++  explicit Recorder(Profile* profile)
++      : profile_(profile),
++        metrics_(base::ProcessMetrics::CreateCurrentProcessMetrics()) {
++    base::ListValue retained =
++        profile_->GetPrefs()->GetList(kHealthSamplesPref).Clone();
++    const size_t previous_size = retained.size();
++    TrimSamples(retained, base::Time::Now().InMillisecondsSinceUnixEpoch());
++    if (retained.size() != previous_size)
++      profile_->GetPrefs()->SetList(kHealthSamplesPref, std::move(retained));
++    profile_->GetPrefs()->SetInteger(
++        kHealthSessionsPref,
++        profile_->GetPrefs()->GetInteger(kHealthSessionsPref) + 1);
++    first_sample_.Start(FROM_HERE, base::Seconds(2), this,
++                        &Recorder::BeginSampling);
++  }
++
++  void Tick() { Sample(/*initial=*/false); }
++
++ private:
++  void BeginSampling() {
++    Sample(/*initial=*/true);
++    timer_.Start(FROM_HERE, kInterval, this, &Recorder::Tick);
++  }
++
++  void Sample(bool initial) {
++    const base::TimeTicks now = base::TimeTicks::Now();
++    const double lag_ms = initial ? 0.0 :
++        std::max(0.0, (now - expected_tick_).InMillisecondsF());
++    expected_tick_ = now + kInterval;
++    const int64_t at = base::Time::Now().InMillisecondsSinceUnixEpoch();
++    base::DictValue row;
++    row.Set("at", static_cast<double>(at));
++    row.Set("session", profile_->GetPrefs()->GetInteger(kHealthSessionsPref));
++    row.Set("lag", lag_ms);
++    double cpu = 0;
++    double memory = 0;
++    if (metrics_) {
++      auto usage = metrics_->GetPlatformIndependentCPUUsage();
++      if (usage.has_value()) cpu = std::max(0.0, usage.value());
++      auto info = metrics_->GetMemoryInfo();
++      if (info.has_value())
++        memory = info->resident_set_bytes / (1024.0 * 1024.0);
++    }
++    row.Set("cpu", cpu);
++    row.Set("memory", memory);
++    const base::DictValue snapshot =
++        TabCatalog::GetForProfile(profile_)->Snapshot();
++    const auto* windows = snapshot.FindList("windows");
++    const auto* tabs = snapshot.FindList("tabs");
++    row.Set("windows", static_cast<int>(windows ? windows->size() : 0));
++    row.Set("pages", static_cast<int>(tabs ? tabs->size() : 0));
++    base::ListValue samples =
++        profile_->GetPrefs()->GetList(kHealthSamplesPref).Clone();
++    samples.Append(std::move(row));
++    TrimSamples(samples, at);
++    profile_->GetPrefs()->SetList(kHealthSamplesPref, std::move(samples));
++  }
++
++  raw_ptr<Profile> profile_;
++  std::unique_ptr<base::ProcessMetrics> metrics_;
++  base::TimeTicks expected_tick_;
++  base::OneShotTimer first_sample_;
++  base::RepeatingTimer timer_;
++};
++
++}  // namespace
++
++void StartHealthRecorder(Profile* profile) {
++  if (!profile || profile->GetUserData(&kRecorderKey)) return;
++  profile->SetUserData(&kRecorderKey, std::make_unique<Recorder>(profile));
++}
++
++base::DictValue HealthSummary(Profile* profile) {
++  StartHealthRecorder(profile);
++  PrefService* prefs = profile->GetPrefs();
++  const base::ListValue& rows = prefs->GetList(kHealthSamplesPref);
++  std::vector<double> cpu, memory, lag;
++  std::set<int> sessions;
++  int observed_minutes = 0;
++  int previous_session = -1;
++  double previous_at = 0;
++  int max_windows = 0, max_pages = 0;
++  double earliest = 0, latest = 0;
++  for (const base::Value& value : rows) {
++    const base::DictValue* row = value.GetIfDict();
++    if (!row) continue;
++    const double at = Number(*row, "at");
++    if (!earliest || at < earliest) earliest = at;
++    latest = std::max(latest, at);
++    const int session = row->FindInt("session").value_or(0);
++    sessions.insert(session);
++    if (session == previous_session && at > previous_at &&
++        at - previous_at <= 120000.0)
++      ++observed_minutes;
++    previous_session = session;
++    previous_at = at;
++    cpu.push_back(Number(*row, "cpu"));
++    memory.push_back(Number(*row, "memory"));
++    lag.push_back(Number(*row, "lag"));
++    max_windows = std::max(max_windows, row->FindInt("windows").value_or(0));
++    max_pages = std::max(max_pages, row->FindInt("pages").value_or(0));
++  }
++  base::DictValue result;
++  if (earliest) result.Set("recordingSince", earliest);
++  if (latest) result.Set("latestAt", latest);
++  result.Set("samples", static_cast<int>(cpu.size()));
++  result.Set("sessions", static_cast<int>(sessions.size()));
++  result.Set("observedMinutes", observed_minutes);
++  const double span_days = earliest ? (latest - earliest) / 86400000.0 : 0.0;
++  result.Set("spanDays", span_days);
++  result.Set("sevenDaySpan", span_days >= 6.95);
++  result.Set("cpuPercent", Stats(std::move(cpu)));
++  result.Set("memoryMb", Stats(std::move(memory)));
++  result.Set("eventLoopLagMs", Stats(std::move(lag)));
++  result.Set("maxWindows", max_windows);
++  result.Set("maxPages", max_pages);
++  result.Set("maxSuspendedPages", 0);
++  result.Set("pageCrashes", prefs->GetInteger(kHealthCrashesPref));
++  result.Set("pageUnresponsive", prefs->GetInteger(kHealthHangsPref));
++  result.Set("suspensionFailures", 0);
++  return result;
++}
++
++base::DictValue ClearHealth(Profile* profile) {
++  StartHealthRecorder(profile);
++  PrefService* prefs = profile->GetPrefs();
++  prefs->SetList(kHealthSamplesPref, base::ListValue());
++  prefs->SetInteger(kHealthSessionsPref, 1);
++  prefs->SetInteger(kHealthCrashesPref, 0);
++  prefs->SetInteger(kHealthHangsPref, 0);
++  return HealthSummary(profile);
++}
++
++void RecordPageCrash(Profile* profile) {
++  if (!profile) return;
++  PrefService* prefs = profile->GetPrefs();
++  prefs->SetInteger(kHealthCrashesPref,
++                    prefs->GetInteger(kHealthCrashesPref) + 1);
++}
++
++void RecordPageUnresponsive(Profile* profile) {
++  if (!profile) return;
++  PrefService* prefs = profile->GetPrefs();
++  prefs->SetInteger(kHealthHangsPref,
++                    prefs->GetInteger(kHealthHangsPref) + 1);
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/health_recorder.h b/chrome/browser/ui/aux/health_recorder.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/health_recorder.h
+@@ -0,0 +1,28 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_HEALTH_RECORDER_H_
++#define CHROME_BROWSER_UI_AUX_HEALTH_RECORDER_H_
++
++#include "base/values.h"
++
++class Profile;
++
++namespace aux {
++
++inline constexpr char kHealthSamplesPref[] = "aux.health.samples";
++inline constexpr char kHealthSessionsPref[] = "aux.health.sessions";
++inline constexpr char kHealthCrashesPref[] = "aux.health.crashes";
++inline constexpr char kHealthHangsPref[] = "aux.health.hangs";
++
++// Starts once per profile. Samples contain aggregate numbers only.
++void StartHealthRecorder(Profile* profile);
++base::DictValue HealthSummary(Profile* profile);
++base::DictValue ClearHealth(Profile* profile);
++void RecordPageCrash(Profile* profile);
++void RecordPageUnresponsive(Profile* profile);
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_HEALTH_RECORDER_H_
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -60,6 +60,8 @@
+   register_shell(AuxShellMethodGroup::kTabs,
+                  {"bindTabSpace", "migrateTabSpaces", "tabsSnapshot",
+                   "tabsSince", "tabCommand", "tabAudio", "tabsUnsavedWork"});
++  register_shell(AuxShellMethodGroup::kHealth,
++                 {"healthSummary", "clearHealth", "exportDiagnostics"});
+   register_shell(AuxShellMethodGroup::kWindow,
+                  {"defaultBrowser", "setDefaultBrowser", "dataDir",
+                   "resolveSearch", "setAppearance", "setShortcuts",
+diff --git a/chrome/browser/ui/aux/method_registry.h b/chrome/browser/ui/aux/method_registry.h
+--- a/chrome/browser/ui/aux/method_registry.h
++++ b/chrome/browser/ui/aux/method_registry.h
+@@ -25,6 +25,7 @@
+   kExtensions,
+   kLibrary,
+   kTabs,
++  kHealth,
+   kWindow,
+ };
+ 
+diff --git a/chrome/browser/ui/aux/methods/health_methods.cc b/chrome/browser/ui/aux/methods/health_methods.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/health_methods.cc
+@@ -0,0 +1,72 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++
++#include <utility>
++
++#include "base/json/json_writer.h"
++#include "base/time/time.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/appearance_prefs.h"
++#include "chrome/browser/ui/aux/health_recorder.h"
++#include "chrome/browser/ui/aux/method_registry.h"
++#include "chrome/browser/ui/aux/site_prefs.h"
++#include "components/prefs/pref_service.h"
++#include "components/version_info/version_info.h"
++
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++void WebUIBrowserUI::HandleAuxHealthRequest(
++    const std::string& method, const base::ListValue& args,
++    RequestCallback callback) {
++  Profile* profile = browser_->GetProfile();
++  if (method == "healthSummary" || method == "clearHealth") {
++    base::DictValue summary = method == "clearHealth"
++                                  ? aux::ClearHealth(profile)
++                                  : aux::HealthSummary(profile);
++    const auto json = base::WriteJson(summary);
++    std::move(callback).Run(json.has_value(), json.value_or(""),
++                            json ? "" : "io_error",
++                            json ? "" : "Health summary could not be encoded");
++    return;
++  }
++  if (method == "exportDiagnostics") {
++    const base::DictValue capabilities = aux::AuxMethodRegistry::Get().Capabilities();
++    base::DictValue report;
++    report.Set("format", "aux-support-report-v1");
++    report.Set("createdAt", static_cast<double>(
++        base::Time::Now().InMillisecondsSinceUnixEpoch()));
++    report.Set("browserVersion", version_info::GetVersionNumber());
++    report.Set("buildId", *capabilities.FindString("buildId"));
++    report.Set("sourceCommit", *capabilities.FindString("sourceCommit"));
++    const base::ListValue* methods = capabilities.FindList("methods");
++    report.Set("availableHostMethods", static_cast<int>(methods ? methods->size() : 0));
++    report.Set("health", aux::HealthSummary(profile));
++    base::DictValue modes;
++    PrefService* prefs = profile->GetPrefs();
++    modes.Set("appearanceTheme", prefs->GetString(aux::kAppearanceThemePref));
++    modes.Set("httpsUpgradeEnabled", prefs->GetBoolean(aux::kHttpsUpgradesEnabled));
++    modes.Set("privateProfile", profile->IsOffTheRecord());
++    report.Set("modes", std::move(modes));
++    base::ListValue limits;
++    limits.Append("CPU and memory samples cover the browser process only.");
++    limits.Append("Responsiveness is one-minute UI task scheduling delay.");
++    limits.Append("Suspension counts and startup timing are not recorded yet.");
++    limits.Append("Page crash and hang counts are since the last Clear action.");
++    limits.Append("Runtime version and state are not included yet.");
++    report.Set("knownLimits", std::move(limits));
++    const auto content = base::WriteJsonWithOptions(
++        report, base::OPTIONS_PRETTY_PRINT);
++    if (!content) {
++      std::move(callback).Run(false, "", "io_error",
++                              "Support report could not be encoded");
++      return;
++    }
++    BeginAuxGeneratedSave("Aux-support-report.json", *content + "\n",
++                          base::FilePath(), 0, std::move(callback));
++    return;
++  }
++  std::move(callback).Run(false, "", "not_found", "Unknown health method");
++}
++#endif
+diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
+--- a/chrome/browser/ui/aux/shell_events.cc
++++ b/chrome/browser/ui/aux/shell_events.cc
+@@ -18,6 +18,7 @@
+ #include "base/values.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/health_recorder.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+@@ -108,6 +109,15 @@
+   void DidStartLoading() override { PublishLoading(); }
+   void DidStopLoading() override { PublishLoading(); }
+   void OnAudioStateChanged(bool audible) override { PublishAudio(audible); }
++  void PrimaryMainFrameRenderProcessGone(base::TerminationStatus status) override {
++    if (status == base::TERMINATION_STATUS_PROCESS_CRASHED ||
++        status == base::TERMINATION_STATUS_ABNORMAL_TERMINATION ||
++        status == base::TERMINATION_STATUS_PROCESS_WAS_KILLED)
++      RecordPageCrash(profile_);
++  }
++  void OnRendererUnresponsive(content::RenderProcessHost*) override {
++    RecordPageUnresponsive(profile_);
++  }
+   void DidStartNavigation(content::NavigationHandle* handle) override {
+     if (!handle->IsInPrimaryMainFrame() || handle->IsSameDocument()) return;
+     ++navigation_generation_;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -45,6 +45,7 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/method_registry.h"
++#include "chrome/browser/ui/aux/health_recorder.h"
+ #include "chrome/browser/ui/aux/dictation_mac.h"
+ #include "chrome/browser/ui/aux/extension_bridge.h"
+ #include "chrome/browser/ui/aux/migration_import.h"
+@@ -316,6 +317,7 @@
+   Profile* profile = Profile::FromWebUI(web_ui);
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   aux::ProfileSearchEngine::InitializeSuggestions(profile);
++  aux::StartHealthRecorder(profile);
+ #endif
+   browser_ = webui_browser_window->browser();
+ 
+@@ -815,6 +817,9 @@
+     case aux::AuxShellMethodGroup::kTabs:
+       HandleAuxTabsRequest(method, *list, std::move(callback));
+       return;
++    case aux::AuxShellMethodGroup::kHealth:
++      HandleAuxHealthRequest(method, *list, std::move(callback));
++      return;
+     case aux::AuxShellMethodGroup::kWindow:
+       HandleAuxWindowRequest(method, *list, std::move(callback));
+       return;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -183,6 +183,9 @@
+       const std::string& method, const base::ListValue& args,
+       RequestCallback callback);
+   void HandleAuxTabsRequest(
++      const std::string& method, const base::ListValue& args,
++      RequestCallback callback);
++  void HandleAuxHealthRequest(
+       const std::string& method, const base::ListValue& args,
+       RequestCallback callback);
+   void HandleAuxWindowRequest(

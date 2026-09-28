@@ -36,6 +36,7 @@ export class ActivationPolicy {
     page.target.lastActiveAt = Date.now();
     this.pages.persist(page);
     this.pages.deps.events.emit(EventTypes.PageUpdated, {pageId, activePageId: pageId, lastActiveAt: page.target.lastActiveAt});
+    if (!page.driver) void this.pages.attachVisible(pageId).catch(() => {});
   }
 
   async activate(pageId: string): Promise<PageTarget> {
@@ -44,6 +45,7 @@ export class ActivationPolicy {
     if (lp.target.backend === "aux" && this.pages.deps.native.available()) {
       await this.pages.deps.native.focusPage(pageId);
       if (lp.target.viewStatus !== "crashed") lp.target.viewStatus = "visible";
+      await this.pages.attachVisible(pageId).catch(() => {});
     }
     this.pages.activeId = pageId;
     this.pages.activeByWindow.set(lp.target.windowId ?? "main", pageId);

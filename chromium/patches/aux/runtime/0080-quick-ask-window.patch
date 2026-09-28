@@ -1,0 +1,449 @@
+diff --git a/chrome/browser/ui/aux/quick_ask_controller.h b/chrome/browser/ui/aux/quick_ask_controller.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/quick_ask_controller.h
+@@ -0,0 +1,32 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CHROME_BROWSER_UI_AUX_QUICK_ASK_CONTROLLER_H_
++#define CHROME_BROWSER_UI_AUX_QUICK_ASK_CONTROLLER_H_
++
++#include <string>
++
++class BrowserWindowInterface;
++class Profile;
++
++namespace aux {
++
++struct QuickAskShortcutStatus {
++  bool enabled = false;
++  bool registered = false;
++  std::string error;
++};
++
++// Initializes the persisted shortcut after the first Aux window is created.
++void InitializeQuickAsk();
++QuickAskShortcutStatus GetQuickAskShortcutStatus();
++QuickAskShortcutStatus SetQuickAskShortcutEnabled(bool enabled);
++bool IsQuickAskWindow(const BrowserWindowInterface* browser);
++bool OpenQuickAsk(Profile* profile);
++bool DismissQuickAsk(BrowserWindowInterface* browser);
++bool ExpandQuickAsk(BrowserWindowInterface* browser);
++
++}  // namespace aux
++
++#endif  // CHROME_BROWSER_UI_AUX_QUICK_ASK_CONTROLLER_H_
+diff --git a/chrome/browser/ui/aux/quick_ask_controller.cc b/chrome/browser/ui/aux/quick_ask_controller.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/quick_ask_controller.cc
+@@ -0,0 +1,199 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++
++#include <algorithm>
++
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/browser_window/public/browser_collection.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
++#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/browser_tabstrip.h"
++#include "components/prefs/pref_service.h"
++#include "components/sessions/core/session_id.h"
++#include "ui/base/accelerators/accelerator.h"
++#include "ui/base/accelerators/global_accelerator_listener/global_accelerator_listener.h"
++#include "ui/base/base_window.h"
++#include "ui/display/screen.h"
++#include "ui/events/event_constants.h"
++#include "ui/events/keycodes/keyboard_codes.h"
++#include "url/gurl.h"
++
++namespace aux {
++namespace {
++
++class QuickAskController : public ui::GlobalAcceleratorListener::Observer {
++ public:
++  QuickAskController() { UpdateRegistration(); }
++  ~QuickAskController() override = default;
++
++  QuickAskShortcutStatus Status() const {
++    QuickAskShortcutStatus status;
++    PrefService* prefs = g_browser_process ? g_browser_process->local_state() : nullptr;
++    status.enabled = prefs && prefs->GetBoolean(kQuickAskShortcutEnabledPref);
++    status.registered = registered_;
++    if (status.enabled && !registered_)
++      status.error = "This shortcut is unavailable or in use by another app.";
++    return status;
++  }
++
++  QuickAskShortcutStatus SetEnabled(bool enabled) {
++    if (PrefService* prefs =
++            g_browser_process ? g_browser_process->local_state() : nullptr)
++      prefs->SetBoolean(kQuickAskShortcutEnabledPref, enabled);
++    UpdateRegistration();
++    return Status();
++  }
++
++  bool IsPopup(const BrowserWindowInterface* browser) const {
++    return browser && popup_id_.is_valid() &&
++           browser->GetSessionID() == popup_id_;
++  }
++
++  bool Open(Profile* profile) {
++    if (!profile || profile->IsOffTheRecord())
++      return false;
++    if (BrowserWindowInterface* popup = Popup()) {
++      if (popup->GetProfile() == profile) {
++        popup->GetWindow()->Show();
++        popup->GetWindow()->Activate();
++        return true;
++      }
++      popup->GetWindow()->Close();
++      popup_id_ = SessionID::InvalidValue();
++    }
++    auto* screen = display::Screen::Get();
++    if (!screen)
++      return false;
++    const gfx::Rect work_area =
++        screen->GetDisplayNearestPoint(screen->GetCursorScreenPoint()).work_area();
++    constexpr int kWidth = 520;
++    constexpr int kHeight = 640;
++    const gfx::Rect bounds(
++        work_area.CenterPoint().x() - kWidth / 2,
++        work_area.CenterPoint().y() - kHeight / 2, kWidth, kHeight);
++    // Aux's WebUI shell is installed on normal browser windows. Keep a
++    // distinct session identity for this compact, non-restored window.
++    BrowserWindowCreateParams params(
++        BrowserWindowInterface::Type::TYPE_NORMAL, profile, true);
++    params.initial_bounds = bounds;
++    params.omit_from_session_restore = true;
++    BrowserWindowInterface* popup = CreateBrowserWindow(std::move(params));
++    if (!popup)
++      return false;
++    popup_id_ = popup->GetSessionID();
++    chrome::AddTabAt(popup, GURL(), -1, true);
++    popup->GetWindow()->SetBounds(bounds);
++    popup->GetWindow()->Show();
++    popup->GetWindow()->Activate();
++    return true;
++  }
++
++  bool Dismiss(BrowserWindowInterface* browser) {
++    if (!IsPopup(browser))
++      return false;
++    popup_id_ = SessionID::InvalidValue();
++    browser->GetWindow()->Close();
++    return true;
++  }
++
++  bool Expand(BrowserWindowInterface* browser) {
++    if (!IsPopup(browser))
++      return false;
++    Profile* profile = browser->GetProfile();
++    auto* screen = display::Screen::Get();
++    if (!screen)
++      return false;
++    const gfx::Rect work_area =
++        screen->GetDisplayNearestWindow(browser->GetWindow()->GetNativeWindow())
++            .work_area();
++    const int width = std::min(1200, work_area.width());
++    const int height = std::min(850, work_area.height());
++    const gfx::Rect bounds(work_area.CenterPoint().x() - width / 2,
++                           work_area.CenterPoint().y() - height / 2,
++                           width, height);
++    BrowserWindowCreateParams params(
++        BrowserWindowInterface::Type::TYPE_NORMAL, profile, true);
++    params.initial_bounds = bounds;
++    params.should_trigger_session_restore = false;
++    BrowserWindowInterface* expanded = CreateBrowserWindow(std::move(params));
++    if (!expanded)
++      return false;
++    chrome::AddTabAt(expanded, GURL(), -1, true);
++    expanded->GetWindow()->SetBounds(bounds);
++    expanded->GetWindow()->Show();
++    expanded->GetWindow()->Activate();
++    return Dismiss(browser);
++  }
++
++  void OnKeyPressed(const ui::Accelerator& accelerator) override {
++    BrowserWindowInterface* active =
++        GlobalBrowserCollection::GetInstance()
++            ? GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser()
++            : nullptr;
++    if (active)
++      Open(active->GetProfile());
++  }
++
++  void ExecuteCommand(const std::string& accelerator_group_id,
++                      const std::string& command_id) override {}
++
++ private:
++  BrowserWindowInterface* Popup() const {
++    auto* collection = GlobalBrowserCollection::GetInstance();
++    return collection && popup_id_.is_valid()
++               ? collection->FindBrowserWithID(popup_id_)
++               : nullptr;
++  }
++
++  void UpdateRegistration() {
++    auto* listener = ui::GlobalAcceleratorListener::GetInstance();
++    if (!listener)
++      return;
++    listener->UnregisterAccelerators(this);
++    registered_ = false;
++    PrefService* prefs = g_browser_process ? g_browser_process->local_state() : nullptr;
++    if (prefs && prefs->GetBoolean(kQuickAskShortcutEnabledPref)) {
++      registered_ = listener->RegisterAccelerator(
++          ui::Accelerator(ui::VKEY_SPACE,
++                          ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN),
++          this);
++    }
++  }
++
++  SessionID popup_id_ = SessionID::InvalidValue();
++  bool registered_ = false;
++};
++
++QuickAskController& Controller() {
++  static auto* controller = new QuickAskController();
++  return *controller;
++}
++
++}  // namespace
++
++void InitializeQuickAsk() { Controller(); }
++QuickAskShortcutStatus GetQuickAskShortcutStatus() {
++  return Controller().Status();
++}
++QuickAskShortcutStatus SetQuickAskShortcutEnabled(bool enabled) {
++  return Controller().SetEnabled(enabled);
++}
++bool IsQuickAskWindow(const BrowserWindowInterface* browser) {
++  return Controller().IsPopup(browser);
++}
++bool OpenQuickAsk(Profile* profile) { return Controller().Open(profile); }
++bool DismissQuickAsk(BrowserWindowInterface* browser) {
++  return Controller().Dismiss(browser);
++}
++bool ExpandQuickAsk(BrowserWindowInterface* browser) {
++  return Controller().Expand(browser);
++}
++
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -50,6 +50,8 @@
+     "profile_library.h",
+     "profile_search_engine.cc",
+     "profile_search_engine.h",
++    "quick_ask_controller.cc",
++    "quick_ask_controller.h",
+     "readable_capture.cc",
+     "readable_capture.h",
+     "result_preview.cc",
+diff --git a/chrome/browser/ui/aux/profile_prefs.h b/chrome/browser/ui/aux/profile_prefs.h
+--- a/chrome/browser/ui/aux/profile_prefs.h
++++ b/chrome/browser/ui/aux/profile_prefs.h
+@@ -8,6 +8,7 @@
+ namespace aux {
+ inline constexpr char kArchivedProfilesPref[] = "aux.archived_profiles";
+ inline constexpr char kAutofillProfileGuidPref[] = "aux.autofill_profile_guid";
++inline constexpr char kQuickAskShortcutEnabledPref[] = "aux.quick_ask_shortcut_enabled";
+ }  // namespace aux
+ 
+ #endif  // CHROME_BROWSER_UI_AUX_PROFILE_PREFS_H_
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -1473,6 +1473,7 @@
+ void RegisterLocalState(PrefRegistrySimple* registry) {
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   registry->RegisterDictionaryPref(aux::kArchivedProfilesPref);
++  registry->RegisterBooleanPref(aux::kQuickAskShortcutEnabledPref, false);
+ #endif
+   // Call outs to individual subsystems that register Local State (browser-wide)
+   // prefs en masse. See RegisterProfilePrefs for per-profile prefs. Please
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -81,6 +81,8 @@
+                   "pickEvidenceDocument", "closeWindow", "openExternal",
+                   "navigationMenu", "contextMenu",
+                   "revealPath", "openPath"});
++  register_shell(AuxShellMethodGroup::kWindow,
++                 {"quickAsk", "quickAskShortcut"});
+   auto register_runtime = [this](AuxRuntimeMethodGroup group,
+                                  std::initializer_list<std::string_view> names) {
+     for (std::string_view name : names)
+diff --git a/chrome/browser/ui/webui_browser/shell_host.mojom b/chrome/browser/ui/webui_browser/shell_host.mojom
+--- a/chrome/browser/ui/webui_browser/shell_host.mojom
++++ b/chrome/browser/ui/webui_browser/shell_host.mojom
+@@ -17,7 +17,8 @@
+ };
+ 
+ interface ShellHost {
+-  GetIdentity() => (string window_id, string profile_id, bool private_mode);
++  GetIdentity() => (string window_id, string profile_id, bool private_mode,
++                    bool quick_ask_mode);
+   Request(string method, string args_json) =>
+       (bool ok, string result_json, string error_code, string error_message);
+ };
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -14,6 +14,7 @@
+   profileId: string;
+   platform: string;
+   privateMode: boolean;
++  quickAskMode: boolean;
+   capabilities: {buildId: string; sourceCommit: string; methods: string[]};
+   featureStages: ReturnType<typeof featureStagesFor>;
+   request(method: string, args: unknown[]): Promise<unknown>;
+@@ -149,6 +150,7 @@
+     profileId: identity.profileId,
+     platform: 'darwin',
+     privateMode: identity.privateMode,
++    quickAskMode: identity.quickAskMode,
+     capabilities,
+     featureStages: featureStagesFor(capabilities.methods, capabilities.sourceCommit),
+     async request(method, args) {
+diff --git a/chrome/browser/resources/aux_host/aux_feature_stages.ts b/chrome/browser/resources/aux_host/aux_feature_stages.ts
+--- a/chrome/browser/resources/aux_host/aux_feature_stages.ts
++++ b/chrome/browser/resources/aux_host/aux_feature_stages.ts
+@@ -535,7 +535,7 @@
+   }
+ } as const;
+ const runtimeMethods = ["agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","spaces.create","spaces.update","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.suggest","routines.get","routines.create","routines.fromResult","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.extractRun","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results","safety.grants.list","safety.grants.revoke"] as const;
+-const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:reader":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:inboundAgents":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:extensions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:electronMigration":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83"};
++const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:reader":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:inboundAgents":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:extensions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:electronMigration":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:quickAsk":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83"};
+ export type FeatureStage = 'off' | 'preview' | 'on';
+ export function featureStagesFor(methods: readonly string[], sourceCommit: string): Record<keyof typeof requirements, FeatureStage> {
+   const implemented = new Set<string>([...methods, ...runtimeMethods]);
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -53,6 +53,7 @@
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
+ #include "chrome/browser/ui/aux/result_preview.h"
+ #include "chrome/browser/ui/aux/shell_events.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+@@ -319,6 +320,7 @@
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   aux::ProfileSearchEngine::InitializeSuggestions(profile);
+   aux::StartHealthRecorder(profile);
++  aux::InitializeQuickAsk();
+ #endif
+   browser_ = webui_browser_window->browser();
+ 
+@@ -796,8 +798,6 @@
+           }
+         },
+         weak_factory_.GetWeakPtr()));
+-    // Quick Ask has no window in this batch, so the shell starts closed.
+-    aux::EmitShellEvent(browser_->GetProfile(), "onQuickAskState", "false");
+   }
+ }
+ 
+@@ -816,13 +816,14 @@
+ 
+ void WebUIBrowserUI::GetIdentity(GetIdentityCallback callback) {
+   if (!IsAuthorizedAuxDocument()) {
+-    std::move(callback).Run("", "", true);
++    std::move(callback).Run("", "", true, false);
+     return;
+   }
+   const Profile* profile = browser_->GetProfile();
+   std::move(callback).Run(base::NumberToString(browser_->GetSessionID().id()),
+                           profile->GetPath().BaseName().AsUTF8Unsafe(),
+-                          profile->IsOffTheRecord());
++                          profile->IsOffTheRecord(),
++                          aux::IsQuickAskWindow(browser_));
+ }
+ 
+ void WebUIBrowserUI::Request(const std::string& method,
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -61,6 +61,7 @@
+ #include "chrome/browser/ui/aux/shell_events.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
+ #include "chrome/browser/ui/aux/result_preview.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
+@@ -279,6 +280,61 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "quickAskShortcut") {
++    if (list->size() > 1 || (list->size() == 1 &&
++                             !(*list)[0].is_bool() && !(*list)[0].is_none())) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Expected an optional enabled flag");
++      return;
++    }
++    const auto status = list->empty() || (*list)[0].is_none()
++        ? aux::GetQuickAskShortcutStatus()
++        : aux::SetQuickAskShortcutEnabled((*list)[0].GetBool());
++    base::DictValue result;
++    result.Set("enabled", status.enabled);
++    result.Set("registered", status.registered);
++    result.Set("error", status.error);
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "quickAsk") {
++    if (list->size() != 1 || !(*list)[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Expected a Quick Ask action");
++      return;
++    }
++    const std::string& action = (*list)[0].GetString();
++    if (action == "status") {
++      std::move(callback).Run(true,
++                              aux::IsQuickAskWindow(browser_) ? "true" : "false",
++                              "", "");
++      return;
++    }
++    if (action == "open") {
++      const bool opened = aux::OpenQuickAsk(browser_->GetProfile());
++      std::move(callback).Run(opened, opened ? "true" : "",
++                              opened ? "" : "unavailable",
++                              opened ? "" : "Quick Ask could not open.");
++      return;
++    }
++    if (action == "dismiss" || action == "expand") {
++      if (!aux::IsQuickAskWindow(browser_)) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Only the Quick Ask window can do that.");
++        return;
++      }
++      std::move(callback).Run(true, "false", "", "");
++      if (action == "expand")
++        aux::ExpandQuickAsk(browser_);
++      else
++        aux::DismissQuickAsk(browser_);
++      return;
++    }
++    std::move(callback).Run(false, "", "invalid_argument",
++                            "Unknown Quick Ask action");
++    return;
++  }
+   if (method == "contextMenu") {
+     if (list->size() != 1 ||
+         (!(*list)[0].is_none() && !(*list)[0].is_string())) {

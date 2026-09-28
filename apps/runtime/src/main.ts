@@ -3,6 +3,12 @@ import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore } from "./services/content-memory.js";
 import { MemoryPipeline } from "./services/memory-pipeline.js";
 import { createMcpTransportProvider } from "./services/mcp-transport-provider.js";
+import { McpOAuthService } from "./services/mcp-oauth.js";
+import { OutboundMcpService } from "./services/outbound-mcp.js";
+import { HookService, type HookExecutor } from "./services/hooks.js";
+import { installRunEndHooks } from "./services/hook-dispatch.js";
+import { WorkspaceFolderService } from "./services/workspace-folders.js";
+import { BrowserBookmarkLedger } from "./services/browser-bookmark-ledger.js";
 /**
  * Aux runtime entry point.
  *
@@ -11,7 +17,7 @@ import { createMcpTransportProvider } from "./services/mcp-transport-provider.js
  * The same runtime and versioned agent API serve each native host.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -19,6 +25,7 @@ import {
   AuxError,
   EffectRequestSchema,
   OriginRuleSchema,
+  RoutinePageChangeTargetParamsSchema,
   TaskSchema,
   SubagentProfileSchema,
   ZapSnapshotParamsSchema,
@@ -44,13 +51,18 @@ import { ChannelNativeBridge, NullNativeBridge, type NativeBridge } from "./nati
 import { featureStagesFor } from "./api/feature-stages.generated.js";
 import { NativeCdpBroker } from "./native-cdp-broker.js";
 import { PageService, type DriverSet } from "./services/pages.js";
+import { RoutineService } from "./services/routines.js";
 import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
+import { GoalService } from "./services/goals.js";
+import { CommandEscalationService } from "./services/command-escalation.js";
 import { SubagentService } from "./services/subagents.js";
 import { BudgetsService } from "./services/budgets.js";
 import { handlePageTakeover } from "./services/page-takeover.js";
 import { ArtifactStore } from "./services/artifacts.js";
+import { artifactExportDescriptor, renderWorkbookForNativeExport } from "./services/native-file-export.js";
 import { minimizeLegacyObservationArtifacts } from "./services/observation-artifact-migration.js";
+import { applyPendingRuntimeRestore } from "./services/runtime-backup.js";
 import { CookieService } from "./services/cookies.js";
 import { SettingsService } from "./services/settings.js";
 import { ResponseStore } from "./services/responses.js";
@@ -60,8 +72,10 @@ import { Tracer } from "./services/tracing.js";
 import { makeInvoker } from "./api/invoke.js";
 import { ApiServer } from "./api/server.js";
 import { AgentConnectionService } from "./services/agent-connections.js";
+import { nativeAgentClients, nativeAgentConfig } from "./services/native-agent-connections.js";
 import { ExternalSessionService } from "./services/external-sessions.js";
 import { CalendarConnectionService } from "./services/calendar-connections.js";
+import { pollCalendarRoutines } from "./services/calendar-routine-poll.js";
 import { ZapService } from "./services/zap.js";
 import { ContentBlockingService } from "./services/content-blocking.js";
 import { runBench } from "./services/bench.js";
@@ -97,7 +111,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const env =
     configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
+  await applyPendingRuntimeRestore(config.dataDir, config.dbPath);
   const repo = new Repo(openDb(config.dbPath));
+  const workspaceFolders = new WorkspaceFolderService(repo, () => [config.dataDir]);
+  const folderRootsForRun = (runId?: string, access: "read" | "write" = "write") => {
+    const workspaceId = runId ? repo.getRun(runId)?.config?.contextWorkspaceId : undefined;
+    return workspaceId ? workspaceFolders.roots(workspaceId)[access] : [];
+  };
   if (env.AUX_HOST_SOCKET && env.AUX_BROWSER_PROFILE_ID) repo.requireChromiumHistory();
   const privacyCheckpoint = new PrivacyCheckpoint(config.dbPath, (error) =>
     process.stderr.write(`[runtime] privacy checkpoint failed: ${error.message}\n`),
@@ -269,8 +289,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       );
   };
   const artifacts = new ArtifactStore(config.artifactsDir, repo, events);
-  setTimeout(() => {
-    void minimizeLegacyObservationArtifacts(repo, config.artifactsDir).catch((error) =>
+  let observationMaintenance: Promise<number> | null = null;
+  const observationMaintenanceTimer = setTimeout(() => {
+    observationMaintenance = minimizeLegacyObservationArtifacts(repo, config.artifactsDir);
+    void observationMaintenance.catch((error) =>
       process.stderr.write(
         `[runtime] observation artifact maintenance failed: ${error instanceof Error ? error.message : String(error)}\n`,
       ),
@@ -346,6 +368,20 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return auxFeatureEnabled("zapAndUserCss", host, stages) ? snapshot : [];
   });
   settings.attachNative(native);
+
+  // These authenticated host-only methods prepare local files for native save dialogs.
+  channel?.onMethod("artifact.exportDescriptor", (params) => {
+    const artifactId = (params as { artifactId?: unknown })?.artifactId;
+    if (typeof artifactId !== "string") throw new Error("Invalid artifact identity");
+    return artifactExportDescriptor(repo, artifactId, config.artifactsDir);
+  });
+  channel?.onMethod("workbook.renderExport", (params) => {
+    const request = params as { content?: unknown; format?: unknown };
+    if (typeof request?.content !== "string" ||
+        (request.format !== undefined && request.format !== "snapshot" && request.format !== "csv"))
+      throw new Error("Invalid workbook export request");
+    return renderWorkbookForNativeExport(request.content, request.format as "snapshot" | "csv" | undefined);
+  });
 
   // Register api.invoke immediately — the renderer can call before services
   // finish booting; calls wait on the invoker promise instead of failing.
@@ -596,6 +632,51 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         return s;
       });
 
+  const mcpOAuth = new McpOAuthService(native);
+  const mcpTransportProvider = createMcpTransportProvider(mcpOAuth);
+  const outboundMcp = new OutboundMcpService(repo, mcpTransportProvider);
+  const hookScratch = join(config.artifactsDir, "hook-tmp");
+  mkdirSync(hookScratch, { recursive: true });
+  const authorizeHookCommand = (workdir: string, workspaceId: string) => {
+    let actual: string;
+    try { actual = realpathSync(workdir); }
+    catch { throw new AuxError("permission_denied", "Hook working folder is unavailable."); }
+    if (!workspaceFolders.roots(workspaceId).write.includes(actual))
+      throw new AuxError("permission_denied", "Bind this exact writable folder to the Space before approving a command Hook.");
+    return actual;
+  };
+  const hooks = new HookService(repo, (handler, workspaceId) => {
+    if (handler.type === "command") { authorizeHookCommand(handler.workdir, workspaceId); return; }
+    if (handler.type !== "mcp_tool") throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
+    const server = outboundMcp.get(handler.serverId);
+    const grant = outboundMcp.getGrant(handler.grantId);
+    if (server.state !== "approved" || server.workspaceId !== workspaceId ||
+      grant.serverId !== handler.serverId || grant.toolName !== handler.toolName ||
+      grant.scope.kind !== "workspace" || grant.scope.workspaceId !== workspaceId ||
+      grant.mode !== "standing" || grant.revokedAt || grant.consumedAt)
+      throw new AuxError("permission_denied", "Approve a standing Space grant for this exact MCP tool first.");
+  });
+  const hookExecutor: HookExecutor = async (handler, context, signal) => {
+    if (signal.aborted) throw new AuxError("permission_denied", "Hook was revoked.");
+    if (handler.type === "command") {
+      const workdir = authorizeHookCommand(handler.workdir, context.workspaceId);
+      const seatbelt = new BashSeatbelt({ writableRoots: () => [config.artifactsDir, workdir],
+        readableRoots: () => [workdir], scratchDir: hookScratch,
+        extraDenyRead: () => [config.dataDir, "/private/var/db/dslocal", "/private/var/db/shadow", "/private/etc/sudoers"] });
+      const result = await seatbelt.run({ command: handler.command, workdir, signal },
+        { runId: context.runId ?? `hook:${context.eventId}`, threadId: context.runId ?? context.eventId,
+          turnId: context.eventId });
+      if ("park" in result || result.timedOut || result.exitCode !== 0 || signal.aborted)
+        throw new AuxError("step_failed", "Command Hook did not complete successfully.");
+      return;
+    }
+    if (handler.type !== "mcp_tool") throw new AuxError("capability_unsupported", "Hook handler is unavailable.");
+    const result = await outboundMcp.callTool(handler.grantId, handler.arguments ?? {},
+      { workspaceId: context.workspaceId }, signal);
+    if (signal.aborted || result.status !== "completed" || result.isError)
+      throw new AuxError("step_failed", "MCP hook tool did not complete successfully.");
+  };
+  const stopRunEndHooks = installRunEndHooks(events, hooks, hookExecutor);
   const calendar = new CalendarConnectionService({
     repo,
     native,
@@ -746,6 +827,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return "allow";
   };
   const agentLoop: AgentLoopHostDeps = {
+    workspaceContext: workspaceId => workspaceFolders.context(workspaceId),
     webFetch: async (url, ctx) => {
       const gated = await loopEgressGate(ctx, url, "agent.web.fetch");
       if ("park" in gated) return { park: gated.park };
@@ -794,6 +876,30 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       events.emit(EventTypes.RunNotice, { text }, ctx.runId);
     },
     repl: {
+      bookmark: async (pageId, ctx) => {
+        const page = pages.get(pageId);
+        const url = permittedWebUrl(page.url);
+        const run = repo.getRun(ctx.runId);
+        const decision = await decide(EffectRequestSchema.parse({
+          profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+          scope: run?.config?.taskId ? { kind: "task", id: run.config.taskId }
+            : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
+          actor: "code_mode", effect: "write", category: "interact", action: "agent.bookmark.add",
+          origin: url.origin, dataClasses: ["none"], provenance: "page",
+          invocationDigest: createHash("sha256").update(JSON.stringify([pageId, url.href, page.title])).digest("hex"),
+          turnId: ctx.runId, threadId: ctx.threadId, runId: ctx.runId, requestedAt: Date.now(),
+        }), decideDeps, { phase: "dispatch" });
+        if (decision.status === "deny")
+          throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
+        if (decision.status === "ask") {
+          suspensions.park({ runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.runId,
+            kind: decision.suspension.kind, request: decision.suspension });
+          return { park: { kind: decision.suspension.kind, instruction: decision.suspension.instruction,
+            ...(decision.suspension.approvalId ? { approvalId: decision.suspension.approvalId } : {}) } };
+        }
+        return { output: await new BrowserBookmarkLedger(repo, native).save(ctx.runId, pageId,
+          url.href, page.title || url.hostname) };
+      },
       // Opening a tab navigates somewhere new — same egress decision as a fetch.
       openTab: async (url, ctx) => {
         const gated = await loopEgressGate(ctx, url, "agent.tab.open");
@@ -852,7 +958,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         }
         return outcome;
       },
-      fsRoots: () => [config.artifactsDir, config.downloadsDir, config.previewsDir],
+      fsRoots: (runId, access) => [config.artifactsDir, config.downloadsDir, config.previewsDir,
+        ...folderRootsForRun(runId, access)],
       outputDir: config.artifactsDir,
     },
   };
@@ -882,6 +989,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     budgets,
     agentLoop,
   });
+  const goals = new GoalService(repo, runs);
+  const commandEscalations = new CommandEscalationService(repo);
+  agentLoop.goalUpdate = async (input, ctx) => goals.report(ctx.runId, input.status, input.blocker, ctx.goalTurn);
 
   // Subagent cells (06-Y): the service is shared with the RPC invoker; the
   // REPL spawns cells under a lazily created group per parent run.
@@ -933,7 +1043,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const bashScratch = join(config.artifactsDir, "bash-tmp");
   mkdirSync(bashScratch, { recursive: true });
   const bashSeatbelt = new BashSeatbelt({
-    writableRoots: () => [config.artifactsDir, config.downloadsDir, config.previewsDir],
+    writableRoots: ctx => [config.artifactsDir, config.downloadsDir, config.previewsDir,
+      ...folderRootsForRun(ctx?.runId, "write")],
+    readableRoots: ctx => folderRootsForRun(ctx?.runId, "read"),
     scratchDir: bashScratch,
     // Reads stay broad for tool usability, minus the runtime data dir (API
     // token, cookies, history DBs) and OS credential stores; /Users is denied
@@ -951,6 +1063,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         recipient: "process:network",
         digestParts: ["agent.bash.network", command],
       }),
+    escalationGate: async (input, ctx) => {
+      const run = repo.getRun(ctx.runId);
+      if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
+      return commandEscalations.authorize({ ...input, runId: ctx.runId,
+        workspaceId: run.config?.contextWorkspaceId ?? "default" });
+    },
   });
   agentLoop.bash = async (input, ctx) => {
     const result = await bashSeatbelt.run(input, ctx);
@@ -1057,20 +1175,38 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const cookies = new CookieService({ drivers: () => drivers, native });
   agentConnections = new AgentConnectionService(repo);
   const externalSessions = new ExternalSessionService(repo, events);
+  channel?.onMethod("agent.connections", () => agentConnections!.list());
+  channel?.onMethod("agent.clients", () => nativeAgentClients());
+  channel?.onMethod("agent.config", (params) => nativeAgentConfig(agentConnections!, params, config.dataDir));
+  channel?.onMethod("agent.revoke", (params) => {
+    const connectionId = (params as { connectionId?: unknown })?.connectionId;
+    if (typeof connectionId !== "string") throw new Error("Invalid connection identity");
+    const revoked = agentConnections!.revoke(connectionId);
+    externalSessions.end(connectionId, "cancelled", "Connection revoked");
+    return revoked;
+  });
 
   const invoke = makeInvoker({
     featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : "electron",
     featureProfileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
     featureStages,
     native,
+    downloadsDir: config.downloadsDir,
     zap,
     contentMemory,
     memoryPipeline,
-    mcpTransportProvider: createMcpTransportProvider(native),
+    mcpTransportProvider,
+    outboundMcp,
+    hooks,
+    hookExecutor,
+    workspaceFolders,
+    mcpOAuth,
     checkpointDeletedData: () => privacyCheckpoint.request(),
     pages,
     sets,
     runs,
+    goals,
+    commandEscalations,
     artifacts,
     settings,
     events,
@@ -1110,6 +1246,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   channel?.onMethod("routines.ingestEvent", (params) =>
     invoke("routines.ingestEvent", params, { external: false }),
   );
+  const pageChangeWatches = new RoutineService(repo, events);
+  channel?.onMethod("routines.pageChangeTarget", (params) => {
+    const { pageId, url } = RoutinePageChangeTargetParamsSchema.parse(params);
+    return pageChangeWatches.pageChangeTarget(pageId, url);
+  });
 
   // ---- channel surface for the shell ----
   // The loopback port has been bound since bootstrap began; flipping the
@@ -1126,9 +1267,23 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     }
   };
   sweepExternalSessions();
+  const calendarAutomationAvailable = !featureStages || (await featureStages).connectors === "on";
+  const calendarScanAbort = new AbortController();
+  let calendarScan: Promise<void> | undefined;
+  const scanCalendar = () => {
+    if (!calendarAutomationAvailable || calendarScan || calendarScanAbort.signal.aborted || !calendar.list().available) return;
+    const watches = pageChangeWatches.calendarWatches();
+    if (!watches.length) return;
+    calendarScan = pollCalendarRoutines(watches, calendar, (event) =>
+      invoke("routines.ingestEvent", event, { external: false }), Date.now(), calendarScanAbort.signal)
+      .catch((error) => { if (!calendarScanAbort.signal.aborted) console.error("Calendar automation scan failed", error); })
+      .finally(() => { calendarScan = undefined; });
+  };
+  void scanCalendar();
   const dueTimer = setInterval(() => {
     sweepExternalSessions();
     void invoke("routines.due", {}, { external: false }).catch(() => undefined);
+    void scanCalendar();
   }, 60_000);
   dueTimer.unref?.();
   // forward the event stream so the shell renderer can subscribe over IPC
@@ -1153,7 +1308,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       case "view.navigationError":
         return pages.onNativeNavigationError(
           str(pl.pageId)!,
-          pl.error as { url: string; code: number; message: string } | null,
+          pl.error as { url: string; code: number; message: string; upgradedFrom?: string } | null,
         );
       case "view.crashed":
         return pages.onNativeCrashed(str(pl.pageId)!);
@@ -1239,8 +1394,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   memoryExpiry.unref();
   contentExpiry.unref();
   const shutdown = async () => {
+    clearTimeout(observationMaintenanceTimer);
     clearInterval(memoryExpiry);
     clearInterval(contentExpiry);
+    calendarScanAbort.abort();
+    await calendarScan;
     contentMemory?.close();
     clearInterval(dueTimer);
     if (closed) return;
@@ -1256,9 +1414,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await drivers.chrome?.disconnect().catch(() => {});
     await nativeCdp?.close();
     await calendar.close();
+    mcpOAuth.close();
+    stopRunEndHooks();
     hostSocket?.close();
     tracer.close();
     await privacyCheckpoint.close();
+    await observationMaintenance?.catch(() => {});
     repo.close();
   };
   process.on("SIGTERM", () => void shutdown().then(() => process.exit(0)));

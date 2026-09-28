@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { bridge, type MigrationProgress, type MigrationReview } from "../bridge";
 import { applyReviewedMigration } from "../migration-import";
-import { NativeDialog } from "./NativeDialog";
+import { Dialog } from "../ui";
 import { adoptImportedOrganization } from "../store/persistence";
 import { useStore } from "../store";
 
@@ -76,7 +76,7 @@ export function MigrationImport() {
       )}
       {message && <output className="hint">{message}</output>}
       {review && (
-        <NativeDialog
+        <Dialog
           label="Review Chromium migration"
           onClose={() => {
             if (!busy) setReview(null);
@@ -153,7 +153,7 @@ export function MigrationImport() {
               Close
             </button>
           </div>
-        </NativeDialog>
+        </Dialog>
       )}
     </>
   );

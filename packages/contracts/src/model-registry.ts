@@ -48,7 +48,7 @@ export type AgentModelRoute = z.infer<typeof AgentModelRouteSchema>;
  */
 export const AgentModelRouteChainSchema = z.union([AgentModelRouteSchema, z.array(AgentModelRouteSchema).min(1).max(8)]);
 export type AgentModelRouteChain = z.infer<typeof AgentModelRouteChainSchema>;
-export const AgentModelRoutesSettingSchema = z.record(AgentModelCategorySchema, AgentModelRouteChainSchema);
+export const AgentModelRoutesSettingSchema = z.partialRecord(AgentModelCategorySchema, AgentModelRouteChainSchema);
 export function normalizeRouteChain(value: unknown): AgentModelRoute[] {
   const parsed = AgentModelRouteChainSchema.safeParse(value);
   if (!parsed.success) return [];

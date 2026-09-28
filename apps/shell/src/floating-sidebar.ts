@@ -161,7 +161,7 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
     const outside = (event: PointerEvent) => {
       if (
         !(event.target instanceof Element) ||
-        event.target.closest(".sidebar, .toolbar, .menu, .cb-pop, .sheet, .palette, dialog[open]")
+        event.target.closest(".sidebar, .toolbar, .menu, .cb-pop, .palette, dialog[open]")
       )
         return;
       state.edge = false;

@@ -42,7 +42,63 @@ export function taskReceiptMarkdown(receipt: TaskReceipt, includeSnapshots = fal
       lines.push("");
     }
   }
-  lines.push("## Unresolved actions", "");
+  lines.push("## Browser form changes", "");
+  if (!receipt.browserChanges.length) lines.push("No browser form changes recorded in this receipt.", "");
+  for (const change of receipt.browserChanges) {
+    lines.push(`- ${text(change.op)} — ${change.status === "ok" ? "completed" : "outcome uncertain"}${change.undoneAt ? `; undone ${time(change.undoneAt)}` : ""}; run ${text(change.runId)}; page ${text(change.pageId)}; task revision ${change.taskRevision}; ${time(change.startedAt)}`);
+    if (change.target) lines.push(`  Target: ${text(change.target)}`);
+    if (includeSnapshots) lines.push(`  Before: ${text(change.before?.checked !== undefined ? String(change.before.checked) : change.before?.selected ?? change.before?.value ?? "unavailable")}`);
+    else lines.push("  Before-state omitted from this export.");
+    if (includeSnapshots) lines.push(`  After: ${text(change.after?.checked !== undefined ? String(change.after.checked) : change.after?.selected ?? change.after?.value ?? "unavailable")}`);
+    else lines.push("  After-state omitted from this export.");
+  }
+  lines.push("", "## Agent tab changes", "");
+  if (!receipt.tabChanges.length) lines.push("No agent tab changes recorded in this receipt.", "");
+  for (const change of receipt.tabChanges) {
+    lines.push(`- ${change.op === "tab.open" ? "Opened" : "Closed"} tab — ${change.status === "ok" ? "completed" : "outcome uncertain"}${change.undoneAt ? `; undone ${time(change.undoneAt)}` : ""}; run ${text(change.runId)}; page ${text(change.pageId)}; ${time(change.startedAt)}`);
+    if (includeSnapshots && change.url) lines.push(`  URL: ${text(change.url)}`);
+    else lines.push("  URL omitted from this export.");
+  }
+  lines.push("", "## Agent bookmark changes", "");
+  if (!receipt.bookmarkChanges.length) lines.push("No agent bookmark changes recorded in this receipt.", "");
+  for (const change of receipt.bookmarkChanges) {
+    lines.push(`- Saved bookmark — ${change.status === "ok" ? "completed" : "outcome uncertain"}${change.undoneAt ? `; undone ${time(change.undoneAt)}` : ""}; run ${text(change.runId)}; page ${text(change.pageId)}; ${time(change.startedAt)}`);
+    if (includeSnapshots && change.url) lines.push(`  URL: ${text(change.url)}`);
+    else lines.push("  URL omitted from this export.");
+    if (includeSnapshots && change.title) lines.push(`  Title: ${text(change.title)}`);
+    else lines.push("  Title omitted from this export.");
+  }
+  lines.push("", "## Downloads during agent runs", "",
+    "These downloads occurred in run-controlled tabs. Moving an unchanged managed file to Trash is recoverable; an interrupted download needs review.", "");
+  if (!receipt.downloadChanges.length) lines.push("No run-controlled downloads recorded in this receipt.", "");
+  for (const change of receipt.downloadChanges) {
+    lines.push(`- Download — ${change.status}${change.undoneAt ? `; moved to Trash ${time(change.undoneAt)}` : change.cleanupAvailable ? "; cleanup available" : "; manual review"}; run ${text(change.runId)}; page ${text(change.pageId)}; ${time(change.startedAt)}`);
+    if (includeSnapshots && change.filename) lines.push(`  Filename: ${text(change.filename)}`);
+    else lines.push("  Filename omitted from this export.");
+    if (includeSnapshots && change.sourceUrl) lines.push(`  Source: ${text(change.sourceUrl)}`);
+    else lines.push("  Source omitted from this export.");
+    if (includeSnapshots && change.path) lines.push(`  Local path: ${text(change.path)}`);
+    else lines.push("  Local path omitted from this export.");
+  }
+  lines.push("", "## History visits during agent runs", "",
+    "An exact recorded history visit can be removed after review. Removal cannot be undone.", "");
+  if (!receipt.historyChanges.length) lines.push("No run-controlled history visits recorded in this receipt.", "");
+  for (const change of receipt.historyChanges) {
+    lines.push(`- History visit${change.undoneAt ? `; removed ${time(change.undoneAt)}` : ""}; run ${text(change.runId)}; page ${text(change.pageId)}; ${time(change.startedAt)}`);
+    if (includeSnapshots && change.url) lines.push(`  URL: ${text(change.url)}`);
+    else lines.push("  URL omitted from this export.");
+    if (includeSnapshots && change.title) lines.push(`  Title: ${text(change.title)}`);
+    else lines.push("  Title omitted from this export.");
+  }
+  lines.push("", "## Consequential page actions", "",
+    "Browser observations do not prove that a remote service committed a change. These actions cannot be reversed by browser undo.", "");
+  if (!receipt.remoteActions.length) lines.push("No consequential page actions recorded in this receipt.", "");
+  for (const action of receipt.remoteActions) {
+    lines.push(`- ${text(action.op)} — ${action.uncertain ? "outcome uncertain" : action.status === "ok" ? "browser step completed" : "step failed"}; ${action.remoteConfirmed ? "remote confirmation recorded" : "no remote confirmation"}; run ${text(action.runId)}; page ${text(action.pageId)}; ${time(action.startedAt)}`);
+    if (includeSnapshots && action.browserObserved) lines.push(`  Browser observed: ${text(action.browserObserved)}`);
+    else lines.push("  Browser observation omitted from this export.");
+  }
+  lines.push("", "## Unresolved actions", "");
   if (!receipt.unresolvedActions.length) lines.push("No unresolved actions recorded in this receipt.", "");
   for (const action of receipt.unresolvedActions) lines.push(`- ${text(action.intentId)} — ${action.status}; run ${text(action.runId)}; page ${text(action.pageId)}`);
   lines.push('', '## Unresolved operations', '');

@@ -6,6 +6,8 @@ import { splitRatio } from "@aux/contracts/split-layout";
  * Everything here is deterministic and unit-tested.
  */
 import type { BrowserSpace, PageTarget } from "@aux/contracts";
+import type { SpaceTheme } from "@aux/contracts/spaces";
+import type { CSSProperties } from "react";
 
 export type SpaceColor = "blue" | "violet" | "pink" | "orange" | "green" | "teal" | "slate";
 export const SPACE_COLORS: SpaceColor[] = ["blue", "violet", "pink", "orange", "green", "teal", "slate"];
@@ -15,7 +17,18 @@ export interface Space {
   name: string;
   color: SpaceColor;
   grain: number;
+  theme?: SpaceTheme;
   workspaceId?: string;
+}
+
+export function spaceThemeColor(theme: SpaceTheme): string {
+  const lightness = theme.inverted ? 100 - theme.lightness : theme.lightness;
+  const chroma = Math.round(theme.intensity * 0.0018 * 1000) / 1000;
+  return `oklch(${lightness}% ${chroma} ${theme.hue})`;
+}
+
+export function spaceThemeStyle(space?: Pick<Space, "theme"> | null): CSSProperties | undefined {
+  return space?.theme ? { "--space-color": spaceThemeColor(space.theme) } as CSSProperties : undefined;
 }
 
 export interface Pin {
@@ -33,6 +46,24 @@ export interface Folder {
   color?: SpaceColor;
   /** Single grapheme shown instead of the folder glyph. */
   emoji?: string;
+}
+
+/** Compact, Profile-persisted receipt for the latest AI Tidy folder mutation. */
+export interface TidyUndoRecord {
+  created: Folder[];
+  moved: { pageId: string; toFolderId: string; fromFolderId?: string }[];
+}
+
+export interface ArchivedTab {
+  archiveId: string;
+  pageId: string;
+  url: string;
+  title: string;
+  spaceId: string;
+  folderId?: string;
+  index: number;
+  archivedAt: number;
+  state: "pending" | "archived";
 }
 
 export interface Layout {
@@ -53,6 +84,8 @@ export interface Layout {
   folders: Folder[];
   /** pageId → folderId; missing means unfiled (shown below New Tab) */
   tabFolder: Record<string, string>;
+  tidyUndo?: TidyUndoRecord;
+  archivedTabs?: ArchivedTab[];
   /** Human tab labels, bound to an exact URL so navigation restores the page title. */
   tabNames?: Record<string, { title: string; url: string }>;
 }
@@ -63,13 +96,23 @@ export function spaceGrain(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : 0;
 }
 
+function parsedSpaceTheme(value: unknown): SpaceTheme | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const theme = value as Record<string, unknown>;
+  if (!Number.isInteger(theme.hue) || (theme.hue as number) < 0 || (theme.hue as number) > 359 ||
+      !Number.isInteger(theme.lightness) || (theme.lightness as number) < 20 || (theme.lightness as number) > 80 ||
+      !Number.isInteger(theme.intensity) || (theme.intensity as number) < 0 || (theme.intensity as number) > 100 ||
+      typeof theme.inverted !== "boolean") return undefined;
+  return { hue: theme.hue as number, lightness: theme.lightness as number, intensity: theme.intensity as number, inverted: theme.inverted };
+}
+
 export function tabLabel(layout: Layout, page: Pick<PageTarget, "pageId" | "url" | "title" | "showBlankDocument">): string {
   const saved = layout.tabNames?.[page.pageId];
   return saved?.url === page.url ? saved.title : isHomeAddress(page.url) && !page.showBlankDocument ? "New Tab" : page.title || hostOf(page.url);
 }
 
 export function emptyLayout(): Layout {
-  return { spaces: [DEFAULT_SPACE], archivedSpaces: [], splits: {}, splitRatio: .5, activeTabs: {}, activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {}, tabNames: {} };
+  return { spaces: [DEFAULT_SPACE], archivedSpaces: [], splits: {}, splitRatio: .5, activeTabs: {}, activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {}, archivedTabs: [], tabNames: {} };
 }
 
 let seq = 0;
@@ -194,22 +237,23 @@ export function assignSpace(layout: Layout, pageId: string, spaceId: string): La
   if (folder && folder.spaceId !== spaceId) {
     const tabFolder = { ...layout.tabFolder };
     delete tabFolder[pageId];
-    return { ...layout, tabSpace, tabFolder };
+    return { ...layout, tabSpace, tabFolder,
+      tidyUndo: layout.tidyUndo?.moved.some(item => item.pageId === pageId) ? undefined : layout.tidyUndo };
   }
   return { ...layout, tabSpace };
 }
 
-export function createSpace(layout: Layout, name: string, color?: SpaceColor, grain = 0): Layout {
+export function createSpace(layout: Layout, name: string, color?: SpaceColor, grain = 0, theme?: SpaceTheme | null): Layout {
   const used = new Set(layout.spaces.map((s) => s.color));
   const pick = color ?? SPACE_COLORS.find((c) => !used.has(c)) ?? SPACE_COLORS[layout.spaces.length % SPACE_COLORS.length]!;
-  const space: Space = { id: newSpaceId(), name: name.trim() || `Space ${layout.spaces.length + 1}`, color: pick, grain: spaceGrain(grain) };
+  const space: Space = { id: newSpaceId(), name: name.trim() || `Space ${layout.spaces.length + 1}`, color: pick, grain: spaceGrain(grain), ...(theme ? { theme } : {}) };
   return { ...layout, spaces: [...layout.spaces, space], activeSpaceId: space.id, pins: { ...layout.pins, [space.id]: [] } };
 }
 
-export function renameSpace(layout: Layout, spaceId: string, name: string, color?: SpaceColor, grain?: number): Layout {
+export function renameSpace(layout: Layout, spaceId: string, name: string, color?: SpaceColor, grain?: number, theme?: SpaceTheme | null): Layout {
   return {
     ...layout,
-    spaces: layout.spaces.map((s) => (s.id === spaceId ? { ...s, name: name.trim() || s.name, color: color ?? s.color, grain: grain === undefined ? s.grain : spaceGrain(grain) } : s)),
+    spaces: layout.spaces.map((s) => (s.id === spaceId ? { ...s, name: name.trim() || s.name, color: color ?? s.color, grain: grain === undefined ? s.grain : spaceGrain(grain), ...(theme === undefined ? {} : { theme: theme ?? undefined }) } : s)),
   };
 }
 
@@ -303,13 +347,14 @@ export function createFolder(layout: Layout, spaceId: string, name: string): Lay
 export function renameFolder(layout: Layout, folderId: string, name: string): Layout {
   const n = name.trim();
   if (!n) return layout;
-  return { ...layout, folders: layout.folders.map((f) => (f.id === folderId ? { ...f, name: n } : f)) };
+  return { ...layout, folders: layout.folders.map((f) => (f.id === folderId ? { ...f, name: n } : f)),
+    tidyUndo: layout.tidyUndo?.created.some(item => item.id === folderId && item.name !== n) ? undefined : layout.tidyUndo };
 }
 
 /** Partial folder update — name, accent colour and emoji glyph share one path. */
 export function updateFolder(layout: Layout, folderId: string, patch: { name?: string; color?: SpaceColor | null; emoji?: string | null }): Layout {
   if (!layout.folders.some((f) => f.id === folderId)) return layout;
-  return {
+  const updated = {
     ...layout,
     folders: layout.folders.map((f) => {
       if (f.id !== folderId) return f;
@@ -320,27 +365,35 @@ export function updateFolder(layout: Layout, folderId: string, patch: { name?: s
       return next;
     }),
   };
+  const original = layout.tidyUndo?.created.find(item => item.id === folderId);
+  const changed = updated.folders.find(item => item.id === folderId);
+  return { ...updated, tidyUndo: original && JSON.stringify(original) !== JSON.stringify(changed) ? undefined : layout.tidyUndo };
 }
 
 export function toggleFolder(layout: Layout, folderId: string): Layout {
-  return { ...layout, folders: layout.folders.map((f) => (f.id === folderId ? { ...f, collapsed: !f.collapsed } : f)) };
+  return { ...layout, folders: layout.folders.map((f) => (f.id === folderId ? { ...f, collapsed: !f.collapsed } : f)),
+    tidyUndo: layout.tidyUndo?.created.some(item => item.id === folderId) ? undefined : layout.tidyUndo };
 }
 
 export function removeFolder(layout: Layout, folderId: string): Layout {
   const tabFolder = { ...layout.tabFolder };
   for (const [pageId, fid] of Object.entries(tabFolder)) if (fid === folderId) delete tabFolder[pageId];
-  return { ...layout, folders: layout.folders.filter((f) => f.id !== folderId), tabFolder };
+  return { ...layout, folders: layout.folders.filter((f) => f.id !== folderId), tabFolder,
+    tidyUndo: layout.tidyUndo?.created.some(item => item.id === folderId) ||
+      layout.tidyUndo?.moved.some(item => item.fromFolderId === folderId) ? undefined : layout.tidyUndo };
 }
 
 export function assignFolder(layout: Layout, pageId: string, folderId: string | null): Layout {
   const tabFolder = { ...layout.tabFolder };
+  const tidyUndo = layout.tidyUndo?.moved.some(item => item.pageId === pageId && item.toFolderId !== folderId)
+    ? undefined : layout.tidyUndo;
   if (!folderId) {
     delete tabFolder[pageId];
-    return { ...layout, tabFolder };
+    return { ...layout, tabFolder, tidyUndo };
   }
   if (!layout.folders.some((f) => f.id === folderId)) return layout;
   tabFolder[pageId] = folderId;
-  return { ...layout, tabFolder };
+  return { ...layout, tabFolder, tidyUndo };
 }
 
 /** Reorder tabs that currently display as one group (a folder, or the unfiled list). */
@@ -378,12 +431,12 @@ export function parseLayout(raw: string | null): Layout {
     const v = JSON.parse(raw) as Partial<Layout>;
     if (!Array.isArray(v.spaces) || v.spaces.length === 0) return emptyLayout();
     const spaces = v.spaces.filter((s): s is Space => !!s && typeof s.id === "string" && typeof s.name === "string")
-      .map(space => ({ ...space, grain: spaceGrain(space.grain) }));
+      .map(space => ({ ...space, grain: spaceGrain(space.grain), theme: parsedSpaceTheme(space.theme) }));
     if (!spaces.length) return emptyLayout();
     const active = spaces.some((s) => s.id === v.activeSpaceId) ? v.activeSpaceId! : spaces[0]!.id;
     return {
       spaces,
-      archivedSpaces: Array.isArray(v.archivedSpaces) ? v.archivedSpaces.filter(space => space && typeof space.id === "string" && typeof space.name === "string").map(space => ({ ...space, grain: spaceGrain(space.grain) })) : [],
+      archivedSpaces: Array.isArray(v.archivedSpaces) ? v.archivedSpaces.filter(space => space && typeof space.id === "string" && typeof space.name === "string").map(space => ({ ...space, grain: spaceGrain(space.grain), theme: parsedSpaceTheme(space.theme) })) : [],
       activeSpaceId: active,
       splitRatio: splitRatio(v.splitRatio),
       activeTabs: v.activeTabs && typeof v.activeTabs === "object" ? Object.fromEntries(Object.entries(v.activeTabs).filter(([, pageId]) => typeof pageId === "string")) : {},
@@ -406,6 +459,11 @@ export function parseLayout(raw: string | null): Layout {
       tabFolder: v.tabFolder && typeof v.tabFolder === "object"
         ? Object.fromEntries(Object.entries(v.tabFolder).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
         : {},
+      archivedTabs: Array.isArray(v.archivedTabs) ? v.archivedTabs.filter((item): item is ArchivedTab =>
+        !!item && typeof item.archiveId === "string" && typeof item.pageId === "string" &&
+        typeof item.url === "string" && typeof item.title === "string" && typeof item.spaceId === "string" &&
+        typeof item.index === "number" && typeof item.archivedAt === "number" &&
+        (item.state === "pending" || item.state === "archived")) : [],
       tabNames: v.tabNames && typeof v.tabNames === "object"
         ? Object.fromEntries(Object.entries(v.tabNames).filter((entry): entry is [string, { title: string; url: string }] =>
           !!entry[1] && typeof entry[1].title === "string" && entry[1].title.trim().length >= 2
@@ -451,6 +509,18 @@ export function splitForPage(layout: Layout, pages: PageTarget[], pageId: string
   if (!companionId || companionId === pageId || layout.tabSpace[pageId] !== layout.tabSpace[companionId]) return null;
   const companion = pages.find(page => page.pageId === companionId);
   return companion && isTab(companion) ? companionId : null;
+}
+
+/** A split is one pair, whichever side the user selects next. Replacing or closing
+ * a pair clears both directions and any older pair involving either page. */
+export function withSplitPair(layout: Layout, primary: string, companion: string | null): Layout {
+  const splits = Object.fromEntries(Object.entries(layout.splits ?? {}).filter(([left, right]) =>
+    left !== primary && right !== primary && (!companion || (left !== companion && right !== companion))));
+  if (companion && companion !== primary) {
+    splits[primary] = companion;
+    splits[companion] = primary;
+  }
+  return { ...layout, splits };
 }
 
 /** Keep the last human selection per Space; stale closed IDs are ignored by the caller. */

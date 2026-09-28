@@ -1,0 +1,220 @@
+diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_browser/BUILD.gn
+--- a/chrome/browser/ui/webui_browser/BUILD.gn
++++ b/chrome/browser/ui/webui_browser/BUILD.gn
+@@ -167,9 +167,12 @@
+     ]
+     deps += [
+       ":shell_host_mojo_bindings",
++      "//chrome/browser/dom_distiller",
+       "//chrome/browser/extensions:extensions",
+       "//chrome/browser/ui/aux:runtime",
+       "//components/prefs",
++      "//components/dom_distiller/content/browser",
++      "//components/dom_distiller/core",
+       "//extensions/browser",
+       "//extensions/common",
+       "//chrome/browser/resources/aux_host:resources",
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -27,7 +27,7 @@
+       shell_handlers_.emplace(name, group);
+   };
+   register_shell(AuxShellMethodGroup::kContent,
+-                 {"preview", "siteZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
++                 {"preview", "readArticle", "siteZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
+                   "httpAuthRequests", "respondHttpAuth",
+                   "clearSitePermission", "clearSiteData", "setHttpsUpgrade"});
+   register_shell(AuxShellMethodGroup::kDictation,
+diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
+--- a/chrome/browser/ui/aux/methods/content_methods.cc
++++ b/chrome/browser/ui/aux/methods/content_methods.cc
+@@ -61,6 +61,14 @@
+ #include "chrome/browser/ui/aux/shell_events.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
++#include "chrome/browser/dom_distiller/dom_distiller_service_factory.h"
++#include "components/dom_distiller/content/browser/distiller_page_web_contents.h"
++#include "components/dom_distiller/content/browser/distiller_javascript_utils.h"
++#include "components/dom_distiller/core/dom_distiller_service.h"
++#include "components/dom_distiller/core/proto/distilled_article.pb.h"
++#include "components/dom_distiller/core/task_tracker.h"
++#include "components/dom_distiller/core/url_utils.h"
++#include "chrome/common/chrome_isolated_world_ids.h"
+ #include "components/guest_contents/browser/guest_contents_handle.h"
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/prefs/pref_service.h"
+@@ -123,6 +131,7 @@
+ #include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
+ #include "content/public/browser/storage_partition.h"
+ #include "components/content_settings/core/browser/host_content_settings_map.h"
+ #include "components/content_settings/core/common/content_settings.h"
+@@ -153,6 +162,65 @@
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ namespace {
+ 
++// Distillation owns a ViewerHandle only while the source document is current.
++// Its result crosses the WebUI boundary as a bounded HTML envelope; the shell
++// converts that envelope to its restricted ReaderNode tree before rendering.
++class ReaderRequest final : public dom_distiller::ViewRequestDelegate,
++                            public content::WebContentsObserver {
++ public:
++  using Reply = base::OnceCallback<void(const dom_distiller::DistilledArticleProto*)>;
++
++  ReaderRequest(content::WebContents* contents, Reply reply)
++      : content::WebContentsObserver(contents), reply_(std::move(reply)) {}
++  ~ReaderRequest() override { viewer_.reset(); }
++
++  void Start() {
++    if (!dom_distiller::DistillerJavaScriptWorldIdIsSet()) {
++      dom_distiller::SetDistillerJavaScriptWorldId(
++          ISOLATED_WORLD_ID_CHROME_INTERNAL);
++    }
++    auto* service = dom_distiller::DomDistillerServiceFactory::GetForBrowserContext(
++        web_contents()->GetBrowserContext());
++    if (!service) { Finish(nullptr); return; }
++    auto source = std::make_unique<dom_distiller::SourcePageHandleWebContents>(
++        web_contents(), false);
++    auto page = service->CreateDefaultDistillerPageWithHandle(std::move(source));
++    viewer_ = service->ViewUrlIgnoreCache(
++        this, std::move(page), web_contents()->GetLastCommittedURL());
++    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++        FROM_HERE, base::BindOnce(&ReaderRequest::Timeout,
++                                  weak_factory_.GetWeakPtr()), base::Seconds(15));
++  }
++
++  void OnArticleReady(const dom_distiller::DistilledArticleProto* article) override {
++    Finish(article);
++  }
++  void OnArticleUpdated(dom_distiller::ArticleDistillationUpdate) override {}
++  void OnDistillationFailed(dom_distiller::DistillationParseResult) override {
++    Finish(nullptr);
++  }
++  void PrimaryPageChanged(content::Page&) override { Finish(nullptr); }
++  void PrimaryMainFrameRenderProcessGone(base::TerminationStatus) override {
++    Finish(nullptr);
++  }
++  void WebContentsDestroyed() override { Finish(nullptr); }
++
++ private:
++  void Timeout() { Finish(nullptr); }
++  void Finish(const dom_distiller::DistilledArticleProto* article) {
++    if (finished_) return;
++    finished_ = true;
++    Observe(nullptr);
++    std::move(reply_).Run(article);
++    // Cancelling during a distiller callback can invalidate its observer list.
++    base::SequencedTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE, this);
++  }
++  Reply reply_;
++  std::unique_ptr<dom_distiller::ViewerHandle> viewer_;
++  bool finished_ = false;
++  base::WeakPtrFactory<ReaderRequest> weak_factory_{this};
++};
++
+ // A thumbnail can arrive after the shell asks for it. Keep the subscription
+ // alive for a bounded interval and detach it outside the image callback.
+ class PreviewRequest : public base::RefCounted<PreviewRequest> {
+@@ -282,6 +350,74 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "readArticle") {
++    if (args.size() != 1 || !args[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument", "Expected a page identity");
++      return;
++    }
++    const std::string page_id = args[0].GetString();
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    content::WebContents* contents = catalog ? catalog->FindPage(page_id, &owner) : nullptr;
++    if (!contents || owner != browser_ ||
++        !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||
++        !dom_distiller::url_utils::IsUrlDistillable(contents->GetLastCommittedURL())) {
++      std::move(callback).Run(false, "", "not_found", "No readable page is available");
++      return;
++    }
++    const auto* entry = contents->GetController().GetLastCommittedEntry();
++    if (!entry) {
++      std::move(callback).Run(false, "", "not_found", "The page has not loaded");
++      return;
++    }
++    const int navigation_id = entry->GetUniqueID();
++    const GURL url = contents->GetLastCommittedURL();
++    auto reply = base::BindOnce(
++        [](base::WeakPtr<WebUIBrowserUI> ui, std::string page_id,
++           int navigation_id, GURL url, RequestCallback callback,
++           const dom_distiller::DistilledArticleProto* article) {
++          if (!ui) return;
++          BrowserWindowInterface* current_owner = nullptr;
++          auto* catalog = aux::TabCatalog::GetForProfile(ui->browser()->GetProfile());
++          auto* page = catalog ? catalog->FindPage(page_id, &current_owner) : nullptr;
++          const auto* entry = page ? page->GetController().GetLastCommittedEntry() : nullptr;
++          if (!page || current_owner != ui->browser() || !entry ||
++              entry->GetUniqueID() != navigation_id || page->GetLastCommittedURL() != url) {
++            std::move(callback).Run(false, "", "stale_page", "The page changed while preparing Reader view");
++            return;
++          }
++          if (!article || article->pages_size() == 0 ||
++              article->pages(0).html().empty()) {
++            std::move(callback).Run(false, "", "unavailable", "Reader could not extract this article");
++            return;
++          }
++          std::string html;
++          for (const auto& distilled_page : article->pages()) {
++            if (html.size() + distilled_page.html().size() > 2 * 1024 * 1024) {
++              std::move(callback).Run(false, "", "too_large", "This article is too large for Reader view");
++              return;
++            }
++            html += distilled_page.html();
++          }
++          base::DictValue envelope;
++          envelope.Set("title", article->title().empty()
++                                    ? base::UTF16ToUTF8(page->GetTitle()) : article->title());
++          envelope.Set("byline", "");
++          envelope.Set("site", url.host());
++          envelope.Set("url", url.spec());
++          envelope.Set("minutes", 1);
++          base::DictValue content;
++          content.Set("tag", "__aux_distilled_html");
++          base::ListValue children;
++          children.Append(std::move(html));
++          content.Set("children", std::move(children));
++          envelope.Set("content", std::move(content));
++          std::move(callback).Run(true, *base::WriteJson(envelope), "", "");
++        }, weak_factory_.GetWeakPtr(), page_id, navigation_id, url,
++        std::move(callback));
++    (new ReaderRequest(contents, std::move(reply)))->Start();
++    return;
++  }
+   if (method == "preview") {
+     if (args.size() != 1 || !args[0].is_string()) {
+       std::move(callback).Run(false, "", "invalid_argument",
+diff --git a/chrome/browser/resources/aux_host/aux_feature_stages.ts b/chrome/browser/resources/aux_host/aux_feature_stages.ts
+--- a/chrome/browser/resources/aux_host/aux_feature_stages.ts
++++ b/chrome/browser/resources/aux_host/aux_feature_stages.ts
+@@ -541,7 +541,7 @@
+   }
+ } as const;
+ const runtimeMethods = ["agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","spaces.create","spaces.update","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.suggest","routines.get","routines.create","routines.fromResult","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.extractRun","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results","safety.grants.list","safety.grants.revoke"] as const;
+-const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83"};
++const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:reader":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83"};
+ export type FeatureStage = 'off' | 'preview' | 'on';
+ export function featureStagesFor(methods: readonly string[], sourceCommit: string): Record<keyof typeof requirements, FeatureStage> {
+   const implemented = new Set<string>([...methods, ...runtimeMethods]);
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -261,6 +261,9 @@
+   // Add required resources.
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   webui::SetupWebUIDataSource(source, kAuxResources, IDR_AUX_INDEX_HTML);
++  source->OverrideContentSecurityPolicy(
++      network::mojom::CSPDirectiveName::TrustedTypes,
++      "trusted-types aux-reader-distiller;");
+   source->AddResourcePaths(kAuxHostResources);
+ #else
+   webui::SetupWebUIDataSource(source, kWebuiBrowserResources,

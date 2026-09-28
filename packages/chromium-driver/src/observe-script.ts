@@ -219,46 +219,40 @@ export function collectObservation(args: ObserveScriptArgs): ObserveScriptResult
     return dup ? before + 1 : 0;
   }
 
-  /**
-   * Build a CSS path for an element. Segments joined by " >> " may cross open
-   * shadow roots — Playwright's css engine pierces them automatically.
-   */
+  /** Direct children keep repeated nested controls distinct; >> crosses an open shadow root. */
   function cssPath(el: any): string {
-    const segments: string[] = [];
+    let path = "";
+    let joinToChild = " > ";
     let node: any = el;
     for (let depth = 0; node && depth < 12; depth++) {
-      if (node.nodeType === 11 /* DocumentFragment (shadow root) */) {
-        node = node.host;
-        continue;
-      }
       if (node.nodeType !== 1) break;
       const tag = (node.tagName as string).toLowerCase();
       const id = node.getAttribute?.("id");
-      if (id && /^[A-Za-z][\w\-:.]*$/.test(id)) {
-        segments.unshift(`${tag}#${id}`);
+      const escapedId = id && (/^[A-Za-z][\w-]*$/.test(id) ? id : (globalThis as any).CSS?.escape?.(id));
+      if (escapedId) {
+        path = `${tag}#${escapedId}${path ? joinToChild + path : ""}`;
         // an id segment is usually enough of an anchor
         const root = node.getRootNode?.();
         if (root === node.ownerDocument) break;
         node = root?.host ?? null;
+        joinToChild = " >> ";
         continue;
       }
       const dataTest = node.getAttribute?.("data-testid") || node.getAttribute?.("data-test-id");
-      if (dataTest) {
-        segments.unshift(`[data-testid="${dataTest}"]`);
+      if (dataTest && /^[A-Za-z0-9_-]{1,128}$/.test(dataTest)) {
+        path = `[data-testid="${dataTest}"]${path ? joinToChild + path : ""}`;
         break;
       }
-      const parent: any = node.parentElement ?? node.getRootNode?.()?.host ?? null;
-      const idx = parent ? typeIndex(node, node.parentElement ?? node.parentNode) : 0;
-      segments.unshift(idx ? `${tag}:nth-of-type(${idx})` : tag);
+      const parent: any = node.parentElement;
+      const idx = node.parentNode ? typeIndex(node, node.parentNode) : 0;
+      const segment = idx ? `${tag}:nth-of-type(${idx})` : tag;
+      path = `${segment}${path ? joinToChild + path : ""}`;
       const root = node.getRootNode?.();
-      if (root && root !== node.ownerDocument && root.host) {
-        node = root.host;
-        continue; // cross a shadow boundary
-      }
-      node = parent && parent !== node.ownerDocument.documentElement.parentNode ? parent : null;
+      node = parent ?? (root && root !== node.ownerDocument ? root.host : null);
+      joinToChild = parent ? " > " : " >> ";
       if (node && node.tagName === "HTML") break;
     }
-    return segments.join(" >> ");
+    return path;
   }
 
   function xpathOf(el: any): string | undefined {

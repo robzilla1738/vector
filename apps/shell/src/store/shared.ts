@@ -67,6 +67,7 @@ export const pageFromTab = (tab: TabRecord): PageTarget => ({
   targetId: `atab-${tab.pageId}`,
   url: tab.url,
   title: tab.title,
+  themeColor: tab.themeColor,
   favicon: tab.favicon,
   documentEpoch: 0,
   lastRevision: 0,
@@ -99,6 +100,7 @@ export const mergedTab = (page: PageTarget, tab: TabRecord): PageTarget => ({
   // The runtime owns the error-page title ("Page couldn't load") — the catalog
   // only knows Electron's last live title, which is stale once a page errors.
   title: tab.navigationError ? page.title || tab.title : tab.title,
+  themeColor: tab.navigationError ? undefined : tab.themeColor,
   favicon: tab.favicon ?? page.favicon,
   loading: tab.loading,
   canGoBack: tab.canGoBack,
@@ -122,7 +124,8 @@ export function applyRemoval(st: Workspace, id: string, activeHint: string | nul
   const group = closingGroups.get(id);
   closingGroups.delete(id);
   const gone = st.pages.find(p => p.pageId === id);
-  const closedTabs = gone && isTab(gone) && gone.url && gone.url !== "about:blank" && !st.closedTabs.some(tab => tab.pageId === id)
+  const closedTabs = gone && isTab(gone) && !id.startsWith("p_peek_") && gone.url && gone.url !== "about:blank" &&
+    !st.layout.archivedTabs?.some(entry => entry.pageId === id) && !st.closedTabs.some(tab => tab.pageId === id)
     ? [...st.closedTabs, {
       pageId: gone.pageId, url: gone.url, title: gone.title,
       spaceId: st.layout.tabSpace[id] ?? st.layout.activeSpaceId,

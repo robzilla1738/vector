@@ -51,12 +51,40 @@ func focusedElement() -> FocusRecord? {
                      description: attribute(kAXDescriptionAttribute))
 }
 
+func shellUrl() -> String? {
+  var visited = 0
+  func visit(_ element: AXUIElement, depth: Int) -> String? {
+    visited += 1
+    if depth > 28 || visited > 4000 { return nil }
+    var role: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+    if (role as? String) == "AXWebArea" {
+      for key in [kAXURLAttribute, "AXDocument", kAXDescriptionAttribute, kAXValueAttribute] {
+        var value: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success {
+          let text = (value as? URL)?.absoluteString ?? (value as? NSURL)?.absoluteString ?? value as? String
+          if let text, let range = text.range(of: "chrome://aux/") {
+            return String(text[range.lowerBound...].split(separator: " ").first ?? "")
+          }
+        }
+      }
+    }
+    var children: CFTypeRef?
+    if AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
+      let children = children as? [AXUIElement] {
+      for child in children { if let url = visit(child, depth: depth + 1) { return url } }
+    }
+    return nil
+  }
+  return visit(AXUIElementCreateApplication(pid), depth: 0)
+}
+
 func hasButton(_ label: String) -> Bool {
   let application = AXUIElementCreateApplication(pid)
   var visited = 0
   func visit(_ element: AXUIElement, depth: Int) -> Bool {
     visited += 1
-    if depth > 18 || visited > 4000 { return false }
+    if depth > 28 || visited > 4000 { return false }
     var roleValue: CFTypeRef?
     var titleValue: CFTypeRef?
     var descriptionValue: CFTypeRef?
@@ -116,7 +144,7 @@ func hasName(_ needle: String) -> Bool {
   }
   func visit(_ element: AXUIElement, depth: Int) -> Bool {
     visited += 1
-    if depth > 18 || visited > 4000 { return false }
+    if depth > 24 || visited > 4000 { return false }
     var role: CFTypeRef?
     AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
     if (role as? String) == (kAXMenuBarRole as String) { return false }
@@ -130,12 +158,41 @@ func hasName(_ needle: String) -> Bool {
   return visit(AXUIElementCreateApplication(pid), depth: 0)
 }
 
+func controlValue(_ label: String) -> String? {
+  var visited = 0
+  func visit(_ element: AXUIElement, depth: Int) -> String? {
+    visited += 1
+    if depth > 24 || visited > 4000 { return nil }
+    var role: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+    if (role as? String) == (kAXMenuBarRole as String) { return nil }
+    for key in [kAXTitleAttribute, kAXDescriptionAttribute] {
+      var name: CFTypeRef?
+      if AXUIElementCopyAttributeValue(element, key as CFString, &name) == .success,
+        (name as? String) == label {
+        var value: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value) == .success {
+          if let string = value as? String { return string }
+          if let number = value as? NSNumber { return number.stringValue }
+        }
+      }
+    }
+    var children: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString,
+                                     &children) == .success,
+      let children = children as? [AXUIElement] else { return nil }
+    for child in children { if let found = visit(child, depth: depth + 1) { return found } }
+    return nil
+  }
+  return visit(AXUIElementCreateApplication(pid), depth: 0)
+}
+
 func namedElements() -> [String] {
   var names: [String] = []
   var visited = 0
   func visit(_ element: AXUIElement, depth: Int) {
     visited += 1
-    if depth > 18 || visited > 4000 || names.count >= 80 { return }
+    if depth > 28 || visited > 4000 || names.count >= 80 { return }
     var role: CFTypeRef?
     AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
     if (role as? String) == (kAXMenuBarRole as String) { return }
@@ -161,7 +218,7 @@ func hasStaticText(_ needle: String) -> Bool {
   var visited = 0
   func visit(_ element: AXUIElement, depth: Int) -> Bool {
     visited += 1
-    if depth > 18 || visited > 4000 { return false }
+    if depth > 28 || visited > 4000 { return false }
     var role: CFTypeRef?
     AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
     if (role as? String) == (kAXStaticTextRole as String) {
@@ -202,7 +259,7 @@ func axSize(_ element: AXUIElement) -> CGSize? {
 func findButton(_ label: String) -> AXUIElement? {
   let application = AXUIElementCreateApplication(pid)
   func visit(_ element: AXUIElement, depth: Int) -> AXUIElement? {
-    if depth > 18 { return nil }
+    if depth > 28 { return nil }
     var roleValue: CFTypeRef?
     var titleValue: CFTypeRef?
     var descriptionValue: CFTypeRef?
@@ -328,6 +385,12 @@ if action == "press-button" {
 } else if action == "has-button" {
   guard CommandLine.arguments.count == 4 else { fail("Use has-button PID label.") }
   print(hasButton(CommandLine.arguments[3]) ? "true" : "false")
+} else if action == "button-enabled" {
+  guard CommandLine.arguments.count == 4 else { fail("Use button-enabled PID label.") }
+  var enabled: CFTypeRef?
+  let button = findButton(CommandLine.arguments[3])
+  print(button != nil && AXUIElementCopyAttributeValue(button!, kAXEnabledAttribute as CFString, &enabled) == .success &&
+    (enabled as? Bool) == true ? "true" : "false")
 } else if action == "buttons" {
   let data = try! JSONEncoder().encode(buttonLabels())
   print(String(data: data, encoding: .utf8)!)
@@ -337,6 +400,9 @@ if action == "press-button" {
 } else if action == "has-name" {
   guard CommandLine.arguments.count == 4 else { fail("Use has-name PID phrase.") }
   print(hasName(CommandLine.arguments[3]) ? "true" : "false")
+} else if action == "control-value" {
+  guard CommandLine.arguments.count == 4 else { fail("Use control-value PID label.") }
+  print(controlValue(CommandLine.arguments[3]) ?? "")
 } else if action == "names" {
   let data = try! JSONEncoder().encode(namedElements())
   print(String(data: data, encoding: .utf8)!)
@@ -344,6 +410,9 @@ if action == "press-button" {
   guard let focus = focusedElement(), let data = try? JSONEncoder().encode(focus),
     let text = String(data: data, encoding: .utf8) else { fail("Cannot read focused Aux element.") }
   print(text)
+} else if action == "shell-url" {
+  guard let url = shellUrl() else { fail("Cannot read top Aux shell URL.") }
+  print(url)
 } else if action == "window" {
   let windows = CGWindowListCopyWindowInfo(
     [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
@@ -396,8 +465,8 @@ func staticTexts() -> [String] {
 if action == "texts" {
   let data = try! JSONEncoder().encode(staticTexts())
   print(String(data: data, encoding: .utf8)!)
-} else if action == "press-button" || action == "click-button" || action == "click-at" || action == "has-button" || action == "buttons" ||
-  action == "has-text" || action == "has-name" || action == "names" || action == "focused" || action == "window" {
+} else if action == "press-button" || action == "click-button" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "buttons" ||
+  action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "escape" ||
   action == "type-return" || action == "move" {
@@ -430,6 +499,9 @@ if action == "texts" {
       let event = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
                           mouseCursorPosition: CGPoint(x: x, y: y), mouseButton: .left) else {
       fail("Use move PID x y.")
+    }
+    guard CGWarpMouseCursorPosition(CGPoint(x: x, y: y)) == .success else {
+      fail("Cannot move the cursor to the requested point.")
     }
     event.post(tap: .cghidEventTap)
   }

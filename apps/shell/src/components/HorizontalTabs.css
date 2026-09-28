@@ -1,0 +1,10 @@
+
+@layer components {
+.horizontal-group { flex: none; align-self: flex-end; margin: 0 var(--space-1-5) var(--space-optical); max-width: 148px; -webkit-app-region: no-drag; }
+.horizontal-group-chip { display: flex; align-items: center; gap: var(--space-1-5); height: 20px; max-width: 148px; padding: var(--space-0) var(--space-1-5); border-radius: var(--r-group); background: var(--bg-active); color: var(--ink-1); font-size: var(--fs-xs); font-weight: var(--fw-medium); }
+.horizontal-group-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.horizontal-group[data-space] .horizontal-group-chip { box-shadow: inset 0 -2px var(--space-color); }
+.horizontal-group-chip small { opacity: .65; font: inherit; }
+.horizontal-group-chip[aria-expanded="false"] { background: var(--bg-hover); }
+.horizontal-group input { width: 130px; height: 24px; padding: var(--space-0) var(--space-1-5); border-radius: var(--r-group); background: var(--surface-input); }
+}

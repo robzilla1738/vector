@@ -2,24 +2,25 @@ import { useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { errToast, useStore } from "../store";
 import { tabsInSpace, type Pin } from "../workspace";
-import { detailsMenuKey } from "../keyboard-list";
 import { FavIcon } from "./SiteTile";
 import { PinMenu } from "./PinMenu";
+import { Menu } from "../ui/dialog";
 
 export function HorizontalPins({ pins, spaceId, activePageId }: { pins: Pin[]; spaceId: string; activePageId: string | null }) {
   const tabs = useStore(useShallow(state => tabsInSpace(state.layout, state.pages, spaceId).filter(page => pins.some(pin => pin.url === page.url))));
   const dragging = useRef<string | null>(null);
-  const overflow = useRef<HTMLDetailsElement>(null);
+  const overflow = useRef<HTMLButtonElement>(null);
+  const [overflowOpen, setOverflowOpen] = useState(false);
   const [menu, setMenu] = useState<{ pin: Pin; x: number; y: number } | null>(null);
   if (!pins.length) return null;
   const openPin = (pin: Pin, background = false) => {
-    if (overflow.current) overflow.current.open = false;
+    setOverflowOpen(false);
     const state = useStore.getState();
     const open = tabs.find(page => page.url === pin.url);
     void (background ? state.openBackgroundTab(pin.url, spaceId, false) : open ? state.activate(open.pageId) : state.newTab(pin.url)).catch(errToast);
   };
   const contextMenu = (pin: Pin, x: number, y: number) => {
-    if (overflow.current) overflow.current.open = false;
+    setOverflowOpen(false);
     setMenu({ pin, x, y });
   };
   return <>
@@ -37,12 +38,12 @@ export function HorizontalPins({ pins, spaceId, activePageId }: { pins: Pin[]; s
           <FavIcon url={pin.url} src={open?.favicon} size="sm" />
         </button>;
       })}
-      {pins.length > 5 && <details ref={overflow} className="horizontal-pin-overflow" onKeyDown={detailsMenuKey} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) event.currentTarget.open = false; }}>
-        <summary aria-label={`${pins.length - 5} more pinned sites`}>+{pins.length - 5}</summary>
-        <div className="menu" role="menu" aria-label="More pinned sites">
+      {pins.length > 5 && <div className="horizontal-pin-overflow">
+        <button ref={overflow} type="button" aria-label={`${pins.length - 5} more pinned sites`} aria-haspopup="menu" aria-expanded={overflowOpen} onClick={() => setOverflowOpen(value => !value)}>+{pins.length - 5}</button>
+        {overflowOpen && <Menu className="menu horizontal-pin-overflow-menu" label="More pinned sites" anchor={overflow} returnFocus={overflow} onClose={() => setOverflowOpen(false)}>
           {pins.slice(5).map(pin => <button key={pin.url} className="menu-item" role="menuitem" onClick={event => openPin(pin, event.metaKey || event.ctrlKey)} onContextMenu={event => { event.preventDefault(); contextMenu(pin, event.clientX, event.clientY); }}><FavIcon url={pin.url} src={tabs.find(page => page.url === pin.url)?.favicon} size="sm" /><span className="t">{pin.title}</span></button>)}
-        </div>
-      </details>}
+        </Menu>}
+      </div>}
     </div>
     {menu && <PinMenu {...menu} spaceId={spaceId} onClose={() => setMenu(null)} />}
   </>;

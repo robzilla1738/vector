@@ -71,7 +71,7 @@ export interface LoopToolDeps {
   webSearch?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<LoopToolResult>;
   /** The code-mode REPL: eval guest code against the persistent per-run session. */
   repl?: (input: { code: string; deadlineMs?: number }, ctx: LoopToolContext) => Promise<LoopToolResult>;
-  /** Auto-recall (06-Z): query content memory for the task — hits land as one durable system message. */
+  /** Auto-recall (06-Z): query content memory for the task — hits land as one durable user message. */
   recall?: (query: string, ctx: { runId: string; threadId: string; turnId: string }) => Promise<{ title: string; url: string; text: string }[]>;
   /** Session/workspace file roots — fs tools stay inside them (S4 upload roots). */
   fsRoots?: () => string[];
@@ -80,7 +80,8 @@ export interface LoopToolDeps {
   fileWrite?: (path: string, content: string) => Promise<void>;
   /** `bash` under the seatbelt — network off by default; `{park}` propagates a gate ask. */
   bash?: (
-    input: { command: string; timeoutMs?: number; workdir?: string; network?: boolean },
+    input: { command: string; timeoutMs?: number; workdir?: string; network?: boolean;
+      requireEscalated?: boolean; justification?: string; prefixRule?: string },
     ctx: { runId: string; threadId: string; turnId: string },
   ) => Promise<LoopToolResult>;
   /** Browser-history search (06-X history_search). */
@@ -106,6 +107,8 @@ export interface LoopToolDeps {
   notify?: (input: { text: string }, ctx: { runId: string; threadId: string; turnId: string }) => Promise<void>;
   /** Persisted todo scratchpad (write_todos). */
   writeTodos?: (todos: string[]) => Promise<void> | void;
+  /** Report the current Goal's limited model-owned status. */
+  goalUpdate?: (input: { status: "paused" | "blocked"; blocker?: string }, ctx: LoopToolContext) => Promise<{ status: string; remaining?: number }>;
   /**
    * Verification v2 — `submit_result` verify-and-finish. The host checks
    * every citation's quote against the cited snapshot's rendered text and
@@ -127,6 +130,8 @@ export interface LoopToolContext {
   turnId: string;
   /** Number of tool calls in this step — `requiresSoloCall` tools need 1. */
   callCount: number;
+  /** Durable assistant-turn ordinal within this run, including turns without tool calls. */
+  goalTurn: number;
   deps: LoopToolDeps;
   signal?: AbortSignal;
 }

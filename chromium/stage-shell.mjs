@@ -33,12 +33,12 @@ function manifestFor(root) {
   if (!html.includes('Content-Security-Policy') || !html.includes('object-src &#39;self&#39;')) {
     throw new Error('Chromium shell CSP must allow only self for SurfaceEmbed objects');
   }
-  if (!html.includes('<script type="module" src="./aux_host_bootstrap.js"></script>')) {
+  if (!html.includes('<script type="module" src="/aux_host_bootstrap.js"></script>')) {
     throw new Error('Chromium shell must load its packaged Mojo host bootstrap');
   }
   const csp = html.indexOf('Content-Security-Policy');
-  const bootstrap = html.indexOf('<script type="module" src="./aux_host_bootstrap.js"></script>');
-  const entry = html.search(/<script type="module"[^>]+src="\.\/assets\/index-[^\"]+\.js"/);
+  const bootstrap = html.indexOf('<script type="module" src="/aux_host_bootstrap.js"></script>');
+  const entry = html.search(/<script type="module"[^>]+src="\/assets\/index-[^\"]+\.js"/);
   if (entry < 0 || !(csp < bootstrap && bootstrap < entry)) {
     throw new Error('Chromium shell must load its CSP and Mojo bootstrap before the app entry');
   }

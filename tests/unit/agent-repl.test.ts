@@ -85,6 +85,15 @@ describe("code-mode REPL", () => {
     expect(step).toHaveBeenCalledWith("p2", expect.objectContaining({ op: "hover", target: "r9" }));
   });
 
+  it("routes page.bookmark through the governed host for the current tab", async () => {
+    const bookmark = vi.fn(async () => ({ output: { saved: true, stepId: "bookmark-step" } }));
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const result = out(await pool.eval(deps({ bookmark }), `page.bookmark()`, { pageId: "p1" }));
+    expect(bookmark).toHaveBeenCalledWith("p1");
+    expect(result.value).toMatchObject({ saved: true, stepId: "bookmark-step" });
+  });
+
   it("denies modules, eval, process and host internals", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

@@ -32,11 +32,13 @@ export function RoutineSchedule({
   disabled,
   calendar,
   onSave,
+  mode = "edit",
 }: {
   trigger: RoutineTrigger;
   disabled: boolean;
   calendar?: CalendarTriggerAccounts;
   onSave: (trigger: RoutineTrigger) => void;
+  mode?: "edit" | "create";
 }) {
   const [kind, setKind] = useState<RoutineTrigger["kind"]>(trigger.kind);
   const [time, setTime] = useState(
@@ -49,6 +51,7 @@ export function RoutineSchedule({
   const [site, setSite] = useState(
     trigger.kind === "site_notification" ? trigger.origin : trigger.kind === "page_change" ? trigger.url : "",
   );
+  const [siteError, setSiteError] = useState("");
   const [minimumInterval, setMinimumInterval] = useState(
     trigger.kind === "page_change" ? trigger.minimumIntervalMinutes : 5,
   );
@@ -105,8 +108,13 @@ export function RoutineSchedule({
         try {
           const parsed = new URL(site);
           if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) return;
-          if (kind === "site_notification") onSave({ kind, origin: parsed.origin });
-          else onSave({ kind, url: parsed.href, minimumIntervalMinutes: minimumInterval });
+          if (kind === "site_notification") {
+            if (site !== parsed.origin) {
+              setSiteError("Enter the exact site origin without a path, query, or fragment.");
+              return;
+            }
+            onSave({ kind, origin: parsed.origin });
+          } else onSave({ kind, url: parsed.href, minimumIntervalMinutes: minimumInterval });
         } catch {
           /* The URL input remains invalid. */
         }
@@ -117,7 +125,7 @@ export function RoutineSchedule({
         <label>
           Trigger
           <select value={kind} onChange={(event) => setKind(event.target.value as RoutineTrigger["kind"])}>
-            <option value="manual">On demand</option>
+            {mode === "edit" && <option value="manual">On demand</option>}
             <option value="schedule">Scheduled time</option>
             <option value="monitor">Recurring monitor</option>
             <option value="site_notification">Site notification</option>
@@ -179,10 +187,18 @@ export function RoutineSchedule({
                 type="url"
                 required
                 value={site}
-                onChange={(event) => setSite(event.target.value)}
+                onChange={(event) => {
+                  setSite(event.target.value);
+                  setSiteError("");
+                }}
                 placeholder="https://example.com"
               />
             </label>
+            {siteError && (
+              <output className="field-error" data-block>
+                {siteError}
+              </output>
+            )}
             {kind === "page_change" && (
               <label>
                 Minimum minutes between runs
@@ -238,6 +254,10 @@ export function RoutineSchedule({
                 Choose at least one day.
               </output>
             )}
+            <p className="hint">
+              On clock-change days, a missing local time is skipped. A repeated local time runs once at its
+              first occurrence.
+            </p>
           </>
         )}
         {kind === "monitor" && (
@@ -255,13 +275,18 @@ export function RoutineSchedule({
           </label>
         )}
         {(kind === "schedule" || kind === "monitor") && (
-          <p className="hint">{timezone} · Existing review requirements remain unchanged.</p>
+          <p className="hint">
+            {timezone} ·{" "}
+            {mode === "create"
+              ? "Saved task review criteria carry into this Skill."
+              : "Existing review requirements remain unchanged."}
+          </p>
         )}
         <output className="routine-schedule-summary" data-block>
           {summary}
         </output>
         <button className="btn" type="submit" disabled={!!saveDisabled}>
-          Save trigger
+          {mode === "create" ? "Create paused Skill" : "Save trigger"}
         </button>
       </fieldset>
     </form>

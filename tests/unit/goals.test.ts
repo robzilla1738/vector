@@ -16,7 +16,7 @@ function fixture() {
   const runs = {
     start: async (opts: Record<string, unknown>) => {
       started = opts;
-      const run: Run = { runId: "goal-run", goal: String(opts.goal), pageIds: opts.pageIds as string[],
+      const run: Run = { runId: String(opts.deliveryRunId), goal: String(opts.goal), pageIds: opts.pageIds as string[],
         status: "running", createdAt: Date.now() };
       repo.saveRun(run);
       return run;
@@ -35,11 +35,11 @@ it("runs a durable goal with the coordinator's token, cost and wall-time limits"
   expect(goal.status).toBe("draft");
   await expect(f.goals.start(goal.goalId, [])).rejects.toThrow(/one to eight/);
   const active = await f.goals.start(goal.goalId, ["p1"]);
-  expect(active).toMatchObject({ status: "active", runId: "goal-run" });
-  expect(f.started()).toMatchObject({ goal: "Compare sources", pageIds: ["p1"],
+  expect(active).toMatchObject({ status: "active", runId: expect.stringMatching(/^run_/) });
+  expect(f.started()).toMatchObject({ goal: "Compare sources", pageIds: ["p1"], engine: "agent-loop",
     defaultWorkspaceId: f.workspace.workspaceId, maxTokens: 10_000, maxCostUsd: 2, deadlineMs: 120_000 });
   await expect(f.goals.start(goal.goalId, ["p1"])).rejects.toThrow(/already started/);
-  f.repo.saveModelCall({ callId: "call-1", runId: "goal-run", role: "planner", modelId: "fixture",
+  f.repo.saveModelCall({ callId: "call-1", runId: active.runId!, role: "planner", modelId: "fixture",
     durationMs: 1, inputTokens: 100, outputTokens: 50, costUsd: 0.3, createdAt: Date.now() });
   expect(f.goals.get(goal.goalId)).toMatchObject({ usedTokens: 150, knownCostUsd: 0.3, costComplete: true });
   expect(f.goals.pause(goal.goalId).status).toBe("paused");
@@ -57,5 +57,59 @@ it("does not retry a goal whose run linkage was interrupted", async () => {
   expect(recovered.get(goal.goalId).status).toBe("needs_input");
   await expect(f.goals.start(goal.goalId, ["p1"])).rejects.toThrow(/needs review/);
   expect(recovered.cancel(goal.goalId).status).toBe("cancelled");
+  f.db.close();
+});
+
+it("reserves the Goal run identity before the coordinator can launch a model turn", async () => {
+  const f = fixture();
+  const goal = f.goals.create({ workspaceId: f.workspace.workspaceId, objective: "Check",
+    budget: { maxTokens: 100 } });
+  const originalStart = f.runs.start;
+  f.runs.start = async (opts) => {
+    const reserved = f.repo.db.prepare("SELECT run_id,status FROM goals WHERE goal_id=?")
+      .get(goal.goalId) as { run_id: string; status: string };
+    expect(reserved).toMatchObject({ run_id: opts.deliveryRunId, status: "starting" });
+    return originalStart(opts);
+  };
+  await f.goals.start(goal.goalId, ["p1"]);
+  f.db.close();
+});
+
+it("keeps one unfinished Goal per conversation and carries that conversation into the run", async () => {
+  const f = fixture();
+  const input = { workspaceId: f.workspace.workspaceId, chatId: "chat-one", objective: "Review the page",
+    budget: { maxTokens: 1200 } };
+  const first = f.goals.create(input);
+  expect(() => f.goals.create(input)).toThrow(/Finish or cancel/);
+  expect(f.goals.cancel(first.goalId).status).toBe("cancelled");
+  const second = f.goals.create(input);
+  await f.goals.start(second.goalId, ["p1"]);
+  expect(f.started()).toMatchObject({ chatId: "chat-one", maxTokens: 1200 });
+  expect(() => f.goals.create(input)).toThrow(/Finish or cancel/);
+  f.goals.cancel(second.goalId);
+  expect(f.goals.create(input).chatId).toBe("chat-one");
+  f.repo.setSetting("conversationWorkspace:chat-other", "different-space");
+  expect(() => f.goals.create({ ...input, chatId: "chat-other" })).toThrow(/another Space/);
+  f.db.close();
+});
+
+it("requires the same blocker in three consecutive model turns and leaves owner limits untouched", async () => {
+  const f = fixture();
+  const goal = f.goals.create({ workspaceId: f.workspace.workspaceId, objective: "Investigate",
+    budget: { maxTokens: 1_200 } });
+  const active = await f.goals.start(goal.goalId, ["p1"]);
+  const runId = active.runId!;
+  expect(() => f.goals.report("not-a-goal", "paused", undefined, 1)).toThrow(/not a Goal/);
+  expect(f.goals.report(runId, "blocked", "Authentication needed", 1)).toEqual({ status: "still_active", remaining: 2 });
+  expect(f.goals.report(runId, "blocked", "Different blocker", 2)).toEqual({ status: "still_active", remaining: 2 });
+  expect(f.goals.report(runId, "blocked", "Authentication needed", 3)).toEqual({ status: "still_active", remaining: 2 });
+  expect(f.goals.report(runId, "blocked", "Authentication needed", 4)).toEqual({ status: "still_active", remaining: 1 });
+  expect(() => f.goals.report(runId, "blocked", "Authentication needed", 4)).toThrow(/at most once/);
+  expect(f.goals.report(runId, "blocked", "Authentication needed", 5)).toEqual({ status: "blocked" });
+  expect(f.goals.get(goal.goalId)).toMatchObject({ status: "blocked", blocker: "Authentication needed",
+    blockerStreak: 3, budget: { maxTokens: 1_200 } });
+  expect(f.goals.resume(goal.goalId)).toMatchObject({ status: "active", blockerStreak: 0 });
+  expect(f.goals.report(runId, "paused", undefined, 6)).toEqual({ status: "paused" });
+  expect(f.goals.get(goal.goalId).status).toBe("paused");
   f.db.close();
 });

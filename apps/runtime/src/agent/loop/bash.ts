@@ -21,6 +21,10 @@ export interface BashSeatbeltInput {
   timeoutMs?: number;
   workdir?: string;
   network?: boolean;
+  requireEscalated?: boolean;
+  justification?: string;
+  prefixRule?: string;
+  signal?: AbortSignal;
 }
 
 export interface BashSeatbeltResult {
@@ -39,7 +43,7 @@ const SANDBOX_EXEC = "/usr/bin/sandbox-exec";
 export type BashRunner = (
   file: string,
   args: string[],
-  opts: { cwd: string; env: Record<string, string>; timeoutMs: number },
+  opts: { cwd: string; env: Record<string, string>; timeoutMs: number; signal?: AbortSignal },
 ) => Promise<{ stdout: string; stderr: string; exitCode: number | null; timedOut: boolean }>;
 
 /** decide() verdict for a network-enabled command — `park` carries the suspension for the loop. */
@@ -70,6 +74,7 @@ const defaultRunner: BashRunner = (file, args, opts) =>
         cwd: opts.cwd,
         env: opts.env,
         timeout: opts.timeoutMs,
+        signal: opts.signal,
         killSignal: "SIGKILL",
         maxBuffer: OUTPUT_CAP_BYTES * 2,
         encoding: "utf8",
@@ -91,7 +96,8 @@ export class BashSeatbelt {
   constructor(
     private readonly opts: {
       /** Writable session roots — resolved; the only places commands may write, and the only user-side paths readable. */
-      writableRoots: () => string[];
+      writableRoots: (ctx?: { runId: string; threadId: string; turnId: string }) => string[];
+      readableRoots?: (ctx?: { runId: string; threadId: string; turnId: string }) => string[];
       /** Scratch dir (inside a writable root) used as TMPDIR/HOME. */
       scratchDir: string;
       /**
@@ -103,14 +109,16 @@ export class BashSeatbelt {
       extraDenyRead?: () => string[];
       /** decide() gate for `network: true` — absent means network requests are unsupported. */
       networkGate?: BashGate;
+      escalationGate?: (input: { command: string; workdir: string; justification: string; prefixRule?: string },
+        ctx: { runId: string; threadId: string; turnId: string }) => Promise<"allow" | { park: LoopPark }>;
       runner?: BashRunner;
       platform?: string;
     },
   ) {}
 
   /** SBPL matches real paths — a root reached through /tmp or /var must be canonicalized or the profile silently misses it. */
-  private roots(): string[] {
-    return this.opts.writableRoots().map((root) => canonical(root));
+  private roots(ctx?: { runId: string; threadId: string; turnId: string }): string[] {
+    return this.opts.writableRoots(ctx).map((root) => canonical(root));
   }
 
   /**
@@ -121,10 +129,12 @@ export class BashSeatbelt {
    * middle ground: /Users and the runtime/OS credential stores are denied,
    * then the session roots are re-allowed after them (last match wins).
    */
-  profile(network: boolean): string {
-    const roots = this.roots();
+  profile(network: boolean, ctx?: { runId: string; threadId: string; turnId: string }): string {
+    const roots = this.roots(ctx);
+    const readable = [...roots, ...(this.opts.readableRoots?.(ctx) ?? []).map(canonical)];
     const dev = ["/dev/null", "/dev/zero", "/dev/random", "/dev/urandom"];
-    const deny = ["/Users", ...(this.opts.extraDenyRead?.() ?? []).map(canonical)];
+    const deny = ["/Users", "/private/tmp", "/private/var/folders", "/Volumes",
+      ...(this.opts.extraDenyRead?.() ?? []).map(canonical)];
     const lines = [
       "(version 1)",
       "(deny default)",
@@ -133,7 +143,7 @@ export class BashSeatbelt {
       "(allow file-read-metadata)",
       "(allow file-read-data)",
       `(deny file-read-data ${deny.map((root) => `(subpath ${sbplLiteral(root)})`).join(" ")})`,
-      `(allow file-read-data ${roots.map((root) => `(subpath ${sbplLiteral(root)})`).join(" ")})`,
+      `(allow file-read-data ${readable.map((root) => `(subpath ${sbplLiteral(root)})`).join(" ")})`,
       `(allow file-write* ${roots.map((root) => `(subpath ${sbplLiteral(root)})`).join(" ")}`,
       `  ${dev.map((devPath) => `(literal ${sbplLiteral(devPath)})`).join(" ")})`,
       network ? "(allow network-outbound)" : "(deny network-inbound network-outbound network-bind)",
@@ -156,12 +166,24 @@ export class BashSeatbelt {
     const command = input.command?.trim() ?? "";
     if (!command || Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES)
       throw new AuxError("invalid_params", `command must be 1 to ${MAX_COMMAND_BYTES} bytes.`);
-    const roots = this.roots();
+    const roots = this.roots(ctx);
+    const readable = [...roots, ...(this.opts.readableRoots?.(ctx) ?? []).map(canonical)];
     if (!roots.length) throw new AuxError("permission_denied", "bash has no writable session roots.");
     const cwd = input.workdir ? canonical(input.workdir) : roots[0]!;
-    if (!roots.some((root) => cwd === root || cwd.startsWith(root + sep)))
-      throw new AuxError("permission_denied", "bash workdir must stay inside the session roots.");
+    if (!readable.some((root) => cwd === root || cwd.startsWith(root + sep)))
+      throw new AuxError("permission_denied", "bash workdir must stay inside reviewed session roots.");
     const timeoutMs = Math.min(Math.max(1_000, Math.floor(input.timeoutMs ?? 30_000)), MAX_TIMEOUT_MS);
+    if (input.requireEscalated) {
+      if (input.network) throw new AuxError("invalid_params", "Escalated commands cannot also request the separate network grant.");
+      if (!this.opts.escalationGate) throw new AuxError("capability_unsupported", "Command escalation is unavailable.");
+      const verdict = await this.opts.escalationGate({ command, workdir: cwd,
+        justification: input.justification ?? "", ...(input.prefixRule ? { prefixRule: input.prefixRule } : {}) }, ctx);
+      if (verdict !== "allow") return verdict;
+      const result = await this.runner()( "/bin/sh", ["-c", command], { cwd,
+        env: { PATH: "/usr/bin:/bin:/usr/sbin:/sbin", TMPDIR: this.opts.scratchDir,
+          HOME: this.opts.scratchDir, LANG: "en_US.UTF-8" }, timeoutMs, signal: input.signal });
+      return this.clip(result);
+    }
     if (input.network) {
       if (!this.opts.networkGate)
         throw new AuxError("capability_unsupported", "bash network is off; use webfetch for HTTP access.");
@@ -171,14 +193,18 @@ export class BashSeatbelt {
       if (verdict !== "allow") return verdict;
     }
     const run = this.runner();
-    const args = ["-p", this.profile(input.network === true), "/bin/sh", "-c", command];
+    const args = ["-p", this.profile(input.network === true, ctx), "/bin/sh", "-c", command];
     const env = {
       PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
       TMPDIR: this.opts.scratchDir,
       HOME: this.opts.scratchDir,
       LANG: "en_US.UTF-8",
     };
-    const result = await run(SANDBOX_EXEC, args, { cwd, env, timeoutMs });
+    const result = await run(SANDBOX_EXEC, args, { cwd, env, timeoutMs, signal: input.signal });
+    return this.clip(result);
+  }
+
+  private clip(result: { stdout: string; stderr: string; exitCode: number | null; timedOut: boolean }): BashSeatbeltResult {
     const clip = (text: string) => {
       const bytes = Buffer.byteLength(text, "utf8");
       return bytes > OUTPUT_CAP_BYTES

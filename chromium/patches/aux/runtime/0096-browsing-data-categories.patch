@@ -1,0 +1,177 @@
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -29,7 +29,8 @@
+   register_shell(AuxShellMethodGroup::kContent,
+                  {"preview", "readArticle", "siteZoom", "privatePageZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
+                   "httpAuthRequests", "respondHttpAuth",
+-                  "clearSitePermission", "clearSiteData", "siteDataCount", "httpsUpgrade",
++                  "clearSitePermission", "clearSiteData", "siteDataCount",
++                  "browsingDataPreview", "clearBrowsingData", "httpsUpgrade",
+                   "setHttpsUpgrade", "cookieControls", "setCookieControls",
+                   "crashReporting", "setCrashReporting",
+                   "proceedInsecure", "useHttp"});
+--- a/chrome/browser/ui/aux/methods/content_methods.cc
++++ b/chrome/browser/ui/aux/methods/content_methods.cc
+@@ -7,6 +7,7 @@
+ #include <algorithm>
+ #include <cmath>
+ #include <array>
++#include <optional>
+ #include <string>
+ #include <string_view>
+ #include <utility>
+@@ -84,6 +85,7 @@
+ #include "components/prefs/pref_service.h"
+ #include "components/content_settings/core/browser/cookie_settings.h"
+ #include "components/content_settings/core/common/pref_names.h"
++#include "components/browsing_data/content/conditional_cache_counting_helper.h"
+ #include "components/zoom/zoom_controller.h"
+ #endif
+ #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
+@@ -395,6 +397,28 @@
+   base::OnceCallback<void(uint64_t)> done_;
+ };
+ 
++bool ParseBrowsingDataRange(const base::ListValue& args, base::Time* begin,
++                            base::Time* end) {
++  if (args.size() < 2 || (!args[0].is_int() && !args[0].is_double()) ||
++      (!args[1].is_int() && !args[1].is_double())) {
++    return false;
++  }
++  const double since_ms = args[0].GetDouble();
++  const double before_ms = args[1].GetDouble();
++  constexpr double kMaxDateMs = 8640000000000000.0;
++  if (!std::isfinite(since_ms) || !std::isfinite(before_ms) ||
++      since_ms < 0 || before_ms <= since_ms || before_ms > kMaxDateMs ||
++      std::floor(since_ms) != since_ms ||
++      std::floor(before_ms) != before_ms) {
++    return false;
++  }
++  *begin = base::Time::FromMillisecondsSinceUnixEpoch(
++      static_cast<int64_t>(since_ms));
++  *end = base::Time::FromMillisecondsSinceUnixEpoch(
++      static_cast<int64_t>(before_ms));
++  return true;
++}
++
+ bool SavedSitePermission(const ContentSettingPatternSource& rule,
+                          bool private_profile, std::string* origin) {
+   // A wildcard, policy, extension or inherited private rule is not a decision
+@@ -442,6 +466,117 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "browsingDataPreview") {
++    base::Time begin;
++    base::Time end;
++    if (list->size() != 2 || !ParseBrowsingDataRange(*list, &begin, &end)) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Choose a valid browsing-data time period");
++      return;
++    }
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Browsing-data counts require a regular Profile");
++      return;
++    }
++    browser_->GetProfile()->GetDefaultStoragePartition()
++        ->GetCookieManagerForBrowserProcess()
++        ->GetAllCookies(mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++            base::BindOnce(
++                [](base::WeakPtr<WebUIBrowserUI> ui, base::Time begin,
++                   base::Time end, RequestCallback callback,
++                   const net::CookieList& cookies) {
++                  if (!ui || !ui->IsAuthorizedAuxDocument()) {
++                    std::move(callback).Run(false, "", "forbidden",
++                                            "The Aux shell is no longer active");
++                    return;
++                  }
++                  int cookie_count = 0;
++                  for (const auto& cookie : cookies) {
++                    if (cookie.CreationDate() >= begin &&
++                        cookie.CreationDate() < end) {
++                      ++cookie_count;
++                    }
++                  }
++                  browsing_data::ConditionalCacheCountingHelper::Count(
++                      ui->browser_->GetProfile()->GetDefaultStoragePartition(),
++                      begin, end,
++                      base::BindOnce(
++                          [](base::WeakPtr<WebUIBrowserUI> ui,
++                             int cookie_count, RequestCallback callback,
++                             bool upper_limit, int64_t cache_bytes) {
++                            if (!ui || !ui->IsAuthorizedAuxDocument()) {
++                              std::move(callback).Run(
++                                  false, "", "forbidden",
++                                  "The Aux shell is no longer active");
++                              return;
++                            }
++                            if (cache_bytes < 0) {
++                              std::move(callback).Run(
++                                  false, "", "backend_unavailable",
++                                  "Chromium could not count cached files");
++                              return;
++                            }
++                            base::DictValue result;
++                            result.Set("cookies", cookie_count);
++                            result.Set("cacheBytes",
++                                       static_cast<double>(cache_bytes));
++                            result.Set("cacheEstimate", upper_limit);
++                            std::move(callback).Run(
++                                true,
++                                *base::WriteJson(base::Value(std::move(result))),
++                                "", "");
++                          },
++                          ui, cookie_count, std::move(callback)));
++                },
++                weak_factory_.GetWeakPtr(), begin, end,
++                std::move(callback)),
++            net::CookieList()));
++    return;
++  }
++  if (method == "clearBrowsingData") {
++    base::Time begin;
++    base::Time end;
++    if (list->size() != 3 || !ParseBrowsingDataRange(*list, &begin, &end) ||
++        !(*list)[2].is_dict()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Choose a valid browsing-data removal");
++      return;
++    }
++    const base::DictValue& selected = (*list)[2].GetDict();
++    const bool cookies = selected.FindBool("cookies").value_or(false);
++    const bool cache = selected.FindBool("cache").value_or(false);
++    if (selected.size() != 2 || !selected.FindBool("cookies") ||
++        !selected.FindBool("cache") || (!cookies && !cache)) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Select cookies or cached files to clear");
++      return;
++    }
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Browsing data cannot be cleared from Private mode");
++      return;
++    }
++    uint64_t mask = 0;
++    if (cookies) mask |= content::BrowsingDataRemover::DATA_TYPE_COOKIES;
++    if (cache) mask |= content::BrowsingDataRemover::DATA_TYPE_CACHE;
++    auto* remover = browser_->GetProfile()->GetBrowsingDataRemover();
++    auto* observer = new SiteDataRemoval(remover, base::BindOnce(
++        [](RequestCallback callback, uint64_t failed_data_types) {
++          if (failed_data_types) {
++            std::move(callback).Run(false, "", "backend_unavailable",
++                                    "Chromium could not clear all selected browsing data");
++          } else {
++            std::move(callback).Run(true, "true", "", "");
++          }
++        }, std::move(callback)));
++    remover->RemoveAndReply(
++        begin, end, mask,
++        content::BrowsingDataRemover::ORIGIN_TYPE_UNPROTECTED_WEB |
++            content::BrowsingDataRemover::ORIGIN_TYPE_PROTECTED_WEB,
++        observer);
++    return;
++  }
+   if (method == "translatePage" || method == "showOriginal") {
+     if (args.size() != 1 || !args[0].is_string()) {
+       std::move(callback).Run(false, "", "invalid_argument",

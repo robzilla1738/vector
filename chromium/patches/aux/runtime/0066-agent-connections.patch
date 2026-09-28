@@ -1,0 +1,78 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -59,6 +59,8 @@
+                   "resolveSearch", "setAppearance", "setShortcuts",
+                   "focusShell", "openFile", "saveFile", "saveWorkbook",
+                   "saveStoredArtifact",
++                  "agentConfig", "agentConnections", "agentClients",
++                  "revokeAgentConnection",
+                   "openPluginDirectory", "pickEvidenceImage",
+                   "pickEvidenceDocument", "closeWindow", "openExternal",
+                   "navigationMenu", "contextMenu",
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -739,6 +739,62 @@
+             std::move(callback)));
+     return;
+   }
++  if (method == "agentConfig" || method == "agentConnections" ||
++      method == "agentClients" || method == "revokeAgentConnection") {
++    const bool has_argument = method == "agentConfig" ||
++                              method == "revokeAgentConnection";
++    if ((has_argument && list->size() != 1) ||
++        (!has_argument && !list->empty()) ||
++        (method == "agentConfig" && !(*list)[0].is_dict()) ||
++        (method == "revokeAgentConnection" &&
++         (!(*list)[0].is_string() || (*list)[0].GetString().size() > 128))) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid agent connection arguments");
++      return;
++    }
++    auto* runtime = AuxRuntimeHost::ForProfile(browser_->GetProfile());
++    if (!runtime) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "Aux Runtime is unavailable");
++      return;
++    }
++    std::string internal_method;
++    base::Value request{base::DictValue()};
++    if (method == "agentConfig") {
++      internal_method = "agent.config";
++      request = (*list)[0].Clone();
++    } else if (method == "agentConnections") {
++      internal_method = "agent.connections";
++    } else if (method == "agentClients") {
++      internal_method = "agent.clients";
++    } else {
++      internal_method = "agent.revoke";
++      request.GetDict().Set("connectionId", (*list)[0].GetString());
++    }
++    const auto json = base::WriteJson(request);
++    if (!json) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid agent connection request");
++      return;
++    }
++    runtime->CallInternal(
++        internal_method, *json,
++        base::BindOnce(
++            [](base::WeakPtr<WebUIBrowserUI> self, RequestCallback callback,
++               AuxRuntimeHost::Response response) {
++              if (!self) return;
++              if (!self->IsAuthorizedAuxDocument()) {
++                std::move(callback).Run(false, "", "forbidden",
++                                        "Aux shell is no longer active");
++                return;
++              }
++              std::move(callback).Run(response.ok, response.result_json,
++                                      response.error_code,
++                                      response.error_message);
++            },
++            weak_factory_.GetWeakPtr(), std::move(callback)));
++    return;
++  }
+   if (method == "closeWindow") {
+     if (!list->empty()) {
+       std::move(callback).Run(false, "", "invalid_argument",

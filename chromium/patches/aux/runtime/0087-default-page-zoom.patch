@@ -1,0 +1,75 @@
+--- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
++++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+@@ -52,6 +52,7 @@
+ #include "chrome/browser/ui/aux/runtime_host.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/zoom/chrome_zoom_level_prefs.h"
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
+ #include "chrome/browser/ui/aux/result_preview.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+@@ -146,6 +147,44 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "defaultPageZoom") {
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Default page zoom requires a regular profile");
++      return;
++    }
++    auto* zoom_prefs = profile->GetZoomLevelPrefs();
++    auto* prefs = profile->GetPrefs();
++    const auto* pref = prefs->FindPreference(prefs::kPartitionDefaultZoomLevel);
++    if (!zoom_prefs || !pref) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "Default page zoom is unavailable");
++      return;
++    }
++    if (!list->empty()) {
++      if (pref->IsManaged()) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Default page zoom is managed by policy");
++        return;
++      }
++      if (!(*list)[0].is_int() || (*list)[0].GetInt() < 50 ||
++          (*list)[0].GetInt() > 200) {
++        std::move(callback).Run(false, "", "invalid_argument",
++                                "Choose a page zoom from 50% to 200%");
++        return;
++      }
++      zoom_prefs->SetDefaultZoomLevelPref(
++          blink::ZoomFactorToZoomLevel((*list)[0].GetInt() / 100.0));
++    }
++    base::DictValue result;
++    result.Set("percentage", static_cast<int>(std::round(
++        zoom_prefs->GetDefaultZoomFactor() * 100)));
++    result.Set("managed", pref->IsManaged());
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
+   if (method == "keepRuntimeInBackground") {
+     auto* profile = browser_->GetProfile();
+     if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -63,6 +63,7 @@
+                   "languagePreferences",
+                   "automaticPictureInPicture",
+                   "keepRuntimeInBackground",
++                  "defaultPageZoom",
+                   "startupPreferences",
+                   "downloadsSnapshot", "controlDownload", "retryDownload"});
+   register_shell(AuxShellMethodGroup::kExtensions,
+--- a/chrome/browser/ui/webui_browser/BUILD.gn
++++ b/chrome/browser/ui/webui_browser/BUILD.gn
+@@ -179,6 +179,7 @@
+       "//components/language/core/browser",
+       "//components/content_settings/core/browser",
+       "//chrome/browser/background/extensions",
++      "//chrome/browser/ui/zoom:zoom",
+       "//components/spellcheck:buildflags",
+       "//components/dom_distiller/content/browser",
+       "//components/dom_distiller/core",

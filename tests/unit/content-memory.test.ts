@@ -49,6 +49,30 @@ it("keeps page text and source paths encrypted while rebuilding search after a r
   f.secrets.set("pageMemoryKey", key);
 });
 
+it("refuses sensitive page metadata even when the site was previously allowed", async () => {
+  const f = fixture();
+  f.memory.setPolicy(f.workspace.workspaceId, { enabled: true, retentionDays: 30,
+    allowedOrigins: ["https://bank.example", "https://example.test"] });
+  const base = { workspaceId: f.workspace.workspaceId, pageId: "page-one", documentEpoch: 1,
+    text: "This page contains account details for the user." };
+  await expect(f.memory.saveEligible({ ...base, url: "https://bank.example/news", title: "News" }))
+    .rejects.toThrow(/Sensitive pages/);
+  await expect(f.memory.saveEligible({ ...base, url: "https://example.test/login", title: "Welcome" }))
+    .rejects.toThrow(/Sensitive pages/);
+  expect(f.db.prepare("SELECT count(*) AS n FROM content_memory").get()).toMatchObject({ n: 0 });
+});
+
+it("rejects sensitive article text and a document change during encryption", async () => {
+  const f = fixture();
+  f.memory.setPolicy(f.workspace.workspaceId, { enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"] });
+  const input = { workspaceId: f.workspace.workspaceId, pageId: "page-one", documentEpoch: 1,
+    url: "https://example.test/article", title: "Ordinary article", text: "Your account balance is $4,000." };
+  await expect(f.memory.saveEligible(input)).rejects.toThrow(/Sensitive pages/);
+  await expect(f.memory.saveEligible({ ...input, text: "A useful neutral article." }, () => false))
+    .rejects.toThrow(/document changed/);
+  expect(f.db.prepare("SELECT count(*) AS n FROM content_memory").get()).toMatchObject({ n: 0 });
+});
+
 it("physically removes excluded and expired sources and rejects tampered ciphertext", async () => {
   const f = fixture();
   f.memory.setPolicy(f.workspace.workspaceId, { enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"] });

@@ -1,0 +1,230 @@
+diff --git a/chrome/browser/resources/aux_host/aux_feature_stages.ts b/chrome/browser/resources/aux_host/aux_feature_stages.ts
+--- a/chrome/browser/resources/aux_host/aux_feature_stages.ts
++++ b/chrome/browser/resources/aux_host/aux_feature_stages.ts
+@@ -541,7 +541,7 @@
+   }
+ } as const;
+ const runtimeMethods = ["agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","spaces.create","spaces.update","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.suggest","routines.get","routines.create","routines.fromResult","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.extractRun","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results","safety.grants.list","safety.grants.revoke"] as const;
+-const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:reader":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:inboundAgents":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:extensions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83"};
++const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:reader":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:inboundAgents":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:extensions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:electronMigration":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83"};
+ export type FeatureStage = 'off' | 'preview' | 'on';
+ export function featureStagesFor(methods: readonly string[], sourceCommit: string): Record<keyof typeof requirements, FeatureStage> {
+   const implemented = new Set<string>([...methods, ...runtimeMethods]);
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -40,7 +40,10 @@
+                   "setTrackerBlock", "removeAllowedHost"});
+   register_shell(AuxShellMethodGroup::kMigration,
+                  {"migrationReview", "migrationBegin", "migrationBatch",
+-                  "migrationFinish", "migrationRollback"});
++                  "migrationFinish", "migrationRollback",
++                  "exportRuntimeBackup", "exportMigrationLayout",
++                  "stageRuntimeRestore", "cancelRuntimeRestore",
++                  "runtimeRestoreStatus"});
+   register_shell(AuxShellMethodGroup::kProfiles,
+                  {"browserProfiles", "createBrowserProfile",
+                   "renameBrowserProfile", "archiveBrowserProfile",
+diff --git a/chrome/browser/ui/aux/methods/migration_methods.cc b/chrome/browser/ui/aux/methods/migration_methods.cc
+--- a/chrome/browser/ui/aux/methods/migration_methods.cc
++++ b/chrome/browser/ui/aux/methods/migration_methods.cc
+@@ -128,6 +128,109 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "exportRuntimeBackup" ||
++      method == "cancelRuntimeRestore" ||
++      method == "runtimeRestoreStatus") {
++    if (!list->empty() || browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid runtime backup request");
++      return;
++    }
++    auto* host = AuxRuntimeHost::ForProfile(browser_->GetProfile());
++    if (!host) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "Aux runtime is unavailable");
++      return;
++    }
++    const char* api = method == "exportRuntimeBackup"
++                          ? "installation.createBackup"
++                          : method == "cancelRuntimeRestore"
++                                ? "installation.cancelRestore"
++                                : "installation.restoreStatus";
++    host->CallApi(api, "{}",
++        base::BindOnce(
++            [](RequestCallback callback, bool backup,
++               AuxRuntimeHost::Response response) {
++              if (!response.ok || !backup) {
++                std::move(callback).Run(response.ok, response.result_json,
++                                        response.error_code,
++                                        response.error_message);
++                return;
++              }
++              auto parsed = base::JSONReader::Read(response.result_json,
++                                                   base::JSON_PARSE_RFC);
++              if (!parsed || !parsed->is_dict()) {
++                std::move(callback).Run(false, "", "backend_unavailable",
++                                        "Aux backup result is invalid");
++                return;
++              }
++              base::DictValue result = parsed->GetDict().Clone();
++              result.Remove("createdAt");
++              result.Remove("schemaVersion");
++              std::move(callback).Run(true,
++                  *base::WriteJson(base::Value(std::move(result))), "", "");
++            }, std::move(callback), method == "exportRuntimeBackup"));
++    return;
++  }
++  if (method == "stageRuntimeRestore") {
++    if (!list->empty() || browser_->GetProfile()->IsOffTheRecord() ||
++        open_file_dialog_) {
++      std::move(callback).Run(false, "", "conflict",
++                              "Runtime restore requires an available regular Profile");
++      return;
++    }
++    auto* active = browser_->GetTabStripModel()->GetActiveWebContents();
++    open_file_dialog_ = ui::SelectFileDialog::Create(
++        this, std::make_unique<ChromeSelectFilePolicy>(active));
++    if (!open_file_dialog_) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "The system file dialog is unavailable");
++      return;
++    }
++    file_dialog_purpose_ = FileDialogPurpose::kRuntimeRestore;
++    file_dialog_callback_ = std::move(callback);
++    open_file_dialog_->SelectFile(
++        ui::SelectFileDialog::SELECT_FOLDER, std::u16string(),
++        browser_->GetProfile()->last_selected_directory(), nullptr, 0,
++        base::FilePath::StringType(), browser_->GetWindow()->GetNativeWindow());
++    return;
++  }
++  if (method == "exportMigrationLayout") {
++    if (list->size() != 1 || !(*list)[0].is_string() ||
++        (*list)[0].GetString().size() > 1024 * 1024 ||
++        browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Invalid migration layout");
++      return;
++    }
++    const std::string& content = (*list)[0].GetString();
++    auto parsed = base::JSONReader::Read(content, base::JSON_PARSE_RFC);
++    if (!parsed || !parsed->is_dict()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Migration layout must be a JSON object");
++      return;
++    }
++    BeginAuxGeneratedSave("Aux-layout.json", content + "\n", base::FilePath(), 0,
++        base::BindOnce(
++            [](RequestCallback callback, bool ok, const std::string& result,
++               const std::string& code, const std::string& message) {
++              if (!ok || result == "null") {
++                std::move(callback).Run(ok, result, code, message);
++                return;
++              }
++              auto path = base::JSONReader::Read(result, base::JSON_PARSE_RFC);
++              if (!path || !path->is_string()) {
++                std::move(callback).Run(false, "", "io_error",
++                                        "Migration layout path is invalid");
++                return;
++              }
++              base::DictValue value;
++              value.Set("path", path->GetString());
++              std::move(callback).Run(true,
++                  *base::WriteJson(base::Value(std::move(value))), "", "");
++            }, std::move(callback)));
++    return;
++  }
+   if (method == "migrationReview" || method == "migrationBegin" ||
+       method == "migrationBatch" || method == "migrationFinish" ||
+       method == "migrationRollback") {
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -77,6 +77,7 @@
+ constexpr size_t kMaxFrameBytes = 16 * 1024 * 1024;
+ constexpr int kConnectTimeoutMs = 15000;
+ constexpr int kRequestTimeoutMs = 30000;
++constexpr int kBackupRequestTimeoutMs = 10 * 60 * 1000;
+ const char kAuxRuntimeHostKey = 0;
+ 
+ struct NativeReplyState {
+@@ -904,6 +905,9 @@
+ void AuxRuntimeHost::Worker::CallRequest(
+     std::string method, std::string params_json, bool desktop_api,
+     ResponseCallback callback) {
++  const bool backup_request = desktop_api &&
++      (method == "installation.createBackup" ||
++       method == "installation.stageRestore");
+   if (pending_requests_.size() >= 256) {
+     std::move(callback).Run({false, "", "backend_unavailable", "Too many pending runtime requests"});
+     return;
+@@ -947,7 +951,9 @@
+   // Return to the worker loop. CDP events and other responses must continue
+   // flowing while an API call waits for runtime initialization or browser work.
+   pending_requests_.emplace(id, PendingRequest{
+-      base::TimeTicks::Now() + base::Milliseconds(kRequestTimeoutMs), std::move(callback)});
++      base::TimeTicks::Now() + base::Milliseconds(
++          backup_request ? kBackupRequestTimeoutMs : kRequestTimeoutMs),
++      std::move(callback)});
+ }
+ 
+ void AuxRuntimeHost::Worker::HandleResponse(const base::DictValue& data) {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -481,7 +481,9 @@
+   }
+   browser_->GetProfile()->set_last_selected_directory(
+       purpose == FileDialogPurpose::kDownloadFolder ||
+-              purpose == FileDialogPurpose::kPluginDirectory ? selected_path
++              purpose == FileDialogPurpose::kPluginDirectory ||
++              purpose == FileDialogPurpose::kUnpackedExtension ||
++              purpose == FileDialogPurpose::kRuntimeRestore ? selected_path
+                                                     : selected_path.DirName());
+   if (purpose == FileDialogPurpose::kDownloadFolder) {
+     auto* prefs = DownloadPrefs::FromBrowserContext(browser_->GetProfile());
+@@ -523,6 +525,30 @@
+               std::move(callback).Run(ok, result, code, message);
+             },
+             std::move(callback)));
++    return;
++  }
++  if (purpose == FileDialogPurpose::kRuntimeRestore) {
++    if (!IsAuthorizedAuxDocument() || browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Aux restore is no longer available");
++      return;
++    }
++    auto* host = AuxRuntimeHost::ForProfile(browser_->GetProfile());
++    if (!host) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "Aux runtime is unavailable");
++      return;
++    }
++    base::DictValue params;
++    params.Set("path", selected_path.AsUTF8Unsafe());
++    host->CallApi("installation.stageRestore",
++        *base::WriteJson(base::Value(std::move(params))),
++        base::BindOnce(
++            [](RequestCallback callback, AuxRuntimeHost::Response response) {
++              std::move(callback).Run(response.ok, response.result_json,
++                                      response.error_code,
++                                      response.error_message);
++            }, std::move(callback)));
+     return;
+   }
+   if (purpose == FileDialogPurpose::kSaveFile) {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -273,7 +273,8 @@
+     kPluginDirectory,
+     kEvidenceImage,
+     kEvidenceDocument,
+-    kUnpackedExtension
++    kUnpackedExtension,
++    kRuntimeRestore
+   };
+   FileDialogPurpose file_dialog_purpose_ = FileDialogPurpose::kNone;
+   scoped_refptr<ui::SelectFileDialog> open_file_dialog_;

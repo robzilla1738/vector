@@ -30,7 +30,7 @@
  * tests/benchmarks/reports/tasks-<suite>-<timestamp>.json.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -63,7 +63,11 @@ const maxStepsFlag = flag("max-steps", null);
 const maxToolSteps = Number(maxStepsFlag ?? "40");
 const trials = Math.max(1, Number(flag("trials", "3")) || 1);
 
-loadDotEnv(join(repoRoot, ".env"));
+const gatewayKeyConflict = loadDotEnv(join(repoRoot, ".env"));
+if (gatewayKeyConflict && !has("validate") && !has("list-adapters")) {
+  console.error("AI_GATEWAY_API_KEY from the shell differs from the ignored .env value; unset the inherited key or reconcile the two before a paid benchmark.");
+  process.exit(2);
+}
 const adaptersCfg = JSON.parse(readFileSync(join(here, "adapters.json"), "utf8")).adapters;
 
 if (has("list-adapters")) {
@@ -101,6 +105,8 @@ if (has("validate")) {
   ok("scoring: object key-wise", scoreAnswer({ owner: "Jordan Lee", extra: 1 }, { type: "object", value: { owner: "Jordan Lee" } }) === 1);
   ok("scoring: failed run with correct answer fails", scoreRun("failed", 1, null) === 0);
   ok("scoring: completed run with correct answer passes", scoreRun("completed", 1, { pass: true }) === 1);
+  ok("Gateway authentication is not a task score", benchmarkInfrastructureFailure("Unauthenticated request to AI Gateway.") === "AI Gateway authentication failed" &&
+    benchmarkInfrastructureFailure("The task answered incorrectly") === null);
   ok("extractAnswer unwraps", extractAnswer({ answer: "x" }) === "x" && extractAnswer("y") === "y");
   ok("oracle: correct write required", evaluateOracle({ kind: "record-edit", id: "rec-04", fields: { status: "approved" } },
     { records: [{ id: "rec-04", status: "approved" }], edits: [{ id: "rec-04", fields: { status: "approved" } }] }).pass);
@@ -108,6 +114,13 @@ if (has("validate")) {
     { records: [{ id: "rec-04", status: "draft" }], edits: [] }).pass);
   ok("oracle: duplicate write fails", !evaluateOracle({ kind: "record-edit", id: "rec-04", fields: { status: "approved" } },
     { records: [{ id: "rec-04", status: "approved" }], edits: [{ id: "rec-04" }, { id: "rec-04" }] }).pass);
+  let oracleOutageRejected = false;
+  try {
+    await checkTaskOracle({ kind: "record-edit", id: "rec-04", fields: { status: "approved" } }, 1);
+  } catch (error) {
+    oracleOutageRejected = /fixture oracle unavailable/.test(String(error));
+  }
+  ok("fixture outage invalidates the oracle rather than scoring a task", oracleOutageRejected);
   ok("aux-mcp mints a scoped connection", adaptersCfg["aux-mcp"]?.scoped === true && adaptersCfg["aux-mcp"]?.needsRuntime === true);
   if (existsSync(runtimeEntry)) {
     const rt = await import(pathToFileURL(runtimeEntry).href);
@@ -172,9 +185,20 @@ const report = {
   timeoutMs,
   trials,
   maxModelCalls: maxStepsFlag ? maxToolSteps : "product default",
+  valid: true,
+  complete: false,
   adapters: {},
 };
+mkdirSync(reportsDir, { recursive: true });
+const outPath = join(reportsDir, `tasks-${suite.suite}-${report.startedAt.replace(/[:.]/g, "-")}.json`);
+const saveReport = () => {
+  writeFileSync(`${outPath}.tmp`, JSON.stringify(report, null, 2));
+  renameSync(`${outPath}.tmp`, outPath);
+};
+saveReport();
+let invalidAdapters = 0;
 
+try {
 for (const name of adapterNames) {
   const cfg = adaptersCfg[name];
   if (!cfg) {
@@ -185,13 +209,17 @@ for (const name of adapterNames) {
   if (!avail.ok) {
     console.log(`\n== ${name}: not measured (${avail.reason})`);
     report.adapters[name] = { skipped: avail.reason };
+    saveReport();
     continue;
   }
   console.log(`\n== ${name} (${cfg.kind}) — ${tasks.length} task(s) × ${trials} trial(s), model ${modelId}`);
   const adapter = cfg.kind === "runtime" ? await runtimeAdapter(name, cfg) : await mcpAdapter(name, cfg);
   const rows = [];
+  report.adapters[name] = { rows };
+  saveReport();
+  let invalidReason = null;
   try {
-    for (let trial = 1; trial <= trials; trial++) for (const task of tasks) {
+    runTasks: for (let trial = 1; trial <= trials; trial++) for (const task of tasks) {
       if (spendLedger.summary().remainingUsd < projectedModelCostUsd(modelId, estimatedPromptTokens(task.goal, task.url), 8192))
         throw new Error("Task benchmark stopped at the AI Gateway program spend cap");
       // a write task must not leak state into the next task or trial
@@ -204,6 +232,14 @@ for (const name of adapterNames) {
         out = { answer: null, error: String(e?.message ?? e) };
       }
       const wallMs = Math.round(performance.now() - t0);
+      const infrastructureFailure = benchmarkInfrastructureFailure(out.error);
+      if (infrastructureFailure) {
+        invalidReason = infrastructureFailure;
+        rows.push({ id: task.id, family: task.family, trial, score: null, wallMs, ...out, invalidReason });
+        saveReport();
+        console.error(`INVALID ${task.id} t${trial}: ${infrastructureFailure}; no task score recorded`);
+        break runTasks;
+      }
       const answerScore = out.answer == null ? 0 : scoreAnswer(out.answer, task.expected);
       const oracle = task.oracle ? await checkTaskOracle(task.oracle) : null;
       const status = out.status ?? (out.error ? "failed" : "completed");
@@ -211,12 +247,20 @@ for (const name of adapterNames) {
       const row = { id: task.id, family: task.family, trial, score, answerScore, oracle, wallMs, ...out, status,
         suspensions: out.suspensions ?? null, interventions: out.interventions ?? null, ledgerDuplicates: out.ledgerDuplicates ?? null };
       rows.push(row);
+      saveReport();
       console.log(
         `${score ? "PASS" : "FAIL"} ${task.id.padEnd(22)} t${trial} ${String(wallMs).padStart(7)} ms  calls=${out.modelCalls ?? "?"}  tokens=${out.tokens ?? "?"}  answer=${JSON.stringify(out.answer)?.slice(0, 80)}${out.message ? `  message=${String(out.message).slice(0, 160)}` : ""}${oracle && !oracle.pass ? `  oracle=${oracle.reason}` : ""}${out.error ? `  error=${out.error.slice(0, 120)}` : ""}`,
       );
     }
   } finally {
     await adapter.close().catch(() => {});
+  }
+  if (invalidReason) {
+    report.adapters[name] = { invalid: invalidReason, rows };
+    report.valid = false;
+    invalidAdapters++;
+    saveReport();
+    continue;
   }
   const passed = rows.filter((r) => r.score === 1).length;
   const walls = rows.map((r) => r.wallMs).sort((a, b) => a - b);
@@ -254,15 +298,22 @@ for (const name of adapterNames) {
     })),
   };
   report.adapters[name] = { summary, rows };
+  saveReport();
   console.log(`-- ${name}: pass@1 ${(summary.passAt1 * 100).toFixed(1)}% (per trial ${perTrial.join("/")} of ${tasks.length}, sd ${summary.passedStdDev}), pass@${trials} ${(summary.passAtK * 100).toFixed(1)}%, flaky [${summary.flaky.join(", ")}], p50 ${summary.wallMsP50} ms, p95 ${summary.wallMsP95} ms, mean ${summary.modelCallsMean} model calls, ${summary.tokensMean} tokens`);
 }
-
-mkdirSync(reportsDir, { recursive: true });
-const outPath = join(reportsDir, `tasks-${suite.suite}-${report.startedAt.replace(/[:.]/g, "-")}.json`);
-writeFileSync(outPath, JSON.stringify(report, null, 2));
+report.complete = invalidAdapters === 0;
+saveReport();
+} catch (error) {
+  report.valid = false;
+  report.error = `benchmark stopped: ${String(error?.message ?? error).slice(0, 500)}`;
+  saveReport();
+  console.error(`\npartial report: ${outPath}`);
+  throw error;
+} finally {
+  for (const proc of fixtures ?? []) proc.kill?.();
+}
 console.log(`\nreport: ${outPath}`);
-for (const proc of fixtures ?? []) proc.kill?.();
-process.exit(0);
+process.exit(invalidAdapters ? 2 : 0);
 
 // ---- adapters ---------------------------------------------------------------
 
@@ -514,6 +565,12 @@ export function scoreRun(status, answerScore, oracle) {
   return status === "completed" && answerScore === 1 && (oracle?.pass ?? true) ? 1 : 0;
 }
 
+function benchmarkInfrastructureFailure(error) {
+  if (!error) return null;
+  return /unauthenticated request to ai gateway|invalid ai.gateway.api.key/i.test(String(error))
+    ? "AI Gateway authentication failed" : null;
+}
+
 function extractAnswer(result) {
   if (result == null) return null;
   if (typeof result !== "object") return result;
@@ -620,14 +677,14 @@ function evaluateOracle(oracle, state) {
   }
 }
 
-async function checkTaskOracle(oracle) {
-  const port = oracle.kind === "form-submission" ? 4811 : 4810;
+async function checkTaskOracle(oracle, portOverride) {
+  const port = portOverride ?? (oracle.kind === "form-submission" ? 4811 : 4810);
   try {
-    const response = await fetch(`http://127.0.0.1:${port}/api/state`);
-    if (!response.ok) return { pass: false, reason: `state endpoint returned ${response.status}` };
+    const response = await fetch(`http://127.0.0.1:${port}/api/state`, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) throw new Error(`state endpoint returned ${response.status}`);
     return evaluateOracle(oracle, await response.json());
   } catch (error) {
-    return { pass: false, reason: `state endpoint failed: ${String(error)}` };
+    throw new Error(`fixture oracle unavailable on port ${port}: ${String(error)}`);
   }
 }
 
@@ -635,7 +692,12 @@ async function checkTaskOracle(oracle) {
 async function resetSuiteState(suite) {
   if (!suite.reset) return;
   for (const target of Array.isArray(suite.reset) ? suite.reset : [suite.reset]) {
-    const res = await fetch(target.url, { method: target.method ?? "POST" });
+    let res;
+    try {
+      res = await fetch(target.url, { method: target.method ?? "POST", signal: AbortSignal.timeout(5000) });
+    } catch (error) {
+      throw new Error(`fixture reset unavailable: ${target.url}: ${String(error)}`);
+    }
     if (!res.ok) throw new Error(`fixture reset failed: ${target.url} ${res.status} ${res.statusText}`);
   }
 }
@@ -655,10 +717,15 @@ function sha(dir) {
   return r.status === 0 ? r.stdout.trim() : null;
 }
 function loadDotEnv(path) {
-  if (!existsSync(path)) return;
+  if (!existsSync(path)) return false;
+  let gatewayKeyConflict = false;
   for (const line of readFileSync(path, "utf8").split("\n")) {
     const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-    if (!m || process.env[m[1]] !== undefined) continue;
-    process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    if (!m) continue;
+    const value = m[2].replace(/^["']|["']$/g, "");
+    if (m[1] === "AI_GATEWAY_API_KEY" && process.env[m[1]] !== undefined && process.env[m[1]] !== value)
+      gatewayKeyConflict = true;
+    process.env[m[1]] ??= value;
   }
+  return gatewayKeyConflict;
 }

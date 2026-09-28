@@ -11,7 +11,7 @@ import type { ShortcutOverrides } from "@aux/contracts";
 import { effectiveShortcuts, matchShortcut } from "@aux/contracts/shortcut-defs";
 import { deferSurface, preloadWhenIdle } from "./components/DeferredSurface";
 import { Conversation, AnswerPreview } from "./components/surfaces";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
 import { LIVE_RUN, useStore, call, toast, errToast, tabCommand, patchPageFields, type SidebarMode } from "./store";
@@ -19,14 +19,18 @@ import { bridge, inNativeHost, inMock } from "./bridge";
 import { savePagePdf, printCurrentPage } from "./page-export";
 import { isHomeAddress, nativePageId } from "./chrome";
 import { useToolbarReveal } from "./toolbar-reveal";
-import { isTab, tabsInSpace } from "./workspace";
+import { isTab, spaceThemeStyle, tabsInSpace } from "./workspace";
+import { createTabSwitcher, type TabSwitcherOrder } from "./tab-switcher";
 import { bookmarkWebUrl } from "./bookmark-files";
 import { Toolbar } from "./components/Toolbar";
 import { Stage } from "./components/Stage";
 import { I } from "./components/icons";
 import { Toasts } from "./components/Toasts";
 import { applyUiFontSize } from "./ui-font-size";
+import { installMemorySaver } from "./memory-saver";
 import { openLocalFile } from "./open-local-file";
+import { settingsRouteFromPath } from "./settings/routes";
+import { recoverPeekLink } from "./peek-link";
 
 const ReaderView = deferSurface(async () => { const module = await import("./components/ReaderView"); return {default:module.ReaderView}; }, "Reader");
 const Settings = deferSurface(async () => { const module = await import("./components/Settings"); return {default:module.Settings}; }, "Settings");
@@ -43,10 +47,11 @@ const HorizontalTabs = deferSurface(async () => { const module = await import(".
 const HttpAuthPrompt = deferSurface(async () => { const module = await import("./components/HttpAuthPrompt"); return {default:module.HttpAuthPrompt}; }, "Sign-in prompt", true, true);
 const ActionConfirmation = deferSurface(async () => { const module = await import("./components/ActionConfirmation"); return {default:module.ActionConfirmation}; }, "Action confirmation", true, true);
 const VaultOfferBanner = deferSurface(async () => { const module = await import("./components/VaultOfferBanner"); return {default:module.VaultOfferBanner}; }, "Password offer", true, true);
-const FindBar = deferSurface(async () => { const module = await import("./components/FindBar"); return {default:module.FindBar}; }, "Find in page", true, true);
+const FindBar = deferSurface<{ scope?: "reader"; inputRef?: RefObject<HTMLInputElement | null>; returnFocusRef?: RefObject<HTMLDivElement | null> }>(async () => { const module = await import("./components/FindBar"); return {default:module.FindBar}; }, "Find in page", true, true);
 const Sidebar = deferSurface(async () => { const module = await import("./components/Sidebar"); return {default:module.Sidebar}; }, "Sidebar", true, true);
 const ChatSidebar = deferSurface(async () => { const module = await import("./components/ChatSidebar"); return {default:module.ChatSidebar}; }, "Sidebar", true, true);
 const AgentRail = deferSurface(async () => { const module = await import("./components/AgentRail"); return {default:module.AgentRail}; }, "Assistant", true, true);
+const LinkPeek = deferSurface(async () => { const module = await import("./components/LinkPeek"); return {default:module.LinkPeek}; }, "Link preview", true, true);
 
 /** Only the fields that decide native-view placement — title/favicon churn must not re-render the shell. */
 const placementFields = (page?: PageTarget) => page && { pageId: page.pageId, url: page.url, backend: page.backend, viewStatus: page.viewStatus, navigationError: page.navigationError, showBlankDocument: page.showBlankDocument };
@@ -55,6 +60,22 @@ type Shortcut = { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl
 type StoreState = ReturnType<typeof useStore.getState>;
 
 export function App() {
+  useEffect(() => installMemorySaver(), []);
+  useEffect(() => recoverPeekLink(), []);
+  useEffect(() => {
+    const syncSettingsRoute = () => {
+      const route = settingsRouteFromPath(window.location.pathname);
+      if (route && !bridge.privateMode) {
+        useStore.setState({ settingsCategory: route.category });
+        if (useStore.getState().overlay !== "settings") useStore.getState().setOverlay("settings");
+      } else if (useStore.getState().overlay === "settings") {
+        useStore.getState().setOverlay(null);
+      }
+    };
+    syncSettingsRoute();
+    window.addEventListener("popstate", syncSettingsRoute);
+    return () => window.removeEventListener("popstate", syncSettingsRoute);
+  }, []);
   useEffect(() => preloadWhenIdle([Conversation, AnswerPreview, Palette, Downloads, SiteControls, FindBar, Sidebar, ChatSidebar, AgentRail]), []);
   useEffect(()=>{
     if(bridge.privateMode)return;
@@ -82,9 +103,27 @@ export function App() {
     window.addEventListener("storage",changed);return()=>window.removeEventListener("storage",changed);
   },[]);
   const [quickAsk,setQuickAsk]=useState(bridge.quickAskMode);
+  const [linkStatus,setLinkStatus]=useState<{pageId:string;text:string}|null>(null);
   const quickAskReady=useRef(false);
+  const conversationComposer=useRef<HTMLTextAreaElement>(null);
+  const conversationScroll=useRef<HTMLDivElement>(null);
+  const findInput=useRef<HTMLInputElement>(null);
   const conversationId=useStore(state=>state.conversationId);
-  const expandQuickAsk=()=>{void bridge.quickAsk("expand").then(compact=>{setQuickAsk(compact);try{localStorage.removeItem("aux.quick-ask.chat");}catch{} useStore.setState({mode:"conversation"});}).catch(errToast);};
+  const peekPageId=useStore(state=>state.peekPageId);
+  const expandQuickAsk=()=>{
+    const chatId=useStore.getState().conversationId;
+    try{if(chatId)localStorage.setItem("aux.quick-ask.expand",chatId);}catch{}
+    void bridge.quickAsk("expand").catch(error=>{
+      try{if(localStorage.getItem("aux.quick-ask.expand")===chatId)localStorage.removeItem("aux.quick-ask.expand");}catch{}
+      errToast(error);
+    });
+  };
+  useEffect(()=>{
+    if(bridge.quickAskMode||bridge.privateMode)return;
+    let chatId:string|null=null;
+    try{chatId=localStorage.getItem("aux.quick-ask.expand");if(chatId)localStorage.removeItem("aux.quick-ask.expand");}catch{}
+    if(chatId&&/^[\w-]{1,128}$/.test(chatId))useStore.getState().openConversationDraft(chatId);
+  },[]);
   useEffect(()=>{
     if(!bridge.quickAskMode)return;
     void bridge.quickAsk("status").then(compact=>{
@@ -98,6 +137,7 @@ export function App() {
   },[]);
   useEffect(()=>{if(quickAskReady.current&&quickAsk&&conversationId)try{localStorage.setItem("aux.quick-ask.chat",conversationId);}catch{}},[quickAsk,conversationId]);
   useEffect(() => bridge.onPageAction(action => {
+    if (action.windowId && action.windowId !== bridge.windowId) return;
     if (bridge.privateMode) return;
     if (action.action === "remember") {
       const state = useStore.getState();
@@ -128,7 +168,7 @@ export function App() {
       state.setConversationDraft(id, `Help me understand this image.\n\nSource: ${action.title || action.url}\n${action.url}${src}${alt}`);
       const open = () => {
         state.openConversationDraft(id);
-        requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>(".conversation-input textarea")?.focus());
+        requestAnimationFrame(() => conversationComposer.current?.focus());
       };
       if (action.image?.dataUrl) {
         const image = action.image;
@@ -147,7 +187,7 @@ export function App() {
     const quote = action.selection ? `\n\nSelected text${action.truncated ? " (first 12,000 characters)" : ""}:\n${action.selection.split("\n").map(line => `> ${line}`).join("\n")}` : "";
     state.setConversationDraft(id, `${instruction}\n\nSource: ${action.title || action.url}\n${action.url}${quote}`);
     state.openConversationDraft(id);
-    requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>(".conversation-input textarea")?.focus());
+    requestAnimationFrame(() => conversationComposer.current?.focus());
   }), []);
   const mode = useStore((s) => s.mode);
   const overlay = useStore((s) => s.overlay);
@@ -158,6 +198,7 @@ export function App() {
   const tabPreviewOpen = useStore(s => s.tabPreviewOpen);
   const settings = useStore(useShallow((s) => ({ tabLayout: s.settings.tabLayout, theme: s.settings.theme, sidebarAppearance: s.settings.sidebarAppearance, sidebarMaterial: s.settings.sidebarMaterial, sidebarTint: s.settings.sidebarTint, contentOpacity: s.settings.contentOpacity })));
   const horizontal = (settings.tabLayout ?? "horizontal") === "horizontal";
+  const tabSwitcher = useRef(createTabSwitcher());
   const activePageId = useStore((s) => s.activePageId);
   const activePageEpoch = useStore((s) => s.pages.find((p) => p.pageId === s.activePageId)?.documentEpoch);
   const activePage = useStore(useShallow((s) => placementFields(s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined)));
@@ -180,6 +221,7 @@ export function App() {
   const connected = useStore((s) => s.connected);
   const spaceColor = useStore((s) => (s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId) ?? s.layout.spaces[0]!).color);
   const spaceGrain = useStore((s) => (s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId) ?? s.layout.spaces[0]!).grain);
+  const spaceTheme = useStore((s) => (s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId) ?? s.layout.spaces[0]!).theme);
   const vaultOffer = useStore((s) => !!s.vaultOffer);
   const setOverlay = useStore((s) => s.setOverlay);
   const setMode = useStore((s) => s.setMode);
@@ -275,12 +317,25 @@ export function App() {
       useStore.setState({ connected: status.connected });
       if (status.connected) void useStore.getState().refresh().then(reconcileDrafts);
     });
-    const offLoading = bridge.onLoading(({ pageId, loading }) => patchPageFields(pageId, { loading }));
+    const offLoading = bridge.onLoading(({ pageId, loading }) => {
+      patchPageFields(pageId, { loading });
+      if (loading) setLinkStatus(current => current?.pageId === pageId ? null : current);
+    });
+    const offLinkStatus = bridge.onLinkStatus(payload => setLinkStatus(payload.text ? payload : null));
     let audioLive=true;
     const changedAudio=new Set<string>();
     const offAudio=bridge.onAudio(({pageId,removed,...state})=>{changedAudio.add(pageId);useStore.setState(current=>{const tabAudio={...current.tabAudio};if(removed)delete tabAudio[pageId];else tabAudio[pageId]=state;return {tabAudio};});});
     void bridge.tabAudio().then(snapshot=>{if(audioLive)useStore.setState(current=>({tabAudio:{...Object.fromEntries(Object.entries(snapshot).filter(([id])=>!changedAudio.has(id))),...Object.fromEntries(Object.entries(current.tabAudio).filter(([id])=>changedAudio.has(id)))}}));}).catch(()=>{});
-    const offDownload = bridge.onDownload((d) => useStore.getState().applyDownload(d as never));
+    const projectedDownloads = new Set<string>();
+    const offDownload = bridge.onDownload((d) => {
+      useStore.getState().applyDownload(d as never);
+      if (!inNativeHost || !d.tabUrl || !d.downloadRoot || !d.path) return;
+      const terminal = d.state === "completed" || d.state === "interrupted" || d.state === "cancelled";
+      if (!terminal && projectedDownloads.has(d.id)) return;
+      projectedDownloads.add(d.id);
+      void call("downloads.projectNative", { ...d, tabUrl: d.tabUrl, downloadRoot: d.downloadRoot })
+        .catch(error => console.warn("Native download receipt projection failed", error));
+    });
     const offShortcut = bridge.onShortcut((s) => dispatchShortcut(s));
     const offVault = bridge.onVaultOffer(offer => useStore.getState().setVaultOffer(offer));
     const offTranslation = bridge.onTranslationChanged(payload => {
@@ -297,6 +352,7 @@ export function App() {
       offPlacement();
       offRuntime();
       offLoading();
+      offLinkStatus();
       offDownload();audioLive=false;offAudio();
       offShortcut();
       offVault();
@@ -327,12 +383,12 @@ export function App() {
     "save-pdf": st => savePagePdf(st.activePageId).catch(errToast),
     "find": st => {
       if (st.overlay === "reader") useStore.setState({readerFindOpen:true}); else setOverlay("find");
-      void bridge.focusShell().then(() => { const input = document.querySelector<HTMLInputElement>(".findbar input"); input?.focus(); input?.select(); }).catch(errToast);
+      void bridge.focusShell().then(() => { findInput.current?.focus(); findInput.current?.select(); }).catch(errToast);
     },
     "find-next": st => findG(st, true),
     "find-previous": st => findG(st, false),
-    "reload": st => st.activePageId && tabCommand({ kind: "reload", pageId: st.activePageId }).catch(errToast),
-    "hard-reload": st => st.activePageId && bridge.hardReload(st.activePageId).catch(errToast),
+    "reload": st => st.overlay === "settings" ? window.dispatchEvent(new Event("aux-settings-refresh")) : st.activePageId && tabCommand({ kind: "reload", pageId: st.activePageId }).catch(errToast),
+    "hard-reload": st => st.overlay === "settings" ? window.location.reload() : st.activePageId && bridge.hardReload(st.activePageId).catch(errToast),
     "actual-size": st => st.activePageId && st.zoomPage(st.activePageId, { reset: true }).catch(errToast),
     "zoom-in": st => st.activePageId && st.zoomPage(st.activePageId, { direction: "in" }).catch(errToast),
     "zoom-out": st => st.activePageId && st.zoomPage(st.activePageId, { direction: "out" }).catch(errToast),
@@ -345,8 +401,8 @@ export function App() {
       const p = st.pages.find((x) => x.pageId === st.activePageId);
       if (p?.url.startsWith("http")) void st.navigatePage(p.pageId, `view-source:${p.url}`).catch(errToast);
     },
-    "back": st => st.activePageId && tabCommand({ kind: "back", pageId: st.activePageId }).catch(errToast),
-    "forward": st => st.activePageId && tabCommand({ kind: "forward", pageId: st.activePageId }).catch(errToast),
+    "back": st => st.overlay === "settings" ? window.history.back() : st.activePageId && tabCommand({ kind: "back", pageId: st.activePageId }).catch(errToast),
+    "forward": st => st.overlay === "settings" ? window.history.forward() : st.activePageId && tabCommand({ kind: "forward", pageId: st.activePageId }).catch(errToast),
     "open-address": st => st.focusCommandBar(),
     "palette": st => bridge.privateMode ? undefined : setOverlay(st.overlay === "palette" ? null : "palette"),
     "settings": () => bridge.privateMode ? undefined : setOverlay("settings"),
@@ -388,10 +444,9 @@ export function App() {
   const cycleTab = (dir: 1 | -1) => {
     const st = useStore.getState();
     const tabs = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId);
-    if (tabs.length < 2) return;
-    const i = tabs.findIndex((p) => p.pageId === st.activePageId);
-    const next = tabs[(i + dir + tabs.length) % tabs.length];
-    if (next) void st.activate(next.pageId).catch(errToast);
+    const next = tabSwitcher.current(tabs, st.activePageId, dir,
+      (st.settings.tabSwitcherOrder as TabSwitcherOrder | undefined) ?? "sidebar");
+    if (next) void st.activate(next).catch(errToast);
   };
 
   const bookmarkAll = () => {
@@ -432,18 +487,26 @@ export function App() {
   return (
     <div
       className={`app tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${toolbarHole ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
-      style={{ "--space-grain": spaceGrain } as React.CSSProperties}
+      style={{ "--space-grain": spaceGrain, ...spaceThemeStyle({ theme: spaceTheme }) } as React.CSSProperties}
       data-overlay={overlay ?? undefined}
+      onKeyDown={(e) => {
+        if (!inNativeHost || e.defaultPrevented || (e.key !== "ContextMenu" && !(e.key === "F10" && e.shiftKey))) return;
+        const el = e.target as HTMLElement;
+        if (el.closest(".sidebar, .rail, .menu, input, textarea, [contenteditable]")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        void bridge.contextMenu(useStore.getState().activePageId);
+      }}
       onContextMenu={(e) => {
-        if (!inNativeHost) return;
+        if (!inNativeHost || e.defaultPrevented) return;
         const el = e.target as HTMLElement;
         if (el.closest(".sidebar, .rail, .menu")) return; // those own their menus
+        if (el.closest("input, textarea, [contenteditable]")) return;
         e.preventDefault();
-        const editable = el.closest("input, textarea, [contenteditable]");
-        void bridge.contextMenu(editable ? null : useStore.getState().activePageId);
+        void bridge.contextMenu(useStore.getState().activePageId);
       }}
     >
-      {!connected && (
+      {!connected && !bridge.privateMode && (
         <output className="degraded" data-block aria-live="polite">
           {I.alert}
           <span>Runtime reconnecting — tabs keep working</span>
@@ -457,9 +520,11 @@ export function App() {
           {horizontal && <button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} onClick={() => useStore.getState().toggleSidebar()}>{I.sidebarOpen}</button>}
           <div className="main">
             <div className="stage-wrap">
-              {overlay === "find" && <FindBar />}
-              <Stage />
+              {overlay === "find" && <FindBar inputRef={findInput} returnFocusRef={conversationScroll} />}
+              <Stage composerRef={conversationComposer} scrollRef={conversationScroll} />
+              {nativeShowing && linkStatus?.pageId === activePageId && <output className="link-status" aria-label="Link destination">{linkStatus.text}</output>}
               {overlay === "reader" && <ReaderView />}
+              {peekPageId && <LinkPeek />}
               {overlay === "settings" && <Settings />}
               {overlay === "tasks" && <Tasks />}
               {overlay === "downloads" && <Downloads />}
@@ -477,7 +542,7 @@ export function App() {
       <HttpAuthPrompt />
       <ActionConfirmation />
       {vaultOffer && <VaultOfferBanner />}
-      <Toasts top={sidebar === "hidden" || sidebar === "rail"} />
+      <Toasts />
       <BrowsingMemoryWatch />
     </div>
   );

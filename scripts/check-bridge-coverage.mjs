@@ -9,8 +9,10 @@ const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const renderer = join(root, "apps/shell/src");
 const nativeRoot = resolve(process.env.AUX_CHROMIUM_SRC ?? join(process.env.HOME, "aux-chromium-stable/chromium/src"));
 const registry = join(nativeRoot, "chrome/browser/ui/aux/method_registry.cc");
+const dispatcher = join(nativeRoot, "chrome/browser/ui/webui_browser/webui_browser_ui.cc");
 const bootstrap = join(nativeRoot, "chrome/browser/resources/aux_host/aux_host_bootstrap.ts");
 if (!existsSync(registry)) throw new Error(`Native method registry unavailable: ${registry}`);
+if (!existsSync(dispatcher)) throw new Error(`Native shell dispatcher unavailable: ${dispatcher}`);
 if (!existsSync(bootstrap)) throw new Error(`Native host bootstrap unavailable: ${bootstrap}`);
 
 // The renderer bridge surface is the generated host client: every HostMethods
@@ -41,6 +43,12 @@ const registrations = [...nativeText.matchAll(/register_shell\([\s\S]*?\{([^}]+)
 if (registrations.length < 5) throw new Error("Native shell registration inventory is incomplete");
 const handled = new Set(registrations.flatMap(match =>
   [...match[1].matchAll(/"([^"]+)"/g)].map(name => name[1])));
+
+// The shell answers capabilities before registry lookup. Keep that special
+// dispatch tied to source evidence instead of counting it as a missing method.
+const dispatcherText = readFileSync(dispatcher, "utf8");
+if (/if \(method == "capabilities"\)[\s\S]*?registry\.Capabilities\(\)/.test(dispatcherText))
+  handled.add("capabilities");
 
 // Methods the aux_host bootstrap answers without the shell registry (e.g.
 // autocomplete through the searchbox mojo surface).

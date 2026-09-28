@@ -42,7 +42,7 @@ body.resizing .rail { transition: none; }
 .run-row:hover { background: var(--bg-hover); color: var(--ink-0); }
 .run-row.on { background: var(--agent-soft); }
 .run-row-ico { width: var(--chip-h); height: var(--chip-h); border-radius: var(--r-md); display: grid; place-items: center; flex: none; }
-.run-row-ico.needs_input { color: var(--warn); background: var(--warn-soft); }
+.run-row-ico.needs_input { color: var(--wait); background: var(--wait-soft); }
 .run-row.live .run-row-ico { color: var(--agent); background: var(--agent-soft); }
 .run-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .run-row-title { font-size: var(--fs-sm); color: var(--ink-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -33,17 +33,9 @@ export class TabSessionRestore {
             /* one stale native target must not block the other live tabs */
           }
         }
-        // A lazily materialized catalog can expose the active native view
-        // before its background placeholders. Restore those saved tabs too;
-        // otherwise one existing view makes the remaining tabs disappear from
-        // the runtime indefinitely after restart.
-        for (const pageId of this.pages.pendingRestore.keys()) {
-          try {
-            await this.restoreSavedTab(pageId);
-          } catch (error) {
-            this.pages.restoreErrors.set(pageId, error instanceof Error ? error.message : String(error));
-          }
-        }
+        // The catalog may publish background placeholders after the active
+        // view. Keep their durable rows pending until that native upsert
+        // arrives; opening them here would defeat lazy session restore.
         const byWindow = new Map<string, (typeof existing.pages)[number]>();
         for (const page of existing.pages) {
           const windowId = page.windowId ?? "main";
@@ -60,19 +52,21 @@ export class TabSessionRestore {
     }
     const tabs = this.pages.deps.repo.loadTabs().filter((t) => t.backend === "aux");
     if (!tabs.length) return;
-    const activateIds = new Map<string, string>();
+    const selected = new Map<string, (typeof tabs)[number]>();
+    for (const tab of tabs) {
+      const windowId = tab.window_id || "main";
+      if (tab.active || !selected.has(windowId)) selected.set(windowId, tab);
+    }
     this.pages.restoring = true;
     try {
-      for (const t of tabs) {
+      for (const t of selected.values()) {
         try {
           const p = await this.restoreSavedTab(t.page_id);
-          const windowId = t.window_id || "main";
-          if (t.active || !activateIds.has(windowId)) activateIds.set(windowId, p.pageId);
+          await this.activation.activate(p.pageId).catch(() => {});
         } catch (error) {
           this.pages.restoreErrors.set(t.page_id,error instanceof Error?error.message:String(error));
         }
       }
-      for (const pageId of activateIds.values()) await this.activation.activate(pageId).catch(() => {});
     } finally {
       this.pages.restoring = false;
       this.pages.deps.events.emit(EventTypes.PageUpdated, {});

@@ -25,15 +25,16 @@ export const AgentRail = memo(function AgentRail() {
   const railWidth = useStore(s => s.railWidth);
   const setRailWidth = useStore(s => s.setRailWidth);
   const connected = useStore(s => s.connected);
-  const runs = useStore(s => s.runs);
+  const selectedRunId = view.kind === "run" ? view.runId : null;
+  const selectedRun = useStore(s => selectedRunId ? s.runs.find(run => run.runId === selectedRunId) : undefined);
   const [recentOpen, setRecentOpen] = useState(false);
   const root = useRef<HTMLElement>(null);
-  const selectedRun = view.kind === "run" ? runs.find(run => run.runId === view.runId) : undefined;
+  const composer = useRef<HTMLTextAreaElement>(null);
   const chatId = view.kind === "draft" ? view.chatId : selectedRun ? selectedRun.config?.chatId ?? selectedRun.runId : view.kind === "run" ? view.runId : null;
   useEffect(() => { setRecentOpen(false); }, [view]);
   useEffect(() => {
     if (!railOpen || recentOpen || view.kind === "set") return;
-    const frame = requestAnimationFrame(() => root.current?.querySelector<HTMLTextAreaElement>('.conversation-input textarea')?.focus({preventScroll:true}));
+    const frame = requestAnimationFrame(() => composer.current?.focus({preventScroll:true}));
     return () => cancelAnimationFrame(frame);
   }, [railOpen, recentOpen, view.kind]);
   const expand = () => {
@@ -54,7 +55,7 @@ export const AgentRail = memo(function AgentRail() {
         </div>
         <div className={`rail-body${recentOpen ? " rail-recents" : ""}`}>
           {railOpen && recentOpen && <RailHistory />}
-          {railOpen && !recentOpen && view.kind !== "set" && <Conversation chatId={chatId} embedded onChatCreated={chatId => setRailView({kind:"draft",chatId})} />}
+          {railOpen && !recentOpen && view.kind !== "set" && <Conversation chatId={chatId} embedded composerRef={composer} onChatCreated={chatId => setRailView({kind:"draft",chatId})} />}
           {railOpen && !recentOpen && view.kind === "set" && <SetPanel setId={view.setId} />}
         </div>
       </div>

@@ -3,9 +3,13 @@ import type { ActivationPolicy } from "./activation.js";
 import type { PageOpener } from "./opener.js";
 import type { PageRegistry } from "./registry.js";
 import type { LivePage } from "./types.js";
+import { BrowserDownloadLedger } from "../browser-download-ledger.js";
 
 export class NativeViewSync {
-  constructor(private pages: PageRegistry, private opener: PageOpener, private activation: ActivationPolicy) {}
+  private downloads: BrowserDownloadLedger;
+  constructor(private pages: PageRegistry, private opener: PageOpener, private activation: ActivationPolicy) {
+    this.downloads = new BrowserDownloadLedger(pages.deps.repo, pages.deps.downloadsDir);
+  }
 
   /** Catalog patches apply strictly in publish order — attach work inside an
    *  op must not interleave with the next patch. */
@@ -26,9 +30,10 @@ export class NativeViewSync {
     void this.pages.refreshMeta(lp);
   }
 
-  onNativeNavigationError(pageId: string, error: { url: string; code: number; message: string } | null) {
+  onNativeNavigationError(pageId: string, error: { url: string; code: number; message: string; upgradedFrom?: string } | null) {
     const lp = this.pages.live.get(pageId);
     if (!lp) return;
+    if (JSON.stringify(lp.target.navigationError ?? null) === JSON.stringify(error)) return;
     lp.target.navigationError = error;
     if (error) { lp.target.url = error.url; lp.target.title = "Page couldn’t load"; lp.target.loading = false; this.pages.resetDocumentState(lp); }
     this.pages.persist(lp);
@@ -102,6 +107,16 @@ export class NativeViewSync {
         this.pages.lastKnownWindow.set(tab.pageId, tab.windowId);
         const lp = this.pages.live.get(tab.pageId);
         if (lp) {
+          this.onNativeNavigationError(tab.pageId, tab.navigationError ?? null);
+          if (lp.target.themeColor !== tab.themeColor) {
+            lp.target.themeColor = tab.themeColor;
+            this.pages.persist(lp);
+            this.pages.deps.events.emit(EventTypes.PageUpdated, { pageId: tab.pageId, themeColor: tab.themeColor });
+          }
+          if (lp.target.lifecycle !== tab.lifecycle) {
+            lp.target.lifecycle = tab.lifecycle;
+            this.pages.persist(lp);
+          }
           // The catalog owns window placement; the driver and view.* events
           // own the per-page fields the runtime reports.
           if ((lp.target.windowId ?? "main") !== tab.windowId) {
@@ -114,7 +129,8 @@ export class NativeViewSync {
         // Pages the runtime itself created echo back through the catalog —
         // skip them. Human/external surfaces register so agent ops can
         // attach on the stable marker.
-        if (op.origin === "runtime" || this.pages.pendingExternal.has(tab.pageId) || this.pages.closing) return;
+        if (op.origin === "runtime" || this.pages.opening.has(tab.pageId) ||
+          this.pages.pendingExternal.has(tab.pageId) || this.pages.closing) return;
         const active = this.pages.activeByWindow.get(tab.windowId) === tab.pageId;
         await this.opener.registerExternal({
           pageId: tab.pageId,
@@ -122,12 +138,20 @@ export class NativeViewSync {
           marker: `atab-${tab.pageId}`,
           url: tab.url,
           title: tab.title,
+          themeColor: tab.themeColor,
           backend: "aux",
           active,
+          ownedByRuntime: tab.runtimeOwned,
+          lifecycle: tab.lifecycle,
           // A re-materialized tab continues its epoch sequence — a fresh
           // surface must invalidate observations made against the old one.
           restored: this.pages.deps.repo.getPage(tab.pageId),
         });
+        if (this.pages.pendingRestore.delete(tab.pageId)) {
+          this.pages.restoreErrors.delete(tab.pageId);
+          this.pages.deps.events.emit("browser.recovery.changed", {});
+        }
+        if (tab.navigationError) this.onNativeNavigationError(tab.pageId, tab.navigationError);
         return;
       }
       case "remove": {
@@ -230,19 +254,21 @@ export class NativeViewSync {
   /** main -> runtime: a profile-session download began (authoritative record). */
   onNativeDownloadStarted(
     pageId: string | undefined,
-    info: { id: string; sourceUrl?: string; filename: string; path: string; size: number; totalBytes?: number; startedAt: number },
+    info: { id: string; sourceUrl?: string; filename: string; path: string; size: number; totalBytes?: number; startedAt: number; downloadRoot?: string },
   ) {
     this.pages.deps.repo.saveDownload({ ...info, pageId, state: "started" });
     const lp = pageId ? this.pages.live.get(pageId) : undefined;
+    this.downloads.started(pageId, info, lp?.target.controller, info.downloadRoot);
     lp?.driver?.notifyDownloadStarted?.(info);
     this.pages.deps.events.emit(EventTypes.DownloadStarted, { pageId, ...info, state: "started" });
   }
 
-  onNativeDownload(
+  async onNativeDownload(
     pageId: string | undefined,
     info: { id: string; sourceUrl?: string; filename: string; path: string; state: string; size: number; totalBytes?: number; startedAt: number; endedAt?: number },
   ) {
     this.pages.deps.repo.saveDownload({ ...info, pageId });
+    await this.downloads.finished(info);
     const lp = pageId ? this.pages.live.get(pageId) : undefined;
     if (lp?.driver) {
       lp.driver.notifyDownload?.({

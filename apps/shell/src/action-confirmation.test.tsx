@@ -29,9 +29,9 @@ it("shows one Allow button for a confirmation event and decides the approval onc
   const root = createRoot(host);
   try {
     await act(async () => { root.render(<ActionConfirmation />); });
-    const allow = host.querySelector<HTMLButtonElement>('[aria-label="Allow"]');
+    const allow = document.body.querySelector<HTMLButtonElement>('[aria-label="Allow"]');
     expect(allow?.textContent).toBe("Allow");
-    expect(host.textContent).toContain("Allow this action before it runs.");
+    expect(document.body.textContent).toContain("Allow this action before it runs.");
     await act(async () => { allow!.click(); allow!.click(); });
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(invoke).toHaveBeenCalledWith("safety.approvals.decide", {
@@ -43,5 +43,30 @@ it("shows one Allow button for a confirmation event and decides the approval onc
     await act(async () => { root.unmount(); });
     invoke.mockRestore();
     useStore.setState(original, true);
+  }
+});
+
+it("treats native dialog cancellation as a declined approval", async () => {
+  const original = useStore.getState();
+  useStore.setState({ confirmation: {
+    approvalId: "ap-cancel", turnId: "turn-cancel", instruction: "Confirm fixture action",
+    action: "click", origin: "http://127.0.0.1:9",
+  } as never });
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true });
+  vi.spyOn(bridge, "overlay").mockResolvedValue(false);
+  vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
+  const root = createRoot(document.createElement("div"));
+  try {
+    await act(async () => root.render(<ActionConfirmation />));
+    const dialog = document.body.querySelector('dialog[aria-label="Allow this action"]')!;
+    await act(async () => dialog.dispatchEvent(new Event("cancel", { bubbles: false, cancelable: true })));
+    expect(invoke).toHaveBeenCalledWith("safety.approvals.decide", {
+      decision: { decision: "decline", approvalId: "ap-cancel" },
+      expectedTurnId: "turn-cancel",
+    });
+  } finally {
+    await act(async () => root.unmount());
+    useStore.setState(original, true);
+    vi.restoreAllMocks();
   }
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { isScrimOverlay } from "../chrome";
 import { call, useStore } from "../store";
 import { bridge } from "../bridge";
+import { Dialog } from "../ui";
 
 /** The person confirms a page action. Allow decides the approval once. */
 export function ActionConfirmation() {
@@ -15,19 +16,13 @@ function Confirm({ confirmation }: { confirmation: NonNullable<ReturnType<typeof
   const allow = useRef<HTMLButtonElement>(null);
   const deciding = useRef(false);
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    const body = document.querySelector<HTMLElement>(".app-body");
-    const wasInert = body?.inert;
-    if (body) body.inert = true;
     let live = true;
     void bridge.overlay(true).then(() => { if (live) return bridge.focusShell(); }).then(() => {
       if (live) allow.current?.focus();
     }).catch(() => {});
     return () => {
       live = false;
-      if (body) body.inert = !!wasInert;
       void bridge.overlay(isScrimOverlay(useStore.getState().overlay));
-      if (previous?.isConnected) previous.focus();
     };
   }, []);
   async function decide(accept: boolean) {
@@ -53,10 +48,10 @@ function Confirm({ confirmation }: { confirmation: NonNullable<ReturnType<typeof
   }
   const site = confirmation.origin.replace(/^https?:\/\//, "");
   return (
-    <div className="scrim-soft">
-      <form className="sheet pop-in http-auth-prompt" role="dialog" aria-modal="true" aria-labelledby="action-confirm-title"
+    <Dialog label="Allow this action" onClose={() => void decide(false)} className="aux-dialog-surface http-auth-prompt">
+      <form
         onSubmit={event => { event.preventDefault(); void decide(true); }}
-        onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); void decide(false); } }}>
+        onKeyDown={event => event.stopPropagation()}>
         <h3 id="action-confirm-title">Allow this action</h3>
         <p>{confirmation.instruction}</p>
         {site && <p className="hint">{site}</p>}
@@ -66,6 +61,6 @@ function Confirm({ confirmation }: { confirmation: NonNullable<ReturnType<typeof
           <button ref={allow} type="submit" className="btn primary" disabled={busy} aria-label="Allow" onClick={() => void decide(true)}>Allow</button>
         </div>
       </form>
-    </div>
+    </Dialog>
   );
 }

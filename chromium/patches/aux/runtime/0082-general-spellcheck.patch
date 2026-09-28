@@ -1,0 +1,93 @@
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -59,6 +59,7 @@
+                  {"createResultPreview", "releaseResultPreview",
+                   "surfaceContentId", "hardReload", "printPage", "devTools",
+                   "savePagePdf", "downloadFolder", "chooseDownloadFolder",
++                  "spellCheck",
+                   "downloadsSnapshot", "controlDownload", "retryDownload"});
+   register_shell(AuxShellMethodGroup::kExtensions,
+                  {"extensions", "installStoreExtension",
+--- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
++++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+@@ -54,6 +54,10 @@
+ #include "components/guest_contents/browser/guest_contents_handle.h"
+ #include "components/prefs/pref_change_registrar.h"
+ #include "components/prefs/pref_service.h"
++#include "components/spellcheck/spellcheck_buildflags.h"
++#if BUILDFLAG(ENABLE_SPELLCHECK)
++#include "components/spellcheck/browser/pref_names.h"
++#endif
+ #endif
+ #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -133,6 +137,41 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "spellCheck") {
++#if BUILDFLAG(ENABLE_SPELLCHECK)
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Spell check settings require a regular profile");
++      return;
++    }
++    auto* prefs = profile->GetPrefs();
++    const auto* pref = prefs->FindPreference(spellcheck::prefs::kSpellCheckEnable);
++    if (!pref) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "Spell check preferences are unavailable");
++      return;
++    }
++    if (!list->empty() && (*list)[0].is_bool()) {
++      if (pref->IsManaged()) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Spell check is managed by policy");
++        return;
++      }
++      prefs->SetBoolean(spellcheck::prefs::kSpellCheckEnable,
++                        (*list)[0].GetBool());
++    }
++    base::DictValue result;
++    result.Set("enabled", prefs->GetBoolean(spellcheck::prefs::kSpellCheckEnable));
++    result.Set("managed", pref->IsManaged());
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++#else
++    std::move(callback).Run(false, "", "not_supported",
++                            "Spell check is unavailable in this build");
++#endif
++    return;
++  }
+   if (method == "downloadFolder" || method == "chooseDownloadFolder") {
+     auto* profile = browser_->GetProfile();
+     if (profile->IsOffTheRecord()) {
+--- a/chrome/browser/ui/webui_browser/BUILD.gn
++++ b/chrome/browser/ui/webui_browser/BUILD.gn
+@@ -4,6 +4,7 @@
+ 
+ import("//mojo/public/tools/bindings/mojom.gni")
+ import("//chrome/browser/buildflags.gni")
++import("//components/spellcheck/spellcheck_build_features.gni")
+ 
+ assert(!is_android)
+ 
+@@ -175,6 +176,7 @@
+       "//chrome/browser/extensions:extensions",
+       "//chrome/browser/ui/aux:runtime",
+       "//components/prefs",
++      "//components/spellcheck:buildflags",
+       "//components/dom_distiller/content/browser",
+       "//components/dom_distiller/core",
+       "//components/device_reauth",
+@@ -185,6 +187,9 @@
+       "//chrome/browser/resources/aux_host:resources",
+       "//chrome/browser/resources/aux:resources",
+     ]
++    if (enable_spellcheck) {
++      deps += [ "//components/spellcheck/browser" ]
++    }
+   }
+ 
+   if (is_chromeos) {

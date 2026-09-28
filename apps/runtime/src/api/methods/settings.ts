@@ -1,6 +1,7 @@
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
-import { AuxError, EventTypes } from "@aux/contracts";
+import { AuxError, EventTypes, MethodSchemas } from "@aux/contracts";
+import { usageReport } from "../../services/usage-report.js";
 
 async function h_settings_get(ctx: MethodCtx): Promise<unknown> {
   const { s } = ctx;
@@ -57,4 +58,10 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
 export const settingsMethods: Partial<Record<MethodName, MethodHandler>> = {
   "settings.get": h_settings_get,
   "settings.set": h_settings_set,
+  "usage.report": h_usage_report,
 };
+
+async function h_usage_report(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.client.external) throw new AuxError("permission_denied", "Usage details are available in Aux Settings.");
+  return usageReport(ctx.s.repo.db, MethodSchemas["usage.report"].parse(ctx.params));
+}

@@ -1,6 +1,6 @@
 import { RunControls } from "./RunControls";
 import type { ConversationSource } from "@aux/contracts";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { CompactObservation, Run } from "@aux/contracts";
 import { decodeBase64Json, isLive, useStore, call, errToast } from "../store";
@@ -135,7 +135,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
 }
 
 /** `latest` lets a conversation that already ordered its turns skip the per-panel scan. */
-export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen, sources, questionInComposer = false, controlsInComposer = false }: { controlsInComposer?: boolean; questionInComposer?: boolean; sources?: ConversationSource[]; runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean }) {
+export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen, sources, questionInComposer = false, controlsInComposer = false, composerRef }: { controlsInComposer?: boolean; questionInComposer?: boolean; sources?: ConversationSource[]; runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean; composerRef?: RefObject<HTMLTextAreaElement | null> }) {
   const run = useStore((s) => s.runs.find((r) => r.runId === runId));
   const latestConversationTurn = useStore((s) => latest ?? isLatestTurn(s.runs, runId));
   const stream = useStore((s) => s.answerStreams[runId]);
@@ -303,7 +303,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
             const state = useStore.getState();
             if (!state.conversationDrafts[`chat:${chatId}`]?.trim()) state.setConversationDraft(chatId, run.goal);
             state.openConversation(run.runId);
-            requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.conversation-input textarea')?.focus());
+            requestAnimationFrame(() => composerRef?.current?.focus());
           }}>{run.config?.taskId ? "Edit task" : "Revise request"}</button>}
           {run.failure.action === "permission_settings" && <button className="btn sm" onClick={() => { useStore.setState({ settingsCategory: "Agent permissions" }); useStore.getState().setOverlay("settings"); }}>{I.lock}Review permissions</button>}
           {run.failure.action === "permission_settings" && run.config?.taskId && <button className="btn sm" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>Open task</button>}

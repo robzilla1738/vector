@@ -7,17 +7,20 @@ import type { PageTarget, TidyProposal } from "@aux/contracts";
 import { useStore, call, errToast, tabCommand, toast, pagePreview } from "../store";
 import { bridge, inNativeHost } from "../bridge";
 import { bookmarkWebUrl } from "../bookmark-files";
-import { hostOf, isPinned, tabLabel } from "../workspace";
-import { persistLayout } from "../store/persistence";
-import { applyTidyProposal, revertTidyProposal } from "../tidy-layout";
+import { assignFolder, assignSpace, hostOf, isPinned, tabLabel, type ArchivedTab } from "../workspace";
+import { flushLayout, persistLayout } from "../store/persistence";
+import { applyTidyProposal, revertTidyRecord, tidyUndoRecord } from "../tidy-layout";
+import { confirmArchiveClose, finishTabArchive, removeTabArchive, stageTabArchive } from "../tab-archive";
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 import { useShortcutLabels } from "../use-shortcut-label";
+import { useFeature } from "../use-feature";
 import "./Overview.css";
 
 /** A searchable, keyboard-accessible place to organize several tabs together. */
 export function Overview() {
   const key = useShortcutLabels();
+  const archiveEnabled = useFeature("archive");
   const pages = useStore(useShallow(state => state.pages.filter(page => page.viewStatus !== "detached" && !page.ownedByRuntime)));
   const layout = useStore(state => state.layout);
   const activePageId = useStore(state => state.activePageId);
@@ -34,7 +37,7 @@ export function Overview() {
   const [folderName, setFolderName] = useState("");
   const [progress, setProgress] = useState("");
   const [tidy, setTidy] = useState<{ proposal: TidyProposal; spaceId: string } | null>(null);
-  const tidyUndo = useStore(state => state.tidyUndo);
+  const tidyUndo = useStore(state => state.layout.tidyUndo);
   const [closing, setClosing] = useState(false);
   const pending = useRef(false);
   const stopClosing = useRef(false);
@@ -124,7 +127,7 @@ export function Overview() {
         if (cancelled) break;
         if (pagePreview(pageId) || captured.current.has(pageId)) continue;
         const page = useStore.getState().pages.find(page => page.pageId === pageId);
-        if (!page || page.viewStatus !== "visible") continue;
+        if (!page || (page.backend !== "aux" && page.viewStatus !== "visible")) continue;
         captured.current.add(pageId);
         try {
           const image = page.backend === "aux" ? await bridge.preview(pageId)
@@ -168,6 +171,76 @@ export function Overview() {
     if (busy) return;
     if (event.metaKey || event.ctrlKey || event.shiftKey || selection.length) select(page.pageId, event.shiftKey);
     else void useStore.getState().activate(page.pageId).catch(errToast);
+  }
+
+  async function archiveSelection() {
+    const chosen = [...selection];
+    const checks = await bridge.tabsUnsavedWork(chosen.map(page => ({ pageId: page.pageId, url: page.url })));
+    if (chosen.some(page => checks[page.pageId] !== "clean"))
+      throw new Error("A selected tab has unsaved work or could not be checked. Review it before archiving.");
+    let archived = 0;
+    for (const selected of chosen) {
+      const state = useStore.getState();
+      const page = state.pages.find(item => item.pageId === selected.pageId);
+      if (!page || page.url !== selected.url) throw new Error(`A tab changed after ${archived} were archived. Review the remainder.`);
+      const staged = stageTabArchive(state.layout, page);
+      useStore.setState({ layout: staged.layout });
+      persistLayout(staged.layout);
+      try { await flushLayout(); }
+      catch (error) {
+        const rolledBack = removeTabArchive(useStore.getState().layout, staged.entry.archiveId);
+        useStore.setState({ layout: rolledBack }); persistLayout(rolledBack);
+        throw error;
+      }
+      const accepted = await confirmArchiveClose(page.pageId,
+        () => bridge.tabCommand({ kind: "close", pageId: page.pageId }, useStore.getState().catalogVersion),
+        () => bridge.tabsSnapshot());
+      if (!accepted) {
+        const rolledBack = removeTabArchive(useStore.getState().layout, staged.entry.archiveId);
+        useStore.setState({ layout: rolledBack }); persistLayout(rolledBack); await flushLayout();
+        throw new Error(`Native tab close was refused after ${archived} archived. Review the remaining tabs.`);
+      }
+      const finished = finishTabArchive(useStore.getState().layout, staged.entry.archiveId);
+      useStore.setState({ layout: finished }); persistLayout(finished); await flushLayout();
+      archived++;
+      setSelected(previous => { const next = new Set(previous); next.delete(page.pageId); return next; });
+      setProgress(`Archived ${archived} of ${chosen.length} tabs…`);
+    }
+    setProgress(`${archived} ${archived === 1 ? "tab" : "tabs"} archived. Restore them below when you need them.`);
+  }
+
+  async function restoreArchive(entry: ArchivedTab) {
+    const state = useStore.getState();
+    if (!state.layout.archivedTabs?.some(item => item.archiveId === entry.archiveId && item.state === "archived"))
+      throw new Error("This archived tab has changed. Refresh the overview.");
+    const existing = state.pages.find(page => page.pageId === entry.pageId);
+    if (existing && existing.url !== entry.url) throw new Error("The original tab ID now has a different page. Review it before restoring.");
+    if (state.layout.archivedSpaces?.some(space => space.id === entry.spaceId))
+      state.syncBrowserSpaces(await call("spaces.update", { id: entry.spaceId, archived: false }));
+    if (!useStore.getState().layout.spaces.some(space => space.id === entry.spaceId))
+      throw new Error("The archived tab’s Space is unavailable. Restore that Space before reopening this tab.");
+    const spaceId = entry.spaceId;
+    if (!existing) {
+      await state.openBackgroundTab(entry.url, spaceId, false, entry.pageId, entry.index);
+      if (!useStore.getState().pages.some(page => page.pageId === entry.pageId)) {
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => { unsubscribe(); reject(new Error("The native tab has not appeared yet. The archive remains available.")); }, 3000);
+          const unsubscribe = useStore.subscribe(current => {
+            if (!current.pages.some(page => page.pageId === entry.pageId)) return;
+            clearTimeout(timeout); unsubscribe(); resolve();
+          });
+        });
+      }
+    }
+    const nextState = useStore.getState();
+    let restored = assignSpace(nextState.layout, entry.pageId, spaceId);
+    if (entry.folderId && restored.folders.some(folder => folder.id === entry.folderId && folder.spaceId === spaceId))
+      restored = assignFolder(restored, entry.pageId, entry.folderId);
+    const order = restored.order.filter(id => id !== entry.pageId);
+    order.splice(Math.min(entry.index, order.length), 0, entry.pageId);
+    restored = removeTabArchive({ ...restored, order }, entry.archiveId);
+    useStore.setState({ layout: restored }); persistLayout(restored); await flushLayout();
+    setProgress(`Restored ${entry.title || hostOf(entry.url)}.`);
   }
 
   return <div className="overview" onKeyDown={event => {
@@ -227,15 +300,17 @@ export function Overview() {
       </div>)}</div>
       <div className="row"><button className="btn sm" disabled={busy} onClick={() => void act(() => {
         const state = useStore.getState();
-        const after = applyTidyProposal(state.layout, state.pages, tidy.spaceId, tidy.proposal);
+        const applied = applyTidyProposal(state.layout, state.pages, tidy.spaceId, tidy.proposal);
+        const receipt = tidyUndoRecord(state.layout, applied);
+        const after = { ...applied, tidyUndo: receipt };
         persistLayout(after);
-        useStore.setState({ layout: after, tidyUndo: { before: state.layout, after } });
+        useStore.setState({ layout: after, tidyUndo: receipt });
         setTidy(null);
         setProgress(`Created ${tidy.proposal.groups.length} ${tidy.proposal.groups.length === 1 ? "folder" : "folders"}. You can undo this change.`);
       })}>Apply folders</button><button className="btn sm ghost" disabled={busy} onClick={() => setTidy(null)}>Dismiss</button></div>
     </section>}
-    {tidyUndo && <div className="ov-tidy-undo"><span className="hint">AI Tidy created folders in this Space.</span><button className="btn sm ghost" disabled={busy} onClick={() => void act(() => {
-      const restored = revertTidyProposal(tidyUndo.before, tidyUndo.after, useStore.getState().layout);
+    {tidyUndo && tidyUndo.moved.every(item => pages.some(page => page.pageId === item.pageId)) && <div className="ov-tidy-undo"><span className="hint">AI Tidy created folders in this Space.</span><button className="btn sm ghost" disabled={busy} onClick={() => void act(() => {
+      const restored = revertTidyRecord(tidyUndo, useStore.getState().layout);
       persistLayout(restored);
       useStore.setState({ layout: restored, tidyUndo: null });
       setProgress("Tidy undone. Your earlier folders and tab positions are restored.");
@@ -275,9 +350,14 @@ export function Overview() {
           try { await tabCommand({ kind: "setMuted", pageId: page.pageId, muted: muteSelection }); changed++; }
           catch(reason) { throw new Error(`Audio changed for ${changed} tabs. ${reason instanceof Error ? reason.message : String(reason)}`); }
         }
+        // Tab commands acknowledge before the audio event reaches this window.
+        // Refresh once for the selection so the next action reflects native state.
+        const snapshot = await bridge.tabAudio();
+        useStore.setState({ tabAudio: snapshot });
         setProgress(`${changed} ${changed === 1 ? "tab" : "tabs"} ${muteSelection ? "muted" : "unmuted"}.`);
       })}>{muteSelection ? "Mute tabs" : "Unmute tabs"}</button>}
       <button className="btn sm" disabled={busy || !selection.some(page => bookmarkWebUrl(page.url))} onClick={() => { setSavingFolder(value => value === "bookmarks" ? false : "bookmarks"); setFolderName(""); }}>Save bookmarks…</button>
+      {archiveEnabled && <button className="btn sm" disabled={busy || !selection.every(page => /^https?:\/\//.test(page.url))} onClick={() => void act(archiveSelection)}>Archive tabs</button>}
       <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
         if(duplicateSelection.current){
           const candidates=selection.map(page=>({pageId:page.pageId,url:page.url}));
@@ -340,5 +420,10 @@ export function Overview() {
         </article>;
       })}
     </div>
+    {archiveEnabled && !!layout.archivedTabs?.some(entry => entry.state === "archived" && !pages.some(page => page.pageId === entry.pageId)) &&
+      <section aria-label="Archived tabs" className="ov-archive"><h2>Archived tabs</h2><p className="hint">Saved in this Profile. Restore a tab to reopen it.</p>
+        {layout.archivedTabs.filter(entry => entry.state === "archived" && !pages.some(page => page.pageId === entry.pageId)).map(entry =>
+          <div className="row" key={entry.archiveId}><span>{entry.title || hostOf(entry.url)}</span><span className="sp" />
+            <button className="btn sm ghost" disabled={busy} onClick={() => void act(() => restoreArchive(entry))}>Restore</button></div>)}</section>}
   </div>;
 }

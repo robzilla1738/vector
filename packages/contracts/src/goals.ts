@@ -10,9 +10,13 @@ export const GoalBudgetSchema = z.object({
 export const GoalSchema = z.object({
   goalId: z.string().uuid(),
   workspaceId: z.string().min(1),
+  chatId: z.string().min(1).optional(),
   objective: z.string().trim().min(1).max(10_000),
   budget: GoalBudgetSchema,
-  status: z.enum(["draft", "starting", "active", "paused", "needs_input", "completed", "failed", "cancelled"]),
+  status: z.enum(["draft", "starting", "active", "paused", "blocked", "needs_input", "completed", "failed", "cancelled"]),
+  blocker: z.string().max(2_000).optional(),
+  blockerStreak: z.number().int().min(0).max(3).optional(),
+  lastBlockerTurn: z.number().int().nonnegative().optional(),
   runId: z.string().optional(),
   usedTokens: z.number().nonnegative(),
   knownCostUsd: z.number().nonnegative(),
@@ -20,5 +24,5 @@ export const GoalSchema = z.object({
   createdAt: z.number(),
   updatedAt: z.number(),
 });
-export const GoalCreateParams = GoalSchema.pick({ workspaceId: true, objective: true, budget: true });
+export const GoalCreateParams = GoalSchema.pick({ workspaceId: true, chatId: true, objective: true, budget: true });
 export type Goal = z.infer<typeof GoalSchema>;

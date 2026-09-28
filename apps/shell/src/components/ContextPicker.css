@@ -1,0 +1,48 @@
+@layer components {
+  .context-choice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 36px;
+    padding: var(--space-2);
+    border-radius: var(--r-md);
+    text-align: left;
+  }
+  .context-choice > span {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+  }
+  .context-choice strong,
+  .context-choice small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .context-choice strong {
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+  }
+  .context-choice small {
+    font-size: var(--fs-xs);
+    color: var(--ink-2);
+  }
+  .context-choice:is(:hover, [aria-pressed="true"]) {
+    background: var(--bg-hover);
+  }
+  .context-choice > svg,
+  .context-choice > input {
+    flex: none;
+  }
+  .context-picker-group {
+    border-top: var(--hairline) solid var(--line);
+    margin-top: var(--space-1);
+    padding-top: var(--space-1);
+  }
+  .context-picker-group > p {
+    margin: var(--space-2);
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+}

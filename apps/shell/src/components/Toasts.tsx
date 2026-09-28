@@ -1,35 +1,19 @@
-import { memo, useEffect, useState } from "react";
+import { memo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
-import { I } from "./icons";
+import { Toast } from "../ui/toast";
 
-const INFO_MS = 3600;
+const ToastRow = memo(function ToastRow({ id }: { id: number }) {
+  const toast = useStore(state => state.toasts.find(item => item.id === id));
+  if (!toast) return null;
+  return <Toast id={toast.id} text={toast.text} kind={toast.kind} onDismiss={useStore.getState().dismissToast} />;
+});
 
-type ToastItem = ReturnType<typeof useStore.getState>["toasts"][number];
-
-/** Info toasts time out (paused while pointed at or focused); errors stay until dismissed. */
-function Toast({ toast }: { toast: ToastItem }) {
-  const [held, setHeld] = useState(false);
-  const error = toast.kind === "error";
-  useEffect(() => {
-    if (error || held) return;
-    const timer = window.setTimeout(() => useStore.getState().dismissToast(toast.id), INFO_MS);
-    return () => window.clearTimeout(timer);
-  }, [error, held, toast.id]);
+export const Toasts = memo(function Toasts() {
+  const toastIds = useStore(useShallow(state => state.toasts.map(item => item.id)));
   return (
-    <div className={`toast rise ${toast.kind}`} role={error ? "alert" : undefined}
-      onPointerEnter={() => setHeld(true)} onPointerLeave={() => setHeld(false)} onFocus={() => setHeld(true)} onBlur={() => setHeld(false)}>
-      {error ? I.alert : I.check}
-      <span className="toast-text">{toast.text}</span>
-      <button className="icon-btn xs toast-dismiss" aria-label="Dismiss notification" onClick={() => useStore.getState().dismissToast(toast.id)}>{I.close}</button>
-    </div>
-  );
-}
-
-export const Toasts = memo(function Toasts({ top }: { top: boolean }) {
-  const toasts = useStore((s) => s.toasts);
-  return (
-    <div className={`toasts ${top ? "top" : ""}`} aria-live="polite">
-      {toasts.map((t) => <Toast key={t.id} toast={t} />)}
+    <div className="toasts" aria-live="polite">
+      {toastIds.map(id => <ToastRow key={id} id={id} />)}
     </div>
   );
 });

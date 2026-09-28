@@ -1,0 +1,291 @@
+diff --git a/chrome/browser/ui/aux/content_blocking_controller.h b/chrome/browser/ui/aux/content_blocking_controller.h
+--- a/chrome/browser/ui/aux/content_blocking_controller.h
++++ b/chrome/browser/ui/aux/content_blocking_controller.h
+@@ -10,6 +10,7 @@
+ #include <memory>
+ #include <optional>
+ #include <string>
++#include <string_view>
+ #include <vector>
+ 
+ #include "base/files/file_path.h"
+@@ -26,6 +27,7 @@
+ }
+ namespace network {
+ struct ResourceRequest;
++class URLLoaderFactoryBuilder;
+ }
+ 
+ namespace aux {
+@@ -33,6 +35,8 @@
+ class ContentBlockingController final : public base::SupportsUserData::Data {
+  public:
+   static ContentBlockingController* ForProfile(Profile* profile);
++  static void MaybeProxySubresourceFactory(
++      Profile* profile, network::URLLoaderFactoryBuilder& factory_builder);
+   ~ContentBlockingController() override;
+ 
+   std::optional<base::DictValue> Begin(const base::DictValue& params,
+@@ -47,6 +51,8 @@
+       std::string top_site_host);
+   std::unique_ptr<blink::URLLoaderThrottle> CreateKeepAliveThrottle(
+       std::string top_site_host);
++  bool ShouldBlockNetworkRequest(const network::ResourceRequest& request);
++  bool ShouldBlockURL(const GURL& url, std::string_view top_site_host);
+ 
+   bool enabled();
+   bool IsAllowed(std::string_view site_host);
+diff --git a/chrome/browser/ui/aux/content_blocking_controller.cc b/chrome/browser/ui/aux/content_blocking_controller.cc
+--- a/chrome/browser/ui/aux/content_blocking_controller.cc
++++ b/chrome/browser/ui/aux/content_blocking_controller.cc
+@@ -13,6 +13,7 @@
+ 
+ #include "base/files/file_util.h"
+ #include "base/functional/bind.h"
++#include "base/memory/self_deleting.h"
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
+ #include "base/strings/string_number_conversions.h"
+@@ -27,9 +28,19 @@
+ #include "content/public/browser/navigation_entry.h"
+ #include "content/public/browser/web_contents.h"
+ #include "crypto/sha2.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "mojo/public/cpp/bindings/receiver.h"
++#include "mojo/public/cpp/bindings/self_owned_receiver.h"
+ #include "net/base/net_errors.h"
+ #include "net/url_request/redirect_info.h"
+ #include "services/network/public/cpp/resource_request.h"
++#include "services/network/public/cpp/self_deleting_url_loader_factory.h"
++#include "services/network/public/cpp/url_loader_completion_status.h"
++#include "services/network/public/cpp/url_loader_factory_builder.h"
++#include "services/network/public/mojom/early_hints.mojom.h"
++#include "services/network/public/mojom/url_loader.mojom.h"
++#include "services/network/public/mojom/url_loader_factory.mojom.h"
++#include "services/network/public/mojom/url_response_head.mojom.h"
+ #include "third_party/blink/public/common/loader/url_loader_throttle.h"
+ 
+ namespace aux {
+@@ -131,6 +142,14 @@
+          contents->GetLastCommittedURL().spec() == *expected_url &&
+          contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() &&
+          entry->GetUniqueID() == *navigation_id;
++}
++
++std::string TopSiteHost(const network::ResourceRequest& request) {
++  std::string host(request.site_for_cookies.RepresentativeUrl().host());
++  if (host.empty() && request.request_initiator) {
++    host = std::string(request.request_initiator->host());
++  }
++  return host;
+ }
+ 
+ }  // namespace
+@@ -196,6 +215,137 @@
+   base::RepeatingCallback<void(std::string)> on_blocked_;
+ };
+ 
++class BlockingRequest final : public network::mojom::URLLoader,
++                              public network::mojom::URLLoaderClient {
++ public:
++  BlockingRequest(
++      mojo::PendingReceiver<network::mojom::URLLoader> loader_receiver,
++      mojo::PendingRemote<network::mojom::URLLoaderClient> client,
++      base::WeakPtr<ContentBlockingController> blocker,
++      std::string top_site_host)
++      : blocker_(std::move(blocker)),
++        top_site_host_(std::move(top_site_host)),
++        client_(std::move(client)),
++        loader_receiver_(this, std::move(loader_receiver)) {
++    loader_receiver_.set_disconnect_handler(base::BindOnce(
++        &BlockingRequest::OnRendererDisconnect, base::Unretained(this)));
++  }
++  ~BlockingRequest() override = default;
++
++  mojo::PendingReceiver<network::mojom::URLLoader> BindTargetLoader() {
++    return target_loader_.BindNewPipeAndPassReceiver();
++  }
++
++  void FollowRedirect(
++      network::HttpRequestHeadersUpdateParams headers_update_params,
++      const std::optional<GURL>& new_url) override {
++    if (target_loader_) {
++      target_loader_->FollowRedirect(std::move(headers_update_params), new_url);
++    }
++  }
++  void SetPriority(net::RequestPriority priority,
++                   int32_t intra_priority_value) override {
++    if (target_loader_) {
++      target_loader_->SetPriority(priority, intra_priority_value);
++    }
++  }
++  void OnReceiveEarlyHints(network::mojom::EarlyHintsPtr early_hints) override {
++    client_->OnReceiveEarlyHints(std::move(early_hints));
++  }
++  void OnReceiveResponse(
++      network::mojom::URLResponseHeadPtr head,
++      mojo::ScopedDataPipeConsumerHandle body,
++      std::optional<mojo_base::BigBuffer> cached_metadata) override {
++    client_->OnReceiveResponse(std::move(head), std::move(body),
++                               std::move(cached_metadata));
++  }
++  void OnReceiveRedirect(
++      const net::RedirectInfo& redirect_info,
++      network::mojom::URLResponseHeadPtr head) override {
++    if (blocker_ &&
++        blocker_->ShouldBlockURL(redirect_info.new_url, top_site_host_)) {
++      client_->OnComplete(
++          network::URLLoaderCompletionStatus(net::ERR_BLOCKED_BY_CLIENT));
++      target_loader_.reset();
++      return;
++    }
++    client_->OnReceiveRedirect(redirect_info, std::move(head));
++  }
++  void OnUploadProgress(int64_t current_position,
++                        int64_t total_size,
++                        OnUploadProgressCallback callback) override {
++    client_->OnUploadProgress(current_position, total_size,
++                              std::move(callback));
++  }
++  void OnTransferSizeUpdated(int32_t transfer_size_diff) override {
++    client_->OnTransferSizeUpdated(transfer_size_diff);
++  }
++  void OnComplete(const network::URLLoaderCompletionStatus& status) override {
++    client_->OnComplete(status);
++  }
++
++ private:
++  void OnRendererDisconnect() { target_loader_.reset(); }
++
++  base::WeakPtr<ContentBlockingController> blocker_;
++  const std::string top_site_host_;
++  mojo::Remote<network::mojom::URLLoaderClient> client_;
++  mojo::Receiver<network::mojom::URLLoader> loader_receiver_;
++  mojo::Remote<network::mojom::URLLoader> target_loader_;
++};
++
++// Renderer-created subresources do not pass through the browser's
++// CreateURLLoaderThrottles hook. Keep a browser-process gate on their factory
++// so Profile rule changes also apply to already-open tabs.
++class BlockingProxyFactory final : public network::SelfDeletingURLLoaderFactory {
++ public:
++  BlockingProxyFactory(
++      mojo::PendingReceiver<network::mojom::URLLoaderFactory> receiver,
++      mojo::PendingRemote<network::mojom::URLLoaderFactory> target,
++      base::WeakPtr<ContentBlockingController> blocker,
++      base::SelfDeletingPassKey pass_key)
++      : network::SelfDeletingURLLoaderFactory(std::move(receiver), pass_key),
++        blocker_(std::move(blocker)) {
++    target_.Bind(std::move(target));
++    target_.set_disconnect_handler(base::BindOnce(
++        &BlockingProxyFactory::OnTargetError, base::Unretained(this)));
++  }
++
++  void CreateLoaderAndStart(
++      mojo::PendingReceiver<network::mojom::URLLoader> loader_receiver,
++      int32_t request_id,
++      uint32_t options,
++      const network::ResourceRequest& request,
++      mojo::PendingRemote<network::mojom::URLLoaderClient> client,
++      const net::MutableNetworkTrafficAnnotationTag& traffic_annotation)
++      override {
++    if (blocker_ && blocker_->ShouldBlockNetworkRequest(request)) {
++      mojo::Remote<network::mojom::URLLoaderClient> blocked_client(
++          std::move(client));
++      blocked_client->OnComplete(
++          network::URLLoaderCompletionStatus(net::ERR_BLOCKED_BY_CLIENT));
++      return;
++    }
++    auto guard = std::make_unique<BlockingRequest>(
++        std::move(loader_receiver), std::move(client), blocker_,
++        TopSiteHost(request));
++    auto target_loader = guard->BindTargetLoader();
++    mojo::PendingRemote<network::mojom::URLLoaderClient> target_client;
++    mojo::MakeSelfOwnedReceiver(
++        std::move(guard), target_client.InitWithNewPipeAndPassReceiver());
++    target_->CreateLoaderAndStart(std::move(target_loader), request_id, options,
++                                  request, std::move(target_client),
++                                  traffic_annotation);
++  }
++
++ private:
++  ~BlockingProxyFactory() override = default;
++  void OnTargetError() { DisconnectReceiversAndDestroy(); }
++
++  mojo::Remote<network::mojom::URLLoaderFactory> target_;
++  base::WeakPtr<ContentBlockingController> blocker_;
++};
++
+ ContentBlockingController* ContentBlockingController::ForProfile(
+     Profile* profile) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+@@ -212,6 +362,19 @@
+   }
+   owner->SyncPrivateRules();
+   return owner;
++}
++
++// static
++void ContentBlockingController::MaybeProxySubresourceFactory(
++    Profile* profile, network::URLLoaderFactoryBuilder& factory_builder) {
++  auto* blocker = ForProfile(profile);
++  if (!blocker) {
++    return;
++  }
++  auto [receiver, target] = factory_builder.Append();
++  base::MakeSelfDeleting<BlockingProxyFactory>(
++      std::move(receiver), std::move(target),
++      blocker->weak_factory_.GetWeakPtr());
+ }
+ 
+ ContentBlockingController::ContentBlockingController(Profile* profile)
+@@ -506,6 +669,26 @@
+                               weak_factory_.GetWeakPtr())));
+ }
+ 
++bool ContentBlockingController::ShouldBlockNetworkRequest(
++    const network::ResourceRequest& request) {
++  return ShouldBlockURL(request.url, TopSiteHost(request));
++}
++
++bool ContentBlockingController::ShouldBlockURL(
++    const GURL& url, std::string_view top_site_host) {
++  SyncPrivateRules();
++  // This proxy is installed only on subresource factories. The request's
++  // is_outermost_main_frame flag describes its owning frame, not its type.
++  if (!ShouldBlockSubresource(url, top_site_host,
++                              /*main_frame=*/false,
++                              rules_->enabled, rules_->blocked,
++                              rules_->allowed)) {
++    return false;
++  }
++  NoteBlocked(std::string(top_site_host));
++  return true;
++}
++
+ void ContentBlockingController::NoteBlocked(std::string site_host) {
+   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+   ++total_blocked_;
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -6735,6 +6735,19 @@
+       frame, type == URLLoaderFactoryType::kNavigation, request_initiator,
+       isolation_info, factory_builder);
+ 
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  if (type == URLLoaderFactoryType::kDocumentSubResource ||
++      type == URLLoaderFactoryType::kWorkerMainResource ||
++      type == URLLoaderFactoryType::kWorkerSubResource ||
++      type == URLLoaderFactoryType::kServiceWorkerScript ||
++      type == URLLoaderFactoryType::kServiceWorkerSubResource ||
++      type == URLLoaderFactoryType::kPrefetch ||
++      type == URLLoaderFactoryType::kEarlyHints) {
++    aux::ContentBlockingController::MaybeProxySubresourceFactory(
++        Profile::FromBrowserContext(browser_context), factory_builder);
++  }
++#endif
++
+ #if BUILDFLAG(ENABLE_CAPTIVE_PORTAL_DETECTION)
+   if (disable_secure_dns) {
+     WebContents* web_contents = WebContents::FromRenderFrameHost(frame);

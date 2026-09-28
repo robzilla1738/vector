@@ -15,6 +15,7 @@ it("promotes once, preserves original chat context and scopes future task runs t
   try {
     f.repo.setSetting("conversationAttachments:original-chat", ["synthetic-attachment"]);
     const task = f.tasks.promote(f.input);
+    expect(task.sourceOrigin).toBe("conversation");
     expect(f.tasks.promote(f.input).taskId).toBe(task.taskId);
     expect(f.tasks.list()).toHaveLength(1);
     expect(f.tasks.prepareRun(task.taskId, 1).chatId).toBe("original-chat");
@@ -22,6 +23,7 @@ it("promotes once, preserves original chat context and scopes future task runs t
     expect(f.repo.getConversation("original-chat")?.taskId).toBe(task.taskId);
     expect(f.repo.getSetting("conversationAttachments:original-chat")).toEqual(["synthetic-attachment"]);
     f.tasks.update({ taskId: task.taskId, expectedRevision: 1, title: "Prepared comparison" });
+    expect(f.tasks.get(task.taskId).sourceOrigin).toBe("conversation");
     expect(f.repo.getConversation("original-chat")?.title).toBe("Prepared comparison");
     f.tasks.archive(task.taskId, 2, true);
     expect(f.repo.getConversation("original-chat")?.archived).toBe(true);

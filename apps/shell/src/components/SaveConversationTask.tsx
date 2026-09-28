@@ -1,17 +1,18 @@
 import { useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import type { Task, PageTarget } from "@aux/contracts";
 import { call, useStore } from "../store";
 
 export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, onSaved }: {
   chatId: string; runId: string; goal: string; workspaceId?: string; page?: PageTarget; onSaved(task: Task): void;
 }) {
-  const spaces = useStore(state => state.layout.spaces);
+  const spaces = useStore(useShallow(state => state.layout.spaces.filter(space => space.workspaceId).map(space => `${space.id}\u0001${space.workspaceId}\u0001${space.name}`)));
   const activeSpaceId = useStore(state => state.layout.activeSpaceId);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(goal.slice(0, 200));
   const [objective, setObjective] = useState(goal);
   const [success, setSuccess] = useState("Complete the objective and explain the results and any remaining limitations.");
-  const [space, setSpace] = useState(workspaceId ?? spaces.find(space => space.id === activeSpaceId)?.workspaceId ?? "");
+  const [space, setSpace] = useState(workspaceId ?? spaces.find(entry => entry.startsWith(`${activeSpaceId}\u0001`))?.split("\u0001")[1] ?? "");
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const [error, setError] = useState("");
@@ -28,7 +29,7 @@ export function SaveConversationTask({ chatId, runId, goal, workspaceId, page, o
     <details className="task-save-details"><summary>Task details</summary>
     <label>Task name<input value={title} maxLength={200} required disabled={busy} onChange={event => setTitle(event.target.value)} /></label>
     <label>What does done look like?<textarea value={success} maxLength={1000} required disabled={busy} onChange={event => setSuccess(event.target.value)} /></label>
-    <label>Space<select value={space} disabled={busy} required onChange={event => setSpace(event.target.value)}><option value="" disabled>Choose a Space</option>{spaces.filter(space => space.workspaceId).map(space => <option key={space.id} value={space.workspaceId}>{space.name}</option>)}</select></label></details>
+    <label>Space<select value={space} disabled={busy} required onChange={event => setSpace(event.target.value)}><option value="" disabled>Choose a Space</option>{spaces.map(entry => { const [id, workspaceId, name] = entry.split("\u0001"); return <option key={id} value={workspaceId}>{name}</option>; })}</select></label></details>
     {!space && <p className="hint">Choose a Space in Task details to keep this work organized.</p>}
     {error && <p className="field-error" role="alert">{error}</p>}
     <div className="row"><button type="button" className="btn sm" disabled={busy} onClick={() => setOpen(false)}>Cancel</button><button className="btn sm" disabled={busy || !space || !title.trim() || !objective.trim() || !success.trim()}>{busy ? "Saving…" : "Save task"}</button></div>

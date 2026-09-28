@@ -40,11 +40,11 @@ export class SpaceService {
     return spaces;
   }
 
-  create(name: string, color: BrowserSpace["color"], grain = 0): BrowserSpace[] {
-    return this.import([{ id: `space-${randomUUID()}`, name, color, grain }]);
+  create(name: string, color: BrowserSpace["color"], grain = 0, theme?: BrowserSpace["theme"]): BrowserSpace[] {
+    return this.import([{ id: `space-${randomUUID()}`, name, color, grain, ...(theme ? { theme } : {}) }]);
   }
 
-  update(id: string, patch: Partial<Pick<BrowserSpace, "name" | "color" | "grain" | "archived">>): BrowserSpace[] {
+  update(id: string, patch: Partial<Pick<BrowserSpace, "name" | "color" | "grain" | "archived">> & { theme?: BrowserSpace["theme"] | null }): BrowserSpace[] {
     const spaces = this.repo.transaction(() => {
       const spaces = this.list();
       const current = spaces.find(space => space.id === id);
@@ -53,6 +53,7 @@ export class SpaceService {
         throw new AuxError("conflict", "Keep at least one active space.");
       }
       Object.assign(current, patch);
+      if (patch.theme === null) delete current.theme;
       if (patch.name) this.repo.db.prepare("UPDATE workspaces SET name=? WHERE workspace_id=?").run(patch.name, current.workspaceId);
       this.repo.setSetting(SPACE_KEY, spaces);
       return spaces;

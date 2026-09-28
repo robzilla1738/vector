@@ -1,4 +1,4 @@
-@layer components {
+@layer primitives {
 .private-search-label {
   flex: 0 0 auto;
   padding: var(--space-1) var(--space-2);

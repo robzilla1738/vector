@@ -1,0 +1,112 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -37,6 +37,11 @@
+ #include "ui/webui/resources/js/tracked_element/tracked_element.mojom.h"
+ 
+ class BrowserWindowInterface;
++class BackForwardMenuModel;
++namespace views {
++class MenuModelAdapter;
++class MenuRunner;
++}
+ 
+ namespace content {
+ class BrowserContext;
+@@ -235,6 +240,9 @@
+   base::CallbackListSubscription shell_events_subscription_;
+   std::unique_ptr<PrefChangeRegistrar> organization_pref_registrar_;
+   std::unique_ptr<AuxShellEdgeMonitor> edge_monitor_;
++  std::unique_ptr<BackForwardMenuModel> aux_navigation_menu_model_;
++  std::unique_ptr<views::MenuModelAdapter> aux_navigation_menu_adapter_;
++  std::unique_ptr<views::MenuRunner> aux_navigation_menu_runner_;
+   enum class FileDialogPurpose { kNone, kOpenFile, kSavePdf, kDownloadFolder };
+   FileDialogPurpose file_dialog_purpose_ = FileDialogPurpose::kNone;
+   scoped_refptr<ui::SelectFileDialog> open_file_dialog_;
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -3,6 +3,9 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++#include "chrome/browser/ui/toolbar/back_forward_menu_model.h"
++#include "ui/views/controls/menu/menu_model_adapter.h"
++#include "ui/views/controls/menu/menu_runner.h"
+ 
+ #include <cmath>
+ #include <utility>
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -58,6 +58,7 @@
+                  {"defaultBrowser", "setDefaultBrowser", "dataDir",
+                   "resolveSearch", "setAppearance", "setShortcuts",
+                   "focusShell", "openFile", "closeWindow", "openExternal",
++                  "navigationMenu",
+                   "revealPath", "openPath"});
+   auto register_runtime = [this](AuxRuntimeMethodGroup group,
+                                  std::initializer_list<std::string_view> names) {
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -43,6 +43,11 @@
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/toolbar/back_forward_menu_model.h"
++#include "ui/display/screen.h"
++#include "ui/views/controls/menu/menu_item_view.h"
++#include "ui/views/controls/menu/menu_model_adapter.h"
++#include "ui/views/controls/menu/menu_runner.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/dictation_mac.h"
+ #include "chrome/browser/ui/aux/extension_bridge.h"
+@@ -192,6 +197,47 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "navigationMenu") {
++    if (list->size() != 2 || !(*list)[0].is_string() ||
++        !(*list)[1].is_string() ||
++        ((*list)[1].GetString() != "back" &&
++         (*list)[1].GetString() != "forward")) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Expected a tab and navigation direction");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    auto* contents = catalog
++        ? catalog->FindPage((*list)[0].GetString(), &owner) : nullptr;
++    const bool back = (*list)[1].GetString() == "back";
++    if (!contents || owner != browser_ ||
++        contents != browser_->GetTabStripModel()->GetActiveWebContents() ||
++        !(back ? contents->GetController().CanGoBack()
++               : contents->GetController().CanGoForward())) {
++      std::move(callback).Run(true, "false", "", "");
++      return;
++    }
++    aux_navigation_menu_runner_.reset();
++    aux_navigation_menu_adapter_.reset();
++    aux_navigation_menu_model_.reset();
++    aux_navigation_menu_model_ = std::make_unique<BackForwardMenuModel>(
++        browser_, back ? BackForwardMenuModel::ModelType::kBackward
++                       : BackForwardMenuModel::ModelType::kForward);
++    aux_navigation_menu_adapter_ = std::make_unique<views::MenuModelAdapter>(
++        aux_navigation_menu_model_.get());
++    aux_navigation_menu_runner_ = std::make_unique<views::MenuRunner>(
++        aux_navigation_menu_adapter_->CreateMenu(),
++        views::MenuRunner::HAS_MNEMONICS);
++    const gfx::Point cursor = display::Screen::Get()->GetCursorScreenPoint();
++    std::move(callback).Run(true, "true", "", "");
++    aux_navigation_menu_runner_->RunMenuAt(
++        browser_window()->widget(), nullptr,
++        gfx::Rect(cursor, gfx::Size(1, 1)),
++        views::MenuAnchorPosition::kTopLeft,
++        ui::mojom::MenuSourceType::kMouse);
++    return;
++  }
+   if (method == "openPath" || method == "revealPath") {
+     const bool reveal_only = method == "revealPath";
+     if (list->size() != 1 || !(*list)[0].is_string() ||

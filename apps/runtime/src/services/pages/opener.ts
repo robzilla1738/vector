@@ -81,60 +81,66 @@ export class PageOpener {
       throw new AuxError("backend_unavailable", `${backend} backend is not connected`);
 
     const pageId = restored?.pageId ?? newPageId();
-    let targetId: string;
-    let nativeCreated = false;
-    let cdpTargetId: string | undefined;
-    // Open on about:blank, then navigate AFTER response listeners are wired —
-    // otherwise the page's own first load escapes passive capture.
-    const initialUrl = opts.targetId ? opts.url : "about:blank";
-    if (opts.targetId && backend === "chrome") {
-      targetId = opts.targetId;
-    } else {
-      ({ targetId, nativeCreated, cdpTargetId } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
-    }
-
-    let dp: DriverPage;
+    this.pages.opening.add(pageId);
     try {
-      dp = restored && driver.recoverPage
-        ? await driver.recoverPage(targetId, pageId, restored.documentEpoch + 1)
-        : await driver.attach(targetId, pageId, cdpTargetId ? { cdpTargetId } : undefined);
-    } catch (e) {
-      // the shell view already exists — destroy it rather than leaking a
-      // driverless zombie tab in the strip
-      if (nativeCreated) await this.pages.deps.native.tabCommand({ commandId: `agent-${newPageId()}`, windowId: opts.windowId ?? "main", command: { kind: "close", pageId } }).catch(() => {});
-      throw e;
+      let targetId: string;
+      let nativeCreated = false;
+      let cdpTargetId: string | undefined;
+      // Open on about:blank, then navigate AFTER response listeners are wired —
+      // otherwise the page's own first load escapes passive capture.
+      const initialUrl = opts.targetId ? opts.url : "about:blank";
+      if (opts.targetId && backend === "chrome") {
+        targetId = opts.targetId;
+      } else {
+        ({ targetId, nativeCreated, cdpTargetId } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
+      }
+
+      let dp: DriverPage;
+      try {
+        dp = restored && driver.recoverPage
+          ? await driver.recoverPage(targetId, pageId, restored.documentEpoch + 1)
+          : await driver.attach(targetId, pageId, cdpTargetId ? { cdpTargetId } : undefined);
+      } catch (e) {
+        // the shell view already exists — destroy it rather than leaking a
+        // driverless zombie tab in the strip
+        if (nativeCreated) await this.pages.deps.native.tabCommand({ commandId: `agent-${newPageId()}`, windowId: opts.windowId ?? "main", command: { kind: "close", pageId } }).catch(() => {});
+        throw e;
+      }
+      const target: PageTarget = {
+        pageId,
+        windowId: opts.windowId,
+        backend,
+        targetId,
+        url: opts.url,
+        title: "",
+        documentEpoch: restored ? restored.documentEpoch + 1 : 0,
+        lastRevision: 0,
+        viewStatus: backend === "chrome" ? "hidden" : opts.background ? "background" : "visible",
+        controller: "none",
+        controllerEpoch: restored ? restored.controllerEpoch + 1 : 0,
+        ownedByRuntime: opts.ownedByRuntime,
+        createdAt: restored?.createdAt ?? Date.now(),
+        lastActiveAt: Date.now(),
+        routeReason,
+      };
+      const lp = this.pages.addLive(target, dp);
+      this.pages.opening.delete(pageId);
+      if (!this.pages.restoring) this.pages.deps.events.emit(EventTypes.PageAdded, { page: target });
+      this.pages.deps.tracer?.incr(`router.open.${backend}`);
+      // Select the requested foreground tab before loading. A slow response must
+      // not steal focus later or leave commands targeting the previous tab.
+      if (opts.activate ?? !opts.background) await this.activation.activate(pageId).catch(() => {});
+      // the real navigation happens with listeners attached — captured like
+      // any later navigation (metadata + bodies)
+      if (dp && opts.url !== initialUrl) {
+        const navigation = lp.driver!.navigate(opts.url).catch(() => {});
+        if (!restored) await navigation;
+      }
+      void this.pages.refreshMeta(lp);
+      return target;
+    } finally {
+      this.pages.opening.delete(pageId);
     }
-    const target: PageTarget = {
-      pageId,
-      windowId: opts.windowId,
-      backend,
-      targetId,
-      url: opts.url,
-      title: "",
-      documentEpoch: restored ? restored.documentEpoch + 1 : 0,
-      lastRevision: 0,
-      viewStatus: backend === "chrome" ? "hidden" : opts.background ? "background" : "visible",
-      controller: "none",
-      controllerEpoch: restored ? restored.controllerEpoch + 1 : 0,
-      ownedByRuntime: opts.ownedByRuntime,
-      createdAt: restored?.createdAt ?? Date.now(),
-      lastActiveAt: Date.now(),
-      routeReason,
-    };
-    const lp = this.pages.addLive(target, dp);
-    if (!this.pages.restoring) this.pages.deps.events.emit(EventTypes.PageAdded, { page: target });
-    this.pages.deps.tracer?.incr(`router.open.${backend}`);
-    // Select the requested foreground tab before loading. A slow response must
-    // not steal focus later or leave commands targeting the previous tab.
-    if (opts.activate ?? !opts.background) await this.activation.activate(pageId).catch(() => {});
-    // the real navigation happens with listeners attached — captured like
-    // any later navigation (metadata + bodies)
-    if (dp && opts.url !== initialUrl) {
-      const navigation = lp.driver!.navigate(opts.url).catch(() => {});
-      if (!restored) await navigation;
-    }
-    void this.pages.refreshMeta(lp);
-    return target;
   }
 
   /** Register a page created natively outside the open() path (popups, restored tabs). */
@@ -151,7 +157,10 @@ export class PageOpener {
     url: string;
     backend: Backend;
     title?: string;
+    themeColor?: string;
     active?: boolean;
+    ownedByRuntime?: boolean;
+    lifecycle?: PageTarget["lifecycle"];
     showBlankDocument?: boolean;
     cdpTargetId?: string;
     restored?: PageTarget;
@@ -181,13 +190,17 @@ export class PageOpener {
     url: string;
     backend: Backend;
     title?: string;
+    themeColor?: string;
     active?: boolean;
+    ownedByRuntime?: boolean;
+    lifecycle?: PageTarget["lifecycle"];
     showBlankDocument?: boolean;
     cdpTargetId?: string;
     restored?: PageTarget;
   }, pageId: string, pending: { removed: boolean }): Promise<PageTarget> {
     const driver = this.pages.driverFor(opts.backend);
-    const dp = driver ? await driver.attach(opts.marker, pageId, {
+    const dormant = !opts.active && (opts.lifecycle === "placeholder" || opts.lifecycle === "discarded");
+    const dp = driver && !dormant ? await driver.attach(opts.marker, pageId, {
       cdpTargetId: opts.cdpTargetId,
       initialDocumentEpoch: opts.restored ? opts.restored.documentEpoch + 1 : undefined,
     }) : null;
@@ -202,13 +215,15 @@ export class PageOpener {
       targetId: opts.marker,
       url: dp?.url() || opts.url,
       title: opts.title ?? "",
+      themeColor: opts.themeColor,
       showBlankDocument: opts.showBlankDocument,
       documentEpoch: opts.restored ? opts.restored.documentEpoch + 1 : 0,
       lastRevision: 0,
       viewStatus: opts.active === false ? "background" : "visible",
+      lifecycle: opts.lifecycle,
       controller: "none",
       controllerEpoch: opts.restored ? opts.restored.controllerEpoch + 1 : 0,
-      ownedByRuntime: false,
+      ownedByRuntime: opts.ownedByRuntime ?? opts.restored?.ownedByRuntime ?? false,
       createdAt: opts.restored?.createdAt ?? Date.now(),
       lastActiveAt: Date.now(),
     };

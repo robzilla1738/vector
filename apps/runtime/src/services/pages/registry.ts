@@ -12,6 +12,9 @@ export class PageRegistry {
 
   live = new Map<string, LivePage>();
   pendingExternal = new Map<string, { removed: boolean; done?: Promise<PageTarget> }>();
+  private driverAttaches = new Map<string, Promise<void>>();
+  /** Suppress catalog reattachment while a native page open is awaiting its driver. */
+  opening = new Set<string>();
   /** Foreground tabs/popups return to the tab that launched them when closed. */
   returnTargets = new Map<string, string>();
   /** Window hint for pages not yet (or never) registered — set by window/upsert ops. */
@@ -32,7 +35,10 @@ export class PageRegistry {
     const persisted = this.deps.repo.listPages(opts);
     // live targets always win over stale rows
     const map = new Map(persisted.map((p) => [p.pageId, p]));
-    for (const [id, lp] of this.live) map.set(id, lp.target);
+    for (const [id, lp] of this.live) {
+      if (opts?.includeDetached || lp.target.viewStatus !== "detached") map.set(id, lp.target);
+      else map.delete(id);
+    }
     return [...map.values()].sort((a, b) => a.createdAt - b.createdAt);
   }
 
@@ -60,6 +66,33 @@ export class PageRegistry {
     if (driver) this.wireDriverEvents(lp);
     this.persist(lp);
     return lp;
+  }
+
+  /** Restored placeholders acquire a driver only after their native tab opens. */
+  async attachVisible(pageId: string): Promise<void> {
+    const lp = this.live.get(pageId);
+    if (!lp || lp.driver || lp.target.backend !== "aux") return;
+    const pending = this.driverAttaches.get(pageId);
+    if (pending) return pending;
+    const work = (async () => {
+      const driver = this.driverFor("aux");
+      if (!driver) return;
+      const attached = await driver.attach(lp.target.targetId, pageId, {
+        initialDocumentEpoch: lp.target.documentEpoch,
+      });
+      if (this.live.get(pageId) !== lp || this.closing) {
+        await attached.dispose().catch(() => {});
+        return;
+      }
+      lp.driver = attached;
+      attached.setNativeDownloadAuthority?.();
+      if (this.deps.downloadsDir) attached.setDownloadDir?.(this.deps.downloadsDir);
+      this.wireDriverEvents(lp);
+      void this.refreshMeta(lp);
+    })();
+    this.driverAttaches.set(pageId, work);
+    try { await work; }
+    finally { this.driverAttaches.delete(pageId); }
   }
 
   wireDriverEvents(lp: LivePage) {

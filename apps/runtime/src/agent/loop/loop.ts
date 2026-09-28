@@ -179,7 +179,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
   );
 
   // Auto-recall (06-Z): query content memory for the task once, durably. The
-  // system message lands before any assistant turn, so every later step shares
+  // recall message lands before any assistant turn, so every later step shares
   // the same cache prefix.
   if (opts.deps.recall && messages.length === 1 && messages[0]?.role === "user" && typeof messages[0].content === "string") {
     try {
@@ -265,6 +265,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       runId, threadId: opts.threadId, turnId: opts.turnId ?? runId,
       pageId: typeof opts.pageId === "function" ? opts.pageId() : opts.pageId,
       signal: opts.signal, callCount: toolCalls.length,
+      goalTurn: messages.filter(message => message.role === "assistant").length,
       deps: opts.deps,
     };
 

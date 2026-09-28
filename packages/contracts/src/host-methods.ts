@@ -8,6 +8,7 @@ import { CredentialHandoffRequestSchema, CredentialHandoffResultSchema } from ".
 import { WebmcpCallResultSchema, WebmcpToolSchema } from "./webmcp.js";
 import { ZapStylesheetInstallSchema, ZapInstallReceiptSchema } from "./zap.js";
 import { EventSchema } from "./events.js";
+import { AutofillProfileSchema } from "./api.js";
 import type { AuxFeature } from "./aux-features.js";
 
 type Owner = "browser" | "runtime";
@@ -67,6 +68,8 @@ const autocompleteMatch = z.object({ id: str, type: z.enum(["history", "bookmark
   title: str, url: str, description: str.optional() }).strict();
 const httpAuthRequest = z.object({ id: str, origin: str, proxy: bool, realm: str, retry: bool }).strict();
 const downloadFolderResult = z.object({ path: str, custom: bool, error: str.optional() }).strict();
+const startupMode = z.enum(["new-tab", "continue", "pages", "continue-and-pages"]);
+const startupPreferences = z.object({ mode: startupMode, urls: z.array(str).max(20) }).strict();
 export type HostReaderNode = string | { tag: string; href?: string; sourceId?: string; children: HostReaderNode[] };
 const readerNode: z.ZodType<HostReaderNode> = z.lazy(() => z.union([str,
   z.object({ tag: str, href: str.optional(), sourceId: str.optional(),
@@ -134,9 +137,14 @@ export const HostMethods = {
     permissions: z.record(str, z.enum(["allow", "deny"])), trackersAllowed: bool, blockedCount: number,
   }).strict()),
   siteZoom: shell("pageZoom", z.tuple([str.optional()]), z.array(z.object({ origin: str, percentage: number }).strict())),
+  privatePageZoom: shell("core", z.tuple([str, z.object({
+    level: number.optional(), delta: number.optional(), reset: bool.optional(),
+    direction: z.enum(["in", "out"]).optional(),
+  }).strict()]), z.object({ level: number }).strict()),
   privacy: shell("contentBlocking", noArgs, z.object({ trackerBlock: bool, blocked: number,
     allowedHosts: z.array(str).optional(), httpsUpgrade: bool.optional() }).strict()),
-  setTrackerBlock: shell("contentBlocking", z.tuple([bool]), z.object({ trackerBlock: bool, blocked: number }).strict()),
+  setTrackerBlock: shell("contentBlocking", z.tuple([bool]), z.object({ trackerBlock: bool, blocked: number,
+    allowedHosts: z.array(str).optional() }).strict()),
   setSiteTrackers: shell("contentBlocking", z.tuple([str, bool]), z.object({ hostname: str, allowed: bool }).strict()),
   removeAllowedHost: shell("contentBlocking", z.tuple([str]), z.array(str)),
   filterLists: shell("contentBlocking", noArgs, filterStatus),
@@ -168,12 +176,14 @@ export const HostMethods = {
   openBrowserProfile: shell("profiles", z.tuple([str]), bool),
   openBrowserProfileUrl: shell("profiles", z.tuple([str, str]), bool),
   // Credential vault
-  autofill: shell("vault", z.tuple([str]), number),
-  vaultFill: shell("vault", z.tuple([str, str]), bool),
-  vaultSave: shell("vault", z.tuple([str, str]), z.object({ ok: bool, updated: bool }).strict()),
-  vaultDismiss: shell("vault", z.tuple([str, str]), bool),
-  vaultExport: shell("vault", z.tuple([str]), z.object({ path: str }).strict().nullable()),
-  vaultImport: shell("vault", z.tuple([str]), z.object({ added: number, skipped: number }).strict().nullable()),
+  autofillProfile: shell("core", noArgs, AutofillProfileSchema.nullable()),
+  setAutofillProfile: shell("core", z.tuple([AutofillProfileSchema]), bool),
+  autofill: shell("core", z.tuple([str]), number),
+  vaultFill: shell("core", z.tuple([str]), bool),
+  vaultSave: shell("core", z.tuple([str, str, str.optional()]), z.object({ ok: bool, updated: bool }).strict()),
+  vaultDismiss: shell("core", z.tuple([str, str, str.optional()]), bool),
+  passwordExport: shell("core", z.tuple([str]), z.object({ path: str, exported: number, skipped: number }).strict().nullable()),
+  passwordImport: shell("core", z.tuple([str]), z.object({ added: number, skipped: number }).strict().nullable()),
   // Quick Ask
   quickAskShortcut: shell("quickAsk", z.tuple([bool.optional()]),
     z.object({ enabled: bool, registered: bool, error: str }).strict()),
@@ -181,12 +191,24 @@ export const HostMethods = {
   // Downloads and tab audio
   downloadFolder: shell("core", noArgs, downloadFolderResult),
   chooseDownloadFolder: shell("core", z.tuple([bool.optional()]), downloadFolderResult),
+  spellCheck: shell("core", z.tuple([bool.optional()]), z.object({ enabled: bool, managed: bool }).strict()),
+  startupPreferences: shell("core", z.tuple([startupPreferences.optional()]), startupPreferences.extend({ managed: bool }).strict()),
+  languagePreferences: shell("core", z.tuple([z.array(str).min(1).max(20).optional()]),
+    z.object({ selected: z.array(str), effective: z.array(str), forced: z.array(str), managed: bool }).strict()),
+  automaticPictureInPicture: shell("core", z.tuple([z.enum(["ask", "allow", "block"]).optional()]),
+    z.object({ mode: z.enum(["ask", "allow", "block"]), managed: bool }).strict()),
+  keepRuntimeInBackground: shell("core", z.tuple([bool.optional()]),
+    z.object({ enabled: bool, available: bool, managed: bool }).strict()),
+  defaultPageZoom: shell("core", z.tuple([z.number().int().min(50).max(200).optional()]),
+    z.object({ percentage: z.number().int(), managed: bool }).strict()),
   downloadsSnapshot: shell("core", noArgs, z.array(DownloadSchema)),
   controlDownload: shell("core", z.tuple([str, z.enum(["pause", "resume", "cancel"])]), noResult),
   retryDownload: shell("core", z.tuple([str]), noResult),
   tabAudio: shell("core", noArgs, z.record(str, z.object({ muted: bool, audible: bool }).strict())),
   tabsUnsavedWork: shell("core", z.tuple([z.array(z.object({ pageId: str, url: str }).strict())]),
     z.record(str, z.enum(["clean", "dirty", "unknown"]))),
+  tabSleep: shell("tabLifecycle", z.tuple([str, z.string().url().max(8192)]),
+    z.object({ slept: bool, reason: str.optional(), estimatedSavedBytes: z.number().int().nonnegative().optional() }).strict()),
   // Page surfaces and menus
   preview: shell("core", z.tuple([str]), nullableString),
   contextMenu: shell("core", z.tuple([z.union([str, z.null()])]), bool),
@@ -224,10 +246,20 @@ export const HostMethods = {
   httpAuthRequests: shell("core", noArgs, z.array(httpAuthRequest)),
   respondHttpAuth: shell("core", z.tuple([str, z.object({ username: str, password: str }).strict().nullable()]), bool),
   clearSiteData: shell("sitePermissions", z.tuple([str]), bool),
+  siteDataCount: shell("sitePermissions", z.tuple([str]), z.object({ domain: str, cookies: number.int().nonnegative() }).strict()),
+  browsingDataPreview: shell("sitePermissions", z.tuple([number.int().nonnegative(), number.int().nonnegative()]),
+    z.object({ cookies: number.int().nonnegative(), cacheBytes: number.int().nonnegative(), cacheEstimate: bool }).strict()),
+  clearBrowsingData: shell("sitePermissions", z.tuple([number.int().nonnegative(), number.int().nonnegative(),
+    z.object({ cookies: bool, cache: bool }).strict()]), bool),
   sitePermissions: shell("sitePermissions", noArgs, z.record(str, z.record(str, z.enum(["allow", "deny"])))),
   clearSitePermission: shell("sitePermissions", z.tuple([str, str.optional()]), bool),
+  cookieControls: shell("sitePermissions", noArgs, z.object({ blockThirdParty: bool, managed: bool }).strict()),
+  setCookieControls: shell("sitePermissions", z.tuple([bool]), bool),
+  crashReporting: shell("core", noArgs, z.object({ available: bool, decided: bool, consent: bool }).strict()),
+  setCrashReporting: shell("core", z.tuple([bool]), bool),
+  httpsUpgrade: shell("httpsFirst", noArgs, z.object({ enabled: bool, available: bool, managed: bool }).strict()),
   setHttpsUpgrade: shell("httpsFirst", z.tuple([bool]), bool),
-  proceedInsecure: shell("core", z.tuple([str]), bool),
+  proceedInsecure: shell("core", z.tuple([str, str]), bool),
   useHttp: shell("core", z.tuple([str, str]), bool),
   translatePage: shell("aiTranslate", z.tuple([str]), z.object({ lang: str, count: number, truncated: bool }).strict()),
   showOriginal: shell("aiTranslate", z.tuple([str]), number),
@@ -247,7 +279,8 @@ export const HostMethods = {
   "native.bookmarksInvoke": runtime("core", z.object({ method: str, params: z.unknown() }).strict(), z.unknown()),
   "native.capabilities": runtime("core", z.object({}).strict(), HostCapabilitiesSchema),
   "native.historyClear": runtime("core", z.object({ since: number.optional(), before: number.optional() }).strict(), z.object({ removed: number }).strict()),
-  "native.historyRemove": runtime("core", z.object({ url: str, visitedAt: number }).strict(), z.object({ removed: bool }).strict()),
+  "native.historyRemove": runtime("core", z.object({ url: str, visitedAt: number,
+    expectedTitle: z.string().max(4096).optional() }).strict(), z.object({ removed: bool }).strict()),
   "native.searchEngineGet": runtime("searchEngines", z.object({}).strict(), str),
   "native.searchEngineSet": runtime("searchEngines", z.object({ template: str }).strict(), bool),
   "native.searchSuggestionsGet": runtime("searchEngines", z.object({}).strict(), bool),
@@ -302,12 +335,14 @@ export const HostEvents = {
   onLoading: event("core", z.object({ pageId: str, loading: bool }).strict()),
   onAudio: event("core", z.object({ pageId: str, muted: bool, audible: bool,
     removed: bool.optional() }).strict()),
+  onLinkStatus: event("core", z.object({ pageId: str, text: str }).strict()),
   onDownload: event("core", DownloadSchema),
   onTabsPlacement: event("core", z.object({ pageId: str, windowId: str,
     placement: TabPlacementSchema }).strict()),
   onPageAction: event("extensions", PageQuickActionSchema),
-  onVaultOffer: event("vault", z.object({ pageId: str, username: str, origin: str,
-    kind: z.enum(["save", "update"]), itemId: str.optional(), locked: bool.optional() }).strict()),
+  onVaultOffer: event("core", z.object({ pageId: str, username: str, origin: str,
+    kind: z.enum(["save", "update"]), itemId: str.optional(), offerId: str.optional(),
+    locked: bool.optional() }).strict()),
   onQuickAskState: event("quickAsk", bool),
   onHttpAuthChanged: event("core", z.object({}).strict()),
   onTranslationChanged: event("aiTranslate", z.object({ pageId: str, lang: nullableString.optional(),

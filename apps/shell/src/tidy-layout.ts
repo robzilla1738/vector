@@ -1,5 +1,5 @@
 import type { PageTarget, TidyProposal } from "@aux/contracts";
-import { assignFolder, createFolder, type Layout } from "./workspace";
+import { assignFolder, createFolder, type Layout, type TidyUndoRecord } from "./workspace";
 
 /** Builds one reviewable layout change. Nothing is persisted until the caller accepts it. */
 export function applyTidyProposal(layout: Layout, livePages: readonly PageTarget[], spaceId: string, proposal: TidyProposal): Layout {
@@ -28,30 +28,46 @@ export function applyTidyProposal(layout: Layout, livePages: readonly PageTarget
   return next;
 }
 
-/** Undo only Tidy's folders and assignments, preserving later unrelated layout edits. */
-export function revertTidyProposal(before: Layout, after: Layout, current: Layout): Layout {
+/** Capture only the folder and assignment before-state needed for a durable undo. */
+export function tidyUndoRecord(before: Layout, after: Layout): TidyUndoRecord {
   const oldIds = new Set(before.folders.map(folder => folder.id));
   const created = after.folders.filter(folder => !oldIds.has(folder.id));
   const createdIds = new Set(created.map(folder => folder.id));
   const moved = Object.entries(after.tabFolder).filter(([pageId, folderId]) =>
-    createdIds.has(folderId) && before.tabFolder[pageId] !== folderId);
+    createdIds.has(folderId) && before.tabFolder[pageId] !== folderId)
+    .map(([pageId, toFolderId]) => ({ pageId, toFolderId,
+      ...(before.tabFolder[pageId] ? { fromFolderId: before.tabFolder[pageId] } : {}) }));
   if (!created.length || !moved.length) throw new Error("This Tidy change is no longer available to undo.");
+  return { created, moved };
+}
+
+/** Undo only Tidy's folders and assignments, preserving later unrelated layout edits. */
+export function revertTidyRecord(record: TidyUndoRecord, current: Layout): Layout {
+  const { created, moved } = record;
+  const createdIds = new Set(created.map(folder => folder.id));
   for (const folder of created) {
     const live = current.folders.find(item => item.id === folder.id);
-    if (!live || live.name !== folder.name || live.spaceId !== folder.spaceId)
+    if (!live || live.name !== folder.name || live.spaceId !== folder.spaceId ||
+      live.collapsed !== folder.collapsed || live.color !== folder.color || live.emoji !== folder.emoji)
       throw new Error("A Tidy folder changed. Review it before undoing.");
   }
-  for (const [pageId, folderId] of moved) {
-    if (current.tabFolder[pageId] !== folderId) throw new Error("A tidied tab moved again. Review it before undoing.");
+  for (const { pageId, toFolderId, fromFolderId } of moved) {
+    if (current.tabFolder[pageId] !== toFolderId) throw new Error("A tidied tab moved again. Review it before undoing.");
+    if (fromFolderId && !current.folders.some(folder => folder.id === fromFolderId))
+      throw new Error("A prior folder changed. Review it before undoing.");
   }
-  const movedIds = new Set(moved.map(([pageId]) => pageId));
+  const movedIds = new Set(moved.map(({ pageId }) => pageId));
   if (Object.entries(current.tabFolder).some(([pageId, folderId]) => createdIds.has(folderId) && !movedIds.has(pageId)))
     throw new Error("A new tab was added to a Tidy folder. Review it before undoing.");
   const tabFolder = { ...current.tabFolder };
-  for (const [pageId] of moved) {
-    const original = before.tabFolder[pageId];
-    if (original && current.folders.some(folder => folder.id === original)) tabFolder[pageId] = original;
+  for (const { pageId, fromFolderId } of moved) {
+    if (fromFolderId) tabFolder[pageId] = fromFolderId;
     else delete tabFolder[pageId];
   }
-  return { ...current, folders: current.folders.filter(folder => !createdIds.has(folder.id)), tabFolder };
+  return { ...current, folders: current.folders.filter(folder => !createdIds.has(folder.id)), tabFolder,
+    tidyUndo: undefined };
+}
+
+export function revertTidyProposal(before: Layout, after: Layout, current: Layout): Layout {
+  return revertTidyRecord(tidyUndoRecord(before, after), current);
 }

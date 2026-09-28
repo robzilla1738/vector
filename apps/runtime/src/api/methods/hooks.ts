@@ -4,12 +4,16 @@ import { AuxError } from "@aux/contracts";
 
 async function h_hooks_register(ctx: MethodCtx): Promise<unknown> {
   const { client, hooks, method, params } = ctx;
-  if (client.external) throw new AuxError("permission_denied", "Hooks are managed in Aux.");
+  if (client.external || client.codeMode) throw new AuxError("permission_denied", "Hooks are managed in Aux.");
   if (method === "hooks.register") return hooks.register(params);
   if (method === "hooks.get") return hooks.get(params.hookId);
   if (method === "hooks.list") return hooks.list(params.workspaceId);
   if (method === "hooks.approve") return hooks.approve(params.hookId, params.expectedDigest);
   if (method === "hooks.revoke") return hooks.revoke(params.hookId);
+  if (method === "hooks.test") {
+    if (!ctx.s.hookExecutor) throw new AuxError("backend_unavailable", "Hook executor is unavailable.");
+    return hooks.test(params.hookId, ctx.s.hookExecutor);
+  }
   return hooks.invocations(params.hookId, params.limit);
 }
 
@@ -19,5 +23,6 @@ export const hooksMethods: Partial<Record<MethodName, MethodHandler>> = {
   "hooks.list": h_hooks_register,
   "hooks.approve": h_hooks_register,
   "hooks.revoke": h_hooks_register,
+  "hooks.test": h_hooks_register,
   "hooks.invocations": h_hooks_register,
 };

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
 import { I } from "./icons";
+import { Button } from "../ui";
 
 /** Chrome-style bar shown while a page is translated in place. */
 export function TranslationBar({ pageId }: { pageId: string }) {
@@ -32,7 +33,7 @@ export function TranslationBar({ pageId }: { pageId: string }) {
         <small>Page text was sent to your configured model provider.</small>
       </span>
       {error && <span className="translation-bar-error">{error}</span>}
-      <button className="btn sm" disabled={busy} onClick={() => void restore()}>{busy ? "Restoring…" : "Show original"}</button>
+      <Button size="small" disabled={busy} onClick={() => void restore()}>{busy ? "Restoring…" : "Show original"}</Button>
     </output>
   );
 }

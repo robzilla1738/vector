@@ -23,7 +23,7 @@
   border-radius: var(--r-card);
   background: color-mix(in srgb, var(--surface-primary) 86%, transparent);
   box-shadow: var(--highlight-inset);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(var(--blur-16));
 }
 
 .plugin-review-preview {

@@ -31,14 +31,16 @@ import { hostOf, tabLabel } from "../workspace";
 
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
-import { bridge } from "../bridge";
+import { bridge, type BrowserExtension } from "../bridge";
 import { recentConversations } from "../conversations";
 import { rememberSiteControlsOpener } from "../site-controls-opener";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { inNativeHost, inMock, type AutocompleteMatch } from "../bridge";
+import { auxShellPathFromUrl } from "../settings/routes";
 import { commandCandidateKey, mergeCommandResults } from "../command-results";
 import type { ProviderSuggestion, Suggestion } from "./command-provider-types";
 import { commandTabRows } from "./command-tab-rows";
+import { featureStage } from "../use-feature";
 import "./CommandBar.css";
 
 const HomeAsk = lazy(() => import("./HomeAsk"));
@@ -46,6 +48,8 @@ const CommandRankingDebug = lazy(() => import("./CommandRankingDebug"));
 
 const EMPTY_HISTORY: HistoryEntry[] = [];
 const EMPTY_BROWSER: AutocompleteMatch[] = [];
+const PROVIDER_SCOPES = ["all", "tabs", "closed", "bookmarks", "history", "extensions", "sites", "work"] as const;
+type ProviderScope = typeof PROVIDER_SCOPES[number];
 
 /**
  * One field, three jobs: URL bar, search, and agent prompt. Intent is
@@ -65,10 +69,17 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const activePageId = useStore((s) => s.activePageId);
   const tabNames = useStore((s) => s.layout.tabNames);
   const settings = useStore((s) => s.settings);
-  const runs = useStore((s) => s.runs);
+  useStore(useShallow(s => s.runs.map(run =>
+    JSON.stringify([run.runId, run.goal, run.status, run.createdAt, run.config?.chatId]))));
+  const runs = useStore.getState().runs;
   const programs = useStore((s) => s.programs);
-  const bookmarks = useStore((s) => s.bookmarks);
-  const closedTabs = useStore((s) => s.closedTabs);
+  useStore(useShallow(s => s.bookmarks.map(bookmark =>
+    JSON.stringify([bookmark.url, bookmark.title, bookmark.folderPath]))));
+  const bookmarks = useStore.getState().bookmarks;
+  useStore(useShallow(s => s.closedTabs.map(tab => JSON.stringify([
+    tab.pageId, tab.title, tab.url, tab.closedAt, tab.spaceId, tab.folderId, tab.groupId,
+  ]))));
+  const closedTabs = useStore.getState().closedTabs;
   const focusRequest = useStore((s) => s.focusRequest);
   const focusSlot = useStore((s) => s.focusSlot);
   const startRun = useStore((s) => s.startRun);
@@ -92,7 +103,9 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const [submitting, setSubmitting] = useState(false);
   const [val, setVal] = useState("");
   const [sel, setSel] = useState(0);
-  const [providerScope, setProviderScope] = useState<"all" | "tabs" | "sites" | "work">("all");
+  const [providerScope, setProviderScope] = useState<ProviderScope>("all");
+  const extensionEnabled = !bridge.privateMode && featureStage("extensions") === "on";
+  const [extensionItems, setExtensionItems] = useState<BrowserExtension[]>([]);
   const [rankingOpen, setRankingOpen] = useState(false);
   const [rankingEntries, setRankingEntries] = useState<CommandRankingEntry[]>([]);
   const [rankingError, setRankingError] = useState<string | null>(null);
@@ -107,20 +120,39 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   }>({ query: "", items: [], error: null });
   const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
     if (!hero || bridge.privateMode) return "search";
+    if (settings.homeEntryMode === "ask" || settings.homeEntryMode === "search") return settings.homeEntryMode;
     try {
       return localStorage.getItem("aux.home.entry-mode.v1") === "ask" ? "ask" : "search";
     } catch {
       return "search";
     }
   });
+  useEffect(() => {
+    if (!hero || bridge.privateMode) return;
+    if (settings.homeEntryMode === "ask" || settings.homeEntryMode === "search") {
+      setEntryModeState(settings.homeEntryMode);
+      return;
+    }
+    if (!settings.dataDir) return;
+    try {
+      const legacy = localStorage.getItem("aux.home.entry-mode.v1");
+      if (legacy === "ask") {
+        void call("settings.set", { homeEntryMode: "ask" })
+          .then(() => localStorage.removeItem("aux.home.entry-mode.v1"))
+          .catch(errToast);
+      } else if (legacy !== null) localStorage.removeItem("aux.home.entry-mode.v1");
+    } catch {
+      /* Storage may be unavailable; Search remains the default. */
+    }
+  }, [hero, settings.dataDir, settings.homeEntryMode]);
   const setEntryMode = (next: "search" | "ask") => {
     setEntryModeState(next);
-    if (!bridge.privateMode)
-      try {
-        localStorage.setItem("aux.home.entry-mode.v1", next);
-      } catch {
-        /* Mode remains available for this window. */
-      }
+    if (!bridge.privateMode) void call("settings.set", { homeEntryMode: next })
+      .then(() => { try { localStorage.removeItem("aux.home.entry-mode.v1"); } catch { /* Optional legacy storage. */ } })
+      .catch((error) => {
+        setEntryModeState(settings.homeEntryMode === "ask" ? "ask" : "search");
+        errToast(error);
+      });
   };
   const [scopeFlip, setScopeFlip] = useState(false);
   const [historyResult, setHistoryResult] = useState<{ query: string; items: HistoryEntry[] }>({
@@ -285,6 +317,14 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   }, [editing]);
 
   useEffect(() => {
+    if (!editing || !extensionEnabled) return;
+    let live = true;
+    void bridge.extensions().then(items => { if (live) setExtensionItems(items); })
+      .catch(() => { if (live) setExtensionItems([]); });
+    return () => { live = false; };
+  }, [editing, extensionEnabled]);
+
+  useLayoutEffect(() => {
     if (!browserAutocomplete || !typedSomething || raw.length < 2 || intent.kind === "command") return;
     let live = true;
     void bridge
@@ -432,6 +472,14 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
             i.kind === "search" && !i.engine && inNativeHost
               ? await bridge.resolveSearch!(i.query).catch(() => i.url)
               : i.url;
+          if (i.kind === "navigate" && inNativeHost) {
+            const shellPath = auxShellPathFromUrl(url);
+            if (shellPath !== null) {
+              if (window.location.pathname !== shellPath) window.history.pushState(null, "", shellPath);
+              window.dispatchEvent(new PopStateEvent("popstate"));
+              break;
+            }
+          }
           if (!alt && page) await useStore.getState().navigatePage(page.pageId, url);
           else await newTab(url);
           break;
@@ -475,6 +523,8 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     () => history.map((entry) => ({ ...entry, id: `h-${entry.url}`, lastVisit: entry.visitedAt })),
     [history],
   );
+  const extensionCandidates = useMemo(() => extensionItems.map(item => ({ ...item,
+    id: item.key, title: item.name })), [extensionItems]);
   const domainCandidates = useMemo(() => {
     const domains = new Map<string, { id: string; title: string; url: string; count: number }>();
     for (const item of [...tabCandidates, ...bookmarks, ...history]) {
@@ -558,7 +608,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     () =>
       browserMatches.map((match) => ({
         id: `browser-${match.id}`,
-        section: "browser",
+        section: match.type === "bookmark" ? "bookmarks" : match.type === "history" ? "history" : "browser",
         providerType: match.type,
         url: match.url,
         icon: match.type === "search" ? I.search : <FavIcon url={match.url} size="sm" />,
@@ -592,6 +642,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       bookmarks: bookmarkCandidates,
       closed: closedCandidates,
       history: historyCandidates,
+      extensions: extensionCandidates,
       programs: programCandidates,
       runs: runCandidates,
       recentChats,
@@ -612,6 +663,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     bookmarkCandidates,
     closedCandidates,
     historyCandidates,
+    extensionCandidates,
     programCandidates,
     runCandidates,
     recentChats,
@@ -625,12 +677,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const rankedRows = useMemo(() => rankedDetails.map((item) => item.candidate), [rankedDetails]);
   const mergedRows = useMemo(() => {
     const sites = providerScope === "sites";
-    const browser = providerScope === "all" || sites ? browserRows : [];
+    const browser = browserRows.filter(row => providerScope === "all" || sites || row.section === providerScope);
     const aux = (rankQuery === raw.toLowerCase() ? rankedRows : []).filter(
       (row) =>
         providerScope === "all" ||
-        (providerScope === "tabs" && row.section === "tabs") ||
-        (sites && ["suggest", "domains", "bookmarks", "recent"].includes(row.section)) ||
+        row.section === providerScope ||
+        (sites && ["suggest", "domains", "bookmarks", "history"].includes(row.section)) ||
         (providerScope === "work" &&
           ["programs", "runs", "results", "skills", "chats"].includes(row.section)),
     );
@@ -700,9 +752,11 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-    if (e.altKey && /^[1-4]$/.test(e.key)) {
+    if (e.altKey && /^[1-8]$/.test(e.key)) {
       e.preventDefault();
-      setProviderScope((["all", "tabs", "sites", "work"] as const)[Number(e.key) - 1]!);
+      const scope = PROVIDER_SCOPES[Number(e.key) - 1]!;
+      if (scope === "extensions" && !extensionEnabled) return;
+      setProviderScope(scope);
       setSel(0);
       return;
     }
@@ -714,6 +768,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
+      if (providerScope !== "all") { setProviderScope("all"); setSel(0); return; }
       inputRef.current?.blur();
       return;
     }
@@ -883,7 +938,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           aria-controls={suggestions.length > 0 ? listId : undefined}
           aria-activedescendant={suggestions[sel] ? `${listId}-opt-${sel}` : undefined}
           aria-busy={submitting || undefined}
-          aria-keyshortcuts="Alt+1 Alt+2 Alt+3 Alt+4"
+          aria-keyshortcuts="Alt+1 Alt+2 Alt+3 Alt+4 Alt+5 Alt+6 Alt+7 Alt+8"
           placeholder={editing ? placeholder : ""}
           spellCheck={false}
           autoCorrect="off"
@@ -982,12 +1037,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           onMouseDown={(e) => e.preventDefault()}
         >
           <div className="cb-provider-scopes" role="group" aria-label="Search providers">
-            {(["all", "tabs", "sites", "work"] as const).map((scope, index) => (
+            {PROVIDER_SCOPES.filter(scope => scope !== "extensions" || extensionEnabled).map((scope) => (
               <button
                 key={scope}
                 type="button"
                 aria-pressed={providerScope === scope}
-                title={`Alt+${index + 1}`}
+                title={`Alt+${PROVIDER_SCOPES.indexOf(scope) + 1}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => {
                   setProviderScope(scope);
@@ -995,7 +1050,9 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
                   inputRef.current?.focus();
                 }}
               >
-                {scope === "all" ? "All" : scope === "tabs" ? "Tabs" : scope === "sites" ? "Sites" : "Work"}
+                {scope === "all" ? "All" : scope === "tabs" ? "Open Tabs" : scope === "closed" ? "Recently Closed" :
+                  scope === "bookmarks" ? "Bookmarks" : scope === "history" ? "History" :
+                  scope === "extensions" ? "Extensions" : scope === "sites" ? "Sites" : "Work"}
               </button>
             ))}
             {!bridge.privateMode && (
@@ -1010,6 +1067,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
               </button>
             )}
           </div>
+          {settings.searchSuggestions === true && <p className="cb-suggestion-privacy">Search suggestions may be sent to your configured search provider.</p>}
           {browserError && (
             <div className="cb-provider-error" role="alert">
               Browser suggestions unavailable: {browserError}
@@ -1081,6 +1139,10 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
               />
             </Suspense>
           )}
+          <div className="cb-search-keys">
+            <span><kbd>Enter</kbd> choose</span>
+            <span><kbd>Esc</kbd> {providerScope === "all" ? "close" : "all results"}</span>
+          </div>
         </div>
       )}
     </div>
@@ -1094,6 +1156,9 @@ const SECTION: Record<Suggestion["section"], string> = {
   tabs: "Open tabs",
   domains: "Top sites",
   bookmarks: "Bookmarks",
+  closed: "Recently Closed",
+  history: "History",
+  extensions: "Extensions",
   recent: "Recent",
   programs: "Saved programs",
   runs: "Conversations",

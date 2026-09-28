@@ -16,17 +16,18 @@ it('rejects late observations from a previous page and preserves a historical sn
   const host = document.createElement('div'); document.body.append(host); const root = createRoot(host);
   try {
     await act(async () => root.render(<Inspector />));
+    expect(document.body.querySelector('dialog[aria-label="Observation"]')).not.toBeNull();
     await act(async () => useStore.setState({ activePageId: 'second' }));
     await act(async () => pending.get('second')!({observation: observation('second')}));
-    expect(host.textContent).toContain('second content');
+    expect(document.body.textContent).toContain('second content');
     await act(async () => pending.get('first')!({observation: observation('first')}));
-    expect(host.textContent).not.toContain('first content');
-    expect(host.textContent).toContain('second content');
+    expect(document.body.textContent).not.toContain('first content');
+    expect(document.body.textContent).toContain('second content');
     await act(async () => useStore.setState({ inspectorObs: observation('historic') }));
-    expect(host.textContent).toContain('historic content');
-    expect(host.textContent).toContain('Recorded snapshot');
+    expect(document.body.textContent).toContain('historic content');
+    expect(document.body.textContent).toContain('Recorded snapshot');
     expect(invoke).toHaveBeenCalledTimes(2);
-    expect(host.querySelector('details')?.open).toBe(false);
+    expect(document.body.querySelector('details')?.open).toBe(false);
   } finally { await act(async () => root.unmount()); }
 });
 it('keeps observation lines after the first 80 available on demand', async () => {

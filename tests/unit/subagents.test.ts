@@ -46,7 +46,7 @@ it("shares a hard reservation budget across at most eight children and rejects p
       profile: "default", tokenAllocation: 1000, costAllocationUsd: 0.1 })).rejects.toThrow(/eight/);
     expect(f.starts[0]).toMatchObject({ context: "Stable shared prompt prefix", contextSnapshot: true,
       subagentProfile: "read_only" });
-    f.service.cancel(f.service.view(group.groupId).agents[0]!.agentId);
+    f.service.cancel(f.service.view(group.groupId).agents.find(agent => agent.pageIds.includes("page-0"))!.agentId);
     await expect(f.service.spawn({ groupId: group.groupId, goal: "Collision", pageIds: ["page-1"],
       profile: "default", tokenAllocation: 1000, costAllocationUsd: 0.1 })).rejects.toThrow(/leased/);
   } finally { f.close(); }

@@ -12,6 +12,7 @@ export { ExternalSessionService, EXTERNAL_SESSION_IDLE_MS } from "./services/ext
 export { OutboundMcpService, type McpTransportProvider } from "./services/outbound-mcp.js";
 export { ConnectorCatalogService } from "./services/connectors.js";
 export { createMcpTransportProvider } from "./services/mcp-transport-provider.js";
+export { McpOAuthService } from "./services/mcp-oauth.js";
 export { MemoryPipeline } from "./services/memory-pipeline.js";
 export { SubagentService } from "./services/subagents.js";
 export { EventBus } from "./events.js";
@@ -174,6 +175,9 @@ export {
   setBackupRetention,
   listRuntimeBackups,
   createRuntimeBackup,
+  stageRuntimeRestore,
+  applyPendingRuntimeRestore,
+  runtimeRestoreStatus,
   BACKUP_KEEP_OPTIONS,
 } from "./services/runtime-backup.js";
 export { prepareElectronMigration, type ElectronMigrationReport } from "./services/electron-migration.js";
@@ -210,7 +214,10 @@ export {
 } from "./safety/origin-policy.js";
 export { ApprovalStore, type AuthorizationDecision, type LocalCeiling } from "./safety/approval.js";
 export { GoalService } from "./services/goals.js";
+export { CommandEscalationService, commandSegments } from "./services/command-escalation.js";
 export { HookService, type HookExecutor } from "./services/hooks.js";
+export { WorkspaceFolderService } from "./services/workspace-folders.js";
+export { installRunEndHooks } from "./services/hook-dispatch.js";
 export {
   decideConfirmation,
   confirmationLevelForAction,

@@ -1,4 +1,4 @@
-import { WorkRow } from "./ui";
+import { WorkRow } from "../ui";
 import { useEffect, useState } from "react";
 import type {
   CalendarTaskGrant,
@@ -23,6 +23,8 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const currentPageUrl = useStore(
     (state) => state.pages.find((page) => page.pageId === state.activePageId)?.url,
   );
+  const savedScan = useStore((state) => state.settings.routineSuggestionScan);
+  const scanMode = savedScan === "off" || savedScan === "five-minutes" ? savedScan : "context";
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [alerts, setAlerts] = useState<RoutineAlert[]>([]);
   const [suggestions, setSuggestions] = useState<RoutineSuggestion[]>([]);
@@ -39,6 +41,9 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   const [status, setStatus] = useState<"all" | "ready" | "paused" | "archived">("all");
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
+  const [activationReview, setActivationReview] = useState("");
+  const [activationSource, setActivationSource] = useState<{ routineId: string; task: Task } | null>(null);
+  const [activationSourceError, setActivationSourceError] = useState("");
   const [loading, setLoading] = useState(true);
   async function refresh(routineId?: string) {
     const [items, nextAlerts, nextInbox] = await Promise.all([
@@ -92,6 +97,37 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       active = false;
     };
   }, [workspaceId]);
+  useEffect(() => {
+    const off = bridge.onEvent((event) => {
+      if (event.type !== "routine.updated") return;
+      const routine = event.payload.routine as Routine | undefined;
+      if (routine?.workspaceId !== workspaceId) return;
+      setRoutines((items) => items.some((item) => item.routineId === routine.routineId)
+        ? items.map((item) => item.routineId === routine.routineId &&
+          routine.revision >= item.revision ? routine : item)
+        : [routine, ...items]);
+      setSelected((current) => current?.routine.routineId === routine.routineId &&
+        routine.revision >= current.routine.revision ? { ...current, routine } : current);
+    });
+    return off;
+  }, [workspaceId]);
+  useEffect(() => {
+    const routine = selected?.routine;
+    if (!routine) return;
+    setActivationSource(null);
+    setActivationSourceError("");
+    if (!routine.activationReview || !routine.sourceTaskId) return;
+    let active = true;
+    void call("tasks.get", { taskId: routine.sourceTaskId })
+      .then(({ task }) => {
+        if (active) setActivationSource({ routineId: routine.routineId, task });
+      })
+      .catch((reason) => {
+        if (active) setActivationSourceError(reason instanceof Error ? reason.message : String(reason));
+      });
+    return () => { active = false; };
+  }, [selected?.routine.routineId, selected?.routine.revision, selected?.routine.sourceTaskId,
+    selected?.routine.activationReview]);
   useEffect(() => {
     const routine = selected?.routine;
     if (!routine) return;
@@ -153,22 +189,28 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
   useEffect(() => {
     let active = true;
     setSuggestions([]);
-    if (!workspaceId || (!task?.objective && !currentPageUrl)) return;
-    void call("routines.suggest", {
-      workspaceId,
-      ...(task?.objective ? { text: task.objective.slice(0, 4000) } : {}),
-      ...(currentPageUrl && currentPageUrl.length <= 2048 ? { pageUrl: currentPageUrl } : {}),
-    })
-      .then((items) => {
-        if (active) setSuggestions(items);
-      })
-      .catch(() => {
-        if (active) setSuggestions([]);
-      });
+    if (scanMode === "off" || !workspaceId || (!task?.objective && !currentPageUrl)) return;
+    let pending = false;
+    const scan = () => {
+      if (pending || document.visibilityState === "hidden") return;
+      pending = true;
+      void call("routines.suggest", {
+        workspaceId,
+        ...(task?.objective ? { text: task.objective.slice(0, 4000) } : {}),
+        ...(currentPageUrl && currentPageUrl.length <= 2048 ? { pageUrl: currentPageUrl } : {}),
+      }).then((items) => { if (active) setSuggestions(items); })
+        .catch(() => { if (active) setSuggestions([]); })
+        .finally(() => { pending = false; });
+    };
+    scan();
+    const timer = scanMode === "five-minutes" ? window.setInterval(scan, 5 * 60_000) : undefined;
+    document.addEventListener("visibilitychange", scan);
     return () => {
       active = false;
+      if (timer !== undefined) window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", scan);
     };
-  }, [workspaceId, task?.objective, currentPageUrl, selected?.routine.revision]);
+  }, [workspaceId, task?.objective, currentPageUrl, selected?.routine.revision, scanMode]);
   async function action(work: () => Promise<void>) {
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setBusy(true);
@@ -220,6 +262,25 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
       : calendarAccounts.scopeKey === `${selected.routine.routineId}:${selected.routine.revision}`
         ? calendarAccounts
         : { status: "loading", choices: [] };
+  const reviewRoutine = selected?.routine;
+  const reviewTask = activationSource && reviewRoutine &&
+    activationSource.routineId === reviewRoutine.routineId &&
+    activationSource.task.taskId === reviewRoutine.sourceTaskId ? activationSource.task : null;
+  const criteriaMatch = !!reviewRoutine && !!reviewTask &&
+    reviewRoutine.successCriteria.length === reviewTask.criteria.length &&
+    reviewRoutine.successCriteria.every((criterion, index) => {
+      const taskCriterion = reviewTask.criteria[index];
+      return taskCriterion?.criterionId === criterion.criterionId &&
+        taskCriterion.description === criterion.description &&
+        taskCriterion.verification === criterion.verification;
+    });
+  const activationBlock = !reviewRoutine?.sourceTaskId ? "Bind a saved task below." :
+    activationSourceError ? `Source task could not be loaded. ${activationSourceError}` :
+    !reviewTask ? "Checking the source task…" :
+    reviewTask.state !== "open" ? "Restore the source task before activation." :
+    reviewTask.revision !== reviewRoutine.sourceTaskRevision ?
+      "The source task changed. Sync this Skill in Skill definition and outcome below." :
+    !criteriaMatch ? "Use the source task criteria in Skill definition and outcome below, then save." : "";
   return (
     <section className="routines-section" aria-label="Skills" aria-busy={loading || busy}>
       <div className="routines-heading">
@@ -452,10 +513,11 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
                   actions={[
                     { label: "Edit Skill", onSelect: () => void action(() => refresh(item.routineId)) },
                     {
-                      label: item.paused ? "Resume" : "Pause",
+                      label: item.activationReview ? "Review Skill" : item.paused ? "Resume" : "Pause",
                       disabled: !!item.archivedAt || (item.paused && !item.sourceTaskId),
                       onSelect: () =>
                         void action(async () => {
+                          if (item.activationReview) return refresh(item.routineId);
                           await call("routines.pause", {
                             routineId: item.routineId,
                             expectedRevision: item.revision,
@@ -510,22 +572,53 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
           <h3>{selected.routine.title}</h3>
           <span className="hint">Revision {selected.routine.revision}</span>
           <p className="hint">{selected.routine.objective}</p>
-          <dl className="routine-overview">
+          <div className="routine-overview">
             <div>
-              <dt>Status</dt>
-              <dd>
+              <span className="routine-overview-label">Status</span>
+              <span className="routine-overview-value">
                 {selected.routine.archivedAt ? "Archived" : selected.routine.paused ? "Paused" : "Ready"}
-              </dd>
+              </span>
             </div>
             <div>
-              <dt>Trigger</dt>
-              <dd>{selected.routine.trigger.kind}</dd>
+              <span className="routine-overview-label">Trigger</span>
+              <span className="routine-overview-value">{selected.routine.trigger.kind}</span>
             </div>
             <div>
-              <dt>Runs</dt>
-              <dd>{selected.runs.length}</dd>
+              <span className="routine-overview-label">Runs</span>
+              <span className="routine-overview-value">{selected.runs.length}</span>
             </div>
-          </dl>
+          </div>
+          {selected.routine.activationReview && (
+            <div className="field" role="status">
+              <strong>Review before activation</strong>
+              <span className="hint">
+                {selected.routine.activationReview === "imported" ? "Imported Skill" :
+                  selected.routine.activationReview === "untrusted_task" ? "Skill based on an external or saved-conversation task" :
+                    "Skill saved from a run result"}
+                {" "}may contain page or tool instructions. Check the objective, source task, trigger, resources,
+                and model spend cap. It stays paused until you activate this exact revision.
+              </span>
+              {activationBlock && <span className="hint">{activationBlock}</span>}
+              {activationReview === `${selected.routine.routineId}:${selected.routine.revision}` ? (
+                <div className="row">
+                  <button className="btn sm" disabled={busy || !!activationBlock}
+                    onClick={() => void action(async () => {
+                      const reviewed = selected.routine;
+                      await call("routines.update", { routineId: reviewed.routineId,
+                        expectedRevision: reviewed.revision, paused: false, activationReviewed: true });
+                      setActivationReview("");
+                      await refresh(reviewed.routineId);
+                    })}>Activate reviewed Skill</button>
+                  <button className="btn sm ghost" onClick={() => setActivationReview("")}>Cancel</button>
+                </div>
+              ) : (
+                <button className="btn sm" disabled={busy || !!activationBlock}
+                  onClick={() => setActivationReview(`${selected.routine.routineId}:${selected.routine.revision}`)}>
+                  Review activation
+                </button>
+              )}
+            </div>
+          )}
           <span className="hint">
             {selected.routine.reviewRequired
               ? "Review required before writes."
@@ -593,7 +686,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
           <div className="row">
             <button
               className="btn sm"
-              disabled={busy || (selected.routine.paused && !selected.routine.sourceTaskId)}
+              disabled={busy || !!selected.routine.activationReview || (selected.routine.paused && !selected.routine.sourceTaskId)}
               onClick={() =>
                 void action(async () => {
                   await call("routines.pause", {
@@ -605,7 +698,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
                 })
               }
             >
-              {selected.routine.paused ? "Resume" : "Pause"}
+              {selected.routine.activationReview ? "Review above to activate" : selected.routine.paused ? "Resume" : "Pause"}
             </button>
             <button
               className="btn sm ghost"

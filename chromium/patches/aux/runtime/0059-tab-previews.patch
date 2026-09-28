@@ -1,0 +1,173 @@
+diff --git a/chrome/browser/ui/ui_features.cc b/chrome/browser/ui/ui_features.cc
+--- a/chrome/browser/ui/ui_features.cc
++++ b/chrome/browser/ui/ui_features.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/ui_features.h"
+ 
+ #include "base/feature_list.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/metrics/field_trial_params.h"
+ #include "base/time/time.h"
+ #include "build/build_config.h"
+@@ -244,7 +245,7 @@
+ // Enables preview images in tab-hover cards.
+ // https://crbug.com/41439486
+ BASE_FEATURE(kTabHoverCardImages,
+-#if BUILDFLAG(IS_MAC)
++#if BUILDFLAG(IS_MAC) && !BUILDFLAG(ENABLE_AUX_SHELL)
+              base::FEATURE_DISABLED_BY_DEFAULT
+ #else
+              base::FEATURE_ENABLED_BY_DEFAULT
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -27,7 +27,7 @@
+       shell_handlers_.emplace(name, group);
+   };
+   register_shell(AuxShellMethodGroup::kContent,
+-                 {"siteZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
++                 {"preview", "siteZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
+                   "httpAuthRequests", "respondHttpAuth",
+                   "clearSitePermission", "clearSiteData", "setHttpsUpgrade"});
+   register_shell(AuxShellMethodGroup::kDictation,
+diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
+--- a/chrome/browser/ui/aux/methods/content_methods.cc
++++ b/chrome/browser/ui/aux/methods/content_methods.cc
+@@ -12,11 +12,13 @@
+ #include <utility>
+ #include <variant>
+ 
++#include "base/base64.h"
+ #include "base/files/file_util.h"
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/memory/ref_counted_memory.h"
++#include "base/task/sequenced_task_runner.h"
+ #include "base/task/thread_pool.h"
+ #include "chrome/browser/shell_integration.h"
+ #include "printing/buildflags/buildflags.h"
+@@ -43,6 +45,9 @@
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/thumbnails/thumbnail_image.h"
++#include "chrome/browser/ui/thumbnails/thumbnail_tab_helper.h"
++#include "components/tabs/public/tab_interface.h"
+ #include "chrome/browser/ui/login/login_tab_helper.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/dictation_mac.h"
+@@ -147,7 +152,52 @@
+ 
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ namespace {
++
++// A thumbnail can arrive after the shell asks for it. Keep the subscription
++// alive for a bounded interval and detach it outside the image callback.
++class PreviewRequest : public base::RefCounted<PreviewRequest> {
++ public:
++  using Reply = base::OnceCallback<void(ThumbnailImage::CompressedThumbnailData)>;
++
++  PreviewRequest(scoped_refptr<ThumbnailImage> image, Reply reply)
++      : image_(std::move(image)), reply_(std::move(reply)) {}
++
++  void Start() {
++    subscription_ = image_->Subscribe();
++    subscription_->SetCompressedImageCallback(base::BindRepeating(
++        &PreviewRequest::OnData, base::RetainedRef(this)));
++    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
++        FROM_HERE, base::BindOnce(&PreviewRequest::Complete,
++                                  base::RetainedRef(this), nullptr),
++        base::Seconds(5));
++    image_->RequestCompressedThumbnailData();
++  }
++
++ private:
++  friend class base::RefCounted<PreviewRequest>;
++  ~PreviewRequest() = default;
+ 
++  void OnData(ThumbnailImage::CompressedThumbnailData data) {
++    if (data) Complete(std::move(data));
++  }
++
++  void Complete(ThumbnailImage::CompressedThumbnailData data) {
++    if (finished_) return;
++    finished_ = true;
++    std::move(reply_).Run(std::move(data));
++    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++        FROM_HERE, base::BindOnce(&PreviewRequest::Detach,
++                                  base::RetainedRef(this)));
++  }
++
++  void Detach() { subscription_.reset(); }
++
++  scoped_refptr<ThumbnailImage> image_;
++  Reply reply_;
++  std::unique_ptr<ThumbnailImage::Subscription> subscription_;
++  bool finished_ = false;
++};
++
+ struct SitePermissionKind {
+   std::string_view name;
+   ContentSettingsType type;
+@@ -232,6 +282,60 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "preview") {
++    if (args.size() != 1 || !args[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Expected a page identity");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++    content::WebContents* contents =
++        catalog ? catalog->FindPage(args[0].GetString(), &owner) : nullptr;
++    if (!contents || owner != browser_) {
++      std::move(callback).Run(false, "", "not_found",
++                              "The page is no longer in this window");
++      return;
++    }
++    auto* tab = tabs::TabInterface::MaybeGetFromContents(contents);
++    auto* helper = tab ? ThumbnailTabHelper::From(tab) : nullptr;
++    auto image = helper ? helper->thumbnail() : nullptr;
++    if (!image) {
++      std::move(callback).Run(true, "null", "", "");
++      return;
++    }
++    const auto* entry = contents->GetController().GetLastCommittedEntry();
++    const int navigation_id = entry ? entry->GetUniqueID() : 0;
++    auto reply = base::BindOnce(
++        [](base::WeakPtr<WebUIBrowserUI> ui, std::string page_id,
++           int navigation_id, RequestCallback callback,
++           ThumbnailImage::CompressedThumbnailData jpeg) {
++          if (!ui) return;
++          BrowserWindowInterface* current_owner = nullptr;
++          auto* catalog = aux::TabCatalog::GetForProfile(ui->browser()->GetProfile());
++          auto* page = catalog
++              ? catalog->FindPage(page_id, &current_owner) : nullptr;
++          const auto* entry = page
++              ? page->GetController().GetLastCommittedEntry() : nullptr;
++          if (!page || current_owner != ui->browser() || !entry ||
++              entry->GetUniqueID() != navigation_id || !jpeg ||
++              jpeg->data.empty() || jpeg->data.size() > 512 * 1024) {
++            std::move(callback).Run(true, "null", "", "");
++            return;
++          }
++          std::string encoded = base::Base64Encode(std::string_view(
++              reinterpret_cast<const char*>(jpeg->data.data()),
++              jpeg->data.size()));
++          std::move(callback).Run(
++              true,
++              *base::WriteJson(base::Value("data:image/jpeg;base64," + encoded)),
++              "", "");
++        },
++        weak_factory_.GetWeakPtr(), args[0].GetString(), navigation_id,
++        std::move(callback));
++    base::MakeRefCounted<PreviewRequest>(image, std::move(reply))->Start();
++    return;
++  }
+   if (method == "httpAuthRequests" || method == "respondHttpAuth") {
+     if (method == "httpAuthRequests" && !list->empty()) {
+       std::move(callback).Run(false, "", "invalid_argument", "No arguments expected");

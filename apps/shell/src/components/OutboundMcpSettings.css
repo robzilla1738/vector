@@ -23,13 +23,13 @@
     gap: 12px;
   }
 
-  .outbound-mcp .mcp-source-details :is(dt, dd) {
+  .outbound-mcp .mcp-source-details :is(.mcp-source-label, .mcp-source-value) {
     margin: 0;
     min-width: 0;
     overflow-wrap: anywhere;
   }
 
-  .outbound-mcp .mcp-source-details dt {
+  .outbound-mcp .mcp-source-details .mcp-source-label {
     color: var(--ink-2);
   }
   .outbound-mcp .mcp-source-details ol {
@@ -47,12 +47,29 @@
     gap: 12px;
     justify-content: space-between;
     padding: 12px 0;
+    flex-wrap: wrap;
   }
 
   .outbound-mcp .mcp-grant-row > div {
     display: grid;
     gap: 4px;
     min-width: 0;
+  }
+
+  .outbound-mcp .mcp-grant-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .outbound-mcp .mcp-tool-test {
+    flex: 1 0 100%;
+  }
+
+  .outbound-mcp .mcp-tool-result {
+    max-height: 240px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   @media (max-width: 700px) {

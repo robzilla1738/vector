@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TabNameSchema } from "./tab-name.js";
+import { SpaceThemeSchema } from "./spaces.js";
 
 /**
  * Human tab command + catalog protocol (§7.2). The desktop main process owns
@@ -26,6 +27,7 @@ export const TabPlacementSchema = z.object({
     name: z.string().max(100),
     color: z.string().max(40),
     grain: z.number().int().min(0).max(100).optional(),
+    theme: SpaceThemeSchema.optional(),
     workspaceId: z.string().max(200).optional(),
   }),
   folder: z.object({ id, name: z.string().max(200), spaceId: z.string().min(1).max(200), collapsed: z.boolean(), color: z.string().max(40).optional(), emoji: z.string().max(16).optional() }).optional(),
@@ -107,6 +109,8 @@ export const TabRecordSchema = z.object({
   workspaceId: z.string().min(1).max(200).optional(),
   url: z.string(),
   title: z.string(),
+  /** Browser-owned theme-color metadata, serialized as an opaque RGB value. */
+  themeColor: z.string().regex(/^#[0-9a-f]{6}$/).optional(),
   favicon: z.string().optional(),
   loading: z.boolean(),
   muted: z.boolean(),
@@ -158,6 +162,7 @@ export type TabPatchOp = z.infer<typeof TabPatchOpSchema>;
 export const TabPatchSchema = z.object({
   version: z.number().int().positive(),
   baseVersion: z.number().int().nonnegative(),
+  batterySaverActive: z.boolean().optional(),
   ops: z.array(TabPatchOpSchema).min(1),
   ts: z.number(),
 });
@@ -165,6 +170,7 @@ export type TabPatch = z.infer<typeof TabPatchSchema>;
 
 export const TabCatalogSnapshotSchema = z.object({
   version: z.number().int().nonnegative(),
+  batterySaverActive: z.boolean().optional(),
   tabs: z.array(TabRecordSchema),
   windows: z.array(WindowTabsSchema),
 });

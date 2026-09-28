@@ -3,7 +3,7 @@ import { normalizeTabName } from "@aux/contracts/tab-name-rule";
 import { bridge } from "../bridge";
 import { featureStage } from "../use-feature";
 import { errToast, toast } from "../store";
-import { assignFolder, assignSpace, canSplitPage, createFolder, createSpace, reconcileSpaces, rememberActiveTab, removeFolder, removeSpace, renameFolder, renameSpace, reorderGroup, reorderInSpace, reorderPin, setActiveSpace, splitForPage, tabsInSpace, toggleFolder, togglePin, updateFolder } from "../workspace";
+import { assignFolder, assignSpace, canSplitPage, createFolder, createSpace, reconcileSpaces, rememberActiveTab, removeFolder, removeSpace, renameFolder, renameSpace, reorderGroup, reorderInSpace, reorderPin, setActiveSpace, splitForPage, tabsInSpace, toggleFolder, togglePin, updateFolder, withSplitPair } from "../workspace";
 import { initialLayout, persistLayout } from "./persistence";
 import { call, sendTabCommand, syncCatalogOrder } from "./shared";
 import type { LayoutKeys, Slice } from "./types";
@@ -21,17 +21,14 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
     if (pageId && (!canSplitPage(state.pages.find(page => page.pageId === pageId)) || !canSplitPage(state.pages.find(page => page.pageId === state.activePageId)))) {
       toast("Open two available browser pages in this Space to use split view."); return;
     }
-    const splits = { ...state.layout.splits };
-    if (pageId) splits[state.activePageId] = pageId;
-    else delete splits[state.activePageId];
-    const layout = { ...state.layout, splits };
+    const layout = withSplitPair(state.layout, state.activePageId, pageId);
     const splitPageId = splitForPage(layout, state.pages, state.activePageId);
     if (pageId && !splitPageId) return;
     persistLayout(layout);
     set({ layout, splitPageId });
   },
   layout: initialLayout,
-  tidyUndo: null,
+  tidyUndo: initialLayout.tidyUndo ?? null,
 
   // ---- layout ----
   reorderTabs: (spaceId, from, to) =>
@@ -114,26 +111,26 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
   refreshSpaces: async () => {
     if (!bridge.privateMode) get().syncBrowserSpaces(await call("spaces.list"));
   },
-  addSpace: async (name, color = "slate", grain = 0) => {
+  addSpace: async (name, color = "slate", grain = 0, theme) => {
     if (bridge.privateMode) {
-      const layout = createSpace(get().layout, name, color, grain);
+      const layout = createSpace(get().layout, name, color, grain, theme);
       persistLayout(layout); set({ layout });
       get().switchSpace(layout.activeSpaceId);
       return;
     }
     const previous = new Set(get().layout.spaces.map(space => space.id));
-    const spaces = await call("spaces.create", { name, color, grain });
+    const spaces = await call("spaces.create", { name, color, grain, ...(theme ? { theme } : {}) });
     get().syncBrowserSpaces(spaces);
     const created = spaces.find(space => !space.archived && !previous.has(space.id));
     if (created) get().switchSpace(created.id);
   },
-  editSpace: async (spaceId, name, color, grain) => {
+  editSpace: async (spaceId, name, color, grain, theme) => {
     if (bridge.privateMode) {
-      const layout = renameSpace(get().layout, spaceId, name, color, grain);
+      const layout = renameSpace(get().layout, spaceId, name, color, grain, theme);
       persistLayout(layout); set({ layout });
       return;
     }
-    get().syncBrowserSpaces(await call("spaces.update", { id: spaceId, name, color, grain }));
+    get().syncBrowserSpaces(await call("spaces.update", { id: spaceId, name, color, grain, theme }));
   },
   deleteSpace: async (spaceId) => {
     if (bridge.privateMode) {

@@ -12,15 +12,15 @@ const useSelection = create<Selection>(() => ({space: "", ids: [], anchor: null}
 /** Selection is transient, scoped to a Space, and never includes agent-owned tabs.
  *  The returned callbacks keep a stable identity — they read the latest state
  *  through a ref — so memoized tab rows are not re-rendered by callback churn. */
-export function useTabSelection(tabs: TabMembership[], spaceId: string, activeId: string | null) {
+export function useTabSelection(tabs: TabMembership[], spaceId: string, activeId: string | null, focusAfterClose: () => void) {
   const state = useSelection();
   const setState = useSelection.setState;
   useEffect(() => { if (useSelection.getState().space !== spaceId) setState({space: spaceId, ids: [], anchor: null}); }, [spaceId]);
   const eligible = tabs;
   const eligibleIds = new Set(eligible.map(tab => tab.pageId));
   const ids = state.space === spaceId ? state.ids.filter(id => eligibleIds.has(id)) : [];
-  const latest = useRef({ state, ids, eligible, activeId, spaceId });
-  latest.current = { state, ids, eligible, activeId, spaceId };
+  const latest = useRef({ state, ids, eligible, activeId, spaceId, focusAfterClose });
+  latest.current = { state, ids, eligible, activeId, spaceId, focusAfterClose };
   const api = useMemo(() => ({
     clear() {
       const { state, spaceId } = latest.current;
@@ -52,11 +52,10 @@ export function useTabSelection(tabs: TabMembership[], spaceId: string, activeId
       }
       if (ids.length > 1 && ["Delete", "Backspace"].includes(event.key) && !event.metaKey && !event.ctrlKey) {
         event.preventDefault(); event.stopPropagation();
-        const list = (event.target as HTMLElement).closest('[role="tablist"]');
         void useStore.getState().closeTabs(ids).then(done => {
           if (done) api.clear();
           requestAnimationFrame(() => {
-            if (list?.isConnected && document.activeElement === document.body) list.querySelector<HTMLElement>('[role="tab"][tabindex="0"]')?.focus();
+            if (document.activeElement === document.body) latest.current.focusAfterClose();
           });
         }).catch(errToast); return true;
       }

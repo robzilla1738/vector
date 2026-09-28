@@ -6,6 +6,7 @@ const ctx = (submitResult: LoopToolContext["deps"]["submitResult"]): LoopToolCon
   threadId: "chat-1",
   turnId: "run-1",
   callCount: 1,
+  goalTurn: 1,
   pageId: "p1",
   deps: { submitResult },
 });

@@ -165,7 +165,7 @@ describe("runAgentLoop — context integration", () => {
     expect(parts[1]!.output.value).toMatchObject({ truncated: true, bytes: 30_002 });
   });
 
-  it("injects auto-recall once as a durable system message after the task", async () => {
+  it("injects auto-recall once as a durable user message after the task", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);
     const model = new MockModelClient().scriptToolSteps([{ text: "done" }]);
@@ -178,7 +178,7 @@ describe("runAgentLoop — context integration", () => {
     const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
     expect(outcome).toMatchObject({ kind: "done" });
     const messages = transcript.load("run-1");
-    expect(messages[1]).toMatchObject({ role: "system" });
+    expect(messages[1]).toMatchObject({ role: "user" });
     expect(String(messages[1]!.content)).toMatch(/Auto-recalled memory.*Note — https:\/\/example\.com/s);
     // a second invocation does not re-inject (messages.length > 1 now)
     let calls = 0;
@@ -188,7 +188,7 @@ describe("runAgentLoop — context integration", () => {
     });
     expect(again).toMatchObject({ kind: "done" });
     expect(calls).toBe(0);
-    expect(transcript.load("run-1").filter((m) => m.role === "system")).toHaveLength(1);
+    expect(transcript.load("run-1").filter((m) => String(m.content).includes("Auto-recalled memory"))).toHaveLength(1);
   });
 
   it("recall failure never blocks the run", async () => {
@@ -198,7 +198,7 @@ describe("runAgentLoop — context integration", () => {
     const deps: LoopToolDeps = { recall: async () => { throw new Error("memory down"); } };
     const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
     expect(outcome).toMatchObject({ kind: "done" });
-    expect(transcript.load("run-1").filter((m) => m.role === "system")).toHaveLength(0);
+    expect(transcript.load("run-1").filter((m) => String(m.content).includes("Auto-recalled memory"))).toHaveLength(0);
   });
 
   it("compacts an oversized transcript durably before the next model call", async () => {

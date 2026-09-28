@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
+import { access, readFile, realpath, rm, stat } from "node:fs/promises";
+import { constants } from "node:fs";
 import { isIP } from "node:net";
-import { isAbsolute } from "node:path";
+import { dirname, isAbsolute, relative, sep } from "node:path";
 import { StreamableHTTPClientTransport, type Transport } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
-import { AuxError, McpOAuthTokenSchema, McpStdioLaunchPermitSchema, type OutboundMcpServer } from "@aux/contracts";
-import type { NativeBridge } from "../native.js";
+import { AuxError, type OutboundMcpServer } from "@aux/contracts";
 import type { McpTransportProvider } from "./outbound-mcp.js";
+import { extractMcpBundle } from "./mcp-bundle.js";
 
 const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const forbiddenHost = (hostname: string) => {
@@ -15,13 +16,63 @@ const forbiddenHost = (hostname: string) => {
     host.endsWith(".local") || host.endsWith(".internal");
 };
 
-/**
- * Real MCP transports behind reviewed source identity. The native host must
- * validate the local command, cwd, source digest and default-deny profile,
- * then make the capability single-use in its launcher before server spawn.
- */
+// This profile grants only process execution and reads of macOS runtime files,
+// the reviewed working directory, and the executable's installation. Network
+// and file writes remain denied by default. Values are passed as sandbox
+// parameters, never interpolated into the policy language.
+const localSeatbelt = (parentCount: number) => `(version 1)
+(deny default)
+(allow process*)
+(allow sysctl-read)
+(allow file-read* (literal "/")
+  (subpath "/usr") (subpath "/bin") (subpath "/System")
+  (subpath "/Library") (subpath "/dev") (subpath "/private/etc")
+  (subpath "/opt/homebrew")
+  ${Array.from({ length: parentCount }, (_, index) => `(literal (param "MCP_PARENT_${index}"))`).join(" ")}
+  (subpath (param "MCP_WORKDIR")) (subpath (param "MCP_COMMAND_DIR")))`;
+
+
+function pathParents(path: string): string[] {
+  const parents: string[] = [];
+  for (let parent = dirname(path); parent !== "/"; parent = dirname(parent)) parents.push(parent);
+  return parents;
+}
+
+async function sandboxedStdio(source: { command: string; args: string[]; cwd: string }, signal: AbortSignal): Promise<Transport> {
+  if (process.platform !== "darwin")
+    throw new AuxError("backend_unavailable", "Sandboxed local MCP launch requires macOS.");
+  const { command, args, cwd } = source;
+  if (!isAbsolute(command) || !isAbsolute(cwd))
+    throw new AuxError("invalid_params", "MCP executable and working directory must be absolute paths.");
+  const [resolvedCommand, resolvedCwd] = await Promise.all([realpath(command), realpath(cwd)]);
+  const [commandInfo, cwdInfo] = await Promise.all([stat(resolvedCommand), stat(resolvedCwd)]);
+  if (!commandInfo.isFile() || !cwdInfo.isDirectory() || resolvedCwd === "/" || dirname(resolvedCommand) === "/")
+    throw new AuxError("permission_denied", "MCP requires an executable file and a bounded working directory.");
+  await access(resolvedCommand, constants.X_OK);
+  if (signal.aborted) throw new AuxError("cancelled", "MCP connection was cancelled.");
+  const launchArgs = await Promise.all(args.map(async arg => {
+    if (!isAbsolute(arg)) return arg;
+    try {
+      const resolved = await realpath(arg);
+      const inside = relative(resolvedCwd, resolved);
+      return inside === "" || (inside !== ".." && !inside.startsWith(`..${sep}`) && !isAbsolute(inside))
+        ? resolved : arg;
+    } catch { return arg; }
+  }));
+  const parents = [...new Set([...pathParents(resolvedCwd), ...pathParents(resolvedCommand)])];
+  if (parents.length > 64) throw new AuxError("permission_denied", "MCP path nesting exceeds the sandbox limit.");
+  const transport = new StdioClientTransport({ command: "/usr/bin/sandbox-exec",
+    args: ["-D", `MCP_WORKDIR=${resolvedCwd}`, "-D", `MCP_COMMAND_DIR=${dirname(resolvedCommand)}`,
+      ...parents.flatMap((parent, index) => ["-D", `MCP_PARENT_${index}=${parent}`]),
+      "-p", localSeatbelt(parents.length), resolvedCommand, ...launchArgs], cwd: resolvedCwd,
+    env: {}, stderr: "ignore", maxBufferSize: 1_000_000 });
+  signal.addEventListener("abort", () => { void transport.close(); }, { once: true });
+  return transport;
+}
+
+/** Real MCP transports behind reviewed source identity. */
 export function createMcpTransportProvider(
-  native?: Pick<NativeBridge, "prepareMcpStdioLaunch" | "mcpOAuthToken">,
+  oauth?: { token(server: OutboundMcpServer & { source: { kind: "remote"; url: string; auth: "oauth" } }): Promise<string> },
   networkFetch: typeof fetch = fetch,
 ): McpTransportProvider {
   return async (server: OutboundMcpServer, signal: AbortSignal): Promise<Transport> => {
@@ -44,12 +95,9 @@ export function createMcpTransportProvider(
       };
       const authProvider = server.source.auth === "oauth" ? {
         token: async () => {
-          if (!native?.mcpOAuthToken) throw new AuxError("backend_unavailable", "MCP OAuth is unavailable in this host.");
-          const token = McpOAuthTokenSchema.parse(await native.mcpOAuthToken(server));
-          if (token.serverId !== server.serverId || token.sourceDigest !== server.sourceDigest ||
-            token.expiresAt <= Date.now() || signal.aborted)
-            throw new AuxError("permission_denied", "MCP OAuth credential does not match this approved server.");
-          return token.token;
+          if (!oauth) throw new AuxError("backend_unavailable", "MCP OAuth is unavailable in this host.");
+          if (signal.aborted) throw new AuxError("cancelled", "MCP connection was cancelled.");
+          return oauth.token(server as OutboundMcpServer & { source: { kind: "remote"; url: string; auth: "oauth" } });
         },
       } : undefined;
       const transport = new StreamableHTTPClientTransport(url, {
@@ -60,28 +108,25 @@ export function createMcpTransportProvider(
       signal.addEventListener("abort", () => { void transport.close(); }, { once: true });
       return transport;
     }
-    if (!native?.prepareMcpStdioLaunch)
-      throw new AuxError("backend_unavailable", "Supervised local MCP launch is unavailable in this host.");
-    if (server.source.kind === "bundle") {
-      const info = await stat(server.source.path);
-      if (!info.isFile() || info.size > 20_000_000 ||
-        createHash("sha256").update(await readFile(server.source.path)).digest("hex") !== server.source.sha256)
-        throw new AuxError("conflict", "MCP bundle contents changed since approval.");
+    if (server.source.kind === "local") return sandboxedStdio(server.source, signal);
+    const info = await stat(server.source.path);
+    if (!info.isFile() || info.size > 20_000_000)
+      throw new AuxError("conflict", "MCP bundle contents changed since approval.");
+    const bytes = await readFile(server.source.path);
+    if (createHash("sha256").update(bytes).digest("hex") !== server.source.sha256)
+      throw new AuxError("conflict", "MCP bundle contents changed since approval.");
+    const extracted = await extractMcpBundle(bytes);
+    try {
+      const transport = await sandboxedStdio({ command: process.execPath,
+        args: extracted.args, cwd: extracted.directory }, signal);
+      const close = transport.close.bind(transport);
+      transport.close = async () => { try { await close(); } finally {
+        await rm(extracted.directory, { recursive: true, force: true });
+      } };
+      return transport;
+    } catch (error) {
+      await rm(extracted.directory, { recursive: true, force: true });
+      throw error;
     }
-    const permit = McpStdioLaunchPermitSchema.parse(await native.prepareMcpStdioLaunch(server));
-    if (permit.serverId !== server.serverId || permit.sourceDigest !== server.sourceDigest ||
-      permit.expiresAt <= Date.now() || permit.expiresAt > Date.now() + 60_000 ||
-      !isAbsolute(permit.launcherPath) || !isAbsolute(permit.cwd) || signal.aborted)
-      throw new AuxError("permission_denied", "The native MCP launch capability is invalid or expired.");
-    if ((server.source.kind === "local" && permit.launcherPath === server.source.command) ||
-      permit.effectiveProfile.readableRoots.some(root => !isAbsolute(root) || root === "/"))
-      throw new AuxError("permission_denied", "MCP requires a supervised launcher with bounded readable roots.");
-    // Only the host-issued supervisor is executed. The reviewed source command
-    // and bundle are never passed to Node's process launcher here.
-    const transport = new StdioClientTransport({ command: permit.launcherPath,
-      args: [...permit.launcherArgs, permit.capabilityId], cwd: permit.cwd,
-      env: {}, stderr: "ignore", maxBufferSize: 1_000_000 });
-    signal.addEventListener("abort", () => { void transport.close(); }, { once: true });
-    return transport;
   };
 }

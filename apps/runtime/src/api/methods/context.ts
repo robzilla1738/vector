@@ -15,8 +15,9 @@ import { DecisionJournal, decide } from "../../safety/decide.js";
 import type { DriverSet, PageService } from "../../services/pages.js";
 import type { EventBus } from "../../events.js";
 import { GoalService } from "../../services/goals.js";
+import { CommandEscalationService } from "../../services/command-escalation.js";
 import { HistoryProjection } from "../../services/history-projection.js";
-import { HookService } from "../../services/hooks.js";
+import { HookService, type HookExecutor } from "../../services/hooks.js";
 import type { McpTransportProvider } from "../../services/outbound-mcp.js";
 import type { MemoryPipeline } from "../../services/memory-pipeline.js";
 import type { NativeBridge } from "../../native.js";
@@ -27,6 +28,7 @@ import type { Repo } from "../../store/repo.js";
 import type { ResponseStore } from "../../services/responses.js";
 import { RoutineService } from "../../services/routines.js";
 import type { RunService } from "../../services/runs.js";
+import { WorkspaceFolderService } from "../../services/workspace-folders.js";
 import { SafetyAuditStore } from "../../safety/audit.js";
 import type { SetService } from "../../services/sets.js";
 import type { SettingsService } from "../../services/settings.js";
@@ -43,6 +45,7 @@ import { VaultService } from "../../services/vault.js";
 import { ZapService } from "../../services/zap.js";
 import { createHash } from "node:crypto";
 import type { MethodName } from "@aux/contracts";
+import type { McpOAuthService } from "../../services/mcp-oauth.js";
 
 export interface Services {
   featureHost?: AuxFeatureHost;
@@ -51,6 +54,8 @@ export interface Services {
   pages: PageService;
   sets: SetService;
   runs: RunService;
+  goals?: GoalService;
+  commandEscalations?: CommandEscalationService;
   artifacts: ArtifactStore;
   settings: SettingsService;
   events: EventBus;
@@ -59,10 +64,16 @@ export interface Services {
   /** S6.7 — scoped connections own first-class session runs. */
   externalSessions?: import("../../services/external-sessions.js").ExternalSessionService;
   mcpTransportProvider?: McpTransportProvider;
+  mcpOAuth?: McpOAuthService;
+  outboundMcp?: OutboundMcpService;
+  hooks?: HookService;
+  hookExecutor?: HookExecutor;
+  workspaceFolders?: WorkspaceFolderService;
   /** Shared with the agent loop's REPL cell surface — created once in main.ts. */
   subagents?: SubagentService;
   calendar?: CalendarConnectionService;
   native?: NativeBridge;
+  downloadsDir?: string;
   contentMemory?: ContentMemoryStore;
   memoryPipeline?: MemoryPipeline;
   checkpointDeletedData?: () => void;
@@ -129,7 +140,7 @@ export type MethodHandler = (ctx: MethodCtx) => Promise<unknown>;
 
 /** Per-invoker collaborators shared by every domain handler. */
 export function buildMethodDeps(s: Services, invoke: InvokeFn) {
-  const outboundMcp = new OutboundMcpService(s.repo, s.mcpTransportProvider);
+  const outboundMcp = s.outboundMcp ?? new OutboundMcpService(s.repo, s.mcpTransportProvider);
   const subagents = s.subagents ?? new SubagentService(s.repo, s.events, s.runs);
   const customization = new SiteCustomization(s.repo.db, s.featureProfileId ?? "default");
   const commandRanking = new CommandRankingStore(s.repo, s.featureProfileId ?? "default");
@@ -187,7 +198,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     }
   };
   const spaces = new SpaceService(s.repo, s.events);
-  const taskEvidence = new TaskEvidenceService(s.repo, s.events, s.pages);
+  const taskEvidence = new TaskEvidenceService(s.repo, s.events, s.pages, s.native, s.downloadsDir);
   const vault = s.vault ?? new VaultService(s.repo, s.native);
   const translate = new TranslateService(s.settings);
   const safetyAudit = new SafetyAuditStore(s.repo.db);
@@ -289,8 +300,10 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
       return { chatId: run.config?.chatId ?? details.task.conversationId, runId: run.runId };
     });
   const plugins = new PluginService(s.repo, routines);
-  const goals = new GoalService(s.repo, s.runs);
-  const hooks = new HookService(s.repo);
+  const goals = s.goals ?? new GoalService(s.repo, s.runs);
+  const commandEscalations = s.commandEscalations ?? new CommandEscalationService(s.repo);
+  const hooks = s.hooks ?? new HookService(s.repo);
+  const workspaceFolders = s.workspaceFolders ?? new WorkspaceFolderService(s.repo);
   const zap = s.zap ?? new ZapService(s.repo, s.native, s.featureProfileId ?? "default");
   const scopedTasks = (scope: AgentConnectionScope) =>
     scope.kind === "task"
@@ -474,7 +487,9 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     routines,
     plugins,
     goals,
+    commandEscalations,
     hooks,
+    workspaceFolders,
     zap,
     scopedTasks,
     sessionPageIds,

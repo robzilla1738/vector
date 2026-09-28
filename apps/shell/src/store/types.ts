@@ -1,4 +1,5 @@
 import type { AuxEvent, BrowserSession, BrowserSpace, CompactObservation, Download, PageSet, PageTarget, ResultRecord, Run, SavedProgram, SetMember, StepRecord, TabCatalogSnapshot, TabPatch, TabPlacement } from "@aux/contracts";
+import type { SpaceTheme } from "@aux/contracts/spaces";
 import type { StateCreator } from "zustand";
 import type { ClosedTab } from "../closed-tabs";
 import type { PageContextRef } from "@aux/contracts";
@@ -97,6 +98,7 @@ export interface Workspace {
   translationPending: string | null;
   setTranslationPending(pageId: string | null): void;
   splitPageId: string | null;
+  peekPageId: string | null;
   setSplitPage(pageId: string | null): void;
   setSplitRatio(value: number, persist?: boolean): void;
   resultPreview: string | null;
@@ -112,8 +114,8 @@ export interface Workspace {
   /** window is too narrow for sidebar + stage + agent rail side by side */
   narrow: boolean;
   layout: Layout;
-  /** Latest AI Tidy change remains undoable while this browser window is open. */
-  tidyUndo: { before: Layout; after: Layout } | null;
+  /** Latest AI Tidy change is stored with the Profile organization layout. */
+  tidyUndo: Layout["tidyUndo"] | null;
 
   setMode(m: Mode): void;
   setNarrow(v: boolean): void;
@@ -156,8 +158,8 @@ export interface Workspace {
   setTabName(pageId: string, expectedUrl: string, name: string | null): void;
   moveTabToWindow(pageId: string, windowId?: string): Promise<void>;
   moveTabsToWindow(pageIds: string[], windowId?: string): Promise<void>;
-  addSpace(name: string, color?: SpaceColor, grain?: number): Promise<void>;
-  editSpace(spaceId: string, name: string, color?: SpaceColor, grain?: number): Promise<void>;
+  addSpace(name: string, color?: SpaceColor, grain?: number, theme?: SpaceTheme | null): Promise<void>;
+  editSpace(spaceId: string, name: string, color?: SpaceColor, grain?: number, theme?: SpaceTheme | null): Promise<void>;
   deleteSpace(spaceId: string): Promise<void>;
   restoreSpace(spaceId: string, activate?:boolean): Promise<void>;
   syncBrowserSpaces(spaces: BrowserSpace[]): void;
@@ -193,7 +195,7 @@ export interface Workspace {
   refreshResults(setId: string): Promise<void>;
 }
 
-export type UiKeys = "mode" | "setMode" | "narrow" | "setNarrow" | "overlay" | "setOverlay" | "skillSelection" | "readerFindOpen" | "settingsCategory" | "memoryWorkspaceId" | "railOpen" | "railView" | "toggleRail" | "openRail" | "setRailView" | "showConversationInRail" | "sidebar" | "setSidebar" | "toggleSidebar" | "sidebarPeek" | "tabPreviewOpen" | "setSidebarPeek" | "focusRequest" | "focusSlot" | "paletteSeed" | "focusCommandBar" | "toast" | "toasts" | "dismissToast" | "findText" | "findMatches" | "find" | "zoomLevels" | "zoomPage" | "sidebarWidth" | "sidebarSections" | "toggleSidebarSection" | "railWidth" | "setSidebarWidth" | "setRailWidth" | "vaultOffer" | "setVaultOffer" | "translation" | "setTranslation" | "translationPending" | "setTranslationPending" | "resultPreview" | "inspectorObs" | "connected";
+export type UiKeys = "mode" | "setMode" | "narrow" | "setNarrow" | "overlay" | "setOverlay" | "skillSelection" | "readerFindOpen" | "settingsCategory" | "memoryWorkspaceId" | "railOpen" | "railView" | "toggleRail" | "openRail" | "setRailView" | "showConversationInRail" | "sidebar" | "setSidebar" | "toggleSidebar" | "sidebarPeek" | "tabPreviewOpen" | "peekPageId" | "setSidebarPeek" | "focusRequest" | "focusSlot" | "paletteSeed" | "focusCommandBar" | "toast" | "toasts" | "dismissToast" | "findText" | "findMatches" | "find" | "zoomLevels" | "zoomPage" | "sidebarWidth" | "sidebarSections" | "toggleSidebarSection" | "railWidth" | "setSidebarWidth" | "setRailWidth" | "vaultOffer" | "setVaultOffer" | "translation" | "setTranslation" | "translationPending" | "setTranslationPending" | "resultPreview" | "inspectorObs" | "connected";
 export type DraftKeys = "conversationContexts" | "setConversationContext" | "conversationBrowserSources" | "setConversationBrowserSources" | "agentDraft" | "setAgentDraft" | "conversationDrafts" | "setConversationDraft" | "runAnswerDrafts" | "setRunAnswerDraft";
 export type BookmarkKeys = "bookmarks" | "bookmarkPending" | "toggleBookmark" | "toggleReadingList" | "downloads" | "applyDownload";
 export type LayoutKeys = "layout" | "tidyUndo" | "splitPageId" | "setSplitPage" | "setSplitRatio" | "reorderTabs" | "reorderGroup" | "moveTabToSpace" | "moveTabs" | "setTabName" | "addSpace" | "editSpace" | "deleteSpace" | "restoreSpace" | "syncBrowserSpaces" | "refreshSpaces" | "switchSpace" | "togglePin" | "reorderPin" | "addFolder" | "renameFolder" | "updateFolder" | "deleteFolder" | "toggleFolder" | "moveTabToFolder";

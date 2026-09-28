@@ -10,7 +10,7 @@ import { PageOpener } from "./pages/opener.js";
 import { PageRegistry } from "./pages/registry.js";
 import { TabSessionRestore } from "./pages/session-restore.js";
 import type { PageServiceDeps } from "./pages/types.js";
-import type { Observation } from "@aux/contracts";
+import { AuxError, type Observation } from "@aux/contracts";
 import type { MethodParams } from "@aux/contracts";
 import { SiteAdapters } from "../agent/site-adapters.js";
 import { InlineAssist } from "./pages/inline-assist.js";
@@ -98,6 +98,46 @@ export class PageService {
   extract: ObservationService["extract"] = (...args) => this.observation.extract(...args);
 
   execute: ProgramExecutor["execute"] = (...args) => this.executor.execute(...args);
+  /** Owner-requested local form restore, serialized with agent commands on this page. */
+  undoFormChange(input: { pageId: string; target: string; url: string; documentEpoch: number;
+    before: { value?: string; checked?: boolean; selected?: string };
+    after: { value?: string; checked?: boolean; selected?: string } }): Promise<void> {
+    return this.lanes.enqueue(input.pageId, async () => {
+      const page = this.pages.get(input.pageId);
+      const driver = this.pages.driverPageLenient(input.pageId);
+      if (page.documentEpoch !== input.documentEpoch || driver.url() !== input.url)
+        throw new AuxError("conflict", "The page changed; the recorded form edit cannot be undone safely");
+      if (!driver.fieldState) throw new AuxError("backend_unavailable", "Form state is unavailable");
+      const same = (left: Record<string, unknown> | undefined, right: Record<string, unknown>) =>
+        !!left && Object.keys(right).length === 1 && Object.keys(left).length === 1 &&
+        Object.keys(right).every(key => left[key] === right[key]);
+      const live = await driver.fieldState(input.target);
+      if (!same(live, input.after)) throw new AuxError("conflict", "The form changed since this run; reload the receipt and review it");
+      if (typeof input.before.value === "string") await driver.fill(input.target, input.before.value);
+      else if (typeof input.before.checked === "boolean") {
+        if (input.before.checked) await driver.check(input.target);
+        else await driver.uncheck(input.target);
+      } else if (typeof input.before.selected === "string") await driver.select(input.target, input.before.selected.split("|"));
+      else throw new AuxError("invalid_params", "No restorable prior form state was recorded");
+      if (page.documentEpoch !== input.documentEpoch || driver.url() !== input.url ||
+        !same(await driver.fieldState(input.target), input.before))
+        throw new AuxError("conflict", "The page changed during restore; inspect the form before trying again");
+    });
+  }
+  /** Close an unused tab created by a completed model run. Foreground/taken-over tabs require human review. */
+  undoOpenedTab(pageId: string, expected: { url: string; documentEpoch: number }): Promise<void> {
+    return this.lanes.enqueue(pageId, async () => {
+      const page = this.pages.get(pageId);
+      if (!page.ownedByRuntime) throw new AuxError("conflict", "This tab is no longer run-owned");
+      if (page.url !== expected.url || page.documentEpoch !== expected.documentEpoch)
+        throw new AuxError("conflict", "This tab navigated after the run opened it");
+      if (this.pages.activeId === pageId || this.pages.activeByWindow.get(page.windowId ?? "main") === pageId ||
+        !["background", "hidden"].includes(page.viewStatus) || page.controller !== "none")
+        throw new AuxError("conflict", "This tab was taken over or activated");
+      const closed = await this.navigation.close(pageId);
+      if (!closed.ok) throw new AuxError("conflict", "The browser did not close this run-owned tab");
+    });
+  }
   waitFor: ProgramExecutor["waitFor"] = (...args) => this.executor.waitFor(...args);
 
   takeover: ControlAuthority["takeover"] = (...args) => this.control.takeover(...args);

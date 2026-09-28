@@ -2,10 +2,10 @@ import { isHomeAddress, nativePageId } from "../chrome";
 import { PaneBoundary } from "./PaneBoundary";
 import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
-import { forwardRef, lazy, memo, Suspense, useRef, useState } from "react";
+import { forwardRef, lazy, memo, Suspense, useRef, useState, type RefObject } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { bridge } from "../bridge";
-import { useStore, call, errToast, tabCommand } from "../store";
+import { useStore, call, errToast } from "../store";
 
 import { TranslationBar } from "./TranslationBar";
 import { Conversation } from "./surfaces";
@@ -18,7 +18,7 @@ const SplitDivider = lazy(async () => { const module = await import("./SplitDivi
 const Overview = deferSurface(async () => { const module = await import("./Overview"); return {default:module.Overview}; }, "Tab overview", true);
 const ResultsTable = deferSurface(async () => { const module = await import("./ResultsTable"); return {default:module.ResultsTable}; }, "Results", true);
 
-function PageRecovery({ page }: { page: PageTarget }) {
+export function PageRecovery({ page }: { page: PageTarget }) {
   const [busy, setBusy] = useState<"reload" | "back" | "proceed" | null>(null);
   const pending = useRef(false);
   const [actionError, setActionError] = useState("");
@@ -43,10 +43,11 @@ function PageRecovery({ page }: { page: PageTarget }) {
     pending.current = true;
     setBusy("proceed"); setActionError("");
     try {
-      if (error.upgradedFrom) await bridge.useHttp(page.pageId, error.upgradedFrom);
+      if (error.upgradedFrom) {
+        if (!await bridge.useHttp(page.pageId, error.upgradedFrom)) throw new Error("The HTTP fallback was not accepted.");
+      }
       else {
-        await bridge.proceedInsecure(error.url);
-        await tabCommand({ kind: "reload", pageId: page.pageId });
+        if (!await bridge.proceedInsecure(page.pageId, error.url)) throw new Error("The certificate exception was not accepted.");
       }
     } catch (reason) {
       setActionError(`Couldn’t proceed. ${reason instanceof Error ? reason.message : String(reason)}`);
@@ -69,7 +70,7 @@ function PageRecovery({ page }: { page: PageTarget }) {
 }
 
 /** Shared viewport for native pages and browser-owned surfaces. */
-export const Stage = memo(forwardRef<HTMLDivElement>(function Stage(_props, ref) {
+export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<HTMLTextAreaElement | null>; scrollRef?: RefObject<HTMLDivElement | null> }>(function Stage({ composerRef, scrollRef }, ref) {
   const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
   const mode = useStore((s) => s.mode);
   const companion = useStore(s => s.pages.find(item => item.pageId === s.splitPageId));
@@ -112,7 +113,7 @@ export const Stage = memo(forwardRef<HTMLDivElement>(function Stage(_props, ref)
         {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && <StartPage />}
         {showingPage && page && !splitVisible && <Suspense fallback={<div className="stage-message">Opening page…</div>}><PageSurface page={page} /></Suspense>}
         {splitVisible && <Suspense fallback={null}><SplitDivider pages={[page!, companion!]} /></Suspense>}
-        {mode === "conversation" && <PaneBoundary label="This conversation"><Conversation /></PaneBoundary>}
+        {mode === "conversation" && <PaneBoundary label="This conversation"><Conversation composerRef={composerRef} findReturnRef={scrollRef} /></PaneBoundary>}
         {mode === "overview" && <Overview />}
         {mode === "table" && <ResultsTable />}
       </div>

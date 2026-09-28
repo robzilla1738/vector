@@ -1,7 +1,7 @@
 import type { ConversationSource } from "@aux/contracts";
 import type { RefObject } from "react";
 import type { BrowserProfile } from "../bridge";
-import { NativeDialog } from "./NativeDialog";
+import { Dialog } from "../ui";
 import { I } from "./icons";
 import "./CalendarSourceChoiceDialog.css";
 
@@ -18,9 +18,9 @@ interface Props {
 
 export function CalendarSourceChoiceDialog({ choice, returnFocus, initialFocus, onClose, onChoose }: Props) {
   return (
-    <NativeDialog
+    <Dialog
       label="Open Calendar source"
-      className="sheet conversation-calendar-choice"
+      className="aux-dialog-surface conversation-calendar-choice"
       returnFocus={returnFocus}
       onClose={onClose}
     >
@@ -44,6 +44,6 @@ export function CalendarSourceChoiceDialog({ choice, returnFocus, initialFocus, 
           </button>
         ))}
       </div>
-    </NativeDialog>
+    </Dialog>
   );
 }

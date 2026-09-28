@@ -4,13 +4,21 @@
  * fall back to Playwright's actionability, readiness counts requests from Node.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import type { ChildProcess } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { StandaloneDriver, type PlaywrightDriverPage } from "@aux/chromium-driver";
 import { findChromium } from "../../scripts/chromium.mjs";
+import { startFixturesIfNeeded, waitForFixtures } from "../../scripts/fixtures.mjs";
 
 let driver: StandaloneDriver;
+let fixtures: ChildProcess[] = [];
 let n = 0;
 
 beforeAll(async () => {
+  fixtures = await startFixturesIfNeeded();
+  await waitForFixtures();
   const path = findChromium();
   if (path && !process.env.AUX_BROWSER_PATH) process.env.AUX_BROWSER_PATH = path;
   driver = new StandaloneDriver();
@@ -19,6 +27,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await driver?.disconnect();
+  for (const fixture of fixtures) fixture.kill();
 });
 
 async function pageWith(html: string) {
@@ -101,5 +110,97 @@ describe("aux isolated world", () => {
     expect(await dp.observeFingerprint()).toBe(a);
     await page(dp).evaluate(() => { document.getElementById("p")!.firstChild!.nodeValue = "two"; });
     expect(await dp.observeFingerprint()).not.toBe(a);
+  });
+
+  it("observes and acts through open shadow DOM and an explicit cross-site iframe subtree", async () => {
+    const dp = (await driver.attach(await driver.createTarget("about:blank"), `p${++n}`)) as PlaywrightDriverPage;
+    await page(dp).goto("http://127.0.0.1:4812/");
+    const shadow = await dp.observe({});
+    const increment = refNamed(shadow.elements, "Increment");
+    await dp.click(increment);
+    expect(await page(dp).locator("shadow-counter #n").textContent()).toBe("1");
+
+    await page(dp).locator("iframe").evaluate((iframe: HTMLIFrameElement) => {
+      iframe.src = "http://localhost:4812/frame-inner";
+    });
+    await page(dp).frameLocator("iframe").locator("#frame-btn").waitFor();
+    const cdp = await page(dp).context().newCDPSession(page(dp));
+    const targets = await cdp.send("Target.getTargets");
+    expect(targets.targetInfos.some((target: { type: string; url: string }) =>
+      target.type === "iframe" && target.url.includes("localhost:4812/frame-inner"))).toBe(true);
+    await cdp.detach();
+    const defaultView = await dp.observe({});
+    expect(defaultView.frames.some(frame => frame.url.includes("localhost:4812/frame-inner") && !frame.sameOrigin)).toBe(true);
+    expect(defaultView.elements.some(element => element.name === "Frame button")).toBe(false);
+
+    const child = await dp.observe({ scope: "subtree", subtreeRef: "css:iframe" });
+    const input = child.elements.find(element => element.tag === "input" && element.frame !== "main");
+    expect(input).toBeDefined();
+    await dp.fill(input!.ref, "frame value");
+    await dp.click(refNamed(child.elements, "Frame button"));
+    expect(await page(dp).frameLocator("iframe").locator("#frame-out").textContent()).toBe("frame clicked: frame value");
+  });
+
+  it("keeps ID-free shadow paths distinct across sibling hosts", async () => {
+    const dp = await pageWith(`<shadow-choice data-name="Alpha"></shadow-choice><shadow-choice data-name="Beta"></shadow-choice>
+      <script>customElements.define('shadow-choice', class extends HTMLElement {
+        connectedCallback() {
+          this.attachShadow({mode:'open'}).innerHTML = '<section><button>' + this.dataset.name + '</button></section>';
+          this.shadowRoot.querySelector('button').onclick = () => { this.dataset.clicked = 'yes'; };
+        }
+      });</script>`);
+    const observed = await dp.observe({});
+    await dp.click(refNamed(observed.elements, "Beta"));
+    expect(await page(dp).locator('shadow-choice[data-name="Alpha"]').getAttribute("data-clicked")).toBeNull();
+    expect(await page(dp).locator('shadow-choice[data-name="Beta"]').getAttribute("data-clicked")).toBe("yes");
+  });
+
+  it("targets controls with CSS punctuation and quoted test IDs", async () => {
+    const dp = await pageWith(`<input id="field.name" aria-label="Dotted field"><input id="field:name" aria-label="Colon field"><input data-testid='quoted"test' aria-label="Quoted test field">`);
+    const observed = await dp.observe({});
+    for (const name of ["Dotted field", "Colon field", "Quoted test field"]) {
+      const selector = observed.elements.find(element => element.name === name)?.selector.css;
+      expect(selector).toBeDefined();
+      expect(await page(dp).locator(selector!).count()).toBe(1);
+    }
+    await dp.fill(refNamed(observed.elements, "Dotted field"), "dot");
+    await dp.fill(refNamed(observed.elements, "Colon field"), "colon");
+    await dp.fill(refNamed(observed.elements, "Quoted test field"), "quote");
+    expect(await page(dp).evaluate(() => [
+      (document.getElementById("field.name") as HTMLInputElement).value,
+      (document.getElementById("field:name") as HTMLInputElement).value,
+      (document.querySelector('input[data-testid]') as HTMLInputElement).value,
+    ])).toEqual(["dot", "colon", "quote"]);
+  });
+
+  it("selects, checks and uploads through observed refs on the form fixture", async () => {
+    const dp = (await driver.attach(await driver.createTarget("about:blank"), `p${++n}`)) as PlaywrightDriverPage;
+    await page(dp).goto("http://127.0.0.1:4811/");
+    const observed = await dp.observe({});
+    const dir = mkdtempSync(join(tmpdir(), "aux-form-upload-"));
+    try {
+      const file = join(dir, "fixture.txt");
+      writeFileSync(file, "fixture upload");
+      await dp.select(refNamed(observed.elements, "Role"), "Engineer");
+      const emailPreference = observed.elements.find(element => element.type === "checkbox" && element.name === "Email");
+      expect(emailPreference).toBeDefined();
+      await dp.check(emailPreference!.ref);
+      await dp.check(refNamed(observed.elements, "Pro"));
+      await dp.uploadFiles(refNamed(observed.elements, "Resume (upload)"), [file]);
+      expect(await page(dp).locator("#role").inputValue()).toBe("Engineer");
+      expect(await page(dp).locator('input[name="pref"][value="email"]').isChecked()).toBe(true);
+      expect(await page(dp).locator('input[name="plan"][value="pro"]').isChecked()).toBe(true);
+      expect(await page(dp).locator("#resume").evaluate((input: HTMLInputElement) => input.files?.[0]?.name)).toBe("fixture.txt");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("accepts an armed dialog from an observed button", async () => {
+    const dp = await pageWith(`<button onclick="alert('confirm fixture'); window.accepted = true">Open alert</button>`);
+    const button = refNamed((await dp.observe({})).elements, "Open alert");
+    await dp.handleDialog("accept");
+    await dp.click(button);
+    expect(await page(dp).evaluate(() => (window as unknown as { accepted?: boolean }).accepted)).toBe(true);
   });
 });

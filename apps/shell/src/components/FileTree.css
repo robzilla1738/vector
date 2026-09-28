@@ -1,0 +1,10 @@
+@layer components {
+.ui-file-tree { display:flex; flex-direction:column; min-width:0; gap:var(--space-0); padding:var(--space-1); }
+.ui-file-tree > button { display:flex; align-items:center; gap:var(--space-1-5); width:100%; min-width:0; height:32px; flex:none; padding-right:var(--space-2); text-align:left; border-radius:var(--r-md); font-size:var(--fs-sm); color:var(--ink-1); }
+.ui-file-tree > button:hover, .ui-file-tree > button:focus-visible { background:var(--bg-hover); }
+.ui-file-tree > button[aria-selected="true"] { background:var(--bg-2); color:var(--ink-0); }
+.ui-file-icon, .ui-file-disclosure { display:flex; flex:none; color:var(--ink-2); }
+.ui-file-icon svg, .ui-file-disclosure svg { width:16px; height:16px; }
+.ui-file-disclosure.open { transform:rotate(90deg); }
+.ui-file-name { min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+}

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { bridge } from "../bridge";
 import { FilterListManager } from "./FilterListManager";
+import { useFeature } from "../use-feature";
 
 type Decisions = Record<string, Record<string, "allow" | "deny">>;
 const labels: Record<string, string> = {
@@ -11,11 +13,29 @@ const labels: Record<string, string> = {
 };
 
 export function SitePermissions({ query = "" }: { query?: string }) {
-  const pages = useStore(state => state.pages);
+  const contentBlockingAvailable = useFeature("contentBlocking");
+  const openSites = useStore(useShallow(state => {
+    const origins = new Set<string>();
+    return state.pages.flatMap(page => {
+      if (page.backend !== "aux" || !/^https?:/.test(page.url) || !URL.canParse(page.url)) return [];
+      const origin = new URL(page.url).origin;
+      if (origins.has(origin)) return [];
+      origins.add(origin);
+      return [`${page.pageId}\u0000${page.url}`];
+    });
+  })).map(key => {
+    const split = key.indexOf("\u0000");
+    return { pageId: key.slice(0, split), url: key.slice(split + 1) };
+  });
   const [selectedPage, setSelectedPage] = useState("");
-  const openSites = pages.filter(page => page.backend === "aux" && /^https?:/.test(page.url) && URL.canParse(page.url))
-    .filter((page, index, all) => all.findIndex(other => new URL(other.url).origin === new URL(page.url).origin) === index);
   const chosenPage = openSites.find(page => page.pageId === selectedPage) ?? openSites[0];
+  const siteDataKey = chosenPage ? `${chosenPage.pageId}\u0000${chosenPage.url}` : "";
+  const [siteDataCount, setSiteDataCount] = useState<{ key: string; domain: string; cookies: number } | null>(null);
+  const [siteDataError, setSiteDataError] = useState<{ key: string; message: string } | null>(null);
+  const [siteDataReview, setSiteDataReview] = useState("");
+  const [siteDataRetry, setSiteDataRetry] = useState(0);
+  const currentSiteDataCount = siteDataCount?.key === siteDataKey ? siteDataCount : null;
+  const currentSiteDataError = siteDataError?.key === siteDataKey ? siteDataError.message : "";
   const [decisions, setDecisions] = useState<Decisions>({});
   const [privacy, setPrivacy] = useState<{ trackerBlock: boolean; blocked: number; allowedHosts?: string[]; httpsUpgrade?: boolean } | null>(null);
   const [search, setSearch] = useState("");
@@ -24,15 +44,25 @@ export function SitePermissions({ query = "" }: { query?: string }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loadError,setLoadError]=useState("");
+  const [privacyError,setPrivacyError]=useState("");
   const request=useRef(0);
   const pending=useRef(false);
   const root=useRef<HTMLDivElement>(null);
+  const searchInput=useRef<HTMLInputElement>(null);
   async function load() {
     const version=++request.current;
-    setLoading(true);setLoadError("");
-    try { const [result, privacyState]=await Promise.all([bridge.sitePermissions(),bridge.privacy()]);if(version===request.current){setDecisions(result);setPrivacy(privacyState);} }
-    catch (error) { if(version===request.current)setLoadError(error instanceof Error ? error.message : String(error)); }
-    finally { if(version===request.current)setLoading(false); }
+    setLoading(true);setLoadError("");setPrivacyError("");
+    const [decisionsResult, privacyResult] = await Promise.allSettled([
+      bridge.sitePermissions(),
+      contentBlockingAvailable ? bridge.privacy() : Promise.resolve(null),
+    ]);
+    if (version === request.current) {
+      if (decisionsResult.status === "fulfilled") setDecisions(decisionsResult.value);
+      else setLoadError(decisionsResult.reason instanceof Error ? decisionsResult.reason.message : String(decisionsResult.reason));
+      if (privacyResult.status === "fulfilled") setPrivacy(privacyResult.value);
+      else { setPrivacy(null); setPrivacyError(privacyResult.reason instanceof Error ? privacyResult.reason.message : String(privacyResult.reason)); }
+    }
+    if (version === request.current) setLoading(false);
   }
   useEffect(() => {
     void load();
@@ -41,6 +71,15 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     document.addEventListener("visibilitychange",refresh);
     return()=>{++request.current;window.removeEventListener("focus",refresh);document.removeEventListener("visibilitychange",refresh);};
   }, []);
+  useEffect(() => {
+    if (!chosenPage) return;
+    let current = true;
+    const key = siteDataKey;
+    void bridge.siteDataCount(chosenPage.pageId)
+      .then(result => { if (current) setSiteDataCount({ key, ...result }); })
+      .catch(reason => { if (current) setSiteDataError({ key, message: reason instanceof Error ? reason.message : String(reason) }); });
+    return () => { current = false; };
+  }, [siteDataKey, siteDataRetry]);
   async function action(id:string,work:()=>Promise<void>){
     if(pending.current)return;
     pending.current=true;++request.current;setLoading(false);
@@ -52,7 +91,7 @@ export function SitePermissions({ query = "" }: { query?: string }) {
       pending.current=false;setBusy("");
       requestAnimationFrame(()=>{
         if(!root.current||document.activeElement!==document.body)return;
-        if(trigger?.isConnected)trigger.focus();else root.current.querySelector<HTMLInputElement>('[aria-label="Search site permissions"]')?.focus();
+        if(trigger?.isConnected)trigger.focus();else searchInput.current?.focus();
       });
     }
   }
@@ -69,22 +108,27 @@ export function SitePermissions({ query = "" }: { query?: string }) {
     setNotice("Decision reset. Reload this site to request access again. An active capture may continue until you stop it or close the tab.");
     await load();
   });
-  const clearData=()=>chosenPage&&action(chosenPage.pageId,async()=>{
+  const clearData=()=>chosenPage&&currentSiteDataCount&&action(chosenPage.pageId,async()=>{
+    const latest=await bridge.siteDataCount(chosenPage.pageId);
+    if(latest.domain!==currentSiteDataCount.domain||latest.cookies!==currentSiteDataCount.cookies){
+      setSiteDataCount({key:siteDataKey,...latest});
+      setSiteDataReview("");
+      setSiteDataError({key:siteDataKey,message:"The cookie count changed. Review it before clearing."});
+      return;
+    }
     if(!await bridge.clearSiteData(chosenPage.pageId))throw new Error("Website data could not be cleared. Try again after the page finishes loading.");
+    setSiteDataReview("");
+    setSiteDataCount({key:siteDataKey,domain:latest.domain,cookies:0});
     setNotice("Cookies and stored website data cleared. Reload the site's open tabs. Cached files and permission decisions remain.");
   });
   const terms = `${search} ${/site|permission/i.test(query) ? "" : query}`.trim().toLowerCase();
   const sites = Object.entries(decisions).sort(([a], [b]) => a.localeCompare(b)).filter(([origin, permissions]) =>
     `${origin} ${Object.keys(permissions).map(key => labels[key] ?? key).join(" ")}`.toLowerCase().includes(terms));
   const toggleTracking=()=>action("tracker-block",async()=>{
-    const next=await bridge.setTrackerBlock(!(privacy?.trackerBlock ?? true));
+    if(!privacy)throw new Error("Privacy settings are unavailable. Refresh them before changing tracker blocking.");
+    const next=await bridge.setTrackerBlock(!privacy.trackerBlock);
     setPrivacy(current=>({...current,...next}));
-    setNotice(next.trackerBlock?"Tracker and ad blocking is on. Reload open tabs to apply it everywhere.":"Tracker and ad blocking is off for all websites.");
-  });
-  const toggleHttps=()=>action("https-upgrade",async()=>{
-    const enabled=await bridge.setHttpsUpgrade(!(privacy?.httpsUpgrade ?? true));
-    setPrivacy(current=>current?{...current,httpsUpgrade:enabled}:current);
-    setNotice(enabled?"HTTP addresses will try HTTPS first. Local and development sites still open directly.":"Websites will open over the address you type — HTTP stays HTTP.");
+    setNotice(next.trackerBlock?"Tracker and ad blocking is on for new requests. Reload open tabs to refresh hidden page elements.":"Tracker and ad blocking is off for new requests.");
   });
   const removeAllowed=(host:string)=>action(`allow-${host}`,async()=>{
     const allowedHosts=await bridge.removeAllowedHost(host);
@@ -93,24 +137,34 @@ export function SitePermissions({ query = "" }: { query?: string }) {
   });
   return <div ref={root} className="site-permissions">
     <p className="hint">Manage saved website access for the shared human and agent browsing profile. Resetting a decision makes the site ask again; it does not clear cookies or sign you out.</p>
-    <section className="site-data-group" aria-label="Privacy">
+    {contentBlockingAvailable && <section className="site-data-group" aria-label="Privacy">
       <header><strong>Privacy</strong></header>
-      <label className="memory-use-toggle"><input type="checkbox" checked={privacy?.trackerBlock ?? true} disabled={!!busy} onChange={() => void toggleTracking()}/><span>Block trackers and ads<small>{privacy?.trackerBlock === false ? "Off. Advertising and tracking domains load on every website." : `Known tracker, ad and telemetry domains can't load on any website${privacy && privacy.blocked > 0 ? ` — ${privacy.blocked} request${privacy.blocked === 1 ? "" : "s"} blocked this session` : ""}.`}</small></span></label>
-      <label className="memory-use-toggle"><input type="checkbox" checked={privacy?.httpsUpgrade ?? true} disabled={!!busy} onChange={() => void toggleHttps()}/><span>Always try secure connections first<small>{privacy?.httpsUpgrade === false ? "Off. Websites open over whatever protocol is requested." : "HTTP addresses try HTTPS first; localhost and development sites still open directly."}</small></span></label>
+      {privacyError && <p role="alert">Couldn’t refresh blocking settings. {privacyError}</p>}
+      <label className="memory-use-toggle"><input type="checkbox" checked={privacy?.trackerBlock ?? false} disabled={!!busy||!privacy} onChange={() => void toggleTracking()}/><span>Block trackers and ads<small>{!privacy ? "Load privacy settings to see the current state." : privacy.trackerBlock === false ? "Off. Advertising and tracking domains load on every website." : `Known tracker, ad and telemetry domains can't load on any website${privacy.blocked > 0 ? ` — ${privacy.blocked} request${privacy.blocked === 1 ? "" : "s"} blocked this session` : ""}.`}</small></span></label>
       {privacy?.allowedHosts?.length ? <div className="filter-exceptions"><strong className="hint">Sites where blocking is paused</strong>
         {privacy.allowedHosts.map(host => <div className="site-permission-row" key={host}><span>{host}</span><span className="hint">Blocking paused</span><button className="btn sm" aria-label={`Resume blocking on ${host}`} disabled={!!busy} onClick={() => void removeAllowed(host)}>{busy === `allow-${host}` ? "Resuming…" : "Resume blocking"}</button></div>)}
       </div> : null}
       <FilterListManager />
-    </section>
+    </section>}
     <section className="site-data-group" aria-label="Website data">
       <header><strong>Website data</strong></header>
       <p className="hint">Clear cookies and stored data for an open website. This can sign you out; cookies for related subdomains are included.</p>
       {chosenPage ? <div className="site-permission-row">
-        <select aria-label="Website to clear" value={chosenPage.pageId} disabled={!!busy} onChange={event => setSelectedPage(event.target.value)}>{openSites.map(page => <option key={page.pageId} value={page.pageId}>{new URL(page.url).origin}</option>)}</select>
-        <button className="btn sm" disabled={!!busy} onClick={() => void clearData()}>{busy===chosenPage.pageId?"Clearing…":"Clear website data…"}</button>
+        <select aria-label="Website to clear" value={chosenPage.pageId} disabled={!!busy} onChange={event => {setSiteDataReview("");setSelectedPage(event.target.value);}}>{openSites.map(page => <option key={page.pageId} value={page.pageId}>{new URL(page.url).origin}</option>)}</select>
+        <button className="btn sm" disabled={!!busy||!currentSiteDataCount} onClick={() => {setSiteDataError(null);setSiteDataReview(siteDataKey);}}>Clear website data…</button>
       </div> : <p className="hint">Open a website to manage its stored data.</p>}
+      {chosenPage && <output className="hint" data-block>{currentSiteDataCount
+        ? `${currentSiteDataCount.cookies} ${currentSiteDataCount.cookies===1?"cookie":"cookies"} in ${currentSiteDataCount.domain}. Other website storage is not counted.`
+        : currentSiteDataError ? `Couldn’t count cookies: ${currentSiteDataError}` : "Counting website cookies…"}</output>}
+      {currentSiteDataError && !currentSiteDataCount && <button className="btn sm" onClick={() => {setSiteDataError(null);setSiteDataRetry(current=>current+1);}}>Retry count</button>}
+      {siteDataReview===siteDataKey && currentSiteDataCount && <div role="group" aria-label="Confirm website data removal">
+        <p>Remove {currentSiteDataCount.cookies} {currentSiteDataCount.cookies===1?"cookie":"cookies"} and other stored website data for {currentSiteDataCount.domain}? This can sign you out and cannot be undone.</p>
+        <button className="btn sm danger" disabled={!!busy} onClick={() => void clearData()}>{busy===chosenPage?.pageId?"Clearing…":"Clear cookies and storage"}</button>
+        <button className="btn sm" disabled={!!busy} onClick={() => setSiteDataReview("")}>Cancel</button>
+      </div>}
+      {currentSiteDataError && currentSiteDataCount && <p role="alert">{currentSiteDataError}</p>}
     </section>
-    <input aria-label="Search site permissions" placeholder="Search websites or permissions" value={search} onChange={event => setSearch(event.target.value)} />
+    <input ref={searchInput} aria-label="Search site permissions" placeholder="Search websites or permissions" value={search} onChange={event => setSearch(event.target.value)} />
     {loading && <output data-block>Loading site permissions…</output>}
     {error && <p role="alert">{error}</p>}
     {loadError && <div role="alert"><p>Couldn’t refresh permissions. {loadError}</p><button className="btn sm" disabled={loading||!!busy} onClick={() => void load()}>Refresh permissions</button></div>}

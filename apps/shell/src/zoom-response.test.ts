@@ -20,3 +20,20 @@ it("ignores older zoom reads and values from a previous document",async()=>{
   replies[2]!({level:3});await navigating;
   expect(useStore.getState().zoomLevels.page).toBeUndefined();
 });
+
+it("routes Private page zoom through the native window bridge", async () => {
+  const prior = bridge.privateMode;
+  bridge.privateMode = true;
+  try {
+    const page = { pageId: "private-page", url: "https://example.com/", documentEpoch: 1 } as PageTarget;
+    useStore.setState({ pages: [page], zoomLevels: {} });
+    const native = vi.spyOn(bridge, "privatePageZoom").mockResolvedValue({ level: 1 });
+    const runtime = vi.spyOn(bridge, "invoke");
+    await useStore.getState().zoomPage(page.pageId, { direction: "in" });
+    expect(native).toHaveBeenCalledWith(page.pageId, { direction: "in" });
+    expect(runtime).not.toHaveBeenCalled();
+    expect(useStore.getState().zoomLevels[page.pageId]).toBe(1);
+  } finally {
+    bridge.privateMode = prior;
+  }
+});

@@ -2,9 +2,10 @@ import { expect, it } from "vitest";
 import { EventBus, openDb, OutboundMcpService, Repo, TaskService, type McpTransportProvider } from "@aux/runtime";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import JSZip from "jszip";
 
 type Transport = Awaited<ReturnType<McpTransportProvider>>;
 
@@ -52,16 +53,51 @@ it("inspects a bundle as inert data and pins its exact bytes", async () => {
   const f = fixture();
   try {
     writeFileSync(join(directory, "manifest.json"), JSON.stringify({ name: "Example", server: { type: "node", entry_point: "index.js" } }));
+    writeFileSync(join(directory, "index.js"), "process.stdin.resume();");
     const bundle = join(directory, "example.mcpb");
-    execFileSync("/usr/bin/zip", ["-q", bundle, "manifest.json"], { cwd: directory });
+    execFileSync("/usr/bin/zip", ["-q", bundle, "manifest.json", "index.js"], { cwd: directory });
     const sha256 = createHash("sha256").update(readFileSync(bundle)).digest("hex");
-    expect(await f.service.inspectBundle(bundle)).toMatchObject({ path: bundle, sha256, format: "mcpb", name: "Example" });
+    expect(await f.service.inspectBundle(bundle)).toMatchObject({ path: realpathSync(bundle), sha256, format: "mcpb", name: "Example" });
     const server = await f.service.register({ workspaceId: f.workspace.workspaceId, name: "bundle",
       source: { kind: "bundle", path: bundle, sha256, format: "mcpb" } });
     expect(server.state).toBe("pending");
     await expect(f.service.register({ workspaceId: f.workspace.workspaceId, name: "changed",
       source: { kind: "bundle", path: bundle, sha256: "0".repeat(64), format: "mcpb" } })).rejects.toThrow(/changed/);
     expect((f.repo.db.prepare("SELECT count(*) AS n FROM outbound_mcp_servers").get() as { n: number }).n).toBe(1);
+  } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+it("rejects a bundle with archive path traversal before approval", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-mcp-unsafe-"));
+  const f = fixture();
+  try {
+    const zip = new JSZip();
+    zip.file("manifest.json", JSON.stringify({ name: "Unsafe", server: { type: "node", entry_point: "index.js" } }));
+    zip.file("index.js", "process.stdin.resume();");
+    zip.file("../escape", "unsafe");
+    const path = join(directory, "unsafe.mcpb");
+    writeFileSync(path, await zip.generateAsync({ type: "nodebuffer" }));
+    await expect(f.service.inspectBundle(path)).rejects.toThrow(/unsafe path/);
+    expect((f.repo.db.prepare("SELECT count(*) AS n FROM outbound_mcp_servers").get() as { n: number }).n).toBe(0);
+  } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+it("rejects MCP bundle arguments that request host substitution or missing files", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-mcp-config-deny-"));
+  const f = fixture();
+  try {
+    const zip = new JSZip();
+    zip.file("server.mjs", "process.stdin.resume();");
+    const path = join(directory, "configured.mcpb");
+    const check = async (args: string[]) => {
+      zip.file("manifest.json", JSON.stringify({ name: "Configured", server: { type: "node",
+        entry_point: "server.mjs", mcp_config: { command: "node", args, env: {} } } }));
+      writeFileSync(path, await zip.generateAsync({ type: "nodebuffer" }));
+      return f.service.inspectBundle(path);
+    };
+    await expect(check(["server.mjs", "${user_config.secret}"])).rejects.toThrow(/host substitution/);
+    await expect(check(["server.mjs", "${__dirname}/missing.json"])).rejects.toThrow(/missing or unsafe file/);
+    await expect(check(["--require", "server.mjs"])).rejects.toThrow(/entry point first/);
   } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 
@@ -121,5 +157,30 @@ it("marks a call uncertain if its grant is revoked while a server is responding"
   f.service.revokeGrant(grant.grantId);
   expect((await pending).status).toBe("uncertain");
   expect((f.repo.db.prepare("SELECT status FROM outbound_mcp_calls WHERE grant_id=?").get(grant.grantId) as { status: string }).status).toBe("uncertain");
+  f.db.close();
+});
+
+it("stops a Hook tool call when its owning Hook is revoked", async () => {
+  let reached!: () => void;
+  const ready = new Promise<void>(resolve => { reached = resolve; });
+  const f = fixture(async () => {
+    const transport = fakeTransport([]);
+    const send = transport.send.bind(transport);
+    transport.send = async (message, options) => {
+      if ("method" in message && message.method === "tools/call") { reached(); return; }
+      return send(message, options);
+    };
+    return transport as unknown as Transport;
+  });
+  const server = await f.service.register({ workspaceId: f.workspace.workspaceId, name: "server",
+    source: { kind: "remote", url: "https://example.test/mcp", auth: "none" } });
+  f.service.approve(server.serverId, server.sourceDigest);
+  const grant = f.service.grant({ serverId: server.serverId, toolName: "read",
+    scope: { kind: "workspace", workspaceId: f.workspace.workspaceId }, mode: "standing", outputTokenLimit: 100 });
+  const controller = new AbortController();
+  const pending = f.service.callTool(grant.grantId, {}, { workspaceId: f.workspace.workspaceId }, controller.signal);
+  await ready;
+  controller.abort();
+  expect((await pending).status).toBe("uncertain");
   f.db.close();
 });

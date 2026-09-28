@@ -1,0 +1,49 @@
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -86,6 +86,7 @@
+                         std::string page_id,
+                         std::string message);
+     void SendTabsChanged();
++    void SendCatalogPatch(std::string payload_json);
+     void SendNavigationError(std::string payload_json);
+     void SendBookmarkChanged();
+ 
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -167,9 +167,12 @@
+           weak_factory_.GetWeakPtr()));
+   if (auto* catalog = aux::TabCatalog::GetForProfile(profile_)) {
+     tab_catalog_subscription_ = catalog->ObserveChanges(base::BindRepeating(
+-        [](base::WeakPtr<AuxRuntimeHost> host, const std::string&) {
+-          if (host)
++        [](base::WeakPtr<AuxRuntimeHost> host, const std::string& patch_json) {
++          if (host) {
+             host->worker_.AsyncCall(&Worker::SendTabsChanged);
++            host->worker_.AsyncCall(&Worker::SendCatalogPatch)
++                .WithArgs(patch_json);
++          }
+         },
+         weak_factory_.GetWeakPtr()));
+   }
+@@ -791,6 +794,21 @@
+     Disconnect();
+ }
+ 
++void AuxRuntimeHost::Worker::SendCatalogPatch(std::string payload_json) {
++  if (connection_fd_ < 0)
++    return;
++  auto payload = base::JSONReader::Read(payload_json, base::JSON_PARSE_RFC);
++  if (!payload || !payload->is_dict())
++    return;
++  base::DictValue note;
++  note.Set("kind", "note");
++  note.Set("type", "tabs.catalog");
++  note.Set("payload", std::move(*payload));
++  const auto json = base::WriteJson(note);
++  if (!json || !SendFrame(*json))
++    Disconnect();
++}
++
+ void AuxRuntimeHost::Worker::SendNavigationError(std::string payload_json) {
+   if (connection_fd_ < 0)
+     return;

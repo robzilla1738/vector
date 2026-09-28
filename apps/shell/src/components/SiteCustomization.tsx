@@ -3,7 +3,7 @@ import type { SiteCss, ZapPickResult, ZapRule } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { siteControlsOpener } from "../site-controls-opener";
-import { NativeDialog } from "./NativeDialog";
+import { Dialog } from "../ui";
 import { I } from "./icons";
 import "./SiteCustomization.css";
 
@@ -165,7 +165,7 @@ export function SiteCustomization() {
 
   if (picking) return <output className="zap-picking">Click an element on the page · Esc cancels</output>;
   return (
-    <NativeDialog
+    <Dialog
       label="Customize this site"
       onClose={close}
       className="site-customization-card"
@@ -310,6 +310,6 @@ export function SiteCustomization() {
           </>
         )}
       </div>
-    </NativeDialog>
+    </Dialog>
   );
 }

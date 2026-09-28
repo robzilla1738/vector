@@ -1,0 +1,86 @@
+--- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
++++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
+@@ -22,6 +22,7 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
++#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/download/download_prefs.h"
+@@ -57,6 +58,7 @@
+ #include "components/prefs/pref_service.h"
+ #include "components/language/core/browser/language_prefs.h"
+ #include "components/language/core/browser/pref_names.h"
++#include "components/content_settings/core/browser/host_content_settings_map.h"
+ #include "components/spellcheck/spellcheck_buildflags.h"
+ #if BUILDFLAG(ENABLE_SPELLCHECK)
+ #include "components/spellcheck/browser/pref_names.h"
+@@ -140,6 +142,47 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "automaticPictureInPicture") {
++    auto* profile = browser_->GetProfile();
++    if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Automatic picture-in-picture requires a regular profile");
++      return;
++    }
++    auto* map = HostContentSettingsMapFactory::GetForProfile(profile);
++    constexpr auto type = ContentSettingsType::AUTO_PICTURE_IN_PICTURE;
++    HostContentSettingsMap::ProviderType provider;
++    ContentSetting setting = map->GetDefaultContentSetting(type, &provider);
++    const bool managed = provider == content_settings::ProviderType::kPolicyProvider;
++    if (!list->empty()) {
++      if (managed) {
++        std::move(callback).Run(false, "", "forbidden",
++                                "Automatic picture-in-picture is managed by policy");
++        return;
++      }
++      if (!(*list)[0].is_string()) {
++        std::move(callback).Run(false, "", "invalid_argument", "Invalid setting");
++        return;
++      }
++      const std::string& choice = (*list)[0].GetString();
++      if (choice == "ask") setting = CONTENT_SETTING_ASK;
++      else if (choice == "allow") setting = CONTENT_SETTING_ALLOW;
++      else if (choice == "block") setting = CONTENT_SETTING_BLOCK;
++      else {
++        std::move(callback).Run(false, "", "invalid_argument", "Unknown setting");
++        return;
++      }
++      map->SetDefaultContentSetting(type, setting);
++      setting = map->GetDefaultContentSetting(type, &provider);
++    }
++    base::DictValue result;
++    result.Set("mode", setting == CONTENT_SETTING_ALLOW ? "allow" :
++                       setting == CONTENT_SETTING_BLOCK ? "block" : "ask");
++    result.Set("managed", provider == content_settings::ProviderType::kPolicyProvider);
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
+   if (method == "languagePreferences") {
+     auto* profile = browser_->GetProfile();
+     if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -61,6 +61,7 @@
+                   "savePagePdf", "downloadFolder", "chooseDownloadFolder",
+                   "spellCheck",
+                   "languagePreferences",
++                  "automaticPictureInPicture",
+                   "startupPreferences",
+                   "downloadsSnapshot", "controlDownload", "retryDownload"});
+   register_shell(AuxShellMethodGroup::kExtensions,
+--- a/chrome/browser/ui/webui_browser/BUILD.gn
++++ b/chrome/browser/ui/webui_browser/BUILD.gn
+@@ -177,6 +177,7 @@
+       "//chrome/browser/ui/aux:runtime",
+       "//components/prefs",
+       "//components/language/core/browser",
++      "//components/content_settings/core/browser",
+       "//components/spellcheck:buildflags",
+       "//components/dom_distiller/content/browser",
+       "//components/dom_distiller/core",

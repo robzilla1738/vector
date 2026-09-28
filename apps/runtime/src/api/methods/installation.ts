@@ -7,6 +7,7 @@ import {
   createRuntimeBackup,
   deleteRuntimeBackup,
   listRuntimeBackups,
+  runtimeRestoreStatus,
   setBackupRetention,
   stageRuntimeRestore,
 } from "../../services/runtime-backup.js";
@@ -52,6 +53,11 @@ async function h_installation_cancelRestore(ctx: MethodCtx): Promise<unknown> {
     throw new AuxError("permission_denied", "Runtime restore requires an explicit action in Aux.");
   return cancelRuntimeRestore(s.settings.all().dataDir);
 }
+async function h_installation_restoreStatus(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.client.external)
+    throw new AuxError("permission_denied", "Runtime restore status is available in Aux settings.");
+  return runtimeRestoreStatus(ctx.s.settings.all().dataDir);
+}
 
 export const installationMethods: Partial<Record<MethodName, MethodHandler>> = {
   "installation.createBackup": h_installation_createBackup,
@@ -61,4 +67,5 @@ export const installationMethods: Partial<Record<MethodName, MethodHandler>> = {
   "installation.setBackupRetention": h_installation_setBackupRetention,
   "installation.stageRestore": h_installation_stageRestore,
   "installation.cancelRestore": h_installation_cancelRestore,
+  "installation.restoreStatus": h_installation_restoreStatus,
 };

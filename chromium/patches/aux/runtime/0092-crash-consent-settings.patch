@@ -1,0 +1,87 @@
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -31,6 +31,7 @@
+                   "httpAuthRequests", "respondHttpAuth",
+                   "clearSitePermission", "clearSiteData", "httpsUpgrade",
+                   "setHttpsUpgrade", "cookieControls", "setCookieControls",
++                  "crashReporting", "setCrashReporting",
+                   "proceedInsecure", "useHttp"});
+   register_shell(AuxShellMethodGroup::kContent,
+                  {"translatePage", "showOriginal"});
+--- a/chrome/browser/ui/aux/methods/content_methods.cc
++++ b/chrome/browser/ui/aux/methods/content_methods.cc
+@@ -13,6 +13,7 @@
+ #include <variant>
+ 
+ #include "base/base64.h"
++#include "build/build_config.h"
+ #include "base/files/file_util.h"
+ #include "base/feature_list.h"
+ #include "base/functional/bind.h"
+@@ -21,6 +22,9 @@
+ #include "base/task/sequenced_task_runner.h"
+ #include "base/task/thread_pool.h"
+ #include "chrome/browser/shell_integration.h"
++#if BUILDFLAG(IS_MAC)
++#include "chrome/app/aux_crash_reporting_mac.h"
++#endif
+ #include "printing/buildflags/buildflags.h"
+ #include "content/public/browser/host_zoom_map.h"
+ #include "third_party/blink/public/common/page/page_zoom.h"
+@@ -902,6 +906,56 @@
+     }
+     return;
+   }
++  if (method == "crashReporting") {
++    if (!list->empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Crash reporting state takes no arguments");
++      return;
++    }
++    base::DictValue result;
++#if BUILDFLAG(IS_MAC)
++    result.Set("available", aux_crash_reporting::HasConfiguredEndpoint());
++    result.Set("decided", aux_crash_reporting::HasUserChoice());
++    result.Set("consent", aux_crash_reporting::HasConsent());
++#else
++    result.Set("available", false);
++    result.Set("decided", false);
++    result.Set("consent", false);
++#endif
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
++  if (method == "setCrashReporting") {
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Crash reporting consent cannot change in Private mode");
++      return;
++    }
++    if (list->size() != 1 || !(*list)[0].is_bool()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "A crash reporting choice is required");
++      return;
++    }
++#if BUILDFLAG(IS_MAC)
++    if (!aux_crash_reporting::HasConfiguredEndpoint()) {
++      std::move(callback).Run(false, "", "backend_unavailable",
++                              "This build has no crash report destination");
++      return;
++    }
++    const bool consent = (*list)[0].GetBool();
++    if (!aux_crash_reporting::SetConsent(consent)) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Crash reporting consent could not be saved");
++      return;
++    }
++    std::move(callback).Run(true, consent ? "true" : "false", "", "");
++#else
++    std::move(callback).Run(false, "", "backend_unavailable",
++                            "Crash reporting consent is unavailable on this platform");
++#endif
++    return;
++  }
+   if (method == "cookieControls") {
+     if (!list->empty()) {
+       std::move(callback).Run(false, "", "invalid_argument",

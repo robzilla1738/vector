@@ -162,7 +162,7 @@ new file mode 100644
 index 0000000000..cc7dffbfe7
 --- /dev/null
 +++ b/chrome/browser/ui/aux/profile_search_engine.cc
-@@ -0,0 +1,182 @@
+@@ -0,0 +1,185 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -274,7 +274,7 @@ index 0000000000..cc7dffbfe7
 +    return SetResult::kUnavailable;
 +  }
 +  const TemplateURL* current = service->GetDefaultSearchProvider();
-+  if (current && !service->CanMakeDefault(current)) {
++  if (!service->CanDefaultSearchProviderBeModifiedByUser()) {
 +    return SetResult::kManaged;
 +  }
 +  const std::string native_template =
@@ -282,6 +282,9 @@ index 0000000000..cc7dffbfe7
 +  for (TemplateURL* provider : service->GetTemplateURLs()) {
 +    if (provider->url() != native_template) {
 +      continue;
++    }
++    if (provider == current) {
++      return SetResult::kOk;
 +    }
 +    if (!service->CanMakeDefault(provider)) {
 +      return SetResult::kManaged;
@@ -390,7 +393,7 @@ new file mode 100644
 index 0000000000..d6c8c41232
 --- /dev/null
 +++ b/chrome/browser/ui/aux/profile_search_engine_unittest.cc
-@@ -0,0 +1,54 @@
+@@ -0,0 +1,57 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -418,6 +421,9 @@ index 0000000000..d6c8c41232
 +            ProfileSearchEngine::SetResult::kOk);
 +  EXPECT_EQ(ProfileSearchEngine::CurrentTemplate(search_service_.profile()),
 +            "https://search.example/?q=%s");
++  EXPECT_EQ(ProfileSearchEngine::Set(search_service_.profile(),
++                                     "https://search.example/?q=%s"),
++            ProfileSearchEngine::SetResult::kOk);
 +  EXPECT_EQ(ProfileSearchEngine::Resolve(search_service_.profile(),
 +                                         "aux browser"),
 +            "https://search.example/?q=aux+browser");

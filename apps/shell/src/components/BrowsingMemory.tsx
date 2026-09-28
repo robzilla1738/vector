@@ -1,4 +1,4 @@
-import { ActionMenu, DetailPane, ListRow, TextField } from "./ui";
+import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
 import { I } from "./icons";
 import { useEffect, useRef, useState } from "react";
 import type { BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory } from "@aux/contracts";

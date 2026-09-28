@@ -102,6 +102,8 @@ import {
   TaskEvidenceSchema,
   CriterionReviewSchema,
   TaskReceiptSchema,
+  TaskUndoBrowserChangeParams,
+  TaskUndoRunBrowserChangesParams,
   TaskVerifyCriterionParams,
   CriterionVerificationSchema,
   TaskReplaceAgentParams,
@@ -130,6 +132,9 @@ import {
   MemoryPipelineForgetParams,
   MemoryPipelineForgetResultSchema,
   MemoryClaimSchema,
+  MemoryPipelineInboxSchema,
+  MemoryPipelineSourceSchema,
+  MemoryPipelineRevisionSchema,
 } from "./memory-pipeline.js";
 import {
   SubagentGroupCreateParams,
@@ -188,11 +193,13 @@ import {
   PluginSkillReadParams,
   PluginSkillReadSchema,
 } from "./routines.js";
-import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema } from "./spaces.js";
+import { BrowserSpaceSchema, SpaceInputSchema, SpaceColorSchema, SpaceGrainSchema, SpaceThemeSchema } from "./spaces.js";
 import { GoalCreateParams, GoalSchema } from "./goals.js";
 import { HookCreateParams, HookInvocationSchema, HookSchema } from "./hooks.js";
+import { WorkspaceFolderAccessSchema, WorkspaceFolderReviewSchema, WorkspaceFolderSchema } from "./workspace-folders.js";
+import { CommandEscalationRequestSchema } from "./command-escalation.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
-import { AgentModelRouteSchema } from "./model-registry.js";
+import { AgentModelRouteChainSchema } from "./model-registry.js";
 import { SiteReadParamsSchema, SiteReadResultSchema } from "./site-adapters.js";
 
 const id = z.string().min(1);
@@ -750,14 +757,21 @@ export const SettingsSetParams = z.object({
   visionModel: z.string().optional(),
   agentModelRoutes: z
     .object({
-      fast: AgentModelRouteSchema.optional(),
-      standard: AgentModelRouteSchema.optional(),
-      deep: AgentModelRouteSchema.optional(),
-      visual: AgentModelRouteSchema.optional(),
+      fast: AgentModelRouteChainSchema.optional(),
+      standard: AgentModelRouteChainSchema.optional(),
+      deep: AgentModelRouteChainSchema.optional(),
+      visual: AgentModelRouteChainSchema.optional(),
     })
     .strict()
     .optional(),
+  budgets: z.object({
+    runUsd: z.number().positive().max(100_000).optional(),
+    dayUsd: z.number().positive().max(100_000).optional(),
+    routineUsd: z.number().positive().max(100_000).optional(),
+  }).strict().optional(),
   searchEngine: SearchEngineTemplateSchema.optional(),
+  /** Preferred surface when a new blank tab opens. Private windows always start in Search. */
+  homeEntryMode: z.enum(["search", "ask"]).optional(),
   /** `kw query` engines — user entries merge over the built-in list. */
   searchEngines: z
     .array(
@@ -771,6 +785,8 @@ export const SettingsSetParams = z.object({
     .optional(),
   /** Remote search suggestions — off by default; never queried in private mode or for probable-private addresses. */
   searchSuggestions: z.boolean().optional(),
+  /** Local Skill suggestions in the saved-work view; no model call. */
+  routineSuggestionScan: z.enum(["off", "context", "five-minutes"]).optional(),
   /** Personal info offered to page forms on explicit request. Credentials and payment are never stored here. */
   autofill: AutofillProfileSchema.optional(),
   maxWorkers: z.number().int().min(1).max(16).optional(),
@@ -785,6 +801,9 @@ export const SettingsSetParams = z.object({
   sidebarBlur: z.number().min(0).max(40).optional(),
   sidebarOpacity: z.number().min(40).max(100).optional(),
   tabLayout: z.enum(["vertical", "horizontal"]).optional(),
+  /** Idle minutes before a clean background tab may be discarded. Zero disables automatic sleep. */
+  memorySaverMinutes: z.union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)]).optional(),
+  tabSwitcherOrder: z.enum(["sidebar", "recently-used"]).optional(),
   /** commandId → replacement bindings; null disables the command's shortcuts. */
   shortcutOverrides: ShortcutOverridesSchema.optional(),
   zoomFactor: z.number().optional(),
@@ -807,6 +826,30 @@ export const SettingsSetParams = z.object({
   safetyCeilings: z.partialRecord(EffectSchema, z.enum(["never", "ask", "always"])).optional(),
 });
 export const SettingsGetParams = z.object({});
+export const UsageReportParams = z.object({
+  asOf: z.number().int().nonnegative().optional(),
+  offset: z.number().int().nonnegative().default(0),
+  limit: z.number().int().min(1).max(500).default(50),
+}).strict();
+const UsageBucketSchema = z.object({
+  calls: z.number().int().nonnegative(),
+  recordedUsd: z.number().nonnegative(),
+  unpricedCalls: z.number().int().nonnegative(),
+  estimatedCalls: z.number().int().nonnegative(),
+});
+export const UsageReportResultSchema = z.object({
+  asOf: z.number().int().nonnegative(),
+  total: UsageBucketSchema,
+  byRun: z.array(UsageBucketSchema.extend({
+    runId: z.string().nullable(),
+    title: z.string(),
+    lastAt: z.number(),
+  })),
+  byModel: z.array(UsageBucketSchema.extend({ modelId: z.string() })),
+  byDay: z.array(UsageBucketSchema.extend({ day: z.string() })),
+  nextOffset: z.number().int().nonnegative().nullable(),
+});
+export type UsageReportResult = z.infer<typeof UsageReportResultSchema>;
 
 /** history/bookmarks */
 export const HistoryListParams = z.object({
@@ -815,6 +858,16 @@ export const HistoryListParams = z.object({
   since: z.number().finite().nonnegative().optional(),
   before: z.object({ visitedAt: z.number().finite().nonnegative(), url: z.string().min(1) }).optional(),
 });
+export const HistoryRangeParams = z
+  .object({
+    since: z.number().finite().nonnegative().optional(),
+    before: z.number().finite().nonnegative().optional(),
+  })
+  .strict()
+  .refine(
+    (value) => value.since === undefined || value.before === undefined || value.since <= value.before,
+    "History range must end after it starts",
+  );
 /** Chromium HistoryService is authoritative; these internal messages maintain a derived FTS index. */
 export const HistoryProjectionVisitSchema = z
   .object({
@@ -921,6 +974,8 @@ export const BookmarkUpdateParams = BookmarkAddParams.extend({
 export const BookmarkRemoveParams = z.object({
   url: z.string().url(),
   nodeId: BookmarkNodeIdSchema.optional(),
+  expected: z.object({ title: z.string(), createdAt: z.number(),
+    folderPath: BookmarkFolderPathSchema.optional(), readingList: z.boolean().optional() }).optional(),
 });
 
 export const PageWindowMoveParams = z.object({
@@ -1036,6 +1091,11 @@ export const MethodSchemas = {
   "tasks.reconcileAction": TaskReconcileParams,
   "tasks.reconcileOperation": TaskReconcileOperationParams,
   "tasks.receipt": z.object({ taskId: id, revision: z.number().int().positive().optional() }),
+  "tasks.undoBrowserChange": TaskUndoBrowserChangeParams,
+  "tasks.undoRunBrowserChanges": TaskUndoRunBrowserChangesParams,
+  "tasks.undoBookmarkChange": TaskUndoBrowserChangeParams,
+  "tasks.undoDownloadChange": TaskUndoBrowserChangeParams,
+  "tasks.undoHistoryChange": TaskUndoBrowserChangeParams,
   "tasks.verifyCriterion": TaskVerifyCriterionParams,
   "tasks.replaceAgent": TaskReplaceAgentParams,
   "workspaces.create": z.object({ name: z.string().trim().min(1).max(100) }),
@@ -1045,15 +1105,26 @@ export const MethodSchemas = {
     name: z.string().trim().min(1).max(100),
     color: SpaceColorSchema,
     grain: SpaceGrainSchema.default(0),
+    theme: SpaceThemeSchema.optional(),
   }),
   "spaces.update": z.object({
     id: id,
     name: z.string().trim().min(1).max(100).optional(),
     color: SpaceColorSchema.optional(),
     grain: SpaceGrainSchema.optional(),
+    theme: SpaceThemeSchema.nullable().optional(),
     archived: z.boolean().optional(),
   }),
   "workspaces.list": z.object({}),
+  "workspaces.folders.inspect": z.object({ workspaceId: id, path: z.string().min(1).max(4096), access: WorkspaceFolderAccessSchema }).strict(),
+  "workspaces.folders.add": z.object({ workspaceId: id, path: z.string().min(1).max(4096), access: WorkspaceFolderAccessSchema,
+    expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  "workspaces.folders.list": z.object({ workspaceId: id }).strict(),
+  "workspaces.folders.archive": z.object({ workspaceId: id, folderId: z.string().uuid() }).strict(),
+  "commands.escalations.list": z.object({ workspaceId: id }).strict(),
+  "commands.escalations.decide": z.object({ requestId: z.string().uuid(), decision: z.enum(["once", "prefix", "decline"]),
+    prefixRule: z.string().min(1).max(200).optional() }).strict(),
+  "commands.escalations.revoke": z.object({ requestId: z.string().uuid() }).strict(),
   "workspaces.browsingMemory.get": z.object({ workspaceId: id }),
   "workspaces.browsingMemory.set": z.object({ workspaceId: id, policy: BrowsingMemoryPolicySchema }),
   "workspaces.browsingMemory.record": z.object({
@@ -1113,6 +1184,7 @@ export const MethodSchemas = {
     .strict(),
   "installation.stageRestore": z.object({ path: z.string().min(1).max(4096) }).strict(),
   "installation.cancelRestore": z.object({}).strict(),
+  "installation.restoreStatus": z.object({}).strict(),
   "vault.status": z.object({}),
   "vault.list": z.object({ includeRevoked: z.boolean().default(false) }),
   "vault.save": VaultSaveParams,
@@ -1156,6 +1228,7 @@ export const MethodSchemas = {
     .object({ hookId: z.string().uuid(), expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) })
     .strict(),
   "hooks.revoke": z.object({ hookId: z.string().uuid() }).strict(),
+  "hooks.test": z.object({ hookId: z.string().uuid() }).strict(),
   "hooks.invocations": z
     .object({ hookId: z.string().uuid(), limit: z.number().int().min(1).max(200).default(100) })
     .strict(),
@@ -1251,6 +1324,9 @@ export const MethodSchemas = {
     .object({ serverId: z.string().uuid(), expectedDigest: z.string().regex(/^[a-f0-9]{64}$/) })
     .strict(),
   "mcp.servers.revoke": z.object({ serverId: z.string().uuid() }).strict(),
+  "mcp.oauth.start": z.object({ serverId: z.string().uuid() }).strict(),
+  "mcp.oauth.status": z.object({ serverId: z.string().uuid() }).strict(),
+  "mcp.oauth.clear": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.tools.list": z.object({ serverId: z.string().uuid() }).strict(),
   "mcp.grants.create": OutboundMcpGrantParams,
   "mcp.grants.list": z.object({ serverId: z.string().uuid() }).strict(),
@@ -1267,6 +1343,12 @@ export const MethodSchemas = {
   "memory.pipeline.policy": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.setPolicy": MemoryPipelinePolicySchema,
   "memory.pipeline.extractRun": z.object({ workspaceId: id, runId: id }).strict(),
+  "memory.pipeline.sources": z.object({ workspaceId: id }).strict(),
+  "memory.pipeline.inbox": z.object({ workspaceId: id }).strict(),
+  "memory.pipeline.claims": z.object({ workspaceId: id }).strict(),
+  "memory.pipeline.history": z.object({ workspaceId: id }).strict(),
+  "memory.pipeline.revert": z.object({ workspaceId: id, revisionId: z.string().uuid() }).strict(),
+  "memory.pipeline.review": z.object({ workspaceId: id, claimId: z.string().uuid(), decision: z.enum(["accept", "discard"]) }).strict(),
   "memory.pipeline.overview": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.search": z.object({ workspaceId: id, query: z.string().trim().min(2).max(200) }).strict(),
   "memory.pipeline.forget": MemoryPipelineForgetParams,
@@ -1488,6 +1570,7 @@ export const MethodSchemas = {
 
   "settings.get": SettingsGetParams,
   "settings.set": SettingsSetParams,
+  "usage.report": UsageReportParams,
   "command.ranking.list": z.object({}).strict(),
   "command.ranking.record": z
     .object({
@@ -1502,16 +1585,8 @@ export const MethodSchemas = {
   "history.list": HistoryListParams,
   "history.projectSnapshot": HistoryProjectSnapshotParams,
   "history.projectDelta": HistoryProjectDeltaParams,
-  "history.clear": z
-    .object({
-      since: z.number().finite().nonnegative().optional(),
-      before: z.number().finite().nonnegative().optional(),
-    })
-    .strict()
-    .refine(
-      (value) => value.since === undefined || value.before === undefined || value.since <= value.before,
-      "History range must end after it starts",
-    ),
+  "history.count": HistoryRangeParams,
+  "history.clear": HistoryRangeParams,
   "history.remove": z.object({ url: z.string().min(1), visitedAt: z.number().finite().nonnegative() }),
   "bookmarks.list": z.object({}),
   "bookmarks.folders.list": z.object({}),
@@ -1554,6 +1629,11 @@ export const MethodSchemas = {
   }),
   "bookmarks.remove": BookmarkRemoveParams,
   "downloads.list": z.object({}),
+  "downloads.projectNative": DownloadSchema.extend({
+    id: z.string().min(1).max(200),
+    filename: z.string().max(1000), path: z.string().max(4096),
+    tabUrl: z.string().url().max(8192), downloadRoot: z.string().min(1).max(4096),
+  }).strict(),
   "downloads.remove": z.object({ ids: z.array(z.string().min(1).max(200)).min(1).max(200) }),
   "workspace.get": WorkspaceGetParams,
   "bench.run": z.object({
@@ -1692,6 +1772,12 @@ export const ResultSchemas = {
   "tasks.reconcileAction": z.object({ ok: z.literal(true) }),
   "tasks.reconcileOperation": z.object({ ok: z.literal(true) }),
   "tasks.receipt": TaskReceiptSchema,
+  "tasks.undoBrowserChange": z.object({ ok: z.literal(true) }),
+  "tasks.undoRunBrowserChanges": z.object({ restored: z.number().int().nonnegative(),
+    skipped: z.array(z.object({ stepId: id, reason: z.string().max(500) })) }),
+  "tasks.undoBookmarkChange": z.object({ ok: z.literal(true) }),
+  "tasks.undoDownloadChange": z.object({ ok: z.literal(true) }),
+  "tasks.undoHistoryChange": z.object({ ok: z.literal(true) }),
   "tasks.verifyCriterion": CriterionVerificationSchema,
   "tasks.replaceAgent": RunSchema,
   "workspaces.create": WorkspaceSchema,
@@ -1700,6 +1786,13 @@ export const ResultSchemas = {
   "spaces.create": z.array(BrowserSpaceSchema),
   "spaces.update": z.array(BrowserSpaceSchema),
   "workspaces.list": z.array(WorkspaceSchema),
+  "workspaces.folders.inspect": WorkspaceFolderReviewSchema,
+  "workspaces.folders.add": WorkspaceFolderSchema,
+  "workspaces.folders.list": z.array(WorkspaceFolderSchema),
+  "workspaces.folders.archive": WorkspaceFolderSchema,
+  "commands.escalations.list": z.array(CommandEscalationRequestSchema),
+  "commands.escalations.decide": CommandEscalationRequestSchema,
+  "commands.escalations.revoke": CommandEscalationRequestSchema,
   "workspaces.browsingMemory.get": WorkspaceBrowsingMemorySchema,
   "workspaces.browsingMemory.set": WorkspaceBrowsingMemorySchema,
   "workspaces.browsingMemory.record": z.object({ recorded: z.boolean() }),
@@ -1783,6 +1876,7 @@ export const ResultSchemas = {
     missingArtifacts: z.number().int().nonnegative(),
   }),
   "installation.cancelRestore": z.object({ cancelled: z.literal(true) }),
+  "installation.restoreStatus": z.object({ pending: z.boolean(), lastAppliedAt: z.number().optional() }),
   "vault.status": VaultStatusSchema,
   "vault.list": z.array(VaultItemSchema),
   "vault.save": VaultItemSchema,
@@ -1814,6 +1908,7 @@ export const ResultSchemas = {
   "hooks.list": z.array(HookSchema),
   "hooks.approve": HookSchema,
   "hooks.revoke": HookSchema,
+  "hooks.test": HookInvocationSchema,
   "hooks.invocations": z.array(HookInvocationSchema),
   "routines.suggest": z.array(RoutineSuggestionSchema),
   "routines.get": z.object({ routine: RoutineSchema, runs: z.array(RoutineRunSchema) }),
@@ -1886,6 +1981,12 @@ export const ResultSchemas = {
   "mcp.servers.list": z.array(OutboundMcpServerSchema),
   "mcp.servers.approve": OutboundMcpServerSchema,
   "mcp.servers.revoke": OutboundMcpServerSchema,
+  "mcp.oauth.start": z.discriminatedUnion("state", [
+    z.object({ state: z.literal("connected") }).strict(),
+    z.object({ state: z.literal("authorization"), url: z.string().url(), expiresAt: z.number().int() }).strict(),
+  ]),
+  "mcp.oauth.status": z.object({ connected: z.boolean(), expiresAt: z.number().int().optional() }).strict(),
+  "mcp.oauth.clear": z.object({ connected: z.literal(false) }).strict(),
   "mcp.tools.list": z.array(OutboundMcpToolSchema),
   "mcp.grants.create": OutboundMcpGrantSchema,
   "mcp.grants.list": z.array(OutboundMcpGrantSchema),
@@ -1894,6 +1995,12 @@ export const ResultSchemas = {
   "memory.pipeline.policy": MemoryPipelinePolicySchema,
   "memory.pipeline.setPolicy": MemoryPipelinePolicySchema,
   "memory.pipeline.extractRun": z.object({ extracted: z.number().int().nonnegative() }),
+  "memory.pipeline.sources": z.array(MemoryPipelineSourceSchema),
+  "memory.pipeline.inbox": MemoryPipelineInboxSchema,
+  "memory.pipeline.claims": MemoryPipelineInboxSchema,
+  "memory.pipeline.history": z.array(MemoryPipelineRevisionSchema),
+  "memory.pipeline.revert": MemoryPipelineOverviewSchema,
+  "memory.pipeline.review": z.object({ accepted: z.boolean(), remaining: z.number().int().nonnegative() }),
   "memory.pipeline.overview": MemoryPipelineOverviewSchema,
   "memory.pipeline.search": z.array(MemoryClaimSchema),
   "memory.pipeline.forget": MemoryPipelineForgetResultSchema,
@@ -2167,6 +2274,7 @@ export const ResultSchemas = {
 
   "settings.get": z.record(z.string(), z.unknown()),
   "settings.set": z.object({ ok: z.boolean() }),
+  "usage.report": UsageReportResultSchema,
   "command.ranking.list": z.array(CommandRankingEntrySchema),
   "command.ranking.record": CommandRankingEntrySchema,
   "command.ranking.clear": z.object({ removed: z.number().int().nonnegative() }),
@@ -2188,6 +2296,7 @@ export const ResultSchemas = {
     nextBatchIndex: z.number().int().nonnegative(),
   }),
   "history.projectDelta": z.object({ accepted: z.boolean(), sequence: z.number().int().nonnegative() }),
+  "history.count": z.object({ count: z.number().int().nonnegative() }),
   "history.clear": z.object({ ok: z.boolean(), removed: z.number().int().nonnegative() }),
   "history.remove": z.object({ removed: z.boolean() }),
   "bookmarks.list": z.array(BookmarkSchema),
@@ -2206,6 +2315,7 @@ export const ResultSchemas = {
   "bookmarks.offline.set": z.object({ ok: z.boolean() }),
   "bookmarks.offline.get": z.object({ article: z.string().nullable(), savedAt: z.number().nullable() }),
   "downloads.list": z.array(DownloadSchema),
+  "downloads.projectNative": z.object({ accepted: z.boolean() }),
   "downloads.remove": z.object({ removed: z.array(z.string()) }),
   "workspace.get": z.object({
     restoringTabs: z.boolean().optional(),

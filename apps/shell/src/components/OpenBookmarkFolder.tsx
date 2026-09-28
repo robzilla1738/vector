@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { bookmarkWebUrl } from "../bookmark-files";
 import { bridge } from "../bridge";
@@ -7,7 +8,7 @@ type Bookmark = { url: string; title: string; folderPath?: string[] };
 
 /** Reopen saved material in an existing Space without interrupting browsing. */
 export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[]; folder: string[] }) {
-  const spaces = useStore(state => state.layout.spaces);
+  const spaces = useStore(useShallow(state => state.layout.spaces.map(space => `${space.id}\u0001${space.name}`)));
   const [spaceId, setSpaceId] = useState(() => useStore.getState().layout.activeSpaceId);
   const [expanded, setExpanded] = useState(false);
   const [running, setRunning] = useState(false);
@@ -39,7 +40,8 @@ export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[
     active.current = false;
     if (!mounted.current) return;
     setRunning(false); setRemaining(failed);
-    setMessage(`${completed} ${completed === 1 ? "page is" : "pages are"} available in ${spaces.find(space => space.id === spaceId)?.name ?? "the selected Space"}.${failed.length ? ` ${failed.length} remaining.` : ""}`);
+    const spaceName = useStore.getState().layout.spaces.find(space => space.id === spaceId)?.name;
+    setMessage(`${completed} ${completed === 1 ? "page is" : "pages are"} available in ${spaceName ?? "the selected Space"}.${failed.length ? ` ${failed.length} remaining.` : ""}`);
     setError(failure);
     // Native background surfaces can take keyboard focus while attaching. Return it
     // only while this dialog is still present, never over a newer browsing action.
@@ -53,8 +55,8 @@ export function OpenBookmarkFolder({ bookmarks, folder }: { bookmarks: Bookmark[
   return <section className="library-folder-open" aria-label="Open bookmark folder">
     <div><strong>Open {folder.at(-1)}</strong><p className="hint">Includes subfolders. Pages open in background tabs; pages already open in this Space are reused.</p></div>
     <div className="library-folder-open-actions">
-      <select aria-label="Open bookmarks in Space" value={spaceId} disabled={running || remaining !== null} onChange={event => setSpaceId(event.target.value)}>{spaces.map(space => <option key={space.id} value={space.id}>{space.name}</option>)}</select>
-      <button className="btn sm" disabled={running || remaining?.length === 0 || !spaces.some(space => space.id === spaceId)} onClick={() => void open()}>{remaining?.length ? `Open remaining ${remaining.length}` : "Open pages"}</button>
+      <select aria-label="Open bookmarks in Space" value={spaceId} disabled={running || remaining !== null} onChange={event => setSpaceId(event.target.value)}>{spaces.map(entry => { const [id, name] = entry.split("\u0001"); return <option key={id} value={id}>{name}</option>; })}</select>
+      <button className="btn sm" disabled={running || remaining?.length === 0 || !spaces.some(entry => entry.startsWith(`${spaceId}\u0001`))} onClick={() => void open()}>{remaining?.length ? `Open remaining ${remaining.length}` : "Open pages"}</button>
       {running ? <button className="btn sm ghost" onClick={() => { stopped.current = true; setMessage("Stopping after the current page…"); }}>Stop</button>
         : <button ref={done} className="btn sm ghost" onClick={() => { setExpanded(false); setRemaining(null); setMessage(""); setError(""); }}>Done</button>}
     </div>

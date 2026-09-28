@@ -1,13 +1,13 @@
 import "./FindBar.css";
 import { conversationFinder, readerFinder } from "../text-surface-find";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useStore, call } from "../store";
 import { I } from "./icons";
 import { bridge } from "../bridge";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
 /** ⌘F — in-flow strip above the page so highlighting stays live. */
-export function FindBar({ scope }: {scope?: "reader"} = {}) {
+export function FindBar({ scope, inputRef, returnFocusRef }: {scope?: "reader"; inputRef?: RefObject<HTMLInputElement | null>; returnFocusRef?: RefObject<HTMLDivElement | null>} = {}) {
   const key = useShortcutLabels();
   const inReader = scope === "reader";
   const mode = useStore(s => s.mode);
@@ -15,8 +15,6 @@ export function FindBar({ scope }: {scope?: "reader"} = {}) {
   const inConversation = !inReader && mode === "conversation";
   const inShell = inReader || inConversation;
   const finder = inReader ? readerFinder : conversationFinder;
-  const surface = inReader ? "reader" : "conversation";
-  const scrollSelector = inReader ? ".reader-scroll" : ".conversation-scroll";
   const activePageId = useStore((s) => s.activePageId);
   const epoch = useStore(s => s.pages.find(page => page.pageId === s.activePageId)?.documentEpoch);
   const loading = useStore(s => s.pages.find(page => page.pageId === s.activePageId)?.loading);
@@ -24,7 +22,8 @@ export function FindBar({ scope }: {scope?: "reader"} = {}) {
   const text = useStore((s) => s.findText);
   const res = useStore((s) => s.findMatches);
   const find = useStore((s) => s.find);
-  const ref = useRef<HTMLInputElement>(null);
+  const ownRef = useRef<HTMLInputElement>(null);
+  const ref = inputRef ?? ownRef;
   const debounce = useRef<number | null>(null);
   const composing = useRef(false);
   const request = useRef(0);
@@ -84,7 +83,7 @@ export function FindBar({ scope }: {scope?: "reader"} = {}) {
     if (debounce.current) window.clearTimeout(debounce.current);
     finder.clear();
     if (inReader) useStore.setState({readerFindOpen:false}); else setOverlay(null);
-    if (inShell) document.querySelector<HTMLElement>(`[data-find-surface="${surface}"]`)?.closest<HTMLElement>(scrollSelector)?.focus({preventScroll:true});
+    if (inShell) returnFocusRef?.current?.focus({preventScroll:true});
     if (!inShell && activePageId) await call("pages.stopFind", { pageId: activePageId, action: "clear" }).catch(() => {});
   };
   const onChange = (v: string) => {

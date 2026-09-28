@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Checkbox } from "./ui";
+import { Checkbox } from "../ui";
 import { I } from "./icons";
 import "./AttachmentTray.css";
 

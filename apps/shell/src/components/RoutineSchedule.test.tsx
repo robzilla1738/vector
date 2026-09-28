@@ -29,6 +29,8 @@ it("saves the existing schedule without changing its timezone or review policy",
   };
   act(() => root.render(<RoutineSchedule trigger={trigger} disabled={false} onSave={onSave} />));
   expect(container.querySelector<HTMLInputElement>('input[type="time"]')?.value).toBe("15:30");
+  expect(container.textContent).toContain("a missing local time is skipped");
+  expect(container.textContent).toContain("a repeated local time runs once");
   act(() =>
     container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
   );
@@ -138,6 +140,21 @@ it("uses a labeled, granted Calendar account and never displays its connection I
   expect(onSave).toHaveBeenCalledWith(trigger);
 });
 
+it("offers Calendar events when creating a task-backed automation", () => {
+  act(() =>
+    root.render(
+      <RoutineSchedule
+        mode="create"
+        trigger={{ kind: "schedule", timezone: "UTC", hour: 9, minute: 0, days: [1] }}
+        calendar={{ status: "ready", choices: [] }}
+        disabled={false}
+        onSave={vi.fn()}
+      />,
+    ),
+  );
+  expect([...container.querySelectorAll("option")].map((item) => item.value)).toContain("calendar_event");
+});
+
 it("prevents saving an unavailable Calendar connection and explains how to connect one", () => {
   const grantId = "22222222-2222-4222-8222-222222222222";
   const onSave = vi.fn();
@@ -163,4 +180,22 @@ it("prevents saving an unavailable Calendar connection and explains how to conne
     container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
   );
   expect(onSave).not.toHaveBeenCalled();
+});
+
+it("rejects a site notification path rather than broadening it to the entire origin", () => {
+  const onSave = vi.fn();
+  act(() =>
+    root.render(
+      <RoutineSchedule
+        trigger={{ kind: "site_notification", origin: "https://example.com/path" }}
+        disabled={false}
+        onSave={onSave}
+      />,
+    ),
+  );
+  act(() =>
+    container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
+  );
+  expect(onSave).not.toHaveBeenCalled();
+  expect(container.textContent).toContain("exact site origin without a path");
 });

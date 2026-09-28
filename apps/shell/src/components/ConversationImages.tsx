@@ -63,6 +63,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
   const [lasso, setLasso] = useState<{ bounds: Bounds; width: number; height: number } | null>(null);
   const overlay = useStore(s => s.overlay);
   const review = useRef<HTMLDivElement>(null);
+  const captureCanvas = useRef<HTMLDivElement>(null);
   const lassoTrigger = useRef<HTMLButtonElement>(null);
   useEffect(() => { review.current?.scrollIntoView({ block: "nearest" }); }, [capture, preview]);
   const request = useRef(0);
@@ -78,7 +79,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     const app = document.querySelector<HTMLElement>(".app");
     const previouslyInert = app?.inert ?? false;
     if (app) app.inert = true;
-    const frame = requestAnimationFrame(() => document.querySelector<HTMLElement>(".page-lasso .capture-canvas")?.focus());
+    const frame = requestAnimationFrame(() => captureCanvas.current?.focus());
     return () => { cancelAnimationFrame(frame); if (app) app.inert = previouslyInert; };
   }, [!!lasso, overlay]);
   useEffect(() => {
@@ -174,7 +175,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     : !/^https?:\/\//.test(page.url) ? "Page capture is available on http(s) pages, not local or special pages."
     : ["crashed", "detached"].includes(page.viewStatus ?? "") ? "This tab is crashed or detached. Capture is unavailable until it is restored."
     : undefined;
-  const selection = capture && <div className="capture-canvas" tabIndex={0} role="group" aria-label="Image selection. Arrow keys select and move a region; Shift and arrows resize." onKeyDown={event => {
+  const selection = capture && <div ref={captureCanvas} className="capture-canvas" tabIndex={0} role="group" aria-label="Image selection. Arrow keys select and move a region; Shift and arrows resize." onKeyDown={event => {
     if (event.key === "Escape") { if (lasso) cancelCapture(); else setRegion(null); event.preventDefault(); return; }
     if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
     event.preventDefault();

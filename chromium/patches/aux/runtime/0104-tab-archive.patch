@@ -1,0 +1,50 @@
+diff --git a/chrome/browser/ui/aux/organization_store.cc b/chrome/browser/ui/aux/organization_store.cc
+--- a/chrome/browser/ui/aux/organization_store.cc
++++ b/chrome/browser/ui/aux/organization_store.cc
+@@ -4,6 +4,7 @@
+ 
+ #include "chrome/browser/ui/aux/organization_store.h"
+ 
++#include <cmath>
+ #include <initializer_list>
+ #include <limits>
+ #include <set>
+@@ -133,14 +134,37 @@
+   return true;
+ }
+ 
++bool ArchiveEntry(const base::Value& value) {
++  const base::DictValue* item = value.GetIfDict();
++  if (!item || !HasOnly(*item, {"archiveId", "pageId", "url", "title",
++                               "spaceId", "folderId", "index", "archivedAt", "state"}) ||
++      !Id(item->Find("archiveId")) || !Id(item->Find("pageId")) ||
++      !Id(item->Find("spaceId")) || !Text(item->Find("title"), 500, false)) return false;
++  const std::string* url = item->FindString("url");
++  if (!url || url->size() > 8192 ||
++      !(url->starts_with("https://") || url->starts_with("http://"))) return false;
++  if (const base::Value* folder = item->Find("folderId"); folder && !Id(folder)) return false;
++  const std::optional<int> index = item->FindInt("index");
++  const std::optional<double> when = item->FindDouble("archivedAt");
++  const std::string* state = item->FindString("state");
++  return index && *index >= 0 && *index <= 5000 && when &&
++         std::isfinite(*when) && *when >= 0 && std::floor(*when) == *when &&
++         state && (*state == "pending" || *state == "archived");
++}
++
+ bool Shared(const base::DictValue* shared) {
+   if (!shared ||
+       !HasOnly(*shared, {"spaces", "archivedSpaces", "pins", "folders",
+-                         "tidyUndo"})) {
++                         "tidyUndo", "archivedTabs"})) {
+     return false;
+   }
+   if (const base::Value* receipt = shared->Find("tidyUndo");
+       receipt && !TidyUndo(receipt->GetIfDict())) return false;
++  if (const base::Value* archive = shared->Find("archivedTabs")) {
++    const base::ListValue* entries = archive->GetIfList();
++    if (!entries || entries->size() > 300) return false;
++    for (const base::Value& entry : *entries) if (!ArchiveEntry(entry)) return false;
++  }
+   const base::ListValue* spaces = shared->FindList("spaces");
+   const base::ListValue* archived = shared->FindList("archivedSpaces");
+   const base::ListValue* folders = shared->FindList("folders");

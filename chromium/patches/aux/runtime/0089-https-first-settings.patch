@@ -1,0 +1,103 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -29,7 +29,8 @@
+   register_shell(AuxShellMethodGroup::kContent,
+                  {"preview", "readArticle", "siteZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
+                   "httpAuthRequests", "respondHttpAuth",
+-                  "clearSitePermission", "clearSiteData", "setHttpsUpgrade",
++                  "clearSitePermission", "clearSiteData", "httpsUpgrade",
++                  "setHttpsUpgrade",
+                   "proceedInsecure", "useHttp"});
+   register_shell(AuxShellMethodGroup::kContent,
+                  {"translatePage", "showOriginal"});
+diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
+--- a/chrome/browser/ui/aux/methods/content_methods.cc
++++ b/chrome/browser/ui/aux/methods/content_methods.cc
+@@ -900,7 +900,31 @@
+     }
+     return;
+   }
++  if (method == "httpsUpgrade") {
++    if (!list->empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "HTTPS upgrade state takes no arguments");
++      return;
++    }
++    auto* prefs = browser_->GetProfile()->GetPrefs();
++    const bool policy_allowed = prefs->GetBoolean(prefs::kHttpsUpgradesEnabled);
++    const bool available =
++        policy_allowed && base::FeatureList::IsEnabled(features::kHttpsUpgrades);
++    base::DictValue result;
++    result.Set("enabled", available && prefs->GetBoolean(aux::kHttpsUpgradesEnabled));
++    result.Set("available", available);
++    result.Set("managed", !policy_allowed &&
++                              prefs->IsManagedPreference(prefs::kHttpsUpgradesEnabled));
++    std::move(callback).Run(true, *base::WriteJson(base::Value(std::move(result))),
++                            "", "");
++    return;
++  }
+   if (method == "setHttpsUpgrade") {
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "HTTPS upgrade settings cannot change in Private mode");
++      return;
++    }
+     if (list->size() != 1 || !(*list)[0].is_bool()) {
+       std::move(callback).Run(false, "", "invalid_argument",
+                               "An HTTPS upgrade setting is required");
+diff --git a/chrome/browser/ui/aux/generated/aux_host_methods.h b/chrome/browser/ui/aux/generated/aux_host_methods.h
+--- a/chrome/browser/ui/aux/generated/aux_host_methods.h
++++ b/chrome/browser/ui/aux/generated/aux_host_methods.h
+@@ -7,10 +7,10 @@
+ #include <string_view>
+ #include "base/values.h"
+ namespace aux::generated {
+-inline constexpr std::string_view kManifestHash = "e266a8d8bf104e4c9bdad7baedbfe95ef0be3def09a97c6e2c8e9f0840073219";
++inline constexpr std::string_view kManifestHash = "3c442dad00210b43fc1235f8881765388eaa6d2c11ff90fca4e6ab3ff82bdd56";
+ inline constexpr std::string_view kSourceCommit = "970adc61bdca278e03a6c5beac507ec3cea95baa";
+ 
+-enum class MethodId { kCapabilities, kDefaultBrowser, kSetDefaultBrowser, kTabCommand, kBindTabSpace, kMigrateTabSpaces, kTabsSnapshot, kOrganizationSnapshot, kOrganizationCommit, kMigrationReview, kMigrationBegin, kMigrationBatch, kMigrationFinish, kMigrationRollback, kTabsSince, kSurfaceContentId, kResolveSearch, kFocusShell, kCreateResultPreview, kReleaseResultPreview, kSavePagePdf, kPrintPage, kDevTools, kHardReload, kCloseWindow, kOpenFile, kDictationStatus, kStartDictation, kStopDictation, kCancelDictation, kDataDir, kSiteInfo, kSiteZoom, kPrivacy, kSetTrackerBlock, kSetSiteTrackers, kRemoveAllowedHost, kFilterLists, kUpdateFilters, kAddFilterSource, kRemoveFilterSource, kSetFilterSourceEnabled, kSetAppearance, kSetShortcuts, kExtensions, kInstallStoreExtension, kCheckStoreExtensionUpdate, kReloadExtension, kShowExtensionAction, kSetExtensionEnabled, kRemoveExtension, kInstallUnpackedExtension, kUpdateUnpackedExtension, kBrowserProfiles, kCreateBrowserProfile, kRenameBrowserProfile, kArchiveBrowserProfile, kDeleteBrowserProfile, kOpenBrowserProfile, kOpenBrowserProfileUrl, kAutofillProfile, kSetAutofillProfile, kAutofill, kVaultFill, kVaultSave, kVaultDismiss, kPasswordExport, kPasswordImport, kQuickAskShortcut, kQuickAsk, kDownloadFolder, kChooseDownloadFolder, kSpellCheck, kStartupPreferences, kLanguagePreferences, kAutomaticPictureInPicture, kKeepRuntimeInBackground, kDefaultPageZoom, kDownloadsSnapshot, kControlDownload, kRetryDownload, kTabAudio, kTabsUnsavedWork, kPreview, kContextMenu, kNavigationMenu, kAutocomplete, kReadArticle, kOpenExternal, kRevealPath, kOpenPath, kSaveFile, kSaveWorkbook, kSaveStoredArtifact, kOpenPluginDirectory, kPickEvidenceImage, kPickEvidenceDocument, kAgentConfig, kAgentConnections, kAgentClients, kRevokeAgentConnection, kExportDiagnostics, kExportRuntimeBackup, kExportMigrationLayout, kStageRuntimeRestore, kCancelRuntimeRestore, kRuntimeRestoreStatus, kHealthSummary, kClearHealth, kHttpAuthRequests, kRespondHttpAuth, kClearSiteData, kSitePermissions, kClearSitePermission, kSetHttpsUpgrade, kProceedInsecure, kUseHttp, kTranslatePage, kShowOriginal, kNativeContentBlockBegin, kNativeContentBlockAppend, kNativeContentBlockCommit, kNativeCosmeticBegin, kNativeCosmeticAppend, kNativeCosmeticCommit, kNativeBookmarksInvoke, kNativeCapabilities, kNativeHistoryClear, kNativeHistoryRemove, kNativeSearchEngineGet, kNativeSearchEngineSet, kNativeSearchSuggestionsGet, kNativeSearchSuggestionsSet, kNativeZapInstallStylesheet, kNativeListPages, kNativeTabCommand, kNativeMovePage, kNativeFocusPage, kNativeRecoverPage, kNativeStopPage, kNativeAcquireStage, kNativeReleaseStage, kNativeFindInPage, kNativeStopFind, kNativeSetZoom, kNativeSetCookies, kNativeStoreSecret, kNativeReadSecret, kNativeCaptureReadablePage, kNativeFillSavedPassword, kNativeCdpReset, kNativeCdpDispatch, kNativeCdpVersion, kNativeWebmcpList, kNativeWebmcpCall };
++enum class MethodId { kCapabilities, kDefaultBrowser, kSetDefaultBrowser, kTabCommand, kBindTabSpace, kMigrateTabSpaces, kTabsSnapshot, kOrganizationSnapshot, kOrganizationCommit, kMigrationReview, kMigrationBegin, kMigrationBatch, kMigrationFinish, kMigrationRollback, kTabsSince, kSurfaceContentId, kResolveSearch, kFocusShell, kCreateResultPreview, kReleaseResultPreview, kSavePagePdf, kPrintPage, kDevTools, kHardReload, kCloseWindow, kOpenFile, kDictationStatus, kStartDictation, kStopDictation, kCancelDictation, kDataDir, kSiteInfo, kSiteZoom, kPrivacy, kSetTrackerBlock, kSetSiteTrackers, kRemoveAllowedHost, kFilterLists, kUpdateFilters, kAddFilterSource, kRemoveFilterSource, kSetFilterSourceEnabled, kSetAppearance, kSetShortcuts, kExtensions, kInstallStoreExtension, kCheckStoreExtensionUpdate, kReloadExtension, kShowExtensionAction, kSetExtensionEnabled, kRemoveExtension, kInstallUnpackedExtension, kUpdateUnpackedExtension, kBrowserProfiles, kCreateBrowserProfile, kRenameBrowserProfile, kArchiveBrowserProfile, kDeleteBrowserProfile, kOpenBrowserProfile, kOpenBrowserProfileUrl, kAutofillProfile, kSetAutofillProfile, kAutofill, kVaultFill, kVaultSave, kVaultDismiss, kPasswordExport, kPasswordImport, kQuickAskShortcut, kQuickAsk, kDownloadFolder, kChooseDownloadFolder, kSpellCheck, kStartupPreferences, kLanguagePreferences, kAutomaticPictureInPicture, kKeepRuntimeInBackground, kDefaultPageZoom, kDownloadsSnapshot, kControlDownload, kRetryDownload, kTabAudio, kTabsUnsavedWork, kPreview, kContextMenu, kNavigationMenu, kAutocomplete, kReadArticle, kOpenExternal, kRevealPath, kOpenPath, kSaveFile, kSaveWorkbook, kSaveStoredArtifact, kOpenPluginDirectory, kPickEvidenceImage, kPickEvidenceDocument, kAgentConfig, kAgentConnections, kAgentClients, kRevokeAgentConnection, kExportDiagnostics, kExportRuntimeBackup, kExportMigrationLayout, kStageRuntimeRestore, kCancelRuntimeRestore, kRuntimeRestoreStatus, kHealthSummary, kClearHealth, kHttpAuthRequests, kRespondHttpAuth, kClearSiteData, kSitePermissions, kClearSitePermission, kHttpsUpgrade, kSetHttpsUpgrade, kProceedInsecure, kUseHttp, kTranslatePage, kShowOriginal, kNativeContentBlockBegin, kNativeContentBlockAppend, kNativeContentBlockCommit, kNativeCosmeticBegin, kNativeCosmeticAppend, kNativeCosmeticCommit, kNativeBookmarksInvoke, kNativeCapabilities, kNativeHistoryClear, kNativeHistoryRemove, kNativeSearchEngineGet, kNativeSearchEngineSet, kNativeSearchSuggestionsGet, kNativeSearchSuggestionsSet, kNativeZapInstallStylesheet, kNativeListPages, kNativeTabCommand, kNativeMovePage, kNativeFocusPage, kNativeRecoverPage, kNativeStopPage, kNativeAcquireStage, kNativeReleaseStage, kNativeFindInPage, kNativeStopFind, kNativeSetZoom, kNativeSetCookies, kNativeStoreSecret, kNativeReadSecret, kNativeCaptureReadablePage, kNativeFillSavedPassword, kNativeCdpReset, kNativeCdpDispatch, kNativeCdpVersion, kNativeWebmcpList, kNativeWebmcpCall };
+ struct MethodInfo { MethodId id; std::string_view name; std::string_view owner; std::string_view feature; std::string_view trusted; bool profile_scoped; };
+ std::optional<MethodId> LookupMethod(std::string_view name);
+ std::span<const MethodInfo> Methods();
+diff --git a/chrome/browser/ui/aux/generated/aux_host_methods.cc b/chrome/browser/ui/aux/generated/aux_host_methods.cc
+--- a/chrome/browser/ui/aux/generated/aux_host_methods.cc
++++ b/chrome/browser/ui/aux/generated/aux_host_methods.cc
+@@ -2481,6 +2481,7 @@
+   {MethodId::kClearSiteData, "clearSiteData", "browser", "sitePermissions", "aux-webui", true},
+   {MethodId::kSitePermissions, "sitePermissions", "browser", "sitePermissions", "aux-webui", true},
+   {MethodId::kClearSitePermission, "clearSitePermission", "browser", "sitePermissions", "aux-webui", true},
++  {MethodId::kHttpsUpgrade, "httpsUpgrade", "browser", "httpsFirst", "aux-webui", true},
+   {MethodId::kSetHttpsUpgrade, "setHttpsUpgrade", "browser", "httpsFirst", "aux-webui", true},
+   {MethodId::kProceedInsecure, "proceedInsecure", "browser", "core", "aux-webui", true},
+   {MethodId::kUseHttp, "useHttp", "browser", "core", "aux-webui", true},
+@@ -2646,6 +2647,7 @@
+     case MethodId::kClearSiteData: valid = ValidateNode82(args); break;
+     case MethodId::kSitePermissions: valid = ValidateNode0(args); break;
+     case MethodId::kClearSitePermission: valid = ValidateNode144(args); break;
++    case MethodId::kHttpsUpgrade: valid = ValidateNode0(args); break;
+     case MethodId::kSetHttpsUpgrade: valid = ValidateNode84(args); break;
+     case MethodId::kProceedInsecure: valid = ValidateNode45(args); break;
+     case MethodId::kUseHttp: valid = ValidateNode45(args); break;
+diff --git a/chrome/browser/resources/aux_host/aux_feature_stages.ts b/chrome/browser/resources/aux_host/aux_feature_stages.ts
+--- a/chrome/browser/resources/aux_host/aux_feature_stages.ts
++++ b/chrome/browser/resources/aux_host/aux_feature_stages.ts
+@@ -487,6 +487,7 @@
+   },
+   "httpsFirst": {
+     "requires": [
++      "httpsUpgrade",
+       "setHttpsUpgrade"
+     ],
+     "journey": "feature:httpsFirst"
+@@ -535,7 +536,7 @@
+   }
+ } as const;
+ const runtimeMethods = ["agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","spaces.create","spaces.update","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.suggest","routines.get","routines.create","routines.fromResult","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.extractRun","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results","safety.grants.list","safety.grants.revoke"] as const;
+-const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:reader":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:inboundAgents":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:extensions":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:electronMigration":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:quickAsk":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:aiTranslate":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:profiles":"970adc61bdca278e03a6c5beac507ec3cea95baa"};
++const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:reader":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:inboundAgents":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:extensions":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:electronMigration":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:quickAsk":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:aiTranslate":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:profiles":"970adc61bdca278e03a6c5beac507ec3cea95baa","feature:httpsFirst":"970adc61bdca278e03a6c5beac507ec3cea95baa"};
+ export type FeatureStage = 'off' | 'preview' | 'on';
+ export function featureStagesFor(methods: readonly string[], sourceCommit: string): Record<keyof typeof requirements, FeatureStage> {
+   const implemented = new Set<string>([...methods, ...runtimeMethods]);

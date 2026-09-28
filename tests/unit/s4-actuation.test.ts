@@ -83,14 +83,15 @@ describe("durable page claims (S4)", () => {
 function fakePage(failOnce?: { code: AuxErrorCode }) {
   const calls: string[] = [];
   let failed = false;
+  let value = "previous";
   const page = {
     identity: { pageId: "p1", targetId: "t1", backend: "aux" },
     url: () => "http://x.test/",
     isAttached: () => true,
     click: async (t: string) => { calls.push(`click:${t}`); if (failOnce && !failed) { failed = true; throw new AuxError(failOnce.code, `${t} gone`); } },
-    fill: async (t: string, v: string) => { calls.push(`fill:${t}=${v}`); if (failOnce && !failed) { failed = true; throw new AuxError(failOnce.code, `${t} gone`); } },
+    fill: async (t: string, v: string) => { calls.push(`fill:${t}=${v}`); if (failOnce && !failed) { failed = true; throw new AuxError(failOnce.code, `${t} gone`); } value = v; },
     waitFor: async (c: Condition) => { calls.push(`waitFor:${c.kind}`); return { ok: true, timedOut: false }; },
-    fieldState: async (t: string) => { calls.push(`state:${t}`); return { value: "previous" }; },
+    fieldState: async (t: string) => { calls.push(`state:${t}`); return { value }; },
     observe: async () => ({}) as never,
     setEvents: () => {},
     dispose: async () => {},
@@ -136,6 +137,7 @@ describe("executor: before-state ledger (S4)", () => {
     });
     expect(res.status).toBe("completed");
     expect(res.steps[0]?.before).toEqual({ value: "previous" });
+    expect(res.steps[0]?.after).toEqual({ value: "new" });
     expect(res.steps[1]?.before).toBeUndefined(); // click is not a setter
     expect(calls.indexOf("state:r1")).toBeLessThan(calls.indexOf("fill:r1=new"));
   });

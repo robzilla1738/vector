@@ -1,7 +1,7 @@
 import type { ConversationSource } from "@aux/contracts";
 import { hostOf } from "../workspace";
 import { I } from "./icons";
-import { ListRow } from "./ui";
+import { ListRow } from "../ui";
 
 export function sourceDescription(source: ConversationSource, profileNames: Record<string, string> = {}) {
   const origin = source.kind === "calendar" ? `Google Calendar · ${source.accountKey}` : `${source.kind === "memory" ? "Saved article · " : ""}${hostOf(source.url)}`;

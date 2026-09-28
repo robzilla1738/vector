@@ -1,21 +1,20 @@
+import "./Sidebar.css";
 import { ChatSessions } from "./ChatSessions";
 import { TabPreview, useSidebarTabPreview } from "./TabPreview";
 import { lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget } from "@aux/contracts";
+import type { SpaceTheme } from "@aux/contracts/spaces";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast, toast } from "../store";
-import { PIN_ROW_SIZE, SPACE_COLORS, foldersInSpace, hostOf, tabLabel, tabsInFolder, tabsInSpace, unfiledTabs, type Folder, type Pin, type Space, type SpaceColor } from "../workspace";
+import { PIN_ROW_SIZE, SPACE_COLORS, foldersInSpace, hostOf, spaceThemeStyle, tabLabel, tabsInFolder, tabsInSpace, unfiledTabs, type Folder, type Pin, type Space, type SpaceColor } from "../workspace";
 
 import { bookmarkTabsFromDrop, TAB_DRAG_TYPE } from "../bookmark-drop";
-import { requestStageReport } from "../stage-obstruction";
-import { detailsMenuKey, moveMenuFocus, moveListFocus } from "../keyboard-list";
+import { moveListFocus } from "../keyboard-list";
 import { ResizeHandle } from "./ResizeHandle";
 import { SidebarSection } from "./SidebarSection";
 import { FavIcon, SiteTile } from "./SiteTile";
 import { useTabSelection } from "../use-tab-selection";
-import { useMenuDismiss } from "../use-menu-dismiss";
-import { positionContextMenu } from "../position-context-menu";
 import { backgroundLink, openBrowserLink } from "../browser-links";
 import { PinMenu } from "./PinMenu";
 import { TabMenu } from "./TabMenu";
@@ -24,8 +23,8 @@ import { I } from "./icons";
 import { useWindowedRows } from "../use-windowed-rows";
 import { acquireFloatingSidebarLock, useFloatingSidebar } from "../floating-sidebar";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
-import { useDismissable } from "../use-dismissable";
 import { useTabMembership, type TabMembership } from "../use-tab-membership";
+import { Menu } from "../ui";
 
 const IDLE_DRAG = { folderId: null as string | null, from: -1, to: null as number | null, pageId: "", over: null as string | null };
 
@@ -89,6 +88,7 @@ interface TabRowProps {
   selected: boolean;
   selecting: boolean;
   onSelectionKey: (event: React.KeyboardEvent) => boolean;
+  onNode: (id: string, node: HTMLDivElement | null) => void;
   onSelect: (id: string, event: React.MouseEvent | React.KeyboardEvent) => boolean;
   index: number;
   folderId: string | null;
@@ -105,7 +105,7 @@ interface TabRowProps {
   onKeyMove: (folderId: string | null, index: number, dir: -1 | 1) => void;
 }
 
-const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selecting, onSelect, onSelectionKey, index, folderId, dragging, dropBefore, dropAfter, onActivate, onClose, onDragStart, onDragOver, onDrop, onDragEnd, onContext, onKeyMove }: TabRowProps) {
+const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selecting, onSelect, onSelectionKey, onNode, index, folderId, dragging, dropBefore, dropAfter, onActivate, onClose, onDragStart, onDragOver, onDrop, onDragEnd, onContext, onKeyMove }: TabRowProps) {
   const p = useStore(state => state.pages.find(page => page.pageId === pageId));
   const key = useShortcutLabels();
   const preview = useSidebarTabPreview();
@@ -120,11 +120,12 @@ const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selec
   return (
     <>
     <div
-      ref={row}
+      ref={node => { row.current = node; onNode(pageId, node); }}
       onMouseEnter={event => preview.show(event.currentTarget)} onMouseLeave={preview.hide}
       onFocus={event => preview.show(event.currentTarget)} onBlur={preview.hide} onPointerDown={preview.hide}
       className={`tab-row ${active ? "active" : ""} ${selected ? "multi-selected" : ""} ${crashed ? "crashed" : ""} ${sleeping ? "sleeping" : ""} ${dragging ? "dragging" : ""} ${dropBefore ? "drop-before" : ""} ${dropAfter ? "drop-after" : ""}`}
       role="tab"
+      aria-description={sleeping ? "Sleeping. Reloads when opened." : undefined}
       aria-selected={selecting ? selected : active}
       tabIndex={focusable ? 0 : -1}
       data-index={index}
@@ -194,7 +195,8 @@ const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selec
 /*  Space switcher                                                      */
 /* ------------------------------------------------------------------ */
 
-export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, onDelete, onCollapse, onHistory, onDownloads, onSettings, onClose: finishClose, archivedSpaces, onRestore }: {
+export function SpaceMenu({ anchor, spaces, active, onPick, onNew, onNewFolder, onEdit, onDelete, onCollapse, onHistory, onDownloads, onSettings, onClose: finishClose, archivedSpaces, onRestore }: {
+  anchor: RefObject<HTMLElement | null>;
   archivedSpaces: Space[];
   onRestore: (id: string) => void;
   spaces: Space[];
@@ -211,10 +213,9 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
   onClose: () => void;
 }) {
   const key = useShortcutLabels();
-  const ref = useRef<HTMLDivElement>(null);
-  const onClose = useMenuDismiss(ref, finishClose);
-  const closeRef = useRef(onClose); closeRef.current = onClose;
-  const trigger = useRef(document.activeElement as HTMLElement | null);
+  const ref = useRef<HTMLDialogElement>(null);
+  const firstSpace = useRef<HTMLButtonElement>(null);
+  const spaceSearch = useRef<HTMLInputElement>(null);
   const [profileName, setProfileName] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [spaceQuery, setSpaceQuery] = useState("");
@@ -227,13 +228,6 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
     void bridge.browserProfiles().then(items => { if (live) setProfileName(items.find(item => item.current)?.name ?? ""); }).catch(() => {});
     return () => { live = false; };
   }, []);
-  useEffect(() => {
-    const outside = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) closeRef.current(); };
-    document.addEventListener("mousedown", outside);
-    ref.current?.querySelector<HTMLElement>('input[type="search"], [role^="menuitem"]')?.focus();
-    return () => document.removeEventListener("mousedown", outside);
-  }, []);
-  useDismissable(true, () => { closeRef.current(); trigger.current?.focus(); });
   // Choosing an item changes the underlying view immediately. Remove the menu
   // in the same turn so a new dialog or Space never inherits its closing layer.
   const choose = (action: () => void) => { action(); finishClose(); };
@@ -246,17 +240,19 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
     ...(onCollapse ? [{ label: "Collapse sidebar", icon: I.sidebarCloseSm, run: onCollapse, key: key("sidebar"), separator: true }] : []),
   ];
   return (
-    <div className="menu space-menu" role="menu" aria-label="Spaces and browser controls" ref={ref}
-      onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }}>
+    <Menu label="Spaces and browser controls" className={`menu space-menu${onCollapse ? "" : " space-menu-horizontal"}`}
+      anchor={anchor} placement={onCollapse ? "above-start" : "below-end"} menuRef={ref}
+      initialFocusRef={spaces.length + archivedSpaces.length > 6 ? spaceSearch : undefined}
+      returnFocus={anchor} onClose={finishClose}>
       {profileName && <div className="menu-caption space-profile-caption" title={`${profileName} browser profile`}>Profile · {profileName}</div>}
       {bridge.privateMode && <div className="menu-caption">Private window</div>}
-      <div className="space-current" data-space={currentSpace?.color}><span className="space-dot" /><div><small>Current Space</small><strong>{currentSpace?.name ?? "Space"}</strong></div></div>
-      {spaces.length + archivedSpaces.length > 6 && <label className="space-search">{I.search}<input type="search" aria-label="Search Spaces" placeholder="Find a Space…" value={spaceQuery} onChange={event => setSpaceQuery(event.target.value)} onKeyDown={event => {
-        if (event.key === "ArrowDown") { event.preventDefault(); ref.current?.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus(); }
+      <div className="space-current" data-space={currentSpace?.color} style={spaceThemeStyle(currentSpace)}><span className="space-dot" /><div><small>Current Space</small><strong>{currentSpace?.name ?? "Space"}</strong></div></div>
+      {spaces.length + archivedSpaces.length > 6 && <label className="space-search">{I.search}<input ref={spaceSearch} type="search" aria-label="Search Spaces" placeholder="Find a Space…" value={spaceQuery} onChange={event => setSpaceQuery(event.target.value)} onKeyDown={event => {
+        if (event.key === "ArrowDown") { event.preventDefault(); firstSpace.current?.focus(); }
       }} /></label>}
       {!visibleSpaces.length && <output className="menu-caption" data-block>No matching Spaces</output>}
-      {visibleSpaces.map(space => <div className="space-menu-row" key={space.id} data-space={space.color} role="none">
-        <button className={`menu-item ${space.id === active ? "on" : ""}`} role="menuitemradio" aria-checked={space.id === active}
+      {visibleSpaces.map(space => <div className="space-menu-row" key={space.id} data-space={space.color} style={spaceThemeStyle(space)} role="none">
+        <button ref={space.id === visibleSpaces[0]?.id ? firstSpace : undefined} className={`menu-item ${space.id === active ? "on" : ""}`} role="menuitemradio" aria-checked={space.id === active}
           onClick={() => choose(() => onPick(space.id))}>
           <span className="space-dot" /><span className="t">{space.name}</span>
         </button>
@@ -282,12 +278,12 @@ export function SpaceMenu({ spaces, active, onPick, onNew, onNewFolder, onEdit, 
           <span className="menu-ico">{action.icon}</span><span className="t">{action.label}</span>{action.key && <kbd>{action.key}</kbd>}
         </button>
       </div>)}
-    </div>
+    </Menu>
   );
 }
 
 const LazySpaceEditor = lazy(() => import("./SpaceEditor"));
-export function SpaceEditor(props: { space: Space | null; onSave: (name: string, color: SpaceColor, grain: number) => Promise<void>; onClose: () => void; returnFocus?: RefObject<HTMLElement | null> }) {
+export function SpaceEditor(props: { space: Space | null; onSave: (name: string, color: SpaceColor, grain: number, theme: SpaceTheme | null) => Promise<void>; onClose: () => void; returnFocus?: RefObject<HTMLElement | null> }) {
   return <Suspense fallback={null}><LazySpaceEditor {...props} /></Suspense>;
 }
 
@@ -367,12 +363,20 @@ const SIDEBAR_BOOKMARKS = 4;
 
 type OpenLink = (link: Pin, event: React.MouseEvent) => void;
 
+const SidebarBookmarkRow = memo(function SidebarBookmarkRow({ url, onOpen }: { url: string; onOpen: OpenLink }) {
+  const bookmark = useStore(s => s.bookmarks.find(item => item.url === url));
+  const favicon = useStore(s => s.pages.find(page => page.url === url && page.favicon)?.favicon);
+  if (!bookmark) return null;
+  return <button className="sb-link" title={bookmark.title || bookmark.url}
+    onClick={event => onOpen(bookmark, event)} onAuxClick={event => onOpen(bookmark, event)}>
+    <FavIcon url={bookmark.url} src={favicon} /><span>{bookmark.title || hostOf(bookmark.url)}</span>
+  </button>;
+});
+
 const SidebarBookmarks = memo(function SidebarBookmarks({ onOpen, onDropped }: { onOpen: OpenLink; onDropped(): void }) {
-  const bookmarks = useStore(s => s.bookmarks);
-  // Favicons of open tabs, keyed by URL — a digest so unrelated tab churn doesn't re-render.
-  const favicons = useStore(useShallow(s => { const byUrl: Record<string, string> = {}; for (const page of s.pages) if (page.favicon && !(page.url in byUrl)) byUrl[page.url] = page.favicon; return byUrl; }));
+  const shownUrls = useStore(useShallow(s => s.bookmarks.slice(0, SIDEBAR_BOOKMARKS).map(bookmark => bookmark.url)));
+  const bookmarkCount = useStore(s => s.bookmarks.length);
   const [hover, setHover] = useState(false);
-  const shown = bookmarks.slice(0, SIDEBAR_BOOKMARKS);
   return <div className={`sb-bookmarks${hover ? " drop" : ""}`}
     onDragOver={event => { if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return; event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setHover(true); }}
     onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setHover(false); }}
@@ -385,11 +389,8 @@ const SidebarBookmarks = memo(function SidebarBookmarks({ onOpen, onDropped }: {
       if (!added.length) { toast("Only web tabs can be bookmarked"); return; }
       void Promise.all(added.map(tab => call("bookmarks.add", tab))).then(() => toast(added.length === 1 ? "Bookmarked" : `Bookmarked ${added.length} tabs`)).catch(errToast);
     }}>
-    {bookmarks.length ? <div className="sb-bookmark-list">{shown.map(bookmark => <button className="sb-link" key={bookmark.url} title={bookmark.title || bookmark.url}
-      onClick={event => onOpen(bookmark, event)} onAuxClick={event => onOpen(bookmark, event)}>
-      <FavIcon url={bookmark.url} src={favicons[bookmark.url]} /><span>{bookmark.title || hostOf(bookmark.url)}</span>
-    </button>)}
-      {bookmarks.length > shown.length && <button className="sb-link sb-show-all" onClick={() => useStore.getState().setOverlay("bookmarks")}>Show all {bookmarks.length}</button>}
+    {bookmarkCount ? <div className="sb-bookmark-list">{shownUrls.map(url => <SidebarBookmarkRow key={url} url={url} onOpen={onOpen} />)}
+      {bookmarkCount > shownUrls.length && <button className="sb-link sb-show-all" onClick={() => useStore.getState().setOverlay("bookmarks")}>Show all {bookmarkCount}</button>}
     </div> : <div className="sb-bookmarks-empty">Drag tabs here to add bookmarks</div>}
   </div>;
 });
@@ -417,6 +418,8 @@ export const Sidebar = memo(function Sidebar() {
   /** 0 not saved · 1 bookmarked · 2 also on the reading list — for the active page. */
   const saved = useStore((s) => { const url = s.pages.find(p => p.pageId === s.activePageId)?.url; const b = url ? s.bookmarks.find(item => item.url === url) : undefined; return b ? b.readingList ? 2 : 1 : 0; });
   const activePageId = useStore((s) => s.activePageId);
+  const splitPrimary = useStore(s => s.pages.find(page => page.pageId === s.activePageId));
+  const splitCompanion = useStore(s => s.pages.find(page => page.pageId === s.splitPageId));
   const mode = useStore((s) => s.mode);
   const sidebarVisible = sidebar === "expanded" || peek;
   const floatingPanel = useRef<HTMLElement>(null);
@@ -446,7 +449,17 @@ export const Sidebar = memo(function Sidebar() {
   const loose = useMemo(() => unfiledTabs(layout, pages, space.id), [layout, pages, space.id]);
   const visibleTabs = useMemo(() => [...folders.flatMap(folder => folder.collapsed ? [] : tabsInFolder(layout, pages, folder.id)), ...loose], [folders, layout, pages, loose]);
   const focusablePageId = visibleTabs.some(tab => tab.pageId === activePageId) ? activePageId : visibleTabs[0]?.pageId;
-  const selection = useTabSelection(visibleTabs, space.id, activePageId);
+  const tabNodes = useRef(new Map<string, HTMLDivElement>());
+  const onTabNode = useCallback((id: string, node: HTMLDivElement | null) => {
+    if (node) tabNodes.current.set(id, node);
+    else tabNodes.current.delete(id);
+  }, []);
+  const focusAfterClose = useCallback(() => {
+    const activeId = useStore.getState().activePageId;
+    const target = tabNodes.current.get(activeId ?? "") ?? tabNodes.current.values().next().value;
+    target?.focus();
+  }, []);
+  const selection = useTabSelection(visibleTabs, space.id, activePageId, focusAfterClose);
   const pins = layout.pins[space.id] ?? [];
   const pinnedIcons = useStore(useShallow(state => {
     const openTabs = tabsInSpace(state.layout, state.pages, space.id);
@@ -462,6 +475,10 @@ export const Sidebar = memo(function Sidebar() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const spaceTrigger = useRef<HTMLButtonElement>(null);
+  const [pinOverflowOpen, setPinOverflowOpen] = useState(false);
+  const pinOverflowTrigger = useRef<HTMLButtonElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreTrigger = useRef<HTMLButtonElement>(null);
   const [editing, setEditing] = useState<Space | null | "new">(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const pinDrag = useRef<{ url: string; spaceId: string } | null>(null);
@@ -476,15 +493,6 @@ export const Sidebar = memo(function Sidebar() {
     return acquireFloatingSidebarLock("keep-current");
   }, [menuOpen, ctx, pinCtx, folderCtx, editing]);
   const listRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const close = (event: PointerEvent) => {
-      for (const menu of document.querySelectorAll<HTMLDetailsElement>(".sb-more[open], .pin-overflow[open]")) {
-        if (!menu.contains(event.target as Node)) menu.open = false;
-      }
-    };
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
-  }, []);
 
   function pinDragProps(pin: Pin) {
     return {
@@ -517,7 +525,7 @@ export const Sidebar = memo(function Sidebar() {
 
   function pinMenu(pin: Pin, event: React.MouseEvent | React.KeyboardEvent) {
     event.preventDefault(); event.stopPropagation();
-    event.currentTarget.closest("details")?.removeAttribute("open");
+    setPinOverflowOpen(false);
     const rect = event.currentTarget.getBoundingClientRect();
     setPinCtx({ pin, spaceId: space.id, x: "clientX" in event ? event.clientX : rect.left, y: "clientY" in event ? event.clientY : rect.bottom });
   }
@@ -532,7 +540,7 @@ export const Sidebar = memo(function Sidebar() {
       const open = tabsInSpace(useStore.getState().layout, useStore.getState().pages, space.id).find(page => page.url === pin.url);
       if (open) onActivate(open.pageId); else void newTab(pin.url).catch(errToast);
     }
-    event.currentTarget.closest("details")?.removeAttribute("open");
+    setPinOverflowOpen(false);
   }
 
   const onActivate = useCallback((id: string) => void activate(id).catch(errToast), [activate]);
@@ -612,6 +620,7 @@ export const Sidebar = memo(function Sidebar() {
       selecting={selection.ids.length > 0}
       onSelect={selection.select}
       onSelectionKey={selection.keyDown}
+      onNode={onTabNode}
       index={index}
       folderId={folderId}
       active={p.pageId === activePageId && mode === "focus"}
@@ -641,16 +650,16 @@ export const Sidebar = memo(function Sidebar() {
                 onClick={event => openPin(b, event)} onAuxClick={event => openPin(b, event)}
                 onKeyDown={event => pinKey(b, event)} onContextMenu={event => pinMenu(b, event)} />
           ))}
-          {overflowPins.length > 0 && <details className="pin-overflow" onKeyDown={detailsMenuKey}>
-            <summary aria-label={`${overflowPins.length} more pinned sites`} title="More pinned sites">+{overflowPins.length}</summary>
-            <div className="menu pin-overflow-menu" role="menu" aria-label="More pinned sites">
+          {overflowPins.length > 0 && <div className="pin-overflow">
+            <button ref={pinOverflowTrigger} type="button" aria-label={`${overflowPins.length} more pinned sites`} title="More pinned sites" aria-haspopup="menu" aria-expanded={pinOverflowOpen} onClick={() => setPinOverflowOpen(value => !value)}>+{overflowPins.length}</button>
+            {pinOverflowOpen && <Menu className="menu sidebar-native-menu pin-overflow-menu" label="More pinned sites" anchor={pinOverflowTrigger} returnFocus={pinOverflowTrigger} onClose={() => setPinOverflowOpen(false)}>
               {overflowPins.map(pin => <button {...pinDragProps(pin)} className="menu-item" role="menuitem" key={pin.url} title={pin.url}
                 onClick={event => openPin(pin, event)} onAuxClick={event => openPin(pin, event)}
                 onKeyDown={event => pinKey(pin, event)} onContextMenu={event => pinMenu(pin, event)}>
                 <span className="menu-ico">{I.pin}</span><span className="t">{pin.title || hostOf(pin.url)}</span>
               </button>)}
-            </div>
-          </details>}
+            </Menu>}
+          </div>}
         </div>
       )}
 
@@ -662,6 +671,14 @@ export const Sidebar = memo(function Sidebar() {
       </SidebarSection>}
       <SidebarSection title="Tabs" open={sections.tabs} onToggle={() => toggleSection("tabs")} fill>
       <div className="sb-tabs" ref={listRef} onKeyDown={onListKey}>
+        {mode === "focus" && splitPrimary && splitCompanion && <div className="sb-split-pair" role="group" aria-label="Split view">
+          <span className="sb-split-pair-title">{I.split} Split view</span>
+          <span className="sb-split-pair-pages" title={`${tabLabel(layout, splitPrimary)} and ${tabLabel(layout, splitCompanion)}`}>
+            {tabLabel(layout, splitPrimary)} <span aria-hidden="true">·</span> {tabLabel(layout, splitCompanion)}
+          </span>
+          <button type="button" title="Swap split sides" aria-label="Swap split sides" onClick={() => void activate(splitCompanion.pageId).catch(errToast)}>Swap</button>
+          <button type="button" title="Close split view" aria-label="Close split view" onClick={() => useStore.getState().setSplitPage(null)}>{I.close}</button>
+        </div>}
         <div className="tab-list" role="tablist" aria-multiselectable="true" aria-label="Tabs" aria-orientation="vertical" ref={tabScroller}>
           <NewTabButton
             onClick={() => void newTab()}
@@ -715,12 +732,13 @@ export const Sidebar = memo(function Sidebar() {
       </SidebarSection>
       <div className="sb-foot">
       <div className="sb-space">
-        <button ref={spaceTrigger} className="space-switch" data-space={space.color} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Switch space">
+        <button ref={spaceTrigger} className="space-switch" data-space={space.color} style={spaceThemeStyle(space)} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Switch space">
           <span className="space-ico">{I.person}</span>
           <span className="space-name">{space.name}</span>
         </button>
         {menuOpen && (
           <SpaceMenu
+            anchor={spaceTrigger}
             spaces={layout.spaces}
             archivedSpaces={layout.archivedSpaces ?? []}
             onRestore={id => void useStore.getState().restoreSpace(id).catch(errToast)}
@@ -743,28 +761,30 @@ export const Sidebar = memo(function Sidebar() {
         <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" onClick={() => setOverlay("palette")}>{I.search}</button>
         {activeController === "human" && <button className="icon-btn" aria-label="Return control to agent" title="Return control to agent" onClick={() => void returnControl(activePageId!)}>{I.handSm}</button>}
         <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{I.agent}</button>
-        <details className="sb-more" onKeyDown={detailsMenuKey}>
-          <summary className="icon-btn" aria-haspopup="menu" aria-label="More" title="More">{I.more}</summary>
-          <div className="sb-more-menu" role="menu" aria-label="Browser tools" onClick={event => { const details = event.currentTarget.closest("details"); if (details) details.open = false; }}>
-            <button role="menuitem" aria-label="Chats" onClick={() => { useStore.getState().openConversation(null); useStore.setState({conversationId:"history"}); }}>{I.agentSm}<span>Chats</span></button>
-            <button role="menuitem" aria-label="Tasks" onClick={() => setOverlay("tasks")}>{I.layersSm}<span>Tasks</span></button>
-            <button role="menuitem" aria-label="Library" onClick={() => setOverlay("bookmarks")}>{I.bookmark}<span>Library</span></button>
-            <button role="menuitem" aria-label="Downloads" onClick={() => setOverlay("downloads")}>{I.downloadSm}<span>Downloads</span></button>
+        <div className="sb-more">
+          <button ref={moreTrigger} className="icon-btn" aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More" title="More" onClick={() => setMoreOpen(value => !value)}>{I.more}</button>
+          {moreOpen && <Menu className="sidebar-native-menu sb-more-menu" label="Browser tools" anchor={moreTrigger} placement="above-end" returnFocus={moreTrigger} onClose={() => setMoreOpen(false)}>
+            <button role="menuitem" aria-label="Chats" onClick={() => { setMoreOpen(false); useStore.getState().openConversation(null); useStore.setState({conversationId:"history"}); }}>{I.agentSm}<span>Chats</span></button>
+            <button role="menuitem" aria-label="Tasks" onClick={() => { setMoreOpen(false); setOverlay("tasks"); }}>{I.layersSm}<span>Tasks</span></button>
+            <button role="menuitem" aria-label="Library" onClick={() => { setMoreOpen(false); setOverlay("bookmarks"); }}>{I.bookmark}<span>Library</span></button>
+            <button role="menuitem" aria-label="Downloads" onClick={() => { setMoreOpen(false); setOverlay("downloads"); }}>{I.downloadSm}<span>Downloads</span></button>
             <hr />
             <button role="menuitem" aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} onClick={() => {
+              setMoreOpen(false);
               const current = useStore.getState().pages.find(item => item.pageId === activePageId);
               if (!current) return;
               void useStore.getState().toggleBookmark(current.url,current.title).catch(errToast);
             }}>{I.bookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
             <button role="menuitem" aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} onClick={() => {
+              setMoreOpen(false);
               const current = useStore.getState().pages.find(item => item.pageId === activePageId);
               if (!current) return;
               void useStore.getState().toggleReadingList(current.url, current.title).catch(errToast);
             }}>{I.clock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span></button>
-            <button role="menuitem" aria-label="Tab overview" onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}<span>Tab overview</span></button>
-            <button role="menuitem" aria-label="Settings" onClick={() => setOverlay("settings")}>{I.gear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
-          </div>
-        </details>
+            <button role="menuitem" aria-label="Tab overview" onClick={() => { setMoreOpen(false); setMode(mode === "overview" ? "focus" : "overview"); }}>{I.grid}<span>Tab overview</span></button>
+            <button role="menuitem" aria-label="Settings" onClick={() => { setMoreOpen(false); setOverlay("settings"); }}>{I.gear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
+          </Menu>}
+        </div>
         </>}
       </div>
     </>
@@ -778,7 +798,7 @@ export const Sidebar = memo(function Sidebar() {
         inert={!sidebarVisible ? true : undefined}
         aria-hidden={!sidebarVisible}
         data-space={space.color}
-        style={{ "--sb-w": `${sidebarWidth}px`, "--space-grain": space.grain } as React.CSSProperties}
+        style={{ "--sb-w": `${sidebarWidth}px`, "--space-grain": space.grain, ...spaceThemeStyle(space) } as React.CSSProperties}
         aria-label="Sidebar"
       >
         <div className="sidebar-content" inert={!sidebarVisible ? true : undefined} aria-hidden={!sidebarVisible}>{full}</div>
@@ -786,7 +806,7 @@ export const Sidebar = memo(function Sidebar() {
       </aside>
       {editing && (
         <SpaceEditor space={editing === "new" ? null : editing} onClose={() => setEditing(null)} returnFocus={spaceTrigger}
-          onSave={(name, color, grain) => (editing === "new" ? addSpace(name, color, grain) : editSpace(editing.id, name, color, grain))} />
+          onSave={(name, color, grain, theme) => (editing === "new" ? addSpace(name, color, grain, theme) : editSpace(editing.id, name, color, grain, theme))} />
       )}
       {pinCtx && <PinMenu {...pinCtx} onClose={() => setPinCtx(null)} />}
       {ctx && <TabMenu selectedPages={selection.pagesFor(ctx.p)} onSelectionDone={selection.clear} page={ctx.p} x={ctx.x} y={ctx.y} onClose={() => setCtx(null)} />}
@@ -823,32 +843,13 @@ function NewTabButton({ onClick, dropOn, onDragOver, onDrop, onDragEnd }: {
 export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename, onDelete, group = false }: {
   folder: Folder; x: number; y: number; onClose: () => void; onRename: () => void; onDelete: () => void; group?: boolean;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const onClose = useMenuDismiss(ref, finishClose);
-  const closeRef = useRef(onClose); closeRef.current = onClose;
   const trigger = useRef(document.activeElement as HTMLElement | null);
-  useLayoutEffect(() => {
-    const menu = ref.current;
-    if (!menu) return;
-    positionContextMenu(menu, x, y);
-    requestStageReport();
-  }, [x, y, folder.name]);
-  useEffect(() => {
-    const h = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && closeRef.current();
-    document.addEventListener("mousedown", h);
-    ref.current?.querySelector<HTMLElement>('[role^="menuitem"]')?.focus();
-    return () => {
-      document.removeEventListener("mousedown", h);
-      requestStageReport();
-    };
-  }, []);
-  useDismissable(true, () => { closeRef.current(); trigger.current?.focus(); });
   const updateFolder = useStore((s) => s.updateFolder);
   return (
-    <div ref={ref} className="menu ctx-menu" role="menu" aria-label={group ? "Tab group actions" : "Folder actions"} onKeyDown={event => { if (event.key === "Tab") { event.preventDefault(); onClose(); trigger.current?.focus(); } else moveMenuFocus(event); }} style={{ left: x, top: y }}>
+    <Menu className="menu ctx-menu" label={group ? "Tab group actions" : "Folder actions"} point={{ x, y }} onClose={finishClose} returnFocus={trigger}>
       <div role="group" className="menu-swatches" aria-label="Folder colour">
         {SPACE_COLORS.map((color) => (
-          <button key={color} aria-pressed={folder.color === color} aria-label={color} data-space={color}
+          <button key={color} role="menuitemradio" aria-checked={folder.color === color} aria-label={color} data-space={color}
             className={`swatch sm ${folder.color === color ? "on" : ""}`}
             onClick={() => updateFolder(folder.id, { color: folder.color === color ? null : color })} />
         ))}
@@ -857,18 +858,18 @@ export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename
         {FOLDER_EMOJIS.map((emoji) => {
           const on = (folder.emoji ?? "") === emoji;
           return (
-            <button key={emoji} aria-pressed={on} aria-label={emoji === "" ? "Default folder icon" : `Icon ${emoji}`}
+            <button key={emoji} role="menuitemradio" aria-checked={on} aria-label={emoji === "" ? "Default folder icon" : `Icon ${emoji}`}
               className={`swatch emoji ${on ? "on" : ""}`}
               onClick={() => updateFolder(folder.id, { emoji: emoji || null })}>{emoji || I.folderClosed}</button>
           );
         })}
       </div>
-      <button className="menu-item" role="menuitem" onClick={() => { onRename(); onClose(); }}>
+      <button className="menu-item" role="menuitem" onClick={() => { onRename(); finishClose(); }}>
         <span className="t">Rename</span>
       </button>
-      <button className="menu-item" role="menuitem" onClick={() => { onDelete(); onClose(); }}>
+      <button className="menu-item" role="menuitem" onClick={() => { onDelete(); finishClose(); }}>
         <span className="t">{group ? "Ungroup tabs" : `Delete “${folder.name}”`}</span>
       </button>
-    </div>
+    </Menu>
   );
 }

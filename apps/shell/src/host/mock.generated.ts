@@ -149,6 +149,9 @@ const RESULTS: Record<string, unknown> = {
     "blockedCount": 0
   },
   "siteZoom": [],
+  "privatePageZoom": {
+    "level": 0
+  },
   "privacy": {
     "trackerBlock": false,
     "blocked": 0
@@ -237,6 +240,8 @@ const RESULTS: Record<string, unknown> = {
   "deleteBrowserProfile": [],
   "openBrowserProfile": false,
   "openBrowserProfileUrl": false,
+  "autofillProfile": null,
+  "setAutofillProfile": false,
   "autofill": 0,
   "vaultFill": false,
   "vaultSave": {
@@ -244,8 +249,8 @@ const RESULTS: Record<string, unknown> = {
     "updated": false
   },
   "vaultDismiss": false,
-  "vaultExport": null,
-  "vaultImport": null,
+  "passwordExport": null,
+  "passwordImport": null,
   "quickAskShortcut": {
     "enabled": false,
     "registered": false,
@@ -260,9 +265,40 @@ const RESULTS: Record<string, unknown> = {
     "path": "/tmp/aux-mock",
     "custom": false
   },
+  "spellCheck": {
+    "enabled": false,
+    "managed": false
+  },
+  "startupPreferences": {
+    "mode": "new-tab",
+    "urls": [],
+    "managed": false
+  },
+  "languagePreferences": {
+    "selected": [],
+    "effective": [],
+    "forced": [],
+    "managed": false
+  },
+  "automaticPictureInPicture": {
+    "mode": "ask",
+    "managed": false
+  },
+  "keepRuntimeInBackground": {
+    "enabled": false,
+    "available": false,
+    "managed": false
+  },
+  "defaultPageZoom": {
+    "percentage": 0,
+    "managed": false
+  },
   "downloadsSnapshot": [],
   "tabAudio": {},
   "tabsUnsavedWork": {},
+  "tabSleep": {
+    "slept": false
+  },
   "preview": null,
   "contextMenu": false,
   "navigationMenu": false,
@@ -380,8 +416,34 @@ const RESULTS: Record<string, unknown> = {
   "httpAuthRequests": [],
   "respondHttpAuth": false,
   "clearSiteData": false,
+  "siteDataCount": {
+    "domain": "mock-domain",
+    "cookies": 0
+  },
+  "browsingDataPreview": {
+    "cookies": 0,
+    "cacheBytes": 0,
+    "cacheEstimate": false
+  },
+  "clearBrowsingData": false,
   "sitePermissions": {},
   "clearSitePermission": false,
+  "cookieControls": {
+    "blockThirdParty": false,
+    "managed": false
+  },
+  "setCookieControls": false,
+  "crashReporting": {
+    "available": false,
+    "decided": false,
+    "consent": false
+  },
+  "setCrashReporting": false,
+  "httpsUpgrade": {
+    "enabled": false,
+    "available": false,
+    "managed": false
+  },
   "setHttpsUpgrade": false,
   "proceedInsecure": false,
   "useHttp": false,

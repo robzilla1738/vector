@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Mic } from "./central-icons";
 import { setDictationDraft, useDictationDrafts } from "../dictation-drafts";
 import { bridge } from "../bridge";
@@ -9,10 +9,12 @@ export function Dictation({
   draftKey,
   disabled,
   onInsert,
+  composerRef,
 }: {
   draftKey: string;
   disabled: boolean;
   onInsert: (text: string) => void;
+  composerRef: RefObject<HTMLTextAreaElement | null>;
 }) {
   const [available, setAvailable] = useState(false);
   const [reason, setReason] = useState("");
@@ -25,6 +27,9 @@ export function Dictation({
   const voiceCommand = phase === "review" ? parseVoiceCommand(text) : null;
   const panel = useRef<HTMLElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const transcript = useRef<HTMLTextAreaElement>(null);
+  const stopButton = useRef<HTMLButtonElement>(null);
+  const cancelButton = useRef<HTMLButtonElement>(null);
   const session = useRef<string | null>(null);
   const alive = useRef(true);
   const holding = useRef(false);
@@ -80,7 +85,8 @@ export function Dictation({
   useEffect(() => {
     if (document.activeElement !== document.body && !panel.current?.contains(document.activeElement)) return;
     if (phase === "idle" || phase === "saved") trigger.current?.focus();
-    else panel.current?.querySelector<HTMLElement>(phase === "review" ? "textarea" : "button")?.focus();
+    else if (phase === "review") transcript.current?.focus();
+    else (phase === "recording" ? stopButton : cancelButton).current?.focus();
   }, [phase]);
   function discard() {
     if (session.current) void bridge.cancelDictation(session.current).catch(() => {});
@@ -224,6 +230,7 @@ export function Dictation({
         </p>
       )}
       <textarea
+        ref={transcript}
         aria-label="Dictation transcript"
         value={text}
         readOnly={phase !== "review"}
@@ -235,7 +242,7 @@ export function Dictation({
       />
       <div className="dictation-actions">
         {phase === "recording" && (
-          <button className="btn sm" onClick={() => void stop()}>
+          <button ref={stopButton} className="btn sm" onClick={() => void stop()}>
             Stop recording
           </button>
         )}
@@ -245,13 +252,10 @@ export function Dictation({
               className="btn sm"
               disabled={disabled || !text.trim()}
               onClick={() => {
-                const input = panel.current
-                  ?.closest(".conversation")
-                  ?.querySelector<HTMLTextAreaElement>('textarea[aria-label="Reply to conversation"]');
                 onInsert(text.trim());
                 discard();
                 requestAnimationFrame(() => {
-                  if (input?.isConnected) input.focus();
+                  composerRef.current?.focus();
                 });
               }}
             >
@@ -275,7 +279,11 @@ export function Dictation({
             </button>
           </>
         )}
-        <button className="btn sm ghost" onClick={phase === "review" ? discard : cancelCapture}>
+        <button
+          ref={cancelButton}
+          className="btn sm ghost"
+          onClick={phase === "review" ? discard : cancelCapture}
+        >
           {phase === "review" ? "Discard" : "Cancel"}
         </button>
       </div>

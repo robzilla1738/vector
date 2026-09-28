@@ -9,7 +9,13 @@ export type TabMembership = Pick<PageTarget, "pageId"> & { viewStatus: "visible"
 /** Page metadata is read by each row. The lists subscribe only when their
  * membership changes, so a background title or loading event stays in its row. */
 export function useTabMembership(): TabMembership[] {
-  const ids = useStore(useShallow((state) => state.pages.filter(isTab).map((page) => page.pageId)));
+  const ids = useStore(
+    useShallow((state) =>
+      state.pages
+        .filter((page) => isTab(page) && page.pageId !== state.peekPageId)
+        .map((page) => page.pageId),
+    ),
+  );
   return useMemo(
     () => ids.map((pageId) => ({ pageId, viewStatus: "visible" as const, ownedByRuntime: false })),
     [ids],

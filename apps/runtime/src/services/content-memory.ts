@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { AuxError, type WorkspaceMemory } from "@aux/contracts";
 import { memoryOrigin, memorySourceExcluded } from "@aux/contracts/memory-context";
+import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
 import type { Repo } from "../store/repo.js";
 import type { EventBus } from "../events.js";
 import type { NativeBridge } from "../native.js";
@@ -143,7 +144,8 @@ export class ContentMemoryStore {
   }
 
   /** Caller must establish foreground/document eligibility before supplying page text. */
-  async saveEligible(input: Omit<RecordBody, "memoryId" | "profileId" | "capturedAt">): Promise<RecordBody> {
+  async saveEligible(input: Omit<RecordBody, "memoryId" | "profileId" | "capturedAt">,
+    currentDocument?: () => boolean): Promise<RecordBody> {
     const policy = this.policy(input.workspaceId);
     const memory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${input.workspaceId}`);
     if (!policy.enabled || memory?.enabled === false) throw new AuxError("permission_denied", "Enable page-content recall in this Space first.");
@@ -153,6 +155,8 @@ export class ContentMemoryStore {
       || !policy.allowedOrigins.includes(url.origin)
       || memory && memorySourceExcluded(memory, url.href))
       throw new AuxError("permission_denied", "This page is not eligible for content recall.");
+    if (memorySensitivityReason(input.url, input.title) || memoryContentSensitivityReason(input.text))
+      throw new AuxError("permission_denied", "Sensitive pages cannot be saved to Memory.");
     if (!input.pageId || input.pageId.length > 200 || (input.sessionId?.length ?? 0) > 200
       || !Number.isSafeInteger(input.documentEpoch) || input.documentEpoch < 0
       || !input.text.trim() || Buffer.byteLength(input.text, "utf8") > MAX_TEXT_BYTES)
@@ -165,6 +169,8 @@ export class ContentMemoryStore {
     if (!current.enabled || !current.allowedOrigins.includes(url.origin) || currentMemory?.enabled === false
       || currentMemory && memorySourceExcluded(currentMemory, url.href))
       throw new AuxError("permission_denied", "Page-content recall changed while this page was being protected.");
+    if (currentDocument && !currentDocument())
+      throw new AuxError("conflict", "The document changed while this page was being protected.");
     const sourceKey = createHmac("sha256", key).update(`${this.profileId}\0${input.workspaceId}\0${url.href}`).digest("hex");
     const existing = this.repo.db.prepare("SELECT memory_id FROM content_memory WHERE profile_id=? AND workspace_id=? AND source_key=?")
       .get(this.profileId, input.workspaceId, sourceKey) as { memory_id: string } | undefined;
@@ -205,6 +211,7 @@ export class ContentMemoryStore {
       if (body.memoryId !== row.memory_id || body.profileId !== this.profileId || body.workspaceId !== workspaceId
         || new URL(body.url).origin !== row.origin || body.capturedAt !== row.captured_at || sourceKey !== row.source_key)
         throw new Error("Protected page-memory provenance does not match its storage record.");
+      if (memorySensitivityReason(body.url, body.title) || memoryContentSensitivityReason(body.text)) continue;
       index.rows.set(row.memory_id, body);
       index.searchable.set(row.memory_id, { title: body.title.toLocaleLowerCase(), text: body.text.toLocaleLowerCase() });
     }

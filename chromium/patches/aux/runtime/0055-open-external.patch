@@ -1,0 +1,48 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -56,7 +56,7 @@
+   register_shell(AuxShellMethodGroup::kWindow,
+                  {"defaultBrowser", "setDefaultBrowser", "dataDir",
+                   "resolveSearch", "setAppearance", "setShortcuts",
+-                  "focusShell", "openFile", "closeWindow"});
++                  "focusShell", "openFile", "closeWindow", "openExternal"});
+   auto register_runtime = [this](AuxRuntimeMethodGroup group,
+                                  std::initializer_list<std::string_view> names) {
+     for (std::string_view name : names)
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -23,6 +23,7 @@
+ #include "base/strings/utf_string_conversions.h"
+ #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+ #include "chrome/browser/buildflags.h"
++#include "chrome/browser/platform_util.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/devtools/devtools_window.h"
+ #if BUILDFLAG(ENABLE_PRINTING)
+@@ -128,6 +129,24 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "openExternal") {
++    if (list->size() != 1 || !(*list)[0].is_string()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "An external link is required");
++      return;
++    }
++    const GURL url((*list)[0].GetString());
++    if (!url.is_valid() ||
++        (!url.SchemeIsHTTPOrHTTPS() && !url.SchemeIs("mailto"))) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Only web and mail links can open externally");
++      return;
++    }
++    platform_util::OpenExternal(url);
++    // The platform API is asynchronous and does not report launch completion.
++    std::move(callback).Run(true, "null", "", "");
++    return;
++  }
+   if (method == "defaultBrowser" || method == "setDefaultBrowser") {
+     if (!list->empty() || browser_->GetProfile()->IsOffTheRecord()) {
+       std::move(callback).Run(false, "", "invalid_argument",

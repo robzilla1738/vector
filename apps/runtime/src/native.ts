@@ -84,7 +84,7 @@ export interface NativeBridge {
   cosmeticCommit?(request: CosmeticCommit): Promise<ChromiumCookieBannerReceipt>;
   /** Chromium HistoryService owns writes once a native history projection is active. */
   historyClear?(range: { since?: number; before?: number }): Promise<{ removed: number }>;
-  historyRemove?(url: string, visitedAt: number): Promise<{ removed: boolean }>;
+  historyRemove?(url: string, visitedAt: number, expectedTitle?: string): Promise<{ removed: boolean }>;
   /** The Chromium Profile's TemplateURLService is the selected engine authority. */
   searchEngineGet?(): Promise<string>;
   searchEngineSet?(template: string): Promise<boolean>;
@@ -185,8 +185,9 @@ export class ChannelNativeBridge implements NativeBridge {
   historyClear(range: { since?: number; before?: number }) {
     return this.channel.call<{ removed: number }>("native.historyClear", range);
   }
-  historyRemove(url: string, visitedAt: number) {
-    return this.channel.call<{ removed: boolean }>("native.historyRemove", { url, visitedAt });
+  historyRemove(url: string, visitedAt: number, expectedTitle?: string) {
+    return this.channel.call<{ removed: boolean }>("native.historyRemove", { url, visitedAt,
+      ...(expectedTitle === undefined ? {} : { expectedTitle }) });
   }
   searchEngineGet() {
     return this.channel.call<string>("native.searchEngineGet", {});
@@ -218,6 +219,7 @@ export class ChannelNativeBridge implements NativeBridge {
         url: string;
         title: string;
         active: boolean;
+        lifecycle?: "placeholder" | "live" | "frozen" | "discarded";
         showBlankDocument?: boolean;
         cdpTargetId?: string;
       }[];

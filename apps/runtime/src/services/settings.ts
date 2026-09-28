@@ -14,6 +14,7 @@ import { z } from "zod";
 import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import {
   MODEL_REGISTRY,
+  AgentModelRoutesSettingSchema,
   mergeModelCapabilities,
   agentModelRoute,
   normalizeRouteChain,
@@ -53,11 +54,14 @@ export interface Settings {
   recoveryModel?: string;
   visionModel?: string;
   agentModelRoutes?: Partial<Record<AgentModelCategory, AgentModelRoute | AgentModelRoute[]>>;
+  providerAgentModelRoutes?: Partial<Record<ModelProvider, Settings["agentModelRoutes"]>>;
   /** User budgets in USD (D11): per run, per local day, per routine lifetime. Unset = unlimited. */
   budgets?: { runUsd?: number; dayUsd?: number; routineUsd?: number };
   searchEngine?: string;
+  homeEntryMode?: "search" | "ask";
   searchEngines?: { keyword: string; name: string; template: string }[];
   searchSuggestions?: boolean;
+  routineSuggestionScan?: "off" | "context" | "five-minutes";
   /** Personal info offered to page forms on explicit request only. */
   autofill?: {
     name?: string;
@@ -81,6 +85,8 @@ export interface Settings {
   sidebarBlur?: number;
   sidebarOpacity?: number;
   tabLayout?: "vertical" | "horizontal";
+  memorySaverMinutes?: 0 | 1 | 15 | 30 | 60;
+  tabSwitcherOrder?: "sidebar" | "recently-used";
   /** commandId → replacement bindings; null disables the command's shortcuts. */
   shortcutOverrides?: ShortcutOverrides;
   zoomFactor?: number;
@@ -170,6 +176,7 @@ export class SettingsService {
     modelCredentialError?: string;
     modelEndpoint: string;
     modelProbe?: ModelProbeRecord;
+    agentModelRouteOverrides: Settings["agentModelRoutes"];
   } {
     const modelProbe = this.get("modelProbe") as ModelProbeRecord | undefined;
     const localCompatible =
@@ -219,10 +226,14 @@ export class SettingsService {
         deep: this.agentRoute("deep"),
         visual: this.agentRoute("visual"),
       },
+      agentModelRouteOverrides: this.routeOverrides(),
       budgets: this.budgetLimits(),
       searchEngine: this.searchEngine(),
+      homeEntryMode: this.get("homeEntryMode") as Settings["homeEntryMode"],
       searchEngines: (this.get("searchEngines") as Settings["searchEngines"]) ?? [],
       searchSuggestions: (this.get("searchSuggestions") as boolean | undefined) ?? false,
+      routineSuggestionScan: z.enum(["off", "context", "five-minutes"])
+        .catch("context").parse(this.get("routineSuggestionScan")),
       maxWorkers: this.maxWorkers(),
       perOrigin: this.perOrigin(),
       maxModelCalls: this.maxModelCalls(),
@@ -234,6 +245,9 @@ export class SettingsService {
       sidebarBlur: Number(this.get("sidebarBlur") ?? 0),
       sidebarOpacity: Number(this.get("sidebarOpacity") ?? 90),
       tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "horizontal",
+      memorySaverMinutes: z.union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)])
+        .catch(0).parse(this.get("memorySaverMinutes")),
+      tabSwitcherOrder: (this.get("tabSwitcherOrder") as Settings["tabSwitcherOrder"]) ?? "sidebar",
       shortcutOverrides: (this.get("shortcutOverrides") as Settings["shortcutOverrides"]) ?? {},
       autofill: (this.get("autofill") as Settings["autofill"]) ?? {},
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,
@@ -285,6 +299,7 @@ export class SettingsService {
       "plannerModel",
       "recoveryModel",
       "visionModel",
+      "agentModelRoutes",
     ].some((key) => key in next);
     if (
       connectionChange &&
@@ -315,6 +330,11 @@ export class SettingsService {
       }
       delete next.modelCredential;
     }
+    if (next.agentModelRoutes !== undefined && selectedProvider !== "gateway") {
+      const current = this.get("providerAgentModelRoutes") as Settings["providerAgentModelRoutes"] | undefined;
+      next.providerAgentModelRoutes = { ...current, [selectedProvider]: next.agentModelRoutes };
+      delete next.agentModelRoutes;
+    }
     if (selectedProvider !== "gateway") {
       const profile = { ...this.profiles()[selectedProvider] };
       for (const key of ["plannerModel", "recoveryModel", "visionModel"] as const) {
@@ -332,6 +352,8 @@ export class SettingsService {
       next.safetyCeilings = z
         .partialRecord(EffectSchema, z.enum(["never", "ask", "always"]))
         .parse(next.safetyCeilings);
+    if (next.agentModelRoutes !== undefined)
+      next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
     if (connectionChange) this.repo.deleteSetting("modelProbe");
     for (const [k, v] of Object.entries(next)) {
@@ -384,6 +406,15 @@ export class SettingsService {
     return (this.get("visionModel") as string) || this.env.AUX_VISION_MODEL || this.plannerModel();
   }
   /** Existing model choices remain the category defaults; explicit routes can tune model and effort. */
+  private routeOverrides(): Settings["agentModelRoutes"] {
+    const provider = this.modelProvider();
+    const stored = provider === "gateway"
+      ? this.get("agentModelRoutes")
+      : (this.get("providerAgentModelRoutes") as Settings["providerAgentModelRoutes"] | undefined)?.[provider];
+    const parsed = AgentModelRoutesSettingSchema.safeParse(stored);
+    return parsed.success ? parsed.data : {};
+  }
+
   private routeBaseline(category: AgentModelCategory): AgentModelRoute {
     const baseline = agentModelRoute(category);
     const modelId =
@@ -401,7 +432,7 @@ export class SettingsService {
    */
   agentRouteChain(category: AgentModelCategory): AgentModelRoute[] {
     const stored = normalizeRouteChain(
-      (this.get("agentModelRoutes") as Settings["agentModelRoutes"] | undefined)?.[category],
+      this.routeOverrides()?.[category],
     );
     const chain = stored.length ? stored : [this.routeBaseline(category)];
     const seen = new Set(chain.map((r) => r.modelId));

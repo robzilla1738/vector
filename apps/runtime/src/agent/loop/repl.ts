@@ -42,6 +42,8 @@ export interface ReplHostDeps {
   /** decide() first; parks like webFetch on `ask`. */
   openTab(url: string): Promise<LoopToolResult>;
   closeTab(pageId: string): Promise<void>;
+  /** Save the claimed current page into Profile bookmarks after a write decision. */
+  bookmark?(pageId: string): Promise<LoopToolResult>;
   /** Switch the REPL's current page — only tabs the run claims or opened. */
   useTab(pageId: string): Promise<ReplTab>;
   observe(pageId: string, scope?: string): Promise<unknown>;
@@ -195,6 +197,7 @@ page.webmcp = Object.freeze({
 const tabs = () => __aux_invoke("tabs");
 const openTab = (url) => { const t = __aux_invoke("openTab", { url }); __aux_page = t.pageId; return t; };
 const closeTab = (pageId) => __aux_invoke("closeTab", { pageId });
+page.bookmark = () => __aux_invoke("bookmark", { pageId: __aux_page });
 const snapshot = (scope) => __aux_invoke("observe", { pageId: __aux_page, scope });
 const annotatedScreenshot = () => __aux_invoke("capture", { pageId: __aux_page });
 const display = (value) => { __aux_displayed.push(value); return __aux_invoke("display", { value }); };
@@ -295,6 +298,13 @@ class ReplSession {
         }
         case "closeTab":
           return ok(await this.deps.closeTab(String(parsed.pageId ?? "")));
+        case "bookmark": {
+          if (!this.deps.bookmark) throw new AuxError("capability_unsupported", "Bookmarking is unavailable in this run.");
+          const result = await this.deps.bookmark(String(parsed.pageId ?? ""));
+          if ("park" in result) return fail("bookmark needs a decision", { park: result.park });
+          if ("finish" in result) return ok(result.finish.result);
+          return ok(result.output);
+        }
         case "useTab":
           return ok(await this.deps.useTab(String(parsed.pageId ?? "")));
         case "observe":

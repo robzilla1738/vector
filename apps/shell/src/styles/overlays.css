@@ -1,9 +1,6 @@
 @layer components {
 /* ---------- overlays ---------- */
 .overlay-scrim { position: fixed; inset: 0; z-index: var(--z-scrim); display: flex; align-items: flex-start; justify-content: center; padding-top: 10vh; background: color-mix(in srgb, var(--bg-window) 35%, transparent); }
-.drawer { position: fixed; top: var(--stage-inset); right: var(--stage-inset); bottom: var(--stage-inset); width: 420px; max-width: calc(100vw - 2 * var(--stage-inset)); z-index: var(--z-drawer); background: var(--surface-popover); border-radius: var(--r-2xl); box-shadow: var(--shadow-pop), var(--line-inset); padding: var(--space-4) var(--space-5) var(--space-5); overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-4); }
-.drawer.wide { width: 520px; }
-.drawer h3 { font-size: var(--fs-lg); font-weight: var(--fw-medium); letter-spacing: var(--tracking-tight); }
 .drawer-head { display: flex; align-items: center; gap: var(--space-2); }
 .drawer-section { font-size: var(--fs-2xs); font-weight: var(--fw-medium); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--ink-2); padding-top: var(--space-2); }
 .drawer-loading { display: flex; align-items: center; gap: var(--space-2); color: var(--ink-2); font-size: var(--fs-sm); }
@@ -51,16 +48,6 @@ fieldset.field { min-inline-size: 0; margin: 0; padding: 0; border: none; }
 .horizontal-tab.drop-before > .horizontal-tab-select::before { left: -2px; }
 .horizontal-tab.drop-after > .horizontal-tab-select::after { right: -2px; }
 
-/* ---------- toasts ---------- */
-.toasts { position: fixed; left: var(--space-3); bottom: var(--space-3); z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--space-2); pointer-events: none; max-width: min(360px, calc(var(--sb-w, var(--sidebar-w)) - var(--space-3))); }
-.toasts.top { left: 50%; bottom: auto; top: var(--space-2); transform: translateX(-50%); }
-.toast svg { color: var(--ok); flex: none; }
-.toast { pointer-events: auto; display: inline-flex; align-items: center; gap: var(--space-2); background: var(--bg-1); border-radius: var(--r-lg); padding: var(--space-2) var(--space-3); font-size: var(--fs-sm); box-shadow: var(--shadow-pop), var(--line-inset); color: var(--ink-0); }
-.toast .toast-dismiss { margin-right: calc(-1 * var(--space-1)); }
-.toast .toast-dismiss svg { color: var(--ink-2); }
-.toast.error svg { color: var(--err); }
-.toast.error { box-shadow: var(--shadow-pop), inset 0 0 0 1px var(--err-line); }
-
 /* ---------- vault save offer ---------- */
 .vault-offer { position: fixed; right: var(--space-3); top: var(--space-3); margin: 0; z-index: var(--z-toast); display: flex; align-items: center; gap: var(--space-3); background: var(--bg-1); border-radius: var(--r-lg); padding: var(--space-2) var(--space-3); box-shadow: var(--shadow-pop), var(--line-inset); color: var(--ink-0); font-size: var(--fs-sm); max-width: min(420px, 90vw); }
 .vault-offer-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
@@ -94,9 +81,9 @@ fieldset.field { min-inline-size: 0; margin: 0; padding: 0; border: none; }
 body.resizing .resize-handle::after {
   width: 5px; height: 64px; opacity: 1; background: var(--ink-1);
 }
-body.resizing { cursor: col-resize !important; user-select: none !important; }
-body.resizing * { pointer-events: none !important; }
-body.resizing .resize-handle { pointer-events: auto !important; }
+body.resizing { cursor: col-resize; user-select: none; }
+body.resizing * { pointer-events: none; cursor: col-resize; }
+body.resizing .resize-handle { pointer-events: auto; }
 
 /* ---------- narrow windows ---------- */
 @media (max-width: 1100px) {

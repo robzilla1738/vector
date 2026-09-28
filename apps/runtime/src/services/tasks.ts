@@ -125,7 +125,7 @@ export class TaskService {
     return next;
   }
 
-  create(input: unknown): Task {
+  create(input: unknown, origin: "desktop" | "external" = "desktop"): Task {
     const definition = TaskCreateParams.parse(input);
     if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(definition.workspaceId))
       throw new AuxError("not_found", "Workspace does not exist");
@@ -151,6 +151,7 @@ export class TaskService {
     const now = Date.now();
     const task: Task = {
       ...definition,
+      ...(origin === "external" ? { sourceOrigin: "external" as const } : {}),
       taskId: randomUUID(),
       revision: 1,
       state: "open",
@@ -213,6 +214,7 @@ export class TaskService {
       const task: Task = {
         ...definition,
         conversationId: chatId,
+        sourceOrigin: "conversation",
         taskId: randomUUID(),
         revision: 1,
         state: "open",
@@ -317,9 +319,10 @@ export class TaskService {
     return { task, revisions, runs, children: descendants };
   }
 
-  update(input: unknown): Task {
+  update(input: unknown, origin: "desktop" | "external" = "desktop"): Task {
     const { taskId, expectedRevision, ...patch } = TaskUpdateParams.parse(input);
-    return this.change(taskId, expectedRevision, patch);
+    return this.change(taskId, expectedRevision,
+      origin === "external" ? { ...patch, sourceOrigin: "external" } : patch);
   }
 
   archive(taskId: string, expectedRevision: number, archived: boolean): Task {

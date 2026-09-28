@@ -10,6 +10,7 @@ import { AnswerPreview } from "./surfaces";
 import { openSavedTask } from "../task-navigation";
 import { STATUS_LABEL } from "../run-status";
 import { I } from "./icons";
+import { Tabs } from "../ui";
 
 function previewText(item: ConversationSummary, draft?: string) {
   if (draft?.trim()) return draft.trim();
@@ -67,22 +68,14 @@ export function RecentWork() {
   const count = tab === "chats" ? items.length : routines.length;
   return <section className="home-history" aria-label="Recent work">
     <header className="home-section-head">
-      <div className="history-segment" role="group" aria-label="Recent work view" onKeyDown={event => {
-        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-        event.preventDefault();
-        const next = event.key === "Home" ? "chats" : event.key === "End" ? "routines" : tab === "chats" ? "routines" : "chats";
-        setTab(next);
-        event.currentTarget.querySelectorAll<HTMLButtonElement>("button")[next === "chats" ? 0 : 1]?.focus();
-      }}>
-        <button className={tab === "chats" ? "active" : ""} aria-pressed={tab === "chats"} onClick={() => setTab("chats")}>Chats</button>
-        <button className={tab === "routines" ? "active" : ""} aria-pressed={tab === "routines"} onClick={() => setTab("routines")}>Routines</button>
-      </div>
+      <Tabs<"chats" | "routines"> label="Recent work view" value={tab} onChange={setTab} panelId="recent-work-panel" className="history-segment"
+        items={[{ value: "chats", label: "Chats" }, { value: "routines", label: "Routines" }]} />
       <button className="home-all" onClick={() => {
         if (tab === "routines") useStore.getState().setOverlay("tasks");
         else { useStore.getState().openConversation(null); useStore.setState({conversationId: "history"}); }
       }}>{tab === "chats" ? "All Chats" : "Manage routines"}{I.right}</button>
     </header>
-    <div className="home-cards" aria-busy={loading}>
+    <div id="recent-work-panel" role="tabpanel" aria-labelledby={`recent-work-panel-${tab}`} className="home-cards" aria-busy={loading}>
       {tab === "chats" ? items.map(item => <article className="home-card" key={item.chatId}>
         <div className="home-card-meta"><time dateTime={new Date(item.updatedAt).toISOString()}>{new Date(item.updatedAt).toLocaleDateString(undefined, {month: "short", day: "numeric"})}</time><span>{drafts[draftKey(item.chatId)]?.trim() ? "Draft" : STATUS_LABEL[item.latestRun.status]}</span></div>
         <h3><button className="home-card-open" onClick={() => useStore.getState().openConversation(item.latestRun.runId)}>{item.title}</button></h3>

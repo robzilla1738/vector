@@ -5,8 +5,10 @@
     gap: var(--space-1);
     padding: var(--space-2) var(--space-3);
     border-bottom: var(--hairline) solid var(--line);
+    overflow-x: auto;
   }
   .cb-provider-scopes button {
+    flex: none;
     padding: var(--space-1) var(--space-2);
     border-radius: var(--r-pill);
     color: var(--ink-2);
@@ -18,6 +20,12 @@
   }
   .cb-provider-scopes .cb-ranking-toggle {
     margin-left: auto;
+  }
+  .cb-suggestion-privacy {
+    margin: 0;
+    padding: var(--space-1) var(--space-3);
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
   }
   .cb-provider-error {
     display: flex;
@@ -41,5 +49,17 @@
   .cb-provider-scopes button:focus-visible {
     outline: 2px solid var(--focus-line);
     outline-offset: 2px;
+  }
+  .cb-search-keys {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-top: var(--hairline) solid var(--line);
+    color: var(--ink-2);
+    font-size: var(--fs-xs);
+  }
+  .cb-search-keys kbd {
+    color: var(--ink-0);
   }
 }

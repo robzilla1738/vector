@@ -1,0 +1,258 @@
+diff --git a/chrome/browser/resources/aux_host/aux_feature_stages.ts b/chrome/browser/resources/aux_host/aux_feature_stages.ts
+--- a/chrome/browser/resources/aux_host/aux_feature_stages.ts
++++ b/chrome/browser/resources/aux_host/aux_feature_stages.ts
+@@ -541,7 +541,7 @@
+   }
+ } as const;
+ const runtimeMethods = ["agent.tidy.propose","agent.tabName.suggest","agent.inlineAssist.capture","agent.inlineAssist.draft","agent.inlineAssist.apply","agent.inlineAssist.cancel","spaces.create","spaces.update","vault.status","vault.list","vault.save","vault.lock","vault.unlock","vault.grant","vault.renewGrant","vault.expiredGrants","vault.revoke","vault.history","vault.grants","vault.generate","vault.itemsForOrigin","vault.fill","vault.export","vault.import","vault.update","vault.secretMatches","routines.list","routines.suggest","routines.get","routines.create","routines.fromResult","routines.update","routines.pause","routines.archive","routines.run","routines.runs","routines.outcome","routines.reconcile","routines.due","routines.ingestEvent","routines.alerts","routines.inbox","routines.inboxRead","routines.compare","routines.export","routines.exportSkill","routines.importSkill","routines.import","zap.list","zap.grant","zap.update","zap.revoke","plugins.inspect","plugins.install","plugins.list","plugins.assets","plugins.skills.grant","plugins.skills.grants","plugins.skills.revoke","plugins.skills.read","plugins.uninstall","memory.pipeline.policy","memory.pipeline.setPolicy","memory.pipeline.extractRun","memory.pipeline.overview","memory.pipeline.search","memory.pipeline.forget","calendar.connections.list","calendar.auth.start","calendar.connections.revoke","calendar.events.list","calendar.taskGrants.list","calendar.taskGrants.create","calendar.taskGrants.revoke","calendar.taskEvents.list","connectors.catalog","customization.zap.pick","customization.zap.list","customization.zap.add","customization.zap.remove","customization.css.get","customization.css.set","customization.css.effective","customization.css.apply","sets.create","sets.get","sets.list","sets.map","sets.results","safety.grants.list","safety.grants.revoke"] as const;
+-const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:reader":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:inboundAgents":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83"};
++const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:reader":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:inboundAgents":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83","feature:extensions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83"};
+ export type FeatureStage = 'off' | 'preview' | 'on';
+ export function featureStagesFor(methods: readonly string[], sourceCommit: string): Record<keyof typeof requirements, FeatureStage> {
+   const implemented = new Set<string>([...methods, ...runtimeMethods]);
+diff --git a/chrome/browser/ui/aux/extension_bridge.cc b/chrome/browser/ui/aux/extension_bridge.cc
+--- a/chrome/browser/ui/aux/extension_bridge.cc
++++ b/chrome/browser/ui/aux/extension_bridge.cc
+@@ -23,6 +23,7 @@
+ #include "extensions/browser/disable_reason.h"
+ #include "extensions/browser/extension_registrar.h"
+ #include "extensions/browser/extension_registry.h"
++#include "extensions/browser/unpacked_installer.h"
+ #include "extensions/browser/uninstall_reason.h"
+ #include "extensions/common/extension.h"
+ #include "extensions/common/permissions/permissions_data.h"
+@@ -47,6 +48,12 @@
+ 
+ bool StoreOwned(const extensions::Extension* extension) {
+   return extension && extension->from_webstore() && !extension->is_app();
++}
++
++bool UserManaged(const extensions::Extension* extension) {
++  return extension && !extension->is_app() &&
++         (StoreOwned(extension) || extension->location() ==
++                                       extensions::mojom::ManifestLocation::kUnpacked);
+ }
+ 
+ base::DictValue Describe(const extensions::Extension& extension,
+@@ -60,7 +67,7 @@
+   item.Set("version", extension.VersionString());
+   item.Set("enabled", enabled);
+   item.Set("loaded", enabled);
+-  item.Set("managed", StoreOwned(&extension));
++  item.Set("managed", UserManaged(&extension));
+   item.Set("source", extension.from_webstore() ? "store" : "environment");
+   base::ListValue permissions;
+   for (const auto& message :
+@@ -84,13 +91,59 @@
+              : nullptr;
+ }
+ 
++void LoadUnpacked(Profile* profile, const base::FilePath& path,
++                  std::string expected_id, Reply callback) {
++  if (!profile || profile->IsOffTheRecord() || path.empty()) {
++    Error(std::move(callback), "invalid_argument",
++          "Choose an unpacked extension folder in a regular Profile");
++    return;
++  }
++  auto installer = extensions::UnpackedInstaller::Create(profile);
++  installer->set_completion_callback(base::BindOnce(
++      [](base::WeakPtr<Profile> profile, std::string expected_id,
++         Reply callback, const extensions::Extension* loaded,
++         const base::FilePath&, const std::u16string& error) {
++        auto* registry = profile
++                             ? extensions::ExtensionRegistry::Get(profile.get())
++                             : nullptr;
++        const auto* installed = loaded && registry
++                                    ? registry->GetInstalledExtension(loaded->id())
++                                    : nullptr;
++        if (!installed) {
++          Error(std::move(callback), "install_failed",
++                error.empty() ? "Unpacked extension could not be loaded"
++                              : base::UTF16ToUTF8(error));
++          return;
++        }
++        if (!expected_id.empty() && installed->id() != expected_id) {
++          if (auto* registrar = extensions::ExtensionRegistrar::Get(profile.get())) {
++            std::u16string uninstall_error;
++            registrar->UninstallExtension(installed->id(),
++                extensions::UNINSTALL_REASON_USER_INITIATED, &uninstall_error);
++          }
++          Error(std::move(callback), "conflict",
++                "The extension identity changed during update");
++          return;
++        }
++        Result(std::move(callback), base::Value(Describe(*installed, *registry)));
++      }, profile->GetWeakPtr(), std::move(expected_id), std::move(callback)));
++  installer->Load(path);
++}
++
+ }  // namespace
+ 
+ bool ExtensionBridge::Handles(std::string_view method) {
+   return method == "extensions" || method == "installStoreExtension" ||
+          method == "checkStoreExtensionUpdate" ||
+          method == "setExtensionEnabled" || method == "reloadExtension" ||
+-         method == "removeExtension" || method == "showExtensionAction";
++         method == "removeExtension" || method == "showExtensionAction" ||
++         method == "updateUnpackedExtension";
++}
++
++void ExtensionBridge::InstallUnpacked(Profile* profile,
++                                      const base::FilePath& path,
++                                      Callback callback) {
++  LoadUnpacked(profile, path, "", std::move(callback));
+ }
+ 
+ bool ExtensionBridge::IsStoreId(std::string_view id) {
+@@ -138,6 +191,18 @@
+   }
+   if (!id || !IsStoreId(*id)) {
+     Error(std::move(callback), "invalid_argument", "Invalid Store extension ID");
++    return;
++  }
++  if (method == "updateUnpackedExtension") {
++    const extensions::Extension* installed =
++        registry->GetInstalledExtension(*id);
++    if (!installed || installed->location() !=
++                          extensions::mojom::ManifestLocation::kUnpacked) {
++      Error(std::move(callback), "not_found",
++            "Unpacked extension is not installed in this Profile");
++      return;
++    }
++    LoadUnpacked(profile, installed->path(), *id, std::move(callback));
+     return;
+   }
+   if (method == "installStoreExtension") {
+@@ -166,11 +231,16 @@
+     return;
+   }
+   const extensions::Extension* extension = registry->GetInstalledExtension(*id);
+-  if (!StoreOwned(extension)) {
+-    Error(std::move(callback), "not_found", "Store extension is not installed in this Profile");
++  if (!UserManaged(extension)) {
++    Error(std::move(callback), "not_found", "Extension is not user-managed in this Profile");
+     return;
+   }
+   if (method == "checkStoreExtensionUpdate") {
++    if (!StoreOwned(extension)) {
++      Error(std::move(callback), "invalid_argument",
++            "Only Store extensions use the Chromium updater");
++      return;
++    }
+     auto* updater = extensions::ExtensionUpdaterFactory::GetForBrowserContext(profile);
+     if (!updater) {
+       Error(std::move(callback), "backend_unavailable", "Extension updater is unavailable");
+diff --git a/chrome/browser/ui/aux/extension_bridge.h b/chrome/browser/ui/aux/extension_bridge.h
+--- a/chrome/browser/ui/aux/extension_bridge.h
++++ b/chrome/browser/ui/aux/extension_bridge.h
+@@ -9,6 +9,7 @@
+ #include <string_view>
+ 
+ #include "base/functional/callback.h"
++#include "base/files/file_path.h"
+ #include "base/values.h"
+ #include "ui/gfx/native_ui_types.h"
+ 
+@@ -27,6 +28,8 @@
+ 
+   static bool Handles(std::string_view method);
+   static bool IsStoreId(std::string_view id);
++  static void InstallUnpacked(Profile* profile, const base::FilePath& path,
++                              Callback callback);
+   static void Handle(Profile* profile, BrowserWindowInterface* browser,
+                      gfx::NativeWindow parent, std::string_view method,
+                      const base::ListValue& args, Callback callback);
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -54,7 +54,8 @@
+   register_shell(AuxShellMethodGroup::kExtensions,
+                  {"extensions", "installStoreExtension",
+                   "checkStoreExtensionUpdate", "setExtensionEnabled",
+-                  "reloadExtension", "removeExtension", "showExtensionAction"});
++                  "reloadExtension", "removeExtension", "showExtensionAction",
++                  "installUnpackedExtension", "updateUnpackedExtension"});
+   register_shell(AuxShellMethodGroup::kLibrary,
+                  {"organizationSnapshot", "organizationCommit"});
+   register_shell(AuxShellMethodGroup::kTabs,
+diff --git a/chrome/browser/ui/aux/methods/extensions_methods.cc b/chrome/browser/ui/aux/methods/extensions_methods.cc
+--- a/chrome/browser/ui/aux/methods/extensions_methods.cc
++++ b/chrome/browser/ui/aux/methods/extensions_methods.cc
+@@ -128,6 +128,38 @@
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "installUnpackedExtension") {
++    if (!list->empty()) {
++      std::move(callback).Run(false, "", "invalid_argument",
++                              "Unpacked install takes no arguments");
++      return;
++    }
++    if (browser_->GetProfile()->IsOffTheRecord()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Extensions require a regular Profile");
++      return;
++    }
++    if (open_file_dialog_) {
++      std::move(callback).Run(false, "", "conflict",
++                              "A file dialog is already open");
++      return;
++    }
++    auto* active = browser_->GetTabStripModel()->GetActiveWebContents();
++    open_file_dialog_ = ui::SelectFileDialog::Create(
++        this, std::make_unique<ChromeSelectFilePolicy>(active));
++    if (!open_file_dialog_) {
++      std::move(callback).Run(false, "", "not_supported",
++                              "The system file dialog is unavailable");
++      return;
++    }
++    file_dialog_purpose_ = FileDialogPurpose::kUnpackedExtension;
++    file_dialog_callback_ = std::move(callback);
++    open_file_dialog_->SelectFile(
++        ui::SelectFileDialog::SELECT_FOLDER, std::u16string(),
++        browser_->GetProfile()->last_selected_directory(), nullptr, 0,
++        base::FilePath::StringType(), browser_->GetWindow()->GetNativeWindow());
++    return;
++  }
+   if (aux::ExtensionBridge::Handles(method)) {
+     aux::ExtensionBridge::Handle(
+         browser_->GetProfile(), browser_, browser_window()->GetNativeWindow(),
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -507,6 +507,22 @@
+         .Run(result.has_value(), result.value_or(""),
+              result.has_value() ? "" : "invalid_argument",
+              result.has_value() ? "" : "Invalid selected file path");
++    return;
++  }
++  if (purpose == FileDialogPurpose::kUnpackedExtension) {
++    if (!IsAuthorizedAuxDocument()) {
++      std::move(callback).Run(false, "", "forbidden",
++                              "Aux shell is no longer active");
++      return;
++    }
++    aux::ExtensionBridge::InstallUnpacked(browser_->GetProfile(),
++        selected_path,
++        base::BindOnce(
++            [](RequestCallback callback, bool ok, std::string result,
++               std::string code, std::string message) {
++              std::move(callback).Run(ok, result, code, message);
++            },
++            std::move(callback)));
+     return;
+   }
+   if (purpose == FileDialogPurpose::kSaveFile) {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -272,7 +272,8 @@
+     kDownloadFolder,
+     kPluginDirectory,
+     kEvidenceImage,
+-    kEvidenceDocument
++    kEvidenceDocument,
++    kUnpackedExtension
+   };
+   FileDialogPurpose file_dialog_purpose_ = FileDialogPurpose::kNone;
+   scoped_refptr<ui::SelectFileDialog> open_file_dialog_;

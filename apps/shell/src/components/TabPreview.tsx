@@ -1,3 +1,4 @@
+import "./TabPreview.css";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { PageTarget } from "@aux/contracts";
