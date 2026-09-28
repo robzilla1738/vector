@@ -1013,10 +1013,16 @@ else {
       const status = await rpc("import.status", { jobId: resumedRun.jobId });
       return status.done ? status : null;
     }, 90_000);
+    report.importRunDiagnostics = { cancelled: stopped.report, resumed: resumed.report };
     assert.deepEqual(resumed.report.results.map(result => result.state), ["done", "error"]);
-    const importedDb = new DatabaseSync(join(profile, "Default/History"), { readOnly: true });
-    const importedCount = importedDb.prepare("SELECT COUNT(*) AS count FROM urls WHERE url LIKE 'https://aux-import-cancel.example/%'").get().count;
-    importedDb.close();
+    const nativeCount = () => {
+      const db = new DatabaseSync(join(profile, "Default/History"), { readOnly: true });
+      try { return db.prepare("SELECT COUNT(*) AS count FROM urls WHERE url LIKE 'https://aux-import-cancel.example/%'").get().count; }
+      finally { db.close(); }
+    };
+    const importedCount = await until("all resumed native History rows", async () => {
+      try { return nativeCount() === 5000 ? 5000 : null; } catch { return null; }
+    }, 30_000);
     assert.equal(importedCount, 5000, "Retry after cancel must complete without duplicate native URLs");
     assert.deepEqual(Object.fromEntries(importSourceFiles.map(path =>
       [path.slice(importHome.length + 1), createHash("sha256").update(readFileSync(path)).digest("hex")])),
@@ -1040,9 +1046,9 @@ else {
         return (await rpc("workspace.get")).sessions?.some(session => session.sessionId === "aux" && session.status === "connected");
       } catch { return false; }
     }, 60_000);
-    const restartedDb = new DatabaseSync(join(profile, "Default/History"), { readOnly: true });
-    const restartedCount = restartedDb.prepare("SELECT COUNT(*) AS count FROM urls WHERE url LIKE 'https://aux-import-cancel.example/%'").get().count;
-    restartedDb.close();
+    const restartedCount = await until("restarted native History rows", async () => {
+      try { return nativeCount() === 5000 ? 5000 : null; } catch { return null; }
+    }, 30_000);
     assert.equal(restartedCount, 5000);
     record("cancelled-and-resumed native History remains complete after graceful restart");
     report.passed = true;
@@ -5327,7 +5333,9 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       count: await rpc("history.count").catch(cause => String(cause)),
     };
   }
-  report.steps.push({ name: "terminal failure", passed: false, detail: String(error), ...(settingsHttpsFirstJourney ? { httpPlainRequests, tlsHelloRequests } : {}) });
+  report.steps.push({ name: "terminal failure", passed: false,
+    detail: browserImportAttachedJourney && error instanceof Error ? error.stack ?? String(error) : String(error),
+    ...(settingsHttpsFirstJourney ? { httpPlainRequests, tlsHelloRequests } : {}) });
   process.exitCode = 1;
 } finally {
   report.completedAt = new Date().toISOString();
