@@ -183,7 +183,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     messages.push(recovery);
   }
   const system = opts.system ?? buildSystemPrompt({
-    hasPage: !!opts.pageId,
+    hasPage: !!(typeof opts.pageId === "function" ? opts.pageId() : opts.pageId),
     webEnabled: !!(opts.deps.webFetch || opts.deps.webSearch),
     webmcp: opts.webmcp === true,
   });
@@ -191,6 +191,9 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
   const sdkTools = Object.fromEntries(
     Object.entries(tools).map(([name, tool]) => [name, { description: `${tool.description}\n\n(${tool.byline})`, inputSchema: tool.inputSchema }]),
   );
+  const firstTurnPageTools = (typeof opts.pageId === "function" ? opts.pageId() : opts.pageId) && opts.deps.repl && tools.goal_program
+    ? { goal_program: sdkTools.goal_program!, submit_result: sdkTools.submit_result!, ask_user_question: sdkTools.ask_user_question! }
+    : undefined;
 
   // Auto-recall (06-Z): query content memory for the task once, durably. The
   // recall message lands before any assistant turn, so every later step shares
@@ -239,7 +242,8 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
         modelId: opts.modelId,
         system,
         messages,
-        tools: sdkTools,
+        tools: firstTurnPageTools && !messages.some((message) => message.role === "assistant")
+          ? firstTurnPageTools : sdkTools,
         signal: opts.signal,
         providerOptions: opts.providerOptions,
         sessionId: opts.threadId,

@@ -136,6 +136,21 @@ describe("code-mode REPL", () => {
     expect(submitResult).toHaveBeenCalledWith({ report: "rec-13", citations: [{ observationId: "obs-3", quote: "Created by the user. Internal ref rec-13." }] });
   });
 
+  it("navigates only a route resolved from observed links", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const findRoute = vi.fn(async () => ({ url: "http://x.test/records/rec-14" }));
+    const step = vi.fn(async () => ({ output: { status: "completed" } }));
+    await pool.eval(deps({ findRoute, step }), `page.navigateMatching("rec-14")`, { pageId: "p1" });
+    expect(findRoute).toHaveBeenCalledWith("p1", "rec-14");
+    expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "navigate", url: "http://x.test/records/rec-14" }));
+    const denied = vi.fn(async () => { throw new AuxError("invalid_params", "ambiguous route"); });
+    const deniedPool = new ReplPool();
+    cleanup.push(() => deniedPool.disposeAll());
+    await expect(deniedPool.eval(deps({ runId: "run-2", findRoute: denied, step }), `page.navigateMatching("rec-99")`, { pageId: "p2" })).rejects.toThrow(/ambiguous route/);
+    expect(step).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses ambiguous labeled values instead of choosing a row", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

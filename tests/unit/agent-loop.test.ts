@@ -80,6 +80,27 @@ describe("TranscriptStore (S5)", () => {
 });
 
 describe("runAgentLoop (S5)", () => {
+  it("offers a complete goal program on the first page turn, then all tools after a safe fallback", async () => {
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    const seen: string[][] = [];
+    let turn = 0;
+    const model: NonNullable<AgentLoopOptions["model"]["toolCallStep"]> = async ({ tools }) => {
+      seen.push(Object.keys(tools));
+      turn++;
+      const toolCalls = turn === 1
+        ? [{ toolCallId: "g1", toolName: "goal_program", input: { code: "page.navigateMatching('rec-14')" } }]
+        : [{ toolCallId: "s1", toolName: "submit_result", input: { report: "fallback" } }];
+      return { message: { role: "assistant", content: [] } as ModelMessage, toolCalls, durationMs: 0 };
+    };
+    const result = await runAgentLoop({ ...baseOpts(transcript, { repl: async () => { throw new Error("should not execute incomplete program"); },
+      submitResult: async ({ report }) => ({ ok: true, result: { report } }) }), model: { toolCallStep: model } });
+    expect(result).toMatchObject({ kind: "done", text: "fallback" });
+    expect(seen[0]).toEqual(["goal_program", "submit_result", "ask_user_question"]);
+    expect(seen[1]).toContain("snapshot");
+    expect(seen[1]).toContain("repl");
+  });
+
   it("closes an unanswered call after a crash without replaying its effect", async () => {
     const { transcript, db } = fixture();
     transcript.append("run-1", [userTask, {
@@ -440,7 +461,7 @@ function coordinatorHarness(
   const events = new EventBus(repo);
   const pages = {
     observe: vi.fn(async () => pageObs()),
-    execute: vi.fn(async (program: { steps: PlanStep[] }, ctx?: { runId?: string }) =>
+    execute: vi.fn(async (program: { steps: PlanStep[] }, ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void }) =>
       execute?.(program, ctx) ?? { status: "completed", steps: [] }),
     livePageIds: () => ["p1"],
     get: () => ({ viewStatus: "visible", documentEpoch: 1, url: "http://x.test/order" }),
@@ -467,6 +488,38 @@ async function settle(repo: Repo, runId: string) {
 }
 
 describe("runToolLoop (S5 host integration)", () => {
+  it("finishes a corroborated record route and dialog in one goal-program model call", async () => {
+    let current = { ...pageObs(), content: { ...pageObs().content,
+      url: "http://x.test/records", text: "Records",
+      elements: [
+        { ref: "r1", tag: "a", role: "link", name: "Record 01", href: "/records/rec-01", frame: "main" },
+        { ref: "r2", tag: "a", role: "link", name: "Record 02", href: "/records/rec-02", frame: "main" },
+      ],
+    } } as Observation;
+    const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{
+      toolCallId: "g1", toolName: "goal_program", input: { code: 'page.navigateMatching("rec-14"); page.clickByName("Details", "button"); page.submitLabeledValue("Internal ref")' },
+    }] }]);
+    const h = coordinatorHarness(model);
+    h.pages.observe.mockImplementation(async () => current);
+    h.pages.execute.mockImplementation(async (program: { steps: PlanStep[] }, ctx?: { onStep?: (o: StepOutcome, s: PlanStep) => void }) => {
+      const op = program.steps[0]?.op;
+      current = op === "navigate"
+        ? { ...current, revision: 2, content: { ...current.content, url: "http://x.test/records/rec-14", text: "Record rec-14", elements: [
+          { ref: "r3", tag: "button", role: "button", name: "Details", frame: "main" },
+        ] } } as Observation
+        : { ...current, revision: 3, content: { ...current.content, text: "Internal ref rec-14." } } as Observation;
+      const steps = program.steps.map((step) => ({ stepId: step.id, op: step.op, status: "ok" as const, startedAt: 1, durationMs: 1,
+        receipt: { remoteConfirmed: true, uncertain: false, dispatchedBeforeTakeover: false }, effect: "observed" as const }));
+      for (const [index, step] of program.steps.entries()) ctx?.onStep?.(steps[index]!, step);
+      return { status: "completed", steps, observation: current };
+    });
+    const run = await h.coordinator.start({ goal: "Find rec-14, open its detail page and Details dialog, then report Internal ref", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "rec-14" });
+    expect(h.modelCalls).toHaveLength(1);
+    expect(h.pages.execute).toHaveBeenCalledTimes(2);
+  });
   it("completes a text turn and seeds the task into the durable transcript", async () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "ship it" }]);
     const h = coordinatorHarness(model);

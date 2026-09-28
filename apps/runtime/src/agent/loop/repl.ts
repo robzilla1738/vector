@@ -50,6 +50,8 @@ export interface ReplHostDeps {
   observe(pageId: string, scope?: string): Promise<unknown>;
   /** Resolve one uniquely named control from a fresh governed observation. */
   findRef?(pageId: string, name: string, role?: string): Promise<{ ref: string }>;
+  /** Infer one route from exact same-origin links or two sibling record links. */
+  findRoute?(pageId: string, targetId: string): Promise<{ url: string }>;
   /** Capture plus the last observation's ref geometry — the annotation data (pixel overlays land with native support). */
   capture(
     pageId: string,
@@ -274,6 +276,10 @@ page.clickByName = (name, role) => {
   const target = __aux_invoke("findRef", { pageId: __aux_page, name, role });
   return page.click(target.ref);
 };
+page.navigateMatching = (targetId) => {
+  const route = __aux_invoke("findRoute", { pageId: __aux_page, targetId });
+  return page.navigate(route.url);
+};
 page.labeledValue = (label) => {
   const wanted = String(label || "").trim().toLowerCase();
   if (!wanted) throw new Error("A field label is required");
@@ -425,6 +431,10 @@ class ReplSession {
             return fail(new AuxError("capability_unsupported", "Named control lookup is unavailable in this run."));
           return ok(await this.deps.findRef(String(parsed.pageId ?? ""), String(parsed.name ?? ""),
             parsed.role === undefined ? undefined : String(parsed.role)));
+        case "findRoute":
+          if (!this.deps.findRoute)
+            return fail(new AuxError("capability_unsupported", "Route matching is unavailable in this run."));
+          return ok(await this.deps.findRoute(String(parsed.pageId ?? ""), String(parsed.targetId ?? "")));
         case "capture": {
           const shot = await this.deps.capture(String(parsed.pageId ?? ""));
           if (shot.dataUrl && this.deps.outputDir) {

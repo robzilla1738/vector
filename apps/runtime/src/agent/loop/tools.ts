@@ -191,6 +191,21 @@ export function buildToolManifest(): LoopToolManifest {
     },
   };
 
+  const goalProgram: LoopTool = {
+    description: "First-turn page workflow. Write one synchronous-looking JavaScript script that performs the whole task and calls submitResult(report, citations) or page.submitLabeledValue(label) after inspecting live evidence. page.navigateMatching(targetId) resolves a unique same-origin route only when observed sibling links support it; page.clickByName(name, role?) observes a unique control before its governed click. Both fail on ambiguity. Use snapshot() for a cited observation. All page actions still pass decide() and the durable write ledger. If the needed route, control, or answer is ambiguous, throw rather than guess; the ordinary tools are available on the next turn.",
+    byline: "Aux first-turn goal program — governed REPL with verified finish",
+    inputSchema: z.object({
+      code: z.string().min(1).max(64_000).describe("One complete REPL script ending in submitResult(...) or page.submitLabeledValue(...)."),
+      deadlineMs: z.number().int().positive().optional(),
+    }),
+    execute: async (raw, ctx) => {
+      const input = z.object({ code: z.string().min(1).max(64_000), deadlineMs: z.number().int().positive().optional() }).parse(raw);
+      if (!/\b(?:submitResult|submitLabeledValue)\s*\(/.test(input.code))
+        return { output: new AuxError("invalid_params", "Goal program needs a verified terminal submitResult or page.submitLabeledValue call; use ordinary tools on the next turn if the answer cannot be derived safely.") };
+      return need(ctx.deps.repl, "goal_program")(input, ctx);
+    },
+  };
+
   const getTime: LoopTool = {
     description: "Current wall-clock time (ISO and epoch ms).",
     byline: "Aux clock",
@@ -475,6 +490,7 @@ export function buildToolManifest(): LoopToolManifest {
     snapshot,
     act,
     repl,
+    goal_program: goalProgram,
     webfetch,
     websearch,
     ask_user_question: askUserQuestion,

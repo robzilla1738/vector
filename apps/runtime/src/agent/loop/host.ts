@@ -16,6 +16,7 @@ import { permittedWebUrl } from "../web-tools.js";
 import { TranscriptStore } from "./transcript.js";
 import { recordRunTabChange } from "../../services/browser-change-ledger.js";
 import { buildToolManifest } from "./tools.js";
+import { matchingRoute } from "./route.js";
 import type { LoopToolDeps, LoopToolResult, ModelMessage } from "./types.js";
 
 /**
@@ -448,6 +449,16 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           ? `Named control "${name}" is ambiguous (${matches.length} matches); use a specific name or ref.`
           : `No control named "${name}" is in the current observation.`);
       return { ref: matches[0]!.ref };
+    },
+    findRoute: async (pageId, targetId) => {
+      if (!run.pageIds.includes(pageId) && !openedTabs.has(pageId))
+        throw new AuxError("permission_denied", "Route matching requires a tab claimed by this run.");
+      const obs = lastObs.get(pageId) ?? await observePage(pageId, {});
+      const hrefs = [...obs.content.elements.flatMap((element) => element.href ? [element.href] : []),
+        ...obs.content.links.map((link) => link.href)];
+      const url = matchingRoute(obs.content.url, hrefs, targetId);
+      if (!url) throw new AuxError("invalid_params", `No unique route for ${targetId} is supported by the observed links.`);
+      return { url };
     },
     capture: async (pageId) => {
       const shot = await self.deps.pages.capture(pageId);
