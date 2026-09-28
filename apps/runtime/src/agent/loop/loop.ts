@@ -168,6 +168,20 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     return { kind: "failed", error: new AuxError("capability_unsupported", "The configured model client does not support tool calling.") };
   }
   const messages = transcript.load(runId);
+  // The assistant call is persisted before any tool is dispatched. A process
+  // can die at any point after that write, including after an effect happened
+  // but before its result was stored. Close that transcript gap on restart;
+  // never replay the call to guess whether it ran. The write ledger remains
+  // the authority for reconciling consequential effects.
+  const interrupted = unansweredToolCalls(messages);
+  if (interrupted.length && !transcript.openPark(runId)) {
+    const recovery = toolResultsMessage(interruptedResults(
+      interrupted,
+      "The process stopped before this tool result was recorded. Its outcome is unknown. Do not repeat a consequential action; inspect the write ledger and fresh page state first.",
+    ));
+    transcript.append(runId, [recovery]);
+    messages.push(recovery);
+  }
   const system = opts.system ?? buildSystemPrompt({
     hasPage: !!opts.pageId,
     webEnabled: !!(opts.deps.webFetch || opts.deps.webSearch),
@@ -297,6 +311,19 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       opts.onToolCall?.(call, result);
     }
 
+    // A terminal call can appear alongside other calls. If it was accepted,
+    // every later call was skipped; still pair each assistant call with a
+    // truthful result before this completed turn enters durable history.
+    if (finished !== undefined) {
+      const answered = new Set(results.map((result) => result.toolCallId));
+      for (const call of toolCalls) {
+        if (!answered.has(call.toolCallId)) results.push({
+          toolCallId: call.toolCallId, toolName: call.toolName,
+          output: { interrupted: true, detail: "The accepted submit_result ended this turn before this call ran." },
+        });
+      }
+    }
+
     // Media pruning + the per-turn tool budget (06-Z): embedded payloads
     // shrink to markers before they persist, and aggregate output past 40 KB
     // truncates with an honest note.
@@ -316,6 +343,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
       transcript.park(runId, {
         toolCallId: parked.call.toolCallId,
         toolName: parked.call.toolName,
+        suspension: parked.park,
         pendingResults: results.map((r) => (r.parked ? { toolCallId: r.toolCallId, toolName: r.toolName, parked: true } : { toolCallId: r.toolCallId, toolName: r.toolName, output: r.output })),
       });
       return { kind: "parked", park: parked.park, toolCallId: parked.call.toolCallId };

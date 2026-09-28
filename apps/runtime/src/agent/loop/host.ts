@@ -119,7 +119,9 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   const writeDispatches = new Map<string, { pageId: string; revision: number }>();
   let applied = run.config?.messageRevision ?? 0;
   let steerCursor = self.deps.repo.listRunSteers(runId).length;
-  let modelCalls = 0;
+  // A resumed process inherits the calls already billed for this run. The
+  // step cap must not reset just because the in-memory host restarted.
+  let modelCalls = self.deps.repo.listModelCalls(runId).filter((call) => call.role === "agent").length;
   const maxModelCalls = run.config?.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS;
   /** One re-observe chance when an uncertain dispatch blocks a done turn. */
   let blockedOnLedger = false;
@@ -561,6 +563,36 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     while (true) {
       await self.waitIfPaused(c, runId);
       if (signal.aborted) return;
+      // A restart may find a durable parked tool call while the old host's
+      // in-memory answer waiter is gone. Recreate its typed suspension and
+      // wait for a fresh answer; never send the unanswered call back to the
+      // model or execute it a second time.
+      const openPark = !hasResume ? transcript.openPark(runId) : undefined;
+      if (openPark) {
+        const suspensionInfo = openPark.suspension ?? {
+          kind: "ask-user-question" as const,
+          instruction: "The agent was waiting for an answer when the runtime stopped. Please answer again to continue.",
+        };
+        const suspension = self.suspensions.pending(runId) ?? self.suspensions.park({
+          runId, threadId, turnId: runId,
+          kind: suspensionInfo.kind,
+          request: {
+            kind: suspensionInfo.kind,
+            instruction: suspensionInfo.instruction,
+            guidance: "Wait for the user to answer; do not dispatch or retry while parked.",
+            ...(suspensionInfo.approvalId ? { approvalId: suspensionInfo.approvalId } : {}),
+          },
+        });
+        self.setStatus(runId, "needs_input", suspension.request.instruction || suspensionInfo.instruction);
+        const raw = await self.waitForAnswer(c, runId);
+        if (signal.aborted || c.abort.signal.aborted) {
+          self.suspensions.resolve(suspension.suspensionId, "cancelled");
+          return;
+        }
+        self.suspensions.resolve(suspension.suspensionId, "answered");
+        resumeAnswer = raw.trim() ? raw : { resolved: true };
+        hasResume = true;
+      }
       if (maxModelCalls > 0 && modelCalls >= maxModelCalls) {
         self.finish(runId, "failed", undefined, "model call budget exhausted");
         return;

@@ -57,13 +57,15 @@ describe("TranscriptStore (S5)", () => {
   });
 
   it("parks once, resolves transactionally, and refuses double resolve", () => {
-    const { transcript } = fixture();
+    const { transcript, db } = fixture();
     transcript.append("r1", [userTask]);
     transcript.park("r1", {
       toolCallId: "c1", toolName: "ask_user_question",
+      suspension: { kind: "ask-user-question", instruction: "What color?" },
       pendingResults: [{ toolCallId: "c1", toolName: "ask_user_question", parked: true }],
     });
     expect(transcript.openPark("r1")?.toolCallId).toBe("c1");
+    expect(new TranscriptStore(db).openPark("r1")?.suspension).toEqual({ kind: "ask-user-question", instruction: "What color?" });
     expect(() => transcript.park("r1", { toolCallId: "c2", toolName: "x", pendingResults: [] })).toThrow(/already has a parked/);
     const toolMessage: ModelMessage = {
       role: "tool",
@@ -77,6 +79,31 @@ describe("TranscriptStore (S5)", () => {
 });
 
 describe("runAgentLoop (S5)", () => {
+  it("closes an unanswered call after a crash without replaying its effect", async () => {
+    const { transcript, db } = fixture();
+    transcript.append("run-1", [userTask, {
+      role: "assistant",
+      content: [{ type: "tool-call", toolCallId: "write-1", toolName: "webfetch", input: { url: "https://example.com" } }],
+    } as ModelMessage]);
+    let executions = 0;
+    let sawRecovery = false;
+    const model: NonNullable<AgentLoopOptions["model"]["toolCallStep"]> = async ({ messages }) => {
+      sawRecovery = messages.some((message) => message.role === "tool" && JSON.stringify(message).includes("outcome is unknown"));
+      return {
+        message: { role: "assistant", content: [{ type: "text", text: "I need to inspect the state." }] } as ModelMessage,
+        toolCalls: [], text: "I need to inspect the state.", finishReason: "stop", durationMs: 0,
+      };
+    };
+    const outcome = await runAgentLoop({
+      ...baseOpts(new TranscriptStore(db), { webFetch: async () => { executions++; return { output: "unexpected" }; } }),
+      model: { toolCallStep: model },
+    });
+    expect(outcome).toMatchObject({ kind: "done" });
+    expect(sawRecovery).toBe(true);
+    expect(executions).toBe(0);
+    expect(transcript.load("run-1").map((message) => message.role)).toEqual(["user", "assistant", "tool", "assistant"]);
+  });
+
   it("ends the turn when the model answers with text", async () => {
     const { transcript } = fixture();
     const model = new MockModelClient().scriptToolSteps([{ text: "all done" }]);
@@ -301,6 +328,27 @@ describe("runAgentLoop (S5)", () => {
     });
     expect(outcome).toMatchObject({ kind: "done", text: "fetched" });
     expect(order).toEqual(["fetch:https://example.com/a", "submit:fetched"]);
+  });
+
+  it("pairs skipped calls when an accepted submit_result ends a multi-call turn", async () => {
+    const { transcript } = fixture();
+    let executions = 0;
+    const model = new MockModelClient().scriptToolSteps([{
+      toolCalls: [
+        { toolCallId: "s1", toolName: "submit_result", input: { report: "done" } },
+        { toolCallId: "s2", toolName: "submit_result", input: { report: "stale" } },
+      ],
+    }]);
+    const result = await runAgentLoop({
+      ...baseOpts(transcript, { submitResult: async () => { executions++; return { ok: true, result: { report: "done" } }; } }),
+      model,
+    });
+    expect(result).toMatchObject({ kind: "done" });
+    expect(executions).toBe(1);
+    const tool = transcript.load("run-1").find((message) => message.role === "tool");
+    expect(JSON.stringify(tool)).toContain('"toolCallId":"s1"');
+    expect(JSON.stringify(tool)).toContain('"toolCallId":"s2"');
+    expect(JSON.stringify(tool)).toContain("before this call ran");
   });
 
   it("caps runaway loops at maxSteps", async () => {

@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { ModelMessage } from "./types.js";
+import type { LoopPark, ModelMessage } from "./types.js";
 
 /**
  * Durable transcript rows: every model-visible message a run consumes or
@@ -19,6 +19,8 @@ export interface ParkedCall {
   /** The tool call awaiting a resolution — its result is the answer. */
   toolCallId: string;
   toolName: string;
+  /** Typed suspension needed to reconstruct the pending question on restart. */
+  suspension?: LoopPark;
   /**
    * Every call of the step in order: real outputs for executed calls, a
    * `parked` slot for the suspended call, and honest "interrupted" outputs
