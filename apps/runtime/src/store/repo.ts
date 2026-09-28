@@ -1150,7 +1150,11 @@ export class Repo {
            body_bytes=excluded.body_bytes,truncated=excluded.truncated`,
       )
       .run(
-        r.requestId, r.pageId, r.url, r.method, r.status ?? null, r.contentType ?? null,
+        r.requestId, r.pageId,
+        this.protectField("response_metadata", r.requestId, "url", r.url),
+        this.protectField("response_metadata", r.requestId, "method", r.method),
+        r.status ?? null,
+        this.protectField("response_metadata", r.requestId, "content_type", r.contentType ?? null),
         r.startedAt, r.endedAt ?? null, r.durationMs ?? null, r.bodyArtifactId ?? null,
         r.bodyBytes ?? null, r.truncated ?? 0, r.runId ?? null,
       );
@@ -1160,23 +1164,43 @@ export class Repo {
     return r ? this.responseRow(r) : undefined;
   }
   listResponses(pageId: string, opts?: { since?: number; urlIncludes?: string; limit?: number }) {
-    const rows = this.q(
-        `SELECT * FROM response_metadata WHERE page_id=? ${opts?.since ? "AND started_at>=?" : ""}
-         ${opts?.urlIncludes ? "AND url LIKE ?" : ""} ORDER BY started_at DESC LIMIT ?`,
-      )
-      .all(
-        ...([pageId, ...(opts?.since ? [opts.since] : []), ...(opts?.urlIncludes ? [`%${opts.urlIncludes}%`] : []), opts?.limit ?? 200] as any[]),
-      ) as any[];
-    return rows.map((r) => this.responseRow(r));
+    const limit = Math.max(0, opts?.limit ?? 200);
+    if (!limit) return [];
+    const since = opts?.since;
+    const includes = opts?.urlIncludes?.toLowerCase();
+    if (!includes) {
+      return (this.q(`SELECT * FROM response_metadata WHERE page_id=? ${since ? "AND started_at>=?" : ""}
+        ORDER BY started_at DESC, request_id DESC LIMIT ?`)
+        .all(...([pageId, ...(since ? [since] : []), limit] as any[])) as any[])
+        .map(row => this.responseRow(row));
+    }
+    const matches: ReturnType<Repo["responseRow"]>[] = [];
+    let cursor: { started_at: number; request_id: string } | undefined;
+    while (matches.length < limit) {
+      const rows = this.q(`SELECT * FROM response_metadata WHERE page_id=? ${since ? "AND started_at>=?" : ""}
+        ${cursor ? "AND (started_at<? OR (started_at=? AND request_id<?))" : ""}
+        ORDER BY started_at DESC, request_id DESC LIMIT 256`)
+        .all(...([pageId, ...(since ? [since] : []), ...(cursor ? [cursor.started_at, cursor.started_at, cursor.request_id] : [])] as any[])) as any[];
+      if (!rows.length) break;
+      for (const row of rows) {
+        const response = this.responseRow(row);
+        if (response.url.toLowerCase().includes(includes)) matches.push(response);
+        if (matches.length >= limit) break;
+      }
+      const last = rows.at(-1)!;
+      cursor = { started_at: last.started_at, request_id: last.request_id };
+      if (rows.length < 256) break;
+    }
+    return matches;
   }
   private responseRow(r: any) {
     return {
       requestId: r.request_id as string,
       pageId: r.page_id as string,
-      url: r.url as string,
-      method: r.method as string,
+      url: this.revealField("response_metadata", r.request_id, "url", r.url)!,
+      method: this.revealField("response_metadata", r.request_id, "method", r.method)!,
       status: r.status ?? undefined,
-      contentType: r.content_type ?? undefined,
+      contentType: this.revealField("response_metadata", r.request_id, "content_type", r.content_type) ?? undefined,
       startedAt: r.started_at as number,
       endedAt: r.ended_at ?? undefined,
       durationMs: r.duration_ms ?? undefined,

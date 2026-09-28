@@ -218,3 +218,42 @@ it("protects saved programs and their execution text across migration and restar
     expect(() => reopened.getProgram("old")).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
+
+it("protects response URLs while preserving paged URL search", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-responses-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    for (let i = 0; i < 260; i++) legacy.saveResponse({ requestId: `other-${i}`, pageId: "page",
+      url: `https://example.test/other-${i}`, method: "GET", startedAt: 1000 + i });
+    legacy.saveResponse({ requestId: "target", pageId: "page", url: "https://private.example/needle-carmine",
+      method: "POST", contentType: "private/type-carmine", startedAt: 1 });
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "response_metadata")).toBe(523);
+    const protectedRepo = new Repo(db, cipher);
+    expect(protectedRepo.listResponses("page", { urlIncludes: "NEEDLE-CARMINE", limit: 1 })[0]?.requestId)
+      .toBe("target");
+    expect(protectedRepo.getResponse("target")?.contentType).toBe("private/type-carmine");
+    protectedRepo.saveResponse({ requestId: "new", pageId: "page", url: "https://private.example/needle-coral",
+      method: "PUT", startedAt: 2000 });
+    expect(protectedRepo.listResponses("page", { urlIncludes: "needle", limit: 2 }).map(row => row.requestId))
+      .toEqual(["new", "target"]);
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("needle-carmine")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("needle-carmine")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopened = new Repo(db, await SqliteColumnCipher.create(secrets.secrets, "profile-one", true));
+    expect(reopened.getResponse("target")?.method).toBe("POST");
+    db.prepare("UPDATE response_metadata SET url='tampered plaintext' WHERE request_id='target'").run();
+    expect(() => reopened.getResponse("target")).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});
