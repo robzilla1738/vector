@@ -3,7 +3,7 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 
 import { basename, dirname, resolve, sep } from "node:path";
 import type { CoordinatorLoopHost } from "../coordinator-verify.js";
 import { DEFAULT_MAX_MODEL_CALLS, NAV_OPS, TERMINAL_STATUSES, markUnconfirmedWrites, verifyResultCitations } from "../coordinator-verify.js";
-import { subagentGrants } from "../permissions.js";
+import { classifyStep, subagentGrants } from "../permissions.js";
 import { observationLineHash } from "../durable.js";
 import { redactObservation } from "../planner.js";
 import { redactForModel } from "../policy.js";
@@ -189,7 +189,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     act: async ({ pageId, steps }): Promise<LoopToolResult> => {
       const obs = lastObs.get(pageId) ?? (lastObs.set(pageId, await observePage(pageId, {})), lastObs.get(pageId)!);
       const safeObs = redactObservation(obs);
-      const actionLabels = steps.flatMap((step) => {
+      const actionLabels = steps.filter((step) => classifyStep(step.op) !== "read").flatMap((step) => {
         const target = "target" in step ? step.target : undefined;
         if (typeof target !== "string") return [];
         const name = safeObs.content.elements.find((element) => element.ref === target)?.name
@@ -283,6 +283,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       const intent = selectedId ? self.durable.getById(selectedId) : undefined;
       if (!intent || intent.runId !== runId || !["pending", "uncertain"].includes(intent.status))
         return { ok: false as const, error: "No unresolved intent with that ID belongs to this run." };
+      if (intent.summary?.ops.length !== 1 || !intent.summary.beforeLineHashes.length)
+        return { ok: false as const, error: "This intent lacks a single action and recorded pre-state; leave its effect uncertain." };
       const key = citation.observationId ?? `${citation.pageId}@${citation.revision}`;
       const meta = obsMeta.get(key);
       const text = obsTexts.get(key);
