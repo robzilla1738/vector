@@ -11,6 +11,8 @@ const IDENTITY_OVERRIDES: Readonly<Record<string, readonly string[]>> = {
   task_evidence: ["evidence_id"],
   criterion_reviews: ["review_id"],
 };
+export const protectedSqliteIdentity = (table: string, info: readonly { name: string; pk: number }[]): readonly string[] =>
+  IDENTITY_OVERRIDES[table] ?? info.filter(item => item.pk > 0).sort((a, b) => a.pk - b.pk).map(item => item.name);
 /** Event stream identity and tracing counters have SQL arithmetic readers. All other KV values are protected. */
 export const protectedKvKey = (key: string): boolean => key !== "meta:eventStreamId" && !key.startsWith("counter:");
 type Secrets = Pick<NativeBridge, "readSecret" | "storeSecret"> & {
@@ -132,8 +134,7 @@ export function migrateSensitiveTable(db: DatabaseSync, cipher: SqliteColumnCiph
   const info = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; pk: number }[];
   const present = new Set(info.map(item => item.name));
   if (columns.some(column => !present.has(column))) throw new Error("Protected database schema does not match the migration plan.");
-  const identity = IDENTITY_OVERRIDES[table] ?? info.filter(item => item.pk > 0)
-    .sort((a, b) => a.pk - b.pk).map(item => item.name);
+  const identity = protectedSqliteIdentity(table, info);
   if (!identity.length || identity.some(column => columns.includes(column)))
     throw new Error("Protected database primary keys need an explicit stable identity migration.");
   if (db.prepare("SELECT 1 FROM sqlite_schema WHERE tbl_name=? AND type='trigger' LIMIT 1").get(table))

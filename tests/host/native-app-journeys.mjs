@@ -816,6 +816,18 @@ else {
     try {
       db.prepare("INSERT INTO model_calls(call_id,run_id,role,model_id,duration_ms,error,created_at) VALUES(?,?,?,?,?,?,?)")
         .run("legacy-startup", "fixture-run", "agent", "fixture-model", 1, "private startup marker", Date.now());
+      db.prepare("INSERT INTO runs(run_id,goal,status,config,created_at) VALUES(?,?,?,?,?)")
+        .run("legacy-run", "private native run", "completed", JSON.stringify({ chatId: "legacy-chat", context: "private native context" }), Date.now());
+      db.prepare("INSERT INTO run_lookup(run_id,config) VALUES(?,?)")
+        .run("legacy-run", JSON.stringify({ chatId: "legacy-chat" }));
+      db.prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES(?,?,?)")
+        .run("legacy-space", "private native space", Date.now());
+      db.prepare("INSERT INTO tasks(task_id,workspace_id,revision,state,updated_at,json) VALUES(?,?,?,?,?,?)")
+        .run("legacy-task", "legacy-space", 1, "open", Date.now(), JSON.stringify({ title: "private native task" }));
+      db.prepare("INSERT INTO task_lookup(task_id) VALUES(?)").run("legacy-task");
+      db.prepare("INSERT INTO task_evidence(evidence_id,task_id,task_revision,criterion_id,json) VALUES(?,?,?,?,?)")
+        .run("legacy-evidence", "legacy-task", 1, "criterion", JSON.stringify({ note: "private native evidence" }));
+      db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("setting:nativeFixture", JSON.stringify({ text: "private native setting" }));
     } finally { db.close(); }
   }
   if (browserImportUiJourney) {
@@ -922,17 +934,28 @@ else {
       try {
         return {
           error: db.prepare("SELECT error FROM model_calls WHERE call_id='legacy-startup'").get()?.error,
+          run: db.prepare("SELECT goal,config FROM runs WHERE run_id='legacy-run'").get(),
+          space: db.prepare("SELECT name FROM workspaces WHERE workspace_id='legacy-space'").get()?.name,
+          task: db.prepare("SELECT json FROM tasks WHERE task_id='legacy-task'").get()?.json,
+          evidence: db.prepare("SELECT json FROM task_evidence WHERE evidence_id='legacy-evidence'").get()?.json,
+          setting: db.prepare("SELECT value FROM kv WHERE key='setting:nativeFixture'").get()?.value,
           markers: db.prepare("SELECT key FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%' ORDER BY key").all().map(row => row.key),
         };
       } finally { db.close(); }
     };
     const migrated = inspect();
     assert.ok(migrated.error?.startsWith("auxenc:v1:"), "Legacy model error must migrate before services start");
+    for (const value of [migrated.run?.goal, migrated.run?.config, migrated.space, migrated.task,
+      migrated.evidence, migrated.setting])
+      assert.ok(value?.startsWith("auxenc:v1:"), "Legacy run, Space, Task, evidence and setting text must migrate");
     assert.deepEqual(migrated.markers, ["datasets", "events", "model_calls", "page_sets", "programs",
       "response_metadata", "results", "run_messages", "operation_implementations", "operation_reconciliations",
-      "safety_approval_requests", "safety_audit",
-      "safety_send_journal", "set_members"].map(table => `protected_sqlite_v1:${table}`).sort());
-    assert.equal(readFileSync(databasePath).includes("private startup marker"), false);
+      "safety_approval_requests", "safety_audit", "safety_send_journal", "set_members", "runs", "steps",
+      "conversations", "workspaces", "tasks", "task_revisions", "task_evidence", "criterion_reviews",
+      "criterion_verifications", "kv_filtered"].map(table => `protected_sqlite_v1:${table}`).sort());
+    for (const marker of ["private startup marker", "private native run", "private native context", "private native space",
+      "private native task", "private native evidence", "private native setting"])
+      assert.equal(readFileSync(databasePath).includes(marker), false);
     record("native Keychain startup migrates adapted SQLite rows before runtime readiness", { tables: migrated.markers.length });
     console.log("Quit this disposable Aux window from the Aux menu, then the journey will relaunch the same Profile.");
     if (child.exitCode === null) await new Promise((resolveExit, rejectExit) => {
@@ -953,6 +976,7 @@ else {
       } catch { return false; }
     }, 60_000);
     assert.equal(inspect().error, migrated.error, "Protected row must remain stable across native restart");
+    assert.equal(inspect().evidence, migrated.evidence, "Protected evidence must remain stable across native restart");
     assert.ok(Array.isArray(await rpc("workspaces.list", {})));
     record("protected SQLite row and authenticated runtime survive native restart");
     report.passed = true;

@@ -6,7 +6,7 @@ import {dirname,isAbsolute,join,relative,resolve,sep} from 'node:path';
 import {SCHEMA_VERSION} from '../store/db.js';
 import type {Repo} from '../store/repo.js';
 import {sanitizePortablePageRecall} from '@aux/contracts/portable-page-recall';
-import {SENSITIVE_SQLITE_COLUMNS,protectedKvKey,type SqliteColumnCipher} from '../store/sqlite-protection.js';
+import {SENSITIVE_SQLITE_COLUMNS,protectedKvKey,protectedSqliteIdentity,type SqliteColumnCipher} from '../store/sqlite-protection.js';
 import {minimizeLegacyObservationArtifacts,minimizedObservationArtifactBytes} from './observation-artifact-migration.js';
 
 const MAX_BACKUP_BYTES=2*1024*1024*1024,MAX_ARTIFACT_BYTES=1024*1024*1024,MAX_ARTIFACTS=10_000;
@@ -64,7 +64,7 @@ function authenticateProtectedCopy(db:DatabaseSync,cipher?:SqliteColumnCipher){
     const columns=SENSITIVE_SQLITE_COLUMNS[table];
     if(!columns||table==='kv')throw new Error('The backup contains an unknown protected storage plan.');
     const info=db.prepare(`PRAGMA table_info(${table})`).all() as {name:string;pk:number}[];
-    const identity=info.filter(item=>item.pk>0).sort((a,b)=>a.pk-b.pk).map(item=>item.name);
+    const identity=protectedSqliteIdentity(table,info);
     if(!identity.length||columns.some(column=>!info.some(item=>item.name===column)))
       throw new Error('The protected backup schema is invalid.');
     const rows=db.prepare(`SELECT ${[...new Set([...identity,...columns])].join(',')} FROM ${table}`).all() as Record<string,unknown>[];

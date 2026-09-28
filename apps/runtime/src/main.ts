@@ -532,7 +532,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         try {
           const row = repo.db.prepare("SELECT json FROM tasks WHERE task_id=?").get(taskId) as
             { json: string } | undefined;
-          const task = row ? TaskSchema.parse(JSON.parse(row.json)) : undefined;
+          const task = row ? TaskSchema.parse(JSON.parse(repo.taskJson(taskId, row.json))) : undefined;
           for (const resource of task?.resources ?? [])
             if (resource.kind === "file" || resource.kind === "repository") roots.push(resource.locator);
         } catch {

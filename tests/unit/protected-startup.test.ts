@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { openDb, Repo } from "@aux/runtime";
+import { EventBus, openDb, Repo, TaskService } from "@aux/runtime";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
 import { prepareProtectedDatabase } from "../../apps/runtime/src/store/protected-startup.js";
 
@@ -30,15 +30,35 @@ it("migrates adapted data before repository reads, survives restart and refuses 
   } as unknown as NativeBridge;
   let db = openDb(path);
   try {
-    new Repo(db).saveModelCall({ callId: "old", runId: "run", role: "agent", modelId: "model", durationMs: 1,
+    const legacy = new Repo(db);
+    legacy.saveModelCall({ callId: "old", runId: "run", role: "agent", modelId: "model", durationMs: 1,
       error: "private startup error", createdAt: 1 });
+    legacy.saveRun({ runId: "old-run", goal: "private startup goal", status: "completed", pageIds: [],
+      config: { chatId: "chat", context: "private startup context" }, createdAt: 1 });
+    legacy.setSetting("startup-fixture", { text: "private startup setting" });
+    const legacyTasks = new TaskService(legacy, new EventBus(legacy));
+    const space = legacyTasks.createWorkspace("private startup space");
+    const task = legacyTasks.create({ workspaceId: space.workspaceId, title: "private startup task",
+      objective: "Check protection", criteria: [{ criterionId: "check", description: "Protected",
+        verification: "manual" }] });
     const cipher = await prepareProtectedDatabase(db, native, profileId);
-    expect(new Repo(db, cipher).listModelCalls("run")[0]?.error).toBe("private startup error");
+    const protectedRepo = new Repo(db, cipher);
+    expect(protectedRepo.listModelCalls("run")[0]?.error).toBe("private startup error");
+    expect(protectedRepo.getRun("old-run")?.config?.context).toBe("private startup context");
+    expect(protectedRepo.getSetting("startup-fixture")).toEqual({ text: "private startup setting" });
+    expect(new TaskService(protectedRepo, new EventBus(protectedRepo)).get(task.taskId).title)
+      .toBe("private startup task");
+    expect((db.prepare("SELECT count(*) AS n FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%'").get() as { n: number }).n)
+      .toBe(24);
     expect(readFileSync(path).includes("private startup error")).toBe(false);
+    expect(readFileSync(path).includes("private startup task")).toBe(false);
     db.close();
     db = openDb(path);
     const reopened = await prepareProtectedDatabase(db, native, profileId);
-    expect(new Repo(db, reopened).listModelCalls("run")[0]?.error).toBe("private startup error");
+    const reopenedRepo = new Repo(db, reopened);
+    expect(reopenedRepo.listModelCalls("run")[0]?.error).toBe("private startup error");
+    expect(new TaskService(reopenedRepo, new EventBus(reopenedRepo)).get(task.taskId).title)
+      .toBe("private startup task");
     secrets.delete(name("sqlite_factor_v1"));
     await expect(prepareProtectedDatabase(db, native, profileId)).rejects.toThrow(/factor is missing/);
   } finally { db.close(); rmSync(dir, { recursive: true, force: true }); }

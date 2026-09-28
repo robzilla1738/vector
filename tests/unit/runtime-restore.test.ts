@@ -71,6 +71,13 @@ it("sanitizes protected article recall and authenticates the same Profile before
     config: { chatId: "chat", contextMemoryIds: ["source"], context: "private source paragraph" },
     result: { answer: "private answer" }, createdAt: 1 });
   legacy.setSetting("conversationAttachments:chat", [{ sourceArtifactId: "unrelated", filename: "retained.txt" }]);
+  db.prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES('space','private space',1)").run();
+  db.prepare("INSERT INTO tasks(task_id,workspace_id,revision,state,updated_at,json) VALUES('task','space',1,'open',1,?)")
+    .run(JSON.stringify({ title: "private task" }));
+  db.prepare("INSERT INTO task_evidence(evidence_id,task_id,task_revision,criterion_id,json) VALUES('evidence','task',1,'criterion',?)")
+    .run(JSON.stringify({ note: "private evidence" }));
+  db.prepare("INSERT INTO criterion_reviews(review_id,task_id,task_revision,criterion_id,json) VALUES('review','task',1,'criterion',?)")
+    .run(JSON.stringify({ note: "private review" }));
   const saved = new Map<string, string>();
   const profileId = "restore-profile";
   const secretName = (prefix: string) => `${prefix}_${createHash("sha256").update(profileId).digest("hex").slice(0, 24)}`;
@@ -91,11 +98,14 @@ it("sanitizes protected article recall and authenticates the same Profile before
   const cipher = await SqliteColumnCipher.create(secrets, profileId, false);
   migrateSensitiveTable(db, cipher, "runs");
   migrateSensitiveKv(db, cipher);
+  for (const table of ["workspaces", "tasks", "task_evidence", "criterion_reviews"])
+    migrateSensitiveTable(db, cipher, table);
   const repo = new Repo(db, cipher);
   const backup = await createRuntimeBackup(repo, dataDir);
   const backupBytes = readFileSync(join(backup.path, "state.sqlite"));
   expect(backupBytes.includes("private source paragraph")).toBe(false);
   expect(backupBytes.includes("retained.txt")).toBe(false);
+  expect(backupBytes.includes("private evidence")).toBe(false);
   repo.close();
   await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/original Profile key/);
   expect(existsSync(join(dataDir, "pending-runtime-restore.json"))).toBe(false);
@@ -110,6 +120,9 @@ it("sanitizes protected article recall and authenticates the same Profile before
   expect(restored.getSetting("conversationAttachments:chat")).toEqual([
     { sourceArtifactId: "unrelated", filename: "retained.txt" },
   ]);
+  const evidence = restored.db.prepare("SELECT json FROM task_evidence WHERE evidence_id='evidence'").get() as { json: string };
+  expect(JSON.parse(cipher.decrypt("task_evidence", JSON.stringify(["evidence"]), "json", evidence.json)))
+    .toMatchObject({ note: "private evidence" });
   restored.close();
   const backupDbPath = join(backup.path, "state.sqlite");
   const tampered = new DatabaseSync(backupDbPath);
