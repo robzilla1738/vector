@@ -452,3 +452,55 @@ it("protects safety approvals, send journal and audit records across restart", a
     expect(() => new ApprovalStore(db, () => {}, reopenedCipher).pending("thread", 103)).toThrow(/plaintext/);
   } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
 });
+
+it("protects operation implementations and reconciliation notes", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-protected-operations-"));
+  const file = join(directory, "state.sqlite");
+  const oldBackup = join(directory, "old.sqlite");
+  const newBackup = join(directory, "new.sqlite");
+  const secrets = fixture();
+  let db = openDb(file);
+  try {
+    const legacy = new Repo(db);
+    legacy.saveOperation({ operationId: "operation", siteKey: "example.test", name: "fill" });
+    legacy.saveImplementation({ implId: "old-impl", operationId: "operation", kind: "program",
+      executable: "private executable teal", evidence: [{ note: "private evidence teal" }],
+      stats: { note: "private stats teal" } });
+    legacy.saveInvocation({ invocationId: "old-invocation", operationId: "operation", status: "running", startedAt: 1 });
+    legacy.saveOperationReconciliation({ invocationId: "old-invocation", taskId: "task", taskRevision: 1,
+      outcome: "applied", evidenceId: "evidence", note: "private reconciliation teal", recordedAt: 2 });
+    db.prepare("VACUUM INTO ?").run(oldBackup);
+    const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
+    expect(migrateSensitiveTable(db, cipher, "operation_implementations")).toBe(3);
+    expect(migrateSensitiveTable(db, cipher, "operation_reconciliations")).toBe(1);
+    const protectedRepo = new Repo(db, cipher);
+    expect(protectedRepo.listImplementations("operation")[0]?.executable).toBe("private executable teal");
+    protectedRepo.setImplState("old-impl", "validated", [{ note: "private updated evidence teal" }]);
+    protectedRepo.saveImplementation({ implId: "new-impl", operationId: "operation", kind: "program",
+      executable: "private executable coral", evidence: [], stats: { score: 1 } });
+    protectedRepo.saveInvocation({ invocationId: "new-invocation", operationId: "operation", status: "running", startedAt: 3 });
+    protectedRepo.saveOperationReconciliation({ invocationId: "new-invocation", taskId: "task", taskRevision: 1,
+      outcome: "not_applied", evidenceId: "evidence", note: "private reconciliation coral", recordedAt: 4 });
+    expect(protectedRepo.listImplementations("operation", "validated")[0]?.evidence)
+      .toEqual([{ note: "private updated evidence teal" }]);
+    compactProtectedSqlite(db);
+    db.prepare("VACUUM INTO ?").run(newBackup);
+    expect(readFileSync(oldBackup).includes("private executable teal")).toBe(true);
+    for (const path of [file, newBackup, `${file}-wal`]) {
+      expect(!existsSync(path) || !readFileSync(path).includes("private executable teal")).toBe(true);
+      expect(!existsSync(path) || !readFileSync(path).includes("private reconciliation teal")).toBe(true);
+    }
+    db.close();
+    db = openDb(file);
+    const reopenedCipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", true);
+    const reopened = new Repo(db, reopenedCipher);
+    expect(reopened.listImplementations("operation").map(implementation => implementation.executable).sort())
+      .toEqual(["private executable coral", "private executable teal"]);
+    const note = db.prepare("SELECT note FROM operation_reconciliations WHERE invocation_id='new-invocation'").get() as
+      { note: string };
+    expect(reopenedCipher.decrypt("operation_reconciliations", JSON.stringify(["new-invocation"]), "note", note.note))
+      .toBe("private reconciliation coral");
+    db.prepare("UPDATE operation_implementations SET executable='tampered plaintext' WHERE impl_id='old-impl'").run();
+    expect(() => reopened.listImplementations("operation")).toThrow(/plaintext/);
+  } finally { db.close(); secrets.close(); rmSync(directory, { recursive: true, force: true }); }
+});

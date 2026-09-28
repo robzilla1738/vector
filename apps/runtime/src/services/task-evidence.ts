@@ -381,11 +381,9 @@ export class TaskEvidenceService {
         .run(p.outcome === "applied" ? "verified" : "not-dispatched", recordedAt, p.invocationId);
       if (updated.changes !== 1)
         throw new AuxError("conflict", "The operation was reconciled by another client");
-      this.repo.db
-        .prepare(
-          `INSERT INTO operation_reconciliations(invocation_id,task_id,task_revision,outcome,evidence_id,note,recorded_at) VALUES(?,?,?,?,?,?,?)`,
-        )
-        .run(p.invocationId, p.taskId, p.expectedRevision, p.outcome, p.evidenceId, p.note, recordedAt);
+      this.repo.saveOperationReconciliation({ invocationId: p.invocationId, taskId: p.taskId,
+        taskRevision: p.expectedRevision, outcome: p.outcome, evidenceId: p.evidenceId,
+        note: p.note, recordedAt });
       if (operation.runId && this.repo.getRun(operation.runId)?.config?.contextMemoryRevoked)
         redactSettledRunInvocations(this.repo.db, operation.runId);
     });

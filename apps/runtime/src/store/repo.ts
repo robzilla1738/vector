@@ -1350,11 +1350,15 @@ export class Repo {
          ON CONFLICT(impl_id) DO UPDATE SET executable=excluded.executable,state=excluded.state,
            evidence=excluded.evidence,stats=excluded.stats,updated_at=excluded.updated_at`,
       )
-      .run(i.implId, i.operationId, i.kind, i.executable, i.state ?? "candidate", J(i.evidence ?? []), J(i.stats ?? {}), now(), now());
+      .run(i.implId, i.operationId, i.kind,
+        this.protectField("operation_implementations", i.implId, "executable", i.executable),
+        i.state ?? "candidate",
+        this.protectField("operation_implementations", i.implId, "evidence", J(i.evidence ?? [])),
+        this.protectField("operation_implementations", i.implId, "stats", J(i.stats ?? {})), now(), now());
   }
   setImplState(implId: string, state: string, evidence?: unknown) {
     this.q("UPDATE operation_implementations SET state=?, evidence=?, updated_at=? WHERE impl_id=?")
-      .run(state, J(evidence ?? []), now(), implId);
+      .run(state, this.protectField("operation_implementations", implId, "evidence", J(evidence ?? [])), now(), implId);
   }
   deleteImpl(implId: string) {
     this.q("DELETE FROM operation_implementations WHERE impl_id=?").run(implId);
@@ -1371,13 +1375,21 @@ export class Repo {
       implId: r.impl_id as string,
       operationId: r.operation_id as string,
       kind: r.kind as string,
-      executable: r.executable as string,
+      executable: this.revealField("operation_implementations", r.impl_id, "executable", r.executable)!,
       state: r.state as string,
-      evidence: P<any[]>(r.evidence, []),
-      stats: P(r.stats, {}),
+      evidence: P<any[]>(this.revealField("operation_implementations", r.impl_id, "evidence", r.evidence), []),
+      stats: P(this.revealField("operation_implementations", r.impl_id, "stats", r.stats), {}),
       createdAt: r.created_at as number,
       updatedAt: r.updated_at as number,
     }));
+  }
+
+  saveOperationReconciliation(input: { invocationId: string; taskId: string; taskRevision: number;
+    outcome: "applied" | "not_applied"; evidenceId: string; note: string; recordedAt: number }): void {
+    this.q(`INSERT INTO operation_reconciliations(invocation_id,task_id,task_revision,outcome,evidence_id,note,recorded_at)
+      VALUES(?,?,?,?,?,?,?)`).run(input.invocationId, input.taskId, input.taskRevision, input.outcome,
+      input.evidenceId, this.protectField("operation_reconciliations", input.invocationId, "note", input.note),
+      input.recordedAt);
   }
   saveInvocation(v: {
     invocationId: string;
