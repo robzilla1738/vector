@@ -1026,6 +1026,12 @@ export const AgentTurnContextSchema = z.object({
 /** browser-data import */
 export const ImportCategorySchema = z.enum(["bookmarks", "history", "tabs"]);
 export type ImportCategory = z.infer<typeof ImportCategorySchema>;
+export const ImportSelectionSchema = z.object({
+  sourceId: z.string().min(1).max(32),
+  profileId: z.string().min(1).max(64).optional(),
+  categories: z.array(ImportCategorySchema).min(1).max(3),
+}).strict();
+export type ImportSelection = z.infer<typeof ImportSelectionSchema>;
 const ImportCategoryPreviewSchema = z.object({
   category: ImportCategorySchema,
   available: z.boolean(),
@@ -1038,6 +1044,10 @@ const ImportSourcePreviewSchema = z.object({
   label: z.string(),
   profiles: z.array(z.string()),
   categories: z.array(ImportCategoryPreviewSchema),
+  profileCategories: z.array(z.object({
+    profileId: z.string(),
+    categories: z.array(ImportCategoryPreviewSchema),
+  }).strict()),
 });
 const ImportCategoryResultSchema = z.object({
   source: z.string(),
@@ -1544,10 +1554,8 @@ export const MethodSchemas = {
   }),
   "import.preview": z.object({}),
   "import.run": z.object({
-    sources: z.array(z.string().min(1).max(32)).max(12).optional(),
-    categories: z.array(ImportCategorySchema).min(1).max(3).optional(),
-    profile: z.string().trim().min(1).max(64).optional(),
-  }),
+    selections: z.array(ImportSelectionSchema).min(1).max(12),
+  }).strict(),
   "import.status": z.object({ jobId: z.string().min(1).max(64) }),
   "import.cancel": z.object({ jobId: z.string().min(1).max(64) }),
   "chrome.openLive": ChromeOpenLiveParams,
