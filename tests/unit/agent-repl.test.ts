@@ -181,6 +181,16 @@ describe("code-mode REPL", () => {
     expect(step).toHaveBeenNthCalledWith(2, "p1", expect.objectContaining({ op: "click", target: "r17" }));
   });
 
+  it("normalizes a copied rendered href before following a link", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const findRef = vi.fn(async () => ({ ref: "r10", navigationUrl: "http://x.test/records/rec-15" }));
+    const step = vi.fn(async () => ({ output: { status: "completed" } }));
+    await pool.eval(deps({ findRef, step }), `page.followLinkByName('Record 15 — Alpha project" href=/records/rec-15')`, { pageId: "p1" });
+    expect(findRef).toHaveBeenCalledWith("p1", "Record 15 — Alpha project", "link");
+    expect(step).toHaveBeenCalledWith("p1", expect.objectContaining({ op: "navigate", url: "http://x.test/records/rec-15" }));
+  });
+
   it("refuses explicit route navigation when the named link has no same-origin href", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
