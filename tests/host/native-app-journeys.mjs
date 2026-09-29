@@ -4672,16 +4672,19 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     await until("a visible Aux browser window", () => {
       try { return JSON.parse(native("window")); } catch { return null; }
     });
-    console.log("Open Settings, then choose Models, Developers & External Agents, and Privacy & Security in the section rail.");
-    for (const section of ["Models", "Developers & External Agents", "Privacy & Security"]) {
-      const focused = await until(`${section} rail selection`, () => {
-        try {
-          const element = JSON.parse(native("focused"));
-          return element.role === "AXButton" && element.title === section ? element : null;
-        } catch { return null; }
-      }, 120_000);
-      record(`Settings section rail selects ${section}`, focused);
-    }
+    console.log("In the Aux command bar, open chrome://aux/settings/selection-capture; focus Selection & Capture in the section rail, then preview an action without sending it.");
+    const selected = await until("Selection & Capture rail selection", () => {
+      try {
+        const element = JSON.parse(native("focused"));
+        return element.role === "AXButton" && element.title === "Selection & Capture" &&
+          native("shell-url") === "chrome://aux/settings/selection-capture" ? element : null;
+      } catch { return null; }
+    }, 120_000);
+    record("Settings section rail opens Selection & Capture", selected);
+    await until("capture shortcuts honestly off", () => native("has-name", "Off. No capture shortcut requested.") === "true", 120_000);
+    record("both capture shortcuts report Off rather than falsely registered", {});
+    await until("local selection template preview", () => native("has-name", "Local preview · example content") === "true", 120_000);
+    record("selection action opens a local example preview", {});
     report.passed = true;
   } else if (settingsInternalUrlJourney) {
     await until("a visible Aux browser window", () => {
