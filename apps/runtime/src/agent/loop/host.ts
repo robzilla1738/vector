@@ -276,6 +276,15 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       };
     },
     submitResult: async ({ report, citations, textProposal }) => {
+      const currentObs = activePageId ? lastObs.get(activePageId) : undefined;
+      if (/\bexact (?:\w+\s+)?title\b/i.test(run.goal) && !/\b(?:browser|tab) title\b/i.test(run.goal)
+        && currentObs && report.trim() === currentObs.content.title.trim()) {
+        const lines = new Set(currentObs.content.text.split("\n").map((line) => line.trim()));
+        const pageHeading = currentObs.content.headings.find((heading) => lines.has(heading.trim())
+          && [" — ", " | ", " - ", " · "].some((separator) => report.startsWith(`${heading}${separator}`)));
+        if (pageHeading)
+          return { ok: false as const, error: `The browser title includes surrounding site text. The visible page heading is "${redactForModel(pageHeading)}"; inspect and cite that heading for an exact title.` };
+      }
       if (citations?.length) {
         const check = verifyResultCitations(citations, obsTexts);
         if (check.missing.length || check.unverified.length) {

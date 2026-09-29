@@ -56,6 +56,17 @@ function fakePage(failOn: Record<string, unknown> = {}) {
 }
 
 describe("executeProgram", () => {
+  it("records setter before/after state when a driver exposes a numeric document epoch", async () => {
+    const { page, calls } = fakePage();
+    let reads = 0;
+    Object.assign(page, { documentEpoch: 7, fieldState: async () => ({ value: ++reads === 1 ? "All statuses" : "approved" }) });
+    const res = await executeProgram(page, { pageId: "p1", steps: [{ id: "s1", op: "select", target: "r4", value: "approved" }] });
+    expect(res.status).toBe("completed");
+    expect(calls).toContain("select:r4=approved");
+    expect(res.steps[0]).toMatchObject({ before: { value: "All statuses" }, after: { value: "approved" },
+      receipt: { identity: { documentEpoch: 7 } } });
+  });
+
   it("denies uploads outside session, attachment, and workspace roots", async () => {
     const { page, calls } = fakePage();
     const upload = (files: string[], uploadRoots?: string[]) =>

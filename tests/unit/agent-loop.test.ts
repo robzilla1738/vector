@@ -618,6 +618,28 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.modelCalls).toHaveLength(1);
   });
 
+  it("rejects a site-suffixed browser title when the user requested the exact visible title", async () => {
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
+        code: 'submitResult("Record 15 — Alpha project — Records",[{pageId:"p1",revision:1,quote:"title: Record 15 — Alpha project — Records"}])',
+        answerLabel: "",
+      } }] },
+      { toolCalls: [{ toolCallId: "s1", toolName: "submit_result", input: { report: "Record 15 — Alpha project",
+        citations: [{ pageId: "p1", revision: 1, quote: "Record 15 — Alpha project" }] } }] },
+    ]);
+    const h = coordinatorHarness(model);
+    h.pages.observe.mockResolvedValue({ ...pageObs(), content: { ...pageObs().content,
+      title: "Record 15 — Alpha project — Records", text: "Record 15 — Alpha project\nOwner: Alex Rivera",
+      headings: ["Record 15 — Alpha project"],
+    } } as Observation);
+    const run = await h.coordinator.start({ goal: "Open rec-15 and report its exact title", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "Record 15 — Alpha project" });
+    expect(h.modelCalls).toHaveLength(2);
+    expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("browser title includes surrounding site text");
+  });
+
   it("persists failed failover attempts against the run budget without a tool replay", async () => {
     const model = new MockModelClient();
     model.toolCallStep = async () => {

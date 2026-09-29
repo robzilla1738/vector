@@ -15,6 +15,15 @@ import { readFile, stat } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { isConsequential } from "../agent/permissions.js";
 
+/** Driver implementations expose the document epoch as either a value or method. */
+function pageDocumentEpoch(page: DriverPage): number | undefined {
+  const p = page as unknown as { documentEpoch?: number | (() => number); epoch?: number | (() => number) };
+  if (typeof p.documentEpoch === "function") return p.documentEpoch();
+  if (typeof p.documentEpoch === "number") return p.documentEpoch;
+  if (typeof p.epoch === "function") return p.epoch();
+  return typeof p.epoch === "number" ? p.epoch : undefined;
+}
+
 export interface ExecContext {
   runId?: string;
   signal?: AbortSignal;
@@ -211,7 +220,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       ctx.checkValid?.();
       if (SETTER_OPS.has(step.op) && page.fieldState && "target" in step && step.target) {
         pageUrl = page.url();
-        beforeEpoch = (page as unknown as { documentEpoch?: () => number }).documentEpoch?.();
+        beforeEpoch = pageDocumentEpoch(page);
         before = await page.fieldState(String(step.target)).catch(() => undefined);
       }
       ctx.checkValid?.();
@@ -233,7 +242,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
       }
       ctx.checkValid?.();
       const after = before && page.fieldState && pageUrl === page.url() && beforeEpoch ===
-        (page as unknown as { documentEpoch?: () => number }).documentEpoch?.() && "target" in step && step.target
+        pageDocumentEpoch(page) && "target" in step && step.target
         ? await page.fieldState(String(step.target)).catch(() => undefined) : undefined;
       const postconditions = (step.expect as Condition[] | undefined) ?? [];
       const mutating = isConsequential(step.op);
@@ -260,12 +269,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
           dispatchedBeforeTakeover: false,
           identity: {
             pageId: page.identity.pageId,
-            documentEpoch: (() => {
-              const p = page as unknown as { documentEpoch?: () => number; epoch?: () => number };
-              if (typeof p.documentEpoch === "function") return p.documentEpoch();
-              if (typeof p.epoch === "function") return p.epoch();
-              return 0;
-            })(),
+            documentEpoch: pageDocumentEpoch(page) ?? 0,
             target: "target" in step ? String(step.target) : undefined,
           },
         },
