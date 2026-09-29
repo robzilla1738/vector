@@ -1209,11 +1209,12 @@ diff --git a/chrome/browser/ui/aux/egress_projection_unittest.cc b/chrome/browse
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/aux/egress_projection_unittest.cc
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,78 @@
 +// Copyright 2026 The Aux Authors
 +#include "chrome/browser/ui/aux/egress_projection.h"
 +
 +#include "base/containers/span.h"
++#include "base/i18n/icu_util.h"
 +#include "base/strings/utf_string_conversions.h"
 +#include "net/http/http_request_headers.h"
 +#include "services/network/public/cpp/resource_request.h"
@@ -1222,7 +1223,11 @@ new file mode 100644
 +#include "url/gurl.h"
 +
 +namespace aux {
-+TEST(EgressProjectionTest, MatchesRuntimeUnicodeWindowGolden) {
++class EgressProjectionTest : public testing::Test {
++ public:
++  static void SetUpTestSuite() { ASSERT_TRUE(base::i18n::InitializeICU()); }
++};
++TEST_F(EgressProjectionTest, MatchesRuntimeUnicodeWindowGolden) {
 +  const auto normalized = EgressNormalize("ＡＢＣＤＥＦＧＨＩＪＫＬ");
 +  ASSERT_TRUE(normalized);
 +  EXPECT_EQ(*normalized, u"abcdefghijkl");
@@ -1232,7 +1237,7 @@ new file mode 100644
 +  ASSERT_TRUE(whitespace);
 +  EXPECT_EQ(*whitespace, u"abc def ghij");
 +}
-+TEST(EgressProjectionTest, NativeBytesNeverAppearInWireAndHeadersChangeDigest) {
++TEST_F(EgressProjectionTest, NativeBytesNeverAppearInWireAndHeadersChangeDigest) {
 +  network::ResourceRequest request;
 +  request.url = GURL("https://example.test/?q=query-secret-18391");
 +  request.method = "POST";
@@ -1261,7 +1266,7 @@ new file mode 100644
 +  EXPECT_NE(*second->wire.FindString("requestDigest"),
 +            *preflight->wire.FindString("requestDigest"));
 +}
-+TEST(EgressProjectionTest, RejectsBinaryOversizeAndOpaqueBody) {
++TEST_F(EgressProjectionTest, RejectsBinaryOversizeAndOpaqueBody) {
 +  network::ResourceRequest request;
 +  request.url = GURL("https://example.test/");
 +  request.method = "POST";
