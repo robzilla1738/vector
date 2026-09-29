@@ -215,7 +215,7 @@ diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui
 +      std::move(callback).Run(false, "", "invalid_argument", "Invalid attention identity");
 +      return;
 +    }
-+    const bool queued = ShowRunAttention(browser_->GetProfile(), *kind, *run_id,
++    const bool queued = aux::ShowRunAttention(browser_->GetProfile(), *kind, *run_id,
 +                                         *identity, *window_id);
 +    std::move(callback).Run(true, queued ? "{\"queued\":true}" : "{\"queued\":false}", "", "");
 +    return;
