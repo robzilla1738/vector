@@ -79,31 +79,48 @@ diff --git a/chrome/browser/chrome_content_browser_client.h b/chrome/browser/chr
 diff --git a/chrome/browser/predictors/network_hints_handler_impl.cc b/chrome/browser/predictors/network_hints_handler_impl.cc
 --- a/chrome/browser/predictors/network_hints_handler_impl.cc
 +++ b/chrome/browser/predictors/network_hints_handler_impl.cc
-@@ -12,6 +12,8 @@
+@@ -11,6 +11,10 @@
+ #include "chrome/browser/predictors/loading_predictor_factory.h"
  #include "chrome/browser/predictors/predictors_traffic_annotations.h"
  #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/egress_controller.h"
++#endif
  #include "content/public/browser/preconnect_manager.h"
-+#include "content/public/browser/content_browser_client.h"
-+#include "content/public/common/content_client.h"
  #include "content/public/browser/render_frame_host.h"
  #include "content/public/browser/render_process_host.h"
- #include "content/public/browser/storage_partition.h"
-@@ -55,6 +57,9 @@
+@@ -21,6 +25,16 @@
+ namespace predictors {
+ 
+ namespace {
++
++bool AllowSpeculation(content::RenderFrameHost* frame) {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  auto* controller = aux::EgressController::ForProfile(
++      Profile::FromBrowserContext(frame->GetBrowserContext()));
++  return controller && controller->AllowUninspectable(frame, "speculation");
++#else
++  return true;
++#endif
++}
+ 
+ // Preconnects can be received from the renderer before commit messages, so
+ // need to use the key from the pending navigation, and not the committed
+@@ -55,6 +69,8 @@
        content::RenderFrameHost::FromID(render_frame_host_id_);
    if (!render_frame_host)
      return;
-+  if (!content::GetContentClient()->browser()->AllowUninspectableNetworkTransport(
-+          render_frame_host->GetBrowserContext(), render_frame_host, "speculation")) return;
++  if (!AllowSpeculation(render_frame_host)) return;
 +
  
    std::vector<GURL> gurls;
    for (const auto& url : urls) {
-@@ -86,6 +91,9 @@
+@@ -86,6 +102,8 @@
        content::RenderFrameHost::FromID(render_frame_host_id_);
    if (!render_frame_host)
      return;
-+  if (!content::GetContentClient()->browser()->AllowUninspectableNetworkTransport(
-+          render_frame_host->GetBrowserContext(), render_frame_host, "speculation")) return;
++  if (!AllowSpeculation(render_frame_host)) return;
 +
  
    base::UnguessableToken network_restrictions_id =
