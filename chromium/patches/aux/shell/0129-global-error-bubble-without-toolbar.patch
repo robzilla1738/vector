@@ -1,0 +1,23 @@
+diff --git a/chrome/browser/ui/views/global_error_bubble_view.cc b/chrome/browser/ui/views/global_error_bubble_view.cc
+index e87e8bf515..211b893253 100644
+--- a/chrome/browser/ui/views/global_error_bubble_view.cc
++++ b/chrome/browser/ui/views/global_error_bubble_view.cc
+@@ -42,9 +42,15 @@
+ GlobalErrorBubbleViewBase* GlobalErrorBubbleViewBase::ShowStandardBubbleView(
+     BrowserWindowInterface* browser,
+     const base::WeakPtr<GlobalErrorWithStandardBubble>& error) {
+-  auto* control = BrowserView::GetBrowserViewForBrowser(browser)
+-                      ->toolbar_button_provider()
+-                      ->GetAppMenuControl();
++  BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
++  // Aux's shell has no toolbar button provider. Anchoring this bubble on the
++  // app menu null-derefs, so keep the error recorded and skip the view.
++  auto* provider =
++      browser_view ? browser_view->toolbar_button_provider() : nullptr;
++  if (!provider) {
++    return nullptr;
++  }
++  auto* control = provider->GetAppMenuControl();
+   views::BubbleAnchor anchor =
+       control ? control->GetAnchor() : views::BubbleAnchor();
+   GlobalErrorBubbleView* bubble_view = new GlobalErrorBubbleView(
