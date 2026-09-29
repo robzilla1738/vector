@@ -105,15 +105,7 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
     page.url !== params.expectedUrl
   )
     throw new AuxError("conflict", "The selected document changed. Select the current page and retry.");
-  const policy = store.policy(params.workspaceId);
-  if (memorySensitivityReason(params.expectedUrl, page.title))
-    throw new AuxError("permission_denied", "Sensitive pages cannot be saved to Memory.");
-  const origin = new URL(params.expectedUrl).origin;
-  if (!policy.enabled || !policy.allowedOrigins.includes(origin))
-    throw new AuxError(
-      "permission_denied",
-      "Allow this site for page-content recall in the selected Space first.",
-    );
+  store.assertCaptureEligible({ workspaceId: params.workspaceId, url: page.url, title: page.title });
   const captured = await s.native.captureReadablePage(page.pageId, params.workspaceId, params.expectedUrl);
   if (memorySensitivityReason(captured.url, captured.title) || memoryContentSensitivityReason(captured.text))
     throw new AuxError("permission_denied", "Sensitive pages cannot be saved to Memory.");

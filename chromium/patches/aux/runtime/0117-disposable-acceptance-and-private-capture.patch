@@ -1,0 +1,47 @@
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -148,6 +148,25 @@
+       !capabilities.methods.every(method => typeof method === 'string')) {
+     throw new Error('The Aux browser returned invalid capabilities.');
+   }
++  const featureStages = featureStagesFor(capabilities.methods, capabilities.sourceCommit);
++  // A disposable acceptance Profile may activate this preview only after the
++  // runtime validates its owner-only, source-bound marker. The shell never
++  // reads a test token or interprets a marker itself.
++  if (featureStages.electronMigration === 'preview') {
++    try {
++      const runtimeResponse = await remote.request('invoke',
++          JSON.stringify(['runtime.describe', {}]));
++      if (runtimeResponse.ok) {
++        const runtime = JSON.parse(runtimeResponse.resultJson) as
++            {featureStages?: {electronMigration?: string}};
++        if (runtime.featureStages?.electronMigration === 'on') {
++          featureStages.electronMigration = 'on';
++        }
++      }
++    } catch {
++      // A missing or failed runtime leaves the production preview gate closed.
++    }
++  }
+   window.auxChromiumHost = {
+     host: 'chromium-fork',
+     windowId: identity.windowId,
+@@ -156,7 +175,7 @@
+     privateMode: identity.privateMode,
+     quickAskMode: identity.quickAskMode,
+     capabilities,
+-    featureStages: featureStagesFor(capabilities.methods, capabilities.sourceCommit),
++    featureStages,
+     async request(method, args) {
+       if (method === 'autocomplete') {
+         if (args.length !== 1 || typeof args[0] !== 'string') {
+--- a/chrome/browser/ui/aux/methods/native_content_methods.cc
++++ b/chrome/browser/ui/aux/methods/native_content_methods.cc
+@@ -86,6 +86,7 @@
+ 
+ bool CaptureAllowed(Profile* profile, const base::DictValue& params,
+                     content::WebContents** page_out) {
++  if (!profile || profile->IsOffTheRecord()) return false;
+   const std::string* page_id = params.FindString("pageId");
+   const std::string* workspace_id = params.FindString("workspaceId");
+   const std::string* expected_url = params.FindString("expectedUrl");
