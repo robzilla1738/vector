@@ -20,7 +20,7 @@ import { browserEgressApproval } from "./safety/browser-egress-approval.js";
  * The same runtime and versioned agent API serve each native host.
  */
 import { createHash, randomUUID } from "node:crypto";
-import { chmodSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -176,8 +176,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let agentConnections: AgentConnectionService | undefined;
   const disarmWatchdog = bootstrapWatchdog();
   const token = config.apiToken || randomUUID();
+  const peerIdentity = { instanceId: randomUUID(), pid: process.pid, schema: SCHEMA_VERSION,
+    startedAt: Date.now() };
   const api = new ApiServer({
     token,
+    peerIdentity,
     invoke: (method, params, client) => invokerReady.then((fn) => fn(method, params, client)),
     events,
     authorizeScopedToken: (scopedToken) => agentConnections?.authorize(scopedToken) ?? null,
@@ -191,7 +194,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     // Versioned takeover: replace only a strictly older daemon; a busy older
     // peer gets the idle wait, and a wedged peer is reclaimed only after its
     // pid verifies as our runtime.
-    const outcome = await resolvePortInUse({ dataDir: config.dataDir, ourSchema: SCHEMA_VERSION });
+    const outcome = await resolvePortInUse({ dataDir: config.dataDir, ourSchema: SCHEMA_VERSION,
+      boundPort: config.apiPort });
     process.stderr.write(`[runtime] ${outcome.action}: ${outcome.reason}\n`);
     if (outcome.action === "peer-serves" || outcome.action === "defer") {
       throw new Error(`runtime port takeover declined: ${outcome.reason}`);
@@ -202,22 +206,25 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // the bearer token lives here — owner-only, and re-chmod'd because
   // writeFileSync's mode applies only when the file is first created
   const runtimeFile = join(config.dataDir, "runtime.json");
+  const descriptorTemp = `${runtimeFile}.${peerIdentity.instanceId}.tmp`;
   writeFileSync(
-    runtimeFile,
+    descriptorTemp,
     JSON.stringify({
       port,
       token,
-      pid: process.pid,
+      pid: peerIdentity.pid,
+      instanceId: peerIdentity.instanceId,
       version: { schema: SCHEMA_VERSION },
-      startedAt: Date.now(),
+      startedAt: peerIdentity.startedAt,
     }),
     { mode: 0o600 },
   );
   try {
-    chmodSync(runtimeFile, 0o600);
+    chmodSync(descriptorTemp, 0o600);
   } catch {
     /* non-POSIX fs */
   }
+  renameSync(descriptorTemp, runtimeFile);
   // The descriptor is public before the service tree exists. Hold the gate
   // across a short timer so a client that just read runtime.json can observe
   // the not-ready /health body; one microtask is not a long enough window

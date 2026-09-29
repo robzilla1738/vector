@@ -44,6 +44,7 @@ export class ApiServer {
       events: EventBus;
       authorizeScopedToken?: (token: string) => ClientContext | null;
       filterEvent?: (client: ClientContext, event: AuxEvent) => boolean;
+      peerIdentity?: { instanceId: string; pid: number; schema: number; startedAt: number };
     },
   ) {
     this.server = createServer((req, res) => void this.handle(req, res));
@@ -252,6 +253,16 @@ export class ApiServer {
       return this.ready
         ? send(200, { ok: true, service: "aux-runtime", ready: true })
         : send(503, { ok: false, service: "aux-runtime", ready: false });
+    }
+    // Internal takeover proof is available during bootstrap. A caller must
+    // possess the owner-only descriptor token and supply a fresh challenge.
+    if (url.pathname === "/internal/peer") {
+      if (!this.masterBearer(req) || !this.opts.peerIdentity || req.method !== "GET")
+        return send(401, { error: { code: "unauthorized", message: "peer proof unavailable" } });
+      const nonce = url.searchParams.get("nonce");
+      if (!nonce || !/^[a-f0-9]{32,128}$/i.test(nonce))
+        return send(400, { error: { code: "invalid_params", message: "invalid peer challenge" } });
+      return send(200, { service: "aux-runtime", nonce, ...this.opts.peerIdentity, ready: this.ready });
     }
     if (!this.ready) {
       return send(503, { error: { code: "not_ready", message: "aux runtime is still starting" } });

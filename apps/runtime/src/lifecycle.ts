@@ -1,21 +1,21 @@
-import { existsSync, readFileSync } from "node:fs";
+import { lstatSync, readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 
 /**
  * Daemon lifecycle (06-T): readiness gating lives on ApiServer; this module
- * is the takeover/reclaim policy for a port already owned by another Aux
+ * is the takeover policy for a port already owned by another Aux
  * runtime, plus the bootstrap stall watchdog.
  *
  * Rules:
- *  - versioned takeover replaces ONLY a strictly older daemon (an older
- *    SCHEMA_VERSION — a peer missing the field is a pre-versioning build and
- *    counts as older). An equal or newer peer keeps the port; the new
- *    process defers instead of fighting it.
+ *  - versioned takeover replaces ONLY a strictly older daemon with a
+ *    matching authenticated descriptor, listener PID and executable. Legacy
+ *    peers lacking that proof are left alone. An equal or newer peer keeps
+ *    the port; the new process defers instead of fighting it.
  *  - an older-but-busy peer gets TAKEOVER_IDLE_WAIT_MS to go idle before we
  *    replace it; still busy after the wait → defer, don't kill.
- *  - a wedged peer (port bound, /health unreachable) is reclaimed only after
- *    its process is verified to be an Aux runtime binary — never kill a pid
- *    we can't identify.
+ *  - a wedged peer (port bound, /health unreachable) is never signalled;
+ *    its live identity cannot be proven well enough to justify a kill.
  */
 
 export const TAKEOVER_IDLE_WAIT_MS = 30_000;
@@ -32,12 +32,16 @@ export interface RuntimeDescriptor {
   pid?: number;
   version?: { schema: number };
   startedAt?: number;
+  instanceId?: string;
 }
 
 export function readRuntimeDescriptor(dataDir: string): RuntimeDescriptor | null {
   const path = join(dataDir, "runtime.json");
   try {
-    if (!existsSync(path)) return null;
+    const file = lstatSync(path);
+    if (!file.isFile() || file.isSymbolicLink() || file.size > 8192 ||
+        (file.mode & 0o077) !== 0 ||
+        (typeof process.getuid === "function" && file.uid !== process.getuid())) return null;
     const value = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
     if (!Number.isInteger(value.port) || typeof value.token !== "string") return null;
     return {
@@ -48,6 +52,7 @@ export function readRuntimeDescriptor(dataDir: string): RuntimeDescriptor | null
         ? { version: { schema: (value.version as { schema: number }).schema } }
         : {}),
       ...(typeof value.startedAt === "number" ? { startedAt: value.startedAt } : {}),
+      ...(typeof value.instanceId === "string" ? { instanceId: value.instanceId } : {}),
     };
   } catch {
     return null;
@@ -55,8 +60,8 @@ export function readRuntimeDescriptor(dataDir: string): RuntimeDescriptor | null
 }
 
 export function peerStrictlyOlder(peer: RuntimeDescriptor | null, ourSchema: number): boolean {
-  // Pre-versioning daemons (no version field) are strictly older by
-  // definition; a peer on an equal or newer schema is never replaced.
+  // This only compares versions. Missing version is logically older, but
+  // takeover still requires the separate authenticated identity proof.
   return (peer?.version?.schema ?? -1) < ourSchema;
 }
 
@@ -78,6 +83,41 @@ async function probeHealth(
   }
 }
 
+/** Bind a bearer-authenticated challenge to the descriptor and listening peer. */
+async function probePeer(descriptor: RuntimeDescriptor, fetchImpl: Fetch): Promise<"ready" | "booting" | null> {
+  if (!descriptor.pid || !descriptor.instanceId || !descriptor.startedAt ||
+      !descriptor.version || !descriptor.token) return null;
+  const nonce = randomBytes(24).toString("hex");
+  try {
+    const res = await fetchImpl(`http://127.0.0.1:${descriptor.port}/internal/peer?nonce=${nonce}`, {
+      headers: { authorization: `Bearer ${descriptor.token}` },
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as Record<string, unknown>;
+    if (body.service !== "aux-runtime" || body.nonce !== nonce ||
+        body.instanceId !== descriptor.instanceId || body.pid !== descriptor.pid ||
+        body.schema !== descriptor.version.schema || body.startedAt !== descriptor.startedAt ||
+        typeof body.ready !== "boolean") return null;
+    return body.ready ? "ready" : "booting";
+  } catch { return null; }
+}
+
+/** Require the descriptor PID to own the loopback listening socket. */
+export async function peerOwnsPort(pid: number, port: number): Promise<boolean> {
+  try {
+    const { execFile } = await import("node:child_process");
+    return await new Promise<boolean>((resolve) => {
+      execFile("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"],
+        { timeout: 3_000 }, (err, stdout) => {
+          if (err) return resolve(false);
+          const pids = stdout.trim().split(/\s+/).filter(Boolean);
+          resolve(pids.length === 1 && pids[0] === String(pid));
+        });
+    });
+  } catch { return false; }
+}
+
 /** Active runs on the peer, or null when the count can't be learned. */
 async function peerActiveRuns(descriptor: RuntimeDescriptor, fetchImpl: Fetch): Promise<number | null> {
   try {
@@ -90,6 +130,8 @@ async function peerActiveRuns(descriptor: RuntimeDescriptor, fetchImpl: Fetch): 
     if (!res.ok) return null;
     const body = (await res.json()) as { result?: { status?: string }[] };
     if (!Array.isArray(body.result)) return null;
+    // A full page may hide further active runs. Unknown means defer.
+    if (body.result.length >= 200) return null;
     return body.result.filter((r) => ACTIVE_RUN_STATUSES.has(r.status ?? "")).length;
   } catch {
     return null;
@@ -106,9 +148,7 @@ function pidAlive(pid: number): boolean {
 }
 
 /**
- * The wedged-daemon guard: reclaim only when the pid is a real process whose
- * command line identifies an Aux runtime (same entry filename we're running,
- * or an aux-runtime binary). We never signal a pid we can't identify.
+ * Extra executable check after the authenticated peer and listening PID checks.
  */
 export async function verifyPeerProcess(
   pid: number,
@@ -131,7 +171,7 @@ export async function verifyPeerProcess(
 }
 
 export type TakeoverOutcome = {
-  action: "takeover" | "reclaim" | "peer-serves" | "defer";
+  action: "takeover" | "peer-serves" | "defer";
   reason: string;
 };
 
@@ -142,6 +182,8 @@ export async function resolvePortInUse(opts: {
   idleWaitMs?: number;
   exitGraceMs?: number;
   verify?: (pid: number) => Promise<boolean>;
+  ownsPort?: (pid: number, port: number) => Promise<boolean>;
+  boundPort?: number;
   alive?: (pid: number) => boolean;
   kill?: (pid: number, signal: NodeJS.Signals) => void;
   sleep?: (ms: number) => Promise<void>;
@@ -149,6 +191,7 @@ export async function resolvePortInUse(opts: {
 }): Promise<TakeoverOutcome> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const verify = opts.verify ?? verifyPeerProcess;
+  const ownsPort = opts.ownsPort ?? peerOwnsPort;
   const alive = opts.alive ?? pidAlive;
   const kill = opts.kill ?? ((pid: number, signal: NodeJS.Signals) => process.kill(pid, signal));
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
@@ -183,25 +226,22 @@ export async function resolvePortInUse(opts: {
     };
   }
 
-  // A peer that never answers /health is wedged: reclaim only after the pid
-  // is verified to be our runtime, never blind-kill a foreign process.
+  if (!peer.pid || !peer.instanceId || !peer.startedAt || !peer.version ||
+      (opts.boundPort !== undefined && peer.port !== opts.boundPort))
+    return { action: "defer", reason: "peer descriptor lacks exact identity or bound port" };
+
+  const authenticated = await probePeer(peer, fetchImpl);
+  if (!authenticated || !alive(peer.pid) || !(await ownsPort(peer.pid, peer.port)) ||
+      !(await verify(peer.pid)))
+    return { action: "defer", reason: "peer identity, port ownership, or executable could not be verified" };
+
+  if (authenticated !== "ready")
+    return { action: "defer", reason: "peer is still booting" };
+
+  // A peer that stops answering health after the proof must be left alone.
   const probe = await probeHealth(peer, fetchImpl);
-  if (probe === "down") {
-    if (peer.pid !== undefined && alive(peer.pid)) {
-      if (!(await verify(peer.pid))) {
-        return {
-          action: "defer",
-          reason: `port held by unverifiable pid ${peer.pid}; refusing to signal a foreign process`,
-        };
-      }
-      if (!(await terminate(peer.pid))) {
-        return { action: "defer", reason: `verified peer pid ${peer.pid} did not exit` };
-      }
-      return { action: "reclaim", reason: `reclaimed port from wedged runtime pid ${peer.pid}` };
-    }
-    // No pid to verify — stale descriptor. Retrying the bind fails again if
-    // a real foreign process owns the port, which is the safe failure mode.
-    return { action: "reclaim", reason: "wedged peer descriptor without a live pid" };
+  if (probe !== "ready") {
+    return { action: "defer", reason: "peer health is unavailable; refusing an unprovable takeover" };
   }
 
   if (!peerStrictlyOlder(peer, opts.ourSchema)) {
@@ -216,6 +256,9 @@ export async function resolvePortInUse(opts: {
   const idleWaitMs = opts.idleWaitMs ?? TAKEOVER_IDLE_WAIT_MS;
   const deadline = Date.now() + idleWaitMs;
   for (;;) {
+    if (readRuntimeDescriptor(opts.dataDir)?.instanceId !== peer.instanceId ||
+        (await probePeer(peer, fetchImpl)) !== "ready" || !(await ownsPort(peer.pid, peer.port)))
+      return { action: "defer", reason: "peer changed during takeover review" };
     const active = await peerActiveRuns(peer, fetchImpl);
     if (active === 0) break;
     if (Date.now() >= deadline) {
@@ -227,6 +270,11 @@ export async function resolvePortInUse(opts: {
     log(`takeover waiting for ${active ?? "?"} active runs on older runtime`);
     await sleep(1_000);
   }
+
+  if (readRuntimeDescriptor(opts.dataDir)?.instanceId !== peer.instanceId ||
+      (await probePeer(peer, fetchImpl)) !== "ready" || !(await ownsPort(peer.pid, peer.port)) ||
+      !(await verify(peer.pid)))
+    return { action: "defer", reason: "peer changed before takeover dispatch" };
 
   if (!(await terminate(peer.pid))) {
     return { action: "defer", reason: `older runtime pid ${peer.pid} did not exit` };
