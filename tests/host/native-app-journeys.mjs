@@ -870,6 +870,16 @@ else {
         .run("legacy-vault-grant", "legacy-vault", "legacy-vault-ref", "https://vault.example", Date.now(), Date.now() + 60_000);
       db.prepare("INSERT INTO vault_access(item_id,grant_id,action,actor,origin,detail,recorded_at) VALUES(?,?,?,?,?,?,?)")
         .run("legacy-vault", "legacy-vault-grant", "grant", "desktop_user", "https://vault.example", "private native vault audit", Date.now());
+      db.prepare("INSERT INTO goals(goal_id,workspace_id,status,body,created_at,updated_at) VALUES(?,?,?,?,?,?)")
+        .run("legacy-goal", "legacy-space", "active", JSON.stringify({ objective: "private native goal" }), Date.now(), Date.now());
+      db.prepare("INSERT INTO hooks(hook_id,workspace_id,event,trust,body,created_at,updated_at) VALUES(?,?,?,?,?,?,?)")
+        .run("legacy-hook", "legacy-space", "run.completed", "approved", JSON.stringify({ command: "private native hook" }), Date.now(), Date.now());
+      db.prepare("INSERT INTO hook_invocations(invocation_id,hook_id,event_id,state,error,created_at,ended_at) VALUES(?,?,?,?,?,?,?)")
+        .run("legacy-hook-invocation", "legacy-hook", "legacy-event", "failed", "private native hook error", Date.now(), Date.now());
+      db.prepare("INSERT INTO subagent_groups(group_id,parent_run_id,workspace_id,body,state,created_at) VALUES(?,?,?,?,?,?)")
+        .run("legacy-group", "legacy-run", "legacy-space", JSON.stringify({ task: "private native group" }), "closed", Date.now());
+      db.prepare("INSERT INTO subagents(agent_id,group_id,state,body,created_at,ended_at) VALUES(?,?,?,?,?,?)")
+        .run("legacy-subagent", "legacy-group", "completed", JSON.stringify({ result: "private native subagent" }), Date.now(), Date.now());
     } finally { db.close(); }
   }
   if (memoryInboxUiJourney) {
@@ -1005,6 +1015,11 @@ else {
           vault: db.prepare("SELECT label FROM vault_items WHERE item_id='legacy-vault'").get()?.label,
           vaultGrant: db.prepare("SELECT origin FROM vault_grants WHERE grant_id='legacy-vault-grant'").get()?.origin,
           vaultAudit: db.prepare("SELECT detail FROM vault_access WHERE grant_id='legacy-vault-grant'").get()?.detail,
+          goal: db.prepare("SELECT body FROM goals WHERE goal_id='legacy-goal'").get()?.body,
+          hook: db.prepare("SELECT body FROM hooks WHERE hook_id='legacy-hook'").get()?.body,
+          hookError: db.prepare("SELECT error FROM hook_invocations WHERE invocation_id='legacy-hook-invocation'").get()?.error,
+          group: db.prepare("SELECT body FROM subagent_groups WHERE group_id='legacy-group'").get()?.body,
+          subagent: db.prepare("SELECT body FROM subagents WHERE agent_id='legacy-subagent'").get()?.body,
           markers: db.prepare("SELECT key FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%' ORDER BY key").all().map(row => row.key),
         };
       } finally { db.close(); }
@@ -1014,7 +1029,8 @@ else {
     for (const value of [migrated.run?.goal, migrated.run?.config, migrated.space, migrated.task,
       migrated.evidence, migrated.setting, migrated.mcp, migrated.mcpGrant, migrated.agent,
       migrated.calendar?.account_key, migrated.calendar?.label,
-      migrated.vault, migrated.vaultGrant, migrated.vaultAudit])
+      migrated.vault, migrated.vaultGrant, migrated.vaultAudit, migrated.goal, migrated.hook,
+      migrated.hookError, migrated.group, migrated.subagent])
       assert.ok(value?.startsWith("auxenc:v1:"), "Legacy run, Space, Task, authority and credential metadata must migrate");
     assert.ok(migrated.calendar?.account_key_lookup?.startsWith("auxidx:v1:"),
       "Calendar account equality must use a keyed lookup after migration");
@@ -1023,11 +1039,13 @@ else {
       "safety_approval_requests", "safety_audit", "safety_send_journal", "set_members", "runs", "steps",
       "conversations", "workspaces", "tasks", "task_revisions", "task_evidence", "criterion_reviews",
       "criterion_verifications", "outbound_mcp_servers", "outbound_mcp_grants", "agent_connections",
-      "vault_items", "vault_grants", "vault_access", "calendar_connections", "kv_filtered"].map(table => `protected_sqlite_v1:${table}`).sort());
+      "vault_items", "vault_grants", "vault_access", "calendar_connections", "kv_filtered",
+      "goals", "hooks", "hook_invocations", "subagent_groups", "subagents"].map(table => `protected_sqlite_v1:${table}`).sort());
     for (const marker of ["private startup marker", "private native run", "private native context", "private native space",
       "private native task", "private native evidence", "private native setting", "private native MCP",
       "private native MCP grant", "private native agent", "private-calendar-account", "private native calendar",
-      "private native vault", "private native vault audit"])
+      "private native vault", "private native vault audit", "private native goal", "private native hook",
+      "private native hook error", "private native group", "private native subagent"])
       assert.equal(readFileSync(databasePath).includes(marker), false);
     record("native Keychain startup migrates adapted SQLite rows before runtime readiness", { tables: migrated.markers.length });
     console.log("Quit this disposable Aux window from the Aux menu, then the journey will relaunch the same Profile.");
@@ -1050,6 +1068,11 @@ else {
     }, 60_000);
     assert.equal(inspect().error, migrated.error, "Protected row must remain stable across native restart");
     assert.equal(inspect().evidence, migrated.evidence, "Protected evidence must remain stable across native restart");
+    assert.equal(inspect().goal, migrated.goal, "Protected goal must remain stable across native restart");
+    assert.equal(inspect().hook, migrated.hook, "Protected hook must remain stable across native restart");
+    assert.equal(inspect().hookError, migrated.hookError, "Protected hook error must remain stable across native restart");
+    assert.equal(inspect().group, migrated.group, "Protected subagent group must remain stable across native restart");
+    assert.equal(inspect().subagent, migrated.subagent, "Protected subagent must remain stable across native restart");
     assert.ok(Array.isArray(await rpc("workspaces.list", {})));
     record("protected SQLite row and authenticated runtime survive native restart");
     report.passed = true;
