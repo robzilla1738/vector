@@ -1,9 +1,11 @@
 # EGRESS request authority — runtime/native integration handoff
 
-Status: **runtime source batch; native qualification remains open**. Base: `e1184a2f`.
-This batch does not contain a Chromium patch, generated bindings, native build, or
-passing native request-path artifact. The EGRESS lane owns native source for patch **0121**. The integrator owns generated
-outputs, patch packaging, the serial AuxDev build, and qualification records.
+Status: **runtime source committed; scoped native 0121 source handed to integrator;
+native qualification and relay isolation remain open**. Runtime base: `e1184a2f`.
+Runtime commits: `54c859cf` and projection revision `3fa25ab7` (integrated by root as
+`28a6ea60`). Native source is not a passing request-path artifact. The integrator now owns native source for patch **0121**, generated outputs,
+patch packaging, the serial AuxDev build, and qualification records. The EGRESS
+lane has stopped editing the shared native checkout.
 
 ## Outcome and boundary
 
@@ -221,7 +223,9 @@ The fixture has a loopback-only self-test; it does not exercise Chromium.
 
 Remaining integrator gate: generated bindings + patch 0121 + one serial native
 build + the capture matrix above + an actual source → recipient approval journey.
-Until that evidence exists, **EGRESS remains unqualified** in the roadmap graph.
+The HTTP/opaque transport journey is a scoped gate. Even after that passes, the
+relay isolation batch in [EGRESS-RELAY-ISOLATION.md](EGRESS-RELAY-ISOLATION.md) must
+close before **EGRESS** can be qualified in the roadmap graph.
 
 Verification recorded 2026-09-28:
 
@@ -244,3 +248,55 @@ or explicit ambiguous-provenance denial. WebSocket/WebTransport/non-HTTP channel
 must be denied or separately attributed before claiming complete agent egress
 coverage. Bounded text matching does not detect arbitrary rephrasing, ciphertext,
 fragmented sub-window secrets or covert channels.
+
+
+## Native 0121 source handoff (2026-09-28)
+
+Frozen delta: `/tmp/aux-egress-0121.patch`, **23 files / 1,904 patch lines**,
+SHA-256 `0635a1797375d1b9111145299eb90e42ce04c2c5f708d95dfcec9b0043c4336d`.
+File list: `/tmp/aux-egress-0121-files.txt`; pre-edit stack snapshot:
+`/tmp/aux-egress-0121-base`. These are integration artifacts on this machine,
+not a release artifact or a native pass. The integrator may revise the source;
+qualification must use the final staged patch and built artifact hashes.
+
+Source includes:
+
+- Browser-generated per-document token; exact Profile/tab/frame/document/run
+  install and renewal; mandatory accepted:true; tombstone after revoke/disconnect.
+- URLLoader factory preflight before target creation, final complete network
+  headers after extension/enterprise mutations, browser-generated loader IDs,
+  redirect URL/body/header replacement checks and final identity recheck.
+- Native-only credential hashes installed immediately before saved-password fill;
+  intended-origin use remains possible, cross-origin copies denied before RPC.
+- Revocation notifications cancel active guarded loaders. New-document requests
+  wait at most five seconds (64 pending bound) for the new native lease.
+- Ambiguous worker contexts fail closed while the Profile contains protected
+  documents. WebSocket/WebTransport/P2P and opaque streaming uploads are denied
+  in protected contexts; already-open opaque transports refuse subsequent agent
+  install. Owner fills without an agent lease similarly require a fresh document
+  before agent takeover, to avoid inheriting an untracked native credential.
+- Protected-document DNS hints, preconnect, prefetch, prerender and new popup
+  creation are denied. Existing storage/IPC relay channels remain a blocker.
+- A bounded native log oracle emits at most 256 `AUX_EGRESS` records per controller:
+  opaque request ID, kind, phase, outcome and reason. No raw address, body,
+  headers, credential or fingerprint is logged. Correlate one fixture action at
+  a time with these receipts and capture counts.
+- Focused native projection test target `//chrome/browser/ui/aux:egress_projection_unittests`
+  includes the JS reference request digest and normalization golden. The standalone
+  target may need ICU test initialization; AuxDev initializes ICU normally.
+
+Source checks: new C++ files formatted with Xcode clang-format; frozen patch
+reverse-application check passed. **No native compile, build or C++ test was run
+by this lane.** Compiler/API errors and live behavior must be resolved by the
+integrator's one native lane.
+
+Additional capture controls: arbitrary header, network-added cookie, new
+WebSocket, already-open WebSocket, WebTransport and WebRTC attempts. The local
+fixture's WebSocket control handshake and no-raw-capture plumbing passed in Node;
+that check does not exercise Chromium. WebTransport/WebRTC denial cases require a
+native admission receipt; a missing capture alone cannot prove interception.
+
+Remaining concrete gates: final native compilation and capture journeys; trusted
+owner-navigation recovery from a protected tombstone; cross-page/worker/storage
+relay isolation; review of privileged channels before any complete confinement
+claim. Signed release packaging is outside this work.

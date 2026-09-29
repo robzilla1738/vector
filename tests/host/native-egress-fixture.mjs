@@ -11,11 +11,12 @@ export async function createEgressFixture() {
   const secret = `aux-private-${randomUUID()}`;
   const captures = [];
   const servers = [];
+  const sockets = new Set();
   const origins = {};
   const cases = new Set([
     "same-origin", "public-recipient", "page-content", "secret-url", "secret-body", "secret-same-origin",
     "secret-header", "secret-cookie", "redirect-secret", "redirect-public", "subresource-secret", "worker-secret",
-    "service-worker-secret", "recipient-substitution", "cancelled-request", "late-after-cancel",
+    "service-worker-secret", "websocket-protected", "websocket-existing", "webtransport-protected", "webrtc-protected", "recipient-substitution", "cancelled-request", "late-after-cancel",
   ]);
   const captureUrl = (role, name, value) => `${origins[role]}/capture?case=${name}${value ? `&value=${encodeURIComponent(value)}` : ""}`;
   for (const role of ["source", "recipient", "substitution"]) {
@@ -77,11 +78,31 @@ const actions={
  'subresource-secret':()=>{const image=new Image();image.src=url('recipient','subresource-secret',secret);document.body.append(image);},
  'worker-secret':()=>new Worker('/worker.js'),
  'service-worker-secret':()=>navigator.serviceWorker.register('/service-worker.js').catch(()=>{}),
+ 'websocket-protected':()=>{const socket=new WebSocket(url('recipient','websocket-protected',secret).replace('http:','ws:'));socket.onerror=()=>{};},
+ 'websocket-existing':()=>{window.existingSocket=new WebSocket(url('source','websocket-existing').replace('http:','ws:'));window.existingSocket.onerror=()=>{};},
+ 'webtransport-protected':()=>{try{const transport=new WebTransport(url('recipient','webtransport-protected',secret).replace('http:','https:'));transport.ready.catch(()=>{});transport.closed.catch(()=>{});}catch{}},
+ 'webrtc-protected':async()=>{try{window.egressPeer=new RTCPeerConnection({iceServers:[]});window.egressPeer.createDataChannel('protected');await window.egressPeer.setLocalDescription(await window.egressPeer.createOffer());}catch{}},
  'cancelled-request':()=>send(url('recipient','cancelled-request'),'public query'),
  'late-after-cancel':()=>setTimeout(()=>send(url('recipient','late-after-cancel',secret)),500),
 };
 for(const [name,run] of Object.entries(actions))document.getElementById(name).onclick=()=>{attempt.textContent=name;run();};
 </script>`);
+    });
+    server.on("upgrade", (req, socket) => {
+      const url = new URL(req.url, origins[role]);
+      const name = url.searchParams.get("case");
+      if (!["websocket-protected", "websocket-existing"].includes(name)) { socket.destroy(); return; }
+      captures.push({ role, case: name, method: "UPGRADE", byteCount: 0,
+        digest: createHash("sha256").update(req.url).digest("hex"), at: Date.now() });
+      const key = req.headers["sec-websocket-key"];
+      if (typeof key !== "string") { socket.destroy(); return; }
+      const accept = createHash("sha1").update(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").digest("base64");
+      socket.write("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept + "\r\n\r\n");
+      sockets.add(socket);
+      socket.on("error", () => {});
+      socket.on("close", () => sockets.delete(socket));
+      // No raw frames are retained. This open socket is the pre-lease refusal control.
+      socket.on("data", () => {});
     });
     await new Promise((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
     const address = server.address();
@@ -99,6 +120,8 @@ for(const [name,run] of Object.entries(actions))document.getElementById(name).on
       assert.ok(matching.every(record => record.role === role), `Wrong recipient for ${name}`);
     },
     async close() {
+      for (const socket of sockets) socket.destroy();
+      sockets.clear();
       await Promise.all(servers.map(server => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); })));
     },
   };
