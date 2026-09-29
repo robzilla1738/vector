@@ -136,18 +136,21 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     }
   },
 
-  answerRun: async (runId, answer, displayedQuestion) => {
+  answerRun: async (runId, answer, displayedQuestion, expectedSuspensionId) => {
     if(get().runAnswerPending[runId])return;
     const prompt = get().prompt;
     const draft = get().runAnswerDrafts[runId];
     set(state=>({runAnswerPending:{...state.runAnswerPending,[runId]:true}}));
     try {
       const current = await call("runs.get", { runId });
-      if (current.run.status !== "needs_input" ||
-          (displayedQuestion !== undefined && current.run.statusMessage !== displayedQuestion))
+      const suspension = current.suspension;
+      if (current.run.runId !== runId || current.run.status !== "needs_input" ||
+          (current.run.statusMessage ?? "") !== displayedQuestion || !expectedSuspensionId ||
+          suspension?.suspensionId !== expectedSuspensionId || suspension.runId !== runId ||
+          suspension.turnId !== runId || suspension.state !== "pending" ||
+          (suspension.kind !== "ask-user-question" && suspension.kind !== "handoff"))
         throw new Error("This request changed. Review the latest question before sending.");
-      await call("runs.answer", { runId, answer,
-        ...(current.suspension ? { expectedSuspensionId: current.suspension.suspensionId } : {}) });
+      await call("runs.answer", { runId, answer, expectedSuspensionId });
       try { clearSubmittedRunAnswer(bridge.privateMode ? null : storage,runId,draft); }
       catch { toast("Your answer was sent, but its saved draft could not be cleared.","error"); }
       set(state=>{

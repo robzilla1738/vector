@@ -12,6 +12,7 @@ import { attentionModelFixture, MODEL_ID, RUN_A, RUN_B, RUN_C, RUN_D, PRIVATE_QU
 
 const root = resolve(import.meta.dirname, "../..");
 const systemOnly = process.argv.includes("--system-only");
+const chatCollaboration = process.argv.includes("--chat-collaboration");
 const stages = [
   "Configure the local model in Settings and open two disposable fixture pages.",
   "Start run A, leave a queue/steer draft, then start run B in a second chat.",
@@ -19,10 +20,11 @@ const stages = [
   "Dismiss the notice with Escape; inspect Home and Tasks attention cards.",
   "Complete A while it is foreground; review B's typed question.",
   "Answer B, switch away, disable in-app notices, then finish B.",
+  "Optional --chat-collaboration: verify typed Answer mode, preserve the answer draft across side panel/full conversation, and reopen B's durable terminal result.",
   "Optional --system-attention: Focus Mode suppresses a third run; background macOS alert opens a fourth run.",
 ];
 if (process.argv.includes("--list")) {
-  console.log(JSON.stringify({ stages, usage: "node tests/host/native-attention-journey.mjs --app /absolute/path/to/Aux.app [--system-attention | --system-only] [--output /absolute/new/directory]", nativeBuild: "Use a previously built Aux.app; this script only compiles the existing AX helper." }, null, 2));
+  console.log(JSON.stringify({ stages, usage: "node tests/host/native-attention-journey.mjs --app /absolute/path/to/Aux.app [--chat-collaboration | --system-attention | --system-only] [--output /absolute/new/directory]", nativeBuild: "Use a previously built Aux.app; this script only compiles the existing AX helper." }, null, 2));
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native attention acceptance requires macOS.");
@@ -176,6 +178,16 @@ try {
   capture("reviewed-question");
   record("Tasks review opens the exact durable B question");
 
+  if (chatCollaboration) {
+    assert.equal(native("has-button", "Answer question"), "true", "Only the typed question should expose Answer mode");
+    await operator("Type 'Use the first local option' in B's Answer question composer without sending. Move to the side panel and back to the full B conversation; do not answer yet.");
+    assert.equal(native("control-value", "Reply to conversation"), "Use the first local option", "Layout change must preserve the pending answer draft");
+    assert.equal(native("has-button", "Answer question"), "true");
+    assert.equal(inspect(RUN_B)?.suspension?.suspensionId, pending.suspension.suspensionId, "The displayed question must still be the same durable suspension");
+    record("typed question and pending answer draft survive layout changes", { runId: b.runId, suspensionId: pending.suspension.suspensionId });
+    capture("chat-question-after-layout-change");
+  }
+
   await operator("Answer B's question in its conversation composer. Its next local model reply is held; then open Home or Tasks and turn Task notices off. Leave A, Home, or Tasks foreground.");
   await until("B's second model request", () => model.seen(`${RUN_B}:2`));
   assert.equal(native("has-name", "Task notices off"), "true", "The local notice preference must be visibly off");
@@ -184,6 +196,13 @@ try {
   assert.equal(native("has-button", "Dismiss task notice"), "false", "The off preference must suppress B's completion notice");
   record("off preference suppresses another run's completion notice");
   capture("preference-off-completion");
+  if (chatCollaboration) {
+    await operator("Open B's full conversation from Chats after it completes. Confirm the saved final answer appears, then leave B visible.");
+    assert.equal(native("has-text", "Disposable page for two concurrent Aux tasks."), "true", "Reopened B must reconstruct its terminal result");
+    assert.equal(native("has-button", "Answer question"), "false", "A completed run must not retain Answer mode");
+    record("completed answer reconstructs after reopening B", { runId: b.runId });
+    capture("chat-durable-terminal-result");
+  }
   if (process.argv.includes("--system-attention")) {
     await operator(`In Home or Tasks, turn Task notices on. In Settings → General → Task attention, turn System task notifications and Focus Mode on. Start a third chat from a local fixture page with goal "${RUN_C}: summarize this local fixture", then switch to another chat before its model reply.`);
     await until("Focus Mode run C request", () => model.seen(RUN_C));

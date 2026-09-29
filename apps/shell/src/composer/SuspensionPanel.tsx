@@ -21,7 +21,7 @@ export function SuspensionPanel({ run, suspension, hydrated, question, readOnly 
   const typed = suspension?.state === "pending" && suspension.runId === run.runId && suspension.turnId === run.runId
     ? suspension : null;
   const instruction = typed?.request.instruction ?? question ?? run.statusMessage ?? "Aux is waiting for your answer.";
-  const kind = typed?.kind ?? "ask-user-question";
+  const kind = typed?.kind;
   const canAnswer = kind === "ask-user-question" || kind === "handoff";
   const text = draft?.question === instruction ? draft.text : "";
   const setText = (value: string) => useStore.getState().setRunAnswerDraft(run.runId, instruction, value);
@@ -35,11 +35,11 @@ export function SuspensionPanel({ run, suspension, hydrated, question, readOnly 
       // A queued event may have replaced the visible suspension. The runtime
       // compares this id atomically again before waking the parked run.
       const current = await call("runs.get", { runId: run.runId });
-      if (current.run.status !== "needs_input" || current.suspension?.suspensionId !== typed?.suspensionId
-        || (typed && current.suspension?.turnId !== typed.turnId))
+      if (current.run.status !== "needs_input" || !typed || current.suspension?.suspensionId !== typed.suspensionId
+        || current.suspension?.turnId !== typed.turnId || current.suspension?.state !== "pending"
+        || current.suspension.kind !== typed.kind)
         throw new Error("This request changed. Review the latest question before sending.");
-      await call("runs.answer", { runId: run.runId, answer: value.trim(),
-        ...(typed ? { expectedSuspensionId: typed.suspensionId } : {}) });
+      await call("runs.answer", { runId: run.runId, answer: value.trim(), expectedSuspensionId: typed.suspensionId });
       const state = useStore.getState();
       if (state.runAnswerDrafts[run.runId]?.question === instruction && state.runAnswerDrafts[run.runId]?.text === value)
         state.setRunAnswerDraft(run.runId, instruction, "");
@@ -48,10 +48,10 @@ export function SuspensionPanel({ run, suspension, hydrated, question, readOnly 
     } finally { sending.current = false; setBusy(false); }
   }
 
-  return <section className="needs-input" aria-label="Run suspension" data-suspension-kind={kind}>
-    <header className="ni-head"><strong>{TITLE[kind]}</strong></header>
+  return <section className="needs-input" aria-label="Run suspension" data-suspension-kind={kind ?? "unavailable"}>
+    <header className="ni-head"><strong>{kind ? TITLE[kind] : "Waiting for your input"}</strong></header>
     <p className="ni-q">{instruction}</p>
-    {!hydrated && <p className="hint">Loading the current request…</p>}
+    {!typed && <p className="hint">{hydrated ? "The current request is unavailable. Refresh this run before continuing." : "Loading the current request…"}</p>}
     {typed?.request.guidance && typed.request.guidance !== instruction && <p className="hint">{typed.request.guidance}</p>}
     {(kind === "approval" || kind === "action-confirmation") && <p className="hint">Review the approval prompt. Aux will wait for your decision.</p>}
     {kind === "handoff" && <p className="hint">Use the page, return control, then tell Aux when you’re done.</p>}

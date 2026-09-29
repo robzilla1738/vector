@@ -32,6 +32,7 @@ it("keeps answers separate from follow-ups and preserves a typed draft when edit
   useStore.setState({runs:[run],steps:{[run.runId]:[]},pages:[],connected:true,prompt:null,pendingTurns:[],conversationDrafts:{"chat:draft-chat":"Keep my existing follow-up"},runAnswerDrafts:{[run.runId]:{question:"Which account?",text:"Use the work account"}}} as never);
   const invoke = vi.spyOn(bridge,"invoke").mockImplementation(async method => {
     if(method === "runs.list") return [run];
+    if(method === "runs.get") return {run,suspension:{suspensionId:"s1",runId:run.runId,turnId:run.runId,threadId:"t1",state:"pending",kind:"ask-user-question",request:{kind:"ask-user-question",instruction:"Which account?",guidance:"Choose an account."},createdAt:1},steps:[]};
     if(method === "runs.messages.list") return [message];
     if(method === "runs.message.cancel") return {...message,status:"cancelled"};
     if(method === "conversations.get") return {title:"Draft",archived:false};
@@ -56,6 +57,32 @@ it("keeps answers separate from follow-ups and preserves a typed draft when edit
   await act(async () => button("Answer question").click());
   expect(input().value).toBe("Use the work account");
   expect(host.querySelectorAll('[aria-label="Run controls"]')).toHaveLength(1);
+});
+
+it("keeps an approval decision out of Answer mode across conversation layouts", async () => {
+  const run = makeRun({runId:"approval-run",config:{chatId:"approval-chat"},status:"needs_input",statusMessage:"Approve this action?",pageIds:[]});
+  useStore.setState({runs:[run],steps:{[run.runId]:[]},pages:[],connected:true,pendingTurns:[],conversationDrafts:{"chat:approval-chat":"Keep this follow-up"},runAnswerDrafts:{[run.runId]:{question:"Old question",text:"Do not send this"}}} as never);
+  const invoke=vi.spyOn(bridge,"invoke").mockImplementation(async method=>{
+    if(method==="runs.list")return [run];
+    if(method==="runs.get")return {run,suspension:{suspensionId:"approval-1",runId:run.runId,turnId:run.runId,threadId:"thread",state:"pending",kind:"approval",request:{kind:"approval",approvalId:"approval-1",instruction:"Review the requested action.",guidance:"Choose in the approval prompt."},createdAt:1},steps:[]};
+    if(method==="runs.messages.list")return [];
+    if(method==="conversations.get")return {title:"Approval",archived:false};
+    if(method==="conversations.artifacts.get")return {artifacts:[]};
+    if(method==="conversations.images.get")return {images:[]};
+    if(method==="conversations.attachments.get")return {attachments:[]};
+    if(method==="conversations.sources.get")return {sources:[]};
+    if(method==="runs.context.get")return {entries:[],historyEnabled:true};
+    return {workspace:null,memory:null};
+  });
+  await act(async()=>root.render(<Conversation chatId="approval-chat" embedded/>));
+  expect(host.querySelector('button[aria-pressed="true"]')?.textContent).not.toBe("Answer question");
+  expect(host.textContent).not.toContain("Aux needs your answer");
+  expect(host.textContent).toContain("Review the approval prompt");
+  expect(host.querySelector<HTMLTextAreaElement>('[aria-label="Reply to conversation"]')?.value).toBe("Keep this follow-up");
+  await act(async()=>root.render(<Conversation chatId="approval-chat"/>));
+  expect(host.querySelector<HTMLTextAreaElement>('[aria-label="Reply to conversation"]')?.value).toBe("Keep this follow-up");
+  expect(useStore.getState().runAnswerDrafts[run.runId]?.text).toBe("Do not send this");
+  expect(invoke.mock.calls.some(([method])=>method==="runs.answer")).toBe(false);
 });
 
 it("searches only available browser tabs and returns focus without silently changing scope", async () => {

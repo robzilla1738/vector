@@ -25,7 +25,7 @@ import { browserSourcesKey, sourceRef, sourceStatus } from "../browser-context-s
 import { isScrimOverlay } from "../chrome";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationArtifact, ConversationSource, Run, RunMessage, Workspace, WorkspaceMemory } from "@aux/contracts";
+import type { CompactObservation, ConversationImage, ConversationAttachment, ConversationArtifact, ConversationSource, Run, RunMessage, Suspension, Workspace, WorkspaceMemory } from "@aux/contracts";
 import { draftKey, HOME_DRAFT_CHAT_KEY, PENDING_CHAT_KEY, readPendingConversation } from "../conversation-drafts";
 import { conversationMarkdown } from "../conversation-export";
 import { bridge, type BrowserProfile } from "../bridge";
@@ -275,7 +275,27 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     void call("conversations.artifacts.get", {chatId:id}).then(value => { if(active) setGenerated(value.artifacts); }).catch(() => {});
     return () => { active = false; };
   }, [id, last?.status, last?.runId]);
-  const answering = last?.status === "needs_input";
+  const [currentSuspension, setCurrentSuspension] = useState<{ runId: string; statusMessage?: string; value: Suspension | null } | null>(null);
+  const [suspensionRefresh, setSuspensionRefresh] = useState(0);
+  useEffect(() => {
+    if (!last || last.status !== "needs_input") { setCurrentSuspension(null); return; }
+    const runId = last.runId, statusMessage = last.statusMessage;
+    let active = true;
+    setCurrentSuspension(null);
+    void call("runs.get", { runId }).then(detail => {
+      if (!active) return;
+      const value = detail.run.runId === runId && detail.run.status === "needs_input"
+        && detail.run.statusMessage === statusMessage && detail.suspension?.state === "pending"
+        && detail.suspension.runId === runId && detail.suspension.turnId === runId
+        ? detail.suspension : null;
+      setCurrentSuspension({ runId, statusMessage, value });
+    }).catch(() => { if (active) setCurrentSuspension({ runId, statusMessage, value: null }); });
+    return () => { active = false; };
+  }, [last?.runId, last?.status, last?.statusMessage, suspensionRefresh]);
+  const suspensionLoaded = currentSuspension?.runId === last?.runId && currentSuspension?.statusMessage === last?.statusMessage;
+  const suspension = currentSuspension?.runId === last?.runId && currentSuspension?.statusMessage === last?.statusMessage
+    ? currentSuspension?.value ?? null : null;
+  const answering = last?.status === "needs_input" && suspension?.kind === "ask-user-question";
   const [sendingChat, setSendingChat] = useState<string | null>(null);
   const [queuedMessages, setQueuedMessages] = useState<RunMessage[]>([]);
   const queueAttemptRef = useRef<QueueAttempt | null>(null);
@@ -496,8 +516,8 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     sendPending.current = true;
     setSending(true); setSendError("");
     try {
-      if (last?.status === "needs_input" && effectiveLiveMode === "answer") {
-        await useStore.getState().answerRun(last.runId,text.trim(),last.statusMessage);
+      if (answering && last && suspension && effectiveLiveMode === "answer") {
+        await useStore.getState().answerRun(last.runId,text.trim(),last.statusMessage ?? "",suspension.suspensionId);
         scrolling.jumpToLatest();
       } else if (live && last && id) {
         const mode = effectiveLiveMode === "answer" ? "steer" : effectiveLiveMode;
@@ -699,7 +719,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       {closedPage ? <div className="conversation-context-note"><span>{selectedContext ? selectedContext.title || selectedContext.url : "This chat’s page is closed."}</span>{recoverUrl && <button className="btn sm" disabled={reopening || live || taskBound} title={recoverUrl} onClick={() => void reopen()}>{reopening ? "Opening…" : "Reopen"}</button>}</div> : null}
       {archived && <output className="conversation-archive-notice" data-block><span>This conversation is archived. Your draft is kept.</span>{!taskBound && <button className="btn sm" disabled={restoring} onClick={()=>void restoreConversation()}>{restoring?"Restoring…":"Restore to reply"}</button>}</output>}
       {queued.length > 0 && <section className="composer-queue" aria-label="Queued follow-ups"><header>Up next <span className="count nums">{queued.length}</span></header><ol>{queued.map(message => <li key={message.messageId} data-message-id={message.messageId}><p>{message.text}</p><div className="queued-message-state"><span role={message.status === "needs_attention" ? "alert" : undefined}>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><button type="button" disabled={archived || !!queueBusy} onClick={() => void cancelQueued(message, true)}>Edit</button><button type="button" disabled={archived || !!queueBusy} onClick={() => void cancelQueued(message)}>Remove</button></>}</div></li>)}</ol></section>}
-      <ComposerFrame notices={<>{last && <RunControls runId={last.runId}/>}{answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{answerQuestion}</p></div>}</>}>
+      <ComposerFrame notices={<>{last && <RunControls runId={last.runId}/>}{answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{suspension?.request.instruction}</p></div>}{last?.status === "needs_input" && !answering && suspension?.kind !== "handoff" && <div className="composer-question" role="status"><strong>{suspension ? "Decision needed" : suspensionLoaded ? "Current request unavailable" : "Loading current request"}</strong><p>{suspension ? "Review the approval prompt before Aux continues." : suspensionLoaded ? "Refresh the request before continuing." : "Checking the durable request…"}</p>{suspensionLoaded && !suspension && <button type="button" className="btn sm" onClick={() => setSuspensionRefresh(value => value + 1)}>Retry loading request</button>}</div>}</>}>
       <div className="composer-context">
       {home && !attachmentsOpen && (selectedContext && selectedContext.url !== "about:blank" || browserSources.length > 0) && <button type="button" className="home-context-summary" onClick={() => conversationRoot.current?.querySelector<HTMLButtonElement>('.home-tools-trigger > button')?.click()}>{I.globe}<span>{selectedContext?.title || selectedContext?.url || "Selected browser context"}{browserSources.length ? ` · ${browserSources.length} saved ${browserSources.length === 1 ? "source" : "sources"}` : ""}</span></button>}
       <AttachmentTray items={attachmentItems} disabled={contextLocked} busy={attachmentSaving}/>
@@ -713,7 +733,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
 
       {contextLoading && <output className="hint" data-block>Loading saved context…</output>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
-      {last?.status === "needs_input" && <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={answering ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder="Answer Aux’s question…" sendDisabled={archived || !connected || sending || answerPending} onChange={setText} onSend={() => void send()} textareaRef={textareaRef} />}
+      {answering && <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={20000} disabled={archived || sending || answerPending} placeholder="Answer Aux’s question…" sendDisabled={archived || !connected || sending || answerPending} onChange={setText} onSend={() => void send()} textareaRef={textareaRef} />}
       </> : <>
       {contextLoading && <output className="hint" data-block>Loading saved context…</output>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}

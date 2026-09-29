@@ -146,7 +146,7 @@ export interface Workspace {
   /** Live answer text streamed by `run.answer.delta`, dropped once the run settles. */
   answerStreams: Record<string, string>;
   retryRun(runId: string, pageId?: string): Promise<Run | null>;
-  answerRun(runId: string, answer: string, displayedQuestion?: string): Promise<void>;
+  answerRun(runId: string, answer: string, displayedQuestion: string, expectedSuspensionId: string): Promise<void>;
   returnControl(pageId: string): Promise<void>;
   loadRun(runId: string): Promise<void>;
 
