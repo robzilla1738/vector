@@ -189,10 +189,12 @@ export function makeInvoker(s: Services) {
         ? s.runs.pageOwnership.tryAcquire({
             pageId,
             actor: "external",
+            runId: externalRunId,
             taskId,
             connectionId: client.connectionId,
           })
         : undefined;
+      let revokeEgress: (() => void) | undefined;
       try {
         if (externalRunId && client.connectionId) s.externalSessions?.notePage(client.connectionId, pageId);
         if (automated && s.pages.get(pageId).controller === "human")
@@ -200,8 +202,11 @@ export function makeInvoker(s: Services) {
             "conflict",
             "A person controls this tab; return control before an automated action",
           );
+        if (automated && externalRunId)
+          revokeEgress = await s.runs.acquireBrowserEgress?.(externalRunId, pageId);
         return await action();
       } finally {
+        revokeEgress?.();
         release?.();
       }
     };

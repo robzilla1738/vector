@@ -72,6 +72,7 @@ export class ProgramExecutor {
         catch { return ""; }
       };
       const run = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
+      if (ctx.runId) await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
       const authorize = async (step: Step, projectedOrigin?: string, phase: "preflight" | "dispatch" = "dispatch") => {
         const documentEpoch = lp.target.documentEpoch;
         const topOrigin = liveOrigin();

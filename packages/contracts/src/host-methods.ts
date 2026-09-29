@@ -10,6 +10,7 @@ import { ZapStylesheetInstallSchema, ZapInstallReceiptSchema } from "./zap.js";
 import { EventSchema } from "./events.js";
 import { AutofillProfileSchema } from "./api.js";
 import type { AuxFeature } from "./aux-features.js";
+import { EgressContextRequestSchema, EgressContextSchema, EgressInstallSchema, EgressRevokeSchema } from "./egress.js";
 
 type Owner = "browser" | "runtime";
 type Trust = "aux-webui" | "authenticated-runtime";
@@ -284,6 +285,9 @@ export const HostMethods = {
     phase: z.literal("document_start"), futureDocuments: z.literal(true) }).strict()),
   "native.bookmarksInvoke": runtime("core", z.object({ method: str, params: z.unknown() }).strict(), z.unknown()),
   "native.capabilities": runtime("core", z.object({}).strict(), HostCapabilitiesSchema),
+  "native.egressContext": runtime("core", EgressContextRequestSchema, EgressContextSchema),
+  "native.egressInstall": runtime("core", EgressInstallSchema, accepted),
+  "native.egressRevoke": runtime("core", EgressRevokeSchema, accepted),
   "native.historyClear": runtime("core", z.object({ since: number.optional(), before: number.optional() }).strict(), z.object({ removed: number }).strict()),
   "native.historyImport": runtime("core", z.object({ visits: z.array(z.object({
     url: str, title: z.string().max(1000), visitedAt: z.number().int().nonnegative(),

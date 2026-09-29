@@ -501,16 +501,26 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     outputDir: self.deps.agentLoop?.repl?.outputDir,
     tabs: async () => [...new Set([...run.pageIds, ...openedTabs.keys()])].map(replTab),
     openTab: async (url) => {
-      permittedWebUrl(url);
+      const destination = permittedWebUrl(url).href;
       const gate = self.deps.agentLoop?.repl?.openTab;
       if (gate) {
-        const decision = await gate(url, { runId, threadId, turnId: runId });
+        const decision = await gate(destination, { runId, threadId, turnId: runId });
         if ("park" in decision) return decision;
       }
-      const target = await self.deps.pages.open({ url, background: true, ownedByRuntime: true });
-      recordRunTabChange(self.deps.repo, runId, target, "tab.open");
-      openedTabs.set(target.pageId, await self.claimPage(runId, target.pageId));
-      return { output: replTab(target.pageId) };
+      let claimedPageId: string | undefined;
+      try {
+        const target = await self.deps.pages.open({ url: destination, background: true, ownedByRuntime: true,
+          beforeNavigate: async target => {
+            openedTabs.set(target.pageId, await self.claimPage(runId, target.pageId, destination));
+            claimedPageId = target.pageId;
+          },
+        });
+        recordRunTabChange(self.deps.repo, runId, target, "tab.open");
+        return { output: replTab(target.pageId) };
+      } catch (error) {
+        if (claimedPageId) { openedTabs.get(claimedPageId)?.(); openedTabs.delete(claimedPageId); }
+        throw error;
+      }
     },
     closeTab: async (pageId) => {
       const release = openedTabs.get(pageId);

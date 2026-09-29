@@ -147,13 +147,23 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
   });
   if (!authorizeProgram([{ id: "turn-egress", op: "navigate", url: url.href }], s.settings.effectGrants()).ok)
     throw new AuxError("permission_denied", `Web egress is not granted for ${url.origin}.`);
-  return turnTabs.open({
-    connectionId: client.connectionId ?? (client.external ? "owner" : "internal"),
-    taskId: params.taskId,
-    turnId: params.turnId,
-    url: url.href,
-    skipIfActive: params.skipIfActive,
-  });
+  let release: (() => void) | undefined;
+  let revoke: (() => void) | undefined;
+  try {
+    return await turnTabs.open({
+      connectionId: client.connectionId ?? (client.external ? "owner" : "internal"),
+      taskId: params.taskId,
+      turnId: params.turnId,
+      url: url.href,
+      skipIfActive: params.skipIfActive,
+      ...(ctx.externalRunId ? { beforeNavigate: async (page: import("@aux/contracts").PageTarget) => {
+        release = s.runs.pageOwnership.tryAcquire({ pageId: page.pageId, actor: "external",
+          runId: ctx.externalRunId, taskId: params.taskId, connectionId: client.connectionId });
+        if (client.connectionId) s.externalSessions?.notePage(client.connectionId, page.pageId);
+        revoke = await s.runs.acquireBrowserEgress?.(ctx.externalRunId!, page.pageId, url.href);
+      } } : {}),
+    });
+  } finally { revoke?.(); release?.(); }
 }
 async function h_agent_turn_end(ctx: MethodCtx): Promise<unknown> {
   const { client, params, turnTabs } = ctx;

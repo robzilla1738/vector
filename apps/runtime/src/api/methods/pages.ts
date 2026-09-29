@@ -79,9 +79,9 @@ async function h_pages_stop(ctx: MethodCtx): Promise<unknown> {
   return withExternalPage(params.pageId, () => s.pages.stop(params.pageId));
 }
 async function h_pages_observe(ctx: MethodCtx): Promise<unknown> {
-  const { params, s } = ctx;
+  const { params, s, withExternalPage } = ctx;
   const { format, ...req } = params as { format?: "full" | "compact" } & Record<string, unknown>;
-  return wireObservation(await s.pages.observe(params.pageId, req as never), format);
+  return withExternalPage(params.pageId, async () => wireObservation(await s.pages.observe(params.pageId, req as never), format));
 }
 async function h_pages_cuaExecute(ctx: MethodCtx): Promise<unknown> {
   const { client, invoke, params, s } = ctx;
@@ -230,12 +230,12 @@ async function h_pages_webmcp(ctx: MethodCtx): Promise<unknown> {
   });
 }
 async function h_pages_extract(ctx: MethodCtx): Promise<unknown> {
-  const { params, s } = ctx;
+  const { params, s, withExternalPage } = ctx;
   const p = params as {
     pageId: string;
     fields?: Array<string | { name: string; selector?: string; attribute?: string; all?: boolean }>;
   };
-  return s.pages.extract(p.pageId, p.fields);
+  return withExternalPage(p.pageId, () => s.pages.extract(p.pageId, p.fields));
 }
 async function h_pages_elementInfo(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;

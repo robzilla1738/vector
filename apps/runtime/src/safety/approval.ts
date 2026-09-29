@@ -77,14 +77,16 @@ export class ApprovalStore {
   }
 
   /** The native approval UI sends an ID and expected turn; the saved action is authoritative. */
-  decideLocal(raw: ApprovalDecision, expectedTurnId: string, now = Date.now()): void {
+  decideLocal(raw: ApprovalDecision, expectedTurnId: string, now = Date.now()): SafetyAction {
     const decision = ApprovalDecisionSchema.parse(raw);
     const row = this.db.prepare("SELECT action_json AS actionJson,turn_id AS turnId FROM safety_approval_requests WHERE approval_id=?")
       .get(decision.approvalId) as { actionJson: string; turnId: string } | undefined;
     if (!row || row.turnId !== expectedTurnId) throw new Error("Stale or unknown approval turn");
-    this.recordLocalDecision(decision, SafetyActionSchema.parse(JSON.parse(
+    const action = SafetyActionSchema.parse(JSON.parse(
       this.columnCipher?.decrypt("safety_approval_requests", JSON.stringify([decision.approvalId]), "action_json", row.actionJson)
-        ?? row.actionJson)), now);
+        ?? row.actionJson));
+    this.recordLocalDecision(decision, action, now);
+    return action;
   }
 
   /** Only a trusted native UI handler may call this method. Never expose it as a model tool. */

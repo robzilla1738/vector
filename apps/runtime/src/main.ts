@@ -10,6 +10,8 @@ import { HookService, type HookExecutor } from "./services/hooks.js";
 import { installRunEndHooks } from "./services/hook-dispatch.js";
 import { WorkspaceFolderService } from "./services/workspace-folders.js";
 import { BrowserBookmarkLedger } from "./services/browser-bookmark-ledger.js";
+import { BrowserEgress } from "./safety/browser-egress.js";
+import { browserEgressApproval } from "./safety/browser-egress-approval.js";
 /**
  * Aux runtime entry point.
  *
@@ -56,6 +58,7 @@ import { PageService, type DriverSet } from "./services/pages.js";
 import { RoutineService } from "./services/routines.js";
 import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
+import { TaskService } from "./services/tasks.js";
 import { GoalService } from "./services/goals.js";
 import { CommandEscalationService } from "./services/command-escalation.js";
 import { SubagentService } from "./services/subagents.js";
@@ -510,6 +513,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       : undefined;
   // pages↔operations are mutually dependent — late-bind via a lazy ref
   let operations!: OperationService;
+  let browserEgress: BrowserEgress | undefined;
   const pages = new PageService({
     repo,
     profileId: env.AUX_BROWSER_PROFILE_ID,
@@ -522,6 +526,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     tracer,
     durableWrites,
     safetyGate,
+    prepareAgentEgress: (runId, pageId) => browserEgress?.ensure(runId, pageId) ?? Promise.resolve(),
+    recordAgentObservation: (pageId, url, text) => {
+      const runId = pageClaims.activeForPage(pageId)?.runId;
+      if (runId) browserEgress?.notePageText(runId, pageId, text, url);
+    },
     // unified step ledger — every execution records steps with pageId so
     // operations.compile can rebuild the trace (§10.3)
     recordStep: (s) => repo.saveStep(s),
@@ -874,6 +883,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const ws = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
       if (!ws || !contentMemory) return [];
       const hits = await contentMemory.search(ws, query, 5);
+      for (const hit of hits) browserEgress?.protect(ctx.runId, hit.snippet, "memory");
       return hits.map((hit) => ({ title: hit.title, url: hit.url, text: hit.snippet }));
     },
     // 06-X history_search / memory_search — the same projections the shell uses.
@@ -883,6 +893,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       const ws = repo.getRun(ctx.runId)?.config?.contextWorkspaceId;
       if (!ws || !contentMemory) return [];
       const hits = await contentMemory.search(ws, query, 8);
+      for (const hit of hits) browserEgress?.protect(ctx.runId, hit.snippet, "memory");
       return hits.map((hit) => ({
         title: hit.title,
         url: hit.url,
@@ -919,7 +930,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         return { output: await new BrowserBookmarkLedger(repo, native).save(ctx.runId, pageId,
           url.href, page.title || url.hostname) };
       },
-      // Opening a tab navigates somewhere new — same egress decision as a fetch.
+      // Authorize the intended target; native additionally inspects its exact
+      // first navigation after blank-page binding without a duplicate prompt.
       openTab: async (url, ctx) => {
         const gated = await loopEgressGate(ctx, url, "agent.tab.open");
         if ("park" in gated) return { park: gated.park };
@@ -988,6 +1000,49 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // model call through this before spending.
   const budgets = new BudgetsService(repo.db, () => settings.budgetLimits());
 
+  if (env.AUX_HOST_SOCKET && env.AUX_BROWSER_PROFILE_ID) {
+    browserEgress = new BrowserEgress({
+      profileId: env.AUX_BROWSER_PROFILE_ID,
+      native,
+      run: runId => {
+        const run = repo.getRun(runId);
+        if (!run || !["queued", "running", "planning", "needs_input"].includes(run.status)) return null;
+        if (run.config?.taskId) {
+          try {
+            if (new TaskService(repo, events).get(run.config.taskId).revision !== run.config.taskRevision) return null;
+          } catch { return null; }
+        }
+        return { taskId: run.config?.taskId, taskRevision: run.config?.taskRevision ?? 0,
+          threadId: run.config?.chatId ?? run.runId };
+      },
+      page: pageId => pages.get(pageId),
+      ownsPage: (runId, pageId) => pageClaims.activeForPage(pageId)?.runId === runId,
+      audit: (decision, evidence) => safetyAudit.record({ ...decision, ...evidence, kind: "browser_egress", requestKind: evidence.kind, at: Date.now() }),
+      approve: browserEgressApproval({
+        profileId: env.AUX_BROWSER_PROFILE_ID, decide: decideDeps, suspensions, events,
+        run: runId => repo.getRun(runId),
+        setStatus: (runId, status, message) => runs.coordinator.setStatus(runId, status, message),
+      }),
+    });
+    channel!.onMethod("egress.request", params => browserEgress!.request(params));
+    events.subscribe(event => {
+      const pageId = typeof event.payload.pageId === "string" ? event.payload.pageId : undefined;
+      if (pageId && [EventTypes.PageRemoved, EventTypes.PageTakeover, EventTypes.PageCrashed].includes(event.type as typeof EventTypes.PageRemoved))
+        browserEgress!.revokePage(pageId);
+      if (event.type === EventTypes.PageUpdated && pageId && typeof event.payload.documentEpoch === "number") {
+        browserEgress!.revokePage(pageId);
+        const runId = pageClaims.activeForPage(pageId)?.runId;
+        if (runId) void browserEgress!.ensure(runId, pageId).catch(() => {});
+      }
+      const changedRun = event.type === "run.updated" ? event.payload.run as { runId?: string; status?: string } | undefined : undefined;
+      const runId = changedRun?.runId ?? event.runId;
+      const status = changedRun?.status ?? (event.type === EventTypes.RunStatus ? event.payload.status : undefined);
+      if (runId && typeof status === "string" && !["queued", "running", "planning", "needs_input"].includes(status)) {
+        if (status === "paused") browserEgress!.suspendRun(runId);
+        else browserEgress!.revokeRun(runId);
+      }
+    });
+  }
   const runs = new RunService({
     repo,
     events,
@@ -1007,6 +1062,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     pageClaims,
     budgets,
     agentLoop,
+    browserEgress,
   });
   const goals = new GoalService(repo, runs);
   const commandEscalations = new CommandEscalationService(repo);
@@ -1420,6 +1476,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   memoryExpiry.unref();
   contentExpiry.unref();
   const shutdown = async () => {
+    browserEgress?.close();
     clearTimeout(observationMaintenanceTimer);
     clearInterval(memoryExpiry);
     clearInterval(contentExpiry);

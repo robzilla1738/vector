@@ -544,6 +544,10 @@ export class RunService {
     };
   }
 
+  acquireBrowserEgress(runId: string, pageId: string, initialDestination?: string): Promise<(() => void) | undefined> {
+    return this.deps.browserEgress?.acquire(runId, pageId, initialDestination) ?? Promise.resolve(undefined);
+  }
+
   constructor(private deps: {
     repo: Repo;
     events: EventBus;
@@ -564,6 +568,7 @@ export class RunService {
     budgets?: import("./budgets.js").BudgetsService;
     /** S5 tool-loop backends (decide()-gated web tools) — main.ts wires them. */
     agentLoop?: import("../agent/loop/host.js").AgentLoopHostDeps;
+    browserEgress?: import("../safety/browser-egress.js").BrowserEgress;
     tracer?: {
       start(
         name: string,
@@ -594,7 +599,9 @@ export class RunService {
         if (!workspaceId || !this.deps.contentMemory) throw new AuxError("permission_denied", "Selected article context is unavailable.");
         const records = await Promise.all(ids.map(id => this.deps.contentMemory!.get(workspaceId, id)));
         if (records.some(record => !record)) throw new AuxError("permission_denied", "A selected article was forgotten or its site access changed.");
-        return records.map(record => ({ url: record!.url, title: record!.title, capturedAt: record!.capturedAt, text: record!.text.slice(0, 8_000) }));
+        const references = records.map(record => ({ url: record!.url, title: record!.title, capturedAt: record!.capturedAt, text: record!.text.slice(0, 8_000) }));
+        for (const reference of references) deps.browserEgress?.protect(run.runId, reference.text, "memory");
+        return references;
       },
       model: () => deps.settings.model(),
       defaultModel: () => deps.settings.agentRoute("standard").modelId,
@@ -651,6 +658,7 @@ export class RunService {
       calendar: deps.calendar,
       operations: deps.operations,
       pageOwnership: this.pageOwnership,
+      browserEgress: deps.browserEgress,
       agentLoop: deps.agentLoop,
     });
     this.setRunner = new SetRunner({

@@ -18,6 +18,9 @@ import {
   WebmcpToolSchema,
   type WebmcpCallResult,
   type WebmcpTool,
+  EgressContextSchema,
+  type EgressContext,
+  type EgressLease,
 } from "@aux/contracts";
 
 export interface ContentBlockBegin {
@@ -73,6 +76,9 @@ import {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge {
+  egressContext?(input: { tabId: string; expectedUrl: string }): Promise<EgressContext>;
+  egressInstall?(input: { lease: EgressLease; expectedUrl: string }): Promise<{ accepted: true }>;
+  egressRevoke?(input: { leaseId: string }): Promise<{ accepted: true }>;
   capabilities?(): Promise<HostCapabilities>;
   /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
   bookmarksInvoke?(method: string, params: unknown): Promise<unknown>;
@@ -161,6 +167,15 @@ export interface NativeBridge {
 
 export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
+  async egressContext(input: { tabId: string; expectedUrl: string }): Promise<EgressContext> {
+    return EgressContextSchema.parse(await this.channel.call("native.egressContext", input));
+  }
+  egressInstall(input: { lease: EgressLease; expectedUrl: string }): Promise<{ accepted: true }> {
+    return this.channel.call("native.egressInstall", input);
+  }
+  egressRevoke(input: { leaseId: string }): Promise<{ accepted: true }> {
+    return this.channel.call("native.egressRevoke", input);
+  }
   async capabilities(): Promise<HostCapabilities> {
     return HostCapabilitiesSchema.parse(await this.channel.call("native.capabilities", {}));
   }

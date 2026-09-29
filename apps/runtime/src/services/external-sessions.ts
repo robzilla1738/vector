@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { RunSchema, type AgentConnectionScope, type Run } from "@aux/contracts";
 import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
+import { TaskService } from "./tasks.js";
 
 /** An external session goes quiet this long → its run completes. */
 export const EXTERNAL_SESSION_IDLE_MS = 10 * 60_000;
@@ -64,11 +65,19 @@ export class ExternalSessionService {
       return undefined;
     }
     this.lastActivity.set(client.connectionId, now);
-    const cached = this.active.get(client.connectionId);
-    if (cached && ACTIVE.has(this.repo.getRun(cached)?.status ?? "")) return cached;
+    const taskRevision = client.scope.kind === "task"
+      ? new TaskService(this.repo, this.events).get(client.scope.taskId).revision : undefined;
+    const cached = this.active.get(client.connectionId) ?? this.activeRunId(client.connectionId);
+    if (cached) {
+      const run = this.repo.getRun(cached);
+      if (run && ACTIVE.has(run.status) && run.config?.taskRevision === taskRevision) {
+        this.active.set(client.connectionId, cached);
+        return cached;
+      }
+      if (run && ACTIVE.has(run.status)) this.end(client.connectionId, "cancelled", "Task revision changed");
+    }
     this.active.delete(client.connectionId);
-    // A still-active session run in the store resumes instead of duplicating
-    // (the in-memory map was rebuilt, or this is a later call in-process).
+    // A revision change starts fresh authority; the old run cannot transmit.
     const resumed = this.activeRunId(client.connectionId);
     const runId = resumed ?? `extrun_${randomUUID()}`;
     this.active.set(client.connectionId, runId);
@@ -82,7 +91,8 @@ export class ExternalSessionService {
           implementation: "external-agent",
           externalConnectionId: client.connectionId,
           chatId: `external:${client.connectionId}`,
-          ...(client.scope.kind === "task" ? { taskId: client.scope.taskId } : {}),
+          ...(client.scope.kind === "task" ? { taskId: client.scope.taskId,
+            taskRevision } : {}),
         },
         startedAt: now,
         createdAt: now,

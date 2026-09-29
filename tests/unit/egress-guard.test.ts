@@ -13,12 +13,12 @@ function fixture() {
   });
   const lease = guard.issue({
     profileId: "p1", runId: "r1", taskRevision: 4, tabId: "tab-1", frameId: "main",
-    documentEpoch: 3, sourceOrigin: "https://source.test", recipientOrigins: ["https://api.test"],
+    documentEpoch: 3, documentToken: "native-document-1", sourceOrigin: "https://source.test", recipientOrigins: ["https://api.test"],
   });
   const send = (destination: string, body = "", overrides: Record<string, unknown> = {}) => {
     const evidence = {
       leaseId: lease.leaseId, profileId: "p1", runId: "r1", taskRevision: 4,
-      tabId: "tab-1", frameId: "main", documentEpoch: 3, destination,
+      tabId: "tab-1", frameId: "main", documentEpoch: 3, documentToken: "native-document-1", destination,
       kind: "fetch" as const, method: "POST" as const, byteCount: Buffer.byteLength(body),
       bodyComplete: true, observedAt: now, ...overrides,
     };

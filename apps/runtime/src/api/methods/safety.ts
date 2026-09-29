@@ -11,7 +11,7 @@ async function h_safety_approvals_decide(ctx: MethodCtx): Promise<unknown> {
   const { approvals, client, params, s, suspensions } = ctx;
   if (client.external)
     throw new AuxError("permission_denied", "Only the Aux interface can decide an approval.");
-  approvals.decideLocal(params.decision, params.expectedTurnId);
+  const action = approvals.decideLocal(params.decision, params.expectedTurnId);
   const approved = params.decision.decision === "accept" || params.decision.decision === "acceptForSession";
   const resolved = suspensions.resolveByApprovalId(
     params.decision.approvalId,
@@ -22,7 +22,12 @@ async function h_safety_approvals_decide(ctx: MethodCtx): Promise<unknown> {
   // refusal (chooses a different action) instead of a silent timeout.
   if (resolved) {
     try {
-      s.runs.coordinator.answer(
+      if (action.action === "browser.request") {
+        // The native request is already waiting. Do not queue an answer that
+        // could accidentally answer the run's next unrelated user question.
+        if (s.repo.getRun(resolved.runId)?.status === "needs_input")
+          s.runs.coordinator.setStatus(resolved.runId, "running", approved ? "Browser request approved" : "Browser request declined");
+      } else s.runs.coordinator.answer(
         resolved.runId,
         approved
           ? "The user approved the requested action."

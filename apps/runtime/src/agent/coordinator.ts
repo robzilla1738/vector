@@ -84,6 +84,7 @@ export interface CoordinatorDeps {
   calendar?: import("../services/calendar-connections.js").CalendarConnectionService;
   operations?: import("../services/operations.js").OperationService;
   pageOwnership?: PageOwnership;
+  browserEgress?: import("../safety/browser-egress.js").BrowserEgress;
   /** S5 tool loop backends (decide()-gated web tools, provider cache options) — main.ts wires them. */
   agentLoop?: AgentLoopHostDeps;
 }
@@ -274,6 +275,7 @@ export class RunCoordinator {
   }
 
   cancel(runId: string, reason = "Cancelled by user"): Run {
+    this.deps.browserEgress?.revokeRun(runId);
     const c = this.controls.get(runId);
     if (c) {
       c.abort.abort();
@@ -393,7 +395,7 @@ export class RunCoordinator {
   }
 
   async waitIfPaused(c: RunControl, runId: string) {
-    if (c.paused) this.releasePages(runId);
+    if (c.paused) this.releasePages(runId, true);
     while (c.paused && !c.abort.signal.aborted) {
       await new Promise((r) => setTimeout(r, 120));
     }
@@ -407,7 +409,7 @@ export class RunCoordinator {
       this.answers.delete(runId);
       return existing;
     }
-    this.releasePages(runId);
+    this.releasePages(runId, true);
     const answer = await new Promise<string>((resolve) => {
       c.answerWaiter = { resolve: answer => { c.answerWaiter = undefined; resolve(answer); } };
     });
@@ -461,13 +463,25 @@ export class RunCoordinator {
       if (humanHeld) throw new AuxError("conflict", `Page ${humanHeld} is under human control`);
       if (control.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled while waiting for a page");
       this.pageReleases.set(runId, release);
+      if (this.deps.browserEgress) {
+        for (const pageId of this.get(runId).pageIds) await this.deps.browserEgress.acquire(runId, pageId);
+        const run = this.get(runId);
+        const memoryOffset = run.config?.context?.indexOf("SPACE MEMORY SUMMARY") ?? -1;
+        if (memoryOffset >= 0) this.deps.browserEgress.protect(runId, run.config!.context!.slice(memoryOffset), "memory");
+        if (run.config?.contextWorkspaceId && run.config.instructions)
+          this.deps.browserEgress.protect(runId, run.config.instructions, "memory");
+      }
     } catch (error) {
+      this.deps.browserEgress?.revokeRun(runId);
+      this.pageReleases.delete(runId);
       release();
       throw error;
     }
   }
 
-  private releasePages(runId: string): void {
+  private releasePages(runId: string, suspend = false): void {
+    if (suspend) this.deps.browserEgress?.suspendRun(runId);
+    else this.deps.browserEgress?.revokeRun(runId);
     const release = this.pageReleases.get(runId);
     this.pageReleases.delete(runId);
     release?.();
@@ -475,10 +489,14 @@ export class RunCoordinator {
 
   ownsPages(runId: string): boolean { return this.pageReleases.has(runId); }
 
-  async claimPage(runId: string, pageId: string): Promise<() => void> {
+  async claimPage(runId: string, pageId: string, initialDestination?: string): Promise<() => void> {
     const control = this.controls.get(runId);
     if (!control) throw new AuxError("cancelled", "run has ended");
-    return this.pageOwnership.acquire({ pageId, actor: "coordinator", runId }, control.abort.signal);
+    const release = await this.pageOwnership.acquire({ pageId, actor: "coordinator", runId }, control.abort.signal);
+    try {
+      const revoke = await this.deps.browserEgress?.acquire(runId, pageId, initialDestination);
+      return () => { revoke?.(); release(); };
+    } catch (error) { release(); throw error; }
   }
 
   failActive(reason: string): string[] {

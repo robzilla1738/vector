@@ -75,6 +75,7 @@ export class ObservationService {
           this.pages.deps.tracer?.incr("observe.cache_hit");
           const current = lp.history.find((h) => h.revision === hit.obs.revision);
           const delta = current ? this.deltaSince(lp, req, current) : undefined;
+          this.pages.deps.recordAgentObservation?.(pageId, hit.obs.content.url, hit.obs.content.text);
           return { ...hit.obs, observedAt: Date.now(), cached: true, changesSince: undefined, deltaFrom: undefined, delta };
         }
       }
@@ -151,6 +152,7 @@ export class ObservationService {
       epoch: obs.documentEpoch,
       approxTokens: content.stats.approxTokens,
     });
+    this.pages.deps.recordAgentObservation?.(pageId, content.url, content.text);
     return obs;
   }
 

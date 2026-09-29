@@ -42,14 +42,14 @@ export class AgentTurnTabs {
     if (!turn || turn.clipboardText === undefined) throw new AuxError("not_found", "This task turn has no clipboard text.");
     return turn.clipboardText;
   }
-  async open(input: { connectionId: string; taskId: string; turnId: string; url: string; skipIfActive?: boolean }): Promise<PageTarget> {
+  async open(input: { connectionId: string; taskId: string; turnId: string; url: string; skipIfActive?: boolean; beforeNavigate?: (target: PageTarget) => Promise<void> }): Promise<PageTarget> {
     const turn = this.begin(input.connectionId, input.taskId, input.turnId);
     if (input.skipIfActive) for (const pageId of turn.pageIds) {
       try { const page = this.pages.get(pageId); if (page.url === input.url) { turn.expiresAt = this.now() + TURN_TTL_MS; return page; } }
       catch { turn.pageIds.delete(pageId); }
     }
     if (turn.pageIds.size >= MAX_TABS_PER_TURN) throw new AuxError("conflict", "A task turn can hold at most eight temporary tabs.");
-    const page = await this.pages.open({ url: input.url, background: true, ownedByRuntime: true });
+    const page = await this.pages.open({ url: input.url, background: true, ownedByRuntime: true, beforeNavigate: input.beforeNavigate });
     turn.pageIds.add(page.pageId);
     turn.expiresAt = this.now() + TURN_TTL_MS;
     return page;

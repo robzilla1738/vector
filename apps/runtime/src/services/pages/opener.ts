@@ -15,6 +15,8 @@ export class PageOpener {
     ownedByRuntime: boolean;
     activate?: boolean;
     targetId?: string; // chrome: attach an existing tab by CDP id
+    /** Internal authority hook; never supplied by renderer/RPC parameters. */
+    beforeNavigate?: (target: PageTarget) => Promise<void>;
   }): Promise<PageTarget> {
     const backend = opts.backend ?? "aux";
     return this.openOn(backend, opts, opts.backend ? `explicit-backend:${opts.backend}` : "chromium-default");
@@ -69,7 +71,7 @@ export class PageOpener {
 
   async openOn(
     backend: Backend,
-    opts: { url: string; windowId?: string; background: boolean; ownedByRuntime: boolean; activate?: boolean; targetId?: string },
+    opts: { url: string; windowId?: string; background: boolean; ownedByRuntime: boolean; activate?: boolean; targetId?: string; beforeNavigate?: (target: PageTarget) => Promise<void> },
     routeReason: string,
     restored?: PageTarget,
   ): Promise<PageTarget> {
@@ -111,7 +113,7 @@ export class PageOpener {
         windowId: opts.windowId,
         backend,
         targetId,
-        url: opts.url,
+        url: opts.beforeNavigate ? initialUrl : opts.url,
         title: "",
         documentEpoch: restored ? restored.documentEpoch + 1 : 0,
         lastRevision: 0,
@@ -127,6 +129,23 @@ export class PageOpener {
       this.pages.opening.delete(pageId);
       if (!this.pages.restoring) this.pages.deps.events.emit(EventTypes.PageAdded, { page: target });
       this.pages.deps.tracer?.incr(`router.open.${backend}`);
+      if (opts.beforeNavigate) {
+        try { await opts.beforeNavigate(target); }
+        catch (error) {
+          // Failed authority never falls through to the requested navigation.
+          // Close only the newly created surface; attached owner tabs stay inert.
+          if (nativeCreated) await this.pages.deps.native.tabCommand({
+            commandId: `agent-${newPageId()}`, windowId: opts.windowId ?? "main",
+            command: { kind: "close", pageId },
+          }).catch(() => {});
+          target.viewStatus = "detached";
+          this.pages.persist(lp);
+          this.pages.live.delete(pageId);
+          await dp.dispose().catch(() => {});
+          this.pages.deps.events.emit(EventTypes.PageRemoved, { pageId });
+          throw error;
+        }
+      }
       // Select the requested foreground tab before loading. A slow response must
       // not steal focus later or leave commands targeting the previous tab.
       if (opts.activate ?? !opts.background) await this.activation.activate(pageId).catch(() => {});

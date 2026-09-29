@@ -85,6 +85,10 @@ export interface PageServiceDeps {
   /** Shared write journal. Direct execute journals here when `ctx.journaled` is unset. */
   durableWrites?: DurableWriteLedger;
   safetyGate?: SafetyDispatchGate;
+  /** Native request protection must be installed before an agent dispatch. */
+  prepareAgentEgress?: (runId: string, pageId: string) => Promise<void>;
+  /** Record source text before any observation is returned to an agent. */
+  recordAgentObservation?: (pageId: string, url: string, text: string) => void;
   /**
    * Un-armed dialog resolution through decide() (S4): `accept`/`dismiss`
    * handles the dialog; `leave` keeps it open for a parked suspension or
