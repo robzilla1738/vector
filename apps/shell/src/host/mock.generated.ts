@@ -490,6 +490,19 @@ const RESULTS: Record<string, unknown> = {
     "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "methods": []
   },
+  "native.egressContext": {
+    "profileId": "a",
+    "tabId": "a",
+    "frameId": "a",
+    "documentToken": "a",
+    "sourceOrigin": "https://example.com/"
+  },
+  "native.egressInstall": {
+    "accepted": true
+  },
+  "native.egressRevoke": {
+    "accepted": true
+  },
   "native.historyClear": {
     "removed": 0
   },
