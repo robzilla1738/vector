@@ -102,6 +102,24 @@ describe("context management — compaction", () => {
     const messages: ModelMessage[] = [userTask, toolMsg("a", { ok: 1 }), toolMsg("b", { ok: 2 })];
     expect(compactMessages(messages)).toBeNull();
   });
+
+  it("bounds a huge completed REPL call in the newest exchange and preserves pairing", () => {
+    const code = "x".repeat(210_000);
+    const call = { role: "assistant", content: [{ type: "tool-call", toolCallId: "g1", toolName: "goal_program", input: { code } }] } as ModelMessage;
+    const result = toolMsg("g1", { status: "failed", detail: "Inspect the current page" });
+    const compacted = compactMessages([userTask, call, result]);
+    expect(compacted).not.toBeNull();
+    expect(JSON.stringify(compacted!.messages).length).toBeLessThan(TRANSCRIPT_COMPACT_BYTES);
+    expect((compacted!.messages[1]!.content as Record<string, unknown>[])[0]).toMatchObject({
+      toolCallId: "g1", toolName: "goal_program", input: { compacted: true },
+    });
+    expect(compacted!.messages[2]).toEqual(result);
+  });
+
+  it("keeps an unanswered call intact when a process stopped before its result", () => {
+    const call = { role: "assistant", content: [{ type: "tool-call", toolCallId: "g1", toolName: "goal_program", input: { code: "x".repeat(210_000) } }] } as ModelMessage;
+    expect(compactMessages([userTask, call])).toBeNull();
+  });
 });
 
 describe("TranscriptStore entries/rewrite (compaction)", () => {

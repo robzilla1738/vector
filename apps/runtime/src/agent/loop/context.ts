@@ -98,6 +98,13 @@ function compactPart(part: MessagePart): MessagePart {
   return part;
 }
 
+/** A completed tool call can shed its bulky input without losing its ID or result pairing. */
+function compactCompletedCall(part: MessagePart, answered: Set<string>): MessagePart {
+  if (part.type !== "tool-call" || typeof part.toolCallId !== "string" || !answered.has(part.toolCallId)
+    || bytes(part.input) <= COMPACT_PART_BYTES) return part;
+  return { ...part, input: { compacted: true, bytes: bytes(part.input), hint: "The completed tool input was compacted; the durable action ledger retains effect authority." } };
+}
+
 /**
  * Deterministic compaction: keep the task and newest exchange verbatim. First
  * shrink older history; if still over budget, shrink the older part of the
@@ -126,6 +133,28 @@ export function compactMessages(messages: ModelMessage[]): { messages: ModelMess
   // large tool results. Keep only the newest assistant/result exchange exact.
   if (transcriptBytes(next) > TRANSCRIPT_COMPACT_BYTES)
     for (let i = tailStart; i < messages.length - 2; i++) compactAt(i);
+  // A large generated REPL program can exceed the cap in the newest exchange
+  // even after all older results shrink. Only completed calls qualify: an
+  // unanswered call after a crash must keep its original input for recovery.
+  if (transcriptBytes(next) > TRANSCRIPT_COMPACT_BYTES) {
+    const answered = new Set<string>();
+    for (const message of next) if (message.role === "tool" && Array.isArray(message.content))
+      for (const part of message.content as MessagePart[])
+        if (part.type === "tool-result" && typeof part.toolCallId === "string") answered.add(part.toolCallId);
+    for (let i = 1; i < next.length; i++) {
+      const message = next[i]!;
+      if (!Array.isArray(message.content)) continue;
+      const compacted = (message.content as MessagePart[]).map((part) => compactCompletedCall(part, answered));
+      if (JSON.stringify(compacted) !== JSON.stringify(message.content)) {
+        next[i] = { ...message, content: compacted } as ModelMessage;
+        if (!changed.includes(i)) changed.push(i);
+      }
+    }
+  }
+  // Tool results in the newest exchange are already durably recorded. If the
+  // history still exceeds the limit, keep their call IDs and bounded summary.
+  if (transcriptBytes(next) > TRANSCRIPT_COMPACT_BYTES)
+    for (let i = Math.max(1, next.length - 2); i < next.length; i++) compactAt(i);
   if (!changed.length) return null;
   // Guard against compaction that fails to shrink below the trigger — callers
   // treat that as "nothing more we can do", not a loop of rewrites.
