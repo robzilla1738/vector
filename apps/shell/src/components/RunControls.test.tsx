@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, expect, it, vi } from "vitest";
 import { RunControls } from "./RunControls";
+import { bridge } from "../bridge";
 
 const mock = vi.hoisted(() => ({
   call: vi.fn(),
@@ -65,7 +66,7 @@ it("explains separate sign-in and opens only this run’s controlled tab", async
   mock.state.pages = [
     { pageId: "owner", controller: "none", viewStatus: "visible" },
     { pageId: "other", controller: "none", viewStatus: "background", agentIsolation: { runId: "other" } },
-    { pageId: "controlled", controller: "agent", viewStatus: "background", agentIsolation: { runId: "run" } },
+    { pageId: "controlled", windowId: bridge.windowId, controller: "agent", viewStatus: "background", agentIsolation: { runId: "run" } },
   ];
   mock.call.mockResolvedValue({ ok: true });
   const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
@@ -75,6 +76,7 @@ it("explains separate sign-in and opens only this run’s controlled tab", async
     expect(host.textContent).toContain("cookie transfer is unavailable");
     const open = [...host.querySelectorAll("button")].find(button => button.textContent === "Open temporary tab");
     expect(open).toBeTruthy(); await act(async () => open!.click());
-    expect(mock.call).toHaveBeenCalledWith("pages.activate", { pageId: "controlled" });
+    expect(mock.state.activate).toHaveBeenCalledWith("controlled");
+    expect(mock.call).not.toHaveBeenCalled();
   } finally { act(() => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
 });
