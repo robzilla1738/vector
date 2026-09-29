@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { AuxError, type ImportSelection } from "@aux/contracts";
+import { AuxError, type ImportCategoryPreview, type ImportSourcePreview, type ImportCategoryResult, type ImportReport, type ImportSelection } from "@aux/contracts";
+import { loadImportReceipts, saveImportReceipts, type ImportJob } from "./import-receipts.js";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 import {
@@ -29,49 +30,8 @@ import type { ImportedBookmark } from "./chrome-bookmarks.js";
  * import stays cancellable; cancellation is checked between batches.
  */
 
-export interface ImportCategoryPreview {
-  category: ImportCategory;
-  available: boolean;
-  count?: number;
-  bytes?: number;
-  blocker?: string;
-}
-
-export interface ImportSourcePreview {
-  id: string;
-  label: string;
-  profiles: string[];
-  categories: ImportCategoryPreview[];
-  profileCategories: { profileId: string; categories: ImportCategoryPreview[] }[];
-}
-
-export interface ImportCategoryResult {
-  source: string;
-  label: string;
-  category: ImportCategory;
-  state: "running" | "done" | "skipped" | "error";
-  imported: number;
-  skipped: number;
-  detail?: string;
-}
-
-export interface ImportReport {
-  jobId: string;
-  cancelled: boolean;
-  results: ImportCategoryResult[];
-}
-
 export interface ImportRunOptions {
   selections: ImportSelection[];
-}
-
-interface ImportJob {
-  id: string;
-  cancelled: boolean;
-  done: boolean;
-  progress: ImportCategoryResult[];
-  report?: ImportReport;
-  error?: string;
 }
 
 const ATTACHED_TABS_SOURCE = "chrome-attached";
@@ -104,7 +64,47 @@ export class BrowserImporter {
     openTab?: (url: string, title: string) => Promise<void>;
     /** Source discovery — injectable so tests never scan the real filesystem. */
     sources?: () => ImportSource[];
-  }) {}
+  }) {
+    for (const job of loadImportReceipts(deps.repo).reverse()) this.jobs.set(job.jobId, job);
+    if (this.jobs.size) this.persist();
+  }
+
+  private recentJobs() {
+    return [...this.jobs.values()].reverse().slice(0, 5);
+  }
+
+  private persist() {
+    saveImportReceipts(this.deps.repo, this.recentJobs());
+  }
+
+  private checkpoint(job: ImportJob, result?: ImportCategoryResult) {
+    if (result) {
+      const index = job.progress.findIndex(item => item.source === result.source &&
+        item.profileId === result.profileId && item.category === result.category);
+      if (index < 0) job.progress.push(result);
+      else job.progress[index] = result;
+    }
+    job.updatedAt = Date.now();
+    job.revision++;
+    this.persist();
+    this.deps.emit("import.progress", { ...result, ...this.status(job.jobId) });
+  }
+
+  private createJob(selections: ImportSelection[]): ImportJob {
+    if ([...this.jobs.values()].some(job => !job.done))
+      throw new AuxError("conflict", "An import is already running in this Profile. Review its progress or cancel it first.");
+    const now = Math.max(Date.now(), (this.recentJobs()[0]?.startedAt ?? 0) + 1);
+    const job: ImportJob = { jobId: `imp_${randomUUID().slice(0, 12)}`, cancelled: false, done: false,
+      selections: structuredClone(selections), progress: [], startedAt: now, updatedAt: now, revision: 0 };
+    this.jobs.set(job.jobId, job);
+    for (const [id, stale] of this.jobs) {
+      if (this.jobs.size <= 5) break;
+      if (stale.done) this.jobs.delete(id);
+    }
+    try { this.checkpoint(job); }
+    catch (error) { this.jobs.delete(job.jobId); throw error; }
+    return job;
+  }
 
   private bookmarkItems(source: ImportSource, profile: ImportProfileRef): { items: ImportedBookmark[]; skipped: number } {
     if (source.id === "safari") return { items: readSafariBookmarks(profile.dir), skipped: 0 };
@@ -155,7 +155,7 @@ export class BrowserImporter {
       return categories;
   }
 
-  async preview(): Promise<{ sources: ImportSourcePreview[] }> {
+  async preview(): Promise<{ sources: ImportSourcePreview[]; recentJobs: ImportJob[] }> {
     const sources: ImportSourcePreview[] = [];
     for (const source of this.sources()) {
       const profileCategories = source.profiles.map(profile => ({ profileId: profile.id, categories: this.previewCategories(source, profile) }));
@@ -176,7 +176,7 @@ export class BrowserImporter {
         blocker: pages.length ? undefined : "Attach Chrome over CDP (⌘⇧P → Attach Chrome) so its live tabs can be opened here.",
       }],
     });
-    return { sources };
+    return { sources, recentJobs: structuredClone(this.recentJobs()) };
   }
 
   private job(jobId: string): ImportJob {
@@ -185,43 +185,40 @@ export class BrowserImporter {
     return job;
   }
 
-  status(jobId: string) {
-    const job = this.job(jobId);
-    return { jobId, done: job.done, cancelled: job.cancelled, progress: job.progress, report: job.report, error: job.error };
+  status(jobId?: string): ImportJob {
+    const job = jobId ? this.job(jobId) : this.recentJobs()[0];
+    if (!job) throw new AuxError("not_found", "No previous browser import in this Profile.");
+    return structuredClone(job);
   }
 
   cancel(jobId: string) {
     const job = this.job(jobId);
-    if (!job.done) job.cancelled = true;
+    if (!job.done && !job.cancelled) {
+      job.cancelled = true;
+      this.checkpoint(job);
+    }
     return { ok: true };
   }
 
-  /** Start an import in the background; progress flows as import.progress events. */
+  /** A receipt is saved before work starts; restart never resumes writes. */
   start(opts: ImportRunOptions): { jobId: string } {
     const selections = this.resolveSelections(opts);
-    const job: ImportJob = { id: `imp_${randomUUID().slice(0, 12)}`, cancelled: false, done: false, progress: [] };
-    this.jobs.set(job.id, job);
-    if (this.jobs.size > 20) {
-      for (const [id, stale] of this.jobs) {
-        if (id === job.id || !stale.done) continue;
-        this.jobs.delete(id);
-        if (this.jobs.size <= 20) break;
-      }
-    }
+    const job = this.createJob(opts.selections);
     void this.execute(job, selections).catch(error => {
+      // A receipt-write failure stops further categories. The last durable
+      // checkpoint will be interrupted after restart; keep this session honest.
       job.done = true;
-      job.error = error instanceof Error ? error.message : String(error);
-      job.report = { jobId: job.id, cancelled: job.cancelled, results: job.progress };
-      this.deps.emit("import.progress", { jobId: job.id, done: true, error: job.error });
+      job.error = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
+      job.report = { jobId: job.jobId, cancelled: job.cancelled, results: job.progress };
+      job.revision++;
+      this.deps.emit("import.progress", this.status(job.jobId));
     });
-    return { jobId: job.id };
+    return { jobId: job.jobId };
   }
 
-  /** Run a full import and return its report — the synchronous path tests use. */
   async runNow(opts: ImportRunOptions): Promise<ImportReport> {
     const selections = this.resolveSelections(opts);
-    const job: ImportJob = { id: `imp_${randomUUID().slice(0, 12)}`, cancelled: false, done: false, progress: [] };
-    this.jobs.set(job.id, job);
+    const job = this.createJob(opts.selections);
     return this.execute(job, selections);
   }
 
@@ -250,64 +247,67 @@ export class BrowserImporter {
   }
 
   private async execute(job: ImportJob, selections: { source?: ImportSource; profile?: ImportProfileRef; categories: ImportCategory[] }[]): Promise<ImportReport> {
-    for (const { source, profile, categories } of selections) {
-      if (job.cancelled) break;
-      if (!source || !profile) continue;
-      for (const category of ["bookmarks", "history"] as const) {
-        if (!categories.includes(category)) continue;
-        const result = await this.runCategory(job, source, profile, category);
-        job.progress.push(result);
-        this.deps.emit("import.progress", { jobId: job.id, ...result });
+    try {
+      for (const { source, profile, categories } of selections) {
+        if (job.cancelled) break;
+        if (!source || !profile) continue;
+        for (const category of ["bookmarks", "history"] as const) {
+          if (!categories.includes(category)) continue;
+          const result = await this.runCategory(job, source, profile, category);
+          this.checkpoint(job, result);
+          if (job.cancelled) break;
+        }
         if (job.cancelled) break;
       }
-      if (job.cancelled) break;
-    }
 
-    if (selections.some(selection => selection.categories.includes("tabs")) && !job.cancelled) {
-      const result = await this.importAttachedTabs(job);
-      job.progress.push(result);
-      this.deps.emit("import.progress", { jobId: job.id, ...result });
+      if (selections.some(selection => selection.categories.includes("tabs")) && !job.cancelled) {
+        const result = await this.importAttachedTabs(job);
+        this.checkpoint(job, result);
+      }
+    } catch (error) {
+      job.error = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
     }
-
     job.done = true;
-    job.report = { jobId: job.id, cancelled: job.cancelled, results: job.progress };
-    this.deps.emit("import.progress", { jobId: job.id, done: true, cancelled: job.cancelled });
+    job.report = { jobId: job.jobId, cancelled: job.cancelled, results: job.progress };
+    this.checkpoint(job);
     return job.report;
   }
 
   private async runCategory(job: ImportJob, source: ImportSource, profile: ImportProfileRef, category: "bookmarks" | "history"): Promise<ImportCategoryResult> {
-    const base = { source: source.id, label: `${source.label} (${profile.id})`, category };
+    const base = { source: source.id, label: `${source.label} (${profile.id})`, profileId: profile.id, category };
+    let imported = 0, skipped = 0;
+    const progress = () => this.checkpoint(job, { ...base, state: "running", imported, skipped });
     if (source.blocker) return { ...base, state: "error", imported: 0, skipped: 0, detail: source.blocker };
     try {
+      progress();
       if (category === "bookmarks") {
         const read = this.bookmarkItems(source, profile);
         const items = read.items.filter(item => safeImportUrl(item.url));
-        const skipped = read.skipped + read.items.length - items.length;
+        skipped = read.skipped + read.items.length - items.length;
         if (!items.length && !source.hasSidebarMetadata) {
           return { ...base, state: "skipped", imported: 0, skipped, detail: "Nothing to import." };
         }
-        let added = 0, duplicates = 0;
         if (this.deps.native?.available()) {
           if (!this.deps.native.bookmarksInvoke)
             throw new AuxError("backend_unavailable", "Chromium bookmarks import is unavailable.");
           for (let offset = 0; offset < items.length; offset += 500) {
             if (job.cancelled) break;
             const result = await this.deps.native.bookmarksInvoke("bookmarks.import", { bookmarks: items.slice(offset, offset + 500) }) as { added: number; skipped: number };
-            added += result.added;
-            duplicates += result.skipped;
+            imported += result.added;
+            skipped += result.skipped;
+            progress();
           }
         } else {
           const result = this.deps.repo.importBookmarks(items.map(i => ({ url: i.url, title: i.title, folderPath: i.folderPath })));
-          added = result.added; duplicates = result.skipped;
-          if (added) this.deps.emit("bookmarks.changed", { bookmarks: this.deps.repo.listBookmarks() });
+          imported = result.added; skipped += result.skipped;
+          progress();
+          if (imported) this.deps.emit("bookmarks.changed", { bookmarks: this.deps.repo.listBookmarks() });
         }
-        return { ...base, state: "done", imported: added, skipped: duplicates + skipped, detail: items.length ? `${items.length} found` : "Nothing found" };
+        return { ...base, state: "done", imported, skipped,
+          detail: job.cancelled ? "Stopped by cancel." : items.length ? `${items.length} found` : "Nothing found" };
       }
-      let imported = 0;
-      let skipped = 0;
-      let batches = 0;
       for (const read of this.historyBatches(source, profile)) {
-        if (job.cancelled) return { ...base, state: "done", imported, skipped, detail: "Stopped by cancel." };
+        if (job.cancelled) break;
         const batch = read.filter(row => safeImportUrl(row.url) && Number.isSafeInteger(row.visitedAt) &&
           row.visitedAt >= 0 && row.visitedAt <= Date.now() + 86_400_000)
           .map(row => ({ ...row, title: row.title.slice(0, 1000) }));
@@ -323,16 +323,16 @@ export class BrowserImporter {
         }
         imported += r.added;
         skipped += r.skipped;
-        batches++;
-        if (batches % 4 === 0) this.deps.emit("import.progress", { jobId: job.id, source: source.id, label: base.label, category, state: "running", imported, skipped });
+        progress();
         // Yield so cancel/status calls and other runtime work interleave —
         // without this a large history import would hold the event loop.
         await new Promise(resolve => setImmediate(resolve));
       }
       if (imported) this.deps.emit("history.changed", {});
-      return { ...base, state: imported + skipped ? "done" : "skipped", imported, skipped, detail: imported + skipped ? `${imported + skipped} visits read` : "No visits found" };
+      return { ...base, state: imported + skipped ? "done" : "skipped", imported, skipped, detail: job.cancelled ? "Stopped by cancel." : imported + skipped ? `${imported + skipped} visits read` : "No visits found" };
     } catch (error) {
-      return { ...base, state: "error", imported: 0, skipped: 0, detail: error instanceof Error ? error.message : String(error) };
+      if (category === "history" && imported) this.deps.emit("history.changed", {});
+      return { ...base, state: "error", imported, skipped, detail: (error instanceof Error ? error.message : String(error)).slice(0, 1000) };
     }
   }
 
@@ -353,6 +353,7 @@ export class BrowserImporter {
       try {
         await this.deps.openTab(page.url, page.title);
         imported++;
+        this.checkpoint(job, { ...base, state: "running", imported, skipped: 0 });
       } catch (error) { firstFailure ??= error instanceof Error ? error.message : String(error); }
     }
     const skipped = pages.length - imported;

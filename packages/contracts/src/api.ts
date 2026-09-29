@@ -1028,49 +1028,8 @@ export const AgentTurnContextSchema = z.object({
   turnId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
 });
 
-/** browser-data import */
-export const ImportCategorySchema = z.enum(["bookmarks", "history", "tabs"]);
-export type ImportCategory = z.infer<typeof ImportCategorySchema>;
-export const ImportSelectionSchema = z.object({
-  sourceId: z.string().min(1).max(32),
-  profileId: z.string().min(1).max(64).optional(),
-  categories: z.array(ImportCategorySchema).min(1).max(3),
-}).strict();
-export type ImportSelection = z.infer<typeof ImportSelectionSchema>;
-const ImportCategoryPreviewSchema = z.object({
-  category: ImportCategorySchema,
-  available: z.boolean(),
-  count: z.number().int().optional(),
-  bytes: z.number().optional(),
-  blocker: z.string().optional(),
-});
-const ImportSourcePreviewSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  profiles: z.array(z.string()),
-  categories: z.array(ImportCategoryPreviewSchema),
-  profileCategories: z.array(z.object({
-    profileId: z.string(),
-    categories: z.array(ImportCategoryPreviewSchema),
-  }).strict()),
-});
-const ImportCategoryResultSchema = z.object({
-  source: z.string(),
-  label: z.string(),
-  category: ImportCategorySchema,
-  state: z.enum(["running", "done", "skipped", "error"]),
-  imported: z.number().int(),
-  skipped: z.number().int(),
-  detail: z.string().optional(),
-});
-const ImportReportSchema = z.object({
-  jobId: z.string(),
-  cancelled: z.boolean(),
-  results: z.array(ImportCategoryResultSchema),
-});
-export type ImportSourcePreview = z.infer<typeof ImportSourcePreviewSchema>;
-export type ImportCategoryResult = z.infer<typeof ImportCategoryResultSchema>;
-export type ImportReport = z.infer<typeof ImportReportSchema>;
+import { ImportJobStatusSchema, ImportSelectionSchema, ImportSourcePreviewSchema } from "./import.js";
+export * from "./import.js";
 
 export const MethodSchemas = {
   "agent.js.run": AgentJsRunParams,
@@ -1568,7 +1527,7 @@ export const MethodSchemas = {
   "import.run": z.object({
     selections: z.array(ImportSelectionSchema).min(1).max(12),
   }).strict(),
-  "import.status": z.object({ jobId: z.string().min(1).max(64) }),
+  "import.status": z.object({ jobId: z.string().min(1).max(64).optional() }),
   "import.cancel": z.object({ jobId: z.string().min(1).max(64) }),
   "chrome.openLive": ChromeOpenLiveParams,
   "models.list": z.object({}),
@@ -2286,16 +2245,9 @@ export const ResultSchemas = {
     profiles: z.array(z.string()),
     detail: z.string(),
   }),
-  "import.preview": z.object({ sources: z.array(ImportSourcePreviewSchema) }),
+  "import.preview": z.object({ sources: z.array(ImportSourcePreviewSchema), recentJobs: z.array(ImportJobStatusSchema).max(5).optional() }),
   "import.run": z.object({ jobId: z.string() }),
-  "import.status": z.object({
-    jobId: z.string(),
-    done: z.boolean(),
-    cancelled: z.boolean(),
-    progress: z.array(ImportCategoryResultSchema),
-    report: ImportReportSchema.optional(),
-    error: z.string().optional(),
-  }),
+  "import.status": ImportJobStatusSchema,
   "import.cancel": z.object({ ok: z.boolean() }),
   "chrome.openLive": z.object({ ok: z.boolean() }),
   "models.list": z.object({
