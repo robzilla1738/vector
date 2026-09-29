@@ -93,10 +93,20 @@ function native(action, ...args) {
 }
 function inspect() {
   if (!existsSync(databasePath)) return null;
+  const nativeBookmarks = join(profile, "Default/Bookmarks");
+  const bookmarkRows = [];
+  if (existsSync(nativeBookmarks)) {
+    const visit = value => {
+      if (!value || typeof value !== "object") return;
+      if (value.url === BOOKMARK) bookmarkRows.push({ url: value.url });
+      for (const child of Object.values(value)) visit(child);
+    };
+    visit(JSON.parse(readFileSync(nativeBookmarks, "utf8")));
+  }
   const db = new DatabaseSync(databasePath, { readOnly: true });
   try {
     return {
-      bookmarks: db.prepare("SELECT url FROM bookmarks WHERE url=?").all(BOOKMARK),
+      bookmarks: bookmarkRows,
       history: db.prepare("SELECT url FROM history WHERE url=?").all(HISTORY),
       runs: db.prepare("SELECT run_id AS runId,status FROM runs ORDER BY created_at,rowid").all(),
       modelCalls: db.prepare("SELECT run_id AS runId,model_id AS modelId,error FROM model_calls ORDER BY created_at,rowid").all(),
