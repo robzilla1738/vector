@@ -58,7 +58,12 @@ function inspect(marker) {
   if (!existsSync(databasePath)) return null;
   const db = new DatabaseSync(databasePath, { readOnly: true });
   try {
-    const run = db.prepare("SELECT run_id AS runId,status FROM runs WHERE goal LIKE ? ORDER BY created_at DESC LIMIT 1").get(`%${marker}%`);
+    // Protected startup seals `runs.goal`; identify these two fixture runs by
+    // their creation order after the model endpoint confirms each marker.
+    // Never decrypt or bypass the Profile key from the host acceptance runner.
+    const ordinal = marker === RUN_A ? 0 : marker === RUN_B ? 1 : -1;
+    assert.notEqual(ordinal, -1, "Unknown attention fixture marker");
+    const run = db.prepare("SELECT run_id AS runId,status FROM runs ORDER BY created_at,rowid LIMIT 1 OFFSET ?").get(ordinal);
     if (!run) return null;
     const suspension = db.prepare("SELECT suspension_id AS suspensionId,kind,state FROM safety_suspensions WHERE run_id=? AND state='pending' ORDER BY created_at DESC LIMIT 1").get(run.runId);
     return { ...run, suspension };
