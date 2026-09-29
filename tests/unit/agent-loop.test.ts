@@ -672,22 +672,29 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.pages.observe).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("fresh page snapshot after takeover");
   });
-  it("selects an unchecked radio with a check receipt when the model clicks it", async () => {
+  it.each([false, true])("selects an unchecked radio with a check receipt, batched=%s", async (batched) => {
     const before = { ...pageObs(), content: { ...pageObs().content,
       text: "Pro plan",
-      elements: [{ ref: "r11", tag: "input", role: "radio", name: "Pro", checked: false, frame: "main" }],
+      elements: [
+        { ref: "r2", tag: "input", role: "textbox", name: "Name", value: "", frame: "main" },
+        { ref: "r11", tag: "input", role: "radio", name: "Pro", checked: false, frame: "main" },
+      ],
     } } as Observation;
     const after = { ...before, revision: 2, content: { ...before.content,
       elements: [{ ref: "r11", tag: "input", role: "radio", name: "Pro", checked: true, frame: "main" }],
     } } as Observation;
     const model = new MockModelClient().scriptToolSteps([
-      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "select-pro", op: "click", target: "r11" }] } }] },
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [
+        ...(batched ? [{ id: "fill-name", op: "fill", target: "r2", value: "Morgan Vale" }] : []),
+        { id: "select-pro", op: "click", target: "r11" },
+      ] } }] },
       { toolCalls: [{ toolCallId: "done", toolName: "submit_result", input: { report: "Pro selected" } }] },
     ]);
     const h = coordinatorHarness(model, (program, ctx) => {
       const steps = program.steps.map((step) => ({ stepId: step.id, op: step.op,
         status: "ok" as const, startedAt: 1, durationMs: 1, effect: "observed" as const,
-        before: { checked: false }, after: { checked: true },
+        before: step.op === "fill" ? { value: "" } : { checked: false },
+        after: step.op === "fill" ? { value: "Morgan Vale" } : { checked: true },
         receipt: { observed: "control value changed after action", remoteConfirmed: false,
           uncertain: false, dispatchedBeforeTakeover: false },
       }));
@@ -698,7 +705,7 @@ describe("runToolLoop (S5 host integration)", () => {
     const run = await h.coordinator.start({ goal: "Select Pro plan", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     await settle(h.repo, run.runId);
     expect(h.pages.execute).toHaveBeenCalledOnce();
-    expect(h.pages.execute.mock.calls[0]?.[0].steps.map((step) => step.op)).toEqual(["check"]);
+    expect(h.pages.execute.mock.calls[0]?.[0].steps.map((step) => step.op)).toEqual(batched ? ["fill", "check"] : ["check"]);
     expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([{ status: "confirmed" }]);
   });
 

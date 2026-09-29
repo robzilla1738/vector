@@ -208,11 +208,10 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       // Selecting an unchecked native radio/checkbox is a state-setting
       // operation. Route a click through check so the driver can prove the
       // checked transition instead of leaving an opaque click uncertain.
-      const toggleClick = steps.length === 1 && steps[0]?.op === "click" ? steps[0] : undefined;
-      const uncheckedControl = toggleClick && safeObs.content.elements.some((element) =>
-        element.ref === toggleClick.target && (element.role === "radio" || element.role === "checkbox")
-        && element.checked === false);
-      if (uncheckedControl) steps = [{ ...toggleClick, op: "check" }];
+      steps = steps.map((step) => step.op === "click" && safeObs.content.elements.some((element) =>
+        element.ref === step.target && (element.role === "radio" || element.role === "checkbox")
+        && element.checked === false)
+        ? { ...step, op: "check" } : step);
       // Typing into an observed rich-text field focuses it itself. A preceding
       // click has no reliable write receipt and can strand the whole batch as
       // uncertain even when the text change is observed. Reject before either
