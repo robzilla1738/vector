@@ -278,6 +278,13 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     await opts.onStep?.({ index, step });
 
     if (!toolCalls.length) {
+      if (!step.text?.trim()) {
+        const nudge: ModelMessage = { role: "user",
+          content: "Your last turn had no tool call or answer, so no result was submitted. Continue with a real tool call; use submit_result with verified citations to finish." };
+        messages.push(nudge);
+        transcript.append(runId, [nudge]);
+        continue;
+      }
       // Markup that is not a complete invoke still gets one correction.
       if (step.text && LEAKED_TOOL_MARKUP.test(step.text)) {
         const nudge: ModelMessage = { role: "user",

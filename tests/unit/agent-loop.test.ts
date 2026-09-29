@@ -397,6 +397,14 @@ describe("runAgentLoop (S5)", () => {
     expect(nudge).toBeTruthy();
   });
 
+  it("does not complete a run from an empty assistant turn", async () => {
+    const { transcript } = fixture();
+    const model = new MockModelClient().scriptToolSteps([{ text: "" }, { text: "42" }]);
+    const outcome = await runAgentLoop({ ...baseOpts(transcript), model });
+    expect(outcome).toMatchObject({ kind: "done", text: "42" });
+    expect(transcript.load("run-1").some((m) => m.role === "user" && String(m.content).includes("no tool call or answer"))).toBe(true);
+  });
+
   it("runs the work in a turn before submit_result, even when submit is listed first", async () => {
     const { transcript } = fixture();
     const order: string[] = [];
@@ -591,6 +599,25 @@ async function settle(repo: Repo, runId: string) {
 }
 
 describe("runToolLoop (S5 host integration)", () => {
+  it("gives a goal program visible body text and headings without browser-title or element duplicates", async () => {
+    const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
+      code: 'var s=snapshot(); if(s.headings[0]!=="Record 15 — Alpha project") throw new Error("wrong heading"); if(s.bodyText.match(/Priya Patel/g).length!==1) throw new Error("duplicated owner"); submitResult(s.headings[0],[{observationId:s.observationId,quote:s.headings[0]}])',
+      answerLabel: "",
+    } }] }]);
+    const h = coordinatorHarness(model);
+    h.pages.observe.mockResolvedValue({ ...pageObs(), content: { ...pageObs().content,
+      title: "Record 15 — Alpha project — Records",
+      text: "Record 15 — Alpha project\nRecord 03\tPriya Patel\tapproved",
+      headings: ["Record 15 — Alpha project", "Hidden dialog title"],
+      elements: [{ ref: "r1", tag: "link", role: "link", name: "Priya Patel", frame: "main" }],
+    } } as Observation);
+    const run = await h.coordinator.start({ goal: "Report the exact record title", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "Record 15 — Alpha project" });
+    expect(h.modelCalls).toHaveLength(1);
+  });
+
   it("persists failed failover attempts against the run budget without a tool replay", async () => {
     const model = new MockModelClient();
     model.toolCallStep = async () => {

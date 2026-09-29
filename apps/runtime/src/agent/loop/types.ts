@@ -56,7 +56,13 @@ export type LoopToolResult =
 /** Service surface a loop tool executes against. */
 export interface LoopToolDeps {
   /** Observe a page: the observation renderer's text becomes the tool output. */
-  observe?: (input: { pageId: string; scope?: import("@aux/contracts").ObservationScope; subtreeRef?: string }) => Promise<{ text: string; observationId: string; revision: number }>;
+  observe?: (input: { pageId: string; scope?: import("@aux/contracts").ObservationScope; subtreeRef?: string }) => Promise<{
+    text: string; observationId: string; revision: number;
+    /** Redacted visible document text, without duplicated control listings or browser title. */
+    bodyText?: string;
+    /** Headings that also occur in visible document text; hidden modal headings are excluded. */
+    headings?: string[];
+  }>;
   /**
    * Compile + authorize + execute + journal a step batch on a page.
    * Returns LoopToolResult so a safety `ask` raised inside the gate can

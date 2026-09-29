@@ -182,7 +182,12 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     obsRecords.set(`${obs.pageId}@${obs.revision}`, safeObs);
     obsAt.set(observationId, Date.now());
     obsAt.set(`${obs.pageId}@${obs.revision}`, Date.now());
-    return { text, observationId, revision: obs.revision };
+    const visibleLines = new Set(safeObs.content.text.split("\n").map((line) => line.trim()));
+    return {
+      text, observationId, revision: obs.revision,
+      bodyText: safeObs.content.text,
+      headings: safeObs.content.headings.filter((heading) => visibleLines.has(heading.trim())),
+    };
   };
 
   const deps: LoopToolDeps = {
