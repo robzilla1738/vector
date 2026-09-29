@@ -195,7 +195,7 @@ export class AgentEgressGuard {
       || evidence.observedAt > this.authority.now() + 1000
       || this.authority.currentTaskRevision(evidence.runId) !== active.lease.taskRevision)
       decision = deny("stale_lease");
-    else if (["profileId", "runId", "taskId", "taskRevision", "tabId", "frameId", "documentToken", "documentEpoch"].some(key =>
+    else if (["isolationId", "profileId", "runId", "taskId", "taskRevision", "tabId", "frameId", "documentToken", "documentEpoch"].some(key =>
       (active.lease as unknown as Record<string, unknown>)[key] !== (evidence as unknown as Record<string, unknown>)[key]))
       decision = deny("identity_mismatch");
     else if (!dest) decision = deny("invalid_destination");

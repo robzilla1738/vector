@@ -468,25 +468,53 @@ export class RunCoordinator {
     if (this.pageReleases.has(runId)) return;
     const control = this.controls.get(runId);
     if (!control) throw new AuxError("cancelled", "run has ended");
-    const release = await this.pageOwnership.acquireMany(this.get(runId).pageIds,
-      { actor: "coordinator", runId }, control.abort.signal);
+    const releases: Array<() => void> = [];
+    const opened: string[] = [];
     try {
-      const humanHeld = this.get(runId).pageIds.find(pageId => this.deps.pages.get(pageId).controller === "human");
-      if (humanHeld) throw new AuxError("conflict", `Page ${humanHeld} is under human control`);
-      if (control.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled while waiting for a page");
-      this.pageReleases.set(runId, release);
+      const run = this.get(runId);
       if (this.deps.browserEgress) {
-        for (const pageId of this.get(runId).pageIds) await this.deps.browserEgress.acquire(runId, pageId);
-        const run = this.get(runId);
+        // Protect run context before even the first controlled navigation.
         const memoryOffset = run.config?.context?.indexOf("SPACE MEMORY SUMMARY") ?? -1;
         if (memoryOffset >= 0) this.deps.browserEgress.protect(runId, run.config!.context!.slice(memoryOffset), "memory");
         if (run.config?.contextWorkspaceId && run.config.instructions)
           this.deps.browserEgress.protect(runId, run.config.instructions, "memory");
       }
+      if (this.deps.browserEgress && !run.config?.isolatedPageSources) {
+        const sources: NonNullable<NonNullable<Run["config"]>["isolatedPageSources"]> = [];
+        for (const sourcePageId of run.pageIds) {
+          if (control.abort.signal.aborted) throw new AuxError("cancelled", "Run cancelled before opening its temporary tab.");
+          const source = this.deps.pages.get(sourcePageId);
+          // An empty tab grants no destination. The tool loop must choose an
+          // exact HTTP(S) URL before openTab creates any actionable document.
+          if (source.url === "about:blank") continue;
+          const agentScope = await this.deps.browserEgress.creationScope(runId, sourcePageId);
+          const copy = await this.deps.pages.open({ url: agentScope.source!.expectedUrl,
+            windowId: source.windowId, background: true, ownedByRuntime: true, agentScope,
+            beforeNavigate: async target => { releases.push(await this.claimPage(runId, target.pageId, agentScope.source!.expectedUrl)); },
+          });
+          opened.push(copy.pageId);
+          sources.push({ sourcePageId, pageId: copy.pageId, url: agentScope.source!.expectedUrl });
+        }
+        if (control.abort.signal.aborted) throw new AuxError("cancelled", "Run cancelled while opening its temporary tab.");
+        if (!sources.length && run.config?.implementation !== "agent-loop")
+          throw new AuxError("capability_unsupported", "This planner needs a website to open in a protected temporary tab. Choose a website before starting.");
+        run.pageIds = sources.map(source => source.pageId);
+        run.config = { ...run.config, isolatedPageSources: sources };
+        this.deps.repo.saveRun(run);
+        this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+      } else {
+        releases.push(await this.pageOwnership.acquireMany(run.pageIds,
+          { actor: "coordinator", runId }, control.abort.signal));
+        const humanHeld = run.pageIds.find(pageId => this.deps.pages.get(pageId).controller === "human");
+        if (humanHeld) throw new AuxError("conflict", `Page ${humanHeld} is under human control`);
+        for (const pageId of run.pageIds) await this.deps.browserEgress?.acquire(runId, pageId);
+      }
+      if (control.abort.signal.aborted) throw new AuxError("cancelled", "run cancelled while waiting for a page");
+      this.pageReleases.set(runId, () => { for (const release of releases.slice().reverse()) release(); });
     } catch (error) {
       this.deps.browserEgress?.revokeRun(runId);
-      this.pageReleases.delete(runId);
-      release();
+      for (const release of releases.reverse()) release();
+      for (const pageId of opened) await this.deps.pages.close(pageId).catch(() => {});
       throw error;
     }
   }

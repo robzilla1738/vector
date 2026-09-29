@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   AuxError, EgressContextSchema, EgressRequestSchema,
-  type EgressDecision, type EgressLease, type EgressRequest,
+  type EgressDecision, type EgressLease, type EgressRequest, type AgentPageCreate, type AgentPageIsolation,
 } from "@aux/contracts";
 import type { NativeBridge } from "../native.js";
 import { AgentEgressGuard, type EgressAuditEvidence, type ProtectedClass } from "./egress.js";
@@ -9,7 +9,7 @@ import { AgentEgressGuard, type EgressAuditEvidence, type ProtectedClass } from 
 interface RunIdentity {
   taskId?: string; taskRevision: number; threadId: string;
 }
-interface PageIdentity { url: string; documentEpoch: number; controller?: string; viewStatus?: string }
+interface PageIdentity { agentIsolation?: AgentPageIsolation; url: string; documentEpoch: number; controller?: string; viewStatus?: string }
 interface ActivePage {
   runId: string; pageId: string; url: string; epoch: number; lease: EgressLease;
   timer?: ReturnType<typeof setInterval>; released: boolean;
@@ -53,6 +53,29 @@ export class BrowserEgress {
     });
   }
 
+  /** Private creation authority; source transfers its URL only, never page state. */
+  async creationScope(runId: string, sourcePageId?: string): Promise<Omit<AgentPageCreate, "windowId" | "background">> {
+    const run = this.deps.run(runId);
+    if (this.closed || !run || !this.deps.native.createAgentPage)
+      throw new AuxError("capability_unsupported", "This browser cannot open a protected temporary tab. Update Aux before continuing.");
+    const identity = { profileId: this.deps.profileId, runId, taskId: run.taskId, taskRevision: run.taskRevision };
+    if (!sourcePageId) return identity;
+    const page = { ...this.deps.page(sourcePageId) };
+    const url = new URL(page.url);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password)
+      throw new AuxError("permission_denied", "Choose a website to open in a separate signed-out tab.");
+    if (!this.deps.native.egressContext)
+      throw new AuxError("capability_unsupported", "The source document cannot be verified.");
+    const context = EgressContextSchema.parse(await this.deps.native.egressContext({ tabId: sourcePageId, expectedUrl: page.url }));
+    const after = this.deps.page(sourcePageId), currentRun = this.deps.run(runId);
+    if (context.profileId !== identity.profileId || context.tabId !== sourcePageId || context.sourceOrigin !== url.origin
+      || !currentRun || currentRun.taskId !== run.taskId || currentRun.taskRevision !== run.taskRevision
+      || after.url !== page.url || after.documentEpoch !== page.documentEpoch
+      || ["detached", "crashed"].includes(after.viewStatus ?? ""))
+      throw new AuxError("ref_stale", "The selected source tab changed. Review it before continuing.");
+    return { ...identity, source: { tabId: sourcePageId, expectedUrl: page.url, documentToken: context.documentToken } };
+  }
+
   /** Called after the durable page claim and before observation or dispatch. */
   async acquire(runId: string, pageId: string, initialDestination?: string): Promise<() => void> {
     await this.ensure(runId, pageId, initialDestination);
@@ -79,7 +102,7 @@ export class BrowserEgress {
 
   private async bind(runId: string, pageId: string, initialDestination?: string): Promise<void> {
     const run = this.deps.run(runId);
-    const page = this.deps.page(pageId);
+    const page = { ...this.deps.page(pageId) };
     if (this.closed || !run || !this.deps.ownsPage(runId, pageId) || page.controller === "human"
       || page.viewStatus === "detached" || page.viewStatus === "crashed")
       throw new AuxError("permission_denied", "Browser transmission requires a current run-owned page.");
@@ -92,14 +115,21 @@ export class BrowserEgress {
     const native = EgressContextSchema.parse(await egressContext.call(this.deps.native, {
       tabId: pageId, expectedUrl: page.url,
     }));
-    const after = this.deps.page(pageId);
-    if (!this.deps.ownsPage(runId, pageId) || !this.deps.run(runId)
+    const isolation = native.isolation;
+    if (!isolation || isolation.runId !== runId || isolation.taskId !== run.taskId || isolation.taskRevision !== run.taskRevision
+      || page.agentIsolation?.isolationId && page.agentIsolation.isolationId !== isolation.isolationId)
+      throw new AuxError("permission_denied", "This is not this run’s protected temporary tab. Open a fresh tab for the task; sign in there separately. Existing cookies cannot be copied.");
+    const after = this.deps.page(pageId), currentRun = this.deps.run(runId);
+    if (!this.deps.ownsPage(runId, pageId) || !currentRun
+      || currentRun.taskId !== run.taskId || currentRun.taskRevision !== run.taskRevision
       || after.url !== page.url || after.documentEpoch !== page.documentEpoch || after.controller === "human"
       || native.profileId !== this.deps.profileId || native.tabId !== pageId
       || native.sourceOrigin !== (page.url === "about:blank" ? "aux://blank" : new URL(page.url).origin))
       throw new AuxError("ref_stale", "The page changed while preparing protected browser requests.");
     const lease = this.guard.issue({
-      ...native, runId, taskId: run.taskId, taskRevision: run.taskRevision,
+      profileId: native.profileId, tabId: native.tabId, frameId: native.frameId,
+      documentToken: native.documentToken, sourceOrigin: native.sourceOrigin, isolationId: isolation.isolationId,
+      runId, taskId: run.taskId, taskRevision: run.taskRevision,
       documentEpoch: page.documentEpoch, recipientOrigins: [],
       ...(initialDestination ? { initialDestination } : {}),
     });

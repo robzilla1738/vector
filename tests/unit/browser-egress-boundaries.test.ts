@@ -27,6 +27,8 @@ function pageFixture() {
   const nativeClose = vi.fn(async () => ({ status: "applied" }));
   const native = Object.assign(new NullNativeBridge(), {
     available: () => true,
+    createAgentPage: vi.fn(async () => ({ pageId: "native-minted-page", targetId: "target",
+      isolation: { isolationId: "native-minted-partition", runId: "run", taskRevision: 0, inMemory: true as const, cookies: "empty" as const } })),
     tabCommand: vi.fn(async (input: { command: { kind: string } }) => {
       if (input.command.kind === "close") return nativeClose();
       trace.push("native-blank"); return { status: "applied", targetId: "target" };
@@ -42,7 +44,7 @@ function pageFixture() {
   const driver = { backend: "aux", isConnected: () => true, attach: async () => driverPage } as unknown as BrowserDriver;
   const record = vi.fn();
   const pages = new PageService({ repo, events, native, drivers: () => ({ aux: driver, chrome: null }), recordAgentObservation: record });
-  return { pages, trace, record, observe, dispose, nativeClose };
+  return { pages, trace, record, observe, dispose, nativeClose, native };
 }
 
 it("claims the actual blank document before first navigation and records even cached observations", async () => {
@@ -105,4 +107,55 @@ it("binds a scoped external dispatch to its actual session run and revokes befor
   expect(trace).toEqual(["bind", "dispatch", "revoke"]);
   expect(repo.getRun(boundRun!)?.config).toMatchObject({ taskId: task.taskId, taskRevision: task.revision });
   expect(pageOwnership.snapshot().p1).toBeUndefined();
+});
+
+
+it("uses native-minted controlled identity before navigation and never falls back to ordinary open", async () => {
+  const f = pageFixture();
+  const target = await f.pages.open({ url: "https://source.test/", background: true, ownedByRuntime: true,
+    agentScope: { profileId: "profile", runId: "run", taskRevision: 0 },
+    beforeNavigate: async page => { expect(page.agentIsolation?.isolationId).toBe("native-minted-partition"); f.trace.push("authority-installed"); },
+  });
+  expect(target.pageId).toBe("native-minted-page");
+  expect(f.trace).toEqual(["authority-installed", "navigate"]);
+  expect(f.native.createAgentPage).toHaveBeenCalledWith({ profileId: "profile", runId: "run", taskRevision: 0, windowId: "main", background: true });
+  expect(f.native.tabCommand).not.toHaveBeenCalled();
+});
+
+it("keeps controlled creation inert when native isolation or source authority is substituted", async () => {
+  const f = pageFixture();
+  await expect(f.pages.open({ url: "https://source.test/", background: true, ownedByRuntime: true,
+    agentScope: { profileId: "profile", runId: "other-run", taskRevision: 0 }, beforeNavigate: vi.fn(),
+  })).rejects.toThrow("did not match this run");
+  expect(f.trace).toEqual([]); expect(f.native.tabCommand).not.toHaveBeenCalled();
+  expect(f.pages.livePageIds()).toEqual([]);
+});
+
+it("closes a newly minted controlled blank on denied install, without navigating or falling back", async () => {
+  const f = pageFixture();
+  await expect(f.pages.open({ url: "https://source.test/", background: true, ownedByRuntime: true,
+    agentScope: { profileId: "profile", runId: "run", taskRevision: 0 },
+    beforeNavigate: async () => { throw new Error("denied native install"); },
+  })).rejects.toThrow("denied native install");
+  expect(f.trace).toEqual([]); expect(f.nativeClose).toHaveBeenCalledOnce();
+  expect(f.pages.livePageIds()).toEqual([]);
+});
+
+it("preserves isolation metadata when the native catalog announces the minted page before create returns", async () => {
+  const f = pageFixture();
+  const result = { pageId: "native-minted-page", targetId: "target", isolation: {
+    isolationId: "native-minted-partition", runId: "run", taskRevision: 0, inMemory: true as const, cookies: "empty" as const,
+  } };
+  let announced!: ReturnType<PageService["registerExternal"]>;
+  f.native.createAgentPage.mockImplementationOnce(async () => {
+    announced = f.pages.registerExternal({ pageId: result.pageId, marker: `atab-${result.pageId}`,
+      cdpTargetId: result.targetId, url: "about:blank", backend: "aux", ownedByRuntime: true });
+    return result;
+  });
+  const page = await f.pages.open({ url: "https://source.test/", background: true, ownedByRuntime: true,
+    agentScope: { profileId: "profile", runId: "run", taskRevision: 0 }, beforeNavigate: async () => {},
+  });
+  expect(await announced).toBe(page);
+  expect(page.agentIsolation).toEqual(result.isolation);
+  expect(f.pages.livePageIds()).toEqual([result.pageId]);
 });

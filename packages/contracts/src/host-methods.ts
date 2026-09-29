@@ -10,7 +10,7 @@ import { ZapStylesheetInstallSchema, ZapInstallReceiptSchema } from "./zap.js";
 import { EventSchema } from "./events.js";
 import { AutofillProfileSchema } from "./api.js";
 import type { AuxFeature } from "./aux-features.js";
-import { EgressContextRequestSchema, EgressContextSchema, EgressInstallSchema, EgressRevokeSchema } from "./egress.js";
+import { AgentPageCreateSchema, AgentPageCreatedSchema, EgressContextRequestSchema, EgressContextSchema, EgressInstallSchema, EgressRevokeSchema } from "./egress.js";
 
 type Owner = "browser" | "runtime";
 type Trust = "aux-webui" | "authenticated-runtime";
@@ -285,6 +285,7 @@ export const HostMethods = {
     phase: z.literal("document_start"), futureDocuments: z.literal(true) }).strict()),
   "native.bookmarksInvoke": runtime("core", z.object({ method: str, params: z.unknown() }).strict(), z.unknown()),
   "native.capabilities": runtime("core", z.object({}).strict(), HostCapabilitiesSchema),
+  "native.createAgentPage": runtime("core", AgentPageCreateSchema, AgentPageCreatedSchema),
   "native.egressContext": runtime("core", EgressContextRequestSchema, EgressContextSchema),
   "native.egressInstall": runtime("core", EgressInstallSchema, accepted),
   "native.egressRevoke": runtime("core", EgressRevokeSchema, accepted),

@@ -8,9 +8,36 @@ const httpOrigin = origin.refine(value => {
   catch { return false; }
 }, "Expected an exact HTTP(S) origin");
 
+/** Native-owned namespace; no caller-selected partition identifiers or cookie bytes. */
+export const AgentPageIsolationSchema = z.object({
+  isolationId: id, runId: id, taskId: id.optional(),
+  taskRevision: z.number().int().nonnegative(),
+  inMemory: z.literal(true),
+  /** Initial namespace policy: no owner cookies copied; later explicit sign-in can create cookies. */
+  cookies: z.literal("empty"),
+}).strict();
+export type AgentPageIsolation = z.infer<typeof AgentPageIsolationSchema>;
+export const AgentPageSourceSchema = z.object({
+  tabId: id, expectedUrl: origin.refine(value => {
+    try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password; }
+    catch { return false; }
+  }), documentToken: id,
+}).strict();
+export const AgentPageCreateSchema = z.object({
+  profileId: id, runId: id, taskId: id.optional(), taskRevision: z.number().int().nonnegative(),
+  windowId: id, background: z.boolean(), source: AgentPageSourceSchema.optional(),
+}).strict();
+export type AgentPageCreate = z.infer<typeof AgentPageCreateSchema>;
+export const AgentPageCreatedSchema = z.object({
+  pageId: id, targetId: id, isolation: AgentPageIsolationSchema,
+  source: AgentPageSourceSchema.optional(),
+}).strict();
+export type AgentPageCreated = z.infer<typeof AgentPageCreatedSchema>;
+
 /** Opaque request authority. Native request interception must bind this to the actual frame and epoch. */
 export const EgressLeaseSchema = z.object({
   leaseId: id,
+  isolationId: id,
   profileId: id,
   runId: id,
   taskRevision: z.number().int().nonnegative(),
@@ -32,6 +59,7 @@ export type EgressLease = z.infer<typeof EgressLeaseSchema>;
 /** Evidence from the request path, not a page or model assertion. Raw URL/body are ephemeral inputs only. */
 export const EgressRequestEvidenceSchema = z.object({
   leaseId: id,
+  isolationId: id,
   profileId: id,
   runId: id,
   taskRevision: z.number().int().nonnegative(),
@@ -63,6 +91,7 @@ export type EgressDecision = z.infer<typeof EgressDecisionSchema>;
 export const EgressContextRequestSchema = z.object({ tabId: id, expectedUrl: origin }).strict();
 export const EgressContextSchema = z.object({
   profileId: id, tabId: id, frameId: id, documentToken: id, sourceOrigin: origin,
+  isolation: AgentPageIsolationSchema.optional(),
 }).strict();
 export type EgressContext = z.infer<typeof EgressContextSchema>;
 export const EgressInstallSchema = z.object({ lease: EgressLeaseSchema, expectedUrl: origin }).strict();

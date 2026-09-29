@@ -18,6 +18,9 @@ import {
   WebmcpToolSchema,
   type WebmcpCallResult,
   type WebmcpTool,
+  AgentPageCreatedSchema,
+  type AgentPageCreate,
+  type AgentPageCreated,
   EgressContextSchema,
   type EgressContext,
   type EgressLease,
@@ -76,6 +79,7 @@ import {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge {
+  createAgentPage?(input: AgentPageCreate): Promise<AgentPageCreated>;
   egressContext?(input: { tabId: string; expectedUrl: string }): Promise<EgressContext>;
   egressInstall?(input: { lease: EgressLease; expectedUrl: string }): Promise<{ accepted: true }>;
   egressRevoke?(input: { leaseId: string }): Promise<{ accepted: true }>;
@@ -167,6 +171,9 @@ export interface NativeBridge {
 
 export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
+  async createAgentPage(input: AgentPageCreate): Promise<AgentPageCreated> {
+    return AgentPageCreatedSchema.parse(await this.channel.call("native.createAgentPage", input, 55_000));
+  }
   async egressContext(input: { tabId: string; expectedUrl: string }): Promise<EgressContext> {
     return EgressContextSchema.parse(await this.channel.call("native.egressContext", input));
   }

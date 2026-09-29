@@ -544,6 +544,38 @@ export class RunService {
     };
   }
 
+  private async openControlledPage(runId: string, url: string, sourcePageId?: string) {
+    const egress = this.deps.browserEgress;
+    if (!egress) throw new AuxError("capability_unsupported", "Protected temporary tabs are unavailable.");
+    const agentScope = await egress.creationScope(runId, sourcePageId);
+    let release: (() => void) | undefined, revoke: (() => void) | undefined;
+    try {
+      const page = await this.deps.pages.open({ url, background: true, ownedByRuntime: true, agentScope,
+        beforeNavigate: async target => {
+          release = this.pageOwnership.tryAcquire({ pageId: target.pageId, actor: "coordinator", runId });
+          revoke = await egress.acquire(runId, target.pageId, url);
+        },
+      });
+      const current = this.deps.repo.getRun(runId);
+      if (!current || TERMINAL_RUN_STATUSES.has(current.status)) {
+        revoke?.(); release?.();
+        await this.deps.pages.close(page.pageId).catch(() => {});
+        throw new AuxError("cancelled", "The run ended while opening its temporary tab.");
+      }
+      if (sourcePageId) {
+        current.config = { ...current.config, isolatedPageSources: [...(current.config?.isolatedPageSources ?? []),
+          { sourcePageId, pageId: page.pageId, url }] };
+        this.deps.repo.saveRun(current);
+        this.deps.events.emit(EventTypes.RunUpdated, { run: current }, runId);
+      }
+      return { pageId: page.pageId, release: () => { revoke?.(); release?.(); } };
+    } catch (error) { revoke?.(); release?.(); throw error; }
+  }
+
+  agentPageScope(runId: string) {
+    return this.deps.browserEgress?.creationScope(runId);
+  }
+
   acquireBrowserEgress(runId: string, pageId: string, initialDestination?: string): Promise<(() => void) | undefined> {
     return this.deps.browserEgress?.acquire(runId, pageId, initialDestination) ?? Promise.resolve(undefined);
   }
@@ -668,6 +700,7 @@ export class RunService {
       sets: deps.sets,
       pool: this.pool,
       nativeAvailable: deps.nativeAvailable,
+      controlledPage: deps.browserEgress ? (runId, url, sourcePageId) => this.openControlledPage(runId, url, sourcePageId) : undefined,
       translateSteps: deps.translateSteps,
       grants: () => deps.settings.effectGrantsForRun?.() ?? USER_RUN_GRANTS,
       durableWrites,
@@ -1271,10 +1304,23 @@ export class RunService {
     this.deps.repo.saveRun(run);
     this.deps.events.emit(EventTypes.RunUpdated, { run }, run.runId);
     const program: Program = { pageId: opts.pageId, steps, nodes };
-    void this.deps.pages
-      // saved programs are user/API-authored (or learned from plans, which
-      // cannot contain evaluate) — a trusted source
-      .execute(program, { runId: run.runId, allowEval: true })
+    let releaseControlled: (() => void) | undefined;
+    const execute = async () => {
+      if (this.deps.browserEgress) {
+        const source = this.deps.pages.get(opts.pageId);
+        const controlled = await this.openControlledPage(run.runId, source.url, opts.pageId);
+        releaseControlled = controlled.release;
+        program.pageId = controlled.pageId;
+        const current = this.deps.repo.getRun(run.runId)!;
+        current.pageIds = [controlled.pageId];
+        this.deps.repo.saveRun(current);
+        this.deps.events.emit(EventTypes.RunUpdated, { run: current }, run.runId);
+      }
+      // Saved programs remain trusted, but native execution still requires
+      // the same per-run isolated document and request protection.
+      return this.deps.pages.execute(program, { runId: run.runId, allowEval: true });
+    };
+    void execute()
       .then((res) => {
         const r = this.deps.repo.getRun(run.runId);
         if (!r || TERMINAL_RUN_STATUSES.has(r.status)) return;
@@ -1301,7 +1347,7 @@ export class RunService {
           this.deps.repo.saveRun(r);
           this.deps.events.emit(EventTypes.RunUpdated, { run: r }, run.runId);
         }
-      });
+      }).finally(() => { releaseControlled?.(); });
     return { runId: run.runId };
   }
 

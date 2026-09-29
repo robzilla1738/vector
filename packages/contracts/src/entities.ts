@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AgentPageIsolationSchema } from "./egress.js";
 import { StepOutcomeSchema } from "./program.js";
 
 export const BackendSchema = z.enum(["aux", "chrome"]);
@@ -39,6 +40,8 @@ export const PageTargetSchema = z.object({
   controller: ControllerSchema,
   /** bumped on every takeover/resume — in-flight programs compare epochs */
   controllerEpoch: z.number().int().nonnegative().default(0),
+  /** Display metadata only; native egressContext remains the authority. */
+  agentIsolation: AgentPageIsolationSchema.optional(),
   ownedByRuntime: z.boolean().describe("disposable worker target vs human/borrowed"),
   createdAt: z.number(),
   lastActiveAt: z.number(),
@@ -142,6 +145,8 @@ export const RunSchema = z.object({
       contextMemoryRevoked: z.boolean().optional(),
       /** IDs of removed generated artifacts, retained only to revoke later dependent turns. */
       revokedArtifactIds: z.array(z.string()).optional(),
+      /** URL-only source receipts; these confer no restored native isolation authority. */
+      isolatedPageSources: z.array(z.object({ sourcePageId: z.string(), pageId: z.string(), url: z.string() }).strict()).optional(),
       /** Live pages explicitly selected for this turn; their identity was checked before launch. */
       contextPageRefs: z.array(PageContextRefSchema).max(9).optional(),
       /** Accepted human steering revision for this run. */

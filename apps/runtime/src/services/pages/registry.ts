@@ -11,6 +11,8 @@ export class PageRegistry {
   constructor(readonly deps: PageServiceDeps) {}
 
   live = new Map<string, LivePage>();
+  /** Catalog events wait until native-minted controlled pages have their creator metadata. */
+  agentCreations = new Set<Promise<void>>();
   pendingExternal = new Map<string, { removed: boolean; done?: Promise<PageTarget> }>();
   private driverAttaches = new Map<string, Promise<void>>();
   /** Suppress catalog reattachment while a native page open is awaiting its driver. */

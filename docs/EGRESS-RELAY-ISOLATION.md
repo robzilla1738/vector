@@ -1,6 +1,8 @@
 # EGRESS relay boundary — next coherent batch
 
-Status: **read-only design; no isolation implementation or native qualification**.
+Status: **contract/runtime/UI source implemented; native isolation and its live
+qualification remain open**. The source batch is not compatible with a browser
+that returns only the 0121 context: missing native isolation refuses agent action.
 The 0121 source batch provides a scoped HTTP/final-header/credential and opaque
 transport gate. It does not establish transitive confinement across ordinary
 same-Profile pages. This dependency must close before EGRESS/S7 or S14 pass.
@@ -66,7 +68,7 @@ Line references are from the audit, before any subsequent integrator edits.
   trusted owner-navigation retirement flow yet; deliver that in this batch.
 - **Auth:** Default to a clean partition and native saved-password fill after
   installing the lease. Do not copy an owner's whole cookie jar or storage. If
-  shared authentication is required, design an explicit origin-scoped native
+  shared authentication is required later, design an explicit origin-scoped native
   handoff and origin-bound credential/cookie fingerprints before copying. Raw
   cookies and credentials remain native. Never copy service workers, channel
   endpoints, local/session storage, IndexedDB or CacheStorage into the partition.
@@ -128,18 +130,25 @@ receipts; native saved-password no-raw-IPC evidence; independent relay review.
 Only then reconcile EGRESS/S7 and S14 qualification. An HTTP pass on 0121 alone
 cannot close this dependency. Signed release packaging stays outside scope.
 
-## Proposed private contract (for integrator review)
+## Private contract implemented in the source batch
 
-These method names are proposals; they are not implemented or added to generated
-bindings by this planning document.
+The following source contracts and runtime call sites are implemented. Native
+creation/registry enforcement and generated bindings remain integrator work;
+schema presence is not native completion evidence.
 
 | Method / fields | Required authority and result |
 | --- | --- |
-| `native.createAgentPage({runId, taskId?, taskRevision, initialDestination, source?})` | Authenticated runtime only, after existing task/tool policy admission. Native mints the partition and creates inert about:blank without an opener. `source?` contains only a trusted owner-selected `pageId`, exact committed URL and native document token. Return `{pageId, isolationId, runId, taskRevision, inMemory:true}`; isolationId is an opaque receipt, never a caller-selected storage name. Creation does not navigate. |
-| `native.egressContext` additions | Return `isolation:{id,runId,taskRevision,inMemory:true}` only after checking `frame.GetStoragePartition().GetConfig()` and `frame.GetSiteInstance().GetSecurityPrincipal().GetStoragePartitionConfig()` against the native registry. Default or mismatched partitions return a recoverable refusal, not optional/missing authority. |
+| `native.createAgentPage({profileId,runId,taskId?,taskRevision,windowId,background,source?})` | Authenticated runtime only. Native mints page/partition identities and creates inert about:blank without an opener. Optional source is exactly `{tabId,expectedUrl,documentToken}`; URL is credential-free HTTP(S), max 2048 characters. Check the exact current document/URL in the requested native Profile. Return `{pageId,targetId,isolation,source?}` with the validated source echoed; `targetId` is its CDP target. No caller page ID, partition path, cookie bytes or initial navigation. |
+| `isolation` receipt | Strict `{isolationId,runId,taskId?,taskRevision,inMemory:true,cookies:"empty"}`. Native mints an opaque ID and owns the registry; runtime cannot select its partition. `cookies:"empty"` means the namespace starts without copied owner state. It does not erase cookies from an explicit later sign-in or assert they remain absent on subsequent tabs in the same run. |
+| `native.egressContext` additions | Optional `isolation` with the shape above, returned only after checking `frame.GetStoragePartition().GetConfig()` and `frame.GetSiteInstance().GetSecurityPrincipal().GetStoragePartitionConfig()` against the native registry. A default-partition context may provide its exact source token/URL for URL-only copying, but a missing/mismatched isolation receipt always refuses lease installation and agent dispatch. |
 | `native.egressInstall` additions | Bind the lease to isolationId plus existing Profile/run/task revision/tab/frame/document token/epoch. Fail if native partition identity differs. Renewal cannot move a lease to a different run, partition or document. |
-| `native.seedAgentSession({sourcePageId,sourceDocumentToken,sourceUrl,targetPageId,targetDocumentToken,isolationId,runId,taskRevision,approvalId})` | Optional owner-only flow below. Approval is a native one-use capability minted by the local owner surface for this exact tuple; never a renderer/model-supplied boolean. Return counts/status only. |
-| `native.releaseAgentIsolation({isolationId,runId,taskRevision})` | Revoke requests first, close controlled documents and worker endpoints, then clear only that native registry entry's ephemeral partition after detach. Caller strings never become filesystem paths or a default-partition selector. Idempotent bounded receipt. |
+| `egress.request` additions | `evidence.isolationId` is mandatory and must match the installed native/run lease. Projection and exact-request approval binding are unchanged; raw outgoing bytes stay native. |
+
+No `native.seedAgentSession` or public API is implemented. Cookie transfer is
+explicitly unavailable. Native cleanup is a required lifecycle invariant, not a
+new caller-selected partition-clear method: revoke first, close endpoints and
+clear only the native registry entry after every controlled document detaches.
+Default-Profile cleanup is never an allowed fallback.
 
 The fixed partition is a **native invariant**, not just a runtime tab label.
 Reject navigation/history/restore/factory contexts that switch to the default or
@@ -153,7 +162,7 @@ Native descriptors from a previous process cannot recreate authority by name.
    A model-provided URL is a requested destination, never proof of owner-page or
    cookie authority. Any source navigation between selection and creation fails
    the exact-document check.
-2. The source supplies **only its URL and clearly labeled source context**. Do not
+2. The source supplies **only its URL and a labeled source receipt**. Do not
    copy its DOM, storage, opener, MessagePort, renderer state or active request
    endpoints into the new WebContents. Send no Referer from the owner document.
    Existing private context entering the run is fingerprinted before dispatch.
@@ -165,15 +174,23 @@ Native descriptors from a previous process cannot recreate authority by name.
    fail at the shared executor **before CDP dispatch and before private inputs
    enter page JS**. Native install independently refuses the same operation.
    Claim acquisition is rolled back; the owner tab remains usable.
-5. UI recovery offers creation of the isolated task tab. It must not retry the
-   original action on the old page after an isolation refusal. An existing run
-   resuming from old saved page IDs must take the same recovery path.
+5. The coordinator automatically makes URL-only copies of selected HTTP(S) tabs
+   before observation. Saved programs and set workers use the same creation path.
+   External sessions must use `agent.turn.open` to obtain their run's temporary
+   tab before dispatch; old/default/other-run tabs refuse. The UI explains the
+   separate sign-in and opens the run's temporary tab. It never retries an action
+   on the old source tab. Persisted isolation metadata cannot recreate authority.
+6. Selecting about:blank supplies no destination and creates no actionable tab.
+   The tool loop can subsequently choose an exact HTTP(S) destination for openTab;
+   the older planner fails clearly until a website is selected. No ordinary
+   blank-tab fallback is permitted.
 
-### Explicit optional cookie handoff
+### Deferred optional cookie handoff — outside this batch
 
 Default behavior is **no cookie transfer**. A clean task tab can use the native
-saved-password fill after its lease is installed. If preserving an existing
-sign-in is required, the same batch must implement this complete owner flow:
+saved-password fill after its lease is installed. Cookie transfer stays
+unavailable in this batch. A future separately accepted sign-in-continuity outcome
+would need this complete owner flow:
 
 - Local owner chooses **Use this site's sign-in** for the exact source origin and
   task tab, with a current run/task revision and both native document tokens.
@@ -217,9 +234,9 @@ continuity or silently copy authentication to avoid the UI transition.
 | Blank creation failure | No first destination capture and no fallback owner navigation; inert blank closed or explicit recoverable state. |
 | Partition immutability | Native partition/config/run identity recorded at blank, first commit, cross-origin redirect, same-URL reload, history restore and process restart. Default or substituted isolation ID never installs. |
 | No-transfer default | Owner cookie/storage marker absent from isolated tab; owner remains signed in; legitimate native password fill can sign into the isolated origin. No browser storage endpoint is copied. |
-| Approved cookie seed | Only the approved host/origin's bounded eligible cookies appear in the target after local consent; capture proves intended-origin authenticated request; other owner-origin markers remain absent. No raw value in RPC/log/artifact. |
-| Cookie exfil/recipient substitution | Native URL/body/header cookie-copy attempts to a second origin, including same hostname with a different port, denied with native receipt and zero recipient captures. Consent does not override the protected producer. |
-| Seed cancellation/race/partial failure | Changing source document, target document, run/task revision, approval ID or isolation identity causes no committed target session; rollback touches only staged target values. |
+| Deferred cookie seed | Outside current scope. A future handoff must prove only approved host/origin cookies transfer, with no raw value in RPC/log/artifact. Current acceptance instead proves no-transfer behavior and unavailable UI. |
+| Deferred transferred-cookie exfil/recipient substitution | Outside current scope. A future transfer cannot release any protected cookie to another origin, including same-host/different-port recipients; ordinary controlled sign-in credential protection remains a current gate. |
+| Deferred seed cancellation/race/partial failure | Outside current scope. A future handoff must roll back staged target values on any identity or approval change. |
 | Explicit owner recovery | Old controlled document's delayed script remains denied; opening a fresh owner copy does not carry its isolated channels/storage/private values. No tombstone-to-bypass interval on the old document. |
 
 This is one end-to-end outcome: a user can safely continue an authorized task in a
@@ -239,3 +256,33 @@ open the matching origin in a controlled partition, prove no automatic fill or
 receiver transmission, then prove the separately reviewed native fill succeeds.
 Keep cookie transfer unavailable in this batch; empty storage and separate sign-in
 are the default and only supported source-state mode.
+
+## Source batch implementation and verification
+
+- Wire source: `packages/contracts/src/egress.ts`, PageTarget/run display metadata
+  in `entities.ts`, and the runtime-only `native.createAgentPage` entry in
+  `host-methods.ts`. No public `api.ts` method or generated binding was edited.
+- Runtime: native bridge and BrowserEgress validate the receipt; opener resolves
+  native-minted page identity before catalog registration and installs authority
+  before first navigation. Coordinator, saved programs, set workers and external
+  turn tabs use the controlled path. Default/other-run tabs cannot obtain a lease.
+  Selected source URL/token/revision races fail closed. Previously persisted
+  isolated pages cannot be opened as ordinary restored tabs by the opener.
+- UI: RunControls states that tabs have separate sign-in, cookies are not copied,
+  and cookie transfer is unavailable; its button activates only this run's
+  controlled tab. This does not grant owner-session authority.
+- Focused source verification rebuilds runtime dist first. It covers actual
+  coordinator/program/set dispatch ordering, claim release, source races, native
+  catalog/create ordering, substituted authority, initial-navigation denial,
+  exact-request approvals/projections, external run identity, and the UI notice.
+  Native partition/process, capture-server relay, password-autofill, restart and
+  cleanup oracles remain pending. Do not mark EGRESS or S14 qualified from these
+  source tests.
+
+Verification at this source handoff: 96 distinct focused tests passed across
+`browser-egress`, `browser-egress-boundaries`, `egress-guard`,
+`browser-egress-approval`, `egress-projection`, `agent-isolation-flow`,
+`agent-turn-tabs`, `external-sessions`, `set-run-lifecycle`, and `RunControls`.
+`npx tsc -b`, shell TypeScript, the repository lint ratchet, format ratchet and
+`git diff --check` passed. No native build or live isolation journey was run by
+this lane. The source commit containing this handoff identifies the exact batch.

@@ -46,6 +46,7 @@ export interface SetRunnerDeps {
    */
   translateSteps: (pageId: string, steps: Step[]) => Step[];
   nativeAvailable?: () => boolean;
+  controlledPage?: (runId: string, url: string, sourcePageId?: string) => Promise<{ pageId: string; release: () => void }>;
   /** Privilege-independent grants for learned replay (Finding 5 / Gate F). */
   grants?: GrantSource;
   /** Shared persist-before-dispatch ledger (Gate D). */
@@ -188,7 +189,8 @@ export class SetRunner {
       let releaseSem: (() => void) | undefined;
       let release: (() => void) | undefined;
       let workerPageId: string | undefined;
-      const owner = m.pageId ? { pageId: m.pageId, actor: "set_member" as const, runId: opts.runId, memberId: m.memberId } : undefined;
+      let releaseControlled: (() => void) | undefined;
+      const owner = m.pageId && !this.deps.controlledPage ? { pageId: m.pageId, actor: "set_member" as const, runId: opts.runId, memberId: m.memberId } : undefined;
       try {
         releaseSem = await sem.acquire(signal);
         // pause may have arrived while this member waited for capacity —
@@ -208,7 +210,7 @@ export class SetRunner {
         }
         m.status = "running";
         this.deps.sets.updateMember(m);
-        const outcome = await this.processMember(m, url!, {...opts,signal,budget}, learnedFor(url!), (id) => (workerPageId = id));
+        const outcome = await this.processMember(m, url!, {...opts,signal,budget}, learnedFor(url!), (id, cleanup) => { workerPageId = id; releaseControlled = cleanup; });
         if (signal.aborted) {
           this.skip(m, opts.runId,skipReason());
           return;
@@ -245,6 +247,7 @@ export class SetRunner {
         }
         this.fail(m, e instanceof Error ? e.message : String(e), opts.runId);
       } finally {
+        releaseControlled?.();
         if (workerPageId) await this.releaseWorker(workerPageId);
         release?.();
         releaseSem?.();
@@ -299,11 +302,16 @@ export class SetRunner {
     url: string,
     opts: { goal?: string; runId: string; signal: AbortSignal; budget?: ResearchBudget; modelId?:string },
     learned: Learned | undefined,
-    setWorker: (id: string) => void,
+    setWorker: (id: string, release?: () => void) => void,
   ): Promise<{ result: ResultRecord; executedSteps?: Step[] }> {
-    // existing human-owned page: use it directly
     let pageId = m.pageId;
-    if (!pageId || !this.deps.pages.isAttached(pageId)) {
+    if (pageId && this.deps.pages.isAttached(pageId) && m.url && this.deps.pages.get(pageId).url !== m.url)
+      throw new AuxError("conflict", "Set member page changed since it was added; refresh the set before running it");
+    if (this.deps.controlledPage) {
+      const page = await this.deps.controlledPage(opts.runId, url, pageId && this.deps.pages.isAttached(pageId) ? pageId : undefined);
+      pageId = page.pageId;
+      setWorker(pageId, page.release);
+    } else if (!pageId || !this.deps.pages.isAttached(pageId)) {
       const page = await this.deps.pages.open({
         url,
         backend: "aux",
@@ -312,8 +320,6 @@ export class SetRunner {
       });
       pageId = page.pageId;
       setWorker(pageId);
-    } else if (m.url && this.deps.pages.get(pageId).url !== m.url) {
-      throw new AuxError("conflict", "Set member page changed since it was added; refresh the set before running it");
     }
     if (this.deps.pages.get(pageId).controller === "human")
       throw new AuxError("conflict", "A person controls this tab; return control before mapping the set");

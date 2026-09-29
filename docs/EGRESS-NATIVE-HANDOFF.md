@@ -22,6 +22,14 @@ navigation, worker, redirect, or subresource.
 
 ## Private wire contract
 
+This section documents the **0121 scoped baseline**. The subsequent relay source
+batch adds runtime-only `native.createAgentPage`, optional native context
+`isolation`, and mandatory lease/request `isolationId`; its exact shapes and
+native requirements are in [EGRESS-RELAY-ISOLATION.md](EGRESS-RELAY-ISOLATION.md).
+That source intentionally refuses agent work against a 0121-only browser. Keep
+the scoped 0121 journey on the matching pre-relay source until the fixed-partition
+native batch and generated bindings land together.
+
 These are authenticated host messages. Do not expose them to `aux://` JavaScript,
 page JavaScript, model tools, external bearer tokens, or generic runtime invokers.
 

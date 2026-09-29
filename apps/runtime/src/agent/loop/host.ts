@@ -591,6 +591,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       let claimedPageId: string | undefined;
       try {
         const target = await self.deps.pages.open({ url: destination, background: true, ownedByRuntime: true,
+          agentScope: await self.deps.browserEgress?.creationScope(runId),
           beforeNavigate: async target => {
             openedTabs.set(target.pageId, await self.claimPage(runId, target.pageId, destination));
             claimedPageId = target.pageId;

@@ -5,19 +5,21 @@ import { STATUS_LABEL } from "../run-status";
 import { I } from "./icons";
 import "./RunControls.css";
 
-type Control = "take" | "return" | "stop" | "pause" | "resume";
+type Control = "take" | "return" | "stop" | "pause" | "resume" | "open";
 
 /** One control owner per visible run. Stop can supersede an in-flight pause/takeover. */
 export function RunControls({ runId, compact = false }: { runId: string; compact?: boolean }) {
   const run = useStore(state => state.runs.find(item => item.runId === runId));
-  const pages = useStore(useShallow(state => state.pages.filter(page => run?.pageIds.includes(page.pageId))));
+  const pages = useStore(useShallow(state => state.pages.filter(page => run?.pageIds.includes(page.pageId) || page.agentIsolation?.runId === runId)));
   const [busy, setBusy] = useState<Control | null>(null);
   const pending = useRef<{ kind: Control; token: symbol } | null>(null);
   const [error, setError] = useState("");
   useEffect(() => { setBusy(null); setError(""); return () => { pending.current = null; }; }, [runId]);
   if (!run) return null;
   const live = isLive(run);
-  const primary = pages.find(page => page.pageId === run.pageIds[0] && !["crashed", "detached"].includes(page.viewStatus ?? ""));
+  const primary = pages.find(page => page.pageId === run.pageIds[0] && !["crashed", "detached"].includes(page.viewStatus ?? ""))
+    ?? pages.find(page => page.agentIsolation?.runId === runId && !["crashed", "detached"].includes(page.viewStatus ?? ""));
+  const isolated = pages.filter(page => page.agentIsolation?.runId === runId && !["crashed", "detached"].includes(page.viewStatus ?? ""));
   const held = pages.filter(page => page.controller === "human");
   const uncertain = run.config?.checkpoint?.unresolvedEffects?.length ?? 0;
   const takeoverCheckpoint = run.config?.checkpoint?.planBoundary === "takeover";
@@ -28,7 +30,7 @@ export function RunControls({ runId, compact = false }: { runId: string; compact
     pending.current = { kind, token }; setBusy(kind); setError("");
     const current = () => pending.current?.token === token;
     try { await work(current); }
-    catch (reason) { if (current()) setError(`${{pause:"Pause",resume:"Resume",take:"Take control",return:"Return control",stop:"Stop"}[kind]} wasn’t confirmed. ${reason instanceof Error ? reason.message : String(reason)}`); }
+    catch (reason) { if (current()) setError(`${{pause:"Pause",resume:"Resume",take:"Take control",return:"Return control",stop:"Stop",open:"Open temporary tab"}[kind]} wasn’t confirmed. ${reason instanceof Error ? reason.message : String(reason)}`); }
     finally { if (current()) { pending.current = null; setBusy(null); } }
   };
   const take = () => primary && control("take", async current => {
@@ -44,6 +46,7 @@ export function RunControls({ runId, compact = false }: { runId: string; compact
       {live && primary && !held.length && <button className="icon-btn sm" disabled={!!busy} title="Take control of browser tab" aria-label="Take control of browser tab" onClick={() => void take()}>{I.handSm}</button>}
       {live && <button className="icon-btn sm danger" disabled={busy === "stop"} title="Stop" aria-label={busy === "stop" ? "Stopping run" : "Stop run"} onClick={() => void control("stop", () => call("runs.cancel",{runId}))}>{I.square}</button>}
     </span></div>
+    {!!isolated.length && <div className="run-held" role="note"><span>Aux uses separate temporary tabs for this run. Sign in there if needed. Existing cookies and saved sign-ins are not copied; cookie transfer is unavailable.</span><button className="btn sm" disabled={!!busy} onClick={() => void control("open", () => call("pages.activate", {pageId:isolated[0]!.pageId}))}>Open temporary tab</button></div>}
     {!!held.length && <div className="run-held" role="status">{I.hand}<span>{run.status === "interrupted" ? "This program stopped when you took control. Review its checkpoint before another run." : held.length > 1 ? `${held.length} pages are held. Return each page when you’re ready.` : "Aux is paused while you use this page."}{uncertain > 0 ? ` ${uncertain} action${uncertain === 1 ? "" : "s"} may have taken effect and need review.` : ""}</span><button className="btn sm" disabled={!!busy} onClick={() => void control("return", () => call("pages.resume",{pageId:held[0]!.pageId}))}>{busy === "return" ? "Returning…" : held.length > 1 ? "Return this page" : run.status === "interrupted" ? "Return page" : "Return and resume"}</button></div>}
     {(!!held.length || takeoverCheckpoint) && run.config?.checkpoint && <details className="run-held-checkpoint"><summary>Takeover checkpoint</summary><p>{run.statusMessage ?? "The page is under your control."}</p><p>{uncertain ? `${uncertain} uncertain action${uncertain === 1 ? "" : "s"} ${uncertain === 1 ? "requires" : "require"} review before completion.` : run.status === "interrupted" ? "This stopped program will not replay when the page is returned." : "The next agent turn will inspect the page again before acting."}</p></details>}
     {error && <p className="field-error" role="alert">{error}</p>}

@@ -1,5 +1,5 @@
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
-import { AuxError, type AuxErrorCode, type Backend, EventTypes, type PageTarget, newPageId } from "@aux/contracts";
+import { AuxError, AgentPageCreatedSchema, type AgentPageCreate, type AgentPageCreated, type AuxErrorCode, type Backend, EventTypes, type PageTarget, newPageId } from "@aux/contracts";
 import type { ActivationPolicy } from "./activation.js";
 import type { PageRegistry } from "./registry.js";
 
@@ -17,6 +17,7 @@ export class PageOpener {
     targetId?: string; // chrome: attach an existing tab by CDP id
     /** Internal authority hook; never supplied by renderer/RPC parameters. */
     beforeNavigate?: (target: PageTarget) => Promise<void>;
+    agentScope?: Omit<AgentPageCreate, "windowId" | "background">;
   }): Promise<PageTarget> {
     const backend = opts.backend ?? "aux";
     return this.openOn(backend, opts, opts.backend ? `explicit-backend:${opts.backend}` : "chromium-default");
@@ -71,7 +72,7 @@ export class PageOpener {
 
   async openOn(
     backend: Backend,
-    opts: { url: string; windowId?: string; background: boolean; ownedByRuntime: boolean; activate?: boolean; targetId?: string; beforeNavigate?: (target: PageTarget) => Promise<void> },
+    opts: { url: string; windowId?: string; background: boolean; ownedByRuntime: boolean; activate?: boolean; targetId?: string; beforeNavigate?: (target: PageTarget) => Promise<void>; agentScope?: Omit<AgentPageCreate, "windowId" | "background"> },
     routeReason: string,
     restored?: PageTarget,
   ): Promise<PageTarget> {
@@ -82,16 +83,43 @@ export class PageOpener {
     if (!driver?.isConnected())
       throw new AuxError("backend_unavailable", `${backend} backend is not connected`);
 
-    const pageId = restored?.pageId ?? newPageId();
+    if (restored?.agentIsolation)
+      throw new AuxError("permission_denied", "This temporary sign-in session has ended. Start a new run to open a fresh protected tab.");
+    if (opts.agentScope && (backend !== "aux" || opts.targetId || !opts.beforeNavigate || !opts.ownedByRuntime))
+      throw new AuxError("permission_denied", "Protected tabs require a fresh native page and request authority before navigation.");
+    let pageId = restored?.pageId ?? newPageId();
+    let registered = () => {};
+    const creating = opts.agentScope ? new Promise<void>(resolve => { registered = resolve; }) : undefined;
+    if (creating) this.pages.agentCreations.add(creating);
     this.pages.opening.add(pageId);
     try {
       let targetId: string;
       let nativeCreated = false;
       let cdpTargetId: string | undefined;
+      let isolated: AgentPageCreated | undefined;
       // Open on about:blank, then navigate AFTER response listeners are wired —
       // otherwise the page's own first load escapes passive capture.
       const initialUrl = opts.targetId ? opts.url : "about:blank";
-      if (opts.targetId && backend === "chrome") {
+      if (opts.agentScope) {
+        if (!this.pages.deps.native.createAgentPage)
+          throw new AuxError("capability_unsupported", "Protected temporary tabs are unavailable in this browser.");
+        if (opts.agentScope.source && opts.agentScope.source.expectedUrl !== opts.url)
+          throw new AuxError("permission_denied", "The temporary tab must open the selected source address.");
+        isolated = AgentPageCreatedSchema.parse(await this.pages.deps.native.createAgentPage({
+          ...opts.agentScope, windowId: opts.windowId ?? "main", background: opts.background,
+        }));
+        if (isolated.isolation.runId !== opts.agentScope.runId || isolated.isolation.taskId !== opts.agentScope.taskId
+          || isolated.isolation.taskRevision !== opts.agentScope.taskRevision
+          || JSON.stringify(isolated.source) !== JSON.stringify(opts.agentScope.source)
+          || this.pages.live.has(isolated.pageId) || this.pages.opening.has(isolated.pageId))
+          throw new AuxError("permission_denied", "Native temporary-tab authority did not match this run.");
+        this.pages.opening.delete(pageId);
+        pageId = isolated.pageId;
+        this.pages.opening.add(pageId);
+        targetId = `atab-${pageId}`;
+        cdpTargetId = isolated.targetId;
+        nativeCreated = true;
+      } else if (opts.targetId && backend === "chrome") {
         targetId = opts.targetId;
       } else {
         ({ targetId, nativeCreated, cdpTargetId } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
@@ -121,11 +149,14 @@ export class PageOpener {
         controller: "none",
         controllerEpoch: restored ? restored.controllerEpoch + 1 : 0,
         ownedByRuntime: opts.ownedByRuntime,
+        ...(isolated ? { agentIsolation: isolated.isolation } : {}),
         createdAt: restored?.createdAt ?? Date.now(),
         lastActiveAt: Date.now(),
         routeReason,
       };
       const lp = this.pages.addLive(target, dp);
+      registered();
+      if (creating) this.pages.agentCreations.delete(creating);
       this.pages.opening.delete(pageId);
       if (!this.pages.restoring) this.pages.deps.events.emit(EventTypes.PageAdded, { page: target });
       this.pages.deps.tracer?.incr(`router.open.${backend}`);
@@ -158,6 +189,8 @@ export class PageOpener {
       void this.pages.refreshMeta(lp);
       return target;
     } finally {
+      registered();
+      if (creating) this.pages.agentCreations.delete(creating);
       this.pages.opening.delete(pageId);
     }
   }
@@ -184,6 +217,8 @@ export class PageOpener {
     cdpTargetId?: string;
     restored?: PageTarget;
   }): Promise<PageTarget> {
+    if (opts.ownedByRuntime && this.pages.agentCreations.size)
+      await Promise.all(this.pages.agentCreations);
     const pageId = opts.pageId ?? newPageId();
     const existing = this.pages.live.get(pageId);
     if (existing) return existing.target;

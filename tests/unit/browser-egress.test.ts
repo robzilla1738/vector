@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { EgressLease, EgressRequest } from "@aux/contracts";
+import { AgentPageCreateSchema, type AgentPageIsolation, type EgressLease, type EgressRequest } from "@aux/contracts";
 import { projectEgressRequest } from "../../apps/runtime/src/safety/egress-projection.js";
 import { BrowserEgress, type BrowserEgressDeps } from "../../apps/runtime/src/safety/browser-egress.js";
 import { NullNativeBridge } from "../../apps/runtime/src/native.js";
@@ -10,11 +10,12 @@ afterEach(() => { for (const service of active.splice(0)) service.close(); vi.us
 function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
   let now = 1000, revision = 4, epoch = 3, token = "native-document-1", owns = true, alive = true;
   let url = "https://source.test/page", controller = "none";
+  let isolation: AgentPageIsolation | undefined = { isolationId: "isolated-run", runId: "run", taskId: "task", taskRevision: 4, inMemory: true, cookies: "empty" };
   const leases: EgressLease[] = [];
   const revoke = vi.fn(async () => ({ accepted: true as const }));
   const consent = vi.fn(approve);
   const native = Object.assign(new NullNativeBridge(), {
-    egressContext: vi.fn(async () => ({ profileId: "profile", tabId: "tab", frameId: "process:frame", documentToken: token, sourceOrigin: url === "about:blank" ? "aux://blank" : new URL(url).origin })),
+    egressContext: vi.fn(async () => ({ profileId: "profile", tabId: "tab", frameId: "process:frame", documentToken: token, sourceOrigin: url === "about:blank" ? "aux://blank" : new URL(url).origin, isolation })),
     egressInstall: vi.fn(async ({ lease }: { lease: EgressLease }) => { leases.push(lease); return { accepted: true as const }; }),
     egressRevoke: revoke,
   });
@@ -30,7 +31,7 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
   const request = (destination: string, body = "", patch: Partial<EgressRequest["evidence"]> = {}, headers: Array<[string, string]> = []): EgressRequest => {
     const lease = leases.at(-1)!;
     return { requestId: `request-${++sequence}`, projection: projectEgressRequest({ url: destination, method: patch.method ?? "POST", body: Buffer.from(body), headers }), evidence: {
-      leaseId: lease.leaseId, profileId: lease.profileId, runId: lease.runId, taskId: lease.taskId,
+      leaseId: lease.leaseId, isolationId: lease.isolationId, profileId: lease.profileId, runId: lease.runId, taskId: lease.taskId,
       taskRevision: lease.taskRevision, tabId: lease.tabId, frameId: lease.frameId,
       documentEpoch: lease.documentEpoch, documentToken: lease.documentToken,
       destination: new URL(destination).origin, kind: "fetch" as const, method: "POST" as const,
@@ -38,6 +39,7 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
     } };
   };
   return { service, native, consent, request, leases,
+    setIsolation: (value?: AgentPageIsolation) => { isolation = value; },
     navigate: (nextUrl?: string) => { epoch++; token = `native-document-${epoch}`; if (nextUrl) url = nextUrl; },
     takeover: () => { controller = "human"; },
     staleTask: () => { revision++; }, relinquish: () => { owns = false; },
@@ -45,6 +47,14 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
 }
 
 describe("native browser egress authority", () => {
+  it("does not install authority when the task changes while reading native document identity", async () => {
+    const f = fixture();
+    const context = await f.native.egressContext();
+    f.native.egressContext.mockImplementationOnce(async () => { f.staleTask(); return context; });
+    await expect(f.service.acquire("run", "tab")).rejects.toThrow("changed while preparing");
+    expect(f.native.egressInstall).not.toHaveBeenCalled();
+  });
+
   it("binds native frame/document identity before work and allows same-origin traffic", async () => {
     const f = fixture();
     const release = await f.service.acquire("run", "tab");
@@ -267,4 +277,42 @@ describe("native browser egress authority", () => {
     expect(f.native.egressRevoke).toHaveBeenCalledTimes(2);
   });
 
+});
+
+
+it("refuses an ordinary owner tab and a different run namespace before native install", async () => {
+  const f = fixture();
+  f.setIsolation();
+  await expect(f.service.acquire("run", "tab")).rejects.toThrow("protected temporary tab");
+  expect(f.native.egressInstall).not.toHaveBeenCalled();
+  f.setIsolation({ isolationId: "other", runId: "another-run", taskId: "task", taskRevision: 4, inMemory: true, cookies: "empty" });
+  await expect(f.service.acquire("run", "tab")).rejects.toThrow("protected temporary tab");
+  expect(f.native.egressInstall).not.toHaveBeenCalled();
+});
+
+it("rejects substituted isolation evidence even when every document field still matches", async () => {
+  const f = fixture();
+  await f.service.acquire("run", "tab");
+  expect((await f.service.request(f.request("https://source.test/", "", { isolationId: "other-run" }))).decision.reason).toBe("identity_mismatch");
+});
+
+it("obtains source URL authority from the current native document without transferring state", async () => {
+  const f = fixture();
+  Object.assign(f.native, { createAgentPage: vi.fn() });
+  f.setIsolation(); // ordinary owner source can supply a URL, never an action lease
+  const scope = await f.service.creationScope("run", "tab");
+  expect(scope).toEqual({ profileId: "profile", runId: "run", taskId: "task", taskRevision: 4,
+    source: { tabId: "tab", expectedUrl: "https://source.test/page", documentToken: "native-document-1" } });
+  expect(f.native.egressInstall).not.toHaveBeenCalled();
+  for (const extra of [{ pageId: "chosen" }, { partitionPath: "/owner" }, { cookies: [] }])
+    expect(AgentPageCreateSchema.safeParse({ ...scope, windowId: "main", background: true, ...extra }).success).toBe(false);
+});
+
+it("rejects a source that navigated while native authority was being read", async () => {
+  const f = fixture();
+  Object.assign(f.native, { createAgentPage: vi.fn() });
+  const original = f.native.egressContext.getMockImplementation()!;
+  f.native.egressContext.mockImplementation(async () => { const context = await original(); f.navigate(); return context; });
+  await expect(f.service.creationScope("run", "tab")).rejects.toThrow("selected source tab changed");
+  expect(f.native.egressInstall).not.toHaveBeenCalled();
 });

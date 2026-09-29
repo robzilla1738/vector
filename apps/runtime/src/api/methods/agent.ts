@@ -156,6 +156,7 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
       turnId: params.turnId,
       url: url.href,
       skipIfActive: params.skipIfActive,
+      agentScope: ctx.externalRunId ? await s.runs.agentPageScope?.(ctx.externalRunId) : undefined,
       ...(ctx.externalRunId ? { beforeNavigate: async (page: import("@aux/contracts").PageTarget) => {
         release = s.runs.pageOwnership.tryAcquire({ pageId: page.pageId, actor: "external",
           runId: ctx.externalRunId, taskId: params.taskId, connectionId: client.connectionId });

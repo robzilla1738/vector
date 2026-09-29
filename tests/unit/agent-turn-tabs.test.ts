@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { AgentTurnTabs } from "../../apps/runtime/src/agent/turn-tabs.js";
-import type { PageTarget } from "@aux/contracts";
+import type { PageTarget, AgentPageCreate } from "@aux/contracts";
 import type { PageService } from "../../apps/runtime/src/services/pages.js";
 
 it("reuses a turn tab, closes owned tabs at turn end, and preserves a human takeover", async () => {
@@ -34,5 +34,30 @@ it("reuses a turn tab, closes owned tabs at turn end, and preserves a human take
     await turns.sweep();
     expect(closed).toContain(old.pageId);
     expect(turns.pageIds("c1")).toEqual([]);
+  } finally { turns.dispose(); }
+});
+
+it("never reuses a same-URL turn tab from an older run or task revision", async () => {
+  const pages = new Map<string, PageTarget>();
+  const service = {
+    open: async ({ url, agentScope }: { url: string; agentScope?: Omit<AgentPageCreate, "windowId" | "background"> }) => {
+      const page = { pageId: `p${pages.size + 1}`, url, ownedByRuntime: true, controller: "none",
+        agentIsolation: { isolationId: `i${pages.size + 1}`, runId: agentScope!.runId,
+          taskId: agentScope!.taskId, taskRevision: agentScope!.taskRevision, inMemory: true, cookies: "empty" },
+      } as PageTarget;
+      pages.set(page.pageId, page); return page;
+    },
+    get: (id: string) => pages.get(id)!, close: async () => ({ ok: true }),
+  } as Pick<PageService, "open" | "get" | "close">;
+  const turns = new AgentTurnTabs(service);
+  try {
+    const input = { connectionId: "c", taskId: "t", turnId: "turn", url: "https://source.test/", skipIfActive: true,
+      agentScope: { profileId: "profile", runId: "first", taskId: "t", taskRevision: 1 } };
+    const first = await turns.open(input);
+    expect((await turns.open(input)).pageId).toBe(first.pageId);
+    const next = await turns.open({ ...input, agentScope: { ...input.agentScope, runId: "second" } });
+    expect(next.pageId).not.toBe(first.pageId);
+    expect((await turns.open({ ...input, agentScope: { ...input.agentScope, taskRevision: 2 } })).pageId)
+      .not.toBe(first.pageId);
   } finally { turns.dispose(); }
 });

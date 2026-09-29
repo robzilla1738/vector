@@ -1,4 +1,4 @@
-import { AuxError, type PageTarget } from "@aux/contracts";
+import { AuxError, type PageTarget, type AgentPageCreate } from "@aux/contracts";
 import type { PageService } from "../services/pages.js";
 
 const TURN_TTL_MS = 60 * 60_000;
@@ -42,14 +42,14 @@ export class AgentTurnTabs {
     if (!turn || turn.clipboardText === undefined) throw new AuxError("not_found", "This task turn has no clipboard text.");
     return turn.clipboardText;
   }
-  async open(input: { connectionId: string; taskId: string; turnId: string; url: string; skipIfActive?: boolean; beforeNavigate?: (target: PageTarget) => Promise<void> }): Promise<PageTarget> {
+  async open(input: { connectionId: string; taskId: string; turnId: string; url: string; skipIfActive?: boolean; beforeNavigate?: (target: PageTarget) => Promise<void>; agentScope?: Omit<AgentPageCreate, "windowId" | "background"> }): Promise<PageTarget> {
     const turn = this.begin(input.connectionId, input.taskId, input.turnId);
     if (input.skipIfActive) for (const pageId of turn.pageIds) {
-      try { const page = this.pages.get(pageId); if (page.url === input.url) { turn.expiresAt = this.now() + TURN_TTL_MS; return page; } }
+      try { const page = this.pages.get(pageId); if (page.url === input.url && (!input.agentScope || page.agentIsolation?.runId === input.agentScope.runId && page.agentIsolation.taskRevision === input.agentScope.taskRevision)) { turn.expiresAt = this.now() + TURN_TTL_MS; return page; } }
       catch { turn.pageIds.delete(pageId); }
     }
     if (turn.pageIds.size >= MAX_TABS_PER_TURN) throw new AuxError("conflict", "A task turn can hold at most eight temporary tabs.");
-    const page = await this.pages.open({ url: input.url, background: true, ownedByRuntime: true, beforeNavigate: input.beforeNavigate });
+    const page = await this.pages.open({ url: input.url, background: true, ownedByRuntime: true, beforeNavigate: input.beforeNavigate, agentScope: input.agentScope });
     turn.pageIds.add(page.pageId);
     turn.expiresAt = this.now() + TURN_TTL_MS;
     return page;

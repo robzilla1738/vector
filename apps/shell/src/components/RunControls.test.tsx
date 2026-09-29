@@ -57,3 +57,24 @@ it("keeps a stopped program checkpoint visible after the page is returned", asyn
     expect(host.querySelector("button")).toBeNull();
   } finally { act(() => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
 });
+
+
+it("explains separate sign-in and opens only this run’s controlled tab", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  mock.state.runs = [{ runId: "run", status: "running", pageIds: [] }];
+  mock.state.pages = [
+    { pageId: "owner", controller: "none", viewStatus: "visible" },
+    { pageId: "other", controller: "none", viewStatus: "background", agentIsolation: { runId: "other" } },
+    { pageId: "controlled", controller: "agent", viewStatus: "background", agentIsolation: { runId: "run" } },
+  ];
+  mock.call.mockResolvedValue({ ok: true });
+  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+  try {
+    await act(async () => root.render(<RunControls runId="run" />));
+    expect(host.textContent).toContain("Sign in there if needed");
+    expect(host.textContent).toContain("cookie transfer is unavailable");
+    const open = [...host.querySelectorAll("button")].find(button => button.textContent === "Open temporary tab");
+    expect(open).toBeTruthy(); await act(async () => open!.click());
+    expect(mock.call).toHaveBeenCalledWith("pages.activate", { pageId: "controlled" });
+  } finally { act(() => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
+});
