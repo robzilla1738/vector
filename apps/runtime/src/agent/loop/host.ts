@@ -270,7 +270,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         },
       };
     },
-    submitResult: async ({ report, citations }) => {
+    submitResult: async ({ report, citations, textProposal }) => {
       if (citations?.length) {
         const check = verifyResultCitations(citations, obsTexts);
         if (check.missing.length || check.unverified.length) {
@@ -292,6 +292,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       const unconfirmed = markUnconfirmedWrites(outcomes);
       const result: Record<string, unknown> = { report };
       if (citations?.length) result.citations = citations;
+      if (textProposal !== undefined) result.textProposal = textProposal;
       if (unconfirmed.length) result.unconfirmedWrites = unconfirmed;
       return { ok: true as const, result };
     },

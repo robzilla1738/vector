@@ -65,6 +65,17 @@ describe("code-mode REPL", () => {
     expect(calls).toBe(2);
   });
 
+  it("carries a bounded plain text proposal through verified scripted completion", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const submitResult = vi.fn(async (input: { report: string; textProposal?: string }) =>
+      ({ ok: true as const, result: { report: input.report, textProposal: input.textProposal } }));
+    const result = await pool.eval(deps({ submitResult }),
+      `submitResult("Draft ready", [], "A clear project note.")`, { pageId: "p1" });
+    expect(result).toMatchObject({ finish: { result: { textProposal: "A clear project note." } } });
+    expect(submitResult).toHaveBeenCalledWith({ report: "Draft ready", citations: [], textProposal: "A clear project note." });
+  });
+
   it("evaluates guest code and returns marshaled data", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

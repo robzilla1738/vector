@@ -213,7 +213,7 @@ describe("runAgentLoop (S5)", () => {
         toolCalls: [{
           toolCallId: "f1",
           toolName: "submit_result",
-          input: { report: "verified answer", citations: [{ pageId: "page-1", quote: "x" }] },
+          input: { report: "verified answer", citations: [{ pageId: "page-1", quote: "x" }], textProposal: "A reviewed draft." },
         }],
       },
       { text: "unreached" },
@@ -224,7 +224,7 @@ describe("runAgentLoop (S5)", () => {
     };
     const outcome = await runAgentLoop({ ...baseOpts(transcript, deps), model });
     expect(outcome).toMatchObject({ kind: "done", text: "verified answer", result: { report: "verified answer", verified: true } });
-    expect(seen[0]).toMatchObject({ report: "verified answer" });
+    expect(seen[0]).toMatchObject({ report: "verified answer", textProposal: "A reviewed draft." });
     // The terminal call's result is the honest {accepted:true} — pairing holds.
     const toolMsg = transcript.load("run-1").find((m) => m.role === "tool");
     expect(JSON.stringify(toolMsg?.content)).toMatch(/accepted/);

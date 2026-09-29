@@ -89,16 +89,19 @@ function chatReply(run: Run): string | null {
 /** Final answer as prose — no status chrome, copy is an icon. */
 function Answer({ run, conversation = false, retry = null, stream, onCitationOpen, sources }: { sources?: ConversationSource[]; run: Run; conversation?: boolean; retry?: ReactNode; stream?: string; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean }) {
   const plainAnswer = run.result && Object.keys(run.result).length === 1 && typeof run.result.answer === "string" ? run.result.answer : null;
+  const result = useMemo(() => run.status === "completed" && run.config?.implementation === "agent-loop" && typeof run.result?.textProposal === "string"
+    ? Object.fromEntries(Object.entries(run.result).filter(([key]) => key !== "textProposal")) : run.result,
+  [run.result, run.status, run.config?.implementation]);
   const showSummary = !!run.statusMessage && (!run.failure || !!run.result) && !(run.status === "completed" && plainAnswer?.trim());
   const reply = conversation ? chatReply(run) : null;
   const [copied, setCopied] = useState(false);
   const text = useMemo(() => {
     const parts: string[] = [];
     if (showSummary) parts.push(run.statusMessage!);
-    if (run.result) for (const [k, v] of Object.entries(run.result)) parts.push(plainAnswer !== null ? plainAnswer : `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
+    if (result) for (const [k, v] of Object.entries(result)) parts.push(plainAnswer !== null ? plainAnswer : `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`);
     if (run.error && !run.failure) parts.push(`Error: ${run.error}`);
     return parts.join("\n");
-  }, [run, plainAnswer, showSummary]);
+  }, [run, result, plainAnswer, showSummary]);
   useEffect(()=>{if(!copied)return;const timer=window.setTimeout(()=>setCopied(false),1200);return()=>window.clearTimeout(timer);},[copied]);
   const copy = () => {
     void navigator.clipboard.writeText(conversation && reply ? reply : text).then(() => {
@@ -127,8 +130,8 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
       )}
       {showSummary && <AnswerMarkdown text={run.statusMessage!}/>}
       {plainAnswer !== null && <AnswerMarkdown text={plainAnswer} />}
-      {plainAnswer === null && run.result && Object.keys(run.result).length > 0 && (
-        <details className="answer-details" open={!run.statusMessage}><summary>Result details</summary><ResultFields result={run.result} labeled /></details>
+      {plainAnswer === null && result && Object.keys(result).length > 0 && (
+        <details className="answer-details" open={!run.statusMessage}><summary>Result details</summary><ResultFields result={result} labeled /></details>
       )}
       {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
     </section>

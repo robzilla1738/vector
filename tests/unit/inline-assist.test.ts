@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { AuxError, agentModelRoute, type PageTarget } from "@aux/contracts";
+import { AuxError, agentModelRoute, type PageTarget, type Run } from "@aux/contracts";
 import { InlineAssist, applyInlineAssistInPage, readFocusedEditableInPage, verifyInlineAssistFieldInPage } from "../../apps/runtime/src/services/pages/inline-assist.js";
+import { agentMethods } from "../../apps/runtime/src/api/methods/agent.js";
+import type { MethodCtx } from "../../apps/runtime/src/api/methods/context.js";
 
 const url = location.href;
 const page: PageTarget = { pageId: "page-1", url, title: "Writing page", backend: "aux", documentEpoch: 3,
@@ -113,4 +115,40 @@ it("rejects sensitive inputs, navigation, and unsupported undo without touching 
   await expect(assist.draft({ captureId: capture.captureId, instruction: "Make it clear" }, model as never, route))
     .rejects.toMatchObject({ code: "conflict" });
   expect(model.generateStructured).not.toHaveBeenCalled();
+});
+
+it("inserts only the exact persisted completed-run proposal through the captured native-undo path", async () => {
+  const target = document.querySelector("textarea")!;
+  const ledger = { begin: vi.fn(() => ({ intent: { id: "intent-2", status: "pending" }, duplicate: false })),
+    confirm: vi.fn(), fail: vi.fn(), abortUndispatched: vi.fn() };
+  const { assist } = harness(ledger);
+  const capture = await assist.capture(request);
+  const proposal = "The reviewed project note.";
+  let run: Run = { runId: "run-1", goal: "Draft a note", status: "completed", pageIds: [], createdAt: 1,
+    config: { implementation: "agent-loop" }, result: { report: proposal, textProposal: proposal } };
+  let driftBeforeLane = false;
+  const apply = vi.fn((input: unknown, verify?: () => void) => {
+    if (driftBeforeLane) run = { ...run, status: "running" };
+    return assist.apply(input, verify);
+  });
+  const context = (replacement: string, external = false) => ({ client: { external },
+    params: { captureId: capture.captureId, replacement, proposalRunId: run.runId },
+    s: { runs: { coordinator: { get: () => run } }, pages: { applyInlineAssist: apply } },
+  }) as unknown as MethodCtx;
+  await expect(agentMethods["agent.inlineAssist.apply"]!(context("Different text"))).rejects.toMatchObject({ code: "conflict" });
+  expect(apply).not.toHaveBeenCalled();
+  run = { ...run, status: "running" };
+  await expect(agentMethods["agent.inlineAssist.apply"]!(context(proposal))).rejects.toMatchObject({ code: "conflict" });
+  run = { ...run, status: "completed" };
+  await expect(agentMethods["agent.inlineAssist.apply"]!(context(proposal, true))).rejects.toMatchObject({ code: "permission_denied" });
+  driftBeforeLane = true;
+  await expect(agentMethods["agent.inlineAssist.apply"]!(context(proposal))).rejects.toMatchObject({ code: "conflict" });
+  expect(document.execCommand).not.toHaveBeenCalled();
+  driftBeforeLane = false;
+  run = { ...run, status: "completed" };
+  expect(await agentMethods["agent.inlineAssist.apply"]!(context(proposal))).toEqual({ applied: true, undoAvailable: true });
+  expect(target.value).toBe(proposal);
+  expect(document.execCommand).toHaveBeenCalledWith("insertText", false, proposal);
+  expect(ledger.confirm).toHaveBeenCalledWith("intent-2");
+  await expect(agentMethods["agent.inlineAssist.apply"]!(context(proposal))).rejects.toMatchObject({ code: "conflict" });
 });

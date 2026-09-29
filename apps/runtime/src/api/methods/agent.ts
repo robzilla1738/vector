@@ -2,7 +2,7 @@ import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AgentImageTools } from "../../agent/image-tools.js";
 import { AgentWebTools, permittedWebUrl } from "../../agent/web-tools.js";
-import { AuxError } from "@aux/contracts";
+import { AuxError, InlineAssistApplyParamsSchema, InlineAssistTextSchema } from "@aux/contracts";
 import { SpendLedger } from "../../store/spend-ledger.js";
 import { authorizeProgram } from "../../agent/permissions.js";
 import { proposeTabTidy } from "../../agent/tidy.js";
@@ -64,7 +64,17 @@ async function h_agent_inlineAssist_apply(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
   if (client.external)
     throw new AuxError("permission_denied", "Inline assist requires the Aux desktop interface.");
-  return s.pages.applyInlineAssist(params);
+  const request = InlineAssistApplyParamsSchema.parse(params);
+  if (!request.proposalRunId) return s.pages.applyInlineAssist(request);
+  const verifyProposal = () => {
+    const run = s.runs.coordinator.get(request.proposalRunId!);
+    const proposal = InlineAssistTextSchema.safeParse(run.result?.textProposal);
+    if (run.status !== "completed" || run.config?.implementation !== "agent-loop" || !proposal.success
+      || proposal.data !== request.replacement)
+      throw new AuxError("conflict", "The text proposal changed. Review the completed run before inserting it.");
+  };
+  verifyProposal();
+  return s.pages.applyInlineAssist(request, verifyProposal);
 }
 async function h_agent_inlineAssist_cancel(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;

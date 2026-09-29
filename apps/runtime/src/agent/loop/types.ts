@@ -123,7 +123,7 @@ export interface LoopToolDeps {
    * it can re-cite and retry.
    */
   submitResult?: (
-    input: { report: string; citations?: ResultCitation[] },
+    input: { report: string; citations?: ResultCitation[]; textProposal?: string },
     ctx: LoopToolContext,
   ) => Promise<{ ok: true; result: Record<string, unknown> } | { ok: false; error: string }>;
   /** Settle one uncertain page write only from a newly observed effect line. */

@@ -2,7 +2,7 @@ import { newAsyncContext, type QuickJSAsyncContext, type QuickJSHandle } from "q
 import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { AuxError, PlanStepSchema, ResultCitationSchema, type ResultCitation } from "@aux/contracts";
+import { AuxError, InlineAssistTextSchema, PlanStepSchema, ResultCitationSchema, type ResultCitation } from "@aux/contracts";
 import { z } from "zod";
 import type { LoopPark, LoopToolResult } from "./types.js";
 
@@ -70,7 +70,7 @@ export interface ReplHostDeps {
   fsRead(path: string): Promise<string>;
   fsWrite(path: string, content: string): Promise<void>;
   /** Same verified terminal path as the submit_result tool. */
-  submitResult?(input: { report: string; citations?: ResultCitation[] }): Promise<
+  submitResult?(input: { report: string; citations?: ResultCitation[]; textProposal?: string }): Promise<
     { ok: true; result: Record<string, unknown> } | { ok: false; error: string }
   >;
   /** `{park}` when a write-annotated tool is waiting on the person. */
@@ -336,7 +336,7 @@ const spawn = (spec) => __aux_invoke("spawnCell", spec);
 const wait = (cellId) => __aux_invoke("waitCell", { cellId, ms: 120000 });
 const send = (cellId, text) => __aux_invoke("sendCell", { cellId, text });
 const stop = (cellId) => __aux_invoke("cancelCell", { cellId });
-const submitResult = (report, citations) => __aux_invoke("submitResult", { report, citations });
+const submitResult = (report, citations, textProposal) => __aux_invoke("submitResult", { report, citations, textProposal });
 const console = Object.freeze({
   log: (...args) => display(args.map(String).join(" ")),
   warn: (...args) => display("warn: " + args.map(String).join(" ")),
@@ -503,6 +503,7 @@ class ReplSession {
           const input = z.object({
             report: z.string().min(1).max(64_000),
             citations: z.array(ResultCitationSchema).max(32).optional(),
+            textProposal: InlineAssistTextSchema.optional(),
           }).parse(parsed);
           const result = await this.deps.submitResult(input);
           if (!result.ok) return fail(new AuxError("invalid_params", result.error));

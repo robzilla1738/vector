@@ -22,7 +22,7 @@ import {
   verifyDoneAgainstObservation,
   type ModelClient,
 } from "@aux/runtime";
-import { AnswerDeltaEmitter } from "../../apps/runtime/src/agent/answer-delta.js";
+import { AnswerDeltaEmitter, ANSWER_DELTA_PREVIEW_CHARS } from "../../apps/runtime/src/agent/answer-delta.js";
 import { fillResultTemplates, planSignature } from "../../apps/runtime/src/agent/coordinator-turn.js";
 import { normalizePlannerObject } from "../../apps/runtime/src/agent/gateway-client.js";
 import { attemptsOf, usageFields, withAttempts } from "../../apps/runtime/src/agent/model-client.js";
@@ -238,6 +238,10 @@ describe("streamed answer deltas", () => {
     d.push("ABCD");
     d.flush();
     expect(emitted.at(-1)).toMatchObject({ runId: "run1", text: "ABCD", delta: "D", seq: 3 });
+    d.push("x".repeat(ANSWER_DELTA_PREVIEW_CHARS + 100));
+    d.flush();
+    expect(String(emitted.at(-1)?.text)).toContain("Live preview limited to 32,000 characters");
+    expect(String(emitted.at(-1)?.text).length).toBeLessThan(ANSWER_DELTA_PREVIEW_CHARS + 100);
   });
 });
 

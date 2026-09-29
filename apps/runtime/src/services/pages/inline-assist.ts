@@ -222,11 +222,12 @@ export class InlineAssist {
     return InlineAssistDraftSchema.parse({ captureId: request.captureId, replacement: parsed.data, modelId: route.modelId });
   }
 
-  async apply(input: unknown) {
+  async apply(input: unknown, verifyProposal?: () => void) {
     const request = InlineAssistApplyParamsSchema.parse(input);
     const item = this.recorded(request.captureId);
-    if (!item.drafted) throw new AuxError("conflict", "Draft and review the replacement before applying it.");
+    if (!item.drafted && !verifyProposal) throw new AuxError("conflict", "Draft and review the replacement before applying it.");
     return this.lanes.enqueue(item.capture.pageId, async () => {
+      verifyProposal?.();
       const { driver } = this.current(item.capture.pageId, item.capture.url, item.capture.documentEpoch);
       const intent = beginConsequentialWrite(this.pages.deps.durableWrites, { runId: `direct:${item.capture.pageId}`,
         pageId: item.capture.pageId, documentEpoch: item.capture.documentEpoch,

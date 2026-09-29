@@ -33,6 +33,8 @@ export const InlineAssistDraftSchema = z.object({
 export const InlineAssistApplyParamsSchema = z.object({
   captureId: id,
   replacement: InlineAssistTextSchema,
+  /** The exact terminal proposal is rechecked in runtime before this bypasses model drafting. */
+  proposalRunId: z.string().min(1).max(200).optional(),
 }).strict();
 export const InlineAssistApplySchema = z.object({ applied: z.literal(true), undoAvailable: z.literal(true) }).strict();
 export const InlineAssistCancelParamsSchema = z.object({ captureId: id }).strict();

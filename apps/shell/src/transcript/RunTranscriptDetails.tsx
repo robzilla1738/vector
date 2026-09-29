@@ -3,6 +3,7 @@ import type { Run, RunTranscriptItem, RunTranscriptProjection, Suspension } from
 import { call } from "../store";
 import { ViewerFrame } from "../components/ViewerFrame";
 import { SuspensionPanel } from "../composer/SuspensionPanel";
+import { TextProposal } from "./TextProposal";
 
 const MAX_TEXT_BYTES = 128 * 1024;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -56,6 +57,8 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
   }, [run.runId, run.status, run.statusMessage, refresh]);
 
   const artifacts = projection?.items.filter((item): item is ArtifactItem => item.kind === "artifact") ?? [];
+  const proposals = projection?.items.filter((item): item is Extract<RunTranscriptItem, { kind: "text-proposal" }> => item.kind === "text-proposal") ?? [];
+  const tools = projection?.items.filter((item): item is Extract<RunTranscriptItem, { kind: "tool" }> => item.kind === "tool") ?? [];
   const citations = projection?.items.filter((item) => item.kind === "citation") ?? [];
   // RunPanel already owns the actionable failure card when a typed failure exists.
   const recovery = run.failure ? undefined : projection?.items.find((item) => item.kind === "recovery");
@@ -95,10 +98,14 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
     }
   }
 
-  if (!citations.length && !artifacts.length && !recovery && run.status !== "needs_input") return null;
+  if (!citations.length && !artifacts.length && !proposals.length && !tools.length && !recovery && run.status !== "needs_input") return null;
   return <section className="run-section transcript-details" aria-label="Run evidence and recovery">
     {run.status === "needs_input" && <SuspensionPanel run={run} suspension={suspension} hydrated={hydrated} question={question} readOnly={readOnly} answerInComposer={answerInComposer} />}
     {run.status === "needs_input" && loadError && <p role="alert">{loadError} <button className="btn sm" onClick={() => setRefresh((value) => value + 1)}>Retry loading</button></p>}
+    {proposals.map((item, index) => <TextProposal key={`${run.runId}-${index}`} run={run} proposal={item} readOnly={readOnly} />)}
+    {tools.length > 0 && <details className="transcript-tools"><summary>Recorded actions · {tools.length}</summary>
+      <ol>{tools.map((item, index) => <li key={index}><span>{item.op.replaceAll(/[._-]/g, " ")}</span> · {item.status}</li>)}</ol>
+    </details>}
     {citations.length > 0 && <details className="transcript-citations"><summary>Verified evidence · {citations.length}</summary>
       <ul>{citations.map((item, index) => item.kind === "citation" && <li key={`${item.observationId}-${index}`}>
         <blockquote>{item.quote}</blockquote>

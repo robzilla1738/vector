@@ -2,6 +2,8 @@ import { EventTypes } from "@aux/contracts";
 import type { EventBus } from "../events.js";
 
 export const ANSWER_DELTA_INTERVAL_MS = 100;
+export const ANSWER_DELTA_PREVIEW_CHARS = 32_000;
+const TRUNCATED = "\n\n[Live preview limited to 32,000 characters.]";
 
 /** Throttled `run.answer.delta` stream: at most one event per interval, the latest text always delivered on flush. */
 export class AnswerDeltaEmitter {
@@ -18,8 +20,10 @@ export class AnswerDeltaEmitter {
   ) {}
 
   push(text: string | undefined): void {
-    if (text === undefined || text === this.latest) return;
-    this.latest = text;
+    if (text === undefined) return;
+    const preview = text.length > ANSWER_DELTA_PREVIEW_CHARS ? text.slice(0, ANSWER_DELTA_PREVIEW_CHARS) + TRUNCATED : text;
+    if (preview === this.latest) return;
+    this.latest = preview;
     const wait = this.lastAt + this.intervalMs - Date.now();
     if (wait <= 0) this.emit();
     else this.timer ??= setTimeout(() => this.emit(), wait);

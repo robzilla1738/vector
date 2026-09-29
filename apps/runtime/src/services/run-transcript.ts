@@ -1,14 +1,21 @@
-import type { Artifact, Run, RunTranscriptItem, RunTranscriptProjection } from "@aux/contracts";
+import { InlineAssistTextSchema, type Artifact, type Run, type RunTranscriptItem, type RunTranscriptProjection, type StepRecord } from "@aux/contracts";
 
 const TERMINAL = new Set(["completed", "partially_completed", "failed", "cancelled", "interrupted"]);
 
 /** A read-only view over durable run and artifact rows. No raw artifact path or bytes cross this feed. */
-export function projectRunTranscript(run: Run, artifacts: readonly Artifact[]): RunTranscriptProjection {
+export function projectRunTranscript(run: Run, artifacts: readonly Artifact[], steps: readonly StepRecord[] = []): RunTranscriptProjection {
   const items: RunTranscriptItem[] = [];
   const result = run.result;
   const terminal = TERMINAL.has(run.status);
   const answer = typeof result?.report === "string" ? result.report : typeof result?.answer === "string" ? result.answer : null;
   if (terminal && answer?.trim()) items.push({ kind: "answer", text: answer, terminal: true });
+  if (run.status === "completed" && run.config?.implementation === "agent-loop") {
+    const proposal = InlineAssistTextSchema.safeParse(result?.textProposal);
+    if (proposal.success) items.push({ kind: "text-proposal", text: proposal.data, terminal: true });
+  }
+  for (const step of steps.filter((item) => item.runId === run.runId && /^[a-zA-Z][a-zA-Z0-9._-]{0,59}$/.test(item.op)).slice(-16)) {
+    items.push({ kind: "tool", op: step.op, status: step.outcome?.status ?? "running" });
+  }
 
   const scoped = artifacts.filter((artifact) => artifact.runId === run.runId && artifact.status === "complete")
     .sort((a, b) => a.createdAt - b.createdAt || a.artifactId.localeCompare(b.artifactId));
@@ -16,11 +23,11 @@ export function projectRunTranscript(run: Run, artifacts: readonly Artifact[]): 
   // S5 records citations only after exact quote verification. Other engines'
   // arbitrary result objects do not acquire that trust by using the same key.
   if (terminal && run.config?.implementation === "agent-loop" && Array.isArray(result?.citations)) {
-    for (const value of result.citations) {
+    for (const value of result.citations.slice(0, 32)) {
       if (!value || typeof value !== "object") continue;
       const citation = value as Record<string, unknown>;
-      if (typeof citation.observationId !== "string" || !citation.observationId.trim()
-        || typeof citation.quote !== "string" || !citation.quote.trim()) continue;
+      if (typeof citation.observationId !== "string" || !citation.observationId.trim() || citation.observationId.length > 200
+        || typeof citation.quote !== "string" || !citation.quote.trim() || citation.quote.length > 4_000) continue;
       items.push({ kind: "citation", observationId: citation.observationId, quote: citation.quote,
         ...(byId.has(citation.observationId) ? { artifactId: citation.observationId } : {}) });
     }

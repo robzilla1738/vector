@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AuxError, ObservationScopeSchema, PlanStepSchema, ResultCitationSchema } from "@aux/contracts";
+import { AuxError, InlineAssistTextSchema, ObservationScopeSchema, PlanStepSchema, ResultCitationSchema } from "@aux/contracts";
 import type { LoopTool, LoopToolManifest, LoopToolContext, LoopToolResult } from "./types.js";
 
 /**
@@ -491,9 +491,11 @@ export function buildToolManifest(): LoopToolManifest {
         "confirmation — not a narrative of the steps you took. Longer prose only when the task asks for a report."
       ),
       citations: z.array(ResultCitationSchema).max(32).optional().describe("Array of citation objects. Never a JSON string."),
+      textProposal: InlineAssistTextSchema.optional().describe("Optional exact plain text the person may review and insert into a focused browser field. Use only for a requested writing draft."),
     }),
     execute: async (raw, ctx) => {
-      const input = z.object({ report: z.string().min(1).max(64_000), citations: z.array(ResultCitationSchema).max(32).optional() }).parse(normalizeSubmitResultInput(raw));
+      const input = z.object({ report: z.string().min(1).max(64_000), citations: z.array(ResultCitationSchema).max(32).optional(),
+        textProposal: InlineAssistTextSchema.optional() }).parse(normalizeSubmitResultInput(raw));
       const verdict = await need(ctx.deps.submitResult, "submit_result")(input, ctx);
       if (!verdict.ok) return { output: new AuxError("invalid_params", verdict.error) };
       return { finish: { result: verdict.result } };

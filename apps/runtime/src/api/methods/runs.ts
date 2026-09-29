@@ -29,12 +29,13 @@ async function h_runs_get(ctx: MethodCtx): Promise<unknown> {
   const { params, s, suspensions } = ctx;
   const run = s.runs.coordinator.get(params.runId);
   const calls = s.repo.listModelCalls(run.runId);
+  const steps = s.repo.listSteps(run.runId);
   return {
     run,
-    steps: s.repo.listSteps(run.runId),
+    steps,
     modelCalls: calls.length,
     usage: summarizeModelUsage(calls),
-    transcript: projectRunTranscript(run, s.artifacts.list({ runId: run.runId })),
+    transcript: projectRunTranscript(run, s.artifacts.list({ runId: run.runId }), steps),
     suspension: currentRunSuspension(run, suspensions.pending(run.runId)),
   };
 }
