@@ -286,3 +286,93 @@ Verification at this source handoff: 96 distinct focused tests passed across
 `npx tsc -b`, shell TypeScript, the repository lint ratchet, format ratchet and
 `git diff --check` passed. No native build or live isolation journey was run by
 this lane. The source commit containing this handoff identifies the exact batch.
+
+## Native acceptance harness
+
+`tests/host/native-relay-journey.mjs` is separate from the scoped 0121 journey and
+the protected-startup/MCP harnesses. Run against the integrated fixed-partition
+browser and matching runtime, with a new output directory:
+
+```sh
+node tests/host/native-relay-journey.mjs \
+  --app /absolute/Aux.app \
+  --native-patch /absolute/isolation.patch \
+  --output /absolute/new/relay-evidence \
+  --group all
+```
+
+Focused reruns can choose `relays`, `autofill`, `lifecycle` or `source-race`. The
+harness makes no model calls. In its disposable native Profile, the operator
+creates two task-scoped Codex connections through Aux Settings and saves their
+one-time tokens to the printed temporary paths. Tokens are read into memory and
+the temporary files are immediately removed; no token or raw credential enters
+the report. Public-recipient review uses the normal Aux approval UI. The autofill
+group additionally saves one printed, randomly generated disposable password.
+The loopback HTTPS fixture uses a self-signed certificate and only the launched
+disposable process ignores certificate errors.
+
+The fixture creates a related ordinary owner receiver using `window.open`, then
+proves each owner actor → receiver → HTTP capture path works. Protected attempts
+exercise BroadcastChannel, localStorage/storage events, IndexedDB, CacheStorage
+and named-window postMessage using the same origin and native Profile. Each
+requires a finished DOM attempt, current native fixed-partition receipt, and
+zero recipient captures. Server silence alone never passes. Native source
+processes for the two isolated runs must differ, while their Profile matches.
+Cookie/localStorage/sessionStorage/opener checks prove no owner state was copied.
+
+Additional gates cover:
+
+- A real same-origin send and a public cross-origin request with zero captures
+  while awaiting owner consent, then exactly one final-header-admitted capture.
+- Ordinary native password autofill as a positive control, followed by an
+  isolated page with an empty password field, native autofill refusal and zero
+  capture. The harness does not type a password into the protected page.
+- An actual native source-document race using a self-navigating source and
+  saved-program URL-only copying. At most 16 targeted attempts are allowed to
+  observe the race; a runtime failure alone, absence of a native refusal, or no
+  observed race is an incomplete/failing gate. The refused run must have no native
+  created-page receipt. This is a race oracle, not a repeated benchmark.
+- Same-URL reload retains the partition and changes the native document token;
+  another run cannot read its marker. Cancel/close releases only that partition,
+  while the other run and durable owner state work. Restart cannot restore an old
+  protected page into an ordinary context and must create fresh empty authority.
+
+### Required bounded native diagnostics
+
+The integrator agreed on this receipt shape; its implementation remains native
+work and is a hard harness prerequisite:
+
+```text
+AUX_ISOLATION event=created|context|refused|released profile=<opaque-id> run=<opaque-id> page=<opaque-id> isolation=<opaque-id> process=<int> document=<opaque-id> partition=memory-fixed reason=<enum>
+```
+
+`created` and `context` must reflect the browser-owned registry, RFH document,
+actual fixed partition and process. `released` is emitted only after final
+detach/endpoint cleanup for that exact partition. Source identity rejection uses
+`event=refused reason=source_document_changed` and the requested run ID; pre-creation
+fields without an allocated identity may use `none`/`-1`. The automatic saved
+password boundary emits `reason=automatic_password_fill_disabled` for the
+controlled page. Never log a path, URL, cookie or raw secret. The harness rejects
+missing receipts and receipt overflow. It also retains bounded 0121 `AUX_EGRESS`
+send receipts for the permitted-request controls.
+
+Evidence is a source/native manifest with Git SHA, generated native source SHA
+and manifest/header hashes, native patch/binary/helper and staged runtime bundle
+hashes, native receipts and safe receiver metadata
+(case, role, byte count, digest, time). Source verification for the harness itself
+is `node --test tests/host/native-relay-fixture.test.mjs`, syntax checks and focused
+lint. These two fixture tests prove the capture oracle and browser-script syntax;
+they do not exercise a browser or qualify isolation. No native build or live
+relay journey has been run by this lane.
+
+The native source and generated manifest identifiers come from the adjacent
+generated header; qualification must reconcile them with the integrator's actual
+build record and the recorded binary/runtime hashes. An edited adjacent source
+tree does not establish which source built an older binary. The harness rejects
+runtime bundle symlinks rather than treating mutable workspace files as a staged
+artifact.
+
+This journey does not independently cover shared/service-worker messaging,
+transferred MessagePorts, extension/native messaging, clipboard or every opaque
+transport. Those remain separate review/oracle requirements from the acceptance
+matrix above. Passing this harness must not silently broaden its tested scope.
