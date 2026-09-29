@@ -123,6 +123,9 @@ const RESULTS: Record<string, unknown> = {
   },
   "surfaceContentId": null,
   "resolveSearch": "mock-resolvesearch",
+  "showRunAttention": {
+    "queued": false
+  },
   "createResultPreview": "mock-createresultpreview",
   "releaseResultPreview": false,
   "savePagePdf": null,

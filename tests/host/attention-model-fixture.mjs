@@ -3,6 +3,8 @@ import { createServer } from "node:http";
 export const MODEL_ID = "aux-attention-fixture";
 export const RUN_A = "AUX_ATTENTION_RUNNING_A";
 export const RUN_B = "AUX_ATTENTION_QUESTION_B";
+export const RUN_C = "AUX_ATTENTION_FOCUS_C";
+export const RUN_D = "AUX_ATTENTION_SYSTEM_D";
 export const PRIVATE_QUESTION = "PRIVATE_FIXTURE_DO_NOT_NOTIFY: which local option?";
 
 /** A local, unpaid model with two release gates so the operator controls event timing. */
@@ -35,7 +37,7 @@ export async function attentionModelFixture() {
     try { payload = JSON.parse(body); }
     catch { response.writeHead(400).end(); return; }
     const serialized = JSON.stringify(payload.messages ?? []);
-    const marker = serialized.includes(RUN_B) ? RUN_B : serialized.includes(RUN_A) ? RUN_A : null;
+    const marker = [RUN_B, RUN_A, RUN_C, RUN_D].find(value => serialized.includes(value)) ?? null;
     if (!marker) { response.writeHead(400).end("Unexpected fixture goal"); return; }
     const call = (calls.get(marker) ?? 0) + 1;
     calls.set(marker, call);

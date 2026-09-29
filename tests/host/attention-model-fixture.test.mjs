@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { attentionModelFixture, MODEL_ID, RUN_A, RUN_B, PRIVATE_QUESTION } from "./attention-model-fixture.mjs";
+import { attentionModelFixture, MODEL_ID, RUN_A, RUN_B, RUN_C, RUN_D, PRIVATE_QUESTION } from "./attention-model-fixture.mjs";
 
 const post = (endpoint, marker, stream = false) => fetch(`${endpoint}/chat/completions`, {
   method: "POST", headers: { "content-type": "application/json" },
@@ -29,5 +29,12 @@ test("fixture holds each run until its native event phase and never calls a prov
     assert.equal(fixture.seen(`${RUN_B}:2`), true);
     fixture.release(`${RUN_B}:2`);
     assert.match(JSON.stringify(await (await answer).json()), /Disposable page for two concurrent Aux tasks/);
+    for (const marker of [RUN_C, RUN_D]) {
+      const pending = post(fixture.endpoint, marker);
+      for (let i = 0; i < 50 && !fixture.seen(marker); i++) await new Promise(resolve => setTimeout(resolve, 10));
+      assert.equal(fixture.seen(marker), true);
+      fixture.release(marker);
+      assert.match(JSON.stringify(await (await pending).json()), /Disposable page for two concurrent Aux tasks/);
+    }
   } finally { await fixture.close(); }
 });

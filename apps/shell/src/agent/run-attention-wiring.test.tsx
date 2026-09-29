@@ -8,7 +8,8 @@ import { useStore } from "../store";
 import { reduceRunEvent } from "../store/events";
 import { RunNoticeBanner, RunNoticePreference } from "./RunNoticeControls";
 import { foregroundRunId } from "./run-notifications";
-import { readInAppNoticePreference, writeInAppNoticePreference } from "./run-notice-preference";
+import { readInAppNoticePreference, writeInAppNoticePreference, readSystemTaskNotices, writeSystemTaskNotices,
+  readTaskFocusMode, writeTaskFocusMode } from "./run-notice-preference";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -47,7 +48,7 @@ it("offers a local notice preference and a keyboard-dismissible review banner", 
   const root = createRoot(host);
   try {
     await act(async () => root.render(<><RunNoticePreference /><RunNoticeBanner notice={{ kind: "question",
-      runId: "r1", title: "Aux needs your answer", body: "Open Aux to review a question.", tag: "aux-question-r1" }}
+      runId: "r1", identity: "s1", title: "Aux needs your answer", body: "Open Aux to review a question.", tag: "aux-question-r1" }}
       onReview={review} onDismiss={dismiss} /></>));
     const toggle = host.querySelector<HTMLButtonElement>(".run-notice-preference")!;
     await act(async () => toggle.click());
@@ -60,5 +61,22 @@ it("offers a local notice preference and a keyboard-dismissible review banner", 
   } finally {
     await act(async () => root.unmount());
     writeInAppNoticePreference(initial);
+  }
+});
+
+it("persists explicit system opt-in and Focus Mode independently", () => {
+  const originalSystem = readSystemTaskNotices();
+  const originalFocus = readTaskFocusMode();
+  try {
+    writeSystemTaskNotices(true);
+    writeTaskFocusMode(true);
+    expect(readSystemTaskNotices()).toBe(true);
+    expect(readTaskFocusMode()).toBe(true);
+    writeTaskFocusMode(false);
+    expect(readSystemTaskNotices()).toBe(true);
+    expect(readTaskFocusMode()).toBe(false);
+  } finally {
+    writeSystemTaskNotices(originalSystem);
+    writeTaskFocusMode(originalFocus);
   }
 });

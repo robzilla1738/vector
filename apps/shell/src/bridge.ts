@@ -107,6 +107,7 @@ const stub: AuxBridge = {
     throw new Error("Aux bridge unavailable — running outside the native host");
   },
   onEvent: noop,
+  onRunAttentionActivated: noop,
   onRuntimeStatus: noop,
   onShortcut: noop,
   onToolbarEdge: noop,
@@ -149,6 +150,7 @@ const stub: AuxBridge = {
   resolveSearch: async () => { throw new Error("Profile search requires the native browser."); },
   overlay: async () => true,
   focusShell: async () => null,
+  showRunAttention: async () => ({ queued: false }),
   preview: async () => null,
   createResultPreview: async () => { throw new Error("Interactive previews require Aux desktop."); },
   releaseResultPreview: async () => true,

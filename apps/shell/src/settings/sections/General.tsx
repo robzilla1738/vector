@@ -19,6 +19,7 @@ import { PictureInPictureSetting } from "./PictureInPicture";
 import { BackgroundRuntimeSetting } from "./BackgroundRuntime";
 import { useFeature } from "../../use-feature";
 import { memorySaverCyclesChanged, memorySaverCyclesKey, memorySaverSummary, readMemorySaverCycles } from "../../memory-saver-report";
+import { TaskAttentionSettings } from "../../agent/TaskAttentionSettings";
 
 export function GeneralSettings({
   active,
@@ -231,6 +232,7 @@ export function GeneralSettings({
             <BackgroundRuntimeSetting active={active && !searching && !subview} />
           </IndexedField>
         </SettingsGroup>
+        {!bridge.privateMode && <TaskAttentionSettings />}
         <SettingsGroup title="Data and recovery">
           <IndexedField compact label="Task data backup" hint="Create, restore, and manage local backups.">
             <button

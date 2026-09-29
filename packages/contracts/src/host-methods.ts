@@ -119,6 +119,11 @@ export const HostMethods = {
   surfaceContentId: shell("core", z.tuple([str]), nullableString),
   resolveSearch: shell("searchEngines", z.tuple([str]), str),
   focusShell: shell("core", noArgs, noResult),
+  /** Browser picks fixed copy. No goal, page, question, or result text crosses this boundary. */
+  showRunAttention: shell("core", z.tuple([z.object({
+    kind: z.enum(["completed", "question", "handoff"]),
+    runId: str.min(1).max(128), identity: str.min(1).max(128), windowId: str.min(1).max(128),
+  }).strict()]), z.object({ queued: bool }).strict()),
   createResultPreview: shell("activeHtml", z.tuple([str]), str),
   releaseResultPreview: shell("activeHtml", z.tuple([str]), bool),
   savePagePdf: shell("reports", z.tuple([str]), nullableString),
@@ -329,6 +334,7 @@ const event = <P extends z.ZodType>(feature: AuxFeature | "core", payload: P) =>
 /** Events published by the native browser to an authorized Aux WebUI. */
 export const HostEvents = {
   onEvent: event("core", EventSchema),
+  onRunAttentionActivated: event("core", z.object({ runId: str.min(1).max(128), identity: str.min(1).max(128), windowId: str.min(1).max(128) }).strict()),
   onTabsPatch: event("core", TabPatchSchema),
   onDictation: event("dictation", z.object({ sessionId: str,
     type: z.enum(["recording", "finishing", "transcript", "final", "error"]),

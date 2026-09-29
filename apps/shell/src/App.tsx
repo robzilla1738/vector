@@ -31,8 +31,8 @@ import { installMemorySaver } from "./memory-saver";
 import { openLocalFile } from "./open-local-file";
 import { settingsRouteFromPath } from "./settings/routes";
 import { recoverPeekLink } from "./peek-link";
-import { foregroundRunId, RunNotificationGate, type OwnerNotice } from "./agent/run-notifications";
-import { onInAppNoticePreferenceChange, readInAppNoticePreference } from "./agent/run-notice-preference";
+import { deliverRunAttention, foregroundRunId, matchesRunAttentionActivation, RunNotificationGate, type OwnerNotice } from "./agent/run-notifications";
+import { onInAppNoticePreferenceChange, readInAppNoticePreference, readSystemTaskNotices, readTaskFocusMode } from "./agent/run-notice-preference";
 import { RunNoticeBanner } from "./agent/RunNoticeControls";
 
 const ReaderView = deferSurface(async () => { const module = await import("./components/ReaderView"); return {default:module.ReaderView}; }, "Reader");
@@ -68,16 +68,29 @@ export function App() {
   const notificationGate = useRef<RunNotificationGate | null>(null);
   if (!notificationGate.current) notificationGate.current = new RunNotificationGate({
     getRun: (runId) => call("runs.get", { runId }),
-    // There is no native OS notification method yet. Keep the generic notice
-    // in this window until reviewed or dismissed, including after returning.
-    emit: (notice) => { setRunNotice(notice); },
+    emit: (notice) => deliverRunAttention(notice, { showInApp: setRunNotice,
+      native: inNativeHost ? (payload) => bridge.showRunAttention(payload) : undefined,
+      systemEnabled: readSystemTaskNotices(), focusMode: readTaskFocusMode(),
+      windowFocused: document.hasFocus(), windowId: bridge.windowId }),
   });
   const foregroundRun = useStore((state) => foregroundRunId(state));
   useEffect(() => onInAppNoticePreferenceChange(() => {
     const current = readInAppNoticePreference();
     setNoticePreference(current);
-    if (current === "off") setRunNotice(null);
+    if (current === "off" || readTaskFocusMode()) setRunNotice(null);
   }), []);
+  useEffect(() => {
+    const off = bridge.onRunAttentionActivated(({ runId, identity, windowId }) => {
+      if (bridge.privateMode || windowId !== bridge.windowId) return;
+      void call("runs.get", { runId }).then((current) => {
+        if (!matchesRunAttentionActivation(current, { runId, identity, windowId })) return;
+        setRunNotice(null);
+        useStore.getState().openConversation(runId);
+        void bridge.focusShell().catch(() => {});
+      }).catch(() => {});
+    });
+    return off;
+  }, []);
   useEffect(() => {
     if (runNotice?.runId === foregroundRun && document.hasFocus()) setRunNotice(null);
   }, [foregroundRun, runNotice]);
@@ -343,7 +356,7 @@ export function App() {
       if (candidate && !bridge.privateMode && useStore.getState().runs.find((run) => run.runId === candidate.runId)?.status === candidate.status) {
         void notificationGate.current?.consider(previous, candidate, () => {
           const state = useStore.getState();
-          return { preference: readInAppNoticePreference(), focusMode: state.settings.focusMode === true,
+          return { preference: readInAppNoticePreference(), focusMode: readTaskFocusMode(),
             windowFocused: document.hasFocus(), foregroundRunId: foregroundRunId(state) };
         }).catch(() => {});
       }

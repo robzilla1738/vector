@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Suspension, SuspensionKind } from "@aux/contracts";
 import { makeRun } from "../mock/fixtures";
-import { RunNotificationGate, type NoticeContext, type OwnerNotice } from "./run-notifications";
+import { deliverRunAttention, matchesRunAttentionActivation, RunNotificationGate, type NoticeContext, type OwnerNotice } from "./run-notifications";
 
 const context: NoticeContext = { preference: "all", focusMode: false, windowFocused: false };
 const running = makeRun({ runId: "run-1", status: "running", goal: "Private page title and secret" });
@@ -14,6 +14,31 @@ function suspension(kind: SuspensionKind, id = "s1"): Suspension {
 }
 
 describe("owner notification gate", () => {
+  it("keeps generic in-app attention when native permission is denied", async () => {
+    const notice: OwnerNotice = { kind: "question", runId: "run-1", identity: "s1",
+      title: "Aux needs your answer", body: "Open Aux to review a question.", tag: "aux-question-run-1" };
+    const showInApp = vi.fn();
+    const native = vi.fn(async () => { throw new Error("denied"); });
+    await deliverRunAttention(notice, { showInApp, native, systemEnabled: true, focusMode: false,
+      windowFocused: false, windowId: "window-1" });
+    expect(showInApp).toHaveBeenCalledWith(notice);
+    expect(native).toHaveBeenCalledWith({ kind: "question", runId: "run-1", identity: "s1", windowId: "window-1" });
+    await deliverRunAttention(notice, { showInApp, native, systemEnabled: true, focusMode: true,
+      windowFocused: false, windowId: "window-1" });
+    await deliverRunAttention(notice, { showInApp, native, systemEnabled: true, focusMode: false,
+      windowFocused: true, windowId: "window-1" });
+    expect(native).toHaveBeenCalledTimes(1);
+  });
+  it("opens only the exact live run or pending suspension after native activation", () => {
+    const activation = { runId: running.runId, identity: "s1", windowId: "main" };
+    expect(matchesRunAttentionActivation({ run: parked, suspension: suspension("ask-user-question") }, activation)).toBe(true);
+    expect(matchesRunAttentionActivation({ run: parked, suspension: suspension("handoff") }, activation)).toBe(true);
+    expect(matchesRunAttentionActivation({ run: parked, suspension: suspension("approval") }, activation)).toBe(false);
+    expect(matchesRunAttentionActivation({ run: parked, suspension: { ...suspension("ask-user-question"), state: "answered" } }, activation)).toBe(false);
+    expect(matchesRunAttentionActivation({ run: parked, suspension: suspension("ask-user-question", "s2") }, activation)).toBe(false);
+    expect(matchesRunAttentionActivation({ run: completed }, { ...activation, identity: running.runId })).toBe(true);
+    expect(matchesRunAttentionActivation({ run: completed }, activation)).toBe(false);
+  });
   it("requires a durable completion transition and emits only generic copy once", async () => {
     const emit = vi.fn(async (_notice: OwnerNotice) => {});
     const gate = new RunNotificationGate({ getRun: async () => ({ run: completed }), emit, now: () => 10_000 });

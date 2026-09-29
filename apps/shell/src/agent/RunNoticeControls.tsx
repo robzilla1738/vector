@@ -8,7 +8,7 @@ export function RunNoticePreference() {
   useEffect(() => onInAppNoticePreferenceChange(() => setPreference(readInAppNoticePreference())), []);
   return <button className="run-notice-preference btn sm ghost" aria-pressed={preference === "all"}
     onClick={() => { const next = preference === "all" ? "off" : "all"; writeInAppNoticePreference(next); setPreference(next); }}>
-    In-app task notices {preference === "all" ? "on" : "off"}
+    Task notices {preference === "all" ? "on" : "off"}
   </button>;
 }
 

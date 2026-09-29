@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, statSync, writeFileSy
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { createInterface } from "node:readline/promises";
-import { attentionModelFixture, MODEL_ID, RUN_A, RUN_B, PRIVATE_QUESTION } from "./attention-model-fixture.mjs";
+import { attentionModelFixture, MODEL_ID, RUN_A, RUN_B, RUN_C, RUN_D, PRIVATE_QUESTION } from "./attention-model-fixture.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const stages = [
@@ -18,9 +18,10 @@ const stages = [
   "Dismiss the notice with Escape; inspect Home and Tasks attention cards.",
   "Complete A while it is foreground; review B's typed question.",
   "Answer B, switch away, disable in-app notices, then finish B.",
+  "Optional --system-attention: Focus Mode suppresses a third run; background macOS alert opens a fourth run.",
 ];
 if (process.argv.includes("--list")) {
-  console.log(JSON.stringify({ stages, usage: "node tests/host/native-attention-journey.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory]", nativeBuild: "Use a previously built Aux.app; this script only compiles the existing AX helper." }, null, 2));
+  console.log(JSON.stringify({ stages, usage: "node tests/host/native-attention-journey.mjs --app /absolute/path/to/Aux.app --system-attention [--output /absolute/new/directory]", nativeBuild: "Use a previously built Aux.app; this script only compiles the existing AX helper." }, null, 2));
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native attention acceptance requires macOS.");
@@ -160,14 +161,33 @@ try {
   capture("reviewed-question");
   record("Tasks review opens the exact durable B question");
 
-  await operator("Answer B's question in its conversation composer. Its next local model reply is held; then open Home or Tasks and turn In-app task notices off. Leave A, Home, or Tasks foreground.");
+  await operator("Answer B's question in its conversation composer. Its next local model reply is held; then open Home or Tasks and turn Task notices off. Leave A, Home, or Tasks foreground.");
   await until("B's second model request", () => model.seen(`${RUN_B}:2`));
-  assert.equal(native("has-name", "In-app task notices off"), "true", "The local notice preference must be visibly off");
+  assert.equal(native("has-name", "Task notices off"), "true", "The local notice preference must be visibly off");
   model.release(`${RUN_B}:2`);
   await until("B completes", () => inspect(RUN_B)?.status === "completed");
   assert.equal(native("has-button", "Dismiss task notice"), "false", "The off preference must suppress B's completion notice");
   record("off preference suppresses another run's completion notice");
   capture("preference-off-completion");
+  if (process.argv.includes("--system-attention")) {
+    await operator(`In Home or Tasks, turn Task notices on. In Settings → General → Task attention, turn System task notifications and Focus Mode on. Start a third chat from a local fixture page with goal "${RUN_C}: summarize this local fixture", then switch to another chat before its model reply.`);
+    await until("Focus Mode run C request", () => model.seen(RUN_C));
+    model.release(RUN_C);
+    await until("C completes under Focus Mode", () => inspect(RUN_C)?.status === "completed");
+    assert.equal(native("has-button", "Dismiss task notice"), "false", "Focus Mode must suppress in-app delivery");
+    await operator("Confirm no Aux system alert appeared while Focus Mode was on. Return to Settings and turn Focus Mode off, leaving System task notifications on.");
+    record("Focus Mode suppresses both attention delivery paths", { runId: inspect(RUN_C).runId, osAlert: "operator-inspected" });
+
+    await operator(`Start a fourth chat from a local fixture page with goal "${RUN_D}: summarize this local fixture". Switch to another app before its model reply; allow Aux notifications in macOS when prompted.`);
+    await until("system notification run D request", () => model.seen(RUN_D));
+    model.release(RUN_D);
+    await until("D completes in background", () => inspect(RUN_D)?.status === "completed");
+    const answer = (await input.question("Confirm the macOS Aux alert used only generic copy, then click it to open D. Type YES after checking the visible D chat: ")).trim();
+    assert.equal(answer, "YES", "A native OS notification and click journey must be witnessed");
+    assert.equal(native("shell-url").startsWith("chrome://aux/"), true);
+    record("generic macOS alert click returns to the reviewed run", { runId: inspect(RUN_D).runId, osAlert: "operator-inspected" });
+    capture("system-alert-opened-run");
+  }
   report.passed = true;
 } catch (error) {
   report.steps.push({ name: "terminal failure", passed: false, detail: String(error) });
