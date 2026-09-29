@@ -34,7 +34,7 @@ Schema v27 and source adapters activate those 29 table families, filtered `kv`, 
 
 ## Sensitive column inventory and remaining work
 
-The canonical schema is `apps/runtime/src/store/db.ts` (v26). This table groups every column that can carry user text, observed page content, provider metadata, local paths, secret-adjacent metadata, or an agent transcript. The protected fields above are listed here for completeness; the other fields remain plaintext or need a documented retained-metadata decision. IDs, counters and timestamps are omitted unless their value is a user URL/path or an access token. The accompanying service-owned tables follow the canonical rows.
+The canonical schema is `apps/runtime/src/store/db.ts` (v27). This table groups every column that can carry user text, observed page content, provider metadata, local paths, secret-adjacent metadata, or an agent transcript. The protected fields above are listed here for completeness; the other fields remain plaintext or need a documented retained-metadata decision. IDs, counters and timestamps are omitted unless their value is a user URL/path or an access token. The accompanying service-owned tables follow the canonical rows.
 
 | Store | Columns requiring encryption or an explicit retained metadata decision |
 | --- | --- |
