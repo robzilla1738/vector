@@ -2322,11 +2322,12 @@ else {
       try { return native("has-name", memoryFixture.report) === "true"; } catch { return false; }
     }, 60_000);
     record("native Settings stages a sourced encrypted note for review", { runId: memoryFixture.runId });
-    await until("owner accepts native memory note", () => generation() !== pendingGeneration, 600_000);
     await until("approved note visible in native Memory", () => {
-      try { return native("has-name", "1 approved notes") === "true" &&
-        native("has-name", memoryFixture.report) === "true"; } catch { return false; }
-    }, 60_000);
+      try { return native("has-name", "Forget note") === "true" &&
+        native("has-name", memoryFixture.report) === "true" &&
+        existsSync(join(spaceDir, generation(), "claims.json.enc")) &&
+        existsSync(join(spaceDir, generation(), "summary.md.enc")); } catch { return false; }
+    }, 600_000);
     record("owner accepted the sourced note into the encrypted Space summary", { runId: memoryFixture.runId });
     console.log("Choose Forget run for the fixture, review the confirmation, and click Forget permanently after the user approves this disposable deletion.");
     await until("native Memory clears forgotten summary", () => {
@@ -2348,6 +2349,7 @@ else {
       cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"],
     });
     child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
+    console.log("After restart, reopen Aux Settings → Memory and select Memory Fixture to verify the forgotten note stays absent.");
     await until("restarted native Memory remains empty", () => {
       try { return native("has-name", "No approved notes yet.") === "true" &&
         native("has-name", memoryFixture.report) === "false"; } catch { return false; }
