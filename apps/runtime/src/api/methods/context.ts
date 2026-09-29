@@ -27,6 +27,7 @@ import { PluginService } from "../../services/plugins.js";
 import type { Repo } from "../../store/repo.js";
 import type { ResponseStore } from "../../services/responses.js";
 import { RoutineService } from "../../services/routines.js";
+import { startSkillReplay } from "../../services/skill-replay.js";
 import type { RunService } from "../../services/runs.js";
 import { WorkspaceFolderService } from "../../services/workspace-folders.js";
 import { SafetyAuditStore } from "../../safety/audit.js";
@@ -281,6 +282,11 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
           "conflict",
           "Attach an open browser tab to the source task before this routine can run.",
         );
+      if (routine.replay) {
+        const started = startSkillReplay({ repo: s.repo, pages: s.pages, events: s.events,
+          routine, pageId: pageIds[0]!, parameters });
+        return { chatId: details.task.conversationId, runId: started.runId };
+      }
       const prepared = tasks.prepareRun(routine.sourceTaskId, details.task.revision);
       const run = await s.runs.start({
         ...prepared,

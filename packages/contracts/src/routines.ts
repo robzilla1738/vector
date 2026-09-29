@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AcceptanceCriterionSchema, TaskReceiptSchema } from "./tasks.js";
+import { PlanStepSchema } from "./program.js";
 
 const text = z.string().trim().min(1);
 const timezone = z
@@ -258,7 +259,32 @@ export const RoutineSchema = RoutineDefinitionSchema.extend({
   pauseCause: z.enum(["unread_results"]).optional(),
   /** Server-assigned origin requiring a separate, revision-bound activation review. */
   activationReview: z.enum(["run_result", "imported", "untrusted_task"]).optional(),
+  /** Declarative, same-site trace. Imported documents cannot carry this local proof. */
+  replay: z.object({
+    format: z.literal("aux-skill-replay@1"),
+    sourceRunId: text,
+    siteOrigin: siteOrigin,
+    steps: z.array(PlanStepSchema).min(2).max(50),
+    digest: z.string().regex(/^[a-f0-9]{64}$/),
+    state: z.enum(["untested", "testing", "tested", "needs_repair"]),
+    testRunId: text.optional(),
+    testRevision: z.number().int().positive().optional(),
+    testedRevision: z.number().int().positive().optional(),
+    testedAt: z.number().int().nonnegative().optional(),
+  }).strict().optional(),
 });
+export const RoutineReplayCompileParams = z.object({
+  routineId: text, expectedRevision: z.number().int().positive(), sourceRunId: text, pageId: text,
+  /** Source values are reviewed by the owner and replaced by placeholders before persistence. */
+  samples: z.record(z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,40}$/), z.string().min(1).max(4000)),
+}).strict();
+export const RoutineReplayTestParams = z.object({
+  routineId: text, expectedRevision: z.number().int().positive(), pageId: text,
+  parameters: z.record(z.string(), z.string().min(1).max(4000)),
+}).strict();
+export const RoutineReplayResultParams = z.object({
+  routineId: text, expectedRevision: z.number().int().positive(), runId: text,
+}).strict();
 export const RoutineOccurrenceSchema = z.object({
   occurrenceId: text,
   routineId: text,

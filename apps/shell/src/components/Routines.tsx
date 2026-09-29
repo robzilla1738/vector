@@ -18,11 +18,13 @@ import { bridge } from "../bridge";
 import { I } from "./icons";
 import { RoutineSchedule, routineScheduleSummary, type CalendarTriggerAccounts } from "./RoutineSchedule";
 import { SkillMetadata } from "./SkillMetadata";
+import { SkillReplayPanel } from "./SkillReplayPanel";
 
 export function Routines({ workspaceId, task }: { workspaceId: string; task?: Task }) {
   const currentPageUrl = useStore(
     (state) => state.pages.find((page) => page.pageId === state.activePageId)?.url,
   );
+  const currentPageId = useStore(state => state.activePageId);
   const savedScan = useStore((state) => state.settings.routineSuggestionScan);
   const scanMode = savedScan === "off" || savedScan === "five-minutes" ? savedScan : "context";
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -280,7 +282,10 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
     reviewTask.state !== "open" ? "Restore the source task before activation." :
     reviewTask.revision !== reviewRoutine.sourceTaskRevision ?
       "The source task changed. Sync this Skill in Skill definition and outcome below." :
-    !criteriaMatch ? "Use the source task criteria in Skill definition and outcome below, then save." : "";
+    !criteriaMatch ? "Use the source task criteria in Skill definition and outcome below, then save." :
+    (reviewRoutine.activationReview === "imported" || reviewRoutine.activationReview === "run_result") &&
+      (reviewRoutine.replay?.state !== "tested" || reviewRoutine.replay.testedRevision !== reviewRoutine.revision)
+      ? "Prepare and pass the current replay test below before activation." : "";
   return (
     <section className="routines-section" aria-label="Skills" aria-busy={loading || busy}>
       <div className="routines-heading">
@@ -662,6 +667,9 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               })
             }
           />
+          <SkillReplayPanel key={`${selected.routine.routineId}-replay:${selected.routine.revision}`}
+            routine={selected.routine} pageId={currentPageId} disabled={busy || !!selected.routine.archivedAt}
+            onChanged={() => refresh(selected.routine.routineId)}/>
           <RoutineRunControls
             key={`${selected.routine.routineId}-run:${selected.routine.revision}`}
             routine={selected.routine}

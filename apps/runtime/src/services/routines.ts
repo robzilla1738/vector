@@ -23,6 +23,8 @@ import type { EventBus } from "../events.js";
 import type { Repo } from "../store/repo.js";
 import type { TaskEvidenceService } from "./task-evidence.js";
 import { readSkillDocument, serializeSkillDocument } from "./skill-document.js";
+import { bindSkillParameters, compileSkillTrace, replayDigest, skillPageOrigin, startSkillReplay } from "./skill-replay.js";
+import type { PageService } from "./pages.js";
 
 function parseRoutine(row: {
   json: string;
@@ -189,6 +191,7 @@ export class RoutineService {
   list(
     opts: { workspaceId?: string; query?: string; includeArchived?: boolean; limit?: number } = {},
   ): Routine[] {
+    this.sync();
     const limit = opts.limit ?? 50;
     const rows = this.repo.db
       .prepare(
@@ -279,7 +282,8 @@ export class RoutineService {
   }
 
   get(routineId: string): { routine: Routine; runs: RoutineRun[] } {
-    return { routine: this.routine(routineId), runs: this.runs(routineId) };
+    const runs = this.runs(routineId);
+    return { routine: this.routine(routineId), runs };
   }
 
   outcome(routineRunId: string, evidence: TaskEvidenceService): RoutineRunOutcome {
@@ -427,6 +431,94 @@ export class RoutineService {
     });
   }
 
+  /** Save a bounded declarative trace; a compile never grants execution authority. */
+  compileReplay(input: { routineId: string; expectedRevision: number; sourceRunId: string;
+    pageId: string; samples: Record<string, string> }, pages: PageService): Routine {
+    const current = this.routine(input.routineId);
+    if (current.revision !== input.expectedRevision)
+      throw new AuxError("conflict", "This Skill changed. Refresh before preparing a replay.");
+    if (!current.sourceTaskId || !current.sourceTaskRevision || current.archivedAt)
+      throw new AuxError("conflict", "Bind an open saved task before preparing a replay.");
+    const sourceTask = this.requireSourceTask(current.sourceTaskId, current.workspaceId);
+    if (sourceTask.revision !== current.sourceTaskRevision)
+      throw new AuxError("conflict", "The source task changed. Sync it before preparing a replay.");
+    const run = this.repo.getRun(input.sourceRunId);
+    if (!run || run.status !== "completed" || run.config?.taskId !== current.sourceTaskId
+      || run.config?.taskRevision !== current.sourceTaskRevision
+      || run.config?.contextWorkspaceId !== current.workspaceId
+      || run.pageIds.length !== 1 || run.pageIds[0] !== input.pageId)
+      throw new AuxError("conflict", "Choose a completed run from this exact saved task and page.");
+    if (Object.keys(input.samples).length !== current.parameters.length ||
+      current.parameters.some(parameter => !input.samples[parameter.name]) ||
+      Object.keys(input.samples).some(name => !current.parameters.some(parameter => parameter.name === name)))
+      throw new AuxError("invalid_params", "Review a source value for every declared Skill parameter.");
+    const siteOrigin = skillPageOrigin(pages, input.pageId);
+    if (current.siteOrigins.length && !current.siteOrigins.includes(siteOrigin))
+      throw new AuxError("conflict", "The source page is outside this Skill's reviewed site scope.");
+    const records = this.repo.listSteps(run.runId);
+    if (records.some(record => record.pageId !== input.pageId))
+      throw new AuxError("conflict", "The source run changed pages; record a single-page trace.");
+    const steps = compileSkillTrace(records, input.samples);
+    const next: Routine = RoutineSchema.parse({ ...current, sourceRunId: run.runId, paused: true,
+      activationReview: "run_result", revision: current.revision + 1, updatedAt: Date.now(),
+      replay: { format: "aux-skill-replay@1", sourceRunId: run.runId, siteOrigin, steps,
+        digest: replayDigest(run.runId, siteOrigin, steps), state: "untested" } });
+    this.persist(next);
+    this.events.emit("routine.updated", { routine: next });
+    return next;
+  }
+
+  testReplay(input: { routineId: string; expectedRevision: number; pageId: string;
+    parameters: Record<string, string> }, pages: PageService): { runId: string; revision: number } {
+    const current = this.routine(input.routineId);
+    if (current.revision !== input.expectedRevision || !current.replay ||
+      current.replay.state === "testing" || current.replay.state === "needs_repair")
+      throw new AuxError("conflict", "This Skill replay changed or is already testing.");
+    if (current.archivedAt || !current.sourceTaskId || !current.sourceTaskRevision)
+      throw new AuxError("conflict", "Bind an open saved task before testing this Skill.");
+    if (this.requireSourceTask(current.sourceTaskId, current.workspaceId).revision !== current.sourceTaskRevision)
+      throw new AuxError("conflict", "The source task changed. Repair this Skill before testing.");
+    if (replayDigest(current.replay.sourceRunId, current.replay.siteOrigin, current.replay.steps) !== current.replay.digest
+      || skillPageOrigin(pages, input.pageId) !== current.replay.siteOrigin)
+      throw new AuxError("conflict", "The saved replay or selected site changed. Repair before testing.");
+    bindSkillParameters(current.replay.steps, input.parameters, current.parameters.map(item => item.name));
+    const started = startSkillReplay({ repo: this.repo, pages, events: this.events, routine: current,
+      pageId: input.pageId, parameters: input.parameters });
+    const next: Routine = RoutineSchema.parse({ ...current, paused: true, revision: current.revision + 1,
+      updatedAt: Date.now(), replay: { ...current.replay, state: "testing", testRunId: started.runId,
+        testRevision: current.revision + 1, testedRevision: undefined, testedAt: undefined } });
+    this.persist(next);
+    this.events.emit("routine.updated", { routine: next });
+    return { runId: started.runId, revision: next.revision };
+  }
+
+  /** The exact test run and every recorded step must prove the final oracle. */
+  resultReplay(input: { routineId: string; expectedRevision: number; runId: string }): Routine {
+    const current = this.routine(input.routineId);
+    const replay = current.replay;
+    if (current.revision !== input.expectedRevision || !replay || replay.state !== "testing"
+      || replay.testRunId !== input.runId || replay.testRevision !== current.revision
+      || replayDigest(replay.sourceRunId, replay.siteOrigin, replay.steps) !== replay.digest)
+      throw new AuxError("conflict", "This is not the pending test for the current Skill revision.");
+    const run = this.repo.getRun(input.runId);
+    if (!run || !["completed", "failed", "cancelled", "interrupted"].includes(run.status)
+      || run.config?.routeReason !== `skill-replay:${current.routineId}:${replay.digest}`
+      || run.config.taskId !== current.sourceTaskId || run.config.taskRevision !== current.sourceTaskRevision
+      || run.config.contextWorkspaceId !== current.workspaceId || run.pageIds.length !== 1)
+      throw new AuxError("conflict", "Wait for this exact Skill test run to settle.");
+    const records = this.repo.listSteps(run.runId);
+    const passed = run.status === "completed" && records.length === replay.steps.length
+      && records.every((record, index) => record.pageId === run.pageIds[0] && record.op === replay.steps[index]?.op
+        && record.outcome?.status === "ok" && !record.outcome?.receipt?.uncertain
+        && !record.outcome?.receipt?.unconfirmed && record.outcome?.effect !== "uncertain");
+    const next: Routine = RoutineSchema.parse({ ...current, paused: true, revision: current.revision + 1,
+      updatedAt: Date.now(), replay: { ...replay, state: passed ? "tested" : "needs_repair",
+        testedRevision: passed ? current.revision + 1 : undefined, testedAt: passed ? Date.now() : undefined } });
+    this.persist(next);
+    this.events.emit("routine.updated", { routine: next });
+    return next;
+  }
+
   update(input: Partial<RoutineDefinition> & { routineId: string; expectedRevision: number; activationReviewed?: boolean }): Routine {
     const current = this.routine(input.routineId);
     if (current.revision !== input.expectedRevision)
@@ -434,6 +526,10 @@ export class RoutineService {
     if (current.activationReview && input.paused === false) {
       if (!current.sourceTaskId)
         throw new AuxError("conflict", "Choose a saved task before resuming this routine.");
+      if ((current.activationReview === "imported" || current.activationReview === "run_result")
+        && (!current.replay || current.replay.state !== "tested"
+          || current.replay.testedRevision !== current.revision))
+        throw new AuxError("conflict", "Test the current Skill replay before activating it.");
       if (input.activationReviewed !== true || Object.keys(input).some((key) =>
         !["routineId", "expectedRevision", "paused", "activationReviewed"].includes(key)))
         throw new AuxError("needs_input", "Review this imported or run-derived Skill in Aux before activating it.");
@@ -496,6 +592,20 @@ export class RoutineService {
       if (!next.successCriteria.length)
         throw new AuxError("conflict", "Sync the source task's success criteria before activation.");
       this.requireCriteriaMatch(next);
+    }
+    const definitionChanged = Object.keys(input).some(key =>
+      !["routineId", "expectedRevision", "paused", "activationReviewed"].includes(key));
+    if (current.replay) {
+      if (definitionChanged) {
+        next.replay = { ...current.replay, state: "needs_repair", testRunId: undefined,
+          testRevision: undefined, testedRevision: undefined, testedAt: undefined };
+        next.paused = true;
+        next.activationReview = "run_result";
+      } else if (current.replay.state === "tested") {
+        next.replay = { ...current.replay, testedRevision: next.revision };
+      }
+      if (!next.paused && (next.replay?.state !== "tested" || next.replay.testedRevision !== next.revision))
+        throw new AuxError("conflict", "Test the current Skill replay before resuming it.");
     }
     this.requireCalendarGrants(next);
     this.requireTriggerAuthority(next);
@@ -615,6 +725,9 @@ export class RoutineService {
     if (routine.revision !== input.expectedRevision)
       throw new AuxError("conflict", "This routine changed. Refresh and try again.");
     if (routine.paused) throw new AuxError("conflict", "Resume this routine before running it.");
+    if (routine.replay && (routine.replay.state !== "tested" || routine.replay.testedRevision !== routine.revision
+      || replayDigest(routine.replay.sourceRunId, routine.replay.siteOrigin, routine.replay.steps) !== routine.replay.digest))
+      throw new AuxError("conflict", "Test the current Skill replay before running it.");
     if (routine.archivedAt) throw new AuxError("conflict", "Restore this routine before running it.");
     if (!routine.sourceTaskId)
       throw new AuxError("conflict", "Choose a saved task for this routine before running it.");
@@ -1177,6 +1290,14 @@ export class RoutineService {
   }
 
   private autoPauseIfNeeded(routine: Routine, record: RoutineRun): void {
+    if (routine.replay && record.status === "failed" && !routine.paused) {
+      const paused: Routine = RoutineSchema.parse({ ...routine, paused: true, activationReview: "run_result",
+        replay: { ...routine.replay, state: "needs_repair", testedRevision: undefined, testedAt: undefined },
+        revision: routine.revision + 1, updatedAt: Date.now() });
+      this.persist(paused);
+      this.events.emit("routine.updated", { routine: paused, run: record });
+      return;
+    }
     if (routine.trigger.kind === "manual" || routine.paused || routine.archivedAt) return;
     const recent = this.repo.db
       .prepare(

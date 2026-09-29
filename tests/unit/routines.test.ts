@@ -542,7 +542,7 @@ it("rejects a source run from another saved task", () => {
   );
 });
 
-it("holds a run-derived Skill until a separate review of its current revision", async () => {
+it("holds a run-derived Skill until an actual replay test and separate review", async () => {
   const f = fixture(async () => ({ runId: "new-run" }));
   f.repo.saveRun({ runId: "source-run", goal: "Inspect page", status: "completed", pageIds: [],
     createdAt: Date.now(), config: { taskId: f.task.taskId, taskRevision: f.task.revision } });
@@ -550,20 +550,19 @@ it("holds a run-derived Skill until a separate review of its current revision", 
     trigger: { kind: "monitor", timezone: "UTC", intervalMinutes: 60 } });
   expect(skill).toMatchObject({ paused: true, activationReview: "run_result", sourceRunId: "source-run" });
   expect(f.routines.exportRoutines([skill.routineId]).routines[0]).not.toHaveProperty("activationReview");
-  expect(() => f.routines.pause(skill.routineId, skill.revision, false)).toThrow(/Review this imported/);
+  expect(() => f.routines.pause(skill.routineId, skill.revision, false)).toThrow(/Test the current Skill replay/);
   expect(await f.routines.due()).toEqual([]);
   const edited = f.routines.update({ routineId: skill.routineId, expectedRevision: skill.revision,
     objective: "Review the source before recurring work" });
   expect(() => f.routines.update({ routineId: edited.routineId, expectedRevision: skill.revision,
     paused: false, activationReviewed: true })).toThrow(/changed/i);
   expect(() => f.routines.update({ routineId: edited.routineId, expectedRevision: edited.revision,
-    paused: false, activationReviewed: true, objective: "Unreviewed change" })).toThrow(/Review this imported/);
-  const ready = f.routines.update({ routineId: edited.routineId, expectedRevision: edited.revision,
-    paused: false, activationReviewed: true });
-  expect(ready).toMatchObject({ paused: false, activationReview: undefined });
-  const retargeted = f.routines.update({ routineId: ready.routineId, expectedRevision: ready.revision,
+    paused: false, activationReviewed: true, objective: "Unreviewed change" })).toThrow(/Test the current Skill replay/);
+  expect(() => f.routines.update({ routineId: edited.routineId, expectedRevision: edited.revision,
+    paused: false, activationReviewed: true })).toThrow(/Test the current Skill replay/);
+  const retargeted = f.routines.update({ routineId: edited.routineId, expectedRevision: edited.revision,
     sourceRunId: "source-run" });
-  expect(retargeted.paused).toBe(false);
+  expect(retargeted.paused).toBe(true);
   f.repo.saveRun({ runId: "later-run", goal: "Inspect another page", status: "completed", pageIds: [],
     createdAt: Date.now(), config: { taskId: f.task.taskId, taskRevision: f.task.revision } });
   const newlyDerived = f.routines.update({ routineId: retargeted.routineId,
@@ -1191,37 +1190,26 @@ it("imports an inactive definition without local task authority or its schedule"
     expectedRevision: routine.revision,
     sourceTaskId: f.task.taskId,
   });
-  expect(() => f.routines.pause(bound.routineId, bound.revision, false)).toThrow(/Review this imported/);
+  expect(() => f.routines.pause(bound.routineId, bound.revision, false)).toThrow(/Test the current Skill replay/);
   expect(() => f.routines.update({ routineId: bound.routineId, expectedRevision: bound.revision,
-    paused: false, activationReviewed: true })).toThrow(/Sync the source task's success criteria/);
+    paused: false, activationReviewed: true })).toThrow(/Test the current Skill replay/);
   const mismatched = f.routines.update({ routineId: bound.routineId, expectedRevision: bound.revision,
     successCriteria: [{ criterionId: "wrong", description: "Wrong check", verification: "manual" }] });
   expect(() => f.routines.update({ routineId: mismatched.routineId, expectedRevision: mismatched.revision,
-    paused: false, activationReviewed: true })).toThrow(/success criteria changed/i);
+    paused: false, activationReviewed: true })).toThrow(/Test the current Skill replay/);
   const synced = f.routines.update({ routineId: mismatched.routineId, expectedRevision: mismatched.revision,
     successCriteria: f.task.criteria, sourceTaskRevision: f.task.revision });
   const revisedTask = f.tasks.update({ taskId: f.task.taskId, expectedRevision: f.task.revision,
     objective: "Compare the next vendors" });
   expect(() => f.routines.update({ routineId: synced.routineId, expectedRevision: synced.revision,
-    paused: false, activationReviewed: true })).toThrow(/source task changed/i);
+    paused: false, activationReviewed: true })).toThrow(/Test the current Skill replay/);
   const resynced = f.routines.update({ routineId: synced.routineId, expectedRevision: synced.revision,
     sourceTaskRevision: revisedTask.revision });
-  const ready = f.routines.update({ routineId: resynced.routineId, expectedRevision: resynced.revision,
-    paused: false, activationReviewed: true });
-  await expect(
-    f.routines.run({
-      routineId: ready.routineId,
-      expectedRevision: ready.revision,
-      parameters: { hidden: "x" },
-    }),
-  ).rejects.toThrow(/Unknown routine parameter/);
+  expect(() => f.routines.update({ routineId: resynced.routineId, expectedRevision: resynced.revision,
+    paused: false, activationReviewed: true })).toThrow(/Test the current Skill replay/);
+  await expect(f.routines.run({ routineId: resynced.routineId, expectedRevision: resynced.revision,
+    parameters: { topic: "hosting" } })).rejects.toThrow(/Resume/);
   expect(started).toEqual([]);
-  await f.routines.run({
-    routineId: ready.routineId,
-    expectedRevision: ready.revision,
-    parameters: { topic: "hosting" },
-  });
-  expect(started).toEqual(["hosting"]);
 });
 
 it("resolves a workspace by name or falls back, and rejects a named space that does not exist", () => {

@@ -22,6 +22,9 @@ async function h_routines_list(ctx: MethodCtx): Promise<unknown> {
   if (method === "routines.get") return routines.get(params.routineId);
   if (method === "routines.create") return routines.create(params);
   if (method === "routines.fromResult") return routines.fromResult(params);
+  if (method === "routines.replay.compile") return routines.compileReplay(params, ctx.s.pages);
+  if (method === "routines.replay.test") return routines.testReplay(params, ctx.s.pages);
+  if (method === "routines.replay.result") return routines.resultReplay(params);
   if (method === "routines.update") return routines.update(params);
   if (method === "routines.pause")
     return routines.pause(params.routineId, params.expectedRevision, params.paused);
@@ -76,6 +79,9 @@ export const routinesMethods: Partial<Record<MethodName, MethodHandler>> = {
   "routines.get": h_routines_list,
   "routines.create": h_routines_list,
   "routines.fromResult": h_routines_list,
+  "routines.replay.compile": h_routines_list,
+  "routines.replay.test": h_routines_list,
+  "routines.replay.result": h_routines_list,
   "routines.update": h_routines_list,
   "routines.pause": h_routines_list,
   "routines.archive": h_routines_list,

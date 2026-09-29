@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Disposable Skill replay fixture</title>
+<body>
+  <h1>Disposable Skill replay</h1>
+  <label>Topic <input id="query" autocomplete="off"></label>
+  <button id="search" type="button">Search</button>
+  <output id="result" aria-live="polite"></output>
+  <script>
+    const drift = new URL(location.href).searchParams.has("drift");
+    if (drift) document.querySelector("#search").id = "changed-search";
+    document.querySelector("button").addEventListener("click", () => {
+      document.querySelector("#result").textContent = document.querySelector("#query").value;
+    });
+  </script>
+</body>
+</html>
