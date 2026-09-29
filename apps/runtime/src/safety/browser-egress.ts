@@ -106,7 +106,8 @@ export class BrowserEgress {
     const active: ActivePage = { runId, pageId, url: page.url, epoch: page.documentEpoch, lease, released: false };
     this.pages.set(pageId, active);
     try {
-      await egressInstall.call(this.deps.native, { lease, expectedUrl: page.url });
+      const installed = await egressInstall.call(this.deps.native, { lease, expectedUrl: page.url });
+      if (!installed.accepted) throw new AuxError("permission_denied", "The browser refused request protection.");
       if (!this.current(active)) throw new AuxError("ref_stale", "The page changed while installing request protection.");
       active.timer = setInterval(() => { void this.renew(active); }, 10_000);
       active.timer.unref();
@@ -131,7 +132,8 @@ export class BrowserEgress {
     if (!this.current(active)) { this.revokePage(active.pageId, active.runId); return; }
     try {
       active.lease = this.guard.renew(active.lease.leaseId);
-      await this.deps.native.egressInstall!({ lease: active.lease, expectedUrl: active.url });
+      const renewed = await this.deps.native.egressInstall!({ lease: active.lease, expectedUrl: active.url });
+      if (!renewed.accepted) throw new AuxError("permission_denied", "The browser refused request protection renewal.");
       if (!this.current(active)) this.revokePage(active.pageId, active.runId);
     } catch { this.revokePage(active.pageId, active.runId); }
   }
