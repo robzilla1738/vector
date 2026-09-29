@@ -214,7 +214,8 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
       </div>
 
       {!(conversation && !live && run.status === "completed") && <div className="run-status nums">
-        {(!conversation || run.status !== "completed" || (!run.statusMessage && !run.result)) && <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>}
+        {(!conversation || !["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
+          && <span className={`run-state ${run.status}`}>{STATUS_LABEL[run.status]}</span>}
         {page && page.url !== "about:blank" && page.pageId !== activePageId && (
           <button className="run-host" onClick={() => void activate(page.pageId).catch(errToast)} title={page.url}>
             {hostOf(page.url)}

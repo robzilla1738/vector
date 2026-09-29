@@ -10,6 +10,19 @@ export type NoticeContext = {
   foregroundRunId?: string | null;
 };
 export type DurableRunState = { run: Run; suspension?: Suspension | null };
+export type RunView = { mode: string; overlay: string | null; conversationId: string | null;
+  railOpen: boolean; railView: { kind: string; runId?: string }; runs: readonly Run[] };
+
+/** A selected chat counts as viewing its newest turn; an overlay hides the run beneath it. */
+export function foregroundRunId(view: RunView): string | null {
+  if (view.overlay) return null;
+  if (view.mode === "conversation" && view.conversationId) {
+    const latest = view.runs.filter((run) => (run.config?.chatId ?? run.runId) === view.conversationId)
+      .sort((a, b) => b.createdAt - a.createdAt || b.runId.localeCompare(a.runId))[0];
+    return latest?.runId ?? null;
+  }
+  return view.railOpen && view.railView.kind === "run" ? view.railView.runId ?? null : null;
+}
 
 const COPY: Record<OwnerNoticeKind, Pick<OwnerNotice, "title" | "body">> = {
   completed: { title: "Aux finished a task", body: "Open Aux to review the result." },

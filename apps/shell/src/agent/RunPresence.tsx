@@ -7,7 +7,8 @@ export type RunPresenceState = "working" | "waiting" | "paused" | "human" | "rev
 export function runPresence(run: Run, pages: readonly PageTarget[]): { state: RunPresenceState; label: string; detail: string } {
   const scoped = pages.filter((page) => run.pageIds.includes(page.pageId));
   const held = scoped.filter((page) => page.controller === "human").length;
-  if (held) return { state: "human", label: "You’re in control", detail: held === 1 ? "Aux waits while you use this page." : `Aux waits while you use ${held} pages.` };
+  if (held && ["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
+    return { state: "human", label: "You’re in control", detail: held === 1 ? "Aux waits while you use this page." : `Aux waits while you use ${held} pages.` };
   if (run.status === "needs_input") return { state: "waiting", label: "Needs your input", detail: "Aux is waiting for your decision or answer." };
   if (run.status === "paused") return { state: "paused", label: "Paused", detail: "This run can be resumed." };
   if (run.status === "queued" || run.status === "planning" || run.status === "running")

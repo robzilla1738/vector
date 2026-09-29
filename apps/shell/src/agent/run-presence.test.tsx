@@ -12,4 +12,5 @@ it("gives human page control precedence over working state and names saved task 
 it("distinguishes input, pause, review, and completed states", () => {
   const states = ["needs_input", "paused", "interrupted", "completed"] as const;
   expect(states.map((status) => runPresence(makeRun({ status }), []).state)).toEqual(["waiting", "paused", "review", "done"]);
+  expect(runPresence(makeRun({ status: "completed", pageIds: ["page"] }), [makePage(0, { pageId: "page", controller: "human" })]).state).toBe("done");
 });

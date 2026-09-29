@@ -13,7 +13,7 @@ import { deferSurface, preloadWhenIdle } from "./components/DeferredSurface";
 import { Conversation, AnswerPreview } from "./components/surfaces";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { PageTarget } from "@aux/contracts";
+import type { PageTarget, Run } from "@aux/contracts";
 import { LIVE_RUN, useStore, call, toast, errToast, tabCommand, patchPageFields, type SidebarMode } from "./store";
 import { bridge, inNativeHost, inMock } from "./bridge";
 import { savePagePdf, printCurrentPage } from "./page-export";
@@ -31,6 +31,9 @@ import { installMemorySaver } from "./memory-saver";
 import { openLocalFile } from "./open-local-file";
 import { settingsRouteFromPath } from "./settings/routes";
 import { recoverPeekLink } from "./peek-link";
+import { foregroundRunId, RunNotificationGate, type OwnerNotice } from "./agent/run-notifications";
+import { onInAppNoticePreferenceChange, readInAppNoticePreference } from "./agent/run-notice-preference";
+import { RunNoticeBanner } from "./agent/RunNoticeControls";
 
 const ReaderView = deferSurface(async () => { const module = await import("./components/ReaderView"); return {default:module.ReaderView}; }, "Reader");
 const Settings = deferSurface(async () => { const module = await import("./components/Settings"); return {default:module.Settings}; }, "Settings");
@@ -60,6 +63,32 @@ type Shortcut = { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl
 type StoreState = ReturnType<typeof useStore.getState>;
 
 export function App() {
+  const [runNotice, setRunNotice] = useState<OwnerNotice | null>(null);
+  const [noticePreference, setNoticePreference] = useState(readInAppNoticePreference);
+  const notificationGate = useRef<RunNotificationGate | null>(null);
+  if (!notificationGate.current) notificationGate.current = new RunNotificationGate({
+    getRun: (runId) => call("runs.get", { runId }),
+    // There is no native OS notification method yet. Keep the generic notice
+    // in this window until reviewed or dismissed, including after returning.
+    emit: (notice) => { setRunNotice(notice); },
+  });
+  const foregroundRun = useStore((state) => foregroundRunId(state));
+  useEffect(() => onInAppNoticePreferenceChange(() => {
+    const current = readInAppNoticePreference();
+    setNoticePreference(current);
+    if (current === "off") setRunNotice(null);
+  }), []);
+  useEffect(() => {
+    if (runNotice?.runId === foregroundRun && document.hasFocus()) setRunNotice(null);
+  }, [foregroundRun, runNotice]);
+  useEffect(() => {
+    const check = () => {
+      const current = foregroundRunId(useStore.getState());
+      setRunNotice((notice) => notice?.runId === current ? null : notice);
+    };
+    window.addEventListener("focus", check);
+    return () => window.removeEventListener("focus", check);
+  }, []);
   useEffect(() => installMemorySaver(), []);
   useEffect(() => recoverPeekLink(), []);
   useEffect(() => {
@@ -308,7 +337,16 @@ export function App() {
     };
     void useStore.getState().refresh().then(reconcileDrafts);
     const offEvent = bridge.onEvent((e) => {
+      const candidate = (e.type === "run.status" || e.type === "run.updated") ? e.payload.run as Run | undefined : undefined;
+      const previous = candidate ? useStore.getState().runs.find((run) => run.runId === candidate.runId) : undefined;
       useStore.getState().applyEvent(e);
+      if (candidate && !bridge.privateMode && useStore.getState().runs.find((run) => run.runId === candidate.runId)?.status === candidate.status) {
+        void notificationGate.current?.consider(previous, candidate, () => {
+          const state = useStore.getState();
+          return { preference: readInAppNoticePreference(), focusMode: state.settings.focusMode === true,
+            windowFocused: document.hasFocus(), foregroundRunId: foregroundRunId(state) };
+        }).catch(() => {});
+      }
       if(e.type==="workspace.contentMemory.updated")void reconcileDrafts();
     });
     const offTabs = bridge.onTabsPatch(patch => useStore.getState().applyTabsPatch(patch));
@@ -543,6 +581,10 @@ export function App() {
       <ActionConfirmation />
       {vaultOffer && <VaultOfferBanner />}
       <Toasts />
+      {runNotice && noticePreference === "all" && !confirming && !overlay
+        && (!document.hasFocus() || foregroundRun !== runNotice.runId) &&
+        <RunNoticeBanner notice={runNotice} onDismiss={() => setRunNotice(null)}
+          onReview={(runId) => { setRunNotice(null); useStore.getState().openConversation(runId); }} />}
       <BrowsingMemoryWatch />
     </div>
   );

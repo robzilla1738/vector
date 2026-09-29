@@ -20,6 +20,8 @@ import { Goals } from "./Goals";
 import { Hooks } from "./Hooks";
 import { CalendarTaskGrants } from "./CalendarTaskGrants";
 import { bridge } from "../bridge";
+import { RunAttentionFeed } from "../agent/RunAttentionFeed";
+import { RunNoticePreference } from "../agent/RunNoticeControls";
 
 type Details = {
   task: Task;
@@ -42,6 +44,7 @@ export function Tasks() {
   const needsSetup = useStore((s) => s.settings.modelConfigured === false);
   const activePageId = useStore((s) => s.activePageId);
   const conversationId = useStore((s) => s.conversationId);
+  const runs = useStore((s) => s.runs);
   const [showHistory, setShowHistory] = useState(false);
   const [creating, setCreating] = useState(false);
   const layout = useStore((s) => s.layout);
@@ -299,6 +302,10 @@ export function Tasks() {
             {error}
           </p>
         )}
+        {!selected && !creating && <>
+          <RunAttentionFeed runs={runs} onOpenRun={(runId) => { close(null); useStore.getState().openConversation(runId); }} />
+          <RunNoticePreference />
+        </>}
         {(selected || creating) && (
           <button
             className="btn ghost task-back"

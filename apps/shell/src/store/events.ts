@@ -42,7 +42,7 @@ export const reduceRunEvent: Reducer = (state, e) => {
         runs: state.runs.some((r) => r.runId === run.runId) ? state.runs.map((r) => (r.runId === run.runId ? run : r)) : [run, ...state.runs],
         ...(settled ? { answerStreams: Object.fromEntries(Object.entries(state.answerStreams).filter(([id]) => id !== run.runId)) } : {}),
         ...(run.status === "needs_input" && run.statusMessage
-          ? { prompt: { runId: run.runId, question: run.statusMessage }, railOpen: true, railView: { kind: "run" as const, runId: run.runId } }
+          ? { prompt: { runId: run.runId, question: run.statusMessage } }
           : state.prompt?.runId === run.runId ? { prompt: null } : {}),
       };
     }

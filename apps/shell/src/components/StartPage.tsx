@@ -6,11 +6,14 @@ import { useStore } from "../store";
 import { CommandBar } from "./CommandBar";
 import { bridge } from "../bridge";
 import { RecentWork } from "./RecentWork";
+import { RunAttentionFeed } from "../agent/RunAttentionFeed";
+import { RunNoticePreference } from "../agent/RunNoticeControls";
 
 /** Browsing starts with one input; saved work stays one step away. */
 export function StartPage() {
   const focus = useStore(s => s.focusCommandBar);
   const connected = useStore(s => s.connected);
+  const runs = useStore(s => s.runs);
   useEffect(() => { focus("hero"); }, [focus]);
   return <div className="start aux-home"><div className="start-inner">
     <AuxMark />
@@ -20,7 +23,11 @@ export function StartPage() {
       <span>Aux won’t save this window’s tabs, history, site data, or permissions. Files you download remain on your Mac.</span>
     </section> : <>
       <SessionRecovery compact />
-      {connected ? <RecentWork /> : <output className="hint" data-block>AI tools are reconnecting. Search and open sites as usual.</output>}
+      {connected ? <>
+        <RunAttentionFeed runs={runs} onOpenRun={(runId) => useStore.getState().openConversation(runId)} />
+        <RunNoticePreference />
+        <RecentWork />
+      </> : <output className="hint" data-block>AI tools are reconnecting. Search and open sites as usual.</output>}
     </>}
   </div></div>;
 }
