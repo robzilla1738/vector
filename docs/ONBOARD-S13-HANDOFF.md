@@ -1,6 +1,6 @@
 # S13: replayable setup to the first useful chat
 
-Source batch, 2026-09-28. Base: IMPORT recovery `9831254a0a9a950820e2095af2dd8d371e459c2a` (integrated separately as `76b26403`). **S13 remains open.** This batch has focused source evidence; it has not been mounted in the shared App, staged into AuxDev, or exercised in a native first-run journey. It does not change `qualification.json` or mark graph dependencies accepted.
+Original source batch, 2026-09-28, integrated as `c48e4f11`; IMPORT recovery was integrated as `76b26403`. **S13 remains open.** Shared App mounting and General replay wiring are now present on integration `18007dbd`. The subsequent [setup review/replay batch](ONBOARD-REVIEW-S13-HANDOFF.md) adds receipt review and recovery/source admission checks. Neither source batch establishes the native first-run journey or changes `qualification.json`. The original implementation and acceptance contract below remain useful context.
 
 ## Delivered outcome and contract
 
@@ -23,7 +23,7 @@ Source batch, 2026-09-28. Base: IMPORT recovery `9831254a0a9a950820e2095af2dd8d3
 - Postcards preview the exact server-owned prompts. Tools use shared badges. Calendar/MCP pills appear only when the current Space's catalog reports an active/approved connection and explicitly say separate task/tool approval is required. Setup never creates those grants.
 - The user chooses an existing available HTTP(S) source or explicitly opens a URL for review. Embedded credentials and non-HTTP URLs are refused. Source review is invalidated on identity/navigation change. No source is auto-selected. A View selected page action saves progress, activates the actual tab and closes setup for reading before returning. Browser control then follows the integrated isolated-task-page implementation; **native source-copy/partition behavior is not proven by these source tests**.
 
-## Integrator wiring (reserved shared files; not edited by this lane)
+## Assembly contract (already integrated; shared files remain integrator-owned)
 
 1. In `apps/shell/src/App.tsx`, add a deferred surface beside the other declarations:
 
@@ -83,4 +83,4 @@ Write a source-bound native manifest containing shell/runtime hashes, native ide
 
 ## Still open after this source batch
 
-Shared App/General wiring, regenerated bindings and integrated bundle budget; native journey above; full SETTINGS/CHAT/MEMORY prerequisite acceptance; owner review of final copy and both layouts; ACCESS/VoiceOver and final S14 qualification. The subsequent source batch in `MEMORY-PASTE-S13-HANDOFF.md` adds reviewed pasted assistant-Memory import from the permissions step; its native restart/review/Forget gate remains open. Signed release packaging remains out of scope. No universal native/roadmap completion claim is made.
+Native journey above and the focused review/replay matrix in `ONBOARD-REVIEW-S13-HANDOFF.md`; integrated candidate bundle budget; full SETTINGS/CHAT/MEMORY prerequisite acceptance; owner review of final copy and both layouts; ACCESS/VoiceOver and final S14 qualification. The subsequent source batch in `MEMORY-PASTE-S13-HANDOFF.md` adds reviewed pasted assistant-Memory import from the permissions step; its native restart/review/Forget gate remains open. Signed release packaging remains out of scope. No universal native/roadmap completion claim is made.

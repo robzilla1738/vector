@@ -80,6 +80,9 @@ function fixture(path = ":memory:") {
     time: (value: number) => {
       now = value;
     },
+    setPage: (patch: Partial<PageTarget>) => {
+      currentPage = { ...page, ...patch };
+    },
     navigate: () => {
       currentPage = { ...page, documentEpoch: 3 };
     },
@@ -146,6 +149,34 @@ it("requires disclosure, a configured model and the exact reviewed live page bef
       }),
     ).rejects.toThrow(/page changed/);
   }
+});
+
+it.each([
+  { loading: true },
+  { controller: "agent" as const },
+  { controller: "external" as const },
+  { ownedByRuntime: true },
+])("refuses an unavailable source %j before reserving a first-chat identity", async (patch) => {
+  const f = fixture();
+  acknowledge(f.service);
+  f.setPage(patch);
+  await expect(begin(f.service)).rejects.toThrow(/page changed or is unavailable/);
+  expect(f.start).not.toHaveBeenCalled();
+  expect(f.service.get().firstTask).toBeUndefined();
+});
+
+it("rechecks source admission after receipt reservation and reuses that identity on reviewed retry", async () => {
+  const f = fixture();
+  acknowledge(f.service);
+  const pending = begin(f.service);
+  const firstId = f.service.get().firstTask!.runId;
+  f.setPage({ controller: "agent" });
+  await expect(pending).rejects.toThrow(/page changed or is unavailable/);
+  expect(f.start).not.toHaveBeenCalled();
+  expect(f.service.get().firstTask).toMatchObject({ runId: firstId, status: "failed" });
+  f.setPage({});
+  expect((await begin(f.service)).run?.runId).toBe(firstId);
+  expect(f.start).toHaveBeenCalledOnce();
 });
 
 it("uses a durable server-owned delivery ID, honors the lower configured budget and reconciles a lost response", async () => {

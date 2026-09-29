@@ -13,6 +13,8 @@ const openPage = vi.hoisted(() => vi.fn());
 const activate = vi.hoisted(() => vi.fn());
 const native = vi.hoisted(() => ({
   privateMode: false,
+  quickAskMode: false,
+  windowId: "main",
   defaultBrowser: vi.fn(async () => ({ isDefault: false })),
   setDefaultBrowser: vi.fn(async () => ({ isDefault: true })),
   runtimeRestoreStatus: vi.fn(async () => ({ pending: false })),
@@ -43,6 +45,7 @@ const initial = (step: OnboardingState["step"]): OnboardingState => ({
 });
 const source: PageTarget = {
   pageId: "reviewed",
+  windowId: "main",
   backend: "aux",
   targetId: "reviewed",
   url: "https://fixture.example/article",
@@ -83,6 +86,7 @@ beforeEach(() => {
   openConversation.mockReset();
   openPage.mockReset();
   native.privateMode = false;
+  native.quickAskMode = false;
   native.setDefaultBrowser.mockClear();
   native.runtimeRestoreStatus.mockResolvedValue({ pending: false });
   workspace = {
@@ -111,6 +115,7 @@ beforeEach(() => {
       };
       return current;
     }
+    if (method === "import.status") throw Object.assign(new Error("No import"), { code: "not_found" });
     if (method === "models.list") return { models: [] };
     if (method === "connectors.catalog") return { entries: [], access: [] };
     throw new Error(`Unexpected ${method}`);
@@ -291,4 +296,108 @@ it("offers pasted Memory from permissions without automatic capture or ingestion
   expect(document.querySelector('section[aria-label="Import pasted assistant notes"]')).toBeTruthy();
   expect(document.querySelector("textarea")?.value).toBe("");
   expect(rpc.mock.calls.some(([method]) => String(method).startsWith("memory."))).toBe(false);
+});
+
+it("replays an already open flow using the new saved revision and welcome step", async () => {
+  current = initial("permissions");
+  await act(async () => root.render(<OnboardingHost />));
+  expect(document.querySelector("h1")?.textContent).toBe("You stay in charge");
+  await act(async () => requestOnboardingReplay());
+  expect(document.querySelector("h1")?.textContent).toBe("A browser for what comes next");
+  await act(async () => button("Continue").click());
+  expect(rpc).toHaveBeenLastCalledWith("import.status", {});
+  expect(rpc).toHaveBeenCalledWith("onboarding.update", { revision: 1, action: "visit", step: "import" });
+});
+
+it("coalesces repeated replay requests while loading progress", async () => {
+  current = { ...initial("welcome"), status: "later" };
+  await act(async () => root.render(<OnboardingHost />));
+  let finish!: (value: OnboardingState) => void;
+  const previous = rpc.getMockImplementation()!;
+  rpc.mockImplementation((method, params) =>
+    method === "onboarding.get"
+      ? new Promise((resolve) => {
+          finish = resolve;
+        })
+      : previous(method, params),
+  );
+  rpc.mockClear();
+  await act(async () => {
+    requestOnboardingReplay();
+    requestOnboardingReplay();
+  });
+  expect(rpc.mock.calls).toEqual([["onboarding.get"]]);
+  await act(async () => finish(current));
+  expect(rpc.mock.calls.filter(([method]) => method === "onboarding.update")).toHaveLength(1);
+  expect(document.querySelector("h1")?.textContent).toBe("A browser for what comes next");
+});
+
+it("ignores a stale startup response after an explicit replay has opened newer progress", async () => {
+  current = { ...initial("welcome"), status: "later" };
+  let finish!: (value: OnboardingState) => void;
+  rpc.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await act(async () => root.render(<OnboardingHost />));
+  await act(async () => requestOnboardingReplay());
+  await act(async () => finish(initial("permissions")));
+  expect(document.querySelector("h1")?.textContent).toBe("A browser for what comes next");
+  expect(current.revision).toBe(1);
+});
+
+it("lets disconnected setup close without mutating saved progress or reopening on reconnect", async () => {
+  current = initial("permissions");
+  await act(async () => root.render(<OnboardingHost />));
+  workspace.connected = false;
+  await act(async () => root.render(<OnboardingHost />));
+  expect(document.body.textContent).toContain("Aux is disconnected");
+  rpc.mockClear();
+  await act(async () => button("Finish later").click());
+  expect(rpc).not.toHaveBeenCalled();
+  workspace.connected = true;
+  await act(async () => root.render(<OnboardingHost />));
+  expect(document.querySelector("dialog")).toBeNull();
+  expect(rpc).not.toHaveBeenCalled();
+});
+
+it("never reads setup or replays it in a Quick Ask utility window", async () => {
+  native.quickAskMode = true;
+  await act(async () => root.render(<OnboardingHost />));
+  await act(async () => requestOnboardingReplay());
+  expect(rpc).not.toHaveBeenCalled();
+});
+
+it("requires recovery readiness and rechecks the selected window before first-chat dispatch", async () => {
+  native.runtimeRestoreStatus.mockRejectedValueOnce(new Error("native status unavailable"));
+  await render(initial("postcard"));
+  await choosePage();
+  await act(async () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+  expect(button("Start this chat").disabled).toBe(true);
+  expect(document.body.textContent).toContain("Recovery readiness is unavailable");
+  await act(async () => button("Retry recovery check").click());
+  expect(button("Start this chat").disabled).toBe(false);
+  native.runtimeRestoreStatus.mockImplementationOnce(async () => {
+    workspace.pages = [{ ...source, windowId: "other-window" }];
+    return { pending: false };
+  });
+  await act(async () => button("Start this chat").click());
+  expect(rpc.mock.calls.some(([method]) => method === "onboarding.start")).toBe(false);
+  expect(document.body.textContent).toContain("selected page changed during review");
+});
+
+it("offers only idle owner pages in this window for explicit review", async () => {
+  workspace.pages = [
+    source,
+    { ...source, pageId: "other-window", windowId: "other" },
+    { ...source, pageId: "loading", loading: true },
+    { ...source, pageId: "agent", controller: "agent" },
+  ];
+  await render(initial("postcard"));
+  const select = [...document.querySelectorAll("select")].find((node) =>
+    [...node.options].some((option) => option.value === source.pageId),
+  )!;
+  expect([...select.options].map((option) => option.value)).toEqual(["", source.pageId]);
 });

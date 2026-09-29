@@ -122,6 +122,34 @@ export class OnboardingService {
       }
     }
   }
+  private reviewedPage(reviewed: OnboardingStart["page"]): PageTarget {
+    const page = this.deps.page(reviewed.pageId);
+    let url: URL;
+    try {
+      url = new URL(page.url);
+    } catch {
+      throw new AuxError("invalid_params", "Choose an available HTTP or HTTPS page.");
+    }
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      page.ownedByRuntime ||
+      page.loading ||
+      page.controller === "agent" ||
+      page.controller === "external" ||
+      ["detached", "crashed"].includes(page.viewStatus) ||
+      page.url !== reviewed.url ||
+      page.documentEpoch !== reviewed.documentEpoch ||
+      page.sessionId !== reviewed.sessionId
+    )
+      throw new AuxError(
+        "conflict",
+        "The selected page changed or is unavailable. Review the page again before starting.",
+      );
+    return page;
+  }
+
   async start(input: OnboardingStart): Promise<{ state: OnboardingState; run: Run | null }> {
     // Stable server-minted delivery identity survives lost responses and runtime restarts.
     const state = this.read();
@@ -149,27 +177,7 @@ export class OnboardingService {
       );
     if (!this.deps.configured())
       throw new AuxError("backend_unavailable", "Set up a model connection first. No chat has started.");
-    const page = this.deps.page(input.page.pageId);
-    let url: URL;
-    try {
-      url = new URL(page.url);
-    } catch {
-      throw new AuxError("invalid_params", "Choose an available HTTP or HTTPS page.");
-    }
-    if (
-      !["http:", "https:"].includes(url.protocol) ||
-      url.username ||
-      url.password ||
-      page.ownedByRuntime ||
-      ["detached", "crashed"].includes(page.viewStatus) ||
-      page.url !== input.page.url ||
-      page.documentEpoch !== input.page.documentEpoch ||
-      page.sessionId !== input.page.sessionId
-    )
-      throw new AuxError(
-        "conflict",
-        "The selected page changed or is unavailable. Review the page again before starting.",
-      );
+    const page = this.reviewedPage(input.page);
     const postcard = ONBOARDING_POSTCARDS.find((item) => item.id === input.postcardId)!;
     const first = {
       postcardId: postcard.id,
@@ -183,6 +191,13 @@ export class OnboardingService {
       .then(async () => {
         let identityMismatch = false;
         try {
+          // Admission may have changed while the durable receipt was being reserved.
+          this.reviewedPage(input.page);
+          if (!this.deps.configured())
+            throw new AuxError(
+              "backend_unavailable",
+              "The model connection changed. Review it before retrying.",
+            );
           const run = await this.deps.start({
             goal: postcard.prompt,
             deliveryRunId: first.runId,

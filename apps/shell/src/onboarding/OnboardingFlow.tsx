@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DEFAULT_BROWSER_COOLDOWN_MS,
   ONBOARDING_DISCLOSURE_VERSION,
@@ -21,6 +21,7 @@ import { RecoveryPackage } from "../settings/sections/RecoveryPackage";
 import { SPACE_COLORS, type SpaceColor } from "../workspace";
 import "./onboarding.css";
 import { PastedMemorySetup } from "./PastedMemorySetup";
+import { SetupReview } from "./SetupReview";
 
 const TITLES = {
   welcome: "A browser for what comes next",
@@ -39,6 +40,10 @@ export function availableOnboardingPage(page: PageTarget): boolean {
       !url.username &&
       !url.password &&
       !page.ownedByRuntime &&
+      !page.loading &&
+      page.controller !== "agent" &&
+      page.controller !== "external" &&
+      page.windowId === bridge.windowId &&
       !["detached", "crashed"].includes(page.viewStatus)
     );
   } catch {
@@ -58,12 +63,17 @@ export function OnboardingFlow({
     [error, setError] = useState("");
   const busyRef = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
+  const connected = useStore((s) => s.connected);
   const settings = useStore((s) => s.settings),
     pages = useStore((s) => s.pages),
     layout = useStore((s) => s.layout);
   const activeSpace = layout.spaces.find((space) => space.id === layout.activeSpaceId);
-  const [recovery, setRecovery] = useState(false),
-    [restorePending, setRestorePending] = useState(false);
+  const [recovery, setRecovery] = useState(false);
+  const [restoreStatus, setRestoreStatus] = useState<"checking" | "ready" | "pending" | "unavailable">(
+    "checking",
+  );
+  const restorePending = restoreStatus === "pending";
+  const restoreGeneration = useRef(0);
   const [isDefault, setIsDefault] = useState<boolean | null>(null);
   const [catalogResult, setCatalogResult] = useState<{ workspaceId: string; value: ConnectorCatalog } | null>(
     null,
@@ -95,22 +105,41 @@ export function OnboardingFlow({
   useEffect(() => {
     heading.current?.focus();
   }, [step]);
+  const checkRecovery = useCallback(async () => {
+    const attempt = ++restoreGeneration.current;
+    if (!inNativeHost || !connected) {
+      setRestoreStatus("unavailable");
+      return false;
+    }
+    setRestoreStatus("checking");
+    try {
+      const value = await bridge.runtimeRestoreStatus();
+      if (restoreGeneration.current !== attempt) return false;
+      setRestoreStatus(value.pending ? "pending" : "ready");
+      return !value.pending;
+    } catch {
+      if (restoreGeneration.current === attempt) setRestoreStatus("unavailable");
+      return false;
+    }
+  }, [connected]);
+  const invalidateRecovery = useCallback(() => {
+    restoreGeneration.current++;
+  }, []);
   useEffect(() => {
-    if (!inNativeHost) return;
     let live = true;
-    void bridge
-      .runtimeRestoreStatus()
-      .then((value) => {
-        if (live) setRestorePending(value.pending);
-      })
-      .catch(() => {
-        if (live)
-          setError("Recovery status is unavailable. Check Settings before staging a recovery package.");
-      });
+    void Promise.resolve().then(() => {
+      if (live) return checkRecovery();
+    });
+    const refresh = () => {
+      void checkRecovery();
+    };
+    window.addEventListener("focus", refresh);
     return () => {
       live = false;
+      invalidateRecovery();
+      window.removeEventListener("focus", refresh);
     };
-  }, []);
+  }, [checkRecovery, invalidateRecovery]);
   useEffect(() => {
     if (step !== "default" || !inNativeHost) return;
     let live = true;
@@ -176,6 +205,10 @@ export function OnboardingFlow({
     return value;
   }
   const later = () => {
+    if (!connected) {
+      onClose();
+      return;
+    }
     void work(async () => {
       await update("later");
       onClose();
@@ -236,7 +269,7 @@ export function OnboardingFlow({
             <button
               key={item}
               className="btn sm ghost"
-              disabled={busy}
+              disabled={busy || !connected}
               aria-current={step === item ? "step" : undefined}
               aria-label={`${position + 1}. ${item}${state.skipped.includes(item) ? ", skipped" : ""}`}
               onClick={() =>
@@ -252,7 +285,13 @@ export function OnboardingFlow({
         <h1 ref={heading} tabIndex={-1}>
           {TITLES[step]}
         </h1>
-        <div className="onboarding-content">
+        {!connected && (
+          <output>
+            Aux is disconnected. Saved setup progress is safe; reconnect to continue, or finish later to
+            browse.
+          </output>
+        )}
+        <fieldset className="onboarding-content" disabled={!connected} aria-label="Setup choices">
           {step === "welcome" && (
             <>
               <p>
@@ -266,7 +305,9 @@ export function OnboardingFlow({
                 Recover an existing Aux Profile
               </button>
               {recovery && (
-                <RecoveryPackage pending={restorePending} onStaged={() => setRestorePending(true)} />
+                <fieldset disabled={restoreStatus !== "ready"}>
+                  <RecoveryPackage pending={restorePending} onStaged={() => setRestoreStatus("pending")} />
+                </fieldset>
               )}
             </>
           )}
@@ -462,6 +503,19 @@ export function OnboardingFlow({
                 Choose a page you want to understand. Aux will use a separate browsing session; the page’s
                 address is copied, without its cookies or saved passwords.
               </p>
+              <SetupReview
+                connected={connected}
+                settings={settings}
+                state={state}
+                recovery={restoreStatus}
+                source={pageReviewed ? reviewedPage : null}
+                onCheckRecovery={() => void checkRecovery()}
+                onVisit={(next) => {
+                  void work(async () => {
+                    await update("visit", next);
+                  });
+                }}
+              />
               {first?.status === "started" ? (
                 <button
                   className="btn"
@@ -600,10 +654,32 @@ export function OnboardingFlow({
                         <button
                           className="btn"
                           disabled={
-                            busy || restorePending || !ready || !pageReviewed || first?.status === "pending"
+                            busy ||
+                            !connected ||
+                            restoreStatus !== "ready" ||
+                            !ready ||
+                            !pageReviewed ||
+                            first?.status === "pending"
                           }
                           onClick={() =>
                             void work(async () => {
+                              if (!(await checkRecovery()))
+                                throw new Error(
+                                  "Recovery readiness changed. Resolve it before starting a chat.",
+                                );
+                              const livePage = useStore
+                                .getState()
+                                .pages.find((item) => item.pageId === reviewedPage?.pageId);
+                              if (
+                                !livePage ||
+                                !availableOnboardingPage(livePage) ||
+                                livePage.url !== reviewedPage?.url ||
+                                livePage.documentEpoch !== reviewedPage?.documentEpoch ||
+                                livePage.sessionId !== reviewedPage?.sessionId
+                              )
+                                throw new Error(
+                                  "The selected page changed during review. Review its current document before starting.",
+                                );
                               const result = await call("onboarding.start", {
                                 revision: state.revision,
                                 postcardId: card.id,
@@ -636,7 +712,7 @@ export function OnboardingFlow({
               )}
             </>
           )}
-        </div>
+        </fieldset>
         {error && (
           <div role="alert">
             <p>{error}</p>
@@ -653,6 +729,18 @@ export function OnboardingFlow({
             </button>
           </div>
         )}
+        {restoreStatus === "unavailable" && (
+          <p role="alert">
+            Recovery readiness is unavailable. New chat starts are blocked until it can be checked.{" "}
+            <button
+              className="btn sm ghost"
+              disabled={busy || !connected}
+              onClick={() => void checkRecovery()}
+            >
+              Retry recovery check
+            </button>
+          </p>
+        )}
         {restorePending && (
           <output>
             Recovery is staged. Quit Aux normally and reopen to apply it before starting new work.
@@ -661,7 +749,7 @@ export function OnboardingFlow({
         <footer>
           <button
             className="btn ghost"
-            disabled={busy}
+            disabled={busy || !connected}
             onClick={() =>
               void work(async () => {
                 const next = await update("skip");
@@ -674,7 +762,7 @@ export function OnboardingFlow({
           {index > 0 && (
             <button
               className="btn ghost"
-              disabled={busy}
+              disabled={busy || !connected}
               onClick={() =>
                 void work(async () => {
                   await update("visit", ONBOARDING_STEPS[index - 1]);
@@ -686,7 +774,7 @@ export function OnboardingFlow({
           )}
           <button
             className="btn"
-            disabled={busy || restorePending}
+            disabled={busy || !connected || restorePending}
             onClick={() =>
               void work(async () => {
                 if (index === ONBOARDING_STEPS.length - 1) {

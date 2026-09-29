@@ -35,6 +35,10 @@
   .onboarding-content {
     display: grid;
     gap: 14px;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
   }
   .onboarding-content p {
     margin: 0;
@@ -75,6 +79,41 @@
   .onboarding-flow footer {
     border-top: 1px solid var(--line);
     padding-top: 16px;
+  }
+  .onboarding-review {
+    display: grid;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow-wrap: anywhere;
+  }
+  .onboarding-review h2,
+  .onboarding-review h3 {
+    margin: 0 0 8px;
+  }
+  .onboarding-review h2 {
+    font-size: 18px;
+  }
+  .onboarding-review h3 {
+    font-size: 14px;
+  }
+  .onboarding-review dl {
+    margin: 8px 0;
+  }
+  .onboarding-review dl div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .onboarding-review dt {
+    min-width: 120px;
+  }
+  .onboarding-review dd {
+    margin: 0;
+  }
+  .onboarding-review .row {
+    flex-wrap: wrap;
   }
   @media (max-width: 540px) {
     .onboarding-flow {
