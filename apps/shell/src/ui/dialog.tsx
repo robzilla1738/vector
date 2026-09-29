@@ -186,15 +186,19 @@ export function Menu({
 
 function focusOutsideMenu(trigger: HTMLElement | null | undefined, direction: 1 | -1) {
   if (!trigger?.isConnected) return;
+  const containingDialog = trigger.closest<HTMLDialogElement>("dialog[open]");
+  const scope = containingDialog ?? document;
   const candidates = [
-    ...document.querySelectorAll<HTMLElement>(
+    ...scope.querySelectorAll<HTMLElement>(
       'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])',
     ),
   ].filter(
     (node) =>
-      !node.closest('dialog, [inert], [aria-hidden="true"]') &&
-      !node.matches(":disabled, [hidden]") &&
-      node.getClientRects().length > 0,
+      node.closest("dialog") === containingDialog &&
+      !node.closest('[inert], [aria-hidden="true"], [hidden]') &&
+      !node.matches(':disabled, [aria-disabled="true"]') &&
+      node.getClientRects().length > 0 &&
+      getComputedStyle(node).visibility !== "hidden",
   );
   const index = candidates.indexOf(trigger);
   const next = index >= 0 ? candidates[index + direction] : null;

@@ -36,15 +36,28 @@ export function Popover({
       if (rect) positionContextMenu(node, rect.left, rect.bottom + 6);
       requestStageReport();
     };
-    node.showModal();
+    if (typeof node.showModal === "function") node.showModal();
+    else node.setAttribute("open", "");
+    const focusable = [
+      "input:not(:disabled)",
+      "button:not(:disabled)",
+      "select:not(:disabled)",
+      "textarea:not(:disabled)",
+      "a[href]",
+      '[tabindex]:not([tabindex="-1"])',
+    ];
+    const preferred = node.querySelector<HTMLElement>("[autofocus]:not(:disabled)");
+    const first = node.querySelector<HTMLElement>(focusable.join(", "));
+    (preferred ?? first ?? node).focus({ preventScroll: true });
     place();
-    const observer = new ResizeObserver(place);
-    observer.observe(node);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
+    observer?.observe(node);
     window.addEventListener("resize", place);
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
       window.removeEventListener("resize", place);
-      node.close();
+      if (typeof node.close === "function") node.close();
+      else node.removeAttribute("open");
       button.current?.focus({ preventScroll: true });
       requestAnimationFrame(requestStageReport);
     };
@@ -69,6 +82,8 @@ export function Popover({
           <dialog
             id={id}
             ref={panel}
+            tabIndex={-1}
+            aria-modal="true"
             className="anchored-panel ctx-menu"
             aria-label={label}
             onCancel={(event) => {

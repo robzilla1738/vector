@@ -28,3 +28,11 @@
     gap: var(--space-2);
   }
 }
+
+@layer overrides {
+  @media (prefers-reduced-transparency: reduce) {
+    .ui-alert-dialog::backdrop {
+      backdrop-filter: none;
+    }
+  }
+}
