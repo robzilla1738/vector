@@ -3,6 +3,11 @@ import { dirname, join } from "node:path";
 import {
   EffectSchema,
   ModelProviderSchema,
+  ModelConnectionChangeSchema,
+  ModelConnectionStatusSchema,
+  ImageModelSchema,
+  type ModelConnectionStatus,
+  type ImageModel,
   OriginRuleSchema,
   SidebarMaterialSchema,
   type Effect,
@@ -44,6 +49,9 @@ import type { NativeBridge } from "../native.js";
 
 export interface Settings {
   modelProvider?: ModelProvider;
+  modelConnection?: { provider: ModelProvider; enabled: boolean };
+  disabledModelProviders?: ModelProvider[];
+  imageModel?: ImageModel | null;
   modelCredential?: { provider: ModelProvider; key: string };
   compatibleEndpoint?: string;
   providerModels?: Partial<
@@ -112,6 +120,7 @@ export interface ModelProbeRecord {
 }
 
 export class SettingsService {
+  private connectionEpoch = 0;
   /** Test hook — inject a mock model instead of the real Gateway client. */
   modelOverride: ModelClient | null = null;
   private gatewayClient: ModelClient | null = null;
@@ -171,6 +180,7 @@ export class SettingsService {
     gatewayCredentialError?: string;
     gatewayCredentialSource: string;
     modelConfigured: boolean;
+    modelConnections: ModelConnectionStatus[];
     modelApiKey?: string;
     modelCredentialSource: string;
     modelCredentialError?: string;
@@ -190,6 +200,8 @@ export class SettingsService {
           ? "A legacy credential is present. Re-enter it in Settings to replace plaintext storage with encrypted storage."
           : undefined),
       modelProvider: this.modelProvider(),
+      modelConnections: this.connectionStatuses(),
+      imageModel: this.imageModel(),
       compatibleEndpoint: this.compatibleEndpoint(),
       modelApiKey: this.selectedKey() ? "••••••••" : undefined,
       modelCredentialSource:
@@ -211,7 +223,7 @@ export class SettingsService {
         modelProbe?.provider === this.modelProvider() && modelProbe.modelId === this.plannerModel()
           ? modelProbe
           : undefined,
-      modelConfigured: !!(
+      modelConfigured: this.connectionEnabled(this.modelProvider()) && !!(
         this.modelOverride ||
         (this.plannerModel() &&
           (this.selectedKey() || localCompatible) &&
@@ -294,6 +306,8 @@ export class SettingsService {
     const connectionChange = [
       "modelProvider",
       "modelCredential",
+      "modelConnection",
+      "imageModel",
       "gatewayApiKey",
       "compatibleEndpoint",
       "plannerModel",
@@ -312,6 +326,15 @@ export class SettingsService {
       throw new Error("Stop active runs before changing model connections.");
     }
     const selectedProvider = ModelProviderSchema.parse(next.modelProvider ?? this.modelProvider());
+    // Validate before touching OS credentials; a rejected setting must not partially rotate a key.
+    if (next.imageModel !== undefined) next.imageModel = ImageModelSchema.nullable().parse(next.imageModel);
+    if (next.modelConnection) {
+      const change = ModelConnectionChangeSchema.parse(next.modelConnection);
+      const disabled = new Set(ModelProviderSchema.array().parse(this.get("disabledModelProviders") ?? []));
+      if (change.enabled) disabled.delete(change.provider); else disabled.add(change.provider);
+      next.disabledModelProviders = [...disabled];
+      delete next.modelConnection;
+    }
     if (next.compatibleEndpoint !== undefined)
       next.compatibleEndpoint = normalizeCompatibleEndpoint(next.compatibleEndpoint);
     if (next.modelCredential) {
@@ -355,7 +378,7 @@ export class SettingsService {
     if (next.agentModelRoutes !== undefined)
       next.agentModelRoutes = AgentModelRoutesSettingSchema.parse(next.agentModelRoutes);
     if (next.gatewayApiKey !== undefined) await this.writeGatewayKey(next.gatewayApiKey);
-    if (connectionChange) this.repo.deleteSetting("modelProbe");
+    if (connectionChange) { this.connectionEpoch++; this.repo.deleteSetting("modelProbe"); }
     for (const [k, v] of Object.entries(next)) {
       if (v === undefined) continue;
       if (k === "gatewayApiKey") continue;
@@ -379,6 +402,7 @@ export class SettingsService {
   }
 
   gatewayKey(): string | undefined {
+    if (!this.connectionEnabled("gateway")) return undefined;
     if (this.savedKey) return this.savedKey;
     if (this.env.AI_GATEWAY_API_KEY) return this.env.AI_GATEWAY_API_KEY;
     if (this.credentialError) throw new Error(this.credentialError);
@@ -479,6 +503,7 @@ export class SettingsService {
   }
 
   model(): ModelClient | null {
+    if (!this.connectionEnabled(this.modelProvider())) return null;
     if (this.modelOverride) return this.modelOverride;
     const provider = this.modelProvider();
     const endpoint = this.compatibleEndpoint();
@@ -516,7 +541,7 @@ export class SettingsService {
       const configured = [
         ...new Set([this.plannerModel(), this.visionModel()].filter((value): value is string => !!value)),
       ].map((id) => ({ id, source: "configured" as const }));
-      if (provider !== "openai-compatible") return { models: configured, source: "configured" };
+      if (provider !== "openai-compatible" || !this.connectionEnabled(provider)) return { models: configured, source: "configured" };
       const endpoint = this.compatibleEndpoint();
       const key = this.selectedKey();
       if (!endpoint || (!key && !isLoopbackCompatibleEndpoint(endpoint)))
@@ -590,6 +615,9 @@ export class SettingsService {
   async probe(
     modelId?: string,
   ): Promise<{ ok: boolean; modelId: string; latencyMs?: number; vision?: boolean; error?: string }> {
+    const epoch = this.connectionEpoch, provider = this.modelProvider();
+    const stale = () => epoch !== this.connectionEpoch || !this.connectionEnabled(provider);
+    const interrupted = () => ({ ok: false, modelId: modelId ?? this.plannerModel(), error: "Connection changed during the test. Review it and test again." });
     const m = this.model();
     const target = modelId ?? this.plannerModel();
     if (!m)
@@ -608,6 +636,7 @@ export class SettingsService {
         // generous budget — reasoning models spend tokens thinking before emitting
         maxOutputTokens: 1024,
       });
+      if (stale()) return interrupted();
       const ok = res.object.ok === true;
       let vision: boolean | undefined;
       try {
@@ -624,6 +653,7 @@ export class SettingsService {
       } catch {
         vision = false;
       }
+      if (stale()) return interrupted();
       const result = { ok, modelId: target, latencyMs: res.durationMs, vision };
       this.repo.setSetting("modelProbe", {
         provider: this.modelProvider(),
@@ -635,6 +665,7 @@ export class SettingsService {
       } satisfies ModelProbeRecord);
       return result;
     } catch (e) {
+      if (stale()) return interrupted();
       this.repo.setSetting("modelProbe", {
         provider: this.modelProvider(),
         modelId: target,
@@ -662,9 +693,28 @@ export class SettingsService {
   }
   private selectedKey(): string | undefined {
     const provider = this.modelProvider();
+    if (!this.connectionEnabled(provider)) return undefined;
     return provider === "gateway"
       ? this.savedKey || this.env.AI_GATEWAY_API_KEY
       : this.directKeys[provider] || this.env[PROVIDER_ENV[provider]];
+  }
+
+  connectionEnabled(provider: ModelProvider): boolean {
+    return !ModelProviderSchema.array().parse(this.get("disabledModelProviders") ?? []).includes(provider);
+  }
+  imageModel(): ImageModel | null {
+    return ImageModelSchema.nullable().parse(this.get("imageModel") ?? null);
+  }
+  private connectionStatuses(): ModelConnectionStatus[] {
+    return ModelProviderSchema.options.map(provider => {
+      const saved = provider === "gateway" ? this.savedKey : this.directKeys[provider];
+      const environment = provider === "gateway" ? this.env.AI_GATEWAY_API_KEY : this.env[PROVIDER_ENV[provider]];
+      return ModelConnectionStatusSchema.parse({ provider, selected: provider === this.modelProvider(),
+        enabled: this.connectionEnabled(provider), credentialSource: saved ? "saved" : environment ? "environment" : "none",
+        credentialUnavailable: !!(provider === "gateway" ? this.credentialError : this.directErrors[provider]),
+        localEndpoint: provider === "openai-compatible" && isLoopbackCompatibleEndpoint(this.compatibleEndpoint()),
+      });
+    });
   }
 
   private gatewayKeyPath(): string {

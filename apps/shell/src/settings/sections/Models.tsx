@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { ModelProvider } from "@aux/contracts";
+import { MODEL_PROVIDER_NAMES, type ModelConnectionStatus, type ModelProvider } from "@aux/contracts";
+import { ModelConnections } from "./ModelConnections";
 import {
   DEFAULT_PLANNER_MODEL_ID,
   MODEL_REGISTRY,
@@ -9,7 +10,7 @@ import {
   type AgentModelRoute,
   type AgentModelRouteChain,
 } from "@aux/contracts/model-registry";
-import { call, toast } from "../../store";
+import { call } from "../../store";
 import { SettingsField as IndexedField, SettingsSection } from "../primitives";
 
 /** what settings.get returns in place of the real key */
@@ -158,13 +159,10 @@ export function ModelsSettings({
   const [savingKey, setSavingKey] = useState(false);
   const [switchingProvider, setSwitchingProvider] = useState(false);
   const provider = (settings.modelProvider as ModelProvider) ?? "gateway";
-  const providerNames: Record<ModelProvider, string> = {
-    gateway: "Vercel AI Gateway",
-    openai: "OpenAI",
-    anthropic: "Anthropic",
-    google: "Google",
-    "openai-compatible": "OpenAI-compatible",
-  };
+  const providerNames = MODEL_PROVIDER_NAMES;
+  const keyInput = useRef<HTMLInputElement>(null),
+    modelInput = useRef<HTMLInputElement>(null);
+  const focusRequest = useRef<{ provider: ModelProvider; field: "model" | "key" } | null>(null);
   const [connectionError, setConnectionError] = useState("");
   const [modelDraft, setModelDraft] = useState(() => plannerModelSelection(settings, provider));
   const [endpointDraft, setEndpointDraft] = useState(String(settings.compatibleEndpoint ?? ""));
@@ -180,9 +178,19 @@ export function ModelsSettings({
   // whenever the fetched record changes.
   useEffect(() => {
     const saved = settings.modelProbe as ProbeResult | undefined;
-    if (saved) setProbe({ ...saved, error: saved.ok ? undefined : "Last connection test failed" });
-  }, [settings.modelProbe]);
+    setProbe(saved ? { ...saved, error: saved.ok ? undefined : "Last connection test failed" } : null);
+  }, [settings.modelProbe, provider]);
   const [probing, setProbing] = useState(false);
+  const connection = (settings.modelConnections as ModelConnectionStatus[] | undefined)?.find(
+    (item) => item.provider === provider,
+  );
+  const connected = connection?.enabled !== false;
+  useEffect(() => {
+    if (switchingProvider || focusRequest.current?.provider !== provider) return;
+    const field = focusRequest.current.field;
+    focusRequest.current = null;
+    (field === "key" ? keyInput.current : modelInput.current)?.focus();
+  }, [provider, switchingProvider]);
   useEffect(() => {
     if (!active) return;
     const sequence = ++modelsSequence.current;
@@ -202,6 +210,10 @@ export function ModelsSettings({
   }, [active, provider, settings.compatibleEndpoint, settings.modelApiKey]);
 
   useEffect(() => {
+    setKey("");
+    probeSequence.current++;
+  }, [provider]);
+  useEffect(() => {
     setModelDraft(plannerModelSelection(settings, provider));
   }, [settings.plannerModel, provider]);
   useEffect(() => {
@@ -216,9 +228,14 @@ export function ModelsSettings({
 
   const set = async (patch: Record<string, unknown>) => {
     if (
-      ["gatewayApiKey", "plannerModel", "modelProvider", "modelCredential", "compatibleEndpoint"].some(
-        (key) => key in patch,
-      )
+      [
+        "gatewayApiKey",
+        "plannerModel",
+        "modelProvider",
+        "modelCredential",
+        "modelConnection",
+        "compatibleEndpoint",
+      ].some((key) => key in patch)
     ) {
       probeSequence.current++;
       setProbe(null);
@@ -226,17 +243,45 @@ export function ModelsSettings({
     return onSave(patch);
   };
 
+  const editConnection = async (target: ModelProvider, focus: "model" | "key") => {
+    if (target === provider) {
+      if (focus === "key") setKey("");
+      (focus === "key" ? keyInput.current : modelInput.current)?.focus();
+      return;
+    }
+    setSwitchingProvider(true);
+    try {
+      if (!(await set({ modelProvider: target })))
+        throw new Error(
+          "Could not select this provider. Stop active tasks or resolve the Settings error first.",
+        );
+      setKey("");
+      setModels([]);
+      setConnectionError("");
+      focusRequest.current = { provider: target, field: focus };
+    } finally {
+      setSwitchingProvider(false);
+    }
+  };
+
   const saveKey = async () => {
     if (savingKey || !key.trim() || key === KEY_MASK) return;
     setSavingKey(true);
     setConnectionError("");
-    const ok = await set({ modelCredential: { provider, key: key.trim() } });
-    if (ok) setKey("");
-    else
+    try {
+      const ok = await set({ modelCredential: { provider, key: key.trim() } });
+      if (ok) setKey("");
+      else
+        setConnectionError(
+          "The key was not saved. Your entry is still here; resolve the storage error and try again.",
+        );
+    } catch {
       setConnectionError(
         "The key was not saved. Your entry is still here; resolve the storage error and try again.",
       );
-    setSavingKey(false);
+    } finally {
+      setSavingKey(false);
+    }
   };
 
   const runProbe = async () => {
@@ -304,19 +349,27 @@ export function ModelsSettings({
         return false;
       }
     })();
-  const connectionReady = hasKey || localCompatible;
+  const connectionReady = connected && (hasKey || localCompatible);
 
   return (
     <SettingsSection name="Models" title="AI model" hidden={!active}>
       <output className="field" data-block>
-        {probe?.ok
-          ? `${providerNames[provider]} is ready.`
-          : localCompatible
-            ? "Local model endpoint configured. Save a model and test the connection before your first run."
-            : hasKey
-              ? `${providerNames[provider]} key configured. Save a model and test the connection before your first run.`
-              : "Agent setup needed. Browsing, saved tasks, and evidence review are available without a model."}
+        {!connected
+          ? `${providerNames[provider]} is disconnected. Reconnect explicitly before making requests.`
+          : probe?.ok
+            ? `${providerNames[provider]} is ready.`
+            : localCompatible
+              ? "Local model endpoint configured. Save a model and test the connection before your first run."
+              : hasKey
+                ? `${providerNames[provider]} key configured. Save a model and test the connection before your first run.`
+                : "Agent setup needed. Browsing, saved tasks, and evidence review are available without a model."}
       </output>
+      <ModelConnections
+        settings={settings}
+        disabled={savingKey || probing || switchingProvider}
+        onSave={set}
+        onEdit={editConnection}
+      />
       <IndexedField
         label="Model provider"
         hint="Switching providers changes where task context and screenshots are sent. Each provider keeps its own key and model choices; there is no automatic fallback to another provider."
@@ -411,6 +464,7 @@ export function ModelsSettings({
         label={`${providerNames[provider]} API key`}
         hint={
           <>
+            {!connected && <>This provider is disconnected. Saving a key does not reconnect it. </>}
             {String(
               settings.modelCredentialError ??
                 (provider === "gateway" ? settings.gatewayCredentialError : undefined) ??
@@ -427,6 +481,7 @@ export function ModelsSettings({
       >
         <div className="row">
           <input
+            ref={keyInput}
             type="password"
             aria-label="Provider API key"
             autoComplete="off"
@@ -459,25 +514,6 @@ export function ModelsSettings({
           >
             {savingKey ? "Saving…" : "Save key"}
           </button>
-          {settings.modelCredentialSource !== "environment" &&
-            (hasKey ||
-              !!(
-                settings.modelCredentialError ??
-                (provider === "gateway" ? settings.gatewayCredentialError : undefined)
-              )) && (
-              <button
-                className="btn sm"
-                disabled={savingKey || probing || switchingProvider}
-                title="Remove this provider’s saved key"
-                onClick={() =>
-                  void set({ modelCredential: { provider, key: "" } }).then((ok) => {
-                    if (ok) toast("Saved provider key removed");
-                  })
-                }
-              >
-                Clear
-              </button>
-            )}
         </div>
       </IndexedField>
 
@@ -493,6 +529,7 @@ export function ModelsSettings({
         <div className="row">
           <input
             className="grow"
+            ref={modelInput}
             aria-label="Planner model"
             aria-describedby={contributorSelected ? "contributor-data-use" : undefined}
             list="agent-model-options"

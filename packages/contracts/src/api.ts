@@ -1,3 +1,5 @@
+import { ModelConnectionChangeSchema, ImageModelSchema } from "./model-connections.js";
+export * from "./model-connections.js";
 import { MemoryPastePreviewParams, MemoryPastePreviewSchema, MemoryPasteCommitParams, MemoryPasteStatusParams, MemoryPasteStatusSchema } from "./memory-paste.js";
 export * from "./memory-paste.js";
 import { OnboardingStateSchema, OnboardingUpdateParamsSchema, OnboardingStartParamsSchema } from "./onboarding.js";
@@ -759,6 +761,8 @@ export type AutofillProfile = z.infer<typeof AutofillProfileSchema>;
 export const SettingsSetParams = z.object({
   modelProvider: ModelProviderSchema.optional(),
   modelCredential: ModelCredentialSchema.optional(),
+  modelConnection: ModelConnectionChangeSchema.optional(),
+  imageModel: ImageModelSchema.nullable().optional(),
   compatibleEndpoint: z.string().trim().max(2048).optional(),
   gatewayApiKey: z.string().optional(),
   plannerModel: z.string().optional(),

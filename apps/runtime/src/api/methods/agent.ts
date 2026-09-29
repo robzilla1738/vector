@@ -108,6 +108,14 @@ async function h_agent_web_fetch(ctx: MethodCtx): Promise<unknown> {
 }
 async function h_agent_images_generate(ctx: MethodCtx): Promise<unknown> {
   const { client, decideEgress, params, s } = ctx;
+  const configuredImage = () => {
+    if (Object.values(s.settings.budgetLimits()).some(limit => limit !== undefined))
+      throw new AuxError("permission_denied", "Image generation is unavailable while a run, day or routine spend cap is set because image spend is not yet included in those caps.");
+    const model = s.settings.imageModel();
+    if (!model) throw new AuxError("permission_denied", "Choose an image-generation model in Settings before generating an image.");
+    return model;
+  };
+  const imageModel = configuredImage();
   await decideEgress({
     url: new URL("https://ai-gateway.vercel.sh"),
     action: "agent.images.generate",
@@ -121,12 +129,13 @@ async function h_agent_images_generate(ctx: MethodCtx): Promise<unknown> {
   );
   if (!permitted.ok)
     throw new AuxError("permission_denied", "AI Gateway egress is not granted for image generation.");
+  if (configuredImage() !== imageModel) throw new AuxError("conflict", "The image model changed during approval. Review the request again.");
   const key = s.settings.gatewayKey();
   if (!key)
     throw new AuxError("backend_unavailable", "Connect AI Gateway in Settings before generating an image.");
   const ledger = new SpendLedger();
   try {
-    return await AgentImageTools.withGateway(key, s.artifacts, ledger).generate(params.prompt, params.taskId);
+    return await AgentImageTools.withGateway(key, s.artifacts, ledger, imageModel).generate(params.prompt, params.taskId);
   } finally {
     ledger.close();
   }
