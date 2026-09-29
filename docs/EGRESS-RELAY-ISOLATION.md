@@ -226,3 +226,16 @@ This is one end-to-end outcome: a user can safely continue an authorized task in
 controlled browsing context, with clear session authority and no old-tab fallback.
 It should be integrated as one coherent contract/native/runtime/UI batch, then
 verified once with these focused journeys alongside the necessary 0121 regressions.
+
+### Mandatory native credential producer boundary
+
+A fresh partition must not silently inherit the owning Profile's automatic
+Chromium `PasswordAutofillManager` fill. Disable automatic saved-password fill for
+controlled partitions unless that producer is routed through the same native
+per-document/run fingerprint registration and explicit owner review as Aux's
+`nativeFillSavedPassword`. The current 0121 producer covers only that explicit
+Aux path. Acceptance must seed a saved password in the disposable owner Profile,
+open the matching origin in a controlled partition, prove no automatic fill or
+receiver transmission, then prove the separately reviewed native fill succeeds.
+Keep cookie transfer unavailable in this batch; empty storage and separate sign-in
+are the default and only supported source-state mode.
