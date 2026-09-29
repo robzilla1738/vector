@@ -2846,10 +2846,14 @@ else {
     assert.equal((await rpc("pages.list")).find(item => item.pageId === runPageId)?.controller, "agent",
       "Synthetic agent input must not be mistaken for a physical takeover");
     record("synthetic agent click did not take its own page", { runId, clicks });
-    await until("isolated task page to become visible", async () => {
-      try { await rpc("pages.activate", { pageId: runPageId }); return true; }
-      catch (error) { if (/state changed before this action completed/i.test(String(error))) return null; throw error; }
-    }, 30_000);
+    console.log("In Aux Tasks, open the Physical takeover proof run and choose Open temporary tab. Keep the agent controlling the isolated page; do not use pages.activate or Take control to reveal it.");
+    await until("isolated task page visible through shell without taking control", async () => {
+      try {
+        const current = (await rpc("pages.list")).find(item => item.pageId === runPageId);
+        return current?.controller === "agent" && native("has-name", "Human input") === "true";
+      } catch { return false; }
+    }, 120_000);
+    record("owner opened the exact isolated task page without changing agent control", { runId, runPageId });
     console.log("In the visible Physical takeover fixture, click the Human input field and type a character with the physical keyboard while the agent waits. Do not use pages.takeover RPC. The page should switch to You’re in control. Then use the native toolbar Return control button when prompted.");
     const takenAt = Date.now();
     await until("native physical input to take the agent page", async () =>
