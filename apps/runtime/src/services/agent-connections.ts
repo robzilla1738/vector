@@ -53,7 +53,8 @@ export class AgentConnectionService {
       createdAt: now, expiresAt: value.expiresAt,
     });
     this.repo.db.prepare(`INSERT INTO agent_connections(connection_id,name,client,scope_kind,workspace_id,task_id,session_id,token_hash,created_at,expires_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?)`).run(connection.connectionId, connection.name, connection.client, connection.scope.kind,
+      VALUES(?,?,?,?,?,?,?,?,?,?)`).run(connection.connectionId,
+        this.repo.protectRecordField("agent_connections", [connection.connectionId], "name", connection.name), connection.client, connection.scope.kind,
         connection.scope.workspaceId,
         connection.scope.kind === "task" ? connection.scope.taskId : null,
         connection.scope.kind === "session" ? connection.scope.sessionId : null,
@@ -109,7 +110,8 @@ export class AgentConnectionService {
 
   private record(row: Row): AgentConnection {
     return AgentConnectionSchema.parse({
-      connectionId: row.connection_id, name: row.name, client: row.client,
+      connectionId: row.connection_id,
+      name: this.repo.revealRecordField("agent_connections", [row.connection_id], "name", row.name), client: row.client,
       scope: row.scope_kind === "task"
         ? { kind: "task", workspaceId: row.workspace_id, taskId: row.task_id! }
         : row.scope_kind === "session"

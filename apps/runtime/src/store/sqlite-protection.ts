@@ -65,7 +65,7 @@ export const SENSITIVE_SQLITE_COLUMNS: Readonly<Record<string, readonly string[]
   task_evidence: ["json"],
   criterion_reviews: ["json"],
   criterion_verifications: ["json"],
-  agent_connections: ["name", "client"],
+  agent_connections: ["name"],
   calendar_connections: ["account_key", "label", "scopes"],
   vault_items: ["label", "username", "account_label", "origin"],
   vault_grants: ["origin", "account_label"],
