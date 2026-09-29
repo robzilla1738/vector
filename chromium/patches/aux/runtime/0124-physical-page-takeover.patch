@@ -1,0 +1,49 @@
+diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
+--- a/chrome/browser/ui/aux/shell_events.cc
++++ b/chrome/browser/ui/aux/shell_events.cc
+@@ -55,6 +55,7 @@
+ #include "content/public/common/isolated_world_ids.h"
+ #include "net/base/net_errors.h"
+ #include "crypto/hash.h"
++#include "third_party/blink/public/common/input/web_input_event.h"
+ #include "ui/base/models/image_model.h"
+ #include "ui/message_center/public/cpp/notification.h"
+ #include "ui/message_center/public/cpp/notifier_id.h"
+@@ -162,6 +163,29 @@
+   void DidStartLoading() override { PublishLoading(); }
+   void DidStopLoading() override { PublishLoading(); }
+   void OnAudioStateChanged(bool audible) override { PublishAudio(audible); }
++  void DidGetUserInteraction(const blink::WebInputEvent& event) override {
++    // Agent input enters through the private DevTools broker and carries the
++    // debugger bit. An unmarked interaction on this guest page asks the
++    // runtime to hand control to the person. This observer runs before the
++    // event is dispatched to the renderer.
++    if (!profile_ || profile_->IsOffTheRecord() || page_id_.empty() ||
++        (event.GetModifiers() & blink::WebInputEvent::kFromDebugger))
++      return;
++    const base::TimeTicks now = base::TimeTicks::Now();
++    if (!last_physical_takeover_.is_null() &&
++        now - last_physical_takeover_ < base::Milliseconds(100))
++      return;
++    auto* runtime = AuxRuntimeHost::ForProfile(profile_);
++    if (!runtime)
++      return;
++    base::DictValue payload;
++    payload.Set("pageId", page_id_);
++    if (auto json = base::WriteJson(payload)) {
++      last_physical_takeover_ = now;
++      runtime->CallInternal("view.takeover", std::move(*json),
++                            base::BindOnce([](AuxRuntimeHost::Response) {}));
++    }
++  }
+   void PrimaryMainFrameRenderProcessGone(base::TerminationStatus status) override {
+     if (status == base::TERMINATION_STATUS_PROCESS_CRASHED ||
+         status == base::TERMINATION_STATUS_ABNORMAL_TERMINATION ||
+@@ -374,6 +398,7 @@
+ 
+   raw_ptr<Profile> profile_;
+   std::string page_id_;
++  base::TimeTicks last_physical_takeover_;
+   bool auth_prompt_ = false;
+   int navigation_generation_ = 0;
+   std::string page_change_url_;
