@@ -282,7 +282,7 @@ export async function stageRecoveryPackage(repo: Repo, native: NativeBridge, dat
   if (!repo.columnCipher || !profileId) throw new Error("Recovery needs a protected destination Profile.");
   if (repo.db.prepare("SELECT 1 FROM workspaces LIMIT 1").get() || repo.db.prepare("SELECT 1 FROM runs LIMIT 1").get() ||
     repo.db.prepare("SELECT 1 FROM artifacts LIMIT 1").get() || repo.db.prepare("SELECT 1 FROM content_memory LIMIT 1").get())
-    throw new Error("Use a new, empty disposable Profile for recovery.");
+    throw new Error("Use a new, empty Profile for recovery.");
   for (const name of ["pending-runtime-restore.json", "pending-runtime-restore.sqlite",
     "pending-runtime-restore-artifacts", "pending-runtime-restore-space-memory"]) {
     try { await lstat(join(dataDir, name)); throw new Error("Finish or cancel the existing restore first."); }

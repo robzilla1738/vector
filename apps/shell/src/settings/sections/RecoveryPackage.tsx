@@ -53,7 +53,7 @@ export function RecoveryPackage({ pending, onStaged }: { pending: boolean; onSta
         {" "}{review.manifest.pageMemoryCount} remembered pages · {review.manifest.spaceMemory.length} Spaces with memory.
         SQLite tables: {review.manifest.sqliteTables.length} protected plans.</p>
       <p>Excluded: {review.manifest.excluded.join("; ")}.</p>
-      <p>Recovery replaces data in a new, empty disposable Profile on restart. It uses that Profile's own OS keys.
+      <p>Recovery replaces data in a new, empty Profile on restart. It uses that Profile's own OS keys.
         Existing Profiles and their credentials are not merged.</p>
       <button className="btn sm danger" disabled={busy || pending}
         onClick={() => void run(async () => {

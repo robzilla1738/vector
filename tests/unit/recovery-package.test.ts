@@ -148,7 +148,7 @@ it("refuses a missing protected factor, a missing artifact and a nonempty destin
   const review = await inspectRecoveryPackage(exported.path, phrase, f.targetId);
   new TaskService(f.target, new EventBus(f.target)).createWorkspace("Existing destination data");
   await expect(stageRecoveryPackage(f.target, f.targetNative.bridge, f.targetDir, f.targetId,
-    exported.path, phrase, review.sha256, review.reviewToken)).rejects.toThrow(/empty disposable Profile/);
+    exported.path, phrase, review.sha256, review.reviewToken)).rejects.toThrow(/empty Profile/);
   expect(f.target.listWorkspaces()[0]?.name).toBe("Existing destination data");
   expect(existsSync(join(f.targetDir, "pending-runtime-restore.json"))).toBe(false);
   f.target.close(); f.source.close();

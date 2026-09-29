@@ -10,7 +10,8 @@ export function MemoryRecoveryNotice({ possible = false }: { possible?: boolean 
   return <div className="field">
     <p>{possible ? "If this change removed saved Memory, older Aux-managed backups can no longer restore." :
       "Older Aux-managed backups can no longer restore after this Memory removal."} Create a fresh local backup for the current state.</p>
-    <p className="hint">Previously copied offline exports cannot be revoked. Phrase-based Memory export is not available in this version.</p>
+    <p className="hint">Previously copied offline recovery packages and their phrases remain usable after Forget.
+      For a current encrypted copy, open General → Protected recovery package and create a new package.</p>
     <button className="btn sm" disabled={busy} onClick={() => {
       setBusy(true); setMessage("");
       void bridge.exportRuntimeBackup().then(result => {

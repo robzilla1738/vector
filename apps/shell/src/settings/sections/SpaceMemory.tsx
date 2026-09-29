@@ -29,7 +29,7 @@ export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
   ])];
 
   async function forget(request: { claimId?: string; sourceRunId?: string; all?: true }, description: string) {
-    if (!await confirm({ title: "Forget Space memory?", description: `${description} Older Aux-managed backups will no longer restore. Copied offline exports cannot be revoked; phrase-based Memory export is not available in this version.`,
+    if (!await confirm({ title: "Forget Space memory?", description: `${description} Older Aux-managed backups will no longer restore. Copied offline recovery packages and their phrases remain usable; create a fresh package in General after Forget.`,
       confirmLabel: "Forget permanently", cancelLabel: "Keep memory", danger: true })) return;
     await act(async () => {
       const result = await call("memory.pipeline.forget", { workspaceId, ...request });
