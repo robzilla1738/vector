@@ -971,6 +971,8 @@ else {
     assert.equal(runtimeCapabilities.featureStages?.spaces, "preview", "Unrequalified candidate stages must remain preview");
   } else assert.equal(runtimeCapabilities.featureStages?.spaces, "on",
     "The runtime must derive qualified Spaces from the native method manifest");
+  if (tidyReceiptJourney) assert.equal(runtimeCapabilities.featureStages?.aiTidy, "on",
+    "Disposable native Tidy acceptance must reach the runtime before UI review");
   if (settingsContentBlockingJourney || siteBlockingExceptionJourney || siteBlockingPrivateJourney || settingsCustomListJourney) assert.equal(runtimeCapabilities.featureStages?.contentBlocking, "on", "Native content blocking must be qualified in the runtime capability manifest");
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
   record("Profile runtime is authenticated and raw debugging is disabled", { sessions: connection.sessions?.length });
