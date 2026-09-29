@@ -8,7 +8,8 @@ import { inspectMcpBundle } from "./mcp-bundle.js";
 
 type ServerRow = { body: string; state: OutboundMcpServer["state"] };
 type GrantRow = { body: string; revoked_at: number | null; consumed_at: number | null };
-export type McpTransportProvider = (server: OutboundMcpServer, signal: AbortSignal) => Promise<Transport>;
+type BundleRow = { sha256: string; archive_base64: string };
+export type McpTransportProvider = (server: OutboundMcpServer, signal: AbortSignal, bundleBytes?: Buffer) => Promise<Transport>;
 
 /** Reviewed MCP sources, grants, calls, and revocation. */
 export class OutboundMcpService {
@@ -27,17 +28,29 @@ export class OutboundMcpService {
       : input.source.kind === "bundle"
         ? { ...input.source, path: await realpath(input.source.path) }
         : input.source;
+    let bundleBytes: Buffer | undefined;
     if (source.kind === "bundle") {
       const inspected = await this.inspectBundle(source.path);
       if (inspected.sha256 !== source.sha256 || inspected.format !== source.format)
+        throw new AuxError("conflict", "Bundle contents changed. Inspect it again.");
+      bundleBytes = await readFile(source.path);
+      if (bundleBytes.length > 20_000_000 || createHash("sha256").update(bundleBytes).digest("hex") !== source.sha256)
         throw new AuxError("conflict", "Bundle contents changed. Inspect it again.");
     }
     const now = Date.now();
     const server = OutboundMcpServerSchema.parse({ ...input, source, serverId: randomUUID(), state: "pending",
       sourceDigest: createHash("sha256").update(JSON.stringify(source)).digest("hex"), createdAt: now, updatedAt: now });
-    this.repo.db.prepare("INSERT INTO outbound_mcp_servers(server_id,workspace_id,state,body,created_at,updated_at) VALUES(?,?,?,?,?,?)")
-      .run(server.serverId, server.workspaceId, server.state,
-        this.repo.protectRecordField("outbound_mcp_servers", [server.serverId], "body", JSON.stringify(server)), now, now);
+    this.repo.db.exec("BEGIN IMMEDIATE");
+    try {
+      this.repo.db.prepare("INSERT INTO outbound_mcp_servers(server_id,workspace_id,state,body,created_at,updated_at) VALUES(?,?,?,?,?,?)")
+        .run(server.serverId, server.workspaceId, server.state,
+          this.repo.protectRecordField("outbound_mcp_servers", [server.serverId], "body", JSON.stringify(server)), now, now);
+      if (bundleBytes && source.kind === "bundle")
+        this.repo.db.prepare("INSERT INTO outbound_mcp_bundles(server_id,sha256,archive_base64,installed_at) VALUES(?,?,?,?)")
+          .run(server.serverId, source.sha256, this.repo.protectRecordField("outbound_mcp_bundles", [server.serverId],
+            "archive_base64", bundleBytes.toString("base64")), now);
+      this.repo.db.exec("COMMIT");
+    } catch (error) { this.repo.db.exec("ROLLBACK"); throw error; }
     return server;
   }
 
@@ -69,6 +82,7 @@ export class OutboundMcpService {
     const server = this.get(serverId);
     if (server.state !== "pending" || server.sourceDigest !== expectedDigest)
       throw new AuxError("conflict", "Server source changed. Review it before approval.");
+    if (server.source.kind === "bundle") this.installedBundle(server);
     this.repo.db.prepare("UPDATE outbound_mcp_servers SET state='approved',updated_at=? WHERE server_id=? AND state='pending'")
       .run(Date.now(), serverId);
     return this.get(serverId);
@@ -81,7 +95,24 @@ export class OutboundMcpService {
     this.repo.db.prepare("UPDATE outbound_mcp_grants SET revoked_at=? WHERE server_id=? AND revoked_at IS NULL")
       .run(Date.now(), serverId);
     this.cancelActive(serverId);
+    this.repo.db.prepare("DELETE FROM outbound_mcp_bundles WHERE server_id=?").run(serverId);
     return this.get(serverId);
+  }
+
+  private installedBundle(server: OutboundMcpServer): Buffer {
+    if (server.source.kind !== "bundle") throw new AuxError("invalid_params", "Server is not a bundle.");
+    const row = this.repo.db.prepare("SELECT sha256,archive_base64 FROM outbound_mcp_bundles WHERE server_id=?")
+      .get(server.serverId) as BundleRow | undefined;
+    if (!row || row.sha256 !== server.source.sha256 || row.archive_base64.length > 40_000_000)
+      throw new AuxError("conflict", "Installed MCP bundle is missing or changed. Review a new source.");
+    const encoded = this.repo.revealRecordField("outbound_mcp_bundles", [server.serverId], "archive_base64", row.archive_base64);
+    if (encoded.length > 26_666_668 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded))
+      throw new AuxError("conflict", "Installed MCP bundle is invalid. Review a new source.");
+    const bytes = Buffer.from(encoded, "base64");
+    if (bytes.length > 20_000_000 || bytes.toString("base64") !== encoded ||
+      createHash("sha256").update(bytes).digest("hex") !== server.source.sha256)
+      throw new AuxError("conflict", "Installed MCP bundle changed. Review a new source.");
+    return bytes;
   }
 
   cancelActive(serverId: string): void {
@@ -142,7 +173,11 @@ export class OutboundMcpService {
     let transport: Transport | undefined;
     let client: Client | undefined;
     try {
-      transport = await this.transportProvider(server, controller.signal);
+      const current = this.get(server.serverId);
+      if (current.state !== "approved" || current.sourceDigest !== server.sourceDigest)
+        throw new AuxError("permission_denied", "MCP server approval was revoked.");
+      transport = await this.transportProvider(current, controller.signal,
+        current.source.kind === "bundle" ? this.installedBundle(current) : undefined);
       if (controller.signal.aborted || this.get(server.serverId).state !== "approved")
         throw new AuxError("permission_denied", "MCP server approval was revoked.");
       client = new Client({ name: "aux", version: "0.1.0" });

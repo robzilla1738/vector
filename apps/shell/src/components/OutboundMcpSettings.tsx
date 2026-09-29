@@ -100,7 +100,7 @@ function ServerSource({ server }: { server: OutboundMcpServer }) {
       {source.kind === "bundle" && (
         <>
           <div>
-            <span className="mcp-source-label">Bundle</span>
+            <span className="mcp-source-label">Original bundle</span>
             <div className="mcp-source-value">
               <code>{source.path}</code>
             </div>
@@ -110,7 +110,7 @@ function ServerSource({ server }: { server: OutboundMcpServer }) {
             <div className="mcp-source-value">{source.format.toUpperCase()}</div>
           </div>
           <div>
-            <span className="mcp-source-label">File SHA-256</span>
+            <span className="mcp-source-label">Installed copy SHA-256</span>
             <div className="mcp-source-value">
               <code>{source.sha256}</code>
             </div>
@@ -322,7 +322,11 @@ export function OutboundMcpSettings() {
       await refreshServers(server.serverId);
       setName("");
       setBundle(null);
-      setMessage("Server saved for review. Approve its source, then grant individual tools.");
+      setMessage(
+        source.kind === "bundle"
+          ? "Bundle installed as an immutable reviewed copy. Approve its digest, then grant individual tools."
+          : "Server saved for review. Approve its source, then grant individual tools.",
+      );
     });
   };
   const inspectBundle = async () => {
@@ -480,7 +484,7 @@ export function OutboundMcpSettings() {
                 {bundle && (
                   <div className="mcp-source-details">
                     <div>
-                      <span className="mcp-source-label">Bundle</span>
+                      <span className="mcp-source-label">Original bundle</span>
                       <div className="mcp-source-value">
                         <code>{bundle.path}</code>
                       </div>

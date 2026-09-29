@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, readFile, realpath, rm, stat } from "node:fs/promises";
+import { access, realpath, rm, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { isIP } from "node:net";
 import { dirname, isAbsolute, relative, sep } from "node:path";
@@ -75,7 +75,7 @@ export function createMcpTransportProvider(
   oauth?: { token(server: OutboundMcpServer & { source: { kind: "remote"; url: string; auth: "oauth" } }): Promise<string> },
   networkFetch: typeof fetch = fetch,
 ): McpTransportProvider {
-  return async (server: OutboundMcpServer, signal: AbortSignal): Promise<Transport> => {
+  return async (server: OutboundMcpServer, signal: AbortSignal, bundleBytes?: Buffer): Promise<Transport> => {
     if (signal.aborted) throw new AuxError("cancelled", "MCP connection was cancelled.");
     if (server.state !== "approved" || digest(server.source) !== server.sourceDigest)
       throw new AuxError("permission_denied", "MCP server source is not approved.");
@@ -109,13 +109,10 @@ export function createMcpTransportProvider(
       return transport;
     }
     if (server.source.kind === "local") return sandboxedStdio(server.source, signal);
-    const info = await stat(server.source.path);
-    if (!info.isFile() || info.size > 20_000_000)
-      throw new AuxError("conflict", "MCP bundle contents changed since approval.");
-    const bytes = await readFile(server.source.path);
-    if (createHash("sha256").update(bytes).digest("hex") !== server.source.sha256)
-      throw new AuxError("conflict", "MCP bundle contents changed since approval.");
-    const extracted = await extractMcpBundle(bytes);
+    if (!bundleBytes || bundleBytes.length > 20_000_000 ||
+      createHash("sha256").update(bundleBytes).digest("hex") !== server.source.sha256)
+      throw new AuxError("conflict", "Installed MCP bundle is missing or changed since approval.");
+    const extracted = await extractMcpBundle(bundleBytes);
     try {
       const transport = await sandboxedStdio({ command: process.execPath,
         args: extracted.args, cwd: extracted.directory }, signal);

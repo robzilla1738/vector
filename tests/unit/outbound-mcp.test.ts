@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { EventBus, openDb, OutboundMcpService, Repo, TaskService, type McpTransportProvider } from "@aux/runtime";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import JSZip from "jszip";
@@ -64,6 +64,41 @@ it("inspects a bundle as inert data and pins its exact bytes", async () => {
     await expect(f.service.register({ workspaceId: f.workspace.workspaceId, name: "changed",
       source: { kind: "bundle", path: bundle, sha256: "0".repeat(64), format: "mcpb" } })).rejects.toThrow(/changed/);
     expect((f.repo.db.prepare("SELECT count(*) AS n FROM outbound_mcp_servers").get() as { n: number }).n).toBe(1);
+  } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
+it("uses the installed archive after the original is deleted and refuses tampered copies", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-mcp-installed-"));
+  const seen: Buffer[] = [];
+  const f = fixture();
+  try {
+    const zip = new JSZip();
+    zip.file("manifest.json", JSON.stringify({ name: "Installed", server: { type: "node", entry_point: "index.js" } }));
+    zip.file("index.js", "process.stdin.resume();");
+    const bundle = join(directory, "installed.dxt");
+    const bytes = await zip.generateAsync({ type: "nodebuffer" });
+    writeFileSync(bundle, bytes);
+    const server = await f.service.register({ workspaceId: f.workspace.workspaceId, name: "installed",
+      source: { kind: "bundle", path: bundle, sha256: createHash("sha256").update(bytes).digest("hex"), format: "dxt" } });
+    expect((f.repo.db.prepare("SELECT archive_base64 FROM outbound_mcp_bundles WHERE server_id=?")
+      .get(server.serverId) as { archive_base64: string }).archive_base64).not.toContain("manifest.json");
+    f.repo.db.prepare("UPDATE outbound_mcp_bundles SET sha256=? WHERE server_id=?").run("0".repeat(64), server.serverId);
+    expect(() => f.service.approve(server.serverId, server.sourceDigest)).toThrow(/missing or changed/);
+    f.repo.db.prepare("UPDATE outbound_mcp_bundles SET sha256=? WHERE server_id=?")
+      .run(server.source.kind === "bundle" ? server.source.sha256 : "", server.serverId);
+    unlinkSync(bundle);
+    const restarted = new OutboundMcpService(f.repo, async (_server, _signal, installed) => {
+      if (installed) seen.push(installed);
+      return fakeTransport([]);
+    });
+    restarted.approve(server.serverId, server.sourceDigest);
+    expect(await restarted.listTools(server.serverId)).toMatchObject([{ name: "read" }]);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.equals(bytes)).toBe(true);
+    f.repo.db.prepare("UPDATE outbound_mcp_bundles SET sha256=? WHERE server_id=?").run("0".repeat(64), server.serverId);
+    await expect(restarted.listTools(server.serverId)).rejects.toThrow(/missing or changed/);
+    restarted.revoke(server.serverId);
+    expect(f.repo.db.prepare("SELECT 1 FROM outbound_mcp_bundles WHERE server_id=?").get(server.serverId)).toBeUndefined();
   } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 
