@@ -599,6 +599,36 @@ async function settle(repo: Repo, runId: string) {
 }
 
 describe("runToolLoop (S5 host integration)", () => {
+  it("interrupts a model turn for takeover and observes again before resuming", async () => {
+    const model = new MockModelClient().scriptToolSteps([{ text: "after takeover" }]);
+    const nextStep = model.toolCallStep.bind(model);
+    let started!: () => void;
+    const pending = new Promise<void>(resolve => { started = resolve; });
+    let calls = 0;
+    model.toolCallStep = async opts => {
+      if (++calls === 1) {
+        started();
+        await new Promise<void>((_resolve, reject) => (opts as typeof opts & { signal?: AbortSignal }).signal?.addEventListener("abort", () =>
+          reject(new AuxError("cancelled", "takeover interrupted this turn")), { once: true }));
+        throw new Error("unreachable");
+      }
+      return nextStep(opts);
+    };
+    const h = coordinatorHarness(model);
+    const run = await h.coordinator.start({ goal: "read after owner", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    await pending;
+    h.coordinator.pause(run.runId);
+    h.coordinator.interruptForTakeover(run.runId);
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(h.repo.getRun(run.runId)?.status).toBe("paused");
+    h.coordinator.resume(run.runId);
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "after takeover" });
+    expect(h.pages.observe).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("fresh page snapshot after takeover");
+  });
+
   it("gives a goal program visible body text and headings without browser-title or element duplicates", async () => {
     const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{ toolCallId: "g1", toolName: "goal_program", input: {
       code: 'var s=snapshot(); if(s.headings[0]!=="Record 15 — Alpha project") throw new Error("wrong heading"); if(s.bodyText.match(/Priya Patel/g).length!==1) throw new Error("duplicated owner"); submitResult(s.headings[0],[{observationId:s.observationId,quote:s.headings[0]}])',

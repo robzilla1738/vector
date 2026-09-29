@@ -34,6 +34,7 @@ export interface RunControl {
   abort: AbortController;
   paused: boolean;
   dispatchAbort?: AbortController;
+  takeoverInterrupted?: boolean;
   interruptPlanning?: () => void;
   deadlineHit?: boolean;
   deadlineTimer?: ReturnType<typeof setTimeout>;
@@ -260,6 +261,17 @@ export class RunCoordinator {
       this.setStatus(runId, "paused", "Paused");
     }
     return this.get(runId);
+  }
+
+  /** A physical takeover fences a live dispatch before the owner uses the page. */
+  interruptForTakeover(runId: string): void {
+    const c = this.controls.get(runId);
+    if (!c || c.abort.signal.aborted) return;
+    c.paused = true;
+    c.takeoverInterrupted = true;
+    c.interruptPlanning?.();
+    c.dispatchAbort?.abort();
+    this.deps.browserEgress?.suspendRun(runId);
   }
 
   resume(runId: string): Run {

@@ -643,6 +643,7 @@ export async function handlePlannerFailure(
     if (partial.steps.length) s.stepsRun += partial.steps.length;
   }
   if (s.self.durable.unresolved(s.runId).length) return "continue";
+  if (s.c.paused && !s.c.abort.signal.aborted) return "continue";
   if (s.c.abort.signal.aborted) throw e;
   const failure = classifyModelFailure(e);
   if (TRANSIENT_FAILURES.has(failure.category) && (s.transientRetries ?? 0) < TRANSIENT_RETRY_LIMIT) {

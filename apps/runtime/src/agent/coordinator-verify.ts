@@ -371,7 +371,7 @@ export interface CoordinatorLoopHost {
   suspensions: import("../safety/suspensions.js").SuspensionStore;
   skills: CompiledSkill[];
   unresolvedByRun: Map<string, string[]>;
-  controls: Map<string, { abort: AbortController; paused: boolean; dispatchAbort?: AbortController; interruptPlanning?: () => void; deadlineHit?: boolean; answerWaiter?: { resolve: (answer: string) => void }; span?: { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void } }>;
+  controls: Map<string, { abort: AbortController; paused: boolean; dispatchAbort?: AbortController; takeoverInterrupted?: boolean; interruptPlanning?: () => void; deadlineHit?: boolean; answerWaiter?: { resolve: (answer: string) => void }; span?: { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void } }>;
   get(runId: string): Run;
   setStatus(runId: string, status: Run["status"], message?: string): void;
   persistCheckpoint(run: Run): void;

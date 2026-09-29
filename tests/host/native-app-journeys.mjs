@@ -120,6 +120,7 @@ const agentConnectionsJourney = process.argv.includes("--agent-connections");
 const outboundMcpLocalJourney = process.argv.includes("--outbound-mcp-local");
 const outboundMcpSettingsJourney = process.argv.includes("--outbound-mcp-settings");
 const outboundMcpBundleSettingsJourney = process.argv.includes("--outbound-mcp-bundle-settings");
+const physicalTakeoverJourney = process.argv.includes("--physical-takeover");
 const goalsUiJourney = process.argv.includes("--goals-ui");
 const goalsThreadUiJourney = process.argv.includes("--goals-thread-ui");
 const goalsStatusUiJourney = process.argv.includes("--goals-status-ui");
@@ -230,7 +231,7 @@ const healthDiagnosticsJourney = process.argv.includes("--health-diagnostics");
 const unpackedExtensionJourney = process.argv.includes("--unpacked-extension");
 const runtimeBackupRestoreJourney = process.argv.includes("--runtime-backup-restore");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -372,7 +373,18 @@ function changedFraction(aPath, bPath, fraction = 0.45) {
 
 try {
   let languageHeader = "";
+  let controlReleased = false;
   fixture = createServer((request, response) => {
+    if (physicalTakeoverJourney && request.url === "/control-ready") {
+      response.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+      response.end(JSON.stringify({ released: controlReleased }));
+      return;
+    }
+    if (physicalTakeoverJourney && request.url === "/control") {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+      response.end(`<!doctype html><title>Physical takeover fixture</title><main style="padding:48px;font:24px system-ui"><h1>Physical takeover fixture</h1><label>Human input <input id="human"></label><button id="act" onclick="fetch('/click')">Agent effect</button><div id="gate"></div></main><script>setInterval(async()=>{if((await(await fetch('/control-ready')).json()).released&&!document.querySelector('#release')){const node=document.createElement('div');node.id='release';node.textContent='Released';document.querySelector('#gate').append(node)}},150)</script>`);
+      return;
+    }
     if (receiptBookmarkUiJourney && request.url === "/bookmark-fixture") {
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
       response.end('<!doctype html><title>Run bookmark fixture</title><main>Disposable bookmark source</main>');
@@ -2699,6 +2711,46 @@ else {
         .get(goal.goalId); } finally { db.close(); }
     }, 600_000);
     record("native Tasks cancels the draft Goal", { goalId: goal.goalId });
+    report.passed = true;
+  } else if (physicalTakeoverJourney) {
+    if (rpcOnly) throw new Error("Physical takeover requires real pointer or key input in the native guest view.");
+    const page = await rpc("pages.open", { url: `${origin}/control`, activate: true });
+    await until("physical takeover fixture to load", async () =>
+      (await rpc("pages.list")).some(item => item.pageId === page.pageId && !item.loading), 60_000);
+    const program = await rpc("programs.save", { name: "Physical takeover proof", siteKey: "127.0.0.1",
+      parameters: [], steps: [
+        { id: randomUUID(), op: "click", target: "css:#act" },
+        { id: randomUUID(), op: "waitFor", condition: { kind: "selector", selector: "#release", state: "visible", timeoutMs: 120_000 } },
+        { id: randomUUID(), op: "click", target: "css:#act" },
+      ] });
+    const { runId } = await rpc("programs.run", { programId: program.programId, pageId: page.pageId });
+    await until("first agent effect while native page remains agent-controlled", async () => {
+      const current = (await rpc("pages.list")).find(item => item.pageId === page.pageId);
+      return clicks === 1 && current?.controller === "agent";
+    }, 60_000);
+    await delay(500);
+    assert.equal((await rpc("pages.list")).find(item => item.pageId === page.pageId)?.controller, "agent",
+      "Synthetic agent input must not be mistaken for a physical takeover");
+    record("synthetic agent click did not take its own page", { runId, clicks });
+    console.log("In the visible Physical takeover fixture, click the Human input field and type a character with the physical keyboard while the agent waits. Do not use pages.takeover RPC. The page should switch to You’re in control. Then use the native toolbar Return control button when prompted.");
+    const takenAt = Date.now();
+    await until("native physical input to take the agent page", async () =>
+      (await rpc("pages.list")).find(item => item.pageId === page.pageId)?.controller === "human", 120_000);
+    const takeoverLatencyMs = Date.now() - takenAt;
+    controlReleased = true;
+    await until("saved program to stop with an inspectable takeover checkpoint", async () => {
+      const { run } = await rpc("runs.get", { runId });
+      return run.status === "interrupted" && run.config?.checkpoint?.planBoundary === "takeover" ? run : null;
+    }, 30_000);
+    await delay(1000);
+    assert.equal(clicks, 1, "No queued agent effect may dispatch after physical takeover");
+    record("physical owner input interrupted the run and fenced its next effect", { runId, clicks, takeoverLatencyMs });
+    await until("owner to return control in the native toolbar", async () =>
+      (await rpc("pages.list")).find(item => item.pageId === page.pageId)?.controller === "none", 120_000);
+    assert.equal((await rpc("runs.get", { runId })).run.status, "interrupted",
+      "Returning a stopped saved program must not replay it");
+    assert.equal(clicks, 1);
+    record("returning the page did not replay the interrupted program", { runId, clicks });
     report.passed = true;
   } else if (outboundMcpBundleSettingsJourney) {
     const space = await until("disposable Personal Space", async () =>

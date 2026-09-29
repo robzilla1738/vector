@@ -1202,8 +1202,36 @@ export class RunService {
     if (!run) throw new AuxError("not_found", `no run ${runId}`);
     if (run.status !== "running" && run.status !== "planning") return run;
     const paused = this.pause(runId);
-    if (paused.status === "paused") this.takeoverPausedRuns.add(runId);
+    if (paused.status === "paused") {
+      this.coordinator.interruptForTakeover(runId);
+      this.takeoverPausedRuns.add(runId);
+      paused.statusMessage = "You took control of a page. Active agent input stopped; return control to continue from a fresh page view.";
+      this.deps.repo.saveRun(paused);
+      this.coordinator.persistCheckpoint(paused);
+      this.deps.events.emit(EventTypes.RunStatus, { runId, status: paused.status, message: paused.statusMessage }, runId);
+      this.deps.events.emit(EventTypes.RunUpdated, { run: paused }, runId);
+    }
     return paused;
+  }
+
+  /** Saved programs cannot safely replay their remaining steps after owner input. */
+  interruptProgramForTakeover(runId: string, pageId: string): Run {
+    const run = this.deps.repo.getRun(runId);
+    if (!run) throw new AuxError("not_found", `no run ${runId}`);
+    if (run.config?.implementation !== "program" || TERMINAL_RUN_STATUSES.has(run.status)) return run;
+    run.status = "interrupted";
+    run.statusMessage = "You took control. This saved program stopped; review its steps before starting it again.";
+    run.endedAt = Date.now();
+    run.config = { ...run.config, checkpoint: {
+      planBoundary: "takeover", recoveryStatus: "interrupted",
+      pageIdentity: { pageIds: run.pageIds, takenPageId: pageId },
+      authorizationScope: run.pageIds,
+      unresolvedEffects: this.coordinator.durable.unresolved(runId).map(intent => intent.id),
+    } };
+    this.deps.repo.saveRun(run);
+    this.deps.events.emit(EventTypes.RunStatus, { runId, status: run.status, message: run.statusMessage }, runId);
+    this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+    return run;
   }
 
   resumeAfterTakeover(runId: string, releasedPageId: string): Run | undefined {
@@ -1249,7 +1277,7 @@ export class RunService {
       .execute(program, { runId: run.runId, allowEval: true })
       .then((res) => {
         const r = this.deps.repo.getRun(run.runId);
-        if (!r || r.status === "cancelled") return;
+        if (!r || TERMINAL_RUN_STATUSES.has(r.status)) return;
         r.status = res.status === "completed" ? "completed" : res.status === "cancelled" ? "cancelled" : "failed";
         r.result = res.extracted;
         r.error = res.error;
@@ -1265,7 +1293,7 @@ export class RunService {
       })
       .catch((e) => {
         const r = this.deps.repo.getRun(run.runId);
-        if (r && r.status !== "cancelled") {
+        if (r && !TERMINAL_RUN_STATUSES.has(r.status)) {
           r.status = "failed";
           r.error = e instanceof Error ? e.message : String(e);
           r.endedAt = Date.now();

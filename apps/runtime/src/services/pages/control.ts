@@ -4,7 +4,7 @@ import type { PageRegistry } from "./registry.js";
 export class ControlAuthority {
   constructor(private pages: PageRegistry) {}
 
-  /** pages with an in-flight program — Playwright input is not a human takeover */
+  /** Execution bookkeeping; only the native producer distinguishes physical from synthetic input. */
   programInflight = new Set<string>();
 
   // ---------- takeover ----------
@@ -13,6 +13,7 @@ export class ControlAuthority {
   async takeover(pageId: string): Promise<PageTarget> {
     const lp = this.pages.live.get(pageId);
     if (!lp) throw new AuxError("not_found", `no page ${pageId}`);
+    if (lp.target.controller === "human") return lp.target;
     lp.target.controller = "human";
     lp.target.controllerEpoch++;
     this.pages.persist(lp);
@@ -24,6 +25,8 @@ export class ControlAuthority {
   async resume(pageId: string): Promise<PageTarget> {
     const lp = this.pages.live.get(pageId);
     if (!lp) throw new AuxError("not_found", `no page ${pageId}`);
+    if (lp.target.controller !== "human")
+      throw new AuxError("conflict", "This page is no longer held by the person. Refresh before returning control.");
     lp.target.controller = "none";
     lp.target.controllerEpoch++;
     this.pages.persist(lp);
@@ -35,7 +38,8 @@ export class ControlAuthority {
   onNativeTakeover(pageId: string) {
     const lp = this.pages.live.get(pageId);
     if (!lp) return;
-    if (this.programInflight.has(pageId)) return;
+    // The native producer must authenticate physical pointer/key input. An
+    // in-flight program is precisely when the epoch fence matters most.
     // Only agent/external-controlled pages hand control to the human —
     // ordinary browsing must not pin the page as human-owned forever.
     if (lp.target.controller === "agent" || lp.target.controller === "external") {

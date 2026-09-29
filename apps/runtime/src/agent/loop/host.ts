@@ -132,7 +132,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   let blockedOnLedger = false;
   let blockedOnRepl = false;
 
-  const signal = c.dispatchAbort ? AbortSignal.any([c.abort.signal, c.dispatchAbort.signal]) : c.abort.signal;
+  c.dispatchAbort = new AbortController();
+  let signal = AbortSignal.any([c.abort.signal, c.dispatchAbort.signal]);
   const steerPending = () =>
     c.paused || (self.deps.repo.getRun(runId)?.config?.messageRevision ?? 0) !== applied;
 
@@ -811,7 +812,39 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     let hasResume = false;
     while (true) {
       await self.waitIfPaused(c, runId);
-      if (signal.aborted) return;
+      if (c.abort.signal.aborted) return;
+      if (signal.aborted) {
+        // The owner returned a held page. The old tool/model turn is fenced;
+        // the next turn must inspect live state before choosing another act.
+        c.dispatchAbort = new AbortController();
+        signal = AbortSignal.any([c.abort.signal, c.dispatchAbort.signal]);
+        const takeover = c.takeoverInterrupted === true;
+        c.takeoverInterrupted = false;
+        lastObs.clear();
+        hasResume = false;
+        if (takeover) {
+          if (!activePageId) {
+            self.finish(runId, "interrupted", undefined, "The returned page is unavailable for a fresh observation.");
+            return;
+          }
+          let fresh: ReturnType<typeof recordObs>;
+          try { fresh = recordObs(await observePage(activePageId, {})); }
+          catch {
+            self.finish(runId, "interrupted", undefined, "The returned page could not be observed safely.");
+            return;
+          }
+          transcript.append(runId, [{ role: "user", content:
+            `A person took control of the page and has returned it. This is a fresh page snapshot after takeover:\n${fresh.text}\nInspect the durable write ledger; do not retry an uncertain effect.` }]);
+        }
+        else {
+          const latest = self.get(runId);
+          applied = latest.config?.messageRevision ?? applied;
+          const steers = self.deps.repo.listRunSteers(runId).map(message => message.text);
+          const fresh = steers.slice(steerCursor);
+          steerCursor = steers.length;
+          if (fresh.length) transcript.append(runId, [steerMessage(fresh)]);
+        }
+      }
       // A restart may find a durable parked tool call while the old host's
       // in-memory answer waiter is gone. Recreate its typed suspension and
       // wait for a fresh answer; never send the unanswered call back to the
@@ -846,10 +879,18 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         self.finish(runId, "failed", undefined, "model call budget exhausted");
         return;
       }
-      const outcome: AgentLoopOutcome = hasResume
-        ? await resumeAgentLoop(makeOpts(), resumeAnswer)
-        : await runAgentLoop(makeOpts());
+      let outcome: AgentLoopOutcome;
+      try {
+        outcome = hasResume
+          ? await resumeAgentLoop(makeOpts(), resumeAnswer)
+          : await runAgentLoop(makeOpts());
+      } catch (error) {
+        if (signal.aborted && !c.abort.signal.aborted) continue;
+        throw error;
+      }
       hasResume = false;
+
+      if ((c.paused || signal.aborted) && !c.abort.signal.aborted) continue;
 
       if (outcome.kind === "done") {
         if (replPool.hasOpen(runId)) {

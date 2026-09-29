@@ -186,6 +186,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
         if (hasNewSteer(s) && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
         if (next === "return") return;
       } catch (error) {
+        if (c.paused && !c.abort.signal.aborted && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
         if (hasNewSteer(s) && !c.abort.signal.aborted && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
         throw error;
       }

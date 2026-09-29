@@ -618,6 +618,58 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     h.runs.cancel(run.runId);
   });
 
+  it("persists a takeover checkpoint and aborts a live planner before resuming", async () => {
+    let started!: () => void;
+    const planning = new Promise<void>(resolve => { started = resolve; });
+    let aborted = 0;
+    const model: ModelClient = {
+      generateStructured: async opts => {
+        started();
+        await new Promise<void>((_resolve, reject) => opts.signal?.addEventListener("abort", () => {
+          aborted++;
+          reject(new Error("takeover stopped planner"));
+        }, { once: true }));
+        throw new Error("unreachable");
+      },
+      generateText: async () => ({ text: "", durationMs: 0 }),
+      listModels: async () => [],
+    };
+    const h = harness({ model });
+    const page = await h.pages.open({ url: "https://shared.test/record", background: false, ownedByRuntime: false });
+    const run = await h.runs.start({ goal: "Read", pageIds: [page.pageId] });
+    await planning;
+    page.controller = "human";
+    handlePageTakeover(page.pageId, "human", h.repo, h.runs);
+    await sleep(20);
+    const held = h.repo.getRun(run.runId)!;
+    expect(held.status).toBe("paused");
+    expect(held.statusMessage).toMatch(/Active agent input stopped/);
+    expect(held.config?.checkpoint).toMatchObject({ planBoundary: "paused",
+      recoveryStatus: "paused", pageIdentity: { pageIds: [page.pageId] } });
+    expect(aborted).toBeGreaterThan(0);
+    page.controller = "none";
+    handlePageTakeover(page.pageId, "none", h.repo, h.runs);
+    expect(h.repo.getRun(run.runId)?.status).toBe("running");
+    h.runs.cancel(run.runId);
+  });
+
+  it("interrupts a saved program on takeover without a late completion overwriting its checkpoint", async () => {
+    const h = harness({ execMs: 80 });
+    const page = await h.pages.open({ url: "https://shared.test/record", background: false, ownedByRuntime: false });
+    h.repo.saveProgram({ programId: "takeover-program", name: "Review", version: 1, siteKey: "shared.test",
+      parameters: [], stepsJson: JSON.stringify(program.steps), useCount: 0, createdAt: Date.now() });
+    const { runId } = h.runs.runProgram({ programId: "takeover-program", pageId: page.pageId });
+    page.controller = "human";
+    handlePageTakeover(page.pageId, "human", h.repo, h.runs);
+    const held = h.repo.getRun(runId)!;
+    expect(held.status).toBe("interrupted");
+    expect(held.config?.checkpoint).toMatchObject({ planBoundary: "takeover",
+      pageIdentity: { takenPageId: page.pageId } });
+    await sleep(120);
+    expect(h.repo.getRun(runId)?.status).toBe("interrupted");
+    expect(h.repo.getProgram("takeover-program")?.useCount).toBe(0);
+  });
+
   it("cancels an active set map when a person takes its member tab", async () => {
     const h = harness({ execMs: 150 });
     const page = await h.pages.open({ url: "https://shared.test/record", background: false, ownedByRuntime: false });
