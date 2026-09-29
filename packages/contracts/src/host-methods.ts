@@ -88,6 +88,7 @@ const runtimeBackup = z.object({ path: str, bytes: number, sha256: str,
 const stagedRestore = runtimeBackup.extend({ staged: z.literal(true), schemaVersion: number });
 export const HostCapabilitiesSchema = z.object({
   buildId: str, sourceCommit: str.length(40), methods: z.array(str),
+  developmentAcceptanceRequested: bool.optional(),
 }).strict();
 export type HostCapabilities = z.infer<typeof HostCapabilitiesSchema>;
 
