@@ -497,7 +497,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     setSending(true); setSendError("");
     try {
       if (last?.status === "needs_input" && effectiveLiveMode === "answer") {
-        await useStore.getState().answerRun(last.runId,text.trim());
+        await useStore.getState().answerRun(last.runId,text.trim(),last.statusMessage);
         scrolling.jumpToLatest();
       } else if (live && last && id) {
         const mode = effectiveLiveMode === "answer" ? "steer" : effectiveLiveMode;

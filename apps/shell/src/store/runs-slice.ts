@@ -136,13 +136,18 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     }
   },
 
-  answerRun: async (runId, answer) => {
+  answerRun: async (runId, answer, displayedQuestion) => {
     if(get().runAnswerPending[runId])return;
     const prompt = get().prompt;
     const draft = get().runAnswerDrafts[runId];
     set(state=>({runAnswerPending:{...state.runAnswerPending,[runId]:true}}));
     try {
-      await call("runs.answer", { runId, answer });
+      const current = await call("runs.get", { runId });
+      if (current.run.status !== "needs_input" ||
+          (displayedQuestion !== undefined && current.run.statusMessage !== displayedQuestion))
+        throw new Error("This request changed. Review the latest question before sending.");
+      await call("runs.answer", { runId, answer,
+        ...(current.suspension ? { expectedSuspensionId: current.suspension.suspensionId } : {}) });
       try { clearSubmittedRunAnswer(bridge.privateMode ? null : storage,runId,draft); }
       catch { toast("Your answer was sent, but its saved draft could not be cleared.","error"); }
       set(state=>{
