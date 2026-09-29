@@ -148,14 +148,10 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
   const runPages = useStore(useShallow((s) => s.pages.filter((p) => (run?.pageIds ?? []).includes(p.pageId) || p.pageId === retryPageId)));
   const activePageId = useStore((s) => s.activePageId);
   const loadRun = useStore((s) => s.loadRun);
-  const answerRun = useStore((s) => s.answerRun);
   const startRun = useStore((s) => s.startRun);
   const retryRun = useStore((s) => s.retryRun);
   const retrying = useStore(s=>!!s.retryingRuns[runId]);
   const activate = useStore((s) => s.activate);
-  const answerDraft = useStore(s=>s.runAnswerDrafts[runId]);
-  const answerPending = useStore(s=>!!s.runAnswerPending[runId]);
-  const [answerError,setAnswerError]=useState("");
   const [showObs, setShowObs] = useState(false);
   const [obsLoading,setObsLoading]=useState(false);
   const [obsError,setObsError]=useState("");
@@ -189,17 +185,6 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
   const humanHolds = runPages.some(page => run.pageIds.includes(page.pageId) && page.controller === "human");
   const asksMe = prompt?.runId === run.runId || run.status === "needs_input";
   const question = prompt?.runId === run.runId ? prompt.question : run.statusMessage;
-  const answer = answerDraft && answerDraft.question === question ? answerDraft.text : "";
-  const setAnswer = (text:string) => {
-    setAnswerError("");
-    useStore.getState().setRunAnswerDraft(runId,question ?? "",text);
-  };
-  const submitAnswer = async () => {
-    if(!answer.trim() || answerPending || readOnly)return;
-    setAnswerError("");
-    try { await answerRun(runId,answer.trim()); }
-    catch(reason) { setAnswerError(reason instanceof Error ? reason.message : String(reason)); }
-  };
   const calls = stats?.calls ?? run.config?.modelCalls;
   const openModelSettings = () => useStore.setState({ overlay: "settings", settingsCategory: "Models", railOpen: true });
 
@@ -253,34 +238,8 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
 
       {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
 
-      {asksMe && question && !questionInComposer && (
-        <div className="needs-input" role="group" aria-label="The agent needs your answer">
-          <div className="ni-head">{I.chat}<span>Needs your answer</span></div>
-          <p className="ni-q">{question}</p>
-          {!conversation && <><div className="ni-row">
-            <textarea
-              rows={2}
-              maxLength={20000}
-              value={answer}
-              disabled={answerPending || readOnly}
-              placeholder="Type an answer…"
-              aria-label="Your answer"
-              aria-describedby={`answer-help-${runId}`}
-              onChange={event => setAnswer(event.target.value)}
-              onKeyDown={event => {
-                if(event.nativeEvent.isComposing || event.keyCode === 229)return;
-                if(event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void submitAnswer(); }
-              }}
-            />
-            <button className="btn primary sm" disabled={!answer.trim() || answerPending || readOnly} onClick={()=>void submitAnswer()}>{answerPending ? "Sending…" : "Send"}</button>
-          </div>
-          <p className="hint" id={`answer-help-${runId}`}>Enter to send · Shift+Enter for a new line</p>
-          {answerError && <p className="field-error" role="alert">{answerError} Your answer is kept.</p>}</>}
-        </div>
-      )}
-
       <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button> : null} />
-      <RunTranscriptDetails run={run} />
+      <RunTranscriptDetails run={run} question={question} readOnly={readOnly} answerInComposer={questionInComposer} />
 
       {(calls != null || stats || !conversation) && <details className="run-provenance">
         <summary>Run details</summary>

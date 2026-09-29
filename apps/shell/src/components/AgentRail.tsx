@@ -1,9 +1,11 @@
 import { memo, useEffect, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { ResizeHandle } from "./ResizeHandle";
 import { Conversation } from "./surfaces";
 import { deferSurface } from "./DeferredSurface";
 import { I } from "./icons";
+import { RunPresence } from "../agent/RunPresence";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
 const SetPanel = deferSurface(async () => {
@@ -27,6 +29,7 @@ export const AgentRail = memo(function AgentRail() {
   const connected = useStore(s => s.connected);
   const selectedRunId = view.kind === "run" ? view.runId : null;
   const selectedRun = useStore(s => selectedRunId ? s.runs.find(run => run.runId === selectedRunId) : undefined);
+  const selectedPages = useStore(useShallow(s => selectedRun ? s.pages.filter(page => selectedRun.pageIds.includes(page.pageId)) : []));
   const [recentOpen, setRecentOpen] = useState(false);
   const root = useRef<HTMLElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
@@ -47,6 +50,7 @@ export const AgentRail = memo(function AgentRail() {
         <div className="rail-head">
           <span className="rail-title">{recentOpen ? "Recent work" : view.kind === "set" ? "Set" : "Ask Aux"}</span>
           {!connected && <output className="rail-sub offline">Connecting…</output>}
+          {selectedRun && <RunPresence run={selectedRun} pages={selectedPages} compact />}
           <span className="sp" />
           <button className="icon-btn" title={recentOpen ? "Return to conversation" : "Recent conversations"} aria-label={recentOpen ? "Return to conversation" : "Recent conversations"} aria-pressed={recentOpen} onClick={() => setRecentOpen(value => !value)}>{recentOpen ? I.left : I.chats}</button>
           {!recentOpen && view.kind !== "set" && <button className="icon-btn" title="Open full conversation" aria-label="Open full conversation" onClick={expand}>{I.open}</button>}

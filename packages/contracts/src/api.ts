@@ -20,6 +20,7 @@ import {
   PendingApprovalSchema,
   SendRecordSchema,
   StandingGrantSchema,
+  SuspensionSchema,
 } from "./safety.js";
 import { CommandRankingEntrySchema, CommandRankingSourceSchema } from "./command-ranking.js";
 import { WebmcpToolSchema } from "./webmcp.js";
@@ -489,7 +490,7 @@ export const RunsEventsParams = z.object({
   /** Stream identity the cursor was issued against — a mismatch answers `resync` (D9). */
   streamId: z.string().optional(),
 });
-export const RunsAnswerParams = z.object({ runId: id, answer: z.string() });
+export const RunsAnswerParams = z.object({ runId: id, answer: z.string(), expectedSuspensionId: id.optional() });
 export const RunsQueueParams = z.object({
   messageId: z.string().uuid(),
   runId: id,
@@ -2144,6 +2145,7 @@ export const ResultSchemas = {
     modelCalls: z.number(),
     usage: ModelUsageSummarySchema,
     transcript: RunTranscriptProjectionSchema.optional(),
+    suspension: SuspensionSchema.nullable().optional(),
   }),
   "runs.list": z.array(RunSchema),
   "runs.context.get": ConversationContextSchema,

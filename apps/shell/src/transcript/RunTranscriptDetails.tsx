@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { Run, RunTranscriptItem, RunTranscriptProjection } from "@aux/contracts";
+import type { Run, RunTranscriptItem, RunTranscriptProjection, Suspension } from "@aux/contracts";
 import { call } from "../store";
 import { ViewerFrame } from "../components/ViewerFrame";
+import { SuspensionPanel } from "../composer/SuspensionPanel";
 
 const MAX_TEXT_BYTES = 128 * 1024;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -20,8 +21,14 @@ const RECOVERY_GUIDANCE = {
 type ArtifactItem = Extract<RunTranscriptItem, { kind: "artifact" }>;
 
 /** Rehydrates from durable runs.get on mount and on status change. Stream deltas never grant citation trust. */
-export function RunTranscriptDetails({ run }: { run: Run }) {
+export function RunTranscriptDetails({ run, question, readOnly = false, answerInComposer = false }: {
+  run: Run; question?: string; readOnly?: boolean; answerInComposer?: boolean;
+}) {
   const [projection, setProjection] = useState<RunTranscriptProjection | null>(null);
+  const [suspension, setSuspension] = useState<Suspension | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  const [loadError, setLoadError] = useState("");
   const [selected, setSelected] = useState<ArtifactItem | null>(null);
   const [preview, setPreview] = useState<{ text?: string; image?: string } | null>(null);
   const [error, setError] = useState("");
@@ -32,14 +39,21 @@ export function RunTranscriptDetails({ run }: { run: Run }) {
     let active = true;
     ++previewRequest.current;
     setProjection(null);
+    setSuspension(null);
+    setHydrated(false);
+    setLoadError("");
     setSelected(null);
     setPreview(null);
     setError("");
     void call("runs.get", { runId: run.runId }).then((response) => {
-      if (active && response.transcript?.runId === run.runId) setProjection(response.transcript);
-    }).catch(() => { /* RunPanel's existing load/failure path remains authoritative. */ });
+      if (active && response.run.runId === run.runId && response.run.status === run.status) {
+        if (response.transcript?.runId === run.runId) setProjection(response.transcript);
+        setSuspension(response.suspension?.runId === run.runId ? response.suspension : null);
+        setHydrated(true);
+      }
+    }).catch(() => { if (active) setLoadError("The current request could not be loaded."); });
     return () => { active = false; ++previewRequest.current; };
-  }, [run.runId, run.status]);
+  }, [run.runId, run.status, run.statusMessage, refresh]);
 
   const artifacts = projection?.items.filter((item): item is ArtifactItem => item.kind === "artifact") ?? [];
   const citations = projection?.items.filter((item) => item.kind === "citation") ?? [];
@@ -81,8 +95,10 @@ export function RunTranscriptDetails({ run }: { run: Run }) {
     }
   }
 
-  if (!citations.length && !artifacts.length && !recovery) return null;
+  if (!citations.length && !artifacts.length && !recovery && run.status !== "needs_input") return null;
   return <section className="run-section transcript-details" aria-label="Run evidence and recovery">
+    {run.status === "needs_input" && <SuspensionPanel run={run} suspension={suspension} hydrated={hydrated} question={question} readOnly={readOnly} answerInComposer={answerInComposer} />}
+    {run.status === "needs_input" && loadError && <p role="alert">{loadError} <button className="btn sm" onClick={() => setRefresh((value) => value + 1)}>Retry loading</button></p>}
     {citations.length > 0 && <details className="transcript-citations"><summary>Verified evidence · {citations.length}</summary>
       <ul>{citations.map((item, index) => item.kind === "citation" && <li key={`${item.observationId}-${index}`}>
         <blockquote>{item.quote}</blockquote>
@@ -95,7 +111,7 @@ export function RunTranscriptDetails({ run }: { run: Run }) {
         {item.mediaType} · {Math.max(1, Math.ceil(item.size / 1024))} KB
       </button></li>)}</ul>
     </details>}
-    {recovery?.kind === "recovery" && <output className="run-failure"><strong>{recovery.state.replaceAll("_", " ")}</strong> {recovery.description} {RECOVERY_GUIDANCE[recovery.action]}</output>}
+    {recovery?.kind === "recovery" && recovery.state !== "needs_input" && <output className="run-failure"><strong>{recovery.state.replaceAll("_", " ")}</strong> {recovery.description} {RECOVERY_GUIDANCE[recovery.action]}</output>}
     {selected && <ViewerFrame label="Saved run artifact" title={selected.mediaType} closeLabel="Close artifact" onClose={() => { ++previewRequest.current; setSelected(null); setPreview(null); setError(""); }}
       metadata={`${Math.max(1, Math.ceil(selected.size / 1024))} KB · ${selected.artifactId}`}>
       {loading ? <output data-block>Loading artifact…</output> : error ? <p role="alert">{error}</p>

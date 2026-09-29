@@ -3,6 +3,7 @@ import type { MethodName } from "@aux/contracts";
 import { AuxError, MethodSchemas } from "@aux/contracts";
 import { summarizeModelUsage } from "../../services/model-usage.js";
 import { projectRunTranscript } from "../../services/run-transcript.js";
+import { assertRunAnswerable, currentRunSuspension } from "../../services/run-suspension.js";
 
 async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
@@ -25,7 +26,7 @@ async function h_runs_retry(ctx: MethodCtx): Promise<unknown> {
   return s.runs.retry(params.runId, params.pageId);
 }
 async function h_runs_get(ctx: MethodCtx): Promise<unknown> {
-  const { params, s } = ctx;
+  const { params, s, suspensions } = ctx;
   const run = s.runs.coordinator.get(params.runId);
   const calls = s.repo.listModelCalls(run.runId);
   return {
@@ -34,6 +35,7 @@ async function h_runs_get(ctx: MethodCtx): Promise<unknown> {
     modelCalls: calls.length,
     usage: summarizeModelUsage(calls),
     transcript: projectRunTranscript(run, s.artifacts.list({ runId: run.runId })),
+    suspension: currentRunSuspension(run, suspensions.pending(run.runId)),
   };
 }
 async function h_runs_list(ctx: MethodCtx): Promise<unknown> {
@@ -65,8 +67,11 @@ async function h_runs_cancel(ctx: MethodCtx): Promise<unknown> {
   return s.runs.cancel(params.runId);
 }
 async function h_runs_answer(ctx: MethodCtx): Promise<unknown> {
-  const { params, s } = ctx;
-  const p = params as { runId: string; answer: string };
+  const { params, s, suspensions } = ctx;
+  const p = params as { runId: string; answer: string; expectedSuspensionId?: string };
+  const run = s.runs.coordinator.get(p.runId);
+  const pending = suspensions.pending(p.runId);
+  assertRunAnswerable(run, pending, p.expectedSuspensionId);
   return s.runs.coordinator.answer(p.runId, p.answer);
 }
 async function h_runs_queue(ctx: MethodCtx): Promise<unknown> {
