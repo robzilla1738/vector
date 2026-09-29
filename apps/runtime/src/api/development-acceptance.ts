@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 
-const ALLOWED = new Set(["electronMigration", "memory", "spaces"]);
+const ALLOWED = new Set(["electronMigration", "memory", "spaces", "aiTidy"]);
 
 /** Accept reviewed preview features only for an owner-only, short-lived native journey Profile. */
 export function developmentAcceptanceStages<T extends Record<string, string>>(

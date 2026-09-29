@@ -240,14 +240,15 @@ const nativeHeader = resolve(app, "../../../chrome/browser/ui/aux/generated/aux_
 const nativeSourceCommit = existsSync(nativeHeader)
   ? readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1]
   : undefined;
-if (runtimeBackupRestoreJourney || memoryInboxUiJourney || menuPrimitivesJourney) {
+if (runtimeBackupRestoreJourney || memoryInboxUiJourney || menuPrimitivesJourney || tidyReceiptJourney) {
   assert.ok(nativeSourceCommit, "Development acceptance requires a built native source identity");
   const token = randomBytes(32).toString("hex");
   const dataDir = join(profile, "Default/Aux Runtime Data");
   mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   writeFileSync(join(dataDir, "development-acceptance.json"), JSON.stringify({
     version: 1, sourceCommit: nativeSourceCommit, tokenHash: createHash("sha256").update(token).digest("hex"),
-    features: memoryInboxUiJourney ? ["memory", "spaces"] : menuPrimitivesJourney ? ["spaces"] : ["electronMigration"],
+    features: memoryInboxUiJourney ? ["memory", "spaces"] : tidyReceiptJourney ? ["spaces", "aiTidy"] :
+      menuPrimitivesJourney ? ["spaces"] : ["electronMigration"],
     createdAt: Date.now(),
   }), { mode: 0o600 });
   process.env.AUX_DEV_ACCEPTANCE_TOKEN = token;
@@ -257,9 +258,9 @@ const windowTool = join(disposable, "native-window");
 const report = { schema: 1, scope: "Native Aux.app, disposable Profile, loopback fixture; no public debugging port", app,
   sourceSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   ...(nativeSourceCommit ? { nativeSourceCommit } : {}),
-  ...((runtimeBackupRestoreJourney || memoryInboxUiJourney || menuPrimitivesJourney) ?
+  ...((runtimeBackupRestoreJourney || memoryInboxUiJourney || menuPrimitivesJourney || tidyReceiptJourney) ?
     { developmentAcceptanceFeatures: memoryInboxUiJourney ? ["memory", "spaces"] :
-      menuPrimitivesJourney ? ["spaces"] : ["electronMigration"] } : {}),
+      tidyReceiptJourney ? ["spaces", "aiTidy"] : menuPrimitivesJourney ? ["spaces"] : ["electronMigration"] } : {}),
   startedAt: new Date().toISOString(), rpcOnly, uiOnly, steps: [], captures: [], passed: false };
 let child;
 let attachedChrome;
