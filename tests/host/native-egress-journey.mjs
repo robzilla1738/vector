@@ -89,7 +89,15 @@ function flushModel() {
 }
 async function command(code) {
   const next = { code, sent: false }; commandQueue.push(next); flushModel();
-  await until("scripted model command", () => next.sent, 120_000);
+  await until("scripted model command", async () => {
+    if (next.sent) return true;
+    if (runId) {
+      const state = await rpc("runs.get", { runId });
+      if (["failed", "cancelled", "completed"].includes(state.run.status))
+        throw new Error(`Run ended before model dispatch: ${state.run.status}: ${state.run.error ?? state.run.statusMessage ?? "unknown"}`);
+    }
+    return false;
+  }, 120_000);
 }
 const receiptSince = (start, outcome, reason, phase) => report.nativeReceipts.slice(start).find(item => item.outcome === outcome && (!reason || reason.test(item.reason)) && (!phase || item.phase === phase));
 async function startSelectedDocumentRun() {
@@ -120,7 +128,7 @@ async function blocked(name, reason, phase) {
 async function cookieBoundary() {
   const start = await click("secret-cookie");
   const receipt = await until("cookie request reaches native final-header boundary", () =>
-    report.nativeReceipts.slice(start).find(item => item.phase === "send"));
+    report.nativeReceipts.slice(start).find(item => item.kind === "subresource" && item.phase === "send"));
   await delay(1000);
   const captures = fixture.snapshot().filter(item => item.case === "secret-cookie");
   assert.ok(captures.every(item => item.protectedCookiePresent === false),
@@ -173,6 +181,7 @@ try {
     const lines = stderrLine.split("\n"); stderrLine = lines.pop().slice(-8192);
     for (const line of lines) {
       if (line.includes("AUX_EGRESS_SCHEMA")) report.schemaDiagnostic = line.slice(0, 500);
+      if (line.includes("AUX_ISOLATION_DIAG")) (report.isolationDiagnostics ??= []).push(line.slice(0, 500));
       const match = /AUX_EGRESS id=(\S+) kind=(\S+) phase=(\S+) outcome=(\S+) reason=(\S+)/.exec(line);
       if (match && report.nativeReceipts.length < 256) report.nativeReceipts.push({ id: match[1], kind: match[2], phase: match[3], outcome: match[4], reason: match[5], at: Date.now() });
     }
