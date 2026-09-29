@@ -20,7 +20,7 @@ export function nextMemorySaverAction(state: State, retryAfter: ReadonlyMap<stri
   const candidates = state.pages.flatMap(page => {
     if (page.backend !== "aux" || !/^https?:\/\//.test(page.url) || page.ownedByRuntime ||
         page.pageId === state.activePageId || page.pageId === state.splitPageId ||
-        page.controller !== "none" || page.loading || page.viewStatus === "crashed" ||
+        page.controller !== "none" || page.loading || page.viewStatus === "crashed" || page.viewStatus === "detached" ||
         (page.lifecycle && page.lifecycle !== "live") || state.tabAudio[page.pageId]?.audible) return [];
     const dueAt = Math.max(page.lastActiveAt, page.createdAt) + minutes * 60_000;
     return [{ pageId: page.pageId, url: page.url, dueAt: Math.max(dueAt, retryAfter.get(`${page.pageId}\n${page.url}`) ?? 0) }];

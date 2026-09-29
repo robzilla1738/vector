@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import type { PageTarget } from "@aux/contracts";
 import { nextMemorySaverAction } from "./memory-saver";
-import { memorySaverSummary } from "./memory-saver-report";
+import { memorySaverSummary, readMemorySaverCycles, recordMemorySaverCycle } from "./memory-saver-report";
 
 const page = (pageId: string, overrides: Partial<PageTarget> = {}): PageTarget => ({
   pageId, windowId: "main", backend: "aux", targetId: `atab-${pageId}`,
@@ -16,7 +16,8 @@ it("schedules the oldest eligible background tab and respects native-safety pref
   const state = {
     pages: [page("active"), page("agent", { ownedByRuntime: true }),
       page("borrowed", { controller: "agent" }), page("split"),
-      page("audible"), page("sleeping", { lifecycle: "discarded" }),
+      page("audible"), page("detached", { viewStatus: "detached" }),
+      page("sleeping", { lifecycle: "discarded" }),
       page("clean", { lastActiveAt: 2000 }), page("newer", { lastActiveAt: 3000 })],
     activePageId: "active", splitPageId: "split", tabAudio: { audible: { audible: true } },
     settings: { memorySaverMinutes: 1 }, connected: true, restoringTabs: false,
@@ -37,4 +38,20 @@ it("reports estimated savings only for cycles with a native estimate", () => {
   expect(summary.slept).toBe(2);
   expect(summary.measured).toBe(1);
   expect(summary.estimatedSavedBytes).toBe(12 * 1024 * 1024);
+});
+
+
+it("persists only bounded native estimates and fixed refusal reasons", () => {
+  let stored: string | null = null;
+  vi.stubGlobal("localStorage", { getItem: () => stored, setItem: (_key: string, value: string) => { stored = value; } });
+  recordMemorySaverCycle(page("dirty"), { slept: false, reason: "private page text / secret" });
+  recordMemorySaverCycle(page("large"), { slept: true, estimatedSavedBytes: 2 ** 42 });
+  recordMemorySaverCycle(page("audible"), { slept: false, reason: "Playing audio keeps this tab awake." });
+  const rows = readMemorySaverCycles();
+  expect(rows[0]?.reason).toBe("Playing audio keeps this tab awake.");
+  expect(rows[1]?.estimatedSavedBytes).toBeUndefined();
+  expect(rows[2]?.reason).toBeUndefined();
+  expect(JSON.stringify(rows)).not.toContain("secret");
+  expect(stored).not.toContain("secret");
+  vi.unstubAllGlobals();
 });

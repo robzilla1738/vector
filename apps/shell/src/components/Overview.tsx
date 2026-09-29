@@ -10,6 +10,7 @@ import { bookmarkWebUrl } from "../bookmark-files";
 import { assignFolder, assignSpace, hostOf, isPinned, tabLabel, type ArchivedTab } from "../workspace";
 import { flushLayout, persistLayout } from "../store/persistence";
 import { applyTidyProposal, revertTidyRecord, tidyUndoRecord } from "../tidy-layout";
+import { commitTidyLayout } from "../tidy-commit";
 import { confirmArchiveClose, finishTabArchive, removeTabArchive, stageTabArchive } from "../tab-archive";
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
@@ -298,21 +299,24 @@ export function Overview() {
       <div className="ov-tidy-groups">{tidy.proposal.groups.map((group, index) => <div className="ov-tidy-group" key={`${group.name}-${index}`}>
         <strong>{group.name}</strong><ul>{group.pageIds.map(pageId => <li key={pageId}>{tidy.proposal.pages.find(page => page.pageId === pageId)?.title || "Untitled tab"}</li>)}</ul>
       </div>)}</div>
-      <div className="row"><button className="btn sm" disabled={busy} onClick={() => void act(() => {
+      <div className="row"><button className="btn sm" disabled={busy} onClick={() => void act(async () => {
         const state = useStore.getState();
         const applied = applyTidyProposal(state.layout, state.pages, tidy.spaceId, tidy.proposal);
         const receipt = tidyUndoRecord(state.layout, applied);
         const after = { ...applied, tidyUndo: receipt };
-        persistLayout(after);
-        useStore.setState({ layout: after, tidyUndo: receipt });
+        await commitTidyLayout({ before: state.layout, after,
+          current: () => useStore.getState().layout, persist: persistLayout, flush: flushLayout,
+          publish: layout => useStore.setState({ layout, tidyUndo: receipt }) });
         setTidy(null);
         setProgress(`Created ${tidy.proposal.groups.length} ${tidy.proposal.groups.length === 1 ? "folder" : "folders"}. You can undo this change.`);
       })}>Apply folders</button><button className="btn sm ghost" disabled={busy} onClick={() => setTidy(null)}>Dismiss</button></div>
     </section>}
-    {tidyUndo && tidyUndo.moved.every(item => pages.some(page => page.pageId === item.pageId)) && <div className="ov-tidy-undo"><span className="hint">AI Tidy created folders in this Space.</span><button className="btn sm ghost" disabled={busy} onClick={() => void act(() => {
-      const restored = revertTidyRecord(tidyUndo, useStore.getState().layout);
-      persistLayout(restored);
-      useStore.setState({ layout: restored, tidyUndo: null });
+    {tidyUndo && tidyUndo.moved.every(item => pages.some(page => page.pageId === item.pageId)) && <div className="ov-tidy-undo"><span className="hint">AI Tidy created folders in this Space.</span><button className="btn sm ghost" disabled={busy} onClick={() => void act(async () => {
+      const before = useStore.getState().layout;
+      const restored = revertTidyRecord(tidyUndo, before);
+      await commitTidyLayout({ before, after: restored,
+        current: () => useStore.getState().layout, persist: persistLayout, flush: flushLayout,
+        publish: layout => useStore.setState({ layout, tidyUndo: null }) });
       setProgress("Tidy undone. Your earlier folders and tab positions are restored.");
     })}>Undo Tidy</button></div>}
     {selection.length > 0 && <section className="ov-selection" aria-label="Selected tab actions" aria-busy={busy}>
