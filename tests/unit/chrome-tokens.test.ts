@@ -190,6 +190,16 @@ describe("shipped stylesheet — native macOS chrome", () => {
     expect(styles).not.toMatch(/inset\s+0\s+-2px\s+0\s+var\(--ok\)/);
   });
 
+  it("keeps the horizontal toolbar out of the window drag region", () => {
+    expect(styles).toMatch(
+      /\.app\.native-host\.tabs-horizontal \.horizontal-chrome > \.toolbar\s*\{[^}]*-webkit-app-region:\s*no-drag/,
+    );
+    expect(styles).not.toMatch(
+      /\.app\.native-host\.tabs-horizontal \.horizontal-chrome > \.toolbar :is\(\.tb-left, \.cmdbar, \.tb-right\)\s*\{[^}]*-webkit-app-region:\s*no-drag/,
+    );
+    expect(styles).toMatch(/\.horizontal-tabs-row\s*\{[^}]*-webkit-app-region:\s*drag/);
+  });
+
   it("keeps waiting, status, diff and find states distinguishable", () => {
     const dark = block("dark");
     const light = block("light");

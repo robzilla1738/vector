@@ -16,6 +16,7 @@ import {
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
 import { MethodSchemas, ResultSchemas, type Condition, type MethodName, type ObservationContent } from "@aux/contracts";
 import type { SetService, RunService, ArtifactStore, SettingsService } from "@aux/runtime";
+import { PageOwnership } from "../../apps/runtime/src/scheduler/page-ownership.js";
 import { PNG } from "pngjs";
 
 const content = (url: string, over: Partial<ObservationContent> = {}): ObservationContent => ({
@@ -205,6 +206,7 @@ describe("H2-C7 pages inspect RPCs", () => {
       pages,
       sets: { create: async () => ({}), get: () => ({}), list: () => [], results: () => [] } as unknown as SetService,
       runs: {
+        pageOwnership: new PageOwnership(),
         coordinator: { get: () => ({ runId: "r" }), list: () => [] },
         mapSet: async () => ({}),
         start: async () => ({}),

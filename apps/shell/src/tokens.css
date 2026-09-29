@@ -262,10 +262,12 @@
   --muted: oklch(98.5% 0 0 / .15);
   --tabs-list: oklch(20.5% 0 0 / .4);
   --shadow-tint: #0000001a;
+  --space-grain-opacity-scale: 0.0005;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
+  --space-grain-opacity-scale: 0.0009;
 }
 
 /* ---------- light ---------- */

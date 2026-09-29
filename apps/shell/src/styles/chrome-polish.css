@@ -53,15 +53,12 @@
 .app.native-host.tabs-vertical .main-col.toolbar-revealed.has-page > .toolbar :is(.icon-btn, .cb-display, .cb-title, .cb-placeholder, .cb-ico, input:not(.ghost)) { color: var(--toolbar-ink); }
 .app.native-host.tabs-vertical .main-col.toolbar-revealed.has-page > .toolbar :is(button, input, select, .cmdbar, .ctl-chip) { -webkit-app-region: no-drag; }
 
-/* In horizontal mode the toolbar is permanent chrome inside .horizontal-chrome —
-   it never auto-hides — so without an explicit no-drag hit surface the whole bar
-   stays one window-drag region and every control inside it (address bar, control
-   chips, extension buttons) swallows clicks as window drags. Punch the control
-   clusters out of the drag set; the tab strip remains the drag surface.
-   A fully clear no-drag box is treated as window drag on macOS, hence the tint. */
-.app.native-host.tabs-horizontal .horizontal-chrome > .toolbar :is(.tb-left, .cmdbar, .tb-right) {
+/* Horizontal mode keeps this toolbar on screen. Its own drag rect was still
+   under the Return chip after the clusters opted out, so AppKit dragged the
+   window instead of delivering the click. The tab strip remains the drag
+   surface. The bar already paints --chrome-surface, so it needs no tint. */
+.app.native-host.tabs-horizontal .horizontal-chrome > .toolbar {
   -webkit-app-region: no-drag;
-  background-color: rgb(0 0 0 / .012);
 }
 
 /* Only the collapsed sidebar previews above a stationary page. */

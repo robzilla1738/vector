@@ -1,10 +1,4 @@
 @layer components {
-  :root {
-    --space-grain-opacity-scale: 0.0005;
-  }
-  :root[data-theme="dark"] {
-    --space-grain-opacity-scale: 0.0009;
-  }
   .app .sidebar::after,
   .app .toolbar::after,
   .app .horizontal-tabs-row::after,

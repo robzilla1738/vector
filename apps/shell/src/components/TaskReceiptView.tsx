@@ -260,7 +260,7 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
       <p className="hint">Restores matching form fields, removes unchanged bookmarks and history visits, moves unchanged managed downloads to recoverable Trash, and closes unused background tabs. Changed items are skipped. Removed visits, closed tabs, and remote effects cannot be reconstructed.</p>
       {runUndoIds.map(runId => <button className="btn sm" key={runId} disabled={undoBusy}
         onClick={() => void reviewRunUndo(runId)}>Review browser changes in run {runId}</button>)}
-      {undoDraft && <div className="field" aria-label="Review selected browser undo">
+      {undoDraft && <div className="field" role="group" aria-label="Review selected browser undo">
         <strong>Select browser changes to undo in run {undoDraft.runId}</strong>
         <p className="hint">Only selected local changes will be attempted. A changed receipt cancels the request before any undo. Each selected item is checked against live state; changed items are skipped. Remote effects remain irreversible.</p>
         {undoDraft.items.map(item => <label className="row" key={item.stepId}><input type="checkbox"

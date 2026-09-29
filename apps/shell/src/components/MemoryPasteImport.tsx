@@ -266,7 +266,7 @@ export function MemoryPasteImport({
         </>
       )}
       {!!receipts.length && (
-        <div aria-label="Pasted Memory import receipts">
+        <div role="region" aria-label="Pasted Memory import receipts">
           <h4>Recent pasted imports</h4>
           {receipts.map((receipt) => (
             <p key={receipt.importId} data-import-id={receipt.importId}>

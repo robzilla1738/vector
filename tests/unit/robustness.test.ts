@@ -67,6 +67,7 @@ describe("pages.execute allowEval spread order", () => {
     const page = {
       identity: { pageId: "p1", targetId: "t", backend: "aux" },
       isAttached: () => true,
+      url: () => "http://x.test/",
       evaluate: async (e: string) => { evals.push(e); return 1; },
       setEvents: () => {},
     } as unknown as DriverPage;

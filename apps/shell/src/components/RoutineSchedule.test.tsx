@@ -30,7 +30,7 @@ it("saves the existing schedule without changing its timezone or review policy",
   act(() => root.render(<RoutineSchedule trigger={trigger} disabled={false} onSave={onSave} />));
   expect(container.querySelector<HTMLInputElement>('input[type="time"]')?.value).toBe("15:30");
   expect(container.textContent).toContain("a missing local time is skipped");
-  expect(container.textContent).toContain("a repeated local time runs once");
+  expect(container.textContent).toContain("A repeated local time runs once at its first occurrence");
   act(() =>
     container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })),
   );

@@ -89,14 +89,16 @@ describe("reviewed connector catalog", () => {
   it("derives Calendar, GitHub and MCP access from their original grants and removes it on revocation", async () => {
     const f = await fixture();
     const connectionId = randomUUID(),
-      now = Date.now();
+      now = Date.now(),
+      accountKey = "alice@example.test";
     f.db
       .prepare(
-        "INSERT INTO calendar_connections(connection_id,provider,account_key,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,?,?,?, 'active',?,?)",
+        "INSERT INTO calendar_connections(connection_id,provider,account_key,account_key_lookup,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,?,?,?,?, 'active',?,?)",
       )
       .run(
         connectionId,
-        "alice@example.test",
+        accountKey,
+        f.repo.exactRecordLookup("calendar_connections", "account_key", accountKey),
         "Alice",
         "synthetic-secret",
         JSON.stringify(["https://www.googleapis.com/auth/calendar.readonly"]),

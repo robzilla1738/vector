@@ -125,3 +125,4 @@ aux/runtime/0124-physical-page-takeover.patch
 aux/runtime/0125-page-action-identity.patch
 aux/runtime/0126-guarded-request-terminal.patch
 aux/runtime/0127-physical-takeover-receipt.patch
+aux/shell/0128-draggable-region-nodrag-precedence.patch
