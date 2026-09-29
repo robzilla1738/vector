@@ -1,5 +1,7 @@
 # Aux roadmap execution graph
 
+**September 28 CHAT source update.** `326700f2` binds Answer mode and runtime acceptance to the exact current typed question/handoff, keeps approval/confirmation decisions separate and preserves drafts across layouts. Focused tests passed 24/24. The native collaboration journey and macOS banner gate remain open. The next isolated source lane is SKILLS tested safe replay on the LOOP→AUTO branch; the integrated shell snapshot for this serial native build includes CHAT.
+
 **September 28 RECEIPTS source update.** `d464c8c2` integrates owner-reviewed selected whole-run local undo with exact ledger freshness and external redaction; 44/44 focused tests passed. The actual-run native form/drift journey and group/bookmark/history/download attribution remain open. CHAT transcript/composer/presence is assigned as the next critical-path source lane. The serial 0121 EGRESS/STORE/S11/MCP native build is in progress; source presence is not acceptance.
 
 **September 28 CONTROL source update.** `abe118fa` integrates active-dispatch takeover fencing, abort and durable checkpoint, fresh-observation Return, owner UI state, and a prepared physical-input journey; 105/105 focused tests passed. The Chromium physical input producer and live journey are still open. The next critical-path isolated source lane has moved to RECEIPTS reviewed selective whole-run undo. The integrator owns the native producer and one-build queue.
