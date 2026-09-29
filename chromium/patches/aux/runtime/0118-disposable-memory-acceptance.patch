@@ -1,0 +1,26 @@
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -154,15 +154,19 @@
+   // runtime validates its owner-only, source-bound marker. The shell never
+   // reads a test token or interprets a marker itself.
+   if (capabilities.developmentAcceptanceRequested === true &&
+-      featureStages.electronMigration === 'preview') {
++      (featureStages.electronMigration === 'preview' ||
++       featureStages.memory === 'preview')) {
+     try {
+       const runtimeResponse = await remote.request('invoke',
+           JSON.stringify(['runtime.describe', {}]));
+       if (runtimeResponse.ok) {
+         const runtime = JSON.parse(runtimeResponse.resultJson) as
+-            {featureStages?: {electronMigration?: string}};
+-        if (runtime.featureStages?.electronMigration === 'on') {
+-          featureStages.electronMigration = 'on';
++            {featureStages?: {electronMigration?: string; memory?: string}};
++        for (const feature of ['electronMigration', 'memory'] as const) {
++          if (featureStages[feature] === 'preview' &&
++              runtime.featureStages?.[feature] === 'on') {
++            featureStages[feature] = 'on';
++          }
+         }
+       }
+     } catch {

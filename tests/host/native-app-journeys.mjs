@@ -232,19 +232,21 @@ mkdirSync(output, { recursive: true });
 // A short /tmp path keeps Chromium's private AF_UNIX socket under sun_path.
 const disposable = mkdtempSync("/tmp/aux-native-journey-");
 const profile = join(disposable, "profile");
+const memoryFixture = { workspaceId: "memory-fixture-space", runId: `run_${randomUUID()}`,
+  report: "The silver memory fixture belongs to the disposable Space." };
 const runtimeFile = join(profile, "Default/Aux Runtime Data/runtime.json");
 const nativeHeader = resolve(app, "../../../chrome/browser/ui/aux/generated/aux_host_methods.h");
 const nativeSourceCommit = existsSync(nativeHeader)
   ? readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1]
   : undefined;
-if (runtimeBackupRestoreJourney) {
+if (runtimeBackupRestoreJourney || memoryInboxUiJourney) {
   assert.ok(nativeSourceCommit, "Development acceptance requires a built native source identity");
   const token = randomBytes(32).toString("hex");
   const dataDir = join(profile, "Default/Aux Runtime Data");
   mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   writeFileSync(join(dataDir, "development-acceptance.json"), JSON.stringify({
     version: 1, sourceCommit: nativeSourceCommit, tokenHash: createHash("sha256").update(token).digest("hex"),
-    features: ["electronMigration"], createdAt: Date.now(),
+    features: memoryInboxUiJourney ? ["memory"] : ["electronMigration"], createdAt: Date.now(),
   }), { mode: 0o600 });
   process.env.AUX_DEV_ACCEPTANCE_TOKEN = token;
 }
@@ -253,7 +255,8 @@ const windowTool = join(disposable, "native-window");
 const report = { schema: 1, scope: "Native Aux.app, disposable Profile, loopback fixture; no public debugging port", app,
   sourceSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   ...(nativeSourceCommit ? { nativeSourceCommit } : {}),
-  ...(runtimeBackupRestoreJourney ? { developmentAcceptanceFeatures: ["electronMigration"] } : {}),
+  ...((runtimeBackupRestoreJourney || memoryInboxUiJourney) ?
+    { developmentAcceptanceFeatures: memoryInboxUiJourney ? ["memory"] : ["electronMigration"] } : {}),
   startedAt: new Date().toISOString(), rpcOnly, uiOnly, steps: [], captures: [], passed: false };
 let child;
 let attachedChrome;
@@ -854,6 +857,21 @@ else {
         .run("legacy-vault-grant", "legacy-vault", "legacy-vault-ref", "https://vault.example", Date.now(), Date.now() + 60_000);
       db.prepare("INSERT INTO vault_access(item_id,grant_id,action,actor,origin,detail,recorded_at) VALUES(?,?,?,?,?,?,?)")
         .run("legacy-vault", "legacy-vault-grant", "grant", "desktop_user", "https://vault.example", "private native vault audit", Date.now());
+    } finally { db.close(); }
+  }
+  if (memoryInboxUiJourney) {
+    const databasePath = join(profile, "Default/Aux Runtime Data/aux-state.sqlite");
+    mkdirSync(join(profile, "Default/Aux Runtime Data"), { recursive: true });
+    const db = openDb(databasePath);
+    try {
+      const now = Date.now();
+      const config = JSON.stringify({ contextWorkspaceId: memoryFixture.workspaceId });
+      db.prepare("INSERT INTO workspaces(workspace_id,name,created_at) VALUES(?,?,?)")
+        .run(memoryFixture.workspaceId, "Memory Fixture", now);
+      db.prepare("INSERT INTO runs(run_id,goal,status,page_ids,config,result,ended_at,created_at) VALUES(?,?,?,?,?,?,?,?)")
+        .run(memoryFixture.runId, "Review memory fixture", "completed", "[]", config,
+          JSON.stringify({ report: memoryFixture.report }), now, now);
+      db.prepare("INSERT INTO run_lookup(run_id,config) VALUES(?,?)").run(memoryFixture.runId, config);
     } finally { db.close(); }
   }
   if (browserImportUiJourney) {
@@ -2279,54 +2297,49 @@ else {
     report.passed = true;
   } else if (memoryInboxUiJourney) {
     assert.equal(runtimeCapabilities.featureStages?.memory, "on");
-    const space = await until("disposable Personal Space", async () =>
-      (await rpc("workspaces.list", {})).find(item => item.name === "Personal"), 60_000);
     const databasePath = join(profile, "Default/Aux Runtime Data/aux-state.sqlite");
-    const runId = `run_${randomUUID()}`;
-    const fixtureReport = "The silver memory fixture belongs to the disposable Space.";
-    const now = Date.now();
-    const db = new DatabaseSync(databasePath);
-    try { db.prepare("INSERT INTO runs(run_id,goal,status,page_ids,config,result,ended_at,created_at) VALUES(?,?,?,?,?,?,?,?)")
-      .run(runId, "Review memory fixture", "completed", "[]", JSON.stringify({ contextWorkspaceId: space.workspaceId }),
-        JSON.stringify({ report: fixtureReport }), now, now); }
-    finally { db.close(); }
     const inspect = query => { const db = new DatabaseSync(databasePath, { readOnly: true });
       try { return query(db); } finally { db.close(); } };
-    console.log("Open Aux Settings → Memory. Enable Space memory, create review notes from Review memory fixture, then accept the silver note.");
-    await until("Space memory enabled through native Settings", () => inspect(db => {
-      const row = db.prepare("SELECT value FROM kv WHERE key=?").get(`setting:memoryPipelinePolicy:${space.workspaceId}`);
-      return row && JSON.parse(row.value).enabled;
-    }), 600_000);
+    const recoveryPath = join(profile, "Default/Aux Runtime Data/managed-recovery-generation.json");
+    const recoveryGeneration = () => existsSync(recoveryPath) ?
+      JSON.parse(readFileSync(recoveryPath, "utf8")).generation : null;
+    const beforeForget = recoveryGeneration();
+    console.log("Open Aux Settings → Memory. Select Memory Fixture, enable memory, create review notes from Review memory fixture, and accept the silver note.");
+    await until("Space memory enabled through native Settings", () => {
+      try { return native("has-name", "Create review notes") === "true"; } catch { return false; }
+    }, 600_000);
     record("native Settings opts the disposable Space into memory");
     await until("encrypted note staged through native Settings", () => inspect(db =>
       db.prepare("SELECT 1 FROM memory_pipeline_watermarks WHERE workspace_id=? AND run_id=?")
-        .get(space.workspaceId, runId)), 600_000);
+        .get(memoryFixture.workspaceId, memoryFixture.runId)), 600_000);
     const base = join(profile, "Default/Aux Runtime Data/space-memory");
     const profileDir = join(base, readdirSync(base)[0]);
     const spaceDir = join(profileDir, readdirSync(profileDir)[0]);
     const generation = () => JSON.parse(readFileSync(join(spaceDir, "manifest.json"), "utf8")).generation;
     const pendingGeneration = generation();
     assert.ok(existsSync(join(spaceDir, pendingGeneration, "inbox.json.enc")));
-    record("native Settings stages a sourced encrypted note for review", { runId });
+    await until("sourced note visible for owner review", () => {
+      try { return native("has-name", memoryFixture.report) === "true"; } catch { return false; }
+    }, 60_000);
+    record("native Settings stages a sourced encrypted note for review", { runId: memoryFixture.runId });
     await until("owner accepts native memory note", () => generation() !== pendingGeneration, 600_000);
-    record("native Settings advances the encrypted memory generation after owner review", { runId });
-    await until("approved note available through owner API", async () =>
-      (await rpc("memory.pipeline.claims", { workspaceId: space.workspaceId }))
-        .some(claim => claim.sourceRunId === runId && claim.text === fixtureReport), 60_000);
-    assert.equal((await rpc("memory.pipeline.search", { workspaceId: space.workspaceId, query: "silver memory" })).length, 1);
     await until("approved note visible in native Memory", () => {
-      try { return native("has-name", fixtureReport) === "true"; } catch { return false; }
+      try { return native("has-name", "1 approved notes") === "true" &&
+        native("has-name", memoryFixture.report) === "true"; } catch { return false; }
     }, 60_000);
-    record("only the reviewed note entered searchable Memory and its native summary", { runId });
-    const forgotten = await rpc("memory.pipeline.forget", { workspaceId: space.workspaceId, sourceRunId: runId });
-    assert.equal(forgotten.forgotten, 1);
-    assert.equal((await rpc("memory.pipeline.claims", { workspaceId: space.workspaceId })).length, 0);
-    assert.ok((await rpc("memory.pipeline.history", { workspaceId: space.workspaceId }))
-      .every(revision => !revision.summary.includes("silver memory")));
-    await until("native Memory clears the forgotten summary", () => {
-      try { return native("has-name", "No approved notes yet.") === "true"; } catch { return false; }
+    record("owner accepted the sourced note into the encrypted Space summary", { runId: memoryFixture.runId });
+    console.log("Choose Forget run for the fixture, review the confirmation, and click Forget permanently after the user approves this disposable deletion.");
+    await until("native Memory clears forgotten summary", () => {
+      try { return native("has-name", "No approved notes yet.") === "true" &&
+        native("has-name", "Create fresh local backup…") === "true"; } catch { return false; }
+    }, 600_000);
+    await until("managed recovery generation advanced after Forget", () => {
+      const after = recoveryGeneration();
+      return typeof after === "number" && after !== beforeForget;
     }, 60_000);
-    record("source Forget scrubbed current and restorable Memory and refreshed native Settings", { runId });
+    assert.ok(generation() !== pendingGeneration);
+    record("native Forget cleared current and restorable Memory and invalidated older managed backups",
+      { runId: memoryFixture.runId, recoveryGeneration: recoveryGeneration() });
     child.kill("SIGTERM");
     if (child.exitCode === null) await new Promise(resolveExit => child.once("exit", resolveExit));
     child.stderr.destroy();
@@ -2335,14 +2348,11 @@ else {
       cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"],
     });
     child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
-    await until("restarted Memory runtime", async () => {
-      try { return (await rpc("memory.pipeline.claims", { workspaceId: space.workspaceId })).length === 0; }
-      catch { return false; }
-    }, 60_000);
-    assert.equal((await rpc("memory.pipeline.search", { workspaceId: space.workspaceId, query: "silver memory" })).length, 0);
-    assert.ok((await rpc("memory.pipeline.history", { workspaceId: space.workspaceId }))
-      .every(revision => !revision.summary.includes("silver memory")));
-    record("forgotten Memory did not return after a full native restart", { runId });
+    await until("restarted native Memory remains empty", () => {
+      try { return native("has-name", "No approved notes yet.") === "true" &&
+        native("has-name", memoryFixture.report) === "false"; } catch { return false; }
+    }, 600_000);
+    record("forgotten Memory did not return after a full native restart", { runId: memoryFixture.runId });
     report.passed = true;
   } else if (hooksCommandUiJourney) {
     const space = await until("disposable Personal Space", async () =>

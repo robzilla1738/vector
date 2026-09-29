@@ -115,3 +115,4 @@ aux/runtime/0114-profile-history-import.patch
 aux/runtime/0115-atomic-profile-storage-root.patch
 aux/runtime/0116-atomic-sqlite-profile-factor.patch
 aux/runtime/0117-disposable-acceptance-and-private-capture.patch
+aux/runtime/0118-disposable-memory-acceptance.patch
