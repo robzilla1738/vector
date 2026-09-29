@@ -65,6 +65,7 @@ import { CommandEscalationService } from "./services/command-escalation.js";
 import { SubagentService } from "./services/subagents.js";
 import { BudgetsService } from "./services/budgets.js";
 import { handlePageTakeover } from "./services/page-takeover.js";
+import { registerNativeControlChannel } from "./services/native-control-channel.js";
 import { ArtifactStore } from "./services/artifacts.js";
 import { artifactExportDescriptor, renderWorkbookForNativeExport } from "./services/native-file-export.js";
 import { minimizeLegacyObservationArtifacts } from "./services/observation-artifact-migration.js";
@@ -1385,6 +1386,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   dueTimer.unref?.();
   // forward the event stream so the shell renderer can subscribe over IPC
   events.subscribe((e) => channel?.notify("event", e));
+  if (channel) registerNativeControlChannel(channel, pages, code =>
+    console.error("Native takeover notification failed", code));
   channel?.onNotify((type, payload) => {
     const pl = (payload ?? {}) as Record<string, unknown>;
     const str = (v: unknown) => (v === undefined || v === null ? undefined : String(v));
@@ -1409,8 +1412,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         );
       case "view.crashed":
         return pages.onNativeCrashed(str(pl.pageId)!);
-      case "view.takeover":
-        return pages.onNativeTakeover(str(pl.pageId)!);
       case "view.downloadStarted":
         return pages.onNativeDownloadStarted(str(pl.pageId), {
           id: str(pl.id) ?? `dl_${Date.now()}`,
