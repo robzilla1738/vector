@@ -1,10 +1,16 @@
 ---
+
+**September 28, 23:45 PT checkpoint.** RECEIPTS exact-claim source and S13 pasted Memory review/import are integrated with focused tests and integrated compile/lint/format. The 100-asset Chromium shell build passes budgets at 455 KB startup JS, 178 KB CSS and 1,626 KB total JS. Native EGRESS 0122 fixed-partition source now includes multi-page cleanup, ephemeral restore filtering and saved-password fill exclusion; the revised patch passes apply/reverse checks but awaits build and relay/lifecycle/autofill journeys. The first relay journey stopped at action-time approval for two disposable task-scoped connections. S5 frozen 50×3 comparison is still running and early timeouts are scored failures. Source does not qualify S13, RECEIPTS or EGRESS; `qualification.json` is unchanged.
+
 name: Aux roadmap v2
 overview: "Dependency-ordered Aux product roadmap. The proposal basis is historical; the current implementation checkpoint and evidence links appear below."
 isProject: false
 ---
 
 # Aux Roadmap v2: the fastest, most capable AI browser with real oversight
+
+<!-- AUTHORITY 2026-09-28 23:25 PT -->
+**September 28, 23:25 PT checkpoint.** AUTO/HOOKS, durable IMPORT recovery, EXTERNAL active-session oversight, immutable MCP bundles, CAL account-isolation cleanup and replayable S13 onboarding are integrated source slices. S13 App/General wiring and generated authorization pass integrated typecheck; shell build budgets pass at 455 KB startup JS, 178 KB CSS and 1,615 KB total JS. The first native EGRESS fixed-partition request probe passed cookie non-transmission, while relay/lifecycle/autofill and full request-path qualification stay open. A focused Contributor L12 repair passed, and the full 50×3 paired S5 comparator is running after the earlier partial stopped at loop 12. No `qualification.json` promotion; S14 acceptance and signed-packaging exclusion remain as stated.
 
 **September 28 evening checkpoint.** Integrated SKILLS tested replay, GOALS funded model turns, WORK reviewed-folder command dispatch, and CRAFT accessible primitives are source-complete slices with focused isolated checks and integrated typecheck. Native owner journeys are still required. The serial 0121 EGRESS AuxDev build and runtime staging passed after an ambient-Cookie leak was found and blocked; a partial live fixture proved same-origin positive traffic, six protected request refusals and cookie non-transmission. Its worker branch is unresolved, and per-run isolated task browsing remains the transitive-egress prerequisite. AUTO/HOOKS and IMPORT recovery source batches are underway in isolated lanes; S5's frozen A/B remains in flight. No feature was promoted in `docs/qualification.json`; S14 and signed packaging scope are unchanged.
 

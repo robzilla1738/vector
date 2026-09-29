@@ -1,0 +1,676 @@
+diff --git a/chrome/browser/password_manager/chrome_password_manager_client.cc b/chrome/browser/password_manager/chrome_password_manager_client.cc
+--- a/chrome/browser/password_manager/chrome_password_manager_client.cc
++++ b/chrome/browser/password_manager/chrome_password_manager_client.cc
+@@ -48,6 +48,7 @@
+ #include "chrome/browser/password_manager/password_change_service_factory.h"
+ #include "chrome/browser/password_manager/password_manager_critical_action_logger.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
+ #include "chrome/browser/profiles/profile_manager.h"
+ #include "chrome/browser/signin/identity_manager_factory.h"
+ #include "chrome/browser/signin/signin_ui_util.h"
+@@ -294,6 +295,12 @@
+ bool ChromePasswordManagerClient::IsFillingEnabled(
+     const url::Origin& origin,
+     base::optional_ref<const GURL> url) const {
++  if (auto* profile = Profile::FromBrowserContext(web_contents()->GetBrowserContext());
++      profile && aux::EgressController::ForProfile(profile)->IsIsolatedPage(web_contents())) {
++    // Task partitions start without the owner's saved-password authority.
++    // An explicit reviewed Aux fill uses its separate one-use native path.
++    return false;
++  }
+   if (origin.opaque() &&
+       base::FeatureList::IsEnabled(
+           password_manager::features::kPasswordBlockOpaqueOrigins)) {
+diff --git a/chrome/browser/sessions/session_restore.cc b/chrome/browser/sessions/session_restore.cc
+--- a/chrome/browser/sessions/session_restore.cc
++++ b/chrome/browser/sessions/session_restore.cc
+@@ -41,6 +41,9 @@
+ #include "chrome/browser/after_startup_task_utils.h"
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/page_identity.h"
++#endif
+ #include "chrome/browser/prefs/session_startup_pref.h"
+ #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+ #include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
+@@ -1018,8 +1021,25 @@
+     // possible yet due the ordering of TabStripModelObserver notifications in
+     // an edge case.
+ 
+-    const int selected_tab_index = std::clamp(
++    int selected_tab_index = std::clamp(
+         window.selected_tab_index, 0, static_cast<int>(window.tabs.size() - 1));
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++    const bool has_restorable_tab = std::any_of(
++        window.tabs.begin(), window.tabs.end(), [](const auto& tab) {
++          return !aux::PageIdentity::IsEphemeralTaskExtraData(tab->extra_data);
++        });
++    if (has_restorable_tab &&
++        aux::PageIdentity::IsEphemeralTaskExtraData(
++            window.tabs[selected_tab_index]->extra_data)) {
++      for (int i = 0; i < static_cast<int>(window.tabs.size()); ++i) {
++        if (!aux::PageIdentity::IsEphemeralTaskExtraData(
++                window.tabs[i]->extra_data)) {
++          selected_tab_index = i;
++          break;
++        }
++      }
++    }
++#endif
+ 
+     // Capture all the splits and all tabs to split.
+     std::map<split_tabs::SplitTabId, std::vector<tabs::TabInterface*>>
+@@ -1029,8 +1049,15 @@
+     // base::Time) can be mapped onto the TimeTicks timeline WebContents wants.
+     const base::Time now = base::Time::Now();
+     const base::TimeTicks now_ticks = base::TimeTicks::Now();
++    int restored_index = 0;
+     for (int i = 0; i < static_cast<int>(window.tabs.size()); ++i) {
+       const sessions::SessionTab& tab = *(window.tabs[i]);
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++      if (aux::PageIdentity::IsEphemeralTaskExtraData(tab.extra_data) &&
++          (has_restorable_tab || initial_tab_count > 0 || restored_index > 0)) {
++        continue;
++      }
++#endif
+ 
+       // Loads are scheduled for each restored tab unless the tab is going to
+       // be selected as ShowBrowser() will load the selected tab.
+@@ -1044,7 +1071,7 @@
+       // If the browser already has tabs, we want to restore the new ones after
+       // the existing ones. E.g. this happens in Win8 Metro where we merge
+       // windows or when launching a hosted app from the app launcher.
+-      int tab_index = i + initial_tab_count;
++      int tab_index = restored_index++ + initial_tab_count;
+       RestoreTab(tab, browser, is_active_browser, restored_tabs, new_group_ids,
+                  &tabs_by_split_id, tab_index, is_selected_tab,
+                  last_active_time_ticks, tab.last_active_time,
+diff --git a/chrome/browser/ui/aux/egress_controller.cc b/chrome/browser/ui/aux/egress_controller.cc
+--- a/chrome/browser/ui/aux/egress_controller.cc
++++ b/chrome/browser/ui/aux/egress_controller.cc
+@@ -2,9 +2,11 @@
+ #include "chrome/browser/ui/aux/egress_controller.h"
+ 
+ #include <algorithm>
++#include <cctype>
+ #include <utility>
+ 
+ #include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
+ #include "base/logging.h"
+@@ -20,7 +22,12 @@
+ #include "content/public/browser/browser_thread.h"
+ #include "content/public/browser/document_user_data.h"
+ #include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/security_principal.h"
++#include "content/public/browser/site_instance.h"
++#include "content/public/browser/storage_partition.h"
+ #include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_observer.h"
+ #include "net/http/http_request_headers.h"
+ #include "services/network/public/cpp/resource_request.h"
+ #include "url/origin.h"
+@@ -55,6 +62,31 @@
+              ? "aux://blank"
+              : frame->GetLastCommittedOrigin().Serialize();
+ }
++std::string ReceiptField(std::string value) {
++  if (value.empty()) return "none";
++  value.resize(std::min(value.size(), size_t{128}));
++  for (char& ch : value) {
++    if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
++          (ch >= '0' && ch <= '9') || ch == ':' || ch == '-')) ch = '_';
++  }
++  return value;
++}
++const char kIsolationObserverKey = 0;
++class IsolationObserver final : public content::WebContentsObserver,
++                                public base::SupportsUserData::Data {
++ public:
++  IsolationObserver(content::WebContents* page,
++                    base::WeakPtr<EgressController> controller,
++                    std::string page_id)
++      : content::WebContentsObserver(page),
++        controller_(std::move(controller)), page_id_(std::move(page_id)) {}
++  void WebContentsDestroyed() override {
++    if (controller_) controller_->ReleaseIsolation(page_id_);
++  }
++ private:
++  base::WeakPtr<EgressController> controller_;
++  std::string page_id_;
++};
+ base::DictValue Fault(const char* reason) {
+   return base::DictValue().Set("error", base::DictValue()
+                                             .Set("code", "permission_denied")
+@@ -75,6 +107,13 @@
+   bool guarded = false;
+   content::WeakDocumentPtr document;
+   base::DictValue lease;
++};
++struct EgressController::Isolation {
++  std::string id;
++  std::string run_id;
++  std::string task_id;
++  int task_revision;
++  content::StoragePartitionConfig config;
+ };
+ struct EgressController::Credential {
+   std::string origin;
+@@ -119,6 +158,168 @@
+ base::WeakPtr<EgressController> EgressController::GetWeakPtr() {
+   return weak_factory_.GetWeakPtr();
+ }
++std::pair<std::string, content::StoragePartitionConfig>
++EgressController::ReserveIsolation(const std::string& run_id,
++                                   const std::string& task_id,
++                                   int task_revision) {
++  auto it = isolations_by_run_.find(run_id);
++  if (it != isolations_by_run_.end()) {
++    const auto& isolation = *it->second;
++    if (isolation.task_id != task_id ||
++        isolation.task_revision != task_revision) {
++      return {};
++    }
++    return {isolation.id, isolation.config};
++  }
++  if (run_id.empty() || task_revision < 0 || isolations_by_run_.size() >= 128) {
++    return {};
++  }
++  const std::string id = base::UnguessableToken::Create().ToString();
++  return {id, content::StoragePartitionConfig::Create(profile_, "aux", id,
++                                                       true)};
++}
++bool EgressController::RegisterIsolation(content::WebContents* page,
++                                         const std::string& isolation_id,
++                                         const std::string& run_id,
++                                         const std::string& task_id,
++                                         int task_revision) {
++  auto* frame = page ? page->GetPrimaryMainFrame() : nullptr;
++  if (!frame || isolation_id.empty() || run_id.empty()) {
++    LOG(ERROR) << "AUX_ISOLATION_DIAG reason=missing_frame_or_scope";
++    return false;
++  }
++  const auto expected = content::StoragePartitionConfig::Create(
++      profile_, "aux", isolation_id, true);
++  if (!frame->GetSiteInstance()) {
++    LOG(ERROR) << "AUX_ISOLATION_DIAG reason=no_site_instance";
++    return false;
++  }
++  const auto& site_config = frame->GetSiteInstance()->GetSecurityPrincipal()
++                                .GetStoragePartitionConfig();
++  const auto& storage_config = frame->GetStoragePartition()->GetConfig();
++  if (site_config != expected || storage_config != expected) {
++    LOG(ERROR) << "AUX_ISOLATION_DIAG reason=partition_mismatch"
++               << " site_domain=" << site_config.partition_domain()
++               << " site_name=" << site_config.partition_name()
++               << " storage_domain=" << storage_config.partition_domain()
++               << " storage_name=" << storage_config.partition_name();
++    return false;
++  }
++  auto it = isolations_by_run_.find(run_id);
++  if (it == isolations_by_run_.end()) {
++    if (isolations_by_run_.size() >= 128) {
++      LOG(ERROR) << "AUX_ISOLATION_DIAG reason=capacity";
++      return false;
++    }
++    auto isolation = std::make_unique<Isolation>();
++    isolation->id = isolation_id;
++    isolation->run_id = run_id;
++    isolation->task_id = task_id;
++    isolation->task_revision = task_revision;
++    isolation->config = expected;
++    it = isolations_by_run_.emplace(run_id, std::move(isolation)).first;
++  } else if (it->second->id != isolation_id ||
++             it->second->task_id != task_id ||
++             it->second->task_revision != task_revision) {
++    LOG(ERROR) << "AUX_ISOLATION_DIAG reason=run_scope_mismatch";
++    return false;
++  }
++  const std::string page_id = PageIdentity::GetOrCreate(profile_, page);
++  if (isolation_run_by_page_.contains(page_id)) {
++    LOG(ERROR) << "AUX_ISOLATION_DIAG reason=duplicate_page";
++    return false;
++  }
++  isolation_run_by_page_[page_id] = run_id;
++  auto& state = pages_[page_id];
++  if (!state) {
++    state = std::make_unique<PageState>();
++  }
++  state->guarded = true;
++  page->SetUserData(&kIsolationObserverKey,
++                    std::make_unique<IsolationObserver>(page, GetWeakPtr(), page_id));
++  return true;
++}
++void EgressController::IsolationReceipt(const std::string& event,
++                                        const std::string& run_id,
++                                        const std::string& page_id,
++                                        const std::string& isolation_id,
++                                        content::RenderFrameHost* frame,
++                                        const std::string& reason) {
++  if (isolation_receipt_count_++ >= 512) return;
++  const auto* process = frame ? frame->GetProcess() : nullptr;
++  const std::string document = frame && frame->IsRenderFrameLive()
++      ? EgressDocument::GetOrCreateForCurrentDocument(frame)->token : "none";
++  const std::string partition = frame && frame->GetStoragePartition() &&
++      frame->GetStoragePartition()->GetConfig().in_memory()
++      ? "memory-fixed" : "default";
++  LOG(ERROR) << "AUX_ISOLATION event=" << ReceiptField(event)
++             << " profile=" << ReceiptField(profile_->GetPath().BaseName().AsUTF8Unsafe())
++             << " run=" << ReceiptField(run_id)
++             << " page=" << ReceiptField(page_id)
++             << " isolation=" << ReceiptField(isolation_id)
++             << " process=" << (process ? process->GetID().value() : -1)
++             << " document=" << ReceiptField(document)
++             << " partition=" << partition
++             << " reason=" << ReceiptField(reason);
++}
++void EgressController::ReleaseIsolation(const std::string& page_id) {
++  const auto owner = isolation_run_by_page_.find(page_id);
++  if (owner == isolation_run_by_page_.end()) return;
++  const std::string run_id = owner->second;
++  isolation_run_by_page_.erase(owner);
++  created_isolation_receipts_.erase(page_id);
++  auto it = isolations_by_run_.find(run_id);
++  if (it == isolations_by_run_.end()) return;
++  const std::string isolation_id = it->second->id;
++  CancelChecks({page_id}, false);
++  pages_.erase(page_id);
++  if (std::any_of(isolation_run_by_page_.begin(),
++                  isolation_run_by_page_.end(),
++                  [&run_id](const auto& entry) {
++                    return entry.second == run_id;
++                  })) {
++    IsolationReceipt("released", run_id, page_id, isolation_id, nullptr,
++                     "shared_partition_retained");
++    return;
++  }
++  const auto config = it->second->config;
++  isolations_by_run_.erase(it);
++  credentials_by_run_.erase(run_id);
++  authority_observers_.Notify();
++  auto* partition = profile_->GetStoragePartition(config, false);
++  if (!partition) {
++    IsolationReceipt("released", run_id, page_id, isolation_id, nullptr,
++                     "partition_absent");
++    return;
++  }
++  partition->ClearData(content::StoragePartition::REMOVE_DATA_MASK_ALL,
++                       nullptr, {}, nullptr, false, base::Time(),
++                       base::Time::Max(),
++                       base::BindOnce(&EgressController::IsolationReceipt,
++                           GetWeakPtr(), "released", run_id, page_id,
++                           isolation_id, nullptr, "clear_completed"));
++}
++bool EgressController::IsIsolatedPage(content::WebContents* page) const {
++  const auto* identity = page ? PageIdentity::FromWebContents(page) : nullptr;
++  return identity && isolation_run_by_page_.contains(identity->id());
++}
++const EgressController::Isolation* EgressController::IsolationForPage(
++    const std::string& page_id,
++    content::RenderFrameHost* frame) const {
++  auto owner = isolation_run_by_page_.find(page_id);
++  if (owner == isolation_run_by_page_.end() || !frame ||
++      !frame->GetSiteInstance()) {
++    return nullptr;
++  }
++  auto it = isolations_by_run_.find(owner->second);
++  if (it == isolations_by_run_.end() ||
++      frame->GetSiteInstance()->GetSecurityPrincipal()
++              .GetStoragePartitionConfig() != it->second->config ||
++      frame->GetStoragePartition()->GetConfig() != it->second->config) {
++    return nullptr;
++  }
++  return it->second.get();
++}
+ base::DictValue EgressController::Context(const base::DictValue& params) {
+   auto* catalog = TabCatalog::GetForProfile(profile_);
+   auto* page = catalog ? catalog->FindPage(String(params, "tabId")) : nullptr;
+@@ -127,14 +328,37 @@
+       page->GetLastCommittedURL().spec() != String(params, "expectedUrl")) {
+     return Fault("The current native document changed");
+   }
+-  return Result(
++  const std::string page_id = PageIdentity::GetOrCreate(profile_, page);
++  const Isolation* isolation = IsolationForPage(page_id, frame);
++  if (isolation_run_by_page_.contains(page_id) && !isolation) {
++    return Fault("The task tab left its native isolated partition");
++  }
++  base::DictValue context =
+       base::DictValue()
+           .Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe())
+-          .Set("tabId", PageIdentity::GetOrCreate(profile_, page))
++          .Set("tabId", page_id)
+           .Set("frameId", FrameId(frame))
+           .Set("documentToken",
+                EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
+-          .Set("sourceOrigin", Origin(frame)));
++          .Set("sourceOrigin", Origin(frame));
++  if (isolation) {
++    if (created_isolation_receipts_.insert(page_id).second)
++      IsolationReceipt("created", isolation->run_id, page_id, isolation->id,
++                       frame, "registered");
++    IsolationReceipt("context", isolation->run_id, page_id, isolation->id,
++                     frame, "verified");
++    base::DictValue scope;
++    scope.Set("isolationId", isolation->id);
++    scope.Set("runId", isolation->run_id);
++    if (!isolation->task_id.empty()) {
++      scope.Set("taskId", isolation->task_id);
++    }
++    scope.Set("taskRevision", isolation->task_revision);
++    scope.Set("inMemory", true);
++    scope.Set("cookies", "empty");
++    context.Set("isolation", std::move(scope));
++  }
++  return Result(std::move(context));
+ }
+ base::DictValue EgressController::Install(const base::DictValue& params) {
+   const auto* lease = params.FindDict("lease");
+@@ -147,6 +371,14 @@
+   auto* frame = page ? page->GetPrimaryMainFrame() : nullptr;
+   if (!LiveFrame(frame)) {
+     return Fault("The native document is unavailable");
++  }
++  const Isolation* isolation = IsolationForPage(page_id, frame);
++  if (!isolation || String(*lease, "isolationId") != isolation->id ||
++      String(*lease, "runId") != isolation->run_id ||
++      String(*lease, "taskId") != isolation->task_id ||
++      lease->FindInt("taskRevision").value_or(-1) !=
++          isolation->task_revision) {
++    return Fault("Browser request lease is not bound to this native task partition");
+   }
+   auto* document = EgressDocument::GetOrCreateForCurrentDocument(frame);
+   const double now = base::Time::Now().InMillisecondsFSinceUnixEpoch();
+@@ -401,7 +633,13 @@
+   }
+   auto* page = content::WebContents::FromRenderFrameHost(frame);
+   auto it = pages_.find(context.page_id);
++  const Isolation* isolation = IsolationForPage(context.page_id, frame);
+   if (!page || page->GetPrimaryMainFrame() != frame || it == pages_.end() ||
++      !isolation || String(lease, "isolationId") != isolation->id ||
++      String(lease, "runId") != isolation->run_id ||
++      String(lease, "taskId") != isolation->task_id ||
++      lease.FindInt("taskRevision").value_or(-1) !=
++          isolation->task_revision ||
+       String(it->second->lease, "leaseId") != String(lease, "leaseId")) {
+     return false;
+   }
+diff --git a/chrome/browser/ui/aux/egress_controller.h b/chrome/browser/ui/aux/egress_controller.h
+--- a/chrome/browser/ui/aux/egress_controller.h
++++ b/chrome/browser/ui/aux/egress_controller.h
+@@ -6,6 +6,7 @@
+ #include <memory>
+ #include <set>
+ #include <string>
++#include <utility>
+ #include <vector>
+ 
+ #include "base/callback_list.h"
+@@ -15,6 +16,7 @@
+ #include "base/supports_user_data.h"
+ #include "base/timer/timer.h"
+ #include "base/values.h"
++#include "content/public/browser/storage_partition_config.h"
+ #include "content/public/browser/weak_document_ptr.h"
+ #include "mojo/public/cpp/bindings/pending_remote.h"
+ #include "services/network/public/mojom/network_context.mojom-forward.h"
+@@ -53,6 +55,23 @@
+   base::DictValue Context(const base::DictValue& params);
+   base::DictValue Install(const base::DictValue& params);
+   base::DictValue Revoke(const base::DictValue& params);
++  std::pair<std::string, content::StoragePartitionConfig> ReserveIsolation(
++      const std::string& run_id,
++      const std::string& task_id,
++      int task_revision);
++  bool RegisterIsolation(content::WebContents* page,
++                         const std::string& isolation_id,
++                         const std::string& run_id,
++                         const std::string& task_id,
++                         int task_revision);
++  void ReleaseIsolation(const std::string& page_id);
++  void IsolationReceipt(const std::string& event,
++                        const std::string& run_id,
++                        const std::string& page_id,
++                        const std::string& isolation_id,
++                        content::RenderFrameHost* frame,
++                        const std::string& reason);
++  bool IsIsolatedPage(content::WebContents* page) const;
+   void Disconnect();
+   bool AllowUninspectable(content::RenderFrameHost* frame,
+                           const std::string& kind);
+@@ -80,6 +99,9 @@
+   struct Credential;
+   struct Pending;
+   struct InFlight;
++  struct Isolation;
++  const Isolation* IsolationForPage(const std::string& page_id,
++                                    content::RenderFrameHost* frame) const;
+   void RetryPending();
+   // Removes authority before invoking callbacks so reentrant requests fail
+   // closed.
+@@ -95,6 +117,10 @@
+               const std::string& error_code);
+   raw_ptr<Profile> profile_;
+   std::map<std::string, std::unique_ptr<PageState>> pages_;
++  std::map<std::string, std::unique_ptr<Isolation>> isolations_by_run_;
++  std::map<std::string, std::string> isolation_run_by_page_;
++  std::set<std::string> created_isolation_receipts_;
++  size_t isolation_receipt_count_ = 0;
+   std::map<std::string, std::vector<Credential>> credentials_by_run_;
+   bool ambiguous_transport_used_ = false;
+   std::vector<content::WeakDocumentPtr> opaque_documents_;
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -111,7 +111,7 @@
+   register_runtime(AuxRuntimeMethodGroup::kCdp,
+                    {"native.cdpReset", "native.cdpDispatch", "native.cdpVersion"});
+   register_runtime(AuxRuntimeMethodGroup::kTabs,
+-                   {"native.listPages", "native.tabCommand", "native.movePage",
++                   {"native.listPages", "native.createAgentPage", "native.tabCommand", "native.movePage",
+                     "native.focusPage", "native.stopPage", "native.recoverPage",
+                     "native.acquireStage", "native.releaseStage"});
+   register_runtime(AuxRuntimeMethodGroup::kPageControls,
+diff --git a/chrome/browser/ui/aux/methods/native_tabs_methods.cc b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+--- a/chrome/browser/ui/aux/methods/native_tabs_methods.cc
++++ b/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+@@ -42,6 +42,7 @@
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/cdp_broker.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
+ #include "chrome/browser/ui/aux/cosmetic_controller.h"
+ #include "chrome/browser/ui/aux/credential_fill.h"
+ #include "chrome/browser/ui/aux/cookie_import.h"
+@@ -57,6 +58,7 @@
+ #include "chrome/browser/ui/browser_commands.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/tabs/tab_enums.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "components/sessions/core/session_id.h"
+ #include "components/find_in_page/find_result_observer.h"
+@@ -65,8 +67,10 @@
+ #include "components/zoom/zoom_controller.h"
+ #include "content/public/browser/devtools_agent_host.h"
+ #include "content/public/browser/navigation_controller.h"
++#include "content/public/browser/site_instance.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/common/stop_find_action.h"
++#include "ui/base/page_transition_types.h"
+ #include "ui/base/base_window.h"
+ #include "url/gurl.h"
+ 
+@@ -130,6 +134,97 @@
+     result.Set("pages", std::move(pages));
+     return NativeResult(base::Value(std::move(result)));
+   }
++  if (method == "native.createAgentPage") {
++    const std::string* profile_id = params.FindString("profileId");
++    const std::string* run_id = params.FindString("runId");
++    const std::string* window_id = params.FindString("windowId");
++    const int revision = params.FindInt("taskRevision").value_or(-1);
++    const std::string task_id = params.FindString("taskId")
++                                    ? *params.FindString("taskId") : "";
++    if (!profile_id || *profile_id !=
++            profile_->GetPath().BaseName().AsUTF8Unsafe() ||
++        !run_id || run_id->empty() || !window_id || revision < 0) {
++      return NativeFault("permission_denied", "Invalid task-tab authority");
++    }
++    auto* browsers = ProfileBrowserCollection::GetForProfile(profile_);
++    BrowserWindowInterface* issuer = nullptr;
++    if (browsers && *window_id == "main") {
++      issuer = browsers->FindTabbedBrowser();
++    } else if (browsers) {
++      int parsed_id = 0;
++      if (base::StringToInt(*window_id, &parsed_id) && parsed_id > 0) {
++        issuer = browsers->FindBrowserWithID(
++            SessionID::FromSerializedValue(parsed_id));
++      }
++    }
++    if (!issuer || issuer->GetProfile() != profile_ ||
++        issuer->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
++      return NativeFault("not_found", "Task tab needs a regular Profile window");
++    }
++    auto* egress = aux::EgressController::ForProfile(profile_);
++    const base::DictValue* source = params.FindDict("source");
++    if (source) {
++      auto current = egress->Context(*source);
++      const auto* result = current.FindDict("result");
++      const auto* actual_token = result ? result->FindString("documentToken") : nullptr;
++      const auto* expected_token = source->FindString("documentToken");
++      if (!actual_token || !expected_token ||
++          *actual_token != *expected_token ||
++          !source->FindString("expectedUrl") ||
++          !GURL(*source->FindString("expectedUrl")).SchemeIsHTTPOrHTTPS()) {
++        egress->IsolationReceipt("refused", *run_id, "none", "none", nullptr,
++                                 "source_document_changed");
++        return NativeFault("permission_denied", "Selected source page changed");
++      }
++    }
++    auto [isolation_id, partition] = egress->ReserveIsolation(
++        *run_id, task_id, revision);
++    if (isolation_id.empty()) {
++      return NativeFault("permission_denied", "Task isolation is unavailable");
++    }
++    auto site = content::SiteInstance::CreateForFixedStoragePartition(
++        profile_, GURL("https://aux.invalid/"), partition);
++    if (!site) {
++      return NativeFault("backend_unavailable", "Task partition could not be created");
++    }
++    content::WebContents::CreateParams create(profile_, site);
++    create.opener_suppressed = true;
++    auto contents = content::WebContents::Create(create);
++    if (!contents) {
++      return NativeFault("backend_unavailable", "Task tab could not be created");
++    }
++    auto* model = issuer->GetTabStripModel();
++    auto* raw = contents.get();
++    model->InsertWebContentsAt(model->count(), std::move(contents),
++        params.FindBool("background").value_or(false)
++            ? ADD_NONE : ADD_ACTIVE);
++    const std::string page_id = aux::PageIdentity::GetOrCreate(profile_, raw);
++    if (!egress->RegisterIsolation(raw, isolation_id, *run_id, task_id,
++                                   revision)) {
++      model->CloseWebContentsAt(model->GetIndexOfWebContents(raw),
++                                TabCloseTypes::CLOSE_NONE);
++      return NativeFault("permission_denied", "Task tab partition identity failed");
++    }
++    catalog->MarkRuntimeOwned(page_id);
++    aux::PageIdentity::MarkEphemeralTask(profile_, raw);
++    content::NavigationController::LoadURLParams blank(GURL("about:blank"));
++    blank.source_site_instance = site;
++    blank.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
++    raw->GetController().LoadURLWithParams(blank);
++    base::DictValue scope;
++    scope.Set("isolationId", isolation_id);
++    scope.Set("runId", *run_id);
++    if (!task_id.empty()) scope.Set("taskId", task_id);
++    scope.Set("taskRevision", revision);
++    scope.Set("inMemory", true);
++    scope.Set("cookies", "empty");
++    base::DictValue result;
++    result.Set("pageId", page_id);
++    result.Set("targetId", content::DevToolsAgentHost::GetOrCreateFor(raw)->GetId());
++    result.Set("isolation", std::move(scope));
++    if (source) result.Set("source", source->Clone());
++    return NativeResult(base::Value(std::move(result)));
++  }
+   if (method == "native.tabCommand") {
+     const std::string* command_id = params.FindString("commandId");
+     const std::string* window_id = params.FindString("windowId");
+diff --git a/chrome/browser/ui/aux/page_identity.cc b/chrome/browser/ui/aux/page_identity.cc
+--- a/chrome/browser/ui/aux/page_identity.cc
++++ b/chrome/browser/ui/aux/page_identity.cc
+@@ -18,6 +18,7 @@
+ 
+ constexpr char kPageIdExtraDataKey[] = "aux.page_id";
+ constexpr char kRuntimeOwnedExtraDataKey[] = "aux.runtime_owned";
++constexpr char kEphemeralTaskExtraDataKey[] = "aux.ephemeral_task";
+ 
+ bool IsValidPageId(const std::string& id) {
+   if (base::Uuid::ParseLowercase(id).is_valid()) {
+@@ -146,6 +147,27 @@
+   if (service && window_id.is_valid() && tab_id.is_valid()) {
+     service->AddTabExtraData(window_id, tab_id, kRuntimeOwnedExtraDataKey, "1");
+   }
++}
++
++void PageIdentity::MarkEphemeralTask(Profile* profile,
++                                     content::WebContents* contents) {
++  if (!profile || profile->IsOffTheRecord() || !contents) {
++    return;
++  }
++  SessionService* service = SessionServiceFactory::GetForProfile(profile);
++  const SessionID window_id =
++      sessions::SessionTabHelper::IdForWindowContainingTab(contents);
++  const SessionID tab_id = sessions::SessionTabHelper::IdForTab(contents);
++  if (service && window_id.is_valid() && tab_id.is_valid()) {
++    service->AddTabExtraData(window_id, tab_id,
++                             kEphemeralTaskExtraDataKey, "1");
++  }
++}
++
++bool PageIdentity::IsEphemeralTaskExtraData(
++    const std::map<std::string, std::string>& extra_data) {
++  const auto it = extra_data.find(kEphemeralTaskExtraDataKey);
++  return it != extra_data.end() && it->second == "1";
+ }
+ 
+ void PageIdentity::RestoreFromExtraData(
+diff --git a/chrome/browser/ui/aux/page_identity.h b/chrome/browser/ui/aux/page_identity.h
+--- a/chrome/browser/ui/aux/page_identity.h
++++ b/chrome/browser/ui/aux/page_identity.h
+@@ -37,6 +37,10 @@
+   static void Transfer(content::WebContents* from, content::WebContents* to);
+   static void MarkRuntimeOwned(Profile* profile,
+                                content::WebContents* contents);
++  static void MarkEphemeralTask(Profile* profile,
++                                content::WebContents* contents);
++  static bool IsEphemeralTaskExtraData(
++      const std::map<std::string, std::string>& extra_data);
+   static void RestoreFromExtraData(
+       content::WebContents* contents,
+       const std::map<std::string, std::string>& extra_data);
+diff --git a/chrome/browser/ui/browser_tabrestore.cc b/chrome/browser/ui/browser_tabrestore.cc
+--- a/chrome/browser/ui/browser_tabrestore.cc
++++ b/chrome/browser/ui/browser_tabrestore.cc
+@@ -83,6 +83,13 @@
+   std::unique_ptr<WebContents> web_contents =
+       WebContents::CreateWithSessionStorage(create_params,
+                                             session_storage_namespace_map);
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  // An agent task's storage partition and authority end with its run. A
++  // historical tab entry must never replay its URL in the Profile partition.
++  if (aux::PageIdentity::IsEphemeralTaskExtraData(extra_data)) {
++    return web_contents;
++  }
++#endif
+   apps::SetAppIdForWebContents(browser->GetProfile(), web_contents.get(),
+                                extension_app_id);
+ 

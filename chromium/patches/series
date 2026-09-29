@@ -119,3 +119,4 @@ aux/runtime/0118-disposable-memory-acceptance.patch
 aux/runtime/0119-run-attention-notifications.patch
 aux/runtime/0120-recovery-owner-auth.patch
 aux/runtime/0121-governed-egress.patch
+aux/runtime/0122-isolated-task-tabs.patch
