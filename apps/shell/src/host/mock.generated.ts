@@ -490,6 +490,17 @@ const RESULTS: Record<string, unknown> = {
     "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "methods": []
   },
+  "native.createAgentPage": {
+    "pageId": "a",
+    "targetId": "a",
+    "isolation": {
+      "isolationId": "1970-01-01T00:00:00.000Z",
+      "runId": "1970-01-01T00:00:00.000Z",
+      "taskRevision": 0,
+      "inMemory": true,
+      "cookies": "empty"
+    }
+  },
   "native.egressContext": {
     "profileId": "a",
     "tabId": "a",
