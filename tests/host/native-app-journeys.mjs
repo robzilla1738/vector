@@ -872,6 +872,8 @@ else {
       db.prepare("INSERT INTO kv(key,value) VALUES(?,?)").run("setting:nativeFixture", JSON.stringify({ text: "private native setting" }));
       db.prepare("INSERT INTO outbound_mcp_servers(server_id,workspace_id,state,body,created_at,updated_at) VALUES(?,?,?,?,?,?)")
         .run("legacy-mcp", "legacy-space", "pending", JSON.stringify({ name: "private native MCP" }), Date.now(), Date.now());
+      db.prepare("INSERT INTO outbound_mcp_bundles(server_id,sha256,archive_base64,installed_at) VALUES(?,?,?,?)")
+        .run("legacy-mcp", "a".repeat(64), Buffer.from("private native MCP bundle").toString("base64"), Date.now());
       db.prepare("INSERT INTO outbound_mcp_grants(grant_id,server_id,tool_name,body) VALUES(?,?,?,?)")
         .run("legacy-mcp-grant", "legacy-mcp", "read", JSON.stringify({ note: "private native MCP grant" }));
       db.prepare("INSERT INTO agent_connections(connection_id,name,client,scope_kind,workspace_id,token_hash,created_at) VALUES(?,?,?,?,?,?,?)")
@@ -1023,6 +1025,7 @@ else {
           evidence: db.prepare("SELECT json FROM task_evidence WHERE evidence_id='legacy-evidence'").get()?.json,
           setting: db.prepare("SELECT value FROM kv WHERE key='setting:nativeFixture'").get()?.value,
           mcp: db.prepare("SELECT body FROM outbound_mcp_servers WHERE server_id='legacy-mcp'").get()?.body,
+          mcpBundle: db.prepare("SELECT archive_base64 FROM outbound_mcp_bundles WHERE server_id='legacy-mcp'").get()?.archive_base64,
           mcpGrant: db.prepare("SELECT body FROM outbound_mcp_grants WHERE grant_id='legacy-mcp-grant'").get()?.body,
           agent: db.prepare("SELECT name FROM agent_connections WHERE connection_id='legacy-agent'").get()?.name,
           calendar: db.prepare("SELECT account_key,account_key_lookup,label FROM calendar_connections WHERE connection_id='legacy-calendar'").get(),
@@ -1041,7 +1044,7 @@ else {
     const migrated = inspect();
     assert.ok(migrated.error?.startsWith("auxenc:v1:"), "Legacy model error must migrate before services start");
     for (const value of [migrated.run?.goal, migrated.run?.config, migrated.space, migrated.task,
-      migrated.evidence, migrated.setting, migrated.mcp, migrated.mcpGrant, migrated.agent,
+      migrated.evidence, migrated.setting, migrated.mcp, migrated.mcpBundle, migrated.mcpGrant, migrated.agent,
       migrated.calendar?.account_key, migrated.calendar?.label,
       migrated.vault, migrated.vaultGrant, migrated.vaultAudit, migrated.goal, migrated.hook,
       migrated.hookError, migrated.group, migrated.subagent])
@@ -1052,7 +1055,7 @@ else {
       "response_metadata", "results", "run_messages", "operation_implementations", "operation_reconciliations",
       "safety_approval_requests", "safety_audit", "safety_send_journal", "set_members", "runs", "steps",
       "conversations", "workspaces", "tasks", "task_revisions", "task_evidence", "criterion_reviews",
-      "criterion_verifications", "outbound_mcp_servers", "outbound_mcp_grants", "agent_connections",
+      "criterion_verifications", "outbound_mcp_servers", "outbound_mcp_bundles", "outbound_mcp_grants", "agent_connections",
       "vault_items", "vault_grants", "vault_access", "calendar_connections", "kv_filtered",
       "goals", "hooks", "hook_invocations", "subagent_groups", "subagents"].map(table => `protected_sqlite_v1:${table}`).sort());
     for (const marker of ["private startup marker", "private native run", "private native context", "private native space",
@@ -1082,6 +1085,7 @@ else {
     }, 60_000);
     assert.equal(inspect().error, migrated.error, "Protected row must remain stable across native restart");
     assert.equal(inspect().evidence, migrated.evidence, "Protected evidence must remain stable across native restart");
+    assert.equal(inspect().mcpBundle, migrated.mcpBundle, "Protected MCP bundle must remain stable across native restart");
     assert.equal(inspect().goal, migrated.goal, "Protected goal must remain stable across native restart");
     assert.equal(inspect().hook, migrated.hook, "Protected hook must remain stable across native restart");
     assert.equal(inspect().hookError, migrated.hookError, "Protected hook error must remain stable across native restart");
