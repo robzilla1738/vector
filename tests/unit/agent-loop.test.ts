@@ -1093,6 +1093,41 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldReconcile ? "confirmed" : "uncertain" });
   });
 
+  it.each([
+    { headingVisibleBefore: false, shouldReconcile: true },
+    { headingVisibleBefore: true, shouldReconcile: false },
+  ])("reconciles Edit only when an inline form and its controls newly render (%o)", async ({ headingVisibleBefore, shouldReconcile }) => {
+    const before = { ...pageObs(), content: { ...pageObs().content,
+      text: headingVisibleBefore ? "Record 04\nEdit record" : "Record 04\nEdit record Details…",
+      headings: ["Record 04", "Edit record"],
+      elements: [{ ref: "r5", tag: "button", role: "button", name: "Edit record", frame: "main" }],
+    } } as Observation;
+    const after = { ...before, revision: 2, content: { ...before.content,
+      text: "Record 04\nEdit record\nTitle\nStatus\napproved\nSave record Cancel",
+    } } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r5" }] } }] },
+      { toolCalls: [{ toolCallId: "r1", toolName: "reconcile_action", input: {
+        citation: { pageId: "p1", revision: 2, quote: "Save record Cancel" }, effect: "Edit record form opened",
+      } }] },
+      { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "edit opened" } }] },
+      { text: "Cannot prove the edit form opened." },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "failed" as const,
+        startedAt: 1, durationMs: 1, error: { code: "condition_timeout", message: "timed out" },
+        effect: "uncertain" as const, receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "failed", steps, observation: after };
+    });
+    h.pages.observe.mockImplementation(async () => before);
+    const run = await h.coordinator.start({ goal: "open the edit form", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status === "completed").toBe(shouldReconcile);
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldReconcile ? "confirmed" : "uncertain" });
+  });
+
   it("reconciles an uncertain link click only from its recorded destination URL", async () => {
     const before = { ...pageObs(), content: { ...pageObs().content,
       url: "http://x.test/records", elements: [{ ref: "r2", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],

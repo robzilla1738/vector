@@ -376,6 +376,32 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         noteUnresolved();
         return { ok: true as const, intentId: intent.id, status: "confirmed" as const };
       }
+      // Inline edit forms have no dialog role or navigation. Require the
+      // clicked Edit control's label to become a newly rendered heading and
+      // newly rendered Save/Cancel controls; hidden indexed headings alone
+      // are insufficient evidence that the form opened.
+      const inlineEditOpened = intent.summary.ops[0] === "click"
+        && labels.some((label) => /^edit\b/i.test(label.trim()))
+        && citedObs && !modalVisible(citedObs)
+        && labels.some((label) => citedObs.content.text.split("\n").some((line) =>
+          line.trim().toLowerCase() === label.trim().toLowerCase()
+          && !intent.summary?.beforeLineHashes.includes(observationLineHash(line))))
+        && citedObs.content.text.split("\n").some((line) =>
+          /\bsave\b.*\bcancel\b/i.test(line)
+          && !intent.summary?.beforeLineHashes.includes(observationLineHash(line)));
+      if (inlineEditOpened && /\bsave\b.*\bcancel\b/i.test(quote)) {
+        self.durable.reconcile(intent.id, "applied", JSON.stringify({
+          observationId: key, quote: redactForModel(quote), effect: "Opened inline edit form",
+        }));
+        for (const outcome of outcomes) {
+          const dispatch = writeDispatches.get(outcome.stepId);
+          if (dispatch?.pageId !== intent.pageId) continue;
+          if (outcome.receipt) outcome.receipt = { ...outcome.receipt, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false, observed: quote };
+          if (outcome.effect === "uncertain" || outcome.effect === "dispatched") outcome.effect = "observed";
+        }
+        noteUnresolved();
+        return { ok: true as const, intentId: intent.id, status: "confirmed" as const };
+      }
       const completedClickWords: Record<string, string> = {
         save: "saved", submit: "submitted", create: "created", delete: "deleted", update: "updated",
         approve: "approved", send: "sent", publish: "published", apply: "applied", remove: "removed",
