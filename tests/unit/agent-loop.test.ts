@@ -81,6 +81,21 @@ describe("TranscriptStore (S5)", () => {
 });
 
 describe("runAgentLoop (S5)", () => {
+  it("rejects a trailing download waiter before dispatching its preceding click", async () => {
+    const { transcript } = fixture();
+    transcript.append("run-1", [userTask]);
+    const act = vi.fn(async () => ({ output: { status: "completed" } }));
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [
+        { id: "click", op: "click", target: "r1" }, { id: "wait", op: "expectDownload" },
+      ] } }] },
+      { text: "The download was not triggered." },
+    ]);
+    await runAgentLoop({ ...baseOpts(transcript, { act }), model });
+    expect(act).not.toHaveBeenCalled();
+    expect(JSON.stringify(transcript.load("run-1"))).toContain("no page action was dispatched");
+  });
+
   it("returns fresh citable progress when a first-turn script fails after changing the page", async () => {
     const { transcript } = fixture();
     transcript.append("run-1", [userTask]);

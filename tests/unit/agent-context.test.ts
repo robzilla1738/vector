@@ -120,6 +120,22 @@ describe("context management — compaction", () => {
     const call = { role: "assistant", content: [{ type: "tool-call", toolCallId: "g1", toolName: "goal_program", input: { code: "x".repeat(210_000) } }] } as ModelMessage;
     expect(compactMessages([userTask, call])).toBeNull();
   });
+
+  it("drops oversized provider reasoning metadata from completed history", () => {
+    const reasoning = { type: "reasoning", text: "brief reasoning", providerOptions: { gateway: { signature: "s".repeat(22_000) } } };
+    const messages: ModelMessage[] = [userTask];
+    for (let i = 0; i < 10; i++) {
+      messages.push({ role: "assistant", content: [reasoning, reasoning, reasoning,
+        { type: "tool-call", toolCallId: `r${i}`, toolName: "snapshot", input: {} }] } as ModelMessage);
+      messages.push(toolMsg(`r${i}`, { ok: true }));
+    }
+    expect(JSON.stringify(messages).length).toBeGreaterThan(TRANSCRIPT_COMPACT_BYTES);
+    const compacted = compactMessages(messages);
+    expect(compacted).not.toBeNull();
+    expect(JSON.stringify(compacted!.messages).length).toBeLessThan(TRANSCRIPT_COMPACT_BYTES);
+    expect((compacted!.messages[1]!.content as Record<string, unknown>[])[0]).toEqual({ type: "reasoning", text: "brief reasoning" });
+    expect((compacted!.messages.at(-1)!.content as Record<string, unknown>[])[0]).toMatchObject({ toolCallId: "r9" });
+  });
 });
 
 describe("TranscriptStore entries/rewrite (compaction)", () => {

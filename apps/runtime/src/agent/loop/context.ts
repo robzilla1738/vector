@@ -93,6 +93,15 @@ interface MessagePart {
 function compactPart(part: MessagePart): MessagePart {
   if (part.type === "tool-result" && bytes(part.output) > COMPACT_PART_BYTES)
     return { ...part, output: { type: "json", value: { compacted: true, bytes: bytes(part.output), hint: "This tool result was compacted — re-issue the call if you still need its content." } } };
+  // Provider reasoning signatures can be tens of KB per part. Once the
+  // assistant's tool result is durable, the provider metadata is no longer
+  // evidence or action authority and need not accompany the next request.
+  if (part.type === "reasoning" && part.providerOptions && bytes(part.providerOptions) > COMPACT_PART_BYTES) {
+    const { providerOptions: _providerOptions, ...rest } = part;
+    return typeof rest.text === "string" && rest.text.length > COMPACT_TEXT_CHARS
+      ? { ...rest, text: `${rest.text.slice(0, COMPACT_TEXT_CHARS)}… [compacted ${rest.text.length - COMPACT_TEXT_CHARS} chars]` }
+      : rest;
+  }
   if ((part.type === "text" || part.type === "reasoning") && typeof part.text === "string" && part.text.length > COMPACT_TEXT_CHARS)
     return { ...part, text: `${part.text.slice(0, COMPACT_TEXT_CHARS)}… [compacted ${part.text.length - COMPACT_TEXT_CHARS} chars]` };
   return part;

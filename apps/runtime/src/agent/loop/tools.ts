@@ -97,6 +97,7 @@ export function buildToolManifest(): LoopToolManifest {
       "Act on the page: a batch of program steps compiled, authorized through decide(), executed and journaled to the " +
       "durable ledger. Steps run in order and report partial failures. Setter steps (fill/type/check/uncheck/select) " +
       "record the control's prior value. Do not repeat a step the ledger marks uncertain — re-observe and re-plan. " +
+      "For a download, put expectDownload immediately BEFORE its triggering click; a misplaced waiter is rejected before any step runs. " +
       "When the snapshot's links differ only by an id, navigate to the matching href instead of paging click by click.",
     byline: "Aux actuation · decide() + durable write ledger",
     inputSchema: z.object({
@@ -105,6 +106,8 @@ export function buildToolManifest(): LoopToolManifest {
     execute: async (raw, ctx: LoopToolContext) => {
       const input = z.object({ steps: z.array(PlanStepSchema).min(1).max(16) }).parse(raw);
       if (!ctx.pageId) throw new AuxError("invalid_params", "act needs an active page; this run claims none.");
+      if (input.steps.some((step, index) => step.op === "expectDownload" && index === input.steps.length - 1))
+        throw new AuxError("invalid_params", "expectDownload must immediately precede its trigger; no page action was dispatched. Reissue one batch with expectDownload before the click.");
       // The dep returns LoopToolResult — a safety `ask` may park the loop.
       return need(ctx.deps.act, "act")({ pageId: ctx.pageId, steps: input.steps });
     },
