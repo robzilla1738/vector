@@ -188,12 +188,12 @@ describe("native browser egress authority", () => {
     const waiting = new Promise<void>(resolve => { release = resolve; });
     f.native.egressInstall.mockImplementationOnce(async input => { await install(input); await waiting; return { accepted: true }; });
     const old = f.service.acquire("run", "tab");
-    const oldFailure = expect(old).rejects.toMatchObject({ code: "ref_stale" });
+    const oldFailure = old.catch(error => error);
     await vi.waitFor(() => expect(f.leases).toHaveLength(1));
     f.navigate();
     const next = f.service.ensure("run", "tab");
     release();
-    await oldFailure;
+    await expect(oldFailure).resolves.toMatchObject({ code: "ref_stale" });
     await next;
     expect(f.leases).toHaveLength(2);
     expect((await f.service.request(f.request("https://source.test/"))).decision.status).toBe("allow");
