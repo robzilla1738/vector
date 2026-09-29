@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { executeProgram } from "@aux/runtime";
+import { executeProgram, writeOutcome } from "@aux/runtime";
 import type { DriverPage } from "@aux/chromium-driver";
 import { AuxError, type Condition, type Program } from "@aux/contracts";
 
@@ -178,7 +178,22 @@ describe("executeProgram", () => {
     const dl = res.steps.find((s) => s.op === "expectDownload");
     expect(dl?.status).toBe("ok");
     expect(dl?.extracted?.downloaded).toBe("f.txt");
+    const click = res.steps.find((s) => s.op === "click");
+    expect(click?.receipt).toMatchObject({ uncertain: false, observed: "downloaded f.txt", remoteConfirmed: false });
+    expect(click?.effect).toBe("observed");
+    expect(writeOutcome(res).outcome).toBe("confirmed");
     expect(calls).toContain("click:r8");
+  });
+
+  it("keeps a trigger uncertain when its paired download waiter fails", async () => {
+    const { page } = fakePage();
+    page.waitForDownload = async () => { throw new AuxError("condition_timeout", "no download"); };
+    const res = await executeProgram(page, { pageId: "p1", steps: [
+      { id: "d0", op: "expectDownload", timeoutMs: 10 }, { id: "c1", op: "click", target: "r8" },
+    ] });
+    expect(res.status).toBe("failed");
+    expect(res.steps.find((s) => s.op === "click")?.receipt?.uncertain).toBe(true);
+    expect(writeOutcome(res).outcome).toBe("uncertain");
   });
 
   it("cancels the download waiter when the trigger is denied", async () => {

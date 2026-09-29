@@ -336,8 +336,8 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
     void dlWait.catch(() => {});
     try {
       const trigOutcome = await runOne(trigger);
-      emit(trigOutcome, trigger);
       if (trigOutcome.status === "failed" && !trigger.optional) {
+        emit(trigOutcome, trigger);
         cancelWait();
         return { early: { status: ctx.signal?.aborted ? "cancelled" : "failed", error: trigOutcome.error?.message } };
       }
@@ -353,6 +353,16 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
           detail: `downloaded ${res.suggestedFilename}`,
           extracted: await downloadExtract(res.suggestedFilename, res.path),
         };
+        if (trigOutcome.status === "ok") {
+          trigOutcome.effect = "observed";
+          trigOutcome.receipt = {
+            remoteConfirmed: false,
+            dispatchedBeforeTakeover: false,
+            ...trigOutcome.receipt,
+            observed: `downloaded ${res.suggestedFilename}`,
+            uncertain: false,
+          };
+        }
       } catch (e) {
         dlOutcome = {
           stepId: dlStep.id,
@@ -363,6 +373,7 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
           error: { code: e instanceof AuxError ? e.code : "step_failed", message: e instanceof Error ? e.message : String(e) },
         };
       }
+      emit(trigOutcome, trigger);
       emit(dlOutcome, dlStep);
       const early = failedUnlessOptional(dlOutcome, dlStep);
       if (early) return { early: { status: early.status, error: early.error } };
