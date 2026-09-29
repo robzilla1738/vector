@@ -1227,6 +1227,9 @@ else {
     report.passed = true;
   } else if (runtimeBackupRestoreJourney) {
     await rpc("settings.set", { tabLayout: "vertical" });
+    const runtimeStage = (await rpc("runtime.describe")).featureStages?.electronMigration;
+    assert.equal(runtimeStage, "on", "disposable runtime acceptance marker must be source-bound and active");
+    record("disposable runtime accepted only the reviewed backup feature", { feature: "electronMigration" });
     const dataDir = join(profile, "Default/Aux Runtime Data");
     const marker = `Post backup ${Date.now()}`;
     console.log("In Aux Settings → General → Task data backup, choose Create backup.");
