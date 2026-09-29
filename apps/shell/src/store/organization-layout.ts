@@ -1,4 +1,5 @@
 import type { OrganizationLayout } from "@aux/contracts";
+import { tidyFoldersMatch } from "../tidy-layout";
 import { emptyLayout, type Layout } from "../workspace";
 
 export function toOrganizationLayout(layout: Layout): OrganizationLayout {
@@ -25,13 +26,13 @@ export function toOrganizationLayout(layout: Layout): OrganizationLayout {
 }
 
 export function fromOrganizationLayout(value: OrganizationLayout): Layout {
-  // Chromium gives a restored window a new session ID. Its window record is
-  // initially empty even though its tabs retain their stable page IDs.
+  // A restored window's record starts empty. Restore Tidy assignments only while
+  // the shared receipt still matches the folders it created.
+  const stored = value.shared.tidyUndo;
+  const receipt = stored && tidyFoldersMatch(stored.created, value.shared.folders) ? stored : undefined;
   const restoredTidy =
-    value.shared.tidyUndo &&
-    value.window.order.length === 0 &&
-    Object.keys(value.window.tabFolder).length === 0
-      ? Object.fromEntries(value.shared.tidyUndo.moved.map(({ pageId, toFolderId }) => [pageId, toFolderId]))
+    receipt && value.window.order.length === 0 && Object.keys(value.window.tabFolder).length === 0
+      ? Object.fromEntries(receipt.moved.map(({ pageId, toFolderId }) => [pageId, toFolderId]))
       : {};
   return {
     ...emptyLayout(),
@@ -39,7 +40,7 @@ export function fromOrganizationLayout(value: OrganizationLayout): Layout {
     ...value.window,
     tabFolder: { ...restoredTidy, ...value.window.tabFolder },
     tabNames: value.window.tabNames ?? {},
-    tidyUndo: value.shared.tidyUndo,
+    tidyUndo: receipt,
   };
 }
 

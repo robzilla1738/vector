@@ -1,10 +1,42 @@
-import type { OrganizationCommit, OrganizationSnapshot } from "@aux/contracts";
+import type { OrganizationCommit, OrganizationLayout, OrganizationSnapshot } from "@aux/contracts";
+import { tidyFoldersMatch } from "../tidy-layout";
 import type { Layout } from "../workspace";
 import {
   fromOrganizationLayout,
   rebaseOrganizationLayout,
   toOrganizationLayout,
 } from "./organization-layout";
+
+const STALE_TIDY_UNDO = "This Tidy change is out of date. Review the folders and tabs before undoing.";
+
+function tidyUndoRemovedFolders(
+  base: OrganizationLayout | null | undefined,
+  local: OrganizationLayout,
+): boolean {
+  const receipt = base?.shared.tidyUndo;
+  if (!receipt || local.shared.tidyUndo) return false;
+  const created = new Set(receipt.created.map((folder) => folder.id));
+  return (
+    base.shared.folders.some((folder) => created.has(folder.id)) &&
+    !local.shared.folders.some((folder) => created.has(folder.id))
+  );
+}
+
+function sameTidyState(left: OrganizationLayout, right: OrganizationLayout): boolean {
+  const leftReceipt = left.shared.tidyUndo;
+  const rightReceipt = right.shared.tidyUndo;
+  if (!leftReceipt && !rightReceipt) return true;
+  if (!leftReceipt || !rightReceipt || JSON.stringify(leftReceipt) !== JSON.stringify(rightReceipt))
+    return false;
+  if (!tidyFoldersMatch(leftReceipt.created, right.shared.folders)) return false;
+  const created = new Set(leftReceipt.created.map((folder) => folder.id));
+  const assignments = (layout: OrganizationLayout) =>
+    Object.entries(layout.window.tabFolder)
+      .filter(([, folderId]) => created.has(folderId))
+      .sort(([leftId], [rightId]) => leftId.localeCompare(rightId))
+      .map(([pageId, folderId]) => `${pageId}\0${folderId}`);
+  return JSON.stringify(assignments(left)) === JSON.stringify(assignments(right));
+}
 
 export interface OrganizationHost {
   organizationSnapshot(): Promise<OrganizationSnapshot>;
@@ -64,12 +96,62 @@ export class OrganizationPersistence {
     const base = this.base!;
     if (!latest.layout || latest.revision <= base.revision)
       return this.pending ?? fromOrganizationLayout(base.layout!);
-    const merged = this.pending
-      ? rebaseOrganizationLayout(base.layout!, toOrganizationLayout(this.pending), latest.layout)
+    const pendingLayout = this.pending ? toOrganizationLayout(this.pending) : null;
+    // A queued undo must not merge over a Tidy folder or tab that changed underneath it.
+    if (
+      pendingLayout &&
+      base.layout &&
+      tidyUndoRemovedFolders(base.layout, pendingLayout) &&
+      !sameTidyState(base.layout, latest.layout)
+    ) {
+      this.pending = null;
+      this.base = latest;
+      return fromOrganizationLayout(latest.layout);
+    }
+    const merged = pendingLayout
+      ? rebaseOrganizationLayout(base.layout!, pendingLayout, latest.layout)
       : latest.layout;
     this.base = latest;
     if (this.pending) this.pending = fromOrganizationLayout(merged);
     return fromOrganizationLayout(merged);
+  }
+
+  /** Commit `next` only when the host still matches the layout Undo was reviewed against. */
+  async commitReviewed(reviewed: Layout, next: Layout): Promise<void> {
+    await this.flushing?.catch(() => {});
+    const state: { current: Promise<void> | null } = { current: null };
+    const commit = this.writeReviewed(reviewed, next).finally(() => {
+      if (this.flushing === state.current) this.flushing = null;
+    });
+    state.current = commit;
+    this.flushing = commit;
+    await commit;
+  }
+
+  private async writeReviewed(reviewed: Layout, next: Layout): Promise<void> {
+    await this.hydrate();
+    const observed = await this.host.organizationSnapshot();
+    if (
+      !observed.layout ||
+      JSON.stringify(fromOrganizationLayout(observed.layout)) !== JSON.stringify(reviewed)
+    ) {
+      throw new Error(STALE_TIDY_UNDO);
+    }
+    const pendingAtStart = this.pending;
+    try {
+      this.base = await this.host.organizationCommit({
+        expectedRevision: observed.revision,
+        layout: toOrganizationLayout(next),
+      });
+      if (this.pending === pendingAtStart) this.pending = null;
+    } catch (error) {
+      const latest = await this.host.organizationSnapshot();
+      if (latest.layout && latest.revision !== observed.revision) {
+        this.base = latest;
+        throw new Error(STALE_TIDY_UNDO);
+      }
+      throw error;
+    }
   }
 
   /** A native Profile import replaces the entire reviewed layout. Local tab
@@ -110,6 +192,14 @@ export class OrganizationPersistence {
           if (latest.revision === base.revision || !latest.layout) {
             this.pending ??= pending;
             throw error;
+          }
+          // Rebase would treat a stale Tidy undo as a folder deletion.
+          if (
+            base.layout &&
+            tidyUndoRemovedFolders(base.layout, local) &&
+            !sameTidyState(base.layout, latest.layout)
+          ) {
+            throw new Error(STALE_TIDY_UNDO);
           }
           local = rebaseOrganizationLayout(
             base.layout ?? toOrganizationLayout(this.legacy),

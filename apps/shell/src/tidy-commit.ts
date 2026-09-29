@@ -1,4 +1,6 @@
-import type { Layout } from "./workspace";
+import type { OrganizationPersistence } from "./store/organization-persistence";
+import { revertTidyRecord } from "./tidy-layout";
+import type { Layout, TidyUndoRecord } from "./workspace";
 
 /** A reviewed Tidy result becomes visible only after Profile organization confirms the write. */
 export async function commitTidyLayout(input: {
@@ -28,4 +30,16 @@ export async function commitTidyLayout(input: {
     throw changed();
   }
   input.publish(input.after);
+}
+
+/** Flush queued edits, re-read the host, and undo only while that Tidy state is still current. */
+export async function undoTidyChange(
+  session: Pick<OrganizationPersistence, "flush" | "refresh" | "commitReviewed">,
+  receipt: TidyUndoRecord,
+): Promise<Layout> {
+  await session.flush();
+  const reviewed = await session.refresh();
+  const restored = revertTidyRecord(receipt, reviewed);
+  await session.commitReviewed(reviewed, restored);
+  return restored;
 }

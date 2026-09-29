@@ -384,14 +384,20 @@ export function removeFolder(layout: Layout, folderId: string): Layout {
 }
 
 export function assignFolder(layout: Layout, pageId: string, folderId: string | null): Layout {
+  if (folderId && !layout.folders.some((f) => f.id === folderId)) return layout;
   const tabFolder = { ...layout.tabFolder };
-  const tidyUndo = layout.tidyUndo?.moved.some(item => item.pageId === pageId && item.toFolderId !== folderId)
-    ? undefined : layout.tidyUndo;
+  const created = new Set(layout.tidyUndo?.created.map((folder) => folder.id));
+  const previous = tabFolder[pageId];
+  const leaves = !!previous && created.has(previous) && previous !== folderId;
+  const enters = !!folderId && created.has(folderId) && previous !== folderId;
+  const movesReceipt = !!layout.tidyUndo?.moved.some((item) => item.pageId === pageId && item.toFolderId !== folderId);
+  // A later session restores assignments from this receipt. Any membership change
+  // on a Tidy folder has to drop it, or Undo becomes valid for the old grouping.
+  const tidyUndo = leaves || enters || movesReceipt ? undefined : layout.tidyUndo;
   if (!folderId) {
     delete tabFolder[pageId];
     return { ...layout, tabFolder, tidyUndo };
   }
-  if (!layout.folders.some((f) => f.id === folderId)) return layout;
   tabFolder[pageId] = folderId;
   return { ...layout, tabFolder, tidyUndo };
 }

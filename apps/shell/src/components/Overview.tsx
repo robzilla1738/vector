@@ -8,8 +8,8 @@ import { useStore, call, errToast, tabCommand, toast, pagePreview } from "../sto
 import { bridge, inNativeHost } from "../bridge";
 import { bookmarkWebUrl } from "../bookmark-files";
 import { assignFolder, assignSpace, hostOf, isPinned, tabLabel, type ArchivedTab } from "../workspace";
-import { flushLayout, persistLayout } from "../store/persistence";
-import { applyTidyProposal, revertTidyRecord, tidyUndoRecord } from "../tidy-layout";
+import { flushLayout, persistLayout, reloadOrganizationLayout, undoPersistedTidy } from "../store/persistence";
+import { applyTidyProposal, tidyUndoRecord } from "../tidy-layout";
 import { commitTidyLayout } from "../tidy-commit";
 import { confirmArchiveClose, finishTabArchive, removeTabArchive, stageTabArchive } from "../tab-archive";
 import { FavIcon } from "./SiteTile";
@@ -313,10 +313,15 @@ export function Overview() {
     </section>}
     {tidyUndo && tidyUndo.moved.every(item => pages.some(page => page.pageId === item.pageId)) && <div className="ov-tidy-undo"><span className="hint">AI Tidy created folders in this Space.</span><button className="btn sm ghost" disabled={busy} onClick={() => void act(async () => {
       const before = useStore.getState().layout;
-      const restored = revertTidyRecord(tidyUndo, before);
-      await commitTidyLayout({ before, after: restored,
-        current: () => useStore.getState().layout, persist: persistLayout, flush: flushLayout,
-        publish: layout => useStore.setState({ layout, tidyUndo: null }) });
+      if (!before.tidyUndo) throw new Error("This Tidy change is no longer available to undo.");
+      let restored;
+      try { restored = await undoPersistedTidy(before.tidyUndo, before); }
+      catch (error) {
+        const latest = await reloadOrganizationLayout().catch(() => null);
+        if (latest) useStore.setState({ layout: latest, tidyUndo: latest.tidyUndo ?? null });
+        throw error;
+      }
+      useStore.setState({ layout: restored, tidyUndo: null });
       setProgress("Tidy undone. Your earlier folders and tab positions are restored.");
     })}>Undo Tidy</button></div>}
     {selection.length > 0 && <section className="ov-selection" aria-label="Selected tab actions" aria-busy={busy}>

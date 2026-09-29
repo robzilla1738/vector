@@ -41,16 +41,29 @@ export function tidyUndoRecord(before: Layout, after: Layout): TidyUndoRecord {
   return { created, moved };
 }
 
+type TidyFolderIdentity = {
+  id: string;
+  name: string;
+  spaceId: string;
+  collapsed: boolean;
+  color?: string;
+  emoji?: string;
+};
+
+/** Created-folder identity the receipt is allowed to undo or restore. */
+export function tidyFoldersMatch(created: readonly TidyFolderIdentity[], folders: readonly TidyFolderIdentity[]): boolean {
+  return created.every(folder => {
+    const live = folders.find(item => item.id === folder.id);
+    return !!live && live.name === folder.name && live.spaceId === folder.spaceId &&
+      live.collapsed === folder.collapsed && live.color === folder.color && live.emoji === folder.emoji;
+  });
+}
+
 /** Undo only Tidy's folders and assignments, preserving later unrelated layout edits. */
 export function revertTidyRecord(record: TidyUndoRecord, current: Layout): Layout {
   const { created, moved } = record;
   const createdIds = new Set(created.map(folder => folder.id));
-  for (const folder of created) {
-    const live = current.folders.find(item => item.id === folder.id);
-    if (!live || live.name !== folder.name || live.spaceId !== folder.spaceId ||
-      live.collapsed !== folder.collapsed || live.color !== folder.color || live.emoji !== folder.emoji)
-      throw new Error("A Tidy folder changed. Review it before undoing.");
-  }
+  if (!tidyFoldersMatch(created, current.folders)) throw new Error("A Tidy folder changed. Review it before undoing.");
   for (const { pageId, toFolderId, fromFolderId } of moved) {
     if (current.tabFolder[pageId] !== toFolderId) throw new Error("A tidied tab moved again. Review it before undoing.");
     if (fromFolderId && !current.folders.some(folder => folder.id === fromFolderId))

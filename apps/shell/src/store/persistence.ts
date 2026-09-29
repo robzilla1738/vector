@@ -2,7 +2,9 @@ import { bridge } from "../bridge";
 import type { ClosedTab } from "../closed-tabs";
 import { createEntryWriter } from "../conversation-drafts";
 import { toast } from "../store";
-import { type Layout, emptyLayout, parseLayout } from "../workspace";
+import { undoTidyChange } from "../tidy-commit";
+import { revertTidyRecord } from "../tidy-layout";
+import { type Layout, type TidyUndoRecord, emptyLayout, parseLayout } from "../workspace";
 import { featureStage } from "../use-feature";
 import type { OrganizationPersistence } from "./organization-persistence";
 
@@ -76,6 +78,13 @@ export const adoptImportedOrganization = async () => {
   layoutTimer = undefined;
   pendingLayout = null;
   return (await organization()).adoptNativeImport();
+};
+/** Undo the reviewed receipt. Ephemeral sessions have no host revision to re-check. */
+export const undoPersistedTidy = async (receipt: TidyUndoRecord, fallback: Layout): Promise<Layout> => {
+  if (ephemeralOrganization) return revertTidyRecord(receipt, fallback);
+  const store = await organization();
+  queuePending(store);
+  return undoTidyChange(store, receipt);
 };
 export const flushLayout = async () => {
   clearTimeout(layoutTimer);
