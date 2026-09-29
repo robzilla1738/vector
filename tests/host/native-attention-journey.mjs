@@ -162,7 +162,7 @@ try {
 
   await operator("Answer B's question in its conversation composer. Its next local model reply is held; then open Home or Tasks and turn In-app task notices off. Leave A, Home, or Tasks foreground.");
   await until("B's second model request", () => model.seen(`${RUN_B}:2`));
-  assert.equal(native("has-button", "In-app task notices off"), "true", "The local notice preference must be visibly off");
+  assert.equal(native("has-name", "In-app task notices off"), "true", "The local notice preference must be visibly off");
   model.release(`${RUN_B}:2`);
   await until("B completes", () => inspect(RUN_B)?.status === "completed");
   assert.equal(native("has-button", "Dismiss task notice"), "false", "The off preference must suppress B's completion notice");
