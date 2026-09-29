@@ -16,16 +16,21 @@ function fixture() {
     config: { taskId: task.taskId, taskRevision: 1 }, createdAt: now - 20, startedAt: now - 20 });
   new PageClaimStore(db).claim({ pageId: "p1", runId: "r1", kind: "borrowed", now: now - 10 });
   const page = { pageId: "p1", url: "https://fixture.test/private", backend: "aux",
-    viewStatus: "visible", controller: "agent" } as PageTarget;
+    documentEpoch: 1, viewStatus: "visible", controller: "agent" } as PageTarget;
   const visit = { url: page.url, title: "Private visit", visitedAt: now };
-  return { db, repo, events, task, page, visit };
+  const effect = { ...visit, visitId: "101", pageId: "p1", documentEpoch: 1 };
+  return { db, repo, events, task, page, visit, effect };
 }
 
 it("attributes one new native visit to a claimed run and removes only its unchanged identity", async () => {
   const f = fixture();
   try {
     f.repo.importHistory([f.visit]);
-    new BrowserHistoryLedger(f.repo).record([f.visit], [f.page]);
+    const ledger = new BrowserHistoryLedger(f.repo);
+    expect(ledger.recordNativeEffect(f.effect, [f.page]).recorded).toBe(true);
+    expect(ledger.recordNativeEffect(f.effect, [f.page]).recorded).toBe(false);
+    expect(() => ledger.recordNativeEffect({ ...f.effect, title: "Changed" }, [f.page]))
+      .toThrow(/reused with different content/);
     const step = f.repo.listSteps("r1")[0]!;
     expect(step.op).toBe("history.visit");
     const remove = vi.fn(async () => ({ removed: true }));
@@ -42,19 +47,19 @@ it("attributes one new native visit to a claimed run and removes only its unchan
   } finally { f.db.close(); }
 });
 
-it("does not attribute ambiguous pages, human pages, or visits before a claim", () => {
+it("refuses human, changed-epoch, ambiguous, or pre-claim native visits", () => {
   const f = fixture();
   try {
     const ledger = new BrowserHistoryLedger(f.repo);
-    ledger.record([f.visit], [f.page, { ...f.page, pageId: "p2" }]);
-    ledger.record([f.visit], [f.page, { ...f.page, pageId: "human", controller: "human" }]);
-    ledger.record([f.visit], [{ ...f.page, controller: "human" }]);
-    ledger.record([{ ...f.visit, visitedAt: f.visit.visitedAt - 30 }], [f.page]);
+    expect(() => ledger.recordNativeEffect(f.effect, [f.page, f.page])).toThrow(/exact current agent page/);
+    expect(() => ledger.recordNativeEffect(f.effect, [{ ...f.page, controller: "human" }])).toThrow(/exact current agent page/);
+    expect(() => ledger.recordNativeEffect(f.effect, [{ ...f.page, documentEpoch: 2 }])).toThrow(/exact current agent page/);
+    expect(() => ledger.recordNativeEffect({ ...f.effect, visitedAt: f.visit.visitedAt - 30 }, [f.page])).toThrow(/active task run claim/);
     expect(f.repo.listSteps("r1")).toEqual([]);
   } finally { f.db.close(); }
 });
 
-it("records a new ordered native history delta but not a repeated or old visit", async () => {
+it("does not mint a run receipt from a URL-only history projection delta", async () => {
   const f = fixture();
   try {
     const invoke = makeInvoker({ repo: f.repo, events: f.events, featureHost: "chromium-fork",
@@ -64,11 +69,13 @@ it("records a new ordered native history delta but not a repeated or old visit",
       { external: false });
     await invoke("history.projectDelta", { ...source, sequence: 2, upserts: [f.visit] },
       { external: false });
-    expect(f.repo.listSteps("r1")).toHaveLength(1);
+    expect(f.repo.listSteps("r1")).toHaveLength(0);
     await invoke("history.projectDelta", { ...source, sequence: 2, upserts: [f.visit] },
       { external: false });
     await invoke("history.projectDelta", { ...source, sequence: 3, upserts: [f.visit] },
       { external: false });
+    expect(f.repo.listSteps("r1")).toHaveLength(0);
+    expect(new BrowserHistoryLedger(f.repo).recordNativeEffect(f.effect, [f.page]).recorded).toBe(true);
     expect(f.repo.listSteps("r1")).toHaveLength(1);
   } finally { f.db.close(); }
 });
@@ -77,7 +84,7 @@ it("refuses removal when the projected visit title changed", async () => {
   const f = fixture();
   try {
     f.repo.importHistory([f.visit]);
-    new BrowserHistoryLedger(f.repo).record([f.visit], [f.page]);
+    new BrowserHistoryLedger(f.repo).recordNativeEffect(f.effect, [f.page]);
     const step = f.repo.listSteps("r1")[0]!;
     f.repo.db.prepare("UPDATE history SET title=? WHERE url=? AND visited_at=?")
       .run("Changed", f.visit.url, f.visit.visitedAt);

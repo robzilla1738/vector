@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { AuxError } from "@aux/contracts";
 import { BrowserGroupNativeEffectSchema } from "@aux/contracts/browser-group-receipt";
+import type { PageTarget } from "@aux/contracts";
+import { z } from "zod";
 import { PageClaimStore } from "../agent/durable.js";
 import type { Repo } from "../store/repo.js";
 
@@ -8,9 +10,16 @@ import type { Repo } from "../store/repo.js";
 export class BrowserGroupLedger {
   constructor(private repo: Repo) {}
 
-  recordNativeEffect(raw: unknown): { recorded: boolean; stepId: string } {
-    const effect = BrowserGroupNativeEffectSchema.parse(raw);
-    const digest = createHash("sha256").update(JSON.stringify(effect)).digest("hex");
+  recordNativeEffect(raw: unknown, pages: PageTarget[]): { recorded: boolean; stepId: string } {
+    const envelope = z.object({ effect: BrowserGroupNativeEffectSchema,
+      pages: z.array(z.object({ pageId: z.string().min(1).max(200),
+        documentEpoch: z.number().int().nonnegative(), url: z.string().max(8192) }).strict()).min(1).max(50),
+    }).strict().parse(raw);
+    const effect = envelope.effect;
+    if (envelope.pages.length !== effect.pageIds.length ||
+      effect.pageIds.some(pageId => envelope.pages.filter(page => page.pageId === pageId).length !== 1))
+      throw new AuxError("permission_denied", "Group effect has an incomplete page identity set.");
+    const digest = createHash("sha256").update(JSON.stringify(envelope)).digest("hex");
     const existing = this.repo.db.prepare("SELECT run_id,op FROM steps WHERE step_id=?")
       .get(effect.mutationId) as { run_id: string; op: string } | undefined;
     if (existing) {
@@ -21,6 +30,14 @@ export class BrowserGroupLedger {
     }
     if (effect.observedAt > Date.now() + 5_000)
       throw new AuxError("conflict", "The native group event time is invalid.");
+    for (const identity of envelope.pages) {
+      const matches = pages.filter(page => page.pageId === identity.pageId);
+      const page = matches.length === 1 ? matches[0] : undefined;
+      if (!page || page.backend !== "aux" || page.controller !== "agent" ||
+        ["detached", "crashed"].includes(page.viewStatus ?? "") ||
+        page.documentEpoch !== identity.documentEpoch || page.url !== identity.url)
+        throw new AuxError("permission_denied", "Group effect lacks an exact current agent page.");
+    }
     const claims = new PageClaimStore(this.repo.db);
     let runId: string | undefined;
     for (const pageId of effect.pageIds) {
