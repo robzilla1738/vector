@@ -26,6 +26,7 @@ async function h_mcp_servers_register(ctx: MethodCtx): Promise<unknown> {
     const remote = server as typeof server & { source: { kind: "remote"; url: string; auth: "oauth" } };
     if (method === "mcp.oauth.start") return s.mcpOAuth.start(remote);
     if (method === "mcp.oauth.status") return s.mcpOAuth.status(remote);
+    outboundMcp.cancelActive(server.serverId);
     return s.mcpOAuth.clear(remote);
   }
   if (method === "mcp.tools.list") return outboundMcp.listTools(params.serverId);

@@ -119,6 +119,7 @@ const artifactExportJourney = process.argv.includes("--artifact-export");
 const agentConnectionsJourney = process.argv.includes("--agent-connections");
 const outboundMcpLocalJourney = process.argv.includes("--outbound-mcp-local");
 const outboundMcpSettingsJourney = process.argv.includes("--outbound-mcp-settings");
+const outboundMcpBundleSettingsJourney = process.argv.includes("--outbound-mcp-bundle-settings");
 const goalsUiJourney = process.argv.includes("--goals-ui");
 const goalsThreadUiJourney = process.argv.includes("--goals-thread-ui");
 const goalsStatusUiJourney = process.argv.includes("--goals-status-ui");
@@ -229,7 +230,7 @@ const healthDiagnosticsJourney = process.argv.includes("--health-diagnostics");
 const unpackedExtensionJourney = process.argv.includes("--unpacked-extension");
 const runtimeBackupRestoreJourney = process.argv.includes("--runtime-backup-restore");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -2698,6 +2699,62 @@ else {
         .get(goal.goalId); } finally { db.close(); }
     }, 600_000);
     record("native Tasks cancels the draft Goal", { goalId: goal.goalId });
+    report.passed = true;
+  } else if (outboundMcpBundleSettingsJourney) {
+    const space = await until("disposable Personal Space", async () =>
+      (await rpc("workspaces.list", {})).find(item => item.name === "Personal"), 60_000);
+    const archive = new JSZip();
+    archive.file("manifest.json", JSON.stringify({ name: "Reviewed Node bundle",
+      server: { type: "node", entry_point: "server.mjs" } }));
+    archive.file("server.mjs", readFileSync(join(root, "tests/fixtures/outbound-mcp-settings-server.mjs")));
+    const bundlePath = join(disposable, "reviewed-node.mcpb");
+    const bytes = await archive.generateAsync({ type: "nodebuffer" });
+    writeFileSync(bundlePath, bytes);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const databasePath = join(profile, "Default/Aux Runtime Data/aux-state.sqlite");
+    const inspectDb = query => {
+      const db = new DatabaseSync(databasePath, { readOnly: true });
+      try { return query(db); } finally { db.close(); }
+    };
+    console.log(`In Aux Settings → MCP & Connectors, choose the .mcpb bundle ${bundlePath} in the disposable Personal Space. Inspect SHA-256 ${sha256}, save as Reviewed Node bundle, approve its source, load greet, grant greet until revoked to the Space with a 100-token output limit, call with {"name":"Aux"}, then wait for the limit and tamper checks before revoking the server.`);
+    const row = await until("reviewed Node bundle registered in native Settings", () => inspectDb(db =>
+      db.prepare("SELECT body,state FROM outbound_mcp_servers WHERE workspace_id=? ORDER BY rowid DESC LIMIT 1")
+        .get(space.workspaceId)), 600_000);
+    const registered = JSON.parse(row.body);
+    assert.equal(row.state, "pending");
+    assert.deepEqual(registered.source, { kind: "bundle", path: realpathSync(bundlePath), sha256, format: "mcpb" });
+    assert.equal(registered.sourceDigest, createHash("sha256").update(JSON.stringify(registered.source)).digest("hex"));
+    record("native Settings retains the reviewed Node bundle and exact source digest", { serverId: registered.serverId, sha256 });
+    await until("Node bundle source approved", () => inspectDb(db => db.prepare(
+      "SELECT state FROM outbound_mcp_servers WHERE server_id=? AND state='approved'").get(registered.serverId)), 600_000);
+    const grantRow = await until("greet grant created", () => inspectDb(db => db.prepare(
+      "SELECT body FROM outbound_mcp_grants WHERE server_id=? AND tool_name='greet' ORDER BY rowid DESC LIMIT 1")
+      .get(registered.serverId)), 600_000);
+    const grant = JSON.parse(grantRow.body);
+    assert.deepEqual(grant.scope, { kind: "workspace", workspaceId: space.workspaceId });
+    assert.equal(grant.mode, "standing");
+    assert.equal(grant.outputTokenLimit, 100);
+    await until("reviewed bundle greet call completed", () => inspectDb(db => db.prepare(
+      "SELECT status FROM outbound_mcp_calls WHERE grant_id=? AND status='completed'").get(grant.grantId)), 600_000);
+    record("native Settings discovered and called only the reviewed greet tool", { grantId: grant.grantId });
+    const oversized = await rpc("mcp.tools.call", { grantId: grant.grantId,
+      arguments: { name: "😀".repeat(120) }, context: { workspaceId: space.workspaceId } });
+    assert.deepEqual({ status: oversized.status, isError: oversized.isError, output: oversized.output },
+      { status: "completed", isError: true, output: "Tool output exceeded the approved limit." });
+    record("native bundle tool output obeys the approved UTF-8 limit", { grantId: grant.grantId });
+    archive.file("server.mjs", readFileSync(join(root, "tests/fixtures/outbound-mcp-settings-server.mjs")) + "\n// tampered");
+    writeFileSync(bundlePath, await archive.generateAsync({ type: "nodebuffer" }));
+    const tampered = await rpc("mcp.tools.list", { serverId: registered.serverId }).then(() => false,
+      error => /changed since approval/.test(String(error)));
+    assert.equal(tampered, true, "A changed bundle must refuse tool discovery");
+    record("changed Node bundle bytes are refused after approval", { serverId: registered.serverId });
+    console.log("The bundle has now changed on disk and a fresh tool discovery was refused. Revoke Reviewed Node bundle and its grants in Aux Settings.");
+    await until("Node bundle and grants revoked", () => inspectDb(db => {
+      const source = db.prepare("SELECT state FROM outbound_mcp_servers WHERE server_id=?").get(registered.serverId);
+      const scoped = db.prepare("SELECT revoked_at FROM outbound_mcp_grants WHERE grant_id=?").get(grant.grantId);
+      return source?.state === "revoked" && scoped?.revoked_at ? true : null;
+    }), 600_000);
+    record("native Settings revokes the bundle and its tool grant", { serverId: registered.serverId });
     report.passed = true;
   } else if (outboundMcpSettingsJourney) {
     const space = await until("disposable Personal Space", async () =>

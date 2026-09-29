@@ -7,7 +7,7 @@ import { AuxError, type OutboundMcpServer } from "@aux/contracts";
 import type { NativeBridge } from "../native.js";
 
 type RemoteServer = OutboundMcpServer & { source: { kind: "remote"; url: string; auth: "oauth" } };
-type Saved = { serverId: string; sourceDigest: string; clients: Record<string, StoredOAuthClientInformation>;
+type Saved = { serverId: string; sourceDigest: string; issuer?: string; clients: Record<string, StoredOAuthClientInformation>;
   tokens?: StoredOAuthTokens; expiresAt?: number; redirectUrl?: string };
 type Pending = { server: Server; timer: NodeJS.Timeout; state: string; consumed: boolean };
 const lifetimeMs = 5 * 60_000;
@@ -23,6 +23,9 @@ function publicHttps(value: string | URL): URL {
 
 export class McpOAuthService {
   private pending = new Map<string, Pending>();
+  private generations = new Map<string, number>();
+  private writes = new Map<string, Promise<void>>();
+  private clearing = new Map<string, number>();
   constructor(private native: Pick<NativeBridge, "readSecret" | "storeSecret">,
     private networkFetch: typeof fetch = fetch, private runAuth: typeof auth = auth) {}
 
@@ -36,8 +39,19 @@ export class McpOAuthService {
     } catch { /* corrupt or obsolete credential */ }
     return { serverId: server.serverId, sourceDigest: server.sourceDigest, clients: {} };
   }
-  private async save(server: RemoteServer, value: Saved) {
-    await this.native.storeSecret(this.key(server), JSON.stringify(value));
+  private async save(server: RemoteServer, value: Saved, generation: number) {
+    await this.write(server, generation, JSON.stringify(value));
+  }
+  private async write(server: RemoteServer, generation: number, value: string) {
+    const key = this.key(server);
+    const previous = this.writes.get(key) ?? Promise.resolve();
+    const current = previous.catch(() => undefined).then(async () => {
+      if ((this.generations.get(key) ?? 0) !== generation)
+        throw new AuxError("cancelled", "MCP authorization was cancelled.");
+      await this.native.storeSecret(key, value);
+    });
+    this.writes.set(key, current);
+    try { await current; } finally { if (this.writes.get(key) === current) this.writes.delete(key); }
   }
   private readonly oauthFetch: typeof fetch = (input, init) => {
     const url = publicHttps(input instanceof Request ? input.url : String(input));
@@ -48,7 +62,8 @@ export class McpOAuthService {
   };
 
   private provider(server: RemoteServer, saved: Saved, redirectUrl?: string, onRedirect?: (url: string) => void,
-    expectedState?: string, active: () => boolean = () => true): OAuthClientProvider {
+    expectedState?: string, active: () => boolean = () => true,
+    generation = this.generations.get(this.key(server)) ?? 0): OAuthClientProvider {
     let verifier = "";
     let discovery: OAuthDiscoveryState | undefined;
     return {
@@ -60,16 +75,20 @@ export class McpOAuthService {
       saveClientInformation: async (information, context) => {
         if (!active()) throw new AuxError("cancelled", "MCP authorization was cancelled.");
         if (!context) throw new AuxError("permission_denied", "MCP OAuth client has no issuer binding.");
+        const issuer = publicHttps(context.issuer).href.replace(/\/$/, "");
+        if (saved.issuer && saved.issuer !== issuer)
+          throw new AuxError("permission_denied", "MCP OAuth issuer changed. Disconnect and review the connection.");
+        saved.issuer = issuer;
         saved.clients[context.issuer] = information;
-        await this.save(server, saved);
+        await this.save(server, saved, generation);
       },
       tokens: () => saved.tokens,
       saveTokens: async tokens => {
-        if (!active()) throw new AuxError("cancelled", "MCP authorization was cancelled.");
+        if (!active() || !saved.issuer) throw new AuxError("cancelled", "MCP authorization was cancelled or has no issuer binding.");
         saved.tokens = tokens;
         saved.expiresAt = typeof tokens.expires_in === "number" && Number.isFinite(tokens.expires_in)
           ? Date.now() + Math.max(0, tokens.expires_in) * 1000 : undefined;
-        await this.save(server, saved);
+        await this.save(server, saved, generation);
       },
       redirectToAuthorization: url => {
         const reviewed = publicHttps(url);
@@ -94,16 +113,20 @@ export class McpOAuthService {
 
   async status(server: RemoteServer) {
     const saved = await this.read(server);
-    return { connected: Boolean(saved.tokens?.access_token &&
+    return { connected: Boolean(saved.issuer && saved.tokens?.access_token &&
       (saved.expiresAt === undefined || saved.expiresAt > Date.now())),
       expiresAt: saved.expiresAt };
   }
 
   async start(server: RemoteServer): Promise<{ state: "connected" } | { state: "authorization"; url: string; expiresAt: number }> {
     publicHttps(server.source.url);
+    if (this.clearing.has(this.key(server))) throw new AuxError("cancelled", "MCP disconnect is in progress.");
     if (this.pending.has(server.serverId)) throw new AuxError("conflict", "An MCP sign-in is already in progress.");
     const state = randomBytes(32).toString("base64url");
+    const generation = this.generations.get(this.key(server)) ?? 0;
     const saved = await this.read(server);
+    if ((this.generations.get(this.key(server)) ?? 0) !== generation)
+      throw new AuxError("cancelled", "MCP authorization was cancelled.");
     let authorizationUrl = "";
     let redirectUrl = "";
     let provider!: OAuthClientProvider;
@@ -116,15 +139,17 @@ export class McpOAuthService {
       }
       pending.consumed = true;
       const code = url.searchParams.get("code");
-      if (!code || url.searchParams.has("error")) {
+      const issuer = url.searchParams.get("iss");
+      if (!code || url.searchParams.has("error") || !saved.issuer || issuer !== saved.issuer) {
         this.finishPending(server.serverId);
         response.writeHead(400).end("MCP authorization was not granted. Return to Aux."); return;
       }
       void this.runAuth(provider, { serverUrl: server.source.url, authorizationCode: code,
-        iss: url.searchParams.get("iss") ?? undefined, fetchFn: this.oauthFetch }).then(result => {
+        iss: issuer, fetchFn: this.oauthFetch }).then(result => {
+        const authorized = result === "AUTHORIZED" && (this.generations.get(this.key(server)) ?? 0) === generation;
         this.finishPending(server.serverId);
-        response.writeHead(result === "AUTHORIZED" ? 200 : 400, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
-        response.end(result === "AUTHORIZED" ? "<!doctype html><title>MCP connected</title><p>MCP connected. Return to Aux.</p>"
+        response.writeHead(authorized ? 200 : 400, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+        response.end(authorized ? "<!doctype html><title>MCP connected</title><p>MCP connected. Return to Aux.</p>"
           : "<!doctype html><title>MCP connection failed</title><p>Return to Aux and try again.</p>");
       }).catch(() => {
         this.finishPending(server.serverId);
@@ -142,7 +167,8 @@ export class McpOAuthService {
     }
     redirectUrl = `http://127.0.0.1:${address.port}/oauth/mcp`;
     provider = this.provider(server, saved, redirectUrl, url => { authorizationUrl = url; }, state,
-      () => this.pending.get(server.serverId)?.state === state);
+      () => this.pending.get(server.serverId)?.state === state &&
+        (this.generations.get(this.key(server)) ?? 0) === generation, generation);
     const expiresAt = Date.now() + lifetimeMs;
     const timer = setTimeout(() => this.finishPending(server.serverId), lifetimeMs);
     timer.unref();
@@ -153,9 +179,11 @@ export class McpOAuthService {
         saved.tokens = undefined;
         saved.expiresAt = undefined;
         saved.redirectUrl = redirectUrl;
-        await this.save(server, saved);
+        await this.save(server, saved, generation);
       }
       const result = await this.runAuth(provider, { serverUrl: server.source.url, fetchFn: this.oauthFetch });
+      if ((this.generations.get(this.key(server)) ?? 0) !== generation)
+        throw new AuxError("cancelled", "MCP authorization was cancelled.");
       if (result === "AUTHORIZED") { this.finishPending(server.serverId); return { state: "connected" }; }
       if (!authorizationUrl) throw new AuxError("backend_unavailable", "MCP authorization URL is unavailable.");
       return { state: "authorization", url: authorizationUrl, expiresAt };
@@ -163,15 +191,22 @@ export class McpOAuthService {
   }
 
   async token(server: RemoteServer): Promise<string> {
+    if (this.clearing.has(this.key(server))) throw new AuxError("needs_input", "Reconnect this MCP server in Aux Settings.");
+    const generation = this.generations.get(this.key(server)) ?? 0;
     const saved = await this.read(server);
-    const provider = this.provider(server, saved, saved.redirectUrl);
+    if (this.clearing.has(this.key(server)) || (this.generations.get(this.key(server)) ?? 0) !== generation)
+      throw new AuxError("needs_input", "Reconnect this MCP server in Aux Settings.");
+    if (!saved.issuer) throw new AuxError("needs_input", "Reconnect this MCP server in Aux Settings.");
+    const provider = this.provider(server, saved, saved.redirectUrl, undefined, undefined,
+      () => (this.generations.get(this.key(server)) ?? 0) === generation, generation);
     if (saved.tokens?.access_token &&
       (saved.expiresAt === undefined || saved.expiresAt > Date.now() + 30_000))
       return saved.tokens.access_token;
     if (!saved.tokens?.refresh_token) throw new AuxError("needs_input", "Connect this MCP server in Aux Settings.");
     try {
       const result = await this.runAuth(provider, { serverUrl: server.source.url, fetchFn: this.oauthFetch });
-      if (result !== "AUTHORIZED" || !saved.tokens?.access_token)
+      if (result !== "AUTHORIZED" || !saved.tokens?.access_token ||
+        (this.generations.get(this.key(server)) ?? 0) !== generation)
         throw new AuxError("needs_input", "Reconnect this MCP server in Aux Settings.");
       return saved.tokens.access_token;
     } catch { throw new AuxError("needs_input", "Reconnect this MCP server in Aux Settings."); }
@@ -179,8 +214,14 @@ export class McpOAuthService {
 
   async clear(server: RemoteServer) {
     this.finishPending(server.serverId);
-    await this.native.storeSecret(this.key(server), "");
-    return { connected: false };
+    const key = this.key(server);
+    const generation = (this.generations.get(key) ?? 0) + 1;
+    this.generations.set(key, generation);
+    this.clearing.set(key, generation);
+    try {
+      await this.write(server, generation, "");
+      return { connected: false };
+    } finally { if (this.clearing.get(key) === generation) this.clearing.delete(key); }
   }
 
   private finishPending(serverId: string) {

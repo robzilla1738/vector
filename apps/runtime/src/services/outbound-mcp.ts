@@ -80,8 +80,12 @@ export class OutboundMcpService {
       .run(Date.now(), serverId);
     this.repo.db.prepare("UPDATE outbound_mcp_grants SET revoked_at=? WHERE server_id=? AND revoked_at IS NULL")
       .run(Date.now(), serverId);
-    for (const controller of this.active.get(serverId) ?? []) controller.abort();
+    this.cancelActive(serverId);
     return this.get(serverId);
+  }
+
+  cancelActive(serverId: string): void {
+    for (const controller of this.active.get(serverId) ?? []) controller.abort();
   }
 
   grant(raw: unknown): OutboundMcpGrant {
@@ -158,7 +162,9 @@ export class OutboundMcpService {
     if (server.state !== "approved") throw new AuxError("permission_denied", "MCP server is not approved.");
     return this.connected(server, async client => {
       const { tools } = await client.listTools();
-      return tools.slice(0, 100).map(tool => OutboundMcpToolSchema.parse({ name: tool.name,
+      if (tools.length > 100 || Buffer.byteLength(JSON.stringify(tools), "utf8") > 128_000)
+        throw new AuxError("invalid_params", "MCP tool catalog exceeds the review limit.");
+      return tools.map(tool => OutboundMcpToolSchema.parse({ name: tool.name,
         description: tool.description?.slice(0, 2000), inputSchema: tool.inputSchema }));
     });
   }
@@ -199,8 +205,9 @@ export class OutboundMcpService {
         if (signal.aborted || this.get(server.serverId).state !== "approved" || this.getGrant(grantId).revokedAt)
           throw new AuxError("permission_denied", "MCP tool authority was revoked during execution.");
         const serialized = JSON.stringify(output);
-        return { output: serialized.length > grant.outputTokenLimit * 4 ? "Tool output exceeded the approved limit." : serialized,
-          isError: serialized.length > grant.outputTokenLimit * 4 || Boolean(output.isError) };
+        const exceeded = Buffer.byteLength(serialized, "utf8") > grant.outputTokenLimit * 4;
+        return { output: exceeded ? "Tool output exceeded the approved limit." : serialized,
+          isError: exceeded || Boolean(output.isError) };
       }, externalSignal);
       this.repo.db.prepare("UPDATE outbound_mcp_calls SET status='completed',ended_at=? WHERE call_id=?")
         .run(Date.now(), callId);

@@ -159,6 +159,11 @@ export function OutboundMcpSettings() {
     expiresAt?: number;
   } | null>(null);
   const [pendingOAuth, setPendingOAuth] = useState<{ serverId: string; expiresAt: number } | null>(null);
+  const [authorizationReview, setAuthorizationReview] = useState<{
+    serverId: string;
+    url: string;
+    expiresAt: number;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -374,6 +379,7 @@ export function OutboundMcpSettings() {
                 setTools(null);
                 setGrants([]);
                 setGrantReview(null);
+                setAuthorizationReview(null);
               }}
             >
               {workspaces.map((workspace) => (
@@ -528,6 +534,7 @@ export function OutboundMcpSettings() {
                   setGrants([]);
                   setToolName("");
                   setGrantReview(null);
+                  setAuthorizationReview(null);
                 }}
               >
                 {servers.map((server) => (
@@ -574,12 +581,20 @@ export function OutboundMcpSettings() {
                                 serverId: selectedServer.serverId,
                               });
                               if (result.state === "authorization") {
-                                await bridge.openExternal(result.url);
-                                setPendingOAuth({
+                                const authorizationUrl = new URL(result.url);
+                                if (
+                                  authorizationUrl.protocol !== "https:" ||
+                                  authorizationUrl.username ||
+                                  authorizationUrl.password ||
+                                  result.expiresAt <= Date.now()
+                                )
+                                  throw new Error("MCP authorization URL is invalid or expired.");
+                                setAuthorizationReview({
                                   serverId: selectedServer.serverId,
+                                  url: authorizationUrl.href,
                                   expiresAt: result.expiresAt,
                                 });
-                                setMessage("Finish MCP authorization in the window that opened.");
+                                setMessage("Review the authorization destination before opening it.");
                               } else {
                                 setOauthStatusRecord({
                                   serverId: selectedServer.serverId,
@@ -593,7 +608,7 @@ export function OutboundMcpSettings() {
                           Connect OAuth
                         </button>
                       )}
-                      {oauthStatus?.connected && (
+                      {(oauthStatus?.connected || oauthStatus?.expiresAt !== undefined) && (
                         <button
                           className="btn sm ghost"
                           disabled={busy}
@@ -604,6 +619,10 @@ export function OutboundMcpSettings() {
                                 ...(await call("mcp.oauth.clear", { serverId: selectedServer.serverId })),
                               });
                               setPendingOAuth(null);
+                              setAuthorizationReview(null);
+                              setTools(null);
+                              setTestGrantId("");
+                              setTestResult("");
                               setMessage("MCP authorization removed from this Profile.");
                             })
                           }
@@ -612,6 +631,44 @@ export function OutboundMcpSettings() {
                         </button>
                       )}
                     </div>
+                    {authorizationReview?.serverId === selectedServer.serverId && (
+                      <fieldset className="mcp-source-details" aria-label="Review MCP authorization">
+                        <p className="hint">
+                          Aux will open this HTTPS authorization page. Confirm its host belongs to the
+                          provider you chose.
+                        </p>
+                        <div>
+                          <span className="mcp-source-label">Authorization destination</span>
+                          <div className="mcp-source-value">
+                            <code>{authorizationReview.url}</code>
+                          </div>
+                        </div>
+                        <button
+                          className="btn sm"
+                          disabled={busy}
+                          onClick={() =>
+                            void action(async () => {
+                              if (authorizationReview.expiresAt <= Date.now()) {
+                                setAuthorizationReview(null);
+                                throw new Error("MCP authorization request expired. Start a new connection.");
+                              }
+                              await bridge.openExternal(authorizationReview.url);
+                              setPendingOAuth({
+                                serverId: authorizationReview.serverId,
+                                expiresAt: authorizationReview.expiresAt,
+                              });
+                              setAuthorizationReview(null);
+                              setMessage("Finish MCP authorization in the window that opened.");
+                            })
+                          }
+                        >
+                          Open reviewed authorization page
+                        </button>
+                        <button className="btn sm ghost" onClick={() => setAuthorizationReview(null)}>
+                          Cancel authorization review
+                        </button>
+                      </fieldset>
+                    )}
                   </div>
                 )}
               {selectedServer.state === "pending" && (
@@ -670,6 +727,11 @@ export function OutboundMcpSettings() {
                       await refreshGrants(selectedServer.serverId);
                       setTools(null);
                       setGrantReview(null);
+                      setAuthorizationReview(null);
+                      setPendingOAuth(null);
+                      setOauthStatusRecord(null);
+                      setTestGrantId("");
+                      setTestResult("");
                       setMessage("Server and all its tool grants revoked. Active calls were stopped.");
                     })
                   }

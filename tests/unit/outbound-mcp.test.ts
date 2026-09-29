@@ -120,6 +120,19 @@ it("binds a once grant to a task revision and records a single completed call", 
   f.db.close();
 });
 
+it("caps UTF-8 tool output by approved bytes before returning it to the caller", async () => {
+  const f = fixture(async () => fakeTransport([], { content: [{ type: "text", text: "😀".repeat(100) }] }));
+  const server = await f.service.register({ workspaceId: f.workspace.workspaceId, name: "bounded",
+    source: { kind: "remote", url: "https://example.test/mcp", auth: "none" } });
+  f.service.approve(server.serverId, server.sourceDigest);
+  const grant = f.service.grant({ serverId: server.serverId, toolName: "read",
+    scope: { kind: "workspace", workspaceId: f.workspace.workspaceId }, mode: "once", outputTokenLimit: 100 });
+  const result = await f.service.callTool(grant.grantId, {}, { workspaceId: f.workspace.workspaceId });
+  expect(result).toMatchObject({ status: "completed", isError: true,
+    output: "Tool output exceeded the approved limit." });
+  f.db.close();
+});
+
 it("recovers interrupted calls as uncertain and never replays them", async () => {
   const f = fixture();
   const server = await f.service.register({ workspaceId: f.workspace.workspaceId, name: "server",
@@ -157,6 +170,31 @@ it("marks a call uncertain if its grant is revoked while a server is responding"
   f.service.revokeGrant(grant.grantId);
   expect((await pending).status).toBe("uncertain");
   expect((f.repo.db.prepare("SELECT status FROM outbound_mcp_calls WHERE grant_id=?").get(grant.grantId) as { status: string }).status).toBe("uncertain");
+  f.db.close();
+});
+
+it("cancels a live tool call when its OAuth credential is disconnected", async () => {
+  let reached!: () => void;
+  const ready = new Promise<void>(resolve => { reached = resolve; });
+  const f = fixture(async () => {
+    const transport = fakeTransport([]);
+    const send = transport.send.bind(transport);
+    transport.send = async (message, options) => {
+      if ("method" in message && message.method === "tools/call") { reached(); return; }
+      return send(message, options);
+    };
+    return transport as unknown as Transport;
+  });
+  const server = await f.service.register({ workspaceId: f.workspace.workspaceId, name: "OAuth server",
+    source: { kind: "remote", url: "https://example.test/mcp", auth: "oauth" } });
+  f.service.approve(server.serverId, server.sourceDigest);
+  const grant = f.service.grant({ serverId: server.serverId, toolName: "read",
+    scope: { kind: "workspace", workspaceId: f.workspace.workspaceId }, mode: "standing", outputTokenLimit: 100 });
+  const pending = f.service.callTool(grant.grantId, {}, { workspaceId: f.workspace.workspaceId });
+  await ready;
+  f.service.cancelActive(server.serverId);
+  expect((await pending).status).toBe("uncertain");
+  expect(f.service.getGrant(grant.grantId).revokedAt).toBeUndefined();
   f.db.close();
 });
 

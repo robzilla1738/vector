@@ -104,6 +104,9 @@ it("requires exact server-source review and a separate tool, scope and limit gra
   await act(async () => button("Disconnect OAuth").click());
   expect(rpc).toHaveBeenCalledWith("mcp.oauth.clear", { serverId });
   await act(async () => button("Connect OAuth").click());
+  expect(bridge.openExternal).not.toHaveBeenCalled();
+  expect(container.textContent).toContain("https://auth.example.test/authorize");
+  await act(async () => button("Open reviewed authorization page").click());
   expect(bridge.openExternal).toHaveBeenCalledWith("https://auth.example.test/authorize");
 
   await act(async () => button("Load available tools").click());
