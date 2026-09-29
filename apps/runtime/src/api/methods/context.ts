@@ -27,7 +27,7 @@ import { PluginService } from "../../services/plugins.js";
 import type { Repo } from "../../store/repo.js";
 import type { ResponseStore } from "../../services/responses.js";
 import { RoutineService } from "../../services/routines.js";
-import { startSkillReplay } from "../../services/skill-replay.js";
+import { requireRoutineTriggerPage, selectSkillReplayPage, startSkillReplay } from "../../services/skill-replay.js";
 import type { RunService } from "../../services/runs.js";
 import { WorkspaceFolderService } from "../../services/workspace-folders.js";
 import { SafetyAuditStore } from "../../safety/audit.js";
@@ -263,7 +263,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     objective.replace(/\{\{([A-Za-z][A-Za-z0-9_]{0,40})\}\}/g, (_, name: string) => parameters[name] ?? "");
   const routines =
     s.routines ??
-    new RoutineService(s.repo, s.events, async (routine, parameters) => {
+    new RoutineService(s.repo, s.events, async (routine, parameters, context) => {
       if (!routine.sourceTaskId)
         throw new AuxError("conflict", "This routine has no saved task. Run it from a conversation in Aux.");
       const details = tasks.details(routine.sourceTaskId);
@@ -277,14 +277,26 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
             return false;
           }
         });
+      if (context?.triggerPageId) {
+        if (routine.trigger.kind !== "page_change" || context.triggerDocumentEpoch === undefined)
+          throw new AuxError("conflict", "The page-change occurrence lost its exact document binding.");
+        const triggerUrl = routine.trigger.url;
+        const inTask = details.task.resources.some(resource =>
+          (resource.kind === "page" && resource.locator === context.triggerPageId)
+          || (resource.kind === "url" && resource.locator === triggerUrl));
+        if (!inTask) throw new AuxError("conflict", "The watched tab left the source task's reviewed scope.");
+        pageIds.splice(0, pageIds.length, requireRoutineTriggerPage(s.pages, context.triggerPageId,
+          triggerUrl, context.triggerDocumentEpoch));
+      }
       if (!pageIds.length)
         throw new AuxError(
           "conflict",
           "Attach an open browser tab to the source task before this routine can run.",
         );
       if (routine.replay) {
+        const pageId = selectSkillReplayPage(s.pages, pageIds, routine.replay.siteOrigin);
         const started = startSkillReplay({ repo: s.repo, pages: s.pages, events: s.events,
-          routine, pageId: pageIds[0]!, parameters });
+          routine, pageId, parameters, expectedDocumentEpoch: context?.triggerDocumentEpoch });
         return { chatId: details.task.conversationId, runId: started.runId };
       }
       const prepared = tasks.prepareRun(routine.sourceTaskId, details.task.revision);

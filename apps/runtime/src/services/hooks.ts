@@ -134,7 +134,8 @@ export class HookService {
   /** Approval is bound to the exact reviewed handler bytes. Imported hooks remain untrusted. */
   approve(hookId: string, expectedDigest: string): Hook {
     const hook = this.get(hookId);
-    if (hook.trust !== "untrusted" || hook.handlerDigest !== expectedDigest)
+    if (hook.trust !== "untrusted" || hook.handlerDigest !== expectedDigest ||
+      digest(hook.handler) !== hook.handlerDigest)
       throw new AuxError("conflict", "This hook changed. Review its handler before approval.");
     if (!this.authorize)
       throw new AuxError("capability_unsupported", "A supervised Hook executor is unavailable.");
@@ -205,10 +206,19 @@ export class HookService {
       this.active.set(hook.hookId, controllers);
       let state: HookInvocation["state"] = "completed";
       let error: string | undefined;
+      let modified = false;
       try {
-        if (this.get(hook.hookId).trust !== "approved")
+        const current = this.get(hook.hookId);
+        if (current.trust !== "approved")
           throw new AuxError("permission_denied", "Hook approval was revoked.");
-        await executor(hook.handler, context, controller.signal);
+        if (digest(current.handler) !== current.handlerDigest) {
+          modified = true;
+          throw new AuxError("permission_denied", "Hook handler changed after approval.");
+        }
+        if (!this.authorize)
+          throw new AuxError("permission_denied", "Supervised Hook authority is unavailable.");
+        this.authorize(current.handler, current.workspaceId);
+        await executor(current.handler, context, controller.signal);
         if (controller.signal.aborted) state = "uncertain";
       } catch {
         state = controller.signal.aborted ? "uncertain" : "failed";
@@ -220,6 +230,7 @@ export class HookService {
         controllers.delete(controller);
         if (!controllers.size) this.active.delete(hook.hookId);
       }
+      if (modified) this.revoke(hook.hookId);
       this.repo.db
         .prepare("UPDATE hook_invocations SET state=?,error=?,ended_at=? WHERE invocation_id=?")
         .run(state, error === undefined ? null : this.repo.protectRecordField(

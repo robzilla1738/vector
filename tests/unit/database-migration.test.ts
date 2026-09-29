@@ -288,6 +288,21 @@ describe("schema versioning", () => {
     expect(readdirSync(directory).filter(name => !name.startsWith("state.sqlite"))).toEqual([]);
   });
 
+  it("adds durable page-change authority to existing v27 automation rows", () => {
+    const { path } = fixture();
+    const old = track(openDb(path));
+    old.exec("ALTER TABLE routine_runs DROP COLUMN trigger_page_id");
+    old.exec("ALTER TABLE routine_runs DROP COLUMN trigger_document_epoch");
+    old.exec("PRAGMA user_version=27");
+    old.close();
+    const upgraded = track(openDb(path));
+    expect(version(upgraded)).toBe(SCHEMA_VERSION);
+    const names = (upgraded.prepare("PRAGMA table_info(routine_runs)").all() as { name: string }[])
+      .map(column => column.name);
+    expect(names).toContain("trigger_page_id");
+    expect(names).toContain("trigger_document_epoch");
+  });
+
   it("enforces foreign keys on owned child rows and cascades deletes", () => {
     const { path } = fixture();
     const db = track(openDb(path));

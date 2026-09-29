@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { Routine, RoutineInboxItem, RoutineTrigger, Task, Workspace } from "@aux/contracts";
+import type { Routine, RoutineInboxItem, RoutineRunOutcome, RoutineTrigger, Task, Workspace } from "@aux/contracts";
 import { call, errToast, useStore } from "../../store";
 import { bridge } from "../../bridge";
 import { openSavedSkill } from "../../task-navigation";
@@ -145,6 +145,8 @@ export function AutomationsSettings({ active }: { active: boolean }) {
   const [workspaceId, setWorkspaceId] = useState("");
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [inbox, setInbox] = useState<RoutineInboxItem[]>([]);
+  const [outcome, setOutcome] = useState<RoutineRunOutcome | null>(null);
+  const [outcomeBusy, setOutcomeBusy] = useState("");
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [scanBusy, setScanBusy] = useState(false);
@@ -263,7 +265,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
           <select
             aria-label="Automation Space"
             value={workspaceId}
-            onChange={(event) => setWorkspaceId(event.target.value)}
+            onChange={(event) => { setWorkspaceId(event.target.value); setOutcome(null); }}
             disabled={!active || loading || !!busyId}
           >
             {!workspaceId && <option value="">No Spaces</option>}
@@ -280,6 +282,9 @@ export function AutomationsSettings({ active }: { active: boolean }) {
             <span className="hint">
               {routine.trigger.kind.replaceAll("_", " ")} · {routine.archivedAt ? "Archived" : routine.paused ? "Paused" : "Ready"}
             </span>
+            <span className="hint">{routine.replay
+              ? routine.replay.state === "tested" ? "Tested browser replay on its reviewed site" : "Replay requires a fresh test and review"
+              : "Model-led Skill; model spend cap applies"}</span>
             <div className="row">
               <button
                 className="btn sm ghost"
@@ -347,7 +352,7 @@ export function AutomationsSettings({ active }: { active: boolean }) {
                 <button className="btn sm" type="submit" disabled={!!busyId}>Save cap</button>
               </form>
             )}
-            {!routine.archivedAt && <span className="hint">Auto-pauses after recorded model spending reaches this cap; a running Skill may go over it.</span>}
+            {!routine.archivedAt && <span className="hint">Checks recorded model spending before each new run and pauses at this cap. A running model call may go over it; tested browser replays do not call a model.</span>}
             {!routine.archivedAt && routine.trigger.kind === "schedule" && (
               <label>
                 When Aux missed a scheduled time
@@ -381,6 +386,22 @@ export function AutomationsSettings({ active }: { active: boolean }) {
             </span>
             <button className="btn sm ghost" type="button" onClick={() => void call("routines.get", { routineId: item.run.routineId })
               .then(({ routine }) => openSavedSkill(routine)).catch(errToast)}>Open Skill</button>
+            {item.run.runId && <button className="btn sm ghost" type="button"
+              disabled={!!outcomeBusy}
+              onClick={() => {
+                setOutcomeBusy(item.run.routineRunId);
+                setError("");
+                void call("routines.outcome", { routineRunId: item.run.routineRunId })
+                  .then(setOutcome)
+                  .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
+                  .finally(() => setOutcomeBusy(""));
+              }}>View result</button>}
+            {outcome?.run.routineRunId === item.run.routineRunId && <div aria-live="polite" className="hint">
+              <div>Linked run: <code>{outcome.run.runId ?? "unavailable"}</code> · {outcome.linkedRunFound ? "Saved run available" : "Linked run unavailable"}</div>
+              {outcome.criteria.map(entry => <div key={entry.criterion.criterionId}>
+                {entry.criterion.description}: {entry.status.replaceAll("_", " ")} · {entry.evidence.length} evidence record{entry.evidence.length === 1 ? "" : "s"}
+              </div>)}
+            </div>}
           </div>
         ))}
       </SettingsField>

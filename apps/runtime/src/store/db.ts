@@ -272,7 +272,7 @@ CREATE TABLE routine_revisions(routine_id TEXT NOT NULL REFERENCES routines(rout
   PRIMARY KEY(routine_id,revision));
 CREATE TABLE routine_runs(
   routine_run_id TEXT PRIMARY KEY, routine_id TEXT NOT NULL REFERENCES routines(routine_id), revision INTEGER NOT NULL,
-  occurrence_id TEXT, occurrence_identity TEXT, status TEXT NOT NULL,
+  occurrence_id TEXT, occurrence_identity TEXT, trigger_page_id TEXT, trigger_document_epoch INTEGER, status TEXT NOT NULL,
   reason TEXT, chat_id TEXT, run_id TEXT, parameters TEXT NOT NULL DEFAULT '{}',
   started_at INTEGER, ended_at INTEGER, created_at INTEGER NOT NULL);
 CREATE UNIQUE INDEX idx_routine_occurrence ON routine_runs(occurrence_identity) WHERE occurrence_identity IS NOT NULL;
@@ -367,7 +367,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 27;
+export const SCHEMA_VERSION = 28;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -664,6 +664,16 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       ...(!hasLookup ? [`ALTER TABLE calendar_connections ADD COLUMN account_key_lookup TEXT`] : []),
       `DROP INDEX IF EXISTS idx_calendar_account_active`,
       `CREATE UNIQUE INDEX idx_calendar_account_active ON calendar_connections(provider,account_key_lookup) WHERE revoked_at IS NULL`,
+    ];
+  },
+  // v27 → v28: keep the exact page-change authority across review and restart.
+  27: (db) => {
+    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='routine_runs'").get()) return [];
+    const names = new Set((db.prepare("PRAGMA table_info(routine_runs)").all() as { name: string }[])
+      .map(column => column.name));
+    return [
+      ...(!names.has("trigger_page_id") ? [`ALTER TABLE routine_runs ADD COLUMN trigger_page_id TEXT`] : []),
+      ...(!names.has("trigger_document_epoch") ? [`ALTER TABLE routine_runs ADD COLUMN trigger_document_epoch INTEGER`] : []),
     ];
   },
 };

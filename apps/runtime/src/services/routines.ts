@@ -57,6 +57,8 @@ function parseRun(row: Record<string, unknown>): RoutineRun {
     revision: Number(row.revision),
     occurrenceId: row.occurrence_id ? String(row.occurrence_id) : undefined,
     occurrenceIdentity: row.occurrence_identity ? String(row.occurrence_identity) : undefined,
+    triggerPageId: row.trigger_page_id ? String(row.trigger_page_id) : undefined,
+    triggerDocumentEpoch: row.trigger_document_epoch == null ? undefined : Number(row.trigger_document_epoch),
     status: row.status as RoutineRun["status"],
     reason: row.reason ? String(row.reason) : undefined,
     chatId: row.chat_id ? String(row.chat_id) : undefined,
@@ -142,6 +144,7 @@ export class RoutineService {
     private startWork?: (
       routine: Routine,
       parameters: Record<string, string>,
+      context?: { triggerPageId?: string; triggerDocumentEpoch?: number },
     ) =>
       | Promise<{ chatId?: string; runId?: string } | { chatId?: string; runId?: string }>
       | { chatId?: string; runId?: string },
@@ -718,7 +721,7 @@ export class RoutineService {
 
   async run(
     input: { routineId: string; expectedRevision: number; parameters?: Record<string, string> },
-    occurrence?: { occurrenceId: string; identity: string; scheduledFor: number },
+    occurrence?: { occurrenceId: string; identity: string; scheduledFor: number; triggerPageId?: string; triggerDocumentEpoch?: number },
   ): Promise<RoutineRun> {
     this.sync();
     const routine = this.routine(input.routineId);
@@ -737,6 +740,15 @@ export class RoutineService {
         "conflict",
         "The source task changed. Review and sync this Skill before running it.",
       );
+    if (!routine.replay && this.spentUsd(routine.routineId) >= (routine.spendCapUsd ?? 50)) {
+      if (routine.trigger.kind !== "manual") {
+        const paused = RoutineSchema.parse({ ...routine, paused: true, revision: routine.revision + 1,
+          updatedAt: Date.now() });
+        this.persist(paused);
+        this.events.emit("routine.updated", { routine: paused });
+      }
+      throw new AuxError("conflict", "This Skill reached its model spend cap. Review its results and cap before running again.");
+    }
     this.requireCriteriaMatch(routine);
     this.requireCalendarGrants(routine);
     this.requireTriggerAuthority(routine);
@@ -772,6 +784,8 @@ export class RoutineService {
       revision: routine.revision,
       occurrenceId: occurrence?.occurrenceId,
       occurrenceIdentity: occurrence?.identity,
+      triggerPageId: occurrence?.triggerPageId,
+      triggerDocumentEpoch: occurrence?.triggerDocumentEpoch,
       status: routine.reviewRequired && occurrence ? "needs_review" : "queued",
       reason:
         routine.reviewRequired && occurrence ? "Scheduled work needs review before it writes." : undefined,
@@ -992,7 +1006,8 @@ export class RoutineService {
         );
         continue;
       }
-      created.push(await this.startOccurrence(routine, identity, dueAt));
+      created.push(await this.startOccurrence(routine, identity, dueAt,
+        event.kind === "page_change" ? { pageId: event.pageId, documentEpoch: event.documentEpoch } : undefined));
     }
     return created;
   }
@@ -1085,6 +1100,26 @@ export class RoutineService {
     return false;
   }
 
+  /** A reviewed page-change occurrence cannot move to another tab or document. */
+  private requireTriggerPage(routine: Routine, record: RoutineRun): void {
+    if (routine.trigger.kind !== "page_change" || !record.occurrenceIdentity) return;
+    const triggerUrl = routine.trigger.url;
+    if (!record.triggerPageId || record.triggerDocumentEpoch === undefined)
+      throw new AuxError("conflict", "The page-change occurrence has no exact tab and document binding.");
+    const page = this.repo.db.prepare("SELECT url,epoch,detached,owned FROM pages WHERE page_id=?")
+      .get(record.triggerPageId) as { url: string; epoch: number; detached: number; owned: number } | undefined;
+    if (!page || page.url !== triggerUrl || page.epoch !== record.triggerDocumentEpoch || page.detached || page.owned)
+      throw new AuxError("conflict", "The watched tab or document changed. Review a new page-change occurrence.");
+    const task = this.repo.db.prepare("SELECT json FROM tasks WHERE task_id=?")
+      .get(routine.sourceTaskId ?? "") as { json: string } | undefined;
+    const resources = (task ? JSON.parse(this.repo.taskJson(routine.sourceTaskId!, task.json)) as {
+      resources?: { kind: string; locator: string }[]
+    } : {}).resources ?? [];
+    if (!resources.some(resource => (resource.kind === "page" && resource.locator === record.triggerPageId)
+      || (resource.kind === "url" && resource.locator === triggerUrl)))
+      throw new AuxError("conflict", "The watched tab is no longer in the source task's reviewed scope.");
+  }
+
   private requireTriggerAuthority(routine: Routine): void {
     if (routine.trigger.kind === "site_notification" && !routine.siteOrigins.includes(routine.trigger.origin))
       throw new AuxError(
@@ -1110,11 +1145,13 @@ export class RoutineService {
     routine: Routine,
     identity: string,
     scheduledFor: number,
+    triggerPage?: { pageId: string; documentEpoch: number },
   ): Promise<RoutineRun> {
     try {
       return await this.run(
         { routineId: routine.routineId, expectedRevision: routine.revision, parameters: {} },
-        { occurrenceId: randomUUID(), identity, scheduledFor },
+        { occurrenceId: randomUUID(), identity, scheduledFor,
+          triggerPageId: triggerPage?.pageId, triggerDocumentEpoch: triggerPage?.documentEpoch },
       );
     } catch (error) {
       if (!(error instanceof AuxError) || !["conflict", "invalid_params", "needs_input"].includes(error.code))
@@ -1209,7 +1246,10 @@ export class RoutineService {
           );
         this.requireCriteriaMatch(routine);
         this.requireCalendarGrants(routine);
-        const started = (await this.startWork?.(routine, record.parameters)) ?? {};
+        this.requireTriggerPage(routine, record);
+        const started = (await this.startWork?.(routine, record.parameters, {
+          triggerPageId: record.triggerPageId, triggerDocumentEpoch: record.triggerDocumentEpoch,
+        })) ?? {};
         const next: RoutineRun = {
           ...record,
           status: "running",
@@ -1305,16 +1345,7 @@ export class RoutineService {
       )
       .all(routine.routineId) as { status: string }[];
     const repeatedFailure = recent.length === 3 && recent.every((row) => row.status === "failed");
-    const spend = Number(
-      (
-        this.repo.db
-          .prepare(
-            `SELECT coalesce(sum(coalesce(m.cost_usd,0)),0) AS usd
-      FROM model_calls m JOIN routine_runs rr ON rr.run_id=m.run_id WHERE rr.routine_id=?`,
-          )
-          .get(routine.routineId) as { usd: number }
-      ).usd,
-    );
+    const spend = this.spentUsd(routine.routineId);
     const overCap = spend >= (routine.spendCapUsd ?? 50);
     if (!repeatedFailure && !overCap) return;
     const reason = repeatedFailure
@@ -1333,6 +1364,13 @@ export class RoutineService {
     };
     this.updateRun(updated);
     this.events.emit("routine.updated", { routine: paused, run: updated });
+  }
+
+  private spentUsd(routineId: string): number {
+    const row = this.repo.db.prepare(`SELECT coalesce(sum(coalesce(m.cost_usd,0)),0) AS usd
+      FROM model_calls m JOIN routine_runs rr ON rr.run_id=m.run_id WHERE rr.routine_id=?`)
+      .get(routineId) as { usd: number };
+    return Number(row.usd);
   }
 
   /** Stop unattended model work when several old results remain unread. */
@@ -1573,7 +1611,7 @@ export class RoutineService {
   private insertRun(run: RoutineRun) {
     this.repo.db
       .prepare(
-        "INSERT INTO routine_runs(routine_run_id,routine_id,revision,occurrence_id,occurrence_identity,status,reason,chat_id,run_id,parameters,started_at,ended_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO routine_runs(routine_run_id,routine_id,revision,occurrence_id,occurrence_identity,trigger_page_id,trigger_document_epoch,status,reason,chat_id,run_id,parameters,started_at,ended_at,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
       )
       .run(
         run.routineRunId,
@@ -1581,6 +1619,8 @@ export class RoutineService {
         run.revision,
         run.occurrenceId ?? null,
         run.occurrenceIdentity ?? null,
+        run.triggerPageId ?? null,
+        run.triggerDocumentEpoch ?? null,
         run.status,
         run.reason ?? null,
         run.chatId ?? null,

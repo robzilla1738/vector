@@ -1,16 +1,47 @@
 import { expect, it } from "vitest";
 import { BashSeatbelt, EventBus, HookService, installRunEndHooks, openDb, Repo, TaskService } from "@aux/runtime";
-import { EventTypes } from "@aux/contracts";
+import { AuxError, EventTypes } from "@aux/contracts";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-function fixture() {
+function fixture(authorize: () => void = () => {}) {
   const db = openDb(":memory:");
   const repo = new Repo(db);
   const workspace = new TaskService(repo, new EventBus(repo)).createWorkspace("Research");
-  return { db, repo, workspace, hooks: new HookService(repo, () => {}) };
+  return { db, repo, workspace, hooks: new HookService(repo, authorize) };
 }
+
+it("rechecks a Hook's capability and exact handler bytes before automatic dispatch", async () => {
+  let allowed = true;
+  const f = fixture(() => { if (!allowed) throw new AuxError("permission_denied", "Grant was revoked."); });
+  try {
+    const create = (event: "run.start" | "run.end") => {
+      const hook = f.hooks.register({ workspaceId: f.workspace.workspaceId, event,
+        handler: { type: "mcp_tool", serverId: "fixture", grantId: "11111111-1111-4111-8111-111111111111",
+          toolName: "record_result" } });
+      f.hooks.approve(hook.hookId, hook.handlerDigest);
+      return hook;
+    };
+    const revokedGrant = create("run.start");
+    allowed = false;
+    let calls = 0;
+    const executor = async () => { calls++; };
+    expect((await f.hooks.dispatch({ eventId: "grant-revoked", workspaceId: f.workspace.workspaceId,
+      event: "run.start", at: Date.now() }, executor))[0]?.state).toBe("failed");
+    expect(calls).toBe(0);
+    expect(f.hooks.invocations(revokedGrant.hookId)).toHaveLength(1);
+    allowed = true;
+    const changed = create("run.end");
+    const altered = { ...changed, handler: { ...changed.handler, toolName: "other_tool" } };
+    f.repo.db.prepare("UPDATE hooks SET body=? WHERE hook_id=?")
+      .run(f.repo.protectRecordField("hooks", [changed.hookId], "body", JSON.stringify(altered)), changed.hookId);
+    expect((await f.hooks.dispatch({ eventId: "changed-handler", workspaceId: f.workspace.workspaceId,
+      event: "run.end", at: Date.now() }, executor))[0]?.state).toBe("failed");
+    expect(f.hooks.get(changed.hookId).trust).toBe("revoked");
+    expect(calls).toBe(0);
+  } finally { f.db.close(); }
+});
 
 it("rejects unavailable handlers, then dispatches a grant-bound hook once after exact approval", async () => {
   const f = fixture();

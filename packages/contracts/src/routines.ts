@@ -299,6 +299,8 @@ export const RoutineRunSchema = z.object({
   revision: z.number().int().positive(),
   occurrenceId: text.optional(),
   occurrenceIdentity: text.optional(),
+  triggerPageId: text.max(200).optional(),
+  triggerDocumentEpoch: z.number().int().nonnegative().optional(),
   status: z.enum([
     "queued",
     "running",

@@ -1,8 +1,8 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { EventBus, openDb, Repo, TaskService } from "@aux/runtime";
+import { EventBus, HookService, installRunEndHooks, nextScheduledTime, openDb, Repo, TaskService } from "@aux/runtime";
 import type { PageService } from "../../apps/runtime/src/services/pages.js";
 import { RoutineService } from "../../apps/runtime/src/services/routines.js";
-import { bindSkillParameters, compileSkillTrace, startSkillReplay } from "../../apps/runtime/src/services/skill-replay.js";
+import { bindSkillParameters, compileSkillTrace, requireRoutineTriggerPage, selectSkillReplayPage, startSkillReplay } from "../../apps/runtime/src/services/skill-replay.js";
 import type { StepRecord } from "@aux/contracts";
 
 const sourceStep = (op: string, inputs: Record<string, unknown>, index: number, pageId = "page-1"): StepRecord => ({
@@ -35,6 +35,23 @@ it("compiles only reviewed values and a verified final oracle into a bounded dec
     .toThrow(/verified/);
 });
 
+it("selects the attached task tab on the tested origin without falling back to another site", () => {
+  const pages = { get: (pageId: string) => ({ url: pageId === "right"
+    ? "https://example.test/search" : "https://other.test/", ownedByRuntime: false }),
+  isAttached: (pageId: string) => pageId !== "detached" } as unknown as PageService;
+  expect(selectSkillReplayPage(pages, ["detached", "wrong", "right"], "https://example.test")).toBe("right");
+  expect(() => selectSkillReplayPage(pages, ["wrong"], "https://example.test")).toThrow(/tested site/);
+});
+
+it("refuses a different same-site tab or changed document at automation dispatch", () => {
+  const pages = { get: (pageId: string) => ({ url: "https://example.test/search",
+    documentEpoch: pageId === "watched" ? 4 : 3, ownedByRuntime: false }),
+  isAttached: () => true } as unknown as PageService;
+  expect(() => requireRoutineTriggerPage(pages, "watched", "https://example.test/search", 3)).toThrow(/document changed/);
+  expect(() => requireRoutineTriggerPage(pages, "other", "https://example.test/search", 4)).toThrow(/document changed/);
+  expect(requireRoutineTriggerPage(pages, "watched", "https://example.test/search", 4)).toBe("watched");
+});
+
 const handles: { close(): void }[] = [];
 afterEach(() => { for (const handle of handles.splice(0)) handle.close(); });
 
@@ -48,18 +65,27 @@ it("keeps a run-derived Skill paused through compile/test, binds exact proof, an
   repo.saveRun({ runId: "source-run", goal: "Search hosting", status: "completed", pageIds: ["page-1"], createdAt: 1,
     config: { taskId: task.taskId, taskRevision: task.revision, contextWorkspaceId: workspace.workspaceId } });
   for (const step of trace()) repo.saveStep(step);
-  const execute = vi.fn(async () => ({ status: "completed" as const, steps: [
+  const execute = vi.fn(async (program: { steps: Array<{ id: string; op: string; [key: string]: unknown }> }, ctx: { runId?: string }) => {
+    for (const [index, step] of program.steps.entries()) {
+      const { id: _id, op, ...inputs } = step;
+      repo.saveStep({ stepId: `verified-${ctx.runId}-${index}`, runId: ctx.runId!, pageId: "page-1",
+        op, inputs, startedAt: index, outcome: { stepId: `verified-${ctx.runId}-${index}`,
+          op, status: "ok", startedAt: index, durationMs: 1 } });
+    }
+    return { status: "completed" as const, steps: [
     { stepId: "skill-1", op: "fill", status: "ok" as const, startedAt: 1, durationMs: 1 },
     { stepId: "skill-2", op: "click", status: "ok" as const, startedAt: 2, durationMs: 1 },
     { stepId: "skill-3", op: "waitFor", status: "ok" as const, startedAt: 3, durationMs: 1 },
-  ] }));
+  ] };
+  });
   const pages = { get: () => ({ url: "https://example.test/search", ownedByRuntime: false }),
     isAttached: () => true, execute } as unknown as PageService;
   let routines!: RoutineService;
   routines = new RoutineService(repo, events, async (routine, parameters) =>
     startSkillReplay({ repo, pages, events, routine, pageId: "page-1", parameters }));
   const created = routines.fromResult({ taskId: task.taskId, runId: "source-run", title: "Reusable search",
-    parameters: [{ name: "topic", label: "Topic" }] });
+    parameters: [{ name: "topic", label: "Topic", value: "hosting" }], reviewRequired: false,
+    trigger: { kind: "schedule", timezone: "UTC", hour: 9, minute: 0, days: [0, 1, 2, 3, 4, 5, 6] } });
   expect(created).toMatchObject({ paused: true, activationReview: "run_result" });
   repo.saveRun({ runId: "foreign-run", goal: "Search elsewhere", status: "completed", pageIds: ["page-1"], createdAt: 2,
     config: { taskId: task.taskId, taskRevision: task.revision, contextWorkspaceId: "other-space" } });
@@ -74,11 +100,6 @@ it("keeps a run-derived Skill paused through compile/test, binds exact proof, an
   const testing = routines.testReplay({ routineId: candidate.routineId, expectedRevision: candidate.revision,
     pageId: "page-1", parameters: { topic: "payments" } }, pages);
   await vi.waitFor(() => expect(repo.getRun(testing.runId)?.status).toBe("completed"));
-  // Native executor normally flushes these step rows; the fixture records the same durable ledger.
-  for (const [index, step] of trace().entries()) repo.saveStep({ ...step, runId: testing.runId,
-    stepId: `test-${index}`, inputs: index === 0 ? { target: "css:#query", value: "payments" }
-      : index === 2 ? { condition: { kind: "textVisible", text: "payments" } } : step.inputs,
-    outcome: { ...step.outcome!, stepId: `test-${index}` } });
   expect(() => routines.resultReplay({ routineId: candidate.routineId, expectedRevision: testing.revision,
     runId: "source-run" })).toThrow(/pending test/);
   const tested = routines.resultReplay({ routineId: candidate.routineId, expectedRevision: testing.revision,
@@ -87,6 +108,28 @@ it("keeps a run-derived Skill paused through compile/test, binds exact proof, an
   const active = routines.update({ routineId: tested.routineId, expectedRevision: tested.revision,
     paused: false, activationReviewed: true });
   expect(active.replay?.testedRevision).toBe(active.revision);
+  const hooks = new HookService(repo, () => {});
+  const hook = hooks.register({ workspaceId: workspace.workspaceId, event: "run.end",
+    handler: { type: "mcp_tool", serverId: "fixture", grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "record_result" } });
+  hooks.approve(hook.hookId, hook.handlerDigest);
+  let hookCalls = 0;
+  const stopHooks = installRunEndHooks(events, hooks, async () => { hookCalls++; });
+  const scheduledFor = nextScheduledTime(active.trigger as Extract<typeof active.trigger, { kind: "schedule" }>, Date.now());
+  const occurrence = (await routines.due(scheduledFor))[0]!;
+  expect(occurrence.status).toBe("running");
+  expect(occurrence).toMatchObject({ routineId: active.routineId, revision: active.revision });
+  expect(occurrence.occurrenceIdentity).toBeTruthy();
+  await vi.waitFor(() => expect(repo.getRun(occurrence.runId!)?.status).toBe("completed"));
+  await vi.waitFor(() => expect(hooks.invocations(hook.hookId)).toHaveLength(1));
+  expect(hooks.invocations(hook.hookId)[0]).toMatchObject({
+    eventId: `run:${occurrence.runId}:end`, state: "completed" });
+  expect(hookCalls).toBe(1);
+  expect(routines.inbox({ workspaceId: workspace.workspaceId })[0]?.run).toMatchObject({
+    routineRunId: occurrence.routineRunId, status: "completed", runId: occurrence.runId });
+  expect(await routines.due(scheduledFor)).toEqual([]);
+  expect(hookCalls).toBe(1);
+  stopHooks();
   expect((await routines.run({ routineId: active.routineId, expectedRevision: active.revision,
     parameters: { topic: "analytics" } })).status).toBe("running");
   expect(execute).toHaveBeenCalledWith(expect.objectContaining({ steps: expect.arrayContaining([
@@ -120,4 +163,20 @@ it("fails a completed executor result when its page leaves the tested site befor
   const { runId } = startSkillReplay({ repo, pages, events, routine, pageId: "page-1", parameters: { topic: "new" } });
   await vi.waitFor(() => expect(repo.getRun(runId)?.status).toBe("failed"));
   expect(repo.getRun(runId)?.error).toMatch(/page changed/);
+});
+
+it("refuses a completed replay without exact durable step receipts", async () => {
+  const db = openDb(":memory:"); handles.push(db);
+  const repo = new Repo(db), events = new EventBus(repo);
+  const pages = { get: () => ({ url: "https://example.test/search", ownedByRuntime: false }),
+    isAttached: () => true, execute: vi.fn(async () => ({ status: "completed" as const, steps: [] })) } as unknown as PageService;
+  const steps = compileSkillTrace(trace(), { topic: "hosting" });
+  const routine = { routineId: "routine-1", title: "Search", parameters: [{ name: "topic" }],
+    replay: { sourceRunId: "source", siteOrigin: "https://example.test", steps,
+      digest: (await import("../../apps/runtime/src/services/skill-replay.js")).replayDigest(
+        "source", "https://example.test", steps) } } as unknown as Parameters<typeof startSkillReplay>[0]["routine"];
+  const { runId } = startSkillReplay({ repo, pages, events, routine, pageId: "page-1",
+    parameters: { topic: "new" } });
+  await vi.waitFor(() => expect(repo.getRun(runId)?.status).toBe("failed"));
+  expect(repo.getRun(runId)?.error).toMatch(/verified receipts/);
 });

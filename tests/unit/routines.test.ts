@@ -37,6 +37,7 @@ function fixture(
   startWork?: (
     routine: { title: string },
     parameters: Record<string, string>,
+    context?: { triggerPageId?: string; triggerDocumentEpoch?: number },
   ) => Promise<{ chatId?: string; runId?: string }>,
   dbPath = ":memory:",
 ) {
@@ -259,6 +260,60 @@ it("preflights a page-change watch against the exact task resource and current p
   expect(f.routines.pageChangeTarget("page-watch", url)).toEqual({ documentEpoch: 8 });
   f.routines.pause(skill.routineId, skill.revision, true);
   expect(f.routines.pageChangeTarget("page-watch", url)).toBeNull();
+});
+
+it.each(["new document", "different tab"])("persists page-change authority and refuses %s after review and restart", async (change) => {
+  const dispatched = vi.fn(async () => ({ runId: "should-not-start" }));
+  const f = fixture(dispatched);
+  const url = "https://example.com/pricing";
+  f.db.prepare("INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)")
+    .run("watched", "aux", "target", url, "Pricing", 3, Date.now(), Date.now());
+  const routine = f.routines.create({
+    title: "Watch pricing", objective: "Inspect changes", workspaceId: f.workspace.workspaceId,
+    sourceTaskId: f.task.taskId, parameters: [], siteOrigins: ["https://example.com"], accountLabels: [],
+    reviewRequired: true, consecutive: false,
+    trigger: { kind: "page_change", url, minimumIntervalMinutes: 5 }, paused: false,
+  });
+  const now = Date.now();
+  const event = { kind: "page_change" as const, eventId: "first", pageId: "watched", url,
+    documentEpoch: 3, contentSha256: "a".repeat(64), observedAt: now };
+  expect(await f.routines.ingestEvent(event, now)).toEqual([]);
+  const [waiting] = await f.routines.ingestEvent({ ...event, eventId: "changed",
+    contentSha256: "b".repeat(64) }, now);
+  expect(waiting).toMatchObject({ status: "needs_review", triggerPageId: "watched", triggerDocumentEpoch: 3 });
+  const restarted = new RoutineService(f.repo, f.events, dispatched);
+  expect(restarted.runs(routine.routineId)[0]).toMatchObject({ triggerPageId: "watched", triggerDocumentEpoch: 3 });
+  if (change === "new document") f.db.prepare("UPDATE pages SET epoch=4 WHERE page_id='watched'").run();
+  else {
+    f.db.prepare("UPDATE pages SET detached=1 WHERE page_id='watched'").run();
+    f.db.prepare("INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)")
+      .run("replacement", "aux", "replacement-target", url, "Pricing", 3, Date.now(), Date.now());
+  }
+  const refused = await restarted.reconcile(waiting!.routineRunId, "applied", "Reviewed the change.");
+  expect(refused.status).toBe("failed");
+  expect(refused.reason).toMatch(/watched tab or document changed/i);
+  expect(dispatched).not.toHaveBeenCalled();
+});
+
+it("passes the exact watched tab and epoch to immediate page-change work", async () => {
+  const dispatched = vi.fn(async () => ({ runId: "run-page-change" }));
+  const f = fixture(dispatched);
+  const url = "https://example.com/pricing";
+  f.db.prepare("INSERT INTO pages(page_id,backend,target_id,url,title,epoch,created_at,active_at) VALUES(?,?,?,?,?,?,?,?)")
+    .run("watched-immediate", "aux", "target", url, "Pricing", 5, Date.now(), Date.now());
+  const routine = f.routines.create({ title: "Watch now", objective: "Inspect changes",
+    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId, parameters: [],
+    siteOrigins: ["https://example.com"], accountLabels: [], reviewRequired: false,
+    consecutive: false, trigger: { kind: "page_change", url, minimumIntervalMinutes: 5 }, paused: false });
+  const now = Date.now();
+  const event = { kind: "page_change" as const, eventId: "base", pageId: "watched-immediate", url,
+    documentEpoch: 5, contentSha256: "a".repeat(64), observedAt: now };
+  expect(await f.routines.ingestEvent(event, now)).toEqual([]);
+  const [started] = await f.routines.ingestEvent({ ...event, eventId: "next",
+    contentSha256: "b".repeat(64) }, now);
+  expect(started).toMatchObject({ status: "running", triggerPageId: "watched-immediate", triggerDocumentEpoch: 5 });
+  expect(dispatched).toHaveBeenCalledWith(expect.objectContaining({ routineId: routine.routineId }), {},
+    { triggerPageId: "watched-immediate", triggerDocumentEpoch: 5 });
 });
 
 it("builds parameterized routines from a saved task and versions edits", () => {
@@ -1022,6 +1077,30 @@ it("pauses an automated Skill after three consecutive failed runs", async () => 
   }
   expect(f.routines.get(routine.routineId).routine.paused).toBe(true);
   expect(f.routines.alerts().some((alert) => alert.routineId === routine.routineId)).toBe(true);
+});
+
+it("does not dispatch another funded occurrence after its Skill spend cap is reached", async () => {
+  let starts = 0;
+  const f = fixture(async () => { starts++; return { runId: `run-${starts}` }; });
+  const routine = f.routines.create({ title: "Capped Skill", objective: "Check the saved task",
+    workspaceId: f.workspace.workspaceId, sourceTaskId: f.task.taskId,
+    parameters: [], siteOrigins: [], accountLabels: [], reviewRequired: false,
+    consecutive: false,
+    spendCapUsd: 0.01, trigger: { kind: "schedule", timezone: "UTC", hour: 9,
+      minute: 0, days: [0, 1, 2, 3, 4, 5, 6] }, paused: false });
+  f.repo.db.prepare(`INSERT INTO routine_runs
+    (routine_run_id,routine_id,revision,status,run_id,parameters,created_at,ended_at)
+    VALUES (?,?,?,'completed','prior-funded-run','{}',?,?)`)
+    .run("prior-funded-occurrence", routine.routineId, routine.revision, Date.now(), Date.now());
+  f.repo.db.prepare(`INSERT INTO model_calls
+    (call_id,run_id,role,model_id,duration_ms,cost_usd,created_at)
+    VALUES ('capped-call','prior-funded-run','planner','fixture',1,0.01,?)`).run(Date.now());
+  const when = nextScheduledTime(routine.trigger as Extract<typeof routine.trigger, { kind: "schedule" }>, Date.now());
+  const result = (await f.routines.due(when))[0];
+  expect(result).toMatchObject({ status: "missed", routineId: routine.routineId });
+  expect(result?.reason).toMatch(/model spend cap/);
+  expect(f.routines.get(routine.routineId).routine.paused).toBe(true);
+  expect(starts).toBe(0);
 });
 
 it("records an overlapping occurrence and still starts other due Skills", async () => {

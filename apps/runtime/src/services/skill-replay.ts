@@ -89,15 +89,34 @@ export function skillPageOrigin(pages: PageService, pageId: string): string {
   }
 }
 
+/** Choose only an attached task resource on the exact tested origin. */
+export function selectSkillReplayPage(pages: PageService, pageIds: readonly string[], siteOrigin: string): string {
+  for (const pageId of pageIds) {
+    try { if (skillPageOrigin(pages, pageId) === siteOrigin) return pageId; }
+    catch { /* A detached or owner-ineligible task resource cannot be used. */ }
+  }
+  throw new AuxError("conflict", "Attach an owner tab on this Skill's tested site before it runs.");
+}
+
+/** Recheck a host-observed page-change target at the last dispatch boundary. */
+export function requireRoutineTriggerPage(pages: PageService, pageId: string, url: string, documentEpoch: number): string {
+  const page = pages.get(pageId);
+  if (!pages.isAttached(pageId) || page.ownedByRuntime || page.url !== url || page.documentEpoch !== documentEpoch)
+    throw new AuxError("conflict", "The watched tab or document changed. Review a new page-change occurrence.");
+  return pageId;
+}
+
 /** A replay is a normal governed browser run with page JS disabled. */
 export function startSkillReplay(input: { repo: Repo; pages: PageService; events: EventBus;
-  routine: Routine; pageId: string; parameters: Record<string, string> }): { runId: string } {
+  routine: Routine; pageId: string; parameters: Record<string, string>; expectedDocumentEpoch?: number }): { runId: string } {
   const { repo, pages, events, routine, pageId, parameters } = input;
   const replay = routine.replay;
   if (!replay || replayDigest(replay.sourceRunId, replay.siteOrigin, replay.steps) !== replay.digest)
     throw new AuxError("conflict", "This Skill replay changed. Review and test it again.");
   if (skillPageOrigin(pages, pageId) !== replay.siteOrigin)
     throw new AuxError("conflict", "This page is outside the Skill's tested site.");
+  if (input.expectedDocumentEpoch !== undefined && pages.get(pageId).documentEpoch !== input.expectedDocumentEpoch)
+    throw new AuxError("conflict", "The watched document changed before Skill replay.");
   const steps = bindSkillParameters(replay.steps, parameters, routine.parameters.map(item => item.name));
   const now = Date.now();
   const run: Run = {
@@ -115,10 +134,24 @@ export function startSkillReplay(input: { repo: Repo; pages: PageService; events
       if (!latest || latest.status !== "running") return;
       let siteStillMatches = false;
       try { siteStillMatches = skillPageOrigin(pages, pageId) === replay.siteOrigin; } catch { /* Detached or changed site fails closed. */ }
-      const completed = result.status === "completed" && siteStillMatches;
+      // A completed executor response alone is not proof: require the exact
+      // durable step ledger and final tested oracle before recording success.
+      const records = repo.listSteps(run.runId);
+      const verified = records.length === steps.length && records.every((record, index) => {
+        const step = steps[index]!;
+        const { id: _id, op: _op, timeoutMs: _timeoutMs, optional: _optional,
+          expect: _expect, ...inputs } = step;
+        return record.pageId === pageId && record.op === step.op &&
+          JSON.stringify(record.inputs) === JSON.stringify(inputs) && record.outcome?.status === "ok" &&
+          !record.outcome?.receipt?.uncertain && !record.outcome?.receipt?.unconfirmed &&
+          record.outcome?.effect !== "uncertain";
+      });
+      const completed = result.status === "completed" && siteStillMatches && verified;
       const settled: Run = { ...latest, status: completed ? "completed" : result.status === "cancelled" ? "cancelled" : "failed",
         result: completed ? result.extracted : undefined,
-        error: siteStillMatches ? result.error : "The Skill page changed or detached before verification.", endedAt: Date.now(),
+        error: !siteStillMatches ? "The Skill page changed or detached before verification."
+          : !verified ? "The tested Skill steps lack complete verified receipts." : result.error,
+        endedAt: Date.now(),
         statusMessage: completed ? "Skill replay finished" : "Skill replay needs review" };
       repo.saveRun(settled);
       events.emit(EventTypes.RunUpdated, { run: settled }, settled.runId);
