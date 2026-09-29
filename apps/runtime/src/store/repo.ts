@@ -75,6 +75,10 @@ export class Repo {
     return this.columnCipher ? this.columnCipher.decrypt(table, JSON.stringify(identity), column, value) : value;
   }
 
+  exactRecordLookup(table: string, column: string, value: string): string {
+    return this.columnCipher ? this.columnCipher.exactLookup(table, column, value) : value;
+  }
+
   getWorkspace(workspaceId: string): {workspaceId:string;name:string;createdAt:number} | undefined {
     const row = this.q("SELECT workspace_id AS workspaceId,name,created_at AS createdAt FROM workspaces WHERE workspace_id=?")
       .get(workspaceId) as {workspaceId:string;name:string;createdAt:number} | undefined;

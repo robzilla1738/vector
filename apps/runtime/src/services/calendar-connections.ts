@@ -9,8 +9,8 @@ const AUTH_LIFETIME_MS = 5 * 60_000;
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RESPONSE_BYTES = 1_000_000;
 
-type Row = { connection_id: string; account_key: string; label: string; secret_name: string; scopes: string; state: "active" | "needs_reauth"; created_at: number; updated_at: number };
-type GrantRow = { grant_id: string; task_id: string; task_revision: number; connection_id: string; created_at: number; revoked_at: number | null; account_key: string; label: string };
+type Row = { connection_id: string; account_key: string; account_key_lookup: string; label: string; secret_name: string; scopes: string; state: "active" | "needs_reauth"; created_at: number; updated_at: number };
+type GrantRow = { grant_id: string; task_id: string; task_revision: number; connection_id: string; created_at: number; revoked_at: number | null; account_key: string; account_key_lookup: string; label: string };
 type Secret = { accessToken: string; refreshToken: string; expiresAt: number };
 type Pending = { server: Server; timer: NodeJS.Timeout; verifier: string; redirectUri: string };
 type Endpoints = { auth: string; token: string; revoke: string; calendar: string };
@@ -75,17 +75,32 @@ export class CalendarConnectionService {
     const rows = this.deps.repo.db.prepare("SELECT * FROM calendar_connections WHERE revoked_at IS NULL ORDER BY created_at,connection_id").all() as Row[];
     return { available, ...(!available ? { reason: "Google Calendar needs a configured OAuth desktop client and secure Aux desktop storage." } : {}), connections: rows.map(row => this.public(row)) };
   }
+  private accountKey(row: Pick<Row, "connection_id" | "account_key" | "account_key_lookup">): string {
+    const accountKey = this.deps.repo.revealRecordField("calendar_connections", [row.connection_id], "account_key", row.account_key);
+    if (row.account_key_lookup !== this.deps.repo.exactRecordLookup("calendar_connections", "account_key", accountKey))
+      throw new Error("Protected Calendar account lookup does not match its account.");
+    return accountKey;
+  }
+  private decode(row: Row): Row {
+    const id = [row.connection_id];
+    const repo = this.deps.repo;
+    const account_key = this.accountKey(row);
+    return { ...row, account_key,
+      label: repo.revealRecordField("calendar_connections", id, "label", row.label),
+      scopes: repo.revealRecordField("calendar_connections", id, "scopes", row.scopes) };
+  }
   private public(row: Row): CalendarConnection {
-    return CalendarConnectionSchema.parse({ connectionId: row.connection_id, provider: "google", accountKey: row.account_key,
-      label: row.label, scopes: JSON.parse(row.scopes), state: row.state, createdAt: row.created_at, updatedAt: row.updated_at });
+    const value = this.decode(row);
+    return CalendarConnectionSchema.parse({ connectionId: value.connection_id, provider: "google", accountKey: value.account_key,
+      label: value.label, scopes: JSON.parse(value.scopes), state: value.state, createdAt: value.created_at, updatedAt: value.updated_at });
   }
   private row(connectionId: string): Row {
     const row = this.deps.repo.db.prepare("SELECT * FROM calendar_connections WHERE connection_id=? AND revoked_at IS NULL").get(connectionId) as Row | undefined;
     if (!row) throw new AuxError("not_found", "Calendar connection is unavailable or revoked.");
-    return row;
+    return this.decode(row);
   }
   private grantRow(taskId: string, grantId: string): GrantRow {
-    const grant = this.deps.repo.db.prepare(`SELECT g.*,c.account_key,c.label FROM calendar_task_grants g
+    const grant = this.deps.repo.db.prepare(`SELECT g.*,c.account_key,c.account_key_lookup,c.label FROM calendar_task_grants g
       JOIN calendar_connections c ON c.connection_id=g.connection_id
       JOIN tasks t ON t.task_id=g.task_id
       WHERE g.grant_id=? AND g.task_id=? AND g.revoked_at IS NULL AND c.revoked_at IS NULL
@@ -94,13 +109,15 @@ export class CalendarConnectionService {
     return grant;
   }
   private publicGrant(row: GrantRow): CalendarTaskGrant {
+    const accountKey = this.accountKey(row);
+    const label = this.deps.repo.revealRecordField("calendar_connections", [row.connection_id], "label", row.label);
     return CalendarTaskGrantSchema.parse({ grantId: row.grant_id, taskId: row.task_id, taskRevision: row.task_revision,
-      connectionId: row.connection_id, accountKey: row.account_key, label: row.label, createdAt: row.created_at,
+      connectionId: row.connection_id, accountKey, label, createdAt: row.created_at,
       ...(row.revoked_at == null ? {} : { revokedAt: row.revoked_at }) });
   }
   taskGrants(taskId: string): CalendarTaskGrant[] {
     if (!this.deps.repo.db.prepare("SELECT 1 FROM tasks WHERE task_id=?").get(taskId)) throw new AuxError("not_found", "Task not found.");
-    const rows = this.deps.repo.db.prepare(`SELECT g.*,c.account_key,c.label FROM calendar_task_grants g
+    const rows = this.deps.repo.db.prepare(`SELECT g.*,c.account_key,c.account_key_lookup,c.label FROM calendar_task_grants g
       JOIN calendar_connections c ON c.connection_id=g.connection_id WHERE g.task_id=? AND g.revoked_at IS NULL AND c.revoked_at IS NULL
       ORDER BY g.created_at,g.grant_id`).all(taskId) as GrantRow[];
     return rows.map(row => this.publicGrant(row));
@@ -112,7 +129,7 @@ export class CalendarConnectionService {
       if (task.state !== "open" || task.revision !== expectedRevision) throw new AuxError("conflict", "Save or restore the current task revision before granting Calendar access.");
       const connection = this.row(connectionId);
       if (connection.state !== "active") throw new AuxError("needs_input", "Reconnect this Calendar account before granting it to a task.");
-      const existing = this.deps.repo.db.prepare(`SELECT g.*,c.account_key,c.label FROM calendar_task_grants g JOIN calendar_connections c ON c.connection_id=g.connection_id
+      const existing = this.deps.repo.db.prepare(`SELECT g.*,c.account_key,c.account_key_lookup,c.label FROM calendar_task_grants g JOIN calendar_connections c ON c.connection_id=g.connection_id
         WHERE g.task_id=? AND g.task_revision=? AND g.connection_id=? AND g.revoked_at IS NULL`).get(taskId, expectedRevision, connectionId) as GrantRow | undefined;
       if (existing) return this.publicGrant(existing);
       const grantId = randomUUID(), createdAt = Date.now();
@@ -186,7 +203,14 @@ export class CalendarConnectionService {
     const accountKey = typeof identity.id === "string" ? identity.id : "";
     if (!accountKey || accountKey.length > 320 || identity.primary !== true) throw new AuxError("backend_unavailable", "Calendar did not identify the primary account.");
     const label = typeof identity.summary === "string" && identity.summary.trim() ? identity.summary.trim().slice(0, 320) : accountKey;
-    const previous = this.deps.repo.db.prepare("SELECT * FROM calendar_connections WHERE provider='google' AND account_key=? AND revoked_at IS NULL").get(accountKey) as Row | undefined;
+    const lookup = this.deps.repo.exactRecordLookup("calendar_connections", "account_key", accountKey);
+    // Calendar account counts are small. Authenticate every active projection before
+    // an indexed lookup so a changed lookup cannot create a second active account.
+    for (const candidate of this.deps.repo.db.prepare("SELECT * FROM calendar_connections WHERE provider='google' AND revoked_at IS NULL").all() as Row[])
+      this.decode(candidate);
+    const priorRow = this.deps.repo.db.prepare("SELECT * FROM calendar_connections WHERE provider='google' AND account_key_lookup=? AND revoked_at IS NULL").get(lookup) as Row | undefined;
+    const previous = priorRow ? this.decode(priorRow) : undefined;
+    if (previous && previous.account_key !== accountKey) throw new Error("Calendar account lookup collision or corruption.");
     const connectionId = previous?.connection_id ?? randomUUID();
     const secretName = `calendar-${randomUUID().replaceAll("-", "")}`;
     const expiresAt = Date.now() + Math.max(60, Number(data.expires_in) || 3600) * 1000;
@@ -196,11 +220,14 @@ export class CalendarConnectionService {
       const now = Date.now();
       if (previous) {
         const updated = this.deps.repo.db.prepare("UPDATE calendar_connections SET label=?,secret_name=?,scopes=?,state='active',updated_at=? WHERE connection_id=? AND revoked_at IS NULL")
-          .run(label, secretName, JSON.stringify([SCOPE]), now, connectionId);
+          .run(this.deps.repo.protectRecordField("calendar_connections", [connectionId], "label", label), secretName,
+            this.deps.repo.protectRecordField("calendar_connections", [connectionId], "scopes", JSON.stringify([SCOPE])), now, connectionId);
         if (!updated.changes) throw new AuxError("cancelled", "Calendar connection changed during sign-in.");
       }
-      else this.deps.repo.db.prepare("INSERT INTO calendar_connections(connection_id,provider,account_key,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,?,?,?, 'active',?,?)")
-        .run(connectionId, accountKey, label, secretName, JSON.stringify([SCOPE]), now, now);
+      else this.deps.repo.db.prepare("INSERT INTO calendar_connections(connection_id,provider,account_key,account_key_lookup,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,?,?,?,?, 'active',?,?)")
+        .run(connectionId, this.deps.repo.protectRecordField("calendar_connections", [connectionId], "account_key", accountKey), lookup,
+          this.deps.repo.protectRecordField("calendar_connections", [connectionId], "label", label), secretName,
+          this.deps.repo.protectRecordField("calendar_connections", [connectionId], "scopes", JSON.stringify([SCOPE])), now, now);
     } catch (error) { await this.deps.native.storeSecret(secretName, "").catch(() => undefined); throw error; }
     if (previous) await this.deps.native.storeSecret(previous.secret_name, "").catch(() => undefined);
     this.deps.onChange?.();

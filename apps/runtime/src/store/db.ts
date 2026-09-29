@@ -240,10 +240,10 @@ CREATE TABLE agent_connections(
 CREATE INDEX idx_agent_connections_scope ON agent_connections(workspace_id,task_id,revoked_at);
 CREATE TABLE calendar_connections(
   connection_id TEXT PRIMARY KEY, provider TEXT NOT NULL CHECK(provider='google'),
-  account_key TEXT NOT NULL, label TEXT NOT NULL, secret_name TEXT NOT NULL UNIQUE,
+  account_key TEXT NOT NULL, account_key_lookup TEXT, label TEXT NOT NULL, secret_name TEXT NOT NULL UNIQUE,
   scopes TEXT NOT NULL, state TEXT NOT NULL CHECK(state IN ('active','needs_reauth')),
   created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, revoked_at INTEGER);
-CREATE UNIQUE INDEX idx_calendar_account_active ON calendar_connections(provider,account_key) WHERE revoked_at IS NULL;
+CREATE UNIQUE INDEX idx_calendar_account_active ON calendar_connections(provider,account_key_lookup) WHERE revoked_at IS NULL;
 CREATE TABLE calendar_task_grants(
   grant_id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES tasks(task_id),
   task_revision INTEGER NOT NULL, connection_id TEXT NOT NULL REFERENCES calendar_connections(connection_id),
@@ -367,7 +367,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 26;
+export const SCHEMA_VERSION = 27;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -655,6 +655,17 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
     `CREATE INDEX IF NOT EXISTS idx_task_lookup_conversation ON task_lookup(conversation_id)`,
     `CREATE INDEX IF NOT EXISTS idx_task_lookup_source ON task_lookup(source_origin,conversation_id)`,
   ],
+  // v26 → v27: exact active account matching uses a keyed lookup after account metadata is sealed.
+  26: (db) => {
+    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='calendar_connections'").get()) return [];
+    const hasLookup = (db.prepare("PRAGMA table_info(calendar_connections)").all() as { name: string }[])
+      .some(column => column.name === "account_key_lookup");
+    return [
+      ...(!hasLookup ? [`ALTER TABLE calendar_connections ADD COLUMN account_key_lookup TEXT`] : []),
+      `DROP INDEX IF EXISTS idx_calendar_account_active`,
+      `CREATE UNIQUE INDEX idx_calendar_account_active ON calendar_connections(provider,account_key_lookup) WHERE revoked_at IS NULL`,
+    ];
+  },
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */

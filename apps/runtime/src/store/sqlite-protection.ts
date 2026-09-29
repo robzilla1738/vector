@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { NativeBridge } from "../native.js";
 import { ProtectedStore } from "../services/protected-store.js";
@@ -123,6 +123,56 @@ export class SqliteColumnCipher {
   }
 
   isEncrypted(value: string) { return value.startsWith(PREFIX); }
+
+  exactLookup(table: string, column: string, value: string): string {
+    if (!NAME.test(table) || !NAME.test(column)) throw new Error("Protected database lookup identity is invalid.");
+    return `auxidx:v1:${createHmac("sha256", this.key).update(`sqlite-exact:v1\0${table}\0${column}\0${value}`).digest("hex")}`;
+  }
+}
+
+/** Atomically replace Calendar account metadata and its active-account UNIQUE lookup. */
+export function migrateCalendarConnections(db: DatabaseSync, cipher: SqliteColumnCipher): number {
+  const table = "calendar_connections";
+  const columns = ["account_key", "label", "scopes"] as const;
+  const marker = "protected_sqlite_v1:calendar_connections";
+  const plan = JSON.stringify({ columns, lookup: "account_key_lookup:auxidx:v1" });
+  let changed = 0;
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const marked = db.prepare("SELECT value FROM aux_meta WHERE key=?").get(marker) as { value: string } | undefined;
+    if (marked && marked.value !== plan)
+      throw new Error("Protected Calendar inventory changed without a new migration version.");
+    const rows = db.prepare("SELECT connection_id,account_key,account_key_lookup,label,scopes FROM calendar_connections")
+      .all() as { connection_id: string; account_key: string; account_key_lookup: string | null; label: string; scopes: string }[];
+    for (const row of rows) {
+      const id = JSON.stringify([row.connection_id]);
+      const values = columns.map(column => {
+        const value = row[column];
+        if (typeof value !== "string") throw new Error("Protected Calendar metadata is invalid.");
+        if (cipher.isEncrypted(value)) return cipher.decrypt(table, id, column, value);
+        if (marked) throw new Error("Protected Calendar metadata was written as plaintext after migration.");
+        changed++;
+        return value;
+      });
+      const lookup = cipher.exactLookup(table, "account_key", values[0]!);
+      if (row.account_key_lookup !== null && row.account_key_lookup !== lookup &&
+          !(row.account_key_lookup === values[0] && !cipher.isEncrypted(row.account_key)))
+        throw new Error("Protected Calendar account lookup does not match its authenticated account.");
+      if (marked && row.account_key_lookup !== lookup)
+        throw new Error("Protected Calendar account lookup is missing or changed.");
+      const sealed = columns.map((column, index) => cipher.isEncrypted(row[column]) ? row[column] :
+        cipher.encrypt(table, id, column, values[index]!));
+      db.prepare("UPDATE calendar_connections SET account_key=?,account_key_lookup=?,label=?,scopes=? WHERE connection_id=?")
+        .run(sealed[0]!, lookup, sealed[1]!, sealed[2]!, row.connection_id);
+    }
+    db.prepare("INSERT INTO aux_meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+      .run(marker, plan);
+    db.exec("COMMIT");
+  } catch (error) {
+    if (db.isTransaction) db.exec("ROLLBACK");
+    throw error;
+  }
+  return changed;
 }
 
 /** Transactional table conversion. Call only after that table's SQL adapters are installed. */
