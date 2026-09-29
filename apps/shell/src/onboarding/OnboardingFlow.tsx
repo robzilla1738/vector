@@ -113,7 +113,7 @@ export function OnboardingFlow({
     }
     setRestoreStatus("checking");
     try {
-      const value = await bridge.runtimeRestoreStatus();
+      const value = await call("installation.restoreStatus", {});
       if (restoreGeneration.current !== attempt) return false;
       setRestoreStatus(value.pending ? "pending" : "ready");
       return !value.pending;

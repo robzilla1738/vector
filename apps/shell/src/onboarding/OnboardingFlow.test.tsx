@@ -17,7 +17,9 @@ const native = vi.hoisted(() => ({
   windowId: "main",
   defaultBrowser: vi.fn(async () => ({ isDefault: false })),
   setDefaultBrowser: vi.fn(async () => ({ isDefault: true })),
-  runtimeRestoreStatus: vi.fn(async () => ({ pending: false })),
+  runtimeRestoreStatus: vi.fn(async () => {
+    throw new Error("onboarding must read installation.restoreStatus");
+  }),
   onEvent: vi.fn(() => () => {}),
   overlay: vi.fn(async () => {}),
   lockSidebar: vi.fn(async () => {}),
@@ -88,7 +90,7 @@ beforeEach(() => {
   native.privateMode = false;
   native.quickAskMode = false;
   native.setDefaultBrowser.mockClear();
-  native.runtimeRestoreStatus.mockResolvedValue({ pending: false });
+  native.runtimeRestoreStatus.mockRejectedValue(new Error("onboarding must read installation.restoreStatus"));
   workspace = {
     connected: true,
     settings: { modelConfigured: true },
@@ -118,6 +120,7 @@ beforeEach(() => {
     if (method === "import.status") throw Object.assign(new Error("No import"), { code: "not_found" });
     if (method === "models.list") return { models: [] };
     if (method === "connectors.catalog") return { entries: [], access: [] };
+    if (method === "installation.restoreStatus") return { pending: false };
     throw new Error(`Unexpected ${method}`);
   });
   host = document.createElement("div");
@@ -146,7 +149,11 @@ it("Cmd+Enter saves Finish later and restore focus without starting work", async
   );
   expect(rpc).toHaveBeenCalledWith("onboarding.update", { revision: 0, action: "later" });
   expect(close).toHaveBeenCalledOnce();
-  expect(rpc.mock.calls.every(([method]) => String(method).startsWith("onboarding."))).toBe(true);
+  expect(
+    rpc.mock.calls.every(
+      ([method]) => method === "installation.restoreStatus" || String(method).startsWith("onboarding."),
+    ),
+  ).toBe(true);
   await act(async () => root.render(null));
   expect(document.activeElement).toBe(trigger);
   trigger.remove();
@@ -205,7 +212,11 @@ it("requires explicit exact-page review and dispatches a double-click once into 
 });
 
 it("clears the page review after navigation and refuses a postcard when recovery is staged", async () => {
-  native.runtimeRestoreStatus.mockResolvedValue({ pending: true });
+  const previous = rpc.getMockImplementation()!;
+  rpc.mockImplementation(async (method, params) => {
+    if (method === "installation.restoreStatus") return { pending: true };
+    return previous(method, params);
+  });
   await render(initial("postcard"));
   await choosePage();
   await act(async () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
@@ -371,7 +382,25 @@ it("never reads setup or replays it in a Quick Ask utility window", async () => 
 });
 
 it("requires recovery readiness and rechecks the selected window before first-chat dispatch", async () => {
-  native.runtimeRestoreStatus.mockRejectedValueOnce(new Error("native status unavailable"));
+  const previous = rpc.getMockImplementation()!;
+  const restores = [
+    async () => {
+      throw new Error("native status unavailable");
+    },
+    async () => ({ pending: false }),
+    async () => {
+      workspace.pages = [{ ...source, windowId: "other-window" }];
+      return { pending: false };
+    },
+  ];
+  rpc.mockImplementation(async (method, params) => {
+    if (method === "installation.restoreStatus") {
+      const next = restores.shift();
+      if (!next) throw new Error("unexpected restore status read");
+      return next();
+    }
+    return previous(method, params);
+  });
   await render(initial("postcard"));
   await choosePage();
   await act(async () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
@@ -379,10 +408,6 @@ it("requires recovery readiness and rechecks the selected window before first-ch
   expect(document.body.textContent).toContain("Recovery readiness is unavailable");
   await act(async () => button("Retry recovery check").click());
   expect(button("Start this chat").disabled).toBe(false);
-  native.runtimeRestoreStatus.mockImplementationOnce(async () => {
-    workspace.pages = [{ ...source, windowId: "other-window" }];
-    return { pending: false };
-  });
   await act(async () => button("Start this chat").click());
   expect(rpc.mock.calls.some(([method]) => method === "onboarding.start")).toBe(false);
   expect(document.body.textContent).toContain("selected page changed during review");
