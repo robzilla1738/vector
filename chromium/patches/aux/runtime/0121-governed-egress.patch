@@ -194,7 +194,7 @@ diff --git a/chrome/browser/ui/aux/egress_controller.cc b/chrome/browser/ui/aux/
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/aux/egress_controller.cc
-@@ -0,0 +1,582 @@
+@@ -0,0 +1,597 @@
 +// Copyright 2026 The Aux Authors
 +#include "chrome/browser/ui/aux/egress_controller.h"
 +
@@ -647,6 +647,11 @@ new file mode 100644
 +    std::move(callback).Run(false);
 +    return;
 +  }
++  if (final_headers && headers.HasHeader("Cookie")) {
++    Receipt(request_id, context.kind, phase, "uninspectable_cookie", false);
++    std::move(callback).Run(false);
++    return;
++  }
 +  auto projected = ProjectEgressRequest(request, headers, final_headers);
 +  if (!projected) {
 +    Receipt(request_id, context.kind, phase, "incomplete_projection", false);
@@ -687,7 +692,8 @@ new file mode 100644
 +               methods.contains(request.method) ? request.method : "OTHER");
 +  evidence.Set("byteCount", static_cast<int>(projected->body_bytes));
 +  evidence.Set("bodyComplete", true);
-+  evidence.Set("observedAt", base::Time::Now().InMillisecondsFSinceUnixEpoch());
++  evidence.Set("observedAt", static_cast<double>(static_cast<int64_t>(
++      base::Time::Now().InMillisecondsFSinceUnixEpoch())));
 +  auto params =
 +      base::WriteJson(base::DictValue()
 +                          .Set("requestId", request_id)
@@ -712,7 +718,8 @@ new file mode 100644
 +          [](base::WeakPtr<EgressController> controller, std::string request_id,
 +             AuxRuntimeHost::Response response) {
 +            if (controller) {
-+              controller->Answer(request_id, response.ok, response.result_json);
++              controller->Answer(request_id, response.ok, response.result_json,
++                                 response.error_code);
 +            }
 +          },
 +          weak_factory_.GetWeakPtr(), request_id));
@@ -744,7 +751,8 @@ new file mode 100644
 +}
 +void EgressController::Answer(const std::string& request_id,
 +                              bool ok,
-+                              const std::string& result_json) {
++                              const std::string& result_json,
++                              const std::string& error_code) {
 +  auto found = in_flight_.find(request_id);
 +  if (found == in_flight_.end()) {
 +    return;
@@ -758,9 +766,16 @@ new file mode 100644
 +                       String(*decision, "status") ==
 +                           (request->phase == "send" ? "allow" : "inspected") &&
 +                       Current(request->context, request->lease);
-+  Receipt(request_id, request->context.kind, request->phase,
-+          decision ? String(*decision, "reason") : "runtime_unavailable",
-+          allowed);
++  std::string reason = decision ? String(*decision, "reason")
++                                : ok ? "runtime_malformed_reply"
++                                     : "runtime_unavailable";
++  if (!decision && !ok && !error_code.empty() && error_code.size() <= 40 &&
++      std::ranges::all_of(error_code, [](char c) {
++        return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
++      })) {
++    reason = "runtime_" + error_code;
++  }
++  Receipt(request_id, request->context.kind, request->phase, reason, allowed);
 +  std::move(request->callback).Run(allowed);
 +}
 +void EgressController::Receipt(const std::string& id,
@@ -781,7 +796,7 @@ diff --git a/chrome/browser/ui/aux/egress_controller.h b/chrome/browser/ui/aux/e
 new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/aux/egress_controller.h
-@@ -0,0 +1,108 @@
+@@ -0,0 +1,109 @@
 +// Copyright 2026 The Aux Authors
 +#ifndef CHROME_BROWSER_UI_AUX_EGRESS_CONTROLLER_H_
 +#define CHROME_BROWSER_UI_AUX_EGRESS_CONTROLLER_H_
@@ -875,7 +890,8 @@ new file mode 100644
 +               const base::DictValue& lease) const;
 +  void Answer(const std::string& request_id,
 +              bool ok,
-+              const std::string& result_json);
++              const std::string& result_json,
++              const std::string& error_code);
 +  raw_ptr<Profile> profile_;
 +  std::map<std::string, std::unique_ptr<PageState>> pages_;
 +  std::map<std::string, std::vector<Credential>> credentials_by_run_;
@@ -1290,9 +1306,10 @@ new file mode 100644
 +}  // namespace aux
 diff --git a/chrome/browser/ui/aux/egress_url_loader.cc b/chrome/browser/ui/aux/egress_url_loader.cc
 new file mode 100644
+index 0000000000..95fab421e2
 --- /dev/null
 +++ b/chrome/browser/ui/aux/egress_url_loader.cc
-@@ -0,0 +1,469 @@
+@@ -0,0 +1,491 @@
 +// Copyright 2026 The Aux Authors
 +#include <algorithm>
 +#include <limits>
@@ -1313,6 +1330,7 @@ new file mode 100644
 +#include "mojo/public/cpp/bindings/remote.h"
 +#include "mojo/public/cpp/bindings/self_owned_receiver.h"
 +#include "net/base/net_errors.h"
++#include "net/base/load_flags.h"
 +#include "net/http/http_request_headers.h"
 +#include "net/ssl/ssl_info.h"
 +#include "net/url_request/redirect_info.h"
@@ -1487,6 +1505,15 @@ new file mode 100644
 +    state->controller = state_->controller;
 +    state->context = state_->context;
 +    state->request = request;
++    if (state->controller && state->controller->IsProtected(state->context)) {
++      // Network Service can append ambient cookies after the trusted header
++      // callback. Agent requests cannot rely on that callback to inspect them.
++      state->request.headers.RemoveHeader("Cookie");
++      state->request.cors_exempt_headers.RemoveHeader("Cookie");
++      if (state->request.trusted_params) {
++        state->request.trusted_params->allow_cookies_from_browser = false;
++      }
++    }
 +    // OPTIONS has its own complete final header check and exact recipient
 +    // approval. It cannot reuse its parent POST's future consent.
 +    mojo::PendingRemote<network::mojom::TrustedHeaderClient> target;
@@ -1688,10 +1715,10 @@ new file mode 100644
 +    mojo::PendingRemote<network::mojom::URLLoaderClient> target_client;
 +    mojo::MakeSelfOwnedReceiver(std::move(guard),
 +                                target_client.InitWithNewPipeAndPassReceiver());
-+    Check(state, KnownHeaders(request), false,
++    Check(state, KnownHeaders(state->request), false,
 +          base::BindOnce(&GuardedFactory::StartChecked,
 +                         weak_factory_.GetWeakPtr(), weak, std::move(loader),
-+                         native_id, options, request, std::move(target_client),
++                         native_id, options, state->request, std::move(target_client),
 +                         annotation));
 +  }
 +
@@ -1713,9 +1740,21 @@ new file mode 100644
 +      guard->Fail();
 +      return;
 +    }
++    if (state_->controller && state_->controller->IsProtected(state_->context)) {
++      request.headers.RemoveHeader("Cookie");
++      request.cors_exempt_headers.RemoveHeader("Cookie");
++      if (request.trusted_params) {
++        request.trusted_params->allow_cookies_from_browser = false;
++      }
++      if (auto it = state_->requests.find(id); it != state_->requests.end()) {
++        if (auto pending = it->second.lock()) pending->request = request;
++      }
++    }
 +    target_->CreateLoaderAndStart(
 +        std::move(loader), id,
-+        options | network::mojom::kURLLoadOptionUseHeaderClient, request,
++        options | network::mojom::kURLLoadOptionUseHeaderClient |
++            network::mojom::kURLLoadOptionBlockAllCookies,
++        request,
 +        std::move(client), annotation);
 +  }
 +  std::shared_ptr<FactoryState> state_;

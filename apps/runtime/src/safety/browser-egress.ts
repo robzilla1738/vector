@@ -163,7 +163,13 @@ export class BrowserEgress {
   }
 
   async request(input: unknown): Promise<{ requestId: string; decision: EgressDecision }> {
-    const request = EgressRequestSchema.parse(input);
+    const parsed = EgressRequestSchema.safeParse(input);
+    if (!parsed.success) {
+      if (process.env.AUX_EGRESS_DIAGNOSTIC === "1")
+        console.error(`AUX_EGRESS_SCHEMA paths=${parsed.error.issues.map(issue => issue.path.join(".")).join(",")}`);
+      throw new AuxError("invalid_params", "Native browser request evidence has an invalid shape.");
+    }
+    const request = parsed.data;
     const evidence = request.evidence;
     const result = (decision: EgressDecision) => ({ requestId: request.requestId, decision });
     const denied = (reason: EgressDecision["reason"]) => {

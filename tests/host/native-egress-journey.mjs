@@ -62,7 +62,13 @@ async function rpc(method, params = {}) {
   return result.result;
 }
 function modelReply(response, payload, code) {
-  const call = { id: `call_${randomUUID()}`, type: "function", function: { name: "repl", arguments: JSON.stringify({ code, deadlineMs: 120_000, yieldTimeMs: 120_000 }) } };
+  const names = payload.tools.map(tool => tool.function?.name);
+  const firstTurn = !names.includes("repl") && names.includes("goal_program");
+  const name = firstTurn ? "goal_program" : "repl";
+  const input = firstTurn
+    ? { code: `${code}\nif (false) submitResult('fixture continues after the first turn');`, answerLabel: "", deadlineMs: 120_000 }
+    : { code, deadlineMs: 120_000, yieldTimeMs: 120_000 };
+  const call = { id: `call_${randomUUID()}`, type: "function", function: { name, arguments: JSON.stringify(input) } };
   const common = { id: `completion_${randomUUID()}`, created: 1, model: "aux-egress-fixture" };
   if (payload.stream) {
     response.writeHead(200, { "content-type": "text/event-stream" });
@@ -85,14 +91,24 @@ async function command(code) {
   const next = { code, sent: false }; commandQueue.push(next); flushModel();
   await until("scripted model command", () => next.sent, 120_000);
 }
-async function attempted(name) {
-  await until(`actual ${name} page action`, async () => JSON.stringify(await rpc("pages.observe", { pageId: controlledPageId })).includes(`Attempted case: ${name}`));
-}
 const receiptSince = (start, outcome, reason, phase) => report.nativeReceipts.slice(start).find(item => item.outcome === outcome && (!reason || reason.test(item.reason)) && (!phase || item.phase === phase));
+async function startSelectedDocumentRun() {
+  if (runId) {
+    await rpc("runs.cancel", { runId });
+    await rpc("pages.close", { pageId: controlledPageId }).catch(() => {});
+  }
+  const seed = await rpc("pages.open", { url: fixture.url, activate: false });
+  await until("seed tab loaded", async () => (await rpc("pages.list")).some(page => page.pageId === seed.pageId && page.url === fixture.url && !page.loading));
+  const run = await rpc("runs.start", { goal: "Exercise one disposable native egress case under the local scripted model.",
+    pageId: seed.pageId, maxSteps: 4, maxModelCalls: 4, deadlineMs: 120_000,
+    context: `SPACE MEMORY SUMMARY\nPrivate synthetic test token: ${fixture.secret}` });
+  runId = run.runId; controlledPageId = seed.pageId;
+  report.runIds ??= []; report.runIds.push(runId);
+}
 async function click(name) {
+  if (group === "requests") await startSelectedDocumentRun();
   const start = report.nativeReceipts.length;
   await command(`page.clickByName(${JSON.stringify(name)}, 'button');`);
-  await attempted(name);
   return start;
 }
 async function blocked(name, reason, phase) {
@@ -100,6 +116,18 @@ async function blocked(name, reason, phase) {
   const receipt = await until(`${name} native denial`, () => receiptSince(start, "denied", reason, phase));
   await delay(1000); fixture.assertNoCapture(name);
   record(name, { receipt, receiverCount: 0 });
+}
+async function cookieBoundary() {
+  const start = await click("secret-cookie");
+  const receipt = await until("cookie request reaches native final-header boundary", () =>
+    report.nativeReceipts.slice(start).find(item => item.phase === "send"));
+  await delay(1000);
+  const captures = fixture.snapshot().filter(item => item.case === "secret-cookie");
+  assert.ok(captures.every(item => item.protectedCookiePresent === false),
+    "Protected ambient cookie reached the receiver");
+  if (receipt.outcome === "denied") assert.equal(captures.length, 0);
+  else { assert.equal(receipt.reason, "same_origin"); fixture.assertCaptured("secret-cookie"); }
+  record("secret-cookie", { receipt, receiverCount: captures.length, protectedCookiePresent: false });
 }
 async function approved(name, destination = "recipient") {
   const start = await click(name);
@@ -127,7 +155,9 @@ try {
     let text = "";
     for await (const bytes of request) { text += bytes; if (text.length > 2_000_000) { response.writeHead(413).end(); return; } }
     try {
-      const payload = JSON.parse(text); assert.ok(payload.tools?.some(tool => tool.function?.name === "repl"), "Real agent-loop REPL request required");
+      const payload = JSON.parse(text);
+      assert.ok(payload.tools?.some(tool => ["repl", "goal_program"].includes(tool.function?.name)),
+        "Real agent-loop page program request required");
       report.modelCalls++; pendingModel.push({ response, payload }); modelWaiters.add(response);
       response.on("close", () => modelWaiters.delete(response)); flushModel();
     } catch { response.writeHead(400).end("Expected local scripted tool request"); }
@@ -136,12 +166,13 @@ try {
   child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
     "--use-mock-keychain", "--password-store=basic", "--enable-logging=stderr", "--v=0", "--no-proxy-server",
     ...(tls ? ["--ignore-certificate-errors"] : [])], {
-    cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", AUX_RUN_ENGINE: "agent-loop" }, stdio: ["ignore", "ignore", "pipe"],
+    cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0", AUX_RUN_ENGINE: "agent-loop", AUX_EGRESS_DIAGNOSTIC: "1" }, stdio: ["ignore", "ignore", "pipe"],
   });
   child.stderr.on("data", bytes => {
     stderrLine += bytes;
     const lines = stderrLine.split("\n"); stderrLine = lines.pop().slice(-8192);
     for (const line of lines) {
+      if (line.includes("AUX_EGRESS_SCHEMA")) report.schemaDiagnostic = line.slice(0, 500);
       const match = /AUX_EGRESS id=(\S+) kind=(\S+) phase=(\S+) outcome=(\S+) reason=(\S+)/.exec(line);
       if (match && report.nativeReceipts.length < 256) report.nativeReceipts.push({ id: match[1], kind: match[2], phase: match[3], outcome: match[4], reason: match[5], at: Date.now() });
     }
@@ -166,26 +197,40 @@ try {
     console.log("Save the native password offer before allowing the later saved-password fill. The next tab is a fresh document.");
     await delay(3000);
   }
-  const seed = await rpc("pages.open", { url: fixture.url, activate: false });
-  await until("seed tab loaded", async () => (await rpc("pages.list")).some(page => page.pageId === seed.pageId && page.url === fixture.url && !page.loading));
-  const run = await rpc("runs.start", { goal: "Exercise only the disposable native egress fixture under the local scripted model.",
-    pageId: seed.pageId, maxSteps: 100, maxModelCalls: 70, deadlineMs: 900_000,
-    context: `SPACE MEMORY SUMMARY\nPrivate synthetic test token: ${fixture.secret}` });
-  runId = run.runId; report.runId = runId;
-  const before = report.nativeReceipts.length;
-  await command(`openTab(${JSON.stringify(fixture.url)});`);
-  controlledPageId = (await until("agent-created protected tab", async () => (await rpc("pages.list")).find(page => page.pageId !== seed.pageId && page.ownedByRuntime && page.url === fixture.url)))?.pageId;
-  const firstPreflight = await until("first navigation inspection", () => receiptSince(before, "admitted", /preflight_only/, "preflight"));
-  const firstSend = await until("first navigation final send authority", () => receiptSince(before, "admitted", /same_origin|authorized_recipient/, "send"));
-  record("real run created blank, installed authority, then navigated", { pageId: controlledPageId, runId, firstPreflight, firstSend });
-  if (group === "requests") {
+  if (group === "credentials") await startSelectedDocumentRun();
+  // The scoped 0121 patch still controls a selected ordinary tab. Each
+  // independent request case gets a fresh run/document because a browser
+  // click's write ledger can correctly remain uncertain after dispatch.
+  if (group === "requests" && option("--case") === "worker-control") {
+    const page = await rpc("pages.open", { url: fixture.url, activate: true });
+    await until("ordinary worker control loaded", async () => (await rpc("pages.list")).some(item => item.pageId === page.pageId && !item.loading));
+    console.log("Click worker-secret in the visible disposable Aux page for the ordinary owner control.");
+    await until("ordinary worker reaches receiver", () => fixture.count("worker-secret") === 1, 120_000);
+    report.workerDiagnostic = { scriptLoads: fixture.scriptLoads(), states: fixture.workerStates(), captures: fixture.snapshot() };
+    record("ordinary worker control", report.workerDiagnostic);
+  } else if (group === "requests" && option("--case") === "secret-cookie") {
+    await cookieBoundary();
+  } else if (group === "requests" && option("--case") === "worker-secret") {
+    const start = await click("worker-secret");
+    await until("worker script request", () => fixture.scriptLoads().length);
+    await delay(3000);
+    report.workerDiagnostic = { scriptLoads: fixture.scriptLoads(), states: fixture.workerStates(), receipts: report.nativeReceipts.slice(start), captures: fixture.snapshot(), run: (await rpc("runs.get", { runId })).run.status };
+    assert.ok(report.workerDiagnostic.receipts.some(item => item.outcome === "denied" && /protected_overlap|ambiguous/.test(item.reason)),
+      "Worker loaded, but no native denial proved its outbound request was intercepted");
+    fixture.assertNoCapture("worker-secret");
+    record("worker-secret", report.workerDiagnostic);
+  } else if (group === "requests") {
     const sameStart = await click("same-origin");
-    await until("same-origin capture", () => fixture.count("same-origin") === 1);
+    await until("same-origin capture", () => {
+      const denied = receiptSince(sameStart, "denied");
+      if (denied) throw new Error(`Native refused same-origin control: ${denied.reason}`);
+      return fixture.count("same-origin") === 1;
+    });
     fixture.assertCaptured("same-origin");
     record("same-origin", { receipt: await until("same-origin final send", () => receiptSince(sameStart, "admitted", /same_origin/, "send")), receiverCount: 1 });
     for (const name of ["secret-url", "secret-body", "secret-same-origin", "secret-header", "subresource-secret", "redirect-secret"])
       await blocked(name, /protected_overlap/);
-    await blocked("secret-cookie", /protected_overlap/, "send");
+    await cookieBoundary();
     for (const name of ["worker-secret", "service-worker-secret"]) await blocked(name, /protected_overlap|ambiguous/);
     await blocked("opaque-upload", /incomplete_projection|uninspectable_transport/);
     for (const name of ["websocket-protected", "webtransport-protected", "webrtc-protected"])
@@ -242,6 +287,17 @@ try {
   let message = String(error);
   for (const value of [bearer, fixture?.secret, fixture?.credential.password].filter(Boolean)) message = message.replaceAll(value, "[redacted]");
   report.steps.push({ name: "terminal failure", passed: false, detail: message }); process.exitCode = 1;
+  if (runId && bearer) {
+    const state = await rpc("runs.get", { runId }).catch(() => null);
+    report.runDiagnostic = state ? { status: state.run?.status, error: state.run?.error,
+      statusMessage: state.run?.statusMessage,
+      steps: JSON.stringify(state.steps ?? []).slice(0, 6000)
+        .replaceAll(fixture?.secret ?? "\u0000", "[redacted]")
+        .replaceAll(fixture?.credential.password ?? "\u0000", "[redacted]"),
+      transcript: JSON.stringify(state.transcript ?? []).slice(0, 6000)
+        .replaceAll(fixture?.secret ?? "\u0000", "[redacted]")
+        .replaceAll(fixture?.credential.password ?? "\u0000", "[redacted]") } : null;
+  }
 } finally {
   if (runId && bearer) await rpc("runs.cancel", { runId }).catch(() => {});
   report.captures = fixture?.snapshot() ?? []; report.completedAt = new Date().toISOString();

