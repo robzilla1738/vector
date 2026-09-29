@@ -19,6 +19,16 @@ it("confirms writes that all dispatched when only a later read failed", () => {
   expect(writeOutcome({ status: "failed", steps: [step("click", "ok"), step("waitFor", "failed", "condition_timeout")] }).outcome).toBe("confirmed");
 });
 
+it("confirms a batched write when the failed postcondition has independent effect proof", () => {
+  expect(writeOutcome({ status: "failed", steps: [
+    step("select", "ok"),
+    { ...step("click", "failed", "condition_timeout"), receipt: { observed: "page URL changed after action", uncertain: false } },
+  ] }).outcome).toBe("confirmed");
+  expect(writeOutcome({ status: "failed", steps: [
+    step("select", "ok"), step("click", "failed", "condition_timeout"),
+  ] }).outcome).toBe("uncertain");
+});
+
 it("lets the next write proceed after a pre-dispatch failure", () => {
   const ledger = new DurableWriteLedger();
   const base = { runId: "r", pageId: "p", documentEpoch: 1 };

@@ -301,6 +301,11 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
     } catch (e) {
       const code = e instanceof AuxError ? e.code : "step_failed";
       const takenOver = dispatched && code === "conflict" && isConsequential(step.op);
+      // A failed postcondition must remain a failed step, but it must not
+      // erase independent evidence that the dispatched action navigated.
+      // In particular, a Save button can disappear after a successful save.
+      const navigationObserved = dispatched && code === "condition_timeout" && mutating
+        && actionUrl !== undefined && page.url() !== actionUrl;
       return {
         stepId: step.id,
         op: step.op,
@@ -311,7 +316,10 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         ...(authorization ? { authorization } : {}),
         ...(before ? { before } : {}),
         ...(pageUrl ? { pageUrl } : {}),
-        ...(takenOver ? { effect: "uncertain" as const, receipt: {
+        ...(navigationObserved ? { effect: "observed" as const, receipt: {
+          observed: "page URL changed after action", remoteConfirmed: false,
+          uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false,
+        } } : takenOver ? { effect: "uncertain" as const, receipt: {
           remoteConfirmed: false, uncertain: true, unconfirmed: false, dispatchedBeforeTakeover: true,
         } } : {}),
       };

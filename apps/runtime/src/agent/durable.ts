@@ -209,7 +209,7 @@ const PRE_DISPATCH_CODES = new Set([
 export interface WriteResultLike {
   status: string;
   steps?: Array<{ op: string; status: string; error?: { code: string; message?: string };
-    receipt?: { uncertain?: boolean; dispatchedBeforeTakeover?: boolean } }>;
+    receipt?: { observed?: string; uncertain?: boolean; dispatchedBeforeTakeover?: boolean } }>;
 }
 
 /**
@@ -225,6 +225,12 @@ export function writeOutcome(result: WriteResultLike): { outcome: "confirmed" | 
   // without step outcomes nothing proves the input stayed in this process
   if (!result.steps?.length) return { outcome: "uncertain" };
   const writes = (result.steps ?? []).filter((s) => classifyStep(s.op) !== "read");
+  // An expectation may fail after an action has already produced a separate
+  // browser-state proof. Keep the program failure, but settle its write intent
+  // when every dispatched write is accounted for by a non-uncertain receipt.
+  if (writes.length && writes.every((step) => step.status === "ok"
+    || step.status === "failed" && !!step.receipt?.observed && step.receipt.uncertain === false))
+    return { outcome: "confirmed" };
   const failed = writes.find((s) => s.status === "failed");
   if (!failed) {
     if (writes.length && writes.every((s) => s.status === "ok")) return { outcome: "confirmed" };

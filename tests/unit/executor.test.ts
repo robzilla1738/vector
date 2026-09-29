@@ -93,6 +93,20 @@ describe("executeProgram", () => {
     expect(writeOutcome(res).outcome).toBe("confirmed");
   });
 
+  it("preserves navigation proof when a post-save visibility condition fails", async () => {
+    const { page } = fakePage({ waitFor: true });
+    let url = "http://x.test/records/rec-04";
+    page.url = () => url;
+    page.click = async () => { url += "?saved=1"; };
+    const res = await executeProgram(page, { pageId: "p1", steps: [
+      { id: "save", op: "click", target: "r11", expect: [{ kind: "textVisible", text: "Save record" }] },
+    ] });
+    expect(res.status).toBe("failed");
+    expect(res.steps[0]).toMatchObject({ status: "failed", error: { code: "condition_timeout" },
+      effect: "observed", receipt: { observed: "page URL changed after action", uncertain: false, remoteConfirmed: false } });
+    expect(writeOutcome(res).outcome).toBe("confirmed");
+  });
+
   it("denies uploads outside session, attachment, and workspace roots", async () => {
     const { page, calls } = fakePage();
     const upload = (files: string[], uploadRoots?: string[]) =>
