@@ -2028,11 +2028,27 @@ else {
     await until("restarted Aux browser window", () => {
       try { return JSON.parse(native("window")); } catch { return null; }
     }, 60_000);
-    console.log("After restart, open Tab overview and inspect the persisted Undo Tidy control; do not click it.");
+    console.log("After restart, open Tab overview and click the persisted Undo Tidy control.");
     await until("durable native Undo Tidy control after restart", () => {
       try { return native("has-button", "Undo Tidy") === "true"; } catch { return false; }
     }, 180_000);
     record("native Overview offers guarded Undo Tidy after a full restart", {});
+    await until("durable Tidy undo committed to Chromium Profile", () => {
+      try {
+        const pref = JSON.parse(readFileSync(join(profile, "Default/Preferences"), "utf8"));
+        const find = (value, depth = 0) => {
+          if (!value || typeof value !== "object" || depth > 9) return null;
+          if (Array.isArray(value.created) && Array.isArray(value.moved) && value.created[0]?.name === "Fixture reading") return value;
+          for (const child of Object.values(value)) {
+            const found = find(child, depth + 1);
+            if (found) return found;
+          }
+          return null;
+        };
+        return !find(pref) && native("has-button", "Undo Tidy") === "false";
+      } catch { return false; }
+    }, 180_000);
+    record("native Undo Tidy removed the committed receipt after restart", {});
     report.passed = true;
   } else if (receiptHistoryUiJourney) {
     const space = await until("disposable Personal Space", async () =>
