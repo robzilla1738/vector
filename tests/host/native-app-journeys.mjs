@@ -248,15 +248,18 @@ const nativeHeader = resolve(app, "../../../chrome/browser/ui/aux/generated/aux_
 const nativeSourceCommit = existsSync(nativeHeader)
   ? readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1]
   : undefined;
-if (runtimeBackupRestoreJourney || memoryInboxUiJourney || menuPrimitivesJourney || anyTidyJourney) {
+const developmentAcceptanceFeatures = memoryInboxUiJourney ? ["memory", "spaces"] :
+  anyTidyJourney ? ["spaces", "aiTidy"] :
+  runtimeBackupRestoreJourney ? ["electronMigration"] :
+  menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney ? ["spaces"] : null;
+if (developmentAcceptanceFeatures) {
   assert.ok(nativeSourceCommit, "Development acceptance requires a built native source identity");
   const token = randomBytes(32).toString("hex");
   const dataDir = join(profile, "Default/Aux Runtime Data");
   mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   writeFileSync(join(dataDir, "development-acceptance.json"), JSON.stringify({
     version: 1, sourceCommit: nativeSourceCommit, tokenHash: createHash("sha256").update(token).digest("hex"),
-    features: memoryInboxUiJourney ? ["memory", "spaces"] : anyTidyJourney ? ["spaces", "aiTidy"] :
-      menuPrimitivesJourney ? ["spaces"] : ["electronMigration"],
+    features: developmentAcceptanceFeatures,
     createdAt: Date.now(),
   }), { mode: 0o600 });
   process.env.AUX_DEV_ACCEPTANCE_TOKEN = token;
@@ -266,9 +269,7 @@ const windowTool = join(disposable, "native-window");
 const report = { schema: 1, scope: "Native Aux.app, disposable Profile, loopback fixture; no public debugging port", app,
   sourceSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   ...(nativeSourceCommit ? { nativeSourceCommit } : {}),
-  ...((runtimeBackupRestoreJourney || memoryInboxUiJourney || menuPrimitivesJourney || anyTidyJourney) ?
-    { developmentAcceptanceFeatures: memoryInboxUiJourney ? ["memory", "spaces"] :
-      anyTidyJourney ? ["spaces", "aiTidy"] : menuPrimitivesJourney ? ["spaces"] : ["electronMigration"] } : {}),
+  ...(developmentAcceptanceFeatures ? { developmentAcceptanceFeatures } : {}),
   startedAt: new Date().toISOString(), rpcOnly, uiOnly, steps: [], captures: [], passed: false };
 let child;
 let attachedChrome;
@@ -2819,6 +2820,9 @@ else {
     const page = await rpc("pages.open", { url: `${origin}/control`, activate: true });
     await until("physical takeover fixture to load", async () =>
       (await rpc("pages.list")).some(item => item.pageId === page.pageId && !item.loading), 60_000);
+    await rpc("settings.set", { effectGrants: ["effect:read", "effect:write"],
+      originPolicies: [{ origin: `${origin}/`, access: "allow", confirmation: "none" }],
+      safetyCeilings: { write: "always" } });
     const program = await rpc("programs.save", { name: "Physical takeover proof", siteKey: "127.0.0.1",
       parameters: [], steps: [
         { id: randomUUID(), op: "click", target: "css:#act" },
@@ -2826,18 +2830,30 @@ else {
         { id: randomUUID(), op: "click", target: "css:#act" },
       ] });
     const { runId } = await rpc("programs.run", { programId: program.programId, pageId: page.pageId });
+    const runPageId = await until("saved program isolated task page", async () => {
+      const id = (await rpc("runs.get", { runId })).run.pageIds[0];
+      return id && id !== page.pageId && (await rpc("pages.list")).some(item => item.pageId === id) ? id : null;
+    }, 30_000);
     await until("first agent effect while native page remains agent-controlled", async () => {
-      const current = (await rpc("pages.list")).find(item => item.pageId === page.pageId);
+      const current = (await rpc("pages.list")).find(item => item.pageId === runPageId);
       return clicks === 1 && current?.controller === "agent";
-    }, 60_000);
+    }, 60_000).catch(async error => {
+      const run = await rpc("runs.get", { runId }).catch(reason => ({ error: String(reason) }));
+      const current = (await rpc("pages.list")).find(item => item.pageId === runPageId);
+      throw new Error(`${error.message}; clicks=${clicks}; page=${JSON.stringify(current)}; run=${JSON.stringify(run)}`);
+    });
     await delay(500);
-    assert.equal((await rpc("pages.list")).find(item => item.pageId === page.pageId)?.controller, "agent",
+    assert.equal((await rpc("pages.list")).find(item => item.pageId === runPageId)?.controller, "agent",
       "Synthetic agent input must not be mistaken for a physical takeover");
     record("synthetic agent click did not take its own page", { runId, clicks });
+    await until("isolated task page to become visible", async () => {
+      try { await rpc("pages.activate", { pageId: runPageId }); return true; }
+      catch (error) { if (/state changed before this action completed/i.test(String(error))) return null; throw error; }
+    }, 30_000);
     console.log("In the visible Physical takeover fixture, click the Human input field and type a character with the physical keyboard while the agent waits. Do not use pages.takeover RPC. The page should switch to You’re in control. Then use the native toolbar Return control button when prompted.");
     const takenAt = Date.now();
     await until("native physical input to take the agent page", async () =>
-      (await rpc("pages.list")).find(item => item.pageId === page.pageId)?.controller === "human", 120_000);
+      (await rpc("pages.list")).find(item => item.pageId === runPageId)?.controller === "human", 120_000);
     const takeoverLatencyMs = Date.now() - takenAt;
     controlReleased = true;
     await until("saved program to stop with an inspectable takeover checkpoint", async () => {
@@ -2848,7 +2864,7 @@ else {
     assert.equal(clicks, 1, "No queued agent effect may dispatch after physical takeover");
     record("physical owner input interrupted the run and fenced its next effect", { runId, clicks, takeoverLatencyMs });
     await until("owner to return control in the native toolbar", async () =>
-      (await rpc("pages.list")).find(item => item.pageId === page.pageId)?.controller === "none", 120_000);
+      (await rpc("pages.list")).find(item => item.pageId === runPageId)?.controller === "none", 120_000);
     assert.equal((await rpc("runs.get", { runId })).run.status, "interrupted",
       "Returning a stopped saved program must not replay it");
     assert.equal(clicks, 1);
