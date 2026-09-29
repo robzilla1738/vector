@@ -2,8 +2,8 @@
 
 Status: **runtime source batch; native qualification remains open**. Base: `e1184a2f`.
 This batch does not contain a Chromium patch, generated bindings, native build, or
-passing native request-path artifact. The integrator owns patch **0121**, generated
-outputs, the serial AuxDev build, and qualification records.
+passing native request-path artifact. The EGRESS lane owns native source for patch **0121**. The integrator owns generated
+outputs, patch packaging, the serial AuxDev build, and qualification records.
 
 ## Outcome and boundary
 
@@ -28,7 +28,7 @@ page JavaScript, model tools, external bearer tokens, or generic runtime invoker
 | `native.egressContext({tabId, expectedUrl})` | runtime → browser | Return native Profile ID, page ID, primary frame ID, document token, and source origin only after the current native URL exactly matches. |
 | `native.egressInstall({lease, expectedUrl})` | runtime → browser | `{accepted:true}` only after revalidating native identity, Profile, URL, expiry and run lease. Install or renew without changing identity/recipient authority. |
 | `native.egressRevoke({leaseId})` | runtime → browser | Synchronously deny that lease and leave a denied-document tombstone. |
-| `egress.request({requestId, evidence, bodyBase64})` | browser → runtime | `{requestId, decision}` after bounded inspection and any local one-use consent; defer bytes until a matching allow reply and a final native identity check. |
+| `egress.request({requestId, evidence, projection})` | browser → runtime | `{requestId, decision}` after bounded projection inspection and any local one-use consent; `inspected` is preflight only, never permission to send. Final bytes stay deferred until a matching `allow` and native identity check. |
 
 `packages/contracts/src/egress.ts` is the wire source; `host-methods.ts` registers the
 three runtime-only native methods. The integrator must run
@@ -52,15 +52,61 @@ channel in `main.ts`; it is deliberately absent from public MethodSchemas.
 
 `kind` is browser-derived: navigation, form, fetch, subresource, worker, or redirect.
 `method` is the actual network method (GET/POST/PUT/PATCH/DELETE/OTHER), not a page
-assertion. `observedAt` is native observation time. `destination` is the complete
-current URL, at most 2048 characters. Userinfo/non-HTTP(S) destinations are denied.
+assertion. `observedAt` is native observation time. `destination` is the exact
+HTTP(S) **origin only**; path, query and fragment never cross this private request
+RPC. Reject userinfo and non-HTTP(S) destinations before projection. Source and
+recipient origins are authority labels and are the only outgoing address text
+shown in the UI.
 
-`bodyBase64` is canonical base64 of the **complete** body bytes. `byteCount` is its
-exact byte length, at most 65,536; `bodyComplete` must be true. Runtime uses fatal
-UTF-8 decoding and denies malformed/binary content. Native must deny files, opaque
-uploads, unreadable/streaming data pipes and larger bodies before send. Do not
-convert unavailable bodies to an empty complete body. No URL query, body, raw
-credential, memory specimen, or body base64 may be logged or persisted.
+### Native projection v1 (supersedes raw bodyBase64)
+
+Raw URL paths/queries, body bytes, Cookie/Authorization and arbitrary header values
+remain native. Saved-password matching runs natively **before either RPC**, including
+URL host labels, with a narrow intended-origin exception. Runtime receives only
+bounded SHA-256 projections and metadata; neither projections nor digests belong
+in persisted audit logs. They are not encryption and can reveal low-entropy text
+through guessing; keep this protocol on the authenticated private host channel.
+
+The reference and golden tests are `safety/egress-projection.ts` and
+`tests/unit/egress-projection.test.ts`:
+
+- Complete UTF-8 body at most 65,536 bytes; null body means empty. A file, opaque
+  data pipe, streaming upload, binary/invalid UTF-8 or oversize body fails closed.
+  Never substitute empty bytes for an unavailable body.
+- URL UTF-8 at most 2,048 bytes. At most 128 header pairs; sum of UTF-8 name/value
+  bytes plus four per pair at most 16,384. No truncation.
+- Independently inspect URL, each header name/value, and body. Include raw text,
+  up to two strict percent/form decoding passes, and bounded common base64/base64url
+  token decoding (tokens at least 16 characters, decoded at least 12 bytes, fatal
+  UTF-8). No recursive base64 expansion.
+- Text fingerprints: NFKC, Unicode lowercase, collapse JavaScript whitespace runs
+  to one ASCII space; every contiguous 12 UTF-16 code-unit window, SHA-256 UTF-8.
+  Page phrases: NFKC/lowercase, Unicode letter/number words; every four-word phrase
+  at least 20 UTF-16 code units, joined by one space, SHA-256 UTF-8.
+- Unique sorted hash arrays, at most 131,072 text hashes and 32,768 phrase hashes.
+  Fail closed on normalization/decoding/bound failures. The arrays fit the existing
+  16 MiB host frame cap. `projectionComplete:true` asserts all inspectable fields
+  and representations were covered.
+- `urlDigest = SHA256(exact URL bytes)`. `requestDigest` hashes ordered UTF-8
+  length-prefixed parts (`byteLength:part`): `aux-egress-v1`, phase, actual method,
+  exact URL, `complete`/`partial`, decimal header count, each lowercased header name
+  then exact value in order (duplicates retained), then complete body text. The
+  digest changes on any method/URL/body/header/phase change.
+- `phase:preflight` checks URL/body/known headers **before target loader creation**
+  and before a protected URL can cause DNS/network connection. Runtime returns
+  `status:inspected, reason:preflight_only`; no recipient consent, no first-open
+  consumption, and no permission to send.
+- `phase:send` uses **final network headers including cookies/auth and all extension
+  and enterprise mutations**, with `headersComplete:true`. Runtime may allow this
+  exact snapshot or wait for one exact consent. The native callback must recheck
+  lease/document and its own unchanged request digest immediately before release.
+  Send never inherits preflight authority. Each phase/hop uses a fresh opaque ID.
+
+Private recalled Memory matches even at the same origin. Native saved credentials
+may be used only for their intended origin; a cross-origin copy in URL/body/headers
+fails before RPC. Page prose copied into any inspected field follows its original
+source to the recipient review. Neither consent nor general origin policy can
+bypass private-data overlap.
 
 ## Native enforcement requirements for 0121
 
@@ -68,7 +114,11 @@ credential, memory specimen, or body base64 may be logged or persisted.
    `ChromeContentBrowserClient::CreateURLLoaderThrottles` supplies navigation
    WebContents/frame identity. `WillCreateURLLoaderFactory` supplies document,
    subresource, worker, service-worker and prefetch factory context. Preserve that
-   context when using the existing blocking-proxy shape.
+   context when using the existing blocking-proxy shape. Wrap the final
+   `TrustedURLLoaderHeaderClient` after enterprise injection, forwarding existing
+   handlers first and inspecting their returned final headers. Set the per-request
+   `kURLLoadOptionUseHeaderClient`; use browser-generated request IDs. A missing
+   final header callback is failure, not a preflight-only send path.
 2. Runtime opens an inert about:blank native tab, attaches its driver, claims the
    exact page, installs its targeted lease, and only then calls `navigate`. A
    failed authority callback closes the newly created blank; no fallback navigate.
@@ -145,13 +195,14 @@ through the actual Memory producer and saved-password producer under test.
 | First agent-open navigation | Browser claim/install precedes first capture; target substitution and repeat initial request denied. |
 | Same-origin public POST | Exactly one source capture under a current native lease. |
 | Public cross-origin request | Waiting source → recipient UI; exactly one intended capture after local approval. Decline gives zero captures. |
-| Private URL and POST body; same-origin memory body | Native attempt/denial receipt plus zero captures; no approval can override. |
+| Private URL, POST body, arbitrary X header and network-added cookie; same-origin memory | Native attempt/denial receipt plus zero captures; no approval can override. |
 | Redirected private bytes | First source hop may occur; recipient sees zero bytes; decision records redirect denial. |
 | Public redirect / replacement recipient | New target requires its own decision; original consent never permits substituted destination. |
 | Subresource image and worker/service-worker attempts | Attributed inspection denial or explicit ambiguous-provenance denial; zero recipient captures. A factory bypass is a failure. |
 | Cancellation during approval; delayed page JS | Approval becomes unusable; zero captures, including delayed request after release. |
 | Same-URL reload, stale task revision, expired lease, lost runtime | Old identity denied and zero stale captures; resumed work requires a fresh native token/lease. |
-| Saved-password fill | Legitimate intended-origin submission works; cross-origin URL/body/redirect copy denied by native credential fingerprints. |
+| Saved-password fill | Legitimate intended-origin submission works with no raw IPC; cross-origin URL/body/header/redirect copy denied by native credential fingerprints. |
+| Final header mutation and opaque upload | Changed final headers bind fresh digest/approval; missing header completeness or opaque body denied before send. |
 
 Server silence alone is insufficient: record a native request attempt and a denial
 for the same case, then assert capture count. Record new IDs/hash paths with the
@@ -162,7 +213,8 @@ this deterministic boundary journey.
 ## Source verification
 
 Focused unit coverage lives in `egress-guard.test.ts`, `browser-egress.test.ts`,
-`browser-egress-approval.test.ts`, and `browser-egress-boundaries.test.ts`; external
+`browser-egress-approval.test.ts`, `browser-egress-boundaries.test.ts`, and
+`egress-projection.test.ts`; external
 session/scoped API regressions are checked because those call paths changed.
 Always run `npx tsc -b` before unit tests because workspace exports use `dist`.
 The fixture has a loopback-only self-test; it does not exercise Chromium.
@@ -180,3 +232,15 @@ Verification recorded 2026-09-28:
 - `npm run format:check` passed; `git diff --check` passed.
 - Loopback capture-fixture plumbing self-test passed; no Chromium/native
   enforcement was exercised and no native build was run in this lane.
+
+
+Projection revision source verification (2026-09-28): workspace build and five-file
+focused EGRESS sweep **32/32** passed. This revises the private request contract;
+regenerate host bindings after integration. Native projection parity, final-header
+interception, native saved-password capture and every request-path oracle remain
+open until patch 0121 is built and exercised. Keepalive's browser throttle receives
+an invalid FrameTreeNodeId in Chromium 154; it requires factory document context
+or explicit ambiguous-provenance denial. WebSocket/WebTransport/non-HTTP channels
+must be denied or separately attributed before claiming complete agent egress
+coverage. Bounded text matching does not detect arbitrary rephrasing, ciphertext,
+fragmented sub-window secrets or covert channels.

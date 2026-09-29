@@ -14,7 +14,7 @@ export async function createEgressFixture() {
   const origins = {};
   const cases = new Set([
     "same-origin", "public-recipient", "page-content", "secret-url", "secret-body", "secret-same-origin",
-    "redirect-secret", "redirect-public", "subresource-secret", "worker-secret",
+    "secret-header", "secret-cookie", "redirect-secret", "redirect-public", "subresource-secret", "worker-secret",
     "service-worker-secret", "recipient-substitution", "cancelled-request", "late-after-cancel",
   ]);
   const captureUrl = (role, name, value) => `${origins[role]}/capture?case=${name}${value ? `&value=${encodeURIComponent(value)}` : ""}`;
@@ -23,13 +23,14 @@ export async function createEgressFixture() {
       const url = new URL(req.url, origins[role]);
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "X-Private");
       res.setHeader("Cache-Control", "no-store");
       if (req.method === "OPTIONS") { res.writeHead(204).end(); return; }
       if (url.pathname === "/capture") {
         const name = url.searchParams.get("case");
         if (!cases.has(name)) { res.writeHead(400).end(); return; }
         let byteCount = 0;
-        const digest = createHash("sha256").update(req.url);
+        const digest = createHash("sha256").update(req.url).update(JSON.stringify(req.rawHeaders));
         for await (const chunk of req) { byteCount += chunk.length; digest.update(chunk); }
         // Record bounded metadata only. Raw URL/body and synthetic value stay out of evidence.
         captures.push({ role, case: name, method: req.method, byteCount, digest: digest.digest("hex"), at: Date.now() });
@@ -68,6 +69,8 @@ const actions={
  'secret-url':()=>send(url('recipient','secret-url',secret)),
  'secret-body':()=>send(url('recipient','secret-body'),secret),
  'secret-same-origin':()=>send(url('source','secret-same-origin'),secret),
+ 'secret-header':()=>fetch(url('source','secret-header'),{headers:{'X-Private':secret}}).catch(()=>{}),
+ 'secret-cookie':()=>{document.cookie='auxPrivate='+secret+'; Path=/capture';send(url('source','secret-cookie')).finally(()=>{document.cookie='auxPrivate=; Max-Age=0; Path=/capture';});},
  'redirect-secret':()=>send('/redirect?case=redirect-secret'),
  'redirect-public':()=>send('/redirect?case=redirect-public'),
  'recipient-substitution':()=>send('/redirect?case=recipient-substitution'),

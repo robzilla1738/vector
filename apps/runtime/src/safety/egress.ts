@@ -6,8 +6,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   EgressLeaseSchema, EgressRequestEvidenceSchema,
-  type EgressDecision, type EgressLease, type EgressRequestEvidence,
+  type EgressDecision, type EgressLease, type EgressRequestEvidence, type EgressProjection,
 } from "@aux/contracts";
+
+import { MEMORY_WINDOW, textFingerprints, phraseHashes, inspectableText } from "./egress-projection.js";
 
 export type ProtectedClass = "credential" | "memory" | "file" | "form";
 const MAX_SPECIMENS = 64;
@@ -24,41 +26,6 @@ interface Specimen { value: string; dataClass: ProtectedClass }
 interface ActiveLease {
   lease: EgressLease; specimens: Specimen[];
   memoryFingerprints: Set<string>; revoked: boolean; initialNavigationStarted: boolean;
-}
-
-const MEMORY_WINDOW = 12;
-function textFingerprints(text: string): Set<string> {
-  const normalized = text.normalize("NFKC").replace(/\s+/gu, " ");
-  const hashes = new Set<string>();
-  for (let at = 0; at + MEMORY_WINDOW <= normalized.length; at++)
-    hashes.add(createHash("sha256").update(normalized.slice(at, at + MEMORY_WINDOW)).digest("hex"));
-  return hashes;
-}
-
-function inspectableText(raw: string): string[] {
-  const variants = [raw];
-  for (let depth = 0; depth < 2; depth++) {
-    try { variants.push(decodeURIComponent(variants.at(-1)!.replace(/\+/g, "%20"))); }
-    catch { break; }
-  }
-  // Common body/query encoding. Decoded data remains ephemeral and bounded.
-  const encodedVariants = variants.slice(); // Decoding appends to variants; iterate the original inputs once.
-  for (const text of encodedVariants) for (const candidate of text.match(/[A-Za-z0-9+/_-]{16,}={0,2}/g) ?? []) {
-    const decoded = Buffer.from(candidate, "base64");
-    if (decoded.length >= MEMORY_WINDOW && decoded.length <= MAX_REQUEST_BYTES)
-      variants.push(decoded.toString("utf8"));
-  }
-  return [...new Set(variants)];
-}
-
-function phraseHashes(text: string): Set<string> {
-  const words = text.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
-  const hashes = new Set<string>();
-  for (let at = 0; at + 4 <= words.length; at++) {
-    const phrase = words.slice(at, at + 4).join(" ");
-    if (phrase.length >= 20) hashes.add(createHash("sha256").update(phrase).digest("hex"));
-  }
-  return hashes;
 }
 
 function exactOrigin(raw: string): string | null {
@@ -209,7 +176,7 @@ export class AgentEgressGuard {
   }
 
   /** Raw URL and complete bounded request body stay in the trusted process only. */
-  decide(raw: EgressRequestEvidence, body = "", approvedRequest = false): EgressDecision {
+  decide(raw: EgressRequestEvidence, body = "", approvedRequest = false, projection?: EgressProjection): EgressDecision {
     const evidence = EgressRequestEvidenceSchema.parse(raw);
     const active = this.leases.get(evidence.leaseId);
     const dest = exactOrigin(evidence.destination);
@@ -235,22 +202,30 @@ export class AgentEgressGuard {
     else if (source === "aux://blank" && (
       evidence.kind === "navigation"
         ? active.initialNavigationStarted || evidence.method !== "GET" || evidence.byteCount !== 0
-          || !!active.lease.initialDestination && evidence.destination !== active.lease.initialDestination
+          || !!active.lease.initialDestination && (projection
+            ? projection.urlDigest !== createHash("sha256").update(active.lease.initialDestination).digest("hex")
+            : evidence.destination !== active.lease.initialDestination)
         : evidence.kind !== "redirect" || !active.initialNavigationStarted
     )) decision = deny("identity_mismatch");
-    else if (!evidence.bodyComplete || evidence.byteCount > MAX_REQUEST_BYTES || Buffer.byteLength(body) > MAX_REQUEST_BYTES
-      || Buffer.byteLength(body) !== evidence.byteCount)
+    else if (!evidence.bodyComplete || evidence.byteCount > MAX_REQUEST_BYTES
+      || !projection && (Buffer.byteLength(body) > MAX_REQUEST_BYTES || Buffer.byteLength(body) !== evidence.byteCount))
       decision = deny("incomplete_body");
+    else if (projection && (!projection.projectionComplete || projection.phase === "send" && !projection.headersComplete))
+      decision = deny("incomplete_projection");
     else {
       const outbound = evidence.destination + "\n" + body;
-      const inspected = inspectableText(outbound);
-      const memoryOverlap = active.memoryFingerprints.size > 0 && inspected.some(text =>
-        [...textFingerprints(text)].some(hash => active.memoryFingerprints.has(hash)));
-      const found = overlap(active.specimens, outbound) ?? (memoryOverlap ? "memory" : null);
-      const outboundPhrases = new Set(inspected.flatMap(text => [...phraseHashes(text)]));
+      const inspected = projection ? [] : inspectableText(outbound);
+      const hashes = new Set(projection?.textHashes ?? inspected.flatMap(text => [...textFingerprints(text)]));
+      const memoryOverlap = [...hashes].some(hash => active.memoryFingerprints.has(hash));
+      const found = projection
+        ? active.specimens.find(specimen => [...textFingerprints(specimen.value)].some(hash => hashes.has(hash)))?.dataClass ?? null
+        : overlap(active.specimens, outbound);
+      const outboundPhrases = new Set(projection?.phraseHashes ?? inspected.flatMap(text => [...phraseHashes(text)]));
       const pageSource = [...(this.pageTextByRun.get(evidence.runId) ?? [])].find(([origin, hashes]) =>
         origin !== dest && [...outboundPhrases].some(hash => hashes.has(hash)))?.[0];
       if (memoryOverlap || found && dest !== source) decision = deny("protected_overlap", memoryOverlap ? "memory" : found!);
+      else if (projection?.phase === "preflight")
+        decision = { status: "inspected", reason: "preflight_only", leaseId: evidence.leaseId, sourceOrigin: source, destinationOrigin: dest };
       else if (!approvedRequest && pageSource) decision = { ...deny("page_content_overlap"), sourceOrigin: pageSource };
       else if (source === "aux://blank" && dest === exactOrigin(active.lease.initialDestination!))
         decision = { status: "allow", reason: "authorized_recipient", leaseId: evidence.leaseId, sourceOrigin: source, destinationOrigin: dest };

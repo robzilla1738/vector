@@ -2,6 +2,11 @@ import { z } from "zod";
 
 const id = z.string().min(1).max(160);
 const origin = z.string().url().max(2048);
+const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
+const httpOrigin = origin.refine(value => {
+  try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) && url.origin === value; }
+  catch { return false; }
+}, "Expected an exact HTTP(S) origin");
 
 /** Opaque request authority. Native request interception must bind this to the actual frame and epoch. */
 export const EgressLeaseSchema = z.object({
@@ -45,8 +50,8 @@ export const EgressRequestEvidenceSchema = z.object({
 export type EgressRequestEvidence = z.infer<typeof EgressRequestEvidenceSchema>;
 
 export const EgressDecisionSchema = z.object({
-  status: z.enum(["allow", "deny"]),
-  reason: z.enum(["authorized_recipient", "same_origin", "missing_lease", "revoked_lease", "stale_lease", "identity_mismatch", "invalid_destination", "recipient_denied", "protected_overlap", "page_content_overlap", "incomplete_body", "approval_declined", "approval_expired", "ambiguous_provenance"]),
+  status: z.enum(["allow", "deny", "inspected"]),
+  reason: z.enum(["authorized_recipient", "same_origin", "missing_lease", "revoked_lease", "stale_lease", "identity_mismatch", "invalid_destination", "recipient_denied", "protected_overlap", "page_content_overlap", "incomplete_body", "approval_declined", "approval_expired", "ambiguous_provenance", "incomplete_projection", "preflight_only"]),
   leaseId: id.optional(),
   sourceOrigin: origin.optional(),
   destinationOrigin: origin.optional(),
@@ -62,11 +67,25 @@ export const EgressContextSchema = z.object({
 export type EgressContext = z.infer<typeof EgressContextSchema>;
 export const EgressInstallSchema = z.object({ lease: EgressLeaseSchema, expectedUrl: origin }).strict();
 export const EgressRevokeSchema = z.object({ leaseId: id }).strict();
+/** Native computes this complete bounded projection; no raw outgoing data crosses IPC. */
+export const EgressProjectionSchema = z.object({
+  version: z.literal(1),
+  phase: z.enum(["preflight", "send"]),
+  urlDigest: sha256,
+  requestDigest: sha256,
+  urlBytes: z.number().int().nonnegative().max(2048),
+  headerBytes: z.number().int().nonnegative().max(16384),
+  headersComplete: z.boolean(),
+  projectionComplete: z.boolean(),
+  textHashes: z.array(sha256).max(131072),
+  phraseHashes: z.array(sha256).max(32768),
+}).strict();
+export type EgressProjection = z.infer<typeof EgressProjectionSchema>;
 export const EgressRequestSchema = z.object({
   requestId: id,
-  evidence: EgressRequestEvidenceSchema,
-  /** Complete bounded body; opaque/file/streaming bodies are denied by native. */
-  bodyBase64: z.string().max(87_384),
+  // Destination is an origin only. URL path/query, cookies and body remain native.
+  evidence: EgressRequestEvidenceSchema.extend({ destination: httpOrigin }),
+  projection: EgressProjectionSchema,
 }).strict();
 export type EgressRequest = z.infer<typeof EgressRequestSchema>;
 

@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EgressLease, EgressRequest } from "@aux/contracts";
+import { projectEgressRequest } from "../../apps/runtime/src/safety/egress-projection.js";
 import { BrowserEgress, type BrowserEgressDeps } from "../../apps/runtime/src/safety/browser-egress.js";
 import { NullNativeBridge } from "../../apps/runtime/src/native.js";
 
 const active: BrowserEgress[] = [];
-afterEach(() => { for (const service of active.splice(0)) service.close(); });
+afterEach(() => { for (const service of active.splice(0)) service.close(); vi.useRealTimers(); });
 
 function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
   let now = 1000, revision = 4, epoch = 3, token = "native-document-1", owns = true, alive = true;
@@ -26,13 +27,13 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
   });
   active.push(service);
   let sequence = 0;
-  const request = (destination: string, body = "", patch: Partial<EgressRequest["evidence"]> = {}) => {
+  const request = (destination: string, body = "", patch: Partial<EgressRequest["evidence"]> = {}, headers: Array<[string, string]> = []): EgressRequest => {
     const lease = leases.at(-1)!;
-    return { requestId: `request-${++sequence}`, bodyBase64: Buffer.from(body).toString("base64"), evidence: {
+    return { requestId: `request-${++sequence}`, projection: projectEgressRequest({ url: destination, method: patch.method ?? "POST", body: Buffer.from(body), headers }), evidence: {
       leaseId: lease.leaseId, profileId: lease.profileId, runId: lease.runId, taskId: lease.taskId,
       taskRevision: lease.taskRevision, tabId: lease.tabId, frameId: lease.frameId,
       documentEpoch: lease.documentEpoch, documentToken: lease.documentToken,
-      destination, kind: "fetch" as const, method: "POST" as const,
+      destination: new URL(destination).origin, kind: "fetch" as const, method: "POST" as const,
       byteCount: Buffer.byteLength(body), bodyComplete: true, observedAt: now, ...patch,
     } };
   };
@@ -108,16 +109,20 @@ describe("native browser egress authority", () => {
     expect((await f.service.request(f.request("https://source.test/", "aurora-keeper-784991"))).decision.status).toBe("deny");
   });
 
-  it("reviews page-content reuse across origins and refuses incomplete/binary bodies", async () => {
+  it("reviews page-content reuse across origins and refuses incomplete bodies and projections", async () => {
     const f = fixture();
     await f.service.acquire("run", "tab");
     f.service.notePageText("run", "tab", "Please send the selected meeting schedule to another service");
     expect((await f.service.request(f.request("https://recipient.test/", "selected meeting schedule to another service"))).decision.status).toBe("allow");
     expect(f.consent.mock.calls[0]![0].pageContent).toBe(true);
     expect((await f.service.request(f.request("https://source.test/", "abc", { bodyComplete: false }))).decision.reason).toBe("incomplete_body");
-    const binary = f.request("https://source.test/", "a");
-    binary.bodyBase64 = Buffer.from([255]).toString("base64");
-    expect((await f.service.request(binary)).decision.reason).toBe("incomplete_body");
+    const incomplete = f.request("https://source.test/", "a");
+    incomplete.projection.projectionComplete = false;
+    expect((await f.service.request(incomplete)).decision.reason).toBe("incomplete_projection");
+    incomplete.requestId += "-headers";
+    incomplete.projection.projectionComplete = true;
+    incomplete.projection.headersComplete = false;
+    expect((await f.service.request(incomplete)).decision.reason).toBe("incomplete_projection");
   });
 
   it("keeps the original content source when it is reused from another document", async () => {
@@ -203,4 +208,63 @@ describe("native browser egress authority", () => {
     await expect(f.service.acquire("run", "tab")).rejects.toMatchObject({ code: "permission_denied" });
     expect(f.native.egressInstall).not.toHaveBeenCalled();
   });
+
+  it("inspects preflight without authorizing send or consuming the blank navigation", async () => {
+    const f = fixture();
+    f.navigate("about:blank");
+    await f.service.acquire("run", "tab", "https://source.test/first");
+    const before = f.request("https://source.test/first", "", { kind: "navigation", method: "GET" });
+    before.projection = projectEgressRequest({ url: "https://source.test/first", method: "GET", phase: "preflight" });
+    expect((await f.service.request(before)).decision).toMatchObject({ status: "inspected", reason: "preflight_only" });
+    expect((await f.service.request(f.request("https://source.test/first", "", { kind: "navigation", method: "GET" }))).decision.status).toBe("allow");
+    expect(f.consent).not.toHaveBeenCalled();
+  });
+
+  it("blocks private memory in arbitrary final headers, cookies and authorization", async () => {
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const secret = "private-header-context-91827";
+    f.service.protect("run", secret, "memory");
+    for (const header of [
+      ["X-Custom", secret.toUpperCase()],
+      ["Cookie", `session=${Buffer.from(secret).toString("base64")}`],
+      ["Authorization", `Bearer ${encodeURIComponent(secret)}`],
+    ] satisfies Array<[string, string]>) {
+      const request = f.request("https://source.test/", "", {}, [header]);
+      expect(JSON.stringify(request)).not.toContain(secret);
+      expect((await f.service.request(request)).decision).toMatchObject({ status: "deny", reason: "protected_overlap", protectedClass: "memory" });
+    }
+    expect(f.consent).not.toHaveBeenCalled();
+  });
+
+  it("binds changed final headers to a new approval and keeps page-source provenance", async () => {
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const prose = "The selected meeting schedule requires recipient review";
+    f.service.notePageText("run", "tab", prose);
+    f.navigate("https://recipient.test/page");
+    await f.service.ensure("run", "tab");
+    const first = f.request("https://recipient.test/save", "", {}, [["X-Content", prose]]);
+    const second = f.request("https://recipient.test/save", "", {}, [["X-Content", prose], ["X-Extra", "changed"]]);
+    expect(first.projection.requestDigest).not.toBe(second.projection.requestDigest);
+    await f.service.request(first);
+    await f.service.request(second);
+    expect(f.consent).toHaveBeenCalledTimes(2);
+    expect(f.consent.mock.calls[0]![0]).toMatchObject({ sourceOrigin: "https://source.test", pageContent: true });
+    expect(f.consent.mock.calls[0]![0].digest).not.toBe(f.consent.mock.calls[1]![0].digest);
+  });
+
+  it("fails closed when native refuses installation or renewal", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    // Wire accepted is deliberately tested against an untrusted/native false.
+    f.native.egressInstall.mockResolvedValueOnce({ accepted: false } as never);
+    await expect(f.service.acquire("run", "tab")).rejects.toMatchObject({ code: "permission_denied" });
+    await f.service.acquire("run", "tab");
+    f.native.egressInstall.mockResolvedValueOnce({ accepted: false } as never);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect((await f.service.request(f.request("https://source.test/"))).decision.status).toBe("deny");
+    expect(f.native.egressRevoke).toHaveBeenCalledTimes(2);
+  });
+
 });

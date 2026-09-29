@@ -107,7 +107,7 @@ export class BrowserEgress {
     this.pages.set(pageId, active);
     try {
       const installed = await egressInstall.call(this.deps.native, { lease, expectedUrl: page.url });
-      if (!installed.accepted) throw new AuxError("permission_denied", "The browser refused request protection.");
+      if (installed?.accepted !== true) throw new AuxError("permission_denied", "Native browser request protection was not accepted.");
       if (!this.current(active)) throw new AuxError("ref_stale", "The page changed while installing request protection.");
       active.timer = setInterval(() => { void this.renew(active); }, 10_000);
       active.timer.unref();
@@ -133,7 +133,7 @@ export class BrowserEgress {
     try {
       active.lease = this.guard.renew(active.lease.leaseId);
       const renewed = await this.deps.native.egressInstall!({ lease: active.lease, expectedUrl: active.url });
-      if (!renewed.accepted) throw new AuxError("permission_denied", "The browser refused request protection renewal.");
+      if (renewed?.accepted !== true) throw new AuxError("permission_denied", "Native browser request protection renewal was not accepted.");
       if (!this.current(active)) this.revokePage(active.pageId, active.runId);
     } catch { this.revokePage(active.pageId, active.runId); }
   }
@@ -177,13 +177,7 @@ export class BrowserEgress {
     this.seen.set(request.requestId, this.now() + 150_000);
     const active = this.pages.get(evidence.tabId);
     if (!active || !this.current(active) || active.lease.leaseId !== evidence.leaseId) return denied("revoked_lease");
-    const bytes = Buffer.from(request.bodyBase64, "base64");
-    if (bytes.toString("base64") !== request.bodyBase64 || bytes.length !== evidence.byteCount)
-      return denied("incomplete_body");
-    let body: string;
-    try { body = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
-    catch { return denied("incomplete_body"); }
-    const decision = this.guard.decide(evidence, body);
+    const decision = this.guard.decide(evidence, "", false, request.projection);
     if (decision.status === "allow" || !["recipient_denied", "page_content_overlap"].includes(decision.reason)) return result(decision);
     if (this.pending.has(active.runId)) return denied("approval_declined");
     const run = this.deps.run(active.runId);
@@ -203,7 +197,7 @@ export class BrowserEgress {
       if (!approved) return denied("approval_declined");
       if (!this.current(active)) return denied("revoked_lease");
       // Recheck every bound field and protected fingerprint after user delay.
-      return result(this.guard.decide({ ...evidence, observedAt: this.now() }, body, true));
+      return result(this.guard.decide({ ...evidence, observedAt: this.now() }, "", true, request.projection));
     } finally {
       clearTimeout(timer);
       if (this.pending.get(active.runId) === controller) this.pending.delete(active.runId);
@@ -242,6 +236,6 @@ export class BrowserEgress {
 
 function requestDigest(request: EgressRequest): string {
   return createHash("sha256").update(JSON.stringify([
-    request.requestId, request.evidence, request.bodyBase64,
+    request.requestId, request.evidence, request.projection,
   ])).digest("hex");
 }
