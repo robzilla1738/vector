@@ -336,6 +336,9 @@ CREATE TABLE outbound_mcp_servers(
   state TEXT NOT NULL CHECK(state IN ('pending','approved','revoked')),
   body TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE INDEX idx_outbound_mcp_servers_workspace ON outbound_mcp_servers(workspace_id,state);
+CREATE TABLE outbound_mcp_bundles(
+  server_id TEXT PRIMARY KEY REFERENCES outbound_mcp_servers(server_id) ON DELETE CASCADE,
+  sha256 TEXT NOT NULL, archive_base64 TEXT NOT NULL, installed_at INTEGER NOT NULL);
 CREATE TABLE outbound_mcp_grants(
   grant_id TEXT PRIMARY KEY, server_id TEXT NOT NULL REFERENCES outbound_mcp_servers(server_id),
   tool_name TEXT NOT NULL, body TEXT NOT NULL, revoked_at INTEGER, consumed_at INTEGER);
@@ -367,7 +370,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 28;
+export const SCHEMA_VERSION = 29;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -676,6 +679,12 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       ...(!names.has("trigger_document_epoch") ? [`ALTER TABLE routine_runs ADD COLUMN trigger_document_epoch INTEGER`] : []),
     ];
   },
+  // v28 → v29: Profile-owned immutable MCP bundle bytes, sealed at startup.
+  28: [
+    `CREATE TABLE IF NOT EXISTS outbound_mcp_bundles(
+      server_id TEXT PRIMARY KEY REFERENCES outbound_mcp_servers(server_id) ON DELETE CASCADE,
+      sha256 TEXT NOT NULL, archive_base64 TEXT NOT NULL, installed_at INTEGER NOT NULL)`,
+  ],
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */

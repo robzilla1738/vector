@@ -79,6 +79,7 @@ export const SENSITIVE_SQLITE_COLUMNS: Readonly<Record<string, readonly string[]
   hooks: ["body"],
   hook_invocations: ["error"],
   outbound_mcp_servers: ["body"],
+  outbound_mcp_bundles: ["archive_base64"],
   outbound_mcp_grants: ["body"],
   subagent_groups: ["body"],
   subagents: ["body"],

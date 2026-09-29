@@ -28,6 +28,7 @@ export const ACTIVE_PROTECTED_TABLES = [
   "criterion_reviews",
   "criterion_verifications",
   "outbound_mcp_servers",
+  "outbound_mcp_bundles",
   "outbound_mcp_grants",
   "agent_connections",
   "vault_items",

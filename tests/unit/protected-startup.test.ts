@@ -103,7 +103,7 @@ it("migrates adapted data before repository reads, survives restart and refuses 
       .toMatch(/^auxenc:v1:/);
     protectedAgents.close();
     expect((db.prepare("SELECT count(*) AS n FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%'").get() as { n: number }).n)
-      .toBe(36);
+      .toBe(37);
     expect(readFileSync(path).includes("private startup error")).toBe(false);
     expect(readFileSync(path).includes("private startup task")).toBe(false);
     expect(readFileSync(path).includes("private startup goal body")).toBe(false);
