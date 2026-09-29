@@ -23,6 +23,7 @@ import { UsageBudgetsSettings } from "../settings/sections/UsageBudgets";
 import { AutomationsSettings } from "../settings/sections/Automations";
 import { WorkspacesSettings } from "../settings/sections/Workspaces";
 import { QuickAskSettings } from "../settings/sections/QuickAsk";
+import { SelectionCaptureSettings } from "../settings/sections/SelectionCapture";
 import { ArchivedChatsSettings } from "../settings/sections/ArchivedChats";
 import { GeneralSettings } from "../settings/sections/General";
 import { ProfilesSettings } from "../settings/sections/Profiles";
@@ -44,6 +45,7 @@ const categoryDescriptions: Record<string, string> = {
   "Usage & Budgets": "Review model spending and set caps for runs, days, and routines.",
   Automations: "Review schedules, results, and spending limits for saved Skills.",
   "Quick Ask": "Open a compact chat from Aux or any app.",
+  "Selection & Capture": "Review selections, capture shortcuts, and writing assistance.",
   "Archived chats": "Find, open, and restore conversations you archived.",
   "Site permissions": "Choose what websites can access.",
   "Agent permissions": "Control what Aux can do on your behalf.",
@@ -391,6 +393,7 @@ export function Settings() {
           {automationsAvailable && <AutomationsSettings active={visible("Automations")} />}
           <WorkspacesSettings active={visible("Workspaces")} />
           <QuickAskSettings active={visible("Quick Ask")} />
+          <SelectionCaptureSettings active={visible("Selection & Capture")} settings={settings} onSave={set} />
           <ArchivedChatsSettings active={visible("Archived chats")} />
           {servicesAvailable && <section
             id="connection-panel-Services"

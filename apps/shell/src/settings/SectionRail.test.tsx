@@ -32,6 +32,7 @@ it("shows implemented sections, gates unavailable ones, and routes connection se
     expect(container.querySelector('button[data-category="Extensions"]')).toBeNull();
     expect(container.querySelector('button[data-category="Skills & Plugins"]')).toBeNull();
     expect(container.querySelector('button[data-category="Automations"]')).toBeNull();
+    expect(container.querySelector('button[data-category="Selection & Capture"]')).not.toBeNull();
     expect(container.querySelector('button[data-category="MCP & Connectors"]')).toBeNull();
     await act(async () => (container.querySelector('button[data-category="Developers & External Agents"]') as HTMLButtonElement).click());
     expect(onOpenCategory).toHaveBeenCalledWith("Connections", "Agents");

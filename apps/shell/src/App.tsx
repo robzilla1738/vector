@@ -4,7 +4,7 @@ import { PaneBoundary } from "./components/PaneBoundary";
 import { closeSelectedTabs } from "./use-tab-selection";
 import { conversationEntryChange, applyConversationStorageChange } from "./conversation-drafts";
 import { browserSourcesEntryChange } from "./browser-context-sources";
-import { pageActionSource } from "./page-action-context";
+import { prepareSelectionActionDraft } from "./selection-action-draft";
 import { BrowsingMemoryWatch } from "./use-browsing-memory";
 import { useMemoryDrafts } from "./memory-drafts";
 import type { ShortcutOverrides } from "@aux/contracts";
@@ -199,38 +199,28 @@ export function App() {
       }).catch(errToast);
       return;
     }
-    const id = crypto.randomUUID();
     const state = useStore.getState();
-    const selectedSource = pageActionSource(action, state.pages);
-    state.setConversationContext(id, selectedSource?.pageId ?? "");
-    state.setConversationBrowserSources(id, selectedSource ? [selectedSource] : []);
-    if (!selectedSource) toast("Aux couldn't attach this page as live context. Choose a current tab before sending.");
-    if (action.action === "image") {
-      const alt = action.image?.altText ? `\nAlt text: "${action.image.altText}"` : "";
-      const src = action.image?.srcURL ? `\nImage: ${action.image.srcURL}` : "";
-      state.setConversationDraft(id, `Help me understand this image.\n\nSource: ${action.title || action.url}\n${action.url}${src}${alt}`);
-      const open = () => {
-        state.openConversationDraft(id);
-        requestAnimationFrame(() => conversationComposer.current?.focus());
-      };
-      if (action.image?.dataUrl) {
-        const image = action.image;
-        void call("conversations.images.add", { chatId: id, filename: "page-image.png", dataUrl: image.dataUrl as string, sourceUrl: image.srcURL })
-          .then(open)
-          .catch(error => { open(); errToast(error instanceof Error ? error : new Error(String(error))); });
-      } else {
-        if (action.image?.captureError) toast(`Aux couldn't attach that image (${action.image.captureError}). The conversation opened with its source instead.`);
-        open();
-      }
-      return;
-    }
-    const instruction = action.action === "explain" ? "Explain this selected text clearly."
-      : action.action === "summarize" ? action.selection ? "Summarize this selected text." : "Summarize this page and its key points."
-      : "Help me understand this selected text.";
-    const quote = action.selection ? `\n\nSelected text${action.truncated ? " (first 12,000 characters)" : ""}:\n${action.selection.split("\n").map(line => `> ${line}`).join("\n")}` : "";
-    state.setConversationDraft(id, `${instruction}\n\nSource: ${action.title || action.url}\n${action.url}${quote}`);
-    state.openConversationDraft(id);
-    requestAnimationFrame(() => conversationComposer.current?.focus());
+    let prepared: ReturnType<typeof prepareSelectionActionDraft>;
+    try {
+      prepared = prepareSelectionActionDraft({ action, pages: state.pages,
+        preferences: state.settings.selectionCapture, windowId: bridge.windowId,
+        privateMode: bridge.privateMode });
+    } catch (error) { errToast(error instanceof Error ? error : new Error(String(error))); return; }
+    const id = crypto.randomUUID();
+    state.setConversationContext(id, prepared.source.pageId);
+    state.setConversationBrowserSources(id, [prepared.source]);
+    state.setConversationDraft(id, prepared.draft);
+    const open = () => {
+      state.openConversationDraft(id);
+      requestAnimationFrame(() => conversationComposer.current?.focus());
+    };
+    if (prepared.needsImage) {
+      const image = action.image!;
+      void call("conversations.images.add", { chatId: id, filename: "page-image.png",
+        dataUrl: image.dataUrl!, sourceUrl: image.srcURL })
+        .then(open)
+        .catch(error => { open(); errToast(error instanceof Error ? error : new Error(String(error))); });
+    } else open();
   }), []);
   const mode = useStore((s) => s.mode);
   const overlay = useStore((s) => s.overlay);

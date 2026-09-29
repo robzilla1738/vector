@@ -18,6 +18,7 @@ const routes: readonly SettingsRoute[] = [
   { slug: "usage-budgets", category: "Usage & Budgets" },
   { slug: "automations", category: "Automations" },
   { slug: "quick-ask", category: "Quick Ask" },
+  { slug: "selection-capture", category: "Selection & Capture" },
   { slug: "archived-chats", category: "Archived chats" },
   { slug: "skills-plugins", category: "Connections", connectionTab: "Plugins" },
   { slug: "mcp-connectors", category: "Connections", connectionTab: "Services" },

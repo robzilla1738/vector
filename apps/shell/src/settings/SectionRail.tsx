@@ -26,6 +26,7 @@ const items: readonly RailItem[] = [
   { label: "Workspaces", category: "Workspaces", group: "Agent", icon: I.folder },
   { label: "Automations", category: "Automations", group: "Features", icon: I.clock, gate: "automations" },
   { label: "Quick Ask", category: "Quick Ask", group: "Features", icon: I.chats },
+  { label: "Selection & Capture", category: "Selection & Capture", group: "Features", icon: I.result },
   { label: "Developers & External Agents", category: "Connections", group: "Features", icon: I.globe, tab: "Agents" },
   { label: "Extensions", category: "Extensions", group: "Features", icon: I.extension, gate: "extensions" },
   { label: "Archived chats", category: "Archived chats", group: "Archived", icon: I.archive },

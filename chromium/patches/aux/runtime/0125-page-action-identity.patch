@@ -1,0 +1,90 @@
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -257,20 +257,72 @@
+     case kAuxContextAskAboutPage:
+     case kAuxContextSummarizePage: {
+       const std::string url = contents->GetLastCommittedURL().spec();
+-      base::DictValue action;
+-      action.Set("pageId", aux_context_page_id_);
+-      action.Set("url", url);
+-      action.Set("topUrl", url);
+-      action.Set("title", base::UTF16ToUTF8(contents->GetTitle().substr(0, 512)));
+-      action.Set("capturedAt", static_cast<double>(
+-          base::Time::Now().InMillisecondsSinceUnixEpoch()));
+-      action.Set("windowId", base::NumberToString(browser_->GetSessionID().id()));
+-      action.Set("action", command_id == kAuxContextSummarizePage
+-                               ? "summarize" : "ask");
+-      action.Set("selection", "");
+-      action.Set("truncated", false);
+-      if (const auto json = base::WriteJson(base::Value(std::move(action))))
+-        aux::EmitShellEvent(browser_->GetProfile(), "onPageAction", *json);
++      const auto* entry = navigation.GetLastCommittedEntry();
++      auto* runtime = AuxRuntimeHost::ForProfile(browser_->GetProfile());
++      if (!entry || !runtime) break;
++      const int navigation_id = entry->GetUniqueID();
++      const std::string page_id = aux_context_page_id_;
++      const std::string window_id =
++          base::NumberToString(browser_->GetSessionID().id());
++      const std::string title =
++          base::UTF16ToUTF8(contents->GetTitle().substr(0, 512));
++      const std::string action_name = command_id == kAuxContextSummarizePage
++                                          ? "summarize" : "ask";
++      // The runtime owns documentEpoch and sessionId. Read both from its
++      // authenticated current page list, then recheck the native tab before
++      // emitting an action. A stale or unavailable identity creates no draft.
++      runtime->CallApi("pages.list", "{}",
++          base::BindOnce(
++              [](base::WeakPtr<WebUIBrowserUI> self, std::string page_id,
++                 std::string window_id, std::string url, std::string title,
++                 std::string action_name, int navigation_id,
++                 AuxRuntimeHost::Response response) {
++                if (!self || !response.ok ||
++                    !self->IsAuthorizedAuxDocument()) return;
++                BrowserWindowInterface* owner = nullptr;
++                auto* catalog = aux::TabCatalog::GetForProfile(
++                    self->browser_->GetProfile());
++                auto* page = catalog ? catalog->FindPage(page_id, &owner) : nullptr;
++                if (!page || owner != self->browser_ ||
++                    page != self->browser_->GetTabStripModel()->GetActiveWebContents() ||
++                    page->GetLastCommittedURL().spec() != url ||
++                    !page->GetController().GetLastCommittedEntry() ||
++                    page->GetController().GetLastCommittedEntry()->GetUniqueID() != navigation_id)
++                  return;
++                auto parsed = base::JSONReader::Read(response.result_json,
++                                                      base::JSON_PARSE_RFC);
++                if (!parsed || !parsed->is_list()) return;
++                for (const auto& item : parsed->GetList()) {
++                  if (!item.is_dict()) continue;
++                  const auto& target = item.GetDict();
++                  const std::string* id = target.FindString("pageId");
++                  const std::string* target_window = target.FindString("windowId");
++                  const std::string* target_url = target.FindString("url");
++                  const auto epoch = target.FindInt("documentEpoch");
++                  if (!id || *id != page_id || !target_window ||
++                      *target_window != window_id || !target_url ||
++                      *target_url != url || !epoch || *epoch < 0) continue;
++                  base::DictValue action;
++                  action.Set("pageId", page_id);
++                  action.Set("windowId", window_id);
++                  action.Set("url", url);
++                  action.Set("topUrl", url);
++                  action.Set("documentEpoch", *epoch);
++                  if (const std::string* session = target.FindString("sessionId"))
++                    action.Set("sessionId", *session);
++                  action.Set("title", title);
++                  action.Set("capturedAt", static_cast<double>(
++                      base::Time::Now().InMillisecondsSinceUnixEpoch()));
++                  action.Set("action", action_name);
++                  action.Set("selection", "");
++                  action.Set("truncated", false);
++                  if (auto json = base::WriteJson(base::Value(std::move(action))))
++                    aux::EmitShellEvent(self->browser_->GetProfile(),
++                                        "onPageAction", *json);
++                  return;
++                }
++              }, weak_factory_.GetWeakPtr(), page_id, window_id, url, title,
++              action_name, navigation_id));
+       break;
+     }
+   }
