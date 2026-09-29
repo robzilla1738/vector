@@ -40,17 +40,41 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
   const [exportError, setExportError] = useState("");
   const [undoBusy, setUndoBusy] = useState(false);
   const [undoMessage, setUndoMessage] = useState("");
-  async function undoRun(runId: string) {
-    if (undoBusy || !onChanged) return;
+  const [undoDraft, setUndoDraft] = useState<{ runId: string; token: string;
+    expectedStepIds: string[]; selectedStepIds: string[]; items: { stepId: string; label: string }[] } | null>(null);
+  async function reviewRunUndo(runId: string) {
+    if (undoBusy) return;
+    setUndoBusy(true); setUndoMessage("");
+    try {
+      const fresh = await call("tasks.receipt", { taskId: receipt.taskId });
+      if (fresh.taskRevision !== receipt.taskRevision) throw new Error("This task changed. Reload its receipt before undoing.");
+      const review = fresh.undoReviews.find(item => item.runId === runId);
+      if (!review?.eligibleStepIds.length) throw new Error("No browser changes are available to undo in this run.");
+      const labels = new Map<string, string>([
+        ...fresh.browserChanges.filter(item => item.runId === runId).map(item => [item.stepId, `Restore ${item.op} on ${item.target ?? "a form field"}`] as const),
+        ...fresh.tabChanges.filter(item => item.runId === runId).map(item => [item.stepId, `Close run-owned tab ${item.url ?? ""}`] as const),
+        ...fresh.bookmarkChanges.filter(item => item.runId === runId).map(item => [item.stepId, `Remove bookmark ${item.title ?? item.url ?? ""}`] as const),
+        ...fresh.downloadChanges.filter(item => item.runId === runId).map(item => [item.stepId, `Move unchanged download ${item.filename ?? ""} to Trash`] as const),
+        ...fresh.historyChanges.filter(item => item.runId === runId).map(item => [item.stepId, `Remove history visit ${item.title ?? item.url ?? ""}`] as const),
+      ]);
+      setUndoDraft({ runId, token: review.token, expectedStepIds: review.eligibleStepIds,
+        selectedStepIds: [], items: review.eligibleStepIds.map(stepId => ({ stepId, label: labels.get(stepId) ?? `Browser change ${stepId}` })) });
+    } catch (error) { setUndoMessage(error instanceof Error ? error.message : String(error)); }
+    finally { setUndoBusy(false); }
+  }
+  async function undoRun() {
+    if (undoBusy || !onChanged || !undoDraft?.selectedStepIds.length) return;
     setUndoBusy(true); setUndoMessage("");
     try {
       const result = await call("tasks.undoRunBrowserChanges", { taskId: receipt.taskId,
-        expectedRevision: receipt.taskRevision, runId });
+        expectedRevision: receipt.taskRevision, runId: undoDraft.runId, reviewToken: undoDraft.token,
+        expectedStepIds: undoDraft.expectedStepIds, selectedStepIds: undoDraft.selectedStepIds });
       await onChanged();
+      setUndoDraft(null);
       setUndoMessage(`${result.restored} browser ${result.restored === 1 ? "change" : "changes"} undone` +
         (result.skipped.length ? `; ${result.skipped.length} skipped: ${result.skipped.map(item =>
           `${item.stepId}: ${item.reason}`).join("; ")}` : "."));
-    } catch (error) { setUndoMessage(error instanceof Error ? error.message : String(error)); }
+    } catch (error) { setUndoDraft(null); setUndoMessage(error instanceof Error ? error.message : String(error)); }
     finally { setUndoBusy(false); }
   }
   async function exportReceipt() {
@@ -73,13 +97,7 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
   const base = { taskId: receipt.taskId, expectedRevision: receipt.taskRevision };
   const usableEvidence = receipt.criteria.flatMap(item => item.evidence.filter(evidence => !evidence.stale));
   const treeUsage={calls:receipt.modelCalls+receipt.childTasks.reduce((total,child)=>total+child.modelCalls,0),cost:receipt.knownCostUsd+receipt.childTasks.reduce((total,child)=>total+child.knownCostUsd,0),complete:receipt.costComplete&&receipt.childTasks.every(child=>child.costComplete)};
-  const runUndoIds = [...new Set([
-    ...receipt.browserChanges.filter(change => change.status === "ok" && !change.undoneAt && change.before && change.after).map(change => change.runId),
-    ...receipt.tabChanges.filter(change => change.op === "tab.open" && change.status === "ok" && !change.undoneAt).map(change => change.runId),
-    ...receipt.bookmarkChanges.filter(change => change.status === "ok" && !change.undoneAt).map(change => change.runId),
-    ...receipt.downloadChanges.filter(change => change.cleanupAvailable && !change.undoneAt).map(change => change.runId),
-    ...receipt.historyChanges.filter(change => !change.undoneAt).map(change => change.runId),
-  ])];
+  const runUndoIds = receipt.undoReviews.filter(item => item.eligibleStepIds.length).map(item => item.runId);
   return <div className="field">
     <h4>Evidence and receipt</h4>
     {historical && <p className="hint">Earlier revision {receipt.taskRevision} · Current task revision {receipt.currentTaskRevision}. This review does not establish the current task’s outcome. Freshness is assessed now, not reconstructed as of the revision date.</p>}
@@ -233,7 +251,17 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
       <h4>Undo a run’s browser changes</h4>
       <p className="hint">Restores matching form fields, removes unchanged bookmarks and history visits, moves unchanged managed downloads to recoverable Trash, and closes unused background tabs. Changed items are skipped. Removed visits, closed tabs, and remote effects cannot be reconstructed.</p>
       {runUndoIds.map(runId => <button className="btn sm" key={runId} disabled={undoBusy}
-        onClick={() => void undoRun(runId)}>Undo browser changes in run {runId}</button>)}
+        onClick={() => void reviewRunUndo(runId)}>Review browser changes in run {runId}</button>)}
+      {undoDraft && <div className="field" aria-label="Review selected browser undo">
+        <strong>Select browser changes to undo in run {undoDraft.runId}</strong>
+        <p className="hint">Only selected local changes will be attempted. A changed receipt cancels the request before any undo. Each selected item is checked against live state; changed items are skipped. Remote effects remain irreversible.</p>
+        {undoDraft.items.map(item => <label className="row" key={item.stepId}><input type="checkbox"
+          checked={undoDraft.selectedStepIds.includes(item.stepId)} onChange={event => setUndoDraft(current => current && ({ ...current,
+            selectedStepIds: event.target.checked ? [...current.selectedStepIds, item.stepId] : current.selectedStepIds.filter(id => id !== item.stepId) }))} />
+          <span>{item.label}</span></label>)}
+        <div className="row"><button className="btn sm danger" disabled={undoBusy || !undoDraft.selectedStepIds.length} onClick={() => void undoRun()}>Undo selected browser changes</button>
+          <button className="btn sm" disabled={undoBusy} onClick={() => setUndoDraft(null)}>Cancel</button></div>
+      </div>}
       {undoMessage && <output data-block>{undoMessage}</output>}
     </section>}
     {receipt.unresolvedActions.length > 0 && <h4>Uncertain actions</h4>}

@@ -69,6 +69,13 @@ function fixture() {
   return { db, repo, tasks, task, evidence, page, pages, invoke, base, note, review, run };
 }
 
+function reviewedUndo(f: ReturnType<typeof fixture>, selectedStepIds?: string[]) {
+  const review = f.evidence.receipt(f.task.taskId).undoReviews.find(item => item.runId === "r1")!;
+  return { taskId: f.task.taskId, expectedRevision: 1, runId: "r1",
+    reviewToken: review.token, expectedStepIds: review.eligibleStepIds,
+    selectedStepIds: selectedStepIds ?? review.eligibleStepIds };
+}
+
 it("undoes a completed form edit once using the recorded page identity and rejects superseded edits", async () => {
   const f = fixture();
   f.run();
@@ -78,8 +85,9 @@ it("undoes a completed form edit once using the recorded page identity and rejec
       receipt: { remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false,
         identity: { pageId: "p1", documentEpoch: 1 } } } };
   f.repo.saveStep(first);
-  const external = await f.invoke("tasks.receipt", { taskId: f.task.taskId }) as { browserChanges: unknown[] };
+  const external = await f.invoke("tasks.receipt", { taskId: f.task.taskId }) as { browserChanges: unknown[]; undoReviews: unknown[] };
   expect(JSON.stringify(external.browserChanges)).not.toContain('"value"');
+  expect(external.undoReviews).toEqual([]);
   const params = { taskId: f.task.taskId, expectedRevision: 1, runId: "r1", stepId: "edit-1" };
   await expect(f.invoke("tasks.undoBrowserChange", params)).rejects.toMatchObject({ code: "permission_denied" });
   await expect(f.evidence.undoBrowserChange(params)).resolves.toEqual({ ok: true });
@@ -93,7 +101,7 @@ it("undoes a completed form edit once using the recorded page identity and rejec
   await expect(f.evidence.undoBrowserChange(params)).rejects.toThrow("later edit");
 });
 
-it("undoes a run's eligible form edits and owned tab while reporting a closed tab", async () => {
+it("undoes a run's eligible form edits and owned tab without touching a closed tab", async () => {
   const f = fixture();
   f.run();
   const outcome = (stepId: string, op: string, startedAt: number, extras: Record<string, unknown> = {}) =>
@@ -108,8 +116,8 @@ it("undoes a run's eligible form edits and owned tab while reporting a closed ta
           identity: { pageId: "p1", documentEpoch: 1 } } }) });
   f.repo.saveStep({ stepId: "closed", runId: "r1", pageId: "old-tab", op: "tab.close", startedAt: 3,
     outcome: outcome("closed", "tab.close", 3) });
-  const result = await f.evidence.undoRunBrowserChanges({ taskId: f.task.taskId, expectedRevision: 1, runId: "r1" });
-  expect(result).toMatchObject({ restored: 2, skipped: [{ stepId: "closed" }] });
+  const result = await f.evidence.undoRunBrowserChanges(reviewedUndo(f));
+  expect(result).toEqual({ restored: 2, skipped: [] });
   expect(f.pages.undoOpenedTab).toHaveBeenCalledWith("agent-tab",
     { url: "https://fixture.test/agent", documentEpoch: 1 });
   expect(f.evidence.receipt(f.task.taskId).browserChanges[0]?.undoneAt).toBeTypeOf("number");
@@ -123,7 +131,7 @@ it("undoes a run's eligible form edits and owned tab while reporting a closed ta
   expect(JSON.stringify(external.tabChanges)).not.toContain("fixture.test/agent");
   expect(JSON.stringify(external.downloadChanges)).not.toContain("private.pdf");
   expect(JSON.stringify(external.downloadChanges)).not.toContain("fixture.test/private");
-  await expect(f.invoke("tasks.undoRunBrowserChanges", { taskId: f.task.taskId, expectedRevision: 1, runId: "r1" }))
+  await expect(f.invoke("tasks.undoRunBrowserChanges", reviewedUndo(f)))
     .rejects.toMatchObject({ code: "permission_denied" });
   await expect(f.invoke("tasks.undoBookmarkChange", { taskId: f.task.taskId, expectedRevision: 1,
     runId: "r1", stepId: "open" })).rejects.toMatchObject({ code: "permission_denied" });
@@ -149,10 +157,37 @@ it("undoes same-millisecond edits in insertion order, newest first", async () =>
         identity: { pageId: "p1", documentEpoch: 1 } } } });
   f.repo.saveStep(makeStep("z-first", "2", "3"));
   f.repo.saveStep(makeStep("a-second", "3", "4"));
-  const result = await f.evidence.undoRunBrowserChanges({ taskId: f.task.taskId, expectedRevision: 1, runId: "r1" });
+  const result = await f.evidence.undoRunBrowserChanges(reviewedUndo(f));
   expect(result).toEqual({ restored: 2, skipped: [] });
   expect(f.pages.undoFormChange).toHaveBeenNthCalledWith(1, expect.objectContaining({ before: { value: "3" } }));
   expect(f.pages.undoFormChange).toHaveBeenNthCalledWith(2, expect.objectContaining({ before: { value: "2" } }));
+});
+
+it("undoes only reviewed selections and refuses receipt drift before any effect", async () => {
+  const f = fixture(); f.run();
+  const make = (stepId: string, target: string, startedAt: number) => ({
+    stepId, runId: "r1", pageId: "p1", op: "fill", inputs: { target }, startedAt,
+    outcome: { stepId, op: "fill", status: "ok" as const, startedAt, durationMs: 1,
+      before: { value: "before" }, after: { value: "after" }, pageUrl: "https://fixture.test/order",
+      receipt: { remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false,
+        identity: { pageId: "p1", documentEpoch: 1 } } },
+  });
+  f.repo.saveStep(make("first", "#first", 1));
+  f.repo.saveStep(make("second", "#second", 2));
+  const review = reviewedUndo(f, ["second"]);
+  f.repo.saveStep({ stepId: "remote", runId: "r1", pageId: "p1", op: "click", startedAt: 3,
+    outcome: { stepId: "remote", op: "click", status: "ok", startedAt: 3, durationMs: 1 } });
+  await expect(f.evidence.undoRunBrowserChanges(review)).rejects.toThrow("receipt changed");
+  expect(f.pages.undoFormChange).not.toHaveBeenCalled();
+  const fresh = reviewedUndo(f, ["second"]);
+  await expect(f.evidence.undoRunBrowserChanges({ ...fresh, expectedStepIds: ["second"] }))
+    .rejects.toThrow("receipt changed");
+  await expect(f.evidence.undoRunBrowserChanges({ ...fresh, selectedStepIds: ["remote"] }))
+    .rejects.toThrow("receipt changed");
+  expect(await f.evidence.undoRunBrowserChanges(fresh)).toEqual({ restored: 1, skipped: [] });
+  expect(f.pages.undoFormChange).toHaveBeenCalledOnce();
+  expect(f.pages.undoFormChange).toHaveBeenCalledWith(expect.objectContaining({ target: "#second" }));
+  expect(f.evidence.receipt(f.task.taskId).browserChanges.find(item => item.stepId === "first")?.undoneAt).toBeUndefined();
 });
 
 it("shows bounded form before-state from the run step ledger without copying arbitrary fields", () => {

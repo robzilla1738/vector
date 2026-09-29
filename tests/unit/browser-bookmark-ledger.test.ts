@@ -17,7 +17,10 @@ it("records a new bookmark and removes it through the owning task receipt", asyn
     expect(await ledger.save("r1", "p1", "https://fixture.test/source", "Source")).toEqual({ saved: false });
     const evidence = new TaskEvidenceService(repo, events);
     expect(evidence.receipt(task.taskId).bookmarkChanges).toMatchObject([{ status: "ok", title: "Source" }]);
-    const result = await evidence.undoRunBrowserChanges({ taskId: task.taskId, expectedRevision: 1, runId: "r1" });
+    const review = evidence.receipt(task.taskId).undoReviews.find(item => item.runId === "r1")!;
+    const result = await evidence.undoRunBrowserChanges({ taskId: task.taskId, expectedRevision: 1, runId: "r1",
+      reviewToken: review.token, expectedStepIds: review.eligibleStepIds,
+      selectedStepIds: review.eligibleStepIds });
     expect(result).toEqual({ restored: 1, skipped: [] });
     expect(repo.listBookmarks()).toHaveLength(0);
     expect(evidence.receipt(task.taskId).bookmarkChanges[0]?.undoneAt).toBeTypeOf("number");

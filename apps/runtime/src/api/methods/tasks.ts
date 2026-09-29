@@ -6,6 +6,7 @@ async function h_tasks_receipt(ctx: MethodCtx): Promise<unknown> {
   const { client, params, taskEvidence } = ctx;
   const receipt = taskEvidence.receipt(params.taskId, params.revision);
   return client.external ? { ...receipt,
+    undoReviews: [],
     browserChanges: receipt.browserChanges.map(({ before: _before, after: _after, ...change }) => change),
     tabChanges: receipt.tabChanges.map(({ url: _url, ...change }) => change),
     remoteActions: receipt.remoteActions.map(({ browserObserved: _browserObserved, ...change }) => change),

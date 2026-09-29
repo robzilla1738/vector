@@ -18,6 +18,7 @@ import {
   type CriterionReview,
   type CriterionVerification,
   type TaskReceipt,
+  type StepRecord,
 } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import { summarizeModelUsage } from "./model-usage.js";
@@ -35,6 +36,28 @@ import { isConsequential } from "../agent/permissions.js";
 type Actor = "desktop_user" | "external_client";
 type EvidenceRow = { seq: number; evidence_id: string; json: string };
 const ACTIVE = new Set(["queued", "planning", "running", "paused", "needs_input"]);
+
+function eligibleUndoStep(step: StepRecord): boolean {
+  const outcome = step.outcome;
+  if (outcome?.status !== "ok" || outcome.undoneAt) return false;
+  if (["fill", "type", "check", "uncheck", "select"].includes(step.op))
+    return !!(outcome.before && outcome.after && step.pageId);
+  if (step.op === "tab.open") return !!(step.pageId && outcome.after?.ownedByRuntime === true);
+  if (step.op === "bookmark.add") return outcome.before?.existed === false && !!outcome.after;
+  if (step.op === "download") return outcome.before?.existed === false && typeof outcome.after?.sha256 === "string";
+  if (step.op === "history.visit") return outcome.before?.existed === false && !!outcome.after;
+  return false;
+}
+
+function undoReview(steps: StepRecord[]): { token: string; eligibleStepIds: string[] } {
+  // Include every step, including remote effects. A newly recorded effect or an
+  // updated outcome invalidates the owner's reviewed snapshot before undo starts.
+  const token = createHash("sha256").update(JSON.stringify(steps.map(step => [
+    step.stepId, step.op, step.inputs, step.outcome,
+  ]))).digest("hex");
+  const eligibleStepIds = steps.filter(eligibleUndoStep).map(step => step.stepId);
+  return { token, eligibleStepIds: eligibleStepIds.length <= 200 ? eligibleStepIds : [] };
+}
 
 export class TaskEvidenceService {
   private tasks: TaskService;
@@ -254,24 +277,35 @@ export class TaskEvidenceService {
     const run = this.tasks.details(p.taskId).runs.find(item => item.run.runId === p.runId &&
       item.run.config?.taskRevision === p.expectedRevision)?.run;
     if (!run || ACTIVE.has(run.status)) throw new AuxError("conflict", "The run is unavailable or still active");
-    const steps = this.repo.listSteps(p.runId).reverse();
+    const recorded = this.repo.listSteps(p.runId);
+    const review = undoReview(recorded);
+    if (review.token !== p.reviewToken ||
+      JSON.stringify(review.eligibleStepIds) !== JSON.stringify(p.expectedStepIds) ||
+      !p.selectedStepIds.every(id => review.eligibleStepIds.includes(id)))
+      throw new AuxError("conflict", "The run receipt changed. Review its browser changes again before undoing.");
+    const selected = new Set(p.selectedStepIds);
+    const steps = recorded.reverse();
+    const single = { taskId: p.taskId, expectedRevision: p.expectedRevision, runId: p.runId };
     let restored = 0;
     const skipped: { stepId: string; reason: string }[] = [];
     for (const step of steps) {
-      if (step.outcome?.status !== "ok" || step.outcome.undoneAt) continue;
+      if (!selected.has(step.stepId)) continue;
       try {
         if (["fill", "type", "check", "uncheck", "select"].includes(step.op)) {
-          await this.undoBrowserChange({ ...p, stepId: step.stepId });
+          await this.undoBrowserChange({ ...single, stepId: step.stepId });
         } else if (step.op === "bookmark.add") {
-          await this.undoBookmarkChange({ ...p, stepId: step.stepId });
+          await this.undoBookmarkChange({ ...single, stepId: step.stepId });
         } else if (step.op === "download") {
-          await this.undoDownloadChange({ ...p, stepId: step.stepId });
+          await this.undoDownloadChange({ ...single, stepId: step.stepId });
         } else if (step.op === "history.visit") {
-          await this.undoHistoryChange({ ...p, stepId: step.stepId });
+          await this.undoHistoryChange({ ...single, stepId: step.stepId });
         } else if (step.op === "tab.open" && step.pageId && this.pages) {
           if (steps.some((later, index) => index < steps.indexOf(step) && later.op === "tab.close" &&
-            later.pageId === step.pageId && later.outcome?.status === "ok")) continue;
-          const after = step.outcome.after;
+            later.pageId === step.pageId && later.outcome?.status === "ok")) {
+            skipped.push({ stepId: step.stepId, reason: "The run already closed this tab" });
+            continue;
+          }
+          const after = step.outcome?.after;
           if (typeof after?.url !== "string" || typeof after?.documentEpoch !== "number" ||
             after.ownedByRuntime !== true)
             throw new AuxError("conflict", "This tab has no safe run-owned before/after record");
@@ -279,6 +313,8 @@ export class TaskEvidenceService {
           const current = this.repo.listSteps(p.runId).find(item => item.stepId === step.stepId);
           if (!current?.outcome || current.outcome.undoneAt) throw new AuxError("conflict", "This tab was already undone");
           this.repo.saveStep({ ...current, outcome: { ...current.outcome, undoneAt: Date.now() } });
+        } else if (step.op === "tab.open") {
+          throw new AuxError("backend_unavailable", "This tab cannot be closed through the current browser connection");
         } else if (step.op === "tab.close") {
           skipped.push({ stepId: step.stepId, reason: "A closed tab cannot be safely reconstructed" });
           continue;
@@ -661,6 +697,10 @@ export class TaskEvidenceService {
       status,
       criteria,
       unresolvedActions,
+      undoReviews: runs.flatMap(({ run }) => {
+        if (ACTIVE.has(run.status) || run.config?.taskRevision !== task.revision) return [];
+        return [{ runId: run.runId, ...undoReview(this.repo.listSteps(run.runId)) }];
+      }).slice(-200),
       browserChanges,
       tabChanges,
       remoteActions,

@@ -138,6 +138,7 @@ const protectedStartupJourney = process.argv.includes("--protected-startup");
 const receiptBeforeUiJourney = process.argv.includes("--receipt-before-ui");
 const receiptUndoUiJourney = process.argv.includes("--receipt-undo-ui");
 const receiptRunUndoUiJourney = process.argv.includes("--receipt-run-undo-ui");
+const receiptActualRunJourney = process.argv.includes("--receipt-actual-run");
 const receiptBookmarkUiJourney = process.argv.includes("--receipt-bookmark-undo-ui");
 const receiptDownloadUiJourney = process.argv.includes("--receipt-download-ui");
 const receiptHistoryUiJourney = process.argv.includes("--receipt-history-ui");
@@ -231,7 +232,7 @@ const healthDiagnosticsJourney = process.argv.includes("--health-diagnostics");
 const unpackedExtensionJourney = process.argv.includes("--unpacked-extension");
 const runtimeBackupRestoreJourney = process.argv.includes("--runtime-backup-restore");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptActualRunJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -390,7 +391,7 @@ try {
       response.end('<!doctype html><title>Run bookmark fixture</title><main>Disposable bookmark source</main>');
       return;
     }
-    if ((receiptUndoUiJourney || receiptRunUndoUiJourney) && request.url === "/receipt-form") {
+    if ((receiptUndoUiJourney || receiptRunUndoUiJourney || receiptActualRunJourney) && request.url === "/receipt-form") {
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
       response.end('<!doctype html><title>Receipt undo fixture</title><label>Quantity <input id="quantity" value="4"></label><label>Code <input id="code" value="B"></label>');
       return;
@@ -2154,6 +2155,65 @@ else {
       record("native Undo Tidy removed the committed receipt after restart", {});
       report.passed = true;
     }
+  } else if (receiptActualRunJourney) {
+    if (rpcOnly) throw new Error("Actual run receipt review needs physical owner input in the native window.");
+    const space = await until("disposable Personal Space", async () =>
+      (await rpc("workspaces.list", {})).find(item => item.name === "Personal"), 60_000);
+    const page = await rpc("pages.open", { url: `${origin}/receipt-form`, activate: true });
+    await until("disposable receipt form", async () =>
+      (await rpc("pages.observe", { pageId: page.pageId, scope: "full" })).content.url === `${origin}/receipt-form`, 60_000);
+    const task = await rpc("tasks.create", { workspaceId: space.workspaceId, title: "Review actual run undo",
+      objective: "Review and reverse local edits from a disposable saved program",
+      criteria: [{ criterionId: "review", description: "Local changes reviewed", verification: "manual" }] });
+    const program = await rpc("programs.save", { name: "Receipt actual edits", siteKey: "127.0.0.1", parameters: [],
+      steps: [{ id: randomUUID(), op: "fill", target: "css:#quantity", value: "7" },
+        { id: randomUUID(), op: "fill", target: "css:#code", value: "C" }] });
+    const { runId } = await rpc("programs.run", { programId: program.programId, pageId: page.pageId });
+    const actual = await until("saved program to write both native form controls", async () => {
+      const result = await rpc("runs.get", { runId });
+      return result.run.status === "completed" && result.steps.filter(step => step.op === "fill" && step.outcome?.status === "ok").length === 2
+        ? result : null;
+    }, 60_000);
+    assert.equal(native("control-value", "Quantity"), "7");
+    assert.equal(native("control-value", "Code"), "C");
+    const actualSteps = actual.steps.filter(step => step.op === "fill");
+    const quantityStep = actualSteps.find(step => step.inputs?.target === "css:#quantity");
+    const codeStep = actualSteps.find(step => step.inputs?.target === "css:#code");
+    assert.equal(quantityStep?.outcome?.before?.value, "4");
+    assert.equal(codeStep?.outcome?.before?.value, "B");
+    const db = new DatabaseSync(join(profile, "Default/Aux Runtime Data/aux-state.sqlite"));
+    try {
+      const config = { ...actual.run.config, taskId: task.taskId, taskRevision: 1 };
+      // Only the test fixture links this real saved-program run to its review task.
+      db.prepare("UPDATE runs SET config=? WHERE run_id=?").run(JSON.stringify(config), runId);
+      db.prepare("INSERT INTO run_lookup(run_id,config) VALUES(?,?) ON CONFLICT(run_id) DO UPDATE SET config=excluded.config")
+        .run(runId, JSON.stringify({ taskId: task.taskId, taskRevision: 1, implementation: "program" }));
+    } finally { db.close(); }
+    const receipt = await rpc("tasks.receipt", { taskId: task.taskId });
+    assert.equal(receipt.browserChanges.length, 2);
+    assert.equal(receipt.undoReviews.find(item => item.runId === runId)?.eligibleStepIds.length, 2);
+    assert.equal(receipt.browserChanges[0].before, undefined, "External receipt must hide captured input values");
+    record("actual saved program produced two attributed, redacted browser changes", { runId });
+    console.log("On the visible fixture page, change Code from C to D with the physical keyboard. Then open Tasks → Review actual run undo, click Review browser changes, select both edits, and click Undo selected browser changes. Quantity should restore to 4; the changed Code should remain D and be reported skipped.");
+    await until("owner to change Code after the agent run", () => {
+      try { return native("control-value", "Code") === "D"; } catch { return false; }
+    }, 600_000);
+    await until("native Tasks to show reviewed run undo", () => {
+      try { return native("has-button", `Review browser changes in run ${runId}`) === "true"; }
+      catch { return false; }
+    }, 600_000);
+    await until("only the unchanged actual edit to be undone", async () => {
+      const current = await rpc("tasks.receipt", { taskId: task.taskId });
+      return current.browserChanges.find(item => item.stepId === quantityStep.stepId)?.undoneAt &&
+        !current.browserChanges.find(item => item.stepId === codeStep.stepId)?.undoneAt;
+    }, 600_000);
+    console.log("Close Tasks to inspect the form. Quantity should be 4 and Code should remain D.");
+    await until("actual unchanged field restored and changed field preserved", () => {
+      try { return native("control-value", "Quantity") === "4" && native("control-value", "Code") === "D"; }
+      catch { return false; }
+    }, 600_000);
+    record("reviewed undo restored the unchanged actual edit and refused stale owner-edited field", { runId });
+    report.passed = true;
   } else if (receiptHistoryUiJourney) {
     const space = await until("disposable Personal Space", async () =>
       (await rpc("workspaces.list", {})).find(item => item.name === "Personal"), 60_000);
@@ -2332,9 +2392,9 @@ else {
               remoteConfirmed: false, uncertain: false, dispatchedBeforeTakeover: false,
               identity: { pageId: page.pageId, documentEpoch: observation.documentEpoch } } }), base + 3);
     } finally { db.close(); }
-    console.log("Open Tasks → Undo whole browser run. Click Undo browser changes in run once.");
-    await until("native run undo control", () => {
-      try { return native("has-button", `Undo browser changes in run ${runId}`) === "true" &&
+    console.log("Open Tasks → Undo whole browser run. Click Review browser changes, select both form fields and the run-owned tab, then click Undo selected browser changes. The remote click must stay outside the selection.");
+    await until("native run undo review control", () => {
+      try { return native("has-button", `Review browser changes in run ${runId}`) === "true" &&
         native("has-name", "Consequential page actions") === "true" &&
         native("has-name", "no remote confirmation") === "true"; } catch { return false; }
     }, 600_000);

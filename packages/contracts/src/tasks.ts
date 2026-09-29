@@ -241,6 +241,9 @@ export const TaskUndoRunBrowserChangesParams = z.object({
   taskId: text,
   expectedRevision: z.number().int().positive(),
   runId: text,
+  reviewToken: z.string().regex(/^[a-f0-9]{64}$/),
+  expectedStepIds: z.array(text).max(200).refine(ids => new Set(ids).size === ids.length),
+  selectedStepIds: z.array(text).min(1).max(200).refine(ids => new Set(ids).size === ids.length),
 }).strict();
 export const TaskReconcileOperationParams = z
   .object({
@@ -298,6 +301,9 @@ export const TaskReceiptSchema = z.object({
   unresolvedActions: z.array(
     z.object({ intentId: text, runId: text, pageId: text, status: z.enum(["pending", "uncertain"]) }),
   ),
+  undoReviews: z.array(z.object({
+    runId: text, token: z.string().regex(/^[a-f0-9]{64}$/), eligibleStepIds: z.array(text).max(200),
+  }).strict()).max(200).default([]),
   browserChanges: z.array(z.object({
     stepId: text, runId: text, pageId: text, taskRevision: z.number().int().positive(),
     op: z.enum(["fill", "type", "check", "uncheck", "select"]),
