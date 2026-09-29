@@ -1,17 +1,20 @@
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
+import { AuxError, toErrorPayload } from "@aux/contracts";
 import { EventBus, GoalService, HookService, openDb, Repo, TaskService } from "@aux/runtime";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
+import { installationMethods } from "../../apps/runtime/src/api/methods/installation.js";
+import { memoryMethods } from "../../apps/runtime/src/api/methods/memory.js";
 import { prepareProtectedDatabase } from "../../apps/runtime/src/store/protected-startup.js";
 import { ContentMemoryStore } from "../../apps/runtime/src/services/content-memory.js";
 import { MemoryPipeline } from "../../apps/runtime/src/services/memory-pipeline.js";
 import { exportRecoveryPackage, inspectRecoveryPackage, stageRecoveryPackage } from
   "../../apps/runtime/src/services/recovery-package.js";
-import { applyPendingRuntimeRestore, createRuntimeBackup, stageRuntimeRestore } from "../../apps/runtime/src/services/runtime-backup.js";
-import { advanceManagedRecoveryGeneration } from "../../apps/runtime/src/services/managed-recovery-generation.js";
+import { applyPendingRuntimeRestore, createRuntimeBackup, listRuntimeBackups, runtimeRestoreStatus, stageRuntimeRestore } from "../../apps/runtime/src/services/runtime-backup.js";
+import { advanceManagedRecoveryGeneration, currentManagedRecoveryGeneration } from "../../apps/runtime/src/services/managed-recovery-generation.js";
 
 const directories: string[] = [];
 afterEach(() => { for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true }); });
@@ -133,6 +136,75 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const memory = new MemoryPipeline(restored, f.targetNative.bridge, join(f.targetDir, "space-memory"), f.targetId);
   expect(await memory.inbox(f.space.workspaceId)).toHaveLength(1);
   expect(f.targetNative.secrets.has(`aux_root_v1_${createHash("sha256").update(f.targetId).digest("hex").slice(0, 24)}`)).toBe(true);
+  restored.close();
+});
+
+it("keeps a copied phrase package restorable after Forget refuses the older managed backup", async () => {
+  const f = await fixture();
+  const phrase = "an original offline recovery phrase";
+  const stale = "This managed backup predates the current recovery generation and cannot be restored. Copied files and phrases cannot be revoked.";
+  const exported = await exportRecoveryPackage(f.source, f.sourceNative.bridge, f.sourceDir, f.sourceId, phrase);
+  const copyDir = mkdtempSync(join(tmpdir(), "aux-recovery-copy-"));
+  directories.push(copyDir);
+  const copyPath = join(copyDir, "owner-copy.auxrec");
+  copyFileSync(exported.path, copyPath);
+  const copiedBytes = readFileSync(copyPath);
+  const managed = await createRuntimeBackup(f.source, f.sourceDir);
+  const managedCopy = join(copyDir, "managed-copy");
+  cpSync(managed.path, managedCopy, { recursive: true });
+  const before = currentManagedRecoveryGeneration(f.sourceDir);
+  const pipeline = new MemoryPipeline(f.source, f.sourceNative.bridge, join(f.sourceDir, "space-memory"), f.sourceId);
+  const forgotten = await memoryMethods["memory.pipeline.forget"]!({
+    client: { external: false, codeMode: false }, method: "memory.pipeline.forget",
+    params: { workspaceId: f.space.workspaceId, all: true }, revokeWorkspaceContext: () => {},
+    s: { repo: f.source, memoryPipeline: pipeline, settings: { all: () => ({ dataDir: f.sourceDir }) },
+      events: { emit: () => {} } },
+  } as unknown as Parameters<NonNullable<(typeof memoryMethods)["memory.pipeline.forget"]>>[0]) as { forgotten: number };
+  expect(forgotten.forgotten).toBeGreaterThan(0);
+  const after = currentManagedRecoveryGeneration(f.sourceDir);
+  expect(after).toEqual({ lineageId: before.lineageId, generation: before.generation + 1 });
+  const backups = await listRuntimeBackups(f.sourceDir);
+  expect(backups.find(item => item.path === managed.path)?.restorable).toBe(false);
+  expect(backups.some(item => item.path !== managed.path && item.restorable && item.missingArtifacts === 0)).toBe(true);
+  expect((await runtimeRestoreStatus(f.sourceDir)).managedRecovery.freshBackupIssued).toBe(true);
+  const freshPhrase = "a fresh package phrase after forget";
+  const fresh = await exportRecoveryPackage(f.source, f.sourceNative.bridge, f.sourceDir, f.sourceId, freshPhrase);
+  expect(fresh.path).not.toBe(exported.path);
+  expect(existsSync(fresh.path)).toBe(true);
+  await expect(inspectRecoveryPackage(fresh.path, freshPhrase, f.targetId)).resolves.toMatchObject({
+    manifest: { version: 1 },
+  });
+  const refuse = async (path: string) => {
+    let error: unknown;
+    try {
+      await installationMethods["installation.stageRestore"]!({
+        client: { external: false }, method: "installation.stageRestore", params: { path },
+        s: { repo: f.source, settings: { all: () => ({ dataDir: f.sourceDir }) } },
+      } as unknown as Parameters<NonNullable<(typeof installationMethods)["installation.stageRestore"]>>[0]);
+    } catch (caught) { error = caught; }
+    expect(error).toBeInstanceOf(AuxError);
+    expect(error).toMatchObject({ code: "recovery_stale", message: stale });
+    expect((error as Error).message).not.toMatch(/was revoked|have been revoked|copy was revoked|package was revoked/);
+    expect(toErrorPayload(error)).toMatchObject({ code: "recovery_stale", message: stale });
+  };
+  await refuse(managed.path);
+  await refuse(managedCopy);
+  expect(existsSync(exported.path)).toBe(true);
+  expect(readFileSync(copyPath).equals(copiedBytes)).toBe(true);
+  const review = await inspectRecoveryPackage(copyPath, phrase, f.targetId);
+  const staged = await stageRecoveryPackage(f.target, f.targetNative.bridge, f.targetDir, f.targetId,
+    copyPath, phrase, review.sha256, review.reviewToken);
+  expect(staged).toMatchObject({ staged: true });
+  expect(readFileSync(copyPath).equals(copiedBytes)).toBe(true);
+  f.target.close();
+  f.source.close();
+  expect((await applyPendingRuntimeRestore(f.targetDir, join(f.targetDir, "state.sqlite"), f.targetId)).applied).toBe(true);
+  const reopenedDb = openDb(join(f.targetDir, "state.sqlite"));
+  const cipher = await prepareProtectedDatabase(reopenedDb, f.targetNative.bridge, f.targetId);
+  const restored = new Repo(reopenedDb, cipher);
+  expect(restored.listWorkspaces()[0]?.name).toBe("Protected research space");
+  const memory = new MemoryPipeline(restored, f.targetNative.bridge, join(f.targetDir, "space-memory"), f.targetId);
+  expect(await memory.inbox(f.space.workspaceId)).toHaveLength(1);
   restored.close();
 });
 

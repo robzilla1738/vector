@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { closeSync, existsSync, fsyncSync, lstatSync, openSync, readFileSync, renameSync, unlinkSync, writeSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
+import { AUX_ERROR_REGISTRY, AuxError } from "@aux/contracts";
 
 export type ManagedRecoveryGeneration = { lineageId: string; generation: number };
 const NAME = "managed-recovery-generation.json";
@@ -95,14 +96,16 @@ export function advanceManagedRecoveryGeneration(dataDir: string): ManagedRecove
   });
 }
 
+function staleManagedBackup(): never {
+  throw new AuxError("recovery_stale", AUX_ERROR_REGISTRY.recovery_stale.publicMessage);
+}
+
 export function assertManagedRecoveryGeneration(dataDir: string, candidate: unknown,
   allowLegacyAtGenerationZero = false): ManagedRecoveryGeneration {
   const current = currentManagedRecoveryGeneration(dataDir);
   if (candidate === undefined && allowLegacyAtGenerationZero && current.generation === 0) return current;
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate))
-    throw new Error("This managed backup predates the current recovery generation and cannot be restored.");
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) staleManagedBackup();
   const value = candidate as Record<string, unknown>;
-  if (value.lineageId !== current.lineageId || value.generation !== current.generation)
-    throw new Error("This managed backup predates the current recovery generation and cannot be restored.");
+  if (value.lineageId !== current.lineageId || value.generation !== current.generation) staleManagedBackup();
   return current;
 }

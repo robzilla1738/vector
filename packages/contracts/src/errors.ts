@@ -17,6 +17,7 @@ export type AuxErrorCode =
   | "permission_denied"
   | "assertion_failed"
   | "operation_not_found"
+  | "recovery_stale"
   | "internal";
 
 export type AuxErrorDomain = "input" | "browser" | "model" | "authorization" | "runtime" | "operation";
@@ -52,6 +53,7 @@ export const AUX_ERROR_REGISTRY = {
   permission_denied: { id: "AUX-E4002", domain: "authorization", retryable: false, payloadAllowlist: ["effect", "origin"], origin: "runtime", userRecovery: "Review the denied action and its permission.", modelGuidance: "Do not retry while denied; request authorization or use a permitted path.", publicMessage: "The action is not authorized." },
   assertion_failed: { id: "AUX-E6001", domain: "operation", retryable: false, payloadAllowlist: ["assertion"], origin: "runtime", userRecovery: "Review the expected result.", modelGuidance: "Observe and report the unmet condition.", publicMessage: "The expected result was not observed." },
   operation_not_found: { id: "AUX-E6002", domain: "operation", retryable: false, payloadAllowlist: ["operationId"], origin: "runtime", userRecovery: "Choose an available operation.", modelGuidance: "List operations and choose an existing one.", publicMessage: "The operation was not found." },
+  recovery_stale: { id: "AUX-E5005", domain: "runtime", retryable: false, payloadAllowlist: [], origin: "runtime", userRecovery: "Create a fresh recovery package. Copied files and phrases cannot be revoked.", modelGuidance: "Do not retry this restore. Say that copied files and phrases cannot be revoked and a new recovery package is required.", publicMessage: "This managed backup predates the current recovery generation and cannot be restored. Copied files and phrases cannot be revoked." },
   internal: { id: "AUX-E5000", domain: "runtime", retryable: false, payloadAllowlist: [], origin: "runtime", userRecovery: "Try again or report this error.", modelGuidance: "Stop and report the runtime error.", publicMessage: "An internal error occurred." },
 } as const satisfies Record<AuxErrorCode, AuxErrorDefinition>;
 
@@ -125,6 +127,8 @@ export function errorAdvice(code: AuxErrorCode): { retryable: boolean; hint: str
       return { retryable: false, hint: "this feature is not enabled for this browser Profile" };
     case "cancelled":
       return { retryable: false, hint: null };
+    case "recovery_stale":
+      return { retryable: false, hint: "create a fresh recovery package; copied files and phrases cannot be revoked" };
     default:
       return { retryable: false, hint: null };
   }

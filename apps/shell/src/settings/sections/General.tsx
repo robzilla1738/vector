@@ -501,7 +501,7 @@ export function GeneralSettings({
                   {new Date(item.createdAt).toLocaleString()} · schema {item.schemaVersion} ·{" "}
                   {item.artifactFiles} artifacts
                   {item.missingArtifacts ? ` · ${item.missingArtifacts} unavailable` : ""}
-                  {!item.restorable ? " · Older than current Forget generation — restore refused" : ""}
+                  {!item.restorable ? " · Older than current Forget generation — restore refused. Copied files and phrases cannot be revoked." : ""}
                   <button
                     className="btn sm"
                     disabled={backupBusy || restoreStatus.pending || !item.restorable}
