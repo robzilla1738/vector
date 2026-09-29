@@ -20,5 +20,11 @@ it("describes a focused trigger, closes on Escape, and leaves focus in place", a
     await act(async () => button.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     expect(document.querySelector('[role="tooltip"]')).toBeNull();
     expect(document.activeElement).toBe(button);
+    await act(async () => button.dispatchEvent(new Event("pointerover", { bubbles: true })));
+    expect(document.querySelector('[role="tooltip"]')).toBeNull();
+    await act(async () => button.dispatchEvent(new Event("pointerout", { bubbles: true })));
+    await act(async () => button.blur());
+    await act(async () => button.focus());
+    expect(document.querySelector('[role="tooltip"]')).not.toBeNull();
   } finally { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
 });

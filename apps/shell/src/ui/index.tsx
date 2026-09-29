@@ -1,4 +1,4 @@
-import { useCallback, useId, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { useCallback, useId, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type RefObject, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { I } from "../components/icons";
 import { Menu } from "./dialog";
 import "./ui.css";
@@ -129,8 +129,8 @@ export function EmptyState({ title, description, action, icon = I.folder }: { ti
   return <div className="ui-empty"><span className="ui-empty-icon" aria-hidden="true">{icon}</span><strong>{title}</strong>{description && <p>{description}</p>}{action}</div>;
 }
 
-export function DetailPane({ title, metadata, actions, onClose, children, className = "" }: { title: string; metadata?: ReactNode; actions?: ReactNode; onClose?: () => void; children: ReactNode; className?: string }) {
-  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button type="button" className="icon-btn" aria-label={`Close ${title}`} onClick={onClose}>{I.close}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
+export function DetailPane({ title, metadata, actions, onClose, children, className = "", headingRef }: { title: string; metadata?: ReactNode; actions?: ReactNode; onClose?: () => void; children: ReactNode; className?: string; headingRef?: RefObject<HTMLElement | null> }) {
+  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button type="button" className="icon-btn" aria-label={`Close ${title}`} onClick={onClose}>{I.close}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
 }
 
 export function ComposerFrame({ context, notices, children }: { context?: ReactNode; notices?: ReactNode; children: ReactNode }) {

@@ -12,12 +12,14 @@ interface BaseProps {
   className?: string;
   children: ReactNode;
   returnFocus?: RefObject<HTMLElement | null>;
+  initialFocusRef?: RefObject<HTMLElement | null>;
 }
 
 function useDialogLifecycle(
   open: boolean,
   ref: RefObject<HTMLDialogElement | null>,
   returnFocus?: RefObject<HTMLElement | null>,
+  initialFocusRef?: RefObject<HTMLElement | null>,
 ) {
   const previous = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -26,6 +28,7 @@ function useDialogLifecycle(
     previous.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "");
+    initialFocusRef?.current?.focus({ preventScroll: true });
     requestStageReport();
     return () => {
       if (typeof dialog.close === "function") dialog.close();
@@ -34,14 +37,21 @@ function useDialogLifecycle(
       if (target?.isConnected) target.focus({ preventScroll: true });
       requestAnimationFrame(requestStageReport);
     };
-  }, [open, ref, returnFocus]);
+  }, [open, ref, returnFocus, initialFocusRef]);
 }
 
 /** The single modal shell for forms and confirmations. Native dialog owns
  * focus containment, Escape, and the top layer. */
-export function Dialog({ label, onClose, className = "", children, returnFocus }: BaseProps) {
+export function Dialog({
+  label,
+  onClose,
+  className = "",
+  children,
+  returnFocus,
+  initialFocusRef,
+}: BaseProps) {
   const ref = useRef<HTMLDialogElement>(null);
-  useDialogLifecycle(true, ref, returnFocus);
+  useDialogLifecycle(true, ref, returnFocus, initialFocusRef);
   useEffect(() => acquireFloatingSidebarLock("keep-current"), []);
   return createPortal(
     <dialog
@@ -90,7 +100,6 @@ export function Menu({
   point?: { x: number; y: number };
   atEnd?: boolean;
   placement?: "below-end" | "above-start" | "above-end";
-  initialFocusRef?: RefObject<HTMLElement | null>;
   id?: string;
   onMenuKeyDown?: (event: KeyboardEvent<HTMLDialogElement>) => void;
   menuRef?: RefObject<HTMLDialogElement | null>;
@@ -149,7 +158,10 @@ export function Menu({
         }
         if (event.key === "Tab") {
           event.preventDefault();
+          const trigger = anchor?.current ?? returnFocus?.current;
+          const direction = event.shiftKey ? -1 : 1;
           onClose();
+          queueMicrotask(() => focusOutsideMenu(trigger, direction));
           return;
         }
         moveMenuFocus(event);
@@ -170,4 +182,21 @@ export function Menu({
     </dialog>,
     document.body,
   );
+}
+
+function focusOutsideMenu(trigger: HTMLElement | null | undefined, direction: 1 | -1) {
+  if (!trigger?.isConnected) return;
+  const candidates = [
+    ...document.querySelectorAll<HTMLElement>(
+      'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])',
+    ),
+  ].filter(
+    (node) =>
+      !node.closest('dialog, [inert], [aria-hidden="true"]') &&
+      !node.matches(":disabled, [hidden]") &&
+      node.getClientRects().length > 0,
+  );
+  const index = candidates.indexOf(trigger);
+  const next = index >= 0 ? candidates[index + direction] : null;
+  (next ?? trigger).focus({ preventScroll: true });
 }

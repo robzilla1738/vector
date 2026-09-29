@@ -9,6 +9,7 @@ export function Tooltip({ content, children }: { content: ReactNode; children(id
   const bubble = useRef<HTMLSpanElement>(null);
   const hovered = useRef(false);
   const focused = useRef(false);
+  const dismissed = useRef(false);
   const [visible, setVisible] = useState(false);
   useLayoutEffect(() => {
     if (!visible) return;
@@ -29,9 +30,9 @@ export function Tooltip({ content, children }: { content: ReactNode; children(id
       window.removeEventListener("resize", place);
     };
   }, [visible, content]);
-  return <span ref={trigger} className="ui-tooltip-trigger" onPointerEnter={() => { hovered.current = true; setVisible(true); }} onPointerLeave={() => { hovered.current = false; if (!focused.current) setVisible(false); }}
-    onFocusCapture={() => { focused.current = true; setVisible(true); }} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { focused.current = false; if (!hovered.current) setVisible(false); } }}
-    onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); setVisible(false); } }}>
+  return <span ref={trigger} className="ui-tooltip-trigger" onPointerEnter={() => { hovered.current = true; if (!dismissed.current) setVisible(true); }} onPointerLeave={() => { hovered.current = false; if (!focused.current) { dismissed.current = false; setVisible(false); } }}
+    onFocusCapture={() => { focused.current = true; if (!dismissed.current) setVisible(true); }} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { focused.current = false; if (!hovered.current) { dismissed.current = false; setVisible(false); } } }}
+    onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); dismissed.current = true; setVisible(false); } }}>
     {children(id)}
     {visible && createPortal(<span ref={bubble} id={id} className="ui-tooltip" role="tooltip">{content}</span>, document.body)}
   </span>;

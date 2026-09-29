@@ -41,3 +41,12 @@
   :is(.horizontal-tab-select, .horizontal-group-chip, .horizontal-profile, .sidebar .space-switch, .aux-native-dialog button, .aux-native-dialog input, .cb-provider-scopes button):focus-visible { outline: 2px solid var(--focus-line); outline-offset: -2px; box-shadow: none; }
 }
 } /* @layer overrides */
+
+@layer overrides {
+  @media (prefers-reduced-motion: reduce) {
+    .aux-dialog-surface, .ui-skeleton, .ui-tooltip, .spin, .drawer-loading .spin {
+      animation: none;
+      transition: none;
+    }
+  }
+}

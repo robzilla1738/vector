@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CompactObservation } from "@aux/contracts";
 import { useStore, call } from "../store";
 import { ObservationPanel } from "./ObservationPanel";
@@ -10,6 +10,7 @@ import { DetailPane, Dialog, EmptyState } from "../ui";
  * ObservationPanel so the two never drift.
  */
 export function Inspector() {
+  const headingRef = useRef<HTMLElement>(null);
   const setOverlay = useStore((s) => s.setOverlay);
   const inspectorObs = useStore((s) => s.inspectorObs) as CompactObservation | null;
   const page = useStore((s) => s.pages.find((p) => p.pageId === ((s.inspectorObs as CompactObservation | null)?.pageId ?? s.activePageId)));
@@ -37,13 +38,13 @@ export function Inspector() {
   };
 
   return (
-    <Dialog label="Observation" onClose={close} className="aux-observation-dialog">
-        <DetailPane className="observation-detail" title="What the agent sees" onClose={close}
+    <Dialog label="Observation" onClose={close} className="aux-observation-dialog" initialFocusRef={headingRef}>
+        <DetailPane className="observation-detail" title="What the agent sees" headingRef={headingRef} onClose={close}
           metadata={historical ? "Recorded snapshot · may differ from the live page" : "Current page observation"}
           actions={!historical && activePageId ? <button className="btn sm ghost" onClick={() => setRetry(value => value + 1)}>Refresh</button> : undefined}>
           {!activePageId && !historical && <EmptyState title="No active page" description="Open a page to inspect its available content." />}
           {err && <div role="alert"><p className="hint err">{err}</p><button className="btn sm" onClick={() => setRetry(value => value + 1)}>Retry observation</button></div>}
-          {!obs && !err && (activePageId || historical) && <output className="drawer-loading" data-block><span className="spin" /> Observing {page?.title || page?.url || activePageId}…</output>}
+          {!obs && !err && (activePageId || historical) && <output className="drawer-loading" aria-live="polite" data-block><span className="spin" aria-hidden="true" /> Observing {page?.title || page?.url || activePageId}…</output>}
           {obs && <><ObservationPanel key={`${obs.pageId}:${obs.revision}`} obs={obs} />
             <details className="observation-raw"><summary>Raw observation</summary><pre className="obs-raw selectable">{obs.text}</pre></details></>}
         </DetailPane>
