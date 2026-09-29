@@ -70,13 +70,26 @@ export class AgentConnectionService {
     return this.get(connectionId);
   }
 
+  /** Recheck the durable authority, including an unchanged scope, before every scoped dispatch. */
+  isLive(client: ScopedExternalClient, now = Date.now()): boolean {
+    const row = this.repo.db.prepare(`SELECT ${COLUMNS} FROM agent_connections WHERE connection_id=?`)
+      .get(client.connectionId) as Row | undefined;
+    if (!row || row.revoked_at !== null || (row.expires_at !== null && row.expires_at <= now)) return false;
+    const scope: AgentConnectionScope = row.scope_kind === "task"
+      ? { kind: "task", workspaceId: row.workspace_id, taskId: row.task_id! }
+      : row.scope_kind === "session"
+        ? { kind: "session", workspaceId: row.workspace_id, sessionId: row.session_id! }
+        : { kind: "workspace", workspaceId: row.workspace_id };
+    return JSON.stringify(scope) === JSON.stringify(client.scope);
+  }
+
   authorize(token: string): ScopedExternalClient | null {
     if (!token.startsWith("auxc_")) return null;
     const hash = digest(token);
     const now = Date.now();
     const cached = this.active.get(hash);
     if (cached) {
-      if (cached.expiresAt !== undefined && cached.expiresAt <= now) {
+      if (!this.isLive(cached.client, now)) {
         this.active.delete(hash);
         return null;
       }

@@ -671,6 +671,7 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(final.result).toMatchObject({ report: "after takeover" });
     expect(h.pages.observe).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("fresh page snapshot after takeover");
+  });
   it("selects an unchecked radio with a check receipt when the model clicks it", async () => {
     const before = { ...pageObs(), content: { ...pageObs().content,
       text: "Pro plan",

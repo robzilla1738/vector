@@ -20,7 +20,7 @@ function setup() {
   return { db, service, created, lastUsed };
 }
 
-it("authorizes repeat requests from memory and writes last_used_at at most once a minute", () => {
+it("rechecks live authority on repeat requests and writes last_used_at at most once a minute", () => {
   vi.useFakeTimers({ now: 1_000_000 });
   const { db, service, created, lastUsed } = setup();
   const prepare = vi.spyOn(db, "prepare");
@@ -29,7 +29,7 @@ it("authorizes repeat requests from memory and writes last_used_at at most once 
   const queries = prepare.mock.calls.length;
   vi.setSystemTime(1_030_000);
   expect(service.authorize(created.token)?.connectionId).toBe(created.connection.connectionId);
-  expect(prepare.mock.calls.length).toBe(queries); // no lookup, no write
+  expect(prepare.mock.calls.length).toBe(queries + 1); // one live row check, no write
   expect(lastUsed()).toBe(first);
   vi.setSystemTime(1_061_000);
   service.authorize(created.token);

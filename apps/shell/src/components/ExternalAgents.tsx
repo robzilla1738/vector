@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { AgentConnection, AgentConnectionScope, Task, Workspace } from "@aux/contracts";
 import { mcpCatalogGrouped, type McpCatalogTool } from "@aux/contracts/mcp-catalog";
 import { bridge } from "../bridge";
+import { ExternalAgentOversight } from "./ExternalAgentOversight";
 
 type Config = Awaited<ReturnType<typeof bridge.agentConfig>>;
 type Installation=Awaited<ReturnType<typeof bridge.agentClients>>[number];
@@ -101,6 +102,7 @@ export function ExternalAgents() {
       <div className="external-agent-copy"><strong>{connection.name}</strong><span className="hint">{connection.client === "codex" ? "Codex" : "Claude Code"} · {connectionTarget(connection)}{connection.lastUsedAt ? ` · used ${new Date(connection.lastUsedAt).toLocaleString()}` : " · not used yet"}{connection.revokedAt ? " · revoked" : ""}</span></div>
       {!connection.revokedAt && <button className="btn sm" disabled={busy} onClick={() => void revoke(connection.connectionId)}>Revoke</button>}
     </div>)}</div>}
+    <ExternalAgentOversight connections={connections} />
     {message && <output data-block>{message}</output>}
     <span className="hint">Removing the client entry stops normal use. Revoking it here invalidates the token immediately. Quitting Aux stops the runtime.</span>
   </section>;

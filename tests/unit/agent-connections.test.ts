@@ -20,9 +20,13 @@ it("persists task-scoped connections as hashes and revokes their tokens immediat
   const created = service.create({ name: "Codex review", client: "codex", scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId } });
   expect(created.token).toMatch(/^auxc_/);
   expect(service.authorize(created.token)).toMatchObject({ connectionId: created.connection.connectionId, scope: created.connection.scope });
+  expect(service.isLive({ external: true, connectionId: created.connection.connectionId, scope: created.connection.scope })).toBe(true);
+  expect(service.isLive({ external: true, connectionId: created.connection.connectionId,
+    scope: { kind: "workspace", workspaceId: workspace.workspaceId } })).toBe(false);
   expect(readFileSync(path).includes(created.token)).toBe(false);
   expect(service.list()[0]).toMatchObject({ name: "Codex review", lastUsedAt: expect.any(Number) });
   service.revoke(created.connection.connectionId);
+  expect(service.isLive({ external: true, connectionId: created.connection.connectionId, scope: created.connection.scope })).toBe(false);
   expect(service.authorize(created.token)).toBeNull();
   expect(service.list()[0]?.revokedAt).toEqual(expect.any(Number));
   expect(() => service.create({ name: "Wrong task", client: "claude", scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: "missing" } })).toThrow("does not belong");

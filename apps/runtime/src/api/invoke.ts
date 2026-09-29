@@ -30,6 +30,11 @@ export function makeInvoker(s: Services) {
     const params: any = schema.parse(rawParams ?? {});
 
     const scope = client.external ? client.scope : undefined;
+    if (scope && client.connectionId && s.agentConnections &&
+      !s.agentConnections.isLive({ external: true, connectionId: client.connectionId, scope })) {
+      s.externalSessions?.sweepIdle();
+      throw new AuxError("permission_denied", "This external connection expired, was revoked, or changed scope.");
+    }
     if (scope) {
       if (method === "agent.js.run" || method === "agent.js.reset") {
         // The code-mode host calls this same invoker with the same client.
@@ -177,6 +182,8 @@ export function makeInvoker(s: Services) {
       scope && client.connectionId
         ? s.externalSessions?.ensure({ connectionId: client.connectionId, scope })
         : undefined;
+    if (scope && client.connectionId && s.externalSessions && !externalRunId)
+      throw new AuxError("permission_denied", "This external session is no longer authorized.");
 
     const withExternalPage = async <T>(
       pageId: string,
@@ -222,6 +229,18 @@ export function makeInvoker(s: Services) {
       externalRunId,
       withExternalPage,
     };
+    const tracked = async <T>(action: () => Promise<T>): Promise<T> => {
+      if (!externalRunId || !client.connectionId || !s.externalSessions) return action();
+      const startedAt = Date.now();
+      try {
+        const result = await action();
+        s.externalSessions.noteInvocation(client.connectionId, externalRunId, method, startedAt, true);
+        return result;
+      } catch (error) {
+        s.externalSessions.noteInvocation(client.connectionId, externalRunId, method, startedAt, false);
+        throw error;
+      }
+    };
 
     if (
       host === "chromium-fork" &&
@@ -243,7 +262,7 @@ export function makeInvoker(s: Services) {
         ].includes(method)
       )
         throw new AuxError("permission_denied", "Organize bookmarks in Aux Library.");
-      const result = await s.native.bookmarksInvoke(method, params);
+      const result = await tracked(() => s.native!.bookmarksInvoke!(method, params));
       if (method === "bookmarks.list") {
         return (result as { url: string; readingList?: boolean }[]).map((item) => ({
           ...item,
@@ -262,7 +281,7 @@ export function makeInvoker(s: Services) {
       return result;
     }
 
-    return METHODS[method as MethodName](ctx);
+    return tracked(() => METHODS[method as MethodName](ctx));
   }
   return Object.assign(invoke, {
     eventVisible: (scope: AgentConnectionScope, connectionId: string | undefined, event: AuxEvent) =>

@@ -23,7 +23,7 @@ export class ApiServer {
   private server: Server;
   private wss: WebSocketServer;
   /** backlog buffers live frames while a resuming socket replays its cursor. */
-  private sockets = new Map<WebSocket, { client: ClientContext; backlog?: string[] }>();
+  private sockets = new Map<WebSocket, { client: ClientContext; scopedToken?: string; backlog?: string[] }>();
   /**
    * Readiness gate (06-T): the port binds before the service tree finishes
    * building so early callers get a real answer instead of ECONNREFUSED —
@@ -82,7 +82,8 @@ export class ApiServer {
         parsedSeq !== undefined && Number.isInteger(parsedSeq) && parsedSeq >= 0 ? parsedSeq : undefined;
       const streamId = url.searchParams.get("streamId") ?? undefined;
       const resume = afterSeq === undefined ? undefined : { afterSeq, streamId };
-      this.wss.handleUpgrade(req, socket, head, (ws) => this.onSocket(ws, client!, resume));
+      const scopedToken = client.scope ? bearer ?? queryToken ?? undefined : undefined;
+      this.wss.handleUpgrade(req, socket, head, (ws) => this.onSocket(ws, client!, resume, scopedToken));
     });
     this.opts.events.subscribe((e) => this.broadcast(e));
   }
@@ -129,12 +130,13 @@ export class ApiServer {
     }
   }
 
-  private onSocket(ws: WebSocket, client: ClientContext, resume?: { afterSeq: number; streamId?: string }) {
-    const entry: { client: ClientContext; backlog?: string[] } = { client };
+  private onSocket(ws: WebSocket, client: ClientContext, resume?: { afterSeq: number; streamId?: string }, scopedToken?: string) {
+    const entry: { client: ClientContext; scopedToken?: string; backlog?: string[] } = { client, scopedToken };
     if (resume) entry.backlog = [];
     this.sockets.set(ws, entry);
     ws.on("close", () => this.sockets.delete(ws));
     ws.on("message", async (data) => {
+      if (!this.liveSocket(ws, entry)) return;
       let msg: unknown;
       try {
         msg = JSON.parse(String(data));
@@ -165,9 +167,17 @@ export class ApiServer {
    * beyond REPLAY_LIMIT resync instead of replaying a flood.
    */
   private static readonly REPLAY_LIMIT = 10_000;
+  private liveSocket(ws: WebSocket, entry: { client: ClientContext; scopedToken?: string }): boolean {
+    if (!entry.client.scope) return true;
+    const fresh = entry.scopedToken ? this.opts.authorizeScopedToken?.(entry.scopedToken) : null;
+    if (fresh && fresh.connectionId === entry.client.connectionId &&
+      JSON.stringify(fresh.scope) === JSON.stringify(entry.client.scope)) return true;
+    ws.close(1008, "Connection expired or revoked");
+    return false;
+  }
   private resume(
     ws: WebSocket,
-    entry: { client: ClientContext; backlog?: string[] },
+    entry: { client: ClientContext; scopedToken?: string; backlog?: string[] },
     resume: { afterSeq: number; streamId?: string },
   ) {
     const visible = (e: AuxEvent) =>
@@ -176,6 +186,7 @@ export class ApiServer {
     let lastSeq = cursor;
     let replayed = 0;
     for (;;) {
+      if (!this.liveSocket(ws, entry)) return;
       const out = this.opts.events.since(
         cursor,
         2000,
@@ -208,6 +219,7 @@ export class ApiServer {
     const backlog = entry.backlog ?? [];
     entry.backlog = undefined;
     for (const frame of backlog) {
+      if (!this.liveSocket(ws, entry)) return;
       const seq = (JSON.parse(frame) as { event: AuxEvent }).event.seq;
       if (seq > lastSeq) ws.send(frame);
     }
@@ -217,6 +229,7 @@ export class ApiServer {
     let frame: string | undefined;
     for (const [ws, entry] of this.sockets) {
       if (ws.readyState !== ws.OPEN) continue;
+      if (!this.liveSocket(ws, entry)) continue;
       // Scoped sockets get a filtered stream; with no filter configured they
       // get nothing rather than the global firehose.
       if (entry.client.scope && (!this.opts.filterEvent || !this.opts.filterEvent(entry.client, e))) continue;

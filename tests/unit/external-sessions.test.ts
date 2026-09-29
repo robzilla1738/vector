@@ -65,12 +65,18 @@ it("gives one scoped connection one session run, then a new run after that one e
   }, client);
   expect(repo.getRun(runId)?.pageIds).toEqual(["p1"]);
   expect(executed.at(-1)?.runId).toBe(runId);
+  expect(repo.listSteps(runId)).toMatchObject([{ op: "pages.execute", outcome: { status: "ok" } }]);
+  expect(repo.listSteps(runId)[0]?.inputs).toBeUndefined();
 
   await expect(invoke("agent.web.fetch", {
     taskId: task.taskId,
     expectedRevision: task.revision,
     url: "https://example.com/fixture",
   }, client)).rejects.toMatchObject({ code: "permission_denied" });
+  expect(repo.listSteps(runId).map(step => [step.op, step.outcome?.status])).toEqual([
+    ["pages.execute", "ok"], ["agent.web.fetch", "failed"],
+  ]);
+  expect(JSON.stringify(repo.listSteps(runId))).not.toContain("https://example.com/fixture");
   const anchored = decisions(repo).filter((row) => row.request.runId === runId);
   const approval = anchored.find((row) => row.decision.status === "ask" && row.decision.suspension?.approvalId);
   const approvalId = approval?.decision.suspension?.approvalId;
@@ -93,7 +99,7 @@ it("gives one scoped connection one session run, then a new run after that one e
 
   await invoke("agentConnections.revoke", { connectionId: created.connection.connectionId }, { external: false });
   expect(repo.getRun(nextId)).toMatchObject({ status: "cancelled", statusMessage: "Connection revoked" });
-  await invoke("pages.list", {}, client);
+  await expect(invoke("pages.list", {}, client)).rejects.toMatchObject({ code: "permission_denied" });
   expect(thread(repo, created.connection.connectionId).some((run) => run.status === "running")).toBe(false);
 
   const expiring = connections.create({
@@ -110,7 +116,7 @@ it("gives one scoped connection one session run, then a new run after that one e
   await invoke("pages.list", {}, expiringClient);
   const expiredId = thread(repo, expiring.connection.connectionId)[0]!.runId;
   repo.db.prepare("UPDATE agent_connections SET expires_at=? WHERE connection_id=?").run(Date.now() - 1, expiring.connection.connectionId);
-  await invoke("pages.list", {}, expiringClient);
+  await expect(invoke("pages.list", {}, expiringClient)).rejects.toMatchObject({ code: "permission_denied" });
   expect(repo.getRun(expiredId)).toMatchObject({ status: "completed", statusMessage: "Connection expired" });
   expect(thread(repo, expiring.connection.connectionId).some((run) => run.status === "running")).toBe(false);
 });

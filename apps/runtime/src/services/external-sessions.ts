@@ -113,6 +113,20 @@ export class ExternalSessionService {
     this.events.emit("run.updated", { run: updated }, updated.runId);
   }
 
+  /** Record only an allowlisted operation name and status; never external arguments or results. */
+  noteInvocation(connectionId: string, runId: string, method: string, startedAt: number, succeeded: boolean) {
+    if (!/^(?:agent\.(?:web\.|turn\.|js\.|images\.)|pages\.(?:execute|cuaExecute)|tasks\.(?:create|update|start)|mcp\.tools\.call|results\.generate)/.test(method)) return;
+    const run = this.repo.getRun(runId);
+    if (!run || run.config?.externalConnectionId !== connectionId || !ACTIVE.has(run.status)) return;
+    const stepId = `external_${randomUUID()}`;
+    this.repo.saveStep({ stepId, runId, op: method, startedAt,
+      outcome: { stepId, op: method, status: succeeded ? "ok" : "failed", startedAt,
+        durationMs: Math.max(0, Date.now() - startedAt) } });
+    const updated: Run = { ...run, statusMessage: succeeded ? `External agent used ${method}` : `External agent action ${method} needs review` };
+    this.repo.saveRun(updated);
+    this.events.emit("run.updated", { run: updated }, runId);
+  }
+
   /** End the session run — revoked connections cancel, expired/idle complete. */
   end(connectionId: string, status: "completed" | "cancelled", statusMessage?: string) {
     const mapped = this.active.get(connectionId);
