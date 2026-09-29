@@ -358,7 +358,11 @@ const RESULTS: Record<string, unknown> = {
     "cancelled": true
   },
   "runtimeRestoreStatus": {
-    "pending": false
+    "pending": false,
+    "managedRecovery": {
+      "generation": 0,
+      "freshBackupIssued": false
+    }
   },
   "healthSummary": {
     "samples": 0,

@@ -8,7 +8,7 @@
  #include "base/memory/raw_ptr.h"
  #include "base/memory/weak_ptr.h"
  #include "base/strings/string_number_conversions.h"
-@@ -183,7 +184,19 @@
+@@ -183,7 +184,20 @@
      if (auto json = base::WriteJson(payload)) {
        last_physical_takeover_ = now;
        runtime->CallInternal("view.takeover", std::move(*json),
@@ -19,7 +19,8 @@
 +                                             << response.error_code;
 +                                return;
 +                              }
-+                              auto result = base::JsonReader::Read(response.result_json);
++                              auto result = base::JSONReader::Read(
++                                  response.result_json, base::JSON_PARSE_RFC);
 +                              const base::DictValue* dict =
 +                                  result ? result->GetIfDict() : nullptr;
 +                              if (dict && dict->FindBool("accepted").value_or(false)) {
