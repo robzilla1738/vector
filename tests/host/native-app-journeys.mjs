@@ -5209,7 +5209,7 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       (await rpc("pages.list")).some(item => item.pageId === page.pageId && item.url === `${origin}/red` && !item.loading));
     console.log("Focus a noneditable Aux shell control, press Shift-F10, and choose Summarize page in the native context menu.");
     await until("page-scoped summary draft", () =>
-      native("has-name", "Summarize this page and its key points.") === "true" &&
+      native("has-name", "Summarize this source and its key points.") === "true" &&
       native("has-name", `${origin}/red`) === "true", 120_000);
     record("native page action opens a summary draft for the current disposable tab", { pageId: page.pageId });
     const focusedComposer = await until("page-action composer focus", () => {
