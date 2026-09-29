@@ -60,7 +60,7 @@ const option = name => {
   return index < 0 ? undefined : process.argv[index + 1];
 };
 if (process.argv.includes("--list")) {
-  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --protected-startup | --browser-import-ui | --browser-import-formats | --browser-import-attached | --link-peek | --space-theme | --space-theme-advanced | --reader-peek | --tab-preview-focus | --tab-name-ui | --downloads | --site-controls | --tab-audio | --unsaved-work | --file-handoff | --http-auth | --http-auth-cancel | --reader | --translation | --eyedropper | --file-io | --workbook-export | --artifact-export | --agent-connections | --page-action | --profiles | --profile-confirmation | --popover | --menu-primitives | --toast-primitives | --selector-bookmark | --selector-site-permissions | --selector-context | --selector-downloads | --selector-results | --selector-task-resources | --selector-search | --selector-closed | --selector-reading | --quick-ask-focus | --settings-focus | --settings-search | --settings-route | --settings-internal-url | --settings-section-rail | --agent-grants | --privacy-history-panel | --settings-focus-jump | --library-focus | --appearance-prefs | --search-engine-prefs | --edge-leeway | --navigation-recovery | --certificate-recovery | --http-fallback | --http-fallback-dialog]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state", siteControls: "--site-controls needs an operator to open site controls, clear the disposable fixture's website data, reset its seeded blocked notification decision, and close the dialog before the storage check", tabAudio: "--tab-audio needs an operator to open Tab overview and select the disposable fixture tab; the harness checks mute and unmute", unsavedWork: "--unsaved-work needs an operator to open Tab overview and press Select duplicates; the harness checks that the edited fixture tab is kept", fileHandoff: "--file-handoff needs an operator to open Downloads; the harness opens and reveals a disposable text file", httpAuth: "--http-auth needs an operator to enter fixture-user / fixture-pass in the Aux sign-in prompt; the harness verifies the protected page loads", httpAuthCancel: "--http-auth-cancel needs an operator to cancel the disposable challenge; the harness verifies no protected content loads", preview: "--preview needs an operator to open Tab overview; the harness checks a captured background tab thumbnail", navigationMenu: "--navigation-menu needs an operator to focus Back, press ArrowDown, and choose the Red history entry", contextMenu: "--context-menu needs an operator to open the shell context menu and choose Reload", pageAction: "--page-action needs an operator to choose Summarize page from the native shell context menu", reader: "--reader needs an operator to open Reader view for a local article", eyeDropper: "--eyedropper needs an operator to select a color with the macOS sampler", fileIo: "--file-io needs an operator to export the fixture bookmark through Library to the printed path", workbookExport: "--workbook-export needs an operator to invoke the Aux shell workbook method and save to the printed path", artifactExport: "--artifact-export needs an operator to create a disposable stored image and save it through the Aux shell method", agentConnections: "--agent-connections needs an operator to create and revoke a disposable scoped connection through the Aux native shell", profiles: "--profiles needs an operator to create, rename, archive, restore, and explicitly delete only the generated disposable Profile", profileConfirmation: "--profile-confirmation checks a named native delete confirmation and cancellation without deleting the disposable Profile", popover: "--popover checks browser-context search, choices and Escape dismissal in a disposable chat", menuPrimitives: "--menu-primitives checks shared vertical Space and Browser tools menus with Escape dismissal in a disposable Profile", toastPrimitives: "--toast-primitives checks the no-data autofill info Toast and its timed dismissal in a disposable Profile", selectorBookmark: "--selector-bookmark checks add/remove toolbar state on a disposable local page", selectorSitePermissions: "--selector-site-permissions checks open-site selection in Aux Settings on a disposable local page", selectorContext: "--selector-context checks the open-tab choices in a disposable conversation", selectorDownloads: "--selector-downloads checks live progress, cancel, and retry in a disposable download shelf", selectorResults: "--selector-results checks the disposable set-results table surface", selectorTaskResources: "--selector-task-resources checks a task page reference after local navigation", selectorSearch: "--selector-search checks that a background local tab appears as a live search suggestion", selectorClosed: "--selector-closed checks a disposable closed tab in Library", selectorReading: "--selector-reading checks two disposable Reading List rows and a read-state change", quickAskFocus: "--quick-ask-focus checks the composer receives focus in the disposable Quick Ask window", settingsFocus: "--settings-focus checks Settings category, search result, and search-field focus in a disposable Profile", settingsSearch: "--settings-search checks Plugins, Google Calendar, and a generated Appearance field in Settings search", settingsRoute: "--settings-route checks native Settings section navigation", settingsInternalUrl: "--settings-internal-url checks an internal Settings URL stays in the top shell", settingsSectionRail: "--settings-section-rail checks three available grouped Settings destinations", agentGrants: "--agent-grants checks a disposable Write grant on and off", privacyHistoryPanel: "--privacy-history-panel checks the clear-history control is in Privacy & Security and cancellation leaves history intact", settingsFocusJump: "--settings-focus-jump checks one indexed search destination", libraryFocus: "--library-focus checks Library search-to-bookmark focus in a disposable Profile", appearancePrefs: "--appearance-prefs needs an operator to choose a light theme and title-bar material in a disposable Profile", searchEnginePrefs: "--search-engine-prefs checks a disposable search engine choice across restart", edgeLeeway: "--edge-leeway automatically checks native floating-sidebar entry and exit leeway over a guest page" }, null, 2));
+  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --protected-startup | --browser-import-ui | --browser-import-formats | --browser-import-attached | --link-peek | --space-theme | --space-theme-advanced | --reader-peek | --tab-preview-focus | --tab-name-ui | --downloads | --site-controls | --tab-audio | --unsaved-work | --file-handoff | --http-auth | --http-auth-cancel | --reader | --translation | --eyedropper | --file-io | --workbook-export | --artifact-export | --agent-connections | --page-action | --profiles | --profile-confirmation | --popover | --menu-primitives | --toast-primitives | --selector-bookmark | --selector-site-permissions | --selector-context | --selector-downloads | --selector-results | --selector-task-resources | --selector-search | --selector-closed | --selector-reading | --quick-ask-focus | --settings-focus | --settings-search | --settings-route | --settings-internal-url | --settings-section-rail | --agent-grants | --privacy-history-panel | --settings-focus-jump | --library-focus | --appearance-prefs | --search-engine-prefs | --edge-leeway | --tidy-changed-state | --memory-saver-report-protected | --navigation-recovery | --certificate-recovery | --http-fallback | --http-fallback-dialog]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state", siteControls: "--site-controls needs an operator to open site controls, clear the disposable fixture's website data, reset its seeded blocked notification decision, and close the dialog before the storage check", tabAudio: "--tab-audio needs an operator to open Tab overview and select the disposable fixture tab; the harness checks mute and unmute", unsavedWork: "--unsaved-work needs an operator to open Tab overview and press Select duplicates; the harness checks that the edited fixture tab is kept", fileHandoff: "--file-handoff needs an operator to open Downloads; the harness opens and reveals a disposable text file", httpAuth: "--http-auth needs an operator to enter fixture-user / fixture-pass in the Aux sign-in prompt; the harness verifies the protected page loads", httpAuthCancel: "--http-auth-cancel needs an operator to cancel the disposable challenge; the harness verifies no protected content loads", preview: "--preview needs an operator to open Tab overview; the harness checks a captured background tab thumbnail", navigationMenu: "--navigation-menu needs an operator to focus Back, press ArrowDown, and choose the Red history entry", contextMenu: "--context-menu needs an operator to open the shell context menu and choose Reload", pageAction: "--page-action needs an operator to choose Summarize page from the native shell context menu", reader: "--reader needs an operator to open Reader view for a local article", eyeDropper: "--eyedropper needs an operator to select a color with the macOS sampler", fileIo: "--file-io needs an operator to export the fixture bookmark through Library to the printed path", workbookExport: "--workbook-export needs an operator to invoke the Aux shell workbook method and save to the printed path", artifactExport: "--artifact-export needs an operator to create a disposable stored image and save it through the Aux shell method", agentConnections: "--agent-connections needs an operator to create and revoke a disposable scoped connection through the Aux native shell", profiles: "--profiles needs an operator to create, rename, archive, restore, and explicitly delete only the generated disposable Profile", profileConfirmation: "--profile-confirmation checks a named native delete confirmation and cancellation without deleting the disposable Profile", popover: "--popover checks browser-context search, choices and Escape dismissal in a disposable chat", menuPrimitives: "--menu-primitives checks shared vertical Space and Browser tools menus with Escape dismissal in a disposable Profile", toastPrimitives: "--toast-primitives checks the no-data autofill info Toast and its timed dismissal in a disposable Profile", selectorBookmark: "--selector-bookmark checks add/remove toolbar state on a disposable local page", selectorSitePermissions: "--selector-site-permissions checks open-site selection in Aux Settings on a disposable local page", selectorContext: "--selector-context checks the open-tab choices in a disposable conversation", selectorDownloads: "--selector-downloads checks live progress, cancel, and retry in a disposable download shelf", selectorResults: "--selector-results checks the disposable set-results table surface", selectorTaskResources: "--selector-task-resources checks a task page reference after local navigation", selectorSearch: "--selector-search checks that a background local tab appears as a live search suggestion", selectorClosed: "--selector-closed checks a disposable closed tab in Library", selectorReading: "--selector-reading checks two disposable Reading List rows and a read-state change", quickAskFocus: "--quick-ask-focus checks the composer receives focus in the disposable Quick Ask window", settingsFocus: "--settings-focus checks Settings category, search result, and search-field focus in a disposable Profile", settingsSearch: "--settings-search checks Plugins, Google Calendar, and a generated Appearance field in Settings search", settingsRoute: "--settings-route checks native Settings section navigation", settingsInternalUrl: "--settings-internal-url checks an internal Settings URL stays in the top shell", settingsSectionRail: "--settings-section-rail checks three available grouped Settings destinations", agentGrants: "--agent-grants checks a disposable Write grant on and off", privacyHistoryPanel: "--privacy-history-panel checks the clear-history control is in Privacy & Security and cancellation leaves history intact", settingsFocusJump: "--settings-focus-jump checks one indexed search destination", libraryFocus: "--library-focus checks Library search-to-bookmark focus in a disposable Profile", appearancePrefs: "--appearance-prefs needs an operator to choose a light theme and title-bar material in a disposable Profile", searchEnginePrefs: "--search-engine-prefs checks a disposable search engine choice across restart", edgeLeeway: "--edge-leeway automatically checks native floating-sidebar entry and exit leeway over a guest page", tidyChanged: "--tidy-changed-state needs an operator to apply AI Tidy, rename its folder, then open Overview after restart", memorySaverReport: "--memory-saver-report-protected needs an operator to open General and expand Recent Memory saver cycles before and after restart" }, null, 2));
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native Aux.app journeys require macOS.");
@@ -140,10 +140,14 @@ const receiptBookmarkUiJourney = process.argv.includes("--receipt-bookmark-undo-
 const receiptDownloadUiJourney = process.argv.includes("--receipt-download-ui");
 const receiptHistoryUiJourney = process.argv.includes("--receipt-history-ui");
 const tidyReceiptJourney = process.argv.includes("--tidy-receipt-restart");
+const tidyChangedJourney = process.argv.includes("--tidy-changed-state");
 const archiveTabsJourney = process.argv.includes("--archive-tabs-ui");
 const tabSleepJourney = process.argv.includes("--tab-sleep-ui");
 const memorySaverJourney = process.argv.includes("--memory-saver-ui");
 const memorySaverRestartJourney = process.argv.includes("--memory-saver-restart");
+const memorySaverReportJourney = process.argv.includes("--memory-saver-report-protected");
+const anyTidyJourney = tidyReceiptJourney || tidyChangedJourney;
+const anyMemorySaverJourney = memorySaverJourney || memorySaverRestartJourney || memorySaverReportJourney;
 const profilesJourney = process.argv.includes("--profiles");
 const profileConfirmationJourney = process.argv.includes("--profile-confirmation");
 const popoverJourney = process.argv.includes("--popover");
@@ -225,7 +229,7 @@ const healthDiagnosticsJourney = process.argv.includes("--health-diagnostics");
 const unpackedExtensionJourney = process.argv.includes("--unpacked-extension");
 const runtimeBackupRestoreJourney = process.argv.includes("--runtime-backup-restore");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -240,14 +244,14 @@ const nativeHeader = resolve(app, "../../../chrome/browser/ui/aux/generated/aux_
 const nativeSourceCommit = existsSync(nativeHeader)
   ? readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1]
   : undefined;
-if (runtimeBackupRestoreJourney || memoryInboxUiJourney || menuPrimitivesJourney || tidyReceiptJourney) {
+if (runtimeBackupRestoreJourney || memoryInboxUiJourney || menuPrimitivesJourney || anyTidyJourney) {
   assert.ok(nativeSourceCommit, "Development acceptance requires a built native source identity");
   const token = randomBytes(32).toString("hex");
   const dataDir = join(profile, "Default/Aux Runtime Data");
   mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   writeFileSync(join(dataDir, "development-acceptance.json"), JSON.stringify({
     version: 1, sourceCommit: nativeSourceCommit, tokenHash: createHash("sha256").update(token).digest("hex"),
-    features: memoryInboxUiJourney ? ["memory", "spaces"] : tidyReceiptJourney ? ["spaces", "aiTidy"] :
+    features: memoryInboxUiJourney ? ["memory", "spaces"] : anyTidyJourney ? ["spaces", "aiTidy"] :
       menuPrimitivesJourney ? ["spaces"] : ["electronMigration"],
     createdAt: Date.now(),
   }), { mode: 0o600 });
@@ -258,9 +262,9 @@ const windowTool = join(disposable, "native-window");
 const report = { schema: 1, scope: "Native Aux.app, disposable Profile, loopback fixture; no public debugging port", app,
   sourceSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   ...(nativeSourceCommit ? { nativeSourceCommit } : {}),
-  ...((runtimeBackupRestoreJourney || memoryInboxUiJourney || menuPrimitivesJourney || tidyReceiptJourney) ?
+  ...((runtimeBackupRestoreJourney || memoryInboxUiJourney || menuPrimitivesJourney || anyTidyJourney) ?
     { developmentAcceptanceFeatures: memoryInboxUiJourney ? ["memory", "spaces"] :
-      tidyReceiptJourney ? ["spaces", "aiTidy"] : menuPrimitivesJourney ? ["spaces"] : ["electronMigration"] } : {}),
+      anyTidyJourney ? ["spaces", "aiTidy"] : menuPrimitivesJourney ? ["spaces"] : ["electronMigration"] } : {}),
   startedAt: new Date().toISOString(), rpcOnly, uiOnly, steps: [], captures: [], passed: false };
 let child;
 let attachedChrome;
@@ -677,9 +681,14 @@ else {
       return;
     }
     if (contextMenuJourney && request.url === "/red") contextRequests++;
-    if ((tabSleepJourney || memorySaverJourney || memorySaverRestartJourney) && request.url === "/red") {
+    if (memorySaverReportJourney && request.url === "/protected-memory") {
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+      response.end('<!doctype html><title>Protected Memory saver fixture</title><h1>Protected tab</h1><script>window.addEventListener("beforeunload", event => { event.preventDefault(); event.returnValue = ""; });</script>');
+      return;
+    }
+    if ((tabSleepJourney || anyMemorySaverJourney) && request.url === "/red") {
       sleepRedLoads++;
-      if (memorySaverRestartJourney) console.log(`Red fixture load ${sleepRedLoads} during ${sleepLoadPhase}`);
+      if (memorySaverRestartJourney || memorySaverReportJourney) console.log(`Red fixture load ${sleepRedLoads} during ${sleepLoadPhase}`);
     }
     const color = request.url?.startsWith("/blue") ? "#164b72" : "#7c344b";
     const name = color === "#164b72" ? "Blue" : "Red";
@@ -689,7 +698,7 @@ else {
   });
   await new Promise(resolveListen => fixture.listen(0, "127.0.0.1", resolveListen));
   origin = `http://127.0.0.1:${fixture.address().port}`;
-  if (translationJourney || tidyReceiptJourney || tabNameJourney) {
+  if (translationJourney || anyTidyJourney || tabNameJourney) {
     modelFixture = createServer((request, response) => {
       if (request.method !== "POST" || request.url !== "/v1/chat/completions") {
         response.writeHead(404).end();
@@ -713,7 +722,7 @@ else {
               usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 } }));
             return;
           }
-          if (tidyReceiptJourney) {
+          if (anyTidyJourney) {
             const pages = JSON.parse(String(prompt).slice(String(prompt).indexOf("\n") + 1));
             assert.ok(Array.isArray(pages) && pages.length === 3);
             const content = JSON.stringify({ groups: [{ name: "Fixture reading", pageIds: pages.slice(0, 2).map(page => page.pageId) }] });
@@ -971,7 +980,7 @@ else {
     assert.equal(runtimeCapabilities.featureStages?.spaces, "preview", "Unrequalified candidate stages must remain preview");
   } else assert.equal(runtimeCapabilities.featureStages?.spaces, "on",
     "The runtime must derive qualified Spaces from the native method manifest");
-  if (tidyReceiptJourney) assert.equal(runtimeCapabilities.featureStages?.aiTidy, "on",
+  if (anyTidyJourney) assert.equal(runtimeCapabilities.featureStages?.aiTidy, "on",
     "Disposable native Tidy acceptance must reach the runtime before UI review");
   if (settingsContentBlockingJourney || siteBlockingExceptionJourney || siteBlockingPrivateJourney || settingsCustomListJourney) assert.equal(runtimeCapabilities.featureStages?.contentBlocking, "on", "Native content blocking must be qualified in the runtime capability manifest");
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
@@ -1883,9 +1892,9 @@ else {
       !existsSync(join(profile, profileId)), 60_000);
     record("Chromium removed the deleted Profile's data on restart", { profileId });
     report.passed = true;
-  } else if (memorySaverJourney || memorySaverRestartJourney) {
+  } else if (anyMemorySaverJourney) {
     const red = await rpc("pages.open", { url: `${origin}/red`, activate: true });
-    await rpc("pages.open", { url: `${origin}/blue`, activate: true });
+    const blue = await rpc("pages.open", { url: `${origin}/blue`, activate: true });
     await until("clean background red tab", async () =>
       sleepRedLoads === 1 && (await rpc("pages.list")).some(page => page.pageId === red.pageId && !page.loading), 60_000);
     await rpc("settings.set", { memorySaverMinutes: 1 });
@@ -1897,7 +1906,22 @@ else {
     }, 150_000);
     assert.equal(sleepRedLoads, 1, "automatic sleep must not reload before activation");
     record("saved memory saver policy automatically slept an idle tab", { loadsBeforeActivation: sleepRedLoads });
-    if (memorySaverRestartJourney) {
+    if (memorySaverReportJourney) {
+      const protectedPage = await rpc("pages.open", { url: `${origin}/protected-memory`, activate: true });
+      await until("loaded protected background tab", async () =>
+        (await rpc("pages.list")).some(page => page.pageId === protectedPage.pageId && !page.loading), 60_000);
+      await rpc("pages.activate", { pageId: blue.pageId });
+      console.log("Open Settings > General > Recent Memory saver cycles. Expand it after the protected tab has been idle for one minute.");
+      await until("native Memory saver report includes protected-tab refusal", () => {
+        try { return native("has-name", "Memory saver cycle report") === "true" &&
+          native("has-name", "This tab has unload handlers and stays awake.") === "true" &&
+          (native("has-name", "estimated at sleep time") === "true" ||
+            native("has-name", "Memory estimate unavailable") === "true"); }
+        catch { return false; }
+      }, 180_000);
+      record("native Memory saver report separates a slept tab from a protected-tab refusal", {});
+    }
+    if (memorySaverRestartJourney || memorySaverReportJourney) {
       sleepLoadPhase = "restarting";
       child.kill("SIGTERM");
       if (child.exitCode === null) await new Promise(resolveExit => child.once("exit", resolveExit));
@@ -1926,14 +1950,28 @@ else {
       assert.equal(restartWorkspace.pages.find(page => page.pageId === red.pageId)?.lifecycle, "placeholder");
       assert.equal(sleepRedLoads, 1, "restart must preserve the sleeping tab until activation");
       record("restart retained the sleeping tab without reloading it", { loadsAfterRestart: sleepRedLoads });
-      await rpc("pages.activate", { pageId: red.pageId });
-      await until("restored background tab activated", async () =>
-        (await rpc("workspace.get")).activePageId === red.pageId, 120_000);
+      if (memorySaverReportJourney) {
+        console.log("After restart, reopen Settings > General > Recent Memory saver cycles to verify the saved report.");
+        await until("durable native Memory saver report after restart", () => {
+          try { return native("has-name", "Memory saver cycle report") === "true" &&
+            native("has-name", "This tab has unload handlers and stays awake.") === "true" &&
+            (native("has-name", "estimated at sleep time") === "true" ||
+              native("has-name", "Memory estimate unavailable") === "true"); }
+          catch { return false; }
+        }, 180_000);
+        record("Profile restart retained the bounded sleep and refusal report", { loadsAfterRestart: sleepRedLoads });
+      } else {
+        await rpc("pages.activate", { pageId: red.pageId });
+        await until("restored background tab activated", async () =>
+          (await rpc("workspace.get")).activePageId === red.pageId, 120_000);
+      }
     } else {
       await rpc("pages.activate", { pageId: red.pageId });
     }
-    await until("automatic sleep lazily reloaded on activation", () => sleepRedLoads >= 2, 120_000);
-    record("idle tab reloaded when reopened", { loadsAfterActivation: sleepRedLoads });
+    if (!memorySaverReportJourney) {
+      await until("automatic sleep lazily reloaded on activation", () => sleepRedLoads >= 2, 120_000);
+      record("idle tab reloaded when reopened", { loadsAfterActivation: sleepRedLoads });
+    }
     report.passed = true;
   } else if (tabSleepJourney) {
     const red = await rpc("pages.open", { url: `${origin}/red`, activate: true });
@@ -1988,7 +2026,7 @@ else {
     }, 180_000);
     record("archived tab restored through native Overview after full restart", { remaining: 1 });
     report.passed = true;
-  } else if (tidyReceiptJourney) {
+  } else if (anyTidyJourney) {
     await rpc("settings.set", { modelProvider: "openai-compatible",
       compatibleEndpoint: `http://127.0.0.1:${modelFixture.address().port}/v1`,
       plannerModel: "meta/muse-spark-1.3-contributor" });
@@ -2020,6 +2058,18 @@ else {
     assert.equal(receipt.created.length, 1);
     assert.equal(receipt.moved.length, 2);
     record("AI Tidy applied the reviewed folder and persisted a compact undo receipt", { folderCount: 1, movedCount: 2 });
+    if (tidyChangedJourney) {
+      console.log("Rename the created Fixture reading folder to Owner changed using the native Space folder menu. Leave both tabs in it.");
+      await until("owner folder edit invalidated Tidy Undo", () => {
+        try {
+          const pref = JSON.parse(readFileSync(join(profile, "Default/Preferences"), "utf8"));
+          const shared = pref.aux?.organization?.v1?.shared;
+          return shared?.folders?.some(folder => folder.id === receipt.created[0].id && folder.name === "Owner changed") &&
+            !shared.tidyUndo;
+        } catch { return false; }
+      }, 180_000);
+      record("changed folder invalidated Tidy Undo without reverting the owner's edit", {});
+    }
     child.kill("SIGTERM");
     if (child.exitCode === null) await new Promise(resolveExit => child.once("exit", resolveExit));
     child.stderr.destroy();
@@ -2031,28 +2081,43 @@ else {
     await until("restarted Aux browser window", () => {
       try { return JSON.parse(native("window")); } catch { return null; }
     }, 60_000);
-    console.log("After restart, open Tab overview and click the persisted Undo Tidy control.");
-    await until("durable native Undo Tidy control after restart", () => {
-      try { return native("has-button", "Undo Tidy") === "true"; } catch { return false; }
-    }, 180_000);
-    record("native Overview offers guarded Undo Tidy after a full restart", {});
-    await until("durable Tidy undo committed to Chromium Profile", () => {
-      try {
-        const pref = JSON.parse(readFileSync(join(profile, "Default/Preferences"), "utf8"));
-        const find = (value, depth = 0) => {
-          if (!value || typeof value !== "object" || depth > 9) return null;
-          if (Array.isArray(value.created) && Array.isArray(value.moved) && value.created[0]?.name === "Fixture reading") return value;
-          for (const child of Object.values(value)) {
-            const found = find(child, depth + 1);
-            if (found) return found;
-          }
-          return null;
-        };
-        return !find(pref) && native("has-button", "Undo Tidy") === "false";
-      } catch { return false; }
-    }, 180_000);
-    record("native Undo Tidy removed the committed receipt after restart", {});
-    report.passed = true;
+    if (tidyChangedJourney) {
+      console.log("After restart, open Tab overview. Verify Owner changed remains and Undo Tidy is unavailable.");
+      await until("changed Tidy state refused Undo after restart", () => {
+        try {
+          const pref = JSON.parse(readFileSync(join(profile, "Default/Preferences"), "utf8"));
+          const shared = pref.aux?.organization?.v1?.shared;
+          return shared?.folders?.some(folder => folder.id === receipt.created[0].id && folder.name === "Owner changed") &&
+            !shared.tidyUndo && native("has-name", "Your tabs") === "true" &&
+            native("has-button", "Undo Tidy") === "false";
+        } catch { return false; }
+      }, 180_000);
+      record("Profile restart preserved the owner's folder edit and refused stale Undo", {});
+      report.passed = true;
+    } else {
+      console.log("After restart, open Tab overview and click the persisted Undo Tidy control.");
+      await until("durable native Undo Tidy control after restart", () => {
+        try { return native("has-button", "Undo Tidy") === "true"; } catch { return false; }
+      }, 180_000);
+      record("native Overview offers guarded Undo Tidy after a full restart", {});
+      await until("durable Tidy undo committed to Chromium Profile", () => {
+        try {
+          const pref = JSON.parse(readFileSync(join(profile, "Default/Preferences"), "utf8"));
+          const find = (value, depth = 0) => {
+            if (!value || typeof value !== "object" || depth > 9) return null;
+            if (Array.isArray(value.created) && Array.isArray(value.moved) && value.created[0]?.name === "Fixture reading") return value;
+            for (const child of Object.values(value)) {
+              const found = find(child, depth + 1);
+              if (found) return found;
+            }
+            return null;
+          };
+          return !find(pref) && native("has-button", "Undo Tidy") === "false";
+        } catch { return false; }
+      }, 180_000);
+      record("native Undo Tidy removed the committed receipt after restart", {});
+      report.passed = true;
+    }
   } else if (receiptHistoryUiJourney) {
     const space = await until("disposable Personal Space", async () =>
       (await rpc("workspaces.list", {})).find(item => item.name === "Personal"), 60_000);

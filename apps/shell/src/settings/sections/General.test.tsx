@@ -41,7 +41,7 @@ it("keeps General fields indexed and opens an editor after extraction", async ()
     await act(async () => recordMemorySaverCycle({ pageId: "fixture", url: "https://example.test/" },
       { slept: true, estimatedSavedBytes: 12 * 1024 * 1024 }));
     expect(container.querySelector('[aria-label="Memory saver cycle report"]')?.textContent)
-      .toContain("About 12 MB estimated saved");
+      .toContain("About 12 MB estimated at sleep time");
     expect(container.querySelector("details")?.textContent).toContain("about 12.0 MB estimated saved");
     const manage = container.querySelector<HTMLButtonElement>('[aria-label="Manage keyword engines"]')!;
     await act(async () => manage.click());

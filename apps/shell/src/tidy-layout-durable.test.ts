@@ -3,7 +3,7 @@ import type { OrganizationSnapshot, PageTarget, TidyProposal } from "@aux/contra
 import { applyTidyProposal, revertTidyRecord, tidyUndoRecord } from "./tidy-layout";
 import { OrganizationPersistence } from "./store/organization-persistence";
 import { fromOrganizationLayout } from "./store/organization-layout";
-import { emptyLayout } from "./workspace";
+import { emptyLayout, renameFolder } from "./workspace";
 
 it("commits reviewed Tidy and Undo across independent organization sessions", async () => {
   const original = emptyLayout();
@@ -51,4 +51,37 @@ it("refuses Undo if a tidied tab or its folder changed after review", () => {
   const record = tidyUndoRecord(before, after);
   expect(() => revertTidyRecord(record, { ...after, tabFolder: { ...after.tabFolder, one: "other" } })).toThrow(/moved again/);
   expect(() => revertTidyRecord(record, { ...after, folders: after.folders.map(folder => ({ ...folder, name: "Changed" })) })).toThrow(/folder changed/);
+});
+
+it("keeps a changed folder after restart and refuses the stale Tidy receipt", async () => {
+  const before = emptyLayout();
+  const pages = ["one", "two"].map(pageId => ({ pageId, url: `https://example.test/${pageId}`,
+    title: pageId, controller: "none", ownedByRuntime: false, viewStatus: "visible" })) as PageTarget[];
+  const proposal = { pages: pages.map(({ pageId, url, title }) => ({ pageId, url, title })),
+    groups: [{ name: "Research", pageIds: ["one", "two"] }], modelId: "fixture", createdAt: 1 } as TidyProposal;
+  let snapshot: OrganizationSnapshot = { revision: 0, layout: null };
+  const host = {
+    organizationSnapshot: async () => structuredClone(snapshot),
+    organizationCommit: async (input: { expectedRevision: number; layout: NonNullable<OrganizationSnapshot["layout"]> }) => {
+      if (input.expectedRevision !== snapshot.revision) throw new Error("stale revision");
+      snapshot = { revision: snapshot.revision + 1, layout: structuredClone(input.layout) };
+      return structuredClone(snapshot);
+    },
+  };
+  const session = new OrganizationPersistence(host, before);
+  await session.hydrate();
+  const applied = applyTidyProposal(before, pages, before.activeSpaceId, proposal);
+  const receipt = tidyUndoRecord(before, applied);
+  session.persist({ ...applied, tidyUndo: receipt });
+  await session.flush();
+  const changed = renameFolder({ ...applied, tidyUndo: receipt }, receipt.created[0]!.id, "Changed by owner");
+  expect(changed.tidyUndo).toBeUndefined();
+  session.persist(changed);
+  await session.flush();
+
+  const recovered = await new OrganizationPersistence(host, emptyLayout()).hydrate();
+  expect(recovered.folders[0]?.name).toBe("Changed by owner");
+  expect(recovered.tidyUndo).toBeUndefined();
+  expect(recovered.tabFolder.one).toBe(receipt.moved[0]?.toFolderId);
+  expect(() => revertTidyRecord(receipt, recovered)).toThrow(/folder changed/);
 });

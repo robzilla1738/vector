@@ -3,6 +3,7 @@ import type { PageTarget } from "@aux/contracts";
 export const memorySaverCyclesKey = "aux.memory-saver-cycles.v1";
 export const memorySaverCyclesChanged = "aux:memory-saver-cycles-changed";
 let currentCycles: MemorySaverCycle[] = [];
+let volatileFallback = false;
 const MAX_ESTIMATE_BYTES = 1024 ** 4;
 const SAFE_REASONS = new Set([
   "Sleeping tabs is unavailable in this window.", "The tab changed or moved. Review it again.",
@@ -26,7 +27,7 @@ export type MemorySaverCycle = {
 export function readMemorySaverCycles(): MemorySaverCycle[] {
   try {
     const stored = localStorage.getItem(memorySaverCyclesKey);
-    if (stored === null) return currentCycles;
+    if (stored === null) return volatileFallback ? currentCycles : [];
     const value = JSON.parse(stored);
     if (!Array.isArray(value)) return [];
     return value.flatMap((row): MemorySaverCycle[] => {
@@ -54,7 +55,8 @@ export function recordMemorySaverCycle(page: Pick<PageTarget, "pageId" | "url">,
   };
   const cycles = [cycle, ...readMemorySaverCycles()].slice(0, 20);
   currentCycles = cycles;
-  try { localStorage.setItem(memorySaverCyclesKey, JSON.stringify(cycles)); } catch { /* Keep this window's current cycles. */ }
+  try { localStorage.setItem(memorySaverCyclesKey, JSON.stringify(cycles)); volatileFallback = false; }
+  catch { volatileFallback = true; /* Keep this window's current cycles. */ }
   window.dispatchEvent(new Event(memorySaverCyclesChanged));
 }
 

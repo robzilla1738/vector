@@ -55,3 +55,33 @@ it("persists only bounded native estimates and fixed refusal reasons", () => {
   expect(stored).not.toContain("secret");
   vi.unstubAllGlobals();
 });
+
+it("rehydrates an estimated sleep and a protected-tab refusal from Profile storage", async () => {
+  const saved = new Map<string, string>();
+  vi.stubGlobal("localStorage", { getItem: (key: string) => saved.get(key) ?? null,
+    setItem: (key: string, value: string) => { saved.set(key, value); } });
+  try {
+    recordMemorySaverCycle(page("clean"), { slept: true, estimatedSavedBytes: 8 * 1024 * 1024 });
+    recordMemorySaverCycle(page("protected"), { slept: false, reason: "This tab has unload handlers and stays awake." });
+    vi.resetModules();
+    const restarted = await import("./memory-saver-report");
+    const cycles = restarted.readMemorySaverCycles();
+    expect(cycles.map(cycle => cycle.slept)).toEqual([false, true]);
+    expect(cycles[0]?.reason).toBe("This tab has unload handlers and stays awake.");
+    expect(restarted.memorySaverSummary(cycles)).toMatchObject({ slept: 1, measured: 1, estimatedSavedBytes: 8 * 1024 * 1024 });
+    saved.clear();
+    expect(restarted.readMemorySaverCycles()).toEqual([]);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps a bounded report for this window when Profile storage rejects a write", () => {
+  vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => { throw new Error("storage unavailable"); } });
+  try {
+    recordMemorySaverCycle(page("clean"), { slept: true, estimatedSavedBytes: 4 * 1024 * 1024 });
+    expect(readMemorySaverCycles()[0]).toMatchObject({ pageId: "clean", estimatedSavedBytes: 4 * 1024 * 1024 });
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

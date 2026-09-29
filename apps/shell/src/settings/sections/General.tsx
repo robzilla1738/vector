@@ -140,7 +140,7 @@ export function GeneralSettings({
             </select>
             {memoryCycles.length > 0 && <small role="status" aria-label="Memory saver cycle report">
               {memorySummary.slept} {memorySummary.slept === 1 ? "tab" : "tabs"} slept in the last {memoryCycles.length} cycles.
-              {memorySummary.measured > 0 ? ` About ${Math.round(memorySummary.estimatedSavedBytes / 1024 / 1024)} MB estimated saved across ${memorySummary.measured} measured cycles.` : " Memory estimate unavailable."}
+              {memorySummary.measured > 0 ? ` About ${Math.round(memorySummary.estimatedSavedBytes / 1024 / 1024)} MB estimated at sleep time across ${memorySummary.measured} measured cycles; this is not current memory use.` : " Memory estimate unavailable."}
             </small>}
             {memoryCycles.length > 0 && <details><summary>Recent Memory saver cycles</summary><ul>
               {memoryCycles.slice(0, 10).map((cycle, index) => <li key={`${cycle.at}:${cycle.pageId}:${index}`}>
