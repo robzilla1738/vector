@@ -3,7 +3,7 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 
 import { basename, dirname, resolve, sep } from "node:path";
 import type { CoordinatorLoopHost } from "../coordinator-verify.js";
 import { DEFAULT_MAX_MODEL_CALLS, TERMINAL_STATUSES, markUnconfirmedWrites, verifyResultCitations } from "../coordinator-verify.js";
-import { attemptsOf } from "../model-client.js";
+import { attemptsOf, type ModelAttempt } from "../model-client.js";
 import { classifyStep, subagentGrants } from "../permissions.js";
 import { observationLineHash } from "../durable.js";
 import { redactObservation } from "../planner.js";
@@ -66,6 +66,11 @@ export interface AgentLoopHostDeps {
   routineUpdate?: LoopToolDeps["routineUpdate"];
   notify?: LoopToolDeps["notify"];
   goalUpdate?: LoopToolDeps["goalUpdate"];
+  goalBudget?: {
+    reserve(runId: string, request: { modelId: string; promptBytes: number; toolsBytes: number;
+      maxOutputTokens: number }): Promise<string | undefined>;
+    settle(runId: string, reservationId: string | undefined, attempts: ModelAttempt[]): void;
+  };
   /** Provider prompt-cache options merged into each model step (S5 deliverable 1). */
   providerOptions?: Record<string, Record<string, unknown>>;
 }
@@ -108,6 +113,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
 
   const transcript = new TranscriptStore(self.deps.repo.db);
   const threadId = run.config?.chatId ?? runId;
+  const goalRun = !!self.deps.repo.db.prepare("SELECT 1 FROM goals WHERE run_id=?").get(runId);
   if (!transcript.count(runId)) transcript.append(runId, [taskMessage(run,
     run.config?.contextWorkspaceId ? self.deps.agentLoop?.workspaceContext?.(run.config.contextWorkspaceId) : "")]);
 
@@ -525,11 +531,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     bash: self.deps.agentLoop?.bash,
     historySearch: self.deps.agentLoop?.historySearch,
     memorySearch: self.deps.agentLoop?.memorySearch,
-    subagents: self.deps.agentLoop?.subagents,
+    // Child model calls have their own ledger; keep Goal funding on this one run.
+    subagents: goalRun ? undefined : self.deps.agentLoop?.subagents,
     routineUpdate: self.deps.agentLoop?.routineUpdate,
     notify: self.deps.agentLoop?.notify,
-    goalUpdate: self.deps.repo.db.prepare("SELECT 1 FROM goals WHERE run_id=?").get(runId)
-      ? self.deps.agentLoop?.goalUpdate : undefined,
+    goalUpdate: goalRun ? self.deps.agentLoop?.goalUpdate : undefined,
     writeTodos: (todos) => {
       self.deps.repo.saveCheckpoint(`run:${runId}`, "loop_todos", { todos });
     },
@@ -692,22 +698,22 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       callCount: 1, goalTurn: 0, signal,
     }),
     spawnCell: (input) => {
-      const spawn = self.deps.agentLoop?.subagents?.spawnCell;
+      const spawn = goalRun ? undefined : self.deps.agentLoop?.subagents?.spawnCell;
       if (!spawn) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
       return spawn(input, { runId, threadId, turnId: runId });
     },
     waitCell: (cellId, timeoutMs) => {
-      const wait = self.deps.agentLoop?.subagents?.waitCell;
+      const wait = goalRun ? undefined : self.deps.agentLoop?.subagents?.waitCell;
       if (!wait) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
       return wait(cellId, timeoutMs);
     },
     sendCell: (cellId, text) => {
-      const send = self.deps.agentLoop?.subagents?.sendCell;
+      const send = goalRun ? undefined : self.deps.agentLoop?.subagents?.sendCell;
       if (!send) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
       return send(cellId, text);
     },
     cancelCell: (cellId) => {
-      const cancel = self.deps.agentLoop?.subagents?.cancelCell;
+      const cancel = goalRun ? undefined : self.deps.agentLoop?.subagents?.cancelCell;
       if (!cancel) throw new AuxError("capability_unsupported", "Subagent cells are unavailable for this run.");
       return cancel(cellId);
     },
@@ -796,6 +802,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     tools: (() => {
       const manifest = buildToolManifest();
       if (!deps.goalUpdate) delete manifest.goal_update;
+      if (goalRun) for (const name of ["subagent", "subagent_wait", "subagent_send", "subagent_stop"])
+        delete manifest[name];
       return manifest;
     })(),
     transcript,
@@ -806,8 +814,14 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     deps,
     maxSteps: Math.max(1, maxModelCalls - modelCalls),
     steerCheck: steerPending,
-    beforeModelCall: () => self.deps.checkBudget?.({ runId }),
-    onStep: async ({ step }) => {
+    beforeModelCall: async request => {
+      await self.deps.checkBudget?.({ runId });
+      if (goalRun && !self.deps.agentLoop?.goalBudget)
+        throw new AuxError("capability_unsupported", "Goal funding is unavailable; no model call was sent.");
+      return goalRun ? self.deps.agentLoop!.goalBudget!.reserve(runId, request) : undefined;
+    },
+    maxAttempts: goalRun ? 1 : undefined,
+    onStep: async ({ step, reservationId }) => {
       for (const a of step.retries ?? []) {
         modelCalls++;
         self.deps.recordModelCall({
@@ -826,8 +840,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         ...(step.providerMetadata ? { providerMetadata: step.providerMetadata } : {}),
         ...(step.error ? { error: step.error } : {}),
       });
+      if (goalRun) self.deps.agentLoop?.goalBudget?.settle(runId, reservationId,
+        [...(step.retries ?? []), step].map(attempt => ({ ...attempt,
+          modelId: attempt.modelId ?? step.resolvedModelId ?? modelId() })));
     },
-    onModelFailure: ({ error }) => {
+    onModelFailure: ({ error, reservationId }) => {
       // The Gateway may have tried other candidates before the final failure.
       // Those attempts and the final request all count against the durable
       // run cap, even though no assistant message was returned.
@@ -844,6 +861,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       modelCalls++;
       self.deps.recordModelCall({ runId, role: "agent", modelId: modelId(), durationMs: 0,
         error: error instanceof Error ? error.message : String(error) });
+      if (goalRun) self.deps.agentLoop?.goalBudget?.settle(runId, reservationId,
+        attemptsOf(error).map(attempt => ({ ...attempt, modelId: attempt.modelId ?? modelId() })));
     },
     providerOptions: self.deps.agentLoop?.providerOptions,
     webmcp: pageExposesWebmcp,
@@ -935,6 +954,11 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       if ((c.paused || signal.aborted) && !c.abort.signal.aborted) continue;
 
       if (outcome.kind === "done") {
+        if (goalRun && !outcome.result) {
+          self.finish(runId, "failed", undefined, "Goal completion requires a verified submit_result call.",
+            "The Goal stopped without a verified result");
+          return;
+        }
         if (replPool.hasOpen(runId)) {
           if (!blockedOnRepl) {
             blockedOnRepl = true;
@@ -966,6 +990,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
             "Couldn't confirm every action — stopped with what I found");
           return;
         }
+        if (goalRun) self.deps.repo.saveCheckpoint(`run:${runId}`, "goal_verified", { accepted: true });
         self.finish(runId, "completed", outcome.result ?? { report: outcome.text }, undefined, "Done");
         return;
       }

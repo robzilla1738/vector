@@ -7,6 +7,8 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import {
   MockModelClient,
+  GoalService,
+  TaskService,
   DurableWriteLedger,
   TranscriptStore,
   buildSystemPrompt,
@@ -599,6 +601,48 @@ async function settle(repo: Repo, runId: string) {
 }
 
 describe("runToolLoop (S5 host integration)", () => {
+  it("funds a real Goal turn and only completes on accepted submit_result", async () => {
+    const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{ toolCallId: "done",
+      toolName: "submit_result", input: { report: "Fixture result" } }] }]);
+    model.inputTokens = 20; model.outputTokens = 10;
+    const h = coordinatorHarness(model);
+    const space = new TaskService(h.repo, new EventBus(h.repo)).createWorkspace("Goal fixture");
+    const runs = { start: (input: { deliveryRunId: string; goal: string; pageIds: string[]; chatId?: string;
+      engine: "agent-loop"; maxTokens?: number; maxCostUsd?: number; deadlineMs?: number }) =>
+      h.coordinator.start({ runId: input.deliveryRunId, goal: input.goal, pageIds: input.pageIds,
+        chatId: input.chatId, engine: input.engine, maxTokens: input.maxTokens,
+        maxCostUsd: input.maxCostUsd, deadlineMs: input.deadlineMs }),
+      pause: (runId: string) => h.coordinator.pause(runId),
+      resume: (runId: string) => h.coordinator.resume(runId),
+      cancel: (runId: string) => h.coordinator.cancel(runId) } as unknown as ConstructorParameters<typeof GoalService>[1];
+    const goals = new GoalService(h.repo, runs, async () => [{ id: "test/agent", source: "configured",
+      inputUsdPerMTok: 1, outputUsdPerMTok: 1 }]);
+    h.coordinator.deps.agentLoop = { goalBudget: {
+      reserve: (runId, request) => goals.reserveModelCall(runId, request),
+      settle: (runId, reservationId, attempts) => goals.settleModelCall(runId, reservationId, attempts),
+    } };
+    const goal = goals.create({ workspaceId: space.workspaceId, chatId: "chat-goal",
+      objective: "Read fixture", budget: { maxTokens: 200_000, maxCostUsd: 1 } });
+    const started = await goals.start(goal.goalId, ["p1"]);
+    const completed = await settle(h.repo, started.runId!);
+    expect(completed).toMatchObject({ status: "completed", result: { report: "Fixture result" } });
+    expect(goals.get(goal.goalId)).toMatchObject({ status: "completed", usedTokens: 30,
+      reservedTokens: 0 });
+    expect(h.modelCalls).toHaveLength(1);
+    model.scriptToolSteps([{ text: "I think it is done" }]);
+    const second = goals.create({ workspaceId: space.workspaceId, chatId: "chat-goal",
+      objective: "Need proof", budget: { maxTokens: 200_000 } });
+    const unverified = await goals.start(second.goalId, ["p1"]);
+    expect((await settle(h.repo, unverified.runId!)).status).toBe("failed");
+    expect(goals.get(second.goalId).status).toBe("failed");
+    const before = h.modelCalls.length;
+    const tooSmall = goals.create({ workspaceId: space.workspaceId, chatId: "chat-goal",
+      objective: "x".repeat(10_000), budget: { maxTokens: 20_000 } });
+    const rejected = await goals.start(tooSmall.goalId, ["p1"]);
+    expect((await settle(h.repo, rejected.runId!)).error).toMatch(/token limit exhausted/);
+    expect(h.modelCalls).toHaveLength(before);
+  });
+
   it("interrupts a model turn for takeover and observes again before resuming", async () => {
     const model = new MockModelClient().scriptToolSteps([{ text: "after takeover" }]);
     const nextStep = model.toolCallStep.bind(model);

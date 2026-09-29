@@ -73,6 +73,17 @@ describe("route chains", () => {
 });
 
 describe("runtime failover", () => {
+  it("a funded Goal tool call stops after its reserved primary model attempt", async () => {
+    const resolved: string[] = [];
+    const client = new GatewayModelClient("fixture", {
+      model: (id) => { resolved.push(id); return new MockLanguageModelV4({ doGenerate: async () => { throw apiError(429); } }); },
+      candidatesFor: () => [{ modelId: MUSE, reasoning: "medium" }, { modelId: LUNA, reasoning: "low" }],
+    });
+    await expect(client.toolCallStep({ modelId: MUSE, system: "", messages: [{ role: "user", content: "hi" }],
+      tools: {}, maxOutputTokens: 32, maxAttempts: 1 })).rejects.toThrow(/429/);
+    expect(resolved).toEqual([MUSE]);
+  });
+
   it("a benchmark model pin refuses a 429 fallback to another model", async () => {
     const resolved: string[] = [];
     const client = new GatewayModelClient("fixture", {

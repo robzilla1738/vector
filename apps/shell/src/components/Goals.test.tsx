@@ -78,7 +78,7 @@ it("creates a bounded Goal and starts it only with the current tab and model rea
   expect(rpc).toHaveBeenCalledWith("goals.create", {
     workspaceId: "space-1",
     objective: "Compare two reports",
-    budget: { maxTokens: 20000, deadlineMs: 1_800_000 },
+    budget: { maxTokens: 200000, maxCostUsd: 1, deadlineMs: 1_800_000 },
   });
   expect(button("Start on current tab").disabled).toBe(true);
   await act(async () =>
@@ -110,7 +110,7 @@ it("binds a new Goal to the current conversation and blocks a second unfinished 
   act(() => change("textarea", "Bounded conversation work"));
   await act(async () => button("Save Goal").click());
   expect(rpc).toHaveBeenCalledWith("goals.create", { workspaceId: "space-1", chatId: "chat-1",
-    objective: "Bounded conversation work", budget: { maxTokens: 20000, deadlineMs: 1_800_000 } });
+    objective: "Bounded conversation work", budget: { maxTokens: 200000, maxCostUsd: 1, deadlineMs: 1_800_000 } });
   expect(button("New Goal").disabled).toBe(true);
   expect(container.textContent).toContain("Finish or cancel this conversation’s current Goal");
 });
@@ -130,4 +130,25 @@ it("shows a model-reported blocker and lets the owner resume the Goal", async ()
   await act(async () => button("Resume").click());
   expect(rpc).toHaveBeenCalledWith("goals.resume", { goalId: "goal-3" });
   expect(container.textContent).not.toContain("Blocked: Authentication needed");
+});
+
+it("separates held capacity from confirmed usage and links the interrupted run", async () => {
+  const openRun = vi.fn();
+  rpc.mockImplementation(async (method: string) => {
+    if (method === "goals.list") return [{ goalId: "goal-4", workspaceId: "space-1", objective: "Read fixture",
+      budget: { maxTokens: 5000, maxCostUsd: 1 }, status: "needs_input", usedTokens: 12,
+      knownCostUsd: 0.01, costComplete: false, reservedTokens: 1324,
+      reservedCostUsd: 0.2, runId: "run-4" }];
+    throw new Error(`Unexpected ${method}`);
+  });
+  await act(async () => root.render(<Goals workspaceId="space-1" activePageId={null}
+    modelConfigured={true} openRun={openRun} />));
+  expect(container.textContent).toContain("12 / 5,000 tokens");
+  expect(container.textContent).toContain("Held capacity: 1,324 tokens");
+  expect(container.textContent).toContain("not confirmed provider usage");
+  expect(container.textContent).toContain("will not resume it automatically");
+  expect(container.querySelectorAll("button").length).toBeGreaterThan(0);
+  await act(async () => button("Open run").click());
+  expect(openRun).toHaveBeenCalledWith("run-4");
+  expect(container.textContent).not.toContain("Resume");
 });

@@ -157,6 +157,8 @@ export interface ModelClient {
     signal?: AbortSignal;
     providerOptions?: Record<string, Record<string, unknown>>;
     maxOutputTokens?: number;
+    /** Funded calls reserve one exact provider attempt; suppress route failover. */
+    maxAttempts?: 1;
     reasoning?: "low" | "medium" | "xhigh";
     /** Conversation id. Direct OpenAI calls send it as `prompt_cache_key`. */
     sessionId?: string;

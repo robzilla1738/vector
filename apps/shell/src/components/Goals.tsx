@@ -21,8 +21,8 @@ function positiveNumber(value: string, max: number): number | undefined {
 export function Goals({ workspaceId, chatId, activePageId, modelConfigured, openRun }: Props) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [objective, setObjective] = useState("");
-  const [tokens, setTokens] = useState("20000");
-  const [cost, setCost] = useState("");
+  const [tokens, setTokens] = useState("200000");
+  const [cost, setCost] = useState("1");
   const [minutes, setMinutes] = useState("30");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -92,8 +92,9 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
         </button>
       </div>
       <p className="hint">
-        Give a Goal an objective and limits before it runs. It uses the current tab, and you can pause or
-        cancel it at any time.
+        Give a Goal an objective and limits before it runs. Defaults are 200,000 tokens, $1 and 30 minutes.
+        Aux reserves the prompt, tool descriptions and maximum output before each model call. Clear the cost
+        limit for a local model without a price. You can pause or cancel at any time.
       </p>
       {chatId && <p className="hint">{unfinishedHere ? "Finish or cancel this conversation’s current Goal before creating another." : "New Goals belong to the current conversation."}</p>}
       {error && <p role="alert">{error}</p>}
@@ -179,6 +180,7 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
           </div>
           {goal.chatId && <p className="hint">{goal.chatId === chatId ? "Current conversation" : "Conversation Goal"}</p>}
           {goal.status === "blocked" && goal.blocker && <p className="hint">Blocked: {goal.blocker}</p>}
+          {goal.status === "needs_input" && <p className="hint">This Goal needs your review. A stopped model call or run may have had an effect or a charge; Aux will not resume it automatically.</p>}
           <p className="hint">
             {goal.usedTokens.toLocaleString()} / {goal.budget.maxTokens?.toLocaleString() ?? "unlimited"}{" "}
             tokens
@@ -186,13 +188,18 @@ export function Goals({ workspaceId, chatId, activePageId, modelConfigured, open
               <>
                 {" "}
                 · ${goal.knownCostUsd.toFixed(2)} / ${goal.budget.maxCostUsd.toFixed(2)}
-                {goal.costComplete ? "" : " (some calls unpriced)"}
+                {goal.costComplete ? "" : " (some charges unconfirmed)"}
               </>
             )}
             {goal.budget.deadlineMs !== undefined && (
               <> · {Math.round(goal.budget.deadlineMs / 60_000)} minute limit</>
             )}
           </p>
+          {!!(goal.reservedTokens || goal.reservedCostUsd) && <p className="hint">
+            Held capacity: {(goal.reservedTokens ?? 0).toLocaleString()} tokens
+            {goal.budget.maxCostUsd !== undefined && <> · ${(goal.reservedCostUsd ?? 0).toFixed(2)}</>}
+            . This includes in-flight or uncertain calls and is not confirmed provider usage.
+          </p>}
           <div className="row">
             {goal.status === "draft" && (
               <button

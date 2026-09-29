@@ -21,6 +21,9 @@ export const GoalSchema = z.object({
   usedTokens: z.number().nonnegative(),
   knownCostUsd: z.number().nonnegative(),
   costComplete: z.boolean(),
+  /** Conservative capacity held for in-flight or opaque model calls; not confirmed usage. */
+  reservedTokens: z.number().int().nonnegative().optional(),
+  reservedCostUsd: z.number().nonnegative().optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
 });

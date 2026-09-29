@@ -262,7 +262,7 @@ export class GatewayModelClient implements ModelClient {
    */
   private async withFailover<
     R extends ModelAttempt & { retries?: ModelAttempt[]; resolvedModelId?: string },
-    O extends { modelId: string; reasoning?: CallOpts["reasoning"]; signal?: AbortSignal },
+    O extends { modelId: string; reasoning?: CallOpts["reasoning"]; signal?: AbortSignal; singleCandidate?: boolean },
   >(opts: O, invoke: (o: O) => Promise<R>): Promise<R> {
     if (this.allowedModelId && opts.modelId !== this.allowedModelId)
       throw new AuxError("permission_denied", `Model ${opts.modelId} is outside this benchmark's authorized model pin.`);
@@ -273,7 +273,7 @@ export class GatewayModelClient implements ModelClient {
         ? [{ modelId: this.allowedModelId, reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium" }]
         : at >= 0 ? chain.slice(at) : [{ modelId: opts.modelId, reasoning: (opts.reasoning as AgentModelRoute["reasoning"]) ?? "medium" }];
     const prior: ModelAttempt[] = [];
-    for (let i = 0; i < seq.length; i++) {
+    for (let i = 0; i < (opts.singleCandidate ? 1 : seq.length); i++) {
       const c = seq[i]!;
       try {
         const res = await invoke({ ...opts, modelId: c.modelId, reasoning: opts.reasoning ?? c.reasoning });
@@ -284,7 +284,7 @@ export class GatewayModelClient implements ModelClient {
       } catch (e) {
         if (opts.signal?.aborted) throw withAttempts(e, prior);
         const billed = attemptsOf(e).map((a) => ({ ...a, modelId: a.modelId ?? c.modelId }));
-        if (i === seq.length - 1 || !isFailoverStatus(e)) throw withAttempts(e, prior);
+        if (opts.singleCandidate || i === seq.length - 1 || !isFailoverStatus(e)) throw withAttempts(e, prior);
         prior.push(
           ...(billed.length
             ? billed
@@ -512,10 +512,11 @@ export class GatewayModelClient implements ModelClient {
     signal?: AbortSignal;
     providerOptions?: Record<string, Record<string, unknown>>;
     maxOutputTokens?: number;
+    maxAttempts?: 1;
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<ToolCallStepResult> {
-    return this.withFailover(opts, (o) => this.toolCallStepInner(o));
+    return this.withFailover({ ...opts, singleCandidate: opts.maxAttempts === 1 }, (o) => this.toolCallStepInner(o));
   }
 
   private async toolCallStepInner(opts: {
@@ -526,6 +527,7 @@ export class GatewayModelClient implements ModelClient {
     signal?: AbortSignal;
     providerOptions?: Record<string, Record<string, unknown>>;
     maxOutputTokens?: number;
+    maxAttempts?: 1;
     reasoning?: CallOpts["reasoning"];
     sessionId?: string;
   }): Promise<ToolCallStepResult> {

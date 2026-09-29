@@ -1064,9 +1064,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     agentLoop,
     browserEgress,
   });
-  const goals = new GoalService(repo, runs);
+  const goals = new GoalService(repo, runs, async () => settings.registryModels());
   const commandEscalations = new CommandEscalationService(repo);
   agentLoop.goalUpdate = async (input, ctx) => goals.report(ctx.runId, input.status, input.blocker, ctx.goalTurn);
+  agentLoop.goalBudget = {
+    reserve: (runId, request) => goals.reserveModelCall(runId, request),
+    settle: (runId, reservationId, attempts) => goals.settleModelCall(runId, reservationId, attempts),
+  };
 
   // Subagent cells (06-Y): the service is shared with the RPC invoker; the
   // REPL spawns cells under a lazily created group per parent run.

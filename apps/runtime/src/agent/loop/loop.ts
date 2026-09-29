@@ -1,4 +1,5 @@
 import { AuxError } from "@aux/contracts";
+import { z } from "zod";
 import type { ModelClient, ToolCallStepResult } from "../model-client.js";
 import type {
   LoopToolCall,
@@ -41,11 +42,14 @@ export interface AgentLoopOptions {
   /** New steer pending → stop before the next model call (or after in-flight tools). */
   steerCheck?: () => boolean;
   /** Pre-call gate (D11 budgets): throws before the model step is billed. */
-  beforeModelCall?: () => void | Promise<void>;
+  beforeModelCall?: (request: { modelId: string; promptBytes: number; toolsBytes: number;
+    maxOutputTokens: number }) => string | undefined | Promise<string | undefined>;
   /** Called after each model step is persisted — usage/billing/reporting. */
-  onStep?: (info: { index: number; step: ToolCallStepResult }) => void | Promise<void>;
+  onStep?: (info: { index: number; step: ToolCallStepResult; reservationId?: string }) => void | Promise<void>;
   /** A dispatched provider request failed; persist every attempted call before returning. */
-  onModelFailure?: (info: { index: number; error: unknown }) => void | Promise<void>;
+  onModelFailure?: (info: { index: number; error: unknown; reservationId?: string }) => void | Promise<void>;
+  /** A funded Goal permits one provider attempt per reservation. */
+  maxAttempts?: 1;
   /** Called after each tool executes — status/byline reporting. */
   onToolCall?: (call: LoopToolCall, result: LoopToolResult) => void;
   /** Per-provider options merged into the client's defaults (prompt caching keys). */
@@ -239,8 +243,15 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     if (transcriptBytes(messages) > TRANSCRIPT_COMPACT_BYTES)
       return { kind: "failed", error: new AuxError("model_error", "Context remains above the 192 KB limit after durable compaction; no model call was made.") };
 
+    const callTools = firstTurnPageTools && !messages.some((message) => message.role === "assistant")
+      ? firstTurnPageTools : sdkTools;
+    let reservationId: string | undefined;
     try {
-      await opts.beforeModelCall?.();
+      reservationId = await opts.beforeModelCall?.({ modelId: opts.modelId,
+        promptBytes: Buffer.byteLength(`${system}\n${JSON.stringify(messages)}`, "utf8"),
+        toolsBytes: Buffer.byteLength(JSON.stringify(Object.entries(callTools).map(([name, spec]) =>
+          ({ name, description: spec.description, schema: z.toJSONSchema(spec.inputSchema) }))), "utf8"),
+        maxOutputTokens: opts.maxOutputTokens ?? 4000 });
     } catch (error) {
       return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", error instanceof Error ? error.message : String(error)) };
     }
@@ -251,15 +262,15 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
         modelId: opts.modelId,
         system,
         messages,
-        tools: firstTurnPageTools && !messages.some((message) => message.role === "assistant")
-          ? firstTurnPageTools : sdkTools,
+        tools: callTools,
         signal: opts.signal,
         providerOptions: opts.providerOptions,
         sessionId: opts.threadId,
         maxOutputTokens: opts.maxOutputTokens,
+        maxAttempts: opts.maxAttempts,
       });
     } catch (error) {
-      await opts.onModelFailure?.({ index, error });
+      await opts.onModelFailure?.({ index, error, reservationId });
       if (opts.steerCheck?.()) return { kind: "steered" };
       return { kind: "failed", error: error instanceof AuxError ? error : new AuxError("step_failed", error instanceof Error ? error.message : String(error)) };
     }
@@ -275,7 +286,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     }
     messages.push(assistant);
     transcript.append(runId, [assistant]);
-    await opts.onStep?.({ index, step });
+    await opts.onStep?.({ index, step, reservationId });
 
     if (!toolCalls.length) {
       if (!step.text?.trim()) {
