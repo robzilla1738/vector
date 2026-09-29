@@ -36,7 +36,8 @@ export class OutboundMcpService {
     const server = OutboundMcpServerSchema.parse({ ...input, source, serverId: randomUUID(), state: "pending",
       sourceDigest: createHash("sha256").update(JSON.stringify(source)).digest("hex"), createdAt: now, updatedAt: now });
     this.repo.db.prepare("INSERT INTO outbound_mcp_servers(server_id,workspace_id,state,body,created_at,updated_at) VALUES(?,?,?,?,?,?)")
-      .run(server.serverId, server.workspaceId, server.state, JSON.stringify(server), now, now);
+      .run(server.serverId, server.workspaceId, server.state,
+        this.repo.protectRecordField("outbound_mcp_servers", [server.serverId], "body", JSON.stringify(server)), now, now);
     return server;
   }
 
@@ -55,7 +56,8 @@ export class OutboundMcpService {
   get(serverId: string): OutboundMcpServer {
     const row = this.repo.db.prepare("SELECT body,state FROM outbound_mcp_servers WHERE server_id=?").get(serverId) as ServerRow | undefined;
     if (!row) throw new AuxError("not_found", "MCP server does not exist");
-    return OutboundMcpServerSchema.parse({ ...JSON.parse(row.body), state: row.state });
+    return OutboundMcpServerSchema.parse({ ...JSON.parse(this.repo.revealRecordField(
+      "outbound_mcp_servers", [serverId], "body", row.body)), state: row.state });
   }
 
   list(workspaceId: string): OutboundMcpServer[] {
@@ -96,7 +98,8 @@ export class OutboundMcpService {
     }
     const grant = OutboundMcpGrantSchema.parse({ ...input, grantId: randomUUID(), createdAt: Date.now() });
     this.repo.db.prepare("INSERT INTO outbound_mcp_grants(grant_id,server_id,tool_name,body) VALUES(?,?,?,?)")
-      .run(grant.grantId, grant.serverId, grant.toolName, JSON.stringify(grant));
+      .run(grant.grantId, grant.serverId, grant.toolName,
+        this.repo.protectRecordField("outbound_mcp_grants", [grant.grantId], "body", JSON.stringify(grant)));
     return grant;
   }
 
@@ -104,7 +107,8 @@ export class OutboundMcpService {
     const row = this.repo.db.prepare("SELECT body,revoked_at,consumed_at FROM outbound_mcp_grants WHERE grant_id=?")
       .get(grantId) as GrantRow | undefined;
     if (!row) throw new AuxError("not_found", "MCP tool grant does not exist");
-    return OutboundMcpGrantSchema.parse({ ...JSON.parse(row.body), revokedAt: row.revoked_at ?? undefined,
+    return OutboundMcpGrantSchema.parse({ ...JSON.parse(this.repo.revealRecordField(
+      "outbound_mcp_grants", [grantId], "body", row.body)), revokedAt: row.revoked_at ?? undefined,
       consumedAt: row.consumed_at ?? undefined });
   }
 
