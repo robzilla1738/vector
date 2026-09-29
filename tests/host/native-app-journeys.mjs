@@ -246,7 +246,7 @@ if (runtimeBackupRestoreJourney || memoryInboxUiJourney) {
   mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   writeFileSync(join(dataDir, "development-acceptance.json"), JSON.stringify({
     version: 1, sourceCommit: nativeSourceCommit, tokenHash: createHash("sha256").update(token).digest("hex"),
-    features: memoryInboxUiJourney ? ["memory"] : ["electronMigration"], createdAt: Date.now(),
+    features: memoryInboxUiJourney ? ["memory", "spaces"] : ["electronMigration"], createdAt: Date.now(),
   }), { mode: 0o600 });
   process.env.AUX_DEV_ACCEPTANCE_TOKEN = token;
 }
@@ -256,7 +256,7 @@ const report = { schema: 1, scope: "Native Aux.app, disposable Profile, loopback
   sourceSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   ...(nativeSourceCommit ? { nativeSourceCommit } : {}),
   ...((runtimeBackupRestoreJourney || memoryInboxUiJourney) ?
-    { developmentAcceptanceFeatures: memoryInboxUiJourney ? ["memory"] : ["electronMigration"] } : {}),
+    { developmentAcceptanceFeatures: memoryInboxUiJourney ? ["memory", "spaces"] : ["electronMigration"] } : {}),
   startedAt: new Date().toISOString(), rpcOnly, uiOnly, steps: [], captures: [], passed: false };
 let child;
 let attachedChrome;

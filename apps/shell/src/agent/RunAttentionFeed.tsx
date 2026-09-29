@@ -67,9 +67,9 @@ export function RunAttentionFeed({ runs, onOpenRun, limit = 8 }: {
 
   return <section className="run-attention-feed" aria-label="Tasks needing your input">
     <h2>Needs your input</h2>
-    {visible.map((item) => <article className="run-attention-card" key={item.suspension.suspensionId}>
-      <div><strong>{LABELS[item.suspension.kind].title}</strong><p>{LABELS[item.suspension.kind].detail}</p></div>
-      <div className="run-attention-actions">
+    {visible.map((item) => <article className="run-failure run-attention-card" key={item.suspension.suspensionId}>
+      <div><strong>{LABELS[item.suspension.kind].title}</strong><p className="hint">{LABELS[item.suspension.kind].detail}</p></div>
+      <div className="row">
         <button className="btn sm primary" onKeyDown={(event) => dismissOnEscape(event, item.suspension.suspensionId)}
           onClick={() => void review(item)}>Review task</button>
         <button className="btn sm ghost" aria-label={`Dismiss ${LABELS[item.suspension.kind].title}`}
@@ -77,7 +77,7 @@ export function RunAttentionFeed({ runs, onOpenRun, limit = 8 }: {
           onClick={() => dismiss(item.suspension.suspensionId)}>Dismiss</button>
       </div>
     </article>)}
-    {items.length > visible.length && <p className="run-attention-more">More tasks need your input in Tasks.</p>}
+    {items.length > visible.length && <p className="hint">More tasks need your input in Tasks.</p>}
     {error && <p role="alert">{error}</p>}
   </section>;
 }

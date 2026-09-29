@@ -1,12 +1,15 @@
 --- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 +++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
-@@ -154,15 +154,19 @@
+@@ -153,16 +153,22 @@
+-  // A disposable acceptance Profile may activate this preview only after the
++  // A disposable acceptance Profile may activate reviewed previews only after the
    // runtime validates its owner-only, source-bound marker. The shell never
    // reads a test token or interprets a marker itself.
    if (capabilities.developmentAcceptanceRequested === true &&
 -      featureStages.electronMigration === 'preview') {
 +      (featureStages.electronMigration === 'preview' ||
-+       featureStages.memory === 'preview')) {
++       featureStages.memory === 'preview' ||
++       featureStages.spaces === 'preview')) {
      try {
        const runtimeResponse = await remote.request('invoke',
            JSON.stringify(['runtime.describe', {}]));
@@ -15,8 +18,9 @@
 -            {featureStages?: {electronMigration?: string}};
 -        if (runtime.featureStages?.electronMigration === 'on') {
 -          featureStages.electronMigration = 'on';
-+            {featureStages?: {electronMigration?: string; memory?: string}};
-+        for (const feature of ['electronMigration', 'memory'] as const) {
++            {featureStages?: {electronMigration?: string; memory?: string;
++                              spaces?: string}};
++        for (const feature of ['electronMigration', 'memory', 'spaces'] as const) {
 +          if (featureStages[feature] === 'preview' &&
 +              runtime.featureStages?.[feature] === 'on') {
 +            featureStages[feature] = 'on';
