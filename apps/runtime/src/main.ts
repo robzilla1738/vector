@@ -1065,7 +1065,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     browserEgress,
   });
   const goals = new GoalService(repo, runs, async () => settings.registryModels());
-  const commandEscalations = new CommandEscalationService(repo);
+  const commandEscalations = new CommandEscalationService(repo,
+    (workspaceId, workdir) => workspaceFolders.scopeDigest(workspaceId, workdir));
   agentLoop.goalUpdate = async (input, ctx) => goals.report(ctx.runId, input.status, input.blocker, ctx.goalTurn);
   agentLoop.goalBudget = {
     reserve: (runId, request) => goals.reserveModelCall(runId, request),
@@ -1147,6 +1148,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
       return commandEscalations.authorize({ ...input, runId: ctx.runId,
         workspaceId: run.config?.contextWorkspaceId ?? "default" });
+    },
+    escalationRecheck: ({ workdir, scopeDigest, requestIds }, ctx) => {
+      const run = repo.getRun(ctx.runId);
+      if (!run) throw new AuxError("not_found", "Escalated run does not exist.");
+      commandEscalations.assertDispatch(run.config?.contextWorkspaceId ?? "default",
+        workdir, scopeDigest, requestIds);
     },
   });
   agentLoop.bash = async (input, ctx) => {
