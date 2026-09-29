@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { installChromiumBridge, type ChromiumHostPort } from "./chromium-bridge";
+import { installChromiumBridge, reconcileChromiumFeatureStages, type ChromiumHostPort } from "./chromium-bridge";
+import { chromiumFeatureStages } from "./feature-stage-reconciliation";
 
 function fakeWindow(url: string, port?: ChromiumHostPort) {
   return { location: new URL(url), auxChromiumHost: port } as unknown as Parameters<
@@ -16,6 +17,60 @@ function fakeWindow(url: string, port?: ChromiumHostPort) {
 }
 
 describe("Chromium Aux shell bridge", () => {
+  it("accepts only the Profile-scoped runtime AI Tidy stage for the shell and invoke gate", async () => {
+    const request = vi.fn(async (method: string, args: unknown[]) =>
+      method === "invoke" && args[0] === "runtime.describe"
+        ? { version: 1, featureStages: { spaces: "on", aiTidy: "on", memory: "on" } }
+        : { groups: [], pages: [] });
+    const target = fakeWindow("chrome://aux/", {
+      host: "chromium-fork", windowId: "win-1", profileId: "disposable",
+      platform: "darwin", privateMode: false,
+      featureStages: { spaces: "preview", aiTidy: "preview", memory: "preview" },
+      request, subscribe: vi.fn(() => () => {}),
+    });
+    expect(installChromiumBridge(target)).toBe(true);
+    const invoke = target.aux as unknown as { invoke(method: string, params: unknown): Promise<unknown> };
+    await expect(invoke.invoke("agent.tidy.propose", { pageIds: [] })).rejects.toThrow(/aiTidy is preview/);
+    await reconcileChromiumFeatureStages(target);
+    expect(chromiumFeatureStages(target)).toMatchObject({ spaces: "on", aiTidy: "on", memory: "preview" });
+    await invoke.invoke("agent.tidy.propose", { pageIds: [] });
+    expect(request).toHaveBeenCalledWith("invoke", ["agent.tidy.propose", { pageIds: [] }]);
+  });
+
+  it.each([
+    ["normal Profile preview", { version: 1, featureStages: { spaces: "on", aiTidy: "preview" } }],
+    ["missing stages", { version: 1 }],
+    ["malformed stages", { version: 1, featureStages: ["on"] }],
+    ["wrong version", { version: 2, featureStages: { spaces: "on", aiTidy: "on" } }],
+  ])("keeps AI Tidy in preview for %s", async (_label, description) => {
+    const request = vi.fn(async () => description);
+    const target = fakeWindow("chrome://aux/", {
+      host: "chromium-fork", windowId: "win-1", profileId: "ordinary",
+      platform: "darwin", privateMode: false,
+      featureStages: { spaces: "on", aiTidy: "preview" },
+      request, subscribe: vi.fn(() => () => {}),
+    });
+    installChromiumBridge(target);
+    await reconcileChromiumFeatureStages(target);
+    expect(chromiumFeatureStages(target)?.aiTidy).toBe("preview");
+    const invoke = target.aux as unknown as { invoke(method: string, params: unknown): Promise<unknown> };
+    await expect(invoke.invoke("agent.tidy.propose", { pageIds: [] })).rejects.toThrow(/aiTidy is preview/);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not query runtime or promote a private window", async () => {
+    const request = vi.fn(async () => ({ version: 1, featureStages: { spaces: "on", aiTidy: "on" } }));
+    const target = fakeWindow("chrome://aux/", {
+      host: "chromium-fork", windowId: "win-1", profileId: "disposable",
+      platform: "darwin", privateMode: true,
+      featureStages: { spaces: "on", aiTidy: "preview" },
+      request, subscribe: vi.fn(() => () => {}),
+    });
+    installChromiumBridge(target);
+    await reconcileChromiumFeatureStages(target);
+    expect(request).not.toHaveBeenCalled();
+    expect(chromiumFeatureStages(target)?.aiTidy).toBe("preview");
+  });
   it("refuses ordinary pages and other WebUI origins", () => {
     const port: ChromiumHostPort = {
       host: "chromium-fork",

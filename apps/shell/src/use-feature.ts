@@ -1,12 +1,11 @@
-import { auxFeatureStage, type AuxFeature, type AuxFeatureStage, type AuxFeatureOverrides } from "@aux/contracts";
+import { auxFeatureStage, type AuxFeature, type AuxFeatureStage } from "@aux/contracts";
 import { inNativeHost, inMock } from "./bridge";
+import { chromiumFeatureStages } from "./feature-stage-reconciliation";
 
-type FeatureWindow = Window & { auxChromiumHost?: { featureStages?: AuxFeatureOverrides } };
-
-/** Native stages are fixed at bootstrap for the lifetime of the shell. */
+/** Native stages, with the trusted runtime's scoped acceptance, are fixed before App mounts. */
 export function featureStage(feature: AuxFeature): AuxFeatureStage {
   if (inNativeHost) {
-    const stages = (window as FeatureWindow).auxChromiumHost?.featureStages;
+    const stages = chromiumFeatureStages();
     return auxFeatureStage(feature, "chromium-fork", stages);
   }
   return inMock ? "on" : "off";

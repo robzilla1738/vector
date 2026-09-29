@@ -1,7 +1,6 @@
 @layer overrides {
 @media (prefers-reduced-transparency: reduce) {
-  .toolbar, .rail-inner, .cb-pop, .palette, .aux-observation-dialog, .menu { backdrop-filter: none; background: var(--bg-1); }
-  .sidebar { backdrop-filter: none; background: var(--sb-bg); }
+  .toolbar, .rail-inner, .palette, .aux-observation-dialog { backdrop-filter: none; background: var(--bg-1); }
   .app.native-host .main-col.has-page > .toolbar::before { display: none; }
 }
 @media (prefers-reduced-transparency: reduce) { :root .sidebar { background: var(--sb-bg); backdrop-filter: none; } }

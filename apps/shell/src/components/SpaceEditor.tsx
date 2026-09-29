@@ -5,6 +5,7 @@ import { isScrimOverlay } from "../chrome";
 import { useStore } from "../store";
 import { SPACE_COLORS, spaceThemeColor, type Space, type SpaceColor } from "../workspace";
 import { Dialog } from "../ui";
+import "./SpaceEditor.css";
 
 const PRESET_HUE: Record<SpaceColor, number> = {
   blue: 250,

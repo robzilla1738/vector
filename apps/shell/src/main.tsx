@@ -36,8 +36,9 @@ async function boot() {
       const ready = (window as Window & { auxChromiumHostReady?: Promise<void> }).auxChromiumHostReady;
       if (!ready) throw new Error("Aux's Chromium host bootstrap is unavailable.");
       await ready;
-      const { installChromiumBridge } = await import("./chromium-bridge");
+      const { installChromiumBridge, reconcileChromiumFeatureStages } = await import("./chromium-bridge");
       if (!installChromiumBridge()) throw new Error("Aux's Chromium host bridge is unavailable.");
+      await reconcileChromiumFeatureStages();
     }
     // Keep the scripted preview bridge out of the native production bundle.
     if (!chromiumShell && import.meta.env.MODE === "mock") {

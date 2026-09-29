@@ -1,0 +1,69 @@
+@layer components {
+  .space-grain-control, .space-theme-controls {
+    display: grid;
+    gap: var(--space-2);
+  }
+  .space-theme-controls label {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--ink-1);
+    font-size: var(--fs-sm);
+  }
+  .space-theme-controls input[type="range"], .space-grain-control input {
+    width: 100%;
+    accent-color: var(--space-color);
+  }
+  .space-theme-controls .space-theme-invert, .space-theme-actions {
+    display: flex;
+  }
+  .space-color-pad {
+    position: relative;
+    width: 100%;
+    height: 80px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background:
+      linear-gradient(to top, #000, transparent 50%, #fff),
+      linear-gradient(
+        to right,
+        oklch(60% 0.18 0),
+        oklch(60% 0.18 60),
+        oklch(60% 0.18 120),
+        oklch(60% 0.18 180),
+        oklch(60% 0.18 240),
+        oklch(60% 0.18 300),
+        oklch(60% 0.18 359)
+      );
+    cursor: crosshair;
+    touch-action: none;
+  }
+  .space-color-cursor {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px #000;
+    transform: translate(-50%, -50%);
+  }
+  .space-theme-actions {
+    gap: var(--space-2);
+  }
+  .space-grain-label {
+    display: flex;
+    justify-content: space-between;
+    color: var(--ink-1);
+    font-size: var(--fs-sm);
+  }
+  .space-grain-preview {
+    position: relative;
+    height: 32px;
+    overflow: hidden;
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--space-color) 28%, var(--sb-bg));
+  }
+
+}
