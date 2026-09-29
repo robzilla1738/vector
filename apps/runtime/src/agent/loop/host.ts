@@ -198,6 +198,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     act: async ({ pageId, steps }): Promise<LoopToolResult> => {
       const obs = lastObs.get(pageId) ?? (lastObs.set(pageId, await observePage(pageId, {})), lastObs.get(pageId)!);
       const safeObs = redactObservation(obs);
+      const dispatchStartedAt = Date.now();
       const actionLabels = steps.filter((step) => classifyStep(step.op) !== "read").flatMap((step) => {
         const target = "target" in step ? step.target : undefined;
         if (typeof target !== "string") return [];
@@ -242,6 +243,37 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       // The post-action observation is citable too — a write's post-state is
       // what a consequential-write citation points at.
       const post = gate.result.observation ? recordObs(gate.result.observation) : undefined;
+      // A single Edit record click can open an inline form without a URL or
+      // dialog transition. The post-action observation is trusted evidence:
+      // settle only this exact target when the same page newly renders both
+      // the form heading and its Save/Cancel controls.
+      const editClick = steps.length === 1 && steps[0]?.op === "click" && steps[0].target;
+      const clickedEdit = editClick && safeObs.content.elements.some((element) =>
+        element.ref === editClick && element.name?.trim() === "Edit record");
+      const afterObs = gate.result.observation && redactObservation(gate.result.observation);
+      const beforeLines = new Set(safeObs.content.text.split("\n").map((line) => line.trim()));
+      const afterLines = afterObs?.content.text.split("\n").map((line) => line.trim()) ?? [];
+      const openIntents = self.durable.unresolved(runId);
+      const pendingEdit = clickedEdit && afterObs && post && gate.result.status === "completed"
+        && afterObs.pageId === obs.pageId && afterObs.documentEpoch === obs.documentEpoch
+        && afterObs.revision > obs.revision && afterObs.observedAt >= dispatchStartedAt
+        && !modalVisible(afterObs) && !beforeLines.has("Edit record") && !beforeLines.has("Save record Cancel")
+        && afterLines.includes("Edit record") && afterLines.includes("Save record Cancel")
+        && openIntents.length === 1
+        ? openIntents.filter((intent) => intent.pageId === pageId
+          && intent.documentEpoch === obs.documentEpoch && intent.createdAt >= dispatchStartedAt
+          && intent.summary?.ops.length === 1 && intent.summary.ops[0] === "click"
+          && intent.summary.actionLabels?.length === 1 && intent.summary.actionLabels[0] === "Edit record")
+        : [];
+      if (pendingEdit.length === 1) {
+        self.durable.reconcile(pendingEdit[0]!.id, "applied", JSON.stringify({
+          observationId: post!.observationId, quote: "Save record Cancel", effect: "Opened inline edit form",
+        }));
+        const outcome = gate.result.steps[0];
+        if (outcome?.receipt) outcome.receipt = { ...outcome.receipt, uncertain: false,
+          unconfirmed: false, dispatchedBeforeTakeover: false, observed: "Save record Cancel" };
+        if (outcome?.effect === "uncertain" || outcome?.effect === "dispatched") outcome.effect = "observed";
+      }
       noteUnresolved();
       self.persistCheckpoint(self.get(runId));
       // A safety `ask` parks a suspension inside the gate and fails the step

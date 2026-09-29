@@ -1128,6 +1128,38 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldReconcile ? "confirmed" : "uncertain" });
   });
 
+  it.each([
+    { editTarget: true, formVisibleBefore: false, shouldSettle: true },
+    { editTarget: false, formVisibleBefore: false, shouldSettle: false },
+    { editTarget: true, formVisibleBefore: true, shouldSettle: false },
+  ])("settles one Edit click from a fresh same-page inline form transition (%o)", async ({ editTarget, formVisibleBefore, shouldSettle }) => {
+    const before = { ...pageObs(), content: { ...pageObs().content,
+      text: formVisibleBefore ? "Record 04\nEdit record\nSave record Cancel" : "Record 04\nEdit record Details…",
+      elements: [{ ref: "r4", tag: "button", role: "button", name: editTarget ? "Edit record" : "Details…", frame: "main" }],
+    } } as Observation;
+    const after = { ...before, revision: 2, observedAt: Date.now() + 10_000, content: { ...before.content,
+      text: "Record 04\nEdit record\nTitle\nStatus\nSave record Cancel",
+    } } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r4" }] } }] },
+      { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "form opened" } }] },
+      { text: "The click remains uncertain." },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const,
+        startedAt: 1, durationMs: 1, effect: "uncertain" as const,
+        receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "completed", steps, observation: after };
+    });
+    h.pages.observe.mockImplementation(async () => before);
+    const run = await h.coordinator.start({ goal: "open the edit form", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status === "completed").toBe(shouldSettle);
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldSettle ? "confirmed" : "uncertain" });
+  });
+
   it("reconciles an uncertain link click only from its recorded destination URL", async () => {
     const before = { ...pageObs(), content: { ...pageObs().content,
       url: "http://x.test/records", elements: [{ ref: "r2", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],
