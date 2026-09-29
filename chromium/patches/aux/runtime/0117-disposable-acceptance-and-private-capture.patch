@@ -1,14 +1,23 @@
 --- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 +++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
-@@ -148,6 +148,25 @@
+@@ -142,11 +142,32 @@
+     throw new Error(`Aux capabilities are unavailable: ${capabilityResponse.errorCode}`);
+   }
+   const capabilities = JSON.parse(capabilityResponse.resultJson) as
+-      {buildId: string; sourceCommit: string; methods: string[]};
++      {buildId: string; sourceCommit: string; methods: string[];
++       developmentAcceptanceRequested?: boolean};
+   if (!capabilities.buildId || !/^[a-f0-9]{40}$/.test(capabilities.sourceCommit) ||
+       !Array.isArray(capabilities.methods) ||
        !capabilities.methods.every(method => typeof method === 'string')) {
      throw new Error('The Aux browser returned invalid capabilities.');
-   }
++  }
 +  const featureStages = featureStagesFor(capabilities.methods, capabilities.sourceCommit);
 +  // A disposable acceptance Profile may activate this preview only after the
 +  // runtime validates its owner-only, source-bound marker. The shell never
 +  // reads a test token or interprets a marker itself.
-+  if (featureStages.electronMigration === 'preview') {
++  if (capabilities.developmentAcceptanceRequested === true &&
++      featureStages.electronMigration === 'preview') {
 +    try {
 +      const runtimeResponse = await remote.request('invoke',
 +          JSON.stringify(['runtime.describe', {}]));
@@ -22,11 +31,10 @@
 +    } catch {
 +      // A missing or failed runtime leaves the production preview gate closed.
 +    }
-+  }
+   }
    window.auxChromiumHost = {
      host: 'chromium-fork',
-     windowId: identity.windowId,
-@@ -156,7 +175,7 @@
+@@ -156,7 +177,7 @@
      privateMode: identity.privateMode,
      quickAskMode: identity.quickAskMode,
      capabilities,
@@ -35,6 +43,27 @@
      async request(method, args) {
        if (method === 'autocomplete') {
          if (args.length !== 1 || typeof args[0] !== 'string') {
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/aux/method_registry.h"
+ 
+ #include <algorithm>
++#include <cstdlib>
+ #include <initializer_list>
+ #include <utility>
+ 
+@@ -162,6 +163,10 @@
+                             std::string(generated::kManifestHash) + "+" +
+                             std::string(generated::kSourceCommit));
+   result.Set("sourceCommit", std::string(generated::kSourceCommit));
++  // This only requests a runtime proof; the runtime validates the disposable
++  // Profile marker before it can enable any preview feature.
++  result.Set("developmentAcceptanceRequested",
++             std::getenv("AUX_DEV_ACCEPTANCE_TOKEN") != nullptr);
+   base::ListValue methods;
+   for (const generated::MethodInfo& info : generated::Methods()) {
+     if (info.name == "capabilities" || info.name == "autocomplete" ||
 --- a/chrome/browser/ui/aux/methods/native_content_methods.cc
 +++ b/chrome/browser/ui/aux/methods/native_content_methods.cc
 @@ -86,6 +86,7 @@
