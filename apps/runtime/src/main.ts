@@ -48,7 +48,7 @@ import {
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb, SCHEMA_VERSION } from "./store/db.js";
 import { prepareProtectedDatabase } from "./store/protected-startup.js";
-import { bootstrapWatchdog, isAddrInUse, resolvePortInUse } from "./lifecycle.js";
+import { bootstrapWatchdog, developmentPeerIdentity, isAddrInUse, resolvePortInUse } from "./lifecycle.js";
 import { PrivacyCheckpoint } from "./store/privacy-checkpoint.js";
 import { Repo } from "./store/repo.js";
 import { EventBus } from "./events.js";
@@ -180,6 +180,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let agentConnections: AgentConnectionService | undefined;
   const disarmWatchdog = bootstrapWatchdog();
   const token = config.apiToken || randomUUID();
+  const developmentIdentity = developmentPeerIdentity();
   const peerIdentity = { instanceId: randomUUID(), pid: process.pid, schema: SCHEMA_VERSION,
     startedAt: Date.now() };
   const api = new ApiServer({
@@ -195,11 +196,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await api.listen(config.apiPort);
   } catch (error) {
     if (!isAddrInUse(error)) throw error;
-    // Versioned takeover: replace only a strictly older daemon; a busy older
-    // peer gets the idle wait, and a wedged peer is reclaimed only after its
-    // pid verifies as our runtime.
+    // Take over only a strictly older daemon with the same unsigned development
+    // identity. A busy older peer gets the idle wait. A foreign, changed, or
+    // unverifiable peer is left running.
     const outcome = await resolvePortInUse({ dataDir: config.dataDir, ourSchema: SCHEMA_VERSION,
-      boundPort: config.apiPort });
+      boundPort: config.apiPort, identity: developmentIdentity });
     process.stderr.write(`[runtime] ${outcome.action}: ${outcome.reason}\n`);
     if (outcome.action === "peer-serves" || outcome.action === "defer") {
       throw new Error(`runtime port takeover declined: ${outcome.reason}`);
@@ -220,6 +221,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       instanceId: peerIdentity.instanceId,
       version: { schema: SCHEMA_VERSION },
       startedAt: peerIdentity.startedAt,
+      uid: developmentIdentity.uid,
+      executable: developmentIdentity.executable,
     }),
     { mode: 0o600 },
   );

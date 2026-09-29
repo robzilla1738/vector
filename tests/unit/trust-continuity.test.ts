@@ -1,20 +1,33 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
+import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
 import type { AgentConnectionScope, AuxEvent } from "@aux/contracts";
 import {
   AgentConnectionService,
   ApiServer,
   EventBus,
+  ExternalSessionService,
   makeInvoker,
+  NullNativeBridge,
   openDb,
+  PageService,
   Repo,
   SCHEMA_VERSION,
+  startRuntime,
   TaskService,
   type Services,
 } from "@aux/runtime";
-import { resolvePortInUse, type RuntimeDescriptor } from "../../apps/runtime/src/lifecycle.js";
+import {
+  assessDevelopmentPeer,
+  developmentPeerIdentity,
+  peerProcessIdentity,
+  readRuntimeDescriptor,
+  resolvePortInUse,
+  type DevelopmentPeerIdentity,
+  type RuntimeDescriptor,
+} from "../../apps/runtime/src/lifecycle.js";
 
 const cleanup: Array<() => void> = [];
 afterEach(() => {
@@ -221,4 +234,499 @@ it("resyncs a scoped replay gap without widening scope or killing an unverifiabl
   expect(outcome.action).toBe("defer");
   expect(outcome.reason).toContain("could not be verified");
   expect(killed).toEqual([]);
+});
+
+const ours: DevelopmentPeerIdentity = { uid: 501, executable: "/opt/aux/dev-runtime" };
+
+function writePeerFile(dataDir: string, peer: RuntimeDescriptor) {
+  const path = join(dataDir, "runtime.json");
+  writeFileSync(path, JSON.stringify(peer), { mode: 0o600 });
+  chmodSync(path, 0o600);
+}
+
+function identityPeer(schema: number, extra: Partial<RuntimeDescriptor> = {}): RuntimeDescriptor {
+  return {
+    port: 40111,
+    pid: 4242,
+    token: "peer-secret",
+    instanceId: "peer-instance",
+    startedAt: 1234,
+    version: { schema },
+    uid: ours.uid,
+    executable: ours.executable,
+    ...extra,
+  };
+}
+
+function authorizationOf(init?: RequestInit): string | null {
+  const headers = init?.headers;
+  if (!headers) return null;
+  if (headers instanceof Headers) return headers.get("authorization");
+  if (Array.isArray(headers)) return headers.find(([key]) => key.toLowerCase() === "authorization")?.[1] ?? null;
+  return headers.authorization ?? null;
+}
+
+async function review(opts: {
+  peer: RuntimeDescriptor;
+  identity?: DevelopmentPeerIdentity;
+  identify?: (pid: number) => Promise<DevelopmentPeerIdentity | null>;
+  realIdentity?: boolean;
+  runs?: () => { status?: string }[];
+  onRpc?: (directory: string) => void;
+  idleWaitMs?: number;
+  sleep?: (ms: number) => Promise<void>;
+}) {
+  const directory = mkdtempSync(join(tmpdir(), "aux-trust-peer-"));
+  cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
+  writePeerFile(directory, opts.peer);
+  const killed: string[] = [];
+  let living = true;
+  const identity = opts.identity ?? ours;
+  const outcome = await resolvePortInUse({
+    dataDir: directory,
+    ourSchema: SCHEMA_VERSION,
+    boundPort: opts.peer.port,
+    identity,
+    ...(opts.realIdentity
+      ? {}
+      : { identify: opts.identify ?? (async () => ({ uid: identity.uid, executable: identity.executable })) }),
+    idleWaitMs: opts.idleWaitMs,
+    alive: () => living,
+    ownsPort: async () => true,
+    verify: async () => true,
+    kill: (_pid, signal) => {
+      killed.push(signal);
+      living = false;
+    },
+    log: () => {},
+    sleep: opts.sleep ?? (async () => {
+      throw new Error("refused peer must not be waited on");
+    }),
+    fetchImpl: (async (input: unknown, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/internal/peer")) {
+        if (authorizationOf(init) !== `Bearer ${opts.peer.token}`) return new Response("no", { status: 401 });
+        const nonce = new URL(url).searchParams.get("nonce") ?? "";
+        return Response.json({
+          service: "aux-runtime",
+          nonce,
+          instanceId: opts.peer.instanceId,
+          pid: opts.peer.pid,
+          schema: opts.peer.version?.schema,
+          startedAt: opts.peer.startedAt,
+          ready: true,
+        });
+      }
+      if (url.endsWith("/health")) return Response.json({ ok: true, ready: true });
+      opts.onRpc?.(directory);
+      return Response.json({ result: (opts.runs ?? (() => []))() });
+    }) as typeof fetch,
+  });
+  return { outcome, killed };
+}
+
+function runtimeEnv(dataDir: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    AUX_DATA_DIR: dataDir,
+    AUX_STANDALONE: "0",
+    AUX_IPC: "0",
+    AUX_API_PORT: "0",
+    AUX_LOAD_DOTENV: "0",
+  };
+  for (const key of ["AUX_HOST_SOCKET", "AUX_HOST_TOKEN", "AUX_BROWSER_PROFILE_ID", "AUX_INTERNAL_CDP", "AUX_RUNTIME_AUTOSTART"])
+    delete env[key];
+  return env;
+}
+
+function holdExecute(pages: PageService) {
+  let started = false;
+  let releaseHold!: () => void;
+  const hold = new Promise<void>((resolve) => {
+    releaseHold = resolve;
+  });
+  pages.execute = (async () => {
+    started = true;
+    await hold;
+    return { steps: [] };
+  }) as unknown as PageService["execute"];
+  return { release: releaseHold, started: () => started };
+}
+
+async function untilStarted(started: () => boolean, pending: Promise<unknown>) {
+  const deadline = Date.now() + 2_000;
+  while (!started() && Date.now() < deadline) await delay(10);
+  if (started()) return;
+  const outcome = await Promise.race([
+    pending.then((value) => value, (error: unknown) => error),
+    delay(50).then(() => new Error("page program did not start")),
+  ]);
+  throw outcome instanceof Error ? outcome : new Error("page program finished before it was held");
+}
+
+it("accepts a new peer, an old idle peer, and an old busy peer with the same unsigned development identity", async () => {
+  const newer = await review({ peer: identityPeer(SCHEMA_VERSION + 1) });
+  expect(newer.outcome.action).toBe("peer-serves");
+  expect(newer.killed).toEqual([]);
+
+  const idle = await review({ peer: identityPeer(SCHEMA_VERSION - 1) });
+  expect(idle.outcome.action).toBe("takeover");
+  expect(idle.killed).toEqual(["SIGTERM"]);
+
+  let polls = 0;
+  const busy = await review({
+    peer: identityPeer(SCHEMA_VERSION - 1, { port: 40112, pid: 4243, instanceId: "busy-peer" }),
+    idleWaitMs: 60_000,
+    sleep: async () => {},
+    runs: () => (polls++ === 0 ? [{ status: "running" }] : []),
+  });
+  expect(busy.outcome.action).toBe("takeover");
+  expect(busy.killed).toEqual(["SIGTERM"]);
+
+  const stillBusy = await review({
+    peer: identityPeer(SCHEMA_VERSION - 1, { port: 40113, pid: 4244, instanceId: "still-busy" }),
+    idleWaitMs: 0,
+    runs: () => [{ status: "running" }],
+  });
+  expect(stillBusy.outcome.action).toBe("defer");
+  expect(stillBusy.outcome.reason).toContain("idle wait");
+  expect(stillBusy.killed).toEqual([]);
+});
+
+it("refuses a foreign or changed development peer even when the command line looks like aux", async () => {
+  const foreign = await review({
+    peer: identityPeer(SCHEMA_VERSION + 1),
+    identify: async () => ({ uid: 999, executable: ours.executable }),
+  });
+  expect(foreign.outcome).toMatchObject({
+    action: "defer",
+    reason: "peer user does not match this development identity",
+  });
+  expect(foreign.killed).toEqual([]);
+
+  const changed = await review({
+    peer: identityPeer(SCHEMA_VERSION - 1),
+    identify: async () => ({ uid: ours.uid, executable: "/opt/aux/other" }),
+  });
+  expect(changed.outcome).toMatchObject({ action: "defer", reason: "peer executable changed" });
+  expect(changed.killed).toEqual([]);
+
+  const recordedUser = await review({ peer: identityPeer(SCHEMA_VERSION - 1, { uid: 999 }) });
+  expect(recordedUser.outcome).toMatchObject({
+    action: "defer",
+    reason: "peer user does not match this development identity",
+  });
+  expect(recordedUser.killed).toEqual([]);
+
+  const recordedExecutable = await review({
+    peer: identityPeer(SCHEMA_VERSION - 1, { executable: "/opt/aux/other" }),
+  });
+  expect(recordedExecutable.outcome).toMatchObject({ action: "defer", reason: "peer executable changed" });
+  expect(recordedExecutable.killed).toEqual([]);
+
+  const unproven = await review({
+    peer: identityPeer(SCHEMA_VERSION - 1),
+    identify: async () => null,
+  });
+  expect(unproven.outcome).toMatchObject({
+    action: "defer",
+    reason: "peer development identity could not be verified",
+  });
+  expect(unproven.killed).toEqual([]);
+
+  const replaced = await review({
+    peer: identityPeer(SCHEMA_VERSION - 1),
+    onRpc: (directory) => writePeerFile(directory, identityPeer(SCHEMA_VERSION - 1, { executable: "/opt/aux/replaced" })),
+  });
+  expect(replaced.outcome).toMatchObject({ action: "defer", reason: "peer executable changed" });
+  expect(replaced.killed).toEqual([]);
+});
+
+it("development identity is the user and executable, not a code signature", async () => {
+  const identity = developmentPeerIdentity();
+  expect(identity.executable.startsWith("/")).toBe(true);
+  expect(await peerProcessIdentity(process.pid)).toEqual(identity);
+  expect(assessDevelopmentPeer({
+    ours: identity,
+    peerUid: identity.uid,
+    peerExecutable: identity.executable,
+  })).toBe("accept");
+  expect(assessDevelopmentPeer({
+    ours: identity,
+    peerUid: identity.uid + 1,
+    peerExecutable: identity.executable,
+  })).toBe("foreign");
+  expect(assessDevelopmentPeer({
+    ours: identity,
+    peerUid: identity.uid,
+    peerExecutable: "/not/aux",
+  })).toBe("changed");
+  expect(assessDevelopmentPeer({ ours: identity, peerUid: null, peerExecutable: null })).toBe("unproven");
+  expect(assessDevelopmentPeer({
+    ours: identity,
+    peerUid: identity.uid,
+    peerExecutable: identity.executable,
+    descriptorExecutable: "/opt/aux/replaced",
+  })).toBe("changed");
+
+  const sameBinary = await review({
+    peer: identityPeer(SCHEMA_VERSION - 1, {
+      pid: process.pid,
+      uid: identity.uid,
+      executable: identity.executable,
+      port: 40121,
+    }),
+    identity,
+    realIdentity: true,
+    sleep: async () => {},
+  });
+  expect(sameBinary.outcome.action).toBe("takeover");
+  expect(sameBinary.killed).toEqual(["SIGTERM"]);
+
+  const parent = mkdtempSync(join(tmpdir(), "aux-trust-boot-"));
+  cleanup.push(() => rmSync(parent, { recursive: true, force: true }));
+  let handle: Awaited<ReturnType<typeof startRuntime>> | undefined;
+  try {
+    handle = await startRuntime(runtimeEnv(join(parent, "data")));
+    expect(readRuntimeDescriptor(join(parent, "data"))).toMatchObject({
+      uid: identity.uid,
+      executable: identity.executable,
+      pid: process.pid,
+    });
+  } finally {
+    await handle?.close();
+  }
+});
+
+it("reopens a crashed runtime without widening a scoped replay gap", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-trust-restart-"));
+  cleanup.push(() => rmSync(directory, { recursive: true, force: true }));
+  const db = openDb(join(directory, "state.sqlite"));
+  let current = db;
+  cleanup.push(() => {
+    try { current.close(); } catch { /* Repo.close already released it */ }
+  });
+  const repo = new Repo(db);
+  const events = new EventBus(repo);
+  const tasks = new TaskService(repo, events);
+  const workspace = tasks.createWorkspace("Scoped");
+  const task = tasks.create({
+    workspaceId: workspace.workspaceId,
+    title: "Read",
+    objective: "Read the page",
+    criteria: [{ criterionId: "c", description: "Read", verification: "manual" }],
+    resources: [{ resourceId: "page", kind: "page", locator: "p1", label: "Tab" }],
+  });
+  const sibling = tasks.create({
+    workspaceId: workspace.workspaceId,
+    title: "Sibling",
+    objective: "Elsewhere in the space",
+    criteria: [{ criterionId: "c", description: "Elsewhere", verification: "manual" }],
+  });
+  const otherWorkspace = tasks.createWorkspace("Other");
+  const other = tasks.create({
+    workspaceId: otherWorkspace.workspaceId,
+    title: "Other",
+    objective: "Outside",
+    criteria: [{ criterionId: "c", description: "Outside", verification: "manual" }],
+  });
+  const connections = new AgentConnectionService(repo);
+  const created = connections.create({
+    name: "Codex",
+    client: "codex",
+    scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
+    expiresAt: Date.now() + 60 * 60_000,
+  });
+  const client = {
+    external: true as const,
+    connectionId: created.connection.connectionId,
+    scope: created.connection.scope,
+  };
+  const gate = makeInvoker({
+    repo,
+    events,
+    agentConnections: connections,
+    pages: { list: () => [], get: () => ({ controller: "none" }) },
+    settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
+  } as unknown as Services) as Gate;
+  const anchor = events.emit("task.updated", { task: { taskId: task.taskId, workspaceId: workspace.workspaceId } });
+  const dropped = events.emit("task.updated", {
+    task: { taskId: other.taskId, workspaceId: otherWorkspace.workspaceId },
+  });
+  events.lastSeq();
+  repo.db.prepare("DELETE FROM events WHERE seq <= ?").run(dropped.seq);
+  events.emit("page.emitted", { pageId: "p1" });
+  events.emit("task.updated", { task: { taskId: sibling.taskId, workspaceId: workspace.workspaceId } });
+  events.emit("task.updated", { task: { taskId: other.taskId, workspaceId: otherWorkspace.workspaceId } });
+  events.emit("settings.changed", { category: "calendar" });
+  const streamId = events.streamId;
+  events.lastSeq();
+  db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+  await gate.dispose();
+  repo.close();
+
+  current = openDb(join(directory, "state.sqlite"));
+  const restartedRepo = new Repo(current);
+  const restartedEvents = new EventBus(restartedRepo);
+  const restartedConnections = new AgentConnectionService(restartedRepo);
+  const restarted = makeInvoker({
+    repo: restartedRepo,
+    events: restartedEvents,
+    agentConnections: restartedConnections,
+    pages: { list: () => [], get: () => ({ controller: "none" }) },
+    settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
+  } as unknown as Services) as Gate;
+  cleanup.push(() => void restarted.dispose());
+  expect(restartedEvents.streamId).toBe(streamId);
+  expect(restartedConnections.authorize(created.token)?.connectionId).toBe(created.connection.connectionId);
+
+  const gap = (await restarted("events.since", {
+    sinceSeq: anchor.seq,
+    limit: 50,
+    streamId,
+  }, client)) as SinceBody;
+  expect(gap.resync).toBe(true);
+  expect(gap.events).toEqual([]);
+  expect(JSON.stringify(gap)).not.toContain(sibling.taskId);
+  expect(JSON.stringify(gap)).not.toContain(other.taskId);
+  const snapshot = (await restarted("events.since", { sinceSeq: 0, limit: 50 }, client)) as SinceBody;
+  const master = (await restarted("events.since", { sinceSeq: 0, limit: 50 }, { external: true })) as SinceBody;
+  expect(snapshot.events.map(mark)).toEqual(["page:p1"]);
+  expect(master.events.map(mark)).toEqual([
+    "page:p1",
+    `task:${sibling.taskId}`,
+    `task:${other.taskId}`,
+    "settings:calendar",
+  ]);
+});
+
+it("keeps browsing usable when the runtime is not ready and when an external session expires or is revoked during activity", async () => {
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
+  const repo = new Repo(db);
+  const events = new EventBus(repo);
+  const driverPage = {
+    url: () => "https://start.example/",
+    title: async () => "Start",
+    isAttached: () => true,
+    navigate: async () => undefined,
+    observe: async () => ({}),
+    setEvents: () => undefined,
+    dispose: async () => undefined,
+  } as unknown as DriverPage;
+  const driver = {
+    backend: "aux",
+    isConnected: () => true,
+    createTarget: async () => "t",
+    attach: async () => driverPage,
+  } as unknown as BrowserDriver;
+  const pages = new PageService({
+    repo,
+    events,
+    native: new NullNativeBridge(),
+    drivers: () => ({ aux: driver, chrome: null }),
+  });
+  const opened = await pages.open({ url: "https://start.example/", background: true, ownedByRuntime: false });
+  const tasks = new TaskService(repo, events);
+  const workspace = tasks.createWorkspace("Browsing");
+  const task = tasks.create({
+    workspaceId: workspace.workspaceId,
+    title: "Read",
+    objective: "Read the page",
+    criteria: [{ criterionId: "c", description: "Read", verification: "manual" }],
+    resources: [{ resourceId: "page", kind: "page", locator: opened.pageId, label: "Tab" }],
+  });
+  const connections = new AgentConnectionService(repo);
+  const sessions = new ExternalSessionService(repo, events);
+  const gate = makeInvoker({
+    repo,
+    events,
+    pages,
+    runs: { pageOwnership: { tryAcquire: () => () => undefined } },
+    settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
+    agentConnections: connections,
+    externalSessions: sessions,
+  } as unknown as Services) as Gate;
+  cleanup.push(() => void gate.dispose());
+  const server = new ApiServer({
+    token: "master-token",
+    events,
+    invoke: (method, params, caller) => gate(method, params, caller),
+    authorizeScopedToken: (token) => connections.authorize(token),
+  });
+  const port = await server.listen(0);
+  cleanup.push(() => void server.close());
+  const health = await fetch(`http://127.0.0.1:${port}/health`);
+  expect(health.status).toBe(503);
+  expect(await health.json()).toMatchObject({ ok: false, ready: false });
+  const owner = { external: false as const };
+  await gate("pages.navigate", { pageId: opened.pageId, url: "https://example.com/during-startup" }, owner);
+  expect(pages.get(opened.pageId).url).toBe("https://example.com/during-startup");
+
+  const created = connections.create({
+    name: "Codex",
+    client: "codex",
+    scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
+    expiresAt: Date.now() + 60 * 60_000,
+  });
+  const client = {
+    external: true as const,
+    connectionId: created.connection.connectionId,
+    scope: created.connection.scope,
+  };
+  await gate("pages.list", {}, client);
+  const program = {
+    program: { pageId: opened.pageId, steps: [{ id: "s", op: "click", target: "r1" }] },
+    taskId: task.taskId,
+    expectedRevision: task.revision,
+  };
+  const held = holdExecute(pages);
+  let settled = false;
+  const inflight = gate("pages.execute", program, client).finally(() => { settled = true; });
+  await untilStarted(held.started, inflight);
+  expect(settled).toBe(false);
+  await gate("pages.navigate", { pageId: opened.pageId, url: "https://example.com/during-activity" }, owner);
+  expect(pages.get(opened.pageId).url).toBe("https://example.com/during-activity");
+  const runId = repo.conversationRuns(`external:${created.connection.connectionId}`)[0]?.runId;
+  if (!runId) throw new Error("expected a session run");
+  repo.db.prepare("UPDATE agent_connections SET expires_at=? WHERE connection_id=?").run(
+    Date.now() - 1,
+    created.connection.connectionId,
+  );
+  await expect(gate("pages.navigate", {
+    pageId: opened.pageId,
+    url: "https://evil.example/exfil",
+  }, client)).rejects.toMatchObject({ code: "permission_denied" });
+  expect(pages.get(opened.pageId).url).toBe("https://example.com/during-activity");
+  await expect(gate("pages.list", {}, client)).rejects.toMatchObject({ code: "permission_denied" });
+  expect(repo.getRun(runId)).toMatchObject({ status: "completed", statusMessage: "Connection expired" });
+  held.release();
+  await expect(inflight).resolves.toEqual({ steps: [] });
+
+  const revoked = connections.create({
+    name: "Later",
+    client: "codex",
+    scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
+    expiresAt: Date.now() + 60 * 60_000,
+  });
+  const revokedClient = {
+    external: true as const,
+    connectionId: revoked.connection.connectionId,
+    scope: revoked.connection.scope,
+  };
+  await gate("pages.list", {}, revokedClient);
+  const again = holdExecute(pages);
+  let revokeSettled = false;
+  const second = gate("pages.execute", program, revokedClient).finally(() => { revokeSettled = true; });
+  await untilStarted(again.started, second);
+  expect(revokeSettled).toBe(false);
+  await gate("agentConnections.revoke", { connectionId: revoked.connection.connectionId }, owner);
+  await expect(gate("pages.list", {}, revokedClient)).rejects.toMatchObject({ code: "permission_denied" });
+  const revokedRun = repo.conversationRuns(`external:${revoked.connection.connectionId}`)[0]?.runId;
+  if (!revokedRun) throw new Error("expected the revoked session run");
+  expect(repo.getRun(revokedRun)).toMatchObject({ status: "cancelled", statusMessage: "Connection revoked" });
+  await gate("pages.navigate", { pageId: opened.pageId, url: "https://example.com/after-revoke" }, owner);
+  expect(pages.get(opened.pageId).url).toBe("https://example.com/after-revoke");
+  again.release();
+  await expect(second).resolves.toEqual({ steps: [] });
 });

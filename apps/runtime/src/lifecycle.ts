@@ -1,4 +1,4 @@
-import { lstatSync, readFileSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 
@@ -12,6 +12,10 @@ import { join } from "node:path";
  *    matching authenticated descriptor, listener PID and executable. Legacy
  *    peers lacking that proof are left alone. An equal or newer peer keeps
  *    the port; the new process defers instead of fighting it.
+ *  - development identity is the user id and executable path. Unsigned
+ *    builds do not require a code signature. A different user is foreign,
+ *    a different executable is changed, and an unreadable process is
+ *    unproven. None of those are signalled.
  *  - an older-but-busy peer gets TAKEOVER_IDLE_WAIT_MS to go idle before we
  *    replace it; still busy after the wait → defer, don't kill.
  *  - a wedged peer (port bound, /health unreachable) is never signalled;
@@ -33,6 +37,15 @@ export interface RuntimeDescriptor {
   version?: { schema: number };
   startedAt?: number;
   instanceId?: string;
+  /** Recorded development identity. Absent on peers written before this policy. */
+  uid?: number;
+  executable?: string;
+}
+
+/** Unsigned development identity: the user and the running executable. No code signature. */
+export interface DevelopmentPeerIdentity {
+  uid: number;
+  executable: string;
 }
 
 export function readRuntimeDescriptor(dataDir: string): RuntimeDescriptor | null {
@@ -44,6 +57,12 @@ export function readRuntimeDescriptor(dataDir: string): RuntimeDescriptor | null
         (typeof process.getuid === "function" && file.uid !== process.getuid())) return null;
     const value = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
     if (!Number.isInteger(value.port) || typeof value.token !== "string") return null;
+    const executable = typeof value.executable === "string"
+      && value.executable.startsWith("/")
+      && value.executable.length <= 1024
+      && !value.executable.includes("\0")
+      ? value.executable
+      : undefined;
     return {
       port: value.port as number,
       token: value.token,
@@ -53,6 +72,8 @@ export function readRuntimeDescriptor(dataDir: string): RuntimeDescriptor | null
         : {}),
       ...(typeof value.startedAt === "number" ? { startedAt: value.startedAt } : {}),
       ...(typeof value.instanceId === "string" ? { instanceId: value.instanceId } : {}),
+      ...(Number.isInteger(value.uid) && (value.uid as number) >= 0 ? { uid: value.uid as number } : {}),
+      ...(executable ? { executable } : {}),
     };
   } catch {
     return null;
@@ -170,6 +191,87 @@ export async function verifyPeerProcess(
   }
 }
 
+export function developmentPeerIdentity(): DevelopmentPeerIdentity {
+  const uid = typeof process.getuid === "function" ? process.getuid() : -1;
+  return { uid, executable: realpathSync(process.execPath) };
+}
+
+function canonicalPath(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
+
+function execText(command: string, args: string[]): Promise<string | null> {
+  return new Promise((resolve) => {
+    import("node:child_process").then(({ execFile }) => {
+      execFile(command, args, { timeout: 3_000 }, (err, stdout) => {
+        resolve(err ? null : String(stdout));
+      });
+    }).catch(() => resolve(null));
+  });
+}
+
+/**
+ * Live user and executable for `pid`. macOS `ps` reports argv0, not the
+ * binary, so the text file is read from lsof (or `/proc/pid/exe`).
+ * Unreadable identity is null — never a guess.
+ */
+export async function peerProcessIdentity(pid: number): Promise<DevelopmentPeerIdentity | null> {
+  try {
+    const ps = await execText("ps", ["-ww", "-p", String(pid), "-o", "uid="]);
+    const uidText = ps?.trim() ?? "";
+    if (!/^\d+$/.test(uidText)) return null;
+    const uid = Number(uidText);
+    let executable: string | null = null;
+    if (process.platform === "darwin") {
+      const listing = await execText("lsof", ["-n", "-a", "-p", String(pid), "-d", "txt", "-Fn"]);
+      if (listing === null) return null;
+      for (const line of listing.split("\n")) {
+        if (line.startsWith("n/")) {
+          executable = line.slice(1);
+          break;
+        }
+      }
+    } else if (process.platform === "linux") {
+      try {
+        executable = realpathSync(`/proc/${pid}/exe`);
+      } catch {
+        return null;
+      }
+    }
+    if (!executable) return null;
+    return { uid, executable: canonicalPath(executable) };
+  } catch {
+    return null;
+  }
+}
+
+export function assessDevelopmentPeer(input: {
+  ours: DevelopmentPeerIdentity;
+  peerUid: number | null;
+  peerExecutable: string | null;
+  descriptorUid?: number;
+  descriptorExecutable?: string;
+}): "accept" | "foreign" | "changed" | "unproven" {
+  if (input.peerUid === null || !input.peerExecutable) return "unproven";
+  if (!Number.isInteger(input.peerUid) || input.peerUid < 0) return "unproven";
+  if (input.peerUid !== input.ours.uid) return "foreign";
+  if (input.descriptorUid !== undefined && input.descriptorUid !== input.peerUid) return "foreign";
+  const live = canonicalPath(input.peerExecutable);
+  if (live !== canonicalPath(input.ours.executable)) return "changed";
+  if (input.descriptorExecutable !== undefined && canonicalPath(input.descriptorExecutable) !== live) return "changed";
+  return "accept";
+}
+
+function developmentRefusal(verdict: "foreign" | "changed" | "unproven"): string {
+  if (verdict === "foreign") return "peer user does not match this development identity";
+  if (verdict === "changed") return "peer executable changed";
+  return "peer development identity could not be verified";
+}
+
 export type TakeoverOutcome = {
   action: "takeover" | "peer-serves" | "defer";
   reason: string;
@@ -183,6 +285,9 @@ export async function resolvePortInUse(opts: {
   exitGraceMs?: number;
   verify?: (pid: number) => Promise<boolean>;
   ownsPort?: (pid: number, port: number) => Promise<boolean>;
+  /** When set, takeover also requires this unsigned development identity. */
+  identity?: DevelopmentPeerIdentity;
+  identify?: (pid: number) => Promise<DevelopmentPeerIdentity | null>;
   boundPort?: number;
   alive?: (pid: number) => boolean;
   kill?: (pid: number, signal: NodeJS.Signals) => void;
@@ -230,10 +335,34 @@ export async function resolvePortInUse(opts: {
       (opts.boundPort !== undefined && peer.port !== opts.boundPort))
     return { action: "defer", reason: "peer descriptor lacks exact identity or bound port" };
 
+  const peerPid = peer.pid;
+  const developmentBlock = async (recorded: RuntimeDescriptor): Promise<TakeoverOutcome | null> => {
+    if (!opts.identity) return null;
+    const identify = opts.identify ?? peerProcessIdentity;
+    let verdict: "accept" | "foreign" | "changed" | "unproven" = "unproven";
+    try {
+      const live = await identify(peerPid);
+      verdict = assessDevelopmentPeer({
+        ours: opts.identity,
+        peerUid: live?.uid ?? null,
+        peerExecutable: live?.executable ?? null,
+        descriptorUid: recorded.uid,
+        descriptorExecutable: recorded.executable,
+      });
+    } catch {
+      verdict = "unproven";
+    }
+    if (verdict === "accept") return null;
+    return { action: "defer", reason: developmentRefusal(verdict) };
+  };
+
   const authenticated = await probePeer(peer, fetchImpl);
-  if (!authenticated || !alive(peer.pid) || !(await ownsPort(peer.pid, peer.port)) ||
-      !(await verify(peer.pid)))
+  if (!authenticated || !alive(peerPid) || !(await ownsPort(peerPid, peer.port)) ||
+      !(await verify(peerPid)))
     return { action: "defer", reason: "peer identity, port ownership, or executable could not be verified" };
+
+  const initialBlock = await developmentBlock(peer);
+  if (initialBlock) return initialBlock;
 
   if (authenticated !== "ready")
     return { action: "defer", reason: "peer is still booting" };
@@ -256,9 +385,12 @@ export async function resolvePortInUse(opts: {
   const idleWaitMs = opts.idleWaitMs ?? TAKEOVER_IDLE_WAIT_MS;
   const deadline = Date.now() + idleWaitMs;
   for (;;) {
-    if (readRuntimeDescriptor(opts.dataDir)?.instanceId !== peer.instanceId ||
-        (await probePeer(peer, fetchImpl)) !== "ready" || !(await ownsPort(peer.pid, peer.port)))
+    const reviewed = readRuntimeDescriptor(opts.dataDir);
+    if (!reviewed || reviewed.instanceId !== peer.instanceId ||
+        (await probePeer(peer, fetchImpl)) !== "ready" || !(await ownsPort(peerPid, peer.port)))
       return { action: "defer", reason: "peer changed during takeover review" };
+    const reviewedBlock = await developmentBlock(reviewed);
+    if (reviewedBlock) return reviewedBlock;
     const active = await peerActiveRuns(peer, fetchImpl);
     if (active === 0) break;
     if (Date.now() >= deadline) {
@@ -271,15 +403,20 @@ export async function resolvePortInUse(opts: {
     await sleep(1_000);
   }
 
-  if (readRuntimeDescriptor(opts.dataDir)?.instanceId !== peer.instanceId ||
-      (await probePeer(peer, fetchImpl)) !== "ready" || !(await ownsPort(peer.pid, peer.port)) ||
-      !(await verify(peer.pid)))
+  // Re-read immediately before the signal. A peer whose user or executable
+  // changed during the idle wait is left running.
+  const fresh = readRuntimeDescriptor(opts.dataDir);
+  if (!fresh || fresh.instanceId !== peer.instanceId ||
+      (await probePeer(peer, fetchImpl)) !== "ready" || !(await ownsPort(peerPid, peer.port)) ||
+      !(await verify(peerPid)))
     return { action: "defer", reason: "peer changed before takeover dispatch" };
+  const freshBlock = await developmentBlock(fresh);
+  if (freshBlock) return freshBlock;
 
-  if (!(await terminate(peer.pid))) {
-    return { action: "defer", reason: `older runtime pid ${peer.pid} did not exit` };
+  if (!(await terminate(peerPid))) {
+    return { action: "defer", reason: `older runtime pid ${peerPid} did not exit` };
   }
-  return { action: "takeover", reason: `replaced strictly older runtime pid ${peer.pid ?? "unknown"}` };
+  return { action: "takeover", reason: `replaced strictly older runtime pid ${peerPid}` };
 }
 
 export function isAddrInUse(error: unknown): boolean {
