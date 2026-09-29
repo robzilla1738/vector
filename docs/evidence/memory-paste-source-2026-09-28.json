@@ -1,0 +1,69 @@
+{
+  "recordedAt": "2026-09-28",
+  "scope": "S13 reviewed pasted assistant-Memory source; native acceptance open",
+  "baseCommit": "1518f4237e0c36aa492a1d61bfe50b395f6196be",
+  "checks": {
+    "workspaceCompile": "passed",
+    "rendererTypecheck": "passed",
+    "focusedTests": {
+      "passed": 45,
+      "files": 5,
+      "casesByFile": {
+        "tests/unit/memory-paste.test.ts": 20,
+        "apps/shell/src/components/MemoryPasteImport.test.tsx": 7,
+        "apps/shell/src/onboarding/OnboardingFlow.test.tsx": 10,
+        "apps/shell/src/settings/sections/Workspaces.test.tsx": 6,
+        "tests/unit/method-registry.test.ts": 2
+      }
+    },
+    "priorMemoryRecoveryRegression": {
+      "passed": 16,
+      "files": [
+        "tests/unit/memory-pipeline.test.ts",
+        "tests/unit/recovery-package.test.ts"
+      ],
+      "reason": "Verify encrypted imports.json.enc generation and recovery inventory compatibility"
+    },
+    "lint": {
+      "passed": true,
+      "warnings": 370,
+      "errors": 0
+    },
+    "formatRatchet": "passed",
+    "diffCheck": "passed"
+  },
+  "notRun": [
+    "native build",
+    "native pasted-Memory and onboarding journeys",
+    "model request or benchmark",
+    "integrated shell bundle budget"
+  ],
+  "generatedBindings": "generated locally for verification, excluded from commit; integrator must regenerate",
+  "nativeAcceptance": "docs/MEMORY-PASTE-S13-HANDOFF.md",
+  "limits": {
+    "inputUtf8Bytes": 32768,
+    "notesPerPreview": 40,
+    "noteCharacters": 2000,
+    "ephemeralPreviews": 5,
+    "previewTtlMs": 600000,
+    "recentReceipts": 20,
+    "sensitivity": "local heuristic plus explicit owner review; not comprehensive detection",
+    "provenance": "unverified-owner-note; no automatic acceptance"
+  },
+  "files": {
+    "packages/contracts/src/memory-paste.ts": "e46d88c2aa003c71fed9d1121fd28088227f9542df621cc6cdae6f7e21785de4",
+    "packages/contracts/src/memory-pipeline.ts": "c323384e046a89be339a7862aa72b5f9b7e0582ce6781a12b22e344ce97095eb",
+    "packages/contracts/src/api.ts": "a3386d6c473b249c01a22412d1bc63b34d51bde9e4878e5c811337ee0c3399fe",
+    "packages/contracts/src/runtime-method-policy.ts": "33bafb61bc7f29180baa396617e865fa14560ea9afef6e1f2302af26cac96980",
+    "apps/runtime/src/services/memory-paste.ts": "dfde153cae34f3d31cfc5c732c146aed5fd635cf239944e18e5fa82ff95d6b13",
+    "apps/runtime/src/services/memory-pipeline.ts": "cdef0b98938427635cc1a29e0ff0d26bef89ccd524e68a9d779877c55c4c55de",
+    "apps/runtime/src/api/methods/memory.ts": "8991c42de21cbfc8875e36c00037c65aeff6d2339ad234657a82a44f596ed3b3",
+    "apps/shell/src/components/MemoryPasteImport.tsx": "9a0c0b009e6c416440b38a5cdb73343bd4cdaaee6949a58b8caa63a6b1e9ce11",
+    "apps/shell/src/components/MemoryPasteImport.test.tsx": "1a374d1b7a5bf62cd72052766965a41f5fab1b9eb0686b37f79c3166205208e1",
+    "apps/shell/src/onboarding/PastedMemorySetup.tsx": "b5398d9f197f4001eec39e339710cdbbaf9e5cdc62482819119d3e41edafc97c",
+    "apps/shell/src/onboarding/OnboardingFlow.tsx": "413b7becc901645d26570ed56dd6b8dc67cdbc769620787571fec4c770ac164e",
+    "apps/shell/src/onboarding/OnboardingFlow.test.tsx": "6955292950bda3e7458881d3143d7824e2b7ab7262fe1c4ce14a551409da7989",
+    "apps/shell/src/settings/sections/SpaceMemory.tsx": "b9101e7ae3fb28f6414d9ea23d8e63650a014aa39adcfac5ab38fea2d5308728",
+    "tests/unit/memory-paste.test.ts": "3559c72d7222d8e72867b29c6ec4289d63b44db96f1707ff09f1ebb5c594c001"
+  }
+}

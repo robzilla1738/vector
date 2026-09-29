@@ -4,13 +4,15 @@ import { bridge } from "../../bridge";
 import { call } from "../../store";
 import { useConfirm } from "../../ui/confirm";
 import { SettingsField } from "../primitives";
+import { MemoryPasteImport } from "../../components/MemoryPasteImport";
 import { MemoryRecoveryNotice } from "../../components/MemoryRecoveryNotice";
 
 type Source = { runId: string; goal: string; endedAt: number };
 type Revision = { revisionId: string; capturedAt: number; claimCount: number; summary: string; sourceRunIds: string[] };
 
-export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
+export function SpaceMemory({ workspaceId, includePasteImport = true }: { workspaceId: string; includePasteImport?: boolean }) {
   const [enabled, setEnabled] = useState(false);
+  const [showPasteImport, setShowPasteImport] = useState(false);
   const [overview, setOverview] = useState<MemoryPipelineOverview | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [sourceId, setSourceId] = useState("");
@@ -102,6 +104,9 @@ export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
       onChange={event => void act(async () => {
         await call("memory.pipeline.setPolicy", { workspaceId, enabled: event.target.checked });
       })} /> Enable memory for this Space</label>
+    {includePasteImport && <><button className="btn sm ghost" aria-expanded={showPasteImport}
+      onClick={() => setShowPasteImport(!showPasteImport)}>Import pasted assistant notes</button>
+      {showPasteImport && <MemoryPasteImport workspaceId={workspaceId} />}</>}
     {enabled && <>
       <div className="row">
         <select aria-label="Completed run for memory" value={sourceId} onChange={event => setSourceId(event.target.value)}>
@@ -118,13 +123,14 @@ export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
       {inbox.map(note => <fieldset className="field" key={note.claimId}>
         <legend>Memory note review</legend>
         <p>{note.text}</p>
-        <p className="hint">Source run: <code>{note.sourceRunId}</code>
-          {note.source && <> · Exact report quote <code>{note.source.quoteSha256.slice(0, 12)}</code></>}
+        <p className="hint">{note.source?.kind === "owner-paste"
+          ? <>Owner-pasted note · import {note.source.importId.slice(0, 8)} · unverified. Accepting stores it as personal context; it does not verify another assistant's claim.</>
+          : <>Source run: <code>{note.sourceRunId}</code>{note.source && <> · Exact report quote <code>{note.source.quoteSha256.slice(0, 12)}</code></>}</>}
         </p>
         <div className="row">
           <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
             await call("memory.pipeline.review", { workspaceId, claimId: note.claimId, decision: "accept" });
-          })}>Accept note</button>
+          })}>{note.source?.kind === "owner-paste" ? "Accept as personal context" : "Accept note"}</button>
           <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
             await call("memory.pipeline.review", { workspaceId, claimId: note.claimId, decision: "discard" });
           })}>Discard note</button>
@@ -133,14 +139,14 @@ export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
       <p className="hint">Approved summary used in later runs</p>
       <pre>{overview?.summary || "No approved notes yet."}</pre>
       {!!sourcesWithNotes.length && <div className="row">
-        <span className="hint">Remove notes from one source run and restorable revisions.</span>
+        <span className="hint">Remove notes from one source and restorable revisions.</span>
         {sourcesWithNotes.map(runId => <button className="btn sm danger" key={runId} disabled={busy}
-          onClick={() => void forget({ sourceRunId: runId }, `All notes from run ${runId} will be removed from current memory and every restorable revision. This cannot be undone.`)}>
-          Forget run {runId}
+          onClick={() => void forget({ sourceRunId: runId }, `All notes from ${runId.startsWith("paste:") ? `pasted import ${runId.slice(6, 14)}` : `run ${runId}`} will be removed from current memory and every restorable revision. This cannot be undone.`)}>
+          {runId.startsWith("paste:") ? `Forget pasted import ${runId.slice(6, 14)}` : `Forget run ${runId}`}
         </button>)}
       </div>}
       {claims.map(claim => <div className="row" key={claim.claimId}>
-        <span className="grow">{claim.text} <span className="hint">[run:{claim.sourceRunId}{claim.source && `#${claim.source.quoteSha256.slice(0, 12)}`}]</span></span>
+        <span className="grow">{claim.text} <span className="hint">[{claim.source?.kind === "owner-paste" ? `pasted import ${claim.source.importId.slice(0, 8)} · unverified` : `run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}`}]</span></span>
         <button className="btn sm" disabled={busy} onClick={() => void forget({ claimId: claim.claimId },
           "This note will be removed from current memory and every restorable revision. This cannot be undone.")}>Forget note</button>
       </div>)}

@@ -1,6 +1,6 @@
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
-import { AuxError } from "@aux/contracts";
+import { AuxError, MethodSchemas } from "@aux/contracts";
 import { advanceManagedRecoveryGeneration } from "../../services/managed-recovery-generation.js";
 
 async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
@@ -44,7 +44,29 @@ async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
   return result.forgotten ? changed(result) : result;
 }
 
+function pastePipeline(ctx: MethodCtx) {
+  if (ctx.client.external || ctx.client.codeMode)
+    throw new AuxError("permission_denied", "Pasted Memory is reviewed in Aux.");
+  if (!ctx.s.memoryPipeline) throw new AuxError("backend_unavailable", "Protected Memory requires the Aux desktop app.");
+  return ctx.s.memoryPipeline;
+}
+async function h_memory_paste_preview(ctx: MethodCtx): Promise<unknown> {
+  return pastePipeline(ctx).previewPaste(MethodSchemas["memory.paste.preview"].parse(ctx.params));
+}
+async function h_memory_paste_commit(ctx: MethodCtx): Promise<unknown> {
+  const pipeline = pastePipeline(ctx), input = MethodSchemas["memory.paste.commit"].parse(ctx.params);
+  const result = await pipeline.commitPaste(input);
+  ctx.s.events.emit("workspace.memory.updated", { workspaceId: input.workspaceId });
+  return result;
+}
+async function h_memory_paste_status(ctx: MethodCtx): Promise<unknown> {
+  return pastePipeline(ctx).pasteStatus(MethodSchemas["memory.paste.status"].parse(ctx.params).workspaceId);
+}
+
 export const memoryMethods: Partial<Record<MethodName, MethodHandler>> = {
+  "memory.paste.preview": h_memory_paste_preview,
+  "memory.paste.commit": h_memory_paste_commit,
+  "memory.paste.status": h_memory_paste_status,
   "memory.pipeline.policy": h_memory_pipeline_policy,
   "memory.pipeline.setPolicy": h_memory_pipeline_policy,
   "memory.pipeline.extractRun": h_memory_pipeline_policy,

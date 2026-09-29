@@ -1,3 +1,5 @@
+import { MemoryPastePreviewParams, MemoryPastePreviewSchema, MemoryPasteCommitParams, MemoryPasteStatusParams, MemoryPasteStatusSchema } from "./memory-paste.js";
+export * from "./memory-paste.js";
 import { OnboardingStateSchema, OnboardingUpdateParamsSchema, OnboardingStartParamsSchema } from "./onboarding.js";
 export * from "./onboarding.js";
 import {
@@ -1323,6 +1325,9 @@ export const MethodSchemas = {
         .strict(),
     })
     .strict(),
+  "memory.paste.preview": MemoryPastePreviewParams,
+  "memory.paste.commit": MemoryPasteCommitParams,
+  "memory.paste.status": MemoryPasteStatusParams,
   "memory.pipeline.policy": z.object({ workspaceId: id }).strict(),
   "memory.pipeline.setPolicy": MemoryPipelinePolicySchema,
   "memory.pipeline.extractRun": z.object({ workspaceId: id, runId: id }).strict(),
@@ -1993,6 +1998,9 @@ export const ResultSchemas = {
   "mcp.grants.list": z.array(OutboundMcpGrantSchema),
   "mcp.grants.revoke": OutboundMcpGrantSchema,
   "mcp.tools.call": OutboundMcpCallResultSchema,
+  "memory.paste.preview": MemoryPastePreviewSchema,
+  "memory.paste.commit": MemoryPasteStatusSchema,
+  "memory.paste.status": z.array(MemoryPasteStatusSchema).max(20),
   "memory.pipeline.policy": MemoryPipelinePolicySchema,
   "memory.pipeline.setPolicy": MemoryPipelinePolicySchema,
   "memory.pipeline.extractRun": z.object({ extracted: z.number().int().nonnegative() }),

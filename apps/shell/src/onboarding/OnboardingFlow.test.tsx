@@ -284,3 +284,11 @@ it("lets the owner view the selected page before committing its context", async 
   expect(close).toHaveBeenCalledOnce();
   expect(rpc.mock.calls.some(([method]) => method === "onboarding.start")).toBe(false);
 });
+
+it("offers pasted Memory from permissions without automatic capture or ingestion", async () => {
+  await render(initial("permissions"));
+  await act(async () => button("Import notes from another assistant").click());
+  expect(document.querySelector('section[aria-label="Import pasted assistant notes"]')).toBeTruthy();
+  expect(document.querySelector("textarea")?.value).toBe("");
+  expect(rpc.mock.calls.some(([method]) => String(method).startsWith("memory."))).toBe(false);
+});

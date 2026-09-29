@@ -20,6 +20,7 @@ import { ModelsSettings } from "../settings/sections/Models";
 import { RecoveryPackage } from "../settings/sections/RecoveryPackage";
 import { SPACE_COLORS, type SpaceColor } from "../workspace";
 import "./onboarding.css";
+import { PastedMemorySetup } from "./PastedMemorySetup";
 
 const TITLES = {
   welcome: "A browser for what comes next",
@@ -72,6 +73,7 @@ export function OnboardingFlow({
   const [pageId, setPageId] = useState("");
   const [reviewedPage, setReviewedPage] = useState<PageContextRef | null>(null);
   const [pageUrl, setPageUrl] = useState("");
+  const [showMemoryImport, setShowMemoryImport] = useState(false);
   const step = state.step,
     index = ONBOARDING_STEPS.indexOf(step);
   const page = pages.find((item) => item.pageId === pageId);
@@ -440,7 +442,18 @@ export function OnboardingFlow({
                   existing Memory controls before using them.
                 </li>
               </ul>
-              <p>Setup does not enable Memory, broaden grants, connect services or import credentials.</p>
+              <p>
+                Setup does not enable Memory, broaden grants, connect services or import credentials
+                automatically.
+              </p>
+              <button
+                className="btn ghost"
+                aria-expanded={showMemoryImport}
+                onClick={() => setShowMemoryImport(!showMemoryImport)}
+              >
+                Import notes from another assistant
+              </button>
+              {showMemoryImport && <PastedMemorySetup />}
             </>
           )}
           {step === "postcard" && (

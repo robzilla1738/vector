@@ -83,4 +83,4 @@ Write a source-bound native manifest containing shell/runtime hashes, native ide
 
 ## Still open after this source batch
 
-Shared App/General wiring, regenerated bindings and integrated bundle budget; native journey above; full SETTINGS/CHAT/MEMORY prerequisite acceptance; reviewed pasted assistant-memory import in onboarding (this batch only explains and points to existing Memory controls); owner review of final copy and both layouts; ACCESS/VoiceOver and final S14 qualification. Signed release packaging remains out of scope. No universal native/roadmap completion claim is made.
+Shared App/General wiring, regenerated bindings and integrated bundle budget; native journey above; full SETTINGS/CHAT/MEMORY prerequisite acceptance; owner review of final copy and both layouts; ACCESS/VoiceOver and final S14 qualification. The subsequent source batch in `MEMORY-PASTE-S13-HANDOFF.md` adds reviewed pasted assistant-Memory import from the permissions step; its native restart/review/Forget gate remains open. Signed release packaging remains out of scope. No universal native/roadmap completion claim is made.

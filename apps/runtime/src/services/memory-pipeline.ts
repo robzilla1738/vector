@@ -6,7 +6,9 @@ import { promisify } from "node:util";
 import { AuxError, MemoryClaimSchema, MemoryPipelineForgetParams, MemoryPipelineInboxSchema, MemoryPipelineOverviewSchema,
   MemoryPipelinePolicySchema, type MemoryClaim } from "@aux/contracts";
 import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
-import type { Run } from "@aux/contracts";
+import { BrowserSpaceSchema, MemoryPasteReceiptSchema, MemoryPastePreviewParams, MemoryPasteCommitParams,
+  type MemoryPastePreview, type MemoryPasteReceipt, type MemoryPasteStatus, type Run } from "@aux/contracts";
+import { memoryPasteSensitivity, memoryPasteLines, memoryPasteFormatReason, memoryPasteKey } from "./memory-paste.js";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 import { ProtectedStore } from "./protected-store.js";
@@ -16,12 +18,14 @@ const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 type Manifest = { generation: string; keyName: string; version?: 2 };
 type Revision = { revisionId: string; capturedAt: number; claims: MemoryClaim[] };
 export type RecoverySpaceMemory = { workspaceId: string; claims: MemoryClaim[]; inbox: MemoryClaim[];
-  history: Revision[]; verifiedFiles: string[] };
+  history: Revision[]; verifiedFiles: string[]; imports?: MemoryPasteReceipt[] };
 type Secrets = Pick<NativeBridge, "storeSecret" | "readSecret">;
 
 /** Opt-in, encrypted, git-backed Space memory. All derived views are rebuilt from source claims. */
 export class MemoryPipeline {
   private protectedStore: ProtectedStore;
+  private pastePreviews = new Map<string, { preview: Extract<MemoryPastePreview, { status: "ready" }>;
+    generation: string | null; timer: ReturnType<typeof setTimeout> }>();
   constructor(private repo: Repo, private secrets: Secrets, private baseDir: string, private profileId: string) {
     if (!profileId) throw new Error("Memory pipeline requires a Profile identity.");
     this.protectedStore = new ProtectedStore(secrets, profileId);
@@ -61,6 +65,7 @@ export class MemoryPipeline {
   setPolicy(workspaceId: string, enabled: boolean) {
     const policy = MemoryPipelinePolicySchema.parse({ workspaceId, enabled });
     this.requireSpace(workspaceId);
+    if (!enabled) this.clearPastePreviews(workspaceId);
     this.repo.setSetting(`memoryPipelinePolicy:${workspaceId}`, policy);
     return policy;
   }
@@ -93,7 +98,10 @@ export class MemoryPipeline {
       .find(value => typeof value === "string") as string | undefined;
   }
 
-  private verifies(workspaceId: string, claim: MemoryClaim): boolean {
+  private eligibleForRecall(workspaceId: string, claim: MemoryClaim): boolean {
+    if (claim.source?.kind === "owner-paste") return claim.source.verification === "unverified-owner-note"
+      && claim.sourceRunId === `paste:${claim.source.importId}` && claim.source.quote === claim.text
+      && claim.source.quoteSha256 === sha(claim.text) && !memoryPasteSensitivity(claim.text);
     const run = this.repo.getRun(claim.sourceRunId);
     const report = run && this.report(run);
     return !!run && run.status === "completed" && run.config?.contextWorkspaceId === workspaceId
@@ -147,10 +155,10 @@ export class MemoryPipeline {
     return Buffer.concat([decipher.update(bytes.subarray(12, -16)), decipher.final()]).toString("utf8");
   }
 
-  private async readClaims(workspaceId: string): Promise<{ claims: MemoryClaim[]; inbox: MemoryClaim[]; history: Revision[]; prior: Manifest | null }> {
+  private async readClaims(workspaceId: string): Promise<{ claims: MemoryClaim[]; inbox: MemoryClaim[]; history: Revision[]; imports: MemoryPasteReceipt[]; importsStored: boolean; prior: Manifest | null }> {
     const directory = this.directory(workspaceId);
     const prior = await this.manifest(directory);
-    if (!prior) return { claims: [], inbox: [], history: [], prior: null };
+    if (!prior) return { claims: [], inbox: [], history: [], imports: [], importsStored: false, prior: null };
     const key = await this.key(prior);
     const filename = "claims.json.enc";
     const bytes = await readFile(join(directory, prior.generation, filename));
@@ -171,7 +179,13 @@ export class MemoryPipeline {
         || !Number.isSafeInteger(revision.capturedAt) || revision.capturedAt < 0))
         throw new Error("Space memory history is invalid.");
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
-    return { claims: parsed.map(value => MemoryClaimSchema.parse(value)), inbox, history, prior };
+    let imports: MemoryPasteReceipt[] = [], importsStored = false;
+    try {
+      imports = MemoryPasteReceiptSchema.array().max(20).parse(JSON.parse(this.open(key, workspaceId, "imports.json.enc",
+        await readFile(join(directory, prior.generation, "imports.json.enc")), prior.version)));
+      importsStored = true;
+    } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    return { claims: parsed.map(value => MemoryClaimSchema.parse(value)), inbox, history, imports, importsStored, prior };
   }
 
   /** Authenticate the complete current generation; retired Git objects are intentionally unreadable. */
@@ -213,11 +227,12 @@ export class MemoryPipeline {
         throw new Error("Recovery Space-memory manifest is unsafe.");
       for (const entry of await readdir(directory)) if (entry !== ".git" && entry !== "manifest.json" && entry !== prior.generation)
         throw new Error("Recovery found an unaccounted Space-memory generation.");
-      const { claims, inbox, history } = await this.readClaims(workspaceId);
+      const { claims, inbox, history, imports, importsStored } = await this.readClaims(workspaceId);
       const generationDirectory = join(directory, prior.generation);
       if (!(await lstat(generationDirectory)).isDirectory() || (await lstat(generationDirectory)).isSymbolicLink())
         throw new Error("Recovery Space-memory generation is unsafe.");
       const files = ["claims.json.enc", "inbox.json.enc", "history.json.enc", "summary.md.enc", "handbook.md.enc",
+        ...(importsStored ? ["imports.json.enc"] : []),
         ...claims.map(claim => `rollouts/${claim.claimId}.json.enc`)].sort();
       const top = (await readdir(generationDirectory)).filter(name => name !== "rollouts");
       const rolloutInfo = await lstat(join(generationDirectory, "rollouts"));
@@ -228,7 +243,7 @@ export class MemoryPipeline {
         throw new Error("Recovery found a missing or unaccounted Space memory file.");
       const key = await this.key(prior);
       const derived = new Map<string, string>([["summary.md.enc", this.summary(claims)],
-        ["handbook.md.enc", claims.map(claim => `## ${claim.claimId}\nSource run: ${claim.sourceRunId}\n${claim.text}`).join("\n\n")],
+        ["handbook.md.enc", this.handbook(claims)],
         ...claims.map(claim => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const)]);
       for (const filename of files) {
         const info = await lstat(join(generationDirectory, filename));
@@ -241,7 +256,7 @@ export class MemoryPipeline {
         if (derived.has(filename) && value !== derived.get(filename))
           throw new Error("Recovery Space-memory derivative differs from its claims.");
       }
-      output.push({ workspaceId, claims, inbox, history, verifiedFiles: files });
+      output.push({ workspaceId, claims, inbox, history, verifiedFiles: files, ...(importsStored ? { imports } : {}) });
     }
     return output;
   }
@@ -256,11 +271,13 @@ export class MemoryPipeline {
       const inbox = MemoryPipelineInboxSchema.parse(space.inbox);
       const history = space.history.map(value => ({ revisionId: value.revisionId, capturedAt: value.capturedAt,
         claims: MemoryPipelineInboxSchema.parse(value.claims) }));
+      const imports = MemoryPasteReceiptSchema.array().max(20).parse(space.imports ?? []);
       const expected = ["claims.json.enc", "inbox.json.enc", "history.json.enc", "summary.md.enc", "handbook.md.enc",
+        ...(space.imports !== undefined ? ["imports.json.enc"] : []),
         ...claims.map(claim => `rollouts/${claim.claimId}.json.enc`)].sort();
       if (JSON.stringify(space.verifiedFiles) !== JSON.stringify(expected))
         throw new Error("Recovery Space memory inventory changed.");
-      await this.writeGeneration(space.workspaceId, claims, inbox, history, null);
+      await this.writeGeneration(space.workspaceId, claims, inbox, history, null, imports);
     }
   }
 
@@ -270,7 +287,9 @@ export class MemoryPipeline {
     const lines: string[] = [];
     let bytes = 0;
     for (const claim of latest) {
-      const line = `- ${claim.text.slice(0, 360)} [run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}]`;
+      const line = claim.source?.kind === "owner-paste"
+        ? `- ${claim.text.slice(0, 360)} [owner-pasted, unverified; import:${claim.source.importId}]`
+        : `- ${claim.text.slice(0, 360)} [run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}]`;
       const size = Buffer.byteLength(line, "utf8") + 1;
       if (bytes + size > 1700) break;
       lines.push(line);
@@ -279,11 +298,17 @@ export class MemoryPipeline {
     return lines.join("\n");
   }
 
+  private handbook(claims: MemoryClaim[]): string {
+    return claims.map(claim => `## ${claim.claimId}\n${claim.source?.kind === "owner-paste"
+      ? `Owner-pasted note (unverified), import: ${claim.source.importId}` : `Source run: ${claim.sourceRunId}`}\n${claim.text}`).join("\n\n");
+  }
+
   private snapshot(claims: MemoryClaim[]): Revision {
     return { revisionId: randomUUID(), capturedAt: Date.now(), claims };
   }
 
-  private async writeGeneration(workspaceId: string, claims: MemoryClaim[], inbox: MemoryClaim[], history: Revision[], prior: Manifest | null) {
+  private async writeGeneration(workspaceId: string, claims: MemoryClaim[], inbox: MemoryClaim[], history: Revision[], prior: Manifest | null, imports?: MemoryPasteReceipt[]) {
+    const receipts = imports ?? (await this.readClaims(workspaceId)).imports;
     const directory = this.directory(workspaceId);
     await this.init(directory);
     const generation = `g-${randomUUID()}`;
@@ -302,8 +327,9 @@ export class MemoryPipeline {
       await put("claims.json.enc", JSON.stringify(claims));
       await put("inbox.json.enc", JSON.stringify(inbox));
       await put("history.json.enc", JSON.stringify(history));
+      await put("imports.json.enc", JSON.stringify(receipts));
       await put("summary.md.enc", this.summary(claims));
-      await put("handbook.md.enc", claims.map(claim => `## ${claim.claimId}\nSource run: ${claim.sourceRunId}\n${claim.text}`).join("\n\n"));
+      await put("handbook.md.enc", this.handbook(claims));
       for (const claim of claims) await put(`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim));
       const manifest: Manifest = { generation, keyName, version: 2 };
       const temp = join(directory, `manifest-${randomUUID()}.tmp`);
@@ -333,6 +359,114 @@ export class MemoryPipeline {
     }
   }
 
+  private clearPastePreviews(workspaceId: string) {
+    for (const [id, entry] of this.pastePreviews) if (entry.preview.workspaceId === workspaceId) {
+      clearTimeout(entry.timer); this.pastePreviews.delete(id);
+    }
+  }
+
+  private requirePasteSpace(workspaceId: string) {
+    this.requireSpace(workspaceId);
+    const spaces = BrowserSpaceSchema.array().parse(this.repo.getSetting("browserSpaces") ?? []);
+    if (spaces.some(space => space.workspaceId === workspaceId && space.archived))
+      throw new AuxError("conflict", "Restore this Space before importing notes.");
+  }
+
+  async previewPaste(raw: unknown): Promise<MemoryPastePreview> {
+    const { workspaceId, text } = MemoryPastePreviewParams.parse(raw);
+    this.requirePasteSpace(workspaceId);
+    const lines = memoryPasteLines(text);
+    const reason = memoryPasteSensitivity(text) ?? memoryPasteFormatReason(lines);
+    if (reason) return { status: "blocked", workspaceId, reason };
+    const current = await this.readClaims(workspaceId);
+    const known = new Set([...current.claims, ...current.inbox, ...current.history.flatMap(item => item.claims)]
+      .map(claim => memoryPasteKey(claim.text)));
+    const preview: Extract<MemoryPastePreview, { status: "ready" }> = { status: "ready", workspaceId,
+      previewId: randomUUID(), expiresAt: Date.now() + 10 * 60_000,
+      candidates: lines.map(text => { const key = memoryPasteKey(text), duplicate = known.has(key); known.add(key);
+        return { candidateId: randomUUID(), text, duplicate }; }) };
+    while (this.pastePreviews.size >= 5) {
+      const oldest = this.pastePreviews.keys().next().value!;
+      clearTimeout(this.pastePreviews.get(oldest)!.timer); this.pastePreviews.delete(oldest);
+    }
+    const timer = setTimeout(() => this.pastePreviews.delete(preview.previewId), 10 * 60_000);
+    timer.unref();
+    this.pastePreviews.set(preview.previewId, { preview, generation: current.prior?.generation ?? null, timer });
+    return structuredClone(preview);
+  }
+
+  private pasteReceipt(receipt: MemoryPasteReceipt, state: { claims: MemoryClaim[]; inbox: MemoryClaim[]; history: Revision[] }): MemoryPasteStatus {
+    const fromImport = (claim: MemoryClaim) => claim.source?.kind === "owner-paste" && claim.source.importId === receipt.importId;
+    const approved = state.claims.filter(fromImport), pending = state.inbox.filter(fromImport);
+    const visible = new Set([...approved, ...pending].map(claim => claim.claimId));
+    const history = new Set(state.history.flatMap(item => item.claims).filter(fromImport).map(claim => claim.claimId)
+      .filter(id => !visible.has(id)));
+    const { selectionDigest: _digest, ...metadata } = receipt;
+    return { ...metadata, pending: pending.length, accepted: approved.length, restorable: history.size,
+      removed: Math.max(0, receipt.added - visible.size - history.size) };
+  }
+
+  async pasteStatus(workspaceId: string): Promise<MemoryPasteStatus[]> {
+    this.requireSpace(workspaceId);
+    const state = await this.readClaims(workspaceId);
+    return [...state.imports].reverse().map(receipt => this.pasteReceipt(receipt, state));
+  }
+
+  async commitPaste(raw: unknown): Promise<MemoryPasteStatus> {
+    const input = MemoryPasteCommitParams.parse(raw);
+    this.requirePasteSpace(input.workspaceId);
+    if (new Set(input.selectedIds).size !== input.selectedIds.length)
+      throw new AuxError("invalid_params", "Review each selected note once.");
+    const selectionDigest = sha([...input.selectedIds].sort().join("\n"));
+    return this.leased(input.workspaceId, async () => {
+      const state = await this.readClaims(input.workspaceId);
+      const priorReceipt = state.imports.find(receipt => receipt.importId === input.previewId);
+      if (priorReceipt) {
+        if (priorReceipt.selectionDigest !== selectionDigest)
+          throw new AuxError("conflict", "This import already committed a different selection. Review a fresh paste.");
+        return this.pasteReceipt(priorReceipt, state);
+      }
+      if (!this.policy(input.workspaceId).enabled) throw new AuxError("permission_denied", "Enable memory for this Space before adding notes for review.");
+      const entry = this.pastePreviews.get(input.previewId);
+      if (!entry || entry.preview.workspaceId !== input.workspaceId || entry.preview.expiresAt <= Date.now())
+        throw new AuxError("conflict", "This paste preview expired or Aux restarted. Paste and review it again; nothing is retried automatically.");
+      if (entry.generation !== (state.prior?.generation ?? null))
+        throw new AuxError("conflict", "Space memory changed after this preview. Review a fresh preview before importing.");
+      const selected = input.selectedIds.map(id => entry.preview.candidates.find(item => item.candidateId === id));
+      if (selected.some(item => !item)) throw new AuxError("invalid_params", "The selected note does not belong to this preview.");
+      const known = new Set([...state.claims, ...state.inbox, ...state.history.flatMap(item => item.claims)]
+        .map(claim => memoryPasteKey(claim.text)));
+      const at = Date.now(), additions: MemoryClaim[] = [];
+      for (const item of selected) {
+        if (memoryPasteSensitivity(item!.text)) throw new AuxError("permission_denied", "This note no longer passes the sensitivity check. Review the paste again.");
+        const key = memoryPasteKey(item!.text);
+        if (known.has(key)) continue;
+        known.add(key);
+        additions.push(MemoryClaimSchema.parse({ claimId: randomUUID(), sourceRunId: `paste:${input.previewId}`,
+          text: item!.text, capturedAt: at, source: { kind: "owner-paste", importId: input.previewId,
+            quote: item!.text, quoteSha256: sha(item!.text), verification: "unverified-owner-note" } }));
+      }
+      if (state.inbox.length + additions.length > 200)
+        throw new AuxError("conflict", "The review inbox is full. Accept or discard pending notes, then make a fresh preview. No notes were dropped.");
+      const receipt = MemoryPasteReceiptSchema.parse({ importId: input.previewId, createdAt: at,
+        selected: selected.length, added: additions.length, duplicates: selected.length - additions.length, selectionDigest });
+      const next = { ...state, inbox: [...state.inbox, ...additions] };
+      this.requirePasteSpace(input.workspaceId);
+      if (!this.policy(input.workspaceId).enabled) throw new AuxError("permission_denied", "Space memory was disabled. Review the paste again.");
+      try {
+        await this.writeGeneration(input.workspaceId, next.claims, next.inbox, next.history, state.prior,
+          [...state.imports, receipt].slice(-20));
+      } catch (error) {
+        const recovered = await this.readClaims(input.workspaceId);
+        const committed = recovered.imports.find(item => item.importId === input.previewId && item.selectionDigest === selectionDigest);
+        if (committed) { clearTimeout(entry.timer); this.pastePreviews.delete(input.previewId); return this.pasteReceipt(committed, recovered); }
+        throw error;
+      }
+      clearTimeout(entry.timer); this.pastePreviews.delete(input.previewId);
+      return this.pasteReceipt(receipt, next);
+    });
+  }
+
   async extractRun(workspaceId: string, runId: string) {
     if (!this.policy(workspaceId).enabled) throw new AuxError("permission_denied", "Enable Space memory extraction first.");
     return this.leased(workspaceId, async () => {
@@ -359,7 +493,9 @@ export class MemoryPipeline {
             capturedAt: at, source: { kind: "run-report", quote, quoteSha256: sha(quote) } });
         });
       if (!additions.length) return { extracted: 0 };
-      await this.writeGeneration(workspaceId, claims, [...inbox, ...additions].slice(-200), history, prior);
+      if (inbox.length + additions.length > 200)
+        throw new AuxError("conflict", "The review inbox is full. Review pending notes before extracting more; no notes were dropped.");
+      await this.writeGeneration(workspaceId, claims, [...inbox, ...additions], history, prior);
       this.repo.db.prepare("INSERT OR IGNORE INTO memory_pipeline_watermarks(workspace_id,run_id,captured_at) VALUES(?,?,?)")
         .run(workspaceId, runId, at);
       return { extracted: additions.length };
@@ -424,11 +560,13 @@ export class MemoryPipeline {
       const note = inbox.find(item => item.claimId === claimId);
       if (!note) throw new AuxError("not_found", "Pending memory note does not exist.");
       if (decision === "accept") {
-        if (!this.verifies(workspaceId, note))
-          throw new AuxError("conflict", "The source run no longer verifies this note.");
+        if (!this.eligibleForRecall(workspaceId, note))
+          throw new AuxError("conflict", "This note no longer meets its source and safety requirements for recall.");
       }
       const remaining = inbox.filter(item => item.claimId !== claimId);
-      const accepted = decision === "accept" ? [...claims, note].slice(-200) : claims;
+      if (decision === "accept" && claims.length >= 200)
+        throw new AuxError("conflict", "Approved Memory is full. Review and explicitly forget an old note before accepting more.");
+      const accepted = decision === "accept" ? [...claims, note] : claims;
       await this.writeGeneration(workspaceId, accepted, remaining,
         decision === "accept" ? [...history, this.snapshot(accepted)].slice(-10) : history, prior);
       return { accepted: decision === "accept", remaining: remaining.length };
@@ -440,7 +578,7 @@ export class MemoryPipeline {
     if (!policy.enabled) return MemoryPipelineOverviewSchema.parse({ workspaceId, enabled: false, summary: "", claimCount: 0, sourceCount: 0 });
     const { claims } = await this.readClaims(workspaceId);
     return MemoryPipelineOverviewSchema.parse({ workspaceId, enabled: true,
-      summary: this.summary(claims.filter(claim => this.verifies(workspaceId, claim))),
+      summary: this.summary(claims.filter(claim => this.eligibleForRecall(workspaceId, claim))),
       claimCount: claims.length, sourceCount: new Set(claims.map(claim => claim.sourceRunId)).size });
   }
 
@@ -449,13 +587,14 @@ export class MemoryPipeline {
     const terms = query.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(term => term.length > 1).slice(0, 8);
     if (!terms.length) return [];
     const { claims } = await this.readClaims(workspaceId);
-    return claims.filter(claim => this.verifies(workspaceId, claim) && !memoryContentSensitivityReason(claim.text)
+    return claims.filter(claim => this.eligibleForRecall(workspaceId, claim) && !memoryContentSensitivityReason(claim.text)
       && terms.every(term => claim.text.toLocaleLowerCase().includes(term))).slice(-20).reverse();
   }
 
   async forget(raw: unknown, beforeRemoval?: () => void | Promise<void>) {
     const input = MemoryPipelineForgetParams.parse(raw);
     this.requireSpace(input.workspaceId);
+    this.clearPastePreviews(input.workspaceId);
     return this.leased(input.workspaceId, async () => {
       const { claims, inbox, history, prior } = await this.readClaims(input.workspaceId);
       const keep = (claim: MemoryClaim) => !input.all && (input.claimId
