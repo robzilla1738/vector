@@ -1190,6 +1190,46 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldSettle ? "confirmed" : "uncertain" });
   });
 
+  it.each([
+    { control: "Create record", postOwner: "Priya Patel", postUrl: "http://x.test/records/rec-31", shouldSettle: true },
+    { control: "Other action", postOwner: "Priya Patel", postUrl: "http://x.test/records/rec-31", shouldSettle: false },
+    { control: "Create record", postOwner: "Morgan Diaz", postUrl: "http://x.test/records/rec-31", shouldSettle: false },
+    { control: "Create record", postOwner: "Priya Patel", postUrl: "http://other.test/records/rec-31", shouldSettle: false },
+  ])("settles Create only from a new matching same-origin record (%o)", async ({ control, postOwner, postUrl, shouldSettle }) => {
+    const before = { ...pageObs(), content: { ...pageObs().content,
+      url: "http://x.test/new", text: "New record\nTitle\nOwner\nStatus\nCreate record",
+      elements: [{ ref: "r7", tag: "button", role: "button", name: control, frame: "main" }],
+      formFields: [
+        { ref: "r4", label: "Title", type: "text", value: "Aux launch review" },
+        { ref: "r5", label: "Owner", type: "select", value: "Priya Patel" },
+        { ref: "r6", label: "Status", type: "select", value: "in review" },
+      ],
+    } } as Observation;
+    const after = { ...before, documentEpoch: 2, revision: 2, observedAt: Date.now() + 10_000,
+      content: { ...before.content, url: postUrl,
+        text: `Aux launch review\nOwner: ${postOwner}\nStatus: in review\nid=rec-31 · updated 2026-09-29`,
+        headings: ["Aux launch review"], formFields: [],
+      } } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "create", op: "click", target: "r7" }] } }] },
+      { toolCalls: [{ toolCallId: "f1", toolName: "submit_result", input: { report: "rec-31" } }] },
+      { text: "Creation cannot be verified." },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok" as const,
+        startedAt: 1, durationMs: 1, effect: "uncertain" as const,
+        receipt: { remoteConfirmed: false, uncertain: true, dispatchedBeforeTakeover: false },
+      }));
+      for (const [i, s] of program.steps.entries()) ctx?.onStep?.(steps[i]!, s);
+      return { status: "completed", steps, observation: after };
+    });
+    h.pages.observe.mockImplementation(async () => before);
+    const run = await h.coordinator.start({ goal: "create one matching record", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    const final = await settle(h.repo, run.runId);
+    expect(final.status === "completed").toBe(shouldSettle);
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").get(run.runId)).toEqual({ status: shouldSettle ? "confirmed" : "uncertain" });
+  });
+
   it("reconciles an uncertain link click only from its recorded destination URL", async () => {
     const before = { ...pageObs(), content: { ...pageObs().content,
       url: "http://x.test/records", elements: [{ ref: "r2", tag: "a", role: "link", name: "2", href: "?page=2", frame: "main" }],

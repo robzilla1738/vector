@@ -275,6 +275,48 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           unconfirmed: false, dispatchedBeforeTakeover: false, observed: "Save record Cancel" };
         if (outcome?.effect === "uncertain" || outcome?.effect === "dispatched") outcome.effect = "observed";
       }
+      // A newly created record has stronger proof than the Create button's
+      // click receipt: the same page navigates from the filled form to a new
+      // record URL, and its visible identity and fields match the preform.
+      const createClick = steps.length === 1 && steps[0]?.op === "click" ? steps[0] : undefined;
+      const clickedCreate = createClick && safeObs.content.elements.some((element) =>
+        element.ref === createClick.target && element.name?.trim() === "Create record");
+      const fieldValue = (label: string) => safeObs.content.formFields.find((field) =>
+        field.label?.trim() === label)?.value?.trim();
+      const title = fieldValue("Title");
+      const owner = fieldValue("Owner");
+      const status = fieldValue("Status");
+      let createdId: string | undefined;
+      try {
+        if (afterObs && new URL(safeObs.content.url).pathname === "/new") {
+          const beforeUrl = new URL(safeObs.content.url);
+          const afterUrl = new URL(afterObs.content.url);
+          createdId = beforeUrl.origin === afterUrl.origin
+            ? /^\/records\/(rec-[A-Za-z0-9_-]+)$/.exec(afterUrl.pathname)?.[1] : undefined;
+        }
+      } catch { /* Unparseable URLs provide no creation proof. */ }
+      const pendingCreate = clickedCreate && createdId && title && owner && status && afterObs && post
+        && gate.result.status === "completed" && openIntents.length === 1
+        && afterObs.pageId === obs.pageId && afterObs.documentEpoch > obs.documentEpoch
+        && afterObs.revision > obs.revision && afterObs.observedAt >= dispatchStartedAt
+        && !safeObs.content.text.includes(createdId)
+        && afterLines.includes(title) && afterLines.includes(`Owner: ${owner}`)
+        && afterLines.includes(`Status: ${status}`)
+        && afterLines.some((line) => line.startsWith(`id=${createdId} · updated `))
+        ? openIntents.filter((intent) => intent.pageId === pageId
+          && intent.documentEpoch === obs.documentEpoch && intent.createdAt >= dispatchStartedAt
+          && intent.summary?.ops.length === 1 && intent.summary.ops[0] === "click"
+          && intent.summary.actionLabels?.length === 1 && intent.summary.actionLabels[0] === "Create record")
+        : [];
+      if (pendingCreate.length === 1) {
+        self.durable.reconcile(pendingCreate[0]!.id, "applied", JSON.stringify({
+          observationId: post!.observationId, quote: `id=${createdId}`, effect: "Created matching record",
+        }));
+        const outcome = gate.result.steps[0];
+        if (outcome?.receipt) outcome.receipt = { ...outcome.receipt, uncertain: false,
+          unconfirmed: false, dispatchedBeforeTakeover: false, observed: `id=${createdId}` };
+        if (outcome?.effect === "uncertain" || outcome?.effect === "dispatched") outcome.effect = "observed";
+      }
       noteUnresolved();
       self.persistCheckpoint(self.get(runId));
       // A safety `ask` parks a suspension inside the gate and fails the step
