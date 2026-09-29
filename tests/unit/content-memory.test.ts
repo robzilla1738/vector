@@ -186,6 +186,24 @@ it("refuses sensitive page metadata even when the site was previously allowed", 
   expect(f.db.prepare("SELECT count(*) AS n FROM content_memory").get()).toMatchObject({ n: 0 });
 });
 
+it("denies Private, excluded, banking, health, and login pages before a readable-text request", async () => {
+  const f = fixture();
+  const workspaceId = f.workspace.workspaceId;
+  await f.memory.setPolicy(workspaceId, { enabled: true, retentionDays: 30,
+    allowedOrigins: ["https://example.test", "https://bank.example", "https://health.example"] });
+  const candidate = { workspaceId, url: "https://example.test/article", title: "Ordinary article" };
+  f.memory.assertCaptureEligible(candidate);
+  for (const input of [
+    { ...candidate, privateMode: true },
+    { ...candidate, url: "https://bank.example/news" },
+    { ...candidate, url: "https://health.example/news" },
+    { ...candidate, url: "https://example.test/login" },
+  ]) expect(() => f.memory.assertCaptureEligible(input)).toThrow(/Sensitive pages/);
+  f.repo.setSetting(`workspaceMemory:${workspaceId}`, { excludedOrigins: ["https://example.test"] });
+  expect(() => f.memory.assertCaptureEligible(candidate)).toThrow(/not eligible/);
+  expect(f.db.prepare("SELECT count(*) AS n FROM content_memory").get()).toMatchObject({ n: 0 });
+});
+
 it("rejects sensitive article text and a document change during encryption", async () => {
   const f = fixture();
   await f.memory.setPolicy(f.workspace.workspaceId, { enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"] });

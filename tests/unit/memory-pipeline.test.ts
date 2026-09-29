@@ -41,6 +41,8 @@ it("extracts completed Space runs only after opt-in and exposes bounded progress
     expect((await f.pipeline.overview(f.workspace.workspaceId)).claimCount).toBe(0);
     expect(await f.pipeline.search(f.workspace.workspaceId, "green fixture")).toEqual([]);
     const [first, second] = await f.pipeline.inbox(f.workspace.workspaceId);
+    expect(second?.source).toEqual({ kind: "run-report", quote: second?.text,
+      quoteSha256: createHash("sha256").update(second!.text).digest("hex") });
     await f.pipeline.review(f.workspace.workspaceId, first!.claimId, "discard");
     await f.pipeline.review(f.workspace.workspaceId, second!.claimId, "accept");
     const overview = await f.pipeline.overview(f.workspace.workspaceId);
@@ -49,6 +51,7 @@ it("extracts completed Space runs only after opt-in and exposes bounded progress
     expect(await f.pipeline.inbox(f.workspace.workspaceId)).toEqual([]);
     expect(overview.summary.length).toBeLessThan(10_000);
     expect(await f.pipeline.search(f.workspace.workspaceId, "green fixture")).toHaveLength(1);
+    expect(overview.summary).toContain(`#${second!.source!.quoteSha256.slice(0, 12)}`);
     const profileDir = join(f.directory, readdirSync(f.directory)[0]!);
     const spaceDir = join(profileDir, readdirSync(profileDir)[0]!);
     const history = execFileSync("git", ["-C", spaceDir, "log", "--all", "-p"], { encoding: "utf8" });
@@ -161,7 +164,9 @@ it("migrates legacy encrypted generations without exposing or restoring forgotte
       "inbox.json.enc": [], "history.json.enc": [{ revisionId: randomUUID(), capturedAt: 1, claims: [claim] }] }))
       writeFileSync(join(directory, generation, name), legacySeal(name, value));
     writeFileSync(join(directory, "manifest.json"), JSON.stringify({ generation, keyName }));
-    expect(await f.pipeline.search(workspaceId, "amber")).toHaveLength(1);
+    // Historical encrypted claims without an available source run are kept for
+    // reviewed removal, but never presented as attributable recall.
+    expect(await f.pipeline.search(workspaceId, "amber")).toEqual([]);
     await f.pipeline.forget({ workspaceId, all: true });
     expect(JSON.parse(readFileSync(join(directory, "manifest.json"), "utf8")).version).toBe(2);
     expect(f.secrets.has(keyName)).toBe(false);
@@ -227,6 +232,23 @@ it("rejects stale evidence and concurrent consolidation before approving a note"
     await expect(f.pipeline.review(f.workspace.workspaceId, note.claimId, "accept")).rejects.toThrow(/no longer verifies/);
     expect((await f.pipeline.overview(f.workspace.workspaceId)).claimCount).toBe(0);
     expect(await f.pipeline.inbox(f.workspace.workspaceId)).toHaveLength(1);
+  } finally { f.close(); }
+});
+
+it("removes an approved report quote from recall when its source changes", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.pipeline.setPolicy(workspaceId, true);
+    f.save("run-one", "The verified copper fixture came from this source report.");
+    await f.pipeline.extractRun(workspaceId, "run-one");
+    const note = (await f.pipeline.inbox(workspaceId))[0]!;
+    await f.pipeline.review(workspaceId, note.claimId, "accept");
+    expect(await f.pipeline.search(workspaceId, "copper fixture")).toHaveLength(1);
+    f.save("run-one", "This changed report no longer supports the prior note.");
+    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    expect(await restarted.search(workspaceId, "copper fixture")).toEqual([]);
+    expect((await restarted.overview(workspaceId)).summary).toBe("");
   } finally { f.close(); }
 });
 

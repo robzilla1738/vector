@@ -112,7 +112,9 @@ export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
       {inbox.map(note => <fieldset className="field" key={note.claimId}>
         <legend>Memory note review</legend>
         <p>{note.text}</p>
-        <p className="hint">Source run: <code>{note.sourceRunId}</code></p>
+        <p className="hint">Source run: <code>{note.sourceRunId}</code>
+          {note.source && <> · Exact report quote <code>{note.source.quoteSha256.slice(0, 12)}</code></>}
+        </p>
         <div className="row">
           <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
             await call("memory.pipeline.review", { workspaceId, claimId: note.claimId, decision: "accept" });
@@ -132,7 +134,7 @@ export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
         </button>)}
       </div>}
       {claims.map(claim => <div className="row" key={claim.claimId}>
-        <span className="grow">{claim.text} <span className="hint">[run:{claim.sourceRunId}]</span></span>
+        <span className="grow">{claim.text} <span className="hint">[run:{claim.sourceRunId}{claim.source && `#${claim.source.quoteSha256.slice(0, 12)}`}]</span></span>
         <button className="btn sm" disabled={busy} onClick={() => void forget({ claimId: claim.claimId },
           "This note will be removed from current memory and every restorable revision. This cannot be undone.")}>Forget note</button>
       </div>)}

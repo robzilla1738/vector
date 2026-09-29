@@ -2,7 +2,10 @@ import { z } from "zod";
 
 export const MemoryPipelinePolicySchema = z.object({ workspaceId: z.string().min(1), enabled: z.boolean() }).strict();
 export const MemoryClaimSchema = z.object({ claimId: z.string().uuid(), sourceRunId: z.string().min(1),
-  text: z.string().min(1).max(2000), capturedAt: z.number().int().nonnegative() });
+  text: z.string().min(1).max(2000), capturedAt: z.number().int().nonnegative(),
+  /** Exact quote from the run report. Older encrypted notes remain readable without this field. */
+  source: z.object({ kind: z.literal("run-report"), quote: z.string().min(1).max(2000),
+    quoteSha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict().optional() });
 export const MemoryPipelineInboxSchema = z.array(MemoryClaimSchema).max(200);
 export const MemoryPipelineSourceSchema = z.object({ runId: z.string().min(1), goal: z.string(), endedAt: z.number().int().nonnegative() });
 export const MemoryPipelineRevisionSchema = z.object({ revisionId: z.string().uuid(), capturedAt: z.number().int().nonnegative(),

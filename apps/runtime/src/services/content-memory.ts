@@ -106,6 +106,23 @@ export class ContentMemoryStore {
     return { enabled: false, retentionDays: 30, allowedOrigins: [] };
   }
 
+  /** Run before requesting readable text from the browser or native host. */
+  assertCaptureEligible(input: { workspaceId: string; url: string; title: string; privateMode?: boolean }): void {
+    const policy = this.policy(input.workspaceId);
+    const memory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${input.workspaceId}`);
+    let url: URL;
+    try { url = new URL(input.url); }
+    catch { throw new AuxError("permission_denied", "This page is not eligible for content recall."); }
+    if (!policy.enabled || memory?.enabled === false)
+      throw new AuxError("permission_denied", "Enable page-content recall in this Space first.");
+    if (input.privateMode || memorySensitivityReason(input.url, input.title))
+      throw new AuxError("permission_denied", "Sensitive pages cannot be saved to Memory.");
+    if (url.protocol !== "https:"
+      || url.username || url.password || input.url.length > 8192
+      || !policy.allowedOrigins.includes(url.origin) || memory && memorySourceExcluded(memory, url.href))
+      throw new AuxError("permission_denied", "This page is not eligible for content recall.");
+  }
+
   async setPolicy(workspaceId: string, policy: Policy): Promise<Policy> {
     this.requireSpace(workspaceId);
     if (typeof policy.enabled !== "boolean" || (policy.retentionDays !== 30 && policy.retentionDays !== 90)
@@ -202,16 +219,10 @@ export class ContentMemoryStore {
   /** Caller must establish foreground/document eligibility before supplying page text. */
   async saveEligible(input: Omit<RecordBody, "memoryId" | "profileId" | "capturedAt">,
     currentDocument?: () => boolean): Promise<RecordBody> {
-    const policy = this.policy(input.workspaceId);
-    const memory = this.repo.getSetting<WorkspaceMemory>(`workspaceMemory:${input.workspaceId}`);
-    if (!policy.enabled || memory?.enabled === false) throw new AuxError("permission_denied", "Enable page-content recall in this Space first.");
+    this.assertCaptureEligible(input);
     let url: URL;
     try { url = new URL(input.url); } catch { throw new AuxError("invalid_params", "Choose a secure web page."); }
-    if (url.protocol !== "https:" || url.username || url.password || input.url.length > 8192
-      || !policy.allowedOrigins.includes(url.origin)
-      || memory && memorySourceExcluded(memory, url.href))
-      throw new AuxError("permission_denied", "This page is not eligible for content recall.");
-    if (memorySensitivityReason(input.url, input.title) || memoryContentSensitivityReason(input.text))
+    if (memoryContentSensitivityReason(input.text))
       throw new AuxError("permission_denied", "Sensitive pages cannot be saved to Memory.");
     if (!input.pageId || input.pageId.length > 200 || (input.sessionId?.length ?? 0) > 200
       || !Number.isSafeInteger(input.documentEpoch) || input.documentEpoch < 0

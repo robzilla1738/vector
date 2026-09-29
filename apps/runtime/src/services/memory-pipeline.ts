@@ -86,6 +86,21 @@ export class MemoryPipeline {
     return true;
   }
 
+  private report(run: Run): string | undefined {
+    return [run.result?.report, run.result?.answer, run.result?.text]
+      .find(value => typeof value === "string") as string | undefined;
+  }
+
+  private verifies(workspaceId: string, claim: MemoryClaim): boolean {
+    const run = this.repo.getRun(claim.sourceRunId);
+    const report = run && this.report(run);
+    return !!run && run.status === "completed" && run.config?.contextWorkspaceId === workspaceId
+      && !!report && this.sourceEligible(workspaceId, run)
+      && report.includes(claim.text)
+      && (!claim.source || claim.source.kind === "run-report" && claim.source.quote === claim.text
+        && claim.source.quoteSha256 === sha(claim.source.quote));
+  }
+
   private async git(directory: string, ...args: string[]) {
     await exec("git", ["-C", directory, "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false",
       "-c", "user.name=Aux Memory", "-c", "user.email=memory@aux.invalid", ...args],
@@ -163,7 +178,7 @@ export class MemoryPipeline {
     const lines: string[] = [];
     let bytes = 0;
     for (const claim of latest) {
-      const line = `- ${claim.text.slice(0, 360)} [run:${claim.sourceRunId}]`;
+      const line = `- ${claim.text.slice(0, 360)} [run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}]`;
       const size = Buffer.byteLength(line, "utf8") + 1;
       if (bytes + size > 1700) break;
       lines.push(line);
@@ -236,7 +251,7 @@ export class MemoryPipeline {
         throw new AuxError("permission_denied", "This run includes a sensitive, excluded, or unverifiable source.");
       if (this.repo.db.prepare("SELECT 1 FROM memory_pipeline_watermarks WHERE workspace_id=? AND run_id=?").get(workspaceId, runId))
         return { extracted: 0 };
-      const report = [run.result?.report, run.result?.answer, run.result?.text].find(value => typeof value === "string") as string | undefined;
+      const report = this.report(run);
       if (!report?.trim()) return { extracted: 0 };
       const { claims, inbox, history, prior } = await this.readClaims(workspaceId);
       if ([...claims, ...inbox].some(claim => claim.sourceRunId === runId)) {
@@ -246,8 +261,11 @@ export class MemoryPipeline {
       }
       const at = Date.now();
       const additions = report.split(/\n{2,}|(?<=[.!?])\s+(?=[A-Z])/u).map(text => text.trim())
-        .filter(text => text.length >= 20).slice(0, 20).map(text => MemoryClaimSchema.parse({
-          claimId: randomUUID(), sourceRunId: runId, text: text.slice(0, 2000), capturedAt: at }));
+        .filter(text => text.length >= 20).slice(0, 20).map(text => {
+          const quote = text.slice(0, 2000);
+          return MemoryClaimSchema.parse({ claimId: randomUUID(), sourceRunId: runId, text: quote,
+            capturedAt: at, source: { kind: "run-report", quote, quoteSha256: sha(quote) } });
+        });
       if (!additions.length) return { extracted: 0 };
       await this.writeGeneration(workspaceId, claims, [...inbox, ...additions].slice(-200), history, prior);
       this.repo.db.prepare("INSERT OR IGNORE INTO memory_pipeline_watermarks(workspace_id,run_id,captured_at) VALUES(?,?,?)")
@@ -314,13 +332,8 @@ export class MemoryPipeline {
       const note = inbox.find(item => item.claimId === claimId);
       if (!note) throw new AuxError("not_found", "Pending memory note does not exist.");
       if (decision === "accept") {
-        const source = this.repo.getRun(note.sourceRunId);
-        const report = [source?.result?.report, source?.result?.answer, source?.result?.text]
-          .find(value => typeof value === "string") as string | undefined;
-        if (!source || source.status !== "completed" || source.config?.contextWorkspaceId !== workspaceId || !report?.includes(note.text))
+        if (!this.verifies(workspaceId, note))
           throw new AuxError("conflict", "The source run no longer verifies this note.");
-        if (!this.sourceEligible(workspaceId, source))
-          throw new AuxError("permission_denied", "The source is now sensitive, excluded, or unverifiable.");
       }
       const remaining = inbox.filter(item => item.claimId !== claimId);
       const accepted = decision === "accept" ? [...claims, note].slice(-200) : claims;
@@ -334,7 +347,8 @@ export class MemoryPipeline {
     const policy = this.policy(workspaceId);
     if (!policy.enabled) return MemoryPipelineOverviewSchema.parse({ workspaceId, enabled: false, summary: "", claimCount: 0, sourceCount: 0 });
     const { claims } = await this.readClaims(workspaceId);
-    return MemoryPipelineOverviewSchema.parse({ workspaceId, enabled: true, summary: this.summary(claims),
+    return MemoryPipelineOverviewSchema.parse({ workspaceId, enabled: true,
+      summary: this.summary(claims.filter(claim => this.verifies(workspaceId, claim))),
       claimCount: claims.length, sourceCount: new Set(claims.map(claim => claim.sourceRunId)).size });
   }
 
@@ -343,7 +357,7 @@ export class MemoryPipeline {
     const terms = query.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(term => term.length > 1).slice(0, 8);
     if (!terms.length) return [];
     const { claims } = await this.readClaims(workspaceId);
-    return claims.filter(claim => !memoryContentSensitivityReason(claim.text)
+    return claims.filter(claim => this.verifies(workspaceId, claim) && !memoryContentSensitivityReason(claim.text)
       && terms.every(term => claim.text.toLocaleLowerCase().includes(term))).slice(-20).reverse();
   }
 
