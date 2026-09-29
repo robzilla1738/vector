@@ -27,6 +27,12 @@ export const ACTIVE_PROTECTED_TABLES = [
   "task_evidence",
   "criterion_reviews",
   "criterion_verifications",
+  "outbound_mcp_servers",
+  "outbound_mcp_grants",
+  "agent_connections",
+  "vault_items",
+  "vault_grants",
+  "vault_access",
 ] as const;
 
 /** Complete the protected migration before constructing any repository service. */
