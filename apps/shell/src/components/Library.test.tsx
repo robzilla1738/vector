@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useStore } from "../store";
+import { bridge } from "../bridge";
 import { makePage } from "../mock/fixtures";
 import { Library } from "./Library";
 
@@ -76,4 +77,26 @@ it("closes Library when a bookmark opens in Peek", async () => {
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Preview Story"]')!.click());
   expect(useStore.getState().overlay).toBeNull();
   expect(useStore.getState().peekPageId).toMatch(/^p_peek_/);
+});
+
+
+it("returns focus to search and scrolls its own result panel when opening a folder", async () => {
+  const saved = { nodeId: "folder-bookmark", url: "https://example.com/story", title: "Story", folderPath: ["Notes"] };
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async (method) => {
+    if (method === "bookmarks.list") return [saved] as never;
+    if (method === "bookmarks.folders.list") return [["Notes"]] as never;
+    return [] as never;
+  });
+  try {
+    await act(async () => root.render(<Library />));
+    await act(async () => { vi.advanceTimersByTime(1); await Promise.resolve(); });
+    const panel = host.querySelector<HTMLElement>("#library-results")!;
+    const scrollTo = vi.fn();
+    panel.scrollTo = scrollTo;
+    const folder = host.querySelector<HTMLButtonElement>(".library-folder")!;
+    expect(folder).toBeTruthy();
+    await act(async () => folder.click());
+    expect(scrollTo).toHaveBeenCalledExactlyOnceWith({ top: 0 });
+    expect(document.activeElement).toBe(host.querySelector<HTMLInputElement>('input[aria-label="Search bookmarks"]'));
+  } finally { invoke.mockRestore(); }
 });

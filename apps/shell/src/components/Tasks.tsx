@@ -3,6 +3,7 @@ import { Tabs, WorkRow } from "../ui";
 import { useEffect, useRef, useState } from "react";
 import type { Run, Task, TaskReceipt } from "@aux/contracts";
 import { call, useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import { I } from "./icons";
 import {
   readTaskDraft,
@@ -20,7 +21,7 @@ import { Goals } from "./Goals";
 import { Hooks } from "./Hooks";
 import { CalendarTaskGrants } from "./CalendarTaskGrants";
 import { bridge } from "../bridge";
-import { RunAttentionFeed } from "../agent/RunAttentionFeed";
+import { RunAttentionFeed, selectAttentionRuns } from "../agent/RunAttentionFeed";
 import { RunNoticePreference } from "../agent/RunNoticeControls";
 
 type Details = {
@@ -44,7 +45,7 @@ export function Tasks() {
   const needsSetup = useStore((s) => s.settings.modelConfigured === false);
   const activePageId = useStore((s) => s.activePageId);
   const conversationId = useStore((s) => s.conversationId);
-  const runs = useStore((s) => s.runs);
+  const runs = useStore(useShallow((s) => selectAttentionRuns(s.runs)));
   const [showHistory, setShowHistory] = useState(false);
   const [creating, setCreating] = useState(false);
   const layout = useStore((s) => s.layout);

@@ -155,6 +155,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
   const [importPreview, setImportPreview] = useState<Awaited<ReturnType<typeof parseBookmarkFile>> | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
+  const results = useRef<HTMLDivElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const firstSelection = useRef<HTMLButtonElement>(null);
   const firstResult = useRef<HTMLButtonElement>(null);
@@ -232,7 +233,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
   function openFolder(path: string[]) {
     setFolder(path); setQuery(""); setEditing(null); setFolderEditor(null);
     search.current?.focus();
-    dialog.current?.querySelector("#library-results")?.scrollTo({top:0});
+    results.current?.scrollTo({ top: 0 });
   }
   const items = view === "bookmarks" ? bookmarks.filter(item => q
     ? `${item.title} ${item.url} ${item.folderPath?.join(" ") ?? ""}`.toLocaleLowerCase().includes(q)
@@ -413,7 +414,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
       {error && <p className="library-message" role="alert">{error} {failedLoad && <button className="btn sm" disabled={loading || loadingMore} onClick={() => failedLoad === "more" ? void loadMoreHistory() : setRefresh(value => value + 1)}>Retry</button>}</p>}
       {notice && <output className="library-message" data-block>{notice}</output>}
       {removed && <div className="library-tools"><span className="hint">Removed {removed.title || hostOf(removed.url)}</span><button className="btn sm" disabled={busy} onClick={() => void action(async () => { await save(removed, true); setRemoved(null); setNotice("Bookmark restored."); })}>Undo remove</button></div>}
-      <div className="palette-list" id="library-results" role="tabpanel" aria-labelledby={`library-${view}`} aria-busy={loading} onKeyDown={event => moveListFocus(event, ".library-folder, .library-open")}>
+      <div ref={results} className="palette-list" id="library-results" role="tabpanel" aria-labelledby={`library-${view}`} aria-busy={loading} onKeyDown={event => moveListFocus(event, ".library-folder, .library-open")}>
         {view === "bookmarks" && childFolders.map((path, index) => <button key={JSON.stringify(path)} ref={index === 0 ? firstResult : undefined} className="library-folder" onClick={() => openFolder(path)}>
           <span className="library-folder-icon">{I.folderClosed}</span><span className="t">{q ? path.join(" / ") : path.at(-1)}</span><span className="hint">{bookmarks.filter(item => path.every((part, index) => item.folderPath?.[index] === part)).length}</span>{I.right}
         </button>)}

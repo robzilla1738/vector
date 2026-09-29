@@ -4,6 +4,11 @@ import { call } from "../store";
 import "./RunAttentionFeed.css";
 
 type Attention = { run: Run; suspension: Suspension };
+
+/** Keep Home and Tasks subscribed only to pending rows they can actually present. */
+export function selectAttentionRuns(runs: readonly Run[]): Run[] {
+  return runs.filter((run) => run.status === "needs_input").slice(0, 32);
+}
 const LABELS: Record<Suspension["kind"], { title: string; detail: string }> = {
   "ask-user-question": { title: "Aux needs your answer", detail: "Review the question in this task." },
   approval: { title: "Approval needed", detail: "Review the requested action in this task." },
@@ -24,7 +29,7 @@ export function RunAttentionFeed({ runs, onOpenRun, limit = 8 }: {
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
-  const pendingKey = JSON.stringify(runs.filter((run) => run.status === "needs_input").slice(0, 32)
+  const pendingKey = JSON.stringify(selectAttentionRuns(runs)
     .map((run) => [run.runId, run.statusMessage, run.config?.messageRevision]));
   useEffect(() => {
     let live = true;

@@ -3,17 +3,18 @@ import { SessionRecovery } from "./SessionRecovery";
 import { AuxMark } from "./AuxMark";
 import { useEffect } from "react";
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import { CommandBar } from "./CommandBar";
 import { bridge } from "../bridge";
 import { RecentWork } from "./RecentWork";
-import { RunAttentionFeed } from "../agent/RunAttentionFeed";
+import { RunAttentionFeed, selectAttentionRuns } from "../agent/RunAttentionFeed";
 import { RunNoticePreference } from "../agent/RunNoticeControls";
 
 /** Browsing starts with one input; saved work stays one step away. */
 export function StartPage() {
   const focus = useStore(s => s.focusCommandBar);
   const connected = useStore(s => s.connected);
-  const runs = useStore(s => s.runs);
+  const runs = useStore(useShallow(s => selectAttentionRuns(s.runs)));
   useEffect(() => { focus("hero"); }, [focus]);
   return <div className="start aux-home"><div className="start-inner">
     <AuxMark />

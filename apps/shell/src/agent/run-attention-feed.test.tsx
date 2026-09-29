@@ -5,7 +5,8 @@ import { expect, it, vi } from "vitest";
 import type { Suspension, SuspensionKind } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { makeRun } from "../mock/fixtures";
-import { RunAttentionFeed } from "./RunAttentionFeed";
+import { RunAttentionFeed, selectAttentionRuns } from "./RunAttentionFeed";
+import { shallow } from "zustand/shallow";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -31,10 +32,10 @@ it("surfaces a durable typed request without page or question text, and opens on
     expect(host.textContent).toContain("Aux needs your answer");
     expect(host.textContent).not.toMatch(/secret|Private/);
     current = pending("ask-user-question", "s2");
-    await act(async () => host.querySelector<HTMLButtonElement>(".run-attention-actions .primary")!.click());
+    await act(async () => host.querySelector<HTMLButtonElement>(".run-attention-card .primary")!.click());
     expect(open).not.toHaveBeenCalled();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain("request changed");
-    await act(async () => host.querySelector<HTMLButtonElement>(".run-attention-actions .primary")!.click());
+    await act(async () => host.querySelector<HTMLButtonElement>(".run-attention-card .primary")!.click());
     expect(open).toHaveBeenCalledExactlyOnceWith(run.runId);
     expect(invoke.mock.calls.filter(([method]) => method === "runs.get").length).toBeGreaterThanOrEqual(3);
   } finally { await act(async () => root.unmount()); invoke.mockRestore(); }
@@ -63,4 +64,17 @@ it("renders approval and handoff cards without their private instructions and al
     await act(async () => dismiss.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     expect(host.querySelectorAll(".run-attention-card")).toHaveLength(1);
   } finally { await act(async () => root.unmount()); invoke.mockRestore(); }
+});
+
+
+it("projects at most 32 pending run rows and ignores unrelated run replacements", () => {
+  const pendingRuns = Array.from({ length: 34 }, (_, index) => makeRun({ ...run, runId: `pending-${index}`, status: "needs_input" }));
+  const completed = makeRun({ ...run, runId: "complete", status: "completed" });
+  const first = selectAttentionRuns([completed, ...pendingRuns]);
+  const changedUnrelated = selectAttentionRuns([{ ...completed, goal: "Unrelated update" }, ...pendingRuns]);
+  expect(first).toHaveLength(32);
+  expect(first.every(item => item.status === "needs_input")).toBe(true);
+  expect(shallow(first, changedUnrelated)).toBe(true);
+  const changedPending = selectAttentionRuns([completed, { ...pendingRuns[0]!, statusMessage: "A new durable request" }, ...pendingRuns.slice(1)]);
+  expect(shallow(first, changedPending)).toBe(false);
 });
