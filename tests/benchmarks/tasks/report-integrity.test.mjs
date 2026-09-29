@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { abReadiness, candidateReadiness, corpusFingerprint, coverage, modelAttribution, summarizeIntents } from "./report-integrity.mjs";
+import { abReadiness, benchmarkInfrastructureFailure, candidateReadiness, corpusFingerprint, coverage, modelAttribution, summarizeIntents } from "./report-integrity.mjs";
 
 const model = "meta/muse-spark-1.3-contributor";
 const ids = Array.from({ length: 50 }, (_, i) => `L${i + 1}`);
@@ -37,6 +37,14 @@ test("observed model-call events resolve the default model and reject mixed rout
   assert.equal(modelAttribution([call(model), call("openai/other")]).runtimeModel, null);
   assert.equal(modelAttribution([call(model), call(undefined)]).runtimeModel, null);
   assert.equal(modelAttribution([]).runtimeModel, null);
+});
+
+test("wrapper timeout aborts before scoring; an attributed run deadline stays a task result", () => {
+  assert.equal(benchmarkInfrastructureFailure("task timeout after 180000 ms"),
+    "Benchmark wrapper timed out before run attribution");
+  assert.equal(benchmarkInfrastructureFailure("run deadline exceeded (175000ms)"), null);
+  assert.equal(benchmarkInfrastructureFailure("benchmark receipt attribution failed: database closed"),
+    "Durable receipt attribution failed");
 });
 
 test("durable receipt summary exposes statuses without evidence or values", () => {

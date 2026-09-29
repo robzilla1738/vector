@@ -79,3 +79,16 @@ export function summarizeIntents(intents) {
   return { statuses, unresolved: statuses.pending + statuses.uncertain,
     ids: intents.map(({ id, status }) => ({ id, status })) };
 }
+
+/** Wrapper expiry has no run receipt, so it cannot become a scored task row. */
+export function benchmarkInfrastructureFailure(error) {
+  if (!error) return null;
+  const message = String(error);
+  if (/^task timeout after \d+ ms$/.test(message))
+    return "Benchmark wrapper timed out before run attribution";
+  if (/unauthenticated request to ai gateway|invalid ai.gateway.api.key/i.test(message))
+    return "AI Gateway authentication failed";
+  if (/benchmark receipt attribution failed/i.test(message))
+    return "Durable receipt attribution failed";
+  return null;
+}

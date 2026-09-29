@@ -39,7 +39,7 @@ import { createGateway } from "@ai-sdk/gateway";
 import { generateText, jsonSchema, stepCountIs, tool, wrapLanguageModel } from "ai";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { abReadiness, candidateReadiness, corpusFingerprint, modelAttribution, summarizeIntents } from "./report-integrity.mjs";
+import { abReadiness, benchmarkInfrastructureFailure, candidateReadiness, corpusFingerprint, modelAttribution, summarizeIntents } from "./report-integrity.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../../..");
@@ -619,15 +619,6 @@ function reportedCost(result) {
 
 export function scoreRun(status, answerScore, oracle) {
   return status === "completed" && answerScore === 1 && (oracle?.pass ?? true) ? 1 : 0;
-}
-
-function benchmarkInfrastructureFailure(error) {
-  if (!error) return null;
-  if (/unauthenticated request to ai gateway|invalid ai.gateway.api.key/i.test(String(error)))
-    return "AI Gateway authentication failed";
-  if (/benchmark receipt attribution failed/i.test(String(error)))
-    return "Durable receipt attribution failed";
-  return null;
 }
 
 function extractAnswer(result) {
