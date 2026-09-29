@@ -40,9 +40,11 @@ async function withHost(reply: (message: Record<string, unknown>) => Record<stri
 describe("Chromium host socket", () => {
   it("authenticates before carrying the existing bidirectional RPC frames", async () => {
     let hello: Record<string, unknown> | null = null;
+    let observedNonce = "";
     await withHost(message => {
       if (message.kind === "hello") {
         hello = message;
+        observedNonce = String(message.nonce);
         return { kind: "hello-ack", protocol: AUX_HOST_PROTOCOL, nonce: message.nonce };
       }
       return { kind: "res", id: message.id, result: message.params };
@@ -53,6 +55,7 @@ describe("Chromium host socket", () => {
       transport.close();
     });
     expect(hello).toMatchObject({ token });
+    expect(observedNonce).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it("registers startup methods before delivering requests buffered with the handshake", async () => {
@@ -92,6 +95,18 @@ describe("Chromium host socket", () => {
   it("rejects a host that does not acknowledge the matching handshake", async () => {
     await withHost(() => ({ kind: "hello-ack", protocol: AUX_HOST_PROTOCOL, nonce: "wrong" }), async path => {
       await expect(connectHostSocket(path, token)).rejects.toThrow("authentication failed");
+    });
+  });
+
+  it("binds a native reconnect to its exact generation", async () => {
+    await withHost(message => ({ kind: "hello-ack", protocol: AUX_HOST_PROTOCOL,
+      nonce: message.nonce, generation: "7" }), async path => {
+      await expect(connectHostSocket(path, token, 15_000, "8")).rejects.toThrow("authentication failed");
+    });
+    await withHost(message => ({ kind: "hello-ack", protocol: AUX_HOST_PROTOCOL,
+      nonce: message.nonce, generation: message.generation }), async path => {
+      const transport = await connectHostSocket(path, token, 15_000, "8");
+      transport.close();
     });
   });
 

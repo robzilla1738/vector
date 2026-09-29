@@ -125,7 +125,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let columnCipher: Awaited<ReturnType<typeof prepareProtectedDatabase>> | undefined;
   try {
     if (env.AUX_HOST_SOCKET) {
-      hostSocket = await connectHostSocket(env.AUX_HOST_SOCKET, env.AUX_HOST_TOKEN ?? "");
+      const generation = env.AUX_HOST_GENERATION ?? "";
+      if (!/^[1-9][0-9]*$/.test(generation)) throw new Error("Aux host generation is missing");
+      hostSocket = await connectHostSocket(env.AUX_HOST_SOCKET, env.AUX_HOST_TOKEN ?? "", 15_000, generation);
       const startup = startupHostChannel(hostSocket);
       channel = startup.channel;
       releaseHostStartup = startup.release;

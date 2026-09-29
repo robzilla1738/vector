@@ -1,0 +1,85 @@
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -9,6 +9,7 @@
+ #include <fcntl.h>
+ #include <poll.h>
+ #include <sys/socket.h>
++#include <libproc.h>
+ #include <sys/stat.h>
+ #include <sys/un.h>
+ #include <unistd.h>
+@@ -16,7 +17,9 @@
+ #include <algorithm>
+ #include <array>
+ #include <cerrno>
++#include <cctype>
+ #include <cmath>
++#include <cstdlib>
+ #include <memory>
+ #include <limits>
+ #include <optional>
+@@ -461,6 +464,9 @@
+   base::LaunchOptions options;
+   options.environment["AUX_HOST_SOCKET"] = socket_path_.value();
+   options.environment["AUX_HOST_TOKEN"] = token_;
++  const std::string expected_generation =
++      std::to_string(connection_generation_ + 1);
++  options.environment["AUX_HOST_GENERATION"] = expected_generation;
+   options.environment["AUX_BROWSER_PROFILE_ID"] = profile_id_;
+   options.environment["AUX_DATA_DIR"] =
+       profile_path_.Append("Aux Runtime Data").value();
+@@ -482,12 +488,27 @@
+   int no_sigpipe = 1;
+   uid_t peer_uid;
+   gid_t peer_gid;
++  pid_t peer_pid = -1;
++  socklen_t peer_pid_size = sizeof(peer_pid);
+   if (connection_fd_ < 0 || fcntl(connection_fd_, F_SETFD, FD_CLOEXEC) != 0 ||
+       setsockopt(connection_fd_, SOL_SOCKET, SO_NOSIGPIPE, &no_sigpipe,
+                  sizeof(no_sigpipe)) != 0 ||
+       getpeereid(connection_fd_, &peer_uid, &peer_gid) != 0 ||
+-      peer_uid != geteuid()) {
+-    *error = "Aux Runtime socket peer has the wrong user identity";
++      peer_uid != geteuid() ||
++      getsockopt(connection_fd_, SOL_LOCAL, LOCAL_PEERPID,
++                 &peer_pid, &peer_pid_size) != 0 ||
++      peer_pid_size != sizeof(peer_pid) ||
++      peer_pid != process_.Pid()) {
++    *error = "Aux Runtime socket peer is not the launched helper";
++    Disconnect();
++    return false;
++  }
++  std::array<char, PROC_PIDPATHINFO_MAXSIZE> peer_path = {};
++  std::array<char, PROC_PIDPATHINFO_MAXSIZE> expected_path = {};
++  if (proc_pidpath(peer_pid, peer_path.data(), peer_path.size()) <= 0 ||
++      !realpath(node.value().c_str(), expected_path.data()) ||
++      std::string(peer_path.data()) != expected_path.data()) {
++    *error = "Aux Runtime socket peer executable changed";
+     Disconnect();
+     return false;
+   }
+@@ -504,8 +525,14 @@
+   const std::string* nonce = data ? data->FindString("nonce") : nullptr;
+   const std::string* presented_token =
+       data ? data->FindString("token") : nullptr;
++  const std::string* generation =
++      data ? data->FindString("generation") : nullptr;
+   if (!kind || *kind != "hello" || !protocol || *protocol != "aux-host-v1" ||
+-      !nonce || nonce->size() > 128 || !presented_token ||
++      !nonce || nonce->size() != 64 ||
++      !std::all_of(nonce->begin(), nonce->end(), [](unsigned char ch) {
++        return std::isxdigit(ch);
++      }) || !generation || *generation != expected_generation ||
++      !presented_token ||
+       *presented_token != token_) {
+     *error = "Aux Runtime authentication failed";
+     Disconnect();
+@@ -515,6 +542,7 @@
+   ack.Set("kind", "hello-ack");
+   ack.Set("protocol", "aux-host-v1");
+   ack.Set("nonce", *nonce);
++  ack.Set("generation", expected_generation);
+   const auto ack_json = base::WriteJson(ack);
+   if (!ack_json || !SendFrame(*ack_json)) {
+     *error = "Cannot acknowledge the Aux Runtime connection";
