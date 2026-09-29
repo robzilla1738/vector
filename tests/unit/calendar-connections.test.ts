@@ -50,7 +50,7 @@ function fixture(options: { denied?: boolean; rateLimited?: boolean; partial?: b
   };
   const service = new CalendarConnectionService({ repo, native, clientId: "desktop-client", profileId: "profile-fixture", fetch: http, endpoints });
   const operations = new OperationService({ repo, events, pages: {} as never, calendar: service });
-  return { db, repo, events, tasks, secrets, calls, service, operations };
+  return { db, repo, events, tasks, secrets, calls, native, http, service, operations };
 }
 
 async function connect(service: CalendarConnectionService, account: string) {
@@ -95,6 +95,60 @@ describe("outbound Google Calendar connection", () => {
       await expect(service.events(query)).rejects.toThrow(/revoked/);
       expect(service.list().connections).toHaveLength(1);
     } finally { await service.close(); }
+  });
+
+  it("keeps a revoked account denied and clears a failed Keychain deletion on restart", async () => {
+    const setup = fixture();
+    try {
+      expect((await connect(setup.service, "alice")).status).toBe(200);
+      const connection = setup.service.list().connections[0]!;
+      const secretName = (setup.db.prepare("SELECT secret_name FROM calendar_connections WHERE connection_id=?")
+        .get(connection.connectionId) as { secret_name: string }).secret_name;
+      const store = setup.native.storeSecret.bind(setup.native);
+      let failDeletion = true;
+      setup.native.storeSecret = async (name, value) => {
+        if (name === secretName && value === "" && failDeletion) {
+          failDeletion = false;
+          throw new Error("Keychain temporarily unavailable");
+        }
+        return store(name, value);
+      };
+      expect(await setup.service.revoke(connection.connectionId)).toEqual({ ok: true, providerRevocation: "pending" });
+      expect(setup.secrets.has(secretName)).toBe(true);
+      expect(setup.service.list().connections).toHaveLength(0);
+      await expect(setup.service.events({ connectionId: connection.connectionId,
+        timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 10 }))
+        .rejects.toThrow(/revoked/);
+      const restarted = new CalendarConnectionService({ repo: setup.repo, native: setup.native,
+        clientId: "desktop-client", profileId: "profile-fixture", fetch: setup.http, endpoints });
+      await restarted.cleanupRevokedSecrets();
+      expect(setup.secrets.has(secretName)).toBe(false);
+      await restarted.close();
+    } finally { await setup.service.close(); }
+  });
+
+  it("restarts with the chosen account and refreshes only its saved Keychain credential", async () => {
+    const setup = fixture();
+    try {
+      await connect(setup.service, "alice");
+      await connect(setup.service, "bob");
+      const alice = setup.service.list().connections.find(item => item.accountKey === "alice@example.test")!;
+      const name = (setup.db.prepare("SELECT secret_name FROM calendar_connections WHERE connection_id=?")
+        .get(alice.connectionId) as { secret_name: string }).secret_name;
+      const before = JSON.parse(setup.secrets.get(name)!) as { accessToken: string; refreshToken: string; expiresAt: number };
+      setup.secrets.set(name, JSON.stringify({ ...before, expiresAt: 0 }));
+      await setup.service.close();
+      const restarted = new CalendarConnectionService({ repo: setup.repo, native: setup.native,
+        clientId: "desktop-client", profileId: "profile-fixture", fetch: setup.http, endpoints });
+      try {
+        expect(restarted.list().connections).toHaveLength(2);
+        const result = await restarted.events({ connectionId: alice.connectionId,
+          timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z", limit: 10 });
+        expect(result.events[0]?.source.accountKey).toBe("alice@example.test");
+        expect(JSON.parse(setup.secrets.get(name)!).accessToken).toBe("renewed-refresh-alice");
+        expect(setup.calls.filter(call => call.url.pathname === "/calendar/calendars/primary/events")).toHaveLength(1);
+      } finally { await restarted.close(); }
+    } finally { await setup.service.close(); }
   });
 
   it("stops waiting for a shared token refresh when a task read is cancelled", async () => {

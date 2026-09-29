@@ -5,6 +5,7 @@ import { call } from "../store";
 
 type ConnectionList = Awaited<ReturnType<typeof call<"calendar.connections.list">>>;
 type EventPage = { events: CalendarEvent[]; nextPageToken?: string; fetchedAt: number };
+type AccountPage = { connectionId: string; value: EventPage };
 
 function range() {
   const start = new Date();
@@ -15,7 +16,9 @@ function range() {
 export function CalendarConnections() {
   const [list, setList] = useState<ConnectionList | null>(null);
   const [selected, setSelected] = useState("");
-  const [page, setPage] = useState<EventPage | null>(null);
+  const [page, setPage] = useState<AccountPage | null>(null);
+  const selectedRef = useRef("");
+  const readGeneration = useRef(0);
   const [pendingUntil, setPendingUntil] = useState(0);
   const pendingBaseline = useRef(new Map<string, number>());
   const eventRange = useRef(range());
@@ -26,7 +29,10 @@ export function CalendarConnections() {
   const refresh = async () => {
     const next = await call("calendar.connections.list", {});
     setList(next);
-    setSelected(current => next.connections.some(connection => connection.connectionId === current) ? current : next.connections[0]?.connectionId ?? "");
+    const chosen = next.connections.some(connection => connection.connectionId === selectedRef.current)
+      ? selectedRef.current : next.connections[0]?.connectionId ?? "";
+    if (chosen !== selectedRef.current) { selectedRef.current = chosen; readGeneration.current += 1; setPage(null); setBusy(false); }
+    setSelected(chosen);
     return next;
   };
   useEffect(() => { void refresh().catch(reason => setError(String(reason))); }, []);
@@ -47,7 +53,13 @@ export function CalendarConnections() {
     }, 2000);
     return () => window.clearInterval(timer);
   }, [pendingUntil]);
-  useEffect(() => { setPage(null); }, [selected]);
+  const select = (connectionId: string) => {
+    selectedRef.current = connectionId;
+    readGeneration.current += 1;
+    setSelected(connectionId);
+    setPage(null);
+    setBusy(false);
+  };
 
   const connect = async () => {
     setBusy(true); setError(""); setMessage("");
@@ -61,21 +73,27 @@ export function CalendarConnections() {
     finally { setBusy(false); }
   };
   const read = async (connection: CalendarConnection, pageToken?: string) => {
+    const generation = ++readGeneration.current;
     setBusy(true); setError("");
     try {
       if (!pageToken) eventRange.current = range();
       const result = await call("calendar.events.list", { connectionId: connection.connectionId, ...eventRange.current, limit: 25, ...(pageToken ? { pageToken } : {}) });
-      setPage(current => pageToken && current ? { ...result, events: [...current.events, ...result.events] } : result);
-    } catch (reason) { setError(String(reason)); }
-    finally { setBusy(false); }
+      if (selectedRef.current !== connection.connectionId || readGeneration.current !== generation) return;
+      setPage(current => ({ connectionId: connection.connectionId,
+        value: pageToken && current?.connectionId === connection.connectionId
+          ? { ...result, events: [...current.value.events, ...result.events] } : result }));
+    } catch (reason) {
+      if (selectedRef.current === connection.connectionId && readGeneration.current === generation) setError(String(reason));
+    } finally { if (readGeneration.current === generation) setBusy(false); }
   };
   const disconnect = async (connection: CalendarConnection) => {
+    readGeneration.current += 1;
     setBusy(true); setError("");
     try {
       const result = await call("calendar.connections.revoke", { connectionId: connection.connectionId });
       setPage(null);
       await refresh();
-      setMessage(result.providerRevocation === "confirmed" ? "Calendar disconnected and provider access revoked." : "Calendar disconnected in Aux. Provider revocation could not be confirmed; you can also remove Aux in your Google account permissions.");
+      setMessage(result.providerRevocation === "confirmed" ? "Calendar disconnected and provider access revoked." : "Calendar disconnected in Aux. Token cleanup or provider revocation could not be confirmed; you can also remove Aux in your Google account permissions.");
     } catch (reason) { setError(String(reason)); }
     finally { setBusy(false); }
   };
@@ -86,10 +104,11 @@ export function CalendarConnections() {
     <p className="hint">Connect a Google account for read-only event access. Aux keeps each account separate and stores its authorization in secure desktop storage. Browser cookies are never used.</p>
     {!list?.available && <output className="hint" data-block>{list?.reason ?? "Checking Calendar availability…"}</output>}
     <div className="row"><button className="btn sm" disabled={busy || !list?.available} onClick={() => void connect()}>Connect Google Calendar</button><button className="btn sm" disabled={busy} onClick={() => void refresh().catch(reason => setError(String(reason)))}>Refresh accounts</button></div>
-    {!!list?.connections.length && <><label className="field">Calendar account<select aria-label="Calendar account" value={selected} onChange={event => setSelected(event.target.value)}>{list.connections.map(item => <option key={item.connectionId} value={item.connectionId}>{item.label} · {item.accountKey}{item.state === "needs_reauth" ? " · reconnect required" : ""}</option>)}</select></label>
+    {!!list?.connections.length && <><label className="field">Calendar account<select aria-label="Calendar account" value={selected} onChange={event => select(event.target.value)}>{list.connections.map(item => <option key={item.connectionId} value={item.connectionId}>{item.label} · {item.accountKey}{item.state === "needs_reauth" ? " · reconnect required" : ""}</option>)}</select></label>
       {connection && <><p className="hint">Source: {connection.accountKey} · {connection.state === "active" ? "Read-only calendar access" : "Reconnect required"}</p>
+        <p className="hint">Granted scope: Google Calendar read-only. Aux cannot edit or send invitations.</p>
         <div className="row"><button className="btn sm" disabled={busy || connection.state !== "active"} onClick={() => void read(connection)}>Show next 7 days</button><button className="btn sm" disabled={busy} onClick={() => void disconnect(connection)}>Disconnect account</button></div>
-        {page && <div className="field"><strong>Upcoming events</strong>{page.events.length ? page.events.map(event => <div className="field" key={`${event.source.connectionId}:${event.eventId}`}><strong>{event.title}</strong><span className="hint">{new Date(event.start).toLocaleString()} · {event.source.accountKey}</span></div>) : <p className="hint">No events in this range.</p>}{page.nextPageToken && <button className="btn sm" disabled={busy} onClick={() => void read(connection, page.nextPageToken)}>Load more</button>}</div>}</>}
+        {page?.connectionId === connection.connectionId && <div className="field"><strong>Upcoming events</strong>{page.value.events.length ? page.value.events.map(event => <div className="field" key={`${event.source.connectionId}:${event.eventId}`}><strong>{event.title}</strong><span className="hint">{new Date(event.start).toLocaleString()} · {event.source.accountKey}</span></div>) : <p className="hint">No events in this range.</p>}{page.value.nextPageToken && <button className="btn sm" disabled={busy} onClick={() => void read(connection, page.value.nextPageToken)}>Load more</button>}</div>}</>}
     </>}
     {message && <output className="hint" data-block>{message}</output>}
     {error && <p className="hint err" role="alert">{error}</p>}

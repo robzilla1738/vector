@@ -62,7 +62,16 @@ export class CalendarConnectionService {
   private refreshing = new Map<string, Promise<Secret>>();
   private closed = false;
 
-  constructor(private deps: { repo: Repo; native: NativeBridge; clientId?: string; profileId?: string; fetch?: typeof fetch; endpoints?: Endpoints; onChange?: () => void }) {}
+  constructor(private deps: { repo: Repo; native: NativeBridge; clientId?: string; profileId?: string; fetch?: typeof fetch; endpoints?: Endpoints; onChange?: () => void }) {
+    void this.cleanupRevokedSecrets().catch(() => undefined);
+  }
+
+  /** A crash or Keychain error after local revocation cannot reactivate the account. */
+  async cleanupRevokedSecrets(): Promise<void> {
+    const rows = this.deps.repo.db.prepare("SELECT secret_name FROM calendar_connections WHERE revoked_at IS NOT NULL")
+      .all() as { secret_name: string }[];
+    for (const row of rows) await this.deps.native.storeSecret(row.secret_name, "").catch(() => undefined);
+  }
 
   private get http() { return this.deps.fetch ?? fetch; }
   private get urls() { return this.deps.endpoints ?? google; }
@@ -367,14 +376,14 @@ export class CalendarConnectionService {
     this.deps.repo.db.prepare("UPDATE calendar_task_grants SET revoked_at=? WHERE connection_id=? AND revoked_at IS NULL").run(Date.now(), connectionId);
     this.deps.onChange?.();
     const raw = await this.deps.native.readSecret(row.secret_name).then(result => result.value).catch(() => undefined);
-    await this.deps.native.storeSecret(row.secret_name, "");
+    const localSecretRemoved = await this.deps.native.storeSecret(row.secret_name, "").then(() => true).catch(() => false);
     let refreshToken = "";
     try { refreshToken = (JSON.parse(raw ?? "") as Secret).refreshToken; } catch { /* already gone */ }
     if (!refreshToken) return { ok: true, providerRevocation: "pending" };
     try {
       const response = await this.http(this.urls.revoke, { method: "POST", redirect: "error", signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ token: refreshToken }) });
-      return { ok: true, providerRevocation: response.ok ? "confirmed" : "pending" };
+      return { ok: true, providerRevocation: response.ok && localSecretRemoved ? "confirmed" : "pending" };
     } catch { return { ok: true, providerRevocation: "pending" }; }
   }
   async close() {
