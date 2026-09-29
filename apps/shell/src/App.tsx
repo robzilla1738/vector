@@ -4,7 +4,6 @@ import { PaneBoundary } from "./components/PaneBoundary";
 import { closeSelectedTabs } from "./use-tab-selection";
 import { conversationEntryChange, applyConversationStorageChange } from "./conversation-drafts";
 import { browserSourcesEntryChange } from "./browser-context-sources";
-import { prepareSelectionActionDraft } from "./selection-action-draft";
 import { BrowsingMemoryWatch } from "./use-browsing-memory";
 import { useMemoryDrafts } from "./memory-drafts";
 import type { ShortcutOverrides } from "@aux/contracts";
@@ -199,28 +198,28 @@ export function App() {
       }).catch(errToast);
       return;
     }
-    const state = useStore.getState();
-    let prepared: ReturnType<typeof prepareSelectionActionDraft>;
-    try {
-      prepared = prepareSelectionActionDraft({ action, pages: state.pages,
+    void import("./selection-action-draft").then(({ prepareSelectionActionDraft }) => {
+      // Resolve after loading so a navigation during the import cannot create a stale draft.
+      const state = useStore.getState();
+      const prepared = prepareSelectionActionDraft({ action, pages: state.pages,
         preferences: state.settings.selectionCapture, windowId: bridge.windowId,
         privateMode: bridge.privateMode });
-    } catch (error) { errToast(error instanceof Error ? error : new Error(String(error))); return; }
-    const id = crypto.randomUUID();
-    state.setConversationContext(id, prepared.source.pageId);
-    state.setConversationBrowserSources(id, [prepared.source]);
-    state.setConversationDraft(id, prepared.draft);
-    const open = () => {
-      state.openConversationDraft(id);
-      requestAnimationFrame(() => conversationComposer.current?.focus());
-    };
-    if (prepared.needsImage) {
-      const image = action.image!;
-      void call("conversations.images.add", { chatId: id, filename: "page-image.png",
-        dataUrl: image.dataUrl!, sourceUrl: image.srcURL })
-        .then(open)
-        .catch(error => { open(); errToast(error instanceof Error ? error : new Error(String(error))); });
-    } else open();
+      const id = crypto.randomUUID();
+      state.setConversationContext(id, prepared.source.pageId);
+      state.setConversationBrowserSources(id, [prepared.source]);
+      state.setConversationDraft(id, prepared.draft);
+      const open = () => {
+        state.openConversationDraft(id);
+        requestAnimationFrame(() => conversationComposer.current?.focus());
+      };
+      if (prepared.needsImage) {
+        const image = action.image!;
+        void call("conversations.images.add", { chatId: id, filename: "page-image.png",
+          dataUrl: image.dataUrl!, sourceUrl: image.srcURL })
+          .then(open)
+          .catch(error => { open(); errToast(error instanceof Error ? error : new Error(String(error))); });
+      } else open();
+    }).catch(error => errToast(error instanceof Error ? error : new Error(String(error))));
   }), []);
   const mode = useStore((s) => s.mode);
   const overlay = useStore((s) => s.overlay);
