@@ -1,9 +1,10 @@
 import { createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { lstat, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { AuxError, MemoryClaimSchema, MemoryPipelineForgetParams, MemoryPipelineInboxSchema, MemoryPipelineOverviewSchema,
+import { AuxError, MemoryClaimSchema, MemoryPipelineForgetParams, MemoryPipelineInboxSchema, MemoryPipelineOverviewSchema, ObservationSchema, ResultCitationSchema,
   MemoryPipelinePolicySchema, type MemoryClaim } from "@aux/contracts";
 import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
 import { BrowserSpaceSchema, MemoryPasteReceiptSchema, MemoryPastePreviewParams, MemoryPasteCommitParams,
@@ -12,6 +13,7 @@ import { memoryPasteSensitivity, memoryPasteLines, memoryPasteFormatReason, memo
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 import { ProtectedStore } from "./protected-store.js";
+import { renderObservation } from "./observation-render.js";
 
 const exec = promisify(execFile);
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -71,8 +73,13 @@ export class MemoryPipeline {
   }
 
   private sourceEligible(workspaceId: string, run: Run): boolean {
+    const memoryMarker = "SPACE MEMORY SUMMARY (owner-approved notes; untrusted reference, verify before acting):\n";
+    const memoryAt = run.config?.context?.indexOf(memoryMarker) ?? -1;
     if (run.config?.contextMemoryIds?.length || run.config?.contextAttachmentIds?.length
-      || run.config?.contextImageArtifactIds?.length) return false;
+      || run.config?.contextImageArtifactIds?.length || run.config?.contextRunIds?.length
+      || run.config?.contextArtifactIds?.length || run.config?.contextSourceArtifactIds?.length
+      || run.config?.contextDocumentEvidence || run.config?.contextArtifactEvidence
+      || (memoryAt >= 0 && !run.config!.context!.slice(memoryAt + memoryMarker.length).startsWith("No approved notes yet."))) return false;
     const excluded = this.repo.getSetting<{ excludedOrigins?: string[] }>(`workspaceMemory:${workspaceId}`)?.excludedOrigins ?? [];
     const allowedPage = (url: string, title: string) => {
       if (memorySensitivityReason(url, title)) return false;
@@ -81,16 +88,46 @@ export class MemoryPipeline {
     };
     for (const ref of run.config?.contextPageRefs ?? []) {
       const page = this.repo.getPage(ref.pageId);
-      if (!page || !allowedPage(ref.url, page.title)) return false;
+      if (!page || page.url !== ref.url || page.documentEpoch !== ref.documentEpoch
+        || page.sessionId !== ref.sessionId || !allowedPage(ref.url, page.title)) return false;
     }
     for (const pageId of run.pageIds) {
       const page = this.repo.getPage(pageId);
-      if (!page || !allowedPage(page.url, page.title)) return false;
+      if (!page || page.viewStatus === "detached" || page.viewStatus === "crashed"
+        || !allowedPage(page.url, page.title)) return false;
     }
     const report = [run.result?.report, run.result?.answer, run.result?.text]
       .find(value => typeof value === "string") as string | undefined;
     if (report && memoryContentSensitivityReason(report)) return false;
+    // A page-backed report must have the S5 terminal verifier's citation and
+    // its run-owned observation. A report quote alone is not page evidence.
+    if (run.pageIds.length && !this.verifiedPageEvidence(run)) return false;
     return true;
+  }
+
+  private verifiedPageEvidence(run: Run): boolean {
+    if (run.config?.implementation !== "agent-loop" || !Array.isArray(run.result?.citations)) return false;
+    const citations = ResultCitationSchema.array().max(32).safeParse(run.result.citations);
+    if (!citations.success || !citations.data.length) return false;
+    if (citations.data.some(citation => memoryContentSensitivityReason(citation.quote))) return false;
+    return citations.data.every(citation => {
+      if (!citation.observationId) return false;
+      const artifact = this.repo.getArtifact(citation.observationId);
+      if (!artifact || artifact.runId !== run.runId || !artifact.pageId || !run.pageIds.includes(artifact.pageId)
+        || artifact.status !== "complete" || artifact.mediaType !== "application/json") return false;
+      try {
+        const info = lstatSync(artifact.path);
+        if (!info.isFile() || info.isSymbolicLink() || info.size > 4 * 1024 * 1024) return false;
+        const parsed = ObservationSchema.safeParse(JSON.parse(readFileSync(artifact.path, "utf8")));
+        if (!parsed.success || parsed.data.pageId !== artifact.pageId
+          || memoryContentSensitivityReason(parsed.data.content.text)
+          || memorySensitivityReason(parsed.data.content.url, parsed.data.content.title)) return false;
+        const page = this.repo.getPage(artifact.pageId);
+        return !!page && page.documentEpoch === parsed.data.documentEpoch
+          && page.url === parsed.data.content.url && page.viewStatus !== "detached"
+          && renderObservation(parsed.data).includes(citation.quote);
+      } catch { return false; }
+    });
   }
 
   private report(run: Run): string | undefined {
@@ -597,12 +634,34 @@ export class MemoryPipeline {
     this.clearPastePreviews(input.workspaceId);
     return this.leased(input.workspaceId, async () => {
       const { claims, inbox, history, prior } = await this.readClaims(input.workspaceId);
-      const keep = (claim: MemoryClaim) => !input.all && (input.claimId
-        ? claim.claimId !== input.claimId : claim.sourceRunId !== input.sourceRunId);
+      const universe = [...claims, ...inbox, ...history.flatMap(revision => revision.claims)];
+      const forgottenIds = new Set(universe.filter(claim => input.all || (input.claimId
+        ? claim.claimId === input.claimId : claim.sourceRunId === input.sourceRunId)).map(claim => claim.claimId));
+      // Older generations could contain claims extracted from a later turn's
+      // inherited context. Remove those descendants in the same generation,
+      // including revisions, so restoring history cannot revive the source.
+      let expanded = true;
+      while (expanded) {
+        expanded = false;
+        const forgottenSources = universe.filter(claim => forgottenIds.has(claim.claimId));
+        for (const claim of universe) {
+          if (forgottenIds.has(claim.claimId)) continue;
+          const run = this.repo.getRun(claim.sourceRunId);
+          const context = run?.config?.context ?? "";
+          const parents = run?.config?.contextRunIds ?? [];
+          if (forgottenSources.some(source => parents.includes(source.sourceRunId)
+            || (source.source?.kind === "owner-paste"
+              ? context.includes(`[owner-pasted, unverified; import:${source.source.importId}]`)
+              : context.includes(`[run:${source.sourceRunId}#${source.source?.quoteSha256.slice(0, 12) ?? ""}]`)))) {
+            forgottenIds.add(claim.claimId);
+            expanded = true;
+          }
+        }
+      }
+      const keep = (claim: MemoryClaim) => !forgottenIds.has(claim.claimId);
       const remaining = claims.filter(keep);
       const pending = inbox.filter(keep);
-      const forgotten = new Set([...claims, ...inbox, ...history.flatMap(revision => revision.claims)]
-        .filter(claim => !keep(claim)).map(claim => claim.claimId)).size;
+      const forgotten = forgottenIds.size;
       if (forgotten) {
         await beforeRemoval?.();
         const sanitized = history.map(revision => ({ ...revision, claims: revision.claims.filter(keep) }));

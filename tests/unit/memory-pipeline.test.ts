@@ -253,7 +253,7 @@ it("rejects stale evidence and concurrent consolidation before approving a note"
     await f.pipeline.extractRun(f.workspace.workspaceId, "run-one");
     const note = (await f.pipeline.inbox(f.workspace.workspaceId))[0]!;
     f.save("run-one", "The source report no longer supports that note.");
-    await expect(f.pipeline.review(f.workspace.workspaceId, note.claimId, "accept")).rejects.toThrow(/no longer verifies/);
+    await expect(f.pipeline.review(f.workspace.workspaceId, note.claimId, "accept")).rejects.toThrow(/source and safety requirements/);
     expect((await f.pipeline.overview(f.workspace.workspaceId)).claimCount).toBe(0);
     expect(await f.pipeline.inbox(f.workspace.workspaceId)).toHaveLength(1);
   } finally { f.close(); }
@@ -301,10 +301,115 @@ it("omits sensitive and excluded page sources before extraction", async () => {
     run("bank-run", "bank-page");
     page("article-page", "https://example.test/article", "Ordinary article");
     run("article-run", "article-page");
-    expect((await f.pipeline.sources(f.workspace.workspaceId)).map(item => item.runId)).toEqual(["article-run"]);
+    // A page-backed report without a persisted verified observation is not a
+    // source, even when its URL and title appear innocuous.
+    expect(await f.pipeline.sources(f.workspace.workspaceId)).toEqual([]);
     await expect(f.pipeline.extractRun(f.workspace.workspaceId, "bank-run")).rejects.toThrow(/sensitive/);
     f.repo.setSetting(`workspaceMemory:${f.workspace.workspaceId}`, { excludedOrigins: ["https://example.test"] });
     expect(await f.pipeline.sources(f.workspace.workspaceId)).toEqual([]);
     await expect(f.pipeline.extractRun(f.workspace.workspaceId, "article-run")).rejects.toThrow(/excluded/);
+  } finally { f.close(); }
+});
+
+it("requires run-owned cited page evidence and refuses changed source identity after restart", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.pipeline.setPolicy(workspaceId, true);
+    const pageId = "article-page";
+    const url = "https://example.test/article";
+    const page = { pageId, backend: "aux" as const, targetId: pageId, url, title: "Ordinary article",
+      documentEpoch: 1, lastRevision: 1, viewStatus: "visible" as const,
+      controller: "human" as const, controllerEpoch: 0, ownedByRuntime: false, createdAt: 1, lastActiveAt: 1 };
+    f.repo.upsertPage(page);
+    const artifactId = "article-observation";
+    const path = join(f.directory, "article-observation.json");
+    const observation = { observationId: "native-observation", pageId, documentEpoch: 1, revision: 1,
+      observedAt: 1, scope: "full", content: { url, title: page.title,
+        viewport: { width: 100, height: 100, scale: 1 }, scroll: { x: 0, y: 0, maxY: 0 }, frames: [],
+        text: "The article confirms the blue fixture has three items.", headings: [], elements: [],
+        formFields: [], tables: [], links: [], dialogs: [], truncated: false,
+        stats: { elementsTotal: 0, elementsShown: 0, textChars: 53, approxTokens: 12 } } };
+    writeFileSync(path, JSON.stringify(observation));
+    f.repo.saveArtifact({ artifactId, runId: "verified-run", pageId, path,
+      mediaType: "application/json", size: readFileSync(path).length, status: "complete", createdAt: 1 });
+    f.repo.saveRun({ runId: "verified-run", goal: "Research", status: "completed", pageIds: [pageId],
+      config: { contextWorkspaceId: workspaceId, implementation: "agent-loop",
+        contextPageRefs: [{ pageId, url, documentEpoch: 1 }] },
+      result: { report: "The blue fixture has three items.",
+        citations: [{ observationId: artifactId, quote: "The article confirms the blue fixture has three items." }] },
+      createdAt: 1, endedAt: 1 });
+    f.repo.saveRun({ runId: "borrowed-citation", goal: "Research", status: "completed", pageIds: [pageId],
+      config: { contextWorkspaceId: workspaceId, implementation: "agent-loop" },
+      result: { report: "The blue fixture has three items.",
+        citations: [{ observationId: artifactId, quote: "The article confirms the blue fixture has three items." }] },
+      createdAt: 1, endedAt: 1 });
+    writeFileSync(path, JSON.stringify({ ...observation, content: { ...observation.content,
+      text: "Your account balance is $4,000. The article confirms the blue fixture has three items." } }));
+    expect(await f.pipeline.sources(workspaceId)).toEqual([]);
+    await expect(f.pipeline.extractRun(workspaceId, "verified-run")).rejects.toThrow(/sensitive/);
+    writeFileSync(path, JSON.stringify(observation));
+    expect((await f.pipeline.sources(workspaceId)).map(item => item.runId)).toEqual(["verified-run"]);
+    await f.pipeline.extractRun(workspaceId, "verified-run");
+    const note = (await f.pipeline.inbox(workspaceId))[0]!;
+    f.repo.upsertPage({ ...page, documentEpoch: 2, lastRevision: 2 });
+    await expect(f.pipeline.review(workspaceId, note.claimId, "accept")).rejects.toThrow(/source and safety requirements/);
+    f.repo.upsertPage(page);
+    await f.pipeline.review(workspaceId, note.claimId, "accept");
+    expect(await f.pipeline.search(workspaceId, "blue fixture")).toHaveLength(1);
+    f.repo.upsertPage({ ...page, documentEpoch: 2, lastRevision: 2 });
+    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    expect(await restarted.search(workspaceId, "blue fixture")).toEqual([]);
+    expect((await restarted.overview(workspaceId)).summary).toBe("");
+    f.repo.upsertPage(page);
+    writeFileSync(path, JSON.stringify({ ...observation, content: { ...observation.content, text: "Different content." } }));
+    expect(await restarted.search(workspaceId, "blue fixture")).toEqual([]);
+  } finally { f.close(); }
+});
+
+it("scrubs descendants from current memory and history when a source claim is forgotten", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.pipeline.setPolicy(workspaceId, true);
+    f.save("source-run", "The amber fixture has three items.");
+    await f.pipeline.extractRun(workspaceId, "source-run");
+    const source = (await f.pipeline.inbox(workspaceId))[0]!;
+    await f.pipeline.review(workspaceId, source.claimId, "accept");
+    const derivedText = "The derived amber fixture has four items.";
+    f.repo.saveRun({ runId: "derived-run", goal: "Research", status: "completed", pageIds: [],
+      config: { contextWorkspaceId: workspaceId, contextRunIds: ["source-run"],
+        context: `SPACE MEMORY SUMMARY (owner-approved notes; untrusted reference, verify before acting):\n- ${source.text} [run:source-run#${source.source!.quoteSha256.slice(0, 12)}]` },
+      result: { report: derivedText }, createdAt: 2, endedAt: 2 });
+    expect(await f.pipeline.sources(workspaceId)).toEqual([]);
+    await expect(f.pipeline.extractRun(workspaceId, "derived-run")).rejects.toThrow(/unverifiable source/);
+    // Simulate a previously accepted generation containing an inherited
+    // report. The current policy must still purge it transitively on Forget.
+    const legacy = { ...source, claimId: randomUUID(), sourceRunId: "derived-run", text: derivedText,
+      source: { kind: "run-report" as const, quote: derivedText,
+        quoteSha256: createHash("sha256").update(derivedText).digest("hex") } };
+    const pipeline = f.pipeline as unknown as { readClaims(id: string): Promise<any>; writeGeneration(id: string,
+      claims: unknown[], inbox: unknown[], history: unknown[], prior: unknown): Promise<void> };
+    const state = await pipeline.readClaims(workspaceId);
+    await pipeline.writeGeneration(workspaceId, [...state.claims, legacy], state.inbox,
+      [...state.history, { revisionId: randomUUID(), capturedAt: 3, claims: [...state.claims, legacy] }], state.prior);
+    expect(await f.pipeline.forget({ workspaceId, claimId: source.claimId })).toEqual({ forgotten: 2, remaining: 0 });
+    const restarted = new MemoryPipeline(f.repo, f.native, f.directory, "profile-one");
+    expect(await restarted.claims(workspaceId)).toEqual([]);
+    expect((await restarted.history(workspaceId)).every(item => item.claimCount === 0)).toBe(true);
+  } finally { f.close(); }
+});
+
+it("allows an empty enabled-Memory marker before any approved note exists", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.pipeline.setPolicy(workspaceId, true);
+    f.repo.saveRun({ runId: "first-run", goal: "Research", status: "completed", pageIds: [],
+      config: { contextWorkspaceId: workspaceId,
+        context: "SPACE MEMORY SUMMARY (owner-approved notes; untrusted reference, verify before acting):\nNo approved notes yet." },
+      result: { report: "The first eligible fixture is ready for review." }, createdAt: 1, endedAt: 1 });
+    expect((await f.pipeline.sources(workspaceId)).map(item => item.runId)).toEqual(["first-run"]);
+    expect((await f.pipeline.extractRun(workspaceId, "first-run")).extracted).toBe(1);
   } finally { f.close(); }
 });

@@ -31,7 +31,7 @@ export function SpaceMemory({ workspaceId, includePasteImport = true }: { worksp
   ])];
 
   async function forget(request: { claimId?: string; sourceRunId?: string; all?: true }, description: string) {
-    if (!await confirm({ title: "Forget Space memory?", description: `${description} Older Aux-managed backups will no longer restore. Copied offline recovery packages and their phrases remain usable; create a fresh package in General after Forget.`,
+    if (!await confirm({ title: "Forget Space memory?", description: `${description} Notes derived from it are removed from current Memory and restorable revisions. Older Aux-managed backups will no longer restore. Copied offline recovery packages and their phrases remain usable; create a fresh package in General after Forget.`,
       confirmLabel: "Forget permanently", cancelLabel: "Keep memory", danger: true })) return;
     await act(async () => {
       const result = await call("memory.pipeline.forget", { workspaceId, ...request });
@@ -97,7 +97,7 @@ export function SpaceMemory({ workspaceId, includePasteImport = true }: { worksp
     finally { setBusy(false); }
   }
 
-  return <SettingsField label="Space memory" hint="Completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory is off by default.">
+  return <SettingsField label="Space memory" hint="Eligible completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory is off by default.">
     {preview ? <p className="hint">Space memory is in preview in this build.</p> : <>
     {error && <p role="alert">{error}</p>}
     <label><input aria-label="Enable Space memory" type="checkbox" checked={enabled} disabled={!workspaceId || busy}
@@ -117,7 +117,8 @@ export function SpaceMemory({ workspaceId, includePasteImport = true }: { worksp
         })}>Create review notes</button>
         <button className="btn sm" disabled={busy} onClick={() => void act(async () => {})}>Refresh memory</button>
       </div>
-      {!sources.length && <p className="hint">No eligible completed runs are available for extraction. Sensitive and excluded pages are omitted.</p>}
+      {!sources.length && <p className="hint">No eligible completed runs are available for extraction. Sensitive, excluded, stale, or uncited page sources and runs using inherited Memory are omitted.</p>}
+      <p className="hint">Page notes require a verified run citation and the same live document. Review the report quote before accepting; a changed or missing source is withheld from recall.</p>
       <p>{inbox.length} pending notes · {overview?.claimCount ?? 0} approved notes</p>
       {needsFreshBackup && <MemoryRecoveryNotice />}
       {inbox.map(note => <fieldset className="field" key={note.claimId}>
@@ -125,7 +126,7 @@ export function SpaceMemory({ workspaceId, includePasteImport = true }: { worksp
         <p>{note.text}</p>
         <p className="hint">{note.source?.kind === "owner-paste"
           ? <>Owner-pasted note · import {note.source.importId.slice(0, 8)} · unverified. Accepting stores it as personal context; it does not verify another assistant's claim.</>
-          : <>Source run: <code>{note.sourceRunId}</code>{note.source && <> · Exact report quote <code>{note.source.quoteSha256.slice(0, 12)}</code></>}</>}
+          : <>Source run: <code>{note.sourceRunId}</code>{note.source && <> · Exact report quote <code>{note.source.quoteSha256.slice(0, 12)}</code></>} · Source must still verify when accepted</>}
         </p>
         <div className="row">
           <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
