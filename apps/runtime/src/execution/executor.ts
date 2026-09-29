@@ -225,6 +225,8 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         beforeEpoch = pageDocumentEpoch(page);
         before = await page.fieldState(String(step.target)).catch(() => undefined);
       }
+      if ((step.op === "fill" || step.op === "type") && before && "selected" in before)
+        throw new AuxError("invalid_params", `step ${step.id}: use select for a select control`);
       ctx.checkValid?.();
       dispatched = true;
       const detail = await runStep(page, step, ctx).catch(async (e) => {

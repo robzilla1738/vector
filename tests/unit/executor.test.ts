@@ -56,6 +56,19 @@ function fakePage(failOn: Record<string, unknown> = {}) {
 }
 
 describe("executeProgram", () => {
+  it.each(["fill", "type"] as const)("rejects %s on a select before input dispatch", async (op) => {
+    const { page, calls } = fakePage();
+    page.fieldState = async () => ({ selected: "archived" });
+    const result = await executeProgram(page, { pageId: "p1", steps: [
+      { id: "status", op, target: "r9", value: "approved" },
+    ] });
+    expect(result.status).toBe("failed");
+    expect(result.steps[0]).toMatchObject({ error: { code: "invalid_params",
+      message: "step status: use select for a select control" } });
+    expect(result.steps[0]?.receipt).toBeUndefined();
+    expect(calls).toEqual([]);
+  });
+
   it("records setter before/after state when a driver exposes a numeric document epoch", async () => {
     const { page, calls } = fakePage();
     let reads = 0;
