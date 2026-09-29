@@ -41,19 +41,22 @@ export type HookAuthority = (
 ) => void;
 
 const digest = (handler: HookHandler) => createHash("sha256").update(JSON.stringify(handler)).digest("hex");
-const asInvocation = (row: InvocationRow): HookInvocation =>
-  HookInvocationSchema.parse({
-    invocationId: row.invocation_id,
-    hookId: row.hook_id,
-    eventId: row.event_id,
-    state: row.state,
-    error: row.error ?? undefined,
-    createdAt: row.created_at,
-    endedAt: row.ended_at ?? undefined,
-  });
-
 export class HookService {
   private active = new Map<string, Set<AbortController>>();
+
+  private sealHook(hookId: string, body: object): string {
+    return this.repo.protectRecordField("hooks", [hookId], "body", JSON.stringify(body));
+  }
+
+  private invocation(row: InvocationRow): HookInvocation {
+    return HookInvocationSchema.parse({
+      invocationId: row.invocation_id, hookId: row.hook_id, eventId: row.event_id,
+      state: row.state,
+      error: row.error === null ? undefined : this.repo.revealRecordField(
+        "hook_invocations", [row.invocation_id], "error", row.error),
+      createdAt: row.created_at, endedAt: row.ended_at ?? undefined,
+    });
+  }
 
   constructor(
     private repo: Repo,
@@ -101,7 +104,7 @@ export class HookService {
       .prepare(
         "INSERT INTO hooks(hook_id,workspace_id,event,trust,body,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
       )
-      .run(hook.hookId, hook.workspaceId, hook.event, hook.trust, JSON.stringify(hook), now, now);
+      .run(hook.hookId, hook.workspaceId, hook.event, hook.trust, this.sealHook(hook.hookId, hook), now, now);
     return hook;
   }
 
@@ -110,7 +113,7 @@ export class HookService {
       HookRow | undefined;
     if (!row) throw new AuxError("not_found", "Hook does not exist");
     return HookSchema.parse({
-      ...JSON.parse(row.body),
+      ...JSON.parse(this.repo.revealRecordField("hooks", [row.hook_id], "body", row.body)),
       hookId: row.hook_id,
       workspaceId: row.workspace_id,
       event: row.event,
@@ -158,7 +161,7 @@ export class HookService {
       this.repo.db
         .prepare("SELECT * FROM hook_invocations WHERE hook_id=? ORDER BY created_at DESC LIMIT ?")
         .all(hookId, limit) as InvocationRow[]
-    ).map(asInvocation);
+    ).map(row => this.invocation(row));
   }
 
   /** A reviewed Hook can be tried once through the same executor used by automatic dispatch. */
@@ -188,12 +191,13 @@ export class HookService {
     for (const row of rows) {
       const hook = this.get(row.hook_id);
       const now = Date.now();
+      const invocationId = randomUUID();
       const inserted = this.repo.db
         .prepare(
           `INSERT OR IGNORE INTO hook_invocations(invocation_id,hook_id,event_id,state,created_at)
         VALUES(?,?,?,'invoking',?)`,
         )
-        .run(randomUUID(), hook.hookId, context.eventId, now);
+        .run(invocationId, hook.hookId, context.eventId, now);
       if (inserted.changes !== 1) continue;
       const controller = new AbortController();
       const controllers = this.active.get(hook.hookId) ?? new Set<AbortController>();
@@ -217,12 +221,13 @@ export class HookService {
         if (!controllers.size) this.active.delete(hook.hookId);
       }
       this.repo.db
-        .prepare("UPDATE hook_invocations SET state=?,error=?,ended_at=? WHERE hook_id=? AND event_id=?")
-        .run(state, error ?? null, Date.now(), hook.hookId, context.eventId);
+        .prepare("UPDATE hook_invocations SET state=?,error=?,ended_at=? WHERE invocation_id=?")
+        .run(state, error === undefined ? null : this.repo.protectRecordField(
+          "hook_invocations", [invocationId], "error", error), Date.now(), invocationId);
       const saved = this.repo.db
         .prepare("SELECT * FROM hook_invocations WHERE hook_id=? AND event_id=?")
         .get(hook.hookId, context.eventId) as InvocationRow;
-      result.push(asInvocation(saved));
+      result.push(this.invocation(saved));
     }
     return result;
   }

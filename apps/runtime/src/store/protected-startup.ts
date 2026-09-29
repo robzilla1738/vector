@@ -33,6 +33,11 @@ export const ACTIVE_PROTECTED_TABLES = [
   "vault_items",
   "vault_grants",
   "vault_access",
+  "goals",
+  "hooks",
+  "hook_invocations",
+  "subagent_groups",
+  "subagents",
 ] as const;
 
 /** Complete the protected migration before constructing any repository service. */

@@ -12,6 +12,14 @@ export class GoalService {
     this.repo.db.prepare("UPDATE goals SET status='needs_input',run_id=NULL,updated_at=? WHERE status='starting' AND (run_id IS NULL OR run_id NOT IN (SELECT run_id FROM runs))").run(Date.now());
   }
 
+  private seal(goalId: string, body: object): string {
+    return this.repo.protectRecordField("goals", [goalId], "body", JSON.stringify(body));
+  }
+
+  private open(goalId: string, body: string): Record<string, unknown> {
+    return JSON.parse(this.repo.revealRecordField("goals", [goalId], "body", body)) as Record<string, unknown>;
+  }
+
   create(raw: unknown): Goal {
     const input = GoalCreateParams.parse(raw);
     if (!this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(input.workspaceId))
@@ -20,23 +28,26 @@ export class GoalService {
       const assigned = this.repo.getSetting<unknown>(`conversationWorkspace:${input.chatId}`);
       if (typeof assigned === "string" && assigned !== input.workspaceId)
         throw new AuxError("permission_denied", "This conversation belongs to another Space.");
-      const peers = this.repo.db.prepare("SELECT goal_id FROM goals WHERE json_extract(body,'$.chatId')=?")
-        .all(input.chatId) as { goal_id: string }[];
-      if (peers.some(peer => !["completed", "failed", "cancelled"].includes(this.get(peer.goal_id).status)))
+      // The conversation ID is inside the protected body. Inspect this Space's
+      // goals through the authenticated reader instead of querying ciphertext.
+      const peers = this.repo.db.prepare("SELECT goal_id,body FROM goals WHERE workspace_id=?")
+        .all(input.workspaceId) as { goal_id: string; body: string }[];
+      if (peers.some(peer => this.open(peer.goal_id, peer.body).chatId === input.chatId &&
+          !["completed", "failed", "cancelled"].includes(this.get(peer.goal_id).status)))
         throw new AuxError("conflict", "Finish or cancel the current Goal in this conversation first.");
     }
     const now = Date.now();
     const goal = GoalSchema.parse({ ...input, goalId: randomUUID(), status: "draft", usedTokens: 0,
       knownCostUsd: 0, costComplete: true, createdAt: now, updatedAt: now });
     this.repo.db.prepare("INSERT INTO goals(goal_id,workspace_id,status,run_id,body,created_at,updated_at) VALUES(?,?,?,?,?,?,?)")
-      .run(goal.goalId, goal.workspaceId, goal.status, null, JSON.stringify(goal), now, now);
+      .run(goal.goalId, goal.workspaceId, goal.status, null, this.seal(goal.goalId, goal), now, now);
     return goal;
   }
 
   get(goalId: string): Goal {
     const row = this.repo.db.prepare("SELECT * FROM goals WHERE goal_id=?").get(goalId) as Row | undefined;
     if (!row) throw new AuxError("not_found", "Goal does not exist");
-    const goal = GoalSchema.parse({ ...JSON.parse(row.body), goalId: row.goal_id, workspaceId: row.workspace_id,
+    const goal = GoalSchema.parse({ ...this.open(row.goal_id, row.body), goalId: row.goal_id, workspaceId: row.workspace_id,
       status: row.status, runId: row.run_id ?? undefined, createdAt: row.created_at, updatedAt: row.updated_at });
     return this.refresh(goal);
   }
@@ -94,7 +105,7 @@ export class GoalService {
       blocker: status === "blocked" ? normalized : undefined, blockerStreak: streak,
       lastBlockerTurn: turn, updatedAt: Date.now() });
     this.repo.db.prepare("UPDATE goals SET status=?,body=?,updated_at=? WHERE goal_id=?")
-      .run(next.status, JSON.stringify(next), next.updatedAt, next.goalId);
+      .run(next.status, this.seal(next.goalId, next), next.updatedAt, next.goalId);
     if (status === "paused" || blocked) this.runs.pause(runId);
     return blocked ? { status: "blocked" } : status === "paused" ? { status: "paused" }
       : { status: "still_active", remaining: 3 - streak };
@@ -104,7 +115,7 @@ export class GoalService {
     if (!goal.runId && ["draft", "needs_input"].includes(goal.status)) {
       const next = GoalSchema.parse({ ...goal, status: "cancelled", updatedAt: Date.now() });
       this.repo.db.prepare("UPDATE goals SET status=?,body=?,updated_at=? WHERE goal_id=?")
-        .run(next.status, JSON.stringify(next), next.updatedAt, next.goalId);
+        .run(next.status, this.seal(next.goalId, next), next.updatedAt, next.goalId);
       return next;
     }
     return this.control(goalId, "cancel");
@@ -119,7 +130,7 @@ export class GoalService {
     this.runs[action](goal.runId);
     if (action === "resume" && goal.status === "blocked") {
       this.repo.db.prepare("UPDATE goals SET status='active',body=?,updated_at=? WHERE goal_id=?")
-        .run(JSON.stringify({ ...goal, status: "active", blocker: undefined, blockerStreak: 0,
+        .run(this.seal(goal.goalId, { ...goal, status: "active", blocker: undefined, blockerStreak: 0,
           lastBlockerTurn: undefined }), Date.now(), goal.goalId);
     }
     return this.get(goalId);
@@ -140,7 +151,7 @@ export class GoalService {
     if (status === goal.status && usedTokens === goal.usedTokens && knownCostUsd === goal.knownCostUsd && costComplete === goal.costComplete) return goal;
     const next = GoalSchema.parse({ ...goal, status, usedTokens, knownCostUsd, costComplete, updatedAt: Date.now() });
     this.repo.db.prepare("UPDATE goals SET status=?,body=?,updated_at=? WHERE goal_id=?")
-      .run(next.status, JSON.stringify(next), next.updatedAt, next.goalId);
+      .run(next.status, this.seal(next.goalId, next), next.updatedAt, next.goalId);
     return next;
   }
 }

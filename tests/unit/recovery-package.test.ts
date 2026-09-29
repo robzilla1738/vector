@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
-import { EventBus, openDb, Repo, TaskService } from "@aux/runtime";
+import { EventBus, GoalService, HookService, openDb, Repo, TaskService } from "@aux/runtime";
 import type { NativeBridge } from "../../apps/runtime/src/native.js";
 import { prepareProtectedDatabase } from "../../apps/runtime/src/store/protected-startup.js";
 import { ContentMemoryStore } from "../../apps/runtime/src/services/content-memory.js";
@@ -53,6 +53,12 @@ async function fixture() {
   const space = tasks.createWorkspace("Protected research space");
   tasks.create({ workspaceId: space.workspaceId, title: "Protected task", objective: "Check source",
     criteria: [{ criterionId: "check", description: "Protected", verification: "manual" }] });
+  const goal = new GoalService(source, { start: async () => { throw new Error("unused"); },
+    pause: () => {}, resume: () => {}, cancel: () => {} } as unknown as ConstructorParameters<typeof GoalService>[1])
+    .create({ workspaceId: space.workspaceId, objective: "Protected planned goal", budget: { maxTokens: 100 } });
+  const hook = new HookService(source, () => {}).register({ workspaceId: space.workspaceId, event: "run.end",
+    handler: { type: "mcp_tool", serverId: "local", grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "protected_recovery_tool" } });
   source.saveRun({ runId: "recovery-run", goal: "Protected source goal", status: "completed", pageIds: [],
     config: { chatId: "chat", contextWorkspaceId: space.workspaceId },
     result: { report: "A protected conclusion with sufficient source detail." }, createdAt: 1, endedAt: 2 });
@@ -71,7 +77,7 @@ async function fixture() {
   const targetDb = openDb(join(targetDir, "state.sqlite"));
   const targetCipher = await prepareProtectedDatabase(targetDb, targetNative.bridge, targetId);
   const target = new Repo(targetDb, targetCipher);
-  return { sourceDir, targetDir, sourceId, targetId, sourceNative, targetNative, source, target, space };
+  return { sourceDir, targetDir, sourceId, targetId, sourceNative, targetNative, source, target, space, goal, hook };
 }
 
 it("restores protected SQLite, page memory, Space memory and artifacts under the second Profile's own keys", async () => {
@@ -81,6 +87,7 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   expect(f.sourceNative.authentications).toEqual(["export"]);
   const bytes = readFileSync(exported.path);
   for (const secret of ["Protected research space", "Protected task", "Protected source goal",
+    "Protected planned goal", "protected_recovery_tool",
     "Protected article memory", "Protected artifact evidence"])
     expect(bytes.includes(secret)).toBe(false);
   expect(exported.manifest).toMatchObject({ pageMemoryCount: 1, artifactIds: ["evidence"] });
@@ -116,6 +123,10 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const restored = new Repo(reopenedDb, cipher);
   expect(restored.listWorkspaces()[0]?.name).toBe("Protected research space");
   expect(restored.getRun("recovery-run")?.goal).toBe("Protected source goal");
+  expect(new GoalService(restored, { start: async () => { throw new Error("unused"); },
+    pause: () => {}, resume: () => {}, cancel: () => {} } as unknown as ConstructorParameters<typeof GoalService>[1])
+    .get(f.goal.goalId).objective).toBe("Protected planned goal");
+  expect(new HookService(restored).get(f.hook.hookId).handler).toMatchObject({ toolName: "protected_recovery_tool" });
   expect(readFileSync(join(f.targetDir, "artifacts", "evidence.txt"), "utf8")).toBe("Protected artifact evidence");
   const pages = new ContentMemoryStore(restored, f.targetNative.bridge, f.targetId);
   expect(await pages.search(f.space.workspaceId, "article memory")).toHaveLength(1);

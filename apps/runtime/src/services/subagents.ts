@@ -14,6 +14,14 @@ const RUN_ACTIVE = new Set(["queued", "planning", "running", "paused", "needs_in
 export class SubagentService {
   private unsubscribe: () => void;
 
+  private seal(table: "subagent_groups" | "subagents", id: string, body: object): string {
+    return this.repo.protectRecordField(table, [id], "body", JSON.stringify(body));
+  }
+
+  private open(table: "subagent_groups" | "subagents", id: string, body: string): Record<string, unknown> {
+    return JSON.parse(this.repo.revealRecordField(table, [id], "body", body)) as Record<string, unknown>;
+  }
+
   constructor(private repo: Repo, private events: EventBus, private runs: RunService) {
     this.reconcile();
     this.unsubscribe = events.subscribe(event => {
@@ -30,13 +38,13 @@ export class SubagentService {
   private group(groupId: string): SubagentGroup {
     const row = this.repo.db.prepare("SELECT body,state FROM subagent_groups WHERE group_id=?").get(groupId) as GroupRow | undefined;
     if (!row) throw new AuxError("not_found", "Subagent group does not exist.");
-    return SubagentGroupSchema.parse({ ...JSON.parse(row.body), state: row.state });
+    return SubagentGroupSchema.parse({ ...this.open("subagent_groups", groupId, row.body), state: row.state });
   }
 
   private agent(agentId: string): Subagent {
     const row = this.repo.db.prepare("SELECT body,state,run_id,ended_at FROM subagents WHERE agent_id=?").get(agentId) as AgentRow | undefined;
     if (!row) throw new AuxError("not_found", "Subagent does not exist.");
-    return SubagentSchema.parse({ ...JSON.parse(row.body), state: row.state, runId: row.run_id ?? undefined,
+    return SubagentSchema.parse({ ...this.open("subagents", agentId, row.body), state: row.state, runId: row.run_id ?? undefined,
       endedAt: row.ended_at ?? undefined });
   }
 
@@ -93,7 +101,7 @@ export class SubagentService {
       deadlineAt: now + input.timeBudgetMs, createdAt: now, state: "active" });
     try {
       this.repo.db.prepare("INSERT INTO subagent_groups(group_id,parent_run_id,workspace_id,body,state,created_at) VALUES(?,?,?,?,'active',?)")
-        .run(group.groupId, group.parentRunId, group.workspaceId, JSON.stringify(group), now);
+        .run(group.groupId, group.parentRunId, group.workspaceId, this.seal("subagent_groups", group.groupId, group), now);
     } catch { throw new AuxError("conflict", "This parent already has a subagent group."); }
     return group;
   }
@@ -214,7 +222,7 @@ export class SubagentService {
         throw new AuxError("conflict", "A selected page is already leased to another run.");
       const agent = SubagentSchema.parse({ ...input, agentId, sourceRunId, state: "starting", createdAt: now });
       this.repo.db.prepare("INSERT INTO subagents(agent_id,group_id,state,body,created_at) VALUES(?,?,'starting',?,?)")
-        .run(agentId, group.groupId, JSON.stringify(agent), now);
+        .run(agentId, group.groupId, this.seal("subagents", agentId, agent), now);
       this.repo.db.exec("COMMIT");
     } catch (error) { this.repo.db.exec("ROLLBACK"); throw error; }
     try {
