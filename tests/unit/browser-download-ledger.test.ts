@@ -95,6 +95,15 @@ it("does not attribute a human download to a nearby agent run", async () => {
   } finally { f.db.close(); await rm(f.root, { recursive: true, force: true }); }
 });
 
+it("does not claim a download started before the agent took the page", async () => {
+  const f = await fixture();
+  try {
+    f.ledger.started("p1", { id: "early", filename: "early.txt", path: join(f.downloads, "early.txt"),
+      size: 0, startedAt: 1 }, "agent");
+    expect(f.repo.downloadStep("early")).toBeUndefined();
+  } finally { f.db.close(); await rm(f.root, { recursive: true, force: true }); }
+});
+
 it("uses the native Profile download folder when it differs from the runtime folder", async () => {
   const f = await fixture();
   try {

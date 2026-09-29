@@ -66,6 +66,25 @@ it("shows browser observation separately from remote confirmation", async () => 
   } finally { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
 });
 
+it("shows a native group receipt without offering an unverified undo", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const host = document.createElement("div"); document.body.append(host);
+  const root = createRoot(host);
+  const receipt = TaskReceiptSchema.parse({ taskId: "task-1", taskRevision: 1, objective: "Group tabs",
+    generatedAt: 1, status: "needs_review", criteria: [], unresolvedActions: [], runs: [],
+    modelCalls: 0, knownCostUsd: 0, costComplete: true,
+    groupChanges: [{ stepId: "11111111-1111-4111-8111-111111111111", runId: "r1", groupId: "native-group",
+      taskRevision: 1, observedAt: 1, before: { revision: 1, memberPageIds: ["p1"] },
+      after: { revision: 2, memberPageIds: ["p1", "p2"], title: "Research" }, undoAvailable: false }] });
+  try {
+    await act(async () => root.render(<TaskReceiptView receipt={receipt} pageId={null} submit={async () => true} />));
+    const section = host.querySelector('[aria-label="Tab group changes"]')!;
+    expect(section.textContent).toContain("Research");
+    expect(section.textContent).toContain("Undo is unavailable");
+    expect(section.querySelector("button")).toBeNull();
+  } finally { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
+});
+
 it("offers bookmark undo from the owner receipt", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const host = document.createElement("div"); document.body.append(host);

@@ -192,6 +192,14 @@ export function TaskReceiptView({ receipt, pageId, submit, onChanged, readOnly =
         </span>
       </div>)}
     </section>}
+    {!!receipt.groupChanges.length && <section className="field" aria-label="Tab group changes">
+      <h4>Agent tab group changes · {receipt.groupChanges.length}</h4>
+      <p className="hint">Native group state was observed before and after the change. Undo is unavailable until Aux can compare the current group revision and membership.</p>
+      {receipt.groupChanges.map(change => <div className="field" key={change.stepId}>
+        <span>Group {change.after.title ?? change.groupId} · revision {change.before.revision} → {change.after.revision}</span>
+        <span className="hint">{change.before.memberPageIds.length} tabs before · {change.after.memberPageIds.length} tabs after · run {change.runId} · task revision {change.taskRevision}</span>
+      </div>)}
+    </section>}
     {!!receipt.bookmarkChanges.length && <section className="field" aria-label="Bookmark changes">
       <h4>Agent bookmark changes · {receipt.bookmarkChanges.length}</h4>
       {receipt.bookmarkChanges.map(change => <div className="row" key={change.stepId}>

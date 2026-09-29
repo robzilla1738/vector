@@ -32,6 +32,7 @@ import { TaskService } from "./tasks.js";
 import { DurableWriteLedger } from "../agent/durable.js";
 import { redactSettledRunInvocations } from "@aux/contracts/forgotten-run-invocations";
 import { isConsequential } from "../agent/permissions.js";
+import { BrowserGroupReceiptSchema } from "@aux/contracts/browser-group-receipt";
 
 type Actor = "desktop_user" | "external_client";
 type EvidenceRow = { seq: number; evidence_id: string; json: string };
@@ -565,6 +566,14 @@ export class TaskEvidenceService {
           ...(step.outcome?.undoneAt ? { undoneAt: step.outcome.undoneAt } : {}),
         }];
       })).sort((a, b) => a.startedAt - b.startedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
+    const groupChanges: TaskReceipt["groupChanges"] = runs.flatMap(({ run }) =>
+      this.repo.listSteps(run.runId).flatMap(step => {
+        if (step.op !== "group.change" || step.outcome?.status !== "ok") return [];
+        return [BrowserGroupReceiptSchema.parse({ stepId: step.stepId, runId: run.runId,
+          groupId: step.inputs?.groupId, taskRevision: run.config!.taskRevision!,
+          observedAt: step.startedAt, before: step.outcome.before, after: step.outcome.after,
+          undoAvailable: false })];
+      })).sort((a, b) => a.observedAt - b.observedAt || a.stepId.localeCompare(b.stepId)).slice(-200);
     const remoteActions: TaskReceipt["remoteActions"] = runs.flatMap(({ run }) =>
       this.repo.listSteps(run.runId).flatMap(step => {
         if (!isConsequential(step.op) || setterOps.has(step.op) || step.op.startsWith("tab.")) return [];
@@ -703,6 +712,7 @@ export class TaskEvidenceService {
       }).slice(-200),
       browserChanges,
       tabChanges,
+      groupChanges,
       remoteActions,
       bookmarkChanges,
       downloadChanges,

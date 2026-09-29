@@ -16,10 +16,13 @@ export class BrowserHistoryLedger {
   record(visits: Visit[], pages: PageTarget[]): void {
     for (const visit of visits) {
       if (visit.visitedAt > Date.now() + 5_000) continue;
-      const matches = pages.filter(page => page.backend === "aux" && page.controller === "agent" &&
+      // Native history deltas do not identify the originating tab. A human tab
+      // on the same URL makes URL-only attribution ambiguous.
+      const matches = pages.filter(page => page.backend === "aux" &&
         page.viewStatus !== "detached" && page.url === visit.url);
       if (matches.length !== 1) continue;
       const page = matches[0]!;
+      if (page.controller !== "agent") continue;
       const active = this.repo.db.prepare("SELECT COUNT(*) AS count FROM page_claims WHERE page_id=? AND status='active'")
         .get(page.pageId) as { count: number };
       if (active.count !== 1) continue;

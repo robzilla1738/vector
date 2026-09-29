@@ -9,6 +9,7 @@ async function h_tasks_receipt(ctx: MethodCtx): Promise<unknown> {
     undoReviews: [],
     browserChanges: receipt.browserChanges.map(({ before: _before, after: _after, ...change }) => change),
     tabChanges: receipt.tabChanges.map(({ url: _url, ...change }) => change),
+    groupChanges: [],
     remoteActions: receipt.remoteActions.map(({ browserObserved: _browserObserved, ...change }) => change),
     bookmarkChanges: receipt.bookmarkChanges.map(({ url: _url, title: _title, ...change }) => change),
     downloadChanges: receipt.downloadChanges.map(({ filename: _filename, sourceUrl: _sourceUrl,

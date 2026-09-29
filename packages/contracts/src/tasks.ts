@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BrowserGroupReceiptSchema } from "./browser-group-receipt.js";
 
 const text = z.string().trim().min(1);
 export const AcceptanceCriterionSchema = z.object({
@@ -327,6 +328,7 @@ export const TaskReceiptSchema = z.object({
     browserObserved: z.string().max(300).optional(), remoteConfirmed: z.boolean(),
     uncertain: z.boolean(),
   })).max(200).default([]),
+  groupChanges: z.array(BrowserGroupReceiptSchema).max(200).default([]),
   bookmarkChanges: z.array(z.object({
     stepId: text, runId: text, pageId: text, taskRevision: z.number().int().positive(),
     status: z.enum(["ok", "failed"]), startedAt: z.number(),

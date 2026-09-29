@@ -47,6 +47,7 @@ it("does not attribute ambiguous pages, human pages, or visits before a claim", 
   try {
     const ledger = new BrowserHistoryLedger(f.repo);
     ledger.record([f.visit], [f.page, { ...f.page, pageId: "p2" }]);
+    ledger.record([f.visit], [f.page, { ...f.page, pageId: "human", controller: "human" }]);
     ledger.record([f.visit], [{ ...f.page, controller: "human" }]);
     ledger.record([{ ...f.visit, visitedAt: f.visit.visitedAt - 30 }], [f.page]);
     expect(f.repo.listSteps("r1")).toEqual([]);

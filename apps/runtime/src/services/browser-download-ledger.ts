@@ -26,7 +26,8 @@ export class BrowserDownloadLedger {
     if (activeClaims.count !== 1) return;
     const claim = this.claims.activeForPage(pageId);
     const run = claim && this.repo.getRun(claim.runId);
-    if (!run || run.status !== "running" || !run.config?.taskId || !run.config.taskRevision) return;
+    if (!run || run.status !== "running" || !run.config?.taskId || !run.config.taskRevision ||
+      claim.createdAt > info.startedAt || (run.startedAt ?? run.createdAt) > info.startedAt) return;
     let absent = false;
     const root = downloadRoot ?? this.downloadsDir;
     if (this.managedPath(info.path, root)) {

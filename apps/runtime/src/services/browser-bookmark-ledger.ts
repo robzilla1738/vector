@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { AuxError, BookmarkSchema, type Bookmark } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
+import { PageClaimStore } from "../agent/durable.js";
 
 export class BrowserBookmarkLedger {
   constructor(private repo: Repo, private native?: NativeBridge) {}
@@ -13,6 +14,14 @@ export class BrowserBookmarkLedger {
   }
 
   async save(runId: string, pageId: string, url: string, title: string): Promise<{ saved: boolean; stepId?: string }> {
+    const run = this.repo.getRun(runId);
+    const claims = new PageClaimStore(this.repo.db);
+    const active = this.repo.db.prepare("SELECT COUNT(*) AS count FROM page_claims WHERE page_id=? AND status='active'")
+      .get(pageId) as { count: number };
+    const claim = claims.activeForPage(pageId);
+    if (!run || run.status !== "running" || !run.pageIds.includes(pageId) ||
+      active.count !== 1 || claim?.runId !== runId)
+      throw new AuxError("permission_denied", "Bookmark attribution requires this run's active page claim.");
     const parsed = new URL(url);
     if (!["https:", "http:"].includes(parsed.protocol) || parsed.username || parsed.password)
       throw new AuxError("invalid_params", "Only web pages without URL credentials can be bookmarked.");

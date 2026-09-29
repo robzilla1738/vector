@@ -85,9 +85,17 @@ it("undoes a completed form edit once using the recorded page identity and rejec
       receipt: { remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false,
         identity: { pageId: "p1", documentEpoch: 1 } } } };
   f.repo.saveStep(first);
-  const external = await f.invoke("tasks.receipt", { taskId: f.task.taskId }) as { browserChanges: unknown[]; undoReviews: unknown[] };
+  f.repo.saveStep({ stepId: "11111111-1111-4111-8111-111111111111", runId: "r1", pageId: "p1",
+    op: "group.change", inputs: { groupId: "native-group" }, startedAt: 2,
+    outcome: { stepId: "11111111-1111-4111-8111-111111111111", op: "group.change", status: "ok",
+      startedAt: 2, durationMs: 0, before: { revision: 1, memberPageIds: ["p1"], title: "Private group" },
+      after: { revision: 2, memberPageIds: ["p1"], title: "Private group changed" } } });
+  const external = await f.invoke("tasks.receipt", { taskId: f.task.taskId }) as
+    { browserChanges: unknown[]; undoReviews: unknown[]; groupChanges: unknown[] };
   expect(JSON.stringify(external.browserChanges)).not.toContain('"value"');
   expect(external.undoReviews).toEqual([]);
+  expect(external.groupChanges).toEqual([]);
+  expect(f.evidence.receipt(f.task.taskId).groupChanges[0]?.after.title).toBe("Private group changed");
   const params = { taskId: f.task.taskId, expectedRevision: 1, runId: "r1", stepId: "edit-1" };
   await expect(f.invoke("tasks.undoBrowserChange", params)).rejects.toMatchObject({ code: "permission_denied" });
   await expect(f.evidence.undoBrowserChange(params)).resolves.toEqual({ ok: true });
@@ -188,6 +196,24 @@ it("undoes only reviewed selections and refuses receipt drift before any effect"
   expect(f.pages.undoFormChange).toHaveBeenCalledOnce();
   expect(f.pages.undoFormChange).toHaveBeenCalledWith(expect.objectContaining({ target: "#second" }));
   expect(f.evidence.receipt(f.task.taskId).browserChanges.find(item => item.stepId === "first")?.undoneAt).toBeUndefined();
+});
+
+it("invalidates selected undo review when a native group effect changes the run receipt", async () => {
+  const f = fixture(); f.run();
+  f.repo.saveStep({ stepId: "edit", runId: "r1", pageId: "p1", op: "fill", startedAt: 1,
+    inputs: { target: "#quantity" },
+    outcome: { stepId: "edit", op: "fill", status: "ok", startedAt: 1, durationMs: 1,
+      before: { value: "3" }, after: { value: "4" }, pageUrl: "https://fixture.test/order",
+      receipt: { remoteConfirmed: false, uncertain: false, unconfirmed: false,
+        dispatchedBeforeTakeover: false, identity: { pageId: "p1", documentEpoch: 1 } } } });
+  const review = reviewedUndo(f, ["edit"]);
+  f.repo.saveStep({ stepId: "11111111-1111-4111-8111-111111111111", runId: "r1", pageId: "p1",
+    op: "group.change", inputs: { groupId: "native-group" }, startedAt: 2,
+    outcome: { stepId: "11111111-1111-4111-8111-111111111111", op: "group.change", status: "ok",
+      startedAt: 2, durationMs: 0, before: { revision: 1, memberPageIds: ["p1"] },
+      after: { revision: 2, memberPageIds: ["p1"], title: "Changed" } } });
+  await expect(f.evidence.undoRunBrowserChanges(review)).rejects.toThrow("receipt changed");
+  expect(f.pages.undoFormChange).not.toHaveBeenCalled();
 });
 
 it("shows bounded form before-state from the run step ledger without copying arbitrary fields", () => {
