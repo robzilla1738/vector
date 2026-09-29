@@ -117,6 +117,17 @@ it("rejects a bundle with archive path traversal before approval", async () => {
   } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 
+it("rejects an oversized source archive before registration", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "aux-mcp-oversize-"));
+  const f = fixture();
+  try {
+    const path = join(directory, "oversize.mcpb");
+    writeFileSync(path, Buffer.alloc(20_000_001));
+    await expect(f.service.inspectBundle(path)).rejects.toThrow(/under 20 MB/);
+    expect((f.repo.db.prepare("SELECT count(*) AS n FROM outbound_mcp_bundles").get() as { n: number }).n).toBe(0);
+  } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
 it("rejects MCP bundle arguments that request host substitution or missing files", async () => {
   const directory = mkdtempSync(join(tmpdir(), "aux-mcp-config-deny-"));
   const f = fixture();

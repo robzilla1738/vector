@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { readFile, realpath, stat } from "node:fs/promises";
+import { open, realpath } from "node:fs/promises";
 import { Client, type Transport } from "@modelcontextprotocol/client";
 import { AuxError, OutboundMcpGrantParams, OutboundMcpGrantSchema, OutboundMcpRegisterParams,
   OutboundMcpServerSchema, OutboundMcpToolSchema, type OutboundMcpGrant, type OutboundMcpServer } from "@aux/contracts";
@@ -10,6 +10,25 @@ type ServerRow = { body: string; state: OutboundMcpServer["state"] };
 type GrantRow = { body: string; revoked_at: number | null; consumed_at: number | null };
 type BundleRow = { sha256: string; archive_base64: string };
 export type McpTransportProvider = (server: OutboundMcpServer, signal: AbortSignal, bundleBytes?: Buffer) => Promise<Transport>;
+
+async function readBoundedBundle(path: string): Promise<Buffer> {
+  const file = await open(path, "r");
+  try {
+    const info = await file.stat();
+    if (!info.isFile() || info.size > 20_000_000)
+      throw new AuxError("invalid_params", "Bundle must be a regular file under 20 MB.");
+    const chunks: Buffer[] = [];
+    const chunk = Buffer.allocUnsafe(64_000);
+    let size = 0;
+    for (;;) {
+      const { bytesRead } = await file.read(chunk, 0, Math.min(chunk.length, 20_000_001 - size));
+      if (!bytesRead) return Buffer.concat(chunks, size);
+      size += bytesRead;
+      if (size > 20_000_000) throw new AuxError("invalid_params", "Bundle grew beyond 20 MB while reading.");
+      chunks.push(Buffer.from(chunk.subarray(0, bytesRead)));
+    }
+  } finally { await file.close(); }
+}
 
 /** Reviewed MCP sources, grants, calls, and revocation. */
 export class OutboundMcpService {
@@ -33,8 +52,8 @@ export class OutboundMcpService {
       const inspected = await this.inspectBundle(source.path);
       if (inspected.sha256 !== source.sha256 || inspected.format !== source.format)
         throw new AuxError("conflict", "Bundle contents changed. Inspect it again.");
-      bundleBytes = await readFile(source.path);
-      if (bundleBytes.length > 20_000_000 || createHash("sha256").update(bundleBytes).digest("hex") !== source.sha256)
+      bundleBytes = await readBoundedBundle(source.path);
+      if (createHash("sha256").update(bundleBytes).digest("hex") !== source.sha256)
         throw new AuxError("conflict", "Bundle contents changed. Inspect it again.");
     }
     const now = Date.now();
@@ -58,9 +77,7 @@ export class OutboundMcpService {
     const format = path.toLowerCase().endsWith(".mcpb") ? "mcpb" : path.toLowerCase().endsWith(".dxt") ? "dxt" : null;
     if (!format) throw new AuxError("invalid_params", "Choose a .mcpb or .dxt bundle.");
     const canonicalPath = await realpath(path);
-    const info = await stat(canonicalPath);
-    if (!info.isFile() || info.size > 20_000_000) throw new AuxError("invalid_params", "Bundle must be a regular file under 20 MB.");
-    const bytes = await readFile(canonicalPath);
+    const bytes = await readBoundedBundle(canonicalPath);
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     const manifest = await inspectMcpBundle(bytes);
     return { path: canonicalPath, sha256, format, name: manifest.name, server: manifest.server };
