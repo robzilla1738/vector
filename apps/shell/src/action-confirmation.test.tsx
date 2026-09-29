@@ -31,6 +31,7 @@ it("shows one Allow button for a confirmation event and decides the approval onc
     await act(async () => { root.render(<ActionConfirmation />); });
     const allow = document.body.querySelector<HTMLButtonElement>('[aria-label="Allow"]');
     expect(allow?.textContent).toBe("Allow");
+    expect(document.activeElement?.textContent).toBe("Don't allow");
     expect(document.body.textContent).toContain("Allow this action before it runs.");
     await act(async () => { allow!.click(); allow!.click(); });
     expect(invoke).toHaveBeenCalledTimes(1);

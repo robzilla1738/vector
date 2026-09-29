@@ -13,12 +13,12 @@ export function ActionConfirmation() {
 function Confirm({ confirmation }: { confirmation: NonNullable<ReturnType<typeof useStore.getState>["confirmation"]> }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const allow = useRef<HTMLButtonElement>(null);
+  const decline = useRef<HTMLButtonElement>(null);
   const deciding = useRef(false);
   useEffect(() => {
     let live = true;
     void bridge.overlay(true).then(() => { if (live) return bridge.focusShell(); }).then(() => {
-      if (live) allow.current?.focus();
+      if (live) decline.current?.focus();
     }).catch(() => {});
     return () => {
       live = false;
@@ -48,7 +48,7 @@ function Confirm({ confirmation }: { confirmation: NonNullable<ReturnType<typeof
   }
   const site = confirmation.origin.replace(/^https?:\/\//, "");
   return (
-    <Dialog label="Allow this action" onClose={() => void decide(false)} className="aux-dialog-surface http-auth-prompt">
+    <Dialog label="Allow this action" onClose={() => void decide(false)} initialFocusRef={decline} className="aux-dialog-surface http-auth-prompt">
       <form
         onSubmit={event => { event.preventDefault(); void decide(true); }}
         onKeyDown={event => event.stopPropagation()}>
@@ -57,8 +57,8 @@ function Confirm({ confirmation }: { confirmation: NonNullable<ReturnType<typeof
         {site && <p className="hint">{site}</p>}
         {error && <p role="alert">{error}</p>}
         <div className="sheet-acts">
-          <button type="button" className="btn" disabled={busy} onClick={() => void decide(false)}>Don't allow</button>
-          <button ref={allow} type="submit" className="btn primary" disabled={busy} aria-label="Allow" onClick={() => void decide(true)}>Allow</button>
+          <button ref={decline} type="button" className="btn" disabled={busy} onClick={() => void decide(false)}>Don't allow</button>
+          <button type="submit" className="btn primary" disabled={busy} aria-label="Allow" onClick={() => void decide(true)}>Allow</button>
         </div>
       </form>
     </Dialog>

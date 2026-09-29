@@ -17,7 +17,7 @@ export function ChatSidebar() {
   return <aside className={`chat-sidebar${open ? " open" : ""}`} style={{ "--sb-w": `${width}px` } as CSSProperties} aria-label="Sidebar" aria-hidden={!open} inert={!open}>
     <div className="chat-sidebar-content">
     <nav aria-label="Work">
-      {!bridge.privateMode && <button className={`chat-sidebar-link primary${mode === "conversation" && !conversationId ? " current" : ""}`} onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button>}
+      {!bridge.privateMode && <button className={`chat-sidebar-link primary${mode === "conversation" && !conversationId ? " current" : ""}`} aria-current={mode === "conversation" && !conversationId ? "page" : undefined} onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button>}
       <button className="chat-sidebar-link" onClick={() => setOverlay("tasks")}>{I.folder}<span>Tasks</span></button>
       <button className="chat-sidebar-link" onClick={() => setOverlay("settings")}>{I.gear}<span>Settings</span></button>
     </nav>

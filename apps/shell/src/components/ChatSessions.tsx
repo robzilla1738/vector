@@ -1,7 +1,7 @@
 import "./ChatSessions.css";
 import { ActionMenu } from "../ui";
 import { STATUS_LABEL } from "../run-status";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ConversationSummary } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
@@ -27,9 +27,22 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
   const root = useRef<HTMLDivElement>(null);
   const projectSelectors = useRef(new Map<string, HTMLSelectElement>());
   const actionTriggers = useRef(new Map<string, HTMLButtonElement>());
+  const folderTriggers = useRef(new Map<string, HTMLButtonElement>());
+  const headingTrigger = useRef<HTMLButtonElement>(null);
+  const editingOrigin = useRef<{ kind: "folder" | "heading"; id?: string }>({ kind: "heading" });
+  const focusReturn = useRef<{ kind: "chat" | "folder" | "heading"; id?: string } | null>(null);
+  useLayoutEffect(() => {
+    if (!focusReturn.current || renaming || moving || deleting || editing) return;
+    const { kind, id } = focusReturn.current;
+    const target = kind === "chat" ? actionTriggers.current.get(id ?? "")
+      : kind === "folder" ? folderTriggers.current.get(id ?? "") : headingTrigger.current;
+    (target?.isConnected ? target : root.current?.querySelector<HTMLButtonElement>(".session-open") ?? headingTrigger.current)
+      ?.focus({ preventScroll: true });
+    focusReturn.current = null;
+  }, [rows, renaming, moving, deleting, editing]);
   useEffect(() => { if (moving) projectSelectors.current.get(moving)?.focus(); }, [moving]);
   function dismiss(chatId: string) {
-    actionTriggers.current.get(chatId)?.focus();
+    focusReturn.current = { kind: "chat", id: chatId };
     setMoving(null); setDeleting(null); setRenaming(null);
   }
   const [error, setError] = useState("");
@@ -76,11 +89,16 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
         organize(() => moveChatToFolder(localStorage, item.chatId, ""));
       } else await call("conversations.archive", { chatId: item.chatId, archived: !archived });
       useStore.setState(state => ({ runs: [...(!remove && archived ? [item.latestRun] : []), ...state.runs.filter(run => (run.config?.chatId ?? run.runId) !== item.chatId)] }));
+      focusReturn.current = { kind: "chat", id: item.chatId };
       setRows(items => items.filter(row => row.chatId !== item.chatId)); setDeleting(null); setMoving(null);
     } catch (reason) { errToast(reason); }
     finally { pending.current = false; setBusy(false); }
   }
-  function edit(folder?: ChatFolder) { setEditing(folder ?? { id: crypto.randomUUID(), name: "", collapsed: false }); setName(folder?.name ?? ""); }
+  function edit(folder?: ChatFolder) {
+    editingOrigin.current = folder ? { kind: "folder", id: folder.id } : { kind: "heading" };
+    setEditing(folder ?? { id: crypto.randomUUID(), name: "", collapsed: false }); setName(folder?.name ?? "");
+  }
+  function finishEdit() { focusReturn.current = editingOrigin.current; setEditing(null); }
   const showHistory = () => { useStore.getState().openConversation(null); useStore.setState({ conversationId: "history" }); };
   const visibleRows = compact ? rows.slice(0, 3) : rows;
   async function rename(item: ConversationSummary) {
@@ -89,6 +107,7 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
     try {
       const changed = await call("conversations.rename", { chatId: item.chatId, title: chatName.trim() });
       setRows(current => current.map(row => row.chatId === changed.chatId ? changed : row));
+      focusReturn.current = { kind: "chat", id: item.chatId };
       setRenaming(null);
     } catch (error) { errToast(error); }
     finally { pending.current = false; setBusy(false); }
@@ -110,24 +129,24 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
       <input autoFocus aria-label="Conversation name" maxLength={160} value={chatName} onChange={event => setChatName(event.target.value)} />
       <button className="btn sm" disabled={busy || !chatName.trim()}>Save</button><button className="btn sm ghost" type="button" onClick={() => dismiss(item.chatId)}>Cancel</button>
     </form>}
-    <div className={`session-disclosure${moving === item.chatId ? " open" : ""}`} aria-hidden={moving !== item.chatId} inert={moving !== item.chatId}><div><label className="session-move">Project<select ref={node => { if (node) projectSelectors.current.set(item.chatId, node); else projectSelectors.current.delete(item.chatId); }} aria-label={`Project for ${item.title}`} value={organization.members[item.chatId] && organization.folders.some(f => f.id === organization.members[item.chatId]) ? organization.members[item.chatId] : ""} onChange={event => { organize(() => moveChatToFolder(localStorage, item.chatId, event.target.value)); setMoving(null); }}><option value="">No project</option>{organization.folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label></div></div>
+    <div className={`session-disclosure${moving === item.chatId ? " open" : ""}`} aria-hidden={moving !== item.chatId} inert={moving !== item.chatId}><div><label className="session-move">Project<select ref={node => { if (node) projectSelectors.current.set(item.chatId, node); else projectSelectors.current.delete(item.chatId); }} aria-label={`Project for ${item.title}`} value={organization.members[item.chatId] && organization.folders.some(f => f.id === organization.members[item.chatId]) ? organization.members[item.chatId] : ""} onChange={event => { organize(() => moveChatToFolder(localStorage, item.chatId, event.target.value)); focusReturn.current = { kind: "chat", id: item.chatId }; setMoving(null); }}><option value="">No project</option>{organization.folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}</select></label></div></div>
     <div className={`session-disclosure${deleting === item.chatId ? " open" : ""}`} aria-hidden={deleting !== item.chatId} inert={deleting !== item.chatId}><div><div className="session-confirm" role="group" aria-label={`Delete ${item.title} permanently?`}><span>Delete this chat permanently?</span><button className="btn ghost danger" disabled={busy} onClick={() => void mutate(item, true)}>Delete permanently</button><button className="btn ghost" onClick={() => dismiss(item.chatId)}>Cancel</button></div></div></div>
   </div>;
   return <div ref={root} className="chat-sessions" aria-busy={loading}>
-    <div className="session-heading"><span>{archived ? "Archived chats" : compact ? "Recent" : "Chats"}</span><ActionMenu label="Chat options" actions={[
+    <div className="session-heading"><span>{archived ? "Archived chats" : compact ? "Recent" : "Chats"}</span><ActionMenu label="Chat options" triggerRef={node => { headingTrigger.current = node; }} actions={[
       { label: "New chat project", icon: I.folder, onSelect: () => edit() },
       { label: archived ? "Active chats" : "Archived chats", icon: I.archive, onSelect: () => { setArchived(!archived); setRows([]); } },
       { label: "All chats", icon: I.chats, onSelect: showHistory },
     ]}/></div>
     {(organization.folders.length > 0 || editing) && <div className="session-heading"><span>Projects</span></div>}
-    {editing && <form className="session-editor" onSubmit={event => { event.preventDefault(); if (!name.trim()) return; organize(() => writeChatFolder(localStorage, { ...editing, name: name.trim() })); setEditing(null); }}>
-      <input autoFocus aria-label="Chat project name" placeholder="Project name" maxLength={80} value={name} onChange={event => setName(event.target.value)} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); setEditing(null); } }} />
-      <button className="btn" disabled={!name.trim()}>Save</button><button type="button" className="btn ghost" onClick={() => setEditing(null)}>Cancel</button>
+    {editing && <form className="session-editor" onSubmit={event => { event.preventDefault(); if (!name.trim()) return; organize(() => writeChatFolder(localStorage, { ...editing, name: name.trim() })); finishEdit(); }}>
+      <input autoFocus aria-label="Chat project name" placeholder="Project name" maxLength={80} value={name} onChange={event => setName(event.target.value)} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); finishEdit(); } }} />
+      <button className="btn" disabled={!name.trim()}>Save</button><button type="button" className="btn ghost" onClick={finishEdit}>Cancel</button>
     </form>}
     {organization.folders.map(folder => {
       const children = visibleRows.filter(row => organization.members[row.chatId] === folder.id);
       return <div className="session-folder" key={folder.id}>
-        <div className="session-row"><button className="session-folder-toggle" aria-expanded={!folder.collapsed} onClick={() => organize(() => writeChatFolder(localStorage, { ...folder, collapsed: !folder.collapsed }))}>{folder.collapsed ? I.right : I.down}<span>{folder.name}</span><small>{rows.filter(row => organization.members[row.chatId] === folder.id).length}</small></button><div className="session-actions"><ActionMenu label={`Actions for project ${folder.name}`} actions={[
+        <div className="session-row"><button className="session-folder-toggle" aria-expanded={!folder.collapsed} onClick={() => organize(() => writeChatFolder(localStorage, { ...folder, collapsed: !folder.collapsed }))}>{folder.collapsed ? I.right : I.down}<span>{folder.name}</span><small>{rows.filter(row => organization.members[row.chatId] === folder.id).length}</small></button><div className="session-actions"><ActionMenu label={`Actions for project ${folder.name}`} triggerRef={node => { if (node) folderTriggers.current.set(folder.id, node); else folderTriggers.current.delete(folder.id); }} actions={[
           { label: "Rename project", icon: I.pencil, onSelect: () => edit(folder) },
           { label: "Remove folder; keep chats", icon: I.close, onSelect: () => organize(() => removeChatFolder(localStorage, folder.id)) },
         ]}/></div></div>
