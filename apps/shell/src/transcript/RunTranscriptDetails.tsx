@@ -4,6 +4,7 @@ import { call } from "../store";
 import { ViewerFrame } from "../components/ViewerFrame";
 import { SuspensionPanel } from "../composer/SuspensionPanel";
 import { TextProposal } from "./TextProposal";
+import { ErrorItem, ToolFold, WaitingItem } from "./TranscriptActivity";
 
 const MAX_TEXT_BYTES = 128 * 1024;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -59,6 +60,9 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
   const artifacts = projection?.items.filter((item): item is ArtifactItem => item.kind === "artifact") ?? [];
   const proposals = projection?.items.filter((item): item is Extract<RunTranscriptItem, { kind: "text-proposal" }> => item.kind === "text-proposal") ?? [];
   const tools = projection?.items.filter((item): item is Extract<RunTranscriptItem, { kind: "tool" }> => item.kind === "tool") ?? [];
+  const toolSummary = projection?.items.find((item): item is Extract<RunTranscriptItem, { kind: "tool-summary" }> => item.kind === "tool-summary");
+  const waiting = projection?.items.find((item): item is Extract<RunTranscriptItem, { kind: "waiting" }> => item.kind === "waiting");
+  const errorItem = projection?.items.find((item): item is Extract<RunTranscriptItem, { kind: "error" }> => item.kind === "error");
   const citations = projection?.items.filter((item) => item.kind === "citation") ?? [];
   // RunPanel already owns the actionable failure card when a typed failure exists.
   const recovery = run.failure ? undefined : projection?.items.find((item) => item.kind === "recovery");
@@ -98,14 +102,13 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
     }
   }
 
-  if (!citations.length && !artifacts.length && !proposals.length && !tools.length && !recovery && run.status !== "needs_input") return null;
+  if (!citations.length && !artifacts.length && !proposals.length && !tools.length && !recovery && !waiting && !errorItem && run.status !== "needs_input") return null;
   return <section className="run-section transcript-details" aria-label="Run evidence and recovery">
+    {waiting && waiting.state !== "needs_input" && <WaitingItem item={waiting} />}
     {run.status === "needs_input" && <SuspensionPanel run={run} suspension={suspension} hydrated={hydrated} question={question} readOnly={readOnly} answerInComposer={answerInComposer} />}
     {run.status === "needs_input" && loadError && <p role="alert">{loadError} <button className="btn sm" onClick={() => setRefresh((value) => value + 1)}>Retry loading</button></p>}
     {proposals.map((item, index) => <TextProposal key={`${run.runId}-${index}`} run={run} proposal={item} readOnly={readOnly} />)}
-    {tools.length > 0 && <details className="transcript-tools"><summary>Recorded actions · {tools.length}</summary>
-      <ol>{tools.map((item, index) => <li key={index}><span>{item.op.replaceAll(/[._-]/g, " ")}</span> · {item.status}</li>)}</ol>
-    </details>}
+    <ToolFold tools={tools} summary={toolSummary} />
     {citations.length > 0 && <details className="transcript-citations"><summary>Verified evidence · {citations.length}</summary>
       <ul>{citations.map((item, index) => item.kind === "citation" && <li key={`${item.observationId}-${index}`}>
         <blockquote>{item.quote}</blockquote>
@@ -118,7 +121,8 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
         {item.mediaType} · {Math.max(1, Math.ceil(item.size / 1024))} KB
       </button></li>)}</ul>
     </details>}
-    {recovery?.kind === "recovery" && recovery.state !== "needs_input" && <output className="run-failure"><strong>{recovery.state.replaceAll("_", " ")}</strong> {recovery.description} {RECOVERY_GUIDANCE[recovery.action]}</output>}
+    {errorItem && <ErrorItem item={errorItem} />}
+    {recovery?.kind === "recovery" && recovery.state !== "needs_input" && !errorItem && <output className="run-failure"><strong>{recovery.state.replaceAll("_", " ")}</strong> {recovery.description} {RECOVERY_GUIDANCE[recovery.action]}</output>}
     {selected && <ViewerFrame label="Saved run artifact" title={selected.mediaType} closeLabel="Close artifact" onClose={() => { ++previewRequest.current; setSelected(null); setPreview(null); setError(""); }}
       metadata={`${Math.max(1, Math.ceil(selected.size / 1024))} KB · ${selected.artifactId}`}>
       {loading ? <output data-block>Loading artifact…</output> : error ? <p role="alert">{error}</p>
