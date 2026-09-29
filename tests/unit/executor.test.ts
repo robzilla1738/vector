@@ -64,7 +64,20 @@ describe("executeProgram", () => {
     expect(res.status).toBe("completed");
     expect(calls).toContain("select:r4=approved");
     expect(res.steps[0]).toMatchObject({ before: { value: "All statuses" }, after: { value: "approved" },
-      receipt: { identity: { documentEpoch: 7 } } });
+      effect: "observed", receipt: { uncertain: false, observed: "control value changed after action",
+        identity: { documentEpoch: 7 } } });
+  });
+
+  it("confirms a click from synchronous navigation without claiming remote state", async () => {
+    const { page } = fakePage();
+    let url = "http://x.test/records";
+    page.url = () => url;
+    page.click = async () => { url = "http://x.test/records?status=approved"; };
+    const res = await executeProgram(page, { pageId: "p1", steps: [{ id: "apply", op: "click", target: "r5" }] });
+    expect(res.status).toBe("completed");
+    expect(res.steps[0]).toMatchObject({ effect: "observed", receipt: { uncertain: false,
+      observed: "page URL changed after action", remoteConfirmed: false } });
+    expect(writeOutcome(res).outcome).toBe("confirmed");
   });
 
   it("denies uploads outside session, attachment, and workspace roots", async () => {

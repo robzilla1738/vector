@@ -207,6 +207,8 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
   const runOne = async (step: Step): Promise<StepOutcome> => {
     const startedAt = Date.now();
     let dispatched = false;
+    const mutating = isConsequential(step.op);
+    const actionUrl = mutating ? page.url() : undefined;
     let authorization: AuthorizationProvenance | void = undefined;
     // Before-state for setter steps: read the control before dispatch so the
     // ledger records what the write replaced (S4). A failed read never blocks.
@@ -245,7 +247,10 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         pageDocumentEpoch(page) && "target" in step && step.target
         ? await page.fieldState(String(step.target)).catch(() => undefined) : undefined;
       const postconditions = (step.expect as Condition[] | undefined) ?? [];
-      const mutating = isConsequential(step.op);
+      const navigationObserved = mutating && actionUrl !== undefined && page.url() !== actionUrl;
+      const setterObserved = mutating && before !== undefined && after !== undefined
+        && JSON.stringify(before) !== JSON.stringify(after);
+      const observed = postconditions.length > 0 || navigationObserved || setterObserved;
       const outcome: StepOutcome = {
         stepId: step.id,
         op: step.op,
@@ -256,15 +261,15 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         ...(before ? { before } : {}),
         ...(after ? { after } : {}),
         ...(pageUrl ? { pageUrl } : {}),
-        effect: postconditions.length ? "observed" : mutating ? "uncertain" : "observed",
+        effect: observed ? "observed" : mutating ? "uncertain" : "observed",
         receipt: {
           observed: postconditions.length
             ? `postconditions satisfied: ${postconditions.map((condition) => condition.kind).join(", ")}`
-            : undefined,
+            : navigationObserved ? "page URL changed after action" : setterObserved ? "control value changed after action" : undefined,
           // A DOM condition proves browser state. Only explicit backend or
           // network evidence may claim remote business-system confirmation.
           remoteConfirmed: false,
-          uncertain: mutating && postconditions.length === 0,
+          uncertain: mutating && !observed,
           unconfirmed: false,
           dispatchedBeforeTakeover: false,
           identity: {
