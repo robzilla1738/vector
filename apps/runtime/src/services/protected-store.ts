@@ -24,7 +24,7 @@ function seal(key: Buffer, aad: Buffer, plain: Buffer) {
 
 function open(key: Buffer, aad: Buffer, encoded: string) {
   const bytes = decode(encoded);
-  if (bytes.length < 29) throw new Error("Protected data is incomplete.");
+  if (bytes.length < 28) throw new Error("Protected data is incomplete.");
   const decipher = createDecipheriv("aes-256-gcm", key, bytes.subarray(0, 12));
   decipher.setAAD(aad);
   decipher.setAuthTag(bytes.subarray(-16));

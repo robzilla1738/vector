@@ -212,9 +212,10 @@ export async function stageRuntimeRestore(dataDir:string,sourcePath:string,ciphe
   }catch(error){await Promise.all([rm(temporaryDatabase,{force:true}),rm(temporaryArtifacts,{recursive:true,force:true})]);throw error;}
 }
 
-export async function cancelRuntimeRestore(dataDir:string){await Promise.all([rm(join(dataDir,'pending-runtime-restore.sqlite'),{force:true}),rm(join(dataDir,'pending-runtime-restore-artifacts'),{recursive:true,force:true}),rm(join(dataDir,'pending-runtime-restore.json'),{force:true})]);return{cancelled:true as const};}
+export async function cancelRuntimeRestore(dataDir:string){await Promise.all([rm(join(dataDir,'pending-runtime-restore.sqlite'),{force:true}),rm(join(dataDir,'pending-runtime-restore-artifacts'),{recursive:true,force:true}),rm(join(dataDir,'pending-runtime-restore-space-memory'),{recursive:true,force:true}),rm(join(dataDir,'pending-runtime-restore.json'),{force:true})]);return{cancelled:true as const};}
 
-type PendingRestore={version:2;createdAt:number;schemaVersion:number;bytes:number;sha256:string;artifactFiles:ManifestArtifact[];recoveryGeneration:ManagedRecoveryGeneration};
+type PendingRestore={version:2;createdAt:number;schemaVersion:number;bytes:number;sha256:string;artifactFiles:ManifestArtifact[];recoveryGeneration?:ManagedRecoveryGeneration;
+  recoveryPackage?:boolean;recoveryProfileId?:string;spaceMemoryFiles?:{relativePath:string;bytes:number;sha256:string}[]};
 
 export async function runtimeRestoreStatus(dataDir:string){
   let lastAppliedAt:number|undefined;
@@ -226,7 +227,7 @@ export async function runtimeRestoreStatus(dataDir:string){
 }
 
 /** Apply a user-staged restore before opening the runtime's active database. */
-export async function applyPendingRuntimeRestore(dataDir:string,dbPath:string){
+export async function applyPendingRuntimeRestore(dataDir:string,dbPath:string,profileId?:string){
   const metadataPath=join(dataDir,'pending-runtime-restore.json');
   if(!existsSync(metadataPath))return{applied:false as const};
   // A separate SQLite database provides a cross-process startup lock, released
@@ -250,7 +251,16 @@ export async function applyPendingRuntimeRestore(dataDir:string,dbPath:string){
       !Number.isInteger(metadata.bytes)||typeof metadata.sha256!=='string'||!/^[a-f0-9]{64}$/.test(metadata.sha256)||
       !Array.isArray(metadata.artifactFiles)||metadata.artifactFiles.length>MAX_ARTIFACTS)
       throw new Error('The staged runtime restore metadata is invalid.');
-    assertManagedRecoveryGeneration(dataDir,metadata.recoveryGeneration);
+    if(metadata.recoveryPackage){
+      if(!profileId||metadata.recoveryProfileId!==profileId||!Array.isArray(metadata.spaceMemoryFiles)||metadata.spaceMemoryFiles.length>20_000)
+        throw new Error('The staged recovery Profile or Space-memory inventory is invalid.');
+      if(existsSync(dbPath)&&await digest(dbPath)!==metadata.sha256){
+        const current=new DatabaseSync(dbPath,{readOnly:true});
+        try{for(const table of ['workspaces','runs','artifacts','content_memory'])
+          if(current.prepare(`SELECT 1 FROM ${table} LIMIT 1`).get())throw new Error('The recovery destination is no longer empty.');}
+        finally{current.close();}
+      }
+    }else assertManagedRecoveryGeneration(dataDir,metadata.recoveryGeneration);
     const pendingDatabase=join(dataDir,'pending-runtime-restore.sqlite');
     const dbInfo=await lstat(pendingDatabase);
     if(dbInfo.isSymbolicLink()||!dbInfo.isFile()||dbInfo.size!==metadata.bytes||await digest(pendingDatabase)!==metadata.sha256||
@@ -264,6 +274,32 @@ export async function applyPendingRuntimeRestore(dataDir:string,dbPath:string){
     if(stagedRootInfo.isSymbolicLink()||!stagedRootInfo.isDirectory())throw new Error('The staged artifact folder is invalid.');
     if((await lstat(artifactRoot)).isSymbolicLink())throw new Error('The Aux artifact folder is a symbolic link.');
     const resolvedStagedRoot=await realpath(stagedRoot),resolvedArtifactRoot=await realpath(artifactRoot);
+    const stagedMemoryRoot=join(dataDir,'pending-runtime-restore-space-memory');
+    const memoryRoot=join(dataDir,'space-memory');
+    if(metadata.recoveryPackage){
+      const rootInfo=await lstat(stagedMemoryRoot);
+      if(rootInfo.isSymbolicLink()||!rootInfo.isDirectory())throw new Error('The staged Space memory is invalid.');
+      await mkdir(memoryRoot,{recursive:true,mode:0o700});
+      if((await lstat(memoryRoot)).isSymbolicLink())throw new Error('The destination Space memory is unsafe.');
+      const resolvedMemoryRoot=await realpath(stagedMemoryRoot);
+      const paths=new Set<string>();
+      for(const item of metadata.spaceMemoryFiles!){
+        if(!item||!Number.isInteger(item.bytes)||item.bytes<0||typeof item.sha256!=='string'||!/^[a-f0-9]{64}$/.test(item.sha256))
+          throw new Error('The staged Space-memory inventory is invalid.');
+        const rel=safeRelative(item.relativePath);
+        if(paths.has(rel))throw new Error('The staged Space memory repeats a file.');
+        paths.add(rel);
+        const source=join(stagedMemoryRoot,rel),info=await lstat(source),resolved=await realpath(source);
+        if(info.isSymbolicLink()||relative(resolvedMemoryRoot,resolved).startsWith('..')||
+          !info.isFile()||info.size!==item.bytes||await digest(source)!==item.sha256)
+          throw new Error('A staged Space-memory file failed validation.');
+        const target=join(memoryRoot,rel);
+        try{const existing=await lstat(target);
+          if(existing.isSymbolicLink()||!existing.isFile()||existing.size!==item.bytes||await digest(target)!==item.sha256)
+            throw new Error('Recovery Space memory conflicts with destination data.');
+        }catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
+      }
+    }
     const ids=new Set<string>(),paths=new Set<string>();
     for(const item of metadata.artifactFiles){
       if(!item||typeof item.artifactId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(item.artifactId)||
@@ -292,6 +328,9 @@ export async function applyPendingRuntimeRestore(dataDir:string,dbPath:string){
       for(const item of metadata.artifactFiles)
         if(!existsSync(join(artifactRoot,safeRelative(item.relativePath))))
           throw new Error(`Restored artifact ${item.artifactId} is missing.`);
+      for(const item of metadata.spaceMemoryFiles??[])
+        if(!existsSync(join(memoryRoot,safeRelative(item.relativePath))))
+          throw new Error('Restored Space memory is missing.');
       await finishRestore(dataDir,Date.now());
       return{applied:true as const,recovered:true as const};
     }
@@ -313,6 +352,18 @@ export async function applyPendingRuntimeRestore(dataDir:string,dbPath:string){
         await copyFile(join(stagedRoot,item.relativePath),temporary);
         await chmod(temporary,0o600);
         if(await digest(temporary)!==item.sha256)throw new Error(`Artifact ${item.artifactId} changed during restore.`);
+        await rename(temporary,target);
+      }finally{await rm(temporary,{force:true});}
+    }
+    for(const item of metadata.spaceMemoryFiles??[]){
+      const rel=safeRelative(item.relativePath),target=join(memoryRoot,rel);
+      if(existsSync(target))continue;
+      await mkdir(dirname(target),{recursive:true,mode:0o700});
+      const parent=await realpath(dirname(target));
+      if(relative(await realpath(memoryRoot),parent).startsWith('..'))throw new Error('Space-memory destination escapes Aux storage.');
+      const temporary=`${target}.${randomUUID()}.tmp`;
+      try{await copyFile(join(stagedMemoryRoot,rel),temporary);await chmod(temporary,0o600);
+        if(await digest(temporary)!==item.sha256)throw new Error('Space memory changed during recovery.');
         await rename(temporary,target);
       }finally{await rm(temporary,{force:true});}
     }

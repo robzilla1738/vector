@@ -26,6 +26,7 @@ type RecordBody = {
   text: string;
   capturedAt: number;
 };
+export type RecoveryPageMemory = { body: RecordBody; expiresAt: number };
 type Row = { memory_id: string; source_key: string; origin: string; captured_at: number; expires_at: number; ciphertext: string };
 type Index = { revision: number; expiresAt: number; rows: Map<string, RecordBody>; searchable: Map<string, { title: string; text: string }> };
 
@@ -186,6 +187,49 @@ export class ContentMemoryStore {
     if (!row.ciphertext.startsWith("v2:")) throw new Error("Unknown protected page-memory format.");
     return JSON.parse(this.protectedStore.open(key, "page-memory", row.memory_id,
       row.ciphertext.slice(3)).toString("utf8")) as RecordBody;
+  }
+
+  /** Export canonical records only after authenticating every row and its Profile-bound lookup. */
+  async recoverySnapshot(): Promise<RecoveryPageMemory[]> {
+    const foreign = this.repo.db.prepare("SELECT 1 FROM content_memory WHERE profile_id<>? LIMIT 1").get(this.profileId);
+    if (foreign) throw new Error("Recovery requires a single disposable Profile's page memory.");
+    const rows = this.repo.db.prepare(`SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext,workspace_id
+      FROM content_memory WHERE profile_id=? ORDER BY memory_id`).all(this.profileId) as (Row & { workspace_id: string })[];
+    if (!rows.length) return [];
+    const key = await this.key();
+    return rows.map(row => {
+      const body = this.decrypt(key, row);
+      const sourceKey = createHmac("sha256", key)
+        .update(`${this.profileId}\0${row.workspace_id}\0${body.url}`).digest("hex");
+      if (body.memoryId !== row.memory_id || body.profileId !== this.profileId || body.workspaceId !== row.workspace_id ||
+        new URL(body.url).origin !== row.origin || body.capturedAt !== row.captured_at || sourceKey !== row.source_key)
+        throw new Error("Protected page-memory provenance does not match its storage record.");
+      return { body, expiresAt: row.expires_at };
+    });
+  }
+
+  /** Destination Profile receives its own Keychain factor and fresh record envelopes. */
+  async importRecoverySnapshot(records: RecoveryPageMemory[]): Promise<void> {
+    if (this.repo.db.prepare("SELECT 1 FROM content_memory LIMIT 1").get())
+      throw new Error("Recovery destination already has page memory.");
+    if (!records.length) return;
+    const key = await this.key();
+    this.repo.transaction(() => {
+      const insert = this.repo.db.prepare(`INSERT INTO content_memory
+        (memory_id,profile_id,workspace_id,source_key,origin,captured_at,expires_at,ciphertext) VALUES(?,?,?,?,?,?,?,?)`);
+      for (const record of records) {
+        const body = { ...record.body, profileId: this.profileId };
+        if (!body.memoryId || !body.workspaceId || !Number.isSafeInteger(record.expiresAt) ||
+          !this.repo.db.prepare("SELECT 1 FROM workspaces WHERE workspace_id=?").get(body.workspaceId))
+          throw new Error("Recovery page-memory record is invalid.");
+        const origin = new URL(body.url).origin;
+        const sourceKey = createHmac("sha256", key)
+          .update(`${this.profileId}\0${body.workspaceId}\0${body.url}`).digest("hex");
+        insert.run(body.memoryId, this.profileId, body.workspaceId, sourceKey, origin,
+          body.capturedAt, record.expiresAt, this.encrypt(key, body));
+      }
+    });
+    this.indexes.clear();
   }
 
   private async migrateLegacy(key: Buffer) {

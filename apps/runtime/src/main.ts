@@ -114,7 +114,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const env =
     configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
-  await applyPendingRuntimeRestore(config.dataDir, config.dbPath);
+  await applyPendingRuntimeRestore(config.dataDir, config.dbPath, env.AUX_BROWSER_PROFILE_ID);
   const db = openDb(config.dbPath);
   let channel: RpcChannel | null = null;
   let hostSocket: HostSocketTransport | null = null;

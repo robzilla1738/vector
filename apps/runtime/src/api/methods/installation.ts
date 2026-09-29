@@ -11,6 +11,7 @@ import {
   setBackupRetention,
   stageRuntimeRestore,
 } from "../../services/runtime-backup.js";
+import { exportRecoveryPackage, inspectRecoveryPackage, stageRecoveryPackage } from "../../services/recovery-package.js";
 
 async function h_installation_createBackup(ctx: MethodCtx): Promise<unknown> {
   const { client, s } = ctx;
@@ -58,6 +59,24 @@ async function h_installation_restoreStatus(ctx: MethodCtx): Promise<unknown> {
     throw new AuxError("permission_denied", "Runtime restore status is available in Aux settings.");
   return runtimeRestoreStatus(ctx.s.settings.all().dataDir);
 }
+async function h_installation_exportRecovery(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s } = ctx;
+  if (client.external || !s.native || !s.featureProfileId)
+    throw new AuxError("permission_denied", "Protected recovery is available only in the current Aux Profile.");
+  return exportRecoveryPackage(s.repo, s.native, s.settings.all().dataDir, s.featureProfileId, params.phrase);
+}
+async function h_installation_inspectRecovery(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s } = ctx;
+  if (client.external || !s.featureProfileId) throw new AuxError("permission_denied", "Review recovery in Aux settings.");
+  return inspectRecoveryPackage(params.path, params.phrase, s.featureProfileId);
+}
+async function h_installation_stageRecovery(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s } = ctx;
+  if (client.external || !s.native || !s.featureProfileId)
+    throw new AuxError("permission_denied", "Protected recovery is available only in the current Aux Profile.");
+  return stageRecoveryPackage(s.repo, s.native, s.settings.all().dataDir, s.featureProfileId,
+    params.path, params.phrase, params.expectedSha256, params.reviewToken);
+}
 
 export const installationMethods: Partial<Record<MethodName, MethodHandler>> = {
   "installation.createBackup": h_installation_createBackup,
@@ -68,4 +87,7 @@ export const installationMethods: Partial<Record<MethodName, MethodHandler>> = {
   "installation.stageRestore": h_installation_stageRestore,
   "installation.cancelRestore": h_installation_cancelRestore,
   "installation.restoreStatus": h_installation_restoreStatus,
+  "installation.exportRecovery": h_installation_exportRecovery,
+  "installation.inspectRecovery": h_installation_inspectRecovery,
+  "installation.stageRecovery": h_installation_stageRecovery,
 };

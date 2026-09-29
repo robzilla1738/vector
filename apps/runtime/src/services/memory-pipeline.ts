@@ -1,6 +1,6 @@
 import { createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { AuxError, MemoryClaimSchema, MemoryPipelineForgetParams, MemoryPipelineInboxSchema, MemoryPipelineOverviewSchema,
@@ -15,6 +15,8 @@ const exec = promisify(execFile);
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 type Manifest = { generation: string; keyName: string; version?: 2 };
 type Revision = { revisionId: string; capturedAt: number; claims: MemoryClaim[] };
+export type RecoverySpaceMemory = { workspaceId: string; claims: MemoryClaim[]; inbox: MemoryClaim[];
+  history: Revision[]; verifiedFiles: string[] };
 type Secrets = Pick<NativeBridge, "storeSecret" | "readSecret">;
 
 /** Opt-in, encrypted, git-backed Space memory. All derived views are rebuilt from source claims. */
@@ -170,6 +172,96 @@ export class MemoryPipeline {
         throw new Error("Space memory history is invalid.");
     } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
     return { claims: parsed.map(value => MemoryClaimSchema.parse(value)), inbox, history, prior };
+  }
+
+  /** Authenticate the complete current generation; retired Git objects are intentionally unreadable. */
+  async recoverySnapshot(): Promise<RecoverySpaceMemory[]> {
+    let inspectedBytes = 0;
+    const workspaceIds = (this.repo.db.prepare("SELECT workspace_id FROM workspaces ORDER BY workspace_id").all() as
+      { workspace_id: string }[]).map(row => row.workspace_id);
+    const expectedDirectories = new Set(workspaceIds.map(id => sha(id).slice(0, 24)));
+    const profileDirectory = join(this.baseDir, sha(this.profileId).slice(0, 24));
+    try {
+      for (const entry of await readdir(this.baseDir)) if (entry !== sha(this.profileId).slice(0, 24))
+        throw new Error("Recovery found Space memory from another Profile.");
+    } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    let directories: string[];
+    try { directories = await readdir(profileDirectory); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      if (this.repo.db.prepare("SELECT 1 FROM memory_pipeline_watermarks LIMIT 1").get())
+        throw new Error("Recovery is missing extracted Space memory.");
+      return [];
+    }
+    if (!(await lstat(profileDirectory)).isDirectory() || (await lstat(profileDirectory)).isSymbolicLink())
+      throw new Error("Recovery Space-memory Profile directory is unsafe.");
+    for (const directory of directories) if (!expectedDirectories.has(directory))
+      throw new Error("Recovery found unaccounted Space memory.");
+    const output: RecoverySpaceMemory[] = [];
+    for (const workspaceId of workspaceIds) {
+      const directory = this.directory(workspaceId);
+      const prior = await this.manifest(directory);
+      if (!prior) {
+        if (this.repo.db.prepare("SELECT 1 FROM memory_pipeline_watermarks WHERE workspace_id=? LIMIT 1").get(workspaceId))
+          throw new Error("Recovery is missing extracted Space memory.");
+        continue;
+      }
+      if (!(await lstat(directory)).isDirectory() || (await lstat(directory)).isSymbolicLink())
+        throw new Error("Recovery Space-memory directory is unsafe.");
+      const manifestInfo = await lstat(join(directory, "manifest.json"));
+      if (!manifestInfo.isFile() || manifestInfo.isSymbolicLink())
+        throw new Error("Recovery Space-memory manifest is unsafe.");
+      for (const entry of await readdir(directory)) if (entry !== ".git" && entry !== "manifest.json" && entry !== prior.generation)
+        throw new Error("Recovery found an unaccounted Space-memory generation.");
+      const { claims, inbox, history } = await this.readClaims(workspaceId);
+      const generationDirectory = join(directory, prior.generation);
+      if (!(await lstat(generationDirectory)).isDirectory() || (await lstat(generationDirectory)).isSymbolicLink())
+        throw new Error("Recovery Space-memory generation is unsafe.");
+      const files = ["claims.json.enc", "inbox.json.enc", "history.json.enc", "summary.md.enc", "handbook.md.enc",
+        ...claims.map(claim => `rollouts/${claim.claimId}.json.enc`)].sort();
+      const top = (await readdir(generationDirectory)).filter(name => name !== "rollouts");
+      const rolloutInfo = await lstat(join(generationDirectory, "rollouts"));
+      if (!rolloutInfo.isDirectory() || rolloutInfo.isSymbolicLink())
+        throw new Error("Recovery Space-memory rollout directory is unsafe.");
+      const rollouts = (await readdir(join(generationDirectory, "rollouts"))).map(name => `rollouts/${name}`);
+      if (JSON.stringify([...top, ...rollouts].sort()) !== JSON.stringify(files))
+        throw new Error("Recovery found a missing or unaccounted Space memory file.");
+      const key = await this.key(prior);
+      const derived = new Map<string, string>([["summary.md.enc", this.summary(claims)],
+        ["handbook.md.enc", claims.map(claim => `## ${claim.claimId}\nSource run: ${claim.sourceRunId}\n${claim.text}`).join("\n\n")],
+        ...claims.map(claim => [`rollouts/${claim.claimId}.json.enc`, JSON.stringify(claim)] as const)]);
+      for (const filename of files) {
+        const info = await lstat(join(generationDirectory, filename));
+        if (!info.isFile() || info.isSymbolicLink()) throw new Error("Recovery Space-memory file is unsafe.");
+        inspectedBytes += info.size;
+        if (inspectedBytes > 32 * 1024 * 1024)
+          throw new Error("Recovery Space memory exceeds the 32 MB reviewed size cap. No export was created.");
+        const value = this.open(key, workspaceId, filename,
+          await readFile(join(generationDirectory, filename)), prior.version);
+        if (derived.has(filename) && value !== derived.get(filename))
+          throw new Error("Recovery Space-memory derivative differs from its claims.");
+      }
+      output.push({ workspaceId, claims, inbox, history, verifiedFiles: files });
+    }
+    return output;
+  }
+
+  /** Reseal a reviewed generation under the destination Profile root and generation factor. */
+  async importRecoverySnapshot(spaces: RecoverySpaceMemory[]): Promise<void> {
+    for (const space of spaces) {
+      this.requireSpace(space.workspaceId);
+      if (await this.manifest(this.directory(space.workspaceId)))
+        throw new Error("Recovery destination already has Space memory.");
+      const claims = space.claims.map(value => MemoryClaimSchema.parse(value));
+      const inbox = MemoryPipelineInboxSchema.parse(space.inbox);
+      const history = space.history.map(value => ({ revisionId: value.revisionId, capturedAt: value.capturedAt,
+        claims: MemoryPipelineInboxSchema.parse(value.claims) }));
+      const expected = ["claims.json.enc", "inbox.json.enc", "history.json.enc", "summary.md.enc", "handbook.md.enc",
+        ...claims.map(claim => `rollouts/${claim.claimId}.json.enc`)].sort();
+      if (JSON.stringify(space.verifiedFiles) !== JSON.stringify(expected))
+        throw new Error("Recovery Space memory inventory changed.");
+      await this.writeGeneration(space.workspaceId, claims, inbox, history, null);
+    }
   }
 
   private summary(claims: MemoryClaim[]): string {

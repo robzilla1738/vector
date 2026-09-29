@@ -20,6 +20,7 @@ import { BackgroundRuntimeSetting } from "./BackgroundRuntime";
 import { useFeature } from "../../use-feature";
 import { memorySaverCyclesChanged, memorySaverCyclesKey, memorySaverSummary, readMemorySaverCycles } from "../../memory-saver-report";
 import { TaskAttentionSettings } from "../../agent/TaskAttentionSettings";
+import { RecoveryPackage } from "./RecoveryPackage";
 
 export function GeneralSettings({
   active,
@@ -577,6 +578,8 @@ export function GeneralSettings({
             </span>
           )}
           {backupMessage && <output className="hint">{backupMessage}</output>}
+          <RecoveryPackage pending={restoreStatus.pending}
+            onStaged={() => setRestoreStatus(current => ({ ...current, pending: true }))} />
         </Field>
       </section>
     </>
