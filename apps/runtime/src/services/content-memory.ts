@@ -123,7 +123,7 @@ export class ContentMemoryStore {
       throw new AuxError("permission_denied", "This page is not eligible for content recall.");
   }
 
-  async setPolicy(workspaceId: string, policy: Policy): Promise<Policy> {
+  async setPolicy(workspaceId: string, policy: Policy, beforeRemoval?: () => void | Promise<void>): Promise<Policy> {
     this.requireSpace(workspaceId);
     if (typeof policy.enabled !== "boolean" || (policy.retentionDays !== 30 && policy.retentionDays !== 90)
       || !Array.isArray(policy.allowedOrigins) || policy.allowedOrigins.length > 100)
@@ -140,7 +140,7 @@ export class ContentMemoryStore {
         ? Math.min(row.expires_at, row.captured_at + policy.retentionDays * DAY) : row.expires_at;
       await this.rotateSelection(row => row.workspace_id === workspaceId &&
         (expires(row) <= this.now() || !allowedOrigins.includes(row.origin)),
-      expires, () => this.repo.setSetting(policyKey(workspaceId), next));
+      expires, () => this.repo.setSetting(policyKey(workspaceId), next), beforeRemoval);
       this.indexes.delete(workspaceId);
       return next;
     });
@@ -339,11 +339,11 @@ export class ContentMemoryStore {
     return record && this.readable(record) ? record : undefined;
   }
 
-  async forget(workspaceId: string, memoryId?: string): Promise<number> {
+  async forget(workspaceId: string, memoryId?: string, beforeRemoval?: () => void | Promise<void>): Promise<number> {
     return this.serialized(async () => {
       this.requireSpace(workspaceId);
       const removed = await this.rotateSelection(row => row.workspace_id === workspaceId &&
-        (!memoryId || row.memory_id === memoryId));
+        (!memoryId || row.memory_id === memoryId), undefined, undefined, beforeRemoval);
       if (removed) this.indexes.clear();
       return removed;
     });
@@ -353,6 +353,7 @@ export class ContentMemoryStore {
     select: (row: Row & { workspace_id: string }) => boolean,
     expiryFor: (row: Row & { workspace_id: string }) => number = row => row.expires_at,
     onCommit: () => void = () => {},
+    beforeRemoval?: () => void | Promise<void>,
   ): Promise<number> {
     const query = () => this.repo.db.prepare(`SELECT memory_id,source_key,origin,captured_at,expires_at,ciphertext,workspace_id
       FROM content_memory WHERE profile_id=?`).all(this.profileId) as (Row & { workspace_id: string })[];
@@ -366,6 +367,7 @@ export class ContentMemoryStore {
       await this.retirePendingFactors();
       return 0;
     }
+    await beforeRemoval?.();
     const oldKey = await this.key();
     const oldFactor = this.factorName();
     rows = query();

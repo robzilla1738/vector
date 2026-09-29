@@ -7,12 +7,15 @@ import { DatabaseSync } from "node:sqlite";
 import {
   applyPendingRuntimeRestore,
   createRuntimeBackup,
+  listRuntimeBackups,
   openDb,
   Repo,
   runtimeRestoreStatus,
   stageRuntimeRestore,
 } from "@aux/runtime";
 import { migrateSensitiveKv, migrateSensitiveTable, SqliteColumnCipher } from "../../apps/runtime/src/store/sqlite-protection.js";
+import { advanceManagedRecoveryGeneration, currentManagedRecoveryGeneration } from
+  "../../apps/runtime/src/services/managed-recovery-generation.js";
 
 const directories: string[] = [];
 afterEach(() => {
@@ -181,4 +184,79 @@ it("finishes a restore interrupted after the database swap", async () => {
   const restored = new Repo(openDb(dbPath));
   expect(restored.getSetting("restore-marker")).toBe("before");
   restored.close();
+});
+
+it("refuses an older managed backup after Forget and accepts a fresh generation", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "aux-recovery-generation-"));
+  directories.push(dataDir);
+  const repo = new Repo(openDb(join(dataDir, "aux-state.sqlite")));
+  try {
+    const old = await createRuntimeBackup(repo, dataDir);
+    const before = currentManagedRecoveryGeneration(dataDir);
+    const after = advanceManagedRecoveryGeneration(dataDir);
+    expect(after).toEqual({ lineageId: before.lineageId, generation: before.generation + 1 });
+    await expect(stageRuntimeRestore(dataDir, old.path)).rejects.toThrow(/predates the current recovery generation/);
+    const fresh = await createRuntimeBackup(repo, dataDir);
+    await expect(stageRuntimeRestore(dataDir, fresh.path)).resolves.toMatchObject({ staged: true });
+  } finally { repo.close(); }
+});
+
+it("rejects a restore staged before Forget at pre-open apply without replacing current data", async () => {
+  const { dataDir, dbPath } = await stagedFixture();
+  advanceManagedRecoveryGeneration(dataDir);
+  await expect(applyPendingRuntimeRestore(dataDir, dbPath)).rejects.toThrow(/predates the current recovery generation/);
+  const current = new Repo(openDb(dbPath));
+  expect(current.getSetting("restore-marker")).toBe("after");
+  current.close();
+  expect(await runtimeRestoreStatus(dataDir)).toMatchObject({ pending: true });
+});
+
+it("fails closed when the recovery anchor is missing or corrupt", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "aux-recovery-anchor-"));
+  directories.push(dataDir);
+  const repo = new Repo(openDb(join(dataDir, "aux-state.sqlite")));
+  try {
+    const backup = await createRuntimeBackup(repo, dataDir);
+    const anchor = join(dataDir, "managed-recovery-generation.json");
+    rmSync(anchor);
+    await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/anchor is missing/);
+    writeFileSync(anchor, "not JSON");
+    await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/anchor is invalid/);
+    expect(existsSync(join(dataDir, "pending-runtime-restore.json"))).toBe(false);
+  } finally { repo.close(); }
+});
+
+it("does not publish a backup if Forget advances generation during its snapshot", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "aux-backup-race-"));
+  directories.push(dataDir);
+  const repo = new Repo(openDb(join(dataDir, "aux-state.sqlite")));
+  try {
+    await expect(createRuntimeBackup(repo, dataDir, {
+      interrupt: () => { advanceManagedRecoveryGeneration(dataDir); },
+    })).rejects.toThrow(/predates the current recovery generation/);
+    expect(await listRuntimeBackups(dataDir)).toEqual([]);
+  } finally { repo.close(); }
+});
+
+it("stages an existing same-Profile legacy backup only before the first Forget", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "aux-legacy-recovery-"));
+  directories.push(dataDir);
+  const repo = new Repo(openDb(join(dataDir, "aux-state.sqlite")));
+  try {
+    const backup = await createRuntimeBackup(repo, dataDir);
+    const path = join(backup.path, "manifest.json");
+    const manifest = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    delete manifest.recoveryGeneration;
+    writeFileSync(path, JSON.stringify(manifest));
+    // Simulate a Profile and backup created before generation anchors shipped.
+    rmSync(join(dataDir, "managed-recovery-generation.json"));
+    rmSync(join(dataDir, "managed-recovery-initialized"));
+    await expect(stageRuntimeRestore(dataDir, backup.path)).resolves.toMatchObject({ staged: true });
+    const pending = JSON.parse(readFileSync(join(dataDir, "pending-runtime-restore.json"), "utf8"));
+    expect(pending.recoveryGeneration).toEqual(currentManagedRecoveryGeneration(dataDir));
+    advanceManagedRecoveryGeneration(dataDir);
+    await expect(stageRuntimeRestore(dataDir, backup.path)).rejects.toThrow(/predates the current recovery generation/);
+    await expect(applyPendingRuntimeRestore(dataDir, join(dataDir, "aux-state.sqlite")))
+      .rejects.toThrow(/predates the current recovery generation/);
+  } finally { repo.close(); }
 });

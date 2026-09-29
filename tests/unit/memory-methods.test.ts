@@ -1,5 +1,10 @@
 import { expect, it, vi } from "vitest";
 import { memoryMethods } from "../../apps/runtime/src/api/methods/memory.js";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { currentManagedRecoveryGeneration, ensureManagedRecoveryGeneration } from
+  "../../apps/runtime/src/services/managed-recovery-generation.js";
 
 it("refreshes and revokes active context after successful Memory changes only", async () => {
   const emit = vi.fn();
@@ -34,4 +39,22 @@ it("refreshes and revokes active context after successful Memory changes only", 
     .rejects.toThrow("source changed");
   expect(revokeWorkspaceContext).not.toHaveBeenCalled();
   expect(emit).not.toHaveBeenCalled();
+});
+
+it("advances the managed backup generation before a nonempty pipeline Forget", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "aux-memory-method-"));
+  try {
+    const before = ensureManagedRecoveryGeneration(dataDir);
+    const forget = vi.fn(async (_params: unknown, beforeRemoval: () => void) => {
+      beforeRemoval();
+      expect(currentManagedRecoveryGeneration(dataDir).generation).toBe(before.generation + 1);
+      return { forgotten: 1, remaining: 0 };
+    });
+    const handler = memoryMethods["memory.pipeline.forget"]!;
+    await handler({ client: { external: false, codeMode: false }, method: "memory.pipeline.forget",
+      params: { workspaceId: "space-1", all: true }, revokeWorkspaceContext: vi.fn(),
+      s: { memoryPipeline: { forget }, settings: { all: () => ({ dataDir }) }, events: { emit: vi.fn() } },
+    } as unknown as Parameters<typeof handler>[0]);
+    expect(forget).toHaveBeenCalledOnce();
+  } finally { rmSync(dataDir, { recursive: true, force: true }); }
 });

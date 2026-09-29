@@ -199,6 +199,30 @@ it("keeps the prior generation readable if credential erasure fails", async () =
   } finally { f.close(); }
 });
 
+it("advances managed recovery before removal and preserves claims when advance fails", async () => {
+  const f = fixture();
+  try {
+    const workspaceId = f.workspace.workspaceId;
+    f.pipeline.setPolicy(workspaceId, true);
+    f.save("run-one", "The retained bronze fixture is in this report.");
+    await f.pipeline.extractRun(workspaceId, "run-one");
+    const note = (await f.pipeline.inbox(workspaceId))[0]!;
+    await f.pipeline.review(workspaceId, note.claimId, "accept");
+    let advances = 0;
+    await expect(f.pipeline.forget({ workspaceId, all: true }, () => {
+      advances++;
+      throw new Error("Recovery anchor unavailable");
+    })).rejects.toThrow(/Recovery anchor unavailable/);
+    expect(advances).toBe(1);
+    expect(await f.pipeline.search(workspaceId, "bronze fixture")).toHaveLength(1);
+    await f.pipeline.forget({ workspaceId, all: true }, () => { advances++; });
+    expect(advances).toBe(2);
+    expect(await f.pipeline.search(workspaceId, "bronze fixture")).toEqual([]);
+    await f.pipeline.forget({ workspaceId, all: true }, () => { advances++; });
+    expect(advances).toBe(2);
+  } finally { f.close(); }
+});
+
 it("persists pending notes across restart and never re-extracts discarded or forgotten sources", async () => {
   const f = fixture();
   try {

@@ -215,6 +215,28 @@ it("rejects sensitive article text and a document change during encryption", asy
   expect(f.db.prepare("SELECT count(*) AS n FROM content_memory").get()).toMatchObject({ n: 0 });
 });
 
+it("requires the recovery advance before deleting articles through Forget or policy removal", async () => {
+  const f = fixture();
+  const workspaceId = f.workspace.workspaceId;
+  await f.memory.setPolicy(workspaceId, { enabled: true, retentionDays: 30,
+    allowedOrigins: ["https://example.test"] });
+  const save = (pageId: string) => f.memory.saveEligible({ workspaceId, pageId, documentEpoch: 1,
+    url: `https://example.test/${pageId}`, title: "Ordinary article", text: `Article ${pageId} has retained text.` });
+  await save("first");
+  await expect(f.memory.forget(workspaceId, undefined, () => { throw new Error("anchor unavailable"); }))
+    .rejects.toThrow(/anchor unavailable/);
+  expect((await f.memory.search(workspaceId, "retained text"))).toHaveLength(1);
+  let advances = 0;
+  expect(await f.memory.forget(workspaceId, undefined, () => { advances++; })).toBe(1);
+  await save("second");
+  await expect(f.memory.setPolicy(workspaceId, { enabled: true, retentionDays: 30, allowedOrigins: [] },
+    () => { throw new Error("anchor unavailable"); })).rejects.toThrow(/anchor unavailable/);
+  expect((await f.memory.search(workspaceId, "retained text"))).toHaveLength(1);
+  await f.memory.setPolicy(workspaceId, { enabled: true, retentionDays: 30, allowedOrigins: [] }, () => { advances++; });
+  expect(advances).toBe(2);
+  expect((await f.memory.search(workspaceId, "retained text"))).toEqual([]);
+});
+
 it("physically removes excluded and expired sources and rejects tampered ciphertext", async () => {
   const f = fixture();
   await f.memory.setPolicy(f.workspace.workspaceId, { enabled: true, retentionDays: 30, allowedOrigins: ["https://example.test"] });

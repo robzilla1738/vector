@@ -4,6 +4,7 @@ import { bridge } from "../../bridge";
 import { call } from "../../store";
 import { useConfirm } from "../../ui/confirm";
 import { SettingsField } from "../primitives";
+import { MemoryRecoveryNotice } from "../../components/MemoryRecoveryNotice";
 
 type Source = { runId: string; goal: string; endedAt: number };
 type Revision = { revisionId: string; capturedAt: number; claimCount: number; summary: string; sourceRunIds: string[] };
@@ -19,6 +20,7 @@ export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState(false);
+  const [needsFreshBackup, setNeedsFreshBackup] = useState(false);
   const { confirm, confirmation } = useConfirm();
   const sourcesWithNotes = [...new Set([
     ...inbox.map(note => note.sourceRunId),
@@ -27,9 +29,12 @@ export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
   ])];
 
   async function forget(request: { claimId?: string; sourceRunId?: string; all?: true }, description: string) {
-    if (!await confirm({ title: "Forget Space memory?", description,
+    if (!await confirm({ title: "Forget Space memory?", description: `${description} Older Aux-managed backups will no longer restore. Copied offline exports cannot be revoked; phrase-based Memory export is not available in this version.`,
       confirmLabel: "Forget permanently", cancelLabel: "Keep memory", danger: true })) return;
-    await act(async () => { await call("memory.pipeline.forget", { workspaceId, ...request }); });
+    await act(async () => {
+      const result = await call("memory.pipeline.forget", { workspaceId, ...request });
+      if (result.forgotten) setNeedsFreshBackup(true);
+    });
   }
 
   async function refresh(id = workspaceId) {
@@ -109,6 +114,7 @@ export function SpaceMemory({ workspaceId }: { workspaceId: string }) {
       </div>
       {!sources.length && <p className="hint">No eligible completed runs are available for extraction. Sensitive and excluded pages are omitted.</p>}
       <p>{inbox.length} pending notes · {overview?.claimCount ?? 0} approved notes</p>
+      {needsFreshBackup && <MemoryRecoveryNotice />}
       {inbox.map(note => <fieldset className="field" key={note.claimId}>
         <legend>Memory note review</legend>
         <p>{note.text}</p>

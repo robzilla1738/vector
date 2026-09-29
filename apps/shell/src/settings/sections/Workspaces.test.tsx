@@ -138,6 +138,8 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
   });
   expect(rpc).toHaveBeenCalledWith("memory.pipeline.forget", { workspaceId, claimId: note.claimId });
   expect(container.textContent).toContain("0 pending notes · 0 approved notes");
+  expect(container.textContent).toContain("Previously copied offline exports cannot be revoked");
+  expect(button("Create fresh local backup…")).toBeDefined();
 });
 
 it("offers UI-confirmed Forget for a source present only in history", async () => {

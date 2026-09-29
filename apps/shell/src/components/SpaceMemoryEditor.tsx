@@ -1,6 +1,7 @@
 import { BrowsingMemory } from "./BrowsingMemory";
 import { ContentMemory } from "./ContentMemory";
 import { MemoryItems } from "./MemoryItems";
+import { MemoryRecoveryNotice } from "./MemoryRecoveryNotice";
 import { useRef, useState } from "react";
 import type { WorkspaceMemory } from "@aux/contracts";
 import { call } from "../store";
@@ -17,6 +18,12 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
   const pending=useRef(false);
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState<WorkspaceMemory | null>(null);
+  const [needsFreshBackup, setNeedsFreshBackup] = useState(false);
+  const noteRemoved = (saved: WorkspaceMemory) =>
+    !!memory.content && !saved.content.includes(memory.content)
+    || (memory.items ?? []).some(old => !(saved.items ?? []).some(item => item.itemId === old.itemId
+      && item.content === old.content && item.sourceUrl === old.sourceUrl))
+    || (saved.excludedOrigins ?? []).some(origin => !(memory.excludedOrigins ?? []).includes(origin));
   const content = draft?.content ?? memory.content;
   const changed = content !== memory.content;
   const edit = (content: string) => useMemoryDrafts.getState().write(memory.workspaceId,
@@ -30,6 +37,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
       const current = useMemoryDrafts.getState().drafts[memory.workspaceId];
       if (current?.content === content) useMemoryDrafts.getState().write(memory.workspaceId, null);
       else if (current?.revision === revision) useMemoryDrafts.getState().write(memory.workspaceId, { ...current, revision: saved.revision });
+      if (noteRemoved(saved)) setNeedsFreshBackup(true);
       setConflict(null); onSaved(saved);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -53,6 +61,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
   }
 
   return <div className="space-memory-editor">
+    {needsFreshBackup && <MemoryRecoveryNotice />}
     <label className="memory-use-toggle"><input type="checkbox" checked={memory.enabled!==false} disabled={disabled||busy} onChange={event=>void setEnabled(event.target.checked)}/><span>Use Space memory in new replies<small>{memory.enabled===false?"Paused. Saved memory stays available; recording and use in new replies stop.":"Saved notes and enabled browsing memory can inform conversations and tasks in this Space."}</small></span></label>
     <details className="memory-overview" open={overviewOpen}><summary onClick={event => { event.preventDefault(); setOverviewOpen(value => !value); }}>Space overview{changed ? " · Unsaved" : ""}</summary>
     <textarea aria-label="Space memory" value={content} maxLength={16_000} disabled={disabled || busy}
@@ -69,6 +78,7 @@ export function SpaceMemoryEditor({ memory, disabled = false, onSaved }: {
     <MemoryItems memory={memory} disabled={disabled || busy} onSaved={saved => {
       const current = useMemoryDrafts.getState().drafts[memory.workspaceId];
       if (current?.revision === memory.revision && saved.content === memory.content) useMemoryDrafts.getState().write(memory.workspaceId, { ...current, revision: saved.revision });
+      if (noteRemoved(saved)) setNeedsFreshBackup(true);
       onSaved(saved);
     }}/>
     <BrowsingMemory key={memory.workspaceId} memory={memory}/>

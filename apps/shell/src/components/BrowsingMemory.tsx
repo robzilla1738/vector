@@ -5,6 +5,7 @@ import type { BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory } from "
 import { memorySourceExcluded } from "@aux/contracts/memory-context";
 import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
+import { MemoryRecoveryNotice } from "./MemoryRecoveryNotice";
 
 type Saved = { workspaceId: string; policy: BrowsingMemoryPolicy; pages: BrowsingMemoryPage[] };
 export function BrowsingMemory({ memory }: { memory: WorkspaceMemory }) {
@@ -17,6 +18,7 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
+  const [needsFreshBackup, setNeedsFreshBackup] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   const pending = useRef(false), sequence = useRef(0);
@@ -34,7 +36,12 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError("");
     ++sequence.current;
-    try { const value = await call(method, { workspaceId: memory.workspaceId, ...params }); setSaved(value); setConfirmClear(false); }
+    try {
+      const prior = saved;
+      const value = await call(method, { workspaceId: memory.workspaceId, ...params });
+      if (prior?.pages.length && value.pages.length < prior.pages.length) setNeedsFreshBackup(true);
+      setSaved(value); setConfirmClear(false);
+    }
     catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { pending.current = false; setBusy(false); }
   }
@@ -44,6 +51,7 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
   return <section className="browsing-memory" aria-label="Browsing memory">
     <h4>Browsing memory</h4>
     <p className="hint">Optionally remember page titles and addresses from foreground tabs in this Space. Query strings and fragments are removed. Page contents and forms are not read. Private windows and agent tabs are excluded.</p>
+    {needsFreshBackup && <MemoryRecoveryNotice />}
     {saved ? <>
       <label className="memory-use-toggle"><input type="checkbox" checked={saved.policy.enabled} disabled={busy} onChange={event => void change("workspaces.browsingMemory.set", { policy: { ...saved.policy, enabled: event.target.checked } })}/><span>Remember pages I browse<small>{saved.policy.enabled ? "Recent page references may be included in new replies in this Space." : "Off. No new visits are remembered or included in replies."}</small></span></label>
       {saved.policy.enabled && memory.enabled === false && <p className="hint">Space memory is paused above. Recording and use are paused too.</p>}

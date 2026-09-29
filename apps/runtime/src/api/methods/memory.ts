@@ -1,6 +1,7 @@
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
+import { advanceManagedRecoveryGeneration } from "../../services/managed-recovery-generation.js";
 
 async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
   const { client, method, params, revokeWorkspaceContext, s } = ctx;
@@ -28,7 +29,18 @@ async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
   if (method === "memory.pipeline.review") return changed(await pipeline.review(params.workspaceId, params.claimId, params.decision));
   if (method === "memory.pipeline.overview") return pipeline.overview(params.workspaceId);
   if (method === "memory.pipeline.search") return pipeline.search(params.workspaceId, params.query);
-  const result = await pipeline.forget(params);
+  let advanced = false;
+  let result: Awaited<ReturnType<typeof pipeline.forget>>;
+  try {
+    result = await pipeline.forget(params, () => {
+      advanceManagedRecoveryGeneration(s.settings.all().dataDir);
+      advanced = true;
+    });
+  } catch (error) {
+    if (advanced)
+      throw new AuxError("conflict", "Memory removal could not be confirmed. Older managed backups were invalidated; review Memory and create a fresh local backup.");
+    throw error;
+  }
   return result.forgotten ? changed(result) : result;
 }
 

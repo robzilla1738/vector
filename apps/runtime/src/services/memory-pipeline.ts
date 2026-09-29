@@ -361,7 +361,7 @@ export class MemoryPipeline {
       && terms.every(term => claim.text.toLocaleLowerCase().includes(term))).slice(-20).reverse();
   }
 
-  async forget(raw: unknown) {
+  async forget(raw: unknown, beforeRemoval?: () => void | Promise<void>) {
     const input = MemoryPipelineForgetParams.parse(raw);
     this.requireSpace(input.workspaceId);
     return this.leased(input.workspaceId, async () => {
@@ -373,6 +373,7 @@ export class MemoryPipeline {
       const forgotten = new Set([...claims, ...inbox, ...history.flatMap(revision => revision.claims)]
         .filter(claim => !keep(claim)).map(claim => claim.claimId)).size;
       if (forgotten) {
+        await beforeRemoval?.();
         const sanitized = history.map(revision => ({ ...revision, claims: revision.claims.filter(keep) }));
         await this.writeGeneration(input.workspaceId, remaining, pending,
           [...sanitized, this.snapshot(remaining)].slice(-10), prior);

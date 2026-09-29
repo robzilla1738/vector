@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ContentMemoryDocument, ContentMemoryMatch, ContentMemoryPolicy, WorkspaceMemory } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
+import { MemoryRecoveryNotice } from "./MemoryRecoveryNotice";
 
 export function ContentMemory({ memory }: { memory: WorkspaceMemory }) {
   return <ContentMemoryContent key={memory.workspaceId} memory={memory} />;
@@ -19,6 +20,8 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
+  const [needsFreshBackup, setNeedsFreshBackup] = useState(false);
+  const [possiblyRemoved, setPossiblyRemoved] = useState(false);
   const [revision, setRevision] = useState(0);
   const readSequence = useRef(0);
   const detailOpener = useRef<HTMLElement | null>(null);
@@ -76,6 +79,10 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
     setBusy(true); setError("");
     try {
       const saved = await call("workspaces.contentMemory.setPolicy", { workspaceId: memory.workspaceId, policy: next });
+      if (policy && (next.retentionDays < policy.retentionDays
+        || policy.allowedOrigins.some(origin => !next.allowedOrigins.includes(origin)))) {
+        setNeedsFreshBackup(true); setPossiblyRemoved(true);
+      }
       setPolicy(saved);
       setMatches([]);
     } catch (reason) { setError(String(reason)); }
@@ -84,7 +91,8 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
   async function forget(memoryId?: string) {
     setBusy(true); setError("");
     try {
-      await call("workspaces.contentMemory.forget", { workspaceId: memory.workspaceId, memoryId });
+      const result = await call("workspaces.contentMemory.forget", { workspaceId: memory.workspaceId, memoryId });
+      if (result.forgotten) { setNeedsFreshBackup(true); setPossiblyRemoved(false); }
       setMatches(current => current.filter(item => !!memoryId && item.memoryId !== memoryId));
       setDocument(null);
       setConfirmClear(false);
@@ -94,6 +102,7 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
   return <section className="browsing-memory" aria-label="Page-content recall">
     <h4>Page-content recall</h4>
     <p className="hint">Use a tab’s “Remember article” action to save readable text in this Space. Aux only captures an active HTTPS article after you confirm its site. Saved content stays protected on this device and expires automatically.</p>
+    {needsFreshBackup && <MemoryRecoveryNotice possible={possiblyRemoved} />}
     {policy && <>
       <label className="memory-use-toggle"><input type="checkbox" checked={policy.enabled} disabled={busy} onChange={event => void change({ ...policy, enabled: event.target.checked })}/><span>Use remembered article content<small>{policy.enabled ? "Search and capture are available for allowed sites." : "Paused. Saved articles remain until they expire or you forget them."}</small></span></label>
       {memory.enabled === false && <p className="hint">Space memory is paused above. Article capture and search are unavailable.</p>}

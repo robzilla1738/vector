@@ -77,6 +77,7 @@ export class TaskService {
     enabled?: boolean,
     items?: WorkspaceMemory["items"],
     excludedOrigins?: string[],
+    beforeSave?: () => void,
   ): WorkspaceMemory {
     const prior = this.workspaceMemory(workspaceId);
     if (prior.revision !== expectedRevision)
@@ -106,6 +107,7 @@ export class TaskService {
       revision: prior.revision + 1,
       updatedAt: Date.now(),
     };
+    beforeSave?.();
     this.repo.transaction(() => {
       this.repo.setSetting(`workspaceMemory:${workspaceId}`, next);
       // An excluded site must leave local browsing memory as well as future prompts.
