@@ -50,9 +50,11 @@ export class WorkspaceFolderService {
     }).some(root => inside(root, canonical) || inside(canonical, root)))
       throw new AuxError("permission_denied", "This folder includes protected runtime data.");
     const agents = this.agents(canonical);
+    const identity = statSync(canonical);
     return WorkspaceFolderReviewSchema.parse({ workspaceId, path: canonical, access,
       agentsPreview: agents.preview, agentsDigest: agents.digest,
-      reviewDigest: sha(JSON.stringify([workspaceId, canonical, access, agents.digest])) });
+      reviewDigest: sha(JSON.stringify([workspaceId, canonical, access, agents.digest,
+        identity.dev, identity.ino])) });
   }
 
   add(workspaceId: string, path: string, access: WorkspaceFolderAccess, expectedDigest: string): WorkspaceFolder {
@@ -70,7 +72,7 @@ export class WorkspaceFolderService {
 
   list(workspaceId: string): WorkspaceFolder[] {
     return this.stored(workspaceId).map(folder => ({ ...folder,
-      agentsChanged: !folder.archivedAt && this.currentAgentsDigest(folder.path) !== folder.agentsDigest }));
+      agentsChanged: !folder.archivedAt && !this.current(folder) }));
   }
 
   archive(workspaceId: string, folderId: string): WorkspaceFolder {
@@ -84,13 +86,29 @@ export class WorkspaceFolderService {
   }
 
   roots(workspaceId: string): { read: string[]; write: string[] } {
-    const active = this.stored(workspaceId).filter(folder => !folder.archivedAt && this.sameFolder(folder.path));
+    const active = this.stored(workspaceId).filter(folder => this.current(folder));
     return { read: active.map(folder => folder.path),
       write: active.filter(folder => folder.access === "readWrite").map(folder => folder.path) };
   }
 
+  /** Fingerprint the exact live owner review backing an escalated working directory. */
+  scopeDigest(workspaceId: string, workdir: string): string {
+    let canonical: string;
+    try { canonical = realpathSync(workdir); }
+    catch { throw new AuxError("permission_denied", "The reviewed working folder is unavailable. Review it again."); }
+    const folder = this.stored(workspaceId)
+      .filter(item => this.current(item) && inside(canonical, item.path))
+      .sort((a, b) => b.path.length - a.path.length)[0];
+    if (!folder) throw new AuxError("permission_denied", "Escalation needs a current reviewed folder in this Space.");
+    const root = statSync(folder.path);
+    const cwd = statSync(canonical);
+    if (!cwd.isDirectory()) throw new AuxError("permission_denied", "Escalated working folder is unavailable.");
+    return sha(JSON.stringify([workspaceId, folder.folderId, folder.path, folder.access,
+      folder.reviewDigest, folder.agentsDigest, root.dev, root.ino, canonical, cwd.dev, cwd.ino]));
+  }
+
   context(workspaceId: string): string {
-    return this.stored(workspaceId).filter(folder => !folder.archivedAt && this.sameFolder(folder.path))
+    return this.stored(workspaceId).filter(folder => this.current(folder))
       .map(folder => {
         let reviewed: { preview: string; digest: string };
         try { reviewed = this.agents(folder.path); } catch { return ""; }
@@ -100,10 +118,13 @@ export class WorkspaceFolderService {
       }).filter(Boolean).join("\n\n").slice(0, 32_000);
   }
 
-  private sameFolder(path: string): boolean {
-    try { return realpathSync(path) === path && statSync(path).isDirectory(); } catch { return false; }
-  }
-  private currentAgentsDigest(path: string): string {
-    try { return this.agents(path).digest; } catch { return "changed"; }
+  private current(folder: WorkspaceFolder): boolean {
+    if (folder.archivedAt) return false;
+    try {
+      const identity = lstatSync(folder.path);
+      return realpathSync(folder.path) === folder.path && identity.isDirectory() &&
+        sha(JSON.stringify([folder.workspaceId, folder.path, folder.access, this.agents(folder.path).digest,
+          identity.dev, identity.ino])) === folder.reviewDigest;
+    } catch { return false; }
   }
 }

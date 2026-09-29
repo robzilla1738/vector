@@ -90,11 +90,11 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
         setPath("");
       })}>Grant reviewed folder access</button>
     </div>}
-    <SettingsField label="Bound folders" hint="Archiving a binding immediately removes its file and bash access from new actions.">
+    <SettingsField label="Bound folders" hint="Archiving immediately removes file and bash access. A changed folder or AGENTS.md pauses access until a fresh review.">
       {!folders.some(item => !item.archivedAt) && <p className="hint">No active folders in this Space.</p>}
       {folders.filter(item => !item.archivedAt).map(item => <div className="row" key={item.folderId}>
         <span className="grow"><code>{item.path}</code> · {item.access === "read" ? "Read only" : "Read and write"}
-          {item.agentsChanged ? " · AGENTS.md changed; context paused" : ""}</span>
+          {item.agentsChanged ? " · Folder or AGENTS.md changed; access paused. Archive and review again." : ""}</span>
         <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
           await call("workspaces.folders.archive", { workspaceId, folderId: item.folderId });
           setFolders(await call("workspaces.folders.list", { workspaceId }));
@@ -137,7 +137,7 @@ export function WorkspacesSettings({ active }: { active: boolean }) {
           await refreshCommands();
         })}>Revoke command prefix</button>
       </div>)}
-      {commandRequests.some(item => item.state === "pending") && <p className="hint">After deciding, answer the paused run so the agent can retry. Approval does not execute the command by itself.</p>}
+      {commandRequests.some(item => item.state === "pending" || item.grantActive) && <p className="hint">After deciding, answer the paused run so the agent can retry the exact command. Approval does not execute it by itself. Changed or archived folder scope invalidates this approval.</p>}
     </SettingsField>
   </SettingsSection>;
 }

@@ -37,7 +37,7 @@ it("reviews exact folder access and AGENTS.md before grant, then archives it", a
     if (method === "memory.pipeline.overview") return { workspaceId, enabled: false, summary: "", claimCount: 0, sourceCount: 0 };
     if (["memory.pipeline.sources", "memory.pipeline.inbox", "memory.pipeline.claims", "memory.pipeline.history"].includes(method)) return [];
     if (method === "workspaces.folders.inspect") return { ...params, path, agentsPreview: "Local notes", agentsDigest: digest, reviewDigest: digest };
-    if (method === "workspaces.folders.add") { folder = { ...params, folderId: "folder-1", path, agentsChanged: false }; return folder; }
+    if (method === "workspaces.folders.add") { folder = { ...params, folderId: "folder-1", path, agentsChanged: true }; return folder; }
     if (method === "workspaces.folders.archive") { folder = { ...folder, archivedAt: Date.now() }; return folder; }
     throw new Error(`Unexpected ${method}`);
   });
@@ -53,6 +53,7 @@ it("reviews exact folder access and AGENTS.md before grant, then archives it", a
   expect(container.textContent).toContain(digest);
   await act(async () => button("Grant reviewed folder access").click());
   expect(rpc).toHaveBeenCalledWith("workspaces.folders.add", { workspaceId, path, access: "read", expectedDigest: digest });
+  expect(container.textContent).toContain("Folder or AGENTS.md changed; access paused. Archive and review again.");
   await act(async () => button("Archive folder access").click());
   expect(rpc).toHaveBeenCalledWith("workspaces.folders.archive", { workspaceId, folderId: "folder-1" });
 });

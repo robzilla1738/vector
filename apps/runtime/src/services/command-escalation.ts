@@ -5,7 +5,8 @@ import type { LoopPark } from "../agent/loop/types.js";
 
 /** The escalated shell subset is deliberately literal: no expansion, redirection, substitution or nested shell. */
 export function commandSegments(command: string): string[] {
-  if (!command.trim() || /[$`\\<>{}()\u0000-\u001F\u007F]/.test(command))
+  if (!command.trim() || /[$`\\<>{}()*?~#\u0000-\u001F\u007F]/.test(command) ||
+    command.includes("[") || command.includes("]"))
     throw new AuxError("invalid_params", "Escalated commands must be literal; expansion, substitution, redirection and multiline shell are unavailable.");
   const segments: string[] = [];
   let quote: "'" | '"' | undefined;
@@ -19,6 +20,8 @@ export function commandSegments(command: string): string[] {
     if (!operator) continue;
     const segment = command.slice(start, index).trim();
     if (!segment) throw new AuxError("invalid_params", "Every escalated command segment must be nonempty.");
+    if (/^(?:(?:env|sudo|command|exec)\s+)*(?:sh|bash|zsh|dash|ksh|fish|eval)(?:\s|$)/.test(segment))
+      throw new AuxError("invalid_params", "Nested shell commands are unavailable for escalation.");
     segments.push(segment);
     index += operator.length - 1;
     start = index + 1;
@@ -26,6 +29,8 @@ export function commandSegments(command: string): string[] {
   if (quote) throw new AuxError("invalid_params", "Escalated command has an unclosed quote.");
   const tail = command.slice(start).trim();
   if (!tail) throw new AuxError("invalid_params", "Every escalated command segment must be nonempty.");
+  if (/^(?:(?:env|sudo|command|exec)\s+)*(?:sh|bash|zsh|dash|ksh|fish|eval)(?:\s|$)/.test(tail))
+    throw new AuxError("invalid_params", "Nested shell commands are unavailable for escalation.");
   segments.push(tail);
   if (segments.length > 8) throw new AuxError("invalid_params", "Escalation supports at most eight command segments.");
   return segments;
@@ -51,7 +56,27 @@ type GrantRow = { request_id: string; body: string; mode: "once" | "prefix"; con
 
 /** Local-owner reviewed command exceptions. No model-facing decision method exists. */
 export class CommandEscalationService {
-  constructor(private readonly repo: Repo) {}
+  constructor(private readonly repo: Repo,
+    private readonly reviewedScope?: (workspaceId: string, workdir: string) => string) {}
+
+  assertScope(workspaceId: string, workdir: string, expectedDigest: string): void {
+    if (!this.reviewedScope || this.reviewedScope(workspaceId, workdir) !== expectedDigest)
+      throw new AuxError("permission_denied", "Reviewed folder scope changed. Review the folder and command again.");
+  }
+
+  assertDispatch(workspaceId: string, workdir: string, expectedDigest: string, requestIds: string[]): void {
+    this.assertScope(workspaceId, workdir, expectedDigest);
+    if (!requestIds.length || requestIds.length > 8)
+      throw new AuxError("permission_denied", "Escalated command approval is missing.");
+    for (const requestId of requestIds) {
+      const row = this.repo.db.prepare("SELECT body FROM command_escalation_grants WHERE request_id=?")
+        .get(requestId) as { body: string } | undefined;
+      if (!row) throw new AuxError("permission_denied", "Command approval was revoked before dispatch.");
+      const grant = JSON.parse(row.body) as { workspaceId: string; workdir: string; scopeDigest?: string };
+      if (grant.workspaceId !== workspaceId || grant.workdir !== workdir || grant.scopeDigest !== expectedDigest)
+        throw new AuxError("permission_denied", "Command approval scope changed before dispatch.");
+    }
+  }
 
   list(workspaceId: string): CommandEscalationRequest[] {
     const rows = this.repo.db.prepare("SELECT * FROM command_escalation_requests WHERE json_extract(body,'$.workspaceId')=? ORDER BY json_extract(body,'$.createdAt') DESC LIMIT 100")
@@ -64,6 +89,10 @@ export class CommandEscalationService {
     if (!row) throw new AuxError("not_found", "Command request does not exist.");
     const request = this.fromRow(row);
     if (request.state !== "pending") throw new AuxError("conflict", "This command request was already decided.");
+    if (decision !== "decline") {
+      if (!request.scopeDigest) throw new AuxError("permission_denied", "Legacy command request needs fresh folder review.");
+      this.assertScope(request.workspaceId, request.workdir, request.scopeDigest);
+    }
     const prefixRule = decision === "prefix" ? validatePrefix(amendment ?? request.prefixRule ?? "", request.segment) : undefined;
     const now = Date.now();
     this.repo.db.exec("BEGIN IMMEDIATE");
@@ -74,7 +103,8 @@ export class CommandEscalationService {
       if (updated.changes !== 1) throw new AuxError("conflict", "This command request changed. Refresh it.");
       if (decision !== "decline") this.repo.db.prepare("INSERT INTO command_escalation_grants(request_id,body,mode) VALUES(?,?,?)")
         .run(requestId, JSON.stringify({ runId: request.runId, workspaceId: request.workspaceId,
-          segment: request.segment, workdir: request.workdir, ...(prefixRule ? { prefixRule } : {}) }), decision);
+          segment: request.segment, workdir: request.workdir, scopeDigest: request.scopeDigest,
+          ...(prefixRule ? { prefixRule } : {}) }), decision);
       this.repo.db.exec("COMMIT");
     } catch (error) { this.repo.db.exec("ROLLBACK"); throw error; }
     const result = this.fromRow(this.repo.db.prepare("SELECT * FROM command_escalation_requests WHERE request_id=?").get(requestId) as Row);
@@ -90,29 +120,38 @@ export class CommandEscalationService {
 
   /** Gate every literal segment before an unsandboxed process starts. One-time grants are consumed together. */
   authorize(input: { runId: string; workspaceId: string; command: string; workdir: string;
-    justification: string; prefixRule?: string }): "allow" | { park: LoopPark } {
+    justification: string; prefixRule?: string }): { allow: string; requestIds: string[] } | { park: LoopPark } {
     const segments = commandSegments(input.command);
+    if (!this.reviewedScope)
+      throw new AuxError("permission_denied", "Escalation needs a current reviewed folder.");
+    const scopeDigest = this.reviewedScope(input.workspaceId, input.workdir);
     if (input.justification.trim().length < 8 || input.justification.length > 2_000)
       throw new AuxError("invalid_params", "Explain why sandboxed execution cannot do this in 8–2,000 characters.");
     const proposal = input.prefixRule ? validatePrefix(input.prefixRule, segments[0]!) : undefined;
     const grants = this.repo.db.prepare("SELECT * FROM command_escalation_grants WHERE consumed_at IS NULL")
       .all() as GrantRow[];
     const onceIds = new Set<string>();
+    const requestIds: string[] = [];
     for (const segment of segments) {
       const matched = grants.find(row => {
-        const grant = JSON.parse(row.body) as { runId: string; workspaceId: string; segment: string; workdir: string; prefixRule?: string };
-        if (grant.workspaceId !== input.workspaceId || grant.workdir !== input.workdir) return false;
+        const grant = JSON.parse(row.body) as { runId: string; workspaceId: string; segment: string; workdir: string; scopeDigest?: string; prefixRule?: string };
+        if (grant.workspaceId !== input.workspaceId || grant.workdir !== input.workdir || grant.scopeDigest !== scopeDigest) return false;
         if (row.mode === "once") return grant.runId === input.runId && grant.segment === segment && !onceIds.has(row.request_id);
         return !!grant.prefixRule && prefixMatches(grant.prefixRule, segment);
       });
-      if (matched) { if (matched.mode === "once") onceIds.add(matched.request_id); continue; }
-      const prior = this.repo.db.prepare("SELECT * FROM command_escalation_requests WHERE json_extract(body,'$.runId')=? AND json_extract(body,'$.segment')=? AND json_extract(body,'$.workdir')=? ORDER BY json_extract(body,'$.createdAt') DESC LIMIT 1")
-        .get(input.runId, segment, input.workdir) as Row | undefined;
+      if (matched) {
+        requestIds.push(matched.request_id);
+        if (matched.mode === "once") onceIds.add(matched.request_id);
+        continue;
+      }
+      const prior = this.repo.db.prepare("SELECT * FROM command_escalation_requests WHERE json_extract(body,'$.runId')=? AND json_extract(body,'$.segment')=? AND json_extract(body,'$.workdir')=? AND json_extract(body,'$.scopeDigest')=? ORDER BY json_extract(body,'$.createdAt') DESC, rowid DESC LIMIT 1")
+        .get(input.runId, segment, input.workdir, scopeDigest) as Row | undefined;
       if (prior?.state === "declined") throw new AuxError("permission_denied", "The owner declined this exact command segment. Do not retry it.");
       let request = prior?.state === "pending" ? this.fromRow(prior) : undefined;
       if (!request) {
         request = CommandEscalationRequestSchema.parse({ requestId: randomUUID(), runId: input.runId,
-          workspaceId: input.workspaceId, segment, workdir: input.workdir, justification: input.justification.trim(),
+          workspaceId: input.workspaceId, segment, workdir: input.workdir, scopeDigest,
+          justification: input.justification.trim(),
           ...(proposal && segment === segments[0] ? { prefixRule: proposal } : {}), state: "pending", createdAt: Date.now() });
         this.repo.db.prepare("INSERT INTO command_escalation_requests(request_id,body,state) VALUES(?,?,'pending')")
           .run(request.requestId, JSON.stringify(request));
@@ -120,6 +159,7 @@ export class CommandEscalationService {
       return { park: { kind: "ask-user-question", instruction:
         `Escalated command needs owner review in Settings → Workspaces. Segment: ${segment}. Reason: ${request.justification}. It would run outside the file/network sandbox from ${input.workdir}. Approve or decline request ${request.requestId}, then answer this run to continue. The command has not run.` } };
     }
+    this.assertScope(input.workspaceId, input.workdir, scopeDigest);
     this.repo.db.exec("BEGIN IMMEDIATE");
     try {
       for (const requestId of onceIds) {
@@ -129,7 +169,7 @@ export class CommandEscalationService {
       }
       this.repo.db.exec("COMMIT");
     } catch (error) { this.repo.db.exec("ROLLBACK"); throw error; }
-    return "allow";
+    return { allow: scopeDigest, requestIds };
   }
 
   private fromRow(row: Row): CommandEscalationRequest {

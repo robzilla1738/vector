@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from "vitest";
-import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BashSeatbelt, EventBus, openDb, Repo, TaskService, WorkspaceFolderService } from "@aux/runtime";
@@ -29,11 +29,37 @@ it("binds a reviewed Space folder, pins AGENTS.md, and removes roots on archive"
     expect(service.context(workspace.workspaceId)).toContain("Use the project style.");
     writeFileSync(join(userFolder, "AGENTS.md"), "Changed instructions.");
     expect(service.context(workspace.workspaceId)).toBe("");
+    expect(service.roots(workspace.workspaceId)).toEqual({ read: [], write: [] });
     expect(service.list(workspace.workspaceId)[0]?.agentsChanged).toBe(true);
     expect(() => service.inspect(workspace.workspaceId, base, "read")).toThrow(/protected runtime data/);
     service.archive(workspace.workspaceId, saved.folderId);
     expect(service.roots(workspace.workspaceId)).toEqual({ read: [], write: [] });
     expect(service.context(workspace.workspaceId)).toBe("");
+  } finally { db.close(); }
+});
+
+it("invalidates reviewed roots when their inode or symlink resolution changes", () => {
+  const base = mkdtempSync(join(tmpdir(), "aux-workspace-identity-"));
+  cleanup.push(base);
+  const root = join(base, "project");
+  const other = join(base, "other");
+  mkdirSync(root);
+  mkdirSync(other);
+  const db = openDb(":memory:");
+  try {
+    const repo = new Repo(db);
+    const workspaceId = new TaskService(repo, new EventBus(repo)).createWorkspace("Research").workspaceId;
+    const service = new WorkspaceFolderService(repo);
+    const review = service.inspect(workspaceId, root, "readWrite");
+    service.add(workspaceId, root, "readWrite", review.reviewDigest);
+    const digest = service.scopeDigest(workspaceId, root);
+    expect(digest).toMatch(/^[a-f0-9]{64}$/);
+    symlinkSync(other, join(root, "outside"));
+    expect(() => service.scopeDigest(workspaceId, join(root, "outside"))).toThrow(/reviewed folder/i);
+    renameSync(root, join(base, "old-project"));
+    symlinkSync(other, root, "dir");
+    expect(service.roots(workspaceId)).toEqual({ read: [], write: [] });
+    expect(() => service.scopeDigest(workspaceId, root)).toThrow(/reviewed folder/i);
   } finally { db.close(); }
 });
 

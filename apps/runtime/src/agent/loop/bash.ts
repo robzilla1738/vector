@@ -110,7 +110,9 @@ export class BashSeatbelt {
       /** decide() gate for `network: true` — absent means network requests are unsupported. */
       networkGate?: BashGate;
       escalationGate?: (input: { command: string; workdir: string; justification: string; prefixRule?: string },
-        ctx: { runId: string; threadId: string; turnId: string }) => Promise<"allow" | { park: LoopPark }>;
+        ctx: { runId: string; threadId: string; turnId: string }) => Promise<{ allow: string; requestIds: string[] } | { park: LoopPark }>;
+      escalationRecheck?: (input: { workdir: string; scopeDigest: string; requestIds: string[] },
+        ctx: { runId: string; threadId: string; turnId: string }) => void;
       runner?: BashRunner;
       platform?: string;
     },
@@ -178,8 +180,13 @@ export class BashSeatbelt {
       if (!this.opts.escalationGate) throw new AuxError("capability_unsupported", "Command escalation is unavailable.");
       const verdict = await this.opts.escalationGate({ command, workdir: cwd,
         justification: input.justification ?? "", ...(input.prefixRule ? { prefixRule: input.prefixRule } : {}) }, ctx);
-      if (verdict !== "allow") return verdict;
-      const result = await this.runner()( "/bin/sh", ["-c", command], { cwd,
+      if ("park" in verdict) return verdict;
+      const runner = this.runner();
+      if (!this.opts.escalationRecheck)
+        throw new AuxError("permission_denied", "Escalated command scope cannot be rechecked.");
+      this.opts.escalationRecheck({ workdir: cwd, scopeDigest: verdict.allow,
+        requestIds: verdict.requestIds }, ctx);
+      const result = await runner("/bin/sh", ["-c", command], { cwd,
         env: { PATH: "/usr/bin:/bin:/usr/sbin:/sbin", TMPDIR: this.opts.scratchDir,
           HOME: this.opts.scratchDir, LANG: "en_US.UTF-8" }, timeoutMs, signal: input.signal });
       return this.clip(result);
