@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { NativeBridge } from "../native.js";
-import { compactProtectedSqlite, migrateSensitiveKv, migrateSensitiveTable, SqliteColumnCipher } from "./sqlite-protection.js";
+import { compactProtectedSqlite, migrateCalendarConnections, migrateSensitiveKv, migrateSensitiveTable, SqliteColumnCipher } from "./sqlite-protection.js";
 
 /** Only tables whose every SQL read and write has a protected-field adapter. */
 export const ACTIVE_PROTECTED_TABLES = [
@@ -45,6 +45,7 @@ export async function prepareProtectedDatabase(db: DatabaseSync, native: NativeB
   let migrated = 0;
   for (const table of ACTIVE_PROTECTED_TABLES) migrated += migrateSensitiveTable(db, cipher, table);
   migrated += migrateSensitiveKv(db, cipher);
+  migrated += migrateCalendarConnections(db, cipher);
   if (migrated) compactProtectedSqlite(db);
   return cipher;
 }

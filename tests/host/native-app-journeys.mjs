@@ -846,6 +846,8 @@ else {
         .run("legacy-mcp-grant", "legacy-mcp", "read", JSON.stringify({ note: "private native MCP grant" }));
       db.prepare("INSERT INTO agent_connections(connection_id,name,client,scope_kind,workspace_id,token_hash,created_at) VALUES(?,?,?,?,?,?,?)")
         .run("legacy-agent", "private native agent", "codex", "workspace", "legacy-space", "legacy-token-hash", Date.now());
+      db.prepare("INSERT INTO calendar_connections(connection_id,provider,account_key,label,secret_name,scopes,state,created_at,updated_at) VALUES(?,'google',?,?,?,?, 'active',?,?)")
+        .run("legacy-calendar", "private-calendar-account", "private native calendar", "legacy-calendar-secret", JSON.stringify(["calendar.readonly"]), Date.now(), Date.now());
       db.prepare("INSERT INTO vault_items(item_id,label,kind,origin,created_at,updated_at) VALUES(?,?,?,?,?,?)")
         .run("legacy-vault", "private native vault", "password", "https://vault.example", Date.now(), Date.now());
       db.prepare("INSERT INTO vault_grants(grant_id,item_id,credential_ref,origin,created_at,expires_at) VALUES(?,?,?,?,?,?)")
@@ -966,6 +968,7 @@ else {
           mcp: db.prepare("SELECT body FROM outbound_mcp_servers WHERE server_id='legacy-mcp'").get()?.body,
           mcpGrant: db.prepare("SELECT body FROM outbound_mcp_grants WHERE grant_id='legacy-mcp-grant'").get()?.body,
           agent: db.prepare("SELECT name FROM agent_connections WHERE connection_id='legacy-agent'").get()?.name,
+          calendar: db.prepare("SELECT account_key,account_key_lookup,label FROM calendar_connections WHERE connection_id='legacy-calendar'").get(),
           vault: db.prepare("SELECT label FROM vault_items WHERE item_id='legacy-vault'").get()?.label,
           vaultGrant: db.prepare("SELECT origin FROM vault_grants WHERE grant_id='legacy-vault-grant'").get()?.origin,
           vaultAudit: db.prepare("SELECT detail FROM vault_access WHERE grant_id='legacy-vault-grant'").get()?.detail,
@@ -977,17 +980,21 @@ else {
     assert.ok(migrated.error?.startsWith("auxenc:v1:"), "Legacy model error must migrate before services start");
     for (const value of [migrated.run?.goal, migrated.run?.config, migrated.space, migrated.task,
       migrated.evidence, migrated.setting, migrated.mcp, migrated.mcpGrant, migrated.agent,
+      migrated.calendar?.account_key, migrated.calendar?.label,
       migrated.vault, migrated.vaultGrant, migrated.vaultAudit])
       assert.ok(value?.startsWith("auxenc:v1:"), "Legacy run, Space, Task, authority and credential metadata must migrate");
+    assert.ok(migrated.calendar?.account_key_lookup?.startsWith("auxidx:v1:"),
+      "Calendar account equality must use a keyed lookup after migration");
     assert.deepEqual(migrated.markers, ["datasets", "events", "model_calls", "page_sets", "programs",
       "response_metadata", "results", "run_messages", "operation_implementations", "operation_reconciliations",
       "safety_approval_requests", "safety_audit", "safety_send_journal", "set_members", "runs", "steps",
       "conversations", "workspaces", "tasks", "task_revisions", "task_evidence", "criterion_reviews",
       "criterion_verifications", "outbound_mcp_servers", "outbound_mcp_grants", "agent_connections",
-      "vault_items", "vault_grants", "vault_access", "kv_filtered"].map(table => `protected_sqlite_v1:${table}`).sort());
+      "vault_items", "vault_grants", "vault_access", "calendar_connections", "kv_filtered"].map(table => `protected_sqlite_v1:${table}`).sort());
     for (const marker of ["private startup marker", "private native run", "private native context", "private native space",
       "private native task", "private native evidence", "private native setting", "private native MCP",
-      "private native MCP grant", "private native agent", "private native vault", "private native vault audit"])
+      "private native MCP grant", "private native agent", "private-calendar-account", "private native calendar",
+      "private native vault", "private native vault audit"])
       assert.equal(readFileSync(databasePath).includes(marker), false);
     record("native Keychain startup migrates adapted SQLite rows before runtime readiness", { tables: migrated.markers.length });
     console.log("Quit this disposable Aux window from the Aux menu, then the journey will relaunch the same Profile.");

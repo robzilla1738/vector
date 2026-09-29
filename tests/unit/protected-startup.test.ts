@@ -49,7 +49,7 @@ it("migrates adapted data before repository reads, survives restart and refuses 
     expect(new TaskService(protectedRepo, new EventBus(protectedRepo)).get(task.taskId).title)
       .toBe("private startup task");
     expect((db.prepare("SELECT count(*) AS n FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%'").get() as { n: number }).n)
-      .toBe(30);
+      .toBe(31);
     expect(readFileSync(path).includes("private startup error")).toBe(false);
     expect(readFileSync(path).includes("private startup task")).toBe(false);
     db.close();
