@@ -246,7 +246,10 @@ export const HostMethods = {
   exportMigrationLayout: shell("electronMigration", z.tuple([str]), z.object({ path: str }).strict().nullable()),
   stageRuntimeRestore: shell("electronMigration", noArgs, stagedRestore.nullable()),
   cancelRuntimeRestore: shell("electronMigration", noArgs, z.object({ cancelled: z.literal(true) }).strict()),
-  runtimeRestoreStatus: shell("electronMigration", noArgs, z.object({ pending: bool, lastAppliedAt: number.optional() }).strict()),
+  runtimeRestoreStatus: shell("electronMigration", noArgs, z.object({
+    pending: bool, lastAppliedAt: number.optional(),
+    managedRecovery: z.object({ generation: number.int().nonnegative(), freshBackupIssued: bool }).strict(),
+  }).strict()),
   healthSummary: shell("core", noArgs, healthSummary),
   clearHealth: shell("core", noArgs, healthSummary),
   // HTTP auth and site controls

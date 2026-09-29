@@ -2850,7 +2850,9 @@ else {
     await until("isolated task page visible through shell without taking control", async () => {
       try {
         const current = (await rpc("pages.list")).find(item => item.pageId === runPageId);
-        return current?.controller === "agent" && native("has-name", "Human input") === "true";
+        const workspace = await rpc("workspace.get");
+        return current?.controller === "agent" && workspace.activePageId === runPageId &&
+          native("has-name", "Human input") === "true";
       } catch { return false; }
     }, 120_000);
     record("owner opened the exact isolated task page without changing agent control", { runId, runPageId });

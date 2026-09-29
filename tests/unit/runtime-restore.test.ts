@@ -4,6 +4,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { HostMethods } from "@aux/contracts";
 import {
   applyPendingRuntimeRestore,
   createRuntimeBackup,
@@ -60,7 +61,9 @@ it("applies a staged restore before the next database open and preserves the pre
   const recovery = new Repo(openDb(join(applied.recoveryPath, "state.sqlite")));
   expect(recovery.getSetting("restore-marker")).toBe("after");
   recovery.close();
-  expect(await runtimeRestoreStatus(dataDir)).toMatchObject({ pending: false, lastAppliedAt: expect.any(Number) });
+  const status = await runtimeRestoreStatus(dataDir);
+  expect(HostMethods.runtimeRestoreStatus.result.parse(status)).toEqual(status);
+  expect(status).toMatchObject({ pending: false, lastAppliedAt: expect.any(Number) });
   expect(existsSync(join(dataDir, "pending-runtime-restore.json"))).toBe(false);
   expect(await applyPendingRuntimeRestore(dataDir, dbPath)).toEqual({ applied: false });
 });

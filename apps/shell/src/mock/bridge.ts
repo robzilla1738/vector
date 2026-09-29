@@ -1140,7 +1140,7 @@ export function installMockBridge(q: URLSearchParams) {
     exportMigrationLayout:async()=>null,
     stageRuntimeRestore:async()=>null,
     cancelRuntimeRestore:async()=>({cancelled:true}),
-    runtimeRestoreStatus:async()=>({pending:false}),
+    runtimeRestoreStatus:async()=>({pending:false,managedRecovery:{generation:0,freshBackupIssued:false}}),
     healthSummary:async()=>({recordingSince:Date.now()-86_400_000,latestAt:Date.now(),samples:1440,sessions:3,observedMinutes:520,spanDays:1,sevenDaySpan:false,startupMs:820,cpuPercent:{p50:1.8,p95:14.2,max:35.1},memoryMb:{p50:410,p95:612,max:680},eventLoopLagMs:{p50:2,p95:18,max:90},maxWindows:2,maxPages:12,maxSuspendedPages:7,pageCrashes:0,pageUnresponsive:0,suspensionFailures:0}),
     clearHealth:async()=>({samples:0,sessions:0,observedMinutes:0,spanDays:0,sevenDaySpan:false,cpuPercent:{p50:0,p95:0,max:0},memoryMb:{p50:0,p95:0,max:0},eventLoopLagMs:{p50:0,p95:0,max:0},maxWindows:0,maxPages:0,maxSuspendedPages:0,pageCrashes:0,pageUnresponsive:0,suspensionFailures:0}),
     httpAuthRequests: async()=>[],

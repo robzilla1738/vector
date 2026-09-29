@@ -1,0 +1,117 @@
+diff --git a/chrome/browser/ui/aux/egress_url_loader.cc b/chrome/browser/ui/aux/egress_url_loader.cc
+--- a/chrome/browser/ui/aux/egress_url_loader.cc
++++ b/chrome/browser/ui/aux/egress_url_loader.cc
+@@ -242,12 +242,7 @@
+     return weak_factory_.GetWeakPtr();
+   }
+   void Fail() {
+-    if (state_->cancelled) {
+-      return;
+-    }
+-    client_->OnComplete(
+-        network::URLLoaderCompletionStatus(net::ERR_BLOCKED_BY_CLIENT));
+-    Cancel();
++    Complete(network::URLLoaderCompletionStatus(net::ERR_BLOCKED_BY_CLIENT));
+   }
+   void FollowRedirect(network::HttpRequestHeadersUpdateParams updates,
+                       const std::optional<GURL>& new_url) override {
+@@ -279,42 +274,60 @@
+                          new_url));
+   }
+   void SetPriority(net::RequestPriority priority, int32_t intra) override {
+-    if (target_) {
++    if (!terminal_ && target_) {
+       target_->SetPriority(priority, intra);
+     }
+   }
+   void OnReceiveEarlyHints(network::mojom::EarlyHintsPtr hints) override {
+-    client_->OnReceiveEarlyHints(std::move(hints));
++    if (!terminal_) client_->OnReceiveEarlyHints(std::move(hints));
+   }
+   void OnReceiveResponse(
+       network::mojom::URLResponseHeadPtr head,
+       mojo::ScopedDataPipeConsumerHandle body,
+       std::optional<mojo_base::BigBuffer> metadata) override {
+-    client_->OnReceiveResponse(std::move(head), std::move(body),
+-                               std::move(metadata));
++    if (!terminal_) {
++      client_->OnReceiveResponse(std::move(head), std::move(body),
++                                 std::move(metadata));
++    }
+   }
+   void OnReceiveRedirect(const net::RedirectInfo& info,
+                          network::mojom::URLResponseHeadPtr head) override {
+-    redirect_ = info;
+-    client_->OnReceiveRedirect(info, std::move(head));
++    if (!terminal_) {
++      redirect_ = info;
++      client_->OnReceiveRedirect(info, std::move(head));
++    }
+   }
+   void OnUploadProgress(int64_t position,
+                         int64_t total,
+                         OnUploadProgressCallback callback) override {
+-    client_->OnUploadProgress(position, total, std::move(callback));
++    if (terminal_) {
++      std::move(callback).Run();
++    } else {
++      client_->OnUploadProgress(position, total, std::move(callback));
++    }
+   }
+   void OnTransferSizeUpdated(int32_t diff) override {
+-    client_->OnTransferSizeUpdated(diff);
++    if (!terminal_) client_->OnTransferSizeUpdated(diff);
+   }
+   void OnComplete(const network::URLLoaderCompletionStatus& status) override {
+-    client_->OnComplete(status);
+-    state_->cancelled = true;
++    Complete(status);
+   }
+ 
+  private:
++  void Complete(const network::URLLoaderCompletionStatus& status) {
++    if (terminal_) return;
++    // Revocation can race a queued upstream completion. The client must see
++    // exactly one terminal message, with authority closed before delivery.
++    terminal_ = true;
++    state_->cancelled = true;
++    weak_factory_.InvalidateWeakPtrs();
++    target_.reset();
++    if (client_) client_->OnComplete(status);
++  }
+   void FollowChecked(network::HttpRequestHeadersUpdateParams updates,
+                      std::optional<GURL> url,
+                      bool allowed) {
++    if (terminal_) return;
+     if (!allowed || !target_) {
+       Fail();
+       return;
+@@ -324,14 +337,18 @@
+     target_->FollowRedirect(std::move(updates), url);
+   }
+   void Revalidate() {
+-    if (!state_->controller ||
+-        !state_->controller->MayContinue(state_->context)) {
++    if (!terminal_ && (!state_->controller ||
++                       !state_->controller->MayContinue(state_->context))) {
+       Fail();
+     }
+   }
+   void Cancel() {
++    if (terminal_) return;
++    terminal_ = true;
+     state_->cancelled = true;
++    weak_factory_.InvalidateWeakPtrs();
+     target_.reset();
++    client_.reset();
+   }
+   std::shared_ptr<RequestState> state_;
+   mojo::Remote<network::mojom::URLLoaderClient> client_;
+@@ -339,6 +356,7 @@
+   mojo::Remote<network::mojom::URLLoader> target_;
+   std::optional<net::RedirectInfo> redirect_;
+   bool following_ = false;
++  bool terminal_ = false;
+   base::CallbackListSubscription subscription_;
+   base::WeakPtrFactory<GuardedRequest> weak_factory_{this};
+ };
