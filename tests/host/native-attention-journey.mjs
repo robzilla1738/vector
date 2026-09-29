@@ -11,6 +11,7 @@ import { createInterface } from "node:readline/promises";
 import { attentionModelFixture, MODEL_ID, RUN_A, RUN_B, RUN_C, RUN_D, PRIVATE_QUESTION } from "./attention-model-fixture.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
+const systemOnly = process.argv.includes("--system-only");
 const stages = [
   "Configure the local model in Settings and open two disposable fixture pages.",
   "Start run A, leave a queue/steer draft, then start run B in a second chat.",
@@ -21,7 +22,7 @@ const stages = [
   "Optional --system-attention: Focus Mode suppresses a third run; background macOS alert opens a fourth run.",
 ];
 if (process.argv.includes("--list")) {
-  console.log(JSON.stringify({ stages, usage: "node tests/host/native-attention-journey.mjs --app /absolute/path/to/Aux.app --system-attention [--output /absolute/new/directory]", nativeBuild: "Use a previously built Aux.app; this script only compiles the existing AX helper." }, null, 2));
+  console.log(JSON.stringify({ stages, usage: "node tests/host/native-attention-journey.mjs --app /absolute/path/to/Aux.app [--system-attention | --system-only] [--output /absolute/new/directory]", nativeBuild: "Use a previously built Aux.app; this script only compiles the existing AX helper." }, null, 2));
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native attention acceptance requires macOS.");
@@ -62,7 +63,8 @@ function inspect(marker) {
     // Protected startup seals `runs.goal`; identify the ordered fixture runs
     // after the local model endpoint confirms each marker.
     // Never decrypt or bypass the Profile key from the host acceptance runner.
-    const ordinal = marker === RUN_A ? 0 : marker === RUN_B ? 1 : marker === RUN_C ? 2 : marker === RUN_D ? 3 : -1;
+    const ordinal = systemOnly && marker === RUN_D ? 0
+      : marker === RUN_A ? 0 : marker === RUN_B ? 1 : marker === RUN_C ? 2 : marker === RUN_D ? 3 : -1;
     assert.notEqual(ordinal, -1, "Unknown attention fixture marker");
     const run = db.prepare("SELECT run_id AS runId,status FROM runs ORDER BY created_at,rowid LIMIT 1 OFFSET ?").get(ordinal);
     if (!run) return null;
@@ -106,6 +108,19 @@ try {
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A native acceptance run must not expose a raw debugging port");
   record("production native shell without public debugging", { pid: child.pid });
 
+  if (systemOnly) {
+    await operator(`In Settings → Models, select OpenAI-compatible, save endpoint ${model.endpoint}, and set Planner model to ${MODEL_ID}. In Settings → General, turn System task notifications on and leave Focus Mode off. Open ${pageUrl}?page=d in a local tab. This uses no paid provider.`);
+    await operator(`Start a new chat from the local page with goal "${RUN_D}: summarize this local fixture". Switch to another app before its model reply.`);
+    await until("system notification run D request", () => model.seen(RUN_D));
+    const d = await until("D durable run", () => inspect(RUN_D));
+    model.release(RUN_D);
+    await until("D completes in background", () => inspect(RUN_D)?.status === "completed");
+    const answer = (await input.question("Confirm the macOS Aux alert used only generic copy, click it, and type YES after checking the visible D chat: ")).trim();
+    assert.equal(answer, "YES", "A native OS notification and click journey must be witnessed");
+    assert.equal(native("has-text", RUN_D), "true", "The alert must open the reviewed D chat");
+    record("generic macOS alert click returns to the reviewed run", { runId: d.runId, osAlert: "operator-inspected" });
+    capture("system-alert-opened-run");
+  } else {
   await operator(`In Settings → Models, select OpenAI-compatible, save endpoint ${model.endpoint}, and set Planner model to ${MODEL_ID}. Open ${pageUrl}?page=a and ${pageUrl}?page=b as two local tabs. This uses no paid provider.`);
   await operator(`From page A, start a new chat with goal "${RUN_A}: summarize this local fixture". The model response is held. In that same conversation, type "Queue draft stays in A" in the composer without sending it.`);
   await until("A model request", () => model.seen(RUN_A));
@@ -187,6 +202,7 @@ try {
     assert.equal(native("shell-url").startsWith("chrome://aux/"), true);
     record("generic macOS alert click returns to the reviewed run", { runId: inspect(RUN_D).runId, osAlert: "operator-inspected" });
     capture("system-alert-opened-run");
+  }
   }
   report.passed = true;
 } catch (error) {
