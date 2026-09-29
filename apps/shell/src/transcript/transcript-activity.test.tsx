@@ -16,6 +16,17 @@ const run = (patch: Partial<Run> = {}): Run => ({
 });
 
 describe("durable transcript activity", () => {
+  it("never links a verified citation to another run's artifact row", () => {
+    const result = projectRunTranscript(run({ status: "completed", result: { report: "rec-15",
+      citations: [{ observationId: "obs-1", quote: "Internal ref rec-15." }] } }), [
+      { artifactId: "obs-1", runId: "another-run", pageId: "page-1", path: "/private/other.json",
+        mediaType: "application/json", size: 100, status: "complete", createdAt: 1 },
+    ]);
+    expect(result.items).toContainEqual({ kind: "citation", observationId: "obs-1", quote: "Internal ref rec-15." });
+    expect(result.items.some((item) => item.kind === "artifact")).toBe(false);
+    expect(JSON.stringify(result)).not.toContain("/private/other.json");
+  });
+
   it("projects a bounded waiting state and safe action summary without inputs or old step leakage", () => {
     const steps: StepRecord[] = Array.from({ length: 22 }, (_, index) => ({
       stepId: `s${index}`, runId: "run-1", op: index === 21 ? "secret.action" : "click",

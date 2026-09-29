@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import type { Run, RunTranscriptItem, RunTranscriptProjection, Suspension } from "@aux/contracts";
-import { call } from "../store";
+import { ObservationSchema, type Run, type RunTranscriptItem, type RunTranscriptProjection, type Suspension } from "@aux/contracts";
+import { call, useStore } from "../store";
 import { ViewerFrame } from "../components/ViewerFrame";
 import { SuspensionPanel } from "../composer/SuspensionPanel";
 import { TextProposal } from "./TextProposal";
 import { ErrorItem, ToolFold, WaitingItem } from "./TranscriptActivity";
+import { IsolatedArtifactHtml } from "./IsolatedArtifactHtml";
 
 const MAX_TEXT_BYTES = 128 * 1024;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_HTML_BYTES = 256 * 1024;
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const TEXT_TYPES = new Set(["text/plain", "text/markdown", "text/csv", "application/json"]);
 const RECOVERY_GUIDANCE = {
@@ -21,6 +23,8 @@ const RECOVERY_GUIDANCE = {
 } as const;
 
 type ArtifactItem = Extract<RunTranscriptItem, { kind: "artifact" }>;
+type CitationItem = Extract<RunTranscriptItem, { kind: "citation" }>;
+type SourceRef = { pageId: string; url: string; documentEpoch: number };
 
 /** Rehydrates from durable runs.get on mount and on status change. Stream deltas never grant citation trust. */
 export function RunTranscriptDetails({ run, question, readOnly = false, answerInComposer = false }: {
@@ -32,9 +36,10 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
   const [refresh, setRefresh] = useState(0);
   const [loadError, setLoadError] = useState("");
   const [selected, setSelected] = useState<ArtifactItem | null>(null);
-  const [preview, setPreview] = useState<{ text?: string; image?: string } | null>(null);
+  const [preview, setPreview] = useState<{ text?: string; image?: string; html?: string; source?: SourceRef } | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [openingSource, setOpeningSource] = useState(false);
   const previewRequest = useRef(0);
 
   useEffect(() => {
@@ -67,7 +72,7 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
   // RunPanel already owns the actionable failure card when a typed failure exists.
   const recovery = run.failure ? undefined : projection?.items.find((item) => item.kind === "recovery");
 
-  async function open(artifact: ArtifactItem) {
+  async function open(artifact: ArtifactItem, citation?: CitationItem) {
     if (!artifacts.some((item) => item.artifactId === artifact.artifactId)) return;
     const request = ++previewRequest.current;
     setSelected(artifact); setPreview(null); setError(""); setLoading(true);
@@ -80,18 +85,37 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
         throw new Error("This artifact no longer belongs to the selected run.");
       const size = response.artifact.size;
       const encoded = response.dataBase64;
-      if (encoded.length > Math.ceil(Math.max(MAX_TEXT_BYTES, MAX_IMAGE_BYTES) / 3) * 4 + 4)
+      if (encoded.length > Math.ceil(Math.max(MAX_TEXT_BYTES, MAX_IMAGE_BYTES, MAX_HTML_BYTES) / 3) * 4 + 4)
         throw new Error("A safe inline preview is unavailable for this file type or size.");
       if (IMAGE_TYPES.has(artifact.mediaType) && size <= MAX_IMAGE_BYTES) {
         if (atob(encoded).length !== size) throw new Error("The saved artifact size does not match its contents.");
         setPreview({ image: `data:${artifact.mediaType};base64,${encoded}` });
-      } else if (TEXT_TYPES.has(artifact.mediaType) && size <= MAX_TEXT_BYTES) {
-        if (encoded.length > Math.ceil(MAX_TEXT_BYTES / 3) * 4 + 4)
+      } else if ((TEXT_TYPES.has(artifact.mediaType) && size <= MAX_TEXT_BYTES)
+        || (artifact.mediaType === "text/html" && size <= MAX_HTML_BYTES)
+        || (citation && artifact.mediaType === "application/json" && size <= MAX_TEXT_BYTES)) {
+        const limit = artifact.mediaType === "text/html" ? MAX_HTML_BYTES : MAX_TEXT_BYTES;
+        if (encoded.length > Math.ceil(limit / 3) * 4 + 4)
           throw new Error("A safe inline preview is unavailable for this file type or size.");
         const raw = atob(encoded);
         if (raw.length !== size) throw new Error("The saved artifact size does not match its contents.");
         const bytes = Uint8Array.from(raw, (char) => char.charCodeAt(0));
-        setPreview({ text: new TextDecoder("utf-8", { fatal: true }).decode(bytes) });
+        const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+        if (artifact.mediaType === "text/html") setPreview({ html: text });
+        else if (citation && citation.artifactId === artifact.artifactId && response.artifact.pageId
+          && run.pageIds.includes(response.artifact.pageId) && artifact.mediaType === "application/json") {
+          let parsed: unknown;
+          try { parsed = JSON.parse(text); } catch { throw new Error("The cited page snapshot could not be read."); }
+          const observation = ObservationSchema.safeParse(parsed);
+          const observedText = observation.success
+            ? [observation.data.content.title, ...observation.data.content.headings, observation.data.content.text].join("\n") : "";
+          if (!observation.success || observation.data.pageId !== response.artifact.pageId
+            || !observedText.includes(citation.quote)
+            || !/^https?:\/\//i.test(observation.data.content.url))
+            throw new Error("The cited page snapshot no longer matches this source.");
+          setPreview({ text: observation.data.content.text,
+            source: { pageId: observation.data.pageId, url: observation.data.content.url,
+              documentEpoch: observation.data.documentEpoch } });
+        } else setPreview({ text });
       } else {
         throw new Error("A safe inline preview is unavailable for this file type or size.");
       }
@@ -100,6 +124,26 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
     } finally {
       if (request === previewRequest.current) setLoading(false);
     }
+  }
+
+  async function openSource() {
+    const source = preview?.source;
+    if (!source || !selected || !run.pageIds.includes(source.pageId) || openingSource) return;
+    const request = previewRequest.current;
+    setOpeningSource(true);
+    setError("");
+    try {
+      const pages = await call("pages.list", {});
+      if (request !== previewRequest.current) return;
+      const page = pages.find((item) => item.pageId === source.pageId);
+      if (!page || page.url !== source.url || page.documentEpoch !== source.documentEpoch
+        || page.ownedByRuntime || (page.viewStatus !== "visible" && page.viewStatus !== "hidden")
+        || (page.controller !== "human" && page.controller !== "none"))
+        throw new Error("The cited page changed or is unavailable. The saved snapshot is still available above.");
+      await useStore.getState().activate(source.pageId);
+    } catch (reason) {
+      if (request === previewRequest.current) setError(reason instanceof Error ? reason.message : String(reason));
+    } finally { if (request === previewRequest.current) setOpeningSource(false); }
   }
 
   if (!citations.length && !artifacts.length && !proposals.length && !tools.length && !recovery && !waiting && !errorItem && run.status !== "needs_input") return null;
@@ -113,7 +157,7 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
       <ul>{citations.map((item, index) => item.kind === "citation" && <li key={`${item.observationId}-${index}`}>
         <blockquote>{item.quote}</blockquote>
         {item.artifactId && artifacts.some((artifact) => artifact.artifactId === item.artifactId) &&
-          <button className="btn sm ghost" onClick={() => void open(artifacts.find((artifact) => artifact.artifactId === item.artifactId)!)}>Inspect cited snapshot</button>}
+          <button className="btn sm ghost" onClick={() => void open(artifacts.find((artifact) => artifact.artifactId === item.artifactId)!, item)}>Inspect cited snapshot</button>}
       </li>)}</ul>
     </details>}
     {artifacts.length > 0 && <details className="transcript-artifacts"><summary>Saved artifacts · {artifacts.length}</summary>
@@ -125,9 +169,13 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
     {recovery?.kind === "recovery" && recovery.state !== "needs_input" && !errorItem && <output className="run-failure"><strong>{recovery.state.replaceAll("_", " ")}</strong> {recovery.description} {RECOVERY_GUIDANCE[recovery.action]}</output>}
     {selected && <ViewerFrame label="Saved run artifact" title={selected.mediaType} closeLabel="Close artifact" onClose={() => { ++previewRequest.current; setSelected(null); setPreview(null); setError(""); }}
       metadata={`${Math.max(1, Math.ceil(selected.size / 1024))} KB · ${selected.artifactId}`}>
-      {loading ? <output data-block>Loading artifact…</output> : error ? <p role="alert">{error}</p>
-        : preview?.image ? <img src={preview.image} alt="Saved run artifact" style={{ maxWidth: "100%" }} />
+      {loading ? <output data-block>Loading artifact…</output> : preview?.image ? <img src={preview.image} alt="Saved run artifact" style={{ maxWidth: "100%" }} />
+        : preview?.html !== undefined ? <IsolatedArtifactHtml key={selected.artifactId} html={preview.html} />
           : preview?.text !== undefined ? <pre>{preview.text}</pre> : null}
+      {preview?.source && <button className="btn sm" disabled={openingSource} onClick={() => void openSource()}>
+        {openingSource ? "Checking cited page…" : "Open cited page"}
+      </button>}
+      {error && <p role="alert">{error}</p>}
     </ViewerFrame>}
   </section>;
 }
