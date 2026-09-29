@@ -1857,6 +1857,7 @@ export const ResultSchemas = {
       sha256: z.string().regex(/^[a-f0-9]{64}$/),
       artifactFiles: z.number().int().nonnegative(),
       missingArtifacts: z.number().int().nonnegative(),
+      restorable: z.boolean(),
     }),
   ),
   "installation.deleteBackup": z.object({ deleted: z.literal(true) }),
@@ -1871,7 +1872,8 @@ export const ResultSchemas = {
     missingArtifacts: z.number().int().nonnegative(),
   }),
   "installation.cancelRestore": z.object({ cancelled: z.literal(true) }),
-  "installation.restoreStatus": z.object({ pending: z.boolean(), lastAppliedAt: z.number().optional() }),
+  "installation.restoreStatus": z.object({ pending: z.boolean(), lastAppliedAt: z.number().optional(),
+    managedRecovery: z.object({ generation: z.number().int().nonnegative(), freshBackupIssued: z.boolean() }) }),
   "installation.exportRecovery": z.object({ path: z.string(), sha256: z.string(), manifest: z.object({
     version: z.literal(1), createdAt: z.number(), sourceProfileId: z.string(), sqliteBytes: z.number(),
     sqliteTables: z.array(z.string()), artifactIds: z.array(z.string()),

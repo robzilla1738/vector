@@ -139,7 +139,7 @@ it("keeps extracted notes pending until the owner accepts or discards them", asy
   });
   expect(rpc).toHaveBeenCalledWith("memory.pipeline.forget", { workspaceId, claimId: note.claimId });
   expect(container.textContent).toContain("0 pending notes · 0 approved notes");
-  expect(container.textContent).toContain("Previously copied offline recovery packages and their phrases remain usable after Forget");
+  expect(container.textContent).toContain("Previously copied offline recovery packages and their original phrases remain usable after Forget");
   expect(button("Create fresh local backup…")).toBeDefined();
 });
 

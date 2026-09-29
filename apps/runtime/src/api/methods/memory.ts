@@ -2,6 +2,7 @@ import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError, MethodSchemas } from "@aux/contracts";
 import { advanceManagedRecoveryGeneration } from "../../services/managed-recovery-generation.js";
+import { attemptFreshManagedBackup } from "../../services/runtime-backup.js";
 
 async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
   const { client, method, params, revokeWorkspaceContext, s } = ctx;
@@ -30,10 +31,11 @@ async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
   if (method === "memory.pipeline.overview") return pipeline.overview(params.workspaceId);
   if (method === "memory.pipeline.search") return pipeline.search(params.workspaceId, params.query);
   let advanced = false;
+  let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
   let result: Awaited<ReturnType<typeof pipeline.forget>>;
   try {
     result = await pipeline.forget(params, () => {
-      advanceManagedRecoveryGeneration(s.settings.all().dataDir);
+      generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir);
       advanced = true;
     });
   } catch (error) {
@@ -41,7 +43,9 @@ async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
       throw new AuxError("conflict", "Memory removal could not be confirmed. Older managed backups were invalidated; review Memory and create a fresh local backup.");
     throw error;
   }
-  return result.forgotten ? changed(result) : result;
+  const response = result.forgotten ? changed(result) : result;
+  if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
+  return response;
 }
 
 function pastePipeline(ctx: MethodCtx) {

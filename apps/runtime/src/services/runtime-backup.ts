@@ -21,18 +21,22 @@ export function backupRetention(repo:Repo):{keep:BackupKeep}{
 }
 export function setBackupRetention(repo:Repo,keep:BackupKeep){repo.setSetting(RETENTION_KEY,keep);return {keep};}
 export async function listRuntimeBackups(dataDir:string){
+  const current=ensureManagedRecoveryGeneration(dataDir);
   const backups=join(dataDir,'backups');let names:string[]=[];
   try{names=(await readdir(backups,{withFileTypes:true})).filter(item=>item.isDirectory()&&item.name.startsWith(BACKUP_PREFIX)).map(item=>item.name);}
   catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;return [];}
-  const listed:{path:string;name:string;createdAt:number;bytes:number;schemaVersion:number;sha256:string;artifactFiles:number;missingArtifacts:number}[]=[];
+  const listed:{path:string;name:string;createdAt:number;bytes:number;schemaVersion:number;sha256:string;artifactFiles:number;missingArtifacts:number;restorable:boolean}[]=[];
   for(const name of names.sort().reverse()){
     const root=join(backups,name);
     try{
       const manifest=await readManifest(root);
       const info=await stat(join(root,'state.sqlite'));
-      listed.push({path:root,name,createdAt:manifest.createdAt,bytes:info.size+manifest.artifacts.reduce((sum,item)=>sum+item.bytes,0),schemaVersion:manifest.schemaVersion,sha256:manifest.database.sha256,artifactFiles:manifest.artifacts.length,missingArtifacts:manifest.missingArtifacts});
+      listed.push({path:root,name,createdAt:manifest.createdAt,bytes:info.size+manifest.artifacts.reduce((sum,item)=>sum+item.bytes,0),schemaVersion:manifest.schemaVersion,sha256:manifest.database.sha256,artifactFiles:manifest.artifacts.length,missingArtifacts:manifest.missingArtifacts,
+        restorable:manifest.recoveryGeneration===undefined?current.generation===0:
+          manifest.recoveryGeneration.lineageId===current.lineageId&&manifest.recoveryGeneration.generation===current.generation});
     }catch{/* Incomplete folders without a valid manifest are skipped. */}
   }
+  assertManagedRecoveryGeneration(dataDir,current);
   return listed;
 }
 export async function deleteRuntimeBackup(dataDir:string,name:string,expectedSha256:string){
@@ -86,18 +90,36 @@ function validateDatabase(path:string){const db=new DatabaseSync(path,{readOnly:
 function safeRelative(value:unknown){if(typeof value!=='string'||!value||value.length>1024||isAbsolute(value))throw new Error('The backup contains an invalid artifact path.');const normalized=value.replaceAll('\\','/');if(normalized.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('The backup contains an unsafe artifact path.');return normalized;}
 async function readManifest(root:string):Promise<BackupManifest>{const path=join(root,'manifest.json'),info=await lstat(path);if(info.isSymbolicLink()||!info.isFile()||info.size>10*1024*1024)throw new Error('The backup manifest is invalid.');const value=JSON.parse(await import('node:fs/promises').then(fs=>fs.readFile(path,'utf8'))) as Partial<BackupManifest>;if(value.formatVersion!==1||typeof value.createdAt!=='number'||typeof value.schemaVersion!=='number'||!value.database||typeof value.database.bytes!=='number'||typeof value.database.sha256!=='string'||!Array.isArray(value.artifacts)||value.artifacts.length>MAX_ARTIFACTS||typeof value.missingArtifacts!=='number')throw new Error('This is not a supported Aux runtime backup.');const ids=new Set<string>(),paths=new Set<string>();for(const item of value.artifacts){if(!item||typeof item.artifactId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(item.artifactId)||typeof item.bytes!=='number'||item.bytes<0||typeof item.sha256!=='string'||!/^[a-f0-9]{64}$/.test(item.sha256))throw new Error('The backup manifest contains an invalid artifact.');const rel=safeRelative(item.relativePath);if(ids.has(item.artifactId)||paths.has(rel))throw new Error('The backup manifest repeats an artifact.');ids.add(item.artifactId);paths.add(rel);}return value as BackupManifest;}
 
-export async function createRuntimeBackup(repo:Repo,dataDir:string,opts:{maxBackupBytes?:number;interrupt?:()=>void}={}){
+export async function createRuntimeBackup(repo:Repo,dataDir:string,opts:{maxBackupBytes?:number;interrupt?:()=>void;expectedRecoveryGeneration?:ManagedRecoveryGeneration;requireCompleteArtifacts?:boolean}={}){
   const maxBytes=opts.maxBackupBytes??MAX_BACKUP_BYTES,keep=backupRetention(repo).keep;
   const recoveryGeneration=ensureManagedRecoveryGeneration(dataDir);
+  if(opts.expectedRecoveryGeneration)assertManagedRecoveryGeneration(dataDir,opts.expectedRecoveryGeneration);
   const backups=join(dataDir,'backups');await mkdir(backups,{recursive:true,mode:0o700});await mkdir(resolve(dataDir,'artifacts'),{recursive:true,mode:0o700});const createdAt=Date.now(),root=join(backups,`${BACKUP_PREFIX}${new Date(createdAt).toISOString().replace(/[:.]/g,'-')}-${randomUUID().slice(0,8)}`),database=join(root,'state.sqlite'),artifactRoot=await realpath(resolve(dataDir,'artifacts'));await mkdir(root,{recursive:true,mode:0o700});
   try{
     await minimizeLegacyObservationArtifacts(repo,artifactRoot);
     repo.db.prepare('VACUUM INTO ?').run(database);await chmod(database,0o600);const sanitized=new DatabaseSync(database);try{authenticateProtectedCopy(sanitized,repo.columnCipher);sanitized.prepare("DELETE FROM kv WHERE key='setting:gatewayApiKey'").run();sanitizePortablePageRecall(sanitized,repo.columnCipher);if(repo.columnCipher&&sanitized.prepare("SELECT 1 FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%' LIMIT 1").get())sanitized.prepare("INSERT INTO aux_meta(key,value) VALUES('portable_profile_proof_v1',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(repo.columnCipher.encrypt('aux_meta',JSON.stringify(['portable_profile_proof_v1']),'value','aux-portable-profile-v1'));sanitized.exec('VACUUM');}finally{sanitized.close();}opts.interrupt?.();const databaseInfo=await stat(database);if(!databaseInfo.isFile())throw new Error('The runtime database backup is invalid or exceeds 2 GB.');if(databaseInfo.size>maxBytes)throw new Error('Not enough free space for a complete runtime backup. Free disk space and try again.');const schemaVersion=validateDatabase(database);
     const snapshot=new DatabaseSync(database,{readOnly:true});let rows:{artifact_id:string;path:string}[];try{rows=snapshot.prepare("SELECT artifact_id,path FROM artifacts WHERE status='complete' ORDER BY created_at").all() as {artifact_id:string;path:string}[];}finally{snapshot.close();}if(rows.length>MAX_ARTIFACTS)throw new Error(`The runtime has more than ${MAX_ARTIFACTS} artifact records; remove old task data before creating a portable backup.`);const artifacts:ManifestArtifact[]=[];let missingArtifacts=0,totalBytes=databaseInfo.size,artifactBytes=0;
     for(const row of rows){try{const source=await realpath(row.path),rel=relative(artifactRoot,source);if(!rel||rel==='..'||rel.startsWith(`..${sep}`))throw new Error('outside artifact root');const info=await lstat(source);if(info.isSymbolicLink()||!info.isFile())throw new Error('not regular');if(artifactBytes+info.size>MAX_ARTIFACT_BYTES)throw new Error('Aux artifact backups are limited to 1 GB. Remove old artifacts and try again.');if(totalBytes+info.size>maxBytes)throw new Error('Not enough free space for a complete runtime backup. Free disk space and try again.');const relativePath=safeRelative(rel),target=join(root,'artifacts',relativePath);await mkdir(dirname(target),{recursive:true,mode:0o700});await copyFile(source,target);await chmod(target,0o600);artifacts.push({artifactId:row.artifact_id,relativePath,bytes:info.size,sha256:await digest(target)});artifactBytes+=info.size;totalBytes+=info.size;}catch(error){if(error instanceof Error&&(error.message.includes('limited to 1 GB')||error.message.includes('Not enough free space')))throw error;missingArtifacts++;}}
+    if(opts.requireCompleteArtifacts&&missingArtifacts)
+      throw new Error('A complete current-generation backup could not be issued because evidence files are missing.');
     assertManagedRecoveryGeneration(dataDir,recoveryGeneration);
-    const manifest:BackupManifest={formatVersion:1,createdAt,schemaVersion,database:{bytes:databaseInfo.size,sha256:await digest(database)},artifacts,missingArtifacts,recoveryGeneration};await writeFile(join(root,'manifest.json'),JSON.stringify(manifest,null,2)+'\n',{encoding:'utf8',mode:0o600});const entries=(await readdir(backups,{withFileTypes:true})).filter(item=>item.isDirectory()&&item.name.startsWith(BACKUP_PREFIX)).map(item=>item.name).sort().reverse();for(const name of entries.slice(keep))await rm(join(backups,name),{recursive:true,force:true});return{path:root,createdAt,bytes:totalBytes,schemaVersion,sha256:manifest.database.sha256,artifactFiles:artifacts.length,missingArtifacts};
+    const manifest:BackupManifest={formatVersion:1,createdAt,schemaVersion,database:{bytes:databaseInfo.size,sha256:await digest(database)},artifacts,missingArtifacts,recoveryGeneration};await writeFile(join(root,'manifest.json'),JSON.stringify(manifest,null,2)+'\n',{encoding:'utf8',mode:0o600});assertManagedRecoveryGeneration(dataDir,recoveryGeneration);const entries=(await readdir(backups,{withFileTypes:true})).filter(item=>item.isDirectory()&&item.name.startsWith(BACKUP_PREFIX)).map(item=>item.name).sort().reverse();for(const name of entries.slice(keep))await rm(join(backups,name),{recursive:true,force:true});return{path:root,createdAt,bytes:totalBytes,schemaVersion,sha256:manifest.database.sha256,artifactFiles:artifacts.length,missingArtifacts};
   }catch(error){await rm(root,{recursive:true,force:true});throw error;}
+}
+
+/** Forget has already committed; issuance failure leaves the generation advanced and restores refused. */
+export async function issueFreshManagedBackup(repo:Repo,dataDir:string,generation:ManagedRecoveryGeneration){
+  return createRuntimeBackup(repo,dataDir,{expectedRecoveryGeneration:generation,requireCompleteArtifacts:true});
+}
+
+export async function attemptFreshManagedBackup(repo:Repo,dataDir:string,generation:ManagedRecoveryGeneration){
+  try { await issueFreshManagedBackup(repo,dataDir,generation); return true; }
+  catch {
+    // Forget is irreversible. A failed snapshot must leave the old generation
+    // refused, while Settings offers an explicit retry for the current state.
+    process.stderr.write('[runtime] fresh managed backup was not issued; review recovery status in Settings.\n');
+    return false;
+  }
 }
 
 export async function stageRuntimeRestore(dataDir:string,sourcePath:string,cipher?:SqliteColumnCipher){
@@ -223,7 +245,11 @@ export async function runtimeRestoreStatus(dataDir:string){
     const value=JSON.parse(await readFile(join(dataDir,'runtime-restore-status.json'),'utf8')) as {lastAppliedAt?:unknown};
     if(typeof value.lastAppliedAt==='number'&&Number.isFinite(value.lastAppliedAt))lastAppliedAt=value.lastAppliedAt;
   }catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw error;}
-  return{pending:existsSync(join(dataDir,'pending-runtime-restore.json')),...(lastAppliedAt?{lastAppliedAt}:{})};
+  const generation=ensureManagedRecoveryGeneration(dataDir);
+  const backups=await listRuntimeBackups(dataDir);
+  assertManagedRecoveryGeneration(dataDir,generation);
+  return{pending:existsSync(join(dataDir,'pending-runtime-restore.json')),...(lastAppliedAt?{lastAppliedAt}:{}),
+    managedRecovery:{generation:generation.generation,freshBackupIssued:backups.some(item=>item.restorable&&item.missingArtifacts===0)}};
 }
 
 /** Apply a user-staged restore before opening the runtime's active database. */

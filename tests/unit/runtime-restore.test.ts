@@ -16,6 +16,7 @@ import {
 import { migrateSensitiveKv, migrateSensitiveTable, SqliteColumnCipher } from "../../apps/runtime/src/store/sqlite-protection.js";
 import { advanceManagedRecoveryGeneration, currentManagedRecoveryGeneration } from
   "../../apps/runtime/src/services/managed-recovery-generation.js";
+import { issueFreshManagedBackup } from "../../apps/runtime/src/services/runtime-backup.js";
 
 const directories: string[] = [];
 afterEach(() => {
@@ -195,8 +196,31 @@ it("refuses an older managed backup after Forget and accepts a fresh generation"
     const before = currentManagedRecoveryGeneration(dataDir);
     const after = advanceManagedRecoveryGeneration(dataDir);
     expect(after).toEqual({ lineageId: before.lineageId, generation: before.generation + 1 });
+    expect((await listRuntimeBackups(dataDir)).find(item => item.path === old.path)?.restorable).toBe(false);
+    expect((await runtimeRestoreStatus(dataDir)).managedRecovery).toEqual({ generation: after.generation, freshBackupIssued: false });
     await expect(stageRuntimeRestore(dataDir, old.path)).rejects.toThrow(/predates the current recovery generation/);
     const fresh = await createRuntimeBackup(repo, dataDir);
+    expect((await listRuntimeBackups(dataDir)).find(item => item.path === fresh.path)?.restorable).toBe(true);
+    expect((await runtimeRestoreStatus(dataDir)).managedRecovery).toEqual({ generation: after.generation, freshBackupIssued: true });
+    await expect(stageRuntimeRestore(dataDir, fresh.path)).resolves.toMatchObject({ staged: true });
+  } finally { repo.close(); }
+});
+
+it("does not issue a partial post-Forget recovery point and permits a complete retry", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "aux-recovery-issue-"));
+  directories.push(dataDir);
+  const repo = new Repo(openDb(join(dataDir, "aux-state.sqlite")));
+  try {
+    const old = await createRuntimeBackup(repo, dataDir);
+    const current = advanceManagedRecoveryGeneration(dataDir);
+    repo.saveArtifact({ artifactId: "missing", path: join(dataDir, "artifacts", "missing.txt"),
+      mediaType: "text/plain", size: 7, status: "complete", createdAt: Date.now() });
+    await expect(issueFreshManagedBackup(repo, dataDir, current)).rejects.toThrow(/complete current-generation backup/);
+    expect((await runtimeRestoreStatus(dataDir)).managedRecovery.freshBackupIssued).toBe(false);
+    expect((await listRuntimeBackups(dataDir)).map(item => [item.path, item.restorable])).toEqual([[old.path, false]]);
+    repo.db.prepare("DELETE FROM artifacts WHERE artifact_id='missing'").run();
+    const fresh = await issueFreshManagedBackup(repo, dataDir, current);
+    expect((await runtimeRestoreStatus(dataDir)).managedRecovery.freshBackupIssued).toBe(true);
     await expect(stageRuntimeRestore(dataDir, fresh.path)).resolves.toMatchObject({ staged: true });
   } finally { repo.close(); }
 });

@@ -23,7 +23,8 @@ export function RecoveryPackage({ pending, onStaged }: { pending: boolean; onSta
       remembered pages, and current Space memory. It excludes browser cookies, passwords, Keychain credentials,
       connector tokens, and deleted memory. The reviewed package is limited to 64 MB; larger Profiles fail without
       a partial export. Settle active work before exporting. Imported grants are revoked and routines pause for review.
-      Copies and phrases kept outside Aux cannot be revoked after Forget.</p>
+      Previously exported copies remain restorable with their original phrase after Forget. Copies and phrases
+      kept outside Aux cannot be revoked.</p>
     <p className="hint">Creating or staging a package asks for fresh device authentication.</p>
     <label>Recovery phrase
       <input type="password" autoComplete="new-password" minLength={16} maxLength={200}

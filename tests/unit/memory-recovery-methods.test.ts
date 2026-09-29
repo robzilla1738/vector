@@ -7,6 +7,7 @@ import { workspacesMethods } from "../../apps/runtime/src/api/methods/workspaces
 import { BrowsingMemory } from "../../apps/runtime/src/services/browsing-memory.js";
 import { currentManagedRecoveryGeneration, ensureManagedRecoveryGeneration } from
   "../../apps/runtime/src/services/managed-recovery-generation.js";
+import { listRuntimeBackups } from "../../apps/runtime/src/services/runtime-backup.js";
 
 function fixture() {
   const dataDir = mkdtempSync(join(tmpdir(), "aux-memory-recovery-"));
@@ -18,7 +19,7 @@ function fixture() {
   const context = (method: keyof typeof workspacesMethods, params: object, extra: object = {}) => ({
     client: { external: false }, method, params, tasks, browsingMemory,
     revokeWorkspaceContext: vi.fn(), revokeArticleRuns: vi.fn(),
-    s: { settings: { all: () => ({ dataDir }) }, events, runs: { redactForgottenArticleOutputs: vi.fn() },
+    s: { repo, settings: { all: () => ({ dataDir }) }, events, runs: { redactForgottenArticleOutputs: vi.fn() },
       checkpointDeletedData: vi.fn(), ...extra },
   }) as unknown as Parameters<NonNullable<(typeof workspacesMethods)[typeof method]>>[0];
   return { dataDir, repo, tasks, space, browsingMemory, context, close: () => {
@@ -46,6 +47,7 @@ it("advances for browsing Forget and retention deletion, but not a pause", async
     await workspacesMethods["workspaces.browsingMemory.forget"]!(f.context("workspaces.browsingMemory.forget",
       { workspaceId, memoryId: "page-2" }));
     expect(currentManagedRecoveryGeneration(f.dataDir).generation).toBe(before + 2);
+    expect((await listRuntimeBackups(f.dataDir)).filter(item => item.restorable && !item.missingArtifacts)).toHaveLength(1);
   } finally { f.close(); }
 });
 
@@ -103,5 +105,6 @@ it("wires saved-article Forget and policy removals through the recovery guard", 
     await workspacesMethods["workspaces.contentMemory.setPolicy"]!(f.context("workspaces.contentMemory.setPolicy",
       { workspaceId, policy: { enabled: true, retentionDays: 30, allowedOrigins: [] } }, { contentMemory: store }));
     expect(currentManagedRecoveryGeneration(f.dataDir).generation).toBe(before + 2);
+    expect((await listRuntimeBackups(f.dataDir)).filter(item => item.restorable && !item.missingArtifacts)).toHaveLength(1);
   } finally { f.close(); }
 });

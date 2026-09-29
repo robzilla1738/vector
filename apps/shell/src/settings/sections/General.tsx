@@ -62,6 +62,7 @@ export function GeneralSettings({
       schemaVersion: number;
       artifactFiles: number;
       missingArtifacts: number;
+      restorable: boolean;
     }[]
   >([]);
   const [deleteBackupName, setDeleteBackupName] = useState<string | null>(null);
@@ -500,9 +501,10 @@ export function GeneralSettings({
                   {new Date(item.createdAt).toLocaleString()} · schema {item.schemaVersion} ·{" "}
                   {item.artifactFiles} artifacts
                   {item.missingArtifacts ? ` · ${item.missingArtifacts} unavailable` : ""}
+                  {!item.restorable ? " · Older than current Forget generation — restore refused" : ""}
                   <button
                     className="btn sm"
-                    disabled={backupBusy || restoreStatus.pending}
+                    disabled={backupBusy || restoreStatus.pending || !item.restorable}
                     onClick={() => {
                       setBackupBusy(true);
                       setBackupMessage("");

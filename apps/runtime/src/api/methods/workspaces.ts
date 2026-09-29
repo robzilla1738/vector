@@ -3,6 +3,7 @@ import type { MethodName, WorkspaceMemory } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
 import { memoryContentSensitivityReason, memorySensitivityReason } from "@aux/contracts/memory-sensitivity";
 import { advanceManagedRecoveryGeneration } from "../../services/managed-recovery-generation.js";
+import { attemptFreshManagedBackup } from "../../services/runtime-backup.js";
 
 async function h_workspaces_create(ctx: MethodCtx): Promise<unknown> {
   const { params, tasks } = ctx;
@@ -42,12 +43,13 @@ async function h_workspaces_browsingMemory_get(ctx: MethodCtx): Promise<unknown>
   if (method === "workspaces.browsingMemory.get") return browsingMemory.get(params.workspaceId);
   if (method === "workspaces.browsingMemory.set") {
     const prior = browsingMemory.policy(params.workspaceId);
-    if (params.policy.retentionDays < prior.retentionDays && browsingMemory.get(params.workspaceId).pages.length)
-      advanceManagedRecoveryGeneration(s.settings.all().dataDir);
+    const generation = params.policy.retentionDays < prior.retentionDays && browsingMemory.get(params.workspaceId).pages.length
+      ? advanceManagedRecoveryGeneration(s.settings.all().dataDir) : undefined;
     const result = browsingMemory.setPolicy(params.workspaceId, params.policy);
     if ((prior.enabled && !result.policy.enabled) || result.policy.retentionDays < prior.retentionDays)
       revokeWorkspaceContext(params.workspaceId, true);
     s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId });
+    if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
     return result;
   }
   if (method === "workspaces.browsingMemory.record")
@@ -57,11 +59,12 @@ async function h_workspaces_browsingMemory_get(ctx: MethodCtx): Promise<unknown>
       params.expectedDocumentEpoch,
     );
   const saved = browsingMemory.get(params.workspaceId).pages;
-  if (saved.some(page => !params.memoryId || page.memoryId === params.memoryId))
-    advanceManagedRecoveryGeneration(s.settings.all().dataDir);
+  const generation = saved.some(page => !params.memoryId || page.memoryId === params.memoryId)
+    ? advanceManagedRecoveryGeneration(s.settings.all().dataDir) : undefined;
   const result = browsingMemory.forget(params.workspaceId, params.memoryId);
   revokeWorkspaceContext(params.workspaceId, true);
   s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId });
+  if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
   return result;
 }
 async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknown> {
@@ -74,10 +77,11 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
   if (method === "workspaces.contentMemory.setPolicy") {
     const prior = store.policy(params.workspaceId);
     let advanced = false;
+    let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
     let result: Awaited<ReturnType<typeof store.setPolicy>>;
     try {
       result = await store.setPolicy(params.workspaceId, params.policy,
-        () => { advanceManagedRecoveryGeneration(s.settings.all().dataDir); advanced = true; });
+        () => { generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir); advanced = true; });
     } catch (error) {
       if (advanced) throw new AuxError("conflict", "Article removal could not be confirmed. Older managed backups were invalidated; review saved articles and create a fresh local backup.");
       throw error;
@@ -91,6 +95,7 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
     s.runs.redactForgottenArticleOutputs(params.workspaceId);
     s.checkpointDeletedData?.();
     s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
+    if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
     return result;
   }
   if (method === "workspaces.contentMemory.search") return store.search(params.workspaceId, params.query);
@@ -102,10 +107,11 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
   }
   if (method === "workspaces.contentMemory.forget") {
     let advanced = false;
+    let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
     let forgotten: number;
     try {
       forgotten = await store.forget(params.workspaceId, params.memoryId,
-        () => { advanceManagedRecoveryGeneration(s.settings.all().dataDir); advanced = true; });
+        () => { generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir); advanced = true; });
     } catch (error) {
       if (advanced) throw new AuxError("conflict", "Article Forget could not be confirmed. Older managed backups were invalidated; review saved articles and create a fresh local backup.");
       throw error;
@@ -114,6 +120,7 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
     s.runs.redactForgottenArticleOutputs(params.workspaceId);
     s.checkpointDeletedData?.();
     s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
+    if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
     return { forgotten };
   }
   const page = s.pages.get(params.pageId);
@@ -170,8 +177,9 @@ async function h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown> {
   const addsExclusion = ((params.excludedOrigins ?? []) as string[])
     .some(origin => !(prior.excludedOrigins ?? []).includes(origin));
   let advanced = false;
+  let generation: ReturnType<typeof advanceManagedRecoveryGeneration> | undefined;
   const beforeSave = prior.revision === params.expectedRevision && (removesText || removesItem || addsExclusion)
-    ? () => { advanceManagedRecoveryGeneration(s.settings.all().dataDir); advanced = true; } : undefined;
+    ? () => { generation = advanceManagedRecoveryGeneration(s.settings.all().dataDir); advanced = true; } : undefined;
   let memory: ReturnType<typeof tasks.setWorkspaceMemory>;
   try {
     memory = tasks.setWorkspaceMemory(
@@ -189,6 +197,7 @@ async function h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown> {
   }
   revokeWorkspaceContext(params.workspaceId, false);
   s.runs.redactForgottenArticleOutputs(params.workspaceId);
+  if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
   return memory;
 }
 

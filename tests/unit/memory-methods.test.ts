@@ -1,5 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { memoryMethods } from "../../apps/runtime/src/api/methods/memory.js";
+import { openDb, Repo } from "@aux/runtime";
+import { createRuntimeBackup, listRuntimeBackups, runtimeRestoreStatus } from "../../apps/runtime/src/services/runtime-backup.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -41,8 +43,28 @@ it("refreshes and revokes active context after successful Memory changes only", 
   expect(emit).not.toHaveBeenCalled();
 });
 
+it("keeps Forget successful but marks recovery incomplete when fresh issuance cannot include evidence", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "aux-memory-issue-fail-"));
+  const repo = new Repo(openDb(":memory:"));
+  try {
+    const old = await createRuntimeBackup(repo, dataDir);
+    repo.saveArtifact({ artifactId: "missing", path: join(dataDir, "artifacts", "missing.txt"),
+      mediaType: "text/plain", size: 7, status: "complete", createdAt: Date.now() });
+    const handler = memoryMethods["memory.pipeline.forget"]!;
+    await expect(handler({ client: { external: false, codeMode: false }, method: "memory.pipeline.forget",
+      params: { workspaceId: "space-1", all: true }, revokeWorkspaceContext: vi.fn(),
+      s: { repo, memoryPipeline: { forget: async (_params: unknown, beforeRemoval: () => void) => {
+        beforeRemoval(); return { forgotten: 1, remaining: 0 };
+      } }, settings: { all: () => ({ dataDir }) }, events: { emit: vi.fn() } },
+    } as unknown as Parameters<typeof handler>[0])).resolves.toEqual({ forgotten: 1, remaining: 0 });
+    expect((await listRuntimeBackups(dataDir)).map(item => [item.path, item.restorable])).toEqual([[old.path, false]]);
+    expect((await runtimeRestoreStatus(dataDir)).managedRecovery.freshBackupIssued).toBe(false);
+  } finally { repo.close(); rmSync(dataDir, { recursive: true, force: true }); }
+});
+
 it("advances the managed backup generation before a nonempty pipeline Forget", async () => {
   const dataDir = mkdtempSync(join(tmpdir(), "aux-memory-method-"));
+  const repo = new Repo(openDb(":memory:"));
   try {
     const before = ensureManagedRecoveryGeneration(dataDir);
     const forget = vi.fn(async (_params: unknown, beforeRemoval: () => void) => {
@@ -53,8 +75,9 @@ it("advances the managed backup generation before a nonempty pipeline Forget", a
     const handler = memoryMethods["memory.pipeline.forget"]!;
     await handler({ client: { external: false, codeMode: false }, method: "memory.pipeline.forget",
       params: { workspaceId: "space-1", all: true }, revokeWorkspaceContext: vi.fn(),
-      s: { memoryPipeline: { forget }, settings: { all: () => ({ dataDir }) }, events: { emit: vi.fn() } },
+      s: { repo, memoryPipeline: { forget }, settings: { all: () => ({ dataDir }) }, events: { emit: vi.fn() } },
     } as unknown as Parameters<typeof handler>[0]);
     expect(forget).toHaveBeenCalledOnce();
-  } finally { rmSync(dataDir, { recursive: true, force: true }); }
+    expect((await listRuntimeBackups(dataDir)).filter(item => item.restorable)).toHaveLength(1);
+  } finally { repo.close(); rmSync(dataDir, { recursive: true, force: true }); }
 });
