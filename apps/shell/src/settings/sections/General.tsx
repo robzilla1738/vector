@@ -21,6 +21,7 @@ import { useFeature } from "../../use-feature";
 import { memorySaverCyclesChanged, memorySaverCyclesKey, memorySaverSummary, readMemorySaverCycles } from "../../memory-saver-report";
 import { TaskAttentionSettings } from "../../agent/TaskAttentionSettings";
 import { RecoveryPackage } from "./RecoveryPackage";
+import { requestOnboardingReplay } from "../../onboarding/replay";
 
 export function GeneralSettings({
   active,
@@ -154,6 +155,9 @@ export function GeneralSettings({
           </IndexedField>}
           <IndexedField label="Default browser">
             <DefaultBrowserSetting />
+          </IndexedField>
+          <IndexedField label="Set up Aux" hint="Replay import, model setup and your first chat. Saved work is kept.">
+            <button className="btn sm" onClick={requestOnboardingReplay}>Replay setup</button>
           </IndexedField>
 
           <IndexedField compact label="Search engine">

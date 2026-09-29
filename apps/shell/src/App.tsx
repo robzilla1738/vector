@@ -55,6 +55,7 @@ const Sidebar = deferSurface(async () => { const module = await import("./compon
 const ChatSidebar = deferSurface(async () => { const module = await import("./components/ChatSidebar"); return {default:module.ChatSidebar}; }, "Sidebar", true, true);
 const AgentRail = deferSurface(async () => { const module = await import("./components/AgentRail"); return {default:module.AgentRail}; }, "Assistant", true, true);
 const LinkPeek = deferSurface(async () => { const module = await import("./components/LinkPeek"); return {default:module.LinkPeek}; }, "Link preview", true, true);
+const Onboarding = deferSurface(() => import("./onboarding/OnboardingHost"), "Setup", true, true);
 
 /** Only the fields that decide native-view placement — title/favicon churn must not re-render the shell. */
 const placementFields = (page?: PageTarget) => page && { pageId: page.pageId, url: page.url, backend: page.backend, viewStatus: page.viewStatus, navigationError: page.navigationError, showBlankDocument: page.showBlankDocument };
@@ -594,6 +595,7 @@ export function App() {
       <ActionConfirmation />
       {vaultOffer && <VaultOfferBanner />}
       <Toasts />
+      <Onboarding />
       {runNotice && noticePreference === "all" && !confirming && !overlay
         && (!document.hasFocus() || foregroundRun !== runNotice.runId) &&
         <RunNoticeBanner notice={runNotice} onDismiss={() => setRunNotice(null)}

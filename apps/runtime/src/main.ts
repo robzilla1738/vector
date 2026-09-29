@@ -529,7 +529,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     prepareAgentEgress: (runId, pageId) => browserEgress?.ensure(runId, pageId) ?? Promise.resolve(),
     recordAgentObservation: (pageId, url, text) => {
       const runId = pageClaims.activeForPage(pageId)?.runId;
-      if (runId) browserEgress?.notePageText(runId, pageId, text, url);
+      // Owner/API reads can hold a short page claim without an agent run.
+      // Only a durable run may taint its protected egress context.
+      if (runId && repo.getRun(runId)) browserEgress?.notePageText(runId, pageId, text, url);
     },
     // unified step ledger — every execution records steps with pageId so
     // operations.compile can rebuild the trace (§10.3)
