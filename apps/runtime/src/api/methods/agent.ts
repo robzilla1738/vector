@@ -2,11 +2,12 @@ import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AgentImageTools } from "../../agent/image-tools.js";
 import { AgentWebTools, permittedWebUrl } from "../../agent/web-tools.js";
-import { AuxError, InlineAssistApplyParamsSchema, InlineAssistTextSchema } from "@aux/contracts";
+import { AuxError, OriginRuleSchema, InlineAssistApplyParamsSchema, InlineAssistTextSchema } from "@aux/contracts";
 import { SpendLedger } from "../../store/spend-ledger.js";
 import { authorizeProgram } from "../../agent/permissions.js";
 import { proposeTabTidy } from "../../agent/tidy.js";
 import { suggestTabName } from "../../agent/tab-name.js";
+import { evaluateOriginPolicy } from "../../safety/origin-policy.js";
 
 async function h_agent_js_run(ctx: MethodCtx): Promise<unknown> {
   const { client, codeMode, params } = ctx;
@@ -45,27 +46,51 @@ async function h_agent_tabName_suggest(ctx: MethodCtx): Promise<unknown> {
   s.events.emit("agent.tabName.suggested", { pageId: suggestion.pageId, modelId: suggestion.modelId });
   return suggestion;
 }
+function inlineAssistGuard(ctx: MethodCtx) {
+  const revision = ctx.s.settings.selectionCapture().revision;
+  const verify = (url?: string, effect: "read" | "egress" | "write" = "read") => {
+    const current = ctx.s.settings.selectionCapture();
+    if (!current.inlineAssist)
+      throw new AuxError("permission_denied", "Inline assist is off in Selection & Capture settings.");
+    if (current.revision !== revision)
+      throw new AuxError("conflict", "Selection & Capture changed. Select the field and start again.");
+    if (url) {
+      const policy = evaluateOriginPolicy({ url, effect, action: `inline_assist_${effect}`,
+        managed: OriginRuleSchema.array().parse(ctx.s.repo.getSetting("managedOriginPolicies") ?? []),
+        user: ctx.s.settings.originPolicies(), audit: decision => ctx.safetyAudit.record({ ...decision }) });
+      if (policy.access !== "allow" || ctx.s.settings.safetyCeiling(effect) === "never")
+        throw new AuxError("permission_denied", policy.access === "ask"
+          ? "This site requires an approval that Inline assist cannot request yet."
+          : "This site’s policy does not allow this Inline assist action.");
+    }
+  };
+  verify();
+  return verify;
+}
+
 async function h_agent_inlineAssist_capture(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
   if (client.external)
     throw new AuxError("permission_denied", "Inline assist requires the Aux desktop interface.");
-  return s.pages.captureInlineAssist(params);
+  return s.pages.captureInlineAssist(params, inlineAssistGuard(ctx));
 }
 async function h_agent_inlineAssist_draft(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
   if (client.external)
     throw new AuxError("permission_denied", "Inline assist requires the Aux desktop interface.");
+  const verifyEnabled = inlineAssistGuard(ctx);
   const model = s.settings.model();
   if (!model)
     throw new AuxError("backend_unavailable", "Connect a model in Settings before drafting field text.");
-  return s.pages.draftInlineAssist(params, model, s.settings.agentRoute("fast"));
+  return s.pages.draftInlineAssist(params, model, s.settings.agentRoute("fast"), verifyEnabled);
 }
 async function h_agent_inlineAssist_apply(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;
   if (client.external)
     throw new AuxError("permission_denied", "Inline assist requires the Aux desktop interface.");
+  const verifyEnabled = inlineAssistGuard(ctx);
   const request = InlineAssistApplyParamsSchema.parse(params);
-  if (!request.proposalRunId) return s.pages.applyInlineAssist(request);
+  if (!request.proposalRunId) return s.pages.applyInlineAssist(request, undefined, verifyEnabled);
   const verifyProposal = () => {
     const run = s.runs.coordinator.get(request.proposalRunId!);
     const proposal = InlineAssistTextSchema.safeParse(run.result?.textProposal);
@@ -74,7 +99,7 @@ async function h_agent_inlineAssist_apply(ctx: MethodCtx): Promise<unknown> {
       throw new AuxError("conflict", "The text proposal changed. Review the completed run before inserting it.");
   };
   verifyProposal();
-  return s.pages.applyInlineAssist(request, verifyProposal);
+  return s.pages.applyInlineAssist(request, verifyProposal, verifyEnabled);
 }
 async function h_agent_inlineAssist_cancel(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;

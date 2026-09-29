@@ -401,6 +401,10 @@ export const PageQuickActionSchema = z.object({
   /** Main-frame URL at the moment the browser menu captured the selection. */
   topUrl: z.string().optional(),
   capturedAt: z.number().int().nonnegative().optional(),
+  /** Exact browser document identity; required for configured Selection & Capture actions. */
+  documentEpoch: z.number().int().nonnegative().optional(),
+  sessionId: z.string().min(1).max(200).optional(),
+  selectionActionId: z.string().min(1).max(80).optional(),
   action: z.enum(["ask", "explain", "summarize", "remember", "image"]),
   selection: z.string().max(12000), truncated: z.boolean(),
   /** Present only for image actions — a PNG snapshot captured from the page, or a capture error. */

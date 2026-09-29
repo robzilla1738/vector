@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-29",
+  "scope": "S9 Selection & Capture source batch; native acceptance remains open",
+  "sourceBase": "3f9c76dc7fbfa62ae2b2c4272aab5320a3d8d0ca",
+  "sourceFilesSha256": {
+    "packages/contracts/src/selection-capture.ts": "2505da7a23460c276b1b669d16d4ed9c151f56ab3616571104ed40f56a2bc958",
+    "packages/contracts/src/api.ts": "ba899ce0764a8fbf8574c4fd8342e49f61721dd8698ff2e7265b126bac0a662d",
+    "packages/contracts/src/entities.ts": "b319473646ba91536e58e776c373b7607339cf1fb8803b4a021170aedd62d3d4",
+    "packages/contracts/src/index.ts": "e7b61c3b5eb2d1334d292c0aeedcb097109e60493fb04b425866365546b5fdf4",
+    "apps/runtime/src/services/settings.ts": "7855a6d34d05c499d00cba9f015b979737339fc36e22576f66d80b6506ab9ba5",
+    "apps/runtime/src/api/methods/agent.ts": "4cd015855116ad5901d0156b1c70a87f28e61386f88ca62dc0171963b5f3bf85",
+    "apps/runtime/src/services/pages/inline-assist.ts": "e1ddb08c9e7c2c31f65bf9b0ed2ed0b930f049af9ab04e8a241b1b94e908f170",
+    "apps/shell/src/selection-action-draft.ts": "fb0628e17d1f785bfef91dbddd1032f1c155e8f9b21ff5c59f5b6ddda24c5c9b",
+    "apps/shell/src/settings/sections/SelectionCapture.tsx": "06233562f6fd3fce83ebf10fc59fb9da3b3372fc49906c5a49a925cb7955a724",
+    "apps/shell/src/components/InlineAssist.tsx": "0b3fc0645ccfb9aacc12e79db8890250482b15e90989203d2759e7023f8a34ed",
+    "tests/unit/selection-capture-settings.test.ts": "f2d769fa6a278aeeb8732d7b6cb523269aeb7c4fc2303ab9f61006bb4ed94a93",
+    "tests/unit/inline-assist.test.ts": "8cbab85ec16c86a00c097273ef008cd88be98fcaba1a2e038bf1c3959a9ba06d",
+    "apps/shell/src/selection-action-draft.test.ts": "50da58f2b7df2a35e0a76e8ac82ab564607e75b042785e4299d4d52cf761a144",
+    "apps/shell/src/settings/sections/SelectionCapture.test.tsx": "122ce24ae4261cef1206ebd445f70295686ba79ab5c432f39e05058d2cf4ad05",
+    "apps/shell/src/components/InlineAssist.test.tsx": "2c8b90b472a343babc1c13f8df2c26450376cfa2bc2fa69addda01df0ca6ce38",
+    "apps/shell/src/browser-context-sources.test.ts": "f8f132001be8cb8bf29aa671212e3256f77db1f16b79b04eb78905acb4aea2ff"
+  },
+  "verification": {
+    "workspaceRebuild": "passed after local generated authorization refresh",
+    "rendererTypecheck": "passed",
+    "focusedTests": [
+      {
+        "file": "tests/unit/selection-capture-settings.test.ts",
+        "passed": 9
+      },
+      {
+        "file": "tests/unit/inline-assist.test.ts",
+        "passed": 8
+      },
+      {
+        "file": "apps/shell/src/selection-action-draft.test.ts",
+        "passed": 12
+      },
+      {
+        "file": "apps/shell/src/settings/sections/SelectionCapture.test.tsx",
+        "passed": 6
+      },
+      {
+        "file": "apps/shell/src/components/InlineAssist.test.tsx",
+        "passed": 3
+      },
+      {
+        "file": "apps/shell/src/browser-context-sources.test.ts",
+        "passed": 2
+      }
+    ],
+    "uniquePassingCases": 40,
+    "lint": {
+      "passed": true,
+      "warnings": 374,
+      "ceiling": 390
+    },
+    "formatRatchet": "passed",
+    "diffCheck": "passed"
+  },
+  "testExecution": "Each changed test file was rerun after its final source change; unchanged source identity and browser context cases reused their passing focused run. No broad repeated test or benchmark run.",
+  "native": {
+    "built": false,
+    "qualified": false,
+    "generatedFilesCommitted": false,
+    "pending": [
+      "Settings route/rail and App consumer assembly",
+      "Native document/session identity and ordered menu producer",
+      "Native hotkey registration receipt and physical gestures",
+      "Region picker and reviewed image handoff",
+      "Private/managed/caller Profile-window admission",
+      "Restart and focused live acceptance"
+    ]
+  },
+  "paidModelCalls": 0,
+  "ownerDataActions": 0,
+  "handoff": "docs/SELECTION-CAPTURE-S9-HANDOFF.md"
+}

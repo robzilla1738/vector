@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { InlineAssistTextSchema, type InlineAssistCapture } from "@aux/contracts";
+import { InlineAssistTextSchema, readSelectionCaptureSettings, type InlineAssistCapture } from "@aux/contracts";
 import { call, toast, useStore } from "../store";
 import { I } from "./icons";
+import { bridge } from "../bridge";
 import "./inline-assist.css";
 
 /** In-flow editor; the browser page remains visible while a person reviews the draft. */
 export function InlineAssist() {
+  const enabled = useStore(s => readSelectionCaptureSettings(s.settings.selectionCapture).inlineAssist) && !bridge.privateMode;
   const activePage = useStore(s => s.pages.find(page => page.pageId === s.activePageId));
   const setOverlay = useStore(s => s.setOverlay);
-  const initial = useRef(activePage ? { pageId: activePage.pageId, url: activePage.url, documentEpoch: activePage.documentEpoch } : null);
+  const initial = useRef(activePage ? { pageId: activePage.pageId, url: activePage.url, documentEpoch: activePage.documentEpoch, windowId: activePage.windowId } : null);
   const [capture, setCapture] = useState<InlineAssistCapture | null>(null);
   const captureId = useRef<string | null>(null);
+  const generation = useRef(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"draft" | "apply" | null>(null);
   const [instruction, setInstruction] = useState("Improve clarity and tone without changing the meaning.");
@@ -18,38 +21,44 @@ export function InlineAssist() {
   const [drafted, setDrafted] = useState(false);
   const [error, setError] = useState("");
   const stale = !!capture && (!activePage || activePage.pageId !== capture.pageId || activePage.url !== capture.url
-    || activePage.documentEpoch !== capture.documentEpoch);
+    || activePage.documentEpoch !== capture.documentEpoch || activePage.windowId !== bridge.windowId);
 
   useEffect(() => {
+    generation.current++; setBusy(null); setDrafted(false); setReplacement("");
+    if (!enabled) { setCapture(null); setDrafted(false); setReplacement(""); setLoading(false); setError("Inline assist is off or unavailable in this window. Review Selection & Capture settings."); return; }
+    setLoading(true); setError("");
     const page = initial.current;
+    if (page && page.windowId !== bridge.windowId) { setError("This field belongs to another window. Select a field in this window."); setLoading(false); return; }
     if (!page) { setError("Select a web page and focus a text field before opening Assist writing."); setLoading(false); return; }
     let live = true;
     void call("agent.inlineAssist.capture", { pageId: page.pageId, expectedUrl: page.url,
       expectedDocumentEpoch: page.documentEpoch }).then(result => {
-      if (!live) { void call("agent.inlineAssist.cancel", { captureId: result.captureId }); return; }
+      if (!live) { void call("agent.inlineAssist.cancel", { captureId: result.captureId }).catch(() => {}); return; }
       captureId.current = result.captureId;
       setCapture(result);
     }).catch(reason => {
       if (live) setError(reason instanceof Error ? reason.message : String(reason));
     }).finally(() => { if (live) setLoading(false); });
     return () => {
-      live = false;
+      live = false; generation.current++;
       if (captureId.current) void call("agent.inlineAssist.cancel", { captureId: captureId.current }).catch(() => {});
+      captureId.current = null;
     };
-  }, []);
+  }, [enabled]);
 
   function close() { setOverlay(null); }
   async function draft() {
-    if (!capture || stale || busy) return;
+    if (!enabled || !capture || stale || busy) return;
+    const attempt = generation.current;
     setBusy("draft"); setError(""); setDrafted(false);
     try {
       const result = await call("agent.inlineAssist.draft", { captureId: capture.captureId, instruction });
-      setReplacement(result.replacement); setDrafted(true);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { setBusy(null); }
+      if (generation.current === attempt) { setReplacement(result.replacement); setDrafted(true); }
+    } catch (reason) { if (generation.current === attempt) setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally { if (generation.current === attempt) setBusy(null); }
   }
   async function apply() {
-    if (!capture || !drafted || stale || busy) return;
+    if (!enabled || !capture || !drafted || stale || busy) return;
     setBusy("apply"); setError("");
     try {
       await call("agent.inlineAssist.apply", { captureId: capture.captureId, replacement });

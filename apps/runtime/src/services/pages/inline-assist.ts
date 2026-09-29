@@ -13,7 +13,8 @@ type Field = { kind: "input" | "textarea" | "contenteditable"; path: number[]; i
   start: number; end: number; label: string; maxLength?: number; mode: "selection" | "field" };
 type FieldRead = { ok: true; field: Field } | { ok: false; reason: string };
 type FieldWrite = { ok: true } | { ok: false; reason: string };
-type Captured = { capture: InlineAssistCapture; field: Field; drafted: boolean; at: number };
+type AssistGuard = (url?: string, effect?: "read" | "egress" | "write") => void;
+type Captured = { capture: InlineAssistCapture; field: Field; drafted: boolean; at: number; verifyEnabled?: AssistGuard };
 const CAPTURE_TTL_MS = 5 * 60_000;
 const MAX_CAPTURES = 20;
 
@@ -171,16 +172,20 @@ export class InlineAssist {
       this.captures.delete(id);
       throw new AuxError("conflict", "This field draft expired. Select the field and start again.");
     }
+    capture.verifyEnabled?.(capture.capture.url, "read");
     return capture;
   }
 
-  async capture(input: unknown): Promise<InlineAssistCapture> {
+  async capture(input: unknown, verifyEnabled?: AssistGuard): Promise<InlineAssistCapture> {
+    verifyEnabled?.();
     const request = InlineAssistCaptureParamsSchema.parse(input);
     return this.lanes.enqueue(request.pageId, async () => {
+      verifyEnabled?.(request.expectedUrl, "read");
       const { driver, origin } = this.current(request.pageId, request.expectedUrl, request.expectedDocumentEpoch);
       let result: FieldRead;
       try { result = await driver.evaluate(`(${readFocusedEditableInPage.toString()})(${JSON.stringify(request.expectedUrl)})`) as FieldRead; }
       catch { throw new AuxError("backend_unavailable", "Aux could not read the focused field."); }
+      verifyEnabled?.(request.expectedUrl, "read");
       this.current(request.pageId, request.expectedUrl, request.expectedDocumentEpoch);
       if (!result?.ok) throw new AuxError("capability_unsupported", "Focus a standard text field on this page, then try again.");
       const field = result.field;
@@ -193,18 +198,22 @@ export class InlineAssist {
         mode: field.mode, ...(field.maxLength ? { maxReplacementLength: field.maxLength - field.text.length + field.end - field.start } : {}) });
       for (const [id, item] of this.captures) if (Date.now() - item.at > CAPTURE_TTL_MS) this.captures.delete(id);
       if (this.captures.size >= MAX_CAPTURES) this.captures.delete(this.captures.keys().next().value!);
-      this.captures.set(capture.captureId, { capture, field, drafted: false, at: Date.now() });
+      this.captures.set(capture.captureId, { capture, field, drafted: false, at: Date.now(), verifyEnabled });
       return capture;
     });
   }
 
-  async draft(input: unknown, model: ModelClient, route: AgentModelRoute) {
+  async draft(input: unknown, model: ModelClient, route: AgentModelRoute, verifyEnabled?: AssistGuard) {
+    verifyEnabled?.();
     const request = InlineAssistDraftParamsSchema.parse(input);
     const item = this.recorded(request.captureId);
+    verifyEnabled?.(item.capture.url, "egress");
     const { driver } = this.current(item.capture.pageId, item.capture.url, item.capture.documentEpoch);
     let fresh = false;
     try { fresh = await driver.evaluate(`(${verifyInlineAssistFieldInPage.toString()})(${JSON.stringify({ expectedUrl: item.capture.url, field: item.field })})`) as boolean; }
     catch { /* A failed read never sends the field to the model. */ }
+    verifyEnabled?.(item.capture.url, "egress");
+    item.verifyEnabled?.(item.capture.url, "read");
     if (!fresh) throw new AuxError("conflict", "The field changed. Select it and start again.");
     const response = await model.generateStructured({
       modelId: route.modelId, reasoning: route.reasoning, maxAttempts: 1, maxOutputTokens: 2_048,
@@ -213,6 +222,8 @@ export class InlineAssist {
         fullFieldText: item.field.text, selectedText: item.capture.sourceText, replace: item.capture.mode }),
       schema: InlineAssistDraftSchema.omit({ captureId: true, modelId: true }),
     });
+    verifyEnabled?.(item.capture.url, "egress");
+    item.verifyEnabled?.(item.capture.url, "read");
     const parsed = InlineAssistTextSchema.safeParse((response.object as { replacement?: unknown })?.replacement);
     if (!parsed.success) throw new AuxError("model_output_invalid", "AI returned an invalid field draft. Try again.");
     if (item.capture.maxReplacementLength && parsed.data.length > item.capture.maxReplacementLength)
@@ -222,11 +233,14 @@ export class InlineAssist {
     return InlineAssistDraftSchema.parse({ captureId: request.captureId, replacement: parsed.data, modelId: route.modelId });
   }
 
-  async apply(input: unknown, verifyProposal?: () => void) {
+  async apply(input: unknown, verifyProposal?: () => void, verifyEnabled?: AssistGuard) {
+    verifyEnabled?.();
     const request = InlineAssistApplyParamsSchema.parse(input);
     const item = this.recorded(request.captureId);
     if (!item.drafted && !verifyProposal) throw new AuxError("conflict", "Draft and review the replacement before applying it.");
     return this.lanes.enqueue(item.capture.pageId, async () => {
+      verifyEnabled?.(item.capture.url, "write");
+      item.verifyEnabled?.(item.capture.url, "read");
       verifyProposal?.();
       const { driver } = this.current(item.capture.pageId, item.capture.url, item.capture.documentEpoch);
       const intent = beginConsequentialWrite(this.pages.deps.durableWrites, { runId: `direct:${item.capture.pageId}`,

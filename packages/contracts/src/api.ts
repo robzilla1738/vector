@@ -210,6 +210,7 @@ import { HookCreateParams, HookInvocationSchema, HookSchema } from "./hooks.js";
 import { WorkspaceFolderAccessSchema, WorkspaceFolderReviewSchema, WorkspaceFolderSchema } from "./workspace-folders.js";
 import { CommandEscalationRequestSchema } from "./command-escalation.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
+import { SelectionCaptureSettingsSchema } from "./selection-capture.js";
 import { AgentModelRouteChainSchema } from "./model-registry.js";
 import { SiteReadParamsSchema, SiteReadResultSchema } from "./site-adapters.js";
 
@@ -819,6 +820,7 @@ export const SettingsSetParams = z.object({
   tabSwitcherOrder: z.enum(["sidebar", "recently-used"]).optional(),
   /** commandId → replacement bindings; null disables the command's shortcuts. */
   shortcutOverrides: ShortcutOverridesSchema.optional(),
+  selectionCapture: SelectionCaptureSettingsSchema.optional(),
   zoomFactor: z.number().optional(),
   /** Privilege-independent effect grants. Model text cannot expand these. */
   effectGrants: z

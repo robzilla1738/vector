@@ -53,6 +53,42 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); document.body.innerHTML = ""; });
 
+it("rechecks preference authority after a page read and never calls the model after revocation", async () => {
+  const { assist, model, driver } = harness();
+  let enabled = true;
+  const verify = () => { if (!enabled) throw new AuxError("permission_denied", "Inline assist is off"); };
+  const capture = await assist.capture(request, verify);
+  driver.evaluate.mockImplementationOnce(async () => { enabled = false; return true; });
+  await expect(assist.draft({ captureId: capture.captureId, instruction: "Improve clarity" }, model as never, route, verify))
+    .rejects.toMatchObject({ code: "permission_denied" });
+  expect(model.generateStructured).not.toHaveBeenCalled();
+});
+
+it("invalidates the original capture when preferences change, even if assist is enabled again", async () => {
+  const { assist, model } = harness();
+  let revision = 0;
+  const verify = () => { if (revision !== 0) throw new AuxError("conflict", "Preferences changed"); };
+  const capture = await assist.capture(request, verify);
+  revision = 2;
+  await expect(assist.draft({ captureId: capture.captureId, instruction: "Improve clarity" }, model as never, route))
+    .rejects.toMatchObject({ code: "conflict" });
+  expect(model.generateStructured).not.toHaveBeenCalled();
+});
+
+it("refuses queued insertion after preference revocation before any page or ledger write", async () => {
+  const ledger = { begin: vi.fn() }, { assist, model } = harness(ledger);
+  let enabled = true;
+  const verify = () => { if (!enabled) throw new AuxError("permission_denied", "Off"); };
+  const capture = await assist.capture(request, verify);
+  await assist.draft({ captureId: capture.captureId, instruction: "Improve clarity" }, model as never, route, verify);
+  let checks = 0;
+  const queued = () => { if (++checks === 2) enabled = false; verify(); };
+  await expect(assist.apply({ captureId: capture.captureId, replacement: "Changed" }, undefined, queued))
+    .rejects.toMatchObject({ code: "permission_denied" });
+  expect(ledger.begin).not.toHaveBeenCalled();
+  expect(document.execCommand).not.toHaveBeenCalled();
+});
+
 it("captures only the focused selected field and drafts through the Contributor fast route", async () => {
   const { assist, model } = harness();
   const capture = await assist.capture(request);
@@ -132,8 +168,8 @@ it("inserts only the exact persisted completed-run proposal through the captured
     return assist.apply(input, verify);
   });
   const context = (replacement: string, external = false) => ({ client: { external },
-    params: { captureId: capture.captureId, replacement, proposalRunId: run.runId },
-    s: { runs: { coordinator: { get: () => run } }, pages: { applyInlineAssist: apply } },
+    params: { captureId: capture.captureId, replacement, proposalRunId: run.runId }, safetyAudit: { record: vi.fn() },
+    s: { settings: { selectionCapture: () => ({ inlineAssist: true }), originPolicies: () => [], safetyCeiling: () => "ask" }, repo: { getSetting: () => [] }, runs: { coordinator: { get: () => run } }, pages: { applyInlineAssist: apply } },
   }) as unknown as MethodCtx;
   await expect(agentMethods["agent.inlineAssist.apply"]!(context("Different text"))).rejects.toMatchObject({ code: "conflict" });
   expect(apply).not.toHaveBeenCalled();

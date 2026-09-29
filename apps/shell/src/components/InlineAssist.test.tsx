@@ -2,16 +2,47 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import type { PageTarget } from "@aux/contracts";
+import { defaultSelectionCaptureSettings, type PageTarget } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
 import { InlineAssist } from "./InlineAssist";
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.replaceChildren(); });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.replaceChildren(); useStore.setState({ settings: {} }); });
+
+it("does not capture a field when assist is disabled in the Profile", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  useStore.setState({ settings: { selectionCapture: { ...defaultSelectionCaptureSettings(), inlineAssist: false } } });
+  const invoke = vi.spyOn(bridge, "invoke");
+  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+  try {
+    await act(async () => root.render(<InlineAssist/>));
+    expect(host.textContent).toContain("Inline assist is off");
+    expect(invoke).not.toHaveBeenCalled();
+  } finally { await act(async () => root.unmount()); }
+});
+
+it("cancels a late capture and discards its field text when the preference changes", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const page = { pageId: "p1", windowId: bridge.windowId, url: "https://example.com/write", title: "Write", backend: "aux", documentEpoch: 2,
+    viewStatus: "visible", controller: "none", ownedByRuntime: false } as PageTarget;
+  useStore.setState({ settings: {}, pages: [page], activePageId: page.pageId });
+  let resolve!: (value: unknown) => void;
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(method => method === "agent.inlineAssist.capture"
+    ? new Promise(done => { resolve = done; }) : Promise.resolve({ cancelled: true }));
+  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+  try {
+    await act(async () => root.render(<InlineAssist/>));
+    await act(async () => useStore.setState({ settings: { selectionCapture: { ...defaultSelectionCaptureSettings(), inlineAssist: false, revision: 1 } } }));
+    await act(async () => resolve({ captureId: "late-capture", sourceText: "Private field content" }));
+    expect(invoke).toHaveBeenCalledWith("agent.inlineAssist.cancel", { captureId: "late-capture" });
+    expect(host.textContent).not.toContain("Private field content");
+    expect(host.textContent).toContain("Inline assist is off");
+  } finally { await act(async () => root.unmount()); }
+});
 
 it("shows the source and a reviewed draft before applying text to the page", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  const page = { pageId: "p1", url: "https://example.com/write", title: "Write", backend: "aux", documentEpoch: 2,
+  const page = { pageId: "p1", windowId: bridge.windowId, url: "https://example.com/write", title: "Write", backend: "aux", documentEpoch: 2,
     viewStatus: "visible", controller: "none", ownedByRuntime: false } as PageTarget;
   useStore.setState({ pages: [page], activePageId: page.pageId, overlay: "inline-assist" });
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async method => {

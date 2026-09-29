@@ -2,6 +2,11 @@ import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
   EffectSchema,
+  AuxError,
+  SelectionCaptureSettingsSchema,
+  readSelectionCaptureSettings,
+  captureShortcutConflict,
+  type SelectionCaptureSettings,
   ModelProviderSchema,
   ModelConnectionChangeSchema,
   ModelConnectionStatusSchema,
@@ -97,6 +102,7 @@ export interface Settings {
   tabSwitcherOrder?: "sidebar" | "recently-used";
   /** commandId → replacement bindings; null disables the command's shortcuts. */
   shortcutOverrides?: ShortcutOverrides;
+  selectionCapture?: SelectionCaptureSettings;
   zoomFactor?: number;
   dataDir?: string;
   /**
@@ -261,6 +267,7 @@ export class SettingsService {
         .catch(0).parse(this.get("memorySaverMinutes")),
       tabSwitcherOrder: (this.get("tabSwitcherOrder") as Settings["tabSwitcherOrder"]) ?? "sidebar",
       shortcutOverrides: (this.get("shortcutOverrides") as Settings["shortcutOverrides"]) ?? {},
+      selectionCapture: this.selectionCapture(),
       autofill: (this.get("autofill") as Settings["autofill"]) ?? {},
       zoomFactor: (this.get("zoomFactor") as number) ?? 1,
       effectGrants: [...this.effectGrantsForRun()],
@@ -293,6 +300,10 @@ export class SettingsService {
     return (this.get("safetyCeilings") as Settings["safetyCeilings"] | undefined)?.[effect] ?? "ask";
   }
 
+  selectionCapture(): SelectionCaptureSettings {
+    return readSelectionCaptureSettings(this.get("selectionCapture"));
+  }
+
   set(patch: Settings): Promise<{ ok: true }> {
     const write = this.writes.then(() => this.save(patch));
     this.writes = write.catch(() => {});
@@ -301,6 +312,17 @@ export class SettingsService {
 
   private async save(patch: Settings): Promise<{ ok: true }> {
     const next: Settings = { ...patch };
+    if (next.selectionCapture !== undefined) {
+      const selection = SelectionCaptureSettingsSchema.parse(next.selectionCapture);
+      if (selection.revision !== this.selectionCapture().revision)
+        throw new AuxError("conflict", "Selection & Capture changed in another window. Reload the saved settings before trying again.");
+      next.selectionCapture = { ...selection, revision: selection.revision + 1 };
+    }
+    if (next.selectionCapture !== undefined || next.shortcutOverrides !== undefined) {
+      const conflict = captureShortcutConflict(next.selectionCapture ?? this.selectionCapture(),
+        next.shortcutOverrides ?? this.get("shortcutOverrides") as ShortcutOverrides | undefined, process.platform);
+      if (conflict) throw new AuxError("conflict", conflict);
+    }
     if (next.modelCredential && next.gatewayApiKey !== undefined)
       throw new Error("Save one provider credential at a time.");
     const connectionChange = [
