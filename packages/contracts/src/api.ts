@@ -1,3 +1,5 @@
+import { OnboardingStateSchema, OnboardingUpdateParamsSchema, OnboardingStartParamsSchema } from "./onboarding.js";
+export * from "./onboarding.js";
 import {
   GenerateResultParamsSchema,
   GeneratedResultSchema,
@@ -1523,6 +1525,9 @@ export const MethodSchemas = {
   "chrome.importBookmarks": z.object({
     profile: z.string().trim().min(1).max(64).optional(),
   }),
+  "onboarding.get": z.object({}).strict(),
+  "onboarding.update": OnboardingUpdateParamsSchema,
+  "onboarding.start": OnboardingStartParamsSchema,
   "import.preview": z.object({}),
   "import.run": z.object({
     selections: z.array(ImportSelectionSchema).min(1).max(12),
@@ -2245,6 +2250,9 @@ export const ResultSchemas = {
     profiles: z.array(z.string()),
     detail: z.string(),
   }),
+  "onboarding.get": OnboardingStateSchema,
+  "onboarding.update": OnboardingStateSchema,
+  "onboarding.start": z.object({ state: OnboardingStateSchema, run: RunSchema.nullable() }).strict(),
   "import.preview": z.object({ sources: z.array(ImportSourcePreviewSchema), recentJobs: z.array(ImportJobStatusSchema).max(5).optional() }),
   "import.run": z.object({ jobId: z.string() }),
   "import.status": ImportJobStatusSchema,

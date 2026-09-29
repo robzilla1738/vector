@@ -1,0 +1,42 @@
+{
+  "recordedAt": "2026-09-28",
+  "scope": "S13 replayable onboarding source; native acceptance open",
+  "baseCommit": "9831254a0a9a950820e2095af2dd8d371e459c2a",
+  "checks": {
+    "workspaceCompile": "passed",
+    "rendererTypecheck": "passed",
+    "focusedTests": {
+      "passed": 21,
+      "files": 3
+    },
+    "lint": {
+      "passed": true,
+      "warnings": 370,
+      "errors": 0
+    },
+    "formatRatchet": "passed",
+    "diffCheck": "passed"
+  },
+  "notRun": [
+    "native build",
+    "native onboarding journey",
+    "model benchmark",
+    "integrated onboarding shell bundle (App wiring reserved for integrator)"
+  ],
+  "generatedBindings": "generated locally for verification, excluded from commit",
+  "files": {
+    "apps/runtime/src/api/methods/index.ts": "c7cf89a178713ff875cd51f23ca111ca15b1d5b79f31fd2ae2a3f801f76a6908",
+    "apps/runtime/src/api/methods/onboarding.ts": "75e6a80fe121d93d5834941ae9a5b8e14cfe45971342f1d4eaf324ef59a78a46",
+    "apps/runtime/src/index.ts": "3e5438d0a835ae4e3360cca7cd44ea0e71a3b4403f76a6ca54c5c25092cfc9e2",
+    "apps/runtime/src/services/onboarding.ts": "23bc3f7c3821aa8139ed0ca7b7f042bc60853325a8632dd2b405501dcd45f33e",
+    "apps/shell/src/onboarding/OnboardingFlow.test.tsx": "cdaef9bf0c19afe3fc7b0be0a030068956fd8e7ba46078410931491e4e9df596",
+    "apps/shell/src/onboarding/OnboardingFlow.tsx": "20c176b2a2b4c9b8e296d1dad65bc3f8de958968ed98976925e7aadedf15b75a",
+    "apps/shell/src/onboarding/OnboardingHost.tsx": "b29c6e79d4a53cf73ee73c88e428dca4f2eb9af73e58eb6e1929791d58a777b8",
+    "apps/shell/src/onboarding/onboarding.css": "690fa75dea94a92d140e2075307bfa867e29364899d4ff0a5d21f6d1be034bf8",
+    "apps/shell/src/onboarding/replay.ts": "f40c7d3ebbac133ccca3d9d7f5c03f94c392e79060655ff8f5220c56f3fa77cc",
+    "packages/contracts/src/api.ts": "9caa5b61137d737cdcd7a212f2e223736d2d76481a4908ad1550699c14b02e4b",
+    "packages/contracts/src/onboarding.ts": "d5850fc56f9aa6a2f7e03b5a6574b0a300fb0e090e1bd2684cacbf97bbb66eec",
+    "packages/contracts/src/runtime-method-policy.ts": "a32e3cfe9a9f48f451d2bc20b79b4f7badad027240d4a695f52af661ef36f71c",
+    "tests/unit/onboarding.test.ts": "a5a866bcc790b624df5a10a83d1b89cd719c3312714c988582f213db57b77023"
+  }
+}

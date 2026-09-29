@@ -249,3 +249,5 @@ export {
   normalizeCompatibleEndpoint,
   providerEndpoint,
 } from "./agent/direct-providers.js";
+
+export { OnboardingService } from "./services/onboarding.js";

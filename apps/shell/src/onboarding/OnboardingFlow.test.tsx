@@ -1,0 +1,286 @@
+// @vitest-environment jsdom
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import type { OnboardingState, PageTarget } from "@aux/contracts";
+import { OnboardingFlow } from "./OnboardingFlow";
+import OnboardingHost from "./OnboardingHost";
+import { requestOnboardingReplay } from "./replay";
+
+const rpc = vi.hoisted(() => vi.fn());
+const openConversation = vi.hoisted(() => vi.fn());
+const openPage = vi.hoisted(() => vi.fn());
+const activate = vi.hoisted(() => vi.fn());
+const native = vi.hoisted(() => ({
+  privateMode: false,
+  defaultBrowser: vi.fn(async () => ({ isDefault: false })),
+  setDefaultBrowser: vi.fn(async () => ({ isDefault: true })),
+  runtimeRestoreStatus: vi.fn(async () => ({ pending: false })),
+  onEvent: vi.fn(() => () => {}),
+  overlay: vi.fn(async () => {}),
+  lockSidebar: vi.fn(async () => {}),
+}));
+let workspace: any;
+vi.mock("../bridge", () => ({ inNativeHost: true, bridge: native }));
+vi.mock("../store", () => ({
+  call: rpc,
+  toast: vi.fn(),
+  useStore: Object.assign((selector: (state: any) => unknown) => selector(workspace), {
+    getState: () => workspace,
+    setState: (update: any) => {
+      workspace = { ...workspace, ...(typeof update === "function" ? update(workspace) : update) };
+    },
+  }),
+}));
+const initial = (step: OnboardingState["step"]): OnboardingState => ({
+  version: 1,
+  revision: 0,
+  status: "active",
+  step,
+  visited: [],
+  skipped: [],
+  disclosureVersion: 1,
+});
+const source: PageTarget = {
+  pageId: "reviewed",
+  backend: "aux",
+  targetId: "reviewed",
+  url: "https://fixture.example/article",
+  title: "Fixture article",
+  documentEpoch: 1,
+  sessionId: "session",
+  lastRevision: 0,
+  viewStatus: "visible",
+  controller: "none",
+  controllerEpoch: 0,
+  ownedByRuntime: false,
+  createdAt: 1,
+  lastActiveAt: 1,
+};
+let current: OnboardingState;
+let host: HTMLDivElement;
+let root: ReturnType<typeof createRoot>;
+const close = vi.fn();
+const button = (text: string) =>
+  [...document.querySelectorAll<HTMLButtonElement>("button")].find((node) => node.textContent === text)!;
+async function render(state: OnboardingState) {
+  current = state;
+  await act(async () => root.render(<OnboardingFlow initialState={state} onClose={close} />));
+}
+async function choosePage() {
+  const select = [...document.querySelectorAll("select")].find((node) =>
+    [...node.options].some((option) => option.value === source.pageId),
+  )!;
+  await act(async () => {
+    select.value = source.pageId;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  rpc.mockReset();
+  close.mockReset();
+  openConversation.mockReset();
+  openPage.mockReset();
+  native.privateMode = false;
+  native.setDefaultBrowser.mockClear();
+  native.runtimeRestoreStatus.mockResolvedValue({ pending: false });
+  workspace = {
+    connected: true,
+    settings: { modelConfigured: true },
+    pages: [source],
+    runs: [],
+    layout: {
+      activeSpaceId: "space",
+      spaces: [{ id: "space", name: "Personal", color: "slate", grain: 0, workspaceId: "workspace" }],
+    },
+    openConversation,
+    activate,
+    openBackgroundTab: openPage,
+  };
+  rpc.mockImplementation(async (method: string, params: any) => {
+    if (method === "onboarding.get") return current;
+    if (method === "onboarding.update") {
+      current = {
+        ...current,
+        revision: current.revision + 1,
+        ...(params.action === "disclosure" ? { disclosureVersion: 1 } : {}),
+        ...(params.action === "replay" ? { status: "active", step: "welcome" } : {}),
+        ...(params.action === "later" ? { status: "later" } : {}),
+        ...(params.action === "visit" ? { step: params.step } : {}),
+      };
+      return current;
+    }
+    if (method === "models.list") return { models: [] };
+    if (method === "connectors.catalog") return { entries: [], access: [] };
+    throw new Error(`Unexpected ${method}`);
+  });
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+});
+afterEach(async () => {
+  await act(async () => root.unmount());
+  host.remove();
+  vi.unstubAllGlobals();
+});
+
+it("Cmd+Enter saves Finish later and restore focus without starting work", async () => {
+  const trigger = document.createElement("button");
+  trigger.textContent = "Setup";
+  document.body.append(trigger);
+  trigger.focus();
+  await render(initial("welcome"));
+  expect(document.activeElement?.textContent).toBe("A browser for what comes next");
+  await act(async () =>
+    document
+      .querySelector("h1")!
+      .dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", metaKey: true, bubbles: true, cancelable: true }),
+      ),
+  );
+  expect(rpc).toHaveBeenCalledWith("onboarding.update", { revision: 0, action: "later" });
+  expect(close).toHaveBeenCalledOnce();
+  expect(rpc.mock.calls.every(([method]) => String(method).startsWith("onboarding."))).toBe(true);
+  await act(async () => root.render(null));
+  expect(document.activeElement).toBe(trigger);
+  trigger.remove();
+});
+
+it("shows data use before mounting model setup and makes no model request on acknowledgment", async () => {
+  await render({ ...initial("model"), disclosureVersion: 0 });
+  expect(document.body.textContent).toContain("Meta use prompts and completions");
+  expect(rpc).not.toHaveBeenCalledWith("models.list", expect.anything());
+  await act(async () => button("I’ve reviewed model data use").click());
+  expect(rpc).toHaveBeenCalledWith("onboarding.update", { revision: 0, action: "disclosure" });
+  expect(rpc.mock.calls.some(([method]) => method === "models.probe" || method === "onboarding.start")).toBe(
+    false,
+  );
+  expect(document.body.textContent).toContain("connection test sends a model request only");
+});
+
+it("requires explicit exact-page review and dispatches a double-click once into the first chat", async () => {
+  await render(initial("postcard"));
+  expect(button("Start this chat").disabled).toBe(true);
+  await choosePage();
+  expect(button("Start this chat").disabled).toBe(true);
+  await act(async () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+  expect(button("Start this chat").disabled).toBe(false);
+  let finish!: () => void;
+  const previous = rpc.getMockImplementation()!;
+  rpc.mockImplementation(async (method, params) => {
+    if (method !== "onboarding.start") return previous(method, params);
+    await new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    return {
+      state: { ...current, status: "complete" },
+      run: { runId: "first-run", config: { chatId: "first-chat" } },
+    };
+  });
+  const start = button("Start this chat");
+  await act(async () => {
+    start.click();
+    start.click();
+  });
+  expect(rpc.mock.calls.filter(([method]) => method === "onboarding.start")).toHaveLength(1);
+  expect(rpc).toHaveBeenCalledWith("onboarding.start", {
+    revision: 0,
+    postcardId: "understand",
+    page: {
+      pageId: source.pageId,
+      url: source.url,
+      documentEpoch: 1,
+      sessionId: "session",
+    },
+  });
+  await act(async () => finish());
+  expect(openConversation).toHaveBeenCalledWith("first-run");
+  expect(close).toHaveBeenCalledOnce();
+});
+
+it("clears the page review after navigation and refuses a postcard when recovery is staged", async () => {
+  native.runtimeRestoreStatus.mockResolvedValue({ pending: true });
+  await render(initial("postcard"));
+  await choosePage();
+  await act(async () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+  expect(button("Start this chat").disabled).toBe(true);
+  workspace.pages = [{ ...source, documentEpoch: 2 }];
+  await act(async () => root.render(<OnboardingFlow initialState={current} onClose={close} />));
+  expect(document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.checked).toBe(false);
+  expect(document.body.textContent).toContain("Recovery is staged");
+});
+
+it("keeps cooldown on replay and never automatically invokes the native default-browser prompt", async () => {
+  await render({ ...initial("default"), defaultBrowserPromptedAt: Date.now() });
+  expect(button("Make Aux the default browser").disabled).toBe(true);
+  expect(native.setDefaultBrowser).not.toHaveBeenCalled();
+});
+
+it("replays only through an explicit event and stays absent from private or disabled windows", async () => {
+  current = { ...initial("welcome"), status: "later" };
+  await act(async () => root.render(<OnboardingHost />));
+  expect(document.querySelector("dialog")).toBeNull();
+  await act(async () => requestOnboardingReplay());
+  expect(document.querySelector('dialog[aria-label="Set up Aux"]')).toBeTruthy();
+  await act(async () => root.render(<OnboardingHost enabled={false} />));
+  expect(document.querySelector("dialog")).toBeNull();
+  rpc.mockClear();
+  native.privateMode = true;
+  await act(async () => root.render(<OnboardingHost />));
+  await act(async () => requestOnboardingReplay());
+  expect(rpc).not.toHaveBeenCalled();
+});
+
+it("Escape leaves any setup step with resumable progress", async () => {
+  await render(initial("permissions"));
+  await act(async () =>
+    document
+      .querySelector("dialog")!
+      .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })),
+  );
+  expect(rpc).toHaveBeenCalledWith("onboarding.update", { revision: 0, action: "later" });
+  expect(current.step).toBe("permissions");
+  expect(close).toHaveBeenCalledOnce();
+});
+
+it("reuses four-browser review without discovering or importing on step entry", async () => {
+  const previous = rpc.getMockImplementation()!;
+  rpc.mockImplementation(async (method, params) => {
+    if (method === "import.status") return null;
+    if (method === "import.preview")
+      return {
+        sources: ["chrome", "arc", "safari", "firefox"].map((id) => ({
+          id,
+          label: id,
+          profiles: ["Fixture"],
+          categories: [],
+          profileCategories: [
+            { profileId: "Fixture", categories: [{ category: "history", available: true }] },
+          ],
+        })),
+      };
+    return previous(method, params);
+  });
+  await render(initial("import"));
+  expect(rpc).toHaveBeenCalledWith("import.status", {});
+  expect(rpc.mock.calls.some(([method]) => method === "import.preview" || method === "import.run")).toBe(
+    false,
+  );
+  await act(async () => button("See what can be imported").click());
+  const options = [...document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+  expect(options).toHaveLength(4);
+  expect(options.every((input) => !input.checked)).toBe(true);
+  expect(document.body.textContent).toContain("Keychain");
+  expect(rpc.mock.calls.some(([method]) => method === "import.run")).toBe(false);
+});
+
+it("lets the owner view the selected page before committing its context", async () => {
+  await render(initial("postcard"));
+  await choosePage();
+  await act(async () => button("View selected page; finish setup later").click());
+  expect(activate).toHaveBeenCalledWith(source.pageId);
+  expect(current).toMatchObject({ status: "later", step: "postcard" });
+  expect(close).toHaveBeenCalledOnce();
+  expect(rpc.mock.calls.some(([method]) => method === "onboarding.start")).toBe(false);
+});

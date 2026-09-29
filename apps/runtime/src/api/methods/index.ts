@@ -1,3 +1,4 @@
+import { onboardingMethods } from "./onboarding.js";
 import { zapMethods } from "./zap.js";
 import { agentMethods } from "./agent.js";
 import { sitesMethods } from "./sites.js";
@@ -78,6 +79,7 @@ export const METHODS: Record<MethodName, MethodHandler> = {
   ...sessionsMethods,
   ...chromeMethods,
   ...importMethods,
+  ...onboardingMethods,
   ...translateMethods,
   ...modelsMethods,
   ...settingsMethods,
