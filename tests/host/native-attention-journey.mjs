@@ -143,8 +143,11 @@ try {
   assert.equal(native("control-value", "Reply to conversation"), "Queue draft stays in A");
   record("keyboard Escape dismisses notice without disturbing A draft");
 
-  await operator("Open Home. The Needs your input card should appear for run B. Focus its Dismiss button and press Escape.");
+  await operator("Open Home and confirm the Needs your input card appears for run B. Leave the card visible.");
   assert.equal(native("has-text", "Needs your input"), "true");
+  assert.equal(native("has-button", "Review task"), "true");
+  capture("home-question-card");
+  await operator("Focus the Home card's Dismiss button with the keyboard and press Escape.");
   assert.equal(native("has-button", "Review task"), "false", "Escape should dismiss the Home card for this mount");
   capture("home-after-card-dismissal");
   record("Home shows durable attention and allows keyboard dismissal");
