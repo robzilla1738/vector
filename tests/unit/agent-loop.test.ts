@@ -671,6 +671,73 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(final.result).toMatchObject({ report: "after takeover" });
     expect(h.pages.observe).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("fresh page snapshot after takeover");
+  it("selects an unchecked radio with a check receipt when the model clicks it", async () => {
+    const before = { ...pageObs(), content: { ...pageObs().content,
+      text: "Pro plan",
+      elements: [{ ref: "r11", tag: "input", role: "radio", name: "Pro", checked: false, frame: "main" }],
+    } } as Observation;
+    const after = { ...before, revision: 2, content: { ...before.content,
+      elements: [{ ref: "r11", tag: "input", role: "radio", name: "Pro", checked: true, frame: "main" }],
+    } } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "select-pro", op: "click", target: "r11" }] } }] },
+      { toolCalls: [{ toolCallId: "done", toolName: "submit_result", input: { report: "Pro selected" } }] },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((step) => ({ stepId: step.id, op: step.op,
+        status: "ok" as const, startedAt: 1, durationMs: 1, effect: "observed" as const,
+        before: { checked: false }, after: { checked: true },
+        receipt: { observed: "control value changed after action", remoteConfirmed: false,
+          uncertain: false, dispatchedBeforeTakeover: false },
+      }));
+      for (const [i, step] of program.steps.entries()) ctx?.onStep?.(steps[i]!, step);
+      return { status: "completed", steps, observation: after };
+    });
+    h.pages.observe.mockResolvedValue(before);
+    const run = await h.coordinator.start({ goal: "Select Pro plan", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    await settle(h.repo, run.runId);
+    expect(h.pages.execute).toHaveBeenCalledOnce();
+    expect(h.pages.execute.mock.calls[0]?.[0].steps.map((step) => step.op)).toEqual(["check"]);
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([{ status: "confirmed" }]);
+  });
+
+  it("rejects a redundant rich-text focus click before dispatch, then types directly", async () => {
+    const before = { ...pageObs(), content: { ...pageObs().content,
+      text: "Bio (rich text)",
+      elements: [{ ref: "r12", tag: "div", name: "Bio (rich text)", frame: "main" }],
+      formFields: [{ ref: "r12", label: "Bio (rich text)", value: "" }],
+    } } as Observation;
+    const after = { ...before, revision: 2, content: { ...before.content,
+      text: "Bio (rich text)\nDesign systems for teams",
+      formFields: [{ ref: "r12", label: "Bio (rich text)", value: "Design systems for teams" }],
+    } } as Observation;
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "b1", toolName: "act", input: { steps: [
+        { id: "click", op: "click", target: "r12" },
+        { id: "type", op: "type", target: "r12", value: "Design systems for teams" },
+      ] } }] },
+      { toolCalls: [{ toolCallId: "b2", toolName: "act", input: { steps: [
+        { id: "type-only", op: "type", target: "r12", value: "Design systems for teams" },
+      ] } }] },
+      { toolCalls: [{ toolCallId: "done", toolName: "submit_result", input: { report: "Bio entered" } }] },
+    ]);
+    const h = coordinatorHarness(model, (program, ctx) => {
+      const steps = program.steps.map((step) => ({ stepId: step.id, op: step.op,
+        status: "ok" as const, startedAt: 1, durationMs: 1, effect: "observed" as const,
+        before: { value: "" }, after: { value: "Design systems for teams" },
+        receipt: { observed: "control value changed after action", remoteConfirmed: false,
+          uncertain: false, dispatchedBeforeTakeover: false },
+      }));
+      for (const [i, step] of program.steps.entries()) ctx?.onStep?.(steps[i]!, step);
+      return { status: "completed", steps, observation: after };
+    });
+    h.pages.observe.mockResolvedValue(before);
+    const run = await h.coordinator.start({ goal: "Enter the bio", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    await settle(h.repo, run.runId);
+    expect(h.pages.execute).toHaveBeenCalledOnce();
+    expect(h.pages.execute.mock.calls[0]?.[0].steps.map((step) => step.op)).toEqual(["type"]);
+    expect(JSON.stringify(new TranscriptStore(h.db).load(run.runId))).toContain("no action was dispatched");
+    expect(h.db.prepare("SELECT status FROM action_intents WHERE run_id=?").all(run.runId)).toEqual([{ status: "confirmed" }]);
   });
 
   it("gives a goal program visible body text and headings without browser-title or element duplicates", async () => {
