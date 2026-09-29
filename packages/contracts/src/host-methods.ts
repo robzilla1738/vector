@@ -314,6 +314,8 @@ export const HostMethods = {
     z.object({ value: str }).strict()),
   "native.profileStorageFactor": runtime("core", z.object({ version: z.literal(1), purpose: z.literal("sqlite") }).strict(),
     z.object({ value: str }).strict()),
+  "native.recoveryOwnerAuth": runtime("core", z.object({ version: z.literal(1),
+    purpose: z.enum(["export", "restore"]) }).strict(), z.object({ approved: z.literal(true) }).strict()),
   "native.captureReadablePage": runtime("reader", NativeMethods["native.captureReadablePage"], z.object({ url: str, title: str, text: str }).strict()),
   "native.fillSavedPassword": runtime("passwordManager", CredentialHandoffRequestSchema, CredentialHandoffResultSchema),
   "native.cdpReset": runtime("fourLayerTabApi", z.object({}).strict(), z.unknown()),

@@ -243,6 +243,8 @@ bool ValidateNode213(const base::Value& value);
 bool ValidateNode214(const base::Value& value);
 bool ValidateNode215(const base::Value& value);
 bool ValidateNode216(const base::Value& value);
+bool ValidateNode217(const base::Value& value);
+bool ValidateNode218(const base::Value& value);
 bool ValidateNode0(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
@@ -2688,6 +2690,27 @@ bool ValidateNode211(const base::Value& value) {
 bool ValidateNode212(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
+  if (const base::Value* field = dict.Find("version")) {
+    if (!ValidateNode209(*field)) return false;
+  } else return false;
+  if (const base::Value* field = dict.Find("purpose")) {
+    if (!ValidateNode213(*field)) return false;
+  } else return false;
+  for (auto entry : dict) {
+    if (!(entry.first == "version" || entry.first == "purpose")) return false;
+  }
+  return true;
+}
+
+bool ValidateNode213(const base::Value& value) {
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("export")) || (value == base::Value("restore")))) return false;
+  return true;
+}
+
+bool ValidateNode214(const base::Value& value) {
+  if (!(value.is_dict())) return false;
+  const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
     if (!ValidateNode152(*field)) return false;
   } else return false;
@@ -2703,7 +2726,7 @@ bool ValidateNode212(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode213(const base::Value& value) {
+bool ValidateNode215(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -2713,10 +2736,10 @@ bool ValidateNode213(const base::Value& value) {
     if (!ValidateNode46(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("usernameSelector")) {
-    if (!ValidateNode214(*field)) return false;
+    if (!ValidateNode216(*field)) return false;
   }
   if (const base::Value* field = dict.Find("passwordSelector")) {
-    if (!ValidateNode214(*field)) return false;
+    if (!ValidateNode216(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "pageId" || entry.first == "expectedUrl" || entry.first == "usernameSelector" || entry.first == "passwordSelector")) return false;
@@ -2724,7 +2747,7 @@ bool ValidateNode213(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode214(const base::Value& value) {
+bool ValidateNode216(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() < 1) return false;
@@ -2732,7 +2755,7 @@ bool ValidateNode214(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode215(const base::Value& value) {
+bool ValidateNode217(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -2747,7 +2770,7 @@ bool ValidateNode215(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode216(const base::Value& value) {
+bool ValidateNode218(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -2927,6 +2950,7 @@ constexpr MethodInfo kMethods[] = {
   {MethodId::kNativeReadSecret, "native.readSecret", "runtime", "vault", "authenticated-runtime", true},
   {MethodId::kNativeProfileStorageRoot, "native.profileStorageRoot", "runtime", "core", "authenticated-runtime", true},
   {MethodId::kNativeProfileStorageFactor, "native.profileStorageFactor", "runtime", "core", "authenticated-runtime", true},
+  {MethodId::kNativeRecoveryOwnerAuth, "native.recoveryOwnerAuth", "runtime", "core", "authenticated-runtime", true},
   {MethodId::kNativeCaptureReadablePage, "native.captureReadablePage", "runtime", "reader", "authenticated-runtime", true},
   {MethodId::kNativeFillSavedPassword, "native.fillSavedPassword", "runtime", "passwordManager", "authenticated-runtime", true},
   {MethodId::kNativeCdpReset, "native.cdpReset", "runtime", "fourLayerTabApi", "authenticated-runtime", true},
@@ -3106,13 +3130,14 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kNativeReadSecret: valid = ValidateNode207(args); break;
     case MethodId::kNativeProfileStorageRoot: valid = ValidateNode208(args); break;
     case MethodId::kNativeProfileStorageFactor: valid = ValidateNode210(args); break;
-    case MethodId::kNativeCaptureReadablePage: valid = ValidateNode212(args); break;
-    case MethodId::kNativeFillSavedPassword: valid = ValidateNode213(args); break;
+    case MethodId::kNativeRecoveryOwnerAuth: valid = ValidateNode212(args); break;
+    case MethodId::kNativeCaptureReadablePage: valid = ValidateNode214(args); break;
+    case MethodId::kNativeFillSavedPassword: valid = ValidateNode215(args); break;
     case MethodId::kNativeCdpReset: valid = ValidateNode178(args); break;
-    case MethodId::kNativeCdpDispatch: valid = ValidateNode215(args); break;
+    case MethodId::kNativeCdpDispatch: valid = ValidateNode217(args); break;
     case MethodId::kNativeCdpVersion: valid = ValidateNode178(args); break;
     case MethodId::kNativeWebmcpList: valid = ValidateNode196(args); break;
-    case MethodId::kNativeWebmcpCall: valid = ValidateNode216(args); break;
+    case MethodId::kNativeWebmcpCall: valid = ValidateNode218(args); break;
   }
   if (!valid && error) *error = "Invalid arguments for generated Aux host method";
   return valid;

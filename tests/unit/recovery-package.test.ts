@@ -18,6 +18,7 @@ afterEach(() => { for (const directory of directories.splice(0)) rmSync(director
 
 function native(profileId: string) {
   const secrets = new Map<string, string>();
+  const authentications: ("export" | "restore")[] = [];
   const secretName = (prefix: string) => `${prefix}_${createHash("sha256").update(profileId).digest("hex").slice(0, 24)}`;
   return { bridge: {
     async readSecret(name: string) { return { value: secrets.get(name) }; },
@@ -32,7 +33,11 @@ function native(profileId: string) {
       if (!secrets.has(name)) secrets.set(name, randomBytes(32).toString("base64"));
       return { value: secrets.get(name)! };
     },
-  } as unknown as NativeBridge, secrets };
+    async recoveryOwnerAuth({ purpose }: { purpose: "export" | "restore" }) {
+      authentications.push(purpose);
+      return { approved: true as const };
+    },
+  } as unknown as NativeBridge, secrets, authentications };
 }
 
 async function fixture() {
@@ -73,6 +78,7 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   const f = await fixture();
   const phrase = "an original offline recovery phrase";
   const exported = await exportRecoveryPackage(f.source, f.sourceNative.bridge, f.sourceDir, f.sourceId, phrase);
+  expect(f.sourceNative.authentications).toEqual(["export"]);
   const bytes = readFileSync(exported.path);
   for (const secret of ["Protected research space", "Protected task", "Protected source goal",
     "Protected article memory", "Protected artifact evidence"])
@@ -100,6 +106,7 @@ it("restores protected SQLite, page memory, Space memory and artifacts under the
   expect(f.target.listWorkspaces()).toHaveLength(0);
   const staged = await stageRecoveryPackage(f.target, f.targetNative.bridge, f.targetDir, f.targetId,
     exported.path, phrase, review.sha256, review.reviewToken);
+  expect(f.targetNative.authentications).toEqual(["restore", "restore"]);
   expect(staged).toMatchObject({ staged: true, artifactFiles: 1, spaceCount: 1, pageMemoryCount: 1 });
   f.target.close();
   f.source.close();
@@ -127,6 +134,22 @@ it("rejects package tampering without changing the destination", async () => {
   writeFileSync(exported.path, JSON.stringify(file));
   await expect(inspectRecoveryPackage(exported.path, phrase, f.targetId)).rejects.toThrow(/phrase is wrong|changed/);
   expect(f.target.listWorkspaces()).toHaveLength(0);
+  expect(existsSync(join(f.targetDir, "pending-runtime-restore.json"))).toBe(false);
+  f.target.close(); f.source.close();
+});
+
+it("fails closed without fresh device authentication", async () => {
+  const f = await fixture();
+  const phrase = "device-authenticated recovery phrase";
+  const noAuth = { ...f.sourceNative.bridge, recoveryOwnerAuth: undefined } as NativeBridge;
+  await expect(exportRecoveryPackage(f.source, noAuth, f.sourceDir, f.sourceId, phrase))
+    .rejects.toThrow(/Device authentication is required/);
+  expect(existsSync(join(f.sourceDir, "recovery-exports"))).toBe(false);
+  const exported = await exportRecoveryPackage(f.source, f.sourceNative.bridge, f.sourceDir, f.sourceId, phrase);
+  const review = await inspectRecoveryPackage(exported.path, phrase, f.targetId);
+  const denied = { ...f.targetNative.bridge, recoveryOwnerAuth: async () => ({ approved: false }) } as unknown as NativeBridge;
+  await expect(stageRecoveryPackage(f.target, denied, f.targetDir, f.targetId,
+    exported.path, phrase, review.sha256, review.reviewToken)).rejects.toThrow(/Device authentication is required/);
   expect(existsSync(join(f.targetDir, "pending-runtime-restore.json"))).toBe(false);
   f.target.close(); f.source.close();
 });

@@ -117,3 +117,4 @@ aux/runtime/0116-atomic-sqlite-profile-factor.patch
 aux/runtime/0117-disposable-acceptance-and-private-capture.patch
 aux/runtime/0118-disposable-memory-acceptance.patch
 aux/runtime/0119-run-attention-notifications.patch
+aux/runtime/0120-recovery-owner-auth.patch

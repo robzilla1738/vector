@@ -46,6 +46,11 @@ const decode = (value: string) => {
 const key = (phrase: string, salt: Buffer) => scryptSync(phrase, salt, 32,
   { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
 
+async function requireOwnerAuth(native: NativeBridge, purpose: "export" | "restore") {
+  if (!native.recoveryOwnerAuth || (await native.recoveryOwnerAuth({ version: 1, purpose })).approved !== true)
+    throw new Error("Device authentication is required for protected recovery.");
+}
+
 function readProtectedSnapshot(db: DatabaseSync, cipher: SqliteColumnCipher): string[] {
   const markers = (db.prepare("SELECT key FROM aux_meta WHERE key LIKE 'protected_sqlite_v1:%' ORDER BY key")
     .all() as { key: string }[]).map(row => row.key);
@@ -230,6 +235,7 @@ export async function exportRecoveryPackage(repo: Repo, native: NativeBridge, da
   profileId: string, phrase: string) {
   if (!repo.columnCipher || !profileId || phrase.length < 16 || phrase.length > 200)
     throw new Error("Recovery needs a protected Profile and a phrase of 16 to 200 characters.");
+  await requireOwnerAuth(native, "export");
   const pageStore = new ContentMemoryStore(repo, native, profileId);
   const memory = new MemoryPipeline(repo, native, join(dataDir, "space-memory"), profileId);
   const sourceCipher = await SqliteColumnCipher.create(native, profileId, true);
@@ -280,6 +286,7 @@ export async function stageRecoveryPackage(repo: Repo, native: NativeBridge, dat
   if (!review || review.path !== path || review.sha256 !== expectedSha256 || review.profileId !== profileId ||
     review.expiresAt <= Date.now()) throw new Error("Review this recovery package again before staging it.");
   if (!repo.columnCipher || !profileId) throw new Error("Recovery needs a protected destination Profile.");
+  await requireOwnerAuth(native, "restore");
   if (repo.db.prepare("SELECT 1 FROM workspaces LIMIT 1").get() || repo.db.prepare("SELECT 1 FROM runs LIMIT 1").get() ||
     repo.db.prepare("SELECT 1 FROM artifacts LIMIT 1").get() || repo.db.prepare("SELECT 1 FROM content_memory LIMIT 1").get())
     throw new Error("Use a new, empty Profile for recovery.");

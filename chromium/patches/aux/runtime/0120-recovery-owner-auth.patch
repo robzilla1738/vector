@@ -1,0 +1,169 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -73,6 +73,8 @@
+     "//base",
+     "//chrome/browser/content_settings:content_settings_factory",
+     "//chrome/browser/notifications:notifications",
++    "//chrome/browser/device_reauth:device_reauth",
++    "//chrome/browser/device_reauth:impl",
+     "//chrome/browser/password_manager/factories",
+     "//chrome/browser/profiles",
+     "//chrome/browser/ui/aux/generated:methods",
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -125,7 +125,8 @@
+                     "native.webmcpCall"});
+   register_runtime(AuxRuntimeMethodGroup::kWorker,
+                    {"native.storeSecret", "native.readSecret",
+-                    "native.profileStorageRoot", "native.profileStorageFactor"});
++                    "native.profileStorageRoot", "native.profileStorageFactor",
++                    "native.recoveryOwnerAuth"});
+ }
+ 
+ AuxShellMethodGroup AuxMethodRegistry::ShellGroup(
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -25,6 +25,9 @@
+ #include "base/time/time.h"
+ 
+ class Profile;
++namespace device_reauth {
++class DeviceAuthenticator;
++}
+ namespace aux {
+ class CdpBroker;
+ class ProfileLibrary;
+@@ -135,6 +138,9 @@
+   void HandleCredentialFill(const base::DictValue& params,
+                             std::shared_ptr<std::atomic_bool> cancelled,
+                             base::OnceCallback<void(base::DictValue)> callback);
++  void HandleRecoveryOwnerAuth(const base::DictValue& params,
++                               std::shared_ptr<std::atomic_bool> cancelled,
++                               base::OnceCallback<void(base::DictValue)> callback);
+   base::DictValue HandleNativeCall(const std::string& method,
+                                    const base::DictValue& params,
+                                    uint64_t connection_generation);
+@@ -168,6 +174,8 @@
+   std::unique_ptr<aux::ProfileLibrary> profile_library_;
+   std::unique_ptr<aux::CredentialFill> credential_fill_;
+   std::unique_ptr<aux::NativeFind> native_find_;
++  std::unique_ptr<device_reauth::DeviceAuthenticator> recovery_authenticator_;
++  bool recovery_auth_pending_ = false;
+   std::map<std::string, int> staged_pages_;
+   base::CallbackListSubscription tab_catalog_subscription_;
+   base::RepeatingCallbackList<void(const std::string&, const std::string&)>
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -40,6 +40,7 @@
+ #include "base/task/bind_post_task.h"
+ #include "base/timer/timer.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
+ #include "chrome/browser/ui/aux/cdp_broker.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/cosmetic_controller.h"
+@@ -62,6 +63,7 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "components/sessions/core/session_id.h"
+ #include "components/find_in_page/find_result_observer.h"
++#include "components/device_reauth/device_authenticator.h"
+ #include "components/find_in_page/find_tab_helper.h"
+ #include "components/version_info/version_info.h"
+ #include "components/zoom/zoom_controller.h"
+@@ -179,6 +181,8 @@
+ }
+ 
+ AuxRuntimeHost::~AuxRuntimeHost() {
++  if (recovery_authenticator_ && recovery_auth_pending_)
++    recovery_authenticator_->Cancel();
+   weak_factory_.InvalidateWeakPtrs();
+   native_find_.reset();
+   worker_.Reset();
+@@ -313,6 +317,58 @@
+   }
+   return NativeFault("backend_unavailable",
+                      "Native method is unavailable in this build");
++}
++
++void AuxRuntimeHost::HandleRecoveryOwnerAuth(
++    const base::DictValue& params,
++    std::shared_ptr<std::atomic_bool> cancelled,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  const std::string* purpose = params.FindString("purpose");
++  if (params.FindInt("version") != 1 || !purpose ||
++      (*purpose != "export" && *purpose != "restore") ||
++      profile_->IsOffTheRecord() || !runtime_connected_) {
++    std::move(callback).Run(NativeFault(
++        "permission_denied", "Protected recovery requires an active regular Profile"));
++    return;
++  }
++  if (recovery_auth_pending_) {
++    std::move(callback).Run(NativeFault(
++        "conflict", "Another recovery authentication is in progress"));
++    return;
++  }
++  recovery_authenticator_ = ChromeDeviceAuthenticatorFactory::GetForProfile(
++      profile_, device_reauth::DeviceAuthParams(
++                    base::Seconds(0),
++                    device_reauth::DeviceAuthSource::kPasswordManager));
++  if (!recovery_authenticator_ ||
++      !recovery_authenticator_->CanAuthenticateWithBiometricOrScreenLock()) {
++    std::move(callback).Run(NativeFault(
++        "permission_denied", "Device authentication is unavailable"));
++    return;
++  }
++  recovery_auth_pending_ = true;
++  const std::u16string message = *purpose == "export"
++      ? u"Approve creating an Aux recovery package"
++      : u"Approve restoring an Aux recovery package";
++  recovery_authenticator_->AuthenticateWithMessage(
++      message,
++      base::BindOnce(
++          [](base::WeakPtr<AuxRuntimeHost> host,
++             std::shared_ptr<std::atomic_bool> cancelled,
++             base::OnceCallback<void(base::DictValue)> callback,
++             bool approved) {
++            if (host) host->recovery_auth_pending_ = false;
++            if (!host || cancelled->load() || !approved ||
++                !host->runtime_connected_) {
++              std::move(callback).Run(NativeFault(
++                  "permission_denied", "Recovery device authentication was not approved"));
++              return;
++            }
++            base::DictValue result;
++            result.Set("approved", true);
++            std::move(callback).Run(NativeResult(base::Value(std::move(result))));
++          }, weak_factory_.GetWeakPtr(), std::move(cancelled),
++          std::move(callback)));
+ }
+ 
+ AuxRuntimeHost::Worker::Worker(
+@@ -577,6 +633,16 @@
+                                state->reply = std::move(reply);
+                                state->ready.Signal();
+                              }, state));
++                         return;
++                       }
++                       if (owner && method == "native.recoveryOwnerAuth") {
++                         owner->HandleRecoveryOwnerAuth(params, state->cancelled,
++                             base::BindOnce(
++                                 [](std::shared_ptr<NativeReplyState> state,
++                                    base::DictValue reply) {
++                                   state->reply = std::move(reply);
++                                   state->ready.Signal();
++                                 }, state));
+                          return;
+                        }
+                        if (owner && method == "native.zapInstallStylesheet") {
+@@ -680,6 +746,7 @@
+                      owner_, method, std::move(params), connection_generation_,
+                      state));
+   if (!state->ready.TimedWait(base::Seconds(
++          method == "native.recoveryOwnerAuth" ? 120 :
+           method == "native.fillSavedPassword" ? 60 : 30))) {
+     state->cancelled->store(true);
+     return NativeFault("backend_unavailable",

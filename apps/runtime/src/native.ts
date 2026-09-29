@@ -139,6 +139,8 @@ export interface NativeBridge {
   /** Atomically create or read the current native Profile's protected-storage root. */
   profileStorageRoot?(args: { version: 1 }): Promise<{ value: string }>;
   profileStorageFactor?(args: { version: 1; purpose: "sqlite" }): Promise<{ value: string }>;
+  /** Fresh OS authentication for this recovery action; never a reusable grant. */
+  recoveryOwnerAuth?(args: { version: 1; purpose: "export" | "restore" }): Promise<{ approved: true }>;
   /** Native host signs a one-use, default-deny launch capability for a reviewed MCP server. */
   prepareMcpStdioLaunch?(server: OutboundMcpServer): Promise<McpStdioLaunchPermit>;
   /** Native host owns OAuth consent/refresh and returns only an ephemeral token for this exact server. */
@@ -285,6 +287,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   profileStorageFactor(args: { version: 1; purpose: "sqlite" }) {
     return this.channel.call<{ value: string }>("native.profileStorageFactor", args);
+  }
+  recoveryOwnerAuth(args: { version: 1; purpose: "export" | "restore" }) {
+    return this.channel.call<{ approved: true }>("native.recoveryOwnerAuth", args, 120_000);
   }
   prepareMcpStdioLaunch(server: OutboundMcpServer) {
     return this.channel.call<McpStdioLaunchPermit>("native.prepareMcpStdioLaunch", { server }, 30_000);

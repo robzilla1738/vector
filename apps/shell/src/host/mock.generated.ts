@@ -564,6 +564,9 @@ const RESULTS: Record<string, unknown> = {
   "native.profileStorageFactor": {
     "value": "mock-value"
   },
+  "native.recoveryOwnerAuth": {
+    "approved": true
+  },
   "native.captureReadablePage": {
     "url": "https://example.com/",
     "title": "mock-title",
