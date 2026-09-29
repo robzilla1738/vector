@@ -35,6 +35,13 @@
   .horizontal-tab:has([data-active="true"])::before, .horizontal-tab:has([data-active="true"])::after { display: none; }
   .aux-native-dialog::backdrop { background: Canvas; opacity: .65; }
   .space-dot, .live-dot { background: Highlight; forced-color-adjust: none; }
+  .ui-scroll-area { mask-image:none; }
+  .ui-tooltip, .ui-surface, .anchored-panel, .toast { background:Canvas; color:CanvasText; border:1px solid CanvasText; box-shadow:none; }
+  input.ui-switch { forced-color-adjust:none; background:Canvas; border:1px solid ButtonText; }
+  input.ui-switch::after { background:ButtonText; }
+  input.ui-switch:checked { background:Highlight; border-color:Highlight; }
+  input.ui-switch:checked::after { background:HighlightText; }
+  .ui-radio-card:has(> input:checked) { outline:2px solid Highlight; outline-offset:2px; }
 }
 @media (forced-colors: none) {
   :is(.horizontal-tab-select, .horizontal-group-chip, .horizontal-profile, .sidebar .space-switch, .aux-native-dialog button, .aux-native-dialog input, .cb-provider-scopes button):focus-visible { outline: 2px solid var(--focus-line); outline-offset: -2px; box-shadow: none; }

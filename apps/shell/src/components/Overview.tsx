@@ -45,7 +45,7 @@ export function Overview() {
   const anchor = useRef<string | null>(null);
   const duplicateSelection = useRef(false);
   const searchInput = useRef<HTMLInputElement>(null);
-  const grid = useRef<HTMLDivElement>(null);
+  const tabButtons = useRef(new Map<string, HTMLButtonElement>());
   const [focused, setFocused] = useState<string | null>(activePageId);
   const captured = useRef(new Set<string>());
   const search = query.trim().toLocaleLowerCase();
@@ -99,14 +99,14 @@ export function Overview() {
   function focusTab(pageId?: string) {
     if (!pageId) return;
     setFocused(pageId);
-    const button = [...(grid.current?.querySelectorAll<HTMLButtonElement>(".ov-open") ?? [])].find(button => button.dataset.pageId === pageId);
+    const button = tabButtons.current.get(pageId);
     button?.focus(); button?.scrollIntoView({ block: "nearest" });
   }
 
   function navigateGrid(event: React.KeyboardEvent, pageId: string) {
     if (event.target !== event.currentTarget || busy || event.nativeEvent.isComposing || event.altKey || event.metaKey || event.ctrlKey) return;
     const index = visible.findIndex(page => page.pageId === pageId);
-    const buttons = [...(grid.current?.querySelectorAll<HTMLButtonElement>(".ov-open") ?? [])];
+    const buttons = visible.flatMap(page => { const button = tabButtons.current.get(page.pageId); return button ? [button] : []; });
     const firstTop = buttons[0]?.getBoundingClientRect().top;
     const columns = Math.max(1, buttons.filter(button => Math.abs(button.getBoundingClientRect().top - (firstTop ?? 0)) < 2).length);
     const offsets: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -columns, ArrowDown: columns };
@@ -409,13 +409,13 @@ export function Overview() {
     {progress && <output className="hint ov-progress" data-block>{progress}</output>}
     {error && <p role="alert" className="field-error">{error}</p>}
     {!visible.length && <div className="empty-state ov-empty"><span className="empty-ico">{query ? I.search : I.grid}</span><h2>{query ? "No matching tabs" : "Room for something new"}</h2><p>{query ? "Try another title or address, or look in all spaces." : "Open a page to start browsing in this space."}</p></div>}
-    <div role="group" ref={grid} className="ov-grid" aria-label="Open tabs" aria-description="Arrow keys move between tabs. Space selects a tab. Enter opens it.">
+    <div role="group" className="ov-grid" aria-label="Open tabs" aria-description="Arrow keys move between tabs. Space selects a tab. Enter opens it.">
       {visible.map(page => {
         const shot = shots[page.pageId] || pagePreview(page.pageId);
         const title = tabLabel(layout,page);
         const owner = [...layout.spaces, ...(layout.archivedSpaces ?? [])].find(space => space.id === layout.tabSpace[page.pageId]);
         return <article key={page.pageId} className={`ov-card ${page.pageId === activePageId ? "active" : ""} ${selected.has(page.pageId) ? "selected" : ""}`}>
-          <button className="ov-open" data-page-id={page.pageId} tabIndex={focusedId === page.pageId ? 0 : -1} onFocus={() => setFocused(page.pageId)} onKeyDown={event => navigateGrid(event, page.pageId)} aria-label={`Open ${title}`} title={`${title}\n${page.url}`} onClick={event => open(page, event)}>
+          <button ref={node => { if (node) tabButtons.current.set(page.pageId, node); else tabButtons.current.delete(page.pageId); }} className="ov-open" data-page-id={page.pageId} tabIndex={focusedId === page.pageId ? 0 : -1} onFocus={() => setFocused(page.pageId)} onKeyDown={event => navigateGrid(event, page.pageId)} aria-label={`Open ${title}`} title={`${title}\n${page.url}`} onClick={event => open(page, event)}>
             <div className="ov-shot">{shot ? <img src={shot} alt="" loading="lazy" /> : <span className="ov-fallback"><FavIcon url={page.url} src={page.favicon} className="ov-bigfav" /></span>}</div>
             <TabCardCaption page={page} space={!spaceId ? owner?.name : undefined} pinned={!!owner && isPinned(layout, owner.id, page.url)} />
           </button>

@@ -447,21 +447,6 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .project-workspace-action { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0 1px; }
 .project-workspace-action p { margin: 0; }
 @media (max-width: 760px) { .project-environment-stack { grid-template-columns: 1fr; } .project-environment-stack > .row { justify-content: flex-start; } }
-.project-diagnostics { display: grid; gap: var(--space-2-5); margin-top: var(--space-2); padding: var(--space-3); border: var(--hairline) solid var(--line); border-radius: var(--r-md); background: color-mix(in srgb,var(--bg-2) 72%,transparent); }
-.project-diagnostics-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
-.project-diagnostics-head p, .project-diagnostics > p { margin: 3px 0 0; }
-.project-diagnostic-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: var(--space-2-5); }
-.project-diagnostic-grid > section { min-width: 0; padding: var(--space-2-5); border: var(--hairline) solid var(--line); border-radius: var(--r-control); background: var(--bg-1); }
-.project-diagnostic-grid h4 { margin: 0 0 var(--space-optical); color: var(--ink-1); font-size: var(--fs-xs); font-weight: var(--fw-semibold); }
-.project-diagnostic-grid ol { display: grid; gap: var(--space-0); max-height: 220px; margin: 0; padding: 0; overflow: auto; list-style: none; }
-.project-diagnostic-grid li { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: baseline; gap: var(--space-2); min-height: 25px; padding: var(--space-1) var(--space-1-5); border-radius: 7px; color: var(--ink-2); font-size: var(--fs-2xs); }
-.project-diagnostic-grid li:nth-child(even) { background: color-mix(in srgb,var(--ink-0) 3%,transparent); }
-.project-diagnostic-grid li > span { color: var(--ink-1); font-weight: var(--fw-strong); text-transform: lowercase; }
-.project-diagnostic-grid li > code { overflow: hidden; color: inherit; font: inherit; text-overflow: ellipsis; white-space: nowrap; }
-.project-diagnostic-grid li > time { color: var(--ink-3); white-space: nowrap; }
-.project-diagnostic-grid .diagnostic-warning > span { color: var(--warn); }
-.project-diagnostic-grid .diagnostic-error > span { color: var(--err); }
-@media (max-width: 760px) { .project-diagnostic-grid { grid-template-columns: 1fr; } .project-diagnostics-head { align-items: stretch; flex-direction: column; } }
 .download-folder { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2-5) var(--space-3-5); border-bottom: var(--hairline) solid var(--line); color: var(--ink-2); font-size: var(--fs-xs); }
 .download-folder-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .download-folder .btn { flex-shrink: 0; }

@@ -42,3 +42,28 @@ it("previews AI Tidy folders, applies them once, and restores the exact layout o
     expect(useStore.getState().layout).toEqual(layout);
   } finally { await act(async () => root.unmount()); }
 });
+
+it("moves focus by visible tab refs after tab removal and reorder", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const initial = useStore.getState(), layout = emptyLayout();
+  const pages = [1, 2, 3].map(index => ({ pageId: `p${index}`, title: `Tab ${index}`, url: `https://example.test/${index}`,
+    controller: "none", viewStatus: "visible", ownedByRuntime: false }) as PageTarget);
+  useStore.setState({ pages, layout: { ...layout, order: ["p3", "p1", "p2"] }, activePageId: "p3", mode: "overview" });
+  vi.spyOn(bridge, "focusShell").mockResolvedValue(undefined);
+  const scroll = HTMLElement.prototype.scrollIntoView; HTMLElement.prototype.scrollIntoView = vi.fn();
+  const host = document.createElement("div"), root = createRoot(host); document.body.append(host);
+  const key = (button: Element, value: string) => button.dispatchEvent(new KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true }));
+  try {
+    await act(async () => root.render(<Overview />));
+    const first = host.querySelector<HTMLButtonElement>('.ov-open[data-page-id="p3"]')!;
+    await act(async () => { first.focus(); key(first, "ArrowRight"); });
+    expect((document.activeElement as HTMLElement).dataset.pageId).toBe("p1");
+    await act(async () => useStore.setState({ pages: pages.filter(page => page.pageId !== "p2"), layout: { ...layout, order: ["p1", "p3"] } }));
+    await act(async () => key(document.activeElement!, "End"));
+    expect((document.activeElement as HTMLElement).dataset.pageId).toBe("p3");
+    expect(host.querySelectorAll('.ov-open[tabindex="0"]')).toHaveLength(1);
+  } finally {
+    await act(async () => root.unmount()); host.remove(); useStore.setState(initial, true);
+    if (scroll) HTMLElement.prototype.scrollIntoView = scroll; else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+  }
+});

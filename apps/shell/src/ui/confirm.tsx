@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Dialog } from "./dialog";
 import "./confirm.css";
 
@@ -19,12 +19,21 @@ export function AlertDialog({
   onConfirm(): void;
   onCancel(): void;
 }) {
+  const descriptionId = useId();
+  const cancel = useRef<HTMLButtonElement>(null);
   return (
-    <Dialog label={options.title} onClose={onCancel} className="ui-alert-dialog">
+    <Dialog
+      label={options.title}
+      kind="alertdialog"
+      descriptionId={descriptionId}
+      initialFocusRef={cancel}
+      onClose={onCancel}
+      className="ui-alert-dialog"
+    >
       <h3>{options.title}</h3>
-      <p>{options.description}</p>
+      <p id={descriptionId}>{options.description}</p>
       <div className="ui-alert-actions">
-        <button type="button" className="btn" autoFocus onClick={onCancel}>
+        <button ref={cancel} type="button" className="btn" onClick={onCancel}>
           {options.cancelLabel ?? "Cancel"}
         </button>
         <button type="button" className={`btn ${options.danger ? "danger" : "primary"}`} onClick={onConfirm}>

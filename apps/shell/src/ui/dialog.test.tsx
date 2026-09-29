@@ -104,8 +104,7 @@ it("Dialog focuses an explicit heading and restores the opener on close", async 
     await act(async () => opener.click());
     expect(document.activeElement?.textContent).toBe("What the agent sees");
     await act(async () => key(document.querySelector("dialog")!, "Escape"));
-    // jsdom lacks native dialog cancel, so activate the explicit close control.
-    await act(async () => (document.querySelector("dialog button") as HTMLButtonElement).click());
+    expect(document.querySelector("dialog")).toBeNull();
     expect(document.activeElement).toBe(opener);
   } finally { await act(async () => root.unmount()); host.remove(); }
 });

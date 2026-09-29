@@ -1,8 +1,8 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { positionContextMenu } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
-import { useDismissable } from "../use-dismissable";
+import { useNativeDialog } from "./native-dialog";
 import "./popover.css";
 
 /** Native dialog focus containment, anchored to its shell control and clamped to the viewport. */
@@ -12,19 +12,21 @@ export function Popover({
   disabled,
   className = "",
   children,
+  initialFocusRef,
 }: {
   label: string;
   trigger: ReactNode;
   disabled?: boolean;
   className?: string;
   children(close: () => void): ReactNode;
+  initialFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDialogElement>(null);
   const id = useId();
   const close = () => setOpen(false);
-  useDismissable(open, close);
+  useNativeDialog(open && !disabled, panel, button, initialFocusRef);
   useEffect(() => {
     if (disabled) setOpen(false);
   }, [disabled]);
@@ -36,19 +38,6 @@ export function Popover({
       if (rect) positionContextMenu(node, rect.left, rect.bottom + 6);
       requestStageReport();
     };
-    if (typeof node.showModal === "function") node.showModal();
-    else node.setAttribute("open", "");
-    const focusable = [
-      "input:not(:disabled)",
-      "button:not(:disabled)",
-      "select:not(:disabled)",
-      "textarea:not(:disabled)",
-      "a[href]",
-      '[tabindex]:not([tabindex="-1"])',
-    ];
-    const preferred = node.querySelector<HTMLElement>("[autofocus]:not(:disabled)");
-    const first = node.querySelector<HTMLElement>(focusable.join(", "));
-    (preferred ?? first ?? node).focus({ preventScroll: true });
     place();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
     observer?.observe(node);
@@ -56,9 +45,6 @@ export function Popover({
     return () => {
       observer?.disconnect();
       window.removeEventListener("resize", place);
-      if (typeof node.close === "function") node.close();
-      else node.removeAttribute("open");
-      button.current?.focus({ preventScroll: true });
       requestAnimationFrame(requestStageReport);
     };
   }, [open]);
@@ -78,6 +64,7 @@ export function Popover({
         {trigger}
       </button>
       {open &&
+        !disabled &&
         createPortal(
           <dialog
             id={id}
@@ -86,8 +73,15 @@ export function Popover({
             aria-modal="true"
             className="anchored-panel ctx-menu"
             aria-label={label}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing) return;
+              event.preventDefault();
+              event.stopPropagation();
+              close();
+            }}
             onCancel={(event) => {
               event.preventDefault();
+              event.stopPropagation();
               close();
             }}
             onClick={(event) => {

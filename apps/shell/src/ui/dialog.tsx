@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { acquireFloatingSidebarLock } from "../floating-sidebar";
 import { moveMenuFocus } from "../keyboard-list";
 import { positionContextMenu } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
+import { availableControls, availableForFocus } from "./focus";
+import { useNativeDialog } from "./native-dialog";
 import "./dialog.css";
 
 interface BaseProps {
@@ -15,31 +16,6 @@ interface BaseProps {
   initialFocusRef?: RefObject<HTMLElement | null>;
 }
 
-function useDialogLifecycle(
-  open: boolean,
-  ref: RefObject<HTMLDialogElement | null>,
-  returnFocus?: RefObject<HTMLElement | null>,
-  initialFocusRef?: RefObject<HTMLElement | null>,
-) {
-  const previous = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    if (!open || !ref.current) return;
-    const dialog = ref.current;
-    previous.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    if (typeof dialog.showModal === "function") dialog.showModal();
-    else dialog.setAttribute("open", "");
-    initialFocusRef?.current?.focus({ preventScroll: true });
-    requestStageReport();
-    return () => {
-      if (typeof dialog.close === "function") dialog.close();
-      else dialog.removeAttribute("open");
-      const target = returnFocus?.current ?? previous.current;
-      if (target?.isConnected) target.focus({ preventScroll: true });
-      requestAnimationFrame(requestStageReport);
-    };
-  }, [open, ref, returnFocus, initialFocusRef]);
-}
-
 /** The single modal shell for forms and confirmations. Native dialog owns
  * focus containment, Escape, and the top layer. */
 export function Dialog({
@@ -49,17 +25,28 @@ export function Dialog({
   children,
   returnFocus,
   initialFocusRef,
-}: BaseProps) {
+  kind = "dialog",
+  descriptionId,
+}: BaseProps & { kind?: "dialog" | "alertdialog"; descriptionId?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
-  useDialogLifecycle(true, ref, returnFocus, initialFocusRef);
-  useEffect(() => acquireFloatingSidebarLock("keep-current"), []);
+  useNativeDialog(true, ref, returnFocus, initialFocusRef);
   return createPortal(
     <dialog
       ref={ref}
+      tabIndex={-1}
+      role={kind}
       className={`aux-native-dialog ${className}`}
       aria-label={label}
+      aria-describedby={descriptionId}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }}
       onCancel={(event) => {
         event.preventDefault();
+        event.stopPropagation();
         onClose();
       }}
       onClick={(event) => {
@@ -109,8 +96,7 @@ export function Menu({
   const generatedId = useId();
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
-  useDialogLifecycle(true, ref, returnFocus);
-  useEffect(() => acquireFloatingSidebarLock("keep-current"), []);
+  useNativeDialog(true, ref, returnFocus);
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
@@ -126,8 +112,14 @@ export function Menu({
       requestStageReport();
     };
     place();
-    const items = dialog.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([disabled])');
-    (initialFocusRef?.current ?? (atEnd ? items[items.length - 1] : items[0]))?.focus();
+    const items = [...dialog.querySelectorAll<HTMLElement>('[role^="menuitem"]')].filter(availableForFocus);
+    const preferred = initialFocusRef?.current;
+    (preferred && dialog.contains(preferred) && availableForFocus(preferred)
+      ? preferred
+      : atEnd
+        ? items.at(-1)
+        : items[0]
+    )?.focus({ preventScroll: true });
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
     observer?.observe(dialog);
     const onResize = () => closeRef.current();
@@ -141,18 +133,21 @@ export function Menu({
     <dialog
       id={id ?? generatedId}
       ref={ref}
+      tabIndex={-1}
       role="menu"
       className={`aux-native-dialog aux-native-menu ${className}`}
       aria-label={label}
       onCancel={(event) => {
         event.preventDefault();
+        event.stopPropagation();
         onClose();
       }}
       onKeyDown={(event) => {
         onMenuKeyDown?.(event);
-        if (event.defaultPrevented) return;
+        if (event.defaultPrevented || event.nativeEvent.isComposing) return;
         if (event.key === "Escape") {
           event.preventDefault();
+          event.stopPropagation();
           onClose();
           return;
         }
@@ -188,18 +183,7 @@ function focusOutsideMenu(trigger: HTMLElement | null | undefined, direction: 1 
   if (!trigger?.isConnected) return;
   const containingDialog = trigger.closest<HTMLDialogElement>("dialog[open]");
   const scope = containingDialog ?? document;
-  const candidates = [
-    ...scope.querySelectorAll<HTMLElement>(
-      'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])',
-    ),
-  ].filter(
-    (node) =>
-      node.closest("dialog") === containingDialog &&
-      !node.closest('[inert], [aria-hidden="true"], [hidden]') &&
-      !node.matches(':disabled, [aria-disabled="true"]') &&
-      node.getClientRects().length > 0 &&
-      getComputedStyle(node).visibility !== "hidden",
-  );
+  const candidates = availableControls(scope).filter((node) => node.closest("dialog") === containingDialog);
   const index = candidates.indexOf(trigger);
   const next = index >= 0 ? candidates[index + direction] : null;
   (next ?? trigger).focus({ preventScroll: true });

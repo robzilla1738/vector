@@ -1,4 +1,4 @@
-import { useCallback, useId, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type RefObject, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { useCallback, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type RefObject, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { I } from "../components/icons";
 import { Menu } from "./dialog";
 import "./ui.css";
@@ -30,8 +30,27 @@ export function Skeleton({ className = "", ...props }: HTMLAttributes<HTMLSpanEl
   return <span {...props} aria-hidden="true" className={`ui-skeleton ${className}`.trim()} />;
 }
 
-export function ScrollArea({ className = "", ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div {...props} className={`ui-scroll-area ${className}`.trim()} />;
+export function ScrollArea({ className = "", children, onScroll, tabIndex, ...props }: HTMLAttributes<HTMLDivElement>) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ top: false, bottom: false });
+  const measure = useCallback(() => {
+    const node = ref.current;
+    if (!node) return;
+    const next = { top: node.scrollTop > 1, bottom: node.scrollTop + node.clientHeight < node.scrollHeight - 1 };
+    setEdges(previous => previous.top === next.top && previous.bottom === next.bottom ? previous : next);
+  }, []);
+  useLayoutEffect(() => {
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(measure);
+    if (ref.current) {
+      observer?.observe(ref.current);
+      for (const child of ref.current.children) observer?.observe(child);
+    }
+    return () => observer?.disconnect();
+  }, [children, measure]);
+  return <div {...props} ref={ref} tabIndex={tabIndex ?? (edges.top || edges.bottom ? 0 : undefined)}
+    data-fade-top={edges.top || undefined} data-fade-bottom={edges.bottom || undefined}
+    onScroll={event => { measure(); onScroll?.(event); }} className={`ui-scroll-area ${className}`.trim()}>{children}</div>;
 }
 
 export function SettingsRow({ label, hint, children, compact = false }: { label: string; hint?: ReactNode; children: ReactNode; compact?: boolean }) {
@@ -69,22 +88,28 @@ export function RadioCard({ name, value, checked, onChange, children, className 
   </label>;
 }
 
-export function Tabs<T extends string>({ label, value, onChange, items, panelId, className = "" }: {
+export function Tabs<T extends string>({ label, value, onChange, items, panelId, className = "", orientation = "horizontal" }: {
   label: string; value: T; onChange(value: T): void;
   items: readonly { value: T; label: ReactNode; ariaLabel?: string; disabled?: boolean }[];
   panelId: string; className?: string;
+  orientation?: "horizontal" | "vertical";
 }) {
   const buttons = useRef(new Map<T, HTMLButtonElement>());
   const enabled = items.filter(item => !item.disabled);
+  const stop = enabled.some(item => item.value === value) ? value : enabled[0]?.value;
   const focus = (next: T) => { onChange(next); buttons.current.get(next)?.focus(); };
-  return <div className={`ui-tabs ${className}`.trim()} role="tablist" aria-label={label} onKeyDown={event => {
-    if (!(event.target instanceof HTMLButtonElement) || !enabled.length) return;
-    const index = enabled.findIndex(item => item.value === value);
+  return <div className={`ui-tabs ${className}`.trim()} role="tablist" aria-label={label} aria-orientation={orientation} onKeyDown={event => {
+    if (!(event.target instanceof HTMLButtonElement) || !enabled.length || event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const index = enabled.findIndex(item => buttons.current.get(item.value) === event.target);
+    if (index < 0) return;
+    const rtl = getComputedStyle(event.currentTarget).direction === "rtl";
+    const forward = orientation === "vertical" ? "ArrowDown" : rtl ? "ArrowLeft" : "ArrowRight";
+    const backward = orientation === "vertical" ? "ArrowUp" : rtl ? "ArrowRight" : "ArrowLeft";
     let next: T | undefined;
     if (event.key === "Home") next = enabled[0]?.value;
     else if (event.key === "End") next = enabled[enabled.length - 1]?.value;
-    else if (event.key === "ArrowRight" || event.key === "ArrowDown") next = enabled[(index + 1) % enabled.length]?.value;
-    else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = enabled[(index + enabled.length - 1) % enabled.length]?.value;
+    else if (event.key === forward) next = enabled[(index + 1) % enabled.length]?.value;
+    else if (event.key === backward) next = enabled[(index + enabled.length - 1) % enabled.length]?.value;
     if (next === undefined) return;
     event.preventDefault();
     event.stopPropagation();
@@ -92,7 +117,7 @@ export function Tabs<T extends string>({ label, value, onChange, items, panelId,
   }}>
     {items.map(item => <button key={item.value} ref={node => { if (node) buttons.current.set(item.value, node); else buttons.current.delete(item.value); }}
       type="button" role="tab" id={`${panelId}-${item.value}`} aria-controls={panelId} aria-label={item.ariaLabel}
-      aria-selected={item.value === value} tabIndex={item.value === value ? 0 : -1}
+      aria-selected={item.value === value} tabIndex={item.value === stop ? 0 : -1}
       className={item.value === value ? "active" : ""} disabled={item.disabled}
       onClick={() => onChange(item.value)}>{item.label}</button>)}
   </div>;

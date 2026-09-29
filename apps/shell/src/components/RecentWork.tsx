@@ -4,23 +4,10 @@ import type { ConversationArtifact, ConversationSummary, Routine } from "@aux/co
 import { call, errToast, useStore } from "../store";
 import { ConversationDrafts } from "./ConversationDrafts";
 import { mergeHistory } from "../run-history";
-import { draftKey } from "../conversation-drafts";
-import { ResultExcerpt } from "./ResultCard";
-import { AnswerPreview } from "./surfaces";
+import { RecentConversationCard } from "./RecentWorkCard";
 import { openSavedTask } from "../task-navigation";
-import { STATUS_LABEL } from "../run-status";
 import { I } from "./icons";
 import { Tabs } from "../ui";
-
-function previewText(item: ConversationSummary, draft?: string) {
-  if (draft?.trim()) return draft.trim();
-  const run = item.latestRun;
-  if (typeof run.result?.answer === "string" && run.result.answer.trim()) return run.result.answer;
-  if (run.status === "failed") return "This chat couldn’t finish. Open it to review or retry.";
-  if (run.status === "cancelled") return "This chat was cancelled.";
-  if (run.status === "interrupted") return "This chat was interrupted. Open it to continue.";
-  return run.statusMessage || run.goal;
-}
 
 /** Home previews use durable chat titles and results, never invented activity. */
 export function RecentWork() {
@@ -31,9 +18,7 @@ export function RecentWork() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
-  const drafts = useStore(state => state.conversationDrafts);
-  const layout = useStore(state => state.layout);
-  const workspaceId = layout.spaces.find(space => space.id === layout.activeSpaceId)?.workspaceId;
+  const workspaceId = useStore(state => state.layout.spaces.find(space => space.id === state.layout.activeSpaceId)?.workspaceId);
   useEffect(() => {
     const update = () => setRefresh(value => value + 1);
     window.addEventListener("focus", update);
@@ -76,11 +61,7 @@ export function RecentWork() {
       }}>{tab === "chats" ? "All Chats" : "Manage routines"}{I.right}</button>
     </header>
     <div id="recent-work-panel" role="tabpanel" aria-labelledby={`recent-work-panel-${tab}`} className="home-cards" aria-busy={loading}>
-      {tab === "chats" ? items.map(item => <article className="home-card" key={item.chatId}>
-        <div className="home-card-meta"><time dateTime={new Date(item.updatedAt).toISOString()}>{new Date(item.updatedAt).toLocaleDateString(undefined, {month: "short", day: "numeric"})}</time><span>{drafts[draftKey(item.chatId)]?.trim() ? "Draft" : STATUS_LABEL[item.latestRun.status]}</span></div>
-        <h3><button className="home-card-open" onClick={() => useStore.getState().openConversation(item.latestRun.runId)}>{item.title}</button></h3>
-        {!drafts[draftKey(item.chatId)]?.trim() && results[item.chatId]?.runId === item.latestRun.runId ? <><ResultExcerpt result={results[item.chatId]!}/><button className="home-result-open" onClick={()=>{useStore.getState().openConversationDraft(item.chatId);useStore.setState({resultPreview:results[item.chatId]!.artifactId});}}>{I.result}<span>{results[item.chatId]!.filename}</span>{results[item.chatId]!.revision && <small>v{results[item.chatId]!.revision}</small>}{I.open}</button></> : <div className="home-excerpt" inert><AnswerPreview text={previewText(item, drafts[draftKey(item.chatId)])}/></div>}
-      </article>) : routines.slice(0, 3).map(item => <article className="home-card" key={item.routineId}>
+      {tab === "chats" ? items.map(item => <RecentConversationCard key={item.chatId} item={item} artifact={results[item.chatId]} />) : routines.slice(0, 3).map(item => <article className="home-card" key={item.routineId}>
         <div className="home-card-meta"><span>{item.paused ? "Paused" : item.trigger.kind === "manual" ? "On demand" : "Scheduled"}</span></div>
         <h3><button className="home-card-open" onClick={() => item.sourceTaskId ? void openSavedTask(item.sourceTaskId).catch(errToast) : useStore.getState().setOverlay("tasks")}>{item.title}</button></h3>
         <p className="home-excerpt">{item.objective}</p>

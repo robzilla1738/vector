@@ -1,4 +1,5 @@
 import type { KeyboardEvent } from 'react';
+import { availableForFocus } from './ui/focus';
 
 /** Manual activation: arrows move focus; Enter/Space keep the control's action. */
 export function moveListFocus(event: KeyboardEvent<HTMLElement>, selector: string, vertical = true) {
@@ -8,7 +9,7 @@ export function moveListFocus(event: KeyboardEvent<HTMLElement>, selector: strin
   const forward = vertical ? 'ArrowDown' : 'ArrowRight';
   if (![backward, forward, 'Home', 'End'].includes(event.key)) return;
   const rows = [...event.currentTarget.querySelectorAll<HTMLElement>(selector)]
-    .filter(row => !row.matches(':disabled, [aria-disabled="true"]') && !row.closest('[inert], [aria-hidden="true"]') && row.getClientRects().length > 0);
+    .filter(availableForFocus);
   const index = rows.indexOf(event.target as HTMLElement);
   if (index < 0 || !rows.length) return;
   event.preventDefault();
@@ -28,7 +29,7 @@ export function moveMenuFocus(event: KeyboardEvent<HTMLElement>, selector = '[ro
   if (event.defaultPrevented) menuSearch.delete(event.currentTarget);
   if (event.defaultPrevented || event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.key.length !== 1 || event.key === ' ') return;
   const root = event.currentTarget;
-  const rows = [...root.querySelectorAll<HTMLElement>(selector)].filter(row => !row.matches(':disabled, [aria-disabled="true"]') && !row.closest('[inert], [aria-hidden="true"]') && row.getClientRects().length > 0);
+  const rows = [...root.querySelectorAll<HTMLElement>(selector)].filter(availableForFocus);
   if (!rows.length) return;
   const now = Date.now();
   const previous = menuSearch.get(root);
@@ -54,7 +55,7 @@ export function detailsMenuKey(event: KeyboardEvent<HTMLDetailsElement>) {
     event.preventDefault();
     menuSearch.delete(details);
     details.open = true;
-    const items = [...details.querySelectorAll<HTMLElement>('[role^="menuitem"]')].filter(item => !item.matches(':disabled, [aria-disabled="true"]'));
+    const items = [...details.querySelectorAll<HTMLElement>('[role^="menuitem"]')].filter(availableForFocus);
     (event.key === 'ArrowUp' ? items.at(-1) : items[0])?.focus();
     return;
   }
