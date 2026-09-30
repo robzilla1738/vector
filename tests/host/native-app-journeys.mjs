@@ -6706,16 +6706,10 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       throw new Error("History scope is open and has no matches for the visited Red page");
     }
     console.log(`history names ${native("names")}`);
-    const focused = focusedValue();
-    console.log(`history scope focused=${focused}`);
-    if (!focused.includes("Address, search, and agent prompt")) {
-      const mark = frameNamed("Bookmark this page");
-      if (!mark) throw new Error("The address field lost focus and the bookmark control is gone");
-      native("click-at", String(Math.max(mark.windowX + 160, mark.x - 240)), String(mark.y));
-      await delay(200);
-      console.log(`history address refocused=${focusedValue()}`);
-    }
-    native("type-return");
+    const row = frameNamed("/red");
+    if (!row) throw new Error("The history suggestion has no frame");
+    console.log(`history row frame ${row.x},${row.y} ${row.width}x${row.height} focused=${focusedValue()}`);
+    native("click-at", String(row.x), String(row.y));
     try {
       await until("history choice navigates back to Red", async () =>
         (await rpc("pages.list")).some(item => item.pageId === page.pageId && item.url === `${origin}/red` && !item.loading), 20_000);
