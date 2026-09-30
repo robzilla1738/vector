@@ -61,15 +61,16 @@ export class PageNavigation {
   }
 
   async navigate(pageId: string, url: string): Promise<PageTarget> {
-    return this.lanes.enqueue(pageId, async () => {
-      const dp = this.pages.driverPageLenient(pageId);
-      await dp.navigate(url);
-      const lp = this.pages.live.get(pageId);
-      if (!lp) throw new AuxError("target_detached", `page ${pageId} detached during navigation`);
-      lp.target.url = url;
-      this.pages.persist(lp);
-      return lp.target;
-    });
+    // The page lane stays with an in-flight program, including a long wait.
+    // The local owner still has to be able to load an address; queueing this
+    // load would freeze browsing until that program finished.
+    const dp = this.pages.driverPageLenient(pageId);
+    await dp.navigate(url);
+    const lp = this.pages.live.get(pageId);
+    if (!lp) throw new AuxError("target_detached", `page ${pageId} detached during navigation`);
+    lp.target.url = url;
+    this.pages.persist(lp);
+    return lp.target;
   }
 
   async back(pageId: string) {

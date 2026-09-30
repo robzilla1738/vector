@@ -21,6 +21,7 @@ import {
   TaskService,
   type Services,
 } from "@aux/runtime";
+import { PageOwnership } from "../../apps/runtime/src/scheduler/page-ownership.js";
 import {
   assessDevelopmentPeer,
   developmentPeerIdentity,
@@ -814,4 +815,93 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
   expect(pages.get(opened.pageId).url).toBe("https://example.com/after-revoke");
   again.release();
   await expect(second).resolves.toEqual({ steps: [] });
+});
+
+it("lets the unscoped loopback owner navigate while an external program holds the tab", async () => {
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
+  const repo = new Repo(db);
+  const events = new EventBus(repo);
+  let url = "https://start.example/";
+  let releaseWait: () => void = () => {};
+  const waiting = new Promise<void>((resolve) => { releaseWait = resolve; });
+  let waitStarted = false;
+  const driverPage = {
+    identity: { pageId: "", targetId: "t", backend: "aux" as const },
+    url: () => url,
+    title: async () => "Start",
+    isAttached: () => true,
+    navigate: async (next: string) => { url = next; },
+    waitFor: async () => {
+      waitStarted = true;
+      await waiting;
+      return { ok: true, timedOut: false };
+    },
+    observe: async () => ({}),
+    setEvents: () => undefined,
+    dispose: async () => undefined,
+  };
+  const driver = {
+    backend: "aux",
+    isConnected: () => true,
+    createTarget: async () => "t",
+    attach: async (_target: string, pageId: string) => {
+      driverPage.identity = { pageId, targetId: "t", backend: "aux" };
+      return driverPage as unknown as DriverPage;
+    },
+  } as unknown as BrowserDriver;
+  const pages = new PageService({
+    repo, events, native: new NullNativeBridge(),
+    drivers: () => ({ aux: driver, chrome: null }),
+  });
+  const opened = await pages.open({ url: "https://start.example/", background: true, ownedByRuntime: false });
+  const tasks = new TaskService(repo, events);
+  const workspace = tasks.createWorkspace("Browsing");
+  const task = tasks.create({
+    workspaceId: workspace.workspaceId, title: "Read", objective: "Read the page",
+    criteria: [{ criterionId: "c", description: "Read", verification: "manual" }],
+    resources: [{ resourceId: "page", kind: "page", locator: opened.pageId, label: "Tab" }],
+  });
+  const connections = new AgentConnectionService(repo);
+  const sessions = new ExternalSessionService(repo, events);
+  const pageOwnership = new PageOwnership();
+  const gate = makeInvoker({
+    repo, events, pages,
+    runs: { pageOwnership },
+    settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
+    agentConnections: connections,
+    externalSessions: sessions,
+  } as unknown as Services) as Gate;
+  const created = connections.create({
+    name: "Codex", client: "codex",
+    scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
+    expiresAt: Date.now() + 60 * 60_000,
+  });
+  const client = { external: true as const, connectionId: created.connection.connectionId, scope: created.connection.scope };
+  let settled = false;
+  const inflight = gate("pages.execute", {
+    program: { pageId: opened.pageId, steps: [{ id: "s", op: "waitFor", condition: { kind: "selector", selector: "#absent", state: "visible", timeoutMs: 30_000 } }] },
+    taskId: task.taskId,
+    expectedRevision: task.revision,
+  }, client).finally(() => { settled = true; });
+  const deadline = Date.now() + 2_000;
+  while (!waitStarted && !settled && Date.now() < deadline) await delay(10);
+  if (!waitStarted) {
+    releaseWait();
+    await inflight;
+    throw new Error("the external program never reached its wait");
+  }
+  try {
+    const navigated = Promise.race([
+      gate("pages.navigate", { pageId: opened.pageId, url: "https://example.com/during-activity" }, { external: true }),
+      delay(500).then(() => { throw new Error("owner navigate waited on the external program"); }),
+    ]);
+    await navigated;
+    expect(pages.get(opened.pageId).url).toBe("https://example.com/during-activity");
+    expect(settled).toBe(false);
+    expect(pageOwnership.snapshot()[opened.pageId]).toMatchObject({ actor: "external", connectionId: created.connection.connectionId });
+  } finally {
+    releaseWait();
+    await inflight;
+  }
 });

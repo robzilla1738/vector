@@ -191,7 +191,12 @@ export function makeInvoker(s: Services) {
       taskId?: string,
       internalAutomation = false,
     ): Promise<T> => {
-      const automated = client.external || internalAutomation;
+      // A scoped agent, or internal automation, takes the tab. The unscoped
+      // loopback owner is the local profile and keeps browsing while that
+      // program is still waiting.
+      const automated =
+        internalAutomation ||
+        (client.external && (client.connectionId !== undefined || scope !== undefined));
       const release = automated
         ? s.runs.pageOwnership.tryAcquire({
             pageId,
