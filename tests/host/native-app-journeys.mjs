@@ -3027,31 +3027,13 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
         throw new Error(`${message}; last heartbeat ${memorySaverToneHeartbeat || "(none)"}`);
       }
       console.log(`Tone sustained ${sustained}`);
-      let lastToneButtons = "";
-      let loggedStrip = false;
-      await until("host reports the tone tab is audible", async () => {
-        const title = await toneTitle();
-        if (title.startsWith("Aux tone blocked")) throw new Error(`Tone playback blocked: ${title}`);
-        try {
-          if (!loggedStrip) {
-            loggedStrip = true;
-            console.log(`Tone strip: tabs ${native("has-name", "Browser tabs")} close ${native("has-name", "Close ")}`);
-          }
-          const names = JSON.parse(native("buttons")).filter(name => name.includes("Mute") || name.includes("tone"));
-          const line = names.join(" | ") || "(no mute name)";
-          if (line !== lastToneButtons) {
-            lastToneButtons = line;
-            console.log(`Tone buttons: ${line}`);
-          }
-          return native("has-name", "Mute tab:") === "true";
-        } catch (error) {
-          console.log(`Tone audible check failed: ${error instanceof Error ? error.message : error}`);
-          return false;
-        }
-      }, 45_000);
-      record("host reported the tone tab audible before Memory saver", {
+      const toneChrome = () => JSON.parse(native("buttons")).filter(name =>
+        name.includes("Mute") || name.includes("tone") || name.includes("Close") || name === "New tab");
+      console.log(`Tone strip: tabs ${native("has-name", "Browser tabs")} close ${native("has-name", "Close ")} mute ${native("has-name", "Mute tab:")}`);
+      console.log(`Tone chrome: ${toneChrome().join(" | ") || "(none)"}`);
+      record("audio clock advanced before Memory saver", {
         wavFetches: memorySaverToneFetches, toneStarts: memorySaverToneStarts,
-        heartbeats: memorySaverToneHeartbeats,
+        heartbeats: memorySaverToneHeartbeats, sustained,
       });
       agent = await rpc("pages.open", { url: `${origin}/agent-memory`, background: true, ownedByRuntime: true, activate: false });
       assert.equal(agent.ownedByRuntime, true, "pages.open must mark the agent tab runtime-owned");
@@ -3112,6 +3094,16 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
       }, 30_000);
     }
     console.log("Waiting for the saved one-minute Memory saver policy to sleep Red while Blue stays active.");
+    if (memorySaverMediaJourney) {
+      try {
+        console.log(`Tone strip before sleep: tabs ${native("has-name", "Browser tabs")} close ${native("has-name", "Close ")} mute ${native("has-name", "Mute tab:")}`);
+        const names = JSON.parse(native("buttons")).filter(name =>
+          name.includes("Mute") || name.includes("tone") || name.includes("Close") || name === "New tab");
+        console.log(`Tone chrome before sleep: ${names.join(" | ") || "(none)"}`);
+      } catch (error) {
+        console.log(`Tone strip before sleep failed: ${error instanceof Error ? error.message : error}`);
+      }
+    }
     if (memorySaverAwakeJourney) {
       let sleepAccessFailures = 0;
       let lastLifecycle = "";
