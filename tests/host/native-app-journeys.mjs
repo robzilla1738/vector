@@ -468,21 +468,27 @@ async function openLibraryView(viewLabel) {
     console.log(`palette row miss dialog=${native("has-name", "Command palette")} focused=${focusedValue()}`);
     throw error;
   }
-  // The row's center click does not run it. The palette field confirms with Return.
-  console.log(`palette row focused=${focusedValue()}`);
+  // The matched frame is the palette field, which advertises the selected row.
+  // Focus that field and confirm it. A miss clicks the list row under the section label.
+  const row = frameNamed("Bookmarks and history");
+  const dialog = frameNamed("Command palette");
+  console.log(`library frames row=${row ? `${row.x},${row.y} ${row.width}x${row.height}` : "none"} dialog=${dialog ? `${dialog.x},${dialog.y} ${dialog.width}x${dialog.height}` : "none"} focused=${focusedValue()}`);
+  if (!row || row.height > 80) throw new Error(`Library command frame is ${row ? `${row.width}x${row.height}` : "missing"}, not a row`);
+  native("click-at", String(row.x), String(row.y));
+  await delay(200);
   native("type-return");
-  await delay(500);
+  await delay(400);
   if (native("has-name", viewLabel) !== "true") {
-    const row = frameNamed("Bookmarks and history");
-    if (!row || row.height > 80) {
-      console.log(`library view miss focused=${focusedValue()} frame=${row ? `${row.width}x${row.height}` : "none"}`);
-      throw new Error(`Timed out waiting for library view ${viewLabel}`);
-    }
-    const y = row.y + 40;
-    console.log(`library command offset click ${row.x},${y} frame ${row.y} ${row.width}x${row.height}`);
+    const y = row.y + row.height / 2 + 46;
+    console.log(`library command lower click ${row.x},${y}`);
     native("click-at", String(row.x), String(y));
   }
-  await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
+  try {
+    await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
+  } catch (error) {
+    console.log(`library view miss focused=${focusedValue()} library=${native("has-name", "Library")} palette=${native("has-name", "Command palette")}`);
+    throw error;
+  }
   clickPhrase(viewLabel);
 }
 function focusedValue() {
