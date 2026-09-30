@@ -445,37 +445,29 @@ function welcomeHeadingFocused() {
 async function openLibraryView(viewLabel) {
   await dismissWelcomeIfPresent();
   await focusShellField();
-  let palette = false;
-  for (let attempt = 0; attempt < 2 && !palette; attempt++) {
-    native("open-palette");
-    const deadline = Date.now() + 15_000;
-    let setup = false;
-    while (Date.now() < deadline) {
-      if (native("has-name", "Bookmarks and history") === "true") {
-        palette = true;
-        break;
-      }
-      // The address click focuses the welcome heading after the first sample.
-      if (welcomeHeadingFocused()) {
-        setup = true;
-        break;
-      }
-      await delay(200);
-    }
-    if (palette) break;
-    if (!setup || attempt === 1) {
-      console.log(`palette row miss dialog=${native("has-name", "Command palette")} focused=${focusedValue()}`);
-      throw new Error("Timed out waiting for palette can open Library");
-    }
+  if (welcomeHeadingFocused()) {
     console.log(`setup covered the address row focused=${focusedValue()}`);
     await until("setup finish control", () => native("has-name", "Finish later") === "true", 8_000);
     clickNamedLogged("Finish later");
     await until("setup dismissed", () => native("has-name", "Finish later") !== "true" && !welcomeHeadingFocused(), 8_000);
     await focusShellField();
   }
-  console.log(`palette filter ${native("type-text", "/bookmarks")} focused=${focusedValue()}`);
+  // Command-K does not open the palette while this combobox is focused.
+  // A leading slash is the address field's command intent and seeds the palette.
+  await until("address field focused", () => focusedValue().includes("Address, search, and agent prompt"), 8_000);
+  native("select-all");
+  await delay(150);
+  console.log(`library command ${native("type-text", "/bookmarks")} focused=${focusedValue()}`);
+  await until("address holds the Library command", () => focusedValue().includes("/bookmarks"), 8_000);
+  native("type-return");
+  try {
+    await until("palette can open Library", () => native("has-name", "Bookmarks and history") === "true", 15_000);
+  } catch (error) {
+    console.log(`palette row miss dialog=${native("has-name", "Command palette")} focused=${focusedValue()}`);
+    throw error;
+  }
   await until("palette filter holds the Library command", () => focusedValue().includes("/bookmarks"), 8_000);
-  await new Promise(resolve => setTimeout(resolve, 150));
+  await delay(150);
   native("type-return");
   await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
   clickPhrase(viewLabel);
