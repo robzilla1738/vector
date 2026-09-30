@@ -2894,15 +2894,19 @@ else {
             : page.pageId === unknown.pageId ? "unknown"
             : new URL(page.url).pathname;
           const summary = pages.map(page => `${nameOf(page)}:${page.lifecycle ?? "missing"}`).join(" ");
-          if (summary !== lastLifecycle) {
-            lastLifecycle = summary;
-            console.log(`Lifecycles while waiting for sleep: ${summary}`);
-          }
           const redPage = pages.find(item => item.pageId === red.pageId);
-          if (!redPage?.lifecycle || redPage.lifecycle === "live") return false;
+          // pages.list omits a detached discard, so a missing row has left live.
+          const leftLive = !redPage || (redPage.lifecycle && redPage.lifecycle !== "live");
+          const exact = leftLive ? native("has-name", "Sleeping tab", "exact") : "";
+          const line = `${summary}${exact ? ` exact Sleeping tab ${exact}` : ""}`;
+          if (line !== lastLifecycle) {
+            lastLifecycle = line;
+            console.log(`Lifecycles while waiting for sleep: ${line}`);
+          }
+          if (!leftLive) return false;
           sleepAccessFailures = 0;
           // The Memory saver hint contains "Sleeping tabs", so only the icon's exact name counts.
-          return native("has-name", "Sleeping tab", "exact") === "true";
+          return exact === "true";
         } catch (error) {
           sleepAccessFailures += 1;
           if (sleepAccessFailures === 1) console.log(`Sleeping tab check failed: ${error instanceof Error ? error.message : error}`);
