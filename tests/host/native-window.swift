@@ -113,14 +113,17 @@ func buttonLabels() -> [String] {
     AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
     let roleName = role as? String ?? ""
     if roleName == (kAXMenuBarRole as String) { return }
-    if roleName == (kAXButtonRole as String) {
+    // aria-haspopup="menu" is a popup button, so the space control is not an AXButton.
+    if roleName == (kAXButtonRole as String) || roleName == (kAXPopUpButtonRole as String) {
       var title: CFTypeRef?
       var description: CFTypeRef?
       AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
       AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
-      let label = (title as? String).flatMap { $0.isEmpty ? nil : $0 } ??
-                  (description as? String).flatMap { $0.isEmpty ? nil : $0 }
-      if let label, !labels.contains(label) { labels.append(label) }
+      for candidate in [title as? String, description as? String] {
+        guard let label = candidate?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !label.isEmpty, !labels.contains(label) else { continue }
+        labels.append(label)
+      }
     }
     if shellOnly && isGuestWebArea(element, role: roleName) { return }
     var children: CFTypeRef?
@@ -418,7 +421,7 @@ func pressButton(_ label: String) -> Bool {
     AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descriptionValue)
     let title = titleValue as? String ?? ""
     let description = descriptionValue as? String ?? ""
-    if role == (kAXButtonRole as String) && (title == label || description == label) {
+    if (role == (kAXButtonRole as String) || role == (kAXPopUpButtonRole as String)) && (title == label || description == label) {
       AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
       return AXUIElementPerformAction(element, kAXPressAction as CFString) == .success
     }
@@ -539,6 +542,7 @@ func staticTexts() -> [String] {
 func pressLabel(_ label: String) -> Bool {
   let application = AXUIElementCreateApplication(pid)
   let button = kAXButtonRole as String
+  let popup = kAXPopUpButtonRole as String
   let disclosure = "AXDisclosureTriangle"
   func roleOf(_ element: AXUIElement) -> String {
     var roleValue: CFTypeRef?
@@ -555,7 +559,7 @@ func pressLabel(_ label: String) -> Bool {
   }
   func pressableAncestor(_ element: AXUIElement) -> AXUIElement? {
     let role = roleOf(element)
-    if role == button || role == disclosure || role == "AXMenuItem" { return element }
+    if role == button || role == popup || role == disclosure || role == "AXMenuItem" { return element }
     var current = element
     for _ in 0..<6 {
       var parent: CFTypeRef?
@@ -564,7 +568,7 @@ func pressLabel(_ label: String) -> Bool {
       let parentElement = unsafeBitCast(parent, to: AXUIElement.self)
       let parentRole = roleOf(parentElement)
       if parentRole == (kAXMenuBarRole as String) { return nil }
-      if parentRole == button || parentRole == disclosure || parentRole == "AXMenuItem" { return parentElement }
+      if parentRole == button || parentRole == popup || parentRole == disclosure || parentRole == "AXMenuItem" { return parentElement }
       current = parentElement
     }
     return nil
