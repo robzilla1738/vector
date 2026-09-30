@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "./store";
-import { isTab } from "./workspace";
+import { isStripTab } from "./workspace";
 
 export type TabMembership = Pick<PageTarget, "pageId"> & { viewStatus: "visible"; ownedByRuntime: false };
 
@@ -12,7 +12,7 @@ export function useTabMembership(): TabMembership[] {
   const ids = useStore(
     useShallow((state) =>
       state.pages
-        .filter((page) => isTab(page) && page.pageId !== state.peekPageId)
+        .filter((page) => isStripTab(page) && page.pageId !== state.peekPageId)
         .map((page) => page.pageId),
     ),
   );

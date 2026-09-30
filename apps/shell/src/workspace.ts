@@ -124,6 +124,13 @@ export function isTab(p: Pick<PageTarget, "viewStatus" | "ownedByRuntime">): boo
   return p.viewStatus !== "detached" && !p.ownedByRuntime;
 }
 
+/** Strip membership. Discard detaches the renderer and marks the tab sleeping; that tab stays visible. */
+export function isStripTab(p: Pick<PageTarget, "viewStatus" | "ownedByRuntime" | "lifecycle">): boolean {
+  if (p.ownedByRuntime) return false;
+  if (p.lifecycle === "discarded" || p.lifecycle === "frozen" || p.lifecycle === "placeholder") return true;
+  return p.viewStatus !== "detached";
+}
+
 /** Bring `order` in sync with the live page list: keep known order, append new pages, drop closed. Unchanged order is returned as-is. */
 export function syncOrder(order: string[], pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): string[] {
   const live = new Set(pages.map((p) => p.pageId));
@@ -192,12 +199,12 @@ export function tabsInSpace<T extends Pick<PageTarget, "pageId" | "viewStatus" |
   const out: T[] = [];
   for (const id of layout.order) {
     const p = byId.get(id);
-    if (p && isTab(p) && (layout.tabSpace[id] ?? layout.activeSpaceId) === spaceId) out.push(p);
+    if (p && isStripTab(p) && (layout.tabSpace[id] ?? layout.activeSpaceId) === spaceId) out.push(p);
   }
   // pages that have not been ordered yet (racing an event) trail the list
   const ordered = new Set(layout.order);
   for (const p of pages) {
-    if (!ordered.has(p.pageId) && isTab(p) && (layout.tabSpace[p.pageId] ?? layout.activeSpaceId) === spaceId) out.push(p);
+    if (!ordered.has(p.pageId) && isStripTab(p) && (layout.tabSpace[p.pageId] ?? layout.activeSpaceId) === spaceId) out.push(p);
   }
   return out;
 }

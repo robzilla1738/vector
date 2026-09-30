@@ -105,6 +105,19 @@ describe("tab order", () => {
     const layout = syncSpaces({ ...emptyLayout(), order: syncOrder([], pages) }, pages);
     expect(tabsInSpace(layout, pages, DEFAULT_SPACE.id).map((p) => p.pageId)).toEqual(["a", "bg"]);
   });
+
+  it("keeps a sleeping tab on the strip after its renderer detaches", () => {
+    const pages = [
+      page("live"),
+      page("discarded", { viewStatus: "detached", lifecycle: "discarded" }),
+      page("frozen", { viewStatus: "detached", lifecycle: "frozen" }),
+      page("placeholder", { viewStatus: "detached", lifecycle: "placeholder" }),
+      page("closed", { viewStatus: "detached" }),
+      page("worker", { ownedByRuntime: true, lifecycle: "discarded" }),
+    ];
+    const layout = syncSpaces({ ...emptyLayout(), order: pages.map(item => item.pageId) }, pages);
+    expect(tabsInSpace(layout, pages, DEFAULT_SPACE.id).map(item => item.pageId)).toEqual(["live", "discarded", "frozen", "placeholder"]);
+  });
 });
 
 describe("spaces", () => {
