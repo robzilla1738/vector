@@ -91,16 +91,30 @@ describe("PageService.syncCatalog", () => {
 
   it("reports a native discard as a detach so the shell can keep the sleeping tab", async () => {
     const { pages, events, destroyAttached } = harness(new DesktopNative());
-    const seen: string[] = [];
+    const seen: { type: string; payload: Record<string, unknown> }[] = [];
     events.subscribe(event => {
-      if (event.type === "page.removed" || (event.type === "page.updated" && event.payload.viewStatus === "detached")) seen.push(event.type);
+      if (event.type === "page.removed" || (event.type === "page.updated" && event.payload.viewStatus === "detached"))
+        seen.push({ type: event.type, payload: event.payload });
     });
     await pages.syncCatalog(patch(1, [upsert(record("one"))]));
     seen.length = 0;
     destroyAttached();
-    expect(seen).toEqual(["page.updated"]);
+    expect(seen).toEqual([{ type: "page.updated", payload: { pageId: "one", viewStatus: "detached" } }]);
     expect(pages.list().map(page => page.pageId)).not.toContain("one");
     expect(pages.get("one").viewStatus).toBe("detached");
+  });
+
+  it("still removes a driver-detached tab when the native host is unavailable", async () => {
+    const { pages, events, destroyAttached } = harness();
+    const seen: { type: string; payload: Record<string, unknown> }[] = [];
+    events.subscribe(event => {
+      if (event.type === "page.removed" || (event.type === "page.updated" && event.payload.viewStatus === "detached"))
+        seen.push({ type: event.type, payload: event.payload });
+    });
+    await pages.syncCatalog(patch(1, [upsert(record("one"))]));
+    seen.length = 0;
+    destroyAttached();
+    expect(seen).toEqual([{ type: "page.removed", payload: { pageId: "one", reason: "closed" } }]);
   });
 
   it("registers human-created tabs on the stable marker", async () => {
