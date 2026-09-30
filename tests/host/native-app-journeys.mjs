@@ -453,15 +453,15 @@ function librarySegments() {
   return frames.filter(item => item.height >= 16 && item.height <= 40 && item.width >= 40 && item.width <= 240)
     .sort((a, b) => a.x - b.x);
 }
-async function clickLibrarySegment(tab, viewLabel) {
+function clickLibrarySegment(viewLabel) {
   const segments = librarySegments();
   console.log(`library tabs ${segments.map(item => `${item.title || item.description || item.role} ${item.x},${item.y} ${item.width}x${item.height}`).join(" | ") || "none"}`);
+  const needle = viewLabel.toLowerCase();
   const index = viewLabel === "Reading list" ? 1 : 3;
-  const named = segments.find(item => `${item.title}\n${item.description}\n${item.value}`.includes(viewLabel));
+  // CSS capitalizes the accessible name, so "Reading list" is exposed as "Reading List".
+  const named = segments.find(item => `${item.title}\n${item.description}\n${item.value}`.toLowerCase().includes(needle));
   const target = named ?? (segments.length === 4 ? segments[index] : null);
-  if (!target || Math.abs(target.y - tab.y) >= 30) {
-    throw new Error(`Library tab ${viewLabel} is not among ${segments.length} segments`);
-  }
+  if (!target) throw new Error(`Library tab ${viewLabel} is not among ${segments.length} segments`);
   console.log(`library tab click ${target.x},${target.y} ${target.width}x${target.height}`);
   native("click-at", String(target.x), String(target.y));
 }
@@ -507,16 +507,9 @@ async function openLibraryView(viewLabel) {
     native("click-at", String(row.x), String(y));
   }
   await until("library dialog", () => native("has-name", "Library") === "true", 15_000);
-  // Unselected tabs are unnamed. The selected Bookmarks tab moves with Arrow Right.
-  const tab = frameNamed("Bookmarks");
-  if (!tab || tab.height > 80) {
-    console.log(`library tab miss focused=${focusedValue()} frame=${tab ? `${tab.x},${tab.y} ${tab.width}x${tab.height}` : "none"}`);
-    throw new Error("The Bookmarks library tab is not a row");
-  }
-  console.log(`library tab frame ${tab.x},${tab.y} ${tab.width}x${tab.height}`);
-  // The library focuses its search field, so Arrow Right never reaches the tab.
-  // Unselected tabs have no accessible name. Click the segment in the tablist.
-  await clickLibrarySegment(tab, viewLabel);
+  // frame-name Bookmarks is a smaller control below the tab row. The tablist
+  // children are the four equal segments, and their names are capitalized.
+  await clickLibrarySegment(viewLabel);
   try {
     await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true" || focusedValue().toLowerCase().includes(viewLabel.toLowerCase()), 8_000);
   } catch (error) {
