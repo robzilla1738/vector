@@ -6683,12 +6683,34 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     await until("search providers are open", () =>
       native("has-name", "Search providers") === "true" || native("has-name", "History") === "true", 20_000);
     clickSearchProvider("History");
+    await delay(400);
+    // The History row exposes the page title. The full http URL is not an
+    // accessible string, which is why requiring `${origin}/red` failed. A click
+    // that only focuses the pill does not run its handler; Space does.
+    const hostPath = `${new URL(origin).host}/red`;
+    const historyRowVisible = () =>
+      native("has-text", "Search for") === "false" &&
+      native("has-text", "No history matches.") === "false" &&
+      (native("has-text", `${origin}/red`) === "true" ||
+        native("has-text", hostPath) === "true" ||
+        native("has-text", "Aux native Red") === "true");
+    const historyProbe = () =>
+      `focused=${focusedValue()} search=${native("has-text", "Search for")} title=${native("has-text", "Aux native Red")} url=${native("has-text", `${origin}/red`)} host=${native("has-text", hostPath)} empty=${native("has-text", "No history matches.")}`;
+    console.log(`history after click ${historyProbe()}`);
+    if (native("has-text", "Search for") === "true") {
+      const pill = focusedValue();
+      if (pill.includes("History") && !pill.includes("Address, search, and agent prompt")) {
+        native("space");
+        console.log(`history space ${historyProbe()}`);
+      }
+    }
     try {
-      await until("history scope shows the visited Red page", () =>
-        native("has-text", "No history matches.") === "false" &&
-        native("has-text", `${origin}/red`) === "true", 20_000);
+      await until("history scope shows the visited Red page", historyRowVisible, 20_000);
     } catch (error) {
-      console.log(`history scope miss focused=${focusedValue()} empty=${native("has-text", "No history matches.")} url=${native("has-text", `${origin}/red`)}`);
+      let visits = [];
+      try { visits = await rpc("history.list", { limit: 20 }); }
+      catch (listError) { console.log(`history list miss ${listError instanceof Error ? listError.message : listError}`); }
+      console.log(`history scope miss ${historyProbe()} visits=${JSON.stringify(visits.map(item => item.url))}`);
       throw error;
     }
     const focused = focusedValue();
