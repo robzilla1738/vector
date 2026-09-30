@@ -113,10 +113,18 @@ export class PageRegistry {
         lp.target.controller = "none";
         this.resetDocumentState(lp);
         this.persist(lp);
-        if (!this.closing) this.deps.events.emit(reason === "crashed" ? EventTypes.PageCrashed : EventTypes.PageRemoved, {
-          pageId: lp.target.pageId,
-          reason,
-        });
+        if (this.closing) return;
+        if (reason === "crashed") {
+          this.deps.events.emit(EventTypes.PageCrashed, { pageId: lp.target.pageId, reason });
+          return;
+        }
+        // Discard replaces the renderer and closes its debugger target. The
+        // catalog remove is the close; reporting one here drops a sleeping tab.
+        if (this.deps.native.available() && lp.target.backend === "aux") {
+          this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, viewStatus: "detached" });
+          return;
+        }
+        this.deps.events.emit(EventTypes.PageRemoved, { pageId: lp.target.pageId, reason });
       },
       onDialog: (info) => {
         lp.lastDialog = info;

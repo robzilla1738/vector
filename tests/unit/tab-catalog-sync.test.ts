@@ -26,7 +26,11 @@ const upsert = (tab: TabRecord, origin: "human" | "runtime" | "external" = "huma
 const win = (windowId: string, order: string[], activePageId: string | null): TabPatchOp =>
   ({ op: "window", window: { windowId, order, activePageId } });
 
-function harness() {
+class DesktopNative extends NullNativeBridge {
+  override available() { return true; }
+}
+
+function harness(native: NullNativeBridge = new NullNativeBridge()) {
   const repo = new Repo(openDb(":memory:"));
   const events = new EventBus(repo);
   const attached: string[] = [];
@@ -68,7 +72,7 @@ function harness() {
   const pages = new PageService({
     repo,
     events,
-    native: new NullNativeBridge(),
+    native,
     drivers: () => drivers,
     responses: new ResponseStore({ repo, events, flushDelayMs: 0 }),
     grants: [],
@@ -83,6 +87,20 @@ describe("PageService.syncCatalog", () => {
     destroyAttached();
     expect(pages.list().map(page => page.pageId)).not.toContain("one");
     expect(pages.list({ includeDetached: true }).map(page => page.pageId)).toContain("one");
+  });
+
+  it("reports a native discard as a detach so the shell can keep the sleeping tab", async () => {
+    const { pages, events, destroyAttached } = harness(new DesktopNative());
+    const seen: string[] = [];
+    events.subscribe(event => {
+      if (event.type === "page.removed" || (event.type === "page.updated" && event.payload.viewStatus === "detached")) seen.push(event.type);
+    });
+    await pages.syncCatalog(patch(1, [upsert(record("one"))]));
+    seen.length = 0;
+    destroyAttached();
+    expect(seen).toEqual(["page.updated"]);
+    expect(pages.list().map(page => page.pageId)).not.toContain("one");
+    expect(pages.get("one").viewStatus).toBe("detached");
   });
 
   it("registers human-created tabs on the stable marker", async () => {
