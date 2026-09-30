@@ -700,11 +700,11 @@ func pressLabel(_ label: String) -> Bool {
 if action == "texts" {
   let data = try! JSONEncoder().encode(staticTexts())
   print(String(data: data, encoding: .utf8)!)
-} else if action == "press-button" || action == "press-label" || action == "click-button" || action == "frame" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
+} else if action == "press-button" || action == "press-label" || action == "click-button" || action == "click-name" || action == "frame" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
   action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "open-palette" || action == "escape" ||
-  action == "type-return" || action == "type-text" || action == "move" {
+  action == "type-return" || action == "type-text" || action == "select-all" || action == "move" {
   // AppKit activation no longer takes focus from another app. Accessibility has to
   // mark the launched Aux process frontmost before any key is posted.
   guard app.activate(options: [.activateAllWindows]) else {
@@ -739,9 +739,10 @@ if action == "texts" {
     print("typed")
   } else if action != "move" && action != "activate" {
     // Aux declares Command-S for the sidebar, Command-L for the address,
+    // Command-K for the command palette, Command-A to select the field,
     // and Control-Tab for next tab. Stock Chromium accepts the latter two.
-    let key: CGKeyCode = action == "next-tab" ? 48 : action == "focus-address" ? 37 : action == "open-settings" ? 43 : action == "open-palette" ? 40 : action == "escape" || action == "type-return" ? (action == "type-return" ? 36 : 53) : 1
-    let flags: CGEventFlags = action == "next-tab" ? .maskControl : action == "open-palette" ? CGEventFlags([.maskCommand, .maskShift]) : action == "escape" || action == "type-return" ? [] : .maskCommand
+    let key: CGKeyCode = action == "next-tab" ? 48 : action == "focus-address" ? 37 : action == "open-settings" ? 43 : action == "open-palette" ? 40 : action == "select-all" ? 0 : action == "escape" || action == "type-return" ? (action == "type-return" ? 36 : 53) : 1
+    let flags: CGEventFlags = action == "next-tab" ? .maskControl : action == "escape" || action == "type-return" ? [] : .maskCommand
     let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true)
     let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false)
     down?.flags = flags

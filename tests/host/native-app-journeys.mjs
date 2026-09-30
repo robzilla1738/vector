@@ -418,10 +418,32 @@ async function dismissSetupIfPresent() {
 }
 async function openLibraryView(viewLabel) {
   native("open-palette");
-  await until("palette can open Library", () => native("has-name", "Bookmarks and history") === "true", 15_000);
+  try {
+    await until("palette can open Library", () => native("has-name", "Bookmarks and history") === "true", 15_000);
+  } catch (error) {
+    console.log(`palette row miss dialog=${native("has-name", "Command palette")}`);
+    throw error;
+  }
   clickPhrase("Bookmarks and history");
   await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
   clickPhrase(viewLabel);
+}
+function addressFieldValue() {
+  try { return native("control-value", "Address, search, and agent prompt"); }
+  catch { return ""; }
+}
+async function seedAddressField() {
+  const seeded = () => addressFieldValue().startsWith("http");
+  native("focus-address");
+  try {
+    await until("address seeded with the open page", seeded, 8_000);
+  } catch (error) {
+    console.log(`address seed miss ${error instanceof Error ? error.message : error}`);
+    clickPhrase("Address, search, and agent prompt");
+    await until("address seeded after click", seeded, 8_000);
+  }
+  native("select-all");
+  await new Promise(resolve => setTimeout(resolve, 150));
 }
 function settingsLabel(labels) {
   return labels.find(label => label === "Settings" || label.startsWith("Settings "));
@@ -6473,9 +6495,9 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       return [red.pageId, blue.pageId].every(pageId => pages.some(page => page.pageId === pageId && !page.loading));
     });
     await dismissSetupIfPresent();
-    native("focus-address");
-    await new Promise(resolve => setTimeout(resolve, 400));
-    console.log(`Search query ${native("type-text", "Aux native Red")}`);
+    await seedAddressField();
+    console.log(`Search query ${native("type-text", "Aux native Red")} field=${addressFieldValue()}`);
+    await until("address holds the Red tab query", () => addressFieldValue().includes("Aux native Red"), 8_000);
     await until("search suggestion for the background Red tab", () =>
       native("has-text", "Open tabs") === "true" && native("has-text", "Switch") === "true" &&
       native("has-text", "Aux native Red") === "true", 20_000);
