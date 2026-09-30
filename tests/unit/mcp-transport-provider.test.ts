@@ -161,6 +161,51 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
   } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 
+it.skipIf(process.platform !== "darwin")("does not pass host identity or PATH into an approved Node bundle", async () => {
+  expect(process.env.HOME).toBeTruthy();
+  expect(process.env.USER).toBeTruthy();
+  expect(process.env.PATH).toBeTruthy();
+  const directory = mkdtempSync(join(tmpdir(), "aux-mcp-env-"));
+  const zip = new JSZip();
+  zip.file("manifest.json", JSON.stringify({ name: "Env probe", server: { type: "node", entry_point: "server.mjs" } }));
+  zip.file("server.mjs", `
+let pending = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", chunk => { pending += chunk; let boundary;
+  while ((boundary = pending.indexOf("\\n")) >= 0) {
+    const line = pending.slice(0, boundary); pending = pending.slice(boundary + 1);
+    if (!line.trim()) continue;
+    const request = JSON.parse(line);
+    if (request.id === undefined) continue;
+    const seen = { home: process.env.HOME ?? null, user: process.env.USER ?? null,
+      path: process.env.PATH ?? null, shell: process.env.SHELL ?? null,
+      logname: process.env.LOGNAME ?? null, term: process.env.TERM ?? null };
+    const result = request.method === "initialize"
+      ? { protocolVersion: request.params.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: "bundle", version: "1" } }
+      : request.method === "tools/list"
+        ? { tools: [{ name: "env", inputSchema: { type: "object", properties: {} } }] }
+      : { content: [{ type: "text", text: JSON.stringify(seen) }] };
+    process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: request.id, result }) + "\\n");
+  }
+});`);
+  const path = join(directory, "env.mcpb");
+  const bytes = await zip.generateAsync({ type: "nodebuffer" });
+  writeFileSync(path, bytes);
+  const f = fixture(createMcpTransportProvider());
+  try {
+    const server = await f.approve({ kind: "bundle", path,
+      sha256: createHash("sha256").update(bytes).digest("hex"), format: "mcpb" });
+    const grant = f.service.grant({ serverId: server.serverId, toolName: "env",
+      scope: { kind: "workspace", workspaceId: f.workspaceId }, mode: "once", outputTokenLimit: 32_000 });
+    const result = await f.service.callTool(grant.grantId, {}, { workspaceId: f.workspaceId });
+    expect(result).toMatchObject({ status: "completed", isError: false });
+    const body = JSON.parse(result.output) as { content: { type: string; text: string }[] };
+    const seen = JSON.parse(body.content[0]?.text ?? "{}") as Record<string, string | null>;
+    expect(seen).toEqual({ home: null, user: null, path: null, shell: null, logname: null, term: null });
+    expect(result.output).not.toContain(process.env.HOME);
+  } finally { f.db.close(); rmSync(directory, { recursive: true, force: true }); }
+});
+
 it("fails closed for unbounded local roots, local URLs, and changed bundles", async () => {
   const f = fixture(createMcpTransportProvider());
   const directory = mkdtempSync(join(tmpdir(), "aux-mcp-deny-"));

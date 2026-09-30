@@ -4,7 +4,7 @@ import { constants } from "node:fs";
 import { isIP } from "node:net";
 import { dirname, isAbsolute, relative, sep } from "node:path";
 import { StreamableHTTPClientTransport, type Transport } from "@modelcontextprotocol/client";
-import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+import { DEFAULT_INHERITED_ENV_VARS, StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { AuxError, type OutboundMcpServer } from "@aux/contracts";
 import type { McpTransportProvider } from "./outbound-mcp.js";
 import { extractMcpBundle } from "./mcp-bundle.js";
@@ -61,11 +61,17 @@ async function sandboxedStdio(source: { command: string; args: string[]; cwd: st
   }));
   const parents = [...new Set([...pathParents(resolvedCwd), ...pathParents(resolvedCommand)])];
   if (parents.length > 64) throw new AuxError("permission_denied", "MCP path nesting exceeds the sandbox limit.");
+  // The SDK merges getDefaultEnvironment() under this object. Undefined replaces
+  // HOME/PATH/USER so Node omits them instead of inheriting the host environment.
+  // The transport type only admits strings; the undefined values are intentional.
+  const launchEnvironment = Object.fromEntries(
+    DEFAULT_INHERITED_ENV_VARS.map((key) => [key, undefined]),
+  ) as unknown as Record<string, string>;
   const transport = new StdioClientTransport({ command: "/usr/bin/sandbox-exec",
     args: ["-D", `MCP_WORKDIR=${resolvedCwd}`, "-D", `MCP_COMMAND_DIR=${dirname(resolvedCommand)}`,
       ...parents.flatMap((parent, index) => ["-D", `MCP_PARENT_${index}=${parent}`]),
       "-p", localSeatbelt(parents.length), resolvedCommand, ...launchArgs], cwd: resolvedCwd,
-    env: {}, stderr: "ignore", maxBufferSize: 1_000_000 });
+    env: launchEnvironment, stderr: "ignore", maxBufferSize: 1_000_000 });
   signal.addEventListener("abort", () => { void transport.close(); }, { once: true });
   return transport;
 }
