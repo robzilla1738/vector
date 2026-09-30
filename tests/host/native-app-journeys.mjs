@@ -6612,11 +6612,20 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     await rpc("bookmarks.add", { url: `${origin}/blue`, title: "Aux reading Blue", readingList: true });
     await dismissSetupIfPresent();
     await openLibraryView("Reading list");
-    clickPhrase("Mark Aux reading Red read");
-    await until("reading-list row change", async () =>
-      (await rpc("bookmarks.list")).some(item => item.url === `${origin}/red` && !!item.readAt) &&
-      native("has-name", "Mark Aux reading Red unread") === "true" &&
-      native("has-name", "Mark Aux reading Blue read") === "true", 20_000);
+    // The mark control is a 24px icon. A posted center click missed it.
+    const pressed = native("press-label", "Mark Aux reading Red read");
+    console.log(`Mark Aux reading Red read press-label ${pressed}`);
+    if (pressed !== "true") throw new Error("The reading-list mark control did not accept a press");
+    try {
+      await until("reading-list row change", async () =>
+        (await rpc("bookmarks.list")).some(item => item.url === `${origin}/red` && !!item.readAt) &&
+        native("has-name", "Mark Aux reading Red unread") === "true" &&
+        native("has-name", "Mark Aux reading Blue read") === "true", 20_000);
+    } catch (error) {
+      const items = await rpc("bookmarks.list");
+      console.log(`reading row miss ${JSON.stringify(items.filter(item => item.readingList).map(item => ({ title: item.title, readAt: item.readAt ?? null })))} unread=${native("has-name", "Mark Aux reading Red unread")} blue=${native("has-name", "Mark Aux reading Blue read")}`);
+      throw error;
+    }
     record("reading-list row moves to Read while its sibling remains unread");
     report.passed = true;
   } else if (selectorTaskResourcesJourney) {
