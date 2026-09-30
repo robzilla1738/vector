@@ -26,6 +26,9 @@ export const TAKEOVER_IDLE_WAIT_MS = 30_000;
 export const BOOTSTRAP_STALL_TIMEOUT_MS = 180_000;
 const EXIT_GRACE_MS = 5_000;
 const PROBE_TIMEOUT_MS = 1_000;
+// A reused keep-alive socket accepts the next proof and then stays silent,
+// so the idle-gap probe times out and a live peer looks like it changed.
+const closedProbe = { connection: "close" };
 
 /** Run statuses that count as in-flight work for the idle wait. */
 const ACTIVE_RUN_STATUSES = new Set(["queued", "planning", "running", "paused", "needs_input"]);
@@ -94,8 +97,10 @@ async function probeHealth(
 ): Promise<"ready" | "booting" | "down"> {
   try {
     const res = await fetchImpl(`http://127.0.0.1:${descriptor.port}/health`, {
+      headers: closedProbe,
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
+    await res.body?.cancel();
     if (res.status === 200) return "ready";
     if (res.status === 503) return "booting";
     return "down";
@@ -111,10 +116,13 @@ async function probePeer(descriptor: RuntimeDescriptor, fetchImpl: Fetch): Promi
   const nonce = randomBytes(24).toString("hex");
   try {
     const res = await fetchImpl(`http://127.0.0.1:${descriptor.port}/internal/peer?nonce=${nonce}`, {
-      headers: { authorization: `Bearer ${descriptor.token}` },
+      headers: { ...closedProbe, authorization: `Bearer ${descriptor.token}` },
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      await res.body?.cancel();
+      return null;
+    }
     const body = (await res.json()) as Record<string, unknown>;
     if (body.service !== "aux-runtime" || body.nonce !== nonce ||
         body.instanceId !== descriptor.instanceId || body.pid !== descriptor.pid ||
@@ -144,11 +152,18 @@ async function peerActiveRuns(descriptor: RuntimeDescriptor, fetchImpl: Fetch): 
   try {
     const res = await fetchImpl(`http://127.0.0.1:${descriptor.port}/rpc`, {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${descriptor.token}` },
+      headers: {
+        ...closedProbe,
+        "content-type": "application/json",
+        authorization: `Bearer ${descriptor.token}`,
+      },
       body: JSON.stringify({ id: 1, method: "runs.list", params: { limit: 200 } }),
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      await res.body?.cancel();
+      return null;
+    }
     const body = (await res.json()) as { result?: { status?: string }[] };
     if (!Array.isArray(body.result)) return null;
     // A full page may hide further active runs. Unknown means defer.

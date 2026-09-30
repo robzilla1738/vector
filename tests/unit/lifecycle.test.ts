@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { chmodSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ApiServer, EventBus, openDb, Repo } from "@aux/runtime";
@@ -169,6 +170,57 @@ describe("runtime lifecycle (06-T)", () => {
     expect(out.action).toBe("defer");
     expect(out.reason).toContain("idle wait");
     expect(kill).not.toHaveBeenCalled();
+  });
+
+  it("replaces an older peer that goes idle across the keep-alive gap", async () => {
+    let lists = 0;
+    const peer = trustedPeer(0, 4245);
+    const server = createServer((req, res) => {
+      const url = new URL(req.url ?? "/", "http://127.0.0.1");
+      const send = (status: number, body: unknown) => {
+        res.writeHead(status, { "content-type": "application/json" });
+        res.end(JSON.stringify(body));
+      };
+      if (url.pathname === "/internal/peer") {
+        const nonce = url.searchParams.get("nonce");
+        send(req.headers.authorization === `Bearer ${peer.token}` ? 200 : 401, {
+          service: "aux-runtime", nonce, instanceId: peer.instanceId, pid: peer.pid,
+          schema: peer.version?.schema, startedAt: peer.startedAt, ready: true,
+        });
+        return;
+      }
+      if (url.pathname === "/health") return send(200, { ok: true, ready: true });
+      lists += 1;
+      send(200, { result: lists === 1 ? [{ status: "running" }] : [] });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const port = (server.address() as { port: number }).port;
+    peer.port = port;
+    const d = tmp();
+    writePeer(d, peer);
+    let peerAlive = true;
+    const killed: string[] = [];
+    try {
+      const out = await resolvePortInUse({
+        dataDir: d,
+        ourSchema: SCHEMA_VERSION,
+        boundPort: port,
+        alive: () => peerAlive,
+        verify: async () => true,
+        ownsPort: async () => true,
+        kill: (_pid, signal) => {
+          killed.push(signal);
+          peerAlive = false;
+        },
+        log: () => {},
+      });
+      expect(out.action).toBe("takeover");
+      expect(killed).toEqual(["SIGTERM"]);
+      expect(lists).toBeGreaterThan(1);
+    } finally {
+      server.closeAllConnections();
+      server.close();
+    }
   });
 
   it("never kills a booting peer — a 503 health read waits out the idle window then defers", async () => {
