@@ -439,6 +439,12 @@ async function dismissWelcomeIfPresent() {
 async function openLibraryView(viewLabel) {
   await dismissWelcomeIfPresent();
   await focusShellField();
+  if (focusedValue().includes("A browser for what comes next")) {
+    console.log(`setup covered the address row focused=${focusedValue()}`);
+    clickNamedLogged("Finish later");
+    await until("setup dismissed", () => native("has-name", "Finish later") !== "true", 8_000);
+    await focusShellField();
+  }
   native("open-palette");
   try {
     await until("palette can open Library", () => native("has-name", "Bookmarks and history") === "true", 15_000);
@@ -446,7 +452,10 @@ async function openLibraryView(viewLabel) {
     console.log(`palette row miss dialog=${native("has-name", "Command palette")} focused=${focusedValue()}`);
     throw error;
   }
-  clickPhrase("Bookmarks and history");
+  console.log(`palette filter ${native("type-text", "/bookmarks")} focused=${focusedValue()}`);
+  await until("palette filter holds the Library command", () => focusedValue().includes("/bookmarks"), 8_000);
+  await new Promise(resolve => setTimeout(resolve, 150));
+  native("type-return");
   await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
   clickPhrase(viewLabel);
 }
