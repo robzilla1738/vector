@@ -493,7 +493,7 @@ async function runTrustAdversarialJourney() {
       });
     });
   }
-  function peerEnv(dataDir) {
+  function peerEnv(dataDir, ipc = false) {
     return {
       PATH: process.env.PATH ?? "/usr/bin:/bin:/opt/homebrew/bin",
       HOME: dataDir,
@@ -501,18 +501,64 @@ async function runTrustAdversarialJourney() {
       LANG: process.env.LANG ?? "C",
       AUX_STANDALONE: "0",
       AUX_LOAD_DOTENV: "0",
-      AUX_IPC: "0",
+      AUX_IPC: ipc ? "1" : "0",
       AUX_API_PORT: String(port),
       AUX_DATA_DIR: dataDir,
     };
   }
-  function launchPeer({ bin, main, dataDir, label, mode = 0o700, argv, killOwned }) {
+  function hostChannel(proc) {
+    if (typeof proc.send !== "function") throw new Error("The peer shell channel is missing");
+    const pending = new Map();
+    let nextId = 1;
+    proc.on("message", (message) => {
+      if (!message || message.id === undefined) return;
+      // The schema-29 runtime asks its shell for a saved key and open tabs before it is ready.
+      // This peer has neither. Any other shell method fails closed instead of hanging startup.
+      if (message.kind === "req") {
+        const result = message.method === "native.readSecret"
+          ? { value: undefined }
+          : message.method === "native.listPages"
+            ? { pages: [] }
+            : undefined;
+        proc.send(result
+          ? { kind: "res", id: message.id, result }
+          : { kind: "res", id: message.id, error: { code: "backend_unavailable", message: "This peer has no browser shell for that method" } });
+        return;
+      }
+      if (message.kind !== "res") return;
+      const waiter = pending.get(message.id);
+      if (!waiter) return;
+      pending.delete(message.id);
+      clearTimeout(waiter.timer);
+      if (message.error) {
+        const error = new Error(`host ${message.error.code ?? "error"}: ${message.error.message ?? "failed"}`);
+        error.code = message.error.code;
+        waiter.reject(error);
+        return;
+      }
+      waiter.resolve(message.result);
+    });
+    return (method, params, timeoutMs = 10_000) => new Promise((resolve, reject) => {
+      const id = nextId++;
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error(`${method}: shell channel timed out`));
+      }, timeoutMs);
+      pending.set(id, { resolve, reject, timer });
+      proc.send({ kind: "req", id, method, params });
+    });
+  }
+  function launchPeer({ bin, main, dataDir, label, mode = 0o700, argv, killOwned, ipc = false }) {
     sameOlderBundle();
     mkdirSync(dataDir, { recursive: true, mode });
     chmodSync(dataDir, mode);
     const stderr = { text: "" };
     const exit = { code: null, signal: null, exited: false, at: 0 };
-    const proc = spawn(bin, argv ?? [main], { cwd: dataDir, env: peerEnv(dataDir), stdio: ["ignore", "ignore", "pipe"] });
+    const proc = spawn(bin, argv ?? [main], {
+      cwd: dataDir,
+      env: peerEnv(dataDir, ipc),
+      stdio: ipc ? ["ignore", "ignore", "pipe", "ipc"] : ["ignore", "ignore", "pipe"],
+    });
     trustPeers.push(proc);
     proc.stderr?.on("data", chunk => {
       if (stderr.text.length < 1_000_000) stderr.text += chunk;
@@ -520,7 +566,7 @@ async function runTrustAdversarialJourney() {
     });
     proc.once("exit", (code, signal) => { exit.code = code; exit.signal = signal; exit.exited = true; exit.at = Date.now(); });
     proc.on("error", error => { exit.exited = true; exit.code = -1; exit.at = Date.now(); stderr.text += `\n${error.message}\n`; });
-    const peer = { proc, stderr, exit, dataDir, label, listenerPid: undefined };
+    const peer = { proc, stderr, exit, dataDir, label, listenerPid: undefined, host: undefined };
     peer.kill = async () => {
       if (killOwned) {
         let owned = peer.listenerPid;
@@ -539,6 +585,7 @@ async function runTrustAdversarialJourney() {
     };
     peer.stopping = null;
     trustStops.push(() => stopPeer(peer));
+    if (ipc) peer.host = hostChannel(proc);
     return peer;
   }
   async function stopPeer(peer) {
@@ -662,16 +709,21 @@ async function runTrustAdversarialJourney() {
     assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
     record(`browser usable after ${label}`, { pageId: page.pageId });
   }
-  async function holdScopedRun(token) {
+  async function holdScopedRun(token, host) {
+    // Schema 29 refuses loopback agentConnections.create. Its shell channel already mints and revokes connections.
     const workspace = await jsonRpc(port, token, "workspaces.create", { name: "Trust peer scope" });
     const task = await jsonRpc(port, token, "tasks.create", {
       workspaceId: workspace.workspaceId, title: "Trust peer run", objective: "Hold the peer until revoke",
       criteria: [{ criterionId: "held", description: "Stay running", verification: "manual" }],
     });
-    const created = await jsonRpc(port, token, "agentConnections.create", {
+    const configured = await host("agent.config", {
       name: "Trust peer", client: "codex",
       scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
     });
+    const minted = configured?.env?.AUX_MCP_TOKEN;
+    if (typeof minted !== "string" || !minted.startsWith("auxc_") || typeof configured?.connection?.connectionId !== "string")
+      throw new Error("agent.config did not return a connection token");
+    const created = { connection: configured.connection, token: minted };
     assert.ok(Array.isArray(await jsonRpc(port, created.token, "pages.list", {})));
     const runs = await jsonRpc(port, token, "runs.list", { chatId: `external:${created.connection.connectionId}`, limit: 20 });
     assert.ok(runs.some(run => run.status === "running"), "Scoped pages.list must leave a running external session");
@@ -711,20 +763,20 @@ async function runTrustAdversarialJourney() {
   }
   async function caseRevokedDuringIdle() {
     sameOlderBundle();
-    const older = launchPeer({ bin: helper, main: olderMain, dataDir: join(disposable, "trust-revoke"), label: "revoke-older" });
+    const older = launchPeer({ bin: helper, main: olderMain, dataDir: join(disposable, "trust-revoke"), label: "revoke-older", ipc: true });
     let challenger;
     let failed;
     try {
       const ready = await waitPeerReady(older);
       assert.equal(ready.body.schema, provenSchema);
-      const created = await holdScopedRun(ready.descriptor.token);
+      const created = await holdScopedRun(ready.descriptor.token, older.host);
       const startedAt = Date.now();
       challenger = launchPeer({ bin: helper, main: currentMain, dataDir: older.dataDir, label: "revoke-challenger" });
       await until("challenger waits for the active scoped run", async () => /takeover waiting/.test(challenger.stderr.text) ? true : null, 20_000);
       assert.equal(older.exit.exited, false);
       assert.equal(pidAlive(ready.descriptor.pid), true);
       const revokedAt = Date.now();
-      await jsonRpc(port, ready.descriptor.token, "agentConnections.revoke", { connectionId: created.connection.connectionId });
+      await older.host("agent.revoke", { connectionId: created.connection.connectionId });
       await until("older peer exits only after the scoped run is revoked", async () => older.exit.exited ? true : null, 25_000);
       assert.ok(older.exit.at >= revokedAt, "The challenger must not signal the peer before revoke");
       assertTakeoverExit(older.exit, startedAt);
@@ -736,13 +788,13 @@ async function runTrustAdversarialJourney() {
   }
   async function caseBusyDefer() {
     sameOlderBundle();
-    const older = launchPeer({ bin: helper, main: olderMain, dataDir: join(disposable, "trust-busy"), label: "busy-older" });
+    const older = launchPeer({ bin: helper, main: olderMain, dataDir: join(disposable, "trust-busy"), label: "busy-older", ipc: true });
     let challenger;
     let failed;
     try {
       const ready = await waitPeerReady(older);
       assert.equal(ready.body.schema, provenSchema);
-      await holdScopedRun(ready.descriptor.token);
+      await holdScopedRun(ready.descriptor.token, older.host);
       challenger = launchPeer({ bin: helper, main: currentMain, dataDir: older.dataDir, label: "busy-challenger" });
       await until("busy challenger defers", async () => challenger.exit.exited ? true : null, 55_000);
       await settledStderr(challenger, /defer:/);

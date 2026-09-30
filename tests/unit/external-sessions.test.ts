@@ -147,6 +147,45 @@ it("answers /health not-ready before bootstrap and ready after, on two boots", a
   }
 });
 
+it("lets the unscoped loopback owner mint and revoke connections and refuses a scoped agent", async () => {
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
+  const repo = new Repo(db);
+  const events = new EventBus(repo);
+  const tasks = new TaskService(repo, events);
+  const workspace = tasks.createWorkspace("Owner");
+  const task = tasks.create({
+    workspaceId: workspace.workspaceId,
+    title: "Hold",
+    objective: "Stay running",
+    criteria: [{ criterionId: "held", description: "Stay running", verification: "manual" }],
+  });
+  const connections = new AgentConnectionService(repo);
+  const sessions = new ExternalSessionService(repo, events);
+  const invoke = sessionInvoker(repo, events, connections, sessions, []);
+  const scope = { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId };
+  const params = { name: "Trust peer", client: "codex", scope };
+  const created = await invoke("agentConnections.create", params, { external: true }) as {
+    connection: { connectionId: string; scope: typeof scope };
+    token: string;
+  };
+  expect(created.token).toMatch(/^auxc_/);
+  const scoped = { external: true as const, connectionId: created.connection.connectionId, scope: created.connection.scope };
+  await expect(invoke("agentConnections.create", params, scoped)).rejects.toMatchObject({ code: "permission_denied" });
+  await expect(invoke("agentConnections.list", {}, scoped)).rejects.toMatchObject({ code: "permission_denied" });
+  await expect(invoke("agentConnections.revoke", { connectionId: created.connection.connectionId }, scoped)).rejects.toMatchObject({ code: "permission_denied" });
+  await invoke("pages.list", {}, scoped);
+  expect(thread(repo, created.connection.connectionId).map((run) => run.status)).toEqual(["running"]);
+  await invoke("agentConnections.revoke", { connectionId: created.connection.connectionId }, { external: true });
+  expect(thread(repo, created.connection.connectionId).map((run) => run.status)).toEqual(["cancelled"]);
+  const listed = await invoke("agentConnections.list", {}, { external: true }) as Array<{ revokedAt?: number }>;
+  expect(listed[0]?.revokedAt).toEqual(expect.any(Number));
+  const settings = await invoke("agentConnections.create", { name: "Settings", client: "claude", scope }, { external: false }) as {
+    token: string;
+  };
+  expect(settings.token).toMatch(/^auxc_/);
+});
+
 function sessionInvoker(
   repo: Repo,
   events: EventBus,
