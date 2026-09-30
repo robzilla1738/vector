@@ -6612,10 +6612,13 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     await rpc("bookmarks.add", { url: `${origin}/blue`, title: "Aux reading Blue", readingList: true });
     await dismissSetupIfPresent();
     await openLibraryView("Reading list");
-    // Tab leaves the Reading List control and stops in its search field. Arrow Down moves
-    // to the row, then Tab reaches the mark control and Space activates it.
-    for (let step = 0; step < 6 && !focusedValue().toLowerCase().includes("search reading list"); step++) native("tab");
-    console.log(`library mark search focused=${focusedValue()}`);
+    // Tab leaves the Reading List control and stops in its search field. Several posted
+    // Tab keys do not move focus, so Arrow Down waits until that field is focused.
+    for (let step = 0; step < 12 && !focusedValue().toLowerCase().includes("search reading list"); step++) {
+      native("tab");
+      console.log(`library mark toward search ${step} focused=${focusedValue()}`);
+    }
+    if (!focusedValue().toLowerCase().includes("search reading list")) throw new Error("The reading search field did not take focus");
     native("arrow-down");
     let focus = focusedValue();
     console.log(`library mark row focused=${focus}`);
