@@ -2884,32 +2884,28 @@ else {
     console.log("Waiting for the saved one-minute Memory saver policy to sleep Red while Blue stays active.");
     if (memorySaverAwakeJourney) {
       let sleepAccessFailures = 0;
-      let lastLifecycleLog = 0;
       let lastLifecycle = "";
-      await until("idle tab slept automatically", async () => {
-        const now = Date.now();
-        if (now - lastLifecycleLog > 5000) {
-          lastLifecycleLog = now;
-          try {
-            const page = (await rpc("pages.list")).find(item => item.pageId === red.pageId);
-            const lifecycle = page?.lifecycle ?? "missing";
-            if (lifecycle !== lastLifecycle) {
-              lastLifecycle = lifecycle;
-              const exact = lifecycle === "live" ? "" : native("has-name", "Sleeping tab", "exact");
-              console.log(`Red lifecycle while waiting for sleep: ${lifecycle}${exact ? ` exact Sleeping tab ${exact}` : ""}`);
-            }
-          } catch (error) {
-            console.log(`Red lifecycle check failed: ${error instanceof Error ? error.message : error}`);
-          }
-        }
+      await until("clean tab left the live lifecycle", async () => {
         try {
+          const pages = await rpc("pages.list");
+          const nameOf = page => page.pageId === red.pageId ? "red"
+            : page.pageId === blue.pageId ? "blue"
+            : page.pageId === dirty.pageId ? "dirty"
+            : page.pageId === unknown.pageId ? "unknown"
+            : new URL(page.url).pathname;
+          const summary = pages.map(page => `${nameOf(page)}:${page.lifecycle ?? "missing"}`).join(" ");
+          if (summary !== lastLifecycle) {
+            lastLifecycle = summary;
+            console.log(`Lifecycles while waiting for sleep: ${summary}`);
+          }
+          const redPage = pages.find(item => item.pageId === red.pageId);
+          if (!redPage?.lifecycle || redPage.lifecycle === "live") return false;
           sleepAccessFailures = 0;
-          // The Memory saver hint contains "Sleeping tabs", so a substring match
-          // passes while settings is open and the clean tab is still live.
+          // The Memory saver hint contains "Sleeping tabs", so only the icon's exact name counts.
           return native("has-name", "Sleeping tab", "exact") === "true";
         } catch (error) {
           sleepAccessFailures += 1;
-          if (sleepAccessFailures === 1) console.log(`Sleeping tab accessibility check failed: ${error instanceof Error ? error.message : error}`);
+          if (sleepAccessFailures === 1) console.log(`Sleeping tab check failed: ${error instanceof Error ? error.message : error}`);
           if (sleepAccessFailures >= 5) throw error;
           return false;
         }
@@ -2923,10 +2919,6 @@ else {
     assert.equal(sleepRedLoads, 1, "automatic sleep must not reload before activation");
     record("saved memory saver policy automatically slept an idle tab", { loadsBeforeActivation: sleepRedLoads });
     if (memorySaverAwakeJourney) {
-      await until("clean tab left the live lifecycle", async () => {
-        const page = (await rpc("pages.list")).find(item => item.pageId === red.pageId);
-        return page?.lifecycle && page.lifecycle !== "live";
-      }, 30_000);
       const awakePages = await rpc("pages.list");
       const dirtyPage = awakePages.find(page => page.pageId === dirty.pageId);
       const unknownPage = awakePages.find(page => page.pageId === unknown.pageId);
