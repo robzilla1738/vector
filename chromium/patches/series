@@ -132,3 +132,4 @@ aux/runtime/0131-disposable-tab-lifecycle-acceptance.patch
 aux/runtime/0132-retry-disposable-tab-lifecycle-describe.patch
 aux/runtime/0133-disposable-extensions-acceptance.patch
 aux/runtime/0134-disposable-command-bar-acceptance.patch
+aux/runtime/0135-command-line-extension-action.patch
