@@ -1073,11 +1073,12 @@ async function runTrustAdversarialJourney() {
       scope: { kind: "task", workspaceId: replay.workspaceId, taskId: replay.taskId },
     });
     let settled = false;
+    let executeError = "";
     const pending = jsonRpc(rpcPort, expiring.token, "pages.execute", {
       program: { pageId: replay.pageId, steps: [{ id: "trust-absent", op: "waitFor", condition: { kind: "selector", selector: "#aux-trust-absent", state: "visible", timeoutMs: 30_000 } }] },
       taskId: replay.taskId, expectedRevision,
     }, 45_000).finally(() => { settled = true; });
-    pending.catch(() => {});
+    pending.catch((error) => { executeError = error instanceof Error ? error.message : String(error); });
     await until("scoped waitFor is running", async () => {
       if (settled) throw new Error("pages.execute ended before the connection expired");
       const runs = await rpc("runs.list", { chatId: `external:${expiring.connection.connectionId}`, limit: 20 });
@@ -1089,7 +1090,9 @@ async function runTrustAdversarialJourney() {
       const pages = await rpc("pages.list");
       return pages.find(item => item.pageId === replay.pageId && item.url.includes("trust=expire") && !item.loading && !item.navigationError) ?? null;
     }, 20_000);
-    assert.equal(settled, false, "pages.execute must still be open while the owner navigates");
+    assert.equal(settled, false, executeError
+      ? `pages.execute must still be open while the owner navigates: ${executeError}`
+      : "pages.execute must still be open while the owner navigates");
     await until("scoped connection reaches expiresAt", async () => Date.now() > expiresAt ? true : null, 20_000);
     let denied;
     try { await jsonRpc(rpcPort, expiring.token, "pages.list", {}); }

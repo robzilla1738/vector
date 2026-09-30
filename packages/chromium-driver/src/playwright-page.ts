@@ -42,6 +42,12 @@ export function bounded<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
 /** Passive response capture — env-off switch; the body policy lives in response-capture.ts. */
 const CAPTURE_RESPONSES = normalizeAuxEnvironment(process.env).AUX_CAPTURE_RESPONSES !== "0";
 
+/** A load replaced the document under an in-flight condition. A closed page is not that. */
+function navigationSuperseded(message: string): boolean {
+  if (/has been closed|target closed|page closed|page crashed/i.test(message)) return false;
+  return /interrupted by another navigation|execution context was destroyed|navigation interrupted|attempting a navigation|frame was detached|net::ERR_ABORTED/i.test(message);
+}
+
 interface FrameKeys {
   /** 'main' or 'f1'..'fN' in page.frames() order at observe time. */
   keyToFrame: Map<string, Frame>;
@@ -843,56 +849,70 @@ export class PlaywrightDriverPage implements DriverPage {
 
   async waitFor(condition: Condition): Promise<WaitOutcome> {
     await this.navigationCommitted();
-    const timeout = "timeoutMs" in condition && condition.timeoutMs ? condition.timeoutMs : DEFAULT_CONDITION_TIMEOUT;
-    try {
-      switch (condition.kind) {
-        case "textVisible":
-          await this.page.getByText(condition.text, { exact: false }).first().waitFor({ state: "visible", timeout });
-          break;
-        case "selector":
-          await this.page.locator(condition.selector).first().waitFor({ state: condition.state, timeout });
-          break;
-        case "refReady": {
-          const loc = await this.resolveLocator(condition.ref);
-          await loc.waitFor({ state: "attached", timeout });
-          break;
+    const budget = "timeoutMs" in condition && condition.timeoutMs ? condition.timeoutMs : DEFAULT_CONDITION_TIMEOUT;
+    const deadline = Date.now() + budget;
+    let detail = "condition timed out";
+    while (Date.now() < deadline) {
+      const timeout = Math.max(1, deadline - Date.now());
+      try {
+        switch (condition.kind) {
+          case "textVisible":
+            await this.page.getByText(condition.text, { exact: false }).first().waitFor({ state: "visible", timeout });
+            break;
+          case "selector":
+            await this.page.locator(condition.selector).first().waitFor({ state: condition.state, timeout });
+            break;
+          case "refReady": {
+            const loc = await this.resolveLocator(condition.ref);
+            await loc.waitFor({ state: "attached", timeout });
+            break;
+          }
+          case "urlMatches": {
+            const p = condition.pattern;
+            const regex = p.startsWith("/") && p.endsWith("/") ? new RegExp(p.slice(1, -1)) : null;
+            await this.page.waitForURL(url => regex ? regex.test(url.href) : url.href.includes(p), { timeout });
+            break;
+          }
+          case "navigationSettled":
+            await this.page.waitForLoadState("domcontentloaded", { timeout });
+            await this.page.waitForLoadState("load", { timeout: Math.min(timeout, 10_000) }).catch(() => {});
+            break;
+          case "settled": {
+            const policy = READINESS_POLICIES[condition.policy ?? "networkIdle"];
+            const ok = await this.waitForSettled(condition.timeoutMs ?? policy.timeoutMs, policy);
+            if (!ok) return { ok: false, timedOut: true, detail: `page did not settle (${condition.policy ?? "networkIdle"}): quiet window not reached` };
+            break;
+          }
+          case "downloadCompleted": {
+            const res = await this.waitForDownload(timeout);
+            return { ok: true, timedOut: false, detail: res.suggestedFilename };
+          }
+          case "response":
+            await this.page.waitForResponse(
+              (r) => r.url().includes(condition.urlIncludes) && (condition.status === undefined || r.status() === condition.status),
+              { timeout },
+            );
+            break;
+          case "expression":
+            await this.page.waitForFunction(condition.expression, undefined, { timeout });
+            break;
         }
-        case "urlMatches": {
-          const p = condition.pattern;
-          const regex = p.startsWith("/") && p.endsWith("/") ? new RegExp(p.slice(1, -1)) : null;
-          await this.page.waitForURL(url => regex ? regex.test(url.href) : url.href.includes(p), { timeout });
-          break;
+        return { ok: true, timedOut: false };
+      } catch (e) {
+        detail = e instanceof Error ? e.message : String(e);
+        // A browser load, including Playwright's own page.goto, destroys the
+        // in-flight locator evaluation. The condition is still running.
+        let closed = false;
+        try { closed = this.page.isClosed(); } catch { closed = true; }
+        if (!closed && this.attached && navigationSuperseded(detail) && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          continue;
         }
-        case "navigationSettled":
-          await this.page.waitForLoadState("domcontentloaded", { timeout });
-          await this.page.waitForLoadState("load", { timeout: Math.min(timeout, 10_000) }).catch(() => {});
-          break;
-        case "settled": {
-          const policy = READINESS_POLICIES[condition.policy ?? "networkIdle"];
-          const ok = await this.waitForSettled(condition.timeoutMs ?? policy.timeoutMs, policy);
-          if (!ok) return { ok: false, timedOut: true, detail: `page did not settle (${condition.policy ?? "networkIdle"}): quiet window not reached` };
-          break;
-        }
-        case "downloadCompleted": {
-          const res = await this.waitForDownload(timeout);
-          return { ok: true, timedOut: false, detail: res.suggestedFilename };
-        }
-        case "response":
-          await this.page.waitForResponse(
-            (r) => r.url().includes(condition.urlIncludes) && (condition.status === undefined || r.status() === condition.status),
-            { timeout },
-          );
-          break;
-        case "expression":
-          await this.page.waitForFunction(condition.expression, undefined, { timeout });
-          break;
+        if (/timeout/i.test(detail)) return { ok: false, timedOut: true, detail };
+        return { ok: false, timedOut: false, detail };
       }
-      return { ok: true, timedOut: false };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (/timeout/i.test(msg)) return { ok: false, timedOut: true, detail: msg };
-      return { ok: false, timedOut: false, detail: msg };
     }
+    return { ok: false, timedOut: true, detail };
   }
 
   waitForDownload(timeoutMs = 30_000, signal?: AbortSignal): Promise<{ suggestedFilename: string; path?: string }> {

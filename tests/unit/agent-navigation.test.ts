@@ -50,6 +50,72 @@ describe("agent page driver", () => {
     expect(calls).toEqual(["goto:domcontentloaded", "back", "forward", "reload"]);
   });
 
+  it("keeps a condition wait open when navigation interrupts the locator", async () => {
+    let calls = 0;
+    let release: () => void = () => {};
+    const waiting = new Promise<void>((resolve) => { release = resolve; });
+    const subject = driver({
+      isClosed: () => false,
+      locator: () => ({
+        first: () => ({
+          waitFor: async () => {
+            calls += 1;
+            if (calls === 1) throw new Error('Navigation to "https://start.example/" is interrupted by another navigation to "https://example.com/next"');
+            await waiting;
+          },
+        }),
+      }),
+    });
+    let settled = false;
+    const pending = subject.waitFor({
+      kind: "selector", selector: "#absent", state: "visible", timeoutMs: 2_000,
+    }).finally(() => { settled = true; });
+    const deadline = Date.now() + 1_000;
+    while (calls < 2 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(calls).toBe(2);
+    expect(settled).toBe(false);
+    release();
+    await expect(pending).resolves.toEqual({ ok: true, timedOut: false });
+  });
+
+  it("does not retry a condition wait after the page closes", async () => {
+    let calls = 0;
+    const subject = driver({
+      isClosed: () => false,
+      locator: () => ({
+        first: () => ({
+          waitFor: async () => {
+            calls += 1;
+            throw new Error("Target page, context or browser has been closed");
+          },
+        }),
+      }),
+    });
+    const result = await subject.waitFor({ kind: "selector", selector: "#absent", state: "visible", timeoutMs: 2_000 });
+    expect(calls).toBe(1);
+    expect(result).toMatchObject({ ok: false, timedOut: false });
+  });
+
+  it("stops retrying a navigation interrupt at the condition deadline", async () => {
+    let calls = 0;
+    const subject = driver({
+      isClosed: () => false,
+      locator: () => ({
+        first: () => ({
+          waitFor: async () => {
+            calls += 1;
+            throw new Error("Execution context was destroyed, most likely because of a navigation");
+          },
+        }),
+      }),
+    });
+    const started = Date.now();
+    const result = await subject.waitFor({ kind: "selector", selector: "#absent", state: "visible", timeoutMs: 80 });
+    expect(calls).toBeGreaterThan(1);
+    expect(Date.now() - started).toBeLessThan(1_000);
+    expect(result).toMatchObject({ ok: false, timedOut: true });
+  });
+
   it("observes a page that is not focused or brought forward", async () => {
     const calls: string[] = [];
     const seen = {
