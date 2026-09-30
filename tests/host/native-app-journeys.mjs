@@ -254,6 +254,7 @@ const nativeSourceCommit = existsSync(nativeHeader)
   : undefined;
 const developmentAcceptanceFeatures = memoryInboxUiJourney || storeRecoveryUiJourney ? ["memory", "spaces"] :
   anyTidyJourney ? ["spaces", "aiTidy"] :
+  memorySaverAwakeJourney ? ["spaces", "tabLifecycle"] :
   runtimeBackupRestoreJourney ? ["electronMigration"] :
   menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney ? ["spaces"] : null;
 if (developmentAcceptanceFeatures) {
