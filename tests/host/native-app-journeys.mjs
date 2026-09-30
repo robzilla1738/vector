@@ -2789,11 +2789,17 @@ else {
             const now = Date.now();
             if (now - lastOpen > 2000) {
               lastOpen = now;
-              // Command-comma is not a stock Chromium accelerator. Focus the shell
-              // address field first so the shell's own shortcut handler receives it.
-              native("focus-address");
-              await delay(200);
-              native("open-settings");
+              // Command-comma does not reach the shell while a page is focused.
+              // The horizontal space menu owns the Settings button.
+              native("activate");
+              let labels = [];
+              try { labels = JSON.parse(native("buttons")); } catch { labels = []; }
+              const space = labels.find(label => typeof label === "string" && label.startsWith("Switch space"));
+              if (!space) console.log(`Memory saver found no space menu. Buttons: ${labels.slice(0, 12).join(" | ")}`);
+              else if (native("press-button", space) === "true") {
+                await delay(300);
+                console.log(`Memory saver settings press: ${native("press-label", "Settings")}`);
+              }
             }
             return false;
           }
@@ -2891,9 +2897,14 @@ else {
             const now = Date.now();
             if (now - lastOpen > 2000) {
               lastOpen = now;
-              native("focus-address");
-              await delay(200);
-              native("open-settings");
+              native("activate");
+              let labels = [];
+              try { labels = JSON.parse(native("buttons")); } catch { labels = []; }
+              const space = labels.find(label => typeof label === "string" && label.startsWith("Switch space"));
+              if (space && native("press-button", space) === "true") {
+                await delay(300);
+                native("press-label", "Settings");
+              }
             }
             return false;
           }

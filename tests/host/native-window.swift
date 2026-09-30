@@ -106,29 +106,35 @@ func hasButton(_ label: String) -> Bool {
 
 func buttonLabels() -> [String] {
   var labels: [String] = []
-  var visited = 0
-  func visit(_ element: AXUIElement, depth: Int) {
+  func visit(_ element: AXUIElement, depth: Int, visited: inout Int, shellOnly: Bool) {
     visited += 1
-    if depth > 18 || visited > 4000 { return }
+    if depth > 24 || visited > 4000 { return }
     var role: CFTypeRef?
     AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
-    if (role as? String) == (kAXButtonRole as String) {
+    let roleName = role as? String ?? ""
+    if roleName == (kAXMenuBarRole as String) { return }
+    if roleName == (kAXButtonRole as String) {
       var title: CFTypeRef?
       var description: CFTypeRef?
       AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
       AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
       let label = (title as? String).flatMap { $0.isEmpty ? nil : $0 } ??
                   (description as? String).flatMap { $0.isEmpty ? nil : $0 }
-      if let label { labels.append(label) }
+      if let label, !labels.contains(label) { labels.append(label) }
     }
+    if shellOnly && isGuestWebArea(element, role: roleName) { return }
     var children: CFTypeRef?
     if AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString,
                                    &children) == .success,
       let children = children as? [AXUIElement] {
-      for child in children { visit(child, depth: depth + 1) }
+      for child in children { visit(child, depth: depth + 1, visited: &visited, shellOnly: shellOnly) }
     }
   }
-  visit(AXUIElementCreateApplication(pid), depth: 0)
+  let root = AXUIElementCreateApplication(pid)
+  var shellVisits = 0
+  visit(root, depth: 0, visited: &shellVisits, shellOnly: true)
+  var pageVisits = 0
+  visit(root, depth: 0, visited: &pageVisits, shellOnly: false)
   return labels
 }
 
@@ -384,31 +390,48 @@ func clickButton(_ label: String) -> ClickRecord? {
                      windowX: window.origin.x, windowY: window.origin.y, windowW: window.width, windowH: window.height)
 }
 
+func isGuestWebArea(_ element: AXUIElement, role: String) -> Bool {
+  guard role == "AXWebArea" else { return false }
+  for key in [kAXURLAttribute, "AXDocument", kAXDescriptionAttribute, kAXValueAttribute] {
+    var value: CFTypeRef?
+    if AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success {
+      let text = (value as? URL)?.absoluteString ?? (value as? NSURL)?.absoluteString ?? (value as? String) ?? ""
+      if text.contains("chrome://aux/") { return false }
+      if !text.isEmpty { return true }
+    }
+  }
+  return false
+}
+
 func pressButton(_ label: String) -> Bool {
   let application = AXUIElementCreateApplication(pid)
-  var visited = 0
-  func visit(_ element: AXUIElement, depth: Int) -> Bool {
+  func visit(_ element: AXUIElement, depth: Int, visited: inout Int, shellOnly: Bool) -> Bool {
     visited += 1
-    if depth > 18 || visited > 4000 { return false }
+    if depth > 24 || visited > 4000 { return false }
     var roleValue: CFTypeRef?
     var titleValue: CFTypeRef?
     var descriptionValue: CFTypeRef?
     AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+    let role = roleValue as? String ?? ""
+    if role == (kAXMenuBarRole as String) { return false }
     AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleValue)
     AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descriptionValue)
     let title = titleValue as? String ?? ""
     let description = descriptionValue as? String ?? ""
-    if (roleValue as? String) == (kAXButtonRole as String) &&
-        (title == label || description == label) {
+    if role == (kAXButtonRole as String) && (title == label || description == label) {
       AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
       return AXUIElementPerformAction(element, kAXPressAction as CFString) == .success
     }
+    if shellOnly && isGuestWebArea(element, role: role) { return false }
     var childrenValue: CFTypeRef?
     guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenValue) == .success,
       let children = childrenValue as? [AXUIElement] else { return false }
-    return children.contains { visit($0, depth: depth + 1) }
+    return children.contains { visit($0, depth: depth + 1, visited: &visited, shellOnly: shellOnly) }
   }
-  return visit(application, depth: 0)
+  var shellVisits = 0
+  if visit(application, depth: 0, visited: &shellVisits, shellOnly: true) { return true }
+  var pageVisits = 0
+  return visit(application, depth: 0, visited: &pageVisits, shellOnly: false)
 }
 
 if action == "press-button" {
@@ -532,7 +555,7 @@ func pressLabel(_ label: String) -> Bool {
   }
   func pressableAncestor(_ element: AXUIElement) -> AXUIElement? {
     let role = roleOf(element)
-    if role == button || role == disclosure { return element }
+    if role == button || role == disclosure || role == "AXMenuItem" { return element }
     var current = element
     for _ in 0..<6 {
       var parent: CFTypeRef?
@@ -541,26 +564,33 @@ func pressLabel(_ label: String) -> Bool {
       let parentElement = unsafeBitCast(parent, to: AXUIElement.self)
       let parentRole = roleOf(parentElement)
       if parentRole == (kAXMenuBarRole as String) { return nil }
-      if parentRole == button || parentRole == disclosure { return parentElement }
+      if parentRole == button || parentRole == disclosure || parentRole == "AXMenuItem" { return parentElement }
       current = parentElement
     }
     return nil
   }
-  var visited = 0
-  func visit(_ element: AXUIElement, depth: Int) -> AXUIElement? {
+  func visit(_ element: AXUIElement, depth: Int, visited: inout Int, shellOnly: Bool) -> AXUIElement? {
     visited += 1
     if depth > 28 || visited > 4000 { return nil }
-    if roleOf(element) == (kAXMenuBarRole as String) { return nil }
+    let role = roleOf(element)
+    if role == (kAXMenuBarRole as String) { return nil }
     if named(element), let target = pressableAncestor(element) { return target }
+    if shellOnly && isGuestWebArea(element, role: role) { return nil }
     var childrenValue: CFTypeRef?
     guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenValue) == .success,
       let children = childrenValue as? [AXUIElement] else { return nil }
     for child in children {
-      if let found = visit(child, depth: depth + 1) { return found }
+      if let found = visit(child, depth: depth + 1, visited: &visited, shellOnly: shellOnly) { return found }
     }
     return nil
   }
-  guard let target = visit(application, depth: 0) else { return false }
+  var shellVisits = 0
+  var target = visit(application, depth: 0, visited: &shellVisits, shellOnly: true)
+  if target == nil {
+    var pageVisits = 0
+    target = visit(application, depth: 0, visited: &pageVisits, shellOnly: false)
+  }
+  guard let target else { return false }
   AXUIElementSetAttributeValue(target, kAXFocusedAttribute as CFString, kCFBooleanTrue)
   return AXUIElementPerformAction(target, kAXPressAction as CFString) == .success
 }
