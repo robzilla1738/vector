@@ -458,7 +458,7 @@ async function openLibraryView(viewLabel) {
   native("select-all");
   await delay(150);
   console.log(`library command ${native("type-text", "/bookmarks")} focused=${focusedValue()}`);
-  await until("address holds the Library command", () => focusedValue().includes("/bookmarks"), 8_000);
+  await until("address holds the Library command", () => focusedValue().includes("Command: bookmarks"), 8_000);
   native("type-return");
   try {
     await until("palette can open Library", () => native("has-name", "Bookmarks and history") === "true", 15_000);
@@ -466,7 +466,12 @@ async function openLibraryView(viewLabel) {
     console.log(`palette row miss dialog=${native("has-name", "Command palette")} focused=${focusedValue()}`);
     throw error;
   }
-  await until("palette filter holds the Library command", () => focusedValue().includes("/bookmarks"), 8_000);
+  try {
+    await until("palette filter holds the Library command", () => focusedValue().includes("/bookmarks"), 8_000);
+  } catch (error) {
+    console.log(`palette filter miss focused=${focusedValue()}`);
+    throw error;
+  }
   await delay(150);
   native("type-return");
   await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
