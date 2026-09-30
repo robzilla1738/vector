@@ -428,7 +428,16 @@ async function focusShellField() {
   native("click-at", String(x), String(mark.y));
   await new Promise(resolve => setTimeout(resolve, 200));
 }
+async function dismissWelcomeIfPresent() {
+  const welcome = () => native("has-name", "A browser for what comes next") === "true";
+  const finish = () => native("has-name", "Finish later") === "true";
+  if (!welcome() && !finish()) return;
+  await until("setup finish control", finish, 8_000);
+  clickNamedLogged("Finish later");
+  await until("setup dismissed", () => !finish() && !welcome(), 8_000);
+}
 async function openLibraryView(viewLabel) {
+  await dismissWelcomeIfPresent();
   await focusShellField();
   native("open-palette");
   try {
