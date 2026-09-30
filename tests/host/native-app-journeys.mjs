@@ -654,7 +654,8 @@ async function runTrustAdversarialJourney() {
         if (/not_ready|ECONNREFUSED|fetch failed|timed out|transport/i.test(String(error))) return null;
         throw error;
       }
-      return pages.find(item => item.url.includes("/red") && item.url.includes(marker) && !item.loading && !item.navigationError) ?? null;
+      // The tab URL can move to the typed address before the fixture document replaces the new-tab title.
+      return pages.find(item => item.url.includes("/red") && item.url.includes(marker) && !item.loading && !item.navigationError && /Aux native Red/.test(item.title ?? "")) ?? null;
     }, 180_000);
     assert.match(page.title, /Aux native Red/);
     assert.match(JSON.stringify(await rpc("pages.observe", { pageId: page.pageId })), /Aux native Red fixture/);
