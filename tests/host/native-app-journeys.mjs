@@ -991,7 +991,7 @@ async function runTrustAdversarialJourney() {
         } finally { db.close(); }
       } catch { return null; }
     }, 10_000);
-    console.log("The disposable runtime helper was stopped. In the Aux window, click Finish later to request a new runtime connection.");
+    console.log("The disposable runtime helper was stopped. In the Aux window, click Bookmark this page to request a new runtime connection.");
     const replacement = await until("host reconnects a new runtime helper", async () => {
       let next;
       try { next = JSON.parse(readFileSync(runtimeFile, "utf8")); } catch { return null; }
