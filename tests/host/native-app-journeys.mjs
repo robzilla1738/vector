@@ -6612,17 +6612,19 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     await rpc("bookmarks.add", { url: `${origin}/blue`, title: "Aux reading Blue", readingList: true });
     await dismissSetupIfPresent();
     await openLibraryView("Reading list");
-    // The mark icon does not take a press or a posted click. The Reading List tab is focused,
-    // so Tab walks the dialog until that control is focused and Space activates it.
-    console.log(`library mark start focused=${focusedValue()}`);
-    let markFocused = false;
-    for (let step = 0; step < 8 && !markFocused; step++) {
+    // Tab leaves the Reading List control and stops in its search field. Arrow Down moves
+    // to the row, then Tab reaches the mark control and Space activates it.
+    for (let step = 0; step < 6 && !focusedValue().toLowerCase().includes("search reading list"); step++) native("tab");
+    console.log(`library mark search focused=${focusedValue()}`);
+    native("arrow-down");
+    let focus = focusedValue();
+    console.log(`library mark row focused=${focus}`);
+    for (let step = 0; step < 8 && !focus.includes("Mark Aux reading Red"); step++) {
       native("tab");
-      const focus = focusedValue();
+      focus = focusedValue();
       console.log(`library mark tab ${step} focused=${focus}`);
-      markFocused = focus.includes("Mark Aux reading Red");
     }
-    if (!markFocused) throw new Error("The reading-list mark control did not take focus");
+    if (!focus.includes("Mark Aux reading Red")) throw new Error("The reading-list mark control did not take focus");
     native("space");
     try {
       await until("reading-list row change", async () =>
