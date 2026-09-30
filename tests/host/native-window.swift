@@ -133,7 +133,6 @@ func buttonLabels() -> [String] {
 }
 
 func hasName(_ needle: String) -> Bool {
-  var visited = 0
   func matches(_ element: AXUIElement) -> Bool {
     for key in [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute] {
       var value: CFTypeRef?
@@ -142,20 +141,40 @@ func hasName(_ needle: String) -> Bool {
     }
     return false
   }
-  func visit(_ element: AXUIElement, depth: Int) -> Bool {
-    visited += 1
-    if depth > 24 || visited > 4000 { return false }
+  func roleOf(_ element: AXUIElement) -> String {
     var role: CFTypeRef?
     AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
-    if (role as? String) == (kAXMenuBarRole as String) { return false }
+    return role as? String ?? ""
+  }
+  func webAreaURL(_ element: AXUIElement) -> String {
+    for key in [kAXURLAttribute, "AXDocument", kAXDescriptionAttribute, kAXValueAttribute] {
+      var value: CFTypeRef?
+      if AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success {
+        let text = (value as? URL)?.absoluteString ?? (value as? NSURL)?.absoluteString ?? value as? String
+        if let text { return text }
+      }
+    }
+    return ""
+  }
+  // A guest page with thousands of fields can exhaust the walk before the shell.
+  func visit(_ element: AXUIElement, depth: Int, visited: inout Int, shellOnly: Bool) -> Bool {
+    visited += 1
+    if depth > 24 || visited > 4000 { return false }
+    let role = roleOf(element)
+    if role == (kAXMenuBarRole as String) { return false }
     if matches(element) { return true }
+    if shellOnly && role == "AXWebArea" && !webAreaURL(element).contains("chrome://aux/") { return false }
     var children: CFTypeRef?
     guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString,
                                        &children) == .success,
       let children = children as? [AXUIElement] else { return false }
-    return children.contains { visit($0, depth: depth + 1) }
+    return children.contains { visit($0, depth: depth + 1, visited: &visited, shellOnly: shellOnly) }
   }
-  return visit(AXUIElementCreateApplication(pid), depth: 0)
+  let root = AXUIElementCreateApplication(pid)
+  var shellVisits = 0
+  if visit(root, depth: 0, visited: &shellVisits, shellOnly: true) { return true }
+  var pageVisits = 0
+  return visit(root, depth: 0, visited: &pageVisits, shellOnly: false)
 }
 
 func controlValue(_ label: String) -> String? {

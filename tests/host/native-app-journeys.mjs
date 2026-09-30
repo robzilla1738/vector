@@ -1790,7 +1790,10 @@ else {
     "Disposable native Tidy acceptance must reach the runtime before UI review");
   if (settingsContentBlockingJourney || siteBlockingExceptionJourney || siteBlockingPrivateJourney || settingsCustomListJourney) assert.equal(runtimeCapabilities.featureStages?.contentBlocking, "on", "Native content blocking must be qualified in the runtime capability manifest");
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
-  record("Profile runtime is authenticated and raw debugging is disabled", { sessions: connection.sessions?.length });
+  record("Profile runtime is authenticated and raw debugging is disabled", {
+    sessions: connection.sessions?.length,
+    ...(memorySaverAwakeJourney ? { tabLifecycle: runtimeCapabilities.featureStages?.tabLifecycle ?? "missing" } : {}),
+  });
 
   if (runtimePeerJourney) {
     const descriptor = JSON.parse(readFileSync(runtimeFile, "utf8"));
@@ -2772,16 +2775,26 @@ else {
     if (memorySaverAwakeJourney) {
       let lastOpen = 0;
       let accessFailures = 0;
+      let lastUrl = null;
+      let reportedHidden = false;
       await until("Memory saver controls are available", () => {
         try {
           let url = "";
           try { url = native("shell-url"); } catch { url = ""; }
+          if (url !== lastUrl) {
+            lastUrl = url;
+            console.log(`Memory saver control shell URL: ${url || "(unavailable)"}`);
+          }
           if (!url.includes("/settings/general")) {
             const now = Date.now();
             if (now - lastOpen > 2000) { lastOpen = now; native("open-settings"); }
             return false;
           }
           const visible = native("has-name", "Memory saver") === "true";
+          if (!visible && !reportedHidden) {
+            reportedHidden = true;
+            console.log("Settings general is open and Memory saver is not visible");
+          }
           if (visible) native("escape");
           return visible;
         } catch (error) {
