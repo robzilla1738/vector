@@ -141,12 +141,13 @@ func buttonLabels() -> [String] {
   return labels
 }
 
-func hasName(_ needle: String) -> Bool {
+func hasName(_ needle: String, exact: Bool = false) -> Bool {
   func matches(_ element: AXUIElement) -> Bool {
     for key in [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute] {
       var value: CFTypeRef?
       if AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success,
-        let value = value as? String, value.contains(needle) { return true }
+        let value = value as? String,
+        exact ? value == needle : value.contains(needle) { return true }
     }
     return false
   }
@@ -513,8 +514,10 @@ if action == "press-button" {
   guard CommandLine.arguments.count == 4 else { fail("Use has-text PID phrase.") }
   print(hasStaticText(CommandLine.arguments[3]) ? "true" : "false")
 } else if action == "has-name" {
-  guard CommandLine.arguments.count == 4 else { fail("Use has-name PID phrase.") }
-  print(hasName(CommandLine.arguments[3]) ? "true" : "false")
+  guard CommandLine.arguments.count == 4 || (CommandLine.arguments.count == 5 && CommandLine.arguments[4] == "exact") else {
+    fail("Use has-name PID phrase [exact].")
+  }
+  print(hasName(CommandLine.arguments[3], exact: CommandLine.arguments.count == 5) ? "true" : "false")
 } else if action == "control-value" {
   guard CommandLine.arguments.count == 4 else { fail("Use control-value PID label.") }
   print(controlValue(CommandLine.arguments[3]) ?? "")

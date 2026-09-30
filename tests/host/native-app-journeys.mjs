@@ -2895,7 +2895,8 @@ else {
             const lifecycle = page?.lifecycle ?? "missing";
             if (lifecycle !== lastLifecycle) {
               lastLifecycle = lifecycle;
-              console.log(`Red lifecycle while waiting for sleep: ${lifecycle}`);
+              const exact = lifecycle === "live" ? "" : native("has-name", "Sleeping tab", "exact");
+              console.log(`Red lifecycle while waiting for sleep: ${lifecycle}${exact ? ` exact Sleeping tab ${exact}` : ""}`);
             }
           } catch (error) {
             console.log(`Red lifecycle check failed: ${error instanceof Error ? error.message : error}`);
@@ -2903,7 +2904,9 @@ else {
         }
         try {
           sleepAccessFailures = 0;
-          return native("has-name", "Sleeping tab") === "true";
+          // The Memory saver hint contains "Sleeping tabs", so a substring match
+          // passes while settings is open and the clean tab is still live.
+          return native("has-name", "Sleeping tab", "exact") === "true";
         } catch (error) {
           sleepAccessFailures += 1;
           if (sleepAccessFailures === 1) console.log(`Sleeping tab accessibility check failed: ${error instanceof Error ? error.message : error}`);
