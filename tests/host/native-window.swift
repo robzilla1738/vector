@@ -554,15 +554,20 @@ if action == "texts" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "escape" ||
   action == "type-return" || action == "move" {
-  guard app.activate(options: []) else {
+  // AppKit activation no longer takes focus from another app. Accessibility has to
+  // mark the launched Aux process frontmost before any key is posted.
+  guard app.activate(options: [.activateAllWindows]) else {
     fail("Cannot activate the launched Aux browser window.")
   }
-  for _ in 0..<20 {
+  let application = AXUIElementCreateApplication(pid)
+  AXUIElementSetAttributeValue(application, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+  for _ in 0..<30 {
     if NSWorkspace.shared.frontmostApplication?.processIdentifier == pid { break }
     usleep(100_000)
   }
   guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
-    fail("Aux is not the frontmost app; refusing to send input elsewhere.")
+    let blocker = NSWorkspace.shared.frontmostApplication?.localizedName ?? "another app"
+    fail("Aux is not the frontmost app; refusing to send input elsewhere. \(blocker) stayed frontmost.")
   }
   if action != "move" && action != "activate" {
     // Aux declares Command-S for the sidebar, Command-L for the address,
