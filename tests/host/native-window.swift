@@ -375,8 +375,40 @@ func screenWindow() -> CGRect? {
   return frames.max(by: { $0.width * $0.height < $1.width * $1.height })
 }
 
+func clickableElement(_ label: String) -> AXUIElement? {
+  let application = AXUIElementCreateApplication(pid)
+  func visit(_ element: AXUIElement, depth: Int, visited: inout Int, shellOnly: Bool) -> AXUIElement? {
+    visited += 1
+    if depth > 24 || visited > 4000 { return nil }
+    var roleValue: CFTypeRef?
+    var titleValue: CFTypeRef?
+    var descriptionValue: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+    let role = roleValue as? String ?? ""
+    if role == (kAXMenuBarRole as String) { return nil }
+    AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleValue)
+    AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descriptionValue)
+    let title = titleValue as? String ?? ""
+    let description = descriptionValue as? String ?? ""
+    let pressable = role == (kAXButtonRole as String) || role == (kAXPopUpButtonRole as String) || role == "AXMenuItem"
+    if pressable && (title == label || description == label) { return element }
+    if shellOnly && isGuestWebArea(element, role: role) { return nil }
+    var childrenValue: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenValue) == .success,
+      let children = childrenValue as? [AXUIElement] else { return nil }
+    for child in children {
+      if let found = visit(child, depth: depth + 1, visited: &visited, shellOnly: shellOnly) { return found }
+    }
+    return nil
+  }
+  var shellVisits = 0
+  if let found = visit(application, depth: 0, visited: &shellVisits, shellOnly: true) { return found }
+  var pageVisits = 0
+  return visit(application, depth: 0, visited: &pageVisits, shellOnly: false)
+}
+
 func clickButton(_ label: String) -> ClickRecord? {
-  guard let element = findButton(label),
+  guard let element = clickableElement(label) ?? findButton(label),
     let origin = axPoint(element, kAXPositionAttribute),
     let size = axSize(element), size.width > 1, size.height > 1 else { return nil }
   _ = app.activate(options: [])

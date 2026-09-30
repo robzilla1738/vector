@@ -357,23 +357,27 @@ async function rpc(method, params = {}) {
 function native(action, ...args) {
   return execFileSync(windowTool, [action, String(child.pid), ...args.map(String)], { encoding: "utf8", timeout: 15_000 }).trim();
 }
-// A fresh profile covers the shell with setup. Finish later is the shell's own
-// later action; the journey token cannot call onboarding.update. Raising the
-// window on every poll keeps that dialog in front of the tab strip. Skip this
-// step only advances setup, so it is not a dismiss. The space trigger is a
-// popup button named "Switch space, current: Personal".
+// AXPress on Finish later reports success and leaves the setup dialog up.
+// A posted click is what other journeys use for a shell button. The window
+// is raised only for that click. Skip this step only advances setup.
 let memorySaverButtonLog = "";
+function clickNamed(label) {
+  try { return JSON.parse(native("click-button", label)); }
+  catch { return null; }
+}
 async function openMemorySaverSettings() {
   let labels = [];
   try { labels = JSON.parse(native("buttons")); } catch { labels = []; }
   if (labels.includes("Finish later")) {
-    console.log(`Memory saver setup press: Finish later ${native("press-button", "Finish later")}`);
+    native("activate");
+    const click = clickNamed("Finish later");
+    console.log(`Memory saver setup click: Finish later ${click ? `${click.x},${click.y}` : "miss"}`);
     return;
   }
-  const space = labels.find(label => typeof label === "string" && label.startsWith("Switch space"));
-  const spaceLabel = "Switch space, current: Personal";
-  let opened = space ? native("press-button", space) === "true" : false;
-  if (!opened) opened = native("press-label", spaceLabel) === "true";
+  const space = labels.find(label => typeof label === "string" && label.startsWith("Switch space"))
+    ?? "Switch space, current: Personal";
+  native("activate");
+  const opened = clickNamed(space);
   if (!opened) {
     const line = labels.slice(0, 16).join(" | ");
     if (line !== memorySaverButtonLog) {
@@ -383,7 +387,8 @@ async function openMemorySaverSettings() {
     return;
   }
   await delay(300);
-  console.log(`Memory saver settings press: ${native("press-label", "Settings")}`);
+  const settings = clickNamed("Settings");
+  console.log(`Memory saver settings click: ${settings ? `${settings.x},${settings.y}` : "miss"}`);
 }
 function capture(windowId, name) {
   const path = join(output, `${name}.png`);
