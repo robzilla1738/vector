@@ -1,4 +1,4 @@
-import type { PageTarget } from "@aux/contracts";
+import type { HostMethodResult, PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "./bridge";
 import { useStore } from "./store";
 import { featureStage } from "./use-feature";
@@ -14,14 +14,24 @@ type State = {
   restoringTabs: boolean;
 };
 
-export function nextMemorySaverAction(state: State, retryAfter: ReadonlyMap<string, number>) {
+type UnsavedByPage = HostMethodResult<"tabsUnsavedWork">;
+
+/** Dirty and unknown stay awake. Missing ids stay eligible until the caller supplies a status. */
+function unsavedKeepsAwake(pageId: string, unsaved: Readonly<UnsavedByPage>): boolean {
+  const status = unsaved[pageId];
+  return status === "dirty" || status === "unknown";
+}
+
+export function nextMemorySaverAction(state: State, retryAfter: ReadonlyMap<string, number>,
+  unsaved: Readonly<UnsavedByPage> = {}) {
   const minutes = Number(state.settings.memorySaverMinutes ?? 0);
   if (!state.connected || state.restoringTabs || ![1, 15, 30, 60].includes(minutes)) return null;
   const candidates = state.pages.flatMap(page => {
     if (page.backend !== "aux" || !/^https?:\/\//.test(page.url) || page.ownedByRuntime ||
         page.pageId === state.activePageId || page.pageId === state.splitPageId ||
         page.controller !== "none" || page.loading || page.viewStatus === "crashed" || page.viewStatus === "detached" ||
-        (page.lifecycle && page.lifecycle !== "live") || state.tabAudio[page.pageId]?.audible) return [];
+        (page.lifecycle && page.lifecycle !== "live") || state.tabAudio[page.pageId]?.audible ||
+        unsavedKeepsAwake(page.pageId, unsaved)) return [];
     const dueAt = Math.max(page.lastActiveAt, page.createdAt) + minutes * 60_000;
     return [{ pageId: page.pageId, url: page.url, dueAt: Math.max(dueAt, retryAfter.get(`${page.pageId}\n${page.url}`) ?? 0) }];
   });
@@ -29,7 +39,7 @@ export function nextMemorySaverAction(state: State, retryAfter: ReadonlyMap<stri
   return candidates[0] ?? null;
 }
 
-/** One timer per shell window; Chromium makes the final unsaved-work and media decision. */
+/** One timer per shell window. Dirty and unknown pages are skipped here; native tabSleep rechecks. */
 export function installMemorySaver() {
   if (!inNativeHost || bridge.privateMode || bridge.quickAskMode || featureStage("tabLifecycle") !== "on") return () => {};
   const retryAfter = new Map<string, number>();
@@ -45,10 +55,13 @@ export function installMemorySaver() {
       timer = undefined;
       running = true;
       try {
-        // The native method rechecks ownership, URL, focus, media and all frames.
+        const unsaved = await bridge.tabsUnsavedWork([{ pageId: next.pageId, url: next.url }]);
+        // Dirty or unknown: do not sleep or record. `finally` still uses the quiet-period retry.
+        if (unsavedKeepsAwake(next.pageId, unsaved)) return;
+        // The native method rechecks ownership, URL, focus, media, unsaved work, and all frames.
         const result = await bridge.tabSleep(next.pageId, next.url);
         recordMemorySaverCycle(next, result);
-      } catch { /* A reconnect or changed tab is retried after the quiet period. */ }
+      } catch { /* Failed unsaved-work query, reconnect, or changed tab: retry after the quiet period. */ }
       finally {
         retryAfter.set(`${next.pageId}\n${next.url}`, Date.now() + 10 * 60_000);
         running = false;

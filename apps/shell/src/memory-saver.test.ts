@@ -1,8 +1,37 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from "vitest";
 import type { PageTarget } from "@aux/contracts";
-import { nextMemorySaverAction } from "./memory-saver";
-import { memorySaverSummary, readMemorySaverCycles, recordMemorySaverCycle } from "./memory-saver-report";
+import { installMemorySaver, nextMemorySaverAction } from "./memory-saver";
+import {
+  memorySaverCyclesKey, memorySaverSummary, readMemorySaverCycles, recordMemorySaverCycle,
+} from "./memory-saver-report";
+
+const harness = vi.hoisted(() => ({
+  tabsUnsavedWork: vi.fn(),
+  tabSleep: vi.fn(),
+  state: {
+    pages: [] as PageTarget[],
+    activePageId: null as string | null,
+    splitPageId: null as string | null,
+    tabAudio: {} as Record<string, { audible: boolean }>,
+    settings: { memorySaverMinutes: 0 } as Record<string, unknown>,
+    connected: true,
+    restoringTabs: false,
+  },
+}));
+vi.mock("./bridge", () => ({
+  inNativeHost: true,
+  bridge: {
+    privateMode: false,
+    quickAskMode: false,
+    tabsUnsavedWork: harness.tabsUnsavedWork,
+    tabSleep: harness.tabSleep,
+  },
+}));
+vi.mock("./store", () => ({
+  useStore: { getState: () => harness.state, subscribe: () => () => {} },
+}));
+vi.mock("./use-feature", () => ({ featureStage: () => "on" }));
 
 const page = (pageId: string, overrides: Partial<PageTarget> = {}): PageTarget => ({
   pageId, windowId: "main", backend: "aux", targetId: `atab-${pageId}`,
@@ -27,6 +56,37 @@ it("schedules the oldest eligible background tab and respects native-safety pref
   expect(nextMemorySaverAction(state, new Map([["clean\nhttps://example.com/clean", 70_000]]))?.pageId).toBe("newer");
   expect(nextMemorySaverAction({ ...state, restoringTabs: true }, new Map())).toBeNull();
   expect(nextMemorySaverAction({ ...state, settings: { memorySaverMinutes: 0 } }, new Map())).toBeNull();
+});
+
+it("leaves dirty and unknown pages awake and still schedules a page the unsaved map does not list", () => {
+  const state = {
+    pages: [page("active", { createdAt: 0, lastActiveAt: 100 }), page("dirty", { createdAt: 0, lastActiveAt: 200 }),
+      page("unknown", { createdAt: 0, lastActiveAt: 300 }), page("missing", { createdAt: 0, lastActiveAt: 400 }),
+      page("clean", { createdAt: 0, lastActiveAt: 500 })],
+    activePageId: "active", splitPageId: null, tabAudio: {},
+    settings: { memorySaverMinutes: 1 }, connected: true, restoringTabs: false,
+  };
+  const unsaved: Record<string, "clean" | "dirty" | "unknown"> = {
+    active: "clean", dirty: "dirty", unknown: "unknown", clean: "clean",
+  };
+  expect(nextMemorySaverAction(state, new Map(), unsaved)).toEqual({
+    pageId: "missing", url: "https://example.com/missing", dueAt: 60_400,
+  });
+  expect(nextMemorySaverAction(state, new Map(), { ...unsaved, missing: "clean" })).toEqual({
+    pageId: "missing", url: "https://example.com/missing", dueAt: 60_400,
+  });
+  expect(nextMemorySaverAction(state, new Map(), { ...unsaved, missing: "dirty" })).toEqual({
+    pageId: "clean", url: "https://example.com/clean", dueAt: 60_500,
+  });
+  expect(nextMemorySaverAction(state, new Map(), { ...unsaved, missing: "unknown" })).toEqual({
+    pageId: "clean", url: "https://example.com/clean", dueAt: 60_500,
+  });
+  expect(nextMemorySaverAction(state, new Map(), { ...unsaved, missing: "dirty", clean: "unknown" })).toBeNull();
+  expect(nextMemorySaverAction(state, new Map([["missing\nhttps://example.com/missing", 70_000]]), unsaved)?.pageId)
+    .toBe("clean");
+  expect(nextMemorySaverAction(state, new Map())).toEqual({
+    pageId: "dirty", url: "https://example.com/dirty", dueAt: 60_200,
+  });
 });
 
 it("reports estimated savings only for cycles with a native estimate", () => {
@@ -72,6 +132,72 @@ it("rehydrates an estimated sleep and a protected-tab refusal from Profile stora
     saved.clear();
     expect(restarted.readMemorySaverCycles()).toEqual([]);
   } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it("queries unsaved work before sleep and retries a dirty, unknown, or failed check", async () => {
+  const saved = new Map<string, string>([[memorySaverCyclesKey, "[]"]]);
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => saved.get(key) ?? null,
+    setItem: (key: string, value: string) => { saved.set(key, value); },
+  });
+  vi.useFakeTimers();
+  vi.setSystemTime(60_000);
+  harness.tabsUnsavedWork.mockReset();
+  harness.tabSleep.mockReset();
+  harness.tabsUnsavedWork
+    .mockResolvedValueOnce({ idle: "dirty" })
+    .mockResolvedValueOnce({ idle: "unknown" })
+    .mockRejectedValueOnce(new Error("unsaved work unavailable"))
+    .mockResolvedValueOnce({ idle: "clean" })
+    .mockResolvedValueOnce({});
+  harness.tabSleep.mockResolvedValue({ slept: true, estimatedSavedBytes: 4 * 1024 });
+  Object.assign(harness.state, {
+    pages: [page("active", { createdAt: 0, lastActiveAt: 0 }), page("idle", { createdAt: 0, lastActiveAt: 0 })],
+    activePageId: "active", splitPageId: null, tabAudio: {},
+    settings: { memorySaverMinutes: 1 }, connected: true, restoringTabs: false,
+  });
+  const stop = installMemorySaver();
+  const candidate = [{ pageId: "idle", url: "https://example.com/idle" }];
+  const quiet = 10 * 60_000;
+  try {
+    await vi.advanceTimersByTimeAsync(0);
+    expect(harness.tabsUnsavedWork).toHaveBeenCalledTimes(1);
+    expect(harness.tabsUnsavedWork).toHaveBeenCalledWith(candidate);
+    expect(harness.tabSleep).not.toHaveBeenCalled();
+    expect(readMemorySaverCycles()).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(quiet - 1);
+    expect(harness.tabsUnsavedWork).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(harness.tabsUnsavedWork).toHaveBeenCalledTimes(2);
+    expect(harness.tabsUnsavedWork).toHaveBeenLastCalledWith(candidate);
+    expect(harness.tabSleep).not.toHaveBeenCalled();
+    expect(readMemorySaverCycles()).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(quiet);
+    expect(harness.tabsUnsavedWork).toHaveBeenCalledTimes(3);
+    expect(harness.tabSleep).not.toHaveBeenCalled();
+    expect(readMemorySaverCycles()).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(quiet);
+    expect(harness.tabsUnsavedWork).toHaveBeenCalledTimes(4);
+    expect(harness.tabSleep).toHaveBeenCalledTimes(1);
+    expect(harness.tabSleep).toHaveBeenCalledWith("idle", "https://example.com/idle");
+    expect(readMemorySaverCycles()).toMatchObject([{ pageId: "idle", slept: true, estimatedSavedBytes: 4 * 1024 }]);
+
+    await vi.advanceTimersByTimeAsync(quiet);
+    expect(harness.tabsUnsavedWork).toHaveBeenCalledTimes(5);
+    expect(harness.tabsUnsavedWork).toHaveBeenLastCalledWith(candidate);
+    expect(harness.tabSleep).toHaveBeenCalledTimes(2);
+    expect(readMemorySaverCycles()).toHaveLength(2);
+    expect(readMemorySaverCycles()[0]).toMatchObject({ pageId: "idle", slept: true, estimatedSavedBytes: 4 * 1024 });
+  } finally {
+    stop();
+    harness.state.pages = [];
+    harness.state.settings = { memorySaverMinutes: 0 };
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   }
 });
