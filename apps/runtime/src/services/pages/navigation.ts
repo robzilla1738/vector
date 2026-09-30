@@ -1,4 +1,4 @@
-import { AuxError, type BrowserSpace, EventTypes, type PageTarget, type PageWindowMove, newPageId } from "@aux/contracts";
+import { AuxError, type AuxErrorCode, type BrowserSpace, EventTypes, type PageTarget, type PageWindowMove, newPageId } from "@aux/contracts";
 import type { ActivationPolicy } from "./activation.js";
 import type { PageLanes } from "./lanes.js";
 import type { PageRegistry } from "./registry.js";
@@ -61,16 +61,59 @@ export class PageNavigation {
   }
 
   async navigate(pageId: string, url: string): Promise<PageTarget> {
-    // The page lane stays with an in-flight program, including a long wait.
-    // The local owner still has to be able to load an address; queueing this
-    // load would freeze browsing until that program finished.
-    const dp = this.pages.driverPageLenient(pageId);
-    await dp.navigate(url);
+    // An in-flight program keeps the page lane, including a long wait.
+    // Playwright's page.goto is a navigation action and cancels that wait;
+    // the shell's tab load is a browser navigation, which the wait keeps
+    // polling through. Queueing here would also freeze the owner until the
+    // program finished.
     const lp = this.pages.live.get(pageId);
     if (!lp) throw new AuxError("target_detached", `page ${pageId} detached during navigation`);
-    lp.target.url = url;
-    this.pages.persist(lp);
-    return lp.target;
+    if (lp.target.backend === "aux" && this.pages.deps.native.available()) {
+      const ack = await this.pages.deps.native.tabCommand({
+        commandId: `agent-${newPageId()}`,
+        windowId: lp.target.windowId ?? "main",
+        command: { kind: "navigate", pageId, url },
+      });
+      const missed = ack.status === "rejected" && (ack.error?.code === "not_found" || ack.error?.code === "wrong_window");
+      if (!missed) {
+        if (ack.status === "rejected") {
+          const raw = ack.error?.code;
+          const code: AuxErrorCode = raw === "invalid_params" ? "invalid_params"
+            : raw === "forbidden" ? "permission_denied"
+            : raw === "stale_tab" ? "conflict"
+            : "target_detached";
+          throw new AuxError(code, ack.error?.message ?? "The native tab is no longer available");
+        }
+        return this.committedTarget(pageId, url);
+      }
+    }
+    const dp = this.pages.driverPageLenient(pageId);
+    await dp.navigate(url);
+    const after = this.pages.live.get(pageId);
+    if (!after) throw new AuxError("target_detached", `page ${pageId} detached during navigation`);
+    after.target.url = url;
+    this.pages.persist(after);
+    return after.target;
+  }
+
+  private async committedTarget(pageId: string, url: string): Promise<PageTarget> {
+    const deadline = Date.now() + 8_000;
+    let committed = url;
+    for (;;) {
+      const current = this.pages.live.get(pageId);
+      if (!current) throw new AuxError("target_detached", `page ${pageId} detached during navigation`);
+      const driver = current.driver?.isAttached() ? current.driver : undefined;
+      if (!driver) break;
+      try { committed = driver.url(); } catch { committed = ""; }
+      if (committed === url || sameDocumentUrl(committed, url)) break;
+      if (Date.now() >= deadline) throw new AuxError("target_detached", "The page did not load that address");
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    const current = this.pages.live.get(pageId);
+    if (!current) throw new AuxError("target_detached", `page ${pageId} detached during navigation`);
+    current.target.url = committed;
+    this.pages.persist(current);
+    return current.target;
   }
 
   async back(pageId: string) {
@@ -135,4 +178,9 @@ export class PageNavigation {
       return this.pages.get(pageId);
     });
   }
+}
+
+function sameDocumentUrl(actual: string, requested: string): boolean {
+  try { return new URL(actual).href === new URL(requested).href; }
+  catch { return false; }
 }

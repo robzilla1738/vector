@@ -905,3 +905,88 @@ it("lets the unscoped loopback owner navigate while an external program holds th
     await inflight;
   }
 });
+
+it("loads an owner address through the native tab command instead of page.goto", async () => {
+  const db = openDb(":memory:");
+  cleanup.push(() => db.close());
+  const repo = new Repo(db);
+  const events = new EventBus(repo);
+  const commands: Array<{ kind: string; url?: string }> = [];
+  let driverNavigations = 0;
+  let reported = "https://start.example/";
+  const driverPage = {
+    identity: { pageId: "", targetId: "t", backend: "aux" as const },
+    url: () => reported,
+    title: async () => "Start",
+    isAttached: () => true,
+    navigate: async (next: string) => { driverNavigations += 1; reported = next; },
+    observe: async () => ({}),
+    setEvents: () => undefined,
+    dispose: async () => undefined,
+  };
+  const driver = {
+    backend: "aux" as const,
+    isConnected: () => true,
+    attach: async (_target: string, pageId: string) => {
+      driverPage.identity = { pageId, targetId: "t", backend: "aux" as const };
+      return driverPage as unknown as DriverPage;
+    },
+  } as unknown as BrowserDriver;
+  type TabAck = {
+    commandId: string;
+    status: "applied" | "rejected";
+    catalogVersion: number;
+    pageId?: string;
+    targetId?: string;
+    error?: { code: string; message: string };
+  };
+  const native = {
+    available: () => true,
+    tabCommand: async (envelope: { commandId: string; command: { kind: string; url?: string; pageId?: string } }): Promise<TabAck> => {
+      commands.push(envelope.command);
+      if (envelope.command.kind === "navigate") reported = envelope.command.url ?? reported;
+      return {
+        commandId: envelope.commandId,
+        status: "applied",
+        catalogVersion: 1,
+        pageId: envelope.command.pageId,
+        targetId: "cdp-1",
+      };
+    },
+  };
+  const pages = new PageService({
+    repo, events, native: native as never,
+    drivers: () => ({ aux: driver, chrome: null }),
+  });
+  const opened = await pages.open({ url: "https://start.example/", background: true, ownedByRuntime: false });
+  const navigationsAfterOpen = driverNavigations;
+  const target = await pages.navigate(opened.pageId, "https://example.com/native-load");
+  expect(target.url).toBe("https://example.com/native-load");
+  expect(commands).toContainEqual({ kind: "navigate", pageId: opened.pageId, url: "https://example.com/native-load" });
+  expect(driverNavigations).toBe(navigationsAfterOpen);
+
+  reported = "https://start.example/";
+  native.tabCommand = async (envelope) => {
+    commands.push(envelope.command);
+    return {
+      commandId: envelope.commandId,
+      status: "rejected",
+      catalogVersion: 1,
+      error: { code: "not_found", message: "Tab is not in this window" },
+    };
+  };
+  await pages.navigate(opened.pageId, "https://example.com/driver-fallback");
+  expect(driverNavigations).toBe(navigationsAfterOpen + 1);
+  expect(pages.get(opened.pageId).url).toBe("https://example.com/driver-fallback");
+
+  const beforeRejection = driverNavigations;
+  native.tabCommand = async (envelope) => ({
+    commandId: envelope.commandId,
+    status: "rejected",
+    catalogVersion: 1,
+    error: { code: "invalid_params", message: "Invalid navigation URL" },
+  });
+  await expect(pages.navigate(opened.pageId, "not a url")).rejects.toMatchObject({ code: "invalid_params" });
+  expect(driverNavigations).toBe(beforeRejection);
+  expect(pages.get(opened.pageId).url).toBe("https://example.com/driver-fallback");
+});
