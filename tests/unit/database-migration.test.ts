@@ -288,6 +288,17 @@ describe("schema versioning", () => {
     expect(readdirSync(directory).filter(name => !name.startsWith("state.sqlite"))).toEqual([]);
   });
 
+  it("advances a schema 29 database to the development-identity peer generation", () => {
+    const { path } = fixture();
+    const old = track(openDb(path));
+    expect(old.prepare("SELECT 1 FROM sqlite_schema WHERE name='outbound_mcp_bundles'").get()).toBeDefined();
+    old.exec("PRAGMA user_version=29");
+    old.close();
+    const upgraded = track(openDb(path));
+    expect(version(upgraded)).toBe(SCHEMA_VERSION);
+    expect(upgraded.prepare("SELECT 1 FROM sqlite_schema WHERE name='outbound_mcp_bundles'").get()).toBeDefined();
+  });
+
   it("adds durable page-change authority to existing v27 automation rows", () => {
     const { path } = fixture();
     const old = track(openDb(path));

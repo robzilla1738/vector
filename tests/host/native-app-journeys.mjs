@@ -9,7 +9,7 @@ import { createServer as createHttpsServer } from "node:https";
 import { createServer as createTcpServer } from "node:net";
 import { DatabaseSync } from "node:sqlite";
 import { createRequire } from "node:module";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -60,7 +60,7 @@ const option = name => {
   return index < 0 ? undefined : process.argv[index + 1];
 };
 if (process.argv.includes("--list")) {
-  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --protected-startup | --runtime-peer | --browser-import-ui | --browser-import-formats | --browser-import-attached | --link-peek | --space-theme | --space-theme-advanced | --reader-peek | --tab-preview-focus | --tab-name-ui | --downloads | --site-controls | --tab-audio | --unsaved-work | --file-handoff | --http-auth | --http-auth-cancel | --reader | --translation | --eyedropper | --file-io | --workbook-export | --artifact-export | --agent-connections | --page-action | --profiles | --profile-confirmation | --popover | --menu-primitives | --toast-primitives | --selector-bookmark | --selector-site-permissions | --selector-context | --selector-downloads | --selector-results | --selector-task-resources | --selector-search | --selector-closed | --selector-reading | --quick-ask-focus | --settings-focus | --settings-search | --settings-route | --settings-internal-url | --settings-section-rail | --agent-grants | --privacy-history-panel | --settings-focus-jump | --library-focus | --appearance-prefs | --search-engine-prefs | --edge-leeway | --tidy-changed-state | --memory-saver-report-protected | --navigation-recovery | --certificate-recovery | --http-fallback | --http-fallback-dialog]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state", siteControls: "--site-controls needs an operator to open site controls, clear the disposable fixture's website data, reset its seeded blocked notification decision, and close the dialog before the storage check", tabAudio: "--tab-audio needs an operator to open Tab overview and select the disposable fixture tab; the harness checks mute and unmute", unsavedWork: "--unsaved-work needs an operator to open Tab overview and press Select duplicates; the harness checks that the edited fixture tab is kept", fileHandoff: "--file-handoff needs an operator to open Downloads; the harness opens and reveals a disposable text file", httpAuth: "--http-auth needs an operator to enter fixture-user / fixture-pass in the Aux sign-in prompt; the harness verifies the protected page loads", httpAuthCancel: "--http-auth-cancel needs an operator to cancel the disposable challenge; the harness verifies no protected content loads", preview: "--preview needs an operator to open Tab overview; the harness checks a captured background tab thumbnail", navigationMenu: "--navigation-menu needs an operator to focus Back, press ArrowDown, and choose the Red history entry", contextMenu: "--context-menu needs an operator to open the shell context menu and choose Reload", pageAction: "--page-action needs an operator to choose Summarize page from the native shell context menu", reader: "--reader needs an operator to open Reader view for a local article", eyeDropper: "--eyedropper needs an operator to select a color with the macOS sampler", fileIo: "--file-io needs an operator to export the fixture bookmark through Library to the printed path", workbookExport: "--workbook-export needs an operator to invoke the Aux shell workbook method and save to the printed path", artifactExport: "--artifact-export needs an operator to create a disposable stored image and save it through the Aux shell method", agentConnections: "--agent-connections needs an operator to create and revoke a disposable scoped connection through the Aux native shell", profiles: "--profiles needs an operator to create, rename, archive, restore, and explicitly delete only the generated disposable Profile", profileConfirmation: "--profile-confirmation checks a named native delete confirmation and cancellation without deleting the disposable Profile", popover: "--popover checks browser-context search, choices and Escape dismissal in a disposable chat", menuPrimitives: "--menu-primitives checks shared vertical Space and Browser tools menus with Escape dismissal in a disposable Profile", toastPrimitives: "--toast-primitives checks the no-data autofill info Toast and its timed dismissal in a disposable Profile", selectorBookmark: "--selector-bookmark checks add/remove toolbar state on a disposable local page", selectorSitePermissions: "--selector-site-permissions checks open-site selection in Aux Settings on a disposable local page", selectorContext: "--selector-context checks the open-tab choices in a disposable conversation", selectorDownloads: "--selector-downloads checks live progress, cancel, and retry in a disposable download shelf", selectorResults: "--selector-results checks the disposable set-results table surface", selectorTaskResources: "--selector-task-resources checks a task page reference after local navigation", selectorSearch: "--selector-search checks that a background local tab appears as a live search suggestion", selectorClosed: "--selector-closed checks a disposable closed tab in Library", selectorReading: "--selector-reading checks two disposable Reading List rows and a read-state change", quickAskFocus: "--quick-ask-focus checks the composer receives focus in the disposable Quick Ask window", settingsFocus: "--settings-focus checks Settings category, search result, and search-field focus in a disposable Profile", settingsSearch: "--settings-search checks Plugins, Google Calendar, and a generated Appearance field in Settings search", settingsRoute: "--settings-route checks native Settings section navigation", settingsInternalUrl: "--settings-internal-url checks an internal Settings URL stays in the top shell", settingsSectionRail: "--settings-section-rail checks three available grouped Settings destinations", agentGrants: "--agent-grants checks a disposable Write grant on and off", privacyHistoryPanel: "--privacy-history-panel checks the clear-history control is in Privacy & Security and cancellation leaves history intact", settingsFocusJump: "--settings-focus-jump checks one indexed search destination", libraryFocus: "--library-focus checks Library search-to-bookmark focus in a disposable Profile", appearancePrefs: "--appearance-prefs needs an operator to choose a light theme and title-bar material in a disposable Profile", searchEnginePrefs: "--search-engine-prefs checks a disposable search engine choice across restart", edgeLeeway: "--edge-leeway automatically checks native floating-sidebar entry and exit leeway over a guest page", tidyChanged: "--tidy-changed-state needs an operator to apply AI Tidy, rename its folder, then open Overview after restart", memorySaverReport: "--memory-saver-report-protected needs an operator to open General and expand Recent Memory saver cycles before and after restart" }, null, 2));
+  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --protected-startup | --runtime-peer | --trust-adversarial | --browser-import-ui | --browser-import-formats | --browser-import-attached | --link-peek | --space-theme | --space-theme-advanced | --reader-peek | --tab-preview-focus | --tab-name-ui | --downloads | --site-controls | --tab-audio | --unsaved-work | --file-handoff | --http-auth | --http-auth-cancel | --reader | --translation | --eyedropper | --file-io | --workbook-export | --artifact-export | --agent-connections | --page-action | --profiles | --profile-confirmation | --popover | --menu-primitives | --toast-primitives | --selector-bookmark | --selector-site-permissions | --selector-context | --selector-downloads | --selector-results | --selector-task-resources | --selector-search | --selector-closed | --selector-reading | --quick-ask-focus | --settings-focus | --settings-search | --settings-route | --settings-internal-url | --settings-section-rail | --agent-grants | --privacy-history-panel | --settings-focus-jump | --library-focus | --appearance-prefs | --search-engine-prefs | --edge-leeway | --tidy-changed-state | --memory-saver-report-protected | --navigation-recovery | --certificate-recovery | --http-fallback | --http-fallback-dialog]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state", siteControls: "--site-controls needs an operator to open site controls, clear the disposable fixture's website data, reset its seeded blocked notification decision, and close the dialog before the storage check", tabAudio: "--tab-audio needs an operator to open Tab overview and select the disposable fixture tab; the harness checks mute and unmute", unsavedWork: "--unsaved-work needs an operator to open Tab overview and press Select duplicates; the harness checks that the edited fixture tab is kept", fileHandoff: "--file-handoff needs an operator to open Downloads; the harness opens and reveals a disposable text file", httpAuth: "--http-auth needs an operator to enter fixture-user / fixture-pass in the Aux sign-in prompt; the harness verifies the protected page loads", httpAuthCancel: "--http-auth-cancel needs an operator to cancel the disposable challenge; the harness verifies no protected content loads", preview: "--preview needs an operator to open Tab overview; the harness checks a captured background tab thumbnail", navigationMenu: "--navigation-menu needs an operator to focus Back, press ArrowDown, and choose the Red history entry", contextMenu: "--context-menu needs an operator to open the shell context menu and choose Reload", pageAction: "--page-action needs an operator to choose Summarize page from the native shell context menu", reader: "--reader needs an operator to open Reader view for a local article", eyeDropper: "--eyedropper needs an operator to select a color with the macOS sampler", fileIo: "--file-io needs an operator to export the fixture bookmark through Library to the printed path", workbookExport: "--workbook-export needs an operator to invoke the Aux shell workbook method and save to the printed path", artifactExport: "--artifact-export needs an operator to create a disposable stored image and save it through the Aux shell method", agentConnections: "--agent-connections needs an operator to create and revoke a disposable scoped connection through the Aux native shell", profiles: "--profiles needs an operator to create, rename, archive, restore, and explicitly delete only the generated disposable Profile", profileConfirmation: "--profile-confirmation checks a named native delete confirmation and cancellation without deleting the disposable Profile", popover: "--popover checks browser-context search, choices and Escape dismissal in a disposable chat", menuPrimitives: "--menu-primitives checks shared vertical Space and Browser tools menus with Escape dismissal in a disposable Profile", toastPrimitives: "--toast-primitives checks the no-data autofill info Toast and its timed dismissal in a disposable Profile", selectorBookmark: "--selector-bookmark checks add/remove toolbar state on a disposable local page", selectorSitePermissions: "--selector-site-permissions checks open-site selection in Aux Settings on a disposable local page", selectorContext: "--selector-context checks the open-tab choices in a disposable conversation", selectorDownloads: "--selector-downloads checks live progress, cancel, and retry in a disposable download shelf", selectorResults: "--selector-results checks the disposable set-results table surface", selectorTaskResources: "--selector-task-resources checks a task page reference after local navigation", selectorSearch: "--selector-search checks that a background local tab appears as a live search suggestion", selectorClosed: "--selector-closed checks a disposable closed tab in Library", selectorReading: "--selector-reading checks two disposable Reading List rows and a read-state change", quickAskFocus: "--quick-ask-focus checks the composer receives focus in the disposable Quick Ask window", settingsFocus: "--settings-focus checks Settings category, search result, and search-field focus in a disposable Profile", settingsSearch: "--settings-search checks Plugins, Google Calendar, and a generated Appearance field in Settings search", settingsRoute: "--settings-route checks native Settings section navigation", settingsInternalUrl: "--settings-internal-url checks an internal Settings URL stays in the top shell", settingsSectionRail: "--settings-section-rail checks three available grouped Settings destinations", agentGrants: "--agent-grants checks a disposable Write grant on and off", privacyHistoryPanel: "--privacy-history-panel checks the clear-history control is in Privacy & Security and cancellation leaves history intact", settingsFocusJump: "--settings-focus-jump checks one indexed search destination", libraryFocus: "--library-focus checks Library search-to-bookmark focus in a disposable Profile", appearancePrefs: "--appearance-prefs needs an operator to choose a light theme and title-bar material in a disposable Profile", searchEnginePrefs: "--search-engine-prefs checks a disposable search engine choice across restart", edgeLeeway: "--edge-leeway automatically checks native floating-sidebar entry and exit leeway over a guest page", tidyChanged: "--tidy-changed-state needs an operator to apply AI Tidy, rename its folder, then open Overview after restart", memorySaverReport: "--memory-saver-report-protected needs an operator to open General and expand Recent Memory saver cycles before and after restart", trustAdversarial: "--trust-adversarial keeps one disposable Aux.app up and checks an omnibox loopback page after each case. Takeover cases fail closed unless AUX_OLDER_RUNTIME_MAIN is a retained older main.js. This command is not evidence that the TRUST gate passed." }, null, 2));
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native Aux.app journeys require macOS.");
@@ -137,6 +137,7 @@ const browserImportFormatsJourney = process.argv.includes("--browser-import-form
 const browserImportAttachedJourney = process.argv.includes("--browser-import-attached");
 const protectedStartupJourney = process.argv.includes("--protected-startup");
 const runtimePeerJourney = process.argv.includes("--runtime-peer");
+const trustAdversarialJourney = process.argv.includes("--trust-adversarial");
 const receiptBeforeUiJourney = process.argv.includes("--receipt-before-ui");
 const receiptUndoUiJourney = process.argv.includes("--receipt-undo-ui");
 const receiptRunUndoUiJourney = process.argv.includes("--receipt-run-undo-ui");
@@ -234,7 +235,7 @@ const healthDiagnosticsJourney = process.argv.includes("--health-diagnostics");
 const unpackedExtensionJourney = process.argv.includes("--unpacked-extension");
 const runtimeBackupRestoreJourney = process.argv.includes("--runtime-backup-restore");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, storeRecoveryUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, runtimePeerJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptActualRunJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, storeRecoveryUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, runtimePeerJourney, trustAdversarialJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptActualRunJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -273,6 +274,9 @@ const report = { schema: 1, scope: "Native Aux.app, disposable Profile, loopback
   ...(developmentAcceptanceFeatures ? { developmentAcceptanceFeatures } : {}),
   startedAt: new Date().toISOString(), rpcOnly, uiOnly, steps: [], captures: [], passed: false };
 let child;
+const trustPeers = [];
+const trustStops = [];
+const trustExtraDirs = [];
 let attachedChrome;
 let fixture;
 let modelFixture;
@@ -373,6 +377,686 @@ function changedFraction(aPath, bPath, fraction = 0.45) {
     }
   }
   return changed / total;
+}
+
+const ACTIVE_PEER_RUNS = new Set(["queued", "planning", "running", "paused", "needs_input"]);
+
+function redactSecret(text) {
+  return String(text).replace(/auxc_[A-Za-z0-9_-]+/g, "auxc_[redacted]").replace(/Bearer\s+\S+/g, "Bearer [redacted]");
+}
+function pidAlive(pid) {
+  try { process.kill(pid, 0); return true; } catch { return false; }
+}
+function psUid(pid) {
+  let out;
+  try { out = execFileSync("ps", ["-ww", "-p", String(pid), "-o", "uid="], { encoding: "utf8", timeout: 5_000 }).trim(); }
+  catch (error) { throw new Error(`ps uid failed for ${pid}: ${error instanceof Error ? error.message : error}`); }
+  if (!/^\d+$/.test(out)) throw new Error(`ps uid failed for ${pid}`);
+  return Number(out);
+}
+function psCommand(pid) {
+  try { return execFileSync("ps", ["-ww", "-p", String(pid), "-o", "command="], { encoding: "utf8", timeout: 5_000 }); }
+  catch (error) { throw new Error(`ps command failed for ${pid}: ${error instanceof Error ? error.message : error}`); }
+}
+function textPath(pid) {
+  let out;
+  try { out = execFileSync("lsof", ["-n", "-a", "-p", String(pid), "-d", "txt", "-Fn"], { encoding: "utf8", timeout: 5_000 }); }
+  catch (error) { throw new Error(`lsof text path failed for ${pid}: ${error instanceof Error ? error.message : error}`); }
+  const line = out.split("\n").find(item => item.startsWith("n/"));
+  if (!line) throw new Error(`lsof text path failed for ${pid}`);
+  return realpathSync(line.slice(1));
+}
+function listenerPid(listenPort) {
+  let out;
+  try { out = execFileSync("lsof", ["-nP", `-iTCP:${listenPort}`, "-sTCP:LISTEN", "-t"], { encoding: "utf8", timeout: 5_000 }).trim(); }
+  catch (error) {
+    if (error.status === 1) return null;
+    throw new Error(`lsof listener failed for ${listenPort}: ${error instanceof Error ? error.message : error}`);
+  }
+  const pids = out.split(/\s+/).filter(Boolean);
+  if (pids.length !== 1 || !/^\d+$/.test(pids[0])) throw new Error(`lsof listener for ${listenPort} was not a single pid`);
+  return Number(pids[0]);
+}
+function signalPid(pid, signal) {
+  try { process.kill(pid, signal); return; }
+  catch (error) { if (error.code !== "EPERM") throw error; }
+  execFileSync("sudo", ["-n", "-u", "nobody", "/bin/kill", signal === "SIGKILL" ? "-KILL" : "-TERM", String(pid)], { timeout: 5_000, stdio: "ignore" });
+}
+
+async function runTrustAdversarialJourney() {
+  const olderMain = process.env.AUX_OLDER_RUNTIME_MAIN ?? "";
+  if (!olderMain || !isAbsolute(olderMain) || !existsSync(olderMain)) {
+    throw new Error("Takeover cases fail closed without a retained older runtime bundle. Set AUX_OLDER_RUNTIME_MAIN to an absolute main.js whose live /internal/peer schema is strictly older than this process. Refusing to synthesize one.");
+  }
+  const currentMain = join(app, "Contents/Resources/aux-runtime/dist/main.js");
+  assert.ok(existsSync(currentMain), "The packaged runtime main.js must exist");
+  const olderHash = createHash("sha256").update(readFileSync(olderMain)).digest("hex");
+  const sameOlderBundle = () => {
+    assert.equal(createHash("sha256").update(readFileSync(olderMain)).digest("hex"), olderHash, "The retained older runtime bundle changed");
+  };
+  const witnessSchema = await witnessPeerSchema();
+  const port = await reserveLoopbackPort();
+  let provenSchema;
+  const proof = launchPeer({ bin: helper, main: olderMain, dataDir: join(disposable, "trust-schema-proof"), port, label: "schema-proof" });
+  try {
+    const ready = await waitPeerReady(proof);
+    provenSchema = ready.body.schema;
+    assert.equal(ready.body.schema, ready.descriptor.version.schema, "Live /internal/peer schema must agree with the process descriptor");
+  } finally {
+    await stopPeer(proof);
+    await waitPortFree(port);
+  }
+  if (typeof provenSchema !== "number" || !(provenSchema < witnessSchema)) {
+    throw new Error(`Takeover cases fail closed: live /internal/peer schema ${provenSchema} is not strictly older than the witness schema ${witnessSchema}. Refusing to synthesize an older bundle.`);
+  }
+  record("retained runtime bundle is strictly older than this process", { witnessSchema, olderSchema: provenSchema });
+
+  await caseIdleTakeover();
+  await confirmOmnibox("idle");
+  await caseRevokedDuringIdle();
+  await confirmOmnibox("revoke");
+  await caseBusyDefer();
+  await confirmOmnibox("busy");
+  await caseExecutableChanged();
+  await confirmOmnibox("executable");
+  await caseForeignDescriptor();
+  await confirmOmnibox("foreign");
+  const replay = await caseReplayGap();
+  await confirmOmnibox("replay");
+  await caseExpiredAndRevoked(replay);
+  await confirmOmnibox("session");
+  assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
+  report.passed = true;
+
+  async function witnessPeerSchema() {
+    const descriptor = JSON.parse(readFileSync(runtimeFile, "utf8"));
+    const nonce = randomBytes(24).toString("hex");
+    const endpoint = `http://127.0.0.1:${descriptor.port}/internal/peer?nonce=${nonce}`;
+    const anonymous = await fetch(endpoint, { signal: AbortSignal.timeout(2_000) });
+    assert.equal(anonymous.status, 401, "An unauthenticated witness peer probe must be refused");
+    const authenticated = await fetch(endpoint, { headers: { authorization: `Bearer ${descriptor.token}` }, signal: AbortSignal.timeout(2_000) });
+    assert.equal(authenticated.status, 200);
+    const body = await authenticated.json();
+    assert.equal(body.service, "aux-runtime");
+    assert.equal(body.ready, true);
+    assert.equal(body.schema, descriptor.version.schema, "Witness age comes from /internal/peer, not a rewritten runtime.json");
+    assert.equal(typeof body.schema, "number");
+    return body.schema;
+  }
+  function reserveLoopbackPort() {
+    const server = createTcpServer();
+    return new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", () => {
+        const bound = server.address().port;
+        server.close(() => resolve(bound));
+      });
+    });
+  }
+  function peerEnv(dataDir) {
+    return {
+      PATH: process.env.PATH ?? "/usr/bin:/bin:/opt/homebrew/bin",
+      HOME: dataDir,
+      TMPDIR: process.env.TMPDIR ?? "/tmp",
+      LANG: process.env.LANG ?? "C",
+      AUX_STANDALONE: "0",
+      AUX_LOAD_DOTENV: "0",
+      AUX_IPC: "0",
+      AUX_API_PORT: String(port),
+      AUX_DATA_DIR: dataDir,
+    };
+  }
+  function launchPeer({ bin, main, dataDir, label, mode = 0o700, argv, killOwned }) {
+    sameOlderBundle();
+    mkdirSync(dataDir, { recursive: true, mode });
+    chmodSync(dataDir, mode);
+    const stderr = { text: "" };
+    const exit = { code: null, signal: null, exited: false, at: 0 };
+    const proc = spawn(bin, argv ?? [main], { cwd: dataDir, env: peerEnv(dataDir), stdio: ["ignore", "ignore", "pipe"] });
+    trustPeers.push(proc);
+    proc.stderr?.on("data", chunk => {
+      if (stderr.text.length < 1_000_000) stderr.text += chunk;
+      appendFileSync(join(output, `${label}.stderr.log`), chunk);
+    });
+    proc.once("exit", (code, signal) => { exit.code = code; exit.signal = signal; exit.exited = true; exit.at = Date.now(); });
+    proc.on("error", error => { exit.exited = true; exit.code = -1; exit.at = Date.now(); stderr.text += `\n${error.message}\n`; });
+    const peer = { proc, stderr, exit, dataDir, label, listenerPid: undefined };
+    peer.kill = async () => {
+      if (killOwned) {
+        let owned = peer.listenerPid;
+        if (!owned) { try { owned = listenerPid(port); } catch { owned = undefined; } }
+        if (owned && pidAlive(owned)) {
+          try { signalPid(owned, "SIGTERM"); } catch { /* cleanup is best-effort */ }
+          await waitQuiet(() => !pidAlive(owned), 5_000);
+          if (pidAlive(owned)) { try { signalPid(owned, "SIGKILL"); } catch { /* already gone */ } }
+        }
+      }
+      if (proc.exitCode === null && proc.signalCode === null) {
+        try { proc.kill("SIGTERM"); } catch { /* already gone */ }
+        await waitQuiet(() => proc.exitCode !== null || proc.signalCode !== null, 5_000);
+        if (proc.exitCode === null && proc.signalCode === null) { try { proc.kill("SIGKILL"); } catch { /* already gone */ } }
+      }
+    };
+    peer.stopping = null;
+    trustStops.push(() => stopPeer(peer));
+    return peer;
+  }
+  async function stopPeer(peer) {
+    if (!peer) return;
+    peer.stopping ??= peer.kill();
+    await peer.stopping;
+  }
+  async function waitQuiet(check, timeoutMs) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (await check()) return true;
+      await delay(100);
+    }
+    return false;
+  }
+  function portFree() {
+    try {
+      return execFileSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"], { encoding: "utf8", timeout: 3_000 }).trim() === "";
+    } catch (error) { return error.status === 1; }
+  }
+  async function waitPortFree() {
+    if (!await waitQuiet(portFree, 15_000)) throw new Error(`port ${port} stayed in use`);
+  }
+  async function settledStderr(peer, pattern) {
+    // The exit event can be delivered before the last stderr chunk.
+    await waitQuiet(() => pattern.test(peer.stderr.text), 2_000);
+    assert.match(peer.stderr.text, pattern);
+  }
+  async function finishPair(older, challenger, failed) {
+    await stopPeer(older).catch(() => {});
+    await stopPeer(challenger).catch(() => {});
+    const free = await waitQuiet(portFree, 15_000);
+    if (!free && !failed) return new Error(`port ${port} stayed in use`);
+    return failed ?? null;
+  }
+  async function jsonRpc(targetPort, token, method, params = {}, timeoutMs = 10_000) {
+    let response;
+    try {
+      response = await fetch(`http://127.0.0.1:${targetPort}/rpc`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id: 1, method, params }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      const wrapped = new Error(`${method}: ${error instanceof Error ? error.message : String(error)}`);
+      wrapped.code = "transport";
+      throw wrapped;
+    }
+    let body = {};
+    try { body = await response.json(); } catch { body = {}; }
+    if (response.status !== 200 || body.error) {
+      const wrapped = new Error(`${method}: ${body.error?.code ?? `http_${response.status}`}: ${body.error?.message ?? response.statusText}`);
+      wrapped.code = body.error?.code ?? `http_${response.status}`;
+      throw wrapped;
+    }
+    return body.result;
+  }
+  async function waitPeerReady(peer) {
+    return until(`${peer.label} publishes an authenticated peer identity`, async () => {
+      if (peer.exit.exited) throw new Error(`${peer.label} exited before it was ready (${peer.exit.signal ?? peer.exit.code}): ${redactSecret(peer.stderr.text.slice(-600))}`);
+      const file = join(peer.dataDir, "runtime.json");
+      if (!existsSync(file)) return null;
+      let descriptor;
+      try { descriptor = JSON.parse(readFileSync(file, "utf8")); } catch { return null; }
+      if (descriptor.port !== port || typeof descriptor.token !== "string" || !Number.isInteger(descriptor.pid) ||
+        typeof descriptor.instanceId !== "string" || typeof descriptor.startedAt !== "number" || typeof descriptor.version?.schema !== "number") return null;
+      const nonce = randomBytes(24).toString("hex");
+      const endpoint = `http://127.0.0.1:${port}/internal/peer?nonce=${nonce}`;
+      const anonymous = await fetch(endpoint, { signal: AbortSignal.timeout(1_000) }).catch(() => null);
+      if (!anonymous || anonymous.status !== 401) return null;
+      const authenticated = await fetch(endpoint, { headers: { authorization: `Bearer ${descriptor.token}` }, signal: AbortSignal.timeout(1_000) }).catch(() => null);
+      if (!authenticated || authenticated.status !== 200) return null;
+      const body = await authenticated.json().catch(() => null);
+      if (!body || body.service !== "aux-runtime" || body.nonce !== nonce || body.ready !== true) return null;
+      if (body.pid !== descriptor.pid || body.instanceId !== descriptor.instanceId || body.startedAt !== descriptor.startedAt || body.schema !== descriptor.version.schema) return null;
+      return { descriptor, body };
+    }, 40_000);
+  }
+  function assertTakeoverExit(exit, startedAt) {
+    assert.equal(exit.exited, true, "The older peer must exit when the challenger takes the port");
+    if (exit.signal === "SIGKILL") {
+      assert.ok(exit.at - startedAt >= 5_000, "SIGKILL is only the follow-up after SIGTERM is ignored");
+      return;
+    }
+    // This runtime handles SIGTERM and then process.exit(0), so the parent sees a clean exit rather than the signal name.
+    const handledTerm = exit.signal === null && exit.code === 0;
+    assert.ok(exit.signal === "SIGTERM" || handledTerm, `Older peer exit was ${exit.signal ?? exit.code}, not SIGTERM`);
+  }
+  function assertDevelopmentIdentity(descriptor, pid) {
+    if (!Number.isInteger(descriptor.uid) || typeof descriptor.executable !== "string" || !descriptor.executable.startsWith("/"))
+      throw new Error("New runtime descriptor has no uid and executable, so ps and lsof identity is unproven");
+    assert.equal(psUid(pid), descriptor.uid, "ps uid must match the new runtime descriptor");
+    assert.equal(textPath(pid), realpathSync(descriptor.executable), "lsof text path must match the new runtime descriptor");
+  }
+  function differentNode() {
+    const helperReal = realpathSync(helper);
+    for (const candidate of [process.execPath, "/opt/homebrew/bin/node", "/usr/local/bin/node", "/usr/bin/node"]) {
+      if (!candidate || !existsSync(candidate)) continue;
+      let real;
+      try { real = realpathSync(candidate); } catch { continue; }
+      if (real !== helperReal) return real;
+    }
+    throw new Error("Changed-executable case fails closed: no Node binary distinct from the Aux Runtime helper.");
+  }
+  async function confirmOmnibox(label) {
+    const marker = `trust=${label}`;
+    console.log(`Load this exact address in the Aux omnibox and wait until it finishes: ${origin}/red?${marker}`);
+    const page = await until(`omnibox shows ${label}`, async () => {
+      let pages;
+      try { pages = await rpc("pages.list"); }
+      catch (error) {
+        if (/not_ready|ECONNREFUSED|fetch failed|timed out|transport/i.test(String(error))) return null;
+        throw error;
+      }
+      return pages.find(item => item.url.includes("/red") && item.url.includes(marker) && !item.loading && !item.navigationError) ?? null;
+    }, 180_000);
+    assert.match(page.title, /Aux native Red/);
+    assert.match(JSON.stringify(await rpc("pages.observe", { pageId: page.pageId })), /Aux native Red fixture/);
+    assert.equal(existsSync(join(profile, "DevToolsActivePort")), false, "A raw debugging port must remain disabled");
+    record(`browser usable after ${label}`, { pageId: page.pageId });
+  }
+  async function holdScopedRun(token) {
+    const workspace = await jsonRpc(port, token, "workspaces.create", { name: "Trust peer scope" });
+    const task = await jsonRpc(port, token, "tasks.create", {
+      workspaceId: workspace.workspaceId, title: "Trust peer run", objective: "Hold the peer until revoke",
+      criteria: [{ criterionId: "held", description: "Stay running", verification: "manual" }],
+    });
+    const created = await jsonRpc(port, token, "agentConnections.create", {
+      name: "Trust peer", client: "codex",
+      scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
+    });
+    assert.ok(Array.isArray(await jsonRpc(port, created.token, "pages.list", {})));
+    const runs = await jsonRpc(port, token, "runs.list", { chatId: `external:${created.connection.connectionId}`, limit: 20 });
+    assert.ok(runs.some(run => run.status === "running"), "Scoped pages.list must leave a running external session");
+    return created;
+  }
+  async function caseIdleTakeover() {
+    sameOlderBundle();
+    const older = launchPeer({ bin: helper, main: olderMain, dataDir: join(disposable, "trust-idle"), label: "idle-older" });
+    let challenger;
+    let failed;
+    try {
+      const ready = await waitPeerReady(older);
+      assert.equal(ready.body.schema, provenSchema);
+      const runs = await jsonRpc(port, ready.descriptor.token, "runs.list", { limit: 200 });
+      assert.equal(runs.filter(run => ACTIVE_PEER_RUNS.has(run.status)).length, 0, "The idle peer must have no active run");
+      const startedAt = Date.now();
+      challenger = launchPeer({ bin: helper, main: currentMain, dataDir: older.dataDir, label: "idle-challenger" });
+      await until("idle older peer exits for the current runtime", async () => older.exit.exited ? true : null, 25_000);
+      assertTakeoverExit(older.exit, startedAt);
+      await settledStderr(challenger, /takeover:/);
+      const next = await waitPeerReady(challenger);
+      assert.equal(next.descriptor.pid, challenger.proc.pid);
+      assert.notEqual(next.descriptor.pid, ready.descriptor.pid);
+      assert.notEqual(next.descriptor.instanceId, ready.descriptor.instanceId);
+      assert.notEqual(next.descriptor.token, ready.descriptor.token);
+      assert.equal(next.body.schema, witnessSchema);
+      const stale = await fetch(`http://127.0.0.1:${port}/internal/peer?nonce=${randomBytes(24).toString("hex")}`, {
+        headers: { authorization: `Bearer ${ready.descriptor.token}` }, signal: AbortSignal.timeout(2_000),
+      });
+      assert.equal(stale.status, 401, "The older runtime token must not authorize the replacement");
+      assertDevelopmentIdentity(next.descriptor, next.descriptor.pid);
+      assert.equal(listenerPid(port), next.descriptor.pid);
+      record("idle older peer replaced on SIGTERM", { oldPid: ready.descriptor.pid, newPid: next.descriptor.pid, signal: older.exit.signal, code: older.exit.code });
+    } catch (error) { failed = error; }
+    failed = await finishPair(older, challenger, failed);
+    if (failed) throw failed;
+  }
+  async function caseRevokedDuringIdle() {
+    sameOlderBundle();
+    const older = launchPeer({ bin: helper, main: olderMain, dataDir: join(disposable, "trust-revoke"), label: "revoke-older" });
+    let challenger;
+    let failed;
+    try {
+      const ready = await waitPeerReady(older);
+      assert.equal(ready.body.schema, provenSchema);
+      const created = await holdScopedRun(ready.descriptor.token);
+      const startedAt = Date.now();
+      challenger = launchPeer({ bin: helper, main: currentMain, dataDir: older.dataDir, label: "revoke-challenger" });
+      await until("challenger waits for the active scoped run", async () => /takeover waiting/.test(challenger.stderr.text) ? true : null, 20_000);
+      assert.equal(older.exit.exited, false);
+      assert.equal(pidAlive(ready.descriptor.pid), true);
+      const revokedAt = Date.now();
+      await jsonRpc(port, ready.descriptor.token, "agentConnections.revoke", { connectionId: created.connection.connectionId });
+      await until("older peer exits only after the scoped run is revoked", async () => older.exit.exited ? true : null, 25_000);
+      assert.ok(older.exit.at >= revokedAt, "The challenger must not signal the peer before revoke");
+      assertTakeoverExit(older.exit, startedAt);
+      await settledStderr(challenger, /takeover:/);
+      record("revoked scoped run lets the challenger replace the older peer", { oldPid: ready.descriptor.pid, signal: older.exit.signal, code: older.exit.code });
+    } catch (error) { failed = error; }
+    failed = await finishPair(older, challenger, failed);
+    if (failed) throw failed;
+  }
+  async function caseBusyDefer() {
+    sameOlderBundle();
+    const older = launchPeer({ bin: helper, main: olderMain, dataDir: join(disposable, "trust-busy"), label: "busy-older" });
+    let challenger;
+    let failed;
+    try {
+      const ready = await waitPeerReady(older);
+      assert.equal(ready.body.schema, provenSchema);
+      await holdScopedRun(ready.descriptor.token);
+      challenger = launchPeer({ bin: helper, main: currentMain, dataDir: older.dataDir, label: "busy-challenger" });
+      await until("busy challenger defers", async () => challenger.exit.exited ? true : null, 55_000);
+      await settledStderr(challenger, /defer:/);
+      await settledStderr(challenger, /idle wait/);
+      assert.doesNotMatch(challenger.stderr.text, /takeover:/);
+      assert.equal(older.exit.exited, false, "A still-running older peer must stay up");
+      assert.equal(older.exit.signal, null, "A still-running older peer receives no signal");
+      assert.equal(pidAlive(ready.descriptor.pid), true);
+      assert.equal(listenerPid(port), ready.descriptor.pid);
+      record("busy older peer stays up after the idle wait", { pid: ready.descriptor.pid });
+    } catch (error) { failed = error; }
+    failed = await finishPair(older, challenger, failed);
+    if (failed) throw failed;
+  }
+  async function caseExecutableChanged() {
+    sameOlderBundle();
+    const nodeBin = differentNode();
+    const older = launchPeer({ bin: nodeBin, main: olderMain, dataDir: join(disposable, "trust-executable"), label: "executable-older" });
+    let challenger;
+    let failed;
+    try {
+      const ready = await waitPeerReady(older);
+      assert.equal(ready.body.schema, provenSchema);
+      assert.match(psCommand(ready.descriptor.pid), /main\.js/);
+      assert.notEqual(textPath(ready.descriptor.pid), realpathSync(helper));
+      challenger = launchPeer({ bin: helper, main: currentMain, dataDir: older.dataDir, label: "executable-challenger" });
+      await until("changed-executable challenger finishes", async () => (challenger.exit.exited || older.exit.exited) ? true : null, 20_000);
+      await settledStderr(challenger, /defer:/);
+      await settledStderr(challenger, /executable changed/);
+      assert.equal(older.exit.exited, false);
+      assert.equal(older.exit.signal, null);
+      assert.equal(pidAlive(ready.descriptor.pid), true);
+      record("changed executable is left running", { pid: ready.descriptor.pid, node: nodeBin });
+    } catch (error) { failed = error; }
+    failed = await finishPair(older, challenger, failed);
+    if (failed) throw failed;
+  }
+  async function caseForeignDescriptor() {
+    sameOlderBundle();
+    const dataDir = mkdtempSync("/tmp/aux-trust-foreign-");
+    trustExtraDirs.push(dataDir);
+    chmodSync(dataDir, 0o777);
+    const readable = sudoNobody(helper, "-r") && sudoNobody(helper, "-x") && sudoNobody(olderMain, "-r") && sudoNobody(dataDir, "-w");
+    if (readable) await foreignUser(dataDir);
+    else await rewrittenUid();
+
+    function sudoNobody(file, flag) {
+      try { execFileSync("sudo", ["-n", "-u", "nobody", "/bin/test", flag, file], { timeout: 5_000, stdio: "ignore" }); return true; }
+      catch { return false; }
+    }
+    async function foreignUser(dir) {
+      const older = launchPeer({
+        bin: "sudo", main: olderMain, dataDir: dir, label: "foreign-older", mode: 0o777, killOwned: true,
+        argv: ["-n", "-u", "nobody", "/usr/bin/env", `HOME=${dir}`, `TMPDIR=${process.env.TMPDIR ?? "/tmp"}`,
+          `PATH=${process.env.PATH ?? "/usr/bin:/bin:/opt/homebrew/bin"}`, "AUX_STANDALONE=0", "AUX_LOAD_DOTENV=0", "AUX_IPC=0",
+          `AUX_API_PORT=${port}`, `AUX_DATA_DIR=${dir}`, helper, olderMain],
+      });
+      let challenger;
+      let failed;
+      try {
+        const incumbent = await until("foreign peer is listening", async () => {
+          if (older.exit.exited) throw new Error(`foreign peer exited before listening: ${redactSecret(older.stderr.text.slice(-600))}`);
+          let pid;
+          try { pid = listenerPid(port); } catch { return null; }
+          if (pid && pidAlive(pid)) older.listenerPid = pid;
+          const health = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(1_000) }).catch(() => null);
+          if (!health || health.status !== 200) return null;
+          const anonymous = await fetch(`http://127.0.0.1:${port}/internal/peer?nonce=${randomBytes(24).toString("hex")}`, { signal: AbortSignal.timeout(1_000) }).catch(() => null);
+          if (!anonymous || anonymous.status !== 401 || !pid || !pidAlive(pid)) return null;
+          return pid;
+        }, 40_000);
+        challenger = launchPeer({ bin: helper, main: currentMain, dataDir: dir, label: "foreign-challenger", mode: 0o777 });
+        await until("foreign challenger finishes without a signal", async () => (challenger.exit.exited || !pidAlive(incumbent)) ? true : null, 20_000);
+        await settledStderr(challenger, /defer:/);
+        await settledStderr(challenger, /no runtime descriptor found|refusing to signal|peer user does not match this development identity|peer executable changed|peer development identity could not be verified/);
+        assert.doesNotMatch(challenger.stderr.text, /takeover:/);
+        assert.equal(pidAlive(incumbent), true);
+        assert.equal(older.exit.exited, false);
+        assert.equal(listenerPid(port), incumbent);
+        record("foreign uid is left running", { pid: incumbent });
+      } catch (error) { failed = error; }
+      failed = await finishPair(older, challenger, failed);
+      if (failed) throw failed;
+    }
+    async function rewrittenUid() {
+      const older = launchPeer({ bin: helper, main: olderMain, dataDir: join(disposable, "trust-foreign"), label: "rewritten-older" });
+      let challenger;
+      let failed;
+      try {
+        const ready = await waitPeerReady(older);
+        assert.equal(ready.body.schema, provenSchema);
+        const file = join(older.dataDir, "runtime.json");
+        const value = JSON.parse(readFileSync(file, "utf8"));
+        const recorded = Number.isInteger(value.uid) ? value.uid : process.getuid();
+        value.uid = recorded + 1;
+        assert.equal(value.version.schema, ready.body.schema, "A descriptor race must not rewrite schema");
+        writeFileSync(file, `${JSON.stringify(value)}\n`, { mode: 0o600 });
+        chmodSync(file, 0o600);
+        challenger = launchPeer({ bin: helper, main: currentMain, dataDir: older.dataDir, label: "rewritten-challenger" });
+        await until("rewritten-descriptor challenger finishes", async () => (challenger.exit.exited || older.exit.exited) ? true : null, 20_000);
+        await settledStderr(challenger, /defer:/);
+        await settledStderr(challenger, /peer user does not match this development identity|peer executable changed/);
+        assert.doesNotMatch(challenger.stderr.text, /takeover:/);
+        assert.equal(older.exit.exited, false);
+        assert.equal(older.exit.signal, null);
+        assert.equal(pidAlive(ready.descriptor.pid), true);
+        record("changed descriptor uid is left running", { pid: ready.descriptor.pid });
+      } catch (error) { failed = error; }
+      failed = await finishPair(older, challenger, failed);
+      if (failed) throw failed;
+    }
+  }
+  async function caseReplayGap() {
+    const opened = await rpc("pages.open", { url: `${origin}/red?trust=task-page`, activate: true });
+    await until("task page loads", async () => (await rpc("pages.list")).some(item => item.pageId === opened.pageId && !item.loading));
+    const workspace = await rpc("workspaces.create", { name: "Trust replay" });
+    const otherWorkspace = await rpc("workspaces.create", { name: "Trust other" });
+    let task = await rpc("tasks.create", {
+      workspaceId: workspace.workspaceId, title: "Trust scoped", objective: "Read the loopback page",
+      criteria: [{ criterionId: "read", description: "Read", verification: "manual" }],
+      resources: [{ resourceId: "page", kind: "page", locator: opened.pageId, label: "Loopback" }],
+    });
+    const sibling = await rpc("tasks.create", {
+      workspaceId: workspace.workspaceId, title: "Trust sibling", objective: "Elsewhere in the space",
+      criteria: [{ criterionId: "else", description: "Elsewhere", verification: "manual" }],
+    });
+    const other = await rpc("tasks.create", {
+      workspaceId: otherWorkspace.workspaceId, title: "Trust other", objective: "Outside the space",
+      criteria: [{ criterionId: "out", description: "Outside", verification: "manual" }],
+    });
+    const before = await eventsAfter(0);
+    task = await rpc("tasks.update", { taskId: task.taskId, expectedRevision: task.revision, title: "Trust anchor" });
+    const anchored = await eventsAfter(before.lastSeq);
+    const anchorEvent = anchored.events.filter(event => event.type === "task.updated" && event.payload?.task?.taskId === task.taskId).at(-1);
+    assert.ok(anchorEvent && anchorEvent.seq > 0, "The replay cursor must be a durable task event");
+    const anchor = anchorEvent.seq;
+    const streamId = anchored.streamId;
+    const created = await rpc("agentConnections.create", {
+      name: "Trust replay", client: "codex",
+      scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
+    });
+    task = await rpc("tasks.update", { taskId: task.taskId, expectedRevision: task.revision, title: "Trust gap floor" });
+    const floored = await eventsAfter(anchor);
+    const droppedEvent = floored.events.filter(event => event.type === "task.updated" && event.payload?.task?.taskId === task.taskId).at(-1);
+    assert.ok(droppedEvent && droppedEvent.seq > anchor, "The gap needs a successor of the replay cursor");
+    const dropped = droppedEvent.seq;
+    await rpc("pages.execute", { program: { pageId: opened.pageId, nodes: [{ kind: "emit", label: "trust-page", value: { pageId: opened.pageId } }] } });
+    await rpc("tasks.update", { taskId: sibling.taskId, expectedRevision: sibling.revision, title: "Trust sibling event" });
+    await rpc("tasks.update", { taskId: other.taskId, expectedRevision: other.revision, title: "Trust other event" });
+    await rpc("settings.set", { sidebarAppearance: "translucent" });
+    const witnessed = await eventsAfter(dropped);
+    assert.ok(witnessed.events.some(event => event.type === "page.emitted" && event.payload?.pageId === opened.pageId && event.seq > dropped));
+    assert.ok(witnessed.events.some(event => event.type === "task.updated" && event.payload?.task?.taskId === sibling.taskId && event.seq > dropped));
+    assert.ok(witnessed.events.some(event => event.type === "task.updated" && event.payload?.task?.taskId === other.taskId && event.seq > dropped));
+    assert.ok(witnessed.events.some(event => event.type === "settings.changed" && event.seq > dropped));
+    const descriptor = JSON.parse(readFileSync(runtimeFile, "utf8"));
+    assert.equal(pidAlive(descriptor.pid), true);
+    process.kill(descriptor.pid, "SIGKILL");
+    await until("witness helper exits", async () => pidAlive(descriptor.pid) ? null : true, 10_000);
+    const removed = await until("event floor is deleted while the helper is down", async () => {
+      let current;
+      try { current = JSON.parse(readFileSync(runtimeFile, "utf8")); } catch { current = null; }
+      if (current?.pid && current.pid !== descriptor.pid && pidAlive(current.pid))
+        throw new Error("Host restarted the helper before the event floor could be deleted");
+      const databasePath = join(profile, "Default/Aux Runtime Data/aux-state.sqlite");
+      try {
+        const db = new DatabaseSync(databasePath);
+        try {
+          db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+          // sinceSeq + 1 < firstSeq is the gap. Deleting only the cursor leaves the next row contiguous.
+          const info = db.prepare("DELETE FROM events WHERE seq <= ?").run(dropped);
+          db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+          return Number(info.changes) > 0 ? Number(info.changes) : null;
+        } finally { db.close(); }
+      } catch { return null; }
+    }, 10_000);
+    console.log("The disposable runtime helper was stopped. In the Aux window, click Finish later to request a new runtime connection.");
+    const replacement = await until("host reconnects a new runtime helper", async () => {
+      let next;
+      try { next = JSON.parse(readFileSync(runtimeFile, "utf8")); } catch { return null; }
+      if (!next.instanceId || next.instanceId === descriptor.instanceId || next.pid === descriptor.pid || !pidAlive(next.pid)) return null;
+      rpcPort = next.port;
+      rpcToken = next.token;
+      try {
+        const workspaceState = await rpc("workspace.get");
+        return workspaceState?.sessions?.some(session => session.sessionId === "aux" && session.status === "connected") ? next : null;
+      } catch (error) {
+        if (/not_ready|ECONNREFUSED|fetch failed|timed out/i.test(String(error))) return null;
+        throw error;
+      }
+    }, 120_000);
+    assert.notEqual(replacement.pid, descriptor.pid);
+    assert.notEqual(replacement.instanceId, descriptor.instanceId);
+    assert.notEqual(replacement.token, descriptor.token);
+    const stale = await fetch(`http://127.0.0.1:${replacement.port}/internal/peer?nonce=${randomBytes(24).toString("hex")}`, {
+      headers: { authorization: `Bearer ${descriptor.token}` }, signal: AbortSignal.timeout(2_000),
+    });
+    assert.equal(stale.status, 401, "The crashed helper token must not authorize the replacement");
+    const gap = await jsonRpc(rpcPort, created.token, "events.since", { sinceSeq: anchor, limit: 2000, streamId });
+    assert.equal(gap.streamId, streamId);
+    assert.equal(gap.resync, true);
+    assert.deepEqual(gap.events, []);
+    assert.equal(JSON.stringify(gap).includes(sibling.taskId), false);
+    assert.equal(JSON.stringify(gap).includes(other.taskId), false);
+    const scoped = await eventsAfter(0, created.token, streamId);
+    assert.equal(scoped.resync, false);
+    assert.ok(scoped.events.some(event => event.type === "page.emitted" && event.payload?.pageId === opened.pageId));
+    for (const event of scoped.events) {
+      const eventPage = event.payload?.pageId ?? event.payload?.page?.pageId;
+      const taskId = event.payload?.task?.taskId ?? event.payload?.taskId ?? event.payload?.run?.config?.taskId;
+      const runPages = Array.isArray(event.payload?.run?.pageIds) ? event.payload.run.pageIds : [];
+      if (eventPage !== undefined) assert.equal(eventPage, opened.pageId, "Scoped replay from the start stays on the task page");
+      for (const id of runPages) assert.equal(id, opened.pageId, "Scoped replay from the start stays on the task page");
+      if (taskId !== undefined) assert.equal(taskId, task.taskId, "Scoped replay from the start stays inside the task");
+      assert.ok(eventPage === opened.pageId || taskId === task.taskId || runPages.includes(opened.pageId),
+        "Scoped replay from the start stays on the task page");
+    }
+    assert.equal(scoped.events.some(event => event.type === "settings.changed"), false);
+    assert.equal(JSON.stringify(scoped.events).includes(sibling.taskId), false);
+    assert.equal(JSON.stringify(scoped.events).includes(other.taskId), false);
+    const master = await eventsAfter(0, rpcToken, streamId);
+    const masterBody = JSON.stringify(master.events);
+    assert.equal(masterBody.includes(sibling.taskId), true);
+    assert.equal(masterBody.includes(other.taskId), true);
+    assert.ok(master.events.some(event => event.type === "settings.changed"));
+    record("replay gap resyncs inside the task and the master stream stays whole", { anchor, deletedThrough: dropped, removed, streamId });
+    return { pageId: opened.pageId, taskId: task.taskId, workspaceId: workspace.workspaceId };
+  }
+  async function eventsAfter(seq, token = rpcToken, streamId) {
+    const events = [];
+    let cursor = seq;
+    let seenStream;
+    let resync = false;
+    let lastSeq = seq;
+    for (let page = 0; page < 20; page++) {
+      const result = await jsonRpc(rpcPort, token, "events.since", { sinceSeq: cursor, limit: 2000, ...(streamId ? { streamId } : {}) }, 10_000);
+      seenStream = result.streamId;
+      lastSeq = result.lastSeq;
+      if (result.resync) { resync = true; break; }
+      events.push(...result.events);
+      if (result.events.length < 2000) {
+        lastSeq = result.events.length ? result.events.at(-1).seq : cursor;
+        break;
+      }
+      cursor = result.events.at(-1).seq;
+      lastSeq = cursor;
+    }
+    return { streamId: seenStream, events, resync, lastSeq };
+  }
+  async function caseExpiredAndRevoked(replay) {
+    const detail = await rpc("tasks.get", { taskId: replay.taskId });
+    const expectedRevision = detail.task.revision;
+    const expiresAt = Date.now() + 8_000;
+    const expiring = await rpc("agentConnections.create", {
+      name: "Trust expiry", client: "codex", expiresAt,
+      scope: { kind: "task", workspaceId: replay.workspaceId, taskId: replay.taskId },
+    });
+    let settled = false;
+    const pending = jsonRpc(rpcPort, expiring.token, "pages.execute", {
+      program: { pageId: replay.pageId, steps: [{ id: "trust-absent", op: "waitFor", condition: { kind: "selector", selector: "#aux-trust-absent", state: "visible", timeoutMs: 30_000 } }] },
+      taskId: replay.taskId, expectedRevision,
+    }, 45_000).finally(() => { settled = true; });
+    pending.catch(() => {});
+    await until("scoped waitFor is running", async () => {
+      if (settled) throw new Error("pages.execute ended before the connection expired");
+      const runs = await rpc("runs.list", { chatId: `external:${expiring.connection.connectionId}`, limit: 20 });
+      return runs.some(run => run.status === "running") ? true : null;
+    }, 15_000);
+    const expiredUrl = `${origin}/blue?trust=expire`;
+    await rpc("pages.navigate", { pageId: replay.pageId, url: expiredUrl });
+    await until("owner navigation while execute is open", async () => {
+      const pages = await rpc("pages.list");
+      return pages.find(item => item.pageId === replay.pageId && item.url.includes("trust=expire") && !item.loading && !item.navigationError) ?? null;
+    }, 20_000);
+    assert.equal(settled, false, "pages.execute must still be open while the owner navigates");
+    await until("scoped connection reaches expiresAt", async () => Date.now() > expiresAt ? true : null, 20_000);
+    let denied;
+    try { await jsonRpc(rpcPort, expiring.token, "pages.list", {}); }
+    catch (error) { denied = error; }
+    assert.equal(denied?.code, "permission_denied");
+    const expiredRuns = await rpc("runs.list", { chatId: `external:${expiring.connection.connectionId}`, limit: 20 });
+    assert.ok(expiredRuns.some(run => run.status === "completed" && /Connection expired/.test(run.statusMessage ?? "")));
+    await until("first scoped execute releases the page", async () => settled ? true : null, 40_000);
+    const revoked = await rpc("agentConnections.create", {
+      name: "Trust revoke", client: "codex", expiresAt: Date.now() + 3_600_000,
+      scope: { kind: "task", workspaceId: replay.workspaceId, taskId: replay.taskId },
+    });
+    const current = await rpc("tasks.get", { taskId: replay.taskId });
+    let revokedSettled = false;
+    const second = jsonRpc(rpcPort, revoked.token, "pages.execute", {
+      program: { pageId: replay.pageId, steps: [{ id: "trust-absent-2", op: "waitFor", condition: { kind: "selector", selector: "#aux-trust-absent", state: "visible", timeoutMs: 30_000 } }] },
+      taskId: replay.taskId, expectedRevision: current.task.revision,
+    }, 45_000).finally(() => { revokedSettled = true; });
+    second.catch(() => {});
+    await until("second scoped waitFor is running", async () => {
+      if (revokedSettled) throw new Error("pages.execute ended before revoke");
+      const runs = await rpc("runs.list", { chatId: `external:${revoked.connection.connectionId}`, limit: 20 });
+      return runs.some(run => run.status === "running") ? true : null;
+    }, 15_000);
+    await rpc("agentConnections.revoke", { connectionId: revoked.connection.connectionId });
+    let revokeDenied;
+    try { await jsonRpc(rpcPort, revoked.token, "pages.list", {}); }
+    catch (error) { revokeDenied = error; }
+    assert.equal(revokeDenied?.code, "permission_denied");
+    const revokedRuns = await rpc("runs.list", { chatId: `external:${revoked.connection.connectionId}`, limit: 20 });
+    assert.ok(revokedRuns.some(run => run.status === "cancelled" && /Connection revoked/.test(run.statusMessage ?? "")));
+    const again = `${origin}/blue?trust=after-revoke`;
+    await rpc("pages.navigate", { pageId: replay.pageId, url: again });
+    await until("owner navigation works after revoke", async () => {
+      const pages = await rpc("pages.list");
+      return pages.find(item => item.pageId === replay.pageId && item.url.includes("trust=after-revoke") && !item.loading && !item.navigationError) ?? null;
+    }, 20_000);
+    await until("revoked execute settles", async () => revokedSettled ? true : null, 40_000);
+    record("expired and revoked sessions stop scoped access", { taskId: replay.taskId });
+  }
 }
 
 try {
@@ -1005,7 +1689,7 @@ else {
   }, 30_000).catch(error => { throw new Error(`${error.message}; runtime sessions: ${JSON.stringify(lastRuntimeStatus ?? [])}; browser log: ${startupLog}`); });
   assert.ok(connection);
   const runtimeCapabilities = await rpc("runtime.describe");
-  if (browserImportUiJourney || browserImportFormatsJourney || browserImportAttachedJourney || protectedStartupJourney || runtimePeerJourney || runtimeBackupRestoreJourney || recoveryOwnerAuthJourney) {
+  if (browserImportUiJourney || browserImportFormatsJourney || browserImportAttachedJourney || protectedStartupJourney || runtimePeerJourney || trustAdversarialJourney || runtimeBackupRestoreJourney || recoveryOwnerAuthJourney) {
     assert.equal(runtimeCapabilities.featureStages?.spaces, "preview", "Unrequalified candidate stages must remain preview");
   } else assert.equal(runtimeCapabilities.featureStages?.spaces, "on",
     "The runtime must derive qualified Spaces from the native method manifest");
@@ -1052,6 +1736,8 @@ else {
     record("runtime crash recovers with fresh helper, token and working browser page", {
       oldPid: descriptor.pid, newPid: replacement.pid, pageId: page.pageId });
     report.passed = true;
+  } else if (trustAdversarialJourney) {
+    await runTrustAdversarialJourney();
   } else if (protectedStartupJourney) {
     const databasePath = join(profile, "Default/Aux Runtime Data/aux-state.sqlite");
     const inspect = () => {
@@ -6038,6 +6724,8 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     ...(settingsHttpsFirstJourney ? { httpPlainRequests, tlsHelloRequests } : {}) });
   process.exitCode = 1;
 } finally {
+  for (const stop of trustStops) await stop().catch(() => {});
+  for (const dir of trustExtraDirs) rmSync(dir, { recursive: true, force: true });
   report.completedAt = new Date().toISOString();
   writeFileSync(join(output, "manifest.json"), `${JSON.stringify(report, null, 2)}\n`);
   if (child && child.exitCode === null) {

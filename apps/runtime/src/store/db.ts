@@ -370,7 +370,7 @@ ${HOT_PATH_INDEXES.join(";\n")};
 `;
 
 export type Db = DatabaseSync;
-export const SCHEMA_VERSION = 29;
+export const SCHEMA_VERSION = 30;
 
 /**
  * Statements that upgrade a database from user_version N to N+1.
@@ -685,6 +685,10 @@ const MIGRATIONS: Record<number, string[] | ((db: DatabaseSync) => string[])> = 
       server_id TEXT PRIMARY KEY REFERENCES outbound_mcp_servers(server_id) ON DELETE CASCADE,
       sha256 TEXT NOT NULL, archive_base64 TEXT NOT NULL, installed_at INTEGER NOT NULL)`,
   ],
+  // v29 → v30: peer generation for unsigned development identity.
+  // Takeover replaces only a strictly older schema, and schema 29 already
+  // speaks /internal/peer. No table change.
+  29: [],
 };
 
 /** Apply schema statements atomically; rolls back fully on any failure. */
