@@ -407,11 +407,10 @@ func clickableElement(_ label: String) -> AXUIElement? {
   return visit(application, depth: 0, visited: &pageVisits, shellOnly: false)
 }
 
-func clickButton(_ label: String) -> ClickRecord? {
+func controlClickRecord(_ label: String) -> ClickRecord? {
   guard let element = clickableElement(label) ?? findButton(label),
     let origin = axPoint(element, kAXPositionAttribute),
     let size = axSize(element), size.width > 1, size.height > 1 else { return nil }
-  _ = app.activate(options: [])
   let screenHeight = NSScreen.screens.map(\.frame.maxY).max() ?? 0
   let raw = CGPoint(x: origin.x + size.width / 2, y: origin.y + size.height / 2)
   let flipped = CGPoint(x: raw.x, y: screenHeight - raw.y)
@@ -419,10 +418,16 @@ func clickButton(_ label: String) -> ClickRecord? {
   let rawInside = window.contains(raw)
   let flippedInside = window.contains(flipped)
   let point = rawInside && !flippedInside ? raw : flippedInside ? flipped : raw
-  postClick(point)
   return ClickRecord(ok: true, x: point.x, y: point.y, width: size.width, height: size.height,
                      rawX: raw.x, rawY: raw.y, flippedX: flipped.x, flippedY: flipped.y,
                      windowX: window.origin.x, windowY: window.origin.y, windowW: window.width, windowH: window.height)
+}
+
+func clickButton(_ label: String) -> ClickRecord? {
+  guard let record = controlClickRecord(label) else { return nil }
+  _ = app.activate(options: [])
+  postClick(CGPoint(x: record.x, y: record.y))
+  return record
 }
 
 func isGuestWebArea(_ element: AXUIElement, role: String) -> Bool {
@@ -475,11 +480,12 @@ if action == "press-button" {
 } else if action == "press-label" {
   guard CommandLine.arguments.count == 4 else { fail("Use press-label PID label.") }
   print(pressLabel(CommandLine.arguments[3]) ? "true" : "false")
-} else if action == "click-button" {
-  guard CommandLine.arguments.count == 4 else { fail("Use click-button PID label.") }
-  guard let click = clickButton(CommandLine.arguments[3]),
+} else if action == "click-button" || action == "frame" {
+  guard CommandLine.arguments.count == 4 else { fail("Use \(action) PID label.") }
+  let click = action == "frame" ? controlClickRecord(CommandLine.arguments[3]) : clickButton(CommandLine.arguments[3])
+  guard let click,
     let data = try? JSONEncoder().encode(click),
-    let text = String(data: data, encoding: .utf8) else { fail("Cannot click that button.") }
+    let text = String(data: data, encoding: .utf8) else { fail("Cannot \(action) that control.") }
   print(text)
 } else if action == "click-at" {
   guard CommandLine.arguments.count == 5,
@@ -634,7 +640,7 @@ func pressLabel(_ label: String) -> Bool {
 if action == "texts" {
   let data = try! JSONEncoder().encode(staticTexts())
   print(String(data: data, encoding: .utf8)!)
-} else if action == "press-button" || action == "click-button" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
+} else if action == "press-button" || action == "click-button" || action == "frame" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
   action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "escape" ||
