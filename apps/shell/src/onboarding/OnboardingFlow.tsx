@@ -63,6 +63,7 @@ export function OnboardingFlow({
     [error, setError] = useState("");
   const busyRef = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
   const connected = useStore((s) => s.connected);
   const settings = useStore((s) => s.settings),
     pages = useStore((s) => s.pages),
@@ -103,7 +104,11 @@ export function OnboardingFlow({
     openedAt - state.defaultBrowserPromptedAt < DEFAULT_BROWSER_COOLDOWN_MS;
 
   useEffect(() => {
-    heading.current?.focus();
+    // The dialog used to scroll this heading into view. On a long step that
+    // parked the step rail on the backdrop, and a click there dismissed setup.
+    const region = scroller.current;
+    if (region) region.scrollTop = 0;
+    heading.current?.focus({ preventScroll: true });
   }, [step]);
   const checkRecovery = useCallback(async () => {
     const attempt = ++restoreGeneration.current;
@@ -282,6 +287,7 @@ export function OnboardingFlow({
             </button>
           ))}
         </nav>
+        <div className="onboarding-scroll" ref={scroller}>
         <h1 ref={heading} tabIndex={-1}>
           {TITLES[step]}
         </h1>
@@ -746,6 +752,7 @@ export function OnboardingFlow({
             Recovery is staged. Quit Aux normally and reopen to apply it before starting new work.
           </output>
         )}
+        </div>
         <footer>
           <button
             className="btn ghost"

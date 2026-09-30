@@ -159,6 +159,21 @@ it("Cmd+Enter saves Finish later and restore focus without starting work", async
   trigger.remove();
 });
 
+it("moves the step heading without scrolling the rail or footer out of the card", async () => {
+  const focus = vi.spyOn(HTMLElement.prototype, "focus");
+  await render(initial("permissions"));
+  const scroller = document.querySelector(".onboarding-scroll");
+  expect(scroller?.contains(document.querySelector("h1"))).toBe(true);
+  expect(scroller?.contains(button("Continue"))).toBe(false);
+  expect(scroller?.contains(button("6"))).toBe(false);
+  expect(focus.mock.calls.every(([options]) => options?.preventScroll === true)).toBe(true);
+  focus.mockClear();
+  await act(async () => button("7").click());
+  expect(document.querySelector("h1")?.textContent).toBe("Start with one useful question");
+  expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+  focus.mockRestore();
+});
+
 it("shows data use before mounting model setup and makes no model request on acknowledgment", async () => {
   await render({ ...initial("model"), disclosureVersion: 0 });
   expect(document.body.textContent).toContain("Meta use prompts and completions");

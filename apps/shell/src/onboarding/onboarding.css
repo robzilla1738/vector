@@ -1,13 +1,28 @@
 @layer components {
-  .onboarding-dialog {
+  .aux-native-dialog.onboarding-dialog {
     width: min(760px, calc(100vw - 40px));
     max-height: calc(100dvh - 40px);
     padding: 0;
+    /* The step rail and footer stay in the border box. Only the step body scrolls. */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   .onboarding-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 0;
+    padding: 28px;
+    overflow: hidden;
+  }
+  .onboarding-scroll {
+    min-height: 0;
+    max-height: calc(100dvh - 320px);
+    overflow: auto;
     display: grid;
     gap: 16px;
-    padding: 28px;
+    align-content: start;
   }
   .onboarding-flow header,
   .onboarding-flow footer,
