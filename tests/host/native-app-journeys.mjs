@@ -257,7 +257,7 @@ const developmentAcceptanceFeatures = memoryInboxUiJourney || storeRecoveryUiJou
   anyTidyJourney ? ["spaces", "aiTidy"] :
   memorySaverAwakeJourney ? ["spaces", "tabLifecycle"] :
   runtimeBackupRestoreJourney ? ["electronMigration"] :
-  menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney ? ["spaces"] : null;
+  menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney || selectorBookmarkJourney || selectorClosedJourney || selectorReadingJourney || selectorSearchJourney ? ["spaces"] : null;
 if (developmentAcceptanceFeatures) {
   assert.ok(nativeSourceCommit, "Development acceptance requires a built native source identity");
   const token = randomBytes(32).toString("hex");
