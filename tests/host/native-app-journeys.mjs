@@ -468,14 +468,11 @@ async function openLibraryView(viewLabel) {
     console.log(`palette row miss dialog=${native("has-name", "Command palette")} focused=${focusedValue()}`);
     throw error;
   }
-  try {
-    await until("palette filter holds the Library command", () => focusedValue().includes("/bookmarks"), 8_000);
-  } catch (error) {
-    console.log(`palette filter miss focused=${focusedValue()}`);
-    throw error;
-  }
-  await delay(150);
-  native("type-return");
+  const row = frameNamed("Bookmarks and history");
+  if (!row) throw new Error("The Library command row is not in the palette");
+  console.log(`library command frame ${row.x},${row.y} ${row.width}x${row.height}`);
+  if (row.height > 80) throw new Error(`Library command frame is ${row.width}x${row.height}, not a row`);
+  native("click-at", String(row.x), String(row.y));
   await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
   clickPhrase(viewLabel);
 }
