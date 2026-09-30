@@ -524,6 +524,92 @@ func clickByName(_ needle: String) -> ClickRecord? {
   return record
 }
 
+struct ChildFrame: Encodable {
+  let role: String
+  let title: String
+  let description: String
+  let value: String
+  let x: Double
+  let y: Double
+  let width: Double
+  let height: Double
+}
+
+func axString(_ element: AXUIElement, _ key: String) -> String {
+  var value: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success else { return "" }
+  return value as? String ?? ""
+}
+
+func eventCenter(_ element: AXUIElement) -> (CGPoint, CGSize)? {
+  guard let size = axSize(element), size.width > 1, size.height > 1,
+    let origin = axPoint(element, kAXPositionAttribute) else { return nil }
+  let screenHeight = NSScreen.screens.map(\.frame.maxY).max() ?? 0
+  let raw = CGPoint(x: origin.x + size.width / 2, y: origin.y + size.height / 2)
+  let flipped = CGPoint(x: raw.x, y: screenHeight - raw.y)
+  let window = screenWindow() ?? .zero
+  let rawInside = window.contains(raw)
+  let flippedInside = window.contains(flipped)
+  let point = rawInside && flippedInside ? raw : flippedInside ? flipped : raw
+  return (point, size)
+}
+
+func childFrames(_ needle: String) -> [ChildFrame]? {
+  let application = AXUIElementCreateApplication(pid)
+  var best: AXUIElement?
+  var bestArea = CGFloat.greatestFiniteMagnitude
+  func consider(_ element: AXUIElement) {
+    let names = [axString(element, kAXTitleAttribute), axString(element, kAXDescriptionAttribute), axString(element, kAXValueAttribute)]
+    guard names.contains(needle), let size = axSize(element), size.width > 1, size.height > 1 else { return }
+    let area = size.width * size.height
+    let window = screenWindow() ?? .zero
+    if area > max(window.width * window.height, 1) * 0.45 { return }
+    if area < bestArea { best = element; bestArea = area }
+  }
+  func visit(_ element: AXUIElement, depth: Int, visited: inout Int, shellOnly: Bool) {
+    visited += 1
+    if depth > 28 || visited > 4000 { return }
+    var roleValue: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+    let role = roleValue as? String ?? ""
+    if role == (kAXMenuBarRole as String) { return }
+    consider(element)
+    if shellOnly && isGuestWebArea(element, role: role) { return }
+    var children: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
+      let children = children as? [AXUIElement] else { return }
+    for child in children { visit(child, depth: depth + 1, visited: &visited, shellOnly: shellOnly) }
+  }
+  var shellVisits = 0
+  visit(application, depth: 0, visited: &shellVisits, shellOnly: true)
+  if best == nil {
+    var pageVisits = 0
+    visit(application, depth: 0, visited: &pageVisits, shellOnly: false)
+  }
+  guard let best else { return nil }
+  func sizedChildren(_ element: AXUIElement) -> [(AXUIElement, CGPoint, CGSize)] {
+    var children: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
+      let children = children as? [AXUIElement] else { return [] }
+    return children.compactMap { child in
+      guard let placed = eventCenter(child) else { return nil }
+      return (child, placed.0, placed.1)
+    }
+  }
+  var items = sizedChildren(best)
+  if items.count == 1 {
+    let nested = sizedChildren(items[0].0)
+    if nested.count >= 2 { items = nested }
+  }
+  return items.map { child, point, size in
+    var roleValue: CFTypeRef?
+    AXUIElementCopyAttributeValue(child, kAXRoleAttribute as CFString, &roleValue)
+    return ChildFrame(role: roleValue as? String ?? "", title: axString(child, kAXTitleAttribute),
+      description: axString(child, kAXDescriptionAttribute), value: axString(child, kAXValueAttribute),
+      x: point.x, y: point.y, width: size.width, height: size.height)
+  }
+}
+
 func isGuestWebArea(_ element: AXUIElement, role: String) -> Bool {
   guard role == "AXWebArea" else { return false }
   for key in [kAXURLAttribute, "AXDocument", kAXDescriptionAttribute, kAXValueAttribute] {
@@ -595,6 +681,12 @@ if action == "press-button" {
   _ = app.activate(options: [])
   postClick(CGPoint(x: x, y: y))
   print("true")
+} else if action == "child-frames" {
+  guard CommandLine.arguments.count == 4 else { fail("Use child-frames PID phrase.") }
+  guard let frames = childFrames(CommandLine.arguments[3]),
+    let data = try? JSONEncoder().encode(frames),
+    let text = String(data: data, encoding: .utf8) else { fail("Cannot list that control.") }
+  print(text)
 } else if action == "has-button" {
   guard CommandLine.arguments.count == 4 else { fail("Use has-button PID label.") }
   print(hasButton(CommandLine.arguments[3]) ? "true" : "false")
