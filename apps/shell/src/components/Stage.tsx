@@ -11,6 +11,7 @@ import { TranslationBar } from "./TranslationBar";
 import { Conversation } from "./surfaces";
 import { StartPage } from "./StartPage";
 import { I } from "./icons";
+import { AgentOverlay } from "../agent/AgentOverlay";
 
 const PageSurface = lazy(async () => { const module = await import("./PageSurface"); return { default: module.PageSurface }; });
 const SplitDivider = lazy(async () => { const module = await import("./SplitDivider"); return { default: module.SplitDivider }; });
@@ -112,6 +113,7 @@ export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<H
         {mode === "focus" && page?.viewStatus === "crashed" && <PageRecovery key={page.pageId} page={page} />}
         {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && <StartPage />}
         {showingPage && page && !splitVisible && <Suspense fallback={<div className="stage-message">Opening page…</div>}><PageSurface page={page} /></Suspense>}
+        {showingPage && page && !splitVisible && <AgentOverlay pageId={page.pageId} />}
         {splitVisible && <Suspense fallback={null}><SplitDivider pages={[page!, companion!]} /></Suspense>}
         {mode === "conversation" && <PaneBoundary label="This conversation"><Conversation composerRef={composerRef} findReturnRef={scrollRef} /></PaneBoundary>}
         {mode === "overview" && <Overview />}
