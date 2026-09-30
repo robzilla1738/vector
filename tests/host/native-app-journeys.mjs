@@ -401,19 +401,27 @@ function clickNamedLogged(label) {
   console.log(`${label} click ${click ? `${click.x},${click.y}` : "miss"}`);
   return click;
 }
+function clickPhrase(needle) {
+  try {
+    const click = JSON.parse(native("click-name", needle));
+    console.log(`${needle} click-name ${click.x},${click.y}`);
+    return click;
+  } catch (error) {
+    console.log(`${needle} click-name miss ${error instanceof Error ? error.message : error}`);
+    return null;
+  }
+}
 async function dismissSetupIfPresent() {
   if (native("has-name", "Finish later") !== "true") return;
   clickNamedLogged("Finish later");
   await until("setup dismissed", () => native("has-name", "Finish later") !== "true", 8_000);
 }
 async function openLibraryView(viewLabel) {
-  await rpc("settings.set", { tabLayout: "vertical" });
-  await until("vertical sidebar is mounted", () => native("has-name", "Search browser") === "true", 20_000);
-  clickNamedLogged("More");
-  await until("Library menu item", () => native("has-name", "Library") === "true", 8_000);
-  clickNamedLogged("Library");
+  native("open-palette");
+  await until("palette can open Library", () => native("has-name", "Bookmarks and history") === "true", 15_000);
+  clickPhrase("Bookmarks and history");
   await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
-  clickNamedLogged(viewLabel);
+  clickPhrase(viewLabel);
 }
 function settingsLabel(labels) {
   return labels.find(label => label === "Settings" || label.startsWith("Settings "));
@@ -6494,7 +6502,7 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     await rpc("bookmarks.add", { url: `${origin}/blue`, title: "Aux reading Blue", readingList: true });
     await dismissSetupIfPresent();
     await openLibraryView("Reading list");
-    clickNamedLogged("Mark Aux reading Red read");
+    clickPhrase("Mark Aux reading Red read");
     await until("reading-list row change", async () =>
       (await rpc("bookmarks.list")).some(item => item.url === `${origin}/red` && !!item.readAt) &&
       native("has-name", "Mark Aux reading Red unread") === "true" &&
@@ -6555,9 +6563,9 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       (await rpc("pages.list")).some(item => item.pageId === page.pageId && !item.loading));
     await dismissSetupIfPresent();
     await until("unbookmarked toolbar action", () => native("has-name", "Bookmark this page") === "true", 60_000);
-    clickNamedLogged("Bookmark this page");
+    clickPhrase("Bookmark this page");
     await until("bookmarked toolbar action", () => native("has-name", "Remove bookmark") === "true", 20_000);
-    clickNamedLogged("Remove bookmark");
+    clickPhrase("Remove bookmark");
     await until("bookmark removed from toolbar", () => native("has-name", "Bookmark this page") === "true", 20_000);
     assert.equal((await rpc("bookmarks.list")).some(item => item.url === `${origin}/red`), false);
     record("toolbar bookmark selector tracks add and remove on a disposable page", { pageId: page.pageId });

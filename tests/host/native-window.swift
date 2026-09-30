@@ -431,6 +431,57 @@ func clickButton(_ label: String) -> ClickRecord? {
   return record
 }
 
+func clickByName(_ needle: String) -> ClickRecord? {
+  let application = AXUIElementCreateApplication(pid)
+  var exact: AXUIElement?
+  var partial: AXUIElement?
+  func texts(_ element: AXUIElement) -> [String] {
+    var found: [String] = []
+    for key in [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute] {
+      var value: CFTypeRef?
+      if AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success,
+        let text = value as? String, !text.isEmpty { found.append(text) }
+    }
+    return found
+  }
+  func visit(_ element: AXUIElement, depth: Int, visited: inout Int) {
+    visited += 1
+    if depth > 28 || visited > 4000 || exact != nil { return }
+    var role: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+    if (role as? String) == (kAXMenuBarRole as String) { return }
+    let names = texts(element)
+    if names.contains(needle) { exact = element; return }
+    if partial == nil && names.contains(where: { $0.contains(needle) }) { partial = element }
+    var children: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
+      let children = children as? [AXUIElement] else { return }
+    for child in children { visit(child, depth: depth + 1, visited: &visited) }
+  }
+  var visited = 0
+  visit(application, depth: 0, visited: &visited)
+  guard var target = exact ?? partial else { return nil }
+  for _ in 0..<6 {
+    if let size = axSize(target), size.width > 1, size.height > 1 { break }
+    var parent: CFTypeRef?
+    if AXUIElementCopyAttributeValue(target, kAXParentAttribute as CFString, &parent) != .success { break }
+    guard let parent, CFGetTypeID(parent) == AXUIElementGetTypeID() else { break }
+    target = unsafeBitCast(parent, to: AXUIElement.self)
+  }
+  guard let origin = axPoint(target, kAXPositionAttribute),
+    let size = axSize(target), size.width > 1, size.height > 1 else { return nil }
+  let screenHeight = NSScreen.screens.map(\.frame.maxY).max() ?? 0
+  let raw = CGPoint(x: origin.x + size.width / 2, y: origin.y + size.height / 2)
+  let flipped = CGPoint(x: raw.x, y: screenHeight - raw.y)
+  let window = screenWindow() ?? .zero
+  let point = window.contains(raw) && !window.contains(flipped) ? raw : window.contains(flipped) ? flipped : raw
+  _ = app.activate(options: [])
+  postClick(point)
+  return ClickRecord(ok: true, x: point.x, y: point.y, width: size.width, height: size.height,
+                     rawX: raw.x, rawY: raw.y, flippedX: flipped.x, flippedY: flipped.y,
+                     windowX: window.origin.x, windowY: window.origin.y, windowW: window.width, windowH: window.height)
+}
+
 func isGuestWebArea(_ element: AXUIElement, role: String) -> Bool {
   guard role == "AXWebArea" else { return false }
   for key in [kAXURLAttribute, "AXDocument", kAXDescriptionAttribute, kAXValueAttribute] {
@@ -487,6 +538,12 @@ if action == "press-button" {
   guard let click,
     let data = try? JSONEncoder().encode(click),
     let text = String(data: data, encoding: .utf8) else { fail("Cannot \(action) that control.") }
+  print(text)
+} else if action == "click-name" {
+  guard CommandLine.arguments.count == 4 else { fail("Use click-name PID phrase.") }
+  guard let click = clickByName(CommandLine.arguments[3]),
+    let data = try? JSONEncoder().encode(click),
+    let text = String(data: data, encoding: .utf8) else { fail("Cannot click-name that control.") }
   print(text)
 } else if action == "click-at" {
   guard CommandLine.arguments.count == 5,
@@ -646,7 +703,7 @@ if action == "texts" {
 } else if action == "press-button" || action == "press-label" || action == "click-button" || action == "frame" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
   action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
-  action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "escape" ||
+  action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "open-palette" || action == "escape" ||
   action == "type-return" || action == "type-text" || action == "move" {
   // AppKit activation no longer takes focus from another app. Accessibility has to
   // mark the launched Aux process frontmost before any key is posted.
@@ -674,17 +731,17 @@ if action == "texts" {
       }
       down.keyboardSetUnicodeString(stringLength: 1, unicodeString: &scalar)
       up.keyboardSetUnicodeString(stringLength: 1, unicodeString: &scalar)
-      down.post(tap: .cghidEventTap)
+      down.postToPid(pid)
       usleep(14_000)
-      up.post(tap: .cghidEventTap)
+      up.postToPid(pid)
       usleep(14_000)
     }
     print("typed")
   } else if action != "move" && action != "activate" {
     // Aux declares Command-S for the sidebar, Command-L for the address,
     // and Control-Tab for next tab. Stock Chromium accepts the latter two.
-    let key: CGKeyCode = action == "next-tab" ? 48 : action == "focus-address" ? 37 : action == "open-settings" ? 43 : action == "escape" || action == "type-return" ? (action == "type-return" ? 36 : 53) : 1
-    let flags: CGEventFlags = action == "next-tab" ? .maskControl : action == "escape" || action == "type-return" ? [] : .maskCommand
+    let key: CGKeyCode = action == "next-tab" ? 48 : action == "focus-address" ? 37 : action == "open-settings" ? 43 : action == "open-palette" ? 40 : action == "escape" || action == "type-return" ? (action == "type-return" ? 36 : 53) : 1
+    let flags: CGEventFlags = action == "next-tab" ? .maskControl : action == "open-palette" ? CGEventFlags([.maskCommand, .maskShift]) : action == "escape" || action == "type-return" ? [] : .maskCommand
     let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true)
     let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false)
     down?.flags = flags
