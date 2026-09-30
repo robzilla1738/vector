@@ -420,18 +420,24 @@ async function dismissSetupIfPresent() {
   clickNamedLogged("Finish later");
   await until("setup dismissed", () => native("has-name", "Finish later") !== "true", 8_000);
 }
+async function focusShellField() {
+  const mark = frameNamed("Bookmark this page") ?? frameNamed("Toggle agent rail");
+  if (!mark) throw new Error("No toolbar control to aim the shell");
+  const x = Math.max(mark.windowX + 160, mark.x - 240);
+  console.log(`shell focus click ${x},${mark.y} bookmark ${mark.x},${mark.y}`);
+  native("click-at", String(x), String(mark.y));
+  await new Promise(resolve => setTimeout(resolve, 200));
+}
 async function openLibraryView(viewLabel) {
-  await rpc("settings.set", { tabLayout: "vertical" });
-  const win = JSON.parse(native("window"));
-  native("move", String(win.x + 80), String(win.y + 2));
-  await new Promise(resolve => setTimeout(resolve, 700));
+  await focusShellField();
+  native("open-palette");
   try {
-    await until("library toolbar button", () => native("has-name", "Library") === "true", 15_000);
+    await until("palette can open Library", () => native("has-name", "Bookmarks and history") === "true", 15_000);
   } catch (error) {
-    console.log(`library button miss ${error instanceof Error ? error.message : error}`);
+    console.log(`palette row miss dialog=${native("has-name", "Command palette")} focused=${focusedValue()}`);
     throw error;
   }
-  clickPhrase("Library");
+  clickPhrase("Bookmarks and history");
   await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
   clickPhrase(viewLabel);
 }
