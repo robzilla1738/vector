@@ -43,6 +43,8 @@ export class ApiServer {
       invoke: InvokeFn;
       events: EventBus;
       authorizeScopedToken?: (token: string) => ClientContext | null;
+      /** Known scoped bearer whose connection has expired or been revoked. */
+      closedScopedToken?: (token: string) => ClientContext | null;
       filterEvent?: (client: ClientContext, event: AuxEvent) => boolean;
       peerIdentity?: { instanceId: string; pid: number; schema: number; startedAt: number };
     },
@@ -103,10 +105,21 @@ export class ApiServer {
     return req.headers.authorization === `Bearer ${this.opts.token}`;
   }
 
+  private presentedToken(req: IncomingMessage): string | undefined {
+    return /^Bearer ([^\s]+)$/.exec(req.headers.authorization ?? "")?.[1];
+  }
+
   private client(req: IncomingMessage): ClientContext | null {
     if (this.masterBearer(req)) return { external: true };
-    const match = /^Bearer ([^\s]+)$/.exec(req.headers.authorization ?? "");
-    return match ? (this.opts.authorizeScopedToken?.(match[1]!) ?? null) : null;
+    const token = this.presentedToken(req);
+    return token ? (this.opts.authorizeScopedToken?.(token) ?? null) : null;
+  }
+
+  /** Admit a known dead bearer only into RPC, where the invoker records the close and denies it. */
+  private closedBearer(req: IncomingMessage, url: URL): ClientContext | null {
+    if (url.pathname !== "/rpc" || req.method !== "POST") return null;
+    const token = this.presentedToken(req);
+    return token ? (this.opts.closedScopedToken?.(token) ?? null) : null;
   }
 
   /**
@@ -267,10 +280,10 @@ export class ApiServer {
     if (!this.ready) {
       return send(503, { error: { code: "not_ready", message: "aux runtime is still starting" } });
     }
-    const client = this.client(req);
+    const client = this.client(req) ?? this.closedBearer(req, url);
     if (!client)
       return send(401, {
-        error: { code: "unauthorized", message: "missing, revoked, or invalid bearer token" },
+        error: { code: "unauthorized", message: "missing or invalid bearer token" },
       });
 
     if (url.pathname === "/rpc" && req.method === "POST") {

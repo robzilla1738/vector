@@ -238,6 +238,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     invoke: (method, params, client) => invokerReady.then((fn) => fn(method, params, client)),
     events,
     authorizeScopedToken: (scopedToken) => agentConnections?.authorize(scopedToken) ?? null,
+    closedScopedToken: (scopedToken) => agentConnections?.closedClient(scopedToken) ?? null,
     filterEvent: (client, event) =>
       client.scope ? (invokeRef?.eventVisible(client.scope, client.connectionId, event) ?? false) : true,
   });

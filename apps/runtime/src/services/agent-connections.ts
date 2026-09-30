@@ -83,6 +83,20 @@ export class AgentConnectionService {
     return JSON.stringify(scope) === JSON.stringify(client.scope);
   }
 
+  /**
+   * A bearer that once identified a connection and may no longer act.
+   * Unknown bearers stay null so the request gate can keep them unauthorized.
+   */
+  closedClient(token: string): ScopedExternalClient | null {
+    if (!token.startsWith("auxc_")) return null;
+    const row = this.repo.db.prepare(`SELECT ${COLUMNS} FROM agent_connections WHERE token_hash=?`)
+      .get(digest(token)) as Row | undefined;
+    if (!row) return null;
+    const record = this.record(row);
+    const client: ScopedExternalClient = { external: true, connectionId: row.connection_id, scope: record.scope };
+    return this.isLive(client) ? null : client;
+  }
+
   authorize(token: string): ScopedExternalClient | null {
     if (!token.startsWith("auxc_")) return null;
     const hash = digest(token);
