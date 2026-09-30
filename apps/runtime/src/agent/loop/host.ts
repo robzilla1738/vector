@@ -890,6 +890,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   try {
     let resumeAnswer: unknown;
     let hasResume = false;
+    let freshHandoff = false;
     while (true) {
       await self.waitIfPaused(c, runId);
       if (c.abort.signal.aborted) return;
@@ -952,12 +953,28 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           return;
         }
         self.suspensions.resolve(suspension.suspensionId, "answered");
+        freshHandoff = suspension.kind === "handoff";
         resumeAnswer = raw.trim() ? raw : { resolved: true };
         hasResume = true;
       }
       if (maxModelCalls > 0 && modelCalls >= maxModelCalls) {
         self.finish(runId, "failed", undefined, "model call budget exhausted");
         return;
+      }
+      if (freshHandoff) {
+        freshHandoff = false;
+        if (!activePageId) {
+          self.finish(runId, "interrupted", undefined, "The handed-off page is unavailable for a fresh observation.");
+          return;
+        }
+        let fresh: ReturnType<typeof recordObs>;
+        try { fresh = recordObs(await observePage(activePageId, {})); }
+        catch {
+          self.finish(runId, "interrupted", undefined, "The handed-off page could not be observed safely.");
+          return;
+        }
+        transcript.append(runId, [{ role: "user", content:
+          `The person finished the handoff in the page. This is a fresh page snapshot:\n${fresh.text}\nDo not retry the action they just completed.` }]);
       }
       let outcome: AgentLoopOutcome;
       try {
@@ -1034,6 +1051,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           return;
         }
         self.suspensions.resolve(suspension.suspensionId, "answered");
+        freshHandoff = suspension.kind === "handoff";
         resumeAnswer = raw.trim() ? raw : { resolved: true };
         hasResume = true;
         continue;

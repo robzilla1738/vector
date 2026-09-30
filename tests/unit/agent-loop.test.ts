@@ -960,6 +960,36 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "blue it is" });
     expect(h.coordinator.suspensions.pending(run.runId)).toBeUndefined();
+    expect(h.pages.observe).toHaveBeenCalledTimes(1);
+  });
+
+  it("observes the page after a handoff and does not run the parked action again", async () => {
+    const model = new MockModelClient().scriptToolSteps([
+      { toolCalls: [{ toolCallId: "a1", toolName: "act", input: { steps: [{ id: "s1", op: "click", target: "r1" }] } }] },
+      { text: "the person finished it" },
+    ]);
+    const h = coordinatorHarness(model, (_program, ctx) => {
+      h.coordinator.suspensions.park({
+        runId: ctx?.runId ?? "", threadId: "chat-1", turnId: ctx?.runId ?? "", kind: "handoff",
+        request: { kind: "handoff", instruction: "Finish the code in the page.", guidance: "Wait." },
+      });
+      return { status: "failed", steps: [{ stepId: "s1", op: "click", status: "failed", startedAt: 1, durationMs: 1, error: { code: "needs_input", message: "Finish the code in the page." } }] };
+    });
+    const run = await h.coordinator.start({ goal: "enter the code", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    for (let i = 0; i < 400 && h.repo.getRun(run.runId)!.status !== "needs_input"; i++) await new Promise((r) => setTimeout(r, 10));
+    expect(h.repo.getRun(run.runId)!.status).toBe("needs_input");
+    expect(h.coordinator.suspensions.pending(run.runId)?.kind).toBe("handoff");
+    const observationsBefore = h.pages.observe.mock.calls.length;
+    const executesBefore = h.pages.execute.mock.calls.length;
+    h.coordinator.answer(run.runId, "I finished the handoff.");
+    const final = await settle(h.repo, run.runId);
+    expect(final.status).toBe("completed");
+    expect(final.result).toMatchObject({ report: "the person finished it" });
+    expect(h.pages.observe.mock.calls.length).toBe(observationsBefore + 1);
+    expect(h.pages.execute.mock.calls.length).toBe(executesBefore);
+    const transcript = JSON.stringify(new TranscriptStore(h.db).load(run.runId));
+    expect(transcript).toContain("fresh page snapshot");
+    expect(transcript).toContain("Do not retry the action they just completed.");
   });
 
   it("parks on a gate-created approval suspension inside act, not a second record", async () => {
