@@ -36,8 +36,11 @@ export class BrowserBookmarkLedger {
       if (this.native?.available() && this.native.bookmarksInvoke)
         await this.native.bookmarksInvoke("bookmarks.add", { url, title, forceNew: true });
       else this.repo.addBookmark(url, title);
+      // A node id matches anywhere in the library. Without one, creation time only matches that URL.
       const added = (await this.list()).filter(item => item.url === url &&
-        !existing.some(prior => prior.nodeId ? prior.nodeId === item.nodeId : prior.createdAt === item.createdAt));
+        !existing.some(prior => prior.nodeId || item.nodeId
+          ? prior.nodeId === item.nodeId
+          : prior.url === item.url && prior.createdAt === item.createdAt));
       if (added.length !== 1) throw new AuxError("conflict", "Bookmark saved but its new identity could not be verified");
       const after = added[0]!;
       this.repo.saveStep({ ...base, outcome: { ...base.outcome, status: "ok", effect: "observed",

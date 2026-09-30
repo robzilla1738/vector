@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { BrowserBookmarkLedger } from "../../apps/runtime/src/services/browser-bookmark-ledger.js";
 import { EventBus, openDb, PageClaimStore, Repo, TaskEvidenceService, TaskService } from "@aux/runtime";
 
@@ -98,5 +98,43 @@ it("refuses to attribute a bookmark without this running agent's unique page cla
     await expect(save()).rejects.toThrow(/active page claim/);
     expect(repo.listSteps("r1")).toEqual([]);
     expect(repo.listBookmarks()).toEqual([]);
+  } finally { db.close(); }
+});
+
+it("attributes a distinct bookmark when an older bookmark has the same creation time", async () => {
+  const db = openDb(":memory:");
+  try {
+    const repo = new Repo(db), events = new EventBus(repo), tasks = new TaskService(repo, events);
+    const workspace = tasks.createWorkspace("Fixture");
+    const task = tasks.create({ workspaceId: workspace.workspaceId, title: "Save source",
+      objective: "Save source", criteria: [{ criterionId: "saved", description: "Saved", verification: "manual" }] });
+    repo.saveRun({ runId: "r1", goal: task.objective, status: "running", pageIds: ["p1"],
+      config: { taskId: task.taskId, taskRevision: 1 }, createdAt: 1 });
+    new PageClaimStore(db).claim({ runId: "r1", pageId: "p1", kind: "borrowed" });
+    const clock = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+    try {
+      repo.addBookmark("https://fixture.test/other", "Kept");
+      const ledger = new BrowserBookmarkLedger(repo);
+      const saved = await ledger.save("r1", "p1", "https://fixture.test/source", "Source");
+      expect(saved.saved).toBe(true);
+      expect(saved.stepId).toEqual(expect.any(String));
+      const step = repo.listSteps("r1").find(item => item.stepId === saved.stepId);
+      expect(step?.outcome?.status).toBe("ok");
+      expect(step?.outcome?.after).toMatchObject({
+        url: "https://fixture.test/source", title: "Source", createdAt: 1_700_000_000_000,
+      });
+      expect(repo.listBookmarks().map(item => item.url).sort()).toEqual([
+        "https://fixture.test/other", "https://fixture.test/source",
+      ]);
+      repo.saveRun({ ...repo.getRun("r1")!, status: "completed", endedAt: 1_700_000_000_000 });
+      const evidence = new TaskEvidenceService(repo, events);
+      await evidence.undoBookmarkChange({
+        taskId: task.taskId, expectedRevision: 1, runId: "r1", stepId: saved.stepId,
+      });
+      expect(repo.listBookmarks().map(item => item.url)).toEqual(["https://fixture.test/other"]);
+      expect(evidence.receipt(task.taskId).bookmarkChanges).toMatchObject([
+        { status: "ok", title: "Source", url: "https://fixture.test/source", undoneAt: expect.any(Number) },
+      ]);
+    } finally { clock.mockRestore(); }
   } finally { db.close(); }
 });
