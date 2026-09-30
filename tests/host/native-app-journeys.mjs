@@ -443,55 +443,27 @@ function welcomeHeadingFocused() {
   return focusedValue().includes("A browser for what comes next");
 }
 function librarySegments() {
-  try {
-    const frames = JSON.parse(native("child-frames", "Library views"));
-    return frames.filter(item => item.height >= 16 && item.height <= 40 && item.width >= 40 && item.width <= 240)
-      .sort((a, b) => a.x - b.x);
-  } catch (error) {
+  let frames;
+  try { frames = JSON.parse(native("child-frames", "Library views")); }
+  catch (error) {
     console.log(`library tabs miss ${error instanceof Error ? error.message : error}`);
     return [];
   }
-}
-function segmentFrame(label, rowY) {
-  const measured = frameNamed(label);
-  if (!measured || measured.height > 40 || measured.width > 240 || Math.abs(measured.y - rowY) > 30) return null;
-  return measured;
+  console.log(`library tab raw ${frames.map(item => `${item.title || item.description || item.role} ${item.x},${item.y} ${item.width}x${item.height}`).join(" | ") || "none"}`);
+  return frames.filter(item => item.height >= 16 && item.height <= 40 && item.width >= 40 && item.width <= 240)
+    .sort((a, b) => a.x - b.x);
 }
 async function clickLibrarySegment(tab, viewLabel) {
   const segments = librarySegments();
   console.log(`library tabs ${segments.map(item => `${item.title || item.description || item.role} ${item.x},${item.y} ${item.width}x${item.height}`).join(" | ") || "none"}`);
   const index = viewLabel === "Reading list" ? 1 : 3;
   const named = segments.find(item => `${item.title}\n${item.description}\n${item.value}`.includes(viewLabel));
-  const target = named ?? segments[index];
-  if (target && Math.abs(target.y - tab.y) < 30) {
-    console.log(`library tab click ${target.x},${target.y} ${target.width}x${target.height}`);
-    native("click-at", String(target.x), String(target.y));
-    return;
+  const target = named ?? (segments.length === 4 ? segments[index] : null);
+  if (!target || Math.abs(target.y - tab.y) >= 30) {
+    throw new Error(`Library tab ${viewLabel} is not among ${segments.length} segments`);
   }
-  // The tablist did not expose the later segments. Each one starts just past
-  // the selected tab, and the 2px segment gap is inside the 16px step.
-  const order = ["Bookmarks", "Reading list", "History", "Recently closed"];
-  let frame = tab;
-  const last = order.indexOf(viewLabel);
-  for (let step = 1; step <= last; step++) {
-    const label = order[step];
-    const x = frame.x + frame.width / 2 + 16;
-    console.log(`library tab step ${label} ${x},${frame.y} from ${frame.width}x${frame.height}`);
-    native("click-at", String(x), String(frame.y));
-    try {
-      await until(`library tab ${label}`, () => focusedValue().toLowerCase().includes(label.toLowerCase()) || segmentFrame(label, frame.y), 5_000);
-    } catch (error) {
-      console.log(`library tab step miss focused=${focusedValue()} library=${native("has-name", "Library")}`);
-      throw error;
-    }
-    if (step === last) return;
-    const measured = segmentFrame(label, frame.y);
-    if (!measured) {
-      console.log(`library tab frame miss ${label} focused=${focusedValue()}`);
-      throw new Error(`Library tab ${label} has no segment frame`);
-    }
-    frame = measured;
-  }
+  console.log(`library tab click ${target.x},${target.y} ${target.width}x${target.height}`);
+  native("click-at", String(target.x), String(target.y));
 }
 async function openLibraryView(viewLabel) {
   await dismissWelcomeIfPresent();

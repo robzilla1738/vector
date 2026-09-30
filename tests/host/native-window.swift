@@ -846,7 +846,7 @@ if action == "texts" {
     return value as? String ?? ""
   }
   print([attribute(kAXRoleAttribute), attribute(kAXTitleAttribute), attribute(kAXDescriptionAttribute), attribute(kAXValueAttribute)].joined(separator: "\t"))
-} else if action == "press-button" || action == "press-label" || action == "click-button" || action == "click-name" || action == "frame-name" || action == "frame" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
+} else if action == "press-button" || action == "press-label" || action == "click-button" || action == "click-name" || action == "frame-name" || action == "frame" || action == "click-at" || action == "child-frames" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
   action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "open-palette" || action == "escape" ||
