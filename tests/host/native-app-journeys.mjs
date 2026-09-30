@@ -404,7 +404,7 @@ function clickNamedLogged(label) {
 function clickPhrase(needle) {
   try {
     const click = JSON.parse(native("click-name", needle));
-    console.log(`${needle} click-name ${click.x},${click.y}`);
+    console.log(`${needle} click-name ${click.x},${click.y} ${click.width}x${click.height}`);
     return click;
   } catch (error) {
     console.log(`${needle} click-name miss ${error instanceof Error ? error.message : error}`);
@@ -428,18 +428,18 @@ async function openLibraryView(viewLabel) {
   await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
   clickPhrase(viewLabel);
 }
-function addressFieldValue() {
-  try { return native("control-value", "Address, search, and agent prompt"); }
+function focusedValue() {
+  try { return native("focused-value"); }
   catch { return ""; }
 }
 async function seedAddressField() {
-  const seeded = () => addressFieldValue().startsWith("http");
+  const seeded = () => focusedValue().includes("http");
   native("focus-address");
   try {
     await until("address seeded with the open page", seeded, 8_000);
   } catch (error) {
-    console.log(`address seed miss ${error instanceof Error ? error.message : error}`);
-    clickPhrase("Address, search, and agent prompt");
+    console.log(`address seed miss ${error instanceof Error ? error.message : error} focused=${focusedValue()}`);
+    clickPhrase("127.0.0.1");
     await until("address seeded after click", seeded, 8_000);
   }
   native("select-all");
@@ -6496,8 +6496,8 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     });
     await dismissSetupIfPresent();
     await seedAddressField();
-    console.log(`Search query ${native("type-text", "Aux native Red")} field=${addressFieldValue()}`);
-    await until("address holds the Red tab query", () => addressFieldValue().includes("Aux native Red"), 8_000);
+    console.log(`Search query ${native("type-text", "Aux native Red")} focused=${focusedValue()}`);
+    await until("address holds the Red tab query", () => focusedValue().includes("Aux native Red"), 8_000);
     await until("search suggestion for the background Red tab", () =>
       native("has-text", "Open tabs") === "true" && native("has-text", "Switch") === "true" &&
       native("has-text", "Aux native Red") === "true", 20_000);

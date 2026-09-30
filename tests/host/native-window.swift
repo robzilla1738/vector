@@ -433,8 +433,15 @@ func clickButton(_ label: String) -> ClickRecord? {
 
 func clickByName(_ needle: String) -> ClickRecord? {
   let application = AXUIElementCreateApplication(pid)
-  var exact: AXUIElement?
-  var partial: AXUIElement?
+  let window = screenWindow() ?? .zero
+  let windowArea = max(window.width * window.height, 1)
+  struct Choice { var element: AXUIElement; var area: CGFloat; var exact: Bool; var pressable: Bool }
+  var best: Choice?
+  func roleOf(_ element: AXUIElement) -> String {
+    var role: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
+    return role as? String ?? ""
+  }
   func texts(_ element: AXUIElement) -> [String] {
     var found: [String] = []
     for key in [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute] {
@@ -444,36 +451,63 @@ func clickByName(_ needle: String) -> ClickRecord? {
     }
     return found
   }
-  func visit(_ element: AXUIElement, depth: Int, visited: inout Int) {
-    visited += 1
-    if depth > 28 || visited > 4000 || exact != nil { return }
-    var role: CFTypeRef?
-    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
-    if (role as? String) == (kAXMenuBarRole as String) { return }
+  func pressable(_ role: String) -> Bool {
+    role == (kAXButtonRole as String) || role == (kAXPopUpButtonRole as String) || role == "AXMenuItem" ||
+      role == "AXRadioButton" || role == "AXTab" || role == "AXTextField" || role == "AXComboBox"
+  }
+  func consider(_ element: AXUIElement) {
     let names = texts(element)
-    if names.contains(needle) { exact = element; return }
-    if partial == nil && names.contains(where: { $0.contains(needle) }) { partial = element }
+    let exact = names.contains(needle)
+    guard exact || names.contains(where: { $0.contains(needle) }) else { return }
+    var target = element
+    var size = axSize(target)
+    if size == nil || size!.width <= 1 || size!.height <= 1 {
+      var current = target
+      for _ in 0..<6 {
+        var parent: CFTypeRef?
+        if AXUIElementCopyAttributeValue(current, kAXParentAttribute as CFString, &parent) != .success { break }
+        guard let parent, CFGetTypeID(parent) == AXUIElementGetTypeID() else { break }
+        current = unsafeBitCast(parent, to: AXUIElement.self)
+        if let parentSize = axSize(current), parentSize.width > 1, parentSize.height > 1 {
+          target = current
+          size = parentSize
+          break
+        }
+      }
+    }
+    guard let size, size.width > 1, size.height > 1 else { return }
+    let area = size.width * size.height
+    if area > windowArea * 0.45 { return }
+    let choice = Choice(element: target, area: area, exact: exact, pressable: pressable(roleOf(target)))
+    guard let current = best else { best = choice; return }
+    if exact != current.exact { if exact { best = choice }; return }
+    if choice.pressable != current.pressable { if choice.pressable { best = choice }; return }
+    if area < current.area { best = choice }
+  }
+  func visit(_ element: AXUIElement, depth: Int, visited: inout Int, shellOnly: Bool) {
+    visited += 1
+    if depth > 28 || visited > 4000 { return }
+    let role = roleOf(element)
+    if role == (kAXMenuBarRole as String) { return }
+    consider(element)
+    if shellOnly && isGuestWebArea(element, role: role) { return }
     var children: CFTypeRef?
     guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
       let children = children as? [AXUIElement] else { return }
-    for child in children { visit(child, depth: depth + 1, visited: &visited) }
+    for child in children { visit(child, depth: depth + 1, visited: &visited, shellOnly: shellOnly) }
   }
-  var visited = 0
-  visit(application, depth: 0, visited: &visited)
-  guard var target = exact ?? partial else { return nil }
-  for _ in 0..<6 {
-    if let size = axSize(target), size.width > 1, size.height > 1 { break }
-    var parent: CFTypeRef?
-    if AXUIElementCopyAttributeValue(target, kAXParentAttribute as CFString, &parent) != .success { break }
-    guard let parent, CFGetTypeID(parent) == AXUIElementGetTypeID() else { break }
-    target = unsafeBitCast(parent, to: AXUIElement.self)
+  var shellVisits = 0
+  visit(application, depth: 0, visited: &shellVisits, shellOnly: true)
+  if best == nil {
+    var pageVisits = 0
+    visit(application, depth: 0, visited: &pageVisits, shellOnly: false)
   }
-  guard let origin = axPoint(target, kAXPositionAttribute),
-    let size = axSize(target), size.width > 1, size.height > 1 else { return nil }
+  guard let best,
+    let origin = axPoint(best.element, kAXPositionAttribute),
+    let size = axSize(best.element), size.width > 1, size.height > 1 else { return nil }
   let screenHeight = NSScreen.screens.map(\.frame.maxY).max() ?? 0
   let raw = CGPoint(x: origin.x + size.width / 2, y: origin.y + size.height / 2)
   let flipped = CGPoint(x: raw.x, y: screenHeight - raw.y)
-  let window = screenWindow() ?? .zero
   let point = window.contains(raw) && !window.contains(flipped) ? raw : window.contains(flipped) ? flipped : raw
   _ = app.activate(options: [])
   postClick(point)
@@ -700,6 +734,17 @@ func pressLabel(_ label: String) -> Bool {
 if action == "texts" {
   let data = try! JSONEncoder().encode(staticTexts())
   print(String(data: data, encoding: .utf8)!)
+} else if action == "focused-value" {
+  var focused: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(AXUIElementCreateApplication(pid), kAXFocusedUIElementAttribute as CFString, &focused) == .success,
+    let element = focused, CFGetTypeID(element) == AXUIElementGetTypeID() else { print(""); exit(0) }
+  let target = unsafeBitCast(element, to: AXUIElement.self)
+  func attribute(_ key: String) -> String {
+    var value: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(target, key as CFString, &value) == .success else { return "" }
+    return value as? String ?? ""
+  }
+  print([attribute(kAXRoleAttribute), attribute(kAXTitleAttribute), attribute(kAXDescriptionAttribute), attribute(kAXValueAttribute)].joined(separator: "\t"))
 } else if action == "press-button" || action == "press-label" || action == "click-button" || action == "click-name" || action == "frame" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
   action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
@@ -748,8 +793,8 @@ if action == "texts" {
     down?.flags = flags
     up?.flags = flags
     guard let down, let up else { fail("Cannot create the browser shortcut event.") }
-    down.post(tap: .cghidEventTap)
-    up.post(tap: .cghidEventTap)
+    down.postToPid(pid)
+    up.postToPid(pid)
   } else if action == "move" {
     guard CommandLine.arguments.count == 5,
       let x = Double(CommandLine.arguments[3]),
