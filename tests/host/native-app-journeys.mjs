@@ -357,13 +357,31 @@ async function rpc(method, params = {}) {
 function native(action, ...args) {
   return execFileSync(windowTool, [action, String(child.pid), ...args.map(String)], { encoding: "utf8", timeout: 15_000 }).trim();
 }
-// AXPress on Finish later reports success and leaves the setup dialog up.
-// A posted click is what other journeys use for a shell button. The window
-// is raised only for that click. Skip this step only advances setup.
-let memorySaverButtonLog = "";
+// AXPress on Finish later reports success and leaves setup up. A posted click
+// dismisses it. The space menu item's name includes its shortcut, so an exact
+// "Settings" click misses, and the open menu hides the space trigger.
+let memorySaverButtonLog = null;
 function clickNamed(label) {
   try { return JSON.parse(native("click-button", label)); }
   catch { return null; }
+}
+function settingsLabel(labels) {
+  return labels.find(label => label === "Settings" || label.startsWith("Settings "));
+}
+function logMemorySaverButtons(labels, reason) {
+  const line = labels.slice(0, 16).join(" | ");
+  if (line === memorySaverButtonLog) return;
+  memorySaverButtonLog = line;
+  console.log(`Memory saver ${reason}. Buttons: ${line}`);
+}
+function chooseMemorySaverSettings(label) {
+  native("activate");
+  const click = clickNamed(label);
+  if (click) {
+    console.log(`Memory saver settings click: ${label} ${click.x},${click.y}`);
+    return;
+  }
+  console.log(`Memory saver settings press: ${label} ${native("press-label", label)}`);
 }
 async function openMemorySaverSettings() {
   let labels = [];
@@ -374,21 +392,29 @@ async function openMemorySaverSettings() {
     console.log(`Memory saver setup click: Finish later ${click ? `${click.x},${click.y}` : "miss"}`);
     return;
   }
-  const space = labels.find(label => typeof label === "string" && label.startsWith("Switch space"))
-    ?? "Switch space, current: Personal";
-  native("activate");
-  const opened = clickNamed(space);
-  if (!opened) {
-    const line = labels.slice(0, 16).join(" | ");
-    if (line !== memorySaverButtonLog) {
-      memorySaverButtonLog = line;
-      console.log(`Memory saver found no space menu. Buttons: ${line}`);
-    }
+  const visibleSettings = settingsLabel(labels);
+  if (visibleSettings) {
+    chooseMemorySaverSettings(visibleSettings);
     return;
   }
+  const space = labels.find(label => typeof label === "string" && label.startsWith("Switch space"));
+  if (!space) {
+    logMemorySaverButtons(labels, "found no space menu");
+    return;
+  }
+  native("activate");
+  const opened = clickNamed(space);
+  console.log(`Memory saver space click: ${space} ${opened ? `${opened.x},${opened.y} ${opened.width}x${opened.height}` : "miss"}`);
+  if (!opened) return;
   await delay(300);
-  const settings = clickNamed("Settings");
-  console.log(`Memory saver settings click: ${settings ? `${settings.x},${settings.y}` : "miss"}`);
+  let next = [];
+  try { next = JSON.parse(native("buttons")); } catch { next = []; }
+  const openedSettings = settingsLabel(next);
+  if (openedSettings) chooseMemorySaverSettings(openedSettings);
+  else {
+    console.log(`Memory saver settings press: Settings ${native("press-label", "Settings")}`);
+    logMemorySaverButtons(next, "menu had no Settings control");
+  }
 }
 function capture(windowId, name) {
   const path = join(output, `${name}.png`);

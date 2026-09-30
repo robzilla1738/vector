@@ -114,7 +114,7 @@ func buttonLabels() -> [String] {
     let roleName = role as? String ?? ""
     if roleName == (kAXMenuBarRole as String) { return }
     // aria-haspopup="menu" is a popup button, so the space control is not an AXButton.
-    if roleName == (kAXButtonRole as String) || roleName == (kAXPopUpButtonRole as String) {
+    if roleName == (kAXButtonRole as String) || roleName == (kAXPopUpButtonRole as String) || roleName == "AXMenuItem" {
       var title: CFTypeRef?
       var description: CFTypeRef?
       AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
