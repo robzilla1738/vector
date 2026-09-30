@@ -259,7 +259,8 @@ const developmentAcceptanceFeatures = memoryInboxUiJourney || storeRecoveryUiJou
   anyTidyJourney ? ["spaces", "aiTidy"] :
   memorySaverAwakeJourney ? ["spaces", "tabLifecycle"] :
   runtimeBackupRestoreJourney ? ["electronMigration"] :
-  menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney || selectorBookmarkJourney || selectorClosedJourney || selectorReadingJourney || selectorSearchJourney || selectorHistoryJourney || selectorExtensionJourney ? ["spaces"] : null;
+  selectorExtensionJourney ? ["spaces", "extensions"] :
+  menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney || selectorBookmarkJourney || selectorClosedJourney || selectorReadingJourney || selectorSearchJourney || selectorHistoryJourney ? ["spaces"] : null;
 if (developmentAcceptanceFeatures) {
   assert.ok(nativeSourceCommit, "Development acceptance requires a built native source identity");
   const token = randomBytes(32).toString("hex");
@@ -6684,35 +6685,24 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       native("has-name", "Search providers") === "true" || native("has-name", "History") === "true", 20_000);
     clickSearchProvider("History");
     await delay(400);
-    // The History row exposes the page title. The full http URL is not an
-    // accessible string, which is why requiring `${origin}/red` failed. A click
-    // that only focuses the pill does not run its handler; Space does.
-    const hostPath = `${new URL(origin).host}/red`;
-    const historyRowVisible = () =>
-      native("has-text", "Search for") === "false" &&
-      native("has-text", "No history matches.") === "false" &&
-      (native("has-text", `${origin}/red`) === "true" ||
-        native("has-text", hostPath) === "true" ||
-        native("has-text", "Aux native Red") === "true");
+    // cl and cn proved the visit is stored and the History click removes the
+    // web-search row, but the row's title and URL are not accessible text.
+    // Return on that open scope runs the selected history suggestion.
     const historyProbe = () =>
-      `focused=${focusedValue()} search=${native("has-text", "Search for")} title=${native("has-text", "Aux native Red")} url=${native("has-text", `${origin}/red`)} host=${native("has-text", hostPath)} empty=${native("has-text", "No history matches.")}`;
+      `focused=${focusedValue()} providers=${native("has-name", "Search providers")} search=${native("has-text", "Search for")} empty=${native("has-text", "No history matches.")} emptyName=${native("has-name", "No history matches.")} title=${native("has-name", "Aux native Red")} url=${native("has-name", `${origin}/red`)}`;
     console.log(`history after click ${historyProbe()}`);
-    if (native("has-text", "Search for") === "true") {
-      const pill = focusedValue();
-      if (pill.includes("History") && !pill.includes("Address, search, and agent prompt")) {
-        native("space");
-        console.log(`history space ${historyProbe()}`);
-      }
-    }
     try {
-      await until("history scope shows the visited Red page", historyRowVisible, 20_000);
+      await until("history scope stays open without the web-search row", () =>
+        native("has-name", "Search providers") === "true" &&
+        native("has-text", "Search for") === "false", 8_000);
     } catch (error) {
-      let visits = [];
-      try { visits = await rpc("history.list", { limit: 20 }); }
-      catch (listError) { console.log(`history list miss ${listError instanceof Error ? listError.message : listError}`); }
-      console.log(`history scope miss ${historyProbe()} visits=${JSON.stringify(visits.map(item => item.url))}`);
+      console.log(`history scope closed ${historyProbe()}`);
       throw error;
     }
+    if (native("has-text", "No history matches.") === "true" || native("has-name", "No history matches.") === "true") {
+      throw new Error("History scope is open and has no matches for the visited Red page");
+    }
+    console.log(`history names ${native("names")}`);
     const focused = focusedValue();
     console.log(`history scope focused=${focused}`);
     if (!focused.includes("Address, search, and agent prompt") && !focused.includes("Aux native Red")) {
@@ -6723,8 +6713,14 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       console.log(`history address refocused=${focusedValue()}`);
     }
     native("type-return");
-    await until("history choice navigates back to Red", async () =>
-      (await rpc("pages.list")).some(item => item.pageId === page.pageId && item.url === `${origin}/red` && !item.loading), 20_000);
+    try {
+      await until("history choice navigates back to Red", async () =>
+        (await rpc("pages.list")).some(item => item.pageId === page.pageId && item.url === `${origin}/red` && !item.loading), 20_000);
+    } catch (error) {
+      const current = (await rpc("pages.list")).find(item => item.pageId === page.pageId);
+      console.log(`history navigation miss ${JSON.stringify({ url: current?.url, title: current?.title, loading: current?.loading })}`);
+      throw error;
+    }
     record("History scope navigates the current tab to the visited Red page", { pageId: page.pageId });
     report.passed = true;
   } else if (selectorExtensionJourney) {

@@ -130,3 +130,4 @@ aux/shell/0129-global-error-bubble-without-toolbar.patch
 aux/runtime/0130-isolation-clear-cookie-filter.patch
 aux/runtime/0131-disposable-tab-lifecycle-acceptance.patch
 aux/runtime/0132-retry-disposable-tab-lifecycle-describe.patch
+aux/runtime/0133-disposable-extensions-acceptance.patch
