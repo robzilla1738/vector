@@ -2777,7 +2777,7 @@ else {
       let accessFailures = 0;
       let lastUrl = null;
       let reportedHidden = false;
-      await until("Memory saver controls are available", () => {
+      await until("Memory saver controls are available", async () => {
         try {
           let url = "";
           try { url = native("shell-url"); } catch { url = ""; }
@@ -2787,7 +2787,14 @@ else {
           }
           if (!url.includes("/settings/general")) {
             const now = Date.now();
-            if (now - lastOpen > 2000) { lastOpen = now; native("open-settings"); }
+            if (now - lastOpen > 2000) {
+              lastOpen = now;
+              // Command-comma is not a stock Chromium accelerator. Focus the shell
+              // address field first so the shell's own shortcut handler receives it.
+              native("focus-address");
+              await delay(200);
+              native("open-settings");
+            }
             return false;
           }
           const visible = native("has-name", "Memory saver") === "true";
@@ -2876,13 +2883,18 @@ else {
       }
       let pressed = false;
       let lastOpen = 0;
-      await until(label, () => {
+      await until(label, async () => {
         try {
           let url = "";
           try { url = native("shell-url"); } catch { url = ""; }
           if (!url.includes("/settings/general")) {
             const now = Date.now();
-            if (now - lastOpen > 2000) { lastOpen = now; native("open-settings"); }
+            if (now - lastOpen > 2000) {
+              lastOpen = now;
+              native("focus-address");
+              await delay(200);
+              native("open-settings");
+            }
             return false;
           }
           if (!pressed && native("has-name", "Recent Memory saver cycles") === "true")
