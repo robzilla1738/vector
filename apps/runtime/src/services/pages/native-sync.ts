@@ -151,6 +151,13 @@ export class NativeViewSync {
           this.pages.restoreErrors.delete(tab.pageId);
           this.pages.deps.events.emit("browser.recovery.changed", {});
         }
+        // A placeholder catalog row for a tab that was still rendered must load.
+        // Waiting here would deadlock the catalog queue on the focus response.
+        if (this.pages.awakeOnRestore.has(tab.pageId) && tab.lifecycle !== "live") {
+          const recover = this.pages.deps.native.recoverPage;
+          if (recover) void recover(tab.pageId, tab.url).catch(() => {});
+          else void this.activation.activate(tab.pageId).catch(() => {});
+        }
         if (tab.navigationError) this.onNativeNavigationError(tab.pageId, tab.navigationError);
         return;
       }

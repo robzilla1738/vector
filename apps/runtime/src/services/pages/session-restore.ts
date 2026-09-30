@@ -6,6 +6,14 @@ import type { PageRegistry } from "./registry.js";
 export class TabSessionRestore {
   constructor(private pages: PageRegistry, private opener: PageOpener, private activation: ActivationPolicy) {
     if(pages.deps.native.available())for(const tab of pages.deps.repo.loadTabs().filter(tab=>tab.backend==="aux"))pages.pendingRestore.set(tab.page_id,tab);
+    // Read the pre-quit renderer state before detachAllPages rewrites every row.
+    for (const tab of pages.pendingRestore.values()) {
+      const previous = pages.deps.repo.getPage(tab.page_id);
+      if (!previous || previous.ownedByRuntime) continue;
+      if (previous.viewStatus !== "visible" && previous.viewStatus !== "background") continue;
+      if (previous.lifecycle === "discarded" || previous.lifecycle === "placeholder" || previous.lifecycle === "frozen") continue;
+      pages.awakeOnRestore.add(tab.page_id);
+    }
     pages.restoring = pages.pendingRestore.size > 0;
     // restore persisted page rows as detached history entries
     pages.deps.repo.detachAllPages();
@@ -36,13 +44,20 @@ export class TabSessionRestore {
         // The catalog may publish background placeholders after the active
         // view. Keep their durable rows pending until that native upsert
         // arrives; opening them here would defeat lazy session restore.
-        const byWindow = new Map<string, (typeof existing.pages)[number]>();
-        for (const page of existing.pages) {
-          const windowId = page.windowId ?? "main";
-          if (page.active || !byWindow.has(windowId)) byWindow.set(windowId, page);
-        }
-        for (const page of byWindow.values()) {
-          await this.activation.activate(page.pageId).catch(() => {});
+        // Tabs that still had a renderer must load again. A discarded tab
+        // stays a placeholder, so activating the first catalog row would reload it.
+        const awake = existing.pages.filter((page) => this.pages.awakeOnRestore.has(page.pageId));
+        if (awake.length) {
+          for (const page of awake) await this.loadAwakeTab(page.pageId, page.url);
+        } else {
+          const byWindow = new Map<string, (typeof existing.pages)[number]>();
+          for (const page of existing.pages) {
+            const windowId = page.windowId ?? "main";
+            if (page.active || !byWindow.has(windowId)) byWindow.set(windowId, page);
+          }
+          for (const page of byWindow.values()) {
+            await this.activation.activate(page.pageId).catch(() => {});
+          }
         }
       } finally {
         this.pages.restoring = false;
@@ -52,14 +67,18 @@ export class TabSessionRestore {
     }
     const tabs = this.pages.deps.repo.loadTabs().filter((t) => t.backend === "aux");
     if (!tabs.length) return;
+    const remembered = tabs.filter((tab) => this.pages.awakeOnRestore.has(tab.page_id));
     const selected = new Map<string, (typeof tabs)[number]>();
-    for (const tab of tabs) {
-      const windowId = tab.window_id || "main";
-      if (tab.active || !selected.has(windowId)) selected.set(windowId, tab);
+    if (!remembered.length) {
+      for (const tab of tabs) {
+        const windowId = tab.window_id || "main";
+        if (tab.active || !selected.has(windowId)) selected.set(windowId, tab);
+      }
     }
+    const opening = remembered.length ? remembered : [...selected.values()];
     this.pages.restoring = true;
     try {
-      for (const t of selected.values()) {
+      for (const t of opening) {
         try {
           const p = await this.restoreSavedTab(t.page_id);
           await this.activation.activate(p.pageId).catch(() => {});
@@ -73,6 +92,15 @@ export class TabSessionRestore {
       // Keep the original durable snapshot until all surfaces are restored.
       // Normal later tab mutations resume snapshotting.
     }
+  }
+
+  /** Load a restored renderer without selecting the tab, so a protected neighbor stays put. */
+  private async loadAwakeTab(pageId: string, url: string) {
+    if (this.pages.deps.native.recoverPage) {
+      await this.pages.deps.native.recoverPage(pageId, url).catch(() => {});
+      return;
+    }
+    await this.activation.activate(pageId).catch(() => {});
   }
 
   recoveryTabs() {

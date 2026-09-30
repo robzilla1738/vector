@@ -60,6 +60,7 @@ beforeAll(() => {
     list: () => [page],
     isRestoringTabs: false,
     recoveryTabs: () => [],
+    restoredTabShown: () => true,
     get: (id: string) => {
       if (id !== "p1") throw new Error(`no page ${id}`);
       return page;

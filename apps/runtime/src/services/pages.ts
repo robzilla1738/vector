@@ -81,6 +81,12 @@ export class PageService {
 
   restoreTabs: TabSessionRestore["restoreTabs"] = (...args) => this.restore.restoreTabs(...args);
   recoveryTabs: TabSessionRestore["recoveryTabs"] = (...args) => this.restore.recoveryTabs(...args);
+
+  /** Hide a tab that still had a renderer until this process has loaded it again. */
+  restoredTabShown(pageId: string, lifecycle: "live" | "placeholder" | "frozen" | "discarded" | undefined): boolean {
+    if (!this.pages.awakeOnRestore.has(pageId)) return true;
+    return lifecycle !== "placeholder" && lifecycle !== "discarded";
+  }
   retryRestore: TabSessionRestore["retryRestore"] = (...args) => this.restore.retryRestore(...args);
 
   activate: ActivationPolicy["activate"] = (...args) => this.activation.activate(...args);

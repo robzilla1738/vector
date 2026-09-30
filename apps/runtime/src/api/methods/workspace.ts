@@ -3,15 +3,19 @@ import type { MethodName } from "@aux/contracts";
 
 async function h_workspace_get(ctx: MethodCtx): Promise<unknown> {
   const { client, s, scope, scopedPageIds, scopedTasks } = ctx;
-  const livePages = scope
+  const listed = scope
     ? s.pages.list().filter((page) => scopedPageIds(scope, client.connectionId).has(page.pageId))
     : s.pages.list();
+  // A tab that still had a renderer stays out of this snapshot until reload.
+  // Showing the session-restore placeholder would report it as sleeping.
+  const livePages = scope ? listed : listed.filter((page) => s.pages.restoredTabShown(page.pageId, page.lifecycle));
   // Saved tabs without a native target belong in the owner's strip. They are
   // presentation placeholders; pages.list and scoped clients remain live only.
   const pages = scope ? livePages : [
     ...livePages,
     ...s.pages.recoveryTabs().flatMap((tab) => {
-      if (livePages.some((page) => page.pageId === tab.pageId)) return [];
+      if (listed.some((page) => page.pageId === tab.pageId)) return [];
+      if (!s.pages.restoredTabShown(tab.pageId, "placeholder")) return [];
       const previous = s.repo.getPage(tab.pageId);
       return previous ? [{ ...previous, url: tab.url, title: tab.title,
         windowId: tab.windowId, lifecycle: "placeholder" as const,

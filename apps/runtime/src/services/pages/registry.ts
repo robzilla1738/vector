@@ -30,6 +30,8 @@ export class PageRegistry {
 
   restoring = false;
   pendingRestore = new Map<string, ReturnType<Repo["loadTabs"]>[number]>();
+  /** Page ids that still had a renderer at shutdown. A restart must load these before showing them. */
+  awakeOnRestore = new Set<string>();
   restoreErrors = new Map<string, string>();
   retryingRestore = new Set<string>();
 

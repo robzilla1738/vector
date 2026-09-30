@@ -125,6 +125,55 @@ it("keeps failed session tabs through later browsing and retries the same durabl
   } finally {pages.shuttingDown();await Promise.resolve();db.close();}
 });
 
+it("reloads a tab that still had a renderer and leaves a discarded tab asleep", async () => {
+  const repo = new Repo(openDb(":memory:"));
+  const row = (pageId: string, viewStatus: PageTarget["viewStatus"], lifecycle: PageTarget["lifecycle"]): PageTarget => ({
+    pageId, windowId: "main", backend: "aux", targetId: `old-${pageId}`,
+    url: `https://example.test/${pageId}`, title: pageId, documentEpoch: 1,
+    lastRevision: 0, viewStatus, lifecycle, controller: "none", controllerEpoch: 0,
+    ownedByRuntime: false, createdAt: 1, lastActiveAt: 2,
+  });
+  const dirty = row("dirty", "background", "live");
+  const red = row("red", "detached", "discarded");
+  repo.upsertPage(dirty);
+  repo.upsertPage(red);
+  repo.saveTabs([
+    { pageId: dirty.pageId, windowId: "main", ordinal: 0, url: dirty.url, title: dirty.title, backend: "aux", active: false },
+    { pageId: red.pageId, windowId: "main", ordinal: 1, url: red.url, title: red.title, backend: "aux", active: false },
+  ]);
+  const reloaded: string[] = [];
+  const attached: string[] = [];
+  const driver = { isConnected: () => true, attach: async (_marker: string, pageId: string) => {
+    attached.push(pageId);
+    return { identity: { targetId: `atab-${pageId}`, pageId, backend: "aux" },
+      isAttached: () => true, url: () => `https://example.test/${pageId}`,
+      title: async () => pageId, setEvents: () => {}, dispose: async () => {} } as unknown as DriverPage;
+  } } as unknown as BrowserDriver;
+  const native = { available: () => true, listPages: async () => ({ pages: [
+    { pageId: "dirty", windowId: "main", marker: "atab-dirty", url: dirty.url, title: "dirty", active: false, lifecycle: "placeholder" as const },
+    { pageId: "red", windowId: "main", marker: "atab-red", url: red.url, title: "red", active: false, lifecycle: "placeholder" as const },
+  ] }), recoverPage: async (pageId: string) => { reloaded.push(pageId); return { ok: true }; },
+    focusPage: async () => { throw new Error("awake restore must not steal activation"); } } as unknown as ConstructorParameters<typeof PageService>[0]["native"];
+  const pages = new PageService({ repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
+  try {
+    await pages.restoreTabs();
+    expect(reloaded).toEqual(["dirty"]);
+    expect(attached).toEqual([]);
+    expect(pages.get("red").lifecycle).toBe("placeholder");
+    expect(pages.restoredTabShown("dirty", pages.get("dirty").lifecycle)).toBe(false);
+    expect(pages.restoredTabShown("red", pages.get("red").lifecycle)).toBe(true);
+    await pages.syncCatalog({ version: 1, baseVersion: 0, ts: Date.now(), ops: [{ op: "upsert", tab: {
+      pageId: "dirty", windowId: "main", url: dirty.url, title: "dirty", loading: false,
+      muted: false, audible: false, canGoBack: false, canGoForward: false, popup: false,
+      crashed: false, runtimeOwned: false, generation: 0, lifecycle: "live",
+      createdAt: 1, lastActiveAt: 2,
+    } }] });
+    expect(pages.get("dirty").lifecycle).toBe("live");
+    expect(pages.restoredTabShown("dirty", pages.get("dirty").lifecycle)).toBe(true);
+    expect(reloaded).toEqual(["dirty"]);
+  } finally { pages.shuttingDown(); repo.close(); }
+});
+
 it("keeps document epochs monotonic when a native catalog event wins the restore race", async () => {
   const db = openDb(":memory:"), repo = new Repo(db);
   const previous: PageTarget = { pageId: "saved-tab", windowId: "main", backend: "aux", targetId: "old-target",
