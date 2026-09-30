@@ -431,7 +431,7 @@ func clickButton(_ label: String) -> ClickRecord? {
   return record
 }
 
-func clickByName(_ needle: String) -> ClickRecord? {
+func frameByName(_ needle: String) -> ClickRecord? {
   let application = AXUIElementCreateApplication(pid)
   let window = screenWindow() ?? .zero
   let windowArea = max(window.width * window.height, 1)
@@ -502,18 +502,26 @@ func clickByName(_ needle: String) -> ClickRecord? {
     var pageVisits = 0
     visit(application, depth: 0, visited: &pageVisits, shellOnly: false)
   }
-  guard let best,
-    let origin = axPoint(best.element, kAXPositionAttribute),
-    let size = axSize(best.element), size.width > 1, size.height > 1 else { return nil }
+  guard let best, let size = axSize(best.element), size.width > 1, size.height > 1,
+    let origin = axPoint(best.element, kAXPositionAttribute) else { return nil }
+  // Shell accessibility positions use CGEvent's top-left space. A tall window
+  // also contains the mirrored point, and posting that mirror hits the page.
   let screenHeight = NSScreen.screens.map(\.frame.maxY).max() ?? 0
   let raw = CGPoint(x: origin.x + size.width / 2, y: origin.y + size.height / 2)
   let flipped = CGPoint(x: raw.x, y: screenHeight - raw.y)
-  let point = window.contains(raw) && !window.contains(flipped) ? raw : window.contains(flipped) ? flipped : raw
-  _ = app.activate(options: [])
-  postClick(point)
+  let rawInside = window.contains(raw)
+  let flippedInside = window.contains(flipped)
+  let point = rawInside && flippedInside ? raw : flippedInside ? flipped : raw
   return ClickRecord(ok: true, x: point.x, y: point.y, width: size.width, height: size.height,
                      rawX: raw.x, rawY: raw.y, flippedX: flipped.x, flippedY: flipped.y,
                      windowX: window.origin.x, windowY: window.origin.y, windowW: window.width, windowH: window.height)
+}
+
+func clickByName(_ needle: String) -> ClickRecord? {
+  guard let record = frameByName(needle) else { return nil }
+  _ = app.activate(options: [])
+  postClick(CGPoint(x: record.x, y: record.y))
+  return record
 }
 
 func isGuestWebArea(_ element: AXUIElement, role: String) -> Bool {
@@ -573,11 +581,12 @@ if action == "press-button" {
     let data = try? JSONEncoder().encode(click),
     let text = String(data: data, encoding: .utf8) else { fail("Cannot \(action) that control.") }
   print(text)
-} else if action == "click-name" {
-  guard CommandLine.arguments.count == 4 else { fail("Use click-name PID phrase.") }
-  guard let click = clickByName(CommandLine.arguments[3]),
+} else if action == "click-name" || action == "frame-name" {
+  guard CommandLine.arguments.count == 4 else { fail("Use \(action) PID phrase.") }
+  let click = action == "frame-name" ? frameByName(CommandLine.arguments[3]) : clickByName(CommandLine.arguments[3])
+  guard let click,
     let data = try? JSONEncoder().encode(click),
-    let text = String(data: data, encoding: .utf8) else { fail("Cannot click-name that control.") }
+    let text = String(data: data, encoding: .utf8) else { fail("Cannot \(action) that control.") }
   print(text)
 } else if action == "click-at" {
   guard CommandLine.arguments.count == 5,
@@ -745,7 +754,7 @@ if action == "texts" {
     return value as? String ?? ""
   }
   print([attribute(kAXRoleAttribute), attribute(kAXTitleAttribute), attribute(kAXDescriptionAttribute), attribute(kAXValueAttribute)].joined(separator: "\t"))
-} else if action == "press-button" || action == "press-label" || action == "click-button" || action == "click-name" || action == "frame" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
+} else if action == "press-button" || action == "press-label" || action == "click-button" || action == "click-name" || action == "frame-name" || action == "frame" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
   action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "open-palette" || action == "escape" ||

@@ -404,12 +404,16 @@ function clickNamedLogged(label) {
 function clickPhrase(needle) {
   try {
     const click = JSON.parse(native("click-name", needle));
-    console.log(`${needle} click-name ${click.x},${click.y} ${click.width}x${click.height}`);
+    console.log(`${needle} click-name ${click.x},${click.y} ${click.width}x${click.height} raw ${click.rawX},${click.rawY} flipped ${click.flippedX},${click.flippedY} window ${click.windowX},${click.windowY} ${click.windowW}x${click.windowH}`);
     return click;
   } catch (error) {
     console.log(`${needle} click-name miss ${error instanceof Error ? error.message : error}`);
     return null;
   }
+}
+function frameNamed(needle) {
+  try { return JSON.parse(native("frame-name", needle)); }
+  catch { return null; }
 }
 async function dismissSetupIfPresent() {
   if (native("has-name", "Finish later") !== "true") return;
@@ -417,14 +421,17 @@ async function dismissSetupIfPresent() {
   await until("setup dismissed", () => native("has-name", "Finish later") !== "true", 8_000);
 }
 async function openLibraryView(viewLabel) {
-  native("open-palette");
+  await rpc("settings.set", { tabLayout: "vertical" });
+  const win = JSON.parse(native("window"));
+  native("move", String(win.x + 80), String(win.y + 2));
+  await new Promise(resolve => setTimeout(resolve, 700));
   try {
-    await until("palette can open Library", () => native("has-name", "Bookmarks and history") === "true", 15_000);
+    await until("library toolbar button", () => native("has-name", "Library") === "true", 15_000);
   } catch (error) {
-    console.log(`palette row miss dialog=${native("has-name", "Command palette")}`);
+    console.log(`library button miss ${error instanceof Error ? error.message : error}`);
     throw error;
   }
-  clickPhrase("Bookmarks and history");
+  clickPhrase("Library");
   await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
   clickPhrase(viewLabel);
 }
@@ -434,14 +441,12 @@ function focusedValue() {
 }
 async function seedAddressField() {
   const seeded = () => focusedValue().includes("http");
-  native("focus-address");
-  try {
-    await until("address seeded with the open page", seeded, 8_000);
-  } catch (error) {
-    console.log(`address seed miss ${error instanceof Error ? error.message : error} focused=${focusedValue()}`);
-    clickPhrase("127.0.0.1");
-    await until("address seeded after click", seeded, 8_000);
-  }
+  const mark = frameNamed("Bookmark this page");
+  if (!mark) throw new Error("The bookmark control is not available to aim the address field");
+  const x = Math.max(mark.windowX + 160, mark.x - 240);
+  console.log(`address click ${x},${mark.y} bookmark ${mark.x},${mark.y} raw ${mark.rawY} flipped ${mark.flippedY} window ${mark.windowY}+${mark.windowH}`);
+  native("click-at", String(x), String(mark.y));
+  await until("address seeded with the open page", seeded, 8_000);
   native("select-all");
   await new Promise(resolve => setTimeout(resolve, 150));
 }
