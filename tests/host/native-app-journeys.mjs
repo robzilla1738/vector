@@ -60,7 +60,7 @@ const option = name => {
   return index < 0 ? undefined : process.argv[index + 1];
 };
 if (process.argv.includes("--list")) {
-  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --protected-startup | --runtime-peer | --trust-adversarial | --browser-import-ui | --browser-import-formats | --browser-import-attached | --link-peek | --space-theme | --space-theme-advanced | --reader-peek | --tab-preview-focus | --tab-name-ui | --downloads | --site-controls | --tab-audio | --unsaved-work | --file-handoff | --http-auth | --http-auth-cancel | --reader | --translation | --eyedropper | --file-io | --workbook-export | --artifact-export | --agent-connections | --page-action | --profiles | --profile-confirmation | --popover | --menu-primitives | --toast-primitives | --selector-bookmark | --selector-site-permissions | --selector-context | --selector-downloads | --selector-results | --selector-task-resources | --selector-search | --selector-closed | --selector-reading | --quick-ask-focus | --settings-focus | --settings-search | --settings-route | --settings-internal-url | --settings-section-rail | --agent-grants | --privacy-history-panel | --settings-focus-jump | --library-focus | --appearance-prefs | --search-engine-prefs | --edge-leeway | --tidy-changed-state | --memory-saver-report-protected | --navigation-recovery | --certificate-recovery | --http-fallback | --http-fallback-dialog]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state", siteControls: "--site-controls needs an operator to open site controls, clear the disposable fixture's website data, reset its seeded blocked notification decision, and close the dialog before the storage check", tabAudio: "--tab-audio needs an operator to open Tab overview and select the disposable fixture tab; the harness checks mute and unmute", unsavedWork: "--unsaved-work needs an operator to open Tab overview and press Select duplicates; the harness checks that the edited fixture tab is kept", fileHandoff: "--file-handoff needs an operator to open Downloads; the harness opens and reveals a disposable text file", httpAuth: "--http-auth needs an operator to enter fixture-user / fixture-pass in the Aux sign-in prompt; the harness verifies the protected page loads", httpAuthCancel: "--http-auth-cancel needs an operator to cancel the disposable challenge; the harness verifies no protected content loads", preview: "--preview needs an operator to open Tab overview; the harness checks a captured background tab thumbnail", navigationMenu: "--navigation-menu needs an operator to focus Back, press ArrowDown, and choose the Red history entry", contextMenu: "--context-menu needs an operator to open the shell context menu and choose Reload", pageAction: "--page-action needs an operator to choose Summarize page from the native shell context menu", reader: "--reader needs an operator to open Reader view for a local article", eyeDropper: "--eyedropper needs an operator to select a color with the macOS sampler", fileIo: "--file-io needs an operator to export the fixture bookmark through Library to the printed path", workbookExport: "--workbook-export needs an operator to invoke the Aux shell workbook method and save to the printed path", artifactExport: "--artifact-export needs an operator to create a disposable stored image and save it through the Aux shell method", agentConnections: "--agent-connections needs an operator to create and revoke a disposable scoped connection through the Aux native shell", profiles: "--profiles needs an operator to create, rename, archive, restore, and explicitly delete only the generated disposable Profile", profileConfirmation: "--profile-confirmation checks a named native delete confirmation and cancellation without deleting the disposable Profile", popover: "--popover checks browser-context search, choices and Escape dismissal in a disposable chat", menuPrimitives: "--menu-primitives checks shared vertical Space and Browser tools menus with Escape dismissal in a disposable Profile", toastPrimitives: "--toast-primitives checks the no-data autofill info Toast and its timed dismissal in a disposable Profile", selectorBookmark: "--selector-bookmark checks add/remove toolbar state on a disposable local page", selectorSitePermissions: "--selector-site-permissions checks open-site selection in Aux Settings on a disposable local page", selectorContext: "--selector-context checks the open-tab choices in a disposable conversation", selectorDownloads: "--selector-downloads checks live progress, cancel, and retry in a disposable download shelf", selectorResults: "--selector-results checks the disposable set-results table surface", selectorTaskResources: "--selector-task-resources checks a task page reference after local navigation", selectorSearch: "--selector-search checks that a background local tab appears as a live search suggestion", selectorClosed: "--selector-closed checks a disposable closed tab in Library", selectorReading: "--selector-reading checks two disposable Reading List rows and a read-state change", quickAskFocus: "--quick-ask-focus checks the composer receives focus in the disposable Quick Ask window", settingsFocus: "--settings-focus checks Settings category, search result, and search-field focus in a disposable Profile", settingsSearch: "--settings-search checks Plugins, Google Calendar, and a generated Appearance field in Settings search", settingsRoute: "--settings-route checks native Settings section navigation", settingsInternalUrl: "--settings-internal-url checks an internal Settings URL stays in the top shell", settingsSectionRail: "--settings-section-rail checks three available grouped Settings destinations", agentGrants: "--agent-grants checks a disposable Write grant on and off", privacyHistoryPanel: "--privacy-history-panel checks the clear-history control is in Privacy & Security and cancellation leaves history intact", settingsFocusJump: "--settings-focus-jump checks one indexed search destination", libraryFocus: "--library-focus checks Library search-to-bookmark focus in a disposable Profile", appearancePrefs: "--appearance-prefs needs an operator to choose a light theme and title-bar material in a disposable Profile", searchEnginePrefs: "--search-engine-prefs checks a disposable search engine choice across restart", edgeLeeway: "--edge-leeway automatically checks native floating-sidebar entry and exit leeway over a guest page", tidyChanged: "--tidy-changed-state needs an operator to apply AI Tidy, rename its folder, then open Overview after restart", memorySaverReport: "--memory-saver-report-protected needs an operator to open General and expand Recent Memory saver cycles before and after restart", trustAdversarial: "--trust-adversarial keeps one disposable Aux.app up and checks an omnibox loopback page after each case. Takeover cases fail closed unless AUX_OLDER_RUNTIME_MAIN is a retained older main.js. This command is not evidence that the TRUST gate passed." }, null, 2));
+  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --protected-startup | --runtime-peer | --trust-adversarial | --browser-import-ui | --browser-import-formats | --browser-import-attached | --link-peek | --space-theme | --space-theme-advanced | --reader-peek | --tab-preview-focus | --tab-name-ui | --downloads | --site-controls | --tab-audio | --unsaved-work | --file-handoff | --http-auth | --http-auth-cancel | --reader | --translation | --eyedropper | --file-io | --workbook-export | --artifact-export | --agent-connections | --page-action | --profiles | --profile-confirmation | --popover | --menu-primitives | --toast-primitives | --selector-bookmark | --selector-site-permissions | --selector-context | --selector-downloads | --selector-results | --selector-task-resources | --selector-search | --selector-closed | --selector-reading | --quick-ask-focus | --settings-focus | --settings-search | --settings-route | --settings-internal-url | --settings-section-rail | --agent-grants | --privacy-history-panel | --settings-focus-jump | --library-focus | --appearance-prefs | --search-engine-prefs | --edge-leeway | --tidy-changed-state | --memory-saver-report-protected | --memory-saver-awake-report | --navigation-recovery | --certificate-recovery | --http-fallback | --http-fallback-dialog]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state", siteControls: "--site-controls needs an operator to open site controls, clear the disposable fixture's website data, reset its seeded blocked notification decision, and close the dialog before the storage check", tabAudio: "--tab-audio needs an operator to open Tab overview and select the disposable fixture tab; the harness checks mute and unmute", unsavedWork: "--unsaved-work needs an operator to open Tab overview and press Select duplicates; the harness checks that the edited fixture tab is kept", fileHandoff: "--file-handoff needs an operator to open Downloads; the harness opens and reveals a disposable text file", httpAuth: "--http-auth needs an operator to enter fixture-user / fixture-pass in the Aux sign-in prompt; the harness verifies the protected page loads", httpAuthCancel: "--http-auth-cancel needs an operator to cancel the disposable challenge; the harness verifies no protected content loads", preview: "--preview needs an operator to open Tab overview; the harness checks a captured background tab thumbnail", navigationMenu: "--navigation-menu needs an operator to focus Back, press ArrowDown, and choose the Red history entry", contextMenu: "--context-menu needs an operator to open the shell context menu and choose Reload", pageAction: "--page-action needs an operator to choose Summarize page from the native shell context menu", reader: "--reader needs an operator to open Reader view for a local article", eyeDropper: "--eyedropper needs an operator to select a color with the macOS sampler", fileIo: "--file-io needs an operator to export the fixture bookmark through Library to the printed path", workbookExport: "--workbook-export needs an operator to invoke the Aux shell workbook method and save to the printed path", artifactExport: "--artifact-export needs an operator to create a disposable stored image and save it through the Aux shell method", agentConnections: "--agent-connections needs an operator to create and revoke a disposable scoped connection through the Aux native shell", profiles: "--profiles needs an operator to create, rename, archive, restore, and explicitly delete only the generated disposable Profile", profileConfirmation: "--profile-confirmation checks a named native delete confirmation and cancellation without deleting the disposable Profile", popover: "--popover checks browser-context search, choices and Escape dismissal in a disposable chat", menuPrimitives: "--menu-primitives checks shared vertical Space and Browser tools menus with Escape dismissal in a disposable Profile", toastPrimitives: "--toast-primitives checks the no-data autofill info Toast and its timed dismissal in a disposable Profile", selectorBookmark: "--selector-bookmark checks add/remove toolbar state on a disposable local page", selectorSitePermissions: "--selector-site-permissions checks open-site selection in Aux Settings on a disposable local page", selectorContext: "--selector-context checks the open-tab choices in a disposable conversation", selectorDownloads: "--selector-downloads checks live progress, cancel, and retry in a disposable download shelf", selectorResults: "--selector-results checks the disposable set-results table surface", selectorTaskResources: "--selector-task-resources checks a task page reference after local navigation", selectorSearch: "--selector-search checks that a background local tab appears as a live search suggestion", selectorClosed: "--selector-closed checks a disposable closed tab in Library", selectorReading: "--selector-reading checks two disposable Reading List rows and a read-state change", quickAskFocus: "--quick-ask-focus checks the composer receives focus in the disposable Quick Ask window", settingsFocus: "--settings-focus checks Settings category, search result, and search-field focus in a disposable Profile", settingsSearch: "--settings-search checks Plugins, Google Calendar, and a generated Appearance field in Settings search", settingsRoute: "--settings-route checks native Settings section navigation", settingsInternalUrl: "--settings-internal-url checks an internal Settings URL stays in the top shell", settingsSectionRail: "--settings-section-rail checks three available grouped Settings destinations", agentGrants: "--agent-grants checks a disposable Write grant on and off", privacyHistoryPanel: "--privacy-history-panel checks the clear-history control is in Privacy & Security and cancellation leaves history intact", settingsFocusJump: "--settings-focus-jump checks one indexed search destination", libraryFocus: "--library-focus checks Library search-to-bookmark focus in a disposable Profile", appearancePrefs: "--appearance-prefs needs an operator to choose a light theme and title-bar material in a disposable Profile", searchEnginePrefs: "--search-engine-prefs checks a disposable search engine choice across restart", edgeLeeway: "--edge-leeway automatically checks native floating-sidebar entry and exit leeway over a guest page", tidyChanged: "--tidy-changed-state needs an operator to apply AI Tidy, rename its folder, then open Overview after restart", memorySaverReport: "--memory-saver-report-protected needs an operator to open General and expand Recent Memory saver cycles before and after restart", memorySaverAwake: "--memory-saver-awake-report checks that dirty and unknown background tabs stay awake while a clean tab sleeps, then opens General and expands the protected-tab report before and after restart", trustAdversarial: "--trust-adversarial keeps one disposable Aux.app up and checks an omnibox loopback page after each case. Takeover cases fail closed unless AUX_OLDER_RUNTIME_MAIN is a retained older main.js. This command is not evidence that the TRUST gate passed." }, null, 2));
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native Aux.app journeys require macOS.");
@@ -152,8 +152,10 @@ const tabSleepJourney = process.argv.includes("--tab-sleep-ui");
 const memorySaverJourney = process.argv.includes("--memory-saver-ui");
 const memorySaverRestartJourney = process.argv.includes("--memory-saver-restart");
 const memorySaverReportJourney = process.argv.includes("--memory-saver-report-protected");
+const memorySaverAwakeJourney = process.argv.includes("--memory-saver-awake-report");
 const anyTidyJourney = tidyReceiptJourney || tidyChangedJourney;
-const anyMemorySaverJourney = memorySaverJourney || memorySaverRestartJourney || memorySaverReportJourney;
+const anyMemorySaverJourney = memorySaverJourney || memorySaverRestartJourney || memorySaverReportJourney || memorySaverAwakeJourney;
+const reportsMemorySaver = memorySaverReportJourney || memorySaverAwakeJourney;
 const profilesJourney = process.argv.includes("--profiles");
 const profileConfirmationJourney = process.argv.includes("--profile-confirmation");
 const popoverJourney = process.argv.includes("--popover");
@@ -235,7 +237,7 @@ const healthDiagnosticsJourney = process.argv.includes("--health-diagnostics");
 const unpackedExtensionJourney = process.argv.includes("--unpacked-extension");
 const runtimeBackupRestoreJourney = process.argv.includes("--runtime-backup-restore");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, storeRecoveryUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, runtimePeerJourney, trustAdversarialJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptActualRunJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, storeRecoveryUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, runtimePeerJourney, trustAdversarialJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptActualRunJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, memorySaverAwakeJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -314,6 +316,8 @@ let authAuthorized = 0;
 let passwordSubmissions = 0;
 let contextRequests = 0;
 let sleepRedLoads = 0;
+let sleepDirtyLoads = 0;
+let sleepUnknownLoads = 0;
 let sleepLoadPhase = "initial";
 let rpcToken;
 let rpcPort;
@@ -1458,14 +1462,26 @@ else {
       return;
     }
     if (contextMenuJourney && request.url === "/red") contextRequests++;
-    if (memorySaverReportJourney && request.url === "/protected-memory") {
+    if (reportsMemorySaver && request.url === "/protected-memory") {
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
       response.end('<!doctype html><title>Protected Memory saver fixture</title><h1>Protected tab</h1><script>window.addEventListener("beforeunload", event => { event.preventDefault(); event.returnValue = ""; });</script>');
       return;
     }
+    if (memorySaverAwakeJourney && request.url === "/dirty-memory") {
+      sleepDirtyLoads++;
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+      response.end('<!doctype html><title>Dirty unsaved fixture</title><main><h1>Dirty unsaved</h1><label for="draft">Draft</label><input id="draft" value=""><script>document.getElementById("draft").value="edited draft"</script></main>');
+      return;
+    }
+    if (memorySaverAwakeJourney && request.url === "/unknown-memory") {
+      sleepUnknownLoads++;
+      response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+      response.end(`<!doctype html><title>Unknown unsaved fixture</title><h1>Unknown unsaved</h1>${"<input>".repeat(5001)}`);
+      return;
+    }
     if ((tabSleepJourney || anyMemorySaverJourney) && request.url === "/red") {
       sleepRedLoads++;
-      if (memorySaverRestartJourney || memorySaverReportJourney) console.log(`Red fixture load ${sleepRedLoads} during ${sleepLoadPhase}`);
+      if (memorySaverRestartJourney || reportsMemorySaver) console.log(`Red fixture load ${sleepRedLoads} during ${sleepLoadPhase}`);
     }
     const color = request.url?.startsWith("/blue") ? "#164b72" : "#7c344b";
     const name = color === "#164b72" ? "Blue" : "Red";
@@ -2736,6 +2752,16 @@ else {
     record("Chromium removed the deleted Profile's data on restart", { profileId });
     report.passed = true;
   } else if (anyMemorySaverJourney) {
+    let dirty;
+    let unknown;
+    if (memorySaverAwakeJourney) {
+      dirty = await rpc("pages.open", { url: `${origin}/dirty-memory`, activate: true });
+      unknown = await rpc("pages.open", { url: `${origin}/unknown-memory`, activate: true });
+      await until("dirty and unknown fixtures loaded", async () =>
+        sleepDirtyLoads === 1 && sleepUnknownLoads === 1 &&
+        (await rpc("pages.list")).filter(page =>
+          (page.pageId === dirty.pageId || page.pageId === unknown.pageId) && !page.loading).length === 2, 60_000);
+    }
     const red = await rpc("pages.open", { url: `${origin}/red`, activate: true });
     const blue = await rpc("pages.open", { url: `${origin}/blue`, activate: true });
     await until("clean background red tab", async () =>
@@ -2746,25 +2772,67 @@ else {
     await until("idle tab slept automatically", () => {
       try { return native("has-name", "Sleeping tab") === "true"; }
       catch { return false; }
-    }, 150_000);
+    }, memorySaverAwakeJourney ? 180_000 : 150_000);
     assert.equal(sleepRedLoads, 1, "automatic sleep must not reload before activation");
     record("saved memory saver policy automatically slept an idle tab", { loadsBeforeActivation: sleepRedLoads });
-    if (memorySaverReportJourney) {
+    if (memorySaverAwakeJourney) {
+      await until("clean tab left the live lifecycle", async () => {
+        const page = (await rpc("pages.list")).find(item => item.pageId === red.pageId);
+        return page?.lifecycle && page.lifecycle !== "live";
+      }, 30_000);
+      const awakePages = await rpc("pages.list");
+      const dirtyPage = awakePages.find(page => page.pageId === dirty.pageId);
+      const unknownPage = awakePages.find(page => page.pageId === unknown.pageId);
+      const redPage = awakePages.find(page => page.pageId === red.pageId);
+      assert.equal(dirtyPage?.lifecycle ?? "live", "live", "a dirty background tab must stay live");
+      assert.equal(unknownPage?.lifecycle ?? "live", "live", "an unknown background tab must stay live");
+      assert.equal(sleepDirtyLoads, 1, "keeping a dirty tab awake must not reload it");
+      assert.equal(sleepUnknownLoads, 1, "keeping an unknown tab awake must not reload it");
+      record("dirty and unknown background tabs stayed awake while a clean tab slept", {
+        dirty: dirtyPage?.lifecycle ?? "live", unknown: unknownPage?.lifecycle ?? "live", clean: redPage?.lifecycle,
+        dirtyLoads: sleepDirtyLoads, unknownLoads: sleepUnknownLoads,
+      });
+    }
+    const memoryReportVisible = () => {
+      try { return native("has-name", "Memory saver cycle report") === "true" &&
+        native("has-name", "This tab has unload handlers and stays awake.") === "true" &&
+        (native("has-name", "estimated at sleep time") === "true" ||
+          native("has-name", "Memory estimate unavailable") === "true"); }
+      catch { return false; }
+    };
+    async function waitForMemoryReport(label, operatorLine) {
+      if (!memorySaverAwakeJourney) {
+        console.log(operatorLine);
+        await until(label, () => memoryReportVisible(), 180_000);
+        return;
+      }
+      let pressed = false;
+      let lastOpen = 0;
+      await until(label, () => {
+        try {
+          let url = "";
+          try { url = native("shell-url"); } catch { url = ""; }
+          if (!url.includes("/settings/general")) {
+            const now = Date.now();
+            if (now - lastOpen > 2000) { lastOpen = now; native("open-settings"); }
+            return false;
+          }
+          if (!pressed && native("has-name", "Recent Memory saver cycles") === "true")
+            pressed = native("press-label", "Recent Memory saver cycles") === "true";
+          return memoryReportVisible();
+        } catch { return false; }
+      }, 180_000);
+    }
+    if (reportsMemorySaver) {
       const protectedPage = await rpc("pages.open", { url: `${origin}/protected-memory`, activate: true });
       await until("loaded protected background tab", async () =>
         (await rpc("pages.list")).some(page => page.pageId === protectedPage.pageId && !page.loading), 60_000);
       await rpc("pages.activate", { pageId: blue.pageId });
-      console.log("Open Settings > General > Recent Memory saver cycles. Expand it after the protected tab has been idle for one minute.");
-      await until("native Memory saver report includes protected-tab refusal", () => {
-        try { return native("has-name", "Memory saver cycle report") === "true" &&
-          native("has-name", "This tab has unload handlers and stays awake.") === "true" &&
-          (native("has-name", "estimated at sleep time") === "true" ||
-            native("has-name", "Memory estimate unavailable") === "true"); }
-        catch { return false; }
-      }, 180_000);
+      await waitForMemoryReport("native Memory saver report includes protected-tab refusal",
+        "Open Settings > General > Recent Memory saver cycles. Expand it after the protected tab has been idle for one minute.");
       record("native Memory saver report separates a slept tab from a protected-tab refusal", {});
     }
-    if (memorySaverRestartJourney || memorySaverReportJourney) {
+    if (memorySaverRestartJourney || reportsMemorySaver) {
       sleepLoadPhase = "restarting";
       child.kill("SIGTERM");
       if (child.exitCode === null) await new Promise(resolveExit => child.once("exit", resolveExit));
@@ -2783,7 +2851,9 @@ else {
         try {
           const descriptor = JSON.parse(readFileSync(runtimeFile, "utf8"));
           rpcPort = descriptor.port; rpcToken = descriptor.token;
-          return (await rpc("workspace.get")).pages.some(page => page.pageId === red.pageId);
+          const pages = (await rpc("workspace.get")).pages;
+          return pages.some(page => page.pageId === red.pageId) &&
+            (!memorySaverAwakeJourney || [dirty.pageId, unknown.pageId].every(pageId => pages.some(page => page.pageId === pageId)));
         } catch { return false; }
       }, 60_000);
       sleepLoadPhase = "runtime ready";
@@ -2792,16 +2862,18 @@ else {
         "pages", JSON.stringify(restartWorkspace.pages.map(page => ({ id: page.pageId, url: page.url, lifecycle: page.lifecycle }))));
       assert.equal(restartWorkspace.pages.find(page => page.pageId === red.pageId)?.lifecycle, "placeholder");
       assert.equal(sleepRedLoads, 1, "restart must preserve the sleeping tab until activation");
+      if (memorySaverAwakeJourney) {
+        const dirtyPage = restartWorkspace.pages.find(page => page.pageId === dirty.pageId);
+        const unknownPage = restartWorkspace.pages.find(page => page.pageId === unknown.pageId);
+        assert.ok(dirtyPage && dirtyPage.lifecycle !== "placeholder" && dirtyPage.lifecycle !== "discarded",
+          "restart must keep the dirty tab awake");
+        assert.ok(unknownPage && unknownPage.lifecycle !== "placeholder" && unknownPage.lifecycle !== "discarded",
+          "restart must keep the unknown tab awake");
+      }
       record("restart retained the sleeping tab without reloading it", { loadsAfterRestart: sleepRedLoads });
-      if (memorySaverReportJourney) {
-        console.log("After restart, reopen Settings > General > Recent Memory saver cycles to verify the saved report.");
-        await until("durable native Memory saver report after restart", () => {
-          try { return native("has-name", "Memory saver cycle report") === "true" &&
-            native("has-name", "This tab has unload handlers and stays awake.") === "true" &&
-            (native("has-name", "estimated at sleep time") === "true" ||
-              native("has-name", "Memory estimate unavailable") === "true"); }
-          catch { return false; }
-        }, 180_000);
+      if (reportsMemorySaver) {
+        await waitForMemoryReport("durable native Memory saver report after restart",
+          "After restart, reopen Settings > General > Recent Memory saver cycles to verify the saved report.");
         record("Profile restart retained the bounded sleep and refusal report", { loadsAfterRestart: sleepRedLoads });
       } else {
         await rpc("pages.activate", { pageId: red.pageId });
@@ -2811,7 +2883,7 @@ else {
     } else {
       await rpc("pages.activate", { pageId: red.pageId });
     }
-    if (!memorySaverReportJourney) {
+    if (!reportsMemorySaver) {
       await until("automatic sleep lazily reloaded on activation", () => sleepRedLoads >= 2, 120_000);
       record("idle tab reloaded when reopened", { loadsAfterActivation: sleepRedLoads });
     }

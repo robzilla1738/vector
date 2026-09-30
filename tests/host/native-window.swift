@@ -395,6 +395,9 @@ func pressButton(_ label: String) -> Bool {
 if action == "press-button" {
   guard CommandLine.arguments.count == 4 else { fail("Use press-button PID label.") }
   print(pressButton(CommandLine.arguments[3]) ? "true" : "false")
+} else if action == "press-label" {
+  guard CommandLine.arguments.count == 4 else { fail("Use press-label PID label.") }
+  print(pressLabel(CommandLine.arguments[3]) ? "true" : "false")
 } else if action == "click-button" {
   guard CommandLine.arguments.count == 4 else { fail("Use click-button PID label.") }
   guard let click = clickButton(CommandLine.arguments[3]),
@@ -491,13 +494,65 @@ func staticTexts() -> [String] {
   return texts
 }
 
+func pressLabel(_ label: String) -> Bool {
+  let application = AXUIElementCreateApplication(pid)
+  let button = kAXButtonRole as String
+  let disclosure = "AXDisclosureTriangle"
+  func roleOf(_ element: AXUIElement) -> String {
+    var roleValue: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+    return roleValue as? String ?? ""
+  }
+  func named(_ element: AXUIElement) -> Bool {
+    for key in [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute] {
+      var value: CFTypeRef?
+      if AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success,
+        (value as? String) == label { return true }
+    }
+    return false
+  }
+  func pressableAncestor(_ element: AXUIElement) -> AXUIElement? {
+    let role = roleOf(element)
+    if role == button || role == disclosure { return element }
+    var current = element
+    for _ in 0..<6 {
+      var parent: CFTypeRef?
+      if AXUIElementCopyAttributeValue(current, kAXParentAttribute as CFString, &parent) != .success { return nil }
+      guard let parent, CFGetTypeID(parent) == AXUIElementGetTypeID() else { return nil }
+      let parentElement = unsafeBitCast(parent, to: AXUIElement.self)
+      let parentRole = roleOf(parentElement)
+      if parentRole == (kAXMenuBarRole as String) { return nil }
+      if parentRole == button || parentRole == disclosure { return parentElement }
+      current = parentElement
+    }
+    return nil
+  }
+  var visited = 0
+  func visit(_ element: AXUIElement, depth: Int) -> AXUIElement? {
+    visited += 1
+    if depth > 28 || visited > 4000 { return nil }
+    if roleOf(element) == (kAXMenuBarRole as String) { return nil }
+    if named(element), let target = pressableAncestor(element) { return target }
+    var childrenValue: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenValue) == .success,
+      let children = childrenValue as? [AXUIElement] else { return nil }
+    for child in children {
+      if let found = visit(child, depth: depth + 1) { return found }
+    }
+    return nil
+  }
+  guard let target = visit(application, depth: 0) else { return false }
+  AXUIElementSetAttributeValue(target, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+  return AXUIElementPerformAction(target, kAXPressAction as CFString) == .success
+}
+
 if action == "texts" {
   let data = try! JSONEncoder().encode(staticTexts())
   print(String(data: data, encoding: .utf8)!)
 } else if action == "press-button" || action == "click-button" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
   action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
-  action == "next-tab" || action == "focus-address" || action == "escape" ||
+  action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "escape" ||
   action == "type-return" || action == "move" {
   guard app.activate(options: []) else {
     fail("Cannot activate the launched Aux browser window.")
@@ -512,7 +567,7 @@ if action == "texts" {
   if action != "move" && action != "activate" {
     // Aux declares Command-S for the sidebar, Command-L for the address,
     // and Control-Tab for next tab. Stock Chromium accepts the latter two.
-    let key: CGKeyCode = action == "next-tab" ? 48 : action == "focus-address" ? 37 : action == "escape" || action == "type-return" ? (action == "type-return" ? 36 : 53) : 1
+    let key: CGKeyCode = action == "next-tab" ? 48 : action == "focus-address" ? 37 : action == "open-settings" ? 43 : action == "escape" || action == "type-return" ? (action == "type-return" ? 36 : 53) : 1
     let flags: CGEventFlags = action == "next-tab" ? .maskControl : action == "escape" || action == "type-return" ? [] : .maskCommand
     let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true)
     let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false)
