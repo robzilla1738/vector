@@ -2769,11 +2769,65 @@ else {
       sleepRedLoads === 1 && (await rpc("pages.list")).some(page => page.pageId === red.pageId && !page.loading), 60_000);
     await rpc("settings.set", { memorySaverMinutes: 1 });
     await until("memory saver setting saved", async () => (await rpc("settings.get", {})).memorySaverMinutes === 1, 120_000);
+    if (memorySaverAwakeJourney) {
+      let lastOpen = 0;
+      let accessFailures = 0;
+      await until("Memory saver controls are available", () => {
+        try {
+          let url = "";
+          try { url = native("shell-url"); } catch { url = ""; }
+          if (!url.includes("/settings/general")) {
+            const now = Date.now();
+            if (now - lastOpen > 2000) { lastOpen = now; native("open-settings"); }
+            return false;
+          }
+          const visible = native("has-name", "Memory saver") === "true";
+          if (visible) native("escape");
+          return visible;
+        } catch (error) {
+          accessFailures += 1;
+          if (accessFailures === 1) console.log(`Memory saver control check failed: ${error instanceof Error ? error.message : error}`);
+          if (accessFailures >= 5) throw error;
+          return false;
+        }
+      }, 30_000);
+    }
     console.log("Waiting for the saved one-minute Memory saver policy to sleep Red while Blue stays active.");
-    await until("idle tab slept automatically", () => {
-      try { return native("has-name", "Sleeping tab") === "true"; }
-      catch { return false; }
-    }, memorySaverAwakeJourney ? 180_000 : 150_000);
+    if (memorySaverAwakeJourney) {
+      let sleepAccessFailures = 0;
+      let lastLifecycleLog = 0;
+      let lastLifecycle = "";
+      await until("idle tab slept automatically", async () => {
+        const now = Date.now();
+        if (now - lastLifecycleLog > 5000) {
+          lastLifecycleLog = now;
+          try {
+            const page = (await rpc("pages.list")).find(item => item.pageId === red.pageId);
+            const lifecycle = page?.lifecycle ?? "missing";
+            if (lifecycle !== lastLifecycle) {
+              lastLifecycle = lifecycle;
+              console.log(`Red lifecycle while waiting for sleep: ${lifecycle}`);
+            }
+          } catch (error) {
+            console.log(`Red lifecycle check failed: ${error instanceof Error ? error.message : error}`);
+          }
+        }
+        try {
+          sleepAccessFailures = 0;
+          return native("has-name", "Sleeping tab") === "true";
+        } catch (error) {
+          sleepAccessFailures += 1;
+          if (sleepAccessFailures === 1) console.log(`Sleeping tab accessibility check failed: ${error instanceof Error ? error.message : error}`);
+          if (sleepAccessFailures >= 5) throw error;
+          return false;
+        }
+      }, 180_000);
+    } else {
+      await until("idle tab slept automatically", () => {
+        try { return native("has-name", "Sleeping tab") === "true"; }
+        catch { return false; }
+      }, 150_000);
+    }
     assert.equal(sleepRedLoads, 1, "automatic sleep must not reload before activation");
     record("saved memory saver policy automatically slept an idle tab", { loadsBeforeActivation: sleepRedLoads });
     if (memorySaverAwakeJourney) {

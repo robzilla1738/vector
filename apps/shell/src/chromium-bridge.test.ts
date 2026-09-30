@@ -1,3 +1,4 @@
+import type { AuxFeatureOverrides } from "@aux/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { installChromiumBridge, reconcileChromiumFeatureStages, type ChromiumHostPort } from "./chromium-bridge";
 import { chromiumFeatureStages } from "./feature-stage-reconciliation";
@@ -56,6 +57,56 @@ describe("Chromium Aux shell bridge", () => {
     const invoke = target.aux as unknown as { invoke(method: string, params: unknown): Promise<unknown> };
     await expect(invoke.invoke("agent.tidy.propose", { pageIds: [] })).rejects.toThrow(/aiTidy is preview/);
     expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("copies disposable tab lifecycle onto the host port the sleep client checks", async () => {
+    const request = vi.fn(async (method: string, args: unknown[]) => {
+      if (method === "invoke" && args[0] === "runtime.describe")
+        return { version: 1, featureStages: { spaces: "on", tabLifecycle: "on", aiTidy: "preview" } };
+      if (method === "tabSleep") return { slept: false, reason: "Only a loaded background tab can sleep." };
+      return {};
+    });
+    const featureStages: AuxFeatureOverrides = { spaces: "preview", aiTidy: "preview", tabLifecycle: "preview" };
+    const target = fakeWindow("chrome://aux/", {
+      host: "chromium-fork", windowId: "win-1", profileId: "disposable",
+      platform: "darwin", privateMode: false,
+      featureStages, request, subscribe: vi.fn(() => () => {}),
+    });
+    expect(installChromiumBridge(target)).toBe(true);
+    const sleep = target.aux as unknown as { tabSleep(pageId: string, url: string): Promise<unknown> };
+    await expect(sleep.tabSleep("page-1", "https://example.com/red")).rejects.toThrow(/tabLifecycle is preview/);
+    await reconcileChromiumFeatureStages(target);
+    expect(featureStages.tabLifecycle).toBe("on");
+    expect(chromiumFeatureStages(target)?.tabLifecycle).toBe("on");
+    await expect(sleep.tabSleep("page-1", "https://example.com/red")).resolves.toEqual({
+      slept: false, reason: "Only a loaded background tab can sleep.",
+    });
+  });
+
+  it("retries a missed runtime describe before leaving disposable tab lifecycle in preview", async () => {
+    vi.useFakeTimers();
+    try {
+      let calls = 0;
+      const request = vi.fn(async () => {
+        calls += 1;
+        if (calls === 1) throw new Error("backend_unavailable");
+        return { version: 1, featureStages: { tabLifecycle: "on" } };
+      });
+      const featureStages: AuxFeatureOverrides = { spaces: "on", aiTidy: "on", tabLifecycle: "preview" };
+      const target = fakeWindow("chrome://aux/", {
+        host: "chromium-fork", windowId: "win-1", profileId: "disposable",
+        platform: "darwin", privateMode: false,
+        featureStages, request, subscribe: vi.fn(() => () => {}),
+      });
+      installChromiumBridge(target);
+      const pending = reconcileChromiumFeatureStages(target);
+      await vi.advanceTimersByTimeAsync(200);
+      await pending;
+      expect(featureStages.tabLifecycle).toBe("on");
+      expect(request).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not query runtime or promote a private window", async () => {

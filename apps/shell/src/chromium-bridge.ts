@@ -29,12 +29,37 @@ type ChromiumWindow = Window & {
   __auxMock?: boolean;
 };
 
+/** The host client gates tabSleep on this object, not on the Tidy reconciliation map. */
+async function acceptDisposableTabLifecycle(port: ChromiumHostPort): Promise<void> {
+  const stages = port.featureStages;
+  if (stages?.tabLifecycle !== "preview") return;
+  const deadline = Date.now() + 20_000;
+  for (;;) {
+    let answered = false;
+    try {
+      const description = await port.request("invoke", ["runtime.describe", {}]);
+      if (description && typeof description === "object" && !Array.isArray(description)) {
+        const { version, featureStages } = description as { version?: unknown; featureStages?: unknown };
+        if (version === 1 && featureStages && typeof featureStages === "object" && !Array.isArray(featureStages)) {
+          answered = true;
+          if ((featureStages as Record<string, unknown>).tabLifecycle === "on") stages.tabLifecycle = "on";
+        }
+      }
+    } catch {
+      // The first runtime connection can miss this describe. Preview stays closed after the deadline.
+    }
+    if (answered || Date.now() >= deadline) return;
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+}
+
 /** Read the runtime's Profile-scoped acceptance stage before mounting the shell. */
 export async function reconcileChromiumFeatureStages(target: ChromiumWindow = window as ChromiumWindow): Promise<void> {
   const port = target.auxChromiumHost;
   if (target.location.protocol !== "chrome:" || target.location.hostname !== "aux" ||
-      target.auxHostProof?.host !== "chromium-fork" || !port || port.privateMode || port.quickAskMode ||
-      !["on", "preview"].includes(port.featureStages?.spaces ?? "") || port.featureStages?.aiTidy !== "preview") return;
+      target.auxHostProof?.host !== "chromium-fork" || !port || port.privateMode || port.quickAskMode) return;
+  await acceptDisposableTabLifecycle(port);
+  if (!["on", "preview"].includes(port.featureStages?.spaces ?? "") || port.featureStages?.aiTidy !== "preview") return;
   try {
     const description = await port.request("invoke", ["runtime.describe", {}]);
     if (!description || typeof description !== "object" || Array.isArray(description)) return;

@@ -1,0 +1,48 @@
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -159,22 +159,32 @@
+        featureStages.memory === 'preview' ||
+        featureStages.spaces === 'preview' ||
+        featureStages.tabLifecycle === 'preview')) {
+-    try {
+-      const runtimeResponse = await remote.request('invoke',
+-          JSON.stringify(['runtime.describe', {}]));
+-      if (runtimeResponse.ok) {
+-        const runtime = JSON.parse(runtimeResponse.resultJson) as
+-            {featureStages?: {electronMigration?: string; memory?: string;
+-                              spaces?: string; tabLifecycle?: string}};
+-        for (const feature of ['electronMigration', 'memory', 'spaces', 'tabLifecycle'] as const) {
+-          if (featureStages[feature] === 'preview' &&
+-              runtime.featureStages?.[feature] === 'on') {
+-            featureStages[feature] = 'on';
++    // The first host connection can time out before the helper authenticates.
++    // Memory saver reads these stages once, so keep asking until the runtime
++    // answers or the shell has to mount with the production preview gate.
++    const deadline = Date.now() + 20_000;
++    for (;;) {
++      let answered = false;
++      try {
++        const runtimeResponse = await remote.request('invoke',
++            JSON.stringify(['runtime.describe', {}]));
++        if (runtimeResponse.ok) {
++          answered = true;
++          const runtime = JSON.parse(runtimeResponse.resultJson) as
++              {featureStages?: {electronMigration?: string; memory?: string;
++                                spaces?: string; tabLifecycle?: string}};
++          for (const feature of ['electronMigration', 'memory', 'spaces', 'tabLifecycle'] as const) {
++            if (featureStages[feature] === 'preview' &&
++                runtime.featureStages?.[feature] === 'on') {
++              featureStages[feature] = 'on';
++            }
+           }
+         }
++      } catch {
++        // A refused describe is retried until the deadline, then preview stays closed.
+       }
+-    } catch {
+-      // A missing or failed runtime leaves the production preview gate closed.
++      if (answered || Date.now() >= deadline) break;
++      await new Promise(resolve => setTimeout(resolve, 200));
+     }
+   }
+   window.auxChromiumHost = {
