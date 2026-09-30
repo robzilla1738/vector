@@ -60,7 +60,7 @@ const option = name => {
   return index < 0 ? undefined : process.argv[index + 1];
 };
 if (process.argv.includes("--list")) {
-  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --protected-startup | --runtime-peer | --trust-adversarial | --browser-import-ui | --browser-import-formats | --browser-import-attached | --link-peek | --space-theme | --space-theme-advanced | --reader-peek | --tab-preview-focus | --tab-name-ui | --downloads | --site-controls | --tab-audio | --unsaved-work | --file-handoff | --http-auth | --http-auth-cancel | --reader | --translation | --eyedropper | --file-io | --workbook-export | --artifact-export | --agent-connections | --page-action | --profiles | --profile-confirmation | --popover | --menu-primitives | --toast-primitives | --selector-bookmark | --selector-site-permissions | --selector-context | --selector-downloads | --selector-results | --selector-task-resources | --selector-search | --selector-closed | --selector-reading | --quick-ask-focus | --settings-focus | --settings-search | --settings-route | --settings-internal-url | --settings-section-rail | --agent-grants | --privacy-history-panel | --settings-focus-jump | --library-focus | --appearance-prefs | --search-engine-prefs | --edge-leeway | --tidy-changed-state | --memory-saver-report-protected | --memory-saver-awake-report | --memory-saver-awake-media | --navigation-recovery | --certificate-recovery | --http-fallback | --http-fallback-dialog]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state", siteControls: "--site-controls needs an operator to open site controls, clear the disposable fixture's website data, reset its seeded blocked notification decision, and close the dialog before the storage check", tabAudio: "--tab-audio needs an operator to open Tab overview and select the disposable fixture tab; the harness checks mute and unmute", unsavedWork: "--unsaved-work needs an operator to open Tab overview and press Select duplicates; the harness checks that the edited fixture tab is kept", fileHandoff: "--file-handoff needs an operator to open Downloads; the harness opens and reveals a disposable text file", httpAuth: "--http-auth needs an operator to enter fixture-user / fixture-pass in the Aux sign-in prompt; the harness verifies the protected page loads", httpAuthCancel: "--http-auth-cancel needs an operator to cancel the disposable challenge; the harness verifies no protected content loads", preview: "--preview needs an operator to open Tab overview; the harness checks a captured background tab thumbnail", navigationMenu: "--navigation-menu needs an operator to focus Back, press ArrowDown, and choose the Red history entry", contextMenu: "--context-menu needs an operator to open the shell context menu and choose Reload", pageAction: "--page-action needs an operator to choose Summarize page from the native shell context menu", reader: "--reader needs an operator to open Reader view for a local article", eyeDropper: "--eyedropper needs an operator to select a color with the macOS sampler", fileIo: "--file-io needs an operator to export the fixture bookmark through Library to the printed path", workbookExport: "--workbook-export needs an operator to invoke the Aux shell workbook method and save to the printed path", artifactExport: "--artifact-export needs an operator to create a disposable stored image and save it through the Aux shell method", agentConnections: "--agent-connections needs an operator to create and revoke a disposable scoped connection through the Aux native shell", profiles: "--profiles needs an operator to create, rename, archive, restore, and explicitly delete only the generated disposable Profile", profileConfirmation: "--profile-confirmation checks a named native delete confirmation and cancellation without deleting the disposable Profile", popover: "--popover checks browser-context search, choices and Escape dismissal in a disposable chat", menuPrimitives: "--menu-primitives checks shared vertical Space and Browser tools menus with Escape dismissal in a disposable Profile", toastPrimitives: "--toast-primitives checks the no-data autofill info Toast and its timed dismissal in a disposable Profile", selectorBookmark: "--selector-bookmark checks add/remove toolbar state on a disposable local page", selectorSitePermissions: "--selector-site-permissions checks open-site selection in Aux Settings on a disposable local page", selectorContext: "--selector-context checks the open-tab choices in a disposable conversation", selectorDownloads: "--selector-downloads checks live progress, cancel, and retry in a disposable download shelf", selectorResults: "--selector-results checks the disposable set-results table surface", selectorTaskResources: "--selector-task-resources checks a task page reference after local navigation", selectorSearch: "--selector-search checks that a background local tab appears as a live search suggestion", selectorClosed: "--selector-closed checks a disposable closed tab in Library", selectorReading: "--selector-reading checks two disposable Reading List rows and a read-state change", quickAskFocus: "--quick-ask-focus checks the composer receives focus in the disposable Quick Ask window", settingsFocus: "--settings-focus checks Settings category, search result, and search-field focus in a disposable Profile", settingsSearch: "--settings-search checks Plugins, Google Calendar, and a generated Appearance field in Settings search", settingsRoute: "--settings-route checks native Settings section navigation", settingsInternalUrl: "--settings-internal-url checks an internal Settings URL stays in the top shell", settingsSectionRail: "--settings-section-rail checks three available grouped Settings destinations", agentGrants: "--agent-grants checks a disposable Write grant on and off", privacyHistoryPanel: "--privacy-history-panel checks the clear-history control is in Privacy & Security and cancellation leaves history intact", settingsFocusJump: "--settings-focus-jump checks one indexed search destination", libraryFocus: "--library-focus checks Library search-to-bookmark focus in a disposable Profile", appearancePrefs: "--appearance-prefs needs an operator to choose a light theme and title-bar material in a disposable Profile", searchEnginePrefs: "--search-engine-prefs checks a disposable search engine choice across restart", edgeLeeway: "--edge-leeway automatically checks native floating-sidebar entry and exit leeway over a guest page", tidyChanged: "--tidy-changed-state needs an operator to apply AI Tidy, rename its folder, then open Overview after restart", memorySaverReport: "--memory-saver-report-protected needs an operator to open General and expand Recent Memory saver cycles before and after restart", memorySaverAwake: "--memory-saver-awake-report checks that dirty and unknown background tabs stay awake while a clean tab sleeps, then opens General and expands the protected-tab report before and after restart", memorySaverMedia: "--memory-saver-awake-media clicks the tone button, records whether playback started, and keeps an audible tab and a runtime-owned tab awake", trustAdversarial: "--trust-adversarial keeps one disposable Aux.app up and checks an omnibox loopback page after each case. Takeover cases fail closed unless AUX_OLDER_RUNTIME_MAIN is a retained older main.js. This command is not evidence that the TRUST gate passed." }, null, 2));
+  console.log(JSON.stringify({ journeys, command: "node tests/host/native-app-journeys.mjs --app /absolute/path/to/Aux.app [--output /absolute/new/directory] [--rpc-only | --ui-only | --protected-startup | --runtime-peer | --trust-adversarial | --browser-import-ui | --browser-import-formats | --browser-import-attached | --link-peek | --space-theme | --space-theme-advanced | --reader-peek | --tab-preview-focus | --tab-name-ui | --downloads | --site-controls | --tab-audio | --unsaved-work | --file-handoff | --http-auth | --http-auth-cancel | --reader | --translation | --eyedropper | --file-io | --workbook-export | --artifact-export | --agent-connections | --page-action | --profiles | --profile-confirmation | --popover | --menu-primitives | --toast-primitives | --selector-bookmark | --selector-site-permissions | --selector-context | --selector-downloads | --selector-results | --selector-task-resources | --selector-search | --selector-closed | --selector-reading | --quick-ask-focus | --settings-focus | --settings-search | --settings-route | --settings-internal-url | --settings-section-rail | --agent-grants | --privacy-history-panel | --settings-focus-jump | --library-focus | --appearance-prefs | --search-engine-prefs | --edge-leeway | --tidy-changed-state | --memory-saver-report-protected | --memory-saver-awake-report | --memory-saver-awake-media | --navigation-recovery | --certificate-recovery | --http-fallback | --http-fallback-dialog]", downloads: "--downloads needs an operator to open the panel, cancel, retry, choose the printed disposable folder, and restore the default while the harness asserts each state", siteControls: "--site-controls needs an operator to open site controls, clear the disposable fixture's website data, reset its seeded blocked notification decision, and close the dialog before the storage check", tabAudio: "--tab-audio needs an operator to open Tab overview and select the disposable fixture tab; the harness checks mute and unmute", unsavedWork: "--unsaved-work needs an operator to open Tab overview and press Select duplicates; the harness checks that the edited fixture tab is kept", fileHandoff: "--file-handoff needs an operator to open Downloads; the harness opens and reveals a disposable text file", httpAuth: "--http-auth needs an operator to enter fixture-user / fixture-pass in the Aux sign-in prompt; the harness verifies the protected page loads", httpAuthCancel: "--http-auth-cancel needs an operator to cancel the disposable challenge; the harness verifies no protected content loads", preview: "--preview needs an operator to open Tab overview; the harness checks a captured background tab thumbnail", navigationMenu: "--navigation-menu needs an operator to focus Back, press ArrowDown, and choose the Red history entry", contextMenu: "--context-menu needs an operator to open the shell context menu and choose Reload", pageAction: "--page-action needs an operator to choose Summarize page from the native shell context menu", reader: "--reader needs an operator to open Reader view for a local article", eyeDropper: "--eyedropper needs an operator to select a color with the macOS sampler", fileIo: "--file-io needs an operator to export the fixture bookmark through Library to the printed path", workbookExport: "--workbook-export needs an operator to invoke the Aux shell workbook method and save to the printed path", artifactExport: "--artifact-export needs an operator to create a disposable stored image and save it through the Aux shell method", agentConnections: "--agent-connections needs an operator to create and revoke a disposable scoped connection through the Aux native shell", profiles: "--profiles needs an operator to create, rename, archive, restore, and explicitly delete only the generated disposable Profile", profileConfirmation: "--profile-confirmation checks a named native delete confirmation and cancellation without deleting the disposable Profile", popover: "--popover checks browser-context search, choices and Escape dismissal in a disposable chat", menuPrimitives: "--menu-primitives checks shared vertical Space and Browser tools menus with Escape dismissal in a disposable Profile", toastPrimitives: "--toast-primitives checks the no-data autofill info Toast and its timed dismissal in a disposable Profile", selectorBookmark: "--selector-bookmark checks add/remove toolbar state on a disposable local page", selectorSitePermissions: "--selector-site-permissions checks open-site selection in Aux Settings on a disposable local page", selectorContext: "--selector-context checks the open-tab choices in a disposable conversation", selectorDownloads: "--selector-downloads checks live progress, cancel, and retry in a disposable download shelf", selectorResults: "--selector-results checks the disposable set-results table surface", selectorTaskResources: "--selector-task-resources checks a task page reference after local navigation", selectorSearch: "--selector-search checks that a background local tab appears as a live search suggestion", selectorClosed: "--selector-closed checks a disposable closed tab in Library", selectorReading: "--selector-reading checks two disposable Reading List rows and a read-state change", quickAskFocus: "--quick-ask-focus checks the composer receives focus in the disposable Quick Ask window", settingsFocus: "--settings-focus checks Settings category, search result, and search-field focus in a disposable Profile", settingsSearch: "--settings-search checks Plugins, Google Calendar, and a generated Appearance field in Settings search", settingsRoute: "--settings-route checks native Settings section navigation", settingsInternalUrl: "--settings-internal-url checks an internal Settings URL stays in the top shell", settingsSectionRail: "--settings-section-rail checks three available grouped Settings destinations", agentGrants: "--agent-grants checks a disposable Write grant on and off", privacyHistoryPanel: "--privacy-history-panel checks the clear-history control is in Privacy & Security and cancellation leaves history intact", settingsFocusJump: "--settings-focus-jump checks one indexed search destination", libraryFocus: "--library-focus checks Library search-to-bookmark focus in a disposable Profile", appearancePrefs: "--appearance-prefs needs an operator to choose a light theme and title-bar material in a disposable Profile", searchEnginePrefs: "--search-engine-prefs checks a disposable search engine choice across restart", edgeLeeway: "--edge-leeway automatically checks native floating-sidebar entry and exit leeway over a guest page", tidyChanged: "--tidy-changed-state needs an operator to apply AI Tidy, rename its folder, then open Overview after restart", memorySaverReport: "--memory-saver-report-protected needs an operator to open General and expand Recent Memory saver cycles before and after restart", memorySaverAwake: "--memory-saver-awake-report checks that dirty and unknown background tabs stay awake while a clean tab sleeps, then opens General and expands the protected-tab report before and after restart", memorySaverMedia: "--memory-saver-awake-media clicks the tone button, brings Aux forward, records that playback currentTime advances, and keeps an audible tab and a runtime-owned tab awake", trustAdversarial: "--trust-adversarial keeps one disposable Aux.app up and checks an omnibox loopback page after each case. Takeover cases fail closed unless AUX_OLDER_RUNTIME_MAIN is a retained older main.js. This command is not evidence that the TRUST gate passed." }, null, 2));
   process.exit(0);
 }
 if (process.platform !== "darwin") throw new Error("Native Aux.app journeys require macOS.");
@@ -325,6 +325,8 @@ let memorySaverToneFetches = 0;
 let memorySaverToneScript = 0;
 let memorySaverToneStarts = 0;
 let memorySaverToneResult = "";
+let memorySaverToneHeartbeat = "";
+let memorySaverToneHeartbeats = 0;
 function toneWavBytes() {
   if (memorySaverToneWav) return memorySaverToneWav;
   const rate = 8000;
@@ -1595,6 +1597,15 @@ else {
       response.writeHead(204).end();
       return;
     }
+    if (memorySaverMediaJourney && request.url?.startsWith("/tone-heartbeat")) {
+      memorySaverToneHeartbeats += 1;
+      memorySaverToneHeartbeat = request.url;
+      if (memorySaverToneHeartbeats === 1 || memorySaverToneHeartbeats % 4 === 0) {
+        console.log(`Tone heartbeat ${memorySaverToneHeartbeats} ${request.url}`);
+      }
+      response.writeHead(204).end();
+      return;
+    }
     if (memorySaverMediaJourney && (request.url === "/tone-script" || request.url === "/tone-started")) {
       if (request.url === "/tone-script") memorySaverToneScript += 1;
       else memorySaverToneStarts += 1;
@@ -1608,15 +1619,24 @@ else {
 fetch("/tone-script");
 const tone=document.getElementById("tone");
 tone.volume=0.5;
+tone.loop=true;
 let starting=null;
+function toneBeat(){
+  const context=window.__toneContext;
+  const code=tone.error&&tone.error.code?tone.error.code:"";
+  fetch("/tone-heartbeat?t="+tone.currentTime+"&paused="+(tone.paused?1:0)+"&ended="+(tone.ended?1:0)+"&vis="+document.visibilityState+"&ready="+tone.readyState+"&err="+code+"&ctx="+(context?context.state:"none")+"&ctxTime="+(context?context.currentTime:0));
+}
 window.__startTone=function(){
   if(starting)return starting;
   fetch("/tone-started");
   document.title="Aux tone playing";
   try{
     const context=new AudioContext();
+    window.__toneContext=context;
     const oscillator=context.createOscillator();
+    window.__toneOscillator=oscillator;
     const gain=context.createGain();
+    window.__toneGain=gain;
     oscillator.frequency.value=440;
     gain.gain.value=0.25;
     oscillator.connect(gain);
@@ -1626,6 +1646,8 @@ window.__startTone=function(){
     const played=tone.play();
     starting=Promise.all([resume,played]).then(()=>{
       fetch("/tone-result?playing=1");
+      toneBeat();
+      window.__toneBeat=setInterval(toneBeat,500);
     }).catch(error=>{
       const name=error&&error.name?error.name:"Error";
       document.title="Aux tone blocked "+name;
@@ -2987,11 +3009,33 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
       const playback = await until("tone playback result", () => memorySaverToneResult || false, 8_000);
       const blocked = String(playback).match(/[?&]blocked=([^&]+)/);
       if (blocked) throw new Error(`Tone playback blocked: ${decodeURIComponent(blocked[1])}`);
+      native("activate");
+      const firstBeat = await until("tone heartbeat", () => memorySaverToneHeartbeat || false, 8_000);
+      const firstTime = Number(new URL(String(firstBeat), "http://127.0.0.1").searchParams.get("t"));
+      let sustained;
+      try {
+        sustained = await until("tone kept playing", () => {
+          if (!memorySaverToneHeartbeat) return false;
+          const params = new URL(memorySaverToneHeartbeat, "http://127.0.0.1").searchParams;
+          const time = Number(params.get("t"));
+          const advanced = Number.isFinite(firstTime) && Number.isFinite(time) && time >= firstTime + 1;
+          return advanced ? memorySaverToneHeartbeat : false;
+        }, 8_000);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`${message}; last heartbeat ${memorySaverToneHeartbeat || "(none)"}`);
+      }
+      console.log(`Tone sustained ${sustained}`);
       let lastToneButtons = "";
+      let loggedStrip = false;
       await until("host reports the tone tab is audible", async () => {
         const title = await toneTitle();
         if (title.startsWith("Aux tone blocked")) throw new Error(`Tone playback blocked: ${title}`);
         try {
+          if (!loggedStrip) {
+            loggedStrip = true;
+            console.log(`Tone strip: tabs ${native("has-name", "Browser tabs")} close ${native("has-name", "Close ")}`);
+          }
           const names = JSON.parse(native("buttons")).filter(name => name.includes("Mute") || name.includes("tone"));
           const line = names.join(" | ") || "(no mute name)";
           if (line !== lastToneButtons) {
@@ -3006,6 +3050,7 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
       }, 45_000);
       record("host reported the tone tab audible before Memory saver", {
         wavFetches: memorySaverToneFetches, toneStarts: memorySaverToneStarts,
+        heartbeats: memorySaverToneHeartbeats,
       });
       agent = await rpc("pages.open", { url: `${origin}/agent-memory`, background: true, ownedByRuntime: true, activate: false });
       assert.equal(agent.ownedByRuntime, true, "pages.open must mark the agent tab runtime-owned");
