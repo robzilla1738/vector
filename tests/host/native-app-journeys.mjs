@@ -3051,6 +3051,17 @@ else {
         await waitForMemoryReport("durable native Memory saver report after restart",
           "After restart, reopen Settings > General > Recent Memory saver cycles to verify the saved report.");
         record("Profile restart retained the bounded sleep and refusal report", { loadsAfterRestart: sleepRedLoads });
+        if (memorySaverAwakeJourney) {
+          const dirtyLoadsBeforeReopen = sleepDirtyLoads;
+          const unknownLoadsBeforeReopen = sleepUnknownLoads;
+          sleepLoadPhase = "reopening";
+          await rpc("pages.activate", { pageId: red.pageId });
+          await until("sleeping tab reloaded when reopened", () => sleepRedLoads >= 2, 120_000);
+          assert.equal(sleepRedLoads, 2, "reopening the sleeping tab reloads it once");
+          assert.equal(sleepDirtyLoads, dirtyLoadsBeforeReopen, "reopening the sleeping tab must not reload the dirty tab");
+          assert.equal(sleepUnknownLoads, unknownLoadsBeforeReopen, "reopening the sleeping tab must not reload the unknown tab");
+          record("sleeping tab reloaded when reopened", { loadsAfterActivation: sleepRedLoads });
+        }
       } else {
         await rpc("pages.activate", { pageId: red.pageId });
         await until("restored background tab activated", async () =>
