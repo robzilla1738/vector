@@ -12,7 +12,7 @@ func fail(_ message: String) -> Never {
 
 guard CommandLine.arguments.count >= 3,
   let pid = Int32(CommandLine.arguments[2]), pid > 0 else {
-  fail("Use window|activate|has-button|focused|toggle-sidebar|next-tab|focus-address|escape|move PID [args].")
+  fail("Use window|activate|has-button|focused|toggle-sidebar|next-tab|focus-address|escape|type-text|move PID [args].")
 }
 
 let action = CommandLine.arguments[1]
@@ -391,7 +391,7 @@ func clickableElement(_ label: String) -> AXUIElement? {
     AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descriptionValue)
     let title = titleValue as? String ?? ""
     let description = descriptionValue as? String ?? ""
-    let pressable = role == (kAXButtonRole as String) || role == (kAXPopUpButtonRole as String) || role == "AXMenuItem" || role == "AXDisclosureTriangle"
+    let pressable = role == (kAXButtonRole as String) || role == (kAXPopUpButtonRole as String) || role == "AXMenuItem" || role == "AXDisclosureTriangle" || role == "AXRadioButton" || role == "AXTab"
     if pressable && (title == label || description == label) { return element }
     if shellOnly && isGuestWebArea(element, role: role) { return nil }
     var childrenValue: CFTypeRef?
@@ -600,7 +600,7 @@ func pressLabel(_ label: String) -> Bool {
   }
   func pressableAncestor(_ element: AXUIElement) -> AXUIElement? {
     let role = roleOf(element)
-    if role == button || role == popup || role == disclosure || role == "AXMenuItem" { return element }
+    if role == button || role == popup || role == disclosure || role == "AXMenuItem" || role == "AXRadioButton" || role == "AXTab" { return element }
     var current = element
     for _ in 0..<6 {
       var parent: CFTypeRef?
@@ -609,7 +609,7 @@ func pressLabel(_ label: String) -> Bool {
       let parentElement = unsafeBitCast(parent, to: AXUIElement.self)
       let parentRole = roleOf(parentElement)
       if parentRole == (kAXMenuBarRole as String) { return nil }
-      if parentRole == button || parentRole == popup || parentRole == disclosure || parentRole == "AXMenuItem" { return parentElement }
+      if parentRole == button || parentRole == popup || parentRole == disclosure || parentRole == "AXMenuItem" || parentRole == "AXRadioButton" || parentRole == "AXTab" { return parentElement }
       current = parentElement
     }
     return nil
@@ -647,7 +647,7 @@ if action == "texts" {
   action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "escape" ||
-  action == "type-return" || action == "move" {
+  action == "type-return" || action == "type-text" || action == "move" {
   // AppKit activation no longer takes focus from another app. Accessibility has to
   // mark the launched Aux process frontmost before any key is posted.
   guard app.activate(options: [.activateAllWindows]) else {
@@ -663,7 +663,24 @@ if action == "texts" {
     let blocker = NSWorkspace.shared.frontmostApplication?.localizedName ?? "another app"
     fail("Aux is not the frontmost app; refusing to send input elsewhere. \(blocker) stayed frontmost.")
   }
-  if action != "move" && action != "activate" {
+  if action == "type-text" {
+    guard CommandLine.arguments.count == 4 else { fail("Use type-text PID text.") }
+    let text = CommandLine.arguments[3]
+    for unit in text.utf16 {
+      var scalar = unit
+      guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
+        let up = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else {
+        fail("Cannot create a text event.")
+      }
+      down.keyboardSetUnicodeString(stringLength: 1, unicodeString: &scalar)
+      up.keyboardSetUnicodeString(stringLength: 1, unicodeString: &scalar)
+      down.post(tap: .cghidEventTap)
+      usleep(14_000)
+      up.post(tap: .cghidEventTap)
+      usleep(14_000)
+    }
+    print("typed")
+  } else if action != "move" && action != "activate" {
     // Aux declares Command-S for the sidebar, Command-L for the address,
     // and Control-Tab for next tab. Stock Chromium accepts the latter two.
     let key: CGKeyCode = action == "next-tab" ? 48 : action == "focus-address" ? 37 : action == "open-settings" ? 43 : action == "escape" || action == "type-return" ? (action == "type-return" ? 36 : 53) : 1

@@ -396,6 +396,25 @@ function clickNamed(label) {
   try { return JSON.parse(native("click-button", label)); }
   catch { return null; }
 }
+function clickNamedLogged(label) {
+  const click = clickNamed(label);
+  console.log(`${label} click ${click ? `${click.x},${click.y}` : "miss"}`);
+  return click;
+}
+async function dismissSetupIfPresent() {
+  if (native("has-name", "Finish later") !== "true") return;
+  clickNamedLogged("Finish later");
+  await until("setup dismissed", () => native("has-name", "Finish later") !== "true", 8_000);
+}
+async function openLibraryView(viewLabel) {
+  await rpc("settings.set", { tabLayout: "vertical" });
+  await until("vertical sidebar is mounted", () => native("has-name", "Search browser") === "true", 20_000);
+  clickNamedLogged("More");
+  await until("Library menu item", () => native("has-name", "Library") === "true", 8_000);
+  clickNamedLogged("Library");
+  await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
+  clickNamedLogged(viewLabel);
+}
 function settingsLabel(labels) {
   return labels.find(label => label === "Settings" || label.startsWith("Settings "));
 }
@@ -6445,10 +6464,13 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       const pages = await rpc("pages.list");
       return [red.pageId, blue.pageId].every(pageId => pages.some(page => page.pageId === pageId && !page.loading));
     });
-    console.log("Open Search browser, type Aux native Red, and leave its suggestion list open.");
+    await dismissSetupIfPresent();
+    native("focus-address");
+    await new Promise(resolve => setTimeout(resolve, 400));
+    console.log(`Search query ${native("type-text", "Aux native Red")}`);
     await until("search suggestion for the background Red tab", () =>
       native("has-text", "Open tabs") === "true" && native("has-text", "Switch") === "true" &&
-      native("has-text", "Aux native Red") === "true", 120_000);
+      native("has-text", "Aux native Red") === "true", 20_000);
     record("search keeps the background local tab available from the built shell", { red: red.pageId, blue: blue.pageId });
     report.passed = true;
   } else if (selectorClosedJourney) {
@@ -6459,8 +6481,9 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     await until("closed-tab fixture to load", async () =>
       (await rpc("pages.list")).some(item => item.pageId === page.pageId && !item.loading));
     await rpc("pages.close", { pageId: page.pageId });
-    console.log("Open Library from Command-K and choose Recently Closed in this disposable Profile.");
-    await until("recently closed fixture row", () => native("has-name", "Reopen Aux native Red") === "true", 120_000);
+    await dismissSetupIfPresent();
+    await openLibraryView("Recently closed");
+    await until("recently closed fixture row", () => native("has-name", "Reopen Aux native Red") === "true", 20_000);
     record("Recently Closed shows the disposable Red tab with a Reopen action", { pageId: page.pageId });
     report.passed = true;
   } else if (selectorReadingJourney) {
@@ -6469,11 +6492,13 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     });
     await rpc("bookmarks.add", { url: `${origin}/red`, title: "Aux reading Red", readingList: true });
     await rpc("bookmarks.add", { url: `${origin}/blue`, title: "Aux reading Blue", readingList: true });
-    console.log("Open Library from Command-K, choose Reading List, and mark Aux reading Red as read.");
+    await dismissSetupIfPresent();
+    await openLibraryView("Reading list");
+    clickNamedLogged("Mark Aux reading Red read");
     await until("reading-list row change", async () =>
       (await rpc("bookmarks.list")).some(item => item.url === `${origin}/red` && !!item.readAt) &&
       native("has-name", "Mark Aux reading Red unread") === "true" &&
-      native("has-name", "Mark Aux reading Blue read") === "true", 120_000);
+      native("has-name", "Mark Aux reading Blue read") === "true", 20_000);
     record("reading-list row moves to Read while its sibling remains unread");
     report.passed = true;
   } else if (selectorTaskResourcesJourney) {
@@ -6528,10 +6553,12 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     const page = await rpc("pages.open", { url: `${origin}/red`, activate: true });
     await until("bookmark fixture to load", async () =>
       (await rpc("pages.list")).some(item => item.pageId === page.pageId && !item.loading));
+    await dismissSetupIfPresent();
     await until("unbookmarked toolbar action", () => native("has-name", "Bookmark this page") === "true", 60_000);
-    console.log("Click Bookmark this page, then Remove bookmark in the disposable Aux toolbar.");
-    await until("bookmarked toolbar action", () => native("has-name", "Remove bookmark") === "true", 120_000);
-    await until("bookmark removed from toolbar", () => native("has-name", "Bookmark this page") === "true", 120_000);
+    clickNamedLogged("Bookmark this page");
+    await until("bookmarked toolbar action", () => native("has-name", "Remove bookmark") === "true", 20_000);
+    clickNamedLogged("Remove bookmark");
+    await until("bookmark removed from toolbar", () => native("has-name", "Bookmark this page") === "true", 20_000);
     assert.equal((await rpc("bookmarks.list")).some(item => item.url === `${origin}/red`), false);
     record("toolbar bookmark selector tracks add and remove on a disposable page", { pageId: page.pageId });
     report.passed = true;
