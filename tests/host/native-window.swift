@@ -256,6 +256,32 @@ func axSize(_ element: AXUIElement) -> CGSize? {
   return size
 }
 
+// button-enabled returns the first match. A later disabled control needs its own walk.
+func hasDisabledButton(_ label: String) -> Bool {
+  func visit(_ element: AXUIElement, depth: Int) -> Bool {
+    if depth > 28 { return false }
+    var roleValue: CFTypeRef?
+    var titleValue: CFTypeRef?
+    var descriptionValue: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+    AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &titleValue)
+    AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descriptionValue)
+    let title = titleValue as? String ?? ""
+    let description = descriptionValue as? String ?? ""
+    if (roleValue as? String) == (kAXButtonRole as String) &&
+        (title == label || description == label) {
+      var enabled: CFTypeRef?
+      let readable = AXUIElementCopyAttributeValue(element, kAXEnabledAttribute as CFString, &enabled) == .success
+      if !readable || (enabled as? Bool) != true { return true }
+    }
+    var childrenValue: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenValue) == .success,
+      let children = childrenValue as? [AXUIElement] else { return false }
+    return children.contains { visit($0, depth: depth + 1) }
+  }
+  return visit(AXUIElementCreateApplication(pid), depth: 0)
+}
+
 func findButton(_ label: String) -> AXUIElement? {
   let application = AXUIElementCreateApplication(pid)
   func visit(_ element: AXUIElement, depth: Int) -> AXUIElement? {
@@ -391,6 +417,9 @@ if action == "press-button" {
   let button = findButton(CommandLine.arguments[3])
   print(button != nil && AXUIElementCopyAttributeValue(button!, kAXEnabledAttribute as CFString, &enabled) == .success &&
     (enabled as? Bool) == true ? "true" : "false")
+} else if action == "has-disabled-button" {
+  guard CommandLine.arguments.count == 4 else { fail("Use has-disabled-button PID label.") }
+  print(hasDisabledButton(CommandLine.arguments[3]) ? "true" : "false")
 } else if action == "buttons" {
   let data = try! JSONEncoder().encode(buttonLabels())
   print(String(data: data, encoding: .utf8)!)
@@ -465,7 +494,7 @@ func staticTexts() -> [String] {
 if action == "texts" {
   let data = try! JSONEncoder().encode(staticTexts())
   print(String(data: data, encoding: .utf8)!)
-} else if action == "press-button" || action == "click-button" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "buttons" ||
+} else if action == "press-button" || action == "click-button" || action == "click-at" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
   action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "escape" ||

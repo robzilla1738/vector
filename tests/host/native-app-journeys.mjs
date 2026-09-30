@@ -9,7 +9,7 @@ import { createServer as createHttpsServer } from "node:https";
 import { createServer as createTcpServer } from "node:net";
 import { DatabaseSync } from "node:sqlite";
 import { createRequire } from "node:module";
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -130,6 +130,7 @@ const hooksStartUiJourney = process.argv.includes("--hooks-start-ui");
 const hooksCommandUiJourney = process.argv.includes("--hooks-command-ui");
 const workspacesUiJourney = process.argv.includes("--workspaces-ui");
 const memoryInboxUiJourney = process.argv.includes("--memory-inbox-ui");
+const storeRecoveryUiJourney = process.argv.includes("--store-recovery-ui");
 const memoryPreviewUiJourney = process.argv.includes("--memory-preview-ui");
 const browserImportUiJourney = process.argv.includes("--browser-import-ui");
 const browserImportFormatsJourney = process.argv.includes("--browser-import-formats");
@@ -233,7 +234,7 @@ const healthDiagnosticsJourney = process.argv.includes("--health-diagnostics");
 const unpackedExtensionJourney = process.argv.includes("--unpacked-extension");
 const runtimeBackupRestoreJourney = process.argv.includes("--runtime-backup-restore");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, runtimePeerJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptActualRunJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, storeRecoveryUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, runtimePeerJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptActualRunJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -248,7 +249,7 @@ const nativeHeader = resolve(app, "../../../chrome/browser/ui/aux/generated/aux_
 const nativeSourceCommit = existsSync(nativeHeader)
   ? readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1]
   : undefined;
-const developmentAcceptanceFeatures = memoryInboxUiJourney ? ["memory", "spaces"] :
+const developmentAcceptanceFeatures = memoryInboxUiJourney || storeRecoveryUiJourney ? ["memory", "spaces"] :
   anyTidyJourney ? ["spaces", "aiTidy"] :
   runtimeBackupRestoreJourney ? ["electronMigration"] :
   menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney ? ["spaces"] : null;
@@ -900,7 +901,7 @@ else {
         .run("legacy-subagent", "legacy-group", "completed", JSON.stringify({ result: "private native subagent" }), Date.now(), Date.now());
     } finally { db.close(); }
   }
-  if (memoryInboxUiJourney) {
+  if (memoryInboxUiJourney || storeRecoveryUiJourney) {
     const databasePath = join(profile, "Default/Aux Runtime Data/aux-state.sqlite");
     mkdirSync(join(profile, "Default/Aux Runtime Data"), { recursive: true });
     const db = openDb(databasePath);
@@ -2600,6 +2601,254 @@ else {
         native("has-name", memoryFixture.report) === "false"; } catch { return false; }
     }, 600_000);
     record("forgotten Memory did not return after a full native restart", { runId: memoryFixture.runId });
+    report.passed = true;
+  } else if (storeRecoveryUiJourney) {
+    if (rpcOnly) throw new Error("Store recovery needs the native Settings window.");
+    assert.equal(runtimeCapabilities.featureStages?.memory, "on");
+    // Clicks belong to the operator. Do not call installation.exportRecovery,
+    // memory.pipeline.forget, installation.stageRestore, or installation.stageRecovery.
+    const transferPassphrase = "fixture-transfer-passphrase-123";
+    const destinationProfile = "StoreRecovery";
+    const keptOutside = "Copies and phrases kept outside Aux cannot be revoked.";
+    const outsideCopies = "Copies and phrases outside Aux cannot be revoked.";
+    const freshBackup = "Fresh Aux-managed task-data backup issued after Forget.";
+    const retryBackup = "Create fresh local backup…";
+    const staleRow = "Older than current Forget generation — restore refused. Copied files and phrases cannot be revoked.";
+    const staleRestore = "This managed backup predates the current recovery generation and cannot be restored. Copied files and phrases cannot be revoked.";
+    const sourceArgs = [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
+      "--use-mock-keychain", "--password-store=basic"];
+    const destinationArgs = [...sourceArgs, `--profile-directory=${destinationProfile}`];
+    const sourceEnv = { ...process.env, AUX_LOAD_DOTENV: "0" };
+    const destinationEnv = { ...sourceEnv };
+    delete destinationEnv.AUX_DEV_ACCEPTANCE_TOKEN;
+    const sourceData = join(profile, "Default/Aux Runtime Data");
+    const destinationData = join(profile, destinationProfile, "Aux Runtime Data");
+    const destinationRuntime = join(destinationData, "runtime.json");
+    const historical = join(disposable, "historical.auxrec");
+    const recoveryExports = join(sourceData, "recovery-exports");
+    const sourcePending = join(sourceData, "pending-runtime-restore.json");
+    const destinationPending = join(destinationData, "pending-runtime-restore.json");
+    const databasePath = join(sourceData, "aux-state.sqlite");
+    const recoveryPath = join(sourceData, "managed-recovery-generation.json");
+    const shows = phrase => {
+      try { return native("has-name", phrase) === "true" || native("has-text", phrase) === "true"; }
+      catch { return false; }
+    };
+    const hides = phrase => {
+      try { return native("has-name", phrase) === "false" && native("has-text", phrase) === "false"; }
+      catch { return false; }
+    };
+    const onPage = url => {
+      try { return native("shell-url") === url; } catch { return false; }
+    };
+    const recoveryPackages = () => existsSync(recoveryExports)
+      ? readdirSync(recoveryExports).filter(name => name.endsWith(".auxrec")).sort() : [];
+    const recoveryGeneration = () => existsSync(recoveryPath)
+      ? JSON.parse(readFileSync(recoveryPath, "utf8")).generation : null;
+    const inspect = query => {
+      const db = new DatabaseSync(databasePath, { readOnly: true });
+      try { return query(db); } finally { db.close(); }
+    };
+    function readRecoveryPackage(path, phrase) {
+      const file = JSON.parse(readFileSync(path, "utf8"));
+      const key = scryptSync(phrase, Buffer.from(file.salt, "base64"), 32,
+        { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+      const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(file.iv, "base64"));
+      decipher.setAAD(Buffer.from("aux-recovery:v1"));
+      decipher.setAuthTag(Buffer.from(file.tag, "base64"));
+      return JSON.parse(Buffer.concat([decipher.update(Buffer.from(file.ciphertext, "base64")), decipher.final()]).toString("utf8"));
+    }
+    const claimRestored = payload => payload.spaceMemory?.some(item => item.workspaceId === memoryFixture.workspaceId &&
+      item.claims?.some(claim => claim.text === memoryFixture.report));
+    async function sigtermAux() {
+      child.kill("SIGTERM");
+      if (child.exitCode === null) await new Promise(resolveExit => child.once("exit", resolveExit));
+      child.stderr.destroy();
+    }
+    function spawnAux(args, env) {
+      child = spawn(binary, args, { cwd: disposable, env, stdio: ["ignore", "ignore", "pipe"] });
+      child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
+    }
+    async function connectRuntime(runtimePath) {
+      await until("Profile runtime", async () => {
+        try {
+          const descriptor = JSON.parse(readFileSync(runtimePath, "utf8"));
+          if (!Number.isInteger(descriptor.port) || !descriptor.token) return false;
+          rpcPort = descriptor.port;
+          rpcToken = descriptor.token;
+          const workspace = await rpc("workspace.get");
+          return !!workspace.sessions?.some(session => session.sessionId === "aux" && session.status === "connected");
+        } catch { return false; }
+      }, 60_000);
+      await until("a visible Aux browser window", () => {
+        try { return JSON.parse(native("window")); } catch { return null; }
+      }, 30_000);
+    }
+    await until("a visible Aux browser window", () => {
+      try { return JSON.parse(native("window")); } catch { return null; }
+    });
+    native("activate");
+    console.log(`OPERATOR: Enter ${transferPassphrase} in Recovery phrase. Seeded run ${memoryFixture.runId}.`);
+    console.log("OPERATOR: Open Settings → General and click Manage task data backup. The harness does not click it.");
+    await until("task data backup says outside copies cannot be revoked", () =>
+      onPage("chrome://aux/settings/general") && shows(keptOutside) && shows("Recovery phrase"), 600_000);
+    record("native task data backup says outside copies and phrases cannot be revoked", {});
+    // The package is taken after Accept note and before Forget, so the restored claim is the accepted note.
+    const beforeForget = recoveryGeneration();
+    console.log(`OPERATOR: Open Settings → Memory. Select Memory Fixture. Enable memory for this Space. Click Create review notes. Accept note on ${memoryFixture.report}. Do not click Discard note.`);
+    await until("Space memory enabled through native Settings", () => {
+      try { return onPage("chrome://aux/settings/memory") && native("has-name", "Create review notes") === "true"; }
+      catch { return false; }
+    }, 600_000);
+    await until("encrypted note staged through native Settings", () => inspect(db =>
+      db.prepare("SELECT 1 FROM memory_pipeline_watermarks WHERE workspace_id=? AND run_id=?")
+        .get(memoryFixture.workspaceId, memoryFixture.runId)), 600_000);
+    const memoryBase = join(sourceData, "space-memory");
+    const memoryProfileDir = join(memoryBase, readdirSync(memoryBase)[0]);
+    const spaceDir = join(memoryProfileDir, readdirSync(memoryProfileDir)[0]);
+    const generation = () => JSON.parse(readFileSync(join(spaceDir, "manifest.json"), "utf8")).generation;
+    const pendingGeneration = generation();
+    assert.ok(existsSync(join(spaceDir, pendingGeneration, "inbox.json.enc")));
+    await until("sourced note visible for owner review", () => shows(memoryFixture.report), 60_000);
+    await until("approved silver note visible in native Memory", () => {
+      try { return native("has-name", "Forget note") === "true" && shows(memoryFixture.report) &&
+        existsSync(join(spaceDir, generation(), "claims.json.enc")) &&
+        existsSync(join(spaceDir, generation(), "summary.md.enc")); }
+      catch { return false; }
+    }, 600_000);
+    record("owner accepted the silver fixture note", { runId: memoryFixture.runId });
+    console.log(`OPERATOR: Return to Settings → General → Task data backup. Enter ${transferPassphrase} in Recovery phrase and click Create encrypted package…. The macOS prompt "Approve creating an Aux recovery package" is outside Aux. Approve it yourself. The harness does not click that dialog and does not bypass device authentication. After one package exists, do not export again.`);
+    const exported = await until("one device-authenticated recovery package", () => {
+      const names = recoveryPackages();
+      if (names.length > 1) throw new Error("Do not export again before Forget.");
+      if (names.length !== 1) return null;
+      try {
+        const bytes = readFileSync(join(recoveryExports, names[0]));
+        const envelope = JSON.parse(bytes.toString("utf8"));
+        if (envelope.format !== "aux-recovery" || envelope.version !== 1 || envelope.kdf !== "scrypt-N32768-r8-p1" ||
+          !envelope.ciphertext?.length) return null;
+        return { name: names[0], bytes };
+      } catch { return null; }
+    }, 600_000);
+    const packageNames = recoveryPackages();
+    copyFileSync(join(recoveryExports, exported.name), historical);
+    const packageSha = createHash("sha256").update(readFileSync(historical)).digest("hex");
+    assert.equal(packageSha, createHash("sha256").update(exported.bytes).digest("hex"));
+    assert.equal(historical.startsWith(`${profile}/`), false);
+    assert.throws(() => readRecoveryPackage(historical, `${transferPassphrase}x`));
+    const historicalPayload = readRecoveryPackage(historical, transferPassphrase);
+    assert.equal(claimRestored(historicalPayload), true);
+    record("historical recovery package was copied outside the profile", { sha256: packageSha, runId: memoryFixture.runId });
+    const backupsBefore = new Set((await rpc("installation.listBackups")).map(item => item.name));
+    console.log("OPERATOR: In Task data backup, click Create backup…. If a native save dialog appears, finish it. Do not click Restore backup… yet. The harness waits for the new aux-runtime folder and does not call installation.createBackup.");
+    const preForgetBackup = await until("pre-Forget runtime backup", async () => {
+      const listed = await rpc("installation.listBackups");
+      const created = listed.filter(item => item.name.startsWith("aux-runtime-") && !backupsBefore.has(item.name));
+      if (created.length > 1) throw new Error("Create one backup before Forget.");
+      return created[0] ?? null;
+    }, 600_000);
+    assert.ok(existsSync(join(preForgetBackup.path, "manifest.json")));
+    assert.deepEqual(recoveryPackages(), packageNames);
+    record("native Settings saved the runtime backup Forget must refuse", { name: preForgetBackup.name });
+    console.log(`OPERATOR: Open Settings → Memory and select Memory Fixture. Click Forget run ${memoryFixture.runId}. The confirmation focuses Keep memory. Click Forget permanently, not Keep memory and not Forget note.`);
+    await until("fresh managed backup issued after Forget", () =>
+      shows(freshBackup) && shows(outsideCopies) && hides(retryBackup), 600_000);
+    assert.deepEqual(recoveryPackages(), packageNames);
+    await until("managed recovery generation advanced after Forget", () => {
+      const after = recoveryGeneration();
+      return typeof after === "number" && after !== beforeForget;
+    }, 60_000);
+    assert.notEqual(generation(), pendingGeneration);
+    const forgotten = await rpc("installation.listBackups");
+    assert.equal(forgotten.find(item => item.name === preForgetBackup.name)?.restorable, false);
+    record("Forget issued a fresh managed backup and refused the earlier one", {
+      runId: memoryFixture.runId, backup: preForgetBackup.name, recoveryGeneration: recoveryGeneration() });
+    await sigtermAux();
+    spawnAux(sourceArgs, sourceEnv);
+    await connectRuntime(runtimeFile);
+    console.log("OPERATOR: After restart, reopen Settings → Memory and select Memory Fixture.");
+    await until("restarted Memory Fixture has no approved notes", () =>
+      onPage("chrome://aux/settings/memory") && shows("No approved notes yet.") && hides(memoryFixture.report), 600_000);
+    const remainingClaims = await rpc("memory.pipeline.claims", { workspaceId: memoryFixture.workspaceId });
+    assert.equal(remainingClaims.some(claim => claim.text === memoryFixture.report), false);
+    record("forgotten silver note stayed absent after restart", { runId: memoryFixture.runId });
+    console.log(`OPERATOR: Open Settings → General → Task data backup. Open the local backups disclosure. The pre-Forget row must show the refused sentence, and Restore this backup stays disabled. Click Restore backup… and choose ${preForgetBackup.path}. Do not choose a newer folder.`);
+    await until("pre-Forget backup row refuses restore", () => {
+      try { return shows(staleRow) && native("has-disabled-button", "Restore this backup") === "true"; }
+      catch { return false; }
+    }, 600_000);
+    assert.equal((await rpc("installation.listBackups")).find(item => item.name === preForgetBackup.name)?.restorable, false);
+    await until("choosing the pre-Forget folder is refused", () =>
+      shows(staleRestore) && !existsSync(sourcePending), 600_000);
+    assert.equal(existsSync(sourcePending), false);
+    record("pre-Forget backup restore was refused and wrote no pending restore", { name: preForgetBackup.name });
+    await sigtermAux();
+    // Acceptance is valid only for profile/Default. StoreRecovery must not inherit the token.
+    spawnAux(destinationArgs, destinationEnv);
+    await connectRuntime(destinationRuntime);
+    console.log("OPERATOR: This is a different empty Chromium profile. If setup is open, click Finish later. Do not create a Space or chat, and do not stage recovery yet.");
+    let sawEmpty = false;
+    const emptyDeadline = Date.now() + 8_000;
+    while (Date.now() < emptyDeadline) {
+      if (child.exitCode !== null || child.signalCode !== null)
+        throw new Error(`Aux exited before the destination profile was ready: ${child.exitCode ?? child.signalCode}`);
+      try {
+        const workspaces = await rpc("workspaces.list", {});
+        const runs = await rpc("runs.list", { limit: 1 });
+        if (workspaces.length || runs.length) throw new Error("Use a new, empty Profile for recovery.");
+        sawEmpty = true;
+      } catch (error) {
+        if (String(error.message).includes("empty Profile") || String(error.message).includes("Aux exited")) throw error;
+      }
+      await delay(250);
+    }
+    assert.equal(sawEmpty, true, "Use a new, empty Profile for recovery.");
+    if ((await rpc("workspaces.list", {})).length || (await rpc("runs.list", { limit: 1 })).length)
+      throw new Error("Use a new, empty Profile for recovery.");
+    assert.equal(createHash("sha256").update(readFileSync(historical)).digest("hex"), packageSha);
+    assert.equal(claimRestored(readRecoveryPackage(historical, transferPassphrase)), true);
+    assert.equal(existsSync(destinationPending), false);
+    console.log(`OPERATOR: Open Settings → General and click Manage task data backup. Click Choose package… and select ${historical}. Enter ${transferPassphrase} in Recovery phrase. Click Review package, then Stage reviewed recovery…. Do not quit between Review and Stage. The macOS prompt "Approve restoring an Aux recovery package" is outside Aux. Approve it yourself. The harness does not click that dialog and does not bypass device authentication. Do not restore again.`);
+    const pending = await until("historical recovery staged in the empty profile", () => {
+      try {
+        if (shows("Use a new, empty Profile for recovery.")) throw new Error("Use a new, empty Profile for recovery.");
+        if (!shows("Recovery staged:") || !shows("Quit Aux normally and reopen to apply.") || !existsSync(destinationPending))
+          return null;
+        const staged = JSON.parse(readFileSync(destinationPending, "utf8"));
+        if (staged.recoveryProfileId && staged.recoveryProfileId !== destinationProfile)
+          throw new Error(`Recovery staged for ${staged.recoveryProfileId}, not ${destinationProfile}.`);
+        return staged.recoveryPackage === true && staged.spaceMemoryFiles?.length > 0 ? staged : null;
+      } catch (error) {
+        if (String(error.message).includes("empty Profile") || String(error.message).includes("Recovery staged for")) throw error;
+        return null;
+      }
+    }, 600_000);
+    assert.notEqual(pending.recoveryProfileId, "Default");
+    record("historical package staged into the destination profile", {
+      profileId: destinationProfile, sha256: packageSha, wrongPhraseAccepted: false });
+    console.log("OPERATOR: Quit this disposable Aux window from the Aux menu. The harness does not force-quit this step. It reopens the same destination profile.");
+    await new Promise((resolveExit, rejectExit) => {
+      const timeout = setTimeout(() => rejectExit(new Error("Timed out waiting for a normal Aux quit")), 180_000);
+      const finished = () => { clearTimeout(timeout); resolveExit(); };
+      child.once("exit", finished);
+      if (child.exitCode !== null || child.signalCode !== null) finished();
+    });
+    child.stderr.destroy();
+    spawnAux(destinationArgs, destinationEnv);
+    await connectRuntime(destinationRuntime);
+    assert.equal(existsSync(destinationPending), false);
+    for (const item of pending.spaceMemoryFiles)
+      assert.ok(existsSync(join(destinationData, "space-memory", item.relativePath)), item.relativePath);
+    const restored = await rpc("runs.get", { runId: memoryFixture.runId });
+    assert.equal(restored.run.result?.report, memoryFixture.report);
+    assert.ok((await rpc("workspaces.list", {})).some(item =>
+      item.workspaceId === memoryFixture.workspaceId && item.name === "Memory Fixture"));
+    console.log("OPERATOR: Open Settings → Workspaces. Open Folder Space so Memory Fixture is visible.");
+    await until("restored Memory Fixture Space is visible", () =>
+      onPage("chrome://aux/settings/workspaces") && shows("Folder Space") && shows("Memory Fixture"), 600_000);
+    record("historical package restored the accepted silver note with the original phrase", {
+      runId: memoryFixture.runId, phrase: transferPassphrase, sha256: packageSha,
+      profileId: destinationProfile, wrongPhraseAccepted: false });
     report.passed = true;
   } else if (hooksCommandUiJourney) {
     const space = await until("disposable Personal Space", async () =>
