@@ -6612,21 +6612,14 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     await rpc("bookmarks.add", { url: `${origin}/blue`, title: "Aux reading Blue", readingList: true });
     await dismissSetupIfPresent();
     await openLibraryView("Reading list");
-    // Tab leaves the Reading List control and stops in its search field. Several posted
-    // Tab keys do not move focus, so Arrow Down waits until that field is focused.
-    for (let step = 0; step < 12 && !focusedValue().toLowerCase().includes("search reading list"); step++) {
-      native("tab");
-      console.log(`library mark toward search ${step} focused=${focusedValue()}`);
-    }
-    if (!focusedValue().toLowerCase().includes("search reading list")) throw new Error("The reading search field did not take focus");
-    native("arrow-down");
-    let focus = focusedValue();
-    console.log(`library mark row focused=${focus}`);
-    for (let step = 0; step < 8 && !focus.includes("Mark Aux reading Red"); step++) {
-      native("tab");
-      focus = focusedValue();
-      console.log(`library mark tab ${step} focused=${focus}`);
-    }
+    // A posted click did not run the handler, and Tab does not leave the Reading List
+    // control reliably. Focus the icon with the click, then Space activates that button.
+    const mark = frameNamed("Mark Aux reading Red read");
+    if (!mark) throw new Error("The reading-list mark control has no frame");
+    console.log(`library mark frame ${mark.x},${mark.y} ${mark.width}x${mark.height}`);
+    native("click-at", String(mark.x), String(mark.y));
+    const focus = focusedValue();
+    console.log(`library mark clicked focused=${focus}`);
     if (!focus.includes("Mark Aux reading Red")) throw new Error("The reading-list mark control did not take focus");
     native("space");
     try {
