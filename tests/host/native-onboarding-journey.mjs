@@ -69,6 +69,12 @@ if (process.argv.includes("--self-check")) {
     const observation = { content: { url: model.pageUrl, title: "Aux first task fixture", text: `${PAGE_MARKER}: ${ANSWER}`, headings: ["First useful question"], tables: [] } };
     assert.equal(verifyDoneAgainstObservation({ answer: ANSWER }, observation, []).ok, true);
     assert.equal(verifyDoneAgainstObservation({ answer: "The local page describes a disposable first task for Aux." }, observation, []).ok, false);
+    const signaled = spawn(process.execPath, ["-e", "process.kill(process.pid, 'SIGTERM')"], { stdio: "ignore" });
+    await new Promise((resolveExit) => signaled.once("exit", resolveExit));
+    await assert.rejects(waitForAuxQuit(signaled, "Timed out waiting for graceful Aux quit"), /SIGTERM/);
+    const clean = spawn(process.execPath, ["-e", "process.exit(0)"], { stdio: "ignore" });
+    await new Promise((resolveExit) => clean.once("exit", resolveExit));
+    await waitForAuxQuit(clean, "Timed out waiting for graceful Aux quit");
     console.log("PASS synthetic Chrome source and held local model protocol");
   } finally { await model.close(); }
   process.exit(0);
@@ -158,12 +164,23 @@ async function launch() {
   await until("native Aux shell", () => { try { return native("shell-url").startsWith("chrome://aux/"); } catch { return false; } });
   assert.equal(existsSync(join(profile, "DevToolsActivePort")), false);
 }
+function waitForAuxQuit(proc, label) {
+  // A signal leaves exitCode null. The exit event is not replayed, so a quit
+  // that already aborted must be read from signalCode.
+  if (proc.signalCode) return Promise.reject(new Error(`Aux terminated by ${proc.signalCode}`));
+  if (proc.exitCode !== null) return Promise.resolve();
+  return new Promise((resolveExit, rejectExit) => {
+    const timer = setTimeout(() => rejectExit(new Error(label)), 180_000);
+    proc.once("exit", (code, signal) => {
+      clearTimeout(timer);
+      if (signal) rejectExit(new Error(`Aux terminated by ${signal}`));
+      else resolveExit();
+    });
+  });
+}
 async function gracefulRestart() {
   await operator("Quit only this disposable Aux window from the Aux menu. Wait until it closes.");
-  if (child.exitCode === null) await new Promise((resolveExit, rejectExit) => {
-    const timer = setTimeout(() => rejectExit(new Error("Timed out waiting for graceful Aux quit")), 180_000);
-    child.once("exit", () => { clearTimeout(timer); resolveExit(); });
-  });
+  await waitForAuxQuit(child, "Timed out waiting for graceful Aux quit");
   child.stderr.destroy();
   await launch();
 }
@@ -190,10 +207,7 @@ try {
   capture("reviewed-import-receipt");
 
   await operator("Choose Finish later, then quit the disposable Aux window. The harness will relaunch it; do not import again.");
-  if (child.exitCode === null) await new Promise((resolveExit, rejectExit) => {
-    const timer = setTimeout(() => rejectExit(new Error("Timed out waiting for first graceful quit")), 180_000);
-    child.once("exit", () => { clearTimeout(timer); resolveExit(); });
-  });
+  await waitForAuxQuit(child, "Timed out waiting for first graceful quit");
   child.stderr.destroy();
   await launch();
   assert.equal(inspect()?.bookmarks.length, 1);
