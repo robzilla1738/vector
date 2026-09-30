@@ -6612,11 +6612,17 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     await rpc("bookmarks.add", { url: `${origin}/blue`, title: "Aux reading Blue", readingList: true });
     await dismissSetupIfPresent();
     await openLibraryView("Reading list");
-    // AXPress reports success without running the button. Space activates it once it is focused.
-    const pressed = native("press-label", "Mark Aux reading Red read");
-    const markFocus = focusedValue();
-    console.log(`Mark Aux reading Red read press-label ${pressed} focused=${markFocus}`);
-    if (!markFocus.includes("Mark Aux reading Red")) throw new Error("The reading-list mark control did not take focus");
+    // The mark icon does not take a press or a posted click. The Reading List tab is focused,
+    // so Tab walks the dialog until that control is focused and Space activates it.
+    console.log(`library mark start focused=${focusedValue()}`);
+    let markFocused = false;
+    for (let step = 0; step < 8 && !markFocused; step++) {
+      native("tab");
+      const focus = focusedValue();
+      console.log(`library mark tab ${step} focused=${focus}`);
+      markFocused = focus.includes("Mark Aux reading Red");
+    }
+    if (!markFocused) throw new Error("The reading-list mark control did not take focus");
     native("space");
     try {
       await until("reading-list row change", async () =>
