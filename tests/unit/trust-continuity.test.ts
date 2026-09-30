@@ -1,6 +1,8 @@
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, expect, it } from "vitest";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
 import type { AgentConnectionScope, AuxEvent } from "@aux/contracts";
@@ -496,6 +498,89 @@ it("development identity is the user and executable, not a code signature", asyn
   } finally {
     await handle?.close();
   }
+});
+
+function userVersion(dbPath: string): number {
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    return (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
+  } finally {
+    db.close();
+  }
+}
+
+function rewindDatabase(dataDir: string): string {
+  mkdirSync(dataDir, { recursive: true });
+  const dbPath = join(dataDir, "aux-state.sqlite");
+  const prepared = openDb(dbPath);
+  prepared.exec(`PRAGMA user_version = ${SCHEMA_VERSION - 1}`);
+  prepared.close();
+  return dbPath;
+}
+
+it("leaves a strictly older database unchanged when the loopback port is already taken", async () => {
+  const parent = mkdtempSync(join(tmpdir(), "aux-trust-preflight-"));
+  cleanup.push(() => rmSync(parent, { recursive: true, force: true }));
+  const dataDir = join(parent, "data");
+  const dbPath = rewindDatabase(dataDir);
+  const holder = createServer();
+  cleanup.push(() => holder.close());
+  await new Promise<void>((resolve, reject) => {
+    holder.once("error", reject);
+    holder.listen(0, "127.0.0.1", () => resolve());
+  });
+  const address = holder.address();
+  if (!address || typeof address === "string") throw new Error("expected a loopback port");
+  const env = { ...runtimeEnv(dataDir), AUX_API_PORT: String(address.port) };
+  const lines: string[] = [];
+  const original = process.stderr.write;
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    lines.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString());
+    return true;
+  }) as typeof process.stderr.write;
+  let handle: Awaited<ReturnType<typeof startRuntime>> | undefined;
+  let failure: unknown;
+  try {
+    handle = await startRuntime(env);
+  } catch (error) {
+    failure = error;
+  } finally {
+    process.stderr.write = original;
+    await handle?.close();
+  }
+  expect((failure as Error).message).toBe(
+    "runtime port takeover declined: port in use but no runtime descriptor found; refusing to signal an unknown owner",
+  );
+  expect(lines.join("")).toContain(
+    "[runtime] defer: port in use but no runtime descriptor found; refusing to signal an unknown owner\n",
+  );
+  expect(userVersion(dbPath)).toBe(SCHEMA_VERSION - 1);
+});
+
+it("migrates a strictly older database when the loopback port is free", async () => {
+  const parent = mkdtempSync(join(tmpdir(), "aux-trust-preflight-free-"));
+  cleanup.push(() => rmSync(parent, { recursive: true, force: true }));
+  const dataDir = join(parent, "data");
+  const dbPath = rewindDatabase(dataDir);
+  const probe = createServer();
+  const port = await new Promise<number>((resolve, reject) => {
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const address = probe.address();
+      probe.close(() => {
+        if (!address || typeof address === "string") reject(new Error("expected a loopback port"));
+        else resolve(address.port);
+      });
+    });
+  });
+  let handle: Awaited<ReturnType<typeof startRuntime>> | undefined;
+  try {
+    handle = await startRuntime({ ...runtimeEnv(dataDir), AUX_API_PORT: String(port) });
+    expect(handle.port).toBe(port);
+  } finally {
+    await handle?.close();
+  }
+  expect(userVersion(dbPath)).toBe(SCHEMA_VERSION);
 });
 
 it("reopens a crashed runtime without widening a scoped replay gap", async () => {

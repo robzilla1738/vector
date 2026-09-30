@@ -22,6 +22,7 @@ import { browserEgressApproval } from "./safety/browser-egress-approval.js";
  */
 import { createHash, randomUUID } from "node:crypto";
 import { chmodSync, mkdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { createServer } from "node:net";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -48,7 +49,13 @@ import {
 import { dotEnvCandidates, loadConfig, loadDotEnv } from "./config.js";
 import { openDb, SCHEMA_VERSION } from "./store/db.js";
 import { prepareProtectedDatabase } from "./store/protected-startup.js";
-import { bootstrapWatchdog, developmentPeerIdentity, isAddrInUse, resolvePortInUse } from "./lifecycle.js";
+import {
+  bootstrapWatchdog,
+  developmentPeerIdentity,
+  isAddrInUse,
+  resolvePortInUse,
+  type DevelopmentPeerIdentity,
+} from "./lifecycle.js";
 import { PrivacyCheckpoint } from "./store/privacy-checkpoint.js";
 import { Repo } from "./store/repo.js";
 import { EventBus } from "./events.js";
@@ -112,6 +119,44 @@ export interface RuntimeHandle {
   close: () => Promise<void>;
 }
 
+function loopbackPortTaken(port: number): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    const onError = (error: Error) => {
+      if (isAddrInUse(error)) resolve(true);
+      else reject(error);
+    };
+    server.once("error", onError);
+    server.listen(port, "127.0.0.1", () => {
+      server.removeListener("error", onError);
+      server.close((error) => (error ? reject(error) : resolve(false)));
+    });
+  });
+}
+
+/**
+ * Take over only a strictly older daemon with the same unsigned development
+ * identity. A busy older peer gets the idle wait. A foreign, changed, or
+ * unverifiable peer is left running. The database stays closed until this
+ * returns: opening it migrates, and that lock makes a live peer look changed.
+ */
+async function takeoverOrDecline(
+  dataDir: string,
+  port: number,
+  identity: DevelopmentPeerIdentity,
+): Promise<void> {
+  const outcome = await resolvePortInUse({
+    dataDir,
+    ourSchema: SCHEMA_VERSION,
+    boundPort: port,
+    identity,
+  });
+  process.stderr.write(`[runtime] ${outcome.action}: ${outcome.reason}\n`);
+  if (outcome.action === "peer-serves" || outcome.action === "defer") {
+    throw new Error(`runtime port takeover declined: ${outcome.reason}`);
+  }
+}
+
 export async function startRuntime(processEnv = process.env): Promise<RuntimeHandle> {
   // `.env` in the data dir, then in the cwd — real environment variables
   // always win. The README promised this; nothing loaded it before.
@@ -119,6 +164,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const env =
     configured.AUX_LOAD_DOTENV === "0" ? configured : loadDotEnv(processEnv, dotEnvCandidates(processEnv));
   const config = loadConfig(env);
+  const developmentIdentity = developmentPeerIdentity();
+  // Port 0 asks the kernel for a free port, so there is no incumbent to review.
+  if (config.apiPort !== 0 && await loopbackPortTaken(config.apiPort)) {
+    await takeoverOrDecline(config.dataDir, config.apiPort, developmentIdentity);
+  }
   await applyPendingRuntimeRestore(config.dataDir, config.dbPath, env.AUX_BROWSER_PROFILE_ID);
   const db = openDb(config.dbPath);
   let channel: RpcChannel | null = null;
@@ -180,7 +230,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   let agentConnections: AgentConnectionService | undefined;
   const disarmWatchdog = bootstrapWatchdog();
   const token = config.apiToken || randomUUID();
-  const developmentIdentity = developmentPeerIdentity();
   const peerIdentity = { instanceId: randomUUID(), pid: process.pid, schema: SCHEMA_VERSION,
     startedAt: Date.now() };
   const api = new ApiServer({
@@ -196,15 +245,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     await api.listen(config.apiPort);
   } catch (error) {
     if (!isAddrInUse(error)) throw error;
-    // Take over only a strictly older daemon with the same unsigned development
-    // identity. A busy older peer gets the idle wait. A foreign, changed, or
-    // unverifiable peer is left running.
-    const outcome = await resolvePortInUse({ dataDir: config.dataDir, ourSchema: SCHEMA_VERSION,
-      boundPort: config.apiPort, identity: developmentIdentity });
-    process.stderr.write(`[runtime] ${outcome.action}: ${outcome.reason}\n`);
-    if (outcome.action === "peer-serves" || outcome.action === "defer") {
-      throw new Error(`runtime port takeover declined: ${outcome.reason}`);
-    }
+    // The port was free at the preflight and was taken while the database
+    // opened. Review it again before replacing the listener.
+    await takeoverOrDecline(config.dataDir, config.apiPort, developmentIdentity);
     await api.listen(config.apiPort);
   }
   const port = api.port;
