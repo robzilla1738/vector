@@ -12,7 +12,10 @@ function repository() {
   cleanup.push(() => { repo.flush(); db.close(); });
   return { repo, events: new EventBus(repo) };
 }
-function pageFixture() {
+function pageFixture(extra: {
+  prepareAgentEgress?: (runId: string, pageId: string) => Promise<void>;
+  grantsForRun?: () => readonly ["effect:read", "effect:write"];
+} = {}) {
   const { repo, events } = repository();
   let url = "about:blank";
   let driverEvents: DriverPageEvents = {};
@@ -38,13 +41,15 @@ function pageFixture() {
     identity: { pageId: "page", targetId: "target", backend: "aux" },
     url: () => url, title: async () => "Fixture", isAttached: () => true,
     navigate: async (next: string) => { trace.push("navigate"); url = next; driverEvents.onNavigated?.(next, 1); },
+    waitFor: async () => ({ ok: true, timedOut: false }),
+    click: async () => { trace.push("click"); },
     setEvents: (value: DriverPageEvents) => { driverEvents = value; }, dispose, observe,
     observeFingerprint: async () => "stable-content",
   } as unknown as DriverPage;
   const driver = { backend: "aux", isConnected: () => true, attach: async () => driverPage } as unknown as BrowserDriver;
   const record = vi.fn();
-  const pages = new PageService({ repo, events, native, drivers: () => ({ aux: driver, chrome: null }), recordAgentObservation: record });
-  return { pages, trace, record, observe, dispose, nativeClose, native };
+  const pages = new PageService({ repo, events, native, drivers: () => ({ aux: driver, chrome: null }), recordAgentObservation: record, ...extra });
+  return { pages, trace, record, observe, dispose, nativeClose, native, driverPage };
 }
 
 it("claims the actual blank document before first navigation and records even cached observations", async () => {
@@ -74,7 +79,7 @@ it("closes the inert native blank and never navigates after authority installati
   expect(f.pages.livePageIds()).toEqual([]);
 });
 
-it("binds a scoped external dispatch to its actual session run and revokes before releasing ownership", async () => {
+function scopedDispatch() {
   const { repo, events } = repository();
   const tasks = new TaskService(repo, events);
   const workspace = tasks.createWorkspace("Scoped");
@@ -101,12 +106,53 @@ it("binds a scoped external dispatch to its actual session run and revokes befor
     } },
     settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
   } as unknown as Services);
+  const client = { external: true as const, connectionId: connection.connectionId, scope: connection.scope };
+  return { repo, invoke, trace, pageOwnership, task, client, boundRun: () => boundRun };
+}
+
+it("binds a scoped external dispatch to its actual session run and revokes before releasing ownership", async () => {
+  const { repo, invoke, trace, pageOwnership, task, client, boundRun } = scopedDispatch();
   await expect(invoke("pages.execute", { taskId: task.taskId, expectedRevision: task.revision,
-    program: { pageId: "p1", steps: [{ id: "read", op: "extract", fields: [{ name: "text" }] }] },
-  }, { external: true, connectionId: connection.connectionId, scope: connection.scope })).rejects.toThrow("driver failed");
+    program: { pageId: "p1", steps: [{ id: "go", op: "click", target: "r1" }] },
+  }, client)).rejects.toThrow("driver failed");
   expect(trace).toEqual(["bind", "dispatch", "revoke"]);
-  expect(repo.getRun(boundRun!)?.config).toMatchObject({ taskId: task.taskId, taskRevision: task.revision });
+  expect(repo.getRun(boundRun()!)?.config).toMatchObject({ taskId: task.taskId, taskRevision: task.revision });
   expect(pageOwnership.snapshot().p1).toBeUndefined();
+});
+
+it("lets a scoped read use the attached task page without transmission protection", async () => {
+  const { invoke, trace, pageOwnership, task, client } = scopedDispatch();
+  await expect(invoke("pages.execute", { taskId: task.taskId, expectedRevision: task.revision,
+    program: { pageId: "p1", steps: [{ id: "wait", op: "waitFor", condition: { kind: "selector", selector: "#aux-trust-absent", state: "visible" } }] },
+  }, client)).rejects.toThrow("driver failed");
+  expect(trace).toEqual(["dispatch"]);
+  expect(pageOwnership.snapshot().p1).toBeUndefined();
+});
+
+it("installs transmission protection for a write program and not for a read", async () => {
+  const prepare = vi.fn(async () => {});
+  const f = pageFixture({
+    prepareAgentEgress: prepare,
+    grantsForRun: () => ["effect:read", "effect:write"],
+  });
+  Object.assign(f.native, {
+    acquireStage: async () => ({ ok: true }),
+    releaseStage: async () => {},
+  });
+  const page = await f.pages.open({ url: "https://source.test/read", background: true, ownedByRuntime: true });
+  (f.driverPage.identity as { pageId: string }).pageId = page.pageId;
+  await f.pages.execute({
+    pageId: page.pageId,
+    steps: [{ id: "wait", op: "waitFor", condition: { kind: "selector", selector: "#x", state: "visible" } }],
+  }, { runId: "run-read" });
+  expect(prepare).not.toHaveBeenCalled();
+  await f.pages.execute({
+    pageId: page.pageId,
+    steps: [{ id: "go", op: "click", target: "r1" }],
+  }, { runId: "run-write" });
+  expect(prepare).toHaveBeenCalledTimes(1);
+  expect(prepare).toHaveBeenCalledWith("run-write", page.pageId);
+  expect(f.trace).toContain("click");
 });
 
 

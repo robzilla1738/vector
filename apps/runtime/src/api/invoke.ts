@@ -190,6 +190,7 @@ export function makeInvoker(s: Services) {
       action: () => Promise<T>,
       taskId?: string,
       internalAutomation = false,
+      transmission: "required" | "none" = "required",
     ): Promise<T> => {
       // A scoped agent, or internal automation, takes the tab. The unscoped
       // loopback owner is the local profile and keeps browsing while that
@@ -214,7 +215,9 @@ export function makeInvoker(s: Services) {
             "conflict",
             "A person controls this tab; return control before an automated action",
           );
-        if (automated && externalRunId)
+        // A read stays on the task page. The protected temporary tab is only
+        // for a program that can change or send the document.
+        if (automated && externalRunId && transmission !== "none")
           revokeEgress = await s.runs.acquireBrowserEgress?.(externalRunId, pageId);
         return await action();
       } finally {

@@ -72,7 +72,10 @@ export class ProgramExecutor {
         catch { return ""; }
       };
       const run = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
-      if (ctx.runId) await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
+      // Same rule as the external page lease: a read uses the task page, and
+      // any non-read step (including hover, scroll, and stop) takes transmission protection.
+      if (ctx.runId && allSteps.some(step => classifyStep(step.op) !== "read"))
+        await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
       const authorize = async (step: Step, projectedOrigin?: string, phase: "preflight" | "dispatch" = "dispatch") => {
         const documentEpoch = lp.target.documentEpoch;
         const topOrigin = liveOrigin();

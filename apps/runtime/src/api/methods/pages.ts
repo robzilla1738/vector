@@ -161,6 +161,8 @@ async function h_pages_execute(ctx: MethodCtx): Promise<unknown> {
         { returnObservation: p.returnObservation ? (req as never) : undefined },
       ),
     p.taskId,
+    false,
+    consequential ? "required" : "none",
   );
   if (!p.returnObservation) return result;
   const wire = observation

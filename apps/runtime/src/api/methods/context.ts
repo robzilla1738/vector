@@ -135,6 +135,7 @@ export interface MethodCtx extends MethodDeps {
     action: () => Promise<T>,
     taskId?: string,
     internalAutomation?: boolean,
+    transmission?: "required" | "none",
   ) => Promise<T>;
 }
 
