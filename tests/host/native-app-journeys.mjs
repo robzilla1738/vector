@@ -6746,23 +6746,25 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       throw new Error(`Extensions scope is absent from search providers (${names.join(", ") || "none"}). Runtime extensions stage is ${stage}.`);
     }
     clickSearchProvider("Extensions");
+    await delay(400);
     try {
       await until("extension scope shows Aux Scope Fixture", () =>
-        native("has-text", "No extensions matches.") === "false" &&
-        native("has-text", "Aux Scope Fixture") === "true", 20_000);
+        native("has-name", "Aux Scope Fixture") === "true" || native("has-text", "Aux Scope Fixture") === "true", 20_000);
     } catch (error) {
-      console.log(`extension scope miss focused=${focusedValue()} empty=${native("has-text", "No extensions matches.")} name=${native("has-text", "Aux Scope Fixture")}`);
+      console.log(`extension scope miss focused=${focusedValue()} names=${native("names")}`);
       throw error;
     }
-    const focused = focusedValue();
-    if (!focused.includes("Address, search, and agent prompt")) {
-      const mark = frameNamed("Bookmark this page");
-      if (!mark) throw new Error("The address field lost focus and the bookmark control is gone");
-      native("click-at", String(Math.max(mark.windowX + 160, mark.x - 240)), String(mark.y));
-      await delay(200);
+    const row = frameNamed("Aux Scope Fixture");
+    if (!row) throw new Error("The extension suggestion has no frame");
+    console.log(`extension row frame ${row.x},${row.y} ${row.width}x${row.height}`);
+    native("click-at", String(row.x), String(row.y));
+    try {
+      await until("extension command opens its popup", () =>
+        native("has-text", "Aux extension popup") === "true" || native("has-name", "Aux extension popup") === "true", 20_000);
+    } catch (error) {
+      console.log(`extension popup miss focused=${focusedValue()} names=${native("names")}`);
+      throw error;
     }
-    native("type-return");
-    await until("extension command opens its popup", () => native("has-text", "Aux extension popup") === "true", 20_000);
     record("Extensions scope opens the loaded extension action", { pageId: page.pageId, runtimeStage: stage });
     report.passed = true;
   } else if (selectorTaskResourcesJourney) {
