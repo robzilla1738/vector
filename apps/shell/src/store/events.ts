@@ -3,7 +3,7 @@ import { bridge } from "../bridge";
 import { setDictationDraft } from "../dictation-drafts";
 import { clearResultDrafts, revokeResultDrafts } from "../result-drafts";
 import { writeRunAnswerDraft } from "../run-answer-drafts";
-import { assignFolder, assignSpace, rememberActiveTab, setActiveSpace, splitForPage, syncLayout, tabsInSpace, withSyncedOrder, type Layout } from "../workspace";
+import { assignFolder, assignSpace, lifecycleForStrip, rememberActiveTab, setActiveSpace, splitForPage, syncLayout, tabsInSpace, withSyncedOrder, type Layout } from "../workspace";
 import { HOME_DRAFT_CHAT_KEY, PENDING_CHAT_KEY, draftKey } from "../conversation-drafts";
 import { persistLayout, storage } from "./persistence";
 import { emptyStats, modelAuxValue } from "./runs-slice";
@@ -101,6 +101,10 @@ export const reducePageEvent: Reducer = (state, e) => {
       } else if (typeof e.payload.pageId === "string") {
         const { pageId, ...patch } = e.payload as { pageId: string } & Partial<PageTarget>;
         const fields = Object.fromEntries(Object.entries(patch).filter(([k]) => k !== "activePageId")) as Partial<PageTarget>;
+        if (fields.viewStatus === "detached") {
+          const current = state.pages.find(page => page.pageId === pageId);
+          fields.lifecycle = lifecycleForStrip(current?.lifecycle, fields.lifecycle, "detached");
+        }
         if (Object.keys(fields).length) next = { ...next, ...patchPage(next, pageId, fields) };
       }
       if (!("activePageId" in e.payload)) return { pages: next.pages, layout: next.layout };

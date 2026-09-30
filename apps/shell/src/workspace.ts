@@ -131,6 +131,16 @@ export function isStripTab(p: Pick<PageTarget, "viewStatus" | "ownedByRuntime" |
   return p.viewStatus !== "detached";
 }
 
+const sleeping = (lifecycle: PageTarget["lifecycle"] | undefined) =>
+  lifecycle === "discarded" || lifecycle === "frozen" || lifecycle === "placeholder";
+
+/** A discard detaches the renderer. Keep a sleeping lifecycle so the strip does not treat that as a close. */
+export function lifecycleForStrip(current: PageTarget["lifecycle"] | undefined, incoming: PageTarget["lifecycle"] | undefined, viewStatus: PageTarget["viewStatus"] | undefined): PageTarget["lifecycle"] | undefined {
+  if (sleeping(incoming)) return incoming;
+  if (viewStatus === "detached") return sleeping(current) ? current : "discarded";
+  return incoming ?? current ?? "live";
+}
+
 /** Bring `order` in sync with the live page list: keep known order, append new pages, drop closed. Unchanged order is returned as-is. */
 export function syncOrder(order: string[], pages: Pick<PageTarget, "pageId">[], preservedIds: string[] = []): string[] {
   const live = new Set(pages.map((p) => p.pageId));

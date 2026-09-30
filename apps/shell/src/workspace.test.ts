@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PageTarget } from "@aux/contracts";
 import {
+  lifecycleForStrip,
   DEFAULT_SPACE,
   groupedTabs,
   canSplitPage,
@@ -117,6 +118,13 @@ describe("tab order", () => {
     ];
     const layout = syncSpaces({ ...emptyLayout(), order: pages.map(item => item.pageId) }, pages);
     expect(tabsInSpace(layout, pages, DEFAULT_SPACE.id).map(item => item.pageId)).toEqual(["live", "discarded", "frozen", "placeholder"]);
+  });
+
+  it("keeps a detached tab sleeping when the catalog still says live", () => {
+    expect(lifecycleForStrip("live", undefined, "detached")).toBe("discarded");
+    expect(lifecycleForStrip("discarded", "live", "detached")).toBe("discarded");
+    expect(lifecycleForStrip("live", "placeholder", "detached")).toBe("placeholder");
+    expect(lifecycleForStrip("discarded", "live", "visible")).toBe("live");
   });
 });
 

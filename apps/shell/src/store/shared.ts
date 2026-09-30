@@ -1,7 +1,7 @@
 import type { MethodName, MethodResult, RpcArgs, PageTarget, TabCommand, TabRecord } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { CLOSED_TAB_LIMIT } from "../closed-tabs";
-import { isTab, splitForPage, tabsInSpace, withSyncedOrder } from "../workspace";
+import { isTab, lifecycleForStrip, splitForPage, tabsInSpace, withSyncedOrder } from "../workspace";
 import { persistClosedTabs, persistLayout } from "./persistence";
 import type { Workspace } from "./types";
 
@@ -108,7 +108,7 @@ export const mergedTab = (page: PageTarget, tab: TabRecord): PageTarget => ({
   navigationError: tab.navigationError ?? null,
   lastActiveAt: tab.lastActiveAt,
   viewStatus: tab.crashed ? "crashed" : page.viewStatus === "crashed" ? "hidden" : page.viewStatus,
-  lifecycle: tab.lifecycle ?? "live",
+  lifecycle: lifecycleForStrip(page.lifecycle, tab.lifecycle, page.viewStatus),
 });
 
 /** Push the window's strip order to the catalog — the window op echo converges the rest. */
