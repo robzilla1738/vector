@@ -1,0 +1,24 @@
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -159,7 +159,8 @@
+        featureStages.memory === 'preview' ||
+        featureStages.spaces === 'preview' ||
+        featureStages.tabLifecycle === 'preview' ||
+-       featureStages.extensions === 'preview')) {
++       featureStages.extensions === 'preview' ||
++       featureStages.commandBar === 'preview')) {
+     // The first host connection can time out before the helper authenticates.
+     // Memory saver reads these stages once, so keep asking until the runtime
+     // answers or the shell has to mount with the production preview gate.
+@@ -173,8 +174,9 @@
+           answered = true;
+           const runtime = JSON.parse(runtimeResponse.resultJson) as
+               {featureStages?: {electronMigration?: string; memory?: string;
+-                                spaces?: string; tabLifecycle?: string; extensions?: string}};
+-          for (const feature of ['electronMigration', 'memory', 'spaces', 'tabLifecycle', 'extensions'] as const) {
++                                spaces?: string; tabLifecycle?: string; extensions?: string;
++                                commandBar?: string}};
++          for (const feature of ['electronMigration', 'memory', 'spaces', 'tabLifecycle', 'extensions', 'commandBar'] as const) {
+             if (featureStages[feature] === 'preview' &&
+                 runtime.featureStages?.[feature] === 'on') {
+               featureStages[feature] = 'on';

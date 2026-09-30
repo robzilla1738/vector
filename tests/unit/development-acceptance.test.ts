@@ -38,6 +38,13 @@ it("accepts one preview only in a matching disposable native Profile", () => {
     expect(developmentAcceptanceStages(withExtensions, dataDir, sourceCommit, token)).toEqual({
       ...withExtensions, extensions: "on",
     });
+    const withCommandBar = { ...stages, commandBar: "preview" };
+    writeFileSync(join(dataDir, "development-acceptance.json"), JSON.stringify({ version: 1,
+      sourceCommit, tokenHash: createHash("sha256").update(token).digest("hex"),
+      features: ["spaces", "commandBar"], createdAt: Date.now() }), { mode: 0o600 });
+    expect(developmentAcceptanceStages(withCommandBar, dataDir, sourceCommit, token)).toEqual({
+      ...withCommandBar, spaces: "on", commandBar: "on",
+    });
     expect(() => developmentAcceptanceStages(stages, dataDir, "b".repeat(40), token)).toThrow(/does not match/);
     expect(() => developmentAcceptanceStages(stages, dataDir, sourceCommit, "0".repeat(64))).toThrow(/does not match/);
     const unsafe = join(root, "owner-profile", "Default", "Aux Runtime Data");

@@ -260,7 +260,8 @@ const developmentAcceptanceFeatures = memoryInboxUiJourney || storeRecoveryUiJou
   memorySaverAwakeJourney ? ["spaces", "tabLifecycle"] :
   runtimeBackupRestoreJourney ? ["electronMigration"] :
   selectorExtensionJourney ? ["spaces", "extensions"] :
-  menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney || selectorBookmarkJourney || selectorClosedJourney || selectorReadingJourney || selectorSearchJourney || selectorHistoryJourney ? ["spaces"] : null;
+  selectorHistoryJourney ? ["spaces", "commandBar"] :
+  menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney || selectorBookmarkJourney || selectorClosedJourney || selectorReadingJourney || selectorSearchJourney ? ["spaces"] : null;
 if (developmentAcceptanceFeatures) {
   assert.ok(nativeSourceCommit, "Development acceptance requires a built native source identity");
   const token = randomBytes(32).toString("hex");
@@ -6685,9 +6686,8 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       native("has-name", "Search providers") === "true" || native("has-name", "History") === "true", 20_000);
     clickSearchProvider("History");
     await delay(400);
-    // cl and cn proved the visit is stored and the History click removes the
-    // web-search row, but the row's title and URL are not accessible text.
-    // Return on that open scope runs the selected history suggestion.
+    // co showed the scope open and the visit stored, while autocomplete refused
+    // because commandBar was preview. Return runs the suggestion once that gate is on.
     const historyProbe = () =>
       `focused=${focusedValue()} providers=${native("has-name", "Search providers")} search=${native("has-text", "Search for")} empty=${native("has-text", "No history matches.")} emptyName=${native("has-name", "No history matches.")} title=${native("has-name", "Aux native Red")} url=${native("has-name", `${origin}/red`)}`;
     console.log(`history after click ${historyProbe()}`);
@@ -6699,7 +6699,10 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       console.log(`history scope closed ${historyProbe()}`);
       throw error;
     }
-    if (native("has-text", "No history matches.") === "true" || native("has-name", "No history matches.") === "true") {
+    if (native("has-text", "Browser suggestions unavailable") === "true" || native("has-text", "commandBar is preview") === "true") {
+      throw new Error("History suggestions are unavailable because commandBar is still preview");
+    }
+    if (native("has-text", "matches. Choose another provider") === "true") {
       throw new Error("History scope is open and has no matches for the visited Red page");
     }
     console.log(`history names ${native("names")}`);
