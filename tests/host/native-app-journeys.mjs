@@ -2936,23 +2936,54 @@ document.addEventListener("pointerdown",()=>{void window.__startTone()});
         originPolicies: [{ origin: `${origin}/`, access: "allow", confirmation: "none" }],
         safetyCeilings: { write: "always" },
       });
-      const toneStart = await rpc("pages.execute", { program: { pageId: tone.pageId, steps: [
-        { id: "tone-pointer", op: "click", target: "css:#tone-heading" },
-        { id: "tone-start", op: "evaluate", expression: "window.__startTone()" },
-      ] } });
-      console.log(`Tone page start: ${JSON.stringify(toneStart).slice(0, 500)}`);
-      assert.equal(toneStart.status, "completed", "the tone page click must run");
-      let released = (await rpc("pages.list")).find(item => item.pageId === tone.pageId);
-      if (released?.controller && released.controller !== "none") {
-        console.log(`Tone controller after start: ${released.controller}`);
-        await rpc("pages.resume", { pageId: tone.pageId });
-        released = (await rpc("pages.list")).find(item => item.pageId === tone.pageId);
-      }
-      assert.equal(released?.controller ?? "none", "none", "the tone tab must be owner-controlled before Memory saver");
-      await until("tone playback reported", async () => {
+      const releaseTone = async () => {
+        let released = (await rpc("pages.list")).find(item => item.pageId === tone.pageId);
+        if (released?.controller && released.controller !== "none") {
+          console.log(`Tone controller: ${released.controller}`);
+          await rpc("pages.resume", { pageId: tone.pageId });
+          released = (await rpc("pages.list")).find(item => item.pageId === tone.pageId);
+        }
+        assert.equal(released?.controller ?? "none", "none", "the tone tab must be owner-controlled before Memory saver");
+      };
+      const toneTitle = async () => {
         const page = (await rpc("pages.list")).find(item => item.pageId === tone.pageId);
         const title = page?.title ?? "";
         logToneTitle(title);
+        return title;
+      };
+      const toneClick = await rpc("pages.execute", { program: { pageId: tone.pageId, steps: [
+        { id: "tone-pointer", op: "click", target: "css:#tone-heading" },
+      ] } });
+      console.log(`Tone page click: ${JSON.stringify(toneClick)}`);
+      const clickStep = toneClick.steps?.find(step => step.stepId === "tone-pointer");
+      if (clickStep?.status !== "ok")
+        throw new Error(`Tone page click failed: ${JSON.stringify(clickStep?.error ?? toneClick)}`);
+      await releaseTone();
+      let clickedTitle = "";
+      try {
+        clickedTitle = await until("tone title after the page click", async () => {
+          const title = await toneTitle();
+          if (title.startsWith("Aux tone blocked") || title === "Aux tone playing") return title;
+          return false;
+        }, 8_000);
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes("tone title after the page click")) throw error;
+        console.log("Tone title stayed on the fixture after the page click");
+      }
+      if (clickedTitle.startsWith("Aux tone blocked")) throw new Error(`Tone playback blocked: ${clickedTitle}`);
+      if (clickedTitle !== "Aux tone playing") {
+        try {
+          const evaluated = await rpc("pages.execute", { program: { pageId: tone.pageId, steps: [
+            { id: "tone-start", op: "evaluate", expression: "window.__startTone()" },
+          ] } });
+          console.log(`Tone evaluate: ${JSON.stringify(evaluated)}`);
+        } catch (error) {
+          console.log(`Tone evaluate failed: ${error instanceof Error ? error.message : error}`);
+        }
+        await releaseTone();
+      }
+      await until("tone playback reported", async () => {
+        const title = await toneTitle();
         if (title.startsWith("Aux tone blocked")) throw new Error(`Tone playback blocked: ${title}`);
         return title === "Aux tone playing";
       }, 20_000);
