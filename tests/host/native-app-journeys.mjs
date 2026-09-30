@@ -361,6 +361,7 @@ function native(action, ...args) {
 // dismisses it. The settings item is named with its shortcut, and the click
 // chosen when both frame points sit inside the window landed far below the menu.
 let memorySaverButtonLog = null;
+let memorySaverAnchorY = null;
 function clickNamed(label) {
   try { return JSON.parse(native("click-button", label)); }
   catch { return null; }
@@ -379,6 +380,7 @@ function controlFrame(label) {
   catch { return null; }
 }
 function aimMemorySaverSettings(label, anchorY) {
+  if (Number.isFinite(anchorY)) memorySaverAnchorY = anchorY;
   native("open-settings");
   console.log("Memory saver settings chord");
   const frame = controlFrame(label);
@@ -404,12 +406,10 @@ async function openMemorySaverSettings() {
   }
   const space = labels.find(label => typeof label === "string" && label.startsWith("Switch space"));
   const visibleSettings = settingsLabel(labels);
-  if (visibleSettings && space) {
-    const anchor = controlFrame(space);
-    if (anchor) {
-      aimMemorySaverSettings(visibleSettings, anchor.y);
-      return;
-    }
+  if (visibleSettings) {
+    const anchor = space ? controlFrame(space) : null;
+    aimMemorySaverSettings(visibleSettings, anchor?.y ?? memorySaverAnchorY ?? 0);
+    return;
   }
   if (!space) {
     logMemorySaverButtons(labels, "found no space menu");
