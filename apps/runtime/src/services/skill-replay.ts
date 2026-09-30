@@ -12,9 +12,13 @@ const SECRET_FIELD = /pass(?:word)?|token|secret|otp|cvv|credit.?card|ssn|social
 
 /** Compile only a complete same-page ledger ending in an observed condition. */
 export function compileSkillTrace(records: StepRecord[], samples: Record<string, string>): PlanStep[] {
-  if (records.length < 2 || records.length > 50 || records.some(record => record.outcome?.status !== "ok"
-    || record.outcome?.effect === "uncertain" || record.outcome?.receipt?.unconfirmed || record.outcome?.receipt?.uncertain
-    || !OPS.has(record.op)))
+  if (records.length < 2 || records.length > 50 || records.some((record, index) => {
+    const oracle = index === records.length - 1;
+    // A click or press often has no field or URL change. That local uncertainty
+    // is not drift; the final wait condition is the tested oracle.
+    return record.outcome?.status !== "ok" || !OPS.has(record.op) || !!record.outcome?.receipt?.unconfirmed
+      || (oracle && (record.outcome?.effect === "uncertain" || !!record.outcome?.receipt?.uncertain));
+  }))
     throw new AuxError("invalid_params", "Choose a completed browser trace of 2–50 supported, verified steps.");
   const pageIds = new Set(records.map(record => record.pageId));
   if (pageIds.size !== 1 || pageIds.has(undefined))
@@ -56,11 +60,18 @@ export function compileSkillTrace(records: StepRecord[], samples: Record<string,
     }
     return step;
   });
-  if (steps.at(-1)?.op !== "waitFor")
+  const replay = steps.map(step => PlanStepSchema.parse(step));
+  const oracle = replay.at(-1);
+  if (oracle?.op !== "waitFor")
     throw new AuxError("invalid_params", "End the recorded trace with a verified wait condition as its replay oracle.");
-  if (Buffer.byteLength(JSON.stringify(steps)) > 32_000)
+  const action = replay.at(-2);
+  // The step ledger does not keep expect, so a click that was only proven by
+  // the following wait would replay as an uncertain write. Attach that oracle.
+  if (action && action.op !== "waitFor" && !action.expect?.length)
+    replay[replay.length - 2] = PlanStepSchema.parse({ ...action, expect: [oracle.condition] });
+  if (Buffer.byteLength(JSON.stringify(replay)) > 32_000)
     throw new AuxError("invalid_params", "The replay trace exceeds 32 KB.");
-  return steps;
+  return replay;
 }
 
 export function replayDigest(sourceRunId: string, siteOrigin: string, steps: PlanStep[]): string {
@@ -137,15 +148,16 @@ export function startSkillReplay(input: { repo: Repo; pages: PageService; events
       // A completed executor response alone is not proof: require the exact
       // durable step ledger and final tested oracle before recording success.
       const records = repo.listSteps(run.runId);
-      const verified = records.length === steps.length && records.every((record, index) => {
-        const step = steps[index]!;
-        const { id: _id, op: _op, timeoutMs: _timeoutMs, optional: _optional,
-          expect: _expect, ...inputs } = step;
-        return record.pageId === pageId && record.op === step.op &&
-          JSON.stringify(record.inputs) === JSON.stringify(inputs) && record.outcome?.status === "ok" &&
-          !record.outcome?.receipt?.uncertain && !record.outcome?.receipt?.unconfirmed &&
-          record.outcome?.effect !== "uncertain";
-      });
+      const verified = steps.at(-1)?.op === "waitFor" && records.length === steps.length
+        && records.every((record, index) => {
+          const step = steps[index]!;
+          const { id: _id, op: _op, timeoutMs: _timeoutMs, optional: _optional,
+            expect: _expect, ...inputs } = step;
+          return record.pageId === pageId && record.op === step.op &&
+            JSON.stringify(record.inputs) === JSON.stringify(inputs) && record.outcome?.status === "ok" &&
+            !record.outcome?.receipt?.uncertain && !record.outcome?.receipt?.unconfirmed &&
+            record.outcome?.effect !== "uncertain";
+        });
       const completed = result.status === "completed" && siteStillMatches && verified;
       const settled: Run = { ...latest, status: completed ? "completed" : result.status === "cancelled" ? "cancelled" : "failed",
         result: completed ? result.extracted : undefined,

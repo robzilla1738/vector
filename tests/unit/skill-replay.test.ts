@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { EventBus, HookService, installRunEndHooks, nextScheduledTime, openDb, Repo, TaskService } from "@aux/runtime";
 import type { PageService } from "../../apps/runtime/src/services/pages.js";
 import { RoutineService } from "../../apps/runtime/src/services/routines.js";
-import { bindSkillParameters, compileSkillTrace, requireRoutineTriggerPage, selectSkillReplayPage, startSkillReplay } from "../../apps/runtime/src/services/skill-replay.js";
+import { bindSkillParameters, compileSkillTrace, replayDigest, requireRoutineTriggerPage, selectSkillReplayPage, startSkillReplay } from "../../apps/runtime/src/services/skill-replay.js";
 import type { StepRecord } from "@aux/contracts";
 
 const sourceStep = (op: string, inputs: Record<string, unknown>, index: number, pageId = "page-1"): StepRecord => ({
@@ -31,8 +31,9 @@ it("compiles only reviewed values and a verified final oracle into a bounded dec
     .toThrow(/stable/);
   expect(() => compileSkillTrace([trace()[0]!, sourceStep("click", { target: "css:#search" }, 2, "other"), trace()[2]!], { topic: "hosting" }))
     .toThrow(/one browser page/);
-  expect(() => compileSkillTrace(trace().map((step, index) => index === 1 ? { ...step, outcome: { ...step.outcome!, receipt: { uncertain: true, remoteConfirmed: false, dispatchedBeforeTakeover: false } } } : step), { topic: "hosting" }))
-    .toThrow(/verified/);
+  expect(() => compileSkillTrace(trace().map((step, index, all) => index === all.length - 1
+    ? { ...step, outcome: { ...step.outcome!, effect: "uncertain", receipt: { uncertain: true, remoteConfirmed: false, dispatchedBeforeTakeover: false } } }
+    : step), { topic: "hosting" })).toThrow(/verified/);
 });
 
 it("selects the attached task tab on the tested origin without falling back to another site", () => {
@@ -67,7 +68,7 @@ it("keeps a run-derived Skill paused through compile/test, binds exact proof, an
   for (const step of trace()) repo.saveStep(step);
   const execute = vi.fn(async (program: { steps: Array<{ id: string; op: string; [key: string]: unknown }> }, ctx: { runId?: string }) => {
     for (const [index, step] of program.steps.entries()) {
-      const { id: _id, op, ...inputs } = step;
+      const { id: _id, op, timeoutMs: _timeoutMs, optional: _optional, expect: _expect, ...inputs } = step;
       repo.saveStep({ stepId: `verified-${ctx.runId}-${index}`, runId: ctx.runId!, pageId: "page-1",
         op, inputs, startedAt: index, outcome: { stepId: `verified-${ctx.runId}-${index}`,
           op, status: "ok", startedAt: index, durationMs: 1 } });
@@ -179,4 +180,48 @@ it("refuses a completed replay without exact durable step receipts", async () =>
     parameters: { topic: "new" } });
   await vi.waitFor(() => expect(repo.getRun(runId)?.status).toBe("failed"));
   expect(repo.getRun(runId)?.error).toMatch(/verified receipts/);
+});
+
+it("replays a new parameter through the final oracle and does not keep a drifted oracle", async () => {
+  const db = openDb(":memory:"); handles.push(db);
+  const repo = new Repo(db), events = new EventBus(repo);
+  const steps = compileSkillTrace(trace().map((step, index) => index === 1
+    ? { ...step, outcome: { ...step.outcome!, effect: "uncertain", receipt: {
+      uncertain: true, remoteConfirmed: false, unconfirmed: false, dispatchedBeforeTakeover: false } } }
+    : step), { topic: "hosting" });
+  expect(JSON.stringify(steps)).not.toContain("hosting");
+  expect(steps[1]).toMatchObject({ op: "click", expect: [{ kind: "textVisible", text: "{{topic}}" }] });
+  expect(steps.at(-1)).toMatchObject({ op: "waitFor", condition: { kind: "textVisible", text: "{{topic}}" } });
+  const routine = { routineId: "routine-1", title: "Search", parameters: [{ name: "topic" }],
+    replay: { sourceRunId: "source", siteOrigin: "https://example.test", steps,
+      digest: replayDigest("source", "https://example.test", steps) } } as unknown as Parameters<typeof startSkillReplay>[0]["routine"];
+  let drift = false;
+  const execute = vi.fn(async (program: { steps: Array<{ id: string; op: string; [key: string]: unknown }> }, ctx: { runId?: string }) => {
+    program.steps.forEach((step, index) => {
+      const { id: _id, op, timeoutMs: _timeoutMs, optional: _optional, expect: _expect, ...inputs } = step;
+      const oracle = index === program.steps.length - 1;
+      const recorded = drift && oracle ? { ...inputs, condition: { kind: "textVisible", text: "hosting" } } : inputs;
+      repo.saveStep({ stepId: `${ctx.runId}-${index}`, runId: ctx.runId!, pageId: "page-1", op, inputs: recorded, startedAt: index,
+        outcome: { stepId: `${ctx.runId}-${index}`, op, status: "ok", startedAt: index, durationMs: 1,
+          effect: "observed",
+          receipt: { remoteConfirmed: false, uncertain: false, unconfirmed: false, dispatchedBeforeTakeover: false,
+            observed: op === "click" ? "postconditions satisfied: textVisible" : op === "waitFor" ? "textVisible" : "control value changed after action" } } });
+    });
+    return { status: "completed" as const, steps: [], extracted: { visible: "payments" } };
+  });
+  const pages = { get: () => ({ url: "https://example.test/search", ownedByRuntime: false }),
+    isAttached: () => true, execute } as unknown as PageService;
+  const proven = startSkillReplay({ repo, pages, events, routine, pageId: "page-1", parameters: { topic: "payments" } });
+  await vi.waitFor(() => expect(repo.getRun(proven.runId)?.status).toBe("completed"));
+  expect(execute).toHaveBeenCalledWith(expect.objectContaining({ steps: [
+    expect.objectContaining({ op: "fill", value: "payments" }),
+    expect.objectContaining({ op: "click", target: "css:#search", expect: [{ kind: "textVisible", text: "payments" }] }),
+    expect.objectContaining({ op: "waitFor", condition: { kind: "textVisible", text: "payments" } }),
+  ] }), expect.objectContaining({ allowEval: false }));
+  expect(repo.getRun(proven.runId)?.result).toEqual({ visible: "payments" });
+  drift = true;
+  const drifted = startSkillReplay({ repo, pages, events, routine, pageId: "page-1", parameters: { topic: "payments" } });
+  await vi.waitFor(() => expect(repo.getRun(drifted.runId)?.status).toBe("failed"));
+  expect(repo.getRun(drifted.runId)?.result).toBeUndefined();
+  expect(repo.getRun(drifted.runId)?.error).toMatch(/verified receipts/);
 });
