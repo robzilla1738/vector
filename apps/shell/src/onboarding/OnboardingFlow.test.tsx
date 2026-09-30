@@ -170,6 +170,10 @@ it("moves the step heading without scrolling the rail or footer out of the card"
   focus.mockClear();
   await act(async () => button("7").click());
   expect(document.querySelector("h1")?.textContent).toBe("Start with one useful question");
+  const tools = document.querySelector('[aria-label="Tools for this question"]');
+  expect(tools?.getAttribute("role")).toBe("group");
+  expect(tools?.textContent).toContain("Read page");
+  expect(close).not.toHaveBeenCalled();
   expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   focus.mockRestore();
 });

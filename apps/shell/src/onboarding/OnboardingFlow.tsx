@@ -645,7 +645,8 @@ export function OnboardingFlow({
                       <article key={card.id}>
                         <h2>{card.question}</h2>
                         <p>{card.prompt}</p>
-                        <div className="row" aria-label="Tools for this question">
+                        {/* chrome:// web UI fatals when aria-label is on a generic div. */}
+                        <div className="row" role="group" aria-label="Tools for this question">
                           {card.tools.map((tool) => (
                             <Badge key={tool} label={tool} />
                           ))}
