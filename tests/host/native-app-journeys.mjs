@@ -459,7 +459,9 @@ async function openLibraryView(viewLabel) {
   await delay(150);
   console.log(`library command ${native("type-text", "/bookmarks")} focused=${focusedValue()}`);
   await until("address holds the Library command", () => focusedValue().includes("Command: bookmarks"), 8_000);
-  native("type-return");
+  // Return does not run this chip. The row itself opens the seeded palette.
+  const command = clickPhrase("Command: bookmarks");
+  if (!command) throw new Error("The address command chip did not accept a click");
   try {
     await until("palette can open Library", () => native("has-name", "Bookmarks and history") === "true", 15_000);
   } catch (error) {
