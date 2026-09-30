@@ -141,6 +141,34 @@ it("dispatches a run-start Hook once when the run is queued, independently of ru
   stop(); f.db.close();
 });
 
+it("dispatches run.start once when a run is first seen running, then run.end once when it fails", async () => {
+  const f = fixture();
+  const eventBus = new EventBus(f.repo);
+  const start = f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "run.start",
+    handler: { type: "mcp_tool", serverId: "local", grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "notify", arguments: { phase: "start" } } });
+  const end = f.hooks.register({ workspaceId: f.workspace.workspaceId, event: "run.end",
+    handler: { type: "mcp_tool", serverId: "local", grantId: "11111111-1111-4111-8111-111111111111",
+      toolName: "notify", arguments: { phase: "end" } } });
+  f.hooks.approve(start.hookId, start.handlerDigest);
+  f.hooks.approve(end.hookId, end.handlerDigest);
+  const seen: string[] = [];
+  const stop = installRunEndHooks(eventBus, f.hooks, async (_handler, context) => { seen.push(`${context.event}:${context.runId}`); });
+  const base = { runId: "run-already-running", config: { contextWorkspaceId: f.workspace.workspaceId }, createdAt: Date.now() };
+  eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "running", startedAt: base.createdAt } });
+  eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "running", startedAt: base.createdAt } });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(seen).toEqual(["run.start:run-already-running"]);
+  expect(f.hooks.invocations(end.hookId)).toEqual([]);
+  eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "failed", endedAt: Date.now() } });
+  eventBus.emit(EventTypes.RunUpdated, { run: { ...base, status: "failed", endedAt: Date.now() } });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(seen).toEqual(["run.start:run-already-running", "run.end:run-already-running"]);
+  expect(f.hooks.invocations(start.hookId)).toMatchObject([{ eventId: "run:run-already-running:start", state: "completed" }]);
+  expect(f.hooks.invocations(end.hookId)).toMatchObject([{ eventId: "run:run-already-running:end", state: "completed" }]);
+  stop(); f.db.close();
+});
+
 it("executes an exactly approved command Hook inside the confined folder and stops after revoke", async () => {
   const f = fixture();
   const root = mkdtempSync(join(tmpdir(), "aux-hook-command-"));
