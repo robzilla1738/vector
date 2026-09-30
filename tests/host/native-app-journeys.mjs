@@ -2951,6 +2951,7 @@ else {
       }
       let pressed = false;
       let lastOpen = 0;
+      let lastReport = "";
       await until(label, async () => {
         try {
           let url = "";
@@ -2963,10 +2964,39 @@ else {
             }
             return false;
           }
-          if (!pressed && native("has-name", "Recent Memory saver cycles") === "true")
-            pressed = native("press-label", "Recent Memory saver cycles") === "true";
-          return memoryReportVisible();
-        } catch { return false; }
+          const cycle = native("has-name", "Memory saver cycle report") === "true";
+          const refusal = native("has-name", "This tab has unload handlers and stays awake.") === "true";
+          const estimate = native("has-name", "estimated at sleep time") === "true" || native("has-name", "Memory estimate unavailable") === "true";
+          const reportLine = `cycle ${cycle} refusal ${refusal} estimate ${estimate}`;
+          if (reportLine !== lastReport) {
+            lastReport = reportLine;
+            console.log(`Memory saver report: ${reportLine}`);
+          }
+          if (!pressed && native("has-name", "Recent Memory saver cycles") === "true") {
+            const frame = controlFrame("Recent Memory saver cycles");
+            if (frame) {
+              const anchorY = memorySaverAnchorY ?? 0;
+              const candidates = [frame.rawY, frame.flippedY].filter(y => Number.isFinite(y));
+              const below = candidates.filter(y => y > anchorY + 4 && y < anchorY + 900);
+              const pool = below.length ? below : candidates;
+              const y = pool.reduce((best, item) => Math.abs(item - anchorY) < Math.abs(best - anchorY) ? item : best, pool[0]);
+              console.log(`Memory saver report aim: raw ${frame.rawY} flipped ${frame.flippedY} using ${frame.x},${y}`);
+              native("activate");
+              native("click-at", frame.x, y);
+            } else {
+              console.log(`Memory saver report press: ${native("press-label", "Recent Memory saver cycles")}`);
+            }
+            pressed = true;
+          }
+          return cycle && refusal && estimate;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (lastReport !== message) {
+            lastReport = message;
+            console.log(`Memory saver report check failed: ${message}`);
+          }
+          return false;
+        }
       }, 180_000);
     }
     if (reportsMemorySaver) {

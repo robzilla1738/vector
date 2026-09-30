@@ -391,7 +391,7 @@ func clickableElement(_ label: String) -> AXUIElement? {
     AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &descriptionValue)
     let title = titleValue as? String ?? ""
     let description = descriptionValue as? String ?? ""
-    let pressable = role == (kAXButtonRole as String) || role == (kAXPopUpButtonRole as String) || role == "AXMenuItem"
+    let pressable = role == (kAXButtonRole as String) || role == (kAXPopUpButtonRole as String) || role == "AXMenuItem" || role == "AXDisclosureTriangle"
     if pressable && (title == label || description == label) { return element }
     if shellOnly && isGuestWebArea(element, role: role) { return nil }
     var childrenValue: CFTypeRef?
