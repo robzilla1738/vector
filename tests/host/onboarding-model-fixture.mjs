@@ -2,7 +2,8 @@ import { createServer } from "node:http";
 
 export const MODEL_ID = "aux-onboarding-local-fixture";
 export const PAGE_MARKER = "AUX_ONBOARDING_DISPOSABLE_SOURCE";
-export const ANSWER = "The local page describes a disposable first task for Aux.";
+// A done claim of eight or more characters must appear in the observed page.
+export const ANSWER = "A local page about a small decision. Compare two options, cite this source, and keep the result as a draft.";
 
 /** A held, unpaid OpenAI-compatible reply and a page with no owner data. */
 export async function onboardingModelFixture() {
@@ -12,7 +13,7 @@ export async function onboardingModelFixture() {
   const server = createServer(async (request, response) => {
     if (request.method === "GET" && request.url?.startsWith("/fixture")) {
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
-      response.end(`<!doctype html><title>Aux first task fixture</title><main><h1>First useful question</h1><p>${PAGE_MARKER}: A local page about a small decision. Compare two options, cite this source, and keep the result as a draft.</p></main>`);
+      response.end(`<!doctype html><title>Aux first task fixture</title><main><h1>First useful question</h1><p>${PAGE_MARKER}: ${ANSWER}</p></main>`);
       return;
     }
     if (request.method === "GET" && request.url === "/v1/models") {

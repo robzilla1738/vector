@@ -8,7 +8,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, statSyn
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { setTimeout as delay } from "node:timers/promises";
-import { ANSWER, MODEL_ID, onboardingModelFixture } from "./onboarding-model-fixture.mjs";
+import { verifyDoneAgainstObservation } from "@aux/runtime";
+import { ANSWER, MODEL_ID, PAGE_MARKER, onboardingModelFixture } from "./onboarding-model-fixture.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 const stages = [
@@ -53,12 +54,21 @@ if (process.argv.includes("--self-check")) {
   const model = await onboardingModelFixture();
   try {
     assert.equal((await (await fetch(`${model.endpoint}/models`)).json()).data[0].id, MODEL_ID);
-    assert.match(await (await fetch(model.pageUrl)).text(), /AUX_ONBOARDING_DISPOSABLE_SOURCE/);
+    const pageHtml = await (await fetch(model.pageUrl)).text();
+    assert.equal(pageHtml.includes(PAGE_MARKER), true);
+    assert.equal(pageHtml.includes(ANSWER), true);
     const request = fetch(`${model.endpoint}/chat/completions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: MODEL_ID, messages: [{ role: "user", content: "test" }] }) });
     for (let i = 0; i < 40 && model.calls.length !== 1; i++) await delay(10);
     assert.equal(model.calls.length, 1);
     model.release();
-    assert.match(JSON.stringify(await (await request).json()), /Finished the local first task/);
+    const completion = await (await request).json();
+    const plan = JSON.parse(completion.choices[0].message.content);
+    assert.equal(plan.status, "done");
+    assert.equal(plan.message, "Finished the local first task");
+    assert.equal(plan.result.answer, ANSWER);
+    const observation = { content: { url: model.pageUrl, title: "Aux first task fixture", text: `${PAGE_MARKER}: ${ANSWER}`, headings: ["First useful question"], tables: [] } };
+    assert.equal(verifyDoneAgainstObservation({ answer: ANSWER }, observation, []).ok, true);
+    assert.equal(verifyDoneAgainstObservation({ answer: "The local page describes a disposable first task for Aux." }, observation, []).ok, false);
     console.log("PASS synthetic Chrome source and held local model protocol");
   } finally { await model.close(); }
   process.exit(0);
