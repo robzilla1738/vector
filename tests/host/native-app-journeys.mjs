@@ -6708,7 +6708,7 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     console.log(`history names ${native("names")}`);
     const focused = focusedValue();
     console.log(`history scope focused=${focused}`);
-    if (!focused.includes("Address, search, and agent prompt") && !focused.includes("Aux native Red")) {
+    if (!focused.includes("Address, search, and agent prompt")) {
       const mark = frameNamed("Bookmark this page");
       if (!mark) throw new Error("The address field lost focus and the bookmark control is gone");
       native("click-at", String(Math.max(mark.windowX + 160, mark.x - 240)), String(mark.y));
@@ -6761,7 +6761,7 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       throw error;
     }
     const focused = focusedValue();
-    if (!focused.includes("Address, search, and agent prompt") && !focused.includes("Aux Scope")) {
+    if (!focused.includes("Address, search, and agent prompt")) {
       const mark = frameNamed("Bookmark this page");
       if (!mark) throw new Error("The address field lost focus and the bookmark control is gone");
       native("click-at", String(Math.max(mark.windowX + 160, mark.x - 240)), String(mark.y));
