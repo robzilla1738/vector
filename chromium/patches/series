@@ -127,3 +127,4 @@ aux/runtime/0126-guarded-request-terminal.patch
 aux/runtime/0127-physical-takeover-receipt.patch
 aux/shell/0128-draggable-region-nodrag-precedence.patch
 aux/shell/0129-global-error-bubble-without-toolbar.patch
+aux/runtime/0130-isolation-clear-cookie-filter.patch
