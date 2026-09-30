@@ -87,16 +87,12 @@ export function MigrationImport() {
             This copy of the Electron profile is staged in the current Chromium Profile. Review the counts
             before importing browser state.
           </p>
-          <dl>
-            <dt>Spaces</dt>
-            <dd>{review.spaces.toLocaleString()}</dd>
-            <dt>Tabs</dt>
-            <dd>{review.tabs.toLocaleString()}</dd>
-            <dt>Bookmarks</dt>
-            <dd>{review.bookmarks.toLocaleString()}</dd>
-            <dt>Bookmark folders</dt>
-            <dd>{review.bookmarkFolders.toLocaleString()}</dd>
-          </dl>
+          <ul className="migration-counts">
+            <li>Spaces: {review.spaces.toLocaleString()}</li>
+            <li>Tabs: {review.tabs.toLocaleString()}</li>
+            <li>Bookmarks: {review.bookmarks.toLocaleString()}</li>
+            <li>Bookmark folders: {review.bookmarkFolders.toLocaleString()}</li>
+          </ul>
           <p className="hint">
             Manifest SHA-256: <code>{review.manifestSha256}</code>
           </p>

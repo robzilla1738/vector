@@ -25,7 +25,7 @@
 .structured-result-table tr:focus-visible { outline:2px solid var(--focus-line); outline-offset:-2px; }
 .result-row-detail { margin-top:12px; border-top:1px solid var(--line); padding-top:12px; }
 .result-row-detail header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.result-row-detail dl { display:grid; grid-template-columns:minmax(60px,1fr) minmax(0,3fr); gap:8px 12px; font-size:var(--fs-sm); }
-.result-row-detail dt { color:var(--ink-3); }
-.result-row-detail dd { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.result-row-detail .result-fields { display:grid; grid-template-columns:minmax(60px,1fr) minmax(0,3fr); gap:8px 12px; font-size:var(--fs-sm); }
+.result-row-detail .meta-k { color:var(--ink-3); }
+.result-row-detail .meta-v { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
 }

@@ -82,7 +82,7 @@ export function MemoryItems({ memory, disabled, onSaved }: { memory: WorkspaceMe
     {!!items.length && !visibleItems.length && <output className="hint" data-block>No notes match these filters.</output>}
     {selectedItem && <DetailPane title="Memory note" metadata={noteStatus(selectedItem)} onClose={() => { setSelectedId(null); requestAnimationFrame(() => detailOpener.current?.focus()); }}>
       <p className="memory-note-content selectable">{selectedItem.content}</p>
-      <dl className="memory-note-metadata"><dt>Scope</dt><dd>This Space</dd><dt>Source</dt><dd className="selectable">{selectedItem.sourceUrl || "Added directly"}</dd><dt>Expires</dt><dd>{selectedItem.expiresAt === undefined ? "No expiry" : new Date(selectedItem.expiresAt).toLocaleDateString()}</dd><dt>Updated</dt><dd>{new Date(selectedItem.updatedAt).toLocaleString()}</dd></dl>
+      <div className="memory-note-metadata"><span className="meta-k">Scope</span><span className="meta-v">This Space</span><span className="meta-k">Source</span><span className="meta-v selectable">{selectedItem.sourceUrl || "Added directly"}</span><span className="meta-k">Expires</span><span className="meta-v">{selectedItem.expiresAt === undefined ? "No expiry" : new Date(selectedItem.expiresAt).toLocaleDateString()}</span><span className="meta-k">Updated</span><span className="meta-v">{new Date(selectedItem.updatedAt).toLocaleString()}</span></div>
     </DetailPane>}
     {!items.length && !draft && <p className="hint">No individual notes yet. Aux only saves notes you explicitly add here.</p>}
     {draft && <form className="memory-note-form" onSubmit={event => { event.preventDefault(); save(); }}>

@@ -66,7 +66,7 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
             { label: "Forget", danger: true, disabled: busy, onSelect: () => void change("workspaces.browsingMemory.forget", { memoryId: page.memoryId }) },
           ]} />} />)}</div>
         {selected && <DetailPane title={selected.title} metadata="Page reference · This Space" actions={<button className="btn sm" onClick={() => openSource(selected.url)}>Open page</button>} onClose={() => { setSelectedId(null); requestAnimationFrame(() => opener.current?.focus()); }}>
-          <dl className="memory-note-metadata"><dt>Source</dt><dd className="selectable">{selected.url}</dd><dt>Last visited</dt><dd>{new Date(selected.lastVisitedAt).toLocaleString()}</dd><dt>Use</dt><dd>{memorySourceExcluded(memory, selected.url) ? "Site excluded" : !saved.policy.enabled || memory.enabled === false ? "Paused" : "Available in this Space"}</dd></dl>
+          <div className="memory-note-metadata"><span className="meta-k">Source</span><span className="meta-v selectable">{selected.url}</span><span className="meta-k">Last visited</span><span className="meta-v">{new Date(selected.lastVisitedAt).toLocaleString()}</span><span className="meta-k">Use</span><span className="meta-v">{memorySourceExcluded(memory, selected.url) ? "Site excluded" : !saved.policy.enabled || memory.enabled === false ? "Paused" : "Available in this Space"}</span></div>
           <p className="hint">Only this page’s title and address are remembered. No page contents or forms were captured.</p>
         </DetailPane>}
         {!!saved.pages.length && !visiblePages.length && <p className="hint">No pages match “{query}”.</p>}

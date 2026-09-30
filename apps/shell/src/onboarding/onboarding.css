@@ -113,19 +113,18 @@
   .onboarding-review h3 {
     font-size: 14px;
   }
-  .onboarding-review dl {
+  .onboarding-review .import-counts {
     margin: 8px 0;
+    padding: 0;
+    list-style: none;
   }
-  .onboarding-review dl div {
+  .onboarding-review .import-counts li {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
   }
-  .onboarding-review dt {
+  .onboarding-review .import-counts li span:first-child {
     min-width: 120px;
-  }
-  .onboarding-review dd {
-    margin: 0;
   }
   .onboarding-review .row {
     flex-wrap: wrap;

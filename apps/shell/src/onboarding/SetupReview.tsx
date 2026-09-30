@@ -159,14 +159,15 @@ export function SetupReview({
               {summary.status}
               {summary.sources.length ? ` · ${summary.sources.join(", ")}` : ""}
             </p>
-            <dl>
-              {Object.entries(categories).map(([key, label]) => (
-                <div key={key}>
-                  <dt>{label}</dt>
-                  <dd>{summary.counts[key as keyof typeof categories].toLocaleString()} confirmed</dd>
-                </div>
+            {/* chrome:// web UI fatals when a term or definition is named from its text. */}
+            <ul className="import-counts">
+              {(Object.keys(categories) as (keyof typeof categories)[]).map((key) => (
+                <li key={key}>
+                  <span>{categories[key]}</span>
+                  <span>{summary.counts[key].toLocaleString()} confirmed</span>
+                </li>
               ))}
-            </dl>
+            </ul>
             {summary.skipped > 0 && (
               <p>
                 {summary.skipped.toLocaleString()} skipped. Skips may include duplicates or unavailable items;

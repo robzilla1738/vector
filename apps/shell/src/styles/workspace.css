@@ -45,8 +45,8 @@ html, body, .app, .app.native-host, .app-body { background: transparent; }
 .conversation:not(.conversation-embedded) .answer { font-size: var(--fs-lg); line-height: 1.7; color: var(--ink-0); max-width: 62ch; }
 .conversation .run-status { font-size: var(--fs-2xs); color: var(--ink-2); }
 .conversation .answer-row { display: block; }
-.conversation .answer-row dt { margin-bottom: 5px; }
-.conversation .answer-row dd { white-space: pre-wrap; }
+.conversation .answer-row .answer-key { margin-bottom: 5px; }
+.conversation .answer-row .answer-value { white-space: pre-wrap; }
 .conversation-image { margin: var(--space-5) 0; }
 .conversation-image figcaption { font-size: var(--fs-2xs); color: var(--ink-2); margin-top: var(--space-optical); }
 .conversation-sources { margin: var(--space-3-5) 0 var(--space-1); border-top: var(--hairline) solid var(--line); color: var(--ink-2); }

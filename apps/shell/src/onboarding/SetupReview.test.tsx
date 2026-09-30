@@ -96,6 +96,7 @@ it("shows confirmed import counts and authority explanations using only the exis
   await render();
   expect(rpc.mock.calls).toEqual([["import.status", {}]]);
   expect(host.textContent).toContain("Import finished · Chrome");
+  expect(host.querySelector("dl, dt, dd")).toBeNull();
   expect(host.textContent).toContain("4 confirmed");
   expect(host.textContent).toContain("7 confirmed");
   expect(host.textContent).toContain("2 skipped");

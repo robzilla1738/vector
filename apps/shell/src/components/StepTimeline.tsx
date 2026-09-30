@@ -237,7 +237,7 @@ const StepCard = memo(function StepCard({
           <div className="tl-expand">
             {s.outcome && <div className="tl-evidence-summary"><span className="tl-ms nums">{fmtMs(s.outcome.durationMs)}</span>{s.outcome.receipt?.observed && <span>{s.outcome.receipt.observed}</span>}</div>}
             {s.outcome?.error?.code && <code className="tl-code">{s.outcome.error.code}</code>}
-            {s.outcome?.receipt?.identity && <dl className="tl-identity"><dt>Page</dt><dd>{s.outcome.receipt.identity.pageId}</dd><dt>Document</dt><dd>{s.outcome.receipt.identity.documentEpoch}</dd>{s.outcome.receipt.identity.generation !== undefined && <><dt>Generation</dt><dd>{s.outcome.receipt.identity.generation}</dd></>}{s.outcome.receipt.identity.target && <><dt>Target</dt><dd>{s.outcome.receipt.identity.target}</dd></>}</dl>}
+            {s.outcome?.receipt?.identity && <div className="tl-identity"><span className="meta-k">Page</span><span className="meta-v">{s.outcome.receipt.identity.pageId}</span><span className="meta-k">Document</span><span className="meta-v">{s.outcome.receipt.identity.documentEpoch}</span>{s.outcome.receipt.identity.generation !== undefined && <><span className="meta-k">Generation</span><span className="meta-v">{s.outcome.receipt.identity.generation}</span></>}{s.outcome.receipt.identity.target && <><span className="meta-k">Target</span><span className="meta-v">{s.outcome.receipt.identity.target}</span></>}</div>}
             {chips.length > 0 && <div className="tl-chips">{chips.map(chip => <Chip key={`${chip.kind}:${chip.value}`} chip={chip} />)}</div>}
             {detailKeys.length > 0 && <pre className="tl-json">{JSON.stringify(redacted, null, 2)}</pre>}
           </div>

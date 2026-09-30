@@ -60,12 +60,12 @@ function ResultValue({ value }: { value: unknown }) {
 }
 
 function ResultFields({ result, labeled }: { result: Record<string, unknown>; labeled: boolean }) {
-  return <dl className="answer-result">{Object.entries(result).map(([key, value]) => (
+  return <div className="answer-result">{Object.entries(result).map(([key, value]) => (
     <div key={key} className="answer-row">
-      {labeled && <dt>{key.replace(/_/g, " ")}</dt>}
-      <dd><ResultValue value={value} /></dd>
+      {labeled && <div className="answer-key">{key.replace(/_/g, " ")}</div>}
+      <div className="answer-value"><ResultValue value={value} /></div>
     </div>
-  ))}</dl>;
+  ))}</div>;
 }
 
 function chatReply(run: Run): string | null {

@@ -26,6 +26,6 @@ export function StructuredResult({content,mediaType}: {content:string;mediaType:
         setSelected(next);rows.current.get(next)?.focus();
       }
     }}>{row.map((cell,j)=><td key={j}>{cell}</td>)}</tr>)}</tbody></table></div>:<pre>{!raw&&parsed.json!==undefined?parsed.json:content||"Empty result"}</pre>}
-    {!raw && parsed.csv && selected!==null && parsed.csv.rows[selected] && <section className="result-row-detail" aria-label={`Row ${selected+1} details`}><header><strong>Row {selected+1}</strong><button className="btn sm ghost" onClick={()=>{rows.current.get(selected)?.focus();setSelected(null);}}>Close details</button></header><dl>{parsed.csv.rows[selected].map((cell,i)=><div key={i} style={{display:"contents"}}><dt>Column {i+1}</dt><dd>{cell||"Empty"}</dd></div>)}</dl></section>}
+    {!raw && parsed.csv && selected!==null && parsed.csv.rows[selected] && <section className="result-row-detail" aria-label={`Row ${selected+1} details`}><header><strong>Row {selected+1}</strong><button className="btn sm ghost" onClick={()=>{rows.current.get(selected)?.focus();setSelected(null);}}>Close details</button></header><div className="result-fields">{parsed.csv.rows[selected].map((cell,i)=><div key={i} style={{display:"contents"}}><span className="meta-k">Column {i+1}</span><span className="meta-v">{cell||"Empty"}</span></div>)}</div></section>}
   </>;
 }
