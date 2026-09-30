@@ -483,10 +483,22 @@ async function openLibraryView(viewLabel) {
     console.log(`library command lower click ${row.x},${y}`);
     native("click-at", String(row.x), String(y));
   }
+  await until("library dialog", () => native("has-name", "Library") === "true", 15_000);
+  // Unselected tabs are unnamed. The selected Bookmarks tab moves with Arrow Right.
+  const tab = frameNamed("Bookmarks");
+  if (!tab || tab.height > 80) {
+    console.log(`library tab miss focused=${focusedValue()} frame=${tab ? `${tab.x},${tab.y} ${tab.width}x${tab.height}` : "none"}`);
+    throw new Error("The Bookmarks library tab is not a row");
+  }
+  console.log(`library tab frame ${tab.x},${tab.y} ${tab.width}x${tab.height}`);
+  native("click-at", String(tab.x), String(tab.y));
+  await delay(150);
+  const moves = viewLabel === "Reading list" ? 1 : 3;
+  for (let step = 0; step < moves; step++) native("arrow-right");
   try {
-    await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true", 15_000);
+    await until(`library view ${viewLabel}`, () => native("has-name", viewLabel) === "true" || focusedValue().includes(viewLabel), 8_000);
   } catch (error) {
-    console.log(`library view miss focused=${focusedValue()} library=${native("has-name", "Library")} palette=${native("has-name", "Command palette")}`);
+    console.log(`library view miss focused=${focusedValue()} library=${native("has-name", "Library")}`);
     throw error;
   }
   clickPhrase(viewLabel);
