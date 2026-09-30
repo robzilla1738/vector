@@ -387,6 +387,17 @@ function redactSecret(text) {
 function pidAlive(pid) {
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
+function helperExited(pid) {
+  // The browser parents the helper and closes the handle without waitpid, so
+  // SIGKILL leaves a zombie. kill(pid, 0) still succeeds until Aux itself exits.
+  let state;
+  try { state = execFileSync("ps", ["-p", String(pid), "-o", "state="], { encoding: "utf8", timeout: 5_000 }).trim(); }
+  catch (error) {
+    if (error.status === 1) return true;
+    throw new Error(`ps state failed for ${pid}: ${error instanceof Error ? error.message : error}`);
+  }
+  return state.startsWith("Z");
+}
 function psUid(pid) {
   let out;
   try { out = execFileSync("ps", ["-ww", "-p", String(pid), "-o", "uid="], { encoding: "utf8", timeout: 5_000 }).trim(); }
@@ -952,8 +963,17 @@ async function runTrustAdversarialJourney() {
     assert.ok(witnessed.events.some(event => event.type === "settings.changed" && event.seq > dropped));
     const descriptor = JSON.parse(readFileSync(runtimeFile, "utf8"));
     assert.equal(pidAlive(descriptor.pid), true);
-    process.kill(descriptor.pid, "SIGKILL");
-    await until("witness helper exits", async () => pidAlive(descriptor.pid) ? null : true, 10_000);
+    try { process.kill(descriptor.pid, "SIGKILL"); }
+    catch (error) { if (error.code !== "ESRCH") throw error; }
+    try {
+      await until("witness helper exits", async () => helperExited(descriptor.pid) ? true : null, 10_000);
+    } catch (error) {
+      if (!String(error?.message).includes("witness helper exits")) throw error;
+      let state;
+      try { state = execFileSync("ps", ["-p", String(descriptor.pid), "-o", "pid=,state=,command="], { encoding: "utf8", timeout: 5_000 }).trim(); }
+      catch (psError) { state = psError.status === 1 ? "gone" : (psError instanceof Error ? psError.message : String(psError)); }
+      throw new Error(`${error.message}; ps ${state || "gone"}`);
+    }
     const removed = await until("event floor is deleted while the helper is down", async () => {
       let current;
       try { current = JSON.parse(readFileSync(runtimeFile, "utf8")); } catch { current = null; }
