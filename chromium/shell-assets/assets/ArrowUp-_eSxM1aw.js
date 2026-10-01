@@ -1,0 +1,1 @@
+import{j as s}from"./index-CSSxPaze.js";import{i as t,g as a,r as o}from"./App-DebS6rrc.js";const n=r=>s.jsxs("svg",{...a,...r,children:[s.jsx("path",{d:"M12 20.25V4.5",...o}),s.jsx("path",{d:"M5.75 10L12 3.75L18.25 10",...o})]}),i=t(n);export{n as A,i as s};

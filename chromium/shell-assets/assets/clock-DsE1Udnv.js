@@ -1,0 +1,1 @@
+function n(r=1,e=Date.now){if(!Number.isFinite(r)||r<1||r>1e5)throw new Error("Invalid clock scale.");return{scale:r,now:e,elapsedSince:o=>Math.max(0,e()-o)*r,delayMs:o=>{if(!Number.isFinite(o)||o<0)throw new Error("Invalid clock duration.");return o/r}}}const t=n(window.auxChromiumHost?.testClockScale);export{t as clock};
