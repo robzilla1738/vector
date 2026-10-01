@@ -2,6 +2,7 @@ import type { ComponentType, ReactElement, SVGProps } from "react";
 import {
   Volume2,
   VolumeX,
+  PictureInPicture2,
   AppWindow,
   Archive,
   ArrowUp,
@@ -151,5 +152,6 @@ export const I = {
   shield: icon(Shield, "sm"),
   unplug: icon(Unplug, "sm"),
   external: icon(ExternalLink, "sm"),
+  pip: icon(PictureInPicture2, "sm"),
   sun: icon(Sun, "lg"),
 } satisfies Record<string, ReactElement>;
