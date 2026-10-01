@@ -29,12 +29,12 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | Role / lane | Status | Patches | Agent / worktree |
 |---|---|---|---|
 | Integrator / Wave 0 | Active | 0136–0139, fix-ups 0186–0199 | Current chat / repository |
-| Builder | Approved incremental143/core-only candidate602b66f0; paired pin independently verified | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
+| Builder | Idle after602b nativecompilePASS/coreFAIL; actualdelegate identity mismatch audited | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
 | Design reviewer | Latest24e2 two captures reviewed8a46b660 integrated61164e17; all DR001–007 open | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
-| L1 Commands | Frozen62f39/root-series61244588; bounded diagnostic143e6d8 reviewed, nativepending | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
-| L4 Windows | Active Snapshot fail-closed correction and actual Little target-return API; source0e4079812090PASS | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
-| L2 Layout | Active full200ms geometry/reduced motion and12 CSS literal ratchet corrections | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
-| L5 Surfaces | Waiting for L4 selector and lane capacity | 0172–0177 | Unassigned |
+| L1 Commands | Resumed actual shell/guest content-identity diagnosis after602b trace | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
+| L4 Windows | Frozensourcec90601ae failclosed/pointer/coldexternalproducer/refusal tests; nativepending | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
+| L2 Layout | Frozen54a34f fullmotion/token/nativegeometry packet; actual root composition pending | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
+| L5 Surfaces | Active fullF9/F17 source; exactL4 selector dependency supplied | 0172–0177 | /root/l5_surfaces /tmp/aux-browser-runtime-l5 |
 | L6 Profiles/routing | Frozen5957d4d3 partial source; resume full F5/F12/F13 after L4 actual target API | 0154–0159 | /root/l6_profiles /tmp/aux-browser-runtime-l6 |
 | L7 Extensions | Waiting for lane capacity | 0160–0165 | Unassigned |
 | L8 Organize | Waiting for lane capacity | 0178–0179 | Unassigned |
@@ -219,3 +219,8 @@ Root-only LJ diagnostic5ade0329 actualcommands/sharedharness plus preservedb27co
 
 
 L1pairedscratchpin verified103assetsSHAa50baa58e282e75060756cb000e5b7f28a4a63a71286f09a9a826a991525d87d, manifestdc0a9d7d, shelllog16727a15 andbudgetlog1989fe9a; startup473/CSS179/total1690PASS. Root installed only isolatedrepo pin andcommitted602b66f053036b94ead6e062a6b86b6ef7188348 cleanproduct/tree7da8d3a261fa7a67477f227e5fa8ee11741c7646. Solebuilder nowapproved incrementally apply exact143e6d8 afterunchanged142a864, build/stageRuntime andONE shortcut-registry-core attempt/outputl1-602b66f0-shortcut-registry-core. No extra retry/perf/records/featuremerge; actualcompile/routeevidence pending. RootLJ sourceaudit release/test-artifacts/root-lj-b27-source-audit.json preserves391/2068 gates/20registrygaps/module/loghashes/actualguestgrammar proof andeightnativeunprovedfailures.
+
+
+Latest native602b compile49steps1m45.36s PASS with exact195/26de283 header/602b source/emptyqualified, runtime602b/tree7da8 andpina50 independentlyread. FullSwiftcache4b35 actualtrusted Accessibility/ScreenRecording=true, ReduceMotion/Transparency=false. Core FAIL oneattempt Website shortcuts1/releases0/modifierscorrect. Root independentlyverifiedallmanifest/module/native/runtime/product/harness/header/log/capture/probe hashes andfourstable/candidate mirrors. Audit `release/test-artifacts/l1-602b66f0-independent-audit.json` SHA0ea78df8d01cd721c82bf81969b8b7d5d43d30b02e386a53a7236d176fe088c4. Sevenunique probe lines establish realkeyup arrivesapp/delegate/pair, actualkey/window/timestamp/nonnullguards pass butevent_contents differsarmedcontents andfocused/documentguards fail; noforwardmarker. Laterheld/refusals/dismissal unreached. Root resumedL1 actualshell/guestidentity diagnosis, no guardwaiver/syntheticrelease/newretry. Failure-process actualownedchild55353/gen1 hasnullcode/signal beforecleanup; cleanupnoerrors/noAux/helper/slot. No perf rerun/qualification.
+
+L4 frozen c90601ae native1488a733772/1500ad60b9c/1518ac22be2/15299bd816c: actualSnapshotfailclosed, actualLittlepointertarget, preciseordinary externalHTTP receiptuntrusted +coldnullguard/fallback, guardedrealnativebrowserrefusaltests. Fullnative test/actualcomposition stillpending. L2 frozen54a34f revisedmotion/tokens/resize/sidebar/nativeguard/nativegeometrypacket source40focused/ratchetPASS, actualcombinedsource/native/perf pending. L5 explicitly dispatched fullF9/F17 inisolatedcontracts-v1+integratione937 worktree; ownership0172–177/Stage/splitreducers/PiP, rootsharedadapter protocol andrealL4ownPages dependency supplied, no otherlane merge/copiedshim. No feature scope has been closed.
