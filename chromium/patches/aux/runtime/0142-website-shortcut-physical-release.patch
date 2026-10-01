@@ -42,7 +42,7 @@ index 1b9c970..1c47e7a 100644
  
  #endif  // CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_WINDOW_H_
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
-index acc50a1..8b1d0a9 100644
+index acc50a1..9d6b891 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
 @@ -8,6 +8,7 @@
@@ -89,7 +89,7 @@ index acc50a1..8b1d0a9 100644
        id != "new-tab" && id != "new-window" && id != "new-private-window" &&
        id != "close-tab" && id != "close-window" && id != "reopen-closed-tab" &&
        id != "quick-ask" && id != "tab-next" && id != "tab-previous" &&
-@@ -215,14 +230,43 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
+@@ -215,14 +230,44 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
    if (site_chord && id == aux_site_shortcut_id_ &&
        aux_site_shortcut_accelerator_ && *aux_site_shortcut_accelerator_ == accelerator &&
        aux_site_shortcut_contents_.get() == contents &&
@@ -108,7 +108,7 @@ index acc50a1..8b1d0a9 100644
 +    // Cocoa rejects releases for a keydown consumed before its own responder
 +    // bookkeeping. Observe the physical release before that filter, never
 +    // manufacture one, and consume it so normal delivery cannot duplicate it.
-+    auto monitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown | NSEventMaskKeyUp
++    NSObject* monitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown | NSEventMaskKeyUp
 +        handler:^NSEvent*(NSEvent* physical) {
 +      if (!owner) return physical;
 +      if (physical.type == NSEventTypeKeyDown) {
@@ -128,7 +128,8 @@ index acc50a1..8b1d0a9 100644
 +    }];
 +    if (!monitor) return shell->DispatchAuxShortcut(id, false);
 +    aux_site_shortcut_release_cleanup_ = base::ScopedClosureRunner(
-+        base::BindOnce([monitor] { [NSEvent removeMonitor:monitor]; }));
++        base::BindOnce([](NSObject* owned_monitor) { [NSEvent removeMonitor:owned_monitor]; },
++                       monitor));
      aux_site_shortcut_id_.clear();
      shell->DispatchAuxShortcut(id, false, true);
      input::NativeWebKeyboardEvent forwarded = event ? *event :
