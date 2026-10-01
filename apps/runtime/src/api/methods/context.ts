@@ -229,7 +229,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
           : { kind: "workspace" as const, id: "rpc" },
         actor: "external_token",
         effect: "egress",
-        category: "external_tool",
+        category: input.action === "agent.web.fetch" || input.action === "agent.web.search" ? "read" : "external_tool",
         action: input.action,
         origin: input.url.origin,
         destination: input.url.href.slice(0, 2048),

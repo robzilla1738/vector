@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { ApprovalDecisionSchema, SafetyActionSchema, type ApprovalDecision, type AuthorizationProvenance, type SafetyAction, type StandingGrant } from "@aux/contracts";
 import type { SqliteColumnCipher } from "../store/sqlite-protection.js";
+import { preapprovableCategory } from "./confirmation.js";
 import type { OriginPolicyDecision } from "./origin-policy.js";
 
 export type LocalCeiling = "never" | "ask" | "always";
@@ -16,11 +17,11 @@ const ASK = "Pause this action and request approval from the user. Do not dispat
 function fingerprint(action: SafetyAction, lifetime: "turn" | "thread"): string {
   return createHash("sha256").update(JSON.stringify([
     action.profileId, action.scope.kind, action.scope.id, action.effect, action.action,
-    action.invocationDigest, action.origin ?? null, action.recipient ?? null, lifetime === "turn" ? action.turnId : null, action.threadId,
+    action.invocationDigest, action.category ?? null, action.confirmation ?? null, action.origin ?? null, action.recipient ?? null, lifetime === "turn" ? action.turnId : null, action.threadId,
   ])).digest("hex");
 }
 
-type GrantRow = { grant_id: string; profile_id: string; scope_kind: string; scope_id: string; effect: string; action: string; origin: string | null; recipient: string | null; lifetime: string; session_id: string | null; created_at: number; revoked_at: number | null };
+type GrantRow = { grant_id: string; profile_id: string; scope_kind: string; scope_id: string; effect: string; action: string; category: string | null; origin: string | null; recipient: string | null; lifetime: string; session_id: string | null; created_at: number; revoked_at: number | null };
 
 /** Local, durable authorization store. Call `authorize` again immediately before dispatch. */
 export class ApprovalStore {
@@ -33,7 +34,7 @@ export class ApprovalStore {
       decision TEXT, created_at INTEGER NOT NULL, decided_at INTEGER);
       CREATE TABLE IF NOT EXISTS safety_standing_grants(
       grant_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, scope_kind TEXT NOT NULL, scope_id TEXT NOT NULL,
-      effect TEXT NOT NULL, action TEXT NOT NULL, origin TEXT, recipient TEXT,
+      effect TEXT NOT NULL, action TEXT NOT NULL, category TEXT, origin TEXT, recipient TEXT,
       lifetime TEXT NOT NULL CHECK(lifetime IN ('session','always')), session_id TEXT,
       created_at INTEGER NOT NULL, revoked_at INTEGER);
       CREATE INDEX IF NOT EXISTS idx_safety_grants_lookup ON safety_standing_grants(profile_id,scope_kind,scope_id,effect,action,origin,recipient,revoked_at);
@@ -103,16 +104,20 @@ export class ApprovalStore {
         JSON.stringify([decision.approvalId]), "action_json", row.action_json);
       if (!row || row.state !== "pending" || row.expires_at <= now || row.fingerprint !== fingerprint(action, row.lifetime)
         || row.turn_id !== action.turnId || row.thread_id !== action.threadId) throw new Error("Forged, expired, or stale approval");
+      if (decision.decision === "acceptForOrigin" && (!preapprovableCategory(action.category) || action.confirmation !== "preapprovable" || !action.origin || action.recipient))
+        throw new Error("Only login, upload and permission actions may be always allowed on an exact origin");
       const state = decision.decision === "decline" || decision.decision === "acceptWithAmendment" ? "declined"
-        : decision.decision === "cancel" ? "cancelled" : decision.decision === "acceptForSession" ? "consumed" : "accepted";
+        : decision.decision === "cancel" ? "cancelled" : decision.decision === "acceptForSession" || decision.decision === "acceptForOrigin" ? "consumed" : "accepted";
       this.db.prepare("UPDATE safety_approval_requests SET state=?,decision=?,decided_at=? WHERE approval_id=?")
         .run(state, decision.decision, now, decision.approvalId);
-      if (decision.decision === "acceptForSession") {
+      if (decision.decision === "acceptForSession" || decision.decision === "acceptForOrigin") {
         this.db.prepare(`INSERT INTO safety_standing_grants(
-          grant_id,profile_id,scope_kind,scope_id,effect,action,origin,recipient,lifetime,session_id,created_at)
-          VALUES(?,?,?,?,?,?,?,?,?,?,?)`)
+          grant_id,profile_id,scope_kind,scope_id,effect,action,category,origin,recipient,lifetime,session_id,created_at)
+          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
           .run(randomUUID(), action.profileId, action.scope.kind, action.scope.id, action.effect,
-            action.action, action.origin ?? null, action.recipient ?? null, "session", decision.sessionId, now);
+            action.action, action.category ?? null, action.origin ?? null, action.recipient ?? null,
+            decision.decision === "acceptForOrigin" ? "always" : "session",
+            decision.decision === "acceptForSession" ? decision.sessionId : null, now);
       }
       this.db.exec("COMMIT");
       this.audit({ kind: "approval_decided", approvalId: decision.approvalId, decision: decision.decision, at: now });
@@ -124,13 +129,13 @@ export class ApprovalStore {
     if (lifetime === "session" && !sessionId) throw new Error("Session grant requires a session ID");
     const grantId = randomUUID();
     this.db.prepare(`INSERT INTO safety_standing_grants(
-      grant_id,profile_id,scope_kind,scope_id,effect,action,origin,recipient,lifetime,session_id,created_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?)`)
-      .run(grantId, action.profileId, action.scope.kind, action.scope.id, action.effect, action.action,
+      grant_id,profile_id,scope_kind,scope_id,effect,action,category,origin,recipient,lifetime,session_id,created_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(grantId, action.profileId, action.scope.kind, action.scope.id, action.effect, action.action, action.category ?? null,
         action.origin ?? null, action.recipient ?? null, lifetime, sessionId ?? null, now);
     this.audit({ kind: "grant_created", grantId, effect: action.effect, action: action.action, at: now });
     return { grantId, profileId: action.profileId, scope: action.scope, effect: action.effect,
-      action: action.action, ...(action.origin ? { origin: action.origin } : {}), ...(action.recipient ? { recipient: action.recipient } : {}),
+      action: action.action, ...(action.category ? { category: action.category } : {}), ...(action.origin ? { origin: action.origin } : {}), ...(action.recipient ? { recipient: action.recipient } : {}),
       lifetime, ...(sessionId ? { sessionId } : {}), createdAt: now };
   }
 
@@ -141,6 +146,7 @@ export class ApprovalStore {
       grantId: row.grant_id, profileId: row.profile_id,
       scope: { kind: row.scope_kind as "workspace" | "task", id: row.scope_id },
       effect: row.effect as StandingGrant["effect"], action: row.action,
+      ...(row.category ? { category: SafetyActionSchema.shape.category.parse(row.category) } : {}),
       ...(row.origin ? { origin: row.origin } : {}), ...(row.recipient ? { recipient: row.recipient } : {}),
       lifetime: row.lifetime as "session" | "always", ...(row.session_id ? { sessionId: row.session_id } : {}),
       createdAt: row.created_at,
@@ -168,10 +174,14 @@ export class ApprovalStore {
     }
     this.db.exec("BEGIN IMMEDIATE");
     try {
-      const grants = this.db.prepare(`SELECT * FROM safety_standing_grants WHERE profile_id=? AND scope_kind=? AND scope_id=?
-        AND effect=? AND action=? AND origin IS ? AND recipient IS ? AND revoked_at IS NULL ORDER BY created_at DESC`)
-        .all(action.profileId, action.scope.kind, action.scope.id, action.effect, action.action, action.origin ?? null, action.recipient ?? null) as GrantRow[];
-      const grant = input.approvalOnly ? undefined : grants.find(row => row.lifetime === "always" || row.session_id === input.sessionId && !!input.sessionId);
+      const grants = this.db.prepare(`SELECT * FROM safety_standing_grants WHERE profile_id=? AND effect=? AND origin IS ? AND recipient IS ? AND revoked_at IS NULL
+        AND ((scope_kind=? AND scope_id=? AND action=? AND category IS ?)
+          OR (lifetime='always' AND session_id IS NULL AND recipient IS NULL AND origin IS NOT NULL AND category=? AND category IN ('login','upload','permission')))
+        ORDER BY created_at DESC`)
+        .all(action.profileId, action.effect, action.origin ?? null, action.recipient ?? null, action.scope.kind, action.scope.id, action.action, action.category ?? null, action.category ?? null) as GrantRow[];
+      const grant = input.approvalOnly ? undefined : grants.find(row =>
+        (!preapprovableCategory(row.category ?? undefined) || action.confirmation === "preapprovable")
+        && (row.lifetime === "always" || row.session_id === input.sessionId && !!input.sessionId));
       if (grant) {
         this.db.exec("COMMIT");
         return this.auditDecision({ status: "authorized", provenance: { authorizedBy: "standing", grantId: grant.grant_id } }, action, now);

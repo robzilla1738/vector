@@ -21,7 +21,7 @@ import {
 } from "@aux/contracts";
 import { classifyStep, grantAllows, isConsequential, parseGrant, resolveGrants, type EffectClass, type GrantInput } from "../agent/permissions.js";
 import { ApprovalStore, type LocalCeiling } from "./approval.js";
-import { confirmationLevelForAction, decideConfirmation } from "./confirmation.js";
+import { confirmationLevelForAction, confirmationTierFor, stricterConfirmation, decideConfirmation } from "./confirmation.js";
 import { reviewGuardian, type GuardianJudge, type UntrustedOutput } from "./guardian.js";
 import { evaluateOriginPolicy, exactOrigin, type OriginPolicyAudit, type OriginPolicyDecision } from "./origin-policy.js";
 
@@ -168,22 +168,11 @@ export function effectRequestForStep(input: {
 function actionFor(request: EffectRequest, normalizedOrigin?: string): SafetyAction {
   return SafetyActionSchema.parse({
     profileId: request.profileId, scope: request.scope, effect: request.effect,
-    action: request.action, invocationDigest: request.invocationDigest,
+    action: request.action, category: request.category, invocationDigest: request.invocationDigest,
     ...(normalizedOrigin ? { origin: `${normalizedOrigin}/` } : {}),
     ...(request.recipient ? { recipient: request.recipient } : {}),
     turnId: request.turnId, threadId: request.threadId, requestedAt: request.requestedAt,
   });
-}
-
-/** "Browse freely, confirm consequences": the unruled default by category. Reads,
- * navigation and non-consequential viewport moves are free; anything that may
- * reach the site confirms at action time; credentials and payments hand off. */
-function defaultConfirmation(request: EffectRequest): "handoff" | "action" | "none" {
-  if (request.category === "credential" || request.category === "payment") return "handoff";
-  if (request.dataClasses.includes("sensitive") || request.dataClasses.includes("file")) return "action";
-  if (["submit", "send", "post", "purchase", "delete", "account", "security"].includes(request.category)) return "action";
-  if (isConsequential(request.action)) return "action";
-  return "none";
 }
 
 function deny(journal: DecisionJournal, request: EffectRequest, refusalId: string, source: DecisionSource, guidance: string, at: number): Decision {
@@ -218,7 +207,7 @@ const ASK_GUIDANCE = "Pause this action and request approval from the user. Do n
  * single-use approvals authorize, and the guardian judges at dispatch.
  */
 export async function decide(request: EffectRequest, deps: DecideDeps, context: DecideContext): Promise<Decision> {
-  const at = deps.now?.() ?? Date.now();
+  let at = deps.now?.() ?? Date.now();
   const parsed = EffectRequestSchema.parse(request);
   const finish = (decision: Decision): Decision => {
     if (context.headless && decision.status === "ask") {
@@ -233,7 +222,7 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
     return finish(deny(deps.journal, parsed, REFUSAL.untrustedOrigin, "origin_resolver",
       "This action has no trustworthy http(s) origin.", at));
   }
-  const action = actionFor(parsed, exact ?? undefined);
+  let action = actionFor(parsed, exact ?? undefined);
 
   // Recipient-scoped effects (external tools addressed to a service, not a page
   // origin) bypass origin rules and always confirm.
@@ -257,7 +246,7 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
     // Session-level effect grants are standing consent: they authorize only
     // what ApprovalStore could not, and never substitute for action-time
     // confirmation (approvalOnly stays exclusive to review artifacts).
-    if (result.status === "ask" && !approvalOnly && exact && deps.settingsGrants) {
+    if (result.status === "ask" && !requiresApproval && !approvalOnly && exact && deps.settingsGrants) {
       const needed = ["read", "write", "destructive", "egress"].includes(parsed.effect) ? parsed.effect as EffectClass : null;
       const granted = needed && resolveGrants(deps.settingsGrants()).map(parseGrant)
         .some(grant => grant != null && grantAllows(grant, needed, exact, at));
@@ -295,10 +284,12 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
 
   // With no matching rule the default is derived from the category; a matched
   // rule's confirmation level wins, escalated by sensitive data or handoff.
-  const policyLevel = policy.source === "default" ? defaultConfirmation(parsed) : policy.confirmation;
+  const floor = confirmationTierFor(parsed);
+  const policyLevel = policy.source === "default" ? floor : stricterConfirmation(floor, policy.confirmation);
   const level = confirmationLevelForAction({
     policyLevel, sensitiveData: context.sensitiveData || parsed.dataClasses.includes("sensitive"),
   });
+  action = SafetyActionSchema.parse({ ...action, confirmation: level });
   if (level === "handoff") {
     return finish(ask(deps.journal, parsed, {
       kind: "handoff",
@@ -308,7 +299,7 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
   }
 
   const requiresApproval = level === "action" || level === "preapprovable";
-  if (requiresApproval && !context.approvalId) {
+  if (requiresApproval && !context.approvalId && !(level === "preapprovable" && authorize(policy, false, true, false).status === "authorized")) {
     const confirmation = decideConfirmation({
       level, action, review: context.review, turnToolCallCount: context.turnToolCallCount ?? 0,
     });
@@ -373,12 +364,21 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
 
   // Policy and grants may have changed during the guardian await; decide again
   // at the dispatch boundary and consume the single-use approval only now.
+  at = deps.now?.() ?? Date.now();
   const finalPolicy = evaluate();
   if (finalPolicy.access === "deny") {
     return finish(deny(deps.journal, parsed, REFUSAL.originPolicyDenied, policySource(finalPolicy),
       "Origin policy denied this action. " + DENIED_GUIDANCE, at));
   }
-  const final = authorize(finalPolicy, true, requiresApproval, level === "action");
+  const finalLevel = confirmationLevelForAction({
+    policyLevel: finalPolicy.source === "default" ? floor : stricterConfirmation(floor, finalPolicy.confirmation),
+    sensitiveData: context.sensitiveData || parsed.dataClasses.includes("sensitive"),
+  });
+  action = SafetyActionSchema.parse({ ...action, confirmation: finalLevel });
+  if (finalLevel === "handoff") return finish(ask(deps.journal, parsed, {
+    kind: "handoff", instruction: "Complete this action directly in the site, then return to Aux.", guidance: ASK_GUIDANCE,
+  }, policySource(finalPolicy), at));
+  const final = authorize(finalPolicy, true, finalLevel !== "none", finalLevel === "action");
   if (final.status === "denied") {
     return finish(deny(deps.journal, parsed, REFUSAL.authorizationDenied, policySource(finalPolicy), final.guidance, at));
   }

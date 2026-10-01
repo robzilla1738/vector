@@ -65,6 +65,7 @@ export type StandingGrant = z.infer<typeof StandingGrantSchema>;
 
 export const ApprovalDecisionSchema = z.discriminatedUnion("decision", [
   z.object({ decision: z.literal("accept"), approvalId: id }).strict(),
+  z.object({ decision: z.literal("acceptForOrigin"), approvalId: id }).strict(),
   z.object({ decision: z.literal("acceptForSession"), approvalId: id, sessionId: id }).strict(),
   z.object({ decision: z.literal("acceptWithAmendment"), approvalId: id, amendment: z.string().trim().min(1).max(4000) }).strict(),
   z.object({ decision: z.literal("decline"), approvalId: id }).strict(),
