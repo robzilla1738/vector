@@ -2,6 +2,16 @@
 
 Newest first. PR numbers refer to the GitHub repository; branch names are
 the integration tracks that were merged.
+
+## Roadmap integration on main (2026-09-30)
+
+`codex/roadmap-integration` fast-forwards onto main. The current handoff is the September 30 evening checkpoint in [docs/HANDOFF.md](docs/HANDOFF.md), [docs/ROADMAP.md](docs/ROADMAP.md), and [docs/ROADMAP-EXECUTION-GRAPH.md](docs/ROADMAP-EXECUTION-GRAPH.md).
+
+- MEMUI Forget passed, and the note stayed gone after restart.
+- The ACCESS visual session passed: theme, grain, tint, and the battery-saver capture are on disk.
+- STORE stops on the macOS `coreautha` sheet. CONTROL timed out waiting for the Aux password offer. S13 could not hit Assistant notes. EGRESS still conflicts before the two scoped-connection approvals.
+- The paid 50×3 is not running. The owner declined another run. Neither partial report is a comparison, and `qualification.json` has no S5 or S14 promotion.
+
 ## Aside-inspired shell and native input fixes (2026-09-23)
 
 - Compact glass horizontal tabs now default for new profiles, with selected-tab
