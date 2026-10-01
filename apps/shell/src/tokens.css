@@ -68,6 +68,8 @@
   --r-peek: 16px;
   --t-none: 0ms;
   --t-layout: 200ms;
+  --t-floating-in: 200ms;
+  --t-floating-out: 150ms;
   --sidebar-row-h: 30px;
   --sidebar-row-radius: 8px;
   --sidebar-resize-handle: 5px;
@@ -414,6 +416,8 @@
     --t-quick: 0ms;
     --t-fast: 0ms;
     --t-popup: 0ms;
+    --t-floating-in: 0ms;
+    --t-floating-out: 0ms;
     --t-material-state: 0ms;
     --t-reveal: 0ms;
     --t-slow: 0ms;

@@ -234,7 +234,7 @@ describe("session chrome — search, preview, close, settings, attachments", () 
   it("draws the search suggestion enter mark as the circular accent send control and leaves other hints as text keys", () => {
     expect(commandBar).toMatch(/trailing=\{\s*s\.hint === "↵"\s*\?\s*\(\s*<span className="cb-go" aria-hidden="true">/);
     expect(commandBar).toContain('hint: "Ask"');
-    expect(commandTabRows).toContain('hint: "Switch"');
+    expect(commandTabRows).toContain('hint: "Switch to tab"');
     expect(styles).toContain(".cb-go { display: grid; place-items: center; width: var(--control-h); height: var(--control-h); flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
     expect(commandBar).toContain("{shellIconSend}");
     expect(commandBar).not.toContain("shellIconEnter");
