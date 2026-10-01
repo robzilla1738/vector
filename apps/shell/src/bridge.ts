@@ -9,12 +9,12 @@
  * packages/contracts/src/host-methods.ts). Members the adapter composes
  * locally are declared in ComposedBridgeMembers below.
  */
-import type { MethodName, MethodResult, RpcArgs, TabCatalogSnapshot, TabPatch } from "@aux/contracts";
+import type { HostMethodResult, MethodName, MethodResult, RpcArgs, TabCatalogSnapshot, TabPatch } from "@aux/contracts";
 import type { createHostClient } from "./host/client.generated";
 
 export type TabsSinceResult = { kind: "patches"; patches: TabPatch[] } | { kind: "snapshot"; snapshot: TabCatalogSnapshot };
 
-export interface BrowserProfile { id:string;name:string;current:boolean;archived?:boolean }
+export type BrowserProfile = HostMethodResult<"browserProfiles">[number];
 export interface MigrationReview {
   status:"ready"|"interrupted"|"applied";
   contentHash:string;manifestSha256:string;

@@ -6,7 +6,8 @@ import type { useStore } from "../store";
 
 export type CommandContext = ReturnType<typeof useStore.getState>;
 export interface CommandInvocation {
-  payload?: { pageId: string } | { spaceId: string } | { target: "little" | "main" };
+  payload?: { pageId: string } | { spaceId: string } | { target: "little" | "main" }
+    | { profileId: string; spaceId: string | null } | { pageId: string; profileId: string };
 }
 export interface ComposerPluginProps {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
