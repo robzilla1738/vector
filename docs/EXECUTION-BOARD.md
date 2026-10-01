@@ -8,7 +8,7 @@ Objective: complete every requirement in [BROWSER-RUNTIME-PLAN.md](BROWSER-RUNTI
 - Branch: `integration/browser-runtime`, cut from clean `main` at `1cf1d75e`.
 - Native tree: `/Users/rcourson/aux-chromium-stable/chromium/src`.
 - No pushes, signing, release work, setup reruns or credential/session/keychain reads.
-- Wave 0 is serial. Feature lanes cannot start until `contracts-v1` and unattended splitView qualification pass.
+- Wave0 foundation checks and clean splitView qualification/promotion pass. `contracts-v1` is being tagged; Wave1 uses isolated worktrees from that ref.
 - Available agent capacity is four including integrator; the plan permits up to eight. Run at most three child agents, preserving one dedicated builder and, from Wave 1, one design reviewer. Reuse the remaining lane slot as dependencies clear.
 
 ## Wave 0
@@ -16,10 +16,10 @@ Objective: complete every requirement in [BROWSER-RUNTIME-PLAN.md](BROWSER-RUNTI
 | Item | Status | Evidence / next action |
 |---|---|---|
 | Planning documents committed first | Complete | Docs-only first commit `ffcf8a54` |
-| W0-1 product identity and schema-2 qualification | In progress | Identity/stamping/schema-2 writer implemented; focused tests pass; no qualified records |
-| W0-2 unattended harness and split/keyboard migrations | In progress | Swift serve compiled; AX/app/RPC/fixtures/evidence helpers and split/keyboard modules implemented; split and keyboard native diagnostics passed; reader port and native test clock pass; remaining legacy bridge coverage pending |
-| W0-3 contracts-v1, organization v2, safety, CLI, mount wiring | In progress | Safety and CLI discovery fixes tested; B12, 192 host methods/26 events and runtime contracts implemented; organization v2 source/tests pass, native validator applied; shell mounts/runtime boots and shared clock implemented; no tag |
-| W0-4 native slot and native diff | In progress | Slot/diff tooling and scratch pins implemented and fixture-tested; dedicated builder incremental smoke passed |
+| W0-1 product identity and schema-2 qualification | Complete | Clean product identity survives docs commit; script-written splitView record independently validated |
+| W0-2 unattended harness and split/keyboard migrations | Foundation complete | Swift serve compiled; AX/app/RPC/fixtures/evidence helpers and split/keyboard modules implemented; split and keyboard native diagnostics passed; reader port and native test clock pass; remaining legacy bridge coverage pending |
+| W0-3 contracts-v1, organization v2, safety, CLI, mount wiring | Foundation complete | Safety and CLI discovery fixes tested; B12, 192 host methods/26 events and runtime contracts implemented; organization v2 source/tests pass, native validator applied; shell mounts/runtime boots and shared clock implemented; tag prepared after mock build pass |
+| W0-4 native slot and native diff | Complete | Slot/diff tooling and scratch pins implemented and fixture-tested; dedicated builder incremental smoke passed |
 | splitView qualify/build/promote without dev acceptance | Complete | Clean f0fe15d0 schema2 record/manifest independently validated; runtime and visible About on probe passed without acceptance |
 
 ## Lane ownership and queue
@@ -58,8 +58,8 @@ Final gates: `npx tsc -b`, `npm test`, `npm run typecheck`, `npm run lint` (≤3
 - Rebuilt full unit suite passes 383 files / 2036 tests (`/tmp/aux-w0-unit-final.log`). Qualification validator subsequently tightened to require a nonempty AX tree; focused qualification tests pass.
 - Workspace typecheck, generated bindings, bridge coverage, port inventory and format ratchet pass on the final foundation slice; lint remains 379 warnings / zero errors. Build budgets pass: startup JS 470/490 KB, CSS 179/180 KB, total JS 1681/1800 KB. These are bundle checks, not the required native perf trials.
 - `journeys/index.mjs --check` intentionally remains failing until all mapped journeys and B12 feature contracts exist; no gate has been relaxed.
-- Owner clarification about the Wave 0/full target-registry dependency cycle remains pending; no gate or lane sequencing requirement has been relaxed. Independent foundation and journey port work continues.
-- Foundation product/harness committed `f0fe15d0`; initial documents were committed first. `contracts-v1` and final Wave0 exit are outstanding. Clean splitView qualification/promotion passes; integrator independently validated the record/manifest/captures and reviewed successful scripted promotion assertions. Docs-only record commit and repeated on probe are next.
+- Sequencing uses the plan's explicit W0-3 foundation gates plus clean splitView promotion. Full target registry remains unchanged and mandatory before feature merges and final integration; its future-feature coverage cannot precede implementation. This interpretation is recorded in the plan; no owner waiver is claimed.
+- Foundation product/harness committed `f0fe15d0`; initial documents were committed first. `contracts-v1` is being tagged after foundation exit. Clean splitView qualification/promotion passes; integrator independently validated the record/manifest/captures and reviewed successful scripted promotion assertions. Docs-only record commit0345bb40 and repeated promotion/on probe both pass.
 
 ## Deviations / unresolved evidence
 
@@ -78,4 +78,4 @@ Final gates: `npx tsc -b`, `npm test`, `npm run typecheck`, `npm run lint` (≤3
 After context reset, read this board, canonical plan and `docs/HANDOFF.md`; inspect current git state and running agents before editing. Preserve all original gates. Keep qualification records script-only. Batch owner-only permission, attended-auth and final visual asks; continue independent work.
 
 
-Clean split qualification: product `f0fe15d04d94ff98a70e66105350520bb8061fc9`, tree `9c1ae21d20b5d9a466e916b474b709461b460d3f`; native manifest `9c8a58e9f274406550a10392694a85f835d613bc73282249679a21ee7a43dcb3`. Record `docs/qualification.json#features.splitView`; manifest `release/test-artifacts/browser-runtime/f0fe15d04d94ff98a70e66105350520bb8061fc9/split-view-1790833467257-1/manifest.json` SHA `de8a8a573d0e92ed1f7b811d65128dc4e84e463b9b2967bd54c762112b1d80b4`. All three steps pass (one attempt), capture hash independently verified. Qualification build23steps1m12.12s; promotion relink11steps14.14s; log `/tmp/aux-browser-runtime-w0-clean-split-qualification.log`. Script exit0 includes runtime and visible About on assertions without development acceptance. Cleanup verified. No contracts-v1 tag or Wave0 exit claim.
+Clean split qualification: product `f0fe15d04d94ff98a70e66105350520bb8061fc9`, tree `9c1ae21d20b5d9a466e916b474b709461b460d3f`; native manifest `9c8a58e9f274406550a10392694a85f835d613bc73282249679a21ee7a43dcb3`. Record `docs/qualification.json#features.splitView`; manifest `release/test-artifacts/browser-runtime/f0fe15d04d94ff98a70e66105350520bb8061fc9/split-view-1790833467257-1/manifest.json` SHA `de8a8a573d0e92ed1f7b811d65128dc4e84e463b9b2967bd54c762112b1d80b4`. All three steps pass (one attempt), capture hash independently verified. Qualification build23steps1m12.12s; promotion relink11steps14.14s; log `/tmp/aux-browser-runtime-w0-clean-split-qualification.log`. Script exit0 includes runtime and visible About on assertions without development acceptance. Cleanup verified. Mock build passes at /tmp/aux-w0-mock-build.log. Docs-only promotion stability diagnostic w0-docs-promoted-2026-10-01 independently verifies splitView on, native qualifiedFeatures=[splitView], developmentAcceptanceRequested=false, and a visible19px AX frame; capture inspected/hash verified. Foundation phase exit passes, full feature registry remains open until feature merges.
