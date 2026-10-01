@@ -1297,6 +1297,13 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
     guard let from = request["from"] as? [String: Any], let to = request["to"] as? [String: Any] else { throw protocolError("from and to required") }
     let start = try requestPoint(from), end = try requestPoint(to)
     let steps = min(max(request["steps"] as? Int ?? 20, 1), 1000)
+    var destinationHoldMs = 0.0
+    if let value = request["destinationHoldMs"] {
+      guard let duration = value as? Double, duration.isFinite, duration >= 0, duration <= 10000 else {
+        throw protocolError("destinationHoldMs must be between 0 and 10000")
+      }
+      destinationHoldMs = duration
+    }
     try mouseEvent(.leftMouseDown, at: start)
     defer { try? mouseEvent(.leftMouseUp, at: end) }
     usleep(useconds_t(min(max(request["holdMs"] as? Double ?? 100, 0), 10000) * 1000))
@@ -1305,6 +1312,7 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
       try mouseEvent(.leftMouseDragged, at: CGPoint(x: start.x + (end.x-start.x)*fraction, y: start.y + (end.y-start.y)*fraction))
       usleep(16_000)
     }
+    usleep(useconds_t(destinationHoldMs * 1000))
   case "scroll":
     let point = try requestPoint(request)
     guard let event = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2,
