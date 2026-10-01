@@ -96,6 +96,10 @@ export const OrganizationSnapshotSchema = z
   })
   .strict();
 export type OrganizationSnapshot = z.infer<typeof OrganizationSnapshotSchema>;
+export const ProfileOrganizationSnapshotSchema = z.object({
+  revision: z.number().int().nonnegative(), shared: OrganizationLayoutSchema.shape.shared.nullable(),
+}).strict();
+export type ProfileOrganizationSnapshot = z.infer<typeof ProfileOrganizationSnapshotSchema>;
 export const OrganizationCommitSchema = z
   .object({
     expectedRevision: z.number().int().nonnegative(),

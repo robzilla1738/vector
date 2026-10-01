@@ -1,0 +1,73 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index 0d1c973..c3b1153 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -108,7 +108,7 @@ AuxMethodRegistry::AuxMethodRegistry() {
+   register_runtime(AuxRuntimeMethodGroup::kLibrary,
+                    {"native.capabilities", "native.searchEngineGet", "native.searchEngineSet",
+                     "native.searchSuggestionsGet", "native.searchSuggestionsSet",
+-                    "native.bookmarksInvoke"});
++                    "native.bookmarksInvoke", "native.organizationSnapshot"});
+   register_runtime(AuxRuntimeMethodGroup::kBlocking,
+                    {"native.egressContext", "native.egressInstall", "native.egressRevoke",
+                     "native.contentBlockBegin", "native.contentBlockAppend",
+diff --git a/chrome/browser/ui/aux/methods/native_library_methods.cc b/chrome/browser/ui/aux/methods/native_library_methods.cc
+index 8613308..0e09a28 100644
+--- a/chrome/browser/ui/aux/methods/native_library_methods.cc
++++ b/chrome/browser/ui/aux/methods/native_library_methods.cc
+@@ -159,6 +159,13 @@ base::DictValue AuxRuntimeHost::HandleNativeLibraryCall(
+                            "Profile suggestions are unavailable");
+     }
+   }
++  if (method == "native.organizationSnapshot") {
++    if (!params.empty()) return NativeFault("invalid_argument", "Organization snapshot takes no arguments");
++    std::string error;
++    auto snapshot = aux::OrganizationStore::ProfileSnapshot(profile_, &error);
++    if (!snapshot) return NativeFault("permission_denied", error);
++    return NativeResult(base::Value(std::move(*snapshot)));
++  }
+   if (method == "native.bookmarksInvoke") {
+     const std::string* bookmark_method = params.FindString("method");
+     const base::DictValue* bookmark_params = params.FindDict("params");
+diff --git a/chrome/browser/ui/aux/organization_store.cc b/chrome/browser/ui/aux/organization_store.cc
+index af3d29b..3be94cb 100644
+--- a/chrome/browser/ui/aux/organization_store.cc
++++ b/chrome/browser/ui/aux/organization_store.cc
+@@ -382,6 +382,24 @@ base::DictValue MakeSnapshot(const base::DictValue& document,
+ 
+ }  // namespace
+ 
++std::optional<base::DictValue> OrganizationStore::ProfileSnapshot(
++    Profile* profile, std::string* error) {
++  if (!profile || profile->IsOffTheRecord()) {
++    *error = "Organization is unavailable for this Profile";
++    return std::nullopt;
++  }
++  const base::DictValue& document = profile->GetPrefs()->GetDict(kOrganizationPref);
++  if (!ValidDocument(document)) {
++    *error = "The Profile organization preference is invalid";
++    return std::nullopt;
++  }
++  base::DictValue snapshot;
++  snapshot.Set("revision", document.FindInt("revision").value_or(0));
++  if (document.empty()) snapshot.Set("shared", base::Value());
++  else snapshot.Set("shared", document.FindDict("shared")->Clone());
++  return snapshot;
++}
++
+ std::optional<base::DictValue> OrganizationStore::Snapshot(
+     Profile* profile,
+     std::string_view window_id,
+diff --git a/chrome/browser/ui/aux/organization_store.h b/chrome/browser/ui/aux/organization_store.h
+index ed13a15..d5fd179 100644
+--- a/chrome/browser/ui/aux/organization_store.h
++++ b/chrome/browser/ui/aux/organization_store.h
+@@ -22,6 +22,8 @@ inline constexpr char kOrganizationPref[] = "aux.organization.v2";
+ // is ever read. Every commit compares the current revision before writing.
+ class OrganizationStore {
+  public:
++  static std::optional<base::DictValue> ProfileSnapshot(Profile* profile,
++                                                          std::string* error);
+   static std::optional<base::DictValue> Snapshot(Profile* profile,
+                                                    std::string_view window_id,
+                                                    std::string* error);

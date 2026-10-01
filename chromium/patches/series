@@ -142,3 +142,5 @@ aux/runtime/0189-split-divider-invariant.patch
 aux/runtime/0140-command-dispatch.patch
 aux/runtime/0141-quick-ask-shortcut-registry.patch
 aux/runtime/0142-website-shortcut-physical-release.patch
+aux/runtime/0190-private-shell-bootstrap.patch
+aux/runtime/0191-profile-organization-authority.patch

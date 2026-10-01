@@ -190,7 +190,7 @@ CREATE TABLE safety_approval_requests(
 CREATE INDEX idx_safety_approvals_turn ON safety_approval_requests(turn_id,state);
 CREATE TABLE safety_standing_grants(
   grant_id TEXT PRIMARY KEY, profile_id TEXT NOT NULL, scope_kind TEXT NOT NULL, scope_id TEXT NOT NULL,
-  effect TEXT NOT NULL, action TEXT NOT NULL, origin TEXT, recipient TEXT,
+  effect TEXT NOT NULL, action TEXT NOT NULL, category TEXT, origin TEXT, recipient TEXT,
   lifetime TEXT NOT NULL CHECK(lifetime IN ('session','always')), session_id TEXT,
   created_at INTEGER NOT NULL, revoked_at INTEGER);
 CREATE INDEX idx_safety_grants_lookup ON safety_standing_grants(profile_id,scope_kind,scope_id,effect,action,origin,recipient,revoked_at);

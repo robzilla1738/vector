@@ -544,6 +544,10 @@ const RESULTS: Record<string, unknown> = {
     "phase": "document_start",
     "futureDocuments": true
   },
+  "native.organizationSnapshot": {
+    "revision": 0,
+    "shared": null
+  },
   "native.bookmarksInvoke": null,
   "native.liveFolderSources": [],
   "native.capabilities": {

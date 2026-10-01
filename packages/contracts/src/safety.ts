@@ -23,11 +23,21 @@ export const OriginRuleSchema = z.object({
 }).strict();
 export type OriginRule = z.infer<typeof OriginRuleSchema>;
 
+/** Semantic category; `submit` also covers send/post/purchase/delete/account/security consequences. */
+export const EffectCategorySchema = z.enum([
+  "read", "navigate", "input", "interact", "submit", "send", "post", "purchase", "delete",
+  "account", "security", "login", "permission", "cookie", "install",
+  "password_change", "two_factor", "captcha", "bot_block", "paywall_bypass", "download", "upload", "credential", "payment", "evaluate", "external_tool", "dialog",
+]);
+export type EffectCategory = z.infer<typeof EffectCategorySchema>;
+
 export const SafetyActionSchema = z.object({
   profileId: id,
   scope: z.object({ kind: z.enum(["workspace", "task"]), id }).strict(),
   effect: EffectSchema,
   action: id,
+  category: EffectCategorySchema.optional(),
+  confirmation: ConfirmationLevelSchema.optional(),
   invocationDigest: z.string().regex(/^[a-f0-9]{64}$/),
   origin: origin.optional(),
   recipient: id.optional(),
@@ -43,6 +53,7 @@ export const StandingGrantSchema = z.object({
   scope: SafetyActionSchema.shape.scope,
   effect: EffectSchema,
   action: id,
+  category: EffectCategorySchema.optional(),
   origin: origin.optional(),
   recipient: id.optional(),
   lifetime: z.enum(["session", "always"]),
@@ -54,6 +65,7 @@ export type StandingGrant = z.infer<typeof StandingGrantSchema>;
 
 export const ApprovalDecisionSchema = z.discriminatedUnion("decision", [
   z.object({ decision: z.literal("accept"), approvalId: id }).strict(),
+  z.object({ decision: z.literal("acceptForOrigin"), approvalId: id }).strict(),
   z.object({ decision: z.literal("acceptForSession"), approvalId: id, sessionId: id }).strict(),
   z.object({ decision: z.literal("acceptWithAmendment"), approvalId: id, amendment: z.string().trim().min(1).max(4000) }).strict(),
   z.object({ decision: z.literal("decline"), approvalId: id }).strict(),
@@ -153,13 +165,6 @@ export const EffectProvenanceSchema = z.enum(["user", "page", "memory", "templat
 export type EffectProvenance = z.infer<typeof EffectProvenanceSchema>;
 export const DataClassSchema = z.enum(["none", "form", "sensitive", "credential", "payment", "file"]);
 export type DataClass = z.infer<typeof DataClassSchema>;
-/** Semantic category; `submit` also covers send/post/purchase/delete/account/security consequences. */
-export const EffectCategorySchema = z.enum([
-  "read", "navigate", "input", "interact", "submit", "send", "post", "purchase", "delete",
-  "account", "security", "download", "upload", "credential", "payment", "evaluate", "external_tool", "dialog",
-]);
-export type EffectCategory = z.infer<typeof EffectCategorySchema>;
-
 export const EffectRequestSchema = z.object({
   profileId: id,
   scope: SafetyActionSchema.shape.scope,

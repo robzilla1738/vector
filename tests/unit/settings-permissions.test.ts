@@ -9,8 +9,8 @@ it.each(["originPolicies", "effectGrants", "safetyCeilings"])("refuses external 
   expect(set).not.toHaveBeenCalled();
 });
 
-it("allows the person to update permissions through the shell", async () => {
-  const patch = { originPolicies: [{ origin: "https://fixture.test/", access: "deny" }] };
+it("allows the person to update effect grants through the shell", async () => {
+  const patch = { effectGrants: ["effect:read"] };
   const set = vi.fn(async () => ({ ok: true }));
   const emit = vi.fn();
   const ctx = { params: patch, client: { external: false }, s: {
@@ -19,4 +19,11 @@ it("allows the person to update permissions through the shell", async () => {
   await expect(settingsMethods["settings.set"]!(ctx)).resolves.toEqual({ ok: true });
   expect(set).toHaveBeenCalledWith(patch);
   expect(emit).toHaveBeenCalled();
+});
+
+it("refuses unversioned site-rule updates from the shell before mutation", async () => {
+  const set = vi.fn();
+  const ctx = { params: { originPolicies: [] }, client: { external: false }, s: { settings: { set } } } as unknown as MethodCtx;
+  await expect(settingsMethods["settings.set"]!(ctx)).rejects.toMatchObject({ code: "permission_denied" });
+  expect(set).not.toHaveBeenCalled();
 });

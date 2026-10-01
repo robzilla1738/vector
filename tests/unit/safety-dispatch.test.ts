@@ -19,6 +19,7 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
   let current = "https://allowed.test/form";
   let driverEvents: DriverPageEvents = {};
   let access: "allow" | "deny" = "allow";
+  const confirmations: string[] = [];
   const gate = new SafetyDispatchGate({
     approvals,
     journal: new DecisionJournal(db),
@@ -27,6 +28,7 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
     localCeiling: () => "always",
     audit: () => {},
     judge,
+    onConfirmation: value => confirmations.push(value.approvalId),
   });
   const driver: BrowserDriver = {
     backend: "aux", connect: async () => {}, disconnect: async () => {}, isConnected: () => true,
@@ -46,7 +48,7 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
   const pages = new PageService({ repo, events, native: new NullNativeBridge(),
     drivers: () => ({ aux: driver, chrome: null }), grants: ["effect:read", "effect:write"],
     profileId: "profile-1", safetyGate: gate });
-  return { pages, calls, approvals, gate, setAccess: (value: "allow" | "deny") => { access = value; },
+  return { pages, calls, approvals, gate, confirmations, setAccess: (value: "allow" | "deny") => { access = value; },
     navigateExternally: (url: string, epoch: number) => { current = url; driverEvents.onNavigated?.(url, epoch); } };
 }
 
@@ -116,18 +118,24 @@ describe("B5 live dispatch gate", () => {
       context: { ...context, approvalId }, phase: "dispatch" })).toMatchObject({ authorizedBy: "approval", approvalId });
   });
 
-  it("records policy authorization and asks for confirmation after an origin change", async () => {
-    const { pages, calls } = fixture();
+  it("consumes exact approval at the first origin and asks again after an origin change", async () => {
+    const { pages, calls, approvals, confirmations } = fixture();
     const page = await pages.open({ url: "https://allowed.test/form", background: true, ownedByRuntime: true });
-    const result = await pages.execute({ pageId: page.pageId, steps: [
-      { id: "step-1", op: "click", target: "#save" },
-      { id: "step-2", op: "click", target: "#save-again" },
-    ] });
+    const program = { pageId: page.pageId, steps: [
+      { id: "step-1", op: "click" as const, target: "#save" },
+      { id: "step-2", op: "click" as const, target: "#save-again" },
+    ] };
+    await expect(pages.execute(program)).rejects.toMatchObject({ code: "needs_input" });
+    expect(calls).toEqual([]);
+    expect(confirmations).toHaveLength(1);
+    const approvalId = confirmations[0]!;
+    approvals.decideLocal({ decision: "accept", approvalId }, `direct:${page.pageId}`);
+    const result = await pages.execute(program);
     expect(calls).toEqual(["click"]);
-    expect(result.steps[0]).toMatchObject({ status: "ok", authorization: { authorizedBy: "policy", policySource: "user" } });
-    // Unruled destinations are no longer denied outright: a consequential
-    // action on a new origin parks for action-time confirmation instead.
+    expect(result.steps[0]).toMatchObject({ status: "ok", authorization: { authorizedBy: "approval", approvalId } });
     expect(result.steps[1]).toMatchObject({ status: "failed", error: { code: "needs_input" } });
+    expect(confirmations).toHaveLength(2);
+    expect(approvals.pending(`page:${page.pageId}`).map(value => value.action.origin)).toEqual(["https://blocked.test/"]);
   });
 
   it("fails closed before dispatch when an origin policy is revoked", async () => {
@@ -142,7 +150,7 @@ describe("B5 live dispatch gate", () => {
   it("rechecks grants after an asynchronous Guardian decision", async () => {
     const db = openDb(":memory:"); databases.push(db);
     const approvals = new ApprovalStore(db);
-    const step: Step = { id: "step-race", op: "click", target: "#submit" };
+    const step: Step = { id: "step-race", op: "upload", target: "#file", files: ["/tmp/synthetic.txt"] };
     let release!: () => void;
     let judging!: () => void;
     const entered = new Promise<void>(resolve => { judging = resolve; });
@@ -156,7 +164,7 @@ describe("B5 live dispatch gate", () => {
     const context = { profileId: "profile-1", scope: { kind: "task" as const, id: "task-1" },
       turnId: "turn-1", threadId: "thread-1", restrictedRetry: true };
     const grant = approvals.grant({ profileId: context.profileId, scope: context.scope, turnId: context.turnId,
-      threadId: context.threadId, effect: "write", action: "click", invocationDigest: "0".repeat(64),
+      threadId: context.threadId, effect: "write", action: "upload", category: "upload", confirmation: "preapprovable", invocationDigest: "0".repeat(64),
       origin: "https://allowed.test/", requestedAt: 1 }, "always");
     const dispatch = gate.check({ step, origin: "https://allowed.test/form", context, phase: "dispatch" });
     await entered;
@@ -170,10 +178,15 @@ describe("B5 live dispatch gate", () => {
     let entered!: () => void;
     const judging = new Promise<void>(resolve => { entered = resolve; });
     const pending = new Promise<void>(resolve => { release = resolve; });
-    const { pages, calls, navigateExternally } = fixture(async () => { entered(); await pending; return []; });
+    const { pages, calls, approvals, confirmations, navigateExternally } = fixture(async () => { entered(); await pending; return []; });
     const page = await pages.open({ url: "https://allowed.test/form", background: true, ownedByRuntime: true });
-    const run = pages.execute({ pageId: page.pageId, steps: [{ id: "step-stale", op: "click", target: "#submit" }] },
-      { safety: { steps: { "step-stale": { restrictedRetry: true } } } });
+    const program = { pageId: page.pageId, steps: [{ id: "step-stale", op: "click" as const, target: "#submit" }] };
+    const options = { safety: { steps: { "step-stale": { restrictedRetry: true } } } };
+    await expect(pages.execute(program, options)).rejects.toMatchObject({ code: "needs_input" });
+    expect(calls).toEqual([]);
+    expect(confirmations).toHaveLength(1);
+    approvals.decideLocal({ decision: "accept", approvalId: confirmations[0]! }, `direct:${page.pageId}`);
+    const run = pages.execute(program, options);
     await judging;
     navigateExternally("https://allowed.test/next-document", (pages.get(page.pageId).documentEpoch ?? 0) + 1);
     release();

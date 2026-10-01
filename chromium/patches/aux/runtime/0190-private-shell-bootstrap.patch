@@ -1,0 +1,11 @@
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -163,7 +163,7 @@
+   // A disposable acceptance Profile may activate reviewed previews only after the
+   // runtime validates its owner-only, source-bound marker. The shell never
+   // reads a test token or interprets a marker itself.
+-  if (capabilities.developmentAcceptanceRequested === true &&
++  if (!identity.privateMode && capabilities.developmentAcceptanceRequested === true &&
+       Object.values(featureStages).some(stage => stage === 'preview')) {
+     // The first host connection can time out before the helper authenticates.
+     // Memory saver reads these stages once, so keep asking until the runtime

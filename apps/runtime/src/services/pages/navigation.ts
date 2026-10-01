@@ -139,14 +139,23 @@ export class PageNavigation {
     return this.lanes.enqueue(pageId, async () => {
       const lp = this.pages.live.get(pageId);
       if (lp?.target.viewStatus === "crashed" && lp.target.backend === "aux" && this.pages.deps.native.recoverPage) {
+        const previousDriver = lp.driver, previousSession = lp.target.sessionId;
         const recovered = await this.pages.deps.native.recoverPage(pageId, lp.target.url);
+        if (this.pages.live.get(pageId) !== lp || (lp.driver !== previousDriver && lp.driver !== null) || (lp.target.sessionId !== previousSession && lp.target.sessionId !== undefined))
+          throw new AuxError("target_detached", "This tab changed while recovering.");
         if (!recovered.ok) throw new AuxError("target_detached", "The native tab is no longer available");
         const driver = this.pages.driverFor("aux");
         if (!driver) throw new AuxError("backend_unavailable", "Browser connection is unavailable");
-        await lp.driver?.dispose();
+        lp.driver = null;
+        delete lp.target.sessionId;
+        this.pages.persist(lp);
+        await previousDriver?.dispose();
         try {
-          lp.driver = await (driver.recoverPage ? driver.recoverPage(lp.target.targetId, pageId, lp.target.documentEpoch) : driver.attach(lp.target.targetId, pageId));
+          const attached = await (driver.recoverPage ? driver.recoverPage(lp.target.targetId, pageId, lp.target.documentEpoch) : driver.attach(lp.target.targetId, pageId));
+          try { this.pages.installDriver(lp, attached); }
+          catch (error) { await attached.dispose().catch(() => {}); throw error; }
         } catch (error) {
+          if (this.pages.live.get(pageId) !== lp || lp.driver) throw error;
           lp.target.viewStatus = "crashed";
           lp.target.error = "The page reloaded, but its browser connection could not be restored.";
           this.pages.persist(lp);
@@ -154,7 +163,6 @@ export class PageNavigation {
           throw error;
         }
         this.pages.resetDocumentState(lp);
-        this.pages.wireDriverEvents(lp);
       } else if (lp?.target.navigationError && lp.target.backend === "aux" && this.pages.deps.native.recoverPage) {
         // A renderer can recover in Electron while Playwright retains its
         // crashed Page flag. The native view owns retries for failed loads.

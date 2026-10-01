@@ -12,7 +12,7 @@ async function h_safety_approvals_decide(ctx: MethodCtx): Promise<unknown> {
   if (client.external)
     throw new AuxError("permission_denied", "Only the Aux interface can decide an approval.");
   const action = approvals.decideLocal(params.decision, params.expectedTurnId);
-  const approved = params.decision.decision === "accept" || params.decision.decision === "acceptForSession";
+  const approved = params.decision.decision === "accept" || params.decision.decision === "acceptForSession" || params.decision.decision === "acceptForOrigin";
   const resolved = suspensions.resolveByApprovalId(
     params.decision.approvalId,
     approved ? "answered" : "cancelled",

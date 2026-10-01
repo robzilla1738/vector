@@ -45,7 +45,9 @@ const requirements = {
     "journey": "feature:cliOpen"
   },
   "tabMentions": {
-    "requires": [],
+    "requires": [
+      "native.organizationSnapshot"
+    ],
     "journey": "feature:tabMentions"
   },
   "agentSitePermissions": {

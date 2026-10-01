@@ -133,7 +133,7 @@ describe("S3 decide()", () => {
     expect(decisions(db)).toEqual([{ status: "ask", source: "approval" }]);
   });
 
-  it("hands off credentials rather than approving them", async () => {
+  it("requires exact one-time approval for credentials and hands off password changes", async () => {
     const credStep: Step = { id: "c1", op: "fillCredential", passwordSelector: "#pw" };
     const { db, deps } = fixture();
     const request = effectRequestForStep({
@@ -142,10 +142,24 @@ describe("S3 decide()", () => {
       turnId: "turn-1", threadId: "thread-1",
       digest: createHash("sha256").update(JSON.stringify(credStep)).digest("hex"), at: 500,
     });
-    const decision = await decide(request, deps, { phase: "dispatch" });
-    expect(decision).toMatchObject({ status: "ask", suspension: { kind: "handoff" } });
-    expect("approvalId" in (decision.status === "ask" ? decision.suspension : {})).toBe(false);
-    expect(decisions(db)).toEqual([{ status: "ask", source: "default" }]);
+    const review = { artifactId: "credential-review", turnId: "turn-1", action: "fillCredential",
+      effect: "credential" as const, invocationDigest: request.invocationDigest,
+      dataDescription: "Synthetic saved credential", destination: "shop.test",
+      consequence: "Fill the sign-in form", createdAt: 400 };
+    const context = { phase: "dispatch" as const, review, turnToolCallCount: 1 };
+    const decision = await decide(request, deps, context);
+    expect(decision).toMatchObject({ status: "ask", suspension: { kind: "approval" } });
+    if (decision.status !== "ask" || !decision.suspension.approvalId) throw new Error("missing credential approval");
+    const approvalId = decision.suspension.approvalId;
+    deps.approvals.decideLocal({ decision: "accept", approvalId }, "turn-1");
+    await expect(decide(request, deps, { ...context, approvalId })).resolves.toMatchObject({
+      status: "allow", authorizedBy: { authorizedBy: "approval", approvalId },
+    });
+    await expect(decide(request, deps, { ...context, approvalId })).resolves.toMatchObject({ status: "ask" });
+    const handoff = await decide({ ...request, category: "password_change" }, deps, context);
+    expect(handoff).toMatchObject({ status: "ask", suspension: { kind: "handoff" } });
+    expect("approvalId" in (handoff.status === "ask" ? handoff.suspension : {})).toBe(false);
+    expect(decisions(db).map(value => value.status)).toEqual(["ask", "allow", "ask", "ask"]);
   });
 
   it("collapses asks into a deny when no UI is attached", async () => {
@@ -158,11 +172,15 @@ describe("S3 decide()", () => {
     ]);
   });
 
-  it("allows matched allow-rules with policy provenance", async () => {
+  it("preserves immutable consequence confirmation despite allow rules and an always ceiling", async () => {
     const { db, deps, request } = fixture([{ origin: "https://shop.test/", access: "allow", confirmation: "none" }], "always");
-    const decision = await decide(request, deps, { phase: "dispatch" });
-    expect(decision).toMatchObject({ status: "allow", authorizedBy: { authorizedBy: "policy" } });
-    expect(decisions(db)).toEqual([{ status: "allow", source: "default" }]);
+    const decision = await decide(request, deps, { phase: "dispatch", turnToolCallCount: 0 });
+    expect(decision).toMatchObject({ status: "ask", suspension: { kind: "action-confirmation" } });
+    expect(decisions(db)).toEqual([{ status: "ask", source: "default" }]);
+    await expect(decide({ ...request, category: "read", action: "send" }, deps, { phase: "dispatch", turnToolCallCount: 0 }))
+      .resolves.toMatchObject({ status: "ask", suspension: { kind: "action-confirmation" } });
+    await expect(decide({ ...request, category: "password_change", action: "delete" }, deps, { phase: "dispatch", turnToolCallCount: 0 }))
+      .resolves.toMatchObject({ status: "ask", suspension: { kind: "handoff" } });
   });
 
   it("denies explicitly denied origins even after the defaults flip", async () => {
@@ -175,7 +193,7 @@ describe("S3 decide()", () => {
     const { db, deps } = fixture();
     const egressRequest = (url: URL): EffectRequest => EffectRequestSchema.parse({
       profileId: "p1", scope: { kind: "task", id: "t1" },
-      actor: "external_token", effect: "egress", category: "external_tool",
+      actor: "external_token", effect: "egress", category: "read",
       action: "agent.web.fetch", origin: url.origin,
       destination: url.href.slice(0, 2048), dataClasses: [], provenance: "template",
       invocationDigest: createHash("sha256").update(JSON.stringify(["agent.web.fetch", url.href])).digest("hex"),
