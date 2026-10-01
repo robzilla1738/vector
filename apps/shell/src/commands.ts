@@ -20,6 +20,7 @@ import { createTabSwitcher, type TabSwitcherOrder } from "./tab-switcher";
 type StoreState = ReturnType<typeof useStore.getState>;
 export interface CommandContext extends CommandInvocation {
   state?: StoreState;
+  settingsRoute?: boolean;
   findInput?: RefObject<HTMLInputElement | null>;
   tabSwitcher?: ReturnType<typeof createTabSwitcher>;
 }
@@ -107,6 +108,11 @@ export const COMMAND_ACTIONS = {
     if (page) return navigator.clipboard.writeText(page.url).then(() => st.toast("Link copied"));
   },
   "quick-ask": () => bridge.quickAsk("open"),
+  "claim-tab": (st) => featureCommand("claim-tab", st),
+  "show-tab-window": (st) => featureCommand("show-tab-window", st),
+  "little-space-picker": (st) => featureCommand("little-space-picker", st),
+  "little-downloads": (st) => featureCommand("little-downloads", st),
+  "set-external-link-target": (st) => featureCommand("set-external-link-target", st),
   "show-archived-tabs": (st) => {
     featureCommand("show-archived-tabs", st);
   },
@@ -130,12 +136,12 @@ export const COMMAND_ACTIONS = {
   },
   "find-next": (st) => findAgain(st, true),
   "find-previous": (st) => findAgain(st, false),
-  reload: (st) =>
-    st.overlay === "settings"
+  reload: (st, context) =>
+    (context.settingsRoute ?? st.overlay === "settings")
       ? window.dispatchEvent(new Event("aux-settings-refresh"))
       : st.activePageId && tabCommand({ kind: "reload", pageId: st.activePageId }).catch(errToast),
-  "hard-reload": (st) =>
-    st.overlay === "settings"
+  "hard-reload": (st, context) =>
+    (context.settingsRoute ?? st.overlay === "settings")
       ? window.location.reload()
       : st.activePageId && bridge.hardReload(st.activePageId).catch(errToast),
   "actual-size": (st) => st.activePageId && st.zoomPage(st.activePageId, { reset: true }).catch(errToast),
@@ -150,12 +156,12 @@ export const COMMAND_ACTIONS = {
     const p = st.pages.find((x) => x.pageId === st.activePageId);
     if (p?.url.startsWith("http")) void st.navigatePage(p.pageId, `view-source:${p.url}`).catch(errToast);
   },
-  back: (st) =>
-    st.overlay === "settings"
+  back: (st, context) =>
+    (context.settingsRoute ?? st.overlay === "settings")
       ? window.history.back()
       : st.activePageId && tabCommand({ kind: "back", pageId: st.activePageId }).catch(errToast),
-  forward: (st) =>
-    st.overlay === "settings"
+  forward: (st, context) =>
+    (context.settingsRoute ?? st.overlay === "settings")
       ? window.history.forward()
       : st.activePageId && tabCommand({ kind: "forward", pageId: st.activePageId }).catch(errToast),
   "open-address": (st) => st.focusCommandBar(),

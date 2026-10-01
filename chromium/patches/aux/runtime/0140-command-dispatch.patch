@@ -164,7 +164,7 @@ index e366925..4a127fb 100644
        break;
      }
 diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
-index 4087ae7..64bcb36 100644
+index 16f368a..54276ce 100644
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 @@ -422,12 +422,14 @@ void WebUIBrowserUI::BindInterface(
