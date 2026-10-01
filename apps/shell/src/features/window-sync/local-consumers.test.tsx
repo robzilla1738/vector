@@ -16,7 +16,7 @@ const page = (pageId: string, windowId = "own", fields = {}): PageTarget => ({
   ownedByRuntime: false, createdAt: 1, lastActiveAt: 1, ...fields,
 });
 it("does not schedule another window's oldest background page", () => {
-  const state = { pages: [page("remote", "other"), page("local", "own", { lastActiveAt: 20 })],
+  const state = { layout: { pins: {} }, pages: [page("remote", "other"), page("local", "own", { lastActiveAt: 20 })],
     activePageId: null, splitPageId: null, tabAudio: {}, settings: { memorySaverMinutes: 1 }, connected: true, restoringTabs: false };
   expect(nextMemorySaverAction(state, new Map())?.pageId).toBe("local");
 });

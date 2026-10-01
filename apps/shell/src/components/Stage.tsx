@@ -1,3 +1,4 @@
+import { useOrganizationEditor } from "../features/organization-state";
 import { useSyncExternalStore } from "react";
 import { movedSelection, observeMovedSelection } from "../features/window-sync/moved-selection";
 import { isHomeAddress, nativePageId } from "../chrome";
@@ -95,7 +96,8 @@ export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<H
   const hasUrl = !!page && (!!page.showBlankDocument || (!isHomeAddress(page.url)));
   const loading = !!page?.loading && !page.navigationError && page.viewStatus !== "crashed";
 
-  const covered = !!surfaceState.dragging || surfaceState.picker;
+  const organizationCovered = !!useOrganizationEditor();
+  const covered = organizationCovered || !!surfaceState.dragging || surfaceState.picker;
   const splitGroup = splitting && page && mode === "focus"
     ? visibleSplitGroup(layout, page.pageId) : null;
   const selectedSplit = splitGroup && splitGroup.panes.every(id => { const item = pages.find(page => page.pageId === id); return item && nativePageId({mode,overlay,confirming,activePageId:id,...item}); });
@@ -107,14 +109,14 @@ export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<H
   }) === page.pageId;
 
   const showingPage = !covered && selectedPage;
-  const visibleIds = JSON.stringify(selectedSplit ? splitGroup!.panes : selectedPage && page && isLocal(page) && !page.ownedByRuntime ? [page.pageId] : []);
+  const visibleIds = JSON.stringify(organizationCovered ? [] : selectedSplit ? splitGroup!.panes : selectedPage && page && isLocal(page) && !page.ownedByRuntime ? [page.pageId] : []);
   useEffect(() => {
     if (inNativeHost) void bridge.setStageVisible(JSON.parse(visibleIds) as string[]).catch(errToast);
   }, [visibleIds]);
   useEffect(() => () => { if (inNativeHost) void bridge.setStageVisible([]).catch(errToast); }, []);
 
   return (
-    <div inert={overlay === "tasks" || overlay === "settings"} className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`} data-controller={page?.controller ?? "none"}>
+    <div inert={organizationCovered || overlay === "tasks" || overlay === "settings"} className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`} data-controller={page?.controller ?? "none"}>
       <div className="stage-progress" role="progressbar" aria-hidden={!loading} aria-valuetext={loading ? "Loading" : "Idle"} />
       {page && translating && <TranslationBar pageId={page.pageId} />}
       <div id="stage" ref={ref}>

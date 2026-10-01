@@ -1,3 +1,4 @@
+import { useOrganizationEditor } from "./features/organization-state";
 import { useFeature } from "./use-feature";
 import { useSurfaceCovering } from "./features/surfaces/drag-state";
 import { bootShellFeatures, FeatureSlots } from "./features/registry";
@@ -18,7 +19,7 @@ import { useShallow } from "zustand/react/shallow";
 import type { PageTarget, Run } from "@aux/contracts";
 import { LIVE_RUN, useStore, call, toast, errToast, patchPageFields, type SidebarMode } from "./store";
 import { bridge, inNativeHost, inMock } from "./bridge";
-import { isHomeAddress, nativePageId } from "./chrome";
+import { isHomeAddress, isScrimOverlay, nativePageId } from "./chrome";
 import { useLayoutChrome, useWindowControls } from "./features/layout/layout";
 import { useToolbarReveal } from "./toolbar-reveal";
 import { spaceThemeStyle } from "./workspace";
@@ -225,6 +226,15 @@ export function App() {
   }), []);
   const mode = useStore((s) => s.mode);
   const overlay = useStore((s) => s.overlay);
+  const organizationCovered = !!useOrganizationEditor();
+  useEffect(() => {
+    if (!organizationCovered) return;
+    void bridge.overlay(true);
+    return () => {
+      const state = useStore.getState();
+      void bridge.overlay(isScrimOverlay(state.overlay) || state.overlay === "zap" || !!state.confirmation);
+    };
+  }, [organizationCovered]);
   useEffect(()=>{if(quickAsk&&overlay)expandQuickAsk();},[quickAsk,overlay]);
   const railOpen = useStore((s) => s.railOpen);
   const sidebar = useStore((s) => s.sidebar);
@@ -245,7 +255,7 @@ export function App() {
   const [toolbarHole, setToolbarHole] = useState(false);
   const [toolbarReady, setToolbarReady] = useState(false);
   const confirming = useStore(s => !!s.confirmation);
-  const nativeShowing = !!nativePageId({ mode, overlay, confirming, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
+  const nativeShowing = !organizationCovered && !!nativePageId({ mode, overlay, confirming, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
   const floatingSidebar = sidebarPeek && (minimal || sidebar !== "expanded");
   const [peekCovering, setPeekCovering] = useState(false);
   useEffect(() => {
@@ -267,7 +277,7 @@ export function App() {
 
   // Raise the shell over the native page before the bar animates.
   useEffect(() => {
-    const covering = toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering;
+    const covering = organizationCovered || toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering;
     let active = true;
     queueMicrotask(() => {
       if (!active) return;
@@ -275,7 +285,7 @@ export function App() {
       if (!covering) setToolbarHole(false);
     });
     return () => { active = false; };
-  }, [toolbarReveal.covering, tabPreviewOpen, sidebarCovering, surfaceCovering]);
+  }, [organizationCovered, toolbarReveal.covering, tabPreviewOpen, sidebarCovering, surfaceCovering]);
 
   // Native vibrancy and transparent renderer layers must change together.
   useEffect(() => {
@@ -432,7 +442,7 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (inNativeHost && (toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering) && !toolbarHole) setToolbarHole(true);
+  if (inNativeHost && (organizationCovered || toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering) && !toolbarHole) setToolbarHole(true);
   if (bridge.windowKind === "little") return <LittleWindow />;
   if (quickAsk) return <QuickAsk onExpand={expandQuickAsk}/>;
   return (

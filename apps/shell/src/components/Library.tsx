@@ -1,3 +1,4 @@
+import { ArchivedTabs } from "./ArchivedTabs";
 import "./Library.css";
 import { backgroundLink } from "../browser-links";
 import { readReaderArticle } from "../reader-article";
@@ -21,9 +22,9 @@ import { useFeature } from "../use-feature";
 
 type SavedPage = { nodeId?: string; url: string; title: string; folderPath?: string[]; readingList?: boolean; readAt?: number; offline?: boolean };
 const bookmarkKey = (item: SavedPage) => item.nodeId ?? item.url;
-type View = "bookmarks" | "reading" | "history" | "closed";
-const VIEWS: View[] = ["bookmarks", "reading", "history", "closed"];
-const VIEW_NAMES: Record<View, string> = { bookmarks: "Bookmarks", reading: "Reading list", history: "History", closed: "Recently closed" };
+type View = "archived" | "bookmarks" | "reading" | "history" | "closed";
+const VIEWS: View[] = ["archived", "bookmarks", "reading", "history", "closed"];
+const VIEW_NAMES: Record<View, string> = { archived: "Archived tabs", bookmarks: "Bookmarks", reading: "Reading list", history: "History", closed: "Recently closed" };
 const HISTORY_PAGE_SIZE = 100;
 function historySince(range: string): number | undefined {
   if (range === "all") return undefined;
@@ -116,9 +117,10 @@ const SavedPageRow = memo(function SavedPageRow({ view, itemKey, position, selec
 });
 
 /** Browser library: saved pages and recent visits share search and navigation. */
-export function Library({ initialView = "bookmarks", confirmClear = false }: { initialView?: View; confirmClear?: boolean }) {
+export function Library({ initialView = "bookmarks", confirmClear = false, onClose }: { initialView?: View; confirmClear?: boolean; onClose?: () => void }) {
   const key = useShortcutLabels();
-  const close = useStore(s => s.setOverlay);
+  const setOverlay = useStore(s => s.setOverlay);
+  const close = (overlay: null) => onClose ? onClose() : setOverlay(overlay);
   useStore(useShallow(s => s.bookmarks.map(item => JSON.stringify([
     item.nodeId, item.url, item.title, item.folderPath, item.readingList, item.readAt, item.offline,
   ]))));
@@ -177,7 +179,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
     if (loadedFilter.current !== filter) { setHistory([]); setMoreHistory(false); }
     loadedFilter.current = filter;
     setLoading(true); setError(""); setFailedLoad(null); setLoadingMore(false); morePending.current=false;
-    if (view === "closed") { setLoading(false); return; }
+    if (view === "closed" || view === "archived") { setLoading(false); return; }
     const timer = window.setTimeout(() => {
       const request = view === "history"
         ? call("history.list", { query: query.trim() || undefined, limit: HISTORY_PAGE_SIZE, since: historySince(historyRange) }).then(items => { if (live && version === historyRequest.current) { setHistory(items); setMoreHistory(items.length === HISTORY_PAGE_SIZE); } })
@@ -308,7 +310,8 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
     setImportPreview(null); search.current?.focus();
   }
   // Private windows never carry reading-list state, so the view stays hidden there.
-  const views = bridge.privateMode ? VIEWS.filter(tab => tab !== "reading") : VIEWS;
+  const archive = useFeature("archive");
+  const views = VIEWS.filter(tab => (tab !== "archived" || (archive && !bridge.privateMode)) && (tab !== "reading" || !bridge.privateMode));
 
   return <div className="overlay-scrim fade-in" onMouseDown={() => close(null)}>
     <div ref={dialog} className="palette library pop-in" role="dialog" aria-modal="true" aria-label="Library" onMouseDown={event => event.stopPropagation()} onKeyDown={event => {
@@ -335,7 +338,7 @@ export function Library({ initialView = "bookmarks", confirmClear = false }: { i
       }} /></div>
       {bridge.privateMode && <p className="library-message hint">Bookmarks and history stay in this private window until it closes. Exported files remain on your Mac.</p>}
       <SessionRecovery />
-      {view === "closed" ? <RecentlyClosed query={query} firstOpenRef={firstResult} /> : <>
+      {view === "archived" ? <ArchivedTabs query={query} /> : view === "closed" ? <RecentlyClosed query={query} firstOpenRef={firstResult} /> : <>
       <div className="library-tools" hidden={selecting && view === "bookmarks"}><button className="btn sm" disabled={busy || !active || !/^https?:\/\//i.test(active.url) || isSaved(active.url)} onClick={() => active && void action(async () => { await save({ url: active.url, title: active.title || hostOf(active.url), folderPath: folder }); setNotice("Current page bookmarked."); })}>{active && isSaved(active.url) ? "Current page bookmarked" : "Bookmark current page"}</button>
         {view === "reading" && <button className="btn sm" disabled={busy || !active || !/^https?:\/\//i.test(active.url) || bookmarks.some(b => b.url === active.url && b.readingList)} onClick={() => active && void action(async () => { await call("bookmarks.readingList", { url: active.url, readingList: true, title: active.title || hostOf(active.url) }); setNotice("Added to reading list."); })}>{active && bookmarks.some(b => b.url === active.url && b.readingList) ? "Page in reading list" : "Read later"}</button>}
         {view === "bookmarks" && <><button className="btn sm" disabled={busy || !bookmarks.length} aria-pressed={selecting} onClick={() => { setSelecting(value => !value); setSelection([]); setEditing(null); setMoveFolder(JSON.stringify(folder)); setNewMoveFolder(""); }}>Select</button><button className="btn sm" disabled={busy} onClick={() => setFolderEditor({ mode: "create", name: "" })}>{I.folderClosed} New folder</button><button className="btn sm" disabled={busy} onClick={() => fileInput.current?.click()}>Import HTML</button><button className="btn sm" disabled={busy || (!bookmarks.length && !folders.length) || !inNativeHost} onClick={() => void action(async () => {

@@ -2,8 +2,6 @@ import { bridge } from "../bridge";
 import type { ClosedTab } from "../closed-tabs";
 import { createEntryWriter } from "../conversation-drafts";
 import { toast } from "../store";
-import { undoTidyChange } from "../tidy-commit";
-import { revertTidyRecord } from "../tidy-layout";
 import { type Layout, type TidyUndoRecord, emptyLayout } from "../workspace";
 import { featureStage } from "../use-feature";
 import type { OrganizationPersistence } from "./organization-persistence";
@@ -76,10 +74,10 @@ export const adoptImportedOrganization = async () => {
 };
 /** Undo the reviewed receipt. Ephemeral sessions have no host revision to re-check. */
 export const undoPersistedTidy = async (receipt: TidyUndoRecord, fallback: Layout): Promise<Layout> => {
-  if (ephemeralOrganization) return revertTidyRecord(receipt, fallback);
+  if (ephemeralOrganization) return (await import("../tidy-layout")).revertTidyRecord(receipt, fallback);
   const store = await organization();
   queuePending(store);
-  return undoTidyChange(store, receipt);
+  return (await import("../tidy-commit")).undoTidyChange(store, receipt);
 };
 export const flushLayout = async () => {
   clearTimeout(layoutTimer);

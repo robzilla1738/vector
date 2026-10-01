@@ -10,6 +10,7 @@ const harness = vi.hoisted(() => ({
   tabsUnsavedWork: vi.fn(),
   tabSleep: vi.fn(),
   state: {
+    layout: { pins: {} },
     pages: [] as PageTarget[],
     activePageId: null as string | null,
     splitPageId: null as string | null,
@@ -44,6 +45,7 @@ const page = (pageId: string, overrides: Partial<PageTarget> = {}): PageTarget =
 
 it("schedules the oldest eligible background tab and respects native-safety prefilters", () => {
   const state = {
+    layout: { pins: {} },
     pages: [page("active"), page("agent", { ownedByRuntime: true }),
       page("borrowed", { controller: "agent" }), page("split"),
       page("audible"), page("detached", { viewStatus: "detached" }),
@@ -61,6 +63,7 @@ it("schedules the oldest eligible background tab and respects native-safety pref
 
 it("leaves dirty and unknown pages awake and still schedules a page the unsaved map does not list", () => {
   const state = {
+    layout: { pins: {} },
     pages: [page("active", { createdAt: 0, lastActiveAt: 100 }), page("dirty", { createdAt: 0, lastActiveAt: 200 }),
       page("unknown", { createdAt: 0, lastActiveAt: 300 }), page("missing", { createdAt: 0, lastActiveAt: 400 }),
       page("clean", { createdAt: 0, lastActiveAt: 500 })],
@@ -211,4 +214,11 @@ it("keeps a bounded report for this window when Profile storage rejects a write"
   } finally {
     vi.unstubAllGlobals();
   }
+});
+
+it("protects only the bound keep-awake pin, even after URL drift", () => {
+  const state = { layout: { pins: { work: [{ url: "https://original.test", title: "App", pageId: "kept", keepAwake: true }] } }, pages: [page("kept"), page("eligible")], activePageId: null, splitPageId: null, tabAudio: {}, settings: { memorySaverMinutes: 1 }, connected: true, restoringTabs: false };
+  expect(nextMemorySaverAction(state, new Map())?.pageId).toBe("eligible");
+  state.layout.pins.work[0]!.keepAwake = false;
+  expect(nextMemorySaverAction(state, new Map())?.pageId).toBe("kept");
 });

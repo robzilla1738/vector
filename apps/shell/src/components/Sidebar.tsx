@@ -19,6 +19,9 @@ import { SidebarSection } from "./SidebarSection";
 import { FavIcon, SiteTile } from "./SiteTile";
 import { useTabSelection } from "../use-tab-selection";
 import { backgroundLink, openBrowserLink } from "../browser-links";
+import { boundPin, pinnedPage } from "../pinned-apps";
+import { LiveFolderRows } from "./LiveFolderRows";
+import { executeCommand } from "../commands";
 import { PinMenu } from "./PinMenu";
 import { TabMenu } from "./TabMenu";
 import { TabAudioButton } from "./TabAudioButton";
@@ -429,7 +432,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   useFloatingSidebar(sidebar, floatingPanel);
   const activate = useStore((s) => s.activate);
   const closeTab = useStore((s) => s.closeTab);
-  const newTab = useStore((s) => s.newTab);
   const setOverlay = useStore((s) => s.setOverlay);
   const switchSpace = useStore((s) => s.switchSpace);
   const addSpace = useStore((s) => s.addSpace);
@@ -449,7 +451,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const space = layout.spaces.find((s) => s.id === layout.activeSpaceId) ?? layout.spaces[0]!;
   const tabs = useMemo(() => tabsInSpace(layout, pages, space.id), [layout, pages, space.id]);
   const folders = useMemo(() => foldersInSpace(layout, space.id), [layout, space.id]);
-  const loose = useMemo(() => unfiledTabs(layout, pages, space.id), [layout, pages, space.id]);
+  const loose = useMemo(() => unfiledTabs(layout, pages, space.id).filter(page => !boundPin(layout, page.pageId)), [layout, pages, space.id]);
   const visibleTabs = useMemo(() => [...folders.flatMap(folder => folder.collapsed ? [] : tabsInFolder(layout, pages, folder.id)), ...loose], [folders, layout, pages, loose]);
   const focusablePageId = visibleTabs.some(tab => tab.pageId === activePageId) ? activePageId : visibleTabs[0]?.pageId;
   const tabNodes = useRef(new Map<string, HTMLDivElement>());
@@ -466,8 +468,9 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const pins = layout.pins[space.id] ?? [];
   const pinnedIcons = useStore(useShallow(state => {
     const openTabs = tabsInSpace(state.layout, state.pages, space.id);
-    return pins.map(pin => openTabs.find(tab => tab.url === pin.url)?.favicon);
+    return pins.map(pin => pinnedPage(pin, openTabs)?.favicon);
   }));
+  const pinnedTitles = useStore(useShallow(state => pins.map(pin => pinnedPage(pin, state.pages)?.title)));
   const visiblePins = pins.length > PIN_ROW_SIZE ? pins.slice(0, PIN_ROW_SIZE - 1) : pins;
   const overflowPins = pins.slice(visiblePins.length);
   const [activeUrl, activeController] = useStore(useShallow((s) => {
@@ -539,10 +542,9 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
     if (event.type === "auxclick" && event.button !== 1) return;
     event.preventDefault();
     if (backgroundLink(event)) void openBrowserLink(pin.url, true).catch(errToast);
-    else {
-      const open = tabsInSpace(useStore.getState().layout, useStore.getState().pages, space.id).find(page => page.url === pin.url);
-      if (open) onActivate(open.pageId); else void newTab(pin.url).catch(errToast);
-    }
+    else if (layout.pins[space.id]?.some(item => item.url === pin.url)) {
+      void executeCommand("open-pinned-app", { payload: { spaceId: space.id, pinUrl: pin.url } }).catch(() => undefined);
+    } else void openBrowserLink(pin.url, false).catch(errToast);
     setPinOverflowOpen(false);
   }
 
@@ -650,7 +652,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
       {pins.length > 0 && (
         <div className="sb-pins" role="group" aria-label="Pinned sites">
           {visiblePins.map((b, index) => (
-              <SiteTile {...pinDragProps(b)} key={b.url} url={b.url} title={b.title} favicon={pinnedIcons[index]} active={activeUrl === b.url} aria-haspopup="menu"
+              <SiteTile {...pinDragProps(b)} key={b.url} url={b.url} title={b.title} favicon={pinnedIcons[index]} unreadTitle={pinnedTitles[index]} active={activePageId === b.pageId} aria-haspopup="menu"
                 onClick={event => openPin(b, event)} onAuxClick={event => openPin(b, event)}
                 onKeyDown={event => pinKey(b, event)} onContextMenu={event => pinMenu(b, event)} />
           ))}
@@ -701,7 +703,8 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
                   onDrop={(e) => onDropFolder(f.id, e)}
                   onDragEnd={onDragEnd}
                 />
-                <FolderKids collapsed={f.collapsed} count={kids.length}>
+                <FolderKids collapsed={f.collapsed} count={kids.length + (f.live ? 1 : 0)}>
+                  {f.live && <LiveFolderRows folderId={f.id} />}
                   {kids.map((p, i) => (
                     <div key={p.pageId} className="tab-slot">{renderRow(p, i, f.id, kids.length)}</div>
                   ))}
@@ -712,6 +715,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
 
           {(folders.length > 0 || loose.length > 0) && <div className="sb-rule" />}
 
+          <div className="today-header"><span>Today</span><button className="btn ghost sm" data-command-id="clear-today" disabled={!loose.length} onClick={() => void executeCommand("clear-today", { payload: { spaceId: space.id } }).catch(errToast)}>Clear</button></div>
           {virtual ? <div className="tab-window" ref={looseRows} style={{ paddingTop: rows.padTop, paddingBottom: rows.padBottom }}>
             {loose.slice(rows.start, rows.end).map((p, i) => (
               <div key={p.pageId} className="tab-slot">{renderRow(p, rows.start + i, null, loose.length)}</div>
@@ -844,6 +848,7 @@ export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename
   const updateFolder = useStore((s) => s.updateFolder);
   return (
     <Menu className="menu ctx-menu" label={group ? "Tab group actions" : "Folder actions"} point={{ x, y }} onClose={finishClose} returnFocus={trigger}>
+      <button className="menu-item" role="menuitem" data-command-id="make-live-folder" onClick={() => { finishClose(); void executeCommand("make-live-folder", { payload: { folderId: folder.id } }).catch(errToast); }}>{folder.live ? "Edit live folder…" : "Make live folder…"}</button>
       <div role="group" className="menu-swatches" aria-label="Folder colour">
         {SPACE_COLORS.map((color) => (
           <button key={color} role="menuitemradio" aria-checked={folder.color === color} aria-label={color} data-space={color}

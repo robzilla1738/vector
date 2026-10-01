@@ -1,15 +1,17 @@
 import { ownPages } from "./tab-window-transfer";
-import type { HostMethodResult, PageTarget, SplitGroup } from "@aux/contracts";
+import type { HostMethodResult, PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "./bridge";
 import { useStore } from "./store";
 import { featureStage } from "./use-feature";
+import type { Layout } from "./workspace";
+import { boundPin } from "./pin-layout";
 import { recordMemorySaverCycle } from "./memory-saver-report";
 
 type State = {
   pages: PageTarget[];
   activePageId: string | null;
   splitPageId: string | null;
-  layout?: { splitGroups?: SplitGroup[] };
+  layout: Pick<Layout, "splitGroups" | "pins">;
   tabAudio: Record<string, { audible: boolean }>;
   settings: Record<string, unknown>;
   connected: boolean;
@@ -32,6 +34,7 @@ export function nextMemorySaverAction(state: State, retryAfter: ReadonlyMap<stri
     if (page.backend !== "aux" || !/^https?:\/\//.test(page.url) || page.ownedByRuntime ||
         page.pageId === state.activePageId || page.pageId === state.splitPageId ||
         state.layout?.splitGroups?.some(group => group.panes.includes(page.pageId)) ||
+        boundPin(state.layout, page.pageId)?.pin.keepAwake ||
         page.controller !== "none" || page.loading || page.viewStatus === "crashed" || page.viewStatus === "detached" ||
         (page.lifecycle && page.lifecycle !== "live") || state.tabAudio[page.pageId]?.audible ||
         unsavedKeepsAwake(page.pageId, unsaved)) return [];
@@ -60,7 +63,7 @@ export function installMemorySaver() {
       try {
         const unsaved = await bridge.tabsUnsavedWork([{ pageId: next.pageId, url: next.url }]);
         // Dirty or unknown: do not sleep or record. `finally` still uses the quiet-period retry.
-        if (unsavedKeepsAwake(next.pageId, unsaved)) return;
+        if (unsavedKeepsAwake(next.pageId, unsaved) || boundPin(useStore.getState().layout, next.pageId)?.pin.keepAwake) return;
         // The native method rechecks ownership, URL, focus, media, unsaved work, and all frames.
         const result = await bridge.tabSleep(next.pageId, next.url);
         recordMemorySaverCycle(next, result);

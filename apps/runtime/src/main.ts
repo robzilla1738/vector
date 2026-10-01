@@ -773,10 +773,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       throw new AuxError("step_failed", "MCP hook tool did not complete successfully.");
   };
   const stopRunEndHooks = installRunEndHooks(events, hooks, hookExecutor);
+  const loopbackServicesUrl = (await nativeIdentity?.catch(() => undefined))?.loopbackServicesUrl;
   const calendar = new CalendarConnectionService({
     repo,
     native,
-    clientId: env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
+    clientId: loopbackServicesUrl ? "aux-loopback-calendar-client" : env.AUX_GOOGLE_CALENDAR_CLIENT_ID,
+    ...(loopbackServicesUrl ? { endpoints: {
+      auth: `${loopbackServicesUrl}calendar/auth`, token: `${loopbackServicesUrl}calendar/token`,
+      revoke: `${loopbackServicesUrl}calendar/revoke`, calendar: `${loopbackServicesUrl}calendar/v3`,
+    } } : {}),
     profileId: env.AUX_BROWSER_PROFILE_ID,
     onChange: () => events.emit("settings.changed", { category: "calendar" }),
   });

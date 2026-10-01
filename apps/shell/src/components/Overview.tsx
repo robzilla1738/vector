@@ -8,11 +8,11 @@ import type { PageTarget, TidyProposal } from "@aux/contracts";
 import { useStore, call, errToast, tabCommand, toast, pagePreview } from "../store";
 import { bridge, inNativeHost } from "../bridge";
 import { bookmarkWebUrl } from "../bookmark-files";
-import { assignFolder, assignSpace, hostOf, isPinned, tabLabel, type ArchivedTab } from "../workspace";
+import { hostOf, isPinned, tabLabel, type ArchivedTab } from "../workspace";
 import { flushLayout, persistLayout, reloadOrganizationLayout, undoPersistedTidy } from "../store/persistence";
 import { applyTidyProposal, tidyUndoRecord } from "../tidy-layout";
 import { commitTidyLayout } from "../tidy-commit";
-import { confirmArchiveClose, finishTabArchive, removeTabArchive, stageTabArchive } from "../tab-archive";
+import { archivePages, restoreArchivedTab } from "../archive-actions";
 import { FavIcon } from "./SiteTile";
 import { I } from "./icons";
 import { useShortcutLabels } from "../use-shortcut-label";
@@ -176,72 +176,14 @@ export function Overview() {
   }
 
   async function archiveSelection() {
-    const chosen = [...selection];
-    const checks = await bridge.tabsUnsavedWork(chosen.map(page => ({ pageId: page.pageId, url: page.url })));
-    if (chosen.some(page => checks[page.pageId] !== "clean"))
-      throw new Error("A selected tab has unsaved work or could not be checked. Review it before archiving.");
-    let archived = 0;
-    for (const selected of chosen) {
-      const state = useStore.getState();
-      const page = state.pages.find(item => item.pageId === selected.pageId);
-      if (!page || page.url !== selected.url) throw new Error(`A tab changed after ${archived} were archived. Review the remainder.`);
-      const staged = stageTabArchive(state.layout, page);
-      useStore.setState({ layout: staged.layout });
-      persistLayout(staged.layout);
-      try { await flushLayout(); }
-      catch (error) {
-        const rolledBack = removeTabArchive(useStore.getState().layout, staged.entry.archiveId);
-        useStore.setState({ layout: rolledBack }); persistLayout(rolledBack);
-        throw error;
-      }
-      const accepted = await confirmArchiveClose(page.pageId,
-        () => bridge.tabCommand({ kind: "close", pageId: page.pageId }, useStore.getState().catalogVersion),
-        () => bridge.tabsSnapshot());
-      if (!accepted) {
-        const rolledBack = removeTabArchive(useStore.getState().layout, staged.entry.archiveId);
-        useStore.setState({ layout: rolledBack }); persistLayout(rolledBack); await flushLayout();
-        throw new Error(`Native tab close was refused after ${archived} archived. Review the remaining tabs.`);
-      }
-      const finished = finishTabArchive(useStore.getState().layout, staged.entry.archiveId);
-      useStore.setState({ layout: finished }); persistLayout(finished); await flushLayout();
-      archived++;
-      setSelected(previous => { const next = new Set(previous); next.delete(page.pageId); return next; });
-      setProgress(`Archived ${archived} of ${chosen.length} tabs…`);
-    }
-    setProgress(`${archived} ${archived === 1 ? "tab" : "tabs"} archived. Restore them below when you need them.`);
+    const chosen = selection.map(page => page.pageId);
+    const { entries } = await archivePages(chosen, { reason: "manual" });
+    setSelected(previous => new Set([...previous].filter(id => !entries.some(entry => entry.pageId === id))));
+    setProgress(`${entries.length} ${entries.length === 1 ? "tab" : "tabs"} archived. Restore them below when you need them.`);
   }
 
   async function restoreArchive(entry: ArchivedTab) {
-    const state = useStore.getState();
-    if (!state.layout.archivedTabs?.some(item => item.archiveId === entry.archiveId && item.state === "archived"))
-      throw new Error("This archived tab has changed. Refresh the overview.");
-    const existing = state.pages.find(page => page.pageId === entry.pageId);
-    if (existing && existing.url !== entry.url) throw new Error("The original tab ID now has a different page. Review it before restoring.");
-    if (state.layout.archivedSpaces?.some(space => space.id === entry.spaceId))
-      state.syncBrowserSpaces(await call("spaces.update", { id: entry.spaceId, archived: false }));
-    if (!useStore.getState().layout.spaces.some(space => space.id === entry.spaceId))
-      throw new Error("The archived tab’s Space is unavailable. Restore that Space before reopening this tab.");
-    const spaceId = entry.spaceId;
-    if (!existing) {
-      await state.openBackgroundTab(entry.url, spaceId, false, entry.pageId, entry.index);
-      if (!useStore.getState().pages.some(page => page.pageId === entry.pageId)) {
-        await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => { unsubscribe(); reject(new Error("The native tab has not appeared yet. The archive remains available.")); }, 3000);
-          const unsubscribe = useStore.subscribe(current => {
-            if (!current.pages.some(page => page.pageId === entry.pageId)) return;
-            clearTimeout(timeout); unsubscribe(); resolve();
-          });
-        });
-      }
-    }
-    const nextState = useStore.getState();
-    let restored = assignSpace(nextState.layout, entry.pageId, spaceId);
-    if (entry.folderId && restored.folders.some(folder => folder.id === entry.folderId && folder.spaceId === spaceId))
-      restored = assignFolder(restored, entry.pageId, entry.folderId);
-    const order = restored.order.filter(id => id !== entry.pageId);
-    order.splice(Math.min(entry.index, order.length), 0, entry.pageId);
-    restored = removeTabArchive({ ...restored, order }, entry.archiveId);
-    useStore.setState({ layout: restored }); persistLayout(restored); await flushLayout();
+    await restoreArchivedTab(entry);
     setProgress(`Restored ${entry.title || hostOf(entry.url)}.`);
   }
 

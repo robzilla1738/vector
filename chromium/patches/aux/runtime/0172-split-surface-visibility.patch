@@ -1,0 +1,213 @@
+diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
+index 1c541e7..925baa1 100644
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
+@@ -5,6 +5,10 @@
+ #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.h"
+ 
+ #include "chrome/browser/ui/browser_tab_strip_tracker.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/surface_visibility.h"
++#endif
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+@@ -118,6 +122,9 @@ void AutoPictureInPictureTabStripObserverHelper::UpdateIsTabActivated(
+         tabs::TabInterface::GetFromContents(GetObservedWebContents());
+     is_tab_activated_ =
+         (tab_strip_model->GetActiveWebContents() == GetObservedWebContents()) ||
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++        aux::IsStageVisible(GetObservedWebContents()) ||
++#endif
+         (active_tab->IsSplit() &&
+          active_tab->GetSplit() == observed_tab->GetSplit());
+   }
+@@ -168,6 +175,11 @@ AutoPictureInPictureTabStripObserverHelper::GetActiveWebContents() const {
+ }
+ 
+ bool AutoPictureInPictureTabStripObserverHelper::IsTabActivated() {
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++  // Aux updates 3–4 pane stage visibility independently of strip selection.
++  UpdateIsTabActivated(GetCurrentTabStripModel());
++  return is_tab_activated_;
++#endif
+   // If we're currently observing the tab strip, then `is_tab_activated_` is
+   // current so we can just return it.
+   if (is_observing_) {
+diff --git a/chrome/browser/ui/aux/surface_visibility.cc b/chrome/browser/ui/aux/surface_visibility.cc
+new file mode 100644
+index 0000000..3f1d190
+--- /dev/null
++++ b/chrome/browser/ui/aux/surface_visibility.cc
+@@ -0,0 +1,63 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/surface_visibility.h"
++#include <algorithm>
++#include "base/memory/weak_ptr.h"
++#include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "components/sessions/core/session_id.h"
++#include "components/tabs/public/tab_interface.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_contents_user_data.h"
++
++namespace aux {
++namespace {
++class StageVisibility final : public content::WebContentsUserData<StageVisibility> {
++ public:
++  bool visible = false;
++  int owner = -1;
++ private:
++  friend class content::WebContentsUserData<StageVisibility>;
++  explicit StageVisibility(content::WebContents* contents)
++      : content::WebContentsUserData<StageVisibility>(*contents) {}
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++WEB_CONTENTS_USER_DATA_KEY_IMPL(StageVisibility);
++}  // namespace
++bool IsStageVisible(content::WebContents* contents) {
++  const auto* state = StageVisibility::FromWebContents(contents);
++  const auto* tab = tabs::TabInterface::GetFromContents(contents);
++  const auto* owner = tab ? tab->GetBrowserWindowInterface() : nullptr;
++  return state && state->visible && owner && owner->GetSessionID().id() == state->owner;
++}
++void SetStageVisible(BrowserWindowInterface* window,
++                     const std::vector<content::WebContents*>& pages) {
++  auto* model = window->GetTabStripModel();
++  std::vector<base::WeakPtr<content::WebContents>> changed;
++  // Commit all visibility bits before notifying auto-PiP about the selection.
++  for (int index = 0; index < model->count(); ++index) {
++    auto* contents = model->GetWebContentsAt(index);
++    const auto* identity = PageIdentity::FromWebContents(contents);
++    if (identity && identity->runtime_owned()) continue;
++    StageVisibility::CreateForWebContents(contents);
++    auto* state = StageVisibility::FromWebContents(contents);
++    const bool visible = std::ranges::find(pages, contents) != pages.end();
++    if (visible != IsStageVisible(contents)) changed.push_back(contents->GetWeakPtr());
++    state->owner = window->GetSessionID().id();
++    state->visible = visible;
++  }
++  for (const auto& weak : changed) {
++    auto* contents = weak.get();
++    const auto* tab = contents ? tabs::TabInterface::GetFromContents(contents) : nullptr;
++    if (!tab || tab->GetBrowserWindowInterface() != window) continue;
++    if (IsStageVisible(contents)) contents->WasShown();
++    else if (contents != model->GetActiveWebContents()) contents->WasHidden();
++    if (!weak) continue;
++    if (auto* helper = AutoPictureInPictureTabHelper::FromWebContents(contents))
++      helper->OnTabActivatedChanged(contents == model->GetActiveWebContents() || IsStageVisible(contents));
++  }
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/surface_visibility.h b/chrome/browser/ui/aux/surface_visibility.h
+new file mode 100644
+index 0000000..d1ebe43
+--- /dev/null
++++ b/chrome/browser/ui/aux/surface_visibility.h
+@@ -0,0 +1,14 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_SURFACE_VISIBILITY_H_
++#define CHROME_BROWSER_UI_AUX_SURFACE_VISIBILITY_H_
++#include <vector>
++class BrowserWindowInterface;
++namespace content { class WebContents; }
++namespace aux {
++void SetStageVisible(BrowserWindowInterface* window,
++                     const std::vector<content::WebContents*>& pages);
++bool IsStageVisible(content::WebContents* contents);
++}  // namespace aux
++#endif  // CHROME_BROWSER_UI_AUX_SURFACE_VISIBILITY_H_
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
+index b3e6a6d..6fd92b9 100644
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -5,6 +5,7 @@
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+ 
+ #include <algorithm>
++#include <cmath>
+ #include <memory>
+ #include <utility>
+ 
+@@ -43,6 +44,10 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
+ #include "components/sessions/core/session_id.h"
++#include "components/split_tabs/split_tab_visual_data.h"
++#include "components/tabs/public/split_tab_data.h"
++#include "components/tabs/public/tab_interface.h"
++#include "chrome/browser/ui/tabs/split_tab_metrics.h"
+ #include "components/performance_manager/public/performance_manager.h"
+ #include "content/public/browser/navigation_controller.h"
+ #include "content/public/browser/render_frame_host.h"
+@@ -305,6 +310,16 @@ base::DictValue TabCatalog::TabRecord(BrowserWindowInterface* browser,
+         SkColorGetR(*theme_color), SkColorGetG(*theme_color),
+         SkColorGetB(*theme_color)));
+   }
++  if (auto* model = browser->GetTabStripModel()) {
++    const int index = model->GetIndexOfWebContents(contents);
++    if (const auto split = model->GetSplitForTab(index)) {
++      const auto* data = model->GetSplitData(*split);
++      base::DictValue metadata;
++      metadata.Set("id", split->ToString());
++      metadata.Set("index", index - static_cast<int>(data->GetIndexRange().start()));
++      tab.Set("split", std::move(metadata));
++    }
++  }
+   tab.Set("loading", contents->IsLoading());
+   tab.Set("muted", contents->IsAudioMuted());
+   tab.Set("audible", contents->IsCurrentlyAudible());
+@@ -565,6 +580,35 @@ base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
+       return Reject(command_id, "backend_unavailable",
+                     "Chromium did not create the tab");
+     }
++  } else if (*kind == "split") {
++    const auto* ids = command.FindList("pageIds");
++    const auto* layout = command.FindString("layout");
++    const auto ratio = command.FindDouble("ratio");
++    if (!ids || ids->size() != 2 || !(*ids)[0].is_string() || !(*ids)[1].is_string() ||
++        (*ids)[0].GetString() == (*ids)[1].GetString() || !layout ||
++        (*layout != "row" && *layout != "column") || !ratio || !std::isfinite(*ratio) ||
++        *ratio < .1 || *ratio > .9) return Reject(command_id, "invalid_params", "Invalid split pair");
++    std::vector<int> indices;
++    for (const auto& value : *ids) {
++      BrowserWindowInterface* owner = nullptr;
++      auto* contents = FindPage(value.GetString(), &owner);
++      const auto* identity = contents ? PageIdentity::FromWebContents(contents) : nullptr;
++      if (!contents || owner != issuer || !identity || identity->runtime_owned())
++        return Reject(command_id, "forbidden", "Split panes must belong to this window");
++      indices.push_back(model->GetIndexOfWebContents(contents));
++    }
++    auto first = model->GetSplitForTab(indices[0]);
++    auto second = model->GetSplitForTab(indices[1]);
++    const auto shape = *layout == "row" ? split_tabs::SplitTabLayout::kSideBySide : split_tabs::SplitTabLayout::kStacked;
++    if (first && first == second) {
++      const auto* data = model->GetSplitData(*first);
++      if (static_cast<int>(data->GetIndexRange().start()) != indices[0]) model->ReverseTabsInSplit(*first);
++      model->UpdateSplitLayout(*first, shape); model->UpdateSplitRatio(*first, *ratio);
++    } else {
++      if (first || second) return Reject(command_id, "conflict", "Separate existing split tabs first");
++      model->AddToNewSplit(indices, split_tabs::SplitTabVisualData(shape, *ratio), split_tabs::SplitTabCreatedSource::kKeyboardShortcut);
++    }
++    result_page_id = (*ids)[0].GetString();
+   } else if (*kind == "claim" || *kind == "move") {
+     const std::string* page_id = command.FindString("pageId");
+     BrowserWindowInterface* source = nullptr;
+@@ -711,6 +755,10 @@ base::DictValue TabCatalog::Command(BrowserWindowInterface* issuer,
+     const int index = model->GetIndexOfWebContents(contents);
+     if (*kind == "activate") {
+       model->ActivateTabAt(index);
++    } else if (*kind == "unsplit") {
++      const auto* identity = PageIdentity::FromWebContents(contents);
++      if (!identity || identity->runtime_owned()) return Reject(command_id, "forbidden", "A runtime tab cannot be split");
++      if (const auto split = model->GetSplitForTab(index)) model->RemoveSplit(*split);
+     } else if (*kind == "close") {
+       model->CloseWebContentsAt(index, TabCloseTypes::CLOSE_USER_GESTURE);
+     } else if (*kind == "navigate") {

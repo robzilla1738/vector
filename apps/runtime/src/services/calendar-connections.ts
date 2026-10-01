@@ -346,8 +346,10 @@ export class CalendarConnectionService {
         let eventUrl: string | undefined;
         if (typeof item.htmlLink === "string") try {
           const parsed = new URL(item.htmlLink);
-          if (parsed.protocol === "https:" && !parsed.username && !parsed.password &&
-            (parsed.hostname === "calendar.google.com" || (parsed.hostname === "www.google.com" && parsed.pathname.startsWith("/calendar/"))))
+          const provider = new URL(this.urls.calendar);
+          const loopback = provider.protocol === "http:" && provider.hostname === "127.0.0.1" && parsed.origin === provider.origin;
+          if (!parsed.username && !parsed.password && (loopback || (parsed.protocol === "https:" &&
+            (parsed.hostname === "calendar.google.com" || (parsed.hostname === "www.google.com" && parsed.pathname.startsWith("/calendar/"))))))
             eventUrl = parsed.href.slice(0, 8192);
         } catch { /* no link */ }
         return [{ eventId, title: typeof item.summary === "string" ? item.summary.slice(0, 1000) : "Untitled event", start: first.slice(0, 100), end: last.slice(0, 100), url: eventUrl,

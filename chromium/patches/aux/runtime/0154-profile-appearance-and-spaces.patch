@@ -1,0 +1,465 @@
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index 54742a1..452324e 100644
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -1474,6 +1474,9 @@ std::string GetCountry() {
+ void RegisterLocalState(PrefRegistrySimple* registry) {
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   registry->RegisterDictionaryPref(aux::kArchivedProfilesPref);
++  registry->RegisterDictionaryPref(aux::kProfileAppearancePref);
++  registry->RegisterDictionaryPref(aux::kProfileSpacesIndexPref);
++  registry->RegisterDictionaryPref(aux::kLinkRoutingPref);
+   registry->RegisterBooleanPref(aux::kQuickAskShortcutEnabledPref, false);
+   registry->RegisterDictionaryPref(aux::kQuickAskShortcutBindingsPref);
+   registry->RegisterStringPref(aux::kExternalLinkTargetPref, "little");
+diff --git a/chrome/browser/ui/aux/methods/profile_methods.cc b/chrome/browser/ui/aux/methods/profile_methods.cc
+index 4f4267e..4b30a7d 100644
+--- a/chrome/browser/ui/aux/methods/profile_methods.cc
++++ b/chrome/browser/ui/aux/methods/profile_methods.cc
+@@ -29,6 +29,20 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/aux/link_router.h"
++#include "chrome/browser/ui/aux/profile_spaces.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/browser/ui/aux/shell_events.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/tabs/tab_enums.h"
++#include "chrome/common/pref_names.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "ui/base/base_window.h"
+ #include "components/prefs/pref_service.h"
+ #include "components/prefs/scoped_user_pref_update.h"
+ #include "content/public/browser/web_contents.h"
+@@ -88,6 +102,12 @@ base::DictValue Describe(ProfileAttributesEntry* entry, Profile* current) {
+                        : base::UTF16ToUTF8(entry->GetLocalProfileName()));
+   item.Set("current", entry->GetPath() == current->GetPath());
+   item.Set("archived", Archived(id));
++  const auto* local_state = g_browser_process->local_state();
++  const auto* appearance = local_state->GetDict(aux::kProfileAppearancePref).FindDict(id);
++  item.Set("color", appearance && appearance->FindString("color") ? *appearance->FindString("color") : "blue");
++  item.Set("icon", appearance && appearance->FindString("icon") ? *appearance->FindString("icon") : "person");
++  const auto* spaces = local_state->GetDict(aux::kProfileSpacesIndexPref).FindList(id);
++  item.Set("spaces", spaces ? spaces->Clone() : base::ListValue());
+   return item;
+ }
+ 
+@@ -132,6 +152,10 @@ void AwaitRemoval(base::WeakPtr<WebUIBrowserUI> ui, base::FilePath path,
+     ScopedDictPrefUpdate archived(g_browser_process->local_state(),
+                                   aux::kArchivedProfilesPref);
+     archived->Remove(ProfileId(path));
++    ScopedDictPrefUpdate appearance(g_browser_process->local_state(), aux::kProfileAppearancePref);
++    appearance->Remove(ProfileId(path));
++    ScopedDictPrefUpdate spaces(g_browser_process->local_state(), aux::kProfileSpacesIndexPref);
++    spaces->Remove(ProfileId(path));
+     Succeed(std::move(callback),
+             base::Value(ListProfiles(manager, ui->browser()->GetProfile())));
+     return;
+@@ -147,30 +171,84 @@ void AwaitRemoval(base::WeakPtr<WebUIBrowserUI> ui, base::FilePath path,
+       base::Milliseconds(100));
+ }
+ 
+-void OpenLoadedProfile(Reply callback, std::optional<GURL> url, Profile* profile) {
++bool HumanTab(Profile* profile, content::WebContents* contents) {
++  const auto* identity = aux::PageIdentity::FromWebContents(contents);
++  aux::EgressRequestContext context;
++  context.document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  context.page_id = aux::PageIdentity::GetOrCreate(profile, contents);
++  return !(identity && identity->runtime_owned()) && !aux::EgressController::ForProfile(profile)->IsProtected(context);
++}
++
++void OpenLoadedProfile(Reply callback, std::optional<GURL> url,
++                       std::optional<std::string> space_id,
++                       base::WeakPtr<content::WebContents> source,
++                       content::WeakDocumentPtr source_document,
++                       Profile* profile) {
+   if (!profile) {
+     Fail(std::move(callback), "backend_unavailable", "Profile could not be loaded");
+     return;
+   }
+-  profiles::OpenBrowserWindowForProfile(
+-      base::BindOnce(
++  auto* entry = g_browser_process->profile_manager()->GetProfileAttributesStorage()
++      .GetProfileAttributesWithPath(profile->GetPath());
++  if (!ListedProfile(entry, profile) || Archived(ProfileId(profile->GetPath())) || entry->IsSigninRequired()) {
++    Fail(std::move(callback), "forbidden", "Destination Profile is archived or locked");
++    return;
++  }
++  auto opened = base::BindOnce(
+           [](Reply callback, std::optional<GURL> url,
++             std::optional<std::string> space_id,
++             base::WeakPtr<content::WebContents> source,
++             content::WeakDocumentPtr source_document,
+              BrowserWindowInterface* window) {
+             if (!window) {
+               Fail(std::move(callback), "backend_unavailable",
+                    "Profile window could not be opened");
+               return;
+             }
++            auto* entry = g_browser_process->profile_manager()->GetProfileAttributesStorage()
++                .GetProfileAttributesWithPath(window->GetProfile()->GetPath());
++            if (!ListedProfile(entry, window->GetProfile()) || Archived(ProfileId(window->GetProfile()->GetPath())) || entry->IsSigninRequired()) {
++              Fail(std::move(callback), "forbidden", "Destination Profile is archived or locked");
++              return;
++            }
++            if (window->GetProfile()->IsOffTheRecord() || aux::IsLittleWindow(window) || aux::IsQuickAskWindow(window)) {
++              Fail(std::move(callback), "forbidden", "A normal Profile window is required");
++              return;
++            }
++            if (space_id) {
++              std::string error;
++              if (!aux::FocusProfileSpace(window, *space_id, &error)) {
++                Fail(std::move(callback), "conflict", error.c_str());
++                return;
++              }
++            }
+             if (url && !chrome::AddAndReturnTabAt(window, *url, -1, true)) {
+               Fail(std::move(callback), "backend_unavailable",
+                    "Page could not be opened in the Profile");
+               return;
+             }
++            window->GetWindow()->Activate();
++            if (source && url && aux::SameMovedDocument(source.get(), source_document, *url)) {
++              auto* source_profile = Profile::FromBrowserContext(source->GetBrowserContext());
++              BrowserWindowInterface* owner = nullptr;
++              aux::TabCatalog::GetForProfile(source_profile)->FindPage(
++                  aux::PageIdentity::GetOrCreate(source_profile, source.get()), &owner);
++              if (owner && !source_profile->IsOffTheRecord() && owner->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
++                  !aux::IsLittleWindow(owner) && !aux::IsQuickAskWindow(owner) && HumanTab(source_profile, source.get())) {
++                const int index = owner->GetTabStripModel()->GetIndexOfWebContents(source.get());
++                if (index >= 0) owner->GetTabStripModel()->CloseWebContentsAt(index, TabCloseTypes::CLOSE_USER_GESTURE);
++              }
++            }
+             Succeed(std::move(callback), base::Value(true));
+           },
+-          std::move(callback), std::move(url)),
+-      /*always_create=*/false, /*is_new_profile=*/false,
+-      /*open_command_line_urls=*/false, profile);
++          std::move(callback), std::move(url), std::move(space_id), source, source_document);
++  if (auto* normal = aux::LastNormalWindow(profile)) {
++    std::move(opened).Run(normal);
++  } else {
++    profiles::OpenBrowserWindowForProfile(std::move(opened),
++        /*always_create=*/true, /*is_new_profile=*/false,
++        /*open_command_line_urls=*/false, profile);
++  }
+ }
+ 
+ }  // namespace
+@@ -178,6 +256,10 @@ void OpenLoadedProfile(Reply callback, std::optional<GURL> url, Profile* profile
+ void WebUIBrowserUI::HandleAuxProfilesRequest(
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
++  if (aux::IsLinkRoutingMethod(method)) {
++    aux::HandleLinkRoutingRequest(browser_, method, args, std::move(callback));
++    return;
++  }
+   Profile* current = browser_ ? browser_->GetProfile() : nullptr;
+   ProfileManager* manager = g_browser_process
+                                 ? g_browser_process->profile_manager()
+@@ -187,6 +269,26 @@ void WebUIBrowserUI::HandleAuxProfilesRequest(
+     Fail(std::move(callback), "forbidden", "Profiles require a regular Aux window");
+     return;
+   }
++  if (method == "javascriptAppleEvents") {
++    if (args.size() > 1 || (!args.empty() && !args[0].is_bool())) {
++      Fail(std::move(callback), "invalid_argument", "Invalid JavaScript Apple Events preference");
++      return;
++    }
++    auto* prefs = current->GetPrefs();
++    const bool managed = prefs->IsManagedPreference(prefs::kAllowJavascriptAppleEvents);
++    if (!args.empty()) {
++      if (managed) {
++        Fail(std::move(callback), "forbidden", "JavaScript Apple Events is managed");
++        return;
++      }
++      prefs->SetBoolean(prefs::kAllowJavascriptAppleEvents, args[0].GetBool());
++    }
++    base::DictValue result;
++    result.Set("enabled", prefs->GetBoolean(prefs::kAllowJavascriptAppleEvents));
++    result.Set("managed", managed);
++    Succeed(std::move(callback), base::Value(std::move(result)));
++    return;
++  }
+   if (method == "browserProfiles") {
+     if (!args.empty()) {
+       Fail(std::move(callback), "invalid_argument", "Unexpected Profile arguments");
+@@ -234,12 +336,54 @@ void WebUIBrowserUI::HandleAuxProfilesRequest(
+     Fail(std::move(callback), "invalid_argument", "Invalid Profile identity");
+     return;
+   }
+-  const std::string id = args[0].GetString();
++  base::WeakPtr<content::WebContents> source;
++  std::optional<GURL> moving_url;
++  content::WeakDocumentPtr source_document;
++  std::string id = args[0].GetString();
++  if (method == "moveTabToProfile") {
++    if (args.size() != 2 || !args[1].is_string()) {
++      Fail(std::move(callback), "invalid_argument", "Invalid destination Profile");
++      return;
++    }
++    BrowserWindowInterface* owner = nullptr;
++    auto* contents = aux::TabCatalog::GetForProfile(current)->FindPage(id, &owner);
++    if (!contents || !owner || owner->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++        aux::IsLittleWindow(owner) || aux::IsQuickAskWindow(owner) || !HumanTab(current, contents)) {
++      Fail(std::move(callback), "forbidden", "Only a human tab in a normal window can change Profile");
++      return;
++    }
++    moving_url = contents->GetLastCommittedURL();
++    if (!ValidWebUrl(moving_url->spec())) {
++      Fail(std::move(callback), "invalid_argument", "Only HTTP and HTTPS tabs can change Profile");
++      return;
++    }
++    source = contents->GetWeakPtr();
++    source_document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++    id = args[1].GetString();
++    if (id == ProfileId(current->GetPath())) {
++      Fail(std::move(callback), "invalid_argument", "The tab is already in that Profile");
++      return;
++    }
++  }
+   auto* entry = FindProfile(manager, current, id);
+   if (!entry) {
+     Fail(std::move(callback), "not_found", "Profile was not found");
+     return;
+   }
++  if (method == "setBrowserProfileAppearance") {
++    const auto* appearance = args.size() == 2 ? args[1].GetIfDict() : nullptr;
++    const auto* color = appearance ? appearance->FindString("color") : nullptr;
++    const auto* icon = appearance ? appearance->FindString("icon") : nullptr;
++    if (!color || !icon || icon->empty() || icon->size() > 32 ||
++        (*color != "blue" && *color != "violet" && *color != "pink" && *color != "orange" && *color != "green" && *color != "teal" && *color != "slate")) {
++      Fail(std::move(callback), "invalid_argument", "Invalid Profile appearance");
++      return;
++    }
++    ScopedDictPrefUpdate appearances(g_browser_process->local_state(), aux::kProfileAppearancePref);
++    appearances->Set(id, appearance->Clone());
++    Succeed(std::move(callback), base::Value(true));
++    return;
++  }
+   if (method == "renameBrowserProfile") {
+     if (args.size() != 2 || !args[1].is_string()) {
+       Fail(std::move(callback), "invalid_argument", "Invalid Profile name");
+@@ -291,7 +435,13 @@ void WebUIBrowserUI::HandleAuxProfilesRequest(
+     AwaitRemoval(GetWeakPtr(), path, std::move(callback), 0);
+     return;
+   }
+-  if (method == "openBrowserProfile" || method == "openBrowserProfileUrl") {
++  if (method == "openBrowserProfile" || method == "openBrowserProfileUrl" ||
++      method == "focusBrowserProfileSpace" || method == "moveTabToProfile") {
++    if (method == "focusBrowserProfileSpace" &&
++        (args.size() != 2 || (!args[1].is_none() && !args[1].is_string()))) {
++      Fail(std::move(callback), "invalid_argument", "Invalid Profile Space");
++      return;
++    }
+     if ((method == "openBrowserProfile" && args.size() != 1) ||
+         (method == "openBrowserProfileUrl" &&
+          (args.size() != 2 || !args[1].is_string() ||
+@@ -303,11 +453,13 @@ void WebUIBrowserUI::HandleAuxProfilesRequest(
+       Fail(std::move(callback), "forbidden", "Profile is archived or locked");
+       return;
+     }
+-    std::optional<GURL> url;
++    std::optional<GURL> url = moving_url;
+     if (method == "openBrowserProfileUrl") url = GURL(args[1].GetString());
++    std::optional<std::string> space_id;
++    if (method == "focusBrowserProfileSpace" && args[1].is_string()) space_id = args[1].GetString();
+     manager->CreateProfileAsync(
+         entry->GetPath(),
+-        base::BindOnce(&OpenLoadedProfile, std::move(callback), std::move(url)));
++        base::BindOnce(&OpenLoadedProfile, std::move(callback), std::move(url), std::move(space_id), source, source_document));
+     return;
+   }
+   Fail(std::move(callback), "not_found", "Unsupported Profile operation");
+diff --git a/chrome/browser/ui/aux/organization_store.cc b/chrome/browser/ui/aux/organization_store.cc
+index af3d29b..64b3423 100644
+--- a/chrome/browser/ui/aux/organization_store.cc
++++ b/chrome/browser/ui/aux/organization_store.cc
+@@ -16,6 +16,9 @@
+ #include "base/strings/string_number_conversions.h"
+ #include "base/strings/utf_string_conversions.h"
+ #include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "components/prefs/scoped_user_pref_update.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "components/prefs/pref_service.h"
+@@ -468,6 +471,20 @@ std::optional<base::DictValue> OrganizationStore::Commit(
+   next.Set("windows", std::move(windows));
+   next.Set("windowOrder", std::move(window_order));
+   profile->GetPrefs()->SetDict(kOrganizationPref, next.Clone());
++  if (g_browser_process && g_browser_process->local_state()) {
++    base::ListValue spaces;
++    for (const auto& value : *layout.FindDict("shared")->FindList("spaces")) {
++      const auto& space = value.GetDict();
++      base::DictValue item;
++      item.Set("id", *space.FindString("id"));
++      item.Set("name", *space.FindString("name"));
++      item.Set("color", *space.FindString("color"));
++      spaces.Append(std::move(item));
++    }
++    const std::string directory = profile->GetPath().BaseName().AsUTF8Unsafe();
++    ScopedDictPrefUpdate index(g_browser_process->local_state(), kProfileSpacesIndexPref);
++    index->Set(directory == "Default" ? "default" : directory, std::move(spaces));
++  }
+   return MakeSnapshot(next, window_id);
+ }
+ 
+diff --git a/chrome/browser/ui/aux/profile_prefs.h b/chrome/browser/ui/aux/profile_prefs.h
+index f787f9c..2322bce 100644
+--- a/chrome/browser/ui/aux/profile_prefs.h
++++ b/chrome/browser/ui/aux/profile_prefs.h
+@@ -6,6 +6,9 @@
+ #define CHROME_BROWSER_UI_AUX_PROFILE_PREFS_H_
+ 
+ namespace aux {
++inline constexpr char kProfileAppearancePref[] = "aux.profile_appearance";
++inline constexpr char kProfileSpacesIndexPref[] = "aux.profile_spaces_index";
++inline constexpr char kLinkRoutingPref[] = "aux.link_routing.v1";
+ inline constexpr char kArchivedProfilesPref[] = "aux.archived_profiles";
+ inline constexpr char kAutofillProfileGuidPref[] = "aux.autofill_profile_guid";
+ inline constexpr char kQuickAskShortcutBindingsPref[] = "aux.quick_ask_shortcut_bindings";
+diff --git a/chrome/browser/ui/aux/profile_spaces.cc b/chrome/browser/ui/aux/profile_spaces.cc
+new file mode 100644
+index 0000000..36d5afe
+--- /dev/null
++++ b/chrome/browser/ui/aux/profile_spaces.cc
+@@ -0,0 +1,46 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/profile_spaces.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/aux/shell_events.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "url/gurl.h"
++namespace aux {
++bool SameMovedDocument(content::WebContents* contents, const content::WeakDocumentPtr& document, const GURL& url) {
++  auto* frame = document.AsRenderFrameHostIfValid();
++  return contents && frame && contents->GetLastCommittedURL() == url &&
++      frame == contents->GetPrimaryMainFrame();
++}
++bool FocusProfileSpace(BrowserWindowInterface* window, std::string_view space_id, std::string* error) {
++  if (!window || window->GetProfile()->IsOffTheRecord() || window->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      IsLittleWindow(window) || IsQuickAskWindow(window)) {
++    *error = "A normal Profile window is required";
++    return false;
++  }
++  const std::string window_id = base::NumberToString(window->GetSessionID().id());
++  auto snapshot = OrganizationStore::Snapshot(window->GetProfile(), window_id, error);
++  auto* layout = snapshot ? snapshot->FindDict("layout") : nullptr;
++  bool found = false;
++  if (layout) for (const auto& value : *layout->FindDict("shared")->FindList("spaces"))
++    found |= *value.GetDict().FindString("id") == space_id;
++  if (!found) {
++    *error = "Space was not found in this Profile";
++    return false;
++  }
++  layout->FindDict("window")->Set("activeSpaceId", std::string(space_id));
++  if (!OrganizationStore::Commit(window->GetProfile(), window_id,
++        snapshot->FindInt("revision").value_or(0), *layout, error)) return false;
++  base::DictValue focus;
++  focus.Set("spaceId", std::string(space_id));
++  focus.Set("windowId", window_id);
++  EmitShellEvent(window->GetProfile(), "onFocusSpace", *base::WriteJson(focus));
++  return true;
++}
++}
+diff --git a/chrome/browser/ui/aux/profile_spaces.h b/chrome/browser/ui/aux/profile_spaces.h
+new file mode 100644
+index 0000000..7d6ce6d
+--- /dev/null
++++ b/chrome/browser/ui/aux/profile_spaces.h
+@@ -0,0 +1,13 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_PROFILE_SPACES_H_
++#define CHROME_BROWSER_UI_AUX_PROFILE_SPACES_H_
++#include <string>
++#include <string_view>
++class BrowserWindowInterface;
++class GURL;
++namespace content { class WebContents; class WeakDocumentPtr; }
++namespace aux {
++bool SameMovedDocument(content::WebContents* contents, const content::WeakDocumentPtr& document, const GURL& url);
++bool FocusProfileSpace(BrowserWindowInterface* window, std::string_view space_id, std::string* error);
++}
++#endif
+diff --git a/chrome/browser/ui/aux/profile_spaces_unittest.cc b/chrome/browser/ui/aux/profile_spaces_unittest.cc
+new file mode 100644
+index 0000000..d3a7738
+--- /dev/null
++++ b/chrome/browser/ui/aux/profile_spaces_unittest.cc
+@@ -0,0 +1,25 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/profile_spaces.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "content/public/test/navigation_simulator.h"
++#include "content/public/test/test_renderer_host.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++namespace aux {
++class ProfileMoveDocumentTest : public content::RenderViewHostTestHarness {};
++TEST_F(ProfileMoveDocumentTest, RechecksCapturedDocumentAfterDestinationLoad) {
++  const GURL url("https://fixture.test/work");
++  content::NavigationSimulator::NavigateAndCommitFromBrowser(web_contents(), url);
++  auto initial = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  EXPECT_TRUE(SameMovedDocument(web_contents(), initial, url));
++  // A destination load can finish after a same-URL replacement document.
++  content::NavigationSimulator::NavigateAndCommitFromBrowser(web_contents(), url);
++  EXPECT_FALSE(SameMovedDocument(web_contents(), initial, url));
++  auto replaced = web_contents()->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  content::NavigationSimulator::NavigateAndCommitFromBrowser(web_contents(), GURL("https://fixture.test/other"));
++  content::NavigationSimulator::NavigateAndCommitFromBrowser(web_contents(), url);
++  EXPECT_FALSE(SameMovedDocument(web_contents(), replaced, url));
++  EXPECT_FALSE(SameMovedDocument(nullptr, replaced, url));
++}
++}
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+index f87755f..63231fd 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+@@ -3,6 +3,11 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/profiles/profile_attributes_entry.h"
++#include "chrome/browser/profiles/profile_attributes_storage.h"
++#include "chrome/browser/profiles/profile_manager.h"
++#include "base/strings/utf_string_conversions.h"
+ 
+ #include "content/public/browser/render_widget_host_view.h"
+ 
+@@ -1425,8 +1430,17 @@ views::ClientView* WebUIBrowserWindow::WidgetDelegate::CreateClientView(
+ std::u16string WebUIBrowserWindow::WidgetDelegate::GetWindowTitle() const {
+   // TODO(webium):  BrowserView::GetWindowTitle() has some magic for media
+   // on Mac.
+-  return WindowMetadataController::From(browser_window_->browser())
++  auto* browser = browser_window_->browser();
++  std::u16string title = WindowMetadataController::From(browser)
+       ->GetWindowTitleForCurrentTab(true /* include_app_name */);
++  if (!browser->GetProfile()->IsOffTheRecord() &&
++      browser->GetProfile()->GetPath().BaseName().AsUTF8Unsafe() != "Default" &&
++      g_browser_process && g_browser_process->profile_manager()) {
++    auto* entry = g_browser_process->profile_manager()->GetProfileAttributesStorage()
++        .GetProfileAttributesWithPath(browser->GetProfile()->GetPath());
++    if (entry) title += u" — " + entry->GetLocalProfileName();
++  }
++  return title;
+ }
+ 
+ bool WebUIBrowserWindow::WidgetDelegate::ShouldDescendIntoChildForEventHandling(

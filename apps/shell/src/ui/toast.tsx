@@ -5,7 +5,7 @@ import "./toast.css";
 const INFO_MS = 3000;
 
 /** Action notices allow ten seconds; plain info allows three. Errors require dismissal. */
-export function Toast({ id, text, kind, action, onDismiss }: { id: number; text: string; kind: "info" | "error"; action?: { label: string; run(): void }; onDismiss(id: number): void }) {
+export function Toast({ id, text, kind, action, onDismiss }: { id: number; text: string; kind: "info" | "error"; action?: { label: string; run(): void; secondary?: { label: string; run(): void } }; onDismiss(id: number): void }) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const held = hovered || focused;
@@ -22,6 +22,7 @@ export function Toast({ id, text, kind, action, onDismiss }: { id: number; text:
     {kind === "error" ? I.alert : I.check}
     <span className="toast-text">{text}</span>
     {action && <button className="btn toast-action" onClick={action.run}>{action.label}</button>}
+    {action?.secondary && <button className="btn toast-action" onClick={action.secondary.run}>{action.secondary.label}</button>}
     <button className="icon-btn xs toast-dismiss" aria-label="Dismiss notification" onClick={() => onDismiss(id)}>{I.close}</button>
   </div>;
 }

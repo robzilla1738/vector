@@ -1,3 +1,5 @@
+import { ArchivePolicy } from "./ArchivePolicy";
+import { useFeature } from "../use-feature";
 import { useEffect, useRef, useState, type RefObject, type PointerEvent } from "react";
 import type { SpaceTheme } from "@aux/contracts/spaces";
 import { bridge } from "../bridge";
@@ -28,6 +30,7 @@ export default function SpaceEditor({
   onClose: () => void;
   returnFocus?: RefObject<HTMLElement | null>;
 }) {
+  const autoArchive = useFeature("autoArchive");
   const [name, setName] = useState(space?.name ?? "");
   const [color, setColor] = useState<SpaceColor>(space?.color ?? "violet");
   const [grain, setGrain] = useState(space?.grain ?? 0);
@@ -94,6 +97,7 @@ export default function SpaceEditor({
           if (e.key === "Enter") void save();
         }}
       />
+      {space && autoArchive && <ArchivePolicy spaceId={space.id} />}
       <div className="swatches" role="radiogroup" aria-label="Colour">
         {SPACE_COLORS.map((c) => (
           <button

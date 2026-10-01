@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { faviconCandidates, hostLetter } from "../favicon";
 import { hostOf } from "../workspace";
+import { unreadBadge } from "../unread-badge";
 import { I } from "./icons";
 
 export function FavIcon({
@@ -61,6 +62,7 @@ export function SiteTile({
   onClick,
   active,
   label,
+  unreadTitle,
   ...rest
 }: {
   url: string;
@@ -68,14 +70,17 @@ export function SiteTile({
   favicon?: string;
   size?: "sm" | "md" | "lg";
   active?: boolean;
+  unreadTitle?: string;
   /** show the title beneath the tile (start page) */
   label?: boolean;
   onClick?: (e: React.MouseEvent) => void;
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick" | "title">) {
   const host = hostOf(url);
+  const unread = unreadBadge(unreadTitle ?? "");
   return (
-    <button className={`site-tile ${size} ${active ? "active" : ""} ${label ? "labelled" : ""}`} title={title || host} aria-label={title || host} onClick={onClick} {...rest}>
+    <button className={`site-tile ${size} ${active ? "active" : ""} ${label ? "labelled" : ""}`} title={title || host} aria-label={`${title || host}${unread ? `, ${unread.label}` : ""}`} onClick={onClick} {...rest}>
       <TileFace url={url} favicon={favicon} size={size} />
+      {unread && <span className="pin-unread" aria-hidden>{unread.text}</span>}
       {label && <span className="tile-label">{title || host}</span>}
     </button>
   );

@@ -258,7 +258,29 @@ export function installMockBridge(q: URLSearchParams) {
     scenario === "connectors");
   const connectors = connectorFixtures(`workspace:${DEFAULT_SPACE.id}`, () => work["tasks.list"](),
     scenario === "connectors");
+  const githubAccounts = new Map<string, { id: string; name: string; login: string; connected: boolean }>();
+  const liveFolderRows = new Map<string, import("@aux/contracts").LiveFolderItem[]>();
   const handlers = {
+    "github.connections.list": async () => [...githubAccounts.values()],
+    "github.connections.connect": async (p: Record<string, unknown>) => {
+      const account = { id: crypto.randomUUID(), name: String(p.name), login: "aux-preview", connected: true };
+      githubAccounts.set(account.id, account); return account;
+    },
+    "github.connections.revoke": async (p: Record<string, unknown>) => { githubAccounts.delete(String(p.connectionId)); return { ok: true }; },
+    "liveFolders.items": async (p: Record<string, unknown>) => ({ folderId: String(p.folderId), items: liveFolderRows.get(String(p.folderId)) ?? [] }),
+    "liveFolders.refresh": async (p: Record<string, unknown>) => {
+      const folderId = String(p.folderId);
+      const source = organization.layout?.shared.folders.find(folder => folder.id === folderId)?.live;
+      if (!source) throw new Error("Choose a live folder source first.");
+      if (source.kind === "github" && !githubAccounts.has(source.config.connectionId)) return { folderId, items: liveFolderRows.get(folderId) ?? [], error: "Couldn't refresh — Reconnect GitHub" };
+      const items = liveFolderRows.get(folderId) ?? [{ id: "preview-article", url: "https://example.com/article", title: "Research worth revisiting", subtitle: source.kind === "github" ? "aux/browser #42" : "example.com", unread: true, updatedAt: 0 }];
+      liveFolderRows.set(folderId, items); return { folderId, items, refreshedAt: Date.now() };
+    },
+    "liveFolders.markRead": async (p: Record<string, unknown>) => {
+      const folderId = String(p.folderId); const items = liveFolderRows.get(folderId) ?? [];
+      if (!items.some(item => item.id === p.itemId)) throw new Error("This live item is no longer available.");
+      liveFolderRows.set(folderId, items.map(item => item.id === p.itemId ? { ...item, unread: false } : item)); return { ok: true };
+    },
     "agent.inlineAssist.capture": async p => {
       const source = pages.find(item => item.pageId === p.pageId);
       if (!source || source.url !== p.expectedUrl || source.documentEpoch !== p.expectedDocumentEpoch)
