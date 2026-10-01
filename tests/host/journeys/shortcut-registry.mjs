@@ -20,17 +20,16 @@ async function openShortcuts(t) {
   await t.ax.press(selector("Manage shortcuts", "AXButton"));
   await t.ax.waitFor(selector("Find keyboard shortcut", "AXTextField"));
 }
+export function registerShortcutFixtures(fixture) {
+  fixture.route("/shortcut-article", `<!doctype html><title>Shortcut article</title><article><h1>Shortcut article</h1>${Array.from({ length: 30 }, (_, i) => `<p>Paragraph ${i}. Aux keeps keyboard commands predictable and lets each person choose familiar shortcuts. Browser controls and the article remain accessible after a restart.</p>`).join("")}</article>`);
+  fixture.route("/shortcut-counter", `<!doctype html><title>Shortcut target</title><h1>Shortcut target</h1><output id="received">Website shortcuts: 0</output><output id="released">Website releases: 0</output><output id="modifiers">Website modifiers: none</output><input aria-label="Website editor"><script>let count=0;document.addEventListener('keydown',event=>{if(event.metaKey&&event.key==='s'){event.preventDefault();document.getElementById('modifiers').textContent='Website modifiers: meta='+event.metaKey+' alt='+event.altKey+' ctrl='+event.ctrlKey+' shift='+event.shiftKey;document.getElementById('received').textContent='Website shortcuts: '+(++count);}});let releases=0;document.addEventListener('keyup',event=>{if(event.metaKey&&event.key==='s')document.getElementById('released').textContent='Website releases: '+(++releases);});</script>`);
+}
 async function core(t) {
-  t.fixture.route("/shortcut-article", () => ({
-    body: `<!doctype html><title>Shortcut article</title><article><h1>Shortcut article</h1>${Array.from({ length: 30 }, (_, i) => `<p>Paragraph ${i}. Aux keeps keyboard commands predictable and lets each person choose familiar shortcuts. Browser controls and the article remain accessible after a restart.</p>`).join("")}</article>`,
-  }));
+  registerShortcutFixtures(t.fixture);
   const page = await t.rpc("pages.open", { url: `${t.fixture.url}/shortcut-article`, activate: true });
-  await t.until("Red loaded", async () =>
+  await t.until("Shortcut article loaded", async () =>
     (await t.rpc("pages.list")).some((row) => row.pageId === page.pageId && !row.loading),
   );
-  t.fixture.route("/shortcut-counter", () => ({
-    body: `<!doctype html><title>Shortcut target</title><h1>Shortcut target</h1><output id="received">Website shortcuts: 0</output><output id="released">Website releases: 0</output><output id="modifiers">Website modifiers: none</output><input aria-label="Website editor"><script>let count=0;document.addEventListener('keydown',event=>{if(event.metaKey&&event.key==='s'){event.preventDefault();document.getElementById('modifiers').textContent='Website modifiers: meta='+event.metaKey+' alt='+event.altKey+' ctrl='+event.ctrlKey+' shift='+event.shiftKey;document.getElementById('received').textContent='Website shortcuts: '+(++count);}});let releases=0;document.addEventListener('keyup',event=>{if(event.metaKey&&event.key==='s')document.getElementById('released').textContent='Website releases: '+(++releases);});</script>`,
-  }));
   await t.step(
     "double press reaches the same website without browser recursion",
     { kind: "ui", features },
