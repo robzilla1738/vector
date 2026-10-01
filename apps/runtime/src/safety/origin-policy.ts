@@ -65,19 +65,23 @@ export function evaluateOriginPolicy(input: {
   const accessFor = (rules: readonly OriginRule[]) => rules.reduce<OriginAccess | undefined>(
     (current, rule) => mostRestrictive(current, ruleAccess(rule, input.effect), ACCESS_RANK, "deny"), undefined);
   const managedAccess = accessFor(managed);
-  const userAccess = accessFor(user);
+  const requestedUserAccess = accessFor(user);
+  const consequential = input.effect === "destructive" || input.effect === "credential";
+  const userAccess = consequential && requestedUserAccess === "allow" ? "ask" : requestedUserAccess;
   const access = normalized
     ? mostRestrictive(managedAccess, userAccess, ACCESS_RANK, defaultAccessFor(input.effect))
     : "deny";
   const source: PolicySource = managedAccess && (!userAccess || ACCESS_RANK[managedAccess] <= ACCESS_RANK[userAccess])
     ? "managed" : userAccess ? "user" : "default";
   const all = [...managed, ...user];
-  const confirmation = all.reduce<OriginPolicyDecision["confirmation"] | undefined>(
+  const requestedConfirmation = all.reduce<OriginPolicyDecision["confirmation"] | undefined>(
     (current, rule) => rule.confirmation === undefined ? current
       : mostRestrictive(current, rule.confirmation, CONFIRM_RANK, "action"), undefined) ?? "action";
   const decision: OriginPolicyDecision = {
     access,
-    confirmation,
+    confirmation: consequential
+      ? mostRestrictive(requestedConfirmation, "action", CONFIRM_RANK, "action")
+      : requestedConfirmation,
     approvalLifetime: all.some(rule => rule.approvalLifetime === "turn") ? "turn"
       : all.some(rule => rule.approvalLifetime === "thread") ? "thread" : "turn",
     grantLifetime: all.some(rule => rule.grantLifetime === "session") ? "session"

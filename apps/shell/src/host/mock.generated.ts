@@ -10,7 +10,8 @@ const RESULTS: Record<string, unknown> = {
   "capabilities": {
     "buildId": "mock-buildid",
     "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "methods": []
+    "methods": [],
+    "qualifiedFeatures": []
   },
   "defaultBrowser": {
     "isDefault": false
@@ -187,6 +188,7 @@ const RESULTS: Record<string, unknown> = {
   "setFilterSourceEnabled": [],
   "setAppearance": false,
   "setShortcuts": false,
+  "windowControlsVisible": false,
   "extensions": [],
   "installStoreExtension": {
     "key": "mock-key",
@@ -219,6 +221,10 @@ const RESULTS: Record<string, unknown> = {
     "source": "managed"
   },
   "showExtensionAction": false,
+  "extensionActions": [],
+  "pinExtensionAction": false,
+  "extensionCommands": [],
+  "setExtensionCommandShortcut": false,
   "setExtensionEnabled": {
     "key": "mock-key",
     "name": "mock-name",
@@ -243,6 +249,38 @@ const RESULTS: Record<string, unknown> = {
   "deleteBrowserProfile": [],
   "openBrowserProfile": false,
   "openBrowserProfileUrl": false,
+  "setBrowserProfileAppearance": false,
+  "focusBrowserProfileSpace": false,
+  "moveTabToProfile": false,
+  "linkRoutes": {
+    "version": 1,
+    "revision": 0,
+    "enabled": false,
+    "inApp": "off",
+    "default": {
+      "kind": "last-used"
+    },
+    "rules": []
+  },
+  "setLinkRoutes": {
+    "version": 1,
+    "revision": 0,
+    "enabled": false,
+    "inApp": "off",
+    "default": {
+      "kind": "last-used"
+    },
+    "rules": []
+  },
+  "testLinkRoute": {
+    "destination": {
+      "kind": "profile",
+      "profileId": "https://example.com/",
+      "window": "tab"
+    },
+    "fallback": false
+  },
+  "resolveRoutePrompt": false,
   "autofillProfile": null,
   "setAutofillProfile": false,
   "autofill": 0,
@@ -260,6 +298,8 @@ const RESULTS: Record<string, unknown> = {
     "error": "mock-error"
   },
   "quickAsk": false,
+  "littleWindow": false,
+  "externalLinkTarget": "little",
   "downloadFolder": {
     "path": "/tmp/aux-mock",
     "custom": false
@@ -298,6 +338,10 @@ const RESULTS: Record<string, unknown> = {
   },
   "downloadsSnapshot": [],
   "tabAudio": {},
+  "pictureInPicture": {
+    "active": false
+  },
+  "setStageVisible": false,
   "tabsUnsavedWork": {},
   "tabSleep": {
     "slept": false
@@ -492,7 +536,18 @@ const RESULTS: Record<string, unknown> = {
   "native.capabilities": {
     "buildId": "mock-buildid",
     "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "methods": []
+    "methods": [],
+    "qualifiedFeatures": []
+  },
+  "native.downloadPreviewText": {
+    "text": "mock-text"
+  },
+  "native.renameDownload": {
+    "renamed": false,
+    "filename": "/tmp/aux-mock"
+  },
+  "native.powerActivity": {
+    "active": false
   },
   "native.createAgentPage": {
     "pageId": "a",

@@ -2,10 +2,21 @@ import { AuxError } from "./errors.js";
 
 export type AuxFeatureStage = "off" | "preview" | "on";
 export type AuxFeatureHost = "electron" | "chromium-fork";
-export type AuxFeatureBatch = "B2" | "B3" | "B4" | "B5" | "B6" | "B7" | "B8" | "B9" | "B10" | "B11";
+export type AuxFeatureBatch = "B2" | "B3" | "B4" | "B5" | "B6" | "B7" | "B8" | "B9" | "B10" | "B11" | "B12";
 
 /** The product surface in ROADMAP section 3. New features must be registered before exposure. */
 export const AUX_FEATURES = {
+  minimalUi: "B12",
+  windowSync: "B12",
+  pinnedApps: "B12",
+  liveFolders: "B12",
+  autoArchive: "B12",
+  pictureInPicture: "B12",
+  cliOpen: "B12",
+  tabMentions: "B12",
+  agentSitePermissions: "B12",
+  demonstrationSkills: "B12",
+  overnightReview: "B12",
   layouts: "B7",
   floatingSidebar: "B2",
   autoHideToolbar: "B2",

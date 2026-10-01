@@ -9,6 +9,11 @@ export function toOrganizationLayout(layout: Layout): OrganizationLayout {
       archivedSpaces: layout.archivedSpaces ?? [],
       pins: layout.pins,
       folders: layout.folders,
+      tabSpace: layout.tabSpace,
+      order: layout.order,
+      tabFolder: layout.tabFolder,
+      tabNames: layout.tabNames ?? {},
+      splitGroups: layout.splitGroups ?? [],
       ...(layout.tidyUndo ? { tidyUndo: layout.tidyUndo } : {}),
       archivedTabs: layout.archivedTabs ?? [],
     },
@@ -16,30 +21,18 @@ export function toOrganizationLayout(layout: Layout): OrganizationLayout {
       activeSpaceId: layout.activeSpaceId,
       activeTabs: layout.activeTabs ?? {},
       splitRatio: layout.splitRatio ?? 0.5,
-      tabSpace: layout.tabSpace,
-      order: layout.order,
-      tabFolder: layout.tabFolder,
-      tabNames: layout.tabNames ?? {},
-      splits: layout.splits ?? {},
     },
   };
 }
 
 export function fromOrganizationLayout(value: OrganizationLayout): Layout {
-  // A restored window's record starts empty. Restore Tidy assignments only while
-  // the shared receipt still matches the folders it created.
+  // Retain Undo only while its created folders still match the shared state.
   const stored = value.shared.tidyUndo;
   const receipt = stored && tidyFoldersMatch(stored.created, value.shared.folders) ? stored : undefined;
-  const restoredTidy =
-    receipt && value.window.order.length === 0 && Object.keys(value.window.tabFolder).length === 0
-      ? Object.fromEntries(receipt.moved.map(({ pageId, toFolderId }) => [pageId, toFolderId]))
-      : {};
   return {
     ...emptyLayout(),
     ...value.shared,
     ...value.window,
-    tabFolder: { ...restoredTidy, ...value.window.tabFolder },
-    tabNames: value.window.tabNames ?? {},
     tidyUndo: receipt,
   };
 }
@@ -141,6 +134,16 @@ export function rebaseOrganizationLayout(
         remoteShared.archivedTabs ?? [],
         (item) => item.archiveId,
       ),
+      tabSpace: mergeRecord(base.shared.tabSpace, local.shared.tabSpace, remote.shared.tabSpace),
+      order: mergeOrder(base.shared.order, local.shared.order, remote.shared.order),
+      tabFolder: mergeRecord(base.shared.tabFolder, local.shared.tabFolder, remote.shared.tabFolder),
+      tabNames: mergeRecord(base.shared.tabNames, local.shared.tabNames, remote.shared.tabNames),
+      splitGroups: mergeItems(
+        baseShared.splitGroups,
+        localShared.splitGroups,
+        remoteShared.splitGroups,
+        (item) => item.id,
+      ),
       tidyUndo: same(baseShared.tidyUndo, localShared.tidyUndo)
         ? remoteShared.tidyUndo
         : localShared.tidyUndo,
@@ -153,15 +156,6 @@ export function rebaseOrganizationLayout(
       splitRatio: same(base.window.splitRatio, local.window.splitRatio)
         ? remote.window.splitRatio
         : local.window.splitRatio,
-      tabSpace: mergeRecord(base.window.tabSpace, local.window.tabSpace, remote.window.tabSpace),
-      order: mergeOrder(base.window.order, local.window.order, remote.window.order),
-      tabFolder: mergeRecord(base.window.tabFolder, local.window.tabFolder, remote.window.tabFolder),
-      tabNames: mergeRecord(
-        base.window.tabNames ?? {},
-        local.window.tabNames ?? {},
-        remote.window.tabNames ?? {},
-      ),
-      splits: mergeRecord(base.window.splits, local.window.splits, remote.window.splits),
     },
   };
 }

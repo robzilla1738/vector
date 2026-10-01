@@ -32,7 +32,7 @@ const disposable = mkdtempSync("/tmp/aux-egress-native-");
 const profile = join(disposable, "profile"), binary = join(app, "Contents/MacOS/Aux");
 const helper = join(app, "Contents/Helpers/Aux Runtime");
 const nativeHeader = resolve(app, "../../../chrome/browser/ui/aux/generated/aux_host_methods.h");
-const nativeSourceCommit = readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1];
+const nativeSourceCommit = readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40}(\+dirty)?)"/)?.[1];
 assert.ok(nativeSourceCommit, "A built native source identity is required");
 const report = { schema: 1, scope: "Scoped 0121; relay isolation remains unqualified", group, app,
   harnessSourceSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),

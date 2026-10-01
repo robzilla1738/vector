@@ -123,6 +123,11 @@ def build(flavor: str) -> None:
     output = SRC / "out" / ("AuxDev" if flavor == "dev" else "AuxRelease")
     if not (output / "build.ninja").exists():
         raise SystemExit("Run configure first")
+    # Keep staging and incremental compilation in the same shared native slot.
+    if not ENV.get("AUX_NATIVE_SLOT_TOKEN"):
+        run("node", str(REPO / "scripts/native-slot.mjs"), "--", sys.executable,
+            str(ROOT / "aux-chromium"), "build", "--flavor", flavor, cwd=REPO)
+        return
     run("node", str(ROOT / "stage-host-bindings.mjs"), cwd=REPO)
     run("nice", "-n", "10", "autoninja", "-C", str(output), "chrome", "-j", "8", cwd=SRC)
 

@@ -49,9 +49,12 @@ import type { MethodName } from "@aux/contracts";
 import type { McpOAuthService } from "../../services/mcp-oauth.js";
 
 export interface Services {
+  clock?: import("@aux/contracts").Clock;
   featureHost?: AuxFeatureHost;
   featureProfileId?: string;
   featureStages?: Promise<AuxFeatureOverrides>;
+  nativeIdentity?: Promise<import("@aux/contracts/host-methods").HostCapabilities>;
+  runtimeIdentity?: import("../runtime-identity.js").RuntimeIdentity | null;
   pages: PageService;
   sets: SetService;
   runs: RunService;

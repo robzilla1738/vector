@@ -1,0 +1,115 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 3b8dd04..789d93c 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -31,6 +31,14 @@ source_set("runtime") {
+     "health_recorder.h",
+     "method_registry.cc",
+     "method_registry.h",
++    "methods/downloads_ai_methods.cc",
++    "methods/extensions_ui_methods.cc",
++    "methods/layout_methods.cc",
++    "methods/power_methods.cc",
++    "methods/profile_routing_methods.cc",
++    "methods/shortcuts_methods.cc",
++    "methods/surfaces_methods.cc",
++    "methods/window_sync_methods.cc",
+     "methods/native_blocking_methods.cc",
+     "methods/native_cdp_methods.cc",
+     "methods/native_content_methods.cc",
+diff --git a/chrome/browser/ui/aux/methods/downloads_ai_methods.cc b/chrome/browser/ui/aux/methods/downloads_ai_methods.cc
+new file mode 100644
+index 0000000..245815e
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/downloads_ai_methods.cc
+@@ -0,0 +1,6 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Wave 0 reserves this compilation unit for the downloads_ai feature lane.
++// It registers no handler; generated methods remain unavailable until implemented.
+diff --git a/chrome/browser/ui/aux/methods/extensions_ui_methods.cc b/chrome/browser/ui/aux/methods/extensions_ui_methods.cc
+new file mode 100644
+index 0000000..6f23838
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/extensions_ui_methods.cc
+@@ -0,0 +1,6 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Wave 0 reserves this compilation unit for the extensions_ui feature lane.
++// It registers no handler; generated methods remain unavailable until implemented.
+diff --git a/chrome/browser/ui/aux/methods/layout_methods.cc b/chrome/browser/ui/aux/methods/layout_methods.cc
+new file mode 100644
+index 0000000..2ef9f92
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/layout_methods.cc
+@@ -0,0 +1,6 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Wave 0 reserves this compilation unit for the layout feature lane.
++// It registers no handler; generated methods remain unavailable until implemented.
+diff --git a/chrome/browser/ui/aux/methods/power_methods.cc b/chrome/browser/ui/aux/methods/power_methods.cc
+new file mode 100644
+index 0000000..4f900f6
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/power_methods.cc
+@@ -0,0 +1,6 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Wave 0 reserves this compilation unit for the power feature lane.
++// It registers no handler; generated methods remain unavailable until implemented.
+diff --git a/chrome/browser/ui/aux/methods/profile_routing_methods.cc b/chrome/browser/ui/aux/methods/profile_routing_methods.cc
+new file mode 100644
+index 0000000..f7cefd4
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/profile_routing_methods.cc
+@@ -0,0 +1,6 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Wave 0 reserves this compilation unit for the profile_routing feature lane.
++// It registers no handler; generated methods remain unavailable until implemented.
+diff --git a/chrome/browser/ui/aux/methods/shortcuts_methods.cc b/chrome/browser/ui/aux/methods/shortcuts_methods.cc
+new file mode 100644
+index 0000000..6b39963
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/shortcuts_methods.cc
+@@ -0,0 +1,6 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Wave 0 reserves this compilation unit for the shortcuts feature lane.
++// It registers no handler; generated methods remain unavailable until implemented.
+diff --git a/chrome/browser/ui/aux/methods/surfaces_methods.cc b/chrome/browser/ui/aux/methods/surfaces_methods.cc
+new file mode 100644
+index 0000000..6b31cb6
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/surfaces_methods.cc
+@@ -0,0 +1,6 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Wave 0 reserves this compilation unit for the surfaces feature lane.
++// It registers no handler; generated methods remain unavailable until implemented.
+diff --git a/chrome/browser/ui/aux/methods/window_sync_methods.cc b/chrome/browser/ui/aux/methods/window_sync_methods.cc
+new file mode 100644
+index 0000000..508832b
+--- /dev/null
++++ b/chrome/browser/ui/aux/methods/window_sync_methods.cc
+@@ -0,0 +1,6 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Wave 0 reserves this compilation unit for the window_sync feature lane.
++// It registers no handler; generated methods remain unavailable until implemented.

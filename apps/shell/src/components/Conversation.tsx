@@ -1,3 +1,4 @@
+import { FeatureComposer } from "../features/registry";
 import { Popover } from "../ui/popover";
 import { RunControls } from "./RunControls";
 import { CalendarSourceChoiceDialog } from "./CalendarSourceChoiceDialog";
@@ -64,7 +65,9 @@ const ComposerInput = memo(function ComposerInput({ id, answerRunId, answerQuest
   inputProps: Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onPaste" | "onDragOver" | "onDrop">; onChange(value: string): void; onSend(): void; children?: ReactNode; footer?: ReactNode; modes?: ReactNode; textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const text = useStore(s => draftText(s, id, answerRunId, answerQuestion));
-  return <div className="conversation-input"><textarea ref={textareaRef} {...inputProps} maxLength={maxLength} disabled={disabled} aria-label="Reply to conversation" placeholder={placeholder} value={text} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); onSend(); } }}/><div className="composer-footer"><div className="composer-footer-context">{footer}{modes}</div><div className="composer-send-actions">{children}<button className="icon-btn" aria-label="Send message" disabled={sendDisabled || !text.trim()} onClick={onSend}>{I.send}</button></div></div></div>;
+  const ownInput = useRef<HTMLTextAreaElement>(null);
+  const inputRef = textareaRef ?? ownInput;
+  return <div className="conversation-input"><FeatureComposer textareaRef={inputRef} value={text} onChange={onChange} disabled={disabled} /><textarea ref={inputRef} {...inputProps} maxLength={maxLength} disabled={disabled} aria-label="Reply to conversation" placeholder={placeholder} value={text} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); onSend(); } }}/><div className="composer-footer"><div className="composer-footer-context">{footer}{modes}</div><div className="composer-send-actions">{children}<button className="icon-btn" aria-label="Send message" disabled={sendDisabled || !text.trim()} onClick={onSend}>{I.send}</button></div></div></div>;
 });
 
 type ConversationSpaceContext = { workspace: Workspace | null; memory: WorkspaceMemory | null; assigned?: boolean; taskId?: string; memoryPreview?: string; browsingPreview?: string };

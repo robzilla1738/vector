@@ -20,7 +20,7 @@ export function stageTabArchive(layout: Layout, page: PageTarget, now = Date.now
     title: page.title.slice(0, 500), spaceId,
     ...(folderId ? { folderId } : {}),
     index: Math.max(0, layout.order.indexOf(page.pageId)),
-    archivedAt: now, state: "pending",
+    archivedAt: now, state: "pending", reason: "manual", batchId: crypto.randomUUID(),
   };
   return { entry, layout: { ...layout, archivedTabs: [...(layout.archivedTabs ?? []), entry] } };
 }

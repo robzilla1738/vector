@@ -1,11 +1,13 @@
 import type { MethodName } from "./api.js";
 import type { AuxFeature } from "./aux-features.js";
+import { BrowserRuntimeMethodPolicy } from "./browser-runtime-api.js";
 
 export type RuntimeAuthClass = "aux-webui" | "handler-guarded" | "standard";
 export type RuntimeMethodPolicyEntry = { feature: AuxFeature | "core"; auth: RuntimeAuthClass };
 
 /** Exhaustive API ownership; handler-guarded methods retain parameter checks. */
 export const RuntimeMethodPolicy = {
+  ...BrowserRuntimeMethodPolicy,
   "agent.js.run": { feature: "core", auth: "standard" },
   "agent.js.reset": { feature: "core", auth: "standard" },
   "agent.tidy.propose": { feature: "aiTidy", auth: "handler-guarded" },

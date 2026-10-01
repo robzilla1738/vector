@@ -74,7 +74,30 @@ export interface ComposedBridgeMembers {
 export type AuxBridge = ReturnType<typeof createHostClient> & ComposedBridgeMembers;
 
 const noop = () => () => {};
+const nativeRequired = async (): Promise<never> => { throw new Error("This action requires the Aux native browser."); };
 const stub: AuxBridge = {
+  windowControlsVisible: nativeRequired,
+  extensionActions: nativeRequired,
+  pinExtensionAction: nativeRequired,
+  extensionCommands: nativeRequired,
+  setExtensionCommandShortcut: nativeRequired,
+  setBrowserProfileAppearance: nativeRequired,
+  focusBrowserProfileSpace: nativeRequired,
+  moveTabToProfile: nativeRequired,
+  linkRoutes: nativeRequired,
+  setLinkRoutes: nativeRequired,
+  testLinkRoute: nativeRequired,
+  resolveRoutePrompt: nativeRequired,
+  littleWindow: nativeRequired,
+  externalLinkTarget: nativeRequired,
+  pictureInPicture: nativeRequired,
+  setStageVisible: nativeRequired,
+  onPictureInPicture: noop,
+  onExtensionActionsChanged: noop,
+  onSidePanel: noop,
+  onFocusSpace: noop,
+  onRoutedOpen: noop,
+  onRoutePrompt: noop,
   capabilities:async()=>{throw new Error("Aux capabilities require the native browser.");},
   browserProfiles:async()=>[],
   openBrowserProfileUrl:async()=>false,

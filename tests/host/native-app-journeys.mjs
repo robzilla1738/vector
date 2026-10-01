@@ -256,7 +256,7 @@ const memoryFixture = { workspaceId: "memory-fixture-space", runId: `run_${rando
 const runtimeFile = join(profile, "Default/Aux Runtime Data/runtime.json");
 const nativeHeader = resolve(app, "../../../chrome/browser/ui/aux/generated/aux_host_methods.h");
 const nativeSourceCommit = existsSync(nativeHeader)
-  ? readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1]
+  ? readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40}(\+dirty)?)"/)?.[1]
   : undefined;
 const developmentAcceptanceFeatures = memoryInboxUiJourney || storeRecoveryUiJourney || memoryPasteUiJourney ? ["memory", "spaces"] :
   anyTidyJourney ? ["spaces", "aiTidy"] :
@@ -678,21 +678,6 @@ function clickLabel(label) {
   console.log(`click ${label} ${hit ? `${hit.x},${hit.y}` : "miss"}`);
   return Boolean(hit);
 }
-function clickLineLabel(label) {
-  const exact = clickNamed(label);
-  if (exact && exact.height >= 8 && exact.height <= 80 && exact.width <= 640) {
-    console.log(`line click ${label} ${exact.x},${exact.y} ${exact.width}x${exact.height}`);
-    return true;
-  }
-  const frame = frameNamed(label);
-  if (frame && frame.height >= 8 && frame.height <= 80 && frame.width <= 640) {
-    native("click-at", String(frame.x), String(frame.y));
-    console.log(`line frame ${label} ${frame.x},${frame.y} ${frame.width}x${frame.height}`);
-    return true;
-  }
-  console.log(`line miss ${label} button ${exact ? `${exact.width}x${exact.height}` : "none"} frame ${frame ? `${frame.width}x${frame.height}` : "none"}`);
-  return false;
-}
 function clickContained(label) {
   if (clickRawLabel(label)) return true;
   let children = [];
@@ -804,30 +789,6 @@ function clickHit(label, wholeWindow = false) {
   if (!hit.ok) return false;
   native("click-at", String(hit.x), String(hit.y));
   return true;
-}
-async function focusKey(labels, key) {
-  const needles = labels.map(label => label.toLowerCase());
-  let previous = "";
-  let repeats = 0;
-  for (let step = 0; step < 18; step += 1) {
-    const focused = focusedValue();
-    console.log(`focus ${step} ${focused}`);
-    if (needles.some(needle => focused.toLowerCase().includes(needle))) {
-      native(key);
-      console.log(`focus ${key} matched ${labels.join(" / ")}`);
-      return true;
-    }
-    if (focused && focused === previous) {
-      repeats += 1;
-      if (repeats >= 2) break;
-    } else {
-      previous = focused;
-      repeats = 0;
-    }
-    native("tab");
-    await delay(150);
-  }
-  return false;
 }
 async function revealControl(needles, ready) {
   const space = lineFrame("Memory Fixture", 360) ?? frameNamed("Memory Fixture");
@@ -4695,9 +4656,10 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     let restoreSheet = "review did not expose staging";
     if (shows("Recovery package review") || shows("Package authenticated") || native("has-button", "Stage reviewed recovery…") === "true") {
       if (!await clickRevealed("Stage reviewed recovery…")) restoreSheet = "Stage reviewed recovery was not clickable";
-      else restoreSheet = await recoveryPrompt("Approve restoring an Aux recovery package", () => false) ?? "restore completed without a visible sheet";
+      else restoreSheet = await recoveryPrompt("Approve restoring an Aux recovery package", () => existsSync(sourcePending));
     }
-    throw new Error(`Blocking macOS authentication sheet: ${JSON.stringify(createSheet)}; restore: ${JSON.stringify(restoreSheet)}`);
+    if (createSheet || restoreSheet)
+      throw new Error(`Blocking macOS authentication sheet: ${JSON.stringify(createSheet)}; restore: ${JSON.stringify(restoreSheet)}`);
     // The package is taken after Accept note and before Forget, so the restored claim is the accepted note.
     const beforeForget = recoveryGeneration();
     await selectMemoryFixture();

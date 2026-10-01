@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 
-const ALLOWED = new Set(["electronMigration", "memory", "spaces", "aiTidy", "tabLifecycle", "extensions", "commandBar"]);
+import { AUX_FEATURES } from "@aux/contracts";
+
+const ALLOWED = new Set(Object.keys(AUX_FEATURES));
 
 /** Accept reviewed preview features only for an owner-only, short-lived native journey Profile. */
 export function developmentAcceptanceStages<T extends Record<string, string>>(
@@ -13,7 +15,7 @@ export function developmentAcceptanceStages<T extends Record<string, string>>(
   const root = realpathSync(dataDir);
   const rel = relative(realpathSync("/tmp"), root).split(sep);
   if (rel.length !== 4 || !/^aux-native-journey-[A-Za-z0-9]+$/.test(rel[0]!) ||
-      rel[1] !== "profile" || rel[2] !== "Default" || rel[3] !== "Aux Runtime Data")
+      rel[1] !== "profile" || !/^(Default|Profile \d+)$/.test(rel[2]!) || rel[3] !== "Aux Runtime Data")
     throw new Error("Development acceptance requires a disposable native journey Profile.");
   const file = resolve(root, "development-acceptance.json");
   const info = lstatSync(file);

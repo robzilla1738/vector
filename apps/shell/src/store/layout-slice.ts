@@ -11,7 +11,9 @@ import type { LayoutKeys, Slice } from "./types";
 export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
   splitPageId: null,
   setSplitRatio: (value, persist = true) => {
-    const layout = { ...get().layout, splitRatio: splitRatio(value) };
+    const state = get(), ratio = splitRatio(value);
+    const layout = { ...state.layout, splitRatio: ratio, splitGroups: (state.layout.splitGroups ?? []).map(group =>
+      state.activePageId && group.panes.includes(state.activePageId) ? { ...group, ratios: [ratio, ...group.ratios.slice(1)] } : group) };
     if (persist) persistLayout(layout);
     set({ layout });
   },

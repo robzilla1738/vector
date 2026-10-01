@@ -1,3 +1,4 @@
+import { FeatureSlots } from "../features/registry";
 import "./Sidebar.css";
 import { ChatSessions } from "./ChatSessions";
 import { TabPreview, useSidebarTabPreview } from "./TabPreview";
@@ -643,6 +644,7 @@ export const Sidebar = memo(function Sidebar() {
   const full = (
     <>
       <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} onClick={toggleSidebar}>{I.sidebarClose}</button></div>
+      <FeatureSlots slot="sidebarItems" />
       {pins.length > 0 && (
         <div className="sb-pins" role="group" aria-label="Pinned sites">
           {visiblePins.map((b, index) => (

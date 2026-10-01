@@ -4,10 +4,18 @@ import AppKit
 import ApplicationServices
 import CoreGraphics
 import Foundation
+import Darwin
 
 func fail(_ message: String) -> Never {
   fputs("native-window: \(message)\n", stderr)
   exit(1)
+}
+
+if CommandLine.arguments.count == 2 && CommandLine.arguments[1] == "trusted" {
+  let result = ["accessibility": AXIsProcessTrusted(), "screenRecording": CGPreflightScreenCaptureAccess()]
+  let data = try! JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
+  print(String(data: data, encoding: .utf8)!)
+  exit(0)
 }
 
 guard CommandLine.arguments.count >= 3,
@@ -772,6 +780,331 @@ func scrollNameIntoView(_ needle: String) -> Bool {
     current = unsafeBitCast(parent, to: AXUIElement.self)
   }
   return false
+}
+
+// Persistent JSON-line protocol. Requests carry an optional id and a command.
+// Replies always preserve id and contain either result or an explicit error.
+struct ProtocolError: Error { let message: String }
+func protocolError(_ message: String) -> ProtocolError { ProtocolError(message: message) }
+func axAttribute(_ element: AXUIElement, _ key: String) -> CFTypeRef? {
+  var value: CFTypeRef?
+  guard AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success else { return nil }
+  return value
+}
+// These roles are accessibility leaves. Chromium can invalidate their backing
+// nodes during menu transitions; asking a stale ignored button for AXChildren
+// invokes BrowserAccessibility::IsLeaf and trips its unignored-node DCHECK.
+let axLeafRoles: Set<String> = ["AXButton", "AXCheckBox", "AXStaticText", "AXImage",
+  "AXProgressIndicator", "AXSlider", "AXTextField", "AXTextArea"]
+func axHidden(_ element: AXUIElement) -> Bool {
+  axAttribute(element, "AXHidden") as? Bool == true
+}
+func axChildren(_ element: AXUIElement) -> [AXUIElement] {
+  guard !axHidden(element), !axLeafRoles.contains(axString(element, kAXRoleAttribute)) else { return [] }
+  return axAttribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? []
+}
+func requireLiveTarget() throws {
+  if app.isTerminated || NSRunningApplication(processIdentifier: pid) == nil ||
+     (Darwin.kill(pid, 0) != 0 && errno == ESRCH) {
+    throw protocolError("Target process exited (PID \(pid))")
+  }
+}
+func frontmostGuard() throws {
+  guard app.activate(options: [.activateAllWindows]) else { throw protocolError("Cannot activate target application") }
+  AXUIElementSetAttributeValue(AXUIElementCreateApplication(pid), kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+  for _ in 0..<30 {
+    if NSWorkspace.shared.frontmostApplication?.processIdentifier == pid { return }
+    usleep(100_000)
+  }
+  throw protocolError("Target is not frontmost; input refused")
+}
+func windowInventory() -> [[String: Any]] {
+  let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+  return windows.compactMap { window in
+    guard (window[kCGWindowOwnerPID as String] as? Int32) == pid,
+          let id = window[kCGWindowNumber as String] as? Int,
+          let bounds = window[kCGWindowBounds as String] as? [String: Any] else { return nil }
+    return ["id": id, "x": bounds["X"] ?? 0, "y": bounds["Y"] ?? 0,
+            "width": bounds["Width"] ?? 0, "height": bounds["Height"] ?? 0,
+            "layer": window[kCGWindowLayer as String] ?? 0]
+  }
+}
+func protocolNames(_ element: AXUIElement) -> [String] {
+  // Secure input values never enter evidence or matching output.
+  if axString(element, kAXSubroleAttribute) == "AXSecureTextField" {
+    return [kAXTitleAttribute, kAXDescriptionAttribute].map { axString(element, $0) }.filter { !$0.isEmpty }
+  }
+  return axNames(element)
+}
+func selectorMatches(_ element: AXUIElement, _ selector: [String: Any]) throws -> Bool {
+  if let role = selector["role"] as? String, axString(element, kAXRoleAttribute) != role { return false }
+  if let enabled = selector["enabled"] as? Bool,
+     (axAttribute(element, kAXEnabledAttribute) as? Bool ?? false) != enabled { return false }
+  if let name = selector["name"] as? String {
+    let names = protocolNames(element)
+    switch selector["match"] as? String ?? "exact" {
+    case "exact": if !names.contains(name) { return false }
+    case "contains": if !names.contains(where: { $0.contains(name) }) { return false }
+    case "regex":
+      let regex = try NSRegularExpression(pattern: name)
+      if !names.contains(where: { regex.firstMatch(in: $0, range: NSRange($0.startIndex..., in: $0)) != nil }) { return false }
+    default: throw protocolError("Unknown selector match")
+    }
+  }
+  return true
+}
+func queryElements(_ selector: [String: Any]) throws -> [(AXUIElement, Int)] {
+  try requireLiveTarget()
+  let scope = selector["scope"] as? String ?? "any"
+  guard ["shell", "page", "any", "window"].contains(scope) else { throw protocolError("Unknown selector scope") }
+  var roots = [AXUIElementCreateApplication(pid)]
+  if let within = selector["within"] as? [String: Any] { roots = try queryElements(within).map { $0.0 } }
+  else if scope == "window" { roots = axAttribute(roots[0], kAXWindowsAttribute) as? [AXUIElement] ?? [] }
+  var found: [(AXUIElement, Int)] = []
+  var visits = 0
+  func walk(_ element: AXUIElement, _ depth: Int, _ inPage: Bool) throws {
+    visits += 1
+    guard visits <= 12000, depth <= 40, !axHidden(element) else { return }
+    let guest = inPage || isGuestWebArea(element, role: axString(element, kAXRoleAttribute))
+    if scope == "shell" && guest { return }
+    if scope != "page" || guest {
+      if try selectorMatches(element, selector) { found.append((element, depth)) }
+    }
+    for child in axChildren(element) { try walk(child, depth + 1, guest) }
+  }
+  for root in roots {
+    var parent = root
+    var guest = false
+    for _ in 0..<40 {
+      if isGuestWebArea(parent, role: axString(parent, kAXRoleAttribute)) { guest = true; break }
+      guard let value = axAttribute(parent, kAXParentAttribute), CFGetTypeID(value) == AXUIElementGetTypeID() else { break }
+      parent = unsafeBitCast(value, to: AXUIElement.self)
+    }
+    try walk(root, 0, guest)
+  }
+  try requireLiveTarget()
+  if let index = selector["index"] as? Int {
+    guard index >= 0 else { throw protocolError("Selector index must be nonnegative") }
+    return index < found.count ? [found[index]] : []
+  }
+  return found
+}
+func elementRecord(_ element: AXUIElement, depth: Int) -> [String: Any] {
+  var result: [String: Any] = ["role": axString(element, kAXRoleAttribute),
+    "name": protocolNames(element).first(where: { !$0.isEmpty }) ?? "", "names": protocolNames(element),
+    "enabled": axAttribute(element, kAXEnabledAttribute) as? Bool ?? false,
+    "focused": axAttribute(element, kAXFocusedAttribute) as? Bool ?? false, "depth": depth]
+  if let point = axPoint(element, kAXPositionAttribute), let size = axSize(element) {
+    result["frame"] = ["x": point.x, "y": point.y, "width": size.width, "height": size.height]
+  }
+  return result
+}
+func selectedElement(_ request: [String: Any]) throws -> AXUIElement {
+  guard let selector = request["selector"] as? [String: Any] else { throw protocolError("selector required") }
+  let found = try queryElements(selector)
+  guard found.count == 1 else { throw protocolError("Expected one element; found \(found.count)") }
+  return found[0].0
+}
+func requestPoint(_ request: [String: Any]) throws -> CGPoint {
+  if let x = request["x"] as? Double, let y = request["y"] as? Double, x.isFinite, y.isFinite { return CGPoint(x: x, y: y) }
+  let element = try selectedElement(request)
+  guard let point = axPoint(element, kAXPositionAttribute), let size = axSize(element) else { throw protocolError("Element has no frame") }
+  return CGPoint(x: point.x + size.width / 2, y: point.y + size.height / 2)
+}
+let keyCodes: [String: CGKeyCode] = [
+  "a":0,"s":1,"d":2,"f":3,"h":4,"g":5,"z":6,"x":7,"c":8,"v":9,"b":11,
+  "q":12,"w":13,"e":14,"r":15,"y":16,"t":17,"1":18,"2":19,"3":20,"4":21,
+  "6":22,"5":23,"=":24,"9":25,"7":26,"-":27,"8":28,"0":29,
+  "]":30,"o":31,"u":32,"[":33,"i":34,"p":35,"enter":36,"return":36,
+  "l":37,"j":38,"'":39,"k":40,";":41,"\\":42,",":43,"/":44,"n":45,"m":46,
+  ".":47,"tab":48,"space":49,"`":50,"backspace":51,"escape":53,"esc":53,
+  "iso":10,"rightcommand":54,"command":55,"shift":56,"capslock":57,"option":58,"control":59,"rightshift":60,
+  "rightoption":61,"rightcontrol":62,"fn":63,"f17":64,"decimal":65,"multiply":67,
+  "add":69,"clear":71,"volumeup":72,"volumedown":73,"mute":74,"divide":75,"numpadenter":76,"subtract":78,"f18":79,"f19":80,
+  "numpadequals":81,"numpad0":82,"numpad1":83,"numpad2":84,"numpad3":85,
+  "numpad4":86,"numpad5":87,"numpad6":88,"numpad7":89,"f20":90,"numpad8":91,
+  "numpad9":92,"yen":93,"underscore":94,"numpadcomma":95,"eisu":102,"kana":104,"f5":96,"f6":97,"f7":98,"f3":99,"f8":100,"f9":101,
+  "f11":103,"f13":105,"f16":106,"f14":107,"f10":109,"f12":111,"f15":113,
+  "help":114,"home":115,"pageup":116,"delete":117,"forwarddelete":117,"f4":118,
+  "end":119,"f2":120,"pagedown":121,"f1":122,"left":123,"right":124,"down":125,"up":126]
+func eventFlags(_ names: [String]) throws -> CGEventFlags {
+  var flags: CGEventFlags = []
+  for name in names {
+    switch name.lowercased() {
+    case "cmd", "command", "meta", "⌘": flags.insert(.maskCommand)
+    case "ctrl", "control", "⌃": flags.insert(.maskControl)
+    case "alt", "option", "⌥": flags.insert(.maskAlternate)
+    case "shift", "⇧": flags.insert(.maskShift)
+    default: throw protocolError("Unknown modifier: \(name)")
+    }
+  }
+  return flags
+}
+func postKey(_ chord: String, via: String = "pid") throws {
+  guard ["pid", "hid"].contains(via) else { throw protocolError("via must be pid or hid") }
+  let normalized = chord.lowercased().replacingOccurrences(of: "⌘", with: "command+")
+    .replacingOccurrences(of: "⌃", with: "control+").replacingOccurrences(of: "⌥", with: "option+")
+    .replacingOccurrences(of: "⇧", with: "shift+")
+  let parts = normalized.split(separator: "+").map(String.init)
+  guard let last = parts.last, let code = keyCodes[last] else { throw protocolError("Unknown key chord") }
+  let flags = try eventFlags(Array(parts.dropLast()))
+  guard let down = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: true),
+        let up = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false) else { throw protocolError("Cannot create key event") }
+  down.flags = flags; up.flags = flags
+  for event in [down, up] { if via == "hid" { event.post(tap: .cghidEventTap) } else { event.postToPid(pid) }; usleep(20_000) }
+}
+func postText(_ text: String) throws {
+  // Send Unicode scalars together so surrogate pairs remain intact.
+  for scalar in text.unicodeScalars {
+    var units = Array(String(scalar).utf16)
+    guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
+          let up = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else { throw protocolError("Cannot create text event") }
+    units.withUnsafeMutableBufferPointer { buffer in
+      down.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
+      up.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
+    }
+    down.postToPid(pid); up.postToPid(pid); usleep(14_000)
+  }
+}
+func mouseEvent(_ type: CGEventType, at point: CGPoint, button: CGMouseButton = .left,
+                flags: CGEventFlags = [], count: Int = 1) throws {
+  guard let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: button) else { throw protocolError("Cannot create mouse event") }
+  event.flags = flags; event.setIntegerValueField(.mouseEventClickState, value: Int64(count)); event.post(tap: .cghidEventTap)
+}
+func protocolCommand(_ request: [String: Any]) throws -> Any {
+  guard let command = (request["command"] ?? request["cmd"]) as? String else { throw protocolError("command required") }
+  switch command {
+  case "trusted": return ["accessibility": AXIsProcessTrusted(), "screenRecording": CGPreflightScreenCaptureAccess()]
+  case "windows": return windowInventory()
+  case "query", "dump":
+    let selector = request["selector"] as? [String: Any] ?? [:]
+    return try queryElements(selector).map { elementRecord($0.0, depth: $0.1) }
+  case "waitFor":
+    guard let selector = request["selector"] as? [String: Any] else { throw protocolError("selector required") }
+    let state = request["state"] as? String ?? "present"
+    guard ["present", "absent", "visible", "hidden", "enabled", "disabled", "focused"].contains(state) else { throw protocolError("Unknown wait state") }
+    let timeout = min(max(request["timeoutMs"] as? Double ?? 5000, 0), 60000)
+    let deadline = Date().addingTimeInterval(timeout / 1000)
+    repeat {
+      try requireLiveTarget()
+      let found = try queryElements(selector)
+      let absent = state == "absent" || state == "hidden"
+      let hidden = found.allSatisfy { (axSize($0.0)?.width ?? 0) <= 0 || (axSize($0.0)?.height ?? 0) <= 0 }
+      let satisfied = absent ? (state == "hidden" ? hidden : found.isEmpty) : found.contains { item in
+        switch state {
+        case "enabled": return axAttribute(item.0, kAXEnabledAttribute) as? Bool == true
+        case "disabled": return axAttribute(item.0, kAXEnabledAttribute) as? Bool == false
+        case "focused": return axAttribute(item.0, kAXFocusedAttribute) as? Bool == true
+        case "visible": return (axSize(item.0)?.width ?? 0) > 0 && (axSize(item.0)?.height ?? 0) > 0
+        default: return true
+        }
+      }
+      if satisfied { return ["matched": true, "elements": found.map { elementRecord($0.0, depth: $0.1) }] }
+      usleep(50_000)
+    } while Date() < deadline
+    throw protocolError("waitFor timed out: \(selector)")
+  case "press", "focus", "click", "hover", "key", "type", "drag", "scroll", "menu", "contextMenu", "savePanel", "openPanel": break
+  default: throw protocolError("Unknown command: \(command)")
+  }
+  try frontmostGuard()
+  switch command {
+  case "press", "focus":
+    let target = try selectedElement(request)
+    let status = command == "press" ? AXUIElementPerformAction(target, kAXPressAction as CFString)
+      : AXUIElementSetAttributeValue(target, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+    guard status == .success else { throw protocolError("AX action failed: \(status.rawValue)") }
+  case "key":
+    guard let chord = request["chord"] as? String else { throw protocolError("chord required") }
+    try postKey(chord, via: request["via"] as? String ?? "pid")
+  case "type":
+    guard let text = request["text"] as? String else { throw protocolError("text required") }
+    if request["selector"] != nil {
+      guard AXUIElementSetAttributeValue(try selectedElement(request), kAXFocusedAttribute as CFString, kCFBooleanTrue) == .success else { throw protocolError("Cannot focus text target") }
+    }
+    try postText(text)
+  case "click", "hover", "contextMenu":
+    let point = try requestPoint(request)
+    let buttonName = command == "contextMenu" ? "right" : request["button"] as? String ?? "left"
+    guard ["left", "right", "middle"].contains(buttonName) else { throw protocolError("Unknown mouse button") }
+    let button: CGMouseButton = buttonName == "right" ? .right : buttonName == "middle" ? .center : .left
+    let flags = try eventFlags(request["modifiers"] as? [String] ?? [])
+    try mouseEvent(.mouseMoved, at: point, flags: flags)
+    if command != "hover" {
+      let count = min(max(request["count"] as? Int ?? 1, 1), 3)
+      for i in 1...count {
+        try mouseEvent(button == .right ? .rightMouseDown : button == .center ? .otherMouseDown : .leftMouseDown, at: point, button: button, flags: flags, count: i)
+        try mouseEvent(button == .right ? .rightMouseUp : button == .center ? .otherMouseUp : .leftMouseUp, at: point, button: button, flags: flags, count: i)
+        usleep(30_000)
+      }
+    }
+  case "drag":
+    guard let from = request["from"] as? [String: Any], let to = request["to"] as? [String: Any] else { throw protocolError("from and to required") }
+    let start = try requestPoint(from), end = try requestPoint(to)
+    let steps = min(max(request["steps"] as? Int ?? 20, 1), 1000)
+    try mouseEvent(.leftMouseDown, at: start)
+    defer { try? mouseEvent(.leftMouseUp, at: end) }
+    usleep(useconds_t(min(max(request["holdMs"] as? Double ?? 100, 0), 10000) * 1000))
+    for step in 1...steps {
+      let fraction = Double(step) / Double(steps)
+      try mouseEvent(.leftMouseDragged, at: CGPoint(x: start.x + (end.x-start.x)*fraction, y: start.y + (end.y-start.y)*fraction))
+      usleep(16_000)
+    }
+  case "scroll":
+    let point = try requestPoint(request)
+    guard let event = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2,
+      wheel1: Int32(clamping: request["dy"] as? Int ?? 0), wheel2: Int32(clamping: request["dx"] as? Int ?? 0), wheel3: 0) else { throw protocolError("Cannot create scroll event") }
+    event.location = point; event.post(tap: .cghidEventTap)
+  case "menu":
+    guard let path = request["path"] as? [String], !path.isEmpty else { throw protocolError("menu path required") }
+    let menuBar = axAttribute(AXUIElementCreateApplication(pid), kAXMenuBarAttribute)
+    var root: AXUIElement? = menuBar.flatMap { CFGetTypeID($0) == AXUIElementGetTypeID() ? unsafeBitCast($0, to: AXUIElement.self) : nil }
+    for name in path {
+      guard let current = root else { throw protocolError("Menu unavailable") }
+      var candidates: [AXUIElement] = []
+      func find(_ node: AXUIElement, _ depth: Int) {
+        guard depth < 4 else { return }
+        if axNames(node).contains(name) { candidates.append(node); return }
+        for child in axChildren(node) { find(child, depth + 1) }
+      }
+      find(current, 0)
+      guard let item = candidates.first, AXUIElementPerformAction(item, kAXPressAction as CFString) == .success else { throw protocolError("Menu item unavailable: \(name)") }
+      root = item; usleep(100_000)
+    }
+  case "savePanel", "openPanel":
+    guard let path = request["path"] as? String, !path.isEmpty else { throw protocolError("panel path required") }
+    let sheets = try queryElements(["role": "AXSheet", "scope": "window"])
+    guard !sheets.isEmpty else { throw protocolError("No panel sheet is open") }
+    try postKey("command+shift+g"); usleep(150_000); try postText(path); try postKey("enter"); usleep(200_000)
+    let button = request["button"] as? String ?? (command == "savePanel" ? "Save" : "Open")
+    let found = try queryElements(["role": "AXButton", "name": button, "scope": "window", "enabled": true])
+    guard found.count == 1, AXUIElementPerformAction(found[0].0, kAXPressAction as CFString) == .success else { throw protocolError("Panel confirmation unavailable") }
+  default: break
+  }
+  return true
+}
+func serveProtocol() {
+  while let line = readLine() {
+    var response: [String: Any] = [:]
+    do {
+      guard let bytes = line.data(using: .utf8), let request = try JSONSerialization.jsonObject(with: bytes) as? [String: Any] else { throw protocolError("JSON object required") }
+      response["id"] = request["id"] ?? NSNull()
+      response["result"] = try protocolCommand(request); response["ok"] = true
+    } catch {
+      response["id"] = response["id"] ?? NSNull(); response["ok"] = false
+      response["error"] = (error as? ProtocolError)?.message ?? String(describing: error)
+    }
+    if let data = try? JSONSerialization.data(withJSONObject: response, options: [.sortedKeys]), let text = String(data: data, encoding: .utf8) { print(text); fflush(stdout) }
+  }
+}
+
+if action == "serve" { serveProtocol(); exit(0) }
+if action == "windows" {
+  let data = try! JSONSerialization.data(withJSONObject: windowInventory(), options: [.sortedKeys])
+  print(String(data: data, encoding: .utf8)!); exit(0)
+}
+// Apply the same target guard to legacy mouse and AX input actions.
+if ["press-button", "focus-name", "press-label", "press-checkbox", "click-button", "click-name", "click-at", "scroll-at", "scroll-name"].contains(action) {
+  do { try frontmostGuard() } catch { fail(String(describing: error)) }
 }
 
 if action == "press-button" {

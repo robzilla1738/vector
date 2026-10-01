@@ -1,3 +1,4 @@
+import { FeatureSlots } from "../features/registry";
 import { type CSSProperties } from "react";
 import { bridge } from "../bridge";
 import { ChatSessions } from "./ChatSessions";
@@ -16,6 +17,7 @@ export function ChatSidebar() {
 
   return <aside className={`chat-sidebar${open ? " open" : ""}`} style={{ "--sb-w": `${width}px` } as CSSProperties} aria-label="Sidebar" aria-hidden={!open} inert={!open}>
     <div className="chat-sidebar-content">
+    <FeatureSlots slot="sidebarItems" />
     <nav aria-label="Work">
       {!bridge.privateMode && <button className={`chat-sidebar-link primary${mode === "conversation" && !conversationId ? " current" : ""}`} aria-current={mode === "conversation" && !conversationId ? "page" : undefined} onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button>}
       <button className="chat-sidebar-link" onClick={() => setOverlay("tasks")}>{I.folder}<span>Tasks</span></button>

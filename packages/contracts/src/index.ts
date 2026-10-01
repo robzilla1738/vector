@@ -31,6 +31,16 @@ export * from "./outbound-mcp.js";
 export * from "./customization.js";
 export * from "./command-ranking.js";
 export * from "./organization.js";
+export * from "./live-folders.js";
+export * from "./window-sync.js";
+export * from "./pip.js";
+export * from "./minimal-ui.js";
+export * from "./link-routing.js";
+export * from "./mentions.js";
+export * from "./download-naming.js";
+export * from "./night-shift.js";
+export * from "./agent-site-permissions.js";
+export * from "./demonstration.js";
 export * from "./command-ranking-query.js";
 export * from "./memory-pipeline.js";
 export * from "./memory-sensitivity.js";
@@ -57,6 +67,7 @@ export * from "./page-zoom.js";
 
 export * from "./split-layout.js";
 export * from "./shortcuts.js";
+export * from "./commands.js";
 
 export * from "./csv.js";
 
@@ -68,3 +79,5 @@ export * from "./electron-migration.js";
 export * from "./zap.js";
 
 export * from "./selection-capture.js";
+
+export { createClock, type Clock } from "./clock.js";

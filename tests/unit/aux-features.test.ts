@@ -5,7 +5,7 @@ import { AUX_FEATURE_REQUIREMENTS, deriveAuxFeatureStages } from "../../packages
 describe("AuxFeature staging", () => {
   it("registers every product feature with an owning batch", () => {
     expect(Object.keys(AUX_FEATURES).length).toBeGreaterThan(70);
-    expect(new Set(Object.values(AUX_FEATURES))).toEqual(new Set(["B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11"]));
+    expect(new Set(Object.values(AUX_FEATURES))).toEqual(new Set(["B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12"]));
   });
 
   it("keeps unqualified native features closed", () => {
@@ -20,16 +20,15 @@ describe("AuxFeature staging", () => {
     expect(auxFeatureEnabled("spaces", "chromium-fork", { spaces: "on" })).toBe(true);
   });
 
-  it("derives stages from implemented methods and the exact passing commit", () => {
+  it("derives stages from implemented methods and baked qualification", () => {
     const methods = AUX_FEATURE_REQUIREMENTS.spaces.requires;
-    const journey = AUX_FEATURE_REQUIREMENTS.spaces.journey;
-    expect(deriveAuxFeatureStages([], {}, "a").spaces).toBe("off");
-    expect(deriveAuxFeatureStages(methods, {}, "a").spaces).toBe("preview");
-    expect(deriveAuxFeatureStages(methods, { [journey]: "b" }, "a").spaces).toBe("preview");
-    expect(deriveAuxFeatureStages(methods, { [journey]: "a" }, "a").spaces).toBe("on");
+    expect(deriveAuxFeatureStages([], []).spaces).toBe("off");
+    expect(deriveAuxFeatureStages(methods, []).spaces).toBe("preview");
+    expect(deriveAuxFeatureStages(methods, ["reader"]).spaces).toBe("preview");
+    expect(deriveAuxFeatureStages(methods, ["spaces"]).spaces).toBe("on");
     expect(AUX_FEATURE_REQUIREMENTS.layouts.requires).toContain("setAppearance");
-    expect(deriveAuxFeatureStages([], {}, "a").layouts).toBe("off");
-    expect(deriveAuxFeatureStages(["setAppearance"], {}, "a").layouts).toBe("preview");
+    expect(deriveAuxFeatureStages([], []).layouts).toBe("off");
+    expect(deriveAuxFeatureStages(["setAppearance"], []).layouts).toBe("preview");
   });
 
   it("returns a typed registry error for disabled runtime and bridge features", () => {

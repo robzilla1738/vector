@@ -9,6 +9,8 @@ async function h_runtime_describe(ctx: MethodCtx): Promise<unknown> {
   return {
     version: 1,
     featureStages: await s.featureStages,
+    nativeIdentity: await s.nativeIdentity,
+    runtimeIdentity: s.runtimeIdentity,
     methods: Object.keys(MethodSchemas).sort(),
     entities: [
       "pages",

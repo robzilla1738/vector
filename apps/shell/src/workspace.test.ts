@@ -243,7 +243,7 @@ describe("persistence", () => {
 describe("Space continuity", () => {
   it("persists per-Space selection and restores splits only for live tabs in the same Space", () => {
     let layout = assignSpace(assignSpace(emptyLayout(), "a", DEFAULT_SPACE.id), "b", DEFAULT_SPACE.id);
-    layout = rememberActiveTab({ ...layout, splits: { a: "b" } }, "a");
+    layout = rememberActiveTab({ ...layout, splitGroups: [{ id: "split-a", panes: ["a", "b"], layout: "row", ratios: [.5], focused: "a" }] }, "a");
     const restored = parseLayout(JSON.stringify(layout));
     expect(restored.activeTabs?.[DEFAULT_SPACE.id]).toBe("a");
     expect(splitForPage(restored, [page("a"), page("b")], "a")).toBe("b");

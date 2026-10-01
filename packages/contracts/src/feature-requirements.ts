@@ -28,15 +28,15 @@ export const AUX_FEATURE_REQUIREMENTS = Object.fromEntries(
 
 export function deriveAuxFeatureStages(
   implementedMethods: readonly string[],
-  passingJourneys: Readonly<Record<string, string>>,
-  sourceCommit: string,
+  qualifiedFeatures: readonly AuxFeature[],
 ): Record<AuxFeature, AuxFeatureStage> {
   const implemented = new Set(implementedMethods);
+  const qualified = new Set(qualifiedFeatures);
   return Object.fromEntries((Object.keys(AUX_FEATURE_REQUIREMENTS) as AuxFeature[])
     .map(feature => {
-      const { requires, journey } = AUX_FEATURE_REQUIREMENTS[feature];
+      const { requires } = AUX_FEATURE_REQUIREMENTS[feature];
       const stage: AuxFeatureStage = requires.every(id => implemented.has(id))
-        ? passingJourneys[journey] === sourceCommit ? "on" : "preview"
+        ? qualified.has(feature) ? "on" : "preview"
         : "off";
       return [feature, stage];
     })) as Record<AuxFeature, AuxFeatureStage>;

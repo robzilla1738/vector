@@ -35,7 +35,7 @@ it("commits reviewed Tidy and Undo across independent organization sessions", as
   const recovered = await restarted.hydrate();
   expect(recovered.folders.map(folder => folder.name)).toEqual(["Research"]);
   expect(recovered.tidyUndo).toEqual(receipt);
-  const newWindow = fromOrganizationLayout({ ...snapshot.layout!, window: { ...snapshot.layout!.window, order: [], tabFolder: {} } });
+  const newWindow = fromOrganizationLayout({ ...snapshot.layout!, window: toOrganizationLayout(emptyLayout()).window });
   expect(() => revertTidyRecord(newWindow.tidyUndo!, newWindow)).not.toThrow();
   const restored = revertTidyRecord(recovered.tidyUndo!, recovered);
   restarted.persist(restored);
@@ -154,11 +154,11 @@ it("refuses a stale Tidy undo after the folder, a tab, or its revision changes",
   moved.session.persist(movedUndo);
   await expect(moved.session.flush()).rejects.toThrow(/out of date/);
   expect(moved.box.snapshot.layout?.shared.folders.map(folder => folder.name)).toEqual(["Research"]);
-  expect(moved.box.snapshot.layout?.window.tabFolder.one).toBeUndefined();
+  expect(moved.box.snapshot.layout?.shared.tabFolder.one).toBeUndefined();
   expect(moved.box.snapshot.layout?.shared.tidyUndo).toBeUndefined();
   await expect(undoTidyChange(moved.session, moved.receipt)).rejects.toThrow(/folder changed|moved again|out of date/);
   expect(moved.box.snapshot.layout?.shared.folders).toHaveLength(1);
-  expect(moved.box.snapshot.layout?.window.tabFolder.one).toBeUndefined();
+  expect(moved.box.snapshot.layout?.shared.tabFolder.one).toBeUndefined();
 
   const revised = await reviewedTidy();
   const revisedUndo = revertTidyRecord(revised.receipt, revised.tidied);
@@ -198,18 +198,17 @@ it("does not restore a stale Tidy grouping after folder membership or identity c
     ...toOrganizationLayout(filed),
     window: { ...toOrganizationLayout(emptyLayout()).window },
   });
-  expect(restarted.tabFolder.one).toBeUndefined();
-  expect(restarted.tabFolder.two).toBeUndefined();
+  expect(restarted.tabFolder).toEqual(filed.tabFolder);
+  expect(restarted.tabFolder.three).toBe(receipt.created[0]!.id);
   expect(restarted.tidyUndo).toBeUndefined();
-  expect(() => revertTidyRecord(receipt, restarted)).toThrow(/moved again|folder changed/);
+  expect(() => revertTidyRecord(receipt, restarted)).toThrow("A new tab was added to a Tidy folder. Review it before undoing.");
 
   const stored = structuredClone(toOrganizationLayout(tidied));
   stored.shared.folders = stored.shared.folders.map((folder, index) =>
     index === 0 ? { ...folder, name: "Changed by owner" } : folder);
-  const renamed = fromOrganizationLayout({ ...stored, window: { ...stored.window, order: [], tabFolder: {} } });
+  const renamed = fromOrganizationLayout({ ...stored, window: toOrganizationLayout(emptyLayout()).window });
   expect(renamed.folders[0]?.name).toBe("Changed by owner");
   expect(renamed.tidyUndo).toBeUndefined();
-  expect(renamed.tabFolder.one).toBeUndefined();
-  expect(renamed.tabFolder.two).toBeUndefined();
+  expect(renamed.tabFolder).toEqual(stored.shared.tabFolder);
   expect(() => revertTidyRecord(receipt, renamed)).toThrow(/folder changed/);
 });

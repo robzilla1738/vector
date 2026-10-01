@@ -2,7 +2,7 @@ import { effectiveShortcuts, type ShortcutOverrides } from "@aux/contracts/short
 import type { AuxBridge } from "./bridge";
 import { requireAuxMethod, type AuxFeatureOverrides, type MethodName, type MethodResult, type RpcArgs } from "@aux/contracts";
 import { createHostClient } from "./host/client.generated";
-import { acceptRuntimeTidyStages, chromiumFeatureStages } from "./feature-stage-reconciliation";
+import { chromiumFeatureStages } from "./feature-stage-reconciliation";
 
 /**
  * Browser-process endpoint installed only in Aux's trusted chrome://aux/ WebUI.
@@ -17,6 +17,7 @@ export interface ChromiumHostPort {
   readonly platform: string;
   readonly privateMode: boolean;
   readonly quickAskMode?: boolean;
+  readonly testClockScale?: number;
   readonly featureStages?: AuxFeatureOverrides;
   request(method: string, args: unknown[]): Promise<unknown>;
   subscribe(event: string, callback: (payload: unknown) => void): () => void;
@@ -28,50 +29,6 @@ type ChromiumWindow = Window & {
   auxHostProof?: { host: "chromium-fork" };
   __auxMock?: boolean;
 };
-
-/** The host client gates tabSleep on this object, not on the Tidy reconciliation map. */
-async function acceptDisposableTabLifecycle(port: ChromiumHostPort): Promise<void> {
-  const stages = port.featureStages;
-  if (stages?.tabLifecycle !== "preview") return;
-  const deadline = Date.now() + 20_000;
-  for (;;) {
-    let answered = false;
-    try {
-      const description = await port.request("invoke", ["runtime.describe", {}]);
-      if (description && typeof description === "object" && !Array.isArray(description)) {
-        const { version, featureStages } = description as { version?: unknown; featureStages?: unknown };
-        if (version === 1 && featureStages && typeof featureStages === "object" && !Array.isArray(featureStages)) {
-          answered = true;
-          if ((featureStages as Record<string, unknown>).tabLifecycle === "on") stages.tabLifecycle = "on";
-        }
-      }
-    } catch {
-      // The first runtime connection can miss this describe. Preview stays closed after the deadline.
-    }
-    if (answered || Date.now() >= deadline) return;
-    await new Promise(resolve => setTimeout(resolve, 200));
-  }
-}
-
-/** Read the runtime's Profile-scoped acceptance stage before mounting the shell. */
-export async function reconcileChromiumFeatureStages(target: ChromiumWindow = window as ChromiumWindow): Promise<void> {
-  const port = target.auxChromiumHost;
-  if (target.location.protocol !== "chrome:" || target.location.hostname !== "aux" ||
-      target.auxHostProof?.host !== "chromium-fork" || !port || port.privateMode || port.quickAskMode) return;
-  await acceptDisposableTabLifecycle(port);
-  if (!["on", "preview"].includes(port.featureStages?.spaces ?? "") || port.featureStages?.aiTidy !== "preview") return;
-  try {
-    const description = await port.request("invoke", ["runtime.describe", {}]);
-    if (!description || typeof description !== "object" || Array.isArray(description)) return;
-    const { version, featureStages } = description as { version?: unknown; featureStages?: unknown };
-    if (version !== 1 || !featureStages || typeof featureStages !== "object" || Array.isArray(featureStages)) return;
-    const stages = featureStages as Record<string, unknown>;
-    if (stages.spaces !== "on" || stages.aiTidy !== "on") return;
-    acceptRuntimeTidyStages(target, port);
-  } catch {
-    // Missing runtime or rejected describe leaves the native preview gate intact.
-  }
-}
 
 /** Install before App is imported so the existing AuxBridge is the real host. */
 export function installChromiumBridge(target: ChromiumWindow = window as ChromiumWindow): boolean {
@@ -104,6 +61,7 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
             meta: !!binding.command && port.platform === "darwin",
             ctrl: !!binding.ctrl || (!!binding.command && port.platform !== "darwin"),
             shift: !!binding.shift, alt: !!binding.alt,
+            focusShell: !!command.focusShell,
           })));
       // Reserve defaults even when disabled or rebound, so AppKit's original
       // browser menu cannot reinterpret them as a different command. The

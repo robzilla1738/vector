@@ -61,7 +61,7 @@ const UNMOCKED = [
   "routines.compare", "routines.create", "routines.export", "routines.fromResult", "routines.import",
   "routines.outcome", "routines.reconcile", "routines.replay.compile", "routines.replay.result", "routines.replay.test",
   "routines.run", "routines.update",
-  "runs.steer", "runtime.describe", "safety.approvals.decide", "safety.approvals.pending",
+  "runs.steer", "safety.approvals.decide", "safety.approvals.pending",
   "tasks.captureEvidence", "tasks.create",
   "tasks.importDocumentEvidence", "tasks.promote",
   "tasks.reconcileAction", "tasks.reconcileOperation", "tasks.recordEvidence", "tasks.replaceAgent",

@@ -5,6 +5,9 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { productIdentity } from '../scripts/lib/product-identity.mjs';
+import { qualifiedFeatures } from '../scripts/lib/qualification.mjs';
+
 const root = resolve(import.meta.dirname, '..');
 const source = resolve(process.env.AUX_CHROMIUM_SRC ??
     join(process.env.HOME, 'aux-chromium-stable/chromium/src'));
@@ -13,10 +16,9 @@ const check = spawnSync('node', ['scripts/gen-host-bindings.mjs', '--check'],
 if (check.status !== 0) process.exit(check.status ?? 1);
 const pinned = readFileSync(join(root, 'chromium/generated/aux_host_methods.sha256'), 'utf8').trim();
 if (!/^[a-f0-9]{64}$/.test(pinned)) throw new Error('Invalid host manifest hash');
-const commit = spawnSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'});
-if (commit.status !== 0 || !/^[a-f0-9]{40}$/.test(commit.stdout.trim())) {
-  throw new Error('Cannot identify the source commit for feature qualification');
-}
+const identity = productIdentity(root);
+const qualification = JSON.parse(readFileSync(join(root, 'docs/qualification.json'), 'utf8'));
+const qualified = qualifiedFeatures(qualification, identity);
 const generated = ['BUILD.gn', 'aux_host_methods.h', 'aux_host_methods.cc'];
 const output = join(source, 'chrome/browser/ui/aux/generated');
 mkdirSync(output, {recursive: true});
@@ -25,7 +27,8 @@ for (const file of generated) {
   const to = join(output, file);
   const bytes = readFileSync(from);
   const expected = file === 'aux_host_methods.h'
-    ? Buffer.from(bytes.toString('utf8').replace('__AUX_SOURCE_COMMIT__', commit.stdout.trim()))
+    ? Buffer.from(bytes.toString('utf8').replace('__AUX_SOURCE_COMMIT__', identity.label)
+      .replace('__AUX_QUALIFIED_FEATURES__', qualified.join(',')))
     : bytes;
   if (!existsSync(to) || !readFileSync(to).equals(expected)) writeFileSync(to, expected);
   if (createHash('sha256').update(expected).digest('hex') !==

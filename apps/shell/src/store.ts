@@ -167,5 +167,5 @@ export const tabCommand = (command: TabCommand) => sendTabCommand(useStore.getSt
 export const patchPageFields = (pageId: string, fields: Partial<PageTarget>) => useStore.setState(st => patchPage(st, pageId, fields));
 
 /** Fire-and-forget helper for UI actions — surfaces API errors as toasts. */
-export const toast = (text: string, kind: "info" | "error" = "info") => useStore.getState().toast(text, kind);
+export const toast: Workspace["toast"] = (text, kind = "info", action) => useStore.getState().toast(text, kind, action);
 export const errToast = (e: unknown) => toast(e instanceof Error ? e.message.replace(/^\w+Error:\s*/, "") : String(e), "error");

@@ -7,7 +7,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 const chromium = import.meta.dirname;
 const repo = resolve(chromium, '..');
 const dist = resolve(repo, 'apps/shell/dist');
-const pinned = resolve(chromium, 'shell-assets');
+const pinned = resolve(process.env.AUX_SHELL_PIN_DIR ?? join(chromium, 'shell-assets'));
 const source = resolve(process.env.AUX_CHROMIUM_SRC ?? join(process.env.HOME, 'aux-chromium-stable/chromium/src'));
 const destination = resolve(source, 'chrome/browser/resources/aux/assets');
 const allowed = new Set(['.css', '.html', '.js', '.json', '.png', '.svg', '.woff', '.woff2']);

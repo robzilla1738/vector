@@ -149,7 +149,7 @@ export class MemoryPipeline {
   }
 
   private async git(directory: string, ...args: string[]) {
-    await exec("git", ["-C", directory, "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false",
+    await exec("git", ["-C", directory, "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "-c", "gc.autoDetach=false", "-c", "maintenance.autoDetach=false",
       "-c", "user.name=Aux Memory", "-c", "user.email=memory@aux.invalid", ...args],
     { timeout: 10_000, maxBuffer: 64_000, env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1" } });
   }

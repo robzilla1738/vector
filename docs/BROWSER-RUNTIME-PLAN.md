@@ -1055,3 +1055,14 @@ No credentials are needed: model, GitHub and Calendar all use loopback fixtures.
 - F19 CDP observer mode
 - F12 in-app reroute vs the opener and popup paths
 - F20 login item
+
+
+## Foundation execution refinements — October 1, 2026
+
+- Runtime feature boots use generated static imports rather than scanning the compiled directory. Native runtime bundling places main in a chunks directory; filesystem discovery incorrectly tried chunks/boot.js. Static imports preserve the per-feature boot interface and work in both workspace dist and the native bundle.
+- `setStageVisible` is a core window-compositor contract, bounded to four unique page IDs (empty hides all); it is shared infrastructure rather than a split-only capability. L5 implements the native handler and uses it for multi-pane visibility. Native stubs do not advertise it.
+- Promotion proves each feature status visibly in Settings: search About Aux, expand Feature availability, scroll to the status, and require a positive AX frame. Matching an offscreen AX label alone is insufficient evidence.
+- Native diff tooling rejects symlinked source parents, mirror paths and patch destinations so reserved edits cannot escape their worktree. Native slot timeout is checked on every retry, including a crashed reclamation lock.
+- Existing main retired historical smoke/e2e sources at 56c53810. The inventory preserves their prior cases/statuses from 51af67 and permits absence only for those explicit retirements; unknown deletions still fail.
+- Memory store Git maintenance runs synchronously. Full unit verification caught detached maintenance writing after a completed operation, which raced temporary store cleanup.
+- The full target-journey registry remains an unsatisfied gate until feature journeys exist. Clean foundation qualification does not constitute Wave 0 exit or authorize lanes; the owner was asked to resolve the plan's registry/dependency cycle.

@@ -31,7 +31,7 @@ function sameTidyState(left: OrganizationLayout, right: OrganizationLayout): boo
   if (!tidyFoldersMatch(leftReceipt.created, right.shared.folders)) return false;
   const created = new Set(leftReceipt.created.map((folder) => folder.id));
   const assignments = (layout: OrganizationLayout) =>
-    Object.entries(layout.window.tabFolder)
+    Object.entries(layout.shared.tabFolder)
       .filter(([, folderId]) => created.has(folderId))
       .sort(([leftId], [rightId]) => leftId.localeCompare(rightId))
       .map(([pageId, folderId]) => `${pageId}\0${folderId}`);
@@ -52,7 +52,7 @@ export class OrganizationPersistence {
 
   constructor(
     private readonly host: OrganizationHost,
-    private readonly legacy: Layout,
+    private readonly initial: Layout,
   ) {}
 
   hydrate(): Promise<Layout> {
@@ -65,7 +65,7 @@ export class OrganizationPersistence {
       try {
         snapshot = await this.host.organizationCommit({
           expectedRevision: snapshot.revision,
-          layout: toOrganizationLayout(this.legacy),
+          layout: toOrganizationLayout(this.initial),
         });
       } catch {
         snapshot = await this.host.organizationSnapshot();
@@ -77,7 +77,7 @@ export class OrganizationPersistence {
     if (!this.pending) return loaded;
     this.pending = fromOrganizationLayout(
       rebaseOrganizationLayout(
-        toOrganizationLayout(this.legacy),
+        toOrganizationLayout(this.initial),
         toOrganizationLayout(this.pending),
         snapshot.layout!,
       ),
@@ -202,7 +202,7 @@ export class OrganizationPersistence {
             throw new Error(STALE_TIDY_UNDO);
           }
           local = rebaseOrganizationLayout(
-            base.layout ?? toOrganizationLayout(this.legacy),
+            base.layout ?? toOrganizationLayout(this.initial),
             local,
             latest.layout,
           );

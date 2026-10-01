@@ -87,7 +87,7 @@ export interface Workspace {
   reopeningTab: boolean;
   downloads: Download[];
   tabAudio: Record<string,{muted:boolean;audible:boolean}>;
-  toasts: { id: number; text: string; kind: "info" | "error" }[];
+  toasts: { id: number; text: string; kind: "info" | "error"; action?: { label: string; run(): void } }[];
   dismissToast(id: number): void;
   vaultOffer: import("../bridge").VaultOffer | null;
   setVaultOffer(offer: Workspace["vaultOffer"]): void;
@@ -190,7 +190,7 @@ export interface Workspace {
    *  the arriving tab into the Space/folder the source window chose. */
   applyTabsPlacement(payload: { pageId: string; windowId: string; placement: TabPlacement }): void;
   resyncTabs(): Promise<void>;
-  toast(text: string, kind?: "info" | "error"): void;
+  toast(text: string, kind?: "info" | "error", action?: { label: string; run(): void }): void;
   refresh(): Promise<void>;
   refreshResults(setId: string): Promise<void>;
 }

@@ -6,7 +6,7 @@ import { Toast } from "../ui/toast";
 const ToastRow = memo(function ToastRow({ id }: { id: number }) {
   const toast = useStore(state => state.toasts.find(item => item.id === id));
   if (!toast) return null;
-  return <Toast id={toast.id} text={toast.text} kind={toast.kind} onDismiss={useStore.getState().dismissToast} />;
+  return <Toast id={toast.id} text={toast.text} kind={toast.kind} action={toast.action} onDismiss={useStore.getState().dismissToast} />;
 });
 
 export const Toasts = memo(function Toasts() {

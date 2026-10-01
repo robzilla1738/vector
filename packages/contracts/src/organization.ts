@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { SpaceColorSchema, SpaceGrainSchema, SpaceThemeSchema } from "./spaces.js";
+import { LiveFolderSchema } from "./live-folders.js";
+import { SplitGroupSchema } from "./window-sync.js";
 
 const Id = z.string().min(1).max(200);
 const Space = z
@@ -21,9 +23,10 @@ const Folder = z
     collapsed: z.boolean(),
     color: SpaceColorSchema.optional(),
     emoji: z.string().max(16).optional(),
+    live: LiveFolderSchema.optional(),
   })
   .strict();
-const Pin = z.object({ url: z.string().min(1).max(2048), title: z.string().max(500) }).strict();
+const Pin = z.object({ url: z.string().min(1).max(2048), title: z.string().max(500), pageId: Id.optional(), keepAwake: z.boolean().optional() }).strict();
 const TabName = z.object({ title: z.string().min(2).max(60), url: z.string().min(1).max(8192) }).strict();
 const TidyUndo = z.object({
   created: z.array(Folder).min(1).max(6),
@@ -39,8 +42,10 @@ const ArchivedTab = z.object({
   index: z.number().int().min(0).max(5000),
   archivedAt: z.number().int().nonnegative(),
   state: z.enum(["pending", "archived"]),
+  reason: z.enum(["manual", "auto"]),
+  batchId: Id,
 }).strict();
-export const MAX_ORGANIZATION_LAYOUT_BYTES = 256 * 1024;
+export const MAX_ORGANIZATION_LAYOUT_BYTES = 1024 * 1024;
 
 /** The native host chooses the Profile and window; neither ID comes from renderer arguments. */
 export const OrganizationLayoutSchema = z
@@ -53,6 +58,11 @@ export const OrganizationLayoutSchema = z
         folders: z.array(Folder).max(1000),
         tidyUndo: TidyUndo.optional(),
         archivedTabs: z.array(ArchivedTab).max(300).optional(),
+        tabSpace: z.record(Id, Id),
+        order: z.array(Id).max(5000),
+        tabFolder: z.record(Id, Id),
+        tabNames: z.record(Id, TabName),
+        splitGroups: z.array(SplitGroupSchema).max(2500),
       })
       .strict(),
     window: z
@@ -60,18 +70,13 @@ export const OrganizationLayoutSchema = z
         activeSpaceId: Id,
         activeTabs: z.record(Id, Id),
         splitRatio: z.number().min(0.1).max(0.9),
-        tabSpace: z.record(Id, Id),
-        order: z.array(Id).max(5000),
-        tabFolder: z.record(Id, Id),
-        tabNames: z.record(Id, TabName).optional(),
-        splits: z.record(Id, Id),
       })
       .strict(),
   })
   .strict()
   .refine(
     (value) => new TextEncoder().encode(JSON.stringify(value)).byteLength <= MAX_ORGANIZATION_LAYOUT_BYTES,
-    "Profile organization exceeds 256 KiB.",
+    "Profile organization exceeds 1 MiB.",
   );
 export type OrganizationLayout = z.infer<typeof OrganizationLayoutSchema>;
 

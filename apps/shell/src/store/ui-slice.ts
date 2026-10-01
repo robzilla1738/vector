@@ -94,9 +94,9 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   },
 
   // Info toasts time out in <Toasts>; errors stay until dismissed.
-  toast: (text, kind = "info") => {
+  toast: (text, kind = "info", action) => {
     const id = Date.now() + Math.random();
-    set((s) => ({ toasts: [...s.toasts, { id, text, kind }].slice(-TOAST_LIMIT) }));
+    set((s) => ({ toasts: [...s.toasts, { id, text, kind, ...(action ? { action } : {}) }].slice(-TOAST_LIMIT) }));
   },
   dismissToast: (id) => set((s) => (s.toasts.some((t) => t.id === id) ? { toasts: s.toasts.filter((t) => t.id !== id) } : s)),
 

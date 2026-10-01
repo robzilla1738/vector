@@ -5,7 +5,7 @@ import { splitRatio } from "@aux/contracts/split-layout";
  * pinned sites. The runtime owns pages; the shell owns how they are arranged.
  * Everything here is deterministic and unit-tested.
  */
-import type { BrowserSpace, PageTarget } from "@aux/contracts";
+import type { BrowserSpace, PageTarget, LiveFolder, SplitGroup } from "@aux/contracts";
 import type { SpaceTheme } from "@aux/contracts/spaces";
 import type { CSSProperties } from "react";
 
@@ -34,6 +34,8 @@ export function spaceThemeStyle(space?: Pick<Space, "theme"> | null): CSSPropert
 export interface Pin {
   url: string;
   title: string;
+  pageId?: string;
+  keepAwake?: boolean;
 }
 
 export const PIN_ROW_SIZE = 5;
@@ -46,6 +48,7 @@ export interface Folder {
   color?: SpaceColor;
   /** Single grapheme shown instead of the folder glyph. */
   emoji?: string;
+  live?: LiveFolder;
 }
 
 /** Compact, Profile-persisted receipt for the latest AI Tidy folder mutation. */
@@ -64,14 +67,16 @@ export interface ArchivedTab {
   index: number;
   archivedAt: number;
   state: "pending" | "archived";
+  reason: "manual" | "auto";
+  batchId: string;
 }
 
 export interface Layout {
   spaces: Space[];
   archivedSpaces?: Space[];
   activeSpaceId: string;
-  /** Saved companion per primary tab; restored only while both remain in this Space. */
-  splits?: Record<string, string>;
+  /** Profile-wide split groups; panes remain in the same Space. */
+  splitGroups?: SplitGroup[];
   splitRatio?: number;
   activeTabs?: Record<string, string>;
   /** pageId → spaceId; pages not listed belong to the active space when first seen */
@@ -112,7 +117,7 @@ export function tabLabel(layout: Layout, page: Pick<PageTarget, "pageId" | "url"
 }
 
 export function emptyLayout(): Layout {
-  return { spaces: [DEFAULT_SPACE], archivedSpaces: [], splits: {}, splitRatio: .5, activeTabs: {}, activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {}, archivedTabs: [], tabNames: {} };
+  return { spaces: [DEFAULT_SPACE], archivedSpaces: [], splitGroups: [], splitRatio: .5, activeTabs: {}, activeSpaceId: DEFAULT_SPACE.id, tabSpace: {}, order: [], pins: { [DEFAULT_SPACE.id]: [] }, folders: [], tabFolder: {}, archivedTabs: [], tabNames: {} };
 }
 
 let seq = 0;
@@ -463,7 +468,12 @@ export function parseLayout(raw: string | null): Layout {
       activeSpaceId: active,
       splitRatio: splitRatio(v.splitRatio),
       activeTabs: v.activeTabs && typeof v.activeTabs === "object" ? Object.fromEntries(Object.entries(v.activeTabs).filter(([, pageId]) => typeof pageId === "string")) : {},
-      splits: v.splits && typeof v.splits === "object" ? Object.fromEntries(Object.entries(v.splits).filter(([id, companion]) => typeof companion === "string" && id !== companion)) : {},
+      splitGroups: Array.isArray(v.splitGroups) ? v.splitGroups.filter((group): group is SplitGroup =>
+        !!group && typeof group.id === "string" && Array.isArray(group.panes) && group.panes.length >= 2 && group.panes.length <= 4 &&
+        group.panes.every(pane => typeof pane === "string") && new Set(group.panes).size === group.panes.length &&
+        ["row", "column", "columns", "one-plus-two", "grid"].includes(group.layout) &&
+        Array.isArray(group.ratios) && group.ratios.every(ratio => typeof ratio === "number" && ratio >= .1 && ratio <= .9) &&
+        group.panes.includes(group.focused)) : [],
       tabSpace: v.tabSpace && typeof v.tabSpace === "object" ? v.tabSpace : {},
       order: Array.isArray(v.order) ? v.order.filter((x): x is string => typeof x === "string") : [],
       pins: v.pins && typeof v.pins === "object"
@@ -486,6 +496,7 @@ export function parseLayout(raw: string | null): Layout {
         !!item && typeof item.archiveId === "string" && typeof item.pageId === "string" &&
         typeof item.url === "string" && typeof item.title === "string" && typeof item.spaceId === "string" &&
         typeof item.index === "number" && typeof item.archivedAt === "number" &&
+        (item.reason === "manual" || item.reason === "auto") && typeof item.batchId === "string" &&
         (item.state === "pending" || item.state === "archived")) : [],
       tabNames: v.tabNames && typeof v.tabNames === "object"
         ? Object.fromEntries(Object.entries(v.tabNames).filter((entry): entry is [string, { title: string; url: string }] =>
@@ -528,7 +539,7 @@ export function previewSplit(layout: Layout, pages: PageTarget[], pageId: string
 /** A saved split never borrows a tab from another Space or a worker. */
 export function splitForPage(layout: Layout, pages: PageTarget[], pageId: string | null): string | null {
   if (!pageId) return null;
-  const companionId = layout.splits?.[pageId];
+  const companionId = layout.splitGroups?.find(group => group.panes.includes(pageId))?.panes.find(id => id !== pageId);
   if (!companionId || companionId === pageId || layout.tabSpace[pageId] !== layout.tabSpace[companionId]) return null;
   const companion = pages.find(page => page.pageId === companionId);
   return companion && isTab(companion) ? companionId : null;
@@ -537,13 +548,11 @@ export function splitForPage(layout: Layout, pages: PageTarget[], pageId: string
 /** A split is one pair, whichever side the user selects next. Replacing or closing
  * a pair clears both directions and any older pair involving either page. */
 export function withSplitPair(layout: Layout, primary: string, companion: string | null): Layout {
-  const splits = Object.fromEntries(Object.entries(layout.splits ?? {}).filter(([left, right]) =>
-    left !== primary && right !== primary && (!companion || (left !== companion && right !== companion))));
+  const splitGroups = (layout.splitGroups ?? []).filter(group => !group.panes.includes(primary) && (!companion || !group.panes.includes(companion)));
   if (companion && companion !== primary) {
-    splits[primary] = companion;
-    splits[companion] = primary;
+    splitGroups.push({ id: `split-${primary}`, panes: [primary, companion], layout: "row", ratios: [layout.splitRatio ?? .5], focused: primary });
   }
-  return { ...layout, splits };
+  return { ...layout, splitGroups };
 }
 
 /** Keep the last human selection per Space; stale closed IDs are ignored by the caller. */

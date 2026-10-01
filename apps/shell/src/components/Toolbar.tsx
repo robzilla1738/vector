@@ -1,3 +1,4 @@
+import { FeatureSlots } from "../features/registry";
 import { memo, useRef, type CSSProperties } from "react";
 import { NavigationButtons } from "./NavigationButtons";
 import { bridge, inNativeHost } from "../bridge";
@@ -50,6 +51,7 @@ export const Toolbar = memo(function Toolbar() {
       {!horizontal && <div className="toolbar-drag-space" title="Drag to move window" aria-hidden="true" />}
 
       <div className="tb-right">
+        <FeatureSlots slot="toolbarItems" />
         <ExtensionActions />
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{I.bookmark}</button>}
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => useStore.getState().setOverlay("settings")}>{I.gear}</button>}

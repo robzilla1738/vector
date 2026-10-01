@@ -1,4 +1,6 @@
 import { ModelConnectionChangeSchema, ImageModelSchema } from "./model-connections.js";
+import { BrowserRuntimeMethodSchemas, BrowserRuntimeResultSchemas } from "./browser-runtime-api.js";
+import { MentionRefsSchema } from "./mentions.js";
 export * from "./model-connections.js";
 import { MemoryPastePreviewParams, MemoryPastePreviewSchema, MemoryPasteCommitParams, MemoryPasteStatusParams, MemoryPasteStatusSchema } from "./memory-paste.js";
 export * from "./memory-paste.js";
@@ -470,6 +472,7 @@ export const SetsResultsParams = z.object({
 
 /** runs.* */
 export const RunsStartParams = z.object({
+  mentions: MentionRefsSchema.optional(),
   goal: z.string().min(1),
   pageId: z.string().optional(),
   pageIds: z.array(z.string()).optional(),
@@ -502,6 +505,7 @@ export const RunsEventsParams = z.object({
 });
 export const RunsAnswerParams = z.object({ runId: id, answer: z.string(), expectedSuspensionId: id.optional() });
 export const RunsQueueParams = z.object({
+  mentions: MentionRefsSchema.optional(),
   messageId: z.string().uuid(),
   runId: id,
   chatId: id,
@@ -1042,6 +1046,7 @@ import { ImportJobStatusSchema, ImportSelectionSchema, ImportSourcePreviewSchema
 export * from "./import.js";
 
 export const MethodSchemas = {
+  ...BrowserRuntimeMethodSchemas,
   "agent.js.run": AgentJsRunParams,
   "agent.js.reset": AgentJsResetParams,
   "agent.tidy.propose": TidyProposalParamsSchema,
@@ -1738,6 +1743,7 @@ export const MethodDefinitions = Object.fromEntries(
 
 /** Wire shapes for the result column — used for typing, validated server-side. */
 export const ResultSchemas = {
+  ...BrowserRuntimeResultSchemas,
   "agent.js.run": AgentJsResult,
   "agent.js.reset": z.object({ reset: z.literal(true) }),
   "agent.tidy.propose": TidyProposalSchema,

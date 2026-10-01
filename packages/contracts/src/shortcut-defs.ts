@@ -1,3 +1,5 @@
+import { COMMANDS, type CommandDef } from "./commands.js";
+
 /**
  * The one shortcut registry: menu accelerators, page-level interception and
  * renderer dispatch all resolve through these definitions, so a chord can
@@ -27,74 +29,14 @@ export interface ShortcutCommandDef {
   bindings: readonly ShortcutBinding[];
   /** Page views hand this chord to the browser instead of the page. */
   readonly intercept?: boolean;
+  readonly focusShell?: boolean;
 }
 
-const B = (key: string, options: Omit<ShortcutBinding, "key"> = {}): ShortcutBinding => ({ key, ...options });
-
-export const SHORTCUTS: readonly ShortcutCommandDef[] = [
-  { id: "new-tab", label: "New Tab", bindings: [B("t", { command: true })], intercept: true },
-  { id: "new-window", label: "New Window", bindings: [B("n", { command: true })] },
-  { id: "new-private-window", label: "New Private Window", bindings: [B("n", { command: true, shift: true })] },
-  { id: "open-file", label: "Open File…", bindings: [B("o", { command: true })], intercept: true },
-  { id: "reopen-closed-tab", label: "Reopen Closed Tab", bindings: [B("t", { command: true, shift: true })], intercept: true },
-  { id: "close-tab", label: "Close Tab", bindings: [B("w", { command: true })], intercept: true },
-  { id: "close-window", label: "Close Window", bindings: [B("w", { command: true, shift: true })], intercept: true },
-  { id: "print", label: "Print…", bindings: [B("p", { command: true })], intercept: true },
-  { id: "save-pdf", label: "Save Page as PDF…", bindings: [B("p", { command: true, shift: true })], intercept: true },
-  { id: "quick-ask", label: "Quick Ask", bindings: [B(" ", { command: true, shift: true })] },
-  { id: "find", label: "Find…", bindings: [B("f", { command: true })], intercept: true },
-  { id: "find-next", label: "Find Next", bindings: [B("g", { command: true })], intercept: true },
-  { id: "find-previous", label: "Find Previous", bindings: [B("g", { command: true, shift: true })], intercept: true },
-  { id: "reload", label: "Reload", bindings: [B("r", { command: true })], intercept: true },
-  { id: "hard-reload", label: "Hard Reload", bindings: [B("r", { command: true, shift: true })], intercept: true },
-  { id: "actual-size", label: "Actual Size", bindings: [B("0", { command: true })], intercept: true },
-  {
-    id: "zoom-in", label: "Zoom In", intercept: true,
-    // `+` is Shift+= on US layouts — the shifted variants are the same chord.
-    bindings: [B("=", { command: true }), B("=", { command: true, shift: true }), B("+", { command: true }), B("+", { command: true, shift: true })],
-  },
-  {
-    id: "zoom-out", label: "Zoom Out", intercept: true,
-    bindings: [B("-", { command: true }), B("-", { command: true, shift: true }), B("_", { command: true }), B("_", { command: true, shift: true })],
-  },
-  { id: "reader", label: "Reader View", bindings: [B("r", { command: true, alt: true })], intercept: true },
-  { id: "sidebar", label: "Toggle Sidebar", bindings: [B("s", { command: true })], intercept: true },
-  { id: "overview", label: "Tab Overview", bindings: [B("o", { command: true, shift: true })], intercept: true },
-  { id: "devtools", label: "Developer Tools", bindings: [B("i", { command: true, alt: true })], intercept: true },
-  { id: "inspect-element", label: "Inspect Element", bindings: [B("c", { command: true, shift: true })], intercept: true },
-  { id: "view-source", label: "View Source", bindings: [B("u", { command: true, alt: true })], intercept: true },
-  { id: "back", label: "Back", bindings: [B("[", { command: true }), B("left", { alt: true, platforms: ["win32", "linux"] })], intercept: true },
-  { id: "forward", label: "Forward", bindings: [B("]", { command: true }), B("right", { alt: true, platforms: ["win32", "linux"] })], intercept: true },
-  { id: "open-address", label: "Open Address", bindings: [B("l", { command: true }), B("e", { command: true })], intercept: true },
-  { id: "palette", label: "Command Palette", bindings: [B("k", { command: true })], intercept: true },
-  { id: "settings", label: "Settings", bindings: [B(",", { command: true })], intercept: true },
-  { id: "history", label: "History", bindings: [B("y", { command: true })], intercept: true },
-  { id: "downloads", label: "Downloads", bindings: [B("j", { command: true, shift: true })], intercept: true },
-  { id: "bookmark", label: "Bookmark This Page", bindings: [B("d", { command: true })], intercept: true },
-  { id: "bookmark-all", label: "Bookmark All Tabs", bindings: [B("d", { command: true, shift: true })], intercept: true },
-  { id: "agent-rail", label: "Toggle Agent Rail", bindings: [B("a", { command: true, shift: true })], intercept: true },
-  { id: "clear-history", label: "Clear History", bindings: [B("backspace", { command: true, shift: true })], intercept: true },
-  {
-    id: "tab-next", label: "Next Tab", intercept: true,
-    bindings: [
-      B("right", { command: true, alt: true }),
-      B("]", { command: true, shift: true }), B("}", { command: true, shift: true }),
-      B("tab", { ctrl: true }), B("tab", { command: true }),
-    ],
-  },
-  {
-    id: "tab-previous", label: "Previous Tab", intercept: true,
-    bindings: [
-      B("left", { command: true, alt: true }),
-      B("[", { command: true, shift: true }), B("{", { command: true, shift: true }),
-      B("tab", { ctrl: true, shift: true }), B("tab", { command: true, shift: true }),
-    ],
-  },
-  ...Array.from({ length: 9 }, (_, i): ShortcutCommandDef => ({
-    id: `tab-${i + 1}`, label: i === 8 ? "Last Tab" : `Switch to Tab ${i + 1}`,
-    bindings: [B(String(i + 1), { command: true })], intercept: true,
-  })),
-];
+export const SHORTCUTS: readonly ShortcutCommandDef[] = COMMANDS.map((command: CommandDef) => ({
+  id: command.id, label: command.label, bindings: command.bindings,
+  ...(command.intercept ? { intercept: true } : {}),
+  ...(command.focusShell ? { focusShell: true } : {}),
+}));
 
 export const shortcutById = (id: string, defs: readonly ShortcutCommandDef[] = SHORTCUTS) => defs.find(def => def.id === id);
 

@@ -10,6 +10,12 @@ import { ZapStylesheetInstallSchema, ZapInstallReceiptSchema } from "./zap.js";
 import { EventSchema } from "./events.js";
 import { AutofillProfileSchema } from "./api.js";
 import type { AuxFeature } from "./aux-features.js";
+import { WindowControlsVisibleSchema } from "./minimal-ui.js";
+import { PictureInPictureOperationSchema, PictureInPictureResultSchema } from "./pip.js";
+import { LinkRoutesSchema, LinkRouteSourceSchema, LinkRouteDestinationSchema } from "./link-routing.js";
+import { RenameDownloadSchema } from "./download-naming.js";
+import { PowerActivitySchema } from "./night-shift.js";
+import { SpaceColorSchema } from "./spaces.js";
 import { AgentPageCreateSchema, AgentPageCreatedSchema, EgressContextRequestSchema, EgressContextSchema, EgressInstallSchema, EgressRevokeSchema } from "./egress.js";
 
 type Owner = "browser" | "runtime";
@@ -64,7 +70,14 @@ const contentBase = z.object({ profileId: str, generation: number, allowedSiteHo
 const cosmeticRule = z.object({ domains: z.array(str), selector: str }).strict();
 const nativePage = z.object({ pageId: str, windowId: str.optional(), marker: str, url: str,
   title: str, active: bool, showBlankDocument: bool.optional(), cdpTargetId: str.optional() }).strict();
-const browserProfile = z.object({ id: str, name: str, current: bool, archived: bool.optional() }).strict();
+const browserProfile = z.object({ id: str, name: str, current: bool, archived: bool.optional(),
+  color: SpaceColorSchema.optional(), icon: str.max(32).optional(),
+  spaces: z.array(z.object({ id: str, name: str, color: SpaceColorSchema }).strict()).max(200).optional(),
+}).strict();
+const extensionAction = z.object({ id: str, name: str, iconPng: str, badgeText: str, badgeColor: str,
+  enabled: bool, pinned: bool, hasPopup: bool }).strict();
+const extensionCommand = z.object({ extensionId: str, name: str, description: str, shortcut: str }).strict();
+const screenRect = z.object({ x: number, y: number, width: number.positive(), height: number.positive() }).strict();
 const autocompleteMatch = z.object({ id: str, type: z.enum(["history", "bookmark", "search", "typed"]),
   title: str, url: str, description: str.optional() }).strict();
 const httpAuthRequest = z.object({ id: str, origin: str, proxy: bool, realm: str, retry: bool }).strict();
@@ -88,8 +101,10 @@ const runtimeBackup = z.object({ path: str, bytes: number, sha256: str,
   artifactFiles: number, missingArtifacts: number }).strict();
 const stagedRestore = runtimeBackup.extend({ staged: z.literal(true), schemaVersion: number });
 export const HostCapabilitiesSchema = z.object({
-  buildId: str, sourceCommit: str.length(40), methods: z.array(str),
+  buildId: str, sourceCommit: str.regex(/^[a-f0-9]{40}(\+dirty)?$/), methods: z.array(str),
+  qualifiedFeatures: z.array(str),
   developmentAcceptanceRequested: bool.optional(),
+  testClockScale: z.number().finite().min(1).max(100000).optional(),
 }).strict();
 export type HostCapabilities = z.infer<typeof HostCapabilitiesSchema>;
 
@@ -163,13 +178,18 @@ export const HostMethods = {
     z.enum(["liquid-glass", "titlebar", "sidebar", "under-window"]).optional()]), bool),
   setShortcuts: shell("core", z.tuple([z.array(z.object({
     commandId: str.max(64), key: str.min(1).max(32), meta: bool, ctrl: bool,
-    shift: bool, alt: bool,
+    shift: bool, alt: bool, focusShell: bool.optional(),
   }).strict()).max(512)]), bool),
+  windowControlsVisible: shell("minimalUi", WindowControlsVisibleSchema, bool),
   extensions: shell("extensions", noArgs, z.array(extension)),
   installStoreExtension: shell("extensions", z.tuple([str]), extension),
   checkStoreExtensionUpdate: shell("extensions", z.tuple([str]), extension),
   reloadExtension: shell("extensions", z.tuple([str]), extension),
-  showExtensionAction: shell("extensions", z.tuple([str]), bool),
+  showExtensionAction: shell("extensions", z.tuple([str, screenRect.optional()]), bool),
+  extensionActions: shell("extensions", noArgs, z.array(extensionAction)),
+  pinExtensionAction: shell("extensions", z.tuple([str, bool]), bool),
+  extensionCommands: shell("extensions", noArgs, z.array(extensionCommand)),
+  setExtensionCommandShortcut: shell("extensions", z.tuple([str, str, str]), bool),
   setExtensionEnabled: shell("extensions", z.tuple([str, bool]), extension),
   removeExtension: shell("extensions", z.tuple([str]), bool),
   installUnpackedExtension: shell("extensions", noArgs, extension.nullable()),
@@ -182,6 +202,14 @@ export const HostMethods = {
   deleteBrowserProfile: shell("profiles", z.tuple([str]), z.array(browserProfile)),
   openBrowserProfile: shell("profiles", z.tuple([str]), bool),
   openBrowserProfileUrl: shell("profiles", z.tuple([str, str]), bool),
+  setBrowserProfileAppearance: shell("profiles", z.tuple([str, z.object({ color: SpaceColorSchema, icon: str.min(1).max(32) }).strict()]), bool),
+  focusBrowserProfileSpace: shell("profiles", z.tuple([str, nullableString]), bool),
+  moveTabToProfile: shell("profiles", z.tuple([str, str]), bool),
+  linkRoutes: shell("linkRouting", noArgs, LinkRoutesSchema),
+  setLinkRoutes: shell("linkRouting", z.tuple([number.int().nonnegative(), LinkRoutesSchema]), LinkRoutesSchema),
+  testLinkRoute: shell("linkRouting", z.tuple([z.string().url().max(8192), LinkRouteSourceSchema]),
+    z.object({ destination: LinkRouteDestinationSchema, ruleId: str.optional(), fallback: bool }).strict()),
+  resolveRoutePrompt: shell("linkRouting", z.tuple([str, LinkRouteDestinationSchema, bool]), bool),
   // Credential vault
   autofillProfile: shell("core", noArgs, AutofillProfileSchema.nullable()),
   setAutofillProfile: shell("core", z.tuple([AutofillProfileSchema]), bool),
@@ -195,6 +223,9 @@ export const HostMethods = {
   quickAskShortcut: shell("quickAsk", z.tuple([bool.optional()]),
     z.object({ enabled: bool, registered: bool, error: str }).strict()),
   quickAsk: shell("quickAsk", z.tuple([z.enum(["open", "expand", "dismiss", "status"])]), bool),
+  littleWindow: shell("littleWindow", z.tuple([z.enum(["open", "promote", "close"]),
+    z.object({ url: z.string().url().max(8192).optional(), spaceId: str.optional() }).strict()]), bool),
+  externalLinkTarget: shell("littleWindow", z.tuple([z.enum(["little", "main"]).optional()]), z.enum(["little", "main"])),
   // Downloads and tab audio
   downloadFolder: shell("core", noArgs, downloadFolderResult),
   chooseDownloadFolder: shell("core", z.tuple([bool.optional()]), downloadFolderResult),
@@ -212,6 +243,9 @@ export const HostMethods = {
   controlDownload: shell("core", z.tuple([str, z.enum(["pause", "resume", "cancel"])]), noResult),
   retryDownload: shell("core", z.tuple([str]), noResult),
   tabAudio: shell("core", noArgs, z.record(str, z.object({ muted: bool, audible: bool }).strict())),
+  pictureInPicture: shell("pictureInPicture", z.tuple([str, PictureInPictureOperationSchema]), PictureInPictureResultSchema),
+  setStageVisible: shell("core", z.tuple([z.array(str.min(1).max(256)).max(4)
+    .refine(ids => new Set(ids).size === ids.length, "Stage pages must be unique")]), bool),
   tabsUnsavedWork: shell("core", z.tuple([z.array(z.object({ pageId: str, url: str }).strict())]),
     z.record(str, z.enum(["clean", "dirty", "unknown"]))),
   tabSleep: shell("tabLifecycle", z.tuple([str, z.string().url().max(8192)]),
@@ -288,6 +322,10 @@ export const HostMethods = {
     phase: z.literal("document_start"), futureDocuments: z.literal(true) }).strict()),
   "native.bookmarksInvoke": runtime("core", z.object({ method: str, params: z.unknown() }).strict(), z.unknown()),
   "native.capabilities": runtime("core", z.object({}).strict(), HostCapabilitiesSchema),
+  "native.downloadPreviewText": runtime("smartDownloadNames", z.object({ downloadId: str }).strict(), z.object({ text: str.max(2048) }).strict()),
+  "native.renameDownload": runtime("smartDownloadNames", RenameDownloadSchema,
+    z.object({ renamed: bool, filename: str, receiptId: str.optional(), reason: str.optional() }).strict()),
+  "native.powerActivity": runtime("overnightReview", PowerActivitySchema, z.object({ active: bool, reason: str.optional() }).strict()),
   "native.createAgentPage": runtime("core", AgentPageCreateSchema, AgentPageCreatedSchema),
   "native.egressContext": runtime("core", EgressContextRequestSchema, EgressContextSchema),
   "native.egressInstall": runtime("core", EgressInstallSchema, accepted),
@@ -358,7 +396,13 @@ export const HostEvents = {
   onRuntimeStatus: event("core", z.object({ connected: bool, detail: str.optional() }).strict()),
   onLoading: event("core", z.object({ pageId: str, loading: bool }).strict()),
   onAudio: event("core", z.object({ pageId: str, muted: bool, audible: bool,
-    removed: bool.optional() }).strict()),
+    removed: bool.optional(), video: bool.optional(), pip: bool.optional() }).strict()),
+  onPictureInPicture: event("pictureInPicture", PictureInPictureResultSchema.extend({ pageId: str })),
+  onExtensionActionsChanged: event("extensions", z.array(extensionAction)),
+  onSidePanel: event("extensions", z.object({ extensionId: str, pageId: str.nullable(), title: str, open: bool }).strict()),
+  onFocusSpace: event("profiles", z.object({ spaceId: str.nullable() }).strict()),
+  onRoutedOpen: event("linkRouting", z.object({ pageId: str, profileId: str, spaceId: str.optional(), ruleId: str.optional() }).strict()),
+  onRoutePrompt: event("linkRouting", z.object({ id: str, url: z.string().url().max(8192), expiresAt: number.int().nonnegative() }).strict()),
   onLinkStatus: event("core", z.object({ pageId: str, text: str }).strict()),
   onDownload: event("core", DownloadSchema),
   onTabsPlacement: event("core", z.object({ pageId: str, windowId: str,

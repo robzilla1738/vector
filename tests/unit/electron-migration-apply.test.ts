@@ -29,7 +29,7 @@ async function fixture() {
   db.close();
   const sourceHash = sha(join(source, "aux-state.sqlite")), artifactHash = sha(sourceArtifact);
   const layoutJson = JSON.stringify({ spaces: [{ id: "space-work", name: "Work", color: "violet" }], activeSpaceId: "space-work",
-    tabSpace: { p1: "space-work" }, order: ["p1"], activeTabs: { "space-work": "p1" }, splits: {}, splitRatio: .5 });
+    tabSpace: { p1: "space-work" }, order: ["p1"], activeTabs: { "space-work": "p1" }, splitGroups: [], splitRatio: .5 });
   await prepareElectronMigration({ sourceDataDir: source, destinationDir: bundle, layoutJson });
   return { root, source, bundle, profile, sourceArtifact, sourceHash, artifactHash };
 }

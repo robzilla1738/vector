@@ -1,3 +1,4 @@
+import { FeatureSettings } from "../features/registry";
 import "./Settings.css";
 import { MemorySettings } from "./MemorySettings";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -341,6 +342,7 @@ export function Settings() {
           tabIndex={0}
           aria-label={searching ? "Settings search results" : `${category} settings`}
         >
+          {!searching && !subview && <FeatureSettings category={category} />}
           {searching && (
             <div className="settings-search-results">
               <output className="hint" data-block>

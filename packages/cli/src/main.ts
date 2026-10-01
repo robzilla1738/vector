@@ -112,7 +112,7 @@ async function main() {
 
     case "doctor": {
       try {
-        const d = readDescriptor();
+        const d = await readDescriptor();
         const health = await rpc("workspace.get");
         out({ ok: true, runtime: { port: d.port, pid: d.pid, token: "***" }, workspace: health });
       } catch (e) {

@@ -41,7 +41,7 @@ function fixture() {
   const layoutJson = JSON.stringify({ spaces: [{ id: "space-work", name: "Work", color: "violet" }], activeSpaceId: "space-work",
     tabSpace: { p1: "space-work" }, order: ["p1"], pins: { "space-work": [{ url: "https://example.com", title: "Example" }] },
     folders: [{ id: "f1", name: "Research", spaceId: "space-work", collapsed: false }], tabFolder: { p1: "f1" },
-    tabNames: { p1: { url: "https://example.com", title: "Research Home" } }, activeTabs: { "space-work": "p1" }, splits: {}, splitRatio: .5 });
+    tabNames: { p1: { url: "https://example.com", title: "Research Home" } }, activeTabs: { "space-work": "p1" }, splitGroups: [], splitRatio: .5 });
   return { source, output, db, database, artifact, layoutJson };
 }
 

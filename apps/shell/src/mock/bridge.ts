@@ -1040,7 +1040,7 @@ export function installMockBridge(q: URLSearchParams) {
     onDownload: () => () => {},
     onLoading: (cb) => (loadingListeners.add(cb), () => loadingListeners.delete(cb)),
     surfaceContentId: async () => null,
-    capabilities: async () => ({ buildId: "mock", sourceCommit: "mock", methods: Object.keys(HostMethods) }),
+    capabilities: async () => ({ buildId: "mock", sourceCommit: "a".repeat(40), qualifiedFeatures: [], methods: Object.keys(HostMethods) }),
     resolveSearch: async query => DEFAULT_SEARCH_ENGINE.replace("%s", encodeURIComponent(query)),
     setShortcuts: async () => true,
     autocomplete: async query => {

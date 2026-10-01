@@ -1,3 +1,4 @@
+import { bootShellFeatures, FeatureSlots, runFeatureCommand } from "./features/registry";
 import { runAnswerEntry } from "./run-answer-drafts";
 import { reconcileResultDrafts } from "./result-drafts";
 import { PaneBoundary } from "./components/PaneBoundary";
@@ -102,6 +103,7 @@ export function App() {
     window.addEventListener("focus", check);
     return () => window.removeEventListener("focus", check);
   }, []);
+  useEffect(() => bootShellFeatures(), []);
   useEffect(() => installMemorySaver(), []);
   useEffect(() => recoverPeekLink(), []);
   useEffect(() => {
@@ -479,7 +481,7 @@ export function App() {
     const id = s.commandId ?? matchShortcut(effectiveShortcuts(st.settings?.shortcutOverrides as ShortcutOverrides | undefined), {
       key: s.key, meta: s.meta, ctrl: s.ctrl ?? false, shift: s.shift, alt: s.alt,
     }, { platform: bridge.platform })?.id;
-    if (id) void SHORTCUT_ACTIONS[id]?.(st);
+    if (id && !runFeatureCommand(id, st)) void SHORTCUT_ACTIONS[id]?.(st);
   };
 
   const cycleTab = (dir: 1 | -1) => {
@@ -583,6 +585,7 @@ export function App() {
       <HttpAuthPrompt />
       <ActionConfirmation />
       {vaultOffer && <VaultOfferBanner />}
+      <FeatureSlots slot="overlays" />
       <Toasts />
       <Onboarding />
       {runNotice && noticePreference === "all" && !confirming && !overlay

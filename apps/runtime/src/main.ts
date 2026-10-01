@@ -1,4 +1,8 @@
+import { createClock } from "@aux/contracts";
+import { bootRuntimeFeatures } from "./features/registry.js";
+import type { Services } from "./api/methods/context.js";
 import { ConnectionRecovery } from "./connection-recovery.js";
+import { readRuntimeIdentity } from "./api/runtime-identity.js";
 import { developmentAcceptanceStages } from "./api/development-acceptance.js";
 import { BrowsingMemory } from "./services/browsing-memory.js";
 import { ContentMemoryStore } from "./services/content-memory.js";
@@ -397,14 +401,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     channel = new RpcChannel(transport, "runtime->shell");
   }
   const native: NativeBridge = channel ? new ChannelNativeBridge(channel) : new NullNativeBridge();
-  const featureStages = env.AUX_HOST_SOCKET
-    ? native.capabilities!()
+  const runtimeIdentity = readRuntimeIdentity(import.meta.url);
+  const nativeIdentity = env.AUX_HOST_SOCKET ? native.capabilities!() : undefined;
+  const featureStages = nativeIdentity
+    ? nativeIdentity
         .then((capabilities) => developmentAcceptanceStages(
-          featureStagesFor(capabilities.methods, capabilities.sourceCommit),
+          featureStagesFor(capabilities.methods,
+            runtimeIdentity && !runtimeIdentity.dirty && runtimeIdentity.label === capabilities.sourceCommit
+              ? capabilities.qualifiedFeatures : []),
           config.dataDir, capabilities.sourceCommit, env.AUX_DEV_ACCEPTANCE_TOKEN))
         .catch((error) => {
           process.stderr.write(`[runtime] native capabilities unavailable: ${String(error)}\n`);
-          return featureStagesFor([], "");
+          return featureStagesFor([], []);
         })
     : undefined;
   const blocking = env.AUX_HOST_SOCKET
@@ -1332,10 +1340,13 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     return revoked;
   });
 
-  const invoke = makeInvoker({
+  const services: Services = {
+    clock: createClock((await nativeIdentity?.catch(() => undefined))?.testClockScale),
     featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : "electron",
     featureProfileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
     featureStages,
+    nativeIdentity,
+    runtimeIdentity,
     native,
     downloadsDir: config.downloadsDir,
     zap,
@@ -1378,7 +1389,9 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         repeats: repeats ?? 10,
         dir: config.benchmarksDir,
       }),
-  });
+  };
+  const invoke = makeInvoker(services);
+  const stopFeatures = await bootRuntimeFeatures(services, invoke);
   // Authenticated Chromium host messages are internal; the loopback API still
   // denies these projection methods to external and scoped clients.
   channel?.onMethod("history.projectSnapshot", (params) =>
@@ -1562,6 +1575,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     process.off("uncaughtException", onUncaughtException);
     await runs.messages.stop();
     runs.coordinator.markInterrupted();
+    await stopFeatures();
     await api.close().catch(() => {});
     await invoke.dispose().catch(() => {});
     await auxRecovery?.stop();

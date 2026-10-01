@@ -1,0 +1,251 @@
+diff --git a/chrome/browser/ui/aux/organization_store.cc b/chrome/browser/ui/aux/organization_store.cc
+index 8660a8f..18ddeb6 100644
+--- a/chrome/browser/ui/aux/organization_store.cc
++++ b/chrome/browser/ui/aux/organization_store.cc
+@@ -19,11 +19,12 @@
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+ #include "components/prefs/pref_service.h"
++#include "url/gurl.h"
+ 
+ namespace aux {
+ namespace {
+ 
+-constexpr size_t kMaxLayoutBytes = 256 * 1024;
++constexpr size_t kMaxLayoutBytes = 1024 * 1024;
+ constexpr size_t kMaxWindows = 64;
+ 
+ bool Text(const base::Value* value, size_t max_units, bool nonempty = true) {
+@@ -94,18 +95,57 @@ bool Space(const base::Value& value) {
+          (!archived || archived->is_bool()) && (!theme || Theme(theme));
+ }
+ 
++bool HttpUrl(const base::Value* value) {
++  if (!Text(value, 8192)) return false;
++  const std::string& text = value->GetString();
++  const GURL url(text);
++  return (text.starts_with("https://") || text.starts_with("http://")) &&
++         url.is_valid() && url.SchemeIsHTTPOrHTTPS();
++}
++
++bool LiveFolder(const base::Value* value) {
++  const base::DictValue* live = value ? value->GetIfDict() : nullptr;
++  if (!live || !HasOnly(*live, {"kind", "config", "refreshMinutes"})) return false;
++  const std::string* kind = live->FindString("kind");
++  const base::DictValue* config = live->FindDict("config");
++  const std::optional<double> refresh = live->FindDouble("refreshMinutes");
++  if (!kind || !config || !refresh || !std::isfinite(*refresh) ||
++      std::floor(*refresh) != *refresh || *refresh < 1 || *refresh > 1440) return false;
++  if (*kind == "github") {
++    if (!HasOnly(*config, {"connectionId", "source", "query"}) ||
++        !Id(config->Find("connectionId"))) return false;
++    const std::string* source = config->FindString("source");
++    const base::Value* query = config->Find("query");
++    return source && (*source == "awaiting-review" || *source == "open-prs" ||
++                      *source == "assigned-issues" || *source == "query") &&
++           (!query || Text(query, 1000)) && (*source != "query" || query);
++  }
++  if (*kind == "calendar") {
++    return HasOnly(*config, {"connectionId"}) && Id(config->Find("connectionId"));
++  }
++  if (*kind == "rss") {
++    return HasOnly(*config, {"url"}) && HttpUrl(config->Find("url"));
++  }
++  if (*kind == "routine") {
++    return HasOnly(*config, {"routineId"}) && Id(config->Find("routineId"));
++  }
++  return false;
++}
++
+ bool Folder(const base::Value& value) {
+   const base::DictValue* folder = value.GetIfDict();
+   if (!folder ||
+       !HasOnly(*folder, {"id", "name", "spaceId", "collapsed", "color",
+-                         "emoji"}) ||
++                         "emoji", "live"}) ||
+       !Id(folder->Find("id")) || !Text(folder->Find("name"), 200) ||
+       !Id(folder->Find("spaceId")) || !folder->FindBool("collapsed")) {
+     return false;
+   }
+   const base::Value* color = folder->Find("color");
+   const base::Value* emoji = folder->Find("emoji");
+-  return (!color || Color(color)) && (!emoji || Text(emoji, 16, false));
++  const base::Value* live = folder->Find("live");
++  return (!color || Color(color)) && (!emoji || Text(emoji, 16, false)) &&
++         (!live || LiveFolder(live));
+ }
+ 
+ bool IdRecord(const base::DictValue* record) {
+@@ -113,7 +153,7 @@ bool IdRecord(const base::DictValue* record) {
+     return false;
+   }
+   for (auto it = record->begin(); it != record->end(); ++it) {
+-    if (it->first.empty() || it->first.size() > 200 || !Id(&it->second)) {
++    if (it->first.empty() || base::UTF8ToUTF16(it->first).size() > 200 || !Id(&it->second)) {
+       return false;
+     }
+   }
+@@ -121,10 +161,10 @@ bool IdRecord(const base::DictValue* record) {
+ }
+ 
+ bool TabNames(const base::DictValue* names) {
+-  if (!names || names->size() > 5000) return false;
++  if (!names) return false;
+   for (auto it = names->begin(); it != names->end(); ++it) {
+     const base::DictValue* entry = it->second.GetIfDict();
+-    if (it->first.empty() || it->first.size() > 200 || !entry ||
++    if (it->first.empty() || base::UTF8ToUTF16(it->first).size() > 200 || !entry ||
+         !HasOnly(*entry, {"title", "url"}) ||
+         !Text(entry->Find("title"), 60) ||
+         base::UTF8ToUTF16(*entry->FindString("title")).size() < 2 ||
+@@ -152,27 +192,61 @@ bool TidyUndo(const base::DictValue* receipt) {
+ bool ArchiveEntry(const base::Value& value) {
+   const base::DictValue* item = value.GetIfDict();
+   if (!item || !HasOnly(*item, {"archiveId", "pageId", "url", "title",
+-                               "spaceId", "folderId", "index", "archivedAt", "state"}) ||
++                               "spaceId", "folderId", "index", "archivedAt", "state",
++                               "reason", "batchId"}) ||
+       !Id(item->Find("archiveId")) || !Id(item->Find("pageId")) ||
+-      !Id(item->Find("spaceId")) || !Text(item->Find("title"), 500, false)) return false;
+-  const std::string* url = item->FindString("url");
+-  if (!url || url->size() > 8192 ||
+-      !(url->starts_with("https://") || url->starts_with("http://"))) return false;
++      !Id(item->Find("spaceId")) || !Text(item->Find("title"), 500, false) ||
++      !Id(item->Find("batchId")) || !HttpUrl(item->Find("url"))) return false;
+   if (const base::Value* folder = item->Find("folderId"); folder && !Id(folder)) return false;
+   const std::optional<int> index = item->FindInt("index");
+   const std::optional<double> when = item->FindDouble("archivedAt");
+   const std::string* state = item->FindString("state");
+-  return index && *index >= 0 && *index <= 5000 && when &&
++  const std::string* reason = item->FindString("reason");
++  return reason && (*reason == "manual" || *reason == "auto") && index && *index >= 0 && *index <= 5000 && when &&
+          std::isfinite(*when) && *when >= 0 && std::floor(*when) == *when &&
+          state && (*state == "pending" || *state == "archived");
+ }
+ 
++bool SplitGroup(const base::Value& value) {
++  const base::DictValue* group = value.GetIfDict();
++  if (!group || !HasOnly(*group, {"id", "panes", "layout", "ratios", "focused"}) ||
++      !Id(group->Find("id")) || !Id(group->Find("focused"))) return false;
++  const base::ListValue* panes = group->FindList("panes");
++  const base::ListValue* ratios = group->FindList("ratios");
++  const std::string* layout = group->FindString("layout");
++  if (!panes || panes->size() < 2 || panes->size() > 4 || !ratios ||
++      ratios->empty() || ratios->size() > 3 || !layout) return false;
++  const size_t count = *layout == "grid" ? 4 :
++      (*layout == "columns" || *layout == "one-plus-two") ? 3 :
++      (*layout == "row" || *layout == "column") ? 2 : 0;
++  if (panes->size() != count) return false;
++  std::set<std::string> seen;
++  for (const base::Value& pane : *panes) {
++    if (!Id(&pane) || !seen.insert(pane.GetString()).second) return false;
++  }
++  if (!seen.contains(*group->FindString("focused"))) return false;
++  for (const base::Value& ratio : *ratios) {
++    const std::optional<double> number = ratio.GetIfDouble();
++    if (!number || !std::isfinite(*number) || *number < 0.1 || *number > 0.9) return false;
++  }
++  return true;
++}
++
+ bool Shared(const base::DictValue* shared) {
+   if (!shared ||
+       !HasOnly(*shared, {"spaces", "archivedSpaces", "pins", "folders",
+-                         "tidyUndo", "archivedTabs"})) {
++                         "tidyUndo", "archivedTabs", "tabSpace", "order",
++                         "tabFolder", "tabNames", "splitGroups"}) ||
++      !IdRecord(shared->FindDict("tabSpace")) ||
++      !IdRecord(shared->FindDict("tabFolder")) ||
++      !TabNames(shared->FindDict("tabNames"))) {
+     return false;
+   }
++  const base::ListValue* order = shared->FindList("order");
++  const base::ListValue* groups = shared->FindList("splitGroups");
++  if (!order || order->size() > 5000 || !groups || groups->size() > 2500) return false;
++  for (const base::Value& page : *order) if (!Id(&page)) return false;
++  for (const base::Value& group : *groups) if (!SplitGroup(group)) return false;
+   if (const base::Value* receipt = shared->Find("tidyUndo");
+       receipt && !TidyUndo(receipt->GetIfDict())) return false;
+   if (const base::Value* archive = shared->Find("archivedTabs")) {
+@@ -205,49 +279,29 @@ bool Shared(const base::DictValue* shared) {
+     }
+   }
+   for (auto it = pins->begin(); it != pins->end(); ++it) {
+-    if (it->first.empty() || it->first.size() > 200 || !it->second.is_list() ||
++    if (it->first.empty() || base::UTF8ToUTF16(it->first).size() > 200 || !it->second.is_list() ||
+         it->second.GetList().size() > 500) {
+       return false;
+     }
+     for (const base::Value& value : it->second.GetList()) {
+       const base::DictValue* pin = value.GetIfDict();
+-      if (!pin || !HasOnly(*pin, {"url", "title"}) ||
++      if (!pin || !HasOnly(*pin, {"url", "title", "pageId", "keepAwake"}) ||
+           !Text(pin->Find("url"), 2048) ||
+           !Text(pin->Find("title"), 500, false)) {
+         return false;
+       }
++      if (const base::Value* page = pin->Find("pageId"); page && !Id(page)) return false;
++      if (const base::Value* awake = pin->Find("keepAwake"); awake && !awake->is_bool()) return false;
+     }
+   }
+   return true;
+ }
+ 
+ bool Window(const base::DictValue* window) {
+-  if (!window || !HasOnly(*window, {"activeSpaceId", "activeTabs",
+-                                 "splitRatio", "tabSpace", "order",
+-                                 "tabFolder", "tabNames", "splits", "tidyUndo"}) ||
+-      !Id(window->Find("activeSpaceId")) ||
+-      !IdRecord(window->FindDict("activeTabs")) ||
+-      !IdRecord(window->FindDict("tabSpace")) ||
+-      !IdRecord(window->FindDict("tabFolder")) ||
+-      !IdRecord(window->FindDict("splits"))) {
+-    return false;
+-  }
+-  if (const base::Value* names = window->Find("tabNames");
+-      names && !TabNames(names->GetIfDict())) return false;
+-  if (const base::Value* receipt = window->Find("tidyUndo");
+-      receipt && !TidyUndo(receipt->GetIfDict())) return false;
++  if (!window || !HasOnly(*window, {"activeSpaceId", "activeTabs", "splitRatio"}) ||
++      !Id(window->Find("activeSpaceId")) || !IdRecord(window->FindDict("activeTabs"))) return false;
+   const std::optional<double> ratio = window->FindDouble("splitRatio");
+-  const base::ListValue* order = window->FindList("order");
+-  if (!ratio || *ratio < 0.1 || *ratio > 0.9 || !order ||
+-      order->size() > 5000) {
+-    return false;
+-  }
+-  for (const base::Value& page_id : *order) {
+-    if (!Id(&page_id)) {
+-      return false;
+-    }
+-  }
+-  return true;
++  return ratio && std::isfinite(*ratio) && *ratio >= 0.1 && *ratio <= 0.9;
+ }
+ 
+ bool ValidLayout(const base::DictValue& layout) {
+@@ -266,11 +320,6 @@ base::DictValue DefaultWindow(const base::DictValue& shared) {
+   window.Set("activeSpaceId", *spaces[0].GetDict().FindString("id"));
+   window.Set("activeTabs", base::DictValue());
+   window.Set("splitRatio", 0.5);
+-  window.Set("tabSpace", base::DictValue());
+-  window.Set("order", base::ListValue());
+-  window.Set("tabFolder", base::DictValue());
+-  window.Set("tabNames", base::DictValue());
+-  window.Set("splits", base::DictValue());
+   return window;
+ }
+ 
+diff --git a/chrome/browser/ui/aux/organization_store.h b/chrome/browser/ui/aux/organization_store.h
+index 5554b51..ed13a15 100644
+--- a/chrome/browser/ui/aux/organization_store.h
++++ b/chrome/browser/ui/aux/organization_store.h
+@@ -15,7 +15,7 @@ class Profile;
+ 
+ namespace aux {
+ 
+-inline constexpr char kOrganizationPref[] = "aux.organization.v1";
++inline constexpr char kOrganizationPref[] = "aux.organization.v2";
+ 
+ // Profile-owned browser organization. The caller supplies only the window ID
+ // derived from its authorized WebUI; no renderer-provided Profile or window ID

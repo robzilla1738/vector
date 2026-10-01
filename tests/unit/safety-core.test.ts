@@ -21,6 +21,16 @@ const allowed = { access: "allow" as const, confirmation: "action" as const, app
   grantLifetime: "session" as const, source: "user" as const, reason: "matched_rule", origin: "https://example.test", effect: "write" as const };
 
 describe("B5 safety core", () => {
+  it.each(["destructive", "credential"] as const)("caps a user's %s allow at explicit confirmation", effect => {
+    const decision = evaluateOriginPolicy({ url: rule.origin, effect, action: "submit", audit: () => {},
+      user: [{ ...rule, confirmation: "none" }],
+    });
+    expect(decision).toMatchObject({ access: "ask", confirmation: "action", source: "user" });
+    const denied = evaluateOriginPolicy({ url: rule.origin, effect, action: "submit", audit: () => {},
+      managed: [{ ...rule, access: "deny" }], user: [rule],
+    });
+    expect(denied).toMatchObject({ access: "deny", source: "managed" });
+  });
   it("browses freely on unconfigured origins, fails closed on malformed ones, and cascades managed denies", () => {
     const audits: unknown[] = [];
     const decide = (url: string, managed = [rule], user = [rule], effect: "write" | "destructive" = "write") => evaluateOriginPolicy({

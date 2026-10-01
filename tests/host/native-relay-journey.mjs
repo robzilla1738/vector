@@ -30,7 +30,7 @@ const profile = join(disposable, "profile"), binary = join(app, "Contents/MacOS/
 const windowTool = join(disposable, "native-window");
 const helper = join(app, "Contents/Helpers/Aux Runtime"), runtimeFile = join(profile, "Default/Aux Runtime Data/runtime.json");
 const nativeHeader = readFileSync(resolve(app, "../../../chrome/browser/ui/aux/generated/aux_host_methods.h"), "utf8");
-const nativeSourceCommit = nativeHeader.match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1];
+const nativeSourceCommit = nativeHeader.match(/kSourceCommit = "([a-f0-9]{40}(\+dirty)?)"/)?.[1];
 const nativeManifestHash = nativeHeader.match(/kManifestHash = "([a-f0-9]{64})"/)?.[1];
 assert.ok(nativeSourceCommit, "Native generated source identity is required");
 assert.ok(nativeManifestHash, "Native generated manifest hash required");

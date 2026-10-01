@@ -1,6 +1,5 @@
-import type { AuxFeatureOverrides } from "@aux/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { installChromiumBridge, reconcileChromiumFeatureStages, type ChromiumHostPort } from "./chromium-bridge";
+import { installChromiumBridge, type ChromiumHostPort } from "./chromium-bridge";
 import { chromiumFeatureStages } from "./feature-stage-reconciliation";
 
 function fakeWindow(url: string, port?: ChromiumHostPort) {
@@ -18,109 +17,17 @@ function fakeWindow(url: string, port?: ChromiumHostPort) {
 }
 
 describe("Chromium Aux shell bridge", () => {
-  it("accepts only the Profile-scoped runtime AI Tidy stage for the shell and invoke gate", async () => {
-    const request = vi.fn(async (method: string, args: unknown[]) =>
-      method === "invoke" && args[0] === "runtime.describe"
-        ? { version: 1, featureStages: { spaces: "on", aiTidy: "on", memory: "on" } }
-        : { groups: [], pages: [] });
-    const target = fakeWindow("chrome://aux/", {
-      host: "chromium-fork", windowId: "win-1", profileId: "disposable",
-      platform: "darwin", privateMode: false,
-      featureStages: { spaces: "preview", aiTidy: "preview", memory: "preview" },
-      request, subscribe: vi.fn(() => () => {}),
-    });
-    expect(installChromiumBridge(target)).toBe(true);
-    const invoke = target.aux as unknown as { invoke(method: string, params: unknown): Promise<unknown> };
-    await expect(invoke.invoke("agent.tidy.propose", { pageIds: [] })).rejects.toThrow(/aiTidy is preview/);
-    await reconcileChromiumFeatureStages(target);
-    expect(chromiumFeatureStages(target)).toMatchObject({ spaces: "on", aiTidy: "on", memory: "preview" });
-    await invoke.invoke("agent.tidy.propose", { pageIds: [] });
-    expect(request).toHaveBeenCalledWith("invoke", ["agent.tidy.propose", { pageIds: [] }]);
-  });
-
-  it.each([
-    ["normal Profile preview", { version: 1, featureStages: { spaces: "on", aiTidy: "preview" } }],
-    ["missing stages", { version: 1 }],
-    ["malformed stages", { version: 1, featureStages: ["on"] }],
-    ["wrong version", { version: 2, featureStages: { spaces: "on", aiTidy: "on" } }],
-  ])("keeps AI Tidy in preview for %s", async (_label, description) => {
-    const request = vi.fn(async () => description);
+  it("preserves native preview stages even when runtime reports on", async () => {
+    const request = vi.fn(async () => ({ version: 1, featureStages: { spaces: "on", memory: "on" } }));
     const target = fakeWindow("chrome://aux/", {
       host: "chromium-fork", windowId: "win-1", profileId: "ordinary",
       platform: "darwin", privateMode: false,
-      featureStages: { spaces: "on", aiTidy: "preview" },
+      featureStages: { spaces: "preview", memory: "preview" },
       request, subscribe: vi.fn(() => () => {}),
     });
     installChromiumBridge(target);
-    await reconcileChromiumFeatureStages(target);
-    expect(chromiumFeatureStages(target)?.aiTidy).toBe("preview");
-    const invoke = target.aux as unknown as { invoke(method: string, params: unknown): Promise<unknown> };
-    await expect(invoke.invoke("agent.tidy.propose", { pageIds: [] })).rejects.toThrow(/aiTidy is preview/);
-    expect(request).toHaveBeenCalledTimes(1);
-  });
-
-  it("copies disposable tab lifecycle onto the host port the sleep client checks", async () => {
-    const request = vi.fn(async (method: string, args: unknown[]) => {
-      if (method === "invoke" && args[0] === "runtime.describe")
-        return { version: 1, featureStages: { spaces: "on", tabLifecycle: "on", aiTidy: "preview" } };
-      if (method === "tabSleep") return { slept: false, reason: "Only a loaded background tab can sleep." };
-      return {};
-    });
-    const featureStages: AuxFeatureOverrides = { spaces: "preview", aiTidy: "preview", tabLifecycle: "preview" };
-    const target = fakeWindow("chrome://aux/", {
-      host: "chromium-fork", windowId: "win-1", profileId: "disposable",
-      platform: "darwin", privateMode: false,
-      featureStages, request, subscribe: vi.fn(() => () => {}),
-    });
-    expect(installChromiumBridge(target)).toBe(true);
-    const sleep = target.aux as unknown as { tabSleep(pageId: string, url: string): Promise<unknown> };
-    await expect(sleep.tabSleep("page-1", "https://example.com/red")).rejects.toThrow(/tabLifecycle is preview/);
-    await reconcileChromiumFeatureStages(target);
-    expect(featureStages.tabLifecycle).toBe("on");
-    expect(chromiumFeatureStages(target)?.tabLifecycle).toBe("on");
-    await expect(sleep.tabSleep("page-1", "https://example.com/red")).resolves.toEqual({
-      slept: false, reason: "Only a loaded background tab can sleep.",
-    });
-  });
-
-  it("retries a missed runtime describe before leaving disposable tab lifecycle in preview", async () => {
-    vi.useFakeTimers();
-    try {
-      let calls = 0;
-      const request = vi.fn(async () => {
-        calls += 1;
-        if (calls === 1) throw new Error("backend_unavailable");
-        return { version: 1, featureStages: { tabLifecycle: "on" } };
-      });
-      const featureStages: AuxFeatureOverrides = { spaces: "on", aiTidy: "on", tabLifecycle: "preview" };
-      const target = fakeWindow("chrome://aux/", {
-        host: "chromium-fork", windowId: "win-1", profileId: "disposable",
-        platform: "darwin", privateMode: false,
-        featureStages, request, subscribe: vi.fn(() => () => {}),
-      });
-      installChromiumBridge(target);
-      const pending = reconcileChromiumFeatureStages(target);
-      await vi.advanceTimersByTimeAsync(200);
-      await pending;
-      expect(featureStages.tabLifecycle).toBe("on");
-      expect(request).toHaveBeenCalledTimes(2);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("does not query runtime or promote a private window", async () => {
-    const request = vi.fn(async () => ({ version: 1, featureStages: { spaces: "on", aiTidy: "on" } }));
-    const target = fakeWindow("chrome://aux/", {
-      host: "chromium-fork", windowId: "win-1", profileId: "disposable",
-      platform: "darwin", privateMode: true,
-      featureStages: { spaces: "on", aiTidy: "preview" },
-      request, subscribe: vi.fn(() => () => {}),
-    });
-    installChromiumBridge(target);
-    await reconcileChromiumFeatureStages(target);
+    expect(chromiumFeatureStages(target)).toEqual({ spaces: "preview", memory: "preview" });
     expect(request).not.toHaveBeenCalled();
-    expect(chromiumFeatureStages(target)?.aiTidy).toBe("preview");
   });
   it("refuses ordinary pages and other WebUI origins", () => {
     const port: ChromiumHostPort = {
@@ -279,12 +186,14 @@ it("registers the shared native shortcut bindings and reserves disabled defaults
   const [method, args] = request.mock.calls[0] as unknown as [string, [Array<Record<string, unknown>>]];
   expect(method).toBe("setShortcuts");
   const bindings = args[0];
-  const chord = (key: string, shift = false) => bindings.filter(row => row.key === key && row.meta && row.shift === shift);
+  const chord = (key: string, shift = false, ctrl = false) => bindings.filter(row => row.key === key && row.meta && row.shift === shift && row.ctrl === ctrl && !row.alt);
   expect(chord("k").at(-1)?.commandId).toBe("");
   expect(chord("k", true).at(-1)?.commandId).toBe("palette");
   expect(chord("s").at(-1)?.commandId).toBe("");
   expect(bindings.some(row => row.key === "left" && row.alt && !row.meta)).toBe(false);
   expect(chord("p").at(-1)?.commandId).toBe("print");
+  expect(chord("p", false, true).at(-1)?.commandId).toBe("picture-in-picture");
+  expect(chord("k", true).at(-1)?.focusShell).toBe(true);
 });
 
 it("keeps the registry's first command when custom chords conflict", async () => {

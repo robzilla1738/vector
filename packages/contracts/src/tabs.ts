@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TabNameSchema } from "./tab-name.js";
+import { WindowKindSchema } from "./window-sync.js";
 import { SpaceThemeSchema } from "./spaces.js";
 
 /**
@@ -36,6 +37,9 @@ export const TabPlacementSchema = z.object({
 export type TabPlacement = z.infer<typeof TabPlacementSchema>;
 
 export const TabCommandSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("claim"), pageId: id, activate: z.boolean() }).strict(),
+  z.object({ kind: z.literal("split"), pageIds: z.tuple([id, id]), layout: z.enum(["row", "column"]), ratio: z.number().min(0.1).max(0.9) }).strict(),
+  z.object({ kind: z.literal("unsplit"), pageId: id }).strict(),
   z.object({
     kind: z.literal("open"),
     url: z.string().max(8192).optional(),
@@ -102,6 +106,9 @@ export type TabCommandAck = z.infer<typeof TabCommandAckSchema>;
 
 /** One catalog row — the browser-domain truth about a tab. */
 export const TabRecordSchema = z.object({
+  anchor: z.boolean().optional(),
+  windowKind: WindowKindSchema.optional(),
+  split: z.object({ id, index: z.number().int().min(0).max(1) }).strict().optional(),
   pageId: id,
   windowId: id,
   /** Main-owned destination for page-derived memory; set only after Space validation. */

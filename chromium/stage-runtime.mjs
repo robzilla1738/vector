@@ -22,6 +22,8 @@ import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { bundleRuntime } from "../scripts/bundle-runtime.mjs";
 
+import { productIdentity } from "../scripts/lib/product-identity.mjs";
+
 const root = resolve(import.meta.dirname, "..");
 const nodeVersion = "26.7.0";
 const archiveName = `node-v${nodeVersion}-darwin-arm64.tar.gz`;
@@ -99,6 +101,7 @@ try {
   run("pnpm", ["exec", "tsc", "-b", "tsconfig.json"]);
   const payload = join(staging, "aux-runtime");
   await bundleRuntime(payload, "node26");
+  writeFileSync(join(payload, "aux-runtime-identity.json"), `${JSON.stringify(productIdentity(root))}\n`);
   const entry = join(payload, "dist", "main.js");
   writeFileSync(entry, `process.env.AUX_PROGRAM_SPEND_CAP_USD ??= "50";\n${readFileSync(entry, "utf8")}`);
   run(node, ["--check", join(payload, "dist", "main.js")]);
