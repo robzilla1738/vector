@@ -1,14 +1,12 @@
-import { useFeature } from "../use-feature";
 import { useSyncExternalStore } from "react";
 import { movedSelection, observeMovedSelection } from "../features/window-sync/moved-selection";
-import { ownPages } from "../tab-window-transfer";
 import { isHomeAddress, nativePageId } from "../chrome";
 import { PaneBoundary } from "./PaneBoundary";
 import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
-import { forwardRef, lazy, memo, Suspense, useRef, useState, type RefObject } from "react";
+import { forwardRef, lazy, memo, Suspense, useEffect, useRef, useState, type RefObject } from "react";
 import type { PageTarget } from "@aux/contracts";
-import { bridge } from "../bridge";
+import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
 
 import { TranslationBar } from "./TranslationBar";
@@ -16,9 +14,13 @@ import { Conversation } from "./surfaces";
 import { StartPage } from "./StartPage";
 import { I } from "./icons";
 import { AgentOverlay } from "../agent/AgentOverlay";
+import { visibleSplitGroup } from "../features/surfaces/split-actions";
+import { useSurfaceState } from "../features/surfaces/drag-state";
+import { useFeature } from "../use-feature";
+import { isLocal, ownPages } from "../tab-window-transfer";
 
 const PageSurface = lazy(async () => { const module = await import("./PageSurface"); return { default: module.PageSurface }; });
-const SplitDivider = lazy(async () => { const module = await import("./SplitDivider"); return { default: module.SplitDivider }; });
+const SplitStage = lazy(async () => { const module = await import("./SplitStage"); return { default: module.SplitStage }; });
 
 const Overview = deferSurface(async () => { const module = await import("./Overview"); return {default:module.Overview}; }, "Tab overview", true);
 const ResultsTable = deferSurface(async () => { const module = await import("./ResultsTable"); return {default:module.ResultsTable}; }, "Results", true);
@@ -78,23 +80,36 @@ export function PageRecovery({ page }: { page: PageTarget }) {
 export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<HTMLTextAreaElement | null>; scrollRef?: RefObject<HTMLDivElement | null> }>(function Stage({ composerRef, scrollRef }, ref) {
   const moved = useSyncExternalStore(observeMovedSelection, movedSelection);
   const enabled = useFeature("windowSync") && !bridge.privateMode;
-  const covered = useStore(state => enabled && !!moved && state.pages.some(page => page.pageId === moved.pageId));
-  const selectedPage = useStore((s) => (s.activePageId ? ownPages(s.pages).find((p) => p.pageId === s.activePageId) : undefined));
-  const page = covered ? undefined : selectedPage;
+  const movedCovered = useStore(state => enabled && !!moved && state.pages.some(page => page.pageId === moved.pageId));
+  const localSelection = useStore((s) => (s.activePageId ? ownPages(s.pages).find((p) => p.pageId === s.activePageId) : undefined));
+  const page = movedCovered ? undefined : localSelection;
   const mode = useStore((s) => s.mode);
-  const companion = useStore(s => ownPages(s.pages).find(item => item.pageId === s.splitPageId));
+  const layout = useStore(s => s.layout);
+  const pages = useStore(s => s.pages);
+  const splitting = useFeature("splitView");
+  const surfaceState = useSurfaceState();
   const overlay = useStore(s => s.overlay);
   const confirming = useStore(s => !!s.confirmation);
   const hasUrl = !!page && (!!page.showBlankDocument || (!isHomeAddress(page.url)));
   const loading = !!page?.loading && !page.navigationError && page.viewStatus !== "crashed";
 
-  const splitVisible = mode === "focus" && page && companion && companion.pageId !== page.pageId
-    && [page, companion].every(item => nativePageId({mode,overlay,confirming,activePageId:item.pageId,...item}));
+  const covered = !!surfaceState.dragging || surfaceState.picker;
+  const splitGroup = splitting && page && mode === "focus"
+    ? visibleSplitGroup(layout, page.pageId) : null;
+  const selectedSplit = splitGroup && splitGroup.panes.every(id => { const item = pages.find(page => page.pageId === id); return item && nativePageId({mode,overlay,confirming,activePageId:id,...item}); });
+  const splitVisible = !covered && selectedSplit;
   // A scrim or an action confirmation replaces the page so the dialog is the thing that can be clicked.
-  const showingPage = !!page && nativePageId({
+  const selectedPage = !!page && nativePageId({
     mode, overlay, confirming, activePageId: page.pageId, url: page.url, backend: page.backend,
     viewStatus: page.viewStatus, navigationError: page.navigationError, showBlankDocument: page.showBlankDocument,
   }) === page.pageId;
+
+  const showingPage = !covered && selectedPage;
+  const visibleIds = JSON.stringify(selectedSplit ? splitGroup!.panes : selectedPage && page && isLocal(page) && !page.ownedByRuntime ? [page.pageId] : []);
+  useEffect(() => {
+    if (inNativeHost) void bridge.setStageVisible(JSON.parse(visibleIds) as string[]).catch(errToast);
+  }, [visibleIds]);
+  useEffect(() => () => { if (inNativeHost) void bridge.setStageVisible([]).catch(errToast); }, []);
 
   return (
     <div inert={overlay === "tasks" || overlay === "settings"} className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`} data-controller={page?.controller ?? "none"}>
@@ -122,7 +137,7 @@ export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<H
         {mode === "focus" && page?.backend !== "chrome" && !hasUrl && page?.viewStatus !== "crashed" && <StartPage />}
         {showingPage && page && !splitVisible && <Suspense fallback={<div className="stage-message">Opening page…</div>}><PageSurface page={page} /></Suspense>}
         {showingPage && page && !splitVisible && <AgentOverlay pageId={page.pageId} />}
-        {splitVisible && <Suspense fallback={null}><SplitDivider pages={[page!, companion!]} /></Suspense>}
+        {splitVisible && <Suspense fallback={null}><SplitStage group={splitGroup!} pages={pages} /></Suspense>}
         {mode === "conversation" && <PaneBoundary label="This conversation"><Conversation composerRef={composerRef} findReturnRef={scrollRef} /></PaneBoundary>}
         {mode === "overview" && <Overview />}
         {mode === "table" && <ResultsTable />}

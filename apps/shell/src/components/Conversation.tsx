@@ -1,3 +1,4 @@
+import { runCommand } from "../commands";
 import { FeatureComposer } from "../features/registry";
 import { Popover } from "../ui/popover";
 import { RunControls } from "./RunControls";
@@ -685,7 +686,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
       return;
     }
     void state.activate(plan.primary).then(() => {
-      if (useStore.getState().activePageId === plan.primary) useStore.getState().setSplitPage(plan.companion);
+      if (useStore.getState().activePageId === plan.primary) runCommand("split-add", { payload: { pageId: plan.companion } });
     }).catch(errToast);
   };
   const browserPreview = !embedded && previewOpen && selectedContext && selectedContext.url !== "about:blank" ? <div className="conversation-preview">

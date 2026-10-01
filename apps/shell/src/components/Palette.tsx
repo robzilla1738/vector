@@ -190,7 +190,7 @@ export function Palette() {
     if (splitPick) {
       for (const p of pages) {
         if (p.pageId === activePageId || !canSplitPage(p) || !canSplitPage(activePage) || layout.tabSpace[p.pageId] !== layout.activeSpaceId || !match(`${tabLabel(layout,p)} ${p.title} ${p.url}`)) continue;
-        out.push({ id: `sp-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, t: tabLabel(layout,p), d: hostOf(p.url), run: () => useStore.getState().setSplitPage(p.pageId) });
+        out.push({ id: `sp-${p.pageId}`, section: "tabs", icon: <FavIcon url={p.url} src={p.favicon} size="sm" />, t: tabLabel(layout,p), d: hostOf(p.url), run: () => runCommand("split-add", { payload: { pageId: p.pageId } }) });
       }
       if (out.length === 0) out.push({ id: "none", section: "tabs", t: "No other available browser pages in this Space", run: () => setSplitPick(false) });
       return out;
@@ -277,7 +277,7 @@ export function Palette() {
       } }] : []),
       { id: "pin", section: "window", t: "Pin this site to the space", icon: I.pin, run: async () => { if (activePage && activePage.url.startsWith("http")) useStore.getState().togglePin({ url: activePage.url, title: activePage.title || hostOf(activePage.url) }); } },
       ...(canSplit && canSplitPage(activePage) ? [{ id: "split", section: "window" as const, t: "Split view with page…", d: "two pages side by side", icon: I.split, keep: true, run: async () => { setSplitPick(true); setQ(""); } }] : []),
-      ...(canSplit && splitPageId ? [{ id: "unsplit", section: "window" as const, t: "Close split view", icon: I.split, run: () => useStore.getState().setSplitPage(null) }] : []),
+      ...(canSplit && splitPageId ? [{ id: "unsplit", section: "window" as const, t: "Close split view", icon: I.split, run: () => runCommand("split-separate") }] : []),
       { id: "open", section: "window", t: "Open file…", k: key("open-file"), icon: I.folder, run: openLocalFile },
       ...(activePage?.backend === "aux" ? [{ id: "pdf", section: "window" as const, t: "Save page as PDF…", k: key("save-pdf"), icon: I.downloadSm, run: async () => savePagePdf(activePageId) }] : []),
       { id: "print", section: "window", t: "Print…", k: key("print"), icon: I.print, run: async () => printCurrentPage(activePageId) },

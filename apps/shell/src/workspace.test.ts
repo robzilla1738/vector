@@ -8,7 +8,8 @@ import {
   previewSplit,
   rememberActiveTab,
   splitForPage,
-  withSplitPair,
+  addPane,
+  separate,
   assignFolder,
   assignSpace,
   createFolder,
@@ -279,13 +280,13 @@ it("offers split view only for available browser-owned pages", () => {
 it("keeps a split visible when either page is selected and clears replaced pairs", () => {
   const pages = [page("a"), page("b"), page("c")];
   const base = { ...emptyLayout(), tabSpace: { a: DEFAULT_SPACE.id, b: DEFAULT_SPACE.id, c: DEFAULT_SPACE.id } };
-  const first = withSplitPair(base, "a", "b");
+  const first = addPane(base, "a", "b");
   expect(splitForPage(first, pages, "a")).toBe("b");
   expect(splitForPage(first, pages, "b")).toBe("a");
-  const replaced = withSplitPair(first, "a", "c");
+  const replaced = addPane(separate(first, "a"), "a", "c");
   expect(splitForPage(replaced, pages, "b")).toBeNull();
   expect(splitForPage(replaced, pages, "c")).toBe("a");
-  const closed = withSplitPair(replaced, "c", null);
+  const closed = separate(replaced, "c");
   expect(splitForPage(closed, pages, "a")).toBeNull();
   expect(splitForPage(closed, pages, "c")).toBeNull();
 });

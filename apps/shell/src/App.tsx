@@ -1,3 +1,5 @@
+import { useFeature } from "./use-feature";
+import { useSurfaceCovering } from "./features/surfaces/drag-state";
 import { bootShellFeatures, FeatureSlots } from "./features/registry";
 import { dispatchShortcut as dispatchCommandShortcut, runCommand } from "./commands";
 import { runAnswerEntry } from "./run-answer-drafts";
@@ -252,6 +254,8 @@ export function App() {
     return () => clearTimeout(timer);
   }, [floatingSidebar]);
   const sidebarCovering = (floatingSidebar || peekCovering) && nativeShowing;
+  const surfaceCovered = useSurfaceCovering();
+  const surfaceCovering = useFeature("splitView") && surfaceCovered && nativeShowing;
   const connected = useStore((s) => s.connected);
   const spaceColor = useStore((s) => (s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId) ?? s.layout.spaces[0]!).color);
   const spaceGrain = useStore((s) => (s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId) ?? s.layout.spaces[0]!).grain);
@@ -263,7 +267,7 @@ export function App() {
 
   // Raise the shell over the native page before the bar animates.
   useEffect(() => {
-    const covering = toolbarReveal.covering || tabPreviewOpen || sidebarCovering;
+    const covering = toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering;
     let active = true;
     queueMicrotask(() => {
       if (!active) return;
@@ -271,7 +275,7 @@ export function App() {
       if (!covering) setToolbarHole(false);
     });
     return () => { active = false; };
-  }, [toolbarReveal.covering, tabPreviewOpen, sidebarCovering]);
+  }, [toolbarReveal.covering, tabPreviewOpen, sidebarCovering, surfaceCovering]);
 
   // Native vibrancy and transparent renderer layers must change together.
   useEffect(() => {
@@ -428,7 +432,7 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (inNativeHost && (toolbarReveal.covering || tabPreviewOpen || sidebarCovering) && !toolbarHole) setToolbarHole(true);
+  if (inNativeHost && (toolbarReveal.covering || tabPreviewOpen || sidebarCovering || surfaceCovering) && !toolbarHole) setToolbarHole(true);
   if (bridge.windowKind === "little") return <LittleWindow />;
   if (quickAsk) return <QuickAsk onExpand={expandQuickAsk}/>;
   return (

@@ -1,3 +1,4 @@
+import { runCommand } from "../commands";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget, TabNameSuggestion } from "@aux/contracts";
@@ -244,7 +245,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
       <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().togglePin({ url: page.url, title: page.title || hostOf(page.url) }, spaceId))}>{I.pin}<span className="t">{pinned ? "Unpin" : "Pin to space"}</span></button>
     </>}
     {rememberable && <button className="menu-item" role="menuitem" onClick={() => setRemembering(true)}>{I.copy}<span className="t">Remember article in {space?.name}…</span></button>}
-    {activePageId && activePageId !== page.pageId && spaceId === layout.activeSpaceId && (splitPageId === page.pageId || (canSplitPage(page) && canSplitPage(activePage))) && <button className="menu-item" role="menuitem" onClick={() => action(() => useStore.getState().setSplitPage(splitPageId === page.pageId ? null : page.pageId))}>{I.split}<span className="t">{splitPageId === page.pageId ? "Close split view" : "Open beside current tab"}</span></button>}
+    {activePageId && activePageId !== page.pageId && spaceId === layout.activeSpaceId && (splitPageId === page.pageId || (canSplitPage(page) && canSplitPage(activePage))) && <button className="menu-item" role="menuitem" data-command-id={splitPageId === page.pageId ? "split-separate" : "split-add"} onClick={() => action(() => runCommand(splitPageId === page.pageId ? "split-separate" : "split-add", { payload: { pageId: page.pageId } }))}>{I.split}<span className="t">{splitPageId === page.pageId ? "Close split view" : "Open beside current tab"}</span></button>}
     </>}
     {horizontal && <button className="menu-item" role="menuitem" onClick={() => action(() => { useStore.getState().moveTabs(selectedIds, spaceId, { name: "New group" }); onSelectionDone?.(); })}>{I.folderClosed}<span className="t">New tab group</span></button>}
     {canMove && <button ref={moveButton} className="menu-item" role="menuitem" aria-haspopup="menu" onClick={() => setMoving(true)} onKeyDown={event => { if (event.key === "ArrowRight") { event.preventDefault(); setMoving(true); } }}>{I.folder}<span className="t">{bulk ? "Move selected tabs…" : "Move tab…"}</span>{I.right}</button>}

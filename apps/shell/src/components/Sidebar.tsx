@@ -423,8 +423,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   /** 0 not saved · 1 bookmarked · 2 also on the reading list — for the active page. */
   const saved = useStore((s) => { const url = s.pages.find(p => p.pageId === s.activePageId)?.url; const b = url ? s.bookmarks.find(item => item.url === url) : undefined; return b ? b.readingList ? 2 : 1 : 0; });
   const activePageId = useStore((s) => s.activePageId);
-  const splitPrimary = useStore(s => s.pages.find(page => page.pageId === s.activePageId));
-  const splitCompanion = useStore(s => s.pages.find(page => page.pageId === s.splitPageId));
   const mode = useStore((s) => s.mode);
   const sidebarVisible = sidebar === "expanded" || peek;
   const floatingPanel = useRef<HTMLElement>(null);
@@ -677,14 +675,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
       </SidebarSection>}
       <SidebarSection title="Tabs" open={sections.tabs} onToggle={() => toggleSection("tabs")} fill>
       <div className="sb-tabs" ref={listRef} onKeyDown={onListKey}>
-        {mode === "focus" && splitPrimary && splitCompanion && <div className="sb-split-pair" role="group" aria-label="Split view">
-          <span className="sb-split-pair-title">{I.split} Split view</span>
-          <span className="sb-split-pair-pages" title={`${tabLabel(layout, splitPrimary)} and ${tabLabel(layout, splitCompanion)}`}>
-            {tabLabel(layout, splitPrimary)} <span aria-hidden="true">·</span> {tabLabel(layout, splitCompanion)}
-          </span>
-          <button type="button" title="Swap split sides" aria-label="Swap split sides" onClick={() => void activate(splitCompanion.pageId).catch(errToast)}>Swap</button>
-          <button type="button" title="Close split view" aria-label="Close split view" onClick={() => useStore.getState().setSplitPage(null)}>{I.close}</button>
-        </div>}
         <div className="tab-list" role="tablist" aria-multiselectable="true" aria-label="Tabs" aria-orientation="vertical" ref={tabScroller}>
           <NewTabButton
             data-command-id="new-tab" onClick={() => runCommand("new-tab")}

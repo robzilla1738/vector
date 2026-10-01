@@ -23,11 +23,11 @@ export async function run(t) {
     const split = { name: 'Open beside current tab', scope: 'shell', index: 0 };
     await t.ax.waitFor(split);
     await t.ax.press(split);
-    await t.ax.waitFor({ role: 'AXSplitter', name: 'Resize split view', scope: 'shell' });
+    await t.ax.waitFor({ role: 'AXSplitter', name: 'Resize split divider 1', scope: 'shell' });
     const showSidebar = { role: 'AXButton', name: 'Show sidebar', match: 'exact', scope: 'shell', index: 0 };
     if ((await t.ax.query(showSidebar)).length) await t.ax.press(showSidebar);
     await t.ax.waitFor({ name: 'Swap split sides', scope: 'shell' });
-    await t.ax.hover({ role: 'AXSplitter', name: 'Resize split view', scope: 'shell', index: 0 });
+    await t.ax.hover({ role: 'AXSplitter', name: 'Resize split divider 1', scope: 'shell', index: 0 });
     await t.ax.waitFor({ role: 'AXGroup', name: 'New Tab newtab', match: 'exact', scope: 'shell' }, 'absent');
     const ax = await t.ax.dump();
     t.assert.match(JSON.stringify(ax), /Aux native Red/);
@@ -41,7 +41,7 @@ export async function run(t) {
     return { ax, rpc: { pages, workspace: await t.rpc('workspace.get') } };
   });
   await t.step('close the split while retaining both pages', { kind: 'ui', features: ['splitView'] }, async () => {
-    await t.ax.press({ name: 'Close split view', scope: 'shell', index: 0 });
+    await t.ax.press({ name: 'Separate split tabs', scope: 'shell', index: 0 });
     await t.ax.waitFor({ name: 'Swap split sides', scope: 'shell' }, 'absent');
     const pages = await t.rpc('pages.list');
     t.assert.ok(pages.some(page => page.pageId === red.pageId) && pages.some(page => page.pageId === blue.pageId));

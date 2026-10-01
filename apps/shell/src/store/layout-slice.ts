@@ -1,34 +1,14 @@
-import { splitRatio } from "@aux/contracts/split-layout";
 import { normalizeTabName } from "@aux/contracts/tab-name-rule";
 import { bridge } from "../bridge";
 import { featureStage } from "../use-feature";
 import { errToast, toast } from "../store";
-import { assignFolder, assignSpace, canSplitPage, createFolder, createSpace, reconcileSpaces, rememberActiveTab, removeFolder, removeSpace, renameFolder, renameSpace, reorderGroup, reorderInSpace, reorderPin, setActiveSpace, splitForPage, tabsInSpace, toggleFolder, togglePin, updateFolder, withSplitPair } from "../workspace";
+import { assignFolder, assignSpace, createFolder, createSpace, reconcileSpaces, rememberActiveTab, removeFolder, removeSpace, renameFolder, renameSpace, reorderGroup, reorderInSpace, reorderPin, setActiveSpace, splitForPage, tabsInSpace, toggleFolder, togglePin, updateFolder } from "../workspace";
 import { initialLayout, persistLayout } from "./persistence";
 import { call, sendTabCommand, syncCatalogOrder } from "./shared";
 import type { LayoutKeys, Slice } from "./types";
 
 export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
   splitPageId: null,
-  setSplitRatio: (value, persist = true) => {
-    const state = get(), ratio = splitRatio(value);
-    const layout = { ...state.layout, splitRatio: ratio, splitGroups: (state.layout.splitGroups ?? []).map(group =>
-      state.activePageId && group.panes.includes(state.activePageId) ? { ...group, ratios: [ratio, ...group.ratios.slice(1)] } : group) };
-    if (persist) persistLayout(layout);
-    set({ layout });
-  },
-  setSplitPage: (pageId) => {
-    const state = get();
-    if (!state.activePageId) return;
-    if (pageId && (!canSplitPage(state.pages.find(page => page.pageId === pageId)) || !canSplitPage(state.pages.find(page => page.pageId === state.activePageId)))) {
-      toast("Open two available browser pages in this Space to use split view."); return;
-    }
-    const layout = withSplitPair(state.layout, state.activePageId, pageId);
-    const splitPageId = splitForPage(layout, state.pages, state.activePageId);
-    if (pageId && !splitPageId) return;
-    persistLayout(layout);
-    set({ layout, splitPageId });
-  },
   layout: initialLayout,
   tidyUndo: initialLayout.tidyUndo ?? null,
 

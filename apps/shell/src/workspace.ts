@@ -5,7 +5,7 @@ import { splitRatio } from "@aux/contracts/split-layout";
  * pinned sites. The runtime owns pages; the shell owns how they are arranged.
  * Everything here is deterministic and unit-tested.
  */
-import type { BrowserSpace, PageTarget, LiveFolder, SplitGroup } from "@aux/contracts";
+import { SplitGroupSchema, type BrowserSpace, type PageTarget, type LiveFolder, type SplitGroup } from "@aux/contracts";
 import type { SpaceTheme } from "@aux/contracts/spaces";
 import type { CSSProperties } from "react";
 
@@ -468,12 +468,15 @@ export function parseLayout(raw: string | null): Layout {
       activeSpaceId: active,
       splitRatio: splitRatio(v.splitRatio),
       activeTabs: v.activeTabs && typeof v.activeTabs === "object" ? Object.fromEntries(Object.entries(v.activeTabs).filter(([, pageId]) => typeof pageId === "string")) : {},
-      splitGroups: Array.isArray(v.splitGroups) ? v.splitGroups.filter((group): group is SplitGroup =>
-        !!group && typeof group.id === "string" && Array.isArray(group.panes) && group.panes.length >= 2 && group.panes.length <= 4 &&
-        group.panes.every(pane => typeof pane === "string") && new Set(group.panes).size === group.panes.length &&
-        ["row", "column", "columns", "one-plus-two", "grid"].includes(group.layout) &&
-        Array.isArray(group.ratios) && group.ratios.every(ratio => typeof ratio === "number" && ratio >= .1 && ratio <= .9) &&
-        group.panes.includes(group.focused)) : [],
+      splitGroups: Array.isArray(v.splitGroups) ? (() => {
+        const members = new Set<string>();
+        return v.splitGroups.flatMap(value => {
+          const result = SplitGroupSchema.safeParse(value);
+          if (!result.success || result.data.panes.some(id => members.has(id))) return [];
+          for (const id of result.data.panes) members.add(id);
+          return [result.data];
+        });
+      })() : [],
       tabSpace: v.tabSpace && typeof v.tabSpace === "object" ? v.tabSpace : {},
       order: Array.isArray(v.order) ? v.order.filter((x): x is string => typeof x === "string") : [],
       pins: v.pins && typeof v.pins === "object"
@@ -536,23 +539,96 @@ export function previewSplit(layout: Layout, pages: PageTarget[], pageId: string
   return other ? { primary: pageId, companion: other.pageId } : null;
 }
 
-/** A saved split never borrows a tab from another Space or a worker. */
-export function splitForPage(layout: Layout, pages: PageTarget[], pageId: string | null): string | null {
-  if (!pageId) return null;
-  const companionId = layout.splitGroups?.find(group => group.panes.includes(pageId))?.panes.find(id => id !== pageId);
-  if (!companionId || companionId === pageId || layout.tabSpace[pageId] !== layout.tabSpace[companionId]) return null;
-  const companion = pages.find(page => page.pageId === companionId);
-  return companion && isTab(companion) ? companionId : null;
+const pageIndexes = new WeakMap<PageTarget[], ReadonlyMap<string, PageTarget>>();
+const splitIndexes = new WeakMap<SplitGroup[], ReadonlyMap<string, SplitGroup>>();
+
+/** Membership is built once per immutable groups array; each lookup is O(1). */
+export function splitIndex(layout: Pick<Layout, "splitGroups">): ReadonlyMap<string, SplitGroup> {
+  const groups = layout.splitGroups;
+  if (!groups) return new Map();
+  let index = splitIndexes.get(groups);
+  if (!index) {
+    index = new Map(groups.flatMap(group => group.panes.map(id => [id, group] as const)));
+    splitIndexes.set(groups, index);
+  }
+  return index;
 }
 
-/** A split is one pair, whichever side the user selects next. Replacing or closing
- * a pair clears both directions and any older pair involving either page. */
-export function withSplitPair(layout: Layout, primary: string, companion: string | null): Layout {
-  const splitGroups = (layout.splitGroups ?? []).filter(group => !group.panes.includes(primary) && (!companion || !group.panes.includes(companion)));
-  if (companion && companion !== primary) {
-    splitGroups.push({ id: `split-${primary}`, panes: [primary, companion], layout: "row", ratios: [layout.splitRatio ?? .5], focused: primary });
-  }
-  return { ...layout, splitGroups };
+export function splitGroupForPage(layout: Layout, pageId: string | null): SplitGroup | null {
+  return pageId ? splitIndex(layout).get(pageId) ?? null : null;
+}
+
+/** All panes must remain available in their original Space. */
+export function splitForPage(layout: Layout, pages: PageTarget[], pageId: string | null): string | null {
+  const group = splitGroupForPage(layout, pageId);
+  let pageIndex = pageIndexes.get(pages);
+  if (!pageIndex) { pageIndex = new Map(pages.map(page => [page.pageId, page])); pageIndexes.set(pages, pageIndex); }
+  if (!group || !group.panes.every(id => layout.tabSpace[id] === layout.tabSpace[pageId!]
+    && !!pageIndex.get(id) && isTab(pageIndex.get(id)!))) return null;
+  return group.panes.find(id => id !== pageId) ?? null;
+}
+
+const defaultSplitLayout = (count: number): SplitGroup["layout"] => count === 4 ? "grid" : count === 3 ? "columns" : "row";
+const defaultSplitRatios = (layout: SplitGroup["layout"]) => layout === "columns" ? [1 / 3, .5] : layout === "grid" ? [.5, .5, .5] : layout === "one-plus-two" ? [.5, .5] : [.5];
+
+function updateSplit(layout: Layout, group: SplitGroup, next: SplitGroup | null): Layout {
+  return { ...layout, splitGroups: (layout.splitGroups ?? []).flatMap(item => item.id === group.id ? next ? [next] : [] : [item]) };
+}
+
+export function addPane(layout: Layout, primary: string, pageId: string, edge: "left" | "right" | "top" | "bottom" = "right"): Layout {
+  if (primary === pageId || !layout.tabSpace[primary] || layout.tabSpace[primary] !== layout.tabSpace[pageId]) return layout;
+  const group = splitGroupForPage(layout, primary);
+  if (splitGroupForPage(layout, pageId) || group?.panes.length === 4) return layout;
+  const panes = [...(group?.panes ?? [primary])];
+  if (edge === "left" || edge === "top") panes.unshift(pageId); else panes.push(pageId);
+  const shape = panes.length === 2 ? edge === "top" || edge === "bottom" ? "column" : "row"
+    : panes.length === 3 && (edge === "top" || edge === "bottom") ? "one-plus-two" : defaultSplitLayout(panes.length);
+  const next: SplitGroup = { id: group?.id ?? `split-${primary}`, panes, layout: shape, ratios: defaultSplitRatios(shape), focused: pageId };
+  return group ? updateSplit(layout, group, next) : { ...layout, splitGroups: [...(layout.splitGroups ?? []), next] };
+}
+
+export function removePane(layout: Layout, pageId: string): Layout {
+  const group = splitGroupForPage(layout, pageId);
+  if (!group) return layout;
+  const panes = group.panes.filter(id => id !== pageId);
+  if (panes.length < 2) return updateSplit(layout, group, null);
+  const shape = defaultSplitLayout(panes.length);
+  return updateSplit(layout, group, { ...group, panes, layout: shape, ratios: defaultSplitRatios(shape),
+    focused: group.focused === pageId ? panes[Math.min(group.panes.indexOf(pageId), panes.length - 1)]! : group.focused });
+}
+
+export function swapPanes(layout: Layout, pageId: string, otherId?: string): Layout {
+  const group = splitGroupForPage(layout, pageId);
+  if (!group) return layout;
+  const first = group.panes.indexOf(pageId), second = otherId ? group.panes.indexOf(otherId) : (first + 1) % group.panes.length;
+  if (second < 0 || first === second) return layout;
+  const panes = [...group.panes];
+  [panes[first], panes[second]] = [panes[second]!, panes[first]!];
+  return updateSplit(layout, group, { ...group, panes });
+}
+
+export function flipLayout(layout: Layout, pageId: string): Layout {
+  const group = splitGroupForPage(layout, pageId);
+  if (!group || group.layout === "grid") return layout;
+  const shape = group.layout === "row" ? "column" : group.layout === "column" ? "row" : group.layout === "columns" ? "one-plus-two" : "columns";
+  return updateSplit(layout, group, { ...group, layout: shape, ratios: defaultSplitRatios(shape) });
+}
+
+export function separate(layout: Layout, pageId: string): Layout {
+  const group = splitGroupForPage(layout, pageId);
+  return group ? updateSplit(layout, group, null) : layout;
+}
+
+export function focusPane(layout: Layout, pageId: string): Layout {
+  const group = splitGroupForPage(layout, pageId);
+  return group && group.focused !== pageId ? updateSplit(layout, group, { ...group, focused: pageId }) : layout;
+}
+
+export function resizeSplit(layout: Layout, pageId: string, divider: number, ratio: number): Layout {
+  const group = splitGroupForPage(layout, pageId);
+  if (!group || divider < 0 || divider >= group.ratios.length || !Number.isFinite(ratio)) return layout;
+  const ratios = [...group.ratios]; ratios[divider] = Math.max(.1, Math.min(.9, ratio));
+  return updateSplit(layout, group, { ...group, ratios });
 }
 
 /** Keep the last human selection per Space; stale closed IDs are ignored by the caller. */

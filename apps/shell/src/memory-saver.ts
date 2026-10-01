@@ -1,5 +1,5 @@
 import { ownPages } from "./tab-window-transfer";
-import type { HostMethodResult, PageTarget } from "@aux/contracts";
+import type { HostMethodResult, PageTarget, SplitGroup } from "@aux/contracts";
 import { bridge, inNativeHost } from "./bridge";
 import { useStore } from "./store";
 import { featureStage } from "./use-feature";
@@ -9,6 +9,7 @@ type State = {
   pages: PageTarget[];
   activePageId: string | null;
   splitPageId: string | null;
+  layout?: { splitGroups?: SplitGroup[] };
   tabAudio: Record<string, { audible: boolean }>;
   settings: Record<string, unknown>;
   connected: boolean;
@@ -30,6 +31,7 @@ export function nextMemorySaverAction(state: State, retryAfter: ReadonlyMap<stri
   const candidates = ownPages(state.pages).flatMap(page => {
     if (page.backend !== "aux" || !/^https?:\/\//.test(page.url) || page.ownedByRuntime ||
         page.pageId === state.activePageId || page.pageId === state.splitPageId ||
+        state.layout?.splitGroups?.some(group => group.panes.includes(page.pageId)) ||
         page.controller !== "none" || page.loading || page.viewStatus === "crashed" || page.viewStatus === "detached" ||
         (page.lifecycle && page.lifecycle !== "live") || state.tabAudio[page.pageId]?.audible ||
         unsavedKeepsAwake(page.pageId, unsaved)) return [];
@@ -72,7 +74,7 @@ export function installMemorySaver() {
   };
   const unsubscribe = useStore.subscribe((state, previous) => {
     if (state.pages !== previous.pages || state.activePageId !== previous.activePageId ||
-        state.splitPageId !== previous.splitPageId || state.tabAudio !== previous.tabAudio ||
+        state.layout !== previous.layout || state.splitPageId !== previous.splitPageId || state.tabAudio !== previous.tabAudio ||
         state.settings !== previous.settings || state.connected !== previous.connected ||
         state.restoringTabs !== previous.restoringTabs) schedule();
   });
