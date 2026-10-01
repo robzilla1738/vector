@@ -266,6 +266,7 @@ export const journeys = [
     journey: {
       ...base,
       id: "shortcut-registry-core",
+      launch: { env: { AUX_SHORTCUT_DIAGNOSTIC: "1" } },
       title: "Native command dispatch and persisted remapping",
     },
     run: core,
