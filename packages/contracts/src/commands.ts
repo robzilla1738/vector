@@ -59,6 +59,7 @@ export const COMMANDS = [
   },
   { id: "reader", section: "Page", handler: "shell", label: "Reader View", bindings: [B("r", { command: true, alt: true })], intercept: true },
   { id: "sidebar", section: "Layout", handler: "shell", label: "Toggle Sidebar", bindings: [B("s", { command: true })], intercept: true },
+  { id: "sidebar-hide", section: "Layout", handler: "shell", label: "Hide Sidebar", bindings: [], palette: false, windows: ["normal", "private"] },
   { id: "overview", section: "Layout", handler: "shell", label: "Tab Overview", bindings: [B("o", { command: true, shift: true })], intercept: true },
   { id: "devtools", section: "Developer", handler: "shell", label: "Developer Tools", bindings: [B("i", { command: true, alt: true })], intercept: true },
   { id: "inspect-element", section: "Developer", handler: "shell", label: "Inspect Element", bindings: [B("c", { command: true, alt: true })], intercept: true },
