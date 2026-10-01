@@ -41,7 +41,7 @@ export function nextMemorySaverAction(state: State, retryAfter: ReadonlyMap<stri
 
 /** One timer per shell window. Dirty and unknown pages are skipped here; native tabSleep rechecks. */
 export function installMemorySaver() {
-  if (!inNativeHost || bridge.privateMode || bridge.quickAskMode || featureStage("tabLifecycle") !== "on") return () => {};
+  if (!inNativeHost || bridge.privateMode || bridge.windowKind !== "normal" || featureStage("tabLifecycle") !== "on") return () => {};
   const retryAfter = new Map<string, number>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let running = false;

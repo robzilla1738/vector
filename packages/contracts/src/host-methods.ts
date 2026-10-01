@@ -224,6 +224,7 @@ export const HostMethods = {
   quickAskShortcut: shell("quickAsk", z.tuple([bool.optional()]),
     z.object({ enabled: bool, registered: bool, error: str }).strict()),
   quickAsk: shell("quickAsk", z.tuple([z.enum(["open", "expand", "dismiss", "status"])]), bool),
+  showTabWindow: shell("windowSync", z.tuple([str]), bool),
   littleWindow: shell("littleWindow", z.tuple([z.enum(["open", "promote", "close"]),
     z.object({ url: z.string().url().max(8192).optional(), spaceId: str.optional() }).strict()]), bool),
   externalLinkTarget: shell("littleWindow", z.tuple([z.enum(["little", "main"]).optional()]), z.enum(["little", "main"])),

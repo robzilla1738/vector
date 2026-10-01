@@ -16,7 +16,7 @@ export interface ChromiumHostPort {
   readonly profileId: string;
   readonly platform: string;
   readonly privateMode: boolean;
-  readonly quickAskMode?: boolean;
+  readonly windowKind: "normal" | "private" | "little" | "quick-ask";
   readonly testClockScale?: number;
   readonly featureStages?: AuxFeatureOverrides;
   request(method: string, args: unknown[]): Promise<unknown>;
@@ -44,7 +44,7 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
     windowId: port.windowId,
     platform: port.platform,
     privateMode: port.privateMode,
-    quickAskMode: !!port.quickAskMode,
+    windowKind: port.windowKind,
     // SurfaceEmbed participates in the shell's DOM stacking and visibility.
     // Chromium applies the overlay transition when the renderer mounts it.
     overlay: async (open: boolean) => {

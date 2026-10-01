@@ -61,7 +61,7 @@ export interface ComposedBridgeMembers {
   windowId: string;
   platform: string;
   privateMode: boolean;
-  quickAskMode: boolean;
+  windowKind: "normal" | "private" | "little" | "quick-ask";
   /** Keep the shell painted above the native page; applied natively on mount. */
   overlay(open: boolean): Promise<boolean>;
   /** Other browser windows, derived from the tab catalog. */
@@ -89,6 +89,7 @@ const stub: AuxBridge = {
   setLinkRoutes: nativeRequired,
   testLinkRoute: nativeRequired,
   resolveRoutePrompt: nativeRequired,
+  showTabWindow: nativeRequired,
   littleWindow: nativeRequired,
   externalLinkTarget: nativeRequired,
   pictureInPicture: nativeRequired,
@@ -120,7 +121,7 @@ const stub: AuxBridge = {
   deleteBrowserProfile:async()=>{throw new Error("Profiles require the native browser.");},
   openBrowserProfile:async()=>false,
   quickAskShortcut: async enabled => ({enabled:!!enabled,registered:!!enabled,error:""}),
-  quickAskMode: false,
+  windowKind: "normal",
   quickAsk: async () => false,
   onQuickAskState: noop,
   privateMode: false,

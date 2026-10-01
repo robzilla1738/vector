@@ -7,7 +7,9 @@ const requirements = {
     "journey": "feature:minimalUi"
   },
   "windowSync": {
-    "requires": [],
+    "requires": [
+      "showTabWindow"
+    ],
     "journey": "feature:windowSync"
   },
   "pinnedApps": {

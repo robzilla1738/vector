@@ -1,0 +1,22 @@
+diff --git a/chrome/browser/ui/aux/egress_url_loader.cc b/chrome/browser/ui/aux/egress_url_loader.cc
+index f2d37bb..ed06192 100644
+--- a/chrome/browser/ui/aux/egress_url_loader.cc
++++ b/chrome/browser/ui/aux/egress_url_loader.cc
+@@ -447,6 +447,7 @@ class GuardedFactory final : public network::SelfDeletingURLLoaderFactory {
+       return;
+     }
+     if (state_->controller && state_->controller->IsProtected(state_->context)) {
++      options |= network::mojom::kURLLoadOptionBlockAllCookies;
+       request.headers.RemoveHeader("Cookie");
+       request.cors_exempt_headers.RemoveHeader("Cookie");
+       if (request.trusted_params) {
+@@ -458,8 +459,7 @@ class GuardedFactory final : public network::SelfDeletingURLLoaderFactory {
+     }
+     target_->CreateLoaderAndStart(
+         std::move(loader), id,
+-        options | network::mojom::kURLLoadOptionUseHeaderClient |
+-            network::mojom::kURLLoadOptionBlockAllCookies,
++        options | network::mojom::kURLLoadOptionUseHeaderClient,
+         request,
+         std::move(client), annotation);
+   }

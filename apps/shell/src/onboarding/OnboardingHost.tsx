@@ -17,7 +17,7 @@ export default function OnboardingHost({ enabled = true }: { enabled?: boolean }
   const invalidate = useCallback(() => {
     generation.current++;
   }, []);
-  const eligible = enabled && inNativeHost && !bridge.privateMode && !bridge.quickAskMode;
+  const eligible = enabled && inNativeHost && !bridge.privateMode && bridge.windowKind === "normal";
   useEffect(() => {
     const attempt = ++generation.current;
     replaying.current = false;

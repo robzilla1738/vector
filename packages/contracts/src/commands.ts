@@ -15,6 +15,11 @@ const B = (key: string, options: Omit<ShortcutBinding, "key"> = {}): ShortcutBin
 const Numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export const COMMANDS = [
+  { id: "claim-tab", label: "Bring this tab here", section: "Windows", handler: "shell", feature: "windowSync", windows: ["normal"], bindings: [] },
+  { id: "show-tab-window", label: "Show this tab's window", section: "Windows", handler: "shell", feature: "windowSync", windows: ["normal"], bindings: [] },
+  { id: "little-space-picker", label: "Choose destination Space", section: "Windows", handler: "shell", feature: "littleWindow", windows: ["little"], bindings: [] },
+  { id: "little-downloads", label: "Downloads for this page", section: "Windows", handler: "shell", feature: "littleWindow", windows: ["little"], bindings: [] },
+  { id: "set-external-link-target", label: "Choose where external links open", section: "Windows", handler: "shell", feature: "littleWindow", palette: false, bindings: [] },
   { id: "minimal-ui", label: "Minimal UI", section: "Layout", handler: "shell", feature: "minimalUi", focusShell: true, bindings: [B("b", { command: true, shift: true })], intercept: true },
   { id: "pin-tab", label: "Pin or unpin tab", section: "Tabs", handler: "shell", feature: "pinnedApps", focusShell: true, bindings: [B("d", { command: true, shift: true })], intercept: true },
   { id: "little-window", label: "New Little window", section: "Windows", handler: "shell", feature: "littleWindow", focusShell: true, bindings: [B("n", { command: true, alt: true })], intercept: true },

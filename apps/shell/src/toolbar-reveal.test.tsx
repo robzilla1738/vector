@@ -11,7 +11,7 @@ vi.mock("./bridge", () => ({
   inMock: true,
   bridge: {
     privateMode: false,
-    quickAskMode: false,
+    windowKind: "normal",
     onOrganizationChanged: () => () => {},
     onToolbarEdge: (listener: (near: boolean) => void) => {
       events.edge = listener;

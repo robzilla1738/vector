@@ -11,7 +11,8 @@ import type { OrganizationPersistence } from "./organization-persistence";
 export const LAYOUT_KEY = `aux.layout.v1:${bridge.windowId}`;
 export const CLOSED_TABS_KEY = `aux.closed-tabs.v1:${bridge.windowId}`;
 export const storage = typeof localStorage !== "undefined" ? localStorage : null;
-const ephemeralOrganization = bridge.privateMode || bridge.quickAskMode || featureStage("spaces") !== "on";
+const ephemeralOrganization =
+  bridge.privateMode || bridge.windowKind !== "normal" || featureStage("spaces") !== "on";
 export let layoutTimer: ReturnType<typeof setTimeout> | undefined;
 export const persistClosedTabs = (tabs: ClosedTab[]) => {
   if (bridge.privateMode) return;

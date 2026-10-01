@@ -146,7 +146,7 @@ export function App() {
     };
     window.addEventListener("storage",changed);return()=>window.removeEventListener("storage",changed);
   },[]);
-  const [quickAsk,setQuickAsk]=useState(bridge.quickAskMode);
+  const [quickAsk,setQuickAsk]=useState((bridge.windowKind === "quick-ask"));
   const [linkStatus,setLinkStatus]=useState<{pageId:string;text:string}|null>(null);
   const quickAskReady=useRef(false);
   const conversationComposer=useRef<HTMLTextAreaElement>(null);
@@ -163,13 +163,13 @@ export function App() {
     });
   };
   useEffect(()=>{
-    if(bridge.quickAskMode||bridge.privateMode)return;
+    if(bridge.windowKind !== "normal"||bridge.privateMode)return;
     let chatId:string|null=null;
     try{chatId=localStorage.getItem("aux.quick-ask.expand");if(chatId)localStorage.removeItem("aux.quick-ask.expand");}catch{}
     if(chatId&&/^[\w-]{1,128}$/.test(chatId))useStore.getState().openConversationDraft(chatId);
   },[]);
   useEffect(()=>{
-    if(!bridge.quickAskMode)return;
+    if(bridge.windowKind !== "quick-ask")return;
     void bridge.quickAsk("status").then(compact=>{
       setQuickAsk(compact);
       if(!compact)return;
@@ -481,7 +481,11 @@ export function App() {
     const id = s.commandId ?? matchShortcut(effectiveShortcuts(st.settings?.shortcutOverrides as ShortcutOverrides | undefined), {
       key: s.key, meta: s.meta, ctrl: s.ctrl ?? false, shift: s.shift, alt: s.alt,
     }, { platform: bridge.platform })?.id;
-    if (id && !runFeatureCommand(id, st)) void SHORTCUT_ACTIONS[id]?.(st);
+    if (!id) return;
+    try {
+      const feature = runFeatureCommand(id, st);
+      void Promise.resolve(feature.handled ? feature.result : SHORTCUT_ACTIONS[id]?.(st)).catch(errToast);
+    } catch (error) { errToast(error); }
   };
 
   const cycleTab = (dir: 1 | -1) => {
