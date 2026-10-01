@@ -97,11 +97,11 @@ async function execute() {
   const actual = await app.identity();
   const clock = createClock(actual.native.testClockScale);
   const context = { app, rpc, fixture, model, ax: observedAx, assert, until, visual: createVisual(outputDir),
-    async restart() {
+    async restart(options) {
       signal.throwIfAborted();
       await ax.close();
       ax = undefined;
-      await app.restart();
+      await app.restart(options);
       ax = await createAxClient(app.pid);
       assertJourneyIdentity(await app.identity(), identity);
       signal.throwIfAborted();
