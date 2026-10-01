@@ -137,3 +137,5 @@ aux/runtime/0136-qualified-capabilities.patch
 aux/runtime/0137-native-feature-stubs.patch
 aux/runtime/0138-organization-v2.patch
 aux/runtime/0139-native-test-clock.patch
+aux/runtime/0186-window-kind-identity.patch
+aux/runtime/0187-human-cookie-egress.patch

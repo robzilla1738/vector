@@ -99,6 +99,7 @@ export function createHostClient(port: HostPort) {
     passwordImport: (...args: HostMethodArgs<"passwordImport">) => call("passwordImport", args),
     quickAskShortcut: (...args: HostMethodArgs<"quickAskShortcut">) => call("quickAskShortcut", args),
     quickAsk: (...args: HostMethodArgs<"quickAsk">) => call("quickAsk", args),
+    showTabWindow: (...args: HostMethodArgs<"showTabWindow">) => call("showTabWindow", args),
     littleWindow: (...args: HostMethodArgs<"littleWindow">) => call("littleWindow", args),
     externalLinkTarget: (...args: HostMethodArgs<"externalLinkTarget">) => call("externalLinkTarget", args),
     downloadFolder: (...args: HostMethodArgs<"downloadFolder">) => call("downloadFolder", args),

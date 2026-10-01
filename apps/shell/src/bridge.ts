@@ -89,6 +89,7 @@ const stub: AuxBridge = {
   setLinkRoutes: nativeRequired,
   testLinkRoute: nativeRequired,
   resolveRoutePrompt: nativeRequired,
+  showTabWindow: nativeRequired,
   littleWindow: nativeRequired,
   externalLinkTarget: nativeRequired,
   pictureInPicture: nativeRequired,

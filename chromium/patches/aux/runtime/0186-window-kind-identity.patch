@@ -1,0 +1,88 @@
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+index 25297c2..69306cf 100644
+--- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
++++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
+@@ -2,7 +2,7 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+-import {ShellHostClientReceiver, ShellHostFactory, ShellHostRemote} from './shell_host.mojom-webui.js';
++import {ShellHostClientReceiver, ShellHostFactory, ShellHostRemote, WindowKind} from './shell_host.mojom-webui.js';
+ import {featureStagesFor} from './aux_feature_stages.js';
+ import {SuggestInventory} from '//resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
+ import {InputMethod, PageCallbackRouter, PageHandlerFactory, PageHandlerRemote} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+@@ -14,7 +14,7 @@ interface Port {
+   profileId: string;
+   platform: string;
+   privateMode: boolean;
+-  quickAskMode: boolean;
++  windowKind: 'normal'|'private'|'little'|'quick-ask';
+   capabilities: {buildId: string; sourceCommit: string; methods: string[];
+                  qualifiedFeatures: string[]; testClockScale?: number};
+   featureStages: ReturnType<typeof featureStagesFor>;
+@@ -192,13 +192,19 @@ window.auxChromiumHostReady = remote.getIdentity().then(async identity => {
+       await new Promise(resolve => setTimeout(resolve, 200));
+     }
+   }
++  const windowKinds: Record<WindowKind, Port['windowKind']> = {
++    [WindowKind.kNormal]: 'normal',
++    [WindowKind.kPrivate]: 'private',
++    [WindowKind.kLittle]: 'little',
++    [WindowKind.kQuickAsk]: 'quick-ask',
++  };
+   window.auxChromiumHost = {
+     host: 'chromium-fork',
+     windowId: identity.windowId,
+     profileId: identity.profileId,
+     platform: 'darwin',
+     privateMode: identity.privateMode,
+-    quickAskMode: identity.quickAskMode,
++    windowKind: windowKinds[identity.windowKind],
+     capabilities,
+     featureStages,
+     ...(capabilities.testClockScale !== undefined ?
+diff --git a/chrome/browser/ui/webui_browser/shell_host.mojom b/chrome/browser/ui/webui_browser/shell_host.mojom
+index 2cae01b..2fc2379 100644
+--- a/chrome/browser/ui/webui_browser/shell_host.mojom
++++ b/chrome/browser/ui/webui_browser/shell_host.mojom
+@@ -16,9 +16,16 @@ interface ShellHostClient {
+   OnEvent(string event_name, string payload_json);
+ };
+ 
++enum WindowKind {
++  kNormal,
++  kPrivate,
++  kLittle,
++  kQuickAsk,
++};
++
+ interface ShellHost {
+   GetIdentity() => (string window_id, string profile_id, bool private_mode,
+-                    bool quick_ask_mode);
++                    WindowKind window_kind);
+   Request(string method, string args_json) =>
+       (bool ok, string result_json, string error_code, string error_message);
+ };
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 4087ae7..16f368a 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -816,14 +816,16 @@ bool WebUIBrowserUI::IsAuthorizedAuxDocument() const {
+ 
+ void WebUIBrowserUI::GetIdentity(GetIdentityCallback callback) {
+   if (!IsAuthorizedAuxDocument()) {
+-    std::move(callback).Run("", "", true, false);
++    std::move(callback).Run("", "", true, aux::mojom::WindowKind::kPrivate);
+     return;
+   }
+   const Profile* profile = browser_->GetProfile();
+   std::move(callback).Run(base::NumberToString(browser_->GetSessionID().id()),
+                           profile->GetPath().BaseName().AsUTF8Unsafe(),
+                           profile->IsOffTheRecord(),
+-                          aux::IsQuickAskWindow(browser_));
++                          profile->IsOffTheRecord() ? aux::mojom::WindowKind::kPrivate :
++                          aux::IsQuickAskWindow(browser_) ? aux::mojom::WindowKind::kQuickAsk :
++                          aux::mojom::WindowKind::kNormal);
+ }
+ 
+ void WebUIBrowserUI::Request(const std::string& method,

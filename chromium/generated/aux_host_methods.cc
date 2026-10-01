@@ -3989,6 +3989,7 @@ constexpr MethodInfo kMethods[] = {
   {MethodId::kPasswordImport, "passwordImport", "browser", "core", "aux-webui", true},
   {MethodId::kQuickAskShortcut, "quickAskShortcut", "browser", "quickAsk", "aux-webui", true},
   {MethodId::kQuickAsk, "quickAsk", "browser", "quickAsk", "aux-webui", true},
+  {MethodId::kShowTabWindow, "showTabWindow", "browser", "windowSync", "aux-webui", true},
   {MethodId::kLittleWindow, "littleWindow", "browser", "littleWindow", "aux-webui", true},
   {MethodId::kExternalLinkTarget, "externalLinkTarget", "browser", "littleWindow", "aux-webui", true},
   {MethodId::kDownloadFolder, "downloadFolder", "browser", "core", "aux-webui", true},
@@ -4193,6 +4194,7 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kPasswordImport: valid = ValidateNode123(args); break;
     case MethodId::kQuickAskShortcut: valid = ValidateNode187(args); break;
     case MethodId::kQuickAsk: valid = ValidateNode188(args); break;
+    case MethodId::kShowTabWindow: valid = ValidateNode123(args); break;
     case MethodId::kLittleWindow: valid = ValidateNode190(args); break;
     case MethodId::kExternalLinkTarget: valid = ValidateNode193(args); break;
     case MethodId::kDownloadFolder: valid = ValidateNode0(args); break;

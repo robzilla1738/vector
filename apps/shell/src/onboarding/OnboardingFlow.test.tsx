@@ -393,8 +393,8 @@ it("lets disconnected setup close without mutating saved progress or reopening o
   expect(rpc).not.toHaveBeenCalled();
 });
 
-it("never reads setup or replays it in a Quick Ask utility window", async () => {
-  native.windowKind = "quick-ask";
+it.each(["quick-ask", "little"])("never reads setup or replays it in a %s utility window", async (windowKind) => {
+  native.windowKind = windowKind;
   await act(async () => root.render(<OnboardingHost />));
   await act(async () => requestOnboardingReplay());
   expect(rpc).not.toHaveBeenCalled();

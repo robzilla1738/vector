@@ -17,6 +17,17 @@ function fakeWindow(url: string, port?: ChromiumHostPort) {
 }
 
 describe("Chromium Aux shell bridge", () => {
+  it.each(["normal", "private", "little", "quick-ask"] as const)("preserves the native %s window identity", (windowKind) => {
+    const target = fakeWindow("chrome://aux/", {
+      host: "chromium-fork", windowId: "win-1", profileId: "profile-1", platform: "darwin",
+      privateMode: windowKind === "private", windowKind,
+      request: vi.fn(async () => true), subscribe: vi.fn(() => () => {}),
+    });
+    expect(installChromiumBridge(target)).toBe(true);
+    expect((target.aux as unknown as {windowKind: string}).windowKind).toBe(windowKind);
+    expect(target.aux).not.toHaveProperty("quickAskMode");
+  });
+
   it("sends rebound native window chords while reserving their original menu chords", async () => {
     const request = vi.fn(async () => true);
     const target = fakeWindow("chrome://aux/", {
