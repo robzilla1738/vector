@@ -1,3 +1,4 @@
+import { ExtensionShortcuts } from "../features/extensions/ExtensionShortcuts";
 import { useEffect, useRef, useState } from "react";
 import {
   bindingKey,
@@ -268,6 +269,7 @@ export function ShortcutsSetting({
           Reset all shortcuts
         </button>
       )}
+      <ExtensionShortcuts active={active} />
     </div>
   );
 }

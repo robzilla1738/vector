@@ -1,0 +1,36 @@
+import { useStore as useBoundStore } from "zustand";
+import { runCommand } from "../../commands";
+import { I } from "../../components/icons";
+import { extensionPanel } from "./extension-panel";
+import "./extensions.css";
+
+export function SidePanelSurface() {
+  const panel = useBoundStore(extensionPanel, (state) => state.panel);
+  if (!panel?.contentId || !panel.open) return null;
+  return (
+    <div className="rail-inner extension-side-panel">
+      <header className="rail-head">
+        <span className="rail-title">{panel.title}</span>
+        <span className="sp" />
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label={`Close ${panel.title} side panel`}
+          data-command-id="close-extension-panel"
+          onClick={() => runCommand("close-extension-panel")}
+        >
+          {I.close}
+        </button>
+      </header>
+      <div className="rail-body">
+        <embed
+          key={panel.contentId}
+          className="extension-panel-surface"
+          type="application/x-chromium-surface-embed"
+          data-content-id={panel.contentId}
+          aria-label={`${panel.title} side panel`}
+        />
+      </div>
+    </div>
+  );
+}

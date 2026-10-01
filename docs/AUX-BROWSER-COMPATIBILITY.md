@@ -272,3 +272,11 @@ scoped credential experience.
 - [CEF browser-view toolbar interface](https://github.com/chromiumembedded/cef/blob/master/include/views/cef_browser_view.h)
 
 - [Electron 43.6.0 media permission dispatch](https://github.com/electron/electron/blob/v43.6.0/shell/browser/web_contents_permission_helper.cc)
+
+## Native Chromium extension organization
+
+Chromium extension-created tabs inherit the explicit opener’s Aux Space when the opener belongs to the same normal window and Profile. Without an opener they use that window’s active Space. Activating a tab already assigned to another Space switches the window to that Space. Private, Little and Quick Ask windows do not host Aux extension actions or side-panel guests.
+
+`chrome.tabGroups` remains Chromium’s native grouping API. Native group identifiers, colors and titles are separate from Aux folders; creating, changing or removing a native group does not create, rename or delete an Aux folder.
+
+The unpacked `extension-actions` journey and `chromium-extension-compat.mjs` smoke test exercise disposable fixtures. Candidate native compilation, lifetime checks and qualification records are required before claiming this implementation is qualified. The MV3 smoke explicitly stops the real worker, waits 35 seconds, and verifies that `runtime.sendMessage` starts a new worker instance; this measures restart and message handling, not natural idle termination.

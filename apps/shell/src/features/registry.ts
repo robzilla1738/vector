@@ -1,5 +1,5 @@
 import { COMMANDS, type AuxFeature, type ShellCommandId } from "@aux/contracts";
-import { createElement, type ComponentType, type RefObject } from "react";
+import { createElement, type ComponentType, type RefObject, useSyncExternalStore } from "react";
 import { bridge } from "../bridge";
 import { featureStage } from "../use-feature";
 import type { useStore } from "../store";
@@ -30,6 +30,7 @@ export interface FeatureMount {
   sidebarItems?: readonly ComponentType[];
   sidebarFooterItems?: readonly ComponentType[];
   toolbarItems?: readonly ComponentType[];
+  railView?: { component: ComponentType; active: () => boolean; subscribe: (listener: () => void) => () => void };
   overlays?: readonly ComponentType[];
   composerPlugins?: readonly ComponentType<ComposerPluginProps>[];
   settingsSections?: readonly { category: string; component: ComponentType }[];
@@ -75,4 +76,12 @@ export function FeatureSettings({ category }: { category: string }) {
 export function FeatureComposer(props: ComposerPluginProps) {
   return featureMounts.filter(enabled).flatMap(mount => (mount.composerPlugins ?? []).map((component, index) =>
     createElement(component, { ...props, key: `${mount.feature}:${index}` })));
+}
+
+export function useFeatureRailView() {
+  const feature = useSyncExternalStore(listener => {
+    const stops = featureMounts.flatMap(mount => mount.railView ? [mount.railView.subscribe(listener)] : []);
+    return () => { for (const stop of stops) stop(); };
+  }, () => featureMounts.find(mount => enabled(mount) && mount.railView?.active())?.feature ?? null);
+  return featureMounts.find(mount => mount.feature === feature)?.railView?.component ?? null;
 }

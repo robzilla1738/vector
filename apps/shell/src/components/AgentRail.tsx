@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
+import { useFeatureRailView } from "../features/registry";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
 import { ResizeHandle } from "./ResizeHandle";
@@ -19,6 +20,7 @@ const RailHistory = deferSurface(async () => {
 }, "Recent conversations", true, false, () => useStore.setState({ railOpen: false }));
 
 export const AgentRail = memo(function AgentRail() {
+  const FeatureRailView = useFeatureRailView();
   const key = useShortcutLabels();
   const railOpen = useStore(s => s.railOpen);
   const view = useStore(s => s.railView);
@@ -36,17 +38,17 @@ export const AgentRail = memo(function AgentRail() {
   const chatId = view.kind === "draft" ? view.chatId : selectedRun ? selectedRun.config?.chatId ?? selectedRun.runId : view.kind === "run" ? view.runId : null;
   useEffect(() => { setRecentOpen(false); }, [view]);
   useEffect(() => {
-    if (!railOpen || recentOpen || view.kind === "set") return;
+    if (!railOpen || FeatureRailView || recentOpen || view.kind === "set") return;
     const frame = requestAnimationFrame(() => composer.current?.focus({preventScroll:true}));
     return () => cancelAnimationFrame(frame);
-  }, [railOpen, recentOpen, view.kind]);
+  }, [railOpen, FeatureRailView, recentOpen, view.kind]);
   const expand = () => {
     if (selectedRun) useStore.getState().openConversation(selectedRun.runId);
     else useStore.getState().openConversationDraft(chatId);
   };
   return (
     <aside ref={root} className={`rail ${railOpen ? "open" : ""}`} style={{ "--rail-w": `${railWidth}px` } as React.CSSProperties} aria-label="Aux assistant" aria-hidden={!railOpen} inert={!railOpen}>
-      <div className="rail-inner">
+      {FeatureRailView ? (railOpen && <FeatureRailView />) : <div className="rail-inner">
         <div className="rail-head">
           <span className="rail-title">{recentOpen ? "Recent work" : view.kind === "set" ? "Set" : "Ask Aux"}</span>
           {!connected && <output className="rail-sub offline">Connecting…</output>}
@@ -62,7 +64,7 @@ export const AgentRail = memo(function AgentRail() {
           {railOpen && !recentOpen && view.kind !== "set" && <Conversation chatId={chatId} embedded composerRef={composer} onChatCreated={chatId => setRailView({kind:"draft",chatId})} />}
           {railOpen && !recentOpen && view.kind === "set" && <SetPanel setId={view.setId} />}
         </div>
-      </div>
+      </div>}
       <ResizeHandle side="right" value={railWidth} min={300} max={620} reset={360} onResize={setRailWidth} />
     </aside>
   );

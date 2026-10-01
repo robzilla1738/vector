@@ -32,7 +32,11 @@ const manifest = {
   devtools_page: "devtools.html",
 };
 writeFileSync(join(extension, "manifest.json"), JSON.stringify(manifest));
-writeFileSync(join(extension, "worker.js"), "chrome.runtime.onInstalled.addListener(()=>{});");
+writeFileSync(join(extension, "worker.js"), `const boot=crypto.randomUUID();
+chrome.runtime.onInstalled.addListener(()=>{});
+chrome.runtime.onMessage.addListener((message,sender,reply)=>{
+  if(message?.type==='aux-wake')reply({boot,echo:message.value});
+});`);
 writeFileSync(join(extension, "probe.html"), "<!doctype html><title>Aux extension probe</title><button id=popup>Open action popup</button><script src=probe.js></script>");
 writeFileSync(join(extension, "probe.js"), `document.querySelector('#popup').onclick=async()=>{
   try { await chrome.action.openPopup(); document.body.dataset.popup='opened'; }
@@ -97,6 +101,27 @@ try {
   const extensionId = new URL(worker.url()).host;
   const probe = await context.newPage();
   await probe.goto(`chrome-extension://${extensionId}/probe.html`);
+
+  await record("runtimeSendMessage", async () => {
+    const result = await probe.evaluate(() => chrome.runtime.sendMessage({ type: "aux-wake", value: "initial" }));
+    assert.equal(result.echo, "initial"); assert.match(result.boot, /^[0-9a-f-]{36}$/);
+    return result;
+  });
+  await record("mv3WorkerWakeAfter35Seconds", async () => {
+    assert.equal(results.runtimeSendMessage.status, "pass");
+    const before = results.runtimeSendMessage.detail.boot;
+    // Stop the real worker before the wait so debugger attachment cannot mask the wake test.
+    const session = await context.newCDPSession(probe);
+    try {
+      await session.send("ServiceWorker.enable");
+      await session.send("ServiceWorker.stopAllWorkers");
+      await new Promise(resolve => setTimeout(resolve, 35_000));
+      const result = await probe.evaluate(() => chrome.runtime.sendMessage({ type: "aux-wake", value: "after-idle" }));
+      assert.equal(result.echo, "after-idle");
+      assert.notEqual(result.boot, before, "The stopped worker must actually restart, not just answer while alive");
+      return { waitMs: 35000, stoppedWith: "ServiceWorker.stopAllWorkers", before, after: result.boot, echo: result.echo };
+    } finally { await session.detach(); }
+  }, 45_000);
 
   await record("tabs", async () => {
     const result = await probe.evaluate(async url => {

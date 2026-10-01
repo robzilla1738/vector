@@ -1,41 +1,61 @@
 import { useCallback, useRef, useState } from "react";
-import { bridge, inNativeHost, type BrowserExtension } from "../bridge";
-import { useStore } from "../store";
+import type { HostMethodResult } from "@aux/contracts";
+import { bridge, inNativeHost } from "../bridge";
+import { runCommand } from "../commands";
 import { I } from "./icons";
 import { Menu } from "../ui";
 import { useFeature } from "../use-feature";
+import { useExtensionActions } from "../features/extensions/use-extension-actions";
+import { extensionActionAnchor } from "../features/extensions/action-anchor";
+import "../features/extensions/extensions.css";
 
-/** User-initiated extension actions are dispatched through Chromium's toolbar
- * model, which owns popup permissions and the extension process. */
+type Action = HostMethodResult<"extensionActions">[number];
+function ActionIcon({ action }: { action: Action }) {
+  // Chromium's action icon already contains its native badge and attention
+  // state; adding another badge here would draw it twice.
+  return action.iconPng ? <img className="extension-action-icon" src={action.iconPng} alt="" /> : I.extension;
+}
 export function ExtensionActions() {
   const available = useFeature("extensions");
+  const enabled = inNativeHost && !bridge.privateMode && bridge.windowKind === "normal" && available;
+  const { items, error } = useExtensionActions(enabled);
   const anchor = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<BrowserExtension[]>([]);
-  const [error, setError] = useState("");
   const close = useCallback(() => setOpen(false), []);
-  if (!inNativeHost || bridge.privateMode || !available) return null;
-
-  async function show() {
-    setError("");
-    setOpen(true);
-    try {
-      setItems((await bridge.extensions()).filter((item) => item.source === "store" && item.enabled));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
-    }
-  }
-
+  if (!enabled) return null;
+  const invoke = (item: Action, button: HTMLButtonElement) => {
+    close();
+    runCommand("extension-action", {
+      payload: { extensionId: item.id, anchor: extensionActionAnchor(button) },
+    });
+  };
   return (
-    <>
+    <fieldset className="extension-toolbar-actions" aria-label="Extension actions">
+      {items
+        .filter((item) => item.pinned)
+        .map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className="icon-btn"
+            aria-label={`${item.name}${item.badgeText ? ` · ${item.badgeText}` : ""}`}
+            title={item.name}
+            disabled={!item.enabled}
+            data-command-id="extension-action"
+            onClick={(event) => invoke(item, event.currentTarget)}
+          >
+            <ActionIcon action={item} />
+          </button>
+        ))}
       <button
         ref={anchor}
+        type="button"
         className="icon-btn"
         title="Extensions"
         aria-label="Extensions"
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => (open ? close() : void show())}
+        onClick={() => setOpen((value) => !value)}
       >
         {I.extension}
       </button>
@@ -53,33 +73,49 @@ export function ExtensionActions() {
               {error}
             </p>
           )}
-          {!error && !items.length && <p className="menu-empty">No enabled Store extensions.</p>}
+          {!error && !items.length && (
+            <p className="menu-empty">No extension actions. Install an extension in Settings.</p>
+          )}
           {items.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              role="menuitem"
-              className="menu-item"
-              onClick={() => {
-                close();
-                void bridge.showExtensionAction(item.key).catch((reason) => {
-                  useStore
-                    .getState()
-                    .toast(reason instanceof Error ? reason.message : String(reason), "error");
-                });
-              }}
-            >
-              {I.extension}
-              <span>{item.name}</span>
-            </button>
+            <fieldset key={item.id} aria-label={item.name}>
+              <button
+                type="button"
+                role="menuitem"
+                className="menu-item"
+                disabled={!item.enabled}
+                data-command-id="extension-action"
+                onClick={(event) => invoke(item, event.currentTarget)}
+              >
+                <ActionIcon action={item} />
+                <span>
+                  {item.name}
+                  {item.badgeText ? ` · ${item.badgeText}` : ""}
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={item.pinned}
+                className="menu-item extension-pin"
+                data-command-id="pin-extension-action"
+                onClick={() =>
+                  runCommand("pin-extension-action", {
+                    payload: { extensionId: item.id, pinned: !item.pinned },
+                  })
+                }
+              >
+                {item.pinned ? "Unpin from toolbar" : "Pin to toolbar"}
+              </button>
+            </fieldset>
           ))}
           <button
             type="button"
             role="menuitem"
             className="menu-item"
+            data-command-id="show-extensions"
             onClick={() => {
               close();
-              useStore.getState().setOverlay("settings");
+              runCommand("show-extensions");
             }}
           >
             {I.gearSm}
@@ -87,6 +123,6 @@ export function ExtensionActions() {
           </button>
         </Menu>
       )}
-    </>
+    </fieldset>
   );
 }
