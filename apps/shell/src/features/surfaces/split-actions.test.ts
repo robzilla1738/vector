@@ -49,8 +49,8 @@ it("serializes competing mutations and refuses the stale second organization bef
   fixture.native.mockImplementationOnce(() => new Promise<void>(resolve => { release = resolve; }));
   const first = commitSplit(resizeSplit(previous, "one", 0, .6), previous);
   const second = commitSplit(resizeSplit(previous, "one", 0, .7), previous);
-  const rejected = expect(second).rejects.toThrow("tabs changed");
-  await Promise.resolve(); release(); await first; await rejected;
+  const rejected = second.catch(error => error);
+  await Promise.resolve(); release(); await first; expect(await rejected).toMatchObject({ message: expect.stringContaining("tabs changed") });
   expect(fixture.native).toHaveBeenCalledTimes(1);
   expect(fixture.state.layout.splitGroups?.[0]?.ratios).toEqual([.6]);
 });

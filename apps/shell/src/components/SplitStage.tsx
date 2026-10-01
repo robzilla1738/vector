@@ -71,7 +71,7 @@ export function SplitStage({ group, pages }: { group: SplitGroup; pages: PageTar
   const targets = useMemo(() => [...geometry.panes, ...geometry.dividers], [geometry]);
   const ids = useMemo(() => [...group.panes, ...geometry.dividers.map(divider => `${group.id}:divider:${divider.index}`)], [group.id, group.panes, geometry.dividers]);
   const rects = useSpringRects(targets, ids, resizing);
-  return <div className="split-stage" role="region" ref={root} aria-label={`${group.panes.length} split panes`}>
+  return <section className="split-stage" ref={root} aria-label={`${group.panes.length} split panes`}>
     {group.panes.map((id, index) => {
       const page = pages.find(page => page.pageId === id)!;
       const rect = rects[index] ?? geometry.panes[index]!;
@@ -84,7 +84,7 @@ export function SplitStage({ group, pages }: { group: SplitGroup; pages: PageTar
     })}
     {geometry.dividers.map((divider, index) => {
       const rect = rects[group.panes.length + index] ?? divider;
-      return <hr key={divider.index} className={`fluid-split-divider ${divider.axis}`} role="separator" tabIndex={0}
+      return <div key={divider.index} className={`fluid-split-divider ${divider.axis}`} role="separator" tabIndex={0}
       aria-label={`Resize split divider ${divider.index + 1}`} aria-orientation={divider.axis === "x" ? "vertical" : "horizontal"}
       aria-valuemin={10} aria-valuemax={90} aria-valuenow={Math.round(divider.ratio * 100)}
       style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
@@ -108,5 +108,5 @@ export function SplitStage({ group, pages }: { group: SplitGroup; pages: PageTar
         if (ratio === null) return; event.preventDefault(); event.stopPropagation(); resize(divider.index, ratio);
       }} />;
     })}
-  </div>;
+  </section>;
 }

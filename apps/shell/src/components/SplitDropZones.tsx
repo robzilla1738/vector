@@ -35,7 +35,7 @@ export function SplitDropZones() {
   if (!state.dragging) return null;
   const bounds = document.getElementById("stage")?.getBoundingClientRect();
   if (!bounds) return null;
-  return <div className="split-drop-cover" role="region" style={{ left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height }} aria-label="Split drop zones" onDragOver={event => {
+  return <section className="split-drop-cover" style={{ left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height }} aria-label="Split drop zones" onDragOver={event => {
     event.preventDefault(); event.dataTransfer.dropEffect = "move";
     const stage = document.getElementById("stage")!.getBoundingClientRect();
     const x = event.clientX - stage.left, y = event.clientY - stage.top;
@@ -52,7 +52,7 @@ export function SplitDropZones() {
     reset();
   }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { started.current = null; setReady(false); if (timer.current) clearTimeout(timer.current); setSurfaceState({ edge: null }); } }}>
     {ready && state.edge && <output className={`split-drop-highlight ${state.edge}`}>Split {state.edge}</output>}
-  </div>;
+  </section>;
 }
 export function SplitPicker() {
   const { picker } = useSurfaceState();
