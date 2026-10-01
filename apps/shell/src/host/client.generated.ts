@@ -68,6 +68,7 @@ export function createHostClient(port: HostPort) {
     reloadExtension: (...args: HostMethodArgs<"reloadExtension">) => call("reloadExtension", args),
     showExtensionAction: (...args: HostMethodArgs<"showExtensionAction">) => call("showExtensionAction", args),
     extensionActions: (...args: HostMethodArgs<"extensionActions">) => call("extensionActions", args),
+    extensionSidePanel: (...args: HostMethodArgs<"extensionSidePanel">) => call("extensionSidePanel", args),
     pinExtensionAction: (...args: HostMethodArgs<"pinExtensionAction">) => call("pinExtensionAction", args),
     extensionCommands: (...args: HostMethodArgs<"extensionCommands">) => call("extensionCommands", args),
     setExtensionCommandShortcut: (...args: HostMethodArgs<"setExtensionCommandShortcut">) => call("setExtensionCommandShortcut", args),

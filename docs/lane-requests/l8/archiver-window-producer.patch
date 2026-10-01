@@ -1,0 +1,10 @@
+--- a/chrome/browser/ui/aux/tab_catalog.cc
++++ b/chrome/browser/ui/aux/tab_catalog.cc
+@@ -383,6 +383,7 @@
+       }
+       base::DictValue window;
+       window.Set("windowId", WindowId(browser));
++      window.Set("windowKind", profile_->IsOffTheRecord() ? "private" : IsQuickAskWindow(browser) ? "quick-ask" : IsLittleWindow(browser) ? "little" : "normal");
+       window.Set("order", std::move(order));
+       window.Set("activePageId", std::move(active));
+       windows.Append(std::move(window));

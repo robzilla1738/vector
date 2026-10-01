@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -108,7 +108,7 @@
+   register_runtime(AuxRuntimeMethodGroup::kLibrary,
+                    {"native.capabilities", "native.searchEngineGet", "native.searchEngineSet",
+                     "native.searchSuggestionsGet", "native.searchSuggestionsSet",
+-                    "native.bookmarksInvoke"});
++                    "native.bookmarksInvoke", "native.liveFolderSources"});
+   register_runtime(AuxRuntimeMethodGroup::kBlocking,
+                    {"native.egressContext", "native.egressInstall", "native.egressRevoke",
+                     "native.contentBlockBegin", "native.contentBlockAppend",

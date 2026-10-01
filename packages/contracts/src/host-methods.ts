@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LiveFolderSchema } from "./live-folders.js";
 import { OrganizationCommitSchema, OrganizationSnapshotSchema } from "./organization.js";
 import { TabCatalogSnapshotSchema, TabCommandAckSchema, TabCommandEnvelopeSchema, TabCommandSchema, TabPatchSchema, TabPlacementSchema } from "./tabs.js";
 import { NativeMethods } from "./bridge.js";
@@ -191,6 +192,7 @@ export const HostMethods = {
   reloadExtension: shell("extensions", z.tuple([str]), extension),
   showExtensionAction: shell("extensions", z.tuple([str, screenRect.optional()]), bool),
   extensionActions: shell("extensions", noArgs, z.array(extensionAction)),
+  extensionSidePanel: shell("extensions", z.tuple([z.enum(["describe", "close"])]), z.object({ extensionId: str, windowId: str, pageId: str.nullable(), contentId: str.nullable(), title: str, open: bool }).strict().nullable()),
   pinExtensionAction: shell("extensions", z.tuple([str, bool]), bool),
   extensionCommands: shell("extensions", noArgs, z.array(extensionCommand)),
   setExtensionCommandShortcut: shell("extensions", z.tuple([str, str, str]), bool),
@@ -329,6 +331,7 @@ export const HostMethods = {
     private: bool, generation: number, rulesDigest: str, installedRules: number,
     phase: z.literal("document_start"), futureDocuments: z.literal(true) }).strict()),
   "native.bookmarksInvoke": runtime("core", z.object({ method: str, params: z.unknown() }).strict(), z.unknown()),
+  "native.liveFolderSources": runtime("liveFolders", z.object({}).strict(), z.array(z.object({ id: str.min(1).max(200), live: LiveFolderSchema }).strict()).max(1000)),
   "native.capabilities": runtime("core", z.object({}).strict(), HostCapabilitiesSchema),
   "native.downloadPreviewText": runtime("smartDownloadNames", z.object({ downloadId: str }).strict(), z.object({ text: str.max(2048) }).strict()),
   "native.renameDownload": runtime("smartDownloadNames", RenameDownloadSchema,
@@ -407,7 +410,7 @@ export const HostEvents = {
     removed: bool.optional(), video: bool.optional(), pip: bool.optional() }).strict()),
   onPictureInPicture: event("pictureInPicture", PictureInPictureResultSchema.extend({ pageId: str })),
   onExtensionActionsChanged: event("extensions", z.array(extensionAction)),
-  onSidePanel: event("extensions", z.object({ extensionId: str, pageId: str.nullable(), title: str, open: bool }).strict()),
+  onSidePanel: event("extensions", z.object({ extensionId: str, windowId: str, pageId: str.nullable(), contentId: str.nullable(), title: str, open: bool }).strict()),
   onFocusSpace: event("profiles", z.object({ spaceId: str.nullable(), windowId: str }).strict()),
   onRoutedOpen: event("linkRouting", routedOpen),
   onRoutePrompt: event("linkRouting", routePrompt),
