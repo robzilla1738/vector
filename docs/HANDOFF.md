@@ -13,6 +13,8 @@ Prior Wave1 requests: L1 dispatchCommand(new-window/private-window) core host co
 
 Latest: contracts-v2 integrates dispatchCommand, all-command native shortcut overrides, disposable journey.prepare and TLSHello counter. Source checks and103-asset shell stage pass; no native build/new qualification yet. Inspect/double-press requests pending next contract. App adapter waits for L1 module. Nine LJ ports need independent source/native verification. Reviewer docs merged65a7202e; four P2 remain open. Builder roster delivered.
 
+Contracts-v3 checkpoint: devTools accepts optional toggle/inspect; onShortcut accepts optional websitePassThrough notification for native forwarding of the actual second trusted event. Generated194/26 hash386a28167923;13 focused tests, typecheck, codegen, bridge and format pass. Builder staged103 assets digesta3f65c8a2cb09787b974d4114633a6f44e98f7437e65ec516d7b4f1d23bc1908; root independently verified pin; budgets470/179/1682 pass. L1 must test navigation/focus target refusal for website forwarding before native review. LJ frozen candidate d9110f6ad2e7542d62ae0a06e3e89acc789fc347 independently source-reviewed, eleven IDs queued builder. Parity matrix preserves remaining gaps; no feature merge/new qualification yet.
+
 ---
 
 # Aux development handoff

@@ -329,6 +329,8 @@ bool ValidateNode299(const base::Value& value);
 bool ValidateNode300(const base::Value& value);
 bool ValidateNode301(const base::Value& value);
 bool ValidateNode302(const base::Value& value);
+bool ValidateNode303(const base::Value& value);
+bool ValidateNode304(const base::Value& value);
 bool ValidateNode0(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
@@ -1810,24 +1812,41 @@ bool ValidateNode126(const base::Value& value) {
 bool ValidateNode127(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
+  if (list.size() < 1) return false;
+  if (list.size() > 2) return false;
+  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
+  if (list.size() > 1 && !ValidateNode128(list[1])) return false;
+  if (list.size() > 2) return false;
+  return true;
+}
+
+bool ValidateNode128(const base::Value& value) {
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("toggle")) || (value == base::Value("inspect")))) return false;
+  return true;
+}
+
+bool ValidateNode129(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
   if (list.size() > 1) return false;
   if (list.size() > 0 && !ValidateNode58(list[0])) return false;
   if (list.size() > 1) return false;
   return true;
 }
 
-bool ValidateNode128(const base::Value& value) {
+bool ValidateNode130(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 2) return false;
   if (list.size() > 2) return false;
   if (list.size() > 0 && !ValidateNode58(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode129(list[1])) return false;
+  if (list.size() > 1 && !ValidateNode131(list[1])) return false;
   if (list.size() > 2) return false;
   return true;
 }
 
-bool ValidateNode129(const base::Value& value) {
+bool ValidateNode131(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("level")) {
@@ -1840,7 +1859,7 @@ bool ValidateNode129(const base::Value& value) {
     if (!ValidateNode7(*field)) return false;
   }
   if (const base::Value* field = dict.Find("direction")) {
-    if (!ValidateNode130(*field)) return false;
+    if (!ValidateNode132(*field)) return false;
   }
   for (auto entry : dict) {
     if (!(entry.first == "level" || entry.first == "delta" || entry.first == "reset" || entry.first == "direction")) return false;
@@ -1848,13 +1867,13 @@ bool ValidateNode129(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode130(const base::Value& value) {
+bool ValidateNode132(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!((value == base::Value("in")) || (value == base::Value("out")))) return false;
   return true;
 }
 
-bool ValidateNode131(const base::Value& value) {
+bool ValidateNode133(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 1) return false;
@@ -1864,7 +1883,7 @@ bool ValidateNode131(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode132(const base::Value& value) {
+bool ValidateNode134(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 2) return false;
@@ -1872,65 +1891,49 @@ bool ValidateNode132(const base::Value& value) {
   if (list.size() > 0 && !ValidateNode58(list[0])) return false;
   if (list.size() > 1 && !ValidateNode7(list[1])) return false;
   if (list.size() > 2) return false;
-  return true;
-}
-
-bool ValidateNode133(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() < 2) return false;
-  if (list.size() > 3) return false;
-  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode58(list[1])) return false;
-  if (list.size() > 2 && !ValidateNode134(list[2])) return false;
-  if (list.size() > 3) return false;
-  return true;
-}
-
-bool ValidateNode134(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!((value == base::Value("hosts")) || (value == base::Value("cookie_banner")))) return false;
   return true;
 }
 
 bool ValidateNode135(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  if (list.size() < 1) return false;
-  if (list.size() > 4) return false;
-  if (list.size() > 0 && !ValidateNode136(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode7(list[1])) return false;
-  if (list.size() > 2 && !ValidateNode7(list[2])) return false;
-  if (list.size() > 3 && !ValidateNode137(list[3])) return false;
-  if (list.size() > 4) return false;
+  if (list.size() < 2) return false;
+  if (list.size() > 3) return false;
+  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
+  if (list.size() > 1 && !ValidateNode58(list[1])) return false;
+  if (list.size() > 2 && !ValidateNode136(list[2])) return false;
+  if (list.size() > 3) return false;
   return true;
 }
 
 bool ValidateNode136(const base::Value& value) {
   if (!(value.is_string())) return false;
-  if (!((value == base::Value("system")) || (value == base::Value("dark")) || (value == base::Value("light")))) return false;
+  if (!((value == base::Value("hosts")) || (value == base::Value("cookie_banner")))) return false;
   return true;
 }
 
 bool ValidateNode137(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!((value == base::Value("liquid-glass")) || (value == base::Value("titlebar")) || (value == base::Value("sidebar")) || (value == base::Value("under-window")))) return false;
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() < 1) return false;
+  if (list.size() > 4) return false;
+  if (list.size() > 0 && !ValidateNode138(list[0])) return false;
+  if (list.size() > 1 && !ValidateNode7(list[1])) return false;
+  if (list.size() > 2 && !ValidateNode7(list[2])) return false;
+  if (list.size() > 3 && !ValidateNode139(list[3])) return false;
+  if (list.size() > 4) return false;
   return true;
 }
 
 bool ValidateNode138(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() < 1) return false;
-  if (list.size() > 1) return false;
-  if (list.size() > 0 && !ValidateNode139(list[0])) return false;
-  if (list.size() > 1) return false;
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("system")) || (value == base::Value("dark")) || (value == base::Value("light")))) return false;
   return true;
 }
 
 bool ValidateNode139(const base::Value& value) {
   if (!(value.is_string())) return false;
-  if (!((value == base::Value("new-window")) || (value == base::Value("new-private-window")))) return false;
+  if (!((value == base::Value("liquid-glass")) || (value == base::Value("titlebar")) || (value == base::Value("sidebar")) || (value == base::Value("under-window")))) return false;
   return true;
 }
 
@@ -1945,21 +1948,37 @@ bool ValidateNode140(const base::Value& value) {
 }
 
 bool ValidateNode141(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() > 512) return false;
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode142(list[i])) return false;
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("new-window")) || (value == base::Value("new-private-window")))) return false;
   return true;
 }
 
 bool ValidateNode142(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() < 1) return false;
+  if (list.size() > 1) return false;
+  if (list.size() > 0 && !ValidateNode143(list[0])) return false;
+  if (list.size() > 1) return false;
+  return true;
+}
+
+bool ValidateNode143(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() > 512) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode144(list[i])) return false;
+  return true;
+}
+
+bool ValidateNode144(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("commandId")) {
-    if (!ValidateNode143(*field)) return false;
+    if (!ValidateNode145(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("key")) {
-    if (!ValidateNode144(*field)) return false;
+    if (!ValidateNode146(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("meta")) {
     if (!ValidateNode7(*field)) return false;
@@ -1982,14 +2001,14 @@ bool ValidateNode142(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode143(const base::Value& value) {
+bool ValidateNode145(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() > 64) return false;
   return true;
 }
 
-bool ValidateNode144(const base::Value& value) {
+bool ValidateNode146(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() < 1) return false;
@@ -1997,18 +2016,18 @@ bool ValidateNode144(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode145(const base::Value& value) {
+bool ValidateNode147(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 1) return false;
   if (list.size() > 2) return false;
   if (list.size() > 0 && !ValidateNode58(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode146(list[1])) return false;
+  if (list.size() > 1 && !ValidateNode148(list[1])) return false;
   if (list.size() > 2) return false;
   return true;
 }
 
-bool ValidateNode146(const base::Value& value) {
+bool ValidateNode148(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("x")) {
@@ -2018,10 +2037,10 @@ bool ValidateNode146(const base::Value& value) {
     if (!ValidateNode56(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("width")) {
-    if (!ValidateNode147(*field)) return false;
+    if (!ValidateNode149(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("height")) {
-    if (!ValidateNode147(*field)) return false;
+    if (!ValidateNode149(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "x" || entry.first == "y" || entry.first == "width" || entry.first == "height")) return false;
@@ -2029,12 +2048,12 @@ bool ValidateNode146(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode147(const base::Value& value) {
+bool ValidateNode149(const base::Value& value) {
   if (!((value.is_int() || value.is_double()))) return false;
   return true;
 }
 
-bool ValidateNode148(const base::Value& value) {
+bool ValidateNode150(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 3) return false;
@@ -2043,32 +2062,6 @@ bool ValidateNode148(const base::Value& value) {
   if (list.size() > 1 && !ValidateNode58(list[1])) return false;
   if (list.size() > 2 && !ValidateNode58(list[2])) return false;
   if (list.size() > 3) return false;
-  return true;
-}
-
-bool ValidateNode149(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() < 2) return false;
-  if (list.size() > 2) return false;
-  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode150(list[1])) return false;
-  if (list.size() > 2) return false;
-  return true;
-}
-
-bool ValidateNode150(const base::Value& value) {
-  if (!(value.is_dict())) return false;
-  const auto& dict = value.GetDict();
-  if (const base::Value* field = dict.Find("color")) {
-    if (!ValidateNode69(*field)) return false;
-  } else return false;
-  if (const base::Value* field = dict.Find("icon")) {
-    if (!ValidateNode144(*field)) return false;
-  } else return false;
-  for (auto entry : dict) {
-    if (!(entry.first == "color" || entry.first == "icon")) return false;
-  }
   return true;
 }
 
@@ -2084,7 +2077,17 @@ bool ValidateNode151(const base::Value& value) {
 }
 
 bool ValidateNode152(const base::Value& value) {
-  if (!(value.is_string() || value.is_none())) return false;
+  if (!(value.is_dict())) return false;
+  const auto& dict = value.GetDict();
+  if (const base::Value* field = dict.Find("color")) {
+    if (!ValidateNode69(*field)) return false;
+  } else return false;
+  if (const base::Value* field = dict.Find("icon")) {
+    if (!ValidateNode146(*field)) return false;
+  } else return false;
+  for (auto entry : dict) {
+    if (!(entry.first == "color" || entry.first == "icon")) return false;
+  }
   return true;
 }
 
@@ -2093,17 +2096,33 @@ bool ValidateNode153(const base::Value& value) {
   const auto& list = value.GetList();
   if (list.size() < 2) return false;
   if (list.size() > 2) return false;
-  if (list.size() > 0 && !ValidateNode18(list[0])) return false;
+  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
   if (list.size() > 1 && !ValidateNode154(list[1])) return false;
   if (list.size() > 2) return false;
   return true;
 }
 
 bool ValidateNode154(const base::Value& value) {
+  if (!(value.is_string() || value.is_none())) return false;
+  return true;
+}
+
+bool ValidateNode155(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() < 2) return false;
+  if (list.size() > 2) return false;
+  if (list.size() > 0 && !ValidateNode18(list[0])) return false;
+  if (list.size() > 1 && !ValidateNode156(list[1])) return false;
+  if (list.size() > 2) return false;
+  return true;
+}
+
+bool ValidateNode156(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("version")) {
-    if (!ValidateNode155(*field)) return false;
+    if (!ValidateNode157(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("revision")) {
     if (!ValidateNode18(*field)) return false;
@@ -2112,13 +2131,13 @@ bool ValidateNode154(const base::Value& value) {
     if (!ValidateNode7(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("inApp")) {
-    if (!ValidateNode156(*field)) return false;
+    if (!ValidateNode158(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("default")) {
-    if (!ValidateNode157(*field)) return false;
+    if (!ValidateNode159(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("rules")) {
-    if (!ValidateNode162(*field)) return false;
+    if (!ValidateNode164(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "version" || entry.first == "revision" || entry.first == "enabled" || entry.first == "inApp" || entry.first == "default" || entry.first == "rules")) return false;
@@ -2126,38 +2145,20 @@ bool ValidateNode154(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode155(const base::Value& value) {
+bool ValidateNode157(const base::Value& value) {
   if (!((value.is_int() || value.is_double()))) return false;
   if (!(value == base::Value(1))) return false;
   return true;
 }
 
-bool ValidateNode156(const base::Value& value) {
+bool ValidateNode158(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!((value == base::Value("off")) || (value == base::Value("cross-site-new-tab")))) return false;
   return true;
 }
 
-bool ValidateNode157(const base::Value& value) {
-  if ((static_cast<int>(ValidateNode158(value)) + static_cast<int>(ValidateNode160(value))) != 1) return false;
-  return true;
-}
-
-bool ValidateNode158(const base::Value& value) {
-  if (!(value.is_dict())) return false;
-  const auto& dict = value.GetDict();
-  if (const base::Value* field = dict.Find("kind")) {
-    if (!ValidateNode159(*field)) return false;
-  } else return false;
-  for (auto entry : dict) {
-    if (!(entry.first == "kind")) return false;
-  }
-  return true;
-}
-
 bool ValidateNode159(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!(value == base::Value("last-used"))) return false;
+  if ((static_cast<int>(ValidateNode160(value)) + static_cast<int>(ValidateNode162(value))) != 1) return false;
   return true;
 }
 
@@ -2166,6 +2167,24 @@ bool ValidateNode160(const base::Value& value) {
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("kind")) {
     if (!ValidateNode161(*field)) return false;
+  } else return false;
+  for (auto entry : dict) {
+    if (!(entry.first == "kind")) return false;
+  }
+  return true;
+}
+
+bool ValidateNode161(const base::Value& value) {
+  if (!(value.is_string())) return false;
+  if (!(value == base::Value("last-used"))) return false;
+  return true;
+}
+
+bool ValidateNode162(const base::Value& value) {
+  if (!(value.is_dict())) return false;
+  const auto& dict = value.GetDict();
+  if (const base::Value* field = dict.Find("kind")) {
+    if (!ValidateNode163(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("profileId")) {
     if (!ValidateNode43(*field)) return false;
@@ -2179,21 +2198,21 @@ bool ValidateNode160(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode161(const base::Value& value) {
+bool ValidateNode163(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!(value == base::Value("profile"))) return false;
   return true;
 }
 
-bool ValidateNode162(const base::Value& value) {
+bool ValidateNode164(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() > 500) return false;
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode163(list[i])) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode165(list[i])) return false;
   return true;
 }
 
-bool ValidateNode163(const base::Value& value) {
+bool ValidateNode165(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("id")) {
@@ -2206,16 +2225,16 @@ bool ValidateNode163(const base::Value& value) {
     if (!ValidateNode18(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("match")) {
-    if (!ValidateNode164(*field)) return false;
+    if (!ValidateNode166(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("sources")) {
-    if (!ValidateNode166(*field)) return false;
-  }
-  if (const base::Value* field = dict.Find("fromApps")) {
     if (!ValidateNode168(*field)) return false;
   }
-  if (const base::Value* field = dict.Find("destination")) {
+  if (const base::Value* field = dict.Find("fromApps")) {
     if (!ValidateNode170(*field)) return false;
+  }
+  if (const base::Value* field = dict.Find("destination")) {
+    if (!ValidateNode172(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("hits")) {
     if (!ValidateNode18(*field)) return false;
@@ -2229,11 +2248,11 @@ bool ValidateNode163(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode164(const base::Value& value) {
+bool ValidateNode166(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("kind")) {
-    if (!ValidateNode165(*field)) return false;
+    if (!ValidateNode167(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("pattern")) {
     if (!ValidateNode74(*field)) return false;
@@ -2247,36 +2266,36 @@ bool ValidateNode164(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode165(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!((value == base::Value("host")) || (value == base::Value("glob")) || (value == base::Value("prefix")))) return false;
-  return true;
-}
-
-bool ValidateNode166(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() < 1) return false;
-  if (list.size() > 3) return false;
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode167(list[i])) return false;
-  return true;
-}
-
 bool ValidateNode167(const base::Value& value) {
   if (!(value.is_string())) return false;
-  if (!((value == base::Value("external")) || (value == base::Value("cli")) || (value == base::Value("in-app")))) return false;
+  if (!((value == base::Value("host")) || (value == base::Value("glob")) || (value == base::Value("prefix")))) return false;
   return true;
 }
 
 bool ValidateNode168(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  if (list.size() > 100) return false;
+  if (list.size() < 1) return false;
+  if (list.size() > 3) return false;
   for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode169(list[i])) return false;
   return true;
 }
 
 bool ValidateNode169(const base::Value& value) {
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("external")) || (value == base::Value("cli")) || (value == base::Value("in-app")))) return false;
+  return true;
+}
+
+bool ValidateNode170(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() > 100) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode171(list[i])) return false;
+  return true;
+}
+
+bool ValidateNode171(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() < 1) return false;
@@ -2284,16 +2303,16 @@ bool ValidateNode169(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode170(const base::Value& value) {
-  if ((static_cast<int>(ValidateNode171(value)) + static_cast<int>(ValidateNode173(value))) != 1) return false;
+bool ValidateNode172(const base::Value& value) {
+  if ((static_cast<int>(ValidateNode173(value)) + static_cast<int>(ValidateNode175(value))) != 1) return false;
   return true;
 }
 
-bool ValidateNode171(const base::Value& value) {
+bool ValidateNode173(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("kind")) {
-    if (!ValidateNode161(*field)) return false;
+    if (!ValidateNode163(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("profileId")) {
     if (!ValidateNode43(*field)) return false;
@@ -2302,7 +2321,7 @@ bool ValidateNode171(const base::Value& value) {
     if (!ValidateNode43(*field)) return false;
   }
   if (const base::Value* field = dict.Find("window")) {
-    if (!ValidateNode172(*field)) return false;
+    if (!ValidateNode174(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "kind" || entry.first == "profileId" || entry.first == "spaceId" || entry.first == "window")) return false;
@@ -2310,17 +2329,17 @@ bool ValidateNode171(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode172(const base::Value& value) {
+bool ValidateNode174(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!((value == base::Value("tab")) || (value == base::Value("little")) || (value == base::Value("new-window")))) return false;
   return true;
 }
 
-bool ValidateNode173(const base::Value& value) {
+bool ValidateNode175(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("kind")) {
-    if (!ValidateNode174(*field)) return false;
+    if (!ValidateNode176(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "kind")) return false;
@@ -2328,74 +2347,74 @@ bool ValidateNode173(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode174(const base::Value& value) {
+bool ValidateNode176(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!(value == base::Value("ask"))) return false;
-  return true;
-}
-
-bool ValidateNode175(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() < 2) return false;
-  if (list.size() > 2) return false;
-  if (list.size() > 0 && !ValidateNode55(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode167(list[1])) return false;
-  if (list.size() > 2) return false;
-  return true;
-}
-
-bool ValidateNode176(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() < 3) return false;
-  if (list.size() > 3) return false;
-  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode170(list[1])) return false;
-  if (list.size() > 2 && !ValidateNode7(list[2])) return false;
-  if (list.size() > 3) return false;
   return true;
 }
 
 bool ValidateNode177(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  if (list.size() < 1) return false;
-  if (list.size() > 1) return false;
-  if (list.size() > 0 && !ValidateNode178(list[0])) return false;
-  if (list.size() > 1) return false;
+  if (list.size() < 2) return false;
+  if (list.size() > 2) return false;
+  if (list.size() > 0 && !ValidateNode55(list[0])) return false;
+  if (list.size() > 1 && !ValidateNode169(list[1])) return false;
+  if (list.size() > 2) return false;
   return true;
 }
 
 bool ValidateNode178(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() < 3) return false;
+  if (list.size() > 3) return false;
+  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
+  if (list.size() > 1 && !ValidateNode172(list[1])) return false;
+  if (list.size() > 2 && !ValidateNode7(list[2])) return false;
+  if (list.size() > 3) return false;
+  return true;
+}
+
+bool ValidateNode179(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() < 1) return false;
+  if (list.size() > 1) return false;
+  if (list.size() > 0 && !ValidateNode180(list[0])) return false;
+  if (list.size() > 1) return false;
+  return true;
+}
+
+bool ValidateNode180(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("name")) {
     if (!ValidateNode50(*field)) return false;
   }
   if (const base::Value* field = dict.Find("email")) {
-    if (!ValidateNode179(*field)) return false;
+    if (!ValidateNode181(*field)) return false;
   }
   if (const base::Value* field = dict.Find("phone")) {
-    if (!ValidateNode180(*field)) return false;
+    if (!ValidateNode182(*field)) return false;
   }
   if (const base::Value* field = dict.Find("organization")) {
     if (!ValidateNode50(*field)) return false;
   }
   if (const base::Value* field = dict.Find("street")) {
-    if (!ValidateNode181(*field)) return false;
-  }
-  if (const base::Value* field = dict.Find("city")) {
-    if (!ValidateNode182(*field)) return false;
-  }
-  if (const base::Value* field = dict.Find("region")) {
-    if (!ValidateNode182(*field)) return false;
-  }
-  if (const base::Value* field = dict.Find("postal")) {
     if (!ValidateNode183(*field)) return false;
   }
+  if (const base::Value* field = dict.Find("city")) {
+    if (!ValidateNode184(*field)) return false;
+  }
+  if (const base::Value* field = dict.Find("region")) {
+    if (!ValidateNode184(*field)) return false;
+  }
+  if (const base::Value* field = dict.Find("postal")) {
+    if (!ValidateNode185(*field)) return false;
+  }
   if (const base::Value* field = dict.Find("country")) {
-    if (!ValidateNode182(*field)) return false;
+    if (!ValidateNode184(*field)) return false;
   }
   for (auto entry : dict) {
     if (!(entry.first == "name" || entry.first == "email" || entry.first == "phone" || entry.first == "organization" || entry.first == "street" || entry.first == "city" || entry.first == "region" || entry.first == "postal" || entry.first == "country")) return false;
@@ -2403,42 +2422,42 @@ bool ValidateNode178(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode179(const base::Value& value) {
+bool ValidateNode181(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() > 320) return false;
   return true;
 }
 
-bool ValidateNode180(const base::Value& value) {
+bool ValidateNode182(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() > 60) return false;
   return true;
 }
 
-bool ValidateNode181(const base::Value& value) {
+bool ValidateNode183(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() > 300) return false;
   return true;
 }
 
-bool ValidateNode182(const base::Value& value) {
+bool ValidateNode184(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() > 120) return false;
   return true;
 }
 
-bool ValidateNode183(const base::Value& value) {
+bool ValidateNode185(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() > 20) return false;
   return true;
 }
 
-bool ValidateNode184(const base::Value& value) {
+bool ValidateNode186(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 2) return false;
@@ -2450,7 +2469,7 @@ bool ValidateNode184(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode185(const base::Value& value) {
+bool ValidateNode187(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() > 1) return false;
@@ -2459,40 +2478,40 @@ bool ValidateNode185(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode186(const base::Value& value) {
+bool ValidateNode188(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 1) return false;
   if (list.size() > 1) return false;
-  if (list.size() > 0 && !ValidateNode187(list[0])) return false;
-  if (list.size() > 1) return false;
-  return true;
-}
-
-bool ValidateNode187(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!((value == base::Value("open")) || (value == base::Value("expand")) || (value == base::Value("dismiss")) || (value == base::Value("status")))) return false;
-  return true;
-}
-
-bool ValidateNode188(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() < 2) return false;
-  if (list.size() > 2) return false;
   if (list.size() > 0 && !ValidateNode189(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode190(list[1])) return false;
-  if (list.size() > 2) return false;
+  if (list.size() > 1) return false;
   return true;
 }
 
 bool ValidateNode189(const base::Value& value) {
   if (!(value.is_string())) return false;
-  if (!((value == base::Value("open")) || (value == base::Value("promote")) || (value == base::Value("close")))) return false;
+  if (!((value == base::Value("open")) || (value == base::Value("expand")) || (value == base::Value("dismiss")) || (value == base::Value("status")))) return false;
   return true;
 }
 
 bool ValidateNode190(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() < 2) return false;
+  if (list.size() > 2) return false;
+  if (list.size() > 0 && !ValidateNode191(list[0])) return false;
+  if (list.size() > 1 && !ValidateNode192(list[1])) return false;
+  if (list.size() > 2) return false;
+  return true;
+}
+
+bool ValidateNode191(const base::Value& value) {
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("open")) || (value == base::Value("promote")) || (value == base::Value("close")))) return false;
+  return true;
+}
+
+bool ValidateNode192(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("url")) {
@@ -2507,21 +2526,6 @@ bool ValidateNode190(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode191(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() > 1) return false;
-  if (list.size() > 0 && !ValidateNode192(list[0])) return false;
-  if (list.size() > 1) return false;
-  return true;
-}
-
-bool ValidateNode192(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!((value == base::Value("little")) || (value == base::Value("main")))) return false;
-  return true;
-}
-
 bool ValidateNode193(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
@@ -2532,13 +2536,28 @@ bool ValidateNode193(const base::Value& value) {
 }
 
 bool ValidateNode194(const base::Value& value) {
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("little")) || (value == base::Value("main")))) return false;
+  return true;
+}
+
+bool ValidateNode195(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() > 1) return false;
+  if (list.size() > 0 && !ValidateNode196(list[0])) return false;
+  if (list.size() > 1) return false;
+  return true;
+}
+
+bool ValidateNode196(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("mode")) {
-    if (!ValidateNode195(*field)) return false;
+    if (!ValidateNode197(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("urls")) {
-    if (!ValidateNode196(*field)) return false;
+    if (!ValidateNode198(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "mode" || entry.first == "urls")) return false;
@@ -2546,33 +2565,15 @@ bool ValidateNode194(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode195(const base::Value& value) {
+bool ValidateNode197(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!((value == base::Value("new-tab")) || (value == base::Value("continue")) || (value == base::Value("pages")) || (value == base::Value("continue-and-pages")))) return false;
-  return true;
-}
-
-bool ValidateNode196(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() > 20) return false;
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode58(list[i])) return false;
-  return true;
-}
-
-bool ValidateNode197(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() > 1) return false;
-  if (list.size() > 0 && !ValidateNode198(list[0])) return false;
-  if (list.size() > 1) return false;
   return true;
 }
 
 bool ValidateNode198(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  if (list.size() < 1) return false;
   if (list.size() > 20) return false;
   for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode58(list[i])) return false;
   return true;
@@ -2588,8 +2589,11 @@ bool ValidateNode199(const base::Value& value) {
 }
 
 bool ValidateNode200(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!((value == base::Value("ask")) || (value == base::Value("allow")) || (value == base::Value("block")))) return false;
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() < 1) return false;
+  if (list.size() > 20) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode58(list[i])) return false;
   return true;
 }
 
@@ -2603,26 +2607,24 @@ bool ValidateNode201(const base::Value& value) {
 }
 
 bool ValidateNode202(const base::Value& value) {
-  if (!((value.is_int() || (value.is_double() && std::isfinite(value.GetDouble()) && std::floor(value.GetDouble()) == value.GetDouble())))) return false;
-  if (AsNumber(value) < 50) return false;
-  if (AsNumber(value) > 200) return false;
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("ask")) || (value == base::Value("allow")) || (value == base::Value("block")))) return false;
   return true;
 }
 
 bool ValidateNode203(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  if (list.size() < 2) return false;
-  if (list.size() > 2) return false;
-  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode204(list[1])) return false;
-  if (list.size() > 2) return false;
+  if (list.size() > 1) return false;
+  if (list.size() > 0 && !ValidateNode204(list[0])) return false;
+  if (list.size() > 1) return false;
   return true;
 }
 
 bool ValidateNode204(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!((value == base::Value("pause")) || (value == base::Value("resume")) || (value == base::Value("cancel")))) return false;
+  if (!((value.is_int() || (value.is_double() && std::isfinite(value.GetDouble()) && std::floor(value.GetDouble()) == value.GetDouble())))) return false;
+  if (AsNumber(value) < 50) return false;
+  if (AsNumber(value) > 200) return false;
   return true;
 }
 
@@ -2639,29 +2641,46 @@ bool ValidateNode205(const base::Value& value) {
 
 bool ValidateNode206(const base::Value& value) {
   if (!(value.is_string())) return false;
-  if (!((value == base::Value("toggle")) || (value == base::Value("enter")) || (value == base::Value("exit")))) return false;
+  if (!((value == base::Value("pause")) || (value == base::Value("resume")) || (value == base::Value("cancel")))) return false;
   return true;
 }
 
 bool ValidateNode207(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  if (list.size() < 1) return false;
-  if (list.size() > 1) return false;
-  if (list.size() > 0 && !ValidateNode208(list[0])) return false;
-  if (list.size() > 1) return false;
+  if (list.size() < 2) return false;
+  if (list.size() > 2) return false;
+  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
+  if (list.size() > 1 && !ValidateNode208(list[1])) return false;
+  if (list.size() > 2) return false;
   return true;
 }
 
 bool ValidateNode208(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() > 4) return false;
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode209(list[i])) return false;
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("toggle")) || (value == base::Value("enter")) || (value == base::Value("exit")))) return false;
   return true;
 }
 
 bool ValidateNode209(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() < 1) return false;
+  if (list.size() > 1) return false;
+  if (list.size() > 0 && !ValidateNode210(list[0])) return false;
+  if (list.size() > 1) return false;
+  return true;
+}
+
+bool ValidateNode210(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() > 4) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode211(list[i])) return false;
+  return true;
+}
+
+bool ValidateNode211(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() < 1) return false;
@@ -2669,24 +2688,24 @@ bool ValidateNode209(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode210(const base::Value& value) {
+bool ValidateNode212(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 1) return false;
   if (list.size() > 1) return false;
-  if (list.size() > 0 && !ValidateNode211(list[0])) return false;
+  if (list.size() > 0 && !ValidateNode213(list[0])) return false;
   if (list.size() > 1) return false;
   return true;
 }
 
-bool ValidateNode211(const base::Value& value) {
+bool ValidateNode213(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode212(list[i])) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode214(list[i])) return false;
   return true;
 }
 
-bool ValidateNode212(const base::Value& value) {
+bool ValidateNode214(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -2701,7 +2720,7 @@ bool ValidateNode212(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode213(const base::Value& value) {
+bool ValidateNode215(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 2) return false;
@@ -2712,37 +2731,20 @@ bool ValidateNode213(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode214(const base::Value& value) {
+bool ValidateNode216(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 1) return false;
   if (list.size() > 1) return false;
-  if (list.size() > 0 && !ValidateNode152(list[0])) return false;
+  if (list.size() > 0 && !ValidateNode154(list[0])) return false;
   if (list.size() > 1) return false;
-  return true;
-}
-
-bool ValidateNode215(const base::Value& value) {
-  if (!(value.is_list())) return false;
-  const auto& list = value.GetList();
-  if (list.size() < 2) return false;
-  if (list.size() > 2) return false;
-  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode216(list[1])) return false;
-  if (list.size() > 2) return false;
-  return true;
-}
-
-bool ValidateNode216(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!((value == base::Value("back")) || (value == base::Value("forward")))) return false;
   return true;
 }
 
 bool ValidateNode217(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  if (list.size() < 1) return false;
+  if (list.size() < 2) return false;
   if (list.size() > 2) return false;
   if (list.size() > 0 && !ValidateNode58(list[0])) return false;
   if (list.size() > 1 && !ValidateNode218(list[1])) return false;
@@ -2752,7 +2754,7 @@ bool ValidateNode217(const base::Value& value) {
 
 bool ValidateNode218(const base::Value& value) {
   if (!(value.is_string())) return false;
-  if (!((value == base::Value("snapshot")) || (value == base::Value("csv")))) return false;
+  if (!((value == base::Value("back")) || (value == base::Value("forward")))) return false;
   return true;
 }
 
@@ -2760,26 +2762,43 @@ bool ValidateNode219(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 1) return false;
-  if (list.size() > 1) return false;
-  if (list.size() > 0 && !ValidateNode220(list[0])) return false;
-  if (list.size() > 1) return false;
+  if (list.size() > 2) return false;
+  if (list.size() > 0 && !ValidateNode58(list[0])) return false;
+  if (list.size() > 1 && !ValidateNode220(list[1])) return false;
+  if (list.size() > 2) return false;
   return true;
 }
 
 bool ValidateNode220(const base::Value& value) {
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("snapshot")) || (value == base::Value("csv")))) return false;
+  return true;
+}
+
+bool ValidateNode221(const base::Value& value) {
+  if (!(value.is_list())) return false;
+  const auto& list = value.GetList();
+  if (list.size() < 1) return false;
+  if (list.size() > 1) return false;
+  if (list.size() > 0 && !ValidateNode222(list[0])) return false;
+  if (list.size() > 1) return false;
+  return true;
+}
+
+bool ValidateNode222(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("name")) {
     if (!ValidateNode68(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("client")) {
-    if (!ValidateNode221(*field)) return false;
+    if (!ValidateNode223(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("scope")) {
-    if (!ValidateNode222(*field)) return false;
+    if (!ValidateNode224(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("expiresAt")) {
-    if (!ValidateNode230(*field)) return false;
+    if (!ValidateNode232(*field)) return false;
   }
   for (auto entry : dict) {
     if (!(entry.first == "name" || entry.first == "client" || entry.first == "scope" || entry.first == "expiresAt")) return false;
@@ -2787,25 +2806,25 @@ bool ValidateNode220(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode221(const base::Value& value) {
+bool ValidateNode223(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!((value == base::Value("codex")) || (value == base::Value("claude")))) return false;
   return true;
 }
 
-bool ValidateNode222(const base::Value& value) {
-  if ((static_cast<int>(ValidateNode223(value)) + static_cast<int>(ValidateNode226(value)) + static_cast<int>(ValidateNode228(value))) != 1) return false;
+bool ValidateNode224(const base::Value& value) {
+  if ((static_cast<int>(ValidateNode225(value)) + static_cast<int>(ValidateNode228(value)) + static_cast<int>(ValidateNode230(value))) != 1) return false;
   return true;
 }
 
-bool ValidateNode223(const base::Value& value) {
+bool ValidateNode225(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("kind")) {
-    if (!ValidateNode224(*field)) return false;
+    if (!ValidateNode226(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("workspaceId")) {
-    if (!ValidateNode225(*field)) return false;
+    if (!ValidateNode227(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "kind" || entry.first == "workspaceId")) return false;
@@ -2813,40 +2832,16 @@ bool ValidateNode223(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode224(const base::Value& value) {
+bool ValidateNode226(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!(value == base::Value("workspace"))) return false;
   return true;
 }
 
-bool ValidateNode225(const base::Value& value) {
+bool ValidateNode227(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() < 1) return false;
-  return true;
-}
-
-bool ValidateNode226(const base::Value& value) {
-  if (!(value.is_dict())) return false;
-  const auto& dict = value.GetDict();
-  if (const base::Value* field = dict.Find("kind")) {
-    if (!ValidateNode227(*field)) return false;
-  } else return false;
-  if (const base::Value* field = dict.Find("workspaceId")) {
-    if (!ValidateNode225(*field)) return false;
-  } else return false;
-  if (const base::Value* field = dict.Find("taskId")) {
-    if (!ValidateNode225(*field)) return false;
-  } else return false;
-  for (auto entry : dict) {
-    if (!(entry.first == "kind" || entry.first == "workspaceId" || entry.first == "taskId")) return false;
-  }
-  return true;
-}
-
-bool ValidateNode227(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!(value == base::Value("task"))) return false;
   return true;
 }
 
@@ -2857,10 +2852,34 @@ bool ValidateNode228(const base::Value& value) {
     if (!ValidateNode229(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("workspaceId")) {
-    if (!ValidateNode225(*field)) return false;
+    if (!ValidateNode227(*field)) return false;
+  } else return false;
+  if (const base::Value* field = dict.Find("taskId")) {
+    if (!ValidateNode227(*field)) return false;
+  } else return false;
+  for (auto entry : dict) {
+    if (!(entry.first == "kind" || entry.first == "workspaceId" || entry.first == "taskId")) return false;
+  }
+  return true;
+}
+
+bool ValidateNode229(const base::Value& value) {
+  if (!(value.is_string())) return false;
+  if (!(value == base::Value("task"))) return false;
+  return true;
+}
+
+bool ValidateNode230(const base::Value& value) {
+  if (!(value.is_dict())) return false;
+  const auto& dict = value.GetDict();
+  if (const base::Value* field = dict.Find("kind")) {
+    if (!ValidateNode231(*field)) return false;
+  } else return false;
+  if (const base::Value* field = dict.Find("workspaceId")) {
+    if (!ValidateNode227(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("sessionId")) {
-    if (!ValidateNode225(*field)) return false;
+    if (!ValidateNode227(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "kind" || entry.first == "workspaceId" || entry.first == "sessionId")) return false;
@@ -2868,35 +2887,35 @@ bool ValidateNode228(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode229(const base::Value& value) {
+bool ValidateNode231(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!(value == base::Value("session"))) return false;
   return true;
 }
 
-bool ValidateNode230(const base::Value& value) {
+bool ValidateNode232(const base::Value& value) {
   if (!((value.is_int() || (value.is_double() && std::isfinite(value.GetDouble()) && std::floor(value.GetDouble()) == value.GetDouble())))) return false;
   if (AsNumber(value) > 9007199254740991) return false;
   return true;
 }
 
-bool ValidateNode231(const base::Value& value) {
+bool ValidateNode233(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 2) return false;
   if (list.size() > 2) return false;
   if (list.size() > 0 && !ValidateNode58(list[0])) return false;
-  if (list.size() > 1 && !ValidateNode232(list[1])) return false;
+  if (list.size() > 1 && !ValidateNode234(list[1])) return false;
   if (list.size() > 2) return false;
   return true;
 }
 
-bool ValidateNode232(const base::Value& value) {
-  if (!(ValidateNode233(value) || ValidateNode234(value))) return false;
+bool ValidateNode234(const base::Value& value) {
+  if (!(ValidateNode235(value) || ValidateNode236(value))) return false;
   return true;
 }
 
-bool ValidateNode233(const base::Value& value) {
+bool ValidateNode235(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("username")) {
@@ -2911,12 +2930,12 @@ bool ValidateNode233(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode234(const base::Value& value) {
+bool ValidateNode236(const base::Value& value) {
   if (!(value.is_none())) return false;
   return true;
 }
 
-bool ValidateNode235(const base::Value& value) {
+bool ValidateNode237(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 2) return false;
@@ -2927,19 +2946,19 @@ bool ValidateNode235(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode236(const base::Value& value) {
+bool ValidateNode238(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 3) return false;
   if (list.size() > 3) return false;
   if (list.size() > 0 && !ValidateNode18(list[0])) return false;
   if (list.size() > 1 && !ValidateNode18(list[1])) return false;
-  if (list.size() > 2 && !ValidateNode237(list[2])) return false;
+  if (list.size() > 2 && !ValidateNode239(list[2])) return false;
   if (list.size() > 3) return false;
   return true;
 }
 
-bool ValidateNode237(const base::Value& value) {
+bool ValidateNode239(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("cookies")) {
@@ -2954,7 +2973,7 @@ bool ValidateNode237(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode238(const base::Value& value) {
+bool ValidateNode240(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 1) return false;
@@ -2965,7 +2984,7 @@ bool ValidateNode238(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode239(const base::Value& value) {
+bool ValidateNode241(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("profileId")) {
@@ -2975,13 +2994,13 @@ bool ValidateNode239(const base::Value& value) {
     if (!ValidateNode56(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("allowedSiteHosts")) {
-    if (!ValidateNode240(*field)) return false;
+    if (!ValidateNode242(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("enabled")) {
     if (!ValidateNode7(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("siteGuard")) {
-    if (!ValidateNode241(*field)) return false;
+    if (!ValidateNode243(*field)) return false;
   }
   if (const base::Value* field = dict.Find("hostsDigest")) {
     if (!ValidateNode58(*field)) return false;
@@ -2995,14 +3014,14 @@ bool ValidateNode239(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode240(const base::Value& value) {
+bool ValidateNode242(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode58(list[i])) return false;
   return true;
 }
 
-bool ValidateNode241(const base::Value& value) {
+bool ValidateNode243(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -3020,7 +3039,7 @@ bool ValidateNode241(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode242(const base::Value& value) {
+bool ValidateNode244(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("profileId")) {
@@ -3033,7 +3052,7 @@ bool ValidateNode242(const base::Value& value) {
     if (!ValidateNode56(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("hosts")) {
-    if (!ValidateNode240(*field)) return false;
+    if (!ValidateNode242(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "profileId" || entry.first == "generation" || entry.first == "offset" || entry.first == "hosts")) return false;
@@ -3041,7 +3060,7 @@ bool ValidateNode242(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode243(const base::Value& value) {
+bool ValidateNode245(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("profileId")) {
@@ -3059,7 +3078,7 @@ bool ValidateNode243(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode244(const base::Value& value) {
+bool ValidateNode246(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("profileId")) {
@@ -3069,13 +3088,13 @@ bool ValidateNode244(const base::Value& value) {
     if (!ValidateNode56(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("allowedSiteHosts")) {
-    if (!ValidateNode240(*field)) return false;
+    if (!ValidateNode242(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("enabled")) {
     if (!ValidateNode7(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("siteGuard")) {
-    if (!ValidateNode241(*field)) return false;
+    if (!ValidateNode243(*field)) return false;
   }
   if (const base::Value* field = dict.Find("rulesDigest")) {
     if (!ValidateNode58(*field)) return false;
@@ -3089,7 +3108,7 @@ bool ValidateNode244(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode245(const base::Value& value) {
+bool ValidateNode247(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("profileId")) {
@@ -3102,7 +3121,7 @@ bool ValidateNode245(const base::Value& value) {
     if (!ValidateNode56(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("rules")) {
-    if (!ValidateNode246(*field)) return false;
+    if (!ValidateNode248(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "profileId" || entry.first == "generation" || entry.first == "offset" || entry.first == "rules")) return false;
@@ -3110,18 +3129,18 @@ bool ValidateNode245(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode246(const base::Value& value) {
+bool ValidateNode248(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode247(list[i])) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode249(list[i])) return false;
   return true;
 }
 
-bool ValidateNode247(const base::Value& value) {
+bool ValidateNode249(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("domains")) {
-    if (!ValidateNode240(*field)) return false;
+    if (!ValidateNode242(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("selector")) {
     if (!ValidateNode58(*field)) return false;
@@ -3132,7 +3151,7 @@ bool ValidateNode247(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode248(const base::Value& value) {
+bool ValidateNode250(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("profileId")) {
@@ -3150,14 +3169,14 @@ bool ValidateNode248(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode249(const base::Value& value) {
+bool ValidateNode251(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("method")) {
     if (!ValidateNode58(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("params")) {
-    if (!ValidateNode250(*field)) return false;
+    if (!ValidateNode252(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "method" || entry.first == "params")) return false;
@@ -3165,18 +3184,18 @@ bool ValidateNode249(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode250(const base::Value& value) {
+bool ValidateNode252(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode251(const base::Value& value) {
+bool ValidateNode253(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (!dict.empty()) return false;
   return true;
 }
 
-bool ValidateNode252(const base::Value& value) {
+bool ValidateNode254(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("downloadId")) {
@@ -3188,20 +3207,20 @@ bool ValidateNode252(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode253(const base::Value& value) {
+bool ValidateNode255(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("downloadId")) {
     if (!ValidateNode43(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("expectedName")) {
-    if (!ValidateNode169(*field)) return false;
+    if (!ValidateNode171(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("stem")) {
     if (!ValidateNode68(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("mode")) {
-    if (!ValidateNode254(*field)) return false;
+    if (!ValidateNode256(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "downloadId" || entry.first == "expectedName" || entry.first == "stem" || entry.first == "mode")) return false;
@@ -3209,20 +3228,20 @@ bool ValidateNode253(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode254(const base::Value& value) {
+bool ValidateNode256(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!((value == base::Value("unclear")) || (value == base::Value("all")) || (value == base::Value("undo")))) return false;
   return true;
 }
 
-bool ValidateNode255(const base::Value& value) {
+bool ValidateNode257(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("reason")) {
     if (!ValidateNode43(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("durationSec")) {
-    if (!ValidateNode256(*field)) return false;
+    if (!ValidateNode258(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "reason" || entry.first == "durationSec")) return false;
@@ -3230,36 +3249,36 @@ bool ValidateNode255(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode256(const base::Value& value) {
+bool ValidateNode258(const base::Value& value) {
   if (!((value.is_int() || (value.is_double() && std::isfinite(value.GetDouble()) && std::floor(value.GetDouble()) == value.GetDouble())))) return false;
   if (AsNumber(value) < 1) return false;
   if (AsNumber(value) > 3600) return false;
   return true;
 }
 
-bool ValidateNode257(const base::Value& value) {
+bool ValidateNode259(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("profileId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("runId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("taskId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   }
   if (const base::Value* field = dict.Find("taskRevision")) {
     if (!ValidateNode18(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("windowId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("background")) {
     if (!ValidateNode7(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("source")) {
-    if (!ValidateNode259(*field)) return false;
+    if (!ValidateNode261(*field)) return false;
   }
   for (auto entry : dict) {
     if (!(entry.first == "profileId" || entry.first == "runId" || entry.first == "taskId" || entry.first == "taskRevision" || entry.first == "windowId" || entry.first == "background" || entry.first == "source")) return false;
@@ -3267,7 +3286,7 @@ bool ValidateNode257(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode258(const base::Value& value) {
+bool ValidateNode260(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() < 1) return false;
@@ -3275,17 +3294,17 @@ bool ValidateNode258(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode259(const base::Value& value) {
+bool ValidateNode261(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("tabId")) {
-    if (!ValidateNode258(*field)) return false;
-  } else return false;
-  if (const base::Value* field = dict.Find("expectedUrl")) {
     if (!ValidateNode260(*field)) return false;
   } else return false;
+  if (const base::Value* field = dict.Find("expectedUrl")) {
+    if (!ValidateNode262(*field)) return false;
+  } else return false;
   if (const base::Value* field = dict.Find("documentToken")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "tabId" || entry.first == "expectedUrl" || entry.first == "documentToken")) return false;
@@ -3293,7 +3312,7 @@ bool ValidateNode259(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode260(const base::Value& value) {
+bool ValidateNode262(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() > 2048) return false;
@@ -3301,14 +3320,14 @@ bool ValidateNode260(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode261(const base::Value& value) {
+bool ValidateNode263(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("tabId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("expectedUrl")) {
-    if (!ValidateNode260(*field)) return false;
+    if (!ValidateNode262(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "tabId" || entry.first == "expectedUrl")) return false;
@@ -3316,14 +3335,14 @@ bool ValidateNode261(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode262(const base::Value& value) {
+bool ValidateNode264(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("lease")) {
-    if (!ValidateNode263(*field)) return false;
+    if (!ValidateNode265(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("expectedUrl")) {
-    if (!ValidateNode260(*field)) return false;
+    if (!ValidateNode262(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "lease" || entry.first == "expectedUrl")) return false;
@@ -3331,47 +3350,47 @@ bool ValidateNode262(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode263(const base::Value& value) {
+bool ValidateNode265(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("leaseId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("isolationId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("profileId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("runId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("taskRevision")) {
     if (!ValidateNode18(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("taskId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   }
   if (const base::Value* field = dict.Find("tabId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("frameId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("documentToken")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("documentEpoch")) {
     if (!ValidateNode18(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("sourceOrigin")) {
-    if (!ValidateNode260(*field)) return false;
+    if (!ValidateNode262(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("initialDestination")) {
-    if (!ValidateNode260(*field)) return false;
+    if (!ValidateNode262(*field)) return false;
   }
   if (const base::Value* field = dict.Find("recipientOrigins")) {
-    if (!ValidateNode264(*field)) return false;
+    if (!ValidateNode266(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("issuedAt")) {
     if (!ValidateNode18(*field)) return false;
@@ -3385,19 +3404,19 @@ bool ValidateNode263(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode264(const base::Value& value) {
+bool ValidateNode266(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() > 16) return false;
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode260(list[i])) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode262(list[i])) return false;
   return true;
 }
 
-bool ValidateNode265(const base::Value& value) {
+bool ValidateNode267(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("leaseId")) {
-    if (!ValidateNode258(*field)) return false;
+    if (!ValidateNode260(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "leaseId")) return false;
@@ -3405,7 +3424,7 @@ bool ValidateNode265(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode266(const base::Value& value) {
+bool ValidateNode268(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("since")) {
@@ -3420,11 +3439,11 @@ bool ValidateNode266(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode267(const base::Value& value) {
+bool ValidateNode269(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("visits")) {
-    if (!ValidateNode268(*field)) return false;
+    if (!ValidateNode270(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "visits")) return false;
@@ -3432,23 +3451,23 @@ bool ValidateNode267(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode268(const base::Value& value) {
+bool ValidateNode270(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
   if (list.size() < 1) return false;
   if (list.size() > 500) return false;
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode269(list[i])) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode271(list[i])) return false;
   return true;
 }
 
-bool ValidateNode269(const base::Value& value) {
+bool ValidateNode271(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("url")) {
     if (!ValidateNode58(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("title")) {
-    if (!ValidateNode270(*field)) return false;
+    if (!ValidateNode272(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("visitedAt")) {
     if (!ValidateNode18(*field)) return false;
@@ -3459,14 +3478,14 @@ bool ValidateNode269(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode270(const base::Value& value) {
+bool ValidateNode272(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() > 1000) return false;
   return true;
 }
 
-bool ValidateNode271(const base::Value& value) {
+bool ValidateNode273(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("url")) {
@@ -3476,7 +3495,7 @@ bool ValidateNode271(const base::Value& value) {
     if (!ValidateNode56(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("expectedTitle")) {
-    if (!ValidateNode272(*field)) return false;
+    if (!ValidateNode274(*field)) return false;
   }
   for (auto entry : dict) {
     if (!(entry.first == "url" || entry.first == "visitedAt" || entry.first == "expectedTitle")) return false;
@@ -3484,14 +3503,14 @@ bool ValidateNode271(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode272(const base::Value& value) {
+bool ValidateNode274(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() > 4096) return false;
   return true;
 }
 
-bool ValidateNode273(const base::Value& value) {
+bool ValidateNode275(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("template")) {
@@ -3503,7 +3522,7 @@ bool ValidateNode273(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode274(const base::Value& value) {
+bool ValidateNode276(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("enabled")) {
@@ -3515,29 +3534,29 @@ bool ValidateNode274(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode275(const base::Value& value) {
+bool ValidateNode277(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("profileId")) {
     if (!ValidateNode43(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("origin")) {
-    if (!ValidateNode260(*field)) return false;
+    if (!ValidateNode262(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("revision")) {
     if (!ValidateNode18(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("stylesheet")) {
-    if (!ValidateNode276(*field)) return false;
-  } else return false;
-  if (const base::Value* field = dict.Find("stylesheetSha256")) {
-    if (!ValidateNode277(*field)) return false;
-  } else return false;
-  if (const base::Value* field = dict.Find("phase")) {
     if (!ValidateNode278(*field)) return false;
   } else return false;
-  if (const base::Value* field = dict.Find("frameScope")) {
+  if (const base::Value* field = dict.Find("stylesheetSha256")) {
     if (!ValidateNode279(*field)) return false;
+  } else return false;
+  if (const base::Value* field = dict.Find("phase")) {
+    if (!ValidateNode280(*field)) return false;
+  } else return false;
+  if (const base::Value* field = dict.Find("frameScope")) {
+    if (!ValidateNode281(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "profileId" || entry.first == "origin" || entry.first == "revision" || entry.first == "stylesheet" || entry.first == "stylesheetSha256" || entry.first == "phase" || entry.first == "frameScope")) return false;
@@ -3545,33 +3564,33 @@ bool ValidateNode275(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode276(const base::Value& value) {
+bool ValidateNode278(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (utf16.size() > 80000) return false;
   return true;
 }
 
-bool ValidateNode277(const base::Value& value) {
+bool ValidateNode279(const base::Value& value) {
   if (!(value.is_string())) return false;
   const auto utf16 = base::UTF8ToUTF16(value.GetString());
   if (!IsLowerHexSha256(value.GetString())) return false;
   return true;
 }
 
-bool ValidateNode278(const base::Value& value) {
+bool ValidateNode280(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!(value == base::Value("document_start"))) return false;
   return true;
 }
 
-bool ValidateNode279(const base::Value& value) {
+bool ValidateNode281(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!(value == base::Value("matching_origin"))) return false;
   return true;
 }
 
-bool ValidateNode280(const base::Value& value) {
+bool ValidateNode282(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("commandId")) {
@@ -3592,14 +3611,14 @@ bool ValidateNode280(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode281(const base::Value& value) {
+bool ValidateNode283(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
     if (!ValidateNode58(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("windowId")) {
-    if (!ValidateNode225(*field)) return false;
+    if (!ValidateNode227(*field)) return false;
   }
   if (const base::Value* field = dict.Find("activate")) {
     if (!ValidateNode7(*field)) return false;
@@ -3610,7 +3629,7 @@ bool ValidateNode281(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode282(const base::Value& value) {
+bool ValidateNode284(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -3622,7 +3641,7 @@ bool ValidateNode282(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode283(const base::Value& value) {
+bool ValidateNode285(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -3637,7 +3656,7 @@ bool ValidateNode283(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode284(const base::Value& value) {
+bool ValidateNode286(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -3647,10 +3666,10 @@ bool ValidateNode284(const base::Value& value) {
     if (!ValidateNode58(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("forward")) {
-    if (!ValidateNode285(*field)) return false;
+    if (!ValidateNode287(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("findNext")) {
-    if (!ValidateNode286(*field)) return false;
+    if (!ValidateNode288(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "pageId" || entry.first == "text" || entry.first == "forward" || entry.first == "findNext")) return false;
@@ -3658,24 +3677,24 @@ bool ValidateNode284(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode285(const base::Value& value) {
-  if (!(value.is_bool())) return false;
-  return true;
-}
-
-bool ValidateNode286(const base::Value& value) {
-  if (!(value.is_bool())) return false;
-  return true;
-}
-
 bool ValidateNode287(const base::Value& value) {
+  if (!(value.is_bool())) return false;
+  return true;
+}
+
+bool ValidateNode288(const base::Value& value) {
+  if (!(value.is_bool())) return false;
+  return true;
+}
+
+bool ValidateNode289(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
     if (!ValidateNode58(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("action")) {
-    if (!ValidateNode288(*field)) return false;
+    if (!ValidateNode290(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "pageId" || entry.first == "action")) return false;
@@ -3683,13 +3702,13 @@ bool ValidateNode287(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode288(const base::Value& value) {
+bool ValidateNode290(const base::Value& value) {
   if (!(value.is_string())) return false;
   if (!((value == base::Value("clear")) || (value == base::Value("keep")))) return false;
   return true;
 }
 
-bool ValidateNode289(const base::Value& value) {
+bool ValidateNode291(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -3705,7 +3724,7 @@ bool ValidateNode289(const base::Value& value) {
     if (!ValidateNode7(*field)) return false;
   }
   if (const base::Value* field = dict.Find("direction")) {
-    if (!ValidateNode130(*field)) return false;
+    if (!ValidateNode132(*field)) return false;
   }
   for (auto entry : dict) {
     if (!(entry.first == "pageId" || entry.first == "level" || entry.first == "delta" || entry.first == "reset" || entry.first == "direction")) return false;
@@ -3713,11 +3732,11 @@ bool ValidateNode289(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode290(const base::Value& value) {
+bool ValidateNode292(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("cookies")) {
-    if (!ValidateNode291(*field)) return false;
+    if (!ValidateNode293(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "cookies")) return false;
@@ -3725,14 +3744,14 @@ bool ValidateNode290(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode291(const base::Value& value) {
+bool ValidateNode293(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode250(list[i])) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode252(list[i])) return false;
   return true;
 }
 
-bool ValidateNode292(const base::Value& value) {
+bool ValidateNode294(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("name")) {
@@ -3747,7 +3766,7 @@ bool ValidateNode292(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode293(const base::Value& value) {
+bool ValidateNode295(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("name")) {
@@ -3759,11 +3778,11 @@ bool ValidateNode293(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode294(const base::Value& value) {
+bool ValidateNode296(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("version")) {
-    if (!ValidateNode155(*field)) return false;
+    if (!ValidateNode157(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "version")) return false;
@@ -3771,32 +3790,11 @@ bool ValidateNode294(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode295(const base::Value& value) {
-  if (!(value.is_dict())) return false;
-  const auto& dict = value.GetDict();
-  if (const base::Value* field = dict.Find("version")) {
-    if (!ValidateNode155(*field)) return false;
-  } else return false;
-  if (const base::Value* field = dict.Find("purpose")) {
-    if (!ValidateNode296(*field)) return false;
-  } else return false;
-  for (auto entry : dict) {
-    if (!(entry.first == "version" || entry.first == "purpose")) return false;
-  }
-  return true;
-}
-
-bool ValidateNode296(const base::Value& value) {
-  if (!(value.is_string())) return false;
-  if (!(value == base::Value("sqlite"))) return false;
-  return true;
-}
-
 bool ValidateNode297(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("version")) {
-    if (!ValidateNode155(*field)) return false;
+    if (!ValidateNode157(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("purpose")) {
     if (!ValidateNode298(*field)) return false;
@@ -3809,18 +3807,39 @@ bool ValidateNode297(const base::Value& value) {
 
 bool ValidateNode298(const base::Value& value) {
   if (!(value.is_string())) return false;
-  if (!((value == base::Value("export")) || (value == base::Value("restore")))) return false;
+  if (!(value == base::Value("sqlite"))) return false;
   return true;
 }
 
 bool ValidateNode299(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
+  if (const base::Value* field = dict.Find("version")) {
+    if (!ValidateNode157(*field)) return false;
+  } else return false;
+  if (const base::Value* field = dict.Find("purpose")) {
+    if (!ValidateNode300(*field)) return false;
+  } else return false;
+  for (auto entry : dict) {
+    if (!(entry.first == "version" || entry.first == "purpose")) return false;
+  }
+  return true;
+}
+
+bool ValidateNode300(const base::Value& value) {
+  if (!(value.is_string())) return false;
+  if (!((value == base::Value("export")) || (value == base::Value("restore")))) return false;
+  return true;
+}
+
+bool ValidateNode301(const base::Value& value) {
+  if (!(value.is_dict())) return false;
+  const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
-    if (!ValidateNode225(*field)) return false;
+    if (!ValidateNode227(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("workspaceId")) {
-    if (!ValidateNode225(*field)) return false;
+    if (!ValidateNode227(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("expectedUrl")) {
     if (!ValidateNode55(*field)) return false;
@@ -3831,7 +3850,7 @@ bool ValidateNode299(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode300(const base::Value& value) {
+bool ValidateNode302(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -3852,7 +3871,7 @@ bool ValidateNode300(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode301(const base::Value& value) {
+bool ValidateNode303(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -3867,7 +3886,7 @@ bool ValidateNode301(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode302(const base::Value& value) {
+bool ValidateNode304(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("pageId")) {
@@ -4112,7 +4131,7 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kReleaseResultPreview: valid = ValidateNode123(args); break;
     case MethodId::kSavePagePdf: valid = ValidateNode123(args); break;
     case MethodId::kPrintPage: valid = ValidateNode123(args); break;
-    case MethodId::kDevTools: valid = ValidateNode123(args); break;
+    case MethodId::kDevTools: valid = ValidateNode127(args); break;
     case MethodId::kHardReload: valid = ValidateNode123(args); break;
     case MethodId::kCloseWindow: valid = ValidateNode0(args); break;
     case MethodId::kOpenFile: valid = ValidateNode0(args); break;
@@ -4122,91 +4141,91 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kCancelDictation: valid = ValidateNode123(args); break;
     case MethodId::kDataDir: valid = ValidateNode0(args); break;
     case MethodId::kSiteInfo: valid = ValidateNode123(args); break;
-    case MethodId::kSiteZoom: valid = ValidateNode127(args); break;
-    case MethodId::kPrivatePageZoom: valid = ValidateNode128(args); break;
+    case MethodId::kSiteZoom: valid = ValidateNode129(args); break;
+    case MethodId::kPrivatePageZoom: valid = ValidateNode130(args); break;
     case MethodId::kPrivacy: valid = ValidateNode0(args); break;
-    case MethodId::kSetTrackerBlock: valid = ValidateNode131(args); break;
-    case MethodId::kSetSiteTrackers: valid = ValidateNode132(args); break;
+    case MethodId::kSetTrackerBlock: valid = ValidateNode133(args); break;
+    case MethodId::kSetSiteTrackers: valid = ValidateNode134(args); break;
     case MethodId::kRemoveAllowedHost: valid = ValidateNode123(args); break;
     case MethodId::kFilterLists: valid = ValidateNode0(args); break;
     case MethodId::kUpdateFilters: valid = ValidateNode0(args); break;
-    case MethodId::kAddFilterSource: valid = ValidateNode133(args); break;
+    case MethodId::kAddFilterSource: valid = ValidateNode135(args); break;
     case MethodId::kRemoveFilterSource: valid = ValidateNode123(args); break;
-    case MethodId::kSetFilterSourceEnabled: valid = ValidateNode132(args); break;
-    case MethodId::kSetAppearance: valid = ValidateNode135(args); break;
-    case MethodId::kDispatchCommand: valid = ValidateNode138(args); break;
-    case MethodId::kSetShortcuts: valid = ValidateNode140(args); break;
-    case MethodId::kWindowControlsVisible: valid = ValidateNode131(args); break;
+    case MethodId::kSetFilterSourceEnabled: valid = ValidateNode134(args); break;
+    case MethodId::kSetAppearance: valid = ValidateNode137(args); break;
+    case MethodId::kDispatchCommand: valid = ValidateNode140(args); break;
+    case MethodId::kSetShortcuts: valid = ValidateNode142(args); break;
+    case MethodId::kWindowControlsVisible: valid = ValidateNode133(args); break;
     case MethodId::kExtensions: valid = ValidateNode0(args); break;
     case MethodId::kInstallStoreExtension: valid = ValidateNode123(args); break;
     case MethodId::kCheckStoreExtensionUpdate: valid = ValidateNode123(args); break;
     case MethodId::kReloadExtension: valid = ValidateNode123(args); break;
-    case MethodId::kShowExtensionAction: valid = ValidateNode145(args); break;
+    case MethodId::kShowExtensionAction: valid = ValidateNode147(args); break;
     case MethodId::kExtensionActions: valid = ValidateNode0(args); break;
-    case MethodId::kPinExtensionAction: valid = ValidateNode132(args); break;
+    case MethodId::kPinExtensionAction: valid = ValidateNode134(args); break;
     case MethodId::kExtensionCommands: valid = ValidateNode0(args); break;
-    case MethodId::kSetExtensionCommandShortcut: valid = ValidateNode148(args); break;
-    case MethodId::kSetExtensionEnabled: valid = ValidateNode132(args); break;
+    case MethodId::kSetExtensionCommandShortcut: valid = ValidateNode150(args); break;
+    case MethodId::kSetExtensionEnabled: valid = ValidateNode134(args); break;
     case MethodId::kRemoveExtension: valid = ValidateNode123(args); break;
     case MethodId::kInstallUnpackedExtension: valid = ValidateNode0(args); break;
     case MethodId::kUpdateUnpackedExtension: valid = ValidateNode123(args); break;
     case MethodId::kBrowserProfiles: valid = ValidateNode0(args); break;
     case MethodId::kCreateBrowserProfile: valid = ValidateNode123(args); break;
     case MethodId::kRenameBrowserProfile: valid = ValidateNode57(args); break;
-    case MethodId::kArchiveBrowserProfile: valid = ValidateNode132(args); break;
+    case MethodId::kArchiveBrowserProfile: valid = ValidateNode134(args); break;
     case MethodId::kDeleteBrowserProfile: valid = ValidateNode123(args); break;
     case MethodId::kOpenBrowserProfile: valid = ValidateNode123(args); break;
     case MethodId::kOpenBrowserProfileUrl: valid = ValidateNode57(args); break;
-    case MethodId::kSetBrowserProfileAppearance: valid = ValidateNode149(args); break;
-    case MethodId::kFocusBrowserProfileSpace: valid = ValidateNode151(args); break;
+    case MethodId::kSetBrowserProfileAppearance: valid = ValidateNode151(args); break;
+    case MethodId::kFocusBrowserProfileSpace: valid = ValidateNode153(args); break;
     case MethodId::kMoveTabToProfile: valid = ValidateNode57(args); break;
     case MethodId::kLinkRoutes: valid = ValidateNode0(args); break;
-    case MethodId::kSetLinkRoutes: valid = ValidateNode153(args); break;
-    case MethodId::kTestLinkRoute: valid = ValidateNode175(args); break;
-    case MethodId::kResolveRoutePrompt: valid = ValidateNode176(args); break;
+    case MethodId::kSetLinkRoutes: valid = ValidateNode155(args); break;
+    case MethodId::kTestLinkRoute: valid = ValidateNode177(args); break;
+    case MethodId::kResolveRoutePrompt: valid = ValidateNode178(args); break;
     case MethodId::kAutofillProfile: valid = ValidateNode0(args); break;
-    case MethodId::kSetAutofillProfile: valid = ValidateNode177(args); break;
+    case MethodId::kSetAutofillProfile: valid = ValidateNode179(args); break;
     case MethodId::kAutofill: valid = ValidateNode123(args); break;
     case MethodId::kVaultFill: valid = ValidateNode123(args); break;
-    case MethodId::kVaultSave: valid = ValidateNode184(args); break;
-    case MethodId::kVaultDismiss: valid = ValidateNode184(args); break;
+    case MethodId::kVaultSave: valid = ValidateNode186(args); break;
+    case MethodId::kVaultDismiss: valid = ValidateNode186(args); break;
     case MethodId::kPasswordExport: valid = ValidateNode123(args); break;
     case MethodId::kPasswordImport: valid = ValidateNode123(args); break;
-    case MethodId::kQuickAskShortcut: valid = ValidateNode185(args); break;
-    case MethodId::kQuickAsk: valid = ValidateNode186(args); break;
-    case MethodId::kLittleWindow: valid = ValidateNode188(args); break;
-    case MethodId::kExternalLinkTarget: valid = ValidateNode191(args); break;
+    case MethodId::kQuickAskShortcut: valid = ValidateNode187(args); break;
+    case MethodId::kQuickAsk: valid = ValidateNode188(args); break;
+    case MethodId::kLittleWindow: valid = ValidateNode190(args); break;
+    case MethodId::kExternalLinkTarget: valid = ValidateNode193(args); break;
     case MethodId::kDownloadFolder: valid = ValidateNode0(args); break;
-    case MethodId::kChooseDownloadFolder: valid = ValidateNode185(args); break;
-    case MethodId::kSpellCheck: valid = ValidateNode185(args); break;
-    case MethodId::kStartupPreferences: valid = ValidateNode193(args); break;
-    case MethodId::kLanguagePreferences: valid = ValidateNode197(args); break;
-    case MethodId::kAutomaticPictureInPicture: valid = ValidateNode199(args); break;
-    case MethodId::kKeepRuntimeInBackground: valid = ValidateNode185(args); break;
-    case MethodId::kDefaultPageZoom: valid = ValidateNode201(args); break;
+    case MethodId::kChooseDownloadFolder: valid = ValidateNode187(args); break;
+    case MethodId::kSpellCheck: valid = ValidateNode187(args); break;
+    case MethodId::kStartupPreferences: valid = ValidateNode195(args); break;
+    case MethodId::kLanguagePreferences: valid = ValidateNode199(args); break;
+    case MethodId::kAutomaticPictureInPicture: valid = ValidateNode201(args); break;
+    case MethodId::kKeepRuntimeInBackground: valid = ValidateNode187(args); break;
+    case MethodId::kDefaultPageZoom: valid = ValidateNode203(args); break;
     case MethodId::kDownloadsSnapshot: valid = ValidateNode0(args); break;
-    case MethodId::kControlDownload: valid = ValidateNode203(args); break;
+    case MethodId::kControlDownload: valid = ValidateNode205(args); break;
     case MethodId::kRetryDownload: valid = ValidateNode123(args); break;
     case MethodId::kTabAudio: valid = ValidateNode0(args); break;
-    case MethodId::kPictureInPicture: valid = ValidateNode205(args); break;
-    case MethodId::kSetStageVisible: valid = ValidateNode207(args); break;
-    case MethodId::kTabsUnsavedWork: valid = ValidateNode210(args); break;
-    case MethodId::kTabSleep: valid = ValidateNode213(args); break;
+    case MethodId::kPictureInPicture: valid = ValidateNode207(args); break;
+    case MethodId::kSetStageVisible: valid = ValidateNode209(args); break;
+    case MethodId::kTabsUnsavedWork: valid = ValidateNode212(args); break;
+    case MethodId::kTabSleep: valid = ValidateNode215(args); break;
     case MethodId::kPreview: valid = ValidateNode123(args); break;
-    case MethodId::kContextMenu: valid = ValidateNode214(args); break;
-    case MethodId::kNavigationMenu: valid = ValidateNode215(args); break;
+    case MethodId::kContextMenu: valid = ValidateNode216(args); break;
+    case MethodId::kNavigationMenu: valid = ValidateNode217(args); break;
     case MethodId::kAutocomplete: valid = ValidateNode123(args); break;
     case MethodId::kReadArticle: valid = ValidateNode123(args); break;
     case MethodId::kOpenExternal: valid = ValidateNode123(args); break;
     case MethodId::kRevealPath: valid = ValidateNode123(args); break;
     case MethodId::kOpenPath: valid = ValidateNode123(args); break;
     case MethodId::kSaveFile: valid = ValidateNode57(args); break;
-    case MethodId::kSaveWorkbook: valid = ValidateNode217(args); break;
+    case MethodId::kSaveWorkbook: valid = ValidateNode219(args); break;
     case MethodId::kSaveStoredArtifact: valid = ValidateNode57(args); break;
     case MethodId::kOpenPluginDirectory: valid = ValidateNode0(args); break;
     case MethodId::kPickEvidenceImage: valid = ValidateNode0(args); break;
     case MethodId::kPickEvidenceDocument: valid = ValidateNode0(args); break;
-    case MethodId::kAgentConfig: valid = ValidateNode219(args); break;
+    case MethodId::kAgentConfig: valid = ValidateNode221(args); break;
     case MethodId::kAgentConnections: valid = ValidateNode0(args); break;
     case MethodId::kAgentClients: valid = ValidateNode0(args); break;
     case MethodId::kRevokeAgentConnection: valid = ValidateNode123(args); break;
@@ -4219,70 +4238,70 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kHealthSummary: valid = ValidateNode0(args); break;
     case MethodId::kClearHealth: valid = ValidateNode0(args); break;
     case MethodId::kHttpAuthRequests: valid = ValidateNode0(args); break;
-    case MethodId::kRespondHttpAuth: valid = ValidateNode231(args); break;
+    case MethodId::kRespondHttpAuth: valid = ValidateNode233(args); break;
     case MethodId::kClearSiteData: valid = ValidateNode123(args); break;
     case MethodId::kSiteDataCount: valid = ValidateNode123(args); break;
-    case MethodId::kBrowsingDataPreview: valid = ValidateNode235(args); break;
-    case MethodId::kClearBrowsingData: valid = ValidateNode236(args); break;
+    case MethodId::kBrowsingDataPreview: valid = ValidateNode237(args); break;
+    case MethodId::kClearBrowsingData: valid = ValidateNode238(args); break;
     case MethodId::kSitePermissions: valid = ValidateNode0(args); break;
-    case MethodId::kClearSitePermission: valid = ValidateNode238(args); break;
+    case MethodId::kClearSitePermission: valid = ValidateNode240(args); break;
     case MethodId::kCookieControls: valid = ValidateNode0(args); break;
-    case MethodId::kSetCookieControls: valid = ValidateNode131(args); break;
+    case MethodId::kSetCookieControls: valid = ValidateNode133(args); break;
     case MethodId::kCrashReporting: valid = ValidateNode0(args); break;
-    case MethodId::kSetCrashReporting: valid = ValidateNode131(args); break;
+    case MethodId::kSetCrashReporting: valid = ValidateNode133(args); break;
     case MethodId::kHttpsUpgrade: valid = ValidateNode0(args); break;
-    case MethodId::kSetHttpsUpgrade: valid = ValidateNode131(args); break;
+    case MethodId::kSetHttpsUpgrade: valid = ValidateNode133(args); break;
     case MethodId::kProceedInsecure: valid = ValidateNode57(args); break;
     case MethodId::kUseHttp: valid = ValidateNode57(args); break;
     case MethodId::kTranslatePage: valid = ValidateNode123(args); break;
     case MethodId::kShowOriginal: valid = ValidateNode123(args); break;
-    case MethodId::kNativeContentBlockBegin: valid = ValidateNode239(args); break;
-    case MethodId::kNativeContentBlockAppend: valid = ValidateNode242(args); break;
-    case MethodId::kNativeContentBlockCommit: valid = ValidateNode243(args); break;
-    case MethodId::kNativeCosmeticBegin: valid = ValidateNode244(args); break;
-    case MethodId::kNativeCosmeticAppend: valid = ValidateNode245(args); break;
-    case MethodId::kNativeCosmeticCommit: valid = ValidateNode248(args); break;
-    case MethodId::kNativeBookmarksInvoke: valid = ValidateNode249(args); break;
-    case MethodId::kNativeCapabilities: valid = ValidateNode251(args); break;
-    case MethodId::kNativeDownloadPreviewText: valid = ValidateNode252(args); break;
-    case MethodId::kNativeRenameDownload: valid = ValidateNode253(args); break;
-    case MethodId::kNativePowerActivity: valid = ValidateNode255(args); break;
-    case MethodId::kNativeCreateAgentPage: valid = ValidateNode257(args); break;
-    case MethodId::kNativeEgressContext: valid = ValidateNode261(args); break;
-    case MethodId::kNativeEgressInstall: valid = ValidateNode262(args); break;
-    case MethodId::kNativeEgressRevoke: valid = ValidateNode265(args); break;
-    case MethodId::kNativeHistoryClear: valid = ValidateNode266(args); break;
-    case MethodId::kNativeHistoryImport: valid = ValidateNode267(args); break;
-    case MethodId::kNativeHistoryRemove: valid = ValidateNode271(args); break;
-    case MethodId::kNativeSearchEngineGet: valid = ValidateNode251(args); break;
-    case MethodId::kNativeSearchEngineSet: valid = ValidateNode273(args); break;
-    case MethodId::kNativeSearchSuggestionsGet: valid = ValidateNode251(args); break;
-    case MethodId::kNativeSearchSuggestionsSet: valid = ValidateNode274(args); break;
-    case MethodId::kNativeZapInstallStylesheet: valid = ValidateNode275(args); break;
-    case MethodId::kNativeListPages: valid = ValidateNode251(args); break;
-    case MethodId::kNativeTabCommand: valid = ValidateNode280(args); break;
-    case MethodId::kNativeMovePage: valid = ValidateNode281(args); break;
-    case MethodId::kNativeFocusPage: valid = ValidateNode282(args); break;
-    case MethodId::kNativeRecoverPage: valid = ValidateNode212(args); break;
-    case MethodId::kNativeStopPage: valid = ValidateNode282(args); break;
-    case MethodId::kNativeAcquireStage: valid = ValidateNode283(args); break;
-    case MethodId::kNativeReleaseStage: valid = ValidateNode282(args); break;
-    case MethodId::kNativeFindInPage: valid = ValidateNode284(args); break;
-    case MethodId::kNativeStopFind: valid = ValidateNode287(args); break;
-    case MethodId::kNativeSetZoom: valid = ValidateNode289(args); break;
-    case MethodId::kNativeSetCookies: valid = ValidateNode290(args); break;
-    case MethodId::kNativeStoreSecret: valid = ValidateNode292(args); break;
-    case MethodId::kNativeReadSecret: valid = ValidateNode293(args); break;
-    case MethodId::kNativeProfileStorageRoot: valid = ValidateNode294(args); break;
-    case MethodId::kNativeProfileStorageFactor: valid = ValidateNode295(args); break;
-    case MethodId::kNativeRecoveryOwnerAuth: valid = ValidateNode297(args); break;
-    case MethodId::kNativeCaptureReadablePage: valid = ValidateNode299(args); break;
-    case MethodId::kNativeFillSavedPassword: valid = ValidateNode300(args); break;
-    case MethodId::kNativeCdpReset: valid = ValidateNode251(args); break;
-    case MethodId::kNativeCdpDispatch: valid = ValidateNode301(args); break;
-    case MethodId::kNativeCdpVersion: valid = ValidateNode251(args); break;
-    case MethodId::kNativeWebmcpList: valid = ValidateNode282(args); break;
-    case MethodId::kNativeWebmcpCall: valid = ValidateNode302(args); break;
+    case MethodId::kNativeContentBlockBegin: valid = ValidateNode241(args); break;
+    case MethodId::kNativeContentBlockAppend: valid = ValidateNode244(args); break;
+    case MethodId::kNativeContentBlockCommit: valid = ValidateNode245(args); break;
+    case MethodId::kNativeCosmeticBegin: valid = ValidateNode246(args); break;
+    case MethodId::kNativeCosmeticAppend: valid = ValidateNode247(args); break;
+    case MethodId::kNativeCosmeticCommit: valid = ValidateNode250(args); break;
+    case MethodId::kNativeBookmarksInvoke: valid = ValidateNode251(args); break;
+    case MethodId::kNativeCapabilities: valid = ValidateNode253(args); break;
+    case MethodId::kNativeDownloadPreviewText: valid = ValidateNode254(args); break;
+    case MethodId::kNativeRenameDownload: valid = ValidateNode255(args); break;
+    case MethodId::kNativePowerActivity: valid = ValidateNode257(args); break;
+    case MethodId::kNativeCreateAgentPage: valid = ValidateNode259(args); break;
+    case MethodId::kNativeEgressContext: valid = ValidateNode263(args); break;
+    case MethodId::kNativeEgressInstall: valid = ValidateNode264(args); break;
+    case MethodId::kNativeEgressRevoke: valid = ValidateNode267(args); break;
+    case MethodId::kNativeHistoryClear: valid = ValidateNode268(args); break;
+    case MethodId::kNativeHistoryImport: valid = ValidateNode269(args); break;
+    case MethodId::kNativeHistoryRemove: valid = ValidateNode273(args); break;
+    case MethodId::kNativeSearchEngineGet: valid = ValidateNode253(args); break;
+    case MethodId::kNativeSearchEngineSet: valid = ValidateNode275(args); break;
+    case MethodId::kNativeSearchSuggestionsGet: valid = ValidateNode253(args); break;
+    case MethodId::kNativeSearchSuggestionsSet: valid = ValidateNode276(args); break;
+    case MethodId::kNativeZapInstallStylesheet: valid = ValidateNode277(args); break;
+    case MethodId::kNativeListPages: valid = ValidateNode253(args); break;
+    case MethodId::kNativeTabCommand: valid = ValidateNode282(args); break;
+    case MethodId::kNativeMovePage: valid = ValidateNode283(args); break;
+    case MethodId::kNativeFocusPage: valid = ValidateNode284(args); break;
+    case MethodId::kNativeRecoverPage: valid = ValidateNode214(args); break;
+    case MethodId::kNativeStopPage: valid = ValidateNode284(args); break;
+    case MethodId::kNativeAcquireStage: valid = ValidateNode285(args); break;
+    case MethodId::kNativeReleaseStage: valid = ValidateNode284(args); break;
+    case MethodId::kNativeFindInPage: valid = ValidateNode286(args); break;
+    case MethodId::kNativeStopFind: valid = ValidateNode289(args); break;
+    case MethodId::kNativeSetZoom: valid = ValidateNode291(args); break;
+    case MethodId::kNativeSetCookies: valid = ValidateNode292(args); break;
+    case MethodId::kNativeStoreSecret: valid = ValidateNode294(args); break;
+    case MethodId::kNativeReadSecret: valid = ValidateNode295(args); break;
+    case MethodId::kNativeProfileStorageRoot: valid = ValidateNode296(args); break;
+    case MethodId::kNativeProfileStorageFactor: valid = ValidateNode297(args); break;
+    case MethodId::kNativeRecoveryOwnerAuth: valid = ValidateNode299(args); break;
+    case MethodId::kNativeCaptureReadablePage: valid = ValidateNode301(args); break;
+    case MethodId::kNativeFillSavedPassword: valid = ValidateNode302(args); break;
+    case MethodId::kNativeCdpReset: valid = ValidateNode253(args); break;
+    case MethodId::kNativeCdpDispatch: valid = ValidateNode303(args); break;
+    case MethodId::kNativeCdpVersion: valid = ValidateNode253(args); break;
+    case MethodId::kNativeWebmcpList: valid = ValidateNode284(args); break;
+    case MethodId::kNativeWebmcpCall: valid = ValidateNode304(args); break;
   }
   if (!valid && error) *error = "Invalid arguments for generated Aux host method";
   return valid;

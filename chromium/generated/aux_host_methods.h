@@ -7,7 +7,7 @@
 #include <string_view>
 #include "base/values.h"
 namespace aux::generated {
-inline constexpr std::string_view kManifestHash = "3e697f1058ca24b0d3b7b001497c5bce74751ad02a586e4e7177b7feaf6c1395";
+inline constexpr std::string_view kManifestHash = "386a28167923c9fab3ead96c185e2c3abfe679862317c59e59c58392458fa4b4";
 inline constexpr std::string_view kSourceCommit = "__AUX_SOURCE_COMMIT__";
 inline constexpr std::string_view kQualifiedFeatures = "__AUX_QUALIFIED_FEATURES__";
 
