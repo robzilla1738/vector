@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import {
   AgentConnectionService,
   EventBus,
@@ -11,6 +11,7 @@ import {
   openDb,
   Repo,
   startRuntime,
+  SettingsService,
   TaskService,
   type Services,
 } from "@aux/runtime";
@@ -127,22 +128,35 @@ it("answers /health not-ready before bootstrap and ready after, on two boots", a
     cleanup.push(() => rmSync(parent, { recursive: true, force: true }));
     const dataDir = join(parent, "data");
     const env = runtimeEnv(dataDir);
+    let markEntered!: () => void;
+    let release!: () => void;
+    const entered = new Promise<void>(resolve => { markEntered = resolve; });
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const initialize = SettingsService.prototype.initializeCredentials;
+    const bootstrap = vi.spyOn(SettingsService.prototype, "initializeCredentials").mockImplementation(async function (this: SettingsService) {
+      markEntered();
+      await gate;
+      await initialize.call(this);
+    });
     const pending = startRuntime(env);
     let handle: Awaited<ReturnType<typeof startRuntime>> | undefined;
     try {
+      await Promise.race([entered, pending.then(() => { throw new Error("Runtime bypassed the bootstrap readiness barrier"); })]);
       const port = await publishedPort(dataDir);
       const early = await fetch(`http://127.0.0.1:${port}/health`);
       const earlyBody = await early.json();
+      expect(early.status).toBe(503);
+      expect(earlyBody).toEqual({ ok: false, service: "aux-runtime", ready: false });
+      release();
       handle = await pending;
       const late = await fetch(`http://127.0.0.1:${port}/health`);
       const lateBody = await late.json();
-      expect(early.status).toBe(503);
-      expect(earlyBody).toEqual({ ok: false, service: "aux-runtime", ready: false });
       expect(late.status).toBe(200);
       expect(lateBody).toEqual({ ok: true, service: "aux-runtime", ready: true });
     } finally {
+      release();
       handle ??= await pending.catch(() => undefined);
-      await handle?.close();
+      try { await handle?.close(); } finally { bootstrap.mockRestore(); }
     }
   }
 });
