@@ -15,6 +15,8 @@ Latest: contracts-v2 integrates dispatchCommand, all-command native shortcut ove
 
 Contracts-v3 checkpoint: devTools accepts optional toggle/inspect; onShortcut accepts optional websitePassThrough notification for native forwarding of the actual second trusted event. Generated194/26 hash386a28167923;13 focused tests, typecheck, codegen, bridge and format pass. Builder staged103 assets digesta3f65c8a2cb09787b974d4114633a6f44e98f7437e65ec516d7b4f1d23bc1908; root independently verified pin; budgets470/179/1682 pass. L1 must test navigation/focus target refusal for website forwarding before native review. LJ frozen candidate d9110f6ad2e7542d62ae0a06e3e89acc789fc347 independently source-reviewed, eleven IDs queued builder. Parity matrix preserves remaining gaps; no feature merge/new qualification yet.
 
+Future L2 verification: integrator added layout-modes.mjs with sidebar-modes and minimal-ui. Real UI/RPC assertions cover auto-hide toggle,216ms reveal, below111px snap, registered CmdS, both-layout Minimal UI250ms toggle and99% page/window area plus top/left controls. Syntax and metadata for these four feature targets pass; full registry still fails missing remaining mapped features, no gate relaxation or native pass claimed. L2 must independently review selectors against its implementation and provide native geometry captures. Lint gate passes after addition. LJ candidate build now running after ignored local pnpm task-state symlink repair; candidate digest matches committed pin599982dd8df28417.
+
 ---
 
 # Aux development handoff
