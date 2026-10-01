@@ -9,7 +9,7 @@ import { I } from "./icons";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { ExtensionActions } from "./ExtensionActions";
 
-export const Toolbar = memo(function Toolbar() {
+export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: boolean }) {
   const key = useShortcutLabels();
   const sidebar = useStore(s => s.sidebar);
   const horizontal = useStore(s => (s.settings.tabLayout ?? "horizontal") === "horizontal");
@@ -34,7 +34,7 @@ export const Toolbar = memo(function Toolbar() {
 
 
   return (
-    <header className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
+    <header inert={hidden} aria-hidden={hidden} className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
       style={themeColor ? { "--page-toolbar-glass": `color-mix(in srgb, ${themeColor} 14%, var(--toolbar-glass))` } as CSSProperties : undefined}>
       <div className="tb-left">
         {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} data-command-id="sidebar" onClick={()=>runCommand("sidebar")}>{I.sidebarOpen}</button>}

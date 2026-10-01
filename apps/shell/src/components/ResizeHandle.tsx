@@ -6,6 +6,15 @@ export function snapResizeWidth(width: number, min: number, max: number, reset: 
   return Math.abs(clamped - reset) <= 8 ? reset : clamped;
 }
 
+function handleAnnouncement(handle: HTMLElement, width: number) {
+  const output = document.createElement("output");
+  output.setAttribute("aria-live", "polite");
+  output.className = "sr-only";
+  output.textContent = `Sidebar width ${width} pixels`;
+  handle.append(output);
+  window.setTimeout(() => output.remove(), 1000);
+}
+
 /** edge drag-handle — resizes the panel it sits in via pointer capture.
  *  `side` = which side of the window the panel lives on: a left panel grows
  *  with positive x-delta, a right panel with negative. Pointer capture keeps
@@ -18,6 +27,7 @@ export function ResizeHandle({
   max,
   reset,
   onResize,
+  onCollapse,
 }: {
   side: "left" | "right";
   value: number;
@@ -26,6 +36,7 @@ export function ResizeHandle({
   /** width a double-click restores */
   reset: number;
   onResize: (w: number) => void;
+  onCollapse?: () => void;
 }) {
   const cleanup = useRef<(() => void) | null>(null);
   useEffect(() => () => cleanup.current?.(), []);
@@ -38,9 +49,14 @@ export function ResizeHandle({
     // the store (and its persisted width) takes the final value on release.
     const panel = handle.parentElement;
     const cssVar = side === "left" ? "--sb-w" : "--rail-w";
+    const updateWidth = (width: number) => {
+      panel?.style.setProperty(cssVar, `${width}px`);
+      if (onCollapse) panel?.closest<HTMLElement>(".app")?.style.setProperty(cssVar, `${width}px`);
+    };
     const startX = e.clientX;
     const startW = value;
     const releaseLock = side === "left" ? acquireFloatingSidebarLock("keep-current") : null;
+    let collapsed = false;
     let width = value,
       frame = 0;
     document.body.classList.add("resizing");
@@ -55,9 +71,10 @@ export function ResizeHandle({
       window.removeEventListener("pointercancel", cancel);
       cancelAnimationFrame(frame);
       document.body.classList.remove("resizing");
-      panel?.style.setProperty(cssVar, `${commit ? width : value}px`);
+      updateWidth(commit && !collapsed ? width : value);
       handle.setAttribute("aria-valuenow", String(commit ? width : value));
-      if (commit && width !== value) onResize(width);
+      if (commit && collapsed) onCollapse?.();
+      else if (commit && width !== value) onResize(width);
       releaseLock?.();
       cleanup.current = null;
     };
@@ -66,11 +83,13 @@ export function ResizeHandle({
     const move = (ev: PointerEvent) => {
       if (!(ev.buttons & 1)) return done(); // released outside the window
       const d = side === "left" ? ev.clientX - startX : startX - ev.clientX;
-      width = snapResizeWidth(startW + d, min, max, reset);
+      const raw = startW + d;
+      collapsed = !!onCollapse && raw < min - 15;
+      width = onCollapse && Math.abs(raw - reset) <= 15 ? reset : snapResizeWidth(raw, min, max, reset);
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
-        panel?.style.setProperty(cssVar, `${width}px`);
+        updateWidth(width);
         handle.setAttribute("aria-valuenow", String(width));
       });
     };
@@ -93,7 +112,9 @@ export function ResizeHandle({
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
           e.preventDefault();
           const direction = (e.key === "ArrowRight" ? 1 : -1) * (side === "left" ? 1 : -1);
-          onResize(snapResizeWidth(value + direction * 16, min, max, reset));
+          const next = snapResizeWidth(value + direction * (onCollapse ? 50 : 16), min, max, reset);
+          onResize(next);
+          if (onCollapse) handleAnnouncement(e.currentTarget, next);
         }
         if (e.key === "Home") {
           e.preventDefault();

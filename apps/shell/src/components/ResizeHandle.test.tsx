@@ -70,3 +70,89 @@ it("restores the saved width when a pointer drag is cancelled", () => {
     vi.unstubAllGlobals();
   }
 });
+
+it.each([
+  [110, [], 1, 280],
+  [111, [[126]], 0, 126],
+  [265, [], 0, 280],
+  [264, [[264]], 0, 264],
+  [415, [[400]], 0, 400],
+])("commits sidebar drag %i with collapse and snap boundaries", (target, resized, collapses, width) => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const app = document.createElement("div");
+  app.className = "app";
+  const panel = document.createElement("aside");
+  app.append(panel);
+  document.body.append(app);
+  const root = createRoot(panel),
+    onResize = vi.fn(),
+    onCollapse = vi.fn();
+  try {
+    act(() =>
+      root.render(
+        <ResizeHandle
+          side="left"
+          value={280}
+          min={126}
+          max={400}
+          reset={280}
+          onResize={onResize}
+          onCollapse={onCollapse}
+        />,
+      ),
+    );
+    const handle = panel.querySelector<HTMLElement>('[role="separator"]')!;
+    act(() =>
+      handle.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, cancelable: true, clientX: 280 })),
+    );
+    act(() => window.dispatchEvent(new MouseEvent("pointermove", { buttons: 1, clientX: target })));
+    expect(onResize).not.toHaveBeenCalled();
+    expect(onCollapse).not.toHaveBeenCalled();
+    act(() => window.dispatchEvent(new Event("pointerup")));
+    expect(onCollapse).toHaveBeenCalledTimes(collapses);
+    expect(onResize.mock.calls).toEqual(resized);
+    expect(app.style.getPropertyValue("--sb-w")).toBe(`${width}px`);
+  } finally {
+    act(() => root.unmount());
+    app.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("announces the sidebar keyboard's 50 pixel step", () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.useFakeTimers();
+  const panel = document.createElement("aside");
+  document.body.append(panel);
+  const root = createRoot(panel),
+    onResize = vi.fn();
+  try {
+    act(() =>
+      root.render(
+        <ResizeHandle
+          side="left"
+          value={280}
+          min={126}
+          max={400}
+          reset={280}
+          onResize={onResize}
+          onCollapse={vi.fn()}
+        />,
+      ),
+    );
+    act(() =>
+      panel
+        .querySelector('[role="separator"]')!
+        .dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" })),
+    );
+    expect(onResize).toHaveBeenCalledWith(330);
+    expect(panel.querySelector('[aria-live="polite"]')?.textContent).toBe("Sidebar width 330 pixels");
+    act(() => vi.advanceTimersByTime(1000));
+    expect(panel.querySelector('[aria-live="polite"]')).toBeNull();
+  } finally {
+    act(() => root.unmount());
+    panel.remove();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});

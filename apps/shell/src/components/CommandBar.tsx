@@ -1,4 +1,5 @@
 import { runCommand } from "../commands";
+import { acquireFloatingSidebarLock } from "../floating-sidebar";
 import { SearchResultRow } from "./SearchResultRow";
 import {
   lazy,
@@ -347,6 +348,10 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   }, [browserAutocomplete, typedSomething, raw, intent.kind, autocompleteRetry]);
   const browserMatches = browserResult.query === raw ? browserResult.items : EMPTY_BROWSER;
   const browserError = browserResult.query === raw ? browserResult.error : null;
+  const omniboxPopup = typedSomething || !!browserError;
+  useEffect(() => {
+    if (omniboxPopup) return acquireFloatingSidebarLock("force-collapse");
+  }, [omniboxPopup]);
 
   // The local indexed query is cheap; dispatch it immediately and only display
   // a response that belongs to the exact text still in the field.

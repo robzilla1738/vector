@@ -60,3 +60,55 @@
 
 
 }
+
+@layer components {
+.app.toolbar-persistent:not(.minimal-ui) .main-col.has-page > .toolbar {
+  position: relative; top: auto; opacity: 1; transform: none; pointer-events: auto;
+  background: var(--surface-panel);
+}
+.app.toolbar-persistent .toolbar > :is(.cmdbar, .tb-left, .tb-right) { opacity: 1; transform: none; }
+.app .horizontal-chrome { position: relative; }
+.app .horizontal-chrome > .chat-sidebar-toggle { top: calc((var(--horizontal-tab-strip-h) - var(--control-h)) / 2); left: var(--traffic-inset); width: var(--control-h); height: var(--control-h); }
+.app .horizontal-chrome .horizontal-tabs-row { height: var(--horizontal-tab-strip-h); padding-left: calc(var(--traffic-inset) + var(--control-h) + var(--space-2)); }
+.app .sidebar .tab-row, .app .sidebar .tab-new, .app .sidebar .folder-row { height: var(--sidebar-row-h); min-height: var(--sidebar-row-h); border-radius: var(--sidebar-row-radius); padding-inline: var(--space-3); }
+.app .sidebar .sb-pins .tile-face { height: var(--control-h-lg); min-height: var(--control-h-lg); border-radius: var(--sidebar-row-radius); }
+.app :is(.sidebar, .chat-sidebar) .resize-handle.left { right: 0; width: var(--sidebar-resize-handle); }
+.app .sidebar, .app .sidebar .sidebar-content { transition-duration: var(--t-fast); }
+.app .sidebar.peek, .app .sidebar.peek .sidebar-content { transition-duration: var(--t-layout); }
+.app.native-host .main-col.has-page > .toolbar { transition-duration: var(--t-fast); }
+.app.native-host .main-col.toolbar-revealed.has-page > .toolbar { transition-duration: var(--t-layout); }
+/* Real flex spacers animate page bounds in both directions. Floating reveals
+   stay outside this flow so moving to an edge never displaces the page. */
+.app.layout-motion::before { content: ""; flex: none; height: 0; transition: height var(--t-layout) var(--ease-emphasized); }
+.app.layout-motion.tabs-horizontal::before { height: var(--horizontal-chrome-h); }
+.app.layout-motion .app-body::before { content: ""; flex: none; width: 0; transition: width var(--t-layout) var(--ease-emphasized); }
+.app.layout-motion.layout-expanded .app-body::before { width: var(--sb-w, var(--sidebar-w)); }
+.app.layout-motion .horizontal-chrome { position: absolute; z-index: var(--z-panel); top: 0; left: 0; right: 0; transition: transform var(--t-layout) var(--ease-emphasized), opacity var(--t-layout) var(--ease-emphasized); }
+.app.layout-motion .horizontal-chrome > .toolbar { height: var(--horizontal-toolbar-h); }
+.app.layout-motion .sidebar, .app.layout-motion .chat-sidebar { position: absolute; z-index: var(--z-panel); top: 0; left: 0; bottom: 0; }
+.app.layout-motion .main-col::before { content: ""; flex: none; height: 0; transition: height var(--t-layout) var(--ease-emphasized); }
+.app.layout-motion.toolbar-persistent.tabs-vertical .main-col.has-page::before { height: var(--toolbar-h); }
+.app.layout-motion.toolbar-persistent.tabs-vertical .main-col.has-page > .toolbar { position: absolute; top: 0; }
+.app.layout-motion .main-col { transition: border-radius var(--t-layout) var(--ease-emphasized); }
+.app.minimal-ui { padding: 0; gap: 0; }
+.app.layout-motion.minimal-ui::before { height: 0; }
+.app.layout-motion.minimal-ui .app-body::before { width: 0; }
+.app.layout-motion.minimal-ui.toolbar-persistent.tabs-vertical .main-col.has-page::before { height: 0; }
+.app.minimal-ui .app-body { margin: 0; padding: 0; gap: 0; }
+.app.minimal-ui .main-col, .app.minimal-ui.sidebar-peek .main-col { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.app.minimal-ui .main, .app.minimal-ui .stage-wrap, .app.minimal-ui .stage-card { padding: 0; margin: 0; border: 0; border-radius: 0; gap: 0; box-shadow: none; }
+.app.minimal-ui .horizontal-chrome { transform: translateY(-100%); opacity: 0; pointer-events: none; background: var(--surface-panel); }
+.app.minimal-ui.layout-toolbar-revealed .horizontal-chrome { transform: none; opacity: 1; pointer-events: auto; }
+.app.minimal-ui .main-col > .toolbar { position: absolute; top: 0; left: 0; right: 0; padding-left: var(--traffic-inset); }
+.app.minimal-ui .horizontal-chrome > .toolbar { opacity: 1; transform: none; }
+.app.minimal-ui .horizontal-chrome .toolbar > :is(.cmdbar, .tb-left, .tb-right) { opacity: 1; transform: none; }
+.app.minimal-ui .sidebar, .app.minimal-ui .chat-sidebar { width: 0; margin: 0; border-radius: 0; background: var(--surface-panel); }
+.app.minimal-ui .sidebar.peek, .app.minimal-ui .chat-sidebar.open { width: var(--sb-w, var(--sidebar-w)); }
+.app .chat-sidebar { transition: width var(--t-fast) var(--ease-emphasized); }
+.app .chat-sidebar.open { transition-duration: var(--t-layout); }
+.app.minimal-ui .rail { display: none; }
+body.resizing .app.layout-motion .app-body::before, body.resizing .app.layout-motion :is(.sidebar, .chat-sidebar) { transition-duration: var(--t-none); }
+@media (prefers-reduced-motion: reduce) {
+  .app.layout-motion::before, .app.layout-motion .app-body::before, .app.layout-motion .main-col::before, .app.layout-motion *, .app .sidebar, .app .sidebar-content { transition-duration: var(--t-none); animation-duration: var(--t-none); }
+}
+}

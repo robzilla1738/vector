@@ -20,11 +20,11 @@ const state = (patch: Partial<FloatingSidebarState> = {}): FloatingSidebarState 
   ...patch,
 });
 
-function FloatingPanel() {
+function FloatingPanel({ className }: { className?: string }) {
   const ref = useRef<HTMLElement>(null);
   useFloatingSidebar("hidden", ref);
   return (
-    <aside ref={ref}>
+    <aside ref={ref} className={className}>
       <button type="button">Focus</button>
       <details>
         <summary>Menu</summary>
@@ -62,7 +62,7 @@ it("retains and dismisses a floating sidebar across 50 scripted interactions", a
         check(trial, "outside 6 px trigger", false);
         move(6);
         await tick(199);
-        check(trial, "early edge reveal", false);
+        check(trial, "edge motion starts without an extra intent delay", true);
         await tick(1);
         check(trial, "edge reveal", true);
         move(14);
@@ -70,7 +70,7 @@ it("retains and dismisses a floating sidebar across 50 scripted interactions", a
         check(trial, "8 px leeway", true);
         move(15);
         await tick(149);
-        check(trial, "exit grace", true);
+        check(trial, "exit motion starts without an extra intent delay", false);
         await tick(1);
       } else if (trial % 5 === 1) {
         act(() => focusTarget.focus());
@@ -122,6 +122,35 @@ it("retains and dismisses a floating sidebar across 50 scripted interactions", a
   }
 });
 
+it.each(["sidebar", "chat-sidebar"])(
+  "keeps %s controls open when clicked and dismisses a page click",
+  async (className) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    try {
+      act(() => useStore.setState({ sidebarPeek: false }));
+      act(() => root.render(createElement(FloatingPanel, { className })));
+      const panel = container.querySelector("aside")!;
+      act(() => panel.dispatchEvent(new Event("pointerenter")));
+      expect(useStore.getState().sidebarPeek).toBe(true);
+      act(() =>
+        panel.querySelector("button")!.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })),
+      );
+      expect(useStore.getState().sidebarPeek).toBe(true);
+      act(() => container.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })));
+      expect(useStore.getState().sidebarPeek).toBe(false);
+    } finally {
+      act(() => root.unmount());
+      container.remove();
+      hasFocus.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
 describe("floating sidebar locks", () => {
   it("counts focus as hover and gates an inactive frame", () => {
     expect(floatingSidebarVisible(state({ focused: true }))).toBe(true);
@@ -155,4 +184,21 @@ describe("floating sidebar locks", () => {
       ),
     ).toBe(true);
   });
+});
+
+it("keeps a collapsed sidebar collapsed when a current-state lock overrides expansion", () => {
+  expect(
+    floatingSidebarVisible(
+      state({
+        edge: true,
+        inside: true,
+        locks: { "force-collapse": 0, "keep-current": 1, "keep-expanded": 1 },
+      }),
+    ),
+  ).toBe(false);
+  expect(
+    floatingSidebarVisible(
+      state({ visible: true, locks: { "force-collapse": 0, "keep-current": 1, "keep-expanded": 1 } }),
+    ),
+  ).toBe(true);
 });

@@ -67,6 +67,13 @@
   --r-tab: 12px;
   --r-peek: 16px;
   --t-none: 0ms;
+  --t-layout: 200ms;
+  --sidebar-row-h: 30px;
+  --sidebar-row-radius: 8px;
+  --sidebar-resize-handle: 5px;
+  --horizontal-tab-strip-h: 38px;
+  --horizontal-toolbar-h: 42px;
+  --horizontal-chrome-h: calc(var(--horizontal-tab-strip-h) + var(--horizontal-toolbar-h));
   --t-disclosure-fade: 160ms;
   --t-disclosure: 220ms;
   --t-sidebar-peek: 260ms;

@@ -1,5 +1,7 @@
 import { FeatureSlots } from "../features/registry";
-import { type CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
+import { runCommand } from "../commands";
+import { useFloatingSidebar } from "../floating-sidebar";
 import { bridge } from "../bridge";
 import { ChatSessions } from "./ChatSessions";
 import { useStore } from "../store";
@@ -7,15 +9,19 @@ import { ResizeHandle } from "./ResizeHandle";
 import { I } from "./icons";
 
 /** The horizontal layout keeps tabs in the title bar and uses this panel for work. */
-export function ChatSidebar() {
-  const open = useStore(state => state.sidebar === "expanded");
+export function ChatSidebar({ minimal = false }: { minimal?: boolean }) {
+  const sidebar = useStore(state => state.sidebar);
+  const peek = useStore(state => state.sidebarPeek);
+  const open = peek || (!minimal && sidebar === "expanded");
+  const panel = useRef<HTMLElement>(null);
+  useFloatingSidebar(minimal ? "hidden" : sidebar, panel);
   const width = useStore(state => state.sidebarWidth);
   const setWidth = useStore(state => state.setSidebarWidth);
   const conversationId = useStore(state => state.conversationId);
   const mode = useStore(state => state.mode);
   const setOverlay = useStore(state => state.setOverlay);
 
-  return <aside className={`chat-sidebar${open ? " open" : ""}`} style={{ "--sb-w": `${width}px` } as CSSProperties} aria-label="Sidebar" aria-hidden={!open} inert={!open}>
+  return <aside ref={panel} className={`chat-sidebar${open ? " open" : ""}`} style={{ "--sb-w": `${width}px` } as CSSProperties} aria-label="Sidebar" aria-hidden={!open} inert={!open}>
     <div className="chat-sidebar-content">
     <FeatureSlots slot="sidebarItems" />
     <nav aria-label="Work">
@@ -27,6 +33,6 @@ export function ChatSidebar() {
       <ChatSessions />
     </section>}
     </div>
-    {open && <ResizeHandle side="left" value={width} min={220} max={380} reset={280} onResize={setWidth} />}
+    {open && <ResizeHandle side="left" value={width} min={126} max={400} reset={280} onResize={setWidth} onCollapse={() => runCommand("sidebar-hide")} />}
   </aside>;
 }

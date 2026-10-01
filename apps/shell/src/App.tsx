@@ -17,6 +17,7 @@ import type { PageTarget, Run } from "@aux/contracts";
 import { LIVE_RUN, useStore, call, toast, errToast, patchPageFields, type SidebarMode } from "./store";
 import { bridge, inNativeHost, inMock } from "./bridge";
 import { isHomeAddress, nativePageId } from "./chrome";
+import { useLayoutChrome, useWindowControls } from "./features/layout/layout";
 import { useToolbarReveal } from "./toolbar-reveal";
 import { spaceThemeStyle } from "./workspace";
 import { createTabSwitcher } from "./tab-switcher";
@@ -233,19 +234,21 @@ export function App() {
   const activePageId = useStore((s) => s.activePageId);
   const activePageEpoch = useStore((s) => s.pages.find((p) => p.pageId === s.activePageId)?.documentEpoch);
   const activePage = useStore(useShallow((s) => placementFields(s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined)));
-  const pageChrome = inNativeHost && !horizontal && !quickAsk && !!activePage && activePage.backend !== "chrome"
+  const { minimal, hideToolbar, layoutMotion, sidebarWidth } = useLayoutChrome();
+  const pageChrome = inNativeHost && !quickAsk && (minimal || (!horizontal && hideToolbar && !!activePage && activePage.backend !== "chrome"
     && activePage.viewStatus !== "crashed" && !activePage.navigationError
-    && (!!activePage.showBlankDocument || (!isHomeAddress(activePage.url)));
-  const toolbarReveal = useToolbarReveal(pageChrome, sidebarPeek);
+    && (!!activePage.showBlankDocument || (!isHomeAddress(activePage.url)))));
+  const toolbarReveal = useToolbarReveal(pageChrome, sidebarPeek, horizontal ? ".horizontal-chrome > .toolbar" : ".main-col > .toolbar");
+  useWindowControls(minimal, toolbarReveal.revealed);
   const [toolbarHole, setToolbarHole] = useState(false);
   const [toolbarReady, setToolbarReady] = useState(false);
   const confirming = useStore(s => !!s.confirmation);
   const nativeShowing = !!nativePageId({ mode, overlay, confirming, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
-  const floatingSidebar = !horizontal && sidebar !== "expanded" && sidebarPeek;
+  const floatingSidebar = sidebarPeek && (minimal || sidebar !== "expanded");
   const [peekCovering, setPeekCovering] = useState(false);
   useEffect(() => {
     if (floatingSidebar) { setPeekCovering(true); return; }
-    const timer = window.setTimeout(() => setPeekCovering(false), 280);
+    const timer = window.setTimeout(() => setPeekCovering(false), 150);
     return () => clearTimeout(timer);
   }, [floatingSidebar]);
   const sidebarCovering = (floatingSidebar || peekCovering) && nativeShowing;
@@ -430,8 +433,8 @@ export function App() {
   if (quickAsk) return <QuickAsk onExpand={expandQuickAsk}/>;
   return (
     <div
-      className={`app tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${toolbarHole ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
-      style={{ "--space-grain": spaceGrain, ...spaceThemeStyle({ theme: spaceTheme }) } as React.CSSProperties}
+      className={`app ${layoutMotion ? "layout-motion" : ""} ${minimal ? "minimal-ui" : ""} ${!hideToolbar ? "toolbar-persistent" : ""} ${toolbarReveal.revealed ? "layout-toolbar-revealed" : ""} tabs-${horizontal ? "horizontal" : "vertical"} ${inNativeHost ? "native-host" : ""} layout-${sidebar as SidebarMode} ${sidebarPeek ? "sidebar-peek" : ""} ${toolbarHole ? "toolbar-stacked" : ""} ${railOpen ? "rail-open" : ""}`}
+      style={{ "--sb-w": `${sidebarWidth}px`, "--space-grain": spaceGrain, ...spaceThemeStyle({ theme: spaceTheme }) } as React.CSSProperties}
       data-overlay={overlay ?? undefined}
       onKeyDown={(e) => {
         if (!inNativeHost || e.defaultPrevented || (e.key !== "ContextMenu" && !(e.key === "F10" && e.shiftKey))) return;
@@ -456,12 +459,11 @@ export function App() {
           <span>Runtime reconnecting — tabs keep working</span>
         </output>
       )}
-      {horizontal && <div className="horizontal-chrome"><HorizontalTabs /><Toolbar /></div>}
+      {horizontal && <div className="horizontal-chrome" inert={minimal && !toolbarReveal.revealed} aria-hidden={minimal && !toolbarReveal.revealed}><button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{I.sidebarOpen}</button><HorizontalTabs /><Toolbar /></div>}
       <div className="app-body">
-        {horizontal ? <ChatSidebar /> : <Sidebar />}
+        {horizontal ? <ChatSidebar minimal={minimal} /> : <Sidebar minimal={minimal} />}
         <div className={`main-col${nativeShowing ? " has-page" : ""}${mode === "conversation" ? " conversation-open" : ""}${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}>
-          {!horizontal && <Toolbar />}
-          {horizontal && <button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{I.sidebarOpen}</button>}
+          {!horizontal && <Toolbar hidden={minimal && !toolbarReveal.revealed} />}
           <div className="main">
             <div className="stage-wrap">
               {overlay === "find" && <FindBar inputRef={findInput} returnFocusRef={conversationScroll} />}

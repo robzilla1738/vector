@@ -6,8 +6,6 @@ import type { SidebarMode } from "./sidebar-mode";
 export type SidebarLock = "force-collapse" | "keep-current" | "keep-expanded";
 export const SIDEBAR_EDGE_TRIGGER_PX = 6;
 export const SIDEBAR_EDGE_LEEWAY_PX = 8;
-export const SIDEBAR_ENTRY_MS = 200;
-export const SIDEBAR_EXIT_MS = 150;
 export interface FloatingSidebarState {
   visible: boolean;
   frameActive: boolean;
@@ -20,8 +18,8 @@ export interface FloatingSidebarState {
 export function floatingSidebarVisible(state: FloatingSidebarState): boolean {
   if (state.locks["force-collapse"]) return false;
   if (!state.frameActive) return false;
-  if (state.locks["keep-expanded"] || state.edge || state.inside || state.focused) return true;
-  return !!state.locks["keep-current"] && state.visible;
+  if (state.locks["keep-current"]) return state.visible;
+  return !!state.locks["keep-expanded"] || state.edge || state.inside || state.focused;
 }
 
 const activeLocks = new Map<SidebarLock, number>();
@@ -60,7 +58,7 @@ export const floatingSidebarLockCounts = (): FloatingSidebarState["locks"] => ({
   "keep-expanded": activeLocks.get("keep-expanded") ?? 0,
 });
 
-/** Owns reveal and retention for the vertical layout. The saved width changes
+/** Owns reveal and retention for both sidebar layouts. The saved width changes
  * only in ResizeHandle's pointer-up path, never during this animation. */
 export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLElement | null>): void {
   useEffect(() => {
@@ -75,65 +73,38 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
       focused: document.hasFocus() && node.contains(document.activeElement),
       locks: floatingSidebarLockCounts(),
     };
-    let showTimer = 0;
-    let hideTimer = 0;
-    let lastPointer: { x: number; time: number } | null = null;
-    const clearShow = () => {
-      window.clearTimeout(showTimer);
-      showTimer = 0;
-    };
-    const clearHide = () => {
-      window.clearTimeout(hideTimer);
-      hideTimer = 0;
-    };
     const show = () => {
-      clearShow();
-      clearHide();
       if (!floatingSidebarVisible({ ...state, edge: true })) return;
       if (!state.visible) {
         state.visible = true;
         useStore.getState().setSidebarPeek(true);
       }
     };
-    const hide = (immediate = false) => {
-      clearShow();
-      clearHide();
-      const finish = () => {
-        if (floatingSidebarVisible(state)) return;
-        state.visible = false;
-        useStore.getState().setSidebarPeek(false);
-      };
-      if (immediate) finish();
-      else hideTimer = window.setTimeout(finish, SIDEBAR_EXIT_MS);
+    const hide = () => {
+      if (floatingSidebarVisible(state)) return;
+      state.visible = false;
+      useStore.getState().setSidebarPeek(false);
     };
-    const reconcile = (fast = false) => {
+    const reconcile = () => {
       state.visible = useStore.getState().sidebarPeek;
       state.locks = floatingSidebarLockCounts();
       if (state.locks["force-collapse"] || !state.frameActive) {
-        hide(true);
+        hide();
         return;
       }
-      if (floatingSidebarVisible(state)) {
-        clearHide();
-        if (fast || state.inside || state.focused || state.locks["keep-expanded"]) show();
-        else if (!state.visible && !showTimer) showTimer = window.setTimeout(show, SIDEBAR_ENTRY_MS);
-      } else hide();
+      if (floatingSidebarVisible(state)) show();
+      else hide();
     };
     const move = (event: PointerEvent) => {
       const edgeWidth = SIDEBAR_EDGE_TRIGGER_PX + (state.edge || state.visible ? SIDEBAR_EDGE_LEEWAY_PX : 0);
       const near = event.clientX >= 0 && event.clientX <= edgeWidth && event.clientY >= 48;
-      const speed =
-        lastPointer && event.timeStamp > lastPointer.time
-          ? Math.abs(event.clientX - lastPointer.x) / (event.timeStamp - lastPointer.time)
-          : 0;
-      lastPointer = { x: event.clientX, time: event.timeStamp };
       if (state.edge === near) return;
       state.edge = near;
-      reconcile(near && (event.clientX <= 2 || speed > 1.5));
+      reconcile();
     };
     const enter = () => {
       state.inside = true;
-      reconcile(true);
+      reconcile();
     };
     const leave = () => {
       state.inside = false;
@@ -141,7 +112,7 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
     };
     const focus = () => {
       state.focused = true;
-      reconcile(true);
+      reconcile();
     };
     const blur = () =>
       queueMicrotask(() => {
@@ -161,18 +132,18 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
     const outside = (event: PointerEvent) => {
       if (
         !(event.target instanceof Element) ||
-        event.target.closest(".sidebar, .toolbar, .menu, .cb-pop, .palette, dialog[open]")
+        event.target.closest(".sidebar, .chat-sidebar, .toolbar, .menu, .cb-pop, .palette, dialog[open]")
       )
         return;
       state.edge = false;
       state.inside = false;
-      hide(true);
+      hide();
     };
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !event.defaultPrevented && !useStore.getState().overlay) {
         state.edge = false;
         state.inside = false;
-        hide(true);
+        hide();
       }
     };
     const nativeEdge = bridge.onSidebarEdge((near) => {
@@ -184,7 +155,7 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
     const scroll = () => {
       state.edge = false;
       state.inside = false;
-      hide(true);
+      hide();
     };
     let releaseDrag: (() => void) | null = null;
     let releaseDisclosure: (() => void) | null = null;
@@ -223,8 +194,6 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
     window.addEventListener("dragend", endDrag);
     window.addEventListener("drop", endDrag);
     return () => {
-      clearShow();
-      clearHide();
       nativeEdge();
       disclosures.disconnect();
       listeners.delete(lockChanged);

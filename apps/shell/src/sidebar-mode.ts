@@ -1,8 +1,6 @@
-/** Stored compact-rail preferences migrate to a fully hidden sidebar. */
-export type SidebarMode = "expanded" | "rail" | "hidden";
+export type SidebarMode = "expanded" | "hidden";
 
 export function readSidebarMode(raw: string | null | undefined): SidebarMode {
-  if (raw === "rail") return "hidden";
   if (raw === "hidden" || raw === "expanded") return raw;
   return "hidden";
 }

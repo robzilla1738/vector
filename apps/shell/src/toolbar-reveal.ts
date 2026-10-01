@@ -6,9 +6,6 @@ import {
   subscribeFloatingSidebarLocks,
 } from "./floating-sidebar";
 
-export const TOOLBAR_ENTRY_MS = 200;
-export const TOOLBAR_EXIT_MS = 150;
-
 const seconds = (list: string) =>
   list.split(",").map((v) => (v.trim().endsWith("ms") ? parseFloat(v) / 1000 : parseFloat(v)) || 0);
 
@@ -24,6 +21,7 @@ function longestTransitionMs(el: HTMLElement): number {
 export function useToolbarReveal(
   enabled: boolean,
   heldOpen = false,
+  selector = ".main-col > .toolbar",
 ): { revealed: boolean; covering: boolean } {
   const [dragging, setDragging] = useState(false);
   const [edge, setEdge] = useState(false);
@@ -34,7 +32,6 @@ export function useToolbarReveal(
   const [covering, setCovering] = useState(false);
   useSyncExternalStore(subscribeFloatingSidebarLocks, floatingSidebarLockVersion);
   const locks = floatingSidebarLockCounts();
-  const forceCollapse = locks["force-collapse"] > 0;
   const keepCurrent = locks["keep-current"] > 0;
   const keepExpanded = locks["keep-expanded"] > 0;
   useEffect(
@@ -57,7 +54,7 @@ export function useToolbarReveal(
   }, []);
   useEffect(() => {
     if (!enabled) return;
-    const bar = document.querySelector<HTMLElement>(".main-col > .toolbar");
+    const bar = document.querySelector<HTMLElement>(selector);
     if (!bar) return;
     const enter = () => {
       setFrameActive(true);
@@ -84,7 +81,7 @@ export function useToolbarReveal(
       setHovered(false);
       setFocused(false);
     };
-  }, [enabled]);
+  }, [enabled, selector]);
   useEffect(() => {
     const drag = (event: Event) => setDragging((event as CustomEvent<boolean>).detail);
     window.addEventListener("aux-window-drag", drag);
@@ -100,7 +97,7 @@ export function useToolbarReveal(
     };
   }, []);
   useEffect(() => {
-    if (!enabled || !frameActive || forceCollapse) {
+    if (!enabled || !frameActive) {
       let active = true;
       queueMicrotask(() => {
         if (active) setOpen(false);
@@ -109,6 +106,7 @@ export function useToolbarReveal(
         active = false;
       };
     }
+    if (keepCurrent) return;
     if (hovered || focused || heldOpen || dragging || keepExpanded) {
       let active = true;
       queueMicrotask(() => {
@@ -118,29 +116,16 @@ export function useToolbarReveal(
         active = false;
       };
     }
-    if (edge) {
-      if (open) return;
-      const timer = window.setTimeout(() => setOpen(true), TOOLBAR_ENTRY_MS);
-      return () => window.clearTimeout(timer);
-    }
-    if (keepCurrent && open) return;
-    if (!open) return;
-    const timer = window.setTimeout(() => setOpen(false), TOOLBAR_EXIT_MS);
-    return () => window.clearTimeout(timer);
-  }, [
-    enabled,
-    frameActive,
-    edge,
-    hovered,
-    focused,
-    heldOpen,
-    dragging,
-    forceCollapse,
-    keepCurrent,
-    keepExpanded,
-    open,
-  ]);
-  const revealed = enabled && frameActive && !forceCollapse && open;
+    // Edge durations belong to the CSS motion, not a second intent delay.
+    let active = true;
+    queueMicrotask(() => {
+      if (active) setOpen(edge);
+    });
+    return () => {
+      active = false;
+    };
+  }, [enabled, frameActive, edge, hovered, focused, heldOpen, dragging, keepCurrent, keepExpanded, open]);
+  const revealed = enabled && frameActive && open;
   useEffect(() => {
     let active = true;
     const update = (value: boolean) =>
@@ -160,7 +145,7 @@ export function useToolbarReveal(
       };
     }
     // Keep the shell above the page until the bar has finished sliding away.
-    const bar = document.querySelector<HTMLElement>(".main-col > .toolbar");
+    const bar = document.querySelector<HTMLElement>(selector);
     const done = () => {
       if (active) setCovering(false);
     };
@@ -175,6 +160,6 @@ export function useToolbarReveal(
       bar?.removeEventListener("transitionend", onEnd);
       window.clearTimeout(timer);
     };
-  }, [enabled, revealed]);
+  }, [enabled, revealed, selector]);
   return { revealed, covering };
 }

@@ -409,13 +409,13 @@ const SidebarChats = memo(function SidebarChats() {
 /*  Sidebar                                                             */
 /* ------------------------------------------------------------------ */
 
-export const Sidebar = memo(function Sidebar() {
+export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: boolean }) {
   const key = useShortcutLabels();
   const sidebarPref = useStore((s) => s.sidebar);
   const sections = useStore(s => s.sidebarSections);
   const toggleSection = useStore(s => s.toggleSidebarSection);
   const railOpenNow = useStore((s) => s.railOpen && s.overlay !== "settings");
-  const sidebar = sidebarPref;
+  const sidebar = minimal ? "hidden" : sidebarPref;
   const peek = useStore(s => s.sidebarPeek);
   const toggleRail = useStore((s) => s.toggleRail);
   const layout = useStore((s) => s.layout);
@@ -808,7 +808,7 @@ export const Sidebar = memo(function Sidebar() {
         aria-label="Sidebar"
       >
         <div className="sidebar-content" inert={!sidebarVisible ? true : undefined} aria-hidden={!sidebarVisible}>{full}</div>
-        {sidebarVisible && <ResizeHandle side="left" value={sidebarWidth} min={220} max={380} reset={280} onResize={setSidebarWidth} />}
+        {sidebarVisible && <ResizeHandle side="left" value={sidebarWidth} min={126} max={400} reset={280} onResize={setSidebarWidth} onCollapse={() => runCommand("sidebar-hide")} />}
       </aside>
       {editing && (
         <SpaceEditor space={editing === "new" ? null : editing} onClose={() => setEditing(null)} returnFocus={spaceTrigger}

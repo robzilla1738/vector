@@ -53,7 +53,7 @@ it("refreshes one website advisory and dismisses it on successful handoff", () =
 
 it("explicit sidebar collapse is idempotent from every sidebar mode", () => {
   vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
-  for (const sidebar of ["expanded", "rail", "hidden"] as const) {
+  for (const sidebar of ["expanded", "hidden"] as const) {
     useStore.setState({ sidebar, sidebarPeek: true });
     expect(runCommand("sidebar-hide")).toBe(true);
     expect(useStore.getState().sidebar).toBe("hidden");
