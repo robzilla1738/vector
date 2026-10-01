@@ -21,7 +21,7 @@ export function makeInvoker(s: Services) {
     const schema = MethodSchemas[method as MethodName];
     if (!schema) throw new AuxError("not_found", `unknown method ${method}`);
     const policy = RuntimeAuthorization[method as MethodName];
-    if (client.external && policy.auth === "aux-webui") {
+    if ((client.external || client.codeMode) && policy.auth === "aux-webui") {
       throw new AuxError("permission_denied", `${method} is managed in Aux.`);
     }
     const host = s.featureHost ?? "electron";

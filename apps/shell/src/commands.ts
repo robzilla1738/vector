@@ -75,6 +75,23 @@ function bookmarkAll(st: StoreState) {
   );
 }
 export const COMMAND_ACTIONS = {
+  "export-demonstration": (st, context) => featureCommand("export-demonstration", st, context),
+  "record-demonstration": (st, context) => featureCommand("record-demonstration", st, context),
+  "pause-demonstration": (st, context) => featureCommand("pause-demonstration", st, context),
+  "resume-demonstration": (st, context) => featureCommand("resume-demonstration", st, context),
+  "stop-demonstration": (st, context) => featureCommand("stop-demonstration", st, context),
+  "discard-demonstration": (st, context) => featureCommand("discard-demonstration", st, context),
+  "save-demonstration": (st, context) => featureCommand("save-demonstration", st, context),
+  "queue-for-tonight": (st, context) => featureCommand("queue-for-tonight", st, context),
+  "review-overnight": (st, context) => featureCommand("review-overnight", st, context),
+  "review-overnight-item": (st, context) => featureCommand("review-overnight-item", st, context),
+  "configure-night-shift": (st, context) => featureCommand("configure-night-shift", st, context),
+  "prepare-skill-replay": (st, context) => featureCommand("prepare-skill-replay", st, context),
+  "test-skill-replay": (st, context) => featureCommand("test-skill-replay", st, context),
+  "check-skill-replay": (st, context) => featureCommand("check-skill-replay", st, context),
+  "propose-skill-repair": (st, context) => featureCommand("propose-skill-repair", st, context),
+  "approve-skill-repair": (st, context) => featureCommand("approve-skill-repair", st, context),
+
   "undo-download-rename": (st, context) => featureCommand("undo-download-rename", st, context),
   "set-download-naming": (st, context) => featureCommand("set-download-naming", st, context),
   "show-download-settings": (st, context) => featureCommand("show-download-settings", st, context),

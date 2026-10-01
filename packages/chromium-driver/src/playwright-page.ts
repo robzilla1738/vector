@@ -109,6 +109,24 @@ export class PlaywrightDriverPage implements DriverPage {
         : Promise.resolve(null);
   }
 
+  async openRecorderObserver() {
+    if (!this.isAttached()) throw new AuxError("target_detached", "The recording tab detached.");
+    const session = await this.context.newCDPSession(this.page);
+    const allowed = new Set(["Runtime.enable", "Runtime.addBinding", "Runtime.removeBinding", "Runtime.evaluate", "Page.enable",
+      "Page.addScriptToEvaluateOnNewDocument", "Page.removeScriptToEvaluateOnNewDocument", "Page.getFrameTree", "Page.createIsolatedWorld"]);
+    return {
+      send: async (method: string, params: Record<string, unknown> = {}) => {
+        if (!allowed.has(method)) throw new AuxError("permission_denied", "Recording cannot dispatch browser actions.");
+        return await session.send(method as never, params as never) as Record<string, unknown>;
+      },
+      on: (event: string, listener: (params: Record<string, unknown>) => void) => {
+        session.on(event as never, listener as never);
+        return () => session.off(event as never, listener as never);
+      },
+      close: () => session.detach(),
+    };
+  }
+
   private on(event: string, fn: (...args: never[]) => void) {
     this.page.on(event as never, fn as never);
     this.listeners.push([event, fn]);

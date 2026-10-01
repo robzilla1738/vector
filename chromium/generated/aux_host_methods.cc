@@ -4137,6 +4137,8 @@ constexpr MethodInfo kMethods[] = {
   {MethodId::kNativeUndoDownloadRename, "native.undoDownloadRename", "runtime", "smartDownloadNames", "authenticated-runtime", true},
   {MethodId::kNativeDownloadPreviewText, "native.downloadPreviewText", "runtime", "smartDownloadNames", "authenticated-runtime", true},
   {MethodId::kNativeRenameDownload, "native.renameDownload", "runtime", "smartDownloadNames", "authenticated-runtime", true},
+  {MethodId::kNativePowerRelease, "native.powerRelease", "runtime", "overnightReview", "authenticated-runtime", true},
+  {MethodId::kNativePowerStatus, "native.powerStatus", "runtime", "overnightReview", "authenticated-runtime", true},
   {MethodId::kNativePowerActivity, "native.powerActivity", "runtime", "overnightReview", "authenticated-runtime", true},
   {MethodId::kNativeCreateAgentPage, "native.createAgentPage", "runtime", "core", "authenticated-runtime", true},
   {MethodId::kNativeEgressContext, "native.egressContext", "runtime", "core", "authenticated-runtime", true},
@@ -4352,6 +4354,8 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kNativeUndoDownloadRename: valid = ValidateNode259(args); break;
     case MethodId::kNativeDownloadPreviewText: valid = ValidateNode260(args); break;
     case MethodId::kNativeRenameDownload: valid = ValidateNode261(args); break;
+    case MethodId::kNativePowerRelease: valid = ValidateNode255(args); break;
+    case MethodId::kNativePowerStatus: valid = ValidateNode255(args); break;
     case MethodId::kNativePowerActivity: valid = ValidateNode263(args); break;
     case MethodId::kNativeCreateAgentPage: valid = ValidateNode265(args); break;
     case MethodId::kNativeEgressContext: valid = ValidateNode269(args); break;

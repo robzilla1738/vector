@@ -6,7 +6,8 @@ import type { Routine } from "@aux/contracts";
 import { SkillReplayPanel } from "./SkillReplayPanel";
 
 const rpc = vi.hoisted(() => vi.fn());
-vi.mock("../store", () => ({ call: rpc }));
+vi.mock("../store", async importOriginal => ({ ...await importOriginal<typeof import("../store")>(), call: rpc }));
+vi.mock("../use-feature", () => ({ featureStage: () => "on", useFeature: () => true }));
 let root: Root;
 let host: HTMLDivElement;
 const routine = { routineId: "skill-1", revision: 2, sourceTaskId: "task-1", sourceTaskRevision: 1,

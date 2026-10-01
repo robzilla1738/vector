@@ -58,6 +58,7 @@ export async function run(t) {
   });
   await t.step('allow automatic PiP through its real Settings control', { kind: 'ui', features: ['pictureInPicture'] }, async () => {
     await t.ax.key('command+,', 'hid'); const search = selector('Search settings', 'shell', 'AXTextField');
+    await t.ax.waitFor(search, 'visible');
     await t.ax.type('Automatic picture in picture', search);
     await t.ax.press(selector('Automatic picture in picture', 'shell', 'AXButton'));
     await t.ax.press(selector('Automatic picture in picture', 'shell', 'AXPopUpButton'));

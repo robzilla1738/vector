@@ -15,6 +15,23 @@ const B = (key: string, options: Omit<ShortcutBinding, "key"> = {}): ShortcutBin
 const Numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export const COMMANDS = [
+  { id: "export-demonstration", label: "Export reviewed demonstration", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "record-demonstration", label: "Record a demonstration", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: true },
+  { id: "pause-demonstration", label: "Pause recording", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "resume-demonstration", label: "Resume recording", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "stop-demonstration", label: "Stop recording", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "discard-demonstration", label: "Discard recording", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "save-demonstration", label: "Save demonstration as Skill", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "queue-for-tonight", label: "Queue for tonight", section: "Agent", handler: "shell", feature: "overnightReview", focusShell: true, windows: ["normal"], bindings: [], palette: true },
+  { id: "review-overnight", label: "Review overnight work", section: "Agent", handler: "shell", feature: "overnightReview", focusShell: true, windows: ["normal"], bindings: [], palette: true },
+  { id: "review-overnight-item", label: "Review overnight item", section: "Agent", handler: "shell", feature: "overnightReview", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "configure-night-shift", label: "Save night shift settings", section: "Agent", handler: "shell", feature: "overnightReview", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "prepare-skill-replay", label: "Prepare Skill replay", section: "Agent", handler: "shell", feature: "automations", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "test-skill-replay", label: "Test Skill replay", section: "Agent", handler: "shell", feature: "automations", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "check-skill-replay", label: "Check Skill replay test", section: "Agent", handler: "shell", feature: "automations", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "propose-skill-repair", label: "Propose Skill target repair", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+  { id: "approve-skill-repair", label: "Approve Skill target repair", section: "Agent", handler: "shell", feature: "demonstrationSkills", focusShell: true, windows: ["normal"], bindings: [], palette: false },
+
   { id: "show-download-settings", label: "Download naming settings", section: "Application", bindings: [], handler: "shell", feature: "smartDownloadNames", windows: ["normal"] },
   { id: "set-download-naming", label: "Change download naming", section: "Application", bindings: [], handler: "shell", feature: "smartDownloadNames", palette: false, windows: ["normal"] },
   { id: "undo-download-rename", label: "Undo download rename", section: "Application", bindings: [], handler: "shell", feature: "smartDownloadNames", palette: false, windows: ["normal"] },

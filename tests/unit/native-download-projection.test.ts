@@ -35,3 +35,13 @@ it("projects only an unambiguous current native tab into an active run", async (
     expect(started).toHaveBeenLastCalledWith(undefined, expect.objectContaining({ id: "old" }));
   } finally { db.close(); }
 });
+
+it("rejects code-mode owner-only calls at the actual invoker boundary", async () => {
+  const db = openDb(":memory:");
+  try {
+    const repo = new Repo(db), events = new EventBus(repo);
+    const invoke = makeInvoker({ repo, events, featureHost: "chromium-fork" } as unknown as Services);
+    for (const method of ["downloads.renameReceipts", "recorder.start", "nightShift.queue", "routines.replay.repair.apply"])
+      await expect(invoke(method, {}, { external: false, codeMode: true })).rejects.toMatchObject({ code: "permission_denied" });
+  } finally { db.close(); }
+});

@@ -19,7 +19,11 @@ async function panes(t, titles, ids) {
   return { ax, rpc: { pages, workspace: await t.rpc('workspace.get') } };
 }
 async function edgeDrop(t, color, edge) {
-  const areas = await t.ax.query({ role: 'AXWebArea', name: '^Aux native (Red|Blue|Green)$', match: 'regex', scope: 'page' });
+  let areas;
+  await t.until('native page ready for drop geometry', async () => {
+    areas = await t.ax.query({ role: 'AXWebArea', name: '^Aux native (Red|Blue|Green)$', match: 'regex', scope: 'page' });
+    return areas.length > 0 && areas.every(area => area.frame?.width >= 200 && area.frame?.height >= 200);
+  });
   t.assert.ok(areas.length && areas.every(area => area.frame), 'A real native page supplies the drop geometry');
   const left = Math.min(...areas.map(area => area.frame.x)), top = Math.min(...areas.map(area => area.frame.y));
   const right = Math.max(...areas.map(area => area.frame.x + area.frame.width)), bottom = Math.max(...areas.map(area => area.frame.y + area.frame.height));

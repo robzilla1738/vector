@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { AuxError, EventTypes, PlanStepSchema, newRunId, type PlanStep, type Routine, type Run, type StepRecord } from "@aux/contracts";
-import { substituteParameters } from "./runs.js";
+import { AuxError, EventTypes, PlanStepSchema, CredentialSelectorSchema, newRunId, type PlanStep, type Routine, type Run, type StepRecord } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
 import type { PageService } from "./pages.js";
 import type { EventBus } from "../events.js";
+import { launchSkillContinuation } from "./skill-continuation.js";
 
 const TARGET = /^css:(?:[#.][A-Za-z][\w-]*|[a-z][\w-]*(?:[#.][A-Za-z][\w-]*)?)$/;
 const SELECTOR = /^(?:[#.][A-Za-z][\w-]*|[a-z][\w-]*(?:[#.][A-Za-z][\w-]*)?)$/;
@@ -75,14 +75,29 @@ export function compileSkillTrace(records: StepRecord[], samples: Record<string,
 }
 
 export function replayDigest(sourceRunId: string, siteOrigin: string, steps: PlanStep[]): string {
-  return createHash("sha256").update(JSON.stringify(["aux-skill-replay@1", sourceRunId, siteOrigin, steps])).digest("hex");
+  return createHash("sha256").update(JSON.stringify(["aux-skill-replay@2", { kind: "run", sourceRunId }, [siteOrigin], steps])).digest("hex");
+}
+
+export function skillReplayProofDigest(replay: { sourceRunId?: string; sourceRecordingId?: string; siteOrigin: string; siteOrigins: readonly string[]; steps: PlanStep[] }): string {
+  if (replay.sourceRecordingId) return demonstrationReplayDigest(replay.sourceRecordingId, replay.siteOrigins, replay.steps);
+  if (!replay.sourceRunId) throw new AuxError("conflict", "The Skill has no exact source identity.");
+  return replayDigest(replay.sourceRunId, replay.siteOrigin, replay.steps);
 }
 
 export function bindSkillParameters(steps: PlanStep[], parameters: Record<string, string>, declared: readonly string[]): PlanStep[] {
   if (Object.keys(parameters).length !== declared.length || declared.some(name => !parameters[name] || parameters[name]!.length > 4000)
     || Object.keys(parameters).some(name => !declared.includes(name)))
     throw new AuxError("invalid_params", "Provide one reviewed value for each Skill parameter.");
-  const bound = JSON.parse(substituteParameters(JSON.stringify(steps), parameters)) as unknown;
+  const substitute = (value: unknown): unknown => {
+    if (typeof value === "string") return value.replace(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g, (_match, name: string) => {
+      if (!Object.hasOwn(parameters, name)) throw new AuxError("invalid_params", `Missing reviewed Skill parameter: ${name}`);
+      return parameters[name]!;
+    });
+    if (Array.isArray(value)) return value.map(substitute);
+    if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, substitute(item)]));
+    return value;
+  };
+  const bound = substitute(steps);
   if (!Array.isArray(bound)) throw new AuxError("invalid_params", "The Skill replay is invalid.");
   return bound.map(step => PlanStepSchema.parse(step));
 }
@@ -119,62 +134,95 @@ export function requireRoutineTriggerPage(pages: PageService, pageId: string, ur
 
 /** A replay is a normal governed browser run with page JS disabled. */
 export function startSkillReplay(input: { repo: Repo; pages: PageService; events: EventBus;
-  routine: Routine; pageId: string; parameters: Record<string, string>; expectedDocumentEpoch?: number }): { runId: string } {
+  routine: Routine; pageId: string; parameters: Record<string, string>; expectedDocumentEpoch?: number; deliveryRunId?: string; nightShiftItemId?: string }): { runId: string } {
   const { repo, pages, events, routine, pageId, parameters } = input;
+  if (!repo.columnCipher) throw new AuxError("permission_denied", "Skill replay requires protected local storage.");
+  if (!pages.get(pageId).sessionId) throw new AuxError("conflict", "The Skill page has no live attachment.");
   const replay = routine.replay;
-  if (!replay || replayDigest(replay.sourceRunId, replay.siteOrigin, replay.steps) !== replay.digest)
+  if (!replay || skillReplayProofDigest(replay) !== replay.digest)
     throw new AuxError("conflict", "This Skill replay changed. Review and test it again.");
   if (skillPageOrigin(pages, pageId) !== replay.siteOrigin)
     throw new AuxError("conflict", "This page is outside the Skill's tested site.");
   if (input.expectedDocumentEpoch !== undefined && pages.get(pageId).documentEpoch !== input.expectedDocumentEpoch)
     throw new AuxError("conflict", "The watched document changed before Skill replay.");
   const steps = bindSkillParameters(replay.steps, parameters, routine.parameters.map(item => item.name));
+  const origins = new Set(replay.siteOrigins);
+  for (const step of steps) if (step.op === "navigate") {
+    const url = new URL(step.url);
+    if (url.username || url.password || !origins.has(url.origin)) throw new AuxError("permission_denied", "A parameter changed a reviewed Skill origin.");
+  }
   const now = Date.now();
   const run: Run = {
-    runId: newRunId(), goal: `Replay ${routine.title}`, pageIds: [pageId], status: "running",
+    runId: input.deliveryRunId ?? newRunId(), goal: `Replay ${routine.title}`, pageIds: [pageId], status: "running",
     config: { implementation: "skill-replay", routeReason: `skill-replay:${routine.routineId}:${replay.digest}`,
-      taskId: routine.sourceTaskId, taskRevision: routine.sourceTaskRevision, contextWorkspaceId: routine.workspaceId },
+      taskId: routine.sourceTaskId, taskRevision: routine.sourceTaskRevision, contextWorkspaceId: routine.workspaceId,
+      ...(input.nightShiftItemId ? { nightShiftItemId: input.nightShiftItemId } : {}) },
     createdAt: now, startedAt: now, statusMessage: "Testing saved Skill steps",
   };
   repo.saveRun(run);
   events.emit(EventTypes.RunUpdated, { run }, run.runId);
-  void pages.execute({ pageId, steps }, { runId: run.runId, taskId: routine.sourceTaskId,
-    taskRevision: routine.sourceTaskRevision, allowEval: false })
-    .then(result => {
-      const latest = repo.getRun(run.runId);
-      if (!latest || latest.status !== "running") return;
-      let siteStillMatches = false;
-      try { siteStillMatches = skillPageOrigin(pages, pageId) === replay.siteOrigin; } catch { /* Detached or changed site fails closed. */ }
-      // A completed executor response alone is not proof: require the exact
-      // durable step ledger and final tested oracle before recording success.
-      const records = repo.listSteps(run.runId);
-      const verified = steps.at(-1)?.op === "waitFor" && records.length === steps.length
-        && records.every((record, index) => {
-          const step = steps[index]!;
-          const { id: _id, op: _op, timeoutMs: _timeoutMs, optional: _optional,
-            expect: _expect, ...inputs } = step;
-          return record.pageId === pageId && record.op === step.op &&
-            JSON.stringify(record.inputs) === JSON.stringify(inputs) && record.outcome?.status === "ok" &&
-            !record.outcome?.receipt?.uncertain && !record.outcome?.receipt?.unconfirmed &&
-            record.outcome?.effect !== "uncertain";
-        });
-      const completed = result.status === "completed" && siteStillMatches && verified;
-      const settled: Run = { ...latest, status: completed ? "completed" : result.status === "cancelled" ? "cancelled" : "failed",
-        result: completed ? result.extracted : undefined,
-        error: !siteStillMatches ? "The Skill page changed or detached before verification."
-          : !verified ? "The tested Skill steps lack complete verified receipts." : result.error,
-        endedAt: Date.now(),
-        statusMessage: completed ? "Skill replay finished" : "Skill replay needs review" };
-      repo.saveRun(settled);
-      events.emit(EventTypes.RunUpdated, { run: settled }, settled.runId);
-    })
-    .catch(error => {
-      const latest = repo.getRun(run.runId);
-      if (!latest || latest.status !== "running") return;
-      const settled: Run = { ...latest, status: "failed", error: error instanceof Error ? error.message : String(error),
-        endedAt: Date.now(), statusMessage: "Skill replay needs review" };
-      repo.saveRun(settled);
-      events.emit(EventTypes.RunUpdated, { run: settled }, settled.runId);
-    });
+  launchSkillContinuation({ repo, pages, events, run, routine, pageId, steps });
   return { runId: run.runId };
+}
+
+export interface DemonstrationReview {
+  /** Every input is reviewed independently, including reused values. */
+  inputs: { step: number; parameter: string; confirmed: boolean }[];
+  targets: { step: number; selector: string; confirmed: boolean }[];
+  navigationTemplates: { step: number; url: string }[];
+  finalWait: Extract<PlanStep, { op: "waitFor" }>;
+}
+const SEMANTIC_TARGET = /^(?:(?:testid|name|text):[^\r\n|]{1,200}|label:[^\r\n|]{1,200}|role:[a-z][a-z-]*\|[^\r\n|]{1,200})$/;
+
+/** Compile trusted human capture after independent variable/ambiguity review. */
+export function compileDemonstration(demo: import("@aux/contracts").Demonstration,
+  review: DemonstrationReview, siteOrigins: readonly string[]): PlanStep[] {
+  if (demo.state !== "stopped" || demo.steps.length < 1 || demo.steps.length > 49)
+    throw new AuxError("invalid_params", "Stop a demonstration with room for its final wait condition.");
+  const origins = new Set(siteOrigins.map(origin => {
+    const url = new URL(origin);
+    if (!/^https?:$/.test(url.protocol) || url.origin !== origin) throw new AuxError("invalid_params", "Review exact http(s) site origins.");
+    return origin;
+  }));
+  if (!origins.size) throw new AuxError("invalid_params", "Review the Skill's sites before compiling.");
+  const steps: PlanStep[] = demo.steps.map((step, index) => {
+    const id = `demo-${index + 1}`;
+    if (step.kind === "navigate") {
+      const template = review.navigationTemplates.find(item => item.step === index)?.url ?? step.url;
+      const url = new URL(template.replace(/\{\{[A-Za-z][A-Za-z0-9_]{0,40}\}\}/g, "sample"));
+      if (url.username || url.password || !origins.has(url.origin) || /\{\{/.test(new URL(template).origin))
+        throw new AuxError("invalid_params", "Navigation must keep an explicitly reviewed site origin.");
+      return PlanStepSchema.parse({ id, op: "navigate", url: template });
+    }
+    const selected = review.targets.find(item => item.step === index);
+    if (!selected?.confirmed || !step.target.candidates.some(candidate => candidate.selector === selected.selector && candidate.matches === 1)
+      || !(TARGET.test(selected.selector) || SEMANTIC_TARGET.test(selected.selector)) || step.kind !== "credentialFill" && SECRET_FIELD.test(selected.selector))
+      throw new AuxError("invalid_params", "Review a supported target for every recorded action, including ambiguous matches.");
+    const target = selected.selector;
+    if (step.kind === "credentialFill") {
+      if (step.secretType !== "password" || !target.startsWith("css:") || !CredentialSelectorSchema.safeParse(target.slice(4)).success)
+        throw new AuxError("permission_denied", "Payment, OTP and other protected entries need the person at the browser. Review a stable password field for secure handoff.");
+      return PlanStepSchema.parse({ id, op: "fillCredential", passwordSelector: target.slice(4) });
+    }
+    if (step.kind === "input") {
+      const input = review.inputs.find(item => item.step === index);
+      if (!input?.confirmed || !/^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(input.parameter) || SECRET_FIELD.test(input.parameter))
+        throw new AuxError("invalid_params", "Confirm a named variable for every typed value.");
+      return PlanStepSchema.parse({ id, op: step.control === "select" ? "select" : "fill", target, value: `{{${input.parameter}}}` });
+    }
+    if (step.kind === "key") return PlanStepSchema.parse({ id, op: "press", target, key: step.key });
+    if (step.kind === "submit") return PlanStepSchema.parse({ id, op: "press", target, key: "Enter" });
+    return PlanStepSchema.parse({ id, op: "click", target });
+  });
+  const oracle = PlanStepSchema.parse(review.finalWait);
+  if (oracle.op !== "waitFor") throw new AuxError("invalid_params", "Review a final observable wait condition.");
+  const last = steps.at(-1)!;
+  if (last.op !== "waitFor") steps[steps.length - 1] = PlanStepSchema.parse({ ...last, expect: [oracle.condition] });
+  steps.push(oracle);
+  if (Buffer.byteLength(JSON.stringify(steps)) > 32_000) throw new AuxError("invalid_params", "The reviewed Skill exceeds 32 KB.");
+  return steps;
+}
+
+export function demonstrationReplayDigest(recordingId: string, siteOrigins: readonly string[], steps: PlanStep[]) {
+  return createHash("sha256").update(JSON.stringify(["aux-skill-replay@2", recordingId, siteOrigins, steps])).digest("hex");
 }

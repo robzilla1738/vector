@@ -19,7 +19,7 @@ export interface BudgetLimits {
 }
 
 export interface BudgetStatus {
-  scope: "run" | "day" | "routine";
+  scope: "run" | "day" | "routine" | "nightShift";
   /** Routine scope id when scope is "routine"; run id when "run". */
   scopeId?: string;
   limitUsd?: number;
@@ -41,6 +41,12 @@ export function dayStartMs(now = Date.now()): number {
 }
 
 export class BudgetsService {
+  private nightShift?: (runId: string) => BudgetStatus[];
+  configureNightShift(status: (runId: string) => BudgetStatus[]) {
+    if (this.nightShift) throw new AuxError("conflict", "Night shift budgets are already installed.");
+    this.nightShift = status;
+    return () => { if (this.nightShift === status) this.nightShift = undefined; };
+  }
   constructor(
     private readonly db: DatabaseSync,
     private readonly limits: () => BudgetLimits,
@@ -87,6 +93,7 @@ export class BudgetsService {
     if (scope.runId) push({ scope: "run", scopeId: scope.runId, limitUsd: positive(limits.runUsd), spentUsd: this.spentRunUsd(scope.runId) });
     push({ scope: "day", limitUsd: positive(limits.dayUsd), spentUsd: this.spentDayUsd(now) });
     if (scope.routineId) push({ scope: "routine", scopeId: scope.routineId, limitUsd: positive(limits.routineUsd), spentUsd: this.spentRoutineUsd(scope.routineId) });
+    if (scope.runId && this.nightShift) out.push(...this.nightShift(scope.runId));
     return out;
   }
 
@@ -101,7 +108,7 @@ export class BudgetsService {
     );
     if (!over) return;
     const label =
-      over.scope === "run" ? "this run" : over.scope === "day" ? "today" : `routine ${over.scopeId}`;
+      over.scope === "run" ? "this run" : over.scope === "day" ? "today" : over.scope === "nightShift" ? `overnight scope ${over.scopeId}` : `routine ${over.scopeId}`;
     throw new AuxError(
       "permission_denied",
       `The user-set ${over.scope} budget of $${over.limitUsd!.toFixed(2)} is spent for ${label} ($${over.spentUsd.toFixed(2)}). Raise the budget in Settings or start a new scope.`,

@@ -6,9 +6,11 @@ export const NightShiftSettingsSchema = z.object({ enabled: z.boolean(), start: 
   nightlyUsd: z.number().finite().positive().max(1000), perTaskUsd: z.number().finite().positive().max(1000), requireAC: z.boolean() }).strict()
   .refine(value => value.perTaskUsd <= value.nightlyUsd, "Per-task budget exceeds the nightly budget.")
   .refine(value => value.start !== value.end, "Night shift requires a bounded time window.");
+export { DEFAULT_NIGHT_SHIFT } from "./night-shift-defaults.js";
 export const NightShiftPayloadSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("goal"), goalId: Id }).strict(),
-  z.object({ kind: z.literal("routine"), routineId: Id, revision: z.number().int().positive() }).strict(),
+  z.object({ kind: z.literal("goal"), goalId: Id, taskId: Id.optional(), taskRevision: z.number().int().positive().optional() }).strict(),
+  z.object({ kind: z.literal("routine"), routineId: Id, revision: z.number().int().positive(),
+    parameters: z.record(z.string().min(1).max(100), z.string().max(10_000)).refine(value => Object.keys(value).length <= 20, "Too many Skill variables").optional() }).strict(),
   z.object({ kind: z.literal("memory.consolidate"), workspaceId: Id }).strict(),
   z.object({ kind: z.literal("memory.reindex"), workspaceId: Id }).strict(),
 ]);

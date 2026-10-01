@@ -17,13 +17,20 @@ function fakeLocator(label: string, count: number, visibleCount = count, log: st
   };
 }
 
-function fakeFrame(counts: { css?: [number, number?]; xpath?: [number, number?]; role?: [number, number?]; text?: [number, number?] }) {
+function fakeFrame(counts: { css?: [number, number?]; xpath?: [number, number?]; label?: [number, number?]; testid?: [number, number?]; role?: [number, number?]; text?: [number, number?] }) {
   const log: string[] = [];
   const frame: FrameLike<ReturnType<typeof fakeLocator>> = {
     locator(sel) {
       const which = sel.startsWith("xpath=") || sel.startsWith("/") ? "xpath" : "css";
       const [c, v] = counts[which] ?? [0];
       return fakeLocator(which, c, v ?? c, log);
+    },
+    getByLabel(_label, options) {
+      expect(options.exact).toBe(true);
+      const [c, v] = counts.label ?? [0]; return fakeLocator("label", c, v ?? c, log);
+    },
+    getByTestId() {
+      const [c, v] = counts.testid ?? [0]; return fakeLocator("testid", c, v ?? c, log);
     },
     getByRole() {
       const [c, v] = counts.role ?? [0];
@@ -98,4 +105,11 @@ describe("selectUniqueLocator", () => {
     const loc = await selectUniqueLocator(locatorAttempts(frame, strategy), "r3");
     expect(loc.label).toBe("css");
   });
+});
+
+it("resolves recorder test IDs and exact labels through the actual unique locator policy", async () => {
+  const first = fakeFrame({ testid: [1], label: [2] });
+  expect((await selectUniqueLocator(locatorAttempts(first.frame, { testId: "submit" }), "testid:submit")).label).toBe("testid");
+  const second = fakeFrame({ label: [2] });
+  await expect(selectUniqueLocator(locatorAttempts(second.frame, { label: "Company", exact: true }), "label:Company")).rejects.toThrow(/ambiguous|matched/);
 });

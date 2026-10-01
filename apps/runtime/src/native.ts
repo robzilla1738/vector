@@ -1,6 +1,8 @@
 import type { DownloadNamingNative, CompletedDownload } from "./services/download-naming.js";
 import {
   ProfileOrganizationSnapshotSchema,
+  HostMethods,
+  type HostMethodResult,
   type ProfileOrganizationSnapshot,
   AuxError,
   HostCapabilitiesSchema,
@@ -82,6 +84,9 @@ import {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge extends Partial<DownloadNamingNative> {
+  powerRelease?(): Promise<HostMethodResult<"native.powerRelease">>;
+  powerStatus?(): Promise<HostMethodResult<"native.powerStatus">>;
+  powerActivity?(input: { reason: string; durationSec: number }): Promise<HostMethodResult<"native.powerActivity">>;
   organizationSnapshot?(): Promise<ProfileOrganizationSnapshot>;
   createAgentPage?(input: AgentPageCreate): Promise<AgentPageCreated>;
   egressContext?(input: { tabId: string; expectedUrl: string }): Promise<EgressContext>;
@@ -189,6 +194,9 @@ export class ChannelNativeBridge implements NativeBridge {
   egressRevoke(input: { leaseId: string }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressRevoke", input);
   }
+  async powerRelease() { return HostMethods["native.powerRelease"].result.parse(await this.channel.call("native.powerRelease", {})); }
+  async powerStatus() { return HostMethods["native.powerStatus"].result.parse(await this.channel.call("native.powerStatus", {})); }
+  async powerActivity(input: { reason: string; durationSec: number }) { return HostMethods["native.powerActivity"].result.parse(await this.channel.call("native.powerActivity", input)); }
   async organizationSnapshot(): Promise<ProfileOrganizationSnapshot> {
     return ProfileOrganizationSnapshotSchema.parse(await this.channel.call("native.organizationSnapshot", {}));
   }

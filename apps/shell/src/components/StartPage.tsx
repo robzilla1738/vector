@@ -1,3 +1,4 @@
+import { FeatureSlots } from "../features/registry";
 import "./StartPage.css";
 import { SessionRecovery } from "./SessionRecovery";
 import { AuxMark } from "./AuxMark";
@@ -27,6 +28,7 @@ export function StartPage() {
       {connected ? <>
         <RunAttentionFeed runs={runs} onOpenRun={(runId) => useStore.getState().openConversation(runId)} />
         <RunNoticePreference />
+        <FeatureSlots slot="startItems" />
         <RecentWork />
       </> : <output className="hint" data-block>AI tools are reconnecting. Search and open sites as usual.</output>}
     </>}

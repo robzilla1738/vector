@@ -1,3 +1,4 @@
+import { executeCommand } from "../commands";
 import { runCommand } from "../commands";
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
@@ -15,6 +16,7 @@ import { useFeature } from "../use-feature";
 
 export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, onClose: finishClose }: { page: PageTarget; selectedPages?: PageTarget[]; onSelectionDone?: () => void; x: number; y: number; onClose: () => void }) {
   const key = useShortcutLabels();
+  const recordEnabled = useFeature("demonstrationSkills") && !bridge.privateMode;
   const lifecycleEnabled = useFeature("tabLifecycle");
   const aiNamingEnabled = useFeature("aiTabNaming") && !bridge.privateMode;
   const bulk = selectedPages.length > 1;
@@ -229,6 +231,7 @@ export function TabMenu({ page, selectedPages = [page], onSelectionDone, x, y, o
     {bulk && <div className="menu-label">{selectedIds.length} tabs selected</div>}
     {!bulk && <>
     <button className="menu-item" role="menuitem" onClick={() => action(() => tabCommand({ kind: "reload", pageId: page.pageId }))}>{shellIconReloadSm}<span className="t">Reload</span>{key("reload") && <kbd>{key("reload")}</kbd>}</button>
+    {recordEnabled && web && !page.ownedByRuntime && <button className="menu-item" role="menuitem" disabled={page.controller === "agent" || page.controller === "external"} data-command-id="record-demonstration" onClick={() => action(() => executeCommand("record-demonstration", { payload: { pageId: page.pageId } }))}>Record a demonstration</button>}
     <TabAudioButton pageId={page.pageId} title={tabLabel(layout, page)} menu onDone={finishClose} />
     {lifecycleEnabled && inNativeHost && !bridge.privateMode && web && page.pageId !== activePageId && !page.ownedByRuntime && page.lifecycle !== "discarded" &&
       <button className="menu-item" role="menuitem" disabled={!!tabSound?.audible || page.controller === "agent" || page.controller === "external"}

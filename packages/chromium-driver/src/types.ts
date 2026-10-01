@@ -76,7 +76,15 @@ export interface ObservedActionTarget {
   challenge?: "captcha" | "bot_block";
 }
 
+export interface RecorderObserver {
+  send(method: string, params?: Record<string, unknown>): Promise<Record<string, unknown>>;
+  on(event: string, listener: (params: Record<string, unknown>) => void): () => void;
+  close(): Promise<void>;
+}
+
 export interface DriverPage {
+  /** Owner-started, isolated CDP recording; it never acquires action control. */
+  openRecorderObserver?(): Promise<RecorderObserver>;
   readonly identity: PageIdentity;
   url(): string;
   title(): Promise<string>;

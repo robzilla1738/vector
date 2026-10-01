@@ -12,6 +12,7 @@ import { BrowserSpaceSchema, MemoryPasteReceiptSchema, MemoryPastePreviewParams,
 import { memoryPasteSensitivity, memoryPasteLines, memoryPasteFormatReason, memoryPasteKey } from "./memory-paste.js";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
+import { consolidateMemoryClaims } from "./night-memory.js";
 import { ProtectedStore } from "./protected-store.js";
 import { renderObservation } from "./observation-render.js";
 
@@ -319,7 +320,7 @@ export class MemoryPipeline {
   }
 
   private summary(claims: MemoryClaim[]): string {
-    const latest = [...claims].filter(claim => !memoryContentSensitivityReason(claim.text))
+    const latest = [...claims].filter(claim => !claim.contradictionIds?.length && !memoryContentSensitivityReason(claim.text))
       .sort((a, b) => b.capturedAt - a.capturedAt).slice(0, 4);
     const lines: string[] = [];
     let bytes = 0;
@@ -578,6 +579,28 @@ export class MemoryPipeline {
       sourceRunIds: [...new Set(revision.claims.map(claim => claim.sourceRunId))] }));
   }
 
+  async consolidate(workspaceId: string) {
+    if (!this.policy(workspaceId).enabled) throw new AuxError("permission_denied", "Enable Space memory before consolidation.");
+    return this.leased(workspaceId, async () => {
+      const { claims, inbox, history, prior } = await this.readClaims(workspaceId);
+      const consolidated = consolidateMemoryClaims(claims, Date.now(), claim => this.eligibleForRecall(workspaceId, claim), 90 * 24 * 60 * 60_000);
+      const revision = this.snapshot(claims);
+      await this.writeGeneration(workspaceId, consolidated, inbox, [...history, revision].slice(-10), prior);
+      return { revisionId: revision.revisionId, before: claims.length, after: consolidated.length,
+        contradictions: consolidated.filter(claim => claim.contradictionIds?.length).length };
+    });
+  }
+
+  async reindex(workspaceId: string) {
+    if (!this.policy(workspaceId).enabled) throw new AuxError("permission_denied", "Enable Space memory before reindexing.");
+    return this.leased(workspaceId, async () => {
+      const { claims, inbox, history, prior } = await this.readClaims(workspaceId);
+      // writeGeneration rebuilds encrypted summary, handbook and rollout projections from authoritative encrypted claims.
+      await this.writeGeneration(workspaceId, claims, inbox, history, prior);
+      return { indexed: claims.length };
+    });
+  }
+
   async revert(workspaceId: string, revisionId: string) {
     if (!this.policy(workspaceId).enabled) throw new AuxError("permission_denied", "Enable Space memory first.");
     return this.leased(workspaceId, async () => {
@@ -615,7 +638,7 @@ export class MemoryPipeline {
     if (!policy.enabled) return MemoryPipelineOverviewSchema.parse({ workspaceId, enabled: false, summary: "", claimCount: 0, sourceCount: 0 });
     const { claims } = await this.readClaims(workspaceId);
     return MemoryPipelineOverviewSchema.parse({ workspaceId, enabled: true,
-      summary: this.summary(claims.filter(claim => this.eligibleForRecall(workspaceId, claim))),
+      summary: this.summary(claims.filter(claim => !claim.contradictionIds?.length && this.eligibleForRecall(workspaceId, claim))),
       claimCount: claims.length, sourceCount: new Set(claims.map(claim => claim.sourceRunId)).size });
   }
 
@@ -624,7 +647,7 @@ export class MemoryPipeline {
     const terms = query.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(term => term.length > 1).slice(0, 8);
     if (!terms.length) return [];
     const { claims } = await this.readClaims(workspaceId);
-    return claims.filter(claim => this.eligibleForRecall(workspaceId, claim) && !memoryContentSensitivityReason(claim.text)
+    return claims.filter(claim => !claim.contradictionIds?.length && this.eligibleForRecall(workspaceId, claim) && !memoryContentSensitivityReason(claim.text)
       && terms.every(term => claim.text.toLocaleLowerCase().includes(term))).slice(-20).reverse();
   }
 

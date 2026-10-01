@@ -21,6 +21,8 @@ import {
 } from "./zap.js";
 import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
+import { SkillRepairProposeSchema, SkillRepairProposalSchema, SkillRepairApplySchema } from "./demonstration.js";
+import { DemonstrationReplayCompileSchema } from "./demonstration.js";
 import {
   ApprovalDecisionSchema,
   EffectSchema,
@@ -213,6 +215,7 @@ import { HookCreateParams, HookInvocationSchema, HookSchema } from "./hooks.js";
 import { WorkspaceFolderAccessSchema, WorkspaceFolderReviewSchema, WorkspaceFolderSchema } from "./workspace-folders.js";
 import { CommandEscalationRequestSchema } from "./command-escalation.js";
 import { ShortcutOverridesSchema } from "./shortcuts.js";
+import { NightShiftSettingsSchema } from "./night-shift.js";
 import { SelectionCaptureSettingsSchema } from "./selection-capture.js";
 import { AgentModelRouteChainSchema } from "./model-registry.js";
 import { SiteReadParamsSchema, SiteReadResultSchema } from "./site-adapters.js";
@@ -805,6 +808,7 @@ export const SettingsSetParams = z.object({
   /** Remote search suggestions — off by default; never queried in private mode or for probable-private addresses. */
   searchSuggestions: z.boolean().optional(),
   /** Local Skill suggestions in the saved-work view; no model call. */
+  nightShift: NightShiftSettingsSchema.optional(),
   routineSuggestionScan: z.enum(["off", "context", "five-minutes"]).optional(),
   /** Personal info offered to page forms on explicit request. Credentials and payment are never stored here. */
   autofill: AutofillProfileSchema.optional(),
@@ -1242,6 +1246,9 @@ export const MethodSchemas = {
   "routines.get": z.object({ routineId: id }),
   "routines.create": RoutineCreateParams,
   "routines.fromResult": RoutineFromResultParams,
+  "routines.replay.repair.propose": SkillRepairProposeSchema,
+  "routines.replay.repair.apply": SkillRepairApplySchema,
+  "routines.replay.compileDemonstration": DemonstrationReplayCompileSchema,
   "routines.replay.compile": RoutineReplayCompileParams,
   "routines.replay.test": RoutineReplayTestParams,
   "routines.replay.result": RoutineReplayResultParams,
@@ -1937,6 +1944,9 @@ export const ResultSchemas = {
   "routines.get": z.object({ routine: RoutineSchema, runs: z.array(RoutineRunSchema) }),
   "routines.create": RoutineSchema,
   "routines.fromResult": RoutineSchema,
+  "routines.replay.repair.propose": SkillRepairProposalSchema,
+  "routines.replay.repair.apply": RoutineSchema,
+  "routines.replay.compileDemonstration": RoutineSchema,
   "routines.replay.compile": RoutineSchema,
   "routines.replay.test": z.object({ runId: id, revision: z.number().int().positive() }),
   "routines.replay.result": RoutineSchema,

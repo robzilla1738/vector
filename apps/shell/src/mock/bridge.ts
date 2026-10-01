@@ -622,6 +622,16 @@ export function installMockBridge(q: URLSearchParams) {
     "bookmarks.list": async () => {
       return bookmarks;
     },
+    "nightShift.list": async () => { throw new Error("Demonstration and overnight work require the Aux native browser."); },
+    "nightShift.queue": async () => { throw new Error("Demonstration and overnight work require the Aux native browser."); },
+    "nightShift.review": async () => { throw new Error("Demonstration and overnight work require the Aux native browser."); },
+    "nightShift.summary": async () => { throw new Error("Demonstration and overnight work require the Aux native browser."); },
+    "recorder.discard": async () => { throw new Error("Demonstration and overnight work require the Aux native browser."); },
+    "recorder.get": async () => { throw new Error("Demonstration and overnight work require the Aux native browser."); },
+    "recorder.start": async () => { throw new Error("Demonstration and overnight work require the Aux native browser."); },
+    "routines.replay.compileDemonstration": async () => { throw new Error("Demonstration and overnight work require the Aux native browser."); },
+    "routines.replay.repair.apply": async () => { throw new Error("Demonstration and overnight work require the Aux native browser."); },
+    "routines.replay.repair.propose": async () => { throw new Error("Demonstration and overnight work require the Aux native browser."); },
     "downloads.renameReceipts": async () => { throw new Error("Download naming requires the Aux native browser."); },
     "downloads.undoRename": async () => { throw new Error("Download naming requires the Aux native browser."); },
     "downloads.list": async () => {

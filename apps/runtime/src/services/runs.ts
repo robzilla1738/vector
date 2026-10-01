@@ -1,3 +1,5 @@
+import { checkNightShiftDispatch } from "../features/overnight-review/service.js";
+import { resumePausedSkill } from "./skill-continuation.js";
 import { documentReference, boundedDocumentReference } from "./document-context.js";
 import { isTextResult, isTextResultContent, resultFilename } from "./text-result.js";
 import { GeneratedResults } from "./generated-results.js";
@@ -640,7 +642,7 @@ export class RunService {
       recoveryModel: () => deps.settings.agentRoute("deep").modelId,
       visionModel: () => deps.settings.agentRoute("visual").modelId,
       routeModel: category => deps.settings.agentRoute(category),
-      checkBudget: async ({ runId }) => deps.budgets?.assertWithin({ runId }),
+      checkBudget: async ({ runId }) => { await checkNightShiftDispatch(deps.repo, runId); deps.budgets?.assertWithin({ runId }); },
       recordModelCall: (c) => this.recordModelCall(c),
       // step recording is unified in PageService.recordStep (wired in main.ts)
       // — every execution, agent or program, lands in the same step ledger
@@ -871,6 +873,7 @@ export class RunService {
   async start(opts: {
     /** Stable delivery identity for a durable queued message; internal only. */
     deliveryRunId?: string;
+    nightShiftItemId?: string;
     queuedMessageId?: string;
     goal: string;
     defaultWorkspaceId?: string;
@@ -1204,6 +1207,8 @@ export class RunService {
   }
 
   resume(runId: string): Run {
+    const replay = resumePausedSkill({ repo: this.deps.repo, pages: this.deps.pages, events: this.deps.events }, runId);
+    if (replay) return replay;
     this.takeoverPausedRuns.delete(runId);
     const sc = this.setRunControls.get(runId);
     const run = this.deps.repo.getRun(runId);

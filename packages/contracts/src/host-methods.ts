@@ -345,6 +345,8 @@ export const HostMethods = {
   "native.downloadPreviewText": runtime("smartDownloadNames", z.object({ downloadId: str }).strict(), z.object({ text: str.max(2048) }).strict()),
   "native.renameDownload": runtime("smartDownloadNames", RenameDownloadSchema,
     z.object({ renamed: bool, filename: str, receiptId: str.optional(), reason: str.optional() }).strict()),
+  "native.powerRelease": runtime("overnightReview", z.object({}).strict(), z.object({ active: z.literal(false) }).strict()),
+  "native.powerStatus": runtime("overnightReview", z.object({}).strict(), z.object({ onAC: bool, backgroundEnabled: bool, active: bool, loginItem: z.enum(["unavailable", "not_registered", "enabled", "requires_approval", "not_found"]) }).strict()),
   "native.powerActivity": runtime("overnightReview", PowerActivitySchema, z.object({ active: bool, reason: str.optional() }).strict()),
   "native.createAgentPage": runtime("core", AgentPageCreateSchema, AgentPageCreatedSchema),
   "native.egressContext": runtime("core", EgressContextRequestSchema, EgressContextSchema),

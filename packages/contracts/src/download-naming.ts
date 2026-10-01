@@ -19,7 +19,4 @@ export type DownloadNamingSettings = z.infer<typeof DownloadNamingSettingsSchema
 export const DownloadRenameReceiptSchema = z.object({ receiptId: z.string().min(1).max(200), downloadId: z.string().min(1).max(200), originalName: z.string().min(1).max(255), filename: z.string().min(1).max(255), renamedAt: z.number().int().nonnegative(), expiresAt: z.number().int().nonnegative() }).strict();
 export type DownloadRenameReceipt = z.infer<typeof DownloadRenameReceiptSchema>;
 
-export const DEFAULT_DOWNLOAD_NAMING: DownloadNamingSettings = {
-  mode: "unclear", useAi: true, excludedHosts: [], excludedExtensions: [], excludedMimeTypes: [],
-  template: "{date} {site} {title}",
-};
+export { DEFAULT_DOWNLOAD_NAMING } from "./download-naming-defaults.js";

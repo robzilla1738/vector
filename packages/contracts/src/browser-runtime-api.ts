@@ -23,6 +23,7 @@ export const BrowserRuntimeMethodSchemas = {
   "downloads.undoRename": z.object({ receiptId: Id }).strict(),
   "safety.originPolicies.list": z.object({}).strict(),
   "safety.originPolicies.set": SetOriginPoliciesSchema,
+  "recorder.get": RecorderControlSchema,
   "recorder.start": RecorderStartSchema,
   "recorder.pause": RecorderControlSchema,
   "recorder.resume": RecorderControlSchema,
@@ -30,6 +31,7 @@ export const BrowserRuntimeMethodSchemas = {
   "recorder.discard": RecorderControlSchema,
   "nightShift.propose": NightShiftQueueSchema,
   "nightShift.queue": NightShiftQueueSchema,
+  "nightShift.summary": z.object({}).strict(),
   "nightShift.list": z.object({}).strict(),
   "nightShift.review": z.object({ id: Id, decision: z.enum(["approve", "discard", "apply"]) }).strict(),
 } as const;
@@ -46,6 +48,7 @@ export const BrowserRuntimeResultSchemas = {
   "downloads.undoRename": z.object({ status: z.enum(["restored", "conflict", "expired"]), filename: z.string().max(255).optional() }).strict(),
   "safety.originPolicies.list": OriginPoliciesSnapshotSchema,
   "safety.originPolicies.set": OriginPoliciesSnapshotSchema,
+  "recorder.get": DemonstrationSchema,
   "recorder.start": DemonstrationSchema,
   "recorder.pause": DemonstrationSchema,
   "recorder.resume": DemonstrationSchema,
@@ -53,6 +56,7 @@ export const BrowserRuntimeResultSchemas = {
   "recorder.discard": Ok,
   "nightShift.propose": NightShiftItemSchema,
   "nightShift.queue": NightShiftItemSchema,
+  "nightShift.summary": z.object({ windowDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), done: z.number().int().nonnegative(), needsReview: z.number().int().nonnegative(), spentUsd: z.number().finite().nonnegative(), limitUsd: z.number().finite().positive() }).strict(),
   "nightShift.list": z.array(NightShiftItemSchema).max(1000),
   "nightShift.review": NightShiftItemSchema,
 } as const;
@@ -69,6 +73,7 @@ export const BrowserRuntimeMethodPolicy = {
   "downloads.undoRename": { feature: "smartDownloadNames", auth: "aux-webui" },
   "safety.originPolicies.list": { feature: "agentSitePermissions", auth: "aux-webui" },
   "safety.originPolicies.set": { feature: "agentSitePermissions", auth: "aux-webui" },
+  "recorder.get": { feature: "demonstrationSkills", auth: "aux-webui" },
   "recorder.start": { feature: "demonstrationSkills", auth: "aux-webui" },
   "recorder.pause": { feature: "demonstrationSkills", auth: "aux-webui" },
   "recorder.resume": { feature: "demonstrationSkills", auth: "aux-webui" },
@@ -76,6 +81,7 @@ export const BrowserRuntimeMethodPolicy = {
   "recorder.discard": { feature: "demonstrationSkills", auth: "aux-webui" },
   "nightShift.propose": { feature: "overnightReview", auth: "handler-guarded" },
   "nightShift.queue": { feature: "overnightReview", auth: "aux-webui" },
+  "nightShift.summary": { feature: "overnightReview", auth: "aux-webui" },
   "nightShift.list": { feature: "overnightReview", auth: "aux-webui" },
   "nightShift.review": { feature: "overnightReview", auth: "aux-webui" },
 } as const;

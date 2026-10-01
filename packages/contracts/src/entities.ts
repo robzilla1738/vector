@@ -119,6 +119,8 @@ export const RunSchema = z.object({
   setId: z.string().optional(),
   config: z
     .object({
+      /** Internal person-queued overnight authority; never accepted from agent/RPC run options. */
+      nightShiftItemId: z.string().uuid().optional(),
       modelId: z.string().optional(),
       maxSteps: z.number().optional(),
       maxModelCalls: z.number().optional(),

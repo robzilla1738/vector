@@ -1,6 +1,7 @@
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
+import { resumeSkillApproval } from "../../services/skill-continuation.js";
 
 async function h_safety_approvals_pending(ctx: MethodCtx): Promise<unknown> {
   const { approvals, client, params } = ctx;
@@ -11,6 +12,9 @@ async function h_safety_approvals_decide(ctx: MethodCtx): Promise<unknown> {
   const { approvals, client, params, s, suspensions } = ctx;
   if (client.external)
     throw new AuxError("permission_denied", "Only the Aux interface can decide an approval.");
+  const parked = suspensions.pendingAll().find(item => item.request.approvalId === params.decision.approvalId);
+  if (parked && s.repo.getRun(parked.runId)?.config?.nightShiftItemId)
+    throw new AuxError("permission_denied", "Apply this overnight result before deciding its foreground approval.");
   const action = approvals.decideLocal(params.decision, params.expectedTurnId);
   const approved = params.decision.decision === "accept" || params.decision.decision === "acceptForSession" || params.decision.decision === "acceptForOrigin";
   const resolved = suspensions.resolveByApprovalId(
@@ -27,6 +31,8 @@ async function h_safety_approvals_decide(ctx: MethodCtx): Promise<unknown> {
         // could accidentally answer the run's next unrelated user question.
         if (s.repo.getRun(resolved.runId)?.status === "needs_input")
           s.runs.coordinator.setStatus(resolved.runId, "running", approved ? "Browser request approved" : "Browser request declined");
+      } else if (resumeSkillApproval({ repo: s.repo, pages: s.pages, events: s.events }, resolved.runId, params.decision.approvalId, approved)) {
+        // Continue only the pending reviewed step through its actual safety gate.
       } else s.runs.coordinator.answer(
         resolved.runId,
         approved

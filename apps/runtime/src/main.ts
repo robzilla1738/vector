@@ -1346,6 +1346,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   });
 
   const services: Services = {
+    budgets,
     clock: createClock((await nativeIdentity?.catch(() => undefined))?.testClockScale),
     featureHost: env.AUX_HOST_SOCKET ? "chromium-fork" : "electron",
     featureProfileId: env.AUX_BROWSER_PROFILE_ID ?? "default",

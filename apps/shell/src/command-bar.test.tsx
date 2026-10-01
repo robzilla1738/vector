@@ -109,9 +109,9 @@ describe("CommandBar keyboard contract", () => {
     const input = host.querySelector("input")!;
     await act(async () => input.focus());
     await act(async () => type(input, "guide"));
-    expect(host.textContent).toContain("Original guide");
+    await vi.waitFor(async () => { await act(async () => {}); expect(host.textContent).toContain("Original guide"); });
     await act(async () => useStore.setState({ bookmarks: [{ url: "https://example.com/guide", title: "Updated guide", folderPath: [] }] } as never));
-    expect(host.textContent).toContain("Updated guide");
+    await vi.waitFor(async () => { await act(async () => {}); expect(host.textContent).toContain("Updated guide"); });
     expect(host.textContent).not.toContain("Original guide");
   });
 

@@ -15,6 +15,7 @@ export async function run(t) {
   const page = await t.rpc('pages.open', { url: `${t.fixture.url}/red`, activate: true });
   await t.step('install the actual unpacked MV3 folder through Settings', { kind: 'ui', features: ['extensions'] }, async () => {
     await t.ax.key('command+,', 'hid');
+    await t.ax.waitFor(control('Extensions'), 'visible');
     await t.ax.press(control('Extensions'));
     await t.ax.press(control('Install unpacked extension…'));
     await t.ax.openPanel(resolve(import.meta.dirname, '../fixtures/extension-actions'));
@@ -49,6 +50,7 @@ export async function run(t) {
     await t.ax.waitFor(popup);
     await t.ax.key('escape', 'hid');
     await t.ax.key('command+,', 'hid');
+    await t.ax.waitFor(control('Appearance'), 'visible');
     await t.ax.press(control('Appearance'));
     await t.ax.press(control('Manage shortcuts'));
     const shortcut = { name: '^Shortcut for Aux extension fixture', role: 'AXTextField', match: 'regex', scope: 'shell', index: 0 };
@@ -118,6 +120,7 @@ export async function run(t) {
   });
   await t.step('give an Aux intercept chord precedence over the same extension chord in guest and shell fields', { kind: 'ui', features: ['extensions'] }, async () => {
     await t.ax.key('command+,', 'hid');
+    await t.ax.waitFor(control('Appearance'), 'visible');
     await t.ax.press(control('Appearance')); await t.ax.press(control('Manage shortcuts'));
     const shortcut = { name: '^Shortcut for Aux extension fixture', role: 'AXTextField', match: 'regex', scope: 'shell', index: 0 };
     await t.ax.type('Command+K', shortcut); await t.ax.press(control('Save shortcut'));

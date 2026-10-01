@@ -10,6 +10,9 @@ export const SelectorStrategySchema = z.object({
   role: z
     .object({ role: z.string(), name: z.string().optional() })
     .optional(),
+  testId: z.string().optional(),
+  label: z.string().optional(),
+  exact: z.boolean().optional(),
   /** CSS selector path; `>>` segments may pierce open shadow roots. */
   css: z.string().optional(),
   /** XPath fallback. */

@@ -17,8 +17,11 @@ async function setting(t, label, key, value) {
   await t.ax.key('command+,', 'hid');
   await t.ax.waitFor(shell('Appearance', 'AXButton'));
   await t.ax.press(shell('Appearance', 'AXButton'));
+  const search = shell('Search settings', 'AXTextField');
+  await t.ax.waitFor(search, 'visible');
+  await t.ax.type(label, search);
   const control = shell(label, 'AXCheckBox');
-  await t.ax.waitFor(control);
+  await t.ax.waitFor(control, 'visible');
   if ((await t.rpc('settings.get'))[key] !== value) await t.ax.press(control);
   await t.until(`${label} saved`, async () => (await t.rpc('settings.get'))[key] === value);
   await t.ax.key('escape', 'hid');

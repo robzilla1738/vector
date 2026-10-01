@@ -164,3 +164,7 @@ aux/runtime/0166-smart-download-naming.patch
 aux/runtime/0167-smart-download-signals.patch
 aux/runtime/0168-smart-download-tests.patch
 aux/runtime/0193-download-file-authority-and-wiring.patch
+aux/runtime/0181-night-shift-power.patch
+aux/runtime/0195-autonomy-power-shared-wiring.patch
+aux/runtime/0196-native-test-build-dependencies.patch
+aux/runtime/0194-native-permission-provenance.patch

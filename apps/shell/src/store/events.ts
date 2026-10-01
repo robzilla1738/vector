@@ -22,6 +22,7 @@ export const reduceRunEvent: Reducer = (state, e) => {
   switch (e.type) {
     case "safety.confirmation": {
       const { approvalId, turnId, instruction, action, origin } = e.payload;
+      if (state.runs.find(run => run.runId === turnId)?.config?.nightShiftItemId) return {};
       if (typeof approvalId !== "string" || typeof turnId !== "string" || typeof instruction !== "string") return {};
       return {
         confirmation: {

@@ -132,6 +132,7 @@ export class RunCoordinator {
   }
 
   async start(opts: {
+    nightShiftItemId?: string;
     runId?: string;
     messageId?: string;
     goal: string;
@@ -191,6 +192,7 @@ export class RunCoordinator {
       pageIds: opts.pageIds,
       setId: opts.setId,
       config: {
+        nightShiftItemId: opts.nightShiftItemId,
         modelId: opts.modelId,
         maxSteps: opts.maxSteps ?? DEFAULT_MAX_STEPS,
         maxModelCalls: opts.maxModelCalls ?? DEFAULT_MAX_MODEL_CALLS,

@@ -143,17 +143,17 @@ export class GoalService {
     return rows.map(row => this.get(row.goal_id));
   }
 
-  async start(goalId: string, pageIds: string[]): Promise<Goal> {
+  async start(goalId: string, pageIds: string[], internal?: { deliveryRunId: string; nightShiftItemId: string; taskId: string; taskRevision: number }): Promise<Goal> {
     const goal = this.get(goalId);
     if (goal.status !== "draft") throw new AuxError("conflict", "This goal has already started or needs review.");
     if (!pageIds.length || pageIds.length > 8 || new Set(pageIds).size !== pageIds.length)
       throw new AuxError("invalid_params", "Choose one to eight distinct pages for this goal.");
-    const reservedRunId = newRunId();
+    const reservedRunId = internal?.deliveryRunId ?? newRunId();
     const reserved = this.repo.db.prepare("UPDATE goals SET status='starting',run_id=?,updated_at=? WHERE goal_id=? AND status='draft'")
       .run(reservedRunId, Date.now(), goalId);
     if (reserved.changes !== 1) throw new AuxError("conflict", "This goal changed. Refresh and try again.");
     try {
-      const run = await this.runs.start({ deliveryRunId: reservedRunId, engine: "agent-loop", goal: goal.objective, pageIds, chatId: goal.chatId,
+      const run = await this.runs.start({ deliveryRunId: reservedRunId, nightShiftItemId: internal?.nightShiftItemId, taskId: internal?.taskId, taskRevision: internal?.taskRevision, engine: "agent-loop", goal: goal.objective, pageIds, chatId: goal.chatId,
         defaultWorkspaceId: goal.workspaceId,
         maxTokens: goal.budget.maxTokens, maxCostUsd: goal.budget.maxCostUsd, deadlineMs: goal.budget.deadlineMs });
       if (run.runId !== reservedRunId) throw new AuxError("conflict", "Goal run identity changed during launch.");

@@ -1,12 +1,14 @@
 import { create } from "zustand";
-import { DownloadRenameReceiptSchema, type DownloadRenameReceipt } from "@aux/contracts";
+import { type DownloadRenameReceipt } from "@aux/contracts";
 import { bridge } from "../../bridge";
 import { call, errToast, toast } from "../../store";
 import { executeCommand } from "../../commands";
 export const useDownloadRenames = create<{ receipts: DownloadRenameReceipt[] }>(() => ({ receipts: [] }));
+let generation = 0;
 export async function refreshDownloadRenames() {
+  const life = generation;
   const receipts = await call("downloads.renameReceipts", {});
-  useDownloadRenames.setState({ receipts });
+  if (life === generation) useDownloadRenames.setState({ receipts });
 }
 export async function undoDownloadRename(receiptId?: string) {
   if (!receiptId) {
@@ -26,10 +28,16 @@ export async function undoDownloadRename(receiptId?: string) {
 }
 export function bootDownloadRenames() {
   let live = true;
+  const life = ++generation;
+  let pending = Promise.resolve();
   void refreshDownloadRenames().catch(errToast);
   const off = bridge.onEvent((event) => {
-    if (!live) return;
+    if (!live || !["download.renamed", "download.renameUndone"].includes(event.type)) return;
+    pending = pending.then(async () => {
+    if (!live || life !== generation) return;
     if (event.type === "download.renamed") {
+      const { DownloadRenameReceiptSchema } = await import("@aux/contracts/download-naming");
+      if (!live || life !== generation) return;
       const parsed = DownloadRenameReceiptSchema.safeParse(event.payload);
       if (!parsed.success) return;
       const receipt = parsed.data;
@@ -45,10 +53,12 @@ export function bootDownloadRenames() {
         },
       });
     }
-    if (event.type === "download.renameUndone") void refreshDownloadRenames().catch(errToast);
+    if (event.type === "download.renameUndone") await refreshDownloadRenames();
+    }).catch(reason => { if (live && life === generation) errToast(reason); });
   });
   return () => {
     live = false;
+    ++generation;
     off();
     useDownloadRenames.setState({ receipts: [] });
   };

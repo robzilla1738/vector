@@ -49,6 +49,7 @@ import type { MethodName } from "@aux/contracts";
 import type { McpOAuthService } from "../../services/mcp-oauth.js";
 
 export interface Services {
+  budgets?: import("../../services/budgets.js").BudgetsService;
   clock?: import("@aux/contracts").Clock;
   featureHost?: AuxFeatureHost;
   featureProfileId?: string;

@@ -1,0 +1,240 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 502f14f..46fd5ba 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -35,6 +35,8 @@ source_set("runtime") {
+     "methods/extensions_ui_methods.cc",
+     "methods/layout_methods.cc",
+     "methods/power_methods.cc",
++    "power_activity_mac.h",
++    "power_activity_mac.mm",
+     "methods/profile_routing_methods.cc",
+     "methods/shortcuts_methods.cc",
+     "methods/surfaces_methods.cc",
+@@ -132,6 +134,8 @@ source_set("runtime") {
+   frameworks = [
+     "PDFKit.framework",    "AVFoundation.framework",
+     "Cocoa.framework",
++    "IOKit.framework",
++    "ServiceManagement.framework",
+     "Security.framework",
+     "Speech.framework",
+   ]
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index 0d1c973..b863e1a 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -113,6 +113,7 @@ AuxMethodRegistry::AuxMethodRegistry() {
+                    {"native.egressContext", "native.egressInstall", "native.egressRevoke",
+                     "native.contentBlockBegin", "native.contentBlockAppend",
+                     "native.cosmeticBegin", "native.cosmeticAppend"});
++  register_runtime(AuxRuntimeMethodGroup::kPower, {"native.powerActivity", "native.powerStatus", "native.powerRelease"});
+   register_runtime(AuxRuntimeMethodGroup::kCdp,
+                    {"native.cdpReset", "native.cdpDispatch", "native.cdpVersion"});
+   register_runtime(AuxRuntimeMethodGroup::kTabs,
+diff --git a/chrome/browser/ui/aux/method_registry.h b/chrome/browser/ui/aux/method_registry.h
+index 6e938a4..e60e684 100644
+--- a/chrome/browser/ui/aux/method_registry.h
++++ b/chrome/browser/ui/aux/method_registry.h
+@@ -34,7 +34,7 @@ enum class AuxShellMethodGroup {
+ // method metadata supplies typed IDs and validates arguments; a declared
+ // method alone never implies that a handler is implemented.
+ enum class AuxRuntimeMethodGroup {
+-  kNone, kLibrary, kBlocking, kCdp, kTabs, kPageControls, kAsync, kWorker
++  kNone, kLibrary, kBlocking, kCdp, kTabs, kPageControls, kAsync, kWorker, kPower
+ };
+ 
+ class AuxMethodRegistry {
+diff --git a/chrome/browser/ui/aux/methods/power_methods.cc b/chrome/browser/ui/aux/methods/power_methods.cc
+index 4f900f6..77ed82b 100644
+--- a/chrome/browser/ui/aux/methods/power_methods.cc
++++ b/chrome/browser/ui/aux/methods/power_methods.cc
+@@ -1,6 +1,24 @@
+-// Copyright 2026 The Aux Authors
+-// Use of this source code is governed by a BSD-style license that can be
+-// found in the LICENSE file.
+-
+-// Wave 0 reserves this compilation unit for the power feature lane.
+-// It registers no handler; generated methods remain unavailable until implemented.
++#include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/power_activity_mac.h"
++#include "chrome/browser/profiles/profile.h"
++base::DictValue AuxRuntimeHost::HandleNativePowerCall(const std::string& method, const base::DictValue& params) {
++  auto fault = [](const char* message) {
++    base::DictValue error; error.Set("code", "invalid_argument"); error.Set("message", message);
++    base::DictValue reply; reply.Set("error", std::move(error)); return reply;
++  };
++  if (!power_activity_) power_activity_ = std::make_unique<aux::PowerActivityMac>(profile_);
++  base::DictValue value;
++  if (method == "native.powerRelease") {
++    if (!params.empty()) return fault("Power release takes no arguments.");
++    power_activity_->End(); value.Set("active", false);
++  } else if (method == "native.powerStatus") {
++    if (!params.empty()) return fault("Power status takes no arguments.");
++    value = power_activity_->Status();
++  } else if (method == "native.powerActivity") {
++    const auto* reason = params.FindString("reason"); const auto duration = params.FindInt("durationSec");
++    if (params.size() != 2 || !reason || reason->empty() || reason->size() > 200 || !duration || *duration < 1 || *duration > 3600)
++      return fault("Power activity requires a bounded reason and one to 3600 seconds.");
++    value = power_activity_->Begin(*reason, *duration);
++  } else return fault("Unknown power method.");
++  base::DictValue reply; reply.Set("result", std::move(value)); return reply;
++}
+diff --git a/chrome/browser/ui/aux/power_activity_mac.h b/chrome/browser/ui/aux/power_activity_mac.h
+new file mode 100644
+index 0000000..2f705db
+--- /dev/null
++++ b/chrome/browser/ui/aux/power_activity_mac.h
+@@ -0,0 +1,20 @@
++#ifndef CHROME_BROWSER_UI_AUX_POWER_ACTIVITY_MAC_H_
++#define CHROME_BROWSER_UI_AUX_POWER_ACTIVITY_MAC_H_
++#include <memory>
++#include <string>
++#include "base/values.h"
++class Profile;
++namespace aux {
++class PowerActivityMac {
++ public:
++  explicit PowerActivityMac(Profile* profile);
++  ~PowerActivityMac();
++  void End();
++  base::DictValue Status() const;
++  base::DictValue Begin(const std::string& reason, int duration_sec);
++ private:
++  struct Impl;
++  std::unique_ptr<Impl> impl_;
++};
++}
++#endif
+diff --git a/chrome/browser/ui/aux/power_activity_mac.mm b/chrome/browser/ui/aux/power_activity_mac.mm
+new file mode 100644
+index 0000000..0f47267
+--- /dev/null
++++ b/chrome/browser/ui/aux/power_activity_mac.mm
+@@ -0,0 +1,84 @@
++#include "chrome/browser/ui/aux/power_activity_mac.h"
++#import <Foundation/Foundation.h>
++#import <ServiceManagement/ServiceManagement.h>
++#include <IOKit/ps/IOPowerSources.h>
++#include <IOKit/ps/IOPSKeys.h>
++#include "base/apple/scoped_cftyperef.h"
++#include "base/functional/bind.h"
++#include "base/memory/raw_ptr.h"
++#include "base/strings/sys_string_conversions.h"
++#include "base/time/time.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "components/prefs/pref_service.h"
++#include "components/prefs/pref_change_registrar.h"
++namespace aux {
++namespace {
++bool OnAC() {
++  base::apple::ScopedCFTypeRef<CFTypeRef> info(IOPSCopyPowerSourcesInfo());
++  if (!info) return false;
++  CFStringRef source = IOPSGetProvidingPowerSourceType(info.get());
++  return source && CFEqual(source, CFSTR(kIOPSACPowerValue));
++}
++}
++struct PowerActivityMac::Impl {
++  explicit Impl(Profile* value) : profile(value) {
++    preferences.Init(profile->GetPrefs());
++    preferences.Add(kKeepRuntimeInBackgroundPref, base::BindRepeating(&Impl::Check, base::Unretained(this)));
++    power_source.reset(IOPSNotificationCreateRunLoopSource([](void* context) {
++      static_cast<Impl*>(context)->Check();
++    }, this));
++    if (power_source) CFRunLoopAddSource(CFRunLoopGetMain(), power_source.get(), kCFRunLoopCommonModes);
++  }
++  ~Impl() {
++    if (power_source) CFRunLoopRemoveSource(CFRunLoopGetMain(), power_source.get(), kCFRunLoopCommonModes);
++    preferences.RemoveAll(); End();
++  }
++  void Check() {
++    if (!OnAC() || profile->IsOffTheRecord() || !profile->GetPrefs()->GetBoolean(kKeepRuntimeInBackgroundPref)) End();
++  }
++  void End() {
++    timer.Stop();
++    if (activity) [[NSProcessInfo processInfo] endActivity:activity];
++    activity = nil;
++  }
++  raw_ptr<Profile> profile;
++  id<NSObject> __strong activity = nil;
++  base::OneShotTimer timer;
++  PrefChangeRegistrar preferences;
++  base::apple::ScopedCFTypeRef<CFRunLoopSourceRef> power_source;
++};
++PowerActivityMac::PowerActivityMac(Profile* profile) : impl_(std::make_unique<Impl>(profile)) {}
++PowerActivityMac::~PowerActivityMac() = default;
++void PowerActivityMac::End() { impl_->End(); }
++base::DictValue PowerActivityMac::Status() const {
++  impl_->Check();
++  base::DictValue result;
++  result.Set("onAC", OnAC());
++  result.Set("backgroundEnabled", !impl_->profile->IsOffTheRecord() && impl_->profile->GetPrefs()->GetBoolean(kKeepRuntimeInBackgroundPref));
++  result.Set("active", impl_->activity != nil);
++  std::string login_status = "unavailable";
++  if (@available(macOS 13.0, *)) {
++    switch ([SMAppService mainAppService].status) {
++      case SMAppServiceStatusNotRegistered: login_status = "not_registered"; break;
++      case SMAppServiceStatusEnabled: login_status = "enabled"; break;
++      case SMAppServiceStatusRequiresApproval: login_status = "requires_approval"; break;
++      case SMAppServiceStatusNotFound: login_status = "not_found"; break;
++    }
++  }
++  result.Set("loginItem", login_status);
++  return result;
++}
++base::DictValue PowerActivityMac::Begin(const std::string& reason, int duration_sec) {
++  base::DictValue result;
++  if (impl_->profile->IsOffTheRecord() || !impl_->profile->GetPrefs()->GetBoolean(kKeepRuntimeInBackgroundPref) || !OnAC()) {
++    impl_->End(); result.Set("active", false); result.Set("reason", "Night shift requires AC power and this Profile's background mode."); return result;
++  }
++  impl_->End();
++  impl_->activity = [[NSProcessInfo processInfo] beginActivityWithOptions:NSActivityIdleSystemSleepDisabled reason:base::SysUTF8ToNSString(reason)];
++  if (impl_->activity) impl_->timer.Start(FROM_HERE, base::Seconds(duration_sec), base::BindOnce(&Impl::End, base::Unretained(impl_.get())));
++  result.Set("active", impl_->activity != nil);
++  return result;
++}
++}
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
+index 329e8ba..5c7c16c 100644
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/ui/aux/runtime_host.h"
++#include "chrome/browser/ui/aux/power_activity_mac.h"
+ 
+ #include "base/task/thread_pool.h"
+ 
+@@ -307,6 +308,8 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
+     return NativeFault("backend_unavailable", "Tab catalog is unavailable");
+   }
+   switch (group) {
++    case aux::AuxRuntimeMethodGroup::kPower:
++      return HandleNativePowerCall(method, params);
+     case aux::AuxRuntimeMethodGroup::kLibrary:
+       return HandleNativeLibraryCall(method, params, connection_generation);
+     case aux::AuxRuntimeMethodGroup::kBlocking:
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
+index 50eeef9..3915db2 100644
+--- a/chrome/browser/ui/aux/runtime_host.h
++++ b/chrome/browser/ui/aux/runtime_host.h
+@@ -29,6 +29,7 @@ namespace device_reauth {
+ class DeviceAuthenticator;
+ }
+ namespace aux {
++class PowerActivityMac;
+ class CdpBroker;
+ class ProfileLibrary;
+ class NativeFind;
+@@ -141,6 +142,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
+   void HandleRecoveryOwnerAuth(const base::DictValue& params,
+                                std::shared_ptr<std::atomic_bool> cancelled,
+                                base::OnceCallback<void(base::DictValue)> callback);
++  std::unique_ptr<aux::PowerActivityMac> power_activity_;
++  base::DictValue HandleNativePowerCall(const std::string& method, const base::DictValue& params);
+   base::DictValue HandleNativeCall(const std::string& method,
+                                    const base::DictValue& params,
+                                    uint64_t connection_generation);

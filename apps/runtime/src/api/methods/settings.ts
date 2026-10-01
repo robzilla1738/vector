@@ -17,11 +17,11 @@ async function h_settings_get(ctx: MethodCtx): Promise<unknown> {
 async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
   const patch = { ...params };
-  if ((ctx.client.external || ctx.codeMode) && "downloadNaming" in patch)
+  if ((ctx.client.external || ctx.client.codeMode) && "downloadNaming" in patch)
     throw new AuxError("permission_denied", "Download naming must be changed in Aux Settings.");
   if ("originPolicies" in patch)
     throw new AuxError("permission_denied", "Save agent site rules through the revision-checked Agent access controls.");
-  if (ctx.client.external && ["originPolicies", "effectGrants", "safetyCeilings"].some(key => key in patch))
+  if ((ctx.client.external || ctx.client.codeMode) && ["originPolicies", "effectGrants", "safetyCeilings", "nightShift"].some(key => key in patch))
     throw new AuxError("permission_denied", "Agent permissions must be changed in Aux Settings.");
   let searchEngine: string | undefined;
   let searchSuggestions: boolean | undefined;

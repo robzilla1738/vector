@@ -19,7 +19,7 @@ it("shows one Allow button for a confirmation event and decides the approval onc
       action: "click", origin: "http://127.0.0.1:9",
     },
   };
-  const next = reduceRunEvent({} as Workspace, event);
+  const next = reduceRunEvent({ runs: [] } as unknown as Workspace, event);
   expect(next?.confirmation).toMatchObject({ approvalId: "ap-1", turnId: "turn-1" });
   useStore.setState({ confirmation: next!.confirmation });
   const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ ok: true });

@@ -70,6 +70,14 @@ export class PageService {
   isAttached: PageRegistry["isAttached"] = (...args) => this.pages.isAttached(...args);
   livePageIds: PageRegistry["livePageIds"] = (...args) => this.pages.livePageIds(...args);
 
+  async recorderObserver(pageId: string) {
+    const page = this.get(pageId);
+    if (page.ownedByRuntime || page.controller === "agent" || page.controller === "external") throw new AuxError("permission_denied", "Recording needs a person-controlled tab.");
+    const driver = this.pages.driverPageLenient(pageId);
+    if (!driver.openRecorderObserver) throw new AuxError("feature_unavailable", "This page cannot record demonstrations.");
+    return driver.openRecorderObserver();
+  }
+
   currentObservation(pageId: string): Observation | undefined {
     const page = this.pages.live.get(pageId);
     const obs = page?.lastObs?.obs;

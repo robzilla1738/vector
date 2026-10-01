@@ -23,8 +23,11 @@ export function createModelFixture(fixture, { respond = () => ({ content: 'Loopb
       throw error;
     }
     const message = { role: 'assistant', content: result.content ?? null, ...(result.tool_calls ? { tool_calls: result.tool_calls } : {}) };
+    const usage = result.usage ?? { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 };
+    assert.ok([usage.prompt_tokens, usage.completion_tokens, usage.total_tokens].every(value => Number.isSafeInteger(value) && value >= 0 && value <= 10_000_000), 'Synthetic transport usage must be bounded integers');
+    assert.equal(usage.total_tokens, usage.prompt_tokens + usage.completion_tokens, 'Synthetic transport usage must balance');
     const base = { id: `aux-loopback-${calls.length}`, created: 1, model: payload.model,
-      usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 } };
+      usage };
     const finish = result.tool_calls?.length ? 'tool_calls' : 'stop';
     if (payload.stream) {
       response.setHeader('content-type', 'text/event-stream');

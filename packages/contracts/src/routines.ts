@@ -261,9 +261,11 @@ export const RoutineSchema = RoutineDefinitionSchema.extend({
   activationReview: z.enum(["run_result", "imported", "untrusted_task"]).optional(),
   /** Declarative, same-site trace. Imported documents cannot carry this local proof. */
   replay: z.object({
-    format: z.literal("aux-skill-replay@1"),
-    sourceRunId: text,
+    format: z.literal("aux-skill-replay@2"),
+    sourceRunId: text.optional(),
+    sourceRecordingId: text.optional(),
     siteOrigin: siteOrigin,
+    siteOrigins: z.array(siteOrigin).min(1).max(20),
     steps: z.array(PlanStepSchema).min(2).max(50),
     digest: z.string().regex(/^[a-f0-9]{64}$/),
     state: z.enum(["untested", "testing", "tested", "needs_repair"]),
@@ -271,7 +273,7 @@ export const RoutineSchema = RoutineDefinitionSchema.extend({
     testRevision: z.number().int().positive().optional(),
     testedRevision: z.number().int().positive().optional(),
     testedAt: z.number().int().nonnegative().optional(),
-  }).strict().optional(),
+  }).strict().refine(replay => Number(!!replay.sourceRunId) + Number(!!replay.sourceRecordingId) === 1, "Choose one exact replay source.").optional(),
 });
 export const RoutineReplayCompileParams = z.object({
   routineId: text, expectedRevision: z.number().int().positive(), sourceRunId: text, pageId: text,

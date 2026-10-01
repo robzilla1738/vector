@@ -106,6 +106,7 @@ export class ProgramExecutor {
                 turnId: ctx.runId ?? ctx.safety?.turnId ?? `direct:${pageId}`,
                 threadId: run?.config?.chatId ?? ctx.safety?.threadId ?? `page:${pageId}`,
                 sessionId: lp.target.sessionId ?? undefined,
+                standingOnly: !!run?.config?.nightShiftItemId,
                 approvalId: metadata?.approvalId,
                 review: metadata?.review,
                 turnToolCallCount: ctx.safety?.turnToolCallCount,

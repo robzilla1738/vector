@@ -568,6 +568,15 @@ const RESULTS: Record<string, unknown> = {
     "renamed": false,
     "filename": "/tmp/aux-mock"
   },
+  "native.powerRelease": {
+    "active": false
+  },
+  "native.powerStatus": {
+    "onAC": false,
+    "backgroundEnabled": false,
+    "active": false,
+    "loginItem": "unavailable"
+  },
   "native.powerActivity": {
     "active": false
   },

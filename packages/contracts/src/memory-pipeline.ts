@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const MemoryPipelinePolicySchema = z.object({ workspaceId: z.string().min(1), enabled: z.boolean() }).strict();
 export const MemoryClaimSchema = z.object({ claimId: z.string().uuid(), sourceRunId: z.string().min(1),
+  contradictionIds: z.array(z.string().uuid()).max(200).optional(),
+  mergedClaimIds: z.array(z.string().uuid()).max(200).optional(),
   text: z.string().min(1).max(2000), capturedAt: z.number().int().nonnegative(),
   /** Exact source quote: report evidence or explicitly unverified owner-pasted context. Older encrypted notes remain readable. */
   source: z.discriminatedUnion("kind", [

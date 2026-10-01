@@ -63,11 +63,25 @@ function fixture(cipher?: SqliteColumnCipher) {
   };
 }
 describe("smart download naming", () => {
+  it("allows the person with the normal code-mode service installed", async () => {
+    const f = fixture();
+    try {
+      await expect(downloadNamingMethods["downloads.renameReceipts"]!({ client: { external: false }, codeMode: {},
+        s: { repo: f.repo, native: f.native, settings: f.settings, events: f.events, featureHost: "chromium-fork" }, params: {},
+      } as unknown as MethodCtx)).resolves.toEqual([]);
+      const set = vi.fn(async () => ({ ok: true }));
+      await expect(settingsMethods["settings.set"]!({ client: { external: false }, codeMode: {},
+        params: { downloadNaming: DEFAULT_DOWNLOAD_NAMING },
+        s: { settings: { set, all: () => ({}) }, runs: { refreshPool: vi.fn() }, events: { emit: vi.fn() } },
+      } as unknown as MethodCtx)).resolves.toEqual({ ok: true });
+      expect(set).toHaveBeenCalledWith({ downloadNaming: DEFAULT_DOWNLOAD_NAMING });
+    } finally { f.db.close(); }
+  });
   it("refuses agent and external preference writes before changing settings", async () => {
     for (const [external, codeMode] of [[true, false], [false, true]]) {
       const set = vi.fn();
       await expect(settingsMethods["settings.set"]!({
-        client: { external }, codeMode,
+        client: { external, codeMode }, codeMode: {},
         params: { downloadNaming: DEFAULT_DOWNLOAD_NAMING },
         s: { settings: { set } },
       } as unknown as MethodCtx)).rejects.toMatchObject({ code: "permission_denied" });
@@ -280,7 +294,7 @@ describe("smart download naming", () => {
         [false, "chromium-fork", true],
       ] as const) {
         await expect(
-          handler({ client: { external }, codeMode, s: { featureHost }, params: {} } as unknown as MethodCtx),
+          handler({ client: { external, codeMode }, codeMode: {}, s: { featureHost }, params: {} } as unknown as MethodCtx),
         ).rejects.toMatchObject({ code: "permission_denied" });
       }
     }

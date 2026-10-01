@@ -2,7 +2,7 @@ import { AuxError } from "@aux/contracts";
 import type { MethodCtx } from "./context.js";
 import { downloadNaming } from "../../features/download-naming/boot.js";
 function service(ctx: MethodCtx) {
-  if (ctx.client.external || ctx.codeMode || ctx.s.featureHost !== "chromium-fork")
+  if (ctx.client.external || ctx.client.codeMode || ctx.s.featureHost !== "chromium-fork")
     throw new AuxError("permission_denied", "Manage download names in Aux.");
   return downloadNaming(ctx.s);
 }

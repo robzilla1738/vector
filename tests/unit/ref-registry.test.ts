@@ -33,7 +33,7 @@ describe("parseTarget", () => {
   it("classifies targets", () => {
     expect(parseTarget("r12")).toEqual({ kind: "ref", ref: "r12" });
     expect(parseTarget("css:#save")).toEqual({ kind: "selector", strategy: { css: "#save" } });
-    expect(parseTarget("text:Save record")).toEqual({ kind: "selector", strategy: { text: "Save record" } });
+    expect(parseTarget("text:Save record")).toEqual({ kind: "selector", strategy: { text: "Save record", exact: true } });
     expect(parseTarget("role=button[name=Save]")).toEqual({ kind: "selector", strategy: { role: { role: "button", name: "Save" } } });
     expect(parseTarget("xpath://button[1]")).toEqual({ kind: "selector", strategy: { xpath: "xpath=//button[1]" } });
     expect(parseTarget("#plain-css")).toEqual({ kind: "selector", strategy: { css: "#plain-css" } });

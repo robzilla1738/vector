@@ -6,7 +6,17 @@ import type { useStore } from "../store";
 
 export type CommandContext = ReturnType<typeof useStore.getState>;
 export interface CommandInvocation {
-  payload?: { receiptId: string } | { downloadNaming: import("@aux/contracts").DownloadNamingSettings } | { pageId: string; edge?: "left" | "right" | "top" | "bottom" }
+  payload?: { queue: import("@aux/contracts").MethodParams<"nightShift.queue"> }
+    | import("@aux/contracts").MethodParams<"nightShift.review">
+    | { nightShift: import("zod").infer<typeof import("@aux/contracts").NightShiftSettingsSchema> }
+    | { demonstration: { recordingId: string; taskId: string; expectedTaskRevision: number; title: string; review: import("zod").infer<typeof import("@aux/contracts").DemonstrationReviewSchema> } }
+    | { compileReplay: import("@aux/contracts").MethodParams<"routines.replay.compile"> }
+    | { testReplay: import("@aux/contracts").MethodParams<"routines.replay.test"> }
+    | { replayResult: import("@aux/contracts").MethodParams<"routines.replay.result"> }
+    | { proposeRepair: import("@aux/contracts").MethodParams<"routines.replay.repair.propose"> }
+    | { applyRepair: import("@aux/contracts").MethodParams<"routines.replay.repair.apply"> }
+    | { pageId: string; edge?: "left" | "right" | "top" | "bottom" }
+    | { receiptId: string } | { downloadNaming: import("@aux/contracts").DownloadNamingSettings }
     | { pageId: string; divider: number; ratio: number; persist?: boolean } | { spaceId: string } | { target: "little" | "main" }
     | { spaceId: string; pinUrl: string; beforePinUrl?: string | null } | { folderId: string; itemId?: string } | { archiveId: string } | { batchId: string }
     | { folderId: string; live: import("@aux/contracts").LiveFolder }
@@ -35,6 +45,7 @@ export interface FeatureMount {
   boot?: () => void | (() => void);
   sidebarItems?: readonly ComponentType[];
   sidebarFooterItems?: readonly ComponentType[];
+  startItems?: readonly ComponentType[];
   toolbarItems?: readonly ComponentType[];
   railView?: { component: ComponentType; active: () => boolean; subscribe: (listener: () => void) => () => void };
   overlays?: readonly ComponentType[];
@@ -71,7 +82,7 @@ export function runFeatureCommand(id: string, context: CommandContext, invocatio
   if (!mount) return { handled: false };
   return { handled: true, result: mount.commands![id as ShellCommandId]!(context, invocation) };
 }
-export function FeatureSlots({ slot }: { slot: "sidebarItems" | "sidebarFooterItems" | "toolbarItems" | "overlays" }) {
+export function FeatureSlots({ slot }: { slot: "sidebarItems" | "sidebarFooterItems" | "toolbarItems" | "overlays" | "startItems" }) {
   return featureMounts.filter(enabled).flatMap(mount => (mount[slot] ?? []).map((component, index) =>
     createElement(component, { key: `${mount.feature}:${index}` })));
 }
