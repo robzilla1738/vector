@@ -5,7 +5,7 @@ import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSy
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { acquireNativeSlot } from '../../../scripts/native-slot.mjs';
-import { createDevelopmentAcceptance, nativeProfileName, validateDisposableProfile } from './dev-acceptance.mjs';
+import { createDevelopmentAcceptance, extendDevelopmentAcceptance, nativeProfileName, validateDisposableProfile } from './dev-acceptance.mjs';
 import { createRpc, validateDescriptor } from './rpc.mjs';
 
 function externalFixtureUrl(url) {
@@ -267,6 +267,13 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       if (running()) throw new Error('Fixture transport must be prepared before launch');
       validateFixtureEnv(extra, fixtureUrl, userDataDir);
       Object.assign(env, extra);
+    },
+    acceptCreatedProfile(profileId) {
+      if (!running() || !acceptance) throw new Error('Created Profile acceptance needs this running owned development fixture');
+      const added = extendDevelopmentAcceptance({userDataDir, profileId, token:acceptance.token,
+        features:launch.devAcceptance.features, sourceCommit:launch.devAcceptance.sourceCommit});
+      acceptance.markers.push(...added.markers);
+      return {profileId, restartRequired:true};
     },
     start, async restart(options) { await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
     async openExternal(url) { if (!running()) throw new Error("Disposable Aux is not running"); return launchUrl(url, [], api.pid); },

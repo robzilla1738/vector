@@ -37,3 +37,13 @@ export function createDevelopmentAcceptance({ userDataDir, profiles = ['Default'
   });
   return { token, env: { AUX_DEV_ACCEPTANCE_TOKEN: token }, markers };
 }
+
+export function extendDevelopmentAcceptance({ userDataDir, profileId, features, sourceCommit, token }) {
+  const root = validateDisposableProfile(userDataDir);
+  nativeProfileName(profileId);
+  const directory = join(root, profileId);
+  const info = lstatSync(directory);
+  if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() || info.mode & 0o077 || realpathSync(directory) !== directory)
+    throw new Error('Created native Profile must exist and be owner-only without symlinks');
+  return createDevelopmentAcceptance({userDataDir:root, profiles:[profileId], features, sourceCommit, token});
+}

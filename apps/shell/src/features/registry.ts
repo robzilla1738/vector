@@ -21,6 +21,7 @@ export interface FeatureMount {
   privateWindows?: boolean;
   boot?: () => void | (() => void);
   sidebarItems?: readonly ComponentType[];
+  sidebarFooterItems?: readonly ComponentType[];
   toolbarItems?: readonly ComponentType[];
   overlays?: readonly ComponentType[];
   composerPlugins?: readonly ComponentType<ComposerPluginProps>[];
@@ -56,7 +57,7 @@ export function runFeatureCommand(id: string, context: CommandContext, invocatio
   if (!mount) return { handled: false };
   return { handled: true, result: mount.commands![id as ShellCommandId]!(context, invocation) };
 }
-export function FeatureSlots({ slot }: { slot: "sidebarItems" | "toolbarItems" | "overlays" }) {
+export function FeatureSlots({ slot }: { slot: "sidebarItems" | "sidebarFooterItems" | "toolbarItems" | "overlays" }) {
   return featureMounts.filter(enabled).flatMap(mount => (mount[slot] ?? []).map((component, index) =>
     createElement(component, { key: `${mount.feature}:${index}` })));
 }

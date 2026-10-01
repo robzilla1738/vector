@@ -733,6 +733,7 @@ export const Sidebar = memo(function Sidebar() {
       </div>
       </SidebarSection>
       <div className="sb-foot">
+        <FeatureSlots slot="sidebarFooterItems"/>
       <div className="sb-space">
         <button ref={spaceTrigger} className="space-switch" data-space={space.color} style={spaceThemeStyle(space)} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Switch space">
           <span className="space-ico">{I.person}</span>
