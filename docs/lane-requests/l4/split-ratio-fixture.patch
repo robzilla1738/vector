@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/aux/tab_catalog_browsertest.cc b/chrome/browser/ui/aux/tab_catalog_browsertest.cc
+index 6c643380..a1390694 100644
+--- a/chrome/browser/ui/aux/tab_catalog_browsertest.cc
++++ b/chrome/browser/ui/aux/tab_catalog_browsertest.cc
+@@ -56,7 +56,7 @@ IN_PROC_BROWSER_TEST_P(TabCatalogMovementBrowserTest,
+   group.Set("focused", members[0]);
+   group.Set("layout", GetParam() == 2 ? "row" : GetParam() == 3 ? "columns" : "grid");
+   base::ListValue ratios;
+-  ratios.Append(0.5);
++  for (int index = 1; index < GetParam(); ++index) ratios.Append(0.5);
+   group.Set("ratios", std::move(ratios));
+   shared->FindList("splitGroups")->Append(std::move(group));
+   std::string error;

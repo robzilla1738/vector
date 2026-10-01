@@ -48,3 +48,13 @@ it("scales elapsed ages and delays without changing native wall timestamps", () 
   for (const scale of [0, -1, Infinity, NaN, 100001]) expect(() => createClock(scale)).toThrow();
   expect(() => clock.delayMs(-1)).toThrow();
 });
+
+it.each([
+  ["row", 2], ["column", 2], ["columns", 3], ["one-plus-two", 3], ["grid", 4],
+])("requires exactly one ratio per %s divider", (layout, count) => {
+  const panes = ["red", "blue", "green", "yellow"].slice(0, Number(count));
+  const group = { id: "split", panes, layout, ratios: Array(Number(count) - 1).fill(0.5), focused: "red" };
+  expect(SplitGroupSchema.safeParse(group).success).toBe(true);
+  for (const ratios of [[], Array(Number(count) - 2).fill(0.5), Array(Number(count)).fill(0.5)])
+    expect(SplitGroupSchema.safeParse({ ...group, ratios }).success).toBe(false);
+});
