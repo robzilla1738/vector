@@ -491,3 +491,6 @@ Reviewer14adc ten-state checkpoint independently fullread andalltenfede original
 
 
 Owner F21 reference update: canonical plan, roadmap and L12 brief now specify the verified130 MB `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/` installed-build capture and `/Users/rcourson/AI Blueprints/06_COPYABLE-SURFACES.md` §§8–8c (root full-read). Use its concrete CSS/WebUI/tokens/icons/surface assets with per-change reference provenance, preserve Aux name/logo/branding/productidentity/copy, keep resources outside Git. All original visual evidence and final sign-off remain mandatory. L9 fullF11 source lane newly active at contracts-v1→integrationc73e, no native writes; L7sourcefreezec186.
+
+
+Contracts-v12 source adds archiveTab identity, stricttabAudio video/pip, fivecontextualpincommands/reorderpayload and archive transaction schema≤300finished+≤20pending/≤320unique IDs. Conditionalreservation preservesoldreceiptsuntilconfirmedclose; no refusalpruning. Actualnative0179/validator fullread andsharedrequests savedbutnotapplied/compiled. Rootrebuild/full390files2088/9focused/typecheck/lint379/format/bindings20126a968ef3c4d5c/inventory/bridge150zero/diff PASS (/tmp/aux-root-v12-*). Actualstable71eb19526de283unchanged; futurefullregistry/nativequalification mandatory.

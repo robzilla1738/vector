@@ -308,3 +308,6 @@ Reviewer14adc ten-state checkpoint independently fullread andalltenfede original
 
 
 Owner F21 resource direction recorded in canonical plan, L12 brief and roadmap: verified approximately130 MB installed-build capture `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/` and full-read `06_COPYABLE-SURFACES.md` §§8–8c. Use reference assets for surface fidelity, preserve Aux name/logo/branding/appidentity/copy, keep assets outside Git and retain all F21 appearance/contact-sheet/reviewer/owner-signoff gates.
+
+
+Contracts-v12 reviewed source batch: guardedarchiveTab exact page/URL/batch/activity identity, strict native media snapshots video/pip, five registered normal-window pin actions and contextual reorder payload, conditional archive transaction bounds≤300finished/≤20pending/≤320total withunique page/receiptIDs. Old finished receipts survive staging/refusal; onlyconfirmed successful auto completion can prune oldauto entries. Nativeguardedproducer andvalidator fullread, requests saved; producer/registration remains unapplied/uncompiled. Rootrebuild/full390files2088tests/9focused/typecheck/lint379/format/bindings20126a968ef3c4d5c/inventory/bridge150zero/diff PASS (/tmp/aux-root-v12-*). Currentcompilednative71eb remains19526de283; fullregistry/native/perf/F21/qualification pending.

@@ -121,6 +121,7 @@ export function createHostClient(port: HostPort) {
     pictureInPicture: (...args: HostMethodArgs<"pictureInPicture">) => call("pictureInPicture", args),
     setStageVisible: (...args: HostMethodArgs<"setStageVisible">) => call("setStageVisible", args),
     tabsUnsavedWork: (...args: HostMethodArgs<"tabsUnsavedWork">) => call("tabsUnsavedWork", args),
+    archiveTab: (...args: HostMethodArgs<"archiveTab">) => call("archiveTab", args),
     tabSleep: (...args: HostMethodArgs<"tabSleep">) => call("tabSleep", args),
     preview: (...args: HostMethodArgs<"preview">) => call("preview", args),
     contextMenu: (...args: HostMethodArgs<"contextMenu">) => call("contextMenu", args),

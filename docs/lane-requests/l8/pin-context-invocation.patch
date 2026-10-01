@@ -1,0 +1,11 @@
+--- a/apps/shell/src/features/registry.ts
++++ b/apps/shell/src/features/registry.ts
+@@ -8,7 +8,7 @@
+ export interface CommandInvocation {
+   payload?: { pageId: string; edge?: "left" | "right" | "top" | "bottom" }
+     | { pageId: string; divider: number; ratio: number; persist?: boolean } | { spaceId: string } | { target: "little" | "main" }
+-    | { spaceId: string; pinUrl: string } | { folderId: string; itemId?: string } | { archiveId: string } | { batchId: string }
++    | { spaceId: string; pinUrl: string; beforePinUrl?: string | null } | { folderId: string; itemId?: string } | { archiveId: string } | { batchId: string }
+     | { folderId: string; live: import("@aux/contracts").LiveFolder }
+     | { spaceId: string; archiveHours: 12 | 24 | 72 | 168 | 720 | "never" }
+     | { connectionId: string } | { name: string; token: string }

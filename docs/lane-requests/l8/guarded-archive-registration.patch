@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -84,7 +84,7 @@
+                  {"organizationSnapshot", "organizationCommit"});
+   register_shell(AuxShellMethodGroup::kTabs,
+                  {"bindTabSpace", "migrateTabSpaces", "tabsSnapshot",
+-                  "tabsSince", "tabCommand", "tabAudio", "tabsUnsavedWork", "tabSleep"});
++                  "tabsSince", "tabCommand", "tabAudio", "tabsUnsavedWork", "tabSleep", "archiveTab"});
+   register_shell(AuxShellMethodGroup::kHealth,
+                  {"healthSummary", "clearHealth", "exportDiagnostics"});
+   register_shell(AuxShellMethodGroup::kWindow,

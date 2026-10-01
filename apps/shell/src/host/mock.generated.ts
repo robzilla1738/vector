@@ -352,6 +352,9 @@ const RESULTS: Record<string, unknown> = {
   },
   "setStageVisible": false,
   "tabsUnsavedWork": {},
+  "archiveTab": {
+    "archived": false
+  },
   "tabSleep": {
     "slept": false
   },

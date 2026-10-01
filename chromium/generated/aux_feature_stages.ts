@@ -29,7 +29,9 @@ const requirements = {
     "journey": "feature:liveFolders"
   },
   "autoArchive": {
-    "requires": [],
+    "requires": [
+      "archiveTab"
+    ],
     "journey": "feature:autoArchive"
   },
   "pictureInPicture": {
