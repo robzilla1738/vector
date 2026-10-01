@@ -1,0 +1,22 @@
+{
+  "status": "product_pair_PASS_helper_unpaired",
+  "candidate": "d9501834001fe98c6b0f454adeda09fc3902577e",
+  "productTree": "7b6fc1cf0b28f4a74ce2f21e053f27ce7d0171c0",
+  "proofSha256": "d01d65f3e90d18e6f5ab20d50721935449073bff2e695411f9ae5212dd515528",
+  "verified": {
+    "nativeStableVsReviewedMirror": 74,
+    "shellBytesInScratchRepoStable": 142,
+    "generatedCompiledPaksLogs": "all hashes independently matched",
+    "runtimeIdentity": "exact clean d950/tree7b6fc1",
+    "stampedHeader": "byte exact with empty qualifiedFeatures"
+  },
+  "helper": {
+    "sourceSha256": "ced7379c767eff08231db69d2b49965edae74f40e83b361068fc7f8fce111fde",
+    "oldExecutable": "/Users/rcourson/Library/Caches/dev.aux.journeys/native-window-28109a157492",
+    "executableSha256": "a0e77de8aec8a861925f28a8b781ce50d1138ba43e8ca890cde15baff1813a93",
+    "paired": false,
+    "required": "Builder compile changed ced737 source once before journeys"
+  },
+  "nativeTestsRun": false,
+  "journeysAuthorized": false
+}
