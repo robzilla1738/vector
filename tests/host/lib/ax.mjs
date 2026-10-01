@@ -88,7 +88,7 @@ export async function createAxClient(pid, { timeoutMs = 65_000 } = {}) {
     focus: selector => request('focus', { selector }),
     click: (selector, options = {}) => request('click', { selector, ...options }),
     hover: selector => request('hover', { selector }),
-    key: (chord, via = 'pid') => request('key', { chord, via }),
+    key: (chord, via = 'pid', phase = 'press') => request('key', { chord, via, phase }),
     measureKey: (chord, selector, expectedName, timeoutMs = 500) => request('measureKey', { chord, selector, expectedName, timeoutMs }),
     measureKeyHidden: (chord, selector, timeoutMs = 500) => request('measureKey', { chord, selector, expectedVisible: false, timeoutMs }),
     type: (text, selector) => request('type', { text, ...(selector ? { selector } : {}) }),
