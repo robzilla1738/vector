@@ -29,8 +29,8 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | Role / lane | Status | Patches | Agent / worktree |
 |---|---|---|---|
 | Integrator / Wave 0 | Active | 0136–0139, fix-ups 0186–0199 | Current chat / repository |
-| Builder | Idle after L1 diagnostic failures and verified cleanup | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
-| Design reviewer | Reviewing L1 f442 default capture | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
+| Builder | Active pure-LJ f890 fourteen diagnostic retry | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
+| Design reviewer | Idle after DR006 report; next native captures pending | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
 | L1 Commands | Active trusted-keyup correction after f442 failures | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
 | L4 Windows | Active source implementation | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
 | L2 Layout | Dispatched; temporarily yielded for builder capacity | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
@@ -135,3 +135,10 @@ L1 native functional failure independently confirmed: `release/test-artifacts/l1
 
 
 L1 perf independently audited: manifest `release/test-artifacts/l1-f4428484-shortcut-perf/manifest.json` SHA `841bcf3c438120b624722cb23c3299e794f597980dcdf2aba0c416ea2a2a9a57`; frozenmoduleSHA `b7431f555c683a4309b31c509fa460ce453ac9514ade2f62fc4862324fdd20c8` matches. Record step proves20ACtrials,92.46–103.19ms, recomputed p95 `99.82112500000221` >50ms; budget step fails. Capture bytes671278/hash `1b3b448aa249c7040ba2c789de279b706e442f984b2fe94055af09067c48601f` independently verified. Raw HID request→AX measurement includes40ms helper delay andIPC; no subtraction/waiver. L1 released afterbuilderverifiedcleanup foractualtrustedkeyuprepair and exact proposed native observation measurement adapter. Reviewer resumed on supplieddefaultcapture; fullF21matrix remains open. Stable currently retainsapplied0140/0141 andcompiledf442candidate; nextpureLJcandidate requiresbuilderreverse/reapply exactprovenance. L2 remainsinterrupteduntilreviewer/sourcecapacityfree. Integration root clean docs/harness checkpoints; main unchanged.
+
+
+Contracts-v6 `5fc1ff66808ed41ca1f9b8a3a943e991a1116142`: optional Settings toolbarAutoHide/minimalUi/minimalUiAcknowledged, no new host surface. Root rebuild/typecheck/codegen195/26unchanged, settings19tests and format/diffpass. Dedicated normalpin103assets `27cadd9b15b406d8e3d289405a9cba55c32bf9ac58b326611b29d3a7eb18247f`, independently verified; stageSHA `9f94366ca539bc369c75d94675839fd86c0d5eae6c9460e212b59a0a8c1cd634`, budgets471/179/1683. No native rebuild/behaviorclaim for new contracts yet. L2 must resume after capacity frees; yielded checkpoint includes lock precedence regression and0144mirror, no native execution.
+
+Reviewer908d79c1 integrated692184bf afterrootfullreport/imageinspection: new openP2 DR006 duplicate equivalent shortcut advisories cover additionalpagecontent. L1 owns scoped coalescing; distinct error/actionreceiptsmustretainmeaning. DR005collapsedcontrolabsentinnewcapture, cannotclose; DR001–006 remainopen.
+
+Builder now requested cleanLJf890eb1a14retry; immutablegitshowf4420141/0140mustreversebeforepureLJcore0186/0187 candidatebuild, matchingfrozenpin e084.../productbffd. No latestv6misstamp or source edits. ReaderexcludeduntilL1repair. L1 proposesreserved0142actualphysicalkeyupmonitor afterimmutable0140/41 baseline; stablechangingduringLJrotation so no mutablebaseline reads. Root exactpatch review/applyverification pending. L4source directmoduledependencycycle confirmed: finish frozenownedsource/tests/nativepatchpackaging thenrootmaycompose independentlyreviewed isolatedcombineddiagnosticcandidate; no otherlane merge/shim/sourcecopy or featuremerge beforeverification. Stagecover adapter needs actualfeatureeligibility matchingcardmount plusnativeembedunmount/restoration tests; not approvedyet. Fullregistry/gates/defaults/perf/F21/WaveQ/mainFF requirements remain unchanged.
