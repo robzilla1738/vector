@@ -651,7 +651,7 @@ func pressCheckbox(_ label: String) -> Bool {
   return visit(application, depth: 0, visited: &visits)
 }
 
-func pressButton(_ label: String) -> Bool {
+func pressButton(_ label: String, press: Bool = true) -> Bool {
   let application = AXUIElementCreateApplication(pid)
   func visit(_ element: AXUIElement, depth: Int, visited: inout Int, shellOnly: Bool) -> Bool {
     visited += 1
@@ -667,7 +667,8 @@ func pressButton(_ label: String) -> Bool {
     let title = titleValue as? String ?? ""
     let description = descriptionValue as? String ?? ""
     if (role == (kAXButtonRole as String) || role == (kAXPopUpButtonRole as String)) && (title == label || description == label) {
-      AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+      let focused = AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue) == .success
+      if !press { return focused }
       return AXUIElementPerformAction(element, kAXPressAction as CFString) == .success
     }
     if shellOnly && isGuestWebArea(element, role: role) { return false }
@@ -682,9 +683,103 @@ func pressButton(_ label: String) -> Bool {
   return visit(application, depth: 0, visited: &pageVisits, shellOnly: false)
 }
 
+struct HitRecord: Encodable {
+  let ok: Bool
+  let x: Double
+  let y: Double
+  let role: String
+  let samples: String
+}
+
+func axNames(_ element: AXUIElement) -> [String] {
+  [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute].compactMap { key in
+    let text = axString(element, key as String)
+    return text.isEmpty ? nil : text
+  }
+}
+
+// A settings control can report the whole content pane as its frame. Hit-testing
+// still returns the control under the pointer, so scan that pane for an exact name.
+func hitName(_ needle: String, wholeWindow: Bool = false) -> HitRecord {
+  let window = screenWindow() ?? .zero
+  let frame = wholeWindow ? nil : frameByName(needle)
+  var rects: [CGRect] = []
+  if let frame {
+    let raw = CGRect(x: frame.rawX - frame.width / 2, y: frame.rawY - frame.height / 2, width: frame.width, height: frame.height)
+    let flipped = CGRect(x: frame.flippedX - frame.width / 2, y: frame.flippedY - frame.height / 2, width: frame.width, height: frame.height)
+    // Shell frames are already in CGEvent space. The mirrored rect is the page.
+    let ordered = window.intersects(raw) ? [raw, flipped] : [flipped, raw]
+    for rect in ordered where rect.width > 8 && rect.height > 8 && window.intersects(rect) {
+      if !rects.contains(where: { abs($0.minY - rect.minY) < 8 && abs($0.minX - rect.minX) < 8 }) { rects.append(rect) }
+      if rects.count == 1 && window.contains(CGPoint(x: rect.midX, y: rect.midY)) { break }
+    }
+  }
+  if rects.isEmpty { rects.append(window.insetBy(dx: 48, dy: 80)) }
+  let controls: Set<String> = [kAXCheckBoxRole as String, kAXButtonRole as String, "AXRadioButton", "AXTextField", "AXTextArea", kAXPopUpButtonRole as String, "AXStaticText"]
+  var samples: [String] = []
+  let application = AXUIElementCreateApplication(pid)
+  for rect in rects {
+    if samples.count < 8 { samples.append("scan \(Int(rect.minX)),\(Int(rect.minY)) \(Int(rect.width))x\(Int(rect.height))") }
+    let yStep: CGFloat = rect.height > 140 ? 12 : 8
+    let xStep: CGFloat = rect.height > 140 ? 24 : 8
+    var y = rect.minY + 4
+    while y < rect.maxY - 4 {
+      var x = rect.minX + 4
+      while x < rect.maxX - 4 {
+        var element: AXUIElement?
+        if AXUIElementCopyElementAtPosition(application, Float(x), Float(y), &element) == .success, let element {
+          let role = axString(element, kAXRoleAttribute as String)
+          let names = axNames(element)
+          let named = names.contains { $0.contains(needle) }
+          if samples.count < 8 && (named || names.contains { $0.localizedCaseInsensitiveContains("memory") || $0.contains("Enable") || $0.contains("Import") }) {
+            let size = axSize(element) ?? .zero
+            let stamp = "\(role) \(names.first.map { String($0.prefix(42)) } ?? "") \(Int(size.width))x\(Int(size.height))@\(Int(x)),\(Int(y))"
+            if !samples.contains(stamp) { samples.append(stamp) }
+          }
+          if named && controls.contains(role) {
+            return HitRecord(ok: true, x: x, y: y, role: role, samples: samples.joined(separator: " | "))
+          }
+        }
+        x += xStep
+      }
+      y += yStep
+    }
+  }
+  return HitRecord(ok: false, x: 0, y: 0, role: "", samples: samples.joined(separator: " | "))
+}
+
+func scrollNameIntoView(_ needle: String) -> Bool {
+  let application = AXUIElementCreateApplication(pid)
+  func visit(_ element: AXUIElement, depth: Int, visited: inout Int) -> AXUIElement? {
+    visited += 1
+    if depth > 28 || visited > 5000 { return nil }
+    if axNames(element).contains(where: { $0.contains(needle) }) { return element }
+    var children: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
+      let children = children as? [AXUIElement] else { return nil }
+    for child in children {
+      if let found = visit(child, depth: depth + 1, visited: &visited) { return found }
+    }
+    return nil
+  }
+  var visited = 0
+  guard var current = visit(application, depth: 0, visited: &visited) else { return false }
+  for _ in 0..<8 {
+    if AXUIElementPerformAction(current, "AXScrollToVisible" as CFString) == .success { return true }
+    var parent: CFTypeRef?
+    if AXUIElementCopyAttributeValue(current, kAXParentAttribute as CFString, &parent) != .success { return false }
+    guard let parent, CFGetTypeID(parent) == AXUIElementGetTypeID() else { return false }
+    current = unsafeBitCast(parent, to: AXUIElement.self)
+  }
+  return false
+}
+
 if action == "press-button" {
   guard CommandLine.arguments.count == 4 else { fail("Use press-button PID label.") }
   print(pressButton(CommandLine.arguments[3]) ? "true" : "false")
+} else if action == "focus-name" {
+  guard CommandLine.arguments.count == 4 else { fail("Use focus-name PID label.") }
+  print(pressButton(CommandLine.arguments[3], press: false) ? "true" : "false")
 } else if action == "press-label" {
   guard CommandLine.arguments.count == 4 else { fail("Use press-label PID label.") }
   print(pressLabel(CommandLine.arguments[3]) ? "true" : "false")
@@ -712,11 +807,36 @@ if action == "press-button" {
   _ = app.activate(options: [])
   postClick(CGPoint(x: x, y: y))
   print("true")
+} else if action == "scroll-at" {
+  guard CommandLine.arguments.count == 6,
+    let x = Double(CommandLine.arguments[3]),
+    let y = Double(CommandLine.arguments[4]),
+    let dy = Int32(CommandLine.arguments[5]),
+    let event = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: dy, wheel2: 0, wheel3: 0) else {
+    fail("Use scroll-at PID x y dy.")
+  }
+  _ = app.activate(options: [.activateAllWindows])
+  let point = CGPoint(x: x, y: y)
+  CGWarpMouseCursorPosition(point)
+  event.location = point
+  event.post(tap: .cghidEventTap)
+  print("true")
+} else if action == "scroll-name" {
+  guard CommandLine.arguments.count == 4 else { fail("Use scroll-name PID phrase.") }
+  print(scrollNameIntoView(CommandLine.arguments[3]) ? "true" : "false")
 } else if action == "child-frames" {
   guard CommandLine.arguments.count == 4 else { fail("Use child-frames PID phrase.") }
   guard let frames = childFrames(CommandLine.arguments[3]),
     let data = try? JSONEncoder().encode(frames),
     let text = String(data: data, encoding: .utf8) else { fail("Cannot list that control.") }
+  print(text)
+} else if action == "hit-name" {
+  guard CommandLine.arguments.count == 4 || (CommandLine.arguments.count == 5 && CommandLine.arguments[4] == "window") else {
+    fail("Use hit-name PID phrase [window].")
+  }
+  let hit = hitName(CommandLine.arguments[3], wholeWindow: CommandLine.arguments.count == 5)
+  guard let data = try? JSONEncoder().encode(hit),
+    let text = String(data: data, encoding: .utf8) else { fail("Cannot encode hit-name.") }
   print(text)
 } else if action == "has-button" {
   guard CommandLine.arguments.count == 4 else { fail("Use has-button PID label.") }
@@ -887,11 +1007,11 @@ if action == "texts" {
     return value as? String ?? ""
   }
   print([attribute(kAXRoleAttribute), attribute(kAXTitleAttribute), attribute(kAXDescriptionAttribute), attribute(kAXValueAttribute)].joined(separator: "\t"))
-} else if action == "press-button" || action == "press-label" || action == "press-checkbox" || action == "click-button" || action == "click-name" || action == "frame-name" || action == "frame" || action == "click-at" || action == "child-frames" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
+} else if action == "press-button" || action == "focus-name" || action == "press-label" || action == "press-checkbox" || action == "click-button" || action == "click-name" || action == "frame-name" || action == "frame" || action == "click-at" || action == "scroll-at" || action == "scroll-name" || action == "child-frames" || action == "hit-name" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
   action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" || action == "screen-windows" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "open-palette" || action == "escape" ||
-  action == "type-return" || action == "type-text" || action == "select-all" || action == "arrow-right" || action == "arrow-down" || action == "space" || action == "tab" || action == "move" {
+  action == "type-return" || action == "type-text" || action == "select-all" || action == "arrow-right" || action == "arrow-down" || action == "space" || action == "tab" || action == "hid-tab" || action == "hid-return" || action == "hid-down" || action == "move" {
   // AppKit activation no longer takes focus from another app. Accessibility has to
   // mark the launched Aux process frontmost before any key is posted.
   guard app.activate(options: [.activateAllWindows]) else {
@@ -907,7 +1027,17 @@ if action == "texts" {
     let blocker = NSWorkspace.shared.frontmostApplication?.localizedName ?? "another app"
     fail("Aux is not the frontmost app; refusing to send input elsewhere. \(blocker) stayed frontmost.")
   }
-  if action == "type-text" {
+  if action == "hid-tab" || action == "hid-return" || action == "hid-down" {
+    let key: CGKeyCode = action == "hid-tab" ? 48 : action == "hid-down" ? 125 : 36
+    guard let down = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: true),
+      let up = CGEvent(keyboardEventSource: nil, virtualKey: key, keyDown: false) else {
+      fail("Cannot create a hardware key event.")
+    }
+    down.post(tap: .cghidEventTap)
+    usleep(30_000)
+    up.post(tap: .cghidEventTap)
+    print("true")
+  } else if action == "type-text" {
     guard CommandLine.arguments.count == 4 else { fail("Use type-text PID text.") }
     let text = CommandLine.arguments[3]
     for unit in text.utf16 {

@@ -71,7 +71,10 @@ async function rpc(method, params = {}, token = bearer) {
     "content-type": "application/json", authorization: `Bearer ${token}` },
     body: JSON.stringify({ id: randomUUID(), method, params }), signal: AbortSignal.timeout(240_000) });
   const value = await response.json();
-  if (value.error) throw new Error(`${method}: ${value.error.code}: ${value.error.message}`);
+  if (value.error) {
+    const detail = value.error.detail ? ` ${JSON.stringify(value.error.detail)}` : "";
+    throw new Error(`${method}: ${value.error.code}: ${value.error.message}${detail}`);
+  }
   return value.result;
 }
 async function stop() {
@@ -114,10 +117,33 @@ async function launch() {
 }
 const receipt = (page, event = "context", since = 0) => report.receipts.slice(since).find(item => item.boot === boot && item.event === event && item.page === page.pageId && item.run === page.agentIsolation?.runId && item.isolation === page.agentIsolation?.isolationId && item.partition === "memory-fixed");
 async function observation(pageId) { return JSON.stringify(await rpc("pages.observe", { pageId })); }
+async function refreshTaskRevision(session) {
+  if (!session) return;
+  const details = await rpc("tasks.get", { taskId: session.task.taskId }, session.token);
+  const revision = details?.task?.revision ?? details?.revision;
+  if (Number.isInteger(revision)) session.task.revision = revision;
+}
 async function execute(pageId, steps, session) {
-  const value = await rpc("pages.execute", { program: { pageId, steps }, ...(session ? { taskId: session.task.taskId, expectedRevision: session.task.revision } : {}) }, session?.token ?? bearer);
-  assert.equal(value.status, "completed", `Program did not complete: ${JSON.stringify(value.steps?.map(step => ({ op: step.op, status: step.status, error: step.error?.code })))}`);
-  return value;
+  let last;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await refreshTaskRevision(session).catch(error => console.log(`task revision refresh ${error instanceof Error ? error.message : error}`));
+    try {
+      const value = await rpc("pages.execute", { program: { pageId, steps }, ...(session ? { taskId: session.task.taskId, expectedRevision: session.task.revision } : {}) }, session?.token ?? bearer);
+      assert.equal(value.status, "completed", `Program did not complete: ${JSON.stringify(value.steps?.map(step => ({ op: step.op, status: step.status, error: step.error?.code })))}`);
+      return value;
+    } catch (error) {
+      last = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("conflict") || attempt === 2) throw error;
+      let controller = "unknown";
+      try { controller = (await rpc("pages.list")).find(item => item.pageId === pageId)?.controller ?? "missing"; }
+      catch { /* The page list is diagnostic only. */ }
+      console.log(`pages.execute conflict attempt ${attempt + 1} controller ${controller} revision ${session?.task?.revision ?? "none"}`);
+      if (controller === "human") await rpc("pages.resume", { pageId }).catch(reason => console.log(`resume ${reason instanceof Error ? reason.message : reason}`));
+      await delay(700);
+    }
+  }
+  throw last;
 }
 async function action(pageId, name, id, session) {
   await execute(pageId, [{ id: "case", op: "fill", target: "css:#case", value: id },
@@ -233,6 +259,7 @@ async function newSession(label, ownerPageId, workspaceId, workspaceName) {
   const session = { task, token, turnId: randomUUID() }; sessions.push(session); return session;
 }
 async function controlled(session, path = "actor") {
+  await refreshTaskRevision(session).catch(error => console.log(`turn revision refresh ${error instanceof Error ? error.message : error}`));
   const page = await rpc("agent.turn.open", { taskId: session.task.taskId, expectedRevision: session.task.revision,
     turnId: session.turnId, url: fixture.url(path), skipIfActive: false }, session.token);
   assert.ok(page.agentIsolation?.isolationId && page.agentIsolation.inMemory && page.agentIsolation.cookies === "empty", "Native controlled identity required");

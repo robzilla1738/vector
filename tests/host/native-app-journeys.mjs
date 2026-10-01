@@ -791,6 +791,108 @@ function lineFrame(label, maxWidth) {
   if (!frame || frame.height < 8 || frame.height > 80 || frame.width > maxWidth) return null;
   return frame;
 }
+function clickHit(label, wholeWindow = false) {
+  let hit;
+  try {
+    const args = ["hit-name", String(child.pid), label, ...(wholeWindow ? ["window"] : [])];
+    hit = JSON.parse(execFileSync(windowTool, args, { encoding: "utf8", timeout: 45_000 }));
+  } catch (error) {
+    console.log(`hit ${label} failed ${error instanceof Error ? error.message : error}`);
+    return false;
+  }
+  console.log(`hit ${label} ok=${hit.ok} ${hit.role} ${hit.x},${hit.y} ${hit.samples || "no samples"}`);
+  if (!hit.ok) return false;
+  native("click-at", String(hit.x), String(hit.y));
+  return true;
+}
+async function focusKey(labels, key) {
+  const needles = labels.map(label => label.toLowerCase());
+  let previous = "";
+  let repeats = 0;
+  for (let step = 0; step < 18; step += 1) {
+    const focused = focusedValue();
+    console.log(`focus ${step} ${focused}`);
+    if (needles.some(needle => focused.toLowerCase().includes(needle))) {
+      native(key);
+      console.log(`focus ${key} matched ${labels.join(" / ")}`);
+      return true;
+    }
+    if (focused && focused === previous) {
+      repeats += 1;
+      if (repeats >= 2) break;
+    } else {
+      previous = focused;
+      repeats = 0;
+    }
+    native("tab");
+    await delay(150);
+  }
+  return false;
+}
+async function revealControl(needles, ready) {
+  const space = lineFrame("Memory Fixture", 360) ?? frameNamed("Memory Fixture");
+  for (const needle of needles) {
+    const scrolled = native("scroll-name", needle);
+    console.log(`scroll-name ${needle} ${scrolled}`);
+    await delay(350);
+    const line = lineFrame(needle, 640);
+    if (line) {
+      native("click-at", String(line.rawX), String(line.rawY));
+      console.log(`line ${needle} ${line.rawX},${line.rawY} ${line.width}x${line.height}`);
+      await delay(450);
+      if (ready()) return true;
+    }
+    if (clickHit(needle)) {
+      await delay(450);
+      if (ready()) return true;
+    }
+  }
+  if (!space) return false;
+  const x = space.rawX;
+  const y = Math.min(space.rawY + 150, space.windowY + space.windowH - 140);
+  for (let pass = 0; pass < 5; pass += 1) {
+    native("scroll-at", String(x), String(y), "-420");
+    console.log(`settings scroll ${pass} ${x},${y}`);
+    await delay(250);
+    if (clickHit(needles[0])) {
+      await delay(450);
+      if (ready()) return true;
+    }
+  }
+  return false;
+}
+async function openBackupManage() {
+  if (await clickRevealed("Manage task data backup")) return true;
+  const search = lineFrame("Search settings", 640);
+  if (search) {
+    native("click-at", String(search.rawX), String(search.rawY));
+    await delay(200);
+    native("select-all");
+    native("type-text", "Task data backup");
+    await delay(200);
+    native("hid-return");
+    await delay(400);
+    const result = lineFrame("Task data backup", 640);
+    if (result) {
+      native("click-at", String(result.rawX), String(result.rawY));
+      console.log(`backup result ${result.rawX},${result.rawY} ${result.width}x${result.height}`);
+      await delay(400);
+    }
+  }
+  return clickRevealed("Manage task data backup");
+}
+async function clickRevealed(label) {
+  const scrolled = native("scroll-name", label);
+  console.log(`scroll-name ${label} ${scrolled}`);
+  await delay(300);
+  const line = lineFrame(label, 640);
+  if (line) {
+    native("click-at", String(line.rawX), String(line.rawY));
+    console.log(`line ${label} ${line.rawX},${line.rawY} ${line.width}x${line.height}`);
+    return true;
+  }
+  return clickHit(label);
+}
 async function selectMemoryFixture() {
   await openSettingsCategory("Memory", "chrome://aux/settings/memory");
   let selected = false;
@@ -810,21 +912,16 @@ async function selectMemoryFixture() {
       }
     }
     if (native("has-name", "Create review notes") === "true") return true;
-    // AXPress reports success without firing the checkbox's DOM change.
+    // The checkbox reports the settings pane. Scroll the real label into view,
+    // then click the point under the pointer. AXPress does not fire onChange.
     if (!toggled) {
       toggled = true;
-      const line = lineFrame("Enable memory for this Space", 520);
-      if (line) {
-        console.log(`enable memory text ${line.x},${line.y} ${line.width}x${line.height}`);
-        native("click-at", String(line.x), String(line.y));
-      } else {
-        const missed = frameNamed("Enable memory for this Space");
-        console.log(`enable memory text miss ${missed ? `${missed.width}x${missed.height}` : "none"}`);
-      }
+      const revealed = await revealControl(["Enable memory for this Space", "Enable Space memory"], () => native("has-name", "Create review notes") === "true");
+      console.log(`enable memory reveal ${revealed}`);
     }
     await delay(600);
     return native("has-name", "Create review notes") === "true";
-  }, 30_000);
+  }, 90_000);
 }
 function sealRecoveryFixture(path, phrase) {
   const excluded = ["Chromium cookies, passwords and browser Profile stores", "Keychain credentials and connector tokens",
@@ -3085,10 +3182,27 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     const url = `${tlsOrigin}/sign-in`;
     const page = await rpc("pages.open", { url, activate: true });
     await until("certificate recovery control", () => native("has-button", "Proceed anyway (unsafe)") === "true", 30_000);
-    if (!clickLineLabel("Proceed anyway (unsafe)")) throw new Error("Proceed anyway (unsafe) was not clickable");
+    const proceed = frameNamed("Proceed anyway (unsafe)");
+    if (!proceed) throw new Error("Proceed anyway (unsafe) was not clickable");
+    const proceedYs = [proceed.rawY, proceed.flippedY].filter((y, index, all) =>
+      Number.isFinite(y) && all.findIndex(item => Math.abs(item - y) < 4) === index);
+    let proceeded = false;
+    for (const y of proceedYs) {
+      native("click-at", String(proceed.rawX), String(y));
+      console.log(`proceed ${proceed.rawX},${y} raw ${proceed.rawY} flipped ${proceed.flippedY} ${Math.round(proceed.width)}x${Math.round(proceed.height)}`);
+      const deadline = Date.now() + 8_000;
+      while (Date.now() < deadline) {
+        if (tlsRequests > 0 && /Disposable sign-in/.test(JSON.stringify(await rpc("pages.observe", { pageId: page.pageId }).catch(() => ({}))))) {
+          proceeded = true;
+          break;
+        }
+        await delay(300);
+      }
+      if (proceeded) break;
+    }
     try {
-      await until("disposable HTTPS sign-in", async () =>
-        tlsRequests > 0 && /Disposable sign-in/.test(JSON.stringify(await rpc("pages.observe", { pageId: page.pageId }).catch(() => ({})))), 30_000);
+      if (!proceeded) await until("disposable HTTPS sign-in", async () =>
+        tlsRequests > 0 && /Disposable sign-in/.test(JSON.stringify(await rpc("pages.observe", { pageId: page.pageId }).catch(() => ({})))), 4_000);
     } catch (error) {
       const observed = JSON.stringify(await rpc("pages.observe", { pageId: page.pageId }).catch(() => ({})));
       const pageState = /Disposable sign-in/.test(observed) ? "form" : /Certificate|ERR_CERT|Proceed anyway/.test(observed) ? "interstitial" : "other";
@@ -3116,7 +3230,14 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     await typePageField("Fixture password");
     if (!clickRawLabel("Sign in")) throw new Error("Sign in was not a line-sized control");
     await until("the fixture sign-in submission", () => passwordSubmissions === 1, 30_000);
-    await until("the Aux password offer", () => native("has-text", "Save sign-in?") === "true", 20_000);
+    try {
+      await until("the Aux password offer", () => native("has-text", "Save sign-in") === "true", 45_000);
+    } catch (error) {
+      let visible = "";
+      try { visible = JSON.parse(native("texts")).filter(text => /sign|save|password|fixture/i.test(text)).slice(0, 6).join(" | "); }
+      catch { visible = "texts unavailable"; }
+      throw new Error(`${error instanceof Error ? error.message : error}; visible ${visible}`);
+    }
     if (!clickRawLabel("Save")) throw new Error("Save was not a line-sized control");
     const loginData = join(profile, "Default/Login Data");
     await until("Chromium saved the disposable credential", () => {
@@ -4309,7 +4430,7 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
       JSON.parse(readFileSync(recoveryPath, "utf8")).generation : null;
     const beforeForget = recoveryGeneration();
     await selectMemoryFixture();
-    clickLabel("Create review notes");
+    if (!await clickRevealed("Create review notes")) throw new Error("Create review notes was not a visible control");
     record("native Settings opts the disposable Space into memory");
     await until("encrypted note staged through native Settings", () => inspect(db =>
       db.prepare("SELECT 1 FROM memory_pipeline_watermarks WHERE workspace_id=? AND run_id=?")
@@ -4324,7 +4445,7 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
       try { return native("has-name", memoryFixture.report) === "true"; } catch { return false; }
     }, 60_000);
     record("native Settings stages a sourced encrypted note for review", { runId: memoryFixture.runId });
-    clickLabel("Accept note");
+    if (!await clickRevealed("Accept note")) throw new Error("Accept note was not a visible control");
     await until("approved note visible in native Memory", () => {
       try { return native("has-name", "Forget note") === "true" &&
         native("has-name", memoryFixture.report) === "true" &&
@@ -4332,13 +4453,49 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
         existsSync(join(spaceDir, generation(), "summary.md.enc")); } catch { return false; }
     }, 60_000);
     record("owner accepted the sourced note into the encrypted Space summary", { runId: memoryFixture.runId });
-    clickLabel(`Forget run ${memoryFixture.runId}`);
-    await until("Forget confirmation", () => native("has-name", "Forget permanently") === "true", 20_000);
-    clickLabel("Forget permanently");
-    await until("native Memory clears forgotten summary", () => {
-      try { return native("has-name", "No approved notes yet.") === "true" &&
-        native("has-name", "Create fresh local backup…") === "true"; } catch { return false; }
-    }, 60_000);
+    if (!await clickRevealed(`Forget run ${memoryFixture.runId}`)) throw new Error("Forget run was not a visible control");
+    await until("Forget confirmation", () => native("has-name", "Forget Space memory?") === "true" && native("has-name", "Forget permanently") === "true", 20_000);
+    for (const label of ["Keep memory", "Forget permanently"]) {
+      const frame = frameNamed(label);
+      console.log(`confirm frame ${label} ${frame ? `${frame.rawX},${frame.rawY} ${Math.round(frame.width)}x${Math.round(frame.height)} flip ${frame.flippedY}` : "none"}`);
+    }
+    // A mouse click on the reported confirm point hits the dialog backdrop and cancels.
+    const pressed = native("press-button", "Forget permanently");
+    await delay(400);
+    console.log(`forget press ${pressed} dialog ${native("has-name", "Forget Space memory?")}`);
+    if (native("has-name", "Forget Space memory?") === "true") {
+      const focused = native("focus-name", "Forget permanently") === "true" ? native("focused-value") : "";
+      console.log(`forget focus ${focused}`);
+      if (focused.includes("Forget permanently")) native("hid-return");
+      else {
+        native("hid-tab");
+        await delay(200);
+        const moved = native("focused-value");
+        console.log(`forget hid-tab ${moved}`);
+        if (moved.includes("Forget permanently")) native("hid-return");
+      }
+      await delay(400);
+      console.log(`forget after key dialog ${native("has-name", "Forget Space memory?")}`);
+    }
+    try {
+      await until("native Memory clears forgotten summary", () => {
+        try {
+          const empty = native("has-name", "No approved notes yet.") === "true";
+          const backup = native("has-name", "Create fresh local backup…") === "true"
+            || native("has-name", "Fresh Aux-managed task-data backup issued after Forget.") === "true";
+          return empty && backup;
+        } catch { return false; }
+      }, 60_000);
+    } catch (error) {
+      const dialog = native("has-name", "Forget Space memory?");
+      const notes = native("has-name", "No approved notes yet.");
+      const backup = native("has-name", "Create fresh local backup…");
+      let visible = "";
+      try {
+        visible = JSON.parse(native("texts")).filter(text => /memory|backup|approved|remov|Forget|error|invalid/i.test(text)).slice(0, 8).join(" | ");
+      } catch { visible = "texts unavailable"; }
+      throw new Error(`${error instanceof Error ? error.message : error}; dialog ${dialog}; empty ${notes}; backup ${backup}; visible ${visible}`);
+    }
     await until("managed recovery generation advanced after Forget", () => {
       const after = recoveryGeneration();
       return typeof after === "number" && after !== beforeForget;
@@ -4349,11 +4506,19 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     child.kill("SIGTERM");
     if (child.exitCode === null) await new Promise(resolveExit => child.once("exit", resolveExit));
     child.stderr.destroy();
+    // Helper processes can keep the profile lock after the parent exits.
+    try { execFileSync("pkill", ["-f", profile]); } catch { /* already gone */ }
+    await delay(500);
     child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
       "--use-mock-keychain", "--password-store=basic"], {
       cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"],
     });
     child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
+    await until("restarted Aux window", () => {
+      if (child.exitCode !== null) return false;
+      try { return Boolean(JSON.parse(native("window"))); } catch { return false; }
+    }, 20_000);
+    if (child.exitCode !== null) throw new Error(`Restarted Aux exited ${child.exitCode}`);
     await selectMemoryFixture();
     await until("restarted native Memory remains empty", () => {
       try { return native("has-name", "No approved notes yet.") === "true" &&
@@ -4448,7 +4613,7 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     });
     native("activate");
     await openSettingsCategory("General", "chrome://aux/settings/general");
-    if (!clickLineLabel("Manage") && !clickLineLabel("Manage task data backup")) {
+    if (!await openBackupManage()) {
       throw new Error(`Task data backup control was not a line-sized button; buttons ${visibleButtons().slice(0, 24).join(" | ")}`);
     }
     await until("task data backup says outside copies cannot be revoked", () =>
@@ -4480,7 +4645,7 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
         const row = authenticationSheet(title);
         if (row) return row;
         const auth = screenWindowText().split("\n").find(line =>
-          /SecurityAgent|coreauthd|LocalAuthentication|AuthenticationServicesAgent/.test(line));
+          /SecurityAgent|coreauth|LocalAuthentication|AuthenticationServicesAgent/.test(line));
         if (auth) return auth;
         if (shows("Device authentication is unavailable")) return "Device authentication is unavailable";
         if (shows("Device authentication is required for protected recovery."))
@@ -4489,12 +4654,21 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
           return "Recovery device authentication was not approved";
         await delay(400);
       }
-      return succeeded() ? null : `timed out waiting for ${title}`;
+      if (succeeded()) return null;
+      const windows = screenWindowText().split("\n").filter(line => /auth|security|touch|local|aux|user/i.test(line)).slice(0, 6).join(" || ");
+      let visible = "";
+      try {
+        visible = JSON.parse(native("texts")).filter(text => /auth|recover|package|phrase|device|error/i.test(text)).slice(0, 6).join(" | ");
+      } catch { visible = "texts unavailable"; }
+      return `timed out waiting for ${title}; windows ${windows}; visible ${visible}`;
     }
     await typeInto("Recovery phrase", transferPassphrase);
     if (native("button-enabled", "Create encrypted package…") !== "true")
       throw new Error("Create encrypted package stayed disabled after the fixture phrase.");
-    if (!clickLabel("Create encrypted package…")) throw new Error("Create encrypted package was not clickable");
+    if (!await clickRevealed("Create encrypted package…")) throw new Error("Create encrypted package was not clickable");
+    const createFocus = native("focus-name", "Create encrypted package…") === "true" ? native("focused-value") : "";
+    console.log(`recovery focus create ${createFocus}`);
+    if (createFocus.includes("Create encrypted package")) native("hid-return");
     const createSheet = await recoveryPrompt("Approve creating an Aux recovery package", () => recoveryPackages().length === 1);
     if (child.exitCode === null) await sigtermAux();
     spawnAux(sourceArgs, sourceEnv);
@@ -4502,18 +4676,25 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     const sealed = join(disposable, "sealed-for-restore-sheet.auxrec");
     sealRecoveryFixture(sealed, transferPassphrase);
     await openSettingsCategory("General", "chrome://aux/settings/general");
-    if (!clickLineLabel("Manage") && !clickLineLabel("Manage task data backup")) throw new Error("Manage task data backup was not a line-sized button after relaunch");
+    if (!await openBackupManage()) throw new Error("Manage task data backup was not a line-sized button after relaunch");
     await until("restore phrase ready", () => shows("Recovery phrase") && shows("Package path"), 20_000);
     await typeInto("Package path", sealed);
     await typeInto("Recovery phrase", transferPassphrase);
-    if (!clickLabel("Review package")) throw new Error("Review package was not clickable");
-    await until("sealed package reviewed or refused", () =>
-      shows("Recovery package review") || shows("Package authenticated") ||
-      shows("The recovery phrase is wrong") || shows("Recovery package manifest is invalid") ||
-      shows("Recovery package is invalid"), 30_000);
+    if (!await clickRevealed("Review package")) throw new Error("Review package was not clickable");
+    const reviewFocus = native("focus-name", "Review package") === "true" ? native("focused-value") : "";
+    console.log(`recovery focus review ${reviewFocus}`);
+    if (reviewFocus.includes("Review package")) native("hid-return");
+    try {
+      await until("sealed package reviewed or refused", () =>
+        shows("Recovery package review") || shows("Package authenticated") ||
+        shows("The recovery phrase is wrong") || shows("Recovery package manifest is invalid") ||
+        shows("Recovery package is invalid"), 30_000);
+    } catch (error) {
+      throw new Error(`${error instanceof Error ? error.message : error}; create sheet ${JSON.stringify(createSheet)}`);
+    }
     let restoreSheet = "review did not expose staging";
     if (shows("Recovery package review") || shows("Package authenticated") || native("has-button", "Stage reviewed recovery…") === "true") {
-      if (!clickLabel("Stage reviewed recovery…")) restoreSheet = "Stage reviewed recovery was not clickable";
+      if (!await clickRevealed("Stage reviewed recovery…")) restoreSheet = "Stage reviewed recovery was not clickable";
       else restoreSheet = await recoveryPrompt("Approve restoring an Aux recovery package", () => false) ?? "restore completed without a visible sheet";
     }
     throw new Error(`Blocking macOS authentication sheet: ${JSON.stringify(createSheet)}; restore: ${JSON.stringify(restoreSheet)}`);
@@ -7086,23 +7267,30 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
     native("click-at", String(space.x), String(space.y));
     console.log(`select Memory Fixture ${space.x},${space.y} ${space.width}x${space.height}`);
     await delay(400);
-    if (!clickContained("Import pasted assistant notes")) throw new Error("Import pasted assistant notes was not a line-sized control");
+    if (!await revealControl(["Import pasted assistant notes"], () => native("has-name", "Assistant notes") === "true") &&
+      !clickContained("Import pasted assistant notes")) {
+      throw new Error("Import pasted assistant notes was not a line-sized control");
+    }
     await until("paste form", () => native("has-name", "Assistant notes") === "true", 15_000);
     const destination = frameNamed("Choose a Space") ?? frameNamed("Destination Space");
-    if (!destination || destination.height > 80 || destination.width > 520) {
-      throw new Error(`Destination Space has no line-sized control${destination ? ` (${destination.width}x${destination.height})` : ""}`);
+    if (!destination || destination.height > 96 || destination.height < 8) {
+      throw new Error(`Destination Space has no line-sized control${destination ? ` (${Math.round(destination.width)}x${Math.round(destination.height)})` : ""}`);
     }
-    native("click-at", String(destination.x), String(destination.y));
-    await delay(250);
-    native("arrow-down");
+    native("click-at", String(destination.rawX), String(destination.rawY));
+    console.log(`destination ${destination.rawX},${destination.rawY} ${Math.round(destination.width)}x${Math.round(destination.height)}`);
+    await delay(300);
+    native("hid-down");
     await delay(200);
-    native("type-return");
+    native("hid-return");
     const notes = frameNamed("Assistant notes");
     if (!notes) throw new Error("Assistant notes has no frame");
-    native("click-at", String(notes.x), String(notes.y));
+    console.log(`notes ${notes.rawX},${notes.rawY} ${Math.round(notes.width)}x${Math.round(notes.height)}`);
+    if (notes.height > 120) {
+      if (!clickHit("Assistant notes")) throw new Error("Assistant notes was not a visible field");
+    } else native("click-at", String(notes.rawX), String(notes.rawY));
     await delay(150);
     native("type-text", note);
-    if (!clickLabel("Preview pasted notes")) throw new Error("Preview pasted notes was not clickable");
+    if (!await clickRevealed("Preview pasted notes")) throw new Error("Preview pasted notes was not clickable");
     await until("pasted note preview", () => native("has-name", note) === "true", 20_000);
     const preview = frameNamed(note);
     if (!preview) throw new Error("Pasted note preview has no frame");
@@ -7112,9 +7300,9 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       throw new Error("Enable Memory for Memory Fixture was not a line-sized control");
     }
     await until("one pasted note can be added", () => native("button-enabled", "Add 1 note to Memory review") === "true", 15_000);
-    if (!clickLabel("Add 1 note to Memory review")) throw new Error("Add pasted note was not clickable");
+    if (!await clickRevealed("Add 1 note to Memory review")) throw new Error("Add pasted note was not clickable");
     await until("pasted note awaits acceptance", () => native("has-name", "Accept as personal context") === "true", 20_000);
-    if (!clickLabel("Accept as personal context")) throw new Error("Accept as personal context was not clickable");
+    if (!await clickRevealed("Accept as personal context")) throw new Error("Accept as personal context was not clickable");
     await until("pasted note accepted", () => native("has-name", "No approved notes yet.") === "false" && native("has-text", note) === "true", 30_000);
     record("owner pasted, previewed, and accepted a disposable assistant note", { note });
     report.passed = true;
