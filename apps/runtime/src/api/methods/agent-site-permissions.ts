@@ -7,11 +7,17 @@ function owner(ctx: MethodCtx): OriginPolicyStore {
   return new OriginPolicyStore(ctx.s.repo);
 }
 
+async function h_safety_originPolicies_list(ctx: MethodCtx) {
+  return owner(ctx).list();
+}
+
+async function h_safety_originPolicies_set(ctx: MethodCtx) {
+  const saved = owner(ctx).set(ctx.params);
+  ctx.s.events.emit(EventTypes.SettingsChanged, { settings: ctx.s.settings.all() });
+  return saved;
+}
+
 export const agentSitePermissionMethods = {
-  "safety.originPolicies.list": async (ctx: MethodCtx) => owner(ctx).list(),
-  "safety.originPolicies.set": async (ctx: MethodCtx) => {
-    const saved = owner(ctx).set(ctx.params);
-    ctx.s.events.emit(EventTypes.SettingsChanged, { settings: ctx.s.settings.all() });
-    return saved;
-  },
+  "safety.originPolicies.list": h_safety_originPolicies_list,
+  "safety.originPolicies.set": h_safety_originPolicies_set,
 };
