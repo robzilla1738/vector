@@ -106,7 +106,7 @@ async function execute() {
       assertJourneyIdentity(await app.identity(), identity);
       signal.throwIfAborted();
     },
-    capture: async name => { signal.throwIfAborted(); return evidence.capture(name); }, clock,
+    capture: async (name, options) => { signal.throwIfAborted(); return evidence.capture(name, options); }, clock,
     async step(name, options, action) {
       signal.throwIfAborted();
       assert.ok(['ui', 'rpc', 'operator'].includes(options.kind), 'Step needs an evidence kind');

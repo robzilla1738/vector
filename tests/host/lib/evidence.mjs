@@ -11,12 +11,13 @@ export function createEvidence(outputDir, ax) {
   if (lstatSync(requested).isSymbolicLink()) throw new Error('Evidence output must not be a symlink');
   const directory = realpathSync(requested);
   const captures = [];
-  async function capture(name) {
+  async function capture(name, { windowId } = {}) {
     if (typeof name !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,120}$/.test(name)) throw new Error('Capture needs a simple unique name');
     return withNativeSlot(async () => {
       const windows = await ax.windows();
-      const window = windows.filter(item => item.layer === 0 && item.width > 0 && item.height > 0)
-        .sort((a, b) => b.width * b.height - a.width * a.height)[0];
+      const candidates = windows.filter(item => item.layer === 0 && item.width > 0 && item.height > 0);
+      if (windowId !== undefined && (!Number.isInteger(windowId) || windowId <= 0)) throw new Error('Capture window ID must be positive');
+      const window = windowId === undefined ? candidates.sort((a, b) => b.width * b.height - a.width * a.height)[0] : candidates.find(item => item.id === windowId);
       if (!window || !Number.isInteger(window.id) || window.id <= 0) throw new Error('No journey window available for capture');
       const path = `${name}.png`;
       const absolute = join(directory, path);

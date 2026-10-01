@@ -22,6 +22,8 @@ Root source repairs DR001/DR003 prepared: Reader toolbar horizontal left reserve
 
 LJ candidate final audit:1pass(QuickAsk)/10fail. Root independently checked all11 manifest digests, only capture digest/size and QuickAsk schema2 validator against frozen module. Canonical release/test-artifacts/lj-d9110f6a-audit.json preserves exact failures. Worktree released for evidence-backed corrections, no merge/records. Reviewer queued QuickAsk capture. Reader/About source repairs shellpin c2342cba909a34d9556560fd76c4eb256168b9183b5075b28fb7e3fa2914493c independently verifies103assets; budgets470/179/1682, typecheck/lint/formatpass. Nativeclosurepending. L1 source/native0140 and saved sharedadapters ready independentreview; invariant intentionallyfails unappliedadapters. Exact QuickAsk globalregistration hunks assigned L1 reserved0141 to remove hardcoded chord ownership and preserve opt-in; Profile selection dependency laterL6.
 
+Latest: Reader/About source fixes committed631f3a44, pinverified. QuickAskmanifestfunctionallyvalid but reviewerimagewrongnormalwindow; new capturewindowID adapterpendingcommit, visualapprovalpending. L1 commands/invariant reviewed, globalAppadapter read but notapplied; native0140/sharedcontroladapter stillneedfullindependentreview. L1 exactQuickAskregistration ownership0141 approved. LJcandidate released, correcting evidence-backed failures; all11digestsindependentlyverified. Reviewerdocs ec254205 awaitreview/cherrypick.
+
 ---
 
 # Aux development handoff
