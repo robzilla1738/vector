@@ -29,9 +29,9 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | Role / lane | Status | Patches | Agent / worktree |
 |---|---|---|---|
 | Integrator / Wave 0 | Active | 0136–0139, fix-ups 0186–0199 | Current chat / repository |
-| Builder | Active productionef7448 incrementalbuild/ONEcore; root pairedscratch pinverified | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
+| Builder | Idle afteref7448 productionnativePASS/corefirstadvisoryFAIL; independentlyaudited | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
 | Design reviewer | Latest602b actual capture/preferences reviewed38809a07 integratedc69e03ec; all DR001–007 open | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
-| L1 Commands | Frozen879f628a/rootd8a exactproduction1427ac; source2071PASS/nativepending | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
+| L1 Commands | Active initialactualAX/guestfocus diagnosis afteref7448 firstadvisoryFAIL; source2071PASS | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
 | L4 Windows | Frozensourcec90601ae failclosed/pointer/coldexternalproducer/refusal tests; nativepending | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
 | L2 Layout | Frozen54a34f; actual root composition399files2106PASS, native/perf pending | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
 | L5 Surfaces | Active fullF9/F17 source; exactL4 selector dependency supplied | 0172–0177 | /root/l5_surfaces /tmp/aux-browser-runtime-l5 |
@@ -241,3 +241,6 @@ Root independently composed production142/144/148/150/151/152 in disposable scra
 
 
 Production pairedscratch d8a stage-only is independentlyverified103assets fd5f0ab9e24f01397b6709bbba9dee91943efc1cbe5acdc518464e56d1d2bede; scratchmanifest ea63b9cc44eaad63a6c95238a663ad7933f21ab115487c2d7ce4d25761bf2a33/shelllog70bb785e/budgetloge316777d hashes checked. Bundles474/490 startupJS,179/180 CSS,1691/1800 totalJS pass. Root installed ONLYisolatedrepo pin and committed ef7448c24886ee0c3bed68864fc13cf4de9ca910 cleanproducttreec2971117eb9bf14e76e30c1682e1b4473d391c0a. Solebuilder now approved exactimmutable61d143cfce/142a864 reverse andnew1427ac apply, incrementalbuild/stageRuntime thenONEcore61ed94a result outputl1-ef7448c2-shortcut-registry-core. No retry/perf/records/featuremerge; compile/release/refusals remainpendingactualevidence.
+
+
+Latest ef7448 productionnative buildPASS49steps/2m15.11s, actual clean195/26de283 header/sourceef7448, runtimeef7448/treec2971117,emptyqualified and103fd5f pin independentlychecked. Onecore now FAILS FIRST websiteadvisory wait: Website shortcuts0/releases0/modifiersnone, zero captures, latersecondpress/release/held/refusals unreached. Root independentlyverified everymanifest/module/product/native/runtime/header/log/failureAX hash andfourstable/candidate mirrors. Audit release/test-artifacts/l1-ef7448c2-independent-audit.json SHA259919b632202727743660f2d02f22291ccb93096181342f98b8bab8e95f053d. Actualownedchild aliveatassertiontimeout, normalquit/cleanup verified, noerrors/residualprocess/slot. No retry/perf/record. L1 resumed initialactualSurfaceEmbed/AXfocus ownership diagnosis: earlier61d releaseframeproof was after handoff contents->Focus; initialAXfocus only setsattribute and neverwaitsownedguestframe. Review realphysicalinput/DOMfocus readiness before firstchord, preservingstrongfocus/doc/window/refusal guards andallassertions. Release repair remains unexercised/unproved on this candidate. FullgoalACTIVE/noowner-only blocker; nofeaturelane merge/finalregistry/Q/perf/F21/localmain closure.
