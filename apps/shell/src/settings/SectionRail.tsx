@@ -8,13 +8,15 @@ interface RailItem {
   group: "Personal" | "Agent" | "Features" | "Archived";
   icon: React.ReactNode;
   tab?: ConnectionTab;
-  gate?: "memory" | "permissions" | "extensions" | "skills" | "services" | "profiles" | "automations";
+  gate?: "memory" | "permissions" | "extensions" | "skills" | "services" | "profiles" | "automations" | "linkRouting" | "appleScript";
 }
 
 const items: readonly RailItem[] = [
   { label: "General", category: "General", group: "Personal", icon: I.gear },
   { label: "Appearance", category: "Appearance", group: "Personal", icon: I.sun },
   { label: "Profiles", category: "Profiles", group: "Personal", icon: I.chats, gate: "profiles" },
+  { label: "Link Routing", category: "Link Routing", group: "Personal", icon: I.globe, gate: "linkRouting" },
+  { label: "Advanced", category: "Advanced", group: "Personal", icon: I.code, gate: "appleScript" },
   { label: "Privacy & Security", category: "Site permissions", group: "Personal", icon: I.lock, gate: "permissions" },
   { label: "Passwords & Autofill", category: "Passwords & Autofill", group: "Personal", icon: I.lock },
   { label: "Agents", category: "Agent permissions", group: "Agent", icon: I.chats },
@@ -38,6 +40,8 @@ export function SectionRail({
   searching,
   memoryAvailable,
   profilesAvailable,
+  linkRoutingAvailable,
+  appleScriptAvailable,
   skillsAvailable,
   automationsAvailable,
   servicesAvailable,
@@ -51,6 +55,8 @@ export function SectionRail({
   searching: boolean;
   memoryAvailable: boolean;
   profilesAvailable: boolean;
+  linkRoutingAvailable: boolean;
+  appleScriptAvailable: boolean;
   skillsAvailable: boolean;
   automationsAvailable: boolean;
   servicesAvailable: boolean;
@@ -63,17 +69,17 @@ export function SectionRail({
   const available = items.filter(item =>
     (!item.gate || (item.gate === "memory" && memoryAvailable) ||
       (item.gate === "profiles" && profilesAvailable) ||
+      (item.gate === "linkRouting" && linkRoutingAvailable) ||
+      (item.gate === "appleScript" && appleScriptAvailable) ||
       (item.gate === "permissions" && permissionsAvailable) ||
       (item.gate === "extensions" && extensionsAvailable) ||
       (item.gate === "skills" && skillsAvailable) ||
       (item.gate === "automations" && automationsAvailable) ||
       (item.gate === "services" && servicesAvailable)));
-  let lastGroup: RailItem["group"] | null = null;
   return (
     <div className="settings-category-list">
-      {available.map(item => {
-        const groupStart = item.group !== lastGroup;
-        lastGroup = item.group;
+      {available.map((item, index) => {
+        const groupStart = item.group !== available[index - 1]?.group;
         return (
           <div className="settings-rail-item" key={item.label}>
             {groupStart && <span className="settings-rail-group-title">{item.group}</span>}

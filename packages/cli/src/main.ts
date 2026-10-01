@@ -2,7 +2,8 @@
 /**
  * auxctl — CLI for the local Aux runtime.
  *
- *   auxctl open <url> [--chrome] [--background]
+ *   aux open <url> [--profile id|name] [--space id|name] [--wait]
+ *   aux open <url> --rpc [--chrome] [--background]
  *   auxctl tabs | pages
  *   auxctl observe <pageId>
  *   auxctl exec <pageId> <steps-json|'@file'>
@@ -20,6 +21,7 @@
 import { readFileSync } from "node:fs";
 import { agentApiDocs, AgentApiManifest, supportedAgentApi } from "@aux/contracts";
 import { rpc, events, readDescriptor } from "./client.js";
+import { openUrl, profileListing, SelectionError } from "./open.js";
 
 const out = (v: unknown) => process.stdout.write(JSON.stringify(v, null, 2) + "\n");
 const fail = (msg: string, code = 1): never => {
@@ -33,9 +35,12 @@ function parseFlags(argv: string[]): { args: string[]; flags: Record<string, str
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     if (a.startsWith("--")) {
-      const [k, v] = a.slice(2).split("=", 2);
+      const text = a.slice(2);
+      const separator = text.indexOf("=");
+      const k = separator < 0 ? text : text.slice(0, separator);
+      const v = separator < 0 ? undefined : text.slice(separator + 1);
       if (v !== undefined) flags[k!] = v;
-      else if (i + 1 < argv.length && !argv[i + 1]!.startsWith("--")) flags[k!] = argv[++i]!;
+      else if (!["json", "little", "new-window", "background", "wait", "rpc", "chrome", "all", "follow", "artifact", "raw", "archived", "revoked"].includes(k!) && i + 1 < argv.length && !argv[i + 1]!.startsWith("--")) flags[k!] = argv[++i]!;
       else flags[k!] = true;
     } else args.push(a);
   }
@@ -57,9 +62,11 @@ async function main() {
     case undefined:
     case "help":
     case "--help":
-      process.stdout.write(`auxctl — control the local Aux browser runtime
+      process.stdout.write(`aux — control the local Aux browser runtime
 
-  open <url> [--chrome] [--background]   open a page
+  open <url> [--profile id|name] [--space id|name] [--little|--new-window] [--background] [--wait]
+  profiles list [--json]                 list Profiles without launching Aux
+  open <url> --rpc [--chrome]             open through the existing RPC API
   pages                                  list pages
   observe <pageId> [--refs]              structured observation
   exec <pageId> <steps-json|@file>       run a typed program
@@ -121,9 +128,22 @@ async function main() {
       return;
     }
 
+    case "profiles": {
+      if (args[0] !== "list") fail("usage: aux profiles list [--json]", 2);
+      const profiles = await profileListing();
+      if (flags.json) out(profiles);
+      else for (const profile of profiles) process.stdout.write(`${profile.name} (${profile.id})${profile.running ? " · running" : ""}${profile.archived ? " · archived" : ""}\n`);
+      return;
+    }
+
     case "open": {
       const url = args[0];
-      if (!url) fail("usage: auxctl open <url> [--chrome] [--background]");
+      if (!url) fail("usage: aux open <url> [--profile id|name] [--space id|name] [--wait]", 2);
+      if (!flags.rpc) {
+        if (flags.profile === true || flags.space === true) fail("--profile and --space require an ID or name.", 2);
+        out(await openUrl(url!, { profile: typeof flags.profile === "string" ? flags.profile : undefined, space: typeof flags.space === "string" ? flags.space : undefined, little: !!flags.little, newWindow: !!flags["new-window"], background: !!flags.background, wait: !!flags.wait }));
+        return;
+      }
       out(
         await rpc("pages.open", {
           url,
@@ -643,4 +663,4 @@ Full protocol doc: docs/AUX-EXTERNAL-AGENTS.md
   }
 }
 
-main().catch((e) => fail((e as Error).message));
+main().catch((e) => fail((e as Error).message, e instanceof SelectionError ? e.exitCode : 1));

@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import {act} from "react";
 import {createRoot} from "react-dom/client";
-import {expect,it,vi} from "vitest";
+import {beforeEach,afterEach,expect,it,vi} from "vitest";
 vi.mock("./bridge",async importOriginal=>({...await importOriginal<typeof import("./bridge")>(),inNativeHost:true}));
 import {bridge} from "./bridge";
 import {BrowserProfiles} from "./components/BrowserProfiles";
+import {ProfileMoveConfirmation} from "./components/ProfileSwitcher";
+beforeEach(()=>vi.stubGlobal("auxChromiumHost", { featureStages: { profiles: "on" } }));
+afterEach(()=>vi.unstubAllGlobals());
 (globalThis as {IS_REACT_ACT_ENVIRONMENT?:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
 it("retains a created profile when its window fails, allowing Open without creating it twice",async()=>{
   const list=vi.spyOn(bridge,"browserProfiles").mockResolvedValue([{id:"default",name:"Personal",current:true,archived:false}]);
@@ -13,7 +16,7 @@ it("retains a created profile when its window fails, allowing Open without creat
   const host=document.createElement("div"),root=createRoot(host);document.body.append(host);
   const button=(label:string)=>Array.from(host.querySelectorAll("button")).find(item=>item.textContent===label)!;
   try{
-    await act(async()=>root.render(<BrowserProfiles/>));
+    await act(async()=>root.render(<><BrowserProfiles/><ProfileMoveConfirmation/></>));
     await act(async()=>button("New profile").click());
     const input=host.querySelector("input")!;
     await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")!.set!.call(input,"Work");input.dispatchEvent(new Event("input",{bubbles:true}));});
@@ -35,7 +38,7 @@ it("keeps Profile actions in one menu and requires a named confirmation before d
   const remove=vi.spyOn(bridge,'deleteBrowserProfile').mockResolvedValue([profiles[0]!]);
   const host=document.createElement('div'),root=createRoot(host);document.body.append(host);
   try{
-    await act(async()=>root.render(<BrowserProfiles/>));
+    await act(async()=>root.render(<><BrowserProfiles/><ProfileMoveConfirmation/></>));
     expect(host.querySelectorAll('[aria-haspopup="menu"]')).toHaveLength(2);
     await act(async()=>host.querySelector<HTMLButtonElement>('[aria-label="Actions for Work Profile"]')!.click());
     const item=[...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(node=>node.textContent==='Delete…')!;

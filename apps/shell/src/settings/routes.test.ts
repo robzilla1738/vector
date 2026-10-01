@@ -4,6 +4,8 @@ import { auxShellPathFromUrl, settingsPath, settingsRouteFromPath } from "./rout
 it("maps current Settings panels to stable section URLs", () => {
   expect(settingsPath("Appearance")).toBe("/settings/appearance");
   expect(settingsPath("Profiles")).toBe("/settings/profiles");
+  expect(settingsPath("Link Routing")).toBe("/settings/link-routing");
+  expect(settingsPath("Advanced")).toBe("/settings/advanced");
   expect(settingsPath("Passwords & Autofill")).toBe("/settings/passwords-autofill");
   expect(settingsPath("Connections", "Plugins")).toBe("/settings/skills-plugins");
   expect(settingsPath("Models")).toBe("/settings/models");

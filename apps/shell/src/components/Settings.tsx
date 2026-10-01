@@ -1,7 +1,7 @@
 import { FeatureSettings } from "../features/registry";
 import "./Settings.css";
 import { MemorySettings } from "./MemorySettings";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore, call, errToast } from "../store";
 
 import { I } from "./icons";
@@ -38,6 +38,8 @@ import { useFeature } from "../use-feature";
 const categoryDescriptions: Record<string, string> = {
   General: "Search, shortcuts, and your browsing data.",
   Profiles: "Manage separate browsing identities and their local data.",
+  "Link Routing": "Choose where links open across Profiles and Spaces.",
+  Advanced: "Control local script access to browser tabs.",
   Appearance: "Make Aux feel at home, from tabs to text size.",
   "Passwords & Autofill": "Manage personal info and Chromium Profile passwords.",
   Memory: "Manage the context Aux remembers for your work.",
@@ -63,6 +65,8 @@ export function Settings() {
   }, []);
   const memoryAvailable = useFeature("memory");
   const profilesAvailable = useFeature("profiles") && inNativeHost && !bridge.privateMode;
+  const linkRoutingAvailable = useFeature("linkRouting") && inNativeHost && !bridge.privateMode;
+  const appleScriptAvailable = useFeature("appleScript") && inNativeHost && !bridge.privateMode;
   const skillsAvailable = useFeature("skills");
   const automationsAvailable = useFeature("automations");
   const outboundMcpAvailable = useFeature("outboundMcp");
@@ -74,6 +78,8 @@ export function Settings() {
   const routeEnabled = (route: SettingsRoute) =>
     (route.category !== "Memory" || memoryAvailable) &&
     (route.category !== "Profiles" || profilesAvailable) &&
+    (route.category !== "Link Routing" || linkRoutingAvailable) &&
+    (route.category !== "Advanced" || appleScriptAvailable) &&
     (route.category !== "Site permissions" || permissionsAvailable) &&
     (route.category !== "Extensions" || extensionsAvailable) &&
     (route.category !== "Automations" || automationsAvailable) &&
@@ -86,6 +92,8 @@ export function Settings() {
   const [category, setCategory] = useState(() =>
     (initialCategory === "Memory" && !memoryAvailable) ||
     (initialCategory === "Profiles" && !profilesAvailable) ||
+    (initialCategory === "Link Routing" && !linkRoutingAvailable) ||
+    (initialCategory === "Advanced" && !appleScriptAvailable) ||
     (initialCategory === "Site permissions" && !permissionsAvailable) ||
     (initialCategory === "Extensions" && !extensionsAvailable) ||
     (initialCategory === "Automations" && !automationsAvailable) ||
@@ -159,6 +167,8 @@ export function Settings() {
     (result) =>
       (memoryAvailable || result.category !== "Memory") &&
       (profilesAvailable || result.category !== "Profiles") &&
+      (linkRoutingAvailable || result.category !== "Link Routing") &&
+      (appleScriptAvailable || result.category !== "Advanced") &&
       (permissionsAvailable || result.category !== "Site permissions") &&
       (vaultAvailable || result.category !== "Vault") &&
       (skillsAvailable || result.target !== "Plugins") &&
@@ -239,10 +249,17 @@ export function Settings() {
     }
   };
 
-  useLayoutEffect(() => {
+  const indexFields = useCallback(() => {
     const next = collectSettingsFields(dialogRef.current);
     setIndexedFields(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
-  }, [category, connectionTab, subview, settings, generalIndexVersion, memoryAvailable, permissionsAvailable, vaultAvailable, extensionsAvailable, automationsAvailable, refreshVersion]);
+  }, []);
+  useLayoutEffect(indexFields, [indexFields, category, connectionTab, subview, settings, generalIndexVersion, memoryAvailable, permissionsAvailable, vaultAvailable, extensionsAvailable, automationsAvailable, refreshVersion]);
+  useEffect(() => {
+    if (!dialogRef.current) return;
+    const observer = new MutationObserver(indexFields);
+    observer.observe(dialogRef.current, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [indexFields, refreshVersion]);
 
   return (
     <SettingsShell key={refreshVersion} shellRef={dialogRef} nav={<SettingsNav
@@ -253,6 +270,8 @@ export function Settings() {
         searching={searching}
         memoryAvailable={memoryAvailable}
         profilesAvailable={profilesAvailable}
+        linkRoutingAvailable={linkRoutingAvailable}
+        appleScriptAvailable={appleScriptAvailable}
         skillsAvailable={skillsAvailable}
         automationsAvailable={automationsAvailable}
         servicesAvailable={servicesAvailable}
@@ -342,7 +361,7 @@ export function Settings() {
           tabIndex={0}
           aria-label={searching ? "Settings search results" : `${category} settings`}
         >
-          {!searching && !subview && <FeatureSettings category={category} />}
+          <FeatureSettings category={!searching && !subview ? category : null} />
           {searching && (
             <div className="settings-search-results">
               <output className="hint" data-block>

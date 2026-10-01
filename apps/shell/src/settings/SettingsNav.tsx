@@ -12,6 +12,8 @@ export function SettingsNav({
   searching,
   memoryAvailable,
   profilesAvailable,
+  linkRoutingAvailable,
+  appleScriptAvailable,
   skillsAvailable,
   automationsAvailable,
   servicesAvailable,
@@ -29,6 +31,8 @@ export function SettingsNav({
   searching: boolean;
   memoryAvailable: boolean;
   profilesAvailable: boolean;
+  linkRoutingAvailable: boolean;
+  appleScriptAvailable: boolean;
   skillsAvailable: boolean;
   automationsAvailable: boolean;
   servicesAvailable: boolean;
@@ -81,6 +85,8 @@ export function SettingsNav({
         searching={searching}
         memoryAvailable={memoryAvailable}
         profilesAvailable={profilesAvailable}
+        linkRoutingAvailable={linkRoutingAvailable}
+        appleScriptAvailable={appleScriptAvailable}
         skillsAvailable={skillsAvailable}
         automationsAvailable={automationsAvailable}
         servicesAvailable={servicesAvailable}

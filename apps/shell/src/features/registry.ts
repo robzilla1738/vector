@@ -15,7 +15,13 @@ export interface CommandInvocation {
     | { profileId: string; spaceId: string | null } | { pageId: string; profileId: string }
     | { extensionId: string; anchor?: { x: number; y: number; width: number; height: number } }
     | { extensionId: string; pinned: boolean } | { extensionId: string; name: string; shortcut: string }
-    | { extensionId: string; enabled: boolean } | { extensionId: string; source: "store" | "managed" | "environment" };
+    | { extensionId: string; enabled: boolean } | { extensionId: string; source: "store" | "managed" | "environment" }
+    | { name: string } | { profileId: string } | { profileId: string; name: string } | { profileId: string; archived: boolean }
+    | { profileId: string; color: import("@aux/contracts").HostMethodArgs<"setBrowserProfileAppearance">[1]["color"]; icon: string }
+    | { revision: number; linkRoutes: import("@aux/contracts").LinkRoutes }
+    | { url: string; source: import("@aux/contracts").HostMethodArgs<"testLinkRoute">[1] }
+    | { promptId: string; destination: import("@aux/contracts").LinkRouteDestination; remember: boolean }
+    | { enabled: boolean };
 }
 export interface ComposerPluginProps {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -69,9 +75,9 @@ export function FeatureSlots({ slot }: { slot: "sidebarItems" | "sidebarFooterIt
   return featureMounts.filter(enabled).flatMap(mount => (mount[slot] ?? []).map((component, index) =>
     createElement(component, { key: `${mount.feature}:${index}` })));
 }
-export function FeatureSettings({ category }: { category: string }) {
-  return featureMounts.filter(enabled).flatMap(mount => (mount.settingsSections ?? []).filter(section => section.category === category)
-    .map((section, index) => createElement(section.component, { key: `${mount.feature}:${index}` })));
+export function FeatureSettings({ category }: { category: string | null }) {
+  return featureMounts.filter(enabled).flatMap(mount => (mount.settingsSections ?? [])
+    .map((section, index) => createElement("div", { key: `${mount.feature}:${index}`, hidden: section.category !== category }, createElement(section.component))));
 }
 export function FeatureComposer(props: ComposerPluginProps) {
   return featureMounts.filter(enabled).flatMap(mount => (mount.composerPlugins ?? []).map((component, index) =>

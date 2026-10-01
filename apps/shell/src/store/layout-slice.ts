@@ -90,8 +90,10 @@ export const createLayoutSlice: Slice<LayoutKeys> = (set, get) => ({
     set({ layout });
     if (previous !== layout.activeSpaceId) get().switchSpace(layout.activeSpaceId);
   },
-  refreshSpaces: async () => {
-    if (!bridge.privateMode) get().syncBrowserSpaces(await call("spaces.list"));
+  refreshSpaces: async (valid = () => true) => {
+    if(bridge.privateMode||!valid())return;
+    const spaces=await call("spaces.list");
+    if(valid())get().syncBrowserSpaces(spaces);
   },
   addSpace: async (name, color = "slate", grain = 0, theme) => {
     if (bridge.privateMode) {

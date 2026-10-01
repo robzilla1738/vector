@@ -15,6 +15,18 @@ const B = (key: string, options: Omit<ShortcutBinding, "key"> = {}): ShortcutBin
 const Numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export const COMMANDS = [
+  { id: "create-browser-profile", label: "Create Profile", section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "open-browser-profile", label: "Open Profile", section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "rename-browser-profile", label: "Rename Profile", section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "archive-browser-profile", label: "Archive or restore Profile", section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "delete-browser-profile", label: "Delete Profile", section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "set-profile-appearance", label: "Change Profile appearance", section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "refresh-browser-profiles", label: "Refresh Profiles", section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "save-link-routing", label: "Save link routing", section: "Application", handler: "shell", feature: "linkRouting", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "test-link-routing", label: "Test link routing", section: "Application", handler: "shell", feature: "linkRouting", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "resolve-link-routing", label: "Open held link", section: "Application", handler: "shell", feature: "linkRouting", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "refresh-link-routing", label: "Refresh link routing", section: "Application", handler: "shell", feature: "linkRouting", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "set-javascript-apple-events", label: "Allow JavaScript from Apple Events", section: "Application", handler: "shell", feature: "appleScript", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "extension-action", label: "Open extension action", section: "Application", handler: "shell", feature: "extensions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "pin-extension-action", label: "Pin or unpin extension action", section: "Application", handler: "shell", feature: "extensions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "show-extensions", label: "Manage extensions", section: "Application", handler: "shell", feature: "extensions", focusShell: true, palette: true, windows: ["normal"], bindings: [] },

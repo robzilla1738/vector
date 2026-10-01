@@ -1,8 +1,5 @@
-# CLI — `auxctl`
-
-A thin client over the loopback API. It finds the runtime via
-`<dataDir>/runtime.json` (see [api.md](api.md)); set `AUX_DATA_DIR` to
-point at a non-default data dir. A legacy `aux` command alias remains available during migration.
+# CLI — `aux` opens links through the native app and also provides the local runtime API. `auxctl` remains an alias.
+Runtime discovery uses `AUX_USER_DATA_DIR` (normally `~/Library/Application Support/Aux`), then the selected Profile's `Aux Runtime Data/runtime.json`. `AUX_RUNTIME_FILE` selects a descriptor directly; an explicit `AUX_DATA_DIR` selects a standalone runtime root.
 The CLI and Aux MCP server use the private `@aux/sdk` package, which validates
 requests and responses against the same versioned contracts as the runtime and never
 retries a failed RPC. It does not expose credentials or bypass desktop approval.
@@ -15,7 +12,10 @@ node packages/cli/dist/main.js <cmd>   # or: pnpm cli <cmd>
 
 ```
 auxctl doctor                      runtime health + descriptor (token masked)
-auxctl open <url> [--chrome] [--background]
+aux profiles list [--json]          read native Profile metadata without launching Aux
+aux open <url> [--profile id|name] [--space id|name]
+               [--little|--new-window] [--background] [--wait]
+aux open <url> --rpc [--chrome] [--background]   use the existing runtime API
 auxctl pages | tabs                list pages
 auxctl observe <pageId>
 auxctl exec <pageId> <steps-json|@file>

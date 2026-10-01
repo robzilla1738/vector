@@ -184,11 +184,12 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     });
   },
 
-  resyncTabs: async () => {
-    if (tabsResyncing) return;
+  resyncTabs: async (valid = () => true) => {
+    if (!valid() || tabsResyncing) return;
     tabsResyncing = true;
     try {
       const result = await bridge.tabsSince(get().catalogVersion);
+      if(!valid())return;
       if (result.kind === "snapshot") get().syncTabsSnapshot(result.snapshot);
       else for (const patch of result.patches) get().applyTabsPatch(patch);
     } catch {

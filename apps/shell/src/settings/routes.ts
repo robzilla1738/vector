@@ -10,6 +10,8 @@ const routes: readonly SettingsRoute[] = [
   { slug: "general", category: "General" },
   { slug: "appearance", category: "Appearance" },
   { slug: "profiles", category: "Profiles" },
+  { slug: "link-routing", category: "Link Routing" },
+  { slug: "advanced", category: "Advanced" },
   { slug: "passwords-autofill", category: "Passwords & Autofill" },
   { slug: "privacy-security", category: "Site permissions" },
   { slug: "vault", category: "Connections", connectionTab: "Vault" },

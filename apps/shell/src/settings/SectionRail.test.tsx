@@ -17,6 +17,8 @@ it("shows implemented sections, gates unavailable ones, and routes connection se
         searching={false}
         memoryAvailable={false}
         profilesAvailable={true}
+        linkRoutingAvailable={true}
+        appleScriptAvailable={false}
         skillsAvailable={false}
         automationsAvailable={false}
         servicesAvailable={false}
@@ -30,6 +32,10 @@ it("shows implemented sections, gates unavailable ones, and routes connection se
     expect(container.querySelector('button[data-category="Memory"]')).toBeNull();
     expect(container.querySelector('button[data-category="Profiles"]')).not.toBeNull();
     expect(container.querySelector('button[data-category="Extensions"]')).toBeNull();
+    expect(container.querySelector('button[data-category="Link Routing"]')).not.toBeNull();
+    expect(container.querySelector('button[data-category="Advanced"]')).toBeNull();
+    await act(async () => (container.querySelector('button[data-category="Link Routing"]') as HTMLButtonElement).click());
+    expect(onOpenCategory).toHaveBeenCalledWith("Link Routing", undefined);
     expect(container.querySelector('button[data-category="Skills & Plugins"]')).toBeNull();
     expect(container.querySelector('button[data-category="Automations"]')).toBeNull();
     expect(container.querySelector('button[data-category="Selection & Capture"]')).not.toBeNull();

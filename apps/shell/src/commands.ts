@@ -75,6 +75,19 @@ function bookmarkAll(st: StoreState) {
   );
 }
 export const COMMAND_ACTIONS = {
+  "create-browser-profile": (st, context) => featureCommand("create-browser-profile", st, context),
+  "open-browser-profile": (st, context) => featureCommand("open-browser-profile", st, context),
+  "rename-browser-profile": (st, context) => featureCommand("rename-browser-profile", st, context),
+  "archive-browser-profile": (st, context) => featureCommand("archive-browser-profile", st, context),
+  "delete-browser-profile": (st, context) => featureCommand("delete-browser-profile", st, context),
+  "set-profile-appearance": (st, context) => featureCommand("set-profile-appearance", st, context),
+  "refresh-browser-profiles": (st, context) => featureCommand("refresh-browser-profiles", st, context),
+  "save-link-routing": (st, context) => featureCommand("save-link-routing", st, context),
+  "test-link-routing": (st, context) => featureCommand("test-link-routing", st, context),
+  "resolve-link-routing": (st, context) => featureCommand("resolve-link-routing", st, context),
+  "refresh-link-routing": (st, context) => featureCommand("refresh-link-routing", st, context),
+  "set-javascript-apple-events": (st, context) => featureCommand("set-javascript-apple-events", st, context),
+
   "focus-profile-space": (st) => featureCommand("focus-profile-space", st),
   "move-tab-to-profile": (st) => featureCommand("move-tab-to-profile", st),
   "show-profiles": (st) => featureCommand("show-profiles", st),

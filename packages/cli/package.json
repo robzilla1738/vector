@@ -7,6 +7,7 @@
     "dist"
   ],
   "bin": {
+    "aux": "./dist/main.js",
     "auxctl": "./dist/main.js"
   },
   "scripts": {

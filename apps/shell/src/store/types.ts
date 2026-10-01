@@ -161,7 +161,7 @@ export interface Workspace {
   deleteSpace(spaceId: string): Promise<void>;
   restoreSpace(spaceId: string, activate?:boolean): Promise<void>;
   syncBrowserSpaces(spaces: BrowserSpace[]): void;
-  refreshSpaces(): Promise<void>;
+  refreshSpaces(valid?:()=>boolean): Promise<void>;
   switchSpace(spaceId: string): void;
   togglePin(pin: Pin, spaceId?: string): void;
   reorderPin(spaceId: string, url: string, beforeUrl: string | null): void;
@@ -187,7 +187,7 @@ export interface Workspace {
   /** Workspace placement relayed with a `move` — the destination window files
    *  the arriving tab into the Space/folder the source window chose. */
   applyTabsPlacement(payload: { pageId: string; windowId: string; placement: TabPlacement }): void;
-  resyncTabs(): Promise<void>;
+  resyncTabs(valid?:()=>boolean): Promise<void>;
   toast(text: string, kind?: "info" | "error", action?: { label: string; run(): void }): void;
   refresh(): Promise<void>;
   refreshResults(setId: string): Promise<void>;
