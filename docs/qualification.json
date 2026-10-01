@@ -6,5 +6,27 @@
     "s4-webmcp": "passed",
     "s7-shell-events": "passed"
   },
-  "features": {}
+  "features": {
+    "splitView": {
+      "commit": "f0fe15d04d94ff98a70e66105350520bb8061fc9",
+      "productTree": "9c1ae21d20b5d9a466e916b474b709461b460d3f",
+      "native": {
+        "buildId": "154.0.8037.58+9c8a58e9f274406550a10392694a85f835d613bc73282249679a21ee7a43dcb3+f0fe15d04d94ff98a70e66105350520bb8061fc9",
+        "manifestHash": "9c8a58e9f274406550a10392694a85f835d613bc73282249679a21ee7a43dcb3"
+      },
+      "shellDigest": "f3c53343b16128bdac4297ba5ad778c48d48659185c6d250614eaea80fea13ae",
+      "harnessCommit": "f0fe15d04d94ff98a70e66105350520bb8061fc9",
+      "qualifiedAt": "2026-10-01T05:44:45.720Z",
+      "journeys": [
+        {
+          "id": "split-view",
+          "moduleSha256": "57b5e8a0b5d876d3883e6fc16621e8ad959791ddca52045767c0cc3e7a45d0d8",
+          "manifest": "release/test-artifacts/browser-runtime/f0fe15d04d94ff98a70e66105350520bb8061fc9/split-view-1790833467257-1/manifest.json",
+          "manifestSha256": "de8a8a573d0e92ed1f7b811d65128dc4e84e463b9b2967bd54c762112b1d80b4",
+          "completedAt": "2026-10-01T05:44:45.612Z",
+          "attempts": 1
+        }
+      ]
+    }
+  }
 }
