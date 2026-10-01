@@ -64,7 +64,6 @@ aux/runtime/0063-window-platform-services.patch
 aux/runtime/0064-native-file-io.patch
 aux/runtime/0065-document-artifact-export.patch
 aux/runtime/0066-agent-connections.patch
-aux/runtime/0067-inbound-agents-qualification.patch
 aux/runtime/0068-page-context-actions.patch
 aux/runtime/0069-native-profiles.patch
 aux/runtime/0070-native-window-polish.patch

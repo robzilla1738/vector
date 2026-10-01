@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/profile_library.h b/chrome/browser/ui/aux/profile_library.h
 --- a/chrome/browser/ui/aux/profile_library.h
 +++ b/chrome/browser/ui/aux/profile_library.h
 @@ -7,6 +7,7 @@
@@ -32,6 +33,7 @@
    void OnHistoryQuery(history::QueryResults results);
    void SendSnapshotBatch(size_t offset, size_t batch_index);
    void EnqueueDelta(base::DictValue delta);
+diff --git a/chrome/browser/ui/aux/profile_library.cc b/chrome/browser/ui/aux/profile_library.cc
 --- a/chrome/browser/ui/aux/profile_library.cc
 +++ b/chrome/browser/ui/aux/profile_library.cc
 @@ -7,6 +7,7 @@
@@ -186,6 +188,7 @@
  }
  
  void ProfileLibrary::ClearHistory(
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -119,6 +119,7 @@
@@ -196,6 +199,7 @@
                      "native.historyRemove", "native.webmcpList",
                      "native.webmcpCall"});
    register_runtime(AuxRuntimeMethodGroup::kWorker,
+diff --git a/chrome/browser/ui/aux/methods/native_library_methods.cc b/chrome/browser/ui/aux/methods/native_library_methods.cc
 --- a/chrome/browser/ui/aux/methods/native_library_methods.cc
 +++ b/chrome/browser/ui/aux/methods/native_library_methods.cc
 @@ -99,6 +99,8 @@
@@ -207,6 +211,7 @@
    } else {
      profile_library_->RemoveVisit(params, std::move(callback));
    }
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
 @@ -658,6 +658,7 @@

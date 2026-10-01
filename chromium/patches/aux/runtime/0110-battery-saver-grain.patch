@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/tab_catalog.h b/chrome/browser/ui/aux/tab_catalog.h
 --- a/chrome/browser/ui/aux/tab_catalog.h
 +++ b/chrome/browser/ui/aux/tab_catalog.h
 @@ -17,6 +17,7 @@
@@ -37,6 +38,7 @@
    std::set<TabStripModel*> observed_;
    std::map<std::string, int64_t> created_at_;
    std::map<std::string, int64_t> last_active_at_;
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
 --- a/chrome/browser/ui/aux/tab_catalog.cc
 +++ b/chrome/browser/ui/aux/tab_catalog.cc
 @@ -96,6 +96,10 @@

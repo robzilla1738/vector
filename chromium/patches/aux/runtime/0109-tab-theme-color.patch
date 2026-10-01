@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/tab_catalog.cc b/chrome/browser/ui/aux/tab_catalog.cc
 --- a/chrome/browser/ui/aux/tab_catalog.cc
 +++ b/chrome/browser/ui/aux/tab_catalog.cc
 @@ -13,6 +13,7 @@

@@ -188,7 +188,8 @@ diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browse
    bool toolbar_ = false;
  };
 diff --git a/chrome/browser/ui/aux/appearance_prefs.h b/chrome/browser/ui/aux/appearance_prefs.h
---- a/chrome/browser/ui/aux/appearance_prefs.h
+new file mode 100644
+--- /dev/null
 +++ b/chrome/browser/ui/aux/appearance_prefs.h
 @@ -0,0 +1,16 @@
 +// Copyright 2026 The Aux Authors

@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -59,6 +59,7 @@
@@ -8,6 +9,7 @@
                    "downloadsSnapshot", "controlDownload", "retryDownload"});
    register_shell(AuxShellMethodGroup::kExtensions,
                   {"extensions", "installStoreExtension",
+diff --git a/chrome/browser/ui/aux/methods/page_controls_methods.cc b/chrome/browser/ui/aux/methods/page_controls_methods.cc
 --- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
 +++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
 @@ -54,6 +54,10 @@
@@ -63,6 +65,7 @@
    if (method == "downloadFolder" || method == "chooseDownloadFolder") {
      auto* profile = browser_->GetProfile();
      if (profile->IsOffTheRecord()) {
+diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_browser/BUILD.gn
 --- a/chrome/browser/ui/webui_browser/BUILD.gn
 +++ b/chrome/browser/ui/webui_browser/BUILD.gn
 @@ -4,6 +4,7 @@

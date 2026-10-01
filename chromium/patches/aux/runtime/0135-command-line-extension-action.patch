@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/extension_bridge.cc b/chrome/browser/ui/aux/extension_bridge.cc
 --- a/chrome/browser/ui/aux/extension_bridge.cc
 +++ b/chrome/browser/ui/aux/extension_bridge.cc
 @@ -51,9 +51,14 @@

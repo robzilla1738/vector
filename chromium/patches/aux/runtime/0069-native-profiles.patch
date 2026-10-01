@@ -83,6 +83,7 @@ diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_
        "../aux/methods/window_methods.cc",
        "../aux/extension_bridge.cc",
 diff --git a/chrome/browser/ui/aux/profile_prefs.h b/chrome/browser/ui/aux/profile_prefs.h
+new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/aux/profile_prefs.h
 @@ -0,0 +1,12 @@
@@ -99,6 +100,7 @@ diff --git a/chrome/browser/ui/aux/profile_prefs.h b/chrome/browser/ui/aux/profi
 +
 +#endif  // CHROME_BROWSER_UI_AUX_PROFILE_PREFS_H_
 diff --git a/chrome/browser/ui/aux/methods/profile_methods.cc b/chrome/browser/ui/aux/methods/profile_methods.cc
+new file mode 100644
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/profile_methods.cc
 @@ -0,0 +1,314 @@

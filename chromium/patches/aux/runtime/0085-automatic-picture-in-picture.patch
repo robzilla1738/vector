@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/methods/page_controls_methods.cc b/chrome/browser/ui/aux/methods/page_controls_methods.cc
 --- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
 +++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
 @@ -22,6 +22,7 @@
@@ -64,6 +65,7 @@
    if (method == "languagePreferences") {
      auto* profile = browser_->GetProfile();
      if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -61,6 +61,7 @@
@@ -74,6 +76,7 @@
                    "startupPreferences",
                    "downloadsSnapshot", "controlDownload", "retryDownload"});
    register_shell(AuxShellMethodGroup::kExtensions,
+diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_browser/BUILD.gn
 --- a/chrome/browser/ui/webui_browser/BUILD.gn
 +++ b/chrome/browser/ui/webui_browser/BUILD.gn
 @@ -177,6 +177,7 @@

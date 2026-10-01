@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
 --- a/chrome/browser/ui/aux/shell_events.cc
 +++ b/chrome/browser/ui/aux/shell_events.cc
 @@ -13,6 +13,7 @@
