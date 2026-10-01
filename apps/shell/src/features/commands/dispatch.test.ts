@@ -5,9 +5,11 @@ import { runCommand, dispatchShortcut } from "../../commands";
 import { useStore } from "../../store";
 import * as registry from "../registry";
 const originalToast = useStore.getState().toast;
+const originalSidebar = useStore.getState().sidebar;
+const originalSidebarPeek = useStore.getState().sidebarPeek;
 afterEach(() => {
   vi.restoreAllMocks();
-  useStore.setState({ toast: originalToast, toasts: [] });
+  useStore.setState({ toast: originalToast, toasts: [], sidebar: originalSidebar, sidebarPeek: originalSidebarPeek });
 });
 it("passes contextual payload and catches an asynchronous feature failure once", async () => {
   const toast = vi.fn();
@@ -47,4 +49,16 @@ it("refreshes one website advisory and dismisses it on successful handoff", () =
   expect(useStore.getState().toasts[0]!.id).not.toBe(first);
   dispatchShortcut({ ...shortcut, websitePassThrough: true });
   expect(useStore.getState().toasts).toHaveLength(0);
+});
+
+it("explicit sidebar collapse is idempotent from every sidebar mode", () => {
+  vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: false });
+  for (const sidebar of ["expanded", "rail", "hidden"] as const) {
+    useStore.setState({ sidebar, sidebarPeek: true });
+    expect(runCommand("sidebar-hide")).toBe(true);
+    expect(useStore.getState().sidebar).toBe("hidden");
+    expect(useStore.getState().sidebarPeek).toBe(false);
+    expect(runCommand("sidebar-hide")).toBe(true);
+    expect(useStore.getState().sidebar).toBe("hidden");
+  }
 });

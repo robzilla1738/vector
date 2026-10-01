@@ -149,6 +149,7 @@ export const COMMAND_ACTIONS = {
   "zoom-out": (st) => st.activePageId && st.zoomPage(st.activePageId, { direction: "out" }).catch(errToast),
   reader: (st) => st.setOverlay(st.overlay === "reader" ? null : "reader"),
   sidebar: (st) => st.toggleSidebar(),
+  "sidebar-hide": (st) => st.setSidebar("hidden"),
   overview: (st) => st.setMode(st.mode === "overview" ? "focus" : "overview"),
   devtools: (st) => st.activePageId && bridge.devTools(st.activePageId),
   "inspect-element": (st) => st.activePageId && bridge.devTools(st.activePageId, "inspect"),
