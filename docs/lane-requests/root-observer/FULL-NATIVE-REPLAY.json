@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-complete-full-order-6piloe2b",
+  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-complete-full-order-p6gte7ui",
   "baseReplay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-unified-native-replay-vz0wmha8",
   "baseProofSha256": "d36444c4b8b7658d62ffd28fe04b8fa30a29e82785d2f7815dd3b242892d90b1",
   "orderedPatches": [
@@ -31,7 +31,8 @@
     "chromium/patches/aux/runtime/0194-native-permission-provenance.patch",
     "0170-committed-link-frecency.patch",
     "0184-native-appearance-snapshot.patch",
-    "0197-native-appearance-observer-transport.patch"
+    "0197-native-appearance-observer-transport.patch",
+    "chromium/patches/aux/runtime/0199-shell-resource-allocation.patch"
   ],
   "revised0196": "aefc4a9c2dcb9f7a17680ea566ecd00bc71f1f510a954d58fa4cd8de90fe9770",
   "exactNativeFiles": [
@@ -414,6 +415,10 @@
     {
       "path": "components/download/public/common/mock_download_item.h",
       "sha256": "1c3f624482074327c8005d27aadba8abaaeccf5ac0ab192100954db98fce1c09"
+    },
+    {
+      "path": "tools/gritsettings/resource_ids.spec",
+      "sha256": "46bb8fbb1992a6668288b1fa9d3dfe47ee5b3082cb4ffc3dd4115627f3c4e86e"
     }
   ],
   "compiled": false,
@@ -473,7 +478,7 @@
     {
       "path": "chrome/browser/profiles/profile.cc",
       "sha256": "bbe2337d87d015c75e205185d2fdc856a9b33536e8e6c0bf5fd1bcfdafc87ced",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "chrome/browser/resources/aux_host/aux_host_bootstrap.ts",
@@ -488,12 +493,12 @@
     {
       "path": "chrome/browser/ui/aux/egress_controller.cc",
       "sha256": "8fb6e41cbf1e813c8b96d65e9e313409e9bac83cab13b8039171655f9b77e3ea",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/egress_controller.h",
       "sha256": "4268eb48b41614deb608bf943597713c68ba39691e518cd782d402c19c78f60a",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/method_registry.cc",
@@ -508,7 +513,7 @@
     {
       "path": "chrome/browser/ui/aux/methods/downloads_ai_methods.cc",
       "sha256": "8ef5f2a030393a221ce6e0999031bb424c4caa4f59eafc298b1f22bb234c6a05",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/methods/extensions_methods.cc",
@@ -533,7 +538,7 @@
     {
       "path": "chrome/browser/ui/aux/methods/power_methods.cc",
       "sha256": "efbeeb9d41f7338c8ef212830fe5de0c81c2f2c35516b3824ace3d7f3794ecd1",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/methods/profile_methods.cc",
@@ -593,17 +598,17 @@
     {
       "path": "chrome/browser/ui/aux/result_preview_browsertest.cc",
       "sha256": "6cd2a39f72811abd6a7feb28c3c3057e70f2d4acd9f20d68386b2aef58b05457",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/runtime_host.cc",
       "sha256": "0edfe5e01e3f8845814bb1d0888408140c6563cfae611edef143d702f38f8f30",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/runtime_host.h",
       "sha256": "60fad59691f448d67a1384c83bab0df3e3d463c6d60a3bcbbacc5db1066769a3",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/shell_events.cc",
@@ -668,7 +673,7 @@
     {
       "path": "chrome/browser/ui/tab_helpers.cc",
       "sha256": "465221d8b2f12af5d7987f8d781327e3c6d575d70b1c8c82423f5eeb4e26d1ad",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc",
@@ -723,21 +728,26 @@
     {
       "path": "components/download/internal/common/download_item_impl.cc",
       "sha256": "87b784203f347cabae4b8928d615ab1218c18dadd2224a8ec8a13794503de66a",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "components/download/public/common/download_item.h",
       "sha256": "331654852c822268159c948c1b0b00d603cb8906e815c4f572acfad26ac85aa2",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "components/download/public/common/download_item_impl.h",
       "sha256": "76b168cf7f27405fa491bb5c300959ec937b7d58c06802a12f48f176585505f1",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-5a719-baseline"
     },
     {
       "path": "components/download/public/common/mock_download_item.h",
       "sha256": "21f4f851ba3b624e4b932539f8ceb4cff4f94dd2229be740f9df6bdf88770086",
+      "authority": "independently-verified-5a719-baseline"
+    },
+    {
+      "path": "tools/gritsettings/resource_ids.spec",
+      "sha256": "781f4acfbb9097e8410d22380a5e1313e89f829cad4985b98fe0c3bec4782879",
       "authority": "unchanged-stable-source"
     }
   ],
@@ -853,7 +863,12 @@
     {
       "path": "chromium/patches/aux/runtime/0197-native-appearance-observer-transport.patch",
       "sha256": "f287db2619ff90099ce0f39998982027009d676155ad94a196b699320383fa20"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0199-shell-resource-allocation.patch",
+      "sha256": "35df0ed7d4e6f1bb91a305b15d0e1b3362fe781db4c65286a8d56f8315582311"
     }
   ],
-  "audit": "All28 reversed to independently verified baseline then reapplied in required dependency order; all95 exact mirrors compared"
+  "audit": "All29 reversed to independently verified baseline then reapplied in required dependency order; all96 exact mirrors compared",
+  "resourceAllocationPatchSha256": "35df0ed7d4e6f1bb91a305b15d0e1b3362fe781db4c65286a8d56f8315582311"
 }

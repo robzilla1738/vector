@@ -1,0 +1,13 @@
+diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
+index 8f0b86e..2974bb1 100644
+--- a/tools/gritsettings/resource_ids.spec
++++ b/tools/gritsettings/resource_ids.spec
+@@ -245,7 +245,7 @@
+     "includes": [2860],
+   },
+   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux/resources.grd": {
+-    "META": {"sizes": {"includes": [150]}},
++    "META": {"sizes": {"includes": [200]}},
+     "includes": [2870],
+   },
+   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/aux_host/resources.grd": {

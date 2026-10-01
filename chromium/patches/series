@@ -171,3 +171,4 @@ aux/runtime/0194-native-permission-provenance.patch
 aux/runtime/0170-committed-link-frecency.patch
 aux/runtime/0184-native-appearance-snapshot.patch
 aux/runtime/0197-native-appearance-observer-transport.patch
+aux/runtime/0199-shell-resource-allocation.patch
