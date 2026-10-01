@@ -187,6 +187,7 @@ const RESULTS: Record<string, unknown> = {
   "removeFilterSource": [],
   "setFilterSourceEnabled": [],
   "setAppearance": false,
+  "dispatchCommand": false,
   "setShortcuts": false,
   "windowControlsVisible": false,
   "extensions": [],

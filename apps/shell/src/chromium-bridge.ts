@@ -53,7 +53,6 @@ export function installChromiumBridge(target: ChromiumWindow = window as Chromiu
     },
     setShortcutOverrides: async (overrides: ShortcutOverrides) => {
       const rows = (saved?: ShortcutOverrides) => effectiveShortcuts(saved)
-        .filter(command => command.intercept)
         .flatMap(command => command.bindings
           .filter(binding => !binding.platforms || binding.platforms.includes(port.platform))
           .map(binding => ({

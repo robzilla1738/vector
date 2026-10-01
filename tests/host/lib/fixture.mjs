@@ -20,6 +20,7 @@ export function fixturePage(title, body, color = '#f3f4f6') {
 export async function createFixture({ tls = false } = {}) {
   const routes = new Map();
   const requests = [];
+  let tlsHellos = 0;
   let tlsDirectory;
   const servers = [];
   const route = (path, handler, { method = 'GET', status = 200, headers = {} } = {}) => {
@@ -63,7 +64,12 @@ export async function createFixture({ tls = false } = {}) {
     if (tlsDirectory) rmSync(tlsDirectory, { recursive: true, force: true });
   };
   try {
-    const port = await listen(createHttpServer(handler));
+    const httpServer = createHttpServer(handler);
+    httpServer.on('clientError', (error, socket) => {
+      if (error.rawPacket?.[0] === 0x16) tlsHellos++;
+      socket.destroy();
+    });
+    const port = await listen(httpServer);
     let tlsUrl;
     let certificate;
     if (tls) {
@@ -75,6 +81,6 @@ export async function createFixture({ tls = false } = {}) {
       const tlsPort = await listen(createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, handler));
       tlsUrl = `https://127.0.0.1:${tlsPort}`;
     }
-    return { url: `http://127.0.0.1:${port}`, route, close, requests, ...(tlsUrl ? { tlsUrl, certificate } : {}) };
+    return { url: `http://127.0.0.1:${port}`, route, close, requests, get tlsHellos() { return tlsHellos; }, ...(tlsUrl ? { tlsUrl, certificate } : {}) };
   } catch (error) { await close(); throw error; }
 }

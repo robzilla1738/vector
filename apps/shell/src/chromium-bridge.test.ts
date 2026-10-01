@@ -17,6 +17,23 @@ function fakeWindow(url: string, port?: ChromiumHostPort) {
 }
 
 describe("Chromium Aux shell bridge", () => {
+  it("sends rebound native window chords while reserving their original menu chords", async () => {
+    const request = vi.fn(async () => true);
+    const target = fakeWindow("chrome://aux/", {
+      host: "chromium-fork", windowId: "win-1", profileId: "profile-1", platform: "darwin", privateMode: false,
+      request, subscribe: vi.fn(() => () => {}),
+    });
+    installChromiumBridge(target);
+    const aux = target.aux as unknown as { setShortcutOverrides(value: Record<string, unknown>): Promise<boolean> };
+    await aux.setShortcutOverrides({ "new-window": [{ key: "F12", ctrl: true, alt: true }] });
+    const [method, args] = request.mock.calls[0]! as unknown as [string, Array<Array<Record<string, unknown>>>];
+    expect(method).toBe("setShortcuts");
+    const rows = args[0]!;
+    expect(rows).toContainEqual(expect.objectContaining({ commandId: "new-window", key: "F12", ctrl: true, alt: true }));
+    expect(rows).toContainEqual(expect.objectContaining({ commandId: "", key: "n", meta: true, shift: false }));
+    expect(rows).not.toContainEqual(expect.objectContaining({ commandId: "new-window", key: "n", meta: true }));
+    expect(rows.length).toBeLessThanOrEqual(512);
+  });
   it("preserves native preview stages even when runtime reports on", async () => {
     const request = vi.fn(async () => ({ version: 1, featureStages: { spaces: "on", memory: "on" } }));
     const target = fakeWindow("chrome://aux/", {

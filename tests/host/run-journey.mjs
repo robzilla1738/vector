@@ -65,6 +65,10 @@ async function execute() {
     ...launch,
     ...(journey.devAcceptance?.length ? { devAcceptance: { features: journey.devAcceptance, sourceCommit: identity.label } } : {}),
   } });
+  if (journey.prepare) {
+    await journey.prepare({ app: { userDataDir: app.userDataDir }, fixture, model });
+    signal.throwIfAborted();
+  }
   await app.start();
   signal.throwIfAborted();
   ax = await createAxClient(app.pid);

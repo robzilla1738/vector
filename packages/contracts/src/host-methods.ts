@@ -176,6 +176,7 @@ export const HostMethods = {
   setFilterSourceEnabled: shell("contentBlocking", z.tuple([str, bool]), z.array(filterSource)),
   setAppearance: shell("core", z.tuple([z.enum(["system", "dark", "light"]), bool.optional(), bool.optional(),
     z.enum(["liquid-glass", "titlebar", "sidebar", "under-window"]).optional()]), bool),
+  dispatchCommand: shell("core", z.tuple([z.enum(["new-window", "new-private-window"])]), bool),
   setShortcuts: shell("core", z.tuple([z.array(z.object({
     commandId: str.max(64), key: str.min(1).max(32), meta: bool, ctrl: bool,
     shift: bool, alt: bool, focusShell: bool.optional(),

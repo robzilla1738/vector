@@ -59,6 +59,7 @@ export function createHostClient(port: HostPort) {
     removeFilterSource: (...args: HostMethodArgs<"removeFilterSource">) => call("removeFilterSource", args),
     setFilterSourceEnabled: (...args: HostMethodArgs<"setFilterSourceEnabled">) => call("setFilterSourceEnabled", args),
     setAppearance: (...args: HostMethodArgs<"setAppearance">) => call("setAppearance", args),
+    dispatchCommand: (...args: HostMethodArgs<"dispatchCommand">) => call("dispatchCommand", args),
     setShortcuts: (...args: HostMethodArgs<"setShortcuts">) => call("setShortcuts", args),
     windowControlsVisible: (...args: HostMethodArgs<"windowControlsVisible">) => call("windowControlsVisible", args),
     extensions: (...args: HostMethodArgs<"extensions">) => call("extensions", args),
