@@ -38,6 +38,7 @@
     "prettier": "3.9.9",
     "pngjs": "7.0.0",
     "typescript": "catalog:",
+    "vite": "7.3.6",
     "vitest": "catalog:"
   }
 }
