@@ -156,6 +156,7 @@ try {
   await Promise.race([execute(), cancelled]);
 } catch (error) {
   manifest.error = error.stack ?? String(error);
+  if (app) writeFileSync(join(outputDir, 'failure-process.json'), JSON.stringify(app.processObservation, null, 2) + '\n');
   if (ax) {
     try { writeFileSync(join(outputDir, 'failure-ax.json'), JSON.stringify(await ax.dump(), null, 2)); }
     catch { /* A crashed native app may no longer have an AX tree. */ }
