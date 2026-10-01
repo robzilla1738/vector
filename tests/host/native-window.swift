@@ -623,6 +623,34 @@ func isGuestWebArea(_ element: AXUIElement, role: String) -> Bool {
   return false
 }
 
+func pressCheckbox(_ label: String) -> Bool {
+  let application = AXUIElementCreateApplication(pid)
+  func visit(_ element: AXUIElement, depth: Int, visited: inout Int) -> Bool {
+    visited += 1
+    if depth > 28 || visited > 4000 { return false }
+    var roleValue: CFTypeRef?
+    AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleValue)
+    let role = roleValue as? String ?? ""
+    if role == (kAXMenuBarRole as String) { return false }
+    if role == (kAXCheckBoxRole as String) {
+      var title: CFTypeRef?
+      var description: CFTypeRef?
+      AXUIElementCopyAttributeValue(element, kAXTitleAttribute as CFString, &title)
+      AXUIElementCopyAttributeValue(element, kAXDescriptionAttribute as CFString, &description)
+      if (title as? String) == label || (description as? String) == label {
+        AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+        return AXUIElementPerformAction(element, kAXPressAction as CFString) == .success
+      }
+    }
+    var children: CFTypeRef?
+    guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &children) == .success,
+      let children = children as? [AXUIElement] else { return false }
+    return children.contains { visit($0, depth: depth + 1, visited: &visited) }
+  }
+  var visits = 0
+  return visit(application, depth: 0, visited: &visits)
+}
+
 func pressButton(_ label: String) -> Bool {
   let application = AXUIElementCreateApplication(pid)
   func visit(_ element: AXUIElement, depth: Int, visited: inout Int, shellOnly: Bool) -> Bool {
@@ -660,6 +688,9 @@ if action == "press-button" {
 } else if action == "press-label" {
   guard CommandLine.arguments.count == 4 else { fail("Use press-label PID label.") }
   print(pressLabel(CommandLine.arguments[3]) ? "true" : "false")
+} else if action == "press-checkbox" {
+  guard CommandLine.arguments.count == 4 else { fail("Use press-checkbox PID label.") }
+  print(pressCheckbox(CommandLine.arguments[3]) ? "true" : "false")
 } else if action == "click-button" || action == "frame" {
   guard CommandLine.arguments.count == 4 else { fail("Use \(action) PID label.") }
   let click = action == "frame" ? controlClickRecord(CommandLine.arguments[3]) : clickButton(CommandLine.arguments[3])
@@ -744,6 +775,16 @@ if action == "press-button" {
     fail("Cannot encode Aux window bounds.")
   }
   print(text)
+} else if action == "screen-windows" {
+  let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+  let rows = windows.compactMap { window -> String? in
+    let owner = window[kCGWindowOwnerName as String] as? String ?? ""
+    let name = window[kCGWindowName as String] as? String ?? ""
+    let layer = window[kCGWindowLayer as String] as? Int ?? 0
+    if owner.isEmpty && name.isEmpty { return nil }
+    return "\(layer)\t\(owner)\t\(name)"
+  }
+  print(rows.joined(separator: "\n"))
 }
 
 func staticTexts() -> [String] {
@@ -846,8 +887,8 @@ if action == "texts" {
     return value as? String ?? ""
   }
   print([attribute(kAXRoleAttribute), attribute(kAXTitleAttribute), attribute(kAXDescriptionAttribute), attribute(kAXValueAttribute)].joined(separator: "\t"))
-} else if action == "press-button" || action == "press-label" || action == "click-button" || action == "click-name" || action == "frame-name" || action == "frame" || action == "click-at" || action == "child-frames" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
-  action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" {
+} else if action == "press-button" || action == "press-label" || action == "press-checkbox" || action == "click-button" || action == "click-name" || action == "frame-name" || action == "frame" || action == "click-at" || action == "child-frames" || action == "has-button" || action == "button-enabled" || action == "has-disabled-button" || action == "buttons" ||
+  action == "has-text" || action == "has-name" || action == "control-value" || action == "names" || action == "focused" || action == "shell-url" || action == "window" || action == "screen-windows" {
 } else if action == "activate" || action == "toggle-sidebar" ||
   action == "next-tab" || action == "focus-address" || action == "open-settings" || action == "open-palette" || action == "escape" ||
   action == "type-return" || action == "type-text" || action == "select-all" || action == "arrow-right" || action == "arrow-down" || action == "space" || action == "tab" || action == "move" {

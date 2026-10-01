@@ -27,6 +27,7 @@ const app = realpathSync(appArg), patch = realpathSync(patchArg), output = resol
 assert.ok(!existsSync(output), "Never overwrite evidence"); mkdirSync(output, { recursive: true });
 const root = resolve(import.meta.dirname, "../.."), disposable = mkdtempSync("/tmp/aux-relay-native-");
 const profile = join(disposable, "profile"), binary = join(app, "Contents/MacOS/Aux");
+const windowTool = join(disposable, "native-window");
 const helper = join(app, "Contents/Helpers/Aux Runtime"), runtimeFile = join(profile, "Default/Aux Runtime Data/runtime.json");
 const nativeHeader = readFileSync(resolve(app, "../../../chrome/browser/ui/aux/generated/aux_host_methods.h"), "utf8");
 const nativeSourceCommit = nativeHeader.match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1];
@@ -123,13 +124,110 @@ async function action(pageId, name, id, session) {
     { id: "act", op: "click", target: `css:#${name}` },
     { id: "finish", op: "waitFor", condition: { kind: "textVisible", text: `Finished ${id}`, timeoutMs: 180_000 } }], session);
 }
-async function newSession(label, ownerPageId, workspaceId) {
+function native(action, ...args) {
+  return execFileSync(windowTool, [action, String(child.pid), ...args.map(String)], { encoding: "utf8", timeout: 20_000 }).trim();
+}
+function relayButtons() {
+  try { return JSON.parse(native("buttons")); } catch { return []; }
+}
+function clickLabel(label) {
+  try {
+    const hit = JSON.parse(native("click-button", label));
+    console.log(`click ${label} ${hit.x},${hit.y}`);
+    return true;
+  } catch { /* A named control may still be a small non-button. */ }
+  let frame = null;
+  try { frame = JSON.parse(native("frame-name", label)); } catch { frame = null; }
+  if (!frame || frame.height > 80 || frame.width > 640) {
+    console.log(`click ${label} refused ${frame ? `${frame.width}x${frame.height}` : "miss"}`);
+    return false;
+  }
+  native("click-at", String(frame.x), String(frame.y));
+  console.log(`click ${label} ${frame.x},${frame.y} ${frame.width}x${frame.height}`);
+  return true;
+}
+async function dismissRelayWelcome() {
+  const finish = () => { try { return native("has-name", "Finish later") === "true"; } catch { return false; } };
+  const welcome = () => { try { return native("has-name", "A browser for what comes next") === "true"; } catch { return false; } };
+  const deadline = Date.now() + 2_500;
+  while (Date.now() < deadline && !welcome() && !finish()) await delay(200);
+  if (!finish()) return;
+  native("activate");
+  clickLabel("Finish later");
+  await until("setup dismissed", () => !finish() && !welcome(), 8_000);
+}
+async function openAgentsSettings() {
+  await dismissRelayWelcome();
+  native("activate");
+  const agentsUrl = "chrome://aux/settings/developers-external-agents";
+  const shell = () => { try { return native("shell-url"); } catch { return ""; } };
+  if (shell() !== agentsUrl) {
+    const revealed = Date.now() + 12_000;
+    while (Date.now() < revealed && !shell().startsWith("chrome://aux/settings/")) {
+      const labels = relayButtons();
+      if (labels.includes("Show sidebar") || labels.some(label => String(label).startsWith("Switch space"))) break;
+      await delay(250);
+    }
+    if (!shell().startsWith("chrome://aux/settings/") && relayButtons().includes("Show sidebar")) {
+      clickLabel("Show sidebar");
+      const sidebar = Date.now() + 8_000;
+      while (Date.now() < sidebar && !relayButtons().some(label => String(label).startsWith("Switch space"))) await delay(200);
+    }
+    if (!shell().startsWith("chrome://aux/settings/")) {
+      const space = relayButtons().find(label => String(label).startsWith("Switch space"));
+      if (space) {
+        clickLabel(space);
+        await delay(300);
+        clickLabel("Settings");
+      }
+    }
+    const opened = Date.now() + 10_000;
+    while (Date.now() < opened && !shell().startsWith("chrome://aux/settings/")) await delay(200);
+    if (!shell().includes("developers-external-agents")) {
+      if (!clickLabel("Developers & External Agents")) throw new Error(`Agents settings was not clickable from ${shell()}; buttons ${relayButtons().slice(0, 16).join(" | ")}`);
+    }
+  }
+  await until("create connection control", () => {
+    try { return native("has-name", "Create scoped connection") === "true"; } catch { return false; }
+  }, 15_000);
+}
+async function chooseOption(label, option) {
+  let current = "";
+  try { current = native("control-value", label); } catch { current = ""; }
+  if (current === option) return;
+  if (!clickLabel(label)) throw new Error(`Cannot open ${label}`);
+  await delay(350);
+  if (!clickLabel(option)) throw new Error(`Cannot choose ${option} from ${label}`);
+  await delay(300);
+}
+function readOnceToken() {
+  let text = "";
+  try { text = native("control-value", "Agent configuration"); } catch { text = ""; }
+  return text.match(/auxc_[A-Za-z0-9_-]{40,80}/)?.[0] ?? "";
+}
+async function captureScopedConnection(label, taskTitle, workspaceName, path) {
+  await openAgentsSettings();
+  // The agents page loads its task list on mount. Leave and return so a task
+  // created after that mount is actually in the menu.
+  if (native("has-name", "General") === "true") clickLabel("General");
+  await delay(400);
+  if (!clickLabel("Developers & External Agents")) throw new Error("Could not reopen Developers & External Agents");
+  await until("agents list refreshed", () => native("has-name", "Create scoped connection") === "true", 15_000);
+  await chooseOption("Connection workspace", workspaceName);
+  await chooseOption("Connection scope", "One task");
+  await chooseOption("Connection task", taskTitle);
+  if (native("button-enabled", "Create scoped connection") !== "true") throw new Error(`Create scoped connection stayed disabled for ${taskTitle}`);
+  if (!clickLabel("Create scoped connection")) throw new Error("Create scoped connection was not clickable");
+  const token = await until(`one-time connection token ${label}`, () => readOnceToken() || null, 20_000);
+  writeFileSync(path, `${token}\n`, { mode: 0o600 });
+  console.log(`saved one-time connection token ${label}`);
+}
+async function newSession(label, ownerPageId, workspaceId, workspaceName) {
   const task = await rpc("tasks.create", { workspaceId, title: `Isolation ${label}`, objective: "Exercise disposable isolation fixture only",
     criteria: [{ criterionId: "isolation", description: "Native isolation journey", verification: "manual" }],
     resources: [{ resourceId: "source", kind: "page", locator: ownerPageId, label: "Disposable owner source" }] });
   const path = join(disposable, `connection-${label}.txt`);
-  console.log(`In Aux Settings create a Codex connection scoped to task ${task.taskId} (Isolation ${label}); use the one-time native token save dialog to save it to ${path}.`);
-  await until(`normal native connection token save ${label}`, () => existsSync(path), 240_000);
+  await captureScopedConnection(label, `Isolation ${label}`, workspaceName, path);
   const token = readFileSync(path, "utf8").trim(); rmSync(path, { force: true });
   assert.match(token, /^auxc_[A-Za-z0-9_-]{40,80}$/);
   const session = { task, token, turnId: randomUUID() }; sessions.push(session); return session;
@@ -152,6 +250,7 @@ try {
     "-days", "1", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1"], { stdio: "ignore" });
   fixture = await createRelayFixture({ tls: { key: readFileSync(key), cert: readFileSync(cert) } });
   report.disposableTls = "Self-signed loopback fixture only; certificate checks disabled only in this disposable launched process";
+  execFileSync("xcrun", ["swiftc", join(root, "tests/host/native-window.swift"), "-o", windowTool], { timeout: 120_000 });
   await launch();
   await rpc("settings.set", { effectGrants: ["effect:read", "effect:write", "effect:egress"],
     originPolicies: Object.values(fixture.origins).map(origin => ({ origin: `${origin}/`, access: "allow", confirmation: "none" })), safetyCeilings: { write: "always" } });
@@ -161,9 +260,10 @@ try {
   const receiver = await until("related owner receiver window", async () => (await rpc("pages.list")).find(page => page.pageId !== owner.pageId && page.url === fixture.url("receiver")));
   await until("owner receiver endpoints ready", async () => (await observation(receiver.pageId)).includes("Relay endpoints ready"));
   await action(owner.pageId, "seed-owner", "seed-owner");
-  const workspace = await rpc("workspaces.create", { name: "Disposable native isolation journey" });
-  const first = await newSession("A", owner.pageId, workspace.workspaceId);
-  const second = await newSession("B", owner.pageId, workspace.workspaceId);
+  const workspaceName = "Disposable native isolation journey";
+  const workspace = await rpc("workspaces.create", { name: workspaceName });
+  const first = await newSession("A", owner.pageId, workspace.workspaceId, workspaceName);
+  const second = await newSession("B", owner.pageId, workspace.workspaceId, workspaceName);
   if (selected("autofill")) {
     await rpc("pages.activate", { pageId: owner.pageId });
     console.log(`In the disposable owner tab only, sign in using ${fixture.credential.username} / ${fixture.credential.password}, then save it in Chromium's native password offer.`);
@@ -204,7 +304,8 @@ try {
     pending.catch(() => {});
     await until("real waiting recipient approval", async () => (await rpc("runs.get", { runId: pageA.agentIsolation.runId })).run.status === "needs_input");
     fixture.assertCount("isolated-recipient", 0);
-    console.log(`In Aux, review and Allow once for the public fixture request ${fixture.origins.source} → ${fixture.origins.recipient}.`);
+    await until("Allow this action", () => native("has-name", "Allow this action") === "true" && native("button-enabled", "Allow") === "true", 30_000);
+    if (!clickLabel("Allow")) throw new Error("Allow was not clickable");
     await pending; fixture.assertCount("isolated-recipient", 1, "recipient");
     const recipientReceipt = await until("recipient final-header admission", () => report.requestReceipts.slice(recipientStart).find(item => item.outcome === "admitted" && item.phase === "send" && item.reason === "authorized_recipient"));
     record("safe same-origin and owner-reviewed exact recipient controls", { sameOriginCount: 1, recipientCount: 1, sameReceipt, recipientReceipt });

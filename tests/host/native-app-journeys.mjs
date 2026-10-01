@@ -89,6 +89,8 @@ const splitViewJourney = process.argv.includes("--split-view");
 const linkPeekJourney = process.argv.includes("--link-peek");
 const spaceThemeJourney = process.argv.includes("--space-theme");
 const spaceThemeAdvancedJourney = process.argv.includes("--space-theme-advanced");
+const accessVisualJourney = process.argv.includes("--access-visual");
+const memoryPasteUiJourney = process.argv.includes("--memory-paste-ui");
 const readerPeekJourney = process.argv.includes("--reader-peek");
 const tabPreviewFocusJourney = process.argv.includes("--tab-preview-focus");
 const tabNameJourney = process.argv.includes("--tab-name-ui");
@@ -105,6 +107,7 @@ const httpAuthCancelJourney = process.argv.includes("--http-auth-cancel");
 const passwordOfferJourney = process.argv.includes("--password-offer");
 const passwordPromptJourney = process.argv.includes("--password-offer-prompt");
 const passwordFillBoundaryJourney = process.argv.includes("--password-fill-boundary");
+const credentialHandoffJourney = process.argv.includes("--credential-handoff");
 const passwordTransferJourney = process.argv.includes("--password-transfer");
 const autofillJourney = process.argv.includes("--autofill");
 const linkStatusJourney = process.argv.includes("--link-status");
@@ -240,7 +243,7 @@ const healthDiagnosticsJourney = process.argv.includes("--health-diagnostics");
 const unpackedExtensionJourney = process.argv.includes("--unpacked-extension");
 const runtimeBackupRestoreJourney = process.argv.includes("--runtime-backup-restore");
 assert.ok(!rpcOnly || !uiOnly, "Choose one focused journey mode");
-assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, selectorHistoryJourney, selectorExtensionJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, storeRecoveryUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, runtimePeerJourney, trustAdversarialJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptActualRunJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, memorySaverAwakeJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
+assert.ok([submitConfirmation, webmcpJourney, paintLease, shellEvents, downloadsJourney, selectorDownloadsJourney, selectorResultsJourney, selectorTaskResourcesJourney, selectorSearchJourney, splitViewJourney, linkPeekJourney, spaceThemeJourney, spaceThemeAdvancedJourney, accessVisualJourney, memoryPasteUiJourney, readerPeekJourney, tabPreviewFocusJourney, tabNameJourney, selectorClosedJourney, selectorReadingJourney, selectorHistoryJourney, selectorExtensionJourney, siteControlsJourney, tabAudioJourney, unsavedWorkJourney, fileHandoffJourney, httpAuthJourney, httpAuthCancelJourney, passwordOfferJourney, passwordPromptJourney, passwordFillBoundaryJourney, credentialHandoffJourney, passwordTransferJourney, autofillJourney, linkStatusJourney, previewJourney, navigationMenuJourney, contextMenuJourney, pageActionJourney, readerJourney, translationJourney, eyeDropperJourney, fileIoJourney, workbookExportJourney, artifactExportJourney, agentConnectionsJourney, outboundMcpLocalJourney, outboundMcpSettingsJourney, outboundMcpBundleSettingsJourney, physicalTakeoverJourney, goalsUiJourney, goalsThreadUiJourney, goalsStatusUiJourney, commandEscalationUiJourney, hooksUiJourney, hooksStartUiJourney, hooksCommandUiJourney, workspacesUiJourney, memoryInboxUiJourney, storeRecoveryUiJourney, memoryPreviewUiJourney, browserImportUiJourney, browserImportFormatsJourney, browserImportAttachedJourney, protectedStartupJourney, runtimePeerJourney, trustAdversarialJourney, receiptBeforeUiJourney, receiptUndoUiJourney, receiptRunUndoUiJourney, receiptActualRunJourney, receiptBookmarkUiJourney, receiptDownloadUiJourney, receiptHistoryUiJourney, tidyReceiptJourney, tidyChangedJourney, archiveTabsJourney, tabSleepJourney, memorySaverJourney, memorySaverRestartJourney, memorySaverReportJourney, memorySaverAwakeJourney, profilesJourney, profileConfirmationJourney, popoverJourney, menuPrimitivesJourney, recoveryOwnerAuthJourney, toastPrimitivesJourney, selectorBookmarkJourney, selectorSitePermissionsJourney, selectorContextJourney, quickAskFocusJourney, settingsFocusJourney, settingsSearchJourney, settingsRouteJourney, settingsInternalUrlJourney, settingsSectionRailJourney, settingsPasswordsJourney, settingsModelsJourney, settingsUsageJourney, settingsAutomationsJourney, settingsAutomationsCreateJourney, settingsAutomationsWakeJourney, settingsAutomationsFireJourney, settingsAutomationsPageChangeJourney, settingsAutomationsNotificationJourney, settingsAutomationsCalendarJourney, settingsAutomationsSuggestionsJourney, settingsAutomationsPresenceJourney, settingsAutomationsDstJourney, skillActivationReviewJourney, skillExternalTaskReviewJourney, skillImportedReadinessJourney, settingsNewTabJourney, settingsArchivedJourney, settingsGeneralJourney, settingsDownloadFolderJourney, settingsAboutJourney, settingsSpellCheckJourney, settingsQualifiedRailJourney, settingsStartupJourney, settingsLanguagesJourney, settingsPipJourney, settingsHttpsFirstJourney, settingsCookieControlsJourney, settingsCrashConsentJourney, settingsSiteDataCountJourney, siteBlockingExceptionJourney, siteBlockingPrivateJourney, privatePageZoomJourney, regularPageZoomJourney, settingsShortcutsAppearanceJourney, privateShellJourney, settingsContentBlockingJourney, settingsCustomListJourney, settingsCookieBannerJourney, settingsPrivacyGatesJourney, settingsBackgroundJourney, settingsDefaultZoomJourney, settingsSidebarOptionsJourney, settingsProfilesSectionJourney, tabSwitcherBaselineJourney, tabSwitcherOrderJourney, settingsHistoryJourney, settingsReloadJourney, settingsDocumentReloadJourney, agentGrantsJourney, privacyHistoryPanelJourney, privacyBrowsingDataJourney, privacyBrowsingDataClearJourney, settingsFocusJumpJourney, libraryFocusJourney, appearancePrefsJourney, searchEnginePrefsJourney, edgeLeewayJourney, navigationRecoveryJourney, certificateRecoveryJourney, httpFallbackJourney, httpFallbackDialogJourney, healthDiagnosticsJourney, unpackedExtensionJourney, runtimeBackupRestoreJourney].filter(Boolean).length <= 1, "Choose one focused journey");
 const output = resolve(option("--output") ?? join(root, "release/test-artifacts", `native-journeys-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`));
 assert.ok(!existsSync(output), "Use a new output directory; existing evidence is never overwritten");
 mkdirSync(output, { recursive: true });
@@ -255,13 +258,13 @@ const nativeHeader = resolve(app, "../../../chrome/browser/ui/aux/generated/aux_
 const nativeSourceCommit = existsSync(nativeHeader)
   ? readFileSync(nativeHeader, "utf8").match(/kSourceCommit = "([a-f0-9]{40})"/)?.[1]
   : undefined;
-const developmentAcceptanceFeatures = memoryInboxUiJourney || storeRecoveryUiJourney ? ["memory", "spaces"] :
+const developmentAcceptanceFeatures = memoryInboxUiJourney || storeRecoveryUiJourney || memoryPasteUiJourney ? ["memory", "spaces"] :
   anyTidyJourney ? ["spaces", "aiTidy"] :
   memorySaverAwakeJourney ? ["spaces", "tabLifecycle"] :
   runtimeBackupRestoreJourney ? ["electronMigration"] :
   selectorExtensionJourney ? ["spaces", "extensions"] :
   selectorHistoryJourney ? ["spaces", "commandBar"] :
-  menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney || selectorBookmarkJourney || selectorClosedJourney || selectorReadingJourney || selectorSearchJourney ? ["spaces"] : null;
+  accessVisualJourney || credentialHandoffJourney || menuPrimitivesJourney || pageActionJourney || physicalTakeoverJourney || settingsSectionRailJourney || selectorBookmarkJourney || selectorClosedJourney || selectorReadingJourney || selectorSearchJourney ? ["spaces"] : null;
 if (developmentAcceptanceFeatures) {
   assert.ok(nativeSourceCommit, "Development acceptance requires a built native source identity");
   const token = randomBytes(32).toString("hex");
@@ -643,6 +646,210 @@ function changedFraction(aPath, bPath, fraction = 0.45) {
     }
   }
   return changed / total;
+}
+function meanAbsDelta(aPath, bPath, box) {
+  const { PNG } = requireDependency("pngjs");
+  const a = PNG.sync.read(readFileSync(aPath));
+  const b = PNG.sync.read(readFileSync(bPath));
+  assert.equal(a.width, b.width, "Native captures must have the same window width");
+  assert.equal(a.height, b.height, "Native captures must have the same window height");
+  const x0 = Math.floor(a.width * box.x0);
+  const x1 = Math.floor(a.width * box.x1);
+  const y0 = Math.floor(a.height * box.y0);
+  const y1 = Math.floor(a.height * box.y1);
+  let sum = 0;
+  let total = 0;
+  for (let y = y0; y < y1; y += 2) {
+    for (let x = x0; x < x1; x += 2) {
+      const offset = (y * a.width + x) * 4;
+      sum += Math.abs(a.data[offset] - b.data[offset]) +
+        Math.abs(a.data[offset + 1] - b.data[offset + 1]) +
+        Math.abs(a.data[offset + 2] - b.data[offset + 2]);
+      total++;
+    }
+  }
+  return total ? sum / total / 3 : 0;
+}
+function shellUrl() {
+  try { return native("shell-url"); } catch { return ""; }
+}
+function clickLabel(label) {
+  const hit = clickNamed(label) || clickPhrase(label);
+  console.log(`click ${label} ${hit ? `${hit.x},${hit.y}` : "miss"}`);
+  return Boolean(hit);
+}
+function clickLineLabel(label) {
+  const exact = clickNamed(label);
+  if (exact && exact.height >= 8 && exact.height <= 80 && exact.width <= 640) {
+    console.log(`line click ${label} ${exact.x},${exact.y} ${exact.width}x${exact.height}`);
+    return true;
+  }
+  const frame = frameNamed(label);
+  if (frame && frame.height >= 8 && frame.height <= 80 && frame.width <= 640) {
+    native("click-at", String(frame.x), String(frame.y));
+    console.log(`line frame ${label} ${frame.x},${frame.y} ${frame.width}x${frame.height}`);
+    return true;
+  }
+  console.log(`line miss ${label} button ${exact ? `${exact.width}x${exact.height}` : "none"} frame ${frame ? `${frame.width}x${frame.height}` : "none"}`);
+  return false;
+}
+function clickContained(label) {
+  if (clickRawLabel(label)) return true;
+  let children = [];
+  try { children = JSON.parse(native("child-frames", label)); } catch { children = []; }
+  const box = children
+    .filter(child => child.height >= 8 && child.height <= 80 && child.width >= 8 && child.width <= 520)
+    .sort((left, right) => left.width * left.height - right.width * right.height)[0];
+  if (!box) {
+    const summary = children.slice(0, 8).map(child => `${child.role} ${Math.round(child.width)}x${Math.round(child.height)}`).join(" | ");
+    console.log(`contained miss ${label} children ${summary || "none"}`);
+    return false;
+  }
+  native("click-at", String(box.x), String(box.y));
+  console.log(`contained ${label} ${box.role} ${box.x},${box.y} ${Math.round(box.width)}x${Math.round(box.height)}`);
+  return true;
+}
+function clickRawLabel(label) {
+  const frame = frameNamed(label);
+  if (!frame || frame.height < 8 || frame.height > 80 || frame.width > 640) {
+    console.log(`raw miss ${label} ${frame ? `${Math.round(frame.width)}x${Math.round(frame.height)}` : "none"}`);
+    return false;
+  }
+  native("click-at", String(frame.x), String(frame.y));
+  console.log(`raw click ${label} ${frame.x},${frame.y} ${Math.round(frame.width)}x${Math.round(frame.height)} rawY ${frame.rawY} flippedY ${frame.flippedY}`);
+  return true;
+}
+function openSpaceMenu() {
+  const labels = visibleButtons();
+  const named = labels.find(label => label === "Switch space" || label.startsWith("Switch space,"));
+  for (const label of [...(named ? [named] : []), "Personal"]) {
+    if (clickRawLabel(label)) return label;
+  }
+  throw new Error(`Space menu was not a line-sized control; buttons ${labels.slice(0, 24).join(" | ")}`);
+}
+function screenWindowText() {
+  try { return native("screen-windows"); }
+  catch (error) { return error instanceof Error ? error.message : String(error); }
+}
+function authenticationSheet(title) {
+  const windows = screenWindowText();
+  const row = windows.split("\n").find(line => line.includes(title));
+  if (row) return row;
+  try {
+    if (native("has-text", title) === "true" || native("has-name", title) === "true") return title;
+  } catch { /* A system sheet is not part of the Aux tree. */ }
+  return null;
+}
+function visibleButtons() {
+  try { return JSON.parse(native("buttons")); }
+  catch { return []; }
+}
+function settingsSurfaceOpen() {
+  if (shellUrl().startsWith("chrome://aux/settings/")) return true;
+  try {
+    return native("has-name", "Settings") === "true" && native("has-name", "General") === "true";
+  } catch { return false; }
+}
+async function openSettingsCategory(category, url) {
+  await dismissWelcomeIfPresent();
+  native("activate");
+  // A fresh profile hides the sidebar, and that hidden column is inert, so
+  // More and Switch space are absent until Show sidebar is clicked.
+  if (!settingsSurfaceOpen()) {
+    const revealed = Date.now() + 12_000;
+    while (Date.now() < revealed && !settingsSurfaceOpen()) {
+      const buttons = visibleButtons();
+      if (buttons.includes("Show sidebar") || buttons.some(label => String(label).startsWith("Switch space"))) break;
+      await delay(250);
+    }
+    if (!settingsSurfaceOpen() && visibleButtons().includes("Show sidebar") && clickLabel("Show sidebar")) {
+      const sidebar = Date.now() + 8_000;
+      while (Date.now() < sidebar && !visibleButtons().some(label => String(label).startsWith("Switch space") || label === "More")) await delay(200);
+    }
+    if (!settingsSurfaceOpen()) openMemorySaverSettings();
+    const opened = Date.now() + 8_000;
+    while (Date.now() < opened && !settingsSurfaceOpen()) await delay(200);
+  }
+  if (!settingsSurfaceOpen()) {
+    native("open-palette");
+    await delay(500);
+    clickLabel("Settings");
+  }
+  try {
+    await until("settings opened", () => settingsSurfaceOpen(), 12_000);
+  } catch (error) {
+    const buttons = visibleButtons().slice(0, 16).join(" | ");
+    throw new Error(`${error instanceof Error ? error.message : error}; shell ${shellUrl()}; buttons ${buttons}`);
+  }
+  if (shellUrl() !== url) {
+    if (!clickLabel(category)) throw new Error(`Settings category ${category} was not clickable from ${shellUrl()}`);
+    await until(`${category} settings`, () => shellUrl() === url || native("has-name", category) === "true", 20_000);
+  }
+}
+function lineFrame(label, maxWidth) {
+  const frame = frameNamed(label);
+  if (!frame || frame.height < 8 || frame.height > 80 || frame.width > maxWidth) return null;
+  return frame;
+}
+async function selectMemoryFixture() {
+  await openSettingsCategory("Memory", "chrome://aux/settings/memory");
+  let selected = false;
+  let toggled = false;
+  await until("Memory Fixture can create review notes", async () => {
+    if (native("has-name", "Create review notes") === "true") return true;
+    if (!selected) {
+      const space = lineFrame("Memory Fixture", 360);
+      if (space) {
+        native("click-at", String(space.x), String(space.y));
+        console.log(`select Memory Fixture ${space.x},${space.y} ${space.width}x${space.height}`);
+        selected = true;
+        await delay(300);
+      } else {
+        const missed = frameNamed("Memory Fixture");
+        console.log(`Memory Fixture line miss ${missed ? `${missed.width}x${missed.height}` : "none"}`);
+      }
+    }
+    if (native("has-name", "Create review notes") === "true") return true;
+    // AXPress reports success without firing the checkbox's DOM change.
+    if (!toggled) {
+      toggled = true;
+      const line = lineFrame("Enable memory for this Space", 520);
+      if (line) {
+        console.log(`enable memory text ${line.x},${line.y} ${line.width}x${line.height}`);
+        native("click-at", String(line.x), String(line.y));
+      } else {
+        const missed = frameNamed("Enable memory for this Space");
+        console.log(`enable memory text miss ${missed ? `${missed.width}x${missed.height}` : "none"}`);
+      }
+    }
+    await delay(600);
+    return native("has-name", "Create review notes") === "true";
+  }, 30_000);
+}
+function sealRecoveryFixture(path, phrase) {
+  const excluded = ["Chromium cookies, passwords and browser Profile stores", "Keychain credentials and connector tokens",
+    "active connection, site and tool grants (records retained as revoked)",
+    "automatic routines and goals resume paused for review",
+    "retired Space-memory generations and deleted data"];
+  const payload = { manifest: { version: 1, createdAt: Date.now(), sourceProfileId: "Default", sqliteBytes: 0,
+    sqliteTables: [], artifactIds: [], spaceMemory: [], pageMemoryCount: 0, excluded },
+    sqlite: "", artifacts: [], pageMemory: [], spaceMemory: [] };
+  const salt = randomBytes(16);
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", scryptSync(phrase, salt, 32, { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }), iv);
+  cipher.setAAD(Buffer.from("aux-recovery:v1"));
+  const ciphertext = Buffer.concat([cipher.update(JSON.stringify(payload)), cipher.final()]);
+  writeFileSync(path, JSON.stringify({ format: "aux-recovery", version: 1, kdf: "scrypt-N32768-r8-p1",
+    salt: salt.toString("base64"), iv: iv.toString("base64"), tag: cipher.getAuthTag().toString("base64"),
+    ciphertext: ciphertext.toString("base64") }));
+}
+function enableBatterySaverPref(userDataDir) {
+  const path = join(userDataDir, "Local State");
+  const state = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {};
+  state.performance_tuning ??= {};
+  state.performance_tuning.battery_saver_mode ??= {};
+  state.performance_tuning.battery_saver_mode.state = 3;
+  writeFileSync(path, JSON.stringify(state));
 }
 
 const ACTIVE_PEER_RUNS = new Set(["queued", "planning", "running", "paused", "needs_input"]);
@@ -1834,7 +2041,7 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     const name = color === "#164b72" ? "Blue" : "Red";
     response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
     const needles = name === "Red" ? "<p>Visible needle one</p><p>Visible needle two</p><p>Visible needle three</p>" : "<p>Visible needle</p>";
-    response.end(`<!doctype html><title>Aux native ${name}</title>${spaceThemeJourney && name === "Red" ? '<meta name="theme-color" content="#a33450">' : ""}<style>html,body{margin:0;height:100%;background:${color};color:white;font:24px system-ui}main{padding:64px}</style><main><h1>Aux native ${name} fixture</h1>${needles}<p hidden>needle hidden</p><label for="name">Title</label><input id="name" name="title"><button id="act" onclick="fetch('/click');this.textContent='Clicked'">Act</button></main>`);
+    response.end(`<!doctype html><title>Aux native ${name}</title>${(spaceThemeJourney || accessVisualJourney) && name === "Red" ? '<meta name="theme-color" content="#a33450">' : ""}<style>html,body{margin:0;height:100%;background:${color};color:white;font:24px system-ui}main{padding:64px}</style><main><h1>Aux native ${name} fixture</h1>${needles}<p hidden>needle hidden</p><label for="name">Title</label><input id="name" name="title"><button id="act" onclick="fetch('/click');this.textContent='Clicked'">Act</button></main>`);
   });
   await new Promise(resolveListen => fixture.listen(0, "127.0.0.1", resolveListen));
   origin = `http://127.0.0.1:${fixture.address().port}`;
@@ -1894,13 +2101,35 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
       aux: { https_upgrades_enabled: true },
     }));
   }
-  if (certificateRecoveryJourney) {
+  if (certificateRecoveryJourney || credentialHandoffJourney) {
     const key = join(disposable, "fixture.key");
     const cert = join(disposable, "fixture.crt");
     execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
       "-keyout", key, "-out", cert, "-subj", "/CN=localhost",
       "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1"], { stdio: "ignore" });
-    tlsFixture = createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, (_request, response) => {
+    tlsFixture = createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, (request, response) => {
+      if (credentialHandoffJourney && request.url === "/password-submit" && request.method === "POST") {
+        let body = "";
+        request.on("data", chunk => { body += chunk; });
+        request.on("end", () => {
+          const fields = new URLSearchParams(body);
+          if (fields.get("username") === "fixture-user" && fields.get("password") === "fixture-pass") passwordSubmissions++;
+          response.writeHead(303, { location: "/password-done", "cache-control": "no-store" });
+          response.end();
+        });
+        return;
+      }
+      if (credentialHandoffJourney && request.url === "/password-done") {
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+        response.end("<!doctype html><title>Aux sign-in done</title><h1>Disposable sign-in complete</h1>");
+        return;
+      }
+      if (credentialHandoffJourney && (request.url === "/" || request.url === "/sign-in")) {
+        tlsRequests++;
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+        response.end(`<!doctype html><title>Aux password fixture</title><main><h1>Disposable sign-in</h1><form method="post" action="/password-submit"><label>Fixture username <input name="username" autocomplete="username" aria-label="Fixture username"></label><label>Fixture password <input name="password" type="password" autocomplete="current-password" aria-label="Fixture password"></label><button type="submit">Sign in</button></form><p id="filled"></p><script>document.querySelector('input[type=password]').addEventListener('input',()=>{document.getElementById('filled').textContent=document.querySelector('input[type=password]').value?'Password field has a value':''})</script></main>`);
+        return;
+      }
       tlsRequests++;
       response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
       response.end("<!doctype html><title>Aux certificate fixture</title><h1>Certificate fixture loaded</h1>");
@@ -2024,7 +2253,7 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
         .run("legacy-subagent", "legacy-group", "completed", JSON.stringify({ result: "private native subagent" }), Date.now(), Date.now());
     } finally { db.close(); }
   }
-  if (memoryInboxUiJourney || storeRecoveryUiJourney) {
+  if (memoryInboxUiJourney || storeRecoveryUiJourney || memoryPasteUiJourney) {
     const databasePath = join(profile, "Default/Aux Runtime Data/aux-state.sqlite");
     mkdirSync(join(profile, "Default/Aux Runtime Data"), { recursive: true });
     const db = openDb(databasePath);
@@ -2846,6 +3075,108 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
       httpFallbackRequests > 0 && (await rpc("pages.list")).some(item =>
         item.pageId === page.pageId && !item.navigationError && !item.loading), 120_000);
     record("native HTTP fallback loads only the approved local fixture", { pageId: page.pageId, httpFallbackRequests });
+    report.passed = true;
+  } else if (credentialHandoffJourney) {
+    if (rpcOnly) throw new Error("Credential handoff needs the native window.");
+    await until("a visible Aux browser window", () => {
+      try { return JSON.parse(native("window")); } catch { return null; }
+    });
+    await dismissWelcomeIfPresent();
+    const url = `${tlsOrigin}/sign-in`;
+    const page = await rpc("pages.open", { url, activate: true });
+    await until("certificate recovery control", () => native("has-button", "Proceed anyway (unsafe)") === "true", 30_000);
+    if (!clickLineLabel("Proceed anyway (unsafe)")) throw new Error("Proceed anyway (unsafe) was not clickable");
+    try {
+      await until("disposable HTTPS sign-in", async () =>
+        tlsRequests > 0 && /Disposable sign-in/.test(JSON.stringify(await rpc("pages.observe", { pageId: page.pageId }).catch(() => ({})))), 30_000);
+    } catch (error) {
+      const observed = JSON.stringify(await rpc("pages.observe", { pageId: page.pageId }).catch(() => ({})));
+      const pageState = /Disposable sign-in/.test(observed) ? "form" : /Certificate|ERR_CERT|Proceed anyway/.test(observed) ? "interstitial" : "other";
+      throw new Error(`${error instanceof Error ? error.message : error}; tlsRequests ${tlsRequests}; page ${pageState}`);
+    }
+    async function typePageField(label) {
+      const deadline = Date.now() + 8_000;
+      let frame = null;
+      while (Date.now() < deadline) {
+        const found = frameNamed(label);
+        if (found && found.height <= 80 && found.width <= 640) { frame = found; break; }
+        await delay(200);
+      }
+      if (!frame) {
+        throw new Error(`${label} has no page field`);
+      }
+      console.log(`type page field ${label} ${frame.x},${frame.y} ${frame.width}x${frame.height}`);
+      native("click-at", String(frame.x), String(frame.y));
+      await delay(200);
+      native("select-all");
+      native("type-text", label === "Fixture username" ? "fixture-user" : "fixture-pass");
+      await delay(150);
+    }
+    await typePageField("Fixture username");
+    await typePageField("Fixture password");
+    if (!clickRawLabel("Sign in")) throw new Error("Sign in was not a line-sized control");
+    await until("the fixture sign-in submission", () => passwordSubmissions === 1, 30_000);
+    await until("the Aux password offer", () => native("has-text", "Save sign-in?") === "true", 20_000);
+    if (!clickRawLabel("Save")) throw new Error("Save was not a line-sized control");
+    const loginData = join(profile, "Default/Login Data");
+    await until("Chromium saved the disposable credential", () => {
+      if (!existsSync(loginData)) return false;
+      try {
+        const db = new DatabaseSync(loginData, { readOnly: true });
+        const count = db.prepare("SELECT COUNT(*) AS count FROM logins WHERE username_value = ? AND origin_url LIKE 'https://localhost:%'")
+          .get("fixture-user")?.count;
+        db.close();
+        return count === 1;
+      } catch { return false; }
+    }, 30_000);
+    await rpc("pages.navigate", { pageId: page.pageId, url });
+    await until("sign-in form reopened", async () =>
+      /Disposable sign-in/.test(JSON.stringify(await rpc("pages.observe", { pageId: page.pageId }).catch(() => ({})))) &&
+      native("has-text", "Save sign-in?") === "false", 20_000);
+    native("activate");
+    native("open-palette");
+    await delay(400);
+    if (!clickRawLabel("Fill sign-in…")) {
+      native("type-text", "Fill sign-in");
+      await delay(300);
+      if (!clickRawLabel("Fill sign-in…")) {
+        throw new Error(`Fill sign-in was not clickable; buttons ${visibleButtons().slice(0, 20).join(" | ")}`);
+      }
+    }
+    const chooser = Date.now() + 20_000;
+    let sawChooser = false;
+    while (Date.now() < chooser && !sawChooser) {
+      sawChooser = native("has-text", "Fill a saved password?") === "true" || native("has-button", "Fill password") === "true";
+      if (!sawChooser) await delay(200);
+    }
+    if (!sawChooser) {
+      const refused = native("has-text", "No saved password was filled") === "true";
+      throw new Error(refused
+        ? "Fill sign-in refused before the account chooser"
+        : `Fill a saved password? did not appear; buttons ${visibleButtons().slice(0, 20).join(" | ")}`);
+    }
+    if (!clickRawLabel("Fill password")) throw new Error("Fill password was not a line-sized control");
+    const decision = Date.now() + 20_000;
+    let blocked = null;
+    while (Date.now() < decision && passwordSubmissions < 2 && !blocked) {
+      const sheet = authenticationSheet("Approve Aux filling this saved password");
+      if (sheet) { blocked = sheet; break; }
+      const windows = screenWindowText();
+      const agent = windows.split("\n").find(line => /SecurityAgent|LocalAuthentication|AuthenticationServicesAgent/.test(line));
+      if (agent) { blocked = agent; break; }
+      if (native("has-text", "No saved password was filled") === "true") {
+        blocked = "Device authentication is unavailable";
+        break;
+      }
+      if (native("has-text", "Password field has a value") === "true") clickRawLabel("Sign in");
+      await delay(300);
+    }
+    if (blocked && /Approve Aux filling|SecurityAgent|LocalAuthentication|AuthenticationServicesAgent/.test(blocked)) {
+      throw new Error(`Blocking macOS authentication sheet: ${blocked}`);
+    }
+    if (blocked) throw new Error(blocked);
+    await until("filled credential submitted", () => passwordSubmissions >= 2, 15_000);
+    record("owner saved a disposable HTTPS sign-in and approved Fill password", { submissions: passwordSubmissions });
     report.passed = true;
   } else if (certificateRecoveryJourney) {
     const url = `${tlsOrigin}/cert`;
@@ -3977,14 +4308,12 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     const recoveryGeneration = () => existsSync(recoveryPath) ?
       JSON.parse(readFileSync(recoveryPath, "utf8")).generation : null;
     const beforeForget = recoveryGeneration();
-    console.log("Open Aux Settings → Memory. Select Memory Fixture, enable memory, create review notes from Review memory fixture, and accept the silver note.");
-    await until("Space memory enabled through native Settings", () => {
-      try { return native("has-name", "Create review notes") === "true"; } catch { return false; }
-    }, 600_000);
+    await selectMemoryFixture();
+    clickLabel("Create review notes");
     record("native Settings opts the disposable Space into memory");
     await until("encrypted note staged through native Settings", () => inspect(db =>
       db.prepare("SELECT 1 FROM memory_pipeline_watermarks WHERE workspace_id=? AND run_id=?")
-        .get(memoryFixture.workspaceId, memoryFixture.runId)), 600_000);
+        .get(memoryFixture.workspaceId, memoryFixture.runId)), 60_000);
     const base = join(profile, "Default/Aux Runtime Data/space-memory");
     const profileDir = join(base, readdirSync(base)[0]);
     const spaceDir = join(profileDir, readdirSync(profileDir)[0]);
@@ -3995,18 +4324,21 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
       try { return native("has-name", memoryFixture.report) === "true"; } catch { return false; }
     }, 60_000);
     record("native Settings stages a sourced encrypted note for review", { runId: memoryFixture.runId });
+    clickLabel("Accept note");
     await until("approved note visible in native Memory", () => {
       try { return native("has-name", "Forget note") === "true" &&
         native("has-name", memoryFixture.report) === "true" &&
         existsSync(join(spaceDir, generation(), "claims.json.enc")) &&
         existsSync(join(spaceDir, generation(), "summary.md.enc")); } catch { return false; }
-    }, 600_000);
+    }, 60_000);
     record("owner accepted the sourced note into the encrypted Space summary", { runId: memoryFixture.runId });
-    console.log("Choose Forget run for the fixture, review the confirmation, and click Forget permanently after the user approves this disposable deletion.");
+    clickLabel(`Forget run ${memoryFixture.runId}`);
+    await until("Forget confirmation", () => native("has-name", "Forget permanently") === "true", 20_000);
+    clickLabel("Forget permanently");
     await until("native Memory clears forgotten summary", () => {
       try { return native("has-name", "No approved notes yet.") === "true" &&
         native("has-name", "Create fresh local backup…") === "true"; } catch { return false; }
-    }, 600_000);
+    }, 60_000);
     await until("managed recovery generation advanced after Forget", () => {
       const after = recoveryGeneration();
       return typeof after === "number" && after !== beforeForget;
@@ -4022,11 +4354,11 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
       cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"],
     });
     child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
-    console.log("After restart, reopen Aux Settings → Memory and select Memory Fixture to verify the forgotten note stays absent.");
+    await selectMemoryFixture();
     await until("restarted native Memory remains empty", () => {
       try { return native("has-name", "No approved notes yet.") === "true" &&
         native("has-name", memoryFixture.report) === "false"; } catch { return false; }
-    }, 600_000);
+    }, 60_000);
     record("forgotten Memory did not return after a full native restart", { runId: memoryFixture.runId });
     report.passed = true;
   } else if (storeRecoveryUiJourney) {
@@ -4115,21 +4447,87 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
       try { return JSON.parse(native("window")); } catch { return null; }
     });
     native("activate");
-    console.log(`OPERATOR: Enter ${transferPassphrase} in Recovery phrase. Seeded run ${memoryFixture.runId}.`);
-    console.log("OPERATOR: Open Settings → General and click Manage task data backup. The harness does not click it.");
+    await openSettingsCategory("General", "chrome://aux/settings/general");
+    if (!clickLineLabel("Manage") && !clickLineLabel("Manage task data backup")) {
+      throw new Error(`Task data backup control was not a line-sized button; buttons ${visibleButtons().slice(0, 24).join(" | ")}`);
+    }
     await until("task data backup says outside copies cannot be revoked", () =>
-      onPage("chrome://aux/settings/general") && shows(keptOutside) && shows("Recovery phrase"), 600_000);
+      onPage("chrome://aux/settings/general") && shows(keptOutside) && shows("Recovery phrase"), 30_000);
     record("native task data backup says outside copies and phrases cannot be revoked", {});
+    // Device authentication is the owner gate. Reach both prompts before any
+    // Memory enable click; that label currently resolves to the whole page.
+    async function typeInto(label, text) {
+      let frame = frameNamed(label);
+      if (frame && (frame.height > 80 || frame.width > 640)) {
+        let children = [];
+        try { children = JSON.parse(native("child-frames", label)); } catch { children = []; }
+        const field = children.find(child => /text/i.test(child.role) && child.height >= 8 && child.height <= 80);
+        if (field) frame = field;
+      }
+      if (!frame || frame.height > 120) throw new Error(`${label} has no typable frame${frame ? ` (${frame.width}x${frame.height})` : ""}`);
+      console.log(`type into ${label} at ${frame.x},${frame.y} ${frame.width}x${frame.height}`);
+      native("click-at", String(frame.x), String(frame.y));
+      await delay(250);
+      native("select-all");
+      await delay(80);
+      native("type-text", text);
+      await delay(200);
+    }
+    async function recoveryPrompt(title, succeeded) {
+      const deadline = Date.now() + 22_000;
+      while (Date.now() < deadline) {
+        if (succeeded()) return null;
+        const row = authenticationSheet(title);
+        if (row) return row;
+        const auth = screenWindowText().split("\n").find(line =>
+          /SecurityAgent|coreauthd|LocalAuthentication|AuthenticationServicesAgent/.test(line));
+        if (auth) return auth;
+        if (shows("Device authentication is unavailable")) return "Device authentication is unavailable";
+        if (shows("Device authentication is required for protected recovery."))
+          return "Device authentication is required for protected recovery.";
+        if (shows("Recovery device authentication was not approved"))
+          return "Recovery device authentication was not approved";
+        await delay(400);
+      }
+      return succeeded() ? null : `timed out waiting for ${title}`;
+    }
+    await typeInto("Recovery phrase", transferPassphrase);
+    if (native("button-enabled", "Create encrypted package…") !== "true")
+      throw new Error("Create encrypted package stayed disabled after the fixture phrase.");
+    if (!clickLabel("Create encrypted package…")) throw new Error("Create encrypted package was not clickable");
+    const createSheet = await recoveryPrompt("Approve creating an Aux recovery package", () => recoveryPackages().length === 1);
+    if (child.exitCode === null) await sigtermAux();
+    spawnAux(sourceArgs, sourceEnv);
+    await connectRuntime(runtimeFile);
+    const sealed = join(disposable, "sealed-for-restore-sheet.auxrec");
+    sealRecoveryFixture(sealed, transferPassphrase);
+    await openSettingsCategory("General", "chrome://aux/settings/general");
+    if (!clickLineLabel("Manage") && !clickLineLabel("Manage task data backup")) throw new Error("Manage task data backup was not a line-sized button after relaunch");
+    await until("restore phrase ready", () => shows("Recovery phrase") && shows("Package path"), 20_000);
+    await typeInto("Package path", sealed);
+    await typeInto("Recovery phrase", transferPassphrase);
+    if (!clickLabel("Review package")) throw new Error("Review package was not clickable");
+    await until("sealed package reviewed or refused", () =>
+      shows("Recovery package review") || shows("Package authenticated") ||
+      shows("The recovery phrase is wrong") || shows("Recovery package manifest is invalid") ||
+      shows("Recovery package is invalid"), 30_000);
+    let restoreSheet = "review did not expose staging";
+    if (shows("Recovery package review") || shows("Package authenticated") || native("has-button", "Stage reviewed recovery…") === "true") {
+      if (!clickLabel("Stage reviewed recovery…")) restoreSheet = "Stage reviewed recovery was not clickable";
+      else restoreSheet = await recoveryPrompt("Approve restoring an Aux recovery package", () => false) ?? "restore completed without a visible sheet";
+    }
+    throw new Error(`Blocking macOS authentication sheet: ${JSON.stringify(createSheet)}; restore: ${JSON.stringify(restoreSheet)}`);
     // The package is taken after Accept note and before Forget, so the restored claim is the accepted note.
     const beforeForget = recoveryGeneration();
-    console.log(`OPERATOR: Open Settings → Memory. Select Memory Fixture. Enable memory for this Space. Click Create review notes. Accept note on ${memoryFixture.report}. Do not click Discard note.`);
+    await selectMemoryFixture();
+    clickLabel("Create review notes");
     await until("Space memory enabled through native Settings", () => {
       try { return onPage("chrome://aux/settings/memory") && native("has-name", "Create review notes") === "true"; }
       catch { return false; }
-    }, 600_000);
+    }, 30_000);
     await until("encrypted note staged through native Settings", () => inspect(db =>
       db.prepare("SELECT 1 FROM memory_pipeline_watermarks WHERE workspace_id=? AND run_id=?")
-        .get(memoryFixture.workspaceId, memoryFixture.runId)), 600_000);
+        .get(memoryFixture.workspaceId, memoryFixture.runId)), 60_000);
     const memoryBase = join(sourceData, "space-memory");
     const memoryProfileDir = join(memoryBase, readdirSync(memoryBase)[0]);
     const spaceDir = join(memoryProfileDir, readdirSync(memoryProfileDir)[0]);
@@ -4137,26 +4535,27 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     const pendingGeneration = generation();
     assert.ok(existsSync(join(spaceDir, pendingGeneration, "inbox.json.enc")));
     await until("sourced note visible for owner review", () => shows(memoryFixture.report), 60_000);
+    clickLabel("Accept note");
     await until("approved silver note visible in native Memory", () => {
       try { return native("has-name", "Forget note") === "true" && shows(memoryFixture.report) &&
         existsSync(join(spaceDir, generation(), "claims.json.enc")) &&
         existsSync(join(spaceDir, generation(), "summary.md.enc")); }
       catch { return false; }
-    }, 600_000);
+    }, 60_000);
     record("owner accepted the silver fixture note", { runId: memoryFixture.runId });
-    console.log(`OPERATOR: Return to Settings → General → Task data backup. Enter ${transferPassphrase} in Recovery phrase and click Create encrypted package…. The macOS prompt "Approve creating an Aux recovery package" is outside Aux. Approve it yourself. The harness does not click that dialog and does not bypass device authentication. After one package exists, do not export again.`);
-    const exported = await until("one device-authenticated recovery package", () => {
+    await openSettingsCategory("General", "chrome://aux/settings/general");
+    if (!clickLabel("Manage task data backup")) throw new Error("Manage task data backup was not clickable");
+    await until("recovery phrase ready", () => onPage("chrome://aux/settings/general") && shows("Recovery phrase"), 20_000);
+    let exported;
+    {
       const names = recoveryPackages();
-      if (names.length > 1) throw new Error("Do not export again before Forget.");
-      if (names.length !== 1) return null;
-      try {
-        const bytes = readFileSync(join(recoveryExports, names[0]));
-        const envelope = JSON.parse(bytes.toString("utf8"));
-        if (envelope.format !== "aux-recovery" || envelope.version !== 1 || envelope.kdf !== "scrypt-N32768-r8-p1" ||
-          !envelope.ciphertext?.length) return null;
-        return { name: names[0], bytes };
-      } catch { return null; }
-    }, 600_000);
+      if (names.length !== 1) throw new Error("Do not export again before Forget.");
+      const bytes = readFileSync(join(recoveryExports, names[0]));
+      const envelope = JSON.parse(bytes.toString("utf8"));
+      if (envelope.format !== "aux-recovery" || envelope.version !== 1 || envelope.kdf !== "scrypt-N32768-r8-p1" ||
+        !envelope.ciphertext?.length) throw new Error("The recovery package envelope is not the Aux format.");
+      exported = { name: names[0], bytes };
+    }
     const packageNames = recoveryPackages();
     copyFileSync(join(recoveryExports, exported.name), historical);
     const packageSha = createHash("sha256").update(readFileSync(historical)).digest("hex");
@@ -4167,19 +4566,22 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     assert.equal(claimRestored(historicalPayload), true);
     record("historical recovery package was copied outside the profile", { sha256: packageSha, runId: memoryFixture.runId });
     const backupsBefore = new Set((await rpc("installation.listBackups")).map(item => item.name));
-    console.log("OPERATOR: In Task data backup, click Create backup…. If a native save dialog appears, finish it. Do not click Restore backup… yet. The harness waits for the new aux-runtime folder and does not call installation.createBackup.");
+    if (!clickLabel("Create backup…")) throw new Error("Create backup was not clickable");
     const preForgetBackup = await until("pre-Forget runtime backup", async () => {
       const listed = await rpc("installation.listBackups");
       const created = listed.filter(item => item.name.startsWith("aux-runtime-") && !backupsBefore.has(item.name));
       if (created.length > 1) throw new Error("Create one backup before Forget.");
       return created[0] ?? null;
-    }, 600_000);
+    }, 90_000);
     assert.ok(existsSync(join(preForgetBackup.path, "manifest.json")));
     assert.deepEqual(recoveryPackages(), packageNames);
     record("native Settings saved the runtime backup Forget must refuse", { name: preForgetBackup.name });
-    console.log(`OPERATOR: Open Settings → Memory and select Memory Fixture. Click Forget run ${memoryFixture.runId}. The confirmation focuses Keep memory. Click Forget permanently, not Keep memory and not Forget note.`);
+    await selectMemoryFixture();
+    if (!clickLabel(`Forget run ${memoryFixture.runId}`)) throw new Error("Forget run was not clickable");
+    await until("Forget confirmation", () => native("has-name", "Forget permanently") === "true", 20_000);
+    if (!clickLabel("Forget permanently")) throw new Error("Forget permanently was not clickable");
     await until("fresh managed backup issued after Forget", () =>
-      shows(freshBackup) && shows(outsideCopies) && hides(retryBackup), 600_000);
+      shows(freshBackup) && shows(outsideCopies) && hides(retryBackup), 60_000);
     assert.deepEqual(recoveryPackages(), packageNames);
     await until("managed recovery generation advanced after Forget", () => {
       const after = recoveryGeneration();
@@ -4193,27 +4595,30 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     await sigtermAux();
     spawnAux(sourceArgs, sourceEnv);
     await connectRuntime(runtimeFile);
-    console.log("OPERATOR: After restart, reopen Settings → Memory and select Memory Fixture.");
+    await selectMemoryFixture();
     await until("restarted Memory Fixture has no approved notes", () =>
-      onPage("chrome://aux/settings/memory") && shows("No approved notes yet.") && hides(memoryFixture.report), 600_000);
+      shows("No approved notes yet.") && hides(memoryFixture.report), 60_000);
     const remainingClaims = await rpc("memory.pipeline.claims", { workspaceId: memoryFixture.workspaceId });
     assert.equal(remainingClaims.some(claim => claim.text === memoryFixture.report), false);
     record("forgotten silver note stayed absent after restart", { runId: memoryFixture.runId });
-    console.log(`OPERATOR: Open Settings → General → Task data backup. Open the local backups disclosure. The pre-Forget row must show the refused sentence, and Restore this backup stays disabled. Click Restore backup… and choose ${preForgetBackup.path}. Do not choose a newer folder.`);
+    await openSettingsCategory("General", "chrome://aux/settings/general");
+    if (!clickLabel("Manage task data backup")) throw new Error("Manage task data backup was not clickable");
+    clickLabel("local backup");
     await until("pre-Forget backup row refuses restore", () => {
       try { return shows(staleRow) && native("has-disabled-button", "Restore this backup") === "true"; }
       catch { return false; }
-    }, 600_000);
+    }, 30_000);
     assert.equal((await rpc("installation.listBackups")).find(item => item.name === preForgetBackup.name)?.restorable, false);
+    if (!clickLabel("Restore backup…")) throw new Error("Restore backup was not clickable");
     await until("choosing the pre-Forget folder is refused", () =>
-      shows(staleRestore) && !existsSync(sourcePending), 600_000);
+      shows(staleRestore) && !existsSync(sourcePending), 25_000);
     assert.equal(existsSync(sourcePending), false);
     record("pre-Forget backup restore was refused and wrote no pending restore", { name: preForgetBackup.name });
     await sigtermAux();
     // Acceptance is valid only for profile/Default. StoreRecovery must not inherit the token.
     spawnAux(destinationArgs, destinationEnv);
     await connectRuntime(destinationRuntime);
-    console.log("OPERATOR: This is a different empty Chromium profile. If setup is open, click Finish later. Do not create a Space or chat, and do not stage recovery yet.");
+    await dismissWelcomeIfPresent();
     let sawEmpty = false;
     const emptyDeadline = Date.now() + 8_000;
     while (Date.now() < emptyDeadline) {
@@ -4235,7 +4640,17 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     assert.equal(createHash("sha256").update(readFileSync(historical)).digest("hex"), packageSha);
     assert.equal(claimRestored(readRecoveryPackage(historical, transferPassphrase)), true);
     assert.equal(existsSync(destinationPending), false);
-    console.log(`OPERATOR: Open Settings → General and click Manage task data backup. Click Choose package… and select ${historical}. Enter ${transferPassphrase} in Recovery phrase. Click Review package, then Stage reviewed recovery…. Do not quit between Review and Stage. The macOS prompt "Approve restoring an Aux recovery package" is outside Aux. Approve it yourself. The harness does not click that dialog and does not bypass device authentication. Do not restore again.`);
+    await openSettingsCategory("General", "chrome://aux/settings/general");
+    if (!clickLabel("Manage task data backup")) throw new Error("Manage task data backup was not clickable in the empty profile");
+    await until("destination recovery phrase", () => shows("Recovery phrase") && shows("Package path"), 20_000);
+    await typeInto("Package path", historical);
+    await typeInto("Recovery phrase", transferPassphrase);
+    if (!clickLabel("Review package")) throw new Error("Review package was not clickable in the empty profile");
+    await until("historical package reviewed", () =>
+      shows("Recovery package review") || shows("Package authenticated") || shows("The recovery phrase is wrong"), 30_000);
+    if (!clickLabel("Stage reviewed recovery…")) throw new Error("Stage reviewed recovery was not clickable");
+    const destinationRestoreSheet = await recoveryPrompt("Approve restoring an Aux recovery package", () => existsSync(destinationPending));
+    if (destinationRestoreSheet) throw new Error(`Blocking macOS authentication sheet: ${JSON.stringify(destinationRestoreSheet)}`);
     const pending = await until("historical recovery staged in the empty profile", () => {
       try {
         if (shows("Use a new, empty Profile for recovery.")) throw new Error("Use a new, empty Profile for recovery.");
@@ -4249,7 +4664,7 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
         if (String(error.message).includes("empty Profile") || String(error.message).includes("Recovery staged for")) throw error;
         return null;
       }
-    }, 600_000);
+    }, 30_000);
     assert.notEqual(pending.recoveryProfileId, "Default");
     record("historical package staged into the destination profile", {
       profileId: destinationProfile, sha256: packageSha, wrongPhraseAccepted: false });
@@ -4270,9 +4685,10 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
     assert.equal(restored.run.result?.report, memoryFixture.report);
     assert.ok((await rpc("workspaces.list", {})).some(item =>
       item.workspaceId === memoryFixture.workspaceId && item.name === "Memory Fixture"));
-    console.log("OPERATOR: Open Settings → Workspaces. Open Folder Space so Memory Fixture is visible.");
+    await openSettingsCategory("Workspaces", "chrome://aux/settings/workspaces");
+    clickLabel("Folder Space");
     await until("restored Memory Fixture Space is visible", () =>
-      onPage("chrome://aux/settings/workspaces") && shows("Folder Space") && shows("Memory Fixture"), 600_000);
+      shows("Folder Space") && shows("Memory Fixture"), 30_000);
     record("historical package restored the accepted silver note with the original phrase", {
       runId: memoryFixture.runId, phrase: transferPassphrase, sha256: packageSha,
       profileId: destinationProfile, wrongPhraseAccepted: false });
@@ -6554,6 +6970,153 @@ process.stdin.on("data", chunk => { pending += chunk; let boundary;
       native("control-value", "Grain") === "70" &&
       native("control-value", "teal") === "1", 300_000);
     record("the saved Space theme reopens with its color and grain", { color: "teal", grain: 70 });
+    report.passed = true;
+  } else if (accessVisualJourney) {
+    let reducedTransparency = false;
+    try {
+      reducedTransparency = execFileSync("defaults", ["read", "com.apple.universalaccess", "reduceTransparency"], { encoding: "utf8" }).trim() === "1";
+    } catch { reducedTransparency = false; }
+    await until("a visible Aux browser window", () => {
+      try { return JSON.parse(native("window")); } catch { return null; }
+    });
+    await dismissWelcomeIfPresent();
+    await rpc("settings.set", { tabLayout: "vertical" });
+    await delay(400);
+    if (native("has-name", "Show sidebar") === "true" && clickLabel("Show sidebar")) await delay(400);
+    const auxWindow = () => JSON.parse(native("window"));
+    const beforeTheme = capture(auxWindow().id, "sidebar-before-theme");
+    openSpaceMenu();
+    try {
+      await until("space menu", () => native("has-name", "New space") === "true", 8_000);
+    } catch (error) {
+      throw new Error(`${error instanceof Error ? error.message : error}; buttons ${visibleButtons().slice(0, 24).join(" | ")}`);
+    }
+    if (!clickRawLabel("New space")) throw new Error(`New space was not a line-sized control; buttons ${visibleButtons().slice(0, 24).join(" | ")}`);
+    await until("new Space editor", () => native("has-text", "New space") === "true" && native("has-name", "Grain") === "true", 15_000);
+    const nameField = frameNamed("Name");
+    if (nameField && nameField.height <= 80) native("click-at", String(nameField.x), String(nameField.y));
+    await delay(150);
+    console.log(`name focus ${focusedValue()}`);
+    native("type-text", "Visual Fixture");
+    if (!clickRawLabel("teal")) throw new Error("teal swatch was not clickable");
+    console.log(`teal value ${JSON.stringify(native("control-value", "teal"))}`);
+    const grainReading = () => native("control-value", "Grain");
+    const grainAt100 = value => value === "100" || value === "100%" || String(value).startsWith("100");
+    for (let step = 0; step < 4; step += 1) {
+      if (!clickRawLabel("Cycle grain")) throw new Error("Cycle grain was not clickable");
+      await delay(250);
+      console.log(`cycle grain click ${step + 1} ${JSON.stringify(grainReading())}`);
+    }
+    let grain = grainReading();
+    if (!grainAt100(grain)) {
+      const slider = frameNamed("Grain");
+      if (slider && slider.height <= 48 && slider.width >= 40) {
+        const x = slider.x + slider.width / 2 - 8;
+        native("click-at", String(x), String(slider.y));
+        console.log(`grain slider ${x},${slider.y} ${Math.round(slider.width)}x${Math.round(slider.height)}`);
+        await delay(300);
+        grain = grainReading();
+        console.log(`grain after slider ${JSON.stringify(grain)}`);
+      }
+    }
+    if (!grainAt100(grain)) throw new Error(`Grain stayed ${grain || "empty"} after cycle clicks`);
+    const editor = capture(auxWindow().id, "editor-teal-grain");
+    if (!clickRawLabel("Create")) throw new Error("Create space was not clickable");
+    await until("Visual Fixture saved", () => native("has-text", "New space") === "false" && native("has-name", "Visual Fixture") === "true", 30_000);
+    await delay(500);
+    const themed = capture(auxWindow().id, "sidebar-teal-grain");
+    const themeDelta = meanAbsDelta(beforeTheme, themed, { x0: 0.02, y0: 0.14, x1: 0.2, y1: 0.82 });
+    const beforeTint = capture(auxWindow().id, "toolbar-before-tint");
+    const page = await rpc("pages.open", { url: `${origin}/red`, activate: true });
+    await until("red page theme color", async () =>
+      (await rpc("pages.list")).some(item => item.pageId === page.pageId && item.themeColor === "#a33450" && !item.loading), 30_000);
+    await delay(600);
+    const tinted = capture(auxWindow().id, "toolbar-red-tint");
+    const tintDelta = meanAbsDelta(beforeTint, tinted, { x0: 0.34, y0: 0.008, x1: 0.78, y1: 0.042 });
+    child.kill("SIGTERM");
+    if (child.exitCode === null) await new Promise(resolveExit => child.once("exit", resolveExit));
+    child.stderr.destroy();
+    enableBatterySaverPref(profile);
+    child = spawn(binary, [`--user-data-dir=${profile}`, "--no-first-run", "--no-default-browser-check",
+      "--use-mock-keychain", "--password-store=basic"], {
+      cwd: disposable, env: { ...process.env, AUX_LOAD_DOTENV: "0" }, stdio: ["ignore", "ignore", "pipe"],
+    });
+    child.stderr.on("data", chunk => appendFileSync(startupLog, chunk));
+    await until("runtime after battery saver", async () => {
+      try {
+        const descriptor = JSON.parse(readFileSync(runtimeFile, "utf8"));
+        if (!Number.isInteger(descriptor.port) || !descriptor.token) return false;
+        rpcPort = descriptor.port;
+        rpcToken = descriptor.token;
+        const workspace = await rpc("workspace.get");
+        return !!workspace.sessions?.some(session => session.sessionId === "aux" && session.status === "connected");
+      } catch { return false; }
+    }, 60_000);
+    await until("window after battery saver", () => {
+      try { return JSON.parse(native("window")); } catch { return null; }
+    }, 30_000);
+    await dismissWelcomeIfPresent();
+    if (native("has-name", "Show sidebar") === "true" && clickLabel("Show sidebar")) await delay(400);
+    if (native("has-name", "Visual Fixture") !== "true") {
+      openSpaceMenu();
+      await delay(300);
+      if (!clickRawLabel("Visual Fixture")) {
+        throw new Error(`Visual Fixture was not in the relaunched space menu; buttons ${visibleButtons().slice(0, 24).join(" | ")}`);
+      }
+      await delay(400);
+    }
+    await until("Visual Fixture still open", () => native("has-name", "Visual Fixture") === "true", 15_000);
+    await delay(500);
+    const saver = capture(auxWindow().id, "sidebar-battery-saver");
+    const grainDelta = meanAbsDelta(themed, saver, { x0: 0.02, y0: 0.14, x1: 0.2, y1: 0.82 });
+    record("visual session measured theme, tint, and battery-saver grain", {
+      themeDelta, tintDelta, grainDelta, reducedTransparency, editorBytes: statSync(editor).size });
+    if (reducedTransparency)
+      throw new Error("macOS Reduce Transparency hides Space grain, so the grain overlay and battery-saver transition are not visible.");
+    if (themeDelta < 8) throw new Error(`Theme color did not change the sidebar capture (${themeDelta.toFixed(2)}).`);
+    if (tintDelta < 2) throw new Error(`Page tint did not change the toolbar capture (${tintDelta.toFixed(2)}).`);
+    if (grainDelta < 0.8) throw new Error(`Battery saver did not change the grain overlay (${grainDelta.toFixed(2)}).`);
+    report.passed = true;
+  } else if (memoryPasteUiJourney) {
+    if (rpcOnly) throw new Error("Pasted memory needs the native Settings window.");
+    const note = "The disposable paste fixture prefers teal notes.";
+    await openSettingsCategory("Memory", "chrome://aux/settings/memory");
+    const space = lineFrame("Memory Fixture", 360);
+    if (!space) throw new Error("Memory Fixture space button has no line-sized frame");
+    native("click-at", String(space.x), String(space.y));
+    console.log(`select Memory Fixture ${space.x},${space.y} ${space.width}x${space.height}`);
+    await delay(400);
+    if (!clickContained("Import pasted assistant notes")) throw new Error("Import pasted assistant notes was not a line-sized control");
+    await until("paste form", () => native("has-name", "Assistant notes") === "true", 15_000);
+    const destination = frameNamed("Choose a Space") ?? frameNamed("Destination Space");
+    if (!destination || destination.height > 80 || destination.width > 520) {
+      throw new Error(`Destination Space has no line-sized control${destination ? ` (${destination.width}x${destination.height})` : ""}`);
+    }
+    native("click-at", String(destination.x), String(destination.y));
+    await delay(250);
+    native("arrow-down");
+    await delay(200);
+    native("type-return");
+    const notes = frameNamed("Assistant notes");
+    if (!notes) throw new Error("Assistant notes has no frame");
+    native("click-at", String(notes.x), String(notes.y));
+    await delay(150);
+    native("type-text", note);
+    if (!clickLabel("Preview pasted notes")) throw new Error("Preview pasted notes was not clickable");
+    await until("pasted note preview", () => native("has-name", note) === "true", 20_000);
+    const preview = frameNamed(note);
+    if (!preview) throw new Error("Pasted note preview has no frame");
+    native("click-at", String(Math.max(preview.windowX + 8, preview.x - 18)), String(preview.y));
+    await delay(250);
+    if (native("has-name", "Enable Memory for Memory Fixture") === "true" && !clickContained("Enable Memory for Memory Fixture")) {
+      throw new Error("Enable Memory for Memory Fixture was not a line-sized control");
+    }
+    await until("one pasted note can be added", () => native("button-enabled", "Add 1 note to Memory review") === "true", 15_000);
+    if (!clickLabel("Add 1 note to Memory review")) throw new Error("Add pasted note was not clickable");
+    await until("pasted note awaits acceptance", () => native("has-name", "Accept as personal context") === "true", 20_000);
+    if (!clickLabel("Accept as personal context")) throw new Error("Accept as personal context was not clickable");
+    await until("pasted note accepted", () => native("has-name", "No approved notes yet.") === "false" && native("has-text", note) === "true", 30_000);
+    record("owner pasted, previewed, and accepted a disposable assistant note", { note });
     report.passed = true;
   } else if (linkPeekJourney) {
     await until("a visible Aux browser window", () => {
