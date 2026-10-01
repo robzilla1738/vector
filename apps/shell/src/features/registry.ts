@@ -5,6 +5,9 @@ import { featureStage } from "../use-feature";
 import type { useStore } from "../store";
 
 export type CommandContext = ReturnType<typeof useStore.getState>;
+export interface CommandInvocation {
+  payload?: { pageId: string } | { spaceId: string } | { target: "little" | "main" };
+}
 export interface ComposerPluginProps {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   value: string;
@@ -20,7 +23,7 @@ export interface FeatureMount {
   overlays?: readonly ComponentType[];
   composerPlugins?: readonly ComponentType<ComposerPluginProps>[];
   settingsSections?: readonly { category: string; component: ComponentType }[];
-  commands?: Partial<Record<ShellCommandId, (context: CommandContext) => unknown>>;
+  commands?: Partial<Record<ShellCommandId, (context: CommandContext, invocation: CommandInvocation) => unknown>>;
   /** Registry IDs only: bindings and remapping stay in the shared command contract. */
   shortcuts?: readonly ShellCommandId[];
 }
@@ -46,11 +49,10 @@ export function bootShellFeatures() {
   });
   return () => { for (const stop of cleanup.reverse()) stop(); };
 }
-export function runFeatureCommand(id: string, context: CommandContext): boolean {
+export function runFeatureCommand(id: string, context: CommandContext, invocation: CommandInvocation = {}): { handled: false } | { handled: true; result: unknown } {
   const mount = featureMounts.find(mount => enabled(mount) && Object.hasOwn(mount.commands ?? {}, id));
-  if (!mount) return false;
-  void mount.commands![id as ShellCommandId]!(context);
-  return true;
+  if (!mount) return { handled: false };
+  return { handled: true, result: mount.commands![id as ShellCommandId]!(context, invocation) };
 }
 export function FeatureSlots({ slot }: { slot: "sidebarItems" | "toolbarItems" | "overlays" }) {
   return featureMounts.filter(enabled).flatMap(mount => (mount[slot] ?? []).map((component, index) =>

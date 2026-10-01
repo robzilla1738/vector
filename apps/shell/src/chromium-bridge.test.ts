@@ -20,7 +20,7 @@ describe("Chromium Aux shell bridge", () => {
   it("sends rebound native window chords while reserving their original menu chords", async () => {
     const request = vi.fn(async () => true);
     const target = fakeWindow("chrome://aux/", {
-      host: "chromium-fork", windowId: "win-1", profileId: "profile-1", platform: "darwin", privateMode: false,
+      host: "chromium-fork", windowId: "win-1", profileId: "profile-1", platform: "darwin", privateMode: false, windowKind: "normal",
       request, subscribe: vi.fn(() => () => {}),
     });
     installChromiumBridge(target);
@@ -38,7 +38,7 @@ describe("Chromium Aux shell bridge", () => {
     const request = vi.fn(async () => ({ version: 1, featureStages: { spaces: "on", memory: "on" } }));
     const target = fakeWindow("chrome://aux/", {
       host: "chromium-fork", windowId: "win-1", profileId: "ordinary",
-      platform: "darwin", privateMode: false,
+      platform: "darwin", privateMode: false, windowKind: "normal",
       featureStages: { spaces: "preview", memory: "preview" },
       request, subscribe: vi.fn(() => () => {}),
     });
@@ -52,7 +52,7 @@ describe("Chromium Aux shell bridge", () => {
       windowId: "win-1",
       profileId: "profile-1",
       platform: "darwin",
-      privateMode: false,
+      privateMode: false, windowKind: "normal",
       featureStages: { extensions: "on" },
       request: vi.fn(async () => null),
       subscribe: vi.fn(() => () => {}),
@@ -74,7 +74,7 @@ describe("Chromium Aux shell bridge", () => {
       windowId: "win-1",
       profileId: "profile-1",
       platform: "darwin",
-      privateMode: false,
+      privateMode: false, windowKind: "normal",
       featureStages: { extensions: "on", searchEngines: "on" },
       request,
       subscribe,
@@ -110,7 +110,7 @@ describe("Chromium Aux shell bridge", () => {
       windowId: "win-1",
       profileId: "profile-1",
       platform: "darwin",
-      privateMode: false,
+      privateMode: false, windowKind: "normal",
       featureStages: { extensions: "on" },
       request,
       subscribe: vi.fn(() => () => {}),
@@ -145,7 +145,7 @@ describe("Chromium Aux shell bridge", () => {
       windowId: "win-1",
       profileId: "profile-1",
       platform: "darwin",
-      privateMode: false,
+      privateMode: false, windowKind: "normal",
       request,
       subscribe: vi.fn(() => () => {}),
     });
@@ -179,7 +179,7 @@ it("builds the move-tab destinations from the Profile catalog without hidden age
   }));
   const target = fakeWindow("chrome://aux/", {
     host: "chromium-fork", windowId: "current", profileId: "profile-1",
-    platform: "darwin", privateMode: false, request, subscribe: vi.fn(() => () => {}),
+    platform: "darwin", privateMode: false, windowKind: "normal", request, subscribe: vi.fn(() => () => {}),
   });
   installChromiumBridge(target);
   expect(await target.aux!.windows()).toEqual([
@@ -193,7 +193,7 @@ it("registers the shared native shortcut bindings and reserves disabled defaults
   const request = vi.fn(async () => true);
   const target = fakeWindow("chrome://aux/", {
     host: "chromium-fork", windowId: "current", profileId: "profile-1",
-    platform: "darwin", privateMode: false, request, subscribe: vi.fn(() => () => {}),
+    platform: "darwin", privateMode: false, windowKind: "normal", request, subscribe: vi.fn(() => () => {}),
   });
   installChromiumBridge(target);
   await target.aux!.setShortcutOverrides({
@@ -217,7 +217,7 @@ it("keeps the registry's first command when custom chords conflict", async () =>
   const request = vi.fn(async () => true);
   const target = fakeWindow("chrome://aux/", {
     host: "chromium-fork", windowId: "current", profileId: "profile-1",
-    platform: "darwin", privateMode: false, request, subscribe: vi.fn(() => () => {}),
+    platform: "darwin", privateMode: false, windowKind: "normal", request, subscribe: vi.fn(() => () => {}),
   });
   installChromiumBridge(target);
   await target.aux!.setShortcutOverrides({ sidebar: [{ key: "k", command: true }] });

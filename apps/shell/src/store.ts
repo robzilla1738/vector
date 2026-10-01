@@ -43,7 +43,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
       catch { /* Native tab patches can converge after the next window event. */ }
       return;
     }
-    if (!bridge.privateMode && !bridge.quickAskMode && featureStage("spaces") === "on" && !organizationHydrated) {
+    if (!bridge.privateMode && bridge.windowKind === "normal" && featureStage("spaces") === "on" && !organizationHydrated) {
       try {
         const layout = await loadOrganizationLayout();
         if (!organizationHydrated) { set({ layout, tidyUndo: layout.tidyUndo ?? null }); organizationHydrated = true; }
@@ -60,7 +60,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
         call("downloads.list").catch(() => [] as Download[]),
         call("programs.list").catch(() => [] as SavedProgram[]),
       ]);
-      if (!bridge.privateMode && !bridge.quickAskMode && featureStage("spaces") === "on") {
+      if (!bridge.privateMode && bridge.windowKind === "normal" && featureStage("spaces") === "on") {
         const layout = get().layout;
         const legacySpaces = layout.spaces.filter(space => !space.workspaceId);
         const spaces = await call("spaces.import", { spaces: legacySpaces.map(space => ({
@@ -102,7 +102,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
         return { ...snapshot, pendingRestoreIds, activePageId, splitPageId: splitForPage(layout, ws.pages, activePageId), restoringTabs: !!ws.restoringTabs, bookmarks, settings, downloads, programs, connected: true, layout, tidyUndo: layout.tidyUndo ?? null };
       });
       lastRefreshError = "";
-      if (!bridge.privateMode && !bridge.quickAskMode) setTimeout(() => {
+      if (!bridge.privateMode && bridge.windowKind === "normal") setTimeout(() => {
         void bridge.tabsSnapshot().then(async catalog => {
           get().syncTabsSnapshot(catalog);
           const layout = get().layout;
@@ -152,7 +152,7 @@ export const useStore = create<Workspace>((set, get, api) => ({
   },
 }));
 
-if (!bridge.privateMode && !bridge.quickAskMode) bridge.onOrganizationChanged(() => {
+if (!bridge.privateMode && bridge.windowKind === "normal") bridge.onOrganizationChanged(() => {
   if (!organizationHydrated) return;
   const before = useStore.getState().layout;
   void reloadOrganizationLayout().then(layout => {

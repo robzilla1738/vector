@@ -1,3 +1,4 @@
+import { runCommand } from "../commands";
 import { SearchResultRow } from "./SearchResultRow";
 import {
   lazy,
@@ -495,7 +496,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           break;
         case "command":
           useStore.setState({ paletteSeed: `/${i.query}` });
-          setOverlay("palette");
+          runCommand("palette");
           break;
         default:
           break;
@@ -1003,7 +1004,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
             title={withShortcut("Command palette", key("palette"))}
             aria-label="Open command palette"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setOverlay("palette")}
+            data-command-id="palette" onClick={() => runCommand("palette")}
           >
             {key("palette")}
           </button>

@@ -1,0 +1,166 @@
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index b6a602f..041ab23 100644
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -1474,6 +1474,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+   registry->RegisterDictionaryPref(aux::kArchivedProfilesPref);
+   registry->RegisterBooleanPref(aux::kQuickAskShortcutEnabledPref, false);
++  registry->RegisterDictionaryPref(aux::kQuickAskShortcutBindingsPref);
+ #endif
+   // Call outs to individual subsystems that register Local State (browser-wide)
+   // prefs en masse. See RegisterProfilePrefs for per-profile prefs. Please
+diff --git a/chrome/browser/ui/aux/profile_prefs.h b/chrome/browser/ui/aux/profile_prefs.h
+index 016acd4..f787f9c 100644
+--- a/chrome/browser/ui/aux/profile_prefs.h
++++ b/chrome/browser/ui/aux/profile_prefs.h
+@@ -8,6 +8,7 @@
+ namespace aux {
+ inline constexpr char kArchivedProfilesPref[] = "aux.archived_profiles";
+ inline constexpr char kAutofillProfileGuidPref[] = "aux.autofill_profile_guid";
++inline constexpr char kQuickAskShortcutBindingsPref[] = "aux.quick_ask_shortcut_bindings";
+ inline constexpr char kQuickAskShortcutEnabledPref[] = "aux.quick_ask_shortcut_enabled";
+ inline constexpr char kKeepRuntimeInBackgroundPref[] = "aux.keep_runtime_in_background";
+ }  // namespace aux
+diff --git a/chrome/browser/ui/aux/quick_ask_controller.cc b/chrome/browser/ui/aux/quick_ask_controller.cc
+index d343f96..2c30085 100644
+--- a/chrome/browser/ui/aux/quick_ask_controller.cc
++++ b/chrome/browser/ui/aux/quick_ask_controller.cc
+@@ -5,10 +5,15 @@
+ #include "chrome/browser/ui/aux/quick_ask_controller.h"
+ 
+ #include <algorithm>
++#include <optional>
++#include "base/scoped_observation.h"
++#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
++#include "components/prefs/scoped_user_pref_update.h"
+ 
+ #include "chrome/browser/browser_process.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/aux/methods/shortcuts_methods.h"
+ #include "chrome/browser/ui/browser_window/public/browser_collection.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+@@ -28,9 +33,27 @@
+ namespace aux {
+ namespace {
+ 
+-class QuickAskController : public ui::GlobalAcceleratorListener::Observer {
++class QuickAskController : public ui::GlobalAcceleratorListener::Observer,
++                           public BrowserCollectionObserver {
+  public:
+-  QuickAskController() { UpdateRegistration(); }
++  QuickAskController() {
++    if (auto* browsers = GlobalBrowserCollection::GetInstance()) observation_.Observe(browsers);
++    UpdateRegistration();
++  }
++  void OnBrowserActivated(BrowserWindowInterface* browser) override { UpdateRegistration(); }
++  void SetBindings(Profile* profile, const std::vector<ui::Accelerator>& bindings) {
++    if (!profile || profile->IsOffTheRecord() || !g_browser_process || !g_browser_process->local_state()) return;
++    base::ListValue rows;
++    for (const auto& binding : bindings) {
++      base::DictValue row;
++      row.Set("keyCode", static_cast<int>(binding.key_code()));
++      row.Set("modifiers", binding.modifiers());
++      rows.Append(std::move(row));
++    }
++    ScopedDictPrefUpdate prefs(g_browser_process->local_state(), kQuickAskShortcutBindingsPref);
++    prefs->Set(profile->GetPath().BaseName().AsUTF8Unsafe(), std::move(rows));
++    UpdateRegistration();
++  }
+   ~QuickAskController() override = default;
+ 
+   QuickAskShortcutStatus Status() const {
+@@ -160,13 +183,35 @@ class QuickAskController : public ui::GlobalAcceleratorListener::Observer {
+     registered_ = false;
+     PrefService* prefs = g_browser_process ? g_browser_process->local_state() : nullptr;
+     if (prefs && prefs->GetBoolean(kQuickAskShortcutEnabledPref)) {
+-      registered_ = listener->RegisterAccelerator(
+-          ui::Accelerator(ui::VKEY_SPACE,
+-                          ui::EF_COMMAND_DOWN | ui::EF_SHIFT_DOWN),
+-          this);
++      auto* browsers = GlobalBrowserCollection::GetInstance();
++      auto* active = browsers ? browsers->GetLastActiveBrowser() : nullptr;
++      if (!active || active->GetProfile()->IsOffTheRecord()) return;
++      const auto* bindings = prefs->GetDict(kQuickAskShortcutBindingsPref).FindList(
++          active->GetProfile()->GetPath().BaseName().AsUTF8Unsafe());
++      if (!bindings) return;
++      if (bindings->empty() || bindings->size() > 4) return;
++      std::vector<ui::Accelerator> accelerators;
++      for (const auto& value : *bindings) {
++        const auto* row = value.GetIfDict();
++        const auto code = row ? row->FindInt("keyCode") : std::nullopt;
++        const auto modifiers = row ? row->FindInt("modifiers") : std::nullopt;
++        if (!code || !modifiers) return;
++        const ui::Accelerator accelerator(static_cast<ui::KeyboardCode>(*code), *modifiers);
++        if (!IsAllowedAuxShortcut(accelerator)) return;
++        if (std::find(accelerators.begin(), accelerators.end(), accelerator) != accelerators.end()) return;
++        accelerators.push_back(accelerator);
++      }
++      for (const auto& accelerator : accelerators) {
++        if (!listener->RegisterAccelerator(accelerator, this)) {
++          listener->UnregisterAccelerators(this);
++          return;
++        }
++      }
++      registered_ = true;
+     }
+   }
+ 
++  base::ScopedObservation<GlobalBrowserCollection, BrowserCollectionObserver> observation_{this};
+   SessionID popup_id_ = SessionID::InvalidValue();
+   bool registered_ = false;
+ };
+@@ -179,6 +224,7 @@ QuickAskController& Controller() {
+ }  // namespace
+ 
+ void InitializeQuickAsk() { Controller(); }
++void SetQuickAskShortcutBindings(Profile* profile, const std::vector<ui::Accelerator>& bindings) { Controller().SetBindings(profile, bindings); }
+ QuickAskShortcutStatus GetQuickAskShortcutStatus() {
+   return Controller().Status();
+ }
+diff --git a/chrome/browser/ui/aux/quick_ask_controller.h b/chrome/browser/ui/aux/quick_ask_controller.h
+index 5272125..831a932 100644
+--- a/chrome/browser/ui/aux/quick_ask_controller.h
++++ b/chrome/browser/ui/aux/quick_ask_controller.h
+@@ -6,6 +6,8 @@
+ #define CHROME_BROWSER_UI_AUX_QUICK_ASK_CONTROLLER_H_
+ 
+ #include <string>
++#include <vector>
++#include "ui/base/accelerators/accelerator.h"
+ 
+ class BrowserWindowInterface;
+ class Profile;
+@@ -20,6 +22,7 @@ struct QuickAskShortcutStatus {
+ 
+ // Initializes the persisted shortcut after the first Aux window is created.
+ void InitializeQuickAsk();
++void SetQuickAskShortcutBindings(Profile* profile, const std::vector<ui::Accelerator>& bindings);
+ QuickAskShortcutStatus GetQuickAskShortcutStatus();
+ QuickAskShortcutStatus SetQuickAskShortcutEnabled(bool enabled);
+ bool IsQuickAskWindow(const BrowserWindowInterface* browser);
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+index 49dca7e..acc50a1 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
++++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+@@ -16,6 +16,7 @@
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/appearance_prefs.h"
+ #include "chrome/browser/ui/aux/methods/shortcuts_methods.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
+ #include "components/prefs/pref_service.h"
+ #endif
+ #include "chrome/browser/ui/browser_command_controller.h"
+@@ -182,6 +183,10 @@ bool WebUIBrowserWindow::SetAuxShortcuts(const base::ListValue& bindings) {
+     if (!aux::IsAllowedAuxShortcut(ui::Accelerator(code, modifiers))) return false;
+     next[ui::Accelerator(code, modifiers)] = {*row.FindString("commandId"), row.FindBool("focusShell").value_or(false)};
+   }
++  std::vector<ui::Accelerator> quick_ask;
++  for (const auto& [accelerator, command] : next)
++    if (command.first == "quick-ask") quick_ask.push_back(accelerator);
++  aux::SetQuickAskShortcutBindings(browser_->GetProfile(), quick_ask);
+   auto* focus = widget_->GetFocusManager();
+   focus->UnregisterAccelerators(this);
+   aux_shortcuts_ = std::move(next);

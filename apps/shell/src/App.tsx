@@ -1,8 +1,8 @@
-import { bootShellFeatures, FeatureSlots, runFeatureCommand } from "./features/registry";
+import { bootShellFeatures, FeatureSlots } from "./features/registry";
+import { dispatchShortcut as dispatchCommandShortcut, runCommand } from "./commands";
 import { runAnswerEntry } from "./run-answer-drafts";
 import { reconcileResultDrafts } from "./result-drafts";
 import { PaneBoundary } from "./components/PaneBoundary";
-import { closeSelectedTabs } from "./use-tab-selection";
 import { conversationEntryChange, applyConversationStorageChange } from "./conversation-drafts";
 import { browserSourcesEntryChange } from "./browser-context-sources";
 import { BrowsingMemoryWatch } from "./use-browsing-memory";
@@ -14,21 +14,18 @@ import { Conversation, AnswerPreview } from "./components/surfaces";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageTarget, Run } from "@aux/contracts";
-import { LIVE_RUN, useStore, call, toast, errToast, tabCommand, patchPageFields, type SidebarMode } from "./store";
+import { LIVE_RUN, useStore, call, toast, errToast, patchPageFields, type SidebarMode } from "./store";
 import { bridge, inNativeHost, inMock } from "./bridge";
-import { savePagePdf, printCurrentPage } from "./page-export";
 import { isHomeAddress, nativePageId } from "./chrome";
 import { useToolbarReveal } from "./toolbar-reveal";
-import { isTab, spaceThemeStyle, tabsInSpace } from "./workspace";
-import { createTabSwitcher, type TabSwitcherOrder } from "./tab-switcher";
-import { bookmarkWebUrl } from "./bookmark-files";
+import { spaceThemeStyle } from "./workspace";
+import { createTabSwitcher } from "./tab-switcher";
 import { Toolbar } from "./components/Toolbar";
 import { Stage } from "./components/Stage";
 import { I } from "./components/icons";
 import { Toasts } from "./components/Toasts";
 import { applyUiFontSize } from "./ui-font-size";
 import { installMemorySaver } from "./memory-saver";
-import { openLocalFile } from "./open-local-file";
 import { settingsRouteFromPath } from "./settings/routes";
 import { recoverPeekLink } from "./peek-link";
 import { deliverRunAttention, foregroundRunId, matchesRunAttentionActivation, RunNotificationGate, type OwnerNotice } from "./agent/run-notifications";
@@ -61,7 +58,6 @@ const Onboarding = deferSurface(() => import("./onboarding/OnboardingHost"), "Se
 const placementFields = (page?: PageTarget) => page && { pageId: page.pageId, url: page.url, backend: page.backend, viewStatus: page.viewStatus, navigationError: page.navigationError, showBlankDocument: page.showBlankDocument };
 
 type Shortcut = { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean; commandId?: string };
-type StoreState = ReturnType<typeof useStore.getState>;
 
 export function App() {
   const [runNotice, setRunNotice] = useState<OwnerNotice | null>(null);
@@ -146,7 +142,7 @@ export function App() {
     };
     window.addEventListener("storage",changed);return()=>window.removeEventListener("storage",changed);
   },[]);
-  const [quickAsk,setQuickAsk]=useState(bridge.quickAskMode);
+  const [quickAsk,setQuickAsk]=useState((bridge.windowKind === "quick-ask"));
   const [linkStatus,setLinkStatus]=useState<{pageId:string;text:string}|null>(null);
   const quickAskReady=useRef(false);
   const conversationComposer=useRef<HTMLTextAreaElement>(null);
@@ -163,13 +159,13 @@ export function App() {
     });
   };
   useEffect(()=>{
-    if(bridge.quickAskMode||bridge.privateMode)return;
+    if(bridge.windowKind !== "normal"||bridge.privateMode)return;
     let chatId:string|null=null;
     try{chatId=localStorage.getItem("aux.quick-ask.expand");if(chatId)localStorage.removeItem("aux.quick-ask.expand");}catch{}
     if(chatId&&/^[\w-]{1,128}$/.test(chatId))useStore.getState().openConversationDraft(chatId);
   },[]);
   useEffect(()=>{
-    if(!bridge.quickAskMode)return;
+    if(bridge.windowKind !== "quick-ask")return;
     void bridge.quickAsk("status").then(compact=>{
       setQuickAsk(compact);
       if(!compact)return;
@@ -258,7 +254,6 @@ export function App() {
   const spaceTheme = useStore((s) => (s.layout.spaces.find((space) => space.id === s.layout.activeSpaceId) ?? s.layout.spaces[0]!).theme);
   const vaultOffer = useStore((s) => !!s.vaultOffer);
   const setOverlay = useStore((s) => s.setOverlay);
-  const setMode = useStore((s) => s.setMode);
 
   useEffect(() => { applyUiFontSize(); }, []);
 
@@ -405,103 +400,7 @@ export function App() {
   }, []);
 
 
-  const findG = (st: StoreState, forward: boolean) => {
-    if (st.overlay === "reader") {
-      useStore.setState({readerFindOpen:true});
-      if (st.findText) void st.find(st.findText,true,forward).catch(errToast);
-      return;
-    }
-    if (!st.findText) return setOverlay("find");
-    if (st.overlay !== "find") setOverlay("find");
-    return void st.find(st.findText, true, forward).catch(errToast);
-  };
-
-  /** commandId → action. The registry owns chords; this owns behavior. */
-  const SHORTCUT_ACTIONS: Record<string, (st: StoreState) => unknown> = {
-    "new-tab": st => st.newTab(),
-    "open-file": () => openLocalFile().catch(errToast),
-    "reopen-closed-tab": st => st.reopenClosedTab(),
-    "close-window": () => bridge.closeWindow(),
-    "print": st => printCurrentPage(st.activePageId).catch(errToast),
-    "save-pdf": st => savePagePdf(st.activePageId).catch(errToast),
-    "find": st => {
-      if (st.overlay === "reader") useStore.setState({readerFindOpen:true}); else setOverlay("find");
-      void bridge.focusShell().then(() => { findInput.current?.focus(); findInput.current?.select(); }).catch(errToast);
-    },
-    "find-next": st => findG(st, true),
-    "find-previous": st => findG(st, false),
-    "reload": st => st.overlay === "settings" ? window.dispatchEvent(new Event("aux-settings-refresh")) : st.activePageId && tabCommand({ kind: "reload", pageId: st.activePageId }).catch(errToast),
-    "hard-reload": st => st.overlay === "settings" ? window.location.reload() : st.activePageId && bridge.hardReload(st.activePageId).catch(errToast),
-    "actual-size": st => st.activePageId && st.zoomPage(st.activePageId, { reset: true }).catch(errToast),
-    "zoom-in": st => st.activePageId && st.zoomPage(st.activePageId, { direction: "in" }).catch(errToast),
-    "zoom-out": st => st.activePageId && st.zoomPage(st.activePageId, { direction: "out" }).catch(errToast),
-    "reader": st => setOverlay(st.overlay === "reader" ? null : "reader"),
-    "sidebar": st => st.toggleSidebar(),
-    "overview": st => setMode(st.mode === "overview" ? "focus" : "overview"),
-    "devtools": st => st.activePageId && bridge.devTools(st.activePageId),
-    "inspect-element": st => st.activePageId && bridge.devTools(st.activePageId),
-    "view-source": st => {
-      const p = st.pages.find((x) => x.pageId === st.activePageId);
-      if (p?.url.startsWith("http")) void st.navigatePage(p.pageId, `view-source:${p.url}`).catch(errToast);
-    },
-    "back": st => st.overlay === "settings" ? window.history.back() : st.activePageId && tabCommand({ kind: "back", pageId: st.activePageId }).catch(errToast),
-    "forward": st => st.overlay === "settings" ? window.history.forward() : st.activePageId && tabCommand({ kind: "forward", pageId: st.activePageId }).catch(errToast),
-    "open-address": st => st.focusCommandBar(),
-    "palette": st => bridge.privateMode ? undefined : setOverlay(st.overlay === "palette" ? null : "palette"),
-    "settings": () => bridge.privateMode ? undefined : setOverlay("settings"),
-    "history": () => setOverlay("history"),
-    "downloads": () => setOverlay("downloads"),
-    "bookmark": st => {
-      const p = st.pages.find((x) => x.pageId === st.activePageId);
-      if (!p || !isTab(p) || !bookmarkWebUrl(p.url)) return;
-      void st.toggleBookmark(p.url, p.title).catch(errToast);
-    },
-    "bookmark-all": () => bookmarkAll(),
-    "agent-rail": st => bridge.privateMode ? undefined : st.toggleRail(),
-    "clear-history": () => setOverlay("clear-history"),
-    "tab-next": () => cycleTab(1),
-    "tab-previous": () => cycleTab(-1),
-    "close-tab": st => {
-      if (st.overlay) return setOverlay(null);
-      if (!st.activePageId) return void bridge.closeWindow();
-      if (st.mode === "focus") return void closeSelectedTabs().then(handled => { if (!handled && st.activePageId) return st.closeTab(st.activePageId); }).catch(errToast);
-      return void st.closeTab(st.activePageId);
-    },
-    ...Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`tab-${i + 1}`, (st: StoreState) => {
-      const tabs = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId);
-      const p = i === 8 ? tabs[tabs.length - 1] : tabs[i];
-      if (p) void st.activate(p.pageId).catch(errToast);
-    }])),
-  };
-
-  const dispatchShortcut = (s: Shortcut) => {
-    const st = useStore.getState();
-    // Menus and page interception resolve the command before sending; only
-    // raw chords (shell keydown) need matching here.
-    const id = s.commandId ?? matchShortcut(effectiveShortcuts(st.settings?.shortcutOverrides as ShortcutOverrides | undefined), {
-      key: s.key, meta: s.meta, ctrl: s.ctrl ?? false, shift: s.shift, alt: s.alt,
-    }, { platform: bridge.platform })?.id;
-    if (id && !runFeatureCommand(id, st)) void SHORTCUT_ACTIONS[id]?.(st);
-  };
-
-  const cycleTab = (dir: 1 | -1) => {
-    const st = useStore.getState();
-    const tabs = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId);
-    const next = tabSwitcher.current(tabs, st.activePageId, dir,
-      (st.settings.tabSwitcherOrder as TabSwitcherOrder | undefined) ?? "sidebar");
-    if (next) void st.activate(next).catch(errToast);
-  };
-
-  const bookmarkAll = () => {
-    const st = useStore.getState();
-    const bookmarks = [...new Map(st.pages.filter(page => isTab(page) && bookmarkWebUrl(page.url)).map(page => [page.url, { url: page.url, title: page.title.slice(0, 1000) }])).values()];
-    if (!bookmarks.length) return toast("No web tabs to bookmark");
-    void call("bookmarks.import", { bookmarks })
-      .then(result => toast(result.added ? `Bookmarked ${result.added} tab${result.added === 1 ? "" : "s"}` : "All tabs already bookmarked"))
-      .catch(errToast);
-  };
-
-
+  const dispatchShortcut = (shortcut: Shortcut) => dispatchCommandShortcut(shortcut, {findInput, tabSwitcher: tabSwitcher.current});
 
   // renderer-side keys (when the shell itself has focus)
   useEffect(() => {
@@ -560,7 +459,7 @@ export function App() {
         {horizontal ? <ChatSidebar /> : <Sidebar />}
         <div className={`main-col${nativeShowing ? " has-page" : ""}${mode === "conversation" ? " conversation-open" : ""}${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}>
           {!horizontal && <Toolbar />}
-          {horizontal && <button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} onClick={() => useStore.getState().toggleSidebar()}>{I.sidebarOpen}</button>}
+          {horizontal && <button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{I.sidebarOpen}</button>}
           <div className="main">
             <div className="stage-wrap">
               {overlay === "find" && <FindBar inputRef={findInput} returnFocusRef={conversationScroll} />}

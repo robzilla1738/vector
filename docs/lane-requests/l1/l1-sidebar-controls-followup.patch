@@ -1,0 +1,27 @@
+--- a/apps/shell/src/components/Sidebar.tsx
++++ b/apps/shell/src/components/Sidebar.tsx
+@@ -644,7 +644,7 @@
+
+   const full = (
+     <>
+-      <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} onClick={toggleSidebar}>{I.sidebarClose}</button></div>
++      <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} data-command-id="sidebar" onClick={()=>runCommand("sidebar")}>{I.sidebarClose}</button></div>
+       <FeatureSlots slot="sidebarItems" />
+       {pins.length > 0 && (
+         <div className="sb-pins" role="group" aria-label="Pinned sites">
+--- a/apps/shell/src/components/Toolbar.tsx
++++ b/apps/shell/src/components/Toolbar.tsx
+@@ -1,3 +1,4 @@
++import {runCommand} from "../commands";
+ import { FeatureSlots } from "../features/registry";
+ import { memo, useRef, type CSSProperties } from "react";
+ import { NavigationButtons } from "./NavigationButtons";
+@@ -41,7 +42,7 @@
+     <header className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
+       style={themeColor ? { "--page-toolbar-glass": `color-mix(in srgb, ${themeColor} 14%, var(--toolbar-glass))` } as CSSProperties : undefined}>
+       <div className="tb-left">
+-        {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} onClick={() => setSidebar(sidebar === "expanded" ? "hidden" : "expanded")}>{I.sidebarOpen}</button>}
++        {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} data-command-id="sidebar" onClick={()=>runCommand("sidebar")}>{I.sidebarOpen}</button>}
+         <div className="nav-btns">
+           <NavigationButtons page={page} settingsRoute={settingsRoute} />
+         </div>

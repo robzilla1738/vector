@@ -1,0 +1,123 @@
+--- a/apps/shell/src/App.tsx
++++ b/apps/shell/src/App.tsx
+@@ -1,4 +1,5 @@
+-import { bootShellFeatures, FeatureSlots, runFeatureCommand } from "./features/registry";
++import { bootShellFeatures, FeatureSlots } from "./features/registry";
++import { dispatchShortcut as dispatchCommandShortcut, runCommand } from "./commands";
+ import { runAnswerEntry } from "./run-answer-drafts";
+ import { reconcileResultDrafts } from "./result-drafts";
+ import { PaneBoundary } from "./components/PaneBoundary";
+@@ -405,103 +406,7 @@
+   }, []);
+
+
+-  const findG = (st: StoreState, forward: boolean) => {
+-    if (st.overlay === "reader") {
+-      useStore.setState({readerFindOpen:true});
+-      if (st.findText) void st.find(st.findText,true,forward).catch(errToast);
+-      return;
+-    }
+-    if (!st.findText) return setOverlay("find");
+-    if (st.overlay !== "find") setOverlay("find");
+-    return void st.find(st.findText, true, forward).catch(errToast);
+-  };
+-
+-  /** commandId → action. The registry owns chords; this owns behavior. */
+-  const SHORTCUT_ACTIONS: Record<string, (st: StoreState) => unknown> = {
+-    "new-tab": st => st.newTab(),
+-    "open-file": () => openLocalFile().catch(errToast),
+-    "reopen-closed-tab": st => st.reopenClosedTab(),
+-    "close-window": () => bridge.closeWindow(),
+-    "print": st => printCurrentPage(st.activePageId).catch(errToast),
+-    "save-pdf": st => savePagePdf(st.activePageId).catch(errToast),
+-    "find": st => {
+-      if (st.overlay === "reader") useStore.setState({readerFindOpen:true}); else setOverlay("find");
+-      void bridge.focusShell().then(() => { findInput.current?.focus(); findInput.current?.select(); }).catch(errToast);
+-    },
+-    "find-next": st => findG(st, true),
+-    "find-previous": st => findG(st, false),
+-    "reload": st => st.overlay === "settings" ? window.dispatchEvent(new Event("aux-settings-refresh")) : st.activePageId && tabCommand({ kind: "reload", pageId: st.activePageId }).catch(errToast),
+-    "hard-reload": st => st.overlay === "settings" ? window.location.reload() : st.activePageId && bridge.hardReload(st.activePageId).catch(errToast),
+-    "actual-size": st => st.activePageId && st.zoomPage(st.activePageId, { reset: true }).catch(errToast),
+-    "zoom-in": st => st.activePageId && st.zoomPage(st.activePageId, { direction: "in" }).catch(errToast),
+-    "zoom-out": st => st.activePageId && st.zoomPage(st.activePageId, { direction: "out" }).catch(errToast),
+-    "reader": st => setOverlay(st.overlay === "reader" ? null : "reader"),
+-    "sidebar": st => st.toggleSidebar(),
+-    "overview": st => setMode(st.mode === "overview" ? "focus" : "overview"),
+-    "devtools": st => st.activePageId && bridge.devTools(st.activePageId),
+-    "inspect-element": st => st.activePageId && bridge.devTools(st.activePageId),
+-    "view-source": st => {
+-      const p = st.pages.find((x) => x.pageId === st.activePageId);
+-      if (p?.url.startsWith("http")) void st.navigatePage(p.pageId, `view-source:${p.url}`).catch(errToast);
+-    },
+-    "back": st => st.overlay === "settings" ? window.history.back() : st.activePageId && tabCommand({ kind: "back", pageId: st.activePageId }).catch(errToast),
+-    "forward": st => st.overlay === "settings" ? window.history.forward() : st.activePageId && tabCommand({ kind: "forward", pageId: st.activePageId }).catch(errToast),
+-    "open-address": st => st.focusCommandBar(),
+-    "palette": st => bridge.privateMode ? undefined : setOverlay(st.overlay === "palette" ? null : "palette"),
+-    "settings": () => bridge.privateMode ? undefined : setOverlay("settings"),
+-    "history": () => setOverlay("history"),
+-    "downloads": () => setOverlay("downloads"),
+-    "bookmark": st => {
+-      const p = st.pages.find((x) => x.pageId === st.activePageId);
+-      if (!p || !isTab(p) || !bookmarkWebUrl(p.url)) return;
+-      void st.toggleBookmark(p.url, p.title).catch(errToast);
+-    },
+-    "bookmark-all": () => bookmarkAll(),
+-    "agent-rail": st => bridge.privateMode ? undefined : st.toggleRail(),
+-    "clear-history": () => setOverlay("clear-history"),
+-    "tab-next": () => cycleTab(1),
+-    "tab-previous": () => cycleTab(-1),
+-    "close-tab": st => {
+-      if (st.overlay) return setOverlay(null);
+-      if (!st.activePageId) return void bridge.closeWindow();
+-      if (st.mode === "focus") return void closeSelectedTabs().then(handled => { if (!handled && st.activePageId) return st.closeTab(st.activePageId); }).catch(errToast);
+-      return void st.closeTab(st.activePageId);
+-    },
+-    ...Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`tab-${i + 1}`, (st: StoreState) => {
+-      const tabs = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId);
+-      const p = i === 8 ? tabs[tabs.length - 1] : tabs[i];
+-      if (p) void st.activate(p.pageId).catch(errToast);
+-    }])),
+-  };
+-
+-  const dispatchShortcut = (s: Shortcut) => {
+-    const st = useStore.getState();
+-    // Menus and page interception resolve the command before sending; only
+-    // raw chords (shell keydown) need matching here.
+-    const id = s.commandId ?? matchShortcut(effectiveShortcuts(st.settings?.shortcutOverrides as ShortcutOverrides | undefined), {
+-      key: s.key, meta: s.meta, ctrl: s.ctrl ?? false, shift: s.shift, alt: s.alt,
+-    }, { platform: bridge.platform })?.id;
+-    if (id && !runFeatureCommand(id, st)) void SHORTCUT_ACTIONS[id]?.(st);
+-  };
+-
+-  const cycleTab = (dir: 1 | -1) => {
+-    const st = useStore.getState();
+-    const tabs = tabsInSpace(st.layout, st.pages, st.layout.activeSpaceId);
+-    const next = tabSwitcher.current(tabs, st.activePageId, dir,
+-      (st.settings.tabSwitcherOrder as TabSwitcherOrder | undefined) ?? "sidebar");
+-    if (next) void st.activate(next).catch(errToast);
+-  };
+-
+-  const bookmarkAll = () => {
+-    const st = useStore.getState();
+-    const bookmarks = [...new Map(st.pages.filter(page => isTab(page) && bookmarkWebUrl(page.url)).map(page => [page.url, { url: page.url, title: page.title.slice(0, 1000) }])).values()];
+-    if (!bookmarks.length) return toast("No web tabs to bookmark");
+-    void call("bookmarks.import", { bookmarks })
+-      .then(result => toast(result.added ? `Bookmarked ${result.added} tab${result.added === 1 ? "" : "s"}` : "All tabs already bookmarked"))
+-      .catch(errToast);
+-  };
+-
+-
++  const dispatchShortcut = (shortcut: Shortcut) => dispatchCommandShortcut(shortcut, {findInput, tabSwitcher: tabSwitcher.current});
+
+   // renderer-side keys (when the shell itself has focus)
+   useEffect(() => {
+@@ -560,7 +465,7 @@
+         {horizontal ? <ChatSidebar /> : <Sidebar />}
+         <div className={`main-col${nativeShowing ? " has-page" : ""}${mode === "conversation" ? " conversation-open" : ""}${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}>
+           {!horizontal && <Toolbar />}
+-          {horizontal && <button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} onClick={() => useStore.getState().toggleSidebar()}>{I.sidebarOpen}</button>}
++          {horizontal && <button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{I.sidebarOpen}</button>}
+           <div className="main">
+             <div className="stage-wrap">
+               {overlay === "find" && <FindBar inputRef={findInput} returnFocusRef={conversationScroll} />}

@@ -1,3 +1,4 @@
+import { runCommand } from "../commands";
 import "./Overview.css";
 import { TabCardCaption } from "./TabCardCaption";
 import { duplicateTabs, protectedDuplicateIds } from "../duplicate-tabs";
@@ -261,7 +262,7 @@ export function Overview() {
     <div className="ov-head">
       <div><h2>Your tabs</h2><p className="hint">{visible.length} {visible.length === 1 ? "tab" : "tabs"}{selection.length ? ` · ${selection.length} selected` : " · Everything in its place"}</p></div>
       <span className="sp" />
-      <button className="btn sm" disabled={busy} onClick={() => void useStore.getState().newTab()}>{I.plusSm} New tab</button>
+      <button className="btn sm" disabled={busy} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{I.plusSm} New tab</button>
       <button className="btn sm ghost" disabled={busy} onClick={() => useStore.getState().setMode("focus")}>Done</button>
     </div>
     <div className="ov-tools">

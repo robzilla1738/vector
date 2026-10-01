@@ -1,3 +1,4 @@
+import { runCommand } from "../commands";
 import { memo, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store";
@@ -136,7 +137,7 @@ export function ResultsTable() {
             <h2>No extracted records</h2>
             <p>Collect open tabs into a set, or run a page set. Each row stays tied to its source page.</p>
             <div className="empty-actions">
-              <button className="btn primary" onClick={() => useStore.getState().setOverlay("palette")}>Collect tabs…</button>
+              <button className="btn primary" data-command-id="palette" onClick={() => runCommand("palette")}>Collect tabs…</button>
             </div>
           </div>
         </div>

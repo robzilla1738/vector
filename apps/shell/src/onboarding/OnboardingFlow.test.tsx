@@ -13,7 +13,7 @@ const openPage = vi.hoisted(() => vi.fn());
 const activate = vi.hoisted(() => vi.fn());
 const native = vi.hoisted(() => ({
   privateMode: false,
-  quickAskMode: false,
+  windowKind: "normal",
   windowId: "main",
   defaultBrowser: vi.fn(async () => ({ isDefault: false })),
   setDefaultBrowser: vi.fn(async () => ({ isDefault: true })),
@@ -88,7 +88,7 @@ beforeEach(() => {
   openConversation.mockReset();
   openPage.mockReset();
   native.privateMode = false;
-  native.quickAskMode = false;
+  native.windowKind = "normal";
   native.setDefaultBrowser.mockClear();
   native.runtimeRestoreStatus.mockRejectedValue(new Error("onboarding must read installation.restoreStatus"));
   workspace = {
@@ -394,7 +394,7 @@ it("lets disconnected setup close without mutating saved progress or reopening o
 });
 
 it("never reads setup or replays it in a Quick Ask utility window", async () => {
-  native.quickAskMode = true;
+  native.windowKind = "quick-ask";
   await act(async () => root.render(<OnboardingHost />));
   await act(async () => requestOnboardingReplay());
   expect(rpc).not.toHaveBeenCalled();

@@ -1,3 +1,4 @@
+import { runCommand } from "../commands";
 import "./Palette.css";
 import { SearchResultRow } from "./SearchResultRow";
 import { conversationDraftEntries } from "../conversation-drafts";
@@ -224,7 +225,7 @@ export function Palette() {
 
     const w: Cmd[] = [
       { id: "tabs", section: "window", t: "Search open tabs", aliases: ["tabs", "switch tab"], d: "Across Spaces · type @", icon: I.search, keep: true, run: () => setQ("@") },
-      { id: "new", section: "window", t: "New tab", k: key("new-tab"), icon: I.plusSm, run: () => newTab() },
+      { id: "new", section: "window", t: "New tab", k: key("new-tab"), icon: I.plusSm, run: () => runCommand("new-tab") },
       ...(lastClosed ? [{ id: "reopen", section: "window" as const, t: `Reopen closed tab — ${lastClosed.title || lastClosed.url}`, k: key("reopen-closed-tab"), icon: I.reopen, run: async () => { await useStore.getState().reopenClosedTab(); } }] : []),
       { id: "ov", section: "window", t: "Tab overview", k: key("overview"), icon: I.grid, run: async () => setMode("overview") },
       { id: "rail", section: "agent", t: railOpen ? "Hide agent rail" : "Show agent rail", k: key("agent-rail"), icon: I.agentSm, run: () => useStore.getState().toggleRail() },
@@ -242,7 +243,7 @@ export function Palette() {
       { id: "reader", section: "window", t: "Reader view", d: "Read this page with fewer distractions", k: key("reader"), icon: I.result, run: () => setOverlay("reader") },
       { id: "hard", section: "window", t: "Hard reload", k: key("hard-reload"), icon: I.reloadSm, run: async () => { if (activePageId) await bridge.hardReload(activePageId); } },
       { id: "find", section: "window", t: "Find in page", k: key("find"), icon: I.findSm, run: async () => setOverlay("find") },
-      { id: "sb", section: "window", t: "Toggle sidebar", k: key("sidebar"), icon: I.sidebarSm, run: async () => useStore.getState().toggleSidebar() },
+      { id: "sb", section: "window", t: "Toggle sidebar", k: key("sidebar"), icon: I.sidebarSm, run: async () => runCommand("sidebar") },
       { id: "hide-sb", section: "window", t: useStore.getState().sidebar === "hidden" ? "Show sidebar" : "Hide sidebar completely", icon: I.sidebarCloseSm, run: async () => useStore.getState().setSidebar(useStore.getState().sidebar === "hidden" ? "expanded" : "hidden") },
       { id: "bm", section: "window", t: activePage && bookmarks.some((b) => b.url === activePage.url) ? "Remove bookmark" : "Bookmark this page", k: key("bookmark"), icon: I.bookmarkSm, run: async () => {
         if (!activePage || !activePage.url.startsWith("http")) return;

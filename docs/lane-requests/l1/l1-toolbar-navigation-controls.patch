@@ -1,0 +1,73 @@
+--- a/apps/shell/src/components/Toolbar.tsx
++++ b/apps/shell/src/components/Toolbar.tsx
+@@ -16,9 +16,7 @@
+   const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
+   const settingsRoute = useStore((s) => s.overlay === "settings");
+   const mode = useStore((s) => s.mode);
+-  const setMode = useStore((s) => s.setMode);
+   const railOpen = useStore((s) => s.railOpen);
+-  const toggleRail = useStore((s) => s.toggleRail);
+   const returnControl = useStore((s) => s.returnControl);
+   const takingControl = useRef(false);
+   const takeControl = async (pageId: string) => {
+@@ -33,9 +31,7 @@
+
+   const bookmarkPending = useStore(state => !!page && !!state.bookmarkPending[page.url]);
+   const themeColor = web && !page?.navigationError && /^#[0-9a-f]{6}$/.test(page?.themeColor ?? "") ? page!.themeColor : undefined;
+-  const toggleBookmark = () => {
+-    if (page && web) void useStore.getState().toggleBookmark(page.url, page.title).catch(errToast);
+-  };
++
+
+   return (
+     <header className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
+@@ -54,7 +50,7 @@
+         <FeatureSlots slot="toolbarItems" />
+         <ExtensionActions />
+         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{I.bookmark}</button>}
+-        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => useStore.getState().setOverlay("settings")}>{I.gear}</button>}
++        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{I.gear}</button>}
+         {page?.controller === "human" && (
+           <button className="ctl-chip human" title="The agent is waiting while you use this page — hand it back when you're done" onClick={() => void returnControl(page.pageId)}>
+             {I.handSm}
+@@ -69,11 +65,11 @@
+             <span className="ctl-take">Take over</span>
+           </button>
+         )}
+-        <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title={withShortcut("Tab overview", key("overview"))} aria-label="Tab overview" aria-pressed={mode === "overview"} onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}</button>
+-        {!bridge.privateMode && <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={withShortcut(bookmarked ? "Remove bookmark" : "Bookmark this page", key("bookmark"))} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web || bookmarkPending} onClick={toggleBookmark}>
++        <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title={withShortcut("Tab overview", key("overview"))} aria-label="Tab overview" aria-pressed={mode === "overview"} data-command-id="overview" onClick={() => runCommand("overview")}>{I.grid}</button>
++        {!bridge.privateMode && <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={withShortcut(bookmarked ? "Remove bookmark" : "Bookmark this page", key("bookmark"))} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web || bookmarkPending} data-command-id="bookmark" onClick={() => runCommand("bookmark")}>
+           {bookmarked ? I.bookmarkFill : I.bookmark}
+         </button>}
+-        {!bridge.privateMode && <button className={`icon-btn ${railOpen ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpen} onClick={toggleRail}>
++        {!bridge.privateMode && <button className={`icon-btn ${railOpen ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpen} data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>
+           {I.agent}
+         </button>}
+       </div>
+--- a/apps/shell/src/components/NavigationButtons.tsx
++++ b/apps/shell/src/components/NavigationButtons.tsx
+@@ -1,3 +1,4 @@
++import {runCommand} from "../commands";
+ import { isHomeAddress } from "../chrome";
+ import type {PageTarget} from "@aux/contracts";
+ import {bridge,inNativeHost} from "../bridge";
+@@ -12,14 +13,12 @@
+     if(!settingsRoute&&page&&inNativeHost)void bridge.navigationMenu(page.pageId,direction).catch(errToast);
+   };
+   return <>
+-    <button className="icon-btn" title={withShortcut("Back",key("back"))+(inNativeHost&&!settingsRoute?" · Right-click for history":"")} onContextMenu={event=>{event.preventDefault();event.stopPropagation();history("back");}} onKeyDown={event=>{if(event.key==="ArrowDown"&&inNativeHost&&!settingsRoute){event.preventDefault();event.stopPropagation();history("back");}}} aria-label="Back" disabled={!settingsRoute&&!page?.canGoBack} onClick={()=>settingsRoute?window.history.back():page&&void tabCommand({kind:"back",pageId:page.pageId}).catch(errToast)}>{I.back}</button>
+-    <button className="icon-btn" title={withShortcut("Forward",key("forward"))+(inNativeHost&&!settingsRoute?" · Right-click for history":"")} onContextMenu={event=>{event.preventDefault();event.stopPropagation();history("forward");}} onKeyDown={event=>{if(event.key==="ArrowDown"&&inNativeHost&&!settingsRoute){event.preventDefault();event.stopPropagation();history("forward");}}} aria-label="Forward" disabled={!settingsRoute&&!page?.canGoForward} onClick={()=>settingsRoute?window.history.forward():page&&void tabCommand({kind:"forward",pageId:page.pageId}).catch(errToast)}>{I.fwd}</button>
++    <button className="icon-btn" title={withShortcut("Back",key("back"))+(inNativeHost&&!settingsRoute?" · Right-click for history":"")} onContextMenu={event=>{event.preventDefault();event.stopPropagation();history("back");}} onKeyDown={event=>{if(event.key==="ArrowDown"&&inNativeHost&&!settingsRoute){event.preventDefault();event.stopPropagation();history("back");}}} aria-label="Back" disabled={!settingsRoute&&!page?.canGoBack} data-command-id="back" onClick={()=>runCommand("back")}>{I.back}</button>
++    <button className="icon-btn" title={withShortcut("Forward",key("forward"))+(inNativeHost&&!settingsRoute?" · Right-click for history":"")} onContextMenu={event=>{event.preventDefault();event.stopPropagation();history("forward");}} onKeyDown={event=>{if(event.key==="ArrowDown"&&inNativeHost&&!settingsRoute){event.preventDefault();event.stopPropagation();history("forward");}}} aria-label="Forward" disabled={!settingsRoute&&!page?.canGoForward} data-command-id="forward" onClick={()=>runCommand("forward")}>{I.fwd}</button>
+     {page?.loading&&!settingsRoute
+       ?<button className="icon-btn" title="Stop loading" aria-label="Stop loading" onClick={()=>void tabCommand({kind:"stop",pageId:page.pageId}).catch(errToast)}>{I.stop}</button>
+-      :<button className="icon-btn" title={withShortcut(settingsRoute?"Refresh settings":"Reload",key("reload"))+(settingsRoute?"":" · Shift-click to reload without cache")} aria-label="Reload" disabled={!settingsRoute&&(!page||(!page.showBlankDocument&&isHomeAddress(page.url)))} onClick={event=>{
+-        if(settingsRoute){window.dispatchEvent(new Event("aux-settings-refresh"));return;}
+-        if(!page)return;
+-        void (event.shiftKey?bridge.hardReload(page.pageId):tabCommand({kind:"reload",pageId:page.pageId})).catch(errToast);
++      :<button className="icon-btn" title={withShortcut(settingsRoute?"Refresh settings":"Reload",key("reload"))+(settingsRoute?"":" · Shift-click to reload without cache")} aria-label="Reload" disabled={!settingsRoute&&(!page||(!page.showBlankDocument&&isHomeAddress(page.url)))} data-command-id="reload" onClick={event=>{
++        runCommand(!settingsRoute&&event.shiftKey?"hard-reload":"reload");
+       }}>{I.reload}</button>}
+   </>;
+ }

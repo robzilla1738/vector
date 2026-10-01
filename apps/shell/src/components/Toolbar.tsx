@@ -1,3 +1,4 @@
+import {runCommand} from "../commands";
 import { FeatureSlots } from "../features/registry";
 import { memo, useRef, type CSSProperties } from "react";
 import { NavigationButtons } from "./NavigationButtons";
@@ -15,10 +16,7 @@ export const Toolbar = memo(function Toolbar() {
   const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
   const settingsRoute = useStore((s) => s.overlay === "settings");
   const mode = useStore((s) => s.mode);
-  const setMode = useStore((s) => s.setMode);
   const railOpen = useStore((s) => s.railOpen);
-  const toggleRail = useStore((s) => s.toggleRail);
-  const setSidebar = useStore((s) => s.setSidebar);
   const returnControl = useStore((s) => s.returnControl);
   const takingControl = useRef(false);
   const takeControl = async (pageId: string) => {
@@ -33,15 +31,13 @@ export const Toolbar = memo(function Toolbar() {
 
   const bookmarkPending = useStore(state => !!page && !!state.bookmarkPending[page.url]);
   const themeColor = web && !page?.navigationError && /^#[0-9a-f]{6}$/.test(page?.themeColor ?? "") ? page!.themeColor : undefined;
-  const toggleBookmark = () => {
-    if (page && web) void useStore.getState().toggleBookmark(page.url, page.title).catch(errToast);
-  };
+
 
   return (
     <header className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
       style={themeColor ? { "--page-toolbar-glass": `color-mix(in srgb, ${themeColor} 14%, var(--toolbar-glass))` } as CSSProperties : undefined}>
       <div className="tb-left">
-        {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} onClick={() => setSidebar(sidebar === "expanded" ? "hidden" : "expanded")}>{I.sidebarOpen}</button>}
+        {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} data-command-id="sidebar" onClick={()=>runCommand("sidebar")}>{I.sidebarOpen}</button>}
         <div className="nav-btns">
           <NavigationButtons page={page} settingsRoute={settingsRoute} />
         </div>
@@ -54,7 +50,7 @@ export const Toolbar = memo(function Toolbar() {
         <FeatureSlots slot="toolbarItems" />
         <ExtensionActions />
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{I.bookmark}</button>}
-        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" onClick={() => useStore.getState().setOverlay("settings")}>{I.gear}</button>}
+        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{I.gear}</button>}
         {page?.controller === "human" && (
           <button className="ctl-chip human" title="The agent is waiting while you use this page — hand it back when you're done" onClick={() => void returnControl(page.pageId)}>
             {I.handSm}
@@ -69,11 +65,11 @@ export const Toolbar = memo(function Toolbar() {
             <span className="ctl-take">Take over</span>
           </button>
         )}
-        <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title={withShortcut("Tab overview", key("overview"))} aria-label="Tab overview" aria-pressed={mode === "overview"} onClick={() => setMode(mode === "overview" ? "focus" : "overview")}>{I.grid}</button>
-        {!bridge.privateMode && <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={withShortcut(bookmarked ? "Remove bookmark" : "Bookmark this page", key("bookmark"))} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web || bookmarkPending} onClick={toggleBookmark}>
+        <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title={withShortcut("Tab overview", key("overview"))} aria-label="Tab overview" aria-pressed={mode === "overview"} data-command-id="overview" onClick={() => runCommand("overview")}>{I.grid}</button>
+        {!bridge.privateMode && <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={withShortcut(bookmarked ? "Remove bookmark" : "Bookmark this page", key("bookmark"))} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web || bookmarkPending} data-command-id="bookmark" onClick={() => runCommand("bookmark")}>
           {bookmarked ? I.bookmarkFill : I.bookmark}
         </button>}
-        {!bridge.privateMode && <button className={`icon-btn ${railOpen ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpen} onClick={toggleRail}>
+        {!bridge.privateMode && <button className={`icon-btn ${railOpen ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpen} data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>
           {I.agent}
         </button>}
       </div>

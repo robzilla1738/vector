@@ -1,0 +1,10 @@
+--- a/apps/shell/src/chromium-bridge.ts
++++ b/apps/shell/src/chromium-bridge.ts
+@@ -53,7 +53,6 @@
+     },
+     setShortcutOverrides: async (overrides: ShortcutOverrides) => {
+       const rows = (saved?: ShortcutOverrides) => effectiveShortcuts(saved)
+-        .filter(command => command.intercept)
+         .flatMap(command => command.bindings
+           .filter(binding => !binding.platforms || binding.platforms.includes(port.platform))
+           .map(binding => ({

@@ -1,0 +1,11 @@
+--- a/packages/contracts/src/host-methods.ts
++++ b/packages/contracts/src/host-methods.ts
+@@ -144,7 +144,7 @@
+   releaseResultPreview: shell("activeHtml", z.tuple([str]), bool),
+   savePagePdf: shell("reports", z.tuple([str]), nullableString),
+   printPage: shell("core", z.tuple([str]), bool),
+-  devTools: shell("core", z.tuple([str]), bool),
++  devTools: shell("core", z.tuple([str, z.enum(["toggle", "inspect"]).optional()]), bool),
+   hardReload: shell("core", z.tuple([str]), bool),
+   closeWindow: shell("core", noArgs, bool),
+   openFile: shell("core", noArgs, nullableString),

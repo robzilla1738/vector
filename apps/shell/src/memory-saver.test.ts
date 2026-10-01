@@ -23,7 +23,7 @@ vi.mock("./bridge", () => ({
   inNativeHost: true,
   bridge: {
     privateMode: false,
-    quickAskMode: false,
+    windowKind: "normal",
     tabsUnsavedWork: harness.tabsUnsavedWork,
     tabSleep: harness.tabSleep,
   },
