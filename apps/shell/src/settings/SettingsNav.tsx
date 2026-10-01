@@ -11,6 +11,7 @@ export function SettingsNav({
   connectionTab,
   searching,
   memoryAvailable,
+  downloadNamingAvailable,
   profilesAvailable,
   linkRoutingAvailable,
   appleScriptAvailable,
@@ -30,6 +31,7 @@ export function SettingsNav({
   connectionTab: ConnectionTab;
   searching: boolean;
   memoryAvailable: boolean;
+  downloadNamingAvailable: boolean;
   profilesAvailable: boolean;
   linkRoutingAvailable: boolean;
   appleScriptAvailable: boolean;
@@ -84,6 +86,7 @@ export function SettingsNav({
         connectionTab={connectionTab}
         searching={searching}
         memoryAvailable={memoryAvailable}
+        downloadNamingAvailable={downloadNamingAvailable}
         profilesAvailable={profilesAvailable}
         linkRoutingAvailable={linkRoutingAvailable}
         appleScriptAvailable={appleScriptAvailable}

@@ -622,6 +622,8 @@ export function installMockBridge(q: URLSearchParams) {
     "bookmarks.list": async () => {
       return bookmarks;
     },
+    "downloads.renameReceipts": async () => { throw new Error("Download naming requires the Aux native browser."); },
+    "downloads.undoRename": async () => { throw new Error("Download naming requires the Aux native browser."); },
     "downloads.list": async () => {
       return downloads;
     },

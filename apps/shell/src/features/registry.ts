@@ -6,7 +6,7 @@ import type { useStore } from "../store";
 
 export type CommandContext = ReturnType<typeof useStore.getState>;
 export interface CommandInvocation {
-  payload?: { pageId: string; edge?: "left" | "right" | "top" | "bottom" }
+  payload?: { receiptId: string } | { downloadNaming: import("@aux/contracts").DownloadNamingSettings } | { pageId: string; edge?: "left" | "right" | "top" | "bottom" }
     | { pageId: string; divider: number; ratio: number; persist?: boolean } | { spaceId: string } | { target: "little" | "main" }
     | { spaceId: string; pinUrl: string; beforePinUrl?: string | null } | { folderId: string; itemId?: string } | { archiveId: string } | { batchId: string }
     | { folderId: string; live: import("@aux/contracts").LiveFolder }

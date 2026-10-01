@@ -14,7 +14,7 @@ import type { AuxFeature } from "./aux-features.js";
 import { WindowControlsVisibleSchema } from "./minimal-ui.js";
 import { PictureInPictureOperationSchema, PictureInPictureResultSchema } from "./pip.js";
 import { LinkRoutesSchema, LinkRouteSourceSchema, LinkRouteDestinationSchema } from "./link-routing.js";
-import { RenameDownloadSchema } from "./download-naming.js";
+import { RenameDownloadSchema, DownloadCompletedNativeSchema, DownloadRenameReceiptSchema } from "./download-naming.js";
 import { PowerActivitySchema } from "./night-shift.js";
 import { SpaceColorSchema } from "./spaces.js";
 import { AgentPageCreateSchema, AgentPageCreatedSchema, EgressContextRequestSchema, EgressContextSchema, EgressInstallSchema, EgressRevokeSchema } from "./egress.js";
@@ -339,6 +339,9 @@ export const HostMethods = {
   "native.bookmarksInvoke": runtime("core", z.object({ method: str, params: z.unknown() }).strict(), z.unknown()),
   "native.liveFolderSources": runtime("liveFolders", z.object({}).strict(), z.array(z.object({ id: str.min(1).max(200), live: LiveFolderSchema }).strict()).max(1000)),
   "native.capabilities": runtime("core", z.object({}).strict(), HostCapabilitiesSchema),
+  "native.downloadRenameReceipts": runtime("smartDownloadNames", z.object({}).strict(), z.array(DownloadRenameReceiptSchema).max(1000)),
+  "native.downloadNamingCandidate": runtime("smartDownloadNames", z.object({ downloadId: str.min(1).max(200) }).strict(), DownloadCompletedNativeSchema.nullable()),
+  "native.undoDownloadRename": runtime("smartDownloadNames", z.object({ receiptId: str.min(1).max(200) }).strict(), z.object({ status: z.enum(["restored", "conflict", "expired"]), filename: str.max(255).optional() }).strict()),
   "native.downloadPreviewText": runtime("smartDownloadNames", z.object({ downloadId: str }).strict(), z.object({ text: str.max(2048) }).strict()),
   "native.renameDownload": runtime("smartDownloadNames", RenameDownloadSchema,
     z.object({ renamed: bool, filename: str, receiptId: str.optional(), reason: str.optional() }).strict()),

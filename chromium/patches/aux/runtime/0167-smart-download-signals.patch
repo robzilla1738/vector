@@ -1,0 +1,67 @@
+diff --git a/chrome/browser/ui/aux/methods/downloads_ai_methods.cc b/chrome/browser/ui/aux/methods/downloads_ai_methods.cc
+index 245815e..1abdf4d 100644
+--- a/chrome/browser/ui/aux/methods/downloads_ai_methods.cc
++++ b/chrome/browser/ui/aux/methods/downloads_ai_methods.cc
+@@ -1,6 +1,8 @@
+ // Copyright 2026 The Aux Authors
+-// Use of this source code is governed by a BSD-style license that can be
+-// found in the LICENSE file.
+-
+-// Wave 0 reserves this compilation unit for the downloads_ai feature lane.
+-// It registers no handler; generated methods remain unavailable until implemented.
++#include "chrome/browser/ui/aux/download_naming.h"
++#include "chrome/browser/ui/aux/runtime_host.h"
++void AuxRuntimeHost::HandleDownloadNamingRequest(
++    const std::string& method, const base::DictValue& params,
++    base::OnceCallback<void(base::DictValue)> callback) {
++  aux::HandleDownloadNaming(profile_, method, params, std::move(callback));
++}
+diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
+index 0c8604f..529eb1d 100644
+--- a/chrome/browser/ui/aux/shell_events.cc
++++ b/chrome/browser/ui/aux/shell_events.cc
+@@ -1,3 +1,5 @@
++#include <set>
++#include "chrome/browser/ui/aux/download_naming.h"
+ // Copyright 2026 The Aux Authors
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+@@ -474,6 +476,7 @@ class DownloadSignals : public content::DownloadManager::Observer,
+   void OnDownloadUpdated(download::DownloadItem* item) override { Publish(item); }
+   void OnDownloadDestroyed(download::DownloadItem* item) override {
+     std::erase(observed_, item);
++    completed_.erase(item->GetGuid());
+   }
+   void OnManagerInitialized() override {
+     if (manager_observation_) {
+@@ -503,6 +506,7 @@ class DownloadSignals : public content::DownloadManager::Observer,
+         return;
+       }
+     }
++    if (item->GetState() == download::DownloadItem::COMPLETE) completed_.insert(item->GetGuid());
+     observed_.push_back(item);
+     item->AddObserver(this);
+     Publish(item);
+@@ -564,11 +568,22 @@ class DownloadSignals : public content::DownloadManager::Observer,
+                                  item->GetEndTime().InMillisecondsSinceUnixEpoch()));
+     }
+     EmitDict(profile_, "onDownload", std::move(payload));
++    if (item->GetState() == download::DownloadItem::COMPLETE &&
++        completed_.insert(item->GetGuid()).second &&
++        aux::EligibleDownloadName(profile_, item)) {
++      if (auto* runtime = AuxRuntimeHost::ForProfile(profile_)) {
++        if (auto json = base::WriteJson(aux::DownloadNamingMetadata(item))) {
++          runtime->CallInternal("downloads.completedNative", std::move(*json),
++              base::BindOnce([](AuxRuntimeHost::Response) {}));
++        }
++      }
++    }
+   }
+ 
+   raw_ptr<Profile> profile_;
+   raw_ptr<content::DownloadManager> manager_observation_ = nullptr;
+   std::vector<raw_ptr<download::DownloadItem>> observed_;
++  std::set<std::string> completed_;
+ };
+ 
+ class NotificationSignals final : public NotificationDisplayService::Observer,

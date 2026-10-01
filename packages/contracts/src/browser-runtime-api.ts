@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { LiveFolderItemsSchema } from "./live-folders.js";
-import { DownloadCompletedNativeSchema } from "./download-naming.js";
+import { DownloadCompletedNativeSchema, DownloadRenameReceiptSchema } from "./download-naming.js";
 import { DemonstrationSchema, RecorderStartSchema, RecorderControlSchema } from "./demonstration.js";
 import { NightShiftQueueSchema, NightShiftItemSchema } from "./night-shift.js";
 import { OriginPoliciesSnapshotSchema, SetOriginPoliciesSchema } from "./agent-site-permissions.js";
@@ -19,6 +19,7 @@ export const BrowserRuntimeMethodSchemas = {
   "github.connections.connect": z.object({ name: z.string().min(1).max(200), token: z.string().min(1).max(1000) }).strict(),
   "github.connections.revoke": z.object({ connectionId: Id }).strict(),
   "downloads.completedNative": DownloadCompletedNativeSchema,
+  "downloads.renameReceipts": z.object({}).strict(),
   "downloads.undoRename": z.object({ receiptId: Id }).strict(),
   "safety.originPolicies.list": z.object({}).strict(),
   "safety.originPolicies.set": SetOriginPoliciesSchema,
@@ -41,6 +42,7 @@ export const BrowserRuntimeResultSchemas = {
   "github.connections.connect": Connection,
   "github.connections.revoke": Ok,
   "downloads.completedNative": z.object({ status: z.enum(["skipped", "renamed", "failed"]), receiptId: Id.optional(), filename: z.string().max(255).optional(), reason: z.string().max(1000).optional() }).strict(),
+  "downloads.renameReceipts": z.array(DownloadRenameReceiptSchema).max(1000),
   "downloads.undoRename": z.object({ status: z.enum(["restored", "conflict", "expired"]), filename: z.string().max(255).optional() }).strict(),
   "safety.originPolicies.list": OriginPoliciesSnapshotSchema,
   "safety.originPolicies.set": OriginPoliciesSnapshotSchema,
@@ -63,6 +65,7 @@ export const BrowserRuntimeMethodPolicy = {
   "github.connections.connect": { feature: "liveFolders", auth: "aux-webui" },
   "github.connections.revoke": { feature: "liveFolders", auth: "aux-webui" },
   "downloads.completedNative": { feature: "smartDownloadNames", auth: "handler-guarded" },
+  "downloads.renameReceipts": { feature: "smartDownloadNames", auth: "aux-webui" },
   "downloads.undoRename": { feature: "smartDownloadNames", auth: "aux-webui" },
   "safety.originPolicies.list": { feature: "agentSitePermissions", auth: "aux-webui" },
   "safety.originPolicies.set": { feature: "agentSitePermissions", auth: "aux-webui" },

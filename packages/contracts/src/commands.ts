@@ -15,6 +15,9 @@ const B = (key: string, options: Omit<ShortcutBinding, "key"> = {}): ShortcutBin
 const Numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export const COMMANDS = [
+  { id: "show-download-settings", label: "Download naming settings", section: "Application", bindings: [], handler: "shell", feature: "smartDownloadNames", windows: ["normal"] },
+  { id: "set-download-naming", label: "Change download naming", section: "Application", bindings: [], handler: "shell", feature: "smartDownloadNames", palette: false, windows: ["normal"] },
+  { id: "undo-download-rename", label: "Undo download rename", section: "Application", bindings: [], handler: "shell", feature: "smartDownloadNames", palette: false, windows: ["normal"] },
   { id: "create-browser-profile", label: "Create Profile", section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "open-browser-profile", label: "Open Profile", section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "rename-browser-profile", label: "Rename Profile", section: "Application", handler: "shell", feature: "profiles", focusShell: true, palette: false, windows: ["normal"], bindings: [] },

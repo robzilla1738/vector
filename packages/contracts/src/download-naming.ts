@@ -11,7 +11,15 @@ export const DownloadCompletedNativeSchema = z.object({ id: z.string().min(1).ma
   mime: z.string().max(200), sourceHost: Host, tabTitle: z.string().max(500), referrerHost: Host.optional(), endedAt: z.number().int().nonnegative() }).strict();
 export const DownloadNameStemSchema = z.string().min(1).max(100).refine(value => value.trim() === value &&
   !value.startsWith(".") && [...value].every(character => character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127 &&
-    character !== "/" && character !== ":"), "Unsafe download name.");
+    character !== "/" && character !== ":" && character !== "\\" && !/[\p{Cc}\p{Cf}]/u.test(character)), "Unsafe download name.");
 export const RenameDownloadSchema = z.object({ downloadId: z.string().min(1).max(200), expectedName: z.string().min(1).max(255),
-  stem: DownloadNameStemSchema, mode: z.enum(["unclear", "all", "undo"]) }).strict();
+  stem: DownloadNameStemSchema, mode: z.enum(["unclear", "all"]) }).strict();
 export type DownloadNamingSettings = z.infer<typeof DownloadNamingSettingsSchema>;
+
+export const DownloadRenameReceiptSchema = z.object({ receiptId: z.string().min(1).max(200), downloadId: z.string().min(1).max(200), originalName: z.string().min(1).max(255), filename: z.string().min(1).max(255), renamedAt: z.number().int().nonnegative(), expiresAt: z.number().int().nonnegative() }).strict();
+export type DownloadRenameReceipt = z.infer<typeof DownloadRenameReceiptSchema>;
+
+export const DEFAULT_DOWNLOAD_NAMING: DownloadNamingSettings = {
+  mode: "unclear", useAi: true, excludedHosts: [], excludedExtensions: [], excludedMimeTypes: [],
+  template: "{date} {site} {title}",
+};

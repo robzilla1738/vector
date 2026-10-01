@@ -160,3 +160,7 @@ aux/runtime/0178-live-folder-sources.patch
 aux/runtime/0179-guarded-auto-archive.patch
 aux/runtime/0191-profile-organization-authority.patch
 aux/runtime/0192-browser-feature-wiring-and-authority.patch
+aux/runtime/0166-smart-download-naming.patch
+aux/runtime/0167-smart-download-signals.patch
+aux/runtime/0168-smart-download-tests.patch
+aux/runtime/0193-download-file-authority-and-wiring.patch

@@ -556,6 +556,11 @@ const RESULTS: Record<string, unknown> = {
     "methods": [],
     "qualifiedFeatures": []
   },
+  "native.downloadRenameReceipts": [],
+  "native.downloadNamingCandidate": null,
+  "native.undoDownloadRename": {
+    "status": "restored"
+  },
   "native.downloadPreviewText": {
     "text": "mock-text"
   },

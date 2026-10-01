@@ -16,6 +16,7 @@ it("shows implemented sections, gates unavailable ones, and routes connection se
         connectionTab="Models"
         searching={false}
         memoryAvailable={false}
+        downloadNamingAvailable={true}
         profilesAvailable={true}
         linkRoutingAvailable={true}
         appleScriptAvailable={false}
@@ -30,6 +31,8 @@ it("shows implemented sections, gates unavailable ones, and routes connection se
     ));
     expect(container.querySelector('button[data-category="Models"]')?.getAttribute("aria-current")).toBe("page");
     expect(container.querySelector('button[data-category="Memory"]')).toBeNull();
+    await act(async () => (container.querySelector('button[data-category="Downloads"]') as HTMLButtonElement).click());
+    expect(onOpenCategory).toHaveBeenCalledWith("Downloads", undefined);
     expect(container.querySelector('button[data-category="Profiles"]')).not.toBeNull();
     expect(container.querySelector('button[data-category="Extensions"]')).toBeNull();
     expect(container.querySelector('button[data-category="Link Routing"]')).not.toBeNull();

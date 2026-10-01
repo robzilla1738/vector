@@ -17,6 +17,8 @@ async function h_settings_get(ctx: MethodCtx): Promise<unknown> {
 async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
   const patch = { ...params };
+  if ((ctx.client.external || ctx.codeMode) && "downloadNaming" in patch)
+    throw new AuxError("permission_denied", "Download naming must be changed in Aux Settings.");
   if ("originPolicies" in patch)
     throw new AuxError("permission_denied", "Save agent site rules through the revision-checked Agent access controls.");
   if (ctx.client.external && ["originPolicies", "effectGrants", "safetyCeilings"].some(key => key in patch))

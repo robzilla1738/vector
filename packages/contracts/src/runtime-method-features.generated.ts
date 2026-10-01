@@ -9,6 +9,7 @@ export const RuntimeMethodFeatures = {
   "github.connections.connect": "liveFolders",
   "github.connections.revoke": "liveFolders",
   "downloads.completedNative": "smartDownloadNames",
+  "downloads.renameReceipts": "smartDownloadNames",
   "downloads.undoRename": "smartDownloadNames",
   "safety.originPolicies.list": "agentSitePermissions",
   "safety.originPolicies.set": "agentSitePermissions",

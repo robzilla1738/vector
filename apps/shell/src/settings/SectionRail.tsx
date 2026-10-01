@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { shellIconArchive, shellIconChats, shellIconClock, shellIconCode, shellIconExtension, shellIconFolder, shellIconGear, shellIconGlobe, shellIconLock, shellIconModel, shellIconResult, shellIconSun } from "../components/icons";
+import { shellIconDownloadSm, shellIconArchive, shellIconChats, shellIconClock, shellIconCode, shellIconExtension, shellIconFolder, shellIconGear, shellIconGlobe, shellIconLock, shellIconModel, shellIconResult, shellIconSun } from "../components/icons";
 import { settingsPath, type ConnectionTab } from "./routes";
 
 interface RailItem {
@@ -8,10 +8,11 @@ interface RailItem {
   group: "Personal" | "Agent" | "Features" | "Archived";
   icon: React.ReactNode;
   tab?: ConnectionTab;
-  gate?: "memory" | "permissions" | "extensions" | "skills" | "services" | "profiles" | "automations" | "linkRouting" | "appleScript";
+  gate?: "smartDownloadNames" | "memory" | "permissions" | "extensions" | "skills" | "services" | "profiles" | "automations" | "linkRouting" | "appleScript";
 }
 
 const items: readonly RailItem[] = [
+  { label: "Downloads", category: "Downloads", group: "Personal", icon: shellIconDownloadSm, gate: "smartDownloadNames" },
   { label: "General", category: "General", group: "Personal", icon: shellIconGear },
   { label: "Appearance", category: "Appearance", group: "Personal", icon: shellIconSun },
   { label: "Profiles", category: "Profiles", group: "Personal", icon: shellIconChats, gate: "profiles" },
@@ -39,6 +40,7 @@ export function SectionRail({
   connectionTab,
   searching,
   memoryAvailable,
+  downloadNamingAvailable,
   profilesAvailable,
   linkRoutingAvailable,
   appleScriptAvailable,
@@ -54,6 +56,7 @@ export function SectionRail({
   connectionTab: ConnectionTab;
   searching: boolean;
   memoryAvailable: boolean;
+  downloadNamingAvailable: boolean;
   profilesAvailable: boolean;
   linkRoutingAvailable: boolean;
   appleScriptAvailable: boolean;
@@ -68,6 +71,7 @@ export function SectionRail({
   const selectedPath = settingsPath(category, connectionTab);
   const available = items.filter(item =>
     (!item.gate || (item.gate === "memory" && memoryAvailable) ||
+      (item.gate === "smartDownloadNames" && downloadNamingAvailable) ||
       (item.gate === "profiles" && profilesAvailable) ||
       (item.gate === "linkRouting" && linkRoutingAvailable) ||
       (item.gate === "appleScript" && appleScriptAvailable) ||

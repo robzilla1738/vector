@@ -1,4 +1,6 @@
 import "./Downloads.css";
+import { useDownloadRenames } from "../features/download-naming/state";
+import { executeCommand } from "../commands";
 import { memo, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { Download } from "@aux/contracts";
@@ -33,6 +35,7 @@ const DownloadRow = memo(function DownloadRow({ id, busy, rowError, retried, act
   setOverlay: ReturnType<typeof useStore.getState>["setOverlay"];
 }) {
   const d = useStore(state => state.downloads.find(item => item.id === id));
+  const rename = useDownloadRenames(state => state.receipts.find(item => item.downloadId === id && item.expiresAt > Date.now()));
   const sourcePage = useStore(state => state.pages.find(page => page.pageId === d?.pageId
     && !page.ownedByRuntime && !["crashed", "detached"].includes(page.viewStatus ?? "")));
   if (!d) return null;
@@ -67,6 +70,7 @@ const DownloadRow = memo(function DownloadRow({ id, busy, rowError, retried, act
                 },true)}>Reveal</button>
               </>
             )}
+            {rename && <button className="btn sm ghost" data-command-id="undo-download-rename" disabled={busy !== null} title={`Restore ${rename.originalName}`} onClick={() => void action(d.id, () => executeCommand("undo-download-rename", { payload: { receiptId: rename.receiptId } }), true)}>Undo rename</button>}
             {canDismissDownload(d) && <button className="icon-btn sm" disabled={busy!==null} aria-label={`Remove ${d.filename} from downloads`} title="Remove from list; keep file" onClick={()=>void dismissDownloads([d.id])}>{shellIconClose}</button>}
             </div>
             {rowError&&<p className="dl-error" role="alert">{rowError}</p>}

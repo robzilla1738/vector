@@ -75,6 +75,9 @@ function bookmarkAll(st: StoreState) {
   );
 }
 export const COMMAND_ACTIONS = {
+  "undo-download-rename": (st, context) => featureCommand("undo-download-rename", st, context),
+  "set-download-naming": (st, context) => featureCommand("set-download-naming", st, context),
+  "show-download-settings": (st, context) => featureCommand("show-download-settings", st, context),
   "create-browser-profile": (st, context) => featureCommand("create-browser-profile", st, context),
   "open-browser-profile": (st, context) => featureCommand("open-browser-profile", st, context),
   "rename-browser-profile": (st, context) => featureCommand("rename-browser-profile", st, context),

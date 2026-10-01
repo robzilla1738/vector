@@ -1,3 +1,4 @@
+import { DownloadNamingSettingsSchema, DEFAULT_DOWNLOAD_NAMING } from "@aux/contracts";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
@@ -98,6 +99,7 @@ export interface Settings {
   sidebarBlur?: number;
   sidebarOpacity?: number;
   tabLayout?: "vertical" | "horizontal";
+  downloadNaming?: import("@aux/contracts").DownloadNamingSettings;
   memorySaverMinutes?: 0 | 1 | 15 | 30 | 60;
   tabSwitcherOrder?: "sidebar" | "recently-used";
   /** commandId → replacement bindings; null disables the command's shortcuts. */
@@ -263,6 +265,7 @@ export class SettingsService {
       sidebarBlur: Number(this.get("sidebarBlur") ?? 0),
       sidebarOpacity: Number(this.get("sidebarOpacity") ?? 90),
       tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "horizontal",
+      downloadNaming: DownloadNamingSettingsSchema.parse(this.get("downloadNaming") ?? DEFAULT_DOWNLOAD_NAMING),
       memorySaverMinutes: z.union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)])
         .catch(0).parse(this.get("memorySaverMinutes")),
       tabSwitcherOrder: (this.get("tabSwitcherOrder") as Settings["tabSwitcherOrder"]) ?? "sidebar",

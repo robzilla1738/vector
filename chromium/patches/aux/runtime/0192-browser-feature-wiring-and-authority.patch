@@ -14,7 +14,7 @@ index 6fada0a..16bb433 100644
  			<key>CFBundleURLName</key>
  			<string>Web site URL</string>
 diff --git a/chrome/browser/app_controller_mac.mm b/chrome/browser/app_controller_mac.mm
-index 064312c..ce8d265 100644
+index 064312c..e9d7461 100644
 --- a/chrome/browser/app_controller_mac.mm
 +++ b/chrome/browser/app_controller_mac.mm
 @@ -47,6 +47,7 @@
@@ -25,7 +25,15 @@ index 064312c..ce8d265 100644
  #endif
  #include "chrome/browser/browser_process_platform_part.h"
  #include "chrome/browser/command_updater_impl.h"
-@@ -2163,6 +2164,10 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
+@@ -80,6 +81,7 @@
+ #include "chrome/browser/task_manager/task_manager_metrics_recorder.h"
+ #include "chrome/browser/ui/browser_command_controller.h"
+ #include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/browser_tabstrip.h"
+ #include "chrome/browser/ui/browser_live_tab_context.h"
+ #include "chrome/browser/ui/browser_mac.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+@@ -2163,6 +2165,10 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
  }
  
  - (void)application:(NSApplication*)sender openURLs:(NSArray<NSURL*>*)urls {
@@ -36,7 +44,7 @@ index 064312c..ce8d265 100644
    StartupTabs startupTabs;
    for (NSURL* url in urls) {
      // Handle the google-chrome:// scheme (and chromium://).
-@@ -2184,6 +2189,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
+@@ -2184,6 +2190,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
      }
    }
  
@@ -44,7 +52,7 @@ index 064312c..ce8d265 100644
    if (!startupTabs.empty()) {
      [self openStartupTabsReplacingNTP:std::move(startupTabs)];
    }
-@@ -2757,6 +2763,20 @@ void OpenStartupTabsInBrowserWithProfile(const StartupTabs& requested_tabs,
+@@ -2757,6 +2764,20 @@ void OpenStartupTabsInBrowserWithProfile(const StartupTabs& requested_tabs,
    // window, not in PWA/app windows which cannot accept new tabs.
    BrowserWindowInterface* browser =
        ProfileBrowserCollection::GetForProfile(profile)->FindTabbedBrowser();
@@ -66,7 +74,7 @@ index 064312c..ce8d265 100644
    if (!profile->IsOffTheRecord() && g_browser_process->local_state()->GetString(aux::kExternalLinkTargetPref) == "little" &&
        std::ranges::any_of(tabs, [](const StartupTab& tab) { return tab.is_untrusted_launch && tab.url.SchemeIsHTTPOrHTTPS(); })) {
 diff --git a/chrome/browser/extensions/api/tabs/tabs_api.cc b/chrome/browser/extensions/api/tabs/tabs_api.cc
-index d225b39..9be6ad9 100644
+index d225b39..4b4a0c5 100644
 --- a/chrome/browser/extensions/api/tabs/tabs_api.cc
 +++ b/chrome/browser/extensions/api/tabs/tabs_api.cc
 @@ -3,6 +3,10 @@
@@ -85,7 +93,7 @@ index d225b39..9be6ad9 100644
    }
  
 +#if BUILDFLAG(ENABLE_AUX_SHELL)
-+  if (!aux::PlaceExtensionTab(browser, new_contents, opener_tab, options.active)) {
++  if (!aux::PlaceExtensionTab(browser, new_contents, opener_tab, options.active.value_or(true))) {
 +    auto* list = TabListInterface::From(&browser);
 +    if (auto* tab = ::tabs::TabInterface::GetFromContents(new_contents); list && tab) {
 +      list->CloseTab(tab->GetHandle());
@@ -181,6 +189,32 @@ index 98f3c45..d9f00dc 100644
    if (enable_extensions_core) {
      deps += [ "//extensions/common:common_constants" ]
    }
+diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
+index 925baa1..5345651 100644
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc
+@@ -175,18 +175,15 @@ AutoPictureInPictureTabStripObserverHelper::GetActiveWebContents() const {
+ }
+ 
+ bool AutoPictureInPictureTabStripObserverHelper::IsTabActivated() {
+-#if BUILDFLAG(ENABLE_AUX_SHELL)
+-  // Aux updates 3–4 pane stage visibility independently of strip selection.
+-  UpdateIsTabActivated(GetCurrentTabStripModel());
+-  return is_tab_activated_;
+-#endif
++#if !BUILDFLAG(ENABLE_AUX_SHELL)
+   // If we're currently observing the tab strip, then `is_tab_activated_` is
+   // current so we can just return it.
+   if (is_observing_) {
+     return is_tab_activated_;
+   }
+ 
+-  // Otherwise, calculate it now.
++#endif
++  // Aux stage visibility can change independently of strip selection.
+   UpdateIsTabActivated(GetCurrentTabStripModel());
+   return is_tab_activated_;
+ }
 diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 index d1cb340..414cebc 100644
 --- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
@@ -399,6 +433,19 @@ index da04ae7..ae1cec9 100644
 +}
 +
  }
+diff --git a/chrome/browser/ui/aux/link_routing.cc b/chrome/browser/ui/aux/link_routing.cc
+index f318062..5d2ec84 100644
+--- a/chrome/browser/ui/aux/link_routing.cc
++++ b/chrome/browser/ui/aux/link_routing.cc
+@@ -37,7 +37,7 @@ int Match(const base::DictValue& rule, const GURL& url,
+     if (!WebUrl(host) || host.has_port() || host.path() != "/" || host.has_query() || host.has_ref()) return 0;
+     if (url.host() == host.host()) return match->FindBool("subdomains").value_or(false) ? 2 : 3;
+     return match->FindBool("subdomains").value_or(false) &&
+-        base::EndsWith(url.host(), "." + host.host()) ? 2 : 0;
++        base::EndsWith(url.host(), "." + std::string(host.host())) ? 2 : 0;
+   }
+   return *kind == "glob" && base::MatchPattern(url.spec(), *pattern) ? 1 : 0;
+ }
 diff --git a/chrome/browser/ui/aux/little_window_controller.h b/chrome/browser/ui/aux/little_window_controller.h
 index 1626ff0..7cdd880 100644
 --- a/chrome/browser/ui/aux/little_window_controller.h
@@ -559,10 +606,43 @@ index d59dec4..5e2a229 100644
      aux::ExtensionBridge::Handle(
          browser_->GetProfile(), browser_, browser_window()->GetNativeWindow(),
 diff --git a/chrome/browser/ui/aux/methods/extensions_ui_methods.cc b/chrome/browser/ui/aux/methods/extensions_ui_methods.cc
-index fecac9a..e1bc644 100644
+index fecac9a..0b16fd6 100644
 --- a/chrome/browser/ui/aux/methods/extensions_ui_methods.cc
 +++ b/chrome/browser/ui/aux/methods/extensions_ui_methods.cc
-@@ -303,9 +303,8 @@ bool UpdateExtensionPlacement(BrowserWindowInterface& browser,
+@@ -16,12 +16,14 @@
+ #include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
+ #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h"
+ #include "components/sessions/content/session_tab_helper.h"
++#include "components/sessions/core/session_id.h"
+ #include "extensions/browser/extension_action.h"
+ #include "extensions/browser/extension_action_manager.h"
+ #include "extensions/common/command.h"
+ #include "extensions/common/api/extension_action/action_info.h"
+ #include "ui/base/webui/web_ui_util.h"
+ #include "ui/gfx/image/image_skia.h"
++#include "ui/gfx/image/image_skia_rep.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/page_identity.h"
+@@ -30,7 +32,7 @@
+ #include "chrome/browser/ui/aux/quick_ask_controller.h"
+ #include "chrome/browser/ui/aux/little_window_controller.h"
+ #include "chrome/browser/ui/aux/shell_events.h"
+-#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+@@ -186,7 +188,7 @@ bool HandlesExtensionUI(std::string_view method) {
+       method == "showExtensionAction" || method == "extensionSidePanel";
+ }
+ 
+-void HandleExtensionUI(Browser* browser, std::string_view method,
++void HandleExtensionUI(BrowserWindowInterface* browser, std::string_view method,
+                        const base::ListValue& args, ExtensionBridge::Callback callback) {
+   if (!CanHostExtensionSidePanel(browser)) {
+     Reject(std::move(callback), "forbidden", "Extensions require a regular browser window");
+@@ -303,9 +305,8 @@ bool UpdateExtensionPlacement(BrowserWindowInterface& browser,
    const auto* workspace = found->GetDict().FindString("workspaceId");
    if (created) {
      shared->FindDict("tabSpace")->Set(page_id, space_id);
@@ -574,6 +654,27 @@ index fecac9a..e1bc644 100644
      if (!std::ranges::any_of(*rows, [&](const base::Value& row) { return row.GetString() == page_id; })) {
        rows->Append(page_id);
      }
+diff --git a/chrome/browser/ui/aux/methods/extensions_ui_methods.h b/chrome/browser/ui/aux/methods/extensions_ui_methods.h
+index dc5e0cf..0560c6b 100644
+--- a/chrome/browser/ui/aux/methods/extensions_ui_methods.h
++++ b/chrome/browser/ui/aux/methods/extensions_ui_methods.h
+@@ -10,7 +10,6 @@
+ #include "chrome/browser/ui/aux/extension_bridge.h"
+ #include "base/values.h"
+ 
+-class Browser;
+ class BrowserWindowInterface;
+ 
+ namespace content { class WebContents; }
+@@ -21,7 +20,7 @@ std::optional<base::DictValue> DescribeExtensionSidePanel(BrowserWindowInterface
+ void PublishExtensionSidePanel(BrowserWindowInterface* browser, bool open);
+ void PublishExtensionActions(BrowserWindowInterface* browser);
+ bool HandlesExtensionUI(std::string_view method);
+-void HandleExtensionUI(Browser* browser, std::string_view method,
++void HandleExtensionUI(BrowserWindowInterface* browser, std::string_view method,
+                        const base::ListValue& args, ExtensionBridge::Callback callback);
+ bool PlaceExtensionTab(BrowserWindowInterface& browser, content::WebContents* contents,
+                        content::WebContents* opener, bool activate);
 diff --git a/chrome/browser/ui/aux/methods/surfaces_methods.cc b/chrome/browser/ui/aux/methods/surfaces_methods.cc
 index 9303808..5872422 100644
 --- a/chrome/browser/ui/aux/methods/surfaces_methods.cc
@@ -620,20 +721,21 @@ index 9303808..5872422 100644
        !contents->GetPrimaryMainFrame()) {
      std::move(callback).Run(false, "", "forbidden", "Choose an available browser page in this window");
 diff --git a/chrome/browser/ui/aux/methods/tabs_methods.cc b/chrome/browser/ui/aux/methods/tabs_methods.cc
-index 31d5357..00e6383 100644
+index 31d5357..293ee97 100644
 --- a/chrome/browser/ui/aux/methods/tabs_methods.cc
 +++ b/chrome/browser/ui/aux/methods/tabs_methods.cc
-@@ -5,6 +5,9 @@
+@@ -5,6 +5,10 @@
  #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
  
  #include <algorithm>
++#include "chrome/browser/ui/aux/shell_events.h"
 +#include "chrome/browser/ui/aux/quick_ask_controller.h"
 +#include "chrome/browser/ui/aux/little_window_controller.h"
 +#include <optional>
  #include <cmath>
  #include <limits>
  #include <map>
-@@ -177,7 +180,8 @@ class UnsavedWorkRequest : public std::enable_shared_from_this<UnsavedWorkReques
+@@ -177,7 +181,8 @@ class UnsavedWorkRequest : public std::enable_shared_from_this<UnsavedWorkReques
    UnsavedWorkRequest(base::WeakPtr<WebUIBrowserUI> ui, Results results)
        : ui_(std::move(ui)), results_(std::move(results)) {}
  
@@ -643,7 +745,7 @@ index 31d5357..00e6383 100644
      struct Job {
        std::string page_id;
        content::GlobalRenderFrameHostId frame_id;
-@@ -197,7 +201,7 @@ class UnsavedWorkRequest : public std::enable_shared_from_this<UnsavedWorkReques
+@@ -197,7 +202,7 @@ class UnsavedWorkRequest : public std::enable_shared_from_this<UnsavedWorkReques
        item.url = url;
        BrowserWindowInterface* owner = nullptr;
        content::WebContents* contents = catalog->FindPage(page_id, &owner);
@@ -652,7 +754,7 @@ index 31d5357..00e6383 100644
            contents->IsCrashed() || contents->GetLastCommittedURL().spec() != url ||
            !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) continue;
        content::RenderFrameHost* main = contents->GetPrimaryMainFrame();
-@@ -272,7 +276,7 @@ class UnsavedWorkRequest : public std::enable_shared_from_this<UnsavedWorkReques
+@@ -272,7 +277,7 @@ class UnsavedWorkRequest : public std::enable_shared_from_this<UnsavedWorkReques
      for (const auto& [page_id, item] : items_) {
        BrowserWindowInterface* owner = nullptr;
        content::WebContents* contents = catalog->FindPage(page_id, &owner);
@@ -661,7 +763,7 @@ index 31d5357..00e6383 100644
                     !contents->IsCrashed() &&
                     contents->GetLastCommittedURL().spec() == item.url &&
                     contents->GetPrimaryMainFrame() &&
-@@ -294,6 +298,22 @@ class UnsavedWorkRequest : public std::enable_shared_from_this<UnsavedWorkReques
+@@ -294,6 +299,22 @@ class UnsavedWorkRequest : public std::enable_shared_from_this<UnsavedWorkReques
      else std::move(callback_).Run(true, *base::WriteJson(result), "", "");
    }
  
@@ -684,7 +786,7 @@ index 31d5357..00e6383 100644
    base::WeakPtr<WebUIBrowserUI> ui_;
    Reply callback_;
    Results results_;
-@@ -364,6 +384,26 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
+@@ -364,6 +385,26 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
              respond(false, "Aux is working in this tab.");
              return;
            }
@@ -711,7 +813,7 @@ index 31d5357..00e6383 100644
            const auto snapshot = catalog->Snapshot();
            const auto* windows = snapshot.FindList("windows");
            const auto* tabs = snapshot.FindList("tabs");
-@@ -379,12 +419,11 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
+@@ -379,12 +420,11 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
              if (!base::StringToInt64(*id, &numeric)) continue;
              elected = std::min(elected, numeric);
              const auto* active = window->FindString("activePageId");
@@ -726,7 +828,7 @@ index 31d5357..00e6383 100644
              respond(false, "This window is not the automatic archiver."); return;
            }
            if (tabs) for (const auto& tab_value : *tabs) {
-@@ -394,16 +433,11 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
+@@ -394,16 +434,11 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
              const auto* kind = tab->FindString("windowKind");
              const auto activity = tab->FindDouble("lastActiveAt");
              target_found = kind && *kind == "normal" && !tab->FindBool("anchor").value_or(false) &&
@@ -745,7 +847,7 @@ index 31d5357..00e6383 100644
              respond(false, "Folder tabs stay open."); return;
            }
            if (const auto* pins = shared->FindDict("pins")) for (const auto [space, value] : *pins) {
-@@ -433,7 +467,7 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
+@@ -433,7 +468,7 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
                respond(false, "Another archive batch is pending."); return;
              }
              if (id && batch && state && reason && expected_url && *id == page_id &&
@@ -754,7 +856,7 @@ index 31d5357..00e6383 100644
                pending = true;
            }
            if (!pending) { respond(false, "This archive receipt changed."); return; }
-@@ -445,7 +479,7 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
+@@ -445,7 +480,7 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
            model->CloseWebContentsAt(index, TabCloseTypes::CLOSE_USER_GESTURE);
            respond(!catalog->FindPage(page_id), "");
          }, GetWeakPtr(), page_id, url, batch_id, last_active, std::move(callback));
@@ -763,7 +865,7 @@ index 31d5357..00e6383 100644
      return;
    }
    if (method == "tabSleep") {
-@@ -474,8 +508,31 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
+@@ -474,8 +509,31 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
              result.Set("slept", false);
              result.Set("reason", "This tab has unsaved work or could not be checked.");
            } else {
@@ -797,7 +899,7 @@ index 31d5357..00e6383 100644
            }
            std::move(callback).Run(true, *base::WriteJson(result), "", "");
          }, GetWeakPtr(), page_id, url, std::move(callback));
-@@ -502,7 +559,7 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
+@@ -502,7 +560,7 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
        }
      }
      std::make_shared<UnsavedWorkRequest>(GetWeakPtr(), std::move(callback))
@@ -806,7 +908,7 @@ index 31d5357..00e6383 100644
      return;
    }
    if (method == "tabAudio") {
-@@ -521,6 +578,11 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
+@@ -521,6 +579,11 @@ void WebUIBrowserUI::HandleAuxTabsRequest(
        base::DictValue state;
        state.Set("muted", tab.FindBool("muted").value_or(false));
        state.Set("audible", tab.FindBool("audible").value_or(false));
@@ -878,6 +980,18 @@ index d3e56e7..fa931c3 100644
    }
    const base::ListValue* spaces = shared->FindList("spaces");
    const base::ListValue* archived = shared->FindList("archivedSpaces");
+diff --git a/chrome/browser/ui/aux/profile_spaces.cc b/chrome/browser/ui/aux/profile_spaces.cc
+index 36d5afe..726e2df 100644
+--- a/chrome/browser/ui/aux/profile_spaces.cc
++++ b/chrome/browser/ui/aux/profile_spaces.cc
+@@ -8,6 +8,7 @@
+ #include "chrome/browser/ui/aux/quick_ask_controller.h"
+ #include "chrome/browser/ui/aux/shell_events.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "components/sessions/core/session_id.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/weak_document_ptr.h"
 diff --git a/chrome/browser/ui/aux/shell_events.h b/chrome/browser/ui/aux/shell_events.h
 index 6b9c844..efb2a88 100644
 --- a/chrome/browser/ui/aux/shell_events.h
@@ -954,8 +1068,33 @@ index a4d59b3..62a9a2a 100644
      "applescript/window_applescript.mm",
      "apps/quit_with_apps_controller_mac.cc",
      "apps/titlebar_background_view.mm",
+diff --git a/chrome/browser/ui/cocoa/applescript/space_applescript.mm b/chrome/browser/ui/cocoa/applescript/space_applescript.mm
+index de7c822..d7cf408 100644
+--- a/chrome/browser/ui/cocoa/applescript/space_applescript.mm
++++ b/chrome/browser/ui/cocoa/applescript/space_applescript.mm
+@@ -7,6 +7,7 @@
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_spaces.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "components/sessions/core/session_id.h"
+ #include "ui/base/base_window.h"
+ @implementation SpaceAppleScript {
+   base::WeakPtr<BrowserWindowInterface> _browser;
+diff --git a/chrome/browser/ui/cocoa/applescript/tab_applescript.mm b/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
+index 8c50d42..4cbb6b5 100644
+--- a/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
++++ b/chrome/browser/ui/cocoa/applescript/tab_applescript.mm
+@@ -97,7 +97,7 @@ void ResumeAppleEventAndSendReply(NSAppleEventManagerSuspensionID suspension_id,
+     return false;
+   }
+ 
+-  const auto identity = aux::PageIdentity::FromWebContents(_webContents.get());
++  auto* const identity = aux::PageIdentity::FromWebContents(_webContents.get());
+   aux::EgressRequestContext context;
+   context.page_id = aux::PageIdentity::GetOrCreate(self.profile, _webContents.get());
+   context.document = _webContents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
 diff --git a/chrome/browser/ui/navigator/browser_navigator.cc b/chrome/browser/ui/navigator/browser_navigator.cc
-index 206e8ea..205684a 100644
+index 206e8ea..e15ecdf 100644
 --- a/chrome/browser/ui/navigator/browser_navigator.cc
 +++ b/chrome/browser/ui/navigator/browser_navigator.cc
 @@ -25,6 +25,12 @@
@@ -980,7 +1119,7 @@ index 206e8ea..205684a 100644
 +  if (params->url.SchemeIs("aux") && params->source_contents) return nullptr;
 +  if (params->source_contents && params->source_contents->GetPrimaryMainFrame() && params->browser && params->browser->GetType() == BrowserWindowInterface::TYPE_NORMAL && !params->initiating_profile->IsOffTheRecord() && !aux::IsLittleWindow(params->browser) && !aux::IsQuickAskWindow(params->browser)) {
 +    content::WebContents* contents = params->source_contents;
-+    auto* profile = params->initiating_profile;
++    auto* profile = params->initiating_profile.get();
 +    const auto* identity = aux::PageIdentity::FromWebContents(contents);
 +    aux::EgressRequestContext context;
 +    context.page_id = aux::PageIdentity::GetOrCreate(profile, contents);

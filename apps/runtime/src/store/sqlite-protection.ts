@@ -42,6 +42,7 @@ export const SENSITIVE_SQLITE_COLUMNS: Readonly<Record<string, readonly string[]
   bookmarks: ["url", "title", "folder_path"],
   bookmark_articles: ["url", "json"],
   bookmark_folders: ["path"],
+  download_renames: ["receipt"],
   downloads: ["filename", "path"],
   spans: ["name", "outcome", "attrs"],
   response_metadata: ["url", "method", "content_type"],

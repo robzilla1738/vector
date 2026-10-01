@@ -1,3 +1,4 @@
+import { DownloadNamingSettingsSchema } from "./download-naming.js";
 import { ModelConnectionChangeSchema, ImageModelSchema } from "./model-connections.js";
 import { BrowserRuntimeMethodSchemas, BrowserRuntimeResultSchemas } from "./browser-runtime-api.js";
 import { MentionRefsSchema } from "./mentions.js";
@@ -819,6 +820,7 @@ export const SettingsSetParams = z.object({
   sidebarBlur: z.number().min(0).max(40).optional(),
   sidebarOpacity: z.number().min(40).max(100).optional(),
   tabLayout: z.enum(["vertical", "horizontal"]).optional(),
+  downloadNaming: DownloadNamingSettingsSchema.optional(),
   toolbarAutoHide: z.boolean().optional(),
   minimalUi: z.boolean().optional(),
   minimalUiAcknowledged: z.boolean().optional(),

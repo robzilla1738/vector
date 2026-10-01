@@ -1,3 +1,4 @@
+import type { DownloadNamingNative, CompletedDownload } from "./services/download-naming.js";
 import {
   ProfileOrganizationSnapshotSchema,
   type ProfileOrganizationSnapshot,
@@ -80,7 +81,7 @@ import {
  * In standalone mode (tests, external-only use) the bridge is absent and
  * aux page creation returns an explicit error.
  */
-export interface NativeBridge {
+export interface NativeBridge extends Partial<DownloadNamingNative> {
   organizationSnapshot?(): Promise<ProfileOrganizationSnapshot>;
   createAgentPage?(input: AgentPageCreate): Promise<AgentPageCreated>;
   egressContext?(input: { tabId: string; expectedUrl: string }): Promise<EgressContext>;
@@ -306,6 +307,11 @@ export class ChannelNativeBridge implements NativeBridge {
   setCookies(cookies: unknown[]) {
     return this.channel.call<{ ok: boolean; count: number }>("native.setCookies", { cookies });
   }
+  downloadRenameReceipts() { return this.channel.call<import("./services/download-naming.js").RenameReceipt[]>("native.downloadRenameReceipts", {}); }
+  downloadNamingCandidate(downloadId: string) { return this.channel.call<CompletedDownload | null>("native.downloadNamingCandidate", { downloadId }); }
+  downloadPreviewText(downloadId: string) { return this.channel.call<{ text: string }>("native.downloadPreviewText", { downloadId }); }
+  renameDownload(input: Parameters<DownloadNamingNative["renameDownload"]>[0]) { return this.channel.call<Awaited<ReturnType<DownloadNamingNative["renameDownload"]>>>("native.renameDownload", input); }
+  undoDownloadRename(receiptId: string) { return this.channel.call<Awaited<ReturnType<DownloadNamingNative["undoDownloadRename"]>>>("native.undoDownloadRename", { receiptId }); }
   liveFolderSources() {
     return this.channel.call<{ id: string; live: import("@aux/contracts").LiveFolder }[]>("native.liveFolderSources", {});
   }

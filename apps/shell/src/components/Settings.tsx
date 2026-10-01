@@ -36,6 +36,7 @@ import { moveListFocus } from "../keyboard-list";
 import { useFeature } from "../use-feature";
 
 const categoryDescriptions: Record<string, string> = {
+  Downloads: "File naming, exclusions, and smart download preferences.",
   General: "Search, shortcuts, and your browsing data.",
   Profiles: "Manage separate browsing identities and their local data.",
   "Link Routing": "Choose where links open across Profiles and Spaces.",
@@ -64,6 +65,7 @@ export function Settings() {
     return () => window.removeEventListener("aux-settings-refresh", refresh);
   }, []);
   const memoryAvailable = useFeature("memory");
+  const downloadNamingAvailable = useFeature("smartDownloadNames") && inNativeHost && !bridge.privateMode;
   const profilesAvailable = useFeature("profiles") && inNativeHost && !bridge.privateMode;
   const linkRoutingAvailable = useFeature("linkRouting") && inNativeHost && !bridge.privateMode;
   const appleScriptAvailable = useFeature("appleScript") && inNativeHost && !bridge.privateMode;
@@ -77,6 +79,7 @@ export function Settings() {
   const extensionsAvailable = useFeature("extensions");
   const routeEnabled = (route: SettingsRoute) =>
     (route.category !== "Memory" || memoryAvailable) &&
+    (route.category !== "Downloads" || downloadNamingAvailable) &&
     (route.category !== "Profiles" || profilesAvailable) &&
     (route.category !== "Link Routing" || linkRoutingAvailable) &&
     (route.category !== "Advanced" || appleScriptAvailable) &&
@@ -91,6 +94,7 @@ export function Settings() {
   const [initialCategory] = useState(() => requestedRoute ? initialRoute?.category ?? "General" : useStore.getState().settingsCategory);
   const [category, setCategory] = useState(() =>
     (initialCategory === "Memory" && !memoryAvailable) ||
+    (initialCategory === "Downloads" && !downloadNamingAvailable) ||
     (initialCategory === "Profiles" && !profilesAvailable) ||
     (initialCategory === "Link Routing" && !linkRoutingAvailable) ||
     (initialCategory === "Advanced" && !appleScriptAvailable) ||
@@ -166,6 +170,7 @@ export function Settings() {
   const results = searchSettings(query, indexedFields).filter(
     (result) =>
       (memoryAvailable || result.category !== "Memory") &&
+      (downloadNamingAvailable || result.category !== "Downloads") &&
       (profilesAvailable || result.category !== "Profiles") &&
       (linkRoutingAvailable || result.category !== "Link Routing") &&
       (appleScriptAvailable || result.category !== "Advanced") &&
@@ -269,6 +274,7 @@ export function Settings() {
         connectionTab={connectionTab}
         searching={searching}
         memoryAvailable={memoryAvailable}
+        downloadNamingAvailable={downloadNamingAvailable}
         profilesAvailable={profilesAvailable}
         linkRoutingAvailable={linkRoutingAvailable}
         appleScriptAvailable={appleScriptAvailable}
