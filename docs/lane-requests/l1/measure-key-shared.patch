@@ -1,5 +1,5 @@
 diff --git a/tests/host/native-window.swift b/tests/host/native-window.swift
-index 62861068..f218e7d3 100644
+index 62861068..f47f8b1c 100644
 --- a/tests/host/native-window.swift
 +++ b/tests/host/native-window.swift
 @@ -949,8 +949,7 @@ func eventFlags(_ names: [String]) throws -> CGEventFlags {
@@ -12,7 +12,7 @@ index 62861068..f218e7d3 100644
    let normalized = chord.lowercased().replacingOccurrences(of: "⌘", with: "command+")
      .replacingOccurrences(of: "⌃", with: "control+").replacingOccurrences(of: "⌥", with: "option+")
      .replacingOccurrences(of: "⇧", with: "shift+")
-@@ -960,8 +959,100 @@ func postKey(_ chord: String, via: String = "pid") throws {
+@@ -960,8 +959,116 @@ func postKey(_ chord: String, via: String = "pid") throws {
    guard let down = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: true),
          let up = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: false) else { throw protocolError("Cannot create key event") }
    down.flags = flags; up.flags = flags
@@ -36,8 +36,12 @@ index 62861068..f218e7d3 100644
 +  }
 +  func observe(_ notification: CFString) {
 +    let receivedAt = DispatchTime.now().uptimeNanoseconds
++    var owner: pid_t = 0
 +    guard postedAt != nil, observedAt == nil,
++          AXUIElementGetPid(target, &owner) == .success, owner == pid,
++          NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
 +          protocolNames(target).contains(expectedName) else { return }
++    do { try requireLiveTarget() } catch { return }
 +    observedAt = receivedAt
 +    self.notification = notification as String
 +  }
@@ -81,6 +85,18 @@ index 62861068..f218e7d3 100644
 +    for (element, name) in registrations { AXObserverRemoveNotification(observer, element, name) }
 +    CFRunLoopRemoveSource(runLoop, source, .defaultMode)
 +  }
++  // Discard queued notifications while the observation is deliberately unarmed.
++  let drainDeadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
++  while CFRunLoopRunInMode(.defaultMode, 0.001, true) == .handledSource {
++    guard DispatchTime.now().uptimeNanoseconds < drainDeadline else {
++      throw protocolError("Cannot drain preexisting AX notifications")
++    }
++  }
++  try requireLiveTarget()
++  guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
++        !protocolNames(target).contains(expectedName) else {
++    throw protocolError("Shortcut target changed before physical posting")
++  }
 +  let requestedTimeout = request["timeoutMs"] as? Double ?? 500
 +  guard requestedTimeout.isFinite else { throw protocolError("timeoutMs must be finite") }
 +  let timeoutMs = min(max(requestedTimeout, 20), 5000)
@@ -113,7 +129,7 @@ index 62861068..f218e7d3 100644
  func postText(_ text: String) throws {
    // Send Unicode scalars together so surrogate pairs remain intact.
    for scalar in text.unicodeScalars {
-@@ -1013,7 +1104,7 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
+@@ -1013,7 +1120,7 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
        usleep(50_000)
      } while Date() < deadline
      throw protocolError("waitFor timed out: \(selector)")
@@ -122,7 +138,7 @@ index 62861068..f218e7d3 100644
    default: throw protocolError("Unknown command: \(command)")
    }
    try frontmostGuard()
-@@ -1023,6 +1114,7 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
+@@ -1023,6 +1130,7 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
      let status = command == "press" ? AXUIElementPerformAction(target, kAXPressAction as CFString)
        : AXUIElementSetAttributeValue(target, kAXFocusedAttribute as CFString, kCFBooleanTrue)
      guard status == .success else { throw protocolError("AX action failed: \(status.rawValue)") }
@@ -143,15 +159,16 @@ index 537048b5..0b315254 100644
      drag: (from, to, options = {}) => request('drag', { from, to, ...options }),
      scroll: (selector, dy, dx = 0) => request('scroll', { selector, dy, dx }),
 diff --git a/tests/host/run-journey.mjs b/tests/host/run-journey.mjs
-index 759125a6..94443abb 100644
+index 759125a6..67f14083 100644
 --- a/tests/host/run-journey.mjs
 +++ b/tests/host/run-journey.mjs
-@@ -50,7 +50,7 @@ const controller = new AbortController();
- const { signal } = controller;
- let deadline;
- const inputs = [];
--const inputCommands = new Set(['press', 'click', 'focus', 'key', 'type', 'drag', 'scroll', 'menu', 'contextMenu', 'savePanel', 'openPanel']);
-+const inputCommands = new Set(['press', 'click', 'focus', 'key', 'type', 'drag', 'scroll', 'menu', 'contextMenu', 'savePanel', 'openPanel', 'measureKey']);
- async function execute() {
-   const permissions = await preflight();
-   assert.ok(permissions.accessibility && permissions.screenRecording, 'Accessibility and Screen Recording are required');
+@@ -82,7 +82,8 @@ async function execute() {
+       const started = performance.now();
+       const result = await member.apply(ax, args);
+       signal.throwIfAborted();
+-      if (inputCommands.has(command)) inputs.push({ command, status: 'passed', elapsedMs: performance.now() - started });
++      if (command === 'measureKey') inputs.push({ command: 'key', sourceCommand: command, status: 'passed', elapsedMs: performance.now() - started, measurement: result });
++      else if (inputCommands.has(command)) inputs.push({ command, status: 'passed', elapsedMs: performance.now() - started });
+       return result;
+     };
+   } });
