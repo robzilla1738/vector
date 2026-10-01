@@ -95,6 +95,7 @@ export interface DecideDeps {
 }
 
 export interface DecideContext {
+  standingOnly?: boolean;
   phase: "preflight" | "dispatch";
   sessionId?: string;
   approvalId?: string;
@@ -234,19 +235,19 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
     url: `${exact}/`, effect: parsed.effect, action: parsed.action,
     managed: deps.managedRules(), user: deps.userRules(), audit: deps.audit, now: at,
   }) : recipientPolicy;
-  let suppliedApprovalId = context.approvalId;
+  let suppliedApprovalId = context.standingOnly ? undefined : context.approvalId;
   const authorize = (policy: OriginPolicyDecision, consume: boolean, requiresApproval: boolean, approvalOnly: boolean) => {
     const result = deps.approvals.authorize({
       action, policy,
       // A permissive local ceiling never substitutes for action-time consent.
       ceiling: requiresApproval && deps.localCeiling(action) === "always" ? "ask" : deps.localCeiling(action),
-      approvalOnly,
+      approvalOnly, standingOnly: context.standingOnly,
       sessionId: context.sessionId, approvalId: suppliedApprovalId, consume, now: at,
     });
     // Session-level effect grants are standing consent: they authorize only
     // what ApprovalStore could not, and never substitute for action-time
     // confirmation (approvalOnly stays exclusive to review artifacts).
-    if (result.status === "ask" && !requiresApproval && !approvalOnly && exact && deps.settingsGrants) {
+    if (result.status === "ask" && !context.standingOnly && !requiresApproval && !approvalOnly && exact && deps.settingsGrants) {
       const needed = ["read", "write", "destructive", "egress"].includes(parsed.effect) ? parsed.effect as EffectClass : null;
       const granted = needed && resolveGrants(deps.settingsGrants()).map(parseGrant)
         .some(grant => grant != null && grantAllows(grant, needed, exact, at));
@@ -307,7 +308,7 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
       // A direct page program has no model turn to attach a review artifact.
       // The person confirms it. The same action can then run once on that acceptance.
       if (context.turnToolCallCount === undefined) {
-        suppliedApprovalId = deps.approvals.acceptedFor(action, policy.approvalLifetime, at);
+        suppliedApprovalId = context.standingOnly ? undefined : deps.approvals.acceptedFor(action, policy.approvalLifetime, at);
         if (!suppliedApprovalId) {
           const approvalId = deps.approvals.issue(action, policy.approvalLifetime, at);
           return finish(ask(deps.journal, parsed, {

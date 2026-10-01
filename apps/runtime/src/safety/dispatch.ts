@@ -8,6 +8,7 @@ import type { OriginPolicyAudit } from "./origin-policy.js";
 import type { SuspensionStore } from "./suspensions.js";
 
 export interface StepSafetyContext {
+  standingOnly?: boolean;
   profileId: string;
   scope: SafetyAction["scope"];
   turnId: string;
@@ -82,6 +83,7 @@ export class SafetyDispatchGate {
       restrictedRetry: input.context.restrictedRetry,
       untrusted: input.context.untrusted,
       trustedEval: input.context.trustedEval === true,
+      standingOnly: input.context.standingOnly === true,
     });
     if (decision.status === "allow") return decision.authorizedBy;
     if (decision.status === "deny") {
