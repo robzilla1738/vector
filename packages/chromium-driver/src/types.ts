@@ -66,6 +66,16 @@ export interface WaitOutcome {
  * Implementations wrap a Playwright Page reached over CDP; no Playwright
  * objects escape this interface into the runtime.
  */
+export interface ObservedActionTarget {
+  origin: string;
+  tag: string;
+  type: string;
+  autocomplete: string;
+  name: string;
+  form?: { action: string; method: string; fields: Array<{ type: string; autocomplete: string }> };
+  challenge?: "captcha" | "bot_block";
+}
+
 export interface DriverPage {
   readonly identity: PageIdentity;
   url(): string;
@@ -77,6 +87,8 @@ export interface DriverPage {
   hasForeignFrames?(): boolean;
 
   navigate(url: string, timeoutMs?: number): Promise<void>;
+  /** Command-owned main-frame loader receipt, unavailable for same-document navigation. */
+  navigateWithReceipt?(url: string, timeoutMs?: number): Promise<{ url: string; documentEpoch: number; loaderId: string }>;
   back(timeoutMs?: number): Promise<void>;
   forward(timeoutMs?: number): Promise<void>;
   reload(timeoutMs?: number): Promise<void>;
@@ -96,6 +108,8 @@ export interface DriverPage {
    * or undefined when the target is not a readable control. Protected
    * controls report "{redacted}", never the raw value.
    */
+  /** Metadata only: no credential values are read. Resolves the live target in its frame. */
+  actionTarget?(target: string): Promise<ObservedActionTarget>;
   fieldState?(target: string): Promise<Record<string, unknown> | undefined>;
   scroll(opts: { target?: string; direction: "up" | "down" | "top" | "bottom"; amount?: number }): Promise<void>;
   dragTo(target: string, to: string, timeoutMs?: number): Promise<void>;
