@@ -15,10 +15,11 @@
 
 /* Shared interaction rhythm: quick entry, gentle departure, stationary hit areas. */
 :root { --hover-in: 100ms; --hover-out: 300ms; --disclosure-duration: 180ms; }
-:is(.icon-btn, .btn, .session-row, .chat-sidebar-link, .sidebar .tab-row, .sidebar .folder-row, .settings-category-list > button, .settings-connection-tabs button, .history-segment button, .horizontal-group-chip, .menu-item) {
+:is(.icon-btn, .btn, .session-row, .chat-sidebar-link, .sidebar .tab-row, .sidebar .folder-row, .settings-category-list > button, .settings-connection-tabs button, .history-segment button, .horizontal-group-chip) {
   transition: background-color var(--hover-out) var(--ease-out), color var(--hover-out) var(--ease-out), opacity var(--hover-out) var(--ease-out);
 }
-:is(.icon-btn, .btn, .session-row, .chat-sidebar-link, .sidebar .tab-row, .sidebar .folder-row, .settings-category-list > button, .settings-connection-tabs button, .history-segment button, .horizontal-group-chip, .menu-item):is(:hover, :focus-visible) { transition-duration: var(--hover-in); }
+:is(.icon-btn, .btn, .session-row, .chat-sidebar-link, .sidebar .tab-row, .sidebar .folder-row, .settings-category-list > button, .settings-connection-tabs button, .history-segment button, .horizontal-group-chip):is(:hover, :focus-visible) { transition-duration: var(--hover-in); }
+.menu-item { transition: background-color var(--t-material-state) var(--ease-in-out), color var(--t-material-state) var(--ease-in-out); }
 .icon-btn:not(:disabled):active, .btn:not(:disabled):active { scale: 1; opacity: 1; }
 :is(.icon-btn, .btn):disabled { opacity: .4; }
 .icon-btn > .ci { width: 16px; height: 16px; }
@@ -68,24 +69,25 @@
   position: absolute; z-index: var(--z-peek); inset: 48px auto var(--space-2) var(--space-2);
   width: var(--sb-w, 280px); min-width: 0; max-width: calc(100% - 16px);
   margin: 0; border: 0; border-radius: var(--r-peek); overflow: clip;
-  background: var(--floating-glass-tint, color-mix(in srgb, var(--sb-bg) 78%, transparent));
+  background: var(--floating-glass-tint, color-mix(in srgb, var(--floating-sidebar-surface) 78%, transparent));
   backdrop-filter: var(--floating-glass-filter, blur(var(--blur-glass-floating)) saturate(1.15));
   -webkit-backdrop-filter: var(--floating-glass-filter, blur(var(--blur-glass-floating)) saturate(1.15));
   box-shadow: 0 8px 30px rgb(0 0 0 / .16), inset 0 1px rgb(255 255 255 / .06);
   opacity: 0; transform: translateX(-12px); visibility: hidden; pointer-events: none;
-  transition: opacity var(--t-disclosure) var(--ease-out), transform var(--t-sidebar-peek) var(--ease-out), visibility var(--t-none) var(--t-sidebar-peek);
+  transition: opacity 150ms var(--ease-in-out), transform 150ms var(--ease-in-out), visibility var(--t-none) 150ms;
   -webkit-app-region: no-drag;
 }
 .app.tabs-vertical:not(.layout-expanded) .sidebar.peek,
 .app.native-host.tabs-vertical:not(.layout-expanded) .sidebar.fully-hidden.peek,
 :root[data-sidebar-appearance="translucent"] .app.tabs-vertical:not(.layout-expanded) .sidebar.peek {
   opacity: 1; transform: none; visibility: visible; pointer-events: auto;
+  transition-duration: 200ms, 200ms, var(--t-none);
   transition-delay: var(--t-none);
 }
 .app.tabs-vertical:not(.layout-expanded) .sidebar .sidebar-content { width: 100%; transform: none; }
 .app.native-host.tabs-vertical:not(.layout-expanded) .sidebar.peek .sb-head.native-host { height: 34px; padding: 0 var(--space-2); }
 @media (prefers-reduced-motion: reduce) { .app.tabs-vertical:not(.layout-expanded) .sidebar { transition: none !important; } }
-@media (prefers-reduced-transparency: reduce) { .app.tabs-vertical:not(.layout-expanded) .sidebar { background: var(--sb-bg); backdrop-filter: none; } }
+@media (prefers-reduced-transparency: reduce) { .app.tabs-vertical:not(.layout-expanded) .sidebar { background: var(--floating-sidebar-surface); backdrop-filter: none; -webkit-backdrop-filter: none; } }
 @media (max-width: 820px) {
   :root[data-sidebar-appearance="translucent"] .rail.open .rail-inner {
     background: var(--floating-glass-tint);
@@ -138,4 +140,37 @@ input::placeholder, textarea::placeholder { color: var(--ink-2); opacity: 1; }
 /* Blank sidebar chrome uses the same captured drag as the revealed toolbar. */
 .app.native-host .sidebar { -webkit-app-region: no-drag; }
 
+}
+
+/* Solid preferences and accessibility modes suppress every decorative layer. */
+@layer overrides {
+  :root[data-sidebar-appearance="solid"] .app.tabs-vertical:not(.layout-expanded) .sidebar {
+    background: var(--floating-sidebar-surface); backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  @supports not ((backdrop-filter: blur(4px)) and (mix-blend-mode: plus-lighter) and (mask-composite: exclude)) {
+    :root .app.tabs-vertical:not(.layout-expanded) .sidebar {
+      background: var(--floating-sidebar-surface); backdrop-filter: none; -webkit-backdrop-filter: none;
+    }
+  }
+  @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview),
+    :root .app.tabs-vertical:not(.layout-expanded) .sidebar {
+      backdrop-filter: none; -webkit-backdrop-filter: none;
+    }
+    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview) { background: var(--surface-menu); border-color: var(--line); box-shadow: var(--shadow-pop); }
+    :root .app.tabs-vertical:not(.layout-expanded) .sidebar { background: var(--floating-sidebar-surface); }
+    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview)::before,
+    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview)::after,
+    :root .app.tabs-vertical:not(.layout-expanded) .sidebar::before,
+    :root .app.tabs-vertical:not(.layout-expanded) .sidebar::after { content: none; }
+  }
+  @media (forced-colors: active) {
+    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview),
+    :root .app.tabs-vertical:not(.layout-expanded) .sidebar {
+      background: Canvas; color: CanvasText; border: var(--hairline) solid CanvasText; box-shadow: none;
+    }
+    .menu-item { color: CanvasText; }
+    .menu-item:disabled { color: GrayText; }
+    .menu-item:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+  }
 }

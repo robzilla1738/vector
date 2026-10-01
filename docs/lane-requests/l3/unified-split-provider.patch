@@ -1,0 +1,20 @@
+--- a/apps/shell/src/features/surfaces/mount.ts
++++ b/apps/shell/src/features/surfaces/mount.ts
+@@ -2,7 +2,7 @@
+ import { splitAdd, splitClose, splitFlip, splitFocus, splitSwap, splitSeparate, splitResize } from "./split-actions";
+ import { SplitDropZones, SplitPicker } from "../../components/SplitDropZones";
+ import { SplitControls } from "../../components/SplitControls";
+-import { openSplitPicker } from "./drag-state";
++import { openCommandSurface } from "../../command-surface-state";
+ 
+ export const mount: FeatureMount = {
+   feature: "splitView",
+@@ -11,7 +11,7 @@
+   overlays: [SplitDropZones, SplitPicker],
+   commands: {
+     "split-add": (_state, invocation) => invocation.payload && "pageId" in invocation.payload
+-      ? splitAdd(invocation.payload.pageId, "edge" in invocation.payload && (invocation.payload.edge === "left" || invocation.payload.edge === "right" || invocation.payload.edge === "top" || invocation.payload.edge === "bottom") ? invocation.payload.edge : "right") : openSplitPicker(),
++      ? splitAdd(invocation.payload.pageId, "edge" in invocation.payload && (invocation.payload.edge === "left" || invocation.payload.edge === "right" || invocation.payload.edge === "top" || invocation.payload.edge === "bottom") ? invocation.payload.edge : "right") : openCommandSurface({ mode: "command", provider: "split" }),
+     "split-separate": (state, invocation) => { const id = invocation.payload && "pageId" in invocation.payload ? invocation.payload.pageId : state.activePageId; return id && splitSeparate(id); },
+     "split-resize": (_state, invocation) => { const value = invocation.payload; if (value && "divider" in value) return splitResize(value.pageId, value.divider, value.ratio, value.persist); },
+     "split-close": (state, invocation) => { const id = invocation.payload && "pageId" in invocation.payload ? invocation.payload.pageId : state.activePageId; return id && splitClose(id); },

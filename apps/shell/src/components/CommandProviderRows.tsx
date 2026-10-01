@@ -49,6 +49,7 @@ export interface CommandProviderInput {
   page: Store["pages"][number] | undefined;
   searchEngine: string | undefined;
   rankingEntries: CommandRankingEntry[];
+  rankingOpenedAt?: number;
   exec: (intent: Intent) => Promise<void>;
   activate: Store["activate"];
 }
@@ -211,8 +212,15 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
       title: item.title,
       detail: "Conversation",
       hint: "Open",
-      run: () => useStore.getState().openConversation(item.latestRun.runId),
+      run: () => {
+        useStore.setState((state) => ({
+          runs: state.runs.some((run) => run.runId === item.latestRun.runId)
+            ? state.runs
+            : [item.latestRun, ...state.runs],
+        }));
+        useStore.getState().openConversation(item.latestRun.runId);
+      },
     });
   }
-  return rankAuxCommandResults(q, out, rankingEntries);
+  return rankAuxCommandResults(q, out, rankingEntries, input.rankingOpenedAt);
 }

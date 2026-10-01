@@ -8,7 +8,7 @@ import type { SidebarMode } from "../sidebar-mode";
 import type { Layout, Pin, SpaceColor } from "../workspace";
 
 export type Mode = "focus" | "overview" | "table" | "conversation";
-export type Overlay = null | "reader" | "palette" | "settings" | "find" | "downloads" | "inline-assist" | "history" | "clear-history" | "observe" | "tasks" | "bookmarks" | "site" | "zap" | "capture";
+export type Overlay = null | "reader" | "command-surface" | "settings" | "find" | "downloads" | "inline-assist" | "history" | "clear-history" | "observe" | "tasks" | "bookmarks" | "site" | "zap" | "capture";
 export type { SidebarMode } from "../sidebar-mode";
 export type CommandSlot = "sidebar" | "hero" | "toolbar";
 export type RailView = { kind: "home" } | { kind: "draft"; chatId: string } | { kind: "run"; runId: string } | { kind: "set"; setId: string };
@@ -107,8 +107,6 @@ export interface Workspace {
   /** bumps each time something asks the command bar to take focus */
   focusRequest: number;
   focusSlot: CommandSlot;
-  /** `/query` from the omnibox seeds the command palette's shared registry. */
-  paletteSeed: string;
   /** window is too narrow for sidebar + stage + agent rail side by side */
   narrow: boolean;
   layout: Layout;
@@ -193,7 +191,7 @@ export interface Workspace {
   refreshResults(setId: string): Promise<void>;
 }
 
-export type UiKeys = "mode" | "setMode" | "narrow" | "setNarrow" | "overlay" | "setOverlay" | "skillSelection" | "readerFindOpen" | "settingsCategory" | "memoryWorkspaceId" | "railOpen" | "railView" | "toggleRail" | "openRail" | "setRailView" | "showConversationInRail" | "sidebar" | "setSidebar" | "toggleSidebar" | "sidebarPeek" | "tabPreviewOpen" | "peekPageId" | "setSidebarPeek" | "focusRequest" | "focusSlot" | "paletteSeed" | "focusCommandBar" | "toast" | "toasts" | "dismissToast" | "findText" | "findMatches" | "find" | "zoomLevels" | "zoomPage" | "sidebarWidth" | "sidebarSections" | "toggleSidebarSection" | "railWidth" | "setSidebarWidth" | "setRailWidth" | "vaultOffer" | "setVaultOffer" | "translation" | "setTranslation" | "translationPending" | "setTranslationPending" | "resultPreview" | "inspectorObs" | "connected";
+export type UiKeys = "mode" | "setMode" | "narrow" | "setNarrow" | "overlay" | "setOverlay" | "skillSelection" | "readerFindOpen" | "settingsCategory" | "memoryWorkspaceId" | "railOpen" | "railView" | "toggleRail" | "openRail" | "setRailView" | "showConversationInRail" | "sidebar" | "setSidebar" | "toggleSidebar" | "sidebarPeek" | "tabPreviewOpen" | "peekPageId" | "setSidebarPeek" | "focusRequest" | "focusSlot" | "focusCommandBar" | "toast" | "toasts" | "dismissToast" | "findText" | "findMatches" | "find" | "zoomLevels" | "zoomPage" | "sidebarWidth" | "sidebarSections" | "toggleSidebarSection" | "railWidth" | "setSidebarWidth" | "setRailWidth" | "vaultOffer" | "setVaultOffer" | "translation" | "setTranslation" | "translationPending" | "setTranslationPending" | "resultPreview" | "inspectorObs" | "connected";
 export type DraftKeys = "conversationContexts" | "setConversationContext" | "conversationBrowserSources" | "setConversationBrowserSources" | "agentDraft" | "setAgentDraft" | "conversationDrafts" | "setConversationDraft" | "runAnswerDrafts" | "setRunAnswerDraft";
 export type BookmarkKeys = "bookmarks" | "bookmarkPending" | "toggleBookmark" | "toggleReadingList" | "downloads" | "applyDownload";
 export type LayoutKeys = "layout" | "tidyUndo" | "splitPageId" | "reorderTabs" | "reorderGroup" | "moveTabToSpace" | "moveTabs" | "setTabName" | "addSpace" | "editSpace" | "deleteSpace" | "restoreSpace" | "syncBrowserSpaces" | "refreshSpaces" | "switchSpace" | "togglePin" | "reorderPin" | "addFolder" | "renameFolder" | "updateFolder" | "deleteFolder" | "toggleFolder" | "moveTabToFolder";

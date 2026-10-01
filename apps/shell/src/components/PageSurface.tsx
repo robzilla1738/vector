@@ -57,6 +57,8 @@ export function PageSurface({ page }: { page: PageTarget }) {
         className="page-surface webium"
         type="application/x-chromium-surface-embed"
         data-content-id={resolved.contentId}
+        data-page-id={page.pageId}
+        data-document-epoch={page.documentEpoch}
         aria-label={page.title || "Browser page"}
       />
     );

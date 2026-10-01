@@ -1,0 +1,31 @@
+--- a/apps/shell/src/commands.ts
++++ b/apps/shell/src/commands.ts
+@@ -7,6 +7,7 @@
+   type ShortcutOverrides,
+ } from "@aux/contracts";
+ import type { RefObject } from "react";
++import { openCommandSurface, closeCommandSurface } from "./command-surface-state";
+ import { commandExecutor } from "./command-execution";
+ import { bridge } from "./bridge";
+ import { useStore, call, errToast, tabCommand } from "./store";
+@@ -177,7 +178,7 @@
+     featureCommand("show-archived-tabs", st);
+   },
+ 
+-  "new-tab": (st) => st.newTab(),
++  "new-tab": () => openCommandSurface({ mode: "new-tab" }),
+   "open-file": () => openLocalFile().catch(errToast),
+   "reopen-closed-tab": (st) => st.reopenClosedTab(),
+   "close-window": () => bridge.closeWindow(),
+@@ -225,9 +226,9 @@
+     (context.settingsRoute ?? st.overlay === "settings")
+       ? window.history.forward()
+       : st.activePageId && tabCommand({ kind: "forward", pageId: st.activePageId }).catch(errToast),
+-  "open-address": (st) => st.focusCommandBar(),
++  "open-address": () => openCommandSurface({ mode: "edit" }),
+   palette: (st) =>
+-    bridge.privateMode ? undefined : st.setOverlay(st.overlay === "palette" ? null : "palette"),
++    st.overlay === "palette" ? closeCommandSurface() : openCommandSurface({ mode: "command" }),
+   settings: (st) => (bridge.privateMode ? undefined : st.setOverlay("settings")),
+   history: (st) => st.setOverlay("history"),
+   downloads: (st) => st.setOverlay("downloads"),

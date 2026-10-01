@@ -14,6 +14,8 @@ import { HookService, type HookExecutor } from "./services/hooks.js";
 import { installRunEndHooks } from "./services/hook-dispatch.js";
 import { WorkspaceFolderService } from "./services/workspace-folders.js";
 import { BrowserBookmarkLedger } from "./services/browser-bookmark-ledger.js";
+import { CommandRankingStore } from "./services/command-ranking.js";
+import { registerNativeCommandRanking } from "./services/command-ranking-native.js";
 import { registerNativeReceiptChannel } from "./services/native-receipt-channel.js";
 import { BrowserEgress } from "./safety/browser-egress.js";
 import { browserEgressApproval } from "./safety/browser-egress-approval.js";
@@ -1406,7 +1408,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   channel?.onMethod("history.projectDelta", (params) =>
     invoke("history.projectDelta", params, { external: false }),
   );
-  if (channel) registerNativeReceiptChannel(channel, repo, () => pages.list());
+  if (channel) {
+    registerNativeReceiptChannel(channel, repo, () => pages.list());
+    registerNativeCommandRanking(channel, pages, new CommandRankingStore(repo, services.featureProfileId ?? "default"));
+  }
   // Native notification/page-change/Calendar adapters submit provenance here;
   // external and scoped API clients cannot mint automation events.
   channel?.onMethod("routines.ingestEvent", (params) =>

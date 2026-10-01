@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 interface SuggestionBase {
   id: string;
+  pinned?: boolean;
   url?: string;
   providerType?: AutocompleteMatch["type"];
   icon: ReactNode;

@@ -1,5 +1,3 @@
-import { runCommand } from "../commands";
-import { acquireFloatingSidebarLock } from "../floating-sidebar";
 import { SearchResultRow } from "./SearchResultRow";
 import {
   lazy,
@@ -25,7 +23,7 @@ import type {
 } from "@aux/contracts";
 import { normalizeCommandRankingQuery } from "@aux/contracts/command-ranking-query";
 import { isHomeAddress, toUrl } from "../chrome";
-import { detectIntent, intentLabel, type Intent } from "../intent";
+import { AskCircuitBreaker, detectIntent, intentLabel, type Intent } from "../intent";
 import { engineList, parseSuggestResponse, suggestEndpoint } from "../engines";
 import { isPrivateAddress } from "../suggest";
 import { useStore, call, errToast } from "../store";
@@ -43,22 +41,52 @@ import { commandCandidateKey, mergeCommandResults } from "../command-results";
 import type { ProviderSuggestion, Suggestion } from "./command-provider-types";
 import { commandTabRows } from "./command-tab-rows";
 import { featureStage } from "../use-feature";
+import { openCommandSurface, type CommandSurfaceMode } from "../command-surface-state";
 import "./CommandBar.css";
+const askBreaker = new AskCircuitBreaker();
+let pendingAsk: Promise<Run | null> | null = null;
 
 const HomeAsk = lazy(() => import("./HomeAsk"));
 const CommandRankingDebug = lazy(() => import("./CommandRankingDebug"));
 
 const EMPTY_HISTORY: HistoryEntry[] = [];
 const EMPTY_BROWSER: AutocompleteMatch[] = [];
-const PROVIDER_SCOPES = ["all", "tabs", "closed", "bookmarks", "history", "extensions", "sites", "work"] as const;
-type ProviderScope = typeof PROVIDER_SCOPES[number];
+const PROVIDER_SCOPES = [
+  "all",
+  "tabs",
+  "closed",
+  "bookmarks",
+  "history",
+  "extensions",
+  "sites",
+  "work",
+] as const;
+type ProviderScope = (typeof PROVIDER_SCOPES)[number];
 
 /**
  * One field, three jobs: URL bar, search, and agent prompt. Intent is
  * detected as you type and shown as a chip; ↵ runs it, ⌘↵ opens a new tab /
  * new task, ⇥ flips a task between "this page" and "new task".
  */
-export function CommandBar({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
+export function CommandBar({
+  compact = false,
+  hero = false,
+  surfaceMode,
+  seed,
+  onClose,
+  commandRows,
+  providerRows,
+  onQueryChange,
+}: {
+  compact?: boolean;
+  hero?: boolean;
+  surfaceMode?: CommandSurfaceMode;
+  seed?: string;
+  onQueryChange?: (query: string) => void;
+  providerRows?: (query: string) => Suggestion[];
+  onClose?: () => void;
+  commandRows?: (query: string) => Array<Suggestion & { keepOpen?: boolean; commandId?: string }>;
+}) {
   const key = useShortcutLabels();
   const slot = hero ? "hero" : "toolbar";
   // Tab suggestions depend on identity/title/url/favicon — a digest of exactly
@@ -70,17 +98,38 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   );
   const activePageId = useStore((s) => s.activePageId);
   const tabNames = useStore((s) => s.layout.tabNames);
+  const pins = useStore((s) => s.layout.pins);
   const settings = useStore((s) => s.settings);
-  useStore(useShallow(s => s.runs.map(run =>
-    JSON.stringify([run.runId, run.goal, run.status, run.createdAt, run.config?.chatId]))));
+  useStore(
+    useShallow((s) =>
+      s.runs.map((run) =>
+        JSON.stringify([run.runId, run.goal, run.status, run.createdAt, run.config?.chatId]),
+      ),
+    ),
+  );
   const runs = useStore.getState().runs;
   const programs = useStore((s) => s.programs);
-  useStore(useShallow(s => s.bookmarks.map(bookmark =>
-    JSON.stringify([bookmark.url, bookmark.title, bookmark.folderPath]))));
+  useStore(
+    useShallow((s) =>
+      s.bookmarks.map((bookmark) => JSON.stringify([bookmark.url, bookmark.title, bookmark.folderPath])),
+    ),
+  );
   const bookmarks = useStore.getState().bookmarks;
-  useStore(useShallow(s => s.closedTabs.map(tab => JSON.stringify([
-    tab.pageId, tab.title, tab.url, tab.closedAt, tab.spaceId, tab.folderId, tab.groupId,
-  ]))));
+  useStore(
+    useShallow((s) =>
+      s.closedTabs.map((tab) =>
+        JSON.stringify([
+          tab.pageId,
+          tab.title,
+          tab.url,
+          tab.closedAt,
+          tab.spaceId,
+          tab.folderId,
+          tab.groupId,
+        ]),
+      ),
+    ),
+  );
   const closedTabs = useStore.getState().closedTabs;
   const focusRequest = useStore((s) => s.focusRequest);
   const focusSlot = useStore((s) => s.focusSlot);
@@ -101,14 +150,38 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     [settings.searchEngines],
   );
 
-  const [editing, setEditing] = useState(false);
+  const initialPrefix =
+    surfaceMode === "command"
+      ? "/"
+      : seed && /^[@/>?]/.test(seed)
+        ? (seed[0] as "@" | "/" | ">" | "?")
+        : null;
+  const [editing, setEditing] = useState(!!surfaceMode);
   const [submitting, setSubmitting] = useState(false);
-  const [val, setVal] = useState("");
+  const [val, setVal] = useState(
+    seed
+      ? initialPrefix && seed.startsWith(initialPrefix)
+        ? seed.slice(1)
+        : seed
+      : surfaceMode === "edit"
+        ? pageAddress
+        : "",
+  );
+  const [scopePrefix, setScopePrefix] = useState<"@" | "/" | ">" | "?" | null>(initialPrefix);
+  const [routeFlip, setRouteFlip] = useState<"search" | "ask" | null>(null);
+  const [preferSearchOffer, setPreferSearchOffer] = useState(false);
+  const [breakerVersion, setBreakerVersion] = useState(0);
+  useEffect(() => {
+    if (!askBreaker.unavailable()) return;
+    const timer = setTimeout(() => setBreakerVersion((value) => value + 1), askBreaker.retryAfter());
+    return () => clearTimeout(timer);
+  }, [breakerVersion]);
   const [sel, setSel] = useState(0);
-  const [providerScope, setProviderScope] = useState<ProviderScope>("all");
+  const [providerScope, setProviderScope] = useState<ProviderScope>(initialPrefix === "@" ? "tabs" : "all");
   const extensionEnabled = !bridge.privateMode && featureStage("extensions") === "on";
   const [extensionItems, setExtensionItems] = useState<BrowserExtension[]>([]);
   const [rankingOpen, setRankingOpen] = useState(false);
+  const rankingOpenedAt = useRef(Date.now());
   const [rankingEntries, setRankingEntries] = useState<CommandRankingEntry[]>([]);
   const [rankingError, setRankingError] = useState<string | null>(null);
   const [providerBuilder, setProviderBuilder] = useState<
@@ -122,7 +195,8 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   }>({ query: "", items: [], error: null });
   const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
     if (!hero || bridge.privateMode) return "search";
-    if (settings.homeEntryMode === "ask" || settings.homeEntryMode === "search") return settings.homeEntryMode;
+    if (settings.homeEntryMode === "ask" || settings.homeEntryMode === "search")
+      return settings.homeEntryMode;
     try {
       return localStorage.getItem("aux.home.entry-mode.v1") === "ask" ? "ask" : "search";
     } catch {
@@ -149,12 +223,19 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   }, [hero, settings.dataDir, settings.homeEntryMode]);
   const setEntryMode = (next: "search" | "ask") => {
     setEntryModeState(next);
-    if (!bridge.privateMode) void call("settings.set", { homeEntryMode: next })
-      .then(() => { try { localStorage.removeItem("aux.home.entry-mode.v1"); } catch { /* Optional legacy storage. */ } })
-      .catch((error) => {
-        setEntryModeState(settings.homeEntryMode === "ask" ? "ask" : "search");
-        errToast(error);
-      });
+    if (!bridge.privateMode)
+      void call("settings.set", { homeEntryMode: next })
+        .then(() => {
+          try {
+            localStorage.removeItem("aux.home.entry-mode.v1");
+          } catch {
+            /* Optional legacy storage. */
+          }
+        })
+        .catch((error) => {
+          setEntryModeState(settings.homeEntryMode === "ask" ? "ask" : "search");
+          errToast(error);
+        });
   };
   const [scopeFlip, setScopeFlip] = useState(false);
   const [historyResult, setHistoryResult] = useState<{ query: string; items: HistoryEntry[] }>({
@@ -198,6 +279,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     };
   }, [editing]);
 
+  useLayoutEffect(() => {
+    if (!surfaceMode) return;
+    inputRef.current?.focus();
+    if (surfaceMode === "edit") inputRef.current?.select();
+  }, [surfaceMode]);
+
   // ⌘L and friends land here
   useEffect(() => {
     if (!focusRequest) return;
@@ -219,9 +306,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     };
   }, [focusRequest, focusSlot, slot]);
 
-  // switching tabs (or the first snapshot landing) resets any half-typed state
+  // A real tab change resets its draft; initial surface mounting preserves prefill.
+  const previousActivePage = useRef(activePageId);
   useEffect(() => {
-    if (!editing) return;
+    const previous = previousActivePage.current;
+    previousActivePage.current = activePageId;
+    if (!editing || previous === activePageId) return;
     setEditing(false);
     setVal("");
     setScopeFlip(false);
@@ -246,6 +336,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   // a new tab starts empty; otherwise seed with the URL and select it
   const onFocus = () => {
     if (editing) return;
+    rankingOpenedAt.current = Date.now();
     setEditing(true);
     setProviderScope("all");
     const seed = hero && entryMode === "ask" ? agentDraft : hasPage ? pageAddress : "";
@@ -265,11 +356,24 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   };
 
   const raw = val.trim();
-  const baseIntent = useMemo(
-    () => detectIntent(raw, { hasPage, searchEngine, searchEngines }),
-    [raw, hasPage, searchEngine, searchEngines],
-  );
-  const intent: Intent = useMemo(() => {
+  useEffect(() => {
+    onQueryChange?.(raw);
+  }, [raw, onQueryChange]);
+  const routing =
+    settings.commandRouting === "prefer-chat" || settings.commandRouting === "prefer-search"
+      ? settings.commandRouting
+      : "automatic";
+  const baseIntent: Intent =
+    scopePrefix === "/"
+      ? { kind: "command", query: raw.replace(/^\//, "") }
+      : detectIntent((scopePrefix === ">" || scopePrefix === "?" ? scopePrefix : "") + raw, {
+          hasPage,
+          searchEngine,
+          searchEngines,
+          routing,
+          askUnavailable: bridge.privateMode || askBreaker.unavailable(),
+        });
+  const intent: Intent = (() => {
     if (bridge.privateMode && baseIntent.kind === "run")
       return { kind: "search", query: raw, url: toUrl(raw, searchEngine) };
     if (hero && raw) {
@@ -278,11 +382,19 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         ? baseIntent
         : { kind: "search", query: raw, url: toUrl(raw, searchEngine) };
     }
+    if (routeFlip && raw && (baseIntent.kind === "run" || baseIntent.kind === "search"))
+      return routeFlip === "search" || askBreaker.unavailable() || bridge.privateMode
+        ? { kind: "search", query: raw, url: toUrl(raw, searchEngine) }
+        : { kind: "run", goal: raw, scope: hasPage ? "page" : "new" };
     if (baseIntent.kind === "run" && scopeFlip)
       return { ...baseIntent, scope: baseIntent.scope === "page" ? "new" : "page" };
     return baseIntent;
-  }, [baseIntent, scopeFlip, hero, raw, entryMode, searchEngine]);
-  const typedSomething = !(hero && entryMode === "ask") && editing && raw.length > 0 && raw !== pageAddress;
+  })();
+  const typedSomething =
+    !(hero && entryMode === "ask") &&
+    editing &&
+    (scopePrefix === "/" || scopePrefix === "@" || raw.length > 0) &&
+    (surfaceMode !== undefined || raw !== pageAddress);
   const browserAutocomplete = inNativeHost || inMock;
 
   useEffect(() => {
@@ -321,13 +433,21 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   useEffect(() => {
     if (!editing || !extensionEnabled) return;
     let live = true;
-    void bridge.extensions().then(items => { if (live) setExtensionItems(items); })
-      .catch(() => { if (live) setExtensionItems([]); });
-    return () => { live = false; };
+    void bridge
+      .extensions()
+      .then((items) => {
+        if (live) setExtensionItems(items);
+      })
+      .catch(() => {
+        if (live) setExtensionItems([]);
+      });
+    return () => {
+      live = false;
+    };
   }, [editing, extensionEnabled]);
 
   useLayoutEffect(() => {
-    if (!browserAutocomplete || !typedSomething || raw.length < 2 || intent.kind === "command") return;
+    if (!browserAutocomplete || !typedSomething || raw.length < 2) return;
     let live = true;
     void bridge
       .autocomplete(raw)
@@ -348,16 +468,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   }, [browserAutocomplete, typedSomething, raw, intent.kind, autocompleteRetry]);
   const browserMatches = browserResult.query === raw ? browserResult.items : EMPTY_BROWSER;
   const browserError = browserResult.query === raw ? browserResult.error : null;
-  const omniboxPopup = typedSomething || !!browserError;
-  useEffect(() => {
-    if (omniboxPopup) return acquireFloatingSidebarLock("force-collapse");
-  }, [omniboxPopup]);
 
   // The local indexed query is cheap; dispatch it immediately and only display
   // a response that belongs to the exact text still in the field.
   useEffect(() => {
     let cancelled = false;
-    if (browserAutocomplete || !typedSomething || raw.length < 2 || intent.kind === "command") {
+    if (browserAutocomplete || !typedSomething || raw.length < 2) {
       return;
     }
     void call("history.list", { query: raw, limit: 6 })
@@ -373,6 +489,8 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   }, [raw, typedSomething, intent.kind, browserAutocomplete]);
   const history = historyResult.query === raw ? historyResult.items : EMPTY_HISTORY;
 
+  const [workStatus, setWorkStatus] = useState({ query: "", pending: 0, failed: false });
+  const [workRetry, setWorkRetry] = useState(0);
   // Saved work joins after immediate local matches. Old responses never paint
   // a new query, and private browsing never queries the regular Profile.
   useEffect(() => {
@@ -387,21 +505,21 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           ...patch,
         }));
       };
-      void call("results.search", { query: raw, limit: 3 })
-        .then((results) => update({ results }))
-        .catch(() => {});
-      void call("routines.list", { query: raw, limit: 3 })
-        .then((skills) => update({ skills }))
-        .catch(() => {});
-      void call("conversations.list", { query: raw, limit: 5, archived: false })
-        .then((chats) => update({ chats }))
-        .catch(() => {});
+      setWorkStatus({ query: raw, pending: 3, failed: false });
+      const accept = <K extends keyof Omit<typeof workResult, "query">>(key: K, promise: Promise<(typeof workResult)[K]>) => {
+        void promise.then(value => update({ [key]: value })).catch(() => {
+          if (live) setWorkStatus(status => ({ ...status, failed: true }));
+        }).finally(() => { if (live) setWorkStatus(status => ({ ...status, pending: status.pending - 1 })); });
+      };
+      accept("results", call("results.search", { query: raw, limit: 3 }));
+      accept("skills", call("routines.list", { query: raw, limit: 3 }));
+      accept("chats", call("conversations.list", { query: raw, limit: 5, archived: false }));
     }, 100);
     return () => {
       live = false;
       window.clearTimeout(timer);
     };
-  }, [raw, typedSomething]);
+  }, [raw, typedSomething, workRetry]);
   const savedWork = workResult.query === raw ? workResult : null;
 
   // Remote suggestions — opt-in preference, never in private mode, and never
@@ -470,7 +588,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   }, [typedSomething, intent.kind, raw, tabDigest, bookmarks, history]);
 
   const exec = useCallback(
-    async (i: Intent, alt = false) => {
+    async (i: Intent, alt = false, typedPick = false) => {
       switch (i.kind) {
         case "navigate":
         case "search": {
@@ -486,28 +604,94 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
               break;
             }
           }
-          if (!alt && page) await useStore.getState().navigatePage(page.pageId, url);
-          else await newTab(url);
+          if (surfaceMode === "new-tab" && alt) {
+            const ack = await bridge.tabCommand(
+              { kind: "open", url, activate: false },
+              useStore.getState().catalogVersion,
+            );
+            if (ack.status === "rejected" || !ack.pageId)
+              throw new Error(ack.error?.message ?? "The tab could not be opened.");
+          } else if (surfaceMode === "new-tab" || alt) {
+            if (!(await newTab(url))) throw new Error("The tab could not be opened.");
+          } else if (page) await useStore.getState().navigatePage(page.pageId, url);
+          else if (!(await newTab(url))) throw new Error("The tab could not be opened.");
+          if (typedPick && !bridge.privateMode) {
+            const candidateKey = commandCandidateKey({ id: "typed", title: "", url, section: "browser" });
+            if (candidateKey.length <= 300) {
+              try {
+                const entry = await call("command.ranking.record", {
+                  query: normalizeCommandRankingQuery(i.kind === "search" ? i.query : i.display),
+                  candidateKey,
+                  source: "browser",
+                  pickOrigin: "typed",
+                });
+                setRankingEntries((current) => [
+                  entry,
+                  ...current.filter((item) => item.candidateKey !== candidateKey),
+                ]);
+              } catch (error) {
+                setRankingError(error instanceof Error ? error.message : String(error));
+              }
+            }
+          }
           break;
         }
-        case "run":
-          if (hero)
-            await startRun(i.goal, {
-              scope: "new",
-              chatId: crypto.randomUUID(),
-              presentation: "conversation",
-            });
-          else await startRun(i.goal, { scope: alt ? (i.scope === "page" ? "new" : "page") : i.scope });
+        case "run": {
+          if (pendingAsk)
+            throw new Error(
+              "An Ask request is still awaiting acknowledgement. You can search while it finishes.",
+            );
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          try {
+            const request = hero
+              ? startRun(i.goal, { scope: "new", chatId: crypto.randomUUID(), presentation: "conversation" })
+              : startRun(i.goal, { scope: alt ? "new" : i.scope });
+            pendingAsk = request;
+            void request.then(
+              () => {
+                if (pendingAsk === request) pendingAsk = null;
+              },
+              () => {
+                if (pendingAsk === request) pendingAsk = null;
+              },
+            );
+            const acknowledged = await Promise.race([
+              request,
+              new Promise<never>((_, reject) => {
+                timer = setTimeout(
+                  () => reject(new Error("Ask did not acknowledge within five seconds")),
+                  5000,
+                );
+              }),
+            ]);
+            if (!acknowledged) throw new Error("Ask is unavailable. Your prompt is kept.");
+          } catch (error) {
+            askBreaker.failed();
+            setBreakerVersion((value) => value + 1);
+            throw error;
+          } finally {
+            clearTimeout(timer);
+          }
           break;
+        }
         case "command":
-          useStore.setState({ paletteSeed: `/${i.query}` });
-          runCommand("palette");
+          openCommandSurface({ mode: "command", seed: i.query });
           break;
-        default:
+        case "empty":
+          if (surfaceMode === "new-tab") {
+            if (alt) {
+              const ack = await bridge.tabCommand(
+                { kind: "open", url: "about:blank", activate: false },
+                useStore.getState().catalogVersion,
+              );
+              if (ack.status === "rejected" || !ack.pageId)
+                throw new Error(ack.error?.message ?? "The tab could not be opened.");
+            } else if (!(await newTab("about:blank"))) throw new Error("The tab could not be opened.");
+          }
           break;
       }
     },
-    [page, newTab, startRun, setOverlay, hero, activate],
+    [page, newTab, startRun, hero, surfaceMode],
   );
 
   // The intent row tracks every keystroke; provider ranking follows a deferred
@@ -518,8 +702,15 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     return useStore
       .getState()
       .pages.filter((p) => p.pageId !== activePageId && !p.ownedByRuntime)
-      .map((p) => ({ ...p, id: p.pageId, title: tabLabel(layout, p) }));
-  }, [tabDigest, activePageId, tabNames]);
+      .map((p) => ({
+        ...p,
+        id: p.pageId,
+        title: tabLabel(layout, p),
+        pinned: Object.values(pins)
+          .flat()
+          .some((pin) => pin.pageId === p.pageId || (!pin.pageId && pin.url === p.url)),
+      }));
+  }, [tabDigest, activePageId, tabNames, pins]);
   const bookmarkCandidates = useMemo(
     () => bookmarks.map((b) => ({ ...b, id: `bookmark-${b.url}` })),
     [bookmarks],
@@ -529,8 +720,10 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     () => history.map((entry) => ({ ...entry, id: `h-${entry.url}`, lastVisit: entry.visitedAt })),
     [history],
   );
-  const extensionCandidates = useMemo(() => extensionItems.map(item => ({ ...item,
-    id: item.key, title: item.name })), [extensionItems]);
+  const extensionCandidates = useMemo(
+    () => extensionItems.map((item) => ({ ...item, id: item.key, title: item.name })),
+    [extensionItems],
+  );
   const domainCandidates = useMemo(() => {
     const domains = new Map<string, { id: string; title: string; url: string; count: number }>();
     for (const item of [...tabCandidates, ...bookmarks, ...history]) {
@@ -624,14 +817,23 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       })),
     [browserMatches, exec],
   );
-  const rankQuery = useDeferredValue(typedSomething && intent.kind !== "command" ? raw.toLowerCase() : "");
+  const rankQuery = useDeferredValue(typedSomething ? raw.toLowerCase() : "");
   // Open tabs remain keyboard-ready while the optional providers load.
   const immediateTabs = useMemo(
-    () => (rankQuery ? commandTabRows(rankQuery, tabCandidates, activate) : []),
-    [rankQuery, tabCandidates, activate],
+    () => (rankQuery || scopePrefix === "@" ? commandTabRows(rankQuery, tabCandidates, activate) : []),
+    [rankQuery, tabCandidates, activate, scopePrefix],
   );
   const rankedDetails = useMemo(() => {
-    if (!rankQuery) return [];
+    if (!rankQuery)
+      return scopePrefix === "@"
+        ? immediateTabs.map((candidate) => ({
+            candidate,
+            key: commandCandidateKey(candidate),
+            base: 0,
+            adjustment: 0,
+            score: 0,
+          }))
+        : [];
     if (!providerBuilder)
       return immediateTabs.map((candidate) => ({
         candidate,
@@ -656,6 +858,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       page,
       searchEngine,
       rankingEntries,
+      rankingOpenedAt: rankingOpenedAt.current,
       exec,
       activate,
     });
@@ -663,6 +866,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     rankQuery,
     providerBuilder,
     immediateTabs,
+    scopePrefix,
     remoteResult,
     tabCandidates,
     domainCandidates,
@@ -683,29 +887,44 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
   const rankedRows = useMemo(() => rankedDetails.map((item) => item.candidate), [rankedDetails]);
   const mergedRows = useMemo(() => {
     const sites = providerScope === "sites";
-    const browser = browserRows.filter(row => providerScope === "all" || sites || row.section === providerScope);
+    const browser = browserRows.filter(
+      (row) => providerScope === "all" || sites || row.section === providerScope,
+    );
     const aux = (rankQuery === raw.toLowerCase() ? rankedRows : []).filter(
       (row) =>
         providerScope === "all" ||
         row.section === providerScope ||
         (sites && ["suggest", "domains", "bookmarks", "history"].includes(row.section)) ||
         (providerScope === "work" &&
-          ["programs", "runs", "results", "skills", "chats"].includes(row.section)),
+          ["programs", "runs", "results", "skills", "chats", "tasks", "memory", "sets"].includes(row.section)),
     );
     return mergeCommandResults(browser, aux);
   }, [browserRows, rankedRows, rankQuery, raw, providerScope]);
   const suggestions = useMemo(() => {
     if (!typedSomething) return [];
-    return providerScope === "all" ? mergeCommandResults(intentRows, mergedRows.rows).rows : mergedRows.rows;
-  }, [typedSomething, intentRows, mergedRows, providerScope]);
+    if (intent.kind === "command" && commandRows)
+      return mergeCommandResults(commandRows(intent.query), [
+        ...mergedRows.rows,
+        ...(providerRows?.(raw) ?? []),
+      ]).rows;
+    const supplemental = (providerRows?.(raw) ?? []).filter(row => providerScope === "all" || row.section === providerScope
+      || (providerScope === "work" && ["programs", "runs", "results", "skills", "chats", "tasks", "memory", "sets"].includes(row.section)));
+    return mergeCommandResults(providerScope === "all" ? intentRows : [], [...mergedRows.rows, ...supplemental]).rows;
+  }, [typedSomething, intentRows, mergedRows, providerScope, intent, commandRows, providerRows, raw]);
 
   const runSuggestion = async (suggestion: Suggestion) => {
     await suggestion.run();
     if (bridge.privateMode || suggestion.section === "intent" || !raw) return;
     const query = normalizeCommandRankingQuery(raw);
     const candidateKey = commandCandidateKey(suggestion);
+    if (candidateKey.length > 300) return;
     try {
-      const entry = await call("command.ranking.record", { query, candidateKey, source: suggestion.section });
+      const entry = await call("command.ranking.record", {
+        query,
+        candidateKey,
+        source: suggestion.section,
+        pickOrigin: suggestion.providerType === "typed" ? "typed" : "bar",
+      });
       setRankingEntries((current) => [
         entry,
         ...current.filter((item) => item.query !== query || item.candidateKey !== candidateKey),
@@ -771,11 +990,22 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       switchEntryMode(entryMode === "search" ? "ask" : "search");
       return;
     }
+    if (e.key === "Backspace" && !val && scopePrefix) {
+      e.preventDefault();
+      setScopePrefix(null);
+      setProviderScope("all");
+      return;
+    }
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
-      if (providerScope !== "all") { setProviderScope("all"); setSel(0); return; }
-      inputRef.current?.blur();
+      if (providerScope !== "all") {
+        setProviderScope("all");
+        setSel(0);
+        return;
+      }
+      if (onClose) onClose();
+      else inputRef.current?.blur();
       return;
     }
     if (
@@ -794,9 +1024,24 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
     } else if (e.key === "ArrowUp" && suggestions.length) {
       e.preventDefault();
       setSel((s) => Math.max(s - 1, 0));
-    } else if (e.key === "Tab" && !e.shiftKey && intent.kind === "run") {
+    } else if (e.key === "Tab" && !e.shiftKey && sel > 0 && suggestions[sel]?.section !== "intent") {
+      const section = suggestions[sel]!.section;
+      const scope =
+        section === "domains" || section === "suggest"
+          ? "sites"
+          : ["programs", "runs", "results", "skills", "chats", "tasks", "memory", "sets"].includes(section)
+            ? "work"
+            : section;
+      if (PROVIDER_SCOPES.includes(scope as ProviderScope)) {
+        e.preventDefault();
+        setProviderScope(scope as ProviderScope);
+        setSel(0);
+      }
+    } else if (e.key === "Tab" && !e.shiftKey && (intent.kind === "run" || intent.kind === "search")) {
       e.preventDefault();
-      setScopeFlip((v) => !v);
+      const next = intent.kind === "run" ? "search" : "ask";
+      setRouteFlip(next);
+      setPreferSearchOffer(askBreaker.flipped(next));
     } else if (e.key === "Enter") {
       e.preventDefault();
       const chosen = suggestions[sel];
@@ -805,18 +1050,26 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         inlineCompletion && sel === 0 && e.currentTarget.selectionStart === val.length
           ? detectIntent(val + inlineCompletion, { hasPage, searchEngine, searchEngines })
           : intent;
-      void submit(() =>
-        chosen && (providerScope !== "all" || sel > 0) ? runSuggestion(chosen) : exec(completed, e.metaKey),
+      void submit(
+        () =>
+          chosen &&
+          (chosen.section === "tabs" || intent.kind === "command" || providerScope !== "all" || sel > 0)
+            ? runSuggestion(chosen)
+            : exec(completed, e.metaKey, true),
+        !!chosen && "keepOpen" in chosen && chosen.keepOpen === true,
       );
     }
   };
 
-  const submit = async (work: () => unknown | Promise<unknown>) => {
+  const submit = async (work: () => unknown | Promise<unknown>, keepOpen = false) => {
     if (submitting) return;
     setSubmitting(true);
     try {
       await work();
-      inputRef.current?.blur();
+      if (!keepOpen) {
+        onClose?.();
+        inputRef.current?.blur();
+      }
     } catch (error) {
       errToast(error);
     } finally {
@@ -929,6 +1182,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           </span>
         )}
         <input
+          autoFocus={!!surfaceMode}
           ref={inputRef}
           className={editing ? "" : "ghost"}
           value={editing ? val : ""}
@@ -951,6 +1205,14 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           autoCapitalize="off"
           onFocus={onFocus}
           onChange={(e) => {
+            setRouteFlip(null);
+            if (!scopePrefix && /^[ @/>?]$/.test(e.target.value) && e.target.value !== " ") {
+              const prefix = e.target.value as "@" | "/" | ">" | "?";
+              setScopePrefix(prefix);
+              setVal("");
+              if (prefix === "@") setProviderScope("tabs");
+              return;
+            }
             setVal(e.target.value);
             if (hero && entryMode === "ask") useStore.getState().setAgentDraft(e.target.value);
           }}
@@ -982,9 +1244,18 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           type="button"
           className={`cb-chip ${intent.kind}`}
           tabIndex={-1}
-          title={intent.kind === "run" ? "⇥ switches between this page and a new task" : undefined}
+          title={
+            intent.kind === "run" || intent.kind === "search"
+              ? "Tab switches between Ask and Search"
+              : undefined
+          }
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => intent.kind === "run" && setScopeFlip((v) => !v)}
+          onClick={() => {
+            if (intent.kind !== "run" && intent.kind !== "search") return;
+            const next = intent.kind === "run" ? "search" : "ask";
+            setRouteFlip(next);
+            setPreferSearchOffer(askBreaker.flipped(next));
+          }}
         >
           {intent.kind === "run"
             ? shellIconAgentSm
@@ -1009,7 +1280,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
             title={withShortcut("Command palette", key("palette"))}
             aria-label="Open command palette"
             onMouseDown={(e) => e.preventDefault()}
-            data-command-id="palette" onClick={() => runCommand("palette")}
+            onClick={() => openCommandSurface({ mode: "command" })}
           >
             {key("palette")}
           </button>
@@ -1026,13 +1297,45 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           onClick={() => {
             const chosen = suggestions[sel];
             void submit(() =>
-              chosen && (providerScope !== "all" || sel > 0) ? runSuggestion(chosen) : exec(intent),
+              chosen &&
+              (chosen.section === "tabs" || intent.kind === "command" || providerScope !== "all" || sel > 0)
+                ? runSuggestion(chosen)
+                : exec(intent, false, true),
             );
           }}
         >
           {shellIconSend}
         </button>
       )}
+      {scopePrefix && (
+        <span className="cb-scope-pill">
+          {scopePrefix === "@"
+            ? "Tabs"
+            : scopePrefix === "/"
+              ? "Commands"
+              : scopePrefix === ">"
+                ? "Ask"
+                : "Search"}
+        </span>
+      )}
+      {askBreaker.unavailable() && typedSomething && (
+        <output className="cb-suggestion-privacy">Ask unavailable — searching</output>
+      )}
+      {preferSearchOffer && (
+        <button
+          type="button"
+          className="btn sm ghost"
+          onClick={() => {
+            void call("settings.set", { commandRouting: "prefer-search" })
+              .then(() => setPreferSearchOffer(false))
+              .catch(errToast);
+          }}
+        >
+          Prefer search?
+        </button>
+      )}
+      {workStatus.query === raw && workStatus.pending > 0 && <output className="cb-suggestion-privacy">Searching saved work…</output>}
+      {workStatus.query === raw && workStatus.failed && <output className="cb-suggestion-privacy">Some saved work couldn’t be searched. <button className="btn sm ghost" onClick={() => setWorkRetry(value => value + 1)}>Retry</button></output>}
       {(typedSomething || browserError) && (
         <div
           className="cb-pop"
@@ -1043,7 +1346,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           onMouseDown={(e) => e.preventDefault()}
         >
           <div className="cb-provider-scopes" role="group" aria-label="Search providers">
-            {PROVIDER_SCOPES.filter(scope => scope !== "extensions" || extensionEnabled).map((scope) => (
+            {PROVIDER_SCOPES.filter((scope) => scope !== "extensions" || extensionEnabled).map((scope) => (
               <button
                 key={scope}
                 type="button"
@@ -1056,9 +1359,21 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
                   inputRef.current?.focus();
                 }}
               >
-                {scope === "all" ? "All" : scope === "tabs" ? "Open Tabs" : scope === "closed" ? "Recently Closed" :
-                  scope === "bookmarks" ? "Bookmarks" : scope === "history" ? "History" :
-                  scope === "extensions" ? "Extensions" : scope === "sites" ? "Sites" : "Work"}
+                {scope === "all"
+                  ? "All"
+                  : scope === "tabs"
+                    ? "Open Tabs"
+                    : scope === "closed"
+                      ? "Recently Closed"
+                      : scope === "bookmarks"
+                        ? "Bookmarks"
+                        : scope === "history"
+                          ? "History"
+                          : scope === "extensions"
+                            ? "Extensions"
+                            : scope === "sites"
+                              ? "Sites"
+                              : "Work"}
               </button>
             ))}
             {!bridge.privateMode && (
@@ -1073,7 +1388,11 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
               </button>
             )}
           </div>
-          {settings.searchSuggestions === true && <p className="cb-suggestion-privacy">Search suggestions may be sent to your configured search provider.</p>}
+          {settings.searchSuggestions === true && (
+            <p className="cb-suggestion-privacy">
+              Search suggestions may be sent to your configured search provider.
+            </p>
+          )}
           {browserError && (
             <div className="cb-provider-error" role="alert">
               Browser suggestions unavailable: {browserError}
@@ -1092,7 +1411,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
             {suggestions.map((s, i) => {
               const first = i === 0 || suggestions[i - 1]!.section !== s.section;
               return (
-                <div key={s.id}>
+                <div
+                  key={s.id}
+                  data-command-id={
+                    intent.kind === "command" && "commandId" in s ? String(s.commandId) : undefined
+                  }
+                >
                   {first && s.section !== "intent" && <div className="cb-section">{SECTION[s.section]}</div>}
                   <SearchResultRow
                     id={`${listId}-opt-${i}`}
@@ -1108,7 +1432,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
                     }}
                     onHover={() => sel !== i && setSel(i)}
                     onSelect={() => {
-                      void submit(() => runSuggestion(s));
+                      void submit(() => runSuggestion(s), "keepOpen" in s && s.keepOpen === true);
                     }}
                     trailing={
                       s.hint === "↵" ? (
@@ -1146,8 +1470,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
             </Suspense>
           )}
           <div className="cb-search-keys">
-            <span><kbd>Enter</kbd> choose</span>
-            <span><kbd>Esc</kbd> {providerScope === "all" ? "close" : "all results"}</span>
+            <span>
+              <kbd>Enter</kbd> choose
+            </span>
+            <span>
+              <kbd>Esc</kbd> {providerScope === "all" ? "close" : "all results"}
+            </span>
           </div>
         </div>
       )}
@@ -1171,4 +1499,7 @@ const SECTION: Record<Suggestion["section"], string> = {
   results: "Saved results",
   skills: "Skills",
   chats: "Conversations",
+  tasks: "Tasks",
+  memory: "Saved notes",
+  sets: "Sets",
 };

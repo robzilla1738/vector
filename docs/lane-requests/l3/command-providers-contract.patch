@@ -1,0 +1,13 @@
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -15,6 +15,10 @@
+ const Numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+ 
+ export const COMMANDS = [
++  { id: "command-switch-space", label: "Switch Space", section: "Layout", handler: "shell", feature: "spaces", palette: false, focusShell: true, bindings: [] },
++  { id: "command-borrow-chrome", label: "Add a Chrome tab…", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
++  { id: "command-borrow-tab", label: "Borrow attached Chrome tab", section: "Application", handler: "shell", windows: ["normal"], palette: false, focusShell: true, bindings: [] },
++
+   { id: "extension-action", label: "Open extension action", section: "Application", handler: "shell", feature: "extensions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+   { id: "pin-extension-action", label: "Pin or unpin extension action", section: "Application", handler: "shell", feature: "extensions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+   { id: "show-extensions", label: "Manage extensions", section: "Application", handler: "shell", feature: "extensions", focusShell: true, palette: true, windows: ["normal"], bindings: [] },

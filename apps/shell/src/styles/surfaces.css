@@ -303,7 +303,7 @@ html:is(.toolbar-stacked, .sidebar-peek) :is(.app, .app-body, .main-col, .main, 
    Apply tint once, on the panel, rather than stacking it on its contents. */
 :root[data-sidebar-appearance="translucent"] {
   --window-glass-tint: color-mix(in srgb, var(--sb-bg) var(--sidebar-tint, 0%), transparent);
-  --floating-glass-tint: color-mix(in srgb, var(--sb-bg) 78%, transparent);
+  --floating-glass-tint: color-mix(in srgb, var(--floating-sidebar-surface) 78%, transparent);
   --floating-glass-filter: blur(var(--blur-glass-floating)) saturate(1.15);
 }
 :root[data-sidebar-appearance="translucent"] :is(.sidebar.expanded, .sidebar.peek, .chat-sidebar, .rail),
@@ -312,7 +312,7 @@ html:is(.toolbar-stacked, .sidebar-peek) :is(.app, .app-body, .main-col, .main, 
 }
 :root[data-sidebar-appearance="translucent"] .stage-card:not(.has-page) { background: transparent; }
 :root[data-sidebar-appearance="solid"] .app-body { background: var(--sb-bg); }
-button, input, textarea, select, .cmdbar, .cb-pop, .main-col, .menu, .aux-dialog-surface, .palette,
+button, input, textarea, select, .cmdbar, .cb-pop, .main-col, .menu, .aux-dialog-surface, .command-surface,
 .home-card, .user-message, .conversation-input, .conversation-preview,
 .settings-content .field, .tab-row, .tab-new, .folder-row, .tile-face, .answer-code {
   corner-shape: superellipse(var(--squircle-factor));
@@ -390,12 +390,44 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: var(--r-pill); }
 .sb-bookmarks-empty:hover { color: var(--ink-2); background: var(--bg-hover); }
 .icon-btn:not(:disabled):active, .btn:not(:disabled):active { scale: .97; opacity: .9; }
 .icon-btn, .btn { transition: background var(--t-fast) var(--ease-in-out), color var(--t-fast) var(--ease-in-out), opacity var(--t-fast) var(--ease-in-out), scale var(--t-fast) var(--ease-in-out); }
-@keyframes menu-enter { from { opacity: 0; transform: translateY(var(--menu-offset, -4px)) scale(.985); } }
+@keyframes menu-enter { from { opacity: 0; } }
 /* The one entrance for menus and popovers; dialogs use .pop-in. */
-.menu, .history-menu, .cb-pop, .sb-more-menu { animation: menu-enter var(--t-quick) var(--ease-out); transform-origin: top; }
+.menu, .history-menu, .cb-pop, .sb-more-menu { animation: menu-enter var(--t-popup) var(--ease-in-out); transform-origin: top; }
 .space-menu, .sb-more-menu { --menu-offset: 4px; transform-origin: bottom; }
-@supports (backdrop-filter: blur(8px)) {
-  .menu, .history-menu, .cb-pop, .sb-more-menu { background: color-mix(in oklab, var(--surface-menu) 80%, transparent); backdrop-filter: blur(8px); }
+/* Live 06 material anatomy; decoration never changes a control's hit area. */
+@supports (backdrop-filter: blur(4px)) and (mix-blend-mode: plus-lighter) and (mask-composite: exclude) {
+  :root[data-sidebar-appearance="translucent"] :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview),
+  :root[data-sidebar-appearance="translucent"] .app.tabs-vertical:not(.layout-expanded) .sidebar {
+    isolation: isolate;
+    --glass-rim: linear-gradient(#909090, #90909000 25%, #70707000 75%, #505050);
+  }
+  :root[data-sidebar-appearance="translucent"][data-theme="light"] :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview),
+  :root[data-sidebar-appearance="translucent"][data-theme="light"] .app.tabs-vertical:not(.layout-expanded) .sidebar {
+    --glass-rim: linear-gradient(#909090, #90909000 25% 75%, #90909080);
+  }
+  :root[data-sidebar-appearance="translucent"] :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview) {
+    background: color-mix(in oklab, var(--surface-menu) 80%, transparent);
+    border-color: transparent;
+    box-shadow: 0 20px 25px -5px var(--shadow-tint), 0 8px 10px -6px var(--shadow-tint);
+    backdrop-filter: blur(var(--blur-4));
+    -webkit-backdrop-filter: blur(var(--blur-4));
+  }
+  :root[data-sidebar-appearance="translucent"] :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview)::before,
+  :root[data-sidebar-appearance="translucent"] .app.tabs-vertical:not(.layout-expanded) .sidebar::before {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    border-radius: inherit; corner-shape: inherit; pointer-events: none;
+    background: #44444480; mix-blend-mode: plus-lighter;
+    box-shadow: inset 0 40px 30px -40px #e6e6e6;
+  }
+  :root[data-sidebar-appearance="translucent"] :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview)::after,
+  :root[data-sidebar-appearance="translucent"] .app.tabs-vertical:not(.layout-expanded) .sidebar::after {
+    content: ""; position: absolute; inset: 0; z-index: -1;
+    border-radius: inherit; corner-shape: inherit; pointer-events: none;
+    padding: var(--hairline); background: var(--glass-rim); mix-blend-mode: color-dodge;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
 }
 .conversation .answer { font-size: var(--fs-md); line-height: var(--lh-relaxed); max-width: 62ch; }
 .conversation .user-message { background: var(--surface-primary); }

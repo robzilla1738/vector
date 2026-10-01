@@ -36,8 +36,8 @@ export function RecentlyClosed({ query, firstOpenRef }: { query: string; firstOp
   const items = [...closedTabs].reverse().filter(tab => `${tab.title} ${tab.url} ${spaces.find(space => space.id === tab.spaceId)?.name ?? ""}`.toLocaleLowerCase().includes(q));
   return <>
     <p className="library-message hint">Your last {CLOSED_TAB_LIMIT} closed tabs, kept for up to 30 days. Reopening restores the address and its place in the sidebar.</p>
-    <div className="palette-list" id="library-results" role="tabpanel" aria-labelledby="library-closed" onKeyDown={event=>moveListFocus(event,".library-open")}>
-      {!items.length && <p className="pal-empty">{q ? "No closed tabs match." : `Tabs you close will appear here.${key("reopen-closed-tab") ? ` Reopen the most recent with ${key("reopen-closed-tab")}.` : ""}`}</p>}
+    <div className="library-list" id="library-results" role="tabpanel" aria-labelledby="library-closed" onKeyDown={event=>moveListFocus(event,".library-open")}>
+      {!items.length && <p className="library-empty">{q ? "No closed tabs match." : `Tabs you close will appear here.${key("reopen-closed-tab") ? ` Reopen the most recent with ${key("reopen-closed-tab")}.` : ""}`}</p>}
       {items.map((tab, index) => {
         const groupCount = tab.groupId ? closedTabs.filter(item => item.groupId === tab.groupId).length : 0;
         const firstInGroup = tab.groupId && !items.slice(0, index).some(item => item.groupId === tab.groupId);

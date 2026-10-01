@@ -124,6 +124,8 @@
   --ease-emphasized: cubic-bezier(.22, 1, .36, 1);
   --t-quick: 100ms;
   --t-fast: 150ms;
+  --t-popup: 82ms;
+  --t-material-state: 120ms;
   --t-reveal: 180ms;
   --t-slow: 240ms;
   --t-enter: 480ms;
@@ -139,7 +141,7 @@
   --blur-16: 16px;
   --blur-24: 24px;
   --blur-64: 64px;
-  --blur-glass-floating: 28px;
+  --blur-glass-floating: 4px;
 
   /* ---- z ---- */
   --z-stage: 1;
@@ -160,6 +162,7 @@
   --bg-3: oklch(37.1% 0 0);
   --bg-hover: oklch(98.5% 0 0 / .08);
   --bg-active: oklch(98.5% 0 0 / .1);
+  --floating-sidebar-surface: #24272b;
   --glass: oklch(20.5% 0 0 / .8);
   --glass-strong: oklch(26.9% 0 0 / .95);
   /* solid: page views are native layers a CSS blur never reaches */
@@ -288,6 +291,7 @@
   --bg-3: oklch(97% 0 0);
   --bg-hover: oklch(14.5% 0 0 / .05);
   --bg-active: oklch(14.5% 0 0 / .1);
+  --floating-sidebar-surface: #f3f4f6;
   --glass: oklch(100% 0 0 / .8);
   --glass-strong: oklch(100% 0 0 / .95);
   --scrim: oklch(14.5% 0 0 / .18);
@@ -409,6 +413,8 @@
   :root {
     --t-quick: 0ms;
     --t-fast: 0ms;
+    --t-popup: 0ms;
+    --t-material-state: 0ms;
     --t-reveal: 0ms;
     --t-slow: 0ms;
     --t-enter: 0ms;

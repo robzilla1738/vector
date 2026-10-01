@@ -43,3 +43,19 @@ it("keeps ranking feedback inside the trusted shell API", async () => {
     db.close();
   }
 });
+
+it("decays a candidate across query changes with the real pick-origin bonuses", () => {
+  const db = openDb(":memory:");
+  let now = 1000;
+  try {
+    const repo = new Repo(db);
+    const store = new CommandRankingStore(repo, "personal", () => now);
+    expect(store.record("alpha", "https://example.com/", "tabs", "typed").frequency).toBe(2);
+    now += 7 * 86_400_000;
+    const bar = store.record("different query", "https://example.com/", "bookmarks", "bar");
+    expect(bar.frequency).toBe(2.5);
+    expect(bar.uses).toBe(2);
+    expect(store.list()).toHaveLength(1);
+    expect(store.record("link", "https://example.com/", "history", "link").frequency).toBe(3.5);
+  } finally { db.close(); }
+});

@@ -1,0 +1,168 @@
+--- a/apps/shell/src/components/CommandBar.tsx
++++ b/apps/shell/src/components/CommandBar.tsx
+@@ -30,7 +30,7 @@
+ import { hostOf, tabLabel } from "../workspace";
+ 
+ import { FavIcon } from "./SiteTile";
+-import { I } from "./icons";
++import { shellIconAgent, shellIconAgentSm, shellIconAlert, shellIconCommand, shellIconGlobe, shellIconLock, shellIconOpen, shellIconSearch, shellIconSearchLg, shellIconSend } from "./icons";
+ import { bridge, type BrowserExtension } from "../bridge";
+ import { recentConversations } from "../conversations";
+ import { rememberSiteControlsOpener } from "../site-controls-opener";
+@@ -759,12 +759,12 @@
+         url: intent.kind === "navigate" || intent.kind === "search" ? intent.url : undefined,
+         icon:
+           intent.kind === "run"
+-            ? I.agentSm
++            ? shellIconAgentSm
+             : intent.kind === "navigate"
+-              ? I.open
++              ? shellIconOpen
+               : intent.kind === "command"
+-                ? I.command
+-                : I.search,
++                ? shellIconCommand
++                : shellIconSearch,
+         title:
+           intent.kind === "navigate"
+             ? intent.display
+@@ -792,7 +792,7 @@
+       out.push({
+         id: "ask",
+         section: "intent",
+-        icon: I.agentSm,
++        icon: shellIconAgentSm,
+         title: `Ask Aux: ${raw}`,
+         detail: hasPage ? `Use the current page · ${hostOf(page?.url ?? "")}` : "Start a conversation",
+         hint: "Ask",
+@@ -808,7 +808,7 @@
+         section: match.type === "bookmark" ? "bookmarks" : match.type === "history" ? "history" : "browser",
+         providerType: match.type,
+         url: match.url,
+-        icon: match.type === "search" ? I.search : <FavIcon url={match.url} size="sm" />,
++        icon: match.type === "search" ? shellIconSearch : <FavIcon url={match.url} size="sm" />,
+         title: match.title,
+         detail: match.description || hostOf(match.url),
+         run: () => exec({ kind: "navigate", url: match.url, display: match.title }),
+@@ -1117,15 +1117,15 @@
+                 setOverlay("site");
+               }}
+             >
+-              {I.globe}
++              {shellIconGlobe}
+             </button>
+           ) : (
+-            <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.search}</span>
++            <span className="cb-ico">{showIntent && intent.kind === "run" ? shellIconAgent : shellIconSearch}</span>
+           )
+         ) : page && hasPage && !hero ? (
+-          <span className="cb-ico">{I.globe}</span>
++          <span className="cb-ico">{shellIconGlobe}</span>
+         ) : (
+-          <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.searchLg}</span>
++          <span className="cb-ico">{showIntent && intent.kind === "run" ? shellIconAgent : shellIconSearchLg}</span>
+         )}
+         {hasPage && !editing && !hero && !compact && (
+           <button
+@@ -1139,7 +1139,7 @@
+               setOverlay("site");
+             }}
+           >
+-            {secure ? I.lock : I.alert}
++            {secure ? shellIconLock : shellIconAlert}
+           </button>
+         )}
+       </span>
+@@ -1256,12 +1256,12 @@
+           }}
+         >
+           {intent.kind === "run"
+-            ? I.agentSm
++            ? shellIconAgentSm
+             : intent.kind === "navigate"
+-              ? I.open
++              ? shellIconOpen
+               : intent.kind === "search"
+-                ? I.search
+-                : I.command}
++                ? shellIconSearch
++                : shellIconCommand}
+           {intentLabel(intent)}
+           {intent.kind === "run" && <kbd>⇥</kbd>}
+         </button>
+@@ -1302,7 +1302,7 @@
+             );
+           }}
+         >
+-          {I.send}
++          {shellIconSend}
+         </button>
+       )}
+       {scopePrefix && (
+@@ -1433,7 +1433,7 @@
+                     trailing={
+                       s.hint === "↵" ? (
+                         <span className="cb-go" aria-hidden="true">
+-                          {I.send}
++                          {shellIconSend}
+                         </span>
+                       ) : s.hint ? (
+                         <kbd>{s.hint}</kbd>
+--- a/apps/shell/src/components/CommandSurface.tsx
++++ b/apps/shell/src/components/CommandSurface.tsx
+@@ -8,7 +8,7 @@
+ import { closeCommandSurface, type CommandSurfaceRequest } from "../command-surface-state";
+ import { useShortcutLabels } from "../use-shortcut-label";
+ import { CommandBar } from "./CommandBar";
+-import { I } from "./icons";
++import { shellIconCommand } from "./icons";
+ import type { CommandInvocation } from "../features/registry";
+ import type { Suggestion } from "./command-provider-types";
+ import { commandSurfaceWorkRows, emptyCommandSurfaceWork } from "../command-surface-providers";
+@@ -74,7 +74,7 @@
+     const term = query.trim().toLocaleLowerCase();
+     const matches = (text: string) => !term || text.toLocaleLowerCase().includes(term);
+     const row = (id: string, title: string, detail: string, run: Suggestion["run"], commandId?: string): Suggestion & { commandId?: string } => ({
+-      commandId, id, title, detail, icon: I.command, section: "intent", run,
++      commandId, id, title, detail, icon: shellIconCommand, section: "intent", run,
+     });
+     if (picker === "split") return pages.filter(page => page.pageId !== activePageId && canSplitPage(page)
+       && canSplitPage(activePage) && layout.tabSpace[page.pageId] === layout.activeSpaceId
+--- a/apps/shell/src/command-surface-providers.tsx
++++ b/apps/shell/src/command-surface-providers.tsx
+@@ -2,7 +2,7 @@
+ import { conversationDraftEntries } from "./conversation-drafts";
+ import { openSavedTask } from "./task-navigation";
+ import { useStore } from "./store";
+-import { I } from "./components/icons";
++import { shellIconLayersSm, shellIconPencil, shellIconResult } from "./components/icons";
+ import type { Suggestion } from "./components/command-provider-types";
+ 
+ export interface CommandSurfaceWork {
+@@ -21,11 +21,11 @@
+   if (term.length < 2 || work.query !== query) return [];
+   const rows: Suggestion[] = [];
+   for (const task of work.tasks) rows.push({ id: `task-${task.taskId}`, section: "intent", title: task.title,
+-    detail: task.objective, icon: I.layersSm, run: () => openSavedTask(task.taskId) });
++    detail: task.objective, icon: shellIconLayersSm, run: () => openSavedTask(task.taskId) });
+   for (const note of work.memory) {
+     if (!state.layout.spaces.some(space => space.workspaceId === note.workspaceId)) continue;
+     rows.push({ id: `memory-${note.workspaceId}`, section: "intent", title: note.name, detail: note.excerpt,
+-      icon: I.result, run: () => {
++      icon: shellIconResult, run: () => {
+         const current = useStore.getState();
+         if (!current.layout.spaces.some(space => space.workspaceId === note.workspaceId)) throw new Error("The Space is no longer available.");
+         useStore.setState({ settingsCategory: "Memory", memoryWorkspaceId: note.workspaceId }); current.setOverlay("settings");
+@@ -34,10 +34,10 @@
+   for (const draft of conversationDraftEntries(state.conversationDrafts, state.runs, work.prepared)) {
+     if (!`${draft.title} ${draft.text}`.toLocaleLowerCase().includes(term)) continue;
+     rows.push({ id: `draft-${draft.key}`, section: "intent", title: draft.title, detail: `Unsent draft · ${draft.text}`,
+-      icon: I.pencil, run: () => state.openConversationDraft(draft.id) });
++      icon: shellIconPencil, run: () => state.openConversationDraft(draft.id) });
+   }
+   for (const set of state.sets) if (set.name.toLocaleLowerCase().includes(term)) rows.push({ id: `set-${set.setId}`,
+-    section: "intent", title: set.name, detail: `${set.memberIds.length} members`, icon: I.layersSm,
++    section: "intent", title: set.name, detail: `${set.memberIds.length} members`, icon: shellIconLayersSm,
+     run: async () => {
+       if (!useStore.getState().sets.some(item => item.setId === set.setId)) throw new Error("The Set is no longer available.");
+       await state.refreshResults(set.setId);

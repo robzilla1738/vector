@@ -6,7 +6,7 @@ import type { useStore } from "../store";
 
 export type CommandContext = ReturnType<typeof useStore.getState>;
 export interface CommandInvocation {
-  payload?: { queue: import("@aux/contracts").MethodParams<"nightShift.queue"> }
+  payload?: { targetId: string; url: string } | { queue: import("@aux/contracts").MethodParams<"nightShift.queue"> }
     | import("@aux/contracts").MethodParams<"nightShift.review">
     | { nightShift: import("zod").infer<typeof import("@aux/contracts").NightShiftSettingsSchema> }
     | { demonstration: { recordingId: string; taskId: string; expectedTaskRevision: number; title: string; review: import("zod").infer<typeof import("@aux/contracts").DemonstrationReviewSchema> } }

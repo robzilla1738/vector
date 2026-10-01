@@ -1,0 +1,18 @@
+--- a/apps/shell/src/settings/sections/General.tsx
++++ b/apps/shell/src/settings/sections/General.tsx
+@@ -180,6 +180,15 @@
+             >
+               <option value="search">Search</option>
+               <option value="ask">Ask</option>
++            </select>
++          </IndexedField>
++
++          <IndexedField compact label="Command routing" hint="Choose how plain text in the command surface starts. URLs always open directly.">
++            <select aria-label="Command routing" value={String(settings.commandRouting ?? "automatic")}
++              onChange={event => void onSave({ commandRouting: event.target.value })}>
++              <option value="automatic">Automatic</option>
++              <option value="prefer-chat">Prefer Ask</option>
++              <option value="prefer-search">Prefer Search</option>
+             </select>
+           </IndexedField>
+ 

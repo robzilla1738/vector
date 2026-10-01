@@ -73,6 +73,7 @@ export interface Settings {
   budgets?: { runUsd?: number; dayUsd?: number; routineUsd?: number };
   searchEngine?: string;
   homeEntryMode?: "search" | "ask";
+  commandRouting?: "automatic" | "prefer-chat" | "prefer-search";
   searchEngines?: { keyword: string; name: string; template: string }[];
   searchSuggestions?: boolean;
   routineSuggestionScan?: "off" | "context" | "five-minutes";
@@ -250,6 +251,7 @@ export class SettingsService {
       budgets: this.budgetLimits(),
       searchEngine: this.searchEngine(),
       homeEntryMode: this.get("homeEntryMode") as Settings["homeEntryMode"],
+      commandRouting: (this.get("commandRouting") as Settings["commandRouting"]) ?? "automatic",
       searchEngines: (this.get("searchEngines") as Settings["searchEngines"]) ?? [],
       searchSuggestions: (this.get("searchSuggestions") as boolean | undefined) ?? false,
       routineSuggestionScan: z.enum(["off", "context", "five-minutes"])

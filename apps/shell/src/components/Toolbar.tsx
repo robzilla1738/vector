@@ -4,7 +4,8 @@ import { memo, useRef, type CSSProperties } from "react";
 import { NavigationButtons } from "./NavigationButtons";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
-import { CommandBar } from "./CommandBar";
+import { deferSurface } from "./DeferredSurface";
+const CommandBar = deferSurface<{ compact: boolean }>(async () => { const module = await import("./CommandBar"); return { default: module.CommandBar }; }, "Address field", true, true);
 import { shellIconAgent, shellIconAgentSm, shellIconBookmark, shellIconBookmarkFill, shellIconGear, shellIconGrid, shellIconHandSm, shellIconSidebarOpen } from "./icons";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 

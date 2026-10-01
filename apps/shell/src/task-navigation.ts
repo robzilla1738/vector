@@ -12,7 +12,7 @@ export async function openSavedTask(taskId: string): Promise<void> {
   await openTaskSurface(task.workspaceId, taskId, navigation);
 }
 
-/** Palette search opens the exact Skill in its Space without running it. */
+/** Command search opens the exact Skill in its Space without running it. */
 export async function openSavedSkill(skill: Pick<Routine,'routineId'|'workspaceId'>): Promise<void> {
   await openTaskSurface(skill.workspaceId, undefined, beginNavigation(), skill.routineId);
 }

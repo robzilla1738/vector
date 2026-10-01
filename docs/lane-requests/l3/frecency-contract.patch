@@ -1,0 +1,20 @@
+--- a/packages/contracts/src/command-ranking.ts
++++ b/packages/contracts/src/command-ranking.ts
+@@ -21,6 +21,7 @@
+     query: z.string().min(1).max(160),
+     candidateKey: z.string().min(1).max(300),
+     source: CommandRankingSourceSchema,
++    frequency: z.number().finite().min(0).max(10000).optional(),
+     uses: z.number().int().min(1).max(1000),
+     lastUsedAt: z.number().int().nonnegative(),
+   })
+--- a/packages/contracts/src/api.ts
++++ b/packages/contracts/src/api.ts
+@@ -1581,6 +1581,7 @@
+       query: z.string().trim().min(1).max(160),
+       candidateKey: z.string().min(1).max(300),
+       source: CommandRankingSourceSchema,
++      pickOrigin: z.enum(["typed", "bar", "link"]).optional(),
+     })
+     .strict(),
+   "command.ranking.clear": z.object({}).strict(),

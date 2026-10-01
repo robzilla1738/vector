@@ -183,6 +183,15 @@ export function GeneralSettings({
             </select>
           </IndexedField>
 
+          <IndexedField compact label="Command routing" hint="Choose how plain text in the command surface starts. URLs always open directly.">
+            <select aria-label="Command routing" value={String(settings.commandRouting ?? "automatic")}
+              onChange={event => void onSave({ commandRouting: event.target.value })}>
+              <option value="automatic">Automatic</option>
+              <option value="prefer-chat">Prefer Ask</option>
+              <option value="prefer-search">Prefer Search</option>
+            </select>
+          </IndexedField>
+
           <IndexedField
             compact
             label="Search suggestions"

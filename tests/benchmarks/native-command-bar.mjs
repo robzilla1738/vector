@@ -12,9 +12,12 @@ import { summarizeSamples } from "./statistics.mjs";
 const root = resolve(import.meta.dirname, "../..");
 const value = flag => { const i = process.argv.indexOf(flag); return i < 0 ? undefined : process.argv[i + 1]; };
 if (process.argv.includes("--plan")) {
-  console.log("node tests/benchmarks/native-command-bar.mjs --app /absolute/AuxDev/Aux.app [--trials 20] [--output /absolute/new/directory]");
+  console.log("node tests/benchmarks/native-command-bar.mjs --app /absolute/AuxDev/Aux.app [--mode new-tab|edit|command] [--trials 20] [--output /absolute/new/directory]");
   process.exit(0);
 }
+const mode = value("--mode") ?? "edit";
+assert.ok(["new-tab", "edit", "command"].includes(mode), "Use a supported command surface mode");
+const fieldSelector = ' .command-surface input[role=combobox][aria-label="Address, search, and agent prompt"]'.trim();
 const app = value("--app");
 assert.ok(app?.startsWith("/") && app.endsWith("/Aux.app"), "Pass an absolute Aux.app path");
 const binary = join(app, "Contents/MacOS/Aux");
@@ -32,13 +35,14 @@ mkdirSync(profile);
 writeFileSync(join(profile, "Local State"), JSON.stringify({ devtools: { remote_debugging: { allowed: true } } }), { mode: 0o600 });
 const server = createServer((_req, res) => { res.writeHead(200, { "content-type": "text/html" }); res.end("<!doctype html><title>Aux history seed</title>Aux history seed"); });
 const origin = await new Promise(resolveListen => server.listen(0, "127.0.0.1", () => resolveListen(`http://127.0.0.1:${server.address().port}`)));
-const report = { schema: 1, status: "running", app, historyEntries: 50_000, trials,
+const report = { schema: 1, status: "running", app, mode, historyEntries: 50_000, trials,
   sourceSha: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   build: "AuxDev component, test remote debugging enabled",
   power: execFileSync("pmset", ["-g", "batt"], { encoding: "utf8" }).trim(),
   method: "input event timestamp to second requestAnimationFrame after the matching native history row enters the shell DOM; conservative presented-frame proxy",
   limitations: ["Development component build; trend only", "CDP text insertion, not a physical key event", "Second animation frame is a paint proxy, not GPU presentation telemetry"],
   samplesMs: [], startedAt: new Date().toISOString() };
+assert.match(report.power, /AC Power/, "Command surface performance requires AC power");
 async function until(label, fn, timeout = 30_000) {
   const end = Date.now() + timeout;
   while (Date.now() < end) { const result = await fn(); if (result) return result; await delay(50); }
@@ -136,14 +140,16 @@ try {
   await until("seeded Chromium autocomplete index", () => run.evaluate(`window.aux.autocomplete('auxperf00000').then(items=>items.some(item=>item.type==='history'&&item.url===${JSON.stringify(`${origin}/auxperf00000`)}))`, true));
   await delay(1000);
   for (let i = 0; i < trials + 3; i++) {
-    const token = `auxperf${String(i).padStart(5, "0")}`;
-    await run.evaluate(`document.querySelector('input[role=combobox][aria-label="Address, search, and agent prompt"]').focus()`);
+    const token = mode === "command" ? "settings" : `auxperf${String(i).padStart(5, "0")}`;
+    await run.evaluate(`window.aux.dispatchCommand(${JSON.stringify(mode === "new-tab" ? "new-tab" : mode === "edit" ? "open-address" : "palette")})`, true);
+    await until("unified command surface", () => run.evaluate(`!!document.querySelector(${JSON.stringify(fieldSelector)})`));
+    await run.evaluate(`document.querySelector(${JSON.stringify(fieldSelector)}).focus()`);
     if (i === 0) await delay(100);
-    await run.evaluate(`document.querySelector('input[role=combobox][aria-label="Address, search, and agent prompt"]').select()`);
+    await run.evaluate(`document.querySelector(${JSON.stringify(fieldSelector)}).select()`);
     await run.evaluate(`window.__auxBenchPromise = new Promise((resolve, reject) => {
       const expected=${JSON.stringify(token)};
-      const historyAddress=${JSON.stringify(`${new URL(origin).host}/${token}`)};
-      const field=document.querySelector('input[role=combobox][aria-label="Address, search, and agent prompt"]');
+      const historyAddress=${JSON.stringify(mode === "command" ? "Settings" : `${new URL(origin).host}/${token}`)};
+      const field=document.querySelector(${JSON.stringify(fieldSelector)});
       let inputAt=0;
       const observer=new MutationObserver(() => {
         if (!inputAt || ![...document.querySelectorAll('[role=option]')].some(row => row.textContent?.includes(historyAddress))) return;
@@ -154,18 +160,22 @@ try {
       field.addEventListener('input',onInput); observer.observe(document.body,{subtree:true,childList:true,characterData:true});
     })`);
     await run.send("Input.insertText", { text: token });
-    if (i === 0) { await delay(300); report.firstInput = await run.evaluate(`({value:document.querySelector('input[role=combobox][aria-label="Address, search, and agent prompt"]')?.value,options:[...document.querySelectorAll('[role=option]')].map(x=>x.textContent)})`); }
+    if (i === 0) { await delay(300); report.firstInput = await run.evaluate(`({value:document.querySelector(${JSON.stringify(fieldSelector)})?.value,options:[...document.querySelectorAll('[role=option]')].map(x=>x.textContent)})`); }
     const ms = await run.evaluate("window.__auxBenchPromise", true);
     if (i >= 3) report.samplesMs.push(ms);
+    await run.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+    await run.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+    await until("surface dismissed", () => run.evaluate(`!document.querySelector(${JSON.stringify(fieldSelector)})`));
   }
   report.summary = summarizeSamples(report.samplesMs);
   report.meets30msP95 = report.summary.p95 <= 30;
-  report.status = "measured";
+  report.status = report.meets30msP95 ? "measured" : "failed-budget";
+  if (!report.meets30msP95) process.exitCode = 1;
   console.log(JSON.stringify({ summary: report.summary, meets30msP95: report.meets30msP95, output }, null, 2));
 } catch (error) {
   report.status = "failed";
   report.error = error instanceof Error ? error.message : String(error);
-  if (run) report.diagnostic = await run.evaluate(`(async()=>{let native,capabilities;try{native=await window.aux.autocomplete('auxperf00000')}catch(e){native=String(e)}try{capabilities=await window.aux.capabilities()}catch(e){capabilities=String(e)}return {input:document.querySelector('input[role=combobox][aria-label="Address, search, and agent prompt"]')?.value,options:[...document.querySelectorAll('[role=option]')].slice(0,8).map(x=>x.textContent),native,capabilities}})()`, true).catch(() => null);
+  if (run) report.diagnostic = await run.evaluate(`(async()=>{let native,capabilities;try{native=await window.aux.autocomplete('auxperf00000')}catch(e){native=String(e)}try{capabilities=await window.aux.capabilities()}catch(e){capabilities=String(e)}return {input:document.querySelector(${JSON.stringify(fieldSelector)})?.value,options:[...document.querySelectorAll('[role=option]')].slice(0,8).map(x=>x.textContent),native,capabilities}})()`, true).catch(() => null);
   console.error(report.error);
   if (report.diagnostic) console.error(JSON.stringify(report.diagnostic));
   process.exitCode = 1;

@@ -38,7 +38,6 @@ export const createUiSlice: Slice<UiKeys> = (set, get) => ({
   connected: false,
   focusRequest: 0,
   focusSlot: "sidebar" as CommandSlot,
-  paletteSeed: "",
   narrow: false,
   setMode: (mode) => set({ mode }),
   setNarrow: (narrow) => set({ narrow }),

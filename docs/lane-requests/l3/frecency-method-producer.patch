@@ -1,0 +1,11 @@
+--- a/apps/runtime/src/api/methods/command.ts
++++ b/apps/runtime/src/api/methods/command.ts
+@@ -7,7 +7,7 @@
+ }
+ async function h_command_ranking_record(ctx: MethodCtx): Promise<unknown> {
+   const { commandRanking, params } = ctx;
+-  return commandRanking.record(params.query, params.candidateKey, params.source);
++  return commandRanking.record(params.query, params.candidateKey, params.source, params.pickOrigin);
+ }
+ async function h_command_ranking_clear(ctx: MethodCtx): Promise<unknown> {
+   const { commandRanking } = ctx;

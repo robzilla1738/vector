@@ -3,53 +3,32 @@ import { commandCandidateKey, mergeCommandResults, titleHostKey } from "./comman
 import { rankAuxCommandResults } from "./command-ranking-renderer";
 
 describe("command result merge", () => {
-  it("preserves Chromium order and drops matching title plus host from Aux", () => {
-    const host = [
-      {
-        id: "history-1",
-        title: "Release Notes",
-        url: "https://example.com/releases",
-      },
-      {
-        id: "bookmark-1",
-        title: "Project",
-        url: "https://aux.example/project",
-      },
-    ];
-    const aux = [
-      {
-        id: "tab-1",
-        title: "Release  Notes",
-        url: "https://example.com/releases?from=tab",
-      },
-      {
-        id: "skill-1",
-        title: "Review release",
-        url: "https://example.com/releases",
-      },
-    ];
-    const result = mergeCommandResults(host, aux);
-    expect(result.rows.map((row) => row.id)).toEqual(["history-1", "bookmark-1", "skill-1"]);
-    expect(result.dropped).toEqual([
-      {
-        droppedId: "tab-1",
-        keptId: "history-1",
-        key: "release notes\u0000example.com",
-      },
-    ]);
+  it("keeps distinct URLs sharing an ordinary title and host", () => {
+    const result = mergeCommandResults(
+      [{ id: "history", title: "Article", url: "https://example.com/one" }],
+      [{ id: "tab", title: "Article", url: "https://example.com/two", section: "tabs" }],
+    );
+    expect(result.rows.map((row) => row.id)).toEqual(["history", "tab"]);
+    expect(titleHostKey(result.rows[0]!)).toBeNull();
   });
-
-  it("keeps distinct titles and non-web actions", () => {
-    expect(titleHostKey({ id: "command", title: "Open settings" })).toBeNull();
-    expect(
-      mergeCommandResults(
-        [{ id: "a", title: "A", url: "https://example.com" }],
-        [
-          { id: "b", title: "B", url: "https://example.com" },
-          { id: "c", title: "A" },
-        ],
-      ).rows.map((row) => row.id),
-    ).toEqual(["a", "b", "c"]);
+  it("canonicalizes only tracking parameters and hash, with an open tab winning", () => {
+    const result = mergeCommandResults(
+      [
+        { id: "history", title: "First", url: "https://example.com/a?utm_source=x&b=2#a" },
+        { id: "second", title: "Second", url: "https://other.example/b" },
+      ],
+      [{ id: "tab", title: "Live", url: "https://example.com/a?b=2#b", section: "tabs" }],
+    );
+    expect(result.rows.map((row) => row.id)).toEqual(["tab", "second"]);
+    expect(result.dropped).toMatchObject([{ droppedId: "history", keptId: "tab" }]);
+  });
+  it("uses title and host aliases only on the bundled hosts", () => {
+    const result = mergeCommandResults(
+      [{ id: "history", title: "Issue", url: "https://github.com/a/issues/1" }],
+      [{ id: "tab", title: "Issue", url: "https://github.com/a/issues/1?view=live", section: "tabs" }],
+    );
+    expect(result.rows.map((row) => row.id)).toEqual(["tab"]);
+    expect(titleHostKey({ id: "command", title: "Settings" })).toBeNull();
   });
 });
 
@@ -77,22 +56,43 @@ describe("learned Aux ranking", () => {
         ranked.map((item) => item.candidate),
       ).rows[0]?.id,
     ).toBe("host-top");
-    expect(rankAuxCommandResults(query, aux, [entry], 1000 + 90 * 86_400_000)[0]?.candidate.id).toBe("first");
+    expect(
+      rankAuxCommandResults(query, aux, [entry], 1000 + 365 * 86_400_000).find(
+        (row) => row.candidate.id === "second",
+      )?.adjustment,
+    ).toBeLessThan(0.001);
   });
 
   it("shares a learned web key across providers and keeps non-web keys distinct", () => {
     expect(
-      commandCandidateKey({ id: "tab", section: "tabs", title: "Release Notes", url: "https://a.example/a" }),
+      commandCandidateKey({
+        id: "tab",
+        section: "tabs",
+        title: "Release Notes",
+        url: "https://a.example/a#one",
+      }),
     ).toBe(
       commandCandidateKey({
         id: "bookmark",
         section: "bookmarks",
         title: "Release Notes",
-        url: "https://a.example/b",
+        url: "https://a.example/a#two",
       }),
     );
     expect(commandCandidateKey({ id: "result", section: "results", title: "Release Notes" })).not.toBe(
       commandCandidateKey({ id: "skill", section: "skills", title: "Release Notes" }),
     );
   });
+});
+
+it("coalesces canonical and bundled aliases without leaving a transitive duplicate", () => {
+  const result = mergeCommandResults(
+    [
+      { id: "first", title: "First", url: "https://github.com/a" },
+      { id: "second", title: "Second", url: "https://github.com/b" },
+    ],
+    [{ id: "tab", section: "tabs", title: "Second", url: "https://github.com/a#live" }],
+  );
+  expect(result.rows.map((row) => row.id)).toEqual(["tab"]);
+  expect(result.dropped.map((row) => row.droppedId)).toEqual(["first", "second"]);
 });

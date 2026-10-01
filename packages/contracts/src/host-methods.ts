@@ -9,7 +9,7 @@ import { CredentialHandoffRequestSchema, CredentialHandoffResultSchema } from ".
 import { WebmcpCallResultSchema, WebmcpToolSchema } from "./webmcp.js";
 import { ZapStylesheetInstallSchema, ZapInstallReceiptSchema } from "./zap.js";
 import { EventSchema } from "./events.js";
-import { AutofillProfileSchema } from "./api.js";
+import { AutofillProfileSchema } from "./autofill.js";
 import type { AuxFeature } from "./aux-features.js";
 import { WindowControlsVisibleSchema } from "./minimal-ui.js";
 import { PictureInPictureOperationSchema, PictureInPictureResultSchema } from "./pip.js";

@@ -1,4 +1,4 @@
-/** Predictable address-bar routing: URLs open, text searches, and > explicitly asks Aux. */
+/** URL-first routing with explicit scopes and the person’s Ask/Search preference. */
 import { isUrlLike, toUrl } from "./chrome";
 import { engineList, resolveKeyword, type KeywordEngine } from "./engines";
 
@@ -13,6 +13,8 @@ export interface IntentContext {
   /** the active page has a real URL the agent could work on */
   hasPage: boolean;
   searchEngine?: string;
+  routing?: "automatic" | "prefer-chat" | "prefer-search";
+  askUnavailable?: boolean;
   searchEngines?: readonly KeywordEngine[];
 }
 
@@ -23,7 +25,11 @@ export function detectIntent(raw: string, ctx: IntentContext): Intent {
   if (v.startsWith("/")) return { kind: "command", query: v.slice(1).trim() };
   if (v.startsWith(">")) {
     const goal = v.slice(1).trim();
-    return goal ? { kind: "run", goal, scope: ctx.hasPage ? "page" : "new" } : { kind: "empty" };
+    return !goal
+      ? { kind: "empty" }
+      : ctx.askUnavailable
+        ? { kind: "search", query: goal, url: toUrl(goal, ctx.searchEngine) }
+        : { kind: "run", goal, scope: ctx.hasPage ? "page" : "new" };
   }
   if (v.startsWith("?")) {
     const q = v.slice(1).trim();
@@ -40,6 +46,13 @@ export function detectIntent(raw: string, ctx: IntentContext): Intent {
     return { kind: "navigate", url, display: url.replace(/^https?:\/\//, "").replace(/\/$/, "") };
   }
 
+  const words = v.split(/\s+/).length;
+  const asks =
+    /^(?:who|what|when|where|why|how|which|can|could|would|should|is|are|do|does|did)\b/i.test(v) ||
+    (v.endsWith("?") && words >= 4) ||
+    words >= 8;
+  if (!ctx.askUnavailable && ctx.routing !== "prefer-search" && (ctx.routing === "prefer-chat" || asks))
+    return { kind: "run", goal: v, scope: ctx.hasPage ? "page" : "new" };
   return { kind: "search", query: v, url: toUrl(v, ctx.searchEngine) };
 }
 
@@ -56,5 +69,33 @@ export function intentLabel(i: Intent): string {
       return "Command";
     default:
       return "";
+  }
+}
+
+/** One window-local breaker. Failures include a missing model, disconnect and
+ * an unacknowledged request; a late completion never counts as a fresh success. */
+export class AskCircuitBreaker {
+  private failures: number[] = [];
+  private blockedUntil = 0;
+  private searchFlips = 0;
+  constructor(private readonly now = Date.now) {}
+  unavailable(): boolean {
+    return this.now() < this.blockedUntil;
+  }
+  retryAfter(): number {
+    return Math.max(0, this.blockedUntil - this.now());
+  }
+  failed(): void {
+    const now = this.now();
+    this.failures = this.failures.filter((time) => now - time < 600_000);
+    this.failures.push(now);
+    if (this.failures.length >= 3) {
+      this.blockedUntil = now + 600_000;
+      this.failures = [];
+    }
+  }
+  flipped(route: "search" | "ask"): boolean {
+    this.searchFlips = route === "search" ? this.searchFlips + 1 : 0;
+    return this.searchFlips === 2;
   }
 }

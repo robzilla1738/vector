@@ -84,3 +84,15 @@ index d3a7738..ae15bc0 100644
  #include "content/public/browser/weak_document_ptr.h"
  #include "content/public/test/navigation_simulator.h"
  #include "content/public/test/test_renderer_host.h"
+diff --git a/chrome/browser/ui/aux/result_preview_browsertest.cc b/chrome/browser/ui/aux/result_preview_browsertest.cc
+index dc54d53..4840a97 100644
+--- a/chrome/browser/ui/aux/result_preview_browsertest.cc
++++ b/chrome/browser/ui/aux/result_preview_browsertest.cc
+@@ -12,6 +12,7 @@
+ #include "base/test/scoped_feature_list.h"
+ #include "base/values.h"
+ #include "chrome/browser/ui/browser.h"
++#include "chrome/common/chrome_features.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+ #include "chrome/test/base/in_process_browser_test.h"

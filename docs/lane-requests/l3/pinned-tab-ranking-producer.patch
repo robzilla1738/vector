@@ -1,0 +1,34 @@
+--- a/apps/shell/src/components/command-provider-types.ts
++++ b/apps/shell/src/components/command-provider-types.ts
+@@ -4,6 +4,7 @@
+ 
+ interface SuggestionBase {
+   id: string;
++  pinned?: boolean;
+   url?: string;
+   providerType?: AutocompleteMatch["type"];
+   icon: ReactNode;
+--- a/apps/shell/src/components/command-tab-rows.tsx
++++ b/apps/shell/src/components/command-tab-rows.tsx
+@@ -9,6 +9,7 @@
+   title: string;
+   url: string;
+   favicon?: string;
++  pinned?: boolean;
+ }
+ 
+ /** The fast tab path is available before the other search providers finish loading. */
+@@ -22,11 +23,12 @@
+     .map((item) => ({
+       id: `tab-${item.pageId}`,
+       section: "tabs",
++      pinned: item.pinned,
+       url: item.url,
+       icon: <FavIcon url={item.url} src={item.favicon} size="sm" />,
+       title: item.title || hostOf(item.url),
+       detail: hostOf(item.url),
+-      hint: "Switch",
++      hint: "Switch to tab",
+       run: () => activate(item.pageId),
+     }));
+ }

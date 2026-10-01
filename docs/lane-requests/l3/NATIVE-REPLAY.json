@@ -1,0 +1,420 @@
+{
+  "status": "PASS",
+  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-unified-native-replay-vz0wmha8",
+  "baseReplay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-autonomy-native-replay-ijy9khf3",
+  "baseProofSha256": "d36444c4b8b7658d62ffd28fe04b8fa30a29e82785d2f7815dd3b242892d90b1",
+  "orderedPatches": [
+    "chromium/patches/aux/runtime/0148-cross-window-claim.patch",
+    "chromium/patches/aux/runtime/0150-little-window-controller.patch",
+    "chromium/patches/aux/runtime/0151-little-window-link-hooks.patch",
+    "chromium/patches/aux/runtime/0152-window-transfer-refusal-tests.patch",
+    "chromium/patches/aux/runtime/0144-minimal-window-controls.patch",
+    "chromium/patches/aux/runtime/0172-split-surface-visibility.patch",
+    "chromium/patches/aux/runtime/0174-picture-in-picture-media.patch",
+    "chromium/patches/aux/runtime/0175-auto-pip-site-policy.patch",
+    "chromium/patches/aux/runtime/0176-surface-media-tests.patch",
+    "chromium/patches/aux/runtime/0154-profile-appearance-and-spaces.patch",
+    "chromium/patches/aux/runtime/0155-link-routing-matcher.patch",
+    "chromium/patches/aux/runtime/0156-aux-applescript.patch",
+    "chromium/patches/aux/runtime/0160-extension-side-panel.patch",
+    "chromium/patches/aux/runtime/0178-live-folder-sources.patch",
+    "chromium/patches/aux/runtime/0179-guarded-auto-archive.patch",
+    "chromium/patches/aux/runtime/0191-profile-organization-authority.patch",
+    "chromium/patches/aux/runtime/0192-browser-feature-wiring-and-authority.patch",
+    "0166-smart-download-naming.patch",
+    "0167-smart-download-signals.patch",
+    "0168-smart-download-tests.patch",
+    "0193-download-file-authority-and-wiring.patch",
+    "0181-night-shift-power.patch",
+    "0195-autonomy-power-shared-wiring.patch",
+    "chromium/patches/aux/runtime/0196-native-test-build-dependencies.patch",
+    "chromium/patches/aux/runtime/0194-native-permission-provenance.patch",
+    "0170-committed-link-frecency.patch",
+    "0184-native-appearance-snapshot.patch"
+  ],
+  "revised0196": "764f3e4a76cc709cbb2097e371f4ea24f66555151f6b8342b8cb3cc43695f639",
+  "exactNativeFiles": [
+    {
+      "path": "chrome/app/app-Info.plist",
+      "sha256": "905effecbc0900df953f1362a7a4bb06d3077f098df22dcfe6d0c380ca64b446"
+    },
+    {
+      "path": "chrome/browser/app_controller_mac.mm",
+      "sha256": "1bc2afa8a4b49072b5dc552a54b13a4107ba7e4c974ab572933e3d9dc3aad63b"
+    },
+    {
+      "path": "chrome/browser/chrome_browser_application_mac.mm",
+      "sha256": "e6c181cdd0cbddbc8ef55826a841a7cd0465bb7c90a91d2df7e4cdfc3e5085d2"
+    },
+    {
+      "path": "chrome/browser/extensions/api/tabs/tabs_api.cc",
+      "sha256": "79e9a037d5ccd2078a3df4a468b8015c0c21d2bab72a65e1e4e31cd89363ace4"
+    },
+    {
+      "path": "chrome/browser/external_protocol/external_protocol_handler.cc",
+      "sha256": "45b9f6f36547056b7d7980a24cca0356c124de0620d075f873e9f6f53715eacb"
+    },
+    {
+      "path": "chrome/browser/metrics/chrome_feature_list_creator.cc",
+      "sha256": "4e8c575ed314ae13be093ebd8e1a49fad9f6f009123e743d08dfa5470940f3e8"
+    },
+    {
+      "path": "chrome/browser/picture_in_picture/BUILD.gn",
+      "sha256": "ad36e0a175896b3d04b3b475e8897822a3ba991b55609aaae056a1e37a70c1ff"
+    },
+    {
+      "path": "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.cc",
+      "sha256": "e08632a6265c6619bd009fabf4b8b81bb8b9737ac2ea38f10d88c5c352d1af1f"
+    },
+    {
+      "path": "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc",
+      "sha256": "bcd6a41ffeeaf10e9118d53e88a83984ffa591347ed37e146cac3431fc4800e6"
+    },
+    {
+      "path": "chrome/browser/prefs/browser_prefs.cc",
+      "sha256": "42cf35820b7b01a22e9fb1d45b4497d3d184e96006a7e68d34e023bd74e66b9b"
+    },
+    {
+      "path": "chrome/browser/profiles/profile.cc",
+      "sha256": "4d080b6481a87f89ad71e4cc915ba26322704a127902433145d1d0117d4c48c7"
+    },
+    {
+      "path": "chrome/browser/resources/aux_host/aux_host_bootstrap.ts",
+      "sha256": "95d8334f28670faf7e485022919e346ae15e721890ade7004a404c56300092a2"
+    },
+    {
+      "path": "chrome/browser/ui/aux/BUILD.gn",
+      "sha256": "993321057af457d3e9d981ffcd4172753e30f5a0aa60aebe7aa8e08016f80dd1"
+    },
+    {
+      "path": "chrome/browser/ui/aux/auto_pip_site_policy.h",
+      "sha256": "dd7fb9c6266d980756d36277261be561d5c2ca01559bbfc58e0da9272ae7a989"
+    },
+    {
+      "path": "chrome/browser/ui/aux/auto_pip_site_policy_unittest.cc",
+      "sha256": "07e01bfb556596b2074238ae89e44369245f57dc83fbdf8d15c63aa4837a9d55"
+    },
+    {
+      "path": "chrome/browser/ui/aux/download_naming.cc",
+      "sha256": "d2ca941127173cd27ef076ed1db2f37c4094827934aa011a7d7d28b479e3c22c"
+    },
+    {
+      "path": "chrome/browser/ui/aux/download_naming.h",
+      "sha256": "d7402fc10598c33710a61d99b94ec417424378170dbe1dedb9839f07d7537f5e"
+    },
+    {
+      "path": "chrome/browser/ui/aux/download_naming_mac.mm",
+      "sha256": "16fcfc5a0ee4b90b3f4319b0f71bf36e929a395d85a22055d19ef942eebfce0d"
+    },
+    {
+      "path": "chrome/browser/ui/aux/download_naming_unittest.cc",
+      "sha256": "e13b4430bee29c817cbe7bc5698aa91a48c6212a1e5e6bd8e537e35a2e197bc3"
+    },
+    {
+      "path": "chrome/browser/ui/aux/egress_controller.cc",
+      "sha256": "9333be98085491b6e7909f0be29b2ef409d31e48b9e9eb71ed557daff75ed246"
+    },
+    {
+      "path": "chrome/browser/ui/aux/egress_controller.h",
+      "sha256": "cf4cb184542f4d692f75ba1f8648a2c2371ba28b3cd9baf68841060e85202ccb"
+    },
+    {
+      "path": "chrome/browser/ui/aux/journey_fixture_path.h",
+      "sha256": "17504a6eec44f1b91537eb40d75eb0f412f1750ae586a98e87193d75050eb309"
+    },
+    {
+      "path": "chrome/browser/ui/aux/journey_fixture_path_unittest.cc",
+      "sha256": "8d4b0d69b041c24c8dc38806b049cb59909596dc331160941012122b9c7d1c2c"
+    },
+    {
+      "path": "chrome/browser/ui/aux/link_router.cc",
+      "sha256": "b80ae6206a4905a078991b60350ffe86b26e6268c2563a7cca8395394198bf9d"
+    },
+    {
+      "path": "chrome/browser/ui/aux/link_router.h",
+      "sha256": "cbb573b4ac9e61b71ca41e7748a51b23f8fb6979ffc891d1c6b1aa3fda007355"
+    },
+    {
+      "path": "chrome/browser/ui/aux/link_router_browsertest.cc",
+      "sha256": "a8e7df10b573251aad089267c2677f48e5a993f3c42b229f59bde7af78aa8251"
+    },
+    {
+      "path": "chrome/browser/ui/aux/link_routing.cc",
+      "sha256": "c88ff7a38ebf3060fbaf9010865009a4b5d1a2c3ce686e44670072c2e12ba99b"
+    },
+    {
+      "path": "chrome/browser/ui/aux/link_routing.h",
+      "sha256": "3190dfd79cd84b5c8df1967844b201e987da35cb61274dd555222137b2c70e88"
+    },
+    {
+      "path": "chrome/browser/ui/aux/link_routing_unittest.cc",
+      "sha256": "9f1c481c1214bbd0fc10245ff90e68f56e8607a1f800ac48bd40daa35952c7e1"
+    },
+    {
+      "path": "chrome/browser/ui/aux/little_window_controller.h",
+      "sha256": "a94e0ecf7ae492f5448e12384145e12c573ee56daed661af4d62b3ab9b5486e0"
+    },
+    {
+      "path": "chrome/browser/ui/aux/little_window_controller.mm",
+      "sha256": "a5e8d4139d18ba4fb01b829efc6b34d3cae3cfae85a072a870f9d7524cb33c48"
+    },
+    {
+      "path": "chrome/browser/ui/aux/method_registry.cc",
+      "sha256": "e8ca8e2964a626b5bf3ec668e5058804cf2e92909b6cc6ab64a7cb1ae42c7c60"
+    },
+    {
+      "path": "chrome/browser/ui/aux/method_registry.h",
+      "sha256": "d8e704cf23607f2bc52456c18f9fa7301fc67798907f0b4dde6fa01b7f851d7c"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/downloads_ai_methods.cc",
+      "sha256": "09e42b38abb3962645b8cbf9f27805b41c69880b8f495fe0e3c1347cdd027764"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/extensions_methods.cc",
+      "sha256": "fd23cc6305ed07ebe02a018b0263d90a237c2b2118334b1e9bc18cd0779c3f15"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/extensions_ui_methods.cc",
+      "sha256": "a9fb636cdb0de1db72a23960494c2fc181d5556655f205877f1133bb23ee1260"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/extensions_ui_methods.h",
+      "sha256": "b064b400f9dad957dae132277fcb248227fc1e18d486a8605904f4f775cf8ba0"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/layout_methods.cc",
+      "sha256": "4d41942c6874757e52ad7c9b44990303be6656fd15d2f48b95f817790ffc84a5"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/layout_methods.h",
+      "sha256": "862980ff44873a7da85e1d3fe97f6323eb89a26bb7cc617b8e2bf99d4290f2db"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/native_library_methods.cc",
+      "sha256": "f0185d1012b1bb479ac6fab37f39c61f4842889a62fa62c6ed57600b23ed263c"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/power_methods.cc",
+      "sha256": "452705586b07cd63f505f4f086def335eb3daf7b5ae292e7caf14aecfcf4260d"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/profile_methods.cc",
+      "sha256": "5671e98998d9637724c85cc77c3ac812631d4a29f5de0bd04d261ac148e98a8f"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/profile_routing_methods.cc",
+      "sha256": "d000133f6642a9e014b9cbf8bfe6d0d64d73cd8375b1ff5bd59f036bc6c60a44"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/shortcuts_methods.cc",
+      "sha256": "2c2636af3b0d36d77c82dd2301fef1ad6d1eefc5adc76636b06dbb7be8dd8ce5"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/shortcuts_methods.h",
+      "sha256": "ff50e9826e5b5b0826d6b2c71586d0514efa39b4730e12dd797f0de856a4b3ef"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/surfaces_methods.cc",
+      "sha256": "e14c222f573687bb9db826a9562b5977f16e167546ff2be933c41fa76faf74a4"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/tabs_methods.cc",
+      "sha256": "621944f8bd88a08208cfb3190f3c2c83c8663ed93012de30c282d392b12d0c6f"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/window_methods.cc",
+      "sha256": "c1fef884334584862eaa30280b9bc125d0a89a7124381dec98e3749b4d8015d6"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/window_sync_methods.cc",
+      "sha256": "eec33bec388444ac030b818ca3dbfe49f8905cb31ebe91515a1360a695528f00"
+    },
+    {
+      "path": "chrome/browser/ui/aux/organization_store.cc",
+      "sha256": "577e96470cb60a775e1474be11857a38c76fa59ed895e747caf6c348d1cce0ec"
+    },
+    {
+      "path": "chrome/browser/ui/aux/organization_store.h",
+      "sha256": "18e883b4167cd32370cd6f703663e62cf81d9bc488275b3f9a92addf6b417c15"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_broker.cc",
+      "sha256": "17cc01c12308c1c3ced8774db9f42ead9872373d77ebb1466d4a1244301fe23f"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_broker.h",
+      "sha256": "26509dc7bd5f70c430b5f0506096c8cba432246f880a7ff2c008cec96e0c90e5"
+    },
+    {
+      "path": "chrome/browser/ui/aux/power_activity_mac.h",
+      "sha256": "d3009c7d08476e9e26d94de9a481a88c3e827edee4ca11d4821541cde43aaf64"
+    },
+    {
+      "path": "chrome/browser/ui/aux/power_activity_mac.mm",
+      "sha256": "ce098f51f399d36d79b66b4f9ec9ea1a96d16730963fc26db81c5c1fbaab751d"
+    },
+    {
+      "path": "chrome/browser/ui/aux/profile_prefs.h",
+      "sha256": "22e6f7dcd9e1e084882cf09a2a5857fded7e8ad1e63f5c57df8169a8ef0fdec4"
+    },
+    {
+      "path": "chrome/browser/ui/aux/profile_spaces.cc",
+      "sha256": "7237f67a3d0b6a38f127766aca84f1f638d55d1e1bc12bc2b27e6bb81ef9f739"
+    },
+    {
+      "path": "chrome/browser/ui/aux/profile_spaces.h",
+      "sha256": "97852fc28a1fe457a1137b21823a7121245710b55bd32af729dff5074f454419"
+    },
+    {
+      "path": "chrome/browser/ui/aux/profile_spaces_unittest.cc",
+      "sha256": "8e7c3de2f033842a06dd30d179bbafb0da006e64bd1edb13ebaa81db847ba325"
+    },
+    {
+      "path": "chrome/browser/ui/aux/result_preview_browsertest.cc",
+      "sha256": "993ae44dec5f497ce1a53493ba3f390de3c51fa419be0b32164b981705e064d6"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.cc",
+      "sha256": "5db102fa6f3fba0e6bae21c978fd98dd1f2ed2f287cffc0c963228ed81b815aa"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.h",
+      "sha256": "b036e69d65d7b0edc75d2aa407ca7287ae9d63876ad9b24d752eef2b78b9c391"
+    },
+    {
+      "path": "chrome/browser/ui/aux/shell_events.cc",
+      "sha256": "2cee6626c297d42ce80300ad19f6ebd0e7270e519c7bed8d42ef275138921699"
+    },
+    {
+      "path": "chrome/browser/ui/aux/shell_events.h",
+      "sha256": "227b5acf5df6dcb0e8683c55ce3d8ec5428faa765424bf5a8454b79e5acc2ba3"
+    },
+    {
+      "path": "chrome/browser/ui/aux/surface_media_browsertest.cc",
+      "sha256": "1d871a75331d31dbe77b393544063f32e461394d5f25e16f61e1f494501faed9"
+    },
+    {
+      "path": "chrome/browser/ui/aux/surface_visibility.cc",
+      "sha256": "45079202f7da45ada108fe23b2bc6b99727da35483786b0bc6b536690c315485"
+    },
+    {
+      "path": "chrome/browser/ui/aux/surface_visibility.h",
+      "sha256": "c168685ab517bc1852e0b773b6eb4e2b32e937aa748030228460336d250ea064"
+    },
+    {
+      "path": "chrome/browser/ui/aux/tab_catalog.cc",
+      "sha256": "0903a09611bfe7bcf55c96db75d4f2a098bc385deffc4c4b3d81ea6b319e986e"
+    },
+    {
+      "path": "chrome/browser/ui/aux/tab_catalog_browsertest.cc",
+      "sha256": "51ef1b3d0c36acc678d77e798175098109b4437752d7ef677e723c05ddad1baa"
+    },
+    {
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "sha256": "c25668f834a7219ffb0cf19948c4b74094925331286332e046aa02952914d780"
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/BUILD.gn",
+      "sha256": "4f592478f95ab8b3d46f41b39fd892171eebdc4511bb596c8066a4f2d8ba466a"
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/applescript/scripting.sdef",
+      "sha256": "48976d7b38f141cbb2cebb4a24408da206b417078af45585bad3aa66e862963a"
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/applescript/space_applescript.h",
+      "sha256": "3e0356aa017a2b0e25c0ec560309ebbe664dab27347c550b72f6106b295e4aec"
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/applescript/space_applescript.mm",
+      "sha256": "9c451d780cb9cade263fd5eb2d6070a2deaf0be7131cbc37c67cc61e9720eebd"
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/applescript/tab_applescript.h",
+      "sha256": "eca5efbd6e53e40c9fe82a409b2d1e4bdafd6c5e0ff5072db33447cb49b25113"
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/applescript/tab_applescript.mm",
+      "sha256": "99de7df4392339b2a77eda9ae36febf10c9091953d9ab2a1a2ca951f2f94d80d"
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/applescript/window_applescript.h",
+      "sha256": "d0aa63b81c758394a791c80f0cdf7186412c436ffcf441999a35ba794f18f4c8"
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/applescript/window_applescript.mm",
+      "sha256": "b5df65f64987865aa5625c77885ee2366dfeaa93a9f01c423ace4b5b8873e706"
+    },
+    {
+      "path": "chrome/browser/ui/navigator/browser_navigator.cc",
+      "sha256": "88d80b86d342d1214f76ae4389a3446ea15a82137800fe3252a8308e2938f6ef"
+    },
+    {
+      "path": "chrome/browser/ui/startup/startup_tab.h",
+      "sha256": "0553e1d9e2c1b74c23dc3ebfa17fcca7e01acda86a97e8ac459dbee1a7ac9484"
+    },
+    {
+      "path": "chrome/browser/ui/tab_helpers.cc",
+      "sha256": "95ea3d2ad46b7652c37a69705ce75021aeccdcf1f829b09876267ee2160bc1a5"
+    },
+    {
+      "path": "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc",
+      "sha256": "1d77747aaea44ac2c6f02764538fa56f594e209f816ad71e1d8f4916038dfada"
+    },
+    {
+      "path": "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h",
+      "sha256": "c77619ab4c2d68531b78723dd2ce95426b6fb30c138582ab83dba38eebca0347"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc",
+      "sha256": "ab6f64e4c38d2351a4afbe5c06f53d2c242ae301d1204d7bf9aa941a8897f4fd"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h",
+      "sha256": "02e48a716eba38cb1cfee4320acb96b819d0f16919e4a57be0209ea43751bf1d"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_ui.cc",
+      "sha256": "ee034a1253c27da182eb3822cb8a6b6083b99a1dc617f6e224ceb68756d2844b"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_ui.h",
+      "sha256": "b2a8e51d72cc1eb474b3f7c95675cbf698a1612a2114e3f2878693fc84ad91e4"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_window.cc",
+      "sha256": "23b8d7a566d30c1fd5383c00daf1f838302f058dafd5ebe5adfe0d8587c3dc5e"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_window.h",
+      "sha256": "9fcf06656c7eb9d128ea60582edc886e4545ec4ac542baa2cf24983b0387309a"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_window_mac.mm",
+      "sha256": "cd9ac9be1b6497d0a4b859eec0624d6b36cb5f07caa51e4b0f7ef5a9790a6719"
+    },
+    {
+      "path": "chrome/test/BUILD.gn",
+      "sha256": "031756ac08a66c09c59ba9850ddd02c08597df98a3f2145b918b75a546c8ebf0"
+    },
+    {
+      "path": "components/download/internal/common/download_item_impl.cc",
+      "sha256": "38817525ecb3038e137c80747a72bf61a24eb0c90bfda342f31407ac2f583152"
+    },
+    {
+      "path": "components/download/public/common/download_item.h",
+      "sha256": "4804864132d1a221e4e2ba5cab361a8d1be6fa50039b4f684c835f272e4a77fc"
+    },
+    {
+      "path": "components/download/public/common/download_item_impl.h",
+      "sha256": "c96ebf05b8ac362fa43069fc0f0336be8543e55f5e7c5e03759024b80e24ed9b"
+    },
+    {
+      "path": "components/download/public/common/mock_download_item.h",
+      "sha256": "1c3f624482074327c8005d27aadba8abaaeccf5ac0ab192100954db98fce1c09"
+    }
+  ],
+  "compiled": false,
+  "appearanceInvocation": "pending private non-debug transport;0184 inactive in normal harness"
+}

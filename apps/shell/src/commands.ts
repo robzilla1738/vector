@@ -7,6 +7,8 @@ import {
   type ShortcutOverrides,
 } from "@aux/contracts";
 import type { RefObject } from "react";
+import { openCommandSurface, closeCommandSurface } from "./command-surface-state";
+import { COMMAND_SURFACE_ACTIONS } from "./command-surface-actions";
 import { commandExecutor } from "./command-execution";
 import { bridge } from "./bridge";
 import { useStore, call, errToast, tabCommand } from "./store";
@@ -75,6 +77,18 @@ function bookmarkAll(st: StoreState) {
   );
 }
 export const COMMAND_ACTIONS = {
+  ...COMMAND_SURFACE_ACTIONS,
+  "command-switch-space": (st, context) => {
+    const spaceId = context.payload && "spaceId" in context.payload ? context.payload.spaceId : undefined;
+    if (!spaceId || !st.layout.spaces.some(space => space.id === spaceId)) throw new Error("The Space is no longer available.");
+    return st.switchSpace(spaceId);
+  },
+  "command-borrow-chrome": () => openCommandSurface({ mode: "command", provider: "chrome" }),
+  "command-borrow-tab": (_st, context) => {
+    const value = context.payload;
+    if (!value || !("targetId" in value) || !("url" in value)) throw new Error("Choose an attached Chrome tab.");
+    return call("pages.open", { url: value.url, backend: "chrome", targetId: value.targetId, activate: true });
+  },
   "export-demonstration": (st, context) => featureCommand("export-demonstration", st, context),
   "record-demonstration": (st, context) => featureCommand("record-demonstration", st, context),
   "pause-demonstration": (st, context) => featureCommand("pause-demonstration", st, context),
@@ -197,7 +211,7 @@ export const COMMAND_ACTIONS = {
     featureCommand("show-archived-tabs", st);
   },
 
-  "new-tab": (st) => st.newTab(),
+  "new-tab": () => openCommandSurface({ mode: "new-tab" }),
   "open-file": () => openLocalFile().catch(errToast),
   "reopen-closed-tab": (st) => st.reopenClosedTab(),
   "close-window": () => bridge.closeWindow(),
@@ -245,9 +259,9 @@ export const COMMAND_ACTIONS = {
     (context.settingsRoute ?? st.overlay === "settings")
       ? window.history.forward()
       : st.activePageId && tabCommand({ kind: "forward", pageId: st.activePageId }).catch(errToast),
-  "open-address": (st) => st.focusCommandBar(),
+  "open-address": () => openCommandSurface({ mode: "edit" }),
   palette: (st) =>
-    bridge.privateMode ? undefined : st.setOverlay(st.overlay === "palette" ? null : "palette"),
+    st.overlay === "command-surface" ? closeCommandSurface() : openCommandSurface({ mode: "command" }),
   settings: (st) => (bridge.privateMode ? undefined : st.setOverlay("settings")),
   history: (st) => st.setOverlay("history"),
   downloads: (st) => st.setOverlay("downloads"),

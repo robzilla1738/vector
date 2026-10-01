@@ -1,0 +1,24 @@
+--- a/packages/contracts/src/commands.ts
++++ b/packages/contracts/src/commands.ts
+@@ -15,6 +15,21 @@
+ const Numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+ 
+ export const COMMANDS = [
++  { id: "command-tabs", label: "Search open tabs", section: "Application", handler: "shell", focusShell: true, bindings: [] },
++  { id: "command-observe", label: "Inspect what the agent sees", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
++  { id: "command-inline-assist", label: "Assist writing in this field…", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
++  { id: "command-collect-tabs", label: "Collect open tabs into a Set", section: "Application", handler: "shell", feature: "subagents", windows: ["normal"], focusShell: true, bindings: [] },
++  { id: "command-reading-list", label: "Read later", section: "Application", handler: "shell", focusShell: true, bindings: [] },
++  { id: "command-autofill", label: "Fill personal info", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
++  { id: "command-vault-fill", label: "Fill sign-in…", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
++  { id: "command-translate", label: "Translate this page", section: "Application", handler: "shell", feature: "aiTranslate", focusShell: true, bindings: [] },
++  { id: "command-show-original", label: "Show original page", section: "Application", handler: "shell", feature: "aiTranslate", focusShell: true, bindings: [] },
++  { id: "command-bookmarks", label: "Bookmarks and history", section: "Application", handler: "shell", focusShell: true, bindings: [] },
++  { id: "command-attach-chrome", label: "Attach Chrome", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
++  { id: "command-detach-chrome", label: "Detach Chrome", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
++  { id: "command-open-live-chrome", label: "Open live in Chrome", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
++  { id: "command-new-space", label: "New Space", section: "Application", handler: "shell", feature: "spaces", focusShell: true, bindings: [] },
++
+   { id: "command-switch-space", label: "Switch Space", section: "Layout", handler: "shell", feature: "spaces", palette: false, focusShell: true, bindings: [] },
+   { id: "command-borrow-chrome", label: "Add a Chrome tab…", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
+   { id: "command-borrow-tab", label: "Borrow attached Chrome tab", section: "Application", handler: "shell", windows: ["normal"], palette: false, focusShell: true, bindings: [] },

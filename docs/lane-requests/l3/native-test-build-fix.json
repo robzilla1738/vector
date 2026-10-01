@@ -1,0 +1,13 @@
+{
+  "source": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-native-tests-expanded-fix-ce8v1j_4",
+  "ownedFiles": [
+    "chrome/browser/ui/aux/BUILD.gn",
+    "chrome/browser/ui/aux/link_router_browsertest.cc",
+    "chrome/browser/ui/aux/profile_spaces_unittest.cc",
+    "chrome/browser/ui/aux/result_preview_browsertest.cc"
+  ],
+  "patch": "chromium/patches/aux/runtime/0196-native-test-build-dependencies.patch",
+  "sha256": "764f3e4a76cc709cbb2097e371f4ea24f66555151f6b8342b8cb3cc43695f639",
+  "assertionsChanged": false,
+  "compiled": false
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectIntent, intentLabel } from "./intent";
+import { AskCircuitBreaker, detectIntent, intentLabel } from "./intent";
 
 const ctx = { hasPage: true, searchEngine: "https://duckduckgo.com/?q=%s" };
 const noPage = { hasPage: false, searchEngine: "https://duckduckgo.com/?q=%s" };
@@ -35,7 +35,7 @@ describe("command bar intent — URLs navigate", () => {
 
   it("keeps ambiguous punctuation and non-English phrases as searches", () => {
     for (const v of [
-      "what's on tv tonight", "c++ move semantics", "a,b testing", "version 1.2 notes",
+      "c++ move semantics", "a,b testing", "version 1.2 notes",
       "qué tiempo hace", "今日の天気", "café menu", "(defun foo)", "100%",
     ]) {
       expect(detectIntent(v, ctx).kind).toBe("search");
@@ -70,7 +70,7 @@ describe("command bar intent — keyword engines", () => {
 describe("command bar intent — search", () => {
   it("sends short noun phrases and questions to the search engine", () => {
     expect(detectIntent("open source browsers", ctx).kind).toBe("search");
-    expect(detectIntent("what is a page set", ctx)).toMatchObject({ kind: "search", url: "https://duckduckgo.com/?q=what%20is%20a%20page%20set" });
+    expect(detectIntent("what is a page set", ctx)).toMatchObject({ kind: "run", goal: "what is a page set" });
     expect(detectIntent("weather tomorrow?", ctx).kind).toBe("search");
   });
 
@@ -85,10 +85,16 @@ describe("command bar intent — search", () => {
 });
 
 describe("command bar intent — agent runs", () => {
-  it("never turns ordinary address-bar text into an agent request", () => {
-    for (const text of ["summarise the review comments", "book a table for two tonight", "what does this page say about refunds?", "every third-party script on the checkout flow with its size and load time please"]) {
+  it("routes interrogatives and long prompts locally, with explicit preferences", () => {
+    for (const text of ["summarise the review comments", "book a table for two tonight", ]) {
       for (const context of [ctx, noPage]) expect(detectIntent(text, context)).toMatchObject({ kind: "search", query: text });
     }
+    expect(detectIntent("what does this page say about refunds?", ctx).kind).toBe("run");
+    expect(detectIntent("one two three four five six seven eight", noPage)).toMatchObject({ kind: "run", scope: "new" });
+    expect(detectIntent("what is this", { ...ctx, routing: "prefer-search" }).kind).toBe("search");
+    expect(detectIntent("short phrase", { ...ctx, routing: "prefer-chat" }).kind).toBe("run");
+    expect(detectIntent("https://example.com", { ...ctx, routing: "prefer-chat" }).kind).toBe("navigate");
+    expect(detectIntent("what is this", { ...ctx, askUnavailable: true }).kind).toBe("search");
     expect(detectIntent("> summarise this", ctx)).toMatchObject({ kind: "run", scope: "page" });
     expect(detectIntent("> summarise this", noPage)).toMatchObject({ kind: "run", scope: "new" });
   });
@@ -110,4 +116,17 @@ describe("intent chip labels", () => {
     expect(intentLabel({ kind: "command", query: "x" })).toBe("Command");
     expect(intentLabel({ kind: "empty" })).toBe("");
   });
+});
+
+it("opens the breaker only after three recent failures and expires after ten minutes", () => {
+  let now = 0;
+  const breaker = new AskCircuitBreaker(() => now);
+  breaker.failed(); breaker.failed(); expect(breaker.unavailable()).toBe(false);
+  breaker.failed(); expect(breaker.unavailable()).toBe(true);
+  now = 600_000; expect(breaker.unavailable()).toBe(false);
+  breaker.failed(); now += 600_001; breaker.failed(); breaker.failed();
+  expect(breaker.unavailable()).toBe(false);
+  expect(breaker.flipped("search")).toBe(false);
+  expect(breaker.flipped("search")).toBe(true);
+  breaker.flipped("ask"); expect(breaker.flipped("search")).toBe(false);
 });

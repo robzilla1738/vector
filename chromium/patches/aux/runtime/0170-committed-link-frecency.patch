@@ -1,0 +1,51 @@
+diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
+index 0afe98f..dd3e377 100644
+--- a/chrome/browser/ui/aux/shell_events.cc
++++ b/chrome/browser/ui/aux/shell_events.cc
+@@ -62,6 +62,7 @@
+ #include "crypto/hash.h"
+ #include "third_party/blink/public/common/input/web_input_event.h"
+ #include "ui/base/models/image_model.h"
++#include "ui/base/page_transition_types.h"
+ #include "ui/message_center/public/cpp/notification.h"
+ #include "ui/message_center/public/cpp/notifier_id.h"
+ #include "url/origin.h"
+@@ -239,6 +240,16 @@ class PageSignals : public content::WebContentsObserver,
+     if (handle->IsInPrimaryMainFrame() && !handle->IsSameDocument() &&
+         handle->HasCommitted()) {
+       const GURL& url = handle->GetURL();
++      const auto* identity = PageIdentity::FromWebContents(web_contents());
++      if (profile_ && !profile_->IsOffTheRecord() && identity && !identity->runtime_owned() &&
++          handle->IsRendererInitiated() && handle->HasUserGesture() &&
++          ui::PageTransitionCoreTypeIs(handle->GetPageTransition(), ui::PAGE_TRANSITION_LINK) &&
++          !handle->IsErrorPage() && handle->GetNetErrorCode() == net::OK &&
++          url.SchemeIsHTTPOrHTTPS() && !url.has_username() && !url.has_password()) {
++        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
++            FROM_HERE, base::BindOnce(&PageSignals::PublishLinkPick,
++            weak_factory_.GetWeakPtr(), url, navigation_generation_));
++      }
+       if (url.SchemeIsHTTPOrHTTPS() && !url.has_username() &&
+           !url.has_password() &&
+           ReadableResponseAllowed(handle->GetResponseHeaders())) {
+@@ -256,6 +267,21 @@ class PageSignals : public content::WebContentsObserver,
+         base::BindOnce(&PageSignals::PublishAuth, weak_factory_.GetWeakPtr()));
+   }
+ 
++  void PublishLinkPick(const GURL& url, int generation) {
++    if (!web_contents() || generation != navigation_generation_ ||
++        web_contents()->GetLastCommittedURL() != url || page_id_.empty()) return;
++    auto* runtime = AuxRuntimeHost::ForProfile(profile_);
++    if (!runtime) return;
++    base::DictValue pick;
++    pick.Set("pageId", page_id_);
++    pick.Set("url", url.spec());
++    pick.Set("navigationId", base::Uuid::GenerateRandomV4().AsLowercaseString());
++    if (auto json = base::WriteJson(pick)) {
++      runtime->CallInternal("command.ranking.link", std::move(*json),
++                           base::BindOnce([](AuxRuntimeHost::Response) {}));
++    }
++  }
++
+   void PublishNavigation(const GURL& url, int net_error, bool error_page,
+                          int generation) {
+     if (!web_contents() || generation != navigation_generation_) return;

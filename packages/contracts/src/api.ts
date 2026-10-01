@@ -21,6 +21,8 @@ import {
 } from "./zap.js";
 import { ModelProviderSchema, ModelCredentialSchema } from "./model-providers.js";
 import { z } from "zod";
+import { AutofillProfileSchema } from "./autofill.js";
+export { AutofillProfileSchema, type AutofillProfile } from "./autofill.js";
 import { SkillRepairProposeSchema, SkillRepairProposalSchema, SkillRepairApplySchema } from "./demonstration.js";
 import { DemonstrationReplayCompileSchema } from "./demonstration.js";
 import {
@@ -754,18 +756,6 @@ export const ChromeOpenLiveParams = z.object({ pageId: id });
 export const ModelsProbeParams = z.object({ modelId: id.optional() });
 export const SidebarMaterialSchema = z.enum(["liquid-glass", "titlebar", "sidebar", "under-window"]);
 export type SidebarMaterial = z.infer<typeof SidebarMaterialSchema>;
-export const AutofillProfileSchema = z.object({
-  name: z.string().max(200).optional(),
-  email: z.string().max(320).optional(),
-  phone: z.string().max(60).optional(),
-  organization: z.string().max(200).optional(),
-  street: z.string().max(300).optional(),
-  city: z.string().max(120).optional(),
-  region: z.string().max(120).optional(),
-  postal: z.string().max(20).optional(),
-  country: z.string().max(120).optional(),
-});
-export type AutofillProfile = z.infer<typeof AutofillProfileSchema>;
 
 export const SettingsSetParams = z.object({
   modelProvider: ModelProviderSchema.optional(),
@@ -794,6 +784,7 @@ export const SettingsSetParams = z.object({
   searchEngine: SearchEngineTemplateSchema.optional(),
   /** Preferred surface when a new blank tab opens. Private windows always start in Search. */
   homeEntryMode: z.enum(["search", "ask"]).optional(),
+  commandRouting: z.enum(["automatic", "prefer-chat", "prefer-search"]).optional(),
   /** `kw query` engines — user entries merge over the built-in list. */
   searchEngines: z
     .array(
@@ -1590,6 +1581,7 @@ export const MethodSchemas = {
       query: z.string().trim().min(1).max(160),
       candidateKey: z.string().min(1).max(300),
       source: CommandRankingSourceSchema,
+      pickOrigin: z.enum(["typed", "bar", "link"]).optional(),
     })
     .strict(),
   "command.ranking.clear": z.object({}).strict(),

@@ -74,11 +74,11 @@ describe("CommandBar keyboard contract", () => {
   it("Enter on typed search navigates through the tab command", async () => {
     const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue(ack);
     const requiredBridge = bridge as typeof bridge & { resolveSearch: (query: string) => Promise<string> };
-    vi.spyOn(requiredBridge, "resolveSearch").mockResolvedValue("https://duckduckgo.com/?q=how+do+browsers+restore+sessions");
+    vi.spyOn(requiredBridge, "resolveSearch").mockResolvedValue("https://duckduckgo.com/?q=browser+session+restore");
     await act(async () => root.render(<CommandBar />));
     const input = host.querySelector("input")!;
     await act(async () => input.focus());
-    await act(async () => type(input, "how do browsers restore sessions"));
+    await act(async () => type(input, "browser session restore"));
     await act(async () => key(input, "Enter"));
     await settle();
     expect(command.mock.calls.some(([c]) => c.kind === "navigate" && String((c as { url?: string }).url).includes("duckduckgo.com"))).toBe(true);
@@ -323,4 +323,71 @@ describe("CommandBar keyboard contract", () => {
     await act(async () => sites.click());
     expect(host.querySelector<HTMLButtonElement>('.cb-provider-scopes button[aria-pressed="true"]')?.textContent).toBe("Sites");
   });
+});
+
+it("new-tab mode starts empty and Escape never creates a tab", async () => {
+  const create = vi.spyOn(useStore.getState(), "newTab");
+  const close = vi.fn();
+  await act(async () => root.render(<CommandBar surfaceMode="new-tab" onClose={close} />));
+  expect(host.querySelector("input")!.value).toBe("");
+  await act(async () => key(host.querySelector("input")!, "Escape"));
+  expect(close).toHaveBeenCalledOnce();
+  expect(create).not.toHaveBeenCalled();
+});
+
+it("edit mode selects the current URL without creating a page", async () => {
+  await act(async () => root.render(<CommandBar surfaceMode="edit" />));
+  const input = host.querySelector("input")!;
+  expect(input.value).toBe(page.url);
+  expect(input.selectionStart).toBe(0);
+  expect(input.selectionEnd).toBe(page.url.length);
+});
+
+it("new-tab CmdEnter uses a background native open acknowledgement", async () => {
+  const command = vi.spyOn(bridge, "tabCommand").mockResolvedValue({ ...ack, pageId: "new" });
+  const close = vi.fn();
+  await act(async () => root.render(<CommandBar surfaceMode="new-tab" onClose={close} />));
+  const input = host.querySelector("input")!;
+  await act(async () => type(input, "https://example.com/new"));
+  await act(async () => key(input, "Enter", { metaKey: true }));
+  await settle();
+  expect(command).toHaveBeenCalledWith(expect.objectContaining({ kind: "open", activate: false, url: "https://example.com/new" }), expect.any(Number));
+  expect(close).toHaveBeenCalledOnce();
+});
+
+it("command mode runs its registered provider rather than navigating", async () => {
+  const run = vi.fn().mockResolvedValue(undefined);
+  const rows = () => [{ id: "split-add", title: "Split view", icon: null, section: "intent" as const, run }];
+  await act(async () => root.render(<CommandBar surfaceMode="command" commandRows={rows} />));
+  expect(host.textContent).toContain("Split view");
+  await act(async () => key(host.querySelector("input")!, "Enter"));
+  await settle();
+  expect(run).toHaveBeenCalledOnce();
+});
+
+it("scope markers become pills and empty Backspace clears the scope", async () => {
+  await act(async () => root.render(<CommandBar surfaceMode="new-tab" />));
+  const input = host.querySelector("input")!;
+  await act(async () => type(input, "@"));
+  expect(input.value).toBe("");
+  expect(host.querySelector(".cb-scope-pill")?.textContent).toBe("Tabs");
+  await act(async () => key(input, "Backspace"));
+  expect(host.querySelector(".cb-scope-pill")).toBeNull();
+});
+
+it("records typed frecency only after navigation succeeds", async () => {
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async method => (method === "command.ranking.record"
+    ? { query: "example.com/typed", candidateKey: "https://example.com/typed", source: "browser", frequency: 2, uses: 1, lastUsedAt: Date.now() } : []) as never);
+  const create = vi.spyOn(useStore.getState(), "newTab").mockRejectedValueOnce(new Error("Native refusal")).mockResolvedValue(page as never);
+  const close = vi.fn();
+  await act(async () => root.render(<CommandBar surfaceMode="new-tab" onClose={close} />));
+  const input = host.querySelector("input")!;
+  await act(async () => type(input, "https://example.com/typed"));
+  await act(async () => key(input, "Enter"));
+  expect(create).toHaveBeenCalledOnce();
+  expect(invoke.mock.calls.some(([method]) => method === "command.ranking.record")).toBe(false);
+  expect(close).not.toHaveBeenCalled();
+  await act(async () => key(input, "Enter"));
+  expect(invoke).toHaveBeenCalledWith("command.ranking.record", expect.objectContaining({ pickOrigin: "typed", candidateKey: "https://example.com/typed" }));
+  expect(close).toHaveBeenCalledOnce();
 });
