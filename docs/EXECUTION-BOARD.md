@@ -29,18 +29,18 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | Role / lane | Status | Patches | Agent / worktree |
 |---|---|---|---|
 | Integrator / Wave 0 | Active | 0136–0139, fix-ups 0186–0199 | Current chat / repository |
-| Builder | Idle, dedicated | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
+| Builder | Active L1 candidate build, dedicated | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
 | Design reviewer | Waiting for corrected native captures | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
-| L1 Commands | Active | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
+| L1 Commands | Frozen native diagnostic candidate f4428484 | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
 | L4 Windows | Active source implementation | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
-| L2 Layout | Waiting for lane capacity | 0144–0147 | Unassigned |
+| L2 Layout | Dispatched; temporarily yielded for builder capacity | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
 | L5 Surfaces | Waiting for L4 selector and lane capacity | 0172–0177 | Unassigned |
 | L6 Profiles/routing | Waiting for lane capacity | 0154–0159 | Unassigned |
 | L7 Extensions | Waiting for lane capacity | 0160–0165 | Unassigned |
 | L8 Organize | Waiting for lane capacity | 0178–0179 | Unassigned |
 | L9 Downloads | Waiting for lane capacity | 0166–0169 | Unassigned |
 | L10 Agent trust | Waiting for lane capacity | None | Unassigned |
-| LJ Legacy journeys | Frozen dfe9a314; twelve-journey builder retry | None | /root/lj_journeys /tmp/aux-browser-runtime-lj |
+| LJ Legacy journeys | Frozen f890eb1a; fourteen-journey retry after L1 | None | /root/lj_journeys /tmp/aux-browser-runtime-lj |
 | L3 Command surface | Waiting for L1 | 0170–0171 | Unassigned |
 | L11 Autonomy | Waiting for Wave 2 | 0180–0183 | Unassigned |
 | L12 Polish/performance | Waiting for all feature lanes | 0184–0185 | Unassigned |
@@ -118,3 +118,8 @@ LJ ce28 native batch and independent audit: all fourteen manifest/module/product
 Continuous reviewer d64d57fa independently reviewed ten default captures and opened P2 DR005 for pale sidebar reveal glyph over white page. Root inspected blocking screenshot and exact transparent CSS cause; root source repair uses opaque theme surface-panel backing, opaque layered hover and explicit focus shadow without geometry changes. Dedicated shell stage103assets digest `e08483ffeca78e83dae7d22f6a7fc0d5184a9f4c01941d1fd9ff1019e22d501e` independently verified; budgets471/179/1683 pass, lint/format/diff pass. Native closure needs light/dark/varied pages, four appearance cells and hover/focus/hit-testing. DR001–005 remain open. Native build still core98d8a3f8; new source/pin need exact clean rebuild before more journeys.
 
 AX harness follow-up root reviewed/applied: Unicode text CGEvents explicitly clear modifier flags; Swift typecheck passes, native translation proof pending. Model callback errors retain bounded sixteen entries and512-character message plus call/hasTools/stream metadata; real loopback request independently verifies HTTP500 unchanged and error evidence present (`/tmp/aux-model-errors-proof.log`). No request/token/env dumps added. LJ resumed corrections after native batch release. L1 frozen29966468 source387files/2053tests pass, root independently checked bindings/typecheck and4route/invariant regressions; native0140 changed only blob index duringv5 rebase (SHA ddc9ba4f...),0141 unchanged ab6ad208...; paired pin/next root merge needed before builder diagnostic. L4 revised untrusted-only external routing/protected source/exact modifiers approved isolated mirrors; local consumers approved; root caught worker reconciliation removal and requested actual catalog regression. Latest external LaunchServices harness caching/environment/log/refusal draft still needs root full review; no stable application.
+
+
+L1 candidate composition checkpoint: root independently applied 0140 then 0141 in a disposable mirror copied from current stable core and verified mirror equality. Patch hashes `ddc9ba4fd2a177e2c64a7bffffb6666b95a19607481f4b1f1d20be2efdd2b249` and `ab6ad208c9e46dae0c968cac154ed1769c6f411874d6098cd8f5cde225568b7b`. Root caught JSON-wrapped HTML in shortcut fixtures; corrected literal HTML receives independent actual HTTP/JSDOM regression proof plus registry tests (4 passed, `/tmp/aux-l1-fixture-independent.log`). Root appended candidate series after0186/0187 in isolated L1, then committed paired shell pin; frozen candidate `f4428484e8ee677b277245f3a246acf1bfd2b4af`. Dedicated builder stage103assets digest `c6c75fe4df2add5ecf7ae432a895619b50564177688eadd42cd4e674466bdeed`, root independently verified pin and log SHA `d9e42dd0300ee951e823827d8587b4bc9a9b51d604a4b2f3c1f149b1bde8ade6`; budgets473/179/1689 pass. Bridge checker reads actual native tree, not series: reviewed candidate mirror132handlers/0missing passes; stable still131handlers/dispatchCommand missing until builder applies candidate. No checker change or feature merge. Builder requested exact clean incremental build/stage-runtime then shortcut-registry-core and ≥20AC shortcut-perf. Full default journey, future mounts, full registry, qualification and F21 remain pending.
+
+L2 dispatched fromcontracts-v1 in `/tmp/aux-browser-runtime-l2` with complete F2/F3 scope, ownership0144–0147, exactgeometry/motion, native spike, journeys/gates and roster. Host rejected builder resume with L2 active; L2 temporarily interrupted to honor dedicated native operator capacity, preserving its worktree. Resume L2 after builder yields. L4 remains active. External LaunchServices harness revised duplicate flags/lazy compilation/EPIPE handling independently read; remaining operational check errors must not falsely mean terminated, and lost cold-launch receipt must produce cleanup uncertainty before native use. No root application of that harness yet. LJ frozenf890eb1a fourteen retries remain queued after L1; no records written.
