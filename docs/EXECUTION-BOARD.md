@@ -36,9 +36,9 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | L2 Layout | Frozen54a34f; actual root composition399files2106PASS, native/perf pending | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
 | L5 Surfaces | Frozen d7b95424 full F9/F17 source, pending actual composition/native/perf/F21; source dependency failures preserved | 0172–0177 | /root/l5_surfaces /tmp/aux-browser-runtime-l5 |
 | L6 Profiles/routing | Frozen517256ba full F5/F12/F13 source; root shared footer/created Profile acceptance landedfca, native proof pending | 0154–0159 | /root/l6_profiles /tmp/aux-browser-runtime-l6 |
-| L7 Extensions | Active full F6; real WebUI side-panel guest spike and producer/contract requests under review | 0160–0165 | /root/l7_extensions /tmp/aux-browser-runtime-l7 |
+| L7 Extensions | Frozen c18664ea fullsource packet; rootactualcommand/rail/nativecomposition pending | 0160–0165 | /root/l7_extensions /tmp/aux-browser-runtime-l7 |
 | L8 Organize | Active full F10/F15 pins/live folders/auto archive, isolated contracts-v1→integration only | 0178–0179 | /root/l8_organize /tmp/aux-browser-runtime-l8 |
-| L9 Downloads | Waiting for lane capacity | 0166–0169 | Unassigned |
+| L9 Downloads | Active full F11 source implementation; isolatedcontracts-v1→c73e integration | 0166–0169 | /root/l9_downloads /tmp/aux-browser-runtime-l9 |
 | L10 Agent trust | Waiting for lane capacity | None | Unassigned |
 | LJ Legacy journeys | Frozenb27ec866 eight failure corrections; actual391files2068 sourcePASS, native8pending | None | /root/lj_journeys /tmp/aux-browser-runtime-lj |
 | L3 Command surface | Waiting for L1 | 0170–0171 | Unassigned |
@@ -305,3 +305,6 @@ Solebuilder ONEe567be57 harness attempt fails beforeanyrecordedstep/capture: hel
 
 
 Reviewer14adc ten-state checkpoint independently fullread andalltenfede originalsrootviewed, hashespreviouslyaudited; integratedbc12de90. DR007 headingocclusion remainsvisibleallstates; singleadvisory/absenceafteractualhandoff onlypartialDR006. AllDR001–007/fullF21cells remainopen. Revieweridle; L1resumed exactroot553ecc harness-onlydiagnosticpacket afterunprovenstartupcrash, nofutureproductmerge; solebuilderidleuntilnewimmutablefreeze/rootreview. L7fullF6 andL8fullF10/F15sourcecontinue; rootfuture0179guardedarchive/conditional≤300finished+≤20pending≤320 requestsreceivedforreview, compilednativecurrentarchivedTabsmax300 (archivedSpacesseparatemax200). Rootintegrationclean; mainunchanged. Throughputsteeringpersisted andactivegoalcontinues.
+
+
+Owner F21 resource direction recorded in canonical plan, L12 brief and roadmap: verified approximately130 MB installed-build capture `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/` and full-read `06_COPYABLE-SURFACES.md` §§8–8c. Use reference assets for surface fidelity, preserve Aux name/logo/branding/appidentity/copy, keep assets outside Git and retain all F21 appearance/contact-sheet/reviewer/owner-signoff gates.

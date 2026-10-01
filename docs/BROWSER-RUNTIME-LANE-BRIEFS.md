@@ -112,6 +112,7 @@ Every lane must pass the original per-merge gates: rebuild `npx tsc -b` before r
 
 ## L12 — Polish and performance
 
+- Design resources: use `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/` (approximately130 MB installed-build capture) and `/Users/rcourson/AI Blueprints/06_COPYABLE-SURFACES.md` §§8–8c. Follow the detailed F21 reference workflow in the canonical plan. Preserve Aux name, logo, branding, app identity and copy; adapt reference surfaces and geometry without importing reference product marks. Record exact asset provenance for changes and contact-sheet comparisons; reference assets remain outside Git.
 - Scope: F21 after feature lanes merge; continuous reviewer runs from Wave1. Preserve exact tokens, geometry, motion and reduced preferences across every feature.
 - Own: `tokens.css`, `styles/**`, `apps/shell/src/ui/**`, `scripts/design-qa.mjs`, `tests/benchmarks/**` and prescribed performance hunks. Patches 0184–0185.
 - Contracts: existing feature/command APIs; request changes rather than adding private flags. UI empty/loading/error states use real copy and registered actions.
