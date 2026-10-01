@@ -894,6 +894,15 @@ func elementRecord(_ element: AXUIElement, depth: Int) -> [String: Any] {
     "name": protocolNames(element).first(where: { !$0.isEmpty }) ?? "", "names": protocolNames(element),
     "enabled": axAttribute(element, kAXEnabledAttribute) as? Bool ?? false,
     "focused": axAttribute(element, kAXFocusedAttribute) as? Bool ?? false, "depth": depth]
+  if ["AXCheckBox", "AXRadioButton"].contains(axString(element, kAXRoleAttribute)),
+     let value = axAttribute(element, kAXValueAttribute) as? NSNumber {
+    result["checked"] = value.boolValue
+  }
+  if axString(element, kAXRoleAttribute) == "AXTextField",
+     axString(element, kAXSubroleAttribute) != "AXSecureTextField" {
+    let placeholder = axString(element, "AXPlaceholderValue")
+    if !placeholder.isEmpty { result["placeholder"] = placeholder }
+  }
   if let point = axPoint(element, kAXPositionAttribute), let size = axSize(element) {
     result["frame"] = ["x": point.x, "y": point.y, "width": size.width, "height": size.height]
   }
