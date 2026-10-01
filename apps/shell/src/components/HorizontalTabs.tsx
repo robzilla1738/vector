@@ -1,3 +1,4 @@
+import { runCommand } from "../commands";
 import { windowTabHint } from "../tab-window-transfer";
 import "./HorizontalTabs.css";
 import { isHomeAddress } from "../chrome";
@@ -137,7 +138,7 @@ export function HorizontalTabs() {
     <div className="horizontal-tabs-row">
     <HorizontalPins pins={pins} spaceId={layout.activeSpaceId} activePageId={activePageId} />
     <div ref={strip} className="horizontal-tabs" style={{ width: Math.max(1, tabs.length) * 200 + groupCount * 96 + 24 }} onScroll={hidePreview} role="tablist" aria-multiselectable="true" aria-label="Browser tabs" aria-orientation="horizontal" onKeyDown={event => { if (selection.keyDown(event)) return; moveListFocus(event, '[role="tab"], .horizontal-group-chip', false); }}>
-      {allTabs.length === 0 && <button className="horizontal-tab empty" role="tab" aria-selected="true" onClick={() => void useStore.getState().newTab().catch(errToast)}><span className="horizontal-empty-icon"><AuxMark /></span><span>New Tab</span></button>}
+      {allTabs.length === 0 && <button className="horizontal-tab empty" role="tab" aria-selected="true" data-command-id="new-tab" onClick={() => runCommand("new-tab")}><span className="horizontal-empty-icon"><AuxMark /></span><span>New Tab</span></button>}
       {ordered.map((page) => {
         const folder = folders.find(item => item.id === layout.tabFolder[page.pageId]);
         const first = folder && ordered.find(item => layout.tabFolder[item.pageId] === folder.id)?.pageId === page.pageId;
@@ -160,7 +161,7 @@ export function HorizontalTabs() {
       </div>}</Fragment>; })}
     </div>
       <div className="horizontal-tab-tools">
-        <button className="icon-btn" aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} onClick={() => void useStore.getState().newTab().catch(errToast)}>{I.plus}</button>
+        <button className="icon-btn" aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{I.plus}</button>
       </div>
       <div className="horizontal-tabs-spacer" />
       <div className="horizontal-space" data-space={space?.color} style={spaceThemeStyle(space)}>

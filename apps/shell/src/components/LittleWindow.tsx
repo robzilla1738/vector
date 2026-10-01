@@ -49,7 +49,7 @@ export function LittleWindow() {
   const host = page && /^https?:/.test(page.url) ? new URL(page.url).host : "New Little window";
   return <main className="little-window" aria-label="Little window">
     <header className="little-strip">
-      <span className="little-host" title={page?.url}>{page?.url.startsWith("https:") && <span aria-label="Secure connection">{I.lock}</span>}{host}</span>
+      <span className="little-host" title={page?.url}>{page?.url.startsWith("https:") && <span role="img" aria-label="Secure connection">{I.lock}</span>}{host}</span>
       <CommandBar compact />
       <button className="btn sm" data-command-id="promote-tab" onClick={() => runCommand("promote-tab")}>Open in Aux</button>
       <button ref={spacesTrigger} className="icon-btn sm" data-command-id="little-space-picker" aria-haspopup="menu" aria-label="Choose destination Space" aria-expanded={panel === "spaces"} onClick={() => runCommand("little-space-picker")}>{I.down}</button>
