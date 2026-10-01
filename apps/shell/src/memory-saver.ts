@@ -1,3 +1,4 @@
+import { ownPages } from "./tab-window-transfer";
 import type { HostMethodResult, PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "./bridge";
 import { useStore } from "./store";
@@ -26,7 +27,7 @@ export function nextMemorySaverAction(state: State, retryAfter: ReadonlyMap<stri
   unsaved: Readonly<UnsavedByPage> = {}) {
   const minutes = Number(state.settings.memorySaverMinutes ?? 0);
   if (!state.connected || state.restoringTabs || ![1, 15, 30, 60].includes(minutes)) return null;
-  const candidates = state.pages.flatMap(page => {
+  const candidates = ownPages(state.pages).flatMap(page => {
     if (page.backend !== "aux" || !/^https?:\/\//.test(page.url) || page.ownedByRuntime ||
         page.pageId === state.activePageId || page.pageId === state.splitPageId ||
         page.controller !== "none" || page.loading || page.viewStatus === "crashed" || page.viewStatus === "detached" ||

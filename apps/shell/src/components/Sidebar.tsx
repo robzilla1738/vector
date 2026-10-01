@@ -1,4 +1,4 @@
-import { runCommand } from "../commands";
+import { windowTabHint } from "../tab-window-transfer";
 import { FeatureSlots } from "../features/registry";
 import "./Sidebar.css";
 import { ChatSessions } from "./ChatSessions";
@@ -116,6 +116,7 @@ const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selec
     if (active && !row.current?.closest('[inert]')) row.current?.scrollIntoView({ block: "nearest" });
   }, [active]);
   if (!p) return null;
+  const windowHint = windowTabHint(p);
   const crashed = p.viewStatus === "crashed";
   const sleeping = !crashed && (p.lifecycle === "frozen" || p.lifecycle === "discarded" || p.lifecycle === "placeholder");
   const title = useStore(state => tabLabel(state.layout, p));
@@ -127,7 +128,8 @@ const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selec
       onFocus={event => preview.show(event.currentTarget)} onBlur={preview.hide} onPointerDown={preview.hide}
       className={`tab-row ${active ? "active" : ""} ${selected ? "multi-selected" : ""} ${crashed ? "crashed" : ""} ${sleeping ? "sleeping" : ""} ${dragging ? "dragging" : ""} ${dropBefore ? "drop-before" : ""} ${dropAfter ? "drop-after" : ""}`}
       role="tab"
-      aria-description={sleeping ? "Sleeping. Reloads when opened." : undefined}
+      title={windowHint}
+      aria-description={windowHint ?? (sleeping ? "Sleeping. Reloads when opened." : undefined)}
       aria-selected={selecting ? selected : active}
       tabIndex={focusable ? 0 : -1}
       data-index={index}
@@ -169,6 +171,7 @@ const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selec
         {crashed ? I.alert : p.loading ? <span className="spin" /> : <FavIcon url={p.url} src={p.favicon} size="sm" />}
       </span>
       <span className="tab-title">{title}</span>
+      {windowHint && <span className="tab-state" role="img" aria-label={windowHint} title={windowHint}>{I.external}</span>}
       <TabAudioButton pageId={p.pageId} title={title}/>
       {p.controller === "agent" || p.controller === "external" ? (
         <span className="tab-state agent" title="The agent is driving this tab">{I.agentSm}</span>
@@ -413,6 +416,7 @@ export const Sidebar = memo(function Sidebar() {
   const railOpenNow = useStore((s) => s.railOpen && s.overlay !== "settings");
   const sidebar = sidebarPref;
   const peek = useStore(s => s.sidebarPeek);
+  const toggleSidebar = useStore((s) => s.toggleSidebar);
   const toggleRail = useStore((s) => s.toggleRail);
   const layout = useStore((s) => s.layout);
   const pages = useTabMembership();
@@ -643,7 +647,7 @@ export const Sidebar = memo(function Sidebar() {
 
   const full = (
     <>
-      <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} data-command-id="sidebar" onClick={()=>runCommand("sidebar")}>{I.sidebarClose}</button></div>
+      <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} onClick={toggleSidebar}>{I.sidebarClose}</button></div>
       <FeatureSlots slot="sidebarItems" />
       {pins.length > 0 && (
         <div className="sb-pins" role="group" aria-label="Pinned sites">
@@ -683,7 +687,7 @@ export const Sidebar = memo(function Sidebar() {
         </div>}
         <div className="tab-list" role="tablist" aria-multiselectable="true" aria-label="Tabs" aria-orientation="vertical" ref={tabScroller}>
           <NewTabButton
-            data-command-id="new-tab" onClick={() => runCommand("new-tab")}
+            onClick={() => void newTab()}
             dropOn={!!drag.pageId && drag.folderId != null && drag.over === ""}
             onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDrag((d) => (d.over === "" ? d : { ...d, over: "" })); }}
             onDrop={(e) => onDrop(null, e)}
@@ -750,7 +754,7 @@ export const Sidebar = memo(function Sidebar() {
             onNewFolder={() => setRenameId(addFolder("Untitled"))}
             onEdit={(s) => setEditing(s)}
             onDelete={id => void deleteSpace(id).catch(errToast)}
-            onCollapse={()=>runCommand("sidebar")}
+            onCollapse={toggleSidebar}
             onHistory={() => setOverlay("history")}
             onDownloads={() => setOverlay("downloads")}
             onSettings={() => setOverlay("settings")}
@@ -760,7 +764,7 @@ export const Sidebar = memo(function Sidebar() {
       </div>
         {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button onClick={() => setMode(mode === "overview" ? "focus" : "overview")} className="icon-btn" aria-label="Tab overview">{I.grid}</button></> : <>
         <span className="sp" />
-        <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" data-command-id="palette" onClick={() => runCommand("palette")}>{I.search}</button>
+        <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" onClick={() => setOverlay("palette")}>{I.search}</button>
         {activeController === "human" && <button className="icon-btn" aria-label="Return control to agent" title="Return control to agent" onClick={() => void returnControl(activePageId!)}>{I.handSm}</button>}
         <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{I.agent}</button>
         <div className="sb-more">

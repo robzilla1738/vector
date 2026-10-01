@@ -1,3 +1,4 @@
+import { isLocal } from "../tab-window-transfer";
 import { useEffect, useState } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { bridge, inMock, inNativeHost } from "../bridge";
@@ -18,7 +19,7 @@ export function PageSurface({ page }: { page: PageTarget }) {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!inNativeHost) return;
+    if (!inNativeHost || !isLocal(page)) return;
     let current = true;
     setState(null);
     void bridge
@@ -39,7 +40,7 @@ export function PageSurface({ page }: { page: PageTarget }) {
     return () => {
       current = false;
     };
-  }, [page.pageId, page.documentEpoch, attempt]);
+  }, [page.pageId, page.documentEpoch, page.windowId, page.anchor, page.viewStatus, attempt]);
 
   if (inMock && MockPage)
     return (
@@ -47,7 +48,7 @@ export function PageSurface({ page }: { page: PageTarget }) {
         <MockPage page={page} />
       </div>
     );
-  if (!inNativeHost) return null;
+  if (!inNativeHost || !isLocal(page)) return null;
 
   const resolved = state?.pageId === page.pageId && state.documentEpoch === page.documentEpoch ? state : null;
   if (resolved?.contentId)

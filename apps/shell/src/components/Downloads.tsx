@@ -75,7 +75,7 @@ const DownloadRow = memo(function DownloadRow({ id, busy, rowError, retried, act
 });
 
 /** ⌘⇧J — in-flow shelf under the page with live progress. */
-export function Downloads() {
+export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () => void } = {}) {
   const setOverlay = useStore((s) => s.setOverlay);
   const [query, setQuery] = useState("");
   const [loading,setLoading]=useState(true);
@@ -86,11 +86,11 @@ export function Downloads() {
   const shelfRef=useRef<HTMLDivElement>(null);
   const searchRef=useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<"all" | "active" | "finished" | "attention">("all");
-  const itemCount = useStore(state => state.downloads.length);
-  const visibleIds = useStore(useShallow(state => state.downloads.filter(item => downloadMatches(item, query, filter))
+  const itemCount = useStore(state => state.downloads.filter(item => tabUrl === undefined || item.tabUrl === tabUrl).length);
+  const visibleIds = useStore(useShallow(state => state.downloads.filter(item => (tabUrl === undefined || item.tabUrl === tabUrl) && downloadMatches(item, query, filter))
     .sort((a, b) => Number(["started", "progressing"].includes(b.state)) - Number(["started", "progressing"].includes(a.state)) || b.startedAt - a.startedAt)
     .map(item => item.id)));
-  const dismissibleIds = useStore(useShallow(state => state.downloads.filter(item => downloadMatches(item, query, filter) && canDismissDownload(item)).map(item => item.id)));
+  const dismissibleIds = useStore(useShallow(state => state.downloads.filter(item => (tabUrl === undefined || item.tabUrl === tabUrl) && downloadMatches(item, query, filter) && canDismissDownload(item)).map(item => item.id)));
 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -176,10 +176,10 @@ export function Downloads() {
         {!!dismissibleIds.length&&<button className="btn sm ghost" disabled={busy!==null} title="Remove inactive downloads matching this view. Files remain on your computer." onClick={()=>void dismissDownloads(dismissibleIds)}>Clear list</button>}
         {!bridge.privateMode&&<button className="btn sm ghost" aria-expanded={showFolder} onClick={()=>setShowFolder(!showFolder)}>Save location</button>}
         <button className="btn sm ghost" disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Refresh</button>
-        <button className="icon-btn sm" title="Close (Esc)" aria-label="Close downloads" onClick={() => setOverlay(null)}>{I.close}</button>
+        <button className="icon-btn sm" title="Close (Esc)" aria-label="Close downloads" onClick={() => onClose ? onClose() : setOverlay(null)}>{I.close}</button>
       </div>
       <div className="download-tools">
-        <label className="download-search">{I.search}<input ref={searchRef} aria-label="Search downloads" placeholder="Find a download…" value={query} onChange={event => setQuery(event.target.value)} /></label>
+        <label className="download-search">{I.search}<input ref={searchRef} autoFocus={!!onClose} aria-label="Search downloads" placeholder="Find a download…" value={query} onChange={event => setQuery(event.target.value)} /></label>
         <div className="download-filters" role="group" aria-label="Filter downloads">
           {([["all","All"],["active","In progress"],["finished","Finished"],["attention","Needs attention"]] as const).map(([value,label])=><button key={value} className="btn sm ghost" aria-pressed={filter===value} onClick={()=>setFilter(value)}>{label}</button>)}
         </div>

@@ -22,6 +22,7 @@ const harness = vi.hoisted(() => ({
 vi.mock("./bridge", () => ({
   inNativeHost: true,
   bridge: {
+    windowId: "main",
     privateMode: false,
     windowKind: "normal",
     tabsUnsavedWork: harness.tabsUnsavedWork,

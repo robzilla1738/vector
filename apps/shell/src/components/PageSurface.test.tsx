@@ -5,7 +5,11 @@ import type { PageTarget } from "@aux/contracts";
 import { afterEach, expect, it, vi } from "vitest";
 
 const { surfaceContentId } = vi.hoisted(() => ({ surfaceContentId: vi.fn() }));
-vi.mock("../bridge", () => ({ inNativeHost: true, inMock: false, bridge: { surfaceContentId } }));
+vi.mock("../bridge", () => ({
+  inNativeHost: true,
+  inMock: false,
+  bridge: { windowId: "main", surfaceContentId },
+}));
 vi.mock("./surfaces", () => ({ MockPage: () => null }));
 
 import { PageSurface } from "./PageSurface";

@@ -1,4 +1,4 @@
-import { runCommand } from "../commands";
+import { windowTabHint } from "../tab-window-transfer";
 import "./HorizontalTabs.css";
 import { isHomeAddress } from "../chrome";
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -35,8 +35,9 @@ const HorizontalTabControls = memo(function HorizontalTabControls({ pageId, acti
   const page = useStore(state => state.pages.find(tab => tab.pageId === pageId));
   if (!page) return null;
   const title = useStore(state => tabLabel(state.layout, page));
+  const windowHint = windowTabHint(page);
   return <>
-    <button ref={node => onTabNode(pageId, node)} className="horizontal-tab-select" role="tab" tabIndex={focusable ? 0 : -1} data-active={active} aria-selected={selecting ? selected : active} aria-label={page.loading ? `Loading ${title}`.trim() : undefined} aria-description={page.lifecycle === "discarded" || page.lifecycle === "frozen" || page.lifecycle === "placeholder" ? "Sleeping. Reloads when opened." : undefined}
+    <button ref={node => onTabNode(pageId, node)} className="horizontal-tab-select" role="tab" tabIndex={focusable ? 0 : -1} data-active={active} aria-selected={selecting ? selected : active} aria-label={page.loading ? `Loading ${title}`.trim() : undefined} title={windowHint} aria-description={windowHint ?? (page.lifecycle === "discarded" || page.lifecycle === "frozen" || page.lifecycle === "placeholder" ? "Sleeping. Reloads when opened." : undefined)}
       onClick={event => { if (!onSelect(pageId, event)) void useStore.getState().activate(pageId).catch(errToast); }} onKeyDown={event => {
         if (event.nativeEvent.isComposing || onSelectionKey(event)) return;
         if ((event.key === " " || event.key === "Enter") && (event.metaKey || event.ctrlKey || event.shiftKey)) { event.preventDefault(); onSelect(pageId, event); return; }
@@ -50,6 +51,7 @@ const HorizontalTabControls = memo(function HorizontalTabControls({ pageId, acti
       }}>
       {page.viewStatus === "crashed" ? I.alert : page.loading ? <output className="spin" aria-label="Loading" /> : page.lifecycle === "discarded" || page.lifecycle === "frozen" || page.lifecycle === "placeholder" ? <span className="horizontal-sleep-icon" role="img" aria-label="Sleeping tab" title="Sleeping until opened">{I.pause}</span> : isHomeAddress(page.url) ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}
       <span className="horizontal-tab-title">{title}</span>
+      {windowHint && <span role="img" aria-label={windowHint} title={windowHint}>{I.external}</span>}
     </button>
     <TabAudioButton pageId={pageId} title={title} />
     <button className="horizontal-tab-close" aria-label={`Close ${title}`} onClick={() => onClose(pageId, false)}>{I.close}</button>
@@ -135,7 +137,7 @@ export function HorizontalTabs() {
     <div className="horizontal-tabs-row">
     <HorizontalPins pins={pins} spaceId={layout.activeSpaceId} activePageId={activePageId} />
     <div ref={strip} className="horizontal-tabs" style={{ width: Math.max(1, tabs.length) * 200 + groupCount * 96 + 24 }} onScroll={hidePreview} role="tablist" aria-multiselectable="true" aria-label="Browser tabs" aria-orientation="horizontal" onKeyDown={event => { if (selection.keyDown(event)) return; moveListFocus(event, '[role="tab"], .horizontal-group-chip', false); }}>
-      {allTabs.length === 0 && <button className="horizontal-tab empty" role="tab" aria-selected="true" data-command-id="new-tab" onClick={() => runCommand("new-tab")}><span className="horizontal-empty-icon"><AuxMark /></span><span>New Tab</span></button>}
+      {allTabs.length === 0 && <button className="horizontal-tab empty" role="tab" aria-selected="true" onClick={() => void useStore.getState().newTab().catch(errToast)}><span className="horizontal-empty-icon"><AuxMark /></span><span>New Tab</span></button>}
       {ordered.map((page) => {
         const folder = folders.find(item => item.id === layout.tabFolder[page.pageId]);
         const first = folder && ordered.find(item => layout.tabFolder[item.pageId] === folder.id)?.pageId === page.pageId;
@@ -158,7 +160,7 @@ export function HorizontalTabs() {
       </div>}</Fragment>; })}
     </div>
       <div className="horizontal-tab-tools">
-        <button className="icon-btn" aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{I.plus}</button>
+        <button className="icon-btn" aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} onClick={() => void useStore.getState().newTab().catch(errToast)}>{I.plus}</button>
       </div>
       <div className="horizontal-tabs-spacer" />
       <div className="horizontal-space" data-space={space?.color} style={spaceThemeStyle(space)}>

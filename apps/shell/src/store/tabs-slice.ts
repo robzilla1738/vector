@@ -1,10 +1,12 @@
 import type { PageTarget, TabPlacement } from "@aux/contracts";
 import { newPageId } from "@aux/contracts/ids";
 import { bridge } from "../bridge";
+import { rememberMovedSelection } from "../features/window-sync/moved-selection";
+import { canClaim, inSharedSidebar, isLocal } from "../tab-window-transfer";
 import { featureStage } from "../use-feature";
 import { readClosedTabs } from "../closed-tabs";
 import { errToast, toast } from "../store";
-import { type Folder, type Space, type SpaceColor, assignFolder, assignSpace, isTab, rememberActiveTab, setActiveSpace, splitForPage, syncLayout, syncOrder, tabsInSpace, withSyncedOrder } from "../workspace";
+import { type Folder, type Space, type SpaceColor, assignFolder, assignSpace, isTab, rememberActiveTab, setActiveSpace, splitForPage, syncLayout, syncOrder, withSyncedOrder } from "../workspace";
 import { CLOSED_TABS_KEY, persistClosedTabs, persistLayout, storage } from "./persistence";
 import { applyRemoval, call, closingGroups, closingOptimistic, mergeTabInto, openingOptimistic, pageFromTab, sendTabCommand } from "./shared";
 import type { Slice, TabKeys, Workspace } from "./types";
@@ -76,13 +78,15 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
       for (const op of patch.ops) {
         if (op.op === "upsert") {
           const tab = op.tab;
-          if (tab.windowId !== bridge.windowId) {
-            // The tab moved to another window — a transfer, not a close, so
-            // no closed-tabs bookkeeping; the page.moved event does layout.
+          if (activePageId === tab.pageId && tab.windowId !== bridge.windowId && pages.some(page => page.pageId === tab.pageId && isLocal(page))) rememberMovedSelection({ pageId: tab.pageId, windowId: tab.windowId });
+          const shared = featureStage("windowSync") === "on" && bridge.windowKind === "normal";
+          const local = isLocal(pageFromTab(tab));
+          const worker = tab.runtimeOwned && pages.some(page => page.pageId === tab.pageId && page.ownedByRuntime);
+          if (!local && !worker && !(shared && inSharedSidebar(pageFromTab(tab)))) {
             if (pages.some(page => page.pageId === tab.pageId)) {
               pages = pages.filter(page => page.pageId !== tab.pageId);
               layout = withSyncedOrder(layout, pages, st.pendingRestoreIds);
-              if (activePageId === tab.pageId) activePageId = tabsInSpace(layout, pages, layout.activeSpaceId)[0]?.pageId ?? null;
+              if (activePageId === tab.pageId) activePageId = null;
               splitPageId = splitForPage(layout, pages, activePageId);
               layoutDirty = true;
             }
@@ -115,9 +119,10 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
           layoutDirty = true;
         } else if (op.op === "window" && op.window.windowId === bridge.windowId) {
           windowChoseActive = true;
-          const order = reconcileWindowOrder(layout.order, op.window.order, pages, st.pendingRestoreIds);
+          const order = featureStage("windowSync") === "on" && bridge.windowKind === "normal" ? syncOrder(layout.order, pages, st.pendingRestoreIds) : reconcileWindowOrder(layout.order, op.window.order, pages, st.pendingRestoreIds);
           if (order.join() !== layout.order.join()) { layout = { ...layout, order }; layoutDirty = true; }
           activePageId = op.window.activePageId;
+          if (pages.some(page => page.pageId === activePageId && isLocal(page))) rememberMovedSelection(null);
         }
       }
       if (windowChoseActive) {
@@ -136,11 +141,12 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
       // A resync can land an older snapshot after newer patches — keep the newer truth.
       if (snapshot.version < st.catalogVersion) return {};
       syncBatterySaverState(snapshot.batterySaverActive);
-      const tabs = snapshot.tabs.filter(tab => tab.windowId === bridge.windowId);
+      const shared = featureStage("windowSync") === "on" && bridge.windowKind === "normal";
+      const tabs = snapshot.tabs.filter(tab => isLocal(pageFromTab(tab)) || (shared && inSharedSidebar(pageFromTab(tab))) || (tab.runtimeOwned && st.pages.some(page => page.pageId === tab.pageId && page.ownedByRuntime)));
       const known = new Set(tabs.map(tab => tab.pageId));
       // The catalog is authoritative for this window's human tab set; pages it
       // does not own (runtime workers, other windows) are left to the runtime.
-      const pages = st.pages.filter(page => known.has(page.pageId) || st.pendingRestoreIds.includes(page.pageId) || page.ownedByRuntime || (page.windowId ?? "main") !== bridge.windowId);
+      const pages = st.pages.filter(page => known.has(page.pageId) || st.pendingRestoreIds.includes(page.pageId) || page.ownedByRuntime);
       for (const tab of tabs) {
         const existing = pages.find(page => page.pageId === tab.pageId);
         if (!existing) pages.push(pageFromTab(tab));
@@ -151,7 +157,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
       if (!st.restoringTabs) layout = syncLayout(layout, pages, st.pendingRestoreIds);
       for (const tab of tabs) if (tab.spaceId && [...layout.spaces, ...(layout.archivedSpaces ?? [])].some(space => space.id === tab.spaceId)
         && layout.tabSpace[tab.pageId] !== tab.spaceId) layout = assignSpace(layout, tab.pageId, tab.spaceId);
-      if (mine) layout = rememberActiveTab({ ...layout, order: reconcileWindowOrder(layout.order, mine.order, pages, st.pendingRestoreIds) }, mine.activePageId);
+      if (mine) layout = rememberActiveTab({ ...layout, order: shared ? syncOrder(layout.order, pages, st.pendingRestoreIds) : reconcileWindowOrder(layout.order, mine.order, pages, st.pendingRestoreIds) }, mine.activePageId);
       persistLayout(layout);
       const activePageId = mine ? mine.activePageId : st.activePageId;
       return { pages, layout, activePageId, splitPageId: splitForPage(layout, pages, activePageId), catalogVersion: snapshot.version };
@@ -199,6 +205,17 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
         set(st => ({ pendingRestoreIds: st.pendingRestoreIds.filter(id => id !== pageId) }));
       } catch (error) { errToast(error); return; }
     }
+    const page = get().pages.find(item => item.pageId === pageId);
+    const claim = page && !isLocal(page) && featureStage("windowSync") === "on" && bridge.windowKind === "normal";
+    if (claim) {
+      if (!canClaim(page)) {
+        rememberMovedSelection({ pageId, windowId: page.windowId ?? "main" });
+        return;
+      }
+      const ack = await bridge.tabCommand({ kind: "claim", pageId, activate: true });
+      if (ack.status === "rejected") throw new Error(ack.error?.message ?? "Aux could not move this tab here.");
+    }
+    rememberMovedSelection(null);
     const spaceId = get().layout.tabSpace[pageId];
     if (spaceId && spaceId !== get().layout.activeSpaceId) {
       if (get().layout.archivedSpaces?.some(space => space.id === spaceId)) await get().restoreSpace(spaceId);
@@ -212,7 +229,7 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
     set({ layout: selectionLayout });
     if (get().overlay !== "find") get().setOverlay(null);
     set({ activePageId: pageId, mode: "focus", splitPageId: splitForPage(get().layout, get().pages, pageId) });
-    await sendTabCommand(get, { kind: "activate", pageId });
+    if (!claim) await sendTabCommand(get, { kind: "activate", pageId });
   },
 
   navigatePage: async (pageId, url) => {
@@ -228,6 +245,16 @@ export const createTabsSlice: Slice<TabKeys> = (set, get, api) => ({
   },
 
   newTab: async (url = "about:blank", reuseId?: string, index?: number) => {
+    if (bridge.windowKind === "little") {
+      const state = get();
+      const page = state.pages.find(item => item.pageId === state.activePageId && isLocal(item));
+      if (!page) throw new Error("Wait for this Little window to finish opening, then try again.");
+      state.setOverlay(null);
+      set({ mode: "focus" });
+      await state.navigatePage(page.pageId, url);
+      if (url === "about:blank") get().focusCommandBar("toolbar");
+      return get().pages.find(item => item.pageId === page.pageId) ?? null;
+    }
     // Optimistic: the row and the start page appear now under a renderer-minted
     // id that main adopts; a refused open removes the placeholder again.
     const pageId = reuseId ?? newPageId();

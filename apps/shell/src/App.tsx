@@ -42,6 +42,7 @@ const Downloads = deferSurface(async () => { const module = await import("./comp
 const InlineAssist = deferSurface(async () => { const module = await import("./components/InlineAssist"); return {default:module.InlineAssist}; }, "Assist writing");
 const SiteControls = deferSurface(async () => { const module = await import("./components/SiteControls"); return {default:module.SiteControls}; }, "Site controls");
 const SiteCustomization = deferSurface(async () => { const module = await import("./components/SiteCustomization"); return {default:module.SiteCustomization}; }, "Site customization");
+const LittleWindow = deferSurface(async () => { const module = await import("./components/LittleWindow"); return {default:module.LittleWindow}; }, "Little window", true, true);
 const QuickAsk = deferSurface(async () => { const module = await import("./components/QuickAsk"); return {default:module.QuickAsk}; }, "Quick Ask", true, true);
 const HorizontalTabs = deferSurface(async () => { const module = await import("./components/HorizontalTabs"); return {default:module.HorizontalTabs}; }, "Tabs", true, true);
 const HttpAuthPrompt = deferSurface(async () => { const module = await import("./components/HttpAuthPrompt"); return {default:module.HttpAuthPrompt}; }, "Sign-in prompt", true, true);
@@ -425,6 +426,7 @@ export function App() {
   }, []);
 
   if (inNativeHost && (toolbarReveal.covering || tabPreviewOpen || sidebarCovering) && !toolbarHole) setToolbarHole(true);
+  if (bridge.windowKind === "little") return <LittleWindow />;
   if (quickAsk) return <QuickAsk onExpand={expandQuickAsk}/>;
   return (
     <div

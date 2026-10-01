@@ -1,3 +1,7 @@
+import { useFeature } from "../use-feature";
+import { useSyncExternalStore } from "react";
+import { movedSelection, observeMovedSelection } from "../features/window-sync/moved-selection";
+import { ownPages } from "../tab-window-transfer";
 import { isHomeAddress, nativePageId } from "../chrome";
 import { PaneBoundary } from "./PaneBoundary";
 import { deferSurface } from "./DeferredSurface";
@@ -72,9 +76,13 @@ export function PageRecovery({ page }: { page: PageTarget }) {
 
 /** Shared viewport for native pages and browser-owned surfaces. */
 export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<HTMLTextAreaElement | null>; scrollRef?: RefObject<HTMLDivElement | null> }>(function Stage({ composerRef, scrollRef }, ref) {
-  const page = useStore((s) => (s.activePageId ? s.pages.find((p) => p.pageId === s.activePageId) : undefined));
+  const moved = useSyncExternalStore(observeMovedSelection, movedSelection);
+  const enabled = useFeature("windowSync") && !bridge.privateMode;
+  const covered = useStore(state => enabled && !!moved && state.pages.some(page => page.pageId === moved.pageId));
+  const selectedPage = useStore((s) => (s.activePageId ? ownPages(s.pages).find((p) => p.pageId === s.activePageId) : undefined));
+  const page = covered ? undefined : selectedPage;
   const mode = useStore((s) => s.mode);
-  const companion = useStore(s => s.pages.find(item => item.pageId === s.splitPageId));
+  const companion = useStore(s => ownPages(s.pages).find(item => item.pageId === s.splitPageId));
   const overlay = useStore(s => s.overlay);
   const confirming = useStore(s => !!s.confirmation);
   const hasUrl = !!page && (!!page.showBlankDocument || (!isHomeAddress(page.url)));
