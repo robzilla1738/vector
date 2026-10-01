@@ -1,0 +1,139 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+index ad3c2ca..80e2e56 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
+@@ -304,6 +304,8 @@ WebUIBrowserWindow::WebUIBrowserWindow(BrowserWindowInterface* browser)
+ 
+ WebUIBrowserWindow::~WebUIBrowserWindow() {
+ #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  aux_site_shortcut_release_cleanup_.RunAndReset();
++  aux_shortcut_weak_factory_.InvalidateWeakPtrs();
+   if (auto* focus = widget_->GetFocusManager())
+     focus->UnregisterAccelerators(this);
+ #endif
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.h b/chrome/browser/ui/webui_browser/webui_browser_window.h
+index 1b9c970..1c47e7a 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_window.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_window.h
+@@ -14,6 +14,7 @@
+ #include "base/values.h"
+ 
+ #include "base/callback_list.h"
++#include "base/functional/callback_helpers.h"
+ #include "chrome/browser/buildflags.h"
+ #include "base/memory/raw_ptr.h"
+ #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
+@@ -325,6 +326,7 @@ class WebUIBrowserWindow : public BrowserWindow,
+   int64_t aux_site_shortcut_navigation_id_ = 0;
+   std::string aux_site_shortcut_url_;
+   base::WeakPtr<content::WebContents> aux_site_shortcut_contents_;
++  base::ScopedClosureRunner aux_site_shortcut_release_cleanup_;
+ #endif
+ 
+   std::unique_ptr<WebUIBrowserModalDialogHost> modal_dialog_host_;
+@@ -341,6 +343,9 @@ class WebUIBrowserWindow : public BrowserWindow,
+   base::CallbackListSubscription theme_changed_subscription_;
+ 
+   base::CallbackListSubscription zoom_changed_subscription_;
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  base::WeakPtrFactory<WebUIBrowserWindow> aux_shortcut_weak_factory_{this};
++#endif
+ };
+ 
+ #endif  // CHROME_BROWSER_UI_WEBUI_BROWSER_WEBUI_BROWSER_WINDOW_H_
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+index acc50a1..8b1d0a9 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
++++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+@@ -8,6 +8,7 @@
+ #import <objc/runtime.h>
+ 
+ #include "build/build_config.h"
++#include "base/functional/bind.h"
+ #include "chrome/app/chrome_command_ids.h"
+ #include "chrome/browser/apps/app_shim/app_shim_host_mac.h"
+ #include "chrome/browser/apps/app_shim/app_shim_manager_mac.h"
+@@ -195,6 +196,21 @@ bool WebUIBrowserWindow::SetAuxShortcuts(const base::ListValue& bindings) {
+   return true;
+ }
+ 
++namespace {
++content::WebContents* FocusedAuxWebsite(BrowserWindowInterface* browser) {
++  auto* contents = browser->GetTabStripModel()->GetActiveWebContents();
++  return contents && contents->GetPrimaryMainFrame() &&
++      contents->GetRenderWidgetHostView() && contents->GetRenderWidgetHostView()->HasFocus() &&
++      contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ? contents : nullptr;
++}
++bool IsAuxShortcutDocument(content::WebContents* contents, int64_t navigation_id,
++                           const std::string& url) {
++  return contents && contents->GetPrimaryMainFrame() &&
++      contents->GetPrimaryMainFrame()->GetNavigationId() == navigation_id &&
++      contents->GetLastCommittedURL().spec() == url;
++}
++}  // namespace
++
+ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerator,
+                                                const input::NativeWebKeyboardEvent* event) {
+   auto found = aux_shortcuts_.find(accelerator);
+@@ -203,10 +219,9 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
+   auto* shell = GetWebUIBrowserUI();
+   if (!shell) return false;
+   const std::string& id = found->second.first;
+-  auto* contents = browser_->GetTabStripModel()->GetActiveWebContents();
+-  const bool site_chord = !found->second.second && contents && contents->GetPrimaryMainFrame() &&
+-      contents->GetRenderWidgetHostView() && contents->GetRenderWidgetHostView()->HasFocus() &&
+-      contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() &&
++  auto* contents = FocusedAuxWebsite(browser_.get());
++  NSEvent* native_down = event ? event->os_event.Get() : NSApp.currentEvent;
++  const bool site_chord = !found->second.second && contents &&
+       id != "new-tab" && id != "new-window" && id != "new-private-window" &&
+       id != "close-tab" && id != "close-window" && id != "reopen-closed-tab" &&
+       id != "quick-ask" && id != "tab-next" && id != "tab-previous" &&
+@@ -215,14 +230,43 @@ bool WebUIBrowserWindow::DispatchAuxAccelerator(const ui::Accelerator& accelerat
+   if (site_chord && id == aux_site_shortcut_id_ &&
+       aux_site_shortcut_accelerator_ && *aux_site_shortcut_accelerator_ == accelerator &&
+       aux_site_shortcut_contents_.get() == contents &&
+-      aux_site_shortcut_navigation_id_ == contents->GetPrimaryMainFrame()->GetNavigationId() &&
+-      aux_site_shortcut_url_ == contents->GetLastCommittedURL().spec() &&
++      IsAuxShortcutDocument(contents, aux_site_shortcut_navigation_id_, aux_site_shortcut_url_) &&
+       now - aux_site_shortcut_at_ <= base::Milliseconds(800) &&
+-      contents->GetRenderWidgetHostView() && (event || NSApp.currentEvent)) {
++      native_down && native_down.type == NSEventTypeKeyDown) {
++    const auto owner = aux_shortcut_weak_factory_.GetWeakPtr();
++    const auto target = contents->GetWeakPtr();
++    const auto navigation_id = aux_site_shortcut_navigation_id_;
++    const auto url = aux_site_shortcut_url_;
++    const auto key_code = native_down.keyCode;
++    aux_site_shortcut_release_cleanup_.RunAndReset();
++    // Cocoa rejects releases for a keydown consumed before its own responder
++    // bookkeeping. Observe the physical release before that filter, never
++    // manufacture one, and consume it so normal delivery cannot duplicate it.
++    auto monitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown | NSEventMaskKeyUp
++        handler:^NSEvent*(NSEvent* physical) {
++      if (!owner) return physical;
++      if (physical.type == NSEventTypeKeyDown) {
++        if (!physical.isARepeat) owner->aux_site_shortcut_release_cleanup_.RunAndReset();
++        return physical;
++      }
++      if (physical.keyCode != key_code) return physical;
++      owner->aux_site_shortcut_release_cleanup_.RunAndReset();
++      if (!owner || NSApp.keyWindow != owner->GetNativeWindow().GetNativeNSWindow() ||
++          (physical.window && physical.window != NSApp.keyWindow) ||
++          FocusedAuxWebsite(owner->browser_.get()) != target.get() ||
++          !IsAuxShortcutDocument(target.get(), navigation_id, url)) return physical;
++      input::NativeWebKeyboardEvent release{base::apple::OwnedNSEvent(physical)};
++      release.skip_if_unhandled = true;
++      target->GetRenderWidgetHostView()->GetRenderWidgetHost()->ForwardKeyboardEvent(release);
++      return nil;
++    }];
++    if (!monitor) return shell->DispatchAuxShortcut(id, false);
++    aux_site_shortcut_release_cleanup_ = base::ScopedClosureRunner(
++        base::BindOnce([monitor] { [NSEvent removeMonitor:monitor]; }));
+     aux_site_shortcut_id_.clear();
+     shell->DispatchAuxShortcut(id, false, true);
+     input::NativeWebKeyboardEvent forwarded = event ? *event :
+-        input::NativeWebKeyboardEvent(base::apple::OwnedNSEvent(NSApp.currentEvent));
++        input::NativeWebKeyboardEvent(base::apple::OwnedNSEvent(native_down));
+     forwarded.skip_if_unhandled = true;
+     contents->Focus();
+     auto* host = contents->GetRenderWidgetHostView()->GetRenderWidgetHost();

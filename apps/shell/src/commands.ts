@@ -234,11 +234,14 @@ export function dispatchShortcut(
   context: CommandContext = {},
 ): boolean {
   const state = context.state ?? useStore.getState();
+  const advisory = "Press again to use this shortcut on the website";
+  if (shortcut.websitePassThrough !== undefined)
+    for (const toast of state.toasts) if (toast.text === advisory) state.dismissToast(toast.id);
   if (shortcut.websitePassThrough === true) {
     state.setOverlay(null);
     return true;
   }
-  if (shortcut.websitePassThrough === false) state.toast("Press again to use this shortcut on the website");
+  if (shortcut.websitePassThrough === false) state.toast(advisory);
   const id =
     shortcut.commandId ??
     matchShortcut(

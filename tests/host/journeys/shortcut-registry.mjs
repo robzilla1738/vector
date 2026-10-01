@@ -39,9 +39,17 @@ async function core(t) {
       await t.ax.focus({ role: "AXTextField", name: "Website editor", scope: "page" });
       await t.ax.key("command+s", "hid");
       await t.ax.waitFor({ name: "Press again to use this shortcut on the website", scope: "shell" });
+      await new Promise(resolve => setTimeout(resolve, 850));
+      await t.ax.key("command+s", "hid");
+      t.assert.equal((await t.ax.query({ name: "Press again to use this shortcut on the website", role: "AXStaticText", scope: "shell" })).length, 1);
+      await t.capture("shortcut-single-advisory");
+      // Keep screenshot work outside the bounded physical double-press pair.
+      await new Promise(resolve => setTimeout(resolve, 850));
+      await t.ax.key("command+s", "hid");
       await t.ax.key("command+s", "hid");
       await t.ax.waitFor({ name: "Website shortcuts: 1", scope: "page" });
       await t.ax.waitFor({ name: "Website releases: 1", scope: "page" });
+      t.assert.equal((await t.ax.query({ name: "Press again to use this shortcut on the website", role: "AXStaticText", scope: "shell" })).length, 0);
       t.assert.equal((await t.ax.query({ name: "Website releases: 2", scope: "page" })).length, 0);
       const observation = await t.rpc("pages.observe", { pageId: page.pageId });
       t.assert.match(JSON.stringify(observation), /Website shortcuts: 1/);
