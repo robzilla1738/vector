@@ -61,6 +61,14 @@ export function validateJourneyBundle(appPath) {
   return path;
 }
 
+export function observeJourneyProcess({ child, externalPid, generation, spawnError }) {
+  return { pid: externalPid ?? child?.pid ?? null, generation,
+    launchKind: externalPid ? "launch-services" : "child",
+    exitCode: externalPid ? null : child?.exitCode ?? null,
+    signal: externalPid ? null : child?.signalCode ?? null,
+    spawnError: spawnError?.message ?? null, exitStatusAvailable: !externalPid && !!child };
+}
+
 export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRoot }) {
   const bundle = validateJourneyBundle(appPath);
   const profileRoot = suppliedRoot ? resolve(suppliedRoot) : mkdtempSync('/tmp/aux-native-journey-');
@@ -229,6 +237,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     },
     start, async restart(options) { await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
     async openExternal(url) { if (!running()) throw new Error("Disposable Aux is not running"); return launchUrl(url, [], api.pid); },
+    get processObservation() { return observeJourneyProcess({ child, externalPid, generation, spawnError }); },
     get pid() { return externalPid ?? child?.pid; }, get log() { return stderr + (existsSync(nativeLog) ? readFileSync(nativeLog, "utf8").slice(-65536) : ""); }, descriptor,
     async identity() {
       const describe = await createRpc(() => descriptor())('runtime.describe');

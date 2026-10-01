@@ -6,13 +6,19 @@ import CoreGraphics
 import Foundation
 import Darwin
 
+func trustedState() -> [String: Bool] {
+  return ["accessibility": AXIsProcessTrusted(), "screenRecording": CGPreflightScreenCaptureAccess(),
+          "reduceMotion": NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+          "reduceTransparency": NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency]
+}
+
 func fail(_ message: String) -> Never {
   fputs("native-window: \(message)\n", stderr)
   exit(1)
 }
 
 if CommandLine.arguments.count == 2 && CommandLine.arguments[1] == "trusted" {
-  let result = ["accessibility": AXIsProcessTrusted(), "screenRecording": CGPreflightScreenCaptureAccess()]
+  let result = trustedState()
   let data = try! JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
   print(String(data: data, encoding: .utf8)!)
   exit(0)
@@ -961,9 +967,88 @@ func keyEvents(_ chord: String) throws -> (CGEvent, CGEvent) {
   down.flags = flags; up.flags = flags
   return (down, up)
 }
-func postKey(_ chord: String, via: String = "pid") throws {
+// A phased HID probe owns at most one held key, with automatic physical
+// release on protocol failure/EOF, target loss, or a 15-second test bound.
+final class HeldKeySession: @unchecked Sendable {
+  private struct Key {
+    let code: Int64
+    let flags: CGEventFlags
+    let release: CGEvent
+    let deadline: UInt64
+  }
+  private let owner: pid_t
+  private let application: NSRunningApplication
+  private let lock = NSLock()
+  private var key: Key?
+  private var timer: DispatchSourceTimer?
+  init(owner: pid_t, application: NSRunningApplication) {
+    self.owner = owner; self.application = application
+  }
+  func requireAvailable(code: Int64? = nil) throws {
+    lock.lock(); defer { lock.unlock() }
+    if let held = key, code == nil || code == held.code {
+      throw protocolError("A conflicting physical key is already held")
+    }
+  }
+  func post(_ down: CGEvent, release: CGEvent, phase: String) throws {
+    lock.lock(); defer { lock.unlock() }
+    let code = down.getIntegerValueField(.keyboardEventKeycode)
+    if phase == "down" {
+      guard key == nil else { throw protocolError("A physical key is already held") }
+      let now = DispatchTime.now().uptimeNanoseconds
+      key = Key(code: code, flags: down.flags, release: release, deadline: now + 15_000_000_000)
+      let expiry = DispatchSource.makeTimerSource(queue: .global(qos: .userInteractive))
+      expiry.schedule(deadline: .now() + .milliseconds(50), repeating: .milliseconds(50))
+      expiry.setEventHandler { [weak self] in self?.checkLifetime() }
+      timer = expiry
+      down.timestamp = now
+      down.post(tap: .cghidEventTap)
+      expiry.resume()
+      return
+    }
+    guard let held = key, held.code == code, held.flags == down.flags else {
+      throw protocolError("No matching physical key/modifiers are held")
+    }
+    if phase == "repeat" {
+      down.setIntegerValueField(.keyboardEventAutorepeat, value: 1)
+      down.timestamp = DispatchTime.now().uptimeNanoseconds
+      down.post(tap: .cghidEventTap)
+      return
+    }
+    key = nil; timer?.cancel(); timer = nil
+    release.timestamp = DispatchTime.now().uptimeNanoseconds
+    release.post(tap: .cghidEventTap)
+  }
+  private func releaseLocked() {
+    guard let held = key else { return }
+    key = nil; timer?.cancel(); timer = nil
+    held.release.timestamp = DispatchTime.now().uptimeNanoseconds
+    held.release.post(tap: .cghidEventTap)
+  }
+  func release() {
+    lock.lock(); defer { lock.unlock() }
+    releaseLocked()
+  }
+  private func checkLifetime() {
+    lock.lock(); defer { lock.unlock() }
+    let expired = key.map { DispatchTime.now().uptimeNanoseconds >= $0.deadline } ?? false
+    let exited = application.isTerminated || (Darwin.kill(owner, 0) != 0 && errno == ESRCH)
+    if expired || exited { releaseLocked() }
+  }
+  deinit { release() }
+}
+let heldKeySession = HeldKeySession(owner: pid, application: app)
+func postKey(_ chord: String, via: String = "pid", phase: String = "press") throws {
   guard ["pid", "hid"].contains(via) else { throw protocolError("via must be pid or hid") }
+  guard ["press", "down", "up", "repeat"].contains(phase) else { throw protocolError("Unknown key phase") }
   let (down, up) = try keyEvents(chord)
+  if phase != "press" {
+    guard via == "hid" else { throw protocolError("Phased keys require physical HID posting") }
+    try requireLiveTarget()
+    try heldKeySession.post(down, release: up, phase: phase)
+    return
+  }
+  try heldKeySession.requireAvailable(code: down.getIntegerValueField(.keyboardEventKeycode))
   for event in [down, up] { if via == "hid" { event.post(tap: .cghidEventTap) } else { event.postToPid(pid) }; usleep(20_000) }
 }
 // One helper clock measures physical posting through a confirmed AX notification.
@@ -1001,6 +1086,7 @@ func visibleShortcutElements(_ selector: [String: Any], window: AXUIElement) thr
   }
 }
 func measureKey(_ request: [String: Any]) throws -> [String: Any] {
+  try heldKeySession.requireAvailable()
   guard let chord = request["chord"] as? String else { throw protocolError("chord required") }
   let expectedName = request["expectedName"] as? String
   let expectedVisible = request["expectedVisible"] as? Bool
@@ -1143,7 +1229,7 @@ func mouseEvent(_ type: CGEventType, at point: CGPoint, button: CGMouseButton = 
 func protocolCommand(_ request: [String: Any]) throws -> Any {
   guard let command = (request["command"] ?? request["cmd"]) as? String else { throw protocolError("command required") }
   switch command {
-  case "trusted": return ["accessibility": AXIsProcessTrusted(), "screenRecording": CGPreflightScreenCaptureAccess()]
+  case "trusted": return trustedState()
   case "windows": return windowInventory()
   case "query", "dump":
     let selector = request["selector"] as? [String: Any] ?? [:]
@@ -1185,7 +1271,7 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
   case "measureKey": return try measureKey(request)
   case "key":
     guard let chord = request["chord"] as? String else { throw protocolError("chord required") }
-    try postKey(chord, via: request["via"] as? String ?? "pid")
+    try postKey(chord, via: request["via"] as? String ?? "pid", phase: request["phase"] as? String ?? "press")
   case "type":
     guard let text = request["text"] as? String else { throw protocolError("text required") }
     if request["selector"] != nil {
@@ -1253,6 +1339,7 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
   return true
 }
 func serveProtocol() {
+  defer { heldKeySession.release() }
   while let line = readLine() {
     var response: [String: Any] = [:]
     do {
@@ -1260,6 +1347,7 @@ func serveProtocol() {
       response["id"] = request["id"] ?? NSNull()
       response["result"] = try protocolCommand(request); response["ok"] = true
     } catch {
+      heldKeySession.release()
       response["id"] = response["id"] ?? NSNull(); response["ok"] = false
       response["error"] = (error as? ProtocolError)?.message ?? String(describing: error)
     }
