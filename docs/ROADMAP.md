@@ -1624,6 +1624,8 @@ Each item is an incremental patch built on the registry. Build AuxDev whenever a
 
 ## 7. Design direction: 06 and 05 quality inside Aux's established identity
 
+The F21 polish pass uses the full-fidelity installed-build capture at `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/` (approximately 130 MB). Read `/Users/rcourson/AI Blueprints/06_COPYABLE-SURFACES.md` §§8–8c for the complete asset index, including live browser 1.0.928.1 and component 1.26.929. Pull relevant surface geometry, states, tokens, motion and icons from those resources; preserve Aux branding, logo, name, app identity and copy. Record exact reference provenance for design changes, keep the capture outside Git, and retain the F21 appearance, contact-sheet, reviewer and final owner sign-off requirements in [the canonical plan](BROWSER-RUNTIME-PLAN.md#f21-design-polish-pass-l12-with-the-design-reviewer-throughout).
+
 ### 7.1 Fixed identity (do not change)
 
 This is already established in `apps/desktop/renderer/src/tokens.css` and confirmed by the owner (`docs/HANDOFF.md`):
