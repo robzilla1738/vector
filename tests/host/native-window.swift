@@ -1299,10 +1299,11 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
     let steps = min(max(request["steps"] as? Int ?? 20, 1), 1000)
     var destinationHoldMs = 0.0
     if let value = request["destinationHoldMs"] {
-      guard let duration = value as? Double, duration.isFinite, duration >= 0, duration <= 10000 else {
+      guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+            number.doubleValue.isFinite, number.doubleValue >= 0, number.doubleValue <= 10000 else {
         throw protocolError("destinationHoldMs must be between 0 and 10000")
       }
-      destinationHoldMs = duration
+      destinationHoldMs = number.doubleValue
     }
     try mouseEvent(.leftMouseDown, at: start)
     defer { try? mouseEvent(.leftMouseUp, at: end) }
