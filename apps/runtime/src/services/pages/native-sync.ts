@@ -148,6 +148,7 @@ export class NativeViewSync {
           url: tab.url,
           title: tab.title,
           themeColor: tab.themeColor,
+          split: tab.split,
           backend: "aux",
           active,
           ownedByRuntime: tab.runtimeOwned,

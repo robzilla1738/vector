@@ -210,6 +210,7 @@ export class PageOpener {
     backend: Backend;
     title?: string;
     themeColor?: string;
+    split?: PageTarget["split"];
     active?: boolean;
     ownedByRuntime?: boolean;
     lifecycle?: PageTarget["lifecycle"];
@@ -245,6 +246,7 @@ export class PageOpener {
     backend: Backend;
     title?: string;
     themeColor?: string;
+    split?: PageTarget["split"];
     active?: boolean;
     ownedByRuntime?: boolean;
     lifecycle?: PageTarget["lifecycle"];
@@ -270,6 +272,7 @@ export class PageOpener {
       url: dp?.url() || opts.url,
       title: opts.title ?? "",
       themeColor: opts.themeColor,
+      split: opts.split,
       showBlankDocument: opts.showBlankDocument,
       documentEpoch: opts.restored ? opts.restored.documentEpoch + 1 : 0,
       lastRevision: 0,
