@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
-import { COMMANDS, SHORTCUTS, effectiveShortcuts } from "@aux/contracts";
+import { COMMANDS, SHORTCUTS, ShortcutOverridesSchema, shortcutInventorySize } from "@aux/contracts";
 import { COMMAND_ACTIONS } from "../../apps/shell/src/commands";
 import {
   platformConflicts,
@@ -22,7 +22,13 @@ it("has unique command IDs and exactly one shell action per shell command", () =
 });
 it("has bounded, conflict-free, safe defaults on every platform", () => {
   expect(SHORTCUTS).toHaveLength(COMMANDS.length);
-  expect(COMMANDS.length * 4 + effectiveShortcuts().flatMap((command) => command.bindings).length).toBeLessThanOrEqual(512);
+  const worst = Object.fromEntries(COMMANDS.map(command => [command.id,
+    Array.from({ length: 4 }, (_, index) => ({ key: `F${index + 1}`, ctrl: true }))]));
+  const fits = ["darwin", "win32", "linux"].every(platform => shortcutInventorySize(worst, platform) <= 512);
+  // Settings must refuse an inventory beyond the unchanged native row cap.
+  expect(ShortcutOverridesSchema.safeParse(worst).success).toBe(fits);
+  for (const platform of ["darwin", "win32", "linux"])
+    expect(shortcutInventorySize({}, platform)).toBeLessThanOrEqual(512);
   for (const platform of ["darwin", "win32", "linux"]) {
     expect(platformConflicts({}, platform)).toEqual([]);
     for (const command of COMMANDS)

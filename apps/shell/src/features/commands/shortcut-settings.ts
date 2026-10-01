@@ -2,6 +2,7 @@ import {
   COMMANDS,
   effectiveShortcuts,
   bindingLabel,
+  ShortcutOverridesSchema,
   type ShortcutBinding,
   type ShortcutOverrides,
 } from "@aux/contracts";
@@ -101,6 +102,7 @@ export function importShortcuts(text: string, platform: string): ShortcutOverrid
       return { ...binding };
     });
   }
+  ShortcutOverridesSchema.parse(result);
   if (platformConflicts(result, platform).length)
     throw new Error(
       "The file assigns the same shortcut to multiple commands. Resolve conflicts before importing.",

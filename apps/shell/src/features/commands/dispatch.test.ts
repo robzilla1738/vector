@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { COMMANDS, type CommandDef } from "@aux/contracts";
-import { runCommand, dispatchShortcut } from "../../commands";
+import { runCommand, executeCommand, dispatchShortcut } from "../../commands";
 import { useStore } from "../../store";
 import * as registry from "../registry";
 const originalToast = useStore.getState().toast;
@@ -61,4 +61,24 @@ it("explicit sidebar collapse is idempotent from every sidebar mode", () => {
     expect(runCommand("sidebar-hide")).toBe(true);
     expect(useStore.getState().sidebar).toBe("hidden");
   }
+});
+
+it("awaits the actual registered feature acknowledgment and propagates refusal without a duplicate toast", async () => {
+  let acknowledge!: () => void;
+  const toast = vi.fn();
+  useStore.setState({ toast });
+  const invoke = vi.spyOn(registry, "runFeatureCommand").mockReturnValue({ handled: true,
+    result: new Promise<void>(resolve => { acknowledge = resolve; }) });
+  let completed = false;
+  const operation = executeCommand("archive-delete", { payload: { archiveId: "saved-tab" } }).then(() => { completed = true; });
+  await Promise.resolve();
+  expect(completed).toBe(false);
+  expect(invoke).toHaveBeenCalledExactlyOnceWith("archive-delete", useStore.getState(), { payload: { archiveId: "saved-tab" } });
+  acknowledge();
+  await operation;
+  expect(completed).toBe(true);
+  const error = new Error("Archive changed");
+  invoke.mockReturnValue({ handled: true, result: Promise.reject(error) });
+  await expect(executeCommand("archive-delete", { payload: { archiveId: "saved-tab" } })).rejects.toBe(error);
+  expect(toast).not.toHaveBeenCalled();
 });
