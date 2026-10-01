@@ -1,0 +1,31 @@
+{
+  "sourceOnly": true,
+  "base": "36485efe",
+  "nativeReplay": "FULL-NATIVE-REPLAY.json",
+  "nativePackets": 28,
+  "nativeFiles": 95,
+  "generatedHostMethods": 208,
+  "generatedHostEvents": 26,
+  "manifestHash": "5b61354df459dac3419d524f39f047be15b1db4e8d339c4ca67c5d758c79eab6",
+  "journeyRegistry": {
+    "journeys": 44,
+    "features": 43
+  },
+  "gates": {
+    "workspaceRebuild": "PASS",
+    "typecheck": "PASS before latest test-only polling changes",
+    "tools": "67 synthetic protocol/performance/QA/poll cases PASS; no physical evidence",
+    "observerLifecycle": "6 PASS",
+    "format": "PASS after exact migrated floating-sidebar formatting",
+    "bridgeSource": "PASS against exact new replay plus unchanged pinned bootstrap; default stable pending staging",
+    "nativePortInventory": "PASS",
+    "wholeUnit": "running; no final result yet"
+  },
+  "appearance": {
+    "invocation": "explicit private owned test opt-in; direct-child stderr only; zero-argument native readback",
+    "lifetimes": "captured child/generation; detach+dispose on restart/quit/error/close; fresh exact-window observations only",
+    "capture": "original PNG retained on provenance failure; explicit state/window for qualifying provenance",
+    "retry": "20 consecutive exact native transient refusals maximum; forbidden/schema/cap failures stop"
+  },
+  "qualification": "none; native compile/journeys/performance/full design matrix/WaveQ and ordered qualified merges remain open"
+}

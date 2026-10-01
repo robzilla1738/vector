@@ -7,6 +7,7 @@ import { createServer } from "node:http";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { setTimeout as delay } from "node:timers/promises";
+import { rawPercentile } from "../host/lib/native-key-performance.mjs";
 import { summarizeSamples } from "./statistics.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -168,7 +169,8 @@ try {
     await until("surface dismissed", () => run.evaluate(`!document.querySelector(${JSON.stringify(fieldSelector)})`));
   }
   report.summary = summarizeSamples(report.samplesMs);
-  report.meets30msP95 = report.summary.p95 <= 30;
+  report.rawP95Ms = rawPercentile(report.samplesMs, 0.95);
+  report.meets30msP95 = report.rawP95Ms <= 30;
   report.status = report.meets30msP95 ? "measured" : "failed-budget";
   if (!report.meets30msP95) process.exitCode = 1;
   console.log(JSON.stringify({ summary: report.summary, meets30msP95: report.meets30msP95, output }, null, 2));

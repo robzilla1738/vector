@@ -4,10 +4,11 @@
     "chrome/browser/ui/aux/BUILD.gn",
     "chrome/browser/ui/aux/link_router_browsertest.cc",
     "chrome/browser/ui/aux/profile_spaces_unittest.cc",
-    "chrome/browser/ui/aux/result_preview_browsertest.cc"
+    "chrome/browser/ui/aux/result_preview_browsertest.cc",
+    "chrome/browser/ui/aux/tab_catalog_browsertest.cc"
   ],
   "patch": "chromium/patches/aux/runtime/0196-native-test-build-dependencies.patch",
-  "sha256": "764f3e4a76cc709cbb2097e371f4ea24f66555151f6b8342b8cb3cc43695f639",
+  "sha256": "aefc4a9c2dcb9f7a17680ea566ecd00bc71f1f510a954d58fa4cd8de90fe9770",
   "assertionsChanged": false,
   "compiled": false
 }

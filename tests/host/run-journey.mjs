@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createUntil } from './lib/until.mjs';
 import { createClock } from "../../packages/contracts/dist/clock.js";
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -13,6 +14,7 @@ import { createJourneyApp } from './lib/app.mjs';
 import { createRpc } from './lib/rpc.mjs';
 import { createAxClient, preflight } from './lib/ax.mjs';
 import { createFixture } from './lib/fixture.mjs';
+import { createAppearanceProvenance } from './lib/appearance-provenance.mjs';
 import { createEvidence } from './lib/evidence.mjs';
 import { createVisual } from './lib/visual.mjs';
 import { assertJourneyIdentity } from './lib/identity.mjs';
@@ -21,7 +23,7 @@ import { acquireNativeSlot } from '../../scripts/native-slot.mjs';
 const root = resolve(import.meta.dirname, '../..');
 const { values } = parseArgs({ options: {
   journey: { type: 'string' }, app: { type: 'string' }, output: { type: 'string' },
-  attempt: { type: 'string', default: '1' }, attended: { type: 'boolean' },
+  attempt: { type: 'string', default: '1' }, attended: { type: 'boolean' }, appearance: { type: 'boolean' },
 } });
 assert.ok(values.journey && values.app && values.output, 'Usage: run-journey --journey <id> --app <Aux.app> --output <dir>');
 if (!process.env.AUX_NATIVE_SLOT_TOKEN) {
@@ -45,7 +47,16 @@ const manifest = { schema: 2, id: journey.id, features: journey.features, needs:
   productIdentity: identity, shellDigest: JSON.parse(readFileSync(join(root, 'chromium/shell-assets/manifest.json'), 'utf8')).sha256,
   attempt: Number(values.attempt), startedAt: new Date().toISOString(), steps: [], captures: [],
 };
-let app, ax, fixture, evidence;
+let app, ax, fixture, evidence, appearance;
+async function configureAppearance() {
+  if (!values.appearance) return;
+  const actual = await app.identity();
+  assertJourneyIdentity(actual, identity);
+  const candidate = { productIdentity: identity, native: { sourceCommit: actual.native.sourceCommit, buildId: actual.native.buildId, manifestHash: actual.native.manifestHash }, shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
+  app.configureAppearance(candidate);
+  appearance = createAppearanceProvenance({ outputDir, candidate, targetPid: app.pid, helper: ax, helperSource: ax.helperSource, helperExecutable: ax.helperExecutable, observeWindow: selection => app.observeAppearance(selection), readIdentity: () => app.identity() });
+  manifest.provenanceProducers = appearance.pins;
+}
 const controller = new AbortController();
 const { signal } = controller;
 let deadline;
@@ -61,8 +72,10 @@ async function execute() {
     model = await createModelFixture(fixture);
   }
   const launch = typeof journey.launch === 'function' ? journey.launch({ fixture, model, identity }) : journey.launch ?? {};
+  assert.ok(!values.appearance || !launch.perf, 'Appearance sampling must not perturb a performance run');
   app = createJourneyApp({ appPath: resolve(values.app), launch: {
     ...launch,
+    ...(values.appearance ? { args: [...(launch.args ?? []), '--aux-native-appearance-observer'] } : {}),
     ...(journey.devAcceptance?.length ? { devAcceptance: { features: journey.devAcceptance, sourceCommit: identity.label } } : {}),
   } });
   if (journey.prepare) {
@@ -96,23 +109,34 @@ async function execute() {
   } });
   const nativeRpc = createRpc(() => app.descriptor());
   const rpc = async (...args) => { signal.throwIfAborted(); const result = await nativeRpc(...args); signal.throwIfAborted(); return result; };
-  evidence = createEvidence(outputDir, observedAx);
-  const until = async (name, predicate, timeoutMs = 10_000) => {
-    const end = performance.now() + timeoutMs;
-    while (performance.now() < end) { signal.throwIfAborted(); const value = await predicate(); if (value) return value; await new Promise(resolve => setTimeout(resolve, 50)); }
-    throw new Error(`Timed out: ${name}`);
-  };
+  evidence = createEvidence(outputDir, observedAx, () => appearance);
+  await configureAppearance();
+  const until = createUntil(signal);
   const actual = await app.identity();
   const clock = createClock(actual.native.testClockScale);
   const context = { app, rpc, fixture, model, ax: observedAx, assert, until, visual: createVisual(outputDir),
     async restart(options) {
       signal.throwIfAborted();
+      appearance = undefined;
       await ax.close();
       ax = undefined;
       await app.restart(options);
       ax = await createAxClient(app.pid);
       assertJourneyIdentity(await app.identity(), identity);
+      await configureAppearance();
       signal.throwIfAborted();
+    },
+    async openAux(url, options) {
+      signal.throwIfAborted();
+      if (options?.cold) { appearance = undefined; await ax.close(); ax = undefined; }
+      const receipt = await app.openAux(url, options);
+      if (options?.cold) {
+        ax = await createAxClient(app.pid);
+        assertJourneyIdentity(await app.identity(), identity);
+        await configureAppearance();
+      }
+      signal.throwIfAborted();
+      return receipt;
     },
     capture: async (name, options) => { signal.throwIfAborted(); return evidence.capture(name, options); }, clock,
     async step(name, options, action) {

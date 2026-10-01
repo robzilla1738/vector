@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { acquireNativeSlot } from '../../../scripts/native-slot.mjs';
 import { createDevelopmentAcceptance, extendDevelopmentAcceptance, nativeProfileName, validateDisposableProfile } from './dev-acceptance.mjs';
 import { createRpc, validateDescriptor } from './rpc.mjs';
+import { createAppearanceStream } from './appearance-stream.mjs';
 import { createStartupTrace } from './startup-evidence.mjs';
 
 function externalFixtureUrl(url) {
@@ -120,6 +121,11 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   const env = { ...process.env, ...launch.env, ...acceptance?.env };
   // Never inherit a developer token unless this launcher made its own marker.
   if (!acceptance) delete env.AUX_DEV_ACCEPTANCE_TOKEN;
+  let appearanceStream, appearanceDetach;
+  function disposeAppearance() {
+    appearanceDetach?.(); appearanceDetach = undefined;
+    appearanceStream?.dispose(); appearanceStream = undefined;
+  }
   let child;
   let externalPid;
   let externalGeneration;
@@ -225,6 +231,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
     externalPid = undefined; externalGeneration = undefined;
     slot = await acquireNativeSlot();
+    disposeAppearance();
     generation += 1; spawnError = undefined; stderr = '';
     startupTrace = createStartupTrace();
     const args = [
@@ -275,6 +282,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
   }
   async function quit() {
+    disposeAppearance();
     if (launchUncertain) throw new Error(`LaunchServices receipt unavailable: inspect the owned disposable profile ${userDataDir} and bundle ${bundle} before releasing the native batch.`);
     if (running()) {
       if (externalPid) execFileSync(urlLauncher, ["terminate", bundle, String(externalPid), String(externalGeneration)], { timeout: 2000, stdio: "pipe" }); else child.kill('SIGTERM');
@@ -288,6 +296,23 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     slot?.release(); slot = undefined;
   }
   const api = {
+    configureAppearance(candidate) {
+      disposeAppearance();
+      if (!running() || externalPid || !child?.stderr || launch.perf ||
+          launchArgs.filter(arg => arg === '--aux-native-appearance-observer').length !== 1)
+        throw new Error('Appearance observation requires an opted-in owned direct child outside performance runs');
+      const observedChild = child, observedPid = child.pid, observedGeneration = generation;
+      const stream = createAppearanceStream({ pid: observedPid, generation: observedGeneration, candidate });
+      const onData = bytes => stream.write(bytes, { pid: observedPid, generation: observedGeneration });
+      const onExit = () => stream.dispose();
+      observedChild.stderr.on('data', onData); observedChild.once('close', onExit); observedChild.once('error', onExit);
+      appearanceDetach = () => { observedChild.stderr.off('data', onData); observedChild.off('close', onExit); observedChild.off('error', onExit); };
+      appearanceStream = stream;
+    },
+    observeAppearance(selection) {
+      if (!running() || externalPid || !appearanceStream) return Promise.reject(new Error('No owned appearance stream for current child'));
+      return appearanceStream.observe(selection);
+    },
     prepareFixtureEnv(extra, fixtureUrl) {
       if (running()) throw new Error('Fixture transport must be prepared before launch');
       validateFixtureEnv(extra, fixtureUrl, userDataDir);

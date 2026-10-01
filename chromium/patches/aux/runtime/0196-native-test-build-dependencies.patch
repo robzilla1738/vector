@@ -96,3 +96,25 @@ index dc54d53..4840a97 100644
  #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
  #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
  #include "chrome/test/base/in_process_browser_test.h"
+diff --git a/chrome/browser/ui/aux/tab_catalog_browsertest.cc b/chrome/browser/ui/aux/tab_catalog_browsertest.cc
+index 6c64338..546f584 100644
+--- a/chrome/browser/ui/aux/tab_catalog_browsertest.cc
++++ b/chrome/browser/ui/aux/tab_catalog_browsertest.cc
+@@ -27,7 +27,7 @@ class TabCatalogMovementBrowserTest : public InProcessBrowserTest,
+ 
+ IN_PROC_BROWSER_TEST_P(TabCatalogMovementBrowserTest,
+                        InvalidOrganizationRefusesEveryMoveWithoutSplittingGroup) {
+-  auto* profile = browser()->profile();
++  auto* profile = browser()->GetProfile();
+   auto* source = browser();
+   auto* catalog = TabCatalog::GetForProfile(profile);
+   ASSERT_TRUE(catalog);
+@@ -106,7 +106,7 @@ INSTANTIATE_TEST_SUITE_P(SplitSizes, TabCatalogMovementBrowserTest, testing::Val
+ 
+ class LittleCreationBrowserTest : public InProcessBrowserTest {};
+ IN_PROC_BROWSER_TEST_F(LittleCreationBrowserTest, ReturnsActualOwner) {
+-  auto* profile = browser()->profile();
++  auto* profile = browser()->GetProfile();
+   EXPECT_EQ(OpenLittleWindow(nullptr, GURL()), nullptr);
+   EXPECT_EQ(OpenLittleWindow(profile->GetPrimaryOTRProfile(true), GURL()), nullptr);
+   EXPECT_EQ(OpenLittleWindow(profile, GURL("file:///tmp/refused-fixture")), nullptr);

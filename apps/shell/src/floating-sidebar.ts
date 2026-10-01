@@ -132,7 +132,9 @@ export function useFloatingSidebar(mode: SidebarMode, panel: RefObject<HTMLEleme
     const outside = (event: PointerEvent) => {
       if (
         !(event.target instanceof Element) ||
-        event.target.closest(".sidebar, .chat-sidebar, .toolbar, .menu, .cb-pop, .command-surface, dialog[open]")
+        event.target.closest(
+          ".sidebar, .chat-sidebar, .toolbar, .menu, .cb-pop, .command-surface, dialog[open]",
+        )
       )
         return;
       state.edge = false;

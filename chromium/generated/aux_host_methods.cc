@@ -3970,6 +3970,7 @@ bool ValidateNode310(const base::Value& value) {
 }
 constexpr MethodInfo kMethods[] = {
   {MethodId::kCapabilities, "capabilities", "browser", "core", "aux-webui", true},
+  {MethodId::kAppearanceSnapshot, "appearanceSnapshot", "browser", "core", "aux-webui", true},
   {MethodId::kDefaultBrowser, "defaultBrowser", "browser", "core", "aux-webui", true},
   {MethodId::kSetDefaultBrowser, "setDefaultBrowser", "browser", "core", "aux-webui", true},
   {MethodId::kTabCommand, "tabCommand", "browser", "core", "aux-webui", true},
@@ -4187,6 +4188,7 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
   bool valid = false;
   switch (id) {
     case MethodId::kCapabilities: valid = ValidateNode0(args); break;
+    case MethodId::kAppearanceSnapshot: valid = ValidateNode0(args); break;
     case MethodId::kDefaultBrowser: valid = ValidateNode0(args); break;
     case MethodId::kSetDefaultBrowser: valid = ValidateNode0(args); break;
     case MethodId::kTabCommand: valid = ValidateNode1(args); break;

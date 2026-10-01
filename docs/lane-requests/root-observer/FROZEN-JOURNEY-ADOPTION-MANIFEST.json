@@ -1,0 +1,270 @@
+{
+  "schema": 1,
+  "kind": "source-adoption-only-not-native-evidence",
+  "target": "/private/tmp/aux-browser-runtime-root-complete",
+  "modules": [
+    {
+      "lane": "L4",
+      "sourceCommit": "c90601ae8ba869a6bc365ac2fcb82b8398083f7f",
+      "path": "tests/host/journeys/cross-window.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l4/tests/host/journeys/cross-window.mjs",
+      "sha256": "9c5893782fcecf9a95586eabc71a335ce77da772117fe24a25055fd5e12f3880",
+      "bytes": 10504,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing",
+      "journeyId": "cross-window",
+      "features": [
+        "windowSync"
+      ],
+      "syntaxCheck": "pass"
+    },
+    {
+      "lane": "L4",
+      "sourceCommit": "c90601ae8ba869a6bc365ac2fcb82b8398083f7f",
+      "path": "tests/host/journeys/little-window.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l4/tests/host/journeys/little-window.mjs",
+      "sha256": "dfddcff9a1a78ee32effd8bc1933f216bf39439bf57f1592d8da8231edfded59",
+      "bytes": 10539,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing",
+      "journeyId": "little-window",
+      "features": [
+        "littleWindow"
+      ],
+      "syntaxCheck": "pass"
+    },
+    {
+      "lane": "L6",
+      "sourceCommit": "2b462061c4eb2db675cddd9baff0d319396f2f18",
+      "path": "tests/host/journeys/applescript.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l6/tests/host/journeys/applescript.mjs",
+      "sha256": "11714f5d586d8fb39c0f44f2b971689ea38f4c98eaf05faa948c574a19da25fc",
+      "bytes": 2434,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing",
+      "journeyId": "applescript",
+      "features": [
+        "appleScript"
+      ],
+      "syntaxCheck": "pass"
+    },
+    {
+      "lane": "L6",
+      "sourceCommit": "2b462061c4eb2db675cddd9baff0d319396f2f18",
+      "path": "tests/host/journeys/cli-open.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l6/tests/host/journeys/cli-open.mjs",
+      "sha256": "fca6b011e9278c881c22f81d751e65fe3eda86eadf4d6c2d7e827098b50e23a1",
+      "bytes": 2327,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing",
+      "journeyId": "cli-open",
+      "features": [
+        "cliOpen"
+      ],
+      "syntaxCheck": "pass"
+    },
+    {
+      "lane": "L6",
+      "sourceCommit": "2b462061c4eb2db675cddd9baff0d319396f2f18",
+      "path": "tests/host/journeys/in-app-profiles.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l6/tests/host/journeys/in-app-profiles.mjs",
+      "sha256": "411f5b222bd159f2cd4e7bd87a4583b7cb3e484edde4ec3bf9574599d046e979",
+      "bytes": 8687,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing",
+      "journeyId": "in-app-profiles",
+      "features": [
+        "profiles"
+      ],
+      "syntaxCheck": "pass"
+    },
+    {
+      "lane": "L6",
+      "sourceCommit": "2b462061c4eb2db675cddd9baff0d319396f2f18",
+      "path": "tests/host/journeys/link-routing.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l6/tests/host/journeys/link-routing.mjs",
+      "sha256": "44a140be29ae371044ea76e3342a7675c7838ad86486b155f0687d455ce6edce",
+      "bytes": 4366,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing",
+      "journeyId": "link-routing",
+      "features": [
+        "linkRouting"
+      ],
+      "syntaxCheck": "pass"
+    },
+    {
+      "lane": "L8",
+      "sourceCommit": "a41c5b01bd943da1bedf5b99e22e4fc7292e1f7f",
+      "path": "tests/host/journeys/pinned-live.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l8/tests/host/journeys/pinned-live.mjs",
+      "sha256": "43a1144241fefdb98317a90c0d4ac64307a20db6845ee5624ce5ea3c20fdc68b",
+      "bytes": 6481,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing",
+      "journeyId": "pinned-live",
+      "features": [
+        "pinnedApps",
+        "liveFolders",
+        "folders",
+        "tabSections"
+      ],
+      "syntaxCheck": "pass"
+    },
+    {
+      "lane": "L8",
+      "sourceCommit": "a41c5b01bd943da1bedf5b99e22e4fc7292e1f7f",
+      "path": "tests/host/journeys/auto-archive.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l8/tests/host/journeys/auto-archive.mjs",
+      "sha256": "37dd30a83b663f1c338e7141f8390cb9725c4ed3af5d71885636087c99514414",
+      "bytes": 4255,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing",
+      "journeyId": "auto-archive",
+      "features": [
+        "autoArchive",
+        "archive"
+      ],
+      "syntaxCheck": "pass"
+    },
+    {
+      "lane": "L10",
+      "sourceCommit": "cbc11369ae7445894b945315b4fbe997eb7c8c37",
+      "path": "tests/host/journeys/agent-site-permissions.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l10/tests/host/journeys/agent-site-permissions.mjs",
+      "sha256": "9425da2cdda0a1b9cd1cc3fb2634f4e5db7984eb50beb044c99058278b74f543",
+      "bytes": 7189,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing",
+      "journeyId": "agent-site-permissions",
+      "features": [
+        "agentSitePermissions"
+      ],
+      "syntaxCheck": "pass"
+    },
+    {
+      "lane": "L10",
+      "sourceCommit": "cbc11369ae7445894b945315b4fbe997eb7c8c37",
+      "path": "tests/host/journeys/tab-mentions.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l10/tests/host/journeys/tab-mentions.mjs",
+      "sha256": "37dd5fd7e134ae9887211cc632da54e1d9bb545070882c62538e6bf51e9b7dff",
+      "bytes": 3609,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing",
+      "journeyId": "tab-mentions",
+      "features": [
+        "tabMentions"
+      ],
+      "syntaxCheck": "pass"
+    }
+  ],
+  "dependencies": [
+    {
+      "lane": "L4",
+      "sourceCommit": "c90601ae8ba869a6bc365ac2fcb82b8398083f7f",
+      "path": "tests/host/lib/fixture.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l4/tests/host/lib/fixture.mjs",
+      "sha256": "9a51b0ccc2b04c09d3127b5830434b171d7f2b6db0f7f7213fb2366b5d266554",
+      "bytes": 8234,
+      "matchesFrozenGit": true,
+      "targetStatus": "different-owner-review-required",
+      "targetSha256": "58346db6a2bc984c2a30ae4630d68f0763acc54c7182bf3aff669e77ac6999b0"
+    },
+    {
+      "lane": "L4",
+      "sourceCommit": "c90601ae8ba869a6bc365ac2fcb82b8398083f7f",
+      "path": "tests/host/lib/tab-layout.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l4/tests/host/lib/tab-layout.mjs",
+      "sha256": "f81e1e75979b428cb8015bf59ed1d2950bb6ace76bc71845d8d35a126102a2b2",
+      "bytes": 1046,
+      "matchesFrozenGit": true,
+      "targetStatus": "identical",
+      "targetSha256": "f81e1e75979b428cb8015bf59ed1d2950bb6ace76bc71845d8d35a126102a2b2"
+    },
+    {
+      "lane": "L6",
+      "sourceCommit": "2b462061c4eb2db675cddd9baff0d319396f2f18",
+      "path": "packages/cli/dist/open.js",
+      "source": "/private/tmp/aux-browser-runtime-l6/packages/cli/dist/open.js",
+      "sha256": "7f09dd22fbb32524f0f0e7e18df3ae40ef4aaa363ffe0d11c36411265ac0ba80",
+      "bytes": 8119,
+      "matchesFrozenGit": false,
+      "targetStatus": "identical",
+      "targetSha256": "7f09dd22fbb32524f0f0e7e18df3ae40ef4aaa363ffe0d11c36411265ac0ba80"
+    },
+    {
+      "lane": "L6",
+      "sourceCommit": "2b462061c4eb2db675cddd9baff0d319396f2f18",
+      "path": "tests/host/lib/rpc.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l6/tests/host/lib/rpc.mjs",
+      "sha256": "d2d430aad38ef081cd710586b99a080e36ad3bab5eaaf412ac24940bba6d403b",
+      "bytes": 2600,
+      "matchesFrozenGit": true,
+      "targetStatus": "identical",
+      "targetSha256": "d2d430aad38ef081cd710586b99a080e36ad3bab5eaaf412ac24940bba6d403b"
+    },
+    {
+      "lane": "L8",
+      "sourceCommit": "a41c5b01bd943da1bedf5b99e22e4fc7292e1f7f",
+      "path": "tests/host/lib/organization-fixtures.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l8/tests/host/lib/organization-fixtures.mjs",
+      "sha256": "78c927982f0d7ea1458690645e19d6a488632f1b331bb179a58ed3d81fdcc8d1",
+      "bytes": 3352,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing"
+    },
+    {
+      "lane": "L8",
+      "sourceCommit": "a41c5b01bd943da1bedf5b99e22e4fc7292e1f7f",
+      "path": "tests/host/lib/github-fixture.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l8/tests/host/lib/github-fixture.mjs",
+      "sha256": "8861b7e51f3b18bdb9224aab39096ae55890e322a6e00a126ad834fbfab435a3",
+      "bytes": 1351,
+      "matchesFrozenGit": true,
+      "targetStatus": "identical",
+      "targetSha256": "8861b7e51f3b18bdb9224aab39096ae55890e322a6e00a126ad834fbfab435a3"
+    },
+    {
+      "lane": "L10",
+      "sourceCommit": "cbc11369ae7445894b945315b4fbe997eb7c8c37",
+      "path": "tests/host/lib/l10-trust-fixtures.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l10/tests/host/lib/l10-trust-fixtures.mjs",
+      "sha256": "766cc57be76b85b7dbc2748ba0772f45f5b3700f0413dcaf051da9cd9dbf9ef3",
+      "bytes": 5089,
+      "matchesFrozenGit": true,
+      "targetStatus": "missing"
+    },
+    {
+      "lane": "L10",
+      "sourceCommit": "cbc11369ae7445894b945315b4fbe997eb7c8c37",
+      "path": "tests/host/lib/fixture.mjs",
+      "source": "/private/tmp/aux-browser-runtime-l10/tests/host/lib/fixture.mjs",
+      "sha256": "58346db6a2bc984c2a30ae4630d68f0763acc54c7182bf3aff669e77ac6999b0",
+      "bytes": 8528,
+      "matchesFrozenGit": true,
+      "targetStatus": "identical",
+      "targetSha256": "58346db6a2bc984c2a30ae4630d68f0763acc54c7182bf3aff669e77ac6999b0"
+    }
+  ],
+  "coveredFeatures": [
+    "agentSitePermissions",
+    "appleScript",
+    "archive",
+    "autoArchive",
+    "cliOpen",
+    "folders",
+    "linkRouting",
+    "littleWindow",
+    "liveFolders",
+    "pinnedApps",
+    "profiles",
+    "tabMentions",
+    "tabSections",
+    "windowSync"
+  ],
+  "reviewConstraints": [
+    "frozen sources only; no lane native mirrors",
+    "preserve assertions; resolve documented source/harness dependency mismatches",
+    "no native qualification/performance/design closure from adoption"
+  ]
+}

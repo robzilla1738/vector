@@ -80,6 +80,11 @@ export async function createAxClient(pid, { timeoutMs = 65_000 } = {}) {
     });
   }
   const client = {
+    get pid() { return pid; },
+    get targetPid() { return pid; },
+    get helperPid() { return child.pid; },
+    get helperSource() { return source; },
+    get helperExecutable() { return executable; },
     request,
     async close() { if (!closed) child.stdin.end(); await exited; },
     query: selector => request('query', { selector }),

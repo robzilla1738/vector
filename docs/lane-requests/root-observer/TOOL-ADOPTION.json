@@ -1,0 +1,30 @@
+{
+  "source": "ed5f81f4",
+  "files": [
+    {
+      "path": "scripts/design-qa.mjs",
+      "sha256": "1b39e9aa4de35d84eeec29afe8d8bcf7b841b0af8153a5ca0a348cf9bc92b2b2"
+    },
+    {
+      "path": "tests/tools/design-qa.test.mjs",
+      "sha256": "0140fb5d4b8fc0c54db6dbab1de02e4d2b77413af784fdedc51b9e3261d3bb5f"
+    },
+    {
+      "path": "tests/host/lib/appearance-provenance.mjs",
+      "sha256": "da875c4eead3357fe02f8d34af07251bfe7d2d39c83be8d20b329f96189be50b"
+    },
+    {
+      "path": "tests/tools/appearance-provenance.test.mjs",
+      "sha256": "4d94c69ee6b276c82e8a02d0d88914d7b58c00301e60129893ae60802707c96d"
+    },
+    {
+      "path": "tests/host/lib/appearance-stream.mjs",
+      "sha256": "e827f90725db340d0c7f6f59e1784d69e4603b355b841907005786ebf4029b9b"
+    },
+    {
+      "path": "tests/tools/appearance-stream.test.mjs",
+      "sha256": "0dfde641d9b69e36a80c89ba2d8919a23519c59354ec3c6d1752fa69f36a1fa3"
+    }
+  ],
+  "nativeProof": false
+}

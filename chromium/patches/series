@@ -170,3 +170,4 @@ aux/runtime/0196-native-test-build-dependencies.patch
 aux/runtime/0194-native-permission-provenance.patch
 aux/runtime/0170-committed-link-frecency.patch
 aux/runtime/0184-native-appearance-snapshot.patch
+aux/runtime/0197-native-appearance-observer-transport.patch

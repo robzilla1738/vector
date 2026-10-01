@@ -10,6 +10,7 @@ import { WebmcpCallResultSchema, WebmcpToolSchema } from "./webmcp.js";
 import { ZapStylesheetInstallSchema, ZapInstallReceiptSchema } from "./zap.js";
 import { EventSchema } from "./events.js";
 import { AutofillProfileSchema } from "./autofill.js";
+import { NativeAppearanceSnapshotSchema } from "./native-appearance.js";
 import type { AuxFeature } from "./aux-features.js";
 import { WindowControlsVisibleSchema } from "./minimal-ui.js";
 import { PictureInPictureOperationSchema, PictureInPictureResultSchema } from "./pip.js";
@@ -119,6 +120,7 @@ export type HostCapabilities = z.infer<typeof HostCapabilitiesSchema>;
 /** Methods already handled by the native WebUI. Missing bridge members remain absent. */
 export const HostMethods = {
   capabilities: shell("core", noArgs, HostCapabilitiesSchema),
+  appearanceSnapshot: shell("core", noArgs, NativeAppearanceSnapshotSchema),
   defaultBrowser: shell("core", noArgs, z.object({ isDefault: bool }).strict()),
   setDefaultBrowser: shell("core", noArgs, z.object({ isDefault: bool }).strict()),
   tabCommand: {

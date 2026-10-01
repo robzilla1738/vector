@@ -13,6 +13,31 @@ const RESULTS: Record<string, unknown> = {
     "methods": [],
     "qualifiedFeatures": []
   },
+  "appearanceSnapshot": {
+    "producer": "aux-native-appearance-snapshot",
+    "version": 1,
+    "pid": 1,
+    "windowId": 1,
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "width": 1,
+      "height": 1
+    },
+    "observedAtUnixMs": 0,
+    "windowKind": "normal",
+    "nativeTheme": null,
+    "backing": null,
+    "material": null,
+    "shell": {
+      "theme": null,
+      "layout": null,
+      "sidebarAppearance": null,
+      "systemDark": false,
+      "reduceMotion": false,
+      "reduceTransparency": false
+    }
+  },
   "defaultBrowser": {
     "isDefault": false
   },

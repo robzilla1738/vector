@@ -106,6 +106,16 @@ export function App() {
     return () => window.removeEventListener("focus", check);
   }, []);
   useEffect(() => bootShellFeatures(), []);
+  useEffect(() => {
+    if (!inNativeHost || inMock) return;
+    let live = true, stop: (() => void) | undefined;
+    void bridge.capabilities().then(async capabilities => {
+      if (!live || !capabilities.methods.includes("appearanceSnapshot")) return;
+      const { startNativeAppearanceObserver } = await import("./native-appearance-observer");
+      if (live) stop = startNativeAppearanceObserver(bridge);
+    }).catch(errToast);
+    return () => { live = false; stop?.(); };
+  }, []);
   useEffect(() => installMemorySaver(), []);
   useEffect(() => recoverPeekLink(), []);
   useEffect(() => {

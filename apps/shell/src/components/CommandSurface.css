@@ -4,6 +4,7 @@
   .command-surface .cmdbar { width: 100%; }
   .command-surface .cb-pop { left: 0; right: 0; width: 100%; }
   .command-surface .search-result-row { min-height: 32px; height: 32px; padding: 4px 12px; border-radius: 16px; font-size: 14px; transition: background var(--t-material-state, 120ms) var(--ease-in-out); }
+  .command-surface .search-result-icon .ci { width: 20px; height: 20px; }
   .command-surface .search-result-icon { width: 20px; height: 20px; border-radius: var(--r-sm); }
   .command-surface .search-result-icon :is(img, svg), .command-surface .search-result-icon .site-tile .tile-face { width: 20px; height: 20px; }
   .command-surface { animation: command-surface-appear var(--t-popup, 82ms) var(--ease-in-out) both; }
