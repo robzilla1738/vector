@@ -1,5 +1,7 @@
 import { createServer as createHttpServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
+import { connect } from 'node:net';
+import { Server as TlsServer } from 'node:tls';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -23,6 +25,8 @@ export async function createFixture({ tls = false } = {}) {
   let tlsHellos = 0;
   let tlsDirectory;
   const servers = [];
+  const tunnelSockets = new Set();
+  const tunnels = new Map();
   const route = (path, handler, { method = 'GET', status = 200, headers = {} } = {}) => {
     if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) throw new Error('Fixture routes need an absolute local path');
     const key = `${method.toUpperCase()} ${path}`;
@@ -58,8 +62,10 @@ export async function createFixture({ tls = false } = {}) {
     return server.address().port;
   }
   const close = async () => {
+    for (const socket of tunnelSockets) socket.destroy();
+    tunnelSockets.clear();
     await Promise.all(servers.map(server => new Promise((resolve, reject) => {
-      server.close(error => error ? reject(error) : resolve()); server.closeAllConnections();
+      server.close(error => error ? reject(error) : resolve()); server.closeAllConnections?.();
     })));
     if (tlsDirectory) rmSync(tlsDirectory, { recursive: true, force: true });
   };
@@ -69,6 +75,25 @@ export async function createFixture({ tls = false } = {}) {
       if (error.rawPacket?.[0] === 0x16) tlsHellos++;
       socket.destroy();
     });
+    httpServer.on('connect', (request, socket, head) => {
+      const target = tunnels.get(request.url);
+      const address = target?.address();
+      if (!target?.listening || !address || typeof address === 'string' || address.address !== '127.0.0.1' || socket.remoteAddress !== '127.0.0.1') {
+        socket.end('HTTP/1.1 403 Forbidden\r\n\r\n'); return;
+      }
+      const upstream = connect(address.port, '127.0.0.1');
+      for (const peer of [socket, upstream]) { tunnelSockets.add(peer); peer.on('close', () => tunnelSockets.delete(peer)); }
+      upstream.on('connect', () => { socket.write('HTTP/1.1 200 Connection Established\r\n\r\n'); if (head.length) upstream.write(head); socket.pipe(upstream); upstream.pipe(socket); });
+      socket.on('error', () => upstream.destroy());
+      socket.on('close', () => upstream.destroy());
+      upstream.on('error', () => socket.destroy());
+    });
+    const tunnel = (authority, server) => {
+      const address = server instanceof TlsServer && server.address();
+      if (authority !== 'aux-filter.fixture.test:443' || !server.listening || !address || typeof address === 'string' || address.address !== '127.0.0.1') throw new Error('Only an owned loopback TLS listener may serve the disposable filter fixture');
+      tunnels.set(authority, server);
+      if (!servers.includes(server)) servers.push(server);
+    };
     const port = await listen(httpServer);
     let tlsUrl;
     let certificate;
@@ -81,6 +106,6 @@ export async function createFixture({ tls = false } = {}) {
       const tlsPort = await listen(createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, handler));
       tlsUrl = `https://127.0.0.1:${tlsPort}`;
     }
-    return { url: `http://127.0.0.1:${port}`, route, close, requests, get tlsHellos() { return tlsHellos; }, ...(tlsUrl ? { tlsUrl, certificate } : {}) };
+    return { tunnel, url: `http://127.0.0.1:${port}`, route, close, requests, get tlsHellos() { return tlsHellos; }, ...(tlsUrl ? { tlsUrl, certificate } : {}) };
   } catch (error) { await close(); throw error; }
 }
