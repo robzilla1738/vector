@@ -50,6 +50,12 @@ export function effectiveShortcuts(overrides?: ShortcutOverrides | null): Shortc
   });
 }
 
+/** Native reserves default chords before installing the effective replacement inventory. */
+export function shortcutInventorySize(overrides: ShortcutOverrides, platform: string): number {
+  return [...SHORTCUTS, ...effectiveShortcuts(overrides)].reduce((count, command) =>
+    count + command.bindings.filter(binding => !binding.platforms || binding.platforms.includes(platform)).length, 0);
+}
+
 export interface ShortcutInput { key: string; meta: boolean; shift: boolean; alt: boolean; ctrl?: boolean }
 
 /** Exact-chord match: every modifier is required iff the binding asks for it. */

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ShortcutBinding, ShortcutOverrides } from "./shortcut-defs.js";
+import { shortcutInventorySize } from "./shortcut-defs.js";
 
 export * from "./shortcut-defs.js";
 
@@ -17,4 +18,5 @@ export const ShortcutBindingSchema: z.ZodType<ShortcutBinding> = z.object({
 export const ShortcutOverridesSchema: z.ZodType<ShortcutOverrides> = z.record(
   z.string().min(1).max(64),
   z.union([z.array(ShortcutBindingSchema).max(4), z.null()]),
-);
+).refine(overrides => ["darwin", "win32", "linux"].every(platform => shortcutInventorySize(overrides, platform) <= 512),
+  "Shortcuts exceed the native limit of 512 reserved and active bindings.");
