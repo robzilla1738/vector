@@ -77,10 +77,51 @@ function harness(native: NullNativeBridge = new NullNativeBridge()) {
     responses: new ResponseStore({ repo, events, flushDelayMs: 0 }),
     grants: [],
   });
-  return { pages, events, attached, disposed, destroyAttached: () => destroyAttached?.() };
+  return { repo, pages, events, attached, disposed, destroyAttached: () => destroyAttached?.() };
 }
 
 describe("PageService.syncCatalog", () => {
+  it("persists native split metadata during fresh attach, update and unsplit", async () => {
+    const { repo, pages, events, attached } = harness();
+    const seen: unknown[] = [];
+    events.subscribe(event => {
+      if (event.type === "page.updated" && event.payload.page) seen.push(JSON.parse(JSON.stringify(event.payload)));
+    });
+    const first = { id: "native-pair", index: 0 };
+    await pages.syncCatalog(patch(1, [upsert(record("one", "main", { split: first }))]));
+    expect(attached).toEqual(["atab-one:one"]);
+    expect(pages.get("one").split).toEqual(first);
+    expect(repo.getPage("one")?.split).toEqual(first);
+    expect(seen).toEqual([expect.objectContaining({ page: expect.objectContaining({ pageId: "one", split: first }) })]);
+    await pages.syncCatalog(patch(2, [upsert(record("one", "main", { split: first }))]));
+    expect(seen).toHaveLength(1);
+    const flipped = { id: "native-pair", index: 1 };
+    await pages.syncCatalog(patch(3, [upsert(record("one", "main", { split: flipped }))]));
+    expect(pages.get("one").split).toEqual(flipped);
+    expect(repo.getPage("one")?.split).toEqual(flipped);
+    expect(seen.at(-1)).toMatchObject({ page: { pageId: "one", split: flipped } });
+    await pages.syncCatalog(patch(4, [upsert(record("one"))]));
+    expect(pages.get("one").split).toBeUndefined();
+    expect(repo.getPage("one")?.split).toBeUndefined();
+    expect(seen.at(-1)).toMatchObject({ page: { pageId: "one" } });
+    expect((seen.at(-1) as { page: { split?: unknown } }).page).not.toHaveProperty("split");
+    expect(attached).toEqual(["atab-one:one"]);
+  });
+
+  it("adds split metadata to an existing page while catalog placement changes", async () => {
+    const { repo, pages, events } = harness();
+    await pages.syncCatalog(patch(1, [upsert(record("one"))]));
+    const epoch = pages.get("one").documentEpoch;
+    const seen: unknown[] = [];
+    events.subscribe(event => { if (event.type === "page.updated") seen.push(JSON.parse(JSON.stringify(event.payload))); });
+    const split = { id: "second-pair", index: 0 };
+    await pages.syncCatalog(patch(2, [upsert(record("one", "second", { split }))]));
+    expect(pages.get("one")).toMatchObject({ windowId: "second", split, documentEpoch: epoch });
+    expect(repo.getPage("one")).toMatchObject({ windowId: "second", split });
+    expect(seen).toContainEqual(expect.objectContaining({ page: expect.objectContaining({ pageId: "one", split }) }));
+    expect(seen).toContainEqual({ pageId: "one", windowId: "second" });
+  });
+
   it("omits a driver-detached tab before its catalog removal arrives", async () => {
     const { pages, destroyAttached } = harness();
     await pages.syncCatalog(patch(1, [upsert(record("one"))]));

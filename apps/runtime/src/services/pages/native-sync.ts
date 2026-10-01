@@ -1,4 +1,4 @@
-import { EventTypes, type TabPatch, type TabPatchOp } from "@aux/contracts";
+import { EventTypes, type TabPatch, type TabPatchOp, type PageTarget } from "@aux/contracts";
 import type { ActivationPolicy } from "./activation.js";
 import type { PageOpener } from "./opener.js";
 import type { PageRegistry } from "./registry.js";
@@ -99,6 +99,14 @@ export class NativeViewSync {
     }
   }
 
+  private syncSplit(pageId: string, split: PageTarget["split"]) {
+    const lp = this.pages.live.get(pageId);
+    if (!lp || (lp.target.split?.id === split?.id && lp.target.split?.index === split?.index)) return;
+    lp.target.split = split;
+    this.pages.persist(lp);
+    this.pages.deps.events.emit(EventTypes.PageUpdated, { page: { ...lp.target } });
+  }
+
   private async syncCatalogOp(op: TabPatchOp) {
     switch (op.op) {
       case "upsert": {
@@ -107,6 +115,7 @@ export class NativeViewSync {
         this.pages.lastKnownWindow.set(tab.pageId, tab.windowId);
         const lp = this.pages.live.get(tab.pageId);
         if (lp) {
+          this.syncSplit(tab.pageId, tab.split);
           this.onNativeNavigationError(tab.pageId, tab.navigationError ?? null);
           if (lp.target.themeColor !== tab.themeColor) {
             lp.target.themeColor = tab.themeColor;
@@ -147,6 +156,7 @@ export class NativeViewSync {
           // surface must invalidate observations made against the old one.
           restored: this.pages.deps.repo.getPage(tab.pageId),
         });
+        this.syncSplit(tab.pageId, tab.split);
         if (this.pages.pendingRestore.delete(tab.pageId)) {
           this.pages.restoreErrors.delete(tab.pageId);
           this.pages.deps.events.emit("browser.recovery.changed", {});

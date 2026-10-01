@@ -74,6 +74,18 @@ function bookmarkAll(st: StoreState) {
   );
 }
 export const COMMAND_ACTIONS = {
+  "focus-profile-space": (st) => featureCommand("focus-profile-space", st),
+  "move-tab-to-profile": (st) => featureCommand("move-tab-to-profile", st),
+  "show-profiles": (st) => featureCommand("show-profiles", st),
+  "show-link-routing": (st) => featureCommand("show-link-routing", st),
+  "split-separate": (st) => featureCommand("split-separate", st),
+  "split-resize": (st) => featureCommand("split-resize", st),
+  "mute-tab": (st, context) => {
+    const pageId = context.payload && "pageId" in context.payload ? context.payload.pageId : st.activePageId;
+    const audio = pageId ? st.tabAudio[pageId] : undefined;
+    if (!pageId || !audio) return st.toast("Audio state is unavailable for this tab");
+    return tabCommand({ kind: "setMuted", pageId, muted: !audio.muted });
+  },
   "minimal-ui": (st) => featureCommand("minimal-ui", st),
   "pin-tab": (st) => featureCommand("pin-tab", st),
   "little-window": (st) => featureCommand("little-window", st),
