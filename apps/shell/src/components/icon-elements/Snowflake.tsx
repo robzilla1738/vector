@@ -1,0 +1,4 @@
+import type { Props } from "./svg-props";
+import { baseSvgProps, roundJoinedStrokeProps } from "./svg-props";
+
+export const Snowflake = (props: Props) => (<svg {...baseSvgProps} {...props}><path d="M12.0469 18.5V5.5L9.54688 3" {...roundJoinedStrokeProps}/><path d="M12.0469 5.5L14.5469 3" {...roundJoinedStrokeProps}/><path d="M9.54688 21L12.0469 18.5L14.5469 21" {...roundJoinedStrokeProps}/><path d="M17.6734 15.25L6.41506 8.75L3 9.66506" {...roundJoinedStrokeProps}/><path d="M6.41506 8.74996L5.5 5.3349" {...roundJoinedStrokeProps}/><path d="M18.5869 18.665L17.6719 15.25L21.0869 14.3349" {...roundJoinedStrokeProps}/><path d="M17.6734 8.75L6.41506 15.25L5.5 18.6651" {...roundJoinedStrokeProps}/><path d="M6.41506 15.25L3 14.3349" {...roundJoinedStrokeProps}/><path d="M21.0869 9.66503L17.6719 8.74996L18.5869 5.3349" {...roundJoinedStrokeProps}/></svg>);

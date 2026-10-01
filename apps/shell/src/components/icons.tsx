@@ -1,157 +1,61 @@
-import type { ComponentType, ReactElement, SVGProps } from "react";
-import {
-  Volume2,
-  VolumeX,
-  PictureInPicture2,
-  AppWindow,
-  Archive,
-  ArrowUp,
-  ArrowDown,
-  ArrowUpRight,
-  Bookmark,
-  Sparkles,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Circle,
-  Clock,
-  Code,
-  Columns2,
-  Shield,
-  Command,
-  Cookie,
-  Copy,
-  Cpu,
-  Download,
-  Ellipsis,
-  ExternalLink,
-  Eye,
-  Folder,
-  FolderOpen,
-  Globe,
-  Hand,
-  Layers,
-  LayoutGrid,
-  List,
-  Lock,
-  MessageCircle,
-  MessagesSquare,
-  PanelLeft,
-  PanelRight,
-  Pause,
-  Pencil,
-  Pin,
-  Play,
-  Plus,
-  Printer,
-  Puzzle,
-  RotateCcw,
-  RotateCw,
-  ScanSearch,
-  Search,
-  Settings,
-  Square,
-  Sun,
-  Table,
-  Trash,
-  TriangleAlert,
-  Unplug,
-  User,
-  X,
-} from "./central-icons";
-
-type IcoSize = "sm" | "md" | "lg";
-
-function icon(Icon: ComponentType<SVGProps<SVGSVGElement>>, size: IcoSize = "md", fill = "none"): ReactElement {
-  return (
-    <span className={`ci ico-${size}`} aria-hidden>
-      <Icon fill={fill} />
-    </span>
-  );
-}
-
 /** Central Icons at the shell's 14 / 16 / 20px optical sizes. */
-export const I = {
-  back: icon(ChevronLeft),
-  fwd: icon(ChevronRight),
-  reload: icon(RotateCw),
-  stop: icon(X),
-  lock: icon(Lock, "sm"),
-  globe: icon(Globe),
-  globeLg: icon(Globe, "lg"),
-  grid: icon(LayoutGrid),
-  table: icon(Table),
-  layers: icon(Layers),
-  layersSm: icon(Layers, "sm"),
-  gear: icon(Settings),
-  gearSm: icon(Settings, "sm"),
-  rail: icon(PanelRight),
-  sidebar: icon(PanelLeft),
-  sidebarClose: icon(PanelLeft),
-  sidebarOpen: icon(PanelLeft),
-  search: icon(Search),
-  searchLg: icon(Search, "lg"),
-  find: icon(ScanSearch),
-  findSm: icon(ScanSearch, "sm"),
-  chrome: icon(AppWindow, "lg"),
-  chromeSm: icon(AppWindow, "sm"),
-  clock: icon(Clock),
-  clockSm: icon(Clock, "sm"),
-  chat: icon(MessageCircle, "sm"),
-  chats: icon(MessagesSquare),
-  bookmark: icon(Bookmark),
-  bookmarkFill: icon(Bookmark, "md", "currentColor"),
-  agent: icon(Sparkles),
-  agentSm: icon(Sparkles, "sm"),
-  model: icon(Cpu, "sm"),
-  hand: icon(Hand),
-  handSm: icon(Hand, "sm"),
-  person: icon(User),
-  copy: icon(Copy, "sm"),
-  check: icon(Check, "sm"),
-  pin: icon(Pin, "sm"),
-  more: icon(Ellipsis),
-  pencil: icon(Pencil, "sm"),
-  trash: icon(Trash, "sm"),
-  open: icon(ArrowUpRight, "sm"),
-  circle: icon(Circle, "sm"),
-  square: icon(Square, "sm"),
-  play: icon(Play, "sm"),
-  pause: icon(Pause, "sm"),
-  close: icon(X),
-  plus: icon(Plus),
-  plusSm: icon(Plus, "sm"),
-  up: icon(ChevronUp, "sm"),
-  down: icon(ChevronDown, "sm"),
-  left: icon(ChevronLeft, "sm"),
-  right: icon(ChevronRight, "sm"),
-  send: icon(ArrowUp),
-  arrowDown: icon(ArrowDown),
-  obs: icon(Eye, "sm"),
-  result: icon(List, "sm"),
-  downloadSm: icon(Download, "sm"),
-  alert: icon(TriangleAlert),
-  command: icon(Command, "sm"),
-  reloadSm: icon(RotateCw, "sm"),
-  reopen: icon(RotateCcw, "sm"),
-  sidebarSm: icon(PanelLeft, "sm"),
-  sidebarCloseSm: icon(PanelLeft, "sm"),
-  volume: icon(Volume2, "sm"),
-  volumeOff: icon(VolumeX, "sm"),
-  bookmarkSm: icon(Bookmark, "sm"),
-  split: icon(Columns2, "sm"),
-  folder: icon(FolderOpen),
-  folderClosed: icon(Folder),
-  archive: icon(Archive),
-  print: icon(Printer, "sm"),
-  extension: icon(Puzzle, "sm"),
-  code: icon(Code, "sm"),
-  cookie: icon(Cookie, "sm"),
-  shield: icon(Shield, "sm"),
-  unplug: icon(Unplug, "sm"),
-  external: icon(ExternalLink, "sm"),
-  pip: icon(PictureInPicture2, "sm"),
-  sun: icon(Sun, "lg"),
-} satisfies Record<string, ReactElement>;
+export { shellIconBack, shellIconLeft } from "./icon-elements/ChevronLeft";
+export { shellIconFwd, shellIconRight } from "./icon-elements/ChevronRight";
+export { shellIconReload, shellIconReloadSm } from "./icon-elements/RotateCw";
+export { shellIconStop, shellIconClose } from "./icon-elements/X";
+export { shellIconLock } from "./icon-elements/Lock";
+export { shellIconGlobe, shellIconGlobeLg } from "./icon-elements/Globe";
+export { shellIconGrid } from "./icon-elements/LayoutGrid";
+export { shellIconTable } from "./icon-elements/Table";
+export { shellIconLayers, shellIconLayersSm } from "./icon-elements/deferred";
+export { shellIconGear, shellIconGearSm } from "./icon-elements/Settings";
+export { shellIconRail } from "./icon-elements/deferred";
+export { shellIconSidebar, shellIconSidebarClose, shellIconSidebarOpen, shellIconSidebarSm, shellIconSidebarCloseSm } from "./icon-elements/PanelLeft";
+export { shellIconSearch, shellIconSearchLg } from "./icon-elements/Search";
+export { shellIconFind, shellIconFindSm } from "./icon-elements/deferred";
+export { shellIconChrome, shellIconChromeSm } from "./icon-elements/AppWindow";
+export { shellIconClock, shellIconClockSm } from "./icon-elements/deferred";
+export { shellIconChat } from "./icon-elements/MessageCircle";
+export { shellIconChats } from "./icon-elements/deferred";
+export { shellIconBookmark, shellIconBookmarkFill, shellIconBookmarkSm } from "./icon-elements/Bookmark";
+export { shellIconAgent, shellIconAgentSm } from "./icon-elements/Sparkles";
+export { shellIconModel } from "./icon-elements/Cpu";
+export { shellIconHand, shellIconHandSm } from "./icon-elements/Hand";
+export { shellIconPerson } from "./icon-elements/deferred";
+export { shellIconCopy } from "./icon-elements/deferred";
+export { shellIconCheck } from "./icon-elements/Check";
+export { shellIconPin } from "./icon-elements/deferred";
+export { shellIconMore } from "./icon-elements/Ellipsis";
+export { shellIconPencil } from "./icon-elements/deferred";
+export { shellIconTrash } from "./icon-elements/deferred";
+export { shellIconOpen } from "./icon-elements/ArrowUpRight";
+export { shellIconCircle } from "./icon-elements/deferred";
+export { shellIconSquare } from "./icon-elements/Square";
+export { shellIconPlay } from "./icon-elements/deferred";
+export { shellIconPause } from "./icon-elements/deferred";
+export { shellIconPlus, shellIconPlusSm } from "./icon-elements/deferred";
+export { shellIconUp } from "./icon-elements/deferred";
+export { shellIconDown } from "./icon-elements/deferred";
+export { shellIconSend } from "./icon-elements/ArrowUp";
+export { shellIconArrowDown } from "./icon-elements/ArrowDown";
+export { shellIconObs } from "./icon-elements/deferred";
+export { shellIconResult } from "./icon-elements/List";
+export { shellIconDownloadSm } from "./icon-elements/deferred";
+export { shellIconAlert } from "./icon-elements/TriangleAlert";
+export { shellIconCommand } from "./icon-elements/Command";
+export { shellIconReopen } from "./icon-elements/deferred";
+export { shellIconVolume } from "./icon-elements/Volume2";
+export { shellIconVolumeOff } from "./icon-elements/VolumeX";
+export { shellIconSplit } from "./icon-elements/deferred";
+export { shellIconFolder } from "./icon-elements/deferred";
+export { shellIconFolderClosed } from "./icon-elements/deferred";
+export { shellIconArchive } from "./icon-elements/deferred";
+export { shellIconPrint } from "./icon-elements/Printer";
+export { shellIconExtension } from "./icon-elements/deferred";
+export { shellIconCode } from "./icon-elements/deferred";
+export { shellIconCookie } from "./icon-elements/Cookie";
+export { shellIconShield } from "./icon-elements/Shield";
+export { shellIconUnplug } from "./icon-elements/Unplug";
+export { shellIconExternal } from "./icon-elements/deferred";
+export { shellIconPip } from "./icon-elements/PictureInPicture2";
+export { shellIconSun } from "./icon-elements/Sun";

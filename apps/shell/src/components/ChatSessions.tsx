@@ -6,7 +6,7 @@ import type { ConversationSummary } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, errToast, useStore } from "../store";
 import { readChatFolders, writeChatFolder, removeChatFolder, moveChatToFolder, type ChatFolder } from "../chat-folders";
-import { I } from "./icons";
+import { shellIconArchive, shellIconChats, shellIconClose, shellIconDown, shellIconFolder, shellIconPencil, shellIconRight, shellIconTrash } from "./icons";
 
 /** Shared session organization for both sidebar layouts. Folder entries belong to this browser profile. */
 export function ChatSessions({ compact = false }: { compact?: boolean }) {
@@ -118,10 +118,10 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
       <div className="session-actions">
         {!["completed", "cancelled"].includes(item.latestRun.status) && <span className={`session-status ${item.latestRun.status}`} role="status" title={STATUS_LABEL[item.latestRun.status]} aria-label={STATUS_LABEL[item.latestRun.status]} />}
         <ActionMenu label={`Actions for ${item.title || "New chat"}`} triggerRef={node => { if (node) actionTriggers.current.set(item.chatId, node); else actionTriggers.current.delete(item.chatId); }} actions={[
-          { label: "Rename", icon: I.pencil, disabled: busy, onSelect: () => { setRenaming(item.chatId); setChatName(item.title); setMoving(null); setDeleting(null); } },
-          { label: "Move to project", icon: I.folder, disabled: busy, onSelect: () => { setMoving(item.chatId); setDeleting(null); setRenaming(null); } },
-          { label: archived ? "Restore chat" : "Archive chat", icon: I.archive, disabled: busy, onSelect: () => { void mutate(item, false); } },
-          { label: "Delete chat…", icon: I.trash, danger: true, disabled: busy, onSelect: () => { setDeleting(item.chatId); setMoving(null); setRenaming(null); } },
+          { label: "Rename", icon: shellIconPencil, disabled: busy, onSelect: () => { setRenaming(item.chatId); setChatName(item.title); setMoving(null); setDeleting(null); } },
+          { label: "Move to project", icon: shellIconFolder, disabled: busy, onSelect: () => { setMoving(item.chatId); setDeleting(null); setRenaming(null); } },
+          { label: archived ? "Restore chat" : "Archive chat", icon: shellIconArchive, disabled: busy, onSelect: () => { void mutate(item, false); } },
+          { label: "Delete chat…", icon: shellIconTrash, danger: true, disabled: busy, onSelect: () => { setDeleting(item.chatId); setMoving(null); setRenaming(null); } },
         ]}/>
       </div>
     </div>
@@ -134,9 +134,9 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
   </div>;
   return <div ref={root} className="chat-sessions" aria-busy={loading}>
     <div className="session-heading"><span>{archived ? "Archived chats" : compact ? "Recent" : "Chats"}</span><ActionMenu label="Chat options" triggerRef={node => { headingTrigger.current = node; }} actions={[
-      { label: "New chat project", icon: I.folder, onSelect: () => edit() },
-      { label: archived ? "Active chats" : "Archived chats", icon: I.archive, onSelect: () => { setArchived(!archived); setRows([]); } },
-      { label: "All chats", icon: I.chats, onSelect: showHistory },
+      { label: "New chat project", icon: shellIconFolder, onSelect: () => edit() },
+      { label: archived ? "Active chats" : "Archived chats", icon: shellIconArchive, onSelect: () => { setArchived(!archived); setRows([]); } },
+      { label: "All chats", icon: shellIconChats, onSelect: showHistory },
     ]}/></div>
     {(organization.folders.length > 0 || editing) && <div className="session-heading"><span>Projects</span></div>}
     {editing && <form className="session-editor" onSubmit={event => { event.preventDefault(); if (!name.trim()) return; organize(() => writeChatFolder(localStorage, { ...editing, name: name.trim() })); finishEdit(); }}>
@@ -146,16 +146,16 @@ export function ChatSessions({ compact = false }: { compact?: boolean }) {
     {organization.folders.map(folder => {
       const children = visibleRows.filter(row => organization.members[row.chatId] === folder.id);
       return <div className="session-folder" key={folder.id}>
-        <div className="session-row"><button className="session-folder-toggle" aria-expanded={!folder.collapsed} onClick={() => organize(() => writeChatFolder(localStorage, { ...folder, collapsed: !folder.collapsed }))}>{folder.collapsed ? I.right : I.down}<span>{folder.name}</span><small>{rows.filter(row => organization.members[row.chatId] === folder.id).length}</small></button><div className="session-actions"><ActionMenu label={`Actions for project ${folder.name}`} triggerRef={node => { if (node) folderTriggers.current.set(folder.id, node); else folderTriggers.current.delete(folder.id); }} actions={[
-          { label: "Rename project", icon: I.pencil, onSelect: () => edit(folder) },
-          { label: "Remove folder; keep chats", icon: I.close, onSelect: () => organize(() => removeChatFolder(localStorage, folder.id)) },
+        <div className="session-row"><button className="session-folder-toggle" aria-expanded={!folder.collapsed} onClick={() => organize(() => writeChatFolder(localStorage, { ...folder, collapsed: !folder.collapsed }))}>{folder.collapsed ? shellIconRight : shellIconDown}<span>{folder.name}</span><small>{rows.filter(row => organization.members[row.chatId] === folder.id).length}</small></button><div className="session-actions"><ActionMenu label={`Actions for project ${folder.name}`} triggerRef={node => { if (node) folderTriggers.current.set(folder.id, node); else folderTriggers.current.delete(folder.id); }} actions={[
+          { label: "Rename project", icon: shellIconPencil, onSelect: () => edit(folder) },
+          { label: "Remove folder; keep chats", icon: shellIconClose, onSelect: () => organize(() => removeChatFolder(localStorage, folder.id)) },
         ]}/></div></div>
         {!folder.collapsed && <div className="session-folder-chats">{children.map(renderChat)}{!children.length && !compact && <p className="session-empty">Use a chat’s menu to move it here.</p>}</div>}
       </div>;
     })}
 
     {visibleRows.filter(row => !organization.folders.some(folder => folder.id === organization.members[row.chatId])).map(renderChat)}
-    {compact && rows.length > 3 && <button className="sb-link sb-show-all" onClick={showHistory}>All chats {I.right}</button>}
+    {compact && rows.length > 3 && <button className="sb-link sb-show-all" onClick={showHistory}>All chats {shellIconRight}</button>}
     {loading && !rows.length && <output className="session-empty" data-block>Loading chats…</output>}
     {!loading && !error && !rows.length && <p className="session-empty">{archived ? "No archived chats." : "Your sessions will appear here."}</p>}
     {error && <p className="session-empty" role="alert">{error}<button className="btn ghost" onClick={() => setRevision(value => value + 1)}>Retry</button></p>}

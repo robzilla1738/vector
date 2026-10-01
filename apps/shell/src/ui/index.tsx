@@ -1,5 +1,5 @@
 import { useCallback, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type RefObject, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
-import { I } from "../components/icons";
+import { shellIconClose, shellIconFolder, shellIconMore } from "../components/icons";
 import { Menu } from "./dialog";
 import "./ui.css";
 
@@ -124,7 +124,7 @@ export function Tabs<T extends string>({ label, value, onChange, items, panelId,
 }
 
 export type MenuAction = { label: string; icon?: ReactNode; onSelect(): void; disabled?: boolean; danger?: boolean; shortcut?: string };
-export function ActionMenu({ label, actions, children = I.more, triggerRef }: { label: string; actions: MenuAction[]; children?: ReactNode; triggerRef?: (node: HTMLButtonElement | null) => void }) {
+export function ActionMenu({ label, actions, children = shellIconMore, triggerRef }: { label: string; actions: MenuAction[]; children?: ReactNode; triggerRef?: (node: HTMLButtonElement | null) => void }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const openAtEnd = useRef(false);
@@ -150,12 +150,12 @@ export function Badge({ label, tone = "neutral" }: { label: string; tone?: "neut
   return <span className="ui-status" data-tone={tone}><span aria-hidden="true" />{label}</span>;
 }
 
-export function EmptyState({ title, description, action, icon = I.folder }: { title: string; description?: ReactNode; action?: ReactNode; icon?: ReactNode }) {
+export function EmptyState({ title, description, action, icon = shellIconFolder }: { title: string; description?: ReactNode; action?: ReactNode; icon?: ReactNode }) {
   return <div className="ui-empty"><span className="ui-empty-icon" aria-hidden="true">{icon}</span><strong>{title}</strong>{description && <p>{description}</p>}{action}</div>;
 }
 
 export function DetailPane({ title, metadata, actions, onClose, children, className = "", headingRef }: { title: string; metadata?: ReactNode; actions?: ReactNode; onClose?: () => void; children: ReactNode; className?: string; headingRef?: RefObject<HTMLElement | null> }) {
-  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button type="button" className="icon-btn" aria-label={`Close ${title}`} onClick={onClose}>{I.close}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
+  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button type="button" className="icon-btn" aria-label={`Close ${title}`} onClick={onClose}>{shellIconClose}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
 }
 
 export function ComposerFrame({ context, notices, children }: { context?: ReactNode; notices?: ReactNode; children: ReactNode }) {

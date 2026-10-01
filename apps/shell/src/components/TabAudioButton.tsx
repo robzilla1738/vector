@@ -1,7 +1,7 @@
 import {useStore} from '../store';
 import {runCommand} from '../commands';
 import {useFeature} from '../use-feature';
-import {I} from './icons';
+import { shellIconPip, shellIconVolume, shellIconVolumeOff } from './icons';
 
 export function TabAudioButton({pageId,title,menu=false,onDone}:{pageId:string;title:string;menu?:boolean;onDone?:()=>void}){
  const audio=useStore(state=>state.tabAudio[pageId]);
@@ -13,7 +13,7 @@ export function TabAudioButton({pageId,title,menu=false,onDone}:{pageId:string;t
  const label=audio.muted?'Unmute tab':'Mute tab';
  return <>{muteVisible&&<button className={menu?'menu-item':'icon-btn xs tab-audio'} role={menu?'menuitem':undefined} aria-label={menu?label:`${label}: ${title}`} title={audio.muted?'Tab muted':audio.audible?`Playing audio · ${label}`:label} data-command-id="mute-tab"
   onKeyDown={event=>{if(!menu)event.stopPropagation();}} onClick={event=>{event.stopPropagation();runCommand("mute-tab",{payload:{pageId}});onDone?.();}}>
-  {audio.muted?I.volumeOff:I.volume}{menu&&<span className="t">{label}</span>}
+  {audio.muted?shellIconVolumeOff:shellIconVolume}{menu&&<span className="t">{label}</span>}
  </button>}
- {pipVisible&&<button className={menu?"menu-item":"icon-btn xs tab-pip"} role={menu?"menuitem":undefined} data-command-id="picture-in-picture" aria-label={audio.pip?"Exit picture in picture":"Picture in picture"} onClick={event=>{event.stopPropagation();runCommand("picture-in-picture",{payload:{pageId}});onDone?.();}}>{I.pip}{menu&&<span className="t">{audio.pip?"Exit picture in picture":"Picture in picture"}</span>}</button>}</>;
+ {pipVisible&&<button className={menu?"menu-item":"icon-btn xs tab-pip"} role={menu?"menuitem":undefined} data-command-id="picture-in-picture" aria-label={audio.pip?"Exit picture in picture":"Picture in picture"} onClick={event=>{event.stopPropagation();runCommand("picture-in-picture",{payload:{pageId}});onDone?.();}}>{shellIconPip}{menu&&<span className="t">{audio.pip?"Exit picture in picture":"Picture in picture"}</span>}</button>}</>;
 }

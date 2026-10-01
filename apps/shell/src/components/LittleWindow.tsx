@@ -4,7 +4,7 @@ import { bridge } from "../bridge";
 import { isHomeAddress } from "../chrome";
 import { fromOrganizationLayout } from "../store/organization-layout";
 import { Dialog, Menu } from "../ui";
-import { I } from "./icons";
+import { shellIconCopy, shellIconDown, shellIconDownloadSm, shellIconLock } from "./icons";
 import { runCommand } from "../commands";
 import { ownPages } from "../tab-window-transfer";
 import { CommandBar } from "./CommandBar";
@@ -49,12 +49,12 @@ export function LittleWindow() {
   const host = page && /^https?:/.test(page.url) ? new URL(page.url).host : "New Little window";
   return <main className="little-window" aria-label="Little window">
     <header className="little-strip">
-      <span className="little-host" title={page?.url}>{page?.url.startsWith("https:") && <span role="img" aria-label="Secure connection">{I.lock}</span>}{host}</span>
+      <span className="little-host" title={page?.url}>{page?.url.startsWith("https:") && <span role="img" aria-label="Secure connection">{shellIconLock}</span>}{host}</span>
       <CommandBar compact />
       <button className="btn sm" data-command-id="promote-tab" onClick={() => runCommand("promote-tab")}>Open in Aux</button>
-      <button ref={spacesTrigger} className="icon-btn sm" data-command-id="little-space-picker" aria-haspopup="menu" aria-label="Choose destination Space" aria-expanded={panel === "spaces"} onClick={() => runCommand("little-space-picker")}>{I.down}</button>
-      <button className="icon-btn sm" data-command-id="copy-url" aria-label="Copy link" onClick={() => runCommand("copy-url")}>{I.copy}</button>
-      <button ref={downloadsTrigger} className="icon-btn sm" data-command-id="little-downloads" aria-haspopup="dialog" aria-label="Downloads for this page" aria-expanded={panel === "downloads"} onClick={() => runCommand("little-downloads")}>{I.downloadSm}</button>
+      <button ref={spacesTrigger} className="icon-btn sm" data-command-id="little-space-picker" aria-haspopup="menu" aria-label="Choose destination Space" aria-expanded={panel === "spaces"} onClick={() => runCommand("little-space-picker")}>{shellIconDown}</button>
+      <button className="icon-btn sm" data-command-id="copy-url" aria-label="Copy link" onClick={() => runCommand("copy-url")}>{shellIconCopy}</button>
+      <button ref={downloadsTrigger} className="icon-btn sm" data-command-id="little-downloads" aria-haspopup="dialog" aria-label="Downloads for this page" aria-expanded={panel === "downloads"} onClick={() => runCommand("little-downloads")}>{shellIconDownloadSm}</button>
     </header>
     {panel === "spaces" && <Menu className="little-spaces menu" label="Open in Aux Space" anchor={spacesTrigger} returnFocus={spacesTrigger} menuRef={spacesMenu} initialFocusRef={firstSpace} onClose={() => runCommand("little-space-picker")}>
       {spaceError && <p role="alert">{spaceError}</p>}

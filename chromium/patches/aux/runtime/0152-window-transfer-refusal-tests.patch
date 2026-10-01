@@ -1,0 +1,145 @@
+diff --git a/chrome/browser/ui/aux/tab_catalog_browsertest.cc b/chrome/browser/ui/aux/tab_catalog_browsertest.cc
+new file mode 100644
+index 0000000..6c64338
+--- /dev/null
++++ b/chrome/browser/ui/aux/tab_catalog_browsertest.cc
+@@ -0,0 +1,124 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/tab_catalog.h"
++
++#include <optional>
++#include <string>
++#include <vector>
++
++#include "base/json/json_reader.h"
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/browser_tabstrip.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/test/base/in_process_browser_test.h"
++#include "components/prefs/pref_service.h"
++#include "content/public/test/browser_test.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "url/gurl.h"
++
++namespace aux {
++class TabCatalogMovementBrowserTest : public InProcessBrowserTest,
++                                     public testing::WithParamInterface<int> {};
++
++IN_PROC_BROWSER_TEST_P(TabCatalogMovementBrowserTest,
++                       InvalidOrganizationRefusesEveryMoveWithoutSplittingGroup) {
++  auto* profile = browser()->profile();
++  auto* source = browser();
++  auto* catalog = TabCatalog::GetForProfile(profile);
++  ASSERT_TRUE(catalog);
++  std::vector<std::string> members;
++  for (int index = 0; index < GetParam(); ++index) {
++    if (index != 0) chrome::AddTabAt(source, GURL("about:blank"), -1, false);
++    members.push_back(PageIdentity::GetOrCreate(profile, source->GetTabStripModel()->GetWebContentsAt(index)));
++  }
++  auto layout = base::JSONReader::ReadDict(R"({
++    "shared":{"spaces":[{"id":"space","name":"Fixture","color":"blue","grain":0}],
++      "archivedSpaces":[],"pins":{},"folders":[],"tabSpace":{},"order":[],
++      "tabFolder":{},"tabNames":{},"splitGroups":[]},
++    "window":{"activeSpaceId":"space","activeTabs":{},"splitRatio":0.5}
++  })", base::JSON_PARSE_RFC);
++  ASSERT_TRUE(layout);
++  auto* shared = layout->FindDict("shared");
++  base::ListValue panes;
++  for (const auto& id : members) {
++    panes.Append(id);
++    shared->FindList("order")->Append(id);
++    shared->FindDict("tabSpace")->Set(id, "space");
++  }
++  base::DictValue group;
++  group.Set("id", "group");
++  group.Set("panes", std::move(panes));
++  group.Set("focused", members[0]);
++  group.Set("layout", GetParam() == 2 ? "row" : GetParam() == 3 ? "columns" : "grid");
++  base::ListValue ratios;
++  ratios.Append(0.5);
++  group.Set("ratios", std::move(ratios));
++  shared->FindList("splitGroups")->Append(std::move(group));
++  std::string error;
++  profile->GetPrefs()->ClearPref(kOrganizationPref);
++  ASSERT_TRUE(OrganizationStore::Commit(profile, base::NumberToString(source->GetSessionID().id()), 0, *layout, &error)) << error;
++  // Corrupt a real committed group: the native Snapshot validator must refuse it.
++  auto malformed = profile->GetPrefs()->GetDict(kOrganizationPref).Clone();
++  malformed.FindDict("shared")->FindList("splitGroups")->front().GetDict().Set("focused", "missing-member");
++  profile->GetPrefs()->SetDict(kOrganizationPref, std::move(malformed));
++  auto* destination = CreateBrowser(profile);
++  const int source_count = source->GetTabStripModel()->count();
++  const int destination_count = destination->GetTabStripModel()->count();
++  auto count_windows = [&]() {
++    int count = 0;
++    ProfileBrowserCollection::GetForProfile(profile)->ForEach([&](BrowserWindowInterface*) { ++count; return true; });
++    return count;
++  };
++  const int window_count = count_windows();
++  for (const auto& operation : {"claim", "move", "move-new"}) {
++    base::DictValue command;
++    command.Set("kind", std::string(operation) == "claim" ? "claim" : "move");
++    command.Set("pageId", members[0]);
++    if (std::string(operation) == "move") command.Set("windowId", base::NumberToString(destination->GetSessionID().id()));
++    const auto result = catalog->Command(std::string(operation) == "claim" ? destination : source, operation, command, std::nullopt);
++    const auto* status = result.FindString("status");
++    ASSERT_TRUE(status);
++    ASSERT_EQ(*status, "rejected");
++    const auto* refusal = result.FindDict("error");
++    ASSERT_TRUE(refusal);
++    const auto* code = refusal->FindString("code");
++    const auto* message = refusal->FindString("message");
++    ASSERT_TRUE(code);
++    ASSERT_TRUE(message);
++    EXPECT_EQ(*code, "backend_unavailable");
++    EXPECT_EQ(*message, "The Profile organization preference is invalid");
++    EXPECT_EQ(source->GetTabStripModel()->count(), source_count);
++    EXPECT_EQ(destination->GetTabStripModel()->count(), destination_count);
++    EXPECT_EQ(count_windows(), window_count);
++    for (const auto& id : members) {
++      BrowserWindowInterface* owner = nullptr;
++      ASSERT_TRUE(catalog->FindPage(id, &owner));
++      EXPECT_EQ(owner, source);
++    }
++  }
++}
++INSTANTIATE_TEST_SUITE_P(SplitSizes, TabCatalogMovementBrowserTest, testing::Values(2, 3, 4));
++
++class LittleCreationBrowserTest : public InProcessBrowserTest {};
++IN_PROC_BROWSER_TEST_F(LittleCreationBrowserTest, ReturnsActualOwner) {
++  auto* profile = browser()->profile();
++  EXPECT_EQ(OpenLittleWindow(nullptr, GURL()), nullptr);
++  EXPECT_EQ(OpenLittleWindow(profile->GetPrimaryOTRProfile(true), GURL()), nullptr);
++  EXPECT_EQ(OpenLittleWindow(profile, GURL("file:///tmp/refused-fixture")), nullptr);
++  auto* little = OpenLittleWindow(profile, GURL());
++  ASSERT_TRUE(little);
++  EXPECT_EQ(little->GetProfile(), profile);
++  EXPECT_TRUE(IsLittleWindow(little));
++  auto* contents = little->GetTabStripModel()->GetActiveWebContents();
++  ASSERT_TRUE(contents);
++  BrowserWindowInterface* owner = nullptr;
++  EXPECT_EQ(TabCatalog::GetForProfile(profile)->FindPage(PageIdentity::GetOrCreate(profile, contents), &owner), contents);
++  EXPECT_EQ(owner, little);
++  EXPECT_TRUE(CloseLittleWindow(little));
++}
++}  // namespace aux
+diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
+index abc2dc9..65d41c4 100644
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -3101,6 +3101,10 @@ if (!is_android) {
+       "data/webui/mojo/mojo_js_interface_broker_browsertest.cc",
+       "data/webui/mojo/mojo_web_ui_controller_browsertest.cc",
+     ]
++    if (enable_aux_shell) {
++      sources += [ "../browser/ui/aux/tab_catalog_browsertest.cc" ]
++      deps += [ "//chrome/browser/ui/aux:runtime" ]
++    }
+     fuzztests = [ "SafeXmlParserFixture.ParseXML" ]
+     fuzztest_additional_args = [
+       "--single-process-tests",

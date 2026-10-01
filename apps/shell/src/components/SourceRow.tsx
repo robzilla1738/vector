@@ -1,6 +1,6 @@
 import type { ConversationSource } from "@aux/contracts";
 import { hostOf } from "../workspace";
-import { I } from "./icons";
+import { shellIconGlobe, shellIconOpen } from "./icons";
 import { ListRow } from "../ui";
 
 export function sourceDescription(source: ConversationSource, profileNames: Record<string, string> = {}) {
@@ -10,5 +10,5 @@ export function sourceDescription(source: ConversationSource, profileNames: Reco
 
 /** Display only recorded provenance; never fetch a remote favicon or invent a snippet. */
 export function SourceRow({ source, profileNames, onOpen }: { source: ConversationSource; profileNames?: Record<string, string>; onOpen(): void }) {
-  return <ListRow title={source.title || hostOf(source.url)} description={sourceDescription(source, profileNames)} leading={I.globe} trailing={I.open} onOpen={onOpen} />;
+  return <ListRow title={source.title || hostOf(source.url)} description={sourceDescription(source, profileNames)} leading={shellIconGlobe} trailing={shellIconOpen} onOpen={onOpen} />;
 }

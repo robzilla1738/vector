@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Artifact } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { ImageViewer } from "./ImageViewer";
-import { I } from "./icons";
+import { shellIconResult } from "./icons";
 
 function RunImage({artifact}:{artifact:Artifact}) {
   const [url,setUrl]=useState("");
@@ -43,7 +43,7 @@ export function RunImages({runId}:{runId:string}) {
   const previews=artifacts.filter(item=>item.size<8_000_000);
   const large=artifacts.length-previews.length;
   return <details className="conversation-sources conversation-images" onToggle={event=>setOpen(event.currentTarget.open)}>
-    <summary>{I.result}<span>Images</span>{artifacts.length>0 && <span className="count nums">{artifacts.length}</span>}</summary>
+    <summary>{shellIconResult}<span>Images</span>{artifacts.length>0 && <span className="count nums">{artifacts.length}</span>}</summary>
     {open && <div>
       {error && <p className="field-error" role="alert">Couldn’t refresh images. {error} <button className="btn sm ghost" onClick={()=>setRetry(value=>value+1)}>Retry</button></p>}
       {previews.slice(0,limit).map(artifact=><RunImage key={artifact.artifactId} artifact={artifact}/>)}

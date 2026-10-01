@@ -5,7 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { isLive, useStore } from "../store";
 import { hostOf } from "../workspace";
 import { VirtualList } from "./VirtualList";
-import { I } from "./icons";
+import { shellIconAgentSm, shellIconAlert, shellIconChat, shellIconCheck, shellIconCircle, shellIconClose, shellIconLayersSm, shellIconSearch } from "./icons";
 
 const ago = (ts: number) => {
   const m = Math.floor((Date.now() - ts) / 60000);
@@ -38,7 +38,7 @@ const RunRow = memo(function RunRow({ runId }: { runId: string }) {
   const live = isLive(r);
   return (
     <button className={`run-row ${live ? "live" : ""}`} onClick={() => useStore.getState().setRailView({ kind: "run", runId: r.runId })} title={r.goal}>
-      <span className={`run-row-ico ${r.status}`}>{r.status === "completed" ? I.check : r.status === "failed" ? I.alert : r.status === "needs_input" ? I.chat : live ? I.agentSm : I.circle}</span>
+      <span className={`run-row-ico ${r.status}`}>{r.status === "completed" ? shellIconCheck : r.status === "failed" ? shellIconAlert : r.status === "needs_input" ? shellIconChat : live ? shellIconAgentSm : shellIconCircle}</span>
       <span className="run-row-main">
         <span className="run-row-title">{r.goal}</span>
         <span className="run-row-sub">
@@ -58,7 +58,7 @@ const SetRow = memo(function SetRow({ setId }: { setId: string }) {
   if (!set) return null;
   const done = members.filter((member) => member.status === "completed").length;
   return <button className="run-row" onClick={() => setRailView({ kind: "set", setId })}>
-    <span className="run-row-ico set">{I.layersSm}</span>
+    <span className="run-row-ico set">{shellIconLayersSm}</span>
     <span className="run-row-main">
       <span className="run-row-title">{set.name}</span>
       <span className="run-row-sub nums">{done}/{members.length || set.memberIds.length} members</span>
@@ -100,9 +100,9 @@ export function RailHistory() {
           <span className="count nums">{past.length}</span>
         </div>
         <div className="rail-search">
-          {I.search}
+          {shellIconSearch}
           <input value={q} placeholder="Find a recent conversation" aria-label="Find a recent conversation" onChange={(e) => setQ(e.target.value)} />
-          {q && <button className="icon-btn xs" aria-label="Clear" onClick={() => setQ("")}>{I.close}</button>}
+          {q && <button className="icon-btn xs" aria-label="Clear" onClick={() => setQ("")}>{shellIconClose}</button>}
         </div>
         {past.length === 0 ? (
           <div className="rail-empty small">{q ? "No recent conversations match." : "Nothing yet. Ask for something below — the agent works in this window, on your tabs."}</div>

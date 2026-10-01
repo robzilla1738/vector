@@ -5,7 +5,7 @@ import { useStore } from "../store";
 import { bridge, inNativeHost } from "../bridge";
 import { hostOf } from "../workspace";
 import type { ResultRecord } from "@aux/contracts";
-import { I } from "./icons";
+import { shellIconBack, shellIconDown, shellIconLayers, shellIconSearch, shellIconUp } from "./icons";
 
 function toCsv(results: ResultRecord[], keys: string[]): string {
   const esc = (v: unknown) => {
@@ -106,7 +106,7 @@ export function ResultsTable() {
           }}
         >
           {label}
-          <span className="sort-ico">{on ? (asc ? I.up : I.down) : null}</span>
+          <span className="sort-ico">{on ? (asc ? shellIconUp : shellIconDown) : null}</span>
         </button>
       </th>
     );
@@ -115,14 +115,14 @@ export function ResultsTable() {
   return (
     <div className="results-wrap fade-in">
       <div className="results-head">
-        <button className="icon-btn" title="Back to page" aria-label="Back to page" onClick={() => setMode("focus")}>{I.back}</button>
+        <button className="icon-btn" title="Back to page" aria-label="Back to page" onClick={() => setMode("focus")}>{shellIconBack}</button>
         <h2>{setName ?? "Set results"}</h2>
         <span className="count nums">{rowIds.length}{filter ? ` of ${resultCount}` : ""} rows</span>
         <span className="sp" />
         {resultCount > 0 && (
           <>
             <div className="rail-search compact">
-              {I.search}
+              {shellIconSearch}
               <input placeholder="Filter rows" aria-label="Filter rows" value={filter} onChange={(e) => setFilter(e.target.value)} />
             </div>
             <button className="btn sm" onClick={() => void exportFile(`${setName ?? "results"}.csv`, toCsv(exportRows(), keys), "text/csv")}>CSV</button>
@@ -133,7 +133,7 @@ export function ResultsTable() {
       {resultCount === 0 ? (
         <div className="stage-message">
           <div className="empty-state">
-            <span className="empty-ico">{I.layers}</span>
+            <span className="empty-ico">{shellIconLayers}</span>
             <h2>No extracted records</h2>
             <p>Collect open tabs into a set, or run a page set. Each row stays tied to its source page.</p>
             <div className="empty-actions">

@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { I } from "../components/icons";
+import { shellIconArchive, shellIconChats, shellIconClock, shellIconCode, shellIconExtension, shellIconFolder, shellIconGear, shellIconGlobe, shellIconLock, shellIconModel, shellIconResult, shellIconSun } from "../components/icons";
 import { settingsPath, type ConnectionTab } from "./routes";
 
 interface RailItem {
@@ -12,26 +12,26 @@ interface RailItem {
 }
 
 const items: readonly RailItem[] = [
-  { label: "General", category: "General", group: "Personal", icon: I.gear },
-  { label: "Appearance", category: "Appearance", group: "Personal", icon: I.sun },
-  { label: "Profiles", category: "Profiles", group: "Personal", icon: I.chats, gate: "profiles" },
-  { label: "Link Routing", category: "Link Routing", group: "Personal", icon: I.globe, gate: "linkRouting" },
-  { label: "Advanced", category: "Advanced", group: "Personal", icon: I.code, gate: "appleScript" },
-  { label: "Privacy & Security", category: "Site permissions", group: "Personal", icon: I.lock, gate: "permissions" },
-  { label: "Passwords & Autofill", category: "Passwords & Autofill", group: "Personal", icon: I.lock },
-  { label: "Agents", category: "Agent permissions", group: "Agent", icon: I.chats },
-  { label: "Models", category: "Connections", group: "Agent", icon: I.model, tab: "Models" },
-  { label: "Usage & Budgets", category: "Usage & Budgets", group: "Agent", icon: I.model },
-  { label: "Skills & Plugins", category: "Connections", group: "Agent", icon: I.extension, tab: "Plugins", gate: "skills" },
-  { label: "MCP & Connectors", category: "Connections", group: "Agent", icon: I.globe, tab: "Services", gate: "services" },
-  { label: "Memory", category: "Memory", group: "Agent", icon: I.chats, gate: "memory" },
-  { label: "Workspaces", category: "Workspaces", group: "Agent", icon: I.folder },
-  { label: "Automations", category: "Automations", group: "Features", icon: I.clock, gate: "automations" },
-  { label: "Quick Ask", category: "Quick Ask", group: "Features", icon: I.chats },
-  { label: "Selection & Capture", category: "Selection & Capture", group: "Features", icon: I.result },
-  { label: "Developers & External Agents", category: "Connections", group: "Features", icon: I.globe, tab: "Agents" },
-  { label: "Extensions", category: "Extensions", group: "Features", icon: I.extension, gate: "extensions" },
-  { label: "Archived chats", category: "Archived chats", group: "Archived", icon: I.archive },
+  { label: "General", category: "General", group: "Personal", icon: shellIconGear },
+  { label: "Appearance", category: "Appearance", group: "Personal", icon: shellIconSun },
+  { label: "Profiles", category: "Profiles", group: "Personal", icon: shellIconChats, gate: "profiles" },
+  { label: "Link Routing", category: "Link Routing", group: "Personal", icon: shellIconGlobe, gate: "linkRouting" },
+  { label: "Advanced", category: "Advanced", group: "Personal", icon: shellIconCode, gate: "appleScript" },
+  { label: "Privacy & Security", category: "Site permissions", group: "Personal", icon: shellIconLock, gate: "permissions" },
+  { label: "Passwords & Autofill", category: "Passwords & Autofill", group: "Personal", icon: shellIconLock },
+  { label: "Agents", category: "Agent permissions", group: "Agent", icon: shellIconChats },
+  { label: "Models", category: "Connections", group: "Agent", icon: shellIconModel, tab: "Models" },
+  { label: "Usage & Budgets", category: "Usage & Budgets", group: "Agent", icon: shellIconModel },
+  { label: "Skills & Plugins", category: "Connections", group: "Agent", icon: shellIconExtension, tab: "Plugins", gate: "skills" },
+  { label: "MCP & Connectors", category: "Connections", group: "Agent", icon: shellIconGlobe, tab: "Services", gate: "services" },
+  { label: "Memory", category: "Memory", group: "Agent", icon: shellIconChats, gate: "memory" },
+  { label: "Workspaces", category: "Workspaces", group: "Agent", icon: shellIconFolder },
+  { label: "Automations", category: "Automations", group: "Features", icon: shellIconClock, gate: "automations" },
+  { label: "Quick Ask", category: "Quick Ask", group: "Features", icon: shellIconChats },
+  { label: "Selection & Capture", category: "Selection & Capture", group: "Features", icon: shellIconResult },
+  { label: "Developers & External Agents", category: "Connections", group: "Features", icon: shellIconGlobe, tab: "Agents" },
+  { label: "Extensions", category: "Extensions", group: "Features", icon: shellIconExtension, gate: "extensions" },
+  { label: "Archived chats", category: "Archived chats", group: "Archived", icon: shellIconArchive },
 ];
 
 export function SectionRail({

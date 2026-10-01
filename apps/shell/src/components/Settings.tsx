@@ -4,7 +4,7 @@ import { MemorySettings } from "./MemorySettings";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useStore, call, errToast } from "../store";
 
-import { I } from "./icons";
+import { shellIconBack, shellIconCheck, shellIconClose } from "./icons";
 import { ExternalAgents } from "./ExternalAgents";
 import { PluginsPanel } from "./PluginsPanel";
 import { Extensions } from "./Extensions";
@@ -296,7 +296,7 @@ export function Settings() {
                 requestAnimationFrame(() => subviewOrigin.current?.focus());
               }}
             >
-              {I.back}
+              {shellIconBack}
             </button>
           )}
           <div className="settings-heading">
@@ -310,14 +310,14 @@ export function Settings() {
             </p>
           </div>
           <span className="sp" />
-          {saved && <output className="saved">{I.check} Saved</output>}
+          {saved && <output className="saved">{shellIconCheck} Saved</output>}
           <button
             className="icon-btn"
             title="Close (Esc)"
             aria-label="Close settings"
             onClick={() => setOverlay(null)}
           >
-            {I.close}
+            {shellIconClose}
           </button>
         </div>
 

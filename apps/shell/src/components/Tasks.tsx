@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Run, Task, TaskReceipt } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { useShallow } from "zustand/react/shallow";
-import { I } from "./icons";
+import { shellIconBack, shellIconClose, shellIconFolder, shellIconPlusSm } from "./icons";
 import {
   readTaskDraft,
   writeTaskDraft,
@@ -295,7 +295,7 @@ export function Tasks() {
           <h3>{creating ? "New task" : selected ? selected.task.title : "Tasks"}</h3>
           <span className="sp" />
           <button ref={closeButton} className="icon-btn" aria-label="Close tasks" onClick={() => close(null)}>
-            {I.close}
+            {shellIconClose}
           </button>
         </div>
         {error && (
@@ -318,7 +318,7 @@ export function Tasks() {
               remember(null);
             }}
           >
-            {I.back}All tasks
+            {shellIconBack}All tasks
           </button>
         )}
         <fieldset
@@ -360,7 +360,7 @@ export function Tasks() {
                   onChange={(event) => setTaskQuery(event.target.value)}
                 />
                 <button className="btn primary" disabled={!workspaceId} onClick={() => reset()}>
-                  {I.plusSm}New task
+                  {shellIconPlusSm}New task
                 </button>
               </div>
               <div className="work-list-heading">
@@ -391,7 +391,7 @@ export function Tasks() {
                     key={task.taskId}
                     title={task.title}
                     summary={task.objective}
-                    icon={I.folder}
+                    icon={shellIconFolder}
                     status={
                       task.state === "archived" ? "Archived" : task.parentTaskId ? "Child task" : "Saved task"
                     }

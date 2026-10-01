@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { HostMethodResult } from "@aux/contracts";
 import { bridge, inNativeHost } from "../bridge";
 import { runCommand } from "../commands";
-import { I } from "./icons";
+import { shellIconExtension, shellIconGearSm } from "./icons";
 import { Menu } from "../ui";
 import { useFeature } from "../use-feature";
 import { useExtensionActions } from "../features/extensions/use-extension-actions";
@@ -13,7 +13,7 @@ type Action = HostMethodResult<"extensionActions">[number];
 function ActionIcon({ action }: { action: Action }) {
   // Chromium's action icon already contains its native badge and attention
   // state; adding another badge here would draw it twice.
-  return action.iconPng ? <img className="extension-action-icon" src={action.iconPng} alt="" /> : I.extension;
+  return action.iconPng ? <img className="extension-action-icon" src={action.iconPng} alt="" /> : shellIconExtension;
 }
 export function ExtensionActions() {
   const available = useFeature("extensions");
@@ -57,7 +57,7 @@ export function ExtensionActions() {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        {I.extension}
+        {shellIconExtension}
       </button>
       {open && (
         <Menu
@@ -118,7 +118,7 @@ export function ExtensionActions() {
               runCommand("show-extensions");
             }}
           >
-            {I.gearSm}
+            {shellIconGearSm}
             <span>Manage extensions…</span>
           </button>
         </Menu>

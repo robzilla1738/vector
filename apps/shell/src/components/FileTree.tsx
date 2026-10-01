@@ -1,6 +1,6 @@
 import "./FileTree.css";
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { I } from './icons';
+import { shellIconCode, shellIconFolder, shellIconFolderClosed, shellIconRight } from './icons';
 
 type Node = { path: string; name: string; directory: boolean; children: Node[] };
 const parents = (path: string) => path.split('/').slice(0, -1).map((_, i) => path.split('/').slice(0, i + 1).join('/'));
@@ -55,9 +55,9 @@ export function FileTree({ paths, selected, onSelect, disabled = false, expandAl
         else if (event.key === 'ArrowRight' && node.directory) { event.preventDefault(); if (expanded.has(node.path)) focus(index + 1); else toggle(node.path, true); }
         else if (event.key === 'ArrowLeft') { event.preventDefault(); if (node.directory && expanded.has(node.path)) toggle(node.path, false); else focus(visible.findIndex(item => item.node.path === parents(node.path).at(-1))); }
       }}>
-      <span className="ui-file-icon" aria-hidden="true">{node.directory ? expanded.has(node.path) ? I.folder : I.folderClosed : I.code}</span>
+      <span className="ui-file-icon" aria-hidden="true">{node.directory ? expanded.has(node.path) ? shellIconFolder : shellIconFolderClosed : shellIconCode}</span>
       <span className="ui-file-name">{node.name}</span>
-      {node.directory && <span className={`ui-file-disclosure${expanded.has(node.path) ? ' open' : ''}`} aria-hidden="true">{I.right}</span>}
+      {node.directory && <span className={`ui-file-disclosure${expanded.has(node.path) ? ' open' : ''}`} aria-hidden="true">{shellIconRight}</span>}
     </button>)}
   </div>;
 }

@@ -13,7 +13,7 @@ import { bridge, inNativeHost } from "../bridge";
 import { detectIntent } from "../intent";
 import { canSplitPage, hostOf, tabLabel } from "../workspace";
 import { FavIcon } from "./SiteTile";
-import { I } from "./icons";
+import { shellIconAgentSm, shellIconBookmark, shellIconBookmarkSm, shellIconChats, shellIconChromeSm, shellIconClockSm, shellIconCode, shellIconCommand, shellIconDownloadSm, shellIconExternal, shellIconFindSm, shellIconFolder, shellIconGear, shellIconGlobe, shellIconGrid, shellIconLayersSm, shellIconLeft, shellIconLock, shellIconObs, shellIconOpen, shellIconPencil, shellIconPerson, shellIconPin, shellIconPlusSm, shellIconPrint, shellIconReloadSm, shellIconReopen, shellIconResult, shellIconSearch, shellIconSearchLg, shellIconSidebarCloseSm, shellIconSidebarSm, shellIconSplit, shellIconUnplug } from "./icons";
 import { openLocalFile } from "../open-local-file";
 import { useFeature } from "../use-feature";
 
@@ -182,7 +182,7 @@ export function Palette() {
         if (!match(`${t.title ?? ""} ${t.url}`)) continue;
         const id = t.targetId ?? t.id;
         if (!id) continue;
-        out.push({ id: `ct-${id}`, section: "chrome", t: t.title || t.url, d: hostOf(t.url), icon: I.chromeSm, run: () => call("pages.open", { url: t.url, backend: "chrome", targetId: id, activate: true }) });
+        out.push({ id: `ct-${id}`, section: "chrome", t: t.title || t.url, d: hostOf(t.url), icon: shellIconChromeSm, run: () => call("pages.open", { url: t.url, backend: "chrome", targetId: id, activate: true }) });
       }
       if (out.length === 0) out.push({ id: "none", section: "chrome", t: "No attachable Chrome tabs", run: () => setChromeTabs(null) });
       return out;
@@ -202,7 +202,7 @@ export function Palette() {
         out.push({
           id: "go",
           section: "go",
-          icon: intent.kind === "navigate" ? I.open : I.search,
+          icon: intent.kind === "navigate" ? shellIconOpen : shellIconSearch,
           t: intent.kind === "navigate" ? `Open ${intent.display}` : `Search for “${intent.query}”`,
           k: "↵",
           run: async () => {
@@ -215,7 +215,7 @@ export function Palette() {
       }
       if (intent.kind !== "command" && intent.kind !== "empty") {
         const goal = intent.kind === "run" ? intent.goal : v;
-        out.push({ id: "ask", section: "go", icon: I.agentSm, t: `Ask Aux: “${goal}”`, d: hasPage ? `on ${hostOf(activePage!.url)}` : "in a new tab", k: intent.kind === "run" ? "↵" : undefined, run: () => startRun(goal) });
+        out.push({ id: "ask", section: "go", icon: shellIconAgentSm, t: `Ask Aux: “${goal}”`, d: hasPage ? `on ${hostOf(activePage!.url)}` : "in a new tab", k: intent.kind === "run" ? "↵" : undefined, run: () => startRun(goal) });
       }
       // switch to an open tab
       for (const p of commandOnly ? [] : matchingTabs.filter(page => page.pageId !== activePageId).slice(0, 8)) {
@@ -224,78 +224,78 @@ export function Palette() {
     }
 
     const w: Cmd[] = [
-      { id: "tabs", section: "window", t: "Search open tabs", aliases: ["tabs", "switch tab"], d: "Across Spaces · type @", icon: I.search, keep: true, run: () => setQ("@") },
-      { id: "new", section: "window", t: "New tab", k: key("new-tab"), icon: I.plusSm, run: () => runCommand("new-tab") },
-      ...(lastClosed ? [{ id: "reopen", section: "window" as const, t: `Reopen closed tab — ${lastClosed.title || lastClosed.url}`, k: key("reopen-closed-tab"), icon: I.reopen, run: async () => { await useStore.getState().reopenClosedTab(); } }] : []),
-      { id: "ov", section: "window", t: "Tab overview", k: key("overview"), icon: I.grid, run: async () => setMode("overview") },
-      { id: "rail", section: "agent", t: railOpen ? "Hide agent rail" : "Show agent rail", k: key("agent-rail"), icon: I.agentSm, run: () => useStore.getState().toggleRail() },
-      { id: "obs", section: "agent", t: "Inspect what the agent sees", d: "observe the active page", icon: I.obs, run: async () => { useStore.setState({ inspectorObs: null }); setOverlay("observe"); } },
+      { id: "tabs", section: "window", t: "Search open tabs", aliases: ["tabs", "switch tab"], d: "Across Spaces · type @", icon: shellIconSearch, keep: true, run: () => setQ("@") },
+      { id: "new", section: "window", t: "New tab", k: key("new-tab"), icon: shellIconPlusSm, run: () => runCommand("new-tab") },
+      ...(lastClosed ? [{ id: "reopen", section: "window" as const, t: `Reopen closed tab — ${lastClosed.title || lastClosed.url}`, k: key("reopen-closed-tab"), icon: shellIconReopen, run: async () => { await useStore.getState().reopenClosedTab(); } }] : []),
+      { id: "ov", section: "window", t: "Tab overview", k: key("overview"), icon: shellIconGrid, run: async () => setMode("overview") },
+      { id: "rail", section: "agent", t: railOpen ? "Hide agent rail" : "Show agent rail", k: key("agent-rail"), icon: shellIconAgentSm, run: () => useStore.getState().toggleRail() },
+      { id: "obs", section: "agent", t: "Inspect what the agent sees", d: "observe the active page", icon: shellIconObs, run: async () => { useStore.setState({ inspectorObs: null }); setOverlay("observe"); } },
       ...(activePage?.backend === "aux" && /^https?:\/\//.test(activePage.url) && !bridge.privateMode ? [{ id: "inline-assist", section: "agent" as const,
-        t: "Assist writing in this field…", d: "Focus a text field first · review before applying", icon: I.agentSm,
+        t: "Assist writing in this field…", d: "Focus a text field first · review before applying", icon: shellIconAgentSm,
         run: () => setOverlay("inline-assist") }] : []),
-      { id: "collect", section: "agent", t: "Collect open tabs into a set", d: "map a task over every tab", icon: I.layersSm, run: async () => {
+      { id: "collect", section: "agent", t: "Collect open tabs into a set", d: "map a task over every tab", icon: shellIconLayersSm, run: async () => {
         const ids = pages.filter((p) => !p.ownedByRuntime).map((p) => p.pageId);
         if (!ids.length) return toast("No open tabs to collect", "error");
         await call("sets.create", { name: `Tabs ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`, source: "tabs", pageIds: ids });
         toast(`Set created from ${ids.length} tabs`);
       } },
-      { id: "reload", section: "window", t: "Reload page", k: key("reload"), icon: I.reloadSm, run: async () => { if (activePageId) await tabCommand({ kind: "reload", pageId: activePageId }); } },
-      { id: "reader", section: "window", t: "Reader view", d: "Read this page with fewer distractions", k: key("reader"), icon: I.result, run: () => setOverlay("reader") },
-      { id: "hard", section: "window", t: "Hard reload", k: key("hard-reload"), icon: I.reloadSm, run: async () => { if (activePageId) await bridge.hardReload(activePageId); } },
-      { id: "find", section: "window", t: "Find in page", k: key("find"), icon: I.findSm, run: async () => setOverlay("find") },
-      { id: "sb", section: "window", t: "Toggle sidebar", k: key("sidebar"), icon: I.sidebarSm, run: async () => runCommand("sidebar") },
-      { id: "hide-sb", section: "window", t: useStore.getState().sidebar === "hidden" ? "Show sidebar" : "Hide sidebar completely", icon: I.sidebarCloseSm, run: async () => useStore.getState().setSidebar(useStore.getState().sidebar === "hidden" ? "expanded" : "hidden") },
-      { id: "bm", section: "window", t: activePage && bookmarks.some((b) => b.url === activePage.url) ? "Remove bookmark" : "Bookmark this page", k: key("bookmark"), icon: I.bookmarkSm, run: async () => {
+      { id: "reload", section: "window", t: "Reload page", k: key("reload"), icon: shellIconReloadSm, run: async () => { if (activePageId) await tabCommand({ kind: "reload", pageId: activePageId }); } },
+      { id: "reader", section: "window", t: "Reader view", d: "Read this page with fewer distractions", k: key("reader"), icon: shellIconResult, run: () => setOverlay("reader") },
+      { id: "hard", section: "window", t: "Hard reload", k: key("hard-reload"), icon: shellIconReloadSm, run: async () => { if (activePageId) await bridge.hardReload(activePageId); } },
+      { id: "find", section: "window", t: "Find in page", k: key("find"), icon: shellIconFindSm, run: async () => setOverlay("find") },
+      { id: "sb", section: "window", t: "Toggle sidebar", k: key("sidebar"), icon: shellIconSidebarSm, run: async () => runCommand("sidebar") },
+      { id: "hide-sb", section: "window", t: useStore.getState().sidebar === "hidden" ? "Show sidebar" : "Hide sidebar completely", icon: shellIconSidebarCloseSm, run: async () => useStore.getState().setSidebar(useStore.getState().sidebar === "hidden" ? "expanded" : "hidden") },
+      { id: "bm", section: "window", t: activePage && bookmarks.some((b) => b.url === activePage.url) ? "Remove bookmark" : "Bookmark this page", k: key("bookmark"), icon: shellIconBookmarkSm, run: async () => {
         if (!activePage || !activePage.url.startsWith("http")) return;
         await useStore.getState().toggleBookmark(activePage.url, activePage.title);
       } },
-      { id: "rl", section: "window", t: activePage && bookmarks.some((b) => b.url === activePage.url && b.readingList) ? "Remove from reading list" : "Read later", d: "Save this page to your reading list", icon: I.clockSm, run: async () => {
+      { id: "rl", section: "window", t: activePage && bookmarks.some((b) => b.url === activePage.url && b.readingList) ? "Remove from reading list" : "Read later", d: "Save this page to your reading list", icon: shellIconClockSm, run: async () => {
         if (!activePage || !activePage.url.startsWith("http")) return;
         await useStore.getState().toggleReadingList(activePage.url, activePage.title);
       } },
-      ...((!inNativeHost || nativeAutofill) && activePage?.backend === "aux" && !bridge.privateMode ? [{ id: "autofill", section: "window" as const, t: "Fill personal info", d: "Fill this form with your saved contact and address details", icon: I.person, run: async () => {
+      ...((!inNativeHost || nativeAutofill) && activePage?.backend === "aux" && !bridge.privateMode ? [{ id: "autofill", section: "window" as const, t: "Fill personal info", d: "Fill this form with your saved contact and address details", icon: shellIconPerson, run: async () => {
         if (!activePage) return;
         const count = await bridge.autofill(activePage.pageId);
         if (!count) toast("No saved personal info was filled");
       } }] : []),
       ...(canTranslate && activePage?.backend === "aux" ? [
-        { id: "translate", section: "window" as const, t: "Translate this page", d: "Sends visible page text to your model provider", icon: I.globe, run: async () => {
+        { id: "translate", section: "window" as const, t: "Translate this page", d: "Sends visible page text to your model provider", icon: shellIconGlobe, run: async () => {
           if (!activePage || !activePage.url.startsWith("http")) return;
           useStore.getState().setTranslationPending(activePage.pageId);
           try { await bridge.translatePage(activePage.pageId); }
           finally { if (useStore.getState().translationPending === activePage.pageId) useStore.getState().setTranslationPending(null); }
         } },
-        ...(useStore.getState().translation?.pageId === activePage.pageId ? [{ id: "translate-original", section: "window" as const, t: "Show original page", d: "Restore the untranslated text", icon: I.reopen, run: async () => {
+        ...(useStore.getState().translation?.pageId === activePage.pageId ? [{ id: "translate-original", section: "window" as const, t: "Show original page", d: "Restore the untranslated text", icon: shellIconReopen, run: async () => {
           if (!activePage) return;
           await bridge.showOriginal(activePage.pageId);
         } }] : []),
       ] : []),
-      ...((canVault || nativePasswordFill) && activePage?.backend === "aux" && !bridge.privateMode ? [{ id: "vault-fill", section: "window" as const, t: "Fill sign-in…", d: "Choose a saved password for this HTTPS page", icon: I.lock, run: async () => {
+      ...((canVault || nativePasswordFill) && activePage?.backend === "aux" && !bridge.privateMode ? [{ id: "vault-fill", section: "window" as const, t: "Fill sign-in…", d: "Choose a saved password for this HTTPS page", icon: shellIconLock, run: async () => {
         if (!activePage) return;
         const filled = await bridge.vaultFill(activePage.pageId);
         if (!filled) toast("No saved password was filled");
       } }] : []),
-      { id: "pin", section: "window", t: "Pin this site to the space", icon: I.pin, run: async () => { if (activePage && activePage.url.startsWith("http")) useStore.getState().togglePin({ url: activePage.url, title: activePage.title || hostOf(activePage.url) }); } },
-      ...(canSplit && canSplitPage(activePage) ? [{ id: "split", section: "window" as const, t: "Split view with page…", d: "two pages side by side", icon: I.split, keep: true, run: async () => { setSplitPick(true); setQ(""); } }] : []),
-      ...(canSplit && splitPageId ? [{ id: "unsplit", section: "window" as const, t: "Close split view", icon: I.split, run: () => runCommand("split-separate") }] : []),
-      { id: "open", section: "window", t: "Open file…", k: key("open-file"), icon: I.folder, run: openLocalFile },
-      ...(activePage?.backend === "aux" ? [{ id: "pdf", section: "window" as const, t: "Save page as PDF…", k: key("save-pdf"), icon: I.downloadSm, run: async () => savePagePdf(activePageId) }] : []),
-      { id: "print", section: "window", t: "Print…", k: key("print"), icon: I.print, run: async () => printCurrentPage(activePageId) },
-      { id: "dev", section: "window", t: "Developer tools", k: key("devtools"), icon: I.code, run: async () => { if (activePageId) await bridge.devTools(activePageId); } },
-      { id: "settings", section: "window", t: "Settings", k: key("settings"), icon: I.gear, run: async () => setOverlay("settings") },
-      { id: "bookmarks", section: "window", t: "Bookmarks and history", icon: I.bookmark, run: async () => setOverlay("bookmarks") },
-      { id: "history", section: "window", t: "History", k: key("history"), icon: I.clockSm, run: async () => setOverlay("history") },
-      { id: "downloads", section: "window", t: "Downloads", k: key("downloads"), icon: I.downloadSm, run: async () => setOverlay("downloads") },
-      { id: "attach", section: "chrome", t: "Attach Chrome", d: "your signed-in Chrome, port 9222", icon: I.chromeSm, run: async () => { await call("chrome.attach", { port: 9222 }); toast("Chrome attached"); } },
-      ...(chromeConnected ? [{ id: "borrow", section: "chrome" as const, t: "Add a Chrome tab…", d: "borrow a tab from your Chrome", icon: I.chromeSm, keep: true, run: async () => { setChromeTabs((await call("chrome.tabs")) as ChromeTab[]); setQ(""); } }] : []),
-      { id: "detach", section: "chrome", t: "Detach Chrome", icon: I.unplug, run: async () => { await call("chrome.detach"); toast("Chrome detached"); } },
-      ...(activePage?.backend === "chrome" ? [{ id: "live", section: "chrome" as const, t: "Open live in Chrome", icon: I.external, run: async () => { await call("pages.openLive", { pageId: activePage.pageId }); } }] : []),
+      { id: "pin", section: "window", t: "Pin this site to the space", icon: shellIconPin, run: async () => { if (activePage && activePage.url.startsWith("http")) useStore.getState().togglePin({ url: activePage.url, title: activePage.title || hostOf(activePage.url) }); } },
+      ...(canSplit && canSplitPage(activePage) ? [{ id: "split", section: "window" as const, t: "Split view with page…", d: "two pages side by side", icon: shellIconSplit, keep: true, run: async () => { setSplitPick(true); setQ(""); } }] : []),
+      ...(canSplit && splitPageId ? [{ id: "unsplit", section: "window" as const, t: "Close split view", icon: shellIconSplit, run: () => runCommand("split-separate") }] : []),
+      { id: "open", section: "window", t: "Open file…", k: key("open-file"), icon: shellIconFolder, run: openLocalFile },
+      ...(activePage?.backend === "aux" ? [{ id: "pdf", section: "window" as const, t: "Save page as PDF…", k: key("save-pdf"), icon: shellIconDownloadSm, run: async () => savePagePdf(activePageId) }] : []),
+      { id: "print", section: "window", t: "Print…", k: key("print"), icon: shellIconPrint, run: async () => printCurrentPage(activePageId) },
+      { id: "dev", section: "window", t: "Developer tools", k: key("devtools"), icon: shellIconCode, run: async () => { if (activePageId) await bridge.devTools(activePageId); } },
+      { id: "settings", section: "window", t: "Settings", k: key("settings"), icon: shellIconGear, run: async () => setOverlay("settings") },
+      { id: "bookmarks", section: "window", t: "Bookmarks and history", icon: shellIconBookmark, run: async () => setOverlay("bookmarks") },
+      { id: "history", section: "window", t: "History", k: key("history"), icon: shellIconClockSm, run: async () => setOverlay("history") },
+      { id: "downloads", section: "window", t: "Downloads", k: key("downloads"), icon: shellIconDownloadSm, run: async () => setOverlay("downloads") },
+      { id: "attach", section: "chrome", t: "Attach Chrome", d: "your signed-in Chrome, port 9222", icon: shellIconChromeSm, run: async () => { await call("chrome.attach", { port: 9222 }); toast("Chrome attached"); } },
+      ...(chromeConnected ? [{ id: "borrow", section: "chrome" as const, t: "Add a Chrome tab…", d: "borrow a tab from your Chrome", icon: shellIconChromeSm, keep: true, run: async () => { setChromeTabs((await call("chrome.tabs")) as ChromeTab[]); setQ(""); } }] : []),
+      { id: "detach", section: "chrome", t: "Detach Chrome", icon: shellIconUnplug, run: async () => { await call("chrome.detach"); toast("Chrome detached"); } },
+      ...(activePage?.backend === "chrome" ? [{ id: "live", section: "chrome" as const, t: "Open live in Chrome", icon: shellIconExternal, run: async () => { await call("pages.openLive", { pageId: activePage.pageId }); } }] : []),
     ];
     for (const s of canSpaces ? layout.spaces : []) {
       if (s.id !== layout.activeSpaceId) w.push({ id: `space-${s.id}`, section: "spaces", t: `Switch to ${s.name}`, icon: <span className="space-dot" data-space={s.color} />, run: () => useStore.getState().switchSpace(s.id) });
     }
-    if (canSpaces) w.push({ id: "space-new", section: "spaces", t: "New space", icon: I.plusSm, run: () => useStore.getState().addSpace(`Space ${layout.spaces.length + 1}`) });
-    for (const s of canSubagents ? sets : []) w.push({ id: `set-${s.setId}`, section: "sets", t: s.name, d: `${s.memberIds.length} members`, icon: I.layersSm, run: async () => { await refreshResults(s.setId); setMode("table"); } });
+    if (canSpaces) w.push({ id: "space-new", section: "spaces", t: "New space", icon: shellIconPlusSm, run: () => useStore.getState().addSpace(`Space ${layout.spaces.length + 1}`) });
+    for (const s of canSubagents ? sets : []) w.push({ id: `set-${s.setId}`, section: "sets", t: s.name, d: `${s.memberIds.length} members`, icon: shellIconLayersSm, run: async () => { await refreshResults(s.setId); setMode("table"); } });
     for (const b of commandOnly ? [] : term ? bookmarks : bookmarks.slice(0, 30)) w.push({ id: `bm-${b.url}`, section: "bookmarks", t: b.title || b.url, d: hostOf(b.url), icon: <FavIcon url={b.url} size="sm" />, run: () => newTab(b.url) });
 
     const saved:Cmd[]=[];
@@ -303,17 +303,17 @@ export function Palette() {
       const taskIds=new Set(matches.tasks.map(task=>task.taskId));
       for(const chat of matches.chats){
         if(chat.taskId&&taskIds.has(chat.taskId))continue;
-        saved.push({id:`chat-${chat.chatId}`,section:"chats",t:chat.title,d:chat.latestRun.statusMessage||`${chat.turnCount} turns`,icon:I.chats,run:()=>{
+        saved.push({id:`chat-${chat.chatId}`,section:"chats",t:chat.title,d:chat.latestRun.statusMessage||`${chat.turnCount} turns`,icon:shellIconChats,run:()=>{
           useStore.setState(state=>({runs:state.runs.some(run=>run.runId===chat.latestRun.runId)?state.runs:[chat.latestRun,...state.runs]}));
           useStore.getState().openConversation(chat.latestRun.runId);
         }});
       }
-      for(const task of matches.tasks)saved.push({id:`task-${task.taskId}`,section:"tasks",t:task.title,d:task.objective,icon:I.layersSm,run:()=>openSavedTask(task.taskId)});
-      for(const skill of matches.skills)saved.push({id:`skill-${skill.routineId}`,section:"skills",t:skill.title,d:`${skill.paused?"Paused · ":""}${skill.objective}`,icon:I.layersSm,run:()=>openSavedSkill(skill)});
-      for (const result of matches.results) saved.push({id:`result-${result.artifactId}`,section:"results",t:result.filename,d:`${result.conversationTitle} · ${Math.max(1,Math.ceil(result.byteLength/1024))} KB`,icon:I.result,run:()=>{useStore.getState().openConversationDraft(result.chatId);useStore.setState({resultPreview:result.artifactId});}});
+      for(const task of matches.tasks)saved.push({id:`task-${task.taskId}`,section:"tasks",t:task.title,d:task.objective,icon:shellIconLayersSm,run:()=>openSavedTask(task.taskId)});
+      for(const skill of matches.skills)saved.push({id:`skill-${skill.routineId}`,section:"skills",t:skill.title,d:`${skill.paused?"Paused · ":""}${skill.objective}`,icon:shellIconLayersSm,run:()=>openSavedSkill(skill)});
+      for (const result of matches.results) saved.push({id:`result-${result.artifactId}`,section:"results",t:result.filename,d:`${result.conversationTitle} · ${Math.max(1,Math.ceil(result.byteLength/1024))} KB`,icon:shellIconResult,run:()=>{useStore.getState().openConversationDraft(result.chatId);useStore.setState({resultPreview:result.artifactId});}});
       const seen=new Set([...(filter==="pages"?[]:matchingTabs.map(page=>page.url)),...bookmarks.filter(page=>match(`${page.title} ${hostOf(page.url)}`)).map(page=>page.url)]);
-      for(const visit of matches.history){if(seen.has(visit.url)||!/^https?:\/\//i.test(visit.url))continue;seen.add(visit.url);saved.push({id:`history-${visit.url}`,section:"history",t:visit.title||hostOf(visit.url),d:hostOf(visit.url),icon:I.clockSm,run:()=>newTab(visit.url)});}
-      for(const note of matches.memory.filter(note=>[...layout.spaces,...(layout.archivedSpaces??[])].some(space=>space.workspaceId===note.workspaceId)))saved.push({id:`memory-${note.workspaceId}`,section:"memory",t:note.name,d:`${note.enabled?"":"Paused · "}${note.excerpt||"Space notes"}`,icon:I.result,run:()=>{useStore.setState({settingsCategory:"Memory",memoryWorkspaceId:note.workspaceId});setOverlay("settings");}});
+      for(const visit of matches.history){if(seen.has(visit.url)||!/^https?:\/\//i.test(visit.url))continue;seen.add(visit.url);saved.push({id:`history-${visit.url}`,section:"history",t:visit.title||hostOf(visit.url),d:hostOf(visit.url),icon:shellIconClockSm,run:()=>newTab(visit.url)});}
+      for(const note of matches.memory.filter(note=>[...layout.spaces,...(layout.archivedSpaces??[])].some(space=>space.workspaceId===note.workspaceId)))saved.push({id:`memory-${note.workspaceId}`,section:"memory",t:note.name,d:`${note.enabled?"":"Paused · "}${note.excerpt||"Space notes"}`,icon:shellIconResult,run:()=>{useStore.setState({settingsCategory:"Memory",memoryWorkspaceId:note.workspaceId});setOverlay("settings");}});
     }
     if (!bridge.privateMode && !commandOnly && !tabOnly && term.length >= 2 && filter !== "pages" && filter !== "tabs") {
       const entries = conversationDraftEntries(drafts, runs, prepared);
@@ -322,7 +322,7 @@ export function Palette() {
         if (existing) { existing.d = `Draft · ${draft.text || `${draft.count} saved attachments`}`; continue; }
         saved.push({id:`draft-${draft.key}`,section:"chats",t:draft.title,
           d:`Unsent draft${draft.count ? ` · ${draft.count} saved ${draft.count === 1 ? "attachment" : "attachments"}` : ""}`,
-          icon:I.pencil,run:()=>useStore.getState().openConversationDraft(draft.id)});
+          icon:shellIconPencil,run:()=>useStore.getState().openConversationDraft(draft.id)});
       }
     }
     const ORDER: Cmd["section"][] = ["go", "tabs", "agent", "window", "spaces", "sets", "chrome", "bookmarks"];
@@ -360,7 +360,7 @@ export function Palette() {
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }}>
         <div className="palette-field">
-          {chromeTabs || splitPick || q.trim().startsWith("@") ? <button className="icon-btn sm" aria-label="Back" onClick={back}>{I.left}</button> : <span className="palette-ico">{I.searchLg}</span>}
+          {chromeTabs || splitPick || q.trim().startsWith("@") ? <button className="icon-btn sm" aria-label="Back" onClick={back}>{shellIconLeft}</button> : <span className="palette-ico">{shellIconSearchLg}</span>}
           <input
             autoFocus
             value={q}
@@ -391,7 +391,7 @@ export function Palette() {
               <div key={c.id}>
                 {first && SECTION[c.section] && <div className="pal-section">{SECTION[c.section]}</div>}
                 <SearchResultRow id={`pal-${c.id}`} selected={i === sel} className={`pal-item ${c.section}`}
-                  title={c.t} detail={c.d} icon={c.icon ?? I.command} query={q}
+                  title={c.t} detail={c.d} icon={c.icon ?? shellIconCommand} query={q}
                   onHover={() => sel !== i && setSel(i)} onSelect={() => exec(c)}
                   trailing={c.k ? <kbd>{c.k}</kbd> : i === sel ? <kbd aria-hidden="true">↵</kbd> : null} />
               </div>

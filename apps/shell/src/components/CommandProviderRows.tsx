@@ -15,7 +15,13 @@ import { hostOf } from "../workspace";
 import { openSavedSkill } from "../task-navigation";
 import type { Intent } from "../intent";
 import { FavIcon } from "./SiteTile";
-import { I } from "./icons";
+import {
+  shellIconChats,
+  shellIconExtension,
+  shellIconLayersSm,
+  shellIconResult,
+  shellIconSearch,
+} from "./icons";
 import type { ProviderSuggestion } from "./command-provider-types";
 import { commandTabRows } from "./command-tab-rows";
 import { bridge, type BrowserExtension } from "../bridge";
@@ -75,7 +81,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
     out.push({
       id: `sug-${phrase}`,
       section: "suggest",
-      icon: I.search,
+      icon: shellIconSearch,
       title: phrase,
       url: toUrl(phrase, searchEngine),
       detail: "Web suggestion",
@@ -132,7 +138,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
     out.push({
       id: `extension-${item.key}`,
       section: "extensions",
-      icon: I.extension,
+      icon: shellIconExtension,
       title: item.name,
       detail: `${item.enabled && item.loaded ? "Open extension" : "Manage extension"} · ${item.version}`,
       hint: "Open",
@@ -147,7 +153,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
     out.push({
       id: `prog-${item.programId}`,
       section: "programs",
-      icon: I.result,
+      icon: shellIconResult,
       title: item.name,
       detail: `Saved program · used ${item.useCount}×`,
       hint: "Run",
@@ -165,7 +171,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
     out.push({
       id: `run-${item.runId}`,
       section: "runs",
-      icon: I.chats,
+      icon: shellIconChats,
       title: item.goal,
       detail: isLive(item) ? "Open active conversation" : "Continue conversation",
       hint: "Open",
@@ -176,7 +182,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
     out.push({
       id: `result-${item.artifactId}`,
       section: "results",
-      icon: I.result,
+      icon: shellIconResult,
       title: item.filename,
       detail: item.conversationTitle,
       hint: "Open",
@@ -189,7 +195,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
     out.push({
       id: `skill-${item.routineId}`,
       section: "skills",
-      icon: I.layersSm,
+      icon: shellIconLayersSm,
       title: item.title,
       detail: item.objective,
       hint: "Open",
@@ -201,7 +207,7 @@ export function buildCommandProviderRows(input: CommandProviderInput) {
     out.push({
       id: `chat-${item.chatId}`,
       section: "chats",
-      icon: I.chats,
+      icon: shellIconChats,
       title: item.title,
       detail: "Conversation",
       hint: "Open",

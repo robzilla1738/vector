@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { bridge } from "../bridge";
 import { useStore } from "../store";
-import { I } from "./icons";
+import { shellIconGlobe } from "./icons";
 import { Button } from "../ui";
 
 /** Chrome-style bar shown while a page is translated in place. */
@@ -13,7 +13,7 @@ export function TranslationBar({ pageId }: { pageId: string }) {
   if (pending && !translation) {
     return (
       <output className="translation-bar">
-        <span className="translation-bar-icon">{I.globe}</span>
+        <span className="translation-bar-icon">{shellIconGlobe}</span>
         <span className="translation-bar-copy">Translating page…<small>Page text was sent to your configured model provider.</small></span>
       </output>
     );
@@ -27,7 +27,7 @@ export function TranslationBar({ pageId }: { pageId: string }) {
   };
   return (
     <output className="translation-bar">
-      <span className="translation-bar-icon">{I.globe}</span>
+      <span className="translation-bar-icon">{shellIconGlobe}</span>
       <span className="translation-bar-copy">
         Page translated from <b>{translation.lang}</b>{translation.truncated ? " (part of the page)" : ""}
         <small>Page text was sent to your configured model provider.</small>

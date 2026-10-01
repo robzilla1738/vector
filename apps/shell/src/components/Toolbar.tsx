@@ -5,7 +5,7 @@ import { NavigationButtons } from "./NavigationButtons";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
 import { CommandBar } from "./CommandBar";
-import { I } from "./icons";
+import { shellIconAgent, shellIconAgentSm, shellIconBookmark, shellIconBookmarkFill, shellIconGear, shellIconGrid, shellIconHandSm, shellIconSidebarOpen } from "./icons";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
 export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: boolean }) {
@@ -36,7 +36,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
     <header inert={hidden} aria-hidden={hidden} className={`toolbar ${inNativeHost && !horizontal && sidebar !== "expanded" ? "traffic" : ""}`}
       style={themeColor ? { "--page-toolbar-glass": `color-mix(in srgb, ${themeColor} 14%, var(--toolbar-glass))` } as CSSProperties : undefined}>
       <div className="tb-left">
-        {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} data-command-id="sidebar" onClick={()=>runCommand("sidebar")}>{I.sidebarOpen}</button>}
+        {!horizontal && <button className="icon-btn" title={withShortcut(sidebar === "expanded" ? "Hide sidebar" : "Show sidebar", key("sidebar"))} aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} data-command-id="sidebar" onClick={()=>runCommand("sidebar")}>{shellIconSidebarOpen}</button>}
         <div className="nav-btns">
           <NavigationButtons page={page} settingsRoute={settingsRoute} />
         </div>
@@ -47,28 +47,28 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
 
       <div className="tb-right">
         <FeatureSlots slot="toolbarItems" />
-        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{I.bookmark}</button>}
-        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{I.gear}</button>}
+        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{shellIconBookmark}</button>}
+        {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{shellIconGear}</button>}
         {page?.controller === "human" && (
           <button className="ctl-chip human" title="The agent is waiting while you use this page — hand it back when you're done" onClick={() => void returnControl(page.pageId)}>
-            {I.handSm}
+            {shellIconHandSm}
             <span className="ctl-chip-label">You're in control</span>
             <span className="ctl-return">Return</span>
           </button>
         )}
         {page && (page.controller === "agent" || page.controller === "external") && (
           <button type="button" className="ctl-chip agent" title="Take control of this page" aria-label="Take control of this page" onClick={() => void takeControl(page.pageId)}>
-            {I.agentSm}
+            {shellIconAgentSm}
             <span className="ctl-chip-label">Agent</span>
             <span className="ctl-take">Take over</span>
           </button>
         )}
-        <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title={withShortcut("Tab overview", key("overview"))} aria-label="Tab overview" aria-pressed={mode === "overview"} data-command-id="overview" onClick={() => runCommand("overview")}>{I.grid}</button>
+        <button className={`icon-btn ${mode === "overview" ? "on" : ""}`} title={withShortcut("Tab overview", key("overview"))} aria-label="Tab overview" aria-pressed={mode === "overview"} data-command-id="overview" onClick={() => runCommand("overview")}>{shellIconGrid}</button>
         {!bridge.privateMode && <button className={`icon-btn ${bookmarked ? "on" : ""}`} title={withShortcut(bookmarked ? "Remove bookmark" : "Bookmark this page", key("bookmark"))} aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"} aria-pressed={bookmarked} disabled={!web || bookmarkPending} data-command-id="bookmark" onClick={() => runCommand("bookmark")}>
-          {bookmarked ? I.bookmarkFill : I.bookmark}
+          {bookmarked ? shellIconBookmarkFill : shellIconBookmark}
         </button>}
         {!bridge.privateMode && <button className={`icon-btn ${railOpen ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpen} data-command-id="agent-rail" onClick={() => runCommand("agent-rail")}>
-          {I.agent}
+          {shellIconAgent}
         </button>}
       </div>
     </header>

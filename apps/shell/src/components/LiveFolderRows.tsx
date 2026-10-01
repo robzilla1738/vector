@@ -3,7 +3,7 @@ import type { LiveFolderItem } from "@aux/contracts";
 import { call } from "../store";
 import { executeCommand } from "../commands";
 import { FavIcon } from "./SiteTile";
-import { I } from "./icons";
+import { shellIconReload } from "./icons";
 
 export function LiveFolderRows({ folderId }: { folderId: string }) {
   return <Rows key={folderId} folderId={folderId} />;
@@ -36,7 +36,7 @@ function Rows({ folderId }: { folderId: string }) {
     finally { if (scope.live) setBusy(false); }
   };
   return <div className="live-folder-rows" aria-busy={busy}>
-    <div className="live-folder-tools"><button className="btn ghost sm" data-command-id="refresh-live-folder" disabled={busy} aria-label="Refresh live folder" onClick={() => void refresh()}>{I.reload} Refresh</button></div>
+    <div className="live-folder-tools"><button className="btn ghost sm" data-command-id="refresh-live-folder" disabled={busy} aria-label="Refresh live folder" onClick={() => void refresh()}>{shellIconReload} Refresh</button></div>
     {error && <output className="live-folder-error">{error}</output>}
     {!error && !items.length && <p className="hint live-folder-empty">No items yet. Refresh this folder to check its source.</p>}
     {items.map(item => <button key={item.id} className="tab-row live-folder-item" data-command-id="open-live-folder-item" aria-label={`${item.title}${item.unread ? ", unread" : ""}`} onClick={() => {

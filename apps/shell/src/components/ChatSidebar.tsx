@@ -6,7 +6,7 @@ import { bridge } from "../bridge";
 import { ChatSessions } from "./ChatSessions";
 import { useStore } from "../store";
 import { ResizeHandle } from "./ResizeHandle";
-import { I } from "./icons";
+import { shellIconFolder, shellIconGear, shellIconPencil } from "./icons";
 
 /** The horizontal layout keeps tabs in the title bar and uses this panel for work. */
 export function ChatSidebar({ minimal = false }: { minimal?: boolean }) {
@@ -25,9 +25,9 @@ export function ChatSidebar({ minimal = false }: { minimal?: boolean }) {
     <div className="chat-sidebar-content">
     <FeatureSlots slot="sidebarItems" />
     <nav aria-label="Work">
-      {!bridge.privateMode && <button className={`chat-sidebar-link primary${mode === "conversation" && !conversationId ? " current" : ""}`} aria-current={mode === "conversation" && !conversationId ? "page" : undefined} onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button>}
-      <button className="chat-sidebar-link" onClick={() => setOverlay("tasks")}>{I.folder}<span>Tasks</span></button>
-      <button className="chat-sidebar-link" onClick={() => setOverlay("settings")}>{I.gear}<span>Settings</span></button>
+      {!bridge.privateMode && <button className={`chat-sidebar-link primary${mode === "conversation" && !conversationId ? " current" : ""}`} aria-current={mode === "conversation" && !conversationId ? "page" : undefined} onClick={() => useStore.getState().openConversation(null)}>{shellIconPencil}<span>New chat</span></button>}
+      <button className="chat-sidebar-link" onClick={() => setOverlay("tasks")}>{shellIconFolder}<span>Tasks</span></button>
+      <button className="chat-sidebar-link" onClick={() => setOverlay("settings")}>{shellIconGear}<span>Settings</span></button>
     </nav>
     {!bridge.privateMode && <section className="chat-sidebar-history" aria-label="Chats">
       <ChatSessions />

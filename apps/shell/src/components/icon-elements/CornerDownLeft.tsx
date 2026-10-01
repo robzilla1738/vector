@@ -1,0 +1,4 @@
+import type { Props } from "./svg-props";
+import { baseSvgProps, roundJoinedStrokeProps } from "./svg-props";
+
+export const CornerDownLeft = (props: Props) => (<svg {...baseSvgProps} {...props}><path d="M18.25 3.75C19.3546 3.75 20.25 4.64543 20.25 5.75V10.75V18.25C20.25 19.3546 19.3546 20.25 18.25 20.25H10.75H5.75C4.64543 20.25 3.75 19.3546 3.75 18.25L3.75 11.75C3.75 10.6454 4.64543 9.75 5.75 9.75H7.75C8.85457 9.75 9.75 8.85457 9.75 7.75V5.75C9.75 4.64543 10.6454 3.75 11.75 3.75L18.25 3.75Z" {...roundJoinedStrokeProps}/><path d="M15 10V13C15 14.1046 14.1046 15 13 15H10.25" {...roundJoinedStrokeProps}/><path d="M10.2167 12.7885L7.5993 14.588C7.31032 14.7867 7.31032 15.2133 7.5993 15.412L10.2167 17.2115C10.5485 17.4396 11 17.2021 11 16.7995V15V13.2005C11 12.7979 10.5485 12.5604 10.2167 12.7885Z" fill="currentColor"/></svg>);

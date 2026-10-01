@@ -14,7 +14,7 @@ import { applyTidyProposal, tidyUndoRecord } from "../tidy-layout";
 import { commitTidyLayout } from "../tidy-commit";
 import { archivePages, restoreArchivedTab } from "../archive-actions";
 import { FavIcon } from "./SiteTile";
-import { I } from "./icons";
+import { shellIconClose, shellIconGrid, shellIconPlusSm, shellIconSearch } from "./icons";
 import { useShortcutLabels } from "../use-shortcut-label";
 import { useFeature } from "../use-feature";
 import "./Overview.css";
@@ -204,11 +204,11 @@ export function Overview() {
     <div className="ov-head">
       <div><h2>Your tabs</h2><p className="hint">{visible.length} {visible.length === 1 ? "tab" : "tabs"}{selection.length ? ` · ${selection.length} selected` : " · Everything in its place"}</p></div>
       <span className="sp" />
-      <button className="btn sm" disabled={busy} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{I.plusSm} New tab</button>
+      <button className="btn sm" disabled={busy} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{shellIconPlusSm} New tab</button>
       <button className="btn sm ghost" disabled={busy} onClick={() => useStore.getState().setMode("focus")}>Done</button>
     </div>
     <div className="ov-tools">
-      <label className="ov-search">{I.search}<input ref={searchInput} disabled={busy} autoFocus aria-label="Search tabs" placeholder="Search tabs, folders, or Spaces…" onKeyDown={event => { if (event.nativeEvent.isComposing) return; if (event.key === "ArrowDown") { event.preventDefault(); focusTab(visible[0]?.pageId); } if (event.key === "Enter" && visible[0] && !busy) { event.preventDefault(); void useStore.getState().activate(visible[0].pageId).catch(errToast); } }} value={query} onChange={event => setQuery(event.target.value)} /></label>
+      <label className="ov-search">{shellIconSearch}<input ref={searchInput} disabled={busy} autoFocus aria-label="Search tabs" placeholder="Search tabs, folders, or Spaces…" onKeyDown={event => { if (event.nativeEvent.isComposing) return; if (event.key === "ArrowDown") { event.preventDefault(); focusTab(visible[0]?.pageId); } if (event.key === "Enter" && visible[0] && !busy) { event.preventDefault(); void useStore.getState().activate(visible[0].pageId).catch(errToast); } }} value={query} onChange={event => setQuery(event.target.value)} /></label>
       <select disabled={busy} aria-label="Filter tabs by space" value={spaceId} onChange={event => setSpaceId(event.target.value)}>
         <option value="">All spaces</option>{[...layout.spaces, ...(layout.archivedSpaces ?? [])].map(space => <option key={space.id} value={space.id}>{space.name}{layout.archivedSpaces?.some(item => item.id === space.id) ? " · Archived" : ""}</option>)}
       </select>
@@ -332,7 +332,7 @@ export function Overview() {
         } finally { setClosing(false); }
       })}>Close tabs</button>
       {closing && <button className="btn sm ghost" onClick={() => { stopClosing.current=true; setProgress("Stopping after the current tab…"); }}>Stop</button>}
-      <span className="sp" /><button className="icon-btn" disabled={busy} aria-label="Clear tab selection" onClick={() => {duplicateSelection.current=false;setSelected(new Set());setSavingFolder(false);}}>{I.close}</button>
+      <span className="sp" /><button className="icon-btn" disabled={busy} aria-label="Clear tab selection" onClick={() => {duplicateSelection.current=false;setSelected(new Set());setSavingFolder(false);}}>{shellIconClose}</button>
     </section>}
     {savingFolder && selection.length > 0 && <form className="ov-save-folder" onSubmit={event => {
       event.preventDefault(); void act(async () => {
@@ -356,7 +356,7 @@ export function Overview() {
     </form>}
     {progress && <output className="hint ov-progress" data-block>{progress}</output>}
     {error && <p role="alert" className="field-error">{error}</p>}
-    {!visible.length && <div className="empty-state ov-empty"><span className="empty-ico">{query ? I.search : I.grid}</span><h2>{query ? "No matching tabs" : "Room for something new"}</h2><p>{query ? "Try another title or address, or look in all spaces." : "Open a page to start browsing in this space."}</p></div>}
+    {!visible.length && <div className="empty-state ov-empty"><span className="empty-ico">{query ? shellIconSearch : shellIconGrid}</span><h2>{query ? "No matching tabs" : "Room for something new"}</h2><p>{query ? "Try another title or address, or look in all spaces." : "Open a page to start browsing in this space."}</p></div>}
     <div role="group" className="ov-grid" aria-label="Open tabs" aria-description="Arrow keys move between tabs. Space selects a tab. Enter opens it.">
       {visible.map(page => {
         const shot = shots[page.pageId] || pagePreview(page.pageId);
@@ -368,7 +368,7 @@ export function Overview() {
             <TabCardCaption page={page} space={!spaceId ? owner?.name : undefined} pinned={!!owner && isPinned(layout, owner.id, page.url)} />
           </button>
           <input className="ov-check" type="checkbox" disabled={busy} tabIndex={focusedId === page.pageId ? 0 : -1} checked={selected.has(page.pageId)} aria-label={`Select ${title}`} onChange={() => select(page.pageId, false)} />
-          <button className="ov-close icon-btn sm" disabled={busy} tabIndex={focusedId === page.pageId ? 0 : -1} aria-label={`Close ${title}`} onClick={() => void useStore.getState().closeTab(page.pageId)}>{I.close}</button>
+          <button className="ov-close icon-btn sm" disabled={busy} tabIndex={focusedId === page.pageId ? 0 : -1} aria-label={`Close ${title}`} onClick={() => void useStore.getState().closeTab(page.pageId)}>{shellIconClose}</button>
         </article>;
       })}
     </div>

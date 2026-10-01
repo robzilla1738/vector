@@ -5,7 +5,7 @@ import { useStore } from "../store";
 import { ResizeHandle } from "./ResizeHandle";
 import { Conversation } from "./surfaces";
 import { deferSurface } from "./DeferredSurface";
-import { I } from "./icons";
+import { shellIconChats, shellIconLeft, shellIconOpen, shellIconPlus, shellIconRail } from "./icons";
 import { RunPresence } from "../agent/RunPresence";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
@@ -54,10 +54,10 @@ export const AgentRail = memo(function AgentRail() {
           {!connected && <output className="rail-sub offline">Connecting…</output>}
           {selectedRun && <RunPresence run={selectedRun} pages={selectedPages} compact />}
           <span className="sp" />
-          <button className="icon-btn" title={recentOpen ? "Return to conversation" : "Recent conversations"} aria-label={recentOpen ? "Return to conversation" : "Recent conversations"} aria-pressed={recentOpen} onClick={() => setRecentOpen(value => !value)}>{recentOpen ? I.left : I.chats}</button>
-          {!recentOpen && view.kind !== "set" && <button className="icon-btn" title="Open full conversation" aria-label="Open full conversation" onClick={expand}>{I.open}</button>}
-          <button className="icon-btn" title="New conversation" aria-label="New conversation" onClick={() => { setRecentOpen(false); setRailView({kind:"home"}); }}>{I.plus}</button>
-          <button className="icon-btn" title={withShortcut("Hide", key("agent-rail"))} aria-label="Hide assistant" onClick={toggleRail}>{I.rail}</button>
+          <button className="icon-btn" title={recentOpen ? "Return to conversation" : "Recent conversations"} aria-label={recentOpen ? "Return to conversation" : "Recent conversations"} aria-pressed={recentOpen} onClick={() => setRecentOpen(value => !value)}>{recentOpen ? shellIconLeft : shellIconChats}</button>
+          {!recentOpen && view.kind !== "set" && <button className="icon-btn" title="Open full conversation" aria-label="Open full conversation" onClick={expand}>{shellIconOpen}</button>}
+          <button className="icon-btn" title="New conversation" aria-label="New conversation" onClick={() => { setRecentOpen(false); setRailView({kind:"home"}); }}>{shellIconPlus}</button>
+          <button className="icon-btn" title={withShortcut("Hide", key("agent-rail"))} aria-label="Hide assistant" onClick={toggleRail}>{shellIconRail}</button>
         </div>
         <div className={`rail-body${recentOpen ? " rail-recents" : ""}`}>
           {railOpen && recentOpen && <RailHistory />}

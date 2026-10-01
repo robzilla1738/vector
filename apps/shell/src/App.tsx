@@ -26,7 +26,7 @@ import { spaceThemeStyle } from "./workspace";
 import { createTabSwitcher } from "./tab-switcher";
 import { Toolbar } from "./components/Toolbar";
 import { Stage } from "./components/Stage";
-import { I } from "./components/icons";
+import { shellIconAlert, shellIconSidebarOpen } from "./components/icons";
 import { Toasts } from "./components/Toasts";
 import { applyUiFontSize } from "./ui-font-size";
 import { installMemorySaver } from "./memory-saver";
@@ -469,11 +469,11 @@ export function App() {
     >
       {!connected && !bridge.privateMode && (
         <output className="degraded" data-block aria-live="polite">
-          {I.alert}
+          {shellIconAlert}
           <span>Runtime reconnecting — tabs keep working</span>
         </output>
       )}
-      {horizontal && <div className="horizontal-chrome" inert={minimal && !toolbarReveal.revealed} aria-hidden={minimal && !toolbarReveal.revealed}><button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{I.sidebarOpen}</button><HorizontalTabs /><Toolbar /></div>}
+      {horizontal && <div className="horizontal-chrome" inert={minimal && !toolbarReveal.revealed} aria-hidden={minimal && !toolbarReveal.revealed}><button className="chat-sidebar-toggle icon-btn" aria-label={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} aria-expanded={sidebar === "expanded"} title={sidebar === "expanded" ? "Hide sidebar" : "Show sidebar"} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{shellIconSidebarOpen}</button><HorizontalTabs /><Toolbar /></div>}
       <div className="app-body">
         {horizontal ? <ChatSidebar minimal={minimal} /> : <Sidebar minimal={minimal} />}
         <div className={`main-col${nativeShowing ? " has-page" : ""}${mode === "conversation" ? " conversation-open" : ""}${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}>

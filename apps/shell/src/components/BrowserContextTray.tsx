@@ -9,7 +9,7 @@ import { BrowserContextPicker } from "./BrowserContextPicker";
 import { Popover } from "../ui/popover";
 import "./ContextPicker.css";
 import { Checkbox } from "../ui";
-import { I } from "./icons";
+import { shellIconClose, shellIconGlobe, shellIconReload } from "./icons";
 
 const availableSource = (page: PageTarget, primaryPageId?: string) => !page.ownedByRuntime && !page.loading
   && !["crashed", "detached"].includes(page.viewStatus ?? "") && page.url.length <= 8192
@@ -34,10 +34,10 @@ const SourceChip = memo(function SourceChip({ source, primaryPageId, disabled, b
   const status = useStore(state => sourceStatus(source, state.pages));
   const label = status === "missing" ? hostOf(source.url) : page?.title || hostOf(source.url);
   return <span className={status === "current" ? "" : "stale"}>
-    {I.globe}<span title={source.url}>{source.pageId === primaryPageId ? `Captured source · ${label}` : label}</span>
+    {shellIconGlobe}<span title={source.url}>{source.pageId === primaryPageId ? `Captured source · ${label}` : label}</span>
     {status !== "current" && <small>{status === "changed" ? "Changed" : "Closed"}</small>}
-    {status === "changed" && <button type="button" disabled={disabled || busy || !!page?.loading} aria-label={`Use current ${label}`} title="Use this tab's current page" onClick={() => onRefresh(source.pageId)}>{I.reload}</button>}
-    <button type="button" disabled={disabled || busy} aria-label={`Remove ${label}`} onClick={() => onRemove(source.pageId)}>{I.close}</button>
+    {status === "changed" && <button type="button" disabled={disabled || busy || !!page?.loading} aria-label={`Use current ${label}`} title="Use this tab's current page" onClick={() => onRefresh(source.pageId)}>{shellIconReload}</button>}
+    <button type="button" disabled={disabled || busy} aria-label={`Remove ${label}`} onClick={() => onRemove(source.pageId)}>{shellIconClose}</button>
   </span>;
 });
 

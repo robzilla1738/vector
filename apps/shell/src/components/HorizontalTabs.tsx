@@ -15,7 +15,7 @@ import { FavIcon } from "./SiteTile";
 import { TabAudioButton } from "./TabAudioButton";
 import { useTabSelection } from "../use-tab-selection";
 import { TabMenu } from "./TabMenu";
-import { I } from "./icons";
+import { shellIconAlert, shellIconClose, shellIconDown, shellIconExternal, shellIconPause, shellIconPerson, shellIconPlus } from "./icons";
 import { TAB_DRAG_TYPE } from "../bookmark-drop";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 import { useTabMembership } from "../use-tab-membership";
@@ -50,12 +50,12 @@ const HorizontalTabControls = memo(function HorizontalTabControls({ pageId, acti
         }
         if (event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) { event.preventDefault(); event.stopPropagation(); onMove(pageId, event.key === "ArrowLeft" ? -1 : 1); }
       }}>
-      {page.viewStatus === "crashed" ? I.alert : page.loading ? <output className="spin" aria-label="Loading" /> : page.lifecycle === "discarded" || page.lifecycle === "frozen" || page.lifecycle === "placeholder" ? <span className="horizontal-sleep-icon" role="img" aria-label="Sleeping tab" title="Sleeping until opened">{I.pause}</span> : isHomeAddress(page.url) ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}
+      {page.viewStatus === "crashed" ? shellIconAlert : page.loading ? <output className="spin" aria-label="Loading" /> : page.lifecycle === "discarded" || page.lifecycle === "frozen" || page.lifecycle === "placeholder" ? <span className="horizontal-sleep-icon" role="img" aria-label="Sleeping tab" title="Sleeping until opened">{shellIconPause}</span> : isHomeAddress(page.url) ? <span className="horizontal-empty-icon"><AuxMark /></span> : <FavIcon url={page.url} src={page.favicon} size="sm" />}
       <span className="horizontal-tab-title">{title}</span>
-      {windowHint && <span role="img" aria-label={windowHint} title={windowHint}>{I.external}</span>}
+      {windowHint && <span role="img" aria-label={windowHint} title={windowHint}>{shellIconExternal}</span>}
     </button>
     <TabAudioButton pageId={pageId} title={title} />
-    <button className="horizontal-tab-close" aria-label={`Close ${title}`} onClick={() => onClose(pageId, false)}>{I.close}</button>
+    <button className="horizontal-tab-close" aria-label={`Close ${title}`} onClick={() => onClose(pageId, false)}>{shellIconClose}</button>
   </>;
 });
 
@@ -161,12 +161,12 @@ export function HorizontalTabs() {
       </div>}</Fragment>; })}
     </div>
       <div className="horizontal-tab-tools">
-        <button className="icon-btn" aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{I.plus}</button>
+        <button className="icon-btn" aria-label="New tab" title={withShortcut("New tab", key("new-tab"))} data-command-id="new-tab" onClick={() => runCommand("new-tab")}>{shellIconPlus}</button>
       </div>
       <div className="horizontal-tabs-spacer" />
       <div className="horizontal-space" data-space={space?.color} style={spaceThemeStyle(space)}>
         <button ref={spaceTrigger} className="horizontal-profile" aria-label={`Switch space, current: ${space?.name ?? "Personal"}`} aria-haspopup="menu" aria-expanded={spaceMenuOpen} title="Switch space" onClick={() => setSpaceMenuOpen(open => !open)}>
-          {I.person}<span className="horizontal-space-name">{space?.name ?? "Personal"}</span>{I.down}
+          {shellIconPerson}<span className="horizontal-space-name">{space?.name ?? "Personal"}</span>{shellIconDown}
         </button>
         {spaceMenuOpen && <SpaceMenu
           anchor={spaceTrigger}

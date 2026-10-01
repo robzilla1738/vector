@@ -32,7 +32,7 @@ import { useStore, call, errToast } from "../store";
 import { hostOf, tabLabel } from "../workspace";
 
 import { FavIcon } from "./SiteTile";
-import { I } from "./icons";
+import { shellIconAgent, shellIconAgentSm, shellIconAlert, shellIconCommand, shellIconGlobe, shellIconLock, shellIconOpen, shellIconSearch, shellIconSearchLg, shellIconSend } from "./icons";
 import { bridge, type BrowserExtension } from "../bridge";
 import { recentConversations } from "../conversations";
 import { rememberSiteControlsOpener } from "../site-controls-opener";
@@ -568,12 +568,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         url: intent.kind === "navigate" || intent.kind === "search" ? intent.url : undefined,
         icon:
           intent.kind === "run"
-            ? I.agentSm
+            ? shellIconAgentSm
             : intent.kind === "navigate"
-              ? I.open
+              ? shellIconOpen
               : intent.kind === "command"
-                ? I.command
-                : I.search,
+                ? shellIconCommand
+                : shellIconSearch,
         title:
           intent.kind === "navigate"
             ? intent.display
@@ -601,7 +601,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
       out.push({
         id: "ask",
         section: "intent",
-        icon: I.agentSm,
+        icon: shellIconAgentSm,
         title: `Ask Aux: ${raw}`,
         detail: hasPage ? `Use the current page · ${hostOf(page?.url ?? "")}` : "Start a conversation",
         hint: "Ask",
@@ -617,7 +617,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
         section: match.type === "bookmark" ? "bookmarks" : match.type === "history" ? "history" : "browser",
         providerType: match.type,
         url: match.url,
-        icon: match.type === "search" ? I.search : <FavIcon url={match.url} size="sm" />,
+        icon: match.type === "search" ? shellIconSearch : <FavIcon url={match.url} size="sm" />,
         title: match.title,
         detail: match.description || hostOf(match.url),
         run: () => exec({ kind: "navigate", url: match.url, display: match.title }),
@@ -866,15 +866,15 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
                 setOverlay("site");
               }}
             >
-              {I.globe}
+              {shellIconGlobe}
             </button>
           ) : (
-            <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.search}</span>
+            <span className="cb-ico">{showIntent && intent.kind === "run" ? shellIconAgent : shellIconSearch}</span>
           )
         ) : page && hasPage && !hero ? (
-          <span className="cb-ico">{I.globe}</span>
+          <span className="cb-ico">{shellIconGlobe}</span>
         ) : (
-          <span className="cb-ico">{showIntent && intent.kind === "run" ? I.agent : I.searchLg}</span>
+          <span className="cb-ico">{showIntent && intent.kind === "run" ? shellIconAgent : shellIconSearchLg}</span>
         )}
         {hasPage && !editing && !hero && !compact && (
           <button
@@ -888,7 +888,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
               setOverlay("site");
             }}
           >
-            {secure ? I.lock : I.alert}
+            {secure ? shellIconLock : shellIconAlert}
           </button>
         )}
       </span>
@@ -987,12 +987,12 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
           onClick={() => intent.kind === "run" && setScopeFlip((v) => !v)}
         >
           {intent.kind === "run"
-            ? I.agentSm
+            ? shellIconAgentSm
             : intent.kind === "navigate"
-              ? I.open
+              ? shellIconOpen
               : intent.kind === "search"
-                ? I.search
-                : I.command}
+                ? shellIconSearch
+                : shellIconCommand}
           {intentLabel(intent)}
           {intent.kind === "run" && <kbd>⇥</kbd>}
         </button>
@@ -1030,7 +1030,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
             );
           }}
         >
-          {I.send}
+          {shellIconSend}
         </button>
       )}
       {(typedSomething || browserError) && (
@@ -1113,7 +1113,7 @@ export function CommandBar({ compact = false, hero = false }: { compact?: boolea
                     trailing={
                       s.hint === "↵" ? (
                         <span className="cb-go" aria-hidden="true">
-                          {I.send}
+                          {shellIconSend}
                         </span>
                       ) : s.hint ? (
                         <kbd>{s.hint}</kbd>

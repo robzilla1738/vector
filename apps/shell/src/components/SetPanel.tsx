@@ -3,7 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 import type { SetMember } from "@aux/contracts";
 import { useStore, errToast } from "../store";
 import { hostOf } from "../workspace";
-import { I } from "./icons";
+import { shellIconAlert, shellIconCheck, shellIconCircle, shellIconClose, shellIconLayers, shellIconPlay, shellIconTable } from "./icons";
 
 const ORDER: SetMember["status"][] = ["completed", "running", "failed", "queued", "skipped"];
 
@@ -29,7 +29,7 @@ export function SetPanel({ setId }: { setId: string }) {
   return (
     <div className="set-panel">
       <div className="run-goal">
-        <span className="run-ico set">{I.layers}</span>
+        <span className="run-ico set">{shellIconLayers}</span>
         <h2>{set.name}</h2>
       </div>
 
@@ -40,7 +40,7 @@ export function SetPanel({ setId }: { setId: string }) {
         <span className="run-time" title="Members done">{counts.completed}/{total} done</span>
         <span className="sp" />
         <button className="btn sm" onClick={() => { void refreshResults(set.setId).then(() => setMode("table")).catch(errToast); }}>
-          {I.table} Results
+          {shellIconTable} Results
         </button>
       </div>
 
@@ -77,7 +77,7 @@ export function SetPanel({ setId }: { setId: string }) {
               <span className="member-label">{label(m)}</span>
               <span className="member-foot">
                 {m.url && m.label && <span className="member-host">{hostOf(m.url)}</span>}
-                <span className="member-state">{m.status === "running" ? I.play : m.status === "completed" ? I.check : m.status === "failed" ? I.close : m.status === "queued" ? I.circle : I.close}</span>
+                <span className="member-state">{m.status === "running" ? shellIconPlay : m.status === "completed" ? shellIconCheck : m.status === "failed" ? shellIconClose : m.status === "queued" ? shellIconCircle : shellIconClose}</span>
               </span>
             </button>
           ))}
@@ -93,7 +93,7 @@ export function SetPanel({ setId }: { setId: string }) {
           <div className="set-errors">
             {failed.slice(0, 5).map((m) => (
               <div key={m.memberId} className="set-error">
-                <span className="set-error-ico">{I.alert}</span>
+                <span className="set-error-ico">{shellIconAlert}</span>
                 <span className="member-label">{label(m)}</span>
                 <span className="err selectable">{m.error ?? "failed"}</span>
               </div>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { InlineAssistTextSchema, readSelectionCaptureSettings, type InlineAssistCapture } from "@aux/contracts";
 import { call, toast, useStore } from "../store";
-import { I } from "./icons";
+import { shellIconAgentSm, shellIconClose } from "./icons";
 import { bridge } from "../bridge";
 import "./inline-assist.css";
 
@@ -69,8 +69,8 @@ export function InlineAssist() {
   }
 
   return <section className="shelf slide-up inline-assist" aria-label="Assist writing">
-    <div className="shelf-head"><span>{I.agentSm} Assist writing</span><span className="sp" />
-      <button className="icon-btn sm" aria-label="Close Assist writing" onClick={close}>{I.close}</button></div>
+    <div className="shelf-head"><span>{shellIconAgentSm} Assist writing</span><span className="sp" />
+      <button className="icon-btn sm" aria-label="Close Assist writing" onClick={close}>{shellIconClose}</button></div>
     <div className="inline-assist-body">
       {loading ? <output>Reading the focused field…</output> : capture ? <>
         <p className="inline-assist-context">{capture.fieldLabel} · {capture.origin} · {capture.mode === "selection" ? "Replace selection" : "Replace field text"}</p>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { I } from "../components/icons";
+import { shellIconAlert, shellIconCheck, shellIconClose } from "../components/icons";
 import "./toast.css";
 
 const INFO_MS = 3000;
@@ -19,10 +19,10 @@ export function Toast({ id, text, kind, action, onDismiss }: { id: number; text:
     onFocus={() => setFocused(true)} onBlur={event => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
     }}>
-    {kind === "error" ? I.alert : I.check}
+    {kind === "error" ? shellIconAlert : shellIconCheck}
     <span className="toast-text">{text}</span>
     {action && <button className="btn toast-action" onClick={action.run}>{action.label}</button>}
     {action?.secondary && <button className="btn toast-action" onClick={action.secondary.run}>{action.secondary.label}</button>}
-    <button className="icon-btn xs toast-dismiss" aria-label="Dismiss notification" onClick={() => onDismiss(id)}>{I.close}</button>
+    <button className="icon-btn xs toast-dismiss" aria-label="Dismiss notification" onClick={() => onDismiss(id)}>{shellIconClose}</button>
   </div>;
 }

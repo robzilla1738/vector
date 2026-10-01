@@ -1,0 +1,88 @@
+diff --git a/chrome/browser/ui/aux/auto_pip_site_policy_unittest.cc b/chrome/browser/ui/aux/auto_pip_site_policy_unittest.cc
+new file mode 100644
+index 0000000..3ffd91b
+--- /dev/null
++++ b/chrome/browser/ui/aux/auto_pip_site_policy_unittest.cc
+@@ -0,0 +1,19 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/auto_pip_site_policy.h"
++#include "testing/gtest/include/gtest/gtest.h"
++namespace aux {
++TEST(AutoPipSitePolicyTest, CallsNeverAutoPip) {
++  for (const auto host : {"slack.com", "work.slack.com", "meet.google.com", "teams.microsoft.com", "teams.live.com"})
++    EXPECT_EQ(AutoPipPolicyForHost(host), AutoPipSitePolicy::kNever);
++}
++TEST(AutoPipSitePolicyTest, YouTubeAllowsInaudiblePlayback) {
++  EXPECT_EQ(AutoPipPolicyForHost("youtube.com"), AutoPipSitePolicy::kEvenInaudible);
++  EXPECT_EQ(AutoPipPolicyForHost("www.youtube.com"), AutoPipSitePolicy::kEvenInaudible);
++}
++TEST(AutoPipSitePolicyTest, LookalikesKeepDefaultPolicy) {
++  for (const auto host : {"notslack.com", "slack.com.example.test", "youtube.com.evil.test", "notyoutube.com", "example.test"})
++    EXPECT_EQ(AutoPipPolicyForHost(host), AutoPipSitePolicy::kDefault);
++}
++}  // namespace aux
+diff --git a/chrome/browser/ui/aux/surface_media_browsertest.cc b/chrome/browser/ui/aux/surface_media_browsertest.cc
+new file mode 100644
+index 0000000..ac86f86
+--- /dev/null
++++ b/chrome/browser/ui/aux/surface_media_browsertest.cc
+@@ -0,0 +1,57 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#include "chrome/browser/ui/aux/shell_events.h"
++#include "base/test/run_until.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/test/base/in_process_browser_test.h"
++#include "chrome/test/base/ui_test_utils.h"
++#include "content/public/test/browser_test.h"
++#include "content/public/test/browser_test_utils.h"
++#include "url/gurl.h"
++
++namespace aux {
++class SurfaceMediaBrowserTest : public InProcessBrowserTest {
++ protected:
++  content::WebContents* contents() {
++    return browser()->tab_strip_model()->GetActiveWebContents();
++  }
++  void PlayVideo() {
++    ASSERT_TRUE(content::ExecJs(contents(), R"JS(
++      window.auxCanvas = document.createElement('canvas');
++      auxCanvas.width = 640; auxCanvas.height = 360;
++      auxCanvas.getContext('2d').fillRect(0, 0, 640, 360);
++      window.auxVideo = document.createElement('video');
++      auxVideo.muted = true;
++      auxVideo.srcObject = auxCanvas.captureStream(20);
++      document.body.append(auxVideo);
++      auxVideo.play();
++    )JS"));
++    ASSERT_TRUE(base::test::RunUntil([&] { return PageHasVideo(contents()); }));
++  }
++};
++IN_PROC_BROWSER_TEST_F(SurfaceMediaBrowserTest, VideoSurvivesPauseAndClearsOnDestroy) {
++  WatchPageShellEvents(contents());
++  EXPECT_FALSE(PageHasVideo(contents()));
++  PlayVideo();
++  ASSERT_TRUE(content::ExecJs(contents(), "auxVideo.pause()"));
++  EXPECT_TRUE(content::EvalJs(contents(), "auxVideo.paused").ExtractBool());
++  EXPECT_TRUE(PageHasVideo(contents()));
++  ASSERT_TRUE(content::ExecJs(contents(), R"JS(
++    auxVideo.srcObject = null;
++    auxVideo.removeAttribute('src');
++    auxVideo.load();
++    auxVideo.remove();
++    window.auxVideo = null;
++    window.auxCanvas = null;
++  )JS"));
++  EXPECT_TRUE(base::test::RunUntil([&] { return !PageHasVideo(contents()); }));
++}
++IN_PROC_BROWSER_TEST_F(SurfaceMediaBrowserTest, NewMainDocumentClearsVideo) {
++  WatchPageShellEvents(contents());
++  PlayVideo();
++  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("data:text/html,<title>New document</title>")));
++  EXPECT_FALSE(PageHasVideo(contents()));
++}
++}  // namespace aux

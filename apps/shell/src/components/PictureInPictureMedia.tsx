@@ -2,7 +2,7 @@ import { useStore } from "../store";
 import { runCommand } from "../commands";
 import { localSplitPage } from "../features/surfaces/split-actions";
 import { FavIcon } from "./SiteTile";
-import { I } from "./icons";
+import { shellIconPip } from "./icons";
 import "./PictureInPictureMedia.css";
 
 export function PictureInPictureMedia() {
@@ -15,7 +15,7 @@ export function PictureInPictureMedia() {
       return <div className="sidebar-media-row" key={page.pageId}>
         <FavIcon url={page.url} src={page.favicon} size="sm" />
         <span title={page.title}>{page.title || "Video"}</span>
-        <button type="button" className="icon-btn xs" data-command-id="picture-in-picture" aria-label={`${label}: ${page.title || "Video"}`} title={label} onClick={() => runCommand("picture-in-picture", { payload: { pageId: page.pageId } })}>{I.pip}</button>
+        <button type="button" className="icon-btn xs" data-command-id="picture-in-picture" aria-label={`${label}: ${page.title || "Video"}`} title={label} onClick={() => runCommand("picture-in-picture", { payload: { pageId: page.pageId } })}>{shellIconPip}</button>
       </div>;
     })}
   </section>;

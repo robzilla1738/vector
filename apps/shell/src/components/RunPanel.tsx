@@ -7,7 +7,7 @@ import { decodeBase64Json, isLive, useStore, call, errToast } from "../store";
 import { hostOf } from "../workspace";
 import { ObservationPanel } from "./ObservationPanel";
 import { StepTimeline, fmtMs } from "./StepTimeline";
-import { I } from "./icons";
+import { shellIconAlert, shellIconCheck, shellIconCopy, shellIconGearSm, shellIconLayersSm, shellIconLock, shellIconReload, shellIconRight } from "./icons";
 import { openSavedTask } from "../task-navigation";
 import { AnswerMarkdown } from "./AnswerMarkdown";
 import { RunTranscriptDetails } from "../transcript/RunTranscriptDetails";
@@ -115,7 +115,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
     return (
       <section className="answer">
         {reply && <AnswerMarkdown text={reply} sources={sources} onOpenLink={onCitationOpen ? (url,background)=>onCitationOpen(url,background,run.runId) : undefined}/>}
-        {(reply || retry) && <span className="answer-tools">{reply && <button className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} onClick={copy}>{copied ? I.check : I.copy}</button>}{retry}</span>}
+        {(reply || retry) && <span className="answer-tools">{reply && <button className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} onClick={copy}>{copied ? shellIconCheck : shellIconCopy}</button>}{retry}</span>}
         {run.error && !run.failure && <p className="answer-text err">{run.error}</p>}
       </section>
     );
@@ -125,7 +125,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
     <section className="answer">
       {text && (
         <button className="icon-btn xs answer-copy" title={copied ? "Copied" : "Copy"} aria-label={copied ? "Copied" : "Copy answer"} onClick={copy}>
-          {copied ? I.check : I.copy}
+          {copied ? shellIconCheck : shellIconCopy}
         </button>
       )}
       {showSummary && <AnswerMarkdown text={run.statusMessage!}/>}
@@ -225,9 +225,9 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
         <span className="sp" />
         <span className="run-acts">
           {!live && (run.config?.taskId
-            ? <button className="icon-btn sm" title="Open saved task" aria-label="Open saved task" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>{I.layersSm}</button>
+            ? <button className="icon-btn sm" title="Open saved task" aria-label="Open saved task" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>{shellIconLayersSm}</button>
             : !conversation && !run.failure
-                ? <button className="icon-btn sm" title="Run again" aria-label="Run again" onClick={() => void startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{I.reload}</button>
+                ? <button className="icon-btn sm" title="Run again" aria-label="Run again" onClick={() => void startRun(run.goal, { pageId: run.pageIds[0] ?? null })}>{shellIconReload}</button>
                 : null)}
         </span>
       </div>}
@@ -242,7 +242,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
 
       {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
 
-      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{I.reload}</button> : null} />
+      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{shellIconReload}</button> : null} />
       <RunTranscriptDetails run={run} question={question} readOnly={readOnly} answerInComposer={questionInComposer} />
 
       {(calls != null || stats || !conversation) && <details className="run-provenance">
@@ -254,13 +254,13 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
 
       {run.failure && (
         <section className="run-failure" role="status">
-          <span className="run-failure-icon">{I.alert}</span>
+          <span className="run-failure-icon">{shellIconAlert}</span>
           <div className="run-failure-copy">
             <strong>{run.failure.action === "model_settings" ? "Connection needs attention" : run.failure.action === "permission_settings" ? "Permission needed" : "This turn stopped"}</strong>
             <p>{run.failure.message}</p>
           </div>
           {latestConversationTurn && !run.config?.taskId && ["retry", "permission_settings"].includes(run.failure.action) && page && (
-            <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId)}>{I.reload}{retrying ? "Retrying…" : "Retry turn"}</button>
+            <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId)}>{shellIconReload}{retrying ? "Retrying…" : "Retry turn"}</button>
           )}
           {run.failure.action === "edit_request" && latestConversationTurn && <button className="btn sm" disabled={readOnly} onClick={() => {
             if (run.config?.taskId) { void openSavedTask(run.config.taskId).catch(errToast); return; }
@@ -270,18 +270,18 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
             state.openConversation(run.runId);
             requestAnimationFrame(() => composerRef?.current?.focus());
           }}>{run.config?.taskId ? "Edit task" : "Revise request"}</button>}
-          {run.failure.action === "permission_settings" && <button className="btn sm" onClick={() => { useStore.setState({ settingsCategory: "Agent permissions" }); useStore.getState().setOverlay("settings"); }}>{I.lock}Review permissions</button>}
+          {run.failure.action === "permission_settings" && <button className="btn sm" onClick={() => { useStore.setState({ settingsCategory: "Agent permissions" }); useStore.getState().setOverlay("settings"); }}>{shellIconLock}Review permissions</button>}
           {run.failure.action === "permission_settings" && run.config?.taskId && <button className="btn sm" onClick={() => void openSavedTask(run.config!.taskId!).catch(errToast)}>Open task</button>}
-          {/vault|credential grant|opaque reference|Unlock the agent vault/i.test(run.failure.message) && <button className="btn sm" onClick={() => { useStore.setState({ settingsCategory: "Vault" }); useStore.getState().setOverlay("settings"); }}>{I.lock}Open vault</button>}
+          {/vault|credential grant|opaque reference|Unlock the agent vault/i.test(run.failure.message) && <button className="btn sm" onClick={() => { useStore.setState({ settingsCategory: "Vault" }); useStore.getState().setOverlay("settings"); }}>{shellIconLock}Open vault</button>}
           {run.failure.action === "model_settings" && (
-            <button className="btn sm" onClick={openModelSettings}>{I.gearSm}Model settings</button>
+            <button className="btn sm" onClick={openModelSettings}>{shellIconGearSm}Model settings</button>
           )}
         </section>
       )}
 
       {( !conversation || live || (steps?.length ?? 0) > 0) && <section className="run-section">
         <button className="run-section-head toggle" aria-expanded={showSteps} onClick={() => setShowSteps((v) => !v)}>
-          <span className={`chev ${showSteps ? "open" : ""}`}>{I.right}</span>
+          <span className={`chev ${showSteps ? "open" : ""}`}>{shellIconRight}</span>
           <span>{conversation ? "Work history" : "Steps"}</span>
           <span className="count nums">{steps?.length ?? 0}</span>
           {steps && steps.length > 0 && <span className="sum nums">{fmtMs(steps.reduce((a, s) => a + (s.outcome?.durationMs ?? 0), 0))}</span>}
@@ -292,7 +292,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
       {(obs || observationArtifact) && (!conversation || showSteps) && (
         <section className="run-section">
           <button className="run-section-head toggle" aria-expanded={showObs} onClick={() => { if(!showObs && !obs && observationArtifact)void inspect(observationArtifact);else setShowObs(value=>!value); }}>
-            <span className={`chev ${showObs ? "open" : ""}`}>{I.right}</span>
+            <span className={`chev ${showObs ? "open" : ""}`}>{shellIconRight}</span>
             <span>Page</span>
             {obs && <span className="count nums">{obs.refs.length}</span>}
           </button>

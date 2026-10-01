@@ -25,7 +25,7 @@ import { executeCommand } from "../commands";
 import { PinMenu } from "./PinMenu";
 import { TabMenu } from "./TabMenu";
 import { TabAudioButton } from "./TabAudioButton";
-import { I } from "./icons";
+import { shellIconAgent, shellIconAgentSm, shellIconAlert, shellIconBookmark, shellIconClock, shellIconClockSm, shellIconClose, shellIconDown, shellIconDownloadSm, shellIconExternal, shellIconFolderClosed, shellIconGear, shellIconGearSm, shellIconGrid, shellIconHandSm, shellIconLayersSm, shellIconMore, shellIconPencil, shellIconPerson, shellIconPin, shellIconPlus, shellIconPlusSm, shellIconReload, shellIconSearch, shellIconSidebarClose, shellIconSidebarCloseSm, shellIconTrash } from "./icons";
 import { useWindowedRows } from "../use-windowed-rows";
 import { acquireFloatingSidebarLock, useFloatingSidebar } from "../floating-sidebar";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
@@ -172,15 +172,15 @@ const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selec
       onDragEnd={onDragEnd}
     >
       <span className="tab-fav">
-        {crashed ? I.alert : p.loading ? <span className="spin" /> : <FavIcon url={p.url} src={p.favicon} size="sm" />}
+        {crashed ? shellIconAlert : p.loading ? <span className="spin" /> : <FavIcon url={p.url} src={p.favicon} size="sm" />}
       </span>
       <span className="tab-title">{title}</span>
-      {windowHint && <span className="tab-state" role="img" aria-label={windowHint} title={windowHint}>{I.external}</span>}
+      {windowHint && <span className="tab-state" role="img" aria-label={windowHint} title={windowHint}>{shellIconExternal}</span>}
       <TabAudioButton pageId={p.pageId} title={title}/>
       {p.controller === "agent" || p.controller === "external" ? (
-        <span className="tab-state agent" title="The agent is driving this tab">{I.agentSm}</span>
+        <span className="tab-state agent" title="The agent is driving this tab">{shellIconAgentSm}</span>
       ) : p.controller === "human" ? (
-        <span className="tab-state human" title="You're in control — the agent is waiting">{I.handSm}</span>
+        <span className="tab-state human" title="You're in control — the agent is waiting">{shellIconHandSm}</span>
       ) : null}
       <button
         className="tab-close"
@@ -192,7 +192,7 @@ const TabRow = memo(function TabRow({ pageId, active, focusable, selected, selec
           onClose(p.pageId);
         }}
       >
-        {I.close}
+        {shellIconClose}
       </button>
     </div>
     {preview.position && !dragging && <TabPreview page={p} {...preview.position} />}
@@ -241,12 +241,12 @@ export function SpaceMenu({ anchor, spaces, active, onPick, onNew, onNewFolder, 
   // in the same turn so a new dialog or Space never inherits its closing layer.
   const choose = (action: () => void) => { action(); finishClose(); };
   const actions = [
-    { label: "New space", icon: I.plusSm, run: onNew },
-    ...(onNewFolder ? [{ label: "New folder", icon: I.folderClosed, run: onNewFolder }] : []),
-    { label: "History", icon: I.clockSm, run: onHistory, key: key("history"), separator: true },
-    { label: "Downloads", icon: I.downloadSm, run: onDownloads, key: key("downloads") },
-    ...(!bridge.privateMode ? [{ label: "Settings", icon: I.gearSm, run: onSettings, key: key("settings") }] : []),
-    ...(onCollapse ? [{ label: "Collapse sidebar", icon: I.sidebarCloseSm, run: onCollapse, key: key("sidebar"), separator: true }] : []),
+    { label: "New space", icon: shellIconPlusSm, run: onNew },
+    ...(onNewFolder ? [{ label: "New folder", icon: shellIconFolderClosed, run: onNewFolder }] : []),
+    { label: "History", icon: shellIconClockSm, run: onHistory, key: key("history"), separator: true },
+    { label: "Downloads", icon: shellIconDownloadSm, run: onDownloads, key: key("downloads") },
+    ...(!bridge.privateMode ? [{ label: "Settings", icon: shellIconGearSm, run: onSettings, key: key("settings") }] : []),
+    ...(onCollapse ? [{ label: "Collapse sidebar", icon: shellIconSidebarCloseSm, run: onCollapse, key: key("sidebar"), separator: true }] : []),
   ];
   return (
     <Menu label="Spaces and browser controls" className={`menu space-menu${onCollapse ? "" : " space-menu-horizontal"}`}
@@ -256,7 +256,7 @@ export function SpaceMenu({ anchor, spaces, active, onPick, onNew, onNewFolder, 
       {profileName && <div className="menu-caption space-profile-caption" title={`${profileName} browser profile`}>Profile · {profileName}</div>}
       {bridge.privateMode && <div className="menu-caption">Private window</div>}
       <div className="space-current" data-space={currentSpace?.color} style={spaceThemeStyle(currentSpace)}><span className="space-dot" /><div><small>Current Space</small><strong>{currentSpace?.name ?? "Space"}</strong></div></div>
-      {spaces.length + archivedSpaces.length > 6 && <label className="space-search">{I.search}<input ref={spaceSearch} type="search" aria-label="Search Spaces" placeholder="Find a Space…" value={spaceQuery} onChange={event => setSpaceQuery(event.target.value)} onKeyDown={event => {
+      {spaces.length + archivedSpaces.length > 6 && <label className="space-search">{shellIconSearch}<input ref={spaceSearch} type="search" aria-label="Search Spaces" placeholder="Find a Space…" value={spaceQuery} onChange={event => setSpaceQuery(event.target.value)} onKeyDown={event => {
         if (event.key === "ArrowDown") { event.preventDefault(); firstSpace.current?.focus(); }
       }} /></label>}
       {!visibleSpaces.length && <output className="menu-caption" data-block>No matching Spaces</output>}
@@ -266,14 +266,14 @@ export function SpaceMenu({ anchor, spaces, active, onPick, onNew, onNewFolder, 
           <span className="space-dot" /><span className="t">{space.name}</span>
         </button>
         <span className="menu-acts" role="none">
-          <button className="icon-btn xs" role="menuitem" aria-label={`Edit ${space.name}`} onClick={() => choose(() => onEdit(space))}>{I.pencil}</button>
+          <button className="icon-btn xs" role="menuitem" aria-label={`Edit ${space.name}`} onClick={() => choose(() => onEdit(space))}>{shellIconPencil}</button>
           {spaces.length > 1 && <button className="icon-btn xs" role="menuitem" aria-label={`${bridge.privateMode ? "Delete" : "Archive"} ${space.name}`}
-            onClick={() => choose(() => onDelete(space.id))}>{I.trash}</button>}
+            onClick={() => choose(() => onDelete(space.id))}>{shellIconTrash}</button>}
         </span>
       </div>)}
       {archivedSpaces.length > 0 && <>
         <button className="menu-item" role="menuitem" aria-expanded={showArchived} onClick={() => setShowArchived(value => !value)}>
-          <span className="menu-ico">{I.reload}</span><span className="t">Archived spaces</span><span className="muted">{archivedSpaces.length}</span>
+          <span className="menu-ico">{shellIconReload}</span><span className="t">Archived spaces</span><span className="muted">{archivedSpaces.length}</span>
         </button>
         {showArchived && archivedSpaces.filter(matchesSpace).map(space => <button key={space.id} className="menu-item space-restore-item" role="menuitem"
           onClick={() => choose(() => onRestore(space.id))} title="Restore this space and its saved work">
@@ -337,7 +337,7 @@ function FolderRow({ folder, count, open, dropOn, renaming, onToggle, onRename, 
       onDrop={onDrop}
       onDragEnd={onDragEnd}
     >
-      <span className="tab-fav folder-glyph" aria-hidden data-space={folder.color}>{folder.emoji ?? I.folderClosed}</span>
+      <span className="tab-fav folder-glyph" aria-hidden data-space={folder.color}>{folder.emoji ?? shellIconFolderClosed}</span>
       {renaming ? (
         <input
           className="folder-name-input"
@@ -357,7 +357,7 @@ function FolderRow({ folder, count, open, dropOn, renaming, onToggle, onRename, 
         <span className="tab-title">{folder.name}</span>
       )}
       <span className="folder-count" aria-hidden="true">{count}</span>
-      <span className="folder-chevron" aria-hidden="true">{I.down}</span>
+      <span className="folder-chevron" aria-hidden="true">{shellIconDown}</span>
     </div>
   );
 }
@@ -405,7 +405,7 @@ const SidebarBookmarks = memo(function SidebarBookmarks({ onOpen, onDropped }: {
 });
 
 const SidebarChats = memo(function SidebarChats() {
-  return <div className="sb-chats"><button className="sb-link" onClick={() => useStore.getState().openConversation(null)}>{I.pencil}<span>New chat</span></button><ChatSessions compact /></div>;
+  return <div className="sb-chats"><button className="sb-link" onClick={() => useStore.getState().openConversation(null)}>{shellIconPencil}<span>New chat</span></button><ChatSessions compact /></div>;
 });
 
 /* ------------------------------------------------------------------ */
@@ -647,7 +647,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
 
   const full = (
     <>
-      <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{I.sidebarClose}</button></div>
+      <div className={`sb-head ${inNativeHost ? "native-host" : ""}`}><button className="icon-btn" aria-label={peek ? "Keep sidebar open" : "Collapse sidebar"} title={withShortcut(peek ? "Keep sidebar open" : "Collapse sidebar", key("sidebar"))} data-command-id="sidebar" onClick={() => runCommand("sidebar")}>{shellIconSidebarClose}</button></div>
       <FeatureSlots slot="sidebarItems" />
       {pins.length > 0 && (
         <div className="sb-pins" role="group" aria-label="Pinned sites">
@@ -662,7 +662,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
               {overflowPins.map(pin => <button {...pinDragProps(pin)} className="menu-item" role="menuitem" key={pin.url} title={pin.url}
                 onClick={event => openPin(pin, event)} onAuxClick={event => openPin(pin, event)}
                 onKeyDown={event => pinKey(pin, event)} onContextMenu={event => pinMenu(pin, event)}>
-                <span className="menu-ico">{I.pin}</span><span className="t">{pin.title || hostOf(pin.url)}</span>
+                <span className="menu-ico">{shellIconPin}</span><span className="t">{pin.title || hostOf(pin.url)}</span>
               </button>)}
             </Menu>}
           </div>}
@@ -734,7 +734,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
         <FeatureSlots slot="sidebarFooterItems"/>
       <div className="sb-space">
         <button ref={spaceTrigger} className="space-switch" data-space={space.color} style={spaceThemeStyle(space)} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Switch space">
-          <span className="space-ico">{I.person}</span>
+          <span className="space-ico">{shellIconPerson}</span>
           <span className="space-name">{space.name}</span>
         </button>
         {menuOpen && (
@@ -757,33 +757,33 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
           />
         )}
       </div>
-        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button onClick={() => setMode(mode === "overview" ? "focus" : "overview")} className="icon-btn" aria-label="Tab overview">{I.grid}</button></> : <>
+        {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button onClick={() => setMode(mode === "overview" ? "focus" : "overview")} className="icon-btn" aria-label="Tab overview">{shellIconGrid}</button></> : <>
         <span className="sp" />
-        <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" data-command-id="palette" onClick={() => runCommand("palette")}>{I.search}</button>
-        {activeController === "human" && <button className="icon-btn" aria-label="Return control to agent" title="Return control to agent" onClick={() => void returnControl(activePageId!)}>{I.handSm}</button>}
-        <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{I.agent}</button>
+        <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" data-command-id="palette" onClick={() => runCommand("palette")}>{shellIconSearch}</button>
+        {activeController === "human" && <button className="icon-btn" aria-label="Return control to agent" title="Return control to agent" onClick={() => void returnControl(activePageId!)}>{shellIconHandSm}</button>}
+        <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{shellIconAgent}</button>
         <div className="sb-more">
-          <button ref={moreTrigger} className="icon-btn" aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More" title="More" onClick={() => setMoreOpen(value => !value)}>{I.more}</button>
+          <button ref={moreTrigger} className="icon-btn" aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More" title="More" onClick={() => setMoreOpen(value => !value)}>{shellIconMore}</button>
           {moreOpen && <Menu className="sidebar-native-menu sb-more-menu" label="Browser tools" anchor={moreTrigger} placement="above-end" returnFocus={moreTrigger} onClose={() => setMoreOpen(false)}>
-            <button role="menuitem" aria-label="Chats" onClick={() => { setMoreOpen(false); useStore.getState().openConversation(null); useStore.setState({conversationId:"history"}); }}>{I.agentSm}<span>Chats</span></button>
-            <button role="menuitem" aria-label="Tasks" onClick={() => { setMoreOpen(false); setOverlay("tasks"); }}>{I.layersSm}<span>Tasks</span></button>
-            <button role="menuitem" aria-label="Library" onClick={() => { setMoreOpen(false); setOverlay("bookmarks"); }}>{I.bookmark}<span>Library</span></button>
-            <button role="menuitem" aria-label="Downloads" onClick={() => { setMoreOpen(false); setOverlay("downloads"); }}>{I.downloadSm}<span>Downloads</span></button>
+            <button role="menuitem" aria-label="Chats" onClick={() => { setMoreOpen(false); useStore.getState().openConversation(null); useStore.setState({conversationId:"history"}); }}>{shellIconAgentSm}<span>Chats</span></button>
+            <button role="menuitem" aria-label="Tasks" onClick={() => { setMoreOpen(false); setOverlay("tasks"); }}>{shellIconLayersSm}<span>Tasks</span></button>
+            <button role="menuitem" aria-label="Library" onClick={() => { setMoreOpen(false); setOverlay("bookmarks"); }}>{shellIconBookmark}<span>Library</span></button>
+            <button role="menuitem" aria-label="Downloads" onClick={() => { setMoreOpen(false); setOverlay("downloads"); }}>{shellIconDownloadSm}<span>Downloads</span></button>
             <hr />
             <button role="menuitem" aria-label={saved ? "Remove bookmark" : "Bookmark this page"} disabled={!web} onClick={() => {
               setMoreOpen(false);
               const current = useStore.getState().pages.find(item => item.pageId === activePageId);
               if (!current) return;
               void useStore.getState().toggleBookmark(current.url,current.title).catch(errToast);
-            }}>{I.bookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
+            }}>{shellIconBookmark}<span>{saved ? "Remove bookmark" : "Bookmark this page"}</span>{key("bookmark") && <kbd>{key("bookmark")}</kbd>}</button>
             <button role="menuitem" aria-label={saved === 2 ? "Remove from reading list" : "Add to reading list"} disabled={!web} onClick={() => {
               setMoreOpen(false);
               const current = useStore.getState().pages.find(item => item.pageId === activePageId);
               if (!current) return;
               void useStore.getState().toggleReadingList(current.url, current.title).catch(errToast);
-            }}>{I.clock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span></button>
-            <button role="menuitem" aria-label="Tab overview" onClick={() => { setMoreOpen(false); setMode(mode === "overview" ? "focus" : "overview"); }}>{I.grid}<span>Tab overview</span></button>
-            <button role="menuitem" aria-label="Settings" onClick={() => { setMoreOpen(false); setOverlay("settings"); }}>{I.gear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
+            }}>{shellIconClock}<span>{saved === 2 ? "Remove from reading list" : "Add to reading list"}</span></button>
+            <button role="menuitem" aria-label="Tab overview" onClick={() => { setMoreOpen(false); setMode(mode === "overview" ? "focus" : "overview"); }}>{shellIconGrid}<span>Tab overview</span></button>
+            <button role="menuitem" aria-label="Settings" onClick={() => { setMoreOpen(false); setOverlay("settings"); }}>{shellIconGear}<span>Settings</span>{key("settings") && <kbd>{key("settings")}</kbd>}</button>
           </Menu>}
         </div>
         </>}
@@ -835,7 +835,7 @@ function NewTabButton({ onClick, dropOn, onDragOver, onDrop, onDragEnd }: {
 }) {
   return (
     <button className={`tab-new ${dropOn ? "drop-on" : ""}`} onClick={onClick} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={onDragEnd}>
-      <span className="tab-fav">{I.plus}</span>
+      <span className="tab-fav">{shellIconPlus}</span>
       <span className="tab-title">New Tab</span>
     </button>
   );
@@ -862,7 +862,7 @@ export function FolderContextMenu({ folder, x, y, onClose: finishClose, onRename
           return (
             <button key={emoji} role="menuitemradio" aria-checked={on} aria-label={emoji === "" ? "Default folder icon" : `Icon ${emoji}`}
               className={`swatch emoji ${on ? "on" : ""}`}
-              onClick={() => updateFolder(folder.id, { emoji: emoji || null })}>{emoji || I.folderClosed}</button>
+              onClick={() => updateFolder(folder.id, { emoji: emoji || null })}>{emoji || shellIconFolderClosed}</button>
           );
         })}
       </div>

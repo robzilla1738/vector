@@ -4,7 +4,7 @@ import { bridge } from "../bridge";
 import { call, useStore } from "../store";
 import { siteControlsOpener } from "../site-controls-opener";
 import { Dialog } from "../ui";
-import { I } from "./icons";
+import { shellIconClose } from "./icons";
 import "./SiteCustomization.css";
 
 function pageOrigin(url: string | null | undefined): string | null {
@@ -177,7 +177,7 @@ export function SiteCustomization() {
           <h2>{origin ?? "Open a website"}</h2>
         </div>
         <button className="icon-btn" aria-label="Close site customization" onClick={close}>
-          {I.close}
+          {shellIconClose}
         </button>
       </header>
       <div className="zap-content">

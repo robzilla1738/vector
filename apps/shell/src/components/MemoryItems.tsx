@@ -1,6 +1,6 @@
 import "./MemoryItems.css";
 import { ActionMenu, Checkbox, DetailPane, ListRow, Select, TextField } from "../ui";
-import { I } from "./icons";
+import { shellIconFolder } from "./icons";
 import { MemoryExclusions } from "./MemoryExclusions";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";
 import { useEffect, useRef, useState } from "react";
@@ -71,7 +71,7 @@ export function MemoryItems({ memory, disabled, onSaved }: { memory: WorkspaceMe
     <div className="conversation-documents-head"><div><b>Individual notes</b><small>Preferences and facts you choose to keep in this Space.</small></div><button className="btn sm" disabled={disabled || busy || !!draft || items.length >= 40} onClick={() => edit()}>Add note</button></div>
     {!!items.length && <div className="memory-list-tools"><TextField type="search" aria-label="Search memory notes" placeholder="Find a note…" value={query} onChange={event => setQuery(event.target.value)} />
       <Select aria-label="Filter memory notes" value={filter} onChange={event => setFilter(event.target.value)}><option value="all">All notes</option><option value="active">Used in replies</option><option value="excluded">Paused or excluded</option></Select></div>}
-    <div className="memory-items-list">{visibleItems.map(item => <ListRow key={item.itemId} title={item.content} leading={I.folder} selected={selectedId === item.itemId}
+    <div className="memory-items-list">{visibleItems.map(item => <ListRow key={item.itemId} title={item.content} leading={shellIconFolder} selected={selectedId === item.itemId}
       description={`${noteStatus(item)} · Updated ${new Date(item.updatedAt).toLocaleDateString()}`}
       onOpen={() => { detailOpener.current = document.activeElement as HTMLElement; setSelectedId(item.itemId); }}
       trailing={<><Checkbox aria-label={`Use note: ${item.content.slice(0, 80)}`} checked={item.enabled} disabled={disabled || busy || !!draft} onChange={event => void persist(items.map(value => value.itemId === item.itemId ? { ...value, enabled: event.target.checked, updatedAt: Date.now() } : value))} />

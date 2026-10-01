@@ -1,5 +1,5 @@
 import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
-import { I } from "./icons";
+import { shellIconGlobe } from "./icons";
 import { useEffect, useRef, useState } from "react";
 import type { ContentMemoryDocument, ContentMemoryMatch, ContentMemoryPolicy, WorkspaceMemory } from "@aux/contracts";
 import { bridge } from "../bridge";
@@ -114,7 +114,7 @@ function ContentMemoryContent({ memory }: { memory: WorkspaceMemory }) {
       </details>
       <TextField type="search" aria-label="Search remembered articles" placeholder="Search remembered articles…" value={query} onChange={event => setQuery(event.target.value)} disabled={!policy.enabled || memory.enabled === false}/>
       {query.trim() && policy.enabled && !matches.length && <p className="hint">{searching ? "Searching remembered articles…" : "No matching remembered articles."}</p>}
-      <div className="browsing-memory-list">{matches.map(item => <ListRow key={item.memoryId} title={item.title} leading={I.globe} selected={document?.memoryId === item.memoryId} disabled={busy}
+      <div className="browsing-memory-list">{matches.map(item => <ListRow key={item.memoryId} title={item.title} leading={shellIconGlobe} selected={document?.memoryId === item.memoryId} disabled={busy}
         description={<><span className="memory-match-source">{item.url} · {new Date(item.capturedAt).toLocaleDateString()}</span><span className="memory-match-snippet">{item.snippet}</span></>}
         onOpen={() => void read(item.memoryId)} trailing={<ActionMenu label={`Actions for ${item.title}`} actions={[
           { label: "Read saved text", disabled: busy, onSelect: () => void read(item.memoryId) },

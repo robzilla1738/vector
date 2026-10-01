@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ConversationImage, PageContextRef, PageTarget } from "@aux/contracts";
 import { call, errToast, useStore } from "../store";
 import { bridge } from "../bridge";
-import { I } from "./icons";
+import { shellIconClose } from "./icons";
 
 type Rect = { x: number; y: number; width: number; height: number };
 type Capture = { dataUrl: string; sourceUrl?: string; sourcePage?: PageContextRef; title: string; filename?: string };
@@ -207,7 +207,7 @@ export function ConversationImages({ chatId, page, images, disabled, ensureChatI
     {images.length >= 4 && <p className="hint">Four images attached. Remove one to add another.</p>}
     {error && <p className="field-error" role="alert">{error}</p>}
     {busy && <output className="hint" data-block>Preparing image…</output>}
-    {showAttachedImages && images.map(item => <div className="conversation-document" key={item.imageId}><label><input type="checkbox" checked={item.included} disabled={disabled || busy} onChange={event => void change(item.imageId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><button className="btn sm ghost" disabled={busy} onClick={() => void inspect(item.imageId)}>Preview</button><button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} onClick={() => void change(item.imageId)}>{I.close}</button></div>)}
+    {showAttachedImages && images.map(item => <div className="conversation-document" key={item.imageId}><label><input type="checkbox" checked={item.included} disabled={disabled || busy} onChange={event => void change(item.imageId, event.target.checked)}/><span><b>{item.filename}</b><small>{item.width} × {item.height} · {Math.ceil(item.byteLength / 1024)} KB</small></span></label><button className="btn sm ghost" disabled={busy} onClick={() => void inspect(item.imageId)}>Preview</button><button className="icon-btn xs" aria-label={`Remove ${item.filename}`} disabled={disabled || busy} onClick={() => void change(item.imageId)}>{shellIconClose}</button></div>)}
     {capture && !lasso && <div className="capture-editor" ref={review}>
       <p className="hint">{capture.title} · {capture.sourceUrl ? hostOf(capture.sourceUrl) : "Local image"}</p>
       <p className="hint">Drag to select a region. Editable fields are hidden in page captures. Keyboard: arrows move it; Shift + arrows resize it. Escape clears the selection.</p>

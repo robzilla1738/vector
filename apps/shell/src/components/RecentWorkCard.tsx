@@ -3,7 +3,7 @@ import type { ConversationArtifact, ConversationSummary } from "@aux/contracts";
 import { draftKey } from "../conversation-drafts";
 import { STATUS_LABEL } from "../run-status";
 import { useStore } from "../store";
-import { I } from "./icons";
+import { shellIconOpen, shellIconResult } from "./icons";
 import { ResultExcerpt } from "./ResultCard";
 import { AnswerPreview } from "./surfaces";
 
@@ -53,10 +53,10 @@ export const RecentConversationCard = memo(function RecentConversationCard({
               useStore.setState({ resultPreview: artifact.artifactId });
             }}
           >
-            {I.result}
+            {shellIconResult}
             <span>{artifact.filename}</span>
             {artifact.revision && <small>v{artifact.revision}</small>}
-            {I.open}
+            {shellIconOpen}
           </button>
         </>
       ) : (

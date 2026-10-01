@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { faviconCandidates, hostLetter } from "../favicon";
 import { hostOf } from "../workspace";
 import { unreadBadge } from "../unread-badge";
-import { I } from "./icons";
+import { shellIconGlobe, shellIconGlobeLg } from "./icons";
 
 export function FavIcon({
   url,
@@ -26,7 +26,7 @@ export function FavIcon({
       const letter = hostLetter(url);
       if (letter) return <span className={`tile-letter ${className ?? ""}`.trim()}>{letter}</span>;
     }
-    return <span className={`tile-globe ${className ?? ""}`.trim()}>{size === "sm" ? I.globe : I.globeLg}</span>;
+    return <span className={`tile-globe ${className ?? ""}`.trim()}>{size === "sm" ? shellIconGlobe : shellIconGlobeLg}</span>;
   }
   return (
     <img

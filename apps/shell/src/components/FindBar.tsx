@@ -2,7 +2,7 @@ import "./FindBar.css";
 import { conversationFinder, readerFinder } from "../text-surface-find";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useStore, call } from "../store";
-import { I } from "./icons";
+import { shellIconClose, shellIconDown, shellIconFind, shellIconUp } from "./icons";
 import { bridge } from "../bridge";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
@@ -95,7 +95,7 @@ export function FindBar({ scope, inputRef, returnFocusRef }: {scope?: "reader"; 
 
   return (
     <div className="findbar slide-down" role="search" onKeyDown={event => { if (event.nativeEvent.isComposing || event.keyCode === 229) return; if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); void close(); } }}>
-      <span className="fb-ico">{I.find}</span>
+      <span className="fb-ico">{shellIconFind}</span>
       <input
         ref={ref}
         value={text}
@@ -117,7 +117,7 @@ export function FindBar({ scope, inputRef, returnFocusRef }: {scope?: "reader"; 
           if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); void close(); }
         }}
       />
-      {text && <button className="icon-btn sm" aria-label="Clear search" title="Clear search" onClick={() => { onChange(""); ref.current?.focus(); }}>{I.close}</button>}
+      {text && <button className="icon-btn sm" aria-label="Clear search" title="Clear search" onClick={() => { onChange(""); ref.current?.focus(); }}>{shellIconClose}</button>}
       <span className={`fb-n nums ${error || res?.matches === 0 ? "none" : ""}`} aria-live="polite" title={error || undefined}>
         {error ? "Search unavailable" : res ? (res.matches === 0 ? "No results" : res.activeMatch ? `${res.activeMatch} of ${res.matches}` : `${res.matches} matches`) : text && (inShell || activePageId) && !composing.current ? "Searching…" : ""}
       </span>
@@ -126,8 +126,8 @@ export function FindBar({ scope, inputRef, returnFocusRef }: {scope?: "reader"; 
         void search(text);
         ref.current?.focus();
       }}>Retry</button>}
-      <button className="icon-btn sm" title={withShortcut("Previous", key("find-previous"))} aria-label="Previous match" disabled={!res || !res.matches} onClick={() => void search(text, true, false)}>{I.up}</button>
-      <button className="icon-btn sm" title={withShortcut("Next", key("find-next"))} aria-label="Next match" disabled={!res || !res.matches} onClick={() => void search(text, true, true)}>{I.down}</button>
+      <button className="icon-btn sm" title={withShortcut("Previous", key("find-previous"))} aria-label="Previous match" disabled={!res || !res.matches} onClick={() => void search(text, true, false)}>{shellIconUp}</button>
+      <button className="icon-btn sm" title={withShortcut("Next", key("find-next"))} aria-label="Next match" disabled={!res || !res.matches} onClick={() => void search(text, true, true)}>{shellIconDown}</button>
       <button className="btn sm ghost" onClick={() => void close()}>Done</button>
     </div>
   );

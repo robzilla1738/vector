@@ -4,7 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import type { Download } from "@aux/contracts";
 import { useStore, errToast, call, toast } from "../store";
 import { bridge } from "../bridge";
-import { I } from "./icons";
+import { shellIconClose, shellIconDownloadSm, shellIconSearch } from "./icons";
 import { canDismissDownload, mergeDownloadSnapshot } from "../downloads";
 
 function fmtSize(bytes: number | undefined): string {
@@ -40,7 +40,7 @@ const DownloadRow = memo(function DownloadRow({ id, busy, rowError, retried, act
   const pct = active && d.totalBytes ? Math.min(100, Math.round((d.size / d.totalBytes) * 100)) : null;
   return (
           <div className={`dl-row ${d.state}${d.paused ? " paused" : ""}`} role="group" aria-label={d.filename}>
-            <span className="dl-ico">{I.downloadSm}</span>
+            <span className="dl-ico">{shellIconDownloadSm}</span>
             <span className="dl-main">
               <span className="dl-name" title={d.path}>{d.filename}</span>
               <span className="dl-sub nums">
@@ -67,7 +67,7 @@ const DownloadRow = memo(function DownloadRow({ id, busy, rowError, retried, act
                 },true)}>Reveal</button>
               </>
             )}
-            {canDismissDownload(d) && <button className="icon-btn sm" disabled={busy!==null} aria-label={`Remove ${d.filename} from downloads`} title="Remove from list; keep file" onClick={()=>void dismissDownloads([d.id])}>{I.close}</button>}
+            {canDismissDownload(d) && <button className="icon-btn sm" disabled={busy!==null} aria-label={`Remove ${d.filename} from downloads`} title="Remove from list; keep file" onClick={()=>void dismissDownloads([d.id])}>{shellIconClose}</button>}
             </div>
             {rowError&&<p className="dl-error" role="alert">{rowError}</p>}
           </div>
@@ -176,10 +176,10 @@ export function Downloads({ tabUrl, onClose }: { tabUrl?: string; onClose?: () =
         {!!dismissibleIds.length&&<button className="btn sm ghost" disabled={busy!==null} title="Remove inactive downloads matching this view. Files remain on your computer." onClick={()=>void dismissDownloads(dismissibleIds)}>Clear list</button>}
         {!bridge.privateMode&&<button className="btn sm ghost" aria-expanded={showFolder} onClick={()=>setShowFolder(!showFolder)}>Save location</button>}
         <button className="btn sm ghost" disabled={loading||busy!==null} onClick={()=>setRefresh(value=>value+1)}>Refresh</button>
-        <button className="icon-btn sm" title="Close (Esc)" aria-label="Close downloads" onClick={() => onClose ? onClose() : setOverlay(null)}>{I.close}</button>
+        <button className="icon-btn sm" title="Close (Esc)" aria-label="Close downloads" onClick={() => onClose ? onClose() : setOverlay(null)}>{shellIconClose}</button>
       </div>
       <div className="download-tools">
-        <label className="download-search">{I.search}<input ref={searchRef} autoFocus={!!onClose} aria-label="Search downloads" placeholder="Find a download…" value={query} onChange={event => setQuery(event.target.value)} /></label>
+        <label className="download-search">{shellIconSearch}<input ref={searchRef} autoFocus={!!onClose} aria-label="Search downloads" placeholder="Find a download…" value={query} onChange={event => setQuery(event.target.value)} /></label>
         <div className="download-filters" role="group" aria-label="Filter downloads">
           {([["all","All"],["active","In progress"],["finished","Finished"],["attention","Needs attention"]] as const).map(([value,label])=><button key={value} className="btn sm ghost" aria-pressed={filter===value} onClick={()=>setFilter(value)}>{label}</button>)}
         </div>

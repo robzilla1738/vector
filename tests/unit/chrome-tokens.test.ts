@@ -236,8 +236,8 @@ describe("session chrome — search, preview, close, settings, attachments", () 
     expect(commandBar).toContain('hint: "Ask"');
     expect(commandTabRows).toContain('hint: "Switch"');
     expect(styles).toContain(".cb-go { display: grid; place-items: center; width: var(--control-h); height: var(--control-h); flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
-    expect(commandBar).toContain("{I.send}");
-    expect(commandBar).not.toContain("I.enter");
+    expect(commandBar).toContain("{shellIconSend}");
+    expect(commandBar).not.toContain("shellIconEnter");
     expect(styles).toContain(".composer-send-actions > .icon-btn,\n.cb-send { flex: none; border-radius: 50%; corner-shape: round; background: var(--accent); color: var(--accent-ink); }");
   });
 

@@ -4,7 +4,7 @@ import { errToast } from "../store";
 import { orderedProfiles } from "../features/profiles/profile-order";
 import { SPACE_COLORS } from "../workspace";
 import { useConfirm } from "../ui/confirm";
-import { I } from "./icons";
+import { shellIconBookmark, shellIconChromeSm, shellIconCode, shellIconFolder, shellIconGlobe, shellIconPerson } from "./icons";
 import { Menu } from "../ui/dialog";
 import "./ProfileSwitcher.css";
 import { HostMethods } from "@aux/contracts";
@@ -62,7 +62,7 @@ export function ProfileSwitcher() {
     <button ref={chip} className="profile-chip" aria-expanded={open} aria-label="Choose Profile and Space" onClick={() => setOpen(value => !value)}><span aria-hidden="true">{current?.name.slice(0,1).toLocaleUpperCase() ?? "P"}</span>{current?.name ?? "Profile"}</button>
     {open && <Menu className="profile-menu" label="Profiles and Spaces" anchor={chip} returnFocus={chip} onClose={()=>setOpen(false)}>
       {profiles.map(profile => <div key={profile.id} className="profile-menu-group">
-        <button className="profile-menu-profile" aria-current={profile.current ? "true" : undefined} data-space={profile.color ?? "blue"} onClick={() => focus(profile.id, null)}>{profile.icon === "code" ? I.code : profile.icon === "travel" ? I.globe : profile.icon === "work" ? I.chromeSm : profile.icon === "study" ? I.bookmark : profile.icon === "home" ? I.folder : I.person} {profile.name}</button>
+        <button className="profile-menu-profile" aria-current={profile.current ? "true" : undefined} data-space={profile.color ?? "blue"} onClick={() => focus(profile.id, null)}>{profile.icon === "code" ? shellIconCode : profile.icon === "travel" ? shellIconGlobe : profile.icon === "work" ? shellIconChromeSm : profile.icon === "study" ? shellIconBookmark : profile.icon === "home" ? shellIconFolder : shellIconPerson} {profile.name}</button>
         {profile.spaces?.map(space => <button className="profile-menu-space" data-space={space.color} key={space.id} onClick={() => focus(profile.id, space.id)}><span className="space-dot" aria-hidden="true" />{space.name}</button>)}
       </div>)}
       <button onClick={() => { const request=++focusRequest.current.value;void executeCommand("show-profiles").then(()=>{if(alive.current&&request===focusRequest.current.value)setOpen(false);}).catch(error=>{if(alive.current&&request===focusRequest.current.value)errToast(error);}); }}>Manage Profiles…</button>

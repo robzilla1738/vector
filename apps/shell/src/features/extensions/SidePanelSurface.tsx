@@ -1,6 +1,6 @@
 import { useStore as useBoundStore } from "zustand";
 import { runCommand } from "../../commands";
-import { I } from "../../components/icons";
+import { shellIconClose } from "../../components/icons";
 import { extensionPanel } from "./extension-panel";
 import "./extensions.css";
 
@@ -19,7 +19,7 @@ export function SidePanelSurface() {
           data-command-id="close-extension-panel"
           onClick={() => runCommand("close-extension-panel")}
         >
-          {I.close}
+          {shellIconClose}
         </button>
       </header>
       <div className="rail-body">

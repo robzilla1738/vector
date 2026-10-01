@@ -6,7 +6,7 @@ import { ConversationDrafts } from "./ConversationDrafts";
 import { mergeHistory } from "../run-history";
 import { RecentConversationCard } from "./RecentWorkCard";
 import { openSavedTask } from "../task-navigation";
-import { I } from "./icons";
+import { shellIconPlusSm, shellIconRight } from "./icons";
 import { Tabs } from "../ui";
 
 /** Home previews use durable chat titles and results, never invented activity. */
@@ -58,7 +58,7 @@ export function RecentWork() {
       <button className="home-all" onClick={() => {
         if (tab === "routines") useStore.getState().setOverlay("tasks");
         else { useStore.getState().openConversation(null); useStore.setState({conversationId: "history"}); }
-      }}>{tab === "chats" ? "All Chats" : "Manage routines"}{I.right}</button>
+      }}>{tab === "chats" ? "All Chats" : "Manage routines"}{shellIconRight}</button>
     </header>
     <div id="recent-work-panel" role="tabpanel" aria-labelledby={`recent-work-panel-${tab}`} className="home-cards" aria-busy={loading}>
       {tab === "chats" ? items.map(item => <RecentConversationCard key={item.chatId} item={item} artifact={results[item.chatId]} />) : routines.slice(0, 3).map(item => <article className="home-card" key={item.routineId}>
@@ -66,7 +66,7 @@ export function RecentWork() {
         <h3><button className="home-card-open" onClick={() => item.sourceTaskId ? void openSavedTask(item.sourceTaskId).catch(errToast) : useStore.getState().setOverlay("tasks")}>{item.title}</button></h3>
         <p className="home-excerpt">{item.objective}</p>
       </article>)}
-      {!loading && !error && !count && <div className="home-empty"><p>{tab === "chats" ? "Your conversations will appear here." : "Your saved routines will appear here."}</p><button className="btn ghost" onClick={() => tab === "chats" ? useStore.getState().openConversation(null) : useStore.getState().setOverlay("tasks")}>{I.plusSm}{tab === "chats" ? "New chat" : "Create a task"}</button></div>}
+      {!loading && !error && !count && <div className="home-empty"><p>{tab === "chats" ? "Your conversations will appear here." : "Your saved routines will appear here."}</p><button className="btn ghost" onClick={() => tab === "chats" ? useStore.getState().openConversation(null) : useStore.getState().setOverlay("tasks")}>{shellIconPlusSm}{tab === "chats" ? "New chat" : "Create a task"}</button></div>}
     </div>
     {tab === "chats" && <ConversationDrafts limit={3} compact exclude={items.map(item => item.chatId)} />}
     {loading && !count && <output className="hint" data-block>Loading recent work…</output>}

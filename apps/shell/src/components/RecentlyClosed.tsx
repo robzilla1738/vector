@@ -2,7 +2,7 @@ import { moveListFocus } from "../keyboard-list";
 import { useStore } from "../store";
 import { hostOf } from "../workspace";
 import { CLOSED_TAB_LIMIT } from "../closed-tabs";
-import { I } from "./icons";
+import { shellIconReopen } from "./icons";
 import { useShortcutLabels } from "../use-shortcut-label";
 import { memo, type RefObject } from "react";
 
@@ -18,7 +18,7 @@ const ClosedTabRow = memo(function ClosedTabRow({ tabId, groupCount, firstInGrou
       <span className="hint">{location}{archived ? " · Space will be restored" : ""} · {new Date(tab.closedAt).toLocaleString()}</span>
     </button>
     {firstInGroup && groupCount > 1 && <button className="btn sm" disabled={busy} onClick={() => void useStore.getState().reopenClosedTab(tab.pageId, true)}>Reopen group · {groupCount}</button>}
-    <button className="btn sm" disabled={busy} aria-label={`Reopen ${tab.title || hostOf(tab.url)}`} onClick={() => void useStore.getState().reopenClosedTab(tab.pageId)}>{I.reopen} Reopen</button>
+    <button className="btn sm" disabled={busy} aria-label={`Reopen ${tab.title || hostOf(tab.url)}`} onClick={() => void useStore.getState().reopenClosedTab(tab.pageId)}>{shellIconReopen} Reopen</button>
   </div>;
 });
 import { useShallow } from "zustand/react/shallow";

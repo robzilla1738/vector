@@ -6,7 +6,7 @@ import { requestStageReport } from "../stage-obstruction";
 import { useDismissable } from "../use-dismissable";
 import { hostOf } from "../workspace";
 import { sourceDescription } from "./SourceRow";
-import { I } from "./icons";
+import { shellIconGlobe } from "./icons";
 import "./reading.css";
 
 export function CitationChip({ source, children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { source: ConversationSource }) {
@@ -25,5 +25,5 @@ export function CitationChip({ source, children, ...props }: AnchorHTMLAttribute
     window.addEventListener("scroll", close, true);
     return () => { window.removeEventListener("resize", close); window.removeEventListener("scroll", close, true); requestAnimationFrame(requestStageReport); };
   }, [open]);
-  return <><a {...props} ref={anchor} className="citation-chip" aria-describedby={open ? id : undefined} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>{I.globe}<span>{children || hostOf(source.url)}</span></a>{open && createPortal(<span id={id} ref={card} role="tooltip" className="citation-preview ctx-menu"><strong>{source.title || hostOf(source.url)}</strong><span>{sourceDescription(source)}</span><small>{source.url}</small></span>, document.body)}</>;
+  return <><a {...props} ref={anchor} className="citation-chip" aria-describedby={open ? id : undefined} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>{shellIconGlobe}<span>{children || hostOf(source.url)}</span></a>{open && createPortal(<span id={id} ref={card} role="tooltip" className="citation-preview ctx-menu"><strong>{source.title || hostOf(source.url)}</strong><span>{sourceDescription(source)}</span><small>{source.url}</small></span>, document.body)}</>;
 }

@@ -1,5 +1,5 @@
 import { ActionMenu, DetailPane, ListRow, TextField } from "../ui";
-import { I } from "./icons";
+import { shellIconGlobe } from "./icons";
 import { useEffect, useRef, useState } from "react";
 import type { BrowsingMemoryPage, BrowsingMemoryPolicy, WorkspaceMemory } from "@aux/contracts";
 import { memorySourceExcluded } from "@aux/contracts/memory-context";
@@ -59,7 +59,7 @@ function BrowsingMemoryContent({ memory }: { memory: WorkspaceMemory }) {
       <p className="hint">Up to 200 recent pages per Space. Shortening retention removes older entries. Pausing keeps saved entries until they expire. Excluded sites are not remembered or used.</p>
       <details><summary>Remembered pages · {saved.pages.length}</summary>
         <TextField type="search" aria-label="Search remembered pages" placeholder="Search titles and addresses…" value={query} onChange={event => setQuery(event.target.value)}/>
-        <div className="browsing-memory-list">{visiblePages.map(page => <ListRow key={page.memoryId} title={page.title} leading={I.globe} selected={selectedId === page.memoryId}
+        <div className="browsing-memory-list">{visiblePages.map(page => <ListRow key={page.memoryId} title={page.title} leading={shellIconGlobe} selected={selectedId === page.memoryId}
           description={<><span className="memory-match-source">{page.url}</span><span>{new Date(page.lastVisitedAt).toLocaleDateString()}{memorySourceExcluded(memory, page.url) ? " · Site excluded" : ""}</span></>}
           onOpen={() => { opener.current = document.activeElement as HTMLElement; setSelectedId(page.memoryId); }} trailing={<ActionMenu label={`Actions for ${page.title}`} actions={[
             { label: "Open page", onSelect: () => openSource(page.url) },

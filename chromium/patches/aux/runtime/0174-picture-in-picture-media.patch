@@ -1,0 +1,294 @@
+diff --git a/chrome/browser/ui/aux/methods/surfaces_methods.cc b/chrome/browser/ui/aux/methods/surfaces_methods.cc
+index 6b31cb6..9303808 100644
+--- a/chrome/browser/ui/aux/methods/surfaces_methods.cc
++++ b/chrome/browser/ui/aux/methods/surfaces_methods.cc
+@@ -2,5 +2,176 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+-// Wave 0 reserves this compilation unit for the surfaces feature lane.
+-// It registers no handler; generated methods remain unavailable until implemented.
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++
++#include <algorithm>
++#include <memory>
++#include <set>
++#include <utility>
++#include <vector>
++
++#include "base/functional/bind.h"
++#include "base/json/json_writer.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/surface_visibility.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/common/chrome_isolated_world_ids.h"
++#include "content/public/browser/media_session.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "services/media_session/public/mojom/media_session.mojom.h"
++#include "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom.h"
++
++namespace {
++using Reply = base::OnceCallback<void(bool, const std::string&,
++                                     const std::string&, const std::string&)>;
++
++// The callback completes on the real media transition, not script scheduling.
++class PictureInPictureRequest final
++    : public content::WebContentsObserver,
++      public std::enable_shared_from_this<PictureInPictureRequest> {
++ public:
++  PictureInPictureRequest(content::WebContents* contents, bool enter,
++                          Reply reply)
++      : content::WebContentsObserver(contents), enter_(enter),
++        document_(contents->GetPrimaryMainFrame()->GetWeakDocumentPtr()),
++        reply_(std::move(reply)) {}
++
++  void Start() {
++    timer_.Start(FROM_HERE, base::Seconds(2),
++                 base::BindOnce(&PictureInPictureRequest::Finish,
++                                shared_from_this(), "picture-in-picture-timeout"));
++    if (!enter_) {
++      if (!PictureInPictureWindowManager::GetInstance()->ExitPictureInPicture())
++        Finish("picture-in-picture-exit-failed");
++      return;
++    }
++    auto* session = content::MediaSession::GetIfExists(web_contents());
++    if (session) {
++      const auto actions = session->GetMediaSessionActionsSync();
++      if (std::ranges::find(actions,
++              media_session::mojom::MediaSessionAction::kEnterPictureInPicture) !=
++          actions.end()) {
++        session->EnterPictureInPicture();
++        return;
++      }
++    }
++    auto* frame = document_.AsRenderFrameHostIfValid();
++    if (!frame) { Finish("page-changed"); return; }
++    frame->NotifyUserActivation(
++        blink::mojom::UserActivationNotificationType::kInteraction);
++    frame->ExecuteJavaScriptInIsolatedWorld(
++        uR"JS((() => {
++          const candidates = [...document.querySelectorAll('video')]
++            .filter(video => !video.paused && !video.ended && video.readyState >= 2
++              && !video.disablePictureInPicture)
++            .map(video => ({ video, rect: video.getBoundingClientRect() }))
++            .filter(({video, rect}) => rect.width > 0 && rect.height > 0
++              && rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight
++              && rect.left < innerWidth && getComputedStyle(video).visibility !== 'hidden'
++              && getComputedStyle(video).display !== 'none')
++            .sort((a, b) => b.rect.width * b.rect.height - a.rect.width * a.rect.height);
++          if (!candidates.length) return 'no-playing-video';
++          candidates[0].video.requestPictureInPicture().catch(() => {});
++          return 'requested';
++        })())JS",
++        base::BindOnce(&PictureInPictureRequest::ScriptScheduled,
++                       shared_from_this()),
++        ISOLATED_WORLD_ID_CHROME_INTERNAL);
++  }
++
++ private:
++  void ScriptScheduled(base::Value result) {
++    if (result.is_string() && result.GetString() == "no-playing-video")
++      Finish("no-playing-video");
++  }
++  void MediaPictureInPictureChanged(bool) override {
++    const bool active = web_contents()->HasPictureInPictureVideo() ||
++                        web_contents()->HasPictureInPictureDocument();
++    if (active == enter_) Finish("");
++  }
++  void PrimaryPageChanged(content::Page&) override { Finish("page-changed"); }
++  void WebContentsDestroyed() override { Finish("page-closed"); }
++  void Finish(std::string reason) {
++    if (!reply_) return;
++    auto keep_alive = shared_from_this();
++    timer_.Stop();
++    const bool unchanged = document_.AsRenderFrameHostIfValid() != nullptr;
++    const bool active = web_contents() &&
++        (web_contents()->HasPictureInPictureVideo() ||
++         web_contents()->HasPictureInPictureDocument());
++    base::DictValue result;
++    result.Set("active", active);
++    if (!reason.empty()) result.Set("reason", std::move(reason));
++    else if (!unchanged) result.Set("reason", "page-changed");
++    Observe(nullptr);
++    std::move(reply_).Run(true, *base::WriteJson(result), "", "");
++  }
++  bool enter_;
++  content::WeakDocumentPtr document_;
++  Reply reply_;
++  base::OneShotTimer timer_;
++};
++}  // namespace
++
++void WebUIBrowserUI::HandleAuxSurfacesRequest(
++    const std::string& method, const base::ListValue& args,
++    RequestCallback callback) {
++  auto* catalog = aux::TabCatalog::GetForProfile(browser_->GetProfile());
++  if (method == "setStageVisible") {
++    if (args.size() != 1 || !args[0].is_list() || args[0].GetList().size() > 4) {
++      std::move(callback).Run(false, "", "invalid_argument", "A stage shows up to four pages");
++      return;
++    }
++    std::vector<content::WebContents*> pages;
++    std::set<std::string> ids;
++    for (const auto& value : args[0].GetList()) {
++      BrowserWindowInterface* owner = nullptr;
++      auto* contents = value.is_string() ? catalog->FindPage(value.GetString(), &owner) : nullptr;
++      auto* identity = contents ? aux::PageIdentity::FromWebContents(contents) : nullptr;
++      if (!contents || owner != browser_ || !identity || identity->runtime_owned() ||
++          !ids.insert(value.GetString()).second) {
++        std::move(callback).Run(false, "", "forbidden", "Stage pages must belong to this window");
++        return;
++      }
++      pages.push_back(contents);
++    }
++    aux::SetStageVisible(browser_, pages);
++    std::move(callback).Run(true, "true", "", "");
++    return;
++  }
++  if (method != "pictureInPicture" || args.size() != 2 || !args[0].is_string() ||
++      !args[1].is_string() || (args[1].GetString() != "toggle" &&
++      args[1].GetString() != "enter" && args[1].GetString() != "exit")) {
++    std::move(callback).Run(false, "", "invalid_argument", "Choose a page and PiP operation");
++    return;
++  }
++  BrowserWindowInterface* owner = nullptr;
++  auto* contents = catalog->FindPage(args[0].GetString(), &owner);
++  auto* identity = contents ? aux::PageIdentity::FromWebContents(contents) : nullptr;
++  if (!contents || owner != browser_ || !identity || identity->runtime_owned() ||
++      !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||
++      !contents->GetPrimaryMainFrame()) {
++    std::move(callback).Run(false, "", "forbidden", "Choose an available browser page in this window");
++    return;
++  }
++  const bool active = contents->HasPictureInPictureVideo() || contents->HasPictureInPictureDocument();
++  const bool enter = args[1].GetString() == "enter" || (args[1].GetString() == "toggle" && !active);
++  if (active == enter) {
++    base::DictValue result; result.Set("active", active);
++    std::move(callback).Run(true, *base::WriteJson(result), "", "");
++    return;
++  }
++  if (!enter && PictureInPictureWindowManager::GetInstance()->GetWebContents() != contents) {
++    std::move(callback).Run(false, "", "forbidden", "This page does not own the PiP window");
++    return;
++  }
++  std::make_shared<PictureInPictureRequest>(contents, enter, std::move(callback))->Start();
++}
+diff --git a/chrome/browser/ui/aux/shell_events.cc b/chrome/browser/ui/aux/shell_events.cc
+index 0c8604f..1a2f413 100644
+--- a/chrome/browser/ui/aux/shell_events.cc
++++ b/chrome/browser/ui/aux/shell_events.cc
+@@ -7,6 +7,7 @@
+ #include <string>
+ #include <map>
+ #include <optional>
++#include <set>
+ #include <utility>
+ #include <vector>
+ 
+@@ -49,6 +50,7 @@
+ #include "content/public/browser/browser_context.h"
+ #include "content/public/browser/download_manager.h"
+ #include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/media_player_id.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/web_contents_observer.h"
+@@ -137,12 +139,16 @@ class PageSignals : public content::WebContentsObserver,
+     return navigation_error_ ? &*navigation_error_ : nullptr;
+   }
+ 
++  bool has_video() const { return !video_players_.empty(); }
++
+   ~PageSignals() override {
+     if (!page_id_.empty()) {
+       base::DictValue payload;
+       payload.Set("pageId", page_id_);
+       payload.Set("muted", false);
+       payload.Set("audible", false);
++      payload.Set("video", false);
++      payload.Set("pip", false);
+       payload.Set("removed", true);
+       EmitDict(profile_, "onAudio", std::move(payload));
+     }
+@@ -317,6 +323,43 @@ class PageSignals : public content::WebContentsObserver,
+     EmitDict(profile_, "onLoading", std::move(payload));
+   }
+ 
++  void MediaMetadataChanged(const MediaPlayerInfo& info,
++                            const content::MediaPlayerId& id) override {
++    if (info.has_video) video_players_.insert(id);
++    else video_players_.erase(id);
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++  }
++  void MediaStartedPlaying(const MediaPlayerInfo& info,
++                           const content::MediaPlayerId& id) override {
++    MediaMetadataChanged(info, id);
++  }
++  void MediaStoppedPlaying(const MediaPlayerInfo&,
++                           const content::MediaPlayerId&,
++                           MediaStoppedReason) override {
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++  }
++  void MediaResized(const gfx::Size& size,
++                    const content::MediaPlayerId& id) override {
++    if (!size.IsEmpty()) video_players_.insert(id);
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++  }
++  void MediaDestroyed(const content::MediaPlayerId& id) override {
++    video_players_.erase(id);
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++  }
++  void PrimaryPageChanged(content::Page&) override {
++    video_players_.clear();
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++  }
++  void MediaPictureInPictureChanged(bool) override {
++    PublishAudio(web_contents()->IsCurrentlyAudible());
++    base::DictValue state;
++    state.Set("pageId", page_id_);
++    state.Set("active", web_contents()->HasPictureInPictureVideo() ||
++                        web_contents()->HasPictureInPictureDocument());
++    EmitDict(profile_, "onPictureInPicture", std::move(state));
++  }
++
+   void PublishAudio(bool audible) {
+     if (page_id_.empty()) {
+       return;
+@@ -325,6 +368,8 @@ class PageSignals : public content::WebContentsObserver,
+     payload.Set("pageId", page_id_);
+     payload.Set("muted", web_contents()->IsAudioMuted());
+     payload.Set("audible", audible);
++    payload.Set("video", has_video());
++    payload.Set("pip", web_contents()->HasPictureInPictureVideo() || web_contents()->HasPictureInPictureDocument());
+     EmitDict(profile_, "onAudio", std::move(payload));
+   }
+ 
+@@ -416,6 +461,7 @@ class PageSignals : public content::WebContentsObserver,
+   bool auth_prompt_ = false;
+   int navigation_generation_ = 0;
+   std::string page_change_url_;
++  std::set<content::MediaPlayerId> video_players_;
+   std::optional<base::DictValue> navigation_error_;
+   base::RepeatingTimer page_change_timer_;
+   bool page_change_pending_ = false;
+@@ -805,6 +851,12 @@ const base::DictValue* PageNavigationError(content::WebContents* contents) {
+   return signals ? signals->navigation_error() : nullptr;
+ }
+ 
++bool PageHasVideo(content::WebContents* contents) {
++  WatchPageShellEvents(contents);
++  auto* signals = contents ? PageSignals::FromWebContents(contents) : nullptr;
++  return signals && signals->has_video();
++}
++
+ void PublishTabPlacement(Profile* profile,
+                          content::WebContents* contents,
+                          const std::string& space_id,

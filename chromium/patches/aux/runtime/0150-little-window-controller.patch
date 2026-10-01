@@ -1,0 +1,351 @@
+diff --git a/chrome/browser/prefs/browser_prefs.cc b/chrome/browser/prefs/browser_prefs.cc
+index 041ab23..54742a1 100644
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -25,6 +25,7 @@
+ #include "chrome/browser/ui/aux/health_recorder.h"
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_prefs.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
+ #include "chrome/browser/ui/aux/site_prefs.h"
+ #endif
+ #include "chrome/browser/accessibility/accessibility_labels_service.h"
+@@ -1475,6 +1476,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+   registry->RegisterDictionaryPref(aux::kArchivedProfilesPref);
+   registry->RegisterBooleanPref(aux::kQuickAskShortcutEnabledPref, false);
+   registry->RegisterDictionaryPref(aux::kQuickAskShortcutBindingsPref);
++  registry->RegisterStringPref(aux::kExternalLinkTargetPref, "little");
+ #endif
+   // Call outs to individual subsystems that register Local State (browser-wide)
+   // prefs en masse. See RegisterProfilePrefs for per-profile prefs. Please
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 502f14f..dff1a96 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -63,6 +63,8 @@ source_set("runtime") {
+     "profile_library.h",
+     "profile_search_engine.cc",
+     "profile_search_engine.h",
++    "little_window_controller.mm",
++    "little_window_controller.h",
+     "quick_ask_controller.cc",
+     "quick_ask_controller.h",
+     "readable_capture.cc",
+diff --git a/chrome/browser/ui/aux/little_window_controller.h b/chrome/browser/ui/aux/little_window_controller.h
+new file mode 100644
+index 0000000..1626ff0
+--- /dev/null
++++ b/chrome/browser/ui/aux/little_window_controller.h
+@@ -0,0 +1,22 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_LITTLE_WINDOW_CONTROLLER_H_
++#define CHROME_BROWSER_UI_AUX_LITTLE_WINDOW_CONTROLLER_H_
++#include <string>
++#include <optional>
++#include "base/values.h"
++class BrowserWindowInterface;
++class Profile;
++namespace content { class WebContents; }
++class GURL;
++namespace aux {
++inline constexpr char kExternalLinkTargetPref[] = "aux.external_links.target";
++std::optional<base::Value> HandleLittleWindow(BrowserWindowInterface* browser, const std::string& method, const base::ListValue& args);
++bool IsLittleWindow(const BrowserWindowInterface* browser);
++bool CanOpenLittleLink(Profile* profile, content::WebContents* contents);
++bool ConsumeLittleLinkGesture(BrowserWindowInterface* browser);
++BrowserWindowInterface* LastNormalWindow(Profile* profile);
++BrowserWindowInterface* OpenLittleWindow(Profile* profile, const GURL& url, bool untrusted_launch = false);
++bool PromoteLittleWindow(BrowserWindowInterface* browser, const std::string& space_id);
++bool CloseLittleWindow(BrowserWindowInterface* browser);
++}
++#endif
+diff --git a/chrome/browser/ui/aux/little_window_controller.mm b/chrome/browser/ui/aux/little_window_controller.mm
+new file mode 100644
+index 0000000..bef3233
+--- /dev/null
++++ b/chrome/browser/ui/aux/little_window_controller.mm
+@@ -0,0 +1,172 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include <algorithm>
++#include <set>
++#include <map>
++#import <Cocoa/Cocoa.h>
++#include "base/time/time.h"
++#include "base/no_destructor.h"
++#include "base/scoped_observation.h"
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/organization_store.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "content/public/browser/render_frame_host.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/browser_commands.h"
++#include "chrome/browser/ui/browser_tabstrip.h"
++#include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
++#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
++#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/navigator/browser_navigator.h"
++#include "chrome/browser/ui/navigator/browser_navigator_params.h"
++#include "url/origin.h"
++#include "components/sessions/core/session_id.h"
++#include "content/public/browser/web_contents.h"
++#include "ui/base/base_window.h"
++#include "ui/display/screen.h"
++#include "url/gurl.h"
++namespace aux {
++namespace {
++class LittleWindows : public BrowserCollectionObserver {
++ public:
++  LittleWindows() {
++    observation_.Observe(GlobalBrowserCollection::GetInstance());
++    [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskLeftMouseDown handler:^NSEvent*(NSEvent* event) {
++      auto* collection = GlobalBrowserCollection::GetInstance();
++      if (!collection) return event;
++      auto* browser = collection->FindBrowserWithWindow(gfx::NativeWindow(event.window));
++      if (!browser) return event;
++      const NSEventModifierFlags flags = event.modifierFlags;
++      const NSEventModifierFlags relevant = NSEventModifierFlagOption | NSEventModifierFlagShift | NSEventModifierFlagCommand | NSEventModifierFlagControl;
++      const bool little = (flags & relevant) == (NSEventModifierFlagOption | NSEventModifierFlagShift);
++      if (little) gestures[browser->GetSessionID().id()] = base::TimeTicks::Now();
++      else gestures.erase(browser->GetSessionID().id());
++      return event;
++    }];
++  }
++  void OnBrowserClosed(BrowserWindowInterface* browser) override { ids.erase(browser->GetSessionID().id()); gestures.erase(browser->GetSessionID().id()); }
++  std::set<int> ids;
++  std::map<int, base::TimeTicks> gestures;
++ private:
++  base::ScopedObservation<GlobalBrowserCollection, BrowserCollectionObserver> observation_{this};
++};
++LittleWindows& Windows() { static base::NoDestructor<LittleWindows> windows; return *windows; }
++}
++bool IsLittleWindow(const BrowserWindowInterface* browser) {
++  return browser && Windows().ids.contains(browser->GetSessionID().id());
++}
++bool CanOpenLittleLink(Profile* profile, content::WebContents* contents) {
++  if (!profile || profile->IsOffTheRecord() || !contents || !contents->GetPrimaryMainFrame()) return false;
++  const std::string page_id = PageIdentity::GetOrCreate(profile, contents);
++  EgressRequestContext authority;
++  authority.page_id = page_id;
++  authority.document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  return !PageIdentity::FromWebContents(contents)->runtime_owned() &&
++         !EgressController::ForProfile(profile)->IsProtected(authority);
++}
++bool ConsumeLittleLinkGesture(BrowserWindowInterface* browser) {
++  if (!browser) return false;
++  auto& gestures = Windows().gestures;
++  const auto found = gestures.find(browser->GetSessionID().id());
++  if (found == gestures.end()) return false;
++  const bool fresh = base::TimeTicks::Now() - found->second <= base::Seconds(1);
++  gestures.erase(found);
++  return fresh;
++}
++BrowserWindowInterface* LastNormalWindow(Profile* profile) {
++  auto* collection = profile ? ProfileBrowserCollection::GetForProfile(profile) : nullptr;
++  if (!collection) return nullptr;
++  BrowserWindowInterface* result = nullptr;
++  collection->ForEach([&](BrowserWindowInterface* candidate) {
++    if (candidate->GetType() == BrowserWindowInterface::TYPE_NORMAL && !IsLittleWindow(candidate) && !IsQuickAskWindow(candidate)) {
++      result = candidate;
++      return false;
++    }
++    return true;
++  }, BrowserCollection::Order::kActivation);
++  return result;
++}
++BrowserWindowInterface* OpenLittleWindow(Profile* profile, const GURL& url, bool untrusted_launch) {
++  if (!profile || profile->IsOffTheRecord() || (!url.is_empty() && !url.SchemeIsHTTPOrHTTPS())) return nullptr;
++  auto* screen = display::Screen::Get();
++  if (!screen) return nullptr;
++  const gfx::Point cursor = screen->GetCursorScreenPoint();
++  const gfx::Rect area = screen->GetDisplayNearestPoint(cursor).work_area();
++  const int width = std::min(960, area.width()), height = std::min(720, area.height());
++  const gfx::Rect bounds(std::clamp(cursor.x() - width / 2, area.x(), area.right() - width),
++                         std::clamp(cursor.y() - 40, area.y(), area.bottom() - height), width, height);
++  BrowserWindowCreateParams params(BrowserWindowInterface::TYPE_NORMAL, profile, true);
++  params.initial_bounds = bounds;
++  params.omit_from_session_restore = true;
++  params.should_trigger_session_restore = false;
++  auto* browser = CreateBrowserWindow(std::move(params));
++  if (!browser) return nullptr;
++  Windows().ids.insert(browser->GetSessionID().id());
++  if (url.is_empty()) {
++    chrome::AddTabAt(browser, GURL(), -1, true);
++  } else {
++    NavigateParams navigation(browser, url, ui::PAGE_TRANSITION_LINK);
++    navigation.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
++    if (untrusted_launch) navigation.initiator_origin = url::Origin();
++    Navigate(&navigation);
++  }
++  browser->GetWindow()->SetBounds(bounds);
++  browser->GetWindow()->Show();
++  browser->GetWindow()->Activate();
++  return browser;
++}
++bool CloseLittleWindow(BrowserWindowInterface* browser) {
++  if (!IsLittleWindow(browser)) return false;
++  browser->GetWindow()->Close();
++  return true;
++}
++bool PromoteLittleWindow(BrowserWindowInterface* browser, const std::string& space_id) {
++  if (!IsLittleWindow(browser)) return false;
++  auto* profile = browser->GetProfile();
++  auto* contents = browser->GetTabStripModel()->GetActiveWebContents();
++  if (!contents) return false;
++  const std::string page_id = PageIdentity::GetOrCreate(profile, contents);
++  EgressRequestContext authority;
++  authority.page_id = page_id;
++  authority.document = contents->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  if (PageIdentity::FromWebContents(contents)->runtime_owned() || EgressController::ForProfile(profile)->IsProtected(authority)) return false;
++  BrowserWindowInterface* destination = LastNormalWindow(profile);
++  if (!destination) return false;
++  const std::string destination_id = base::NumberToString(destination->GetSessionID().id());
++  std::string error;
++  auto organization = OrganizationStore::Snapshot(profile, destination_id, &error);
++  if (!organization) return false;
++  const auto* layout = organization->FindDict("layout");
++  const auto* shared = layout ? layout->FindDict("shared") : nullptr;
++  const auto* window = layout ? layout->FindDict("window") : nullptr;
++  const auto* spaces = shared ? shared->FindList("spaces") : nullptr;
++  const std::string* active = window ? window->FindString("activeSpaceId") : nullptr;
++  const std::string selected = space_id.empty() && active ? *active : space_id;
++  bool valid = false;
++  std::string workspace_id;
++  if (spaces) for (const auto& space : *spaces) {
++    const auto* id = space.is_dict() ? space.GetDict().FindString("id") : nullptr;
++    if (id && *id == selected) {
++      valid = true;
++      if (const auto* workspace = space.GetDict().FindString("workspaceId")) workspace_id = *workspace;
++    }
++  }
++  if (!valid) return false;
++  const int index = browser->GetTabStripModel()->GetIndexOfWebContents(contents);
++  chrome::MoveTabsToExistingWindow(browser, destination, {index});
++  auto* catalog = TabCatalog::GetForProfile(profile);
++  BrowserWindowInterface* actual = nullptr;
++  if (catalog->FindPage(page_id, &actual) != contents || actual != destination) return false;
++  catalog->BindSpace(page_id, selected, workspace_id);
++  destination->GetTabStripModel()->ActivateTabAt(destination->GetTabStripModel()->GetIndexOfWebContents(contents));
++  destination->GetWindow()->Show();
++  destination->GetWindow()->Activate();
++  return true;
++}
++}
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index 0d1c973..f334492 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -99,7 +99,7 @@ AuxMethodRegistry::AuxMethodRegistry() {
+                   "navigationMenu", "contextMenu",
+                   "revealPath", "openPath"});
+   register_shell(AuxShellMethodGroup::kWindow,
+-                 {"quickAsk", "quickAskShortcut"});
++                 {"quickAsk", "quickAskShortcut", "littleWindow", "externalLinkTarget", "showTabWindow"});
+   auto register_runtime = [this](AuxRuntimeMethodGroup group,
+                                  std::initializer_list<std::string_view> names) {
+     for (std::string_view name : names)
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+index 521196e..fdeb05f 100644
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -62,6 +62,7 @@
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
+ #include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
+ #include "chrome/browser/ui/aux/methods/shortcuts_methods.h"
+ #include "chrome/browser/ui/aux/result_preview.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+@@ -333,6 +334,15 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+     const std::string& method, const base::ListValue& args,
+     RequestCallback callback) {
+   const base::ListValue* list = &args;
++  if (method == "littleWindow" || method == "externalLinkTarget" || method == "showTabWindow") {
++    auto result = aux::HandleLittleWindow(browser_, method, args);
++    if (!result) {
++      std::move(callback).Run(false, "", "invalid_argument", "Invalid Little window request");
++      return;
++    }
++    std::move(callback).Run(true, *base::WriteJson(*result), "", "");
++    return;
++  }
+   if (method == "dispatchCommand") {
+     const std::string* id = args.size() == 1 ? args[0].GetIfString() : nullptr;
+     if (!id || !aux::DispatchNativeAuxCommand(browser_.get(), *id)) {
+diff --git a/chrome/browser/ui/aux/methods/window_sync_methods.cc b/chrome/browser/ui/aux/methods/window_sync_methods.cc
+index 508832b..cd8918e 100644
+--- a/chrome/browser/ui/aux/methods/window_sync_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_sync_methods.cc
+@@ -1,6 +1,41 @@
+ // Copyright 2026 The Aux Authors
+-// Use of this source code is governed by a BSD-style license that can be
+-// found in the LICENSE file.
+-
+-// Wave 0 reserves this compilation unit for the window_sync feature lane.
+-// It registers no handler; generated methods remain unavailable until implemented.
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/browser_process.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/aux/tab_catalog.h"
++#include "ui/base/base_window.h"
++#include "components/prefs/pref_service.h"
++#include "url/gurl.h"
++namespace aux {
++std::optional<base::Value> HandleLittleWindow(BrowserWindowInterface* browser,
++    const std::string& method, const base::ListValue& args) {
++  if (!browser) return std::nullopt;
++  if (method == "showTabWindow") {
++    if (args.size() != 1 || !args[0].is_string()) return std::nullopt;
++    BrowserWindowInterface* owner = nullptr;
++    auto* catalog = TabCatalog::GetForProfile(browser->GetProfile());
++    if (!catalog->FindPage(args[0].GetString(), &owner) || !owner || owner->GetProfile() != browser->GetProfile()) return base::Value(false);
++    owner->GetWindow()->Show();
++    owner->GetWindow()->Activate();
++    return base::Value(true);
++  }
++  if (method == "externalLinkTarget") {
++    auto* prefs = g_browser_process ? g_browser_process->local_state() : nullptr;
++    if (!prefs || args.size() > 1) return std::nullopt;
++    if (!args.empty() && !args[0].is_none()) {
++      if (!args[0].is_string() || (args[0].GetString() != "little" && args[0].GetString() != "main")) return std::nullopt;
++      prefs->SetString(kExternalLinkTargetPref, args[0].GetString());
++    }
++    return base::Value(prefs->GetString(kExternalLinkTargetPref));
++  }
++  if (method != "littleWindow" || args.size() != 2 || !args[0].is_string() || !args[1].is_dict()) return std::nullopt;
++  const auto& options = args[1].GetDict();
++  const auto& operation = args[0].GetString();
++  const auto* url = options.FindString("url");
++  const auto* space_id = options.FindString("spaceId");
++  if (operation == "open") return base::Value(OpenLittleWindow(browser->GetProfile(), url ? GURL(*url) : GURL()) != nullptr);
++  if (operation == "promote") return base::Value(PromoteLittleWindow(browser, space_id ? *space_id : ""));
++  if (operation == "close") return base::Value(CloseLittleWindow(browser));
++  return std::nullopt;
++}
++}
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 54276ce..5bd5689 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -54,6 +54,7 @@
+ #include "chrome/browser/ui/aux/organization_store.h"
+ #include "chrome/browser/ui/aux/profile_search_engine.h"
+ #include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
+ #include "chrome/browser/ui/aux/result_preview.h"
+ #include "chrome/browser/ui/aux/shell_events.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
+@@ -827,6 +828,7 @@ void WebUIBrowserUI::GetIdentity(GetIdentityCallback callback) {
+                           profile->IsOffTheRecord(),
+                           profile->IsOffTheRecord() ? aux::mojom::WindowKind::kPrivate :
+                           aux::IsQuickAskWindow(browser_) ? aux::mojom::WindowKind::kQuickAsk :
++                          aux::IsLittleWindow(browser_) ? aux::mojom::WindowKind::kLittle :
+                           aux::mojom::WindowKind::kNormal);
+ }
+ 

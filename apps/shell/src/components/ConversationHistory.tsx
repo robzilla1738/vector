@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ConversationSummary, Run } from "@aux/contracts";
 import { openSavedTask } from "../task-navigation";
 import { call, errToast, useStore } from "../store";
-import { I } from "./icons";
+import { shellIconArchive, shellIconGrid, shellIconLayersSm, shellIconMore, shellIconPencil, shellIconReopen, shellIconResult, shellIconSearch, shellIconTrash } from "./icons";
 import { ConversationDrafts } from "./ConversationDrafts";
 import { draftKey } from "../conversation-drafts";
 import { AnswerMarkdown } from "./AnswerMarkdown";
@@ -134,7 +134,7 @@ export function ConversationHistory() {
       panelId="conversation-history-panel" className="history-segment" items={[{ value: "active", label: "Active", disabled: saving }, { value: "archived", label: "Archived", disabled: saving }]} /></header>
     <div id="conversation-history-panel" role="tabpanel" aria-labelledby={`conversation-history-panel-${archived ? "archived" : "active"}`} className="conversation-history-list" ref={list} onKeyDown={event=>moveListFocus(event,".history-conversation")}>
       <div className="history-toolbar">
-      <label className="history-search">{I.search}
+      <label className="history-search">{shellIconSearch}
       <input ref={search} disabled={saving} onKeyDown={event=>{if(event.nativeEvent.isComposing)return;if(event.key==="ArrowDown"){event.preventDefault();firstConversation.current?.focus();}else if(event.key==="Enter" && !loading && rows[0]){event.preventDefault();useStore.getState().openConversation(rows[0].latestRun.runId);}}} aria-label="Search conversations" placeholder="Search chats…" maxLength={500} value={query} onChange={event => setQuery(event.target.value)}/>
       </label>
       {space?.workspaceId && <div className="history-space-filter" role="group" aria-label="Conversation Space filter">
@@ -142,7 +142,7 @@ export function ConversationHistory() {
         <button className="btn sm ghost" disabled={saving} aria-pressed={currentSpaceOnly} title={space.name} onClick={() => setCurrentSpaceOnly(true)}>{space.name}</button>
       </div>}
       <div className="history-view-tools"><Tabs<"grid" | "list"> label="Chat layout" value={viewMode} onChange={setViewMode} panelId="conversation-layout-panel" className="history-segment"
-        items={[{ value: "grid", label: I.grid, ariaLabel: "Grid view" }, { value: "list", label: I.result, ariaLabel: "List view" }]} /></div>
+        items={[{ value: "grid", label: shellIconGrid, ariaLabel: "Grid view" }, { value: "list", label: shellIconResult, ariaLabel: "List view" }]} /></div>
       </div>
       {(archived || workspaceId) && <p className="hint history-scope-note">{archived ? "Archived chats stay available until you delete them." : "Searching this Space. Unsent drafts are available in All Spaces."}</p>}
       {!archived && !workspaceId && <ConversationDrafts query={query} exclude={rows.map(row => row.chatId)} />}
@@ -152,13 +152,13 @@ export function ConversationHistory() {
         {renaming === item.chatId ? <form className="history-rename" onSubmit={event => { event.preventDefault(); if (title.trim()) void mutate("rename", item); }}><input autoFocus aria-label="Conversation title" maxLength={160} value={title} onChange={event => setTitle(event.target.value)}/><button className="btn sm" disabled={saving || !title.trim()}>Save</button><button type="button" className="btn sm ghost" onClick={() => setRenaming(null)}>Cancel</button></form> : <>
           <button ref={index === 0 ? firstConversation : undefined} disabled={saving} className="history-conversation" onClick={() => useStore.getState().openConversation(item.latestRun.runId)}><strong>{item.title}</strong><span>{drafts[draftKey(item.chatId)]?.trim() ? `Draft · ${drafts[draftKey(item.chatId)]}` : item.taskId ? "Saved task" : item.latestRun.statusMessage ?? item.latestRun.status.replaceAll("_", " ")}</span><time>{new Date(item.updatedAt).toLocaleString()} · {item.turnCount} {item.turnCount === 1 ? "turn" : "turns"}</time></button>
           {viewMode === "grid" && <div className="history-card-preview home-excerpt" inert><AnswerMarkdown text={drafts[draftKey(item.chatId)]?.trim() || (typeof item.latestRun.result?.answer === "string" ? item.latestRun.result.answer : item.latestRun.statusMessage || item.latestRun.goal)} /></div>}
-          <button disabled={saving} className="icon-btn history-actions" aria-label={`Conversation actions for ${item.title}`} aria-haspopup="menu" aria-expanded={menu === item.chatId} onClick={event => { menuAnchor.current = event.currentTarget; setMenu(value => value === item.chatId ? null : item.chatId); setDeleting(null); }}>{I.more}</button>
+          <button disabled={saving} className="icon-btn history-actions" aria-label={`Conversation actions for ${item.title}`} aria-haspopup="menu" aria-expanded={menu === item.chatId} onClick={event => { menuAnchor.current = event.currentTarget; setMenu(value => value === item.chatId ? null : item.chatId); setDeleting(null); }}>{shellIconMore}</button>
         </>}
         {menu === item.chatId && <Menu className="history-menu" label="Conversation actions" anchor={menuAnchor} returnFocus={menuAnchor} onClose={closeMenu} onMenuKeyDown={event => event.stopPropagation()}>
-          {item.taskId ? <button role="menuitem" disabled={saving} onClick={() => void openSavedTask(item.taskId!).catch(errToast)}>{I.layersSm} Open saved task</button> : <>
-          <button role="menuitem" disabled={saving} onClick={() => { setTitle(item.title); setRenaming(item.chatId); setMenu(null); }}>{I.pencil} Rename</button>
-          <button role="menuitem" disabled={saving} onClick={() => void mutate("archive", item)}>{item.archived ? I.reopen : I.archive} {item.archived ? "Restore" : "Archive"}</button>
-          {deleting === item.chatId ? <div className="history-delete-confirm" role="group" aria-label="Confirm conversation deletion"><span>Delete permanently?</span><button role="menuitem" disabled={saving} onClick={() => void mutate("delete", item)}>Delete</button><button role="menuitem" onClick={() => setDeleting(null)}>Cancel</button></div> : <button role="menuitem" disabled={saving} className="danger" onClick={() => setDeleting(item.chatId)}>{I.trash} Delete</button>}
+          {item.taskId ? <button role="menuitem" disabled={saving} onClick={() => void openSavedTask(item.taskId!).catch(errToast)}>{shellIconLayersSm} Open saved task</button> : <>
+          <button role="menuitem" disabled={saving} onClick={() => { setTitle(item.title); setRenaming(item.chatId); setMenu(null); }}>{shellIconPencil} Rename</button>
+          <button role="menuitem" disabled={saving} onClick={() => void mutate("archive", item)}>{item.archived ? shellIconReopen : shellIconArchive} {item.archived ? "Restore" : "Archive"}</button>
+          {deleting === item.chatId ? <div className="history-delete-confirm" role="group" aria-label="Confirm conversation deletion"><span>Delete permanently?</span><button role="menuitem" disabled={saving} onClick={() => void mutate("delete", item)}>Delete</button><button role="menuitem" onClick={() => setDeleting(null)}>Cancel</button></div> : <button role="menuitem" disabled={saving} className="danger" onClick={() => setDeleting(item.chatId)}>{shellIconTrash} Delete</button>}
           </>}
         </Menu>}
       </div>)}

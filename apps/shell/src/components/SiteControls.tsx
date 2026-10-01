@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { bridge, type BrowserSiteInfo } from "../bridge";
 import { useStore } from "../store";
-import { I } from "./icons";
+import {
+  shellIconAlert,
+  shellIconClose,
+  shellIconCode,
+  shellIconCookie,
+  shellIconGlobe,
+  shellIconLock,
+  shellIconShield,
+} from "./icons";
 import { PageZoom } from "./PageZoom";
 import { siteControlsOpener } from "../site-controls-opener";
 import { Dialog } from "../ui";
@@ -153,27 +161,31 @@ export function SiteControls() {
   const unavailable = !!page?.navigationError || page?.viewStatus === "crashed";
   const security = unavailable
     ? {
-        icon: I.alert,
+        icon: shellIconAlert,
         title: "Connection not established",
         detail:
           "This page did not load successfully. Its address alone does not establish a secure connection.",
       }
     : !info
-      ? { icon: I.globe, title: error ? "Site details unavailable" : "Checking this page…", detail: "" }
+      ? {
+          icon: shellIconGlobe,
+          title: error ? "Site details unavailable" : "Checking this page…",
+          detail: "",
+        }
       : info.security === "secure"
         ? {
-            icon: I.lock,
+            icon: shellIconLock,
             title: "Connection is secure",
             detail: "This page was loaded over an encrypted HTTPS connection.",
           }
         : info.security === "local"
           ? {
-              icon: I.globe,
+              icon: shellIconGlobe,
               title: "Local connection",
               detail: "This page uses an unencrypted connection on this Mac.",
             }
           : {
-              icon: I.alert,
+              icon: shellIconAlert,
               title: "Connection is not secure",
               detail: info.url.startsWith("https:")
                 ? "This HTTPS page has a security warning. Information you send may be exposed."
@@ -195,7 +207,7 @@ export function SiteControls() {
           <p>{security.title}</p>
         </div>
         <button ref={closeRef} className="icon-btn" aria-label="Close site controls" onClick={close}>
-          {I.close}
+          {shellIconClose}
         </button>
       </header>
       {error && (
@@ -228,7 +240,7 @@ export function SiteControls() {
           </div>
           <section className="site-controls-group" aria-labelledby="site-data-title">
             <div>
-              <span className="site-row-icon">{I.cookie}</span>
+              <span className="site-row-icon">{shellIconCookie}</span>
               <div>
                 <strong id="site-data-title">Cookies and site data</strong>
                 <span>
@@ -241,7 +253,7 @@ export function SiteControls() {
               </button>
             </div>
             <div>
-              <span className="site-row-icon">{I.shield}</span>
+              <span className="site-row-icon">{shellIconShield}</span>
               <div>
                 <strong>Block trackers and ads</strong>
                 <span>
@@ -297,7 +309,7 @@ export function SiteControls() {
           {!bridge.privateMode && page?.backend !== "chrome" && /^https?:\/\//.test(info.origin) && (
             <section className="site-controls-group" aria-label="Page customization">
               <div>
-                <span className="site-row-icon">{I.code}</span>
+                <span className="site-row-icon">{shellIconCode}</span>
                 <div>
                   <strong>Customize this site</strong>
                   <span>Hide page elements or add CSS for this Profile</span>

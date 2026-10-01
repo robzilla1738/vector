@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { requestStageReport } from "../stage-obstruction";
 import { useDismissable } from "../use-dismissable";
 import { DetailPane } from "../ui";
-import { I } from "./icons";
+import { shellIconOpen, shellIconResult } from "./icons";
 import "./SupportingContent.css";
 
 /** One supporting-content slot. The transcript and composer never remount. */
@@ -35,7 +35,7 @@ export function SupportingContent({ container, title, children, onClose, initial
   }, [overlay]);
   const pane = viewer ? <div className="supporting-viewer">{children}</div> : <DetailPane title={title} onClose={overlay ? () => setExpanded(false) : onClose}>{children}</DetailPane>;
   if (!wide) return <>
-    <button type="button" className="supporting-chip" onClick={() => setExpanded(true)} aria-haspopup="dialog">{I.result}<span>{title}</span>{I.open}</button>
+    <button type="button" className="supporting-chip" onClick={() => setExpanded(true)} aria-haspopup="dialog">{shellIconResult}<span>{title}</span>{shellIconOpen}</button>
     {overlay && createPortal(<dialog ref={dialog} className="supporting-dialog ctx-menu" aria-label={title} onCancel={event => { event.preventDefault(); setExpanded(false); }} onClick={event => { if (event.target === event.currentTarget) setExpanded(false); }}>{pane}</dialog>, document.body)}
   </>;
   return <aside className="supporting-content" style={{ width }}>

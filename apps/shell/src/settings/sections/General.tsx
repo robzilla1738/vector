@@ -3,7 +3,7 @@ import { DEFAULT_SEARCH_ENGINE } from "@aux/contracts/search-engine";
 import { SettingsRow as Field, SettingsGroup, Switch } from "../../ui";
 import { bridge, emptyBrowserHealthSummary, type BrowserHealthSummary } from "../../bridge";
 import { call, errToast, useStore } from "../../store";
-import { I } from "../../components/icons";
+import { shellIconRight } from "../../components/icons";
 import { SearchEngineSetting } from "../../components/SearchEngineSetting";
 import { SearchEnginesSetting, type EngineRow } from "../../components/SearchEnginesSetting";
 import { DefaultBrowserSetting } from "../../components/DefaultBrowserSetting";
@@ -206,7 +206,7 @@ export function GeneralSettings({
               onClick={(event) => onOpenEditor("Keyword engines", event.currentTarget)}
               aria-label="Manage keyword engines"
             >
-              Manage {I.right}
+              Manage {shellIconRight}
             </button>
           </IndexedField>
 
@@ -247,7 +247,7 @@ export function GeneralSettings({
               onClick={(event) => onOpenEditor("Task data backup", event.currentTarget)}
               aria-label="Manage task data backup"
             >
-              Manage {I.right}
+              Manage {shellIconRight}
             </button>
           </IndexedField>
 

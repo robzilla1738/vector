@@ -46,10 +46,18 @@ async function archivePagesTransaction(ids: readonly string[], options: { reason
     const accepted = await confirmArchiveClose(page.pageId,
       async () => {
         if (options.reason === "auto") {
-          const result = await bridge.archiveTab(page.pageId, page.url, batchId, page.lastActiveAt);
-          return { status: result.archived ? "applied" : "rejected" };
+          const { archiveSettings, autoArchiveCandidates } = await import("./auto-archive");
+          const { clock } = await import("./clock");
+          const catalog = await bridge.tabsSnapshot();
+          const current = useStore.getState();
+          const layout = { ...current.layout, archivedTabs: current.layout.archivedTabs?.filter(entry => entry.archiveId !== staged.entry.archiveId) };
+          const eligible = autoArchiveCandidates({ layout, pages: current.pages, catalog,
+            settings: archiveSettings(current.settings.autoArchive), windowId: bridge.windowId, clock,
+            unsaved: { [page.pageId]: "clean" } });
+          if (!eligible.some(candidate => candidate.pageId === page.pageId)) return { status: "rejected" };
         }
-        return bridge.tabCommand({ kind: "close", pageId: page.pageId }, useStore.getState().catalogVersion);
+        const result = await bridge.archiveTab(page.pageId, page.url, batchId, page.lastActiveAt);
+        return { status: result.archived ? "applied" : "rejected" };
       },
       () => bridge.tabsSnapshot());
     if (!accepted) {

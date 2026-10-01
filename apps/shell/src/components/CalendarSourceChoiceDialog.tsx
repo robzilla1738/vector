@@ -2,7 +2,7 @@ import type { ConversationSource } from "@aux/contracts";
 import type { RefObject } from "react";
 import type { BrowserProfile } from "../bridge";
 import { Dialog } from "../ui";
-import { I } from "./icons";
+import { shellIconClose } from "./icons";
 import "./CalendarSourceChoiceDialog.css";
 
 interface Props {
@@ -27,7 +27,7 @@ export function CalendarSourceChoiceDialog({ choice, returnFocus, initialFocus, 
       <header>
         <h3>Open Calendar source</h3>
         <button ref={initialFocus} className="icon-btn" aria-label="Cancel" onClick={onClose}>
-          {I.close}
+          {shellIconClose}
         </button>
       </header>
       <p>

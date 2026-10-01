@@ -11,7 +11,7 @@ import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
 
 import { Conversation } from "./surfaces";
-import { I } from "./icons";
+import { shellIconAlert, shellIconChrome, shellIconGlobe } from "./icons";
 import { AgentOverlay } from "../agent/AgentOverlay";
 import { visibleSplitGroup } from "../features/surfaces/split-actions";
 import { useSurfaceState } from "../features/surfaces/drag-state";
@@ -63,7 +63,7 @@ export function PageRecovery({ page }: { page: PageTarget }) {
     } finally { pending.current = false; setBusy(null); }
   };
   return <div className="stage-message"><div className="empty-state navigation-error" role="status">
-    <span className={`empty-ico ${crashed ? "err" : ""}`}>{crashed ? I.alert : I.globe}</span><h2>{failure.title}</h2>
+    <span className={`empty-ico ${crashed ? "err" : ""}`}>{crashed ? shellIconAlert : shellIconGlobe}</span><h2>{failure.title}</h2>
     <p>{failure.detail}</p>
     <p className="navigation-error-address selectable">{error?.url ?? page.url}</p>
     <div className="empty-actions">
@@ -123,7 +123,7 @@ export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<H
         {mode === "focus" && page?.backend === "chrome" && page.viewStatus !== "crashed" && !page.navigationError && (
           <div className="stage-message">
             <div className="empty-state">
-              <span className="empty-ico">{I.chrome}</span>
+              <span className="empty-ico">{shellIconChrome}</span>
               <h2>This tab lives in your Chrome</h2>
               <p>Aux drives it over CDP. Type, click, and upload in the real Chrome window — the agent sees the same page.</p>
               <div className="empty-actions">

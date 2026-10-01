@@ -15,7 +15,7 @@ import type {
 } from "@aux/contracts";
 import { call, useStore } from "../store";
 import { bridge } from "../bridge";
-import { I } from "./icons";
+import { shellIconBack, shellIconClock, shellIconSearch } from "./icons";
 import { RoutineSchedule, routineScheduleSummary, type CalendarTriggerAccounts } from "./RoutineSchedule";
 import { SkillMetadata } from "./SkillMetadata";
 import { SkillReplayPanel } from "./SkillReplayPanel";
@@ -466,7 +466,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
             </section>
           )}
           <label className="routine-search">
-            {I.search}
+            {shellIconSearch}
             <input
               aria-label="Search Skills"
               placeholder="Search Skills…"
@@ -502,7 +502,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
                   key={item.routineId}
                   title={item.title}
                   summary={item.objective}
-                  icon={I.clock}
+                  icon={shellIconClock}
                   status={
                     item.archivedAt
                       ? "Archived"
@@ -536,7 +536,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               ))}
               {!error && !visibleRoutines.length && (
                 <div className="routine-empty">
-                  {I.clock}
+                  {shellIconClock}
                   <strong>
                     {query || status !== "all" ? "No matching Skills" : "Make room for repeatable work"}
                   </strong>
@@ -572,7 +572,7 @@ export function Routines({ workspaceId, task }: { workspaceId: string; task?: Ta
               setComparison(null);
             }}
           >
-            {I.back}All Skills
+            {shellIconBack}All Skills
           </button>
           <h3>{selected.routine.title}</h3>
           <span className="hint">Revision {selected.routine.revision}</span>

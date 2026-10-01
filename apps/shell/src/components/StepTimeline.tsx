@@ -3,7 +3,7 @@ import type { ActionReceipt, StepRecord } from "@aux/contracts";
 import { backgroundLink, browserLinkUrl, openBrowserLink } from "../browser-links";
 import { bridge } from "../bridge";
 import { errToast } from "../store";
-import { I } from "./icons";
+import { shellIconCheck, shellIconClose, shellIconObs, shellIconRight } from "./icons";
 
 export type StepState = "ok" | "failed" | "skipped" | "running";
 
@@ -222,14 +222,14 @@ const StepCard = memo(function StepCard({
   return (
     <li className={`tl-step tl-card ${state}${enter ? " enter" : ""}${nested ? " nested" : ""}`} aria-current={current ? "step" : undefined} data-testid="tl-step">
       <span className="tl-dot">
-        {state === "ok" ? I.check : state === "failed" ? I.close : state === "skipped" ? <span className="tl-skip" /> : <span className="live-dot" />}
+        {state === "ok" ? shellIconCheck : state === "failed" ? shellIconClose : state === "skipped" ? <span className="tl-skip" /> : <span className="live-dot" />}
       </span>
       <div className="tl-body">
         <button className="tl-summary" type="button" aria-expanded={open} disabled={!hasBody} onClick={() => hasBody && setOpen(v => !v)}>
           <span className="tl-op">{opLabel(s.op)}</span>
           <span className="tl-detail" title={stepSummary(s)}>{stepSummary(s)}</span>
           <span className={`tl-status ${state}`}>{statusLabel(state)}</span>
-          {hasBody && <span className={`tl-disclosure ${open ? "open" : ""}`} aria-hidden="true">{I.right}</span>}
+          {hasBody && <span className={`tl-disclosure ${open ? "open" : ""}`} aria-hidden="true">{shellIconRight}</span>}
 
         </button>
         {receipt && <span className="tl-receipt" data-testid="tl-receipt" data-receipt={kind}>{receipt}</span>}
@@ -246,7 +246,7 @@ const StepCard = memo(function StepCard({
       </div>
       {obsId && onInspect && (
         <button className="icon-btn xs tl-obs" title="Show what the agent saw before this step" aria-label="Inspect observation" onClick={() => onInspect(obsId, s)}>
-          {I.obs}
+          {shellIconObs}
         </button>
       )}
     </li>

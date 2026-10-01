@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from "react";
 import type { CompactObservation } from "@aux/contracts";
-import { I } from "./icons";
+import { shellIconCopy, shellIconRight } from "./icons";
 
 interface ParsedObs {
   header: string[];
@@ -54,7 +54,7 @@ const ObsSection = memo(function ObsSection({ name, lines, startOpen }: { name: 
   return (
     <section className={`obs-section ${open ? "open" : ""}`}>
       <button className="obs-section-head" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        <span className={`chev ${open ? "open" : ""}`}>{I.right}</span>
+        <span className={`chev ${open ? "open" : ""}`}>{shellIconRight}</span>
         <span>{name}</span>
         <span className="count nums">{lines.length}</span>
       </button>
@@ -77,7 +77,7 @@ export const ObservationPanel = memo(
           <div className="obs-head">
             <span className="obs-title" title={obs.url}>{obs.title || obs.url}</span>
             <span className="obs-meta nums">rev {obs.revision} · {obs.refs.length} refs</span>
-            {onCopy && <button className="icon-btn xs" title="Copy observation" aria-label="Copy observation" onClick={onCopy}>{I.copy}</button>}
+            {onCopy && <button className="icon-btn xs" title="Copy observation" aria-label="Copy observation" onClick={onCopy}>{shellIconCopy}</button>}
           </div>
         )}
         {!compact && parsed.header.slice(1).map((l, i) => (

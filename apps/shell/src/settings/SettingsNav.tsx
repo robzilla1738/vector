@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { I } from "../components/icons";
+import { shellIconClose, shellIconSearch } from "../components/icons";
 import { moveListFocus } from "../keyboard-list";
 import { SectionRail } from "./SectionRail";
 import type { ConnectionTab } from "./routes";
@@ -50,7 +50,7 @@ export function SettingsNav({
       onKeyDown={event => moveListFocus(event, "button[data-category]")}
     >
       <div className="settings-search-box">
-        {I.search}
+        {shellIconSearch}
         <input
           ref={searchInput}
           aria-label="Search settings"
@@ -75,7 +75,7 @@ export function SettingsNav({
               searchInput.current?.focus();
             }}
           >
-            {I.close}
+            {shellIconClose}
           </button>
         )}
       </div>
