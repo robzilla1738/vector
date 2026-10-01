@@ -972,11 +972,13 @@ final class ShortcutEffectObservation {
   let pid: pid_t
   let target: AXUIElement
   let expectedName: String
+  let validateTarget: () throws -> Void
   var postedAt: UInt64?
   var observedAt: UInt64?
   var notification: String?
-  init(pid: pid_t, target: AXUIElement, expectedName: String) {
+  init(pid: pid_t, target: AXUIElement, expectedName: String, validateTarget: @escaping () throws -> Void) {
     self.pid = pid; self.target = target; self.expectedName = expectedName
+    self.validateTarget = validateTarget
   }
   func observe(_ notification: CFString) {
     let receivedAt = DispatchTime.now().uptimeNanoseconds
@@ -985,7 +987,7 @@ final class ShortcutEffectObservation {
           AXUIElementGetPid(target, &owner) == .success, owner == pid,
           NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
           protocolNames(target).contains(expectedName) else { return }
-    do { try requireLiveTarget() } catch { return }
+    do { try validateTarget() } catch { return }
     observedAt = receivedAt
     self.notification = notification as String
   }
@@ -1000,7 +1002,8 @@ func measureKey(_ request: [String: Any]) throws -> [String: Any] {
     throw protocolError("Shortcut target already has the expected name")
   }
   let (down, up) = try keyEvents(chord)
-  let observation = ShortcutEffectObservation(pid: pid, target: target, expectedName: expectedName)
+  let observation = ShortcutEffectObservation(pid: pid, target: target, expectedName: expectedName,
+                                              validateTarget: requireLiveTarget)
   var observer: AXObserver?
   let status = AXObserverCreate(pid, { _, _, notification, context in
     guard let context else { return }
