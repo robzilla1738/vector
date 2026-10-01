@@ -1,0 +1,27 @@
+--- a/packages/contracts/src/organization.ts
++++ b/packages/contracts/src/organization.ts
+@@ -57,7 +57,7 @@
+         pins: z.record(Id, z.array(Pin).max(500)),
+         folders: z.array(Folder).max(1000),
+         tidyUndo: TidyUndo.optional(),
+-        archivedTabs: z.array(ArchivedTab).max(300).optional(),
++        archivedTabs: z.array(ArchivedTab).max(320).optional(),
+         tabSpace: z.record(Id, Id),
+         order: z.array(Id).max(5000),
+         tabFolder: z.record(Id, Id),
+@@ -74,6 +74,15 @@
+       .strict(),
+   })
+   .strict()
++  .superRefine((value, context) => {
++    const entries = value.shared.archivedTabs ?? [];
++    if (entries.filter(entry => entry.state === "archived").length > 300)
++      context.addIssue({ code: "custom", message: "A Profile may keep at most 300 finished archive entries." });
++    if (entries.filter(entry => entry.state === "pending").length > 20)
++      context.addIssue({ code: "custom", message: "An archive batch may reserve at most twenty pending entries." });
++    if (new Set(entries.map(entry => entry.pageId)).size !== entries.length || new Set(entries.map(entry => entry.archiveId)).size !== entries.length)
++      context.addIssue({ code: "custom", message: "Archive receipts and tab identities must be unique." });
++  })
+   .refine(
+     (value) => new TextEncoder().encode(JSON.stringify(value)).byteLength <= MAX_ORGANIZATION_LAYOUT_BYTES,
+     "Profile organization exceeds 1 MiB.",

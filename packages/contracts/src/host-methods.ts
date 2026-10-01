@@ -252,12 +252,13 @@ export const HostMethods = {
   downloadsSnapshot: shell("core", noArgs, z.array(DownloadSchema)),
   controlDownload: shell("core", z.tuple([str, z.enum(["pause", "resume", "cancel"])]), noResult),
   retryDownload: shell("core", z.tuple([str]), noResult),
-  tabAudio: shell("core", noArgs, z.record(str, z.object({ muted: bool, audible: bool }).strict())),
+  tabAudio: shell("core", noArgs, z.record(str, z.object({ muted: bool, audible: bool, video: bool, pip: bool }).strict())),
   pictureInPicture: shell("pictureInPicture", z.tuple([str, PictureInPictureOperationSchema]), PictureInPictureResultSchema),
   setStageVisible: shell("core", z.tuple([z.array(str.min(1).max(256)).max(4)
     .refine(ids => new Set(ids).size === ids.length, "Stage pages must be unique")]), bool),
   tabsUnsavedWork: shell("core", z.tuple([z.array(z.object({ pageId: str, url: str }).strict())]),
     z.record(str, z.enum(["clean", "dirty", "unknown"]))),
+  archiveTab: shell("autoArchive", z.tuple([str.min(1).max(128), z.string().url().max(8192), str.min(1).max(200), number.nonnegative()]), z.object({ archived: bool, reason: str.optional() }).strict()),
   tabSleep: shell("tabLifecycle", z.tuple([str, z.string().url().max(8192)]),
     z.object({ slept: bool, reason: str.optional(), estimatedSavedBytes: z.number().int().nonnegative().optional() }).strict()),
   // Page surfaces and menus

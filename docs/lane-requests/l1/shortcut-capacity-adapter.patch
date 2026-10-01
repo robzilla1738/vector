@@ -1,0 +1,48 @@
+diff --git a/apps/shell/src/features/commands/shortcut-settings.ts b/apps/shell/src/features/commands/shortcut-settings.ts
+index 13bbb023..d248ad08 100644
+--- a/apps/shell/src/features/commands/shortcut-settings.ts
++++ b/apps/shell/src/features/commands/shortcut-settings.ts
+@@ -2,6 +2,7 @@ import {
+   COMMANDS,
+   effectiveShortcuts,
+   bindingLabel,
++  ShortcutOverridesSchema,
+   type ShortcutBinding,
+   type ShortcutOverrides,
+ } from "@aux/contracts";
+@@ -101,6 +102,7 @@ export function importShortcuts(text: string, platform: string): ShortcutOverrid
+       return { ...binding };
+     });
+   }
++  ShortcutOverridesSchema.parse(result);
+   if (platformConflicts(result, platform).length)
+     throw new Error(
+       "The file assigns the same shortcut to multiple commands. Resolve conflicts before importing.",
+diff --git a/tests/unit/command-registry.test.ts b/tests/unit/command-registry.test.ts
+index 341208f4..9f0bf844 100644
+--- a/tests/unit/command-registry.test.ts
++++ b/tests/unit/command-registry.test.ts
+@@ -1,7 +1,7 @@
+ /// <reference types="vite/client" />
+ // @vitest-environment jsdom
+ import { expect, it } from "vitest";
+-import { COMMANDS, SHORTCUTS, effectiveShortcuts } from "@aux/contracts";
++import { COMMANDS, SHORTCUTS, ShortcutOverridesSchema, shortcutInventorySize } from "@aux/contracts";
+ import { COMMAND_ACTIONS } from "../../apps/shell/src/commands";
+ import {
+   platformConflicts,
+@@ -22,7 +22,13 @@ it("has unique command IDs and exactly one shell action per shell command", () =
+ });
+ it("has bounded, conflict-free, safe defaults on every platform", () => {
+   expect(SHORTCUTS).toHaveLength(COMMANDS.length);
+-  expect(COMMANDS.length * 4 + effectiveShortcuts().flatMap((command) => command.bindings).length).toBeLessThanOrEqual(512);
++  const worst = Object.fromEntries(COMMANDS.map(command => [command.id,
++    Array.from({ length: 4 }, (_, index) => ({ key: `F${index + 1}`, ctrl: true }))]));
++  const fits = ["darwin", "win32", "linux"].every(platform => shortcutInventorySize(worst, platform) <= 512);
++  // Settings must refuse an inventory beyond the unchanged native row cap.
++  expect(ShortcutOverridesSchema.safeParse(worst).success).toBe(fits);
++  for (const platform of ["darwin", "win32", "linux"])
++    expect(shortcutInventorySize({}, platform)).toBeLessThanOrEqual(512);
+   for (const platform of ["darwin", "win32", "linux"]) {
+     expect(platformConflicts({}, platform)).toEqual([]);
+     for (const command of COMMANDS)

@@ -946,6 +946,15 @@ Already isolated: cookies and storage, extensions, the runtime, agent, memory, s
 
 ### F21: Design polish pass (L12, with the design reviewer throughout)
 
+**Design reference resources (owner direction, October 1, 2026)**
+
+Use the installed-build capture at `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/` as the primary full-fidelity resource for this pass. The directory is approximately 130 MB; its index is `/Users/rcourson/AI Blueprints/06_COPYABLE-SURFACES.md`, §§8–8c. Read those sections before implementing or reviewing polish. Section 8 identifies the installed browser 1.0.928.1 and live component 1.26.929; §8b indexes the accompanying `06/assets/components/` payloads, and §8c records the final deep capture.
+
+- Pull relevant surface hierarchy, control states, spacing, typography, motion, glass treatment, icon geometry and interaction anatomy from the captured CSS/WebUI bundles, 92-color-token inventory, custom UI inventory and extracted SVG assets. Use the live agent-manager, side-panel, new-tab, quick-view, settings and permission surfaces to inform their corresponding Aux surfaces.
+- Preserve **Aux branding, Aux name, Aux logo, app identity and product copy** throughout. Adapt reference geometry and interaction patterns to Aux; do not replace Aux marks with Aside, 06, Gemini/Glic or other captured product identities, logos, app icons, branded illustrations or branded text. Keep the plan's Geist/Geist Mono typography and explicit token/geometry/motion requirements unless a documented, verified better design is adopted.
+- Record the exact reference files and applicable build/version for each material design change and contact-sheet comparison. Extracted class names and token names identify reference surfaces; establish actual geometry, colors and behavior from their concrete assets and captured output before claiming fidelity. Document any deliberate deviations in this plan.
+- Keep the reference capture outside Git. Continue using real Aux journey captures for light/dark, Reduce Transparency on/off, reduced motion, focus, narrow-window and long-label review. The full P0–P2 closure and final owner visual sign-off requirements remain unchanged.
+
 **Tokens (`tokens.css`)** aligned to the 06 measurements:
 - Radii use a squircle factor of 1.4 (8.4, 11.2, 16.8).
 - 4 px spacing grid and .5 px hairlines.

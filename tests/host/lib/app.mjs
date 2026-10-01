@@ -94,7 +94,8 @@ export function observeJourneyProcess({ child, externalPid, generation, spawnErr
     launchKind: externalPid ? "launch-services" : "child",
     exitCode: externalPid ? null : child?.exitCode ?? null,
     signal: externalPid ? null : child?.signalCode ?? null,
-    spawnError: spawnError?.message ?? null, exitStatusAvailable: !externalPid && !!child };
+    spawnError: spawnError?.message ?? null,
+    exitStatusAvailable: !externalPid && (child?.exitCode != null || child?.signalCode != null) };
 }
 
 export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRoot }) {

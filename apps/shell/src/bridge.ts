@@ -76,6 +76,7 @@ export type AuxBridge = ReturnType<typeof createHostClient> & ComposedBridgeMemb
 const noop = () => () => {};
 const nativeRequired = async (): Promise<never> => { throw new Error("This action requires the Aux native browser."); };
 const stub: AuxBridge = {
+  archiveTab: nativeRequired,
   dispatchCommand: nativeRequired,
   windowControlsVisible: nativeRequired,
   extensionActions: nativeRequired,
