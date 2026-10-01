@@ -3,6 +3,20 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { observeJourneyProcess } from "../host/lib/app.mjs";
 
+it("does not claim a concrete exit status for a running owned child", async () => {
+  const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+  const exited = once(child, "exit");
+  try {
+    await once(child, "spawn");
+    expect(observeJourneyProcess({ child, externalPid: undefined, generation: 1, spawnError: undefined })).toMatchObject({
+      pid: child.pid, launchKind: "child", exitCode: null, signal: null, exitStatusAvailable: false,
+    });
+  } finally {
+    child.kill("SIGTERM");
+    await exited;
+  }
+});
+
 it("retains the actual owned child exit code before cleanup", async () => {
   const child = spawn(process.execPath, ["-e", "process.exit(7)"], { stdio: "ignore" });
   await once(child, "exit");

@@ -31,7 +31,7 @@ guard CommandLine.arguments.count >= 3,
 
 let action = CommandLine.arguments[1]
 guard let app = NSRunningApplication(processIdentifier: pid) else {
-  fail("The launched Aux process has exited.")
+  fail("No running application is registered for the launched PID \(pid).")
 }
 
 struct WindowRecord: Encodable {
@@ -810,9 +810,12 @@ func axChildren(_ element: AXUIElement) -> [AXUIElement] {
   return axAttribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? []
 }
 func requireLiveTarget() throws {
-  if app.isTerminated || NSRunningApplication(processIdentifier: pid) == nil ||
-     (Darwin.kill(pid, 0) != 0 && errno == ESRCH) {
-    throw protocolError("Target process exited (PID \(pid))")
+  let terminated = app.isTerminated
+  let registered = NSRunningApplication(processIdentifier: pid) != nil
+  let processStatus = Darwin.kill(pid, 0)
+  let processError = processStatus == 0 ? 0 : errno
+  if terminated || !registered || processError == ESRCH {
+    throw protocolError("Target unavailable (PID \(pid), appTerminated=\(terminated), registered=\(registered), processStatus=\(processStatus), errno=\(processError))")
   }
 }
 func frontmostGuard() throws {
