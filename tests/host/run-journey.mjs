@@ -81,7 +81,13 @@ async function execute() {
       signal.throwIfAborted();
       const command = property === 'request' ? args[0] : property;
       const started = performance.now();
-      const result = await member.apply(ax, args);
+      let result;
+      try { result = await member.apply(ax, args); }
+      catch (error) {
+        if (inputCommands.has(command) || command === 'measureKey') inputs.push({ command: command === 'measureKey' ? 'key' : command,
+          status: 'failed', elapsedMs: performance.now() - started, error: error.message });
+        throw error;
+      }
       signal.throwIfAborted();
       if (command === 'measureKey') inputs.push({ command: 'key', sourceCommand: command, status: 'passed', elapsedMs: performance.now() - started, measurement: result });
       else if (inputCommands.has(command)) inputs.push({ command, status: 'passed', elapsedMs: performance.now() - started });
@@ -120,13 +126,14 @@ async function execute() {
         signal.throwIfAborted();
         step.inputs = inputs.slice(start);
         if (options.kind === 'ui') {
-          assert.ok(step.inputs.length, 'UI step did not drive Accessibility or CGEvent input');
+          assert.ok(step.inputs.some(input => input.status === 'passed'), 'UI step did not drive Accessibility or CGEvent input');
           assert.ok(observations?.ax && observations?.rpc, 'UI step needs AX and RPC/native observations');
         }
         if (options.kind === 'operator') assert.ok(values.attended && journey.needs.includes('owner-presence'), 'Undeclared operator step');
         step.observations = observations;
         step.status = 'passed';
       } catch (error) { step.status = 'failed'; step.error = error.message; throw error; }
+      finally { step.inputs = inputs.slice(start); }
     },
   };
   manifest.native = actual.native;
