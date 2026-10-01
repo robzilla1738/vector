@@ -1,5 +1,19 @@
 # Browser-runtime execution board
 
+## Current throughput checkpoint — coherent trust and journey corrections
+
+All four slots remain occupied: root composition/source gates, sole native builder, L10 permission lifecycle/source review, and design/presentation/PiP capture preparation. Candidate `de90ad48` remains immutable while the builder collects independent broad-unit/browser compilation failures. Qualified merge order is unchanged.
+
+Root independently verified actual composed trust source: rebuilt runtime output, full unit suite, typecheck, lint and format pass (`/tmp/aux-root-trust-{full-unit,typecheck,lint,format}.log`). Current-turn page access, exact origin policy, response provenance and awaited native authority retirement are implemented at source level. Bindings remain208 methods/26 events. Subsequent command causality and journey changes require final coherent gates.
+
+All nine native functional journeys failed. Root independently checked49 manifest/log/capture digest-and-size facts (`/tmp/aux-root-de90-independent-functional-audit.json`). Real split dwell/drop and four PiP behaviors passed their feature steps; full qualifications remain open. CmdT actually opens the command surface as AXGroup; the harness incorrectly required AXDialog. Settings search must select its result before expecting a checkbox. Several post-navigation failures precede asynchronous control rendering. Corrections add bounded visible readiness before one actual press/type, select real Settings results, use the actual command accessibility role, and create disposable autonomy fixture workspaces through the existing API. Assertions/global deadlines remain intact. Minimal UI's native shortcut failure remains unresolved.
+
+Actual React regressions verify A→B→A cannot resurrect old history or count an out-of-order reply as current presentation; errors cannot produce history witnesses. Rows now carry current query/surface generations. Targeted regressions pass; native presentation/performance remain pending.
+
+Root0200 source replay passes30 ordered packets/99 exact mirrors/65 independently verified baselines. Integer permission timestamps, immutable lease renewal comparison, queued owner-mutation fencing and supported Profile ContentTestSuite initialization are included. Compilation/effect tests are pending. L10 prepares22 actual Broker/PermissionRequestManager cases and a genuine hidden-tab decision path; reentrancy review precedes adoption. Broad compilation found two test fakes missing new interface methods; explicit unsupported/asynchronous refusal corrections are prepared without changing assertions.
+
+Design uses `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/` and `06_COPYABLE-SURFACES.md` §§8–8c on stable surfaces, preserving Aux branding/name/logo. Exact widget feedback, semantic witnesses, private native grants and PiP child lifecycle capture remain source-only. Every qualification,22 legacy requalifications,≥20 AC trials, design matrix/P0–P2 closure, owner signoff, WaveQ all-on promotion, final gates and local main fast-forward remain open. No push/sign/release.
+
 Objective: complete every requirement in [BROWSER-RUNTIME-PLAN.md](BROWSER-RUNTIME-PLAN.md), including Wave Q. This board records evidence, not self-reported completion.
 
 ## Integration state
