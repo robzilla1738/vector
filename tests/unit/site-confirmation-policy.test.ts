@@ -61,3 +61,43 @@ it("rejects approval that expires while Guardian is awaiting the dispatch decisi
   expect(result.suspension.approvalId).not.toBe(approvalId);
   expect(deps.approvals.pending("chat", clock)).toHaveLength(1);
 });
+
+it("overnight dispatch uses only current exact-origin preapprovals and preserves one-off consent for foreground review", async () => {
+  const { deps, request } = fixture();
+  const first = await decide(request, deps, { phase: "preflight" });
+  if (first.status !== "ask" || !first.suspension.approvalId) throw new Error("Missing login approval");
+  deps.approvals.decideLocal({ decision: "acceptForSession", approvalId: first.suspension.approvalId, sessionId: "foreground" }, request.turnId);
+  expect(await decide(request, deps, { phase: "dispatch", sessionId: "foreground", standingOnly: true })).toMatchObject({ status: "ask" });
+  const login = await decide({ ...request, turnId: "origin", invocationDigest: "b".repeat(64) }, deps, { phase: "preflight" });
+  if (login.status !== "ask" || !login.suspension.approvalId) throw new Error("Missing exact-origin approval");
+  deps.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: login.suspension.approvalId }, "origin");
+  const overnight = { ...request, scope: { kind: "task" as const, id: "overnight" }, turnId: "overnight", invocationDigest: "c".repeat(64) };
+  expect(await decide(overnight, deps, { phase: "dispatch", standingOnly: true })).toMatchObject({ status: "allow", authorizedBy: { authorizedBy: "standing" } });
+  expect(await decide({ ...overnight, category: "permission" }, deps, { phase: "dispatch", standingOnly: true })).toMatchObject({ status: "ask" });
+  expect(await decide({ ...overnight, origin: "https://other.test/" }, deps, { phase: "dispatch", standingOnly: true })).toMatchObject({ status: "ask" });
+  const send = { ...overnight, action: "send", category: "send" as const, invocationDigest: "d".repeat(64) };
+  const parked = await decide(send, deps, { phase: "dispatch", standingOnly: true });
+  if (parked.status !== "ask" || !parked.suspension.approvalId) throw new Error("Missing action approval");
+  deps.approvals.decideLocal({ decision: "accept", approvalId: parked.suspension.approvalId }, send.turnId);
+  expect(await decide(send, deps, { phase: "dispatch", standingOnly: true, approvalId: parked.suspension.approvalId })).toMatchObject({ status: "ask" });
+  expect(await decide(send, deps, { phase: "dispatch", approvalId: parked.suspension.approvalId })).toMatchObject({ status: "allow", authorizedBy: { authorizedBy: "approval" } });
+  expect(await decide({ ...overnight, effect: "read", action: "observe", category: "read" }, deps, { phase: "dispatch", standingOnly: true })).toMatchObject({ status: "allow", authorizedBy: { authorizedBy: "policy" } });
+});
+
+it("a same-scope preapproval cannot change semantic category", async () => {
+  const { deps, request } = fixture();
+  const first = await decide(request, deps, { phase: "preflight" });
+  if (first.status !== "ask" || !first.suspension.approvalId) throw new Error("Missing login approval");
+  deps.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: first.suspension.approvalId }, request.turnId);
+  expect(await decide({ ...request, category: "permission" }, deps, { phase: "preflight" })).toMatchObject({ status: "ask" });
+});
+
+
+it("overnight read authority excludes ambient session effect grants", async () => {
+  const { deps, request } = fixture();
+  deps.localCeiling = () => "ask";
+  deps.settingsGrants = () => ["effect:read"];
+  const read = { ...request, effect: "read" as const, action: "observe", category: "read" as const };
+  expect(await decide(read, deps, { phase: "dispatch" })).toMatchObject({ status: "allow", authorizedBy: { authorizedBy: "standing", grantId: "settings:read" } });
+  expect(await decide(read, deps, { phase: "dispatch", standingOnly: true })).toMatchObject({ status: "ask" });
+});

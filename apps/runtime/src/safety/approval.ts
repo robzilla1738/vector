@@ -165,11 +165,11 @@ export class ApprovalStore {
   }
 
   /** Atomically consumes one-time approvals. A revoked grant is rejected at dispatch time. */
-  authorize(input: { action: SafetyAction; policy: OriginPolicyDecision; ceiling: LocalCeiling; sessionId?: string; approvalId?: string; approvalOnly?: boolean; consume?: boolean; now?: number }): AuthorizationDecision {
+  authorize(input: { action: SafetyAction; policy: OriginPolicyDecision; ceiling: LocalCeiling; sessionId?: string; approvalId?: string; approvalOnly?: boolean; standingOnly?: boolean; consume?: boolean; now?: number }): AuthorizationDecision {
     const action = SafetyActionSchema.parse(input.action);
     const now = input.now ?? Date.now();
     if (input.ceiling === "never" || input.policy.access === "deny") return this.auditDecision({ status: "denied", guidance: DENIED }, action, now);
-    if (!input.approvalOnly && input.policy.access === "allow" && input.ceiling === "always") {
+    if (!input.approvalOnly && (!input.standingOnly || action.confirmation === "none") && input.policy.access === "allow" && input.ceiling === "always") {
       return this.auditDecision({ status: "authorized", provenance: { authorizedBy: "policy", policySource: input.policy.source } }, action, now);
     }
     this.db.exec("BEGIN IMMEDIATE");
@@ -180,13 +180,14 @@ export class ApprovalStore {
         ORDER BY created_at DESC`)
         .all(action.profileId, action.effect, action.origin ?? null, action.recipient ?? null, action.scope.kind, action.scope.id, action.action, action.category ?? null, action.category ?? null) as GrantRow[];
       const grant = input.approvalOnly ? undefined : grants.find(row =>
-        (!preapprovableCategory(row.category ?? undefined) || action.confirmation === "preapprovable")
-        && (row.lifetime === "always" || row.session_id === input.sessionId && !!input.sessionId));
+        (!preapprovableCategory(row.category ?? undefined) || action.confirmation === "preapprovable" && row.category === action.category)
+        && (row.lifetime === "always" || row.session_id === input.sessionId && !!input.sessionId)
+        && (!input.standingOnly || row.lifetime === "always" && !row.session_id && !!row.origin && !row.recipient && row.category === action.category && preapprovableCategory(row.category ?? undefined) && action.confirmation === "preapprovable"));
       if (grant) {
         this.db.exec("COMMIT");
         return this.auditDecision({ status: "authorized", provenance: { authorizedBy: "standing", grantId: grant.grant_id } }, action, now);
       }
-      if (input.approvalId) {
+      if (input.approvalId && !input.standingOnly) {
         const row = this.db.prepare("SELECT * FROM safety_approval_requests WHERE approval_id=?").get(input.approvalId) as {
           fingerprint: string; action_json: string; turn_id: string; thread_id: string;
           lifetime: "turn" | "thread"; expires_at: number; state: string;

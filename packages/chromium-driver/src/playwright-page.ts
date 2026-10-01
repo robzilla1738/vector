@@ -16,7 +16,7 @@ import { locatorAttempts, selectUniqueLocator } from "./locator-resolve.js";
 import { bodyCapturePolicy, defaultResponseCaptureOptions, type ResponseCaptureOptions } from "./response-capture.js";
 import { READINESS_POLICIES, RequestTracker, SETTLED_CONDITION_MS, settledProbe, type ReadinessPolicy } from "./readiness.js";
 import { AuxWorld } from "./aux-world.js";
-import type { DriverPage, DriverPageEvents, PageIdentity, ScreenshotResult, WaitOutcome } from "./types.js";
+import type { ObservedActionTarget, DriverPage, DriverPageEvents, PageIdentity, ScreenshotResult, WaitOutcome } from "./types.js";
 
 const DEFAULT_STEP_TIMEOUT = 15_000;
 const DEFAULT_CONDITION_TIMEOUT = 10_000;
@@ -389,6 +389,72 @@ export class PlaywrightDriverPage implements DriverPage {
     await this.world;
     await this.page.goto(url, { timeout: timeoutMs, waitUntil: "domcontentloaded" });
   }
+  async navigateWithReceipt(url: string, timeoutMs = 30_000): Promise<{ url: string; documentEpoch: number; loaderId: string }> {
+    const deadline = Date.now() + Math.max(1, timeoutMs);
+    const stage = async <T>(work: () => Promise<T>): Promise<T> => {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw new AuxError("condition_timeout", "Navigation receipt deadline exceeded.");
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try { return await Promise.race([work(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new AuxError("condition_timeout", "Navigation receipt deadline exceeded.")), remaining); })]); }
+      finally { if (timer) clearTimeout(timer); }
+    };
+    await stage(() => this.world);
+    const epoch = this.documentEpoch;
+    const attaching = this.context.newCDPSession(this.page);
+    let session: Awaited<typeof attaching>;
+    try { session = await stage(() => attaching); }
+    catch (error) { void attaching.then(late => late.detach()).catch(() => {}); throw error; }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const commits = new Map<string, { id: string; loaderId: string; url: string }>();
+    let loaderId: string | undefined;
+    let frameId: string | undefined;
+    let currentLoader: string | undefined;
+    let overflow = false;
+    let receipt: { url: string; documentEpoch: number; loaderId: string } | undefined;
+    let resolveCommit: (() => void) | undefined;
+    let rejectCommit: ((error: Error) => void) | undefined;
+    const committed = new Promise<void>((resolve, reject) => { resolveCommit = resolve; rejectCommit = reject; });
+    session.on("Page.frameNavigated", ({ frame }) => {
+      if (frame.parentId) return;
+      currentLoader = frame.loaderId;
+      if (!loaderId && !commits.has(frame.loaderId) && commits.size >= 8) overflow = true;
+      if (!loaderId && !overflow) commits.set(frame.loaderId, { id: frame.id, loaderId: frame.loaderId, url: frame.url });
+      if (loaderId && frame.id === frameId) {
+        if (frame.loaderId === loaderId) resolveCommit?.();
+        else rejectCommit?.(new AuxError("ref_stale", "Another navigation replaced this command's document."));
+      }
+    });
+    try {
+      await stage(() => session.send("Page.enable"));
+      const ack = await stage(() => session.send("Page.navigate", { url }));
+      if (ack.errorText || !ack.loaderId) throw new AuxError("ref_stale", ack.errorText || "Navigation produced no document loader receipt.");
+      if (overflow) throw new AuxError("ref_stale", "Too many documents committed while awaiting the command receipt.");
+      loaderId = ack.loaderId;
+      frameId = ack.frameId;
+      timer = setTimeout(() => rejectCommit?.(new AuxError("condition_timeout", "The commanded document did not commit.")), Math.max(1, deadline - Date.now()));
+      const early = commits.get(loaderId);
+      if (early?.id === frameId && currentLoader === loaderId) resolveCommit?.();
+      else if (early) throw new AuxError("ref_stale", "Another document replaced the early command receipt.");
+      await stage(() => committed);
+      await stage(() => this.page.waitForLoadState("domcontentloaded", { timeout: Math.max(1, deadline - Date.now()) }));
+      const boundEpoch = this.documentEpoch;
+      if (currentLoader !== loaderId || boundEpoch <= epoch) throw new AuxError("ref_stale", "The loader has no matching live document epoch.");
+      const { frameTree } = await stage(() => session.send("Page.getFrameTree"));
+      if (!this.isAttached() || currentLoader !== loaderId || this.documentEpoch !== boundEpoch || frameTree.frame.id !== frameId || frameTree.frame.loaderId !== loaderId)
+        throw new AuxError("ref_stale", "The commanded document was replaced before its receipt returned.");
+      // Capture the epoch bound to this loader; never borrow a replacement's epoch.
+      receipt = { url: frameTree.frame.url, documentEpoch: boundEpoch, loaderId };
+    } finally {
+      if (timer) clearTimeout(timer);
+      const detach = session.detach();
+      await Promise.race([detach.catch(() => {}), new Promise<void>(resolve => {
+        const cleanup = setTimeout(resolve, 1_000); cleanup.unref(); detach.finally(() => clearTimeout(cleanup)).catch(() => {});
+      })]);
+    }
+    if (!receipt || !this.isAttached() || currentLoader !== receipt.loaderId || this.documentEpoch !== receipt.documentEpoch)
+      throw new AuxError("ref_stale", "The commanded document changed during receipt cleanup.");
+    return receipt;
+  }
   async back(timeoutMs = 15_000) {
     const res = await this.page.goBack({ timeout: timeoutMs, waitUntil: "domcontentloaded" }).catch(() => null);
     if (!res) throw new AuxError("step_failed", "No back history");
@@ -665,6 +731,46 @@ export class PlaywrightDriverPage implements DriverPage {
     await loc.selectOption(Array.isArray(value) ? value.map((v) => ({ label: v })) : { label: value }, { timeout: timeoutMs });
   }
   /** Before-state for setter steps (S4): value/checked/selected, redacted for protected controls. */
+  async actionTarget(target: string): Promise<ObservedActionTarget> {
+    const metadata = (el: HTMLElement | SVGElement): ObservedActionTarget => {
+      const boundedAttribute = (node: Element, attribute: string) => {
+        const value = node.getAttribute(attribute) ?? "";
+        if (value.length > 512) throw new Error("Action metadata exceeds its bound.");
+        return value;
+      };
+      const tag = el.tagName.toLowerCase();
+      const type = String(boundedAttribute(el, "type") || (tag === "button" ? "submit" : "")).toLowerCase();
+      const control = el as HTMLButtonElement | HTMLInputElement;
+      const form = control.form ?? el.closest("form");
+      const fields: Array<{ type: string; autocomplete: string }> = [];
+      if (form) {
+        if (form.elements.length > 128) throw new Error("This form exceeds the action metadata bound.");
+        for (let index = 0; index < form.elements.length; index++) {
+          const field = form.elements.item(index);
+          if (field && /^(INPUT|TEXTAREA|SELECT)$/.test(field.tagName))
+            fields.push({ type: boundedAttribute(field, "type").toLowerCase(), autocomplete: boundedAttribute(field, "autocomplete").toLowerCase() });
+        }
+      }
+      // Field values and field text are excluded, even when nested in a button.
+      let name = tag === "button" || tag === "input" && /^(submit|button)$/.test(type) ? boundedAttribute(el, "aria-label") : "";
+      if (tag === "button" && !name) {
+        const walker = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+        let count = 0;
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (++count > 128) throw new Error("This button exceeds the action metadata bound.");
+          if (node.nodeType === Node.TEXT_NODE && !node.parentElement?.closest("input,textarea,select,[contenteditable]")) name += node.textContent ?? "";
+          if (name.length > 512) throw new Error("This button caption exceeds the action metadata bound.");
+        }
+      }
+      const challenge = el.ownerDocument.querySelector('iframe[src*="recaptcha"], iframe[src*="hcaptcha"], [name="g-recaptcha-response"], [name="h-captcha-response"]') ? "captcha" as const : undefined;
+      const action = form ? el.hasAttribute("formaction") ? new URL(boundedAttribute(el, "formaction"), el.ownerDocument.baseURI).href : form.action : undefined;
+      const method = form ? (el.hasAttribute("formmethod") ? boundedAttribute(el, "formmethod") : form.method).toLowerCase() : undefined;
+      return { origin: el.ownerDocument.location.origin, tag, type, autocomplete: boundedAttribute(el, "autocomplete").toLowerCase(), name: name.trim(),
+        ...(form && action && method ? { form: { action, method, fields } } : {}), ...(challenge ? { challenge } : {}) };
+    };
+    const locator = await this.resolveActionable(target);
+    return (locator as { evaluate: (fn: typeof metadata) => Promise<ObservedActionTarget> }).evaluate(metadata);
+  }
   async fieldState(target: string): Promise<Record<string, unknown> | undefined> {
     const w = await this.worldRef(target);
     if (w) {
