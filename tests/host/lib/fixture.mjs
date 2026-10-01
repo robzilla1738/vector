@@ -1,4 +1,5 @@
 import { createServer as createHttpServer } from 'node:http';
+import { createHash, X509Certificate } from 'node:crypto';
 import { createServer as createHttpsServer } from 'node:https';
 import { connect } from 'node:net';
 import { Server as TlsServer } from 'node:tls';
@@ -101,11 +102,11 @@ export async function createFixture({ tls = false } = {}) {
       tlsDirectory = mkdtempSync('/tmp/aux-loopback-tls-');
       const key = join(tlsDirectory, 'fixture.key'), cert = join(tlsDirectory, 'fixture.crt');
       execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', key, '-out', cert,
-        '-days', '1', '-subj', '/CN=127.0.0.1', '-addext', 'subjectAltName=IP:127.0.0.1'], { stdio: 'pipe', timeout: 10000 });
+        '-days', '1', '-subj', '/CN=127.0.0.1', '-addext', 'subjectAltName=IP:127.0.0.1,DNS:slack.com,DNS:meet.google.com,DNS:teams.microsoft.com,DNS:youtube.com'], { stdio: 'pipe', timeout: 10000 });
       certificate = cert;
       const tlsPort = await listen(createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, handler));
       tlsUrl = `https://127.0.0.1:${tlsPort}`;
     }
-    return { tunnel, url: `http://127.0.0.1:${port}`, route, close, requests, get tlsHellos() { return tlsHellos; }, ...(tlsUrl ? { tlsUrl, certificate } : {}) };
+    return { tunnel, url: `http://127.0.0.1:${port}`, route, close, requests, get tlsHellos() { return tlsHellos; }, ...(tlsUrl ? { tlsUrl, certificate, certificateSpki: createHash('sha256').update(new X509Certificate(readFileSync(certificate)).publicKey.export({ type: 'spki', format: 'der' })).digest('base64') } : {}) };
   } catch (error) { await close(); throw error; }
 }

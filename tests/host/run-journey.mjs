@@ -54,7 +54,7 @@ const inputCommands = new Set(['press', 'click', 'focus', 'key', 'type', 'drag',
 async function execute() {
   const permissions = await preflight();
   assert.ok(permissions.accessibility && permissions.screenRecording, 'Accessibility and Screen Recording are required');
-  fixture = await createFixture();
+  fixture = await createFixture({ tls: journey.fixture?.tls === true });
   let model;
   if (journey.model === 'loopback') {
     const { createModelFixture } = await import('./lib/model-fixture.mjs');
