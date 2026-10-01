@@ -8,7 +8,14 @@ export type CommandContext = ReturnType<typeof useStore.getState>;
 export interface CommandInvocation {
   payload?: { pageId: string; edge?: "left" | "right" | "top" | "bottom" }
     | { pageId: string; divider: number; ratio: number; persist?: boolean } | { spaceId: string } | { target: "little" | "main" }
-    | { profileId: string; spaceId: string | null } | { pageId: string; profileId: string };
+    | { spaceId: string; pinUrl: string } | { folderId: string; itemId?: string } | { archiveId: string } | { batchId: string }
+    | { folderId: string; live: import("@aux/contracts").LiveFolder }
+    | { spaceId: string; archiveHours: 12 | 24 | 72 | 168 | 720 | "never" }
+    | { connectionId: string } | { name: string; token: string }
+    | { profileId: string; spaceId: string | null } | { pageId: string; profileId: string }
+    | { extensionId: string; anchor?: { x: number; y: number; width: number; height: number } }
+    | { extensionId: string; pinned: boolean } | { extensionId: string; name: string; shortcut: string }
+    | { extensionId: string; enabled: boolean } | { extensionId: string; source: "store" | "managed" | "environment" };
 }
 export interface ComposerPluginProps {
   textareaRef: RefObject<HTMLTextAreaElement | null>;

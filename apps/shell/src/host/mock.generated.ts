@@ -223,6 +223,7 @@ const RESULTS: Record<string, unknown> = {
   },
   "showExtensionAction": false,
   "extensionActions": [],
+  "extensionSidePanel": null,
   "pinExtensionAction": false,
   "extensionCommands": [],
   "setExtensionCommandShortcut": false,
@@ -541,6 +542,7 @@ const RESULTS: Record<string, unknown> = {
     "futureDocuments": true
   },
   "native.bookmarksInvoke": null,
+  "native.liveFolderSources": [],
   "native.capabilities": {
     "buildId": "mock-buildid",
     "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

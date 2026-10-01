@@ -146,6 +146,7 @@ export const TabSpaceMigrationSchema = z.array(z.object({ pageId: id, spaceId: z
 
 export const WindowTabsSchema = z.object({
   windowId: id,
+  windowKind: WindowKindSchema.optional(),
   order: z.array(id),
   activePageId: id.nullable(),
 });

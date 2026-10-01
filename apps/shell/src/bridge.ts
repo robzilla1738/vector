@@ -79,6 +79,7 @@ const stub: AuxBridge = {
   dispatchCommand: nativeRequired,
   windowControlsVisible: nativeRequired,
   extensionActions: nativeRequired,
+  extensionSidePanel: nativeRequired,
   pinExtensionAction: nativeRequired,
   extensionCommands: nativeRequired,
   setExtensionCommandShortcut: nativeRequired,

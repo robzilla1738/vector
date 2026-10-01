@@ -18,6 +18,7 @@ const requirements = {
   },
   "liveFolders": {
     "requires": [
+      "native.liveFolderSources",
       "liveFolders.items",
       "liveFolders.refresh",
       "liveFolders.markRead",
@@ -530,6 +531,7 @@ const requirements = {
       "reloadExtension",
       "showExtensionAction",
       "extensionActions",
+      "extensionSidePanel",
       "pinExtensionAction",
       "extensionCommands",
       "setExtensionCommandShortcut",

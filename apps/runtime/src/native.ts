@@ -143,7 +143,9 @@ export interface NativeBridge {
   ): Promise<{ level: number }>;
   /** Write cookies into the shared profile partition. Returns count set. */
   setCookies(cookies: unknown[]): Promise<{ ok: boolean; count: number }>;
-  /** Persist a secret via Electron safeStorage (plan A22). */
+  /** Read this Profile's authoritative shared live-folder configuration. */
+  liveFolderSources?(): Promise<{ id: string; live: import("@aux/contracts").LiveFolder }[]>;
+  /** Persist a secret via the native protected store. */
   storeSecret(name: string, value: string): Promise<{ ok: true }>;
   readSecret(name: string): Promise<{ value?: string }>;
   /** Atomically create or read the current native Profile's protected-storage root. */
@@ -297,6 +299,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   setCookies(cookies: unknown[]) {
     return this.channel.call<{ ok: boolean; count: number }>("native.setCookies", { cookies });
+  }
+  liveFolderSources() {
+    return this.channel.call<{ id: string; live: import("@aux/contracts").LiveFolder }[]>("native.liveFolderSources", {});
   }
   storeSecret(name: string, value: string) {
     return this.channel.call<{ ok: true }>("native.storeSecret", { name, value });
