@@ -26,6 +26,9 @@ Latest: Reader/About source fixes committed631f3a44, pinverified. QuickAskmanife
 
 L4 active /root/l4_windows in /tmp/aux-browser-runtime-l4 (contracts-v1 FF integration38026026), full F4/F14 brief/roster delivered. Root applied reviewed L1 App/control adapters in isolatedlane only; invariant3tests pass, typecheck ignored workspace dependency links failing. Root0140 review requested DevTools Toggle, exact accelerator equality, safe focus and key-up accounting corrections. All full feature/gate/perf/visual requirements unchanged.
 
+
+Contracts-v4 checkpoint: PageTarget carries native anchor/windowKind/split metadata through catalog reconciliation; shifted split chords accept their produced characters and every alias disappears after remapping. Two capture regressions prove explicit compact-window selection and refusal of invalid/foreign/layered IDs. Rebuild/typecheck, five focused tests, generated bindings (194/26,386a28167923), bridge, lint and format pass; full journey coverage remains open. Builder staged 103 assets, digest435c631f4a2816ba3d052f4521e86bf0ec957ad945d96c9f2b110491520c7c32, independently verified; bundle budgets470/179/1682 pass. Native build and visual closure are pending. LJ frozen dfe9a31489a0c8c677d64ee502f3d916ef1b60f1 awaits independent review and twelve-journey builder batch; Reader remains blocked by L1 native shortcut repair. No new feature qualification is claimed.
+
 ---
 
 # Aux development handoff

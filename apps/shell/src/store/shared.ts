@@ -63,6 +63,9 @@ export async function sendTabCommand(get: () => Workspace, command: TabCommand):
 export const pageFromTab = (tab: TabRecord): PageTarget => ({
   pageId: tab.pageId,
   windowId: tab.windowId,
+  anchor: tab.anchor,
+  windowKind: tab.windowKind,
+  split: tab.split,
   backend: "aux",
   targetId: `atab-${tab.pageId}`,
   url: tab.url,
@@ -96,6 +99,9 @@ export const mergeTabInto = (page: PageTarget, tab: TabRecord): PageTarget => {
 export const mergedTab = (page: PageTarget, tab: TabRecord): PageTarget => ({
   ...page,
   windowId: tab.windowId,
+  anchor: tab.anchor,
+  windowKind: tab.windowKind,
+  split: tab.split,
   url: tab.url,
   // The runtime owns the error-page title ("Page couldn't load") — the catalog
   // only knows Electron's last live title, which is stale once a page errors.

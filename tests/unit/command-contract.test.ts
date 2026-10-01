@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { COMMANDS, SHORTCUTS, matchShortcut, shortcutConflicts } from "@aux/contracts";
+import { COMMANDS, SHORTCUTS, effectiveShortcuts, matchShortcut, shortcutConflicts } from "@aux/contracts";
 
 it("keeps the command-derived shortcut inventory unique and within the native row cap", () => {
   expect(new Set(COMMANDS.map(command => command.id)).size).toBe(COMMANDS.length);
@@ -17,4 +17,15 @@ it("reserves macOS app switching while assigning the plan's browser chords", () 
   expect(chord("b", { shift: true })).toBe("minimal-ui");
   expect(chord("2", { meta: false, ctrl: true, alt: true })).toBe("profile-2");
   expect(chord("2", { meta: false, ctrl: true })).toBe("space-2");
+});
+
+it("matches produced shifted split keys while removing all default aliases after a rebind", () => {
+  const event = (key: string) => ({ key, meta: false, ctrl: true, shift: true, alt: false });
+  for (const [base, produced, id] of [["=", "+", "split-add"], ["-", "_", "split-close"], ["]", "}", "split-next"], ["[", "{", "split-previous"], ["\\", "|", "split-swap"]]) {
+    expect(matchShortcut(SHORTCUTS, event(base!), { platform: "darwin" })?.id).toBe(id);
+    expect(matchShortcut(SHORTCUTS, event(produced!), { platform: "darwin" })?.id).toBe(id);
+  }
+  const rebound = effectiveShortcuts({ "split-add": [{ key: "F12", ctrl: true }] });
+  expect(matchShortcut(rebound, event("+"), { platform: "darwin" })).toBeUndefined();
+  expect(matchShortcut(rebound, event("="), { platform: "darwin" })).toBeUndefined();
 });

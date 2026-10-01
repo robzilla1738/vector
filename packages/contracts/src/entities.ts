@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AgentPageIsolationSchema } from "./egress.js";
+import { WindowKindSchema } from "./window-sync.js";
 import { StepOutcomeSchema } from "./program.js";
 
 export const BackendSchema = z.enum(["aux", "chrome"]);
@@ -19,6 +20,9 @@ export type Controller = z.infer<typeof ControllerSchema>;
 
 export const PageTargetSchema = z.object({
   pageId: z.string(),
+  anchor: z.boolean().optional(),
+  windowKind: WindowKindSchema.optional(),
+  split: z.object({ id: z.string().min(1), index: z.number().int().min(0).max(1) }).strict().optional(),
   /** Durable owner for human tabs; worker/borrowed pages may omit it. */
   windowId: z.string().min(1).optional(),
   backend: BackendSchema,
