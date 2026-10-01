@@ -93,7 +93,11 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       helper.stdout.on("data", bytes => { output += bytes; });
       helper.stderr.on("data", bytes => { errors = (errors + bytes).slice(-4096); });
       helper.once("error", error => { clearTimeout(timer); rejectLaunch(error); });
-      helper.once("close", code => { clearTimeout(timer); code === 0 ? resolveLaunch(output) : rejectLaunch(new Error(errors || "LaunchServices helper failed")); });
+      helper.once("close", code => {
+        clearTimeout(timer);
+        if (code === 0) resolveLaunch(output);
+        else rejectLaunch(new Error(errors || "LaunchServices helper failed"));
+      });
       helper.stdin.on("error", error => { clearTimeout(timer); helper.kill(); rejectLaunch(error); });
       helper.stdin.end(JSON.stringify({ ...env, AUX_NATIVE_SLOT_TOKEN: slot.token }));
     });
