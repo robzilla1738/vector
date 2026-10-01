@@ -970,58 +970,98 @@ func postKey(_ chord: String, via: String = "pid") throws {
 // Observer setup and request/response transport are outside this interval.
 final class ShortcutEffectObservation {
   let pid: pid_t
-  let target: AXUIElement
-  let expectedName: String
+  let confirmEffect: () throws -> Bool
   let validateTarget: () throws -> Void
   var postedAt: UInt64?
   var observedAt: UInt64?
   var notification: String?
-  init(pid: pid_t, target: AXUIElement, expectedName: String, validateTarget: @escaping () throws -> Void) {
-    self.pid = pid; self.target = target; self.expectedName = expectedName
-    self.validateTarget = validateTarget
+  init(pid: pid_t, confirmEffect: @escaping () throws -> Bool, validateTarget: @escaping () throws -> Void) {
+    self.pid = pid; self.confirmEffect = confirmEffect; self.validateTarget = validateTarget
   }
   func observe(_ notification: CFString) {
     let receivedAt = DispatchTime.now().uptimeNanoseconds
-    var owner: pid_t = 0
     guard postedAt != nil, observedAt == nil,
-          AXUIElementGetPid(target, &owner) == .success, owner == pid,
-          NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
-          protocolNames(target).contains(expectedName) else { return }
-    do { try validateTarget() } catch { return }
+          NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else { return }
+    do {
+      try validateTarget()
+      guard try confirmEffect() else { return }
+    } catch { return }
     observedAt = receivedAt
     self.notification = notification as String
   }
 }
+// Visibility trials require one owned window: disappearance must not be
+// confused with selecting another window or the target process exiting.
+func visibleShortcutElements(_ selector: [String: Any], window: AXUIElement) throws -> [(AXUIElement, Int)] {
+  try queryElements(selector).filter { element, _ in
+    guard let position = axPoint(element, kAXPositionAttribute), let size = axSize(element),
+          let origin = axPoint(window, kAXPositionAttribute), let bounds = axSize(window) else { return false }
+    return size.width > 0 && size.height > 0 &&
+      CGRect(origin: position, size: size).intersects(CGRect(origin: origin, size: bounds))
+  }
+}
 func measureKey(_ request: [String: Any]) throws -> [String: Any] {
-  guard let chord = request["chord"] as? String,
-        let expectedName = request["expectedName"] as? String, !expectedName.isEmpty else {
-    throw protocolError("chord and expectedName required")
+  guard let chord = request["chord"] as? String else { throw protocolError("chord required") }
+  let expectedName = request["expectedName"] as? String
+  let expectedVisible = request["expectedVisible"] as? Bool
+  guard (expectedName != nil) != (expectedVisible != nil), expectedName != "" else {
+    throw protocolError("Exactly one of expectedName or expectedVisible required")
   }
   let target = try selectedElement(request)
-  guard !protocolNames(target).contains(expectedName) else {
+  let application = AXUIElementCreateApplication(pid)
+  var owningWindow: AXUIElement?
+  var selector: [String: Any] = [:]
+  if let expectedVisible {
+    guard !expectedVisible, let supplied = request["selector"] as? [String: Any],
+          supplied["index"] == nil, supplied["scope"] as? String == "shell", supplied["within"] == nil,
+          let windows = axAttribute(application, kAXWindowsAttribute) as? [AXUIElement], windows.count == 1 else {
+      throw protocolError("Visibility timing requires one window, an unindexed shell selector and expectedVisible false")
+    }
+    selector = supplied; owningWindow = windows[0]
+    guard try visibleShortcutElements(selector, window: windows[0]).count == 1 else {
+      throw protocolError("Shortcut visibility target must initially be visible")
+    }
+  } else if let expectedName, protocolNames(target).contains(expectedName) {
     throw protocolError("Shortcut target already has the expected name")
   }
+  let targetPid = pid
+  let effect: () throws -> Bool = {
+    if let owningWindow {
+      guard let windows = axAttribute(application, kAXWindowsAttribute) as? [AXUIElement],
+            windows.count == 1, CFEqual(windows[0], owningWindow) else {
+        throw protocolError("Shortcut owning window changed")
+      }
+      return try visibleShortcutElements(selector, window: owningWindow).isEmpty
+    }
+    var owner: pid_t = 0
+    return AXUIElementGetPid(target, &owner) == .success && owner == targetPid &&
+      protocolNames(target).contains(expectedName!)
+  }
   let (down, up) = try keyEvents(chord)
-  let observation = ShortcutEffectObservation(pid: pid, target: target, expectedName: expectedName,
-                                              validateTarget: requireLiveTarget)
+  let observation = ShortcutEffectObservation(pid: pid, confirmEffect: effect, validateTarget: requireLiveTarget)
   var observer: AXObserver?
   let status = AXObserverCreate(pid, { _, _, notification, context in
     guard let context else { return }
     Unmanaged<ShortcutEffectObservation>.fromOpaque(context).takeUnretainedValue().observe(notification)
   }, &observer)
   guard status == .success, let observer else { throw protocolError("Cannot create shortcut AX observer") }
-  let application = AXUIElementCreateApplication(pid)
   let context = Unmanaged.passUnretained(observation).toOpaque()
   var registrations: [(AXUIElement, CFString)] = []
-  for (element, notification) in [(target, kAXTitleChangedNotification),
-                                   (target, kAXValueChangedNotification),
-                                   (application, kAXLayoutChangedNotification)] {
+  var notifications = [(target, kAXTitleChangedNotification),
+                       (target, kAXValueChangedNotification),
+                       (application, kAXLayoutChangedNotification)]
+  if let owningWindow {
+    notifications += [(target, kAXUIElementDestroyedNotification),
+                      (owningWindow, kAXLayoutChangedNotification)]
+  }
+  for (element, notification) in notifications {
     let name = notification as CFString
     if AXObserverAddNotification(observer, element, name, context) == .success {
       registrations.append((element, name))
     }
   }
-  guard registrations.contains(where: { CFEqual($0.0, target) }) else {
+  guard registrations.contains(where: { CFEqual($0.0, target) }) &&
+        (owningWindow == nil || registrations.contains(where: { CFEqual($0.0, application) || CFEqual($0.0, owningWindow!) })) else {
     for (element, name) in registrations { AXObserverRemoveNotification(observer, element, name) }
     throw protocolError("Shortcut target does not support AX change observation")
   }
@@ -1041,7 +1081,7 @@ func measureKey(_ request: [String: Any]) throws -> [String: Any] {
   }
   try requireLiveTarget()
   guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid,
-        !protocolNames(target).contains(expectedName) else {
+        !(try effect()) else {
     throw protocolError("Shortcut target changed before physical posting")
   }
   let requestedTimeout = request["timeoutMs"] as? Double ?? 500
@@ -1068,10 +1108,18 @@ func measureKey(_ request: [String: Any]) throws -> [String: Any] {
   guard let observedAt = observation.observedAt, let notification = observation.notification else {
     throw protocolError("Shortcut produced no confirmed AX notification within \(timeoutMs)ms")
   }
-  return ["elapsedMs": Double(observedAt - started) / 1_000_000,
+  var result: [String: Any] = ["elapsedMs": Double(observedAt - started) / 1_000_000,
           "postedAtNs": String(started), "observedAtNs": String(observedAt),
-          "notification": notification, "expectedName": expectedName,
-          "element": elementRecord(target, depth: 0), "via": "hid"]
+          "notification": notification, "via": "hid"]
+  if let expectedVisible {
+    result["expectedVisible"] = expectedVisible
+    result["selector"] = selector
+    result["visibleElements"] = try visibleShortcutElements(selector, window: owningWindow!).map { elementRecord($0.0, depth: $0.1) }
+  } else {
+    result["expectedName"] = expectedName!
+    result["element"] = elementRecord(target, depth: 0)
+  }
+  return result
 }
 func postText(_ text: String) throws {
   // Send Unicode scalars together so surrogate pairs remain intact.

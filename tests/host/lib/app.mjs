@@ -1,7 +1,7 @@
 import { homedir } from 'node:os';
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, statSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { acquireNativeSlot } from '../../../scripts/native-slot.mjs';
@@ -33,6 +33,21 @@ export function externalGenerationRunning(receipt) {
   if (!receipt || typeof receipt !== "object" || typeof receipt.running !== "boolean")
     throw new Error("Native generation check failed; process cleanup is unverified");
   return receipt.running;
+}
+
+export function validateFixtureEnv(extra, fixtureUrl, userDataDir) {
+  if (!extra || typeof extra !== 'object' || Array.isArray(extra) ||
+      Object.keys(extra).sort().join(',') !== 'HTTPS_PROXY,NODE_EXTRA_CA_CERTS,NODE_USE_ENV_PROXY' ||
+      extra.NODE_USE_ENV_PROXY !== '1' || extra.HTTPS_PROXY !== fixtureUrl)
+    throw new Error('Prepared fixture transport must use only the owned loopback fixture proxy');
+  const proxy = new URL(fixtureUrl);
+  if (proxy.protocol !== 'http:' || proxy.hostname !== '127.0.0.1' || !proxy.port || proxy.username || proxy.password || proxy.pathname !== '/' || proxy.search || proxy.hash)
+    throw new Error('Prepared fixture proxy must be the owned HTTP loopback listener');
+  const ca = realpathSync(extra.NODE_EXTRA_CA_CERTS);
+  const owned = realpathSync(userDataDir);
+  const info = statSync(ca);
+  if (!ca.startsWith(`${owned}/`) || !info.isFile() || info.uid !== process.getuid?.() || (info.mode & 0o077))
+    throw new Error('Prepared CA must be an owner-only file inside disposable user data');
 }
 
 export function validateJourneyBundle(appPath) {
@@ -207,6 +222,11 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     slot?.release(); slot = undefined;
   }
   const api = {
+    prepareFixtureEnv(extra, fixtureUrl) {
+      if (running()) throw new Error('Fixture transport must be prepared before launch');
+      validateFixtureEnv(extra, fixtureUrl, userDataDir);
+      Object.assign(env, extra);
+    },
     start, async restart(options) { await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
     async openExternal(url) { if (!running()) throw new Error("Disposable Aux is not running"); return launchUrl(url, [], api.pid); },
     get pid() { return externalPid ?? child?.pid; }, get log() { return stderr + (existsSync(nativeLog) ? readFileSync(nativeLog, "utf8").slice(-65536) : ""); }, descriptor,

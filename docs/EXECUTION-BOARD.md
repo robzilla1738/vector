@@ -29,11 +29,11 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | Role / lane | Status | Patches | Agent / worktree |
 |---|---|---|---|
 | Integrator / Wave 0 | Active | 0136–0139, fix-ups 0186–0199 | Current chat / repository |
-| Builder | Idle after nine passes / five failures and verified cleanup | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
-| Design reviewer | Frozen review8440490c integrated4173b42b; DR007 open | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
-| L1 Commands | Frozen3a139d03; root candidate79d3ef2a awaits paired pin/native retry | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
+| Builder | Idle after 3831 core failure / performance pass; cleanup verified | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
+| Design reviewer | Fresh shortcut review5da3f44b integrated2abdc40c; all DR001–007 open | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
+| L1 Commands | Active diagnosis after 3831 core release failure; native performance passed | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
 | L4 Windows | Frozen pre-native diagnostic 7e6115f6; yielded for corrections | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
-| L2 Layout | Dispatched; temporarily yielded for builder capacity | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
+| L2 Layout | Active full F2/F3 implementation; focused lock tests passed | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
 | L5 Surfaces | Waiting for L4 selector and lane capacity | 0172–0177 | Unassigned |
 | L6 Profiles/routing | Waiting for lane capacity | 0154–0159 | Unassigned |
 | L7 Extensions | Waiting for lane capacity | 0160–0165 | Unassigned |
@@ -163,3 +163,13 @@ Nativeff83compilefailedbeforeapp/runtime/journeys:0142 auto-monitor-Wauto-var-id
 LJcustomfilterport cannotuse publicfetch orweakenURL/TLSvalidation; savedfixtureenv/proxyrequestunappliedpendingclosedlocalTLS/SAN/CAwireproof andownedtunnellifecyclecleanup revisions. Rootcaught CONNECTupgradedsockets excludedfromcloseAllConnections, requestedtrack/destroycleanup/live-sockettest; no realnetwork/credentials allowed.
 
 Corrected0e4080nativecompile nowindependentlyverifiedPASS47steps1m36.04s log/tmp/aux-l1-0e40-build.log SHA452755c1d00e5dbd1dbd1d2dfd85dde80cfdd7b39f9b9e63cf3809b3b2867cbb. Actualstagedheadercommit0e4080/de283manifest/emptyqualified andruntimeidentitycommit0e4080/treea0dec39b... bothverified afterruntime stage. Builderfunctional/perfjourneyresults remainpending; noqualificationorvisualclosure followsfromcompile.
+
+## Latest shortcut and fixture evidence
+
+The corrected native product `0e4080f3` compiled, but the first two runs failed before steps because full Swift code generation rejected the observer's reference to a top-level capturing guard. Root fixed the dependency explicitly in `f48bd92c`; independent SIL code generation, seven harness regressions, lint and format passed. Root merged that harness-only change into frozen L1, producing clean harness `3831d162` while preserving native product/tree/pin.
+
+The fresh `3831d162` core journey still fails: the website receives exactly one keydown with the right modifiers and zero key releases. The performance journey passes schema-2 validation and twenty AC trials: p95 **26.724541 ms**, minimum12.149959 and maximum36.688834. Root independently recomputed each interval from monotonic nanoseconds, correlated all twenty physical-input records, recomputed p95 and verified both capture hashes/bytes plus manifest/module/harness/native/runtime identities. Evidence: `release/test-artifacts/l1-3831d162-independent-audit.json`. This is diagnostic performance evidence, not full F1 qualification or a final-product carry-forward. L1 is tracing the real Cocoa event path without relaxing pairing/focus/document guards or synthesizing release events.
+
+Reviewer `5da3f44b` is integrated as `2abdc40c`: the two captures show one advisory, improving DR006 idle coalescing; successful handoff dismissal and full appearance/focus/motion coverage are still unproved. The core capture repeats DR007 heading occlusion. No finding is closed; all DR001–007 and final F21 sign-off remain open.
+
+Root `019e9141` adds reviewed disposable HTTPS fixture transport. Prepare may supply exactly three validated environment variables, an owned HTTP loopback proxy, and an owner-only CA under disposable user data. CONNECT accepts only the fixed fixture authority and a current-process loopback TLS listener. Both tunnel ends and that listener belong to fixture cleanup. Independent wire proof rejects the default untrusted CA, accepts the generated SAN certificate at startup, verifies exact body/ETag, refuses foreign authorities without receiver access, and closes a live tunnel in0.241ms. Eighteen refusal/harness tests, lint, syntax and format pass. Production URL/TLS validation is unchanged. Exact compiled runtime Node proxy support still needs builder verification before the new custom-list native run. LJ is implementing the remaining legacy ports; L2 has resumed full layout work.

@@ -66,7 +66,8 @@ async function execute() {
     ...(journey.devAcceptance?.length ? { devAcceptance: { features: journey.devAcceptance, sourceCommit: identity.label } } : {}),
   } });
   if (journey.prepare) {
-    await journey.prepare({ app: { userDataDir: app.userDataDir }, fixture, model });
+    const prepared = await journey.prepare({ app: { userDataDir: app.userDataDir }, fixture, model });
+    if (prepared?.env) app.prepareFixtureEnv(prepared.env, fixture.url);
     signal.throwIfAborted();
   }
   await app.start();
