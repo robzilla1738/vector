@@ -29,9 +29,9 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | Role / lane | Status | Patches | Agent / worktree |
 |---|---|---|---|
 | Integrator / Wave 0 | Active | 0136–0139, fix-ups 0186–0199 | Current chat / repository |
-| Builder | Idle after 3831 core failure / performance pass; cleanup verified | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
+| Builder | Idle after77af bounded diagnostic retry; cleanup verified | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
 | Design reviewer | Fresh shortcut review5da3f44b integrated2abdc40c; all DR001–007 open | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
-| L1 Commands | Active diagnosis after 3831 core release failure; native performance passed | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
+| L1 Commands | Active real Cocoa release-path repair after77af arm-only trace | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
 | L4 Windows | Frozen pre-native diagnostic 7e6115f6; yielded for corrections | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
 | L2 Layout | Active full F2/F3 implementation; focused lock tests passed | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
 | L5 Surfaces | Waiting for L4 selector and lane capacity | 0172–0177 | Unassigned |
@@ -40,7 +40,7 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | L8 Organize | Waiting for lane capacity | 0178–0179 | Unassigned |
 | L9 Downloads | Waiting for lane capacity | 0166–0169 | Unassigned |
 | L10 Agent trust | Waiting for lane capacity | None | Unassigned |
-| LJ Legacy journeys | Active five evidence-backed corrections and remaining ports | None | /root/lj_journeys /tmp/aux-browser-runtime-lj |
+| LJ Legacy journeys | Frozen7ca50fe1 all remaining source ports; root diagnostic composition in verification | None | /root/lj_journeys /tmp/aux-browser-runtime-lj |
 | L3 Command surface | Waiting for L1 | 0170–0171 | Unassigned |
 | L11 Autonomy | Waiting for Wave 2 | 0180–0183 | Unassigned |
 | L12 Polish/performance | Waiting for all feature lanes | 0184–0185 | Unassigned |
@@ -173,3 +173,13 @@ The fresh `3831d162` core journey still fails: the website receives exactly one 
 Reviewer `5da3f44b` is integrated as `2abdc40c`: the two captures show one advisory, improving DR006 idle coalescing; successful handoff dismissal and full appearance/focus/motion coverage are still unproved. The core capture repeats DR007 heading occlusion. No finding is closed; all DR001–007 and final F21 sign-off remain open.
 
 Root `019e9141` adds reviewed disposable HTTPS fixture transport. Prepare may supply exactly three validated environment variables, an owned HTTP loopback proxy, and an owner-only CA under disposable user data. CONNECT accepts only the fixed fixture authority and a current-process loopback TLS listener. Both tunnel ends and that listener belong to fixture cleanup. Independent wire proof rejects the default untrusted CA, accepts the generated SAN certificate at startup, verifies exact body/ETag, refuses foreign authorities without receiver access, and closes a live tunnel in0.241ms. Eighteen refusal/harness tests, lint, syntax and format pass. Production URL/TLS validation is unchanged. Exact compiled runtime Node proxy support still needs builder verification before the new custom-list native run. LJ is implementing the remaining legacy ports; L2 has resumed full layout work.
+
+## Physical release trace and legacy diagnostic composition
+
+Root independently reconstructed native0140→0141→diagnostic0142 SHA4c3c7097 against immutable prior142e5b355, verified all three mirrored files and reverse application. Dedicated builder compiled clean77af1fd6/treed528258a in46steps1m38.55s. First launch exited before setup steps; one unchanged bounded retry reached the probe. It records one unique arm with key-window/event-window/content-native-window checks true, no monitor callback or decision, and actual websitekeydown1/keyup0. Root verified both manifests/modules/identities/log hashes, retry capture bytes/hash and trace; independent audit `release/test-artifacts/l1-77af1fd6-independent-audit.json`. All F1 qualification assertions remain intact. L1 resumed precise physical Cocoa→browser path repair; temporary diagnostic environment, logs and counter must be removed before final completion.
+
+Exact bundled AuxRuntime Nodev26.7.0 startup proxy/owned fixture CA proof passed: defaultCArefused, exactHTTPSbody/ETag200, foreignCONNECT403/receiver1, live tunnel cleanup0.247917ms. This proves fixture transport capability, not native custom-list behavior.
+
+LJ frozen7ca50fe1 source adds automation/lifecycle/custom-list and stronger Tidy rename diagnostics. Root read all new modules/helpers and preserved full legacy assertions; independently inspected suite386files/2056PASS transcript and fullregistry21missing. Root-only isolated diagnostic composition `/tmp/aux-browser-runtime-root-l1-lj`, ref92755d16, combines actualL1commands/native77af with frozenLJ owned ports and integration harness. Product identity remains exactly77af/treed528258a,103-asset1388pin independently verifies. Initial gates failed because a rootnode_modules symlink omitted package dependencies; repaired with offline frozen-lockfile install, complete rebuilt gates pending. No feature merge, qualification or native acceptance is claimed.
+
+Root sharedharness e6b9386b adds notification-confirmed HID→selector-hidden timing for Minimal UI, requiring one stable owned window and an initially unique visible shell target. It handles AX destruction/layout notifications with raw monotonic intervals, no polling fallback or subtraction. Full Swift SIL generation, thirteen existing harness regressions, lint/format pass; native behavior is pending. L2 still owns complete F2/F3 implementation: root requested registered horizontal button dispatch and correction of stacked reveal delay/animation; lane reports source correction, independent frozen adapter/native review pending. L4 resumed replacing Little positioned-div panels with actual shared Menu/Dialog lifecycle, async focus and real component/native journey assertions; source review/composed test run pending. DR001–007 remain open.
