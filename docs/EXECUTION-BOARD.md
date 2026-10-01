@@ -32,14 +32,14 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | Builder | Idle, dedicated | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
 | Design reviewer | Active foundation review | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
 | L1 Commands | Active | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
-| L4 Windows | Waiting for Wave 0 | 0148–0153 | Unassigned |
-| L2 Layout | Waiting for Wave 0 | 0144–0147 | Unassigned |
-| L5 Surfaces | Waiting for Wave 0 and L4 selector | 0172–0177 | Unassigned |
-| L6 Profiles/routing | Waiting for Wave 0 | 0154–0159 | Unassigned |
-| L7 Extensions | Waiting for Wave 0 | 0160–0165 | Unassigned |
-| L8 Organize | Waiting for Wave 0 | 0178–0179 | Unassigned |
-| L9 Downloads | Waiting for Wave 0 | 0166–0169 | Unassigned |
-| L10 Agent trust | Waiting for Wave 0 | None | Unassigned |
+| L4 Windows | Active source implementation | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
+| L2 Layout | Waiting for lane capacity | 0144–0147 | Unassigned |
+| L5 Surfaces | Waiting for L4 selector and lane capacity | 0172–0177 | Unassigned |
+| L6 Profiles/routing | Waiting for lane capacity | 0154–0159 | Unassigned |
+| L7 Extensions | Waiting for lane capacity | 0160–0165 | Unassigned |
+| L8 Organize | Waiting for lane capacity | 0178–0179 | Unassigned |
+| L9 Downloads | Waiting for lane capacity | 0166–0169 | Unassigned |
+| L10 Agent trust | Waiting for lane capacity | None | Unassigned |
 | LJ Legacy journeys | Active | None | /root/lj_journeys /tmp/aux-browser-runtime-lj |
 | L3 Command surface | Waiting for L1 | 0170–0171 | Unassigned |
 | L11 Autonomy | Waiting for Wave 2 | 0180–0183 | Unassigned |
@@ -95,3 +95,5 @@ Root source repairs DR001/DR003 prepared: Reader toolbar horizontal left reserve
 LJ candidate final audit:1pass(QuickAsk)/10fail. Root independently checked all11 manifest digests, only capture digest/size and QuickAsk schema2 validator against frozen module. Canonical release/test-artifacts/lj-d9110f6a-audit.json preserves exact failures. Worktree released for evidence-backed corrections, no merge/records. Reviewer queued QuickAsk capture. Reader/About source repairs shellpin c2342cba909a34d9556560fd76c4eb256168b9183b5075b28fb7e3fa2914493c independently verifies103assets; budgets470/179/1682, typecheck/lint/formatpass. Nativeclosurepending. L1 source/native0140 and saved sharedadapters ready independentreview; invariant intentionallyfails unappliedadapters. Exact QuickAsk globalregistration hunks assigned L1 reserved0141 to remove hardcoded chord ownership and preserve opt-in; Profile selection dependency laterL6.
 
 QuickAsk capture audit: reviewer independently found functionalpass screenshot targeted normal Settings instead compact520x640window. Visualapprovalpending. Integrator adds capture(name,{windowId}) with current owned/on-screen/layer0 positiveID validation; LJ mustrequest actualnewcompactwindowID before visualrerun. Existing singlestage default retained. No qualification/visualcompletionclaimed.
+
+L1 adapter checkpoint: integrator independently read commands.ts, invariant, full0140 draft and savedApp/control adapters. Applied only inspected adapters in isolatedL1 worktree; invariant3tests pass. Typecheck fails package declarations due ignored workspace links, lane repairing. Native review requires Toggle rather than Show, exact accelerator equality for doublepress, safe focus eligibility and event key-up accounting before build. L4 dispatched from contracts-v1 then FF integration38026026, full F4/F14 brief and roster delivered; ownership0148–0153. Source capacity root/L1/LJ/L4; dedicatedbuilder/reviewer idle until stable candidate slot rotation.

@@ -24,6 +24,8 @@ LJ candidate final audit:1pass(QuickAsk)/10fail. Root independently checked all1
 
 Latest: Reader/About source fixes committed631f3a44, pinverified. QuickAskmanifestfunctionallyvalid but reviewerimagewrongnormalwindow; new capturewindowID adapterpendingcommit, visualapprovalpending. L1 commands/invariant reviewed, globalAppadapter read but notapplied; native0140/sharedcontroladapter stillneedfullindependentreview. L1 exactQuickAskregistration ownership0141 approved. LJcandidate released, correcting evidence-backed failures; all11digestsindependentlyverified. Reviewerdocs ec254205 awaitreview/cherrypick.
 
+L4 active /root/l4_windows in /tmp/aux-browser-runtime-l4 (contracts-v1 FF integration38026026), full F4/F14 brief/roster delivered. Root applied reviewed L1 App/control adapters in isolatedlane only; invariant3tests pass, typecheck ignored workspace dependency links failing. Root0140 review requested DevTools Toggle, exact accelerator equality, safe focus and key-up accounting corrections. All full feature/gate/perf/visual requirements unchanged.
+
 ---
 
 # Aux development handoff
