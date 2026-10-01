@@ -29,6 +29,8 @@ L4 active /root/l4_windows in /tmp/aux-browser-runtime-l4 (contracts-v1 FF integ
 
 Contracts-v4 checkpoint: PageTarget carries native anchor/windowKind/split metadata through catalog reconciliation; shifted split chords accept their produced characters and every alias disappears after remapping. Two capture regressions prove explicit compact-window selection and refusal of invalid/foreign/layered IDs. Rebuild/typecheck, five focused tests, generated bindings (194/26,386a28167923), bridge, lint and format pass; full journey coverage remains open. Builder staged 103 assets, digest435c631f4a2816ba3d052f4521e86bf0ec957ad945d96c9f2b110491520c7c32, independently verified; bundle budgets470/179/1682 pass. Native build and visual closure are pending. LJ frozen dfe9a31489a0c8c677d64ee502f3d916ef1b60f1 awaits independent review and twelve-journey builder batch; Reader remains blocked by L1 native shortcut repair. No new feature qualification is claimed.
 
+Current rotation: integration contracts-v4 e592362c is clean. Root L1 adapter cleanup/invariant/typecheck/lint passes in isolated lane; native0140 applies cleanly,0141 atomic global registration correction requested. L4 isolated authoritative windowKind adapter/typecheck/35 focused tests pass, owned selector locality review requested; native adapters may apply only mirrors. Builder running frozen LJ dfe9a314 retry12 IDs, Reader excluded until nativeSpace shortcut fix. Reviewer idle awaiting corrected captures, LJ yielded. Full integration unit rerun at /tmp/aux-contracts-v4-unit.log is running; no new qualification/promote/merge.
+
 ---
 
 # Aux development handoff
