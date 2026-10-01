@@ -9,15 +9,16 @@ import type { PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
 
-import { TranslationBar } from "./TranslationBar";
 import { Conversation } from "./surfaces";
-import { StartPage } from "./StartPage";
 import { I } from "./icons";
 import { AgentOverlay } from "../agent/AgentOverlay";
 import { visibleSplitGroup } from "../features/surfaces/split-actions";
 import { useSurfaceState } from "../features/surfaces/drag-state";
 import { useFeature } from "../use-feature";
 import { isLocal, ownPages } from "../tab-window-transfer";
+
+const StartPage = deferSurface(async () => { const module = await import("./StartPage"); return { default: module.StartPage }; }, "New tab", true);
+const TranslationBar = deferSurface(async () => { const module = await import("./TranslationBar"); return { default: module.TranslationBar }; }, "Translation", true, true);
 
 const PageSurface = lazy(async () => { const module = await import("./PageSurface"); return { default: module.PageSurface }; });
 const SplitStage = lazy(async () => { const module = await import("./SplitStage"); return { default: module.SplitStage }; });
@@ -90,6 +91,7 @@ export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<H
   const surfaceState = useSurfaceState();
   const overlay = useStore(s => s.overlay);
   const confirming = useStore(s => !!s.confirmation);
+  const translating = useStore(state => !!page && (state.translation?.pageId === page.pageId || state.translationPending === page.pageId));
   const hasUrl = !!page && (!!page.showBlankDocument || (!isHomeAddress(page.url)));
   const loading = !!page?.loading && !page.navigationError && page.viewStatus !== "crashed";
 
@@ -114,7 +116,7 @@ export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<H
   return (
     <div inert={overlay === "tasks" || overlay === "settings"} className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`} data-controller={page?.controller ?? "none"}>
       <div className="stage-progress" role="progressbar" aria-hidden={!loading} aria-valuetext={loading ? "Loading" : "Idle"} />
-      {page && <TranslationBar pageId={page.pageId} />}
+      {page && translating && <TranslationBar pageId={page.pageId} />}
       <div id="stage" ref={ref}>
         {mode === "focus" && page?.backend === "chrome" && page.viewStatus !== "crashed" && !page.navigationError && (
           <div className="stage-message">

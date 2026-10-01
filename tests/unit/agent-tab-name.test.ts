@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { PageTarget } from "@aux/contracts";
+import { OrganizationLayoutSchema, type PageTarget } from "@aux/contracts";
+import { fromOrganizationLayout, toOrganizationLayout } from "../../apps/shell/src/store/organization-layout.js";
 import { suggestTabName } from "../../apps/runtime/src/agent/tab-name.js";
 import type { ModelClient } from "../../apps/runtime/src/agent/model-client.js";
-import { emptyLayout, parseLayout, syncLayout, tabLabel } from "../../apps/shell/src/workspace.js";
+import { emptyLayout, syncLayout, tabLabel } from "../../apps/shell/src/workspace.js";
 
 const page = { pageId: "p1", url: "https://example.com/private/report?token=secret", title: "Quarterly report — Example",
   documentEpoch: 3, viewStatus: "visible", controller: "none", ownedByRuntime: false } as PageTarget;
@@ -42,7 +43,7 @@ describe("AI tab naming", () => {
     const layout = { ...emptyLayout(), tabNames: { p1: { title: "Work report", url: page.url } } };
     expect(tabLabel(layout, page)).toBe("Work report");
     expect(tabLabel(layout, { ...page, url: "https://example.com/other" })).toBe(page.title);
-    expect(parseLayout(JSON.stringify(layout)).tabNames?.p1).toEqual(layout.tabNames.p1);
+    expect(fromOrganizationLayout(OrganizationLayoutSchema.parse(toOrganizationLayout(layout))).tabNames?.p1).toEqual(layout.tabNames.p1);
     expect(syncLayout(layout, [{ ...page, url: "https://example.com/other" }]).tabNames).toEqual({});
     expect(syncLayout(layout, []).tabNames).toEqual({});
   });

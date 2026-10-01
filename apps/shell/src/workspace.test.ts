@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { PageTarget } from "@aux/contracts";
+import { OrganizationLayoutSchema, type PageTarget } from "@aux/contracts";
+import { fromOrganizationLayout, toOrganizationLayout } from "./store/organization-layout";
 import {
   lifecycleForStrip,
   DEFAULT_SPACE,
@@ -17,7 +18,6 @@ import {
   emptyLayout,
   isPinned,
   moveTab,
-  parseLayout,
   renameSpace,
   spaceThemeColor,
   removeFolder,
@@ -35,15 +35,20 @@ import {
   updateFolder,
 } from "./workspace";
 
+const roundTrip = (layout: ReturnType<typeof emptyLayout>) => fromOrganizationLayout(
+  OrganizationLayoutSchema.parse(JSON.parse(JSON.stringify(toOrganizationLayout(layout)))),
+);
+
 it("round-trips a custom Space color and rejects malformed stored recipes", () => {
   const theme = { hue: 195, lightness: 62, intensity: 80, inverted: true };
   const created = createSpace(emptyLayout(), "Studio", "teal", 50, theme);
-  const restored = parseLayout(JSON.stringify(created));
+  const restored = roundTrip(created);
   expect(restored.spaces[1]?.theme).toEqual(theme);
   expect(spaceThemeColor(theme)).toBe("oklch(38% 0.144 195)");
   expect(renameSpace(restored, restored.spaces[1]!.id, "Studio", "teal", 50, null).spaces[1]?.theme).toBeUndefined();
-  const malicious = JSON.stringify({ ...created, spaces: [created.spaces[0], { ...created.spaces[1], theme: { ...theme, hue: "0);background:red" } }] });
-  expect(parseLayout(malicious).spaces[1]?.theme).toBeUndefined();
+  const malicious = toOrganizationLayout(created);
+  const unsafe = { ...malicious, shared: { ...malicious.shared, spaces: [created.spaces[0], { ...created.spaces[1], theme: { ...theme, hue: "0);background:red" } }] } };
+  expect(OrganizationLayoutSchema.safeParse(unsafe).success).toBe(false);
 });
 
 const page = (id: string, extra: Partial<PageTarget> = {}): PageTarget => ({
@@ -164,7 +169,7 @@ describe("pins", () => {
     let layout = emptyLayout();
     for (let i = 0; i < 7; i++) layout = togglePin(layout, DEFAULT_SPACE.id, { url: `https://s${i}.com/`, title: `s${i}` });
     expect(layout.pins[DEFAULT_SPACE.id]).toHaveLength(7);
-    expect(parseLayout(JSON.stringify(layout)).pins[DEFAULT_SPACE.id]).toHaveLength(7);
+    expect(roundTrip(layout).pins[DEFAULT_SPACE.id]).toHaveLength(7);
     layout = togglePin(layout, DEFAULT_SPACE.id, { url: "https://s0.com/", title: "s0" });
     expect(isPinned(layout, DEFAULT_SPACE.id, "https://s0.com/")).toBe(false);
   });
@@ -214,30 +219,33 @@ describe("folders", () => {
     layout = updateFolder(layout, folderId, { emoji: null });
     expect(layout.folders[0]!.emoji).toBeUndefined();
     expect(layout.folders[0]!.color).toBe("green");
-    expect(parseLayout(JSON.stringify(layout)).folders[0]).toEqual(layout.folders[0]);
+    expect(roundTrip(layout).folders[0]).toEqual(layout.folders[0]);
     expect(updateFolder(layout, "missing", { name: "X" })).toBe(layout);
   });
 });
 
-describe("persistence", () => {
-  it("round-trips and survives corrupt storage", () => {
+describe("Profile organization persistence", () => {
+  it("round-trips the current contract and rejects corrupt or incomplete data", () => {
     const layout = createSpace(emptyLayout(), "Work");
-    expect(parseLayout(JSON.stringify(layout))).toEqual(layout);
-    expect(parseLayout(null)).toEqual(emptyLayout());
-    expect(parseLayout("{not json")).toEqual(emptyLayout());
-    expect(parseLayout(JSON.stringify({ spaces: [] })).spaces).toHaveLength(1);
-    const bad = parseLayout(JSON.stringify({ spaces: [{ id: "x", name: "X", color: "blue" }], activeSpaceId: "missing", order: [1, "ok"] }));
-    expect(bad.activeSpaceId).toBe("x");
-    expect(bad.order).toEqual(["ok"]);
-    expect(bad.folders).toEqual([]);
-    expect(bad.spaces[0]?.grain).toBe(0);
-    expect(parseLayout(JSON.stringify({ spaces: [{ id: "x", name: "X", color: "blue", grain: 75 }] })).spaces[0]?.grain).toBe(75);
-    expect(parseLayout(JSON.stringify({ spaces: [{ id: "x", name: "X", color: "blue", grain: 101 }] })).spaces[0]?.grain).toBe(0);
-    const withFolder = parseLayout(JSON.stringify({
-      spaces: [{ id: "x", name: "X", color: "blue" }],
-      folders: [{ id: "f1", name: "Dev", spaceId: "x" }],
-    }));
-    expect(withFolder.folders).toEqual([{ id: "f1", name: "Dev", spaceId: "x", collapsed: false }]);
+    expect(roundTrip(layout)).toEqual(layout);
+    const stored = toOrganizationLayout(layout);
+    for (const invalid of [null, "{not json", {}, { ...stored, shared: { ...stored.shared, spaces: [] } }]) {
+      expect(OrganizationLayoutSchema.safeParse(invalid).success).toBe(false);
+    }
+    for (const grain of [101, -1, "75"]) {
+      expect(OrganizationLayoutSchema.safeParse({ ...stored, shared: { ...stored.shared,
+        spaces: [{ ...stored.shared.spaces[0], grain }],
+      } }).success).toBe(false);
+    }
+    const valid = { ...stored, shared: { ...stored.shared,
+      spaces: [{ ...stored.shared.spaces[0], grain: 75 }],
+      folders: [{ id: "f1", name: "Dev", spaceId: stored.window.activeSpaceId, collapsed: false }],
+    } };
+    expect(OrganizationLayoutSchema.parse(valid).shared.spaces[0]?.grain).toBe(75);
+    expect(OrganizationLayoutSchema.parse(valid).shared.folders).toEqual(valid.shared.folders);
+    expect(OrganizationLayoutSchema.safeParse({ ...valid, shared: { ...valid.shared,
+      folders: [{ id: "f1", name: "Dev", spaceId: stored.window.activeSpaceId }],
+    } }).success).toBe(false);
   });
 });
 
@@ -245,7 +253,7 @@ describe("Space continuity", () => {
   it("persists per-Space selection and restores splits only for live tabs in the same Space", () => {
     let layout = assignSpace(assignSpace(emptyLayout(), "a", DEFAULT_SPACE.id), "b", DEFAULT_SPACE.id);
     layout = rememberActiveTab({ ...layout, splitGroups: [{ id: "split-a", panes: ["a", "b"], layout: "row", ratios: [.5], focused: "a" }] }, "a");
-    const restored = parseLayout(JSON.stringify(layout));
+    const restored = roundTrip(layout);
     expect(restored.activeTabs?.[DEFAULT_SPACE.id]).toBe("a");
     expect(splitForPage(restored, [page("a"), page("b")], "a")).toBe("b");
     expect(splitForPage(restored, [page("a")], "a")).toBeNull();

@@ -4,11 +4,10 @@ import { createEntryWriter } from "../conversation-drafts";
 import { toast } from "../store";
 import { undoTidyChange } from "../tidy-commit";
 import { revertTidyRecord } from "../tidy-layout";
-import { type Layout, type TidyUndoRecord, emptyLayout, parseLayout } from "../workspace";
+import { type Layout, type TidyUndoRecord, emptyLayout } from "../workspace";
 import { featureStage } from "../use-feature";
 import type { OrganizationPersistence } from "./organization-persistence";
 
-export const LAYOUT_KEY = `aux.layout.v1:${bridge.windowId}`;
 export const CLOSED_TABS_KEY = `aux.closed-tabs.v1:${bridge.windowId}`;
 export const storage = typeof localStorage !== "undefined" ? localStorage : null;
 const ephemeralOrganization =
@@ -22,12 +21,7 @@ export const persistClosedTabs = (tabs: ClosedTab[]) => {
     /* Recovery remains available for this window. */
   }
 };
-export const initialLayout = (() => {
-  if (!storage || ephemeralOrganization) return emptyLayout();
-  const current = storage.getItem(LAYOUT_KEY);
-  const legacy = bridge.windowId === "main" ? storage.getItem("aux.layout.v1") : null;
-  return parseLayout(current ?? legacy);
-})();
+export const initialLayout = emptyLayout();
 let organizationPromise: Promise<OrganizationPersistence> | null = null;
 let pendingLayout: Layout | null = null;
 const organization = () =>
@@ -49,7 +43,7 @@ const warnLayoutStorage = (error: unknown) => {
     "error",
   );
 };
-/** Only legacy import reads localStorage; the host owns Profile organization writes. */
+/** The native host owns Profile organization; auxiliary windows remain ephemeral. */
 export const loadOrganizationLayout = async () => {
   if (ephemeralOrganization) return initialLayout;
   const store = await organization();

@@ -4,7 +4,7 @@ import { useStore } from "../store";
 import { runCommand } from "../commands";
 import { localSplitPage } from "../features/surfaces/split-actions";
 import { getSurfaceState, setSurfaceState, useSurfaceState, type SplitEdge } from "../features/surfaces/drag-state";
-import { Dialog } from "../ui";
+import { Dialog } from "../ui/dialog";
 import { addPane } from "../workspace";
 import "./SplitStage.css";
 

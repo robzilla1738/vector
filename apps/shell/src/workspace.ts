@@ -1,11 +1,10 @@
 import { isHomeAddress, nativePageId } from "./chrome";
-import { splitRatio } from "@aux/contracts/split-layout";
 /**
  * Pure reducers for the sidebar's local organisation: spaces, tab order,
  * pinned sites. The runtime owns pages; the shell owns how they are arranged.
  * Everything here is deterministic and unit-tested.
  */
-import { SplitGroupSchema, type BrowserSpace, type PageTarget, type LiveFolder, type SplitGroup } from "@aux/contracts";
+import type { BrowserSpace, PageTarget, LiveFolder, SplitGroup } from "@aux/contracts";
 import type { SpaceTheme } from "@aux/contracts/spaces";
 import type { CSSProperties } from "react";
 
@@ -99,16 +98,6 @@ export const DEFAULT_SPACE: Space = { id: "space-personal", name: "Personal", co
 
 export function spaceGrain(value: unknown): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100 ? value : 0;
-}
-
-function parsedSpaceTheme(value: unknown): SpaceTheme | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const theme = value as Record<string, unknown>;
-  if (!Number.isInteger(theme.hue) || (theme.hue as number) < 0 || (theme.hue as number) > 359 ||
-      !Number.isInteger(theme.lightness) || (theme.lightness as number) < 20 || (theme.lightness as number) > 80 ||
-      !Number.isInteger(theme.intensity) || (theme.intensity as number) < 0 || (theme.intensity as number) > 100 ||
-      typeof theme.inverted !== "boolean") return undefined;
-  return { hue: theme.hue as number, lightness: theme.lightness as number, intensity: theme.intensity as number, inverted: theme.inverted };
 }
 
 export function tabLabel(layout: Layout, page: Pick<PageTarget, "pageId" | "url" | "title" | "showBlankDocument">): string {
@@ -450,67 +439,6 @@ export function reorderGroup(
 function dedupePins(pins: Pin[]): Pin[] {
   const seen = new Set<string>();
   return pins.filter((p) => (seen.has(p.url) ? false : (seen.add(p.url), true)));
-}
-
-/** Round-trip through storage — tolerant of missing/corrupt data. */
-export function parseLayout(raw: string | null): Layout {
-  if (!raw) return emptyLayout();
-  try {
-    const v = JSON.parse(raw) as Partial<Layout>;
-    if (!Array.isArray(v.spaces) || v.spaces.length === 0) return emptyLayout();
-    const spaces = v.spaces.filter((s): s is Space => !!s && typeof s.id === "string" && typeof s.name === "string")
-      .map(space => ({ ...space, grain: spaceGrain(space.grain), theme: parsedSpaceTheme(space.theme) }));
-    if (!spaces.length) return emptyLayout();
-    const active = spaces.some((s) => s.id === v.activeSpaceId) ? v.activeSpaceId! : spaces[0]!.id;
-    return {
-      spaces,
-      archivedSpaces: Array.isArray(v.archivedSpaces) ? v.archivedSpaces.filter(space => space && typeof space.id === "string" && typeof space.name === "string").map(space => ({ ...space, grain: spaceGrain(space.grain), theme: parsedSpaceTheme(space.theme) })) : [],
-      activeSpaceId: active,
-      splitRatio: splitRatio(v.splitRatio),
-      activeTabs: v.activeTabs && typeof v.activeTabs === "object" ? Object.fromEntries(Object.entries(v.activeTabs).filter(([, pageId]) => typeof pageId === "string")) : {},
-      splitGroups: Array.isArray(v.splitGroups) ? (() => {
-        const members = new Set<string>();
-        return v.splitGroups.flatMap(value => {
-          const result = SplitGroupSchema.safeParse(value);
-          if (!result.success || result.data.panes.some(id => members.has(id))) return [];
-          for (const id of result.data.panes) members.add(id);
-          return [result.data];
-        });
-      })() : [],
-      tabSpace: v.tabSpace && typeof v.tabSpace === "object" ? v.tabSpace : {},
-      order: Array.isArray(v.order) ? v.order.filter((x): x is string => typeof x === "string") : [],
-      pins: v.pins && typeof v.pins === "object"
-        ? Object.fromEntries(
-            Object.entries(v.pins).map(([id, list]) => [id, Array.isArray(list) ? (list as Pin[]) : []]),
-          )
-        : {},
-      folders: Array.isArray(v.folders)
-        ? v.folders.flatMap((f) => {
-            if (!f || typeof f.id !== "string" || typeof f.name !== "string" || typeof f.spaceId !== "string") return [];
-            return [{ id: f.id, name: f.name, spaceId: f.spaceId, collapsed: !!f.collapsed,
-              ...(f.color && SPACE_COLORS.includes(f.color) ? { color: f.color } : {}),
-              ...(typeof f.emoji === "string" && f.emoji.length <= 16 ? { emoji: f.emoji } : {}) }];
-          })
-        : [],
-      tabFolder: v.tabFolder && typeof v.tabFolder === "object"
-        ? Object.fromEntries(Object.entries(v.tabFolder).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
-        : {},
-      archivedTabs: Array.isArray(v.archivedTabs) ? v.archivedTabs.filter((item): item is ArchivedTab =>
-        !!item && typeof item.archiveId === "string" && typeof item.pageId === "string" &&
-        typeof item.url === "string" && typeof item.title === "string" && typeof item.spaceId === "string" &&
-        typeof item.index === "number" && typeof item.archivedAt === "number" &&
-        (item.reason === "manual" || item.reason === "auto") && typeof item.batchId === "string" &&
-        (item.state === "pending" || item.state === "archived")) : [],
-      tabNames: v.tabNames && typeof v.tabNames === "object"
-        ? Object.fromEntries(Object.entries(v.tabNames).filter((entry): entry is [string, { title: string; url: string }] =>
-          !!entry[1] && typeof entry[1].title === "string" && entry[1].title.trim().length >= 2
-          && entry[1].title.length <= 60 && !/[\p{Cc}\p{Cf}]/u.test(entry[1].title)
-          && typeof entry[1].url === "string" && entry[1].url.length <= 8192))
-        : {},
-    };
-  } catch {
-    return emptyLayout();
-  }
 }
 
 /** Host without www — used for tiles, pins, and the start page. */
