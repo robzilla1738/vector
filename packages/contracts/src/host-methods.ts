@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { LiveFolderSchema } from "./live-folders.js";
-import { OrganizationCommitSchema, OrganizationSnapshotSchema } from "./organization.js";
+import { OrganizationCommitSchema, OrganizationSnapshotSchema, ProfileOrganizationSnapshotSchema } from "./organization.js";
 import { TabCatalogSnapshotSchema, TabCommandAckSchema, TabCommandEnvelopeSchema, TabCommandSchema, TabPatchSchema, TabPlacementSchema } from "./tabs.js";
 import { NativeMethods } from "./bridge.js";
 import { DownloadSchema, PageQuickActionSchema } from "./entities.js";
@@ -331,6 +331,7 @@ export const HostMethods = {
     rulesDigest: str }).strict(), z.object({ backend: z.literal("isolated_world_stylesheet"), profileId: str,
     private: bool, generation: number, rulesDigest: str, installedRules: number,
     phase: z.literal("document_start"), futureDocuments: z.literal(true) }).strict()),
+  "native.organizationSnapshot": runtime("tabMentions", z.object({}).strict(), ProfileOrganizationSnapshotSchema),
   "native.bookmarksInvoke": runtime("core", z.object({ method: str, params: z.unknown() }).strict(), z.unknown()),
   "native.liveFolderSources": runtime("liveFolders", z.object({}).strict(), z.array(z.object({ id: str.min(1).max(200), live: LiveFolderSchema }).strict()).max(1000)),
   "native.capabilities": runtime("core", z.object({}).strict(), HostCapabilitiesSchema),

@@ -1,4 +1,6 @@
 import {
+  ProfileOrganizationSnapshotSchema,
+  type ProfileOrganizationSnapshot,
   AuxError,
   HostCapabilitiesSchema,
   ZapInstallReceiptSchema,
@@ -79,6 +81,7 @@ import {
  * aux page creation returns an explicit error.
  */
 export interface NativeBridge {
+  organizationSnapshot?(): Promise<ProfileOrganizationSnapshot>;
   createAgentPage?(input: AgentPageCreate): Promise<AgentPageCreated>;
   egressContext?(input: { tabId: string; expectedUrl: string }): Promise<EgressContext>;
   egressInstall?(input: { lease: EgressLease; expectedUrl: string }): Promise<{ accepted: true }>;
@@ -184,6 +187,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   egressRevoke(input: { leaseId: string }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressRevoke", input);
+  }
+  async organizationSnapshot(): Promise<ProfileOrganizationSnapshot> {
+    return ProfileOrganizationSnapshotSchema.parse(await this.channel.call("native.organizationSnapshot", {}));
   }
   async capabilities(): Promise<HostCapabilities> {
     return HostCapabilitiesSchema.parse(await this.channel.call("native.capabilities", {}));

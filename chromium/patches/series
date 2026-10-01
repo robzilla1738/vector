@@ -140,3 +140,4 @@ aux/runtime/0186-window-kind-identity.patch
 aux/runtime/0187-human-cookie-egress.patch
 aux/runtime/0189-split-divider-invariant.patch
 aux/runtime/0190-private-shell-bootstrap.patch
+aux/runtime/0191-profile-organization-authority.patch

@@ -3211,11 +3211,18 @@ bool ValidateNode254(const base::Value& value) {
 bool ValidateNode255(const base::Value& value) {
   if (!(value.is_dict())) return false;
   const auto& dict = value.GetDict();
+  if (!dict.empty()) return false;
+  return true;
+}
+
+bool ValidateNode256(const base::Value& value) {
+  if (!(value.is_dict())) return false;
+  const auto& dict = value.GetDict();
   if (const base::Value* field = dict.Find("method")) {
     if (!ValidateNode58(*field)) return false;
   } else return false;
   if (const base::Value* field = dict.Find("params")) {
-    if (!ValidateNode256(*field)) return false;
+    if (!ValidateNode257(*field)) return false;
   } else return false;
   for (auto entry : dict) {
     if (!(entry.first == "method" || entry.first == "params")) return false;
@@ -3223,14 +3230,7 @@ bool ValidateNode255(const base::Value& value) {
   return true;
 }
 
-bool ValidateNode256(const base::Value& value) {
-  return true;
-}
-
 bool ValidateNode257(const base::Value& value) {
-  if (!(value.is_dict())) return false;
-  const auto& dict = value.GetDict();
-  if (!dict.empty()) return false;
   return true;
 }
 
@@ -3786,7 +3786,7 @@ bool ValidateNode296(const base::Value& value) {
 bool ValidateNode297(const base::Value& value) {
   if (!(value.is_list())) return false;
   const auto& list = value.GetList();
-  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode256(list[i])) return false;
+  for (size_t i = 0; i < list.size(); ++i) if (!ValidateNode257(list[i])) return false;
   return true;
 }
 
@@ -4102,6 +4102,7 @@ constexpr MethodInfo kMethods[] = {
   {MethodId::kNativeCosmeticBegin, "native.cosmeticBegin", "runtime", "contentBlocking", "authenticated-runtime", true},
   {MethodId::kNativeCosmeticAppend, "native.cosmeticAppend", "runtime", "contentBlocking", "authenticated-runtime", true},
   {MethodId::kNativeCosmeticCommit, "native.cosmeticCommit", "runtime", "contentBlocking", "authenticated-runtime", true},
+  {MethodId::kNativeOrganizationSnapshot, "native.organizationSnapshot", "runtime", "tabMentions", "authenticated-runtime", true},
   {MethodId::kNativeBookmarksInvoke, "native.bookmarksInvoke", "runtime", "core", "authenticated-runtime", true},
   {MethodId::kNativeLiveFolderSources, "native.liveFolderSources", "runtime", "liveFolders", "authenticated-runtime", true},
   {MethodId::kNativeCapabilities, "native.capabilities", "runtime", "core", "authenticated-runtime", true},
@@ -4313,9 +4314,10 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kNativeCosmeticBegin: valid = ValidateNode250(args); break;
     case MethodId::kNativeCosmeticAppend: valid = ValidateNode251(args); break;
     case MethodId::kNativeCosmeticCommit: valid = ValidateNode254(args); break;
-    case MethodId::kNativeBookmarksInvoke: valid = ValidateNode255(args); break;
-    case MethodId::kNativeLiveFolderSources: valid = ValidateNode257(args); break;
-    case MethodId::kNativeCapabilities: valid = ValidateNode257(args); break;
+    case MethodId::kNativeOrganizationSnapshot: valid = ValidateNode255(args); break;
+    case MethodId::kNativeBookmarksInvoke: valid = ValidateNode256(args); break;
+    case MethodId::kNativeLiveFolderSources: valid = ValidateNode255(args); break;
+    case MethodId::kNativeCapabilities: valid = ValidateNode255(args); break;
     case MethodId::kNativeDownloadPreviewText: valid = ValidateNode258(args); break;
     case MethodId::kNativeRenameDownload: valid = ValidateNode259(args); break;
     case MethodId::kNativePowerActivity: valid = ValidateNode261(args); break;
@@ -4326,12 +4328,12 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kNativeHistoryClear: valid = ValidateNode272(args); break;
     case MethodId::kNativeHistoryImport: valid = ValidateNode273(args); break;
     case MethodId::kNativeHistoryRemove: valid = ValidateNode277(args); break;
-    case MethodId::kNativeSearchEngineGet: valid = ValidateNode257(args); break;
+    case MethodId::kNativeSearchEngineGet: valid = ValidateNode255(args); break;
     case MethodId::kNativeSearchEngineSet: valid = ValidateNode279(args); break;
-    case MethodId::kNativeSearchSuggestionsGet: valid = ValidateNode257(args); break;
+    case MethodId::kNativeSearchSuggestionsGet: valid = ValidateNode255(args); break;
     case MethodId::kNativeSearchSuggestionsSet: valid = ValidateNode280(args); break;
     case MethodId::kNativeZapInstallStylesheet: valid = ValidateNode281(args); break;
-    case MethodId::kNativeListPages: valid = ValidateNode257(args); break;
+    case MethodId::kNativeListPages: valid = ValidateNode255(args); break;
     case MethodId::kNativeTabCommand: valid = ValidateNode286(args); break;
     case MethodId::kNativeMovePage: valid = ValidateNode287(args); break;
     case MethodId::kNativeFocusPage: valid = ValidateNode288(args); break;
@@ -4350,9 +4352,9 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kNativeRecoveryOwnerAuth: valid = ValidateNode303(args); break;
     case MethodId::kNativeCaptureReadablePage: valid = ValidateNode305(args); break;
     case MethodId::kNativeFillSavedPassword: valid = ValidateNode306(args); break;
-    case MethodId::kNativeCdpReset: valid = ValidateNode257(args); break;
+    case MethodId::kNativeCdpReset: valid = ValidateNode255(args); break;
     case MethodId::kNativeCdpDispatch: valid = ValidateNode307(args); break;
-    case MethodId::kNativeCdpVersion: valid = ValidateNode257(args); break;
+    case MethodId::kNativeCdpVersion: valid = ValidateNode255(args); break;
     case MethodId::kNativeWebmcpList: valid = ValidateNode288(args); break;
     case MethodId::kNativeWebmcpCall: valid = ValidateNode308(args); break;
   }
