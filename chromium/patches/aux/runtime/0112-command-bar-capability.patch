@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -162,7 +162,7 @@ base::DictValue AuxMethodRegistry::Capabilities() const {

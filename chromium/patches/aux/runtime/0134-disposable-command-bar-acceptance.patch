@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 --- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 +++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 @@ -159,7 +159,8 @@

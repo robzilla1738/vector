@@ -147,7 +147,9 @@ const requirements = {
       "linkRoutes",
       "setLinkRoutes",
       "testLinkRoute",
-      "resolveRoutePrompt"
+      "resolveRoutePrompt",
+      "routedOpens",
+      "routePrompts"
     ],
     "journey": "feature:linkRouting"
   },
@@ -210,7 +212,9 @@ const requirements = {
     "journey": "feature:browserImport"
   },
   "appleScript": {
-    "requires": [],
+    "requires": [
+      "javascriptAppleEvents"
+    ],
     "journey": "feature:appleScript"
   },
   "commandBar": {

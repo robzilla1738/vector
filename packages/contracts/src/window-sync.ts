@@ -11,6 +11,7 @@ export const SplitGroupSchema = z.object({ id: Id, panes: z.array(Id).min(2).max
     if (!group.panes.includes(group.focused)) context.addIssue({ code: "custom", message: "Focused pane must belong to the split." });
     const count = group.layout === "grid" ? 4 : ["columns", "one-plus-two"].includes(group.layout) ? 3 : 2;
     if (group.panes.length !== count) context.addIssue({ code: "custom", message: "Split layout does not match its pane count." });
+    if (group.ratios.length !== count - 1) context.addIssue({ code: "custom", message: "Split ratios must match its dividers." });
   });
 export type SplitGroup = z.infer<typeof SplitGroupSchema>;
 export const ClaimTabSchema = z.object({ pageId: Id, activate: z.boolean() }).strict();

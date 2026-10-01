@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/methods/page_controls_methods.cc b/chrome/browser/ui/aux/methods/page_controls_methods.cc
 --- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
 +++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
 @@ -52,6 +52,7 @@
@@ -53,6 +54,7 @@
    if (method == "keepRuntimeInBackground") {
      auto* profile = browser_->GetProfile();
      if (profile->IsOffTheRecord() || profile->IsGuestSession()) {
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -63,6 +63,7 @@
@@ -63,6 +65,7 @@
                    "startupPreferences",
                    "downloadsSnapshot", "controlDownload", "retryDownload"});
    register_shell(AuxShellMethodGroup::kExtensions,
+diff --git a/chrome/browser/ui/webui_browser/BUILD.gn b/chrome/browser/ui/webui_browser/BUILD.gn
 --- a/chrome/browser/ui/webui_browser/BUILD.gn
 +++ b/chrome/browser/ui/webui_browser/BUILD.gn
 @@ -179,6 +179,7 @@

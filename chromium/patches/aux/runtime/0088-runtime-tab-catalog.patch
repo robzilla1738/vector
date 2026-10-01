@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/runtime_host.h b/chrome/browser/ui/aux/runtime_host.h
 --- a/chrome/browser/ui/aux/runtime_host.h
 +++ b/chrome/browser/ui/aux/runtime_host.h
 @@ -86,6 +86,7 @@
@@ -8,6 +9,7 @@
      void SendNavigationError(std::string payload_json);
      void SendBookmarkChanged();
  
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
 @@ -167,9 +167,12 @@

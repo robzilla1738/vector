@@ -5,13 +5,17 @@ import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSy
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { acquireNativeSlot } from '../../../scripts/native-slot.mjs';
-import { createDevelopmentAcceptance, nativeProfileName, validateDisposableProfile } from './dev-acceptance.mjs';
+import { createDevelopmentAcceptance, extendDevelopmentAcceptance, nativeProfileName, validateDisposableProfile } from './dev-acceptance.mjs';
 import { createRpc, validateDescriptor } from './rpc.mjs';
 
-export function validateExternalLaunch(url, args, expectedPid, userDataDir) {
+function externalFixtureUrl(url) {
   const fixture = new URL(url);
   if (!["http:", "https:"].includes(fixture.protocol) || !["127.0.0.1", "[::1]"].includes(fixture.hostname) || fixture.username || fixture.password)
     throw new Error("External journey URLs must be loopback fixtures");
+  return fixture.href;
+}
+export function validateExternalLaunch(url, args, expectedPid, userDataDir) {
+  const fixtureUrl = externalFixtureUrl(url);
   if (!Array.isArray(args) || !Number.isInteger(expectedPid) || expectedPid < 0)
     throw new Error("Invalid external launch identity");
   if (expectedPid > 0) {
@@ -26,7 +30,31 @@ export function validateExternalLaunch(url, args, expectedPid, userDataDir) {
         args.some(arg => typeof arg !== "string" || arg.startsWith("--remote-debugging")))
       throw new Error("Cold external open must preserve disposable launch guards");
   }
-  return fixture.href;
+  return fixtureUrl;
+}
+
+export function validateAuxEnvelope(url) {
+  const outer = new URL(url);
+  const allowed = new Set(['url','profile','space','window','source','background']);
+  const seen = new Set();
+  if (outer.protocol !== 'aux:' || outer.hostname !== 'open' || outer.username || outer.password || outer.port || outer.hash || (outer.pathname && outer.pathname !== '/')) throw new Error('Invalid owned Aux scheme');
+  for (const [key,value] of outer.searchParams) {
+    if (!allowed.has(key) || seen.has(key) || Buffer.byteLength(value,'utf8') > (key === 'url' ? 8192 : 200)) throw new Error('Invalid or duplicate Aux query');
+    seen.add(key);
+  }
+  if (outer.searchParams.get('source') !== 'cli' || !outer.searchParams.get('url') ||
+      (outer.searchParams.has('window') && !['tab','little','new-window'].includes(outer.searchParams.get('window'))) ||
+      (outer.searchParams.has('background') && outer.searchParams.get('background') !== '1')) throw new Error('Invalid owned CLI envelope');
+  const profile = outer.searchParams.get('profile'), space = outer.searchParams.get('space');
+  if ((profile !== null && !/^(default|Default|Profile [1-9][0-9]*)$/.test(profile)) ||
+      (space !== null && !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$/.test(space))) throw new Error('Invalid canonical Profile or Space ID');
+  externalFixtureUrl(outer.searchParams.get('url'));
+  return outer;
+}
+export function validateAuxLaunch(url, args, expectedPid, userDataDir) {
+  const outer = validateAuxEnvelope(url);
+  validateExternalLaunch(outer.searchParams.get('url'),args,expectedPid,userDataDir);
+  return outer.href;
 }
 
 export function externalGenerationRunning(receipt) {
@@ -80,6 +108,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   mkdirSync(userDataDir, { mode: 0o700 });
   validateDisposableProfile(userDataDir);
   const profiles = launch.profiles ?? ['Default'];
+  let activeProfile = profiles[0];
   if (!Array.isArray(profiles) || !profiles.length) throw new Error('launch.profiles must be native Profile names');
   profiles.forEach(nativeProfileName);
   const acceptance = launch.devAcceptance ? createDevelopmentAcceptance({ userDataDir, profiles, ...launch.devAcceptance }) : null;
@@ -105,12 +134,12 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     execFileSync('xcrun', ['swiftc', launchSource, '-o', temporary], { timeout: 120_000, stdio: 'pipe' });
     renameSync(temporary, urlLauncher);
   }
-  async function launchUrl(url, args, expectedPid = null) {
-    const fixtureUrl = validateExternalLaunch(url, args, expectedPid ?? 0, userDataDir);
+  async function launchUrl(url, args, expectedPid = null, aux = false, background = false) {
+    const fixtureUrl = (aux ? validateAuxLaunch : validateExternalLaunch)(url, args, expectedPid ?? 0, userDataDir);
     ensureUrlLauncher();
     if (!expectedPid) launchUncertain = true;
     const stdout = await new Promise((resolveLaunch, rejectLaunch) => {
-      const helper = spawn(urlLauncher, [bundle, fixtureUrl, JSON.stringify(args), String(expectedPid ?? 0), String(externalGeneration ?? 0)], { stdio: ["pipe", "pipe", "pipe"] });
+      const helper = spawn(urlLauncher, [bundle, fixtureUrl, JSON.stringify(args), String(expectedPid ?? 0), String(externalGeneration ?? 0), aux ? "aux" : "http", background ? "background" : "foreground"], { stdio: ["pipe", "pipe", "pipe"] });
       let output = "", errors = "";
       const timer = setTimeout(() => { helper.kill(); rejectLaunch(new Error("LaunchServices receipt was lost; inspect the owned disposable Aux instance before retrying")); }, 15_000);
       helper.stdout.on("data", bytes => { output += bytes; });
@@ -142,7 +171,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
     return child && child.exitCode === null && child.signalCode === null && !spawnError;
   }
-  async function descriptor(name = profiles[0], { timeoutMs = 30_000 } = {}) {
+  async function descriptor(name = activeProfile, { timeoutMs = 30_000 } = {}) {
     nativeProfileName(name);
     const file = join(userDataDir, name, 'Aux Runtime Data/runtime.json');
     const deadline = Date.now() + timeoutMs;
@@ -177,21 +206,25 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
     throw new Error(`Timed out waiting for disposable Profile runtime (${name}); browser stderr retained in launcher.log`);
   }
-  async function start({ externalUrl } = {}) {
+  async function start({ externalUrl, auxUrl, background = false } = {}) {
     if (running()) throw new Error('Journey Aux is already running');
+    if (auxUrl) {
+      const selected = new URL(auxUrl).searchParams.get('profile');
+      if (selected) { activeProfile = selected === 'default' ? 'Default' : selected; nativeProfileName(activeProfile); }
+    }
     externalPid = undefined; externalGeneration = undefined;
     slot = await acquireNativeSlot();
     generation += 1; spawnError = undefined; stderr = '';
     const args = [
-      `--user-data-dir=${userDataDir}`, `--profile-directory=${profiles[0]}`,
+      `--user-data-dir=${userDataDir}`, `--profile-directory=${activeProfile}`,
       '--no-first-run', '--no-default-browser-check', '--use-mock-keychain', '--password-store=basic',
       '--enable-logging', `--log-file=${nativeLog}`,
       '--disable-background-networking', '--disable-component-update', '--disable-sync',
       ...(launch.perf ? [] : ['--force-renderer-accessibility']), ...launchArgs,
     ];
     try {
-      if (externalUrl) {
-        const receipt = await launchUrl(externalUrl, args);
+      if (externalUrl || auxUrl) {
+        const receipt = await launchUrl(auxUrl ?? externalUrl, args, null, !!auxUrl, background);
         externalPid = receipt.pid;
         launchUncertain = false;
       }
@@ -235,8 +268,37 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       validateFixtureEnv(extra, fixtureUrl, userDataDir);
       Object.assign(env, extra);
     },
+    acceptCreatedProfile(profileId) {
+      if (!running() || !acceptance) throw new Error('Created Profile acceptance needs this running owned development fixture');
+      const added = extendDevelopmentAcceptance({userDataDir, profileId, token:acceptance.token,
+        features:launch.devAcceptance.features, sourceCommit:launch.devAcceptance.sourceCommit});
+      acceptance.markers.push(...added.markers);
+      return {profileId, restartRequired:true};
+    },
     start, async restart(options) { await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
     async openExternal(url) { if (!running()) throw new Error("Disposable Aux is not running"); return launchUrl(url, [], api.pid); },
+    async openAux(url, {cold = false, background = false} = {}) {
+      // Validate before quitting the existing owned generation.
+      validateAuxEnvelope(url);
+      if (cold) { await quit(); externalPid = undefined; externalGeneration = undefined; return start({auxUrl:url,background}); }
+      if (!running()) throw new Error("Disposable Aux is not running");
+      return launchUrl(url, [], api.pid, true, background);
+    },
+    async appleScript(body) {
+      if (!running()) throw new Error("Disposable Aux is not running");
+      ensureUrlLauncher();
+      const pid = api.pid;
+      const generation = externalGeneration ?? JSON.parse(execFileSync(urlLauncher,["receipt",bundle,String(pid)],{encoding:"utf8",timeout:2000})).generation;
+      return await new Promise((resolveScript,rejectScript)=>{
+        const child = spawn(urlLauncher,["script",bundle,String(pid),String(generation)],{stdio:["pipe","pipe","pipe"]});
+        let stdout = "", stderr = "";
+        const timer = setTimeout(()=>{child.kill();rejectScript(new Error("Owned AppleScript timed out"));},12000);
+        child.stdout.on("data",bytes=>{stdout=(stdout+bytes).slice(-16384);});child.stderr.on("data",bytes=>{stderr=(stderr+bytes).slice(-4096);});
+        child.once("error",error=>{clearTimeout(timer);rejectScript(error);});
+        child.once("close",exitCode=>{clearTimeout(timer);resolveScript({stdout,stderr,exitCode});});
+        child.stdin.on("error",error=>{clearTimeout(timer);child.kill();rejectScript(error);});child.stdin.end(body);
+      });
+    },
     get processObservation() { return observeJourneyProcess({ child, externalPid, generation, spawnError }); },
     get pid() { return externalPid ?? child?.pid; }, get log() { return stderr + (existsSync(nativeLog) ? readFileSync(nativeLog, "utf8").slice(-65536) : ""); }, descriptor,
     async identity() {

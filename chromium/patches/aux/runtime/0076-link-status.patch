@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 --- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 +++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 @@ -34,7 +34,7 @@
@@ -9,17 +10,7 @@
  ]);
  type Match = {id: string; type: 'history'|'bookmark'|'search'|'typed'; title: string; url: string; description?: string};
  let searchbox: PageHandlerRemote|undefined;
---- a/chrome/browser/ui/aux/generated/aux_host_methods.h
-+++ b/chrome/browser/ui/aux/generated/aux_host_methods.h
-@@ -7,7 +7,7 @@
- #include <string_view>
- #include "base/values.h"
- namespace aux::generated {
--inline constexpr std::string_view kManifestHash = "25b18481e803586719c0c848d7ad980c335851689efb35bc6081823263e08e8d";
-+inline constexpr std::string_view kManifestHash = "2b2d76ba1e7c854ce863612e8cfe5eb3b8bc99229052e1831ca38242b59c4c23";
- inline constexpr std::string_view kSourceCommit = "e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83";
- 
- enum class MethodId { kCapabilities, kDefaultBrowser, kSetDefaultBrowser, kTabCommand, kBindTabSpace, kMigrateTabSpaces, kTabsSnapshot, kOrganizationSnapshot, kOrganizationCommit, kMigrationReview, kMigrationBegin, kMigrationBatch, kMigrationFinish, kMigrationRollback, kTabsSince, kSurfaceContentId, kResolveSearch, kFocusShell, kCreateResultPreview, kReleaseResultPreview, kSavePagePdf, kPrintPage, kDevTools, kHardReload, kCloseWindow, kOpenFile, kDictationStatus, kStartDictation, kStopDictation, kCancelDictation, kDataDir, kSiteInfo, kSiteZoom, kPrivacy, kSetTrackerBlock, kSetSiteTrackers, kRemoveAllowedHost, kFilterLists, kUpdateFilters, kAddFilterSource, kRemoveFilterSource, kSetFilterSourceEnabled, kSetAppearance, kSetShortcuts, kExtensions, kInstallStoreExtension, kCheckStoreExtensionUpdate, kReloadExtension, kShowExtensionAction, kSetExtensionEnabled, kRemoveExtension, kInstallUnpackedExtension, kUpdateUnpackedExtension, kBrowserProfiles, kCreateBrowserProfile, kRenameBrowserProfile, kArchiveBrowserProfile, kDeleteBrowserProfile, kOpenBrowserProfile, kOpenBrowserProfileUrl, kAutofill, kVaultFill, kVaultSave, kVaultDismiss, kVaultExport, kVaultImport, kQuickAskShortcut, kQuickAsk, kDownloadFolder, kChooseDownloadFolder, kDownloadsSnapshot, kControlDownload, kRetryDownload, kTabAudio, kTabsUnsavedWork, kPreview, kContextMenu, kNavigationMenu, kAutocomplete, kReadArticle, kOpenExternal, kRevealPath, kOpenPath, kSaveFile, kSaveWorkbook, kSaveStoredArtifact, kOpenPluginDirectory, kPickEvidenceImage, kPickEvidenceDocument, kAgentConfig, kAgentConnections, kAgentClients, kRevokeAgentConnection, kExportDiagnostics, kExportRuntimeBackup, kExportMigrationLayout, kStageRuntimeRestore, kCancelRuntimeRestore, kRuntimeRestoreStatus, kHealthSummary, kClearHealth, kHttpAuthRequests, kRespondHttpAuth, kClearSiteData, kSitePermissions, kClearSitePermission, kSetHttpsUpgrade, kProceedInsecure, kUseHttp, kTranslatePage, kShowOriginal, kNativeContentBlockBegin, kNativeContentBlockAppend, kNativeContentBlockCommit, kNativeCosmeticBegin, kNativeCosmeticAppend, kNativeCosmeticCommit, kNativeBookmarksInvoke, kNativeCapabilities, kNativeHistoryClear, kNativeHistoryRemove, kNativeSearchEngineGet, kNativeSearchEngineSet, kNativeSearchSuggestionsGet, kNativeSearchSuggestionsSet, kNativeZapInstallStylesheet, kNativeListPages, kNativeTabCommand, kNativeMovePage, kNativeFocusPage, kNativeRecoverPage, kNativeStopPage, kNativeAcquireStage, kNativeReleaseStage, kNativeFindInPage, kNativeStopFind, kNativeSetZoom, kNativeSetCookies, kNativeStoreSecret, kNativeReadSecret, kNativeCaptureReadablePage, kNativeFillSavedPassword, kNativeCdpReset, kNativeCdpDispatch, kNativeCdpVersion, kNativeWebmcpList, kNativeWebmcpCall };
+diff --git a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
 --- a/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
 +++ b/chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.cc
 @@ -13,6 +13,7 @@
@@ -75,6 +66,7 @@
    for (StatusBubble* status_bubble : status_bubbles) {
      StatusBubbleViews* status_bubble_views =
          static_cast<StatusBubbleViews*>(status_bubble);
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 --- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
 @@ -759,7 +759,8 @@
@@ -87,6 +79,7 @@
                auto payload = base::JSONReader::Read(payload_json,
                                                      base::JSON_PARSE_RFC);
                const std::string* page_id = payload && payload->is_dict()
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.cc b/chrome/browser/ui/webui_browser/webui_browser_window.cc
 --- a/chrome/browser/ui/webui_browser/webui_browser_window.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window.cc
 @@ -9,7 +9,10 @@
@@ -192,6 +185,7 @@
  }
  
  void WebUIBrowserWindow::UpdateTitleBar() {
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_window.h b/chrome/browser/ui/webui_browser/webui_browser_window.h
 --- a/chrome/browser/ui/webui_browser/webui_browser_window.h
 +++ b/chrome/browser/ui/webui_browser/webui_browser_window.h
 @@ -38,6 +38,7 @@

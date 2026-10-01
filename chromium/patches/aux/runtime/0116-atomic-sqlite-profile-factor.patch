@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/secret_store_mac.h b/chrome/browser/ui/aux/secret_store_mac.h
 --- a/chrome/browser/ui/aux/secret_store_mac.h
 +++ b/chrome/browser/ui/aux/secret_store_mac.h
 @@ -28,6 +28,10 @@
@@ -11,6 +12,7 @@
  
  }  // namespace aux
  
+diff --git a/chrome/browser/ui/aux/secret_store_mac.mm b/chrome/browser/ui/aux/secret_store_mac.mm
 --- a/chrome/browser/ui/aux/secret_store_mac.mm
 +++ b/chrome/browser/ui/aux/secret_store_mac.mm
 @@ -56,13 +56,59 @@
@@ -130,6 +132,7 @@
  }
  
  }  // namespace aux
+diff --git a/chrome/browser/ui/aux/runtime_host.cc b/chrome/browser/ui/aux/runtime_host.cc
 --- a/chrome/browser/ui/aux/runtime_host.cc
 +++ b/chrome/browser/ui/aux/runtime_host.cc
 @@ -737,6 +737,18 @@
@@ -151,6 +154,7 @@
    } else if (native_method && native_params) {
      base::DictValue dispatched =
          DispatchNative(*native_method, native_params->Clone());
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -124,7 +124,7 @@

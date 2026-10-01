@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -31,6 +31,7 @@
@@ -8,6 +9,7 @@
                    "proceedInsecure", "useHttp"});
    register_shell(AuxShellMethodGroup::kContent,
                   {"translatePage", "showOriginal"});
+diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
 --- a/chrome/browser/ui/aux/methods/content_methods.cc
 +++ b/chrome/browser/ui/aux/methods/content_methods.cc
 @@ -13,6 +13,7 @@

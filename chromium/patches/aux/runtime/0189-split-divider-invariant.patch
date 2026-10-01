@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/aux/organization_store.cc b/chrome/browser/ui/aux/organization_store.cc
+index 18ddeb6..af3d29b 100644
+--- a/chrome/browser/ui/aux/organization_store.cc
++++ b/chrome/browser/ui/aux/organization_store.cc
+@@ -219,7 +219,7 @@ bool SplitGroup(const base::Value& value) {
+   const size_t count = *layout == "grid" ? 4 :
+       (*layout == "columns" || *layout == "one-plus-two") ? 3 :
+       (*layout == "row" || *layout == "column") ? 2 : 0;
+-  if (panes->size() != count) return false;
++  if (panes->size() != count || ratios->size() != count - 1) return false;
+   std::set<std::string> seen;
+   for (const base::Value& pane : *panes) {
+     if (!Id(&pane) || !seen.insert(pane.GetString()).second) return false;

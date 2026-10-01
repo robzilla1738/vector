@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -60,6 +60,7 @@
@@ -8,6 +9,7 @@
                    "downloadsSnapshot", "controlDownload", "retryDownload"});
    register_shell(AuxShellMethodGroup::kExtensions,
                   {"extensions", "installStoreExtension",
+diff --git a/chrome/browser/ui/aux/methods/page_controls_methods.cc b/chrome/browser/ui/aux/methods/page_controls_methods.cc
 --- a/chrome/browser/ui/aux/methods/page_controls_methods.cc
 +++ b/chrome/browser/ui/aux/methods/page_controls_methods.cc
 @@ -25,6 +25,7 @@

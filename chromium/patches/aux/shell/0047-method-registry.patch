@@ -1983,7 +1983,7 @@ new file mode 100644
 index 0000000..a34d2b1
 --- /dev/null
 +++ b/chrome/browser/ui/aux/methods/native_content_methods.cc
-@@ -0,0 +1,149 @@
+@@ -0,0 +1,148 @@
 +// Copyright 2026 The Aux Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -2132,7 +2132,6 @@ index 0000000..a34d2b1
 +          }, weak_factory_.GetWeakPtr(), params.Clone(), page,
 +          std::move(callback)));
 +}
-+
 diff --git a/chrome/browser/ui/aux/methods/native_credentials_methods.cc b/chrome/browser/ui/aux/methods/native_credentials_methods.cc
 new file mode 100644
 index 0000000..e5d06d1

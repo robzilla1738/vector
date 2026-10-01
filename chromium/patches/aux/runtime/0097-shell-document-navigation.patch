@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc b/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
 --- a/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
 +++ b/chrome/browser/ui/webui_browser/webui_browser_web_contents_delegate.cc
 @@ -8,7 +8,11 @@

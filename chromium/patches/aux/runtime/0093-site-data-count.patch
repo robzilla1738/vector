@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -29,7 +29,7 @@
@@ -9,6 +10,7 @@
                    "setHttpsUpgrade", "cookieControls", "setCookieControls",
                    "crashReporting", "setCrashReporting",
                    "proceedInsecure", "useHttp"});
+diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
 --- a/chrome/browser/ui/aux/methods/content_methods.cc
 +++ b/chrome/browser/ui/aux/methods/content_methods.cc
 @@ -1042,6 +1042,93 @@

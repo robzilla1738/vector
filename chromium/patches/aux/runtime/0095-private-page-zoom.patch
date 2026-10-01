@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -27,7 +27,7 @@
@@ -9,6 +10,7 @@
                    "httpAuthRequests", "respondHttpAuth",
                    "clearSitePermission", "clearSiteData", "siteDataCount", "httpsUpgrade",
                    "setHttpsUpgrade", "cookieControls", "setCookieControls",
+diff --git a/chrome/browser/ui/aux/methods/content_methods.cc b/chrome/browser/ui/aux/methods/content_methods.cc
 --- a/chrome/browser/ui/aux/methods/content_methods.cc
 +++ b/chrome/browser/ui/aux/methods/content_methods.cc
 @@ -84,6 +84,7 @@

@@ -502,35 +502,3 @@ new file mode 100644
 +}  // namespace aux
 +
 +#endif  // CHROME_BROWSER_UI_AUX_SITE_PREFS_H_
-diff --git a/chrome/browser/ui/aux/generated/aux_host_methods.h b/chrome/browser/ui/aux/generated/aux_host_methods.h
---- a/chrome/browser/ui/aux/generated/aux_host_methods.h
-+++ b/chrome/browser/ui/aux/generated/aux_host_methods.h
-@@ -7,7 +7,7 @@
- #include <string_view>
- #include "base/values.h"
- namespace aux::generated {
--inline constexpr std::string_view kManifestHash = "db0e355a760e6225434057d8259ef813123fa2116d4fa8cb3358cf7ea660b38d";
-+inline constexpr std::string_view kManifestHash = "da53d25a033082363f49382849bec70975c4b1de4a1f1f259c6c0c356048373a";
- inline constexpr std::string_view kSourceCommit = "e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83";
- 
- enum class MethodId { kCapabilities, kDefaultBrowser, kSetDefaultBrowser, kTabCommand, kBindTabSpace, kMigrateTabSpaces, kTabsSnapshot, kOrganizationSnapshot, kOrganizationCommit, kMigrationReview, kMigrationBegin, kMigrationBatch, kMigrationFinish, kMigrationRollback, kTabsSince, kSurfaceContentId, kResolveSearch, kFocusShell, kCreateResultPreview, kReleaseResultPreview, kSavePagePdf, kPrintPage, kDevTools, kHardReload, kCloseWindow, kOpenFile, kDictationStatus, kStartDictation, kStopDictation, kCancelDictation, kDataDir, kSiteInfo, kSiteZoom, kPrivacy, kSetTrackerBlock, kSetSiteTrackers, kRemoveAllowedHost, kFilterLists, kUpdateFilters, kAddFilterSource, kRemoveFilterSource, kSetFilterSourceEnabled, kSetAppearance, kSetShortcuts, kExtensions, kInstallStoreExtension, kCheckStoreExtensionUpdate, kReloadExtension, kShowExtensionAction, kSetExtensionEnabled, kRemoveExtension, kInstallUnpackedExtension, kUpdateUnpackedExtension, kBrowserProfiles, kCreateBrowserProfile, kRenameBrowserProfile, kArchiveBrowserProfile, kDeleteBrowserProfile, kOpenBrowserProfile, kOpenBrowserProfileUrl, kAutofill, kVaultFill, kVaultSave, kVaultDismiss, kVaultExport, kVaultImport, kQuickAskShortcut, kQuickAsk, kDownloadFolder, kChooseDownloadFolder, kDownloadsSnapshot, kControlDownload, kRetryDownload, kTabAudio, kTabsUnsavedWork, kPreview, kContextMenu, kNavigationMenu, kAutocomplete, kReadArticle, kOpenExternal, kRevealPath, kOpenPath, kSaveFile, kSaveWorkbook, kSaveStoredArtifact, kOpenPluginDirectory, kPickEvidenceImage, kPickEvidenceDocument, kAgentConfig, kAgentConnections, kAgentClients, kRevokeAgentConnection, kExportDiagnostics, kExportRuntimeBackup, kExportMigrationLayout, kStageRuntimeRestore, kCancelRuntimeRestore, kRuntimeRestoreStatus, kHealthSummary, kClearHealth, kHttpAuthRequests, kRespondHttpAuth, kClearSiteData, kSitePermissions, kClearSitePermission, kSetHttpsUpgrade, kProceedInsecure, kUseHttp, kTranslatePage, kShowOriginal, kNativeContentBlockBegin, kNativeContentBlockAppend, kNativeContentBlockCommit, kNativeCosmeticBegin, kNativeCosmeticAppend, kNativeCosmeticCommit, kNativeBookmarksInvoke, kNativeCapabilities, kNativeHistoryClear, kNativeHistoryRemove, kNativeSearchEngineGet, kNativeSearchEngineSet, kNativeSearchSuggestionsGet, kNativeSearchSuggestionsSet, kNativeZapInstallStylesheet, kNativeListPages, kNativeTabCommand, kNativeMovePage, kNativeFocusPage, kNativeRecoverPage, kNativeStopPage, kNativeAcquireStage, kNativeReleaseStage, kNativeFindInPage, kNativeStopFind, kNativeSetZoom, kNativeSetCookies, kNativeStoreSecret, kNativeReadSecret, kNativeCaptureReadablePage, kNativeFillSavedPassword, kNativeCdpReset, kNativeCdpDispatch, kNativeCdpVersion, kNativeWebmcpList, kNativeWebmcpCall };
-diff --git a/chrome/browser/ui/aux/generated/aux_host_methods.cc b/chrome/browser/ui/aux/generated/aux_host_methods.cc
---- a/chrome/browser/ui/aux/generated/aux_host_methods.cc
-+++ b/chrome/browser/ui/aux/generated/aux_host_methods.cc
-@@ -2433,7 +2433,7 @@
-     case MethodId::kSitePermissions: valid = ValidateNode0(args); break;
-     case MethodId::kClearSitePermission: valid = ValidateNode126(args); break;
-     case MethodId::kSetHttpsUpgrade: valid = ValidateNode84(args); break;
--    case MethodId::kProceedInsecure: valid = ValidateNode82(args); break;
-+    case MethodId::kProceedInsecure: valid = ValidateNode45(args); break;
-     case MethodId::kUseHttp: valid = ValidateNode45(args); break;
-     case MethodId::kTranslatePage: valid = ValidateNode82(args); break;
-     case MethodId::kShowOriginal: valid = ValidateNode82(args); break;
-diff --git a/chrome/browser/resources/aux_host/aux_feature_stages.ts b/chrome/browser/resources/aux_host/aux_feature_stages.ts
---- a/chrome/browser/resources/aux_host/aux_feature_stages.ts
-+++ b/chrome/browser/resources/aux_host/aux_feature_stages.ts
-@@ -544,3 +544,3 @@
--const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed"};
-+const qualification: Record<string, string> = {"s3-submit-confirmation":"passed","s4-webmcp":"passed","s4-paint-lease":"passed","s7-shell-events":"passed","feature:sitePermissions":"e5ffa8a7573853fb06d764c5dab3ff24d7e0ba83"};
- export type FeatureStage = 'off' | 'preview' | 'on';
- export function featureStagesFor(methods: readonly string[], sourceCommit: string): Record<keyof typeof requirements, FeatureStage> {

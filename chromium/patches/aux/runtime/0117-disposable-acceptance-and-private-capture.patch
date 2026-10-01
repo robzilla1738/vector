@@ -1,3 +1,4 @@
+diff --git a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 --- a/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 +++ b/chrome/browser/resources/aux_host/aux_host_bootstrap.ts
 @@ -142,11 +142,32 @@
@@ -43,6 +44,7 @@
      async request(method, args) {
        if (method === 'autocomplete') {
          if (args.length !== 1 || typeof args[0] !== 'string') {
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
 --- a/chrome/browser/ui/aux/method_registry.cc
 +++ b/chrome/browser/ui/aux/method_registry.cc
 @@ -5,6 +5,7 @@
@@ -64,6 +66,7 @@
    base::ListValue methods;
    for (const generated::MethodInfo& info : generated::Methods()) {
      if (info.name == "capabilities" || info.name == "autocomplete" ||
+diff --git a/chrome/browser/ui/aux/methods/native_content_methods.cc b/chrome/browser/ui/aux/methods/native_content_methods.cc
 --- a/chrome/browser/ui/aux/methods/native_content_methods.cc
 +++ b/chrome/browser/ui/aux/methods/native_content_methods.cc
 @@ -86,6 +86,7 @@
