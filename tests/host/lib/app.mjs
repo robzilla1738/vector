@@ -1,12 +1,13 @@
 import { homedir } from 'node:os';
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { acquireNativeSlot } from '../../../scripts/native-slot.mjs';
 import { createDevelopmentAcceptance, extendDevelopmentAcceptance, nativeProfileName, validateDisposableProfile } from './dev-acceptance.mjs';
 import { createRpc, validateDescriptor } from './rpc.mjs';
+import { createStartupTrace } from './startup-evidence.mjs';
 
 function externalFixtureUrl(url) {
   const fixture = new URL(url);
@@ -165,6 +166,8 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   let spawnError;
   let generation = 0;
   const knownPeers = new Map();
+  let startupTrace;
+  const recordStartup = (phase, facts) => startupTrace?.record(phase, facts);
   function running() {
     if (externalPid) {
       const receipt = JSON.parse(execFileSync(urlLauncher, ["check", bundle, String(externalPid), String(externalGeneration)], { timeout: 2000, encoding: "utf8", stdio: "pipe" }));
@@ -178,12 +181,15 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       if (!running()) throw new Error(`Aux exited before its disposable runtime became ready: ${spawnError?.message ?? child?.exitCode ?? child?.signalCode ?? 'not started'}`);
-      if (existsSync(file)) {
+      const descriptorExists = existsSync(file);
+      recordStartup('descriptor-poll', { descriptorExists });
+      if (descriptorExists) {
         const info = lstatSync(file);
         if (!info.isFile() || info.isSymbolicLink() || info.uid !== process.getuid?.() || info.mode & 0o077 ||
             !realpathSync(file).startsWith(`${realpathSync(userDataDir)}/`)) throw new Error('Disposable runtime descriptor is not owner-only');
         let value;
-        try { value = JSON.parse(readFileSync(file, 'utf8')); } catch { await delay(100); continue; }
+        try { value = JSON.parse(readFileSync(file, 'utf8')); } catch { recordStartup('descriptor-json', { valid: false }); await delay(100); continue; }
+        recordStartup('descriptor-json', { valid: true });
         validateDescriptor(value);
         if (!Number.isInteger(value.pid) || value.pid <= 0 || typeof value.instanceId !== 'string' ||
             !value.instanceId || !Number.isFinite(value.startedAt) || !Number.isInteger(value.version?.schema))
@@ -196,12 +202,16 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
             redirect: 'error', headers: { authorization: `Bearer ${value.token}` }, signal: AbortSignal.timeout(1000),
           });
           const peer = response.ok ? await response.json() : null;
+          recordStartup('peer-response', { status: response.status, ready: peer?.ready === true,
+            serviceMatches: peer?.service === 'aux-runtime', nonceMatches: peer?.nonce === nonce,
+            pidMatches: peer?.pid === value.pid, instanceMatches: peer?.instanceId === value.instanceId,
+            startedAtMatches: peer?.startedAt === value.startedAt, schemaMatches: peer?.schema === value.version?.schema });
           if (peer?.service === 'aux-runtime' && peer.ready === true && peer.nonce === nonce && peer.pid === value.pid &&
               peer.instanceId === value.instanceId && peer.startedAt === value.startedAt && peer.schema === value.version?.schema) {
             knownPeers.set(name, { generation, instanceId: value.instanceId });
             return value;
           }
-        } catch { /* Runtime startup or replacement may briefly close the listener. */ }
+        } catch (error) { recordStartup('peer-unavailable', { aborted: error?.name === 'AbortError' || error?.name === 'TimeoutError' }); }
       }
       await delay(100);
     }
@@ -216,6 +226,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     externalPid = undefined; externalGeneration = undefined;
     slot = await acquireNativeSlot();
     generation += 1; spawnError = undefined; stderr = '';
+    startupTrace = createStartupTrace();
     const args = [
       `--user-data-dir=${userDataDir}`, `--profile-directory=${activeProfile}`,
       '--no-first-run', '--no-default-browser-check', '--use-mock-keychain', '--password-store=basic',
@@ -236,19 +247,32 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
         child.stderr.on('data', bytes => { stderr = (stderr + bytes.toString()).slice(-65536); });
       }
       const value = await descriptor();
+      recordStartup('authenticated-descriptor-ready');
       const rpc = createRpc(value);
       const deadline = Date.now() + (launch.timeoutMs ?? 30_000);
       while (Date.now() < deadline) {
         if (!running()) throw new Error('Aux exited before native session connected');
         const workspace = await rpc('workspace.get', {}, { timeoutMs: 2000 }).catch(() => null);
+        recordStartup('native-session-poll', { workspaceAvailable: !!workspace,
+          nativeConnected: workspace?.sessions?.some(session => session.sessionId === 'aux' && session.status === 'connected') === true });
         if (workspace?.sessions?.some(session => session.sessionId === 'aux' && session.status === 'connected')) {
           if (existsSync(join(userDataDir, 'DevToolsActivePort'))) throw new Error('Journey exposed a public debugging port');
+          startupTrace = undefined;
           return api;
         }
         await delay(100);
       }
       throw new Error('Timed out waiting for authenticated native session');
-    } catch (error) { await quit(); throw error; }
+    } catch (error) {
+      const evidence = startupTrace.snapshot(observeJourneyProcess({ child, externalPid, generation, spawnError }));
+      startupTrace = undefined;
+      try { writeFileSync(join(profileRoot, 'startup-evidence.json'), JSON.stringify(evidence, null, 2), { mode: 0o600, flag: 'wx' }); }
+      catch { evidence.writeFailed = true; }
+      const message = `${error.message}; bounded startup evidence: ${JSON.stringify(evidence)}`;
+      try { await quit(); }
+      catch (cleanup) { throw new AggregateError([error, cleanup], `${message}; owned cleanup also failed: ${cleanup.message}`, { cause: error }); }
+      throw new Error(message, { cause: error });
+    }
   }
   async function quit() {
     if (launchUncertain) throw new Error(`LaunchServices receipt unavailable: inspect the owned disposable profile ${userDataDir} and bundle ${bundle} before releasing the native batch.`);
