@@ -29,9 +29,9 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | Role / lane | Status | Patches | Agent / worktree |
 |---|---|---|---|
 | Integrator / Wave 0 | Active | 0136–0139, fix-ups 0186–0199 | Current chat / repository |
-| Builder | Active L1 candidate build, dedicated | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
-| Design reviewer | Waiting for corrected native captures | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
-| L1 Commands | Frozen native diagnostic candidate f4428484 | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
+| Builder | Idle after L1 diagnostic failures and verified cleanup | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
+| Design reviewer | Reviewing L1 f442 default capture | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
+| L1 Commands | Active trusted-keyup correction after f442 failures | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
 | L4 Windows | Active source implementation | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
 | L2 Layout | Dispatched; temporarily yielded for builder capacity | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
 | L5 Surfaces | Waiting for L4 selector and lane capacity | 0172–0177 | Unassigned |
@@ -132,3 +132,6 @@ L1 native candidate build independently verified: exact clean `f4428484e8ee677b2
 
 
 L1 native functional failure independently confirmed: `release/test-artifacts/l1-f4428484-shortcut-registry-core/manifest.json` SHA `2faefbe504855ba358eb1fc2a4e57876162bd449239b4d229eb920509a28d91a`; moduleSHA `1ea4db9c603445169a31c86f241276a218fd4768434ef97e2148a58aa41dbf35` matches frozen shortcut-registry.mjs. Native/runtime/source/pin match exactf442candidate. Setup passes, first substantive website double-press step fails: AX Website shortcuts1, releases0, meta=true/alt=false/ctrl=false/shift=false. Actual secondkeydown reaches website butkeyup does not; no capture or cleanupErrors, remaining assertions unreached. L1 resumed read-only diagnosis while perf runs; worktree stays frozen untilbuildercleanup. No journey weakening or synthesized redundantkeyup approval. Full qualification remains incomplete.
+
+
+L1 perf independently audited: manifest `release/test-artifacts/l1-f4428484-shortcut-perf/manifest.json` SHA `841bcf3c438120b624722cb23c3299e794f597980dcdf2aba0c416ea2a2a9a57`; frozenmoduleSHA `b7431f555c683a4309b31c509fa460ce453ac9514ade2f62fc4862324fdd20c8` matches. Record step proves20ACtrials,92.46–103.19ms, recomputed p95 `99.82112500000221` >50ms; budget step fails. Capture bytes671278/hash `1b3b448aa249c7040ba2c789de279b706e442f984b2fe94055af09067c48601f` independently verified. Raw HID request→AX measurement includes40ms helper delay andIPC; no subtraction/waiver. L1 released afterbuilderverifiedcleanup foractualtrustedkeyuprepair and exact proposed native observation measurement adapter. Reviewer resumed on supplieddefaultcapture; fullF21matrix remains open. Stable currently retainsapplied0140/0141 andcompiledf442candidate; nextpureLJcandidate requiresbuilderreverse/reapply exactprovenance. L2 remainsinterrupteduntilreviewer/sourcecapacityfree. Integration root clean docs/harness checkpoints; main unchanged.
