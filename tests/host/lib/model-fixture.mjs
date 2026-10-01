@@ -28,7 +28,7 @@ export function createModelFixture(fixture, { respond = () => ({ content: 'Loopb
     const finish = result.tool_calls?.length ? 'tool_calls' : 'stop';
     if (payload.stream) {
       response.setHeader('content-type', 'text/event-stream');
-      response.write(`data: ${JSON.stringify({ ...base, object: 'chat.completion.chunk', choices: [{ index: 0, delta: message, finish_reason: null }] })}\n\n`);
+      response.write(`data: ${JSON.stringify({ ...base, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { ...message, ...(message.tool_calls ? { tool_calls: message.tool_calls.map((call, index) => ({ index, ...call })) } : {}) }, finish_reason: null }] })}\n\n`);
       response.end(`data: ${JSON.stringify({ ...base, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: finish }] })}\n\ndata: [DONE]\n\n`);
       return;
     }

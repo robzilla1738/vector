@@ -82,7 +82,8 @@ async function execute() {
       const started = performance.now();
       const result = await member.apply(ax, args);
       signal.throwIfAborted();
-      if (inputCommands.has(command)) inputs.push({ command, status: 'passed', elapsedMs: performance.now() - started });
+      if (command === 'measureKey') inputs.push({ command: 'key', sourceCommand: command, status: 'passed', elapsedMs: performance.now() - started, measurement: result });
+      else if (inputCommands.has(command)) inputs.push({ command, status: 'passed', elapsedMs: performance.now() - started });
       return result;
     };
   } });
