@@ -35,7 +35,7 @@ export function AboutAuxSetting({ active }: { active: boolean }) {
   </div>
   <details>
     <summary>Feature availability</summary>
-    <table aria-label="Installed feature availability"><thead><tr><th>Feature</th><th>Status</th></tr></thead>
+    <table className="feature-availability" aria-label="Installed feature availability"><thead><tr><th>Feature</th><th>Status</th></tr></thead>
       <tbody>{(Object.keys(AUX_FEATURES) as AuxFeature[]).sort().map(feature => {
         const stage = featureStage(feature);
         return <tr key={feature}><td>{feature}</td><td><output aria-label={`${feature}: ${stage}`}>{stage}</output></td></tr>;

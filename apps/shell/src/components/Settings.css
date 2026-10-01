@@ -107,4 +107,8 @@
 .settings-content select { padding-right: var(--space-7); }
 .settings-content textarea { border: 0; border-radius: var(--r-lg); padding: var(--space-3); box-shadow: none; font-size: var(--fs-sm); }
 .settings-content :is(input, select, textarea, .btn):focus-visible { outline: 2px solid var(--focus-line); outline-offset: 2px; }
+
+.feature-availability { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--fs-sm); }
+.feature-availability th, .feature-availability td { padding: var(--space-1) var(--space-2); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.feature-availability th:last-child, .feature-availability td:last-child { width: 28%; white-space: nowrap; }
 }

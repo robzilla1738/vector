@@ -2,6 +2,7 @@
 @layer components {
 .reader-view { position:absolute; inset:0; z-index:5; display:grid; grid-template-rows:auto minmax(0,1fr); background:var(--bg-0); border-radius:inherit; overflow:hidden; }
 .reader-toolbar { display:flex; position:relative; z-index:3; align-items:center; flex-wrap:wrap; gap:var(--space-2); padding:var(--space-4) var(--space-6); flex-shrink:0; }
+.tabs-horizontal .reader-toolbar { padding-left: calc(var(--space-2) + var(--control-h) + var(--space-3)); }
 .reader-toolbar select { max-width:140px; padding:5px var(--space-2); border:1px solid var(--line); border-radius:var(--r-md); background:var(--bg-1); color:var(--ink-1); font:inherit; font-size:var(--fs-xs); }
 .reader-notice { flex-basis:100%; margin:0; color:var(--ink-2); font-size:var(--fs-xs); }
 .reader-scroll { overflow:auto; flex:1; min-height:0; user-select:text; }
