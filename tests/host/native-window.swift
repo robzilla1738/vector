@@ -968,6 +968,7 @@ func postText(_ text: String) throws {
     var units = Array(String(scalar).utf16)
     guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
           let up = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else { throw protocolError("Cannot create text event") }
+    down.flags = []; up.flags = []
     units.withUnsafeMutableBufferPointer { buffer in
       down.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
       up.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)

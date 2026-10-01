@@ -187,8 +187,9 @@ body.resizing .chat-sidebar { transition: none; }
 /* Empty browser content and work panels share one continuous window material. */
 :root[data-sidebar-appearance="translucent"] .app.native-host.tabs-horizontal:has(.main-col:not(.has-page)) { --chrome-surface: color-mix(in srgb, var(--sb-bg) max(85%, var(--sidebar-tint, 0%)), transparent); }
 :root[data-sidebar-appearance="translucent"] .app.native-host.tabs-horizontal .main-col:not(.has-page) { background: color-mix(in srgb, var(--sb-bg) max(85%, var(--sidebar-tint, 0%)), transparent); }
-.chat-sidebar-toggle { position: absolute; z-index: var(--z-panel); top: var(--space-2); left: var(--space-2); color: var(--ink-1); -webkit-app-region: no-drag; }
-.chat-sidebar-toggle:hover { background: var(--bg-hover); }
+.chat-sidebar-toggle { position: absolute; z-index: var(--z-panel); top: var(--space-2); left: var(--space-2); color: var(--ink-1); background: var(--surface-panel); box-shadow: var(--shadow-card); -webkit-app-region: no-drag; }
+.chat-sidebar-toggle:hover { background: linear-gradient(var(--bg-hover), var(--bg-hover)), var(--surface-panel); }
+.chat-sidebar-toggle:focus-visible { box-shadow: 0 0 0 2px var(--focus-ring), var(--shadow-card); }
 @media (max-width: 1150px) { .home-mode > span { display: none; } }
 @container (max-width: 600px) {
   .conversation-scroll { padding-inline: var(--space-5); }
