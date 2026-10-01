@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
 import { AuxError, type Backend, EventTypes, type PageTarget } from "@aux/contracts";
 import type { Repo } from "../../store/repo.js";
@@ -61,13 +62,11 @@ export class PageRegistry {
 
   /** One construction path for pages opened here and pages attached from native surfaces. */
   addLive(target: PageTarget, driver: DriverPage | null): LivePage {
-    const lp: LivePage = { target, driver, queue: Promise.resolve(), history: [], consoleLines: [] };
+    // Persisted sessions never identify a restored or replacement attachment.
+    delete target.sessionId;
+    const lp: LivePage = { target, driver: null, queue: Promise.resolve(), history: [], consoleLines: [] };
     this.live.set(target.pageId, lp);
-    if (driver && target.backend === "aux" && this.deps.native.available()) {
-      driver.setNativeDownloadAuthority?.();
-    }
-    if (driver && this.deps.downloadsDir) driver.setDownloadDir?.(this.deps.downloadsDir);
-    if (driver) this.wireDriverEvents(lp);
+    if (driver) this.installDriver(lp, driver);
     this.persist(lp);
     return lp;
   }
@@ -88,10 +87,8 @@ export class PageRegistry {
         await attached.dispose().catch(() => {});
         return;
       }
-      lp.driver = attached;
-      attached.setNativeDownloadAuthority?.();
-      if (this.deps.downloadsDir) attached.setDownloadDir?.(this.deps.downloadsDir);
-      this.wireDriverEvents(lp);
+      try { this.installDriver(lp, attached); }
+      catch (error) { await attached.dispose().catch(() => {}); throw error; }
       void this.refreshMeta(lp);
     })();
     this.driverAttaches.set(pageId, work);
@@ -99,9 +96,27 @@ export class PageRegistry {
     finally { this.driverAttaches.delete(pageId); }
   }
 
+  /** A real attachment, shared by fresh open, restore, discard recovery and crash reload. */
+  installDriver(lp: LivePage, driver: DriverPage) {
+    if (this.live.get(lp.target.pageId) !== lp || this.closing) throw new AuxError("target_detached", "This tab closed while attaching.");
+    if (lp.driver === driver) return;
+    if (lp.driver) throw new AuxError("conflict", "This tab already has a newer attachment.");
+    lp.driver = driver;
+    lp.target.sessionId = randomUUID();
+    if (lp.target.backend === "aux" && this.deps.native.available()) driver.setNativeDownloadAuthority?.();
+    if (this.deps.downloadsDir) driver.setDownloadDir?.(this.deps.downloadsDir);
+    this.wireDriverEvents(lp);
+    this.persist(lp);
+    this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
+  }
+
   wireDriverEvents(lp: LivePage) {
-    lp.driver?.setEvents({
+    const driver = lp.driver, sessionId = lp.target.sessionId;
+    const current = () => this.live.get(lp.target.pageId) === lp && lp.driver === driver && lp.target.sessionId === sessionId;
+    const response = this.deps.responses?.record(lp.target.pageId);
+    driver?.setEvents({
       onNavigated: (url, epoch) => {
+        if (!current()) return;
         if (!url.startsWith("chrome-error://")) lp.target.url = url;
         lp.target.documentEpoch = epoch;
         this.resetDocumentState(lp);
@@ -111,6 +126,9 @@ export class PageRegistry {
         void this.refreshMeta(lp);
       },
       onDestroyed: (reason) => {
+        if (!current()) return;
+        delete lp.target.sessionId;
+        lp.driver = null;
         lp.target.viewStatus = reason === "crashed" ? "crashed" : "detached";
         lp.target.controller = "none";
         this.resetDocumentState(lp);
@@ -129,17 +147,20 @@ export class PageRegistry {
         this.deps.events.emit(EventTypes.PageRemoved, { pageId: lp.target.pageId, reason });
       },
       onDialog: (info) => {
+        if (!current()) return;
         lp.lastDialog = info;
         this.deps.events.emit(EventTypes.PageUpdated, { pageId: lp.target.pageId, dialog: info });
       },
       decideDialog: this.deps.decideDialog
-        ? (info) => this.deps.decideDialog!({ pageId: lp.target.pageId, ...info })
+        ? (info) => current() ? this.deps.decideDialog!({ pageId: lp.target.pageId, ...info }) : Promise.resolve("leave" as const)
         : undefined,
       onConsole: (info) => {
+        if (!current()) return;
       lp.consoleLines.push({ level: info.level, message: info.message, atMs: info.atMs ?? Date.now() });
       if (lp.consoleLines.length > 200) lp.consoleLines.splice(0, lp.consoleLines.length - 200);
       },
       onDownload: (info) => {
+        if (!current()) return;
         // In the desktop shell the native will-download path is authoritative
         // (it sees every profile-session download); driver events cover
         // standalone mode where no native surface exists.
@@ -147,7 +168,7 @@ export class PageRegistry {
           this.deps.events.emit(EventTypes.DownloadStarted, { pageId: lp.target.pageId, ...info });
         }
       },
-      onResponse: this.deps.responses?.record(lp.target.pageId),
+      onResponse: response ? info => { if (current()) return response(info); } : undefined,
     });
   }
 
@@ -203,10 +224,12 @@ export class PageRegistry {
   }
 
   async refreshMeta(lp: LivePage) {
-    if (!lp.driver?.isAttached()) return;
+    const driver = lp.driver, sessionId = lp.target.sessionId;
+    if (!driver?.isAttached()) return;
     try {
-      const title = await lp.driver.title();
-      const url = lp.driver.url();
+      const title = await driver.title();
+      if (this.live.get(lp.target.pageId) !== lp || lp.driver !== driver || lp.target.sessionId !== sessionId) return;
+      const url = driver.url();
       if (lp.target.navigationError || url.startsWith("chrome-error://")) return;
       lp.target.title = title;
       lp.target.url = url;
