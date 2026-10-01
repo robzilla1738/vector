@@ -282,6 +282,8 @@ const RESULTS: Record<string, unknown> = {
     "fallback": false
   },
   "resolveRoutePrompt": false,
+  "routedOpens": [],
+  "routePrompts": [],
   "autofillProfile": null,
   "setAutofillProfile": false,
   "autofill": 0,
@@ -302,6 +304,10 @@ const RESULTS: Record<string, unknown> = {
   "showTabWindow": false,
   "littleWindow": false,
   "externalLinkTarget": "little",
+  "javascriptAppleEvents": {
+    "enabled": false,
+    "managed": false
+  },
   "downloadFolder": {
     "path": "/tmp/aux-mock",
     "custom": false

@@ -70,6 +70,9 @@ const contentBase = z.object({ profileId: str, generation: number, allowedSiteHo
 const cosmeticRule = z.object({ domains: z.array(str), selector: str }).strict();
 const nativePage = z.object({ pageId: str, windowId: str.optional(), marker: str, url: str,
   title: str, active: bool, showBlankDocument: bool.optional(), cdpTargetId: str.optional() }).strict();
+const routeFallbackReason = z.enum(["profile-unavailable", "space-unavailable"]);
+const routedOpen = z.object({ pageId: str, profileId: str, spaceId: str.optional(), ruleId: str.optional(), fallbackReason: routeFallbackReason.optional() }).strict();
+const routePrompt = z.object({ id: str, url: z.string().url().max(8192), expiresAt: number.int().nonnegative() }).strict();
 const browserProfile = z.object({ id: str, name: str, current: bool, archived: bool.optional(),
   color: SpaceColorSchema.optional(), icon: str.max(32).optional(),
   spaces: z.array(z.object({ id: str, name: str, color: SpaceColorSchema }).strict()).max(200).optional(),
@@ -209,8 +212,10 @@ export const HostMethods = {
   linkRoutes: shell("linkRouting", noArgs, LinkRoutesSchema),
   setLinkRoutes: shell("linkRouting", z.tuple([number.int().nonnegative(), LinkRoutesSchema]), LinkRoutesSchema),
   testLinkRoute: shell("linkRouting", z.tuple([z.string().url().max(8192), LinkRouteSourceSchema]),
-    z.object({ destination: LinkRouteDestinationSchema, ruleId: str.optional(), fallback: bool }).strict()),
+    z.object({ destination: LinkRouteDestinationSchema, ruleId: str.optional(), fallback: bool, fallbackReason: routeFallbackReason.optional() }).strict()),
   resolveRoutePrompt: shell("linkRouting", z.tuple([str, LinkRouteDestinationSchema, bool]), bool),
+  routedOpens: shell("linkRouting", noArgs, z.array(routedOpen).max(128)),
+  routePrompts: shell("linkRouting", noArgs, z.array(routePrompt).max(128)),
   // Credential vault
   autofillProfile: shell("core", noArgs, AutofillProfileSchema.nullable()),
   setAutofillProfile: shell("core", z.tuple([AutofillProfileSchema]), bool),
@@ -228,6 +233,7 @@ export const HostMethods = {
   littleWindow: shell("littleWindow", z.tuple([z.enum(["open", "promote", "close"]),
     z.object({ url: z.string().url().max(8192).optional(), spaceId: str.optional() }).strict()]), bool),
   externalLinkTarget: shell("littleWindow", z.tuple([z.enum(["little", "main"]).optional()]), z.enum(["little", "main"])),
+  javascriptAppleEvents: shell("appleScript", z.tuple([bool.optional()]), z.object({ enabled: bool, managed: bool }).strict()),
   // Downloads and tab audio
   downloadFolder: shell("core", noArgs, downloadFolderResult),
   chooseDownloadFolder: shell("core", z.tuple([bool.optional()]), downloadFolderResult),
@@ -402,9 +408,9 @@ export const HostEvents = {
   onPictureInPicture: event("pictureInPicture", PictureInPictureResultSchema.extend({ pageId: str })),
   onExtensionActionsChanged: event("extensions", z.array(extensionAction)),
   onSidePanel: event("extensions", z.object({ extensionId: str, pageId: str.nullable(), title: str, open: bool }).strict()),
-  onFocusSpace: event("profiles", z.object({ spaceId: str.nullable() }).strict()),
-  onRoutedOpen: event("linkRouting", z.object({ pageId: str, profileId: str, spaceId: str.optional(), ruleId: str.optional() }).strict()),
-  onRoutePrompt: event("linkRouting", z.object({ id: str, url: z.string().url().max(8192), expiresAt: number.int().nonnegative() }).strict()),
+  onFocusSpace: event("profiles", z.object({ spaceId: str.nullable(), windowId: str }).strict()),
+  onRoutedOpen: event("linkRouting", routedOpen),
+  onRoutePrompt: event("linkRouting", routePrompt),
   onLinkStatus: event("core", z.object({ pageId: str, text: str }).strict()),
   onDownload: event("core", DownloadSchema),
   onTabsPlacement: event("core", z.object({ pageId: str, windowId: str,

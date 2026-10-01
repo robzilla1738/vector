@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { createClock, HostMethods, LiveFolderSchema, LinkRoutesSchema, SplitGroupSchema } from "@aux/contracts";
+import { createClock, HostEvents, HostMethods, LiveFolderSchema, LinkRoutesSchema, SplitGroupSchema } from "@aux/contracts";
 
 it("keeps live sources bounded and excludes connection secrets from layout", () => {
   const rss = { kind: "rss", config: { url: "https://fixture.invalid/feed" }, refreshMinutes: 15 };
@@ -57,4 +57,26 @@ it.each([
   expect(SplitGroupSchema.safeParse(group).success).toBe(true);
   for (const ratios of [[], Array(Number(count) - 2).fill(0.5), Array(Number(count)).fill(0.5)])
     expect(SplitGroupSchema.safeParse({ ...group, ratios }).success).toBe(false);
+});
+
+it("keeps routed receipts bounded, source reasons strict and Space focus window-specific", () => {
+  const receipt = { pageId: "red", profileId: "Profile 1", spaceId: "research", fallbackReason: "space-unavailable" };
+  expect(HostMethods.routedOpens.result.safeParse([receipt]).success).toBe(true);
+  expect(HostEvents.onRoutedOpen.payload.safeParse(receipt).success).toBe(true);
+  expect(HostMethods.routedOpens.result.safeParse(Array(129).fill(receipt)).success).toBe(false);
+  expect(HostEvents.onRoutedOpen.payload.safeParse({ ...receipt, fallbackReason: "network-error" }).success).toBe(false);
+  expect(HostEvents.onRoutedOpen.payload.safeParse({ ...receipt, token: "unexpected" }).success).toBe(false);
+  const prompt = { id: "prompt", url: "https://fixture.invalid/red", expiresAt: 1000 };
+  expect(HostMethods.routePrompts.result.safeParse([prompt]).success).toBe(true);
+  expect(HostMethods.routePrompts.result.safeParse(Array(129).fill(prompt)).success).toBe(false);
+  expect(HostEvents.onRoutePrompt.payload.safeParse({ ...prompt, expiresAt: -1 }).success).toBe(false);
+  expect(HostEvents.onFocusSpace.payload.safeParse({ spaceId: "research" }).success).toBe(false);
+  expect(HostEvents.onFocusSpace.payload.safeParse({ spaceId: "research", windowId: "2" }).success).toBe(true);
+});
+it("requires typed managed JavaScript Apple Events state", () => {
+  expect(HostMethods.javascriptAppleEvents.args.safeParse([]).success).toBe(true);
+  expect(HostMethods.javascriptAppleEvents.args.safeParse([true]).success).toBe(true);
+  expect(HostMethods.javascriptAppleEvents.args.safeParse(["true"]).success).toBe(false);
+  expect(HostMethods.javascriptAppleEvents.result.safeParse({ enabled: false, managed: true }).success).toBe(true);
+  expect(HostMethods.javascriptAppleEvents.result.safeParse({ enabled: false }).success).toBe(false);
 });

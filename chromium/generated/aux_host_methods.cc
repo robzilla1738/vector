@@ -3979,6 +3979,8 @@ constexpr MethodInfo kMethods[] = {
   {MethodId::kSetLinkRoutes, "setLinkRoutes", "browser", "linkRouting", "aux-webui", true},
   {MethodId::kTestLinkRoute, "testLinkRoute", "browser", "linkRouting", "aux-webui", true},
   {MethodId::kResolveRoutePrompt, "resolveRoutePrompt", "browser", "linkRouting", "aux-webui", true},
+  {MethodId::kRoutedOpens, "routedOpens", "browser", "linkRouting", "aux-webui", true},
+  {MethodId::kRoutePrompts, "routePrompts", "browser", "linkRouting", "aux-webui", true},
   {MethodId::kAutofillProfile, "autofillProfile", "browser", "core", "aux-webui", true},
   {MethodId::kSetAutofillProfile, "setAutofillProfile", "browser", "core", "aux-webui", true},
   {MethodId::kAutofill, "autofill", "browser", "core", "aux-webui", true},
@@ -3992,6 +3994,7 @@ constexpr MethodInfo kMethods[] = {
   {MethodId::kShowTabWindow, "showTabWindow", "browser", "windowSync", "aux-webui", true},
   {MethodId::kLittleWindow, "littleWindow", "browser", "littleWindow", "aux-webui", true},
   {MethodId::kExternalLinkTarget, "externalLinkTarget", "browser", "littleWindow", "aux-webui", true},
+  {MethodId::kJavascriptAppleEvents, "javascriptAppleEvents", "browser", "appleScript", "aux-webui", true},
   {MethodId::kDownloadFolder, "downloadFolder", "browser", "core", "aux-webui", true},
   {MethodId::kChooseDownloadFolder, "chooseDownloadFolder", "browser", "core", "aux-webui", true},
   {MethodId::kSpellCheck, "spellCheck", "browser", "core", "aux-webui", true},
@@ -4184,6 +4187,8 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kSetLinkRoutes: valid = ValidateNode155(args); break;
     case MethodId::kTestLinkRoute: valid = ValidateNode177(args); break;
     case MethodId::kResolveRoutePrompt: valid = ValidateNode178(args); break;
+    case MethodId::kRoutedOpens: valid = ValidateNode0(args); break;
+    case MethodId::kRoutePrompts: valid = ValidateNode0(args); break;
     case MethodId::kAutofillProfile: valid = ValidateNode0(args); break;
     case MethodId::kSetAutofillProfile: valid = ValidateNode179(args); break;
     case MethodId::kAutofill: valid = ValidateNode123(args); break;
@@ -4197,6 +4202,7 @@ bool ValidateMethodArgs(MethodId id, const base::Value& args, std::string* error
     case MethodId::kShowTabWindow: valid = ValidateNode123(args); break;
     case MethodId::kLittleWindow: valid = ValidateNode190(args); break;
     case MethodId::kExternalLinkTarget: valid = ValidateNode193(args); break;
+    case MethodId::kJavascriptAppleEvents: valid = ValidateNode187(args); break;
     case MethodId::kDownloadFolder: valid = ValidateNode0(args); break;
     case MethodId::kChooseDownloadFolder: valid = ValidateNode187(args); break;
     case MethodId::kSpellCheck: valid = ValidateNode187(args); break;
