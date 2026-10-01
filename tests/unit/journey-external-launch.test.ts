@@ -1,7 +1,7 @@
 import { afterEach, expect, it } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { validateExternalLaunch, externalGenerationRunning } from '../host/lib/app.mjs';
+import { validateExternalLaunch, validateAuxEnvelope, validateAuxLaunch, externalGenerationRunning } from '../host/lib/app.mjs';
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 function profile() {
@@ -33,4 +33,24 @@ it('only a typed native check receipt can prove a launch generation gone', () =>
   expect(externalGenerationRunning({ running: true })).toBe(true);
   for (const receipt of [null, {}, { running: "false" }, { error: "IPC timeout" }])
     expect(() => externalGenerationRunning(receipt)).toThrow("cleanup is unverified");
+});
+
+const auxUrl = 'aux://open?url=http%3A%2F%2F127.0.0.1%3A1234%2Fred&source=cli&profile=Profile+1&space=research&window=little&background=1';
+it('validates the entire owned Aux envelope before process changes and preserves cold launch guards', () => {
+  const dir = profile();
+  const args = [`--user-data-dir=${dir}`, '--profile-directory=Profile 1', '--use-mock-keychain', '--password-store=basic'];
+  expect(validateAuxEnvelope(auxUrl).href).toBe(auxUrl);
+  expect(validateAuxLaunch(auxUrl, [], 42, dir)).toBe(auxUrl);
+  expect(validateAuxLaunch(auxUrl, args, 0, dir)).toBe(auxUrl);
+  expect(() => validateAuxLaunch(auxUrl, args.slice(1), 0, dir)).toThrow();
+  expect(() => validateAuxLaunch(auxUrl, [...args, '--remote-debugging-port=9222'], 0, dir)).toThrow();
+  expect(() => validateExternalLaunch(auxUrl, [], 42, dir)).toThrow();
+});
+it.each([
+  auxUrl + '&url=http%3A%2F%2F127.0.0.1%2Fother', auxUrl + '&unknown=1', auxUrl + '&profile=Default',
+  auxUrl.replace('aux://open', 'aux://user:secret@open'), auxUrl.replace('aux://open', 'aux://open:80'),
+  auxUrl.replace('Profile+1', 'Work'), auxUrl.replace('Profile+1', 'Profile+01'), auxUrl.replace('Profile+1', ''),
+  auxUrl.replace('research', ''), auxUrl.replace('127.0.0.1', 'example.com'),
+])('refuses an invalid Aux envelope before quit: %s', url => {
+  expect(() => validateAuxEnvelope(url)).toThrow();
 });
