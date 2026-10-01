@@ -29,15 +29,15 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | Role / lane | Status | Patches | Agent / worktree |
 |---|---|---|---|
 | Integrator / Wave 0 | Active | 0136–0139, fix-ups 0186–0199 | Current chat / repository |
-| Builder | Idle afteref7448 productionnativePASS/corefirstadvisoryFAIL; independentlyaudited | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
-| Design reviewer | Latest602b actual capture/preferences reviewed38809a07 integratedc69e03ec; all DR001–007 open | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
-| L1 Commands | Active initialactualAX/guestfocus diagnosis afteref7448 firstadvisoryFAIL; source2071PASS | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
+| Builder | Idle after8da harness diagnostic; source/native identities and four functional passes independently audited, focus postcondition failure preserved | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
+| Design reviewer | Frozen84b47 docs integrateddd83; five f51 captures independently viewed/hashed; all DR001–007 open | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
+| L1 Commands | Active physical address-click readiness after8da AX focus postcondition failure; actual native production guards unchanged | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
 | L4 Windows | Frozensourcec90601ae failclosed/pointer/coldexternalproducer/refusal tests; nativepending | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
 | L2 Layout | Frozen54a34f; actual root composition399files2106PASS, native/perf pending | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
-| L5 Surfaces | Active fullF9/F17 source; exactL4 selector dependency supplied | 0172–0177 | /root/l5_surfaces /tmp/aux-browser-runtime-l5 |
-| L6 Profiles/routing | Active full F5/F12/F13 resumed on04f912 with actual L4 pointer API | 0154–0159 | /root/l6_profiles /tmp/aux-browser-runtime-l6 |
-| L7 Extensions | Waiting for lane capacity | 0160–0165 | Unassigned |
-| L8 Organize | Waiting for lane capacity | 0178–0179 | Unassigned |
+| L5 Surfaces | Frozen d7b95424 full F9/F17 source, pending actual composition/native/perf/F21; source dependency failures preserved | 0172–0177 | /root/l5_surfaces /tmp/aux-browser-runtime-l5 |
+| L6 Profiles/routing | Frozen517256ba full F5/F12/F13 source; root shared footer/created Profile acceptance landedfca, native proof pending | 0154–0159 | /root/l6_profiles /tmp/aux-browser-runtime-l6 |
+| L7 Extensions | Active full F6; real WebUI side-panel guest spike and producer/contract requests under review | 0160–0165 | /root/l7_extensions /tmp/aux-browser-runtime-l7 |
+| L8 Organize | Active full F10/F15 pins/live folders/auto archive, isolated contracts-v1→integration only | 0178–0179 | /root/l8_organize /tmp/aux-browser-runtime-l8 |
 | L9 Downloads | Waiting for lane capacity | 0166–0169 | Unassigned |
 | L10 Agent trust | Waiting for lane capacity | None | Unassigned |
 | LJ Legacy journeys | Frozenb27ec866 eight failure corrections; actual391files2068 sourcePASS, native8pending | None | /root/lj_journeys /tmp/aux-browser-runtime-lj |
@@ -280,3 +280,6 @@ Fresh f51 native core independently audited: setup plus four functional steps pa
 
 
 Historical native series root-cause cleanup verified and adopted: removed obsolete generated-only0067 and manual generated host/stage sections; repaired missing Git diff/new-file metadata while preserving every retained native hunk except one final blank line in0047 to exactly match compiled stable bytes. Independent isolated full frozen L1 candidate144-patch forward-check/apply PASS; all206 nongenerated native files equal actual stable bytes; all144 reverse-check/apply restores all206 upstream paths exactly. Exact per-patch payload audit and replay proof at release/test-artifacts/historical-native-series-cleanup/{payload-audit,replay-proof}.json. Forty-eight patch files corrected; no stable tree writes/builds. Root bindings198/26, inventory, lint379, format and diff checks PASS; actual canonical stage-host-bindings writes exact generated BUILD/cc/feature bytes to owned scratch (/tmp/aux-root-historical-*). Generated artifacts remain solely produced/staged by canonical scripts. Full root/native candidate identity, future feature registration, all journeys/perf/F21/WaveQ still pending; no feature merge or qualification claim.
+
+
+Fresh root-paired8da1fc2e uses actual3f563 L1 error-preserving helper plus root75bf failed-input runner, clean product remains71eb/tree619f; independent rebuild13focused/lint/format PASS. Sole-builderONE core preserves original Address AX focus-postcondition timeout: focus setter returned success but address staysfocusedfalse, guest editorfocusedtrue; completedinput/failingcleanup recorded. Setup+fourfunctionalstepsstillPASS, laterrefusalsunreached. Independent audit release/test-artifacts/l1-8da1fc2e-independent-audit.json SHA987bac2e8d881dea75d3691abf7c8c14f38473ad6155ad9a62542dc3f9f609e7 verifiesallcapture/log/module/nativeproof/header/runtime/21nativefile/fourmirrorhashes andactualfailureAX. L1 resumed genuine physical address click without another keydown, preserving all refusal assertions. Reviewer84b fullreport read/allfivef51 originals rootviewed and integrateddd83, allfindingsopen. Actual root layout composition merges ONLYintegration4116697 at9c2d86c4; resolved series0189beforeunchangedL1tail, then adopts actual L1 seven new command handlers and L5 catalog snapshot/JSON-wire regressions. Rebuild13catalogtests/typecheck/lint/format PASS; partialsourcecommit pending/readlog. No shims or featuremerge/nativeproof. L7 and new L8 active fullscope; L5/L6 frozenawaitreview. main unchanged; fullgoalactive.
