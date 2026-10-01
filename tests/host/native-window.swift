@@ -6,13 +6,19 @@ import CoreGraphics
 import Foundation
 import Darwin
 
+func trustedState() -> [String: Bool] {
+  return ["accessibility": AXIsProcessTrusted(), "screenRecording": CGPreflightScreenCaptureAccess(),
+          "reduceMotion": NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+          "reduceTransparency": NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency]
+}
+
 func fail(_ message: String) -> Never {
   fputs("native-window: \(message)\n", stderr)
   exit(1)
 }
 
 if CommandLine.arguments.count == 2 && CommandLine.arguments[1] == "trusted" {
-  let result = ["accessibility": AXIsProcessTrusted(), "screenRecording": CGPreflightScreenCaptureAccess()]
+  let result = trustedState()
   let data = try! JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
   print(String(data: data, encoding: .utf8)!)
   exit(0)
@@ -1223,7 +1229,7 @@ func mouseEvent(_ type: CGEventType, at point: CGPoint, button: CGMouseButton = 
 func protocolCommand(_ request: [String: Any]) throws -> Any {
   guard let command = (request["command"] ?? request["cmd"]) as? String else { throw protocolError("command required") }
   switch command {
-  case "trusted": return ["accessibility": AXIsProcessTrusted(), "screenRecording": CGPreflightScreenCaptureAccess()]
+  case "trusted": return trustedState()
   case "windows": return windowInventory()
   case "query", "dump":
     let selector = request["selector"] as? [String: Any] ?? [:]
