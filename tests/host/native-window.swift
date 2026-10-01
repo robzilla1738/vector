@@ -894,6 +894,15 @@ func elementRecord(_ element: AXUIElement, depth: Int) -> [String: Any] {
     "name": protocolNames(element).first(where: { !$0.isEmpty }) ?? "", "names": protocolNames(element),
     "enabled": axAttribute(element, kAXEnabledAttribute) as? Bool ?? false,
     "focused": axAttribute(element, kAXFocusedAttribute) as? Bool ?? false, "depth": depth]
+  if ["AXCheckBox", "AXRadioButton"].contains(axString(element, kAXRoleAttribute)),
+     let value = axAttribute(element, kAXValueAttribute) as? NSNumber {
+    result["checked"] = value.boolValue
+  }
+  if axString(element, kAXRoleAttribute) == "AXTextField",
+     axString(element, kAXSubroleAttribute) != "AXSecureTextField" {
+    let placeholder = axString(element, "AXPlaceholderValue")
+    if !placeholder.isEmpty { result["placeholder"] = placeholder }
+  }
   if let point = axPoint(element, kAXPositionAttribute), let size = axSize(element) {
     result["frame"] = ["x": point.x, "y": point.y, "width": size.width, "height": size.height]
   }
@@ -959,6 +968,7 @@ func postText(_ text: String) throws {
     var units = Array(String(scalar).utf16)
     guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true),
           let up = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false) else { throw protocolError("Cannot create text event") }
+    down.flags = []; up.flags = []
     units.withUnsafeMutableBufferPointer { buffer in
       down.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
       up.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
