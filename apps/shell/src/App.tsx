@@ -496,7 +496,7 @@ export function App() {
         </div>
         {!bridge.privateMode && railOpen && <PaneBoundary label="The assistant"><AgentRail /></PaneBoundary>}
       </div>
-      {commandSurface && <CommandSurface request={commandSurface} executeCommand={executeCommand} />}
+      {commandSurface && <CommandSurface key={commandSurface.sequence} request={commandSurface} executeCommand={executeCommand} />}
       {(overlay === "history" || overlay === "bookmarks" || overlay === "clear-history") && <Library key={overlay} initialView={overlay === "bookmarks" ? "bookmarks" : "history"} confirmClear={overlay === "clear-history"} />}
       {overlay === "observe" && <Inspector />}
       {overlay === "site" && <SiteControls />}
