@@ -29,18 +29,18 @@ All lane-owned globs, contract symbols, journeys, dependencies and exit criteria
 | Role / lane | Status | Patches | Agent / worktree |
 |---|---|---|---|
 | Integrator / Wave 0 | Active | 0136–0139, fix-ups 0186–0199 | Current chat / repository |
-| Builder | Idle after bfcd17 diagnostic9PASS8FAIL; next reviewed L1 owner-hook freeze | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
-| Design reviewer | bfcd27 captures reviewed6b1e3826 integratedfdc8ec4e; all DR001–007 open | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
-| L1 Commands | Active real Cocoa release-path repair after77af arm-only trace | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
-| L4 Windows | Frozen05d0b899; actualL1 composition0e407981 full2090testsPASS; native refusal correction pending | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
-| L2 Layout | Frozen08682c82 full adapters; motion/source review outstanding | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
+| Builder | Idle after24e2 coreFAIL/perf20ACPASS; cleanup verified | 0136–0139 applied and reverse-checked; v2 incremental build and diagnostics passed | `/root/builder` / stable native tree |
+| Design reviewer | Latest24e2 two captures reviewed8a46b660 integrated61164e17; all DR001–007 open | None | /root/design_reviewer /tmp/aux-browser-runtime-design |
+| L1 Commands | Active bounded Cocoa delegate/Command-keyup diagnosis after24e2 still1down0up | 0140–0143 | /root/l1_commands /tmp/aux-browser-runtime-l1 |
+| L4 Windows | Active Snapshot fail-closed correction and actual Little target-return API; source0e4079812090PASS | 0148–0153 | /root/l4_windows /tmp/aux-browser-runtime-l4 |
+| L2 Layout | Active full200ms geometry/reduced motion and12 CSS literal ratchet corrections | 0144–0147 | /root/l2_layout /tmp/aux-browser-runtime-l2 |
 | L5 Surfaces | Waiting for L4 selector and lane capacity | 0172–0177 | Unassigned |
-| L6 Profiles/routing | Active independent full F5/F12/F13 source implementation | 0154–0159 | /root/l6_profiles /tmp/aux-browser-runtime-l6 |
+| L6 Profiles/routing | Frozen5957d4d3 partial source; resume full F5/F12/F13 after L4 actual target API | 0154–0159 | /root/l6_profiles /tmp/aux-browser-runtime-l6 |
 | L7 Extensions | Waiting for lane capacity | 0160–0165 | Unassigned |
 | L8 Organize | Waiting for lane capacity | 0178–0179 | Unassigned |
 | L9 Downloads | Waiting for lane capacity | 0166–0169 | Unassigned |
 | L10 Agent trust | Waiting for lane capacity | None | Unassigned |
-| LJ Legacy journeys | Resumed after bfcd17 audit for eight evidence-backed failures | None | /root/lj_journeys /tmp/aux-browser-runtime-lj |
+| LJ Legacy journeys | Frozenb27ec866 eight failure corrections; actual root composition gates running | None | /root/lj_journeys /tmp/aux-browser-runtime-lj |
 | L3 Command surface | Waiting for L1 | 0170–0171 | Unassigned |
 | L11 Autonomy | Waiting for Wave 2 | 0180–0183 | Unassigned |
 | L12 Polish/performance | Waiting for all feature lanes | 0184–0185 | Unassigned |
@@ -200,3 +200,12 @@ L1 frozen24e2c693a8cc77ef642afffc6a3b2f4d1702c80f/tree4d29672cb32320c068148a5906
 
 
 Builder stage-only24e2 PASS independentlyverified103assets1388unchanged, shelllogSHA5b2a63658bef707bdd29eb6aa56fcd40dcf7c0a578fc8a860757fe090dafd501, budgets54b5f90a.../4731791689, pinmanifestf6048c69. Correct identity distinction:24e2c693 is harnessHEAD/git tree4d29672c; actual clean product2b06655d4f23c75aca3ea0c0ae82bc0b1a967abd/tree15aa3ce028908d570fe24ea05b0f6ab4f17e4e98. No asset changes, so no redundantpincommit. Root approved dedicated incrementalnative exactnew142a86470 replacing immutablebfcd1424c3c, fourmirrors/corestackvalidation; stamps MUST product2b066,195/26de283/pin1388. Then shortcut-registry-core(dc628module), shortcut-perf(884928module)serial20AC; outputs l1-24e2c693-{id}; no retry/records/fullF1claim. Root additional binding/bridge151used0missing/inventory PASS independently. Fullregistry35futuremodules remainsFAIL. LJ confirms outbound Savebutton focusedheight0offscreen; normal scroll/readiness fixespending pluscustomlist/task/Draft waits andcookie stagedfixture proof. ExactoldownedPIDcrashreports requestedbuilder, no speculativefailurewaiver.
+
+
+## Current 24e2 failure and source verification
+
+Dedicated builder compiled clean product2b06655d/tree15aa3ce0 with harness24e2c693, native0142a86470 and103-asset1388 pin:47steps2m04.83s. Root verified actual header/runtime identities and logs, both manifests/modules/capture hashes, and all twenty raw HID→AX monotonic intervals. Core stillFAIL websitekeydown1/keyup0; all later held-key refusal cases are unreached. Performance PASS20AC p95 **26.71525ms**, min12.565291/max27.9125. Root audit `release/test-artifacts/l1-24e2c693-independent-audit.json`; no qualification or feature merge. No cleanup errors/residual owned process/slot. Reviewer8a46/61164e17 finds identical prior capture bytes, no new state or closure; allDR001–007/four appearance cells/owner sign-off remain open. L1 is preparing a source-reviewed bounded arm-only boolean trace of the actual delegate and native lookup; native build not approved.
+
+Root8b108bb2 adds failure-process.json before cleanup using only the owned launch generation, actual child exit code/signal/spawn error, and explicit LaunchServices status unavailable. Actual process.exit(7)/SIGTERM tests pass, plus12 existing harness regressions; typecheck/lint379/format/diff checks pass. No crash-directory, credential or session reads.
+
+Actual L1+L4+L2 source composition `/tmp/aux-browser-runtime-root-layout` passes18 focused tests/typecheck/lint386/format but full suite has2094PASS/1FAIL: shipped CSS literal ratchet expected0 got12. L2 resumed exact token corrections, full200ms geometry both directions and reduced motion, plus registered explicit-hide resize action; ratchet remains unchanged. Native144/shared source not approved. LJb27 owned corrections now compose with actual root/L1 harness in `/tmp/aux-browser-runtime-root-l1-lj`; rebuild/full suite running. Eight fresh native failure diagnostics need reviewed source/pin before solebuilder dispatch; no speculative fix for three exits. L6 frozen5957 native authored tests unrun and full Profile UI/routing/AppleScript unfinished; L4 actual pointer-return API and cold owned receipt delivery remain dependencies. All original complete-registry, all-feature/native22 qualification, perf/F21/WaveQ/local-main requirements remain mandatory.
