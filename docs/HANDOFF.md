@@ -31,6 +31,8 @@ Contracts-v4 checkpoint: PageTarget carries native anchor/windowKind/split metad
 
 Current rotation: integration contracts-v4 e592362c is clean. Root L1 adapter cleanup/invariant/typecheck/lint passes in isolated lane; native0140 applies cleanly,0141 atomic global registration correction requested. L4 isolated authoritative windowKind adapter/typecheck/35 focused tests pass, owned selector locality review requested; native adapters may apply only mirrors. Builder running frozen LJ dfe9a314 retry12 IDs, Reader excluded until nativeSpace shortcut fix. Reviewer idle awaiting corrected captures, LJ yielded. Full integration unit rerun at /tmp/aux-contracts-v4-unit.log is running; no new qualification/promote/merge.
 
+Contracts-v4 full unit rerun passes384 files/2040 tests, exit0 at /tmp/aux-contracts-v4-unit.log. Frozen LJ dfe9a314 incremental build passes23 steps/1m19.34s; candidate scratch pin matches committed c2342cba909a34d9556560fd76c4eb256168b9183b5075b28fb7e3fa2914493c. Builder reports matching clean product631f3a44afd2f9b241300c9f7d25f23947c3ab51/tree3ab7a8c995139d0a01b628eda5dcc410a2237038 and native386a28167923; independent manifest audit awaits batch outputs. Twelve diagnostics running, qualifiedFeatures empty.
+
 ---
 
 # Aux development handoff
