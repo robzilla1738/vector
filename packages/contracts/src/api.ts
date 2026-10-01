@@ -819,6 +819,9 @@ export const SettingsSetParams = z.object({
   sidebarBlur: z.number().min(0).max(40).optional(),
   sidebarOpacity: z.number().min(40).max(100).optional(),
   tabLayout: z.enum(["vertical", "horizontal"]).optional(),
+  toolbarAutoHide: z.boolean().optional(),
+  minimalUi: z.boolean().optional(),
+  minimalUiAcknowledged: z.boolean().optional(),
   /** Idle minutes before a clean background tab may be discarded. Zero disables automatic sleep. */
   memorySaverMinutes: z.union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)]).optional(),
   tabSwitcherOrder: z.enum(["sidebar", "recently-used"]).optional(),
