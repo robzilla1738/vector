@@ -15,6 +15,24 @@ function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}
 }
 
 describe("settings defaults for a real test pass", () => {
+  it("exposes saved layout and automation preferences in live and reopened snapshots", async () => {
+    const { dir, repo, settings } = harness();
+    try {
+      expect(settings.all()).toMatchObject({ toolbarAutoHide: true, minimalUi: false,
+        minimalUiAcknowledged: false, autoArchive: { acknowledged: false, bySpace: {} },
+        nightShift: { enabled: false, requireAC: true } });
+      const patch = MethodSchemas["settings.set"].parse({ toolbarAutoHide: false,
+        minimalUi: true, minimalUiAcknowledged: true,
+        autoArchive: { acknowledged: true, bySpace: { work: 24 } },
+        nightShift: { enabled: true, start: "01:00", end: "07:00", nightlyUsd: 3, perTaskUsd: 1, requireAC: true } });
+      await settings.set(patch);
+      expect(settings.all()).toMatchObject(patch);
+      expect(new SettingsService(repo, join(dir, "settings.json"), {}).all()).toMatchObject(patch);
+      const reopened = harness({}, JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")));
+      try { expect(reopened.settings.all()).toMatchObject(patch); }
+      finally { reopened.repo.db.close(); rmSync(reopened.dir, { recursive: true, force: true }); }
+    } finally { repo.db.close(); rmSync(dir, { recursive: true, force: true }); }
+  });
   it("persists the new-tab mode and rejects unsupported choices", async () => {
     const { dir, settings } = harness();
     try {

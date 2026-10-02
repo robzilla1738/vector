@@ -1,4 +1,4 @@
-import { DownloadNamingSettingsSchema, DEFAULT_DOWNLOAD_NAMING } from "@aux/contracts";
+import { DownloadNamingSettingsSchema, DEFAULT_DOWNLOAD_NAMING, DEFAULT_NIGHT_SHIFT, NightShiftSettingsSchema, SettingsSetParams } from "@aux/contracts";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
@@ -53,7 +53,8 @@ import { GatewayModelClient } from "../agent/gateway-client.js";
 import type { Repo } from "../store/repo.js";
 import type { NativeBridge } from "../native.js";
 
-export interface Settings {
+export interface Settings extends Pick<z.infer<typeof SettingsSetParams>,
+  "toolbarAutoHide" | "minimalUi" | "minimalUiAcknowledged" | "autoArchive" | "nightShift"> {
   modelProvider?: ModelProvider;
   modelConnection?: { provider: ModelProvider; enabled: boolean };
   disabledModelProviders?: ModelProvider[];
@@ -267,6 +268,11 @@ export class SettingsService {
       sidebarBlur: Number(this.get("sidebarBlur") ?? 0),
       sidebarOpacity: Number(this.get("sidebarOpacity") ?? 90),
       tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "horizontal",
+      toolbarAutoHide: z.boolean().parse(this.get("toolbarAutoHide") ?? true),
+      minimalUi: z.boolean().parse(this.get("minimalUi") ?? false),
+      minimalUiAcknowledged: z.boolean().parse(this.get("minimalUiAcknowledged") ?? false),
+      autoArchive: SettingsSetParams.shape.autoArchive.parse(this.get("autoArchive") ?? { acknowledged: false, bySpace: {} }),
+      nightShift: NightShiftSettingsSchema.parse(this.get("nightShift") ?? DEFAULT_NIGHT_SHIFT),
       downloadNaming: DownloadNamingSettingsSchema.parse(this.get("downloadNaming") ?? DEFAULT_DOWNLOAD_NAMING),
       memorySaverMinutes: z.union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)])
         .catch(0).parse(this.get("memorySaverMinutes")),
