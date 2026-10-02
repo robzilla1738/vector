@@ -1,10 +1,10 @@
 {
   "scope": "source-only independently verified; native build/actual journeys/hardware20AC/F21/full qualification remain required",
   "productIdentity": {
-    "commit": "3d401ea776e145238b86724307653020cac8f2f7",
-    "tree": "f8d354736c75f27b23f665b7d80d8e14e74b369a",
+    "commit": "28b745682bd961f1b0683f91f37bf4f755155e18",
+    "tree": "e371610bfddd9c633800403364983f65e21f009b",
     "dirty": false,
-    "label": "3d401ea776e145238b86724307653020cac8f2f7"
+    "label": "28b745682bd961f1b0683f91f37bf4f755155e18"
   },
   "wholeSuite": {
     "files": 470,
@@ -29,10 +29,11 @@
     "features": 43
   },
   "native": {
-    "packets": 77,
+    "packets": 79,
     "exactMirrors": 231,
-    "replayProofSha256": "0ecf439b3a357877b730beb30248103e36a265bd973fe829ee5946c6b59a74cd",
-    "compiled": false
+    "replayProofSha256": "20cc31ce18655becd56897c43ae4a7a5d2127329107e5af9d473c16ec8d64058",
+    "compiled": false,
+    "finalDelta": "0248/0249 exact actual owned PiP fields independently reviewed and entire79 packet replay PASS; native compilation mandatory. No runtime/renderer changes after prior full source gates."
   },
   "qualificationRecordsWritten": false,
   "logs": [
