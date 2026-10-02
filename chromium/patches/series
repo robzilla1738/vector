@@ -226,3 +226,4 @@ aux/runtime/0251-platform-widget-mojo-import-order.patch
 aux/runtime/0253-blink-native-guest-type-corrections.patch
 aux/runtime/0220-auto-pip-final-effect-authority.patch
 aux/runtime/0254-pip-genuine-person-input-lineage.patch
+aux/runtime/0255-blink-witness-vector-adapters.patch

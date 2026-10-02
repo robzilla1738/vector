@@ -1,0 +1,73 @@
+{
+  "scope": "Source gates after actual rebuild; native compilation/physical performance/visual qualification still pending",
+  "gates": {
+    "source-build": {
+      "log": "/tmp/aux-root-person-source-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASS"
+    },
+    "typecheck-after-build": {
+      "log": "/tmp/aux-root-person-typecheck-after-build.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f",
+      "status": "PASS"
+    },
+    "lint": {
+      "log": "/tmp/aux-root-person-lint.log",
+      "sha256": "8d0ea9564928f98028fdfdab8dee091daa45d88d5d6e582b31b82cc60e444588",
+      "status": "PASS"
+    },
+    "format": {
+      "log": "/tmp/aux-root-person-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562",
+      "status": "PASS"
+    },
+    "unit-after-build": {
+      "log": "/tmp/aux-root-person-unit-after-build.log",
+      "sha256": "52f88e791fef31261624ebc6eb1cd89b191f341edc92cb44f88dbc2236ef8b69",
+      "status": "PASS"
+    },
+    "bindings": {
+      "log": "/tmp/aux-root-person-bindings.log",
+      "sha256": "c2635bc1ad9062801fd9ce3c8ad8a74b577439116d3d850581070a87f4533591",
+      "status": "PASS"
+    },
+    "bridge": {
+      "log": "/tmp/aux-root-person-bridge.log",
+      "sha256": "54befd1123551f8e2f0c983459b4bbb6760198805940fde7236b51b22d31111e",
+      "status": "PASS"
+    },
+    "inventory": {
+      "log": "/tmp/aux-root-person-inventory.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASS"
+    },
+    "journeys": {
+      "log": "/tmp/aux-root-person-journeys.log",
+      "sha256": "1027ac9235f75daec4a52577d1888c215b442fdca714019bc1474d97435a2d34",
+      "status": "PASS"
+    },
+    "budgets": {
+      "log": "/tmp/aux-root-person-budgets.log",
+      "sha256": "40147d974ada0a34130db464dc6508253b1c87f2556a0d154e0ad3dc09372366",
+      "status": "PASS"
+    },
+    "chromium-renderer-build": {
+      "log": "/tmp/aux-root-person-chromium-renderer-build.log",
+      "sha256": "2560416563fd891d2a2a9a02448a8bedea8b79c3984db45f20a1123ce7f4e7c9",
+      "status": "PASS"
+    },
+    "renderer-capture": {
+      "log": "/tmp/aux-root-person-renderer-capture.log",
+      "sha256": "d3990e1dac8fe1357e07dd0430c680bbe95f51499c948fd572ea84068e49dec2",
+      "status": "PASS"
+    }
+  },
+  "unitFiles": 470,
+  "unitCases": 2536,
+  "nativePackets": 85,
+  "nativeMirrors": 274,
+  "existingBaselines": 188,
+  "rendererDigest": "0d2279fb43d311b47bfd241f8bd04fd9a2f82194bd5771357d0a69b7bf4916c9",
+  "qualificationRecordsWritten": false,
+  "discardedTestAttempt": "Early unit invocation stopped while source build still active; only completed after-build log counts"
+}

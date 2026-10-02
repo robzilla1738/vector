@@ -66,13 +66,15 @@ export function commitSplit(layout: Layout, previous = useStore.getState().layou
         for (const group of restore) if (group.panes.some(id => affected.has(id)) && !group.panes.every(localSplitPage))
           throw new Error("The split tabs moved or became unavailable.");
         const representatives = new Set([...nativeBefore, ...after].filter(group => group.panes.length === 2 && group.panes.some(id => affected.has(id))).map(group => group.panes[0]!));
+        const restoring = restore.filter(group => group.panes.some(id => affected.has(id)));
+        const restoredPanes = new Set([...affected, ...restoring.flatMap(group => group.panes)]);
         const restoreSignature = JSON.stringify(restore);
-        const available = () => valid() && JSON.stringify(useStore.getState().layout.splitGroups ?? []) === restoreSignature && [...affected].every(localSplitPage);
+        const available = () => valid() && JSON.stringify(useStore.getState().layout.splitGroups ?? []) === restoreSignature && [...restoredPanes].every(id => localSplitPage(id) && useStore.getState().layout.tabSpace[id] === current.tabSpace[id]);
         for (const pageId of representatives) {
           if (!available()) throw new Error("The split tabs moved or became unavailable.");
           await tabCommand({ kind: "unsplit", pageId });
         }
-        await synchronizePairs([], restore.filter(group => group.panes.some(id => affected.has(id))), available);
+        await synchronizePairs([], restoring, available);
       } catch (restoreError) {
         throw new AggregateError([reason, restoreError], "The split could not be restored. Try separating its tabs.");
       }

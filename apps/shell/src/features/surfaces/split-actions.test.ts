@@ -73,3 +73,40 @@ it("refuses restoration for a persisted pair whose tab moved to another window",
   await expect(commitSplit(layout, layout, { ...layout, splitGroups: [] })).rejects.toThrow("tabs changed");
   expect(fixture.native).not.toHaveBeenCalled();
 });
+
+it.each([
+  { name: "runtime ownership", change: { ownedByRuntime: true }, moveSpace: false },
+  { name: "another window", change: { windowId: "other" }, moveSpace: false },
+  { name: "removal", change: null, moveSpace: false },
+  { name: "another Space", change: {}, moveSpace: true },
+])("refuses a concurrent restored pane that changes to $name during a rollback ACK", async ({ change, moveSpace }) => {
+  const previous = fixture.state.layout;
+  const concurrent = {
+    ...previous,
+    tabSpace: { ...previous.tabSpace, three: previous.tabSpace.one! },
+    splitGroups: [{ id: "pair", panes: ["one", "three"], layout: "row" as const, ratios: [.7], focused: "one" }],
+  };
+  fixture.state.pages.push(page("three"));
+  let entered!: () => void, release!: () => void;
+  const rollbackEntered = new Promise<void>(resolve => { entered = resolve; });
+  const rollbackAck = new Promise<void>(resolve => { release = resolve; });
+  fixture.native.mockImplementationOnce(async () => { fixture.state.layout = concurrent; });
+  fixture.native.mockImplementationOnce(async () => { entered(); await rollbackAck; });
+  const rejected = commitSplit(resizeSplit(previous, "one", 0, .6), previous).catch(error => error);
+  await rollbackEntered;
+  expect(fixture.native.mock.calls).toEqual([
+    [{ kind: "split", pageIds: ["one", "two"], layout: "row", ratio: .6 }],
+    [{ kind: "unsplit", pageId: "one" }],
+  ]);
+  fixture.state.pages = change
+    ? fixture.state.pages.map(value => value.pageId === "three" ? { ...value, ...change } : value)
+    : fixture.state.pages.filter(value => value.pageId !== "three");
+  if (moveSpace) fixture.state.layout = { ...fixture.state.layout, tabSpace: { ...fixture.state.layout.tabSpace, three: "another-space" } };
+  const afterChange = fixture.state.layout;
+  release();
+  const error = await rejected;
+  expect(fixture.native).toHaveBeenCalledTimes(2);
+  expect(error).toBeInstanceOf(AggregateError);
+  expect(fixture.state.layout).toBe(afterChange);
+  expect(fixture.persist).not.toHaveBeenCalled();
+});

@@ -1,0 +1,40 @@
+--- a/third_party/blink/renderer/core/frame/native_guest_stage_witness.cc
++++ b/third_party/blink/renderer/core/frame/native_guest_stage_witness.cc
+@@ -64,7 +64,7 @@
+ }
+ bool SamePages(const NativeGuestStageWitness& a, const NativeGuestStageWitness& b) {
+   if (a.pages.size() != b.pages.size()) return false;
+-  for (size_t i = 0; i < a.pages.size(); ++i)
++  for (wtf_size_t i = 0; i < a.pages.size(); ++i)
+     if (a.pages[i].page_id != b.pages[i].page_id ||
+         a.pages[i].document_epoch != b.pages[i].document_epoch ||
+         a.pages[i].content_id != b.pages[i].content_id) return false;
+@@ -153,7 +153,7 @@
+           2 * canonical_radius > std::min(pane_bounds.width(), pane_bounds.height())) return std::nullopt;
+       radius = canonical_radius;
+     } else if (pane) return std::nullopt;
+-    result.pages.push_back({*id, *content, *epoch, bounds, pane_bounds, radius, native_plugin});
++    result.pages.push_back(NativeGuestStagePage{*id, *content, *epoch, bounds, pane_bounds, radius, native_plugin});
+   }
+   return result;
+ }
+@@ -164,7 +164,7 @@
+     if (!before.split_instance || before.split_instance != after.split_instance || before.dragging || !before.focused_divider || !after.focused_divider || before.pages.size() < 2 ||
+         !SamePages(before, after) || before.selection_generation != after.selection_generation ||
+         before.geometry_generation >= kLargestGeneration || after.geometry_generation != before.geometry_generation + 1) return false;
+-    for (size_t i = 0; i < before.pages.size(); ++i)
++    for (wtf_size_t i = 0; i < before.pages.size(); ++i)
+       if (before.pages[i].bounds != after.pages[i].bounds) return true;
+     return false;
+   }
+--- a/content/browser/renderer_host/render_widget_host_impl.cc
++++ b/content/browser/renderer_host/render_widget_host_impl.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/renderer_host/render_widget_host_impl.h"
++
++#include "third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom.h"
+ 
+ #include <math.h>
+ 
