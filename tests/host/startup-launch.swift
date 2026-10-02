@@ -33,7 +33,7 @@ final class StartupHelperIdentity {
       a.st_ctimespec.tv_sec == b.st_ctimespec.tv_sec && a.st_ctimespec.tv_nsec == b.st_ctimespec.tv_nsec
   }
   private static func executablePath() throws -> String {
-    var buffer = [CChar](repeating: 0, count: Int(PROC_PIDPATHINFO_MAXSIZE))
+    var buffer = [CChar](repeating: 0, count: 4 * Int(PATH_MAX))
     guard proc_pidpath(getpid(), &buffer, UInt32(buffer.count)) > 0 else { throw StartupReceiptError.io }
     return String(cString: buffer)
   }
@@ -171,7 +171,7 @@ guard lstat(binary, &binaryInfo) == 0, (binaryInfo.st_mode & S_IFMT) == S_IFREG,
 }
 // Child stdout/stdin cannot forge or consume the launcher's receipt channel.
 // Stderr remains inherited for genuine bounded native producer records.
-var actions = posix_spawn_file_actions_t()
+var actions: posix_spawn_file_actions_t? = nil
 guard posix_spawn_file_actions_init(&actions) == 0,
       posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0) == 0,
       posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0) == 0 else {
@@ -182,7 +182,7 @@ var arguments = [binary, "--user-data-dir=" + profile, "--no-first-run", "--no-d
 if request.kind == "aux" { arguments.append(contentsOf: ["--aux-native-performance-observer", "--aux-native-startup-observer"]) }
 let ownedArguments = arguments.map { strdup($0) }
 var argv = ownedArguments + [nil]
-var attributes = posix_spawnattr_t()
+var attributes: posix_spawnattr_t? = nil
 var defaultSignals = sigset_t(), emptyMask = sigset_t()
 sigemptyset(&defaultSignals); sigaddset(&defaultSignals, SIGTERM); sigaddset(&defaultSignals, SIGINT)
 sigemptyset(&emptyMask)
