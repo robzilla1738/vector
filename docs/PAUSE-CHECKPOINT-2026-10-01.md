@@ -32,3 +32,9 @@ Native source replay is34 ordered packets/108 exact mirrors/73 verified baseline
 5. Finish all43 mapped features and22 legacy requalifications, schema2 only through qualify.mjs, ≥20 AC trials/all budgets, F21 L/D/LR/DR plus RM/narrow/focus and no P0–P2 findings/owner signoff, WaveQ all-on without dev acceptance, final full gates, required merge order, local main fast-forward. No push/sign/release, setup or credential/session/keychain reads.
 
 Design resources are `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/` (130MB installed-build capture), indexed by `06_COPYABLE-SURFACES.md` §§8–8c; retain Aux branding/logo/name. These are already recorded in F21 and roadmap documentation.
+
+## Final lane checkpoint references
+
+- Builder: `/Users/rcourson/Code/web/release/test-artifacts/builder-e496-pause-checkpoint.md`, SHA ddff1591c2e6ce14aa3fac54e1a34667fa4b851fbfe9ae44e7d68d76478a9d0f. **Do not merely continue its stopped orchestration shell**: it contains queued staging. Read exact verified-owned-PID termination/reaping instructions in that checkpoint; never signal reused PIDs. Native runtime remains de90 and the e496 application pair is not ready to launch.
+- Design: `/tmp/aux-browser-runtime-design/docs/design-reviews/DESIGN-LANE-PAUSE-CHECKPOINT.json`, review checkpoint commit12a134a9, source8be1d490. It pins all unadopted packet hashes and explicitly records uncompiled/unrun limits.
+- L10 pending dispatch packet files saved under `/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/`: `OVERNIGHT-DISPATCH-BASELINES.json`, `OVERNIGHT-DISPATCH-REVIEW.md`, `overnight-dispatch-boundary.patch`. Obtain the final pause checkpoint/test outcome on resumption; the packet is not yet root-adopted or root-verified.
