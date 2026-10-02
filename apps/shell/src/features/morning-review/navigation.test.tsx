@@ -21,6 +21,15 @@ beforeEach(() => {
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
 async function render() { await act(async () => root.render(<><SettingsShell shellRef={createRef<HTMLElement>()} nav={<button>Automations</button>}><h1>Settings</h1></SettingsShell><NightOverlays /></>)); }
+const select = (label: string) => [...document.querySelectorAll<HTMLSelectElement>('dialog label select')].find(node => node.parentElement?.textContent?.startsWith(label))!;
+async function waitForQueue() {
+  await act(async () => { await import('./QueueTonight'); });
+  await vi.waitFor(async () => {
+    await act(async () => {});
+    expect(select('Space')).toBeDefined();
+    expect(select('Work')).toBeDefined();
+  });
+}
 it('dismisses the actual modal lifecycle when global Settings navigation occurs', async () => {
   useNightReview.setState({ inboxOpen: true }); await render();
   expect(document.querySelector('dialog[open][aria-label="Overnight review"]')).not.toBeNull();
@@ -32,8 +41,7 @@ it('dismisses the actual modal lifecycle when global Settings navigation occurs'
 it('loads no queue data before the first visit, and preserves form edits across navigation', async () => {
   await render(); expect(fixture.call).not.toHaveBeenCalled();
   await act(async () => useNightReview.setState({ queueOpen: true, queueVisited: true }));
-  await act(async () => new Promise(resolve => setTimeout(resolve, 30)));
-  const select = (label: string) => [...document.querySelectorAll<HTMLSelectElement>('dialog label select')].find(node => node.parentElement?.textContent?.startsWith(label))!;
+  await waitForQueue();
   await act(async () => { select('Space').value = 'space-b'; select('Space').dispatchEvent(new Event('change', { bubbles: true })); });
   await act(async () => { select('Work').value = 'memory.reindex'; select('Work').dispatchEvent(new Event('change', { bubbles: true })); });
   const budget = document.querySelector<HTMLInputElement>('dialog input[type="number"]')!;
@@ -49,7 +57,7 @@ it('loads no queue data before the first visit, and preserves form edits across 
 it('preserves the selected Skill and edited parameters without queuing work on navigation', async () => {
   fixture.call.mockImplementation(async (method: string) => method === 'workspaces.list' ? [{ workspaceId: 'space-a', name: 'Space A' }] : method === 'routines.list' ? [{ routineId: 'skill-a', title: 'Reviewed skill', paused: false, revision: 1, parameters: [{ name: 'company', value: '' }] }] : []);
   useNightReview.setState({ queueOpen: true, queueVisited: true }); await render();
-  const select = (label: string) => [...document.querySelectorAll<HTMLSelectElement>('dialog label select')].find(node => node.parentElement?.textContent?.startsWith(label))!;
+  await waitForQueue();
   await act(async () => { select('Work').value = 'routine'; select('Work').dispatchEvent(new Event('change', { bubbles: true })); });
   await act(async () => { select('Skill').value = 'skill-a'; select('Skill').dispatchEvent(new Event('change', { bubbles: true })); });
   const parameter = document.querySelector<HTMLInputElement>('[aria-label="Overnight value for company"]')!;
