@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { setTabLayout } from '../lib/tab-layout.mjs';
 
 export const journey = {
   id: 'extension-actions', title: 'Use unpacked Chromium actions, shortcuts and a native side panel',
@@ -95,13 +96,51 @@ export async function run(t) {
     return { ax, rpc: await t.rpc('pages.list') };
   });
   await t.step('preserve native extension-created tab placement and switch to its existing Space', { kind: 'ui', features: ['extensions'] }, async () => {
-    const spacesA = await t.rpc('spaces.create', { name: 'Aux extension Space A', color: 'blue' });
-    const spaceA = spacesA.find(space => space.name === 'Aux extension Space A');
-    t.assert.ok(spaceA);
-    const spacesB = await t.rpc('spaces.create', { name: 'Aux extension Space B', color: 'green' });
-    const spaceB = spacesB.find(space => space.name === 'Aux extension Space B');
-    t.assert.ok(spaceB);
-    await t.rpc('pages.moveToWindow', { pageId: page.pageId, spaceId: spaceA.id, activate: true });
+    await setTabLayout(t, 'vertical', { role: 'AXRadioButton', name: '^Aux native Red(?: Close Aux native Red)?$', match: 'regex', scope: 'shell', index: 0 });
+    const createSpace = async (name, color) => {
+      const menu = { role: 'AXPopUpButton', name: '^(Personal|Aux extension Space A|Aux extension Space B)$', match: 'regex', scope: 'shell', index: 0 };
+      await t.ax.waitFor(menu);
+      await t.ax.press(menu);
+      await t.ax.press(control('New space', 'AXMenuItem'));
+      const input = { role: 'AXTextField', scope: 'shell', index: 0 };
+      await t.ax.waitFor(input);
+      t.assert.equal((await t.ax.query(input))[0].placeholder, 'Name', 'The actual Space editor owns this field');
+      await t.ax.type(name, input);
+      await t.ax.press(control(color, 'AXRadioButton'));
+      await t.ax.press(control('Create'));
+      await t.ax.waitFor(control('New space'), 'absent');
+      const saved = await t.until('person-created native Space workspace is published', async () => (await t.rpc('workspaces.list')).find(workspace => workspace.name === name));
+      return { ...saved, color };
+    };
+    const spaceA = await createSpace('Aux extension Space A', 'blue');
+    const spaceB = await createSpace('Aux extension Space B', 'green');
+    const menu = { role: 'AXPopUpButton', name: '^(Personal|Aux extension Space A|Aux extension Space B)$', match: 'regex', scope: 'shell', index: 0 };
+    const selectSpace = async name => {
+      await t.ax.press(menu);
+      await t.ax.press({ name, match: 'exact', scope: 'shell', index: 0 });
+      await t.ax.waitFor({ ...control(name, 'AXPopUpButton') });
+    };
+    await selectSpace('Personal');
+    const moveOriginal = async destination => {
+      const previousId = (await t.rpc('workspace.get')).tabPlacements?.[page.pageId]?.spaceId;
+      const tab = { role: 'AXRadioButton', name: '^Aux native Red(?: Close Aux native Red)?$', match: 'regex', scope: 'shell', index: 0 };
+      await t.ax.waitFor(tab);
+      await t.ax.contextMenu(tab);
+      await t.ax.press(control('Move tab…', 'AXMenuItem'));
+      await t.ax.press(control(destination.name, 'AXMenuItem'));
+      await selectSpace(destination.name);
+      await t.ax.waitFor(tab);
+      await t.ax.press(tab);
+      const value = await t.until('original tab placement and activation published after person move', async () => {
+        const workspace = await t.rpc('workspace.get');
+        const id = workspace.tabPlacements?.[page.pageId]?.spaceId;
+        return workspace.activePageId === page.pageId && id && id !== previousId && workspace;
+      });
+      const id = value.tabPlacements[page.pageId].spaceId;
+      t.assert.ok(!destination.id || destination.id === id, 'An existing destination retains its original native identity');
+      destination.id = id;
+    };
+    await moveOriginal(spaceA);
     const created = [];
     for (const button of ['Create fixture tab', 'Create opener fixture tab']) {
       const before = await t.rpc('pages.list');
@@ -115,7 +154,8 @@ export async function run(t) {
       created.push(tab);
       await t.ax.key('escape', 'hid');
     }
-    await t.rpc('pages.moveToWindow', { pageId: page.pageId, spaceId: spaceB.id, activate: true });
+    await moveOriginal(spaceB);
+    t.assert.notEqual(spaceA.id, spaceB.id, 'The two person-created Spaces have distinct native identities');
     await t.ax.press(action); await t.ax.waitFor(popup);
     await t.ax.press(control('Activate fixture tab', 'AXButton', 'any'));
     const workspace = await t.until('extension activation selects its existing native page', async () => {

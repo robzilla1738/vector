@@ -13,7 +13,7 @@ let uuidBytes = (1...16).map { UInt8($0) }
 let uuid = uuidBytes.map { String(format: "%02x", $0) }.joined()
 func bytes(duplicate: Bool = false) -> Data {
   var header = mach_header_64()
-  header.magic = MH_MAGIC_64; header.cputype = CPU_TYPE_ARM64; header.filetype = MH_EXECUTE
+  header.magic = MH_MAGIC_64; header.cputype = CPU_TYPE_ARM64; header.filetype = UInt32(MH_EXECUTE)
   header.ncmds = duplicate ? 2 : 1; header.sizeofcmds = header.ncmds * 24
   var data = withUnsafeBytes(of: &header) { Data($0) }
   var command = load_command(cmd: UInt32(LC_UUID), cmdsize: 24)

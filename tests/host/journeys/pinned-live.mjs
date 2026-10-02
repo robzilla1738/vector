@@ -70,7 +70,12 @@ export async function run(t) {
     await t.ax.key('command+,', 'hid'); await t.ax.waitFor(s('MCP & Connectors')); await t.ax.press(s('MCP & Connectors'));
     await t.ax.type('Fixture GitHub', s('Connection name', 'AXTextField'));
     await t.ax.type('aux-loopback-fixture-token', s('Personal access token', 'AXSecureTextField')); await t.ax.press(s('Connect GitHub'));
-    await t.until('real account metadata stored', async () => (await t.rpc('github.connections.list')).some(account => account.name === 'Fixture GitHub'));
+    const githubAccount = s('Fixture GitHub', 'AXStaticText');
+    await t.ax.waitFor(githubAccount);
+    const githubLogin = { ...s('^\\s*·\\s*aux-fixture$', 'AXStaticText'), match: 'regex' };
+    await t.ax.waitFor(githubLogin);
+    const github = { account: await t.ax.query(githubAccount), login: await t.ax.query(githubLogin) };
+    t.assert.equal(github.account.length, 1, 'The actual trusted account list publishes fixture name and login');
     await t.ax.press(s('Connect Google Calendar'));
     await t.until('real Calendar OAuth account stored', async () => (await t.rpc('calendar.connections.list')).connections.some(account => account.label === 'Aux Calendar fixture'), 30_000);
     await t.ax.key('escape', 'hid');
@@ -78,7 +83,7 @@ export async function run(t) {
     await t.ax.waitFor(s('Review Aux work, unread'));
     await makeFolder(t, 'Calendar test', "Today's Calendar events with links", () => choose(t, 'Account', 'Aux Calendar fixture'));
     await t.ax.waitFor(s('Review the browser, unread')); await t.capture('github-calendar-live');
-    return { ax: await t.ax.dump(), rpc: { github: await t.rpc('github.connections.list'), calendar: await t.rpc('calendar.connections.list') } };
+    return { ax: await t.ax.dump(), githubAccount: github, rpc: { calendar: await t.rpc('calendar.connections.list') } };
   });
   await t.step('restart retains live rows and read state', { kind: 'ui', features: ['liveFolders', 'pinnedApps'] }, async () => {
     await t.restart(); await showSidebar(t); await t.ax.waitFor(s('Read Red')); await t.ax.waitFor(s('Read Blue, unread'));
