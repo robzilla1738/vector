@@ -5,7 +5,7 @@ import { call } from "../../store";
 import { executeCommand } from "../../commands";
 import { Dialog } from "../../ui/dialog";
 import { useNightReview } from "./state";
-export default function QueueTonight() {
+export default function QueueTonight({ active = true }: { active?: boolean }) {
   const [spaces, setSpaces] = useState<Workspace[]>([]), [workspaceId, setWorkspaceId] = useState("");
   const [goals, setGoals] = useState<Goal[]>([]), [skills, setSkills] = useState<Routine[]>([]);
   const [kind, setKind] = useState<"goal" | "routine" | "memory.consolidate" | "memory.reindex">("goal"), [id, setId] = useState("");
@@ -13,13 +13,16 @@ export default function QueueTonight() {
   const skill = skills.find(item => item.routineId === id);
   const missingVariables = kind === "routine" && skill?.parameters.some(item => !(parameters[item.name] ?? item.value ?? "").trim());
   const [budgetUsd, setBudget] = useState(DEFAULT_NIGHT_SHIFT.perTaskUsd), [error, setError] = useState("");
-  useEffect(() => { let active = true; void call("workspaces.list", {}).then(items => { if (active) { setSpaces(items); setWorkspaceId(items[0]?.workspaceId ?? ""); } }).catch(reason => { if (active) setError(String(reason)); }); return () => { active = false; }; }, []);
+  useEffect(() => { if (!active) return; let live = true; void call("workspaces.list", {}).then(items => { if (live) { setSpaces(items); setWorkspaceId(current => current || items[0]?.workspaceId || ""); } }).catch(reason => { if (live) setError(String(reason)); }); return () => { live = false; }; }, [active]);
   useEffect(() => {
-    let active = true; if (!workspaceId) return;
+    let live = true; if (!active || !workspaceId) return;
     void Promise.all([call("goals.list", { workspaceId }), call("routines.list", { workspaceId, includeArchived: false })])
-      .then(([goals, skills]) => { if (active) { setGoals(goals.filter(goal => goal.status === "draft")); setSkills(skills.filter(skill => !skill.paused)); } })
-      .catch(reason => { if (active) setError(String(reason)); }); return () => { active = false; };
-  }, [workspaceId]);
+      .then(([goals, skills]) => { if (live) { setGoals(goals.filter(goal => goal.status === "draft")); setSkills(skills.filter(skill => !skill.paused)); } })
+      .catch(reason => { if (live) setError(String(reason)); }); return () => { live = false; };
+  }, [workspaceId, active]);
+  // Keep a visited form mounted when navigating elsewhere; unsubmitted edits
+  // stay local to this window and are never queued by hiding the dialog.
+  if (!active) return null;
   return <Dialog label="Queue for tonight" onClose={() => useNightReview.setState({ queueOpen: false })}>
     <h2>Queue for tonight</h2><p>Choose saved work and a spending limit. Aux will check the current task, tabs, permissions and power before starting.</p>
     <label>Space<select value={workspaceId} onChange={event => { setWorkspaceId(event.target.value); setId(""); setParameters({}); setGoals([]); setSkills([]); }}>{spaces.map(space => <option key={space.workspaceId} value={space.workspaceId}>{space.name}</option>)}</select></label>

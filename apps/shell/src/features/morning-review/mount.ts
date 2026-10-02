@@ -2,29 +2,23 @@ import { createElement, lazy, Suspense } from "react";
 import type { FeatureMount, ComposerPluginProps } from "../registry";
 import { call, useStore } from "../../store";
 import { executeCommand } from "../../commands";
-import { Dialog } from "../../ui/dialog";
-import { OvernightCard, MorningReviewInbox } from "./MorningReview";
+import { NightOverlays } from "./NightOverlays";
+export { NightOverlays } from "./NightOverlays";
+import { OvernightCard } from "./MorningReview";
 const NightSettings = lazy(() => import("./NightSettings").then(module => ({ default: module.NightSettings })));
 function NightSettingsSection() {
   return createElement(Suspense, { fallback: createElement("p", { role: "status" }, "Loading night shift settings…") }, createElement(NightSettings));
 }
 import { bootNightReview, queueTonight, reviewNightItem, useNightReview, nightReviewGeneration } from "./state";
-const QueueTonight = lazy(() => import("./QueueTonight"));
 function QueueButton({ disabled = false }: Partial<ComposerPluginProps>) {
   return createElement("button", { className: "btn sm ghost", disabled, onClick: () => void executeCommand("queue-for-tonight") }, "Queue for tonight");
-}
-function NightOverlays() {
-  const inbox = useNightReview(state => state.inboxOpen), queue = useNightReview(state => state.queueOpen);
-  if (queue) return createElement(Suspense, { fallback: createElement("p", { role: "status" }, "Loading saved work…") }, createElement(QueueTonight));
-  if (inbox) return createElement(Dialog, { label: "Overnight review", onClose: () => useNightReview.setState({ inboxOpen: false }), children: createElement(MorningReviewInbox) });
-  return null;
 }
 export const mount: FeatureMount = {
   feature: "overnightReview", boot: bootNightReview, sidebarFooterItems: [OvernightCard], startItems: [OvernightCard], overlays: [NightOverlays],
   composerPlugins: [QueueButton], settingsSections: [{ category: "Automations", component: NightSettingsSection }],
   commands: {
     "queue-for-tonight": (_context, invocation) => invocation.payload && "queue" in invocation.payload
-      ? queueTonight(invocation.payload.queue) : useNightReview.setState({ queueOpen: true, inboxOpen: false }),
+      ? queueTonight(invocation.payload.queue) : useNightReview.setState({ queueOpen: true, inboxOpen: false, queueVisited: true }),
     "review-overnight": () => useNightReview.setState({ inboxOpen: true, queueOpen: false }),
     "review-overnight-item": async (_context, invocation) => {
       if (!invocation.payload || !("decision" in invocation.payload)) throw new Error("Choose an overnight item to review.");
