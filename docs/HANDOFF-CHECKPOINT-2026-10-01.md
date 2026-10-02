@@ -1,6 +1,6 @@
-# Requested pause checkpoint — 2026-10-01
+# New-agent handoff checkpoint — 2026-10-01
 
-The user requested a good pausing point. The full roadmap is incomplete; resume the existing goal, preserve its complete scope and merge order. No qualification or main fast-forward is claimed.
+The user requested documentation for handoff to a new agent. Keep the existing goal active: no goal-status pause was applied. The full roadmap is incomplete; continue its complete scope and merge order. No qualification or main fast-forward is claimed. Implementation lanes are frozen for transfer, and only the previously running native build continues.
 
 ## Immutable candidates and saved work
 
@@ -38,3 +38,9 @@ Design resources are `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/` (13
 - Builder: `/Users/rcourson/Code/web/release/test-artifacts/builder-e496-pause-checkpoint.md`, SHA ddff1591c2e6ce14aa3fac54e1a34667fa4b851fbfe9ae44e7d68d76478a9d0f. **Do not merely continue its stopped orchestration shell**: it contains queued staging. Read exact verified-owned-PID termination/reaping instructions in that checkpoint; never signal reused PIDs. Native runtime remains de90 and the e496 application pair is not ready to launch.
 - Design: `/tmp/aux-browser-runtime-design/docs/design-reviews/DESIGN-LANE-PAUSE-CHECKPOINT.json`, review checkpoint commit12a134a9, source8be1d490. It pins all unadopted packet hashes and explicitly records uncompiled/unrun limits.
 - L10 pending dispatch packet files saved under `/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/`: `OVERNIGHT-DISPATCH-BASELINES.json`, `OVERNIGHT-DISPATCH-REVIEW.md`, `overnight-dispatch-boundary.patch`. Obtain the final pause checkpoint/test outcome on resumption; the packet is not yet root-adopted or root-verified.
+
+## Final L10 transfer and first new-agent action
+
+L10 is frozen clean at1ac4af93; checkpoint `/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/PAUSE-CHECKPOINT.md`. Overnight packet SHA6994586537b64a5c8ee086438b1b2819868b8b8f8f3bd2c24935a116406abad2. Lane reports rebuild/scoped lint and three focused suites53 tests pass; this result is not yet independently root-verified. No L10 jobs remain. Parent already adopted permission retry tests and positive mentioned-page journey in e496; external direct-owner denial journey is saved in root34d29cab. QuickJS owner-manifest test remains unadopted.
+
+Start by inspecting the builder's running process/slot and final log, then recreate independent root review, trust and design lanes as useful. Existing agents are frozen; do not assume they will continue automatically. Maintain one builder and explicit file ownership. Full objective is `/Users/rcourson/.codex/attachments/eaf3bec7-e6ec-49bb-9ced-b48bf8a8fe6d/goal-objective.md`; original plan `/Users/rcourson/.claude/plans/pasted-content-id-c7c7-you-are-fuzzy-garden.md`. Read both and AGENTS fully before roadmap work. This checkpoint overrides older historical status paragraphs at the top of HANDOFF and board.

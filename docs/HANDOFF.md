@@ -1,6 +1,6 @@
-## Requested pause — 2026-10-01
+## New-agent handoff — 2026-10-01
 
-User requested a resumable pausing point. See [pause checkpoint](PAUSE-CHECKPOINT-2026-10-01.md) for exact saved candidates, verified deliverables, unadopted work and resume order. Only the existing e496 native build may finish; no new implementation, staging or journeys. Full roadmap remains incomplete; main unchanged.
+User requested documentation for handoff; the existing goal remains active, not paused. See [authoritative handoff checkpoint](HANDOFF-CHECKPOINT-2026-10-01.md) for saved commits, verified deliverables, outstanding requirements and exact resume order. Implementation/design/trust lanes are frozen for transfer; only the existing e496 native build continues, with queued staging blocked. Read its process/slot instructions before operating native. Full roadmap remains incomplete; main unchanged.
 
 ## Current coherent throughput checkpoint
 
