@@ -190,7 +190,13 @@ void MediaSessionController::OnRequestAutoPictureInPictureSize(
     return;
   }
   observer->GetMediaPlayerRemote(id_)->RequestAutoPictureInPictureSize(
-      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), gfx::Size()));
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+          base::BindOnce(
+              [](AutoPictureInPictureSizeCallback callback, const gfx::Size& size) {
+                std::move(callback).Run(size);
+              },
+              std::move(callback)),
+          gfx::Size()));
 }
 
 RenderFrameHost* MediaSessionController::render_frame_host() const {
