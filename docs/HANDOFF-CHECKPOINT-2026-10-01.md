@@ -1,3 +1,7 @@
+## Resumed full roadmap — October 1, 2026
+
+The user explicitly resumed implementation through completion, excellence and verification. The prior pause is historical. Root reviews/composes Settings, harness, DR008 and genuine Zap fixture corrections; one native builder owns all stable builds/staging/journeys; trust finishes receipt/accounting/lifecycle authority; design completes causal presentation producers and stable polish. The user also requested viewing the current compiled32106 build during implementation. No qualification or main fast-forward is claimed; all required gates remain.
+
 # Aux roadmap handoff — paused 2026-10-01
 
 This is the authoritative checkpoint. The user explicitly requested a pause for transfer to another agent. Earlier active/resumed paragraphs in other documents are historical. The full objective is **incomplete**, not achieved. Do not resume automatically; await the user's authorization. No feature qualification, Wave Q promotion or main fast-forward is claimed for the current composed candidate.

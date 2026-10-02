@@ -1,3 +1,7 @@
+## Resumed full roadmap — October 1, 2026
+
+The user explicitly resumed implementation through completion, excellence and verification. The prior pause is historical. Root reviews/composes Settings, harness, DR008 and genuine Zap fixture corrections; one native builder owns all stable builds/staging/journeys; trust finishes receipt/accounting/lifecycle authority; design completes causal presentation producers and stable polish. The user also requested viewing the current compiled32106 build during implementation. No qualification or main fast-forward is claimed; all required gates remain.
+
 ## Authoritative pause for handoff — 2026-10-01
 
 The user requested stopping at a handoff point. **Goal paused; full roadmap incomplete.** Read [the current checkpoint](HANDOFF-CHECKPOINT-2026-10-01.md) and [saved evidence/patch index](handoff/2026-10-01/final-transfer/artifact-index.json) first. Root source is saved at fe77a837 (Settings correction,42 focused tests); staged native/runtime pair remains32106f84 (coherent build passed, full source2430 tests). All nine physical journeys failed overall; Broker fixture, held-ALLOW/accounting authority, performance producers and F21 remain open. No new qualifications or main fast-forward. All active lanes are stopping and saving transfer checkpoints; no further implementation is authorized before resume.
