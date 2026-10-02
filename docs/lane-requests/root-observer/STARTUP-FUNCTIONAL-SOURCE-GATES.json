@@ -1,0 +1,94 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "qualification": false,
+  "sourceGates": {
+    "workspaceBuild": "PASS before runtime tests; /tmp/aux-root-startup-secret-build-final.log",
+    "fullUnit": "485 files/2632 PASS before final SetupProgress effect/test cleanup",
+    "changedFinalUnit": "SetupProgress2 PASS after final cleanup",
+    "typecheck": "PASS",
+    "lintWarnings": 381,
+    "lintMaximum": 390,
+    "formatRatchet": "PASS",
+    "hostBindings": "PASS",
+    "bridgeCoverage": "PASS",
+    "nativePortInventory": "PASS",
+    "journeyRegistry": {
+      "journeys": 47,
+      "features": 43
+    },
+    "budgetsKB": {
+      "startup": 487,
+      "css": 175,
+      "total": 1799,
+      "maximum": [
+        490,
+        180,
+        1800
+      ]
+    }
+  },
+  "renderer": {
+    "files": 175,
+    "digest": "e59508dcd4ade244132826cdcc31982454b669e9e585fcaf5b03a5282a4d8c55"
+  },
+  "logs": {
+    "aux-root-startup-setup-bindings.log": {
+      "path": "/tmp/aux-root-startup-setup-bindings.log",
+      "sha256": "660bdebe965820ac64d1154b21a96518bcc22c74db990d7e4be279e8ce6cfe44"
+    },
+    "aux-root-startup-setup-renderer.log": {
+      "path": "/tmp/aux-root-startup-setup-renderer.log",
+      "sha256": "191784ac10f9afae81ccc87f2386a06b2c8770fb87b4fceea7aa6ef9ffec6bae"
+    },
+    "aux-root-startup-setup-format-final.log": {
+      "path": "/tmp/aux-root-startup-setup-format-final.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    "aux-root-startup-setup-bridge.log": {
+      "path": "/tmp/aux-root-startup-setup-bridge.log",
+      "sha256": "b902406e71432dcc601710f7966314f27c06f12c1aec31900d24c1d64fe886b6"
+    },
+    "aux-root-startup-setup-full-test.log": {
+      "path": "/tmp/aux-root-startup-setup-full-test.log",
+      "sha256": "e8eb87d5b7e422108edca73b2196996eaf13d82a527dde4af0f6da48f95ea1ea"
+    },
+    "aux-root-startup-setup-lint-final.log": {
+      "path": "/tmp/aux-root-startup-setup-lint-final.log",
+      "sha256": "3ff3414e516f141783635cb76c7eb603d8cbabab658062a983a527d8496c7033"
+    },
+    "aux-root-startup-setup-budgets.log": {
+      "path": "/tmp/aux-root-startup-setup-budgets.log",
+      "sha256": "257b30b5f5c98c8980f4b752668eaff838334eee867ee5e0905051eff46793f5"
+    },
+    "aux-root-startup-setup-journeys.log": {
+      "path": "/tmp/aux-root-startup-setup-journeys.log",
+      "sha256": "4b10e449edc1397c9026a41a813b448986362c446092aafa21db5002483b7d4c"
+    },
+    "aux-root-startup-setup-final-focused.log": {
+      "path": "/tmp/aux-root-startup-setup-final-focused.log",
+      "sha256": "27332f737713389260df842ae70171daf8bae68b90d2e9a20a691418870b087c"
+    },
+    "aux-root-startup-setup-assets.log": {
+      "path": "/tmp/aux-root-startup-setup-assets.log",
+      "sha256": "4963b0ed6181a15720bb244fee98ba6a5400f6ddc0d96ab1031ccfb164cbac76"
+    },
+    "aux-root-startup-setup-native-inventory.log": {
+      "path": "/tmp/aux-root-startup-setup-native-inventory.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "aux-root-startup-setup-typecheck-final.log": {
+      "path": "/tmp/aux-root-startup-setup-typecheck-final.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    }
+  },
+  "nativeReplay": "STARTUP-FUNCTIONAL-FULL-REPLAY.json",
+  "remaining": [
+    "Fresh native stage/build/pair/enumeration/assertions/journeys",
+    "Startup cold audit Swift compile and genuine inventory availability",
+    "Stock0294 complete producer and separate warm native window producer",
+    "Every20 actual AC performance measurements",
+    "Whole0280 authority/closed observer/navigation/Stop-resume",
+    "Full qualification/design/signoff/merge/final main FF"
+  ]
+}

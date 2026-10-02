@@ -26,6 +26,7 @@ final class StartupColdProcessAudit {
   private let expectedSha256: String
   private let expectedUuid: String
   private var inventory: (UInt64, UInt64)?
+  private var attempted = false
   private var consumed = false
   private static func same(_ a: stat, _ b: stat) -> Bool {
     a.st_dev == b.st_dev && a.st_ino == b.st_ino && a.st_mode == b.st_mode &&
@@ -140,7 +141,8 @@ final class StartupColdProcessAudit {
     return Set(live)
   }
   func provePrelaunchAbsence() throws {
-    guard inventory == nil, !consumed else { throw StartupColdAuditError.incompleteInventory }
+    guard !attempted, !consumed else { throw StartupColdAuditError.incompleteInventory }
+    attempted = true // incomplete inventory cannot later be retried as this trial
     let before = mach_absolute_time()
     try validateExecutable()
     let ids = try Self.processIds()

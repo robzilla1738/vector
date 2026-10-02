@@ -22,6 +22,7 @@ import { memorySaverCyclesChanged, memorySaverCyclesKey, memorySaverSummary, rea
 import { TaskAttentionSettings } from "../../agent/TaskAttentionSettings";
 import { RecoveryPackage } from "./RecoveryPackage";
 import { requestOnboardingReplay } from "../../onboarding/replay";
+import { SetupProgress } from "../../onboarding/SetupProgress";
 
 export function GeneralSettings({
   active,
@@ -44,6 +45,7 @@ export function GeneralSettings({
   refreshVersion: number;
   onIndexChange: Dispatch<SetStateAction<number>>;
 }) {
+  const connected = useStore(state => state.connected);
   const [dataDir, setDataDir] = useState("");
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
   const [diagnosticsMessage, setDiagnosticsMessage] = useState("");
@@ -158,6 +160,7 @@ export function GeneralSettings({
             <DefaultBrowserSetting />
           </IndexedField>
           <IndexedField label="Set up Aux" hint="Replay import, model setup and your first chat. Saved work is kept.">
+            {active && connected && <SetupProgress />}
             <button className="btn sm" onClick={requestOnboardingReplay}>Replay setup</button>
           </IndexedField>
 

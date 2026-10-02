@@ -268,3 +268,5 @@ aux/runtime/0292-startup-authenticated-hello.patch
 aux/runtime/0293-startup-absolute-deadline.patch
 aux/runtime/0295-download-fixture-delegate-shutdown.patch
 aux/runtime/0296-reflected-fill-fixture-geometry.patch
+aux/runtime/0297-result-preview-header-csp.patch
+aux/runtime/0298-retired-surface-guest-attachment.patch

@@ -1,0 +1,8 @@
+{
+  "actualUpstream": "a654841425914cbb703a2931e07b70a83aedbafd",
+  "originals": {
+    "components/surface_embed/browser/surface_embed_host.cc": "abbc031f360a86cab6a37864940d48a84f9002b7b1d981e5390d5a2de6b5d9ca",
+    "components/surface_embed/browser/surface_embed_plugin_browsertest.cc": "97a8e7c7d9a63727d0522b60bb08492369324d53f73122f0deead9460bb35cf4"
+  },
+  "nativeExecuted": false
+}

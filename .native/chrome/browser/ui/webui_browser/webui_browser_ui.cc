@@ -366,6 +366,10 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::TrustedTypes,
       "trusted-types aux-reader-distiller;");
+  // The packaged shell's sandboxed result previews use only the fixed private
+  // preview scheme. The WebUI header and renderer meta policies must agree.
+  source->OverrideContentSecurityPolicy(
+      network::mojom::CSPDirectiveName::FrameSrc, "frame-src aux-result:;");
   source->AddResourcePaths(kAuxHostResources);
 #else
   webui::SetupWebUIDataSource(source, kWebuiBrowserResources,
