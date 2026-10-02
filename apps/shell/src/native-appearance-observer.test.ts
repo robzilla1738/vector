@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { startNativeAppearanceObserver } from "./native-appearance-observer";
+import { startNativeAppearanceObserver, startNativePipAppearanceObserver } from "./native-appearance-observer";
 
 afterEach(() => { vi.useRealTimers(); });
 it("recovers from a real transient refusal and remains serial", async () => {
@@ -39,4 +39,21 @@ it("does not schedule after unmount during a pending native call", async () => {
   const stop = startNativeAppearanceObserver({ appearanceSnapshot } as never);
   stop(); finish(); await vi.advanceTimersByTimeAsync(2000);
   expect(appearanceSnapshot).toHaveBeenCalledTimes(1);
+});
+
+it("keeps looking for an actual child after ordinary absent-child refusals", async () => {
+  vi.useFakeTimers();
+  const read = vi.fn().mockRejectedValue(new Error("unavailable: PiP appearance owner changed or is absent"));
+  const stop = startNativePipAppearanceObserver(read);
+  await vi.advanceTimersByTimeAsync(15000);
+  expect(read).toHaveBeenCalledTimes(31);
+  read.mockResolvedValueOnce({}); await vi.advanceTimersByTimeAsync(500);
+  expect(read).toHaveBeenCalledTimes(32);
+  stop(); await vi.advanceTimersByTimeAsync(1000); expect(read).toHaveBeenCalledTimes(32);
+});
+it("stops private child observation on authorization refusal", async () => {
+  vi.useFakeTimers();
+  const read = vi.fn().mockRejectedValue(new Error("forbidden: PiP appearance requires the authorized test shell"));
+  const stop = startNativePipAppearanceObserver(read);
+  await vi.advanceTimersByTimeAsync(1500); expect(read).toHaveBeenCalledTimes(1); stop();
 });

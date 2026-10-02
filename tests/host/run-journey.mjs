@@ -14,7 +14,7 @@ import { createJourneyApp } from './lib/app.mjs';
 import { createRpc } from './lib/rpc.mjs';
 import { createAxClient, preflight } from './lib/ax.mjs';
 import { createFixture } from './lib/fixture.mjs';
-import { createAppearanceProvenance } from './lib/appearance-provenance.mjs';
+import { createAppearanceProvenance, createPipAppearanceProvenance } from './lib/appearance-provenance.mjs';
 import { createEvidence } from './lib/evidence.mjs';
 import { createVisual } from './lib/visual.mjs';
 import { assertJourneyIdentity } from './lib/identity.mjs';
@@ -47,7 +47,7 @@ const manifest = { schema: 2, id: journey.id, features: journey.features, needs:
   productIdentity: identity, shellDigest: JSON.parse(readFileSync(join(root, 'chromium/shell-assets/manifest.json'), 'utf8')).sha256,
   attempt: Number(values.attempt), startedAt: new Date().toISOString(), steps: [], captures: [],
 };
-let app, ax, fixture, evidence, appearance;
+let app, ax, fixture, evidence, appearance, pipAppearance;
 async function configureAppearance() {
   if (!values.appearance) return;
   const actual = await app.identity();
@@ -55,6 +55,7 @@ async function configureAppearance() {
   const candidate = { productIdentity: identity, native: { sourceCommit: actual.native.sourceCommit, buildId: actual.native.buildId, manifestHash: actual.native.manifestHash }, shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
   app.configureAppearance(candidate);
   appearance = createAppearanceProvenance({ outputDir, candidate, targetPid: app.pid, helper: ax, helperSource: ax.helperSource, helperExecutable: ax.helperExecutable, observeWindow: selection => app.observeAppearance(selection), readIdentity: () => app.identity() });
+  pipAppearance = createPipAppearanceProvenance({ outputDir, candidate, targetPid: app.pid, helper: ax, helperSource: ax.helperSource, helperExecutable: ax.helperExecutable, observeWindow: selection => app.observePipAppearance(selection), readIdentity: () => app.identity() });
   manifest.provenanceProducers = appearance.pins;
 }
 const controller = new AbortController();
@@ -109,7 +110,7 @@ async function execute() {
   } });
   const nativeRpc = createRpc(() => app.descriptor());
   const rpc = async (...args) => { signal.throwIfAborted(); const result = await nativeRpc(...args); signal.throwIfAborted(); return result; };
-  evidence = createEvidence(outputDir, observedAx, () => appearance);
+  evidence = createEvidence(outputDir, observedAx, () => appearance, () => pipAppearance);
   await configureAppearance();
   const until = createUntil(signal);
   const actual = await app.identity();
@@ -117,7 +118,7 @@ async function execute() {
   const context = { app, rpc, fixture, model, ax: observedAx, assert, until, visual: createVisual(outputDir),
     async restart(options) {
       signal.throwIfAborted();
-      appearance = undefined;
+      appearance = undefined; pipAppearance = undefined;
       await ax.close();
       ax = undefined;
       await app.restart(options);
@@ -128,7 +129,7 @@ async function execute() {
     },
     async openAux(url, options) {
       signal.throwIfAborted();
-      if (options?.cold) { appearance = undefined; await ax.close(); ax = undefined; }
+      if (options?.cold) { appearance = undefined; pipAppearance = undefined; await ax.close(); ax = undefined; }
       const receipt = await app.openAux(url, options);
       if (options?.cold) {
         ax = await createAxClient(app.pid);
@@ -148,6 +149,7 @@ async function execute() {
       writeFileSync(join(outputDir, filename), bytes, { flag: 'wx' });
       records.push({ name, filename, bytes: bytes.length, sha256: sha256(bytes) });
     },
+    capturePip: async (name, options) => { signal.throwIfAborted(); return evidence.capturePip(name, options); },
     capture: async (name, options) => { signal.throwIfAborted(); return evidence.capture(name, options); }, clock,
     async step(name, options, action) {
       signal.throwIfAborted();

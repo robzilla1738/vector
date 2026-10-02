@@ -16,15 +16,25 @@ function fixture(change = () => {}) {
   const paired = { ...candidate, harnessCommit: 'e'.repeat(40), moduleSha256: 'f'.repeat(64) };
   const png = PNG.sync.write({ width: 1, height: 1, data: Buffer.from([255, 255, 255, 255]) });
   writeFileSync(join(root, 'synthetic.png'), png);
-  const capture = { name: 'synthetic', path: 'synthetic.png', sha256: hash(png), bytes: png.length, windowId: 1, state: 'default', provenanceObservationId: 'one', capturedAt: '2026-10-01T12:00:01Z', pixelDimensions: { width: 1, height: 1 }, windowFrame: { x: 0, y: 0, width: 1, height: 1 } };
+  const capture = { name: 'synthetic', path: 'synthetic.png', sha256: hash(png), bytes: png.length, windowId: 1, state: 'default', provenanceObservationId: 'one', capturedAt: '2026-10-01T12:00:01Z', captureCompletedAt: '2026-10-01T12:00:01Z', pixelDimensions: { width: 1, height: 1 }, windowFrame: { x: 0, y: 0, width: 1, height: 1 } };
   const system = observedAt => ({ producer: 'native-window.trusted', observedAt, candidate: paired, windowId: 1, pid: 42, helperSha256: '1'.repeat(64), helperSourceSha256: '2'.repeat(64), accessibility: true, screenRecording: true, reduceMotion: false, reduceTransparency: false });
-  const window = observedAt => ({ producer: 'aux-native-appearance-snapshot', version: 1, observedAt, candidate: paired, windowId: 1, pid: 42, windowKind: 'normal', frame: capture.windowFrame, nativeTheme: 'dark', shell: { theme: 'dark', layout: 'vertical', reduceMotion: false, reduceTransparency: false } });
+  const window = observedAt => ({ producer: 'aux-native-appearance-snapshot', version: 1, observedAt, candidate: paired, windowId: 1, pid: 42, windowKind: 'normal', frame: capture.windowFrame, nativeTheme: 'dark', backing: 'solid', material: 'solid', shell: { theme: 'dark', layout: 'vertical', sidebarAppearance: 'solid', systemDark: true, reduceMotion: false, reduceTransparency: false } });
   const before = { system: system('2026-10-01T12:00:00Z'), window: window('2026-10-01T12:00:00Z') };
   const after = { system: system('2026-10-01T12:00:02Z'), window: window('2026-10-01T12:00:02Z') };
   const manifest = { schema: 2, id: 'synthetic-tool-test', features: ['sample'], productIdentity, native: candidate.native, runtime: structuredClone(productIdentity), shellDigest: candidate.shellDigest, harnessCommit: paired.harnessCommit, moduleSha256: paired.moduleSha256, steps: [{ status: 'passed' }], captures: [capture] };
   const entry = { state: 'default', captureName: 'synthetic', observationId: 'one' };
   const inventory = { schema: 1, feature: 'sample', states: ['default'] };
   change({ before, after, manifest, capture, entry, candidate, inventory });
+  for (const [name, side] of [['before', before], ['after', after]]) {
+    const observed = Date.parse(side.window.observedAt);
+    const rawWindow = Object.fromEntries(Object.entries(side.window).filter(([key]) => !['observedAt', 'candidate'].includes(key)));
+    rawWindow.observedAtUnixMs = observed;
+    side.window.rawReply = json(`${name}-native-raw.json`, rawWindow);
+    side.window.requestStartedAt = new Date(observed - 1).toISOString();
+    side.window.requestCompletedAt = new Date(observed + 1).toISOString();
+    side.window.observedAt = new Date(observed).toISOString();
+    side.system.rawReply = json(`${name}-helper-raw.json`, Object.fromEntries(['accessibility', 'screenRecording', 'reduceMotion', 'reduceTransparency'].map(key => [key, side.system[key]])));
+  }
   const observation = { id: 'one', capture: structuredClone(capture), before: { system: json('before-system.json', before.system), window: json('before-window.json', before.window) }, after: { system: json('after-system.json', after.system), window: json('after-window.json', after.window) } };
   entry.provenance = capture.provenance = json('provenance.json', { schema: 1, candidate: paired, observations: [observation] });
   manifest.provenanceProducers = { helperSha256: '1'.repeat(64), helperSourceSha256: '2'.repeat(64), nativeSnapshotVersion: 1 };
@@ -48,14 +58,14 @@ test('actual RT mapping derives LR without caller label', () => run(({ before, a
 }, f => assert.equal(buildContactSheets(f.input, f.output).features[0].records[0].cell, 'LR')));
 for (const [name, change] of [
   ['unknown theme', ({ before, after }) => { before.window.nativeTheme = after.window.nativeTheme = null; }],
-  ['unknown RT', ({ before }) => { before.system.reduceTransparency = null; }],
   ['changed RT', ({ after }) => { after.system.reduceTransparency = true; }],
   ['Aux/native mismatch', ({ before }) => { before.window.shell.theme = 'light'; }],
-  ['missing shell readback', ({ before }) => { delete before.window.shell; }],
 ]) test(`${name} is diagnostic and never counts`, () => run(change, f => {
   const result = buildContactSheets(f.input, f.output).features[0]; assert.equal(result.cells, 0); assert.equal(result.records[0].cell, null); assert.equal(result.missing.length, 4);
 }));
 for (const [name, change] of [
+  ['unknown RT', ({ before }) => { before.system.reduceTransparency = null; }],
+  ['missing shell readback', ({ before }) => { delete before.window.shell; }],
   ['unpaired runtime', ({ manifest }) => { manifest.runtime.commit = '9'.repeat(40); }],
   ['wrong helper pin', ({ before }) => { before.system.helperSha256 = '3'.repeat(64); }],
   ['wrong window', ({ before }) => { before.window.windowId = 2; }],

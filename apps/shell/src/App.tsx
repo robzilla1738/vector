@@ -20,6 +20,7 @@ import { useShallow } from "zustand/react/shallow";
 import type { PageTarget, Run } from "@aux/contracts";
 import { LIVE_RUN, useStore, call, toast, errToast, patchPageFields, type SidebarMode } from "./store";
 import { bridge, inNativeHost, inMock } from "./bridge";
+import type { ChromiumHostPort } from "./chromium-bridge";
 import { isHomeAddress, isScrimOverlay, nativePageId } from "./chrome";
 import { useLayoutChrome, useWindowControls } from "./features/layout/layout";
 import { useToolbarReveal } from "./toolbar-reveal";
@@ -112,8 +113,13 @@ export function App() {
     let live = true, stop: (() => void) | undefined;
     void bridge.capabilities().then(async capabilities => {
       if (!live || !capabilities.methods.includes("appearanceSnapshot")) return;
-      const { startNativeAppearanceObserver } = await import("./native-appearance-observer");
-      if (live) stop = startNativeAppearanceObserver(bridge);
+      const { startNativeAppearanceObserver, startNativePipAppearanceObserver } = await import("./native-appearance-observer");
+      if (!live) return;
+      const normal = startNativeAppearanceObserver(bridge);
+      const port = (window as Window & { auxChromiumHost?: ChromiumHostPort }).auxChromiumHost;
+      const child = port?.host === "chromium-fork" && capabilities.methods.includes("pipAppearanceSnapshot")
+        ? startNativePipAppearanceObserver(() => port.request("pipAppearanceSnapshot", [])) : undefined;
+      stop = () => { normal(); child?.(); };
     }).catch(errToast);
     return () => { live = false; stop?.(); };
   }, []);

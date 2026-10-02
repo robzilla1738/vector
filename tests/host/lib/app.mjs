@@ -7,7 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { acquireNativeSlot } from '../../../scripts/native-slot.mjs';
 import { createDevelopmentAcceptance, extendDevelopmentAcceptance, nativeProfileName, validateDisposableProfile } from './dev-acceptance.mjs';
 import { createRpc, validateDescriptor } from './rpc.mjs';
-import { createAppearanceStream } from './appearance-stream.mjs';
+import { createAppearanceStream, createPipAppearanceStream } from './appearance-stream.mjs';
 import { createStartupTrace } from './startup-evidence.mjs';
 
 function externalFixtureUrl(url) {
@@ -121,10 +121,11 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   const env = { ...process.env, ...launch.env, ...acceptance?.env };
   // Never inherit a developer token unless this launcher made its own marker.
   if (!acceptance) delete env.AUX_DEV_ACCEPTANCE_TOKEN;
-  let appearanceStream, appearanceDetach;
+  let appearanceStream, pipAppearanceStream, appearanceDetach;
   function disposeAppearance() {
     appearanceDetach?.(); appearanceDetach = undefined;
     appearanceStream?.dispose(); appearanceStream = undefined;
+    pipAppearanceStream?.dispose(); pipAppearanceStream = undefined;
   }
   let child;
   let externalPid;
@@ -303,15 +304,23 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
         throw new Error('Appearance observation requires an opted-in owned direct child outside performance runs');
       const observedChild = child, observedPid = child.pid, observedGeneration = generation;
       const stream = createAppearanceStream({ pid: observedPid, generation: observedGeneration, candidate });
-      const onData = bytes => stream.write(bytes, { pid: observedPid, generation: observedGeneration });
-      const onExit = () => stream.dispose();
+      const pip = createPipAppearanceStream({ pid: observedPid, generation: observedGeneration, candidate });
+      const onData = bytes => {
+        const source = { pid: observedPid, generation: observedGeneration };
+        stream.write(bytes, source); pip.write(bytes, source);
+      };
+      const onExit = () => { stream.dispose(); pip.dispose(); };
       observedChild.stderr.on('data', onData); observedChild.once('close', onExit); observedChild.once('error', onExit);
       appearanceDetach = () => { observedChild.stderr.off('data', onData); observedChild.off('close', onExit); observedChild.off('error', onExit); };
-      appearanceStream = stream;
+      appearanceStream = stream; pipAppearanceStream = pip;
     },
     observeAppearance(selection) {
       if (!running() || externalPid || !appearanceStream) return Promise.reject(new Error('No owned appearance stream for current child'));
       return appearanceStream.observe(selection);
+    },
+    observePipAppearance(selection) {
+      if (!running() || externalPid || !pipAppearanceStream) return Promise.reject(new Error('No owned child appearance stream for current child'));
+      return pipAppearanceStream.observe(selection);
     },
     prepareFixtureEnv(extra, fixtureUrl) {
       if (running()) throw new Error('Fixture transport must be prepared before launch');

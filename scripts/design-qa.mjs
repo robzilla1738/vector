@@ -5,6 +5,7 @@ import { dirname, resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { PNG } from 'pngjs';
+import { normalizeNativeAppearance, normalizePipAppearance, normalizeTrustedPreferences } from '../tests/host/lib/appearance-provenance.mjs';
 
 const cells = ['L', 'D', 'LR', 'DR'];
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -42,10 +43,23 @@ function snapshot(reference, parent, capture, candidate, kind) {
     require(json.accessibility === true && json.screenRecording === true, 'Native capture permissions not proved');
     require(json.producer === 'native-window.trusted' && hex(json.helperSha256, 64) && hex(json.helperSourceSha256, 64), 'Unrecognized system preference producer');
   } else {
-    require(json.producer === 'aux-native-appearance-snapshot' && json.version === 1, 'Missing native appearance snapshot producer');
+    require(['aux-native-appearance-snapshot', 'aux-native-pip-appearance'].includes(json.producer) && json.version === 1, 'Missing distinct native appearance producer');
   }
+  const raw = artifact(json.rawReply, referencePath(reference, parent));
+  let derived;
+  if (kind === 'system') {
+    derived = normalizeTrustedPreferences(raw.json, { candidate, targetPid: json.pid, windowId: capture.windowId,
+      observedAt: json.observedAt, pins: { helperSha256: json.helperSha256, helperSourceSha256: json.helperSourceSha256, nativeSnapshotVersion: 1 } });
+  } else {
+    require(raw.json.frame && isDeepStrictEqual(Object.keys(raw.json.frame).sort(), ['height', 'width', 'x', 'y']), 'Unexpected raw window frame fields');
+    const normalize = json.producer === 'aux-native-pip-appearance' ? normalizePipAppearance : normalizeNativeAppearance;
+    derived = normalize(raw.bytes.toString('utf8'), { candidate, targetPid: json.pid, windowId: capture.windowId,
+      startedAt: json.requestStartedAt, completedAt: json.requestCompletedAt });
+  }
+  same(derived, Object.fromEntries(Object.entries(json).filter(([key]) => !['rawReply', 'requestStartedAt', 'requestCompletedAt'].includes(key))), `${kind} raw producer projection`);
   return json;
 }
+function referencePath(reference, parent) { return resolve(dirname(parent), reference.path); }
 function observedCell(before, after, capture) {
   for (const side of [before, after]) {
     for (const kind of ['system', 'window']) require(kind in side, 'Missing before/after producer');
@@ -58,18 +72,29 @@ function observedCell(before, after, capture) {
   const frame = before.window.frame;
   require(frame && ['x', 'y', 'width', 'height'].every(key => Number.isFinite(frame[key])) && frame.width > 0 && frame.height > 0, 'Missing actual window point frame');
   same(capture.windowFrame, frame, 'capture point frame');
-  const timestamp = time(capture.capturedAt);
-  require(Math.max(time(before.system.observedAt), time(before.window.observedAt)) <= timestamp && timestamp <= Math.min(time(after.system.observedAt), time(after.window.observedAt)), 'Observations do not bracket capture');
+  const timestamp = time(capture.capturedAt), completed = time(capture.captureCompletedAt);
+  require(completed >= timestamp && Math.max(time(before.system.observedAt), time(before.window.observedAt)) <= timestamp && completed <= Math.min(time(after.system.observedAt), time(after.window.observedAt)), 'Observations do not bracket capture');
   const reasons = [];
   for (const key of ['reduceMotion', 'reduceTransparency']) {
     if (typeof before.system[key] !== 'boolean' || typeof after.system[key] !== 'boolean') reasons.push(`Unknown system ${key}`);
     else if (before.system[key] !== after.system[key]) reasons.push(`Changed system ${key}`);
   }
+  same(before.window.producer, after.window.producer, 'window producer stability');
+  const child = before.window.producer === 'aux-native-pip-appearance';
+  if (child) {
+    for (const key of ['surfaceKind', 'registrationGeneration', 'windowLayer']) same(before.window[key], after.window[key], `child ${key} stability`);
+  }
   same(before.window.windowKind, after.window.windowKind, 'window kind');
-  require(['normal', 'private', 'quick-ask', 'little', 'picture-in-picture'].includes(before.window.windowKind), 'Unknown window kind');
+  require(child || ['normal', 'private', 'quick-ask', 'little'].includes(before.window.windowKind), 'Unknown normal window kind; child requires its distinct producer');
   for (const side of [before, after]) {
     if (!['light', 'dark'].includes(side.window.nativeTheme)) reasons.push('Unknown native effective appearance');
-    if (side.window.windowKind !== 'picture-in-picture') {
+    if (side.window.backing === null || side.window.material === null) reasons.push('Unknown actual native backing/material');
+    if (child) {
+      if (!['light', 'dark'].includes(side.window.viewTheme)) reasons.push('Unknown child view theme');
+      else if (side.window.viewTheme !== side.window.nativeTheme) reasons.push('Child view/native theme mismatch');
+      for (const [nativeKey, systemKey] of [['nativeReduceMotion', 'reduceMotion'], ['nativeReduceTransparency', 'reduceTransparency']])
+        if (side.window[nativeKey] !== side.system[systemKey]) reasons.push(`Child/system ${systemKey} mismatch`);
+    } else {
       const shell = side.window.shell;
       if (!shell || !['light', 'dark'].includes(shell.theme)) reasons.push('Unknown observed Aux theme');
       else if (shell.theme !== side.window.nativeTheme) reasons.push('Aux/native theme mismatch');
@@ -77,7 +102,7 @@ function observedCell(before, after, capture) {
       for (const key of ['reduceMotion', 'reduceTransparency']) if (!shell || typeof shell[key] !== 'boolean' || shell[key] !== side.system[key]) reasons.push(`Shell/system ${key} mismatch`);
     }
   }
-  if (before.window.nativeTheme !== after.window.nativeTheme || !isDeepStrictEqual(before.window.shell, after.window.shell)) reasons.push('Changed appearance during capture');
+  if (before.window.nativeTheme !== after.window.nativeTheme || before.window.viewTheme !== after.window.viewTheme || before.window.backing !== after.window.backing || before.window.material !== after.window.material || !isDeepStrictEqual(before.window.shell, after.window.shell)) reasons.push('Changed appearance during capture');
   return { cell: reasons.length ? null : (before.window.nativeTheme === 'light' ? 'L' : 'D') + (before.system.reduceTransparency ? 'R' : ''), reasons: [...new Set(reasons)], reduceMotion: before.system.reduceMotion, layout: before.window.shell?.layout ?? null };
 }
 function captureEntry(entry, feature, indexPath, expected) {

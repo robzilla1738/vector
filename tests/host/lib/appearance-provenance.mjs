@@ -15,7 +15,7 @@ const frame = value => {
   assert.ok(value && ['x', 'y', 'width', 'height'].every(key => Number.isFinite(value[key])) && value.width > 0 && value.height > 0, 'Invalid native window frame');
   return { x: value.x, y: value.y, width: value.width, height: value.height };
 };
-function validateCandidate(candidate) {
+export function validateAppearanceCandidate(candidate) {
   const product = candidate?.productIdentity;
   assert.ok(product?.dirty === false && hex(product.commit, 40) && hex(product.tree, 40) && product.label === product.commit, 'Appearance needs clean product identity');
   assert.equal(candidate.native?.sourceCommit, product.commit, 'Native/product identity mismatch');
@@ -28,7 +28,7 @@ function validateIdentity(actual, candidate) {
 
 /** Parse only the actual zero-argument native getter reply. Caller labels are not inputs. */
 export function normalizeNativeAppearance(rawJson, { candidate, targetPid, windowId, startedAt, completedAt }) {
-  validateCandidate(candidate);
+  validateAppearanceCandidate(candidate);
   assert.equal(typeof rawJson, 'string', 'Missing raw native getter JSON');
   const raw = JSON.parse(rawJson);
   assert.equal(raw.producer, 'aux-native-appearance-snapshot', 'Wrong native appearance producer');
@@ -48,8 +48,36 @@ export function normalizeNativeAppearance(rawJson, { candidate, targetPid, windo
     observedAt: new Date(raw.observedAtUnixMs).toISOString(), frame: frame(raw.frame), nativeTheme: raw.nativeTheme,
     backing: raw.backing, material: raw.material, shell: structuredClone(shell) };
 }
+/** Only the actual registered child's distinct native stderr/getter record. */
+export function normalizePipAppearance(rawJson, { candidate, targetPid, windowId, startedAt, completedAt }) {
+  validateAppearanceCandidate(candidate);
+  assert.equal(typeof rawJson, 'string', 'Missing native child JSON');
+  const raw = JSON.parse(rawJson);
+  assert.equal(raw.producer, 'aux-native-pip-appearance', 'Wrong child appearance producer');
+  assert.equal(raw.version, 1, 'Unknown child appearance version');
+  assert.ok(Number.isInteger(targetPid) && targetPid > 0 && Number.isInteger(windowId) && windowId > 0, 'Missing owned child target');
+  assert.equal(raw.pid, targetPid, 'Native child PID mismatch');
+  assert.equal(raw.windowId, windowId, 'Native child window mismatch');
+  assert.ok(['video-pip', 'document-pip'].includes(raw.surfaceKind), 'Unknown native child kind');
+  assert.ok(Number.isInteger(raw.windowLayer), 'Missing actual native window layer');
+  assert.ok(typeof raw.registrationGeneration === 'string' && /^[1-9][0-9]{0,19}$/.test(raw.registrationGeneration)
+    && BigInt(raw.registrationGeneration) <= 18446744073709551615n, 'Invalid child registration generation');
+  assert.deepEqual(Object.keys(raw.frame ?? {}).sort(), ['height', 'width', 'x', 'y'], 'Unexpected child frame fields');
+  assert.ok(Object.values(raw.frame).every(Number.isFinite) && raw.frame.width > 0 && raw.frame.height > 0, 'Invalid child frame');
+  for (const key of ['nativeTheme', 'viewTheme']) assert.ok(['light', 'dark', null].includes(raw[key]), `Invalid actual child ${key}`);
+  assert.equal(raw.auxTheme, null, 'Child cannot inherit an unobserved Aux theme');
+  for (const key of ['windowOpaque', 'nativeReduceTransparency', 'nativeReduceMotion']) assert.equal(typeof raw[key], 'boolean', `Missing actual child ${key}`);
+  assert.ok(['solid', 'liquid-glass', 'visual-effect', null].includes(raw.backing), 'Invalid actual child backing');
+  assert.ok(['solid', 'liquid-glass', 'titlebar', 'sidebar', 'under-window', null].includes(raw.material), 'Invalid actual child material');
+  const start = Date.parse(startedAt), end = Date.parse(completedAt);
+  assert.ok(Number.isFinite(start) && Number.isFinite(end) && Number.isFinite(raw.nativeUnixMs)
+    && raw.nativeUnixMs >= start && raw.nativeUnixMs <= end, 'Stale or unbracketed child readback');
+  assert.deepEqual(Object.keys(raw).sort(), ['producer', 'version', 'pid', 'windowId', 'surfaceKind', 'windowLayer', 'registrationGeneration', 'frame', 'nativeTheme', 'viewTheme', 'auxTheme', 'windowOpaque', 'backing', 'material', 'nativeReduceTransparency', 'nativeReduceMotion', 'nativeUnixMs'].sort(), 'Unexpected child getter fields');
+  return { ...raw, candidate: structuredClone(candidate), observedAt: new Date(raw.nativeUnixMs).toISOString() };
+}
+
 export function normalizeTrustedPreferences(raw, { candidate, targetPid, windowId, observedAt, pins }) {
-  validateCandidate(candidate); timestamp(observedAt);
+  validateAppearanceCandidate(candidate); timestamp(observedAt);
   assert.ok(raw?.accessibility === true && raw.screenRecording === true, 'Actual helper permissions unavailable');
   assert.deepEqual(Object.keys(raw).sort(), ['accessibility', 'screenRecording', 'reduceMotion', 'reduceTransparency'].sort(), 'Unexpected trusted helper fields');
   for (const key of ['reduceMotion', 'reduceTransparency']) assert.equal(typeof raw[key], 'boolean', `Missing actual helper ${key}`);
@@ -59,8 +87,10 @@ export function normalizeTrustedPreferences(raw, { candidate, targetPid, windowI
 }
 
 /** No debugger/RPC/settings fallback: the owner must supply a real authorized shell observer. */
-export function createAppearanceProvenance({ outputDir, candidate, targetPid, helper, helperExecutable, helperSource, observeWindow, readIdentity }) {
-  validateCandidate(candidate);
+export function createAppearanceProvenance(options) { return createNativeProvenance(options, false); }
+export function createPipAppearanceProvenance(options) { return createNativeProvenance(options, true); }
+function createNativeProvenance({ outputDir, candidate, targetPid, helper, helperExecutable, helperSource, observeWindow, readIdentity }, child) {
+  validateAppearanceCandidate(candidate);
   candidate = structuredClone(candidate);
   assert.ok(Number.isInteger(targetPid) && targetPid > 0 && typeof observeWindow === 'function' && typeof readIdentity === 'function' && typeof helper?.trusted === 'function' && typeof helper.windows === 'function', 'Missing authorized appearance producer access');
   assert.equal(basename(helperSource), 'native-window.swift', 'Unexpected helper source');
@@ -88,18 +118,22 @@ export function createAppearanceProvenance({ outputDir, candidate, targetPid, he
     // A periodic observer must wait for a fresh record from this exact window.
     const rawJson = await observeWindow({ windowId, notBefore: startedAt });
     const completedAt = new Date().toISOString();
-    const window = normalizeNativeAppearance(rawJson, { candidate, targetPid, windowId, startedAt, completedAt });
-    const matches = (await helper.windows()).filter(item => item.id === windowId && item.layer === 0);
+    const window = (child ? normalizePipAppearance : normalizeNativeAppearance)(rawJson, { candidate, targetPid, windowId, startedAt, completedAt });
+    const matches = (await helper.windows()).filter(item => item.id === windowId && item.layer === (child ? window.windowLayer : 0));
     assert.equal(matches.length, 1, 'Appearance window not in owned helper inventory');
     assert.deepEqual(frame(matches[0]), window.frame, 'Helper/native point frame mismatch');
     const rawSystem = structuredClone(await helper.trusted());
     const system = normalizeTrustedPreferences(rawSystem, { candidate, targetPid, windowId, pins, observedAt: new Date().toISOString() });
+    if (child) {
+      assert.equal(window.nativeReduceMotion, system.reduceMotion, "Child/helper motion preference mismatch");
+      assert.equal(window.nativeReduceTransparency, system.reduceTransparency, "Child/helper transparency preference mismatch");
+    }
     validateIdentity(await readIdentity(), candidate);
     return { window, system, rawJson, rawSystem, startedAt, completedAt };
   }
   return { pins,
     async before(windowId) {
-      const value = await sample(windowId), ticket = Object.freeze({ windowId });
+      const value = await sample(windowId), ticket = Object.freeze({ windowId, ...(child ? { windowLayer: value.window.windowLayer, surfaceKind: value.window.surfaceKind, registrationGeneration: value.window.registrationGeneration } : {}) });
       pending.set(ticket, value); return ticket;
     },
     async finish(ticket, capture, { state, capturedAt, captureCompletedAt }) {
@@ -111,6 +145,8 @@ export function createAppearanceProvenance({ outputDir, candidate, targetPid, he
       const after = await sample(capture.windowId);
       assert.deepEqual(before.window.frame, after.window.frame, 'Capture point frame changed');
       assert.equal(before.window.windowKind, after.window.windowKind, 'Capture window kind changed');
+      if (child) for (const key of ['registrationGeneration', 'surfaceKind', 'windowLayer'])
+        assert.equal(before.window[key], after.window[key], `Capture child ${key} changed`);
       const at = timestamp(capturedAt), end = timestamp(captureCompletedAt);
       assert.ok(end >= at && Math.max(timestamp(before.window.observedAt), timestamp(before.system.observedAt)) <= at && end <= Math.min(timestamp(after.window.observedAt), timestamp(after.system.observedAt)), 'Producers do not bracket capture');
       const bytes = evidenceBytes(directory, capture.path);

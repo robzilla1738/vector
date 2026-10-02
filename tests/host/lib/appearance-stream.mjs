@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import { StringDecoder } from 'node:string_decoder';
-import { normalizeNativeAppearance } from './appearance-provenance.mjs';
+import { normalizeNativeAppearance, normalizePipAppearance } from './appearance-provenance.mjs';
 
-const prefix = 'AUX_NATIVE_APPEARANCE_V1 ';
+export function createAppearanceStream(options) {
+  return createRecordStream(options, 'AUX_NATIVE_APPEARANCE_V1 ', normalizeNativeAppearance, 'observedAtUnixMs');
+}
+export function createPipAppearanceStream(options) {
+  return createRecordStream(options, 'AUX_NATIVE_PIP_APPEARANCE_V1 ', normalizePipAppearance, 'nativeUnixMs');
+}
 
 /** Direct-child stderr only. Inputs are transport bytes, never reconstructed logs. */
-export function createAppearanceStream({ pid, generation, candidate, maxRecords = 4000, maxLineBytes = 16384, maxBytes = 2 * 1024 * 1024 }) {
+function createRecordStream({ pid, generation, candidate, maxRecords = 4000, maxLineBytes = 16384, maxBytes = 2 * 1024 * 1024 }, prefix, normalize, timeKey) {
   assert.ok(Number.isInteger(pid) && pid > 0 && Number.isInteger(generation) && generation > 0, 'Missing direct-child generation');
   for (const [value, limit] of [[maxRecords, 4000], [maxLineBytes, 16384], [maxBytes, 2 * 1024 * 1024]])
     assert.ok(Number.isInteger(value) && value > 0 && value <= limit, 'Invalid stream bound');
@@ -23,13 +28,13 @@ export function createAppearanceStream({ pid, generation, candidate, maxRecords 
     const rawJson = text.slice(prefix.length), raw = JSON.parse(rawJson);
     const receivedAt = new Date().toISOString();
     assert.deepEqual(Object.keys(raw.frame ?? {}).sort(), ['height', 'width', 'x', 'y'], 'Unexpected native frame fields');
-    normalizeNativeAppearance(rawJson, { candidate, targetPid: pid, windowId: raw.windowId,
+    normalize(rawJson, { candidate, targetPid: pid, windowId: raw.windowId,
       startedAt: new Date(0).toISOString(), completedAt: receivedAt });
-    const key = `${raw.windowId}:${raw.observedAtUnixMs}`;
+    const key = `${raw.windowId}:${raw[timeKey]}`;
     assert.ok(!seen.has(key), 'Duplicate native appearance observation'); seen.add(key);
     const waiter = pending.get(raw.windowId);
     const recordSequence = ++sequence;
-    if (waiter && recordSequence > waiter.sequence && raw.observedAtUnixMs >= waiter.notBefore) {
+    if (waiter && recordSequence > waiter.sequence && raw[timeKey] >= waiter.notBefore) {
       pending.delete(raw.windowId); clearTimeout(waiter.timer); waiter.resolve(rawJson);
     }
   }

@@ -1,7 +1,7 @@
 // Synthetic transport fixtures only; never native qualification evidence.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAppearanceStream } from '../host/lib/appearance-stream.mjs';
+import { createAppearanceStream, createPipAppearanceStream } from '../host/lib/appearance-stream.mjs';
 const candidate = {
   productIdentity: { commit: 'a'.repeat(40), tree: 'b'.repeat(40), label: 'a'.repeat(40), dirty: false },
   native: { sourceCommit: 'a'.repeat(40), buildId: 'synthetic', manifestHash: 'c'.repeat(64) },
@@ -85,4 +85,21 @@ test('only Buffer transport input and positive explicit window are accepted', as
   const s = stream(); await assert.rejects(s.observe({ windowId: 0, notBefore: now() }), /selection/);
   const promise = s.observe({ windowId: 7, notBefore: now() });
   s.write('caller log'); await assert.rejects(promise, /stderr bytes/); s.dispose();
+});
+
+test('normal and child stderr channels never satisfy one another', async () => {
+  const normal = stream(), child = createPipAppearanceStream({ pid: 42, generation: 1, candidate });
+  const n = normal.observe({ windowId: 7, notBefore: now(), timeoutMs: 15 });
+  const c = child.observe({ windowId: 7, notBefore: now(), timeoutMs: 15 });
+  const native = raw();
+  child.write(line(native), { pid: 42, generation: 1 });
+  const pip = { producer: 'aux-native-pip-appearance', version: 1, pid: 42, windowId: 7, nativeUnixMs: Date.now(),
+    registrationGeneration: '1', surfaceKind: 'document-pip', windowLayer: 3, frame: native.frame,
+    nativeTheme: 'dark', viewTheme: 'dark', auxTheme: null, windowOpaque: true, backing: null, material: null,
+    nativeReduceTransparency: false, nativeReduceMotion: false };
+  const bytes = Buffer.from(`AUX_NATIVE_PIP_APPEARANCE_V1 ${JSON.stringify(pip)}\n`);
+  normal.write(bytes); await Promise.all([assert.rejects(n, /No fresh/), assert.rejects(c, /No fresh/)]);
+  const actual = child.observe({ windowId: 7, notBefore: now() }); pip.nativeUnixMs = Date.now();
+  child.write(Buffer.from(`AUX_NATIVE_PIP_APPEARANCE_V1 ${JSON.stringify(pip)}\n`), { pid: 42, generation: 1 });
+  assert.equal(await actual, JSON.stringify(pip)); normal.dispose(); child.dispose();
 });
