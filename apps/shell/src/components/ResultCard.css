@@ -15,4 +15,11 @@
 .home-result-open { position:relative; z-index:1; display:flex; align-items:center; gap:8px; margin-top:auto; padding:8px 0 0; font-size:var(--fs-xs); color:var(--ink-2); text-align:left; }
 .home-result-open > span:not(.ci) { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .result-card footer { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; font-size:var(--fs-xs); color:var(--ink-2); }
+.result-card-compact header { gap:var(--space-2); padding:var(--space-2) var(--space-3); flex-wrap:wrap; }
+.result-card-compact header > button:first-of-type { flex:1 1 120px; }
+.result-card-compact header > small { font-size:var(--fs-xs); color:var(--ink-2); }
+.result-card-disclosure { border-top:1px solid var(--line); }
+.result-card-disclosure > summary { padding:var(--space-2) var(--space-3); color:var(--ink-2); font-size:var(--fs-xs); cursor:pointer; }
+.result-card-disclosure > summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--r-sm); }
+.result-card-disclosure .result-card-preview { margin-bottom:var(--space-3); }
 }

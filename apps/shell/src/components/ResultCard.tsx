@@ -16,8 +16,14 @@ export function ResultExcerpt({result}:{result:ConversationArtifact}) {
   return <div className="result-card-preview" inert aria-hidden="true">{rows ? <table><tbody>{rows.map((row,i)=><tr key={i}>{row.map((cell,j)=><td key={j}>{cell}</td>)}</tr>)}</tbody></table> : result.mediaType==="text/markdown" ? <AnswerPreview text={result.excerpt}/> : result.mediaType==="text/html" ? <div className="result-card-html">{shellIconResult}<span>Interactive document</span></div> : <pre>{result.excerpt || "No text preview"}</pre>}</div>;
 }
 
-export function ResultCard({result, revision, onOpen}: {result:ConversationArtifact; revision?:number; onOpen():void}) {
+export function ResultCard({result, revision, compact = false, onOpen}: {result:ConversationArtifact; revision?:number; compact?:boolean; onOpen():void}) {
   const kind=result.mediaType==="text/csv"?"Table":result.mediaType==="application/json"?"Data":result.mediaType==="text/html"?"HTML": "Document";
+  // The caller supplies verified automatic-report provenance. Filename alone
+  // cannot decide whether an artifact is a redundant answer or a deliverable.
+  if (compact) return <article className="result-card result-card-compact">
+    <header><span aria-hidden="true">{shellIconResult}</span><button onClick={onOpen} title={result.filename} aria-label={`Open ${result.filename}`}>{result.filename}</button><small>{kind} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB</small><span className="result-card-version">v{revision ?? result.revision ?? 1}</span><button className="btn sm ghost" onClick={onOpen}>Open {shellIconOpen}</button></header>
+    <details className="result-card-disclosure"><summary>Preview saved answer</summary><ResultExcerpt result={result}/></details>
+  </article>;
   return <article className="result-card">
     <header><span aria-hidden="true">{shellIconResult}</span><button onClick={onOpen} title={result.filename}>{result.filename}</button><span className="result-card-version">v{revision ?? result.revision ?? 1}</span></header>
     <ResultExcerpt result={result}/>
