@@ -1,0 +1,97 @@
+{
+  "scope": "Independent runtime/renderer/source verification; native compilation and physical behavior pending",
+  "productIdentity": {
+    "commit": "4163b693e4d3ca0c48cd9a9253e61390ada19e59",
+    "tree": "daddf4f71bb8ab37b779b94ccc5f62dd9eba1ad6",
+    "dirty": false,
+    "label": "4163b693e4d3ca0c48cd9a9253e61390ada19e59"
+  },
+  "wholeSuite": {
+    "files": 465,
+    "tests": 2513,
+    "status": "PASS",
+    "runtimeSourceCommit": "d382ddc6",
+    "finalTestOnlyAssertionRestructure": "116 affected tests independently PASS; all expectations retained"
+  },
+  "typecheck": "PASS",
+  "lint": "PASS with unchanged max390",
+  "format": "PASS",
+  "budgetsKB": {
+    "startupJS": 484,
+    "startupCSS": 175,
+    "totalJS": 1791
+  },
+  "static": {
+    "hostMethods": 209,
+    "events": 26,
+    "rendererBridgeMissing": 0,
+    "journeys": 45,
+    "features": 43
+  },
+  "assets": {
+    "files": 174,
+    "digest": "9f4e9d85e66d3e51990c80c838a1d0015fce1e064feb534eea88aa239f5e90c2",
+    "actualDistAndPinnedBytesSha256": "PASS"
+  },
+  "native": {
+    "orderedPackets": 47,
+    "exactMirrors": 132,
+    "pinnedBaselines": 95,
+    "replayProofSha256": "d57e5865189bc4ebdec3062556cf9d8fa9099e82d90d41dbadec1c5820e591cd",
+    "compilation": "PENDING; reviewed0218/0219 correct actual compiler failures"
+  },
+  "logs": [
+    {
+      "path": "/tmp/aux-root-followup-tsc-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-root-followup-full-unit-final.log",
+      "sha256": "d732ab51699f3f0cb8db396c3ece5b6afa1b2d41ec2a6240a6453b98e2b64249"
+    },
+    {
+      "path": "/tmp/aux-root-followup-recovery-final.log",
+      "sha256": "3ac555fa4089fd99a903748c73f8411ff087510bd895d154455d01433096c49e"
+    },
+    {
+      "path": "/tmp/aux-root-followup-typecheck-final.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    {
+      "path": "/tmp/aux-root-followup-lint-final.log",
+      "sha256": "d55e249549b991fdb05e31c23468b409a085b75f7ccb7e04fe164ac9e8edfc73"
+    },
+    {
+      "path": "/tmp/aux-root-followup-format-final.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    {
+      "path": "/tmp/aux-root-followup-budgets.log",
+      "sha256": "9f57956bd6acae9c99711755c12540ed2022a0596d445f718d687fb9bd5ec9aa"
+    },
+    {
+      "path": "/tmp/aux-root-followup-renderer-build.log",
+      "sha256": "019b3d7ce7b9b347cca89a6a719c56e733635dbbbd35031801b65bc4f2db8977"
+    },
+    {
+      "path": "/tmp/aux-root-followup-renderer-capture.log",
+      "sha256": "4e997eaeda99bfd32b58aff25f6bda4ea0a39d5e48d2d218a34fc6da43532e35"
+    },
+    {
+      "path": "/tmp/aux-root-followup-bindings-final.log",
+      "sha256": "c2635bc1ad9062801fd9ce3c8ad8a74b577439116d3d850581070a87f4533591"
+    },
+    {
+      "path": "/tmp/aux-root-followup-bridge-final.log",
+      "sha256": "211d8849fa3ef7f6251c2a492b067ab86d74257a8d845a5aef0893312e1cdbe0"
+    },
+    {
+      "path": "/tmp/aux-root-followup-inventory-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-root-followup-registry-final.log",
+      "sha256": "1027ac9235f75daec4a52577d1888c215b442fdca714019bc1474d97435a2d34"
+    }
+  ]
+}
