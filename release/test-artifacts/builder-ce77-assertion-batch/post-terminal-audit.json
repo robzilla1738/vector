@@ -1,0 +1,581 @@
+{
+  "terminalSha256": "8f3e45631d81dfde2923401c77878b08de5e304ed143edce9cf9962d8ab7e022",
+  "recordedOwnedPids": [
+    89323,
+    89336,
+    89361,
+    89378,
+    90235,
+    95026,
+    95072,
+    95085,
+    95136,
+    95152,
+    95168,
+    95280,
+    95297,
+    95300,
+    95333,
+    95337,
+    95338,
+    95339,
+    95340,
+    95343,
+    95344,
+    95345,
+    95346,
+    95355,
+    95386,
+    95387,
+    95393,
+    95396,
+    95398,
+    95453,
+    95469,
+    95500,
+    95501,
+    95502,
+    95503,
+    95508,
+    95509,
+    95510,
+    95512,
+    95520,
+    95536,
+    95537,
+    95538,
+    95548,
+    95551,
+    95578,
+    95580,
+    95583,
+    95588,
+    95650,
+    95679,
+    95695,
+    95707,
+    95708,
+    95709,
+    95710,
+    95713,
+    95714,
+    95715,
+    95716,
+    95722,
+    95742,
+    95743,
+    95744,
+    95754,
+    95758,
+    95840,
+    95851,
+    95867,
+    95880,
+    95881,
+    95882,
+    95883,
+    95886,
+    95887,
+    95888,
+    95889,
+    95911,
+    95921,
+    95923,
+    95924,
+    95934,
+    95992,
+    96178,
+    96195,
+    96293,
+    96294,
+    96295,
+    96296,
+    96298,
+    96299,
+    96300,
+    96304,
+    96315,
+    96333,
+    96334,
+    96335,
+    96375,
+    96380,
+    96468,
+    96482,
+    96498,
+    96516,
+    96517,
+    96518,
+    96519,
+    96522,
+    96523,
+    96524,
+    96525,
+    96531,
+    96549,
+    96550,
+    96551,
+    96561,
+    96574,
+    96605,
+    96624,
+    96640,
+    96653,
+    96654,
+    96655,
+    96656,
+    96659,
+    96660,
+    96661,
+    96662,
+    96680,
+    96699,
+    96700,
+    96702,
+    96711,
+    96714,
+    96763,
+    96803,
+    96819,
+    96839,
+    96840,
+    96841,
+    96842,
+    96845,
+    96846,
+    96847,
+    96848,
+    96855,
+    96870,
+    96871,
+    96872,
+    96883,
+    96897,
+    96941,
+    96998,
+    97016,
+    97032,
+    97034,
+    97046,
+    97047,
+    97048,
+    97049,
+    97052,
+    97053,
+    97054,
+    97055,
+    97068,
+    97076,
+    97099,
+    97114,
+    97115,
+    97116,
+    97117,
+    97120,
+    97121,
+    97122,
+    97123,
+    97131,
+    97145,
+    97148,
+    97149,
+    97155,
+    97160,
+    97189,
+    97215,
+    97232,
+    97244,
+    97317
+  ],
+  "currentRowsForRecordedPids": [],
+  "slotAbsent": true,
+  "everyOwnedGroupEmpty": true,
+  "allArtifactHashesMatch": true,
+  "nativeNonSuccess": [
+    {
+      "binary": "cc_unittests",
+      "case": "LayerTreeHostImplTest.GuestDocumentMetadataUsesActualActiveTree/CommitToActiveTree",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "cc_unittests",
+      "case": "LayerTreeHostImplTest.GuestDocumentMetadataUsesActualActiveTree/CommitToActiveTreeTreesInVizClient",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "cc_unittests",
+      "case": "LayerTreeHostImplTest.GuestDocumentMetadataUsesActualActiveTree/CommitToActiveTreeTreesInVizService",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "cc_unittests",
+      "case": "LayerTreeHostImplTest.GuestDocumentMetadataUsesActualActiveTree/CommitToPendingTree",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "cc_unittests",
+      "case": "LayerTreeHostImplTest.GuestDocumentMetadataUsesActualActiveTree/CommitToPendingTreeTreesInVizClient",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "cc_unittests",
+      "case": "NativePerformanceSwapPromiseTest.ExactSubmitTimestampSurvivesDelayedCallback",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "cc_unittests",
+      "case": "NativePerformanceSwapPromiseTest.ForeignFrameTokenNeverGetsSubmissionEvidence",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "cc_unittests",
+      "case": "NativePerformanceSwapPromiseTest.MetadataPreparationWithoutActualSubmissionRefuses",
+      "statuses": [
+        "CRASH"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativeCommandPresentationSession.MissingOwnedWindowResolvesWithoutReadyOrMeasuredResult",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativeGuestPresentationFixtureTest.GeometryRequiresActualPixelFrameAndConnectorFloorCeilConversion",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativeGuestPresentationFixtureTest.MissingOwnerFailureMustBeConsumedBeforeAnotherSample",
+      "statuses": [
+        "CRASH"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePerformanceSwapPromise.EmitsActualSubmittedTokenExactlyOnce",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipRegistrationLifetimeTest.ReaderDestroysRegistry",
+      "statuses": [
+        "TIMEOUT"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipRegistrationLifetimeTest.ReaderDestroysWidget",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipRegistrationLifetimeTest.ReaderNestedRegisterRefusesOnlyNestedAttempt",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipRegistrationLifetimeTest.ReaderUnregisterCancelsPendingAttempt",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipRegistrationLifetimeTest.SnapshotMatcherDestroysRegistry",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipRegistrationLifetimeTest.ValidRegistrationAndReregistrationHaveDistinctGenerations",
+      "statuses": [
+        "TIMEOUT"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipSolidBackingTest.AColorOnTexturedOrForeignViewCannotProveSolidMode",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipSolidBackingTest.ActualInstalledSolidIsPositiveAndStable",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipSolidBackingTest.PartialTransformedOrClippedFillIsUnknown",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipSolidBackingTest.ReflectedSubtreeIsNotSolidEvenWithBlackBackgroundColor",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePipSolidBackingTest.TransparencyOrUnknownMaskIsNotAnOpaqueSolidBacking",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePresentationTiming.RefusesFailureAndGuessedCompletion",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePresentationTiming.RefusesNullReversedFutureAndStaleClocks",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "NativePresentationTiming.RetainsFractionalBudgetBoundary",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "PermissionBrokerTest.LiveFastCompletedDownloadAdmitsOnceWhileScanHistoryStaysSuppressed",
+      "statuses": [
+        "CRASH"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "PermissionBrokerTest.LiveFastDownloadEligibilityStillRefusesDangerousAndPersonPromptedFiles",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "unit_tests",
+      "case": "PermissionBrokerTest.UninitializedCreatedCompleteIsHistoricalAndNeverRenamedAfterInitialization",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxAutoPictureInPictureEligibilityBrowserTest.ExactSiteOptInIsRequired",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxAutoPictureInPictureEligibilityBrowserTest.NativeProtectedDocumentRefusesEntry",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxAutoPictureInPictureEligibilityBrowserTest.RuntimeOwnedPageCannotAutoEnter",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxAutoPictureInPictureEligibilityBrowserTest.VisibleSplitPaneIsNotAHiddenCandidate",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxQueuedAutomaticPictureInPictureBrowserTest.NewDevToolsActivationCannotEraseAutomaticNativeContext",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxQueuedAutomaticPictureInPictureBrowserTest.PausedPlayerBeforeActualAutomaticEffectRefusesWindow",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxQueuedAutomaticPictureInPictureBrowserTest.ReplacedDocumentRefusesHeldAutomaticPayload",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.AsyncRegisteredActionRemovalRetiresHeldAutomaticAuthority",
+      "statuses": [
+        "TIMEOUT"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.AsyncRegisteredHandlerExpiryCannotBecomeManualEntry",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.AsyncRegisteredHandlerSiteRevocationCannotUseManualEntry",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.AutomaticDocumentHandlerRefusesButRealManualDocumentPipWorks",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.CurrentAsyncRegisteredHandlerUsesExactAutomaticAuthority",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "AuxQueuedRegisteredAutoPictureInPictureBrowserTest.LegacyMissingTicketCannotEnterVideoOrMintManualActivation",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "browser_tests",
+      "case": "ResultPreviewBrowserTest.ScriptRunsButCannotReachBridgeStorageOrNetwork",
+      "statuses": [
+        "CRASH"
+      ]
+    },
+    {
+      "binary": "blink_platform_unittests",
+      "case": "WidgetCompositorNativeCreatedTest.MissingOrUnsupportedActualWidgetNeverClaimsReady",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "blink_platform_unittests",
+      "case": "WidgetCompositorNativeGuestTest.MissingActualWidgetRefusesBothPrivateRoutes",
+      "statuses": [
+        "CRASH"
+      ]
+    },
+    {
+      "binary": "blink_platform_unittests",
+      "case": "WidgetCompositorNativeGuestTest.UnsupportedClientCannotArmOrClaimReadiness",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "blink_platform_unittests",
+      "case": "WidgetCompositorNativePresentationTest.MissingActualWidgetRefuses",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "blink_platform_unittests",
+      "case": "WidgetCompositorNativePresentationTest.UnsupportedWidgetClientRefuses",
+      "statuses": [
+        "FAILURE"
+      ]
+    },
+    {
+      "binary": "content_unittests",
+      "case": "AutomaticPictureInPictureEffectTest.MatchingAutomaticTicketEntersOriginalControllerOnce",
+      "statuses": [
+        "CRASH"
+      ]
+    },
+    {
+      "binary": "content_unittests",
+      "case": "AutomaticPictureInPictureEffectTest.QueuedAutomaticSessionCannotExtendSelectionDeadline",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "content_unittests",
+      "case": "ChildProcessTaskPortProviderTest.GenericAndNonTaskPortsNeverMintOwnedAudit",
+      "statuses": [
+        "CRASH"
+      ]
+    },
+    {
+      "binary": "content_unittests",
+      "case": "ChildProcessTaskPortProviderTest.OwnedAuditUsesRealKernelTaskAndExactHost",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "content_unittests",
+      "case": "ChildProcessTaskPortProviderTest.PublicOwnedIdentityRejectsInvalidNativeIdentity",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "content_unittests",
+      "case": "NativeGuestFrameMetadata.AbsentMarkerCannotBorrowPriorDocument",
+      "statuses": [
+        "NOTRUN"
+      ]
+    },
+    {
+      "binary": "content_unittests",
+      "case": "NativeGuestFrameMetadata.ExactActivatedTupleAndScopeReset",
+      "statuses": [
+        "NOTRUN"
+      ]
+    }
+  ]
+}
