@@ -21,7 +21,7 @@ export function NightOverlays() {
     {(queue || queueVisited) && <Suspense fallback={queue && !overlay ? <output>Loading saved work…</output> : null}>
       <QueueTonight active={queue && !overlay} />
     </Suspense>}
-    {inbox && !queue && !overlay && <Dialog label="Overnight review" onClose={() => useNightReview.setState({ inboxOpen: false })}>
+    {inbox && !queue && !overlay && <Dialog label="Overnight review" className="aux-dialog-surface" onClose={() => useNightReview.setState({ inboxOpen: false })}>
       <MorningReviewInbox />
     </Dialog>}
   </>;

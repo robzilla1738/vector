@@ -1341,24 +1341,6 @@ export function CommandBar({
                 : "Search"}
         </span>
       )}
-      {askBreaker.unavailable() && typedSomething && (
-        <output className="cb-suggestion-privacy">Ask unavailable — searching</output>
-      )}
-      {preferSearchOffer && (
-        <button
-          type="button"
-          className="btn sm ghost"
-          onClick={() => {
-            void call("settings.set", { commandRouting: "prefer-search" })
-              .then(() => setPreferSearchOffer(false))
-              .catch(errToast);
-          }}
-        >
-          Prefer search?
-        </button>
-      )}
-      {workStatus.query === raw && workStatus.pending > 0 && <output className="cb-suggestion-privacy">Searching saved work…</output>}
-      {workStatus.query === raw && workStatus.failed && <output className="cb-suggestion-privacy">Some saved work couldn’t be searched. <button className="btn sm ghost" onClick={() => setWorkRetry(value => value + 1)}>Retry</button></output>}
       {(typedSomething || browserError) && (
         <div
           className="cb-pop"
@@ -1368,6 +1350,28 @@ export function CommandBar({
           }}
           onMouseDown={(e) => e.preventDefault()}
         >
+          {(askBreaker.unavailable() || preferSearchOffer || (workStatus.query === raw && (workStatus.pending > 0 || workStatus.failed))) && (
+            <div className="cb-query-status">
+              {askBreaker.unavailable() && typedSomething && (
+                <output className="cb-suggestion-privacy">Ask unavailable — searching</output>
+              )}
+              {preferSearchOffer && (
+                <button
+                  type="button"
+                  className="btn sm ghost"
+                  onClick={() => {
+                    void call("settings.set", { commandRouting: "prefer-search" })
+                      .then(() => setPreferSearchOffer(false))
+                      .catch(errToast);
+                  }}
+                >
+                  Prefer search?
+                </button>
+              )}
+              {workStatus.query === raw && workStatus.pending > 0 && <output className="cb-suggestion-privacy">Searching saved work…</output>}
+              {workStatus.query === raw && workStatus.failed && <output className="cb-suggestion-privacy">Some saved work couldn’t be searched. <button className="btn sm ghost" onClick={() => setWorkRetry(value => value + 1)}>Retry</button></output>}
+            </div>
+          )}
           <div className="cb-provider-scopes" role="group" aria-label="Search providers">
             {PROVIDER_SCOPES.filter((scope) => scope !== "extensions" || extensionEnabled).map((scope) => (
               <button

@@ -21,6 +21,25 @@
   .cb-provider-scopes .cb-ranking-toggle {
     margin-left: auto;
   }
+  .cb-query-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .cb-query-status .cb-suggestion-privacy {
+    padding: 0;
+  }
+  .cb-query-status button {
+    flex: none;
+  }
+  .cb-query-status button:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: 2px;
+  }
   .cb-suggestion-privacy {
     margin: 0;
     padding: var(--space-1) var(--space-3);

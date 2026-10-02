@@ -416,9 +416,38 @@ it("keeps missing-model Ask refusals in the command surface and searches after t
   }
   expect(start).not.toHaveBeenCalled();
   expect(host.textContent).toContain("searching");
+  const status = host.querySelector(".cb-query-status")!;
+  expect(status.closest(".cb-pop")).not.toBeNull();
+  expect(status.parentElement?.contains(input)).toBe(false);
+  expect(input.value).toBe(question);
+  expect(document.activeElement).toBe(input);
   await act(async () => key(input, "Enter"));
   expect(search).toHaveBeenCalledWith(question);
   expect(create).toHaveBeenCalledWith("https://example.com/profile-search");
   expect(create).toHaveBeenCalledOnce();
   expect(close).toHaveBeenCalledOnce();
+});
+
+
+it("keeps saved-work failure and Retry outside the editing row and retries the current query", async () => {
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async method => {
+    if (method === "results.search") throw new Error("Fixture work unavailable");
+    return [] as never;
+  });
+  await act(async () => root.render(<CommandBar surfaceMode="new-tab" />));
+  const input = host.querySelector("input")!;
+  await act(async () => input.focus());
+  await act(async () => type(input, "a long current query that must remain editable"));
+  await act(async () => new Promise(resolve => setTimeout(resolve, 140)));
+  const status = host.querySelector(".cb-query-status")!;
+  expect(status.textContent).toContain("Some saved work couldn’t be searched.");
+  expect(status.closest(".cb-pop")).not.toBeNull();
+  expect(status.parentElement?.contains(input)).toBe(false);
+  const retry = [...status.querySelectorAll("button")].find(button => button.textContent === "Retry")!;
+  const before = invoke.mock.calls.filter(([method]) => method === "results.search").length;
+  await act(async () => retry.click());
+  await act(async () => new Promise(resolve => setTimeout(resolve, 140)));
+  expect(invoke.mock.calls.filter(([method]) => method === "results.search")).toHaveLength(before + 1);
+  expect(input.value).toBe("a long current query that must remain editable");
+  expect(document.activeElement).toBe(input);
 });
