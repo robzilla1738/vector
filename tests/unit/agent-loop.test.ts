@@ -627,7 +627,20 @@ describe("runToolLoop (S5 host integration)", () => {
       .toMatchObject({ text: "Complete page-free answer", seq: 2 });
   });
 
-  it.each(["safe-host", "private-address"] as const)("enforces the actual page-free streamed REPL openTab boundary for %s", async target => {
+  it.each([
+    { target: "safe-host", status: "needs_input", gateCount: 1, calls: 1,
+      checkEvidence: (evidence: { pending: unknown; park: unknown; row: unknown; transcript: string }) => {
+        expect(evidence.pending).toMatchObject({ kind: "approval" });
+        expect(evidence.park).toMatchObject({ toolCallId: "first-chat-open-real-url" });
+        expect(evidence.row).toEqual({ n: 1 });
+      } },
+    { target: "private-address", status: "failed", gateCount: 0, calls: 3,
+      checkEvidence: (evidence: { pending: unknown; park: unknown; row: unknown; transcript: string }) => {
+        expect(evidence.pending).toBeUndefined();
+        expect(evidence.transcript).toContain("Web tools cannot contact a private or local network address.");
+        expect(evidence.transcript).not.toContain("redeclaration");
+      } },
+  ])("enforces the actual page-free streamed REPL openTab boundary for $target", async ({ target, status, gateCount, calls, checkEvidence }) => {
     const { createRequire } = await import("node:module");
     const { createFixture } = await import("../host/lib/fixture.mjs");
     const { createModelFixture } = await import("../host/lib/model-fixture.mjs");
@@ -667,21 +680,13 @@ describe("runToolLoop (S5 host integration)", () => {
         expect(h.repo.getRun(run.runId)?.pageIds).toEqual([]);
         expect(h.pages.observe).not.toHaveBeenCalled();
         expect(h.pages.execute).not.toHaveBeenCalled();
-        if (target === "safe-host") {
-          expect(h.repo.getRun(run.runId)?.status).toBe("needs_input");
-          expect(gateCalls).toBe(1);
-          expect(h.modelCalls).toHaveLength(1);
-          expect(h.coordinator.suspensions.pending(run.runId)).toMatchObject({ kind: "approval" });
-          expect(new TranscriptStore(h.db).openPark(run.runId)).toMatchObject({ toolCallId: "first-chat-open-real-url" });
-          expect(h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId)).toEqual({ n: 1 });
-        } else {
-          expect(h.repo.getRun(run.runId)?.status).toBe("failed");
-          expect(gateCalls).toBe(0);
-          expect(h.modelCalls).toHaveLength(3);
-          expect(h.coordinator.suspensions.pending(run.runId)).toBeUndefined();
-          expect(JSON.stringify(transcript)).toContain("Web tools cannot contact a private or local network address.");
-          expect(JSON.stringify(transcript)).not.toContain("redeclaration");
-        }
+        expect(h.repo.getRun(run.runId)?.status).toBe(status);
+        expect(gateCalls).toBe(gateCount);
+        expect(h.modelCalls).toHaveLength(calls);
+        checkEvidence({ pending: h.coordinator.suspensions.pending(run.runId),
+          park: new TranscriptStore(h.db).openPark(run.runId),
+          row: h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId),
+          transcript: JSON.stringify(transcript) });
       } finally { await h.coordinator.cancel(run.runId); }
     } finally { transport.close(); await fixture.close(); }
   });

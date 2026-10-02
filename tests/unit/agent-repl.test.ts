@@ -101,7 +101,14 @@ describe("code-mode REPL", () => {
     expect(original.value).toBe(1); // the prior handle remains available
   });
 
-  it.each(["refusal", "park"] as const)("reaches the real gate again after a %s interrupts a top-level declaration", async first => {
+  it.each([
+    { first: "refusal", checkInitial: async (result: Promise<LoopToolResult>) => {
+      await expect(result).rejects.toThrow("Current site authority was revoked");
+    } },
+    { first: "park", checkInitial: async (result: Promise<LoopToolResult>) => {
+      expect(await result).toMatchObject({ park: { approvalId: "ap-owned" } });
+    } },
+  ])("reaches the real gate again after a $first interrupts a top-level declaration", async ({ first, checkInitial }) => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());
     let calls = 0;
@@ -114,8 +121,7 @@ describe("code-mode REPL", () => {
     });
     const host = deps({ openTab });
     const code = 'const opened = openTab("http://allowed.test"); display(opened); opened.pageId';
-    if (first === "refusal") await expect(pool.eval(host, code)).rejects.toThrow("Current site authority was revoked");
-    else expect(await pool.eval(host, code)).toMatchObject({ park: { approvalId: "ap-owned" } });
+    await checkInitial(pool.eval(host, code));
     expect(openTab).toHaveBeenCalledTimes(1);
     expect(out(await pool.eval(host, code)).value).toBe("p2");
     expect(openTab).toHaveBeenCalledTimes(2);
