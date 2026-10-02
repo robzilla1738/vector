@@ -1,0 +1,24 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "originalError": "WeakPtr has no equality operator; compare only live original owner handles via supported get()",
+  "patch": "aux/runtime/0303-startup-live-weak-owner-comparisons.patch",
+  "patchSha256": "6ba3f23c5dfea1af83a63067f33bb63078db88fdede0ceb23960716db964c7f9",
+  "files": {
+    "chrome/browser/ui/aux/native_startup_presentation_session.cc": {
+      "before": "d2fa3027ae595af2fb1c2a8e55c53723bbde05a02b63f6c5e5253ddd43849939",
+      "result": "6c21a620a69490b20f3103ccb74f1140f462f031b7a476d9ee764714748e6ac6"
+    },
+    "chrome/browser/ui/aux/native_startup_viewport.cc": {
+      "before": "ff2f25cc1a2e3c6da574af9cd9ae8862375e13f3ee8c30c8aea0007f78eb92ce",
+      "result": "baf85e222c2a7cf5be77114091e685c052c954d0f87daa0aec76f94597554071"
+    },
+    "chrome/browser/ui/aux/native_startup_runtime_hello.cc": {
+      "before": "f07a3f79486cca652a2600ff8238ba35613d9b12e8a1bdfd899e72e92722c15a",
+      "result": "9fdb038c1245f8708b547dccd046bc3f93443864f1690e9497c78bc14e98c2af"
+    }
+  },
+  "scratchForwardReverseExact": "PASS",
+  "preserved": "Original retained window/host identity, live handles, original handshake peer+connection generation+acknowledgement/deadline; two invalidated handles cannot compare equal. No raw-pointer ownership or assertion changes.",
+  "remaining": "Genuine native compile and lifetime/retirement cases"
+}

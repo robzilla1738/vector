@@ -41,7 +41,7 @@ bool NativeStartupPresentationSession::UniqueRegularOwner() const {
             WebUIBrowserWindow::FromBrowser(candidate)) inventory.push_back(candidate->GetWeakPtr());
         return true;
       });
-  return ui_ && browser && inventory.size() == 1 && inventory[0] == browser &&
+  return ui_ && browser && inventory.size() == 1 && inventory[0] && inventory[0].get() == browser.get() &&
       NativePerformanceOwnerInventoryMatches(browser.get(), {}, {browser.get()});
 }
 bool NativeStartupPresentationSession::WithinDeadline() const {

@@ -63,7 +63,7 @@ std::optional<NativeStartupViewport> ReadNativeStartupViewport(
         return true;
       });
   if (!ui || !browser_weak || inventory.size() != 1 || !inventory[0] ||
-      inventory[0] != browser_weak ||
+      inventory[0].get() != browser_weak.get() ||
       !NativePerformanceOwnerInventoryMatches(browser_weak.get(), {}, {browser_weak.get()}))
     return std::nullopt;
   auto* shell = ui->web_ui()->GetWebContents();

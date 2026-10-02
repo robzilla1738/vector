@@ -64,14 +64,14 @@ base::ScopedClosureRunner NativeStartupRuntimeHelloStore::Observe(Profile* profi
 std::optional<NativeStartupRuntimeHello> NativeStartupRuntimeHelloStore::Read(Profile* profile) {
   auto* state = State(profile, false);
   const auto host = AuxRuntimeHost::ExistingForStartup(profile);
-  if (!state || !state->actual || !host || state->actual->host != host ||
+  if (!state || !state->actual || !host || !state->actual->host || state->actual->host.get() != host.get() ||
       state->actual->connection_generation != 1 || state->actual->acknowledged.is_null()) return std::nullopt;
   return state->actual;
 }
 void NativeStartupRuntimeHelloStore::Confirm(Profile* profile,
     const NativeStartupRuntimeHello& expected, base::TimeTicks deadline, base::OnceCallback<void(std::optional<base::TimeTicks>)> reply) {
   const auto current = Read(profile);
-  if (deadline.is_null() || base::TimeTicks::Now() > deadline || !current || current->host != expected.host || current->peer != expected.peer ||
+  if (deadline.is_null() || base::TimeTicks::Now() > deadline || !current || !current->host || !expected.host || current->host.get() != expected.host.get() || current->peer != expected.peer ||
       current->connection_generation != expected.connection_generation ||
       current->acknowledged != expected.acknowledged) {
     std::move(reply).Run(std::nullopt); return;
@@ -80,7 +80,7 @@ void NativeStartupRuntimeHelloStore::Confirm(Profile* profile,
       base::BindOnce([](base::WeakPtr<Profile> profile, NativeStartupRuntimeHello expected, base::TimeTicks deadline,
                        base::OnceCallback<void(std::optional<base::TimeTicks>)> reply, std::optional<base::TimeTicks> confirmed) {
         const auto current = profile ? NativeStartupRuntimeHelloStore::Read(profile.get()) : std::nullopt;
-        const bool valid = confirmed && base::TimeTicks::Now() <= deadline && *confirmed <= deadline && current && current->host == expected.host &&
+        const bool valid = confirmed && base::TimeTicks::Now() <= deadline && *confirmed <= deadline && current && current->host && expected.host && current->host.get() == expected.host.get() &&
             current->peer == expected.peer && current->connection_generation == expected.connection_generation &&
             current->acknowledged == expected.acknowledged;
         std::move(reply).Run(valid ? confirmed : std::nullopt);
@@ -89,7 +89,7 @@ void NativeStartupRuntimeHelloStore::Confirm(Profile* profile,
 void NativeStartupRuntimeHelloStore::Published(Profile* profile, NativeStartupRuntimeHello actual) {
   auto* state = State(profile, true);
   const auto host = AuxRuntimeHost::ExistingForStartup(profile);
-  if (!state || !host || actual.host != host || actual.acknowledged.is_null() ||
+  if (!state || !host || !actual.host || actual.host.get() != host.get() || actual.acknowledged.is_null() ||
       actual.acknowledged > base::TimeTicks::Now() || actual.connection_generation != 1 ||
       actual.peer.pid <= 0 || actual.peer.pid_version <= 0) return;
   // A second publication cannot replace the original handshake endpoint.
@@ -101,7 +101,7 @@ void NativeStartupRuntimeHelloStore::Published(Profile* profile, NativeStartupRu
 void NativeStartupRuntimeHelloStore::Retired(Profile* profile,
     base::WeakPtr<AuxRuntimeHost> host, uint64_t connection_generation) {
   auto* state = State(profile, false);
-  if (!state || !state->actual || state->actual->host != host ||
+  if (!state || !state->actual || !host || !state->actual->host || state->actual->host.get() != host.get() ||
       state->actual->connection_generation != connection_generation) return;
   state->actual.reset();
   state->known = true;
