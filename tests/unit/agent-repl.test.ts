@@ -101,6 +101,68 @@ describe("code-mode REPL", () => {
     expect(original.value).toBe(1); // the prior handle remains available
   });
 
+  it.each(["refusal", "park"] as const)("reaches the real gate again after a %s interrupts a top-level declaration", async first => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    let calls = 0;
+    const openTab = vi.fn(async () => {
+      if (++calls === 1) {
+        if (first === "refusal") throw new AuxError("permission_denied", "Current site authority was revoked.");
+        return { park: { kind: "approval" as const, approvalId: "ap-owned", instruction: "Approve this destination?" } };
+      }
+      return { output: { pageId: "p2", url: "http://allowed.test", title: "New", active: false, owned: true } };
+    });
+    const host = deps({ openTab });
+    const code = 'const opened = openTab("http://allowed.test"); display(opened); opened.pageId';
+    if (first === "refusal") await expect(pool.eval(host, code)).rejects.toThrow("Current site authority was revoked");
+    else expect(await pool.eval(host, code)).toMatchObject({ park: { approvalId: "ap-owned" } });
+    expect(openTab).toHaveBeenCalledTimes(1);
+    expect(out(await pool.eval(host, code)).value).toBe("p2");
+    expect(openTab).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves global bindings after correcting a syntax-invalid declaration", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const host = deps();
+    await expect(pool.eval(host, "const corrected = ;")).rejects.toThrow();
+    expect(out(await pool.eval(host, "const corrected = 42; corrected")).value).toBe(42);
+    expect(out(await pool.eval(host, "corrected")).value).toBe(42);
+  });
+
+  it("remembers bindings when guest code throws its own SyntaxError", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    const host = deps();
+    await expect(pool.eval(host, 'const retained = (() => { throw new SyntaxError("guest failure"); })();'))
+      .rejects.toThrow("guest failure");
+    expect(out(await pool.eval(host, "const retained = 42; retained")).value).toBe(42);
+  });
+
+  it("chooses declaration scoping after the preceding queued evaluation settles", async () => {
+    const pool = new ReplPool();
+    cleanup.push(() => pool.disposeAll());
+    let release!: () => void;
+    let entered!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    const host = deps({ openTab: async () => {
+      entered();
+      await held;
+      return { output: { pageId: "p2", url: "http://allowed.test", title: "New", active: false, owned: true } };
+    } });
+    await pool.eval(host, "1"); // Warm the single actual session before concurrency.
+    const first = pool.eval(host, 'const queued = openTab("http://allowed.test"); queued.pageId');
+    await started;
+    const second = pool.eval(host, 'const queued = "second"; queued');
+    try {
+      release();
+      expect(out(await first).value).toBe("p2");
+      expect(out(await second).value).toBe("second");
+      expect(out(await pool.eval(host, "queued.pageId")).value).toBe("p2");
+    } finally { release(); await Promise.allSettled([first, second]); }
+  });
+
   it("accepts model-style await on synchronous host calls without changing strings", async () => {
     const pool = new ReplPool();
     cleanup.push(() => pool.disposeAll());

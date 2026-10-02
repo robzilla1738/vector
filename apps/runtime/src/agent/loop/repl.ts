@@ -559,26 +559,34 @@ class ReplSession {
     checkSource(code);
     code = normalizeBridgeAwaits(code);
     const declared = topLevelLexicals(code);
-    const scoped = declared.some((name) => this.lexicals.has(name));
-    const source = scoped ? `{\n${code}\n}` : code;
     let release!: () => void;
     const previous = this.queue;
     this.queue = new Promise<void>((resolve) => {
       release = resolve;
     });
     await previous;
+    const scoped = declared.some((name) => this.lexicals.has(name));
+    const source = scoped ? `{\n${code}\n}` : code;
     const started = Date.now();
     this.deadline = started + Math.min(deadlineMs ?? REPL_MAX_DEADLINE_MS, REPL_MAX_DEADLINE_MS);
     this.touchedAt = started;
     this.finished = undefined;
     try {
+      if (!scoped && declared.length) {
+        // Syntax-invalid cells allocate no bindings. Validate with the same engine,
+        // without executing a host call or inspecting guest-controlled errors.
+        const compiled = await this.context.evalCodeAsync(source, "eval.js", { compileOnly: true });
+        this.context.unwrapResult(compiled).dispose();
+      }
       const result = await this.context.evalCodeAsync(source);
+      // A runtime refusal or park can interrupt an initializer after QuickJS has
+      // allocated its top-level bindings. Remember those before unwrapping errors.
+      if (!scoped) for (const name of declared) this.lexicals.add(name);
       if (this.finished) {
         try { this.context.unwrapResult(result).dispose(); } catch { /* accepted result is already terminal */ }
         return { finish: { result: this.finished } };
       }
       const valueHandle = this.context.unwrapResult(result); // guest exceptions throw here (park marker included)
-      if (!scoped) for (const name of declared) this.lexicals.add(name);
       this.context.setProp(this.context.global, "__aux_pending_result", valueHandle);
       valueHandle.dispose();
       let marshalled: unknown;

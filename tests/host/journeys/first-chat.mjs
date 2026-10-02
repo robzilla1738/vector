@@ -5,7 +5,10 @@ import { configureModel, finished, mentionedRun, newChat, observations, tool } f
 export const journey = {
   id: 'first-chat', title: 'Answer and retry without a page; open a real page only through a tool',
   features: ['electronMigration'], devAcceptance: ['tabMentions'],
-  needs: ['accessibility', 'screen-recording'], model: 'loopback', launch: {},
+  needs: ['accessibility', 'screen-recording'], model: 'loopback', launch: ({ fixture }) => ({ args: [
+    `--host-resolver-rules=MAP aux-recovery.fixture.test 127.0.0.1:${new URL(fixture.url).port}`,
+    '--no-proxy-server',
+  ] }),
   timeoutMs: 150000, owner: 'Builder first-chat regression',
 };
 const selector = (name, role) => ({ name, ...(role ? { role } : {}), match: 'exact', scope: 'shell', index: 0 });
@@ -20,7 +23,7 @@ async function send(t, text) {
 
 export async function run(t) {
   await configureModel(t);
-  const openedUrl = `${t.fixture.url}/first-chat/opened`;
+  const openedUrl = `http://aux-recovery.fixture.test/first-chat/opened`;
   const contextUrl = `${t.fixture.url}/first-chat/context`;
   t.fixture.route('/first-chat/opened', fixturePage('Aux first-chat tool page', '<p>Explicit tool destination ready.</p>'));
   t.fixture.route('/first-chat/context', fixturePage('Aux first-chat optional context', '<p>Optional context evidence: copper-467.</p>'));

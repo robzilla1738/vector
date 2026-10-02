@@ -627,6 +627,65 @@ describe("runToolLoop (S5 host integration)", () => {
       .toMatchObject({ text: "Complete page-free answer", seq: 2 });
   });
 
+  it.each(["safe-host", "private-address"] as const)("enforces the actual page-free streamed REPL openTab boundary for %s", async target => {
+    const { createRequire } = await import("node:module");
+    const { createFixture } = await import("../host/lib/fixture.mjs");
+    const { createModelFixture } = await import("../host/lib/model-fixture.mjs");
+    const runtimeRequire = createRequire(new URL("../../apps/runtime/package.json", import.meta.url));
+    const { createOpenAI } = await import(runtimeRequire.resolve("@ai-sdk/openai"));
+    const { streamText } = await import(runtimeRequire.resolve("ai"));
+    const fixture = await createFixture();
+    const transport = createModelFixture(fixture);
+    const destination = target === "safe-host" ? "http://aux-recovery.fixture.test/first-chat/opened" : `${fixture.url}/first-chat/opened`;
+    const code = `const opened = openTab(${JSON.stringify(destination)}); display(opened); submitResult("Explicit tool destination opened.");`;
+    transport.respond(() => ({ tool_calls: [{ id: "first-chat-open-real-url", type: "function",
+      function: { name: "repl", arguments: JSON.stringify({ code }) } }] }));
+    try {
+      const provider = createOpenAI({ apiKey: "synthetic-loopback-only", baseURL: transport.endpoint });
+      const decoded = streamText({ model: provider.chat("fixture-model"), prompt: "Open synthetic destination",
+        maxRetries: 0, tools: { repl: { inputSchema: buildToolManifest().repl!.inputSchema } } });
+      for await (const _part of decoded.fullStream) { /* Consume the actual SDK transport before dispatch. */ }
+      const toolCalls = await decoded.toolCalls;
+      expect(toolCalls).toHaveLength(1);
+      expect(toolCalls[0]).toMatchObject({ toolCallId: "first-chat-open-real-url", toolName: "repl", input: { code } });
+      const model = new MockModelClient().scriptToolSteps([{ toolCalls }]);
+      const h = coordinatorHarness(model);
+      let gateCalls = 0;
+      h.coordinator.deps.agentLoop = { repl: { openTab: async (url, ctx) => {
+        expect(url).toBe(destination);
+        gateCalls++;
+        // Controlled gate response; no site grant or native consent is fabricated.
+        h.coordinator.suspensions.park({ runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.turnId,
+          kind: "approval", request: { kind: "approval", approvalId: "ap-first-chat", instruction: "Approve this destination?", guidance: "Wait for actual person input." } });
+        return { park: { kind: "approval", approvalId: "ap-first-chat", instruction: "Approve this destination?" } };
+      } } };
+      const run = await h.coordinator.start({ goal: "Open the synthetic destination", pageIds: [],
+        engine: "agent-loop", maxModelCalls: 3 });
+      try {
+        await vi.waitFor(() => expect(["needs_input", "failed"]).toContain(h.repo.getRun(run.runId)?.status));
+        const transcript = new TranscriptStore(h.db).load(run.runId);
+        expect(h.repo.getRun(run.runId)?.pageIds).toEqual([]);
+        expect(h.pages.observe).not.toHaveBeenCalled();
+        expect(h.pages.execute).not.toHaveBeenCalled();
+        if (target === "safe-host") {
+          expect(h.repo.getRun(run.runId)?.status).toBe("needs_input");
+          expect(gateCalls).toBe(1);
+          expect(h.modelCalls).toHaveLength(1);
+          expect(h.coordinator.suspensions.pending(run.runId)).toMatchObject({ kind: "approval" });
+          expect(new TranscriptStore(h.db).openPark(run.runId)).toMatchObject({ toolCallId: "first-chat-open-real-url" });
+          expect(h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId)).toEqual({ n: 1 });
+        } else {
+          expect(h.repo.getRun(run.runId)?.status).toBe("failed");
+          expect(gateCalls).toBe(0);
+          expect(h.modelCalls).toHaveLength(3);
+          expect(h.coordinator.suspensions.pending(run.runId)).toBeUndefined();
+          expect(JSON.stringify(transcript)).toContain("Web tools cannot contact a private or local network address.");
+          expect(JSON.stringify(transcript)).not.toContain("redeclaration");
+        }
+      } finally { await h.coordinator.cancel(run.runId); }
+    } finally { transport.close(); await fixture.close(); }
+  });
+
   it("funds a real Goal turn and only completes on accepted submit_result", async () => {
     const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{ toolCallId: "done",
       toolName: "submit_result", input: { report: "Fixture result" } }] }]);
