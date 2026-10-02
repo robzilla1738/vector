@@ -379,3 +379,55 @@ it("checks the real overnight window before each replayed Skill dispatch", async
     expect(repo.listSteps(service.get(item.id).runId!)).toHaveLength(1);
   } finally { await remove(); }
 });
+
+
+it("the actual page executor stops later program steps when the overnight window closes", async () => {
+  const { repo, db } = await fixture();
+  const { EventBus, NullNativeBridge } = await import("@aux/runtime");
+  const { PageService } = await import("../../apps/runtime/src/services/pages.js");
+  const { fixtureTurnMentions } = await import("../fixtures/turn-mentions.js");
+  const { installNightShift } = await import("../../apps/runtime/src/features/overnight-review/service.js");
+  let now = new Date(2026, 9, 1, 1).getTime();
+  repo.setSetting("nightShift", { enabled: true, start: "00:00", end: "08:00", nightlyUsd: 2, perTaskUsd: 0.5, requireAC: true });
+  const dispatched: string[] = [];
+  const driver: import("@aux/chromium-driver").BrowserDriver = {
+    backend: "aux", connect: async () => {}, disconnect: async () => {}, isConnected: () => true,
+    listTargets: async () => [], createTarget: async () => "fixture-target",
+    attach: async (_targetId, pageId) => ({ identity: { pageId, targetId: "fixture-target", backend: "aux" },
+      url: () => "https://fixture.test/", title: async () => "Overnight fixture", isAttached: () => true,
+      navigate: async () => {}, setEvents: () => {}, dispose: async () => {},
+      waitFor: async (condition: import("@aux/contracts").Condition) => {
+        dispatched.push(condition.kind === "selector" ? condition.selector : condition.kind);
+        now = new Date(2026, 9, 1, 8).getTime(); return { ok: true, timedOut: false };
+      },
+    }) as unknown as import("@aux/chromium-driver").DriverPage,
+  };
+  const events = new EventBus(repo);
+  const mentions = fixtureTurnMentions(id => pages.get(id));
+  const pages = new PageService({ repo, events, turnMentions: mentions, native: new NullNativeBridge(),
+    drivers: () => ({ aux: driver, chrome: null }), grants: ["effect:read"] });
+  const page = await pages.open({ url: "https://fixture.test/", ownedByRuntime: true, background: true });
+  let runId = "";
+  const service = new NightShiftService(repo, { backgroundEnabled: () => true, onAC: async () => true,
+    releaseActivity: async () => {}, powerActivity: async () => ({ active: true }), cancel: () => {}, resume: async () => {},
+    consolidate: async () => {}, reindex: async () => {}, start: async (_payload, item, reserved) => {
+      runId = reserved;
+      repo.saveRun({ runId, goal: "Read overnight fixture", pageIds: [page.pageId], status: "running", createdAt: now,
+        config: { implementation: "builtin-agent", nightShiftItemId: item.id } });
+      await mentions.begin(runId, [], [page.pageId]); return runId;
+    } }, new BudgetsService(db, () => ({})), createClock(1, () => now));
+  const remove = installNightShift({ repo } as import("../../apps/runtime/src/api/methods/context.js").Services, service);
+  try {
+    const item = service.queue({ payload: { kind: "goal", goalId: "fixture-goal" }, budgetUsd: 0.4 });
+    await service.tick();
+    const result = await pages.execute({ pageId: page.pageId, steps: [
+      { id: "first", op: "waitFor", condition: { kind: "selector", selector: "#first", state: "visible" } },
+      { id: "later", op: "waitFor", condition: { kind: "selector", selector: "#later", state: "visible" } },
+    ] }, { runId });
+    expect(result.status).toBe("failed");
+    expect(result.steps[1]?.error).toMatchObject({ code: "permission_denied" });
+    expect(dispatched).toEqual(["#first"]);
+    expect(repo.getRun(runId)?.status).toBe("running");
+    expect(service.get(item.id).status).toBe("running");
+  } finally { await remove(); }
+});

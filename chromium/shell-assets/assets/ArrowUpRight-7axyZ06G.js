@@ -1,0 +1,1 @@
+import{j as s}from"./index-DRJf_-5P.js";import{j as r,k as t,l as n}from"./App-BoHb2Z_n.js";const p=o=>s.jsx("svg",{...t,...o,children:s.jsx("path",{d:"M18.25 15.25V5.75M18.25 5.75H8.75M18.25 5.75L6 18",...n})}),i=r(p,"sm");export{i as s};

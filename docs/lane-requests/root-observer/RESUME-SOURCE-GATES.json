@@ -1,0 +1,78 @@
+{
+  "scope": "Rebuilt actual overnight dispatch guards+QuickJS manifest regression, renderer timing retention, native0206 fixture correction",
+  "logs": [
+    {
+      "path": "/tmp/aux-root-resume-runtime-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "/tmp/aux-root-resume-trust-tests.log",
+      "sha256": "b8cf6c692db390507be888229d891758481ebae01052cc0094c61c35c09c7d7b",
+      "bytes": 613
+    },
+    {
+      "path": "/tmp/aux-root-resume-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f",
+      "bytes": 90
+    },
+    {
+      "path": "/tmp/aux-root-resume-lint.log",
+      "sha256": "b02f1a9633821bed246d2e6351e4302d0305f9ac3207cf9827570242ce8311d3",
+      "bytes": 128307
+    },
+    {
+      "path": "/tmp/aux-root-resume-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562",
+      "bytes": 142
+    },
+    {
+      "path": "/tmp/aux-root-resume-shell.log",
+      "sha256": "bb8838117521514cadd167fe7ddea7949120b9b7225c42a034594007d5b5a786",
+      "bytes": 53209
+    },
+    {
+      "path": "/tmp/aux-root-resume-capture.log",
+      "sha256": "7ebcbdf96787e5886240ef49b20d403fdec237f14d3602c4fef7d003a8d04fbc",
+      "bytes": 116
+    },
+    {
+      "path": "/tmp/aux-root-resume-budgets.log",
+      "sha256": "7b19e2b2753b928eff7306263cbabedf8ca9923d8676067e3ac32495bef177ac",
+      "bytes": 404
+    },
+    {
+      "path": "/tmp/aux-root-resume-bindings.log",
+      "sha256": "8745a8f670267397187db5377130643382abcbf0dc79b24117e0e2b76acf4902",
+      "bytes": 60
+    },
+    {
+      "path": "/tmp/aux-root-resume-bridge.log",
+      "sha256": "13cb2fc53cb8b533ff4bbc0d4e6a4b25934544a6f458daf4a2c7ad87f1ba284b",
+      "bytes": 158
+    },
+    {
+      "path": "/tmp/aux-root-resume-inventory.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "/tmp/aux-root-resume-journeys.log",
+      "sha256": "7a47098a0e06ff2f10394b664bae6680d52fa21e4ea33efac47284f3d992b5ed",
+      "bytes": 30
+    },
+    {
+      "path": "/tmp/aux-root-resume-native-replay.log",
+      "sha256": "3bc0fc3084757a2e3b3c252b85b2d85b1cdf1f5fef10a278b2fe9fee6d72904d",
+      "bytes": 84
+    }
+  ],
+  "focusedTests": 60,
+  "nativePackets": 35,
+  "nativeFiles": 108,
+  "nativeBaselines": 73,
+  "shellAssetDigest": "0b1c00026b36984efd3744c94bba28112dc944b4123b8a8ed70daae974024150",
+  "nativeCompiled": false,
+  "fullUnitSuiteRerun": false,
+  "heldAllowSafetyGap": "fresh receipt/authority retirement design remains open"
+}

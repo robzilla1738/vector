@@ -1,3 +1,4 @@
+import { checkNightShiftDispatch } from "./features/overnight-review/service.js";
 import { SafetyAuthorityRevocation } from "./safety/authority-revocation.js";
 import { z } from "zod";
 import { createClock } from "@aux/contracts";
@@ -1156,6 +1157,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       run: runId => repo.getRun(runId),
       page: pageId => pages.get(pageId),
       standingOnly: runId => !!repo.getRun(runId)?.config?.nightShiftItemId,
+      assertDispatch: runId => checkNightShiftDispatch(repo, runId),
       requiresTurn: (run, pageId) => run.config?.implementation !== "external-agent" ||
         !!run.config?.mentions?.length || turnMentions.ownedPages(run.runId).includes(pageId),
       sourceCheck: (runId, pageId) => {

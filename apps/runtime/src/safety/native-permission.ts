@@ -79,6 +79,7 @@ export class NativePermissionController {
       page(id: string): PageTarget;
       sourceCheck(runId: string, pageId: string): () => void;
       standingOnly(runId: string): boolean;
+      assertDispatch(runId: string): Promise<void>;
       requiresTurn(run: Run, pageId: string): boolean;
       now?: () => number;
     },
@@ -214,6 +215,7 @@ export class NativePermissionController {
             standingOnly: this.deps.standingOnly(input.runId),
           },
         );
+        await this.deps.assertDispatch(input.runId);
         fence();
       };
       try {

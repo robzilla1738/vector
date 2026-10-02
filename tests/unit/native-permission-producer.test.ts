@@ -14,7 +14,7 @@ import {
 import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
 const cleanup: Array<() => void> = [];
 afterEach(() => cleanup.splice(0).forEach((dispose) => dispose()));
-async function fixture(readOnly = false, external = false) {
+async function fixture(readOnly = false, external = false, assertDispatch: (runId: string) => Promise<void> = async () => {}, runId = "run") {
   const db = openDb(":memory:");
   cleanup.push(() => db.close());
   const approvals = new ApprovalStore(db);
@@ -46,7 +46,7 @@ async function fixture(readOnly = false, external = false) {
     lastActiveAt: 1,
   });
   const run = RunSchema.parse({
-    runId: "run",
+    runId,
     status: "running",
     goal: "Review permissions",
     pageIds: [page.pageId],
@@ -131,6 +131,7 @@ async function fixture(readOnly = false, external = false) {
     page: () => page,
     run: () => run,
     standingOnly: () => onlyStanding,
+    assertDispatch,
     requiresTurn: () => !external,
     sourceCheck: () => () => {
       if (!owns) throw new AuxError("permission_denied", "Lease owner retired.");
@@ -374,4 +375,64 @@ it("a hidden overnight permission uses only its exact standing grant and remains
   expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "allow" });
   expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "deny" });
   expect(f.mentions.ownedPages("run")).toEqual([]);
+});
+
+
+it("a real closed overnight window denies a standing native permission before scheduler reconciliation", async () => {
+  const { Repo } = await import("@aux/runtime");
+  const { SqliteColumnCipher } = await import("../../apps/runtime/src/store/sqlite-protection.js");
+  const { NightShiftService } = await import("../../apps/runtime/src/services/night-shift.js");
+  const { BudgetsService } = await import("../../apps/runtime/src/services/budgets.js");
+  const { installNightShift, checkNightShiftDispatch } = await import("../../apps/runtime/src/features/overnight-review/service.js");
+  const { createClock } = await import("@aux/contracts");
+  const { randomBytes, createHash } = await import("node:crypto");
+  const db = openDb(":memory:"); cleanup.push(() => db.close());
+  const stored = new Map<string, string>();
+  const secret = (key: string) => { if (!stored.has(key)) stored.set(key, randomBytes(32).toString("base64")); return { value: stored.get(key)! }; };
+  const cipher = await SqliteColumnCipher.create({ readSecret: async key => ({ value: stored.get(key) }),
+    storeSecret: async (key, value) => { stored.set(key, value); return { ok: true }; },
+    profileStorageRoot: async () => secret(`aux_root_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`), profileStorageFactor: async () => secret(`sqlite_factor_v1_${createHash("sha256").update("fixture").digest("hex").slice(0, 24)}`) }, "fixture", false);
+  const repo = new Repo(db, cipher);
+  let now = new Date(2026, 9, 1, 1).getTime();
+  repo.setSetting("nightShift", { enabled: true, start: "00:00", end: "08:00", nightlyUsd: 2, perTaskUsd: 0.5, requireAC: true });
+  let f: Awaited<ReturnType<typeof fixture>> | undefined;
+  const service = new NightShiftService(repo, { backgroundEnabled: () => true, onAC: async () => true,
+    releaseActivity: async () => {}, powerActivity: async () => ({ active: true }), cancel: () => {}, resume: async () => {},
+    consolidate: async () => {}, reindex: async () => {}, start: async (_payload, item, runId) => {
+      f = await fixture(false, true, id => checkNightShiftDispatch(repo, id), runId);
+      f.run.config = { ...f.run.config, nightShiftItemId: item.id };
+      repo.saveRun(f.run); f.overnight(); return runId;
+    } }, new BudgetsService(db, () => ({})), createClock(1, () => now));
+  const remove = installNightShift({ repo } as import("../../apps/runtime/src/api/methods/context.js").Services, service);
+  try {
+    const item = service.queue({ payload: { kind: "goal", goalId: "fixture-goal" }, budgetUsd: 0.4 });
+    await service.tick();
+    const actual = f!;
+    const pending = await actual.controller.request(actual.request);
+    expect(pending.decision).toBe("pending");
+    actual.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: pending.approvalId! }, actual.run.runId);
+    expect(await actual.controller.request(actual.request)).toMatchObject({ decision: "allow" });
+    const next = { ...actual.request, batchId: "after-window" };
+    now = new Date(2026, 9, 1, 8).getTime();
+    expect(service.get(item.id).status).toBe("running");
+    expect(repo.getRun(actual.run.runId)?.status).toBe("running");
+    expect(await actual.controller.request(next)).toEqual({ batchId: next.batchId, decision: "deny" });
+    expect(actual.approvals.pending(actual.run.runId)).toEqual([]);
+    expect(actual.approvals.listGrants("profile")).toHaveLength(1);
+    // An unanswered exact batch may still report its actual pending approval;
+    // it does not dispatch an effect or consume overnight foreground consent.
+    actual.approvals.revoke({ profileId: "profile" });
+    now = new Date(2026, 9, 1, 1).getTime();
+    const unanswered = { ...actual.request, batchId: "parked-pending" };
+    const waiting = await actual.controller.request(unanswered);
+    expect(waiting.decision).toBe("pending");
+    repo.saveRun({ ...actual.run, status: "needs_input" });
+    await service.tick();
+    expect(service.get(item.id).status).toBe("parked");
+    expect(await actual.controller.request(unanswered)).toEqual(waiting);
+    now = new Date(2026, 9, 1, 8).getTime();
+    await service.tick();
+    expect(service.get(item.id).status).toBe("needs_review");
+    expect(await actual.controller.request(unanswered)).toEqual(waiting);
+  } finally { await remove(); }
 });

@@ -1,3 +1,4 @@
+import { checkNightShiftDispatch } from "../../features/overnight-review/service.js";
 import { AuxError, isElementRef, type Condition, type Observation, type ObservationContent, type Program, type ProgramNode, type ProgramResult, type Step, type StepRecord, newStepId } from "@aux/contracts";
 import { beginConsequentialWrite, settleWrite } from "../../agent/durable.js";
 import { DEFAULT_GRANTS, authorizeProgram, classifyStep } from "../../agent/permissions.js";
@@ -81,6 +82,7 @@ export class ProgramExecutor {
       if (ctx.runId && allSteps.some(step => classifyStep(step.op) !== "read"))
         await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
       const authorize = async (step: Step, projectedOrigin?: string, phase: "preflight" | "dispatch" = "dispatch") => {
+        if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
         ctx.taskRead?.check();
         ctx.sourcePageCheck?.();
         const access = classifyStep(step.op) === "read" ? "read" : "act";
@@ -146,6 +148,7 @@ export class ProgramExecutor {
               throw new AuxError("ref_stale", "The target frame changed while authorizing this action. Observe it again.");
           }
         }
+        if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
         if (mentionTurn && ctx.runId) await this.pages.deps.turnMentions.assert(ctx.runId, pageId, access, mentionTurn);
         ctx.taskRead?.check();
         ctx.sourcePageCheck?.();

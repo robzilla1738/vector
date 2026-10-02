@@ -6,6 +6,21 @@ import { AuxError } from "@aux/contracts";
 const caller = { external: true, connectionId: "test-connection" };
 
 describe("manifest-backed code mode", () => {
+  it("never dispatches person approval or grant operations even from an internal-person code session", async () => {
+    const calls: string[] = [];
+    const mode = new AgentCodeMode(async method => {
+      calls.push(method);
+      throw new Error("A person-only safety operation must not reach host dispatch");
+    });
+    try {
+      for (const path of ["safety.approvals.pending", "safety.approvals.decide", "safety.grants.list", "safety.grants.revoke", "safety.originPolicies.set"]) {
+        const result = await mode.run({ code: `JSON.parse(aux_call(${JSON.stringify(path)}, '{}'))` }, { external: false });
+        expect(result.value).toEqual({ ok: false, error: `Unsupported Aux API member: ${path}` });
+      }
+      expect(calls).toEqual([]);
+    } finally { mode.disposeAll(); }
+  });
+
   it("projects supported members and one Contributor model across all roles", () => {
     expect(supportedAgentApi({ surface: "code" }).some(entry => entry.path === "tabs.ax.write")).toBe(false);
     expect(supportedAgentApi({ surface: "code", capabilities: new Set(["ax"]), apiSupportOverrides: { "tabs.ax.write": true } }).some(entry => entry.path === "tabs.ax.write")).toBe(true);

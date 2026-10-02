@@ -177,3 +177,4 @@ aux/runtime/0203-native-test-interface-contracts.patch
 aux/runtime/0204-appkit-command-registry.patch
 aux/runtime/0202-native-permission-lifecycle.patch
 aux/runtime/0205-native-callback-compilation.patch
+aux/runtime/0206-permission-fixture-dictionary.patch
