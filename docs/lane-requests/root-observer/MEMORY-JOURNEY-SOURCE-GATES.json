@@ -1,0 +1,55 @@
+{
+  "sourceOnly": true,
+  "nativeCompilation": false,
+  "actualPerformanceQualification": false,
+  "journeySemanticReview": {
+    "status": "independently reviewed source boundaries; actual native execution pending",
+    "actualSourceChecks": [
+      "explicit agent-loop fixture engine selects real tool loop for parent and children",
+      "tasks.start returns before acquirePages: fresh exact runs.get after genuine held provider callback retains actual protected copies",
+      "desktop resource updates create real task revisions/read grants; scoped task start preserves workspace/task resource authority",
+      "each executing trial independently requires fresh native five-cell current-document kernel bracket; provider holds arrange setup only",
+      "UI steps contain actual AX input/captures; native measurement steps explicitly RPC",
+      "original failure and cancellation errors retained without finally overwriting primary failure"
+    ],
+    "reviewer": "L10 independently reviewed scope/transport source; root inspected actual coordinator/settings/tasks/qualification boundaries"
+  },
+  "orderedNativePackets": 101,
+  "exactNativeMirrors": 324,
+  "actualOriginalBaselines": 195,
+  "registry": {
+    "journeys": 47,
+    "features": 43
+  },
+  "protocolCases": 103,
+  "preservedBudgetsBytes": {
+    "shell": 150000000,
+    "runtimeIdle": 120000000,
+    "runtimeExecuting": 250000000,
+    "matchedStockOverhead": 250000000
+  },
+  "logs": {
+    "build": {
+      "path": "/tmp/aux-root-memory-journey-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "lint": {
+      "path": "/tmp/aux-root-memory-journey-lint.log",
+      "sha256": "151ac13b4985e164ab217a87af8fd17129a8c09eb112d07caf1bc6a48dab8914"
+    },
+    "format": {
+      "path": "/tmp/aux-root-memory-journey-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    "protocol": {
+      "path": "/tmp/aux-root-memory-journey-protocol.log",
+      "sha256": "1d12430581eee7e6ddeca3d38f6168013458a4b75fadf3e726f9b8bd514c2393"
+    },
+    "bridge": {
+      "path": "/tmp/aux-root-memory-journey-bridge.log",
+      "sha256": "2b6fc625dea7b1c53aea5c20e723ddfc348fafd8eadb51326122c12803cec669"
+    }
+  },
+  "unchangedFullUnitSourceEvidence": "Parent04b740ba rebuilt whole suite481 files2605 cases PASS; this successor changes only native patches and Node journey infrastructure, no TS/runtime/renderer source",
+  "remaining": "actual native compile and real UI/kernel20AC trials including stock comparison; every original roadmap gate"
+}

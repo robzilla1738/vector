@@ -114,7 +114,7 @@ std::optional<NativeGuestStageOwnedSnapshot> NativeLittlePresentationFixture::Cu
       guest_document_.AsRenderFrameHostIfValid() != guest_->GetPrimaryMainFrame()) return std::nullopt;
   const auto actual = ticket_.ReadTarget(target_);
   const auto* identity = PageIdentity::FromWebContents(guest_.get());
-  const auto* handle = guest_contents::GuestContentsHandle::FromWebContents(guest_.get());
+  auto* handle = guest_contents::GuestContentsHandle::FromWebContents(guest_.get());
   if (!actual || !identity || identity->runtime_owned() || !handle) return std::nullopt;
   return ReadNativeGuestStageOwnedSnapshot(target_, {{identity->id(), handle->id().ToString()}});
 }

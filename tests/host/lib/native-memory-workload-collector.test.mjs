@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createNativeProcessMemoryReader } from './native-process-memory.mjs';
 import { createNativeWorkloadPreparationAdapter, collectNativeMemoryWorkloadTrials } from './native-memory-workload-collector.mjs';
+import { collectNativeMemoryBudget } from './native-memory-budget.mjs';
 
 // Synthetic original protocol controls against the actual reader; not native
 // kernel measurements, five real VMs, AC hardware or M3 qualification.
@@ -15,6 +16,7 @@ function fixture(mode = 'idle') {
     native: { sourceCommit: 'a'.repeat(40), buildId: 'synthetic', manifestHash: 'c'.repeat(64) },
     shellDigest: 'd'.repeat(64), harnessCommit: 'e'.repeat(40), moduleSha256: 'f'.repeat(64) };
   const f = { pages, idlePageIds, change: row => row, fail: () => {}, cleanupFail: false };
+  f.candidate = candidate;
   const transport = { async invoke(operation) {
     const sequence = ++count; f.fail(sequence);
     const start = 1000000 + sequence * 1000;
@@ -134,4 +136,47 @@ test('scope precondition rejection still cancels the already launched real workl
   const f = fixture('executing'); f.options.idlePageIds = ['foreign'];
   await assert.rejects(collectNativeMemoryWorkloadTrials(f.options), error => { assert.equal(error.trials.length, 0); return true; });
   assert.equal(f.calls(), 0); assert.equal(f.cleanups(), 1);
+});
+
+for (const mode of ['idle', 'executing']) test(`${mode} exact byte budget boundary retains serializable original evidence`, async () => {
+  const f = fixture(mode), runtimeLimit = mode === 'idle' ? 120_000_000 : 250_000_000;
+  f.change = row => {
+    for (const process of row.processes) if (process[1] === 'shell' || process[1] === 'runtime')
+      for (const reading of process[6]) reading[0] = String(process[1] === 'shell' ? 150_000_000 : runtimeLimit);
+    return row;
+  };
+  const report = await collectNativeMemoryBudget(f.options, f.candidate);
+  assert.equal(report.status, 'measured'); assert.equal(report.attempts.length, 20);
+  assert.deepEqual(report.maximumBytes, { shell: '150000000', runtime: String(runtimeLimit), allProcesses: String(150_000_000 + runtimeLimit + 210) });
+  assert.match(report.stockComparison, /required separately/);
+  for (const attempt of report.attempts) assert.equal(JSON.stringify(attempt.decoded.row), attempt.observation.raw);
+  assert.doesNotThrow(() => JSON.stringify(report));
+});
+
+for (const [mode, role, bytes] of [['idle', 'shell', 150_000_001], ['idle', 'runtime', 120_000_001], ['executing', 'runtime', 250_000_001]])
+  test(`${mode} ${role} one byte above budget refuses without dropping measured trials`, async () => {
+    const f = fixture(mode);
+    f.change = row => { for (const reading of row.processes.find(process => process[1] === role)[6]) reading[0] = String(bytes); return row; };
+    await assert.rejects(collectNativeMemoryBudget(f.options, f.candidate), error => {
+      assert.equal(error.report.status, 'failed'); assert.equal(error.report.attempts.length, 20);
+      assert.equal(error.report.maximumBytes[role], String(bytes)); return true;
+    });
+    assert.equal(f.cleanups(), mode === 'executing' ? 1 : 0);
+  });
+
+test('memory budget report retains original native refusal and exact cleanup failure', async () => {
+  const f = fixture('executing'); f.cleanupFail = true;
+  f.change = row => ({ producer: row.producer, version: 1, status: 'refused' });
+  await assert.rejects(collectNativeMemoryBudget(f.options, f.candidate), error => {
+    assert.equal(error.report.attempts.length, 1);
+    assert.ok(error.report.attempts[0].observation.raw.includes('refused'));
+    assert.match(error.report.cleanupFailure, /ACK missing/); return true;
+  });
+});
+
+test('memory report cannot relabel original native observations to a different build', async () => {
+  const f = fixture(), candidate = structuredClone(f.candidate); candidate.native.buildId = 'foreign';
+  await assert.rejects(collectNativeMemoryBudget(f.options, candidate), error => {
+    assert.equal(error.report.attempts.length, 20); assert.match(error.message, /Report candidate/); return true;
+  });
 });

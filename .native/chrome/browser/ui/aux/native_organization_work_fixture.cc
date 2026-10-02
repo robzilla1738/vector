@@ -162,12 +162,14 @@ void NativeOrganizationWorkFixture::RuntimeCompleted(blink::mojom::NativeOrganiz
       batches.Append(*batch);
     }
     if (count != sample->units) { Refuse(); return; }
-    work.Set("kind", "nativeArchiveBatch").Set("batchIds", std::move(batches));
+    work.Set("kind", "nativeArchiveBatch");
+    work.Set("batchIds", std::move(batches));
   } else {
     if (runtime->live_refresh_sequence != runtime_->live_refresh_sequence + 1 ||
         runtime->live_folder_id != sample->folder_id || runtime->live_folder_units != sample->units) { Refuse(); return; }
-    work.Set("kind", "runtimeLiveFolderRender").Set("runtimePid", runtime->pid)
-        .Set("rowsCommitted", true);
+    work.Set("kind", "runtimeLiveFolderRender");
+    work.Set("runtimePid", runtime->pid);
+    work.Set("rowsCommitted", true);
   }
   auto record = Record("measured"); record.Set("work", std::move(work));
   record.Set("sample", base::DictValue().Set("startMs", sample->start_ms).Set("durationMs", sample->duration_ms)

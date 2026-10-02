@@ -1,6 +1,6 @@
 {
-  "status": "99 ordered packets full reverse/195 actual originals/forward324 exact mirrors PASS; native compilation pending",
-  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-99-replay-rvqf6hnc",
+  "status": "101 ordered packets full reverse/195 actual originals/forward324 exact mirrors PASS; native compilation pending",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-101-replay-ekxjbwmi",
   "orderedPatches": [
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch",
     "chromium/patches/aux/runtime/0150-little-window-controller.patch",
@@ -100,7 +100,9 @@
     "chromium/patches/aux/runtime/0268-auto-pip-test-callable-action.patch",
     "chromium/patches/aux/runtime/0261-native-full-process-memory.patch",
     "chromium/patches/aux/runtime/0263-native-owned-process-identity.patch",
-    "chromium/patches/aux/runtime/0269-organization-work-native-api-adapters.patch"
+    "chromium/patches/aux/runtime/0269-organization-work-native-api-adapters.patch",
+    "chromium/patches/aux/runtime/0271-organization-work-browser-mojo-include.patch",
+    "chromium/patches/aux/runtime/0272-native-fixture-api-includes.patch"
   ],
   "packetDigests": {
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch": "8a7337726222a33aa306fd3f35e3485a60b59d4c0d036a1fda9bc98dce8c4e93",
@@ -201,7 +203,9 @@
     "chromium/patches/aux/runtime/0268-auto-pip-test-callable-action.patch": "bc722d8eb00e2f8c77f079e432cf8fb08a24f7aa485eddc26af1c91b0039befc",
     "chromium/patches/aux/runtime/0261-native-full-process-memory.patch": "edd35db67d8b12e52a13ca67d308f6a47cdd4fe3abaea0bc2a240c587fc86231",
     "chromium/patches/aux/runtime/0263-native-owned-process-identity.patch": "e9b51ce40349aa79ea78513d5d85d69d97c47890c58308fd9d8515071e6adc7e",
-    "chromium/patches/aux/runtime/0269-organization-work-native-api-adapters.patch": "4f9572de6d33a67cf51288352f25a47936aba698adac196301c08add017f9729"
+    "chromium/patches/aux/runtime/0269-organization-work-native-api-adapters.patch": "4f9572de6d33a67cf51288352f25a47936aba698adac196301c08add017f9729",
+    "chromium/patches/aux/runtime/0271-organization-work-browser-mojo-include.patch": "4201585148eb74a13faf3f1baf9a3830fe4c320e6a4471308be73629401f3780",
+    "chromium/patches/aux/runtime/0272-native-fixture-api-includes.patch": "4e288994a806e6a7bdbc965fd6441b27dd76b19c7d12621b203bb6238baca2a3"
   },
   "baselineVerification": {
     "cc/BUILD.gn": "2b1b3c86ec12fcd5dd95bb5c94fcc42f49f8530359e682c1903a019268bdba06",
@@ -630,11 +634,11 @@
     "chrome/browser/ui/aux/native_little_creation_ticket.cc": "5ee32763a943759c848c279c5463d7861395cc2b5de90615d86f984b77b52924",
     "chrome/browser/ui/aux/native_little_creation_ticket.h": "a2e3e36450c8571918e570459697b13c19857a5a3fcead0382884d5098358115",
     "chrome/browser/ui/aux/native_little_creation_ticket_unittest.cc": "91d3d8d1b4a8c6a6d0c0b70f0b76c78f5b6e10b38e21dea88f629cd7aad6c2a8",
-    "chrome/browser/ui/aux/native_little_presentation_fixture.cc": "48f630efa65a7b40256f99ecfa42eac9947c447f5f48263da475604496ed0e11",
+    "chrome/browser/ui/aux/native_little_presentation_fixture.cc": "412b5f1cb5c25a09beff36da6c56d8d469f298038da13bce79208ec9821395c9",
     "chrome/browser/ui/aux/native_little_presentation_fixture.h": "a07de03b6c230e8ed7d8c155ba21edd2bed339753959246ef32cf8566a33f154",
     "chrome/browser/ui/aux/native_little_presentation_fixture_unittest.cc": "50d982fcf4b572a82d29e56099f046e9cce70cfa94e2d276b76bf1fcfdb87d78",
     "chrome/browser/ui/aux/native_organization_runtime_unittest.cc": "d85ad3876942f18531b89323d16f8244f0946aef465d1aaadc362e4ff71c32fe",
-    "chrome/browser/ui/aux/native_organization_work_fixture.cc": "e66dee2ec72f11fb97f687a14e9b06a8a767036b096a23999d75fd34ba51e852",
+    "chrome/browser/ui/aux/native_organization_work_fixture.cc": "cb30bad13339bf8471e622e1e04dc85b10c2d9240e87e405d0e06760507d8a9a",
     "chrome/browser/ui/aux/native_organization_work_fixture.h": "374073f454e491f91eef0da006ec41eed0e465202e596898d9d9aff07c6789c1",
     "chrome/browser/ui/aux/native_performance_input_mac.h": "8a4fd681418cbf4b3eff11e2eb64cdf2d6423f99bd88429bb65c0a44831dc8bc",
     "chrome/browser/ui/aux/native_performance_input_mac.mm": "88ea624205aaa54e291ad0f226c0d8b4fbcc5a8e303b964add43f8cb15ece3f0",
@@ -706,7 +710,7 @@
     "chrome/browser/ui/navigator/browser_navigator.cc": "88d80b86d342d1214f76ae4389a3446ea15a82137800fe3252a8308e2938f6ef",
     "chrome/browser/ui/startup/startup_tab.h": "0553e1d9e2c1b74c23dc3ebfa17fcca7e01acda86a97e8ac459dbee1a7ac9484",
     "chrome/browser/ui/tab_helpers.cc": "95ea3d2ad46b7652c37a69705ce75021aeccdcf1f829b09876267ee2160bc1a5",
-    "chrome/browser/ui/views/frame/browser_view.cc": "e0fff5d5e7a4d5ad3f2c8fde4ea07f49709fa45888332fc53119bfe9299c41c4",
+    "chrome/browser/ui/views/frame/browser_view.cc": "d5f2e40aa2d6a344ae0105b19cc4d8a4bd42cf5de15c7bf2ae8c60349d88da89",
     "chrome/browser/ui/views/global_media_controls/media_dialog_view_interactive_browsertest.cc": "3e4ec2c14bd21abec550eb1f44fde0940b9c57d8d4ea99c3196b60a1a8c33487",
     "chrome/browser/ui/views/overlay/video_overlay_window_views.cc": "798c812f16f58c1222084f7b239144f0bbba6153aafdf0ce8e50fad60b54dd03",
     "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc": "1d77747aaea44ac2c6f02764538fa56f594e209f816ad71e1d8f4916038dfada",
@@ -770,7 +774,7 @@
     "content/browser/renderer_host/render_frame_metadata_provider_impl.cc": "77405c7400e06f005418a09a7b3161bd94df4dac62b208b83fd817cc22535842",
     "content/browser/renderer_host/render_frame_metadata_provider_impl.h": "18bb2282917ba3605c0792db5f9ab94546ecb60160536ea58700525adef1e456",
     "content/browser/renderer_host/render_process_host_impl.cc": "db1b13ed0d70323441c61bd4af8787c7e7b78806183e097eaf30cbd1d5e789cb",
-    "content/browser/renderer_host/render_widget_host_impl.cc": "14ca3283e318f563d96c4d6a8df039226899a892ad6f0b51e4fb2b409c0d88c6",
+    "content/browser/renderer_host/render_widget_host_impl.cc": "70093274064fabdc8d672f290dea8f018746136c662134c3069985ea74b2b05c",
     "content/browser/renderer_host/render_widget_host_impl.h": "d0d712844e93b73cfcb8e4c22036662495d75dfcea730cd179a4c252acb4b188",
     "content/browser/web_contents/web_contents_impl.cc": "2b5260b4d71bc0a0242268811ce3628b1b5488653143cbbbee62a83cda5cb14d",
     "content/public/browser/BUILD.gn": "82819f35924e160bc4f4cb601285babb8c317e8c630d20b8b88752186bfe3b95",

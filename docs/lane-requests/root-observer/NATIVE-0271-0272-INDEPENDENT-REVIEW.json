@@ -1,0 +1,48 @@
+[
+  {
+    "packet": "chromium/patches/aux/runtime/0271-organization-work-browser-mojo-include.patch",
+    "sha256": "4201585148eb74a13faf3f1baf9a3830fe4c320e6a4471308be73629401f3780",
+    "actualApiPins": {
+      "third_party/blink/public/mojom/widget/native_organization_work.mojom": "3711d82b54500381f487614d9a33d4e3a65f6de4e6356ae71ed0045c51941de5",
+      "out/AuxDev/gen/third_party/blink/public/mojom/widget/native_organization_work.mojom.h": "536079583f6eeecca5a991b66b981dc23dc089d605fe3e352391f687256369e7",
+      "out/AuxDev/gen/third_party/blink/public/mojom/widget/native_organization_work.mojom-forward.h": "4fd8558a3785fd9cbcc06d6555418f9b427d8498bbfce7f6138d093d58f797e4"
+    },
+    "nativePins": {
+      "content/browser/renderer_host/render_widget_host_impl.cc": {
+        "before": "14ca3283e318f563d96c4d6a8df039226899a892ad6f0b51e4fb2b409c0d88c6",
+        "after": "70093274064fabdc8d672f290dea8f018746136c662134c3069985ea74b2b05c",
+        "entireOriginalRestoration": true
+      }
+    },
+    "contextualForwardReverseAndWholeAllowedRestoration": "PASS",
+    "nativeCompile": false
+  },
+  {
+    "packet": "chromium/patches/aux/runtime/0272-native-fixture-api-includes.patch",
+    "sha256": "4e288994a806e6a7bdbc965fd6441b27dd76b19c7d12621b203bb6238baca2a3",
+    "actualApiPins": {
+      "base/values.h": "bc6ffad749e2e84ed10dbd296f604570bde6bf9bc1e41c11a3f8207ae9000f81",
+      "components/guest_contents/browser/guest_contents_handle.h": "c6e091065a67505c043c4b9f018391053a3da814c1ed792643b6f9cabd5c6443",
+      "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h": "e36edc993de434841497c92e7b283f8df79708b16efc916260e176137acc8c65"
+    },
+    "nativePins": {
+      "chrome/browser/ui/aux/native_little_presentation_fixture.cc": {
+        "before": "48f630efa65a7b40256f99ecfa42eac9947c447f5f48263da475604496ed0e11",
+        "after": "412b5f1cb5c25a09beff36da6c56d8d469f298038da13bce79208ec9821395c9",
+        "entireOriginalRestoration": true
+      },
+      "chrome/browser/ui/aux/native_organization_work_fixture.cc": {
+        "before": "e66dee2ec72f11fb97f687a14e9b06a8a767036b096a23999d75fd34ba51e852",
+        "after": "cb30bad13339bf8471e622e1e04dc85b10c2d9240e87e405d0e06760507d8a9a",
+        "entireOriginalRestoration": true
+      },
+      "chrome/browser/ui/views/frame/browser_view.cc": {
+        "before": "e0fff5d5e7a4d5ad3f2c8fde4ea07f49709fa45888332fc53119bfe9299c41c4",
+        "after": "d5f2e40aa2d6a344ae0105b19cc4d8a4bd42cf5de15c7bf2ae8c60349d88da89",
+        "entireOriginalRestoration": true
+      }
+    },
+    "contextualForwardReverseAndWholeAllowedRestoration": "PASS",
+    "nativeCompile": false
+  }
+]

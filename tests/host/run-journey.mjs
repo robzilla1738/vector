@@ -116,24 +116,55 @@ async function execute() {
   const until = createUntil(signal);
   const actual = await app.identity();
   const clock = createClock(actual.native.testClockScale);
+  function savePerformanceReport(prefix, report) {
+    assert.match(report.metric, /^[a-z-]{1,40}$/);
+    const records = manifest.performance ??= []; assert.ok(records.length < 8, 'Performance report count exceeded');
+    const filename = `${prefix}-${report.metric}-${records.length + 1}.json`;
+    const bytes = Buffer.from(JSON.stringify(report, null, 2) + '\n');
+    assert.ok(bytes.length <= 1048576, 'Performance report exceeds bound');
+    writeFileSync(join(outputDir, filename), bytes, { flag: 'wx' });
+    records.push({ filename, bytes: bytes.length, sha256: sha256(bytes), status: report.status });
+  }
   async function measurePerformance(prefix, produce) {
     signal.throwIfAborted(); assert.ok(!values.appearance, 'Performance trials cannot include appearance sampling');
     let report;
     try { report = await produce(); return report; }
     catch (error) { report = error.report; throw error; }
-    finally {
-      if (report) {
-        assert.match(report.metric, /^[a-z-]{1,40}$/);
-        const records = manifest.performance ??= []; assert.ok(records.length < 8, 'Performance report count exceeded');
-        const filename = `${prefix}-${report.metric}-${records.length + 1}.json`;
-        const bytes = Buffer.from(JSON.stringify(report, null, 2) + '\n');
-        assert.ok(bytes.length <= 1048576, 'Performance report exceeds bound');
-        writeFileSync(join(outputDir, filename), bytes, { flag: 'wx' });
-        records.push({ filename, bytes: bytes.length, sha256: sha256(bytes), status: report.status });
-      }
+    finally { if (report) savePerformanceReport(prefix, report); }
+  }
+  let processMemoryReader;
+  const memoryCandidate = () => ({ productIdentity: manifest.productIdentity, native: manifest.native,
+    shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 });
+  async function ownedMemoryReader() {
+    assert.ok(!values.appearance && launch.perf, 'Native process memory requires its separate performance launch');
+    if (!processMemoryReader) {
+      const { createNativeProcessMemoryReader } = await import('./lib/native-process-memory.mjs');
+      processMemoryReader = createNativeProcessMemoryReader({ transport: app.configurePerformanceMailbox(),
+        browserPid: app.pid, candidate: memoryCandidate(), readIdentity: () => app.identity() });
     }
+    return processMemoryReader;
   }
   const context = { app, rpc, fixture, model, appearanceEnabled: Boolean(values.appearance), ax: observedAx, assert, until, visual: createVisual(outputDir),
+    async startSubagentMemoryWorkload({ scopedRpc, parent, idlePageIds, parentHold }) {
+      const { startSubagentMemoryWorkload } = await import('./lib/native-subagent-memory-workload.mjs');
+      const { createNativeWorkloadPreparationAdapter } = await import('./lib/native-memory-workload-collector.mjs');
+      const preparation = createNativeWorkloadPreparationAdapter(await ownedMemoryReader());
+      const report = { schema: 1, metric: 'subagent-preparation', candidate: memoryCandidate(),
+        endpoint: 'original authenticated native paused-parent preparation', attempts: preparation.observations, status: 'running' };
+      signal.throwIfAborted();
+      try {
+        const workload = await startSubagentMemoryWorkload({ scopedRpc, model, parent, idlePageIds, parentHold,
+          signal, until, readNativePreparation: preparation.readNativePreparation });
+        report.status = 'prepared'; return workload;
+      } catch (error) { report.status = 'failed'; report.error = error.message; throw error; }
+      finally { savePerformanceReport('performance', report); }
+    },
+    async measureProcessMemory({ mode, workload, idlePageIds }) {
+      const { collectNativeMemoryBudget } = await import('./lib/native-memory-budget.mjs');
+      const reader = await ownedMemoryReader();
+      return measurePerformance('performance', () => collectNativeMemoryBudget({ mode, workload, idlePageIds,
+        reader, browserPid: app.pid, readPages: () => rpc('pages.list'), signal }, memoryCandidate()));
+    },
     async measureGuestPresentations(options) {
       const { collectGuestPresentations } = await import('./lib/native-guest-performance.mjs');
       const candidate = { productIdentity: manifest.productIdentity, native: manifest.native,
