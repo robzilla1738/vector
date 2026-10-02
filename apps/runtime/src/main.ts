@@ -127,7 +127,7 @@ import { SafetyDispatchGate } from "./safety/dispatch.js";
 import { SuspensionStore } from "./safety/suspensions.js";
 import { createGuardianJudge } from "./safety/guardian-model.js";
 import { connectHostSocket, type HostSocketTransport } from "./host-socket.js";
-import { startupHostChannel } from "./startup-host-channel.js";
+import { registerDownloadNamingChannel, startupHostChannel } from "./startup-host-channel.js";
 
 export interface RuntimeHandle {
   port: number;
@@ -493,6 +493,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     const { method, params, desktopUser } = p as { method: string; params: unknown; desktopUser?: boolean };
     return invokerReady.then((fn) => fn(method, params, { external: desktopUser !== true }));
   });
+  if (channel) registerDownloadNamingChannel(channel, invokerReady);
   await settings.initializeCredentials();
 
   // ---- drivers ----
@@ -834,8 +835,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     headless: boolean,
   ) => {
     const run = repo.getRun(ctx.runId);
-    return decide(
-      EffectRequestSchema.parse({
+    const request = EffectRequestSchema.parse({
         profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
         scope: run?.config?.taskId
           ? { kind: "task", id: run.config.taskId }
@@ -855,10 +855,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         threadId: ctx.threadId,
         runId: ctx.runId,
         requestedAt: Date.now(),
-      }),
+      });
+    const decision = await decide(
+      request,
       decideDeps,
       { phase: "dispatch", headless },
     );
+    if (decision.status === "ask") safetyGate.park(request, request, decision.suspension);
+    return decision;
   };
   const loopEgressGate = async (
     ctx: { runId: string; threadId: string; turnId: string },
@@ -870,13 +874,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
     }
     if (decision.status === "ask") {
-      suspensions.park({
-        runId: ctx.runId,
-        threadId: ctx.threadId,
-        turnId: ctx.runId,
-        kind: decision.suspension.kind,
-        request: decision.suspension,
-      });
       return {
         park: {
           kind: decision.suspension.kind,
@@ -898,8 +895,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     input: { action: string; recipient: string; digestParts: unknown[] },
   ) => {
     const run = repo.getRun(ctx.runId);
-    return decide(
-      EffectRequestSchema.parse({
+    const request = EffectRequestSchema.parse({
         profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
         scope: run?.config?.taskId
           ? { kind: "task", id: run.config.taskId }
@@ -916,10 +912,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         threadId: ctx.threadId,
         runId: ctx.runId,
         requestedAt: Date.now(),
-      }),
+      });
+    const decision = await decide(
+      request,
       decideDeps,
       { phase: "dispatch" },
     );
+    if (decision.status === "ask") safetyGate.park(request, request, decision.suspension);
+    return decision;
   };
   const recipientGate = async (
     ctx: { runId: string; threadId: string; turnId: string },
@@ -929,13 +929,6 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     if (decision.status === "deny")
       throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
     if (decision.status === "ask") {
-      suspensions.park({
-        runId: ctx.runId,
-        threadId: ctx.threadId,
-        turnId: ctx.runId,
-        kind: decision.suspension.kind,
-        request: decision.suspension,
-      });
       return {
         park: {
           kind: decision.suspension.kind,
@@ -1002,7 +995,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         const page = pages.get(pageId);
         const url = permittedWebUrl(page.url);
         const run = repo.getRun(ctx.runId);
-        const decision = await decide(EffectRequestSchema.parse({
+        const request = EffectRequestSchema.parse({
           profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
           scope: run?.config?.taskId ? { kind: "task", id: run.config.taskId }
             : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
@@ -1010,12 +1003,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
           origin: url.origin, dataClasses: ["none"], provenance: "page",
           invocationDigest: createHash("sha256").update(JSON.stringify([pageId, url.href, page.title])).digest("hex"),
           turnId: ctx.runId, threadId: ctx.threadId, runId: ctx.runId, requestedAt: Date.now(),
-        }), decideDeps, { phase: "dispatch" });
+        });
+        const decision = await decide(request, decideDeps, { phase: "dispatch" });
         if (decision.status === "deny")
           throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
         if (decision.status === "ask") {
-          suspensions.park({ runId: ctx.runId, threadId: ctx.threadId, turnId: ctx.runId,
-            kind: decision.suspension.kind, request: decision.suspension });
+          safetyGate.park(request, request, decision.suspension);
           return { park: { kind: decision.suspension.kind, instruction: decision.suspension.instruction,
             ...(decision.suspension.approvalId ? { approvalId: decision.suspension.approvalId } : {}) } };
         }

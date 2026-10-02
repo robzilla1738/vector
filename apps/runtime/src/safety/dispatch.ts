@@ -11,6 +11,7 @@ import {
   type OriginRule,
   type SafetyAction,
   type Step,
+  type SuspensionRequest,
 } from "@aux/contracts";
 import type { ObservedActionTarget } from "./observed-target.js";
 import { ApprovalStore, type LocalCeiling } from "./approval.js";
@@ -153,6 +154,44 @@ export class SafetyDispatchGate {
     };
   }
 
+  /** Publish and retain an already-decided suspension without deciding or consuming approval again. */
+  park(
+    request: EffectRequest,
+    context: Pick<StepSafetyContext, "turnId" | "threadId" | "runId" | "pageId">,
+    suspension: SuspensionRequest,
+    origin = request.origin ?? "",
+  ): void {
+    if ((suspension.kind === "approval" && suspension.approvalId) || suspension.kind === "handoff") {
+      const saved = suspension.approvalId
+        ? this.deps.approvals
+            .pending(context.threadId)
+            .find((value) => value.approvalId === suspension.approvalId)?.action
+        : undefined;
+      if (suspension.kind === "approval" && (!saved?.category || !saved.confirmation))
+        throw new AuxError("needs_input", "This approval must be refreshed.");
+      this.deps.onConfirmation?.({
+        ...(suspension.approvalId ? { approvalId: suspension.approvalId } : {}),
+        turnId: context.turnId,
+        threadId: context.threadId,
+        instruction: suspension.instruction,
+        action: request.action,
+        origin,
+        category: saved?.category ?? request.category,
+        confirmation: suspension.kind === "handoff" ? "handoff" : (saved?.confirmation ?? "action"),
+        ...(context.pageId ? { pageId: context.pageId } : {}),
+      });
+    }
+    if (this.deps.suspensions && context.runId) {
+      this.deps.suspensions.park({
+        runId: context.runId,
+        threadId: context.threadId,
+        turnId: context.turnId,
+        kind: suspension.kind,
+        request: suspension,
+      });
+    }
+  }
+
   private policySnapshot(action: Parameters<DecideDeps["localCeiling"]>[0]): string {
     return JSON.stringify([
       this.deps.managedRules(),
@@ -199,35 +238,7 @@ export class SafetyDispatchGate {
       throw new AuxError("permission_denied", decision.guidance, { refusalId: decision.refusalId });
     }
     const { suspension } = decision;
-    if ((suspension.kind === "approval" && suspension.approvalId) || suspension.kind === "handoff") {
-      const saved = suspension.approvalId
-        ? this.deps.approvals
-            .pending(context.threadId)
-            .find((value) => value.approvalId === suspension.approvalId)?.action
-        : undefined;
-      if (suspension.kind === "approval" && (!saved?.category || !saved.confirmation))
-        throw new AuxError("needs_input", "This approval must be refreshed.");
-      this.deps.onConfirmation?.({
-        ...(suspension.approvalId ? { approvalId: suspension.approvalId } : {}),
-        turnId: context.turnId,
-        threadId: context.threadId,
-        instruction: suspension.instruction,
-        action: request.action,
-        origin,
-        category: saved?.category ?? request.category,
-        confirmation: suspension.kind === "handoff" ? "handoff" : (saved?.confirmation ?? "action"),
-        ...(context.pageId ? { pageId: context.pageId } : {}),
-      });
-    }
-    if (this.deps.suspensions && context.runId) {
-      this.deps.suspensions.park({
-        runId: context.runId,
-        threadId: context.threadId,
-        turnId: context.turnId,
-        kind: suspension.kind,
-        request: suspension,
-      });
-    }
+    this.park(request, context, suspension, origin);
     throw new AuxError("needs_input", suspension.instruction || suspension.guidance, {
       suspensionKind: suspension.kind,
       ...(suspension.approvalId ? { requestId: suspension.approvalId } : {}),

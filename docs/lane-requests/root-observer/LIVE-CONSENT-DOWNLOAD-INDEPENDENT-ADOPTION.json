@@ -1,0 +1,87 @@
+{
+  "status": "six exact baseline/result hashes and forward/reverse checks PASS; native journeys pending",
+  "sourceCommit": "947b0f4d",
+  "pins": {
+    "base": "4ac124009404c14293a8227cfbf3e62f943d6365",
+    "patchSha256": "3415206ada8d674cea369debe28c09c7177827cb0ffd1f444d25c11974de10a5",
+    "files": [
+      {
+        "path": "apps/runtime/src/main.ts",
+        "baselineSha256": "35f104124abc5584df26a869cfc97c53de07f9bdac6e03243a0e29bb47764915",
+        "resultSha256": "b2720eb048ca5d9a372c2edaa3985580a0bfaa5cdd92ad5d546c82d1b023d71e"
+      },
+      {
+        "path": "apps/runtime/src/safety/decide.ts",
+        "baselineSha256": "d4c81b0065e6d5210436058938295b4492a2787df9a63549005f32624178573b",
+        "resultSha256": "c541461fb8ce3ea85666f7543fe745612b1d4e3fded4ac5c250c72a56da3ee95"
+      },
+      {
+        "path": "apps/runtime/src/safety/dispatch.ts",
+        "baselineSha256": "14792263c3164055675b3aeeaa42e82a5a99b49d3734390c1ebb1b372afc4049",
+        "resultSha256": "815bed6612889511a3883b158c2a73d8c5029db43a5699c526c9de90b8f72b1c"
+      },
+      {
+        "path": "apps/runtime/src/startup-host-channel.ts",
+        "baselineSha256": "42904ae68bd34285297ea188bee8a39a63c2a3ed4cebb71d95732a971581bcb5",
+        "resultSha256": "7c26a13721f74673e2d273ef201d34c6a1136e8984349bdab883733d824ea376"
+      },
+      {
+        "path": "tests/unit/loop-approval-publication.test.ts",
+        "baselineSha256": null,
+        "resultSha256": "174ca45cdc818457e47650963edd02f594b31d6ab54e9a8bbcd1675c85e4e12f"
+      },
+      {
+        "path": "tests/unit/download-naming-channel.test.ts",
+        "baselineSha256": null,
+        "resultSha256": "113e79c1f4916aff33ff093bd38865e9b5ef4b8b9c80d4d456c0a98c2afb0eb7"
+      }
+    ],
+    "verification": {
+      "originalRuntimeRegression": "RED: zero safety.confirmation events with needs_input",
+      "baselineRebuildExit": 0,
+      "proposalRebuildExit": 0,
+      "focusedTests": {
+        "files": 10,
+        "passed": 130
+      },
+      "typecheckExit": 0,
+      "lintExit": 0,
+      "formatRatchetExit": 0,
+      "nativeExecution": false,
+      "baselineApplyCheck": "PASS",
+      "exactReplay": "6 result hashes PASS",
+      "reverseCheck": "PASS",
+      "replayPath": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-builder-approval-replay-gg_fimdu"
+    },
+    "logs": [
+      {
+        "path": "/tmp/aux-builder-approval-baseline-build.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/tmp/aux-builder-approval-publication-red.log",
+        "sha256": "1ce5995f795c767eb19227f4aac7ad92d0dd7d675fe2a297895aed6adff3548b"
+      },
+      {
+        "path": "/tmp/aux-builder-approval-final-build.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/tmp/aux-builder-approval-focused-final.log",
+        "sha256": "04cf0bb6dc84f42e66e2ae848390ce53cc3849901c598a5b885357905279039b"
+      },
+      {
+        "path": "/tmp/aux-builder-approval-typecheck.log",
+        "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+      },
+      {
+        "path": "/tmp/aux-builder-approval-lint.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "/tmp/aux-builder-approval-format-check.log",
+        "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+      }
+    ]
+  }
+}

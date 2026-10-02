@@ -40,3 +40,13 @@ export function startupHostChannel(socket: HostSocketTransport) {
     },
   };
 }
+
+/** The authenticated native owner publishes live download completion metadata. */
+export function registerDownloadNamingChannel(
+  channel: RpcChannel,
+  invokerReady: Promise<(method: string, params: unknown, client: { external: boolean }) => Promise<unknown>>,
+) {
+  channel.onMethod("downloads.completedNative", params =>
+    invokerReady.then(invoke => invoke("downloads.completedNative", params, { external: false })),
+  );
+}

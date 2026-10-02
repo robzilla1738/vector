@@ -313,8 +313,13 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
     }, policySource(policy), at));
   }
 
+  // Direct programs resume only the exact saved acceptance. Policy and the
+  // confirmation floor above remain authoritative; final dispatch consumes it.
+  if (!suppliedApprovalId && !context.headless && !context.standingOnly && context.turnToolCallCount === undefined) {
+    suppliedApprovalId = deps.approvals.acceptedFor(action, policy.approvalLifetime, at);
+  }
   const requiresApproval = level === "action" || level === "preapprovable";
-  if (requiresApproval && !context.approvalId && !(level === "preapprovable" && authorize(policy, false, true, false).status === "authorized")) {
+  if (requiresApproval && !suppliedApprovalId && !(level === "preapprovable" && authorize(policy, false, true, false).status === "authorized")) {
     const confirmation = decideConfirmation({
       level, action, review: context.review, turnToolCallCount: context.turnToolCallCount ?? 0,
     });
@@ -322,7 +327,6 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
       // A direct page program has no model turn to attach a review artifact.
       // The person confirms it. The same action can then run once on that acceptance.
       if (context.turnToolCallCount === undefined) {
-        suppliedApprovalId = context.standingOnly ? undefined : deps.approvals.acceptedFor(action, policy.approvalLifetime, at);
         if (!suppliedApprovalId) {
           const approvalId = deps.approvals.issue(action, policy.approvalLifetime, at);
           return finish(ask(deps.journal, parsed, {
