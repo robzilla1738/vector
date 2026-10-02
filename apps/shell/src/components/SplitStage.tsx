@@ -1,3 +1,4 @@
+import { committedSplitGeometry, useCommittedSurfaceWitness } from "../committed-surface-witness";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PageTarget, SplitGroup } from "@aux/contracts";
 import { paneRects, dividerRatio, springStep, type Box } from "../split-layout";
@@ -71,6 +72,11 @@ export function SplitStage({ group, pages }: { group: SplitGroup; pages: PageTar
   const targets = useMemo(() => [...geometry.panes, ...geometry.dividers], [geometry]);
   const ids = useMemo(() => [...group.panes, ...geometry.dividers.map(divider => `${group.id}:divider:${divider.index}`)], [group.id, group.panes, geometry.dividers]);
   const rects = useSpringRects(targets, ids, resizing);
+  const committedPages = JSON.stringify(group.panes.map(id => [id, pages.find(page => page.pageId === id)?.documentEpoch ?? null]));
+  useCommittedSurfaceWitness(root, "split", element => {
+    const renderedGeometry = committedSplitGeometry(element);
+    return renderedGeometry === null ? null : JSON.stringify([committedPages, renderedGeometry]);
+  });
   return <section className="split-stage" ref={root} aria-label={`${group.panes.length} split panes`}>
     {group.panes.map((id, index) => {
       const page = pages.find(page => page.pageId === id)!;

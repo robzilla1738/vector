@@ -76,7 +76,7 @@ function chatReply(run: Run): string | null {
   };
   const answer = prose(run.result?.answer);
   const report = prose(run.result?.report);
-  const message = prose(run.statusMessage);
+  const message = run.failure || (run.error && run.statusMessage === run.error) ? "" : prose(run.statusMessage);
   if (report && run.status === "completed") return report;
   if (answer && run.status !== "completed" && message) return `${message}\n\n${answer}`;
   if (answer) return answer;
@@ -92,7 +92,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
   const result = useMemo(() => run.status === "completed" && run.config?.implementation === "agent-loop" && typeof run.result?.textProposal === "string"
     ? Object.fromEntries(Object.entries(run.result).filter(([key]) => key !== "textProposal")) : run.result,
   [run.result, run.status, run.config?.implementation]);
-  const showSummary = !!run.statusMessage && (!run.failure || !!run.result) && !(run.status === "completed" && plainAnswer?.trim());
+  const showSummary = !!run.statusMessage && run.statusMessage !== run.error && (!run.failure || !!run.result) && !(run.status === "completed" && plainAnswer?.trim());
   const reply = conversation ? chatReply(run) : null;
   const [copied, setCopied] = useState(false);
   const text = useMemo(() => {

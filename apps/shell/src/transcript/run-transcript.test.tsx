@@ -173,3 +173,27 @@ it("opens only the current cited page and refuses a changed epoch", async () => 
     useStore.setState(original, true);
   }
 });
+
+it("shows one failure explanation with recorded technical detail collapsed", async () => {
+  const original = useStore.getState();
+  const message = "The model connection expired. Reconnect to continue.";
+  const run = makeRun({runId:"failure-copy",status:"failed",pageIds:[],result:undefined,error:message,statusMessage:message,
+    failure:{category:"authentication",message,retryable:true,action:"model_settings"}});
+  const projection: RunTranscriptProjection = {runId:run.runId,items:[
+    {kind:"error",category:"authentication",message,retryable:true,action:"model_settings"},
+    {kind:"recovery",state:"failed",description:message,action:"settings"},
+  ]};
+  vi.spyOn(bridge,"invoke").mockResolvedValue({run,steps:[],transcript:projection} as never);
+  useStore.setState({runs:[run],steps:{[run.runId]:[]},pages:[],prompt:null});
+  const host = document.createElement("div"), root = createRoot(host);
+  try {
+    await act(async () => root.render(<RunPanel runId={run.runId} conversation />));
+    expect(host.querySelector('.answer')).toBeNull();
+    expect(host.querySelectorAll('.run-failure')).toHaveLength(1);
+    expect(host.querySelector('.run-failure')?.textContent).toContain(message);
+    const detail = host.querySelector<HTMLDetailsElement>('.transcript-error-details')!;
+    expect(detail.open).toBe(false);
+    expect(detail.textContent).toContain(message);
+    expect(host.querySelector('.run-failure button')?.textContent).toBe("Model settings");
+  } finally { await act(async () => root.unmount());vi.restoreAllMocks();useStore.setState(original,true); }
+});

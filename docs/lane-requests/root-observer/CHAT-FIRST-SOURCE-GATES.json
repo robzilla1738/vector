@@ -1,5 +1,5 @@
 {
-  "status": "source candidate; final full suite in progress; native uncompiled",
+  "status": "combined source gates pass; native build in progress",
   "deliverables": [
     "genuine page-free agent-loop first chat and retry, no eager blank tab",
     "durable chat-primary home with explicit model connection",
@@ -61,6 +61,57 @@
       "path": "/tmp/aux-root-chat-onboarding-final.log",
       "sha256": "9f869275d1c834f7987dfae5aa20f88f79d90356cd66dbd508e9397d5ea8ba9c",
       "bytes": 328
+    },
+    {
+      "path": "/tmp/aux-root-chat-final-full-unit.log",
+      "sha256": "290b13e2ef1064ffc6a93fde93af87655c10675db58c6cd19849d3dea633e3ec",
+      "bytes": 54281
+    },
+    {
+      "path": "/tmp/aux-root-chat-final-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f",
+      "bytes": 90
+    },
+    {
+      "path": "/tmp/aux-root-chat-final-lint.log",
+      "sha256": "04c5807f3f55e1d6b09e2413608108c87faa2282e398f2eb85649219ff372811",
+      "bytes": 128845
+    },
+    {
+      "path": "/tmp/aux-root-chat-final-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562",
+      "bytes": 142
+    },
+    {
+      "path": "/tmp/aux-root-chat-bindings.log",
+      "sha256": "8745a8f670267397187db5377130643382abcbf0dc79b24117e0e2b76acf4902",
+      "bytes": 60
+    },
+    {
+      "path": "/tmp/aux-root-chat-bridge.log",
+      "sha256": "13cb2fc53cb8b533ff4bbc0d4e6a4b25934544a6f458daf4a2c7ad87f1ba284b",
+      "bytes": 158
+    },
+    {
+      "path": "/tmp/aux-root-chat-inventory.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "/tmp/aux-root-chat-journeys.log",
+      "sha256": "1027ac9235f75daec4a52577d1888c215b442fdca714019bc1474d97435a2d34",
+      "bytes": 30
     }
-  ]
+  ],
+  "immutableNativeCandidate": "32e49bfd25ecccab08f05379389b985be5066adb",
+  "fullUnit": {
+    "files": 456,
+    "tests": 2438,
+    "passed": true
+  },
+  "bindings": 208,
+  "events": 26,
+  "bridgeMissing": 0,
+  "journeys": 45,
+  "features": 43
 }

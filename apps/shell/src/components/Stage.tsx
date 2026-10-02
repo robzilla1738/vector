@@ -1,3 +1,4 @@
+import { useCommittedSurfaceWitness } from "../committed-surface-witness";
 import { useOrganizationEditor } from "../features/organization-state";
 import { useSyncExternalStore } from "react";
 import { movedSelection, observeMovedSelection } from "../features/window-sync/moved-selection";
@@ -5,7 +6,7 @@ import { isHomeAddress, nativePageId } from "../chrome";
 import { PaneBoundary } from "./PaneBoundary";
 import { deferSurface } from "./DeferredSurface";
 import { navigationFailure } from "../navigation-failure";
-import { forwardRef, lazy, memo, Suspense, useEffect, useRef, useState, type RefObject } from "react";
+import { forwardRef, lazy, memo, Suspense, useEffect, useRef, useState, useCallback, type RefObject } from "react";
 import type { PageTarget } from "@aux/contracts";
 import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
@@ -108,6 +109,15 @@ export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<H
     viewStatus: page.viewStatus, navigationError: page.navigationError, showBlankDocument: page.showBlankDocument,
   }) === page.pageId;
 
+  const stageNode = useRef<HTMLDivElement>(null);
+  const bindStage = useCallback((node: HTMLDivElement | null) => {
+    stageNode.current = node;
+    if (typeof ref === "function") ref(node); else if (ref) ref.current = node;
+  }, [ref]);
+  const committedSelection = JSON.stringify([mode, overlay, confirming, organizationCovered,
+    selectedSplit ? splitGroup!.panes.map(id => { const item = pages.find(page => page.pageId === id)!; return [id, item.documentEpoch]; }) : selectedPage && page ? [[page.pageId, page.documentEpoch]] : []]);
+  useCommittedSurfaceWitness(stageNode, "stage", () => committedSelection);
+
   const showingPage = !covered && selectedPage;
   const visibleIds = JSON.stringify(organizationCovered ? [] : selectedSplit ? splitGroup!.panes : selectedPage && page && isLocal(page) && !page.ownedByRuntime ? [page.pageId] : []);
   useEffect(() => {
@@ -119,7 +129,7 @@ export const Stage = memo(forwardRef<HTMLDivElement, { composerRef?: RefObject<H
     <div inert={organizationCovered || overlay === "tasks" || overlay === "settings"} className={`stage-card ${loading ? "loading" : ""} ${showingPage ? "has-page" : ""}`} data-controller={page?.controller ?? "none"}>
       <div className="stage-progress" role="progressbar" aria-hidden={!loading} aria-valuetext={loading ? "Loading" : "Idle"} />
       {page && translating && <TranslationBar pageId={page.pageId} />}
-      <div id="stage" ref={ref}>
+      <div id="stage" ref={bindStage} data-stage-dragging={surfaceState.dragging ? "true" : "false"}>
         {mode === "focus" && page?.backend === "chrome" && page.viewStatus !== "crashed" && !page.navigationError && (
           <div className="stage-message">
             <div className="empty-state">

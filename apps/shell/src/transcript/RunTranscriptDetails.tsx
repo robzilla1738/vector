@@ -70,7 +70,7 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
   const errorItem = projection?.items.find((item): item is Extract<RunTranscriptItem, { kind: "error" }> => item.kind === "error");
   const citations = projection?.items.filter((item) => item.kind === "citation") ?? [];
   // RunPanel already owns the actionable failure card when a typed failure exists.
-  const recovery = run.failure ? undefined : projection?.items.find((item) => item.kind === "recovery");
+  const recovery = run.failure || run.error ? undefined : projection?.items.find((item) => item.kind === "recovery");
 
   async function open(artifact: ArtifactItem, citation?: CitationItem) {
     if (!artifacts.some((item) => item.artifactId === artifact.artifactId)) return;
@@ -165,7 +165,7 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
         {item.mediaType} · {Math.max(1, Math.ceil(item.size / 1024))} KB
       </button></li>)}</ul>
     </details>}
-    {errorItem && <ErrorItem item={errorItem} />}
+    {errorItem && (run.failure || run.error ? <details className="transcript-error-details"><summary>Error details</summary><ErrorItem item={errorItem} /></details> : <ErrorItem item={errorItem} />)}
     {recovery?.kind === "recovery" && recovery.state !== "needs_input" && !errorItem && <output className="run-failure"><strong>{recovery.state.replaceAll("_", " ")}</strong> {recovery.description} {RECOVERY_GUIDANCE[recovery.action]}</output>}
     {selected && <ViewerFrame label="Saved run artifact" title={selected.mediaType} closeLabel="Close artifact" onClose={() => { ++previewRequest.current; setSelected(null); setPreview(null); setError(""); }}
       metadata={`${Math.max(1, Math.ceil(selected.size / 1024))} KB · ${selected.artifactId}`}>
