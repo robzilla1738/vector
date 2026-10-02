@@ -1,0 +1,11 @@
+{
+  "candidate": "ce77c017833d09b975db01fd33d7312b3f3e3476",
+  "builderSourceProofSha256": "ab39f6bfa658c8e807d1493161a78abd47dc32c562b82e2469b3f2741546eadf",
+  "actualCleanHeadTree": "PASS",
+  "actual335RootAndBuilderNativeMirrors": "PASS",
+  "actual109RootAndBuilderPackets": "PASS",
+  "allCommittedRendererAssetsUnchanged": "PASS",
+  "originalBaselinesMatchRootFullReplay": "PASS",
+  "stageApproved": false,
+  "compiled": false
+}
