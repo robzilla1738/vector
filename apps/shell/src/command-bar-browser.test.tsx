@@ -90,16 +90,31 @@ it("does not mark a failed native search as presented history", async () => {
     programs: [],
     settings: {},
   } as never);
-  vi.spyOn(bridge, "autocomplete").mockRejectedValue(new Error("History is unavailable"));
+  const autocomplete = vi
+    .spyOn(bridge, "autocomplete")
+    .mockRejectedValueOnce(new Error("commandBar is preview in chromium-fork"))
+    .mockResolvedValue([
+      { id: "retry", type: "history", title: "Recovered history", url: "https://recovered.example/" },
+    ]);
   vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
   root = createRoot(host);
   await act(async () => root.render(<CommandBar />));
   const input = host.querySelector<HTMLInputElement>('input[role="combobox"]')!;
   await act(async () => input.focus());
   await enterQuery(input, "alpha");
-  expect(host.textContent).toContain("History is unavailable");
+  expect(host.textContent).toContain("Browser suggestions couldn’t load. You can still search.");
+  expect(host.textContent).not.toContain("chromium-fork");
+  expect(input.value).toBe("alpha");
   expect(host.querySelector('[data-command-result-source="history"]')).toBeNull();
   expect(host.querySelector("[data-command-results-generation]")).toBeNull();
+  const retry = [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+    (button) => button.textContent === "Try again",
+  )!;
+  await act(async () => retry.click());
+  expect(autocomplete).toHaveBeenLastCalledWith("alpha");
+  expect(input.value).toBe("alpha");
+  expect(host.textContent).toContain("Recovered history");
+  expect(host.textContent).not.toContain("Browser suggestions couldn’t load");
 });
 
 it("preserves Chromium order while a scoped tab survives title-and-host dedup", async () => {

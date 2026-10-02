@@ -1,0 +1,10 @@
+{
+  "scope": "Screenshot-tied browser autocomplete recovery copy; meaningful native reply retry preserves query and current result generation",
+  "sourceChecks": {
+    "tests": "2f69bd7b6c6e277c1dfd072bfc248a08419829f1bfa4d9c978d5a5fe2f4b2097",
+    "lint": "fceca901dc63c984164464b920c0cab88580e16d0e75cd3ce156e001147049ce"
+  },
+  "nativeRecapture": false,
+  "originalAssertionsRetained": true,
+  "qualification": false
+}

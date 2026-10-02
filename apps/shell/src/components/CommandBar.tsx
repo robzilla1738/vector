@@ -1422,7 +1422,7 @@ export function CommandBar({
           )}
           {browserError && (
             <div className="cb-provider-error" role="alert">
-              Browser suggestions unavailable: {browserError}
+              Browser suggestions couldn’t load. You can still search.
               <button type="button" onClick={() => setAutocompleteRetry((value) => value + 1)}>
                 Try again
               </button>
