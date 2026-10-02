@@ -1,0 +1,8 @@
+{
+  "requestSha256": "9d3dbbb94ff7cda589aa3cd24d70054156bd430153d6b9aed2916166f1e32157",
+  "exact2LeafBaselineResult": "PASS",
+  "independentFullSourceReview": "PASS",
+  "originalChildCloseAndSlotDebtRetained": true,
+  "noNumericPidCleanupAuthority": true,
+  "nativeExecuted": false
+}

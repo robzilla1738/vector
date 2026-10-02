@@ -191,3 +191,21 @@ for (const [name, change] of [
 ]) test(`original stock comparison refuses ${name}`, () => {
   const trials = matchedTrials(); change(trials); assert.throws(() => assertMatchedStockMemoryOverhead(trials.aux, trials.stock, 100n));
 });
+
+for (const revision of ['0'.repeat(40), '0'.repeat(40) + '-refs/branch-heads/8037@{#1294}'])
+  test(`original stock decoder rejects matching dummy revision ${revision}`, () => {
+    const row = record(); row.chromiumLastChange = revision;
+    assert.throws(() => validateNativeStockProcessMemory(JSON.stringify(row), 100, { ...chromium, lastChange: revision }), /Dummy compiled Chromium revision/);
+  });
+for (const both of [false, true]) test(`stock comparison rejects original dummy stock revision; Aux also dummy=${both}`, () => {
+  const { aux, stock } = matchedTrials(), revision = '0'.repeat(40);
+  for (const trial of stock) {
+    rewriteOriginal(trial.observation, row => { row.chromiumLastChange = revision; });
+    trial.observation.before.identity.chromiumLastChange = revision; trial.observation.after.identity.chromiumLastChange = revision;
+  }
+  if (both) for (const trial of aux) {
+    rewriteOriginal(trial.observation, row => { row.chromiumLastChange = revision; });
+    trial.observation.before.identity.native.chromiumLastChange = revision; trial.observation.after.identity.native.chromiumLastChange = revision;
+  }
+  assert.throws(() => assertMatchedStockMemoryOverhead(aux, stock, 100n), /Dummy compiled Chromium revision/);
+});

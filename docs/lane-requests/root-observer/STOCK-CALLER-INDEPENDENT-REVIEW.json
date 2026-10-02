@@ -1,0 +1,9 @@
+{
+  "frozenLane": "47efea5c",
+  "requestSha256": "96dde01001fa9c9a5253d7492a93dd337bd5ebbb6b82703462825f2b0d8d0a9f",
+  "exact4NewLeaves": "PASS",
+  "native335Preserved": "PASS",
+  "independentFullSourceReview": "PASS",
+  "pendingCleanupSuccessor": true,
+  "nativeLaunchPerformed": false
+}

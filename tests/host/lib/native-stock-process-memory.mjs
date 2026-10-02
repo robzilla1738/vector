@@ -18,6 +18,7 @@ export function validateNativeStockProcessMemory(raw, browserPid, expectedChromi
   assert.equal(row.status, 'sampled');
   keys(row, ['producer', 'version', 'status', 'auxShellEnabled', 'chromiumVersion', 'chromiumLastChange', 'windowId', 'requestNonce', 'sampleSequence', 'sampleStartUs', 'sampleEndUs', 'tabs', 'processes']);
   assert.equal(row.auxShellEnabled, false, 'Stock must compile without the Aux shell');
+  assert.ok(!/^0+(?:-|$)/.test(row.chromiumLastChange), 'Dummy compiled Chromium revision cannot establish source identity');
   assert.match(expectedChromium?.version ?? '', /^\d+\.\d+\.\d+\.\d+$/); assert.ok(typeof expectedChromium.lastChange === 'string' && expectedChromium.lastChange.length > 0);
   assert.equal(row.chromiumVersion, expectedChromium.version); assert.equal(row.chromiumLastChange, expectedChromium.lastChange);
   pid(browserPid); pid(row.windowId); nonce(row.requestNonce); integer(row.sampleSequence);

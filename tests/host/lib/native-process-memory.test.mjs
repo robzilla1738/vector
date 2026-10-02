@@ -263,3 +263,18 @@ for (const field of ['chromiumVersion', 'chromiumLastChange']) test(`native read
   f.mutate = row => { row[field] = field === 'chromiumVersion' ? '146.0.0.0' : 'foreign-source'; return row; };
   await assert.rejects(reader.sample(), /Compiled Chromium source changed/);
 });
+
+for (const revision of ['0'.repeat(40), '0'.repeat(40) + '-refs/branch-heads/8037@{#1294}'])
+  test(`original native decoder rejects dummy compiled revision ${revision}`, () => {
+    const row = record(); row.chromiumLastChange = revision;
+    assert.throws(() => validateNativeProcessMemory(JSON.stringify(row), 100), /Dummy compiled Chromium revision/);
+  });
+test('native reader retains raw dummy revision failure despite matching public build label', async () => {
+  const f = readerFixture(), revision = '0'.repeat(40); f.options.candidate.native.buildId = revision;
+  f.mutate = row => { row.chromiumLastChange = revision; return row; };
+  await assert.rejects(createNativeProcessMemoryReader(f.options).sample(), error => {
+    assert.match(error.message, /Dummy compiled Chromium revision/);
+    assert.equal(JSON.parse(error.observation.raw).chromiumLastChange, revision);
+    assert.equal(error.observation.status, 'failed'); return true;
+  });
+});

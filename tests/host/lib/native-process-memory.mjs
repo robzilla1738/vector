@@ -60,6 +60,7 @@ export function validateNativeProcessMemory(raw, browserPid) {
     'requestNonce', 'sampleSequence', 'sampleStartUs', 'sampleEndUs', 'processes', 'workload', 'workloadObservedAt', 'workloadRequestTimes'].sort());
   assert.match(row.chromiumVersion, /^\d+\.\d+\.\d+\.\d+$/, 'Missing actual compiled Chromium version');
   assert.ok(typeof row.chromiumLastChange === 'string' && /^[\x21-\x7e]{1,160}$/.test(row.chromiumLastChange), 'Missing actual compiled Chromium revision');
+  assert.ok(!/^0+(?:-|$)/.test(row.chromiumLastChange), 'Dummy compiled Chromium revision cannot establish source identity');
   const workload = workloadBracket(row);
   pid(browserPid); pid(row.windowId); pid(row.widgetRoutingId); uuid(row.requestNonce);
   u64(row.sampleSequence);
