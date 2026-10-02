@@ -1,0 +1,44 @@
+--- a/chrome/browser/ui/aux/permission_broker_unittest.cc
++++ b/chrome/browser/ui/aux/permission_broker_unittest.cc
+@@ -433,7 +433,7 @@
+   EXPECT_EQ(Find("permission.request"), nullptr); EXPECT_FALSE(state_.granted);
+   browser()->tab_strip_model()->ActivateTabAt(1); page_->WasShown(); base::RunLoop().RunUntilIdle();
+   EXPECT_TRUE(prompts_->is_visible()); EXPECT_EQ(Find("permission.request"), nullptr);
+-  manager_->Accept(PromptOptions{}); EXPECT_TRUE(state_.granted);
++  manager_->Accept(std::monostate()); EXPECT_TRUE(state_.granted);
+ }
+ TEST_F(PermissionBrokerTest, SupportedNativeKeysComeFromActualRequestTypeProducer) {
+   for (auto type : {permissions::RequestType::kNotifications, permissions::RequestType::kClipboard,
+@@ -449,7 +449,7 @@
+     auto* types = request->params.FindList("permissionTypes"); ASSERT_TRUE(types); ASSERT_EQ(types->size(), 1u);
+     EXPECT_EQ((*types)[0].GetString(), permissions::PermissionKeyForRequestType(type));
+     EXPECT_FALSE(state.granted);
+-    manager_->Dismiss(PromptOptions{}); base::RunLoop().RunUntilIdle(); calls_.clear();
++    manager_->Dismiss(std::monostate()); base::RunLoop().RunUntilIdle(); calls_.clear();
+   }
+ }
+ TEST_F(PermissionBrokerTest, UnsupportedNativeRequestRemainsAttended) {
+@@ -459,12 +459,12 @@
+   EXPECT_EQ(Find("permission.request"), nullptr); EXPECT_FALSE(state_.granted);
+ }
+ TEST_F(PermissionBrokerTest, ReplacementRequestCannotReceiveAlreadyQueuedAllow) {
+-  Prompt(); Allow(false); manager_->Dismiss(PromptOptions{});
++  Prompt(); Allow(false); manager_->Dismiss(std::monostate());
+   permissions::MockPermissionRequest::MockPermissionRequestState replacement;
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(permissions::RequestType::kClipboard, replacement.GetWeakPtr()));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+   EXPECT_FALSE(state_.granted); EXPECT_FALSE(replacement.granted);
+-  manager_->Dismiss(PromptOptions{});
++  manager_->Dismiss(std::monostate());
+ }
+ TEST_F(PermissionBrokerTest, PersonPageWithoutRealLeaseStaysAttended) {
+   controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
+@@ -472,7 +472,7 @@
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+   ASSERT_TRUE(manager_->IsRequestInProgress());
+   EXPECT_EQ(Find("permission.request"), nullptr); EXPECT_FALSE(state_.granted);
+-  manager_->Accept(PromptOptions{}); EXPECT_TRUE(state_.granted);
++  manager_->Accept(std::monostate()); EXPECT_TRUE(state_.granted);
+ }
+ 
+ TEST_F(PermissionBrokerTest, DenyIsImmediateWhileActualOwnerMutationPending) {

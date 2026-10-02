@@ -30,10 +30,10 @@ async function h_safety_approvals_decide(ctx: MethodCtx): Promise<unknown> {
         // The native request is already waiting. Do not queue an answer that
         // could accidentally answer the run's next unrelated user question.
         if (s.repo.getRun(resolved.runId)?.status === "needs_input")
-          s.runs.coordinator.setStatus(resolved.runId, "running", approved ? "Browser request approved" : "Browser request declined");
-      } else if (resumeSkillApproval({ repo: s.repo, pages: s.pages, events: s.events }, resolved.runId, params.decision.approvalId, approved)) {
+          await s.runs.coordinator.setStatus(resolved.runId, "running", approved ? "Browser request approved" : "Browser request declined");
+      } else if (await resumeSkillApproval({ repo: s.repo, pages: s.pages, events: s.events }, resolved.runId, params.decision.approvalId, approved)) {
         // Continue only the pending reviewed step through its actual safety gate.
-      } else s.runs.coordinator.answer(
+      } else await s.runs.coordinator.answer(
         resolved.runId,
         approved
           ? "The user approved the requested action."

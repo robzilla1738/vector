@@ -142,7 +142,7 @@ describe("verifyDoneAgainstObservation", () => {
   });
 });
 
-it("saves completed report and HTML results once and keeps failed outputs out of saved results", () => {
+it("saves completed report and HTML results once and keeps failed outputs out of saved results", async () => {
   const repo = new Repo(openDb(":memory:"));
   const saved: string[] = [], htmlSaved:string[]=[];
   const coordinatorFixturePages1 = {};
@@ -154,12 +154,12 @@ it("saves completed report and HTML results once and keeps failed outputs out of
   });
   const seed = (runId: string) => repo.saveRun({runId, goal:"Write a report", status:"running", pageIds:["p1"], config:{chatId:"chat-1"}, createdAt:Date.now()});
   seed("run-1");
-  coordinator.finish("run-1", "completed", {report:"# Verified report",html:"<h1>Preview</h1>"});
+  await coordinator.finish("run-1", "completed", {report:"# Verified report",html:"<h1>Preview</h1>"});
   expect(repo.getRun("run-1")?.status).toBe("completed");
   expect(saved).toEqual(["# Verified report"]);
   expect(htmlSaved).toEqual(["<h1>Preview</h1>"]);
   seed("run-2");
-  coordinator.finish("run-2", "failed", {report:"# Unsupported report",html:"<h1>Unsupported</h1>"});
+  await coordinator.finish("run-2", "failed", {report:"# Unsupported report",html:"<h1>Unsupported</h1>"});
   expect(saved).toEqual(["# Verified report"]);
   expect(htmlSaved).toEqual(["<h1>Preview</h1>"]);
 });

@@ -1,3 +1,5 @@
+import { lineageRuns, runRoot } from "./run-lineage.js";
+import { withOvernightAuthorityMutation } from "./overnight-authority.js";
 import { randomUUID } from "node:crypto";
 import { AuxError, DEFAULT_NIGHT_SHIFT, NightShiftItemSchema, NightShiftQueueSchema, NightShiftSettingsSchema, createClock, newRunId, type Clock, type NightShiftItem } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
@@ -10,7 +12,7 @@ export interface NightShiftRuntime {
   releaseActivity(): Promise<void>;
   powerActivity(reason: string, durationSec: number): Promise<{ active: boolean }>;
   start(payload: Payload, item: NightShiftItem, reservedRunId: string): Promise<string>;
-  cancel(runId: string, reason: string): void;
+  cancel(runId: string, reason: string): void | Promise<void>;
   resume(runId: string): Promise<void>;
   consolidate(workspaceId: string): Promise<unknown>;
   reindex(workspaceId: string): Promise<unknown>;
@@ -50,11 +52,18 @@ export class NightShiftService {
     const settings = this.settings();
     const window = nightWindow(this.clock.now(), settings.start, settings.end);
     const items = this.list().filter(item => item.windowDate === window.windowDate);
-    const ledger = this.repo.db.prepare(`SELECT COALESCE(SUM(m.cost_usd),0) AS spent FROM model_calls m
-      WHERE m.run_id IN (SELECT run_id FROM night_queue WHERE window_date=?)`).get(window.windowDate) as { spent: number };
+    const ledger = { spent: this.spentWindow(window.windowDate) };
     return { windowDate: window.windowDate, done: items.filter(item => item.status === "done").length,
       needsReview: items.filter(item => ["parked", "needs_review"].includes(item.status)).length,
       spentUsd: ledger.spent, limitUsd: settings.nightlyUsd };
+  }
+  private spentTree(runId: string) {
+    return lineageRuns(this.repo, runId).reduce((sum, id) => sum + this.budgets.spentRunUsd(id), 0);
+  }
+  private spentWindow(windowDate: string) {
+    const roots = this.repo.db.prepare("SELECT run_id FROM night_queue WHERE window_date=? AND run_id IS NOT NULL").all(windowDate) as { run_id: string }[];
+    const ids = new Set(roots.flatMap(row => lineageRuns(this.repo, row.run_id)));
+    return [...ids].reduce((sum, id) => sum + this.budgets.spentRunUsd(id), 0);
   }
   private read(row: Record<string, unknown>): NightShiftItem {
     if (!this.repo.columnCipher) throw new AuxError("backend_unavailable", "Night shift requires protected Profile storage.");
@@ -85,8 +94,10 @@ export class NightShiftService {
   async review(id: string, decision: "approve" | "discard" | "apply") {
     const item = this.get(id);
     if (decision === "discard") {
-      if (item.runId && ["running", "parked", "needs_review"].includes(item.status)) this.runtime.cancel(item.runId, "Discarded by the person.");
-      this.repo.db.prepare("UPDATE night_queue SET status='discarded' WHERE id=?").run(id);
+      await withOvernightAuthorityMutation(this.repo, async () => {
+        if (item.runId && ["running", "parked", "needs_review"].includes(item.status)) await this.runtime.cancel(item.runId, "Discarded by the person.");
+        this.repo.db.prepare("UPDATE night_queue SET status='discarded' WHERE id=?").run(id);
+      }, item.runId);
     } else if (decision === "approve") {
       if (item.status !== "proposed") throw new AuxError("conflict", "Only proposed items can be queued.");
       if (item.budgetUsd > this.settings().perTaskUsd) throw new AuxError("permission_denied", "Review the current per-task budget first.");
@@ -99,7 +110,14 @@ export class NightShiftService {
     }
     return this.get(id);
   }
+  effectAuthority(runId: string): { windowEnd: number; requireAC: boolean } {
+    this.assertRun(runId);
+    const row = this.repo.db.prepare("SELECT window_end FROM night_queue WHERE run_id=? AND foreground=0").get(runId) as { window_end: number } | undefined;
+    if (!row) throw new AuxError("permission_denied", "This overnight run has no exact claimed window.");
+    return { windowEnd: row.window_end, requireAC: this.settings().requireAC };
+  }
   async assertDispatch(runId: string) {
+    runId = runRoot(this.repo, runId, true);
     const row = this.repo.db.prepare("SELECT * FROM night_queue WHERE run_id=?").get(runId) as Record<string, unknown> | undefined;
     if (!row || row.foreground === 1) return;
     const onAC = await this.runtime.onAC();
@@ -108,42 +126,46 @@ export class NightShiftService {
   }
 
   budgetStatus(runId: string) {
+    runId = runRoot(this.repo, runId);
     const row = this.repo.db.prepare("SELECT * FROM night_queue WHERE run_id=?").get(runId) as Record<string, unknown> | undefined;
     if (!row || row.foreground === 1) return [];
     const item = this.read(row), settings = this.settings();
-    const nightly = this.repo.db.prepare(`SELECT COALESCE(SUM(m.cost_usd),0) AS spent FROM model_calls m
-      WHERE m.run_id IN (SELECT run_id FROM night_queue WHERE window_date=?)`).get(String(row.window_date)) as { spent: number };
-    return [{ scope: "nightShift" as const, scopeId: item.id, limitUsd: Math.min(item.budgetUsd, settings.perTaskUsd), spentUsd: this.budgets.spentRunUsd(runId) },
+    const nightly = { spent: this.spentWindow(String(row.window_date)) };
+    return [{ scope: "nightShift" as const, scopeId: item.id, limitUsd: Math.min(item.budgetUsd, settings.perTaskUsd), spentUsd: this.spentTree(runId) },
       { scope: "nightShift" as const, scopeId: String(row.window_date), limitUsd: settings.nightlyUsd, spentUsd: nightly.spent }]
       .map(status => ({ ...status, remainingUsd: Math.max(0, status.limitUsd - status.spentUsd), exceeded: status.spentUsd >= status.limitUsd }));
   }
 
   /** Invoked before every model call through BudgetsService's nightShift scope. */
   assertRun(runId: string) {
+    runId = runRoot(this.repo, runId, true);
     const row = this.repo.db.prepare("SELECT * FROM night_queue WHERE run_id=?").get(runId) as Record<string, unknown> | undefined;
     if (!row || row.foreground === 1) return;
     const item = this.read(row), settings = this.settings();
     if (!settings.enabled || !this.runtime.backgroundEnabled() || this.clock.now() >= Number(row.window_end)
       || !nightWindow(this.clock.now(), settings.start, settings.end).inside || item.createdBy !== "person" || item.status !== "running") throw new AuxError("permission_denied", "The overnight window is closed or this run needs review.");
-    const spent = this.budgets.spentRunUsd(runId);
-    const total = this.repo.db.prepare(`SELECT COALESCE(SUM(m.cost_usd),0) AS spent FROM model_calls m
-      WHERE m.run_id IN (SELECT run_id FROM night_queue WHERE window_date=?)`).get(String(row.window_date)) as { spent: number };
+    const spent = this.spentTree(runId);
+    const total = { spent: this.spentWindow(String(row.window_date)) };
     if (spent >= Math.min(item.budgetUsd, settings.perTaskUsd) || total.spent >= settings.nightlyUsd)
       throw new AuxError("permission_denied", "The overnight budget is exhausted.", { scope: "nightShift" });
   }
-  private reconcile(now: number) {
+  private async reconcile(now: number) {
     const rows = this.repo.db.prepare("SELECT * FROM night_queue WHERE status IN ('running','parked') OR (status='needs_review' AND foreground=1)").all() as Record<string, unknown>[];
     for (const row of rows) {
       const item = this.read(row), run = item.runId ? this.repo.getRun(item.runId) : undefined;
       let status: NightShiftItem["status"] | undefined;
+      let cancelForWindow = false;
       if (run?.status === "completed") status = "done";
       else if (run && ["failed", "cancelled"].includes(run.status)) status = "failed";
       else if (run?.status === "interrupted") status = "needs_review";
       else if (row.foreground !== 1 && now >= Number(row.window_end)) {
-        if (item.runId && run?.status === "running") this.runtime.cancel(item.runId, "The overnight window closed.");
+        cancelForWindow = !!item.runId && run?.status === "running";
         status = "needs_review";
       } else if (row.foreground !== 1 && (run?.status === "needs_input" || run?.status === "paused")) status = "parked";
-      if (status) this.repo.db.prepare("UPDATE night_queue SET status=? WHERE id=?").run(status, item.id);
+      if (status) await withOvernightAuthorityMutation(this.repo, async () => {
+        if (cancelForWindow && item.runId) await this.runtime.cancel(item.runId, "The overnight window closed.");
+        this.repo.db.prepare("UPDATE night_queue SET status=? WHERE id=?").run(status, item.id);
+      }, item.runId);
     }
   }
   async tick() {
@@ -151,14 +173,14 @@ export class NightShiftService {
     try {
       const now = this.clock.now();
       const onAC = await this.runtime.onAC();
-      this.reconcile(now);
+      await this.reconcile(now);
       const settings = this.settings(), window = nightWindow(now, settings.start, settings.end);
       if (!window.inside) {
-        this.parkActiveForReview("The overnight window closed.");
+        await this.parkActiveForReview("The overnight window closed.");
         await this.runtime.releaseActivity(); return;
       }
       if (!settings.enabled || !this.runtime.backgroundEnabled() || settings.requireAC && !onAC) {
-        this.parkActiveForReview("Overnight settings or power changed.");
+        await this.parkActiveForReview("Overnight settings or power changed.");
         await this.runtime.releaseActivity(); return;
       }
       const active = this.repo.db.prepare("SELECT status,window_end FROM night_queue WHERE status IN ('running','parked') LIMIT 1").get() as { status: string; window_end: number } | undefined;
@@ -169,8 +191,7 @@ export class NightShiftService {
       }
       const row = this.repo.db.prepare("SELECT * FROM night_queue WHERE status='queued' AND created_by='person' ORDER BY created_at,id LIMIT 1").get() as Record<string, unknown> | undefined;
       if (!row) { await this.runtime.releaseActivity(); return; }
-      const spent = this.repo.db.prepare(`SELECT COALESCE(SUM(m.cost_usd),0) AS spent FROM model_calls m WHERE m.run_id IN
-        (SELECT run_id FROM night_queue WHERE window_date=?)`).get(window.windowDate) as { spent: number };
+      const spent = { spent: this.spentWindow(window.windowDate) };
       if (spent.spent >= settings.nightlyUsd) { await this.runtime.releaseActivity(); return; }
       const item = this.read(row);
       if (item.budgetUsd > settings.perTaskUsd) {
@@ -193,34 +214,44 @@ export class NightShiftService {
           await this.assertDispatch(reservedRunId);
           const runId = await this.runtime.start(item.payload, { ...item, status: "running", windowDate: window.windowDate }, reservedRunId);
           if (this.closed || this.clock.now() >= window.end) {
-            this.runtime.cancel(runId, "The overnight window closed during launch.");
-            this.repo.db.prepare("UPDATE night_queue SET status='needs_review' WHERE id=?").run(item.id);
+            await withOvernightAuthorityMutation(this.repo, async () => {
+              await this.runtime.cancel(runId, "The overnight window closed during launch.");
+              this.repo.db.prepare("UPDATE night_queue SET status='needs_review' WHERE id=?").run(item.id);
+            }, reservedRunId);
           }
           if (runId !== reservedRunId) {
-            this.runtime.cancel(runId, "The overnight run identity changed during launch.");
-            this.runtime.cancel(reservedRunId, "The overnight run identity changed during launch.");
+            await withOvernightAuthorityMutation(this.repo, async () => {
+              await this.runtime.cancel(runId, "The overnight run identity changed during launch.");
+              await this.runtime.cancel(reservedRunId, "The overnight run identity changed during launch.");
+            });
             throw new AuxError("conflict", "The overnight run identity changed during launch.");
           }
         }
       } catch {
-        this.repo.db.prepare("UPDATE night_queue SET status='failed' WHERE id=? AND status='running'").run(item.id);
+        await withOvernightAuthorityMutation(this.repo, async () => {
+          this.repo.db.prepare("UPDATE night_queue SET status='failed' WHERE id=? AND status='running'").run(item.id);
+        }, this.get(item.id).runId);
         await this.runtime.releaseActivity();
       }
     } finally { this.ticking = false; }
   }
-  private parkActiveForReview(reason: string) {
+  private async parkActiveForReview(reason: string) {
     const rows = this.repo.db.prepare("SELECT id,run_id,status FROM night_queue WHERE status IN ('running','parked')").all() as { id: string; run_id: string | null; status: string }[];
     for (const row of rows) {
       // A real pending approval remains parked for person-present Apply.
-      if (row.run_id && row.status === "running") this.runtime.cancel(row.run_id, reason);
-      this.repo.db.prepare("UPDATE night_queue SET status='needs_review' WHERE id=? AND status IN ('running','parked')").run(row.id);
+      await withOvernightAuthorityMutation(this.repo, async () => {
+        if (row.run_id && row.status === "running") await this.runtime.cancel(row.run_id, reason);
+        this.repo.db.prepare("UPDATE night_queue SET status='needs_review' WHERE id=? AND status IN ('running','parked')").run(row.id);
+      }, row.run_id ?? undefined);
     }
   }
   async close() {
     this.closed = true;
     for (const item of this.list()) if (["running", "parked"].includes(item.status)) {
-      if (item.runId) this.runtime.cancel(item.runId, "Night shift stopped in this Profile.");
-      this.repo.db.prepare("UPDATE night_queue SET status='needs_review' WHERE id=?").run(item.id);
+      await withOvernightAuthorityMutation(this.repo, async () => {
+        if (item.runId) await this.runtime.cancel(item.runId, "Night shift stopped in this Profile.");
+        this.repo.db.prepare("UPDATE night_queue SET status='needs_review' WHERE id=?").run(item.id);
+      }, item.runId);
     }
     await this.runtime.releaseActivity();
   }

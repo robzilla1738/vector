@@ -687,11 +687,11 @@ describe("runToolLoop (S5 host integration)", () => {
     const h = coordinatorHarness(model);
     const run = await h.coordinator.start({ goal: "read after owner", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
     await pending;
-    h.coordinator.pause(run.runId);
+    await h.coordinator.pause(run.runId);
     h.coordinator.interruptForTakeover(run.runId);
     await new Promise(resolve => setTimeout(resolve, 20));
     expect(h.repo.getRun(run.runId)?.status).toBe("paused");
-    h.coordinator.resume(run.runId);
+    await h.coordinator.resume(run.runId);
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "after takeover" });
@@ -981,7 +981,7 @@ describe("runToolLoop (S5 host integration)", () => {
     const pending = h.coordinator.suspensions.pending(run.runId);
     expect(pending?.kind).toBe("ask-user-question");
     expect(new TranscriptStore(h.db).openPark(run.runId)).toMatchObject({ toolCallId: "q1" });
-    h.coordinator.answer(run.runId, "blue");
+    await h.coordinator.answer(run.runId, "blue");
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "blue it is" });
@@ -1007,7 +1007,7 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.coordinator.suspensions.pending(run.runId)?.kind).toBe("handoff");
     const observationsBefore = h.pages.observe.mock.calls.length;
     const executesBefore = h.pages.execute.mock.calls.length;
-    h.coordinator.answer(run.runId, "I finished the handoff.");
+    await h.coordinator.answer(run.runId, "I finished the handoff.");
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     expect(final.result).toMatchObject({ report: "the person finished it" });
@@ -1040,7 +1040,7 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.db.prepare("SELECT COUNT(*) AS n FROM safety_suspensions WHERE run_id=?").get(run.runId)).toEqual({ n: 1 });
     const resolved = h.coordinator.suspensions.resolveByApprovalId("ap-9", "answered");
     expect(resolved?.runId).toBe(run.runId);
-    h.coordinator.answer(run.runId, "The user approved.");
+    await h.coordinator.answer(run.runId, "The user approved.");
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
   });

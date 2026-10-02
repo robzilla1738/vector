@@ -58,7 +58,7 @@ export async function run(t) {
   await t.step('an open-tab result switches without creating another page', { kind: 'ui', features: ['commandBar'] }, async () => {
     const before = await t.rpc('pages.list');
     await t.ax.key('command+t', 'hid'); await t.ax.waitFor(dialog); await t.ax.type('@', field); await t.ax.type('Aux native Red', field);
-    const target = { name: 'Aux native Red', match: 'contains', scope: 'shell', within: dialog, index: 0 };
+    const target = { role: 'AXStaticText', name: 'Aux native Red 127.0.0.1 Switch to tab', match: 'exact', scope: 'shell', within: dialog, index: 0 };
     await t.ax.waitFor(target); await t.ax.click(target);
     const rpc = await t.until('Red selected without a new page', async () => {
       const workspace = await t.rpc('workspace.get'); const pages = await t.rpc('pages.list');

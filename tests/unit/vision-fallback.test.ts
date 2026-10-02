@@ -1,3 +1,4 @@
+import { withAttempts } from "../../apps/runtime/src/agent/model-client.js";
 import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { openDb, Repo, RunCoordinator } from "@aux/runtime";
@@ -97,7 +98,7 @@ function harness(opts: {
     defaultModel: () => "test/planner",
     recoveryModel: () => undefined,
     visionModel: () => "test/vision",
-    recordModelCall: (c) => modelCalls.push({ role: c.role, modelId: c.modelId }),
+    recordModelCall: (c) => { modelCalls.push({ role: c.role, modelId: c.modelId }); },
     grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
   });
   return { repo, coordinator, model, generateStructured, generateText, pages, modelCalls, executeCalls };
@@ -242,4 +243,33 @@ describe("no-progress guard", () => {
     expect(final.status).toBe("failed");
     expect(final.error).toMatch(/no progress/);
   });
+});
+
+
+it("records actual failed vision provider usage and identity before continuing with the planner", async () => {
+  const h = harness({ observeOverride: obs({ elements: 0, text: "" }),
+    structuredPlan: { status: "done", result: { note: "planner" } }, visionText: "" });
+  h.generateText.mockImplementation(async () => { throw withAttempts(new Error("Vision provider failed"),
+    [{ modelId: "actual/vision", durationMs: 9, inputTokens: 31, outputTokens: 4,
+      providerMetadata: { gateway: { cost: 0.25 } } }]); });
+  const recorded: Parameters<typeof h.coordinator.deps.recordModelCall>[0][] = [];
+  h.coordinator.deps.recordModelCall = async call => { recorded.push(call); };
+  const run = await h.coordinator.start({ goal: "Inspect the fixture", pageIds: ["p1"] });
+  await waitForRun(h.repo, run.runId);
+  expect(h.generateText).toHaveBeenCalledOnce();
+  expect(recorded.filter(call => call.role === "vision")).toEqual([{ runId: run.runId, role: "vision",
+    modelId: "actual/vision", durationMs: 9, inputTokens: 31, outputTokens: 4,
+    providerMetadata: { gateway: { cost: 0.25 } }, error: "Vision provider failed" }]);
+});
+
+it("prices successful vision by the provider that actually served the attempt", async () => {
+  const h = harness({ observeOverride: obs({ elements: 0, text: "" }),
+    structuredPlan: { status: "done", result: { note: "planner" } }, visionText: "" });
+  h.generateText.mockImplementation(async () => ({ text: '{"status":"done","result":{"note":"vision"}}', durationMs: 9,
+    resolvedModelId: "served/vision", inputTokens: 23, outputTokens: 4 }));
+  const recorded: Parameters<typeof h.coordinator.deps.recordModelCall>[0][] = [];
+  h.coordinator.deps.recordModelCall = async call => { recorded.push(call); };
+  const run = await h.coordinator.start({ goal: "Inspect", pageIds: ["p1"] });
+  await waitForRun(h.repo, run.runId);
+  expect(recorded.filter(call => call.role === "vision")).toMatchObject([{ runId: run.runId, modelId: "served/vision", inputTokens: 23, outputTokens: 4 }]);
 });

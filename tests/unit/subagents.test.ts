@@ -1,4 +1,5 @@
-import { expect, it } from "vitest";
+import { lineageRuns, overnightRoot, runRoot } from "../../apps/runtime/src/services/run-lineage.js";
+import { expect, it, vi } from "vitest";
 import { authorizeProgram, EventBus, openDb, Repo, SubagentService, subagentGrants, TaskService } from "@aux/runtime";
 import { EventTypes, type Run } from "@aux/contracts";
 
@@ -46,7 +47,7 @@ it("shares a hard reservation budget across at most eight children and rejects p
       profile: "default", tokenAllocation: 1000, costAllocationUsd: 0.1 })).rejects.toThrow(/eight/);
     expect(f.starts[0]).toMatchObject({ context: "Stable shared prompt prefix", contextSnapshot: true,
       subagentProfile: "read_only" });
-    f.service.cancel(f.service.view(group.groupId).agents.find(agent => agent.pageIds.includes("page-0"))!.agentId);
+    await f.service.cancel(f.service.view(group.groupId).agents.find(agent => agent.pageIds.includes("page-0"))!.agentId);
     await expect(f.service.spawn({ groupId: group.groupId, goal: "Collision", pageIds: ["page-1"],
       profile: "default", tokenAllocation: 1000, costAllocationUsd: 0.1 })).rejects.toThrow(/leased/);
   } finally { f.close(); }
@@ -72,7 +73,7 @@ it("releases unused reservations after completion and forks the exact saved cont
     expect(fork.sourceRunId).toBe(first.runId);
     expect(f.starts.at(-1)?.context).toBe("Stable shared prompt prefix");
     expect(f.service.view(group.groupId)).toMatchObject({ usedTokens: 100, reservedTokens: 2000 });
-    const message = f.service.sendMessage(fork.agentId, fork.runId!, "Check the second source");
+    const message = await f.service.sendMessage(fork.agentId, fork.runId!, "Check the second source");
     expect(message).toBeDefined();
     expect(f.messages[0]).toMatchObject({ runId: fork.runId, text: "Check the second source" });
   } finally { f.close(); }
@@ -96,12 +97,12 @@ it("cancels child work when the parent settles or a child exceeds its allocation
     f.repo.saveModelCall({ callId: "overspend", runId: child.runId, role: "planner", modelId: "fixture", durationMs: 1,
       inputTokens: 1200, outputTokens: 10, costUsd: 0.01, createdAt: Date.now() });
     f.events.emit(EventTypes.ModelCall, {}, child.runId);
-    expect(f.cancelled).toContain(child.runId);
+    await vi.waitFor(() => expect(f.cancelled).toContain(child.runId));
     const second = await f.service.spawn({ groupId: group.groupId, goal: "Two", pageIds: ["two"],
       profile: "read_only", tokenAllocation: 1000, costAllocationUsd: 0.2 });
     const parent = f.repo.getRun(f.parent.runId)!;
     parent.status = "completed"; f.repo.saveRun(parent); f.events.emit(EventTypes.RunUpdated, { run: parent }, parent.runId);
-    expect(f.cancelled).toContain(second.runId);
+    await vi.waitFor(() => expect(f.cancelled).toContain(second.runId));
     expect(f.service.view(group.groupId).group.state).toBe("closed");
   } finally { f.close(); }
 });
@@ -152,7 +153,7 @@ it("waitFor resolves when a cell reaches a terminal state and reports pending wh
     expect(f.service.get(agent.agentId).state).toBe("running");
     const pending = await f.service.waitFor(agent.agentId, 60);
     expect(pending.pending).toBe(true);
-    f.service.sendMessage(agent.agentId, agent.runId!, "steer me");
+    await f.service.sendMessage(agent.agentId, agent.runId!, "steer me");
     expect(f.messages.at(-1)).toMatchObject({ text: "steer me" });
     const done = f.repo.getRun(agent.runId!)!;
     done.status = "completed"; done.result = { answer: 42 }; f.repo.saveRun(done);
@@ -178,5 +179,26 @@ it("waitFor surfaces the child run's failure", async () => {
     f.events.emit(EventTypes.RunUpdated, { run: failed }, failed.runId);
     const settled = await f.service.waitFor(agent.agentId, 2000);
     expect(settled.error).toBe("it broke");
+  } finally { f.close(); }
+});
+
+it("persists trusted child lineage before launch without fabricating a child night queue marker", async () => {
+  const f = fixture();
+  try {
+    f.repo.saveRun({ ...f.parent, config: { ...f.parent.config, nightShiftItemId: "person-queue" } });
+    const group = f.service.createGroup({ parentRunId: f.parent.runId, tokenBudget: 2000, costBudgetUsd: 0.5, timeBudgetMs: 60_000 });
+    const start = f.runs.start.bind(f.runs);
+    f.runs.start = async input => {
+      expect(f.repo.getRun(input.deliveryRunId!)).toBeUndefined();
+      expect(overnightRoot(f.repo, input.deliveryRunId!)).toBe(f.parent.runId);
+      expect(input).not.toHaveProperty("nightShiftItemId");
+      return start(input);
+    };
+    const child = await f.service.spawn({ groupId: group.groupId, goal: "Child", pageIds: ["one"], profile: "read_only", tokenAllocation: 1000, costAllocationUsd: 0.2 });
+    expect(runRoot(f.repo, child.runId!)).toBe(f.parent.runId);
+    expect(lineageRuns(f.repo, f.parent.runId)).toEqual([f.parent.runId, child.runId]);
+    f.db.prepare("UPDATE subagent_groups SET state='closed' WHERE group_id=?").run(group.groupId);
+    expect(() => overnightRoot(f.repo, child.runId!)).toThrow(/no longer active/);
+    expect(lineageRuns(f.repo, f.parent.runId)).toContain(child.runId);
   } finally { f.close(); }
 });

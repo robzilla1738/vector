@@ -43,9 +43,9 @@ it("runs a durable goal with the coordinator's token, cost and wall-time limits"
   f.repo.saveModelCall({ callId: "call-1", runId: active.runId!, role: "planner", modelId: "fixture",
     durationMs: 1, inputTokens: 100, outputTokens: 50, costUsd: 0.3, createdAt: Date.now() });
   expect(f.goals.get(goal.goalId)).toMatchObject({ usedTokens: 150, knownCostUsd: 0.3, costComplete: true });
-  expect(f.goals.pause(goal.goalId).status).toBe("paused");
-  expect(f.goals.resume(goal.goalId).status).toBe("active");
-  expect(f.goals.cancel(goal.goalId).status).toBe("cancelled");
+  expect((await f.goals.pause(goal.goalId)).status).toBe("paused");
+  expect((await f.goals.resume(goal.goalId)).status).toBe("active");
+  expect((await f.goals.cancel(goal.goalId)).status).toBe("cancelled");
   expect(f.goals.list(f.workspace.workspaceId)).toHaveLength(1);
   f.db.close();
 });
@@ -57,7 +57,7 @@ it("does not retry a goal whose run linkage was interrupted", async () => {
   const recovered = new GoalService(f.repo, f.runs);
   expect(recovered.get(goal.goalId).status).toBe("needs_input");
   await expect(f.goals.start(goal.goalId, ["p1"])).rejects.toThrow(/needs review/);
-  expect(recovered.cancel(goal.goalId).status).toBe("cancelled");
+  expect((await recovered.cancel(goal.goalId)).status).toBe("cancelled");
   f.db.close();
 });
 
@@ -84,12 +84,12 @@ it("keeps one unfinished Goal per conversation and carries that conversation int
   expect(() => f.goals.create(input)).toThrow(/Finish or cancel/);
   const otherSpace = new TaskService(f.repo, new EventBus(f.repo)).createWorkspace("Other");
   expect(() => f.goals.create({ ...input, workspaceId: otherSpace.workspaceId })).toThrow(/Finish or cancel/);
-  expect(f.goals.cancel(first.goalId).status).toBe("cancelled");
+  expect((await f.goals.cancel(first.goalId)).status).toBe("cancelled");
   const second = f.goals.create(input);
   await f.goals.start(second.goalId, ["p1"]);
   expect(f.started()).toMatchObject({ chatId: "chat-one", maxTokens: 1200 });
   expect(() => f.goals.create(input)).toThrow(/Finish or cancel/);
-  f.goals.cancel(second.goalId);
+  await f.goals.cancel(second.goalId);
   expect(f.goals.create(input).chatId).toBe("chat-one");
   f.repo.setSetting("conversationWorkspace:chat-other", "different-space");
   expect(() => f.goals.create({ ...input, chatId: "chat-other" })).toThrow(/another Space/);
@@ -102,17 +102,17 @@ it("requires the same blocker in three consecutive model turns and leaves owner 
     budget: { maxTokens: 1_200 } });
   const active = await f.goals.start(goal.goalId, ["p1"]);
   const runId = active.runId!;
-  expect(() => f.goals.report("not-a-goal", "paused", undefined, 1)).toThrow(/not a Goal/);
-  expect(f.goals.report(runId, "blocked", "Authentication needed", 1)).toEqual({ status: "still_active", remaining: 2 });
-  expect(f.goals.report(runId, "blocked", "Different blocker", 2)).toEqual({ status: "still_active", remaining: 2 });
-  expect(f.goals.report(runId, "blocked", "Authentication needed", 3)).toEqual({ status: "still_active", remaining: 2 });
-  expect(f.goals.report(runId, "blocked", "Authentication needed", 4)).toEqual({ status: "still_active", remaining: 1 });
-  expect(() => f.goals.report(runId, "blocked", "Authentication needed", 4)).toThrow(/at most once/);
-  expect(f.goals.report(runId, "blocked", "Authentication needed", 5)).toEqual({ status: "blocked" });
+  await expect(f.goals.report("not-a-goal", "paused", undefined, 1)).rejects.toThrow(/not a Goal/);
+  expect(await f.goals.report(runId, "blocked", "Authentication needed", 1)).toEqual({ status: "still_active", remaining: 2 });
+  expect(await f.goals.report(runId, "blocked", "Different blocker", 2)).toEqual({ status: "still_active", remaining: 2 });
+  expect(await f.goals.report(runId, "blocked", "Authentication needed", 3)).toEqual({ status: "still_active", remaining: 2 });
+  expect(await f.goals.report(runId, "blocked", "Authentication needed", 4)).toEqual({ status: "still_active", remaining: 1 });
+  await expect(f.goals.report(runId, "blocked", "Authentication needed", 4)).rejects.toThrow(/at most once/);
+  expect(await f.goals.report(runId, "blocked", "Authentication needed", 5)).toEqual({ status: "blocked" });
   expect(f.goals.get(goal.goalId)).toMatchObject({ status: "blocked", blocker: "Authentication needed",
     blockerStreak: 3, budget: { maxTokens: 1_200 } });
-  expect(f.goals.resume(goal.goalId)).toMatchObject({ status: "active", blockerStreak: 0 });
-  expect(f.goals.report(runId, "paused", undefined, 6)).toEqual({ status: "paused" });
+  expect(await f.goals.resume(goal.goalId)).toMatchObject({ status: "active", blockerStreak: 0 });
+  expect(await f.goals.report(runId, "paused", undefined, 6)).toEqual({ status: "paused" });
   expect(f.goals.get(goal.goalId).status).toBe("paused");
   f.db.close();
 });
@@ -195,6 +195,6 @@ it("keeps an interrupted ambiguous charge for owner review and does not restart 
   expect(recovered.get(goal.goalId)).toMatchObject({ status: "needs_input", reservedTokens: 1324 });
   expect(() => recovered.create({ workspaceId: f.workspace.workspaceId, chatId: "chat-goal", objective: "Again",
     budget: { maxTokens: 5000 } })).toThrow(/Finish or cancel/);
-  expect(recovered.cancel(goal.goalId).status).toBe("cancelled");
+  expect((await recovered.cancel(goal.goalId)).status).toBe("cancelled");
   f.db.close();
 });

@@ -1,3 +1,4 @@
+import { withRunAuthorityMutation } from "./overnight-authority.js";
 import { randomUUID } from "node:crypto";
 import { AuxError, EventTypes, newRunId, SubagentGroupCreateParams, SubagentGroupSchema, SubagentSchema,
   SubagentSpawnParams, type Subagent, type SubagentGroup } from "@aux/contracts";
@@ -23,13 +24,13 @@ export class SubagentService {
   }
 
   constructor(private repo: Repo, private events: EventBus, private runs: RunService) {
-    this.reconcile();
+    void this.reconcile().catch(error => console.error("[aux-runtime] subagent recovery failed", error));
     this.unsubscribe = events.subscribe(event => {
       if (event.type === EventTypes.RunUpdated) {
         const run = event.payload.run;
-        if (run && typeof run === "object" && "runId" in run && typeof run.runId === "string") this.reconcileRun(run.runId);
+        if (run && typeof run === "object" && "runId" in run && typeof run.runId === "string") void this.reconcileRun(run.runId).catch(error => console.error("[aux-runtime] subagent retirement failed", error));
       }
-      if (event.type === EventTypes.ModelCall && event.runId) this.enforceBudget(event.runId);
+      if (event.type === EventTypes.ModelCall && event.runId) void this.enforceBudget(event.runId).catch(error => console.error("[aux-runtime] subagent budget retirement failed", error));
     });
   }
 
@@ -44,7 +45,7 @@ export class SubagentService {
   private agent(agentId: string): Subagent {
     const row = this.repo.db.prepare("SELECT body,state,run_id,ended_at FROM subagents WHERE agent_id=?").get(agentId) as AgentRow | undefined;
     if (!row) throw new AuxError("not_found", "Subagent does not exist.");
-    return SubagentSchema.parse({ ...this.open("subagents", agentId, row.body), state: row.state, runId: row.run_id ?? undefined,
+    return SubagentSchema.parse({ ...this.open("subagents", agentId, row.body), state: row.state, ...(row.run_id ? { runId: row.run_id } : {}),
       endedAt: row.ended_at ?? undefined });
   }
 
@@ -131,11 +132,11 @@ export class SubagentService {
     return { group, agents, reservedTokens, reservedCostUsd, usedTokens, usedCostUsd };
   }
 
-  private reconcileRun(runId: string) {
+  private async reconcileRun(runId: string) {
     const parentGroup = this.repo.db.prepare("SELECT group_id FROM subagent_groups WHERE parent_run_id=? AND state='active'")
       .get(runId) as { group_id: string } | undefined;
     if (parentGroup && !RUN_ACTIVE.has(this.repo.getRun(runId)?.status ?? "missing")) {
-      this.closeGroup(parentGroup.group_id);
+      await this.closeGroup(parentGroup.group_id);
       return;
     }
     const row = this.repo.db.prepare("SELECT agent_id FROM subagents WHERE run_id=? AND state IN ('starting','running')")
@@ -148,29 +149,35 @@ export class SubagentService {
       .run(state, Date.now(), row.agent_id);
   }
 
-  private reconcile() {
+  private async reconcile() {
     const groups = this.repo.db.prepare("SELECT parent_run_id FROM subagent_groups WHERE state='active'")
       .all() as { parent_run_id: string }[];
-    for (const group of groups) this.reconcileRun(group.parent_run_id);
+    for (const group of groups) await this.reconcileRun(group.parent_run_id);
     const rows = this.repo.db.prepare("SELECT agent_id,run_id FROM subagents WHERE state IN ('starting','running')")
       .all() as { agent_id: string; run_id: string | null }[];
     for (const row of rows) {
-      if (row.run_id) this.reconcileRun(row.run_id);
-      else this.repo.db.prepare("UPDATE subagents SET state='interrupted',ended_at=? WHERE agent_id=?")
+      const reservedRunId = row.run_id ?? this.agent(row.agent_id).runId;
+      if (reservedRunId && this.repo.getRun(reservedRunId)) {
+        this.repo.db.prepare("UPDATE subagents SET run_id=? WHERE agent_id=? AND run_id IS NULL").run(reservedRunId, row.agent_id);
+        await this.reconcileRun(reservedRunId);
+      } else this.repo.db.prepare("UPDATE subagents SET state='interrupted',ended_at=? WHERE agent_id=?")
         .run(Date.now(), row.agent_id);
     }
   }
 
-  private closeGroup(groupId: string) {
-    this.repo.db.prepare("UPDATE subagent_groups SET state='closed' WHERE group_id=? AND state='active'").run(groupId);
-    for (const agent of this.agents(groupId).filter(item => ACTIVE.has(item.state))) {
-      if (agent.runId) this.runs.cancel(agent.runId);
-      else this.repo.db.prepare("UPDATE subagents SET state='interrupted',ended_at=? WHERE agent_id=?")
-        .run(Date.now(), agent.agentId);
-    }
+  private async closeGroup(groupId: string) {
+    const group = this.group(groupId);
+    await withRunAuthorityMutation(this.repo, async () => {
+      this.repo.db.prepare("UPDATE subagent_groups SET state='closed' WHERE group_id=? AND state='active'").run(groupId);
+      for (const agent of this.agents(groupId).filter(item => ACTIVE.has(item.state))) {
+        if (agent.state === "starting") this.repo.db.prepare("UPDATE subagents SET state='interrupted',ended_at=? WHERE agent_id=? AND state='starting'").run(Date.now(), agent.agentId);
+        if (agent.runId && this.repo.getRun(agent.runId)) await this.runs.cancel(agent.runId);
+        else this.repo.db.prepare("UPDATE subagents SET state='interrupted',ended_at=? WHERE agent_id=?").run(Date.now(), agent.agentId);
+      }
+    }, group.parentRunId);
   }
 
-  private enforceBudget(runId: string) {
+  private async enforceBudget(runId: string) {
     const row = this.repo.db.prepare("SELECT group_id FROM subagents WHERE run_id=?").get(runId) as { group_id: string } | undefined;
     if (!row) return;
     const view = this.view(row.group_id);
@@ -180,13 +187,13 @@ export class SubagentService {
       const actualTokens = calls.reduce((sum, call) => sum + (call.inputTokens ?? current.tokenAllocation) + (call.outputTokens ?? 0), 0);
       const actualCost = calls.reduce((sum, call) => sum + (call.costUsd ?? current.costAllocationUsd), 0);
       if (actualTokens > current.tokenAllocation || actualCost > current.costAllocationUsd) {
-        this.runs.cancel(runId);
+        await this.runs.cancel(runId);
         return;
       }
     }
     if (view.usedTokens + view.reservedTokens <= view.group.tokenBudget &&
       view.usedCostUsd + view.reservedCostUsd <= view.group.costBudgetUsd && Date.now() < view.group.deadlineAt) return;
-    this.closeGroup(row.group_id);
+    await this.closeGroup(row.group_id);
   }
 
   async spawn(raw: unknown): Promise<Subagent> {
@@ -220,7 +227,7 @@ export class SubagentService {
       const pageOwners = this.runs.pageOwnership.snapshot();
       if (input.pageIds.some(pageId => pageOwners[pageId] || view.agents.some(agent => ACTIVE.has(agent.state) && agent.pageIds.includes(pageId))))
         throw new AuxError("conflict", "A selected page is already leased to another run.");
-      const agent = SubagentSchema.parse({ ...input, agentId, sourceRunId, state: "starting", createdAt: now });
+      const agent = SubagentSchema.parse({ ...input, agentId, sourceRunId, state: "starting", runId: childRunId, createdAt: now });
       this.repo.db.prepare("INSERT INTO subagents(agent_id,group_id,state,body,created_at) VALUES(?,?,'starting',?,?)")
         .run(agentId, group.groupId, this.seal("subagents", agentId, agent), now);
       this.repo.db.exec("COMMIT");
@@ -236,16 +243,16 @@ export class SubagentService {
       const bound = this.repo.db.prepare("UPDATE subagents SET run_id=?,state='running' WHERE agent_id=? AND state='starting'")
         .run(run.runId, agentId);
       if (bound.changes !== 1 || this.group(group.groupId).state !== "active") {
-        this.runs.cancel(run.runId);
+        await this.runs.cancel(run.runId);
         throw new AuxError("conflict", "The subagent group closed during launch.");
       }
-      this.reconcileRun(run.runId);
+      await this.reconcileRun(run.runId);
       return this.agent(agentId);
     } catch (error) {
       // start can create the run before a later launch step rejects. The stable
       // run ID lets us find and stop that child even when start itself throws.
       const launched = this.repo.getRun(childRunId);
-      if (launched && RUN_ACTIVE.has(launched.status)) this.runs.cancel(childRunId);
+      if (launched && RUN_ACTIVE.has(launched.status)) await this.runs.cancel(childRunId);
       this.repo.db.prepare("UPDATE subagents SET state='failed',ended_at=? WHERE agent_id=? AND state='starting'")
         .run(Date.now(), agentId);
       throw error;
@@ -268,9 +275,9 @@ export class SubagentService {
       expectedRevision: run.config?.messageRevision ?? 0 });
   }
 
-  cancel(agentId: string) {
+  async cancel(agentId: string) {
     const agent = this.agent(agentId);
-    if (agent.runId && ACTIVE.has(agent.state)) this.runs.cancel(agent.runId);
+    if (agent.runId && ACTIVE.has(agent.state)) await this.runs.cancel(agent.runId);
     this.repo.db.prepare("UPDATE subagents SET state='cancelled',ended_at=? WHERE agent_id=? AND state IN ('starting','running')")
       .run(Date.now(), agentId);
     return this.agent(agentId);

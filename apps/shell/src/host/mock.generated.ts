@@ -626,6 +626,9 @@ const RESULTS: Record<string, unknown> = {
   "native.egressInstall": {
     "accepted": true
   },
+  "native.permissionRetire": {
+    "accepted": true
+  },
   "native.egressRevoke": {
     "accepted": true
   },

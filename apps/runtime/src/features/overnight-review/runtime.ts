@@ -1,3 +1,4 @@
+import { withOvernightAuthorityMutation } from "../../services/overnight-authority.js";
 import { AuxError } from "@aux/contracts";
 import type { Services } from "../../api/methods/context.js";
 import { RoutineService } from "../../services/routines.js";
@@ -66,13 +67,13 @@ export function overnightRuntime(s: Services, power: NightPower): NightShiftRunt
         if (!record.runId) throw new AuxError("conflict", record.reason ?? "The overnight Skill did not launch."); return record.runId;
       } finally { pending.delete(payload.routineId); }
     },
-    cancel: (runId, reason) => { s.runs.cancel(runId, reason); },
+    cancel: async (runId, reason) => { await s.runs.cancel(runId, reason); },
     resume: async runId => {
       const run = s.repo.getRun(runId);
       if (!run || !["paused", "needs_input"].includes(run.status) || !run.config?.nightShiftItemId)
         throw new AuxError("conflict", "This overnight action is no longer parked for review.");
       const config = { ...run.config }; delete config.nightShiftItemId;
-      s.repo.saveRun({ ...run, config });
+      await withOvernightAuthorityMutation(s.repo, async () => { s.repo.saveRun({ ...run, config }); }, runId);
       s.events.emit("run.updated", { run: { ...run, config } }, runId);
       // The foreground sheet resolves the actual suspension; this transition grants no one-off approval.
     },

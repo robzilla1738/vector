@@ -234,7 +234,7 @@ describe("RunCoordinator streams plans (A5)", () => {
       runId => coordinator.controls.has(runId), runId => coordinator.steer(runId));
     const run = await coordinator.start({ goal: "Read the page", chatId: "chat-steer", pageIds: ["p1"], contextPageRefs: refs });
     await vi.waitFor(() => expect(ran).toEqual(["s1"]));
-    messages.steer({ messageId: "11111111-1111-4111-8111-111111111111", runId: run.runId, chatId: "chat-steer",
+    await messages.steer({ messageId: "11111111-1111-4111-8111-111111111111", runId: run.runId, chatId: "chat-steer",
       text: "Use the latest figures", pageIds: ["p1"], contextPageRefs: refs, expectedRevision: 0 });
     releaseFirst();
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("completed"));

@@ -39,7 +39,8 @@ export async function runMemberAgent(opts: {
   /** Persist write intent before dispatch (Gate D). */
   durable?: DurableWriteLedger;
   budget?: ResearchBudget;
-  recordModelCall?: (c: { modelId: string; durationMs: number; inputTokens?: number; outputTokens?: number; cachedInputTokens?: number; providerMetadata?: Record<string, unknown>; error?: string }) => void;
+  beforeModelCall?: () => Promise<void>;
+  recordModelCall?: (c: { modelId: string; durationMs: number; inputTokens?: number; outputTokens?: number; cachedInputTokens?: number; providerMetadata?: Record<string, unknown>; error?: string }) => void | Promise<void>;
 }): Promise<{ result: ResultRecord; executedSteps: Step[] }> {
   const { member, pages, model, modelId, signal, runId } = opts;
   const pageId = opts.pageId;
@@ -52,6 +53,7 @@ export async function runMemberAgent(opts: {
     if (signal.aborted || opts.budget?.signal.aborted) break;
     const obs = await opts.turnMentions.useSourcePage(runId, pageId, "read", opts.checkSource, () => pages.observe(pageId, {}));
     const prompt = buildPlannerPrompt({ goal: memberGoal, observations: [obs], recentOutcomes: outcomes, pageIds: [pageId], notes, budget: { tokens: 3000 } });
+    await opts.beforeModelCall?.();
     const permit=opts.budget?.reserveModel(modelId,prompt,PLANNER_SYSTEM,8192);
     if(permit&&"reason" in permit)return err(member,pageId,obs.content.url,permit.reason,executed);
     let call: StructuredCallResult<PlanChunk>;
@@ -63,13 +65,13 @@ export async function runMemberAgent(opts: {
     } catch(error) {
       const attempts=attemptsOf(error);
       if(permit&&"finish" in permit)permit.finish(attempts);
-      for(const attempt of attempts)opts.recordModelCall?.({modelId,...attempt});
-      if(!attempts.length)opts.recordModelCall?.({modelId,durationMs:Date.now()-callStarted,error:error instanceof Error?error.message:String(error)});
+      for(const attempt of attempts)await opts.recordModelCall?.({...attempt,modelId:attempt.modelId??modelId});
+      if(!attempts.length)await opts.recordModelCall?.({modelId,durationMs:Date.now()-callStarted,error:error instanceof Error?error.message:String(error)});
       return err(member,pageId,obs.content.url,error instanceof Error?error.message:String(error),executed);
     }
     calls += 1 + (call.retries?.length ?? 0);
-    for (const retry of call.retries ?? []) opts.recordModelCall?.({ modelId, ...retry });
-    opts.recordModelCall?.({ modelId, durationMs: call.durationMs, inputTokens: call.inputTokens, outputTokens: call.outputTokens, cachedInputTokens: call.cachedInputTokens, providerMetadata: call.providerMetadata });
+    for (const retry of call.retries ?? []) await opts.recordModelCall?.({ ...retry, modelId: retry.modelId ?? modelId });
+    await opts.recordModelCall?.({ modelId: call.resolvedModelId ?? modelId, durationMs: call.durationMs, inputTokens: call.inputTokens, outputTokens: call.outputTokens, cachedInputTokens: call.cachedInputTokens, providerMetadata: call.providerMetadata });
     const plan = call.object;
     if (plan.notes !== undefined) notes = plan.notes;
 

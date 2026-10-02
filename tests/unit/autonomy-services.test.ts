@@ -1,3 +1,4 @@
+import { fixtureEmptyOvernightAuthority } from "../fixtures/overnight-authority.js";
 import { runInNewContext } from "node:vm";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { afterEach, expect, it, vi } from "vitest";
@@ -21,7 +22,9 @@ async function fixture() {
     profileStorageRoot: async () => create(key("aux_root_v1")),
     profileStorageFactor: async () => create(key("sqlite_factor_v1")),
   }, "fixture", false);
-  return { db, repo: new Repo(db, cipher) };
+  const repo = new Repo(db, cipher);
+  fixtureEmptyOvernightAuthority(repo);
+  return { db, repo };
 }
 it("encrypts actual recorder rows, excludes detached callbacks and removes observer listeners", async () => {
   const { db, repo } = await fixture();
@@ -202,18 +205,18 @@ it("continues only the owner-resolved pending Skill step and never repeats the e
   await vi.waitFor(() => expect(repo.getRun(runId)?.status).toBe("needs_input"));
   expect(invoked).toEqual(["fill"]);
   expect(JSON.stringify(db.prepare("SELECT payload FROM skill_continuations").get())).not.toContain("Globex");
-  expect(() => resumeSkillApproval(context, runId, "forged", true)).toThrow(/resolved/);
+  await expect(resumeSkillApproval(context, runId, "forged", true)).rejects.toThrow(/resolved/);
   repo.saveRun({ ...repo.getRun(runId)!, config: { ...repo.getRun(runId)!.config, nightShiftItemId: "night-item" } });
-  expect(() => resumeSkillApproval(context, runId, actualApproval, true)).toThrow(/Apply/);
+  await expect(resumeSkillApproval(context, runId, actualApproval, true)).rejects.toThrow(/Apply/);
   const { nightShiftItemId: _night, ...foreground } = repo.getRun(runId)!.config!;
   repo.saveRun({ ...repo.getRun(runId)!, config: foreground });
   approvals.decideLocal({ decision: "accept", approvalId: actualApproval }, runId);
   suspensions.resolveByApprovalId(actualApproval, "answered");
-  expect(resumeSkillApproval(context, runId, actualApproval, true)).toBe(true);
+  expect(await resumeSkillApproval(context, runId, actualApproval, true)).toBe(true);
   await vi.waitFor(() => expect(repo.getRun(runId)?.status).toBe("completed"));
   expect(invoked).toEqual(["fill", "send", "oracle"]);
   expect(repo.listSteps(runId)).toHaveLength(3);
-  expect(() => resumeSkillApproval(context, runId, actualApproval, true)).toThrow(/no longer/);
+  await expect(resumeSkillApproval(context, runId, actualApproval, true)).rejects.toThrow(/no longer/);
 });
 
 it("stores only a repair proposal until owner review, refuses ambiguity and stale attachments, and requires retesting", async () => {
@@ -430,4 +433,37 @@ it("the actual page executor stops later program steps when the overnight window
     expect(repo.getRun(runId)?.status).toBe("running");
     expect(service.get(item.id).status).toBe("running");
   } finally { await remove(); }
+});
+
+it("charges real descendant model and Guardian calls to the original person queue after child settlement", async () => {
+  const { repo, db } = await fixture(); const now = new Date(2026, 9, 1, 2).getTime();
+  const { EventBus, SubagentService, TaskService } = await import("@aux/runtime");
+  const events = new EventBus(repo), workspace = new TaskService(repo, events).createWorkspace("Overnight descendants");
+  repo.setSetting("nightShift", { enabled: true, start: "00:00", end: "08:00", nightlyUsd: 1, perTaskUsd: 0.5, requireAC: true });
+  const runtime: NightShiftRuntime = { backgroundEnabled: () => true, onAC: async () => true, releaseActivity: async () => {}, powerActivity: async () => ({ active: true }),
+    start: async (_payload, item, runId) => {
+      repo.saveRun({ runId, goal: "Parent", pageIds: ["one"], status: "running", createdAt: now, config: { nightShiftItemId: item.id, contextWorkspaceId: workspace.workspaceId } }); return runId;
+    }, cancel: async () => {}, resume: async () => {}, consolidate: async () => {}, reindex: async () => {} };
+  const night = new NightShiftService(repo, runtime, new BudgetsService(db, () => ({})), createClock(1, () => now));
+  const item = night.queue({ payload: { kind: "goal", goalId: "goal" }, budgetUsd: 0.4 }); await night.tick();
+  const parentId = night.get(item.id).runId!;
+  const runs = { pageOwnership: { snapshot: () => ({}) }, start: async (input: { deliveryRunId: string; goal: string; pageIds: string[] }) => {
+    const run = { runId: input.deliveryRunId, goal: input.goal, pageIds: input.pageIds, status: "running" as const, createdAt: now };
+    repo.saveRun(run); return run;
+  }, cancel: async () => {} } as unknown as ConstructorParameters<typeof SubagentService>[2];
+  const agents = new SubagentService(repo, events, runs);
+  try {
+    const group = agents.createGroup({ parentRunId: parentId, tokenBudget: 2000, costBudgetUsd: 0.5, timeBudgetMs: 60_000 });
+    const child = await agents.spawn({ groupId: group.groupId, goal: "Read", pageIds: ["one"], profile: "read_only", tokenAllocation: 1000, costAllocationUsd: 0.4 });
+    repo.saveModelCall({ callId: randomUUID(), runId: child.runId, role: "agent", modelId: "served/agent", durationMs: 1, inputTokens: 10, outputTokens: 10, costUsd: 0.3, createdAt: now });
+    repo.saveModelCall({ callId: randomUUID(), runId: child.runId, role: "guardian", modelId: "served/guardian", durationMs: 1, inputTokens: 10, outputTokens: 10, costUsd: 0.1, createdAt: now });
+    expect(night.budgetStatus(child.runId!)[0]).toMatchObject({ scopeId: item.id, spentUsd: 0.4, exceeded: true });
+    expect(() => night.assertRun(child.runId!)).toThrow(/budget/);
+    repo.saveRun({ ...repo.getRun(child.runId!)!, status: "completed" });
+    db.prepare("UPDATE subagents SET state='completed' WHERE agent_id=?").run(child.agentId);
+    db.prepare("UPDATE subagent_groups SET state='closed' WHERE group_id=?").run(group.groupId);
+    expect(night.summary().spentUsd).toBe(0.4);
+    expect(night.budgetStatus(parentId)[0]?.spentUsd).toBe(0.4);
+    expect(repo.getRun(child.runId!)?.config?.nightShiftItemId).toBeUndefined();
+  } finally { agents.close(); }
 });

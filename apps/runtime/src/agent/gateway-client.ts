@@ -298,18 +298,20 @@ export class GatewayModelClient implements ModelClient {
   private async billed<T extends { usage?: unknown; providerMetadata?: unknown }>(
     modelId: string, promptTokens: number, maxOutputTokens: number, call: () => Promise<T>,
   ): Promise<T> {
-    if (!this.spendLedger) return call();
-    const reservation = this.spendLedger.reserve("aux-runtime", modelId, projectedModelCostUsd(modelId, promptTokens, maxOutputTokens, this.capabilities()));
+    const started = Date.now();
+    const reservation = this.spendLedger?.reserve("aux-runtime", modelId, projectedModelCostUsd(modelId, promptTokens, maxOutputTokens, this.capabilities()));
     try {
       const result = await call();
       const cost = modelCallCost(modelId, { ...usageFields(result.usage), providerMetadata: result.providerMetadata as Record<string, unknown> | undefined });
-      this.spendLedger.settle(reservation, cost.costUsd);
+      if (reservation) this.spendLedger?.settle(reservation, cost.costUsd);
       return result;
     } catch (error) {
       const billed = error as { usage?: unknown; providerMetadata?: unknown };
       const cost = modelCallCost(modelId, { ...usageFields(billed?.usage), providerMetadata: billed?.providerMetadata as Record<string, unknown> | undefined });
-      this.spendLedger.settle(reservation, cost.costUsd);
-      throw error;
+      const known = attemptsOf(error);
+      if (reservation) this.spendLedger?.settle(reservation, cost.costUsd ?? (known.length ? modelCallCost(modelId, known.at(-1)!).costUsd : undefined));
+      throw known.length || (!billed?.usage && !billed?.providerMetadata) ? error
+        : withAttempts(error, [{ ...attempt(started, billed), modelId }]);
     }
   }
 
@@ -372,11 +374,8 @@ export class GatewayModelClient implements ModelClient {
         });
         return { object: res.object, ...attempt(started, res) };
       } catch (e) {
-        if (opts.signal?.aborted) throw e;
-        if (!isStructuredOutputError(e)) throw e;
-        const usage = (e as { usage?: unknown }).usage;
-        if (usage) retries.push({ ...attempt(started, { usage }), error: "structured output unusable" });
-        if(opts.maxAttempts===1)throw withAttempts(e,retries);
+        if (opts.signal?.aborted || !isStructuredOutputError(e) || opts.maxAttempts === 1) throw e;
+        retries.push(...attemptsOf(e).map(a => ({ ...a, error: "structured output unusable" })));
       }
     }
     return this.structuredFromText(opts, retries);
@@ -398,31 +397,24 @@ export class GatewayModelClient implements ModelClient {
   private async streamStructuredInner<T>(opts: CallOpts & { schema: z.ZodType<T>; onText: (delta: string) => void }): Promise<StructuredCallResult<T>> {
     const started = Date.now();
     this.requireVision(opts.modelId, opts.imageDataUrls);
-    const reservation = this.spendLedger?.reserve("aux-runtime", opts.modelId, projectedModelCostUsd(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, schemaHint(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000, this.capabilities()));
     const { cacheTools: _cacheTools, ...request } = this.directRequest(
       { ...opts, system: `${opts.system}${schemaHint(opts.schema)}`, messages: imageReferenceMessage(opts.prompt, opts.imageDataUrls) },
       opts.maxOutputTokens ?? 2000,
     );
-    const stream = streamText(request);
     let text = "";
-    let usage: unknown;
-    let providerMetadata: unknown;
-    try {
-      for await (const delta of stream.textStream) {
-        text += delta;
-        opts.onText(delta);
-      }
-      usage = await stream.usage;
-      providerMetadata = await stream.providerMetadata;
-    } catch (error) {
-      if (reservation) this.spendLedger?.settle(reservation);
-      throw error;
-    }
-    if (reservation) this.spendLedger?.settle(reservation, modelCallCost(opts.modelId, {
-      ...usageFields(usage), providerMetadata: providerMetadata as Record<string, unknown> | undefined,
-    }).costUsd);
-    const first = attempt(started, { usage, providerMetadata });
-    return this.parseOrRetry(opts, text, first, []);
+    const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, opts.prompt, schemaHint(opts.schema)) + (opts.imageDataUrls?.length ?? 0) * 8192, opts.maxOutputTokens ?? 2000, async () => {
+      let completed: ModelAttempt | undefined;
+      const stream = streamText({ ...request, onStepFinish: result => { completed = reportedAttempt(started, opts.modelId, result); } });
+      try {
+        for await (const part of stream.fullStream) {
+          if (part.type === "error") throw part.error;
+          if (part.type === "abort") throw request.abortSignal?.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
+          if (part.type === "text-delta") { text += part.text; opts.onText(part.text); }
+        }
+        return { usage: await stream.usage, providerMetadata: await stream.providerMetadata };
+      } catch (error) { throw completed ? withAttempts(error, [completed]) : error; }
+    });
+    return this.parseOrRetry(opts, text, attempt(started, res), []);
   }
 
   private async structuredFromText<T>(opts: CallOpts & { schema: z.ZodType<T> }, retries: ModelAttempt[]): Promise<StructuredCallResult<T>> {
@@ -552,17 +544,20 @@ export class GatewayModelClient implements ModelClient {
     );
     const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, JSON.stringify(opts.messages).slice(0, 120_000)), maxOut, async () => {
       if (!opts.onText) return generateText({ ...request, tools });
-      const stream = streamText({ ...request, tools });
+      let completed: ModelAttempt | undefined;
+      const stream = streamText({ ...request, tools, onStepFinish: result => { completed = reportedAttempt(started, opts.modelId, result); } });
       let text = "";
       opts.onText(text);
-      for await (const part of stream.fullStream) {
-        if (part.type === "error") throw part.error;
-        if (part.type === "abort") throw request.abortSignal?.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
-        if (part.type === "text-delta") { text += part.text; opts.onText(text); }
-      }
-      return { text: await stream.text, steps: await stream.steps, toolCalls: await stream.toolCalls,
-        response: await stream.response, finishReason: await stream.finishReason,
-        usage: await stream.usage, providerMetadata: await stream.providerMetadata };
+      try {
+        for await (const part of stream.fullStream) {
+          if (part.type === "error") throw part.error;
+          if (part.type === "abort") throw request.abortSignal?.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
+          if (part.type === "text-delta") { text += part.text; opts.onText(text); }
+        }
+        return { text: await stream.text, steps: await stream.steps, toolCalls: await stream.toolCalls,
+          response: await stream.response, finishReason: await stream.finishReason,
+          usage: await stream.usage, providerMetadata: await stream.providerMetadata };
+      } catch (error) { throw completed ? withAttempts(error, [completed]) : error; }
     });
     const lastStep = res.steps.at(-1);
     const calls = (lastStep?.toolCalls ?? res.toolCalls ?? []).map((call) => ({
@@ -604,6 +599,13 @@ function attempt(started: number, res: { usage?: unknown; providerMetadata?: unk
     ...usageFields(res.usage),
     ...(res.providerMetadata ? { providerMetadata: res.providerMetadata as Record<string, unknown> } : {}),
   };
+}
+
+/** SDK error steps may have entirely unknown usage; never replace a provider's actual error receipt with that empty step. */
+function reportedAttempt(started: number, modelId: string, res: { usage?: unknown; providerMetadata?: unknown }): ModelAttempt | undefined {
+  const recorded = attempt(started, res);
+  return recorded.inputTokens !== undefined || recorded.outputTokens !== undefined || recorded.providerMetadata
+    ? { ...recorded, modelId } : undefined;
 }
 
 function stripText(a: ModelAttempt & { text?: string }): ModelAttempt {

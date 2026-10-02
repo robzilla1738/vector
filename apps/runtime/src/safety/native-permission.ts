@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { AuxError, EgressLeaseSchema, EffectRequestSchema, type PageTarget, type Run } from "@aux/contracts";
 import type { ApprovalStore } from "./approval.js";
@@ -53,6 +54,7 @@ export type NativePermissionResult = {
   batchId: string;
   decision: "allow" | "deny" | "pending";
   approvalId?: string;
+  reservationId?: string;
 };
 interface Batch {
   request: NativePermissionRequest;
@@ -60,7 +62,8 @@ interface Batch {
   runId: string;
   sessionId: string;
   expiresAt: number;
-  status: "pending" | "used" | "denied";
+  status: "pending" | "authorized" | "used" | "denied";
+  reservation?: { id: string; nonce: number; fence: () => void };
   approvalId?: string;
   turn?: symbol;
 }
@@ -68,6 +71,15 @@ interface Batch {
 /** Only main's authenticated internal channel invokes this controller. No renderer/model RPC route exists. */
 export class NativePermissionController {
   private batches = new Map<string, Batch>();
+  private authorityMutations = new Set<(runId: string) => boolean>();
+  private mutationContext = new AsyncLocalStorage<{ active: boolean }>();
+  private mutationTail: Promise<void> = Promise.resolve();
+  private retirementAttempts = new Map<string, Promise<void>>();
+  private retirementDebt = new Map<string, { runId: string; tabId: string; batchId: string; reservationId: string }>();
+  private authorityChanging(runId: string): boolean {
+    return [...this.authorityMutations].some(matches => matches(runId))
+      || [...this.retirementDebt.values()].some(receipt => receipt.runId === runId);
+  }
   constructor(
     private deps: {
       profileId: string;
@@ -80,6 +92,8 @@ export class NativePermissionController {
       sourceCheck(runId: string, pageId: string): () => void;
       standingOnly(runId: string): boolean;
       assertDispatch(runId: string): Promise<void>;
+      overnightAuthority(runId: string): { windowEnd: number; requireAC: boolean } | null;
+      retireReservation(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }>;
       requiresTurn(run: Run, pageId: string): boolean;
       now?: () => number;
     },
@@ -121,6 +135,7 @@ export class NativePermissionController {
       at - input.requestedAt >= 120_000
     )
       return deny();
+    if (this.authorityChanging(input.runId)) return deny();
     const digest = createHash("sha256").update(JSON.stringify(input)).digest("hex");
     let batch = this.batches.get(input.batchId);
     if (batch && (batch.digest !== digest || batch.status !== "pending")) {
@@ -163,17 +178,22 @@ export class NativePermissionController {
         this.batches.set(input.batchId, batch);
       }
       const current = batch;
+      const overnightItem = run.config?.nightShiftItemId;
+      const standingOnly = this.deps.standingOnly(input.runId);
       const fence = () => {
         leaseCheck();
         sourceCheck();
         const nowPage = this.deps.page(input.tabId);
         const nowRun = this.deps.run(input.runId);
         if (
+          this.authorityChanging(input.runId) ||
           this.batches.get(input.batchId) !== current ||
-          current.status !== "pending" ||
+          !["pending", "authorized"].includes(current.status) ||
           current.expiresAt <= this.now() ||
           nowPage.sessionId !== current.sessionId ||
           nowRun?.config?.messageRevision !== run.config?.messageRevision ||
+          nowRun?.config?.nightShiftItemId !== overnightItem ||
+          this.deps.standingOnly(input.runId) !== standingOnly ||
           !nowRun ||
           !["running", "planning", "needs_input"].includes(nowRun.status) ||
           (turn && this.deps.mentions.capture(input.runId) !== turn)
@@ -234,12 +254,99 @@ export class NativePermissionController {
         }
         throw error;
       }
-      current.status = "used";
-      return { batchId: input.batchId, decision: "allow" };
+      current.status = "authorized";
+      current.reservation = { id: randomUUID(), nonce: 0, fence };
+      return { batchId: input.batchId, decision: "allow", reservationId: current.reservation.id };
     } catch (error) {
       this.invalidate(input.batchId);
       if (error instanceof AuxError) return deny();
       throw error;
     }
   }
+
+  /** Retire exact queued receipts before a real settings, lifecycle or ledger mutation. */
+  private captureRetirementDebt(matches: (runId: string) => boolean): void {
+    for (const [batchId, batch] of this.batches) if (matches(batch.runId) && batch.status === "authorized" && batch.reservation) {
+      this.retirementDebt.set(batch.reservation.id, { runId: batch.runId, tabId: batch.request.tabId,
+        batchId, reservationId: batch.reservation.id });
+      this.invalidate(batchId);
+    }
+  }
+  private async retireDebt(matches: (runId: string) => boolean): Promise<void> {
+    for (const receipt of [...this.retirementDebt.values()].filter(receipt => matches(receipt.runId))) {
+      let attempt = this.retirementAttempts.get(receipt.reservationId);
+      if (!attempt) {
+        attempt = Promise.resolve().then(async () => {
+          const { runId: _runId, ...input } = receipt;
+          const result = await this.deps.retireReservation(input);
+          if (result.accepted !== true) throw new AuxError("permission_denied", "Native permission retirement was not acknowledged.");
+          this.retirementDebt.delete(receipt.reservationId);
+        });
+        this.retirementAttempts.set(receipt.reservationId, attempt);
+      }
+      try { await attempt; }
+      finally { if (this.retirementAttempts.get(receipt.reservationId) === attempt) this.retirementAttempts.delete(receipt.reservationId); }
+    }
+  }
+  async withAuthorityMutation<T>(matches: (runId: string) => boolean, mutation: () => Promise<T>): Promise<T> {
+    // Capture exact debt BEFORE any await; a concurrent denial cannot hide its receipt.
+    const barrier = (runId: string) => matches(runId);
+    this.authorityMutations.add(barrier);
+    this.captureRetirementDebt(matches);
+    if (this.mutationContext.getStore()?.active) {
+      // A caller may compose Runs.cancel → coordinator.finish within an already
+      // acknowledged mutation. Retire any newly covered scope without deadlocking.
+      try { await this.retireDebt(matches); return await mutation(); }
+      finally { this.authorityMutations.delete(barrier); }
+    }
+    const previous = this.mutationTail;
+    let release!: () => void;
+    this.mutationTail = new Promise<void>(resolve => { release = resolve; });
+    try {
+      await previous;
+      await this.retireDebt(matches);
+      const context = { active: true };
+      try { return await this.mutationContext.run(context, mutation); }
+      finally { context.active = false; }
+    } finally {
+      this.authorityMutations.delete(barrier);
+      release();
+    }
+  }
+
+  /** Authenticated native-only fresh effect check; never consumes consent again. */
+  async revalidate(raw: unknown): Promise<{ batchId: string; reservationId: string; nonce: number; decision: "allow" | "deny"; overnight?: { windowEnd: number; requireAC: boolean } }> {
+    const input = z.object({ batchId: z.string().min(1).max(160), reservationId: z.string().uuid(), nonce: z.number().int().positive() }).strict().parse(raw);
+    const denied = () => ({ ...input, decision: "deny" as const });
+    const batch = this.batches.get(input.batchId);
+    if (!batch || batch.status !== "authorized" || batch.reservation?.id !== input.reservationId || input.nonce !== batch.reservation.nonce + 1) return denied();
+    const reservation = batch.reservation;
+    // Reserve nonce synchronously; overlapping replies cannot redeem one attempt twice.
+    reservation.nonce = input.nonce;
+    try {
+      reservation.fence();
+      await this.deps.assertDispatch(batch.runId);
+      reservation.fence();
+      if (batch.reservation !== reservation || reservation.nonce !== input.nonce) return denied();
+      const overnight = this.deps.overnightAuthority(batch.runId);
+      if (this.deps.standingOnly(batch.runId) && !overnight)
+        throw new AuxError("permission_denied", "Overnight native effects require their exact claimed window.");
+      return { ...input, decision: "allow", ...(overnight ? { overnight } : {}) };
+    } catch (error) {
+      this.invalidate(input.batchId);
+      if (error instanceof AuxError) return denied();
+      throw error;
+    }
+  }
+
+  /** Native finalization retires this exact reservation; no other batch is touched. */
+  finalize(raw: unknown): { retired: boolean } {
+    const input = z.object({ batchId: z.string().min(1).max(160), reservationId: z.string().uuid() }).strict().parse(raw);
+    const batch = this.batches.get(input.batchId);
+    if (!batch || batch.status !== "authorized" || batch.reservation?.id !== input.reservationId) return { retired: false };
+    batch.status = "used";
+    batch.reservation = undefined;
+    return { retired: true };
+  }
+
 }

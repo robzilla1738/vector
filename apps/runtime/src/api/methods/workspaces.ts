@@ -1,3 +1,4 @@
+import { withRunAuthorityMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName, WorkspaceMemory } from "@aux/contracts";
 import { AuxError } from "@aux/contracts";
@@ -25,9 +26,13 @@ async function h_workspaces_folders(ctx: MethodCtx): Promise<unknown> {
   return workspaceFolders.archive(params.workspaceId, params.folderId);
 }
 async function h_command_escalations(ctx: MethodCtx): Promise<unknown> {
-  const { client, method, params, commandEscalations } = ctx;
-  if (client.external || client.codeMode)
-    throw new AuxError("permission_denied", "Command exceptions require review in local Aux Settings.");
+  if (ctx.client.external || ctx.client.codeMode) throw new AuxError("permission_denied", "Command exceptions require review in local Aux Settings.");
+  if (["commands.escalations.revoke"].includes(ctx.method)) return withRunAuthorityMutation(ctx.s.repo, () => retired_h_command_escalations(ctx));
+  return retired_h_command_escalations(ctx);
+}
+
+async function retired_h_command_escalations(ctx: MethodCtx): Promise<unknown> {
+  const { method, params, commandEscalations } = ctx;
   if (method === "commands.escalations.list") return commandEscalations.list(params.workspaceId);
   if (method === "commands.escalations.revoke") return commandEscalations.revoke(params.requestId);
   return commandEscalations.decide(params.requestId, params.decision, params.prefixRule);
@@ -38,8 +43,13 @@ async function h_workspaces_memory_search(ctx: MethodCtx): Promise<unknown> {
   return tasks.searchWorkspaceMemory(params.query);
 }
 async function h_workspaces_browsingMemory_get(ctx: MethodCtx): Promise<unknown> {
-  const { browsingMemory, client, method, params, revokeWorkspaceContext, s } = ctx;
-  if (client.external) throw new AuxError("permission_denied", "Browsing memory is managed in Aux.");
+  if (ctx.client.external) throw new AuxError("permission_denied", "Browsing memory is managed in Aux.");
+  if (["workspaces.browsingMemory.set", "workspaces.browsingMemory.forget"].includes(ctx.method)) return withRunAuthorityMutation(ctx.s.repo, () => retired_h_workspaces_browsingMemory_get(ctx));
+  return retired_h_workspaces_browsingMemory_get(ctx);
+}
+
+async function retired_h_workspaces_browsingMemory_get(ctx: MethodCtx): Promise<unknown> {
+  const { browsingMemory, method, params, revokeWorkspaceContext, s } = ctx;
   if (method === "workspaces.browsingMemory.get") return browsingMemory.get(params.workspaceId);
   if (method === "workspaces.browsingMemory.set") {
     const prior = browsingMemory.policy(params.workspaceId);
@@ -47,7 +57,7 @@ async function h_workspaces_browsingMemory_get(ctx: MethodCtx): Promise<unknown>
       ? advanceManagedRecoveryGeneration(s.settings.all().dataDir) : undefined;
     const result = browsingMemory.setPolicy(params.workspaceId, params.policy);
     if ((prior.enabled && !result.policy.enabled) || result.policy.retentionDays < prior.retentionDays)
-      revokeWorkspaceContext(params.workspaceId, true);
+      await revokeWorkspaceContext(params.workspaceId, true);
     s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId });
     if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
     return result;
@@ -62,14 +72,19 @@ async function h_workspaces_browsingMemory_get(ctx: MethodCtx): Promise<unknown>
   const generation = saved.some(page => !params.memoryId || page.memoryId === params.memoryId)
     ? advanceManagedRecoveryGeneration(s.settings.all().dataDir) : undefined;
   const result = browsingMemory.forget(params.workspaceId, params.memoryId);
-  revokeWorkspaceContext(params.workspaceId, true);
+  await revokeWorkspaceContext(params.workspaceId, true);
   s.events.emit("workspace.browsingMemory.updated", { workspaceId: params.workspaceId });
   if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
   return result;
 }
 async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknown> {
-  const { client, method, params, revokeArticleRuns, s, spaces } = ctx;
-  if (client.external) throw new AuxError("permission_denied", "Page-content memory is managed in Aux.");
+  if (ctx.client.external) throw new AuxError("permission_denied", "Page-content memory is managed in Aux.");
+  if (["workspaces.contentMemory.setPolicy", "workspaces.contentMemory.forget"].includes(ctx.method)) return withRunAuthorityMutation(ctx.s.repo, () => retired_h_workspaces_contentMemory_policy(ctx));
+  return retired_h_workspaces_contentMemory_policy(ctx);
+}
+
+async function retired_h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknown> {
+  const { method, params, revokeArticleRuns, s, spaces } = ctx;
   const store = s.contentMemory;
   if (!store)
     throw new AuxError("backend_unavailable", "Protected page-content memory requires the Aux desktop app.");
@@ -91,8 +106,8 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
       result.retentionDays < prior.retentionDays ||
       prior.allowedOrigins.some((origin) => !result.allowedOrigins.includes(origin))
     )
-      revokeArticleRuns(params.workspaceId);
-    s.runs.redactForgottenArticleOutputs(params.workspaceId);
+      await revokeArticleRuns(params.workspaceId);
+    await s.runs.redactForgottenArticleOutputs(params.workspaceId);
     s.checkpointDeletedData?.();
     s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
     if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
@@ -116,8 +131,8 @@ async function h_workspaces_contentMemory_policy(ctx: MethodCtx): Promise<unknow
       if (advanced) throw new AuxError("conflict", "Article Forget could not be confirmed. Older managed backups were invalidated; review saved articles and create a fresh local backup.");
       throw error;
     }
-    revokeArticleRuns(params.workspaceId, params.memoryId);
-    s.runs.redactForgottenArticleOutputs(params.workspaceId);
+    await revokeArticleRuns(params.workspaceId, params.memoryId);
+    await s.runs.redactForgottenArticleOutputs(params.workspaceId);
     s.checkpointDeletedData?.();
     s.events.emit("workspace.contentMemory.updated", { workspaceId: params.workspaceId });
     if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
@@ -167,8 +182,13 @@ async function h_workspaces_memory_get(ctx: MethodCtx): Promise<unknown> {
   return tasks.workspaceMemory(params.workspaceId);
 }
 async function h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown> {
-  const { client, params, revokeWorkspaceContext, s, tasks } = ctx;
-  if (client.external) throw new AuxError("permission_denied", "Workspace memory is managed in Aux.");
+  if (ctx.client.external) throw new AuxError("permission_denied", "Workspace memory is managed in Aux.");
+  if (["workspaces.memory.set"].includes(ctx.method)) return withRunAuthorityMutation(ctx.s.repo, () => retired_h_workspaces_memory_set(ctx));
+  return retired_h_workspaces_memory_set(ctx);
+}
+
+async function retired_h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown> {
+  const { params, revokeWorkspaceContext, s, tasks } = ctx;
   const prior = tasks.workspaceMemory(params.workspaceId);
   const items = (params.items ?? prior.items ?? []) as NonNullable<WorkspaceMemory["items"]>;
   const removesText = !!prior.content && !params.content.includes(prior.content);
@@ -195,8 +215,8 @@ async function h_workspaces_memory_set(ctx: MethodCtx): Promise<unknown> {
     if (advanced) throw new AuxError("conflict", "Memory update could not be confirmed. Older managed backups were invalidated; review Memory and create a fresh local backup.");
     throw error;
   }
-  revokeWorkspaceContext(params.workspaceId, false);
-  s.runs.redactForgottenArticleOutputs(params.workspaceId);
+  await revokeWorkspaceContext(params.workspaceId, false);
+  await s.runs.redactForgottenArticleOutputs(params.workspaceId);
   if (generation) await attemptFreshManagedBackup(s.repo, s.settings.all().dataDir, generation);
   return memory;
 }

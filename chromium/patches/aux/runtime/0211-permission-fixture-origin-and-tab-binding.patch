@@ -1,0 +1,217 @@
+--- a/chrome/browser/ui/aux/permission_broker_unittest.cc
++++ b/chrome/browser/ui/aux/permission_broker_unittest.cc
+@@ -3,6 +3,7 @@
+ #include "chrome/browser/ui/aux/profile_prefs.h"
+ #include "components/prefs/pref_service.h"
+ #include <cmath>
++#include <vector>
+ #include "pdf/buildflags.h"
+ #include "components/actor/core/shared_types.h"
+ #include "chrome/common/chrome_render_frame.mojom.h"
+@@ -27,6 +28,7 @@
+ #include "chrome/test/base/browser_with_test_window_test.h"
+ #include "chrome/test/base/testing_profile.h"
+ #include "components/permissions/permission_request_manager.h"
++#include "components/permissions/permission_request_data.h"
+ #include "components/permissions/request_type.h"
+ #include "components/permissions/test/mock_permission_prompt_factory.h"
+ #include "components/permissions/test/mock_permission_request.h"
+@@ -184,7 +186,8 @@
+     auto contents = content::WebContentsTester::CreateTestWebContents(profile(), instance);
+     page_ = contents.get();
+     browser()->tab_strip_model()->AppendWebContents(std::move(contents), true);
+-    frame_bindings_ = std::make_unique<PermissionFixtureFrameBindings>(page_);
++    frame_bindings_.push_back(
++        std::make_unique<PermissionFixtureFrameBindings>(page_));
+     NavigateAndCommit(page_, origin_);
+     page_->WasShown();
+     ASSERT_TRUE(controller_->RegisterIsolation(page_, id, "run", "task", 4));
+@@ -211,12 +214,24 @@
+   }
+   void TearDown() override {
+     prompts_.reset();
+-    frame_bindings_.reset();
+     host_ = nullptr;
+     AuxRuntimeHostTestPeer::Destroy(profile());
+     calls_.clear();
+     manager_ = nullptr; page_ = nullptr; controller_ = nullptr;
+     BrowserWithTestWindowTest::TearDown();
++    frame_bindings_.clear();
++  }
++  void AddFixtureTab(const GURL& url) {
++    auto contents = content::WebContentsTester::CreateTestWebContents(
++        profile(), content::SiteInstance::Create(profile()));
++    auto* page = contents.get();
++    frame_bindings_.push_back(
++        std::make_unique<PermissionFixtureFrameBindings>(page));
++    // Match AddTab's foreground index-zero insertion, while providing the
++    // real empty stylesheet acknowledgement before navigation starts.
++    browser()->tab_strip_model()->InsertWebContentsAt(
++        0, std::move(contents), ADD_ACTIVE);
++    NavigateAndCommit(page, url);
+   }
+   void Renew() {
+     const double now = static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch());
+@@ -225,9 +240,19 @@
+     auto result = controller_->Install(base::DictValue().Set("lease", lease_.Clone()).Set("expectedUrl", origin_.spec()));
+     ASSERT_TRUE(result.FindDict("result"));
+   }
++  std::unique_ptr<permissions::MockPermissionRequest> MakeRequest(
++      permissions::RequestType type,
++      base::WeakPtr<permissions::MockPermissionRequest::MockPermissionRequestState> state) {
++    // Match a real same-origin request: the short MockPermissionRequest
++    // constructor leaves its embedding origin empty, which the broker must
++    // correctly refuse. Keep that production origin check intact.
++    auto data = std::make_unique<permissions::PermissionRequestData>(
++        type, false, origin_, origin_);
++    return std::make_unique<permissions::MockPermissionRequest>(
++        std::move(data), std::move(state));
++  }
+   void Prompt() {
+-    manager_->AddRequest(page_->GetPrimaryMainFrame(), std::make_unique<permissions::MockPermissionRequest>(
+-        origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr()));
++    manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr()));
+     manager_->DocumentOnLoadCompletedInPrimaryMainFrame();
+     base::RunLoop().RunUntilIdle();
+     ASSERT_TRUE(manager_->IsRequestInProgress());
+@@ -292,7 +317,7 @@
+   raw_ptr<content::WebContents> page_ = nullptr;
+   raw_ptr<permissions::PermissionRequestManager> manager_ = nullptr;
+   std::unique_ptr<permissions::MockPermissionPromptFactory> prompts_;
+-  std::unique_ptr<PermissionFixtureFrameBindings> frame_bindings_;
++  std::vector<std::unique_ptr<PermissionFixtureFrameBindings>> frame_bindings_;
+   permissions::MockPermissionRequest::MockPermissionRequestState state_;
+   GURL origin_{"https://agent.test/"};
+   bool auto_fresh_ = true;
+@@ -374,36 +399,35 @@
+   Allow(); EXPECT_TRUE(state_.granted);
+ }
+ TEST_F(PermissionBrokerTest, HiddenDeniedReplyUsesActualManagerDenialPipeline) {
+-  AddTab(browser(), GURL("https://other.test/")); page_->WasHidden(); Prompt();
++  AddFixtureTab(GURL("https://other.test/")); page_->WasHidden(); Prompt();
+   auto* request = Find("permission.request"); ASSERT_TRUE(request);
+   const auto* batch = request->params.FindString("batchId"); ASSERT_TRUE(batch);
+   Reply("permission.request", true, base::DictValue().Set("batchId", *batch).Set("decision", "deny"));
+   EXPECT_FALSE(state_.granted); EXPECT_TRUE(state_.finished);
+ }
+ TEST_F(PermissionBrokerTest, GenuineHiddenReadyBatchAcceptsWithoutForegroundPrompt) {
+-  AddTab(browser(), GURL("https://other.test/")); page_->WasHidden();
++  AddFixtureTab(GURL("https://other.test/")); page_->WasHidden();
+   Prompt(); EXPECT_FALSE(prompts_->is_visible()); Allow();
+   EXPECT_TRUE(state_.granted); EXPECT_TRUE(state_.finished);
+ }
+ TEST_F(PermissionBrokerTest, VisiblePromptCanBecomeBackgroundWhileOwnerMutationHeld) {
+   Prompt(); Mutate(); Allow();
+   auto* request = Find("permission.invalidate"); EXPECT_EQ(request, nullptr);
+-  AddTab(browser(), GURL("https://other.test/")); page_->WasHidden();
++  AddFixtureTab(GURL("https://other.test/")); page_->WasHidden();
+   EXPECT_FALSE(prompts_->is_visible()); EXPECT_TRUE(manager_->IsRequestInProgress());
+   EXPECT_EQ(Find("permission.invalidate"), nullptr);
+   Reply("safety.originPolicies.set", true, base::DictValue()); EXPECT_TRUE(state_.granted);
+ }
+ TEST_F(PermissionBrokerTest, BackgroundMatchingRevocationStillPreventsEffects) {
+-  AddTab(browser(), GURL("https://other.test/")); page_->WasHidden();
++  AddFixtureTab(GURL("https://other.test/")); page_->WasHidden();
+   Prompt(); Mutate(); Allow(); controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
+   Reply("safety.originPolicies.set", true, base::DictValue()); EXPECT_FALSE(state_.granted);
+   EXPECT_NE(Find("permission.invalidate"), nullptr);
+ }
+ TEST_F(PermissionBrokerTest, HiddenPersonRequestWaitsForAttendedNativePrompt) {
+   controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
+-  AddTab(browser(), GURL("https://other.test/")); page_->WasHidden();
+-  manager_->AddRequest(page_->GetPrimaryMainFrame(), std::make_unique<permissions::MockPermissionRequest>(
+-      origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr()));
++  AddFixtureTab(GURL("https://other.test/")); page_->WasHidden();
++  manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr()));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+   EXPECT_TRUE(manager_->IsRequestInProgress()); EXPECT_FALSE(prompts_->is_visible());
+   EXPECT_EQ(Find("permission.request"), nullptr); EXPECT_FALSE(state_.granted);
+@@ -418,8 +442,7 @@
+                     permissions::RequestType::kPointerLock}) {
+     SCOPED_TRACE(permissions::PermissionKeyForRequestType(type));
+     permissions::MockPermissionRequest::MockPermissionRequestState state;
+-    manager_->AddRequest(page_->GetPrimaryMainFrame(), std::make_unique<permissions::MockPermissionRequest>(
+-        origin_, type, state.GetWeakPtr()));
++    manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(type, state.GetWeakPtr()));
+     manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+     ASSERT_TRUE(manager_->IsRequestInProgress());
+     auto* request = Find("permission.request"); ASSERT_TRUE(request);
+@@ -430,8 +453,7 @@
+   }
+ }
+ TEST_F(PermissionBrokerTest, UnsupportedNativeRequestRemainsAttended) {
+-  manager_->AddRequest(page_->GetPrimaryMainFrame(), std::make_unique<permissions::MockPermissionRequest>(
+-      origin_, permissions::RequestType::kGeolocation, state_.GetWeakPtr()));
++  manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(permissions::RequestType::kGeolocation, state_.GetWeakPtr()));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+   ASSERT_TRUE(manager_->IsRequestInProgress());
+   EXPECT_EQ(Find("permission.request"), nullptr); EXPECT_FALSE(state_.granted);
+@@ -439,16 +461,14 @@
+ TEST_F(PermissionBrokerTest, ReplacementRequestCannotReceiveAlreadyQueuedAllow) {
+   Prompt(); Allow(false); manager_->Dismiss(PromptOptions{});
+   permissions::MockPermissionRequest::MockPermissionRequestState replacement;
+-  manager_->AddRequest(page_->GetPrimaryMainFrame(), std::make_unique<permissions::MockPermissionRequest>(
+-      origin_, permissions::RequestType::kClipboard, replacement.GetWeakPtr()));
++  manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(permissions::RequestType::kClipboard, replacement.GetWeakPtr()));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+   EXPECT_FALSE(state_.granted); EXPECT_FALSE(replacement.granted);
+   manager_->Dismiss(PromptOptions{});
+ }
+ TEST_F(PermissionBrokerTest, PersonPageWithoutRealLeaseStaysAttended) {
+   controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
+-  manager_->AddRequest(page_->GetPrimaryMainFrame(), std::make_unique<permissions::MockPermissionRequest>(
+-      origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr()));
++  manager_->AddRequest(page_->GetPrimaryMainFrame(), MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr()));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+   ASSERT_TRUE(manager_->IsRequestInProgress());
+   EXPECT_EQ(Find("permission.request"), nullptr); EXPECT_FALSE(state_.granted);
+@@ -491,8 +511,7 @@
+   EXPECT_FALSE(state_.granted); EXPECT_TRUE(state_.finished);
+ }
+ TEST_F(PermissionBrokerTest, ActualGrantCallbackCanDestroyManagerWithoutPostEffectAccess) {
+-  auto request = std::make_unique<permissions::MockPermissionRequest>(
+-      origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr());
++  auto request = MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr());
+   request->RegisterOnPermissionDecidedCallback(base::BindOnce(&PermissionBrokerTest::DestroyPage, base::Unretained(this)));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(request));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+@@ -500,8 +519,7 @@
+   EXPECT_TRUE(state_.granted); EXPECT_TRUE(state_.finished); EXPECT_EQ(page_, nullptr);
+ }
+ TEST_F(PermissionBrokerTest, ActualDenyCallbackCanDestroyManagerWithoutPostEffectAccess) {
+-  auto request = std::make_unique<permissions::MockPermissionRequest>(
+-      origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr());
++  auto request = MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr());
+   request->RegisterOnPermissionDecidedCallback(base::BindOnce(&PermissionBrokerTest::DestroyPage, base::Unretained(this)));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(request));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+@@ -513,8 +531,7 @@
+ 
+ TEST_F(PermissionBrokerTest, OriginalDecisionMutationCancelsUntouchedDuplicateWithoutReplay) {
+   permissions::MockPermissionRequest::MockPermissionRequestState duplicate_state;
+-  auto request = std::make_unique<permissions::MockPermissionRequest>(
+-      origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr());
++  auto request = MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr());
+   auto duplicate = request->CreateDuplicateRequest(duplicate_state.GetWeakPtr());
+   request->RegisterOnPermissionDecidedCallback(base::BindOnce(&PermissionBrokerTest::Mutate, base::Unretained(this), std::string("safety.originPolicies.set"), false));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(request));
+@@ -529,8 +546,7 @@
+ }
+ TEST_F(PermissionBrokerTest, DuplicateDecisionRevocationCancelsLaterDuplicateWithoutReplay) {
+   permissions::MockPermissionRequest::MockPermissionRequestState first_duplicate, later_duplicate;
+-  auto request = std::make_unique<permissions::MockPermissionRequest>(
+-      origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr());
++  auto request = MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr());
+   auto first = request->CreateDuplicateRequest(first_duplicate.GetWeakPtr());
+   auto later = request->CreateDuplicateRequest(later_duplicate.GetWeakPtr());
+   first->RegisterOnPermissionDecidedCallback(base::BindOnce(&PermissionBrokerTest::RevokeLease, base::Unretained(this)));
+@@ -547,8 +563,7 @@
+ 
+ TEST_F(PermissionBrokerTest, ActualDuplicateCallbackDestructionCannotGrantLaterDuplicate) {
+   permissions::MockPermissionRequest::MockPermissionRequestState first_duplicate, later_duplicate;
+-  auto request = std::make_unique<permissions::MockPermissionRequest>(
+-      origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr());
++  auto request = MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr());
+   auto first = request->CreateDuplicateRequest(first_duplicate.GetWeakPtr());
+   auto later = request->CreateDuplicateRequest(later_duplicate.GetWeakPtr());
+   first->RegisterOnPermissionDecidedCallback(base::BindOnce(&PermissionBrokerTest::DestroyPage, base::Unretained(this)));

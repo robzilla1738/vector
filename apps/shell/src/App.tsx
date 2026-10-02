@@ -268,6 +268,7 @@ export function App() {
   const [toolbarReady, setToolbarReady] = useState(false);
   const confirming = useStore(s => !!s.confirmation);
   const nativeShowing = !organizationCovered && !!nativePageId({ mode, overlay, confirming, activePageId, url: activePage?.url, backend: activePage?.backend, viewStatus: activePage?.viewStatus, navigationError: activePage?.navigationError, showBlankDocument: activePage?.showBlankDocument });
+  const toolbarHidden = (minimal || (pageChrome && nativeShowing)) && !toolbarReveal.revealed;
   const floatingSidebar = sidebarPeek && (minimal || sidebar !== "expanded");
   const [peekCovering, setPeekCovering] = useState(false);
   useEffect(() => {
@@ -489,7 +490,7 @@ export function App() {
       <div className="app-body">
         {horizontal ? <ChatSidebar minimal={minimal} /> : <Sidebar minimal={minimal} />}
         <div className={`main-col${nativeShowing ? " has-page" : ""}${mode === "conversation" ? " conversation-open" : ""}${toolbarReveal.revealed && toolbarReady ? " toolbar-revealed" : ""}`}>
-          {!horizontal && <Toolbar hidden={minimal && !toolbarReveal.revealed} />}
+          {!horizontal && <Toolbar hidden={toolbarHidden} />}
           <div className="main">
             <div className="stage-wrap">
               {overlay === "find" && <FindBar inputRef={findInput} returnFocusRef={conversationScroll} />}

@@ -130,7 +130,7 @@ describe("gate ask → coordinator suspension flow", () => {
     // What safety.approvals.decide does: resolve the suspension, wake the run.
     const resolved = coordinator.suspensions.resolveByApprovalId("ap-1", "answered");
     expect(resolved?.runId).toBe(run.runId);
-    coordinator.answer(resolved!.runId, "The user approved the requested action.");
+    await coordinator.answer(resolved!.runId, "The user approved the requested action.");
 
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -156,7 +156,7 @@ describe("gate ask → coordinator suspension flow", () => {
     const pending = coordinator.suspensions.pending(run.runId)!;
 
     const resolved = coordinator.suspensions.resolveByApprovalId("ap-1", "cancelled");
-    coordinator.answer(resolved!.runId, "The user declined the requested action. Do not retry it; choose a different action.");
+    await coordinator.answer(resolved!.runId, "The user declined the requested action. Do not retry it; choose a different action.");
 
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
@@ -206,7 +206,7 @@ describe("gate ask → coordinator suspension flow", () => {
     const pending = h.coordinator.suspensions.pending(run.runId);
     expect(pending?.kind).toBe("ask-user-question");
 
-    h.coordinator.answer(run.runId, "yes, submit it");
+    await h.coordinator.answer(run.runId, "yes, submit it");
     const final = await settle(h.repo, run.runId);
     expect(final.status).toBe("completed");
     h.db.close();

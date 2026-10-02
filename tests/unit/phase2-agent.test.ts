@@ -302,7 +302,7 @@ function harness(model: ModelClient, opts: { text?: string; extracted?: Record<s
     model: () => model,
     defaultModel: () => "test/planner",
     recoveryModel: () => undefined,
-    recordModelCall: (c) => recorded.push({ role: c.role, error: c.error, inputTokens: c.inputTokens }),
+    recordModelCall: (c) => { recorded.push({ role: c.role, error: c.error, inputTokens: c.inputTokens }); },
     grants: ["effect:read", "effect:write", "effect:egress"],
   });
   return { repo, coordinator, recorded, executed, events };
@@ -440,7 +440,7 @@ describe("coordinator phase 2 behaviour", () => {
     const h = harness(model);
     const run = await h.coordinator.start({ goal: "g", pageIds: ["p1"], instructions: "Acceptance: cite the order id" });
     for (let k = 0; k < 100 && h.repo.getRun(run.runId)!.status !== "needs_input"; k++) await new Promise((r) => setTimeout(r, 10));
-    h.coordinator.answer(run.runId, long);
+    await h.coordinator.answer(run.runId, long);
     await settle(h.repo, run.runId);
     const second = prompts[1]!;
     const section = second.slice(second.indexOf("=== USER INSTRUCTIONS"), second.indexOf("=== OBSERVATION"));

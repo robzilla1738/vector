@@ -66,7 +66,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
   const model = self.deps.model();
   if (!model) {
     const failure = { category: "configuration", message: "Set up a model connection in Settings before starting this turn.", retryable: false, action: "model_settings" } as const;
-    self.finish(runId, "failed", undefined, failure.message, undefined, failure);
+    await self.finish(runId, "failed", undefined, failure.message, undefined, failure);
     return;
   }
   const s: TurnState = {
@@ -106,11 +106,11 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     run.config = { ...run.config, lastCrashRecovery: recovery as unknown as Record<string, unknown> };
     self.deps.repo.saveRun(run);
     if (recovery.needsUserReview) {
-      self.finish(runId, "partially_completed", undefined, "Uncertain dispatched effects need review after crash", "Needs review — already-dispatched writes were not retried");
+      await self.finish(runId, "partially_completed", undefined, "Uncertain dispatched effects need review after crash", "Needs review — already-dispatched writes were not retried");
       return;
     }
   }
-  self.setStatus(runId, "planning", "Planning");
+  await self.setStatus(runId, "planning", "Planning");
   const startedAt = Date.now();
   self.deps.repo.saveRun({ ...self.get(runId), startedAt });
   run.startedAt = startedAt;
@@ -121,7 +121,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
         const latest = self.get(runId);
         const unresolved = self.durable.unresolved(runId);
         if (unresolved.length) {
-          self.finish(runId, "interrupted", undefined,
+          await self.finish(runId, "interrupted", undefined,
             `An action's outcome is uncertain (${unresolved.map(intent => intent.id).join(", ")}). Review it before continuing.`,
             "Stopped to avoid repeating an uncertain action");
           return;
@@ -167,7 +167,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
           throw new AuxError("step_failed", "no progress — same page state repeatedly");
         }
 
-        self.setStatus(runId, "planning", "Thinking…");
+        await self.setStatus(runId, "planning", "Thinking…");
         const attempt = await planTurn(s, obs, obsArtifactId);
         if (hasNewSteer(s)) {
           if (attempt.early) {
@@ -192,6 +192,15 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
         if (hasNewSteer(s) && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
         if (next === "return") return;
       } catch (error) {
+        // Accounting/retirement may finish after the owner has already returned
+        // the page. The old aborted planning turn still cannot become a failure
+        // or a retry against its stale observation merely because pause ended.
+        if (c.takeoverInterrupted && !c.abort.signal.aborted && !TERMINAL_STATUSES.has(self.get(runId).status)) {
+          c.takeoverInterrupted = false;
+          s.observedPages.clear(); s.carriedObs = undefined; s.pendingObs = undefined;
+          resetGuards(s);
+          continue;
+        }
         if (c.paused && !c.abort.signal.aborted && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
         if (hasNewSteer(s) && !c.abort.signal.aborted && !TERMINAL_STATUSES.has(self.get(runId).status)) continue;
         throw error;
@@ -200,8 +209,8 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
   } catch (e) {
     if (e instanceof AuxError && e.code === "cancelled") return;
     if (c.abort.signal.aborted) return;
-    if (e instanceof ModelFailureError) giveUpRepair(s, e.failure.message, e.failure);
-    else giveUpRepair(s, e instanceof Error ? e.message : String(e));
+    if (e instanceof ModelFailureError) await giveUpRepair(s, e.failure.message, e.failure);
+    else await giveUpRepair(s, e instanceof Error ? e.message : String(e));
   } finally {
     if (c.deadlineHit && self.ownsPages(runId) && !TERMINAL_STATUSES.has(self.get(runId).status)) {
       await withDeadline(async (signal) => {
@@ -211,7 +220,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
     }
     if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
       const partial = partialResult(s.outcomes);
-      self.finish(
+      await self.finish(
         runId,
         partial ? "partially_completed" : "failed",
         partial,
@@ -226,7 +235,7 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
 async function applyPlan(s: TurnState, obs: Observation, attempt: PlanAttempt): Promise<"return" | "continue"> {
   const { plan } = attempt;
   if (plan.status === "source") {
-    s.self.setStatus(s.runId, "running", plan.message);
+    await s.self.setStatus(s.runId, "running", plan.message);
     return dispatchSourcePlan(s, plan);
   }
   if (plan.status === "done" && !plan.steps?.some((step) => isConsequential(step.op))) return settleDonePlan(s, plan, obs, attempt);
@@ -238,7 +247,7 @@ async function applyPlan(s: TurnState, obs: Observation, attempt: PlanAttempt): 
   if (plan.observationRequest) {
     s.pendingObs = { scope: plan.observationRequest.scope, subtreeRef: plan.observationRequest.subtreeRef };
   }
-  s.self.setStatus(s.runId, "running", plan.message);
+  await s.self.setStatus(s.runId, "running", plan.message);
   if (!plan.steps?.length) {
     if (plan.observationRequest || retargeted) {
       s.modelErrorCount = 0;

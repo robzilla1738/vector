@@ -109,7 +109,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       category: "configuration", retryable: false, action: "model_settings",
       message: "The agent loop needs a tool-capable model connection. Configure one in Settings, or run the planner engine.",
     } as const;
-    self.finish(runId, "failed", undefined, failure.message, undefined, failure);
+    await self.finish(runId, "failed", undefined, failure.message, undefined, failure);
     return;
   }
 
@@ -798,7 +798,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     }
   }
 
-  self.setStatus(runId, "running", "Working…");
+  await self.setStatus(runId, "running", "Working…");
   const startedAt = Date.now();
   self.deps.repo.saveRun({ ...self.get(runId), startedAt });
   run.startedAt = startedAt;
@@ -856,7 +856,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     onStep: async ({ step, reservationId }) => {
       for (const a of step.retries ?? []) {
         modelCalls++;
-        self.deps.recordModelCall({
+        await self.deps.recordModelCall({
           runId, role: "agent", modelId: a.modelId ?? modelId(),
           durationMs: a.durationMs, inputTokens: a.inputTokens, outputTokens: a.outputTokens,
           ...(a.cachedInputTokens ? { cachedInputTokens: a.cachedInputTokens } : {}),
@@ -865,7 +865,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         });
       }
       modelCalls++;
-      self.deps.recordModelCall({
+      await self.deps.recordModelCall({
         runId, role: "agent", modelId: step.resolvedModelId ?? step.modelId ?? modelId(),
         durationMs: step.durationMs, inputTokens: step.inputTokens, outputTokens: step.outputTokens,
         ...(step.cachedInputTokens ? { cachedInputTokens: step.cachedInputTokens } : {}),
@@ -876,13 +876,13 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         [...(step.retries ?? []), step].map(attempt => ({ ...attempt,
           modelId: attempt.modelId ?? step.resolvedModelId ?? modelId() })));
     },
-    onModelFailure: ({ error, reservationId }) => {
+    onModelFailure: async ({ error, reservationId }) => {
       // The Gateway may have tried other candidates before the final failure.
       // Those attempts and the final request all count against the durable
       // run cap, even though no assistant message was returned.
       for (const attempt of attemptsOf(error)) {
         modelCalls++;
-        self.deps.recordModelCall({
+        await self.deps.recordModelCall({
           runId, role: "agent", modelId: attempt.modelId ?? modelId(),
           durationMs: attempt.durationMs, inputTokens: attempt.inputTokens, outputTokens: attempt.outputTokens,
           ...(attempt.cachedInputTokens ? { cachedInputTokens: attempt.cachedInputTokens } : {}),
@@ -891,7 +891,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         });
       }
       modelCalls++;
-      self.deps.recordModelCall({ runId, role: "agent", modelId: modelId(), durationMs: 0,
+      await self.deps.recordModelCall({ runId, role: "agent", modelId: modelId(), durationMs: 0,
         error: error instanceof Error ? error.message : String(error) });
       if (goalRun) self.deps.agentLoop?.goalBudget?.settle(runId, reservationId,
         attemptsOf(error).map(attempt => ({ ...attempt, modelId: attempt.modelId ?? modelId() })));
@@ -919,13 +919,13 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         hasResume = false;
         if (takeover) {
           if (!activePageId) {
-            self.finish(runId, "interrupted", undefined, "The returned page is unavailable for a fresh observation.");
+            await self.finish(runId, "interrupted", undefined, "The returned page is unavailable for a fresh observation.");
             return;
           }
           let fresh: ReturnType<typeof recordObs>;
           try { fresh = recordObs(await observePage(activePageId, {})); }
           catch {
-            self.finish(runId, "interrupted", undefined, "The returned page could not be observed safely.");
+            await self.finish(runId, "interrupted", undefined, "The returned page could not be observed safely.");
             return;
           }
           transcript.append(runId, [{ role: "user", content:
@@ -966,7 +966,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
             ...(suspensionInfo.approvalId ? { approvalId: suspensionInfo.approvalId } : {}),
           },
         });
-        self.setStatus(runId, "needs_input", suspension.request.instruction || suspensionInfo.instruction);
+        await self.setStatus(runId, "needs_input", suspension.request.instruction || suspensionInfo.instruction);
         const raw = await self.waitForAnswer(c, runId);
         if (signal.aborted || c.abort.signal.aborted) {
           self.suspensions.resolve(suspension.suspensionId, "cancelled");
@@ -978,19 +978,19 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         hasResume = true;
       }
       if (maxModelCalls > 0 && modelCalls >= maxModelCalls) {
-        self.finish(runId, "failed", undefined, "model call budget exhausted");
+        await self.finish(runId, "failed", undefined, "model call budget exhausted");
         return;
       }
       if (freshHandoff) {
         freshHandoff = false;
         if (!activePageId) {
-          self.finish(runId, "interrupted", undefined, "The handed-off page is unavailable for a fresh observation.");
+          await self.finish(runId, "interrupted", undefined, "The handed-off page is unavailable for a fresh observation.");
           return;
         }
         let fresh: ReturnType<typeof recordObs>;
         try { fresh = recordObs(await observePage(activePageId, {})); }
         catch {
-          self.finish(runId, "interrupted", undefined, "The handed-off page could not be observed safely.");
+          await self.finish(runId, "interrupted", undefined, "The handed-off page could not be observed safely.");
           return;
         }
         transcript.append(runId, [{ role: "user", content:
@@ -1011,7 +1011,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
 
       if (outcome.kind === "done") {
         if (goalRun && !outcome.result) {
-          self.finish(runId, "failed", undefined, "Goal completion requires a verified submit_result call.",
+          await self.finish(runId, "failed", undefined, "Goal completion requires a verified submit_result call.",
             "The Goal stopped without a verified result");
           return;
         }
@@ -1021,7 +1021,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
             transcript.append(runId, [{ role: "user", content: "A REPL script is still open. Call repl_wait with its cell ID to receive its actual result, or terminate it. Do not claim this run completed while the cell is open." }]);
             continue;
           }
-          self.finish(runId, "failed", undefined, "REPL cell still open; its result was not joined", "A script was still running");
+          await self.finish(runId, "failed", undefined, "REPL cell still open; its result was not joined", "A script was still running");
           return;
         }
         // An uncertain dispatch in the durable ledger blocks completion —
@@ -1040,14 +1040,14 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
             continue;
           }
           const partial = outcome.result?.report ?? outcome.text;
-          self.finish(runId, "partially_completed",
+          await self.finish(runId, "partially_completed",
             { partial: { report: partial }, unconfirmedWrites: markUnconfirmedWrites(outcomes) },
             "an uncertain dispatch is recorded in the write ledger",
             "Couldn't confirm every action — stopped with what I found");
           return;
         }
         if (goalRun) self.deps.repo.saveCheckpoint(`run:${runId}`, "goal_verified", { accepted: true });
-        self.finish(runId, "completed", outcome.result ?? { report: outcome.text }, undefined, "Done");
+        await self.finish(runId, "completed", outcome.result ?? { report: outcome.text }, undefined, "Done");
         return;
       }
       if (outcome.kind === "parked") {
@@ -1064,7 +1064,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
               ...(outcome.park.approvalId ? { approvalId: outcome.park.approvalId } : {}),
             },
           });
-        self.setStatus(runId, "needs_input", suspension.request.instruction || outcome.park.instruction);
+        await self.setStatus(runId, "needs_input", suspension.request.instruction || outcome.park.instruction);
         const raw = await self.waitForAnswer(c, runId);
         if (signal.aborted || c.abort.signal.aborted) {
           self.suspensions.resolve(suspension.suspensionId, "cancelled");
@@ -1092,22 +1092,22 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         continue;
       }
       if (outcome.kind === "exhausted") {
-        self.finish(runId, "failed", undefined, "agent loop exhausted its step budget", "Ran out of room — stopped before repeating work");
+        await self.finish(runId, "failed", undefined, "agent loop exhausted its step budget", "Ran out of room — stopped before repeating work");
         return;
       }
       if (outcome.error.code === "cancelled" || signal.aborted) return;
-      self.finish(runId, "failed", undefined, outcome.error.message, "The agent loop failed");
+      await self.finish(runId, "failed", undefined, outcome.error.message, "The agent loop failed");
       return;
     }
   } catch (error) {
     if (error instanceof AuxError && error.code === "cancelled") return;
     if (signal.aborted) return;
     if (!TERMINAL_STATUSES.has(self.get(runId).status)) {
-      self.finish(runId, "failed", undefined, error instanceof Error ? error.message : String(error));
+      await self.finish(runId, "failed", undefined, error instanceof Error ? error.message : String(error));
     }
   } finally {
     if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
-      self.finish(runId, "failed", undefined, `run deadline exceeded (${run.config?.deadlineMs}ms)`, "Ran out of time");
+      await self.finish(runId, "failed", undefined, `run deadline exceeded (${run.config?.deadlineMs}ms)`, "Ran out of time");
     }
     replPool.disposeAll();
     for (const release of [...openedTabs.values()].reverse()) release();

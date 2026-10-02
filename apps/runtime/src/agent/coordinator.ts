@@ -1,3 +1,4 @@
+import { withRunAuthorityMutation } from "../services/overnight-authority.js";
 import {
   EventTypes,
   newRunId,
@@ -67,7 +68,7 @@ export interface CoordinatorDeps {
     cachedInputTokens?: number;
     providerMetadata?: Record<string, unknown>;
     error?: string;
-  }) => void;
+  }) => void | Promise<void>;
   onStepRecorded?: (runId: string, outcome: StepOutcome, step: Step, obsArtifactId?: string) => void;
   saveObservation?: (runId: string, obs: Observation) => string | undefined;
   saveCompletedReport?: (run: Run, markdown: string) => void;
@@ -252,20 +253,20 @@ export class RunCoordinator {
     }, run.config.deadlineMs);
     this.controls.set(run.runId, control);
     this.deps.tracer?.incr("run.started");
-    void this.loop(run.runId).catch((e) => {
+    void this.loop(run.runId).catch(async (e) => {
       const error = control.deadlineHit ? `run deadline exceeded (${run.config?.deadlineMs}ms)` : e instanceof Error ? e.message : String(e);
-      this.finish(run.runId, "failed", undefined, error, error);
+      await this.finish(run.runId, "failed", undefined, error, error);
       this.controls.delete(run.runId);
     });
     return run;
   }
 
-  pause(runId: string): Run {
+  async pause(runId: string): Promise<Run> {
     const c = this.controls.get(runId);
     const run = this.get(runId);
     if (c && (run.status === "running" || run.status === "planning")) {
       c.paused = true;
-      this.setStatus(runId, "paused", "Paused");
+      await this.setStatus(runId, "paused", "Paused");
     }
     return this.get(runId);
   }
@@ -281,19 +282,19 @@ export class RunCoordinator {
     this.deps.browserEgress?.suspendRun(runId);
   }
 
-  resume(runId: string): Run {
+  async resume(runId: string): Promise<Run> {
     const c = this.controls.get(runId);
     const run = this.get(runId);
     if (c?.paused) {
       c.paused = false;
-      if (run.status === "paused") this.setStatus(runId, "running", "Resumed");
+      if (run.status === "paused") await this.setStatus(runId, "running", "Resumed");
     } else if (run.status === "needs_input") {
-      this.setStatus(runId, "needs_input", run.statusMessage);
+      await this.setStatus(runId, "needs_input", run.statusMessage);
     }
     return this.get(runId);
   }
 
-  cancel(runId: string, reason = "Cancelled by user"): Run {
+  async cancel(runId: string, reason = "Cancelled by user"): Promise<Run> {
     this.deps.browserEgress?.revokeRun(runId);
     const c = this.controls.get(runId);
     if (c) {
@@ -302,12 +303,13 @@ export class RunCoordinator {
     }
     const run = this.get(runId);
     if (!TERMINAL_STATUSES.has(run.status)) {
-      this.finish(runId, "cancelled", undefined, reason);
+      await this.finish(runId, "cancelled", undefined, reason);
     }
     return this.get(runId);
   }
 
   async refreshPageSelection(runId: string): Promise<string[]> {
+    return withRunAuthorityMutation(this.deps.repo, async () => {
     const token = this.deps.turnMentions.capture(runId);
     const run = this.get(runId);
     this.releasePages(runId);
@@ -324,6 +326,7 @@ export class RunCoordinator {
       throw new AuxError("conflict", "This turn changed while acquiring its newly selected pages.");
     }
     return [...this.get(runId).pageIds];
+    }, runId);
   }
 
   pageSourceCheck(runId: string, pageId: string): () => void {
@@ -380,29 +383,34 @@ export class RunCoordinator {
   }
 
   async answerWithMentions(runId: string, answer: string, mentions: readonly import("@aux/contracts").MentionRef[], recheck: () => void): Promise<Run> {
-    const run = this.get(runId);
-    const owned = this.ownedPages(runId);
-    return this.deps.turnMentions.acknowledge(runId, mentions, owned, {
-      workspaceId: run.config?.contextWorkspaceId, taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
-    }, validated => {
-      recheck();
-      const current = this.get(runId);
-      current.config = { ...current.config, mentions: [...validated], messageRevision: (current.config?.messageRevision ?? 0) + 1 };
-      this.deps.repo.saveRun(current);
-      return this.answer(runId, answer);
-    });
+    return withRunAuthorityMutation(this.deps.repo, async () => {
+      const run = this.get(runId);
+      const owned = this.ownedPages(runId);
+      return this.deps.turnMentions.acknowledge(runId, mentions, owned, {
+        workspaceId: run.config?.contextWorkspaceId, taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
+      }, validated => {
+        recheck();
+        const current = this.get(runId);
+        current.config = { ...current.config, mentions: [...validated], messageRevision: (current.config?.messageRevision ?? 0) + 1 };
+        this.deps.repo.saveRun(current);
+        return this.answer(runId, answer);
+      });
+    }, runId);
   }
 
-  answer(runId: string, answer: string): Run {
-    const c = this.controls.get(runId);
-    this.answers.set(runId, answer);
-    c?.answerWaiter?.resolve(answer);
-    const run = this.get(runId);
-    if (run.status === "needs_input") this.setStatus(runId, "running", `Answer received`);
-    return this.get(runId);
+  async answer(runId: string, answer: string): Promise<Run> {
+    return withRunAuthorityMutation(this.deps.repo, async () => {
+      const c = this.controls.get(runId);
+      const run = this.get(runId);
+      if (run.status === "needs_input") await this.setStatus(runId, "running", `Answer received`);
+      this.answers.set(runId, answer);
+      c?.answerWaiter?.resolve(answer);
+      return this.get(runId);
+    }, runId);
   }
 
-  setStatus(runId: string, status: Run["status"], message?: string) {
+  async setStatus(runId: string, status: Run["status"], message?: string) {
+    await withRunAuthorityMutation(this.deps.repo, async () => {
     const run = this.get(runId);
     if (this.controls.get(runId)?.paused && (status === "running" || status === "planning")) {
       status = "paused";
@@ -414,6 +422,8 @@ export class RunCoordinator {
     this.persistCheckpoint(run);
     this.deps.events.emit(EventTypes.RunStatus, { runId, status, message }, runId);
     this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+
+    }, runId);
   }
 
   persistCheckpoint(run: Run) {
@@ -435,7 +445,8 @@ export class RunCoordinator {
     try { if (taskKey && this.heldLeases.has(taskKey)) this.leases.refresh(taskKey, this.leaseOwner); } catch { /* fenced owners stop at finish */ }
   }
 
-  finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]) {
+  async finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]) {
+    await withRunAuthorityMutation(this.deps.repo, async () => {
     this.deps.turnMentions.end(runId);
     this.createdPages.delete(runId);
     const run = this.get(runId);
@@ -490,6 +501,8 @@ export class RunCoordinator {
     const runKey = `run:${runId}`;
     if (taskKey && this.heldLeases.has(taskKey)) { this.leases.release(taskKey, this.leaseOwner); this.heldLeases.delete(taskKey); }
     if (this.heldLeases.has(runKey)) { this.leases.release(runKey, this.leaseOwner); this.heldLeases.delete(runKey); }
+
+    }, runId);
   }
 
   async waitIfPaused(c: RunControl, runId: string) {
@@ -635,7 +648,7 @@ export class RunCoordinator {
     } catch (error) { release(); throw error; }
   }
 
-  failActive(reason: string): string[] {
+  async failActive(reason: string): Promise<string[]> {
     const failed: string[] = [];
     for (const run of this.deps.repo.listRuns(200)) {
       if (!["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) continue;
@@ -644,18 +657,20 @@ export class RunCoordinator {
         c.abort.abort();
         c.answerWaiter?.resolve("");
       }
-      this.finish(run.runId, "failed", undefined, reason, "Stopped by a runtime fault");
+      await this.finish(run.runId, "failed", undefined, reason, "Stopped by a runtime fault");
       failed.push(run.runId);
     }
     return failed;
   }
 
-  markInterrupted() {
+  async markInterrupted() {
     for (const run of this.deps.repo.listRuns(200)) {
       if (["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) {
-        run.status = "interrupted";
-        run.endedAt = Date.now();
-        this.deps.repo.saveRun(run);
+        await withRunAuthorityMutation(this.deps.repo, async () => {
+          run.status = "interrupted";
+          run.endedAt = Date.now();
+          this.deps.repo.saveRun(run);
+        }, run.runId);
       }
     }
   }

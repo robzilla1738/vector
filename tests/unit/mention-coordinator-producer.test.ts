@@ -32,7 +32,7 @@ it("only actual created pages survive an acknowledged steer and final completion
   expect(mentions.has("run")).toBe(false);
   await mentions.begin("run", [], coordinator.ownedPages("run"));
   expect(await mentions.require("run", "owned", "act")).toEqual({ status: "available" });
-  coordinator.finish("run", "cancelled");
+  await coordinator.finish("run", "cancelled");
   expect(coordinator.ownedPages("run")).toEqual([]);
   expect(mentions.has("run")).toBe(false);
 });
@@ -76,7 +76,7 @@ it("a person selecting B retires A's actual lease before the next read, retainin
   await expect(coordinator.usePage("run", "owned", "read", async () => "old content")).rejects.toThrow();
   expect(await coordinator.usePage("run", "b", "read", async () => "B content")).toBe("B content");
   await expect(coordinator.usePage("run", "b", "act", async () => undefined)).rejects.toThrow();
-  coordinator.finish("run", "cancelled");
+  await coordinator.finish("run", "cancelled");
   expect(mentions.has("run")).toBe(false);
   await expect(coordinator.usePage("run", "b", "read", async () => "late result")).rejects.toThrow();
 });

@@ -41,6 +41,7 @@ const enumName = name => `k${name.split(/[^A-Za-z0-9]+/).map(part => part[0].toU
 const cppString = value => JSON.stringify(value);
 const bool = value => value ? "true" : "false";
 
+const UUID_PATTERN = "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$";
 const nodes = [];
 const nodeByJson = new Map();
 function intern(value) {
@@ -93,10 +94,18 @@ function emitNode(schema, index) {
     if (schema.minLength !== undefined) add(`if (utf16.size() < ${schema.minLength}) return false;`);
     if (schema.maxLength !== undefined) add(`if (utf16.size() > ${schema.maxLength}) return false;`);
     if (schema.format) {
-      if (schema.format !== "uri") throw new Error(`Unsupported format ${schema.format}`);
-      add("if (!GURL(value.GetString()).is_valid()) return false;");
+      if (schema.format === "uri") add("if (!GURL(value.GetString()).is_valid()) return false;");
+      else if (schema.format === "uuid" && schema.pattern === UUID_PATTERN) {
+        add("const auto& uuid = value.GetString();");
+        add("if (uuid.size() != 36) return false;");
+        add("for (size_t i = 0; i < uuid.size(); ++i) {");
+        add("  if (i == 8 || i == 13 || i == 18 || i == 23) { if (uuid[i] != '-') return false; }");
+        add("  else if (!((uuid[i] >= '0' && uuid[i] <= '9') || (uuid[i] >= 'a' && uuid[i] <= 'f') || (uuid[i] >= 'A' && uuid[i] <= 'F'))) return false;");
+        add("}");
+        add(`if (uuid != "00000000-0000-0000-0000-000000000000" && uuid != "ffffffff-ffff-ffff-ffff-ffffffffffff" && (!(uuid[14] >= '1' && uuid[14] <= '8') || std::string("89abAB").find(uuid[19]) == std::string::npos)) return false;`);
+      } else throw new Error(`Unsupported format ${schema.format}`);
     }
-    if (schema.pattern) {
+    if (schema.pattern && schema.format !== "uuid") {
       if (schema.pattern === "^[^\\p{Cc}\\p{Cf}]+$") add("if (!HasNoControlOrFormatCharacters(utf16)) return false;");
       else if (schema.pattern === "^[a-f0-9]{64}$") add("if (!IsLowerHexSha256(value.GetString())) return false;");
       else throw new Error(`Unsupported pattern ${schema.pattern}`);

@@ -1,3 +1,4 @@
+import { withRunAuthorityMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError, MethodSchemas } from "@aux/contracts";
@@ -5,14 +6,18 @@ import { advanceManagedRecoveryGeneration } from "../../services/managed-recover
 import { attemptFreshManagedBackup } from "../../services/runtime-backup.js";
 
 async function h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
-  const { client, method, params, revokeWorkspaceContext, s } = ctx;
-  if (client.external || client.codeMode)
-    throw new AuxError("permission_denied", "Space memory is managed in Aux.");
+  if (ctx.client.external || ctx.client.codeMode) throw new AuxError("permission_denied", "Space memory is managed in Aux.");
+  if (["memory.pipeline.setPolicy", "memory.pipeline.revert", "memory.pipeline.review", "memory.pipeline.forget"].includes(ctx.method)) return withRunAuthorityMutation(ctx.s.repo, () => retired_h_memory_pipeline_policy(ctx));
+  return retired_h_memory_pipeline_policy(ctx);
+}
+
+async function retired_h_memory_pipeline_policy(ctx: MethodCtx): Promise<unknown> {
+  const { method, params, revokeWorkspaceContext, s } = ctx;
   const pipeline = s.memoryPipeline;
   if (!pipeline)
     throw new AuxError("backend_unavailable", "Protected Space memory requires the Aux desktop app.");
-  const changed = (value: unknown) => {
-    revokeWorkspaceContext(params.workspaceId, false);
+  const changed = async (value: unknown) => {
+    await revokeWorkspaceContext(params.workspaceId, false);
     s.events.emit("workspace.memory.updated", { workspaceId: params.workspaceId });
     return value;
   };

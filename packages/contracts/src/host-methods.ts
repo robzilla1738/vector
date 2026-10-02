@@ -353,6 +353,7 @@ export const HostMethods = {
   "native.createAgentPage": runtime("core", AgentPageCreateSchema, AgentPageCreatedSchema),
   "native.egressContext": runtime("core", EgressContextRequestSchema, EgressContextSchema),
   "native.egressInstall": runtime("core", EgressInstallSchema, accepted),
+  "native.permissionRetire": runtime("core", z.object({ tabId: z.string().min(1).max(160), batchId: z.string().min(1).max(160), reservationId: z.string().uuid() }).strict(), accepted),
   "native.egressRevoke": runtime("core", EgressRevokeSchema, accepted),
   "native.historyClear": runtime("core", z.object({ since: number.optional(), before: number.optional() }).strict(), z.object({ removed: number }).strict()),
   "native.historyImport": runtime("core", z.object({ visits: z.array(z.object({

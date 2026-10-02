@@ -9,6 +9,7 @@ import { currentManagedRecoveryGeneration, ensureManagedRecoveryGeneration } fro
   "../../apps/runtime/src/services/managed-recovery-generation.js";
 
 it("refreshes and revokes active context after successful Memory changes only", async () => {
+  const repo = new Repo(openDb(":memory:"));
   const emit = vi.fn();
   const revokeWorkspaceContext = vi.fn();
   const review = vi.fn().mockResolvedValue({ accepted: true, remaining: 0 });
@@ -17,7 +18,7 @@ it("refreshes and revokes active context after successful Memory changes only", 
   const context = (method: "memory.pipeline.review" | "memory.pipeline.forget") => ({
     client: { external: false, codeMode: false }, method,
     params: { workspaceId: "space-1", claimId: "11669024-a817-444b-bafa-7622510e51a2", decision: "accept" },
-    revokeWorkspaceContext, s: { memoryPipeline: { review, forget }, events: { emit } },
+    revokeWorkspaceContext, s: { repo, memoryPipeline: { review, forget }, events: { emit } },
   }) as unknown as Parameters<NonNullable<(typeof memoryMethods)[typeof method]>>[0];
 
   await memoryMethods["memory.pipeline.review"]!(context("memory.pipeline.review"));
@@ -41,6 +42,7 @@ it("refreshes and revokes active context after successful Memory changes only", 
     .rejects.toThrow("source changed");
   expect(revokeWorkspaceContext).not.toHaveBeenCalled();
   expect(emit).not.toHaveBeenCalled();
+  repo.close();
 });
 
 it("keeps Forget successful but marks recovery incomplete when fresh issuance cannot include evidence", async () => {

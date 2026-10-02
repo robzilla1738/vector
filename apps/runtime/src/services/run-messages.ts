@@ -1,3 +1,4 @@
+import { withRunAuthorityMutation } from "./overnight-authority.js";
 import {
   AuxError,
   EventTypes,
@@ -156,7 +157,8 @@ export class RunMessageQueue {
     return message;
   }
 
-  steer(input: QueueMessageInput): RunMessage {
+  async steer(input: QueueMessageInput): Promise<RunMessage> {
+    return withRunAuthorityMutation(this.repo, async () => {
     const mentions = MentionRefsSchema.parse(input.mentions ?? []);
     const { message, created } = this.repo.transaction(() => {
       const previous = this.repo.getRunMessage(input.messageId);
@@ -253,6 +255,7 @@ export class RunMessageQueue {
       this.signalSteer(message.targetRunId);
     }
     return message;
+    }, input.runId);
   }
 
   cancel(messageId: string): RunMessage {

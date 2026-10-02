@@ -72,7 +72,7 @@ describe("smart download naming", () => {
       const set = vi.fn(async () => ({ ok: true }));
       await expect(settingsMethods["settings.set"]!({ client: { external: false }, codeMode: {},
         params: { downloadNaming: DEFAULT_DOWNLOAD_NAMING },
-        s: { settings: { set, all: () => ({}) }, runs: { refreshPool: vi.fn() }, events: { emit: vi.fn() } },
+        s: { repo: f.repo, settings: { set, all: () => ({}) }, runs: { refreshPool: vi.fn() }, events: { emit: vi.fn() } },
       } as unknown as MethodCtx)).resolves.toEqual({ ok: true });
       expect(set).toHaveBeenCalledWith({ downloadNaming: DEFAULT_DOWNLOAD_NAMING });
     } finally { f.db.close(); }

@@ -168,10 +168,10 @@ export class GoalService {
     }
   }
 
-  pause(goalId: string): Goal { return this.control(goalId, "pause"); }
-  resume(goalId: string): Goal { return this.control(goalId, "resume"); }
+  async pause(goalId: string): Promise<Goal> { return this.control(goalId, "pause"); }
+  async resume(goalId: string): Promise<Goal> { return this.control(goalId, "resume"); }
   /** A model can pause its own Goal or report a blocker. The owner alone sets budgets. */
-  report(runId: string, status: "paused" | "blocked", blocker: string | undefined, turn: number): { status: string; remaining?: number } {
+  async report(runId: string, status: "paused" | "blocked", blocker: string | undefined, turn: number): Promise<{ status: string; remaining?: number }> {
     const row = this.repo.db.prepare("SELECT goal_id FROM goals WHERE run_id=?").get(runId) as { goal_id: string } | undefined;
     if (!row) throw new AuxError("capability_unsupported", "This run is not a Goal.");
     const goal = this.get(row.goal_id);
@@ -190,11 +190,11 @@ export class GoalService {
       lastBlockerTurn: turn, updatedAt: Date.now() });
     this.repo.db.prepare("UPDATE goals SET status=?,body=?,updated_at=? WHERE goal_id=?")
       .run(next.status, this.seal(next.goalId, next), next.updatedAt, next.goalId);
-    if (status === "paused" || blocked) this.runs.pause(runId);
+    if (status === "paused" || blocked) await this.runs.pause(runId);
     return blocked ? { status: "blocked" } : status === "paused" ? { status: "paused" }
       : { status: "still_active", remaining: 3 - streak };
   }
-  cancel(goalId: string): Goal {
+  async cancel(goalId: string): Promise<Goal> {
     const goal = this.get(goalId);
     const run = goal.runId ? this.repo.getRun(goal.runId) : undefined;
     if ((!goal.runId && ["draft", "needs_input"].includes(goal.status))
@@ -207,13 +207,13 @@ export class GoalService {
     return this.control(goalId, "cancel");
   }
 
-  private control(goalId: string, action: "pause" | "resume" | "cancel"): Goal {
+  private async control(goalId: string, action: "pause" | "resume" | "cancel"): Promise<Goal> {
     const goal = this.get(goalId);
     if (!goal.runId) throw new AuxError("conflict", "Start this goal before changing its run.");
     if (action === "pause" && goal.status !== "active" || action === "resume" && !["paused", "blocked"].includes(goal.status)
       || action === "cancel" && !["active", "paused", "blocked", "needs_input"].includes(goal.status))
       throw new AuxError("conflict", "This goal cannot make that transition.");
-    this.runs[action](goal.runId);
+    await this.runs[action](goal.runId);
     if (action === "resume" && goal.status === "blocked") {
       this.repo.db.prepare("UPDATE goals SET status='active',body=?,updated_at=? WHERE goal_id=?")
         .run(this.seal(goal.goalId, { ...goal, status: "active", blocker: undefined, blockerStreak: 0,

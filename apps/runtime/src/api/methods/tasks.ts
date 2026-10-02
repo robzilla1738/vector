@@ -1,3 +1,4 @@
+import { withTaskAuthorityMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError, taskMatchesQuery } from "@aux/contracts";
@@ -47,15 +48,23 @@ async function h_tasks_verifyCriterion(ctx: MethodCtx): Promise<unknown> {
   return taskEvidence.verifyCriterion(params);
 }
 async function h_tasks_replaceAgent(ctx: MethodCtx): Promise<unknown> {
-  const { client, params, requireScopedPage, s, scope, tasks } = ctx;
-  const details = tasks.details(params.taskId);
-  for (const { run } of details.runs) {
-    if (["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
-      s.runs.cancel(run.runId);
-  }
+  const { client, params, requireScopedPage, scope } = ctx;
   const pageIds = params.pageIds ?? (params.pageId ? [params.pageId] : []);
   if (scope && Array.isArray(pageIds))
     for (const pageId of pageIds) requireScopedPage(scope, pageId, client.connectionId);
+
+  if (["tasks.replaceAgent"].includes(ctx.method)) return withTaskAuthorityMutation(ctx.s.repo, ctx.params.taskId, () => retired_h_tasks_replaceAgent(ctx));
+  return retired_h_tasks_replaceAgent(ctx);
+}
+
+async function retired_h_tasks_replaceAgent(ctx: MethodCtx): Promise<unknown> {
+  const { params, s, tasks } = ctx;
+  const details = tasks.details(params.taskId);
+  for (const { run } of details.runs) {
+    if (["queued", "planning", "running", "paused", "needs_input"].includes(run.status))
+      await s.runs.cancel(run.runId);
+  }
+  const pageIds = params.pageIds ?? (params.pageId ? [params.pageId] : []);
   return s.runs.start({
     ...tasks.prepareRun(params.taskId, params.expectedRevision, params.context),
     pageIds,
@@ -127,7 +136,7 @@ async function h_tasks_list(ctx: MethodCtx): Promise<unknown> {
     : tasks.list(params);
 }
 async function h_tasks_update(ctx: MethodCtx): Promise<unknown> {
-  const { client, params, tasks } = ctx;
+  const { client, params } = ctx;
   if (
     client.external &&
     Array.isArray(params.resources) &&
@@ -135,9 +144,21 @@ async function h_tasks_update(ctx: MethodCtx): Promise<unknown> {
   ) {
     throw new AuxError("permission_denied", "Write access on task resources can only be set in Aux.");
   }
+
+  if (["tasks.update"].includes(ctx.method)) return withTaskAuthorityMutation(ctx.s.repo, ctx.params.taskId, () => retired_h_tasks_update(ctx));
+  return retired_h_tasks_update(ctx);
+}
+
+async function retired_h_tasks_update(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, tasks } = ctx;
   return tasks.update(params, client.external ? "external" : "desktop");
 }
 async function h_tasks_archive(ctx: MethodCtx): Promise<unknown> {
+  if (["tasks.archive"].includes(ctx.method)) return withTaskAuthorityMutation(ctx.s.repo, ctx.params.taskId, () => retired_h_tasks_archive(ctx));
+  return retired_h_tasks_archive(ctx);
+}
+
+async function retired_h_tasks_archive(ctx: MethodCtx): Promise<unknown> {
   const { params, tasks } = ctx;
   return tasks.archive(params.taskId, params.expectedRevision, params.archived);
 }

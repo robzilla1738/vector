@@ -65,14 +65,14 @@ describe("durable conversation queue", () => {
     const messages = new RunMessageQueue(repo, events, async () => { throw new Error("queue should not start"); }, () => true, signaled);
     const input = { messageId: "11111111-1111-4111-8111-111111111111", runId: "run-steer", chatId: "chat-steer",
       text: "Use the latest figures", pageIds: ["p1"], contextPageRefs: refs, expectedRevision: 0 };
-    const first = messages.steer(input);
+    const first = await messages.steer(input);
     expect(first).toMatchObject({ mode: "steer", status: "delivered" });
     expect(repo.getRun("run-steer")?.config?.messageRevision).toBe(1);
     expect(repo.listRunSteers("run-steer").map(message => message.text)).toEqual([input.text]);
-    expect(messages.steer(input).messageId).toBe(first.messageId);
+    expect((await messages.steer(input)).messageId).toBe(first.messageId);
     expect(repo.getRun("run-steer")?.config?.messageRevision).toBe(1);
     expect(signaled).toHaveBeenCalledTimes(1);
-    expect(() => messages.steer({ ...input, messageId: "22222222-2222-4222-8222-222222222222" })).toThrow(/changed/);
+    await expect(messages.steer({ ...input, messageId: "22222222-2222-4222-8222-222222222222" })).rejects.toThrow(/changed/);
     await messages.stop();
   });
 
@@ -92,9 +92,9 @@ describe("durable conversation queue", () => {
     const messages = new RunMessageQueue(repo, events, async () => { throw new Error("queue should not start"); }, () => true, signaled);
     const input = { messageId: "33333333-3333-4333-8333-333333333333", runId: target.runId, chatId,
       text: "Prefer the official source", pageIds: ["p1"], contextPageRefs: [], expectedRevision: 0 };
-    expect(() => messages.steer({ ...input, messageId: "44444444-4444-4444-8444-444444444444", pageIds: ["p1", "p2"] }))
-      .toThrow(/context changed/i);
-    expect(messages.steer(input).status).toBe("delivered");
+    await expect(messages.steer({ ...input, messageId: "44444444-4444-4444-8444-444444444444", pageIds: ["p1", "p2"] }))
+      .rejects.toThrow(/context changed/i);
+    expect((await messages.steer(input)).status).toBe("delivered");
     expect(signaled).toHaveBeenCalledTimes(1);
     await messages.stop();
   });

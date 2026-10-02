@@ -1,3 +1,4 @@
+import { withRunAuthorityMutation } from "../../services/overnight-authority.js";
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
 import { AuxError, EventTypes, MethodSchemas } from "@aux/contracts";
@@ -48,7 +49,9 @@ async function h_settings_set(ctx: MethodCtx): Promise<unknown> {
       delete patch.searchSuggestions;
     }
   }
-  const r = Object.keys(patch).length ? await s.settings.set(patch as never) : { ok: true as const };
+  const r = Object.keys(patch).length
+    ? await withRunAuthorityMutation(s.repo, () => s.settings.set(patch as never))
+    : { ok: true as const };
   // worker limits apply live — no restart needed
   s.runs.refreshPool();
   s.events.emit(EventTypes.SettingsChanged, {

@@ -115,7 +115,7 @@ describe("RunCoordinator.failActive (P1-10)", () => {
     expect(seen).toBeDefined();
     // a finished run is left alone
     repo.saveRun({ runId: "done", goal: "g", status: "completed", pageIds: [], createdAt: Date.now() });
-    const failed = coordinator.failActive("runtime fault — unhandled rejection: TypeError: boom");
+    const failed = await coordinator.failActive("runtime fault — unhandled rejection: TypeError: boom");
     expect(failed).toEqual([run.runId]);
     expect(seen!.aborted).toBe(true);
     const r = repo.getRun(run.runId)!;

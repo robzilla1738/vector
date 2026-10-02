@@ -165,7 +165,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
   });
   const browsingMemory = new BrowsingMemory(s.repo);
   browsingMemory.prune();
-  const revokeWorkspaceContext = (workspaceId: string, browsingOnly: boolean) => {
+  const revokeWorkspaceContext = async (workspaceId: string, browsingOnly: boolean) => {
     const rows = s.repo.db
       .prepare(
         `SELECT run_id AS runId FROM runs
@@ -181,13 +181,13 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
         config.contextBrowsingMemory ||
         (config.contextBrowsingMemory === undefined && config.context?.includes(BROWSING_CONTEXT_MARKER))
       )
-        s.runs.cancel(
+        await s.runs.cancel(
           row.runId,
           "Workspace context changed before this turn finished. Review and retry with current sources.",
         );
     }
   };
-  const revokeArticleRuns = (workspaceId: string, memoryId?: string) => {
+  const revokeArticleRuns = async (workspaceId: string, memoryId?: string) => {
     const rows = s.repo.db
       .prepare(
         `SELECT run_id AS runId FROM runs
@@ -198,7 +198,7 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     for (const row of rows) {
       const ids = s.repo.getRun(row.runId)?.config?.contextMemoryIds;
       if (ids?.length && (!memoryId || ids.includes(memoryId)))
-        s.runs.cancel(
+        await s.runs.cancel(
           row.runId,
           "A selected saved article was forgotten or its access changed. Start a new turn with current sources.",
         );

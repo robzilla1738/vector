@@ -358,6 +358,7 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
 
   // The judge sees only typed, bounded untrusted envelopes; it cannot change policy or provenance.
   const review = await reviewGuardian({
+    runId: parsed.runId,
     action,
     authorization: authorization.provenance.authorizedBy === "approval" ? "high" : "medium",
     restrictedRetry: context.restrictedRetry,

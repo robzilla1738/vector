@@ -1,4 +1,7 @@
-import { checkNightShiftDispatch } from "./features/overnight-review/service.js";
+import { overnightRoot } from "./services/run-lineage.js";
+import { saveAuthorizedModelCall } from "./services/model-call-authority.js";
+import { installOvernightAuthority } from "./services/overnight-authority.js";
+import { checkNightShiftDispatch, nightShiftEffectAuthority } from "./features/overnight-review/service.js";
 import { SafetyAuthorityRevocation } from "./safety/authority-revocation.js";
 import { z } from "zod";
 import { createClock } from "@aux/contracts";
@@ -318,8 +321,12 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         ...(env.AUX_HOST_SOCKET ? { judge: createGuardianJudge({
           model: () => settings.model(),
           modelId: () => settings.plannerModel(),
-          recordAttempt: (attempt, modelId, error) =>
-            repo.saveModelCall({
+          beforeCall: async runId => {
+            if (runId) { await checkNightShiftDispatch(repo, runId); budgets.assertWithin({ runId }); }
+          },
+          recordAttempt: async (attempt, modelId, error, runId) =>
+            saveAuthorizedModelCall(repo, {
+              ...(runId ? { runId } : {}),
               callId: randomUUID(),
               role: "guardian",
               modelId,
@@ -1156,8 +1163,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       mentions: turnMentions,
       run: runId => repo.getRun(runId),
       page: pageId => pages.get(pageId),
-      standingOnly: runId => !!repo.getRun(runId)?.config?.nightShiftItemId,
-      assertDispatch: runId => checkNightShiftDispatch(repo, runId),
+      standingOnly: runId => !!overnightRoot(repo, runId),
+      assertDispatch: async runId => { await checkNightShiftDispatch(repo, runId); budgets.assertWithin({ runId }); },
+      overnightAuthority: runId => nightShiftEffectAuthority(repo, runId),
+      retireReservation: input => native.permissionRetire(input),
       requiresTurn: (run, pageId) => run.config?.implementation !== "external-agent" ||
         !!run.config?.mentions?.length || turnMentions.ownedPages(run.runId).includes(pageId),
       sourceCheck: (runId, pageId) => {
@@ -1186,7 +1195,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         return check;
       },
     });
+    installOvernightAuthority(repo, nativePermissions);
     channel.onMethod("permission.request", params => nativePermissions!.request(params));
+    channel.onMethod("permission.revalidate", params => nativePermissions!.revalidate(params));
+    channel.onMethod("permission.finalize", params => nativePermissions!.finalize(params));
     channel.onMethod("permission.invalidate", params => {
       const input = z.object({ batchId: z.string().min(1).max(160) }).strict().parse(params);
       nativePermissions!.invalidate(input.batchId);
@@ -1404,7 +1416,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     const pageId = e.payload.pageId;
     const controller = e.payload.controller;
     if (typeof pageId !== "string" || typeof controller !== "string") return;
-    handlePageTakeover(pageId, controller, repo, runs);
+    void handlePageTakeover(pageId, controller, repo, runs).catch(error => console.error("[aux-runtime] page takeover retirement failed", error));
   });
 
   // ---- chrome attach ----
@@ -1662,7 +1674,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     contentPruning = true;
     try {
       const pruned = await contentMemory?.prune();
-      for (const workspaceId of pruned?.workspaceIds ?? []) runs.redactForgottenArticleOutputs(workspaceId);
+      for (const workspaceId of pruned?.workspaceIds ?? []) await runs.redactForgottenArticleOutputs(workspaceId);
       if (pruned?.workspaceIds.length) privacyCheckpoint.request();
     } catch (error) {
       console.error("Page-content memory cleanup failed", error);
@@ -1688,7 +1700,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     process.off("unhandledRejection", onUnhandledRejection);
     process.off("uncaughtException", onUncaughtException);
     await runs.messages.stop();
-    runs.coordinator.markInterrupted();
+    await runs.coordinator.markInterrupted();
     await stopFeatures();
     await api.close().catch(() => {});
     await invoke.dispose().catch(() => {});
@@ -1714,14 +1726,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // and keep serving. An uncaught exception is not recoverable in-process:
   // fail runs, flush, and exit non-zero so the shell can respawn.
   const describeFault = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message}` : String(e));
-  const onUnhandledRejection = (reason: unknown) => {
+  const onUnhandledRejection = async (reason: unknown) => {
     if (closed) return;
     console.error(
       "[aux-runtime] unhandled rejection:",
       reason instanceof Error ? (reason.stack ?? reason.message) : reason,
     );
     try {
-      const failed = runs.coordinator.failActive(
+      const failed = await runs.coordinator.failActive(
         `runtime fault — unhandled rejection: ${describeFault(reason)}`,
       );
       if (failed.length) console.error(`[aux-runtime] marked ${failed.length} active run(s) failed`);
@@ -1729,11 +1741,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       /* the ledger itself may be the thing that failed */
     }
   };
-  const onUncaughtException = (err: Error) => {
+  const onUncaughtException = async (err: Error) => {
     if (closed) return;
     console.error("[aux-runtime] uncaught exception:", err.stack ?? err.message);
     try {
-      runs.coordinator.failActive(`runtime fault — uncaught exception: ${describeFault(err)}`);
+      await runs.coordinator.failActive(`runtime fault — uncaught exception: ${describeFault(err)}`);
     } catch {
       /* best effort */
     }
@@ -1750,7 +1762,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // recover from an unclean stop: anything still "live" never completed.
   // Invocation rows persisted 'running' before dispatch (§13.3) reconcile
   // to 'interrupted' with unknown effect — never assumed applied or not.
-  runs.coordinator.markInterrupted();
+  await runs.coordinator.markInterrupted();
   repo.markRunningInvocationsInterrupted();
   // Suspensions parked by runs that did not survive the restart expire; a
   // still-parked suspension belongs to a resumable run and resurfaces for UI.

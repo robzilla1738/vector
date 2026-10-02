@@ -1,3 +1,5 @@
+import { overnightRoot } from "./run-lineage.js";
+import { withRunAuthorityMutation } from "./overnight-authority.js";
 import { checkNightShiftDispatch } from "../features/overnight-review/service.js";
 import { AuxError, EventTypes, type PlanStep, type Routine, type Run } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
@@ -26,13 +28,15 @@ function load(repo: Repo, runId: string): Continuation {
   if (!row) throw new AuxError("conflict", "This Skill has no resumable reviewed execution.");
   return JSON.parse(repo.revealRecordField("skill_continuations", [runId], "payload", row.payload)!) as Continuation;
 }
-function update(context: Context, runId: string, status: Run["status"], message: string, error?: string, result?: Run["result"]): void {
+async function update(context: Context, runId: string, status: Run["status"], message: string, error?: string, result?: Run["result"]): Promise<void> {
+  await withRunAuthorityMutation(context.repo, async () => {
   const run = context.repo.getRun(runId);
   if (!run || !["running", "needs_input", "paused"].includes(run.status)) return;
   const next: Run = { ...run, status, statusMessage: message, error, ...(status === "completed" ? { result } : {}),
     ...(["completed", "failed", "cancelled"].includes(status) ? { endedAt: Date.now() } : {}) };
   context.repo.saveRun(next);
   context.events.emit(EventTypes.RunUpdated, { run: next }, runId);
+  }, runId);
 }
 function validate(context: Context, state: Continuation): void {
   const row = context.repo.db.prepare("SELECT revision,json,archived_at FROM routines WHERE routine_id=?")
@@ -79,7 +83,7 @@ async function execute(context: Context, runId: string, approvalId?: string): Pr
         const dispatched = context.repo.listSteps(runId).some(record => !before.has(record.stepId));
         if (error instanceof AuxError && error.code === "needs_input" && !dispatched) {
           state.inFlight = false; save(context.repo, runId, state);
-          update(context, runId, "needs_input", "Skill replay needs your approval"); return;
+          await update(context, runId, "needs_input", "Skill replay needs your approval"); return;
         }
         throw error;
       }
@@ -103,9 +107,9 @@ async function execute(context: Context, runId: string, approvalId?: string): Pr
     if (state.steps.at(-1)?.op !== "waitFor" || ledger.length !== state.receipts.length || ledger.some(record => !state.receipts.includes(record.stepId)))
       throw new AuxError("conflict", "The Skill lacks its complete verified final oracle.");
     validate(context, state);
-    update(context, runId, "completed", "Skill replay finished", undefined, extracted);
+    await update(context, runId, "completed", "Skill replay finished", undefined, extracted);
   } catch (error) {
-    update(context, runId, "failed", "Skill replay needs review", error instanceof Error ? error.message : String(error));
+    await update(context, runId, "failed", "Skill replay needs review", error instanceof Error ? error.message : String(error));
   } finally { owned.delete(runId); }
 }
 
@@ -121,10 +125,10 @@ export function launchSkillContinuation(input: Context & { run: Run; routine: Ro
 }
 
 /** Called exclusively after the real owner approval handler resolves this exact suspension. */
-export function resumeSkillApproval(context: Context, runId: string, approvalId: string, approved: boolean): boolean {
+export async function resumeSkillApproval(context: Context, runId: string, approvalId: string, approved: boolean): Promise<boolean> {
   const run = context.repo.getRun(runId);
   if (run?.config?.implementation !== "skill-replay") return false;
-  if (run.config.nightShiftItemId) throw new AuxError("permission_denied", "Apply this overnight result before deciding its foreground approval.");
+  if (overnightRoot(context.repo, run.runId)) throw new AuxError("permission_denied", "Apply this overnight result before deciding its foreground approval.");
   if (run.status !== "needs_input") throw new AuxError("conflict", "This Skill is no longer awaiting that approval.");
   const answered = context.repo.db.prepare("SELECT state FROM safety_suspensions WHERE run_id=? AND approval_id=? ORDER BY created_at DESC LIMIT 1")
     .get(runId, approvalId) as { state: string } | undefined;
@@ -135,26 +139,26 @@ export function resumeSkillApproval(context: Context, runId: string, approvalId:
     || (approved ? !["accepted", "consumed"].includes(decision.state) || !["accept", "acceptForSession", "acceptForOrigin"].includes(decision.decision)
       : !["declined", "cancelled"].includes(decision.state)))
     throw new AuxError("permission_denied", "This Skill lacks a current owner decision for its exact turn.");
-  if (!approved) { update(context, runId, "cancelled", "Skill replay declined"); return true; }
+  if (!approved) { await update(context, runId, "cancelled", "Skill replay declined"); return true; }
   const state = load(context.repo, runId);
   if (state.inFlight) throw new AuxError("conflict", "An interrupted dispatch requires review, not a retry.");
   try { validate(context, state); }
-  catch (error) { update(context, runId, "failed", "Skill replay needs review", error instanceof Error ? error.message : String(error)); throw error; }
-  update(context, runId, "running", "Continuing reviewed Skill steps");
+  catch (error) { await update(context, runId, "failed", "Skill replay needs review", error instanceof Error ? error.message : String(error)); throw error; }
+  await update(context, runId, "running", "Continuing reviewed Skill steps");
   void execute(context, runId, approvalId);
   return true;
 }
 
 /** A paused replay may resume only between verified dispatches, never while awaiting consent. */
-export function resumePausedSkill(context: Context, runId: string): Run | undefined {
+export async function resumePausedSkill(context: Context, runId: string): Promise<Run | undefined> {
   const run = context.repo.getRun(runId);
   if (run?.config?.implementation !== "skill-replay") return undefined;
   if (run.status !== "paused") throw new AuxError("conflict", "Resolve the current Skill review before resuming.");
   const state = load(context.repo, runId);
   if (state.inFlight || active.get(context.repo)?.has(runId)) throw new AuxError("conflict", "The current dispatch is still settling. Resume after its receipt arrives.");
   try { validate(context, state); }
-  catch (error) { update(context, runId, "failed", "Skill replay needs review", error instanceof Error ? error.message : String(error)); throw error; }
-  update(context, runId, "running", "Continuing reviewed Skill steps");
+  catch (error) { await update(context, runId, "failed", "Skill replay needs review", error instanceof Error ? error.message : String(error)); throw error; }
+  await update(context, runId, "running", "Continuing reviewed Skill steps");
   void execute(context, runId);
   return context.repo.getRun(runId)!;
 }

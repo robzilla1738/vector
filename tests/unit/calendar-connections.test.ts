@@ -422,7 +422,7 @@ describe("outbound Google Calendar connection", () => {
         recoveryModel: () => undefined, recordModelCall: () => {} });
       const run = await coordinator.start({ goal: "Read Calendar", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision });
       await begun;
-      coordinator.cancel(run.runId);
+      await coordinator.cancel(run.runId);
       await aborted;
       expect(setup.repo.getRun(run.runId)?.status).toBe("cancelled");
       expect(setup.repo.listSteps(run.runId)).toEqual([]);

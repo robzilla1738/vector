@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-complete-full-order-0luclyrg",
+  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-receipt-full-replay-c1kt19t5",
   "baseReplay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-unified-native-replay-vz0wmha8",
   "baseProofSha256": "d36444c4b8b7658d62ffd28fe04b8fa30a29e82785d2f7815dd3b242892d90b1",
   "orderedPatches": [
@@ -21,26 +21,30 @@
     "chromium/patches/aux/runtime/0179-guarded-auto-archive.patch",
     "chromium/patches/aux/runtime/0191-profile-organization-authority.patch",
     "chromium/patches/aux/runtime/0192-browser-feature-wiring-and-authority.patch",
-    "0166-smart-download-naming.patch",
-    "0167-smart-download-signals.patch",
-    "0168-smart-download-tests.patch",
-    "0193-download-file-authority-and-wiring.patch",
-    "0181-night-shift-power.patch",
-    "0195-autonomy-power-shared-wiring.patch",
+    "chromium/patches/aux/runtime/0166-smart-download-naming.patch",
+    "chromium/patches/aux/runtime/0167-smart-download-signals.patch",
+    "chromium/patches/aux/runtime/0168-smart-download-tests.patch",
+    "chromium/patches/aux/runtime/0193-download-file-authority-and-wiring.patch",
+    "chromium/patches/aux/runtime/0181-night-shift-power.patch",
+    "chromium/patches/aux/runtime/0195-autonomy-power-shared-wiring.patch",
     "chromium/patches/aux/runtime/0196-native-test-build-dependencies.patch",
     "chromium/patches/aux/runtime/0194-native-permission-provenance.patch",
-    "0170-committed-link-frecency.patch",
-    "0184-native-appearance-snapshot.patch",
-    "0197-native-appearance-observer-transport.patch",
+    "chromium/patches/aux/runtime/0170-committed-link-frecency.patch",
+    "chromium/patches/aux/runtime/0184-native-appearance-snapshot.patch",
+    "chromium/patches/aux/runtime/0197-native-appearance-observer-transport.patch",
     "chromium/patches/aux/runtime/0199-shell-resource-allocation.patch",
-    "0200-native-owner-mutation-fence.patch",
-    "0203-native-test-interface-contracts.patch",
-    "0204-appkit-command-registry.patch",
+    "chromium/patches/aux/runtime/0200-native-owner-mutation-fence.patch",
+    "chromium/patches/aux/runtime/0203-native-test-interface-contracts.patch",
+    "chromium/patches/aux/runtime/0204-appkit-command-registry.patch",
     "chromium/patches/aux/runtime/0202-native-permission-lifecycle.patch",
     "chromium/patches/aux/runtime/0205-native-callback-compilation.patch",
     "chromium/patches/aux/runtime/0206-permission-fixture-dictionary.patch",
     "chromium/patches/aux/runtime/0209-permission-zap-fixture.patch",
-    "chromium/patches/aux/runtime/0210-permission-fixture-actor-types.patch"
+    "chromium/patches/aux/runtime/0210-permission-fixture-actor-types.patch",
+    "chromium/patches/aux/runtime/0208-native-permission-effect-receipt.patch",
+    "chromium/patches/aux/runtime/0211-permission-fixture-origin-and-tab-binding.patch",
+    "chromium/patches/aux/runtime/0212-permission-fixture-prompt-options.patch",
+    "chromium/patches/aux/runtime/0213-permission-retirement-dispatch-registration.patch"
   ],
   "revised0196": "aefc4a9c2dcb9f7a17680ea566ecd00bc71f1f510a954d58fa4cd8de90fe9770",
   "exactNativeFiles": [
@@ -106,7 +110,7 @@
     },
     {
       "path": "chrome/browser/ui/aux/BUILD.gn",
-      "sha256": "471b7f831ff500dbc1edbaf6ce6c4f95e2291815240319b2f68f24351a5a154d"
+      "sha256": "5f946c01e7f4e7b103b0a8cd6b1bca04f9a8870038f12cc2d905704a13788a25"
     },
     {
       "path": "chrome/browser/ui/aux/auto_pip_site_policy.h",
@@ -182,7 +186,7 @@
     },
     {
       "path": "chrome/browser/ui/aux/method_registry.cc",
-      "sha256": "83963e61591af87d38c7907ae75b9fe86d69a19491f272cf9939babd6f1dd028"
+      "sha256": "be12a65811741e17440486ac335c33094bf4f92cb140d0fe9af76d4edb860d36"
     },
     {
       "path": "chrome/browser/ui/aux/method_registry.h",
@@ -274,23 +278,23 @@
     },
     {
       "path": "chrome/browser/ui/aux/permission_broker.cc",
-      "sha256": "8f0aa0625448d8d70f1eaf7115daaaba78a0dd7318d508638821bb6f703dde17"
+      "sha256": "f2756724dd5d9e8d383bf392ea8d9624711b88d5b2bdf0ca3b81e5d2a0e5c739"
     },
     {
       "path": "chrome/browser/ui/aux/permission_broker.h",
-      "sha256": "6d88e63d258562d6d13e77532788221fe3c7fa10e23dceff95a1ccaff9cbbad4"
+      "sha256": "283668e06eb0507898d2dc3076b925383e1557c5b06a10fde047538944120646"
     },
     {
       "path": "chrome/browser/ui/aux/permission_broker_unittest.cc",
-      "sha256": "c4ccd7d7dce5e9037fedec20c92bc4cfba14261d83a5b3fc85b38abf67c58a8d"
+      "sha256": "c1e065b40386a17086e301b9ce974ef56dff33fa3dbac89f4f17014ae7ae08df"
     },
     {
       "path": "chrome/browser/ui/aux/power_activity_mac.h",
-      "sha256": "d3009c7d08476e9e26d94de9a481a88c3e827edee4ca11d4821541cde43aaf64"
+      "sha256": "0b6602eb70fb12af37a40352c28cc6f2cc9bff320a3236d8308dbe3001abee4c"
     },
     {
       "path": "chrome/browser/ui/aux/power_activity_mac.mm",
-      "sha256": "ce098f51f399d36d79b66b4f9ec9ea1a96d16730963fc26db81c5c1fbaab751d"
+      "sha256": "d0b62bba58d53bb9edd0648dbd4c2e75cfe809c83850c0964e9c91afc6c93d85"
     },
     {
       "path": "chrome/browser/ui/aux/profile_prefs.h",
@@ -314,7 +318,7 @@
     },
     {
       "path": "chrome/browser/ui/aux/runtime_host.cc",
-      "sha256": "3054e319352d256fd07155aea338bd345165323337be72458625970fb72e7d6f"
+      "sha256": "5dbe6fa7fc370e96519457d0a709372e7fed41030dd51a5f9966d18ee7ec8c55"
     },
     {
       "path": "chrome/browser/ui/aux/runtime_host.h",
@@ -475,6 +479,14 @@
     {
       "path": "tools/gritsettings/resource_ids.spec",
       "sha256": "46bb8fbb1992a6668288b1fa9d3dfe47ee5b3082cb4ffc3dd4115627f3c4e86e"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_effect_receipt.h",
+      "sha256": "bbd8ce632ce55951f62c5bee0efbb9f5f194aff998684db1174cc4e5d013425c"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_effect_receipt.cc",
+      "sha256": "c100dc3b7e621e26e0d3e58154aa6ec2655d4b09262ad6cebf0ab3d017f0be09"
     }
   ],
   "compiled": false,
@@ -487,9 +499,9 @@
       "authority": "reviewed-native-baseline"
     },
     {
-      "path": "chrome/browser/actor/execution_engine_unittest.cc",
-      "sha256": "9a0708f61e82d2b8408d9a53ac751692a01e5c4b8fb318d5abeea72a8fa47aa6",
-      "authority": "independently-verified-0b3e-baseline"
+      "path": "chrome/test/BUILD.gn",
+      "sha256": "daa6c447e11337040efe832b15b758ceb050b4155f87caf752117fa51d54f935",
+      "authority": "original-native-commit"
     },
     {
       "path": "chrome/browser/app_controller_mac.mm",
@@ -502,14 +514,9 @@
       "authority": "original-native-commit"
     },
     {
-      "path": "chrome/browser/extensions/api/tabs/tabs_api.cc",
-      "sha256": "2922364b1076f401ed020f877f3b750eba96e1d05d4c28c17d1126c28eef172e",
-      "authority": "reviewed-native-baseline"
-    },
-    {
-      "path": "chrome/browser/external_protocol/external_protocol_handler.cc",
-      "sha256": "af0174c54dcf359d5d9ae3cf14dac4dd9673afdf2fc7e2b2cd3cd24bec2dd0d7",
-      "authority": "reviewed-native-baseline"
+      "path": "chrome/browser/prefs/browser_prefs.cc",
+      "sha256": "0ea77588463413def04c703119113d5aa3678a882cab9b2ea62eb32ec444dead",
+      "authority": "original-native-commit"
     },
     {
       "path": "chrome/browser/metrics/chrome_feature_list_creator.cc",
@@ -517,14 +524,14 @@
       "authority": "reviewed-native-baseline"
     },
     {
-      "path": "chrome/browser/password_manager/actor_login/internal/actor_login_siwg_controller_unittest.cc",
-      "sha256": "26ef5700843a9b499a3c9337638262affd875572459633af7440e468537e3fb6",
+      "path": "chrome/browser/ui/tab_helpers.cc",
+      "sha256": "465221d8b2f12af5d7987f8d781327e3c6d575d70b1c8c82423f5eeb4e26d1ad",
       "authority": "independently-verified-0b3e-baseline"
     },
     {
-      "path": "chrome/browser/password_manager/password_change/password_change_page_stability_waiter_unittest.cc",
-      "sha256": "a2c8428cc3de7f013ffaa8a2a77ab2fef9c4a35ec0c8f84c692e8a73240a0df6",
-      "authority": "independently-verified-0b3e-baseline"
+      "path": "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc",
+      "sha256": "fbd5211bc5ce8500b5b56037199c2448b848f8bbd0e273daba7eff8279446c18",
+      "authority": "original-native-commit"
     },
     {
       "path": "chrome/browser/picture_in_picture/BUILD.gn",
@@ -537,14 +544,9 @@
       "authority": "original-native-commit"
     },
     {
-      "path": "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_strip_observer_helper.cc",
-      "sha256": "fbd5211bc5ce8500b5b56037199c2448b848f8bbd0e273daba7eff8279446c18",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/prefs/browser_prefs.cc",
-      "sha256": "0ea77588463413def04c703119113d5aa3678a882cab9b2ea62eb32ec444dead",
-      "authority": "original-native-commit"
+      "path": "chrome/browser/external_protocol/external_protocol_handler.cc",
+      "sha256": "af0174c54dcf359d5d9ae3cf14dac4dd9673afdf2fc7e2b2cd3cd24bec2dd0d7",
+      "authority": "reviewed-native-baseline"
     },
     {
       "path": "chrome/browser/profiles/profile.cc",
@@ -552,8 +554,83 @@
       "authority": "independently-verified-0b3e-baseline"
     },
     {
+      "path": "chrome/browser/actor/execution_engine_unittest.cc",
+      "sha256": "9a0708f61e82d2b8408d9a53ac751692a01e5c4b8fb318d5abeea72a8fa47aa6",
+      "authority": "independently-verified-0b3e-baseline"
+    },
+    {
+      "path": "chrome/browser/extensions/api/tabs/tabs_api.cc",
+      "sha256": "2922364b1076f401ed020f877f3b750eba96e1d05d4c28c17d1126c28eef172e",
+      "authority": "reviewed-native-baseline"
+    },
+    {
       "path": "chrome/browser/resources/aux_host/aux_host_bootstrap.ts",
       "sha256": "c8138b1b6946e38705a1d0ceb42ee36da0e52fce9ee463b630be20f5f27a55c2",
+      "authority": "reviewed-native-baseline"
+    },
+    {
+      "path": "chrome/browser/ui/cocoa/BUILD.gn",
+      "sha256": "45dbef0467d8105030018e26a190601f6b86b10a5c76582d5d08a259babcd68b",
+      "authority": "reviewed-native-baseline"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_window_mac.mm",
+      "sha256": "fbc419231273b58a45983692eab0e543d25b761edf03753101897f368d96c3dd",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_ui.h",
+      "sha256": "6dc9a496d172044085127aaa6b3ff45ddae99da2dba7d06a07aae6b0a994db5f",
+      "authority": "reviewed-native-baseline"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_ui.cc",
+      "sha256": "394e71323ac6840ebb04ed6fb329319c797876d42bf5a06ff18612a97d4507a4",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_window.h",
+      "sha256": "a4a74831201192c5066d1347666e249823b255116f3d43842b1636f79da0442e",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h",
+      "sha256": "edc97de68bda020b2f48afc0df35157ba0e193b3f9bbb70d9f9d76eb3f51dd23",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_window.cc",
+      "sha256": "29bfc643c94d2136519bbb33d1eaffc6928d093659d55dc269d26c33c94aa8d0",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc",
+      "sha256": "040ad7725ad20396fd920af3569d3bf84b2e1c7b4072b91f09149c7c69266c0f",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/navigator/browser_navigator.cc",
+      "sha256": "e96f0e36171271afc043946c8a322c981dca6ab2f9493d1ee2bacaa677f0ebc9",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/aux/organization_store.h",
+      "sha256": "2345a9cd43c04ebcd4bd1dcec7540661b9756313e5ca8bdcab5617956a3d76ae",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.cc",
+      "sha256": "0edfe5e01e3f8845814bb1d0888408140c6563cfae611edef143d702f38f8f30",
+      "authority": "independently-verified-0b3e-baseline"
+    },
+    {
+      "path": "chrome/browser/ui/aux/shell_events.h",
+      "sha256": "0b90744cc6ae0999386ba0f3780d02f81e56a42dd7e9810ab9270f866095776a",
+      "authority": "reviewed-native-baseline"
+    },
+    {
+      "path": "chrome/browser/ui/aux/method_registry.h",
+      "sha256": "1dc4727e8c1271c9cd0f43463f5e0c1ac99e53e11bd66dac95ab57c6545bb39c",
       "authority": "reviewed-native-baseline"
     },
     {
@@ -562,8 +639,23 @@
       "authority": "original-native-commit"
     },
     {
-      "path": "chrome/browser/ui/aux/egress_controller.cc",
-      "sha256": "8fb6e41cbf1e813c8b96d65e9e313409e9bac83cab13b8039171655f9b77e3ea",
+      "path": "chrome/browser/ui/aux/shell_events.cc",
+      "sha256": "578c05e43589c4ea903f948c980c0eb2fef8b63255ae278e0c66839181a80f38",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/aux/organization_store.cc",
+      "sha256": "ff143c27f9d4c639796537602ddf7cfd9150b80c38d2762dfcd40871868034bd",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/aux/tab_catalog.cc",
+      "sha256": "72947ea1889f02c79bebb27d4a4f77df7152b63675edeef274e52541817f3f75",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.h",
+      "sha256": "60fad59691f448d67a1384c83bab0df3e3d463c6d60a3bcbbacc5db1066769a3",
       "authority": "independently-verified-0b3e-baseline"
     },
     {
@@ -572,53 +664,43 @@
       "authority": "independently-verified-0b3e-baseline"
     },
     {
+      "path": "chrome/browser/ui/aux/profile_prefs.h",
+      "sha256": "84af98b137213d5bb72592f6dda88adc64ec89566a42a00cdc8ff0cacd15fec3",
+      "authority": "original-native-commit"
+    },
+    {
       "path": "chrome/browser/ui/aux/method_registry.cc",
       "sha256": "4240878d09f8bb1757fa35c77642c08eddbab953be431c6889d678e47c80585f",
       "authority": "original-native-commit"
     },
     {
-      "path": "chrome/browser/ui/aux/method_registry.h",
-      "sha256": "1dc4727e8c1271c9cd0f43463f5e0c1ac99e53e11bd66dac95ab57c6545bb39c",
-      "authority": "reviewed-native-baseline"
-    },
-    {
-      "path": "chrome/browser/ui/aux/methods/downloads_ai_methods.cc",
-      "sha256": "8ef5f2a030393a221ce6e0999031bb424c4caa4f59eafc298b1f22bb234c6a05",
+      "path": "chrome/browser/ui/aux/result_preview_browsertest.cc",
+      "sha256": "6cd2a39f72811abd6a7feb28c3c3057e70f2d4acd9f20d68386b2aef58b05457",
       "authority": "independently-verified-0b3e-baseline"
     },
     {
-      "path": "chrome/browser/ui/aux/methods/extensions_methods.cc",
-      "sha256": "ec0dab8469c23319c74a25ecbb0ab7b8a98ae841a9eb019a0dbab5fb4489ee02",
+      "path": "chrome/browser/ui/aux/egress_controller.cc",
+      "sha256": "8fb6e41cbf1e813c8b96d65e9e313409e9bac83cab13b8039171655f9b77e3ea",
+      "authority": "independently-verified-0b3e-baseline"
+    },
+    {
+      "path": "chrome/browser/ui/startup/startup_tab.h",
+      "sha256": "0569ea513a29239283dd55052c7f7f3224a577256b361ec64f19fa6b002aa132",
       "authority": "reviewed-native-baseline"
     },
     {
-      "path": "chrome/browser/ui/aux/methods/extensions_ui_methods.cc",
-      "sha256": "42c0118f4ba7925b8ad09b3b7ea49cf5c5b2d88dd978dcffe46e5b7611422e55",
+      "path": "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h",
+      "sha256": "5a86ea21b43468ba0479027598eff7a3b0749cf6e60c8b3a264d56c25c3344a5",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc",
+      "sha256": "3d3182a900ea262c290d9c31bd515a4d6bd3f487a7f681a9c883cf98adf26f79",
       "authority": "original-native-commit"
     },
     {
       "path": "chrome/browser/ui/aux/methods/layout_methods.cc",
       "sha256": "799f0ae67735e8b8c9a9d82e01d2cedb4c2000f07657addba5585243837a491a",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/aux/methods/native_library_methods.cc",
-      "sha256": "e083c8dbc66c66cca9eefdb77d0217e6551d74e3da5df9f4cac4a59a7e6845e0",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/aux/methods/power_methods.cc",
-      "sha256": "efbeeb9d41f7338c8ef212830fe5de0c81c2f2c35516b3824ace3d7f3794ecd1",
-      "authority": "independently-verified-0b3e-baseline"
-    },
-    {
-      "path": "chrome/browser/ui/aux/methods/profile_methods.cc",
-      "sha256": "631f2161e646d93df2f28b3057865ac22fe9fa7d5df1117e7e1128a16433df2d",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/aux/methods/profile_routing_methods.cc",
-      "sha256": "a42751d0647af3707dbb369db4b9e1bbe4ea720eb0b719633947234a3b9cb9e7",
       "authority": "original-native-commit"
     },
     {
@@ -637,8 +719,8 @@
       "authority": "original-native-commit"
     },
     {
-      "path": "chrome/browser/ui/aux/methods/tabs_methods.cc",
-      "sha256": "2effcd0e2bb6a30ea9c499c05d41c51d760074d5ce401f7cfc11b0b4b771ebb1",
+      "path": "chrome/browser/ui/aux/methods/profile_methods.cc",
+      "sha256": "631f2161e646d93df2f28b3057865ac22fe9fa7d5df1117e7e1128a16433df2d",
       "authority": "original-native-commit"
     },
     {
@@ -647,74 +729,44 @@
       "authority": "original-native-commit"
     },
     {
+      "path": "chrome/browser/ui/aux/methods/downloads_ai_methods.cc",
+      "sha256": "8ef5f2a030393a221ce6e0999031bb424c4caa4f59eafc298b1f22bb234c6a05",
+      "authority": "independently-verified-0b3e-baseline"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/extensions_ui_methods.cc",
+      "sha256": "42c0118f4ba7925b8ad09b3b7ea49cf5c5b2d88dd978dcffe46e5b7611422e55",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/extensions_methods.cc",
+      "sha256": "ec0dab8469c23319c74a25ecbb0ab7b8a98ae841a9eb019a0dbab5fb4489ee02",
+      "authority": "reviewed-native-baseline"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/tabs_methods.cc",
+      "sha256": "2effcd0e2bb6a30ea9c499c05d41c51d760074d5ce401f7cfc11b0b4b771ebb1",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/profile_routing_methods.cc",
+      "sha256": "a42751d0647af3707dbb369db4b9e1bbe4ea720eb0b719633947234a3b9cb9e7",
+      "authority": "original-native-commit"
+    },
+    {
       "path": "chrome/browser/ui/aux/methods/window_sync_methods.cc",
       "sha256": "23dfb39fba0a12325159a29d86ff01923b5a40dbe8b672f21730d108b95c8251",
       "authority": "original-native-commit"
     },
     {
-      "path": "chrome/browser/ui/aux/organization_store.cc",
-      "sha256": "ff143c27f9d4c639796537602ddf7cfd9150b80c38d2762dfcd40871868034bd",
+      "path": "chrome/browser/ui/aux/methods/native_library_methods.cc",
+      "sha256": "e083c8dbc66c66cca9eefdb77d0217e6551d74e3da5df9f4cac4a59a7e6845e0",
       "authority": "original-native-commit"
     },
     {
-      "path": "chrome/browser/ui/aux/organization_store.h",
-      "sha256": "2345a9cd43c04ebcd4bd1dcec7540661b9756313e5ca8bdcab5617956a3d76ae",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/aux/profile_prefs.h",
-      "sha256": "84af98b137213d5bb72592f6dda88adc64ec89566a42a00cdc8ff0cacd15fec3",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/aux/result_preview_browsertest.cc",
-      "sha256": "6cd2a39f72811abd6a7feb28c3c3057e70f2d4acd9f20d68386b2aef58b05457",
+      "path": "chrome/browser/ui/aux/methods/power_methods.cc",
+      "sha256": "efbeeb9d41f7338c8ef212830fe5de0c81c2f2c35516b3824ace3d7f3794ecd1",
       "authority": "independently-verified-0b3e-baseline"
-    },
-    {
-      "path": "chrome/browser/ui/aux/runtime_host.cc",
-      "sha256": "0edfe5e01e3f8845814bb1d0888408140c6563cfae611edef143d702f38f8f30",
-      "authority": "independently-verified-0b3e-baseline"
-    },
-    {
-      "path": "chrome/browser/ui/aux/runtime_host.h",
-      "sha256": "60fad59691f448d67a1384c83bab0df3e3d463c6d60a3bcbbacc5db1066769a3",
-      "authority": "independently-verified-0b3e-baseline"
-    },
-    {
-      "path": "chrome/browser/ui/aux/shell_events.cc",
-      "sha256": "578c05e43589c4ea903f948c980c0eb2fef8b63255ae278e0c66839181a80f38",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/aux/shell_events.h",
-      "sha256": "0b90744cc6ae0999386ba0f3780d02f81e56a42dd7e9810ab9270f866095776a",
-      "authority": "reviewed-native-baseline"
-    },
-    {
-      "path": "chrome/browser/ui/aux/tab_catalog.cc",
-      "sha256": "72947ea1889f02c79bebb27d4a4f77df7152b63675edeef274e52541817f3f75",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
-      "sha256": "d316ba25ee4de5c6fad819ca1bcb5a3d04bb5118171158a7ca4dc31b93980aab",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/cocoa/BUILD.gn",
-      "sha256": "45dbef0467d8105030018e26a190601f6b86b10a5c76582d5d08a259babcd68b",
-      "authority": "reviewed-native-baseline"
-    },
-    {
-      "path": "chrome/browser/ui/cocoa/applescript/scripting.sdef",
-      "sha256": "cd0453c2e166a0b664f8ea1d1ac04b53a54eed14835569b6104a7823dbb950f2",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/cocoa/applescript/tab_applescript.h",
-      "sha256": "0dec1f1ed0876a00a64ffaed2d5f19aede1020eb54acb435c3a158da38627f63",
-      "authority": "original-native-commit"
     },
     {
       "path": "chrome/browser/ui/cocoa/applescript/tab_applescript.mm",
@@ -732,73 +784,43 @@
       "authority": "original-native-commit"
     },
     {
-      "path": "chrome/browser/ui/navigator/browser_navigator.cc",
-      "sha256": "e96f0e36171271afc043946c8a322c981dca6ab2f9493d1ee2bacaa677f0ebc9",
+      "path": "chrome/browser/ui/cocoa/applescript/tab_applescript.h",
+      "sha256": "0dec1f1ed0876a00a64ffaed2d5f19aede1020eb54acb435c3a158da38627f63",
       "authority": "original-native-commit"
     },
     {
-      "path": "chrome/browser/ui/startup/startup_tab.h",
-      "sha256": "0569ea513a29239283dd55052c7f7f3224a577256b361ec64f19fa6b002aa132",
-      "authority": "reviewed-native-baseline"
+      "path": "chrome/browser/ui/cocoa/applescript/scripting.sdef",
+      "sha256": "cd0453c2e166a0b664f8ea1d1ac04b53a54eed14835569b6104a7823dbb950f2",
+      "authority": "original-native-commit"
     },
     {
-      "path": "chrome/browser/ui/tab_helpers.cc",
-      "sha256": "465221d8b2f12af5d7987f8d781327e3c6d575d70b1c8c82423f5eeb4e26d1ad",
+      "path": "chrome/browser/ui/browser_window/internal/browser_window_features.cc",
+      "sha256": "d316ba25ee4de5c6fad819ca1bcb5a3d04bb5118171158a7ca4dc31b93980aab",
+      "authority": "original-native-commit"
+    },
+    {
+      "path": "chrome/browser/password_manager/password_change/password_change_page_stability_waiter_unittest.cc",
+      "sha256": "a2c8428cc3de7f013ffaa8a2a77ab2fef9c4a35ec0c8f84c692e8a73240a0df6",
       "authority": "independently-verified-0b3e-baseline"
     },
     {
-      "path": "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc",
-      "sha256": "3d3182a900ea262c290d9c31bd515a4d6bd3f487a7f681a9c883cf98adf26f79",
-      "authority": "original-native-commit"
+      "path": "chrome/browser/password_manager/actor_login/internal/actor_login_siwg_controller_unittest.cc",
+      "sha256": "26ef5700843a9b499a3c9337638262affd875572459633af7440e468537e3fb6",
+      "authority": "independently-verified-0b3e-baseline"
     },
     {
-      "path": "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h",
-      "sha256": "5a86ea21b43468ba0479027598eff7a3b0749cf6e60c8b3a264d56c25c3344a5",
-      "authority": "original-native-commit"
+      "path": "components/permissions/permission_request_manager.cc",
+      "sha256": "6d7a5a484559881272d24bdc2a07f6a765b024fcbbe66374c8d7bfd24cbca8cd",
+      "authority": "independently-verified-0b3e-baseline"
     },
     {
-      "path": "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.cc",
-      "sha256": "040ad7725ad20396fd920af3569d3bf84b2e1c7b4072b91f09149c7c69266c0f",
-      "authority": "original-native-commit"
+      "path": "components/permissions/permission_request.h",
+      "sha256": "6985be46d89e49cd3f95322f9185737399574c21c5179feff56da9224ed98388",
+      "authority": "independently-verified-0b3e-baseline"
     },
     {
-      "path": "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h",
-      "sha256": "edc97de68bda020b2f48afc0df35157ba0e193b3f9bbb70d9f9d76eb3f51dd23",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/webui_browser/webui_browser_ui.cc",
-      "sha256": "394e71323ac6840ebb04ed6fb329319c797876d42bf5a06ff18612a97d4507a4",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/webui_browser/webui_browser_ui.h",
-      "sha256": "6dc9a496d172044085127aaa6b3ff45ddae99da2dba7d06a07aae6b0a994db5f",
-      "authority": "reviewed-native-baseline"
-    },
-    {
-      "path": "chrome/browser/ui/webui_browser/webui_browser_window.cc",
-      "sha256": "29bfc643c94d2136519bbb33d1eaffc6928d093659d55dc269d26c33c94aa8d0",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/webui_browser/webui_browser_window.h",
-      "sha256": "a4a74831201192c5066d1347666e249823b255116f3d43842b1636f79da0442e",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/browser/ui/webui_browser/webui_browser_window_mac.mm",
-      "sha256": "fbc419231273b58a45983692eab0e543d25b761edf03753101897f368d96c3dd",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "chrome/test/BUILD.gn",
-      "sha256": "daa6c447e11337040efe832b15b758ceb050b4155f87caf752117fa51d54f935",
-      "authority": "original-native-commit"
-    },
-    {
-      "path": "components/download/internal/common/download_item_impl.cc",
-      "sha256": "87b784203f347cabae4b8928d615ab1218c18dadd2224a8ec8a13794503de66a",
+      "path": "components/permissions/permission_request_manager.h",
+      "sha256": "7e126ddbecf92f0f11907180358a95bc716908fbed7ed04bd5c677ac8b847af1",
       "authority": "independently-verified-0b3e-baseline"
     },
     {
@@ -817,28 +839,18 @@
       "authority": "independently-verified-0b3e-baseline"
     },
     {
-      "path": "components/permissions/permission_request.h",
-      "sha256": "6985be46d89e49cd3f95322f9185737399574c21c5179feff56da9224ed98388",
-      "authority": "independently-verified-0b3e-baseline"
-    },
-    {
-      "path": "components/permissions/permission_request_manager.cc",
-      "sha256": "6d7a5a484559881272d24bdc2a07f6a765b024fcbbe66374c8d7bfd24cbca8cd",
-      "authority": "independently-verified-0b3e-baseline"
-    },
-    {
-      "path": "components/permissions/permission_request_manager.h",
-      "sha256": "7e126ddbecf92f0f11907180358a95bc716908fbed7ed04bd5c677ac8b847af1",
-      "authority": "independently-verified-0b3e-baseline"
-    },
-    {
-      "path": "content/public/test/fake_download_item.cc",
-      "sha256": "751c0585aa75282785a336fca012755e54273aca291b8d7539b982b37efbdb04",
+      "path": "components/download/internal/common/download_item_impl.cc",
+      "sha256": "87b784203f347cabae4b8928d615ab1218c18dadd2224a8ec8a13794503de66a",
       "authority": "independently-verified-0b3e-baseline"
     },
     {
       "path": "content/public/test/fake_download_item.h",
       "sha256": "9b806dc7e6b517bf3f8dcc06bdd51975b36e0333ea413020327dd10cf545d440",
+      "authority": "independently-verified-0b3e-baseline"
+    },
+    {
+      "path": "content/public/test/fake_download_item.cc",
+      "sha256": "751c0585aa75282785a336fca012755e54273aca291b8d7539b982b37efbdb04",
       "authority": "independently-verified-0b3e-baseline"
     },
     {
@@ -995,8 +1007,24 @@
     {
       "path": "chromium/patches/aux/runtime/0210-permission-fixture-actor-types.patch",
       "sha256": "2c03537c3d3870f063ef4f80ffafa0533fa2be61ccea7bd09717c6165da5b5ab"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0208-native-permission-effect-receipt.patch",
+      "sha256": "09b7a5a5ad9b29a8acef97897a6eb1c2d23aa1a6e998b6ec0ec36c6e62ac240e"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0211-permission-fixture-origin-and-tab-binding.patch",
+      "sha256": "d3a6aa3cc766527f44e127426607a9c538ede3a1738d0ebad42640e8065a5333"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0212-permission-fixture-prompt-options.patch",
+      "sha256": "bb3b9ee8929c3a26283196fa00ea81b1e907c6d400872efcdc64eaa6c2c37245"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0213-permission-retirement-dispatch-registration.patch",
+      "sha256": "b1c2f935d758f698d5209e3175b08bd83061eaef71965cc339f73a2ad2bec269"
     }
   ],
-  "audit": "All37 reversed to independently verified baseline then reapplied in required dependency order; all108 exact mirrors compared",
+  "audit": "All 41 packets independently reverse to 73 pinned baselines and replay to 110 exact native mirrors",
   "resourceAllocationPatchSha256": "35df0ed7d4e6f1bb91a305b15d0e1b3362fe781db4c65286a8d56f8315582311"
 }

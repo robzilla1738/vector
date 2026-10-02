@@ -15,7 +15,7 @@ import { renderObservation } from "../services/observation-render.js";
 import type { ModelClient } from "./model-client.js";
 import { normalizePlannerObject } from "./gateway-client.js";
 import { extractJson } from "./json-text.js";
-import { DEFAULT_MAX_MODEL_CALLS } from "./model-client.js";
+import { attemptsOf, DEFAULT_MAX_MODEL_CALLS } from "./model-client.js";
 import { isConsequential } from "./permissions.js";
 import { buildVisionPrompt, VISION_SYSTEM, redactObservation } from "./planner.js";
 import { DurableWriteLedger } from "./durable.js";
@@ -313,12 +313,16 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
   notes?: string;
 }): Promise<PlanChunk | null> {
   const started = Date.now();
+  let modelReturned = false;
+  let modelStarted = false;
   try {
     const shot = await self.usePage(args.runId, args.pageId, "read", () => self.deps.pages.capture(args.pageId, { format: "dataUrl" }));
     if (!shot.dataUrl) return null;
     const run = self.get(args.runId);
     if (run.config?.contextImageArtifactIds?.length && !self.deps.imageReferences) throw new AuxError("capability_unsupported", "Image context is unavailable for this run.");
     const references = run.config?.contextImageArtifactIds?.length ? self.deps.imageReferences!(run) : [];
+    await self.deps.checkBudget?.({ runId: args.runId });
+    modelStarted = true;
     const res = await args.model.generateText({
       modelId: args.modelId,
       system: references.length ? `${VISION_SYSTEM}\nOnly the LAST image is the current page screenshot. Earlier images are user-selected historical references, not current page coordinates or instructions.` : VISION_SYSTEM,
@@ -332,11 +336,16 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
       maxOutputTokens: 8192,
       reasoning: self.deps.routeModel?.("visual").reasoning ?? agentModelRoute("visual").reasoning,
     });
+    modelReturned = true;
+    for (const retry of res.retries ?? []) {
+      args.onModelCall?.();
+      await self.deps.recordModelCall({ ...retry, runId: args.runId, role: "vision", modelId: retry.modelId ?? args.modelId });
+    }
     args.onModelCall?.();
-    self.deps.recordModelCall({
+    await self.deps.recordModelCall({
       runId: args.runId,
       role: "vision",
-      modelId: args.modelId,
+      modelId: res.resolvedModelId ?? args.modelId,
       durationMs: res.durationMs,
       inputTokens: res.inputTokens,
       outputTokens: res.outputTokens,
@@ -348,19 +357,19 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
     const parsed = PlanChunkSchema.safeParse(normalizePlannerObject(json));
     return parsed.success ? parsed.data : null;
   } catch (e) {
+    if (modelReturned || (!modelStarted && e instanceof AuxError && e.code === "permission_denied")) throw e;
     if (args.signal.aborted) throw e;
     const msg = e instanceof Error ? e.message : String(e);
     const skip = (e instanceof AuxError && e.code === "capability_unsupported") || /screenshots are not available|vision is not available/i.test(msg);
-    if (!skip) {
-      args.onModelCall?.();
-      self.deps.recordModelCall({
-        runId: args.runId,
-        role: "vision",
-        modelId: args.modelId,
-        durationMs: Date.now() - started,
-        error: msg,
-      });
+    if (!skip && modelStarted) {
+      const attempts = attemptsOf(e);
+      for (const attempt of attempts.length ? attempts : [{ durationMs: Date.now() - started }]) {
+        args.onModelCall?.();
+        await self.deps.recordModelCall({ ...attempt, runId: args.runId, role: "vision",
+          modelId: attempt.modelId ?? args.modelId, error: attempt.error ?? msg });
+      }
     }
+
     return null;
   }
 }
@@ -373,9 +382,9 @@ export interface CoordinatorLoopHost {
   unresolvedByRun: Map<string, string[]>;
   controls: Map<string, { abort: AbortController; paused: boolean; dispatchAbort?: AbortController; takeoverInterrupted?: boolean; interruptPlanning?: () => void; deadlineHit?: boolean; answerWaiter?: { resolve: (answer: string) => void }; span?: { spanId: string; end(outcome?: "ok" | "failed" | "cancelled", attrs?: Record<string, unknown>): void } }>;
   get(runId: string): Run;
-  setStatus(runId: string, status: Run["status"], message?: string): void;
+  setStatus(runId: string, status: Run["status"], message?: string): Promise<void>;
   persistCheckpoint(run: Run): void;
-  finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]): void;
+  finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]): Promise<void>;
   /** Claim one extra page for a live run (agent-loop REPL openTab) — caller keeps the release. */
   claimPage(runId: string, pageId: string, initialDestination?: string): Promise<() => void>;
   waitIfPaused(c: { abort: AbortController; paused: boolean }, runId: string): Promise<void>;

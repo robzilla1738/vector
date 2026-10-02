@@ -1,3 +1,5 @@
+import { withRunAuthorityMutation } from "./overnight-authority.js";
+import { saveAuthorizedModelCall } from "./model-call-authority.js";
 import { checkNightShiftDispatch } from "../features/overnight-review/service.js";
 import { resumePausedSkill } from "./skill-continuation.js";
 import { documentReference, boundedDocumentReference } from "./document-context.js";
@@ -337,7 +339,7 @@ export class RunService {
   }
 
   /** Withdraw saved answers and run-owned artifacts when any selected article is deleted. */
-  redactForgottenArticleOutputs(workspaceId: string): number {
+  async redactForgottenArticleOutputs(workspaceId: string): Promise<number> {
     const rows = this.deps.repo.db.prepare("SELECT run_id AS runId FROM runs").all() as { runId: string }[];
     const runs = rows.map(row => this.deps.repo.getRun(row.runId)!).map(run => ({ runId: run.runId,
       config: (run.config ?? {}) as NonNullable<Run["config"]> }));
@@ -374,7 +376,7 @@ export class RunService {
       const current = this.deps.repo.getRun(runId);
       if (!current || current.config?.contextMemoryRevoked) continue;
       if (current.config?.chatId) this.messages.cancelForChat(current.config.chatId);
-      if (!TERMINAL_RUN_STATUSES.has(current.status)) this.cancel(runId, "A selected saved article was forgotten.");
+      if (!TERMINAL_RUN_STATUSES.has(current.status)) await this.cancel(runId, "A selected saved article was forgotten.");
       const run = this.deps.repo.getRun(runId)!;
       const artifacts = this.deps.repo.listArtifacts({ runId });
       const paths = artifacts.map(item => item.path);
@@ -761,6 +763,7 @@ export class RunService {
           budget: ctx.budget,
           grants: () => deps.settings.effectGrantsForRun?.() ?? USER_RUN_GRANTS,
           durable: durableWrites,
+          beforeModelCall: async () => { await checkNightShiftDispatch(deps.repo, ctx.runId); deps.budgets?.assertWithin({ runId: ctx.runId }); },
           recordModelCall: (c) => this.recordModelCall({ runId: ctx.runId, role: "planner", ...c }),
         });
       },
@@ -799,7 +802,7 @@ export class RunService {
     });
   }
 
-  private recordModelCall(input: {
+  private async recordModelCall(input: {
     runId: string;
     role: "planner" | "repair" | "vision" | "probe" | "final" | "agent";
     modelId: string;
@@ -821,7 +824,7 @@ export class RunService {
     let destination: string | undefined;
     try { destination = settings?.modelEndpoint ? new URL(settings.modelEndpoint).origin : undefined; } catch { /* invalid endpoints never become model clients */ }
     c.providerMetadata = { ...c.providerMetadata, aux: { provider, ...(destination ? { destination } : {}) } };
-    this.deps.repo.saveModelCall({ callId: newStepId(), ...c, createdAt: Date.now() });
+    await saveAuthorizedModelCall(this.deps.repo, { callId: newStepId(), ...c, createdAt: Date.now() });
     this.deps.events.emit(EventTypes.ModelCall, c, c.runId);
     this.deps.tracer?.incr("model.calls");
     if (c.error) this.deps.tracer?.incr("model.errors");
@@ -869,7 +872,7 @@ export class RunService {
       });
     })
       .then(() => this.finishSetRun(run.runId))
-      .catch((e) => {
+      .catch((e) => withRunAuthorityMutation(this.deps.repo, async () => {
         const r = this.deps.repo.getRun(run.runId);
         if (r && !TERMINAL_RUN_STATUSES.has(r.status)) {
           r.status = control.abort.signal.aborted ? "cancelled" : "failed";
@@ -878,7 +881,8 @@ export class RunService {
           this.deps.repo.saveRun(r);
           this.deps.events.emit(EventTypes.RunUpdated, { run: r }, run.runId);
         }
-      })
+
+      }, run.runId))
       .finally(() => { this.deps.turnMentions.end(run.runId); this.setRunControls.delete(run.runId); releaseClaim(); });
   }
 
@@ -1126,7 +1130,8 @@ export class RunService {
    * state (cancelled by the user mid-map) keeps that status — only the
    * model-call stamp and end time are filled in if missing.
    */
-  private finishSetRun(runId: string) {
+  private async finishSetRun(runId: string) {
+    await withRunAuthorityMutation(this.deps.repo, async () => {
     const run = this.deps.repo.getRun(runId);
     if (!run || !run.setId) return;
     const members = this.deps.repo.listMembers(run.setId);
@@ -1141,6 +1146,8 @@ export class RunService {
     run.config = { ...run.config, modelCalls: this.deps.repo.listModelCalls(runId).length };
     this.deps.repo.saveRun(run);
     this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+
+    }, runId);
   }
 
   async mapSet(opts: {
@@ -1196,7 +1203,8 @@ export class RunService {
     }
   }
 
-  pause(runId: string): Run {
+  async pause(runId: string): Promise<Run> {
+    return withRunAuthorityMutation(this.deps.repo, async () => {
     this.takeoverPausedRuns.delete(runId);
     const sc = this.setRunControls.get(runId);
     if (sc) {
@@ -1214,10 +1222,13 @@ export class RunService {
       return run;
     }
     return this.coordinator.pause(runId);
+
+    }, runId);
   }
 
-  resume(runId: string): Run {
-    const replay = resumePausedSkill({ repo: this.deps.repo, pages: this.deps.pages, events: this.deps.events }, runId);
+  async resume(runId: string): Promise<Run> {
+    return withRunAuthorityMutation(this.deps.repo, async () => {
+    const replay = await resumePausedSkill({ repo: this.deps.repo, pages: this.deps.pages, events: this.deps.events }, runId);
     if (replay) return replay;
     this.takeoverPausedRuns.delete(runId);
     const sc = this.setRunControls.get(runId);
@@ -1234,22 +1245,27 @@ export class RunService {
       return run;
     }
     return this.coordinator.resume(runId);
+
+    }, runId);
   }
 
-  cancel(runId: string, reason?: string): Run {
+  async cancel(runId: string, reason?: string): Promise<Run> {
+    return withRunAuthorityMutation(this.deps.repo, async () => {
     this.takeoverPausedRuns.delete(runId);
     const run = this.deps.repo.getRun(runId);
     if (run?.config?.chatId && ["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) this.messages.cancelForChat(run.config.chatId);
     const sc = this.setRunControls.get(runId);
     if (sc) { this.deps.turnMentions.end(runId); sc.cancel(); }
     return this.coordinator.cancel(runId, reason);
+
+    }, runId);
   }
 
-  pauseForTakeover(runId: string): Run {
+  async pauseForTakeover(runId: string): Promise<Run> {
     const run = this.deps.repo.getRun(runId);
     if (!run) throw new AuxError("not_found", `no run ${runId}`);
     if (run.status !== "running" && run.status !== "planning") return run;
-    const paused = this.pause(runId);
+    const paused = await this.pause(runId);
     if (paused.status === "paused") {
       this.coordinator.interruptForTakeover(runId);
       this.takeoverPausedRuns.add(runId);
@@ -1263,7 +1279,8 @@ export class RunService {
   }
 
   /** Saved programs cannot safely replay their remaining steps after owner input. */
-  interruptProgramForTakeover(runId: string, pageId: string): Run {
+  async interruptProgramForTakeover(runId: string, pageId: string): Promise<Run> {
+    return withRunAuthorityMutation(this.deps.repo, async () => {
     const run = this.deps.repo.getRun(runId);
     if (!run) throw new AuxError("not_found", `no run ${runId}`);
     if (run.config?.implementation !== "program" || TERMINAL_RUN_STATUSES.has(run.status)) return run;
@@ -1280,9 +1297,11 @@ export class RunService {
     this.deps.events.emit(EventTypes.RunStatus, { runId, status: run.status, message: run.statusMessage }, runId);
     this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
     return run;
+
+    }, runId);
   }
 
-  resumeAfterTakeover(runId: string, releasedPageId: string): Run | undefined {
+  async resumeAfterTakeover(runId: string, releasedPageId: string): Promise<Run | undefined> {
     if (!this.takeoverPausedRuns.has(runId)) return undefined;
     const run = this.deps.repo.getRun(runId);
     if (!run || run.status !== "paused") {
@@ -1336,7 +1355,7 @@ export class RunService {
       return this.deps.pages.execute(program, { runId: run.runId, allowEval: true });
     };
     void execute()
-      .then((res) => {
+      .then((res) => withRunAuthorityMutation(this.deps.repo, async () => {
         const r = this.deps.repo.getRun(run.runId);
         if (!r || TERMINAL_RUN_STATUSES.has(r.status)) return;
         r.status = res.status === "completed" ? "completed" : res.status === "cancelled" ? "cancelled" : "failed";
@@ -1351,8 +1370,9 @@ export class RunService {
           saved.lastUsedAt = Date.now();
           this.deps.repo.saveProgram(saved);
         }
-      })
-      .catch((e) => {
+
+      }, run.runId))
+      .catch((e) => withRunAuthorityMutation(this.deps.repo, async () => {
         const r = this.deps.repo.getRun(run.runId);
         if (r && !TERMINAL_RUN_STATUSES.has(r.status)) {
           r.status = "failed";
@@ -1362,7 +1382,8 @@ export class RunService {
           this.deps.repo.saveRun(r);
           this.deps.events.emit(EventTypes.RunUpdated, { run: r }, run.runId);
         }
-      }).finally(() => { releaseControlled?.(); });
+
+      }, run.runId)).finally(() => { releaseControlled?.(); });
     return { runId: run.runId };
   }
 

@@ -1350,10 +1350,59 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
     guard let path = request["path"] as? String, !path.isEmpty else { throw protocolError("panel path required") }
     let sheets = try queryElements(["role": "AXSheet", "scope": "window"])
     guard !sheets.isEmpty else { throw protocolError("No panel sheet is open") }
-    try postKey("command+shift+g"); usleep(150_000); try postText(path); try postKey("enter"); usleep(200_000)
+    let deadline = Date().addingTimeInterval(5)
+    func focusedPanelField() throws -> AXUIElement? {
+      guard let value = axAttribute(AXUIElementCreateApplication(pid), kAXFocusedUIElementAttribute),
+            CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+      let field = unsafeBitCast(value, to: AXUIElement.self)
+      let role = axString(field, kAXRoleAttribute)
+      guard ["AXTextField", "AXComboBox"].contains(role),
+            axString(field, kAXSubroleAttribute) != "AXSecureTextField",
+            !axHidden(field), let size = axSize(field), size.width > 5, size.height > 5 else { return nil }
+      let fields = try queryElements(["role": role, "within": ["role": "AXSheet", "scope": "window"]])
+      return fields.contains(where: { CFEqual($0.0, field) }) ? field : nil
+    }
+    func waitForPanel(_ message: String, _ condition: () throws -> Bool) throws {
+      while Date() < deadline {
+        try requireLiveTarget(); try frontmostGuard()
+        if try condition() { return }
+        usleep(20_000)
+      }
+      throw protocolError(message)
+    }
+    let previousField = try focusedPanelField()
+    try postKey("command+shift+g")
+    var pathField: AXUIElement?
+    try waitForPanel("Go-to-folder field did not acquire focus") {
+      guard let field = try focusedPanelField(),
+            previousField == nil || !CFEqual(previousField!, field) else { return false }
+      pathField = field; return true
+    }
+    guard let pathField else { throw protocolError("Go-to-folder field unavailable") }
+    try postKey("command+a"); try postText(path)
+    try waitForPanel("Go-to-folder path was not entered exactly") {
+      axString(pathField, kAXValueAttribute) == path &&
+          (axAttribute(pathField, kAXFocusedAttribute) as? Bool == true)
+    }
+    try postKey("enter")
+    try waitForPanel("Go-to-folder navigation did not complete") {
+      let fields = try queryElements(["role": axString(pathField, kAXRoleAttribute), "scope": "window"])
+      return !fields.contains(where: { CFEqual($0.0, pathField) })
+    }
     let button = request["button"] as? String ?? (command == "savePanel" ? "Save" : "Open")
-    let found = try queryElements(["role": "AXButton", "name": button, "scope": "window", "enabled": true])
-    guard found.count == 1, AXUIElementPerformAction(found[0].0, kAXPressAction as CFString) == .success else { throw protocolError("Panel confirmation unavailable") }
+    var confirmation: AXUIElement?
+    try waitForPanel("Panel confirmation unavailable after path navigation") {
+      let found = try queryElements(["role": "AXButton", "name": button, "enabled": true,
+          "within": ["role": "AXSheet", "scope": "window"]]).filter {
+        guard let size = axSize($0.0) else { return false }
+        return !axHidden($0.0) && size.width > 5 && size.height > 5
+      }
+      guard found.count == 1 else { return false }
+      confirmation = found[0].0; return true
+    }
+    guard let confirmation, AXUIElementPerformAction(confirmation, kAXPressAction as CFString) == .success else {
+      throw protocolError("Panel confirmation failed")
+    }
   default: break
   }
   return true

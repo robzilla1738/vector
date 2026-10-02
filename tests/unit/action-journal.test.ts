@@ -82,7 +82,7 @@ it("rolls back intent creation if its transition record cannot be committed", ()
   expect(f.ledger.begin(action).duplicate).toBe(false);
 });
 
-it("cannot report completion while the persistent journal contains an unresolved effect", () => {
+it("cannot report completion while the persistent journal contains an unresolved effect", async () => {
   const f = fixture();
   seedParents(f.db, action);
   const repo = new Repo(f.db);
@@ -90,7 +90,7 @@ it("cannot report completion while the persistent journal contains an unresolved
   f.ledger.begin(action);
   const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => repo.getPage(pageId)), repo, events: new EventBus(repo), pages: {} as never,
     model: () => null, defaultModel: () => "test", recoveryModel: () => undefined, recordModelCall: () => {} });
-  coordinator.finish("run", "completed", { sent: true });
+  await coordinator.finish("run", "completed", { sent: true });
   const run = repo.getRun("run")!;
   expect(run.status).toBe("interrupted");
   expect(run.result).toBeUndefined();

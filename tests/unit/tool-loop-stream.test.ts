@@ -179,3 +179,105 @@ it("does not complete a partial answer after the person cancels the actual strea
   await rejection;
   expect(model.doGenerateCalls).toHaveLength(0);
 });
+
+it.each(["tools", "structured"] as const)(
+  "retains actual reported usage when a %s stream fails",
+  async (kind) => {
+    const failure = Object.assign(new Error("Billed provider failure"), {
+      usage: { inputTokens: 12, outputTokens: 4 },
+      providerMetadata: { gateway: { cost: "0.02" } },
+    });
+    const model = new MockLanguageModelV4({
+      doStream: {
+        stream: new ReadableStream({
+          start(controller) {
+            controller.enqueue({ type: "stream-start", warnings: [] });
+            controller.enqueue({ type: "error", error: failure });
+            controller.close();
+          },
+        }),
+      },
+    });
+    const { SpendLedger } = await import("../../apps/runtime/src/store/spend-ledger.js");
+    const { attemptsOf } = await import("../../apps/runtime/src/agent/model-client.js");
+    const ledger = new SpendLedger(":memory:");
+    const settle = vi.spyOn(ledger, "settle");
+    const client = new GatewayModelClient("synthetic", {
+      model: () => model,
+      spendLedger: ledger,
+      models: () => [
+        {
+          id: "openai/gpt-5.6-luna-fast",
+          contextTokens: 100000,
+          inputUsdPerMTok: 1,
+          outputUsdPerMTok: 2,
+          source: "configured",
+        },
+      ],
+    });
+    const pending =
+      kind === "tools"
+        ? client.toolCallStep({
+            modelId: "openai/gpt-5.6-luna-fast",
+            system: "Answer",
+            messages: [{ role: "user", content: "Hello" }],
+            tools: {},
+            onText: () => {},
+          })
+        : client.streamStructured({
+            modelId: "openai/gpt-5.6-luna-fast",
+            system: "Answer",
+            prompt: "Hello",
+            schema: z.object({ ok: z.boolean() }),
+            onText: () => {},
+          });
+    await expect(pending).rejects.toBe(failure);
+    expect(attemptsOf(failure)).toEqual([
+      expect.objectContaining({
+        modelId: "openai/gpt-5.6-luna-fast",
+        inputTokens: 12,
+        outputTokens: 4,
+        providerMetadata: { gateway: { cost: "0.02" } },
+      }),
+    ]);
+    expect(settle).toHaveBeenCalledExactlyOnceWith(expect.anything(), 0.02);
+    expect(model.doStreamCalls).toHaveLength(1);
+    expect(model.doGenerateCalls).toHaveLength(0);
+  },
+);
+
+it("retains known usage on structured cancellation without corrective retry or failover", async () => {
+  const abort = new AbortController();
+  const failure = Object.assign(new Error("Billed cancellation"), {
+    usage: { inputTokens: 12, outputTokens: 4 },
+    providerMetadata: { gateway: { cost: "0.02" } },
+  });
+  const model = new MockLanguageModelV4({
+    doGenerate: async () => {
+      abort.abort(failure);
+      throw failure;
+    },
+  });
+  const { attemptsOf } = await import("../../apps/runtime/src/agent/model-client.js");
+  const client = new GatewayModelClient("synthetic", {
+    model: () => model,
+    candidatesFor: () => [
+      { modelId: "test", reasoning: "low" },
+      { modelId: "other", reasoning: "low" },
+    ],
+  });
+  await expect(
+    client.generateStructured({
+      modelId: "test",
+      system: "Answer",
+      prompt: "Hello",
+      schema: z.object({ ok: z.boolean() }),
+      signal: abort.signal,
+    }),
+  ).rejects.toBe(failure);
+  expect(attemptsOf(failure)).toEqual([
+    expect.objectContaining({ modelId: "test", inputTokens: 12, outputTokens: 4 }),
+  ]);
+  expect(model.doGenerateCalls).toHaveLength(1);
+  expect(model.doStreamCalls).toHaveLength(0);
+});

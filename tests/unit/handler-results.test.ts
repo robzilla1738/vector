@@ -113,6 +113,7 @@ beforeAll(() => {
     repo,
     native: {
       available: () => true,
+      permissionRetire: async () => { throw new Error("This fixture does not support native permission retirement"); },
       tabCommand: async () => ({ commandId: "", status: "applied" as const, catalogVersion: 0 }),
       focusPage: async () => ({ ok: true }),
       stopPage: async () => ({ ok: true }),

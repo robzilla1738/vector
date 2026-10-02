@@ -1,3 +1,4 @@
+import { overnightRoot } from "../run-lineage.js";
 import { checkNightShiftDispatch } from "../../features/overnight-review/service.js";
 import { AuxError, isElementRef, type Condition, type Observation, type ObservationContent, type Program, type ProgramNode, type ProgramResult, type Step, type StepRecord, newStepId } from "@aux/contracts";
 import { beginConsequentialWrite, settleWrite } from "../../agent/durable.js";
@@ -124,7 +125,7 @@ export class ProgramExecutor {
                 turnId: ctx.runId ?? ctx.safety?.turnId ?? `direct:${pageId}`,
                 threadId: run?.config?.chatId ?? ctx.safety?.threadId ?? `page:${pageId}`,
                 sessionId: lp.target.sessionId ?? undefined,
-                standingOnly: !!run?.config?.nightShiftItemId,
+                standingOnly: !!(ctx.runId && overnightRoot(this.pages.deps.repo, ctx.runId)),
                 approvalId: metadata?.approvalId,
                 review: metadata?.review,
                 turnToolCallCount: ctx.safety?.turnToolCallCount,

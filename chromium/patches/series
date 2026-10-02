@@ -180,3 +180,7 @@ aux/runtime/0205-native-callback-compilation.patch
 aux/runtime/0206-permission-fixture-dictionary.patch
 aux/runtime/0209-permission-zap-fixture.patch
 aux/runtime/0210-permission-fixture-actor-types.patch
+aux/runtime/0208-native-permission-effect-receipt.patch
+aux/runtime/0211-permission-fixture-origin-and-tab-binding.patch
+aux/runtime/0212-permission-fixture-prompt-options.patch
+aux/runtime/0213-permission-retirement-dispatch-registration.patch

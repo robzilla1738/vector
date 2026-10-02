@@ -169,7 +169,7 @@ it("forgets saved article answers through later turns, artifact citations, and r
   save("unrelated", { context: "ordinary independent context" });
   const pending = h.runs.messages.queue({ messageId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", runId: "article",
     chatId: "forget-chat", text: "Continue the private answer", pageIds: ["page"], contextPageRefs: [], expectedRevision: 0 });
-  expect(h.runs.redactForgottenArticleOutputs("space")).toBe(4);
+  expect(await h.runs.redactForgottenArticleOutputs("space")).toBe(4);
   expect(h.runs.messages.list("forget-chat").find(message => message.messageId === pending.messageId)?.status).toBe("cancelled");
   for (const id of ["article", "followup", "citation", "retry"]) {
     const run = h.repo.getRun(id)!;
@@ -193,12 +193,12 @@ it("forgets saved article answers through later turns, artifact citations, and r
   expect(h.repo.getInvocation("uncertain-invocation")?.inputs).toEqual({ taskId: "task-one", projectId: "project-one" });
   expect(h.removedArtifacts).toContain("/synthetic/derived-report");
   expect(h.repo.getRun("unrelated")?.result).toEqual({ answer: "private answer unrelated" });
-  expect(h.runs.redactForgottenArticleOutputs("space")).toBe(0);
+  expect(await h.runs.redactForgottenArticleOutputs("space")).toBe(0);
   expect(() => h.runs.messages.queue({ messageId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", runId: "article",
     chatId: "forget-chat", text: "Continue revoked article", pageIds: ["page"], contextPageRefs: [], expectedRevision: 0 }))
     .toThrow(/forgotten saved article/);
   save("late-citation", { contextArtifactIds: ["derived-report"], context: "private answer from removed report" });
-  expect(h.runs.redactForgottenArticleOutputs("space")).toBe(1);
+  expect(await h.runs.redactForgottenArticleOutputs("space")).toBe(1);
   expect(h.repo.getRun("late-citation")?.result).toBeUndefined();
   await expect(h.runs.retry("retry")).rejects.toThrow(/forgotten saved article/);
 });
@@ -607,20 +607,20 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const page = await h.pages.open({ url: "https://shared.test/record", background: false, ownedByRuntime: false });
     const run = await h.runs.start({ goal: "Read", pageIds: [page.pageId] });
     await sleep(10);
-    h.runs.pause(run.runId);
+    await h.runs.pause(run.runId);
     page.controller = "human";
-    handlePageTakeover(page.pageId, "human", h.repo, h.runs);
+    await handlePageTakeover(page.pageId, "human", h.repo, h.runs);
     page.controller = "none";
-    handlePageTakeover(page.pageId, "none", h.repo, h.runs);
+    await handlePageTakeover(page.pageId, "none", h.repo, h.runs);
     expect(h.repo.getRun(run.runId)?.status).toBe("paused");
-    h.runs.resume(run.runId);
+    await h.runs.resume(run.runId);
     page.controller = "human";
-    handlePageTakeover(page.pageId, "human", h.repo, h.runs);
+    await handlePageTakeover(page.pageId, "human", h.repo, h.runs);
     expect(h.repo.getRun(run.runId)?.status).toBe("paused");
     page.controller = "none";
-    handlePageTakeover(page.pageId, "none", h.repo, h.runs);
+    await handlePageTakeover(page.pageId, "none", h.repo, h.runs);
     expect(h.repo.getRun(run.runId)?.status).toBe("running");
-    h.runs.cancel(run.runId);
+    await h.runs.cancel(run.runId);
   });
 
   it("persists a takeover checkpoint and aborts a live planner before resuming", async () => {
@@ -644,7 +644,7 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const run = await h.runs.start({ goal: "Read", pageIds: [page.pageId] });
     await planning;
     page.controller = "human";
-    handlePageTakeover(page.pageId, "human", h.repo, h.runs);
+    await handlePageTakeover(page.pageId, "human", h.repo, h.runs);
     await sleep(20);
     const held = h.repo.getRun(run.runId)!;
     expect(held.status).toBe("paused");
@@ -653,9 +653,9 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
       recoveryStatus: "paused", pageIdentity: { pageIds: [page.pageId] } });
     expect(aborted).toBeGreaterThan(0);
     page.controller = "none";
-    handlePageTakeover(page.pageId, "none", h.repo, h.runs);
+    await handlePageTakeover(page.pageId, "none", h.repo, h.runs);
     expect(h.repo.getRun(run.runId)?.status).toBe("running");
-    h.runs.cancel(run.runId);
+    await h.runs.cancel(run.runId);
   });
 
   it("interrupts a saved program on takeover without a late completion overwriting its checkpoint", async () => {
@@ -665,7 +665,7 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
       parameters: [], stepsJson: JSON.stringify(program.steps), useCount: 0, createdAt: Date.now() });
     const { runId } = h.runs.runProgram({ programId: "takeover-program", pageId: page.pageId });
     page.controller = "human";
-    handlePageTakeover(page.pageId, "human", h.repo, h.runs);
+    await handlePageTakeover(page.pageId, "human", h.repo, h.runs);
     const held = h.repo.getRun(runId)!;
     expect(held.status).toBe("interrupted");
     expect(held.config?.checkpoint).toMatchObject({ planBoundary: "takeover",
@@ -682,7 +682,7 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const { runId } = await h.runs.mapSet({ setId: set.setId, program });
     await sleep(10);
     page.controller = "human";
-    handlePageTakeover(page.pageId, "human", h.repo, h.runs);
+    await handlePageTakeover(page.pageId, "human", h.repo, h.runs);
     expect(h.repo.getRun(runId)?.status).toBe("cancelled");
     const members = await untilMembersSettled(h.repo, set.setId);
     expect(members[0]?.status).toBe("skipped");
@@ -783,7 +783,7 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const h=harness({maxWorkers:1,model});
     const set=await h.sets.create({name:"timed",source:"urls",urls:urls(2)});
     const {runId}=await h.runs.mapSet({setId:set.setId,goal:"Compare",deadlineMs:40});
-    h.runs.pause(runId);
+    await h.runs.pause(runId);
     const run=await untilTerminal(h.repo,runId);
     expect(run.status).toBe("failed");
     expect(h.repo.listMembers(set.setId).every(member=>member.status!=="running"&&member.status!=="queued")).toBe(true);
@@ -813,7 +813,7 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const set = await h.sets.create({ name: "s", source: "urls", urls: urls(4) });
     const { runId } = await h.runs.mapSet({ setId: set.setId, program });
     await sleep(30); // first member is mid-execute, three are queued behind the 1-worker pool
-    h.runs.cancel(runId);
+    await h.runs.cancel(runId);
     const run = await untilTerminal(h.repo, runId);
     expect(run.status).toBe("cancelled");
     const members = await untilMembersSettled(h.repo, set.setId);
@@ -832,7 +832,7 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
         calls++;
         seenSignal = o.signal;
         await sleep(30, o.signal);
-        return { object: { status: "done", message: "ok", result: { v: calls } } as never, durationMs: 30 };
+        return { object: { status: "done", message: "ok", result: { v: calls } } as never, durationMs: 30, resolvedModelId: "served/member" };
       },
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
@@ -848,6 +848,7 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     expect(results.length).toBe(2);
     expect(results.every((r) => r.runId === run.runId)).toBe(true);
     expect(h.repo.listModelCalls(run.runId).length).toBe(calls);
+    expect(h.repo.listModelCalls(run.runId).every(call => call.modelId === "served/member")).toBe(true);
     expect(done.config?.modelCalls).toBe(calls);
     expect(calls).toBeGreaterThan(0);
   });
@@ -901,7 +902,7 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const run = await h.runs.start({ goal: "g", setId: set.setId });
     await sleep(40);
     expect(seenSignal?.aborted).toBe(false);
-    h.runs.cancel(run.runId);
+    await h.runs.cancel(run.runId);
     const done = await untilTerminal(h.repo, run.runId);
     expect(done.status).toBe("cancelled");
     expect(seenSignal?.aborted).toBe(true);
@@ -924,7 +925,7 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const set = await h.sets.create({ name: "s", source: "urls", urls: urls(3) });
     const { runId } = await h.runs.mapSet({ setId: set.setId, program });
     await sleep(20);
-    const paused = h.runs.pause(runId);
+    const paused = await h.runs.pause(runId);
     expect(paused.status).toBe("paused");
     expect(h.runs.isSetRunPaused(runId)).toBe(true);
     await sleep(200); // the in-flight member finishes; nothing else may start
@@ -933,7 +934,7 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const members = h.repo.listMembers(set.setId);
     expect(members.filter((m) => m.status === "completed").length).toBe(1);
     expect(members.filter((m) => m.status === "queued").length).toBe(2);
-    const resumed = h.runs.resume(runId);
+    const resumed = await h.runs.resume(runId);
     expect(resumed.status).toBe("running");
     const run = await untilTerminal(h.repo, runId);
     expect(run.status).toBe("completed");
@@ -944,9 +945,9 @@ describe("set-run lifecycle (P0-2 / P1-3)", () => {
     const h = harness({ execMs: 30, maxWorkers: 1 });
     const set = await h.sets.create({ name: "s", source: "urls", urls: urls(3) });
     const { runId } = await h.runs.mapSet({ setId: set.setId, program });
-    h.runs.pause(runId);
+    await h.runs.pause(runId);
     await sleep(80);
-    h.runs.cancel(runId);
+    await h.runs.cancel(runId);
     const run = await untilTerminal(h.repo, runId);
     expect(run.status).toBe("cancelled");
     const members = await untilMembersSettled(h.repo, set.setId);

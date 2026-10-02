@@ -91,6 +91,7 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   createAgentPage?(input: AgentPageCreate): Promise<AgentPageCreated>;
   egressContext?(input: { tabId: string; expectedUrl: string }): Promise<EgressContext>;
   egressInstall?(input: { lease: EgressLease; expectedUrl: string }): Promise<{ accepted: true }>;
+  permissionRetire(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }>;
   egressRevoke?(input: { leaseId: string }): Promise<{ accepted: true }>;
   capabilities?(): Promise<HostCapabilities>;
   /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
@@ -190,6 +191,9 @@ export class ChannelNativeBridge implements NativeBridge {
   }
   egressInstall(input: { lease: EgressLease; expectedUrl: string }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressInstall", input);
+  }
+  permissionRetire(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }> {
+    return this.channel.call("native.permissionRetire", input);
   }
   egressRevoke(input: { leaseId: string }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressRevoke", input);
@@ -359,6 +363,9 @@ export class ChannelNativeBridge implements NativeBridge {
 }
 
 export class NullNativeBridge implements NativeBridge {
+  async permissionRetire(_input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }> {
+    throw new AuxError("backend_unavailable", "Native permission retirement is unavailable.");
+  }
   available() {
     return false;
   }

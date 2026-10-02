@@ -13,11 +13,12 @@ const RANK = { none: 0, low: 1, medium: 2, high: 3 } as const;
 /** Text from pages and tools is data. This envelope must be preserved through every model hop. */
 export type UntrustedOutput = { trust: "untrusted"; source: "page" | "tool" | "mcp"; content: string; sourceId?: string };
 
-export type GuardianJudge = (input: { action: SafetyAction; untrusted: readonly UntrustedOutput[] }) => Promise<GuardianFinding[]>;
+export type GuardianJudge = (input: { runId?: string; action: SafetyAction; untrusted: readonly UntrustedOutput[] }) => Promise<GuardianFinding[]>;
 
 /** Deterministic policy leads; a judge may only add findings, never relax a denial. */
 export async function reviewGuardian(input: {
   action: SafetyAction;
+  runId?: string;
   authorization: "none" | "low" | "medium" | "high";
   restrictedRetry?: boolean;
   untrusted?: readonly UntrustedOutput[];
@@ -36,7 +37,7 @@ export async function reviewGuardian(input: {
   const needsJudge = findings.some(f => f.severity === "high") || input.action.effect === "external_tool";
   if (needsJudge && !input.judge) findings.push({ category: "privilege_escalation", severity: "critical", reason: "guardian_unavailable" });
   if (needsJudge && input.judge) {
-    try { findings.push(...await input.judge({ action: input.action, untrusted: input.untrusted ?? [] })); }
+    try { findings.push(...await input.judge({ runId: input.runId, action: input.action, untrusted: input.untrusted ?? [] })); }
     catch { findings.push({ category: "privilege_escalation", severity: "critical", reason: "guardian_unavailable" }); }
   }
   if (findings.some(f => f.severity === "critical")) {

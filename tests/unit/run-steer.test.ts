@@ -59,11 +59,11 @@ describe("run steering", () => {
     const run = await coordinator.start({ goal: "Find the result", pageIds: ["page"] });
     await vi.waitFor(() => expect(calls).toBe(1));
     expect(pageOwnership.snapshot().page).toMatchObject({ runId: run.runId });
-    coordinator.pause(run.runId);
+    await coordinator.pause(run.runId);
     releasePlan();
     await vi.waitFor(() => expect(pageOwnership.snapshot().page).toBeUndefined());
     const releaseExternal = pageOwnership.tryAcquire({ pageId: "page", actor: "external" });
-    coordinator.resume(run.runId);
+    await coordinator.resume(run.runId);
     await new Promise(resolve => setTimeout(resolve, 140));
     expect(calls).toBe(1);
     releaseExternal();
@@ -106,7 +106,7 @@ describe("run steering", () => {
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("needs_input"));
     expect(pageOwnership.snapshot().page).toBeUndefined();
     const releaseExternal = pageOwnership.tryAcquire({ pageId: "page", actor: "external" });
-    coordinator.answer(run.runId, "Latest");
+    await coordinator.answer(run.runId, "Latest");
     await new Promise(resolve => setTimeout(resolve, 20));
     expect(calls).toBe(1);
     releaseExternal();
@@ -132,7 +132,7 @@ describe("run steering", () => {
     const { repo, coordinator, messages } = harness(model);
     const run = await coordinator.start({ goal: "Find the result", pageIds: ["page"], chatId: "chat", contextPageRefs: refs });
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("needs_input"));
-    messages.steer(steer(run.runId));
+    await messages.steer(steer(run.runId));
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("completed"));
     expect(prompts[1]).toContain("<interrupted_request>\nUser correction: Use the updated requirement\n</interrupted_request>");
     expect(prompts[1]).not.toContain("Answer to your question");
@@ -158,7 +158,7 @@ describe("run steering", () => {
     const { repo, coordinator, messages } = harness(model, execute as never);
     const run = await coordinator.start({ goal: "Apply the change", pageIds: ["page"], chatId: "chat", contextPageRefs: refs });
     await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1));
-    messages.steer(steer(run.runId));
+    await messages.steer(steer(run.runId));
     releaseWrite();
     await vi.waitFor(() => expect(repo.getRun(run.runId)?.status).toBe("interrupted"));
     expect(calls).toBe(1);
