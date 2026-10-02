@@ -37,13 +37,21 @@ export async function run(t) {
     return { ax: await t.ax.dump(), rpc: details };
   });
   await t.step('repeat login in a new run without another sheet', { kind: 'ui', features: ['agentSitePermissions'] }, async () => {
+    const outsiderDenials = [];
+    for (const [method, params] of [
+      ['safety.originPolicies.set', { expectedRevision: 0, rules: [{ origin: new URL(t.fixture.url).origin, access: 'allow' }] }],
+      ['safety.grants.revoke', { profileId: 'outside-profile' }],
+    ]) await t.assert.rejects(() => t.rpc(method, params), error => {
+      outsiderDenials.push({ method, code: error.code, message: error.message });
+      return error.code === 'permission_denied';
+    });
     modelForLogin(2);
     const next = await mentionedRun(t, 'Aux synthetic account', 'Press Sign in again without entering either synthetic field.', true);
     const details = await finished(t, next.runId);
     t.assert.equal(fixture.logins(), 2);
     t.assert.equal((await t.ax.query({ name: 'Allow this action', match: 'exact', scope: 'shell' })).length, 0);
     await t.capture('site-login-standing-consent');
-    return { ax: await t.ax.dump(), rpc: details };
+    return { ax: await t.ax.dump(), rpc: { ...details, outsiderDenials } };
   });
   await t.step('delete still requires a fresh sheet without Always allow', { kind: 'ui', features: ['agentSitePermissions'] }, async () => {
     t.model.respond(payload => {

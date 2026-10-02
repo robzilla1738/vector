@@ -5,8 +5,9 @@ export async function measureOrganizationWork<T>(name: "aux:autoArchive:cycle" |
   performance.mark(start);
   try { return await work(); }
   finally {
-    performance.mark(end); performance.measure(name, start, end);
+    performance.mark(end);
+    if (performance.getEntriesByName(name, "measure").length >= 20) performance.clearMeasures(name);
+    performance.measure(name, start, end);
     performance.clearMarks(start); performance.clearMarks(end);
-    if (performance.getEntriesByName(name, "measure").length > 20) performance.clearMeasures(name);
   }
 }
