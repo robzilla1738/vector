@@ -318,6 +318,10 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       if (!running() || externalPid || !appearanceStream) return Promise.reject(new Error('No owned appearance stream for current child'));
       return appearanceStream.observe(selection);
     },
+    discoverPipAppearance(selection) {
+      if (!running() || externalPid || !pipAppearanceStream) return Promise.reject(new Error('No current owned child discovery stream'));
+      return pipAppearanceStream.discover(selection);
+    },
     observePipAppearance(selection) {
       if (!running() || externalPid || !pipAppearanceStream) return Promise.reject(new Error('No owned child appearance stream for current child'));
       return pipAppearanceStream.observe(selection);

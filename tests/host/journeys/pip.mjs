@@ -1,3 +1,4 @@
+import { captureOwnedPip } from '../lib/pip-capture.mjs';
 import { surfaceMediaPage } from '../fixtures/surface-media.mjs';
 import { setTabLayout } from '../lib/tab-layout.mjs';
 
@@ -28,7 +29,8 @@ export async function run(t) {
     await t.ax.waitFor(selector('Video PiP: large')); await t.until('native video PiP window appears', async () => (await pipWindows(t, baseline)).length === 1);
     await t.ax.waitFor(selector('Exit picture in picture', 'shell', 'AXButton'));
     const entered = await observation(t, page); t.assert.match(JSON.stringify(entered.rpc.page), /Video PiP: large/);
-    await t.capture('pip-largest-video'); await t.ax.key('control+command+p', 'hid');
+    await t.capture('pip-largest-video');
+    await captureOwnedPip(t, 'pip-largest-video-child', page, 'video-pip', 'video-manual-largest'); await t.ax.key('control+command+p', 'hid');
     await t.ax.waitFor(selector('Video PiP: none')); await t.until('native PiP window closes', async () => !(await pipWindows(t, baseline)).length);
     return { ax: await t.ax.dump(), rpc: { entered: entered.rpc, exited: (await observation(t, page)).rpc } };
   });
@@ -37,6 +39,7 @@ export async function run(t) {
     await t.ax.key('control+command+p', 'hid'); await t.ax.waitFor(selector('Media session handler: invoked'));
     await t.ax.waitFor(selector('Video PiP: large')); const entered = await observation(t, page);
     t.assert.match(JSON.stringify(entered.rpc.page), /Media session handler: invoked/);
+    await captureOwnedPip(t, 'pip-media-session-child', page, 'video-pip', 'video-media-session');
     await t.ax.key('control+command+p', 'hid'); await t.ax.waitFor(selector('Video PiP: none'));
     return entered;
   });
@@ -52,7 +55,9 @@ export async function run(t) {
   await t.step('Document PiP owns a real window and native state', { kind: 'ui', features: ['pictureInPicture'] }, async () => {
     const baseline = await t.ax.windows(); await t.ax.press(selector('Document picture in picture', 'page', 'AXButton'));
     await t.ax.waitFor(selector('Document PiP fixture', 'any')); await t.until('native Document PiP window appears', async () => (await pipWindows(t, baseline)).length === 1);
-    const opened = await observation(t, page); await t.ax.press(selector('Close Document PiP', 'any', 'AXButton'));
+    const opened = await observation(t, page);
+    await captureOwnedPip(t, 'pip-document-child', page, 'document-pip', 'document-open');
+    await t.ax.press(selector('Close Document PiP', 'any', 'AXButton'));
     await t.until('native Document PiP window closes', async () => !(await pipWindows(t, baseline)).length);
     return opened;
   });
@@ -80,6 +85,7 @@ export async function run(t) {
       const observed = await observation(t, video);
       t.assert.match(JSON.stringify(observed.rpc.page), allows ? /Video PiP: large/ : /Video PiP: none/);
       await t.capture(`pip-auto-${host.replaceAll('.', '-')}`);
+      if (allows) await captureOwnedPip(t, `pip-auto-child-${host.replaceAll('.', '-')}`, video, 'video-pip', `video-auto-${host.replaceAll('.', '-')}`);
       // Returning to the owning tab must close auto-PiP before the next trial.
       await t.ax.press(tab('Aux PiP one video')); await t.until('auto PiP closes on return', async () => !(await pipWindows(t, baseline)).length);
       await t.ax.key('command+w', 'hid'); await t.until('the exact auto-PiP fixture is closed', async () => !(await t.rpc('pages.list')).some(item => item.pageId === video.pageId));

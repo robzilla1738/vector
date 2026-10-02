@@ -17,10 +17,12 @@ function createRecordStream({ pid, generation, candidate, maxRecords = 4000, max
   candidate = structuredClone(candidate);
   let decoder = new StringDecoder('utf8'), partial = '', bytes = 0, count = 0, sequence = 0, disposed = false, failure;
   const pending = new Map(), seen = new Set();
+  let discovery;
   function fail(error) {
     failure ??= error;
     for (const waiter of pending.values()) { clearTimeout(waiter.timer); waiter.reject(failure); }
     pending.clear(); partial = '';
+    if (discovery) { clearTimeout(discovery.timer); discovery.reject(failure); discovery = undefined; }
   }
   function line(text) {
     if (!text.startsWith(prefix)) return; // Other browser diagnostics have no authority.
@@ -34,6 +36,10 @@ function createRecordStream({ pid, generation, candidate, maxRecords = 4000, max
     assert.ok(!seen.has(key), 'Duplicate native appearance observation'); seen.add(key);
     const waiter = pending.get(raw.windowId);
     const recordSequence = ++sequence;
+    if (discovery && recordSequence > discovery.sequence && raw[timeKey] >= discovery.notBefore &&
+        raw.ownerPageId === discovery.ownerPageId && raw.surfaceKind === discovery.surfaceKind) {
+      const ready = discovery; discovery = undefined; clearTimeout(ready.timer); ready.resolve(rawJson);
+    }
     if (waiter && recordSequence > waiter.sequence && raw[timeKey] >= waiter.notBefore) {
       pending.delete(raw.windowId); clearTimeout(waiter.timer); waiter.resolve(rawJson);
     }
@@ -60,12 +66,27 @@ function createRecordStream({ pid, generation, candidate, maxRecords = 4000, max
       try {
         assert.ok(Number.isInteger(windowId) && windowId > 0 && typeof notBefore === 'string' && Number.isFinite(Date.parse(notBefore)), 'Invalid owned stream selection');
         assert.ok(Number.isInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 10000, 'Invalid bounded observation wait');
-        assert.ok(!pending.has(windowId), 'Ambiguous concurrent observation for window');
+        assert.ok(!discovery && !pending.has(windowId), 'Ambiguous concurrent observation for window');
       } catch (error) { return Promise.reject(error); }
       return new Promise((resolve, reject) => {
         const waiter = { resolve, reject, sequence, notBefore: Date.parse(notBefore), timer: undefined };
         waiter.timer = setTimeout(() => { pending.delete(windowId); reject(new Error('No fresh native appearance record')); }, timeoutMs);
         pending.set(windowId, waiter);
+      });
+    },
+    discover({ ownerPageId, surfaceKind, notBefore, timeoutMs = 5000 }) {
+      if (failure || disposed) return Promise.reject(failure ?? new Error('Appearance stream disposed'));
+      try {
+        assert.equal(prefix, 'AUX_NATIVE_PIP_APPEARANCE_V1 ', 'Discovery is private child-only');
+        assert.ok(typeof ownerPageId === 'string' && ownerPageId.length > 0 && ownerPageId.length <= 512 &&
+          ['video-pip', 'document-pip'].includes(surfaceKind) && typeof notBefore === 'string' && Number.isFinite(Date.parse(notBefore)), 'Invalid owned child discovery');
+        assert.ok(Number.isInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 30000, 'Invalid discovery deadline');
+        assert.ok(!discovery && pending.size === 0, 'Concurrent child discovery is ambiguous');
+      } catch (error) { return Promise.reject(error); }
+      return new Promise((resolve, reject) => {
+        const waiter = { ownerPageId, surfaceKind, notBefore: Date.parse(notBefore), sequence, resolve, reject, timer: undefined };
+        waiter.timer = setTimeout(() => { discovery = undefined; reject(new Error('No fresh owned child discovery record')); }, timeoutMs);
+        discovery = waiter;
       });
     },
     reset(next) {

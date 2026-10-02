@@ -93,7 +93,7 @@ test('normal and child stderr channels never satisfy one another', async () => {
   const c = child.observe({ windowId: 7, notBefore: now(), timeoutMs: 15 });
   const native = raw();
   child.write(line(native), { pid: 42, generation: 1 });
-  const pip = { producer: 'aux-native-pip-appearance', version: 1, pid: 42, windowId: 7, nativeUnixMs: Date.now(),
+  const pip = { producer: 'aux-native-pip-appearance', version: 1, pid: 42, windowId: 7, ownerWindowId: 6, ownerPageId: 'actual-page', nativeUnixMs: Date.now(),
     registrationGeneration: '1', surfaceKind: 'document-pip', windowLayer: 3, frame: native.frame,
     nativeTheme: 'dark', viewTheme: 'dark', auxTheme: null, windowOpaque: true, backing: null, material: null,
     nativeReduceTransparency: false, nativeReduceMotion: false };

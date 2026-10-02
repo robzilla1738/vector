@@ -175,6 +175,11 @@ async function execute() {
       writeFileSync(join(outputDir, filename), bytes, { flag: 'wx' });
       records.push({ name, filename, bytes: bytes.length, sha256: sha256(bytes) });
     },
+    discoverPipAppearance: async selection => {
+      signal.throwIfAborted();
+      assert.ok(values.appearance && pipAppearance, 'Counted child capture requires actual appearance enabled');
+      return app.discoverPipAppearance(selection);
+    },
     capturePip: async (name, options) => { signal.throwIfAborted(); return evidence.capturePip(name, options); },
     capture: async (name, options) => { signal.throwIfAborted(); return evidence.capture(name, options); }, clock,
     async step(name, options, action) {

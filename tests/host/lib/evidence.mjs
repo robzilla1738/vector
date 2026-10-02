@@ -11,7 +11,7 @@ export function createEvidence(outputDir, ax, appearanceProvider, pipAppearanceP
   if (lstatSync(requested).isSymbolicLink()) throw new Error('Evidence output must not be a symlink');
   const directory = realpathSync(requested);
   const captures = [];
-  async function capture(name, { windowId, state } = {}, child = false) {
+  async function capture(name, { windowId, state, expectedOwner } = {}, child = false) {
     if (typeof name !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,120}$/.test(name)) throw new Error('Capture needs a simple unique name');
     return withNativeSlot(async () => {
       const windows = await ax.windows();
@@ -19,7 +19,8 @@ export function createEvidence(outputDir, ax, appearanceProvider, pipAppearanceP
       if (windowId !== undefined && (!Number.isInteger(windowId) || windowId <= 0)) throw new Error('Capture window ID must be positive');
       const appearance = child ? pipAppearanceProvider?.() : state === undefined ? undefined : appearanceProvider?.();
       if (child && (!appearance || windowId === undefined || typeof state !== "string" || !state)) throw new Error("Child capture requires its current registry producer, explicit window and state");
-      const childTicket = child ? await appearance.before(windowId) : undefined;
+      if (!child && expectedOwner !== undefined) throw new Error('Normal capture cannot use child ownership');
+      const childTicket = child ? await appearance.before(windowId, expectedOwner) : undefined;
       const selected = child ? windows.filter(item => item.id === windowId && item.layer === childTicket.windowLayer && item.width > 0 && item.height > 0) : candidates;
       if (child && selected.length !== 1) throw new Error("Registered child is absent or ambiguous in owned helper inventory");
       const window = windowId === undefined ? candidates.sort((a, b) => b.width * b.height - a.width * a.height)[0] : selected.find(item => item.id === windowId);

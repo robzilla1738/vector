@@ -113,7 +113,7 @@ test('normalizer rejects timestamp outside actual native request boundaries', ()
 });
 
 function rawChild(changes = {}) {
-  return { producer: 'aux-native-pip-appearance', version: 1, pid: 42, windowId: 7,
+  return { producer: 'aux-native-pip-appearance', version: 1, pid: 42, windowId: 7, ownerWindowId: 6, ownerPageId: 'actual-page',
     nativeUnixMs: Date.now(), registrationGeneration: '1', surfaceKind: 'video-pip', windowLayer: 3,
     frame: { x: 10, y: 20, width: 100, height: 100 }, nativeTheme: 'dark', viewTheme: 'dark', auxTheme: null,
     windowOpaque: true, backing: null, material: null, nativeReduceMotion: false, nativeReduceTransparency: false, ...changes };
@@ -124,7 +124,7 @@ function asChild(f) {
   return createPipAppearanceProvenance(f.options);
 }
 test('distinct actual child schema admits its owned floating layer while retaining unknown material', () => run(async f => {
-  const producer = asChild(f), ticket = await producer.before(7), capturedAt = new Date().toISOString();
+  const producer = asChild(f), ticket = await producer.before(7, { ownerWindowId: 6, ownerPageId: 'actual-page', registrationGeneration: '1', surfaceKind: 'video-pip' }), capturedAt = new Date().toISOString();
   assert.equal(ticket.windowLayer, 3); assert.equal(ticket.registrationGeneration, '1');
   const record = await producer.finish(ticket, f.capture, { state: 'video', capturedAt, captureCompletedAt: capturedAt });
   const proof = JSON.parse(readFileSync(join(f.directory, record.provenance.path)));
@@ -141,7 +141,7 @@ for (const [name, changes, error] of [
   ['missing registry identity', { registrationGeneration: '0' }, /registration generation/],
   ['stale observation', { nativeUnixMs: Date.now() - 10000 }, /unbracketed/],
 ]) test(`child ${name} refuses a counted capture`, () => run(async f => {
-  const producer = asChild(f), ticket = await producer.before(7), capturedAt = new Date().toISOString();
+  const producer = asChild(f), ticket = await producer.before(7, { ownerWindowId: 6, ownerPageId: 'actual-page', registrationGeneration: '1', surfaceKind: 'video-pip' }), capturedAt = new Date().toISOString();
   f.state.native = () => rawChild(changes);
   await assert.rejects(producer.finish(ticket, f.capture, { state: 'video', capturedAt, captureCompletedAt: capturedAt }), error);
   assert.equal(existsSync(join(f.directory, '.appearance-synthetic')), false);
@@ -149,21 +149,21 @@ for (const [name, changes, error] of [
 test('child helper ambiguity and preference disagreement refuse before capture', () => run(async f => {
   const producer = asChild(f);
   f.state.windows = () => Array(2).fill({ id: 7, layer: 3, x: 10, y: 20, width: 100, height: 100 });
-  await assert.rejects(producer.before(7), /owned helper inventory/);
+  await assert.rejects(producer.before(7, { ownerWindowId: 6, ownerPageId: 'actual-page', registrationGeneration: '1', surfaceKind: 'video-pip' }), /owned helper inventory/);
   f.state.windows = () => [{ id: 7, layer: 3, x: 10, y: 20, width: 100, height: 100 }];
   f.state.preferences = () => ({ accessibility: true, screenRecording: true, reduceMotion: false, reduceTransparency: true });
-  await assert.rejects(producer.before(7), /transparency preference mismatch/);
+  await assert.rejects(producer.before(7, { ownerWindowId: 6, ownerPageId: 'actual-page', registrationGeneration: '1', surfaceKind: 'video-pip' }), /transparency preference mismatch/);
 }));
 
 test('known child material counts only through the distinct hashed raw producer', () => run(async f => {
   const producer = asChild(f);
   f.state.native = () => rawChild({ backing: 'solid', material: 'solid' });
-  const ticket = await producer.before(7), capturedAt = new Date().toISOString();
+  const ticket = await producer.before(7, { ownerWindowId: 6, ownerPageId: 'actual-page', registrationGeneration: '1', surfaceKind: 'video-pip' }), capturedAt = new Date().toISOString();
   const record = await producer.finish(ticket, f.capture, { state: 'video', capturedAt, captureCompletedAt: capturedAt });
   assert.equal(sheets(f, record, producer.pins, 'video').records[0].cell, 'D');
 }));
 test('child capture must be fully bracketed, including completion', () => run(async f => {
-  const producer = asChild(f), ticket = await producer.before(7), capturedAt = new Date().toISOString();
+  const producer = asChild(f), ticket = await producer.before(7, { ownerWindowId: 6, ownerPageId: 'actual-page', registrationGeneration: '1', surfaceKind: 'video-pip' }), capturedAt = new Date().toISOString();
   await assert.rejects(producer.finish(ticket, f.capture, { state: 'video', capturedAt,
     captureCompletedAt: new Date(Date.now() + 60000).toISOString() }), /bracket/);
 }));

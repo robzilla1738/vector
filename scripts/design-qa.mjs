@@ -82,7 +82,7 @@ function observedCell(before, after, capture) {
   same(before.window.producer, after.window.producer, 'window producer stability');
   const child = before.window.producer === 'aux-native-pip-appearance';
   if (child) {
-    for (const key of ['surfaceKind', 'registrationGeneration', 'windowLayer']) same(before.window[key], after.window[key], `child ${key} stability`);
+    for (const key of ['surfaceKind', 'ownerWindowId', 'ownerPageId', 'registrationGeneration', 'windowLayer']) same(before.window[key], after.window[key], `child ${key} stability`);
   }
   same(before.window.windowKind, after.window.windowKind, 'window kind');
   require(child || ['normal', 'private', 'quick-ask', 'little'].includes(before.window.windowKind), 'Unknown normal window kind; child requires its distinct producer');

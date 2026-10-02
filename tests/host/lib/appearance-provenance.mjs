@@ -59,6 +59,8 @@ export function normalizePipAppearance(rawJson, { candidate, targetPid, windowId
   assert.equal(raw.pid, targetPid, 'Native child PID mismatch');
   assert.equal(raw.windowId, windowId, 'Native child window mismatch');
   assert.ok(['video-pip', 'document-pip'].includes(raw.surfaceKind), 'Unknown native child kind');
+  assert.ok(Number.isInteger(raw.ownerWindowId) && raw.ownerWindowId > 0 && raw.ownerWindowId !== raw.windowId, 'Missing actual child owner window');
+  assert.ok(typeof raw.ownerPageId === 'string' && raw.ownerPageId.length > 0 && raw.ownerPageId.length <= 512, 'Missing actual child owner page');
   assert.ok(Number.isInteger(raw.windowLayer), 'Missing actual native window layer');
   assert.ok(typeof raw.registrationGeneration === 'string' && /^[1-9][0-9]{0,19}$/.test(raw.registrationGeneration)
     && BigInt(raw.registrationGeneration) <= 18446744073709551615n, 'Invalid child registration generation');
@@ -72,7 +74,7 @@ export function normalizePipAppearance(rawJson, { candidate, targetPid, windowId
   const start = Date.parse(startedAt), end = Date.parse(completedAt);
   assert.ok(Number.isFinite(start) && Number.isFinite(end) && Number.isFinite(raw.nativeUnixMs)
     && raw.nativeUnixMs >= start && raw.nativeUnixMs <= end, 'Stale or unbracketed child readback');
-  assert.deepEqual(Object.keys(raw).sort(), ['producer', 'version', 'pid', 'windowId', 'surfaceKind', 'windowLayer', 'registrationGeneration', 'frame', 'nativeTheme', 'viewTheme', 'auxTheme', 'windowOpaque', 'backing', 'material', 'nativeReduceTransparency', 'nativeReduceMotion', 'nativeUnixMs'].sort(), 'Unexpected child getter fields');
+  assert.deepEqual(Object.keys(raw).sort(), ['producer', 'version', 'pid', 'windowId', 'ownerWindowId', 'ownerPageId', 'surfaceKind', 'windowLayer', 'registrationGeneration', 'frame', 'nativeTheme', 'viewTheme', 'auxTheme', 'windowOpaque', 'backing', 'material', 'nativeReduceTransparency', 'nativeReduceMotion', 'nativeUnixMs'].sort(), 'Unexpected child getter fields');
   return { ...raw, candidate: structuredClone(candidate), observedAt: new Date(raw.nativeUnixMs).toISOString() };
 }
 
@@ -132,8 +134,13 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
     return { window, system, rawJson, rawSystem, startedAt, completedAt };
   }
   return { pins,
-    async before(windowId) {
+    async before(windowId, expectedOwner) {
       const value = await sample(windowId), ticket = Object.freeze({ windowId, ...(child ? { windowLayer: value.window.windowLayer, surfaceKind: value.window.surfaceKind, registrationGeneration: value.window.registrationGeneration } : {}) });
+      if (child) {
+        assert.deepEqual(Object.keys(expectedOwner ?? {}).sort(), ['ownerPageId', 'ownerWindowId', 'registrationGeneration', 'surfaceKind'].sort(), 'Child capture requires discovered ownership fences');
+        for (const key of ['ownerPageId', 'ownerWindowId', 'registrationGeneration', 'surfaceKind'])
+          assert.equal(value.window[key], expectedOwner[key], `Discovered child ${key} changed before capture`);
+      } else assert.equal(expectedOwner, undefined, 'Normal capture cannot use child ownership');
       pending.set(ticket, value); return ticket;
     },
     async finish(ticket, capture, { state, capturedAt, captureCompletedAt }) {
@@ -145,7 +152,7 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
       const after = await sample(capture.windowId);
       assert.deepEqual(before.window.frame, after.window.frame, 'Capture point frame changed');
       assert.equal(before.window.windowKind, after.window.windowKind, 'Capture window kind changed');
-      if (child) for (const key of ['registrationGeneration', 'surfaceKind', 'windowLayer'])
+      if (child) for (const key of ['registrationGeneration', 'ownerWindowId', 'ownerPageId', 'surfaceKind', 'windowLayer'])
         assert.equal(before.window[key], after.window[key], `Capture child ${key} changed`);
       const at = timestamp(capturedAt), end = timestamp(captureCompletedAt);
       assert.ok(end >= at && Math.max(timestamp(before.window.observedAt), timestamp(before.system.observedAt)) <= at && end <= Math.min(timestamp(after.window.observedAt), timestamp(after.system.observedAt)), 'Producers do not bracket capture');
