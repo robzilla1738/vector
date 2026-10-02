@@ -219,3 +219,5 @@ aux/runtime/0244-registration-lifetime-tests-v2.patch
 aux/runtime/0245-private-child-appearance-getter.patch
 aux/runtime/0246-private-owned-pip-appearance-route.patch
 aux/runtime/0247-pip-fixture-special-members.patch
+aux/runtime/0248-pip-actual-owner-window.patch
+aux/runtime/0249-pip-actual-owner-page.patch
