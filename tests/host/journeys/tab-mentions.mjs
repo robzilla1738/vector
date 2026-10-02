@@ -25,6 +25,8 @@ export async function run(t) {
     t.assert.match(JSON.stringify(payload.messages), /"status"\s*:\s*"unavailable"/);
     return tool('submit_result', { report: 'The mentioned page is unavailable after its document changed.' }, 'l10-drift-finish');
   });
+  t.signal.addEventListener('abort', release, { once: true });
+  try {
   let run;
   await t.step('mention A while B is selected and send through the composer', { kind: 'ui', features: ['tabMentions'] }, async () => {
     run = await mentionedRun(t, 'Aux mention A', 'summarize L10 explicit A');
@@ -49,4 +51,5 @@ export async function run(t) {
     await t.capture('mention-drift-refused');
     return { ax: await t.ax.dump(), rpc: details };
   });
+  } finally { release(); t.signal.removeEventListener('abort', release); }
 }
