@@ -1,6 +1,6 @@
 {
   "status": "PASS source replay only; native compilation pending",
-  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-followup-46-replay-0srxl9wc",
+  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-followup-47-replay-45bkiq7k",
   "baseProofSha256": "3c9488741c2896feb692d8748e0e00ffdfb95e204b1a41e785f1efb646ad3f84",
   "orderedPatches": [
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch",
@@ -48,7 +48,8 @@
     "chromium/patches/aux/runtime/0215-native-receipt-cancellation.patch",
     "chromium/patches/aux/runtime/0216-fast-download-completion.patch",
     "chromium/patches/aux/runtime/0217-auto-pip-selection-fixture.patch",
-    "chromium/patches/aux/runtime/0218-auto-pip-mojo-callback.patch"
+    "chromium/patches/aux/runtime/0218-auto-pip-mojo-callback.patch",
+    "chromium/patches/aux/runtime/0219-auto-pip-blink-fixture.patch"
   ],
   "baselineVerification": [
     {
@@ -1046,7 +1047,7 @@
     },
     {
       "path": "third_party/blink/renderer/core/html/media/html_video_element_test.cc",
-      "sha256": "bfe59fd5b87369789f8a675e925f1402fee7d5909201b2ef0a1f58f795495ea3"
+      "sha256": "ed6dd792f218e886011124fee25aac7721089df1f1583fb5eda6823f466a23f2"
     },
     {
       "path": "third_party/blink/renderer/modules/webaudio/audio_context.h",
@@ -1241,7 +1242,11 @@
     {
       "path": "chromium/patches/aux/runtime/0218-auto-pip-mojo-callback.patch",
       "sha256": "362514099c39c92e32af12b5ba4539f2f8cf95bbf7bb6c0983dadf19a7c8c4f1"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0219-auto-pip-blink-fixture.patch",
+      "sha256": "0794f6e1438884045807a39451e61e296d1b34ba54f2eda89837907d62300569"
     }
   ],
-  "priorProofSha256": "c8a3d88f17c8607fd9946a226a58c745681f96e88245a532957e119ac69c4f89"
+  "priorProofSha256": "325054dba0178ecb2257abd98db5d034b5fe5ce39b8083d858607da4e4ce121c"
 }
