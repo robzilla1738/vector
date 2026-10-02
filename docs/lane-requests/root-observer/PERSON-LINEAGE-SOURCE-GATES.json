@@ -69,5 +69,13 @@
   "existingBaselines": 188,
   "rendererDigest": "0d2279fb43d311b47bfd241f8bd04fd9a2f82194bd5771357d0a69b7bf4916c9",
   "qualificationRecordsWritten": false,
-  "discardedTestAttempt": "Early unit invocation stopped while source build still active; only completed after-build log counts"
+  "discardedTestAttempt": "Early unit invocation stopped while source build still active; only completed after-build log counts",
+  "frozenSourceCommit": "678c33d54720a93f17969916eb2b4dda8a78ec8b",
+  "productIdentity": {
+    "commit": "678c33d54720a93f17969916eb2b4dda8a78ec8b",
+    "tree": "e8c77feb254eb49dc35bdb9ffd6be1d14531f8aa",
+    "dirty": false,
+    "label": "678c33d54720a93f17969916eb2b4dda8a78ec8b"
+  },
+  "replaySha256": "bad0dc067f75776c2722cffaf61da3637756d807168f85e7d8d2c29fe9fc78fd"
 }
