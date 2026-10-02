@@ -1218,7 +1218,8 @@ func measureKey(_ request: [String: Any]) throws -> [String: Any] {
   }
   return result
 }
-func postText(_ text: String) throws {
+func postText(_ text: String, via: String = "pid") throws {
+  guard ["pid", "hid"].contains(via) else { throw protocolError("via must be pid or hid") }
   // Send Unicode scalars together so surrogate pairs remain intact.
   for scalar in text.unicodeScalars {
     var units = Array(String(scalar).utf16)
@@ -1229,7 +1230,11 @@ func postText(_ text: String) throws {
       down.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
       up.keyboardSetUnicodeString(stringLength: buffer.count, unicodeString: buffer.baseAddress!)
     }
-    down.postToPid(pid); up.postToPid(pid); usleep(14_000)
+    if via == "hid" {
+      try requireLiveTarget(); try frontmostGuard()
+      down.post(tap: .cghidEventTap); up.post(tap: .cghidEventTap)
+    } else { down.postToPid(pid); up.postToPid(pid) }
+    usleep(14_000)
   }
 }
 func mouseEvent(_ type: CGEventType, at point: CGPoint, button: CGMouseButton = .left,
@@ -1348,19 +1353,25 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
     }
   case "savePanel", "openPanel":
     guard let path = request["path"] as? String, !path.isEmpty else { throw protocolError("panel path required") }
-    let sheets = try queryElements(["role": "AXSheet", "scope": "window"])
-    guard !sheets.isEmpty else { throw protocolError("No panel sheet is open") }
     let deadline = Date().addingTimeInterval(5)
     func focusedPanelField() throws -> AXUIElement? {
-      guard let value = axAttribute(AXUIElementCreateApplication(pid), kAXFocusedUIElementAttribute),
-            CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
-      let field = unsafeBitCast(value, to: AXUIElement.self)
-      let role = axString(field, kAXRoleAttribute)
-      guard ["AXTextField", "AXComboBox"].contains(role),
-            axString(field, kAXSubroleAttribute) != "AXSecureTextField",
-            !axHidden(field), let size = axSize(field), size.width > 5, size.height > 5 else { return nil }
-      let fields = try queryElements(["role": role, "within": ["role": "AXSheet", "scope": "window"]])
-      return fields.contains(where: { CFEqual($0.0, field) }) ? field : nil
+      let fields = try ["AXTextField", "AXComboBox"].flatMap { role in
+        try queryElements(["role": role, "within": ["role": "AXSheet", "scope": "window"]])
+      }.filter {
+        axString($0.0, kAXSubroleAttribute) != "AXSecureTextField" &&
+          axAttribute($0.0, kAXEnabledAttribute) as? Bool == true &&
+          !axHidden($0.0) && (axSize($0.0)?.width ?? 0) > 5 &&
+          (axSize($0.0)?.height ?? 0) > 5
+      }.reduce(into: [(AXUIElement, Int)]()) { unique, field in
+        if !unique.contains(where: { CFEqual($0.0, field.0) }) { unique.append(field) }
+      }
+      if let value = axAttribute(AXUIElementCreateApplication(pid), kAXFocusedUIElementAttribute),
+         CFGetTypeID(value) == AXUIElementGetTypeID() {
+        let field = unsafeBitCast(value, to: AXUIElement.self)
+        if fields.contains(where: { CFEqual($0.0, field) }) { return field }
+      }
+      let focused = fields.filter { axAttribute($0.0, kAXFocusedAttribute) as? Bool == true }
+      return focused.count == 1 ? focused[0].0 : nil
     }
     func waitForPanel(_ message: String, _ condition: () throws -> Bool) throws {
       while Date() < deadline {
@@ -1370,8 +1381,13 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
       }
       throw protocolError(message)
     }
+    try waitForPanel("No visible panel sheet became ready") {
+      let sheets = try queryElements(["role": "AXSheet", "scope": "window"])
+      return sheets.count == 1 && !axHidden(sheets[0].0) &&
+        (axSize(sheets[0].0)?.width ?? 0) > 5 && (axSize(sheets[0].0)?.height ?? 0) > 5
+    }
     let previousField = try focusedPanelField()
-    try postKey("command+shift+g")
+    try postKey("command+shift+g", via: "hid")
     var pathField: AXUIElement?
     try waitForPanel("Go-to-folder field did not acquire focus") {
       guard let field = try focusedPanelField(),
@@ -1379,12 +1395,12 @@ func protocolCommand(_ request: [String: Any]) throws -> Any {
       pathField = field; return true
     }
     guard let pathField else { throw protocolError("Go-to-folder field unavailable") }
-    try postKey("command+a"); try postText(path)
+    try postKey("command+a", via: "hid"); try postText(path, via: "hid")
     try waitForPanel("Go-to-folder path was not entered exactly") {
       axString(pathField, kAXValueAttribute) == path &&
           (axAttribute(pathField, kAXFocusedAttribute) as? Bool == true)
     }
-    try postKey("enter")
+    try postKey("enter", via: "hid")
     try waitForPanel("Go-to-folder navigation did not complete") {
       let fields = try queryElements(["role": axString(pathField, kAXRoleAttribute), "scope": "window"])
       return !fields.contains(where: { CFEqual($0.0, pathField) })
