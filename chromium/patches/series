@@ -240,3 +240,4 @@ aux/runtime/0267-auto-pip-test-content-client-api.patch
 aux/runtime/0268-auto-pip-test-callable-action.patch
 aux/runtime/0261-native-full-process-memory.patch
 aux/runtime/0263-native-owned-process-identity.patch
+aux/runtime/0269-organization-work-native-api-adapters.patch

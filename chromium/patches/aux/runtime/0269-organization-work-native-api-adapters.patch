@@ -1,0 +1,95 @@
+diff --git a/third_party/blink/renderer/core/frame/native_organization_work_controller.cc b/third_party/blink/renderer/core/frame/native_organization_work_controller.cc
+index a2cf832..d609d6c 100644
+--- a/third_party/blink/renderer/core/frame/native_organization_work_controller.cc
++++ b/third_party/blink/renderer/core/frame/native_organization_work_controller.cc
+@@ -63,9 +63,9 @@ void NativeOrganizationWorkController::TryRead() {
+   result->completed_tasks = sample->completed_tasks;
+   result->maximum_task_ms = sample->maximum_task_ms;
+   result->completed_through_ms = sample->completed_through_ms;
+-  result->operation_id = sample->operation_id;
++  result->operation_id = String::FromUtf8(sample->operation_id);
+   result->units = sample->units;
+-  result->folder_id = sample->folder_id;
++  result->folder_id = String::FromUtf8(sample->folder_id);
+   witness_.reset();
+   weak_factory_.InvalidateWeakPtrs();
+   // Keep the responder pipe alive until this real reply is serialized. The
+diff --git a/third_party/blink/renderer/core/frame/native_organization_work_witness.cc b/third_party/blink/renderer/core/frame/native_organization_work_witness.cc
+index a919172..d33917b 100644
+--- a/third_party/blink/renderer/core/frame/native_organization_work_witness.cc
++++ b/third_party/blink/renderer/core/frame/native_organization_work_witness.cc
+@@ -14,7 +14,6 @@
+ #include "third_party/blink/renderer/core/dom/document_lifecycle.h"
+ #include "third_party/blink/renderer/core/dom/element.h"
+ #include "third_party/blink/renderer/core/dom/static_node_list.h"
+-#include "third_party/blink/renderer/platform/wtf/casting.h"
+ #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+ #include "third_party/blink/renderer/core/frame/local_frame.h"
+ #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
+@@ -73,7 +72,7 @@ void NativeOrganizationWorkWitness::DidProcessTask(
+     task_overflow_ = true;
+     return;
+   }
+-  tasks_.push_back({start, end});
++  tasks_.push_back(CompletedTask{start, end});
+   completed_through_ = end;
+ }
+ std::optional<NativeOrganizationWorkSample> NativeOrganizationWorkWitness::Read(Document& document) {
+@@ -96,7 +95,7 @@ std::optional<NativeOrganizationWorkSample> NativeOrganizationWorkWitness::Read(
+   auto* script_state = ToScriptStateForMainWorld(document.GetFrame());
+   if (!script_state || !script_state->ContextIsValid()) return std::nullopt;
+   ScriptState::Scope script_scope(script_state);
+-  const auto detail = To<PerformanceMeasure>(*selected).detail(script_state).V8Value();
++  const auto detail = static_cast<PerformanceMeasure*>(selected)->detail(script_state).V8Value();
+   if (detail.IsEmpty() || !detail->IsString() ||
+       detail.As<v8::String>()->Length() > 512) return std::nullopt;
+   const v8::String::Utf8Value detail_bytes(script_state->GetIsolate(), detail);
+diff --git a/third_party/blink/renderer/core/frame/native_organization_work_witness.h b/third_party/blink/renderer/core/frame/native_organization_work_witness.h
+index 6a3bd92..6424efc 100644
+--- a/third_party/blink/renderer/core/frame/native_organization_work_witness.h
++++ b/third_party/blink/renderer/core/frame/native_organization_work_witness.h
+@@ -2,13 +2,13 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_ORGANIZATION_WORK_WITNESS_H_
+ #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_ORGANIZATION_WORK_WITNESS_H_
+ #include <optional>
+-#include <vector>
+ #include <string>
+ #include "base/time/time.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/task/sequence_manager/task_time_observer.h"
+ #include "third_party/blink/renderer/core/core_export.h"
+ #include "third_party/blink/renderer/platform/heap/persistent.h"
++#include "third_party/blink/renderer/platform/wtf/vector.h"
+ namespace blink {
+ class Document;
+ class PerformanceEntry;
+@@ -49,7 +49,7 @@ class CORE_EXPORT NativeOrganizationWorkWitness final
+   void DidProcessTask(base::TimeTicks, base::TimeTicks, base::TimeTicks) override;
+   struct CompletedTask { base::TimeTicks start; base::TimeTicks end; };
+   raw_ptr<Thread> thread_ = nullptr;
+-  std::vector<CompletedTask> tasks_;
++  Vector<CompletedTask> tasks_;
+   base::TimeTicks completed_through_;
+   bool task_overflow_ = false;
+   WeakPersistent<Document> document_;
+@@ -57,7 +57,7 @@ class CORE_EXPORT NativeOrganizationWorkWitness final
+   NativeOrganizationWork work_;
+   base::TimeTicks time_origin_;
+   double armed_at_ms_ = 0;
+-  std::vector<WeakPersistent<PerformanceEntry>> previous_;
++  Vector<WeakPersistent<PerformanceEntry>> previous_;
+   bool armed_ = false;
+ };
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
+index ab20848..73fe802 100644
+--- a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
++++ b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/renderer/platform/widget/compositing/widget_compositor.h"
++#include "third_party/blink/public/mojom/widget/native_organization_work.mojom-blink.h"
+ 
+ #include <utility>
+ #include "mojo/public/cpp/bindings/remote.h"

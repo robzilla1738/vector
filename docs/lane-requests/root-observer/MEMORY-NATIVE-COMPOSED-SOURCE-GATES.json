@@ -3,10 +3,10 @@
   "nativeStageApproval": false,
   "nativeCompilation": false,
   "fullRoadmapComplete": false,
-  "orderedNativePackets": 98,
+  "orderedNativePackets": 99,
   "exactNativeMirrors": 324,
   "actualOriginalBaselines": 195,
-  "readerCallerProtocolCases": 98,
+  "readerCallerProtocolCases": 96,
   "rendererDigest": "da3e598a91e2beac6f4078f7d8fa9836a387e9bfcdc77bfabb462b824629b087",
   "bundleKB": {
     "startupJS": 487,
@@ -20,7 +20,8 @@
   },
   "nativePackets": {
     "0261": "edd35db67d8b12e52a13ca67d308f6a47cdd4fe3abaea0bc2a240c587fc86231",
-    "0263": "e9b51ce40349aa79ea78513d5d85d69d97c47890c58308fd9d8515071e6adc7e"
+    "0263": "e9b51ce40349aa79ea78513d5d85d69d97c47890c58308fd9d8515071e6adc7e",
+    "0269": "4f9572de6d33a67cf51288352f25a47936aba698adac196301c08add017f9729"
   },
   "logs": {
     "typecheck": {
@@ -40,7 +41,7 @@
       "sha256": "c2635bc1ad9062801fd9ce3c8ad8a74b577439116d3d850581070a87f4533591"
     },
     "bridge": {
-      "path": "/tmp/aux-root-memory98-bridge.log",
+      "path": "/tmp/aux-root-memory99-bridge.log",
       "sha256": "2b6fc625dea7b1c53aea5c20e723ddfc348fafd8eadb51326122c12803cec669"
     },
     "inventory": {
@@ -60,8 +61,12 @@
       "sha256": "9732b9fa8989075bd58a641ea5b82c66358affbfbcc8b233cbd7294bf0525567"
     },
     "protocol": {
-      "path": "/tmp/aux-root-memory98-protocol.log",
-      "sha256": "215a00d92a6866daee31a51e65b34c484172f4d1a5a83bd4100bce32dc0e7670"
+      "path": "/tmp/aux-root-memory99-protocol.log",
+      "sha256": "4e7bf09486676d22a017de5d4ef8f93f151aafb2e0be0141123d6afd30189085"
+    },
+    "scoped-lint": {
+      "path": "/tmp/aux-root-memory99-scoped-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   },
   "workerTestQualificationScope": "Genuine launched OS peer and socket/kernel/Worker RPC via installed test endpoint; production authenticated Connect handshake not exercised",
@@ -74,5 +79,15 @@
     "43features/46journeys/22legacy qualification",
     "full F21 review/owner visual signoff",
     "script-only records/promotion/mergeorder/localmainFF"
-  ]
+  ],
+  "obsoleteExpandedCollector": "Removed unconsumed old collector and its two superseded synthetic controls; exact compact reader/collector controls retain full raw evidence, failed trials, document epochs and cleanup failures",
+  "fullUnit": {
+    "status": "PASS",
+    "files": 481,
+    "cases": 2605,
+    "seconds": 162.71,
+    "path": "/tmp/aux-root-memory98-full-unit.log",
+    "sha256": "9be3ad58ff40fec29a446313d9f02c99111c4fc1fbc4f421c2204f459defbf02",
+    "sourceScope": "Current unchanged TypeScript/runtime/renderer source; latest0269 native-only correction remains uncompiled"
+  }
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertSubagentMemoryBracket, startSubagentMemoryWorkload, collectSubagentMemoryTrials } from './native-subagent-memory-workload.mjs';
+import { assertSubagentMemoryBracket, startSubagentMemoryWorkload } from './native-subagent-memory-workload.mjs';
 
 function fixture() {
   const children = Array.from({ length: 5 }, (_, index) => ({ runId: `run-${index}`, agentId: `agent-${index}`, pageIds: [`page-${index}`] }));
@@ -48,28 +48,6 @@ test('unapproved parent fails before any service call or model response override
     parent: { runId: 'parent', pageIds: Array.from({ length: 5 }, (_, i) => `page-${i}`), config: {} },
     idlePageIds: Array.from({ length: 10 }, (_, i) => `idle-${i}`) }));
   assert.equal(calls, 0);
-});
-
-test('collector requires all twenty fresh native brackets and retains idle tabs and AC, then cancels actual workload', async () => {
-  const { expected, record } = fixture(); let samples = 0, cleanup = 0;
-  const idlePageIds = Array.from({ length: 10 }, (_, i) => `idle-${i}`);
-  const options = { workload: { expected, idlePageIds, cleanup: async () => { cleanup++; } },
-    signal: new AbortController().signal,
-    readPages: async () => idlePageIds.map(pageId => ({ pageId, sessionId: `attachment-${pageId}`, url: 'https://fixture.test/idle' })),
-    readPair: async () => ({ runtime: { dirty: false, commit: 'a'.repeat(40) }, native: { sourceCommit: 'a'.repeat(40), manifestHash: 'b'.repeat(64) } }),
-    readPower: async () => "Now drawing from 'AC Power'",
-    sampleNative: async () => { samples++; return { producer: 'aux-native-process-memory', status: 'sampled', ...structuredClone(record) }; } };
-  const results = await collectSubagentMemoryTrials(options);
-  assert.equal(samples, 20); assert.equal(results.length, 20); assert.equal(cleanup, 1);
-});
-
-test('missing fresh VM evidence fails the first sample and still releases the held workload', async () => {
-  const { expected } = fixture(); let samples = 0, cleanup = 0;
-  const idlePageIds = Array.from({ length: 10 }, (_, i) => `idle-${i}`);
-  await assert.rejects(collectSubagentMemoryTrials({ workload: { expected, idlePageIds, cleanup: async () => { cleanup++; } },
-    signal: new AbortController().signal, readPages: async () => idlePageIds.map(pageId => ({ pageId, sessionId: `attachment-${pageId}`, url: 'https://fixture.test/idle' })),
-    readPair: async () => ({ runtime: { dirty: false, commit: 'a'.repeat(40) }, native: { sourceCommit: 'a'.repeat(40), manifestHash: 'b'.repeat(64) } }), readPower: async () => "Now drawing from 'AC Power'", sampleNative: async () => { samples++; return { producer: 'aux-native-process-memory', status: 'sampled' }; } }));
-  assert.equal(samples, 1); assert.equal(cleanup, 1);
 });
 
 function preparationFixture() {

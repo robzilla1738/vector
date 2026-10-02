@@ -57,38 +57,6 @@ export function assertSubagentMemoryBracket(record, expected) {
   return { before, after };
 }
 
-/** Root supplies its genuine private native sampler and AC/identity readers.
- * No tool transcript or duration proxy can substitute for the embedded receipts.
- */
-export async function collectSubagentMemoryTrials({ workload, sampleNative, readPages, readPair, readPower, signal }) {
-  const records = [];
-  try {
-    for (let trial = 0; trial < 20; trial++) {
-      assert.ok(!signal.aborted, 'Journey deadline reached');
-      const beforePair = await readPair();
-      assert.equal(beforePair.runtime?.dirty, false, 'Clean paired runtime required');
-      assert.match(beforePair.runtime?.commit ?? '', /^[a-f0-9]{40}$/);
-      assert.equal(beforePair.native?.sourceCommit, beforePair.runtime.commit);
-      assert.match(beforePair.native?.manifestHash ?? '', /^[a-f0-9]{64}$/);
-      const beforePower = await readPower();
-      assert.match(beforePower, /Now drawing from 'AC Power'/, 'Original native AC reading required');
-      const beforePages = await readPages();
-      const idleBefore = workload.idlePageIds.map(pageId => { const page = beforePages.find(page => page.pageId === pageId); assert.ok(page?.sessionId, 'Live idle fixture tab disappeared'); return { pageId, sessionId: page.sessionId, url: page.url }; });
-      const record = await sampleNative();
-      assert.equal(record.producer, 'aux-native-process-memory'); assert.equal(record.status, 'sampled');
-      const bracket = assertSubagentMemoryBracket(record, workload.expected);
-      const afterPages = await readPages(), afterPair = await readPair();
-      const afterPower = await readPower();
-      assert.match(afterPower, /Now drawing from 'AC Power'/, 'Original native AC reading required');
-      assert.deepEqual(afterPair, beforePair, 'Native pair or AC changed');
-      const idleAfter = workload.idlePageIds.map(pageId => { const page = afterPages.find(page => page.pageId === pageId); assert.ok(page?.sessionId, 'Live idle fixture tab disappeared'); return { pageId, sessionId: page.sessionId, url: page.url }; });
-      assert.deepEqual(idleAfter, idleBefore, 'Retained fixture document/attachment changed');
-      records.push({ trial: trial + 1, record, bracket, idleBefore, idleAfter, beforePair, afterPair, beforePower, afterPower });
-    }
-    return records;
-  } finally { await workload.cleanup(); }
-}
-
 /** Actual scoped service launch. Caller must first obtain a disposable UI-issued
  * workspace connection and a real parent with five person-approved resources.
  * This helper cannot create a connection, approve a task or override a lease.

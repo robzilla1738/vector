@@ -63,9 +63,9 @@ void NativeOrganizationWorkController::TryRead() {
   result->completed_tasks = sample->completed_tasks;
   result->maximum_task_ms = sample->maximum_task_ms;
   result->completed_through_ms = sample->completed_through_ms;
-  result->operation_id = sample->operation_id;
+  result->operation_id = String::FromUtf8(sample->operation_id);
   result->units = sample->units;
-  result->folder_id = sample->folder_id;
+  result->folder_id = String::FromUtf8(sample->folder_id);
   witness_.reset();
   weak_factory_.InvalidateWeakPtrs();
   // Keep the responder pipe alive until this real reply is serialized. The

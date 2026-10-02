@@ -2,13 +2,13 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_ORGANIZATION_WORK_WITNESS_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_ORGANIZATION_WORK_WITNESS_H_
 #include <optional>
-#include <vector>
 #include <string>
 #include "base/time/time.h"
 #include "base/memory/raw_ptr.h"
 #include "base/task/sequence_manager/task_time_observer.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
+#include "third_party/blink/renderer/platform/wtf/vector.h"
 namespace blink {
 class Document;
 class PerformanceEntry;
@@ -49,7 +49,7 @@ class CORE_EXPORT NativeOrganizationWorkWitness final
   void DidProcessTask(base::TimeTicks, base::TimeTicks, base::TimeTicks) override;
   struct CompletedTask { base::TimeTicks start; base::TimeTicks end; };
   raw_ptr<Thread> thread_ = nullptr;
-  std::vector<CompletedTask> tasks_;
+  Vector<CompletedTask> tasks_;
   base::TimeTicks completed_through_;
   bool task_overflow_ = false;
   WeakPersistent<Document> document_;
@@ -57,7 +57,7 @@ class CORE_EXPORT NativeOrganizationWorkWitness final
   NativeOrganizationWork work_;
   base::TimeTicks time_origin_;
   double armed_at_ms_ = 0;
-  std::vector<WeakPersistent<PerformanceEntry>> previous_;
+  Vector<WeakPersistent<PerformanceEntry>> previous_;
   bool armed_ = false;
 };
 }  // namespace blink

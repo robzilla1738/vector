@@ -14,7 +14,6 @@
 #include "third_party/blink/renderer/core/dom/document_lifecycle.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/static_node_list.h"
-#include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
@@ -73,7 +72,7 @@ void NativeOrganizationWorkWitness::DidProcessTask(
     task_overflow_ = true;
     return;
   }
-  tasks_.push_back({start, end});
+  tasks_.push_back(CompletedTask{start, end});
   completed_through_ = end;
 }
 std::optional<NativeOrganizationWorkSample> NativeOrganizationWorkWitness::Read(Document& document) {
@@ -96,7 +95,7 @@ std::optional<NativeOrganizationWorkSample> NativeOrganizationWorkWitness::Read(
   auto* script_state = ToScriptStateForMainWorld(document.GetFrame());
   if (!script_state || !script_state->ContextIsValid()) return std::nullopt;
   ScriptState::Scope script_scope(script_state);
-  const auto detail = To<PerformanceMeasure>(*selected).detail(script_state).V8Value();
+  const auto detail = static_cast<PerformanceMeasure*>(selected)->detail(script_state).V8Value();
   if (detail.IsEmpty() || !detail->IsString() ||
       detail.As<v8::String>()->Length() > 512) return std::nullopt;
   const v8::String::Utf8Value detail_bytes(script_state->GetIsolate(), detail);
