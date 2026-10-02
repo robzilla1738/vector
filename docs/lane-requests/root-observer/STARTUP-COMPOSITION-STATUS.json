@@ -24,5 +24,11 @@
     "native compile/lifetime execution",
     "0294 distinct Stock Views/HW source producer",
     "20 actual AC trials and genuine qualification"
-  ]
+  ],
+  "filesystemPublicationControls": {
+    "count": 8,
+    "log": "/tmp/aux-root-startup-build-writer-controls.log",
+    "sha256": "4e2c6ba695f5a42b91f48e110d6fe1c7fd50167162f9adf53bc9868da1a2dc04",
+    "nativeAuthorityOrTimingEvidence": false
+  }
 }
