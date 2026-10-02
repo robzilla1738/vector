@@ -1,5 +1,5 @@
 import { browserContextPage } from "./browser-context-page.js";
-import { withRunAuthorityMutation } from "./overnight-authority.js";
+import { withRunAuthorityMutation, withRunDispatchMutation } from "./overnight-authority.js";
 import { saveAuthorizedModelCall } from "./model-call-authority.js";
 import { checkNightShiftDispatch } from "../features/overnight-review/service.js";
 import { resumePausedSkill } from "./skill-continuation.js";
@@ -1133,7 +1133,7 @@ export class RunService {
    * model-call stamp and end time are filled in if missing.
    */
   private async finishSetRun(runId: string) {
-    await withRunAuthorityMutation(this.deps.repo, async () => {
+    await withRunDispatchMutation(this.deps.repo, async () => {
     const run = this.deps.repo.getRun(runId);
     if (!run || !run.setId) return;
     const members = this.deps.repo.listMembers(run.setId);
@@ -1206,7 +1206,7 @@ export class RunService {
   }
 
   async pause(runId: string): Promise<Run> {
-    return withRunAuthorityMutation(this.deps.repo, async () => {
+    return withRunDispatchMutation(this.deps.repo, async () => {
     this.takeoverPausedRuns.delete(runId);
     const sc = this.setRunControls.get(runId);
     if (sc) {
@@ -1252,7 +1252,7 @@ export class RunService {
   }
 
   async cancel(runId: string, reason?: string): Promise<Run> {
-    return withRunAuthorityMutation(this.deps.repo, async () => {
+    return withRunDispatchMutation(this.deps.repo, async () => {
     this.takeoverPausedRuns.delete(runId);
     const run = this.deps.repo.getRun(runId);
     if (run?.config?.chatId && ["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) this.messages.cancelForChat(run.config.chatId);
@@ -1282,7 +1282,7 @@ export class RunService {
 
   /** Saved programs cannot safely replay their remaining steps after owner input. */
   async interruptProgramForTakeover(runId: string, pageId: string): Promise<Run> {
-    return withRunAuthorityMutation(this.deps.repo, async () => {
+    return withRunDispatchMutation(this.deps.repo, async () => {
     const run = this.deps.repo.getRun(runId);
     if (!run) throw new AuxError("not_found", `no run ${runId}`);
     if (run.config?.implementation !== "program" || TERMINAL_RUN_STATUSES.has(run.status)) return run;

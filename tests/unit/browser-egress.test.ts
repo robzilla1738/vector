@@ -12,7 +12,7 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
   let url = "https://source.test/page", controller = "none";
   let isolation: AgentPageIsolation | undefined = { isolationId: "isolated-run", runId: "run", taskId: "task", taskRevision: 4, inMemory: true, cookies: "empty" };
   const leases: EgressLease[] = [];
-  const revoke = vi.fn(async () => ({ accepted: true as const }));
+  const revoke = vi.fn(async (_input: { leaseId: string }) => ({ accepted: true as const }));
   const consent = vi.fn(approve);
   const native = Object.assign(new NullNativeBridge(), {
     egressContext: vi.fn(async () => ({ profileId: "profile", tabId: "tab", frameId: "process:frame", documentToken: token, sourceOrigin: url === "about:blank" ? "aux://blank" : new URL(url).origin, isolation })),
@@ -315,4 +315,156 @@ it("rejects a source that navigated while native authority was being read", asyn
   f.native.egressContext.mockImplementation(async () => { const context = await original(); f.navigate(); return context; });
   await expect(f.service.creationScope("run", "tab")).rejects.toThrow("selected source tab changed");
   expect(f.native.egressInstall).not.toHaveBeenCalled();
+});
+
+
+it("refuses a new page bind while exact browser retirement and its mutation are held", async () => {
+  const f = fixture();
+  await f.service.acquire("run", "tab");
+  let acknowledge!: (value: { accepted: true }) => void;
+  const ack = new Promise<{ accepted: true }>(resolve => { acknowledge = resolve; });
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  f.native.egressRevoke.mockImplementation(async () => { entered(); return ack; });
+  let release!: () => void;
+  const mutation = new Promise<void>(resolve => { release = resolve; });
+  let mutating!: () => void;
+  const begun = new Promise<void>(resolve => { mutating = resolve; });
+  const retiring = f.service.withAuthorityMutation(id => id === "run", async () => { mutating(); await mutation; });
+  await started;
+  await expect(f.service.ensure("run", "tab")).rejects.toThrow("current run-owned page");
+  expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+  acknowledge({ accepted: true });
+  await begun;
+  await expect(f.service.ensure("run", "tab")).rejects.toThrow("current run-owned page");
+  release();
+  await retiring;
+  await f.service.ensure("run", "tab");
+  expect(f.native.egressInstall).toHaveBeenCalledTimes(2);
+});
+
+it("retains a fire-and-forget lifecycle revoke failure for the acknowledged mutation", async () => {
+  const f = fixture();
+  await f.service.acquire("run", "tab");
+  const id = f.leases[0]!.leaseId;
+  f.native.egressRevoke.mockRejectedValueOnce(new Error("disconnected"));
+  f.service.revokeRun("run");
+  await Promise.resolve();
+  await f.service.withAuthorityMutation(runId => runId === "run", async () => {});
+  expect(f.native.egressRevoke).toHaveBeenCalledTimes(2);
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(1, { leaseId: id });
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(2, { leaseId: id });
+});
+
+
+it("retains a rejected installation's exact lease and both installation/retirement errors", async () => {
+  const f = fixture();
+  const install = f.native.egressInstall.getMockImplementation()!;
+  const primary = new Error("install acknowledgement lost");
+  const cleanup = new Error("native retirement refused");
+  f.native.egressInstall.mockImplementationOnce(async input => { await install(input); throw primary; });
+  f.native.egressRevoke.mockRejectedValueOnce(cleanup);
+  const failure = await f.service.acquire("run", "tab").catch(error => error);
+  expect(failure).toBeInstanceOf(AggregateError);
+  expect(failure.errors).toEqual([primary, cleanup]);
+  expect(failure.cause).toBe(primary);
+  let acknowledge!: (value: { accepted: true }) => void;
+  const ack = new Promise<{ accepted: true }>(resolve => { acknowledge = resolve; });
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  f.native.egressRevoke.mockImplementation(async () => { entered(); return ack; });
+  let mutations = 0;
+  const retry = f.service.withAuthorityMutation(id => id === "run", async () => { mutations++; });
+  await started;
+  expect(mutations).toBe(0);
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(2, { leaseId: f.leases[0]!.leaseId });
+  acknowledge({ accepted: true });
+  await retry;
+  expect(mutations).toBe(1);
+});
+
+it("keeps late install cleanup debt after the original active row was already retired", async () => {
+  const f = fixture();
+  const install = f.native.egressInstall.getMockImplementation()!;
+  let acknowledgeInstall!: (value: { accepted: true }) => void;
+  const installAck = new Promise<{ accepted: true }>(resolve => { acknowledgeInstall = resolve; });
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  f.native.egressInstall.mockImplementationOnce(async input => { await install(input); entered(); return installAck; });
+  const acquiring = f.service.acquire("run", "tab");
+  const rejected = expect(acquiring).rejects.toBeInstanceOf(AggregateError);
+  await started;
+  await f.service.withAuthorityMutation(id => id === "run", async () => {});
+  f.native.egressRevoke.mockRejectedValueOnce(new Error("late install retirement refused"));
+  acknowledgeInstall({ accepted: true });
+  await rejected;
+  await f.service.withAuthorityMutation(id => id === "run", async () => {});
+  expect(f.native.egressRevoke).toHaveBeenCalledTimes(3);
+  const identity = { leaseId: f.leases[0]!.leaseId };
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(1, identity);
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(2, identity);
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(3, identity);
+});
+
+it("retains late renewal cleanup debt even after the run's active page was removed", async () => {
+  vi.useFakeTimers();
+  const f = fixture();
+  await f.service.acquire("run", "tab");
+  const install = f.native.egressInstall.getMockImplementation()!;
+  let acknowledgeInstall!: (value: { accepted: true }) => void;
+  const installAck = new Promise<{ accepted: true }>(resolve => { acknowledgeInstall = resolve; });
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  f.native.egressInstall.mockImplementationOnce(async input => { await install(input); entered(); return installAck; });
+  await vi.advanceTimersByTimeAsync(10_000);
+  await started;
+  await f.service.withAuthorityMutation(id => id === "run", async () => {});
+  let cleanupEntered!: () => void;
+  const cleaning = new Promise<void>(resolve => { cleanupEntered = resolve; });
+  f.native.egressRevoke.mockImplementationOnce(async () => { cleanupEntered(); throw new Error("late renewal retirement refused"); });
+  acknowledgeInstall({ accepted: true });
+  await cleaning;
+  await Promise.resolve();
+  await f.service.withAuthorityMutation(id => id === "run", async () => {});
+  expect(f.native.egressRevoke).toHaveBeenCalledTimes(3);
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(3, { leaseId: f.leases[0]!.leaseId });
+});
+
+
+it("late retired renewal preserves a replacement lease's held approval", async () => {
+  vi.useFakeTimers();
+  let approvalEntered!: () => void;
+  const approving = new Promise<void>(resolve => { approvalEntered = resolve; });
+  let allow!: (value: boolean) => void;
+  const approval = new Promise<boolean>(resolve => { allow = resolve; });
+  let approvalSignal: AbortSignal | undefined;
+  const f = fixture(async ({ signal }) => { approvalSignal = signal; approvalEntered(); return approval; });
+  await f.service.acquire("run", "tab");
+  const originalLeaseId = f.leases[0]!.leaseId;
+  const install = f.native.egressInstall.getMockImplementation()!;
+  let acknowledgeRenewal!: (value: { accepted: true }) => void;
+  const renewalAck = new Promise<{ accepted: true }>(resolve => { acknowledgeRenewal = resolve; });
+  let renewalEntered!: () => void;
+  const renewing = new Promise<void>(resolve => { renewalEntered = resolve; });
+  f.native.egressInstall.mockImplementationOnce(async input => { await install(input); renewalEntered(); return renewalAck; });
+  await vi.advanceTimersByTimeAsync(10_000);
+  await renewing;
+  await f.service.withAuthorityMutation(id => id === "run", async () => {});
+  await f.service.ensure("run", "tab");
+  const replacementLeaseId = f.leases.at(-1)!.leaseId;
+  expect(replacementLeaseId).not.toBe(originalLeaseId);
+  const request = f.service.request(f.request("https://recipient.test/path", "public content"));
+  await approving;
+  let cleanupEntered!: () => void;
+  const cleaning = new Promise<void>(resolve => { cleanupEntered = resolve; });
+  f.native.egressRevoke.mockImplementationOnce(async ({ leaseId }) => {
+    expect(leaseId).toBe(originalLeaseId); cleanupEntered(); return { accepted: true as const };
+  });
+  acknowledgeRenewal({ accepted: true });
+  await cleaning;
+  expect(approvalSignal?.aborted).toBe(false);
+  allow(true);
+  expect((await request).decision.status).toBe("allow");
+  expect(f.native.egressRevoke).toHaveBeenCalledTimes(2);
+  expect(f.native.egressRevoke).not.toHaveBeenCalledWith({ leaseId: replacementLeaseId });
 });

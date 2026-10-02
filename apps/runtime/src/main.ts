@@ -4,7 +4,7 @@ import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-sh
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
 import { overnightRoot } from "./services/run-lineage.js";
 import { saveAuthorizedModelCall } from "./services/model-call-authority.js";
-import { installOvernightAuthority } from "./services/overnight-authority.js";
+import { installBrowserAuthority, installOvernightAuthority } from "./services/overnight-authority.js";
 import { checkNightShiftDispatch, nightShiftEffectAuthority } from "./features/overnight-review/service.js";
 import { SafetyAuthorityRevocation } from "./safety/authority-revocation.js";
 import { z } from "zod";
@@ -1111,6 +1111,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
         setStatus: (runId, status, message) => runs.coordinator.setStatus(runId, status, message),
       }),
     });
+    installBrowserAuthority(repo, browserEgress);
     channel!.onMethod("egress.request", params => browserEgress!.request(params));
     events.subscribe(event => {
       const pageId = typeof event.payload.pageId === "string" ? event.payload.pageId : undefined;

@@ -125,17 +125,6 @@ export class PageOpener {
         ({ targetId, nativeCreated, cdpTargetId } = await this.createSurface(backend, driver, pageId, initialUrl, opts.background, opts.windowId,opts.ownedByRuntime));
       }
 
-      let dp: DriverPage;
-      try {
-        dp = restored && driver.recoverPage
-          ? await driver.recoverPage(targetId, pageId, restored.documentEpoch + 1)
-          : await driver.attach(targetId, pageId, cdpTargetId ? { cdpTargetId } : undefined);
-      } catch (e) {
-        // the shell view already exists — destroy it rather than leaking a
-        // driverless zombie tab in the strip
-        if (nativeCreated) await this.pages.deps.native.tabCommand({ commandId: `agent-${newPageId()}`, windowId: opts.windowId ?? "main", command: { kind: "close", pageId } }).catch(() => {});
-        throw e;
-      }
       const target: PageTarget = {
         pageId,
         windowId: opts.windowId,
@@ -154,13 +143,35 @@ export class PageOpener {
         lastActiveAt: Date.now(),
         routeReason,
       };
-      const lp = this.pages.addLive(target, dp);
+      let dp: DriverPage;
+      const protectedPage = isolated ? this.pages.addLive(target, null) : undefined;
+      try {
+        // CDP attachment initializes execution worlds. Install genuine native
+        // authority before even these commands reach a protected document.
+        if (protectedPage) await opts.beforeNavigate!(target);
+        dp = restored && driver.recoverPage
+          ? await driver.recoverPage(targetId, pageId, restored.documentEpoch + 1)
+          : await driver.attach(targetId, pageId, cdpTargetId ? { cdpTargetId } : undefined);
+      } catch (e) {
+        // the shell view already exists — destroy it rather than leaking a
+        // driverless zombie tab in the strip
+        if (nativeCreated) await this.pages.deps.native.tabCommand({ commandId: `agent-${newPageId()}`, windowId: opts.windowId ?? "main", command: { kind: "close", pageId } }).catch(() => {});
+        if (protectedPage) {
+          target.viewStatus = "detached";
+          this.pages.persist(protectedPage);
+          this.pages.live.delete(pageId);
+          this.pages.deps.events.emit(EventTypes.PageRemoved, { pageId });
+        }
+        throw e;
+      }
+      const lp = protectedPage ?? this.pages.addLive(target, dp);
+      if (protectedPage) this.pages.installDriver(lp, dp);
       registered();
       if (creating) this.pages.agentCreations.delete(creating);
       this.pages.opening.delete(pageId);
       if (!this.pages.restoring) this.pages.deps.events.emit(EventTypes.PageAdded, { page: target });
       this.pages.deps.tracer?.incr(`router.open.${backend}`);
-      if (opts.beforeNavigate) {
+      if (opts.beforeNavigate && !protectedPage) {
         try { await opts.beforeNavigate(target); }
         catch (error) {
           // Failed authority never falls through to the requested navigation.

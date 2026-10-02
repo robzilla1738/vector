@@ -50,11 +50,11 @@ function pageFixture(extra: {
     setEvents: (value: DriverPageEvents) => { driverEvents = value; }, dispose, observe,
     observeFingerprint: async () => "stable-content",
   } as unknown as DriverPage;
-  const driver = { backend: "aux", isConnected: () => true, attach: async () => driverPage } as unknown as BrowserDriver;
+  const driver = { backend: "aux", isConnected: () => true, attach: vi.fn(async () => driverPage) } as unknown as BrowserDriver;
   const record = vi.fn();
   const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
   const pages = new PageService({ turnMentions: pagesTurnMentions, repo, events, native, drivers: () => ({ aux: driver, chrome: null }), recordAgentObservation: record, ...extra });
-  return { pages, turnMentions: pagesTurnMentions, trace, record, observe, dispose, nativeClose, native, driverPage };
+  return { pages, turnMentions: pagesTurnMentions, trace, record, observe, dispose, nativeClose, native, driverPage, driver };
 }
 
 it("claims the actual blank document before first navigation and records even cached observations", async () => {
@@ -216,4 +216,48 @@ it("preserves isolation metadata when the native catalog announces the minted pa
   expect(await announced).toBe(page);
   expect(page.agentIsolation).toEqual(result.isolation);
   expect(f.pages.livePageIds()).toEqual([result.pageId]);
+});
+
+
+it("installs protected authority before driver initialization can emit CDP commands", async () => {
+  const f = pageFixture();
+  let installed = false;
+  f.driver.attach = vi.fn(async () => {
+    expect(installed).toBe(true);
+    return f.driverPage;
+  });
+  const target = await f.pages.open({ url: "https://source.test/", background: true, ownedByRuntime: true,
+    agentScope: { profileId: "profile", runId: "run", taskRevision: 0 },
+    beforeNavigate: async page => {
+      expect(f.pages.get(page.pageId).url).toBe("about:blank");
+      expect(f.driver.attach).not.toHaveBeenCalled();
+      expect(page.sessionId).toBeUndefined();
+      installed = true;
+    },
+  });
+  expect(f.driver.attach).toHaveBeenCalledOnce();
+  expect(target.sessionId).toEqual(expect.any(String));
+  expect(f.trace).toEqual(["navigate"]);
+});
+
+it("does not attach a protected CDP driver while installation is pending or rejected", async () => {
+  const f = pageFixture();
+  let reject!: (reason: Error) => void;
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const install = new Promise<void>((_, fail) => { reject = fail; });
+  const opening = f.pages.open({ url: "https://source.test/", background: true, ownedByRuntime: true,
+    agentScope: { profileId: "profile", runId: "run", taskRevision: 0 },
+    beforeNavigate: () => { entered(); return install; },
+  });
+  const refused = expect(opening).rejects.toThrow("native install refused");
+  await started;
+  expect(f.driver.attach).not.toHaveBeenCalled();
+  expect(f.pages.get("native-minted-page").sessionId).toBeUndefined();
+  reject(new Error("native install refused"));
+  await refused;
+  expect(f.driver.attach).not.toHaveBeenCalled();
+  expect(f.nativeClose).toHaveBeenCalledOnce();
+  expect(f.dispose).not.toHaveBeenCalled();
+  expect(f.pages.livePageIds()).toEqual([]);
 });

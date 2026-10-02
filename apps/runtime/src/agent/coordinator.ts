@@ -1,5 +1,5 @@
 import { browserContextPage } from "../services/browser-context-page.js";
-import { withRunAuthorityMutation } from "../services/overnight-authority.js";
+import { withRunAuthorityMutation, withRunDispatchMutation } from "../services/overnight-authority.js";
 import {
   EventTypes,
   newRunId,
@@ -411,7 +411,8 @@ export class RunCoordinator {
   }
 
   async setStatus(runId: string, status: Run["status"], message?: string) {
-    await withRunAuthorityMutation(this.deps.repo, async () => {
+    const mutate = status === "paused" || TERMINAL_STATUSES.has(status) ? withRunDispatchMutation : withRunAuthorityMutation;
+    await mutate(this.deps.repo, async () => {
     const run = this.get(runId);
     if (this.controls.get(runId)?.paused && (status === "running" || status === "planning")) {
       status = "paused";
@@ -447,7 +448,7 @@ export class RunCoordinator {
   }
 
   async finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]) {
-    await withRunAuthorityMutation(this.deps.repo, async () => {
+    await withRunDispatchMutation(this.deps.repo, async () => {
     this.deps.turnMentions.end(runId);
     this.createdPages.delete(runId);
     const run = this.get(runId);
@@ -671,7 +672,7 @@ export class RunCoordinator {
   async markInterrupted() {
     for (const run of this.deps.repo.listRuns(200)) {
       if (["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) {
-        await withRunAuthorityMutation(this.deps.repo, async () => {
+        await withRunDispatchMutation(this.deps.repo, async () => {
           const current = this.deps.repo.getRun(run.runId);
           if (!current || !["queued", "planning", "running", "paused", "needs_input"].includes(current.status)) return;
           current.status = "interrupted";

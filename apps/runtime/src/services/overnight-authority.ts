@@ -1,6 +1,7 @@
 import { lineageRuns, runRoot } from "./run-lineage.js";
 import { AuxError } from "@aux/contracts";
 import type { Repo } from "../store/repo.js";
+import type { BrowserEgress } from "../safety/browser-egress.js";
 import type { NativePermissionController } from "../safety/native-permission.js";
 
 const controllers = new WeakMap<Repo, NativePermissionController>();
@@ -41,4 +42,25 @@ export async function withTaskAuthorityMutation<T>(repo: Repo, taskId: string, m
   if (rows.some(row => matches(row.run_id) && repo.getRun(runRoot(repo, row.run_id))?.config?.nightShiftItemId))
     throw new AuxError("permission_denied", "Native overnight authority retirement is unavailable.");
   return mutation();
+}
+
+const browserControllers = new WeakMap<Repo, BrowserEgress>();
+
+export function installBrowserAuthority(repo: Repo, controller: BrowserEgress): void {
+  if (browserControllers.has(repo)) throw new AuxError("conflict", "Browser authority is already installed.");
+  browserControllers.set(repo, controller);
+}
+
+/** Terminal/pause/takeover writers retire CDP/network leases before state mutation.
+ * Approval parking and cost ledger writes use their existing permission receipt
+ * boundary: they must not abort a genuine held browser transmission approval.
+ */
+export function withRunDispatchMutation<T>(repo: Repo, mutation: () => Promise<T>, runId?: string): Promise<T> {
+  const matches = (id: string) => !runId || lineageRuns(repo, runId).includes(id);
+  if (browserControllers.has(repo) && !controllers.has(repo))
+    throw new AuxError("permission_denied", "Native browser mutation serialization is unavailable.");
+  return withRunAuthorityMutation(repo, async () => {
+    const browser = browserControllers.get(repo);
+    return browser ? browser.withAuthorityMutation(matches, mutation) : mutation();
+  }, runId);
 }
