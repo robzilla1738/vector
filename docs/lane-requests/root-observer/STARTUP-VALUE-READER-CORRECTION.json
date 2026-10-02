@@ -1,0 +1,15 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "base": "704a19bf",
+  "originalError": "base/functional/bind_internal.h WeakCallReturnsVoid rejects WeakPtr-bound nonvoid methods",
+  "file": "third_party/blink/renderer/core/frame/native_startup_frame_controller.cc",
+  "before": "fc44276f0304e3fc9984cc82c9fd9feca6896616d3c1ad3de0a033bab7d3e6fc",
+  "result": "9bf289ab6194d60ee7c1c335294774e0a8a76e312ee7fb5d18ecaad54da9d997",
+  "patch": "aux/runtime/0302-startup-value-reader-weak-lifetime.patch",
+  "patchSha256": "4dde6bd8965640ac77260c079e8b38e0807dc4574f59d46a60a0c3fe55c0b734",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-0302-diff-ba7t2iob",
+  "forwardReverseByteExact": "PASS",
+  "preserved": "Original WeakPtr retained as ordinary callback argument; each invocation explicitly refuses invalidation with nullopt before reading original controller. No Unretained, gate waiver or changed assertions.",
+  "remaining": "Actual coherent native compile and original lifetime assertions."
+}

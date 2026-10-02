@@ -59,8 +59,18 @@ bool NativeStartupFrameController::Begin(mojom::blink::NativeStartupFrameScopePt
   lease_.Bind(std::move(lease));
   lease_.set_disconnect_handler(base::BindOnce(&NativeStartupFrameController::Stop, weak));
   measurement_ = std::make_unique<NativeStartupFrameMeasurement>(widget_.get(),
-      base::BindRepeating(&NativeStartupFrameController::CurrentScope, weak),
-      base::BindRepeating(&NativeStartupFrameController::CurrentWitness, weak));
+      base::BindRepeating(
+          [](base::WeakPtr<NativeStartupFrameController> controller)
+              -> std::optional<NativeStartupFrameScope> {
+            if (!controller) return std::nullopt;
+            return controller->CurrentScope();
+          }, weak),
+      base::BindRepeating(
+          [](base::WeakPtr<NativeStartupFrameController> controller)
+              -> std::optional<NativeStartupInteractiveWitness> {
+            if (!controller) return std::nullopt;
+            return controller->CurrentWitness();
+          }, weak));
   const bool armed = measurement_->Prepare(base::BindOnce(&NativeStartupFrameController::Finished, weak));
   if (!weak) return false;
   if (!armed) Finished(std::nullopt);
