@@ -6,8 +6,8 @@ import { DatabaseSync } from 'node:sqlite';
 
 const shell = (name, role = 'AXButton', index = 0) => ({ name, role, match: 'exact', scope: 'shell', index });
 const page = (name, role = 'AXTextField', index = 0) => ({ name, role, match: 'exact', scope: 'page', index });
-async function replace(t, name, value, index = 0) {
-  const target = shell(name, 'AXTextField', index);
+async function replace(t, name, value, index = 0, role = 'AXTextField') {
+  const target = shell(name, role, index);
   await t.ax.focus(target); await t.ax.key('command+a', 'hid'); await t.ax.type(String(value));
 }
 async function choose(t, name, text, index = 0) {
@@ -22,6 +22,8 @@ async function startRecording(t) {
   if ((await t.ax.query(reveal)).length) await t.ax.press(reveal);
   await t.ax.waitFor(shell('Record a demonstration'));
   await t.ax.press(shell('Record a demonstration'));
+  await t.ax.waitFor(shell('Demonstration recording', 'AXGroup'));
+  await t.ax.waitFor(shell('Stop'));
 }
 async function exportRecording(t, name) {
   const path = join(t.app.userDataDir, `${name}.json`);
@@ -71,7 +73,8 @@ async function recordAndReview(t, workspaceId, fixture, title = 'Aux company Ski
     criteria: [{ criterionId: 'done', description: 'Company appears in Done', verification: 'manual' }],
     resources: [{ resourceId: 'company-tab', kind: 'page', locator: opened.pageId, label: 'Company form', access: 'read' }] });
   await startRecording(t);
-  await t.ax.type('Acme', page('Company'));
+  await t.ax.click(page('Company'));
+  await t.ax.type('Acme');
   await t.ax.click(page('Continue', 'AXButton'));
   await t.ax.waitFor(page('Send company', 'AXButton'));
   await t.ax.click(page('Send company', 'AXButton'));
@@ -131,12 +134,17 @@ async function demonstration(t) {
     await t.ax.waitFor({ ...page('Fixture password'), subrole: 'AXSecureTextField' });
     const before = (await t.rpc('pages.list')).find(item => item.pageId === opened.pageId);
     await startRecording(t);
-    for (const [name, role, text] of [['Fixture password', 'AXTextField', 'synthetic-password-931'], ['Fixture OTP', 'AXTextField', 'synthetic-otp-822'], ['Fixture card', 'AXTextField', 'synthetic-card-744']]) await t.ax.type(text, { ...page(name, role), ...(name === 'Fixture password' ? { subrole: 'AXSecureTextField' } : {}) });
+    for (const [name, role, text] of [['Fixture password', 'AXTextField', 'synthetic-password-931'], ['Fixture OTP', 'AXTextField', 'synthetic-otp-822'], ['Fixture card', 'AXTextField', 'synthetic-card-744']]) {
+      // A physical click also transfers native first-responder ownership from
+      // the shell recording button to the actual page surface.
+      await t.ax.click({ ...page(name, role), ...(name === 'Fixture password' ? { subrole: 'AXSecureTextField' } : {}) });
+      await t.ax.type(text);
+    }
     await t.ax.click(page('Ambiguous', 'AXButton'));
     await t.ax.press(shell('Stop'));
     const exported = await exportRecording(t, 'aux-secret-filter');
     for (const secret of ['synthetic-password-931', 'synthetic-otp-822', 'synthetic-card-744']) t.assert.ok(!exported.raw.includes(secret));
-    t.assert.deepEqual(new Set(exported.recording.steps.filter(step => step.kind === 'credentialFill').map(step => step.secretType)), new Set(['password', 'otp', 'payment']));
+    t.assert.deepEqual(new Set(exported.recording.steps.filter(step => step.kind === 'credentialFill').map(step => step.secretType)), new Set(['password', 'otp', 'payment']), `Recorded kinds: ${JSON.stringify(exported.recording.steps.map(step => ({ kind: step.kind, ...(step.kind === 'credentialFill' ? { secretType: step.secretType } : {}) })))}`);
     t.assert.ok(exported.recording.steps.some(step => step.kind === 'click' && step.target.candidates.every(candidate => candidate.matches > 1)));
     const after = (await t.rpc('pages.list')).find(item => item.pageId === opened.pageId);
     t.assert.equal(after.controller, before.controller); t.assert.equal(after.controllerEpoch, before.controllerEpoch);
@@ -192,13 +200,31 @@ async function queueUI(t, kind, name, limit = '0.5', parameters = {}) {
   await choose(t, 'Work', kind);
   if (name) await choose(t, kind, name);
   for (const [name, value] of Object.entries(parameters)) await replace(t, `Overnight value for ${name}`, value);
-  await replace(t, 'Task limit ($)', limit);
+  await replace(t, 'Task limit ($)', limit, 0, 'AXIncrementor');
   await t.ax.press(shell('Queue for tonight'));
 }
 const localMinute = minutes => {
   const date = new Date(Date.now() + minutes * 60_000);
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 };
+async function replaceTime(t, name, value) {
+  const [hours, minutes] = value.split(':').map(Number);
+  const meridiem = shell(`AM/PM ${name}`, 'AXIncrementor');
+  const hasMeridiem = (await t.ax.query(meridiem)).length > 0;
+  for (const [part, text] of [['Hours', String(hasMeridiem ? hours % 12 || 12 : hours)], ['Minutes', String(minutes).padStart(2, '0')]]) {
+    await t.ax.click(shell(`${part} ${name}`, 'AXIncrementor'));
+    await t.ax.type(text);
+  }
+  if (hasMeridiem) {
+    await t.ax.click(meridiem);
+    await t.ax.type(hours < 12 ? 'a' : 'p');
+  }
+  await t.ax.key('tab', 'hid');
+  await t.until(`actual ${name} time control reads ${value}`, async () => {
+    const [control] = await t.ax.query(shell(name, 'AXTimeField'));
+    return control?.names?.includes(value) || control?.value === value;
+  });
+}
 async function nightSettingsUI(t, { enabled = true, nightly = '0.01', task = '0.01', outside = false } = {}) {
   await t.ax.key('command+,', 'hid');
   await t.ax.press(shell('Automations'));
@@ -206,10 +232,10 @@ async function nightSettingsUI(t, { enabled = true, nightly = '0.01', task = '0.
   const enabledControl = shell('Enable overnight work', 'AXCheckBox');
   const node = (await t.ax.query(enabledControl))[0];
   if (Boolean(Number(node.value)) !== enabled) await t.ax.press(enabledControl);
-  await replace(t, 'Start', localMinute(outside ? 5 : -5));
-  await replace(t, 'End', localMinute(outside ? 10 : 5));
-  await replace(t, 'Nightly limit ($)', nightly);
-  await replace(t, 'Per-task limit ($)', task);
+  await replaceTime(t, 'Start', localMinute(outside ? 5 : -5));
+  await replaceTime(t, 'End', localMinute(outside ? 10 : 5));
+  await replace(t, 'Nightly limit ($)', nightly, 0, 'AXIncrementor');
+  await replace(t, 'Per-task limit ($)', task, 0, 'AXIncrementor');
   await t.ax.press(shell('Save night shift settings'));
   await t.ax.key('escape', 'hid');
 }
