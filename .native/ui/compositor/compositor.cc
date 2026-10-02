@@ -939,6 +939,10 @@ void Compositor::DidPresentCompositorFrame(
                         frame_timing_details.presentation_feedback);
 }
 
+void Compositor::DidLoseLayerTreeFrameSink() {
+  AdvanceNativeStartupDisplayGeneration();
+}
+
 void Compositor::DidSubmitCompositorFrame() {
   base::TimeTicks start_time = base::TimeTicks::Now();
   observer_list_.Notify(&CompositorObserver::OnCompositingStarted, this,

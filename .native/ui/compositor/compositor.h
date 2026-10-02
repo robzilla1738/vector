@@ -445,7 +445,7 @@ class COMPOSITOR_EXPORT Compositor
 
   // cc::LayerTreeHostSingleThreadDelegate implementation.
   void DidSubmitCompositorFrame() override;
-  void DidLoseLayerTreeFrameSink() override { AdvanceNativeStartupDisplayGeneration(); }
+  void DidLoseLayerTreeFrameSink() override;
   void FrameIntervalUpdated(base::TimeDelta interval) override;
   void FrameSinksToThrottleUpdated(
       const base::flat_set<viz::FrameSinkId>& ids) override;
@@ -748,9 +748,9 @@ class COMPOSITOR_EXPORT Compositor
   std::optional<cc::PropertyTrees> property_trees_;
   int viewport_clip_id_ = cc::kInvalidPropertyNodeId;
 
-  base::WeakPtrFactory<Compositor> context_creation_weak_ptr_factory_{this};
   void AdvanceNativeStartupDisplayGeneration();
   uint64_t native_startup_display_generation_ = 1;
+  base::WeakPtrFactory<Compositor> context_creation_weak_ptr_factory_{this};
   base::WeakPtrFactory<Compositor> weak_ptr_factory_{this};
 };
 
