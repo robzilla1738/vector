@@ -1,0 +1,17 @@
+{
+  "baselineCommit": "aa5974436f1d3e1d4226ce0402505c2928dcf555",
+  "path": "chrome/browser/ui/aux/permission_broker_unittest.cc",
+  "baselineSha256": "90e97e1c0989511f2ad6f39e384b36766ac422f59fb5984754a3765c0c3676d1",
+  "resultSha256": "e428865df9cef49153ef2e0c65000372ed6df23f7bc331187043fb1b27ad45d6",
+  "patchSha256": "646ef2d015f8c7ea4525fbac221611a61453913df828730703b3e57cfbe59a85",
+  "forwardReverseExact": true,
+  "assertionLinesExact": true,
+  "caseCount": 40,
+  "productionChanged": false,
+  "stableMutation": false,
+  "nativeCompile": false,
+  "lifetime": "ManagerGoingDown invokes production ForgetItems/RemoveObserver before native MockDownloadItem destruction; real item notifier invokes registered DownloadSignals observer",
+  "rootIndependentPins": true,
+  "rootAssertionsAndCasesExact": true,
+  "review": "Actual item notifier invokes registered DownloadSignals; ManagerGoingDown removes every item observer before mock item destruction."
+}
