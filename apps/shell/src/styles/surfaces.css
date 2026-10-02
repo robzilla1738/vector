@@ -419,6 +419,15 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: var(--r-pill); }
     background: #44444480; mix-blend-mode: plus-lighter;
     box-shadow: inset 0 40px 30px -40px #e6e6e6;
   }
+  /* Installed 06 alpha/noTopGlow compact variant: quiet results, no additive
+     white glow in the filter band. Rim, blur, keyboard focus and hit areas stay. */
+  :root[data-sidebar-appearance="translucent"] .cb-pop {
+    box-shadow: 0 20px 25px -5px var(--shadow-tint), 0 8px 10px -6px var(--shadow-tint);
+  }
+  :root[data-sidebar-appearance="translucent"] .cb-pop::before {
+    background: #00000014; mix-blend-mode: normal;
+    box-shadow: inset 0 -40px 10px -40px #ffffff1a;
+  }
   :root[data-sidebar-appearance="translucent"] :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview)::after,
   :root[data-sidebar-appearance="translucent"] .app.tabs-vertical:not(.layout-expanded) .sidebar::after {
     content: ""; position: absolute; inset: 0; z-index: -1;

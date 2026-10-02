@@ -500,11 +500,12 @@ export class GatewayModelClient implements ModelClient {
 
   /**
    * One step of the v2 tool-call loop (S5). Manifest tools carry no `execute`,
-   * so `generateText` returns after the model turn with client-side tool
+   * so the completed response returns with client-side tool
    * calls for the loop to dispatch — every side effect is journaled by the
    * caller, never hidden inside the SDK loop.
    */
   async toolCallStep(opts: {
+    onText?: (text: string) => void;
     modelId: string;
     system: string;
     messages: ModelMessage[];
@@ -520,6 +521,7 @@ export class GatewayModelClient implements ModelClient {
   }
 
   private async toolCallStepInner(opts: {
+    onText?: (text: string) => void;
     modelId: string;
     system: string;
     messages: ModelMessage[];
@@ -548,10 +550,20 @@ export class GatewayModelClient implements ModelClient {
         })];
       }),
     );
-    const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, JSON.stringify(opts.messages).slice(0, 120_000)), maxOut, () => generateText({
-      ...request,
-      tools,
-    }));
+    const res = await this.billed(opts.modelId, estimatedPromptTokens(opts.system, JSON.stringify(opts.messages).slice(0, 120_000)), maxOut, async () => {
+      if (!opts.onText) return generateText({ ...request, tools });
+      const stream = streamText({ ...request, tools });
+      let text = "";
+      opts.onText(text);
+      for await (const part of stream.fullStream) {
+        if (part.type === "error") throw part.error;
+        if (part.type === "abort") throw request.abortSignal?.reason ?? new AuxError("cancelled", "Model stream was cancelled.");
+        if (part.type === "text-delta") { text += part.text; opts.onText(text); }
+      }
+      return { text: await stream.text, steps: await stream.steps, toolCalls: await stream.toolCalls,
+        response: await stream.response, finishReason: await stream.finishReason,
+        usage: await stream.usage, providerMetadata: await stream.providerMetadata };
+    });
     const lastStep = res.steps.at(-1);
     const calls = (lastStep?.toolCalls ?? res.toolCalls ?? []).map((call) => ({
       toolCallId: call.toolCallId,

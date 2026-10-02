@@ -87,6 +87,10 @@ export async function run(t) {
       t.assert.deepEqual(requested.pageIds, [], 'Sending the request must not eagerly open a page');
       t.assert.deepEqual(await t.rpc('pages.list'), [], 'No page may exist before the model actually issues openTab');
     } finally { releaseOpen(); }
+    const allow = selector('Allow once', 'AXButton');
+    await t.ax.waitFor(allow);
+    t.assert.deepEqual(await t.rpc('pages.list'), [], 'The intended destination must wait for real person consent');
+    await t.ax.press(allow);
     const details = await finished(t, requested.runId);
     const pages = await t.until('the one tool-opened real URL finishes loading', async () => {
       const pages = await t.rpc('pages.list');

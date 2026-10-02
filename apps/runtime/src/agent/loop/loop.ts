@@ -26,6 +26,8 @@ import { parseLooseJson } from "./tools.js";
  */
 export interface AgentLoopOptions {
   model: Pick<ModelClient, "toolCallStep">;
+  /** Actual provider text, published independently of complete tool dispatch. */
+  onText?: (text: string) => void;
   modelId: string;
   tools: LoopToolManifest;
   transcript: TranscriptStore;
@@ -261,6 +263,7 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopOut
     let step;
     try {
       step = await model.toolCallStep({
+        onText: opts.onText,
         modelId: opts.modelId,
         system,
         messages,

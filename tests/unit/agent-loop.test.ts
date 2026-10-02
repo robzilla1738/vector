@@ -602,6 +602,31 @@ async function settle(repo: Repo, runId: string) {
 }
 
 describe("runToolLoop (S5 host integration)", () => {
+  it("publishes a page-free live answer before completion through the existing answer event", async () => {
+    const model = new MockModelClient().scriptToolSteps([{ text: "Complete page-free answer" }]);
+    const nextStep = model.toolCallStep.bind(model);
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    model.toolCallStep = async opts => {
+      (opts as typeof opts & { onText?: (text: string) => void }).onText?.("Live page-free answer");
+      await held;
+      (opts as typeof opts & { onText?: (text: string) => void }).onText?.("Complete page-free answer");
+      return nextStep(opts);
+    };
+    const h = coordinatorHarness(model);
+    const run = await h.coordinator.start({ goal: "Chat without a page", pageIds: [], engine: "agent-loop" });
+    try {
+      await vi.waitFor(() => expect(h.coordinator.deps.events.since(0).events.some(event =>
+        event.type === "run.answer.delta" && event.payload.text === "Live page-free answer")).toBe(true));
+      expect(h.repo.getRun(run.runId)?.status).toBe("running");
+      expect(h.pages.observe).not.toHaveBeenCalled();
+      expect(h.pages.execute).not.toHaveBeenCalled();
+    } finally { release(); await settle(h.repo, run.runId); }
+    expect(h.repo.getRun(run.runId)?.result).toMatchObject({ report: "Complete page-free answer" });
+    expect(h.coordinator.deps.events.since(0).events.filter(event => event.type === "run.answer.delta").at(-1)?.payload)
+      .toMatchObject({ text: "Complete page-free answer", seq: 2 });
+  });
+
   it("funds a real Goal turn and only completes on accepted submit_result", async () => {
     const model = new MockModelClient().scriptToolSteps([{ toolCalls: [{ toolCallId: "done",
       toolName: "submit_result", input: { report: "Fixture result" } }] }]);

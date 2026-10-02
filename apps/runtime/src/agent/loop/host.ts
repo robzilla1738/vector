@@ -1,3 +1,4 @@
+import { AnswerDeltaEmitter } from "../answer-delta.js";
 import { MentionUnavailable } from "../turn-mentions.js";
 import { ObservationScopeSchema, AuxError, type Observation, type Run, type StepOutcome } from "@aux/contracts";
 import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
@@ -113,6 +114,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   }
 
   const transcript = new TranscriptStore(self.deps.repo.db);
+  const answer = new AnswerDeltaEmitter(self.deps.events, runId);
   const threadId = run.config?.chatId ?? runId;
   const goalRun = !!self.deps.repo.db.prepare("SELECT 1 FROM goals WHERE run_id=?").get(runId);
   const initialTranscript = !transcript.count(runId);
@@ -826,6 +828,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       }
     return ({
     model,
+    onText: text => { if (!signal.aborted) answer.push(text); },
     modelId: modelId(),
     tools: (() => {
       const manifest = buildToolManifest();
@@ -1001,7 +1004,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       } catch (error) {
         if (signal.aborted && !c.abort.signal.aborted) continue;
         throw error;
-      }
+      } finally { answer.flush(); }
       hasResume = false;
 
       if ((c.paused || signal.aborted) && !c.abort.signal.aborted) continue;

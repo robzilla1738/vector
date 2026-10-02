@@ -150,6 +150,8 @@ export interface ModelClient {
    * reports capability_unsupported.
    */
   toolCallStep?(opts: {
+    /** Full text received so far for this provider attempt; retries replace prior previews. */
+    onText?: (text: string) => void;
     modelId: string;
     system: string;
     messages: ModelMessage[];
