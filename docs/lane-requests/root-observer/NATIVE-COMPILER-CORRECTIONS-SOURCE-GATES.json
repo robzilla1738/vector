@@ -1,0 +1,66 @@
+{
+  "baseHarness": "08819b46cc18fc6847e4a79f79f0e1a23f4141a8",
+  "checks": {
+    "install": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-native-api-install.log",
+      "sha256": "bca72417b277dec70cab279b2558b1dba0ef6a64f09a582560cf994de16cc758"
+    },
+    "build": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-native-api-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "typecheck": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-native-api-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    "lint": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-native-api-lint.log",
+      "sha256": "3db2952fcbd87f114d7a8819b521d5473c7ec58176282da1b31986d8a38a1050"
+    },
+    "format": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-native-api-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    "bindings": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-native-api-bindings.log",
+      "sha256": "c2635bc1ad9062801fd9ce3c8ad8a74b577439116d3d850581070a87f4533591"
+    },
+    "bridge": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-native-api-bridge.log",
+      "sha256": "b902406e71432dcc601710f7966314f27c06f12c1aec31900d24c1d64fe886b6"
+    },
+    "inventory": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-native-api-inventory.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "journeys": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-native-api-journeys.log",
+      "sha256": "4b10e449edc1397c9026a41a813b448986362c446092aafa21db5002483b7d4c"
+    },
+    "budgets": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-native-api-budgets.log",
+      "sha256": "ba836e45f7ac3de86c2092aa78735ecf83fefe9468dc2371123c900c36f14592"
+    }
+  },
+  "nativeReplay": "109 ordered packets /197 actual originals /335 mirrors PASS",
+  "rendererAssetsUnchangedVs088": true,
+  "runtimeShellContractsTestsScriptsUnchangedVs088": true,
+  "fullUnitEvidence": "04 full481files2605cases carried only for unchanged runtime/shell/contracts/unit source; final integration full unit mandatory",
+  "budgetsKb": {
+    "startupJs": 487,
+    "startupCss": 175,
+    "totalJs": 1798
+  },
+  "nativeCompiled": false,
+  "performanceQualified": false
+}

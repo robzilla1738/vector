@@ -1,0 +1,38 @@
+diff --git a/chrome/browser/ui/aux/native_runtime_memory_worker_unittest.cc b/chrome/browser/ui/aux/native_runtime_memory_worker_unittest.cc
+index 6546b9b..beff613 100644
+--- a/chrome/browser/ui/aux/native_runtime_memory_worker_unittest.cc
++++ b/chrome/browser/ui/aux/native_runtime_memory_worker_unittest.cc
+@@ -6,13 +6,14 @@
+ #include <sys/socket.h>
+ #include <sys/un.h>
+ #include <unistd.h>
+-#include <cstring>
+ #include <chrono>
+ #include <memory>
+ #include <optional>
+ #include <string>
+ #include <utility>
+ #include "base/command_line.h"
++#include "base/containers/span.h"
++#include "base/strings/string_util.h"
+ #include "base/files/scoped_file.h"
+ #include "base/files/scoped_temp_dir.h"
+ #include "base/functional/bind.h"
+@@ -91,7 +92,7 @@ MULTIPROCESS_TEST_MAIN(AuxNativeMemorySocketPeer) {
+       setsockopt(control, SOL_SOCKET, SO_NOSIGPIPE, &no_sigpipe, sizeof(no_sigpipe)) != 0) return 9;
+   sockaddr_un address{}; address.sun_family = AF_UNIX;
+   if (path.size() >= sizeof(address.sun_path)) return 2;
+-  std::memcpy(address.sun_path, path.c_str(), path.size() + 1);
++  base::strlcpy(base::span(address.sun_path), path);
+   if (connect(socket_fd.get(), reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0) return 3;
+   // This is an owned child endpoint. Its real audit token/PID/kernel footprint,
+   // rather than the parent process or a synthetic identity, enter production.
+@@ -140,7 +141,7 @@ class NativeRuntimeMemoryWorkerTest : public testing::Test {
+     sockaddr_un address{};
+     address.sun_family = AF_UNIX;
+     ASSERT_LT(path.size(), sizeof(address.sun_path));
+-    std::memcpy(address.sun_path, path.c_str(), path.size() + 1);
++    base::strlcpy(base::span(address.sun_path), path);
+     ASSERT_EQ(bind(listener.get(), reinterpret_cast<sockaddr*>(&address), sizeof(address)), 0);
+     ASSERT_EQ(listen(listener.get(), 1), 0);
+     int controls[2];

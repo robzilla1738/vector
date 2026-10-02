@@ -247,3 +247,7 @@ aux/runtime/0270-stock-memory-boundary.patch
 aux/runtime/0273-native-memory-compiled-tag.patch
 aux/runtime/0274-stock-memory-public-identity-boundary.patch
 aux/runtime/0275-organization-runtime-test-dict-index.patch
+aux/runtime/0276-browser-widget-owned-pointer.patch
+aux/runtime/0277-organization-work-weak-identity-storage.patch
+aux/runtime/0278-worker-fixture-bounded-socket-path.patch
+aux/runtime/0279-organization-work-fixture-gc-callback.patch

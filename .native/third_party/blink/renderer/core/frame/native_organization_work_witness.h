@@ -1,6 +1,7 @@
 // Copyright 2026 The Aux Authors
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_ORGANIZATION_WORK_WITNESS_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_ORGANIZATION_WORK_WITNESS_H_
+#include <array>
 #include <optional>
 #include <string>
 #include "base/time/time.h"
@@ -57,7 +58,8 @@ class CORE_EXPORT NativeOrganizationWorkWitness final
   NativeOrganizationWork work_;
   base::TimeTicks time_origin_;
   double armed_at_ms_ = 0;
-  Vector<WeakPersistent<PerformanceEntry>> previous_;
+  std::array<WeakPersistent<PerformanceEntry>, 20> previous_;
+  std::size_t previous_count_ = 0;
   bool armed_ = false;
 };
 }  // namespace blink

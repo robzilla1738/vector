@@ -1,6 +1,6 @@
 {
-  "status": "105 ordered packets full reverse/197 actual originals/forward335 exact mirrors PASS; native compilation pending",
-  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-stock-105-replay-x663raee",
+  "status": "109 ordered packets full reverse/197 actual originals/forward335 exact mirrors PASS; native compilation pending",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-109-native-replay-st75v0ef",
   "orderedPatches": [
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch",
     "chromium/patches/aux/runtime/0150-little-window-controller.patch",
@@ -106,7 +106,11 @@
     "chromium/patches/aux/runtime/0270-stock-memory-boundary.patch",
     "chromium/patches/aux/runtime/0273-native-memory-compiled-tag.patch",
     "chromium/patches/aux/runtime/0274-stock-memory-public-identity-boundary.patch",
-    "chromium/patches/aux/runtime/0275-organization-runtime-test-dict-index.patch"
+    "chromium/patches/aux/runtime/0275-organization-runtime-test-dict-index.patch",
+    "chromium/patches/aux/runtime/0276-browser-widget-owned-pointer.patch",
+    "chromium/patches/aux/runtime/0277-organization-work-weak-identity-storage.patch",
+    "chromium/patches/aux/runtime/0278-worker-fixture-bounded-socket-path.patch",
+    "chromium/patches/aux/runtime/0279-organization-work-fixture-gc-callback.patch"
   ],
   "packetDigests": {
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch": "8a7337726222a33aa306fd3f35e3485a60b59d4c0d036a1fda9bc98dce8c4e93",
@@ -213,7 +217,11 @@
     "chromium/patches/aux/runtime/0270-stock-memory-boundary.patch": "c49cc59a97127943038df76afdc7ee77d1477d28bb767f1a0828368ff1e11326",
     "chromium/patches/aux/runtime/0273-native-memory-compiled-tag.patch": "94b8cb8cdd86c08308a91ca3c79fb90da7e0aed410bba8dc8a48b8eb8eb0ec1b",
     "chromium/patches/aux/runtime/0274-stock-memory-public-identity-boundary.patch": "be9d399207ceb895e70745655199279b2375321a3a43640738e6d85b81ed6c70",
-    "chromium/patches/aux/runtime/0275-organization-runtime-test-dict-index.patch": "06fe1c8a1f4cfbd01eded9cc32ab8668e4caa770b99bc6b1d0409a01e37a2274"
+    "chromium/patches/aux/runtime/0275-organization-runtime-test-dict-index.patch": "06fe1c8a1f4cfbd01eded9cc32ab8668e4caa770b99bc6b1d0409a01e37a2274",
+    "chromium/patches/aux/runtime/0276-browser-widget-owned-pointer.patch": "189268a11e078c0694cb5c0aad8cecaa457bbb233c0a0e73650058f859504a5a",
+    "chromium/patches/aux/runtime/0277-organization-work-weak-identity-storage.patch": "187e367b2193c2038198a099e5c9e75fb890640a99548ace051ae1111acc6341",
+    "chromium/patches/aux/runtime/0278-worker-fixture-bounded-socket-path.patch": "a1ad9e0da61f0aaadd43441f6951db0515544d68537358990e189a48eaaa1c7a",
+    "chromium/patches/aux/runtime/0279-organization-work-fixture-gc-callback.patch": "299437600208cdc650c7f72f4bf16b41940737d6133ce5e84d800143a301e7a7"
   },
   "baselineVerification": {
     "cc/BUILD.gn": "2b1b3c86ec12fcd5dd95bb5c94fcc42f49f8530359e682c1903a019268bdba06",
@@ -654,7 +662,7 @@
     "chrome/browser/ui/aux/native_little_creation_ticket.h": "a2e3e36450c8571918e570459697b13c19857a5a3fcead0382884d5098358115",
     "chrome/browser/ui/aux/owner_mutation_fence.h": "001ce5108fd1235109c024688b9395543d57e209f0757dbac9f922ce43271a93",
     "chrome/browser/ui/aux/native_pip_appearance_registry.cc": "79758d8fe4ad8a5de9b7a455014345cec4de046b4b940cab0037fcbb65a92a0e",
-    "chrome/browser/ui/aux/native_runtime_memory_worker_unittest.cc": "436a5fc221eb9f27acef5e7541225df5d59af0cef250611d9e2dc7b65179896f",
+    "chrome/browser/ui/aux/native_runtime_memory_worker_unittest.cc": "6ffe20e321d3ff95f99871bda7d3b49ed75dd3d7f1433139c20a02777be8c40a",
     "chrome/browser/ui/aux/permission_broker.cc": "a1fbf8c1349813efc36cc7d3922ef7cb6f7daea702b1ec9b53d612be9e65f01e",
     "chrome/browser/ui/aux/native_pip_video_backing_unittest.cc": "4a81c0e21fcbe0c0a29fa72607f65e304f70a9445143a399fee414c039bb2352",
     "chrome/browser/ui/aux/profile_spaces.cc": "7237f67a3d0b6a38f127766aca84f1f638d55d1e1bc12bc2b27e6bb81ef9f739",
@@ -723,7 +731,7 @@
     "chrome/browser/ui/startup/startup_tab.h": "0553e1d9e2c1b74c23dc3ebfa17fcca7e01acda86a97e8ac459dbee1a7ac9484",
     "chrome/browser/ui/global_media_controls/media_notification_service.h": "3868c4fdb3bcec3d2474bbfae03264f43cc09b64eccea8af7fc0e4d26dab6be5",
     "chrome/browser/ui/global_media_controls/media_notification_service.cc": "c72f12da031182a819a500035edfe9aaa05d7071d898c29d888877f8fae5fb32",
-    "chrome/browser/ui/views/frame/browser_view.cc": "d5f2e40aa2d6a344ae0105b19cc4d8a4bd42cf5de15c7bf2ae8c60349d88da89",
+    "chrome/browser/ui/views/frame/browser_view.cc": "afbd96201ba0975813901a5f4d330ff5df12c64d434d16771513cccb888b94b1",
     "chrome/browser/ui/views/global_media_controls/media_dialog_view_interactive_browsertest.cc": "3e4ec2c14bd21abec550eb1f44fde0940b9c57d8d4ea99c3196b60a1a8c33487",
     "chrome/browser/ui/views/overlay/video_overlay_window_views.cc": "798c812f16f58c1222084f7b239144f0bbba6153aafdf0ce8e50fad60b54dd03",
     "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h": "c77619ab4c2d68531b78723dd2ce95426b6fb30c138582ab83dba38eebca0347",
@@ -799,17 +807,17 @@
     "third_party/blink/renderer/core/frame/native_guest_stage_controller.cc": "a9e235ce1a6481b6451c0ced5a67854bbbf38a0b8f819f3c059789001b058c06",
     "third_party/blink/renderer/core/frame/native_command_results_witness.h": "bc660246deedf18f3169c6b75679faf47757fb7269a7784fb4d000ab2e763ef8",
     "third_party/blink/renderer/core/frame/native_command_results_witness.cc": "3dc0607f41687a419452dc4175624f390530284f930cee655189ae827371436b",
-    "third_party/blink/renderer/core/frame/native_organization_work_witness.h": "a7893525df469f5662e35e7582ac7e199aeaa4bdd148ce5b8ad22dddbacda4dc",
+    "third_party/blink/renderer/core/frame/native_organization_work_witness.h": "5204b44ee2fe8d48a7bcdfc10badd83cb4abf3266f66e3f82a700c125f85d876",
     "third_party/blink/renderer/core/frame/web_frame_widget_impl.h": "c665a1ebb54bb6654fb3797db5884bcdc68468337c11e5f3eb3c031b495c7c6d",
     "third_party/blink/renderer/core/frame/native_command_results_witness_test.cc": "b95e3248849fae2a2c18b427887d708f37a8cb03a077c5f173850bc8f0684b35",
     "third_party/blink/renderer/core/frame/native_created_guest_frame.h": "c6a3597c32c17da3752bbcf7c6fcb0fb44d9444fd98ff632821af1c8eb5c5f89",
     "third_party/blink/renderer/core/frame/native_created_guest_controller.h": "8f3a04ee64b15d6b8ed7988a0aa13b24b00f4029707e76761b8d94271117765b",
-    "third_party/blink/renderer/core/frame/native_organization_work_witness_test.cc": "9f228f4efa0a0277b1a534914c63421d86882255f46a1b5f89bd9f0709655e04",
+    "third_party/blink/renderer/core/frame/native_organization_work_witness_test.cc": "6a0c762cdb3f78100ca3268286ed1ee24d8e0ad0c83146cfbcde2293253cd4af",
     "third_party/blink/renderer/core/frame/native_guest_stage_measurement.cc": "ae5dd94be089cac27cffbbe2bdf0dcbb4303b85efe5f367e29c65354c82266b9",
     "third_party/blink/renderer/core/frame/native_created_guest_frame.cc": "4f6a087c8badf1bcfc2d506c8284c6f48c803dcbeb2f7935ea978bf7272a5efe",
     "third_party/blink/renderer/core/frame/native_guest_stage_witness.cc": "94bd50ce39c197ad90c955aa9605a89dedf9f2f3f09a9509e358e8f1628de9ae",
     "third_party/blink/renderer/core/frame/build.gni": "0a5b08991158a2d563fe4aa1b572d757548a42ae107377261842af375ef4fd64",
-    "third_party/blink/renderer/core/frame/native_organization_work_witness.cc": "35c229edc26e90dfa21af76cfd2e6bc873fd310d2a20ff269bd2d20050a5c25f",
+    "third_party/blink/renderer/core/frame/native_organization_work_witness.cc": "a4963d181d6a5b53b2ba5307e7af85b58f8b0cccad928a44c84842417683b650",
     "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "c48c69154898d1b8784c47c552267da612c8f4ceb83834be44720852d2aaa07f",
     "third_party/blink/renderer/core/frame/picture_in_picture_controller.h": "e69eada22052386fe782a7961e2771211c43286fb8f6b5a44a1ffac6b674d7b3",
     "third_party/blink/renderer/core/html/media/html_video_element.cc": "b3b756302bfcd0ebbebf328d094b1582d63d95cb0c90d57d1af65f9e85ed901a",

@@ -2,6 +2,7 @@
 #include "third_party/blink/renderer/core/frame/native_organization_work_witness.h"
 #include <algorithm>
 #include <cmath>
+#include <span>
 #include "base/check.h"
 #include "base/json/json_reader.h"
 #include "base/uuid.h"
@@ -47,7 +48,7 @@ NativeOrganizationWorkWitness::NativeOrganizationWorkWitness(
   const auto entries = performance_->getEntriesByName(AtomicString(MeasureName(work)), AtomicString("measure"));
   if (time_origin_.is_null() || !std::isfinite(armed_at_ms_) || armed_at_ms_ < 0 || entries.size() > 20 ||
       performance_->getBufferedEntriesByType(AtomicString("longtask")).size() >= 200) return;
-  for (const auto& entry : entries) previous_.emplace_back(entry.Get());
+  for (const auto& entry : entries) previous_[previous_count_++] = entry.Get();
   // Observe real main-thread task completion independently of DOM timeline
   // subscription/LoAF delivery. No zero-entry inference establishes coverage.
   thread_ = Thread::Current();
@@ -85,7 +86,7 @@ std::optional<NativeOrganizationWorkSample> NativeOrganizationWorkWitness::Read(
   if (entries.size() > 20) return std::nullopt;
   PerformanceEntry* selected = nullptr;
   for (const auto& entry : entries) {
-    if (std::ranges::any_of(previous_, [entry](const auto& previous) { return previous.Get() == entry.Get(); })) continue;
+    if (std::ranges::any_of(std::span(previous_).first(previous_count_), [entry](const auto& previous) { return previous.Get() == entry.Get(); })) continue;
     if (selected || entry->source() != document.domWindow() || !entry->IsMeasure()) return std::nullopt;
     selected = entry.Get();
   }
