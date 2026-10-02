@@ -1,0 +1,17 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "helperAssemblyChanged": false,
+  "paths": {
+    "tests/host/startup-cold-process-audit.swift": "ddfbd628cb1f2c2afb477cf852527651770c0a4636895540fa98f3f09ae60b60",
+    "tests/host/startup-cold-process-audit-test.swift": "1529db67311d56f27f239977d357eceb8667f81cc0960cec6beda2716b19e4fc"
+  },
+  "scope": "Internal candidate held inode/SHA/Mach-O UUID admission, complete unchanged public kernel process inventory without title/Profile/session reads, one-use original child parent/kernel UUID/start generation and Mach ordering. Incomplete inventory, existing candidate, replacement or premature child refuses.",
+  "remaining": [
+    "actual Swift compiler/API review and synthetic execution",
+    "review complete inventory eligibility on actual macOS",
+    "manifest candidate executable identity pins and launcher protocol wiring",
+    "independent raw receipt consumer/cold classification",
+    "real20AC cold trials; distinct native warm-window producer"
+  ]
+}
