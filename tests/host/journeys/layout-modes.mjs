@@ -100,11 +100,21 @@ async function minimalUi(t) {
     const window = await mainWindow(t);
     await t.step(`${layout} Minimal UI fills the window and restores edge controls`, { kind: 'ui', features: ['minimalUi'] }, async () => {
       await centerPointer(t, window);
-      const started = performance.now();
-      await t.ax.key('command+shift+b', 'hid');
+      const addressTarget = { ...address }, tabsTarget = { ...tabs(layout) };
+      delete addressTarget.index; delete tabsTarget.index;
+      const timing = await t.ax.request('measureKey', {
+        chord: 'command+shift+b', selector: addressTarget, expectedVisible: false,
+        additionalHiddenSelectors: [tabsTarget], timeoutMs: 250,
+      });
       await t.until('Minimal UI saved', async () => (await t.rpc('settings.get')).minimalUi === true);
       await t.until('Minimal UI removes tab and address controls', async () => !visible(await t.ax.query(tabs(layout)), window).length && !visible(await t.ax.query(address), window).length);
-      const elapsedMs = performance.now() - started;
+      t.assert.equal(timing.via, 'hid');
+      t.assert.deepEqual(timing.hiddenSelectors, [addressTarget, tabsTarget]);
+      t.assert.deepEqual(timing.visibleElements, []);
+      for (const endpoint of ['postedAtNs', 'observedAtNs', 'effectConfirmedAtNs']) t.assert.match(timing[endpoint], /^[0-9]+$/);
+      t.assert.ok(BigInt(timing.postedAtNs) <= BigInt(timing.observedAtNs) && BigInt(timing.observedAtNs) <= BigInt(timing.effectConfirmedAtNs));
+      const elapsedMs = Number(BigInt(timing.effectConfirmedAtNs) - BigInt(timing.postedAtNs)) / 1_000_000;
+      t.assert.equal(timing.elapsedMs, elapsedMs);
       t.assert.ok(elapsedMs <= 250, `Minimal UI toggle took ${elapsedMs.toFixed(1)}ms`);
       const ax = await t.ax.dump({ scope: 'any' });
       const page = ax.find(row => row.role === 'AXWebArea' && row.name === 'Aux native Red' && row.frame?.width > 0);
@@ -122,7 +132,7 @@ async function minimalUi(t) {
       await t.until('Minimal UI exits', async () => (await t.rpc('settings.get')).minimalUi === false);
       const rpc = await t.rpc('workspace.get');
       t.assert.equal(rpc.activePageId, red.pageId);
-      return { ax, rpc: { workspace: rpc, settings: await t.rpc('settings.get'), coverage, elapsedMs } };
+      return { ax, rpc: { workspace: rpc, settings: await t.rpc('settings.get'), coverage, elapsedMs, timing } };
     });
   }
 }

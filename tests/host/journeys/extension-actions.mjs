@@ -25,7 +25,7 @@ export async function run(t) {
   });
   await t.ax.key('escape', 'hid');
   await t.step('pin the unpacked action and verify the native popup anchor within forty pixels', { kind: 'ui', features: ['extensions'] }, async () => {
-    await t.ax.press(control('Extensions'));
+    await t.ax.press(control('Extensions', 'AXPopUpButton'));
     await t.ax.press(control(`Pin ${fixtureName}`));
     await t.ax.key('escape', 'hid');
     await t.ax.waitFor(action);

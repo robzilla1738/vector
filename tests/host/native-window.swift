@@ -1070,6 +1070,7 @@ final class ShortcutEffectObservation {
   let validateTarget: () throws -> Void
   var postedAt: UInt64?
   var observedAt: UInt64?
+  var effectConfirmedAt: UInt64?
   var notification: String?
   init(pid: pid_t, confirmEffect: @escaping () throws -> Bool, validateTarget: @escaping () throws -> Void) {
     self.pid = pid; self.confirmEffect = confirmEffect; self.validateTarget = validateTarget
@@ -1082,6 +1083,7 @@ final class ShortcutEffectObservation {
       try validateTarget()
       guard try confirmEffect() else { return }
     } catch { return }
+    effectConfirmedAt = DispatchTime.now().uptimeNanoseconds
     observedAt = receivedAt
     self.notification = notification as String
   }
@@ -1108,6 +1110,13 @@ func measureKey(_ request: [String: Any]) throws -> [String: Any] {
   let application = AXUIElementCreateApplication(pid)
   var owningWindow: AXUIElement?
   var selector: [String: Any] = [:]
+  var hiddenSelectors: [[String: Any]] = []
+  var visibilityTargets: [AXUIElement] = []
+  let additional = request["additionalHiddenSelectors"] as? [[String: Any]] ?? []
+  guard request["additionalHiddenSelectors"] == nil || request["additionalHiddenSelectors"] is [[String: Any]],
+        additional.count <= 7, additional.isEmpty || expectedVisible == false else {
+    throw protocolError("Additional hidden selectors require visibility timing and at most seven selectors")
+  }
   if let expectedVisible {
     guard !expectedVisible, let supplied = request["selector"] as? [String: Any],
           supplied["index"] == nil, supplied["scope"] as? String == "shell", supplied["within"] == nil,
@@ -1115,8 +1124,16 @@ func measureKey(_ request: [String: Any]) throws -> [String: Any] {
       throw protocolError("Visibility timing requires one window, an unindexed shell selector and expectedVisible false")
     }
     selector = supplied; owningWindow = windows[0]
-    guard try visibleShortcutElements(selector, window: windows[0]).count == 1 else {
-      throw protocolError("Shortcut visibility target must initially be visible")
+    hiddenSelectors = [supplied] + additional
+    for hidden in hiddenSelectors {
+      guard hidden["index"] == nil, hidden["scope"] as? String == "shell", hidden["within"] == nil else {
+        throw protocolError("Visibility timing requires unindexed shell selectors without within")
+      }
+      let found = try visibleShortcutElements(hidden, window: windows[0])
+      guard found.count == 1, !visibilityTargets.contains(where: { CFEqual($0, found[0].0) }) else {
+        throw protocolError("Each shortcut visibility target must initially be unique and visible")
+      }
+      visibilityTargets.append(found[0].0)
     }
   } else if let expectedName, protocolNames(target).contains(expectedName) {
     throw protocolError("Shortcut target already has the expected name")
@@ -1128,7 +1145,10 @@ func measureKey(_ request: [String: Any]) throws -> [String: Any] {
             windows.count == 1, CFEqual(windows[0], owningWindow) else {
         throw protocolError("Shortcut owning window changed")
       }
-      return try visibleShortcutElements(selector, window: owningWindow).isEmpty
+      for hidden in hiddenSelectors {
+        if !(try visibleShortcutElements(hidden, window: owningWindow)).isEmpty { return false }
+      }
+      return true
     }
     var owner: pid_t = 0
     return AXUIElementGetPid(target, &owner) == .success && owner == targetPid &&
@@ -1148,8 +1168,9 @@ func measureKey(_ request: [String: Any]) throws -> [String: Any] {
                        (target, kAXValueChangedNotification),
                        (application, kAXLayoutChangedNotification)]
   if let owningWindow {
-    notifications += [(target, kAXUIElementDestroyedNotification),
-                      (owningWindow, kAXLayoutChangedNotification)]
+    notifications += visibilityTargets.map { ($0, kAXUIElementDestroyedNotification) }
+    notifications += visibilityTargets.dropFirst().flatMap { [($0, kAXTitleChangedNotification), ($0, kAXValueChangedNotification)] }
+    notifications.append((owningWindow, kAXLayoutChangedNotification))
   }
   for (element, notification) in notifications {
     let name = notification as CFString
@@ -1158,6 +1179,7 @@ func measureKey(_ request: [String: Any]) throws -> [String: Any] {
     }
   }
   guard registrations.contains(where: { CFEqual($0.0, target) }) &&
+        visibilityTargets.allSatisfy({ visible in registrations.contains(where: { CFEqual($0.0, visible) }) }) &&
         (owningWindow == nil || registrations.contains(where: { CFEqual($0.0, application) || CFEqual($0.0, owningWindow!) })) else {
     for (element, name) in registrations { AXObserverRemoveNotification(observer, element, name) }
     throw protocolError("Shortcut target does not support AX change observation")
@@ -1205,13 +1227,20 @@ func measureKey(_ request: [String: Any]) throws -> [String: Any] {
   guard let observedAt = observation.observedAt, let notification = observation.notification else {
     throw protocolError("Shortcut produced no confirmed AX notification within \(timeoutMs)ms")
   }
-  var result: [String: Any] = ["elapsedMs": Double(observedAt - started) / 1_000_000,
+  // Combined disappearance uses the conservative endpoint after both live
+  // predicates are confirmed, never subtracting traversal or transport cost.
+  let completedAt = hiddenSelectors.count > 1 ? observation.effectConfirmedAt! : observedAt
+  var result: [String: Any] = ["elapsedMs": Double(completedAt - started) / 1_000_000,
           "postedAtNs": String(started), "observedAtNs": String(observedAt),
           "notification": notification, "via": "hid"]
   if let expectedVisible {
     result["expectedVisible"] = expectedVisible
     result["selector"] = selector
-    result["visibleElements"] = try visibleShortcutElements(selector, window: owningWindow!).map { elementRecord($0.0, depth: $0.1) }
+    result["visibleElements"] = try hiddenSelectors.flatMap { try visibleShortcutElements($0, window: owningWindow!) }.map { elementRecord($0.0, depth: $0.1) }
+    if hiddenSelectors.count > 1 {
+      result["hiddenSelectors"] = hiddenSelectors
+      result["effectConfirmedAtNs"] = String(completedAt)
+    }
   } else {
     result["expectedName"] = expectedName!
     result["element"] = elementRecord(target, depth: 0)
