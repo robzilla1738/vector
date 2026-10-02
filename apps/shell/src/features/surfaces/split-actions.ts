@@ -14,10 +14,12 @@ let splitOperations: Promise<unknown> = Promise.resolve();
 const resizeOrigins = new Map<string, Layout>();
 const nativePair = (group: SplitGroup) => JSON.stringify([group.panes, group.layout, group.ratios[0]]);
 
-async function synchronizePairs(before: SplitGroup[], after: SplitGroup[]) {
+async function synchronizePairs(before: SplitGroup[], after: SplitGroup[], valid = () => true) {
+  if (!valid()) throw new Error("The tabs changed. Try splitting them again.");
   for (const group of before) if (group.panes.length === 2 && !after.some(next => next.id === group.id && next.panes.length === 2))
     await tabCommand({ kind: "unsplit", pageId: group.panes[0]! });
   for (const group of after) {
+    if (!valid()) throw new Error("The tabs changed. Try splitting them again.");
     const old = before.find(item => item.id === group.id);
     if (group.panes.length === 2 && (!old || nativePair(group) !== nativePair(old)))
       await tabCommand({ kind: "split", pageIds: [group.panes[0]!, group.panes[1]!], layout: group.layout as "row" | "column", ratio: group.ratios[0]! });
@@ -25,20 +27,20 @@ async function synchronizePairs(before: SplitGroup[], after: SplitGroup[]) {
 }
 
 /** Serialize native ACKs before persisting the shared organization. */
-export function commitSplit(layout: Layout, previous = useStore.getState().layout, nativePrevious = previous) {
+export function commitSplit(layout: Layout, previous = useStore.getState().layout, nativePrevious = previous, valid = () => true) {
   const operation = splitOperations.then(async () => {
     if (layout === previous && nativePrevious === previous) return;
     const before = previous.splitGroups ?? [], after = layout.splitGroups ?? [];
     const signature = JSON.stringify(before);
     const nativeBefore = nativePrevious.splitGroups ?? [];
     const changed = [...nativeBefore, ...before, ...after].filter(group => {
-      const other = (before.includes(group) || nativeBefore.includes(group) ? after : before).find(item => item.id === group.id);
-      return JSON.stringify(other) !== JSON.stringify(group);
+      const next = after.find(item => item.id === group.id);
+      return [before, nativeBefore].some(groups => JSON.stringify(groups.find(item => item.id === group.id)) !== JSON.stringify(next));
     });
-    const available = () => changed.every(group => group.panes.every(id => localSplitPage(id) && useStore.getState().layout.tabSpace[id] === previous.tabSpace[id]));
+    const available = () => valid() && changed.every(group => group.panes.every(id => localSplitPage(id) && useStore.getState().layout.tabSpace[id] === previous.tabSpace[id]));
     if (JSON.stringify(useStore.getState().layout.splitGroups ?? []) !== signature || !available()) throw new Error("The tabs changed. Try splitting them again.");
     try {
-      await synchronizePairs(nativeBefore, after);
+      await synchronizePairs(nativeBefore, after, available);
       const current = useStore.getState().layout;
       if (JSON.stringify(current.splitGroups ?? []) !== signature || !available()) throw new Error("The tabs changed. Try splitting them again.");
       const next = { ...current, splitGroups: after };
@@ -46,6 +48,7 @@ export function commitSplit(layout: Layout, previous = useStore.getState().layou
       useStore.setState({ layout: next });
       for (const id of resizeOrigins.keys()) if (!after.some(group => group.id === id)) resizeOrigins.delete(id);
     } catch (reason) {
+      if (!valid()) throw reason;
       // An ACK or organization race can leave the native mirror partly changed.
       // Reconcile only affected human tabs still owned by this window.
       const affected = new Set(changed.flatMap(group => group.panes));

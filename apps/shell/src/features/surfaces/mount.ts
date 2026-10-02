@@ -1,5 +1,6 @@
 import type { FeatureMount } from "../registry";
 import { splitAdd, splitClose, splitFlip, splitFocus, splitSwap, splitSeparate, splitResize } from "./split-actions";
+import { restoreNativeSplits } from "./split-restoration";
 import { SplitDropZones, SplitPicker } from "../../components/SplitDropZones";
 import { SplitControls } from "../../components/SplitControls";
 import { openCommandSurface } from "../../command-surface-state";
@@ -7,6 +8,7 @@ import { openCommandSurface } from "../../command-surface-state";
 export const mount: FeatureMount = {
   feature: "splitView",
   privateWindows: true,
+  boot: restoreNativeSplits,
   sidebarItems: [SplitControls],
   overlays: [SplitDropZones, SplitPicker],
   commands: {

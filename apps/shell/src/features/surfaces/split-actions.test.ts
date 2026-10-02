@@ -54,3 +54,22 @@ it("serializes competing mutations and refuses the stale second organization bef
   expect(fixture.native).toHaveBeenCalledTimes(1);
   expect(fixture.state.layout.splitGroups?.[0]?.ratios).toEqual([.6]);
 });
+
+it("restores a persisted pair after native session tabs return without split metadata", async () => {
+  const layout = fixture.state.layout;
+  await commitSplit(layout, layout, { ...layout, splitGroups: [] });
+  expect(fixture.native.mock.calls).toEqual([[{ kind: "split", pageIds: ["one", "two"], layout: "row", ratio: .5 }]]);
+  expect(fixture.state.layout.splitGroups).toEqual(layout.splitGroups);
+});
+it("refuses restoration when its owner unmounts before queued native dispatch", async () => {
+  const layout = fixture.state.layout;
+  await expect(commitSplit(layout, layout, { ...layout, splitGroups: [] }, () => false)).rejects.toThrow("tabs changed");
+  expect(fixture.native).not.toHaveBeenCalled();
+  expect(fixture.persist).not.toHaveBeenCalled();
+});
+it("refuses restoration for a persisted pair whose tab moved to another window", async () => {
+  const layout = fixture.state.layout;
+  fixture.state.pages[1] = { ...fixture.state.pages[1]!, windowId: "other" };
+  await expect(commitSplit(layout, layout, { ...layout, splitGroups: [] })).rejects.toThrow("tabs changed");
+  expect(fixture.native).not.toHaveBeenCalled();
+});
