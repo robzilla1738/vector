@@ -24,11 +24,11 @@ import { PastedMemorySetup } from "./PastedMemorySetup";
 import { SetupReview } from "./SetupReview";
 
 const TITLES = {
-  welcome: "A browser for what comes next",
-  import: "Bring the parts you want",
-  model: "Choose how Aux thinks with you",
-  appearance: "Make room for your way of working",
-  default: "Open your next link here",
+  welcome: "Welcome to Aux",
+  import: "Bring your bookmarks and history",
+  model: "Choose your AI model",
+  appearance: "Make Aux feel like yours",
+  default: "Open links in Aux",
   permissions: "You stay in charge",
   postcard: "Start with one useful question",
 };
@@ -320,18 +320,11 @@ export function OnboardingFlow({
           {step === "import" && (
             <>
               <p>
-                Review Chrome, Arc, Safari or Firefox, then choose the Profiles and categories to bring over.
-                Nothing imports until you confirm your selection.
-              </p>
-              <p>
-                The browser import does not copy passwords, cookies or account access. macOS may separately
-                ask for Keychain access when Aux stores or unlocks its own encrypted Profile data or model
-                keys. Read that system prompt before allowing it.
+                Choose what to bring from your other browser. Nothing is imported until you confirm.
               </p>
               <ImportDataSetting />
               <p className="hint">
-                Leaving this step does not cancel an import you started. Return here to inspect its durable
-                progress; interrupted imports require a fresh review before retry.
+                Imports keep running if you leave this step. Check progress here before retrying.
               </p>
             </>
           )}

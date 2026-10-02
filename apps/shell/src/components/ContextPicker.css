@@ -1,4 +1,14 @@
 @layer components {
+  .anchored-panel:has(.context-picker-group) {
+    background: var(--surface-popover);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    scrollbar-gutter: stable;
+  }
+  .anchored-panel:has(.context-picker-group) input[type="search"]:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: -2px;
+  }
   .context-choice {
     display: flex;
     align-items: center;

@@ -1,6 +1,6 @@
 import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
 import { describe, it, expect, vi } from "vitest";
-import { DurableWriteLedger, EventBus, openDb, Repo, RunService, SetService, TaskService, WorkerPool } from "@aux/runtime";
+import { DurableWriteLedger, MockModelClient, EventBus, openDb, Repo, RunService, SetService, TaskService, WorkerPool } from "@aux/runtime";
 import { EventTypes, taskConversationId } from "@aux/contracts";
 import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@aux/runtime";
 import type { Observation, PageTarget, Program, Run } from "@aux/contracts";
@@ -1042,4 +1042,23 @@ it("a Set source edit during observation withholds the document before any effec
   expect(h.state.executed).toBe(0);
   expect(h.repo.listMembers(set.setId)[0]?.error).toMatch(/approved source changed/);
   expect(h.turnMentions.has(runId)).toBe(false);
+});
+
+
+it("answers and retries a page-free chat without reading or creating a browser page", async () => {
+  const model = new MockModelClient().scriptToolSteps([{ text: "Yes, I’m here. What would you like to work on?" }, { text: "I’m ready to help." }]);
+  const h = harness({ model });
+  const open = vi.spyOn(h.pages, "open"), read = vi.spyOn(h.pages, "get"), observe = vi.spyOn(h.pages, "observe");
+  try {
+    const started = await h.runs.start({ goal: "Are you there?" });
+    expect(started.pageIds).toEqual([]);
+    expect(started.config?.implementation).toBe("agent-loop");
+    const completed = await untilTerminal(h.repo, started.runId);
+    expect(completed.status).toBe("completed");
+    expect(completed.result?.report).toContain("Yes, I’m here");
+    const retried = await h.runs.retry(started.runId);
+    expect(retried.pageIds).toEqual([]);
+    expect((await untilTerminal(h.repo, retried.runId)).status).toBe("completed");
+    expect(open).not.toHaveBeenCalled(); expect(read).not.toHaveBeenCalled(); expect(observe).not.toHaveBeenCalled();
+  } finally { h.repo.db.close(); }
 });

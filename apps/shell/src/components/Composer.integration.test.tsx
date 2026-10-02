@@ -156,3 +156,28 @@ it("does not adopt another conversation into home but restores a home-owned atta
   await act(async()=>root.render(<HomeAsk key="remount" onSearch={()=>{}}/>));
   expect(invoke.mock.calls.some(([method,params])=>method==="conversations.images.get"&&(params as {chatId?:string})?.chatId==="home-image-draft")).toBe(true);
 });
+
+it("retries a completed page-free answer through its visible control without adding a tab", async () => {
+  const run = makeRun({runId:"page-free",config:{chatId:"page-free-chat"},status:"completed",pageIds:[],result:{report:"A page-free answer"}});
+  const retryRun = vi.fn().mockResolvedValue(null);
+  useStore.setState({runs:[run],steps:{[run.runId]:[]},pages:[],connected:true,pendingTurns:[],retryRun,conversationDrafts:{},retryingRuns:{}});
+  vi.spyOn(bridge,"invoke").mockImplementation(async method => {
+    if(method === "runs.list") return [run];
+    if(method === "runs.get") return {run,steps:[]};
+    if(method === "runs.messages.list") return [];
+    if(method === "conversations.get") return {title:"Chat",archived:false};
+    if(method === "conversations.artifacts.get") return {artifacts:[]};
+    if(method === "conversations.images.get") return {images:[]};
+    if(method === "conversations.attachments.get") return {attachments:[]};
+    if(method === "conversations.sources.get") return {sources:[]};
+    if(method === "runs.context.get") return {entries:[],historyEnabled:true};
+    return {workspace:null,memory:null};
+  });
+  await act(async () => root.render(<Conversation chatId="page-free-chat" embedded/>));
+  const retry = host.querySelector<HTMLButtonElement>('[aria-label="Retry this turn"]')!;
+  expect(retry).not.toBeNull();
+  expect(retry.disabled).toBe(false);
+  await act(async () => retry.click());
+  expect(retryRun).toHaveBeenCalledExactlyOnceWith(run.runId);
+  expect(useStore.getState().pages).toEqual([]);
+});

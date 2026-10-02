@@ -5,17 +5,17 @@ import { useStore } from "./store";
 import { makeRun } from "./mock/fixtures";
 const initial = useStore.getState();
 afterEach(() => { vi.restoreAllMocks(); useStore.setState(initial, true); });
-it("starts new-tab work in the originating Space without displacing newer navigation or drafts", async () => {
+it("starts a page-free chat without opening a tab or displacing newer navigation or drafts", async () => {
   let finish!: (value: unknown) => void;
   const run = makeRun({runId:"background",config:{chatId:"chat"}});
   vi.spyOn(bridge,"invoke").mockImplementation(() => new Promise(resolve => { finish = resolve; }));
   const open = vi.fn().mockResolvedValue({pageId:"task-page"});
   const reveal = vi.fn();
   useStore.setState({openBackgroundTab:open,openConversation:reveal,mode:"conversation",conversationId:null,overlay:null,agentDraft:"Research this",settings:{...initial.settings,modelConfigured:true}});
-  const space = useStore.getState().layout.activeSpaceId;
   const pending = useStore.getState().startRun("Research this",{scope:"new",presentation:"conversation"});
   await Promise.resolve();
-  expect(open).toHaveBeenCalledWith("about:blank",space,false);
+  expect(open).not.toHaveBeenCalled();
+  expect(bridge.invoke).toHaveBeenCalledWith("runs.start", expect.objectContaining({ pageIds: [] }));
   useStore.setState({overlay:"settings",agentDraft:"A newer draft"});
   finish(run); await pending;
   expect(reveal).not.toHaveBeenCalled();

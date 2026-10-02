@@ -139,7 +139,7 @@ it("Cmd+Enter saves Finish later and restore focus without starting work", async
   document.body.append(trigger);
   trigger.focus();
   await render(initial("welcome"));
-  expect(document.activeElement?.textContent).toBe("A browser for what comes next");
+  expect(document.activeElement?.textContent).toBe("Welcome to Aux");
   await act(async () =>
     document
       .querySelector("h1")!
@@ -333,7 +333,7 @@ it("replays an already open flow using the new saved revision and welcome step",
   await act(async () => root.render(<OnboardingHost />));
   expect(document.querySelector("h1")?.textContent).toBe("You stay in charge");
   await act(async () => requestOnboardingReplay());
-  expect(document.querySelector("h1")?.textContent).toBe("A browser for what comes next");
+  expect(document.querySelector("h1")?.textContent).toBe("Welcome to Aux");
   await act(async () => button("Continue").click());
   expect(rpc).toHaveBeenLastCalledWith("import.status", {});
   expect(rpc).toHaveBeenCalledWith("onboarding.update", { revision: 1, action: "visit", step: "import" });
@@ -359,7 +359,7 @@ it("coalesces repeated replay requests while loading progress", async () => {
   expect(rpc.mock.calls).toEqual([["onboarding.get"]]);
   await act(async () => finish(current));
   expect(rpc.mock.calls.filter(([method]) => method === "onboarding.update")).toHaveLength(1);
-  expect(document.querySelector("h1")?.textContent).toBe("A browser for what comes next");
+  expect(document.querySelector("h1")?.textContent).toBe("Welcome to Aux");
 });
 
 it("ignores a stale startup response after an explicit replay has opened newer progress", async () => {
@@ -374,7 +374,7 @@ it("ignores a stale startup response after an explicit replay has opened newer p
   await act(async () => root.render(<OnboardingHost />));
   await act(async () => requestOnboardingReplay());
   await act(async () => finish(initial("permissions")));
-  expect(document.querySelector("h1")?.textContent).toBe("A browser for what comes next");
+  expect(document.querySelector("h1")?.textContent).toBe("Welcome to Aux");
   expect(current.revision).toBe(1);
 });
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { positionContextMenu } from "./position-context-menu";
+import { positionContextMenu, positionAnchoredPopover } from "./position-context-menu";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -18,4 +18,21 @@ it.each([
   expect(menu.style.left).toBe(left);
   expect(menu.style.top).toBe(top);
   expect(bounds).not.toHaveBeenCalled();
+});
+
+
+it("places a composer picker above its anchor and grows again when space returns", () => {
+  vi.stubGlobal("innerWidth", 800); vi.stubGlobal("innerHeight", 600);
+  const menu = document.createElement("div");
+  Object.defineProperties(menu, {
+    offsetWidth: { value: 272 },
+    offsetHeight: { get: () => Math.min(400, Number.parseFloat(menu.style.maxHeight) || 400) },
+  });
+  positionAnchoredPopover(menu, { left: 620, top: 300, bottom: 332 });
+  expect(menu.style.maxHeight).toBe("286px"); expect(menu.style.top).toBe("8px");
+  expect(Number.parseFloat(menu.style.top) + menu.offsetHeight).toBeLessThan(300);
+  positionAnchoredPopover(menu, { left: 100, top: 500, bottom: 532 });
+  expect(menu.style.maxHeight).toBe("420px"); expect(menu.style.top).toBe("94px");
+  positionAnchoredPopover(menu, { left: 100, top: 40, bottom: 72 });
+  expect(menu.style.top).toBe("78px"); expect(menu.style.maxHeight).toBe("420px");
 });

@@ -1,0 +1,117 @@
+import { fixturePage } from '../lib/fixture.mjs';
+import { configureModel, finished, mentionedRun, newChat, observations, tool } from '../lib/l10-trust-fixtures.mjs';
+
+export const journey = {
+  id: 'first-chat', title: 'Answer and retry without a page; open a real page only through a tool',
+  features: ['electronMigration'], devAcceptance: ['tabMentions'],
+  needs: ['accessibility', 'screen-recording'], model: 'loopback', launch: {},
+  timeoutMs: 150000, owner: 'Builder first-chat regression',
+};
+const selector = (name, role) => ({ name, ...(role ? { role } : {}), match: 'exact', scope: 'shell', index: 0 });
+
+async function send(t, text) {
+  const previous = new Set((await t.rpc('runs.list')).map(run => run.runId));
+  await t.ax.type(text, selector('Reply to conversation'));
+  await t.ax.press(selector('Send message', 'AXButton'));
+  return t.until('the submitted real conversation run exists', async () =>
+    (await t.rpc('runs.list')).find(run => !previous.has(run.runId) && run.goal === text), 30000);
+}
+
+export async function run(t) {
+  await configureModel(t);
+  const openedUrl = `${t.fixture.url}/first-chat/opened`;
+  const contextUrl = `${t.fixture.url}/first-chat/context`;
+  t.fixture.route('/first-chat/opened', fixturePage('Aux first-chat tool page', '<p>Explicit tool destination ready.</p>'));
+  t.fixture.route('/first-chat/context', fixturePage('Aux first-chat optional context', '<p>Optional context evidence: copper-467.</p>'));
+  let phase = 'answer', contextTurns = 0;
+  const decisions = [];
+  let releaseOpen;
+  const openGate = new Promise(resolve => { releaseOpen = resolve; });
+  t.model.respond(async payload => {
+    if (!payload.tools?.length) return { content: 'Aux synthetic first chat' };
+    decisions.push({ phase, stream: payload.stream === true, observations: observations(payload) });
+    if (phase === 'answer' || phase === 'retry') {
+      t.assert.equal(observations(payload).length, 0, 'Page-free requests must contain no page observation');
+      t.assert.equal(payload.stream, true, 'The answer must use the actual streaming transport');
+      return { content: phase === 'answer' ? 'Page-free answer violet-271.' : 'Page-free retry amber-839.' };
+    }
+    if (phase === 'open') {
+      await openGate;
+      return tool('repl', { code: `const opened = openTab(${JSON.stringify(openedUrl)}); display(opened); submitResult("Explicit tool destination opened.");` }, 'first-chat-open-real-url');
+    }
+    if (++contextTurns === 1) return tool('snapshot', {}, 'first-chat-explicit-context');
+    const observed = observations(payload).find(item => item.text.includes('copper-467'));
+    t.assert.ok(observed, 'The explicitly attached page must produce a real observation');
+    return tool('submit_result', { report: 'Optional context evidence: copper-467.', citations: [{
+      pageId: observed.pageId, revision: observed.revision, observationId: observed.observationId,
+      quote: 'Optional context evidence: copper-467.',
+    }] }, 'first-chat-context-answer');
+  });
+  let first;
+  await t.step('send first chat with no page and observe the streamed answer', { kind: 'ui', features: ['electronMigration'] }, async () => {
+    t.assert.deepEqual(await t.rpc('pages.list'), [], 'Fresh chat must start with no public page');
+    await newChat(t);
+    t.assert.deepEqual(await t.rpc('pages.list'), [], 'Opening the composer must not create a blank page');
+    first = await send(t, 'Give a short greeting without opening or attaching any browser page.');
+    t.assert.deepEqual(first.pageIds, []);
+    const details = await finished(t, first.runId);
+    await t.ax.waitFor(selector('Page-free answer violet-271.'));
+    t.assert.deepEqual(details.run.pageIds, []);
+    t.assert.deepEqual(await t.rpc('pages.list'), [], 'Answering must not create any page');
+    t.assert.ok(decisions.some(row => row.phase === 'answer' && row.stream));
+    await t.capture('first-chat-page-free-answer');
+    return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), decisions } };
+  });
+  await t.step('retry the same page-free run without manufacturing page context', { kind: 'ui', features: ['electronMigration'] }, async () => {
+    phase = 'retry';
+    const previous = new Set((await t.rpc('runs.list')).map(run => run.runId));
+    const retry = selector('Retry this turn', 'AXButton');
+    await t.ax.waitFor(retry);
+    await t.ax.press(retry);
+    const retried = await t.until('the person-requested retry exists', async () =>
+      (await t.rpc('runs.list')).find(run => !previous.has(run.runId) && run.config?.retryOfRunId === first.runId), 30000);
+    t.assert.notEqual(retried.runId, first.runId);
+    t.assert.deepEqual(retried.pageIds, []);
+    t.assert.equal(retried.config.retryOfRunId, first.runId);
+    const details = await finished(t, retried.runId);
+    await t.ax.waitFor(selector('Page-free retry amber-839.'));
+    t.assert.deepEqual(details.run.pageIds, []);
+    t.assert.deepEqual(await t.rpc('pages.list'), [], 'Retry must remain page-free');
+    return { ax: await t.ax.dump(), rpc: { details, decisions } };
+  });
+  await t.step('an actual model tool opens exactly one real URL', { kind: 'ui', features: ['electronMigration'] }, async () => {
+    phase = 'open';
+    const requested = await send(t, 'Open the explicit synthetic destination using openTab, then report completion.');
+    try {
+      await t.until('the actual model request reaches the held explicit open decision', async () => decisions.some(row => row.phase === 'open'), 30000);
+      t.assert.deepEqual(requested.pageIds, [], 'Sending the request must not eagerly open a page');
+      t.assert.deepEqual(await t.rpc('pages.list'), [], 'No page may exist before the model actually issues openTab');
+    } finally { releaseOpen(); }
+    const details = await finished(t, requested.runId);
+    const pages = await t.until('the one tool-opened real URL finishes loading', async () => {
+      const pages = await t.rpc('pages.list');
+      return pages.length === 1 && pages[0].url === openedUrl && !pages[0].loading && pages;
+    }, 30000);
+    t.assert.equal(pages[0].ownedByRuntime, true);
+    t.assert.ok(!pages.some(page => page.url === 'about:blank'));
+    t.assert.equal(t.model.errors.length, 0);
+    await t.capture('first-chat-explicit-tool-open');
+    return { ax: await t.ax.dump(), rpc: { details, pages, decisions } };
+  });
+  await t.step('choose an optional person-owned page through the mention UI', { kind: 'ui', features: ['electronMigration', 'tabMentions'] }, async () => {
+    const page = await t.rpc('pages.open', { url: contextUrl, activate: true });
+    await t.until('the explicit context document is ready', async () =>
+      (await t.rpc('pages.list')).some(item => item.pageId === page.pageId && item.url === contextUrl && !item.loading), 30000);
+    phase = 'context';
+    const requested = await mentionedRun(t, 'Aux first-chat optional context', 'Read only this explicitly attached page.');
+    t.assert.deepEqual(requested.pageIds, [page.pageId]);
+    t.assert.equal(requested.config.mentions.length, 1);
+    t.assert.equal(requested.config.mentions[0].pageId, page.pageId);
+    const details = await finished(t, requested.runId);
+    await t.ax.waitFor(selector('Optional context evidence: copper-467.'));
+    t.assert.ok(decisions.filter(row => row.phase === 'context').every(row => row.observations.every(item => item.pageId === page.pageId)), 'Optional attachment must not read the runtime-owned tool page');
+    t.assert.equal(t.model.errors.length, 0);
+    await t.capture('first-chat-optional-explicit-context');
+    return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), decisions } };
+  });
+}

@@ -242,7 +242,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
 
       {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
 
-      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !page || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{shellIconReload}</button> : null} />
+      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || (!page && run.pageIds.length > 0) || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{shellIconReload}</button> : null} />
       <RunTranscriptDetails run={run} question={question} readOnly={readOnly} answerInComposer={questionInComposer} />
 
       {(calls != null || stats || !conversation) && <details className="run-provenance">
@@ -259,7 +259,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
             <strong>{run.failure.action === "model_settings" ? "Connection needs attention" : run.failure.action === "permission_settings" ? "Permission needed" : "This turn stopped"}</strong>
             <p>{run.failure.message}</p>
           </div>
-          {latestConversationTurn && !run.config?.taskId && ["retry", "permission_settings"].includes(run.failure.action) && page && (
+          {latestConversationTurn && !run.config?.taskId && ["retry", "permission_settings"].includes(run.failure.action) && (page || !run.pageIds.length) && (
             <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId)}>{shellIconReload}{retrying ? "Retrying…" : "Retry turn"}</button>
           )}
           {run.failure.action === "edit_request" && latestConversationTurn && <button className="btn sm" disabled={readOnly} onClick={() => {

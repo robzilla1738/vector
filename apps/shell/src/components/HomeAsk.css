@@ -1,5 +1,5 @@
 @layer components {
-.home-ask { width:100%; max-width:880px; text-align:left; }
+.home-ask { width:min(880px, 100%); max-width:880px; margin-inline:auto; text-align:left; }
 .home-ask-handoff { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:var(--space-3); padding:var(--space-4); border-radius:var(--r-composer); background:var(--surface-input); color:var(--ink-2); font-size:var(--fs-sm); }
 .home-ask .conversation-home { position:relative; inset:auto; background:transparent; }
 .home-ask .conversation-home .conversation-body { padding:0; }

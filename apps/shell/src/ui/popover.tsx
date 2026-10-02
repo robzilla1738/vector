@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { positionContextMenu } from "../position-context-menu";
+import { positionAnchoredPopover } from "../position-context-menu";
 import { requestStageReport } from "../stage-obstruction";
 import { useNativeDialog } from "./native-dialog";
 import "./popover.css";
@@ -35,16 +35,18 @@ export function Popover({
     const node = panel.current;
     const place = () => {
       const rect = button.current?.getBoundingClientRect();
-      if (rect) positionContextMenu(node, rect.left, rect.bottom + 6);
+      if (rect) positionAnchoredPopover(node, rect);
       requestStageReport();
     };
     place();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
     observer?.observe(node);
     window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
     return () => {
       observer?.disconnect();
       window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
       requestAnimationFrame(requestStageReport);
     };
   }, [open]);

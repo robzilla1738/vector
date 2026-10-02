@@ -1,0 +1,66 @@
+{
+  "status": "source candidate; final full suite in progress; native uncompiled",
+  "deliverables": [
+    "genuine page-free agent-loop first chat and retry, no eager blank tab",
+    "durable chat-primary home with explicit model connection",
+    "visible retry enabled for page-free completed answers",
+    "viewport-aware opaque browser context picker",
+    "compact onboarding preserving safety disclosures",
+    "actual native ActorMojo fixture definitions",
+    "unattended first-chat UI journey prepared"
+  ],
+  "rendererDigest": "f93043214bb72b7396a583dd60d64ab5e456696c37b81de0c49fb769f2727837",
+  "budgetsKb": {
+    "startup": 482,
+    "css": 175,
+    "total": 1788
+  },
+  "nativeReplay": {
+    "packets": 37,
+    "mirrors": 108,
+    "baselines": 73,
+    "compiled": false
+  },
+  "uiTests": {
+    "files": 5,
+    "tests": 35,
+    "passed": true
+  },
+  "logs": [
+    {
+      "path": "/tmp/aux-root-chat-final-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "/tmp/aux-root-chat-final-ui.log",
+      "sha256": "440eedaf013804a431463db7f70ae84f01fce85b7e93b0eb014e69d49e503048",
+      "bytes": 981
+    },
+    {
+      "path": "/tmp/aux-root-chat-final-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f",
+      "bytes": 90
+    },
+    {
+      "path": "/tmp/aux-root-chat-shell.log",
+      "sha256": "bc61e43057fcc45ce777451d41826a858c0d44862a086b09d1a3efd9af0617a7",
+      "bytes": 53297
+    },
+    {
+      "path": "/tmp/aux-root-chat-capture.log",
+      "sha256": "98e58718bfbb9c450d145a444bf612ae71fb23ab490e794d99ab6adefc9a5d02",
+      "bytes": 116
+    },
+    {
+      "path": "/tmp/aux-root-chat-budgets.log",
+      "sha256": "425a613764b1614441afeaa0ba78e229de6a4b13c90545260c128ba5634cb687",
+      "bytes": 404
+    },
+    {
+      "path": "/tmp/aux-root-chat-onboarding-final.log",
+      "sha256": "9f869275d1c834f7987dfae5aa20f88f79d90356cd66dbd508e9397d5ea8ba9c",
+      "bytes": 328
+    }
+  ]
+}

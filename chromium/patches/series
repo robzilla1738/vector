@@ -179,3 +179,4 @@ aux/runtime/0202-native-permission-lifecycle.patch
 aux/runtime/0205-native-callback-compilation.patch
 aux/runtime/0206-permission-fixture-dictionary.patch
 aux/runtime/0209-permission-zap-fixture.patch
+aux/runtime/0210-permission-fixture-actor-types.patch

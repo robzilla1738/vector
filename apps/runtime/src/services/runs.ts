@@ -990,9 +990,6 @@ export class RunService {
     const contextWorkspaceRevision = opts.contextSnapshot ? opts.contextWorkspaceRevision : inherited?.workspaceRevision ?? opts.contextWorkspaceRevision;
     const contextBrowsingMemory = opts.contextSnapshot ? opts.contextBrowsingMemory : !!inherited?.browsing;
     const pageIds = opts.pageIds ?? (opts.pageId ? [opts.pageId] : []);
-    if (!pageIds.length && !opts.setId) {
-      throw new AuxError("invalid_params", "runs.start needs a pageId, pageIds, or setId scope");
-    }
     if (opts.contextPageRefs?.length) {
       const allowed = new Set(pageIds);
       const seen = new Set<string>();
@@ -1057,7 +1054,7 @@ export class RunService {
       calendarGrantIds: opts.calendarGrantIds,
       maxModelCalls: opts.maxModelCalls ?? this.deps.settings.maxModelCalls(),
       // S5 A/B gate: explicit engine wins; AUX_RUN_ENGINE is the corpus default.
-      engine: opts.engine ?? this.deps.settings.runEngine?.(),
+      engine: pageIds.length ? opts.engine ?? this.deps.settings.runEngine?.() : "agent-loop",
     });
   }
 
@@ -1092,7 +1089,6 @@ export class RunService {
         if (prior.pageIds.length > 1) throw new AuxError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
         throw new AuxError("conflict", "Reopen or choose a browser tab before retrying this turn.");
       }
-      if (!prior.pageIds.length) throw new AuxError("conflict", "Reopen or choose a browser tab before retrying this turn.");
     }
     return this.start({
       goal: prior.goal,

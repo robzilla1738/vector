@@ -81,17 +81,12 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     set(state => ({ pendingTurns: [...state.pendingTurns, pending] }));
     const settle = (runs?: (state: Workspace) => Run[]) => set(state => ({ pendingTurns: state.pendingTurns.filter(turn => turn !== pending), ...(runs ? { runs: runs(state) } : {}) }));
     try {
-      let pageId = opts.pageId === undefined ? opts.pageIds?.[0] ?? before.activePageId : opts.pageId;
-      if (opts.scope === "new" || !pageId) {
-        const spaceId = opts.memorySource ? before.layout.spaces.find(space => space.workspaceId === opts.memorySource!.workspaceId)?.id : before.layout.activeSpaceId;
-        if (!spaceId) throw new Error("The selected Space is no longer available.");
-        const page = await get().openBackgroundTab("about:blank", spaceId, false);
-        pageId = page.pageId;
-      }
+      const pageId = opts.scope === "new" ? null
+        : opts.pageId === undefined ? opts.pageIds?.[0] ?? (opts.scope === "page" ? before.activePageId : null) : opts.pageId;
       const n = Number(before.settings.maxModelCalls);
       const budget = n === 0 ? 0 : Math.min(256, Math.max(1, Number.isFinite(n) ? n : 8));
       const pageIds = [...new Set([...(pageId ? [pageId] : []), ...(opts.pageIds ?? [])])];
-      const run = await call("runs.start", { goal: g, pageIds: pageIds.length ? pageIds : undefined,
+      const run = await call("runs.start", { goal: g, pageIds,
         contextPageRefs: opts.contextPageRefs,
         mentions: opts.mentions,
         contextMemoryIds: opts.memorySource ? [opts.memorySource.memoryId] : undefined,

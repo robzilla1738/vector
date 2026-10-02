@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-complete-full-order-8r2k5nym",
+  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-complete-full-order-0luclyrg",
   "baseReplay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-unified-native-replay-vz0wmha8",
   "baseProofSha256": "d36444c4b8b7658d62ffd28fe04b8fa30a29e82785d2f7815dd3b242892d90b1",
   "orderedPatches": [
@@ -39,7 +39,8 @@
     "chromium/patches/aux/runtime/0202-native-permission-lifecycle.patch",
     "chromium/patches/aux/runtime/0205-native-callback-compilation.patch",
     "chromium/patches/aux/runtime/0206-permission-fixture-dictionary.patch",
-    "chromium/patches/aux/runtime/0209-permission-zap-fixture.patch"
+    "chromium/patches/aux/runtime/0209-permission-zap-fixture.patch",
+    "chromium/patches/aux/runtime/0210-permission-fixture-actor-types.patch"
   ],
   "revised0196": "aefc4a9c2dcb9f7a17680ea566ecd00bc71f1f510a954d58fa4cd8de90fe9770",
   "exactNativeFiles": [
@@ -281,7 +282,7 @@
     },
     {
       "path": "chrome/browser/ui/aux/permission_broker_unittest.cc",
-      "sha256": "575ac896dba19c4aaa29b496ebb704721238b4cac0766686db98897340cf3a96"
+      "sha256": "c4ccd7d7dce5e9037fedec20c92bc4cfba14261d83a5b3fc85b38abf67c58a8d"
     },
     {
       "path": "chrome/browser/ui/aux/power_activity_mac.h",
@@ -990,8 +991,12 @@
     {
       "path": "chromium/patches/aux/runtime/0209-permission-zap-fixture.patch",
       "sha256": "d3bd045a3a1a597bae87d8874ad4d03ff9744befc585dc209b6c3a5c92502475"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0210-permission-fixture-actor-types.patch",
+      "sha256": "2c03537c3d3870f063ef4f80ffafa0533fa2be61ccea7bd09717c6165da5b5ab"
     }
   ],
-  "audit": "All36 reversed to independently verified baseline then reapplied in required dependency order; all108 exact mirrors compared",
+  "audit": "All37 reversed to independently verified baseline then reapplied in required dependency order; all108 exact mirrors compared",
   "resourceAllocationPatchSha256": "35df0ed7d4e6f1bb91a305b15d0e1b3362fe781db4c65286a8d56f8315582311"
 }

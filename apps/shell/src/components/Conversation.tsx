@@ -268,7 +268,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     catch(error){errToast(error);}finally{setRestoring(false);}
   };
   const contexts = useStore(s => s.conversationContexts);
-  const contextPage = contexts[id ? draftKey(id) : "new"] ?? (id ? "linked" : "active");
+  const contextPage = contexts[id ? draftKey(id) : "new"] ?? (id ? "linked" : "none");
   const setContextPage = (pageId: string) => useStore.getState().setConversationContext(id,pageId);
   const selectedBrowserSources = useStore(s => s.conversationBrowserSources[browserSourcesKey(id)]);
   const browserSources = selectedBrowserSources ?? [];
