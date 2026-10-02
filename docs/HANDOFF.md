@@ -1,6 +1,6 @@
 ## New-agent handoff — 2026-10-01
 
-User requested documentation for handoff; the existing goal remains active, not paused. See [authoritative handoff checkpoint](HANDOFF-CHECKPOINT-2026-10-01.md) for saved commits, verified deliverables, outstanding requirements and exact resume order. Implementation/design/trust lanes are frozen for transfer; only the existing e496 native build continues, with queued staging blocked. Read its process/slot instructions before operating native. Full roadmap remains incomplete; main unchanged.
+User requested documentation for handoff; the existing goal is paused at this saved checkpoint. See [authoritative handoff checkpoint](HANDOFF-CHECKPOINT-2026-10-01.md) for saved commits, verified deliverables, outstanding requirements and exact resume order. Implementation/design/trust lanes are frozen for transfer; only the existing e496 native build continues, with queued staging blocked. Read its process/slot instructions before operating native. Full roadmap remains incomplete; main unchanged.
 
 ## Current coherent throughput checkpoint
 

@@ -1,6 +1,6 @@
 # New-agent handoff checkpoint — 2026-10-01
 
-The user requested documentation for handoff to a new agent. Keep the existing goal active: no goal-status pause was applied. The full roadmap is incomplete; continue its complete scope and merge order. No qualification or main fast-forward is claimed. Implementation lanes are frozen for transfer, and only the previously running native build continues.
+The user requested documentation for handoff to a new agent. The user explicitly requested stopping at this checkpoint; the existing goal is paused, not complete. The full roadmap is incomplete; continue its complete scope and merge order. No qualification or main fast-forward is claimed. Implementation lanes are frozen for transfer, and only the previously running native build continues.
 
 ## Immutable candidates and saved work
 
