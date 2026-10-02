@@ -1,3 +1,4 @@
+import { ModelDataDisclosure } from "./ModelDataDisclosure";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DEFAULT_BROWSER_COOLDOWN_MS,
@@ -303,10 +304,11 @@ export function OnboardingFlow({
               <p>
                 Bring your browsing with you, choose a model, and turn a question into a useful first chat.
               </p>
-              <p>
-                Every step is optional. Your progress stays with this Profile. Replay setup in Settings →
-                General at any time. Press ⌘↩ to finish later.
-              </p>
+              <p>Every step is optional. Start with what you need.</p>
+              <details className="onboarding-details">
+                <summary>Setup tips</summary>
+                <p>Your progress stays with this Profile. Replay setup in Settings → General at any time. Press ⌘↩ to finish later.</p>
+              </details>
               <button className="btn ghost" aria-expanded={recovery} onClick={() => setRecovery(!recovery)}>
                 Recover an existing Aux Profile
               </button>
@@ -330,15 +332,7 @@ export function OnboardingFlow({
           )}
           {step === "model" && (
             <>
-              <p>
-                Model requests send your prompt, selected page context and attached material to the provider
-                you choose. Gateway routes requests to that provider; BYOK uses your chosen provider account.
-                Usage may cost money. Credentials are saved through the OS credential store.
-              </p>
-              <p>
-                <strong>Muse Spark 1.3 Contributor:</strong> this tier lets Meta use prompts and completions
-                sent to it to improve its models. Select a provider and model whose data use fits your work.
-              </p>
+              <ModelDataDisclosure reviewed={state.disclosureVersion === ONBOARDING_DISCLOSURE_VERSION} />
               {state.disclosureVersion !== ONBOARDING_DISCLOSURE_VERSION ? (
                 <button
                   className="btn"

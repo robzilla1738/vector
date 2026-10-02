@@ -82,6 +82,24 @@
   .onboarding-content li + li {
     margin-top: 10px;
   }
+  .onboarding-details {
+    border: var(--hairline) solid var(--line);
+    border-radius: var(--r-group);
+    padding: var(--space-2) var(--space-3);
+    min-width: 0;
+  }
+  .onboarding-details summary {
+    cursor: pointer;
+    color: var(--ink-1);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-relaxed);
+  }
+  .onboarding-details summary:focus-visible {
+    outline: 2px solid var(--focus-line);
+    outline-offset: 2px;
+    border-radius: var(--r-xs);
+  }
+  .onboarding-details[open] > p { margin-top: var(--space-2); }
   .onboarding-postcards {
     display: grid;
     gap: 12px;
