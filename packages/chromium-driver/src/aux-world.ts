@@ -19,7 +19,7 @@ const MISSING = "__aux_missing__";
 function installAuxWorld(collect: (args: unknown) => unknown) {
   const g = globalThis as any;
   if (g.__aux || g.top !== g) return;
-  const st = { id: Math.random().toString(36).slice(2, 10), mutations: 0, last: null as number | null };
+  const st = { id: Math.random().toString(36).slice(2, 10), mutations: 0, last: null as number | null, formProbes: 0 };
   // registered at DOMContentLoaded: nodes the parser inserts are present when
   // navigation returns, so only post-load activity has to go quiet
   const track = () => {
@@ -77,16 +77,14 @@ function installAuxWorld(collect: (args: unknown) => unknown) {
      */
     fingerprint: () => {
       const d = document;
-      let values = "";
       const controls = d.querySelectorAll("input,textarea,select");
-      for (let i = 0; i < controls.length && i < 400; i++) {
-        const c = controls[i] as HTMLInputElement;
-        values += c.type === "checkbox" || c.type === "radio" ? (c.checked ? "1" : "0") : `${c.value.length}:${c.value.slice(0, 32)}`;
-        values += "|";
-      }
+      // A cache key must never read credential/payment/OTP contents. Forms
+      // are re-observed even for silent property setters; no event assumption
+      // or duplicate sensitive-field classifier is needed here.
+      const formProbe = controls.length ? ++st.formProbes : 0;
       const a = d.activeElement;
       const focus = a ? `${a.tagName}#${a.id}.${String(a.className)}` : "";
-      return [st.id, st.mutations, location.href, d.title, Math.round(scrollX), Math.round(scrollY), innerWidth, innerHeight, d.readyState, controls.length, values, focus].join("\u0001");
+      return [st.id, st.mutations, location.href, d.title, Math.round(scrollX), Math.round(scrollY), innerWidth, innerHeight, d.readyState, controls.length, formProbe, focus].join("\u0001");
     },
     /** Two frames, then DOM mutation-free for `quietMs` — or false at the deadline. */
     settle: async (timeoutMs: number, quietMs: number) => {
