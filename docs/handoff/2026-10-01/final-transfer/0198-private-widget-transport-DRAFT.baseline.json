@@ -1,0 +1,52 @@
+{
+  "status": "DRAFT-DO-NOT-ADOPT",
+  "files": [
+    {
+      "path": "third_party/blink/public/mojom/widget/platform_widget.mojom",
+      "beforeSha256": "af2e91be70ad6b3cb3fbd863b5eb39105df957144a2f83eae45b6c41be2cc5da",
+      "afterSha256": "1ea2354117248269ae6fa9af4895aa53c4c8b0e35641c4557b1a1938e4bc0474"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/widget_base_client.h",
+      "beforeSha256": "bee03ed7e699d92cc6112d9d36bb4f57cda226f5434df0a9e35b904ec5e7ebb1",
+      "afterSha256": "78a68a8821277948e8dc14b3212b9ee413028199b71c5d0257f02e2c36f7a6fc"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/widget_compositor.h",
+      "beforeSha256": "236b5e9f3d629fb58356e032b214afb3bcc175cca6c51fb0cde712faa698dbad",
+      "afterSha256": "d792f244642799422f548c07c530620b032666c2d983d42a1fb084bd3975df2f"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc",
+      "beforeSha256": "51a5f770a1561c1aa0cd44ac3b19d008134daa1dae70ae82b39e04405188f7c5",
+      "afterSha256": "e432e32c172e9b22fbf8a25f5a8a4b6eda1bceed29aaef41fc957cc69709244f"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/web_frame_widget_impl.h",
+      "beforeSha256": "b499765457b144561cc0b8d64d94b3914023fc80f17145778508bb77ca293745",
+      "afterSha256": "000694468cbab2e9e21afc92a406102035bed0901038be3ae9b5dfbfce962142"
+    },
+    {
+      "path": "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc",
+      "beforeSha256": "0d3b4ec98a70f24c0b81c8bac98f3ec98f03e5429dfdf8fd0a286b89f5950e95",
+      "afterSha256": "d42d885cef2829a03ae60797edff40f4a697de349ac3905bc582930c61933568"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_impl.h",
+      "beforeSha256": "2d47998ea09b93f7a5e1db749ff36f3dce9e05ed6f8bbfaa29d14cada3d9b5af",
+      "afterSha256": "56061f098e29bd8ab21087ee59ce3510f411cf48046c04f87c5f336bd4979314"
+    },
+    {
+      "path": "content/browser/renderer_host/render_widget_host_impl.cc",
+      "beforeSha256": "37f5e5e4c09e9d6767dba14f87295efc3d81091e2fe12009a1289902906d044c",
+      "afterSha256": "68e4f857477443df5e1e0c3af3a74dc47ad40e65730f4e3eab542e3180b151a5"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/widget_compositor_unittest.cc",
+      "beforeSha256": "28b34a698618e36436238531691f65b3f2795acc3e2c6abef64ea742923813a3",
+      "afterSha256": "dbade7a5c058f537cb985c1d0b60881dc65f147706efcfde70bca4775344bb52"
+    }
+  ],
+  "patchSha256": "bd8ea5938399cdab66ea5b26d77e2bcd2d5f1523615881f27c040db3bed64e40",
+  "verification": "isolated apply/reverse/byte equality only; not native compiled"
+}

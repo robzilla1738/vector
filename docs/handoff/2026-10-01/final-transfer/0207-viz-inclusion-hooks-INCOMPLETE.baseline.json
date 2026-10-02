@@ -1,0 +1,27 @@
+{
+  "status": "INCOMPLETE DO NOT ADOPT: private owner/mutation transport, real geometry/occlusion proof and native compile pending",
+  "patchSha256": "0699fb2e150229ce977c7aeed625bf462192f4de8920221dae15eb163954984e",
+  "files": [
+    {
+      "path": "components/viz/service/display/surface_aggregator.h",
+      "beforeSha256": "3f3a59ae30be7238158e948aa14f0beba8c0da9458f15057238663bab9f0915c",
+      "afterSha256": "039193db50dd64e9c09189fb03b05230b5497c8cfd5b2922575709480eaaf6dd"
+    },
+    {
+      "path": "components/viz/service/display/surface_aggregator.cc",
+      "beforeSha256": "f045bf250a01e6ca524e84c7765aeb465dbac72928d3df1eb1cbe1ab7bb99334",
+      "afterSha256": "7a592e0d4221b66b71d8311367c87d25e894b40c110bea38bd0ec90ca0fd8882"
+    },
+    {
+      "path": "components/viz/service/display/display.h",
+      "beforeSha256": "9d35537d953d0d6f20d07de5cc19c021fc3c4493ce8279edbb7835472e5df875",
+      "afterSha256": "8c41b7adc9732ce9be579c67d5ac2847fc33ea2df8025682ede5849b6e395a98"
+    },
+    {
+      "path": "components/viz/service/display/display.cc",
+      "beforeSha256": "007f47afe74378941529158798d153b2513ea2cbcf88676da719dc9d1411a0e4",
+      "afterSha256": "529a240828ab93e3c71dad25fbef5e923cce59dc62844f794a883aca5780fda3"
+    }
+  ],
+  "verification": "exact isolated apply/reverse/bytes PASS; no native compile/tests"
+}

@@ -1,0 +1,71 @@
+{
+  "status": "source-only readout/producer investigation; no native execution or finding closure",
+  "packet": "/tmp/aux-browser-runtime-root-polish/chromium/patches/aux/runtime/0207-native-guest-presentation-owner.patch",
+  "packetSha256": "624c898a759c377753b9fe2a06901659745ba97010992f729692c53ce921f8b1",
+  "baselines": [
+    {
+      "path": "components/surface_embed/browser/surface_embed_host.cc",
+      "sha256": "abbc031f360a86cab6a37864940d48a84f9002b7b1d981e5390d5a2de6b5d9ca",
+      "authority": "stable read-only; root independent compare pending"
+    },
+    {
+      "path": "components/surface_embed/renderer/surface_embed_web_plugin.cc",
+      "sha256": "8e8e97d4a76bed5582c04ae015792d7175e2072359591fc81971659a4a016183",
+      "authority": "stable read-only; root independent compare pending"
+    },
+    {
+      "path": "content/browser/surface_embed/surface_embed_connector_impl.h",
+      "sha256": "b9743c585724a502e097619379a11098a31964107f25846dbbfaf1e431a7c060",
+      "authority": "stable read-only; root independent compare pending"
+    },
+    {
+      "path": "content/browser/surface_embed/surface_embed_connector_impl.cc",
+      "sha256": "84888881dcfa40503beb4a6be52aceb8e41d93c0fa35e70a38777fe02a935070",
+      "authority": "stable read-only; root independent compare pending"
+    },
+    {
+      "path": "components/viz/service/display/display.h",
+      "sha256": "9d35537d953d0d6f20d07de5cc19c021fc3c4493ce8279edbb7835472e5df875",
+      "authority": "stable read-only; root independent compare pending"
+    },
+    {
+      "path": "components/viz/service/display/display.cc",
+      "sha256": "007f47afe74378941529158798d153b2513ea2cbcf88676da719dc9d1411a0e4",
+      "authority": "stable read-only; root independent compare pending"
+    },
+    {
+      "path": "components/viz/service/display/surface_aggregator.h",
+      "sha256": "3f3a59ae30be7238158e948aa14f0beba8c0da9458f15057238663bab9f0915c",
+      "authority": "stable read-only; root independent compare pending"
+    },
+    {
+      "path": "components/viz/service/display/surface_aggregator.cc",
+      "sha256": "f045bf250a01e6ca524e84c7765aeb465dbac72928d3df1eb1cbe1ab7bb99334",
+      "authority": "stable read-only; root independent compare pending"
+    },
+    {
+      "path": "components/viz/service/surfaces/surface.cc",
+      "sha256": "d42c553c93be3fc2a7f3e500ff70dd6ac104d3e0cf5947aa575b160ebe8c4ced",
+      "authority": "stable read-only; root independent compare pending"
+    }
+  ],
+  "frozen0198Sha256": "eb1310c0be7ff6519f1d9bc51626a6e9d0ae79029348b8750967f67945bc71c1",
+  "frozen0201Sha256": "a7ea1693aa0fb5294a6cbc9a2adaaacb01b96f098042d3711ee388e63b3c6546",
+  "checks": "5 NEW files exact isolated apply/reverse/result bytes PASS; 4 synthetic inclusion tests defined, uncompiled; actual browser authority/session/mutation source and transport hookup/native proof pending",
+  "hookRequest": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0207-viz-inclusion-hooks-INCOMPLETE.request.patch",
+  "hookRequestSha256": "55ccde907173cbdc6136e902c90450f6c5af9b47cd6298ac60748a8e3bf753be",
+  "sharedRequests": [
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0207-viz-inclusion-hooks-INCOMPLETE.request.patch",
+      "sha256": "0699fb2e150229ce977c7aeed625bf462192f4de8920221dae15eb163954984e"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0207-private-display-route-INCOMPLETE.request.patch",
+      "sha256": "a2e353879c507aa64ac0f59a6b97d10ce8b3528dd9a58cf77ad33ea6b6cc4ec6"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-design/docs/design-reviews/0207-viz-GN.request.patch",
+      "sha256": "823c0f59be2bdcc51fc46d09f24e47c2b2f2997669b779c9f3063445e252e6b0"
+    }
+  ]
+}

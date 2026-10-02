@@ -1,0 +1,114 @@
+$ tsc -b
+Checked 208 host methods, 26 events (5b61354df459)
+Staged Aux host methods 5b61354df459
+offline mode
+ninja: Entering directory `/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev'
+
+
+disable fast local for non-interactive: fastlocal=1->0
+ use `--fast_local` to enable fast local with non-interactive mode
+schedule pending:1+ready:0 (node:80884 edge:2)
+build start: Ready 1 Pending 1
+[0/2] 1.08s S Regenerating ninja files
+[0/2] 40.10s F Regenerating ninja files
+rebuild manifest finished
+39.80s Regenerating ninja files
+
+
+
+loading build.ninja... done 18.6321425s
+load siso config done 1.062740708s
+schedule pending:1+ready:0 (node:413638 edge:2)
+build start: Ready 1 Pending 1
+rebuild manifest finished
+schedule pending:1+ready:0 (node:413638 edge:9)
+build start: Ready 8992 Pending 91416
+[0/99564] 1m01.77s S ACTION //chrome/browser/resources/aux:build_grd(//build/toolchain/mac:clang_arm64)
+[0/49216] 1m02.27s S CXX obj/chrome/browser/ui/aux/generated/methods/aux_host_methods.o
+[0/21293] 1m03.24s F ACTION //chrome/browser/resources/aux:build_grd(//build/toolchain/mac:clang_arm64)
+[1/21292] 1m03.24s S ACTION //chrome/browser/resources/aux:resources_grit(//build/toolchain/mac:clang_arm64)
+[1/15105] 1m03.36s S CXX obj/chrome/browser/ui/aux/runtime/profile_routing_methods.o
+[1/13966] 1m03.38s S CXX obj/chrome/browser/ui/aux/runtime/method_registry.o
+[1/13591] 1m03.39s S CXX obj/chrome/browser/ui/aux/runtime/link_routing.o
+[1/10999] 1m03.96s F CXX obj/chrome/browser/ui/aux/runtime/link_routing.o
+[2/10998] 1m04.32s F CXX obj/chrome/browser/ui/aux/runtime/method_registry.o
+[3/10998] 1m04.33s F CXX obj/chrome/browser/ui/aux/generated/methods/aux_host_methods.o
+[4/10997] 1m05.07s F CXX obj/chrome/browser/ui/aux/runtime/profile_routing_methods.o
+[5/10997] 1m05.08s S LINK ./profile_spaces_unittests
+[5/10997] 1m09.46s F ACTION //chrome/browser/resources/aux:resources_grit(//build/toolchain/mac:clang_arm64)
+[6/10797] 1m09.47s S CXX obj/chrome/browser/ui/webui_browser/impl/library_methods.o
+[6/10790] 1m09.47s S CXX obj/chrome/browser/ui/webui_browser/impl/page_controls_methods.o
+[6/10615] 1m09.47s S CXX obj/chrome/browser/ui/webui_browser/impl/dictation_methods.o
+[6/10368] 1m09.48s S CXX obj/chrome/browser/ui/webui_browser/impl/tabs_methods.o
+[6/10285] 1m09.48s S CXX obj/chrome/browser/ui/webui_browser/impl/extensions_methods.o
+[6/10193] 1m09.48s S CXX obj/chrome/browser/ui/webui_browser/impl/migration_methods.o
+[6/9819] 1m09.49s S CXX obj/chrome/browser/ui/webui_browser/impl/window_methods.o
+[6/9807] 1m09.49s S CXX obj/chrome/browser/resources/aux/resources/aux_resources_map.o
+[6/7732] 1m09.53s S CXX obj/chrome/browser/ui/webui_browser/impl/webui_browser_ui.o
+[6/7215] 1m09.54s S CXX obj/chrome/browser/ui/webui_browser/impl/blocking_methods.o
+[6/6992] 1m09.55s S CXX obj/chrome/browser/ui/webui_browser/impl/content_methods.o
+[6/5124] 1m09.60s S CXX obj/chrome/test/unit_tests/permission_broker_unittest.o
+[6/1764] 1m09.77s S ACTION //chrome:packed_resources_extra__repack(//build/toolchain/mac:clang_arm64)
+[6/1706] 1m09.78s F CXX obj/chrome/browser/resources/aux/resources/aux_resources_map.o
+[7/1486] 1m19.50s F ACTION //chrome:packed_resources_extra__repack(//build/toolchain/mac:clang_arm64)
+[8/1481] 1m27.34s F LINK ./profile_spaces_unittests	
+stderr:
+ld: warning: ignoring -lto_library '../../third_party/llvm-build/Release+Asserts/lib/libLTO.dylib', file does not exist
+
+
+[9/1481] 1m36.24s F CXX obj/chrome/browser/ui/webui_browser/impl/library_methods.o
+[9/1481] 1m36.24s F CXX obj/chrome/browser/ui/webui_browser/impl/migration_methods.o
+[9/1481] 1m36.24s F CXX obj/chrome/browser/ui/webui_browser/impl/dictation_methods.o
+[12/1481] 1m36.25s F CXX obj/chrome/browser/ui/webui_browser/impl/extensions_methods.o
+[13/1481] 1m36.31s F CXX obj/chrome/browser/ui/webui_browser/impl/blocking_methods.o
+[14/1481] 1m36.60s F CXX obj/chrome/browser/ui/webui_browser/impl/tabs_methods.o
+[15/1481] 1m36.65s F CXX obj/chrome/browser/ui/webui_browser/impl/window_methods.o
+[16/1481] 1m36.92s F CXX obj/chrome/browser/ui/webui_browser/impl/webui_browser_ui.o
+[17/1481] 1m45.43s F CXX obj/chrome/test/unit_tests/permission_broker_unittest.o
+[18/1481] 1m48.17s F CXX obj/chrome/browser/ui/webui_browser/impl/page_controls_methods.o
+[19/1481] 1m48.75s F CXX obj/chrome/browser/ui/webui_browser/impl/content_methods.o
+[20/1268] 1m48.78s S SOLINK libchrome_dll.dylib libchrome_dll.dylib.TOC
+[20/1240] 2m04.89s F SOLINK libchrome_dll.dylib libchrome_dll.dylib.TOC	
+stderr:
+ld: warning: ignoring -lto_library '../../third_party/llvm-build/Release+Asserts/lib/libLTO.dylib', file does not exist
+
+
+[21/939] 2m04.90s S COPY_BUNDLE_DATA gen/repack/resources.pak 'Aux Framework.framework/Versions/154.0.8037.58/Resources/resources.pak'
+[21/933] 2m04.92s F COPY_BUNDLE_DATA gen/repack/resources.pak 'Aux Framework.framework/Versions/154.0.8037.58/Resources/resources.pak'
+[22/923] 2m04.92s S CXX obj/chrome/chrome_app_executable/llvm_profile_util.o
+[22/923] 2m04.92s S CXX obj/chrome/chrome_app_executable/chrome_exe_main_mac.o
+[22/98] 2m05.01s F CXX obj/chrome/chrome_app_executable/llvm_profile_util.o
+[23/98] 2m05.03s S LINK obj/chrome/chrome_app_executable/Aux
+[23/98] 2m05.03s F CXX obj/chrome/chrome_app_executable/chrome_exe_main_mac.o
+[24/70] 2m05.14s S COPY_BUNDLE_DATA obj/chrome/chrome_app_executable/Aux Aux.app/Contents/MacOS/Aux
+[24/65] 2m05.14s S COPY_BUNDLE_DATA 'Aux Framework.framework' 'Aux.app/Contents/Frameworks/Aux Framework.framework'
+[24/33] 2m05.14s F LINK obj/chrome/chrome_app_executable/Aux	
+stderr:
+ld: warning: ignoring -lto_library '../../third_party/llvm-build/Release+Asserts/lib/libLTO.dylib', file does not exist
+
+
+[25/33] 2m05.20s F COPY_BUNDLE_DATA obj/chrome/chrome_app_executable/Aux Aux.app/Contents/MacOS/Aux
+[26/33] 2m05.63s F COPY_BUNDLE_DATA 'Aux Framework.framework' 'Aux.app/Contents/Frameworks/Aux Framework.framework'
+[27/29] 2m05.66s S LINK ./unit_tests
+[27/29] 2m05.66s S LINK ./browser_tests
+[27/29] 2m16.08s F LINK ./browser_tests	
+stderr:
+ld: warning: ignoring -lto_library '../../third_party/llvm-build/Release+Asserts/lib/libLTO.dylib', file does not exist
+
+
+[28/29] 2m16.33s F LINK ./unit_tests	
+stderr:
+ld: warning: ignoring -lto_library '../../third_party/llvm-build/Release+Asserts/lib/libLTO.dylib', file does not exist
+
+
+build finished
+
+	
+noexec:3 local:26 remote:0 cache:0 skip:100379
+  cache-write:0(err:0) fallback:0 retry:0
+fs: ops: 4707(err:687) / r:642(err:0) 1.05GiB / w:6(err:0) 24.17MiB
+
+
+shutdown cloud logging/monitoring done 21.833µs
+
+2m16.65s Build Succeeded: 29 steps - 0.21/s

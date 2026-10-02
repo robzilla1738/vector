@@ -1,0 +1,61 @@
+diff --git a/apps/runtime/src/services/settings.ts b/apps/runtime/src/services/settings.ts
+index b1dd8c73..b75e3ec0 100644
+--- a/apps/runtime/src/services/settings.ts
++++ b/apps/runtime/src/services/settings.ts
+@@ -1,4 +1,4 @@
+-import { DownloadNamingSettingsSchema, DEFAULT_DOWNLOAD_NAMING } from "@aux/contracts";
++import { DownloadNamingSettingsSchema, DEFAULT_DOWNLOAD_NAMING, DEFAULT_NIGHT_SHIFT, NightShiftSettingsSchema, SettingsSetParams } from "@aux/contracts";
+ import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+ import { dirname, join } from "node:path";
+ import {
+@@ -53,7 +53,8 @@ import { GatewayModelClient } from "../agent/gateway-client.js";
+ import type { Repo } from "../store/repo.js";
+ import type { NativeBridge } from "../native.js";
+ 
+-export interface Settings {
++export interface Settings extends Pick<z.infer<typeof SettingsSetParams>,
++  "toolbarAutoHide" | "minimalUi" | "minimalUiAcknowledged" | "autoArchive" | "nightShift"> {
+   modelProvider?: ModelProvider;
+   modelConnection?: { provider: ModelProvider; enabled: boolean };
+   disabledModelProviders?: ModelProvider[];
+@@ -267,6 +268,11 @@ export class SettingsService {
+       sidebarBlur: Number(this.get("sidebarBlur") ?? 0),
+       sidebarOpacity: Number(this.get("sidebarOpacity") ?? 90),
+       tabLayout: (this.get("tabLayout") as "vertical" | "horizontal") ?? "horizontal",
++      toolbarAutoHide: z.boolean().parse(this.get("toolbarAutoHide") ?? true),
++      minimalUi: z.boolean().parse(this.get("minimalUi") ?? false),
++      minimalUiAcknowledged: z.boolean().parse(this.get("minimalUiAcknowledged") ?? false),
++      autoArchive: SettingsSetParams.shape.autoArchive.parse(this.get("autoArchive") ?? { acknowledged: false, bySpace: {} }),
++      nightShift: NightShiftSettingsSchema.parse(this.get("nightShift") ?? DEFAULT_NIGHT_SHIFT),
+       downloadNaming: DownloadNamingSettingsSchema.parse(this.get("downloadNaming") ?? DEFAULT_DOWNLOAD_NAMING),
+       memorySaverMinutes: z.union([z.literal(0), z.literal(1), z.literal(15), z.literal(30), z.literal(60)])
+         .catch(0).parse(this.get("memorySaverMinutes")),
+diff --git a/tests/unit/settings-defaults.test.ts b/tests/unit/settings-defaults.test.ts
+index a46a1e2f..dc687f3b 100644
+--- a/tests/unit/settings-defaults.test.ts
++++ b/tests/unit/settings-defaults.test.ts
+@@ -15,6 +15,24 @@ function harness(env: NodeJS.ProcessEnv = {}, file: Record<string, unknown> = {}
+ }
+ 
+ describe("settings defaults for a real test pass", () => {
++  it("exposes saved layout and automation preferences in live and reopened snapshots", async () => {
++    const { dir, repo, settings } = harness();
++    try {
++      expect(settings.all()).toMatchObject({ toolbarAutoHide: true, minimalUi: false,
++        minimalUiAcknowledged: false, autoArchive: { acknowledged: false, bySpace: {} },
++        nightShift: { enabled: false, requireAC: true } });
++      const patch = MethodSchemas["settings.set"].parse({ toolbarAutoHide: false,
++        minimalUi: true, minimalUiAcknowledged: true,
++        autoArchive: { acknowledged: true, bySpace: { work: 24 } },
++        nightShift: { enabled: true, start: "01:00", end: "07:00", nightlyUsd: 3, perTaskUsd: 1, requireAC: true } });
++      await settings.set(patch);
++      expect(settings.all()).toMatchObject(patch);
++      expect(new SettingsService(repo, join(dir, "settings.json"), {}).all()).toMatchObject(patch);
++      const reopened = harness({}, JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")));
++      try { expect(reopened.settings.all()).toMatchObject(patch); }
++      finally { reopened.repo.db.close(); rmSync(reopened.dir, { recursive: true, force: true }); }
++    } finally { repo.db.close(); rmSync(dir, { recursive: true, force: true }); }
++  });
+   it("persists the new-tab mode and rejects unsupported choices", async () => {
+     const { dir, settings } = harness();
+     try {

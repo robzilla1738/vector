@@ -1,0 +1,841 @@
+{
+  "candidate": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+  "buildProof": "/tmp/aux-root-3210-build-proof.json",
+  "buildProofSha256": "bf3403bb921f689ad89f46014057a2b7343074f9fdfec49a85b8bfbdd2c9c903",
+  "journeys": [
+    {
+      "id": "sidebar-modes",
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-sidebar-modes/manifest.json",
+      "moduleSha256": "17e78cd1ba12478e3e2e2497fa527108d2cbdce89e02c926c3775d92c517e87e",
+      "status": "failed",
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 140.97029199999997
+            }
+          ]
+        },
+        {
+          "name": "keep the address field visible when toolbar auto-hide is disabled",
+          "status": "failed",
+          "error": "Timed out: Auto-hide toolbar saved",
+          "inputs": [
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 54.711458000001585
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 153.0191249999989
+            },
+            {
+              "command": "type",
+              "status": "passed",
+              "elapsedMs": 395.1920829999999
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 119.16212499999892
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 138.84712500000023
+            }
+          ]
+        }
+      ],
+      "error": "Error: Timed out: Auto-hide toolbar saved\n    at Object.until (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/lib/until.mjs:21:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async setting (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/journeys/layout-modes.mjs:28:3)\n    at async file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/journeys/layout-modes.mjs:40:5\n    at async Object.step (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/run-journey.mjs:149:30)\n    at async sidebarModes (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/journeys/layout-modes.mjs:39:3)\n    at async execute (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/run-journey.mjs:173:3)\n    at async file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/run-journey.mjs:187:3",
+      "captures": [],
+      "files": [
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-sidebar-modes/failure-ax.json",
+          "sha256": "380b6021732a712405156a5043dfb7fee413f1c3b1a4e3b573b17aa895340748",
+          "bytes": 133857
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-sidebar-modes/manifest.json",
+          "sha256": "ffb009750d71d06f1c7128ae6be84f2fd51a96dd1b72433dc37ca2db89ebdb90",
+          "bytes": 148550
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-sidebar-modes/launcher.log",
+          "sha256": "5aa65aacfd2df6837c90f445b77e9526753e76f6a73c330019b251f9e9120f73",
+          "bytes": 19016
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-sidebar-modes/failure-process.json",
+          "sha256": "ef523acdcab2904f1d628b4c1fb4baff1bfc4d6316d3098e4a8fe75a1c3ca089",
+          "bytes": 155
+        }
+      ],
+      "log": "/tmp/aux-root-3210-sidebar-modes.log",
+      "logSha256": "4dc5e759915ce8f2b1598b445b67444ab73aefff314b0c741dd15de907e0855b",
+      "cleanupErrors": null
+    },
+    {
+      "id": "minimal-ui",
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-minimal-ui/manifest.json",
+      "moduleSha256": "17e78cd1ba12478e3e2e2497fa527108d2cbdce89e02c926c3775d92c517e87e",
+      "status": "failed",
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 133.8297500000008
+            }
+          ]
+        },
+        {
+          "name": "vertical Minimal UI fills the window and restores edge controls",
+          "status": "failed",
+          "error": "Timed out: Minimal UI saved",
+          "inputs": [
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 54.29899999999907
+            }
+          ]
+        }
+      ],
+      "error": "Error: Timed out: Minimal UI saved\n    at Object.until (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/lib/until.mjs:21:11)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/journeys/layout-modes.mjs:105:7\n    at async Object.step (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/run-journey.mjs:149:30)\n    at async minimalUi (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/journeys/layout-modes.mjs:101:5)\n    at async execute (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/run-journey.mjs:173:3)\n    at async file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/run-journey.mjs:187:3",
+      "captures": [],
+      "files": [
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-minimal-ui/failure-ax.json",
+          "sha256": "9d2a2d82ad35c4072de5216d8a0fb22f9d6f9dbd938e79735c390bcb77c6f2b3",
+          "bytes": 97474
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-minimal-ui/manifest.json",
+          "sha256": "78d4e7618bb933586ab328757a020da021b563ff6af36f3f4ef77a1103ce4883",
+          "bytes": 147851
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-minimal-ui/launcher.log",
+          "sha256": "bb3e51550d8f0e60ac9eaeaa55f62c40fe42c887beb03f3bb4f22fdcdd817daf",
+          "bytes": 19334
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-minimal-ui/failure-process.json",
+          "sha256": "c667da383e5da4ee31f06ced283965fd13a50477ed14daf095c2502eeb714c8b",
+          "bytes": 155
+        }
+      ],
+      "log": "/tmp/aux-root-3210-minimal-ui.log",
+      "logSha256": "36d1e66232fa673f09102d911e098429d97a594d2ce74e1db4bc96d468702d13",
+      "cleanupErrors": null
+    },
+    {
+      "id": "extension-actions",
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-extension-actions/manifest.json",
+      "moduleSha256": "6d49adc7c73bd67e502d6e6c471d90f03dec610dea9888a699a6af5265e6c927",
+      "status": "failed",
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 185.29904200000237
+            }
+          ]
+        },
+        {
+          "name": "install the actual unpacked MV3 folder through Settings",
+          "status": "failed",
+          "error": "Panel confirmation unavailable",
+          "inputs": [
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 78.91025000000081
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 150.03779199999917
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 227.52850000000035
+            },
+            {
+              "command": "openPanel",
+              "status": "failed",
+              "elapsedMs": 3506.1966669999965,
+              "error": "Panel confirmation unavailable"
+            }
+          ]
+        }
+      ],
+      "error": "Error: Panel confirmation unavailable\n    at Interface.<anonymous> (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/lib/ax.mjs:58:26)\n    at Interface.emit (node:events:514:20)\n    at [_onLine] [as _onLine] (node:internal/readline/interface:474:12)\n    at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:669:18)\n    at Socket.ondata (node:internal/readline/interface:268:23)\n    at Socket.emit (node:events:514:20)\n    at addChunk (node:internal/streams/readable:568:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:519:3)\n    at Readable.push (node:internal/streams/readable:399:5)\n    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)",
+      "captures": [],
+      "files": [
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-extension-actions/failure-ax.json",
+          "sha256": "c28c43208c60403f866541437d49db99cc1fa526fac9d42f2d64170ef3034f4b",
+          "bytes": 100573
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-extension-actions/manifest.json",
+          "sha256": "bbe83dc962d02b2046f2266b28edbc69cd90bb907916ace96c9c09254f828f1d",
+          "bytes": 149056
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-extension-actions/launcher.log",
+          "sha256": "361b29838d761dd43ab3a1e71053ffd072851980fc6bf3bace468a70341ed79a",
+          "bytes": 19016
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-extension-actions/failure-process.json",
+          "sha256": "029e5bfc427edf9e95cef27edd63cb2f19a320afd8f3530c48ca432b273dd8db",
+          "bytes": 155
+        }
+      ],
+      "log": "/tmp/aux-root-3210-extension-actions.log",
+      "logSha256": "fbabd942ab7c997c2caf890f3f3a981ad666a936a5d06a2f5d3352559a52bf98",
+      "cleanupErrors": null
+    },
+    {
+      "id": "split-fluid",
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-split-fluid/manifest.json",
+      "moduleSha256": "8c04f0db1c1e4ec427d3b8813f3bd2d928e347793327a1ae7a2568abd4180075",
+      "status": "failed",
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 146.16362499999923
+            }
+          ]
+        },
+        {
+          "name": "dwell-drop Blue on the right edge of Red",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "contextMenu",
+              "status": "passed",
+              "elapsedMs": 93.86391699999876
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 147.82458399999814
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 96.56408400000146
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 104.72545900000114
+            },
+            {
+              "command": "drag",
+              "status": "passed",
+              "elapsedMs": 1783.4367500000008
+            }
+          ]
+        },
+        {
+          "name": "restore the native pair after restart",
+          "status": "failed",
+          "error": "waitFor timed out: [\"match\": regex, \"role\": AXRadioButton, \"scope\": shell, \"name\": ^Aux native Red(?: Close Aux native Red)?$, \"index\": 0]",
+          "inputs": [
+            {
+              "command": "press",
+              "status": "failed",
+              "elapsedMs": 5098.6161250000005,
+              "error": "waitFor timed out: [\"match\": regex, \"role\": AXRadioButton, \"scope\": shell, \"name\": ^Aux native Red(?: Close Aux native Red)?$, \"index\": 0]"
+            }
+          ]
+        }
+      ],
+      "error": "Error: waitFor timed out: [\"match\": regex, \"role\": AXRadioButton, \"scope\": shell, \"name\": ^Aux native Red(?: Close Aux native Red)?$, \"index\": 0]\n    at Interface.<anonymous> (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/lib/ax.mjs:58:26)\n    at Interface.emit (node:events:514:20)\n    at [_onLine] [as _onLine] (node:internal/readline/interface:474:12)\n    at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:669:18)\n    at Socket.ondata (node:internal/readline/interface:268:23)\n    at Socket.emit (node:events:514:20)\n    at addChunk (node:internal/streams/readable:568:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:519:3)\n    at Readable.push (node:internal/streams/readable:399:5)\n    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)",
+      "captures": [
+        {
+          "name": "split-fluid-two",
+          "path": "split-fluid-two.png",
+          "sha256": "7cb4fee1711244089ce5033a79db669e0c222c50e26a03410b9778de379dd433",
+          "bytes": 719337,
+          "windowId": 13262
+        }
+      ],
+      "files": [
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-split-fluid/failure-ax.json",
+          "sha256": "22c8de6b330d3db3191752dc6c6e8ec05dd2b05fb3a7a0cf1451367879c3abc5",
+          "bytes": 98357
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-split-fluid/manifest.json",
+          "sha256": "a414c73b49fdc33a05d573b0ec7162412eeb018015295d9eda02d1a29ff997b5",
+          "bytes": 320943
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-split-fluid/launcher.log",
+          "sha256": "8dd3f11a21113e3ff815702f028ad333487e91d530d47ce15037040fbf95efcb",
+          "bytes": 18263
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-split-fluid/split-fluid-two.png",
+          "sha256": "7cb4fee1711244089ce5033a79db669e0c222c50e26a03410b9778de379dd433",
+          "bytes": 719337
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-split-fluid/failure-process.json",
+          "sha256": "e375b2f10de2767f8f8df4ffdd0c21177a88b760870bd7ba8e9e3146fc1fc224",
+          "bytes": 155
+        }
+      ],
+      "log": "/tmp/aux-root-3210-split-fluid.log",
+      "logSha256": "34ff0466ec9fcc1d81459eb88ab7c022dc7e408f0784a950127471693288a6e9",
+      "cleanupErrors": null
+    },
+    {
+      "id": "pip",
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-pip/manifest.json",
+      "moduleSha256": "1f7fb061df3281a1ba575d35ae33c9c04e79a41224345d0999b30c4d40afc183",
+      "status": "failed",
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 134.43662500000028
+            }
+          ]
+        },
+        {
+          "name": "the remappable command selects the largest playing video and exits",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "contextMenu",
+              "status": "passed",
+              "elapsedMs": 103.8776659999985
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 144.3662919999988
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 99.24108400000114
+            },
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 48.06904099999883
+            },
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 43.408292000000074
+            }
+          ]
+        },
+        {
+          "name": "the registered MediaSession handler enters PiP",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 101.8022920000003
+            },
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 43.52679199999875
+            },
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 43.273167000001195
+            }
+          ]
+        },
+        {
+          "name": "paused video retains the control; destroyed video clears it and the empty command explains why",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 104.50616599999921
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 108.5060829999984
+            },
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 42.79187499999898
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 104.99154199999975
+            }
+          ]
+        },
+        {
+          "name": "Document PiP owns a real window and native state",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 98.86862499999916
+            },
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 124.04441700000098
+            }
+          ]
+        },
+        {
+          "name": "allow automatic PiP through its real Settings control",
+          "status": "failed",
+          "error": "waitFor timed out: [\"scope\": shell, \"match\": exact, \"index\": 0, \"role\": AXButton, \"name\": Automatic picture in picture]",
+          "inputs": [
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 43.59449999999924
+            },
+            {
+              "command": "type",
+              "status": "passed",
+              "elapsedMs": 597.010209
+            },
+            {
+              "command": "press",
+              "status": "failed",
+              "elapsedMs": 5107.762584,
+              "error": "waitFor timed out: [\"scope\": shell, \"match\": exact, \"index\": 0, \"role\": AXButton, \"name\": Automatic picture in picture]"
+            }
+          ]
+        }
+      ],
+      "error": "Error: waitFor timed out: [\"scope\": shell, \"match\": exact, \"index\": 0, \"role\": AXButton, \"name\": Automatic picture in picture]\n    at Interface.<anonymous> (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/lib/ax.mjs:58:26)\n    at Interface.emit (node:events:514:20)\n    at [_onLine] [as _onLine] (node:internal/readline/interface:474:12)\n    at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:669:18)\n    at Socket.ondata (node:internal/readline/interface:268:23)\n    at Socket.emit (node:events:514:20)\n    at addChunk (node:internal/streams/readable:568:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:519:3)\n    at Readable.push (node:internal/streams/readable:399:5)\n    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)",
+      "captures": [
+        {
+          "name": "pip-largest-video",
+          "path": "pip-largest-video.png",
+          "sha256": "e6b0355d76e4c138dc4ad86705d3da96c92613d0c08c22bbe29726dc0644a79c",
+          "bytes": 745016,
+          "windowId": 13286
+        }
+      ],
+      "files": [
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-pip/pip-largest-video.png",
+          "sha256": "e6b0355d76e4c138dc4ad86705d3da96c92613d0c08c22bbe29726dc0644a79c",
+          "bytes": 745016
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-pip/failure-ax.json",
+          "sha256": "031d276e050914954011ee641f1e2aacacb5211e6f0e2fdc37e0ae5c21091d3e",
+          "bytes": 102738
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-pip/manifest.json",
+          "sha256": "32cb817d5df96d007010f3c32a17d76fda0a63308f90c4e0381ec59ebe6bb2e0",
+          "bytes": 806151
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-pip/launcher.log",
+          "sha256": "40352bcffc7b9b083a7ee2bdabae434e00a8fcd30aca4e2fddd637b96d0e70c0",
+          "bytes": 24144
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-pip/failure-process.json",
+          "sha256": "0ed04f51fa7c748dc79421f1137a53ae3569558425362dcec584c3281b38caa1",
+          "bytes": 155
+        }
+      ],
+      "log": "/tmp/aux-root-3210-pip.log",
+      "logSha256": "ade6f84d441fde7ae78de22c451c0f31cf3e49b01a8bcf79535fefb41eaf356f",
+      "cleanupErrors": null
+    },
+    {
+      "id": "command-bar-modes",
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/manifest.json",
+      "moduleSha256": "9b4e171a8fdafd0cee47cd889506b68d546de2336dbb68c47d1885a451eea785",
+      "status": "failed",
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 131.1194999999998
+            }
+          ]
+        },
+        {
+          "name": "CmdT opens an empty field and Escape creates no page",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 57.86579100000017
+            },
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 42.91883399999824
+            }
+          ]
+        },
+        {
+          "name": "Enter commits exactly one new native page",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 42.955832999999984
+            },
+            {
+              "command": "type",
+              "status": "passed",
+              "elapsedMs": 518.5309580000012
+            },
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 43.431915999999546
+            }
+          ]
+        },
+        {
+          "name": "CmdEnter acknowledges one background page and keeps the active page",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 43.846832999999606
+            },
+            {
+              "command": "type",
+              "status": "passed",
+              "elapsedMs": 536.6557919999996
+            },
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 43.58429100000103
+            }
+          ]
+        },
+        {
+          "name": "CmdL selects the native page URL in the same field",
+          "status": "failed",
+          "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- 'http://127.0.0.1:51694/blue'\n",
+          "inputs": [
+            {
+              "command": "key",
+              "status": "passed",
+              "elapsedMs": 43.16374999999971
+            }
+          ]
+        }
+      ],
+      "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- 'http://127.0.0.1:51694/blue'\n\n    at file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/journeys/command-bar-modes.mjs:45:55\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.step (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/run-journey.mjs:149:30)\n    at async run (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/journeys/command-bar-modes.mjs:43:3)\n    at async execute (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/run-journey.mjs:173:3)\n    at async file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/run-journey.mjs:187:3",
+      "captures": [
+        {
+          "name": "command-new-tab-empty",
+          "path": "command-new-tab-empty.png",
+          "sha256": "3cfe97b336ad348effbff7b6e389a21b80d9f5874490acc2b7694363ef9d72f3",
+          "bytes": 572474,
+          "windowId": 13302
+        },
+        {
+          "name": "command-new-tab-committed",
+          "path": "command-new-tab-committed.png",
+          "sha256": "05f194bedf1a8bfc28aef691aadf7c69ef645df7e260d0bb1bbf114ff2cf2066",
+          "bytes": 594413,
+          "windowId": 13302
+        },
+        {
+          "name": "command-background-page",
+          "path": "command-background-page.png",
+          "sha256": "7949ee9ab52d87ebc8f718463a8b711f2bf61bb6afc26d6b844377365eef6377",
+          "bytes": 596699,
+          "windowId": 13302
+        }
+      ],
+      "files": [
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/failure-ax.json",
+          "sha256": "023ee8cd6be24f00228f7c909ec86ab59f969da6a408dd82146802b2e1691cca",
+          "bytes": 96561
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/command-background-page.png",
+          "sha256": "7949ee9ab52d87ebc8f718463a8b711f2bf61bb6afc26d6b844377365eef6377",
+          "bytes": 596699
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/command-new-tab-committed.png",
+          "sha256": "05f194bedf1a8bfc28aef691aadf7c69ef645df7e260d0bb1bbf114ff2cf2066",
+          "bytes": 594413
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/command-new-tab-empty.png",
+          "sha256": "3cfe97b336ad348effbff7b6e389a21b80d9f5874490acc2b7694363ef9d72f3",
+          "bytes": 572474
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/manifest.json",
+          "sha256": "2addc4c98d80bb593e1da8db0e2745a78128a5804f4465a997b324ab2a2bfe90",
+          "bytes": 562007
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/launcher.log",
+          "sha256": "69f975cf3138d054af6e58bb8f0c3460cb450be2056d2c6bdab9a8eb1c3b0365",
+          "bytes": 21772
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/failure-process.json",
+          "sha256": "f9879f8b5a85f307b56a12bc8947ee8c69cc9a7b3121892129981931050fcdc8",
+          "bytes": 155
+        }
+      ],
+      "log": "/tmp/aux-root-3210-command-bar-modes.log",
+      "logSha256": "b3be16633cc8ba2ae6ebb62b8397e07be52785c355141ed4159032c900244050",
+      "cleanupErrors": null
+    },
+    {
+      "id": "smart-download-rename",
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-smart-download-rename/manifest.json",
+      "moduleSha256": "62838cdc89bd5dc55dc8e66c8dd4ed896e4c05a90059a4925e4bb1ff6e770174",
+      "status": "failed",
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 136.58187499999985
+            }
+          ]
+        }
+      ],
+      "error": "Error: waitFor timed out: [\"scope\": shell, \"match\": exact, \"index\": 0, \"name\": Save naming preferences, \"role\": AXButton]\n    at Interface.<anonymous> (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/lib/ax.mjs:58:26)\n    at Interface.emit (node:events:514:20)\n    at [_onLine] [as _onLine] (node:internal/readline/interface:474:12)\n    at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:669:18)\n    at Socket.ondata (node:internal/readline/interface:268:23)\n    at Socket.emit (node:events:514:20)\n    at addChunk (node:internal/streams/readable:568:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:519:3)\n    at Readable.push (node:internal/streams/readable:399:5)\n    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)",
+      "captures": [],
+      "files": [
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-smart-download-rename/failure-ax.json",
+          "sha256": "75bf7a77ce4fa573f450bcb6b0d2ea616970ea20a0243b0adf197f64da817a44",
+          "bytes": 103128
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-smart-download-rename/manifest.json",
+          "sha256": "0e68ef4841c5c53b14fc58b7495f3f5f30911538f15271cb3e8ad79d419eb278",
+          "bytes": 146923
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-smart-download-rename/launcher.log",
+          "sha256": "9c4fe48d254c1ef23259be618ac3be3f4f9aa46ce4180b27d10fa68129541e2f",
+          "bytes": 15605
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-smart-download-rename/failure-process.json",
+          "sha256": "0e8b6f4f3b703516c55ec2806c51fb73078420c7ea564764813aaa361202e580",
+          "bytes": 155
+        }
+      ],
+      "log": "/tmp/aux-root-3210-smart-download-rename.log",
+      "logSha256": "f54c57aef94b04163e46afcb26e460c3ace99fe1c73b84eff79914455f91157f",
+      "cleanupErrors": null
+    },
+    {
+      "id": "demonstration-skill",
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-demonstration-skill/manifest.json",
+      "moduleSha256": "61f50100e2e84126918312efabe65aee31e549169f44c35026227308b7fe1d79",
+      "status": "failed",
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 136.08291700000063
+            }
+          ]
+        },
+        {
+          "name": "trusted isolated recording filters synthetic secrets and exposes ambiguity without taking browser control",
+          "status": "failed",
+          "error": "waitFor timed out: [\"scope\": page, \"match\": exact, \"role\": AXSecureTextField, \"index\": 0, \"name\": Fixture password]",
+          "inputs": []
+        }
+      ],
+      "error": "Error: waitFor timed out: [\"scope\": page, \"match\": exact, \"role\": AXSecureTextField, \"index\": 0, \"name\": Fixture password]\n    at Interface.<anonymous> (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/lib/ax.mjs:58:26)\n    at Interface.emit (node:events:514:20)\n    at [_onLine] [as _onLine] (node:internal/readline/interface:474:12)\n    at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:669:18)\n    at Socket.ondata (node:internal/readline/interface:268:23)\n    at Socket.emit (node:events:514:20)\n    at addChunk (node:internal/streams/readable:568:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:519:3)\n    at Readable.push (node:internal/streams/readable:399:5)\n    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)",
+      "captures": [],
+      "files": [
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-demonstration-skill/failure-ax.json",
+          "sha256": "b1a390ffe4bd7be23d20db98b32d1129d27ce9baabe37d935a540601e437ff74",
+          "bytes": 90919
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-demonstration-skill/manifest.json",
+          "sha256": "0c01498bc57504a05be04cd249e78238701c1d950720ce6a7428870223737e63",
+          "bytes": 147926
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-demonstration-skill/launcher.log",
+          "sha256": "1663646993d5f55bacfc10c0a5fa1dcf1ae6d67f95aec7c06b68ccc59d7fb405",
+          "bytes": 19995
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-demonstration-skill/failure-process.json",
+          "sha256": "712ecf7047ec926b8078605bbe6a5820bd9c26ec787bd96370e769b44657ac9a",
+          "bytes": 155
+        }
+      ],
+      "log": "/tmp/aux-root-3210-demonstration-skill.log",
+      "logSha256": "a133edd99db2929487103f315e2e0ee388d33f284c04cc3de8a3ad184873ded4",
+      "cleanupErrors": null
+    },
+    {
+      "id": "overnight-review",
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-overnight-review/manifest.json",
+      "moduleSha256": "61f50100e2e84126918312efabe65aee31e549169f44c35026227308b7fe1d79",
+      "status": "failed",
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null,
+          "inputs": [
+            {
+              "command": "press",
+              "status": "passed",
+              "elapsedMs": 122.87395899999956
+            }
+          ]
+        }
+      ],
+      "error": "Error: waitFor timed out: [\"scope\": shell, \"role\": AXCheckBox, \"name\": Keep Aux running after closing all windows, \"match\": exact, \"index\": 0]\n    at Interface.<anonymous> (file:///private/tmp/aux-browser-runtime-builder-3210/tests/host/lib/ax.mjs:58:26)\n    at Interface.emit (node:events:514:20)\n    at [_onLine] [as _onLine] (node:internal/readline/interface:474:12)\n    at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:669:18)\n    at Socket.ondata (node:internal/readline/interface:268:23)\n    at Socket.emit (node:events:514:20)\n    at addChunk (node:internal/streams/readable:568:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:519:3)\n    at Readable.push (node:internal/streams/readable:399:5)\n    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)",
+      "captures": [],
+      "files": [
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-overnight-review/failure-ax.json",
+          "sha256": "b9984cace1f5ac0761a37627c264453526bcae4ea1ba68aee6a24c832938a78e",
+          "bytes": 138605
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-overnight-review/manifest.json",
+          "sha256": "24c3f675381a4a152073996c8c78442fce5e76c15c1c746e24d05ead14d1793c",
+          "bytes": 147402
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-overnight-review/launcher.log",
+          "sha256": "5241794526dde78a04e6e97783190a765e5df52f58a269f044f5e87ca4f76328",
+          "bytes": 19334
+        },
+        {
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-overnight-review/failure-process.json",
+          "sha256": "561a73689e40a0937b68bab3dfc6b13d1fded8967b72ef7d5749da3e089c81b5",
+          "bytes": 155
+        }
+      ],
+      "log": "/tmp/aux-root-3210-overnight-review.log",
+      "logSha256": "7493bdb9e2fa69c6dea8934734006f4bbe9599e9bcb76a843ec110ca5d2e5fa3",
+      "cleanupErrors": null
+    }
+  ],
+  "nativeUnits": [
+    {
+      "target": "owner_mutation_fence_unittests",
+      "filter": "OwnerMutationFenceTest.*",
+      "exitCode": 0,
+      "binarySha256": "a6567ea01ee7ff0f544d241b187806be68e193c9d2bde6f0412b4fa86ef93eeb",
+      "logPath": "/tmp/aux-root-3210-owner_mutation_fence-unit.log",
+      "logSha256": "c42d9707ae3aa26104e29cabcb950d37ec2c37b66cab57cc3a7b8d1a8ca54381"
+    },
+    {
+      "target": "profile_spaces_unittests",
+      "filter": "ProfileMoveDocumentTest.*",
+      "exitCode": 0,
+      "binarySha256": "d972617bc26bf8ed561aca47f57211bce67365b861f812ba92bb7330e07e1b04",
+      "logPath": "/tmp/aux-root-3210-profile_spaces-unit.log",
+      "logSha256": "82f50735d02ecfb181d864f80ac3aa23d66f3a6ee6120bdab0d1d9032d1a4de4"
+    },
+    {
+      "target": "permission_broker_unittests",
+      "filter": "PermissionBrokerTest.*",
+      "exitCode": 1,
+      "binarySha256": "a47d1382e40e8d9c53ad9bb13a94d8a31652918b3185a0db07362926b4dcee73",
+      "logPath": "/tmp/aux-root-3210-permission_broker-unit.log",
+      "logSha256": "7afa03c61a2df0e243fc7f5a8bb14e43e33a848472b9b81fa36411d5fa43869e"
+    }
+  ],
+  "unitResultsSha256": "ab15d42fd75922f0e28543716400acb1666209f3a39b7fffa1f6e611f7104ed7",
+  "terminalGuardSha256": "67269e96f34f0ca982be6623bffca32c17da6335de912e5a29d34afa9b7ae20a",
+  "ownedProcesses": [],
+  "slotReleased": true,
+  "recordsWritten": false
+}

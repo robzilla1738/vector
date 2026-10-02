@@ -1,0 +1,671 @@
+--- a/apps/runtime/src/safety/native-permission.ts
++++ b/apps/runtime/src/safety/native-permission.ts
+@@ -1,4 +1,4 @@
+-import { createHash } from "node:crypto";
++import { createHash, randomUUID } from "node:crypto";
+ import { z } from "zod";
+ import { AuxError, EgressLeaseSchema, EffectRequestSchema, type PageTarget, type Run } from "@aux/contracts";
+ import type { ApprovalStore } from "./approval.js";
+@@ -53,6 +53,7 @@
+   batchId: string;
+   decision: "allow" | "deny" | "pending";
+   approvalId?: string;
++  reservationId?: string;
+ };
+ interface Batch {
+   request: NativePermissionRequest;
+@@ -60,7 +61,8 @@
+   runId: string;
+   sessionId: string;
+   expiresAt: number;
+-  status: "pending" | "used" | "denied";
++  status: "pending" | "authorized" | "used" | "denied";
++  reservation?: { id: string; nonce: number; fence: () => void };
+   approvalId?: string;
+   turn?: symbol;
+ }
+@@ -68,6 +70,7 @@
+ /** Only main's authenticated internal channel invokes this controller. No renderer/model RPC route exists. */
+ export class NativePermissionController {
+   private batches = new Map<string, Batch>();
++  private authorityMutations = new Set<(runId: string) => boolean>();
+   constructor(
+     private deps: {
+       profileId: string;
+@@ -80,6 +83,8 @@
+       sourceCheck(runId: string, pageId: string): () => void;
+       standingOnly(runId: string): boolean;
+       assertDispatch(runId: string): Promise<void>;
++      overnightAuthority(runId: string): { windowEnd: number; requireAC: boolean } | null;
++      retireReservation(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }>;
+       requiresTurn(run: Run, pageId: string): boolean;
+       now?: () => number;
+     },
+@@ -121,6 +126,7 @@
+       at - input.requestedAt >= 120_000
+     )
+       return deny();
++    if ([...this.authorityMutations].some(matches => matches(input.runId))) return deny();
+     const digest = createHash("sha256").update(JSON.stringify(input)).digest("hex");
+     let batch = this.batches.get(input.batchId);
+     if (batch && (batch.digest !== digest || batch.status !== "pending")) {
+@@ -163,17 +169,20 @@
+         this.batches.set(input.batchId, batch);
+       }
+       const current = batch;
++      const overnightItem = run.config?.nightShiftItemId;
+       const fence = () => {
+         leaseCheck();
+         sourceCheck();
+         const nowPage = this.deps.page(input.tabId);
+         const nowRun = this.deps.run(input.runId);
+         if (
++          [...this.authorityMutations].some(matches => matches(input.runId)) ||
+           this.batches.get(input.batchId) !== current ||
+-          current.status !== "pending" ||
++          !["pending", "authorized"].includes(current.status) ||
+           current.expiresAt <= this.now() ||
+           nowPage.sessionId !== current.sessionId ||
+           nowRun?.config?.messageRevision !== run.config?.messageRevision ||
++          nowRun?.config?.nightShiftItemId !== overnightItem ||
+           !nowRun ||
+           !["running", "planning", "needs_input"].includes(nowRun.status) ||
+           (turn && this.deps.mentions.capture(input.runId) !== turn)
+@@ -234,12 +243,66 @@
+         }
+         throw error;
+       }
+-      current.status = "used";
+-      return { batchId: input.batchId, decision: "allow" };
++      current.status = "authorized";
++      current.reservation = { id: randomUUID(), nonce: 0, fence };
++      return { batchId: input.batchId, decision: "allow", reservationId: current.reservation.id };
+     } catch (error) {
+       this.invalidate(input.batchId);
+       if (error instanceof AuxError) return deny();
+       throw error;
+     }
+   }
++
++  /** Retire exact queued receipts before a real settings, lifecycle or ledger mutation. */
++  async withAuthorityMutation<T>(matches: (runId: string) => boolean, mutation: () => Promise<T>): Promise<T> {
++    this.authorityMutations.add(matches);
++    try {
++      const retiring = [...this.batches].filter(([, batch]) => matches(batch.runId));
++      const receipts = retiring.flatMap(([batchId, batch]) => batch.status === "authorized" && batch.reservation
++        ? [{ tabId: batch.request.tabId, batchId, reservationId: batch.reservation.id }] : []);
++      // Runtime authority retires synchronously before crossing the native channel.
++      for (const [batchId, batch] of retiring) if (batch.status === "authorized") this.invalidate(batchId);
++      for (const receipt of receipts) {
++        const result = await this.deps.retireReservation(receipt);
++        if (result.accepted !== true) throw new AuxError("permission_denied", "Native permission retirement was not acknowledged.");
++      }
++      return await mutation();
++    } finally { this.authorityMutations.delete(matches); }
++  }
++
++  /** Authenticated native-only fresh effect check; never consumes consent again. */
++  async revalidate(raw: unknown): Promise<{ batchId: string; reservationId: string; nonce: number; decision: "allow" | "deny"; overnight?: { windowEnd: number; requireAC: boolean } }> {
++    const input = z.object({ batchId: z.string().min(1).max(160), reservationId: z.string().uuid(), nonce: z.number().int().positive() }).strict().parse(raw);
++    const denied = () => ({ ...input, decision: "deny" as const });
++    const batch = this.batches.get(input.batchId);
++    if (!batch || batch.status !== "authorized" || batch.reservation?.id !== input.reservationId || input.nonce !== batch.reservation.nonce + 1) return denied();
++    const reservation = batch.reservation;
++    // Reserve nonce synchronously; overlapping replies cannot redeem one attempt twice.
++    reservation.nonce = input.nonce;
++    try {
++      reservation.fence();
++      await this.deps.assertDispatch(batch.runId);
++      reservation.fence();
++      if (batch.reservation !== reservation || reservation.nonce !== input.nonce) return denied();
++      const overnight = this.deps.overnightAuthority(batch.runId);
++      if (this.deps.standingOnly(batch.runId) && !overnight)
++        throw new AuxError("permission_denied", "Overnight native effects require their exact claimed window.");
++      return { ...input, decision: "allow", ...(overnight ? { overnight } : {}) };
++    } catch (error) {
++      this.invalidate(input.batchId);
++      if (error instanceof AuxError) return denied();
++      throw error;
++    }
++  }
++
++  /** Native finalization retires this exact reservation; no other batch is touched. */
++  finalize(raw: unknown): { retired: boolean } {
++    const input = z.object({ batchId: z.string().min(1).max(160), reservationId: z.string().uuid() }).strict().parse(raw);
++    const batch = this.batches.get(input.batchId);
++    if (!batch || batch.status !== "authorized" || batch.reservation?.id !== input.reservationId) return { retired: false };
++    batch.status = "used";
++    batch.reservation = undefined;
++    return { retired: true };
++  }
++
+ }
+--- a/apps/runtime/src/main.ts
++++ b/apps/runtime/src/main.ts
+@@ -1,4 +1,5 @@
+-import { checkNightShiftDispatch } from "./features/overnight-review/service.js";
++import { installOvernightAuthority } from "./services/overnight-authority.js";
++import { checkNightShiftDispatch, nightShiftEffectAuthority } from "./features/overnight-review/service.js";
+ import { SafetyAuthorityRevocation } from "./safety/authority-revocation.js";
+ import { z } from "zod";
+ import { createClock } from "@aux/contracts";
+@@ -1158,6 +1159,8 @@
+       page: pageId => pages.get(pageId),
+       standingOnly: runId => !!repo.getRun(runId)?.config?.nightShiftItemId,
+       assertDispatch: runId => checkNightShiftDispatch(repo, runId),
++      overnightAuthority: runId => nightShiftEffectAuthority(repo, runId),
++      retireReservation: input => native.permissionRetire(input),
+       requiresTurn: (run, pageId) => run.config?.implementation !== "external-agent" ||
+         !!run.config?.mentions?.length || turnMentions.ownedPages(run.runId).includes(pageId),
+       sourceCheck: (runId, pageId) => {
+@@ -1186,7 +1189,10 @@
+         return check;
+       },
+     });
++    installOvernightAuthority(repo, nativePermissions);
+     channel.onMethod("permission.request", params => nativePermissions!.request(params));
++    channel.onMethod("permission.revalidate", params => nativePermissions!.revalidate(params));
++    channel.onMethod("permission.finalize", params => nativePermissions!.finalize(params));
+     channel.onMethod("permission.invalidate", params => {
+       const input = z.object({ batchId: z.string().min(1).max(160) }).strict().parse(params);
+       nativePermissions!.invalidate(input.batchId);
+--- a/apps/runtime/src/features/overnight-review/service.ts
++++ b/apps/runtime/src/features/overnight-review/service.ts
+@@ -23,3 +23,11 @@
+   if (item.runId !== runId || item.createdBy !== "person") throw new AuxError("permission_denied", "This run is outside its person-queued overnight item.");
+   await service.assertDispatch(runId);
+ }
++
++/** Runtime-owned exact queue authority for a native effect receipt. */
++export function nightShiftEffectAuthority(repo: Services["repo"], runId: string) {
++  if (!repo.getRun(runId)?.config?.nightShiftItemId) return null;
++  const service = byRepo.get(repo);
++  if (!service) throw new AuxError("permission_denied", "This Profile's overnight authority is unavailable.");
++  return service.effectAuthority(runId);
++}
+--- a/apps/runtime/src/services/night-shift.ts
++++ b/apps/runtime/src/services/night-shift.ts
+@@ -1,3 +1,4 @@
++import { withOvernightAuthorityMutation } from "./overnight-authority.js";
+ import { randomUUID } from "node:crypto";
+ import { AuxError, DEFAULT_NIGHT_SHIFT, NightShiftItemSchema, NightShiftQueueSchema, NightShiftSettingsSchema, createClock, newRunId, type Clock, type NightShiftItem } from "@aux/contracts";
+ import type { Repo } from "../store/repo.js";
+@@ -85,8 +86,10 @@
+   async review(id: string, decision: "approve" | "discard" | "apply") {
+     const item = this.get(id);
+     if (decision === "discard") {
+-      if (item.runId && ["running", "parked", "needs_review"].includes(item.status)) this.runtime.cancel(item.runId, "Discarded by the person.");
+-      this.repo.db.prepare("UPDATE night_queue SET status='discarded' WHERE id=?").run(id);
++      await withOvernightAuthorityMutation(this.repo, async () => {
++        if (item.runId && ["running", "parked", "needs_review"].includes(item.status)) this.runtime.cancel(item.runId, "Discarded by the person.");
++        this.repo.db.prepare("UPDATE night_queue SET status='discarded' WHERE id=?").run(id);
++      }, item.runId);
+     } else if (decision === "approve") {
+       if (item.status !== "proposed") throw new AuxError("conflict", "Only proposed items can be queued.");
+       if (item.budgetUsd > this.settings().perTaskUsd) throw new AuxError("permission_denied", "Review the current per-task budget first.");
+@@ -98,6 +101,12 @@
+       this.repo.db.prepare("UPDATE night_queue SET foreground=1 WHERE id=? AND status='needs_review'").run(id);
+     }
+     return this.get(id);
++  }
++  effectAuthority(runId: string): { windowEnd: number; requireAC: boolean } {
++    this.assertRun(runId);
++    const row = this.repo.db.prepare("SELECT window_end FROM night_queue WHERE run_id=? AND foreground=0").get(runId) as { window_end: number } | undefined;
++    if (!row) throw new AuxError("permission_denied", "This overnight run has no exact claimed window.");
++    return { windowEnd: row.window_end, requireAC: this.settings().requireAC };
+   }
+   async assertDispatch(runId: string) {
+     const row = this.repo.db.prepare("SELECT * FROM night_queue WHERE run_id=?").get(runId) as Record<string, unknown> | undefined;
+@@ -131,7 +140,7 @@
+     if (spent >= Math.min(item.budgetUsd, settings.perTaskUsd) || total.spent >= settings.nightlyUsd)
+       throw new AuxError("permission_denied", "The overnight budget is exhausted.", { scope: "nightShift" });
+   }
+-  private reconcile(now: number) {
++  private async reconcile(now: number) {
+     const rows = this.repo.db.prepare("SELECT * FROM night_queue WHERE status IN ('running','parked') OR (status='needs_review' AND foreground=1)").all() as Record<string, unknown>[];
+     for (const row of rows) {
+       const item = this.read(row), run = item.runId ? this.repo.getRun(item.runId) : undefined;
+@@ -143,7 +152,9 @@
+         if (item.runId && run?.status === "running") this.runtime.cancel(item.runId, "The overnight window closed.");
+         status = "needs_review";
+       } else if (row.foreground !== 1 && (run?.status === "needs_input" || run?.status === "paused")) status = "parked";
+-      if (status) this.repo.db.prepare("UPDATE night_queue SET status=? WHERE id=?").run(status, item.id);
++      if (status) await withOvernightAuthorityMutation(this.repo, async () => {
++        this.repo.db.prepare("UPDATE night_queue SET status=? WHERE id=?").run(status, item.id);
++      }, item.runId);
+     }
+   }
+   async tick() {
+@@ -151,14 +162,14 @@
+     try {
+       const now = this.clock.now();
+       const onAC = await this.runtime.onAC();
+-      this.reconcile(now);
++      await this.reconcile(now);
+       const settings = this.settings(), window = nightWindow(now, settings.start, settings.end);
+       if (!window.inside) {
+-        this.parkActiveForReview("The overnight window closed.");
++        await this.parkActiveForReview("The overnight window closed.");
+         await this.runtime.releaseActivity(); return;
+       }
+       if (!settings.enabled || !this.runtime.backgroundEnabled() || settings.requireAC && !onAC) {
+-        this.parkActiveForReview("Overnight settings or power changed.");
++        await this.parkActiveForReview("Overnight settings or power changed.");
+         await this.runtime.releaseActivity(); return;
+       }
+       const active = this.repo.db.prepare("SELECT status,window_end FROM night_queue WHERE status IN ('running','parked') LIMIT 1").get() as { status: string; window_end: number } | undefined;
+@@ -208,19 +219,23 @@
+       }
+     } finally { this.ticking = false; }
+   }
+-  private parkActiveForReview(reason: string) {
++  private async parkActiveForReview(reason: string) {
+     const rows = this.repo.db.prepare("SELECT id,run_id,status FROM night_queue WHERE status IN ('running','parked')").all() as { id: string; run_id: string | null; status: string }[];
+     for (const row of rows) {
+       // A real pending approval remains parked for person-present Apply.
+-      if (row.run_id && row.status === "running") this.runtime.cancel(row.run_id, reason);
+-      this.repo.db.prepare("UPDATE night_queue SET status='needs_review' WHERE id=? AND status IN ('running','parked')").run(row.id);
++      await withOvernightAuthorityMutation(this.repo, async () => {
++        if (row.run_id && row.status === "running") this.runtime.cancel(row.run_id, reason);
++        this.repo.db.prepare("UPDATE night_queue SET status='needs_review' WHERE id=? AND status IN ('running','parked')").run(row.id);
++      }, row.run_id ?? undefined);
+     }
+   }
+   async close() {
+     this.closed = true;
+     for (const item of this.list()) if (["running", "parked"].includes(item.status)) {
+-      if (item.runId) this.runtime.cancel(item.runId, "Night shift stopped in this Profile.");
+-      this.repo.db.prepare("UPDATE night_queue SET status='needs_review' WHERE id=?").run(item.id);
++      await withOvernightAuthorityMutation(this.repo, async () => {
++        if (item.runId) this.runtime.cancel(item.runId, "Night shift stopped in this Profile.");
++        this.repo.db.prepare("UPDATE night_queue SET status='needs_review' WHERE id=?").run(item.id);
++      }, item.runId);
+     }
+     await this.runtime.releaseActivity();
+   }
+--- a/tests/unit/native-permission-producer.test.ts
++++ b/tests/unit/native-permission-producer.test.ts
+@@ -14,7 +14,7 @@
+ import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
+ const cleanup: Array<() => void> = [];
+ afterEach(() => cleanup.splice(0).forEach((dispose) => dispose()));
+-async function fixture(readOnly = false, external = false, assertDispatch: (runId: string) => Promise<void> = async () => {}, runId = "run") {
++async function fixture(readOnly = false, external = false, assertDispatch: (runId: string) => Promise<void> = async () => {}, runId = "run", overnightAuthority: (runId: string) => { windowEnd: number; requireAC: boolean } | null = () => null, retireReservation: (input: { tabId: string; batchId: string; reservationId: string }) => Promise<{ accepted: true }> = async () => ({ accepted: true })) {
+   const db = openDb(":memory:");
+   cleanup.push(() => db.close());
+   const approvals = new ApprovalStore(db);
+@@ -132,6 +132,8 @@
+     run: () => run,
+     standingOnly: () => onlyStanding,
+     assertDispatch,
++    overnightAuthority,
++    retireReservation,
+     requiresTurn: () => !external,
+     sourceCheck: () => () => {
+       if (!owns) throw new AuxError("permission_denied", "Lease owner retired.");
+@@ -184,7 +186,7 @@
+     approvalId: expect.any(String),
+   });
+   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
+-  expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "allow" });
++  expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "allow", reservationId: expect.any(String) });
+   expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "deny" });
+   expect(f.mentions.ownedPages("run")).toEqual([]);
+ });
+@@ -192,7 +194,7 @@
+   const f = await fixture();
+   const waiting = await f.controller.request(f.request);
+   f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: waiting.approvalId! }, "run");
+-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow" });
++  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+   await f.mentions.begin(
+     "run",
+     [
+@@ -252,7 +254,7 @@
+   const waiting = await f.controller.request(f.request);
+   expect(waiting.decision).toBe("pending");
+   f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
+-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow" });
++  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+   expect(f.mentions.has("run")).toBe(false);
+   expect(f.mentions.ownedPages("run")).toEqual([]);
+ });
+@@ -281,7 +283,7 @@
+       origin: "https://permission.test",
+     });
+     f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
+-    expect(await f.controller.request(request)).toMatchObject({ decision: "allow" });
++    expect(await f.controller.request(request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+     expect(await f.controller.request(request)).toMatchObject({ decision: "deny" });
+   },
+ );
+@@ -299,7 +301,7 @@
+   const waiting = await f.controller.request(f.request);
+   f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: waiting.approvalId! }, "run");
+   f.overnight();
+-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow" });
++  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+ });
+ 
+ function revocation(f: Awaited<ReturnType<typeof fixture>>) {
+@@ -310,7 +312,7 @@
+   const f = await fixture();
+   const pending = await f.controller.request(f.request);
+   f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
+-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow" });
++  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+   const nativeFinalCheck = f.egress.permissionAuthority(f.request);
+   nativeFinalCheck();
+   f.block();
+@@ -331,7 +333,7 @@
+   const grant = f.approvals.listGrants("profile")[0]!;
+   const otherId = f.approvals.issue({ ...currentAction, scope: { kind: "task", id: "other" },
+     origin: "https://unrelated.test", turnId: "other", threadId: "other" }, "turn");
+-  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow" });
++  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
+   const finalCheck = f.egress.permissionAuthority(f.request);
+   f.approvals.revoke({ profileId: "profile", grantId: grant.grantId });
+   await revocation(f).grants([grant]);
+@@ -350,7 +352,7 @@
+   expect(f.approvals.pending("run").map(item => item.approvalId)).toEqual([first.approvalId]);
+   expect(JSON.stringify(f.request)).toBe(serialized);
+   f.approvals.decideLocal({ decision: "accept", approvalId: first.approvalId! }, "run");
+-  expect(await f.controller.request(JSON.parse(serialized))).toEqual({ batchId: f.request.batchId, decision: "allow" });
++  expect(await f.controller.request(JSON.parse(serialized))).toEqual({ batchId: f.request.batchId, decision: "allow", reservationId: expect.any(String) });
+   expect(await f.controller.request(JSON.parse(serialized))).toEqual({ batchId: f.request.batchId, decision: "deny" });
+ });
+ 
+@@ -372,7 +374,7 @@
+   f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: pending.approvalId! }, "run");
+   f.page.viewStatus = "hidden";
+   f.overnight();
+-  expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "allow" });
++  expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "allow", reservationId: expect.any(String) });
+   expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "deny" });
+   expect(f.mentions.ownedPages("run")).toEqual([]);
+ });
+@@ -383,7 +385,8 @@
+   const { SqliteColumnCipher } = await import("../../apps/runtime/src/store/sqlite-protection.js");
+   const { NightShiftService } = await import("../../apps/runtime/src/services/night-shift.js");
+   const { BudgetsService } = await import("../../apps/runtime/src/services/budgets.js");
+-  const { installNightShift, checkNightShiftDispatch } = await import("../../apps/runtime/src/features/overnight-review/service.js");
++  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
++  const { installNightShift, checkNightShiftDispatch, nightShiftEffectAuthority } = await import("../../apps/runtime/src/features/overnight-review/service.js");
+   const { createClock } = await import("@aux/contracts");
+   const { randomBytes, createHash } = await import("node:crypto");
+   const db = openDb(":memory:"); cleanup.push(() => db.close());
+@@ -399,9 +402,9 @@
+   const service = new NightShiftService(repo, { backgroundEnabled: () => true, onAC: async () => true,
+     releaseActivity: async () => {}, powerActivity: async () => ({ active: true }), cancel: () => {}, resume: async () => {},
+     consolidate: async () => {}, reindex: async () => {}, start: async (_payload, item, runId) => {
+-      f = await fixture(false, true, id => checkNightShiftDispatch(repo, id), runId);
++      f = await fixture(false, true, id => checkNightShiftDispatch(repo, id), runId, id => nightShiftEffectAuthority(repo, id));
+       f.run.config = { ...f.run.config, nightShiftItemId: item.id };
+-      repo.saveRun(f.run); f.overnight(); return runId;
++      repo.saveRun(f.run); f.overnight(); installOvernightAuthority(repo, f.controller); return runId;
+     } }, new BudgetsService(db, () => ({})), createClock(1, () => now));
+   const remove = installNightShift({ repo } as import("../../apps/runtime/src/api/methods/context.js").Services, service);
+   try {
+@@ -411,11 +414,16 @@
+     const pending = await actual.controller.request(actual.request);
+     expect(pending.decision).toBe("pending");
+     actual.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: pending.approvalId! }, actual.run.runId);
+-    expect(await actual.controller.request(actual.request)).toMatchObject({ decision: "allow" });
++    const authorized = await actual.controller.request(actual.request);
++    expect(authorized).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
++    const ticket = { batchId: actual.request.batchId, reservationId: authorized.reservationId! };
++    expect(await actual.controller.revalidate({ ...ticket, nonce: 1 })).toEqual({ ...ticket, nonce: 1, decision: "allow",
++      overnight: { windowEnd: new Date(2026, 9, 1, 8).getTime(), requireAC: true } });
+     const next = { ...actual.request, batchId: "after-window" };
+     now = new Date(2026, 9, 1, 8).getTime();
+     expect(service.get(item.id).status).toBe("running");
+     expect(repo.getRun(actual.run.runId)?.status).toBe("running");
++    expect(await actual.controller.revalidate({ ...ticket, nonce: 2 })).toMatchObject({ decision: "deny" });
+     expect(await actual.controller.request(next)).toEqual({ batchId: next.batchId, decision: "deny" });
+     expect(actual.approvals.pending(actual.run.runId)).toEqual([]);
+     expect(actual.approvals.listGrants("profile")).toHaveLength(1);
+@@ -436,3 +444,84 @@
+     expect(await actual.controller.request(unanswered)).toEqual(waiting);
+   } finally { await remove(); }
+ });
++
++
++it("fresh permission reservations revalidate the exact consent once without consuming another approval", async () => {
++  let closed = false;
++  const f = await fixture(false, false, async () => { if (closed) throw new AuxError("permission_denied", "Window closed"); });
++  const pending = await f.controller.request(f.request);
++  f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
++  const authorized = await f.controller.request(f.request);
++  expect(authorized).toMatchObject({ decision: "allow", reservationId: expect.any(String) });
++  const ticket = { batchId: f.request.batchId, reservationId: authorized.reservationId! };
++  expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toEqual({ ...ticket, nonce: 1, decision: "allow" });
++  expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toEqual({ ...ticket, nonce: 1, decision: "deny" });
++  expect(f.approvals.pending("run")).toEqual([]);
++  expect(await f.controller.revalidate({ ...ticket, nonce: 2 })).toMatchObject({ decision: "allow" });
++  closed = true;
++  expect(await f.controller.revalidate({ ...ticket, nonce: 3 })).toMatchObject({ decision: "deny" });
++  expect(f.controller.finalize(ticket)).toEqual({ retired: false });
++});
++
++it("exact native finalization prevents reservation replay and rejects a foreign token", async () => {
++  const f = await fixture();
++  const pending = await f.controller.request(f.request);
++  f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
++  const authorized = await f.controller.request(f.request);
++  const ticket = { batchId: f.request.batchId, reservationId: authorized.reservationId! };
++  expect(f.controller.finalize({ ...ticket, reservationId: "00000000-0000-4000-8000-000000000000" })).toEqual({ retired: false });
++  expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toMatchObject({ decision: "allow" });
++  expect(f.controller.finalize(ticket)).toEqual({ retired: true });
++  expect(f.controller.finalize(ticket)).toEqual({ retired: false });
++  expect(await f.controller.revalidate({ ...ticket, nonce: 2 })).toMatchObject({ decision: "deny" });
++});
++
++
++it("a real origin-policy retirement cancels an authorized reservation before fresh redemption", async () => {
++  const f = await fixture();
++  const pending = await f.controller.request(f.request);
++  f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: pending.approvalId! }, "run");
++  const authorized = await f.controller.request(f.request);
++  const ticket = { batchId: f.request.batchId, reservationId: authorized.reservationId! };
++  f.block();
++  await revocation(f).policies([], [{ origin: "https://permission.test/", access: "deny" }]);
++  expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toMatchObject({ decision: "deny" });
++  expect(f.controller.finalize(ticket)).toEqual({ retired: false });
++});
++
++it("an authority replacement during real fresh authorization cannot publish an ALLOW receipt", async () => {
++  let release: (() => void) | undefined;
++  let held = false;
++  const f = await fixture(false, false, async () => { if (held) await new Promise<void>(resolve => { release = resolve; }); });
++  const pending = await f.controller.request(f.request);
++  f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
++  const authorized = await f.controller.request(f.request);
++  const ticket = { batchId: f.request.batchId, reservationId: authorized.reservationId! };
++  held = true;
++  const fresh = f.controller.revalidate({ ...ticket, nonce: 1 });
++  await Promise.resolve();
++  f.retire(); release!();
++  expect(await fresh).toEqual({ ...ticket, nonce: 1, decision: "deny" });
++  expect(f.controller.finalize(ticket)).toEqual({ retired: false });
++});
++
++
++it("central authority mutation awaits native exact-ticket retirement before changing ledger or settings", async () => {
++  let acknowledge: (() => void) | undefined;
++  let mutationDone = false;
++  const calls: unknown[] = [];
++  const f = await fixture(false, false, async () => {}, "run", () => null, async input => {
++    calls.push(input); await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true };
++  });
++  const pending = await f.controller.request(f.request);
++  f.approvals.decideLocal({ decision: "accept", approvalId: pending.approvalId! }, "run");
++  const authorized = await f.controller.request(f.request);
++  const ticket = { batchId: f.request.batchId, reservationId: authorized.reservationId! };
++  const mutation = f.controller.withAuthorityMutation(id => id === f.run.runId, async () => { mutationDone = true; });
++  expect(calls).toEqual([{ ...ticket, tabId: f.page.pageId }]);
++  expect(mutationDone).toBe(false);
++  expect(await f.controller.revalidate({ ...ticket, nonce: 1 })).toMatchObject({ decision: "deny" });
++  expect(await f.controller.request({ ...f.request, batchId: "during-mutation" })).toMatchObject({ decision: "deny" });
++  acknowledge!(); await mutation;
++  expect(mutationDone).toBe(true);
++});
+--- a/apps/runtime/src/native.ts
++++ b/apps/runtime/src/native.ts
+@@ -91,6 +91,7 @@
+   createAgentPage?(input: AgentPageCreate): Promise<AgentPageCreated>;
+   egressContext?(input: { tabId: string; expectedUrl: string }): Promise<EgressContext>;
+   egressInstall?(input: { lease: EgressLease; expectedUrl: string }): Promise<{ accepted: true }>;
++  permissionRetire(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }>;
+   egressRevoke?(input: { leaseId: string }): Promise<{ accepted: true }>;
+   capabilities?(): Promise<HostCapabilities>;
+   /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
+@@ -191,6 +192,9 @@
+   egressInstall(input: { lease: EgressLease; expectedUrl: string }): Promise<{ accepted: true }> {
+     return this.channel.call("native.egressInstall", input);
+   }
++  permissionRetire(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }> {
++    return this.channel.call("native.permissionRetire", input);
++  }
+   egressRevoke(input: { leaseId: string }): Promise<{ accepted: true }> {
+     return this.channel.call("native.egressRevoke", input);
+   }
+@@ -359,6 +363,9 @@
+ }
+ 
+ export class NullNativeBridge implements NativeBridge {
++  async permissionRetire(_input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }> {
++    throw new AuxError("backend_unavailable", "Native permission retirement is unavailable.");
++  }
+   available() {
+     return false;
+   }
+--- a/packages/contracts/src/host-methods.ts
++++ b/packages/contracts/src/host-methods.ts
+@@ -353,6 +353,7 @@
+   "native.createAgentPage": runtime("core", AgentPageCreateSchema, AgentPageCreatedSchema),
+   "native.egressContext": runtime("core", EgressContextRequestSchema, EgressContextSchema),
+   "native.egressInstall": runtime("core", EgressInstallSchema, accepted),
++  "native.permissionRetire": runtime("core", z.object({ tabId: z.string().min(1).max(160), batchId: z.string().min(1).max(160), reservationId: z.string().uuid() }).strict(), accepted),
+   "native.egressRevoke": runtime("core", EgressRevokeSchema, accepted),
+   "native.historyClear": runtime("core", z.object({ since: number.optional(), before: number.optional() }).strict(), z.object({ removed: number }).strict()),
+   "native.historyImport": runtime("core", z.object({ visits: z.array(z.object({
+--- a/tests/unit/handler-results.test.ts
++++ b/tests/unit/handler-results.test.ts
+@@ -113,6 +113,7 @@
+     repo,
+     native: {
+       available: () => true,
++      permissionRetire: async () => { throw new Error("This fixture does not support native permission retirement"); },
+       tabCommand: async () => ({ commandId: "", status: "applied" as const, catalogVersion: 0 }),
+       focusPage: async () => ({ ok: true }),
+       stopPage: async () => ({ ok: true }),
+--- a/apps/runtime/src/api/methods/settings.ts
++++ b/apps/runtime/src/api/methods/settings.ts
+@@ -1,3 +1,4 @@
++import { withOvernightAuthorityMutation } from "../../services/overnight-authority.js";
+ import type { MethodCtx, MethodHandler } from "./context.js";
+ import type { MethodName } from "@aux/contracts";
+ import { AuxError, EventTypes, MethodSchemas } from "@aux/contracts";
+@@ -48,7 +49,9 @@
+       delete patch.searchSuggestions;
+     }
+   }
+-  const r = Object.keys(patch).length ? await s.settings.set(patch as never) : { ok: true as const };
++  const r = Object.keys(patch).length
++    ? await withOvernightAuthorityMutation(s.repo, () => s.settings.set(patch as never))
++    : { ok: true as const };
+   // worker limits apply live — no restart needed
+   s.runs.refreshPool();
+   s.events.emit(EventTypes.SettingsChanged, {
+--- a/apps/runtime/src/features/overnight-review/runtime.ts
++++ b/apps/runtime/src/features/overnight-review/runtime.ts
+@@ -1,3 +1,4 @@
++import { withOvernightAuthorityMutation } from "../../services/overnight-authority.js";
+ import { AuxError } from "@aux/contracts";
+ import type { Services } from "../../api/methods/context.js";
+ import { RoutineService } from "../../services/routines.js";
+@@ -72,7 +73,7 @@
+       if (!run || !["paused", "needs_input"].includes(run.status) || !run.config?.nightShiftItemId)
+         throw new AuxError("conflict", "This overnight action is no longer parked for review.");
+       const config = { ...run.config }; delete config.nightShiftItemId;
+-      s.repo.saveRun({ ...run, config });
++      await withOvernightAuthorityMutation(s.repo, async () => { s.repo.saveRun({ ...run, config }); }, runId);
+       s.events.emit("run.updated", { run: { ...run, config } }, runId);
+       // The foreground sheet resolves the actual suspension; this transition grants no one-off approval.
+     },
+--- /dev/null
++++ b/apps/runtime/src/services/overnight-authority.ts
+@@ -0,0 +1,21 @@
++import { AuxError } from "@aux/contracts";
++import type { Repo } from "../store/repo.js";
++import type { NativePermissionController } from "../safety/native-permission.js";
++
++const controllers = new WeakMap<Repo, NativePermissionController>();
++/** Actual authenticated native controller; no standalone permission authority is manufactured. */
++export function installOvernightAuthority(repo: Repo, controller: NativePermissionController): void {
++  if (controllers.has(repo)) throw new AuxError("conflict", "Overnight native authority is already installed.");
++  controllers.set(repo, controller);
++}
++
++/** Settings, lifecycle and cost changes retire queued native effect tickets first. */
++export async function withOvernightAuthorityMutation<T>(repo: Repo, mutation: () => Promise<T>, runId?: string): Promise<T> {
++  const matches = (id: string) => (!runId || id === runId) && !!repo.getRun(id)?.config?.nightShiftItemId;
++  const active = runId ? matches(runId) : (repo.db.prepare("SELECT run_id FROM runs").all() as { run_id: string }[]).some(row => matches(row.run_id));
++  // No matching run has overnight authority: there is no effect ticket to retire.
++  if (!active) return mutation();
++  const controller = controllers.get(repo);
++  if (!controller) throw new AuxError("permission_denied", "Native overnight authority retirement is unavailable.");
++  return controller.withAuthorityMutation(matches, mutation);
++}
+--- /dev/null
++++ b/tests/fixtures/overnight-authority.ts
+@@ -0,0 +1,31 @@
++import { AuxError } from "@aux/contracts";
++import type { Repo } from "../../apps/runtime/src/store/repo.js";
++import { NullNativeBridge } from "../../apps/runtime/src/native.js";
++import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
++import { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
++import { DecisionJournal } from "../../apps/runtime/src/safety/decide.js";
++import { SafetyDispatchGate } from "../../apps/runtime/src/safety/dispatch.js";
++import { NativePermissionController } from "../../apps/runtime/src/safety/native-permission.js";
++import { installOvernightAuthority } from "../../apps/runtime/src/services/overnight-authority.js";
++import { checkNightShiftDispatch, nightShiftEffectAuthority } from "../../apps/runtime/src/features/overnight-review/service.js";
++import { fixtureTurnMentions } from "./turn-mentions.js";
++
++/** A real controller for fixtures with no installed native leases. Any browser permission refuses. */
++export function fixtureEmptyOvernightAuthority(repo: Repo): void {
++  const native = new NullNativeBridge();
++  const page = (id: string) => { const value = repo.getPage(id); if (!value) throw new AuxError("not_found", "No fixture native page"); return value; };
++  const approvals = new ApprovalStore(repo.db, () => {}, repo.columnCipher);
++  const egress = new BrowserEgress({ profileId: "fixture", native, run: () => null, page,
++    ownsPage: () => false, audit: () => {}, approve: async () => false });
++  const gate = new SafetyDispatchGate({ approvals, journal: new DecisionJournal(repo.db), managedRules: () => [], userRules: () => [],
++    localCeiling: () => "ask", audit: () => {} });
++  const controller = new NativePermissionController({ profileId: "fixture",
++    approvals, egress, gate, mentions: fixtureTurnMentions(page), page, run: id => repo.getRun(id),
++    requiresTurn: () => true,
++    sourceCheck: () => { throw new AuxError("backend_unavailable", "This fixture has no native source authority"); },
++    standingOnly: id => !!repo.getRun(id)?.config?.nightShiftItemId,
++    assertDispatch: id => checkNightShiftDispatch(repo, id), overnightAuthority: id => nightShiftEffectAuthority(repo, id),
++    retireReservation: input => native.permissionRetire(input),
++  });
++  installOvernightAuthority(repo, controller);
++}
+--- a/tests/unit/autonomy-services.test.ts
++++ b/tests/unit/autonomy-services.test.ts
+@@ -1,3 +1,4 @@
++import { fixtureEmptyOvernightAuthority } from "../fixtures/overnight-authority.js";
+ import { runInNewContext } from "node:vm";
+ import { createHash, randomBytes, randomUUID } from "node:crypto";
+ import { afterEach, expect, it, vi } from "vitest";
+@@ -21,7 +22,9 @@
+     profileStorageRoot: async () => create(key("aux_root_v1")),
+     profileStorageFactor: async () => create(key("sqlite_factor_v1")),
+   }, "fixture", false);
+-  return { db, repo: new Repo(db, cipher) };
++  const repo = new Repo(db, cipher);
++  fixtureEmptyOvernightAuthority(repo);
++  return { db, repo };
+ }
+ it("encrypts actual recorder rows, excludes detached callbacks and removes observer listeners", async () => {
+   const { db, repo } = await fixture();

@@ -1,0 +1,237 @@
+{
+  "status": "independent5capture/hash/bytes/originalpixel review; diagnostic only",
+  "appearance": "observed dark Aux; forced Aux/native theme +actual system RT/RM paired provenance absent; zero full F21 cells",
+  "records": [
+    {
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-split-fluid/manifest.json",
+      "manifestSha256": "a414c73b49fdc33a05d573b0ec7162412eeb018015295d9eda02d1a29ff997b5",
+      "schema": 2,
+      "id": "split-fluid",
+      "moduleSha256": "8c04f0db1c1e4ec427d3b8813f3bd2d928e347793327a1ae7a2568abd4180075",
+      "harnessCommit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+      "productIdentity": {
+        "commit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "tree": "3b0b4fe8f686b1b681f829f80c8261acade453af",
+        "dirty": false,
+        "label": "32106f84ec843cc0e453dc7c7b68f5d576cc7325"
+      },
+      "runtime": {
+        "commit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "tree": "3b0b4fe8f686b1b681f829f80c8261acade453af",
+        "dirty": false,
+        "label": "32106f84ec843cc0e453dc7c7b68f5d576cc7325"
+      },
+      "shellDigest": "0b1c00026b36984efd3744c94bba28112dc944b4123b8a8ed70daae974024150",
+      "native": {
+        "buildId": "154.0.8037.58+5b61354df459dac3419d524f39f047be15b1db4e8d339c4ca67c5d758c79eab6+32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "sourceCommit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "manifestHash": "5b61354df459dac3419d524f39f047be15b1db4e8d339c4ca67c5d758c79eab6",
+        "developmentAcceptanceRequested": true,
+        "qualifiedFeatures": []
+      },
+      "captures": [
+        {
+          "name": "split-fluid-two",
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-split-fluid/split-fluid-two.png",
+          "sha256": "7cb4fee1711244089ce5033a79db669e0c222c50e26a03410b9778de379dd433",
+          "bytes": 719337,
+          "windowId": 13262,
+          "originalPixelsIndependentlyViewed": true
+        }
+      ],
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "dwell-drop Blue on the right edge of Red",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "restore the native pair after restart",
+          "status": "failed",
+          "error": "waitFor timed out: [\"match\": regex, \"role\": AXRadioButton, \"scope\": shell, \"name\": ^Aux native Red(?: Close Aux native Red)?$, \"index\": 0]"
+        }
+      ]
+    },
+    {
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-pip/manifest.json",
+      "manifestSha256": "32cb817d5df96d007010f3c32a17d76fda0a63308f90c4e0381ec59ebe6bb2e0",
+      "schema": 2,
+      "id": "pip",
+      "moduleSha256": "1f7fb061df3281a1ba575d35ae33c9c04e79a41224345d0999b30c4d40afc183",
+      "harnessCommit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+      "productIdentity": {
+        "commit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "tree": "3b0b4fe8f686b1b681f829f80c8261acade453af",
+        "dirty": false,
+        "label": "32106f84ec843cc0e453dc7c7b68f5d576cc7325"
+      },
+      "runtime": {
+        "commit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "tree": "3b0b4fe8f686b1b681f829f80c8261acade453af",
+        "dirty": false,
+        "label": "32106f84ec843cc0e453dc7c7b68f5d576cc7325"
+      },
+      "shellDigest": "0b1c00026b36984efd3744c94bba28112dc944b4123b8a8ed70daae974024150",
+      "native": {
+        "buildId": "154.0.8037.58+5b61354df459dac3419d524f39f047be15b1db4e8d339c4ca67c5d758c79eab6+32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "sourceCommit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "manifestHash": "5b61354df459dac3419d524f39f047be15b1db4e8d339c4ca67c5d758c79eab6",
+        "developmentAcceptanceRequested": true,
+        "qualifiedFeatures": []
+      },
+      "captures": [
+        {
+          "name": "pip-largest-video",
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-pip/pip-largest-video.png",
+          "sha256": "e6b0355d76e4c138dc4ad86705d3da96c92613d0c08c22bbe29726dc0644a79c",
+          "bytes": 745016,
+          "windowId": 13286,
+          "originalPixelsIndependentlyViewed": true
+        }
+      ],
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "the remappable command selects the largest playing video and exits",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "the registered MediaSession handler enters PiP",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "paused video retains the control; destroyed video clears it and the empty command explains why",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "Document PiP owns a real window and native state",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "allow automatic PiP through its real Settings control",
+          "status": "failed",
+          "error": "waitFor timed out: [\"scope\": shell, \"match\": exact, \"index\": 0, \"role\": AXButton, \"name\": Automatic picture in picture]"
+        }
+      ]
+    },
+    {
+      "manifest": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/manifest.json",
+      "manifestSha256": "2addc4c98d80bb593e1da8db0e2745a78128a5804f4465a997b324ab2a2bfe90",
+      "schema": 2,
+      "id": "command-bar-modes",
+      "moduleSha256": "9b4e171a8fdafd0cee47cd889506b68d546de2336dbb68c47d1885a451eea785",
+      "harnessCommit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+      "productIdentity": {
+        "commit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "tree": "3b0b4fe8f686b1b681f829f80c8261acade453af",
+        "dirty": false,
+        "label": "32106f84ec843cc0e453dc7c7b68f5d576cc7325"
+      },
+      "runtime": {
+        "commit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "tree": "3b0b4fe8f686b1b681f829f80c8261acade453af",
+        "dirty": false,
+        "label": "32106f84ec843cc0e453dc7c7b68f5d576cc7325"
+      },
+      "shellDigest": "0b1c00026b36984efd3744c94bba28112dc944b4123b8a8ed70daae974024150",
+      "native": {
+        "buildId": "154.0.8037.58+5b61354df459dac3419d524f39f047be15b1db4e8d339c4ca67c5d758c79eab6+32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "sourceCommit": "32106f84ec843cc0e453dc7c7b68f5d576cc7325",
+        "manifestHash": "5b61354df459dac3419d524f39f047be15b1db4e8d339c4ca67c5d758c79eab6",
+        "developmentAcceptanceRequested": true,
+        "qualifiedFeatures": []
+      },
+      "captures": [
+        {
+          "name": "command-new-tab-empty",
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/command-new-tab-empty.png",
+          "sha256": "3cfe97b336ad348effbff7b6e389a21b80d9f5874490acc2b7694363ef9d72f3",
+          "bytes": 572474,
+          "windowId": 13302,
+          "originalPixelsIndependentlyViewed": true
+        },
+        {
+          "name": "command-new-tab-committed",
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/command-new-tab-committed.png",
+          "sha256": "05f194bedf1a8bfc28aef691aadf7c69ef645df7e260d0bb1bbf114ff2cf2066",
+          "bytes": 594413,
+          "windowId": 13302,
+          "originalPixelsIndependentlyViewed": true
+        },
+        {
+          "name": "command-background-page",
+          "path": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-command-bar-modes/command-background-page.png",
+          "sha256": "7949ee9ab52d87ebc8f718463a8b711f2bf61bb6afc26d6b844377365eef6377",
+          "bytes": 596699,
+          "windowId": 13302,
+          "originalPixelsIndependentlyViewed": true
+        }
+      ],
+      "steps": [
+        {
+          "name": "dismiss optional fresh-profile setup",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "CmdT opens an empty field and Escape creates no page",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "Enter commits exactly one new native page",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "CmdEnter acknowledges one background page and keeps the active page",
+          "status": "passed",
+          "error": null
+        },
+        {
+          "name": "CmdL selects the native page URL in the same field",
+          "status": "failed",
+          "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- 'http://127.0.0.1:51694/blue'\n"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "split-blank-de90",
+      "severity": "P1",
+      "status": "not reproduced in3210 capture; narrowly resolved for visible red/blue content only",
+      "evidence": "split-fluid-two shows both fixture headings/backgrounds. Restart fails; no native150ms/all-pane timing proof."
+    },
+    {
+      "id": "DR008",
+      "severity": "P2",
+      "status": "OPEN",
+      "owner": "root/L3 command surface",
+      "capture": "command-new-tab-empty",
+      "geometry": "rectangular input focus outline protrudes above/below rounded whole commandbar and duplicates its existing focus contour",
+      "source": "CommandSurface.css input focus2px+offset2 conflicts with workspace.css existing cmdbar focus contour",
+      "action": "use single whole-field focus-line contour; remove scoped inner input contour while retaining individual button focus; verify actual both-theme/RT/RM/narrow/result states"
+    },
+    {
+      "id": "pip-owned-child-appearance",
+      "status": "OPEN",
+      "evidence": "mainwindow only; same prior imageSHA e6b0355d; no owned separate PiPchild appearance captured"
+    }
+  ],
+  "existingFindings": "DR001\u2013007 remain open; no ordinary state closure or full qualifier approval",
+  "performance": "no clocks/20AC raw intervals/presentation producer in these captures; no performance claim"
+}

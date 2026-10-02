@@ -1,0 +1,38 @@
+{
+  "status": "INCOMPLETE DO NOT ADOPT alone: actual browser fixture owner/session/input/mutation/registered private scope remains missing",
+  "patchSha256": "a2e353879c507aa64ac0f59a6b97d10ce8b3528dd9a58cf77ad33ea6b6cc4ec6",
+  "files": [
+    {
+      "path": "services/viz/privileged/mojom/compositing/display_private.mojom",
+      "beforeSha256": "6efb41b7c2605f19d236954c23aea1ea9fa7609320e22248dbb2b8abd4f4651c",
+      "afterSha256": "705e43177ba21e6efd2cfda420d442e8dfea68e9fd8844327a08b422d00b2fe8"
+    },
+    {
+      "path": "ui/compositor/compositor.h",
+      "beforeSha256": "62a68380af3b78038a957a4532f51292f04210a8b551a7155bd4078f383adfea",
+      "afterSha256": "dd7f970cfa7a021afa5c6823d3b62d0fb6f2da3fa8f98abdc9f9dd2700fcece6"
+    },
+    {
+      "path": "ui/compositor/compositor.cc",
+      "beforeSha256": "8780d06653a1a5dcbfca11a69caa0483c484971b4136696b33e8a3afb319003c",
+      "afterSha256": "926dfb793ef4644a5820e97ad8bcd7405b90b23556f1cdbc2bdd60ea7cd8dc47"
+    },
+    {
+      "path": "components/viz/service/frame_sinks/root_compositor_frame_sink_impl.h",
+      "beforeSha256": "a8bba00aecbc25df75e75f3f185df2217265341f2e8a4adf97dc8c029bdea44a",
+      "afterSha256": "b7e0198c86b4e2501934d745a9c87e045e56e062571756faab60819096d86f77"
+    },
+    {
+      "path": "components/viz/service/frame_sinks/root_compositor_frame_sink_impl.cc",
+      "beforeSha256": "03952b59d279fe9183525f670f25799bcf1af9450413af43bd49c9323b027e8b",
+      "afterSha256": "6d1f305d219bdf34d01b258e114991d798860cc5e350968b6fb47aea15d99290"
+    },
+    {
+      "path": "ui/compositor/test/in_process_context_factory.cc",
+      "beforeSha256": "dc445e42cb0474076fd11bcea74250bd92ad4734cc925ddcde7947d5c198c786",
+      "afterSha256": "50e274783152081a7c23ba26a224db3c371ed72b58547286fee40926139edbbf"
+    }
+  ],
+  "implementors": "actual RootCompositorFrameSinkImpl + InProcessContextFactory::PerCompositorData; latter explicit null refusal",
+  "verification": "isolated apply/reverse/exact bytes PASS; native codegen/GN/compile/tests pending"
+}

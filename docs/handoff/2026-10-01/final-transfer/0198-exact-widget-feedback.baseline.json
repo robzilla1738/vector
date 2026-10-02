@@ -1,0 +1,28 @@
+{
+  "status": "unapplied source request; no compile/tests/native evidence",
+  "baseline": "read-only stable bytes; parent confirms unchanged by root29/96",
+  "patchSha256": "dc2539b97495d5574a77c75510075ad9d0d6d63eba8a9df312ac3032be11a2be",
+  "files": [
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/layer_tree_view_delegate.h",
+      "baselineSha256": "24d9ccbf6f71bcbe698092d81b2a18410866902cabc5a833ffa848123994afd6",
+      "requestedSha256": "458dc6ee75b39f296552672aca8e9de5b70a3b1f6a529126df9a3ad8df36b7b9"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/compositing/layer_tree_view.cc",
+      "baselineSha256": "45e099ee3a249118873bbad0828dee1aac08cbae709952c242e0e6b81529ec92",
+      "requestedSha256": "5dddaade8dfa12b610e2da179e81003b22f86ca854e0744de552e3bc40678bac"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/widget_base.h",
+      "baselineSha256": "33f020d64d5a266bb8c40e24e06cc4bd5e299b1e73bdb4dcc102240867f1e1be",
+      "requestedSha256": "4f2e3aeae3f0ea129919d1441180692fa7c91a1cb9db19d0ea0254591b3da5d1"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/widget_base.cc",
+      "baselineSha256": "65ef15027cfaf9d468f4f6ec4413080b29d3bbf4b0c10db63ac3e224c1ac3b66",
+      "requestedSha256": "186c51d6e91b45dc3c9de9f390c5a5cb5ed02f2d7955dde38d6701b6eebd89e5"
+    }
+  ],
+  "isolatedApplyCheck": "PASS; all four resulting exact byte hashes match requested source"
+}

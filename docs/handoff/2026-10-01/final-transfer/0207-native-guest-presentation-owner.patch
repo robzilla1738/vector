@@ -1,0 +1,333 @@
+diff --git a/chrome/browser/ui/aux/native_guest_presentation_owner.cc b/chrome/browser/ui/aux/native_guest_presentation_owner.cc
+new file mode 100644
+index 0000000..7d27f02
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_guest_presentation_owner.cc
+@@ -0,0 +1,74 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_guest_presentation_owner.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include "base/command_line.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/native_performance_observer.h"
++#include "chrome/browser/ui/aux/surface_visibility.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "components/tabs/public/tab_interface.h"
++#include "content/browser/renderer_host/render_frame_host_impl.h"
++#include "content/browser/renderer_host/render_widget_host_impl.h"
++#include "content/browser/renderer_host/render_widget_host_view_base.h"
++#include "content/browser/surface_embed/surface_embed_connector_impl.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_ui.h"
++#include "ui/compositor/compositor.h"
++#include "ui/views/widget/widget.h"
++namespace aux {
++std::optional<NativeGuestPresentationOwner> ReadNativeGuestPresentationOwner(
++    base::WeakPtr<WebUIBrowserUI> ui, base::WeakPtr<content::WebContents> child) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!ui || !child || child->IsBeingDestroyed() || !NativePerformanceObservationEnabled())
++    return std::nullopt;
++  auto* web_ui = ui->web_ui();
++  auto* shell = web_ui ? web_ui->GetWebContents() : nullptr;
++  auto* shell_frame = shell ? shell->GetPrimaryMainFrame() : nullptr;
++  auto* frame = child->GetPrimaryMainFrame();
++  auto* window = shell ? WebUIBrowserWindow::FromWebShellWebContents(shell) : nullptr;
++  auto* tab = tabs::TabInterface::GetFromContents(child.get());
++  const auto* identity = PageIdentity::FromWebContents(child.get());
++  auto* connector = child->GetSurfaceEmbedConnector();
++  if (!shell || shell->IsBeingDestroyed() || !shell_frame || !frame || !window ||
++      shell_frame != web_ui->GetRenderFrameHost() || shell == child.get() ||
++      shell_frame->GetLastCommittedURL().spec() != "chrome://aux/" || !window->browser() ||
++      !tab || tab->GetBrowserWindowInterface() != window->browser() ||
++      !identity || identity->runtime_owned() || !IsStageVisible(child.get()) || !connector)
++    return std::nullopt;
++  for (auto* current : {shell_frame, frame})
++    if (!current->IsRenderFrameLive() || current->IsErrorDocument() ||
++        !current->IsInLifecycleState(content::RenderFrameHost::LifecycleState::kActive))
++      return std::nullopt;
++  auto* profile = Profile::FromWebUI(web_ui);
++  const base::FilePath selected(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("user-data-dir"));
++  if (!profile || profile != window->browser()->GetProfile() ||
++      child->GetBrowserContext() != profile || profile->GetPath().DirName() != selected)
++    return std::nullopt;
++  auto* actual = static_cast<content::SurfaceEmbedConnectorImpl*>(connector);
++  if (!actual->IsVisible() || actual->GetParentRenderWidgetHostView() != shell->GetRenderWidgetHostView())
++    return std::nullopt;
++  auto* widget = static_cast<content::RenderWidgetHostImpl*>(frame->GetRenderWidgetHost());
++  auto* process = frame->GetProcess();
++  const viz::SurfaceId surface(connector->GetFrameSinkId(), actual->GetLocalSurfaceId());
++  if (!widget || !process || widget->GetProcess() != process || !process->GetProcess().IsValid() ||
++      widget->GetRoutingID() <= 0 || !surface.is_valid() || widget->GetFrameSinkId() != surface.frame_sink_id())
++    return std::nullopt;
++  auto* compositor = window->widget() ? window->widget()->GetCompositor() : nullptr;
++  auto* shell_widget = static_cast<content::RenderWidgetHostImpl*>(shell_frame->GetRenderWidgetHost());
++  if (!compositor || !compositor->frame_sink_id().is_valid() || !shell_widget ||
++      !shell_widget->GetFrameSinkId().is_valid()) return std::nullopt;
++  const auto native = window->GetAuxAppearanceSnapshot();
++  const auto window_id = native.FindInt("windowId");
++  if (!window_id || *window_id <= 0) return std::nullopt;
++  return NativeGuestPresentationOwner{*window_id, widget->GetRoutingID(), process->GetProcess().Pid(),
++      static_cast<content::RenderFrameHostImpl*>(shell_frame)->GetDocumentToken(),
++      static_cast<content::RenderFrameHostImpl*>(frame)->GetDocumentToken(),
++      compositor->frame_sink_id(), shell_widget->GetFrameSinkId(), surface};
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_guest_presentation_owner.h b/chrome/browser/ui/aux/native_guest_presentation_owner.h
+new file mode 100644
+index 0000000..ed1d2da
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_guest_presentation_owner.h
+@@ -0,0 +1,32 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_GUEST_PRESENTATION_OWNER_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_GUEST_PRESENTATION_OWNER_H_
++#include <optional>
++#include "base/memory/weak_ptr.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include "components/viz/common/surfaces/surface_id.h"
++#include "third_party/blink/public/common/tokens/tokens.h"
++class WebUIBrowserUI;
++namespace content { class WebContents; }
++namespace aux {
++struct NativeGuestPresentationOwner {
++  int window_id = 0;
++  int widget_routing_id = 0;
++  int renderer_pid = 0;
++  blink::DocumentToken shell_document;
++  blink::DocumentToken guest_document;
++  viz::FrameSinkId display_sink;
++  viz::FrameSinkId shell_sink;
++  viz::SurfaceId guest_surface;
++  bool operator==(const NativeGuestPresentationOwner&) const = default;
++};
++// Internal owner hook only: the actual selected child is supplied by the native
++// stage owner, never a public selector. This readout proves ownership/attachment,
++// NOT presentation. Exact SurfaceId/token feedback must be paired separately.
++std::optional<NativeGuestPresentationOwner> ReadNativeGuestPresentationOwner(
++    base::WeakPtr<WebUIBrowserUI> ui, base::WeakPtr<content::WebContents> child);
++}  // namespace aux
++#endif
++#endif
+diff --git a/components/viz/service/display/native_guest_inclusion_receipt.cc b/components/viz/service/display/native_guest_inclusion_receipt.cc
+new file mode 100644
+index 0000000..693ba1e
+--- /dev/null
++++ b/components/viz/service/display/native_guest_inclusion_receipt.cc
+@@ -0,0 +1,68 @@
++// Copyright 2026 The Aux Authors
++#include "components/viz/service/display/native_guest_inclusion_receipt.h"
++#include <algorithm>
++#include <cmath>
++#include <utility>
++namespace viz {
++NativeGuestInclusionReceipt::NativeGuestInclusionReceipt(NativeGuestInclusionScope scope)
++    : scope_(std::move(scope)) {
++  invalid_ = !scope_.display_sink.is_valid() || !scope_.shell_sink.is_valid() ||
++      !scope_.mutation_shell_token || scope_.guests.empty() || scope_.guests.size() > 4 ||
++      scope_.input.is_null() || scope_.mutation < scope_.input ||
++      scope_.shell_submission < scope_.mutation || !base::TimeTicks::IsConsistentAcrossProcesses();
++  for (size_t i = 0; i < scope_.guests.size(); ++i) {
++    if (!scope_.guests[i].is_valid() || scope_.guests[i].frame_sink_id() == scope_.shell_sink ||
++        scope_.guests[i].frame_sink_id() == scope_.display_sink) invalid_ = true;
++    for (size_t j = 0; j < i; ++j)
++      if (scope_.guests[j].frame_sink_id() == scope_.guests[i].frame_sink_id()) invalid_ = true;
++  }
++}
++NativeGuestInclusionReceipt::~NativeGuestInclusionReceipt() = default;
++void NativeGuestInclusionReceipt::RecordDrawnSurface(const SurfaceId& surface, uint32_t token) {
++  if (invalid_ || consumed_) return;
++  const bool shell = surface.frame_sink_id() == scope_.shell_sink;
++  const auto guest = std::ranges::find(scope_.guests, surface);
++  if (!shell && guest == scope_.guests.end()) return;
++  if (!surface.is_valid() || !token || (shell && token != scope_.mutation_shell_token)) {
++    invalid_ = true; return;
++  }
++  const auto prior = std::ranges::find_if(drawn_, [&](const NativeDrawnGuest& item) {
++    return item.surface.frame_sink_id() == surface.frame_sink_id();
++  });
++  if (prior != drawn_.end()) {
++    if (prior->surface != surface || prior->token != token) invalid_ = true;
++    return;
++  }
++  if (drawn_.size() >= 5) { invalid_ = true; return; }
++  drawn_.push_back({surface, token, gfx::Rect()});
++}
++void NativeGuestInclusionReceipt::RecordEmittedSurface(const SurfaceId& surface,
++    uint32_t token, const gfx::Rect& visible, float opacity) {
++  if (invalid_ || consumed_ || visible.IsEmpty() || !std::isfinite(opacity) || opacity != 1.0f) return;
++  const auto prior = std::ranges::find_if(drawn_, [&](const NativeDrawnGuest& item) {
++    return item.surface == surface && item.token == token;
++  });
++  if (prior != drawn_.end()) prior->visible_bounds.Union(visible);
++}
++NativeGuestInclusionResult NativeGuestInclusionReceipt::Present(const SurfaceId& display,
++    base::TimeTicks draw, const gfx::SwapTimings& swap,
++    const gfx::PresentationFeedback& feedback, base::TimeTicks observed) {
++  NativeGuestInclusionResult result{false, scope_, display, drawn_, draw, swap, feedback, std::nullopt};
++  if (consumed_) return result;
++  consumed_ = true;
++  if (invalid_ || !display.is_valid() || display.frame_sink_id() != scope_.display_sink ||
++      drawn_.size() != scope_.guests.size() + 1 || draw.is_null() || draw < scope_.shell_submission ||
++      swap.is_null() || swap.swap_start < draw || swap.swap_end < swap.swap_start ||
++      feedback.failed() || !(feedback.flags & gfx::PresentationFeedback::kHWCompletion) ||
++      feedback.timestamp.is_null() || feedback.timestamp < swap.swap_end ||
++      feedback.timestamp > observed || feedback.timestamp - scope_.input > base::Seconds(5)) return result;
++  if (std::ranges::any_of(drawn_, [](const NativeDrawnGuest& item) { return item.visible_bounds.IsEmpty(); }))
++    return result;
++  for (const auto& guest : scope_.guests)
++    if (std::ranges::none_of(drawn_, [&](const NativeDrawnGuest& item) { return item.surface == guest; }))
++      return result;
++  result.measured = true;
++  result.elapsed = feedback.timestamp - scope_.input;
++  return result;
++}
++}  // namespace viz
+diff --git a/components/viz/service/display/native_guest_inclusion_receipt.h b/components/viz/service/display/native_guest_inclusion_receipt.h
+new file mode 100644
+index 0000000..269df2a
+--- /dev/null
++++ b/components/viz/service/display/native_guest_inclusion_receipt.h
+@@ -0,0 +1,58 @@
++// Copyright 2026 The Aux Authors
++#ifndef COMPONENTS_VIZ_SERVICE_DISPLAY_NATIVE_GUEST_INCLUSION_RECEIPT_H_
++#define COMPONENTS_VIZ_SERVICE_DISPLAY_NATIVE_GUEST_INCLUSION_RECEIPT_H_
++#include <optional>
++#include <vector>
++#include "base/time/time.h"
++#include "components/viz/common/surfaces/surface_id.h"
++#include "components/viz/service/viz_service_export.h"
++#include "ui/gfx/presentation_feedback.h"
++#include "ui/gfx/geometry/rect.h"
++#include "ui/gfx/swap_result.h"
++namespace viz {
++struct NativeGuestInclusionScope {
++  FrameSinkId display_sink;
++  FrameSinkId shell_sink;
++  uint32_t mutation_shell_token = 0;
++  base::TimeTicks input;
++  base::TimeTicks mutation;
++  base::TimeTicks shell_submission;
++  std::vector<SurfaceId> guests;
++};
++struct NativeDrawnGuest {
++  SurfaceId surface;
++  uint32_t token = 0;
++  gfx::Rect visible_bounds;
++};
++struct NativeGuestInclusionResult {
++  bool measured = false;
++  NativeGuestInclusionScope scope;
++  SurfaceId display_surface;
++  std::vector<NativeDrawnGuest> drawn;
++  base::TimeTicks draw;
++  gfx::SwapTimings swap;
++  gfx::PresentationFeedback feedback;
++  std::optional<base::TimeDelta> elapsed;
++};
++// Private trusted-owner instrumentation only; this class grants no authority.
++// One instance belongs to ONE actual aggregation / PresentationGroupTiming.
++// The owner must supply a verified post-mutation shell token and real native
++// input. Reused guest tokens are valid only for exact SurfaceId drawn here.
++class VIZ_SERVICE_EXPORT NativeGuestInclusionReceipt {
++ public:
++  explicit NativeGuestInclusionReceipt(NativeGuestInclusionScope scope);
++  ~NativeGuestInclusionReceipt();
++  void RecordDrawnSurface(const SurfaceId& actual_surface, uint32_t actual_token);
++  void RecordEmittedSurface(const SurfaceId& actual_surface, uint32_t actual_token,
++      const gfx::Rect& actual_visible_bounds, float actual_opacity);
++  NativeGuestInclusionResult Present(const SurfaceId& actual_display,
++      base::TimeTicks actual_draw, const gfx::SwapTimings& actual_swap,
++      const gfx::PresentationFeedback& actual_feedback, base::TimeTicks observed);
++ private:
++  NativeGuestInclusionScope scope_;
++  std::vector<NativeDrawnGuest> drawn_;
++  bool invalid_ = false;
++  bool consumed_ = false;
++};
++}  // namespace viz
++#endif
+diff --git a/components/viz/service/display/native_guest_inclusion_receipt_unittest.cc b/components/viz/service/display/native_guest_inclusion_receipt_unittest.cc
+new file mode 100644
+index 0000000..fc48c82
+--- /dev/null
++++ b/components/viz/service/display/native_guest_inclusion_receipt_unittest.cc
+@@ -0,0 +1,71 @@
++// Copyright 2026 The Aux Authors
++// Synthetic exact-inclusion contracts, never native paint trials.
++#include "components/viz/service/display/native_guest_inclusion_receipt.h"
++#include "base/unguessable_token.h"
++#include "testing/gtest/include/gtest/gtest.h"
++namespace viz {
++namespace {
++SurfaceId Surface(FrameSinkId sink) {
++  return SurfaceId(sink, LocalSurfaceId(1, base::UnguessableToken::Create()));
++}
++NativeGuestInclusionScope Scope() {
++  const auto input = base::TimeTicks() + base::Seconds(1);
++  return {FrameSinkId(1, 1), FrameSinkId(2, 2), 77, input,
++      input + base::Milliseconds(1), input + base::Milliseconds(2),
++      {Surface(FrameSinkId(3, 3)), Surface(FrameSinkId(4, 4))}};
++}
++NativeGuestInclusionResult Finish(NativeGuestInclusionReceipt& receipt,
++    const NativeGuestInclusionScope& scope) {
++  gfx::SwapTimings swap;
++  swap.swap_start = scope.input + base::Milliseconds(4);
++  swap.swap_end = scope.input + base::Milliseconds(5);
++  gfx::PresentationFeedback feedback(scope.input + base::Microseconds(150004),
++      base::Microseconds(16667), gfx::PresentationFeedback::kHWCompletion);
++  return receipt.Present(Surface(scope.display_sink), scope.input + base::Milliseconds(3),
++      swap, feedback, feedback.timestamp);
++}
++void DrawAll(NativeGuestInclusionReceipt& receipt, const NativeGuestInclusionScope& scope) {
++  const auto shell = Surface(scope.shell_sink);
++  receipt.RecordDrawnSurface(shell, scope.mutation_shell_token);
++  receipt.RecordEmittedSurface(shell, scope.mutation_shell_token, gfx::Rect(0, 0, 800, 600), 1.0f);
++  // Guest tokens intentionally differ from the post-mutation shell token.
++  receipt.RecordDrawnSurface(scope.guests[0], 8);
++  receipt.RecordDrawnSurface(scope.guests[1], 9);
++  receipt.RecordEmittedSurface(scope.guests[0], 8, gfx::Rect(0, 0, 400, 600), 1.0f);
++  receipt.RecordEmittedSurface(scope.guests[1], 9, gfx::Rect(400, 0, 400, 600), 1.0f);
++}
++TEST(NativeGuestInclusion, ReusedGuestTokensCanCountOnlyInExactNewDisplayGroup) {
++  const auto scope = Scope(); NativeGuestInclusionReceipt receipt(scope); DrawAll(receipt, scope);
++  const auto result = Finish(receipt, scope);
++  if (!base::TimeTicks::IsConsistentAcrossProcesses()) { EXPECT_FALSE(result.measured); return; }
++  ASSERT_TRUE(result.measured); ASSERT_TRUE(result.elapsed);
++  EXPECT_EQ(result.elapsed->InMicroseconds(), 150004);
++  EXPECT_GT(result.elapsed->InMillisecondsF(), 150.0);
++  EXPECT_FALSE(Finish(receipt, scope).measured);
++}
++TEST(NativeGuestInclusion, MissingPaneAndWrongLocalSurfaceCannotCount) {
++  const auto scope = Scope(); NativeGuestInclusionReceipt receipt(scope);
++  receipt.RecordDrawnSurface(Surface(scope.shell_sink), scope.mutation_shell_token);
++  receipt.RecordDrawnSurface(scope.guests[0], 8);
++  receipt.RecordDrawnSurface(Surface(scope.guests[1].frame_sink_id()), 9);
++  EXPECT_FALSE(Finish(receipt, scope).measured);
++}
++TEST(NativeGuestInclusion, DrawHierarchyWithoutEmittedVisibleContentCannotCount) {
++  const auto scope = Scope(); NativeGuestInclusionReceipt receipt(scope);
++  receipt.RecordDrawnSurface(Surface(scope.shell_sink), scope.mutation_shell_token);
++  receipt.RecordDrawnSurface(scope.guests[0], 8); receipt.RecordDrawnSurface(scope.guests[1], 9);
++  receipt.RecordEmittedSurface(scope.guests[0], 8, gfx::Rect(), 1.0f);
++  receipt.RecordEmittedSurface(scope.guests[1], 9, gfx::Rect(0, 0, 400, 600), 0.0f);
++  EXPECT_FALSE(Finish(receipt, scope).measured);
++}
++TEST(NativeGuestInclusion, OlderShellTokenAndFailureFeedbackCannotCount) {
++  const auto scope = Scope(); NativeGuestInclusionReceipt receipt(scope);
++  receipt.RecordDrawnSurface(Surface(scope.shell_sink), scope.mutation_shell_token - 1);
++  receipt.RecordDrawnSurface(scope.guests[0], 8); receipt.RecordDrawnSurface(scope.guests[1], 9);
++  EXPECT_FALSE(Finish(receipt, scope).measured);
++  NativeGuestInclusionReceipt failure(scope); DrawAll(failure, scope);
++  EXPECT_FALSE(failure.Present(Surface(scope.display_sink), base::TimeTicks(),
++      gfx::SwapTimings(), gfx::PresentationFeedback::Failure(), base::TimeTicks::Now()).measured);
++}
++}  // namespace
++}  // namespace viz

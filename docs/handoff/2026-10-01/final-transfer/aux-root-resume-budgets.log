@@ -1,0 +1,10 @@
+
+> aux-browser@0.1.0 budgets
+> node scripts/check-budgets.mjs bundle
+
+ok   renderer startup JS                482 KB  (budget 490 KB)
+ok   renderer startup CSS               175 KB  (budget 180 KB)
+ok   renderer total JS                 1786 KB  (budget 1800 KB)
+       246 KB  assets/App-BoHb2Z_n.js
+       203 KB  assets/index-DRJf_-5P.js
+        34 KB  assets/feature-stage-reconciliation-BHv5Mg1_.js

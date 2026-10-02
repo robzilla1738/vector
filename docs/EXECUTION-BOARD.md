@@ -1,3 +1,9 @@
+## Authoritative pause for handoff — 2026-10-01
+
+The user requested stopping at a handoff point. **Goal paused; full roadmap incomplete.** Read [the current checkpoint](HANDOFF-CHECKPOINT-2026-10-01.md) and [saved evidence/patch index](handoff/2026-10-01/final-transfer/artifact-index.json) first. Root source is saved at fe77a837 (Settings correction,42 focused tests); staged native/runtime pair remains32106f84 (coherent build passed, full source2430 tests). All nine physical journeys failed overall; Broker fixture, held-ALLOW/accounting authority, performance producers and F21 remain open. No new qualifications or main fast-forward. All active lanes are stopping and saving transfer checkpoints; no further implementation is authorized before resume.
+
+Everything below is historical and does not override this checkpoint.
+
 ## Resumed coherent implementation — 2026-10-01
 
 User resumed the complete roadmap. Goal active; previous handoff/pause checkpoints are historical. Root source candidate32106f84 in `/tmp/aux-browser-runtime-root-complete` implements actual overnight per-step and post-Gate native dispatch checks, QuickJS owner-manifest denial regression and corrected native Broker fixture. Root independently rebuilt runtime, passed60 relevant tests/typecheck/lint/format/static gates, rebuilt/captured174 renderer assets digest0b1c00026b36984efd3744c94bba28112dc944b4123b8a8ed70daae974024150 and passes482KB/175KB/1786KB bundle budgets. Full rebuilt suite is running because the executor dispatch change crosses feature boundaries.

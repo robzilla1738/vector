@@ -1,0 +1,385 @@
+--- a/chrome/browser/ui/aux/permission_broker.h
++++ b/chrome/browser/ui/aux/permission_broker.h
+@@ -11,6 +11,7 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/timer/timer.h"
+ #include "base/values.h"
++#include "chrome/browser/ui/aux/permission_effect_receipt.h"
+ #include "components/permissions/permission_request_manager.h"
+ #include "content/public/browser/weak_document_ptr.h"
+ #include "content/public/browser/web_contents_user_data.h"
+@@ -30,6 +31,7 @@
+   void OnRequestsFinalized() override;
+   void OnNavigation(content::NavigationHandle*) override;
+   void OnPermissionRequestManagerDestructed() override;
++  void RetireReservation(const std::string& batch, const std::string& reservation);
+ 
+  private:
+   friend class content::WebContentsUserData<PermissionBroker>;
+@@ -39,6 +41,9 @@
+   void Request();
+   void Answer(bool ok, const std::string& json);
+   void OnOwnerMutationChanged();
++  void RequestFresh();
++  void FreshAnswer(int nonce, bool ok, const std::string& json);
++  void Dispatch(bool allow);
+   raw_ptr<permissions::PermissionRequestManager> manager_ = nullptr;
+   content::WeakDocumentPtr document_;
+   base::DictValue authority_;
+@@ -50,7 +55,11 @@
+   base::OneShotTimer retry_;
+   base::OneShotTimer deadline_timer_;
+   base::WeakPtr<EgressController> egress_;
+-  std::optional<std::string> held_allow_;
++  bool held_allow_ = false;
++  bool fresh_inflight_ = false;
++  int fresh_nonce_ = 0;
++  std::string reservation_id_;
++  std::optional<PermissionEffectReceipt> effect_receipt_;
+   uint64_t mutation_failure_epoch_ = 0;
+   base::CallbackListSubscription mutation_subscription_;
+   base::CallbackListSubscription authority_subscription_;
+--- a/chrome/browser/ui/aux/permission_broker.cc
++++ b/chrome/browser/ui/aux/permission_broker.cc
+@@ -51,7 +51,20 @@
+   Cancel();
+   if (manager_) manager_->RemoveObserver(this);
+ }
++void PermissionBroker::RetireReservation(const std::string& batch, const std::string& reservation) {
++  if (request_.empty() || *request_.FindString("batchId") != batch) return;
++  // A runtime reservation may be retired before its initial ALLOW reaches UI.
++  // Same exact batch and authenticated transport fence that queued reply too.
++  if (!reservation_id_.empty() && reservation_id_ != reservation) return;
++  Cancel();
++}
+ void PermissionBroker::Cancel() {
++  if (runtime_ && !request_.empty() && !reservation_id_.empty()) {
++    auto json = base::WriteJson(base::DictValue().Set("batchId", *request_.FindString("batchId"))
++        .Set("reservationId", reservation_id_));
++    if (json) runtime_->CallInternal("permission.finalize", std::move(*json),
++        base::BindOnce([](AuxRuntimeHost::Response) {}));
++  }
+   if (runtime_ && !request_.empty()) {
+     auto json = base::WriteJson(base::DictValue().Set("batchId", *request_.FindString("batchId")));
+     if (json) runtime_->CallInternal("permission.invalidate", std::move(*json),
+@@ -61,7 +74,11 @@
+   pending_approval_id_.clear();
+   retry_.Stop();
+   deadline_timer_.Stop();
+-  held_allow_.reset();
++  held_allow_ = false;
++  fresh_inflight_ = false;
++  fresh_nonce_ = 0;
++  reservation_id_.clear();
++  effect_receipt_.reset();
+   weak_factory_.InvalidateWeakPtrs();
+   request_.clear();
+   authority_.clear();
+@@ -152,9 +169,8 @@
+   if (request_.empty()) return;
+   if (!Current()) { Cancel(); return; }
+   if (!egress_->owner_mutations().pending() && held_allow_) {
+-    auto answer = std::move(*held_allow_);
+-    held_allow_.reset();
+-    Answer(true, answer);
++    held_allow_ = false;
++    RequestFresh();
+   }
+ }
+ void PermissionBroker::Answer(bool ok, const std::string& json) {
+@@ -174,12 +190,39 @@
+   }
+   if (!decision || (*decision != "allow" && *decision != "deny")) { Cancel(); return; }
+   const bool allow = *decision == "allow";
+-  if (allow && egress_->owner_mutations().pending()) {
+-    if (json.size() > 4096 || held_allow_) { Cancel(); return; }
+-    held_allow_ = json;
+-    retry_.Stop();
+-    return;
+-  }
++  if (!allow) { Dispatch(false); return; }
++  const auto* reservation = result->FindString("reservationId");
++  if (!reservation || reservation->size() != 36 || !reservation_id_.empty()) { Cancel(); return; }
++  reservation_id_ = *reservation;
++  retry_.Stop();
++  if (egress_->owner_mutations().pending()) { held_allow_ = true; return; }
++  RequestFresh();
++}
++void PermissionBroker::RequestFresh() {
++  if (!Current() || !runtime_ || reservation_id_.empty() || fresh_inflight_ || fresh_nonce_ >= 256) { Cancel(); return; }
++  if (egress_->owner_mutations().pending()) { held_allow_ = true; return; }
++  const int nonce = ++fresh_nonce_;
++  auto json = base::WriteJson(base::DictValue().Set("batchId", *request_.FindString("batchId"))
++      .Set("reservationId", reservation_id_).Set("nonce", nonce));
++  if (!json) { Cancel(); return; }
++  fresh_inflight_ = true;
++  runtime_->CallInternal("permission.revalidate", std::move(*json), base::BindOnce(
++      [](base::WeakPtr<PermissionBroker> self, int nonce, AuxRuntimeHost::Response reply) {
++        if (self) self->FreshAnswer(nonce, reply.ok, reply.result_json);
++      }, weak_factory_.GetWeakPtr(), nonce));
++}
++void PermissionBroker::FreshAnswer(int nonce, bool ok, const std::string& json) {
++  if (!Current() || !fresh_inflight_ || nonce != fresh_nonce_) { Cancel(); return; }
++  fresh_inflight_ = false;
++  auto result = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
++  auto receipt = ok && result ? PermissionEffectReceipt::Parse(*result,
++      *request_.FindString("batchId"), reservation_id_, nonce) : std::nullopt;
++  if (!receipt) { Cancel(); return; }
++  if (egress_->owner_mutations().pending()) { held_allow_ = true; return; }
++  effect_receipt_ = std::move(receipt);
++  Dispatch(true);
++}
++void PermissionBroker::Dispatch(bool allow) {
+   // Revalidate the exact live request batch and lease immediately before effects.
+   if (!Current()) { Cancel(); return; }
+   auto* manager = manager_.get();
+@@ -188,15 +231,18 @@
+   const auto self = weak_factory_.GetWeakPtr();
+   manager->ResolveRequestsFromBrowser(requests, allow, base::BindRepeating(
+       [](base::WeakPtr<PermissionBroker> broker, bool allow) {
+-        return broker && broker->Current() &&
+-            (!allow || !broker->egress_->owner_mutations().pending());
++        if (!broker || !broker->Current()) return false;
++        if (!allow) return true;
++        auto* profile = Profile::FromBrowserContext(broker->GetWebContents().GetBrowserContext());
++        return !broker->egress_->owner_mutations().pending() &&
++            broker->effect_receipt_ && broker->effect_receipt_->CanGrant(profile);
+       }, self, allow));
+   // Finalization/destruction cancels through the real manager observer. Never
+   // use the original broker pointer after effects.
+   if (!self) return;
+   if (allow && self->Current() && self->egress_->owner_mutations().pending()) {
+-    if (json.size() > 4096 || self->held_allow_) { self->Cancel(); return; }
+-    self->held_allow_ = json;
++    self->held_allow_ = true;
++    self->effect_receipt_.reset();
+     self->retry_.Stop();
+     return;
+   }
+--- a/chrome/browser/ui/aux/power_activity_mac.h
++++ b/chrome/browser/ui/aux/power_activity_mac.h
+@@ -10,6 +10,7 @@
+   explicit PowerActivityMac(Profile* profile);
+   ~PowerActivityMac();
+   void End();
++  static bool AllowsBackgroundEffect(Profile* profile, bool require_ac);
+   base::DictValue Status() const;
+   base::DictValue Begin(const std::string& reason, int duration_sec);
+  private:
+--- a/chrome/browser/ui/aux/power_activity_mac.mm
++++ b/chrome/browser/ui/aux/power_activity_mac.mm
+@@ -52,6 +52,11 @@
+ PowerActivityMac::PowerActivityMac(Profile* profile) : impl_(std::make_unique<Impl>(profile)) {}
+ PowerActivityMac::~PowerActivityMac() = default;
+ void PowerActivityMac::End() { impl_->End(); }
++bool PowerActivityMac::AllowsBackgroundEffect(Profile* profile, bool require_ac) {
++  return profile && !profile->IsOffTheRecord() &&
++      profile->GetPrefs()->GetBoolean(kKeepRuntimeInBackgroundPref) &&
++      (!require_ac || OnAC());
++}
+ base::DictValue PowerActivityMac::Status() const {
+   impl_->Check();
+   base::DictValue result;
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -26,6 +26,8 @@
+     "egress_controller.h",
+     "owner_mutation_fence.h",
+     "owner_mutation_fence.cc",
++    "permission_effect_receipt.cc",
++    "permission_effect_receipt.h",
+     "permission_broker.cc",
+     "permission_broker.h",
+     "egress_projection.cc",
+--- a/chrome/browser/ui/aux/permission_broker_unittest.cc
++++ b/chrome/browser/ui/aux/permission_broker_unittest.cc
+@@ -1,5 +1,7 @@
+ // Copyright 2026 The Aux Authors
+ #include "chrome/browser/ui/aux/permission_broker.h"
++#include "chrome/browser/ui/aux/profile_prefs.h"
++#include "components/prefs/pref_service.h"
+ #include <cmath>
+ #include "chrome/browser/ui/browser.h"
+ #include "base/functional/bind.h"
+@@ -116,6 +118,14 @@
+     auto reply = std::move(call->reply);
+     std::move(reply).Run({ok, *json, ok ? "" : "conflict", ok ? "" : "CAS failed"});
+     if (drain) base::RunLoop().RunUntilIdle();
++    if (auto_fresh_ && Find("permission.revalidate")) FreshAllow();
++  }
++  void FreshAllow(std::optional<double> window_end = std::nullopt) {
++    auto* call = Find("permission.revalidate"); ASSERT_TRUE(call);
++    EXPECT_TRUE(call->internal);
++    auto body = call->params.Clone(); body.Set("decision", "allow");
++    if (window_end) body.Set("overnight", base::DictValue().Set("windowEnd", *window_end).Set("requireAC", false));
++    Reply("permission.revalidate", true, std::move(body));
+   }
+   void Allow(bool drain = true) {
+     auto* request = Find("permission.request"); ASSERT_TRUE(request);
+@@ -123,7 +133,8 @@
+     const auto* batch = request->params.FindString("batchId"); ASSERT_TRUE(batch);
+     auto at = request->params.FindDouble("requestedAt"); ASSERT_TRUE(at);
+     EXPECT_EQ(*at, std::floor(*at));
+-    Reply("permission.request", true, base::DictValue().Set("batchId", *batch).Set("decision", "allow"), drain);
++    Reply("permission.request", true, base::DictValue().Set("batchId", *batch).Set("decision", "allow")
++        .Set("reservationId", "00000000-0000-4000-8000-000000000001"), drain);
+   }
+   void DestroyPage() {
+     auto contents = browser()->tab_strip_model()->DetachWebContentsAtForInsertion(
+@@ -158,6 +169,7 @@
+   std::unique_ptr<permissions::MockPermissionPromptFactory> prompts_;
+   permissions::MockPermissionRequest::MockPermissionRequestState state_;
+   GURL origin_{"https://agent.test/"};
++  bool auto_fresh_ = true;
+   std::string isolation_id_, page_id_;
+   base::DictValue lease_;
+ };
+@@ -424,4 +436,57 @@
+   EXPECT_TRUE(state_.finished); EXPECT_TRUE(first_duplicate.finished); EXPECT_TRUE(later_duplicate.finished);
+   EXPECT_EQ(page_, nullptr);
+ }
++
++TEST_F(PermissionBrokerTest, HeldAllowRequiresFreshInternalReceiptAfterEveryOwnerReceipt) {
++  auto_fresh_ = false;
++  Prompt(); Mutate(); Allow();
++  EXPECT_EQ(Find("permission.revalidate"), nullptr);
++  EXPECT_FALSE(state_.granted);
++  Reply("safety.originPolicies.set", true, base::DictValue());
++  ASSERT_NE(Find("permission.revalidate"), nullptr);
++  EXPECT_FALSE(state_.granted);
++  FreshAllow();
++  EXPECT_TRUE(state_.granted); EXPECT_TRUE(state_.finished);
++  EXPECT_NE(Find("permission.finalize"), nullptr);
++}
++TEST_F(PermissionBrokerTest, NativeEffectRejectsExactOvernightWindowEndAfterReceiptQueue) {
++  auto_fresh_ = false;
++  profile()->GetPrefs()->SetBoolean(kKeepRuntimeInBackgroundPref, true);
++  Prompt(); Allow();
++  ASSERT_NE(Find("permission.revalidate"), nullptr);
++  FreshAllow(static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()));
++  EXPECT_FALSE(state_.granted); EXPECT_TRUE(state_.finished);
++  EXPECT_FALSE(manager_->IsRequestInProgress());
++}
++TEST_F(PermissionBrokerTest, NativeEffectRejectsCurrentProfileBackgroundRevocation) {
++  auto_fresh_ = false;
++  profile()->GetPrefs()->SetBoolean(kKeepRuntimeInBackgroundPref, true);
++  Prompt(); Allow();
++  ASSERT_NE(Find("permission.revalidate"), nullptr);
++  profile()->GetPrefs()->SetBoolean(kKeepRuntimeInBackgroundPref, false);
++  FreshAllow(static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()) + 60000);
++  EXPECT_FALSE(state_.granted); EXPECT_TRUE(state_.finished);
++}
++TEST_F(PermissionBrokerTest, ForeignFreshNonceCannotGrantActualRequest) {
++  auto_fresh_ = false;
++  Prompt(); Allow();
++  auto* call = Find("permission.revalidate"); ASSERT_TRUE(call);
++  auto body = call->params.Clone(); body.Set("nonce", 999); body.Set("decision", "allow");
++  Reply("permission.revalidate", true, std::move(body));
++  EXPECT_FALSE(state_.granted); EXPECT_NE(Find("permission.invalidate"), nullptr);
++}
++TEST_F(PermissionBrokerTest, MutationAfterFreshRequestRequiresAnotherFreshRuntimeCheck) {
++  auto_fresh_ = false;
++  Prompt(); Allow();
++  auto* call = Find("permission.revalidate"); ASSERT_TRUE(call);
++  EXPECT_EQ(call->params.FindInt("nonce"), 1);
++  Mutate(); FreshAllow();
++  EXPECT_FALSE(state_.granted);
++  Reply("safety.originPolicies.set", true, base::DictValue());
++  call = Find("permission.revalidate"); ASSERT_TRUE(call);
++  EXPECT_EQ(call->params.FindInt("nonce"), 2);
++  EXPECT_FALSE(state_.granted);
++  FreshAllow(); EXPECT_TRUE(state_.granted); EXPECT_TRUE(state_.finished);
++}
++
+ }  // namespace aux
+--- a/chrome/browser/ui/aux/runtime_host.cc
++++ b/chrome/browser/ui/aux/runtime_host.cc
+@@ -59,6 +59,7 @@
+ #include "chrome/browser/ui/aux/readable_capture.h"
+ #include "chrome/browser/ui/aux/secret_store_mac.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/permission_broker.h"
+ #include "chrome/browser/ui/aux/webmcp.h"
+ #include "chrome/browser/ui/aux/native_find.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
+@@ -357,6 +358,20 @@
+     const base::DictValue& params,
+     uint64_t connection_generation) {
+   auto* egress = aux::EgressController::ForProfile(profile_);
++  if (method == "native.permissionRetire") {
++    const auto* tab = params.FindString("tabId");
++    const auto* batch = params.FindString("batchId");
++    const auto* reservation = params.FindString("reservationId");
++    if (!tab || tab->empty() || !batch || batch->empty() || !reservation || reservation->size() != 36)
++      return NativeFault("invalid_params", "Exact permission retirement identity is required");
++    auto* catalog = aux::TabCatalog::GetForProfile(profile_);
++    auto* page = catalog ? catalog->FindPage(*tab) : nullptr;
++    if (page) {
++      auto* broker = aux::PermissionBroker::FromWebContents(page);
++      if (broker) broker->RetireReservation(*batch, *reservation);
++    }
++    return base::DictValue().Set("result", base::DictValue().Set("accepted", true));
++  }
+   if (method == "native.egressContext") return egress->Context(params);
+   if (method == "native.egressInstall") return egress->Install(params);
+   if (method == "native.egressRevoke") return egress->Revoke(params);
+--- /dev/null
++++ b/chrome/browser/ui/aux/permission_effect_receipt.h
+@@ -0,0 +1,20 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_PERMISSION_EFFECT_RECEIPT_H_
++#define CHROME_BROWSER_UI_AUX_PERMISSION_EFFECT_RECEIPT_H_
++#include <optional>
++#include <string>
++#include "base/values.h"
++class Profile;
++namespace aux {
++// Authenticated runtime authority for ONE exact native batch/attempt.
++class PermissionEffectReceipt {
++ public:
++  static std::optional<PermissionEffectReceipt> Parse(const base::DictValue& value,
++      const std::string& batch, const std::string& reservation, int nonce);
++  bool CanGrant(Profile* profile) const;
++ private:
++  std::optional<double> window_end_;
++  bool require_ac_ = false;
++};
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/ui/aux/permission_effect_receipt.cc
+@@ -0,0 +1,34 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/permission_effect_receipt.h"
++#include <cmath>
++#include "base/time/time.h"
++#include "chrome/browser/ui/aux/power_activity_mac.h"
++namespace aux {
++std::optional<PermissionEffectReceipt> PermissionEffectReceipt::Parse(
++    const base::DictValue& value, const std::string& batch,
++    const std::string& reservation, int nonce) {
++  const auto* actual_batch = value.FindString("batchId");
++  const auto* actual_reservation = value.FindString("reservationId");
++  const auto* decision = value.FindString("decision");
++  if (!actual_batch || *actual_batch != batch || !actual_reservation ||
++      *actual_reservation != reservation || value.FindInt("nonce") != nonce ||
++      !decision || *decision != "allow") return std::nullopt;
++  PermissionEffectReceipt receipt;
++  if (value.contains("overnight")) {
++    const auto* overnight = value.FindDict("overnight");
++    if (!overnight) return std::nullopt;
++    const auto end = overnight->FindDouble("windowEnd");
++    const auto ac = overnight->FindBool("requireAC");
++    if (!end || !std::isfinite(*end) || *end < 0 || std::floor(*end) != *end || !ac)
++      return std::nullopt;
++    receipt.window_end_ = *end;
++    receipt.require_ac_ = *ac;
++  }
++  return receipt;
++}
++bool PermissionEffectReceipt::CanGrant(Profile* profile) const {
++  return !window_end_ ||
++      (base::Time::Now().InMillisecondsFSinceUnixEpoch() < *window_end_ &&
++       PowerActivityMac::AllowsBackgroundEffect(profile, require_ac_));
++}
++}  // namespace aux

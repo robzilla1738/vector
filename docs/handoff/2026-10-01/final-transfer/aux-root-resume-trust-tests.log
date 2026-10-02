@@ -1,0 +1,14 @@
+
+ RUN  v3.2.4 /private/tmp/aux-browser-runtime-root-complete
+
+ ✓ |unit| tests/unit/native-permission-producer.test.ts (27 tests) 100ms
+ ✓ |unit| tests/unit/agent-code-mode.test.ts (7 tests) 224ms
+ ✓ |unit| tests/unit/autonomy-services.test.ts (18 tests) 1293ms
+   ✓ resolves real saved-task goals and refuses a changed queued task before run launch  796ms
+ ✓ |unit| tests/unit/safety-dispatch.test.ts (8 tests) 41ms
+
+ Test Files  4 passed (4)
+      Tests  60 passed (60)
+   Start at  21:09:14
+   Duration  8.54s (transform 2.59s, setup 0ms, collect 14.26s, tests 1.66s, environment 0ms, prepare 654ms)
+

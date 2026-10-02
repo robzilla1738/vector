@@ -1,0 +1,23 @@
+{
+  "status": "unapplied shared source request; no compile/native evidence",
+  "dependency": "apply0198-exact-widget-feedback.request.patch first",
+  "patchSha256": "b6157184141880a94c7d97407937d0c304e0185a900b1aee2c764fe4791f692e",
+  "files": [
+    {
+      "path": "third_party/blink/renderer/platform/widget/widget_base.h",
+      "baselineSha256": "4f2e3aeae3f0ea129919d1441180692fa7c91a1cb9db19d0ea0254591b3da5d1",
+      "requestedSha256": "cd451a791edf660a6656b3e97fce2aa50b9ecea651b34300eb89814aba42e1fa"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/widget_base.cc",
+      "baselineSha256": "186c51d6e91b45dc3c9de9f390c5a5cb5ed02f2d7955dde38d6701b6eebd89e5",
+      "requestedSha256": "534f0dd750d09b70f44da515f4863a48a4b8bddf964894b2cc39c4b5cbd1a8ec"
+    },
+    {
+      "path": "third_party/blink/renderer/platform/widget/input/widget_base_input_handler.cc",
+      "baselineSha256": "cb989343b8cea113db4762fb003eed1847ada47bbfd4259dea6a88a0d2de03d7",
+      "requestedSha256": "539af6b02fbdd9757f32cc17b458744ac4fbb6a48502e71933f49e0528aaf604"
+    }
+  ],
+  "isolatedApplyCheck": "PASS; exact reverse restores feedback baseline; disconnected-widget pre/post callback guards included"
+}

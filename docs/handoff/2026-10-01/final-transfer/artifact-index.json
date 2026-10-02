@@ -1,0 +1,635 @@
+{
+  "status": "paused; unadopted proposals are not qualification evidence",
+  "artifacts": [
+    {
+      "source": "/tmp/aux-builder-helper-proposal/ax-value-and-panel-button.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/ax-value-and-panel-button.patch",
+      "bytes": 2002,
+      "sha256": "1697b2eb3f7d56b80ab34dfda7b93e54a3064c29df5c0720ad58b4e8356f1cc7"
+    },
+    {
+      "source": "/tmp/aux-builder-helper-settings-proposal/secure-selector-and-settings-readiness.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/secure-selector-and-settings-readiness.patch",
+      "bytes": 6161,
+      "sha256": "5ef1f7d94e551238a53ed0ffe8e6bea4ebfc2fe5bea09f69343476e1866a908e"
+    },
+    {
+      "source": "/tmp/aux-root-organization-work-source/SOURCE-DRAFT.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/SOURCE-DRAFT.patch",
+      "bytes": 7775,
+      "sha256": "3a322d10f32c20ff0864c7ad2d4635de50e620ace37508e70e4fc818faa1f526"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/native-zap-permission-fixture.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/native-zap-permission-fixture.patch",
+      "bytes": 7971,
+      "sha256": "b9e992bf6f223ddf0955f68a52223c41bc7267d18d25fd1b11f8a58ab5066cf1"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-private-widget-transport-DRAFT.request.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-private-widget-transport-DRAFT.request.patch",
+      "bytes": 24992,
+      "sha256": "bd8ea5938399cdab66ea5b26d77e2bcd2d5f1523615881f27c040db3bed64e40"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-private-widget-transport-DRAFT.baseline.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-private-widget-transport-DRAFT.baseline.json",
+      "bytes": 2693,
+      "sha256": "3cf5e2d615efff0d28ef1890df6c37abc2e9fe4d0a334fba963539cbbd99f532"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-command-session-source-freeze.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-command-session-source-freeze.json",
+      "bytes": 4111,
+      "sha256": "b3f8f77fa6b28b58f692b6d2920d6ae144bbc79e3b05ae644ab84f6c0818d98e"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-0201-GN-DRAFT.request.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-0201-GN-DRAFT.request.patch",
+      "bytes": 3225,
+      "sha256": "afb03a84f00bf3cf6b4253d36ea4302c17932296015303b351dadd969b81cb2f"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-0201-GN-DRAFT.baseline.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-0201-GN-DRAFT.baseline.json",
+      "bytes": 1897,
+      "sha256": "f0a260f9fc2a461c10c87f84cdbbd8859a8ce6ec9a0e85fdc548675d26527451"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-command-session-integration-request.md",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-command-session-integration-request.md",
+      "bytes": 5454,
+      "sha256": "4da2bfa00f76af5f9f64e457580a1681763d058af7b1fa7a518a040fe53db8a0"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-input-lifecycle.baseline.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-input-lifecycle.baseline.json",
+      "bytes": 1215,
+      "sha256": "3acdf45c126257c9866e1871ca6ece40d8410e1d35e32b9c6dbebf3c87cfe647"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-input-lifecycle.request.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-input-lifecycle.request.patch",
+      "bytes": 4202,
+      "sha256": "b6157184141880a94c7d97407937d0c304e0185a900b1aee2c764fe4791f692e"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-exact-widget-feedback.request.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-exact-widget-feedback.request.patch",
+      "bytes": 3727,
+      "sha256": "dc2539b97495d5574a77c75510075ad9d0d6d63eba8a9df312ac3032be11a2be"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-exact-widget-feedback.baseline.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-exact-widget-feedback.baseline.json",
+      "bytes": 1479,
+      "sha256": "70ddea536bfea3e509169f8a31c580d4c40d1532338ab07a610423e9fce6b851"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-command-session-hooks-DRAFT.baseline.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-command-session-hooks-DRAFT.baseline.json",
+      "bytes": 1663,
+      "sha256": "d7689132d475c06fa26fbefadd1258a0030e1ab13c59070d4af6c86c5ae35d7b"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0198-command-session-hooks-DRAFT.request.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-command-session-hooks-DRAFT.request.patch",
+      "bytes": 5689,
+      "sha256": "8513c259321fb509da9ea1e5cd91633deb245de1657e65548491eaaff6998347"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0201-owner-lifecycle.request.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0201-owner-lifecycle.request.patch",
+      "bytes": 8472,
+      "sha256": "c5b1d05c3ee8d8dc9c8de99a061b0527baa925e36e9f143383a04e935f4cfe5a"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0201-owner-lifecycle.baseline.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0201-owner-lifecycle.baseline.json",
+      "bytes": 1430,
+      "sha256": "29d94028f7ce4861eca56e85b5c76fb5ff6660c4a36a6456ebe06674495fca8d"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0207-viz-inclusion-hooks-INCOMPLETE.baseline.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0207-viz-inclusion-hooks-INCOMPLETE.baseline.json",
+      "bytes": 1342,
+      "sha256": "923091d3794f88a4f450ff3b77d200b323b2dbba32227988e2ac58d946123243"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0207-viz-inclusion-hooks-INCOMPLETE.request.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0207-viz-inclusion-hooks-INCOMPLETE.request.patch",
+      "bytes": 10993,
+      "sha256": "0699fb2e150229ce977c7aeed625bf462192f4de8920221dae15eb163954984e"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0207-split-blank-and-inclusion.md",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0207-split-blank-and-inclusion.md",
+      "bytes": 7964,
+      "sha256": "a6567553b75ef03ba519d3f119c444eb41bc56a660528c645b4a1d43f6dcef47"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0207-guest-inclusion-source-investigation.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0207-guest-inclusion-source-investigation.json",
+      "bytes": 3766,
+      "sha256": "47d2e28297975c2a1b4ee345b33ca647259da6e0bf434d6035bd41a766bda7b7"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0207-private-display-route-INCOMPLETE.request.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0207-private-display-route-INCOMPLETE.request.patch",
+      "bytes": 6227,
+      "sha256": "a2e353879c507aa64ac0f59a6b97d10ce8b3528dd9a58cf77ad33ea6b6cc4ec6"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0207-private-display-route-INCOMPLETE.baseline.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0207-private-display-route-INCOMPLETE.baseline.json",
+      "bytes": 2032,
+      "sha256": "b2237275c7f87d3c618621bd7cf6b22638be72d6a6b0090b35d892d7436d6ba1"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0207-viz-GN.request.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0207-viz-GN.request.patch",
+      "bytes": 771,
+      "sha256": "823c0f59be2bdcc51fc46d09f24e47c2b2f2997669b779c9f3063445e252e6b0"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/0207-viz-GN.baseline.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0207-viz-GN.baseline.json",
+      "bytes": 669,
+      "sha256": "f66041ac3af032931aa1197d0e79508b3533e80d851d37cea765dd5124a9b8a6"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/DR008-command-field-focus.baseline.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/DR008-command-field-focus.baseline.json",
+      "bytes": 556,
+      "sha256": "b139224a5c3da9649a8b61fb3d64471e9f98795387bb282dcfc5b93290a39e9b"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/DR008-command-field-focus.request.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/DR008-command-field-focus.request.patch",
+      "bytes": 1166,
+      "sha256": "7cf2d605987b203584f7f0f570d0a2757c07d1e55e7bd13ad199c6ff4c22c01b"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/root-3210-capture-review.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/root-3210-capture-review.json",
+      "bytes": 10221,
+      "sha256": "1df54194a37b778a3ccb7ab53f66259522dbceee2a988bc01887b4b0a3eb068c"
+    },
+    {
+      "source": "/tmp/aux-root-3210-build-proof.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-3210-build-proof.json",
+      "bytes": 114246,
+      "sha256": "bf3403bb921f689ad89f46014057a2b7343074f9fdfec49a85b8bfbdd2c9c903"
+    },
+    {
+      "source": "/tmp/aux-root-3210-independent-pair-audit.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-3210-independent-pair-audit.json",
+      "bytes": 170525,
+      "sha256": "ea9d51cc779994a0c173167a4f133367d24e63f56e9c250587657f8373cbbd6b"
+    },
+    {
+      "source": "/tmp/aux-root-resume-full-unit.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-full-unit.log",
+      "bytes": 52349,
+      "sha256": "a970781cfcef7a49b93bb8ce8017b69d53dc0af80760833603368215025ab7e3"
+    },
+    {
+      "source": "/tmp/aux-root-snapshot-runtime-build.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-snapshot-runtime-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/aux-root-snapshot-tests.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-snapshot-tests.log",
+      "bytes": 540,
+      "sha256": "3388b1691bd720ef9023f53c2f2a64afe5c0fc44ee9149c60bdbbb2d3560683c"
+    },
+    {
+      "source": "/tmp/aux-root-3210-permission-child-sample.txt",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-3210-permission-child-sample.txt",
+      "bytes": 565171,
+      "sha256": "b95f90f6c5c2fb855028d11e6ea33bb9254b500271f703ede51afffe95faf0f7"
+    },
+    {
+      "source": "/Users/rcourson/Code/web/release/test-artifacts/root-3210-functional-batch-audit.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/root-3210-functional-batch-audit.json",
+      "bytes": 37531,
+      "sha256": "a806334c35b9101d625f81c61fcfac6e4f34eca90d8f25b13c1a988041bc9190"
+    },
+    {
+      "source": "git fe77a837",
+      "saved": "docs/handoff/2026-10-01/final-transfer/settings-snapshot-fe77a837.patch",
+      "bytes": 3925,
+      "sha256": "8f11f9582d13a41f366b40e829e46cea6ee5bc3cb215c04fa6df7438e7470005"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-design/docs/design-reviews/DESIGN-LANE-PAUSE-2026-10-01-0207.md",
+      "saved": "docs/handoff/2026-10-01/final-transfer/DESIGN-LANE-PAUSE-2026-10-01-0207.md",
+      "bytes": 6659,
+      "sha256": "e5e1d968e66926af0545614e3932760ca9ca8d6c4faa77f2ddc263896c6dc251"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-root-polish/chromium/patches/aux/runtime/0198-native-performance-observer.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0198-native-performance-observer.patch",
+      "bytes": 82836,
+      "sha256": "eb1310c0be7ff6519f1d9bc51626a6e9d0ae79029348b8750967f67945bc71c1"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-root-polish/chromium/patches/aux/runtime/0201-native-pip-appearance-registry.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0201-native-pip-appearance-registry.patch",
+      "bytes": 19863,
+      "sha256": "a7ea1693aa0fb5294a6cbc9a2adaaacb01b96f098042d3711ee388e63b3c6546"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-root-polish/chromium/patches/aux/runtime/0207-native-guest-presentation-owner.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/0207-native-guest-presentation-owner.patch",
+      "bytes": 17733,
+      "sha256": "624c898a759c377753b9fe2a06901659745ba97010992f729692c53ce921f8b1"
+    },
+    {
+      "source": "/tmp/aux-root-resume-trust-tests.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-trust-tests.log",
+      "bytes": 613,
+      "sha256": "b8cf6c692db390507be888229d891758481ebae01052cc0094c61c35c09c7d7b"
+    },
+    {
+      "source": "/tmp/aux-root-resume-lint.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-lint.log",
+      "bytes": 128307,
+      "sha256": "b02f1a9633821bed246d2e6351e4302d0305f9ac3207cf9827570242ce8311d3"
+    },
+    {
+      "source": "/tmp/aux-root-resume-format.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-format.log",
+      "bytes": 142,
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    {
+      "source": "/tmp/aux-root-resume-runtime-build.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-runtime-build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/aux-root-resume-budgets.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-budgets.log",
+      "bytes": 404,
+      "sha256": "7b19e2b2753b928eff7306263cbabedf8ca9923d8676067e3ac32495bef177ac"
+    },
+    {
+      "source": "/tmp/aux-root-resume-inventory.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-inventory.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "/tmp/aux-root-resume-journeys.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-journeys.log",
+      "bytes": 30,
+      "sha256": "7a47098a0e06ff2f10394b664bae6680d52fa21e4ea33efac47284f3d992b5ed"
+    },
+    {
+      "source": "/tmp/aux-root-resume-full-unit.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-full-unit.log",
+      "bytes": 52349,
+      "sha256": "a970781cfcef7a49b93bb8ce8017b69d53dc0af80760833603368215025ab7e3"
+    },
+    {
+      "source": "/tmp/aux-root-resume-native-replay.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-native-replay.log",
+      "bytes": 84,
+      "sha256": "3bc0fc3084757a2e3b3c252b85b2d85b1cdf1f5fef10a278b2fe9fee6d72904d"
+    },
+    {
+      "source": "/tmp/aux-root-resume-capture.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-capture.log",
+      "bytes": 116,
+      "sha256": "7ebcbdf96787e5886240ef49b20d403fdec237f14d3602c4fef7d003a8d04fbc"
+    },
+    {
+      "source": "/tmp/aux-root-resume-shell.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-shell.log",
+      "bytes": 53209,
+      "sha256": "bb8838117521514cadd167fe7ddea7949120b9b7225c42a034594007d5b5a786"
+    },
+    {
+      "source": "/tmp/aux-root-resume-bridge.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-bridge.log",
+      "bytes": 158,
+      "sha256": "13cb2fc53cb8b533ff4bbc0d4e6a4b25934544a6f458daf4a2c7ad87f1ba284b"
+    },
+    {
+      "source": "/tmp/aux-root-resume-bindings.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-bindings.log",
+      "bytes": 60,
+      "sha256": "8745a8f670267397187db5377130643382abcbf0dc79b24117e0e2b76acf4902"
+    },
+    {
+      "source": "/tmp/aux-root-resume-typecheck.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-resume-typecheck.log",
+      "bytes": 90,
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    {
+      "source": "/tmp/aux-root-3210-build.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-3210-build.log",
+      "bytes": 6577,
+      "sha256": "5fa76d1d6062dc6500c451a2807f412822fa68ef8c8529859a695cda1332649a"
+    },
+    {
+      "source": "/tmp/aux-root-3210-owner_mutation_fence-unit.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-3210-owner_mutation_fence-unit.log",
+      "bytes": 1286,
+      "sha256": "c42d9707ae3aa26104e29cabcb950d37ec2c37b66cab57cc3a7b8d1a8ca54381"
+    },
+    {
+      "source": "/tmp/aux-root-3210-profile_spaces-unit.log",
+      "saved": "docs/handoff/2026-10-01/final-transfer/aux-root-3210-profile_spaces-unit.log",
+      "bytes": 3092,
+      "sha256": "82f50735d02ecfb181d864f80ac3aa23d66f3a6ee6120bdab0d1d9032d1a4de4"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native.patch",
+      "bytes": 17365,
+      "sha256": "8b12f6c36b72e21422fc2bf75476621f4c757e2494b5e9e9c76ce5a0c1798a07"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/COMPOSITION-DEPENDENCIES.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/COMPOSITION-DEPENDENCIES.json",
+      "bytes": 120,
+      "sha256": "98da088b550911096789d7a82c77e640a29467de600114dc4d37dc3ef2f33229"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime.patch",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime.patch",
+      "bytes": 39959,
+      "sha256": "dcfe02d8d4e82f11cbaa54167e38773597146ad5fa979a20ab5286b41b13fd07"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/REVIEW-MIRROR-STATUS.txt",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/REVIEW-MIRROR-STATUS.txt",
+      "bytes": 782,
+      "sha256": "db29e3518030f807f85db02a280b9ea30cf12a8167329ee51bc82c54074631be"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-manifest.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-manifest.json",
+      "bytes": 3102,
+      "sha256": "21b67d3e7d0637e9146ee3756e72331b1c2fd38caf164878d171e2afbd6214a2"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native-manifest.json",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native-manifest.json",
+      "bytes": 1979,
+      "sha256": "15c0c9ed4fb6d5497a20c91c2fd6cc73ca612204988064b0619f527502500eb8"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/HANDOFF.md",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/HANDOFF.md",
+      "bytes": 7386,
+      "sha256": "15b8d6550ed113192092e6a806559d07025223c00c0f006802946c6060cd6bca"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native/runtime_host.cc",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native/runtime_host.cc",
+      "bytes": 48791,
+      "sha256": "5dbe6fa7fc370e96519457d0a709372e7fed41030dd51a5f9966d18ee7ec8c55"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native/power_activity_mac.mm",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native/power_activity_mac.mm",
+      "bytes": 4033,
+      "sha256": "d0b62bba58d53bb9edd0648dbd4c2e75cfe809c83850c0964e9c91afc6c93d85"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native/BUILD.gn",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native/BUILD.gn",
+      "bytes": 8277,
+      "sha256": "5f946c01e7f4e7b103b0a8cd6b1bca04f9a8870038f12cc2d905704a13788a25"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native/permission_effect_receipt.cc",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native/permission_effect_receipt.cc",
+      "bytes": 1525,
+      "sha256": "c100dc3b7e621e26e0d3e58154aa6ec2655d4b09262ad6cebf0ab3d017f0be09"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native/permission_broker.cc",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native/permission_broker.cc",
+      "bytes": 12055,
+      "sha256": "f2756724dd5d9e8d383bf392ea8d9624711b88d5b2bdf0ca3b81e5d2a0e5c739"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native/power_activity_mac.h",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native/power_activity_mac.h",
+      "bytes": 559,
+      "sha256": "0b6602eb70fb12af37a40352c28cc6f2cc9bff320a3236d8308dbe3001abee4c"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native/permission_broker_unittest.cc",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native/permission_broker_unittest.cc",
+      "bytes": 28504,
+      "sha256": "8b8449ad442ecd61427670c6d025f132be2cbf28ed20c4c25d9c5fcf84714683"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native/permission_effect_receipt.h",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native/permission_effect_receipt.h",
+      "bytes": 664,
+      "sha256": "bbd8ce632ce55951f62c5bee0efbb9f5f194aff998684db1174cc4e5d013425c"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native/permission_broker.h",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native/permission_broker.h",
+      "bytes": 2515,
+      "sha256": "283668e06eb0507898d2dc3076b925383e1557c5b06a10fde047538944120646"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native-baselines/runtime_host.cc",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native-baselines/runtime_host.cc",
+      "bytes": 47955,
+      "sha256": "3054e319352d256fd07155aea338bd345165323337be72458625970fb72e7d6f"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native-baselines/power_activity_mac.mm",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native-baselines/power_activity_mac.mm",
+      "bytes": 3796,
+      "sha256": "ce098f51f399d36d79b66b4f9ec9ea1a96d16730963fc26db81c5c1fbaab751d"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native-baselines/BUILD.gn",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native-baselines/BUILD.gn",
+      "bytes": 8206,
+      "sha256": "471b7f831ff500dbc1edbaf6ce6c4f95e2291815240319b2f68f24351a5a154d"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native-baselines/permission_broker.cc",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native-baselines/permission_broker.cc",
+      "bytes": 9442,
+      "sha256": "8f0aa0625448d8d70f1eaf7115daaaba78a0dd7318d508638821bb6f703dde17"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native-baselines/power_activity_mac.h",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native-baselines/power_activity_mac.h",
+      "bytes": 486,
+      "sha256": "d3009c7d08476e9e26d94de9a481a88c3e827edee4ca11d4821541cde43aaf64"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native-baselines/permission_broker_unittest.cc",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native-baselines/permission_broker_unittest.cc",
+      "bytes": 25374,
+      "sha256": "3936159e21300b0030d163d9a70e1720edc08582f0a34bb05471c747c06c3b51"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/native-baselines/permission_broker.h",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/native-baselines/permission_broker.h",
+      "bytes": 2122,
+      "sha256": "6d88e63d258562d6d13e77532788221fe3c7fa10e23dceff95a1ccaff9cbbad4"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/apps/runtime/src/main.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/apps/runtime/src/main.ts",
+      "bytes": 78865,
+      "sha256": "7baab669ac0c2a8d1103d9b875b491518b6d2b7c9e6a2827a38f086f461c2577"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/apps/runtime/src/native.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/apps/runtime/src/native.ts",
+      "bytes": 17637,
+      "sha256": "8deabd2d70495a3dbc49c57568236007226b33ac1857a8096f6dc3424c5e0dfd"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/apps/runtime/src/safety/native-permission.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/apps/runtime/src/safety/native-permission.ts",
+      "bytes": 8837,
+      "sha256": "f7851b53314e24fc52036adcd2b3e47356efe400426098b8296beb3f0a436beb"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/apps/runtime/src/services/night-shift.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/apps/runtime/src/services/night-shift.ts",
+      "bytes": 15930,
+      "sha256": "9cfdf87663859158eb87644a145e6f64933203c6a21b0bc233d59658a6712b13"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/apps/runtime/src/api/methods/settings.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/apps/runtime/src/api/methods/settings.ts",
+      "bytes": 3780,
+      "sha256": "b044f8d707d8d7ccfe2ed1f36717191c34c49743ef1f9d9509dd3c79140d2546"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/apps/runtime/src/features/overnight-review/runtime.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/apps/runtime/src/features/overnight-review/runtime.ts",
+      "bytes": 5838,
+      "sha256": "af4eff99fdd72f7cc32695f2fa42c1c5bc776b276361f740bd039b4e60136816"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/apps/runtime/src/features/overnight-review/service.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/apps/runtime/src/features/overnight-review/service.ts",
+      "bytes": 1407,
+      "sha256": "081b426ce3665c14fd3b82530afc6f61b7400a618b33a732cc96573df6e19dd0"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/packages/contracts/src/host-methods.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/packages/contracts/src/host-methods.ts",
+      "bytes": 35513,
+      "sha256": "254933fe6bc870bd6e06ff600ca4624fe73d80c4a063fbfe09f1939f65ca9d50"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/tests/unit/native-permission-producer.test.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/tests/unit/native-permission-producer.test.ts",
+      "bytes": 20192,
+      "sha256": "0bb996616f92028fc5cebab5545dd096ef25ce922eed3708ca291af80b710176"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/tests/unit/handler-results.test.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/tests/unit/handler-results.test.ts",
+      "bytes": 29839,
+      "sha256": "10eed3cdd2f1ccde1633bf034756458644c73325f1b300b6738a1e9a71c8ef31"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime-baselines/tests/unit/autonomy-services.test.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime-baselines/tests/unit/autonomy-services.test.ts",
+      "bytes": 34043,
+      "sha256": "91aa6fa0f0adc50f0abda30a3e1b8ef0ade0b5b792310c18b8b64aa42811c45a"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/apps/runtime/src/main.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/apps/runtime/src/main.ts",
+      "bytes": 79356,
+      "sha256": "4e82654c343a22683549e0abb47fefffe350a9fc3d4dd612106a31a37030a656"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/apps/runtime/src/native.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/apps/runtime/src/native.ts",
+      "bytes": 18158,
+      "sha256": "8b55f20682fad8540d04beacda7b0f4f988cd5005d0b8152daa4815673e83111"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/apps/runtime/src/safety/native-permission.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/apps/runtime/src/safety/native-permission.ts",
+      "bytes": 12848,
+      "sha256": "14d19551c8faea4c267380e53575675a6decf851210efc0588bc5c698d4ecaea"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/apps/runtime/src/services/night-shift.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/apps/runtime/src/services/night-shift.ts",
+      "bytes": 16874,
+      "sha256": "b81327ffbcfca48140abfb7b419b35ea59aec5442ba18de12f13a1894bf25a81"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/apps/runtime/src/services/overnight-authority.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/apps/runtime/src/services/overnight-authority.ts",
+      "bytes": 1408,
+      "sha256": "c2fc732d73e3ac34ed8d1464182deb16d94f66d7bbe031803f3d5d7d50279e57"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/apps/runtime/src/api/methods/settings.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/apps/runtime/src/api/methods/settings.ts",
+      "bytes": 3922,
+      "sha256": "bc204fea273a80912d511047739b44b497333de74fe931fd2f88f73acd7a6ff4"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/apps/runtime/src/features/overnight-review/runtime.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/apps/runtime/src/features/overnight-review/runtime.ts",
+      "bytes": 5996,
+      "sha256": "2e4d9780f7e5c7b82eb05ef12e05544aad53b23611a6874474a9a417fcb844cf"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/apps/runtime/src/features/overnight-review/service.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/apps/runtime/src/features/overnight-review/service.ts",
+      "bytes": 1819,
+      "sha256": "0602090975a6bc9976ccf2198fe90a7e6ec79b1096b6940cd122fadea6a78c9b"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/packages/contracts/src/host-methods.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/packages/contracts/src/host-methods.ts",
+      "bytes": 35698,
+      "sha256": "d721190a2952d318691011b9514875bede810acc45cc877e41807f438efcb621"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/tests/unit/native-permission-producer.test.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/tests/unit/native-permission-producer.test.ts",
+      "bytes": 26537,
+      "sha256": "5c48caf6d8d0673645c7891dc6f73a2ee345d898ca388bb1976b9dc7dafbaf38"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/tests/unit/handler-results.test.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/tests/unit/handler-results.test.ts",
+      "bytes": 29959,
+      "sha256": "4f60cf1b93d70764ddc927c6bd0d7e40cd72ce969aee1a54f20759cef3140460"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/tests/unit/autonomy-services.test.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/tests/unit/autonomy-services.test.ts",
+      "bytes": 34183,
+      "sha256": "624059d6df85f76b6f2038a418797615d4f1b2c7d89f4a380d24b202b03a2cac"
+    },
+    {
+      "source": "/tmp/aux-browser-runtime-l10/docs/lane-requests/l10/receipt-draft/runtime/tests/fixtures/overnight-authority.ts",
+      "saved": "docs/handoff/2026-10-01/final-transfer/trust-receipt-draft/runtime/tests/fixtures/overnight-authority.ts",
+      "bytes": 2303,
+      "sha256": "009d65fdbd1f2569930d0ec9eb2f158319e459a27df7b58f786e3fe5b213183a"
+    }
+  ]
+}
