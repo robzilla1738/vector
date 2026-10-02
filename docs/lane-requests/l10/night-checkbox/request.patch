@@ -1,0 +1,61 @@
+diff --git a/tests/host/journeys/autonomy.mjs b/tests/host/journeys/autonomy.mjs
+index 53f05302..12081137 100644
+--- a/tests/host/journeys/autonomy.mjs
++++ b/tests/host/journeys/autonomy.mjs
+@@ -225,13 +225,14 @@ async function replaceTime(t, name, value) {
+     return control?.names?.includes(value) || control?.value === value;
+   });
+ }
+-async function nightSettingsUI(t, { enabled = true, nightly = '0.01', task = '0.01', outside = false } = {}) {
++export async function nightSettingsUI(t, { enabled = true, nightly = '0.01', task = '0.01', outside = false } = {}) {
+   await t.ax.key('command+,', 'hid');
+   await t.ax.press(shell('Automations'));
+   await t.ax.waitFor(shell('Enable overnight work', 'AXCheckBox'));
+   const enabledControl = shell('Enable overnight work', 'AXCheckBox');
+   const node = (await t.ax.query(enabledControl))[0];
+-  if (Boolean(Number(node.value)) !== enabled) await t.ax.press(enabledControl);
++  t.assert.equal(typeof node?.checked, 'boolean', 'Native overnight checkbox state is unavailable.');
++  if (node.checked !== enabled) await t.ax.press(enabledControl);
+   const start = localMinute(outside ? 5 : -5), end = localMinute(outside ? 10 : 5);
+   await replaceTime(t, 'Start', start);
+   await replaceTime(t, 'End', end);
+diff --git a/tests/unit/autonomy-settings-checkbox.test.ts b/tests/unit/autonomy-settings-checkbox.test.ts
+new file mode 100644
+index 00000000..a1b2eba5
+--- /dev/null
++++ b/tests/unit/autonomy-settings-checkbox.test.ts
+@@ -0,0 +1,34 @@
++import assert from "node:assert/strict";
++import { expect, it } from "vitest";
++import { nightSettingsUI } from "../host/journeys/autonomy.mjs";
++
++// Actual native-window.swift elementRecord contract and original4ac AX evidence:
++// AXCheckBox publishes a Boolean checked, never a text-field value.
++const checkbox = { role: "AXCheckBox", name: "Enable overnight work", names: ["Enable overnight work"], enabled: true, focused: false };
++function boundary(record: typeof checkbox & { checked?: boolean; value?: string }) {
++  const presses: string[] = [];
++  const nextTimeEdit = new Error("Fixture stops at the next physical time-edit boundary");
++  return { presses, nextTimeEdit, t: {
++    assert,
++    ax: {
++      key: async () => {},
++      press: async (target: { name: string }) => { presses.push(target.name); },
++      waitFor: async () => {},
++      query: async (target: { name: string }) => target.name === "Enable overnight work" ? [record] : [],
++      click: async () => { throw nextTimeEdit; },
++    },
++  } };
++}
++
++for (const [checked, enabled, toggle] of [[true, false, true], [false, true, true], [true, true, false], [false, false, false]] as const)
++  it(`uses the actual checked state ${checked} when requesting ${enabled}`, async () => {
++    const f = boundary({ ...checkbox, checked });
++    await expect(nightSettingsUI(f.t, { enabled })).rejects.toBe(f.nextTimeEdit);
++    expect(f.presses).toEqual(toggle ? ["Automations", "Enable overnight work"] : ["Automations"]);
++  });
++
++it("refuses missing native checkbox state before toggling or editing time", async () => {
++  const f = boundary({ ...checkbox, value: "1" });
++  await expect(nightSettingsUI(f.t, { enabled: true })).rejects.toThrow("Native overnight checkbox state is unavailable.");
++  expect(f.presses).toEqual(["Automations"]);
++});

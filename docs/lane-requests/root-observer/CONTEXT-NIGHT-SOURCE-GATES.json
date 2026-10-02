@@ -1,0 +1,65 @@
+{
+  "scope": "Rebuilt chat-context composition, acknowledged Night Shift save and real native checkbox shape; source verification only, fresh native run pending",
+  "gates": {
+    "build": {
+      "log": "/tmp/aux-root-context-resume-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASS"
+    },
+    "typecheck": {
+      "log": "/tmp/aux-context-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f",
+      "status": "PASS"
+    },
+    "unit": {
+      "log": "/tmp/aux-context-unit.log",
+      "sha256": "8015936b225c788b560744a93e069b820b58582340d2e0a05c4aab94712fb7e3",
+      "status": "PASS"
+    },
+    "lint": {
+      "log": "/tmp/aux-context-final-lint.log",
+      "sha256": "5d75aff69b041d8f56a729945f95f347cd187ded28dce8eb199c44f9bc27ab15",
+      "status": "PASS"
+    },
+    "format": {
+      "log": "/tmp/aux-context-final-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562",
+      "status": "PASS"
+    },
+    "journeys": {
+      "log": "/tmp/aux-context-final-journeys.log",
+      "sha256": "1027ac9235f75daec4a52577d1888c215b442fdca714019bc1474d97435a2d34",
+      "status": "PASS"
+    },
+    "chromium-renderer": {
+      "log": "/tmp/aux-context-chromium-renderer-build.log",
+      "sha256": "9987d5f83f5444a2bfa2d56688586da2b6a062f17a21ea6011d80622d154e7b1",
+      "status": "PASS"
+    },
+    "renderer-capture": {
+      "log": "/tmp/aux-context-renderer-capture.log",
+      "sha256": "a2a6d24d169bc34bfda3260abdc699c1808423da80147bbb3cce950f9b46124e",
+      "status": "PASS"
+    },
+    "bundle": {
+      "log": "/tmp/aux-context-budgets.log",
+      "sha256": "4ed75c5bcae921e76a1cd0a7ebae327954c830dc3186571851e870314031d956",
+      "status": "PASS"
+    },
+    "key-effect-protocol": {
+      "log": "/tmp/aux-context-key-performance.log",
+      "sha256": "b36c75e2f37e86062cc40e3aea4245ffa33ee63b12e48523daa28ff80ea7a16f",
+      "status": "PASS"
+    }
+  },
+  "unitFiles": 472,
+  "unitCases": 2554,
+  "rendererDigest": "4e460ef80de744d827c0e96a4659262f0f1d1b40d1bb829b4644b6cb99f791aa",
+  "rendererAssets": 174,
+  "nightSaveIndependentReview": "All3 baseline/result pins and forward/reverse checks PASS; actual registered-command held/rejected settings bridge2PASS",
+  "checkboxIndependentReview": "All2 successor baseline/result pins after original packet and forward/reverse PASS; actual exported helper real AX checked-shape5PASS",
+  "chatContextFocused": "22 rebuilt actual runtime/renderer consumer regressions PASS",
+  "nativeFirstChat": "Preserves original pagefree streaming/retry/tool consent/mention checks; adds explicit selected page close, kept draft, disabled Send, genuine picker removal and subsequent pagefree run. node syntax only; native execution pending.",
+  "shortcutBudget": "F1 specifies p95<=50ms and global table shortcut<=50ms. Collector now additionally gates raw max<=50ms; p95 retained. Synthetic oneoutlier regression proves strict gate, no physical performance claim.",
+  "qualificationRecordsWritten": false
+}

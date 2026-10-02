@@ -225,18 +225,26 @@ async function replaceTime(t, name, value) {
     return control?.names?.includes(value) || control?.value === value;
   });
 }
-async function nightSettingsUI(t, { enabled = true, nightly = '0.01', task = '0.01', outside = false } = {}) {
+export async function nightSettingsUI(t, { enabled = true, nightly = '0.01', task = '0.01', outside = false } = {}) {
   await t.ax.key('command+,', 'hid');
   await t.ax.press(shell('Automations'));
   await t.ax.waitFor(shell('Enable overnight work', 'AXCheckBox'));
   const enabledControl = shell('Enable overnight work', 'AXCheckBox');
   const node = (await t.ax.query(enabledControl))[0];
-  if (Boolean(Number(node.value)) !== enabled) await t.ax.press(enabledControl);
-  await replaceTime(t, 'Start', localMinute(outside ? 5 : -5));
-  await replaceTime(t, 'End', localMinute(outside ? 10 : 5));
+  t.assert.equal(typeof node?.checked, 'boolean', 'Native overnight checkbox state is unavailable.');
+  if (node.checked !== enabled) await t.ax.press(enabledControl);
+  const start = localMinute(outside ? 5 : -5), end = localMinute(outside ? 10 : 5);
+  await replaceTime(t, 'Start', start);
+  await replaceTime(t, 'End', end);
   await replace(t, 'Nightly limit ($)', nightly, 0, 'AXIncrementor');
   await replace(t, 'Per-task limit ($)', task, 0, 'AXIncrementor');
   await t.ax.press(shell('Save night shift settings'));
+  await t.until('person night shift settings persisted after native authority acknowledgement', async () => {
+    const saved = (await t.rpc('settings.get', {})).nightShift;
+    return saved?.enabled === enabled && saved.start === start && saved.end === end
+      && saved.nightlyUsd === Number(nightly) && saved.perTaskUsd === Number(task);
+  });
+  await t.ax.waitFor(shell('Save night shift settings'));
   await t.ax.key('escape', 'hid');
 }
 async function overnight(t) {

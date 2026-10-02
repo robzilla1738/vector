@@ -139,4 +139,36 @@ export async function run(t) {
     await t.capture('first-chat-optional-explicit-context');
     return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), decisions } };
   });
+  await t.step('remove closed explicit context and send the preserved draft without a page', { kind: 'ui', features: ['electronMigration'] }, async () => {
+    await newChat(t);
+    const context = selector('Browser context', 'AXButton');
+    await t.ax.press(context);
+    await t.ax.press({ name: 'Aux first-chat optional context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
+    const draft = 'Keep this reply when the explicitly selected browser tab closes.';
+    const composer = selector('Reply to conversation');
+    await t.ax.type(draft, composer);
+    const page = (await t.rpc('pages.list')).find(item => item.url === contextUrl);
+    t.assert.ok(page, 'The explicitly selected person-owned context must exist before closing');
+    await t.rpc('pages.close', { pageId: page.pageId });
+    await t.ax.waitFor(selector('The selected tab is unavailable. Choose another browser context before sending.'));
+    const [input] = await t.ax.query(composer);
+    const [submit] = await t.ax.query(selector('Send message', 'AXButton'));
+    t.assert.equal(input?.value, draft, 'Closing explicit context must preserve the reply');
+    t.assert.equal(submit?.enabled, false, 'Closed explicit context must not silently fall back to another page');
+    await t.capture('first-chat-closed-context-kept-draft');
+    await t.ax.press(context);
+    await t.ax.press({ name: 'No browser context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
+    await t.ax.waitFor(selector('The selected tab is unavailable. Choose another browser context before sending.'), 'absent');
+    t.assert.equal((await t.ax.query(composer))[0]?.value, draft);
+    phase = 'retry';
+    const previous = new Set((await t.rpc('runs.list')).map(run => run.runId));
+    await t.ax.press(selector('Send message', 'AXButton'));
+    const requested = await t.until('the preserved draft starts after removing closed context', async () =>
+      (await t.rpc('runs.list')).find(run => !previous.has(run.runId) && run.goal === draft), 30000);
+    const details = await finished(t, requested.runId);
+    t.assert.deepEqual(details.run.pageIds, []);
+    await t.ax.waitFor(selector('Page-free retry amber-839.'));
+    await t.capture('first-chat-closed-context-recovered');
+    return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), decisions } };
+  });
 }

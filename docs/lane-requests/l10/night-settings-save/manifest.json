@@ -1,0 +1,21 @@
+{
+  "base": "918e0f93110147b869d414c6e7aa35b4e726f18f",
+  "leaves": [
+    {
+      "path": "apps/shell/src/features/morning-review/NightSettings.tsx",
+      "baselineSha256": "354fad5080ee4df3c778ece9591818741e61fb1abba54cfaf53d66989542da44",
+      "resultSha256": "9daf15dd60f1c87d9a68b4b073751c80559ed521236029196b1d1a3e548a43bd"
+    },
+    {
+      "path": "apps/shell/src/features/morning-review/NightSettings.test.tsx",
+      "baselineSha256": null,
+      "resultSha256": "3298ef33a1909b981c4912e2fd25d906741905d24ca392c2d7af34884560af47"
+    },
+    {
+      "path": "tests/host/journeys/autonomy.mjs",
+      "baselineSha256": "ae3233864fee68d6610653b473efe1a1ee0710dd593011d58b35de1e8756e573",
+      "resultSha256": "892c26c76c95db5ca29093882b92c28f4bafdd24a10d6adb29ab3609c4421d57"
+    }
+  ],
+  "patchSha256": "912c629355326da8b4138d6f209819f5e7f70c952b3b649e676e8c66d09411e8"
+}

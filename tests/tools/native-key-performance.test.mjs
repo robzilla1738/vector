@@ -40,9 +40,16 @@ test('collects 20 actual-call shaped raw intervals, paired pins and unrounded su
   assert.deepEqual(f.calls[0], ['command+s', selector, 'After', 500]);
   assert.equal(report.powerBefore, ac); assert.equal(report.powerAfter, ac); assert.match(report.endpoint, /not presentation/);
 }));
-test('unrounded just-over-budget raw percentile refuses', () => run(async f => {
+test('unrounded just-over-budget raw interval refuses', () => run(async f => {
   f.duration = 50.000001;
   await assert.rejects(collectNativeKeyEffects(f.options), error => error.report.status === 'failed' && error.report.p95Ms > 50 && error.report.measurements.length === 20);
+}));
+test('one slow shortcut refuses even when its retained p95 is within budget', () => run(async f => {
+  let trial = 0;
+  f.options.prepareTrial = async () => { f.duration = ++trial === 20 ? 50.000001 : 10; };
+  await assert.rejects(collectNativeKeyEffects(f.options), error =>
+    error.report.measurements.length === 20 && error.report.p95Ms < 50 &&
+    error.report.maxMs === 50.000001 && error.report.gatedMs === error.report.maxMs);
 }));
 test('raw percentile preserves precision without modifying samples', () => {
   const samples = [30.01, 30.04]; assert.equal(rawPercentile(samples, 0.95), 30.0385); assert.deepEqual(samples, [30.01, 30.04]);

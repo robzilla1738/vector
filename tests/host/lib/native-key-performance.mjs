@@ -91,7 +91,7 @@ export async function collectNativeKeyEffects({ ax, candidate, readIdentity, pre
     const samples = report.measurements.map(row => row.elapsedMs);
     report.samplesMs = samples; report.p95Ms = rawPercentile(samples, 0.95);
     report.maxMs = Math.max(...samples); report.budgetMs = metric === 'shortcut' ? 50 : 250;
-    report.gatedMs = metric === 'shortcut' ? report.p95Ms : report.maxMs;
+    report.gatedMs = report.maxMs;
     assert.ok(report.gatedMs <= report.budgetMs, `Raw AX effect interval ${report.gatedMs} exceeds ${report.budgetMs}ms`);
     report.status = 'measured'; return report;
   } catch (error) {
