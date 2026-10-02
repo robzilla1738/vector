@@ -13,7 +13,13 @@ export async function setTabLayout(t, layout, tab) {
   const tabs = { role: 'AXTabGroup', name: layout === 'vertical' ? 'Tabs' : 'Browser tabs', match: 'exact', scope: 'shell' };
   if (layout === 'vertical' && !(await t.ax.query(tabs)).length) {
     const show = { role: 'AXButton', name: 'Show sidebar', match: 'exact', scope: 'shell', index: 0 };
-    await t.ax.waitFor(show);
+    if (!(await t.ax.query(show)).length) {
+      const windows = (await t.ax.windows()).filter(window => window.layer === 0 && window.width >= 800);
+      t.assert.equal(windows.length, 1, "Reveal controls in the exact owned browser window");
+      const window = windows[0];
+      await t.ax.request("hover", { x: window.x + window.width / 2, y: window.y + 2 });
+    }
+    await t.ax.waitFor(show, "visible");
     await t.ax.press(show);
   }
   await t.ax.waitFor(tabs);

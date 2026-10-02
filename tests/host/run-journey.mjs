@@ -69,7 +69,7 @@ async function execute() {
   let model;
   if (journey.model === 'loopback') {
     const { createModelFixture } = await import('./lib/model-fixture.mjs');
-    model = await createModelFixture(fixture);
+    model = await createModelFixture(fixture, { signal });
   }
   const launch = typeof journey.launch === 'function' ? journey.launch({ fixture, model, identity }) : journey.launch ?? {};
   assert.ok(!values.appearance || !launch.perf, 'Appearance sampling must not perturb a performance run');
@@ -137,6 +137,16 @@ async function execute() {
       }
       signal.throwIfAborted();
       return receipt;
+    },
+    diagnostic(name, value) {
+      assert.match(name, /^[a-z0-9-]{1,80}$/);
+      const bytes = Buffer.from(JSON.stringify(value, null, 2) + '\n');
+      assert.ok(bytes.length <= 65536, 'Journey diagnostic must fit 64 KiB');
+      const records = manifest.diagnostics ??= [];
+      assert.ok(records.length < 16, 'Journey diagnostic count must be bounded');
+      const filename = `diagnostic-${name}.json`;
+      writeFileSync(join(outputDir, filename), bytes, { flag: 'wx' });
+      records.push({ name, filename, bytes: bytes.length, sha256: sha256(bytes) });
     },
     capture: async (name, options) => { signal.throwIfAborted(); return evidence.capture(name, options); }, clock,
     async step(name, options, action) {

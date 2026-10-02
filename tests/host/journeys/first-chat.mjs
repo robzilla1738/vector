@@ -1,3 +1,4 @@
+import { withFailureEvidence } from '../lib/journey-diagnostics.mjs';
 import { fixturePage } from '../lib/fixture.mjs';
 import { configureModel, finished, mentionedRun, newChat, observations, tool } from '../lib/l10-trust-fixtures.mjs';
 
@@ -23,6 +24,7 @@ export async function run(t) {
   const contextUrl = `${t.fixture.url}/first-chat/context`;
   t.fixture.route('/first-chat/opened', fixturePage('Aux first-chat tool page', '<p>Explicit tool destination ready.</p>'));
   t.fixture.route('/first-chat/context', fixturePage('Aux first-chat optional context', '<p>Optional context evidence: copper-467.</p>'));
+  const heldAnswer = t.model.holdText('Page-free answer', ' violet-271.');
   let phase = 'answer', contextTurns = 0;
   const decisions = [];
   let releaseOpen;
@@ -33,7 +35,7 @@ export async function run(t) {
     if (phase === 'answer' || phase === 'retry') {
       t.assert.equal(observations(payload).length, 0, 'Page-free requests must contain no page observation');
       t.assert.equal(payload.stream, true, 'The answer must use the actual streaming transport');
-      return { content: phase === 'answer' ? 'Page-free answer violet-271.' : 'Page-free retry amber-839.' };
+      return phase === 'answer' ? heldAnswer.response : { content: 'Page-free retry amber-839.' };
     }
     if (phase === 'open') {
       await openGate;
@@ -52,15 +54,25 @@ export async function run(t) {
     t.assert.deepEqual(await t.rpc('pages.list'), [], 'Fresh chat must start with no public page');
     await newChat(t);
     t.assert.deepEqual(await t.rpc('pages.list'), [], 'Opening the composer must not create a blank page');
-    first = await send(t, 'Give a short greeting without opening or attaching any browser page.');
-    t.assert.deepEqual(first.pageIds, []);
+    let partial;
+    try {
+      first = await send(t, 'Give a short greeting without opening or attaching any browser page.');
+      t.assert.deepEqual(first.pageIds, []);
+      await t.ax.waitFor(selector('Page-free answer'));
+      partial = await t.rpc('runs.get', { runId: first.runId });
+      t.assert.ok(['running', 'planning'].includes(partial.run.status), 'Partial native answer must be visible before the real run becomes terminal');
+      t.assert.deepEqual(partial.run.pageIds, []);
+      t.assert.deepEqual(await t.rpc('pages.list'), [], 'Incremental answer must remain page-free');
+      t.assert.equal((await t.ax.query(selector('Page-free answer violet-271.'))).length, 0, 'The held suffix must not be visible yet');
+      await t.capture('first-chat-held-partial-answer');
+    } finally { heldAnswer.release(); }
     const details = await finished(t, first.runId);
     await t.ax.waitFor(selector('Page-free answer violet-271.'));
     t.assert.deepEqual(details.run.pageIds, []);
     t.assert.deepEqual(await t.rpc('pages.list'), [], 'Answering must not create any page');
     t.assert.ok(decisions.some(row => row.phase === 'answer' && row.stream));
     await t.capture('first-chat-page-free-answer');
-    return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), decisions } };
+    return { ax: await t.ax.dump(), rpc: { partial, details, pages: await t.rpc('pages.list'), decisions } };
   });
   await t.step('retry the same page-free run without manufacturing page context', { kind: 'ui', features: ['electronMigration'] }, async () => {
     phase = 'retry';
@@ -79,9 +91,10 @@ export async function run(t) {
     t.assert.deepEqual(await t.rpc('pages.list'), [], 'Retry must remain page-free');
     return { ax: await t.ax.dump(), rpc: { details, decisions } };
   });
-  await t.step('an actual model tool opens exactly one real URL', { kind: 'ui', features: ['electronMigration'] }, async () => {
+  let requested;
+  await t.step('an actual model tool opens exactly one real URL', { kind: 'ui', features: ['electronMigration'] }, async () => withFailureEvidence(t, 'first-chat-tool-open', async () => {
     phase = 'open';
-    const requested = await send(t, 'Open the explicit synthetic destination using openTab, then report completion.');
+    requested = await send(t, 'Open the explicit synthetic destination using openTab, then report completion.');
     try {
       await t.until('the actual model request reaches the held explicit open decision', async () => decisions.some(row => row.phase === 'open'), 30000);
       t.assert.deepEqual(requested.pageIds, [], 'Sending the request must not eagerly open a page');
@@ -101,7 +114,12 @@ export async function run(t) {
     t.assert.equal(t.model.errors.length, 0);
     await t.capture('first-chat-explicit-tool-open');
     return { ax: await t.ax.dump(), rpc: { details, pages, decisions } };
-  });
+  }, async () => {
+    const details = requested ? await t.rpc('runs.get', { runId: requested.runId }) : null;
+    return { transcript: details?.transcript, requestedRunId: requested?.runId,
+      run: details?.run, steps: details?.steps.slice(-8), modelCalls: details?.modelCalls,
+      usage: details?.usage, pages: await t.rpc('pages.list') };
+  }));
   await t.step('choose an optional person-owned page through the mention UI', { kind: 'ui', features: ['electronMigration', 'tabMentions'] }, async () => {
     const page = await t.rpc('pages.open', { url: contextUrl, activate: true });
     await t.until('the explicit context document is ready', async () =>

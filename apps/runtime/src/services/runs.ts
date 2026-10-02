@@ -281,6 +281,7 @@ export class RunService {
             artifactId: artifact.artifactId,
             runId: artifact.runId!,
             filename,
+            automaticReport: run.result?.automaticReportArtifactId === artifact.artifactId && run.status === "completed" && run.result.report === content,
             mediaType: artifact.mediaType,
             excerpt: content.replace(/\s+/g, " ").trim().slice(0, 1000),
             byteLength: artifact.size,
@@ -677,12 +678,12 @@ export class RunService {
         if (buffer.length > 256 * 1024 || markdown.includes("\0")) {
           throw new AuxError("invalid_params", "The generated report exceeds the saved text result limit.");
         }
-        this.deps.artifacts.save({
+        return this.deps.artifacts.save({
           runId: run.runId,
           label: "report.md",
           mediaType: "text/markdown",
           buffer,
-        });
+        }).artifactId;
       },
       saveCompletedHtml: (run, html) => {
         const buffer = Buffer.from(html, "utf8");

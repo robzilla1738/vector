@@ -149,19 +149,21 @@ it("saves completed report and HTML results once and keeps failed outputs out of
     const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => repo.getPage(pageId)),
     repo, events: new EventBus(repo), pages: coordinatorFixturePages1 as never,
     model: () => null, defaultModel: () => "m", recoveryModel: () => undefined,
-    recordModelCall: () => {}, saveCompletedReport: (_run, markdown) => saved.push(markdown),
+    recordModelCall: () => {}, saveCompletedReport: (_run, markdown) => { saved.push(markdown); return "saved-report"; },
     saveCompletedHtml: (_run, html) => htmlSaved.push(html),
   });
   const seed = (runId: string) => repo.saveRun({runId, goal:"Write a report", status:"running", pageIds:["p1"], config:{chatId:"chat-1"}, createdAt:Date.now()});
   seed("run-1");
-  await coordinator.finish("run-1", "completed", {report:"# Verified report",html:"<h1>Preview</h1>"});
+  await coordinator.finish("run-1", "completed", {report:"# Verified report",html:"<h1>Preview</h1>",automaticReportArtifactId:"model-forged"});
   expect(repo.getRun("run-1")?.status).toBe("completed");
+  expect(repo.getRun("run-1")?.result?.automaticReportArtifactId).toBe("saved-report");
   expect(saved).toEqual(["# Verified report"]);
   expect(htmlSaved).toEqual(["<h1>Preview</h1>"]);
   seed("run-2");
-  await coordinator.finish("run-2", "failed", {report:"# Unsupported report",html:"<h1>Unsupported</h1>"});
+  await coordinator.finish("run-2", "failed", {report:"# Unsupported report",html:"<h1>Unsupported</h1>",automaticReportArtifactId:"model-forged"});
   expect(saved).toEqual(["# Verified report"]);
   expect(htmlSaved).toEqual(["<h1>Preview</h1>"]);
+  expect(repo.getRun("run-2")?.result).not.toHaveProperty("automaticReportArtifactId");
 });
 
 describe("lying model cannot complete a run", () => {

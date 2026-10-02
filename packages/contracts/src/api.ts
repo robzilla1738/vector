@@ -628,6 +628,7 @@ export type ConversationImage = z.infer<typeof ConversationImageSchema>;
 const ConversationImagesSchema = z.object({ chatId: id, images: z.array(ConversationImageSchema) });
 const ConversationImageControl = z.object({ chatId: id, imageId: id });
 export const ConversationArtifactSchema = z.object({
+  automaticReport: z.boolean().optional(),
   artifactId: id,
   runId: id,
   filename: z.string().min(1).max(255),

@@ -1,3 +1,4 @@
+import { withFailureEvidence } from '../lib/journey-diagnostics.mjs';
 import { revealSettingsControl } from "../lib/settings-control.mjs";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -110,7 +111,7 @@ export async function run(t) {
   await t.step(
     "download invoice through the page and observe a renamed native file",
     { kind: "ui", features: ["smartDownloadNames"] },
-    async () => {
+    async () => withFailureEvidence(t, "download-rename", async () => {
       await t.ax.press({ role: "AXLink", name: "Download invoice", match: "exact", scope: "page", index: 0 });
       receipt = await t.until("durable renamed invoice receipt", async () =>
         (await t.rpc("downloads.list", {})).find((item) => item.filename === "Invoice 4471.pdf" && item.state === "completed"),
@@ -134,12 +135,13 @@ export async function run(t) {
           modelCalls: t.model.calls,
         },
       };
-    },
+    }, async () => ({ downloads: (await t.rpc("downloads.list", {})).slice(-32),
+      namingPreferences: (await t.rpc("settings.get", {})).downloadNaming, fixtureRequests: t.fixture.requests.slice(-16) })),
   );
   await t.step(
     "Undo the rename from the Downloads row after restarting",
     { kind: "ui", features: ["smartDownloadNames"] },
-    async () => {
+    async () => withFailureEvidence(t, "download-undo", async () => {
       const beforeRestartCalls = t.model.calls.length;
       await t.restart();
       t.assert.equal(
@@ -167,12 +169,13 @@ export async function run(t) {
           downloads: await t.rpc("downloads.list"),
         },
       };
-    },
+    }, async () => ({ downloads: (await t.rpc("downloads.list", {})).slice(-32),
+      namingPreferences: (await t.rpc("settings.get", {})).downloadNaming, fixtureRequests: t.fixture.requests.slice(-16) })),
   );
   await t.step(
     "provider failure uses the template name",
     { kind: "ui", features: ["smartDownloadNames"] },
-    async () => {
+    async () => withFailureEvidence(t, "download-fallback", async () => {
       t.model.respond(() => {
         throw new Error("Fixture model 500");
       });
@@ -199,12 +202,13 @@ export async function run(t) {
         ax: await t.ax.dump(),
         rpc: { receipt: fallback, modelErrors: t.model.errors, downloads: await t.rpc("downloads.list") },
       };
-    },
+    }, async () => ({ downloads: (await t.rpc("downloads.list", {})).slice(-32),
+      namingPreferences: (await t.rpc("settings.get", {})).downloadNaming, fixtureRequests: t.fixture.requests.slice(-16) })),
   );
   await t.step(
     "a Save dialog download is never renamed",
     { kind: "ui", features: ["smartDownloadNames"] },
-    async () => {
+    async () => withFailureEvidence(t, "download-save-dialog", async () => {
       await t.app.quit();
       const path = join(t.app.userDataDir, "Default", "Preferences");
       const prefs = JSON.parse(await readFile(path, "utf8"));
@@ -235,6 +239,7 @@ export async function run(t) {
         ax: await t.ax.dump(),
         rpc: { unchangedPriorDownloads: before, downloads: await t.rpc("downloads.list"), modelCalls },
       };
-    },
+    }, async () => ({ downloads: (await t.rpc("downloads.list", {})).slice(-32),
+      namingPreferences: (await t.rpc("settings.get", {})).downloadNaming, fixtureRequests: t.fixture.requests.slice(-16) })),
   );
 }

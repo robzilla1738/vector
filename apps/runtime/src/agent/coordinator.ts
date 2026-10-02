@@ -71,7 +71,7 @@ export interface CoordinatorDeps {
   }) => void | Promise<void>;
   onStepRecorded?: (runId: string, outcome: StepOutcome, step: Step, obsArtifactId?: string) => void;
   saveObservation?: (runId: string, obs: Observation) => string | undefined;
-  saveCompletedReport?: (run: Run, markdown: string) => void;
+  saveCompletedReport?: (run: Run, markdown: string) => string;
   saveCompletedHtml?: (run: Run, html: string) => void;
   saveCompletedGenerated?: (run: Run, file: import("@aux/contracts").CompletedGeneratedFile) => Promise<{artifactId:string}>;
   tracer?: {
@@ -459,6 +459,7 @@ export class RunCoordinator {
       message = "Stopped with an uncertain outcome; no automatic retry";
     }
     run.status = status;
+    if (result) { result = { ...result }; delete result.automaticReportArtifactId; }
     run.result = result;
     run.error = error;
     run.failure = failure;
@@ -471,7 +472,10 @@ export class RunCoordinator {
     if (status === "completed" && run.config?.chatId &&
       ((typeof result?.report === "string" && result.report.trim()) || (typeof result?.html === "string" && result.html.trim()))) {
       try {
-        if (typeof result?.report === "string" && result.report.trim()) this.deps.saveCompletedReport?.(run, result.report);
+        if (typeof result?.report === "string" && result.report.trim()) {
+          const artifactId = this.deps.saveCompletedReport?.(run, result.report);
+          if (artifactId) { run.result = { ...run.result, automaticReportArtifactId: artifactId }; this.deps.repo.saveRun(run); }
+        }
         if (typeof result?.html === "string" && result.html.trim()) this.deps.saveCompletedHtml?.(run, result.html);
       }
       catch (cause) {

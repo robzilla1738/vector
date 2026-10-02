@@ -313,8 +313,15 @@ describe("conversation turn retry", () => {
   it("uses only an exact completed prior report as artifact completion evidence", async () => {
     const h = harness();
     const report = "# Report\nOption B has offline support.";
-    h.repo.saveRun({runId:"source-turn",goal:"Write report",status:"completed",pageIds:["p1"],config:{chatId:"report-chat"},result:{report},createdAt:1,endedAt:2});
+    h.repo.saveRun({runId:"source-turn",goal:"Write report",status:"completed",pageIds:["p1"],config:{chatId:"report-chat"},result:{report,automaticReportArtifactId:"verified-report"},createdAt:1,endedAt:2});
     h.repo.saveArtifact({artifactId:"verified-report",runId:"source-turn",path:"/artifacts/verified-report-report.md",mediaType:"text/markdown",size:Buffer.byteLength(report),status:"complete",createdAt:2});
+    h.artifactContents.set("verified-report",report);
+    expect(h.runs.conversationArtifacts("report-chat").artifacts[0]?.automaticReport).toBe(true);
+    h.repo.saveArtifact({artifactId:"explicit-report",runId:"source-turn",path:"/artifacts/explicit-report-report.md",mediaType:"text/markdown",size:Buffer.byteLength(report),status:"complete",createdAt:2});
+    h.artifactContents.set("explicit-report",report);
+    expect(h.runs.conversationArtifacts("report-chat").artifacts.find(item=>item.artifactId==="explicit-report")?.automaticReport).toBe(false);
+    h.artifactContents.set("verified-report","An explicit report with the same filename");
+    expect(h.runs.conversationArtifacts("report-chat").artifacts[0]?.automaticReport).toBe(false);
     h.artifactContents.set("verified-report",report);
     h.runs.toggleConversationArtifact({chatId:"report-chat",artifactId:"verified-report",included:true});
     const run=await h.runs.start({goal:"Revise the report",pageIds:["p1"],chatId:"report-chat"});
