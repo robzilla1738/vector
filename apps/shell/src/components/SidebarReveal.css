@@ -1,0 +1,15 @@
+.sidebar-reveal-button {
+  position: absolute;
+  z-index: var(--z-peek);
+  left: var(--traffic-inset);
+  top: calc((var(--toolbar-h) - var(--control-h)) / 2);
+  width: var(--control-h);
+  height: var(--control-h);
+  background: var(--surface-panel);
+  box-shadow: var(--line-inset);
+  -webkit-app-region: no-drag;
+}
+.sidebar-reveal-button:focus-visible {
+  outline: 2px solid var(--focus-line);
+  outline-offset: 2px;
+}
