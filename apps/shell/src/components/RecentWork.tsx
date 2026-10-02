@@ -6,7 +6,8 @@ import { ConversationDrafts } from "./ConversationDrafts";
 import { mergeHistory } from "../run-history";
 import { RecentConversationCard } from "./RecentWorkCard";
 import { openSavedTask } from "../task-navigation";
-import { shellIconPlusSm, shellIconRight } from "./icons";
+import { shellIconRight } from "./icons";
+import { RecentWorkEmpty } from "./RecentWorkEmpty";
 import { Tabs } from "../ui";
 
 /** Home previews use durable chat titles and results, never invented activity. */
@@ -66,7 +67,7 @@ export function RecentWork() {
         <h3><button className="home-card-open" onClick={() => item.sourceTaskId ? void openSavedTask(item.sourceTaskId).catch(errToast) : useStore.getState().setOverlay("tasks")}>{item.title}</button></h3>
         <p className="home-excerpt">{item.objective}</p>
       </article>)}
-      {!loading && !error && !count && <div className="home-empty"><p>{tab === "chats" ? "Your conversations will appear here." : "Your saved routines will appear here."}</p><button className="btn ghost" onClick={() => tab === "chats" ? useStore.getState().openConversation(null) : useStore.getState().setOverlay("tasks")}>{shellIconPlusSm}{tab === "chats" ? "New chat" : "Create a task"}</button></div>}
+      {!loading && !error && !count && <RecentWorkEmpty view={tab} onCreateTask={() => useStore.getState().setOverlay("tasks")} />}
     </div>
     {tab === "chats" && <ConversationDrafts limit={3} compact exclude={items.map(item => item.chatId)} />}
     {loading && !count && <output className="hint" data-block>Loading recent work…</output>}

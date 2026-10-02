@@ -44,3 +44,8 @@
 .aux-home .start-inner:has(.home-ask .conversation-turn) { padding-top:clamp(var(--space-6), 6vh, 56px); }
 .aux-home .start-inner:has(.home-ask .conversation-turn) .home-welcome { display:none; }
 }
+
+@layer components {
+.aux-home .home-empty-chats { min-height:0; padding:var(--space-3) 0; align-items:flex-start; text-align:left; }
+.aux-home .home-empty-chats p { margin:0; }
+}
