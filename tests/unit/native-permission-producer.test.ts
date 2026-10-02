@@ -1,3 +1,4 @@
+import { RuntimeShutdownAdmission } from "../../apps/runtime/src/services/runtime-shutdown.js";
 import { SafetyAuthorityRevocation } from "../../apps/runtime/src/safety/authority-revocation.js";
 import { afterEach, expect, it } from "vitest";
 import { AuxError, PageTargetSchema, RunSchema, type EgressLease, type OriginRule } from "@aux/contracts";
@@ -122,6 +123,7 @@ async function fixture(readOnly = false, external = false, assertDispatch: (runI
       [],
     );
   let onlyStanding = false;
+  const admission = new RuntimeShutdownAdmission();
   const controller = new NativePermissionController({
     profileId: "profile",
     approvals,
@@ -136,6 +138,7 @@ async function fixture(readOnly = false, external = false, assertDispatch: (runI
     retireReservation,
     requiresTurn: () => !external,
     sourceCheck: () => () => {
+      admission.assertOpen();
       if (!owns) throw new AuxError("permission_denied", "Lease owner retired.");
     },
   });
@@ -158,6 +161,7 @@ async function fixture(readOnly = false, external = false, assertDispatch: (runI
     requestedAt: Date.now(),
   });
   return {
+    admission,
     db,
     approvals,
     page,
@@ -735,4 +739,120 @@ it("unauthorized policy and out-of-scope task mutations cannot retire a real for
   await expect(tasksMethods["tasks.replaceAgent"]!({ ...base, method: "tasks.replaceAgent", params: { taskId: "task", pageIds: ["outside"] }, scope: { kind: "task" }, requireScopedPage: () => { throw new AuxError("permission_denied", "Outside approved task scope"); } } as unknown as Parameters<NonNullable<typeof tasksMethods["tasks.replaceAgent"]>>[0])).rejects.toMatchObject({ code: "permission_denied" });
   expect(retirements).toBe(0);
   expect(await f.controller.revalidate({ batchId: f.request.batchId, reservationId: authorized.reservationId!, nonce: 1 })).toMatchObject({ decision: "allow" });
+});
+
+it("queued interruption cannot resurrect a terminal run or overwrite its newer configuration after ACK", async () => {
+  const { Repo, EventBus } = await import("@aux/runtime");
+  const { RunCoordinator } = await import("../../apps/runtime/src/agent/coordinator.js");
+  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { fixtureTurnMentions } = await import("../fixtures/turn-mentions.js");
+  let acknowledge!: () => void;
+  const f = await fixture(false, false, async () => {}, "run", () => null, async () => { await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true }; });
+  const waiting = await f.controller.request(f.request);
+  f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
+  await f.controller.request(f.request);
+  const repo = new Repo(f.db); repo.saveRun(f.run); installOvernightAuthority(repo, f.controller);
+  const coordinator = new RunCoordinator({ repo, events: new EventBus(repo), turnMentions: fixtureTurnMentions(() => f.page), pages: {} as never, model: () => null, defaultModel: () => "fixture", recoveryModel: () => undefined, grants: [], recordModelCall: () => {} });
+  const settle = f.controller.withAuthorityMutation(id => id === "run", async () => { repo.saveRun({ ...repo.getRun("run")!, status: "completed", config: { messageRevision: 9 }, result: { report: "Verified" } }); });
+  const interrupt = coordinator.markInterrupted();
+  await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
+  acknowledge(); await Promise.all([settle, interrupt]);
+  expect(repo.getRun("run")).toMatchObject({ status: "completed", config: { messageRevision: 9 }, result: { report: "Verified" } });
+});
+
+it("a Goal report cannot persist pause metadata before exact native retirement acknowledgement", async () => {
+  const { Repo, EventBus, TaskService } = await import("@aux/runtime");
+  const { GoalService } = await import("../../apps/runtime/src/services/goals.js");
+  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  let acknowledge!: () => void;
+  const f = await fixture(false, false, async () => {}, "run", () => null, async () => { await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true }; });
+  const waiting = await f.controller.request(f.request);
+  f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
+  await f.controller.request(f.request);
+  const repo = new Repo(f.db); repo.saveRun(f.run); installOvernightAuthority(repo, f.controller);
+  const workspace = new TaskService(repo, new EventBus(repo)).createWorkspace("Goal authority");
+  const goals = new GoalService(repo, {
+    start: async () => { throw new Error("This existing Goal must not launch again"); },
+    pause: async runId => { const run = { ...repo.getRun(runId)!, status: "paused" as const }; repo.saveRun(run); return run; },
+    resume: async () => { throw new Error("Not resuming"); },
+    cancel: async () => { throw new Error("Not cancelling"); },
+  });
+  const goal = goals.create({ workspaceId: workspace.workspaceId, objective: "Review", budget: { maxTokens: 1000 } });
+  repo.db.prepare("UPDATE goals SET run_id='run',status='active' WHERE goal_id=?").run(goal.goalId);
+  const reporting = goals.report("run", "paused", undefined, 1);
+  await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
+  expect(goals.get(goal.goalId).lastBlockerTurn).toBeUndefined();
+  expect(repo.getRun("run")?.status).toBe("running");
+  acknowledge(); expect(await reporting).toEqual({ status: "paused" });
+  expect(goals.get(goal.goalId)).toMatchObject({ status: "paused", lastBlockerTurn: 1 });
+});
+
+
+it("foreground Apply preserves a newer parked configuration written while native retirement is held", async () => {
+  const { Repo, EventBus } = await import("@aux/runtime");
+  const { installOvernightAuthority } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { overnightRuntime } = await import("../../apps/runtime/src/features/overnight-review/runtime.js");
+  let acknowledge!: () => void;
+  const f = await fixture(false, false, async () => {}, "run", () => null, async () => { await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true }; });
+  const waiting = await f.controller.request(f.request);
+  f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
+  await f.controller.request(f.request);
+  const repo = new Repo(f.db), events = new EventBus(repo);
+  repo.saveRun({ ...f.run, status: "needs_input", config: { ...f.run.config, nightShiftItemId: "person-item", messageRevision: 0 } });
+  installOvernightAuthority(repo, f.controller);
+  const runtime = overnightRuntime({ repo, events } as never, { status: async () => ({ onAC: true, backgroundEnabled: true }), release: async () => {}, activity: async () => ({ active: true }) });
+  const update = f.controller.withAuthorityMutation(id => id === "run", async () => { const run = repo.getRun("run")!; repo.saveRun({ ...run, config: { ...run.config, messageRevision: 9 } }); });
+  const applying = runtime.resume("run");
+  await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
+  expect(repo.getRun("run")?.config).toMatchObject({ nightShiftItemId: "person-item", messageRevision: 0 });
+  acknowledge(); await Promise.all([update, applying]);
+  expect(repo.getRun("run")?.config?.messageRevision).toBe(9);
+  expect(repo.getRun("run")?.config).not.toHaveProperty("nightShiftItemId");
+  expect(repo.getRun("run")?.status).toBe("needs_input");
+  expect(f.approvals.pending("run")).toEqual([]);
+});
+
+it("one runtime shutdown awaits every installed native receipt before egress close and run interruption", async () => {
+  const { Repo, EventBus } = await import("@aux/runtime");
+  const { RunCoordinator } = await import("../../apps/runtime/src/agent/coordinator.js");
+  const { installOvernightAuthority, withRunAuthorityMutation } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const { runtimeShutdown } = await import("../../apps/runtime/src/services/runtime-shutdown.js");
+  const { fixtureTurnMentions } = await import("../fixtures/turn-mentions.js");
+  let acknowledge!: () => void;
+  const f = await fixture(false, false, async () => {}, "run", () => null, async () => { await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true }; });
+  const waiting = await f.controller.request(f.request);
+  f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
+  await f.controller.request(f.request);
+  const repo = new Repo(f.db); repo.saveRun(f.run); installOvernightAuthority(repo, f.controller);
+  const coordinator = new RunCoordinator({ repo, events: new EventBus(repo), turnMentions: fixtureTurnMentions(() => f.page), pages: {} as never, model: () => null, defaultModel: () => "fixture", recoveryModel: () => undefined, grants: [], recordModelCall: () => {} });
+  const stages: string[] = [];
+  const shutdown = runtimeShutdown({
+    quiesce: () => { stages.push("quiesce"); },
+    retireAuthority: () => withRunAuthorityMutation(repo, async () => {}),
+    disconnectAuthority: () => { stages.push("disconnect"); },
+    closeEgress: () => { stages.push("egress"); f.egress.close(); },
+    stopMessages: async () => { stages.push("messages"); },
+    markInterrupted: async () => { await coordinator.markInterrupted(); stages.push("interrupted"); },
+    stopFeatures: async () => { stages.push("features"); },
+    cleanup: [{ stage: "cleanup", run: () => { stages.push("cleanup"); } }],
+    reportFailure: (_, error) => { throw error; },
+  });
+  const first = shutdown(); expect(shutdown()).toBe(first);
+  await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
+  expect(stages).toEqual(["quiesce"]); expect(repo.getRun("run")?.status).toBe("running");
+  acknowledge(); await first;
+  expect(stages).toEqual(["quiesce", "egress", "messages", "interrupted", "features", "cleanup"]);
+  expect(repo.getRun("run")?.status).toBe("interrupted");
+});
+
+it("closed runtime admission still refuses a new native batch after the global retirement barrier is released", async () => {
+  const f = await fixture();
+  const waiting = await f.controller.request(f.request);
+  f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
+  await f.controller.request(f.request);
+  f.admission.beginShutdown();
+  await f.controller.withAuthorityMutation(() => true, async () => {});
+  expect(await f.controller.request({ ...f.request, batchId: "queued-after-retirement" })).toMatchObject({ decision: "deny" });
+  expect(f.approvals.pending("run")).toEqual([]);
+  expect(f.run.status).toBe("running");
 });

@@ -2307,8 +2307,8 @@ document.getElementById("tone-play").addEventListener("click",()=>{void window._
         .run("legacy-hook-invocation", "legacy-hook", "legacy-event", "failed", "private native hook error", Date.now(), Date.now());
       db.prepare("INSERT INTO subagent_groups(group_id,parent_run_id,workspace_id,body,state,created_at) VALUES(?,?,?,?,?,?)")
         .run("legacy-group", "legacy-run", "legacy-space", JSON.stringify({ task: "private native group" }), "closed", Date.now());
-      db.prepare("INSERT INTO subagents(agent_id,group_id,state,body,created_at,ended_at) VALUES(?,?,?,?,?,?)")
-        .run("legacy-subagent", "legacy-group", "completed", JSON.stringify({ result: "private native subagent" }), Date.now(), Date.now());
+      db.prepare("INSERT INTO subagents(agent_id,group_id,reserved_run_id,state,body,created_at,ended_at) VALUES(?,?,?,?,?,?,?)")
+        .run("legacy-subagent", "legacy-group", "legacy-child", "completed", JSON.stringify({ result: "private native subagent" }), Date.now(), Date.now());
     } finally { db.close(); }
   }
   if (memoryInboxUiJourney || storeRecoveryUiJourney || memoryPasteUiJourney) {

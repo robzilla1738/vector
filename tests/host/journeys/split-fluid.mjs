@@ -44,6 +44,13 @@ export async function run(t) {
   });
   await t.step('restore the native pair after restart', { kind: 'ui', features: ['splitView'] }, async () => {
     await t.restart(); await t.ax.press(tab('Red')); await t.ax.waitFor(divider(1));
+    await t.until('restored native pair is loaded and attached', async () => {
+      const expectedIds = ids(['Red', 'Blue']);
+      const restored = (await t.rpc('pages.list')).filter(page => expectedIds.includes(page.pageId));
+      const areas = (await t.ax.dump()).filter(item => item.role === 'AXWebArea' && titles(['Red', 'Blue']).includes(item.name));
+      return restored.length === 2 && restored.every(page => !page.loading)
+        && areas.length === 2 && areas.every(item => item.frame?.width >= 200 && item.frame?.height >= 200);
+    });
     const observations = await panes(t, titles(['Red', 'Blue']), ids(['Red', 'Blue']));
     const pair = observations.rpc.pages.filter(page => ids(['Red', 'Blue']).includes(page.pageId));
     t.assert.ok(pair.every(page => page.split) && pair[0].split.id === pair[1].split.id, 'Session restoration retains the native split identity');

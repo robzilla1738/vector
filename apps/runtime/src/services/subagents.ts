@@ -228,8 +228,8 @@ export class SubagentService {
       if (input.pageIds.some(pageId => pageOwners[pageId] || view.agents.some(agent => ACTIVE.has(agent.state) && agent.pageIds.includes(pageId))))
         throw new AuxError("conflict", "A selected page is already leased to another run.");
       const agent = SubagentSchema.parse({ ...input, agentId, sourceRunId, state: "starting", runId: childRunId, createdAt: now });
-      this.repo.db.prepare("INSERT INTO subagents(agent_id,group_id,state,body,created_at) VALUES(?,?,'starting',?,?)")
-        .run(agentId, group.groupId, this.seal("subagents", agentId, agent), now);
+      this.repo.db.prepare("INSERT INTO subagents(agent_id,group_id,reserved_run_id,state,body,created_at) VALUES(?,?,?,'starting',?,?)")
+        .run(agentId, group.groupId, childRunId, this.seal("subagents", agentId, agent), now);
       this.repo.db.exec("COMMIT");
     } catch (error) { this.repo.db.exec("ROLLBACK"); throw error; }
     try {
@@ -262,6 +262,18 @@ export class SubagentService {
   async forkSelf(raw: unknown): Promise<Subagent> {
     const input = SubagentSpawnParams.extend({ sourceRunId: SubagentSpawnParams.shape.sourceRunId.unwrap() }).parse(raw);
     return this.spawn(input);
+  }
+
+  cellControls() {
+    return {
+      waitCell: (cellId: string, timeoutMs: number) => this.waitFor(cellId, timeoutMs),
+      sendCell: async (cellId: string, text: string) => {
+        const agent = this.get(cellId);
+        if (!agent.runId) throw new AuxError("conflict", "This cell has not started yet.");
+        await this.sendMessage(cellId, agent.runId, text);
+      },
+      cancelCell: async (cellId: string) => { await this.cancel(cellId); },
+    };
   }
 
   sendMessage(agentId: string, expectedRunId: string, text: string) {

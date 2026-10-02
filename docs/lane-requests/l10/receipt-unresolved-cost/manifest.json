@@ -1,0 +1,30 @@
+{
+  "applyAfter": "47148dd5",
+  "patchSha256": "45df4eebb8de3a3e858045d46fbb7a554f5236179d3680d7a57555fa1aed3972",
+  "files": {
+    "apps/runtime/src/services/budgets.ts": {
+      "baselineSha256": "950d3ba3aff89bf1cfcf8a9099078b21ced4a1591aebd4746719b7e80e434119",
+      "resultSha256": "8465b7c1e216fabb5a939ede9071a107571af51f10fc0d627164eb83e9642bc2"
+    },
+    "apps/runtime/src/services/night-shift.ts": {
+      "baselineSha256": "786fd8a47490445b0209510d800d488c854d67f0c879e140af5e5baeffc279c7",
+      "resultSha256": "083dd157d053d31d7d1471ae3cf8b551c35aba501b9925995d11a671a531bba2"
+    },
+    "packages/contracts/src/browser-runtime-api.ts": {
+      "baselineSha256": "aa2727ee2cce535ed91474510862bb6e702b0cdaf29a4714b8981890b8beccd6",
+      "resultSha256": "be43f8b47528b7a00a20de7273c52779db40dd6e47c94746b45b6cd6b9acfd27"
+    },
+    "apps/shell/src/features/morning-review/MorningReview.tsx": {
+      "baselineSha256": "4d0345604e43d947dcf3039eb147f65ca5e58c667d7ae899c4ff6374a05f725b",
+      "resultSha256": "b89fb63ae3b1fe4faac29cba814f92ab5135baaf6d143585755350a033c93a5b"
+    },
+    "apps/shell/src/features/morning-review/state.ts": {
+      "baselineSha256": "46ca96f738a20873d04b67879dc5c9b3cf7f4e9506a9e98c9e9f7acf9d56365b",
+      "resultSha256": "d62376ddb95e7e55e6285b97d6e5955d231e7cc8bbcd873787f43295849f0579"
+    },
+    "tests/unit/autonomy-services.test.ts": {
+      "baselineSha256": "c718ad575951b1d7d09945ca8191ead7df2191ea875144fb1039b1d91bb5af10",
+      "resultSha256": "80d2197a1171b8dc55192b85dea6c9744162101d2e528beeeeba2e437515d1f4"
+    }
+  }
+}

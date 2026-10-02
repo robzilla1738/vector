@@ -4,7 +4,9 @@ export function OvernightCard() {
   const summary = useNightReview(state => state.summary);
   if (!summary) return null;
   return <button className="overnight-card" onClick={() => void executeCommand("review-overnight")}>
-    Overnight: {summary.done} done · {summary.needsReview} needs review · ${summary.spentUsd.toFixed(2)} of ${summary.limitUsd.toFixed(2)}
+    Overnight: {summary.done} done · {summary.needsReview} needs review · {summary.costComplete
+      ? `$${summary.spentUsd.toFixed(2)} of $${summary.limitUsd.toFixed(2)}`
+      : `$${summary.spentUsd.toFixed(2)} known · cost pending; overnight work paused`}
   </button>;
 }
 export function MorningReviewInbox() {

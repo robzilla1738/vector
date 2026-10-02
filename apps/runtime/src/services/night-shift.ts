@@ -55,7 +55,7 @@ export class NightShiftService {
     const ledger = { spent: this.spentWindow(window.windowDate) };
     return { windowDate: window.windowDate, done: items.filter(item => item.status === "done").length,
       needsReview: items.filter(item => ["parked", "needs_review"].includes(item.status)).length,
-      spentUsd: ledger.spent, limitUsd: settings.nightlyUsd };
+      spentUsd: ledger.spent, limitUsd: settings.nightlyUsd, costComplete: this.windowCostComplete(window.windowDate) };
   }
   private spentTree(runId: string) {
     return lineageRuns(this.repo, runId).reduce((sum, id) => sum + this.budgets.spentRunUsd(id), 0);
@@ -64,6 +64,11 @@ export class NightShiftService {
     const roots = this.repo.db.prepare("SELECT run_id FROM night_queue WHERE window_date=? AND run_id IS NOT NULL").all(windowDate) as { run_id: string }[];
     const ids = new Set(roots.flatMap(row => lineageRuns(this.repo, row.run_id)));
     return [...ids].reduce((sum, id) => sum + this.budgets.spentRunUsd(id), 0);
+  }
+  private windowCostComplete(windowDate: string) {
+    const roots = this.repo.db.prepare("SELECT run_id FROM night_queue WHERE window_date=? AND run_id IS NOT NULL").all(windowDate) as { run_id: string }[];
+    const ids = new Set(roots.flatMap(row => lineageRuns(this.repo, row.run_id)));
+    return [...ids].every(id => this.budgets.runCostComplete(id));
   }
   private read(row: Record<string, unknown>): NightShiftItem {
     if (!this.repo.columnCipher) throw new AuxError("backend_unavailable", "Night shift requires protected Profile storage.");
@@ -144,6 +149,8 @@ export class NightShiftService {
     const item = this.read(row), settings = this.settings();
     if (!settings.enabled || !this.runtime.backgroundEnabled() || this.clock.now() >= Number(row.window_end)
       || !nightWindow(this.clock.now(), settings.start, settings.end).inside || item.createdBy !== "person" || item.status !== "running") throw new AuxError("permission_denied", "The overnight window is closed or this run needs review.");
+    if (!this.windowCostComplete(String(row.window_date)))
+      throw new AuxError("permission_denied", "Night shift needs review because a model call has unresolved cost.", { scope: "nightShift" });
     const spent = this.spentTree(runId);
     const total = { spent: this.spentWindow(String(row.window_date)) };
     if (spent >= Math.min(item.budgetUsd, settings.perTaskUsd) || total.spent >= settings.nightlyUsd)
@@ -181,6 +188,10 @@ export class NightShiftService {
       }
       if (!settings.enabled || !this.runtime.backgroundEnabled() || settings.requireAC && !onAC) {
         await this.parkActiveForReview("Overnight settings or power changed.");
+        await this.runtime.releaseActivity(); return;
+      }
+      if (!this.windowCostComplete(window.windowDate)) {
+        await this.parkActiveForReview("A model call has unresolved cost. Review spending before more overnight work.");
         await this.runtime.releaseActivity(); return;
       }
       const active = this.repo.db.prepare("SELECT status,window_end FROM night_queue WHERE status IN ('running','parked') LIMIT 1").get() as { status: string; window_end: number } | undefined;

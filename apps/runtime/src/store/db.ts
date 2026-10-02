@@ -356,9 +356,11 @@ CREATE TABLE subagent_groups(
   UNIQUE(parent_run_id));
 CREATE TABLE subagents(
   agent_id TEXT PRIMARY KEY, group_id TEXT NOT NULL REFERENCES subagent_groups(group_id), run_id TEXT REFERENCES runs(run_id),
+  reserved_run_id TEXT NOT NULL UNIQUE,
   state TEXT NOT NULL CHECK(state IN ('starting','running','completed','failed','cancelled','interrupted')),
   body TEXT NOT NULL, created_at INTEGER NOT NULL, ended_at INTEGER);
 CREATE INDEX idx_subagents_group_state ON subagents(group_id,state);
+CREATE UNIQUE INDEX idx_subagents_run ON subagents(run_id);
 CREATE TABLE site_user_css(
   profile_id TEXT NOT NULL, origin TEXT NOT NULL, css TEXT NOT NULL, updated_at INTEGER NOT NULL,
   PRIMARY KEY(profile_id,origin));

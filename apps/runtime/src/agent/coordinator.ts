@@ -667,9 +667,11 @@ export class RunCoordinator {
     for (const run of this.deps.repo.listRuns(200)) {
       if (["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) {
         await withRunAuthorityMutation(this.deps.repo, async () => {
-          run.status = "interrupted";
-          run.endedAt = Date.now();
-          this.deps.repo.saveRun(run);
+          const current = this.deps.repo.getRun(run.runId);
+          if (!current || !["queued", "planning", "running", "paused", "needs_input"].includes(current.status)) return;
+          current.status = "interrupted";
+          current.endedAt = Date.now();
+          this.deps.repo.saveRun(current);
         }, run.runId);
       }
     }

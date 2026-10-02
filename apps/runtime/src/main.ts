@@ -1,3 +1,5 @@
+import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
+import { withRunAuthorityMutation } from "./services/overnight-authority.js";
 import { overnightRoot } from "./services/run-lineage.js";
 import { saveAuthorizedModelCall } from "./services/model-call-authority.js";
 import { installOvernightAuthority } from "./services/overnight-authority.js";
@@ -173,6 +175,7 @@ async function takeoverOrDecline(
 }
 
 export async function startRuntime(processEnv = process.env): Promise<RuntimeHandle> {
+  const shutdownAdmission = new RuntimeShutdownAdmission();
   // `.env` in the data dir, then in the cwd — real environment variables
   // always win. The README promised this; nothing loaded it before.
   const configured = normalizeAuxEnvironment(processEnv);
@@ -1170,12 +1173,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       requiresTurn: (run, pageId) => run.config?.implementation !== "external-agent" ||
         !!run.config?.mentions?.length || turnMentions.ownedPages(run.runId).includes(pageId),
       sourceCheck: (runId, pageId) => {
+        shutdownAdmission.assertOpen();
         const before = repo.getRun(runId);
         const claim = pageClaims.activeForPage(pageId);
         const taskId = before?.config?.taskId;
         const taskRevision = before?.config?.taskRevision;
         const task = taskId ? new TaskService(repo, events).get(taskId) : undefined;
         const check = () => {
+          shutdownAdmission.assertOpen();
           const current = repo.getRun(runId);
           const currentClaim = pageClaims.activeForPage(pageId);
           if (!before || !current || !claim || claim.runId !== runId ||
@@ -1283,15 +1288,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       });
       return { cellId: agent.agentId };
     },
-    waitCell: (cellId, timeoutMs) => subagents.waitFor(cellId, timeoutMs),
-    sendCell: async (cellId, text) => {
-      const agent = subagents.get(cellId);
-      if (!agent.runId) throw new AuxError("conflict", "This cell has not started yet.");
-      subagents.sendMessage(cellId, agent.runId, text);
-    },
-    cancelCell: async (cellId) => {
-      subagents.cancel(cellId);
-    },
+    ...subagents.cellControls(),
   };
 
   // 06-X bash under the macOS seatbelt: writes confined to the same session
@@ -1686,39 +1683,49 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const contentExpiry = setInterval(() => { void pruneContent(); }, 60_000);
   memoryExpiry.unref();
   contentExpiry.unref();
-  const shutdown = async () => {
-    browserEgress?.close();
-    clearTimeout(observationMaintenanceTimer);
-    clearInterval(memoryExpiry);
-    clearInterval(contentExpiry);
-    calendarScanAbort.abort();
-    await calendarScan;
-    contentMemory?.close();
-    clearInterval(dueTimer);
-    if (closed) return;
-    closed = true;
-    process.off("unhandledRejection", onUnhandledRejection);
-    process.off("uncaughtException", onUncaughtException);
-    await runs.messages.stop();
-    await runs.coordinator.markInterrupted();
-    await stopFeatures();
-    await api.close().catch(() => {});
-    await invoke.dispose().catch(() => {});
-    await auxRecovery?.stop();
-    await drivers.aux?.disconnect().catch(() => {});
-    await drivers.chrome?.disconnect().catch(() => {});
-    await nativeCdp?.close();
-    await calendar.close();
-    mcpOAuth.close();
-    stopRunEndHooks();
-    hostSocket?.close();
-    tracer.close();
-    await privacyCheckpoint.close();
-    await observationMaintenance?.catch(() => {});
-    repo.close();
-  };
-  process.on("SIGTERM", () => void shutdown().then(() => process.exit(0)));
-  process.on("SIGINT", () => void shutdown().then(() => process.exit(0)));
+  const shutdown = runtimeShutdown({
+    quiesce: () => {
+      shutdownAdmission.beginShutdown();
+      closed = true;
+      clearTimeout(observationMaintenanceTimer);
+      clearInterval(memoryExpiry);
+      clearInterval(contentExpiry);
+      clearInterval(dueTimer);
+      calendarScanAbort.abort();
+      process.off("unhandledRejection", onUnhandledRejection);
+      process.off("uncaughtException", onUncaughtException);
+    },
+    retireAuthority: () => withRunAuthorityMutation(repo, async () => {}),
+    closeEgress: () => { browserEgress?.close(); },
+    disconnectAuthority: () => { hostSocket?.close(); },
+    stopMessages: () => runs.messages.stop(),
+    markInterrupted: () => runs.coordinator.markInterrupted(),
+    stopFeatures,
+    reportFailure: (stage, error) => {
+      console.error(`[aux-runtime] shutdown ${stage} failed:`, error);
+      safetyAudit.record({ kind: "runtime_shutdown", action: stage, status: "refused", reason: "Shutdown boundary was not acknowledged.", at: Date.now() });
+    },
+    cleanup: [
+      { stage: "calendar-scan", run: () => calendarScan },
+      { stage: "content-memory", run: () => { contentMemory?.close(); } },
+      { stage: "api", run: () => api.close() },
+      { stage: "invocations", run: () => invoke.dispose() },
+      { stage: "aux-recovery", run: async () => { await auxRecovery?.stop(); } },
+      { stage: "aux-driver", run: async () => { await drivers.aux?.disconnect(); } },
+      { stage: "chrome-driver", run: async () => { await drivers.chrome?.disconnect(); } },
+      { stage: "native-cdp", run: async () => { await nativeCdp?.close(); } },
+      { stage: "calendar", run: () => calendar.close() },
+      { stage: "mcp-oauth", run: () => { mcpOAuth.close(); } },
+      { stage: "run-hooks", run: stopRunEndHooks },
+      { stage: "host-socket", run: () => { hostSocket?.close(); } },
+      { stage: "tracer", run: () => { tracer.close(); } },
+      { stage: "privacy-checkpoint", run: () => privacyCheckpoint.close() },
+      { stage: "observations", run: async () => { await observationMaintenance; } },
+      { stage: "repository", run: () => repo.close() },
+    ],
+  });
+  process.on("SIGTERM", () => void shutdown().then(() => process.exit(0), () => process.exit(1)));
+  process.on("SIGINT", () => void shutdown().then(() => process.exit(0), () => process.exit(1)));
 
   // Process-level faults (P1-10). Node would otherwise exit on an unhandled
   // rejection, taking every tab and run with it and leaving runs 'running'
@@ -1749,14 +1756,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     } catch {
       /* best effort */
     }
-    void shutdown().finally(() => process.exit(1));
+    void shutdown().then(() => process.exit(1), () => process.exit(1));
   };
   process.on("unhandledRejection", onUnhandledRejection);
   process.on("uncaughtException", onUncaughtException);
   // The native host owns this helper. A closed authenticated socket means its
   // owner has exited; finish the journal and release the Profile database.
   hostSocket?.onClose?.(() => {
-    if (!closed) void shutdown().finally(() => process.exit(0));
+    if (!closed) void shutdown().then(() => process.exit(0), () => process.exit(1));
   });
 
   // recover from an unclean stop: anything still "live" never completed.

@@ -1,4 +1,5 @@
-import { withAttempts } from "../../apps/runtime/src/agent/model-client.js";
+import { randomUUID } from "node:crypto";
+import { modelCallCost, withAttempts } from "../../apps/runtime/src/agent/model-client.js";
 import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { openDb, Repo, RunCoordinator } from "@aux/runtime";
@@ -272,4 +273,21 @@ it("prices successful vision by the provider that actually served the attempt", 
   const run = await h.coordinator.start({ goal: "Inspect", pageIds: ["p1"] });
   await waitForRun(h.repo, run.runId);
   expect(recorded.filter(call => call.role === "vision")).toMatchObject([{ runId: run.runId, modelId: "served/vision", inputTokens: 23, outputTokens: 4 }]);
+});
+
+it("retains actual billed vision usage after cancellation without fabricating another attempt", async () => {
+  const h = harness({ observeOverride: obs({ elements: 0, text: "" }), structuredPlan: { status: "done", result: {} }, visionText: "" });
+  const recorded: Parameters<typeof h.coordinator.deps.recordModelCall>[0][] = [];
+  h.coordinator.deps.recordModelCall = async call => { recorded.push(call); h.repo.saveModelCall({ ...call, callId: randomUUID(), createdAt: Date.now(), costUsd: modelCallCost(call.modelId, call).costUsd }); };
+  h.generateText.mockImplementation(async () => {
+    const current = h.repo.listRuns(1)[0]!;
+    await h.coordinator.cancel(current.runId);
+    throw withAttempts(new Error("Vision cancelled after partial usage"), [{ modelId: "served/cancelled-vision", durationMs: 12, inputTokens: 17, outputTokens: 3, providerMetadata: { gateway: { cost: 0.125 } } }]);
+  });
+  const run = await h.coordinator.start({ goal: "Inspect", pageIds: ["p1"] });
+  await vi.waitFor(() => expect(recorded.filter(call => call.role === "vision")).toHaveLength(1));
+  expect(h.repo.getRun(run.runId)?.status).toBe("cancelled");
+  expect(recorded.filter(call => call.role === "vision")).toEqual([{ runId: run.runId, role: "vision", modelId: "served/cancelled-vision", durationMs: 12, inputTokens: 17, outputTokens: 3, providerMetadata: { gateway: { cost: 0.125 } }, error: "Vision cancelled after partial usage" }]);
+  expect(h.repo.listModelCalls(run.runId)).toMatchObject([{ modelId: "served/cancelled-vision", inputTokens: 17, outputTokens: 3, costUsd: 0.125 }]);
+  expect(h.executeCalls).toEqual([]);
 });

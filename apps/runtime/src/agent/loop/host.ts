@@ -877,10 +877,9 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           modelId: attempt.modelId ?? step.resolvedModelId ?? modelId() })));
     },
     onModelFailure: async ({ error, reservationId }) => {
-      // The Gateway may have tried other candidates before the final failure.
-      // Those attempts and the final request all count against the durable
-      // run cap, even though no assistant message was returned.
-      for (const attempt of attemptsOf(error)) {
+      // Known provider attempts include the final failed request.
+      const attempts = attemptsOf(error);
+      for (const attempt of attempts) {
         modelCalls++;
         await self.deps.recordModelCall({
           runId, role: "agent", modelId: attempt.modelId ?? modelId(),
@@ -890,11 +889,13 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           error: attempt.error ?? "model attempt failed before a usable response",
         });
       }
-      modelCalls++;
-      await self.deps.recordModelCall({ runId, role: "agent", modelId: modelId(), durationMs: 0,
-        error: error instanceof Error ? error.message : String(error) });
+      if (!attempts.length) {
+        modelCalls++;
+        await self.deps.recordModelCall({ runId, role: "agent", modelId: modelId(), durationMs: 0,
+          error: error instanceof Error ? error.message : String(error) });
+      }
       if (goalRun) self.deps.agentLoop?.goalBudget?.settle(runId, reservationId,
-        attemptsOf(error).map(attempt => ({ ...attempt, modelId: attempt.modelId ?? modelId() })));
+        attempts.map(attempt => ({ ...attempt, modelId: attempt.modelId ?? modelId() })));
     },
     providerOptions: self.deps.agentLoop?.providerOptions,
     webmcp: pageExposesWebmcp,

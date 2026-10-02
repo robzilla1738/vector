@@ -822,7 +822,8 @@ describe("runToolLoop (S5 host integration)", () => {
       Object.defineProperty(error, Symbol.for("aux.modelAttempts"), { value: [{
         durationMs: 5, modelId: "test/fallback", inputTokens: 12,
         error: "first route failed",
-      }] });
+      }, { durationMs: 7, modelId: "test/agent", inputTokens: 9, outputTokens: 2,
+        error: "final route failed" }] });
       throw error;
     };
     const h = coordinatorHarness(model);
@@ -833,6 +834,24 @@ describe("runToolLoop (S5 host integration)", () => {
     expect(h.repo.listModelCalls(run.runId)).toHaveLength(2);
     expect(h.repo.listModelCalls(run.runId).map((call) => call.modelId)).toEqual(["test/fallback", "test/agent"]);
     expect(h.repo.listModelCalls(run.runId).every((call) => !!call.error)).toBe(true);
+    expect(h.pages.execute).not.toHaveBeenCalled();
+  });
+
+  it("retains a cancelled provider's known billed attempt without a phantom requested-model row", async () => {
+    const model = new MockModelClient();
+    const h = coordinatorHarness(model);
+    model.toolCallStep = async () => {
+      await h.coordinator.cancel(h.repo.listRuns()[0]!.runId);
+      const error = new Error("provider cancelled after billed work");
+      Object.defineProperty(error, Symbol.for("aux.modelAttempts"), { value: [{ durationMs: 7,
+        modelId: "test/served", inputTokens: 9, outputTokens: 2,
+        providerMetadata: { gateway: { cost: "0.125" } }, error: "cancelled" }] });
+      throw error;
+    };
+    const run = await h.coordinator.start({ goal: "read", pageIds: ["p1"], chatId: "chat-1", engine: "agent-loop" });
+    await vi.waitFor(() => expect(h.repo.listModelCalls(run.runId)).toHaveLength(1));
+    expect(h.repo.listModelCalls(run.runId)[0]).toMatchObject({ modelId: "test/served", inputTokens: 9, outputTokens: 2 });
+    expect(h.repo.getRun(run.runId)?.status).toBe("cancelled");
     expect(h.pages.execute).not.toHaveBeenCalled();
   });
 

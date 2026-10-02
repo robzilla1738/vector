@@ -467,3 +467,33 @@ it("charges real descendant model and Guardian calls to the original person queu
     expect(repo.getRun(child.runId!)?.config?.nightShiftItemId).toBeUndefined();
   } finally { agents.close(); }
 });
+
+it("refuses subsequent overnight dispatch and another queued item when an actual provider failure has unresolved cost", async () => {
+  const { repo, db } = await fixture();
+  const { modelCallCost } = await import("../../apps/runtime/src/agent/model-client.js");
+  const { saveAuthorizedModelCall } = await import("../../apps/runtime/src/services/model-call-authority.js");
+  const { withRunAuthorityMutation } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const now = new Date(2026, 9, 1, 1).getTime();
+  repo.setSetting("nightShift", { enabled: true, start: "00:00", end: "08:00", nightlyUsd: 2, perTaskUsd: 0.5, requireAC: true });
+  let launches = 0;
+  const service = new NightShiftService(repo, { backgroundEnabled: () => true, onAC: async () => true,
+    releaseActivity: async () => {}, powerActivity: async () => ({ active: true }), cancel: async () => {}, resume: async () => {},
+    consolidate: async () => {}, reindex: async () => {}, start: async (_payload, item, runId) => {
+      launches++;
+      repo.saveRun({ runId, goal: "Provider accounting", pageIds: [], status: "running", createdAt: now, config: { nightShiftItemId: item.id } });
+      return runId;
+    } }, new BudgetsService(db, () => ({})), createClock(1, () => now));
+  const first = service.queue({ payload: { kind: "goal", goalId: "first" }, budgetUsd: 0.4 });
+  await service.tick();
+  const next = service.queue({ payload: { kind: "goal", goalId: "next" }, budgetUsd: 0.4 });
+  const runId = service.get(first.id).runId!;
+  await saveAuthorizedModelCall(repo, { callId: "unknown-billed-provider", runId, role: "agent", modelId: "served/provider",
+    durationMs: 12, error: "Provider failed without usage", ...modelCallCost("served/provider", {}), createdAt: now });
+  expect(repo.listModelCalls(runId)).toHaveLength(1);
+  expect(repo.listModelCalls(runId)[0]!.costUsd).toBeUndefined();
+  expect(service.summary()).toMatchObject({ costComplete: false, spentUsd: 0 });
+  await expect(service.assertDispatch(runId)).rejects.toThrow(/unresolved cost/);
+  await withRunAuthorityMutation(repo, async () => { repo.saveRun({ ...repo.getRun(runId)!, status: "failed" }); }, runId);
+  await service.tick();
+  expect(launches).toBe(1); expect(service.get(next.id).status).toBe("queued");
+});

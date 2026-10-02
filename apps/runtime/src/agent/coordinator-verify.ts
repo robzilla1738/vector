@@ -358,18 +358,17 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
     return parsed.success ? parsed.data : null;
   } catch (e) {
     if (modelReturned || (!modelStarted && e instanceof AuxError && e.code === "permission_denied")) throw e;
-    if (args.signal.aborted) throw e;
     const msg = e instanceof Error ? e.message : String(e);
     const skip = (e instanceof AuxError && e.code === "capability_unsupported") || /screenshots are not available|vision is not available/i.test(msg);
-    if (!skip && modelStarted) {
-      const attempts = attemptsOf(e);
+    const attempts = attemptsOf(e);
+    if (modelStarted && (attempts.length || (!skip && !args.signal.aborted))) {
       for (const attempt of attempts.length ? attempts : [{ durationMs: Date.now() - started }]) {
         args.onModelCall?.();
         await self.deps.recordModelCall({ ...attempt, runId: args.runId, role: "vision",
           modelId: attempt.modelId ?? args.modelId, error: attempt.error ?? msg });
       }
     }
-
+    if (args.signal.aborted) throw e;
     return null;
   }
 }

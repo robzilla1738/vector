@@ -202,3 +202,76 @@ it("persists trusted child lineage before launch without fabricating a child nig
     expect(lineageRuns(f.repo, f.parent.runId)).toContain(child.runId);
   } finally { f.close(); }
 });
+
+it("actual cell controls wait for steer and cancel authority acknowledgements and propagate refusal", async () => {
+  const f = fixture();
+  try {
+    const group = f.service.createGroup({ parentRunId: f.parent.runId, tokenBudget: 3000, costBudgetUsd: 1, timeBudgetMs: 60_000 });
+    const child = await f.service.spawn({ groupId: group.groupId, goal: "One", pageIds: ["one"], profile: "default", tokenAllocation: 1000, costAllocationUsd: 0.2 });
+    const controls = f.service.cellControls();
+    let acknowledgeSteer!: () => void;
+    const originalSteer = f.runs.messages.steer.bind(f.runs.messages);
+    vi.spyOn(f.runs.messages, "steer").mockImplementation(async input => {
+      await new Promise<void>(resolve => { acknowledgeSteer = resolve; });
+      return originalSteer(input);
+    });
+    let sent = false;
+    const sending = controls.sendCell(child.agentId, "Check source").then(() => { sent = true; });
+    await vi.waitFor(() => expect(acknowledgeSteer).toBeTypeOf("function"));
+    expect(sent).toBe(false); expect(f.messages).toEqual([]);
+    acknowledgeSteer(); await sending;
+    expect(sent).toBe(true); expect(f.messages).toHaveLength(1);
+    vi.spyOn(f.runs.messages, "steer").mockRejectedValue(new Error("Native retirement was refused"));
+    await expect(controls.sendCell(child.agentId, "Again")).rejects.toThrow("Native retirement was refused");
+    let acknowledgeCancel!: () => void;
+    const originalCancel = f.runs.cancel.bind(f.runs);
+    vi.spyOn(f.runs, "cancel").mockImplementation(async runId => {
+      await new Promise<void>(resolve => { acknowledgeCancel = resolve; });
+      return originalCancel(runId);
+    });
+    let cancelled = false;
+    const cancelling = controls.cancelCell(child.agentId).then(() => { cancelled = true; });
+    await vi.waitFor(() => expect(acknowledgeCancel).toBeTypeOf("function"));
+    expect(cancelled).toBe(false); expect(f.service.get(child.agentId).state).toBe("running");
+    acknowledgeCancel(); await cancelling;
+    expect(cancelled).toBe(true); expect(f.service.get(child.agentId).state).toBe("cancelled");
+  } finally { f.close(); }
+});
+
+it("uses indexed exact family provenance despite more than 4096 unrelated historical reservations", async () => {
+  const f = fixture();
+  try {
+    f.repo.saveRun({ ...f.parent, runId: "unrelated-history", pageIds: [] });
+    const history = f.service.createGroup({ parentRunId: "unrelated-history", tokenBudget: 2000, costBudgetUsd: 0.5, timeBudgetMs: 60_000 });
+    const group = f.service.createGroup({ parentRunId: f.parent.runId, tokenBudget: 2000, costBudgetUsd: 0.5, timeBudgetMs: 60_000 });
+    const child = await f.service.spawn({ groupId: group.groupId, goal: "Relevant", pageIds: ["one"], profile: "read_only", tokenAllocation: 1000, costAllocationUsd: 0.2 });
+    f.db.exec("BEGIN");
+    const insert = f.db.prepare("INSERT INTO subagents(agent_id,group_id,reserved_run_id,state,body,created_at) VALUES(?,?,?,'completed',?,?)");
+    for (let i = 0; i < 4100; i++) {
+      const agentId = `historical-${i}`, runId = `historical-run-${i}`;
+      const body = { ...child, agentId, groupId: history.groupId, runId };
+      insert.run(agentId, history.groupId, runId, f.repo.protectRecordField("subagents", [agentId], "body", JSON.stringify(body)), Date.now());
+    }
+    f.db.exec("COMMIT");
+    const reveal = vi.spyOn(f.repo, "revealRecordField");
+    expect(runRoot(f.repo, child.runId!)).toBe(f.parent.runId);
+    expect(lineageRuns(f.repo, f.parent.runId)).toEqual([f.parent.runId, child.runId]);
+    expect(reveal.mock.calls.length).toBeLessThan(20);
+    expect(f.db.prepare("SELECT COUNT(*) AS total FROM subagents").get()).toMatchObject({ total: 4101 });
+    f.repo.saveModelCall({ callId: "retained-child-cost", runId: child.runId, role: "agent", modelId: "served", durationMs: 1, costUsd: 0.25, createdAt: Date.now() });
+    f.db.prepare("UPDATE subagents SET state='completed' WHERE agent_id=?").run(child.agentId);
+    expect(lineageRuns(f.repo, f.parent.runId).flatMap(id => f.repo.listModelCalls(id))).toMatchObject([{ costUsd: 0.25 }]);
+    expect(() => lineageRuns(f.repo, "unrelated-history")).toThrow(/bounded authority/);
+  } finally { f.close(); }
+});
+
+it("refuses a reservation index that no longer matches its protected run provenance", async () => {
+  const f = fixture();
+  try {
+    const group = f.service.createGroup({ parentRunId: f.parent.runId, tokenBudget: 2000, costBudgetUsd: 0.5, timeBudgetMs: 60_000 });
+    const child = await f.service.spawn({ groupId: group.groupId, goal: "Relevant", pageIds: ["one"], profile: "read_only", tokenAllocation: 1000, costAllocationUsd: 0.2 });
+    f.db.prepare("UPDATE subagents SET reserved_run_id='foreign-reservation' WHERE agent_id=?").run(child.agentId);
+    expect(() => runRoot(f.repo, child.runId!)).toThrow(/provenance changed/);
+    expect(() => lineageRuns(f.repo, f.parent.runId)).toThrow(/provenance changed/);
+  } finally { f.close(); }
+});

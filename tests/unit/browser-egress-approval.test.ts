@@ -11,7 +11,7 @@ import { safetyMethods } from "../../apps/runtime/src/api/methods/safety.js";
 const databases: ReturnType<typeof openDb>[] = [];
 afterEach(() => { for (const db of databases.splice(0)) db.close(); });
 
-function fixture() {
+function fixture(statusBoundary?: () => Promise<void>) {
   const db = openDb(":memory:"); databases.push(db);
   const approvals = new ApprovalStore(db), suspensions = new SuspensionStore(db);
   const listeners = new Set<(event: AuxEvent) => void>();
@@ -29,7 +29,7 @@ function fixture() {
   const rules: OriginRule[] = [];
   const approve = browserEgressApproval({
     profileId: "profile", events, suspensions, run: () => run,
-    setStatus: (_, status, message) => { run.status = status; run.statusMessage = message; events.emit("run.status", { status }, "run"); },
+    setStatus: async (_, status, message) => { await statusBoundary?.(); run.status = status; run.statusMessage = message; events.emit("run.status", { status }, "run"); },
     decide: { approvals, journal: new DecisionJournal(db), managedRules: () => [], userRules: () => rules,
       localCeiling: () => "always", audit: () => {} },
   });
@@ -92,4 +92,40 @@ describe("browser transmission approval", () => {
     expect(f.approvals.pending("thread")).toEqual([]);
     expect(f.listeners.size).toBe(0);
   });
+});
+
+it("waits for actual asynchronous status retirement before advertising confirmation", async () => {
+  let release!: () => void;
+  const f = fixture(() => new Promise<void>(resolve => { release = resolve; }));
+  const pending = f.approve(f.input);
+  await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+  expect(f.emitted.some(event => event.type === "safety.confirmation")).toBe(false);
+  expect(f.listeners.size).toBe(0);
+  release();
+  await vi.waitFor(() => expect(f.emitted.some(event => event.type === "safety.confirmation")).toBe(true));
+  f.answer(true); expect(await pending).toBe(true);
+});
+
+it("cancels the exact approval and suspension when retirement rejects before a confirmation waiter exists", async () => {
+  const f = fixture(async () => { throw new Error("Native retirement was not acknowledged"); });
+  await expect(f.approve(f.input)).rejects.toThrow("Native retirement was not acknowledged");
+  expect(f.suspensions.pending("run")).toBeUndefined();
+  expect(f.approvals.pending("thread")).toEqual([]);
+  expect(f.listeners.size).toBe(0);
+  expect(f.emitted.some(event => event.type === "safety.confirmation")).toBe(false);
+});
+
+
+it("does not advertise an aborted browser request after its held status retirement completes", async () => {
+  let release!: () => void;
+  let changes = 0;
+  const f = fixture(async () => { if (++changes === 1) await new Promise<void>(resolve => { release = resolve; }); });
+  const pending = f.approve(f.input);
+  await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+  f.abort.abort(); release();
+  expect(await pending).toBe(false);
+  expect(f.emitted.some(event => event.type === "safety.confirmation")).toBe(false);
+  expect(f.listeners.size).toBe(0); expect(f.suspensions.pending("run")).toBeUndefined();
+  expect(f.approvals.pending("thread")).toEqual([]);
+  expect(f.run.status).toBe("running");
 });

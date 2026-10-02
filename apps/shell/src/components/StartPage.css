@@ -37,3 +37,10 @@
 .home-connection { margin-top:var(--space-6); text-align:center; }
 @container start-page (max-width:420px) { .home-welcome h1 { font-size:var(--fs-xl); } .home-model-setup { align-items:stretch; } .home-model-setup .btn { width:100%; } }
 }
+
+@layer components {
+/* Actual pending/restored turns become the primary reading surface. Empty home
+   keeps its welcome; browser context and secondary work stay available. */
+.aux-home .start-inner:has(.home-ask .conversation-turn) { padding-top:clamp(var(--space-6), 6vh, 56px); }
+.aux-home .start-inner:has(.home-ask .conversation-turn) .home-welcome { display:none; }
+}

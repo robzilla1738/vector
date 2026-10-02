@@ -56,7 +56,7 @@ export const BrowserRuntimeResultSchemas = {
   "recorder.discard": Ok,
   "nightShift.propose": NightShiftItemSchema,
   "nightShift.queue": NightShiftItemSchema,
-  "nightShift.summary": z.object({ windowDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), done: z.number().int().nonnegative(), needsReview: z.number().int().nonnegative(), spentUsd: z.number().finite().nonnegative(), limitUsd: z.number().finite().positive() }).strict(),
+  "nightShift.summary": z.object({ windowDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), done: z.number().int().nonnegative(), needsReview: z.number().int().nonnegative(), spentUsd: z.number().finite().nonnegative(), limitUsd: z.number().finite().positive(), costComplete: z.boolean() }).strict(),
   "nightShift.list": z.array(NightShiftItemSchema).max(1000),
   "nightShift.review": NightShiftItemSchema,
 } as const;

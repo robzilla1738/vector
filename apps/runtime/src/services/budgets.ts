@@ -62,6 +62,11 @@ export class BudgetsService {
     return this.sum("SELECT COALESCE(SUM(cost_usd),0) s FROM model_calls WHERE run_id=?", runId);
   }
 
+  /** Missing reported/priceable usage is unresolved, never a zero-cost bill. */
+  runCostComplete(runId: string): boolean {
+    return !this.db.prepare("SELECT 1 FROM model_calls WHERE run_id=? AND cost_usd IS NULL LIMIT 1").get(runId);
+  }
+
   /** All model-call cost across every run since local midnight. */
   spentDayUsd(now = Date.now()): number {
     return this.sum("SELECT COALESCE(SUM(cost_usd),0) s FROM model_calls WHERE created_at>=?", dayStartMs(now));

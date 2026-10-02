@@ -17,6 +17,12 @@ async function choose(t, name, text, index = 0) {
 async function command(t, text) {
   await t.ax.key('command+k', 'hid'); await t.ax.type(text); await t.ax.key('return', 'hid');
 }
+async function startRecording(t) {
+  const reveal = shell('Show sidebar');
+  if ((await t.ax.query(reveal)).length) await t.ax.press(reveal);
+  await t.ax.waitFor(shell('Record a demonstration'));
+  await t.ax.press(shell('Record a demonstration'));
+}
 async function exportRecording(t, name) {
   const path = join(t.app.userDataDir, `${name}.json`);
   await t.ax.press(shell('Export demonstration'));
@@ -64,7 +70,7 @@ async function recordAndReview(t, workspaceId, fixture, title = 'Aux company Ski
   const task = await t.rpc('tasks.create', { workspaceId, title: 'Company submission fixture', objective: 'Submit the independently reviewed company variable',
     criteria: [{ criterionId: 'done', description: 'Company appears in Done', verification: 'manual' }],
     resources: [{ resourceId: 'company-tab', kind: 'page', locator: opened.pageId, label: 'Company form', access: 'read' }] });
-  await t.ax.press(shell('Record a demonstration'));
+  await startRecording(t);
   await t.ax.type('Acme', page('Company'));
   await t.ax.click(page('Continue', 'AXButton'));
   await t.ax.waitFor(page('Send company', 'AXButton'));
@@ -124,7 +130,7 @@ async function demonstration(t) {
     const opened = await t.rpc('pages.open', { url: `${t.fixture.url}/demo-secret`, activate: true });
     await t.ax.waitFor({ ...page('Fixture password'), subrole: 'AXSecureTextField' });
     const before = (await t.rpc('pages.list')).find(item => item.pageId === opened.pageId);
-    await t.ax.press(shell('Record a demonstration'));
+    await startRecording(t);
     for (const [name, role, text] of [['Fixture password', 'AXTextField', 'synthetic-password-931'], ['Fixture OTP', 'AXTextField', 'synthetic-otp-822'], ['Fixture card', 'AXTextField', 'synthetic-card-744']]) await t.ax.type(text, { ...page(name, role), ...(name === 'Fixture password' ? { subrole: 'AXSecureTextField' } : {}) });
     await t.ax.click(page('Ambiguous', 'AXButton'));
     await t.ax.press(shell('Stop'));
@@ -310,5 +316,5 @@ async function overnight(t) {
 }
 export const journeys = [
   { journey: { id: 'demonstration-skill', title: 'Record, review, test and repair a real multi-page Skill', features: ['demonstrationSkills'], devAcceptance: ['demonstrationSkills', 'automations'], needs: ['accessibility', 'screen-recording'], model: 'none', launch: {}, timeoutMs: 240000, owner: 'L11' }, run: demonstration },
-  { journey: { id: 'overnight-review', title: 'Queue real overnight work and review actual priced budget refusal', features: ['overnightReview'], devAcceptance: ['overnightReview', 'memory', 'goals'], needs: ['accessibility', 'screen-recording'], model: 'loopback', launch: {}, timeoutMs: 240000, owner: 'L11' }, run: overnight },
+  { journey: { id: 'overnight-review', title: 'Queue real overnight work and review actual priced budget refusal', features: ['overnightReview'], devAcceptance: ['overnightReview', 'automations', 'memory', 'goals'], needs: ['accessibility', 'screen-recording'], model: 'loopback', launch: {}, timeoutMs: 240000, owner: 'L11' }, run: overnight },
 ];

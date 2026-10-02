@@ -4,37 +4,37 @@ import type { Repo } from "../store/repo.js";
 const MAX_LINEAGE = 32;
 const MAX_DESCENDANTS = 4096;
 const ACTIVE = new Set(["queued", "planning", "running", "paused", "needs_input"]);
+const EDGE_SELECT = `SELECT a.agent_id,a.group_id,a.run_id,a.reserved_run_id,a.body,a.state,
+  g.parent_run_id,g.body AS group_body,g.state AS group_state
+  FROM subagents a JOIN subagent_groups g ON g.group_id=a.group_id`;
+type EdgeRow = { agent_id: string; group_id: string; run_id: string | null; reserved_run_id: string;
+  body: string; state: string; parent_run_id: string; group_body: string; group_state: string };
 
-function edges(repo: Repo) {
-  const rows = repo.db.prepare(`SELECT a.agent_id,a.group_id,a.run_id,a.body,a.state,g.parent_run_id,g.body AS group_body,g.state AS group_state
-    FROM subagents a JOIN subagent_groups g ON g.group_id=a.group_id LIMIT ?`).all(MAX_DESCENDANTS + 1) as {
-      agent_id: string; group_id: string; run_id: string | null; body: string; state: string;
-      parent_run_id: string; group_body: string; group_state: string;
-    }[];
-  if (rows.length > MAX_DESCENDANTS) throw new AuxError("permission_denied", "Run lineage exceeds its bounded authority limit.");
-  return rows.map(row => {
-    const agent = SubagentSchema.parse(JSON.parse(repo.revealRecordField("subagents", [row.agent_id], "body", row.body)));
-    const group = SubagentGroupSchema.parse(JSON.parse(repo.revealRecordField("subagent_groups", [row.group_id], "body", row.group_body)));
-    if (agent.agentId !== row.agent_id || agent.groupId !== row.group_id || group.groupId !== row.group_id || group.parentRunId !== row.parent_run_id
-      || (row.run_id && agent.runId && row.run_id !== agent.runId)) throw new AuxError("permission_denied", "Run lineage provenance changed.");
-    return { runId: row.run_id ?? agent.runId, parentRunId: group.parentRunId, active: row.group_state === "active" && ["starting", "running"].includes(row.state) && Date.now() < group.deadlineAt };
-  });
+function edge(repo: Repo, row: EdgeRow) {
+  const agent = SubagentSchema.parse(JSON.parse(repo.revealRecordField("subagents", [row.agent_id], "body", row.body)));
+  const group = SubagentGroupSchema.parse(JSON.parse(repo.revealRecordField("subagent_groups", [row.group_id], "body", row.group_body)));
+  if (agent.agentId !== row.agent_id || agent.groupId !== row.group_id || group.groupId !== row.group_id
+    || group.parentRunId !== row.parent_run_id || !agent.runId || agent.runId !== row.reserved_run_id
+    || (row.run_id !== null && row.run_id !== row.reserved_run_id))
+    throw new AuxError("permission_denied", "Run lineage provenance changed.");
+  return { runId: row.reserved_run_id, parentRunId: group.parentRunId,
+    active: row.group_state === "active" && ["starting", "running"].includes(row.state) && Date.now() < group.deadlineAt };
 }
 
-/** Trusted encrypted reservation plus durable parent/group membership, never a child queue identity. */
+/** Indexed trusted reservation lookup includes children before their run row exists. */
 export function runRoot(repo: Repo, runId: string, requireActive = false): string {
-  const membership = edges(repo), visited = new Set<string>();
+  const visited = new Set<string>();
   let current = runId;
   for (let depth = 0; depth < MAX_LINEAGE; depth++) {
     if (visited.has(current)) throw new AuxError("permission_denied", "Run lineage contains a cycle.");
     visited.add(current);
-    const parents = membership.filter(edge => edge.runId === current);
-    if (parents.length > 1) throw new AuxError("permission_denied", "Run lineage is ambiguous.");
-    if (!parents.length) return current;
-    const edge = parents[0]!;
-    if (requireActive && (!edge.active || !ACTIVE.has(repo.getRun(edge.parentRunId)?.status ?? "missing")))
+    const rows = repo.db.prepare(`${EDGE_SELECT} WHERE a.run_id=? OR a.reserved_run_id=? LIMIT 2`).all(current, current) as EdgeRow[];
+    if (rows.length > 1) throw new AuxError("permission_denied", "Run lineage is ambiguous.");
+    if (!rows.length) return current;
+    const parent = edge(repo, rows[0]!);
+    if (requireActive && (!parent.active || !ACTIVE.has(repo.getRun(parent.parentRunId)?.status ?? "missing")))
       throw new AuxError("permission_denied", "The parent run or subagent group is no longer active.");
-    current = edge.parentRunId;
+    current = parent.parentRunId;
   }
   throw new AuxError("permission_denied", "Run lineage exceeds its depth limit.");
 }
@@ -44,16 +44,25 @@ export function overnightRoot(repo: Repo, runId: string): string | undefined {
   return repo.getRun(root)?.config?.nightShiftItemId ? root : undefined;
 }
 
-/** Historical membership remains charged after child/group completion. */
+/** Scoped historical membership remains charged after child/group completion. */
 export function lineageRuns(repo: Repo, runId: string): string[] {
-  const membership = edges(repo), result = new Set([runId]);
+  runRoot(repo, runId);
+  const result = new Set([runId]);
+  let frontier = [runId];
   for (let depth = 0; depth < MAX_LINEAGE; depth++) {
-    const next = membership.filter(edge => edge.runId && result.has(edge.parentRunId) && !result.has(edge.runId));
-    if (!next.length) {
-      for (const id of result) runRoot(repo, id);
-      return [...result];
+    const next: string[] = [];
+    for (const parentRunId of frontier) {
+      const remaining = MAX_DESCENDANTS - result.size;
+      const rows = repo.db.prepare(`${EDGE_SELECT} WHERE g.parent_run_id=? LIMIT ?`).all(parentRunId, remaining + 1) as EdgeRow[];
+      if (rows.length > remaining) throw new AuxError("permission_denied", "Run descendants exceed their bounded authority limit.");
+      for (const row of rows) {
+        const child = edge(repo, row);
+        if (result.has(child.runId)) throw new AuxError("permission_denied", "Run lineage contains a cycle or ambiguous membership.");
+        result.add(child.runId); next.push(child.runId);
+      }
     }
-    for (const edge of next) result.add(edge.runId!);
+    if (!next.length) return [...result];
+    frontier = next;
   }
   throw new AuxError("permission_denied", "Run descendants exceed their depth limit.");
 }

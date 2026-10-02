@@ -1,0 +1,38 @@
+{
+  "status": "source-only UX improvement request; no native visual closure",
+  "patchSha256": "be3d86df5f19abf16a4be6b8fd117922c13fe42c52e1725091cd224fe03f72ec",
+  "files": [
+    {
+      "path": "apps/shell/src/components/StartPage.css",
+      "baselineSha256": "8ecf036ba46c164fe2d9e5ae3327f0d7dad57013c2224c58bf293ea129085dc2",
+      "resultSha256": "22362c2bcbc7e5e0b8d08fb3745311536672b40af87ad6b8ed32050461d7dbf5"
+    },
+    {
+      "path": "apps/shell/src/components/HomeAsk.css",
+      "baselineSha256": "ae2166f3e9dd9b6c6ae2e113a0579c71efacf38b9ecf81957ba319da1b0bf9a8",
+      "resultSha256": "50d2634a518bf93017accbf28d9559418b1c7321fa8071a2d1e126137378af99"
+    }
+  ],
+  "evidence": "Current root HomeAsk max-height240px + welcoming header retained above actual conversation-turn articles. Native32e4 first-chat has no pixels, so this is an exact source defect/proposal, not capture approval.",
+  "behavior": [
+    "empty home retains Aux welcome and primary composer",
+    "only actual conversation-turn content (including truthful pending turn) hides redundant welcome",
+    "active thread max-height min56vh/560px and native scroll; bounded small-window reading room",
+    "composer overflow/Popover/context/recents/registered actions unchanged",
+    "no animation/blur added; uses existing theme/spacing tokens, same rules under RM/RT"
+  ],
+  "verification": {
+    "apply": true,
+    "reverseApply": true,
+    "resultBytes": true,
+    "fullStylesheetPostCSSParse": true,
+    "nativeVisualClosure": false
+  },
+  "nextCaptures": [
+    "empty normal home",
+    "first submitted/streaming turn and long reply",
+    "restored draft/chat",
+    "narrow280px rail and narrow home with context open",
+    "L/D/LR/DR + actual RM preference brackets"
+  ]
+}

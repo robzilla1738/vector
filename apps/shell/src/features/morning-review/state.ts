@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import { type NightShiftItem } from "@aux/contracts";
+import { type MethodResult, type NightShiftItem } from "@aux/contracts";
 import { call } from "../../store";
-export const useNightReview = create<{ items: NightShiftItem[]; summary: { windowDate: string; done: number; needsReview: number; spentUsd: number; limitUsd: number } | null; inboxOpen: boolean; queueOpen: boolean; busy: boolean; error: string }>(() => ({ items: [], summary: null, inboxOpen: false, queueOpen: false, busy: false, error: "" }));
+export const useNightReview = create<{ items: NightShiftItem[]; summary: MethodResult<"nightShift.summary"> | null; inboxOpen: boolean; queueOpen: boolean; busy: boolean; error: string }>(() => ({ items: [], summary: null, inboxOpen: false, queueOpen: false, busy: false, error: "" }));
 let life = 0;
 export const nightReviewGeneration = () => life;
 export function bootNightReview() {

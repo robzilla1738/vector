@@ -72,9 +72,16 @@ export function overnightRuntime(s: Services, power: NightPower): NightShiftRunt
       const run = s.repo.getRun(runId);
       if (!run || !["paused", "needs_input"].includes(run.status) || !run.config?.nightShiftItemId)
         throw new AuxError("conflict", "This overnight action is no longer parked for review.");
-      const config = { ...run.config }; delete config.nightShiftItemId;
-      await withOvernightAuthorityMutation(s.repo, async () => { s.repo.saveRun({ ...run, config }); }, runId);
-      s.events.emit("run.updated", { run: { ...run, config } }, runId);
+      const itemId = run.config.nightShiftItemId;
+      await withOvernightAuthorityMutation(s.repo, async () => {
+        const current = s.repo.getRun(runId);
+        if (!current || !["paused", "needs_input"].includes(current.status) || current.config?.nightShiftItemId !== itemId)
+          throw new AuxError("conflict", "This overnight action changed while waiting for review authority.");
+        const config = { ...current.config }; delete config.nightShiftItemId;
+        const resumed = { ...current, config };
+        s.repo.saveRun(resumed);
+        s.events.emit("run.updated", { run: resumed }, runId);
+      }, runId);
       // The foreground sheet resolves the actual suspension; this transition grants no one-off approval.
     },
     consolidate: workspaceId => {

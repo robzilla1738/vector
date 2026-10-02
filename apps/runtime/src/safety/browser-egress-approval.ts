@@ -11,7 +11,7 @@ export function browserEgressApproval(deps: {
   suspensions: SuspensionStore;
   events: EventBus;
   run(runId: string): Run | undefined;
-  setStatus(runId: string, status: Run["status"], message: string): void;
+  setStatus(runId: string, status: Run["status"], message: string): void | Promise<void>;
 }): BrowserEgressDeps["approve"] {
   return async input => {
     if (input.signal.aborted || deps.suspensions.pending(input.runId)) return false;
@@ -39,7 +39,25 @@ export function browserEgressApproval(deps: {
       runId: input.runId, turnId: input.runId, threadId: input.threadId, kind: "approval",
       request: { kind: "approval", approvalId, ...copy },
     });
-    deps.setStatus(input.runId, "needs_input", copy.instruction);
+    try {
+      await deps.setStatus(input.runId, "needs_input", copy.instruction);
+    } catch (error) {
+      cancelApproval();
+      if (deps.suspensions.pending(input.runId)?.suspensionId === suspension.suspensionId)
+        deps.suspensions.resolve(suspension.suspensionId, "cancelled");
+      throw error;
+    }
+    const currentRun = deps.run(input.runId);
+    if (input.signal.aborted || !currentRun || !["running", "planning", "needs_input"].includes(currentRun.status)
+      || deps.suspensions.pending(input.runId)?.suspensionId !== suspension.suspensionId) {
+      cancelApproval();
+      if (deps.suspensions.pending(input.runId)?.suspensionId === suspension.suspensionId) {
+        deps.suspensions.resolve(suspension.suspensionId, "cancelled");
+        if (currentRun?.status === "needs_input")
+          await deps.setStatus(input.runId, "running", "The browser request expired without being sent.");
+      }
+      return false;
+    }
     deps.events.emit("safety.confirmation", {
       approvalId, turnId: input.runId, threadId: input.threadId,
       instruction: copy.instruction, action: "browser.request", origin: input.destinationOrigin,
@@ -71,7 +89,7 @@ export function browserEgressApproval(deps: {
       if (deps.suspensions.pending(input.runId)?.suspensionId === suspension.suspensionId) {
         deps.suspensions.resolve(suspension.suspensionId, "expired");
         if (deps.run(input.runId)?.status === "needs_input")
-          deps.setStatus(input.runId, "running", "The browser request expired without being sent.");
+          await deps.setStatus(input.runId, "running", "The browser request expired without being sent.");
       }
       return false;
     }

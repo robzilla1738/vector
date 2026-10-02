@@ -1,0 +1,103 @@
+--- a/apps/runtime/src/main.ts
++++ b/apps/runtime/src/main.ts
+@@ -1,4 +1,4 @@
+-import { runtimeShutdown } from "./services/runtime-shutdown.js";
++import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
+ import { withRunAuthorityMutation } from "./services/overnight-authority.js";
+ import { overnightRoot } from "./services/run-lineage.js";
+ import { saveAuthorizedModelCall } from "./services/model-call-authority.js";
+@@ -175,6 +175,7 @@
+ }
+ 
+ export async function startRuntime(processEnv = process.env): Promise<RuntimeHandle> {
++  const shutdownAdmission = new RuntimeShutdownAdmission();
+   // `.env` in the data dir, then in the cwd — real environment variables
+   // always win. The README promised this; nothing loaded it before.
+   const configured = normalizeAuxEnvironment(processEnv);
+@@ -1172,12 +1173,14 @@
+       requiresTurn: (run, pageId) => run.config?.implementation !== "external-agent" ||
+         !!run.config?.mentions?.length || turnMentions.ownedPages(run.runId).includes(pageId),
+       sourceCheck: (runId, pageId) => {
++        shutdownAdmission.assertOpen();
+         const before = repo.getRun(runId);
+         const claim = pageClaims.activeForPage(pageId);
+         const taskId = before?.config?.taskId;
+         const taskRevision = before?.config?.taskRevision;
+         const task = taskId ? new TaskService(repo, events).get(taskId) : undefined;
+         const check = () => {
++          shutdownAdmission.assertOpen();
+           const current = repo.getRun(runId);
+           const currentClaim = pageClaims.activeForPage(pageId);
+           if (!before || !current || !claim || claim.runId !== runId ||
+@@ -1682,6 +1685,7 @@
+   contentExpiry.unref();
+   const shutdown = runtimeShutdown({
+     quiesce: () => {
++      shutdownAdmission.beginShutdown();
+       closed = true;
+       clearTimeout(observationMaintenanceTimer);
+       clearInterval(memoryExpiry);
+--- a/apps/runtime/src/services/runtime-shutdown.ts
++++ b/apps/runtime/src/services/runtime-shutdown.ts
+@@ -1,3 +1,14 @@
++import { AuxError } from "@aux/contracts";
++
++/** Persists admission closure after the retirement barrier itself is released. */
++export class RuntimeShutdownAdmission {
++  private shuttingDown = false;
++  beginShutdown(): void { this.shuttingDown = true; }
++  assertOpen(): void {
++    if (this.shuttingDown) throw new AuxError("permission_denied", "Browser permission authority is closed while the runtime shuts down.");
++  }
++}
++
+ /** One shutdown owns retirement and cleanup; refused retirement never becomes an ACK. */
+ export function runtimeShutdown(deps: {
+   quiesce(): void;
+--- a/tests/unit/native-permission-producer.test.ts
++++ b/tests/unit/native-permission-producer.test.ts
+@@ -1,3 +1,4 @@
++import { RuntimeShutdownAdmission } from "../../apps/runtime/src/services/runtime-shutdown.js";
+ import { SafetyAuthorityRevocation } from "../../apps/runtime/src/safety/authority-revocation.js";
+ import { afterEach, expect, it } from "vitest";
+ import { AuxError, PageTargetSchema, RunSchema, type EgressLease, type OriginRule } from "@aux/contracts";
+@@ -122,6 +123,7 @@
+       [],
+     );
+   let onlyStanding = false;
++  const admission = new RuntimeShutdownAdmission();
+   const controller = new NativePermissionController({
+     profileId: "profile",
+     approvals,
+@@ -136,6 +138,7 @@
+     retireReservation,
+     requiresTurn: () => !external,
+     sourceCheck: () => () => {
++      admission.assertOpen();
+       if (!owns) throw new AuxError("permission_denied", "Lease owner retired.");
+     },
+   });
+@@ -158,6 +161,7 @@
+     requestedAt: Date.now(),
+   });
+   return {
++    admission,
+     db,
+     approvals,
+     page,
+@@ -840,3 +844,15 @@
+   expect(stages).toEqual(["quiesce", "egress", "messages", "interrupted", "features", "cleanup"]);
+   expect(repo.getRun("run")?.status).toBe("interrupted");
+ });
++
++it("closed runtime admission still refuses a new native batch after the global retirement barrier is released", async () => {
++  const f = await fixture();
++  const waiting = await f.controller.request(f.request);
++  f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
++  await f.controller.request(f.request);
++  f.admission.beginShutdown();
++  await f.controller.withAuthorityMutation(() => true, async () => {});
++  expect(await f.controller.request({ ...f.request, batchId: "queued-after-retirement" })).toMatchObject({ decision: "deny" });
++  expect(f.approvals.pending("run")).toEqual([]);
++  expect(f.run.status).toBe("running");
++});

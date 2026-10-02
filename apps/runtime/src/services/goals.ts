@@ -1,3 +1,4 @@
+import { withRunAuthorityMutation } from "./overnight-authority.js";
 import { randomUUID } from "node:crypto";
 import { AuxError, GoalCreateParams, GoalSchema, newRunId, type Goal } from "@aux/contracts";
 import { MODEL_REGISTRY, modelCapabilities, registryCostUsd, type ModelCapability } from "@aux/contracts/model-registry";
@@ -172,6 +173,7 @@ export class GoalService {
   async resume(goalId: string): Promise<Goal> { return this.control(goalId, "resume"); }
   /** A model can pause its own Goal or report a blocker. The owner alone sets budgets. */
   async report(runId: string, status: "paused" | "blocked", blocker: string | undefined, turn: number): Promise<{ status: string; remaining?: number }> {
+    return withRunAuthorityMutation(this.repo, async () => {
     const row = this.repo.db.prepare("SELECT goal_id FROM goals WHERE run_id=?").get(runId) as { goal_id: string } | undefined;
     if (!row) throw new AuxError("capability_unsupported", "This run is not a Goal.");
     const goal = this.get(row.goal_id);
@@ -193,7 +195,9 @@ export class GoalService {
     if (status === "paused" || blocked) await this.runs.pause(runId);
     return blocked ? { status: "blocked" } : status === "paused" ? { status: "paused" }
       : { status: "still_active", remaining: 3 - streak };
+    }, runId);
   }
+
   async cancel(goalId: string): Promise<Goal> {
     const goal = this.get(goalId);
     const run = goal.runId ? this.repo.getRun(goal.runId) : undefined;
