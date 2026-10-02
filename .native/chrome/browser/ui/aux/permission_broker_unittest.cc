@@ -682,6 +682,7 @@ class FastDownloadSignalFixture {
     Configure(refused_, refused_guid_, refused_path_);
     auto owned_manager = std::make_unique<testing::NiceMock<content::MockDownloadManager>>();
     manager_ = owned_manager.get();
+    ON_CALL(*manager_, GetBrowserContext()).WillByDefault(testing::Return(&profile_));
     ON_CALL(*manager_, IsManagerInitialized()).WillByDefault(testing::Return(initialized));
     ON_CALL(*manager_, GetAllDownloads(testing::_)).WillByDefault(
         [this, restore_complete](content::DownloadManager::DownloadVector* items) {

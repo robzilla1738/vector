@@ -190,3 +190,4 @@ aux/runtime/0216-fast-download-completion.patch
 aux/runtime/0217-auto-pip-selection-fixture.patch
 aux/runtime/0218-auto-pip-mojo-callback.patch
 aux/runtime/0219-auto-pip-blink-fixture.patch
+aux/runtime/0222-download-fixture-profile-context.patch
