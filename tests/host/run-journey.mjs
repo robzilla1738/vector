@@ -73,7 +73,7 @@ async function execute() {
     const { createModelFixture } = await import('./lib/model-fixture.mjs');
     model = await createModelFixture(fixture, { signal });
   }
-  const launch = typeof journey.launch === 'function' ? journey.launch({ fixture, model, identity }) : journey.launch ?? {};
+  const launch = typeof journey.launch === 'function' ? journey.launch({ fixture, model, identity, appearance: Boolean(values.appearance) }) : journey.launch ?? {};
   assert.ok(!values.appearance || !launch.perf, 'Appearance sampling must not perturb a performance run');
   app = createJourneyApp({ appPath: resolve(values.app), launch: {
     ...launch,
@@ -116,7 +116,7 @@ async function execute() {
   const until = createUntil(signal);
   const actual = await app.identity();
   const clock = createClock(actual.native.testClockScale);
-  const context = { app, rpc, fixture, model, ax: observedAx, assert, until, visual: createVisual(outputDir),
+  const context = { app, rpc, fixture, model, appearanceEnabled: Boolean(values.appearance), ax: observedAx, assert, until, visual: createVisual(outputDir),
     async measureNativeKeyEffects(options) {
       signal.throwIfAborted();
       assert.ok(!values.appearance, 'Performance trials cannot include appearance sampling');

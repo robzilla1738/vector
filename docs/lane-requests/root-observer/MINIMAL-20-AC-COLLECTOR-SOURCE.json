@@ -8,5 +8,6 @@
     "sha256": "020b65f3a5b4ad0b4425e8391f1ca1ec04eae1723d63f83306426c7bc4acc784"
   },
   "actualExecution": "pending dedicated sole native builder",
-  "nativeCandidate": "frozen19f37c0c/product28b74568; cannot qualify until actual new harness executes"
+  "nativeCandidate": "frozen19f37c0c/product28b74568; cannot qualify until actual new harness executes",
+  "appearanceSeparation": "Normal functional/performance run collects20AC trials with no forced renderer accessibility; appearance-only run retains strict one-shot functional250ms and captures, rejects20trialmeasurement and never counts as AC performance."
 }

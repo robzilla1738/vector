@@ -103,7 +103,7 @@ async function minimalUi(t) {
       await centerPointer(t, window);
       const addressTarget = { ...address }, tabsTarget = { ...tabs(layout) };
       delete addressTarget.index; delete tabsTarget.index;
-      const performanceReport = await t.measureNativeKeyEffects({
+      const performanceReport = t.appearanceEnabled ? null : await t.measureNativeKeyEffects({
         metric: 'minimal-toggle', chord: 'command+shift+b', selector: addressTarget,
         effect: { expectedVisible: false }, additionalHiddenSelectors: [tabsTarget],
         async prepareTrial() {
@@ -116,7 +116,10 @@ async function minimalUi(t) {
           await t.ax.waitFor(tabsTarget, 'visible');
         },
       });
-      const timing = performanceReport.measurements.at(-1);
+      const timing = performanceReport?.measurements.at(-1) ?? await t.ax.request('measureKey', {
+        chord: 'command+shift+b', selector: addressTarget, expectedVisible: false,
+        additionalHiddenSelectors: [tabsTarget], timeoutMs: 250,
+      });
       await t.until('Minimal UI saved', async () => (await t.rpc('settings.get')).minimalUi === true);
       await t.until('Minimal UI removes tab and address controls', async () => !visible(await t.ax.query(tabs(layout)), window).length && !visible(await t.ax.query(address), window).length);
       t.assert.equal(timing.via, 'hid');
@@ -149,5 +152,5 @@ async function minimalUi(t) {
 }
 export const journeys = [
   { journey: { id: 'sidebar-modes', title: 'Persist toolbar visibility, edge reveal and sidebar snap and command behavior', features: ['floatingSidebar', 'autoHideToolbar', 'layouts'], devAcceptance: ['floatingSidebar', 'autoHideToolbar', 'layouts', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none', launch: {}, timeoutMs: 120000, owner: 'L2' }, run: sidebarModes },
-  { journey: { id: 'minimal-ui', title: 'Minimal UI geometry and edge reveal in both tab layouts', features: ['minimalUi'], devAcceptance: ['minimalUi', 'floatingSidebar', 'autoHideToolbar', 'layouts', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none', launch: { perf: true }, timeoutMs: 120000, owner: 'L2' }, run: minimalUi },
+  { journey: { id: 'minimal-ui', title: 'Minimal UI geometry and edge reveal in both tab layouts', features: ['minimalUi'], devAcceptance: ['minimalUi', 'floatingSidebar', 'autoHideToolbar', 'layouts', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none', launch: ({ appearance }) => ({ perf: !appearance }), timeoutMs: 120000, owner: 'L2' }, run: minimalUi },
 ];
