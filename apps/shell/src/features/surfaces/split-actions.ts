@@ -16,8 +16,10 @@ const nativePair = (group: SplitGroup) => JSON.stringify([group.panes, group.lay
 
 async function synchronizePairs(before: SplitGroup[], after: SplitGroup[], valid = () => true) {
   if (!valid()) throw new Error("The tabs changed. Try splitting them again.");
-  for (const group of before) if (group.panes.length === 2 && !after.some(next => next.id === group.id && next.panes.length === 2))
+  for (const group of before) if (group.panes.length === 2 && !after.some(next => next.id === group.id && next.panes.length === 2)) {
+    if (!valid()) throw new Error("The tabs changed. Try splitting them again.");
     await tabCommand({ kind: "unsplit", pageId: group.panes[0]! });
+  }
   for (const group of after) {
     if (!valid()) throw new Error("The tabs changed. Try splitting them again.");
     const old = before.find(item => item.id === group.id);
@@ -64,8 +66,13 @@ export function commitSplit(layout: Layout, previous = useStore.getState().layou
         for (const group of restore) if (group.panes.some(id => affected.has(id)) && !group.panes.every(localSplitPage))
           throw new Error("The split tabs moved or became unavailable.");
         const representatives = new Set([...nativeBefore, ...after].filter(group => group.panes.length === 2 && group.panes.some(id => affected.has(id))).map(group => group.panes[0]!));
-        for (const pageId of representatives) await tabCommand({ kind: "unsplit", pageId });
-        await synchronizePairs([], restore.filter(group => group.panes.some(id => affected.has(id))));
+        const restoreSignature = JSON.stringify(restore);
+        const available = () => valid() && JSON.stringify(useStore.getState().layout.splitGroups ?? []) === restoreSignature && [...affected].every(localSplitPage);
+        for (const pageId of representatives) {
+          if (!available()) throw new Error("The split tabs moved or became unavailable.");
+          await tabCommand({ kind: "unsplit", pageId });
+        }
+        await synchronizePairs([], restore.filter(group => group.panes.some(id => affected.has(id))), available);
       } catch (restoreError) {
         throw new AggregateError([reason, restoreError], "The split could not be restored. Try separating its tabs.");
       }

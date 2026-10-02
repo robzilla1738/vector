@@ -1,5 +1,6 @@
 import { EFFECT_CATEGORIES, CONFIRMATION_LEVELS } from "@aux/contracts";
 import type { AuxEvent, BrowserSession, BrowserSpace, CompactObservation, Download, ModelCall, PageSet, PageTarget, ResultRecord, Run, SetMember, StepRecord } from "@aux/contracts";
+import { retainNativeTabMetadata } from "./native-tab-metadata";
 import { bridge } from "../bridge";
 import { setDictationDraft } from "../dictation-drafts";
 import { clearResultDrafts, revokeResultDrafts } from "../result-drafts";
@@ -102,7 +103,7 @@ export const reducePageEvent: Reducer = (state, e) => {
       if (p) {
         const index = state.pages.findIndex((x) => x.pageId === p.pageId);
         // An update to a known page never changes order or Space assignment.
-        if (index >= 0) next = { ...next, pages: state.pages.with(index, p) };
+        if (index >= 0) next = { ...next, pages: state.pages.with(index, retainNativeTabMetadata(state.pages[index]!, p, state.catalogVersion)) };
         else if (!closingOptimistic.has(p.pageId)) {
           const pages = [...state.pages, p];
           next = { pages, layout: state.restoringTabs ? state.layout : syncLayout(state.layout, pages, state.pendingRestoreIds) };
@@ -113,6 +114,9 @@ export const reducePageEvent: Reducer = (state, e) => {
         if (fields.viewStatus === "detached") {
           const current = state.pages.find(page => page.pageId === pageId);
           fields.lifecycle = lifecycleForStrip(current?.lifecycle, fields.lifecycle, "detached");
+        }
+        if (state.catalogVersion > 0 && state.pages.some(page => page.pageId === pageId)) {
+          delete fields.windowId; delete fields.windowKind; delete fields.anchor; delete fields.split;
         }
         if (Object.keys(fields).length) next = { ...next, ...patchPage(next, pageId, fields) };
       }

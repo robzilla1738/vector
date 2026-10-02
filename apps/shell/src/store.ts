@@ -9,6 +9,7 @@ import { createLayoutSlice } from "./store/layout-slice";
 import { loadOrganizationLayout, persistLayout, reloadOrganizationLayout } from "./store/persistence";
 import { createRunsSlice } from "./store/runs-slice";
 import { call, eventStream, lastEventSeq, noteEventSeq, noteStream, patchPage, sendTabCommand } from "./store/shared";
+import { retainNativeTabMetadata } from "./store/native-tab-metadata";
 import { createTabsSlice } from "./store/tabs-slice";
 import type { Workspace } from "./store/types";
 import { createUiSlice } from "./store/ui-slice";
@@ -72,6 +73,10 @@ export const useStore = create<Workspace>((set, get, api) => ({
       // Events received while the supporting data loaded take precedence over this snapshot.
       if (lastEventSeq() > ws.lastSeq) { void get().refresh(); return; }
       const { lastSeq, streamId, ...snapshot } = ws;
+      snapshot.pages = snapshot.pages.map(page => {
+        const current = get().pages.find(item => item.pageId === page.pageId);
+        return current ? retainNativeTabMetadata(current, page, get().catalogVersion) : page;
+      });
       noteStream(streamId);
       noteEventSeq(lastSeq);
       set((s) => {

@@ -127,3 +127,18 @@ it("resyncs from a snapshot on a live-stream gap, stream change, or drops replay
   apply({ type: "page.updated", payload: { pageId: "px" }, seq: 12, streamId: "new-generation", ts: Date.now() });
   expect(refresh).toHaveBeenCalledTimes(1);
 });
+
+it("keeps actual native split and window ownership through full and partial runtime updates", () => {
+  tabs("a");
+  const native = { ...page("a"), windowId: "native-own", windowKind: "normal" as const, anchor: false, split: { id: "native-split", index: 0 } };
+  useStore.setState({ pages: [native], catalogVersion: 7 });
+  useStore.getState().applyEvent(event("page.updated", { page: { ...page("a"), title: "New title", windowId: "stale-other", controller: "agent" } }));
+  expect(useStore.getState().pages[0]).toMatchObject({ title: "New title", controller: "agent", windowId: "native-own", split: native.split });
+  useStore.getState().applyEvent(event("page.updated", { pageId: "a", loading: true, windowId: "stale-other", split: undefined }));
+  expect(useStore.getState().pages[0]).toMatchObject({ loading: true, windowId: "native-own", split: native.split });
+});
+it("accepts runtime placement before any native catalog is available", () => {
+  tabs("a"); useStore.setState({ catalogVersion: 0 });
+  useStore.getState().applyEvent(event("page.updated", { page: { ...page("a"), windowId: "runtime-window" } }));
+  expect(useStore.getState().pages[0]?.windowId).toBe("runtime-window");
+});
