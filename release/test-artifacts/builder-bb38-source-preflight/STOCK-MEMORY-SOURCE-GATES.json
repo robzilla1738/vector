@@ -1,0 +1,97 @@
+{
+  "status": "source-only PASS; actual native compile/journeys/stock measurements pending",
+  "base": "383ae75dd74bb3f2ef00e4d3fcdf36cb23b577b9",
+  "newNativePackets": [
+    "0270",
+    "0273",
+    "0274",
+    "0275"
+  ],
+  "nativeReplay": {
+    "packets": 105,
+    "mirrors": 335,
+    "actualOriginalBaselines": 197,
+    "proof": "AUTHORITY-NATIVE-REPLAY.json"
+  },
+  "gates": {
+    "rebuild": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-stock-memory-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "typecheck": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-stock-memory-type.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    "lint": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-stock-memory-lint.log",
+      "sha256": "fc2bc7a92113dc2e185ec4ec584ab18902f47830cf2fa0e2a90649b3da192d3f"
+    },
+    "format": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-stock-memory-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    "bindings": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-stock-memory-bindings.log",
+      "sha256": "c2635bc1ad9062801fd9ce3c8ad8a74b577439116d3d850581070a87f4533591"
+    },
+    "bridge": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-stock-memory-bridge.log",
+      "sha256": "2b6fc625dea7b1c53aea5c20e723ddfc348fafd8eadb51326122c12803cec669"
+    },
+    "inventory": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-stock-memory-inventory.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "journeys": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-stock-memory-journeys.log",
+      "sha256": "4b10e449edc1397c9026a41a813b448986362c446092aafa21db5002483b7d4c"
+    },
+    "budgets": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-stock-memory-budgets.log",
+      "sha256": "ba836e45f7ac3de86c2092aa78735ecf83fefe9468dc2371123c900c36f14592"
+    },
+    "protocol": {
+      "status": "PASS",
+      "log": "/tmp/aux-root-stock-memory-protocol.log",
+      "sha256": "70e45bce9e8566dd955956d3127b866000ba061701842cccc69adf7743513124"
+    }
+  },
+  "protocolCases": 142,
+  "actualPythonOwnedWriterControls": 6,
+  "renderer": {
+    "committedFiles": 175,
+    "unchangedDigest": "da3e598a91e2beac6f4078f7d8fa9836a387e9bfcdc77bfabb462b824629b087",
+    "startupJsKb": 487,
+    "startupCssKb": 175,
+    "totalJsKb": 1798,
+    "budgets": [
+      490,
+      180,
+      1800
+    ],
+    "sourceUnchangedSince": "04b740ba6a0b64738d6a22bc4b88b76eafbc928d",
+    "distRestoredOnlyAfterAll175ActualHashChecks": true
+  },
+  "fullUnitEvidence": {
+    "source": "04b740ba6a0b64738d6a22bc4b88b76eafbc928d",
+    "log": "/tmp/aux-root-memory98-full-unit.log",
+    "passedFiles": 481,
+    "passedCases": 2605,
+    "note": "Runtime/shell/contracts and unit source unchanged; no repeat full suite this native/harness-only batch. Final integration full unit gate remains required."
+  },
+  "remaining": [
+    "actual complete native build and independent pair audit",
+    "real20AC Aux and same-tag genuine stock kernel observations",
+    "actual OS launch/interactive/hardware startup endpoint",
+    "every final roadmap/native/performance/F21/qualification gate"
+  ]
+}
