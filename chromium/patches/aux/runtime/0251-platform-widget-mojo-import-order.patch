@@ -1,0 +1,70 @@
+--- a/third_party/blink/public/mojom/widget/platform_widget.mojom
++++ b/third_party/blink/public/mojom/widget/platform_widget.mojom
+@@ -7,33 +7,6 @@
+ import "services/viz/public/mojom/compositing/frame_sink_id.mojom";
+ import "services/viz/public/mojom/compositing/frame_timing_details.mojom";
+ import "third_party/blink/public/mojom/tokens/tokens.mojom";
+-
+-// Internal browser-owned fixture request on the ALREADY bound actual widget.
+-// Tokens are continuity fences, never lookup selectors or authority grants.
+-enum NativeCommandPresentationSource { kHistory, kRegistry, kObserveCurrent };
+-struct NativeCommandPresentationScope {
+-  int32 window_id;
+-  int32 content_id;
+-  int32 renderer_pid;
+-  uint64 document_generation;
+-  DocumentToken document;
+-  viz.mojom.FrameSinkId frame_sink;
+-  NativeCommandPresentationSource source;
+-};
+-struct NativeCommandPresentationResult {
+-  NativeCommandPresentationScope scope;
+-  bool measured;
+-  int32 failure;
+-  mojo_base.mojom.TimeTicks input;
+-  mojo_base.mojom.TimeTicks mutation;
+-  mojo_base.mojom.TimeTicks commit;
+-  mojo_base.mojom.TimeTicks submitted;
+-  uint32 frame_token;
+-  bool activated;
+-  bool submitted_frame;
+-  int32 submission_failure;
+-  viz.mojom.FrameTimingDetails timing;
+-};
+ 
+ import "third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom";
+ import "cc/mojom/render_frame_metadata.mojom";
+@@ -50,6 +23,33 @@
+ import "services/viz/public/mojom/hit_test/input_target_client.mojom";
+ import "ui/base/mojom/menu_source_type.mojom";
+ 
++// Internal browser-owned fixture request on the ALREADY bound actual widget.
++// Tokens are continuity fences, never lookup selectors or authority grants.
++enum NativeCommandPresentationSource { kHistory, kRegistry, kObserveCurrent };
++struct NativeCommandPresentationScope {
++  int32 window_id;
++  int32 content_id;
++  int32 renderer_pid;
++  uint64 document_generation;
++  DocumentToken document;
++  viz.mojom.FrameSinkId frame_sink;
++  NativeCommandPresentationSource source;
++};
++struct NativeCommandPresentationResult {
++  NativeCommandPresentationScope scope;
++  bool measured;
++  int32 failure;
++  mojo_base.mojom.TimeTicks input;
++  mojo_base.mojom.TimeTicks mutation;
++  mojo_base.mojom.TimeTicks commit;
++  mojo_base.mojom.TimeTicks submitted;
++  uint32 frame_token;
++  bool activated;
++  bool submitted_frame;
++  int32 submission_failure;
++  viz.mojom.FrameTimingDetails timing;
++};
++
+ struct InitialFrameSinkParams {
+   pending_remote<viz.mojom.CompositorFrameSink> initial_frame_sink;
+   pending_receiver<viz.mojom.CompositorFrameSinkClient>

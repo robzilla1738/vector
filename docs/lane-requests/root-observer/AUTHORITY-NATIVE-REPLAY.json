@@ -1,6 +1,6 @@
 {
-  "status": "80 ordered packets full reverse/actual baselines/forward exact mirrors PASS; native compilation pending",
-  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-authority-80-replay-v38qp_8w",
+  "status": "81 ordered packets full reverse/actual baselines/forward exact mirrors PASS; native compilation pending",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-authority-81-replay-dfy7v99x",
   "orderedPatches": [
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch",
     "chromium/patches/aux/runtime/0150-little-window-controller.patch",
@@ -81,7 +81,8 @@
     "chromium/patches/aux/runtime/0247-pip-fixture-special-members.patch",
     "chromium/patches/aux/runtime/0248-pip-actual-owner-window.patch",
     "chromium/patches/aux/runtime/0249-pip-actual-owner-page.patch",
-    "chromium/patches/aux/runtime/0250-content-public-browser-dependency.patch"
+    "chromium/patches/aux/runtime/0250-content-public-browser-dependency.patch",
+    "chromium/patches/aux/runtime/0251-platform-widget-mojo-import-order.patch"
   ],
   "packetDigests": {
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch": "8a7337726222a33aa306fd3f35e3485a60b59d4c0d036a1fda9bc98dce8c4e93",
@@ -163,7 +164,8 @@
     "chromium/patches/aux/runtime/0247-pip-fixture-special-members.patch": "6e479c56d9676aca6a7dab0b6eaab3a7b2d47459941b2586c1fb2a6137ea05db",
     "chromium/patches/aux/runtime/0248-pip-actual-owner-window.patch": "d17b46dde29fcf143c878643e62f34f645d8d5982178a8aa83973e538d2716d4",
     "chromium/patches/aux/runtime/0249-pip-actual-owner-page.patch": "519878caee094b31bea262a0a73097fef6f79a90f16b4abc497d2695553b2459",
-    "chromium/patches/aux/runtime/0250-content-public-browser-dependency.patch": "bfb6b64f09b39430e3a6f9b512affb2bc03feaca783ea8e10241b3ab0f4d61f6"
+    "chromium/patches/aux/runtime/0250-content-public-browser-dependency.patch": "bfb6b64f09b39430e3a6f9b512affb2bc03feaca783ea8e10241b3ab0f4d61f6",
+    "chromium/patches/aux/runtime/0251-platform-widget-mojo-import-order.patch": "9bfa20f22dee827b8475acb42cca6bb1a0804dcab8da690baa18bcc497d9db90"
   },
   "baselineVerification": {
     "cc/BUILD.gn": "2b1b3c86ec12fcd5dd95bb5c94fcc42f49f8530359e682c1903a019268bdba06",
@@ -590,7 +592,7 @@
     "services/viz/privileged/mojom/compositing/display_private.mojom": "f8891c09abf2b7c704287fd30cb33874cd664f509006761fd7a0f66066af0688",
     "third_party/blink/public/mojom/BUILD.gn": "f285462d523db72b3e3c622ac94f2dd1f2368cdfb3fbe7f58720a183ad653b7c",
     "third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom": "c0895205895158c019307bc5f1eed3f7619bb0daa33ae250aaf8faeb6e81c024",
-    "third_party/blink/public/mojom/widget/platform_widget.mojom": "3dce41b17a7e9e128b8b47d3c51690057f6bef4c990c00d07d80e9f16b5e749d",
+    "third_party/blink/public/mojom/widget/platform_widget.mojom": "a8ff4205f317205f81e36439e17e60061a71d7d18b786dc20706f9faf6195fd5",
     "third_party/blink/renderer/core/exported/web_plugin_container_impl.h": "5d34a3963dd1d35c55a985f3c3efb62599d14fb08464007d60c7f544bf198a3f",
     "third_party/blink/renderer/core/frame/build.gni": "5da7d2d069a72e855b4b5a281336d8044db06f98ecac5ffca63b368f9f1c1b1d",
     "third_party/blink/renderer/core/frame/native_command_results_witness.cc": "3dc0607f41687a419452dc4175624f390530284f930cee655189ae827371436b",
