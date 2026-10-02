@@ -225,9 +225,8 @@ class PictureInPictureServiceImplTest : public RenderViewHostImplTestHarness {
 
     contents()->SetDelegate(&delegate_);
 
-    mojo::Remote<blink::mojom::PictureInPictureService> service_remote;
     service_impl_ = PictureInPictureServiceImpl::CreateForTesting(
-        render_frame_host, service_remote.BindNewPipeAndPassReceiver());
+        render_frame_host, service_remote_.BindNewPipeAndPassReceiver());
 
     surface_id_ = viz::SurfaceId(
         viz::FrameSinkId(1, 1),
@@ -244,6 +243,7 @@ class PictureInPictureServiceImplTest : public RenderViewHostImplTestHarness {
   }
 
   void TearDown() override {
+    service_remote_.reset();
     service_impl_ = nullptr;
     RenderViewHostImplTestHarness::TearDown();
   }
@@ -369,6 +369,9 @@ class PictureInPictureServiceImplTest : public RenderViewHostImplTestHarness {
   PictureInPictureTestBrowserClient browser_client_;
   PictureInPictureDelegate delegate_;
   // Will be deleted when the frame is destroyed.
+  // Keep the original DocumentService pipe alive while mock time pumps tasks.
+  // A local Remote would queue its own disconnect before the expiry test.
+  mojo::Remote<blink::mojom::PictureInPictureService> service_remote_;
   raw_ptr<PictureInPictureServiceImpl> service_impl_;
   // Required to pass a valid PendingRemote to StartSession() in the tests.
   PictureInPictureMediaPlayerReceiver media_player_receiver_;
