@@ -21,6 +21,13 @@
 #include "base/run_loop.h"
 #include "base/test/task_environment.h"
 #include "chrome/browser/ui/aux/egress_controller.h"
+#include "chrome/browser/ui/aux/shell_events.h"
+#include "chrome/browser/ui/aux/download_naming.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_temp_dir.h"
+#include "content/public/test/mock_download_manager.h"
+#include "components/download/public/common/mock_download_item.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "chrome/browser/ui/aux/page_identity.h"
 #include "chrome/browser/ui/aux/runtime_host.h"
 #include "chrome/browser/ui/aux/tab_catalog.h"
@@ -142,7 +149,6 @@ class PermissionFixtureRenderFrame : public chrome::mojom::ChromeRenderFrame {
   mojo::AssociatedReceiverSet<chrome::mojom::ChromeRenderFrame> receivers_;
   base::WeakPtrFactory<PermissionFixtureRenderFrame> weak_factory_{this};
 };
-
 
 class PermissionFixtureFrameBindings : public content::WebContentsObserver {
  public:
@@ -657,6 +663,114 @@ TEST_F(PermissionBrokerTest, MutationAfterFreshRequestRequiresAnotherFreshRuntim
   EXPECT_EQ(call->params.FindInt("nonce"), 2);
   EXPECT_FALSE(state_.granted);
   FreshAllow(); EXPECT_TRUE(state_.granted); EXPECT_TRUE(state_.finished);
+}
+
+// The actual Profile download observer runs against the supported manager
+// fixture; file identity/candidate production and internal transport stay real.
+class FastDownloadSignalFixture {
+ public:
+  FastDownloadSignalFixture(bool initialized, bool restore_complete) {
+    CHECK(directory_.CreateUniqueTempDir());
+    restored_path_ = directory_.GetPath().AppendASCII("restored.pdf");
+    live_path_ = directory_.GetPath().AppendASCII("live.pdf");
+    refused_path_ = directory_.GetPath().AppendASCII("refused.pdf");
+    CHECK(base::WriteFile(restored_path_, "synthetic restored bytes"));
+    CHECK(base::WriteFile(live_path_, "synthetic live bytes"));
+    CHECK(base::WriteFile(refused_path_, "synthetic refused bytes"));
+    Configure(restored_, restored_guid_, restored_path_);
+    Configure(live_, live_guid_, live_path_);
+    Configure(refused_, refused_guid_, refused_path_);
+    auto owned_manager = std::make_unique<testing::NiceMock<content::MockDownloadManager>>();
+    manager_ = owned_manager.get();
+    ON_CALL(*manager_, IsManagerInitialized()).WillByDefault(testing::Return(initialized));
+    ON_CALL(*manager_, GetAllDownloads(testing::_)).WillByDefault(
+        [this, restore_complete](content::DownloadManager::DownloadVector* items) {
+          if (restore_complete) items->push_back(&restored_);
+        });
+    EXPECT_CALL(*manager_, AddObserver(testing::_)).WillOnce(testing::SaveArg<0>(&observer_));
+    profile_.SetDownloadManagerForTesting(std::move(owned_manager));
+    AuxRuntimeHostTestPeer::Install(&profile_, base::BindRepeating(
+        [](std::vector<base::DictValue>* calls, bool internal, std::string method,
+           std::string json, AuxRuntimeHost::ResponseCallback reply) {
+          EXPECT_TRUE(internal);
+          if (method == "downloads.completedNative") {
+            auto params = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
+            CHECK(params); calls->push_back(std::move(*params));
+            std::move(reply).Run({true, "{\"status\":\"fixture-recorded\"}", "", ""});
+          } else std::move(reply).Run({false, "", "capability_unsupported", "No unrelated fixture dispatch"});
+        }, base::Unretained(&calls_)));
+    StartShellEvents(&profile_);
+    CHECK(observer_);
+  }
+  ~FastDownloadSignalFixture() {
+    observer_->OnDownloadDestroyed(&restored_);
+    observer_->OnDownloadDestroyed(&live_);
+    observer_->OnDownloadDestroyed(&refused_);
+    observer_->ManagerGoingDown(manager_);
+    AuxRuntimeHostTestPeer::Destroy(&profile_);
+  }
+  void Configure(download::MockDownloadItem& item, const std::string& guid,
+                 const base::FilePath& path) {
+    ON_CALL(item, GetState()).WillByDefault(testing::Return(download::DownloadItem::COMPLETE));
+    ON_CALL(item, GetTargetDisposition()).WillByDefault(testing::Return(download::DownloadItem::TARGET_DISPOSITION_OVERWRITE));
+    ON_CALL(item, GetInsecureDownloadStatus()).WillByDefault(testing::Return(download::DownloadItem::SAFE));
+    ON_CALL(item, GetGuid()).WillByDefault(testing::ReturnRef(guid));
+    ON_CALL(item, GetURL()).WillByDefault(testing::ReturnRef(source_));
+    ON_CALL(item, GetTabUrl()).WillByDefault(testing::ReturnRef(source_));
+    ON_CALL(item, GetTabReferrerUrl()).WillByDefault(testing::ReturnRef(empty_url_));
+    ON_CALL(item, GetTargetFilePath()).WillByDefault(testing::ReturnRef(path));
+    ON_CALL(item, GetForcedFilePath()).WillByDefault(testing::ReturnRef(empty_path_));
+    ON_CALL(item, GetEndTime()).WillByDefault(testing::Return(base::Time::Now()));
+  }
+  TestingProfile profile_;
+  base::ScopedTempDir directory_;
+  const GURL source_{"http://127.0.0.1/fast-download.pdf"}, empty_url_;
+  const base::FilePath empty_path_;
+  const std::string restored_guid_ = "restored-guid", live_guid_ = "live-guid", refused_guid_ = "refused-guid";
+  base::FilePath restored_path_, live_path_, refused_path_;
+  testing::NiceMock<download::MockDownloadItem> restored_, live_, refused_;
+  raw_ptr<content::MockDownloadManager> manager_ = nullptr;
+  raw_ptr<content::DownloadManager::Observer> observer_ = nullptr;
+  std::vector<base::DictValue> calls_;
+};
+
+TEST_F(PermissionBrokerTest, LiveFastCompletedDownloadAdmitsOnceWhileScanHistoryStaysSuppressed) {
+  FastDownloadSignalFixture fixture(true, true);
+  EXPECT_TRUE(fixture.calls_.empty());
+  EXPECT_FALSE(DownloadNamingCandidate(&fixture.profile_, &fixture.restored_));
+  fixture.observer_->OnDownloadCreated(fixture.manager_, &fixture.live_);
+  ASSERT_EQ(fixture.calls_.size(), 1u);
+  ASSERT_NE(fixture.calls_[0].FindString("id"), nullptr);
+  EXPECT_EQ(*fixture.calls_[0].FindString("id"), fixture.live_guid_);
+  EXPECT_TRUE(DownloadNamingCandidate(&fixture.profile_, &fixture.live_));
+  fixture.observer_->OnDownloadCreated(fixture.manager_, &fixture.live_);
+  fixture.observer_->OnDownloadUpdated(&fixture.live_);
+  fixture.observer_->OnManagerInitialized();
+  EXPECT_EQ(fixture.calls_.size(), 1u);
+  EXPECT_FALSE(DownloadNamingCandidate(&fixture.profile_, &fixture.restored_));
+}
+TEST_F(PermissionBrokerTest, UninitializedCreatedCompleteIsHistoricalAndNeverRenamedAfterInitialization) {
+  FastDownloadSignalFixture fixture(false, false);
+  fixture.observer_->OnDownloadCreated(fixture.manager_, &fixture.restored_);
+  EXPECT_TRUE(fixture.calls_.empty());
+  ON_CALL(*fixture.manager_, IsManagerInitialized()).WillByDefault(testing::Return(true));
+  fixture.observer_->OnManagerInitialized();
+  fixture.observer_->OnDownloadUpdated(&fixture.restored_);
+  EXPECT_TRUE(fixture.calls_.empty());
+  EXPECT_FALSE(DownloadNamingCandidate(&fixture.profile_, &fixture.restored_));
+  fixture.observer_->OnDownloadCreated(fixture.manager_, &fixture.live_);
+  ASSERT_EQ(fixture.calls_.size(), 1u);
+}
+TEST_F(PermissionBrokerTest, LiveFastDownloadEligibilityStillRefusesDangerousAndPersonPromptedFiles) {
+  FastDownloadSignalFixture fixture(true, false);
+  ON_CALL(fixture.refused_, IsDangerous()).WillByDefault(testing::Return(true));
+  fixture.observer_->OnDownloadCreated(fixture.manager_, &fixture.refused_);
+  EXPECT_TRUE(fixture.calls_.empty());
+  EXPECT_FALSE(DownloadNamingCandidate(&fixture.profile_, &fixture.refused_));
+  ON_CALL(fixture.live_, GetTargetDisposition()).WillByDefault(testing::Return(download::DownloadItem::TARGET_DISPOSITION_PROMPT));
+  fixture.observer_->OnDownloadCreated(fixture.manager_, &fixture.live_);
+  EXPECT_TRUE(fixture.calls_.empty());
+  EXPECT_FALSE(DownloadNamingCandidate(&fixture.profile_, &fixture.live_));
 }
 
 }  // namespace aux

@@ -93,6 +93,12 @@ export function FeatureSlots({ slot }: { slot: "sidebarItems" | "sidebarFooterIt
   return featureMounts.filter(enabled).flatMap(mount => (mount[slot] ?? []).map((component, index) =>
     createElement(component, { key: `${mount.feature}:${index}` })));
 }
+/** Category visibility follows actual enabled registered sections, not unrelated
+ * base-feature availability. Every section retains its own feature gate. */
+export function featureSettingsAvailable(category: string): boolean {
+  return featureMounts.some(mount => enabled(mount) &&
+    (mount.settingsSections ?? []).some(section => section.category === category));
+}
 export function FeatureSettings({ category }: { category: string | null }) {
   return featureMounts.filter(enabled).flatMap(mount => (mount.settingsSections ?? [])
     .map((section, index) => createElement("div", { key: `${mount.feature}:${index}`, hidden: section.category !== category }, createElement(section.component))));

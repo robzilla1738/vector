@@ -1,4 +1,4 @@
-import { FeatureSettings } from "../features/registry";
+import { FeatureSettings, featureSettingsAvailable } from "../features/registry";
 import "./Settings.css";
 import { MemorySettings } from "./MemorySettings";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -70,7 +70,8 @@ export function Settings() {
   const linkRoutingAvailable = useFeature("linkRouting") && inNativeHost && !bridge.privateMode;
   const appleScriptAvailable = useFeature("appleScript") && inNativeHost && !bridge.privateMode;
   const skillsAvailable = useFeature("skills");
-  const automationsAvailable = useFeature("automations");
+  const automationsFeatureAvailable = useFeature("automations");
+  const automationsAvailable = automationsFeatureAvailable || featureSettingsAvailable("Automations");
   const outboundMcpAvailable = useFeature("outboundMcp");
   const connectorsAvailable = useFeature("connectors");
   const servicesAvailable = outboundMcpAvailable || connectorsAvailable;
@@ -417,7 +418,7 @@ export function Settings() {
           {permissionsAvailable && <PrivacySecuritySettings active={visible("Site permissions")} />}
           <ModelsSettings active={visible("Models")} settings={settings} onSave={set} />
           <UsageBudgetsSettings active={visible("Usage & Budgets")} settings={settings} onSave={set} />
-          {automationsAvailable && <AutomationsSettings active={visible("Automations")} />}
+          {automationsFeatureAvailable && <AutomationsSettings active={visible("Automations")} />}
           <WorkspacesSettings active={visible("Workspaces")} />
           <QuickAskSettings active={visible("Quick Ask")} />
           <SelectionCaptureSettings active={visible("Selection & Capture")} settings={settings} onSave={set} />
