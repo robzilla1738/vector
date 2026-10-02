@@ -1,0 +1,19 @@
+{
+   "//base/version_info:generate_version_info_action": {
+      "args": [ "-f", "../../chrome/VERSION", "-f", "../../chrome/app/theme/chromium/BRANDING", "-f", "../../build/util/LASTCHANGE", "-o", "gen/base/version_info/version_info_values.h", "../../base/version_info/version_info_values.h.version" ],
+      "check_includes_strict": false,
+      "deps": [  ],
+      "inputs": [ "//build/util/LASTCHANGE", "//base/version_info/version_info_values.h.version", "//chrome/VERSION", "//chrome/app/theme/chromium/BRANDING", "//build/util/LASTCHANGE" ],
+      "metadata": {
+
+      },
+      "outputs": [ "//out/AuxDev/gen/base/version_info/version_info_values.h" ],
+      "public": "*",
+      "script": "//build/util/version.py",
+      "sources": [ "//build/util/android_chrome_version.py" ],
+      "testonly": false,
+      "toolchain": "//build/toolchain/mac:clang_arm64",
+      "type": "action",
+      "visibility": [ "//base/version_info:generate_version_info" ]
+   }
+}

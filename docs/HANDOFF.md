@@ -1,3 +1,9 @@
+## Coherent native compilation authorized — 2026-10-02
+
+Root independently verified actual Aux effective GN arguments, original metadata pins, current generated build graph and the real version-info action consuming original LASTCHANGE. The full bb38 ten-target incremental graph is approved with the reviewed controllerda642313..., one owned native slot, unchanged nice10/j8/k0 and the generated-byte watcher. No runtime/helper/app staging or launch is authorized before successful whole graph and independent actual binary/source/real revision pair audit. Evidence: `release/test-artifacts/builder-bb38-gn-preparation/`. The separate Stock checkout/GN preparation remains queued behind the sole native slot.
+
+Root independently integrated the exact four-leaf strict dummy-revision refusal successor in editable stock-caller source. Fresh runtime rebuild and affected original-evidence controls pass; native source and renderer bytes remain unchanged. L10 closes the identified unreaped-child/retained-slot cleanup debt before harness freeze; design completes original first-interactive-full-hardware startup wiring. Full native journeys, every performance gate, F21 and final qualification remain required. Goal ACTIVE.
+
 ## Native stage independently verified — 2026-10-02
 
 Frozen bb38 is staged in Stable. Root independently checked all335 current native mirrors,105 packet bytes,175 renderer assets, three generated bindings and three unchanged executable/library payload pins, original runtime identity, original stage log and released52004 slot owner. Reviewed watcher records show only declared pre-arm binding staging and no armed drift. Evidence: `release/test-artifacts/builder-bb38-stage-preflight/`. Stage is complete; compilation, runtime/helper staging and app launch are not yet authorized.

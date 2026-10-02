@@ -1,0 +1,84 @@
+{
+  "candidate": "bb38c2853ee42e4a820c4aad9a5479750f549a36",
+  "stageProofSha256": "a94b5482ff7246f52d475ca8f091f599800dfd81f263d62a7623f908065ac204",
+  "proposalSha256": "38583065500adec807a4732e7381774afd08e8a38504aa92008820f617b482af",
+  "ownerPid": 53442,
+  "ownerStartedAt": 1790967848836,
+  "effectiveArgsSha256": "36ea1577ba68f9c504263a0052c8a242f43cab8a2aed0f13b2f763d7131ee12e",
+  "effectiveGnArguments": {
+    "is_debug": "is_debug = false",
+    "is_component_build": "is_component_build = true",
+    "symbol_level": "symbol_level = 0",
+    "use_lld": "use_lld = false",
+    "enable_aux_shell": "enable_aux_shell = true",
+    "aux_allow_remote_debugging_for_tests": "aux_allow_remote_debugging_for_tests = true",
+    "use_dummy_lastchange": "use_dummy_lastchange = false",
+    "is_official_build": "is_official_build = false"
+  },
+  "versionActionInputs": "{\n   \"//base/version_info:generate_version_info\": {\n      \"inputs\": [ \"//build/config/warning_suppression.txt\", \"//build/config/raw_ptr_plugin_config.yaml\", \"//build/config/unsafe_buffers_paths.txt\" ]\n   }\n}",
+  "metadataUnchanged": {
+    "build/util/LASTCHANGE": "0035e90b3102cbb758b0073a588ffabfdeb260e4aa141273f97975c9ea80e424",
+    "build/util/LASTCHANGE.dummy": "480ae9e79d839221f93e71de882216ce44cf90233ae67ed29f336982629a3ee9",
+    "build/util/lastchange.gni": "63cb16e1cdd6632bab19f820e485dc88686d1fc31637d8539e0f40a1abe7117f",
+    "build/util/lastchange.py": "bdaa8346de36bacb873a4b5a1981e78cb70c32b6f961edd771476b655cfda674",
+    "base/version_info/BUILD.gn": "add7135d37e48d41cb1401853a0a278cc9e98e72c422c1424c0f3bb67ca66a82",
+    "base/version_info/version_info.h": "166350c8ce67fb543511946edc6125d104d24ae4ca6eda25d1f31cec2220f61f",
+    "base/version_info/version_info_values.h.version": "d1dabee73ccc77679368d9ab74a1720311534c63f4eee9cfe92a32f06b46ae12",
+    "chrome/VERSION": "cdb54b2a29c5ce72666330c26e56e16bb33b44160d85c09ef8f9a2e304b0c90e"
+  },
+  "nativeAndGeneratedAfterGuard": "PASS",
+  "compiledAndRuntimeAfterGuard": "PASS",
+  "currentVersionHeaderSha256": "da2bc6e94d9f867171d102c385ad41b6f938a70b61fa99f23489ea0513177c53",
+  "currentVersionHeaderMayBeStaleUntilCompile": true,
+  "metadataRewritten": false,
+  "officialBuild": false,
+  "compile": false,
+  "runtimeHelperPhysicalExecution": false,
+  "actualNinjaVersionActionLines": [
+    "  command = ../../third_party/cpython3/host/bin/python3 ../../build/util/version.py -f ../../chrome/VERSION -f ../../chrome/app/theme/chromium/BRANDING -f ../../build/util/LASTCHANGE -o gen/base/version_info/version_info_values.h ../../base/version_info/version_info_values.h.version",
+    "build gen/base/version_info/version_info_values.h: __base_version_info_generate_version_info_action___build_toolchain_mac_clang_arm64__rule | ../../build/util/version.py ../../build/util/LASTCHANGE ../../base/version_info/version_info_values.h.version ../../chrome/VERSION ../../chrome/app/theme/chromium/BRANDING ../../build/util/LASTCHANGE ../../build/util/android_chrome_version.py"
+  ],
+  "actualToolchainNinjaSha256": "98b980cdd5fc4e20ebebc8fcd18f282537fb3db14f411495d58c6c4e13a0282d",
+  "actualNinjaVersionActionUsesOriginalLastchange": true,
+  "nativeSlotReleased": true,
+  "execSession10569ReapedExitCode": 0,
+  "actualGnVersionAction": {
+    "args": [
+      "-f",
+      "../../chrome/VERSION",
+      "-f",
+      "../../chrome/app/theme/chromium/BRANDING",
+      "-f",
+      "../../build/util/LASTCHANGE",
+      "-o",
+      "gen/base/version_info/version_info_values.h",
+      "../../base/version_info/version_info_values.h.version"
+    ],
+    "check_includes_strict": false,
+    "deps": [],
+    "inputs": [
+      "//build/util/LASTCHANGE",
+      "//base/version_info/version_info_values.h.version",
+      "//chrome/VERSION",
+      "//chrome/app/theme/chromium/BRANDING",
+      "//build/util/LASTCHANGE"
+    ],
+    "metadata": {},
+    "outputs": [
+      "//out/AuxDev/gen/base/version_info/version_info_values.h"
+    ],
+    "public": "*",
+    "script": "//build/util/version.py",
+    "sources": [
+      "//build/util/android_chrome_version.py"
+    ],
+    "testonly": false,
+    "toolchain": "//build/toolchain/mac:clang_arm64",
+    "type": "action",
+    "visibility": [
+      "//base/version_info:generate_version_info"
+    ]
+  },
+  "actualGnActionRawPath": "/tmp/aux-browser-runtime-builder-bb38c285/release/test-artifacts/builder-bb38-gn-preparation/actual-version-action-gn.json",
+  "actualGnActionRawSha256": "4ada11a874a5d2c532e9f93bcd8b002960c15fb627104412228d58b776be45c2"
+}
