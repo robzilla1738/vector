@@ -4,7 +4,7 @@ import { fixturePage } from '../lib/fixture.mjs';
 export const journey = {
   id: 'split-fluid', title: 'Create, restore, resize and reflow native split panes', features: ['splitView'],
   devAcceptance: ['splitView', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none',
-  launch: {}, timeoutMs: 180_000, owner: 'L5',
+  launch: ({ appearance }) => ({ args: appearance ? [] : ['--aux-native-performance-observer'] }), timeoutMs: 180_000, owner: 'L5',
 };
 const tab = color => ({ role: 'AXRadioButton', name: `^Aux native ${color}(?: Close Aux native ${color})?$`, match: 'regex', scope: 'shell', index: 0 });
 const button = name => ({ role: 'AXButton', name, match: 'exact', scope: 'shell', index: 0 });
@@ -79,4 +79,31 @@ export async function run(t) {
     const pages = await t.rpc('pages.list'); t.assert.ok(ids(['Red', 'Blue', 'Green']).every(id => pages.some(page => page.pageId === id && !page.split)));
     return { ax: await t.ax.dump(), rpc: { pages } };
   });
+  if (!t.appearanceEnabled) {
+    await t.step('20 AC exact guest split-drop presentations', { kind: 'ui', features: ['splitView'] }, async () => {
+      const report = await t.measureGuestPresentations({ metric: 'split-drop',
+        setup: async () => {
+          if ((await t.rpc('pages.list')).some(page => page.split)) {
+            await t.ax.press(button('Separate split tabs')); await t.ax.waitFor(divider(1), 'absent');
+          }
+          await t.ax.press(tab('Red'));
+          await panes(t, titles(['Red']), ids(['Red']));
+        }, input: () => edgeDrop(t, 'Blue', 'right') });
+      await panes(t, titles(['Red', 'Blue']), ids(['Red', 'Blue']));
+      return { ax: await t.ax.dump(), rpc: { performance: report } };
+    });
+    let dragTarget;
+    await t.step('20 AC exact divider hardware frame presentations', { kind: 'ui', features: ['splitView'] }, async () => {
+      const report = await t.measureGuestPresentations({ metric: 'divider-frame',
+        setup: async index => {
+          await t.ax.waitFor(divider(1));
+          const rows = await t.ax.query(divider(1)); t.assert.equal(rows.length, 1);
+          const frame = rows[0].frame; t.assert.ok(frame && frame.width > 0 && frame.height > 0);
+          const x = frame.x + frame.width / 2, y = frame.y + frame.height / 2;
+          dragTarget = { from: { x, y }, to: { x: x + (index % 2 ? -12 : 12), y } };
+          await panes(t, titles(['Red', 'Blue']), ids(['Red', 'Blue']));
+        }, input: () => t.ax.drag(dragTarget.from, dragTarget.to, { steps: 1, holdMs: 0 }) });
+      return { ax: await t.ax.dump(), rpc: { performance: report } };
+    });
+  }
 }

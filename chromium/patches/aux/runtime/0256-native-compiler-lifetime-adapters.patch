@@ -1,0 +1,179 @@
+diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.h b/content/browser/picture_in_picture/picture_in_picture_service_impl.h
+--- a/content/browser/picture_in_picture/picture_in_picture_service_impl.h
++++ b/content/browser/picture_in_picture/picture_in_picture_service_impl.h
+@@ -77,8 +77,8 @@
+   friend class AutomaticPictureInPictureTestPeer;
+   // Private, one-shot transport only: held payloads still use the same genuine
+   // production dispatch and its mandatory document/ticket authority.
+-  static WeakDocumentPtr automatic_test_document_;
+-  static base::OnceCallback<void(base::OnceClosure)> automatic_test_transport_;
++  static WeakDocumentPtr& AutomaticTestDocument();
++  static base::OnceCallback<void(base::OnceClosure)>& AutomaticTestTransport();
+ 
+   struct PendingSession;
+ 
+diff --git a/content/browser/picture_in_picture/picture_in_picture_service_impl.cc b/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
+--- a/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
++++ b/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
+@@ -8,6 +8,7 @@
+ #include <utility>
+ 
+ #include "base/functional/bind.h"
++#include "base/no_destructor.h"
+ #include "content/browser/picture_in_picture/video_picture_in_picture_window_controller_impl.h"
+ #include "content/browser/renderer_host/render_frame_host_impl.h"
+ #include "content/public/browser/web_contents.h"
+@@ -45,9 +46,15 @@
+   StartSessionCallback callback;
+ };
+ 
+-WeakDocumentPtr PictureInPictureServiceImpl::automatic_test_document_;
+-base::OnceCallback<void(base::OnceClosure)>
+-    PictureInPictureServiceImpl::automatic_test_transport_;
++WeakDocumentPtr& PictureInPictureServiceImpl::AutomaticTestDocument() {
++  static base::NoDestructor<WeakDocumentPtr> document;
++  return *document;
++}
++base::OnceCallback<void(base::OnceClosure)>&
++PictureInPictureServiceImpl::AutomaticTestTransport() {
++  static base::NoDestructor<base::OnceCallback<void(base::OnceClosure)>> transport;
++  return *transport;
++}
+ 
+ // static
+ void PictureInPictureServiceImpl::Create(
+@@ -112,10 +119,10 @@
+       show_play_pause_button, std::move(observer), source_bounds, spatial_format,
+       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+           std::move(callback), mojo::NullRemote(), gfx::Size()));
+-  if (automatic_test_transport_ &&
+-      automatic_test_document_.AsRenderFrameHostIfValid() == &render_frame_host()) {
+-    auto transport = std::move(automatic_test_transport_);
+-    automatic_test_document_ = {};
++  if (AutomaticTestTransport() &&
++      AutomaticTestDocument().AsRenderFrameHostIfValid() == &render_frame_host()) {
++    auto transport = std::move(AutomaticTestTransport());
++    AutomaticTestDocument() = {};
+     std::move(transport).Run(base::BindOnce(
+         &PictureInPictureServiceImpl::DispatchAutomaticSession,
+         immersive_confirmation_weak_factory_.GetWeakPtr(), ticket,
+diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
+@@ -4151,13 +4151,13 @@
+  public:
+   static void Hold(WeakDocumentPtr document,
+                    base::OnceCallback<void(base::OnceClosure)> transport) {
+-    CHECK(!PictureInPictureServiceImpl::automatic_test_transport_);
+-    PictureInPictureServiceImpl::automatic_test_document_ = document;
+-    PictureInPictureServiceImpl::automatic_test_transport_ = std::move(transport);
++    CHECK(!PictureInPictureServiceImpl::AutomaticTestTransport());
++    PictureInPictureServiceImpl::AutomaticTestDocument() = document;
++    PictureInPictureServiceImpl::AutomaticTestTransport() = std::move(transport);
+   }
+   static void Reset() {
+-    PictureInPictureServiceImpl::automatic_test_transport_.Reset();
+-    PictureInPictureServiceImpl::automatic_test_document_ = {};
++    PictureInPictureServiceImpl::AutomaticTestTransport().Reset();
++    PictureInPictureServiceImpl::AutomaticTestDocument() = {};
+   }
+ };
+ }  // namespace content
+diff --git a/chrome/browser/ui/aux/native_pip_appearance_registry.h b/chrome/browser/ui/aux/native_pip_appearance_registry.h
+--- a/chrome/browser/ui/aux/native_pip_appearance_registry.h
++++ b/chrome/browser/ui/aux/native_pip_appearance_registry.h
+@@ -21,10 +21,10 @@
+ bool NativePipAppearanceObservationEnabled();
+ enum class NativePipSurfaceKind { kVideo, kDocument };
+ struct NativePipOwner {
+-  Profile* profile = nullptr;
+-  content::WebContents* opener = nullptr;
+-  content::WebContents* child = nullptr;
+-  content::PictureInPictureWindowController* controller = nullptr;
++  raw_ptr<Profile> profile = nullptr;
++  raw_ptr<content::WebContents> opener = nullptr;
++  raw_ptr<content::WebContents> child = nullptr;
++  raw_ptr<content::PictureInPictureWindowController> controller = nullptr;
+   bool operator==(const NativePipOwner&) const = default;
+ };
+ // Actual lifetime-owned widget/controller registration; never a title, requested
+diff --git a/components/media_message_center/media_notification_item.h b/components/media_message_center/media_notification_item.h
+--- a/components/media_message_center/media_notification_item.h
++++ b/components/media_message_center/media_notification_item.h
+@@ -75,9 +75,7 @@
+   // original action and do not create person authority.
+   virtual void OnMediaSessionActionButtonPressedWithUserInput(
+       media_session::mojom::MediaSessionAction action,
+-      const ui::Event& event, gfx::NativeWindow source_window) {
+-    OnMediaSessionActionButtonPressed(action);
+-  }
++      const ui::Event& event, gfx::NativeWindow source_window);
+ 
+   // Called by MediaNotificationView when progress bar is clicked to seek.
+   virtual void SeekTo(base::TimeDelta time) = 0;
+diff --git a/components/media_message_center/media_notification_item.cc b/components/media_message_center/media_notification_item.cc
+--- a/components/media_message_center/media_notification_item.cc
++++ b/components/media_message_center/media_notification_item.cc
+@@ -18,4 +18,10 @@
+ const char MediaNotificationItem::kSourceHistogramName[] =
+     "Media.Notification.Source";
+ 
++void MediaNotificationItem::OnMediaSessionActionButtonPressedWithUserInput(
++    media_session::mojom::MediaSessionAction action,
++    const ui::Event& event, gfx::NativeWindow source_window) {
++  OnMediaSessionActionButtonPressed(action);
++}
++
+ }  // namespace media_message_center
+diff --git a/chrome/browser/ui/aux/native_command_presentation_session.cc b/chrome/browser/ui/aux/native_command_presentation_session.cc
+--- a/chrome/browser/ui/aux/native_command_presentation_session.cc
++++ b/chrome/browser/ui/aux/native_command_presentation_session.cc
+@@ -2,7 +2,7 @@
+ // Use of this source code is governed by a BSD-style license in the LICENSE file.
+ #include "chrome/browser/ui/aux/native_command_presentation_session.h"
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+-#include <cstdio>
++#include <iostream>
+ #include <utility>
+ #include "base/command_line.h"
+ #include "base/functional/bind.h"
+@@ -56,8 +56,7 @@
+   auto json = base::WriteJson(record);
+   if (!json || json->size() > 4000) return;
+   ++records;
+-  std::fprintf(stderr, "%s %s\n", prefix, json->c_str());
+-  std::fflush(stderr);
++  std::cerr << prefix << " " << *json << std::endl;
+ }
+ }  // namespace
+ std::optional<base::TimeDelta> ValidateCommandPresentationPair(
+diff --git a/chrome/browser/ui/aux/native_guest_presentation_fixture.cc b/chrome/browser/ui/aux/native_guest_presentation_fixture.cc
+--- a/chrome/browser/ui/aux/native_guest_presentation_fixture.cc
++++ b/chrome/browser/ui/aux/native_guest_presentation_fixture.cc
+@@ -2,7 +2,7 @@
+ #include "chrome/browser/ui/aux/native_guest_presentation_fixture.h"
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+ #include <iostream>
+-#include <cstring>
++#include <string_view>
+ #include <algorithm>
+ #include <utility>
+ #include "base/functional/bind.h"
+@@ -69,7 +69,7 @@
+     const blink::mojom::NativeGuestStageSubmission* submission,
+     const viz::mojom::NativeGuestInclusionResult* presentation,
+     const std::optional<PerformanceInput>& input, const char* reason) {
+-  const bool claimed_measurement = reason && std::strcmp(reason, "measured") == 0;
++  const bool claimed_measurement = reason && std::string_view(reason) == "measured";
+   auto record = Record("refused", claimed_measurement ?
+       (input ? "invalid_presentation_pair" : "no_native_input") :
+       (reason ? reason : "invalid_presentation_pair"), scope);
+@@ -178,7 +178,7 @@
+   active_ = false; Emit("AUX_NATIVE_GUEST_PRESENTATION_V1 ", record);
+   record_ = std::move(record);
+   if (ready_) std::move(ready_).Run(record_->Clone());
+-  if (completed_) { auto reply = std::move(completed_); auto record = std::move(*record_); record_.reset(); std::move(reply).Run(std::move(record)); }
++  if (completed_) { auto reply = std::move(completed_); auto completion_record = std::move(*record_); record_.reset(); std::move(reply).Run(std::move(completion_record)); }
+ }
+ void NativeGuestPresentationFixture::Complete(Reply completed) {
+   if (completed_) { std::move(completed).Run(Record("refused", "completion_already_waiting", nullptr)); return; }

@@ -227,3 +227,6 @@ aux/runtime/0253-blink-native-guest-type-corrections.patch
 aux/runtime/0220-auto-pip-final-effect-authority.patch
 aux/runtime/0254-pip-genuine-person-input-lineage.patch
 aux/runtime/0255-blink-witness-vector-adapters.patch
+aux/runtime/0252-private-performance-mailbox.patch
+aux/runtime/0257-native-owned-shell-memory.patch
+aux/runtime/0256-native-compiler-lifetime-adapters.patch

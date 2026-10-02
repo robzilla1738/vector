@@ -3,7 +3,7 @@ import { setTabLayout } from '../lib/tab-layout.mjs';
 export const journey = {
   id: 'keyboard-tabs', title: 'Switch native pages through Chromium tab shortcuts', features: ['layouts'],
   devAcceptance: ['layouts', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none',
-  launch: {}, timeoutMs: 90_000, owner: 'Integrator',
+  launch: ({ appearance }) => ({ args: appearance ? [] : ['--aux-native-performance-observer'] }), timeoutMs: 90_000, owner: 'Integrator',
 };
 
 export async function run(t) {
@@ -27,5 +27,36 @@ export async function run(t) {
       return { ax, rpc: { workspace: rpc, tabLayout: settings.tabLayout } };
     });
     }
+    if (!t.appearanceEnabled) await t.step(`${layout} 20 AC exact native tab presentations`, { kind: 'ui', features: ['layouts'] }, async () => {
+      const report = await t.measureGuestPresentations({ metric: 'tab-switch',
+        setup: async () => {
+          await t.ax.press({ role: 'AXRadioButton', name: '^Aux native Blue(?: Close Aux native Blue)?$', match: 'regex', scope: 'shell', index: 0 });
+          await t.until('Blue native baseline selected', async () => (await t.rpc('workspace.get')).activePageId === blue.pageId);
+          await t.ax.waitFor({ role: 'AXWebArea', name: 'Aux native Blue', match: 'exact', scope: 'page' }, 'visible');
+        }, input: () => t.ax.key('control+shift+tab', 'hid') });
+      t.assert.equal((await t.rpc('workspace.get')).activePageId, red.pageId);
+      return { ax: await t.ax.dump(), rpc: { performance: report } };
+    });
   }
+  if (!t.appearanceEnabled) await t.step('20 AC shell footprint samples with ten idle fixture tabs', { kind: 'ui', features: ['layouts'] }, async () => {
+    const expected = new Set([red.pageId, blue.pageId]);
+    for (let index = 0; index < 8; index++) {
+      const page = await t.rpc('pages.open', { url: `${t.fixture.url}/${index % 2 ? 'red' : 'blue'}`, activate: false });
+      expected.add(page.pageId);
+    }
+    const idle = async () => {
+      const pages = await t.rpc('pages.list');
+      return pages.length === 10 && pages.every(page => expected.has(page.pageId) && !page.loading &&
+        [ `${t.fixture.url}/red`, `${t.fixture.url}/blue` ].includes(page.url)) && pages;
+    };
+    await t.until('all ten actual fixture tabs finish loading', idle);
+    await t.ax.press({ role: 'AXRadioButton', name: '^Aux native Blue(?: Close Aux native Blue)?$', match: 'regex', scope: 'shell', index: 0 });
+    await t.ax.waitFor({ role: 'AXWebArea', name: 'Aux native Blue', match: 'exact', scope: 'page' }, 'visible');
+    const report = await t.measureShellMemory({ setup: async () => {
+      const pages = await idle(); t.assert.ok(pages, 'Memory workload must retain ten loaded fixture tabs');
+      return { kind: 'ten-idle-fixture-tabs', pages };
+    } });
+    t.assert.equal(report.samplesBytes.length, 20);
+    return { ax: await t.ax.dump(), rpc: { pages: await t.rpc('pages.list'), performance: report } };
+  });
 }

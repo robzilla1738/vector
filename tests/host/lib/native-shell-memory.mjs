@@ -38,7 +38,7 @@ export async function collectShellMemory({ transport, browserPid, candidate, rea
     let owned, generation, sequence = 0n, receiptSequence = 0n, previousEnd = 0n;
     for (let index = 0; index < trials; index++) {
       const attempt = { trial: index + 1, status: 'running' }; report.attempts.push(attempt);
-      await setup(index); attempt.before = await verify();
+      attempt.workload = await setup(index); attempt.before = await verify();
       attempt.raw = await transport.invoke('sampleShellMemory');
       const receipt = transport.lastReceipt; attempt.receipt = structuredClone(receipt);
       assert.ok(receipt && typeof receipt.raw === 'string' && Buffer.byteLength(receipt.raw) <= 16384);

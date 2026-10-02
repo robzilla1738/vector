@@ -1,0 +1,38 @@
+{
+  "baseline": "0252 frozen afterpins; no Stable changes",
+  "paths": [
+    "chrome/browser/ui/aux/native_shell_memory.h",
+    "chrome/browser/ui/aux/native_shell_memory.cc",
+    "chrome/browser/ui/webui_browser/webui_browser_ui.h",
+    "chrome/browser/ui/webui_browser/webui_browser_ui.cc",
+    "chrome/browser/ui/aux/BUILD.gn",
+    "chrome/browser/ui/aux/native_performance_mailbox.cc",
+    "chrome/browser/ui/aux/method_registry.cc",
+    "chrome/browser/ui/aux/methods/window_methods.cc",
+    "chrome/browser/ui/aux/native_performance_mailbox_unittest.cc"
+  ],
+  "baselineSha256": {
+    "chrome/browser/ui/aux/native_shell_memory.h": null,
+    "chrome/browser/ui/aux/native_shell_memory.cc": null,
+    "chrome/browser/ui/webui_browser/webui_browser_ui.h": "2c5c5732e265339c3cf0b74294544a2d7ebcae8076980eb88927a683fad3a49e",
+    "chrome/browser/ui/webui_browser/webui_browser_ui.cc": "2f12f4c2faf23c777e1f38fcaae13371c5949f05e76d11ef07ee2c36ec72d373",
+    "chrome/browser/ui/aux/BUILD.gn": "ca81db24598f94342082359a287a07a35ee669a8faffe0b62e6dc7050aa36036",
+    "chrome/browser/ui/aux/native_performance_mailbox.cc": "7535dfaa0bb02ad718245bbea2b384ccf3649510bb560d959394d5054f154789",
+    "chrome/browser/ui/aux/method_registry.cc": "1b76092cb22782908e27b9a0806b22427a1c17a099063b773cb93c90e6408c32",
+    "chrome/browser/ui/aux/methods/window_methods.cc": "724f2b0acd8334613b2cb4ce55092c4ce1bda03836ad01f39e0815a0d4a87a9d",
+    "chrome/browser/ui/aux/native_performance_mailbox_unittest.cc": "1ec4d2a9a485cd57fcc901f8bd55b66d1252db4ea4528129be6d7f1154976aab"
+  },
+  "resultSha256": {
+    "chrome/browser/ui/aux/native_shell_memory.h": "c03d2928d2a4bd11093c9863d11e6c89ce32a2cdd5ef732a97c696a908202458",
+    "chrome/browser/ui/aux/native_shell_memory.cc": "cb229f5bf3bfc1cf4f319a91e28d9a3158ce43bf883da78128aecc64b46b8126",
+    "chrome/browser/ui/webui_browser/webui_browser_ui.h": "b5a197c6dc857bd3f2a408b115989a0005718b968c929eefcbdededde7db2892",
+    "chrome/browser/ui/webui_browser/webui_browser_ui.cc": "b63f7125a4a7986f95468b63a2238f069361be2468b529582aa0e247f1e89abe",
+    "chrome/browser/ui/aux/BUILD.gn": "18631b2afc242ddde23aa90be0da7c5ad2c718a091c2a2dddacfb7b939d8e1ea",
+    "chrome/browser/ui/aux/native_performance_mailbox.cc": "03bb8f627003c2c0041ead7f5c9025eeccf032029f86ee78510d875b0651dd54",
+    "chrome/browser/ui/aux/method_registry.cc": "7ca4cab5985119ec5625492529091ad7fec2efce2101c756077b2f375955f6c6",
+    "chrome/browser/ui/aux/methods/window_methods.cc": "89b45f56b22d78052259dde64127fbcc22c7d526102e99da56269d58479c1b78",
+    "chrome/browser/ui/aux/native_performance_mailbox_unittest.cc": "b3611691d4c29aec54a3ad000f09448a23d125a28f1421a8fe70548b41460518"
+  },
+  "patchSha256": "9000d3a40b27c6d4b1f47545013960183353b1361c0509c89c3e65f77c7cec18",
+  "sourceNativeIntegration": "Wired actual owner-bound native sampler/private fixed op/GN; native compilation and real kernel memory trials pending"
+}

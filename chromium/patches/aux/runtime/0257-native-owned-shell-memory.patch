@@ -1,0 +1,258 @@
+diff --git a/chrome/browser/ui/aux/native_shell_memory.h b/chrome/browser/ui/aux/native_shell_memory.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_shell_memory.h
+@@ -0,0 +1,34 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_SHELL_MEMORY_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_SHELL_MEMORY_H_
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include <cstdint>
++#include <optional>
++#include "base/memory/weak_ptr.h"
++#include "base/unguessable_token.h"
++#include "base/values.h"
++#include "chrome/browser/ui/aux/native_guest_stage_owner.h"
++#include "content/public/browser/weak_document_ptr.h"
++class WebUIBrowserUI;
++namespace aux {
++// Fixed private fixture operation. The native owner chooses its own renderer;
++// no process selector or caller assertion can choose another process.
++class NativeShellMemorySampler {
++ public:
++  explicit NativeShellMemorySampler(base::WeakPtr<WebUIBrowserUI> ui);
++  ~NativeShellMemorySampler();
++  NativeShellMemorySampler(const NativeShellMemorySampler&) = delete;
++  NativeShellMemorySampler& operator=(const NativeShellMemorySampler&) = delete;
++  base::DictValue Sample();
++ private:
++  base::WeakPtr<WebUIBrowserUI> ui_;
++  content::WeakDocumentPtr document_;
++  std::optional<NativeGuestStageOwnedSnapshot> owner_;
++  const base::UnguessableToken nonce_ = base::UnguessableToken::Create();
++  uint64_t sequence_ = 0;
++};
++}  // namespace aux
++#endif
++#endif
+diff --git a/chrome/browser/ui/aux/native_shell_memory.cc b/chrome/browser/ui/aux/native_shell_memory.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_shell_memory.cc
+@@ -0,0 +1,62 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_shell_memory.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include <libproc.h>
++#include <sys/resource.h>
++#include <algorithm>
++#include "base/strings/string_number_conversions.h"
++#include "base/time/time.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_ui.h"
++namespace aux {
++namespace {
++base::DictValue Refused(const char* reason) {
++  return base::DictValue().Set("producer", "aux-native-shell-memory")
++      .Set("version", 1).Set("status", "refused").Set("reason", reason);
++}
++}
++NativeShellMemorySampler::NativeShellMemorySampler(base::WeakPtr<WebUIBrowserUI> ui) : ui_(ui) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  owner_ = ReadNativeGuestStageShellOwner(ui_);
++  auto* shell = ui_ && ui_->web_ui() ? ui_->web_ui()->GetWebContents() : nullptr;
++  auto* frame = shell ? shell->GetPrimaryMainFrame() : nullptr;
++  if (owner_ && frame) document_ = frame->GetWeakDocumentPtr();
++  else owner_.reset();
++}
++NativeShellMemorySampler::~NativeShellMemorySampler() = default;
++base::DictValue NativeShellMemorySampler::Sample() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto* frame = document_.AsRenderFrameHostIfValid();
++  auto* shell = ui_ && ui_->web_ui() ? ui_->web_ui()->GetWebContents() : nullptr;
++  const auto before = ReadNativeGuestStageShellOwner(ui_);
++  if (!owner_ || !before || *before != *owner_ || !frame || !shell ||
++      shell->GetPrimaryMainFrame() != frame || sequence_ >= 4000)
++    return Refused("stale_owned_shell");
++  rusage_info_v4 memory{};
++  const auto started = base::TimeTicks::Now();
++  if (proc_pid_rusage(owner_->shell_renderer_pid, RUSAGE_INFO_V4,
++      reinterpret_cast<rusage_info_t*>(&memory)) != 0)
++    return Refused("kernel_memory_unavailable");
++  const auto completed = base::TimeTicks::Now();
++  const auto after = ReadNativeGuestStageShellOwner(ui_);
++  if (!after || *after != *owner_ || document_.AsRenderFrameHostIfValid() != frame ||
++      shell->GetPrimaryMainFrame() != frame || !memory.ri_phys_footprint ||
++      !memory.ri_proc_start_abstime || memory.ri_proc_exit_abstime ||
++      std::ranges::all_of(memory.ri_uuid, [](uint8_t value) { return value == 0; }))
++    return Refused("changed_or_unavailable_process");
++  return base::DictValue().Set("producer", "aux-native-shell-memory")
++      .Set("version", 1).Set("status", "sampled").Set("reason", "sampled")
++      .Set("windowId", owner_->window_id).Set("widgetRoutingId", owner_->shell_widget_routing_id)
++      .Set("rendererPid", owner_->shell_renderer_pid).Set("requestNonce", nonce_.ToString())
++      .Set("sampleSequence", base::NumberToString(++sequence_))
++      .Set("processUuid", base::HexEncode(memory.ri_uuid))
++      .Set("processStartAbsolute", base::NumberToString(memory.ri_proc_start_abstime))
++      .Set("sampleStartUs", base::NumberToString(started.since_origin().InMicroseconds()))
++      .Set("sampleEndUs", base::NumberToString(completed.since_origin().InMicroseconds()))
++      .Set("physicalFootprintBytes", base::NumberToString(memory.ri_phys_footprint));
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -76,6 +76,7 @@
+ class NativeCommandPresentationSession;
+ class NativeGuestPresentationFixture;
+ class NativePerformanceMailbox;
++class NativeShellMemorySampler;
+ }
+ #endif
+ class WebUIBrowserBookmarkBarPageHandler;
+@@ -346,6 +347,7 @@
+   std::unique_ptr<aux::NativeCommandPresentationSession> command_presentation_session_;
+   std::unique_ptr<aux::NativeGuestPresentationFixture> guest_presentation_fixture_;
+   std::unique_ptr<aux::NativePerformanceMailbox> performance_mailbox_;
++  std::unique_ptr<aux::NativeShellMemorySampler> shell_memory_sampler_;
+ #endif
+   base::WeakPtrFactory<WebUIBrowserUI> weak_factory_{this};
+ };
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -7,6 +7,7 @@
+ #include "chrome/browser/ui/aux/native_command_presentation_session.h"
+ #include "chrome/browser/ui/aux/native_guest_presentation_fixture.h"
+ #include "chrome/browser/ui/aux/native_performance_mailbox.h"
++#include "chrome/browser/ui/aux/native_shell_memory.h"
+ #endif
+ #include "chrome/browser/ui/toolbar/back_forward_menu_model.h"
+ #include "ui/views/controls/menu/menu_model_adapter.h"
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -42,6 +42,8 @@
+     "native_guest_presentation_fixture.cc",
+     "native_performance_mailbox.h",
+     "native_performance_mailbox.cc",
++    "native_shell_memory.h",
++    "native_shell_memory.cc",
+     "native_guest_presentation_owner.h",
+     "native_guest_presentation_owner.cc",
+     "native_guest_stage_owner.h",
+diff --git a/chrome/browser/ui/aux/native_performance_mailbox.cc b/chrome/browser/ui/aux/native_performance_mailbox.cc
+--- a/chrome/browser/ui/aux/native_performance_mailbox.cc
++++ b/chrome/browser/ui/aux/native_performance_mailbox.cc
+@@ -75,7 +75,8 @@
+ bool IsNativePerformanceMailboxOperation(const std::string& operation) {
+   return operation == "prepareGuestSplitDropPresentation" ||
+       operation == "prepareGuestDividerFramePresentation" ||
+-      operation == "prepareGuestTabSwitchPresentation" || operation == "completeGuestPresentation";
++      operation == "prepareGuestTabSwitchPresentation" || operation == "completeGuestPresentation" ||
++      operation == "sampleShellMemory";
+ }
+ std::optional<base::DictValue> ReadNativePerformanceMailboxFile(const base::FilePath& root,
+                                                              uint64_t last_sequence, uint64_t root_device, uint64_t root_inode) {
+@@ -200,8 +201,11 @@
+   if (!Stable() || !running_ || *running_ != operation || sequence != sequence_) { Refuse(); return false; }
+   const auto* producer = record.FindString("producer");
+   const auto* status = record.FindString("status");
+-  if (!producer || *producer != "aux-native-guest-presentation" || record.FindInt("version") != 1 ||
+-      !status || (*status != "ready" && *status != "measured" && *status != "refused") ||
++  const bool memory = operation == "sampleShellMemory";
++  if (!producer || *producer != (memory ? "aux-native-shell-memory" : "aux-native-guest-presentation") ||
++      record.FindInt("version") != 1 || !status ||
++      (memory ? (*status != "sampled" && *status != "refused") :
++          (*status != "ready" && *status != "measured" && *status != "refused")) ||
+       (*status != "refused" && record.FindInt("windowId") != owner_->window_id)) {
+     Refuse(); return false;
+   }
+@@ -210,7 +214,7 @@
+       .Set("sequence", base::NumberToString(sequence)).Set("operation", operation).Set("record", record.Clone());
+   const auto json = base::WriteJson(wrapper);
+   if (!json || json->size() > 16000 || !AdmitRecord()) { Refuse(); return false; }
+-  if (operation == "completeGuestPresentation") sample_active_ = false;
++  if (memory || operation == "completeGuestPresentation") sample_active_ = false;
+   else sample_active_ = record.FindString("status") && *record.FindString("status") == "ready";
+   running_.reset(); fprintf(stderr, "AUX_NATIVE_FIXTURE_REPLY_V1 %s\n", json->c_str()); fflush(stderr); return true;
+ }
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -45,7 +45,7 @@
+     register_shell(AuxShellMethodGroup::kWindow,
+         {"commandPresentationSnapshot", "prepareGuestSplitDropPresentation",
+          "prepareGuestDividerFramePresentation", "prepareGuestTabSwitchPresentation",
+-         "completeGuestPresentation", "performanceFixtureNextRequest"});
++         "completeGuestPresentation", "performanceFixtureNextRequest", "sampleShellMemory"});
+ #endif
+   register_shell(AuxShellMethodGroup::kContent,
+                  {"preview", "readArticle", "siteZoom", "privatePageZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -36,6 +36,7 @@
+ #include "chrome/browser/ui/aux/native_command_presentation_session.h"
+ #include "chrome/browser/ui/aux/native_guest_presentation_fixture.h"
+ #include "chrome/browser/ui/aux/native_performance_mailbox.h"
++#include "chrome/browser/ui/aux/native_shell_memory.h"
+ #endif
+ #include "chrome/browser/platform_util.h"
+ #include "chrome/browser/download/download_prefs.h"
+@@ -388,7 +389,7 @@
+   if (method == "prepareGuestSplitDropPresentation" ||
+       method == "prepareGuestDividerFramePresentation" ||
+       method == "prepareGuestTabSwitchPresentation" ||
+-      method == "completeGuestPresentation") {
++      method == "completeGuestPresentation" || method == "sampleShellMemory") {
+     if (!args.empty()) {
+       std::move(callback).Run(false, "", "invalid_argument", "Guest fixture takes no arguments");
+       return;
+@@ -404,8 +405,6 @@
+     if (!mailbox_sequence) {
+       std::move(callback).Run(false, "", "forbidden", "Guest fixture requires its owned mailbox operation"); return;
+     }
+-    if (!guest_presentation_fixture_)
+-      guest_presentation_fixture_ = std::make_unique<aux::NativeGuestPresentationFixture>(GetWeakPtr());
+     auto reply = base::BindOnce([](base::WeakPtr<WebUIBrowserUI> ui,
+         content::WeakDocumentPtr document, uint64_t sequence, std::string operation,
+         RequestCallback callback, base::DictValue record) {
+@@ -427,6 +426,14 @@
+       }
+       std::move(callback).Run(true, *json, "", "");
+     }, GetWeakPtr(), frame->GetWeakDocumentPtr(), *mailbox_sequence, method, std::move(callback));
++    if (method == "sampleShellMemory") {
++      if (!shell_memory_sampler_)
++        shell_memory_sampler_ = std::make_unique<aux::NativeShellMemorySampler>(GetWeakPtr());
++      std::move(reply).Run(shell_memory_sampler_->Sample());
++      return;
++    }
++    if (!guest_presentation_fixture_)
++      guest_presentation_fixture_ = std::make_unique<aux::NativeGuestPresentationFixture>(GetWeakPtr());
+     if (method == "completeGuestPresentation") {
+       guest_presentation_fixture_->Complete(std::move(reply));
+     } else {
+diff --git a/chrome/browser/ui/aux/native_performance_mailbox_unittest.cc b/chrome/browser/ui/aux/native_performance_mailbox_unittest.cc
+--- a/chrome/browser/ui/aux/native_performance_mailbox_unittest.cc
++++ b/chrome/browser/ui/aux/native_performance_mailbox_unittest.cc
+@@ -34,6 +34,14 @@
+   EXPECT_FALSE(Read(1));
+ }
+ TEST_F(NativePerformanceMailboxFileTest, MissingFileIsIdle) { EXPECT_FALSE(Read()); }
++TEST_F(NativePerformanceMailboxFileTest, MemoryOperationCannotCarryAProcessSelector) {
++  Write(R"({"sequence":"1","operation":"sampleShellMemory"})");
++  auto request = Read(); ASSERT_TRUE(request);
++  EXPECT_EQ("sampleShellMemory", *request->FindString("operation"));
++  Write(R"({"sequence":"1","operation":"sampleShellMemory","rendererPid":42})");
++  auto refusal = Read(); ASSERT_TRUE(refusal);
++  EXPECT_EQ("refused", *refusal->FindString("status"));
++}
+ TEST_F(NativePerformanceMailboxFileTest, ExtraSelectorOrSkippedSequenceRefuses) {
+   Write(R"({"sequence":"1","operation":"prepareGuestTabSwitchPresentation","windowId":7})");
+   auto refusal = Read(); ASSERT_TRUE(refusal); EXPECT_EQ("refused", *refusal->FindString("status"));

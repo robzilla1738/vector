@@ -1,0 +1,34 @@
+{
+  "sourceCommit": "02b755500132ac6a8448d04400fe871f29410b6b",
+  "sourceWorktree": "/tmp/aux-browser-runtime-design-command",
+  "rootBaseline": "8bb15a442438237e271344dae2b1e56f2c56fbb0",
+  "files": [
+    {
+      "patch": "0252-private-performance-mailbox-FROZEN.request.patch",
+      "sha256": "bc3815963500d292ae4e77c22e9f20901ff58a954e52a2e319c6cf704cbdfb5d",
+      "baseline": "0252-private-performance-mailbox-FROZEN.baseline.json",
+      "paths": 9
+    },
+    {
+      "patch": "0252-private-performance-callers-FROZEN.request.patch",
+      "sha256": "4eb7bc29f5072aad0bbb97103991168817bd762fb3de56915eee6b38a15af4ce",
+      "baseline": "0252-private-performance-callers-FROZEN.baseline.json",
+      "paths": 14
+    }
+  ],
+  "checks": {
+    "tools": "30 Node cases PASS including wrapper that runs six real hostile filesystem Python cases",
+    "observer": "6 renderer unit cases PASS",
+    "workspaceAndRendererType": "npx tsc -b and shell tsc PASS in isolated /tmp/aux-browser-runtime-design-0252-check; local workspace links corrected before successful check",
+    "targetedLint": "PASS",
+    "chromiumRendererBundle": {
+      "startupJsKb": 486,
+      "startupCssKb": 175,
+      "totalJsKb": 1795
+    }
+  },
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "hardwareTrialsRun": 0,
+  "qualified": false
+}

@@ -1,0 +1,79 @@
+{
+  "rootHead": "520bec3f83cd9707ccc40fe3356c78c420ad2b3b",
+  "patchSha256": "4eb7bc29f5072aad0bbb97103991168817bd762fb3de56915eee6b38a15af4ce",
+  "files": [
+    {
+      "path": "apps/shell/src/native-performance-fixture-observer.ts",
+      "beforeSha256": null,
+      "afterSha256": "01b9f5febda475a62c4278b36725a78a26827fd984da09f38c21bab97db1c8ab"
+    },
+    {
+      "path": "apps/shell/src/native-performance-fixture-observer.test.ts",
+      "beforeSha256": null,
+      "afterSha256": "10e57fc665aafae6b8e1c231c726ec12e86075198da665d976a0501fbaf62a49"
+    },
+    {
+      "path": "tests/host/lib/performance-mailbox.mjs",
+      "beforeSha256": null,
+      "afterSha256": "24e9e21e7bf2707c04aee5db24fdbf046648395127220fb0f8db383206b49cf2"
+    },
+    {
+      "path": "tests/host/lib/performance-mailbox-writer.py",
+      "beforeSha256": null,
+      "afterSha256": "f5ea34ee19c3b18e78543adba077a8699f9999169b613487a26da3fe384bb0ff"
+    },
+    {
+      "path": "tests/host/lib/native-guest-performance.mjs",
+      "beforeSha256": null,
+      "afterSha256": "90ceca1c2b45c0c74bda54200b082fb7d6214d749719ddde3fbd40dde43db559"
+    },
+    {
+      "path": "tests/tools/performance-mailbox.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "9df05123e603894e787ac4d3c232f244b7bc3f45e00d1ab7b49ede0f8a140c32"
+    },
+    {
+      "path": "tests/tools/performance-mailbox-writer.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "c83dca0f12fcad8c6097e22161a02ef6fa34334fa0f8e76fc654ef6ecba98b54"
+    },
+    {
+      "path": "tests/tools/performance_mailbox_writer_test.py",
+      "beforeSha256": null,
+      "afterSha256": "3d48698e38b8c576774aed1af84c87d37f5874bf65aa9358da4f2689cb7b8fbe"
+    },
+    {
+      "path": "tests/tools/native-guest-performance.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "fbc3b392182f6a3a6e7e0c6a1120bb6ac8a563d400ae0292f43d2fadfd8f877a"
+    },
+    {
+      "path": "apps/shell/src/App.tsx",
+      "beforeSha256": "9f711d865520627f6c022bae904948a08990b787fc68d04a91ae764ffa4c260b",
+      "afterSha256": "37f09ffcfb434be5e093d9bdd226d49f32b5c4eabf2c3b04a5ffb51a553280d0"
+    },
+    {
+      "path": "tests/host/lib/app.mjs",
+      "beforeSha256": "ed9281d2ae2a1a38d028d9002f52a9c15a8100580adf30ae352813e74dd21733",
+      "afterSha256": "cf2b8bce5b669c43557dc66b3c7b146e8d6d212da764d15357d70652a7395e46"
+    },
+    {
+      "path": "tests/host/run-journey.mjs",
+      "beforeSha256": "3a7cf7b88a843fb84a2a65c55397d1da7e6c281fae77614c98de19c2c03b2c23",
+      "afterSha256": "85e24730a6b91077e400e2ef63d12a97152ff4b703804536b77e0494212bdcb3"
+    },
+    {
+      "path": "tests/host/journeys/split-fluid.mjs",
+      "beforeSha256": "44731fbb791a9af6c955193d11c58c960f66d502da948bcd1f41fd695480a65b",
+      "afterSha256": "11d38b1f0f473d5b2310669e932c142aeb8f7d27241eccdfa17df9b8e3f64519"
+    },
+    {
+      "path": "tests/host/journeys/keyboard-tabs.mjs",
+      "beforeSha256": "a02d1eb3790dd003ce5e771a27112563d9b82df3814efd4d4109c1bc3c9615f8",
+      "afterSha256": "e8964410c2902df0becc90e706213e5ffd29f6c0f2bb3d56d749c0e97ae16c78"
+    }
+  ],
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-0252-callers-replay-ui5nfgpo",
+  "status": "FROZEN source proposal: exact forward/reverse/result-byte replay PASS; native uncompiled/unexecuted; no performance or qualification claim",
+  "sourceCommit": "02b755500132ac6a8448d04400fe871f29410b6b"
+}

@@ -1,0 +1,19 @@
+{
+  "baselineRootHead": "e1325efd98fd9eb04f8fb4b63673ad93e24737e8",
+  "packets": [
+    {
+      "kind": "mailbox",
+      "patchSha256": "bc3815963500d292ae4e77c22e9f20901ff58a954e52a2e319c6cf704cbdfb5d",
+      "leafCount": 9,
+      "actualBeforeAfterAndForwardReverse": "PASS"
+    },
+    {
+      "kind": "callers",
+      "patchSha256": "4eb7bc29f5072aad0bbb97103991168817bd762fb3de56915eee6b38a15af4ce",
+      "leafCount": 14,
+      "actualBeforeAfterAndForwardReverse": "PASS"
+    }
+  ],
+  "rootNativeReview": "Reviewed actualuniqueowned Profile/window/WeakDocument, IO watcher/MayBlock lifecycle, bounded authenticateddirect-child native replies, real dirfd/noFollow filesystem writer and allfixed enum/caller paths. No arbitrary selectors, sourceonly.",
+  "sourceGates": "Root474files/2566cases, protocol60, typecheck/lint/format/bindings/bridge/inventory/journeys/budgets PASS; 88native replayPASS"
+}

@@ -8,6 +8,7 @@ import { acquireNativeSlot } from '../../../scripts/native-slot.mjs';
 import { createDevelopmentAcceptance, extendDevelopmentAcceptance, nativeProfileName, validateDisposableProfile } from './dev-acceptance.mjs';
 import { createRpc, validateDescriptor } from './rpc.mjs';
 import { createAppearanceStream, createPipAppearanceStream } from './appearance-stream.mjs';
+import { createPerformanceMailbox, preparePerformanceMailbox } from './performance-mailbox.mjs';
 import { createStartupTrace } from './startup-evidence.mjs';
 
 function externalFixtureUrl(url) {
@@ -122,6 +123,11 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   // Never inherit a developer token unless this launcher made its own marker.
   if (!acceptance) delete env.AUX_DEV_ACCEPTANCE_TOKEN;
   let appearanceStream, pipAppearanceStream, appearanceDetach;
+  let performanceMailbox, performanceDetach;
+  function disposePerformance() {
+    performanceDetach?.(); performanceDetach = undefined;
+    performanceMailbox?.dispose(); performanceMailbox = undefined;
+  }
   function disposeAppearance() {
     appearanceDetach?.(); appearanceDetach = undefined;
     appearanceStream?.dispose(); appearanceStream = undefined;
@@ -231,8 +237,9 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       if (selected) { activeProfile = selected === 'default' ? 'Default' : selected; nativeProfileName(activeProfile); }
     }
     externalPid = undefined; externalGeneration = undefined;
+    if (launchArgs.includes("--aux-native-performance-observer")) preparePerformanceMailbox(userDataDir);
     slot = await acquireNativeSlot();
-    disposeAppearance();
+    disposeAppearance(); disposePerformance();
     generation += 1; spawnError = undefined; stderr = '';
     startupTrace = createStartupTrace();
     const args = [
@@ -283,7 +290,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
   }
   async function quit() {
-    disposeAppearance();
+    disposeAppearance(); disposePerformance();
     if (launchUncertain) throw new Error(`LaunchServices receipt unavailable: inspect the owned disposable profile ${userDataDir} and bundle ${bundle} before releasing the native batch.`);
     if (running()) {
       if (externalPid) execFileSync(urlLauncher, ["terminate", bundle, String(externalPid), String(externalGeneration)], { timeout: 2000, stdio: "pipe" }); else child.kill('SIGTERM');
@@ -297,6 +304,20 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     slot?.release(); slot = undefined;
   }
   const api = {
+    configurePerformanceMailbox() {
+      if (performanceMailbox) return performanceMailbox;
+      if (!running() || externalPid || !child?.stderr ||
+          launchArgs.filter(arg => arg === '--aux-native-performance-observer').length !== 1 ||
+          launchArgs.includes('--aux-native-appearance-observer'))
+        throw new Error('Hardware measurement requires its opted-in current direct child without appearance sampling');
+      const observedChild = child, observedPid = child.pid, observedGeneration = generation;
+      const mailbox = createPerformanceMailbox({ userDataDir, pid: observedPid, generation: observedGeneration });
+      const onData = bytes => mailbox.write(bytes, { pid: observedPid, generation: observedGeneration });
+      const onExit = () => mailbox.dispose();
+      observedChild.stderr.on('data', onData); observedChild.once('close', onExit); observedChild.once('error', onExit);
+      performanceDetach = () => { observedChild.stderr.off('data', onData); observedChild.off('close', onExit); observedChild.off('error', onExit); };
+      performanceMailbox = mailbox; return mailbox;
+    },
     configureAppearance(candidate) {
       disposeAppearance();
       if (!running() || externalPid || !child?.stderr || launch.perf ||

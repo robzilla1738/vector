@@ -112,6 +112,18 @@ export function App() {
     if (!inNativeHost || inMock) return;
     let live = true, stop: (() => void) | undefined;
     void bridge.capabilities().then(async capabilities => {
+      if (!live || !capabilities.methods.includes("performanceFixtureNextRequest")) return;
+      const port = (window as Window & { auxChromiumHost?: ChromiumHostPort }).auxChromiumHost;
+      if (!port || port.host !== "chromium-fork" || port.privateMode) return;
+      const { startNativePerformanceFixtureObserver } = await import("./native-performance-fixture-observer");
+      if (live) stop = startNativePerformanceFixtureObserver(method => port.request(method, []));
+    }).catch(() => {});
+    return () => { live = false; stop?.(); };
+  }, []);
+  useEffect(() => {
+    if (!inNativeHost || inMock) return;
+    let live = true, stop: (() => void) | undefined;
+    void bridge.capabilities().then(async capabilities => {
       if (!live || !capabilities.methods.includes("appearanceSnapshot")) return;
       const { startNativeAppearanceObserver, startNativePipAppearanceObserver } = await import("./native-appearance-observer");
       if (!live) return;

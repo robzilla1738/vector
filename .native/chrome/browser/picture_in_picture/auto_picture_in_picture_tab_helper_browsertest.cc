@@ -4151,13 +4151,13 @@ class AutomaticPictureInPictureTestPeer {
  public:
   static void Hold(WeakDocumentPtr document,
                    base::OnceCallback<void(base::OnceClosure)> transport) {
-    CHECK(!PictureInPictureServiceImpl::automatic_test_transport_);
-    PictureInPictureServiceImpl::automatic_test_document_ = document;
-    PictureInPictureServiceImpl::automatic_test_transport_ = std::move(transport);
+    CHECK(!PictureInPictureServiceImpl::AutomaticTestTransport());
+    PictureInPictureServiceImpl::AutomaticTestDocument() = document;
+    PictureInPictureServiceImpl::AutomaticTestTransport() = std::move(transport);
   }
   static void Reset() {
-    PictureInPictureServiceImpl::automatic_test_transport_.Reset();
-    PictureInPictureServiceImpl::automatic_test_document_ = {};
+    PictureInPictureServiceImpl::AutomaticTestTransport().Reset();
+    PictureInPictureServiceImpl::AutomaticTestDocument() = {};
   }
 };
 }  // namespace content

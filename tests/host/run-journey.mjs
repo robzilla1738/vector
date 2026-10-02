@@ -116,31 +116,45 @@ async function execute() {
   const until = createUntil(signal);
   const actual = await app.identity();
   const clock = createClock(actual.native.testClockScale);
+  async function measurePerformance(prefix, produce) {
+    signal.throwIfAborted(); assert.ok(!values.appearance, 'Performance trials cannot include appearance sampling');
+    let report;
+    try { report = await produce(); return report; }
+    catch (error) { report = error.report; throw error; }
+    finally {
+      if (report) {
+        assert.match(report.metric, /^[a-z-]{1,40}$/);
+        const records = manifest.performance ??= []; assert.ok(records.length < 8, 'Performance report count exceeded');
+        const filename = `${prefix}-${report.metric}-${records.length + 1}.json`;
+        const bytes = Buffer.from(JSON.stringify(report, null, 2) + '\n');
+        assert.ok(bytes.length <= 1048576, 'Performance report exceeds bound');
+        writeFileSync(join(outputDir, filename), bytes, { flag: 'wx' });
+        records.push({ filename, bytes: bytes.length, sha256: sha256(bytes), status: report.status });
+      }
+    }
+  }
   const context = { app, rpc, fixture, model, appearanceEnabled: Boolean(values.appearance), ax: observedAx, assert, until, visual: createVisual(outputDir),
+    async measureGuestPresentations(options) {
+      const { collectGuestPresentations } = await import('./lib/native-guest-performance.mjs');
+      const candidate = { productIdentity: manifest.productIdentity, native: manifest.native,
+        shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
+      return measurePerformance('hardware', () => collectGuestPresentations({ ...options, trials: 20, candidate,
+        ax: observedAx, transport: app.configurePerformanceMailbox(), readIdentity: () => app.identity() }));
+    },
+    async measureShellMemory(options) {
+      const { collectShellMemory } = await import('./lib/native-shell-memory.mjs');
+      const candidate = { productIdentity: manifest.productIdentity, native: manifest.native,
+        shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
+      return measurePerformance('performance', () => collectShellMemory({ ...options, trials: 20, candidate,
+        browserPid: app.pid, transport: app.configurePerformanceMailbox(), readIdentity: () => app.identity() }));
+    },
     async measureNativeKeyEffects(options) {
-      signal.throwIfAborted();
-      assert.ok(!values.appearance, 'Performance trials cannot include appearance sampling');
       const { metric, chord, selector, effect, additionalHiddenSelectors, prepareTrial } = options;
       const candidate = { productIdentity: identity,
         native: { sourceCommit: actual.native.sourceCommit, buildId: actual.native.buildId, manifestHash: actual.native.manifestHash },
         shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
-      let report;
-      try {
-        report = await collectNativeKeyEffects({ metric, chord, selector, effect, additionalHiddenSelectors, prepareTrial,
-          trials: 20, candidate, ax: observedAx, readIdentity: () => app.identity() });
-        return report;
-      } catch (error) { report = error.report; throw error; }
-      finally {
-        if (report) {
-          const records = manifest.performance ??= [];
-          assert.ok(records.length < 8, 'Performance report count exceeded');
-          const filename = `performance-${metric}-${records.length + 1}.json`;
-          const bytes = Buffer.from(JSON.stringify(report, null, 2) + '\n');
-          assert.ok(bytes.length <= 1048576, 'Performance report exceeds bound');
-          writeFileSync(join(outputDir, filename), bytes, { flag: 'wx' });
-          records.push({ filename, bytes: bytes.length, sha256: sha256(bytes), status: report.status });
-        }
-      }
+      return measurePerformance('performance', () => collectNativeKeyEffects({ metric, chord, selector, effect,
+        additionalHiddenSelectors, prepareTrial, trials: 20, candidate, ax: observedAx, readIdentity: () => app.identity() }));
     },
     async restart(options) {
       signal.throwIfAborted();
