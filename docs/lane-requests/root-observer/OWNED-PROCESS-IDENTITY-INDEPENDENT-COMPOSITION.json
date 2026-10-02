@@ -1,0 +1,69 @@
+{
+  "sourceOnly": true,
+  "frozenRequestSha256": "eeeaae79679ffb7f942c99186859c0a2ba8835b86964f529589f2f44b776a6dc",
+  "files": {
+    "content/browser/child_process_task_port_provider_mac.h": {
+      "beforeSha256": "b46e5142a489151602cd025c18f4502d5b323ee5e0c1056216fdc28b0a5fd46c",
+      "afterSha256": "a7a7e6f8ad95392bb420a69c73c9a7ac28519159932833f17b6860e90d7c6eae",
+      "frozenBeforeSha256": "b46e5142a489151602cd025c18f4502d5b323ee5e0c1056216fdc28b0a5fd46c",
+      "frozenAfterSha256": "a7a7e6f8ad95392bb420a69c73c9a7ac28519159932833f17b6860e90d7c6eae"
+    },
+    "content/browser/child_process_task_port_provider_mac.cc": {
+      "beforeSha256": "7abe0e3c682b427615652eb92b875f8a0ad3a6dd0a0fc5b040891eda3644e613",
+      "afterSha256": "ab3a5503c505fd70d77ced27b744520a36cb2800bafaa66215d6034ccfd09875",
+      "frozenBeforeSha256": "7abe0e3c682b427615652eb92b875f8a0ad3a6dd0a0fc5b040891eda3644e613",
+      "frozenAfterSha256": "ab3a5503c505fd70d77ced27b744520a36cb2800bafaa66215d6034ccfd09875"
+    },
+    "content/browser/child_process_task_port_provider_mac_unittest.cc": {
+      "beforeSha256": "bdc8f7c5b2b048aa65cbf1dd4b218a4c1c9c97c4bdd8bdbedcafeafe3bc459a1",
+      "afterSha256": "68a209084734ee2924da7cf6bac8d28ad04becb4e0a02cb6b30376dc733bb9c3",
+      "frozenBeforeSha256": "bdc8f7c5b2b048aa65cbf1dd4b218a4c1c9c97c4bdd8bdbedcafeafe3bc459a1",
+      "frozenAfterSha256": "68a209084734ee2924da7cf6bac8d28ad04becb4e0a02cb6b30376dc733bb9c3"
+    },
+    "content/browser/renderer_host/render_process_host_impl.cc": {
+      "beforeSha256": "6f276e9ff90c5b6aa0412c1427ef38251898f58d0f9855bba7facedbba396592",
+      "afterSha256": "db1b13ed0d70323441c61bd4af8787c7e7b78806183e097eaf30cbd1d5e789cb",
+      "frozenBeforeSha256": "6f276e9ff90c5b6aa0412c1427ef38251898f58d0f9855bba7facedbba396592",
+      "frozenAfterSha256": "db1b13ed0d70323441c61bd4af8787c7e7b78806183e097eaf30cbd1d5e789cb"
+    },
+    "content/browser/browser_child_process_host_impl.cc": {
+      "beforeSha256": "ff1fabee0aea31d72cb2957508e85b2eea05b01e2527c6c80b065c5f0db965cb",
+      "afterSha256": "9903602075040b3825b5dc223ffac5d9d8baf5d2c12a1041ab4118e4c9dfb894",
+      "frozenBeforeSha256": "ff1fabee0aea31d72cb2957508e85b2eea05b01e2527c6c80b065c5f0db965cb",
+      "frozenAfterSha256": "9903602075040b3825b5dc223ffac5d9d8baf5d2c12a1041ab4118e4c9dfb894"
+    },
+    "chrome/browser/ui/aux/BUILD.gn": {
+      "beforeSha256": "ea272e3e5f059a06ad761f94caac922aa0b6e0a6ce582499313018665a975485",
+      "afterSha256": "ba62bb2e4d296a58d39eabc0b441dbf2109793b8070d0d4637ae38dd5d6de3fc",
+      "frozenBeforeSha256": "7103913d9cf32bba4fed10403504c656911e886d1bb51d53f6bc078decc59715",
+      "frozenAfterSha256": "39509a845e6d3199d7c2450bd75850057483ee29df0f6922d6af281d47ffa8df"
+    },
+    "chrome/test/BUILD.gn": {
+      "beforeSha256": "543083ae9aad053e9a1bf45b07c0984c3c1fe72a6d425f8dee7c66c9f6b17c40",
+      "afterSha256": "55847058c43af6629a34a14d396e36c8ed856607e4e108f91b0c3b5ddff424e1",
+      "frozenBeforeSha256": "95fcc2224046a17f5c81bf4752881b2f084fa09ca3abd0517509b635a364ec4c",
+      "frozenAfterSha256": "70b8ea663e523bc42b5101bc451dd659ce313061c68e9b604c936256826e3b25"
+    },
+    "chrome/browser/ui/aux/native_runtime_peer_identity.h": {
+      "beforeSha256": null,
+      "afterSha256": "bb4b927ca7045cf2a500a96a279ede161901028e53a652bbda1be17c82d1c792",
+      "frozenBeforeSha256": null,
+      "frozenAfterSha256": "bb4b927ca7045cf2a500a96a279ede161901028e53a652bbda1be17c82d1c792"
+    },
+    "chrome/browser/ui/aux/native_runtime_peer_identity.cc": {
+      "beforeSha256": null,
+      "afterSha256": "9c89e7aaf65268823eb7f9c685d064ce9af9e3ac78ce55c5dbea19e23f26e880",
+      "frozenBeforeSha256": null,
+      "frozenAfterSha256": "9c89e7aaf65268823eb7f9c685d064ce9af9e3ac78ce55c5dbea19e23f26e880"
+    },
+    "chrome/browser/ui/aux/native_runtime_peer_identity_unittest.cc": {
+      "beforeSha256": null,
+      "afterSha256": "e31cb2c124e399e7b34318f8bda0edfdaca09a6cf1726166adea32fe720f55cf",
+      "frozenBeforeSha256": null,
+      "frozenAfterSha256": "e31cb2c124e399e7b34318f8bda0edfdaca09a6cf1726166adea32fe720f55cf"
+    }
+  },
+  "nativeCompile": false,
+  "GNComposition": "Adjacent independent Worker/peer registrations conflict explicitly composed; exact whole-file removal of either insertion restores other original result",
+  "originalBeforeScratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-0263-frozen-baselines-62ghfk4s"
+}

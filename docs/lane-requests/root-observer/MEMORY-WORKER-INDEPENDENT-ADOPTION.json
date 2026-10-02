@@ -1,0 +1,28 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "originalConnectHandshakeExercised": false,
+  "genuineLaunchedPeerSocketKernelWorkerSourceCases": 7,
+  "requestSha256": "b055bef40db341da7fec06ba3e4d7efad1471220ddc415e8d22878a3f0cd6533",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.h",
+      "source": "/tmp/aux-root-native-0261-b690/.native/chrome/browser/ui/aux/runtime_host.h",
+      "beforeSha256": "6b5734e3bcf0c88ac4749b14de0417ce4a72c57f8224c57bcb1cf94bffdd2d5e",
+      "afterSha256": "b935846b719e62363dda14086040720dcd35408aa743e34a0f66c97cfcad233e"
+    },
+    {
+      "path": "chrome/test/BUILD.gn",
+      "source": "/tmp/aux-root-native-0261-b690/.native/chrome/test/BUILD.gn",
+      "beforeSha256": "f0a19cdabe8038413549950bdb628c2584f343f8857acfd039a078075c24b476",
+      "afterSha256": "543083ae9aad053e9a1bf45b07c0984c3c1fe72a6d425f8dee7c66c9f6b17c40"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_runtime_memory_worker_unittest.cc",
+      "source": null,
+      "beforeSha256": null,
+      "afterSha256": "436a5fc221eb9f27acef5e7541225df5d59af0cef250611d9e2dc7b65179896f"
+    }
+  ],
+  "contextualForwardReverse": "PASS"
+}

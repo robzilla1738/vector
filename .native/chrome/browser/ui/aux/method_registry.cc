@@ -46,7 +46,7 @@ AuxMethodRegistry::AuxMethodRegistry() {
         {"commandPresentationSnapshot", "prepareGuestSplitDropPresentation",
          "prepareGuestDividerFramePresentation", "prepareGuestTabSwitchPresentation",
          "completeGuestPresentation", "prepareLittleWindowPresentation", "completeLittleWindowPresentation",
-         "performanceFixtureNextRequest", "sampleShellMemory",
+         "performanceFixtureNextRequest", "sampleShellMemory", "sampleProcessMemory", "prepareSubagentMemoryWorkload",
          "prepareOrganizationAutoArchiveWork", "prepareOrganizationLiveFolderWork", "completeOrganizationWork"});
 #endif
   register_shell(AuxShellMethodGroup::kContent,

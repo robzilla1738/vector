@@ -104,3 +104,36 @@ test('deadline before genuine pause readiness cancels the real parent hold and c
   }), /Original global deadline/);
   assert.equal(canceled, 1); assert.equal(launches, 0);
 });
+
+
+test('exact native refusal waits for original runtime readiness before launching five children', async () => {
+  const { parent, idlePageIds, ready } = preparationFixture();
+  let proved = false, released = false, launches = 0;
+  const workload = await startSubagentMemoryWorkload({ parent, idlePageIds, signal: new AbortController().signal,
+    parentHold: { release() { released = true; }, cancel() {} }, model: { respond() {}, holdText() {} },
+    readNativePreparation: async () => { assert.equal(released, true); return proved ? ready : { producer: 'aux-native-subagent-preparation', version: 1, status: 'refused' }; },
+    until: async (_label, predicate) => { assert.equal(await predicate(), false); assert.equal(launches, 0); proved = true; return predicate(); },
+    scopedRpc: async method => {
+      if (method === 'runs.get') return { run: { status: 'paused' } };
+      if (method === 'subagents.createGroup') { assert.equal(proved, true); return { groupId: 'group', workspaceId: 'workspace' }; }
+      if (method === 'subagents.spawn') return { agentId: `a-${launches}`, runId: `r-${launches++}`, pageIds: [parent.pageIds[launches - 1]] };
+    },
+  });
+  assert.equal(workload.preparation, ready); assert.equal(launches, 5);
+  await workload.cleanup();
+});
+
+for (const [name, record] of [
+  ['wrong producer', { producer: 'foreign-native-preparation', version: 1, status: 'refused' }],
+  ['extra native field', { producer: 'aux-native-subagent-preparation', version: 1, status: 'refused', preparation: {} }],
+  ['native ready instead of original runtime record', { producer: 'aux-native-subagent-preparation', version: 1, status: 'ready' }],
+  ['wrong native version', { producer: 'aux-native-subagent-preparation', version: 2, status: 'refused' }],
+]) test(`rejects ${name} before creating groups or children and cancels parent hold`, async () => {
+  const { parent, idlePageIds } = preparationFixture(); let canceled = 0, launches = 0;
+  await assert.rejects(startSubagentMemoryWorkload({ parent, idlePageIds, signal: new AbortController().signal,
+    parentHold: { release() {}, cancel() { canceled++; } }, model: { respond() {}, holdText() {} },
+    readNativePreparation: async () => record, until: async (_label, predicate) => predicate(),
+    scopedRpc: async method => { if (method === 'runs.get') return { run: { status: 'paused' } }; if (method.startsWith('subagents.')) launches++; },
+  }));
+  assert.equal(canceled, 1); assert.equal(launches, 0);
+});

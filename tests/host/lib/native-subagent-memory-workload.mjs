@@ -140,6 +140,11 @@ export async function startSubagentMemoryWorkload({ scopedRpc, model, parent, id
     parentHold.release();
     const preparation = await until('parent reaches the actual no-page-ownership paused boundary', async () => {
       const value = await readNativePreparation();
+      if (value?.producer === 'aux-native-subagent-preparation') {
+        assert.deepEqual(Object.keys(value).sort(), ['producer', 'status', 'version'], 'Native refusal must retain its exact closed shape');
+        assert.equal(value.version, 1); assert.equal(value.status, 'refused');
+        return false;
+      }
       assert.equal(value?.producer, 'aux-runtime-subagent-preparation'); assert.equal(value.version, 1);
       if (value.status === 'refused') return false;
       assertParentPreparation(value, parent, idlePageIds); return value;

@@ -286,6 +286,84 @@ AuxRuntimeHost::Worker::ReadPerformanceProcessIdentity() {
   return PerformanceProcessIdentity{static_cast<int>(process_.Pid()), connection_generation_,
       live_refresh_sequence_, live_folder_id_, live_folder_units_};
 }
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+void AuxRuntimeHost::ReadPerformanceProcessMemory(
+    base::OnceCallback<void(std::optional<PerformanceProcessMemory>)> callback) {
+  if (test_dispatch_) { std::move(callback).Run(std::nullopt); return; }
+  worker_.AsyncCall(&Worker::ReadPerformanceProcessMemory).Then(std::move(callback));
+}
+std::optional<AuxRuntimeHost::PerformanceProcessMemory>
+AuxRuntimeHost::Worker::ReadPerformanceProcessMemory() {
+  // PID comes only from this Worker's actual authenticated launched process.
+  const auto identity = ReadPerformanceProcessIdentity();
+  if (!identity) return std::nullopt;
+  const auto peer = aux::ReadNativeRuntimePeerIdentity(connection_fd_, identity->pid);
+  if (!peer) return std::nullopt;
+  const auto before = aux::ReadNativeProcessFootprint(identity->pid);
+  if (!before || ReadPerformanceProcessIdentity() != identity) return std::nullopt;
+  const auto after = aux::ReadNativeProcessFootprint(identity->pid);
+  if (!after || ReadPerformanceProcessIdentity() != identity ||
+      aux::ReadNativeRuntimePeerIdentity(connection_fd_, identity->pid) != peer ||
+      before->process_uuid != after->process_uuid ||
+      before->process_start_absolute != after->process_start_absolute ||
+      before->sample_end > after->sample_start) return std::nullopt;
+  return PerformanceProcessMemory{*identity, *before, *after, *peer};
+}
+void AuxRuntimeHost::ReadPerformanceProcessWorkload(PerformanceWorkloadCallback callback) {
+  if (test_dispatch_) { std::move(callback).Run(std::nullopt); return; }
+  worker_.AsyncCall(&Worker::ReadPerformanceProcessWorkload)
+      .WithArgs(base::BindPostTaskToCurrentDefault(std::move(callback)));
+  SchedulePump();
+}
+void AuxRuntimeHost::ReadPerformanceSubagentPreparation(PerformanceWorkloadCallback callback) {
+  if (test_dispatch_) { std::move(callback).Run(std::nullopt); return; }
+  worker_.AsyncCall(&Worker::ReadPerformanceObservation)
+      .WithArgs(PerformanceObservation::kPreparation,
+          base::BindPostTaskToCurrentDefault(std::move(callback)));
+  SchedulePump();
+}
+void AuxRuntimeHost::Worker::ReadPerformanceProcessWorkload(PerformanceWorkloadCallback callback) {
+  ReadPerformanceObservation(PerformanceObservation::kWorkload, std::move(callback));
+}
+void AuxRuntimeHost::Worker::ReadPerformanceObservation(
+    PerformanceObservation kind, PerformanceWorkloadCallback callback) {
+  const auto identity = ReadPerformanceProcessIdentity();
+  const auto peer = identity ? aux::ReadNativeRuntimePeerIdentity(connection_fd_, identity->pid) : std::nullopt;
+  if (!identity || !peer) { std::move(callback).Run(std::nullopt); return; }
+  const auto issued = base::TimeTicks::Now();
+  // The fixed fresh request uses the existing authenticated connection's
+  // pending-request identity. A buffered prior response cannot satisfy it.
+  CallInternal(kind == PerformanceObservation::kPreparation ?
+      "performance.subagentPreparation" : "performance.subagentWorkload", "{}", base::BindOnce(
+      [](Worker* worker, PerformanceObservation kind, PerformanceProcessIdentity identity,
+          aux::NativeRuntimePeerIdentity peer, base::TimeTicks issued,
+          PerformanceWorkloadCallback callback, Response response) {
+        const auto received = base::TimeTicks::Now();
+        if (!response.ok || response.result_json.size() > 8192 ||
+            received < issued || received - issued > base::Seconds(5) ||
+            worker->ReadPerformanceProcessIdentity() != identity ||
+            aux::ReadNativeRuntimePeerIdentity(worker->connection_fd_, identity.pid) != peer) {
+          std::move(callback).Run(std::nullopt); return;
+        }
+        auto value = base::JSONReader::Read(response.result_json, base::JSON_PARSE_RFC);
+        auto* record = value ? value->GetIfDict() : nullptr;
+        const auto* producer = record ? record->FindString("producer") : nullptr;
+        const auto* status = record ? record->FindString("status") : nullptr;
+        const auto observed = record ? record->FindDouble("observedAt") : std::nullopt;
+        const bool preparation = kind == PerformanceObservation::kPreparation;
+        if (!record || !producer || *producer != (preparation ?
+                "aux-runtime-subagent-preparation" : "aux-runtime-subagent-workload") ||
+            record->FindInt("version") != 1 || !status ||
+            (preparation ? *status != "ready" : (*status != "executing" && *status != "idle")) || !observed ||
+            !std::isfinite(*observed) || *observed <= 0 ||
+            *observed > 9007199254740991.0 || std::floor(*observed) != *observed) {
+          std::move(callback).Run(std::nullopt); return;
+        }
+        std::move(callback).Run(PerformanceProcessWorkload{
+            std::move(identity), peer, std::move(*record), issued, received});
+      }, base::Unretained(this), kind, *identity, *peer, issued, std::move(callback)));
+}
+#endif
 void AuxRuntimeHost::CallInternal(std::string method,
                                   std::string params_json,
                                   ResponseCallback callback) {

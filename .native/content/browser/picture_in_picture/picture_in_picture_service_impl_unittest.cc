@@ -873,7 +873,7 @@ TEST_F(AutomaticPictureInPictureEffectTest, QueuedAutomaticSessionCannotUseRetir
 TEST_F(AutomaticPictureInPictureEffectTest, RefusalDuringNativeDelegateQueryPrecedesWindowEffect) {
   ASSERT_NO_FATAL_FAILURE(Select());
   EXPECT_CALL(delegate(), IsPictureInPictureEnabled())
-      .WillOnce(testing::Invoke([this] { eligible_ = false; return true; }));
+      .WillOnce([this] { eligible_ = false; return true; });
   EXPECT_CALL(delegate(), EnterPictureInPicture(contents())).Times(0);
   Dispatch(player_->ticket);
   EXPECT_FALSE(session_out_);

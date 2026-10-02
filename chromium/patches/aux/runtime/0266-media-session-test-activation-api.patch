@@ -1,0 +1,22 @@
+diff --git a/third_party/blink/renderer/modules/mediasession/media_session_test.cc b/third_party/blink/renderer/modules/mediasession/media_session_test.cc
+index d738667..f85e2df 100644
+--- a/third_party/blink/renderer/modules/mediasession/media_session_test.cc
++++ b/third_party/blink/renderer/modules/mediasession/media_session_test.cc
+@@ -405,7 +405,7 @@ TEST_F(MediaSessionTest, AutomaticHandlerDoesNotMintSyntheticActivation) {
+   const auto generation = GetFrame().UserActivationGeneration();
+   const auto token = base::UnguessableToken::Create();
+   DeliverAutomaticPictureInPicture(token);
+-  EXPECT_FALSE(GetFrame().HasTransientUserActivation());
++  EXPECT_FALSE(LocalFrame::HasTransientUserActivation(&GetFrame()));
+   EXPECT_EQ(GetFrame().UserActivationGeneration(), generation);
+   auto context = PictureInPictureController::From(GetDocument())
+       .AutomaticPictureInPictureContext();
+@@ -416,7 +416,7 @@ TEST_F(MediaSessionTest, MissingAutomaticHandlerTicketCannotMintManualActivation
+   GetFrame().ClearUserActivation();
+   const auto generation = GetFrame().UserActivationGeneration();
+   DeliverAutomaticPictureInPicture(std::nullopt);
+-  EXPECT_FALSE(GetFrame().HasTransientUserActivation());
++  EXPECT_FALSE(LocalFrame::HasTransientUserActivation(&GetFrame()));
+   EXPECT_EQ(GetFrame().UserActivationGeneration(), generation);
+   auto context = PictureInPictureController::From(GetDocument())
+       .AutomaticPictureInPictureContext();

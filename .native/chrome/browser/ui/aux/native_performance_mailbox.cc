@@ -98,7 +98,8 @@ bool IsNativePerformanceMailboxOperation(const std::string& operation) {
   return operation == "prepareGuestSplitDropPresentation" ||
       operation == "prepareGuestDividerFramePresentation" ||
       operation == "prepareGuestTabSwitchPresentation" || operation == "completeGuestPresentation" ||
-      operation == "sampleShellMemory" ||
+      operation == "sampleShellMemory" || operation == "sampleProcessMemory" ||
+      operation == "prepareSubagentMemoryWorkload" ||
       operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation" ||
       operation == "prepareOrganizationAutoArchiveWork" ||
       operation == "prepareOrganizationLiveFolderWork" || operation == "completeOrganizationWork";
@@ -230,15 +231,17 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
   const auto* producer = record.FindString("producer");
   const auto* status = record.FindString("status");
   const bool little = operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation";
-  const bool memory = operation == "sampleShellMemory";
+  const bool preparation = operation == "prepareSubagentMemoryWorkload";
+  const bool process_memory = operation == "sampleProcessMemory";
+  const bool memory = operation == "sampleShellMemory" || process_memory;
   const bool prepare_work = operation == "prepareOrganizationAutoArchiveWork" ||
       operation == "prepareOrganizationLiveFolderWork";
   const bool organization = prepare_work || operation == "completeOrganizationWork";
-  if (!producer || *producer != (memory ? "aux-native-shell-memory" :
+  if (!producer || *producer != (preparation ? "aux-native-subagent-preparation" : process_memory ? "aux-native-process-memory" : memory ? "aux-native-shell-memory" :
           organization ? "aux-native-organization-work-v1" :
           little ? "aux-native-little-presentation-upperbound" : "aux-native-guest-presentation") ||
       record.FindInt("version") != 1 || !status ||
-      (memory ? (*status != "sampled" && *status != "refused") :
+      (preparation ? (*status != "ready" && *status != "refused") : memory ? (*status != "sampled" && *status != "refused") :
           (*status != "ready" && *status != "measured" && *status != "refused")) ||
       (*status != "refused" && record.FindInt("windowId") != owner_->window_id)) {
     Refuse(); return false;
@@ -259,7 +262,7 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
       .Set("sequence", base::NumberToString(sequence)).Set("operation", operation).Set("record", record.Clone());
   const auto json = base::WriteJson(wrapper);
   if (!json || json->size() > 16000 || !AdmitRecord()) { Refuse(); return false; }
-  if (memory || operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
+  if (preparation || memory || operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
       operation == "completeLittleWindowPresentation" ||
       *status == "refused") { sample_completion_.reset(); sample_scope_.reset(); }
   else {

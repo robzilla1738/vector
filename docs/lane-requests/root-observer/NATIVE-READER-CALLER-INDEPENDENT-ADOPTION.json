@@ -1,0 +1,33 @@
+[
+  {
+    "packet": "native-memory-reader-controls",
+    "sha256": "ed43f1f407a44b857aa277ce363b11954578a6afc099824d0d178e74c6a5547a",
+    "files": [
+      {
+        "path": "tests/host/lib/native-process-memory.test.mjs",
+        "beforeSha256": "f735b032a451f37352443ce48eea75fc0b800efea0a9d9c2956b526c5ca88ec8",
+        "afterSha256": "4b667c99951875e078c4cd44aee1ad60c4bcbbab2ef6ea4b89f2f0c67cdfb040"
+      }
+    ],
+    "contextualForwardReverse": "PASS",
+    "sourceOnly": true
+  },
+  {
+    "packet": "native-preparation-refusals",
+    "sha256": "10cdf36c89ac5ef24eb52008e6b29633826fc6560bcc181660c4f5e18160c7dd",
+    "files": [
+      {
+        "path": "tests/host/lib/native-subagent-memory-workload.mjs",
+        "beforeSha256": "93ad85ecdc3c965d5fd3e0eb8190bbf34e21675093533ab164a3ed2a3a8273aa",
+        "afterSha256": "280024927702f0fa106721614f54b572c5a7dc77e4cba446b39e6e7db6564aba"
+      },
+      {
+        "path": "tests/host/lib/native-subagent-memory-workload.test.mjs",
+        "beforeSha256": "9e65821542d5c062cd10bb8c6b2b3c752ff9886267ce4d733b9ddaf47cde1f9b",
+        "afterSha256": "2dfeeeda01fd068f142850c9c5c800bd96b80e2590c80bc6a6b06ae0343a0d9a"
+      }
+    ],
+    "contextualForwardReverse": "PASS",
+    "sourceOnly": true
+  }
+]

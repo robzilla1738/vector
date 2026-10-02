@@ -1,0 +1,473 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index c9b4eab..db73051 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -58,6 +58,8 @@ source_set("runtime") {
+     "native_browser_memory_sample.h",
+     "native_process_footprint.cc",
+     "native_process_footprint.h",
++    "native_runtime_peer_identity.cc",
++    "native_runtime_peer_identity.h",
+     "native_process_memory_sampler.cc",
+     "native_process_memory_sampler.h",
+     "native_guest_presentation_owner.h",
+diff --git a/chrome/browser/ui/aux/native_runtime_peer_identity.cc b/chrome/browser/ui/aux/native_runtime_peer_identity.cc
+new file mode 100644
+index 0000000..16f587f
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_runtime_peer_identity.cc
+@@ -0,0 +1,31 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_runtime_peer_identity.h"
++#if BUILDFLAG(IS_MAC)
++#include <algorithm>
++#include <iterator>
++#include <bsm/libbsm.h>
++#include <sys/socket.h>
++#include <sys/un.h>
++namespace aux {
++std::optional<NativeRuntimePeerIdentity> ReadNativeRuntimePeerIdentity(
++    int connection_fd, int launched_pid) {
++  if (connection_fd < 0 || launched_pid <= 0) return std::nullopt;
++  int type = 0;
++  socklen_t size = sizeof(type);
++  if (getsockopt(connection_fd, SOL_SOCKET, SO_TYPE, &type, &size) != 0 ||
++      size != sizeof(type) || type != SOCK_STREAM) return std::nullopt;
++  audit_token_t token{};
++  size = sizeof(token);
++  if (getsockopt(connection_fd, SOL_LOCAL, LOCAL_PEERTOKEN, &token, &size) != 0 ||
++      size != sizeof(token) || audit_token_to_pid(token) != launched_pid ||
++      audit_token_to_pidversion(token) <= 0) return std::nullopt;
++  pid_t pid = -1;
++  size = sizeof(pid);
++  if (getsockopt(connection_fd, SOL_LOCAL, LOCAL_PEERPID, &pid, &size) != 0 ||
++      size != sizeof(pid) || pid != launched_pid) return std::nullopt;
++  NativeRuntimePeerIdentity result{pid, audit_token_to_pidversion(token), {}};
++  std::copy(std::begin(token.val), std::end(token.val), result.audit_token.begin());
++  return result;
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_runtime_peer_identity.h b/chrome/browser/ui/aux/native_runtime_peer_identity.h
+new file mode 100644
+index 0000000..bb82722
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_runtime_peer_identity.h
+@@ -0,0 +1,22 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_RUNTIME_PEER_IDENTITY_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_RUNTIME_PEER_IDENTITY_H_
++#include "build/build_config.h"
++#if BUILDFLAG(IS_MAC)
++#include <array>
++#include <optional>
++#include <stdint.h>
++namespace aux {
++struct NativeRuntimePeerIdentity {
++  int pid;
++  int pid_version;
++  std::array<uint32_t, 8> audit_token;
++  bool operator==(const NativeRuntimePeerIdentity&) const = default;
++};
++// Kernel socket identity, not process liveness. A genuine new same-connection
++// response after the memory reads is still required to prove endpoint liveness.
++std::optional<NativeRuntimePeerIdentity> ReadNativeRuntimePeerIdentity(
++    int connection_fd, int launched_pid);
++}  // namespace aux
++#endif
++#endif
+diff --git a/chrome/browser/ui/aux/native_runtime_peer_identity_unittest.cc b/chrome/browser/ui/aux/native_runtime_peer_identity_unittest.cc
+new file mode 100644
+index 0000000..1acc07a
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_runtime_peer_identity_unittest.cc
+@@ -0,0 +1,50 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_runtime_peer_identity.h"
++#if BUILDFLAG(IS_MAC)
++#include <algorithm>
++#include <sys/socket.h>
++#include <sys/un.h>
++#include <unistd.h>
++#include "base/files/scoped_file.h"
++#include "base/files/scoped_temp_dir.h"
++#include "testing/gtest/include/gtest/gtest.h"
++namespace aux {
++TEST(NativeRuntimePeerIdentityTest, RealAcceptedEndpointRetainsExactKernelAudit) {
++  base::ScopedTempDir dir;
++  ASSERT_TRUE(dir.CreateUniqueTempDir());
++  sockaddr_un address{};
++  address.sun_family = AF_UNIX;
++  const auto path = dir.GetPath().AppendASCII("runtime.sock").value();
++  ASSERT_LT(path.size(), sizeof(address.sun_path));
++  std::copy(path.begin(), path.end(), address.sun_path);
++  base::ScopedFD listener(socket(AF_UNIX, SOCK_STREAM, 0));
++  ASSERT_TRUE(listener.is_valid());
++  ASSERT_EQ(bind(listener.get(), reinterpret_cast<sockaddr*>(&address), sizeof(address)), 0);
++  ASSERT_EQ(listen(listener.get(), 1), 0);
++  EXPECT_FALSE(ReadNativeRuntimePeerIdentity(listener.get(), getpid()));
++  base::ScopedFD client(socket(AF_UNIX, SOCK_STREAM, 0));
++  ASSERT_TRUE(client.is_valid());
++  ASSERT_EQ(connect(client.get(), reinterpret_cast<sockaddr*>(&address), sizeof(address)), 0);
++  base::ScopedFD accepted(accept(listener.get(), nullptr, nullptr));
++  ASSERT_TRUE(accepted.is_valid());
++  const auto before = ReadNativeRuntimePeerIdentity(accepted.get(), getpid());
++  ASSERT_TRUE(before);
++  EXPECT_EQ(before->pid, getpid());
++  EXPECT_GT(before->pid_version, 0);
++  EXPECT_EQ(ReadNativeRuntimePeerIdentity(accepted.get(), getpid()), before);
++  EXPECT_FALSE(ReadNativeRuntimePeerIdentity(accepted.get(), getpid() + 1));
++  accepted.reset();
++  EXPECT_FALSE(ReadNativeRuntimePeerIdentity(accepted.get(), getpid()));
++  // Identity is intentionally not a liveness receipt: production must obtain
++  // a new authenticated fixed-operation response AFTER kernel measurement.
++}
++TEST(NativeRuntimePeerIdentityTest, NoDescriptorOrPipeCannotMintPeerIdentity) {
++  EXPECT_FALSE(ReadNativeRuntimePeerIdentity(-1, getpid()));
++  int descriptors[2];
++  ASSERT_EQ(pipe(descriptors), 0);
++  base::ScopedFD reader(descriptors[0]), writer(descriptors[1]);
++  EXPECT_FALSE(ReadNativeRuntimePeerIdentity(reader.get(), getpid()));
++  EXPECT_FALSE(ReadNativeRuntimePeerIdentity(writer.get(), getpid()));
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
+index 9f4ff46..7d3bdb9 100644
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -8072,6 +8072,7 @@ test("unit_tests") {
+       "../browser/ui/aux/native_little_presentation_fixture_unittest.cc",
+       "../browser/ui/aux/native_performance_mailbox_unittest.cc",
+       "../browser/ui/aux/native_process_footprint_unittest.cc",
++      "../browser/ui/aux/native_runtime_peer_identity_unittest.cc",
+       "../browser/ui/aux/native_runtime_memory_worker_unittest.cc",
+       "../browser/ui/aux/native_organization_runtime_unittest.cc",
+     ]
+diff --git a/content/browser/browser_child_process_host_impl.cc b/content/browser/browser_child_process_host_impl.cc
+index a8cc20c..a43798a 100644
+--- a/content/browser/browser_child_process_host_impl.cc
++++ b/content/browser/browser_child_process_host_impl.cc
+@@ -651,7 +651,9 @@ void BrowserChildProcessHostImpl::OnProcessLaunched() {
+   ChildProcessTaskPortProvider::GetInstance()->OnChildProcessLaunched(
+       process.Pid(),
+       static_cast<ChildProcessHostImpl*>(child_process_host_.get())
+-          ->child_process());
++          ->child_process(),
++      ChildProcessTaskPortProvider::OwnedHost{
++          ChildProcessTaskPortProvider::OwnedHostKind::kBrowserChild, data_.GetChildProcessId().value()});
+ #endif
+ 
+ #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+diff --git a/content/browser/child_process_task_port_provider_mac.cc b/content/browser/child_process_task_port_provider_mac.cc
+index 05524f6..5f44107 100644
+--- a/content/browser/child_process_task_port_provider_mac.cc
++++ b/content/browser/child_process_task_port_provider_mac.cc
+@@ -5,6 +5,11 @@
+ #include "content/browser/child_process_task_port_provider_mac.h"
+ 
+ #include <map>
++#include <algorithm>
++#include <iterator>
++#include <limits>
++#include <bsm/libbsm.h>
++#include <mach/task_info.h>
+ 
+ #include "base/apple/foundation_util.h"
+ #include "base/apple/mach_logging.h"
+@@ -29,13 +34,22 @@ ChildProcessTaskPortProvider* ChildProcessTaskPortProvider::GetInstance() {
+ 
+ void ChildProcessTaskPortProvider::OnChildProcessLaunched(
+     base::ProcessHandle process_handle,
+-    mojom::ChildProcess* child_process) {
++    mojom::ChildProcess* child_process, std::optional<OwnedHost> owner) {
+   if (!ShouldRequestTaskPorts())
+     return;
+ 
++  uint64_t generation;
++  {
++    base::AutoLock lock(lock_);
++    auto& entry = handle_to_task_port_[process_handle];
++    if (next_launch_generation_ == std::numeric_limits<uint64_t>::max()) return;
++    generation = ++next_launch_generation_;
++    entry.launch_generation = generation;
++    entry.owner = owner;
++  }
+   child_process->GetTaskPort(
+       base::BindOnce(&ChildProcessTaskPortProvider::OnTaskPortReceived,
+-                     base::Unretained(this), process_handle));
++                     base::Unretained(this), process_handle, generation));
+ }
+ 
+ mach_port_t ChildProcessTaskPortProvider::TaskForHandle(
+@@ -45,7 +59,35 @@ mach_port_t ChildProcessTaskPortProvider::TaskForHandle(
+   if (it == handle_to_task_port_.end()) {
+     return MACH_PORT_NULL;
+   }
+-  return it->second.get();
++  return it->second.port.get();
++}
++
++std::optional<ChildProcessTaskPortProvider::OwnedTaskIdentity>
++ChildProcessTaskPortProvider::ReadOwnedTaskIdentity(
++    base::ProcessHandle process_handle, OwnedHost host) const {
++  if (process_handle <= 0 || host.id <= 0) return std::nullopt;
++  base::AutoLock lock(lock_);
++  const auto it = handle_to_task_port_.find(process_handle);
++  if (it == handle_to_task_port_.end() || it->second.owner != host ||
++      !it->second.launch_generation ||
++      it->second.installed_generation != it->second.launch_generation ||
++      !it->second.port.is_valid()) return std::nullopt;
++  audit_token_t token{};
++  mach_msg_type_number_t count = TASK_AUDIT_TOKEN_COUNT;
++  if (task_info(it->second.port.get(), TASK_AUDIT_TOKEN,
++      reinterpret_cast<task_info_t>(&token), &count) != KERN_SUCCESS ||
++      count != TASK_AUDIT_TOKEN_COUNT || audit_token_to_pid(token) != process_handle ||
++      audit_token_to_pidversion(token) <= 0) return std::nullopt;
++  // An audit token alone can describe a dead task. Require the original task
++  // still to expose its VM before/after the caller's PID-based kernel read.
++  task_vm_info_data_t vm{};
++  count = TASK_VM_INFO_COUNT;
++  if (task_info(it->second.port.get(), TASK_VM_INFO,
++      reinterpret_cast<task_info_t>(&vm), &count) != KERN_SUCCESS ||
++      count != TASK_VM_INFO_COUNT || !vm.virtual_size) return std::nullopt;
++  OwnedTaskIdentity result{host, it->second.launch_generation, {}, audit_token_to_pidversion(token)};
++  std::copy(std::begin(token.val), std::end(token.val), result.audit_token.begin());
++  return result;
+ }
+ 
+ ChildProcessTaskPortProvider::ChildProcessTaskPortProvider() {
+@@ -84,6 +126,7 @@ bool ChildProcessTaskPortProvider::ShouldRequestTaskPorts() const {
+ 
+ void ChildProcessTaskPortProvider::OnTaskPortReceived(
+     base::ProcessHandle process_handle,
++    uint64_t launch_generation,
+     mojo::PlatformHandle task_port) {
+   CHECK(ShouldRequestTaskPorts(), base::NotFatalUntil::M159);
+   if (!task_port.is_mach_send()) {
+@@ -112,17 +155,10 @@ void ChildProcessTaskPortProvider::OnTaskPortReceived(
+   {
+     base::AutoLock lock(lock_);
+     auto it = handle_to_task_port_.find(process_handle);
+-    if (it == handle_to_task_port_.end()) {
+-      handle_to_task_port_.emplace(process_handle, std::move(port));
+-    } else {
+-      // If a task port already exists for the PID, then reset it if the port
+-      // is of a different name. The port name may be the same when running in
+-      // single-process mode, tests, or if the PID is reused and this races the
+-      // DEAD_NAME notification. Self-reseting is not allowed on ScopedGeneric,
+-      // so test for that first.
+-      if (it->second.get() != port.get())
+-        it->second = std::move(port);
+-    }
++    if (it == handle_to_task_port_.end() ||
++        it->second.launch_generation != launch_generation) return;
++    if (it->second.port.get() != port.get()) it->second.port = std::move(port);
++    it->second.installed_generation = launch_generation;
+   }
+ 
+   NotifyObservers(process_handle);
+@@ -150,14 +186,19 @@ void ChildProcessTaskPortProvider::OnTaskPortDied() {
+   base::apple::ScopedMachSendRight dead_port(notification.not_port);
+ 
+   base::AutoLock lock(lock_);
+-  std::erase_if(handle_to_task_port_, [&dead_port](const auto& pair) {
+-    if (pair.second.get() == dead_port.get()) {
+-      DVLOG(1) << "Task died, PID=" << base::GetProcId(pair.first)
+-               << ", task port name=" << dead_port.get();
+-      return true;
++  for (auto it = handle_to_task_port_.begin(); it != handle_to_task_port_.end();) {
++    if (it->second.port.get() != dead_port.get()) { ++it; continue; }
++    DVLOG(1) << "Task died, PID=" << base::GetProcId(it->first)
++             << ", task port name=" << dead_port.get();
++    if (it->second.installed_generation != it->second.launch_generation) {
++      // A replacement task reply is still in flight. Death of the previous
++      // port must not erase its exact new host/generation expectation.
++      it->second.port.reset();
++      ++it;
++    } else {
++      it = handle_to_task_port_.erase(it);
+     }
+-    return false;
+-  });
++  }
+ }
+ 
+ }  // namespace content
+diff --git a/content/browser/child_process_task_port_provider_mac.h b/content/browser/child_process_task_port_provider_mac.h
+index ac605a8..1639c9b 100644
+--- a/content/browser/child_process_task_port_provider_mac.h
++++ b/content/browser/child_process_task_port_provider_mac.h
+@@ -6,6 +6,9 @@
+ #define CONTENT_BROWSER_CHILD_PROCESS_TASK_PORT_PROVIDER_MAC_H_
+ 
+ #include <map>
++#include <array>
++#include <optional>
++#include <stdint.h>
+ 
+ #include "base/apple/dispatch_source.h"
+ #include "base/apple/scoped_mach_port.h"
+@@ -32,6 +35,24 @@ class CONTENT_EXPORT ChildProcessTaskPortProvider : public base::PortProvider {
+   ChildProcessTaskPortProvider& operator=(const ChildProcessTaskPortProvider&) =
+       delete;
+ 
++  enum class OwnedHostKind { kRenderer, kBrowserChild };
++  struct OwnedHost {
++    OwnedHostKind kind;
++    int id;
++    bool operator==(const OwnedHost&) const = default;
++  };
++  struct OwnedTaskIdentity {
++    OwnedHost host;
++    uint64_t launch_generation;
++    std::array<uint32_t, 8> audit_token;
++    int pid_version;
++    bool operator==(const OwnedTaskIdentity&) const = default;
++  };
++  // A fresh kernel audit of the exact native host's original task port. Null
++  // for a pending/replaced/dead task or a generic unowned association.
++  std::optional<OwnedTaskIdentity> ReadOwnedTaskIdentity(
++      base::ProcessHandle process_handle, OwnedHost host) const;
++
+   // Called by BrowserChildProcessHostImpl and RenderProcessHostImpl when a new
+   // child is launched. Invokes `GetTaskPort()` on `child_process` and stores
+   // the returned port as being associated to `process_handle`.
+@@ -40,7 +61,8 @@ class CONTENT_EXPORT ChildProcessTaskPortProvider : public base::PortProvider {
+   // indicating that the child process has died, the association will be
+   // removed.
+   void OnChildProcessLaunched(base::ProcessHandle process_handle,
+-                              mojom::ChildProcess* child_process);
++                              mojom::ChildProcess* child_process,
++                              std::optional<OwnedHost> owner = std::nullopt);
+ 
+   // base::PortProvider:
+   mach_port_t TaskForHandle(base::ProcessHandle process_handle) const override;
+@@ -62,6 +84,7 @@ class CONTENT_EXPORT ChildProcessTaskPortProvider : public base::PortProvider {
+ 
+   // Callback for mojom::ChildProcess::GetTaskPort reply.
+   void OnTaskPortReceived(base::ProcessHandle process_handle,
++                          uint64_t launch_generation,
+                           mojo::PlatformHandle task_port);
+ 
+   // Event handler for |notification_source_|, invoked for
+@@ -72,9 +95,15 @@ class CONTENT_EXPORT ChildProcessTaskPortProvider : public base::PortProvider {
+   mutable base::Lock lock_;
+ 
+   // Maps a process handle to the corresponding task port.
+-  using HandleToTaskPortMap =
+-      std::map<base::ProcessHandle, base::apple::ScopedMachSendRight>;
++  struct TaskPortEntry {
++    base::apple::ScopedMachSendRight port;
++    std::optional<OwnedHost> owner;
++    uint64_t launch_generation = 0;
++    uint64_t installed_generation = 0;
++  };
++  using HandleToTaskPortMap = std::map<base::ProcessHandle, TaskPortEntry>;
+   HandleToTaskPortMap handle_to_task_port_ GUARDED_BY(lock_);
++  uint64_t next_launch_generation_ GUARDED_BY(lock_) = 0;
+ 
+   // A Mach port that is used to register for dead name notifications from the
+   // kernel. All the ports in `handle_to_task_port_` have a notification set up
+diff --git a/content/browser/child_process_task_port_provider_mac_unittest.cc b/content/browser/child_process_task_port_provider_mac_unittest.cc
+index f5de025..546081e 100644
+--- a/content/browser/child_process_task_port_provider_mac_unittest.cc
++++ b/content/browser/child_process_task_port_provider_mac_unittest.cc
+@@ -5,6 +5,7 @@
+ #include "content/browser/child_process_task_port_provider_mac.h"
+ 
+ #include <mach/mach.h>
++#include <unistd.h>
+ 
+ #include <vector>
+ 
+@@ -299,4 +300,74 @@ TEST_F(ChildProcessTaskPortProviderTest, ReplacePort) {
+   EXPECT_EQ(receive_right2.get(), provider()->TaskForHandle(42));
+ }
+ 
++TEST_F(ChildProcessTaskPortProviderTest, OwnedAuditUsesRealKernelTaskAndExactHost) {
++  const auto pid = getpid();
++  const ChildProcessTaskPortProvider::OwnedHost owner{
++      ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, 901};
++  MockChildProcess child;
++  EXPECT_CALL(child, GetTaskPort(_)).WillOnce([](auto callback) {
++    std::move(callback).Run(mojo::PlatformHandle(
++        base::apple::RetainMachSendRight(mach_task_self())));
++  });
++  provider()->OnChildProcessLaunched(pid, &child, owner);
++  WaitForTaskPort();
++  const auto audit = provider()->ReadOwnedTaskIdentity(pid, owner);
++  ASSERT_TRUE(audit);
++  EXPECT_GT(audit->pid_version, 0);
++  EXPECT_EQ(audit->host, owner);
++  EXPECT_FALSE(provider()->ReadOwnedTaskIdentity(pid,
++      {ChildProcessTaskPortProvider::OwnedHostKind::kBrowserChild, 901}));
++  EXPECT_FALSE(provider()->ReadOwnedTaskIdentity(pid,
++      {ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, 902}));
++  EXPECT_EQ(provider()->TaskForHandle(pid), mach_task_self());
++}
++
++TEST_F(ChildProcessTaskPortProviderTest, LatePortReplyCannotRelabelNewHost) {
++  const auto pid = getpid();
++  const ChildProcessTaskPortProvider::OwnedHost old_owner{
++      ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, 911};
++  const ChildProcessTaskPortProvider::OwnedHost new_owner{
++      ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, 912};
++  mojom::ChildProcess::GetTaskPortCallback old_reply, new_reply;
++  MockChildProcess old_child, new_child;
++  EXPECT_CALL(old_child, GetTaskPort(_)).WillOnce([&old_reply](auto callback) { old_reply = std::move(callback); });
++  EXPECT_CALL(new_child, GetTaskPort(_)).WillOnce([&new_reply](auto callback) { new_reply = std::move(callback); });
++  provider()->OnChildProcessLaunched(pid, &old_child, old_owner);
++  provider()->OnChildProcessLaunched(pid, &new_child, new_owner);
++  EXPECT_FALSE(provider()->ReadOwnedTaskIdentity(pid, old_owner));
++  EXPECT_FALSE(provider()->ReadOwnedTaskIdentity(pid, new_owner));
++  std::move(new_reply).Run(mojo::PlatformHandle(base::apple::RetainMachSendRight(mach_task_self())));
++  WaitForTaskPort();
++  const auto current = provider()->ReadOwnedTaskIdentity(pid, new_owner);
++  ASSERT_TRUE(current);
++  std::move(old_reply).Run(mojo::PlatformHandle(base::apple::RetainMachSendRight(mach_task_self())));
++  EXPECT_EQ(provider()->ReadOwnedTaskIdentity(pid, new_owner), current);
++  EXPECT_FALSE(provider()->ReadOwnedTaskIdentity(pid, old_owner));
++}
++
++TEST_F(ChildProcessTaskPortProviderTest, GenericAndNonTaskPortsNeverMintOwnedAudit) {
++  const auto pid = getpid();
++  const ChildProcessTaskPortProvider::OwnedHost owner{
++      ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, 921};
++  MockChildProcess generic;
++  EXPECT_CALL(generic, GetTaskPort(_)).WillOnce([](auto callback) {
++    std::move(callback).Run(mojo::PlatformHandle(base::apple::RetainMachSendRight(mach_task_self())));
++  });
++  provider()->OnChildProcessLaunched(pid, &generic);
++  WaitForTaskPort();
++  EXPECT_EQ(provider()->TaskForHandle(pid), mach_task_self());
++  EXPECT_FALSE(provider()->ReadOwnedTaskIdentity(pid, owner));
++  base::apple::ScopedMachReceiveRight receive;
++  base::apple::ScopedMachSendRight send;
++  ASSERT_TRUE(base::apple::CreateMachPort(&receive, &send));
++  MockChildProcess owned;
++  EXPECT_CALL(owned, GetTaskPort(_)).WillOnce([&send](auto callback) {
++    std::move(callback).Run(mojo::PlatformHandle(base::apple::RetainMachSendRight(send.get())));
++  });
++  provider()->OnChildProcessLaunched(pid, &owned, owner);
++  WaitForTaskPort();
++  EXPECT_FALSE(provider()->ReadOwnedTaskIdentity(pid, owner));
++  EXPECT_EQ(provider()->TaskForHandle(pid), send.get());
++}
++
+ }  // namespace content
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+index 0d96ded..e3eb16f 100644
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -4319,7 +4319,9 @@ void RenderProcessHostImpl::OnChannelConnected(int32_t peer_pid) {
+ 
+ #if BUILDFLAG(IS_MAC)
+   ChildProcessTaskPortProvider::GetInstance()->OnChildProcessLaunched(
+-      peer_pid, child_process_.get());
++      peer_pid, child_process_.get(),
++      ChildProcessTaskPortProvider::OwnedHost{
++          ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, GetID().value()});
+ #endif
+ 
+   if (IsReady()) {

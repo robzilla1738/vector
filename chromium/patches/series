@@ -235,3 +235,8 @@ aux/runtime/0258-native-organization-work.patch
 aux/runtime/0262-browser-view-buildflags.patch
 aux/runtime/0260-native-little-hardware-upperbound.patch
 aux/runtime/0264-pip-solid-backing-test-layer.patch
+aux/runtime/0266-media-session-test-activation-api.patch
+aux/runtime/0267-auto-pip-test-content-client-api.patch
+aux/runtime/0268-auto-pip-test-callable-action.patch
+aux/runtime/0261-native-full-process-memory.patch
+aux/runtime/0263-native-owned-process-identity.patch

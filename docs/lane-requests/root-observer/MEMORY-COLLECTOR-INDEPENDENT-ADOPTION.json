@@ -1,0 +1,22 @@
+{
+  "sourceOnly": true,
+  "nativePerformanceQualified": false,
+  "contextualForwardReverse": "PASS",
+  "requestSha256": "bdfb200a6c0e6e5a31bab3e144b2723cf00abbb4be1bf2c1778047c9aec49660",
+  "files": [
+    {
+      "path": "tests/host/lib/native-memory-workload-collector.mjs",
+      "beforeSha256": null,
+      "afterSha256": "aca4daee29f1eaadd3c67a9d64460c11d021aea0dc47cdbdd0d38f9529c62edd"
+    },
+    {
+      "path": "tests/host/lib/native-memory-workload-collector.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "77c6b81ce152346ea536f0181b3f68fb5006fd906dc616ee46aea558ee433231"
+    }
+  ],
+  "requiredReader": {
+    "path": "tests/host/lib/native-process-memory.mjs",
+    "sha256": "891820c2a9363359816a9cf41b0113aa7ea9538257a5664bd41fc56bd921905f"
+  }
+}

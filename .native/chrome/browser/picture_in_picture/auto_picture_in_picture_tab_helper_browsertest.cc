@@ -4218,7 +4218,7 @@ class AuxQueuedAutomaticPictureInPictureBrowserTest
     : public AuxOrdinaryAutoPictureInPictureBrowserTest {
  public:
   void HoldActualAutomaticSession() {
-    ASSERT_TRUE(content::GetContentClient()->browser()
+    ASSERT_TRUE(content::GetContentClientForTesting()->browser()
         ->RequiresCurrentAutoPictureInPictureAuthority());
     auto* helper = AutoPictureInPictureTabHelper::FromWebContents(page);
     ASSERT_NE(helper, nullptr);
@@ -4582,7 +4582,7 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
   ASSERT_NO_FATAL_FAILURE(RegisterAsyncVideoHandler());
   SetContentSetting(page, CONTENT_SETTING_BLOCK);
   OpenNewTab(browser());
-  ASSERT_TRUE(content::GetContentClient()->browser()
+  ASSERT_TRUE(content::GetContentClientForTesting()->browser()
       ->RequiresCurrentAutoPictureInPictureAuthority());
   content::MediaSession::Get(page)->EnterAutoPictureInPicture();
   EXPECT_EQ("NotSupportedError", content::EvalJs(page, "window.auxAutomaticDone",
