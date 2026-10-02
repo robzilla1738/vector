@@ -27,6 +27,8 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/testing_profile.h"
+#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+#include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/permissions/permission_request_manager.h"
 #include "components/permissions/permission_request_data.h"
 #include "components/permissions/request_type.h"
@@ -598,6 +600,7 @@ TEST_F(PermissionBrokerTest, NativeEffectRejectsExactOvernightWindowEndAfterRece
   FreshAllow(static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()));
   EXPECT_FALSE(state_.granted); EXPECT_TRUE(state_.finished);
   EXPECT_FALSE(manager_->IsRequestInProgress());
+  EXPECT_TRUE(state_.cancelled);
 }
 TEST_F(PermissionBrokerTest, NativeEffectRejectsCurrentProfileBackgroundRevocation) {
   auto_fresh_ = false;
@@ -607,6 +610,32 @@ TEST_F(PermissionBrokerTest, NativeEffectRejectsCurrentProfileBackgroundRevocati
   profile()->GetPrefs()->SetBoolean(kKeepRuntimeInBackgroundPref, false);
   FreshAllow(static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()) + 60000);
   EXPECT_FALSE(state_.granted); EXPECT_TRUE(state_.finished);
+  EXPECT_TRUE(state_.cancelled);
+}
+TEST_F(PermissionBrokerTest, ExpiredReceiptCancelsExactDuplicateBatchWithoutDurableDenial) {
+  auto_fresh_ = false;
+  auto* content_settings = HostContentSettingsMapFactory::GetForProfile(profile());
+  ASSERT_TRUE(content_settings);
+  const auto notification_before = content_settings->GetContentSetting(
+      origin_, origin_, ContentSettingsType::NOTIFICATIONS);
+  ASSERT_EQ(notification_before, CONTENT_SETTING_ASK);
+  profile()->GetPrefs()->SetBoolean(kKeepRuntimeInBackgroundPref, true);
+  permissions::MockPermissionRequest::MockPermissionRequestState duplicate_state;
+  auto request = MakeRequest(permissions::RequestType::kNotifications, state_.GetWeakPtr());
+  auto duplicate = request->CreateDuplicateRequest(duplicate_state.GetWeakPtr());
+  manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(request));
+  manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(duplicate));
+  manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+  ASSERT_NE(Find("permission.request"), nullptr); Allow();
+  ASSERT_NE(Find("permission.revalidate"), nullptr);
+  FreshAllow(static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch()));
+  EXPECT_FALSE(state_.granted); EXPECT_FALSE(duplicate_state.granted);
+  EXPECT_TRUE(state_.cancelled); EXPECT_TRUE(duplicate_state.cancelled);
+  EXPECT_TRUE(state_.finished); EXPECT_TRUE(duplicate_state.finished);
+  EXPECT_FALSE(manager_->IsRequestInProgress());
+  EXPECT_NE(Find("permission.finalize"), nullptr);
+  EXPECT_EQ(content_settings->GetContentSetting(
+      origin_, origin_, ContentSettingsType::NOTIFICATIONS), notification_before);
 }
 TEST_F(PermissionBrokerTest, ForeignFreshNonceCannotGrantActualRequest) {
   auto_fresh_ = false;

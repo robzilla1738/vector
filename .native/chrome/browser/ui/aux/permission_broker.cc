@@ -229,7 +229,7 @@ void PermissionBroker::Dispatch(bool allow) {
   std::vector<const permissions::PermissionRequest*> requests;
   for (const auto& request : requests_) requests.push_back(request.get());
   const auto self = weak_factory_.GetWeakPtr();
-  manager->ResolveRequestsFromBrowser(requests, allow, base::BindRepeating(
+  const bool resolved = manager->ResolveRequestsFromBrowser(requests, allow, base::BindRepeating(
       [](base::WeakPtr<PermissionBroker> broker, bool allow) {
         if (!broker || !broker->Current()) return false;
         if (!allow) return true;
@@ -245,6 +245,14 @@ void PermissionBroker::Dispatch(bool allow) {
     self->effect_receipt_.reset();
     self->retry_.Stop();
     return;
+  }
+  if (!resolved && allow && self->Current()) {
+    // Authority refused this queued ALLOW, not a durable site denial. Retire
+    // only this exact untouched batch through the manager cancellation helpers.
+    // Pending owner mutations above instead hold for fresh authorization.
+    self->manager_->CancelRequestsFromBrowser(requests);
+    // Manager effects/observers may destroy or finalize this broker.
+    if (!self) return;
   }
   self->Cancel();
 }
