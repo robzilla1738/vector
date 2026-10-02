@@ -1,6 +1,6 @@
 {
-  "status": "79 ordered packets full reverse/actual baselines/forward exact mirrors PASS; native compilation pending",
-  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-authority-79-replay-0_t81h6n",
+  "status": "80 ordered packets full reverse/actual baselines/forward exact mirrors PASS; native compilation pending",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-authority-80-replay-v38qp_8w",
   "orderedPatches": [
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch",
     "chromium/patches/aux/runtime/0150-little-window-controller.patch",
@@ -80,7 +80,8 @@
     "chromium/patches/aux/runtime/0246-private-owned-pip-appearance-route.patch",
     "chromium/patches/aux/runtime/0247-pip-fixture-special-members.patch",
     "chromium/patches/aux/runtime/0248-pip-actual-owner-window.patch",
-    "chromium/patches/aux/runtime/0249-pip-actual-owner-page.patch"
+    "chromium/patches/aux/runtime/0249-pip-actual-owner-page.patch",
+    "chromium/patches/aux/runtime/0250-content-public-browser-dependency.patch"
   ],
   "packetDigests": {
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch": "8a7337726222a33aa306fd3f35e3485a60b59d4c0d036a1fda9bc98dce8c4e93",
@@ -161,7 +162,8 @@
     "chromium/patches/aux/runtime/0246-private-owned-pip-appearance-route.patch": "c2171971281379a643b7101207024595fbf441e039c44da4f4c185474190b398",
     "chromium/patches/aux/runtime/0247-pip-fixture-special-members.patch": "6e479c56d9676aca6a7dab0b6eaab3a7b2d47459941b2586c1fb2a6137ea05db",
     "chromium/patches/aux/runtime/0248-pip-actual-owner-window.patch": "d17b46dde29fcf143c878643e62f34f645d8d5982178a8aa83973e538d2716d4",
-    "chromium/patches/aux/runtime/0249-pip-actual-owner-page.patch": "519878caee094b31bea262a0a73097fef6f79a90f16b4abc497d2695553b2459"
+    "chromium/patches/aux/runtime/0249-pip-actual-owner-page.patch": "519878caee094b31bea262a0a73097fef6f79a90f16b4abc497d2695553b2459",
+    "chromium/patches/aux/runtime/0250-content-public-browser-dependency.patch": "bfb6b64f09b39430e3a6f9b512affb2bc03feaca783ea8e10241b3ab0f4d61f6"
   },
   "baselineVerification": {
     "cc/BUILD.gn": "2b1b3c86ec12fcd5dd95bb5c94fcc42f49f8530359e682c1903a019268bdba06",
@@ -437,7 +439,7 @@
     "chrome/browser/prefs/browser_prefs.cc": "42cf35820b7b01a22e9fb1d45b4497d3d184e96006a7e68d34e023bd74e66b9b",
     "chrome/browser/profiles/profile.cc": "4d080b6481a87f89ad71e4cc915ba26322704a127902433145d1d0117d4c48c7",
     "chrome/browser/resources/aux_host/aux_host_bootstrap.ts": "95d8334f28670faf7e485022919e346ae15e721890ade7004a404c56300092a2",
-    "chrome/browser/ui/aux/BUILD.gn": "958404b3c47f8e4f81793f8648221f47255301330dd396a8e1e35b247a1b84c8",
+    "chrome/browser/ui/aux/BUILD.gn": "a20415e1c04a56cd0b8093a664b9c4f7dd503d4966a5b5111bd08de463733e1e",
     "chrome/browser/ui/aux/auto_pip_site_policy.h": "dd7fb9c6266d980756d36277261be561d5c2ca01559bbfc58e0da9272ae7a989",
     "chrome/browser/ui/aux/auto_pip_site_policy_unittest.cc": "07e01bfb556596b2074238ae89e44369245f57dc83fbdf8d15c63aa4837a9d55",
     "chrome/browser/ui/aux/download_naming.cc": "d2ca941127173cd27ef076ed1db2f37c4094827934aa011a7d7d28b479e3c22c",

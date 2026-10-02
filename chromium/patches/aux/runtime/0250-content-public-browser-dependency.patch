@@ -1,0 +1,12 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 9bae133..5cb2e7e 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -124,7 +124,6 @@ source_set("runtime") {
+   deps = [
+     "//components/guest_contents/browser",
+     "//services/viz/privileged/mojom/compositing",
+-    "//content/browser",
+     "//cc",
+     "//ui/compositor",
+     "//ui/events",

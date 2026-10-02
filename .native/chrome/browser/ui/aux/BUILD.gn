@@ -124,7 +124,6 @@ source_set("runtime") {
   deps = [
     "//components/guest_contents/browser",
     "//services/viz/privileged/mojom/compositing",
-    "//content/browser",
     "//cc",
     "//ui/compositor",
     "//ui/events",
