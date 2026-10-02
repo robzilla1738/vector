@@ -45,7 +45,8 @@ AuxMethodRegistry::AuxMethodRegistry() {
     register_shell(AuxShellMethodGroup::kWindow,
         {"commandPresentationSnapshot", "prepareGuestSplitDropPresentation",
          "prepareGuestDividerFramePresentation", "prepareGuestTabSwitchPresentation",
-         "completeGuestPresentation", "performanceFixtureNextRequest", "sampleShellMemory"});
+         "completeGuestPresentation", "performanceFixtureNextRequest", "sampleShellMemory",
+         "prepareOrganizationAutoArchiveWork", "prepareOrganizationLiveFolderWork", "completeOrganizationWork"});
 #endif
   register_shell(AuxShellMethodGroup::kContent,
                  {"preview", "readArticle", "siteZoom", "privatePageZoom", "siteInfo", "setSiteTrackers", "sitePermissions",

@@ -4,6 +4,9 @@ const operations = new Set([
   "prepareGuestTabSwitchPresentation",
   "completeGuestPresentation",
   "sampleShellMemory",
+  "prepareOrganizationAutoArchiveWork",
+  "prepareOrganizationLiveFolderWork",
+  "completeOrganizationWork",
 ]);
 
 /** Private owned-fixture long poll; no timers, selectors, effects or public RPC. */

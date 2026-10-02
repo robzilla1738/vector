@@ -1,0 +1,11 @@
+{
+  "apps/shell/src/organization-performance.ts": "8abd034bd8df63b4dc471170c1be49d941b2a5065eee3c43c471f55661e94551",
+  "apps/shell/src/components/LiveFolderRows.tsx": "9f9e40351cac45a94f91c60c916ed092080af9f53a411b006f6cd3f40e70426c",
+  "apps/shell/src/features/organization-live/mount.ts": "563d3d3c4e24bebc105f6beb83ad606f5b1864ae0da16aeb2e369d363858b365",
+  "apps/shell/src/native-performance-fixture-observer.ts": "efbdb468adaaa6b374a0f85e98df4091de03fa80c6b33afaf87b0ad93cf29a05",
+  "tests/host/lib/performance-mailbox.mjs": "5fb436d8ba93ede1ad079a036178592355db18c8b380be78711539a517f4ddda",
+  "tests/host/lib/performance-mailbox-writer.py": "86a249dde6abb84057d252e9b5b4e9975e91e169fdd4451ee4bfec05b6f3b160",
+  "tests/host/run-journey.mjs": "91409ff43a8dce38e071ad5e5b834a61f4a89387963f45b44c39f48e2ffc1112",
+  "tests/host/journeys/pinned-live.mjs": "39c1ef59ca5f39070dbebc15768ad6c85275fdb0a9ebb8a6556257318273be63",
+  "tests/host/journeys/index.mjs": "1a47124e693fdb36bb442b3c2fbfb243b21053d4f143fa1e691e35e4c109479e"
+}

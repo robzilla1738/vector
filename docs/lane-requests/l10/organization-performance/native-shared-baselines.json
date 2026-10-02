@@ -1,0 +1,22 @@
+{
+  "third_party/blink/public/mojom/widget/platform_widget.mojom": "a8ff4205f317205f81e36439e17e60061a71d7d18b786dc20706f9faf6195fd5",
+  "third_party/blink/public/mojom/BUILD.gn": "f285462d523db72b3e3c622ac94f2dd1f2368cdfb3fbe7f58720a183ad653b7c",
+  "third_party/blink/renderer/core/frame/web_frame_widget_impl.h": "1bb62a806cdf5d270132919e901467ed68ac476af05c0acc0066924988b42fad",
+  "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "4643e2a4e66ff35330680f46c79ebc1404562cf2978ba59daa0ffea7bf9b3116",
+  "third_party/blink/renderer/platform/widget/widget_base_client.h": "f7dd9a6a0c94edcf20c12b60a6fa5583e8aa155743d3fd3ae943ab9feccd2dd1",
+  "third_party/blink/renderer/platform/widget/compositing/widget_compositor.h": "fc94b4c95fba36e8bb61880f80f927f3e113d872b4a23db0b1215fe1a00ba7d5",
+  "third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc": "5ef49171f953d804b12106f82d6a3a6d5bd6a0213e8fcd06b335bcfc45635959",
+  "content/browser/renderer_host/render_widget_host_impl.h": "5431613305bddf11786acfc88833997534c4a610915fddb3b982f73b554f229a",
+  "content/browser/renderer_host/render_widget_host_impl.cc": "410f5788149a095306df6e2018b16a722604638628ebc0039854f82cbe6f6d47",
+  "third_party/blink/renderer/core/frame/build.gni": "5da7d2d069a72e855b4b5a281336d8044db06f98ecac5ffca63b368f9f1c1b1d",
+  "chrome/browser/ui/aux/runtime_host.h": "ca2b583605f974d5c205a161c9becc531d93bb9ff886a86cc6426cc20b733f5d",
+  "chrome/browser/ui/aux/runtime_host.cc": "5dbe6fa7fc370e96519457d0a709372e7fed41030dd51a5f9966d18ee7ec8c55",
+  "chrome/browser/ui/webui_browser/webui_browser_ui.h": "b5a197c6dc857bd3f2a408b115989a0005718b968c929eefcbdededde7db2892",
+  "chrome/browser/ui/webui_browser/webui_browser_ui.cc": "b63f7125a4a7986f95468b63a2238f069361be2468b529582aa0e247f1e89abe",
+  "chrome/browser/ui/aux/methods/window_methods.cc": "89b45f56b22d78052259dde64127fbcc22c7d526102e99da56269d58479c1b78",
+  "chrome/browser/ui/aux/method_registry.cc": "7ca4cab5985119ec5625492529091ad7fec2efce2101c756077b2f375955f6c6",
+  "chrome/browser/ui/aux/BUILD.gn": "7f00b9c30afd62537fa35adc3b5c548235febe1f64d96470c562c39bb2309313",
+  "chrome/test/BUILD.gn": "688ce2dc1276e732a80b4f04079b177f6a88ff3b069942adbee81b12cfdd61c1",
+  "chrome/browser/ui/aux/native_performance_mailbox.h": "3c8b78266af3e7c921ef30444859d3886dbdf71ec1e865f6f283aabf0469e46b",
+  "chrome/browser/ui/aux/native_performance_mailbox.cc": "03bb8f627003c2c0041ead7f5c9025eeccf032029f86ee78510d875b0651dd54"
+}

@@ -43,7 +43,9 @@ class NativePerformanceMailbox final {
   uint64_t sequence_ = 0;
   std::optional<std::string> expected_;
   std::optional<std::string> running_;
-  bool failed_ = false, sample_active_ = false;
+  bool failed_ = false;
+  std::optional<std::string> sample_completion_;
+  std::optional<base::DictValue> sample_scope_;
   Reply pending_;
   base::SequenceBound<WatchState> watcher_;
   base::OneShotTimer timeout_;

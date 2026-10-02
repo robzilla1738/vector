@@ -1,0 +1,37 @@
+// Copyright 2026 The Aux Authors
+module blink.mojom;
+import "mojo/public/mojom/base/unguessable_token.mojom";
+import "third_party/blink/public/mojom/tokens/tokens.mojom";
+
+enum NativeOrganizationWorkMetric { kAutoArchive, kLiveFolderRefresh };
+// Browser-created private fixture scope. No script, selector or effect endpoint.
+struct NativeOrganizationWorkScope {
+  NativeOrganizationWorkMetric metric;
+  mojo_base.mojom.UnguessableToken nonce;
+  uint64 sample_sequence;
+  int32 window_id;
+  int32 renderer_pid;
+  int32 widget_routing_id;
+  uint64 document_generation;
+  DocumentToken document;
+};
+struct NativeOrganizationWorkSample {
+  NativeOrganizationWorkScope scope;
+  double start_ms;
+  double duration_ms;
+  double duration_upper_bound_ms;
+  bool long_task_coverage;
+  uint32 overlapping_long_tasks;
+  double maximum_long_task_ms;
+  uint32 completed_tasks;
+  double maximum_task_ms;
+  double completed_through_ms;
+  string operation_id;
+  uint32 units;
+  string folder_id;
+};
+// The browser retains this pipe only for the current exact document/scope.
+// Read consumes it once; disconnect destroys task observation immediately.
+interface NativeOrganizationWorkLease {
+  Read() => (NativeOrganizationWorkSample? sample);
+};

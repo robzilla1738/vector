@@ -1,0 +1,21 @@
+{
+  "base": "d565d969f1de9dd0a718994da1fe7982a83e5d32",
+  "patchSha256": "367ddb947b5c7a42ea6b06dcc73fcd319886e740cb4c279a73ef00a848f8e430",
+  "files": [
+    {
+      "path": "apps/shell/src/components/LittleWindow.tsx",
+      "beforeSha256": "dc2f53ed0f6b3c5299c209885eaa7faeb387fc83aad9c0b45c85574db8a9d5a1",
+      "afterSha256": "fdae8f200e728d9996427dd7a19bf77aec7e5691dbd13ed3bbbdc21c12452fe0"
+    },
+    {
+      "path": "apps/shell/src/features/little-window/popovers.test.tsx",
+      "beforeSha256": "695e8ed2b56e4373da3f9918a11de7a10a421d5c1eec1bd5b093b4c4b2d7f459",
+      "afterSha256": "fecf7f194147c48f06320092554514d84388991f9540e04334c5d51b201256ae"
+    }
+  ],
+  "checks": {
+    "vitest": "2 files / 8 assertions cases PASS; actual component document revision and remount fencing",
+    "oxlint": "0 errors, 1 existing img-role warning"
+  },
+  "paintEvidence": false
+}

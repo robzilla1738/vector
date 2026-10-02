@@ -76,7 +76,9 @@ bool IsNativePerformanceMailboxOperation(const std::string& operation) {
   return operation == "prepareGuestSplitDropPresentation" ||
       operation == "prepareGuestDividerFramePresentation" ||
       operation == "prepareGuestTabSwitchPresentation" || operation == "completeGuestPresentation" ||
-      operation == "sampleShellMemory";
+      operation == "sampleShellMemory" ||
+      operation == "prepareOrganizationAutoArchiveWork" ||
+      operation == "prepareOrganizationLiveFolderWork" || operation == "completeOrganizationWork";
 }
 std::optional<base::DictValue> ReadNativePerformanceMailboxFile(const base::FilePath& root,
                                                              uint64_t last_sequence, uint64_t root_device, uint64_t root_inode) {
@@ -194,7 +196,8 @@ void NativePerformanceMailbox::Received(std::optional<base::DictValue> request) 
 }
 std::optional<uint64_t> NativePerformanceMailbox::TakeExpected(const std::string& operation) {
   if (!Stable() || !expected_ || *expected_ != operation || running_ ||
-      (operation == "completeGuestPresentation" ? !sample_active_ : sample_active_)) { Refuse(); return std::nullopt; }
+      (sample_completion_ ? operation != *sample_completion_ :
+          (operation == "completeGuestPresentation" || operation == "completeOrganizationWork"))) { Refuse(); return std::nullopt; }
   running_ = std::move(expected_); expected_.reset(); return sequence_;
 }
 bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& operation, const base::DictValue& record) {
@@ -202,20 +205,39 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
   const auto* producer = record.FindString("producer");
   const auto* status = record.FindString("status");
   const bool memory = operation == "sampleShellMemory";
-  if (!producer || *producer != (memory ? "aux-native-shell-memory" : "aux-native-guest-presentation") ||
+  const bool prepare_work = operation == "prepareOrganizationAutoArchiveWork" ||
+      operation == "prepareOrganizationLiveFolderWork";
+  const bool organization = prepare_work || operation == "completeOrganizationWork";
+  if (!producer || *producer != (memory ? "aux-native-shell-memory" :
+          organization ? "aux-native-organization-work-v1" : "aux-native-guest-presentation") ||
       record.FindInt("version") != 1 || !status ||
       (memory ? (*status != "sampled" && *status != "refused") :
           (*status != "ready" && *status != "measured" && *status != "refused")) ||
       (*status != "refused" && record.FindInt("windowId") != owner_->window_id)) {
     Refuse(); return false;
   }
+  if (organization && *status != "refused") {
+    const auto* scope = record.FindDict("scope");
+    const auto* metric = scope ? scope->FindString("metric") : nullptr;
+    const char* expected = operation == "prepareOrganizationAutoArchiveWork" ? "auto-archive" : "live-folder-refresh";
+    if (record.FindInt("pid") != getpid() || !scope || !metric ||
+        scope->FindInt("windowId") != owner_->window_id ||
+        (prepare_work ? (*status != "ready" || *metric != expected) :
+            (*status != "measured" || !sample_scope_ || *scope != *sample_scope_))) {
+      Refuse(); return false;
+    }
+  }
   auto wrapper = base::DictValue().Set("producer", "aux-native-fixture-reply").Set("version", 1)
       .Set("pid", static_cast<int>(getpid())).Set("windowId", owner_->window_id)
       .Set("sequence", base::NumberToString(sequence)).Set("operation", operation).Set("record", record.Clone());
   const auto json = base::WriteJson(wrapper);
   if (!json || json->size() > 16000 || !AdmitRecord()) { Refuse(); return false; }
-  if (memory || operation == "completeGuestPresentation") sample_active_ = false;
-  else sample_active_ = record.FindString("status") && *record.FindString("status") == "ready";
+  if (memory || operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
+      *status == "refused") { sample_completion_.reset(); sample_scope_.reset(); }
+  else {
+    sample_completion_ = organization ? "completeOrganizationWork" : "completeGuestPresentation";
+    if (organization) sample_scope_ = record.FindDict("scope")->Clone();
+  }
   running_.reset(); fprintf(stderr, "AUX_NATIVE_FIXTURE_REPLY_V1 %s\n", json->c_str()); fflush(stderr); return true;
 }
 void NativePerformanceMailbox::Refuse() {

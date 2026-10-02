@@ -1,0 +1,731 @@
+--- /dev/null
++++ b/apps/shell/src/components/LiveFolderRows.test.tsx
+@@ -0,0 +1,72 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { performance as nativeTestClock } from "node:perf_hooks";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++const calls = vi.hoisted(() => ({ read: vi.fn(), command: vi.fn() }));
++vi.mock("../store", () => ({ call: calls.read }));
++vi.mock("../commands", () => ({ executeCommand: calls.command }));
++vi.mock("./SiteTile", () => ({ FavIcon: () => null }));
++import { LiveFolderRows } from "./LiveFolderRows";
++(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
++const name = "aux:liveFolders:refresh";
++const item = { id: "fixture", title: "Fresh fixture row", url: "https://fixture.test/", unread: true, updatedAt: 1 };
++function deferred<T>() {
++  let resolve!: (value: T) => void, reject!: (reason: Error) => void;
++  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
++  return { promise, resolve, reject };
++}
++beforeEach(() => {
++  calls.read.mockReset(); calls.command.mockReset();
++  vi.stubGlobal("performance", nativeTestClock);
++  nativeTestClock.clearMarks(); nativeTestClock.clearMeasures();
++});
++afterEach(() => { vi.unstubAllGlobals(); nativeTestClock.clearMarks(); nativeTestClock.clearMeasures(); });
++it("measures ACK, row response and actual React commit before completing refresh", async () => {
++  const ack = deferred<unknown>(), rows = deferred<{ items: typeof item[] }>();
++  calls.read.mockResolvedValueOnce({ items: [] }).mockReturnValueOnce(rows.promise);
++  calls.command.mockReturnValue(ack.promise);
++  const host = document.createElement("div"), root = createRoot(host); document.body.append(host);
++  try {
++    await act(async () => root.render(<LiveFolderRows folderId="fixture-folder" />));
++    const refresh = host.querySelector<HTMLButtonElement>('[aria-label="Refresh live folder"]')!;
++    await act(async () => { refresh.click(); refresh.click(); });
++    expect(calls.command).toHaveBeenCalledTimes(1);
++    expect(calls.command).toHaveBeenCalledWith("refresh-live-folder", { payload: { folderId: "fixture-folder" } });
++    expect(refresh.disabled).toBe(true);
++    expect(nativeTestClock.getEntriesByName(name, "measure")).toHaveLength(0);
++    await act(async () => ack.resolve({ items: [item] }));
++    expect(nativeTestClock.getEntriesByName(name, "measure")).toHaveLength(0);
++    expect(host.textContent).not.toContain(item.title);
++    await act(async () => rows.resolve({ items: [item] }));
++    expect(host.textContent).toContain(item.title); expect(refresh.disabled).toBe(false);
++    const measured = nativeTestClock.getEntriesByName(name, "measure");
++    expect(measured).toHaveLength(1);
++    expect(JSON.parse((measured[0] as PerformanceMeasure).detail)).toMatchObject({ units: 1, committed: true });
++    expect(nativeTestClock.getEntriesByType("mark")).toHaveLength(0);
++  } finally { await act(async () => root.unmount()); host.remove(); }
++});
++it("rejected ACK retains actionable error without a false completed refresh", async () => {
++  const ack = deferred<unknown>(); calls.read.mockResolvedValue({ items: [] }); calls.command.mockReturnValue(ack.promise);
++  const host = document.createElement("div"), root = createRoot(host); document.body.append(host);
++  try {
++    await act(async () => root.render(<LiveFolderRows folderId="fixture-folder" />));
++    const refresh = host.querySelector<HTMLButtonElement>('[aria-label="Refresh live folder"]')!;
++    await act(async () => refresh.click());
++    await act(async () => ack.reject(new Error("Source refresh unavailable. Try again.")));
++    expect(host.textContent).toContain("Source refresh unavailable. Try again.");
++    expect(refresh.disabled).toBe(false);
++    expect(nativeTestClock.getEntriesByName(name, "measure")).toHaveLength(0);
++    expect(nativeTestClock.getEntriesByType("mark")).toHaveLength(0);
++  } finally { await act(async () => root.unmount()); host.remove(); }
++});
++it("unmounted folder retires measurement and late source reply cannot produce a sample", async () => {
++  const ack = deferred<unknown>(); calls.read.mockResolvedValue({ items: [] }); calls.command.mockReturnValue(ack.promise);
++  const host = document.createElement("div"), root = createRoot(host); document.body.append(host);
++  await act(async () => root.render(<LiveFolderRows folderId="fixture-folder" />));
++  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Refresh live folder"]')!.click());
++  await act(async () => root.unmount()); host.remove();
++  await act(async () => ack.resolve({ items: [item] }));
++  expect(nativeTestClock.getEntriesByName(name, "measure")).toHaveLength(0);
++  expect(nativeTestClock.getEntriesByType("mark")).toHaveLength(0);
++});
+--- a/apps/shell/src/components/LiveFolderRows.tsx
++++ b/apps/shell/src/components/LiveFolderRows.tsx
+@@ -1,9 +1,10 @@
+-import { useCallback, useEffect, useRef, useState } from "react";
++import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+ import type { LiveFolderItem } from "@aux/contracts";
+ import { call } from "../store";
+ import { executeCommand } from "../commands";
+ import { FavIcon } from "./SiteTile";
+ import { shellIconReload } from "./icons";
++import { beginOrganizationWork } from "../organization-performance";
+ 
+ export function LiveFolderRows({ folderId }: { folderId: string }) {
+   return <Rows key={folderId} folderId={folderId} />;
+@@ -12,30 +13,51 @@
+   const [items, setItems] = useState<LiveFolderItem[]>([]);
+   const [error, setError] = useState("");
+   const [busy, setBusy] = useState(false);
++  const refreshInFlight = useRef(false);
++  const measurement = useRef<{ work: ReturnType<typeof beginOrganizationWork>; items?: LiveFolderItem[]; request?: number } | null>(null);
+   const lifetime = useRef({ live: false, request: 0 });
+   const load = useCallback(async () => {
+     const scope = lifetime.current;
+     const request = ++scope.request;
+     try {
+       const value = await call("liveFolders.items", { folderId });
+-      if (scope.live && request === scope.request) { setItems(value.items); setError(value.error ?? ""); }
++      if (scope.live && request === scope.request) {
++        if (measurement.current) {
++          if (value.error) { measurement.current.work.cancel(); measurement.current = null; }
++          else { measurement.current.items = value.items; measurement.current.request = request; }
++        }
++        setItems(value.items); setError(value.error ?? "");
++      }
+     } catch (error) { if (scope.live && request === scope.request) setError(error instanceof Error ? error.message : String(error)); }
+   }, [folderId]);
+   useEffect(() => {
+     const scope = lifetime.current;
+     scope.live = true;
+     void load(); const timer = setInterval(() => void load(), 30_000);
+-    return () => { scope.live = false; ++scope.request; clearInterval(timer); };
++    return () => { scope.live = false; ++scope.request; measurement.current?.work.cancel(); measurement.current = null; clearInterval(timer); };
+   }, [load]);
++  useLayoutEffect(() => {
++    const pending = measurement.current, scope = lifetime.current;
++    if (!pending || busy) return;
++    if (scope.live && pending.request === scope.request && pending.items === items && !error)
++      pending.work.complete(items.length, folderId);
++    else pending.work.cancel();
++    measurement.current = null;
++  }, [busy, items, error, folderId]);
+   const refresh = async () => {
+-    if (busy) return;
++    if (refreshInFlight.current) return;
++    refreshInFlight.current = true;
+     const scope = lifetime.current;
++    measurement.current = { work: beginOrganizationWork("aux:liveFolders:refresh") };
+     setBusy(true);
+     try { await executeCommand("refresh-live-folder", { payload: { folderId } }); if (scope.live) await load(); }
+-    catch (error) { if (scope.live) setError(error instanceof Error ? error.message : String(error)); }
+-    finally { if (scope.live) setBusy(false); }
++    catch (error) {
++      measurement.current?.work.cancel(); measurement.current = null;
++      if (scope.live) setError(error instanceof Error ? error.message : String(error));
++    }
++    finally { refreshInFlight.current = false; if (scope.live) setBusy(false); }
+   };
+-  return <div className="live-folder-rows" aria-busy={busy}>
++  return <div className="live-folder-rows" data-aux-live-folder-id={folderId} aria-busy={busy}>
+     <div className="live-folder-tools"><button className="btn ghost sm" data-command-id="refresh-live-folder" disabled={busy} aria-label="Refresh live folder" onClick={() => void refresh()}>{shellIconReload} Refresh</button></div>
+     {error && <output className="live-folder-error">{error}</output>}
+     {!error && !items.length && <p className="hint live-folder-empty">No items yet. Refresh this folder to check its source.</p>}
+--- a/apps/shell/src/features/organization-live/mount.ts
++++ b/apps/shell/src/features/organization-live/mount.ts
+@@ -1,4 +1,3 @@
+-import { measureOrganizationWork } from "../../organization-performance";
+ import { lazy, createElement } from "react";
+ import type { FeatureMount, CommandInvocation } from "../registry";
+ import { call, useStore, flushLayout } from "../../store";
+@@ -27,7 +26,7 @@
+       useStore.setState({ layout }); persistLayout(layout); await flushLayout();
+       await call("liveFolders.refresh", { folderId: id });
+     },
+-    "refresh-live-folder": (_state, invocation) => measureOrganizationWork("aux:liveFolders:refresh", () => call("liveFolders.refresh", { folderId: folderId(invocation) })),
++    "refresh-live-folder": (_state, invocation) => call("liveFolders.refresh", { folderId: folderId(invocation) }),
+     "open-live-folder-item": async (_state, invocation) => {
+       const id = folderId(invocation); const payload = invocation.payload;
+       if (!payload || !("itemId" in payload) || !payload.itemId) throw new Error("Choose a live item first.");
+--- a/apps/shell/src/native-performance-fixture-observer.ts
++++ b/apps/shell/src/native-performance-fixture-observer.ts
+@@ -4,6 +4,9 @@
+   "prepareGuestTabSwitchPresentation",
+   "completeGuestPresentation",
+   "sampleShellMemory",
++  "prepareOrganizationAutoArchiveWork",
++  "prepareOrganizationLiveFolderWork",
++  "completeOrganizationWork",
+ ]);
+ 
+ /** Private owned-fixture long poll; no timers, selectors, effects or public RPC. */
+--- /dev/null
++++ b/apps/shell/src/organization-performance.test.ts
+@@ -0,0 +1,40 @@
++import { afterEach, describe, expect, it } from "vitest";
++import { performance } from "node:perf_hooks";
++import { beginOrganizationWork, measureOrganizationWork } from "./organization-performance";
++const name = "aux:autoArchive:cycle";
++afterEach(() => { performance.clearMarks(); performance.clearMeasures(); });
++function deferred<T>() {
++  let resolve!: (value: T) => void;
++  const promise = new Promise<T>(yes => { resolve = yes; });
++  return { promise, resolve };
++}
++describe("whole organization work timing", () => {
++  it("keeps native close/CAS awaits in the actual successful whole cycle", async () => {
++    const held = deferred<{ archived: number }>();
++    const running = measureOrganizationWork(name, () => held.promise);
++    expect(performance.getEntriesByName(name, "measure")).toHaveLength(0);
++    held.resolve({ archived: 1 });
++    await running;
++    const entries = performance.getEntriesByName(name, "measure");
++    expect(entries).toHaveLength(1);
++    expect(JSON.parse((entries[0] as PerformanceMeasure).detail)).toMatchObject({ units: 1, committed: true });
++    expect(performance.getEntriesByType("mark")).toHaveLength(0);
++  });
++  it("empty early returns cannot become successful measured cycles", async () => {
++    await measureOrganizationWork(name, async () => ({ archived: 0 }));
++    expect(performance.getEntriesByName(name, "measure")).toHaveLength(0);
++    expect(performance.getEntriesByType("mark")).toHaveLength(0);
++  });
++  it("rejected real work clears marks without emitting completion", async () => {
++    await expect(measureOrganizationWork(name, async () => { throw new Error("native ACK refused"); })).rejects.toThrow("native ACK refused");
++    expect(performance.getEntriesByName(name, "measure")).toHaveLength(0);
++    expect(performance.getEntriesByType("mark")).toHaveLength(0);
++  });
++  it("committed samples are bounded and one-use", () => {
++    const sample = beginOrganizationWork(name);
++    sample.complete(20); sample.complete(1); sample.cancel();
++    expect(performance.getEntriesByName(name, "measure")).toHaveLength(1);
++    const invalid = beginOrganizationWork(name); invalid.complete(21);
++    expect(performance.getEntriesByName(name, "measure")).toHaveLength(1);
++  });
++});
+--- a/apps/shell/src/organization-performance.ts
++++ b/apps/shell/src/organization-performance.ts
+@@ -1,13 +1,35 @@
+-/** Bounded User Timing entries consumed by the canonical native trace observer. */
+-export async function measureOrganizationWork<T>(name: "aux:autoArchive:cycle" | "aux:liveFolders:refresh", work: () => Promise<T>): Promise<T> {
+-  const token = crypto.randomUUID();
+-  const start = `${name}:start:${token}`; const end = `${name}:end:${token}`;
++type OrganizationWorkName = "aux:autoArchive:cycle" | "aux:liveFolders:refresh";
++
++/** Whole asynchronous work, emitted only after its real successful commit. */
++export function beginOrganizationWork(name: OrganizationWorkName) {
++  const token = crypto.randomUUID(), start = `${name}:start:${token}`, end = `${name}:end:${token}`;
++  let pending = true;
+   performance.mark(start);
+-  try { return await work(); }
+-  finally {
+-    performance.mark(end);
+-    if (performance.getEntriesByName(name, "measure").length >= 20) performance.clearMeasures(name);
+-    performance.measure(name, start, end);
++  const cancel = () => {
++    if (!pending) return;
++    pending = false;
+     performance.clearMarks(start); performance.clearMarks(end);
+-  }
++  };
++  return {
++    cancel,
++    complete(units: number, folderId?: string) {
++      if (!pending) return;
++      if (!Number.isInteger(units) || units < 1 || units > (name === "aux:autoArchive:cycle" ? 20 : 25)) { cancel(); return; }
++      if (name === "aux:liveFolders:refresh" && (!folderId || folderId.length > 200)) { cancel(); return; }
++      try {
++        performance.mark(end);
++        if (performance.getEntriesByName(name, "measure").length >= 20) performance.clearMeasures(name);
++        performance.measure(name, { start, end, detail: JSON.stringify({ operationId: token, units, committed: true, ...(folderId ? { folderId } : {}) }) });
++      } finally { cancel(); }
++    },
++  };
+ }
++
++export async function measureOrganizationWork<T extends { archived: number }>(name: "aux:autoArchive:cycle", work: () => Promise<T>): Promise<T> {
++  const measurement = beginOrganizationWork(name);
++  try {
++    const result = await work();
++    measurement.complete(result.archived);
++    return result;
++  } finally { measurement.cancel(); }
++}
+--- a/tests/host/journeys/index.mjs
++++ b/tests/host/journeys/index.mjs
+@@ -12,6 +12,7 @@
+   'split-fluid': ['splitView'], 'pinned-live': ['pinnedApps', 'liveFolders', 'folders', 'tabSections'],
+   'smart-download-rename': ['smartDownloadNames'], 'in-app-profiles': ['profiles'], 'extension-actions': ['extensions'],
+   'link-routing': ['linkRouting'], 'cli-open': ['cliOpen'], applescript: ['appleScript'], 'little-window': ['littleWindow'],
++  'organization-work-performance': ['autoArchive'],
+   'auto-archive': ['autoArchive', 'archive'], 'tab-mentions': ['tabMentions'], pip: ['pictureInPicture'],
+   'agent-site-permissions': ['agentSitePermissions'], 'demonstration-skill': ['demonstrationSkills'], 'overnight-review': ['overnightReview'],
+ };
+--- /dev/null
++++ b/tests/host/journeys/organization-work-performance.mjs
+@@ -0,0 +1,59 @@
++const s = (name, role = 'AXButton') => ({ name, role, scope: 'shell', match: 'exact', index: 0 });
++export const journey = {
++  id: 'organization-work-performance', title: '20 AC full native archive batches with completed renderer task coverage',
++  features: ['autoArchive'], devAcceptance: ['autoArchive', 'archive', 'spaces', 'tabSections'],
++  needs: ['accessibility', 'screen-recording'], model: 'none',
++  launch: ({ appearance }) => ({ args: ['--aux-test-clock-scale=3600', '--aux-native-performance-observer'], perf: !appearance }),
++  timeoutMs: 600_000, owner: 'L10',
++};
++export async function run(t) {
++  t.assert.equal(t.appearanceEnabled, false, 'Actual work metrics require a separate performance run');
++  t.assert.equal(t.clock.delayMs(12 * 3_600_000), 12_000, 'The real native clock preserves the canonical twelve-second idle age');
++  const active = await t.rpc('pages.open', { url: `${t.fixture.url}/blue`, activate: true });
++  await t.until('active protection page loaded', async () => (await t.rpc('pages.list')).some(page => page.pageId === active.pageId && !page.loading));
++  if ((await t.ax.query(s('Show sidebar'))).length) await t.ax.press(s('Show sidebar'));
++  await t.ax.waitFor(s('Got it')); await t.ax.press(s('Got it')); await t.ax.waitFor(s('Got it'), 'absent');
++  t.assert.equal((await t.rpc('settings.get')).autoArchive.acknowledged, true, 'Education is genuinely acknowledged before policy work');
++  let spaceId, batch;
++  async function policy(hours) {
++    await t.ax.press(s('Personal')); await t.ax.press(s('Edit Personal', 'AXMenuItem'));
++    await t.ax.waitFor(s('Archive unpinned tabs after', 'AXPopUpButton'));
++    await t.ax.press(s('Archive unpinned tabs after', 'AXPopUpButton'));
++    await t.ax.press(s(hours === 'never' ? 'Never' : '12 hours', 'AXMenuItem'));
++    await t.until('actual registered policy mutation persisted', async () => {
++      const settings = await t.rpc('settings.get');
++      const entries = Object.entries(settings.autoArchive.bySpace);
++      t.assert.equal(entries.length, 1, 'The clean fixture has exactly one edited Space');
++      if (spaceId) t.assert.equal(entries[0][0], spaceId, 'Policy remains on the same native Space');
++      if (entries[0][1] !== hours) return false;
++      spaceId = entries[0][0]; return true;
++    });
++    await t.ax.key('escape', 'hid'); await t.ax.waitFor(s('Archive unpinned tabs after', 'AXPopUpButton'), 'absent');
++  }
++  await t.step('20 AC positive whole cycles each commit the full twenty-tab native policy batch', { kind: 'ui', features: ['autoArchive'] }, async () => {
++    const report = await t.measureOrganizationWork({ metric: 'auto-archive',
++      prepareTrial: async trial => {
++        await policy('never'); batch = [];
++        for (let unit = 0; unit < 20; unit++) batch.push(await t.rpc('pages.open', {
++          url: `${t.fixture.url}/red?organizationTrial=${trial + 1}&unit=${unit + 1}`, activate: false }));
++        const ids = new Set(batch.map(page => page.pageId));
++        t.assert.equal(ids.size, 20, 'Every trial creates twenty distinct real native tabs');
++        await t.until('full clean policy batch is loaded and genuinely twelve hours idle', async () => {
++          const pages = await t.rpc('pages.list'); const current = pages.filter(page => ids.has(page.pageId));
++          return current.length === 20 && current.every(page => !page.loading && !page.ownedByRuntime && page.controller === 'none'
++            && t.clock.elapsedSince(Math.max(page.createdAt, page.lastActiveAt)) >= 12 * 3_600_000);
++        }, 25_000);
++        t.assert.ok((await t.rpc('pages.list')).some(page => page.pageId === active.pageId), 'The active protection page remains live');
++      },
++      performWork: async () => {
++        await policy(12);
++        await t.until('all twenty eligible native tabs actually archived', async () => {
++          const pages = await t.rpc('pages.list'); return batch.every(page => !pages.some(current => current.pageId === page.pageId));
++        }, 25_000);
++      } });
++    t.assert.equal(report.measurements.length, 20, 'All twenty AC cycles produce actual native receipts');
++    for (const receipt of report.measurements) t.assert.equal(receipt.work.units, 20, 'A one-tab or empty cycle cannot replace the full policy batch');
++    t.assert.ok((await t.rpc('pages.list')).some(page => page.pageId === active.pageId), 'Actual policy work preserves the active tab');
++    return { ax: await t.ax.dump(), rpc: { performance: report } };
++  });
++}
+--- a/tests/host/journeys/pinned-live.mjs
++++ b/tests/host/journeys/pinned-live.mjs
+@@ -14,7 +14,7 @@
+ export const journey = {
+   id: 'pinned-live', title: 'Bound pinned apps and cached live source rows through native UI', features: ['pinnedApps', 'liveFolders', 'folders', 'tabSections'],
+   devAcceptance: ['pinnedApps', 'liveFolders', 'folders', 'tabSections', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none',
+-  launch: ({ fixture }) => ({ args: [`--aux-loopback-services-url=${fixture.url}/`] }),
++  launch: ({ fixture, appearance }) => ({ args: [`--aux-loopback-services-url=${fixture.url}/`, ...(appearance ? [] : ['--aux-native-performance-observer'])] }),
+   prepare: ({ fixture }) => { organizationFixtures(fixture); }, timeoutMs: 240_000, owner: 'L8',
+ };
+ export async function run(t) {
+@@ -50,6 +50,22 @@
+     const pages = await t.rpc('pages.list'); t.assert.ok(pages.some(page => page.pageId !== red.pageId && page.url === `${t.fixture.url}/red`));
+     await t.capture('rss-read-dot'); return { ax: await t.ax.dump(), rpc: { pages } };
+   });
++  if (!t.appearanceEnabled) {
++    await t.step('20 AC source refreshes through actual committed RSS rows', { kind: 'ui', features: ['liveFolders'] }, async () => {
++      const report = await t.measureOrganizationWork({ metric: 'live-folder-refresh',
++        prepareTrial: async () => {
++          await t.ax.waitFor(s('Read Red')); await t.ax.waitFor(s('Read Blue, unread'));
++          const refresh = await t.ax.query(s('Refresh live folder'));
++          t.assert.equal(refresh.length, 1, 'The actual RSS folder owns one refresh control');
++          t.assert.equal(refresh[0].enabled, true, 'The prior native refresh and row commit completed');
++        },
++        performWork: async () => {
++          await t.ax.press(s('Refresh live folder'));
++          await t.ax.waitFor(s('Read Red')); await t.ax.waitFor(s('Read Blue, unread'));
++        } });
++      return { ax: await t.ax.dump(), rpc: { performance: report } };
++    });
++  }
+   await t.step('GitHub PAT is pasted in owner UI and Calendar completes real OAuth callback', { kind: 'ui', features: ['liveFolders'] }, async () => {
+     await t.ax.key('command+,', 'hid'); await t.ax.waitFor(s('MCP & Connectors')); await t.ax.press(s('MCP & Connectors'));
+     await t.ax.type('Fixture GitHub', s('Connection name', 'AXTextField'));
+--- /dev/null
++++ b/tests/host/lib/native-organization-performance.mjs
+@@ -0,0 +1,149 @@
++import assert from 'node:assert/strict';
++import { execFileSync } from 'node:child_process';
++import { createHash } from 'node:crypto';
++import { lstatSync, realpathSync, readFileSync } from 'node:fs';
++import { basename } from 'node:path';
++
++const operations = Object.freeze({
++  'auto-archive': 'prepareOrganizationAutoArchiveWork',
++  'live-folder-refresh': 'prepareOrganizationLiveFolderWork',
++});
++const hex = (value, length) => typeof value === 'string' && new RegExp(`^[a-f0-9]{${length}}$`).test(value);
++const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
++const token = value => typeof value === 'string' && /^[a-f0-9]{32}$/i.test(value);
++const number = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
++const integer = value => Number.isSafeInteger(value) && value > 0;
++const defaultPower = () => execFileSync('/usr/bin/pmset', ['-g', 'batt'], { encoding: 'utf8', timeout: 5000 });
++const assertAC = value => { assert.equal(typeof value, 'string'); assert.match(value, /Now drawing from 'AC Power'/, 'Actual AC power required'); };
++
++/** Private native whole-work/task observer receipts only. Not presentation or qualification. */
++export async function collectNativeOrganizationWork({ metric, transport, ax, candidate, readIdentity, prepareTrial, performWork, trials = 20, readPower = defaultPower }) {
++  const report = { schema: 1, status: 'running', metric, candidate: structuredClone(candidate), trials,
++    endpoint: 'fresh whole asynchronous work through committed rows/archive receipt; completed native renderer tasks',
++    startedAt: new Date().toISOString(), attempts: [], measurements: [], identities: [], power: [] };
++  try {
++    const expected = structuredClone(candidate), product = expected?.productIdentity;
++    assert.ok(Object.hasOwn(operations, metric), 'Unsupported organization metric');
++    assert.ok(Number.isInteger(trials) && trials >= 20 && trials <= 100, '20–100 actual trials required');
++    assert.ok(product?.dirty === false && hex(product.commit, 40) && hex(product.tree, 40) && product.label === product.commit, 'Clean candidate required');
++    assert.equal(expected.native?.sourceCommit, product.commit);
++    assert.ok(hex(expected.native?.manifestHash, 64) && typeof expected.native?.buildId === 'string' && expected.native.buildId && hex(expected.shellDigest, 64) && hex(expected.harnessCommit, 40) && hex(expected.moduleSha256, 64), 'Missing paired candidate');
++    assert.ok(integer(ax?.pid) && integer(ax.helperPid) && typeof transport?.invoke === 'function' && typeof readIdentity === 'function' && typeof prepareTrial === 'function' && typeof performWork === 'function' && typeof readPower === 'function', 'Missing genuine fixture/work/identity producers');
++    const digest = path => createHash('sha256').update(readFileSync(path)).digest('hex');
++    const helper = { pid: ax.pid, helperPid: ax.helperPid, source: realpathSync(ax.helperSource), executable: realpathSync(ax.helperExecutable), sourceSha256: digest(ax.helperSource), executableSha256: digest(ax.helperExecutable) };
++    const writer = structuredClone(transport.writer);
++    assert.equal(basename(helper.source), 'native-window.swift');
++    assert.equal(basename(helper.executable), `native-window-${helper.sourceSha256.slice(0, 12)}`);
++    assert.deepEqual(Object.keys(writer ?? {}).sort(), ['source', 'sourceSha256', 'interpreter', 'interpreterSha256'].sort());
++    assert.equal(basename(writer.source), 'performance-mailbox-writer.py');
++    assert.equal(writer.interpreter, realpathSync('/usr/bin/python3'));
++    report.helper = helper; report.writer = writer;
++    const verify = async () => {
++      assert.equal(ax.pid, helper.pid); assert.equal(ax.helperPid, helper.helperPid);
++      assert.deepEqual(transport.writer, writer);
++      for (const [path, expectedHash] of [[helper.source, helper.sourceSha256], [helper.executable, helper.executableSha256], [writer.source, writer.sourceSha256], [writer.interpreter, writer.interpreterSha256]]) {
++        const info = lstatSync(path);
++        assert.ok(info.isFile() && !info.isSymbolicLink() && hex(expectedHash, 64), 'Changed/missing producer file');
++        assert.equal(realpathSync(path), path); assert.equal(digest(path), expectedHash, 'Producer bytes changed');
++      }
++      const actual = structuredClone(await readIdentity()); report.identities.push(actual);
++      assert.deepEqual(actual.runtime, product, 'Runtime candidate changed');
++      for (const key of ['sourceCommit', 'buildId', 'manifestHash']) assert.equal(actual.native?.[key], expected.native[key], `Native ${key} changed`);
++    };
++    const power = async () => { const actual = await readPower(); report.power.push(actual); assertAC(actual); };
++    let transportSequence = 0n, transportGeneration;
++    const decode = (method, text, attempt, stage) => {
++      attempt[`${stage}Raw`] = text;
++      assert.ok(typeof text === 'string' && Buffer.byteLength(text) <= 16384, 'Missing bounded original native reply');
++      const receipt = structuredClone(transport.lastReceipt); attempt[`${stage}Receipt`] = receipt;
++      assert.ok(receipt && typeof receipt.raw === 'string' && receipt.raw.startsWith('AUX_NATIVE_FIXTURE_REPLY_V1 ') && Buffer.byteLength(receipt.raw) <= 16384, 'Missing original native stderr receipt');
++      assert.equal(receipt.pid, helper.pid); assert.equal(receipt.operation, method); assert.equal(receipt.recordRaw, text);
++      assert.ok(integer(receipt.generation) && typeof receipt.sequence === 'string' && /^[1-9][0-9]{0,3}$/.test(receipt.sequence), 'Invalid transport provenance');
++      assert.ok(BigInt(receipt.sequence) > transportSequence && BigInt(receipt.sequence) <= 4000n, 'Replayed transport receipt'); transportSequence = BigInt(receipt.sequence);
++      if (transportGeneration === undefined) transportGeneration = receipt.generation;
++      else assert.equal(receipt.generation, transportGeneration, 'Native process generation changed');
++      const wrapper = JSON.parse(receipt.raw.slice('AUX_NATIVE_FIXTURE_REPLY_V1 '.length));
++      assert.deepEqual(Object.keys(wrapper).sort(), ['producer', 'version', 'pid', 'windowId', 'sequence', 'operation', 'record'].sort());
++      assert.equal(wrapper.producer, 'aux-native-fixture-reply'); assert.equal(wrapper.version, 1);
++      assert.equal(wrapper.pid, helper.pid); assert.equal(wrapper.sequence, receipt.sequence); assert.equal(wrapper.operation, method);
++      assert.equal(JSON.stringify(wrapper.record), text);
++      const record = JSON.parse(text);
++      assert.equal(wrapper.windowId, record.scope?.windowId, 'Native receipt owner mismatch');
++      if (record.status === 'refused') throw new Error('Original native organization work refusal');
++      return record;
++    };
++    const seen = new Set(), workIds = new Set(); let previousSequence = 0, previousEnd = 0, owner;
++    for (let index = 0; index < trials; index++) {
++      const attempt = { trial: index + 1, stage: 'setup', status: 'running' }; report.attempts.push(attempt);
++      let armed = false, completion;
++      try {
++        await power(); await verify(); await prepareTrial(index);
++        attempt.stage = 'arm';
++        const readyRaw = await transport.invoke(operations[metric]); armed = true;
++        const ready = decode(operations[metric], readyRaw, attempt, "ready"); attempt.ready = ready;
++        assert.equal(ready.status, "ready");
++        assert.equal(ready?.producer, 'aux-native-organization-work-v1'); assert.equal(ready.version, 1);
++        assert.equal(ready.pid, helper.pid); assert.equal(ready.operation, operations[metric]);
++        const scope = ready.scope;
++        assert.ok(scope && token(scope.requestNonce) && integer(scope.sampleSequence) && integer(scope.windowId) && integer(scope.rendererPid) && token(scope.documentToken) && integer(scope.nativeDocumentGeneration), 'Missing exact native scope');
++        assert.equal(scope.metric, metric); assert.ok(scope.sampleSequence > previousSequence, 'Replayed/reversed native sequence');
++        assert.ok(!seen.has(scope.requestNonce), 'Replayed native scope'); seen.add(scope.requestNonce); previousSequence = scope.sampleSequence;
++        const currentOwner = { windowId: scope.windowId, rendererPid: scope.rendererPid, documentToken: scope.documentToken, nativeDocumentGeneration: scope.nativeDocumentGeneration };
++        if (owner) assert.deepEqual(currentOwner, owner, 'Native owner/document changed'); else owner = currentOwner;
++        // Reserve the native one-use read before work. It awaits the fresh
++        // measure/actual final task; helper polling cannot skip to a later cycle.
++        completion = transport.invoke('completeOrganizationWork', 30000).then(
++          text => ({ text }), error => ({ error }));
++        attempt.stage = 'real-work'; await performWork(index);
++        attempt.stage = 'native-read';
++        const finished = await completion; armed = false;
++        if (finished.error) throw finished.error;
++        const rawText = finished.text;
++        const raw = decode('completeOrganizationWork', rawText, attempt, 'measured'); attempt.raw = raw;
++        assert.equal(raw.status, 'measured');
++        assert.equal(raw?.producer, ready.producer); assert.equal(raw.version, 1); assert.equal(raw.pid, helper.pid);
++        assert.equal(raw.operation, 'completeOrganizationWork'); assert.deepEqual(raw.scope, scope, 'Receipt scope changed');
++        const sample = raw.sample, work = raw.work;
++        assert.ok(sample && ['startMs', 'durationMs', 'durationUpperBoundMs', 'completedThroughMs', 'maximumTaskMs', 'maximumLongTaskMs'].every(key => number(sample[key])), 'Invalid native measurement');
++        assert.ok(sample.durationUpperBoundMs > sample.durationMs, 'Missing privacy resolution bound');
++        assert.equal(sample.longTaskCoverage, true, 'Missing native task coverage');
++        assert.ok(integer(sample.completedTasks) && sample.completedTasks <= 4096, 'Missing/overflowed native completed tasks');
++        assert.ok(Number.isInteger(sample.overlappingLongTasks) && sample.overlappingLongTasks >= 0, 'Invalid native long-task count');
++        assert.ok(sample.completedThroughMs >= sample.startMs + sample.durationUpperBoundMs, 'Read preceded final task completion');
++        assert.ok(sample.startMs > previousEnd, 'Overlapping/replayed work interval'); previousEnd = sample.startMs + sample.durationUpperBoundMs;
++        assert.ok(work && work.committed === true && integer(work.units) && uuid(work.operationId), 'Empty/unfinished work cannot qualify');
++        assert.ok(!workIds.has(work.operationId), 'Replayed work receipt'); workIds.add(work.operationId);
++        if (metric === 'auto-archive') {
++          assert.equal(work.kind, 'nativeArchiveBatch'); assert.ok(work.units <= 20, 'Archive batch exceeded20');
++          assert.ok(Array.isArray(work.batchIds) && work.batchIds.length === work.units && work.batchIds.every(uuid), 'Missing genuine committed native archive batches');
++        } else {
++          assert.equal(work.kind, 'runtimeLiveFolderRender');
++          assert.ok(integer(work.runtimePid) && work.runtimePid !== scope.rendererPid && work.runtimePid !== helper.pid, 'Source refresh not proven off the UI thread');
++          assert.equal(work.rowsCommitted, true, 'Refresh omitted renderer response/React commit');
++          assert.ok(work.units <= 25, 'Live folder exceeded25 rows');
++        }
++        await power(); await verify(); report.measurements.push(raw); attempt.status = 'passed';
++        assert.equal(sample.overlappingLongTasks, 0, 'Actual overlapping long task');
++        assert.ok(sample.maximumTaskMs <= 50, 'Actual renderer task exceeded50ms');
++        if (metric === 'auto-archive') assert.ok(sample.durationUpperBoundMs <= 50, 'Whole asynchronous archive cycle exceeded50ms');
++      } catch (error) { attempt.status = 'failed'; attempt.error = error.message; throw error; }
++      finally {
++        if (armed) {
++          // The fixed completion endpoint retires exact armed scope on every refusal.
++          try {
++            if (completion) { const finished = await completion; if (finished.error) attempt.cleanupError = finished.error.message;
++              else attempt.cleanup = finished.text; }
++            else attempt.cleanup = await transport.invoke('completeOrganizationWork', 30000);
++          }
++          catch (error) { attempt.cleanupError = error.message; }
++        }
++      }
++    }
++    report.maximumTaskMs = Math.max(...report.measurements.map(row => row.sample.maximumTaskMs));
++    report.maximumCycleUpperBoundMs = Math.max(...report.measurements.map(row => row.sample.durationUpperBoundMs));
++    report.status = 'measured'; return report;
++  } catch (error) {
++    report.status = 'failed'; report.error = error.message;
++    const failure = new Error(`Native organization performance refused: ${error.message}`, { cause: error }); failure.report = report; throw failure;
++  } finally { report.completedAt = new Date().toISOString(); }
++}
+--- a/tests/host/lib/performance-mailbox-writer.py
++++ b/tests/host/lib/performance-mailbox-writer.py
+@@ -7,6 +7,7 @@
+ 
+ OPERATIONS = {
+     "sampleShellMemory",
++    "prepareOrganizationAutoArchiveWork", "prepareOrganizationLiveFolderWork", "completeOrganizationWork",
+     "prepareGuestSplitDropPresentation", "prepareGuestDividerFramePresentation",
+     "prepareGuestTabSwitchPresentation", "completeGuestPresentation",
+ }
+--- a/tests/host/lib/performance-mailbox.mjs
++++ b/tests/host/lib/performance-mailbox.mjs
+@@ -5,7 +5,7 @@
+ import { createHash } from 'node:crypto';
+ import { fileURLToPath } from 'node:url';
+ import { basename, dirname } from 'node:path';
+-const operations = new Set(['prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory']);
++const operations = new Set(['prepareOrganizationAutoArchiveWork', 'prepareOrganizationLiveFolderWork', 'completeOrganizationWork', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory']);
+ const prefix = 'AUX_NATIVE_FIXTURE_REPLY_V1 ';
+ const refusalPrefix = 'AUX_NATIVE_FIXTURE_REFUSAL_V1 ';
+ function ownedFixture(userDataDir) {
+--- a/tests/host/run-journey.mjs
++++ b/tests/host/run-journey.mjs
+@@ -141,6 +141,13 @@
+       return measurePerformance('hardware', () => collectGuestPresentations({ ...options, trials: 20, candidate,
+         ax: observedAx, transport: app.configurePerformanceMailbox(), readIdentity: () => app.identity() }));
+     },
++    async measureOrganizationWork(options) {
++      const { collectNativeOrganizationWork } = await import('./lib/native-organization-performance.mjs');
++      const candidate = { productIdentity: manifest.productIdentity, native: manifest.native,
++        shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
++      return measurePerformance('performance', () => collectNativeOrganizationWork({ ...options, trials: 20, candidate,
++        ax: observedAx, transport: app.configurePerformanceMailbox(), readIdentity: () => app.identity() }));
++    },
+     async measureShellMemory(options) {
+       const { collectShellMemory } = await import('./lib/native-shell-memory.mjs');
+       const candidate = { productIdentity: manifest.productIdentity, native: manifest.native,
+--- /dev/null
++++ b/tests/tools/native-organization-performance.test.mjs
+@@ -0,0 +1,126 @@
++// Synthetic receipt fixtures only. These tests cannot qualify native performance.
++import { test, afterEach } from 'node:test';
++import { createHash } from 'node:crypto';
++import { mkdtempSync, writeFileSync, readFileSync, realpathSync, rmSync } from 'node:fs';
++import { join } from 'node:path';
++import { tmpdir } from 'node:os';
++import assert from 'node:assert/strict';
++import { collectNativeOrganizationWork } from '../host/lib/native-organization-performance.mjs';
++
++const uuid = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
++const token = n => String(n).padStart(32, '0');
++const candidate = {
++  productIdentity: { commit: 'a'.repeat(40), tree: 'b'.repeat(40), label: 'a'.repeat(40), dirty: false },
++  native: { sourceCommit: 'a'.repeat(40), buildId: 'synthetic', manifestHash: 'c'.repeat(64) },
++  shellDigest: 'd'.repeat(64), harnessCommit: 'e'.repeat(40), moduleSha256: 'f'.repeat(64),
++};
++const directories = new Set();
++afterEach(() => { for (const path of directories) rmSync(path, { recursive: true, force: true }); directories.clear(); });
++const digest = path => createHash('sha256').update(readFileSync(path)).digest('hex');
++function fixture(metric = 'auto-archive') {
++  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'aux-synthetic-org-performance-'))); directories.add(directory);
++  const helperSource = join(directory, 'native-window.swift'); writeFileSync(helperSource, '// synthetic observer');
++  const helperExecutable = join(directory, `native-window-${digest(helperSource).slice(0, 12)}`); writeFileSync(helperExecutable, 'not executable');
++  const source = join(directory, 'performance-mailbox-writer.py'); writeFileSync(source, '# synthetic transport metadata');
++  const interpreter = realpathSync('/usr/bin/python3');
++  const writer = { source, sourceSha256: digest(source), interpreter, interpreterSha256: digest(interpreter) };
++  const f = { calls: [], scope: null, index: 0, mutate: row => row, failWork: false };
++  f.options = { metric, candidate, readPower: async () => "Now drawing from 'AC Power'",
++    readIdentity: async () => ({ runtime: candidate.productIdentity, native: candidate.native }),
++    prepareTrial: async () => {}, performWork: async () => { if (f.failWork) throw new Error('actual-work-refused'); },
++    ax: { pid: 42, helperPid: 41, helperSource, helperExecutable },
++    transport: { writer, lastReceipt: null, invoke: async operation => {
++      f.calls.push(operation);
++      if (operation.startsWith('prepare')) {
++        f.scope = { requestNonce: token(++f.index), sampleSequence: f.index, windowId: 2, rendererPid: 43, documentToken: token(999), nativeDocumentGeneration: 1, metric };
++        const row = { producer: 'aux-native-organization-work-v1', version: 1, pid: 42, operation, scope: f.scope, status: 'ready' };
++        return receipt(row, operation);
++      }
++      const row = { producer: 'aux-native-organization-work-v1', version: 1, pid: 42, operation, scope: f.scope, status: 'measured',
++        sample: { startMs: f.index * 100, durationMs: 10, durationUpperBoundMs: 10.2, completedThroughMs: f.index * 100 + 11, maximumTaskMs: 8, maximumLongTaskMs: 0, overlappingLongTasks: 0, completedTasks: 2, longTaskCoverage: true },
++        work: { committed: true, units: 1, batchIds: [uuid(f.index + 2000)], operationId: uuid(f.index + 1000), kind: metric === 'auto-archive' ? 'nativeArchiveBatch' : 'runtimeLiveFolderRender', runtimePid: 44, rowsCommitted: true } };
++      return receipt(f.mutate(row), operation);
++    } } };
++  let sequence = 0;
++  function receipt(row, operation) {
++    const recordRaw = JSON.stringify(row), counter = String(++sequence);
++    const observed = { pid: 42, generation: 1, sequence: counter, operation, recordRaw,
++      raw: 'AUX_NATIVE_FIXTURE_REPLY_V1 ' + JSON.stringify({ producer: 'aux-native-fixture-reply', version: 1, pid: 42, windowId: 2, sequence: counter, operation, record: row }) };
++    f.options.transport.lastReceipt = f.mutateReceipt ? f.mutateReceipt(observed) : observed;
++    return recordRaw;
++  }
++  return f;
++}
++test('collects20 positive whole async cycles and genuine completed-task shaped receipts', async () => {
++  const f = fixture(), report = await collectNativeOrganizationWork(f.options);
++  assert.equal(report.status, 'measured'); assert.equal(report.measurements.length, 20);
++  assert.equal(report.maximumCycleUpperBoundMs, 10.2); assert.equal(report.maximumTaskMs, 8);
++  assert.equal(report.power.length, 40);
++  assert.deepEqual(f.calls.slice(0, 2), ['prepareOrganizationAutoArchiveWork', 'completeOrganizationWork']);
++});
++test('live source requires distinct runtime process and committed renderer rows', async () => {
++  const f = fixture('live-folder-refresh'), report = await collectNativeOrganizationWork(f.options);
++  assert.equal(report.measurements.length, 20); assert.equal(report.measurements[0].work.runtimePid, 44);
++  assert.equal(f.calls[0], 'prepareOrganizationLiveFolderWork');
++});
++for (const [name, mutate, message] of [
++  ['empty archive cycle', row => { row.work.units = 0; }, /Empty/],
++  ['whole async cycle exceeds50 while synchronous tasks are fast', row => { row.sample.durationMs = 50; row.sample.durationUpperBoundMs = 50.2; row.sample.completedThroughMs += 100; }, /Whole asynchronous/],
++  ['completed task exceeds50', row => { row.sample.maximumTaskMs = 50.000001; }, /renderer task/],
++  ['zero long-task entries without coverage', row => { row.sample.longTaskCoverage = false; }, /coverage/],
++  ['read before native completion watermark', row => { row.sample.completedThroughMs = row.sample.startMs + row.sample.durationMs; }, /final task/],
++  ['actual long task conservative boundary overlap', row => { row.sample.overlappingLongTasks = 1; row.sample.maximumLongTaskMs = 50; }, /overlapping long/],
++  ['task buffer overflow', row => { row.sample.completedTasks = 4097; }, /overflowed/],
++  ['different document completion', row => { row.scope = { ...row.scope, documentToken: token(777) }; }, /scope changed/],
++  ['unfinished archive batch', row => { row.work.committed = false; }, /unfinished/],
++  ['archive batch greater than20', row => { row.work.units = 21; }, /exceeded20/],
++  ['privacy bound omitted', row => { row.sample.durationUpperBoundMs = row.sample.durationMs; }, /privacy/],
++]) test(`refuses ${name} and retains exact failed receipt`, async () => {
++  const f = fixture(); f.mutate = row => { mutate(row); return row; };
++  await assert.rejects(collectNativeOrganizationWork(f.options), error => {
++    assert.match(error.message, message); assert.equal(error.report.status, 'failed');
++    assert.equal(error.report.attempts[0].status, 'failed'); assert.ok(error.report.attempts[0].raw); return true;
++  });
++});
++for (const [name, mutate, message] of [
++  ['source refreshed on shell renderer', row => { row.work.runtimePid = row.scope.rendererPid; }, /off the UI/],
++  ['command resolved before React commit', row => { row.work.rowsCommitted = false; }, /React commit/],
++]) test(`live refuses ${name}`, async () => {
++  const f = fixture('live-folder-refresh'); f.mutate = row => { mutate(row); return row; };
++  await assert.rejects(collectNativeOrganizationWork(f.options), message);
++});
++test('rejects replayed operation even with different native sample', async () => {
++  const f = fixture(); f.mutate = row => { row.work.operationId = uuid(123); return row; };
++  await assert.rejects(collectNativeOrganizationWork(f.options), error => {
++    assert.match(error.message, /Replayed work/); assert.equal(error.report.measurements.length, 1); return true;
++  });
++});
++test('refused actual work still retires armed native scope exactly once', async () => {
++  const f = fixture(); f.failWork = true;
++  await assert.rejects(collectNativeOrganizationWork(f.options), error => {
++    assert.match(error.message, /actual-work-refused/); assert.ok(error.report.attempts[0].cleanup); return true;
++  });
++  assert.deepEqual(f.calls, ['prepareOrganizationAutoArchiveWork', 'completeOrganizationWork']);
++});
++test('less than20, unsupported metric or dirty source refuses before arming', async () => {
++  const f = fixture();
++  await assert.rejects(collectNativeOrganizationWork({ ...f.options, trials: 19 }), /20–100/);
++  await assert.rejects(collectNativeOrganizationWork({ ...f.options, metric: 'AX-walltime' }), /Unsupported/);
++  await assert.rejects(collectNativeOrganizationWork({ ...f.options, candidate: { ...candidate, productIdentity: { ...candidate.productIdentity, dirty: true } } }), /Clean/);
++  assert.deepEqual(f.calls, []);
++});
++test('AC loss after work refuses while preserving real raw receipt', async () => {
++  const f = fixture(); let calls = 0;
++  await assert.rejects(collectNativeOrganizationWork({ ...f.options, readPower: async () => ++calls === 1 ? "Now drawing from 'AC Power'" : "Now drawing from 'Battery Power'" }), error => {
++    assert.match(error.message, /AC power/); assert.ok(error.report.attempts[0].raw); assert.equal(error.report.measurements.length, 0); return true;
++  });
++});
++
++for (const [name, mutate, message] of [
++  ['missing original stderr', receipt => ({ ...receipt, raw: undefined }), /original native stderr/],
++  ['changed native wrapper producer', receipt => ({ ...receipt, raw: receipt.raw.replace('aux-native-fixture-reply', 'renderer-invented') }), /aux-native-fixture-reply/],
++  ['native process replaced between arm and read', receipt => ({ ...receipt, generation: receipt.operation === 'completeOrganizationWork' ? 2 : 1 }), /generation changed/],
++]) test(`refuses ${name} even with plausible sample fields`, async () => {
++  const f = fixture(); f.mutateReceipt = mutate;
++  await assert.rejects(collectNativeOrganizationWork(f.options), message);
++});
+--- /dev/null
++++ b/tests/tools/organization-mailbox.test.mjs
+@@ -0,0 +1,38 @@
++// Actual fixed metadata writer only; no browser effects or native qualification.
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { spawnSync } from 'node:child_process';
++import { mkdtempSync, mkdirSync, realpathSync, statSync, readFileSync, existsSync, rmSync } from 'node:fs';
++import { join } from 'node:path';
++import { fileURLToPath } from 'node:url';
++const writer = fileURLToPath(new URL('../host/lib/performance-mailbox-writer.py', import.meta.url));
++function fixture() {
++  const root = realpathSync(mkdtempSync('/tmp/aux-native-journey-work-')), profile = join(root, 'profile');
++  mkdirSync(profile, { mode: 0o700 });
++  const rootInfo = statSync(root), profileInfo = statSync(profile);
++  return { root, request: { profile, rootDevice: rootInfo.dev, rootInode: rootInfo.ino,
++    profileDevice: profileInfo.dev, profileInode: profileInfo.ino, action: 'publish', sequence: '1' } };
++}
++for (const operation of ['prepareOrganizationAutoArchiveWork', 'prepareOrganizationLiveFolderWork', 'completeOrganizationWork']) {
++  test(`real private writer admits only fixed metadata for ${operation}`, () => {
++    const f = fixture();
++    try {
++      const result = spawnSync('/usr/bin/python3', [writer], { input: JSON.stringify({ ...f.request, operation }), encoding: 'utf8', timeout: 5000 });
++      assert.equal(result.status, 0, result.stderr);
++      const path = join(f.root, 'performance-request.json');
++      assert.deepEqual(JSON.parse(readFileSync(path, 'utf8')), { sequence: '1', operation });
++      assert.equal(statSync(path).mode & 0o777, 0o600);
++    } finally { rmSync(f.root, { recursive: true, force: true }); }
++  });
++}
++test('organization writer refuses caller method, selector and unknown operation before publication', () => {
++  const f = fixture();
++  try {
++    for (const extra of [{ operation: 'runtime.readPage' }, { operation: 'completeOrganizationWork', selector: '#caller' },
++      { operation: 'prepareOrganizationAutoArchiveWork', method: 'pages.evaluate' }]) {
++      const result = spawnSync('/usr/bin/python3', [writer], { input: JSON.stringify({ ...f.request, ...extra }), encoding: 'utf8', timeout: 5000 });
++      assert.notEqual(result.status, 0);
++      assert.equal(existsSync(join(f.root, 'performance-request.json')), false);
++    }
++  } finally { rmSync(f.root, { recursive: true, force: true }); }
++});

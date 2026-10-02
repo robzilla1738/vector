@@ -272,6 +272,20 @@ void AuxRuntimeHost::FailOwnerMutations() {
       owner_mutation_egress_->owner_mutations().End(token, false);
 }
 
+void AuxRuntimeHost::ReadPerformanceProcessIdentity(
+    base::OnceCallback<void(std::optional<PerformanceProcessIdentity>)> callback) {
+  // Private friend-owned observation only. No public API or synthetic test PID.
+  if (test_dispatch_) { std::move(callback).Run(std::nullopt); return; }
+  worker_.AsyncCall(&Worker::ReadPerformanceProcessIdentity).Then(std::move(callback));
+}
+std::optional<AuxRuntimeHost::PerformanceProcessIdentity>
+AuxRuntimeHost::Worker::ReadPerformanceProcessIdentity() {
+  // Sequenced actual authenticated connection and launched Node helper.
+  if (connection_fd_ < 0 || !connection_generation_ || !process_.IsValid())
+    return std::nullopt;
+  return PerformanceProcessIdentity{static_cast<int>(process_.Pid()), connection_generation_,
+      live_refresh_sequence_, live_folder_id_, live_folder_units_};
+}
 void AuxRuntimeHost::CallInternal(std::string method,
                                   std::string params_json,
                                   ResponseCallback callback) {
@@ -1138,6 +1152,7 @@ void AuxRuntimeHost::Worker::CallRequest(
     std::string method, std::string params_json, bool desktop_api,
     ResponseCallback callback) {
   const bool egress_request = !desktop_api && method == "egress.request";
+  const bool live_refresh = desktop_api && method == "liveFolders.refresh";
   const bool backup_request = desktop_api &&
       (method == "installation.createBackup" ||
        method == "installation.stageRestore");
@@ -1162,6 +1177,8 @@ void AuxRuntimeHost::Worker::CallRequest(
     else
       ++next_request_id_;
   }
+  const auto* live_id = live_refresh && params->is_dict() ? params->GetDict().FindString("folderId") : nullptr;
+  const std::string live_folder = live_id && !live_id->empty() && live_id->size() <= 200 ? *live_id : "";
   const uint32_t id = next_request_id_++;
   base::DictValue invocation;
   if (desktop_api) {
@@ -1186,7 +1203,7 @@ void AuxRuntimeHost::Worker::CallRequest(
   pending_requests_.emplace(id, PendingRequest{
       base::TimeTicks::Now() + base::Milliseconds(
           egress_request ? 125000 : backup_request ? kBackupRequestTimeoutMs : kRequestTimeoutMs),
-      std::move(callback)});
+      std::move(callback), live_folder});
 }
 
 void AuxRuntimeHost::Worker::HandleResponse(const base::DictValue& data) {
@@ -1195,6 +1212,7 @@ void AuxRuntimeHost::Worker::HandleResponse(const base::DictValue& data) {
   auto it = pending_requests_.find(static_cast<uint32_t>(*id));
   if (it == pending_requests_.end()) return;
   auto callback = std::move(it->second.callback);
+  const std::string live_folder = it->second.live_folder_id;
   pending_requests_.erase(it);
   if (const auto* fault = data.FindDict("error")) {
     const auto* code = fault->FindString("code");
@@ -1208,6 +1226,20 @@ void AuxRuntimeHost::Worker::HandleResponse(const base::DictValue& data) {
   if (!json) {
     std::move(callback).Run({false, "", "protocol_error", "Invalid runtime result"});
     return;
+  }
+  const auto* refreshed = result ? result->GetIfDict() : nullptr;
+  const auto* folder_id = refreshed ? refreshed->FindString("folderId") : nullptr;
+  const auto* rows = refreshed ? refreshed->FindList("items") : nullptr;
+  const auto* refresh_error = refreshed ? refreshed->FindString("error") : nullptr;
+  // The actual successful authenticated worker response, not renderer metadata.
+  // Failed/empty source work and saturated history cannot fabricate a trial.
+  if (!live_folder.empty() && folder_id && *folder_id == live_folder && rows &&
+      !rows->empty() && rows->size() <= 25 && (!refresh_error || refresh_error->empty()) &&
+      refreshed->FindDouble("refreshedAt").value_or(0) > 0 &&
+      live_refresh_sequence_ < 9007199254740991ULL) {
+    ++live_refresh_sequence_;
+    live_folder_id_ = live_folder;
+    live_folder_units_ = static_cast<unsigned>(rows->size());
   }
   std::move(callback).Run({true, *json, "", ""});
 }

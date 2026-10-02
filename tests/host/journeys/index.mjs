@@ -12,6 +12,7 @@ export const FEATURE_JOURNEYS = {
   'split-fluid': ['splitView'], 'pinned-live': ['pinnedApps', 'liveFolders', 'folders', 'tabSections'],
   'smart-download-rename': ['smartDownloadNames'], 'in-app-profiles': ['profiles'], 'extension-actions': ['extensions'],
   'link-routing': ['linkRouting'], 'cli-open': ['cliOpen'], applescript: ['appleScript'], 'little-window': ['littleWindow'],
+  'organization-work-performance': ['autoArchive'],
   'auto-archive': ['autoArchive', 'archive'], 'tab-mentions': ['tabMentions'], pip: ['pictureInPicture'],
   'agent-site-permissions': ['agentSitePermissions'], 'demonstration-skill': ['demonstrationSkills'], 'overnight-review': ['overnightReview'],
 };

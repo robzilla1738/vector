@@ -1,4 +1,3 @@
-import { measureOrganizationWork } from "../../organization-performance";
 import { lazy, createElement } from "react";
 import type { FeatureMount, CommandInvocation } from "../registry";
 import { call, useStore, flushLayout } from "../../store";
@@ -27,7 +26,7 @@ export const mount: FeatureMount = {
       useStore.setState({ layout }); persistLayout(layout); await flushLayout();
       await call("liveFolders.refresh", { folderId: id });
     },
-    "refresh-live-folder": (_state, invocation) => measureOrganizationWork("aux:liveFolders:refresh", () => call("liveFolders.refresh", { folderId: folderId(invocation) })),
+    "refresh-live-folder": (_state, invocation) => call("liveFolders.refresh", { folderId: folderId(invocation) }),
     "open-live-folder-item": async (_state, invocation) => {
       const id = folderId(invocation); const payload = invocation.payload;
       if (!payload || !("itemId" in payload) || !payload.itemId) throw new Error("Choose a live item first.");

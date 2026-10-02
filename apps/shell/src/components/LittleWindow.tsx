@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useStore } from "../store";
+import { useCommittedSurfaceWitness } from "../committed-surface-witness";
 import { bridge } from "../bridge";
 import { isHomeAddress } from "../chrome";
 import { fromOrganizationLayout } from "../store/organization-layout";
@@ -38,6 +39,9 @@ export function LittleWindow() {
     return () => { active = false; off(); };
   }, []);
   const blank = !page || isHomeAddress(page.url);
+  const pageSection = useRef<HTMLElement>(null);
+  const committedSelection = JSON.stringify(blank ? [] : [[page!.pageId, page!.documentEpoch]]);
+  useCommittedSurfaceWitness(pageSection, "stage", () => committedSelection);
   useEffect(() => {
     if (blank) requestAnimationFrame(() => useStore.getState().focusCommandBar("toolbar"));
   }, [page?.pageId, blank]);
@@ -62,7 +66,7 @@ export function LittleWindow() {
       {spacesReady && spaces.map((space, index) => <button ref={index === 0 ? firstSpace : undefined} key={space.id} className="menu-item" role="menuitem" data-command-id="promote-tab" onClick={() => { runCommand("little-space-picker"); runCommand("promote-tab", { payload: { spaceId: space.id } }); }}>{space.name}</button>)}
     </Menu>}
     {panel === "downloads" && <Dialog className="little-downloads popover" label="Downloads for this page" returnFocus={downloadsTrigger} onClose={() => runCommand("little-downloads")}><Suspense fallback={<output>Loading downloads…</output>}><Downloads tabUrl={page?.url ?? ""} onClose={() => runCommand("little-downloads")} /></Suspense></Dialog>}
-    <section className="little-page">
+    <section ref={pageSection} className="little-page" data-little-stage data-stage-dragging="false">
       {page && !isHomeAddress(page.url) ? <Suspense fallback={<output>Opening page…</output>}><PageSurface page={page} /></Suspense> : <div className="little-empty"><h1>Take a quick look</h1><p>Enter a link above. Open it in Aux when you want to keep it.</p></div>}
     </section>
   </main>;

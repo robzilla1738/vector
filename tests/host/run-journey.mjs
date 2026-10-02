@@ -141,6 +141,13 @@ async function execute() {
       return measurePerformance('hardware', () => collectGuestPresentations({ ...options, trials: 20, candidate,
         ax: observedAx, transport: app.configurePerformanceMailbox(), readIdentity: () => app.identity() }));
     },
+    async measureOrganizationWork(options) {
+      const { collectNativeOrganizationWork } = await import('./lib/native-organization-performance.mjs');
+      const candidate = { productIdentity: manifest.productIdentity, native: manifest.native,
+        shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
+      return measurePerformance('performance', () => collectNativeOrganizationWork({ ...options, trials: 20, candidate,
+        ax: observedAx, transport: app.configurePerformanceMailbox(), readIdentity: () => app.identity() }));
+    },
     async measureShellMemory(options) {
       const { collectShellMemory } = await import('./lib/native-shell-memory.mjs');
       const candidate = { productIdentity: manifest.productIdentity, native: manifest.native,

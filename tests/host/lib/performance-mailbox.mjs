@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname } from 'node:path';
-const operations = new Set(['prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory']);
+const operations = new Set(['prepareOrganizationAutoArchiveWork', 'prepareOrganizationLiveFolderWork', 'completeOrganizationWork', 'prepareGuestSplitDropPresentation', 'prepareGuestDividerFramePresentation', 'prepareGuestTabSwitchPresentation', 'completeGuestPresentation', 'sampleShellMemory']);
 const prefix = 'AUX_NATIVE_FIXTURE_REPLY_V1 ';
 const refusalPrefix = 'AUX_NATIVE_FIXTURE_REFUSAL_V1 ';
 function ownedFixture(userDataDir) {

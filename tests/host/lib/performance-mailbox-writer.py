@@ -7,6 +7,7 @@ import sys
 
 OPERATIONS = {
     "sampleShellMemory",
+    "prepareOrganizationAutoArchiveWork", "prepareOrganizationLiveFolderWork", "completeOrganizationWork",
     "prepareGuestSplitDropPresentation", "prepareGuestDividerFramePresentation",
     "prepareGuestTabSwitchPresentation", "completeGuestPresentation",
 }

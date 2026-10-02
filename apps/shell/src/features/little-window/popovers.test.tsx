@@ -121,3 +121,33 @@ it("uses a native Downloads dialog, focuses the lazy scoped search, filters othe
     expect(host.errors).not.toHaveBeenCalled();
   } finally { await cleanup(); }
 });
+
+it("publishes only committed Little selection/epoch revisions and fences a remount", async () => {
+  host.snapshot.mockResolvedValue({ layout: toOrganizationLayout(layout()) });
+  const cleanup = await render();
+  let firstInstance: string | null;
+  try {
+    const section = document.querySelector<HTMLElement>(".little-page[data-little-stage]")!;
+    expect(section).not.toBeNull();
+    expect(section.id).not.toBe("stage");
+    expect(section.getAttribute("data-stage-dragging")).toBe("false");
+    firstInstance = section.getAttribute("data-stage-instance");
+    expect(Number(firstInstance)).toBeGreaterThan(0);
+    expect(section.getAttribute("data-stage-selection-generation")).toBe("1");
+    const original = useStore.getState().pages[0]!;
+    await act(async () => useStore.setState({ pages: [{ ...original, title: "Renamed" }] }));
+    expect(section.getAttribute("data-stage-selection-generation")).toBe("1");
+    await act(async () => useStore.setState({ pages: [{ ...original, documentEpoch: 2 }] }));
+    expect(section.getAttribute("data-stage-selection-generation")).toBe("2");
+    await act(async () => useStore.setState({ activePageId: null }));
+    expect(section.getAttribute("data-stage-selection-generation")).toBe("3");
+    await act(async () => useStore.setState({ activePageId: original.pageId }));
+    expect(section.getAttribute("data-stage-selection-generation")).toBe("4");
+  } finally { await cleanup(); }
+  const remount = await render();
+  try {
+    const section = document.querySelector<HTMLElement>(".little-page[data-little-stage]")!;
+    expect(section.getAttribute("data-stage-instance")).not.toBe(firstInstance!);
+    expect(section.getAttribute("data-stage-selection-generation")).toBe("1");
+  } finally { await remount(); }
+});

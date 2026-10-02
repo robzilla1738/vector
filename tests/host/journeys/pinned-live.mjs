@@ -14,7 +14,7 @@ async function makeFolder(t, name, kind, configure) {
 export const journey = {
   id: 'pinned-live', title: 'Bound pinned apps and cached live source rows through native UI', features: ['pinnedApps', 'liveFolders', 'folders', 'tabSections'],
   devAcceptance: ['pinnedApps', 'liveFolders', 'folders', 'tabSections', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none',
-  launch: ({ fixture }) => ({ args: [`--aux-loopback-services-url=${fixture.url}/`] }),
+  launch: ({ fixture, appearance }) => ({ args: [`--aux-loopback-services-url=${fixture.url}/`, ...(appearance ? [] : ['--aux-native-performance-observer'])] }),
   prepare: ({ fixture }) => { organizationFixtures(fixture); }, timeoutMs: 240_000, owner: 'L8',
 };
 export async function run(t) {
@@ -50,6 +50,22 @@ export async function run(t) {
     const pages = await t.rpc('pages.list'); t.assert.ok(pages.some(page => page.pageId !== red.pageId && page.url === `${t.fixture.url}/red`));
     await t.capture('rss-read-dot'); return { ax: await t.ax.dump(), rpc: { pages } };
   });
+  if (!t.appearanceEnabled) {
+    await t.step('20 AC source refreshes through actual committed RSS rows', { kind: 'ui', features: ['liveFolders'] }, async () => {
+      const report = await t.measureOrganizationWork({ metric: 'live-folder-refresh',
+        prepareTrial: async () => {
+          await t.ax.waitFor(s('Read Red')); await t.ax.waitFor(s('Read Blue, unread'));
+          const refresh = await t.ax.query(s('Refresh live folder'));
+          t.assert.equal(refresh.length, 1, 'The actual RSS folder owns one refresh control');
+          t.assert.equal(refresh[0].enabled, true, 'The prior native refresh and row commit completed');
+        },
+        performWork: async () => {
+          await t.ax.press(s('Refresh live folder'));
+          await t.ax.waitFor(s('Read Red')); await t.ax.waitFor(s('Read Blue, unread'));
+        } });
+      return { ax: await t.ax.dump(), rpc: { performance: report } };
+    });
+  }
   await t.step('GitHub PAT is pasted in owner UI and Calendar completes real OAuth callback', { kind: 'ui', features: ['liveFolders'] }, async () => {
     await t.ax.key('command+,', 'hid'); await t.ax.waitFor(s('MCP & Connectors')); await t.ax.press(s('MCP & Connectors'));
     await t.ax.type('Fixture GitHub', s('Connection name', 'AXTextField'));
