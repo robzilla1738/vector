@@ -1,0 +1,111 @@
+{
+  "sourceOnly": true,
+  "draftPatchSHA": "4688989ce378c8b9648f2cfa7991e57d7e5f8380d4c81d6526e4364ebfd5d29b",
+  "base": "b690cd2038d1d897168fb9c9641cee9418650efd",
+  "files": {
+    "chrome/browser/ui/aux/runtime_host.cc": {
+      "before": "333501e5e0d35c003aa30af59dc40cea2e0648e5d06822bc4aad9aecaa92b08b",
+      "draftAfter": "530735dfe67740be00f5fde1088cfae11b92b79db9aeabeee45a7f235105fead",
+      "composedAfter": "530735dfe67740be00f5fde1088cfae11b92b79db9aeabeee45a7f235105fead"
+    },
+    "chrome/browser/ui/aux/native_process_footprint_unittest.cc": {
+      "before": null,
+      "draftAfter": "4bcb0663bb0d52efe350d1c8c1d08d6286e1eefae8ea8fa8a1463f7aa4bbb5e6",
+      "composedAfter": "4bcb0663bb0d52efe350d1c8c1d08d6286e1eefae8ea8fa8a1463f7aa4bbb5e6"
+    },
+    "chrome/browser/ui/aux/native_process_memory_sampler.cc": {
+      "before": null,
+      "draftAfter": "11f4c90b513b8c58847bac5d75dc87f631cdec100a28d1d90ce1b9d90851b023",
+      "composedAfter": "11f4c90b513b8c58847bac5d75dc87f631cdec100a28d1d90ce1b9d90851b023"
+    },
+    "chrome/browser/ui/aux/native_browser_memory_sample.h": {
+      "before": null,
+      "draftAfter": "fea97a7fe6cc295a503f343f7bbca69a0631207f465181b658e0bc5a79058fdb",
+      "composedAfter": "fea97a7fe6cc295a503f343f7bbca69a0631207f465181b658e0bc5a79058fdb"
+    },
+    "chrome/browser/ui/aux/native_browser_memory_inventory.h": {
+      "before": null,
+      "draftAfter": "852f822ef009d504eb2aad8907d81bc8ec40425728b1f9b244dbebf2e524d356",
+      "composedAfter": "852f822ef009d504eb2aad8907d81bc8ec40425728b1f9b244dbebf2e524d356"
+    },
+    "chrome/browser/ui/aux/native_browser_memory_sample.cc": {
+      "before": null,
+      "draftAfter": "37fe439a3cc2dc8b36d50f07ba5b9e6682851b8d51ece07d170a2eb50ad190e5",
+      "composedAfter": "37fe439a3cc2dc8b36d50f07ba5b9e6682851b8d51ece07d170a2eb50ad190e5"
+    },
+    "chrome/browser/ui/aux/native_browser_memory_inventory.cc": {
+      "before": null,
+      "draftAfter": "983ba2b59f81475a57c40ba62db8142fcc8c48c1c6c319763b00a445d82a4c74",
+      "composedAfter": "983ba2b59f81475a57c40ba62db8142fcc8c48c1c6c319763b00a445d82a4c74"
+    },
+    "chrome/browser/ui/aux/runtime_host.h": {
+      "before": "588627869f8b08a32c45daa0e3d6caed05ff4edd87264f99b6788ba53f2d702a",
+      "draftAfter": "421ab78d4462c0af0676cb3df80d7cb8689fb75577bd1a6ff962705b8758e591",
+      "composedAfter": "421ab78d4462c0af0676cb3df80d7cb8689fb75577bd1a6ff962705b8758e591"
+    },
+    "chrome/browser/ui/aux/native_process_memory_sampler.h": {
+      "before": null,
+      "draftAfter": "e05ba41f9e466fc105b861b75a086772b8130e2d4cd08e31e22eda2bfff52ba7",
+      "composedAfter": "e05ba41f9e466fc105b861b75a086772b8130e2d4cd08e31e22eda2bfff52ba7"
+    },
+    "chrome/browser/ui/aux/native_process_footprint.h": {
+      "before": null,
+      "draftAfter": "1942501883b688b84061465b8a661d2bdefc28d8658f9c40aecc13f06bbf153b",
+      "composedAfter": "1942501883b688b84061465b8a661d2bdefc28d8658f9c40aecc13f06bbf153b"
+    },
+    "chrome/browser/ui/aux/native_process_footprint.cc": {
+      "before": null,
+      "draftAfter": "ae0ff6fd10ed0f804b731ea860ab15432ed41d9dd25bdc2926143d1e71a229d4",
+      "composedAfter": "ae0ff6fd10ed0f804b731ea860ab15432ed41d9dd25bdc2926143d1e71a229d4"
+    },
+    "chrome/browser/ui/aux/BUILD.gn": {
+      "before": "ced63ac967039e12fbb44c6cadf1122ea8efc693f87747bc74927a34a807c704",
+      "draftAfter": "7103913d9cf32bba4fed10403504c656911e886d1bb51d53f6bc078decc59715",
+      "composedAfter": "ea272e3e5f059a06ad761f94caac922aa0b6e0a6ce582499313018665a975485"
+    },
+    "chrome/test/BUILD.gn": {
+      "before": "8c1d0c7bdbfba27d053c10fd0dec537f9697d7dbe5adb0f53dfdb51aaaf98d14",
+      "draftAfter": "95fcc2224046a17f5c81bf4752881b2f084fa09ca3abd0517509b635a364ec4c",
+      "composedAfter": "f0a19cdabe8038413549950bdb628c2584f343f8857acfd039a078075c24b476"
+    },
+    "chrome/browser/ui/aux/native_performance_mailbox.cc": {
+      "before": "95cffb43ea853b671ec02c29ee19cd266f75cb161c820a4010a9353dd0eb53f7",
+      "draftAfter": "e91578137a47f498f37730554ec50d6fd08c406b1fea96b7eeb58ef5618c556d",
+      "composedAfter": "41148b2ce8acd66271dbb2515660375e0c5467375f4fbc8cb93a1b8efce58495"
+    },
+    "chrome/browser/ui/aux/methods/window_methods.cc": {
+      "before": "d30812e6a411758361bde9ecab28b0366ad3c01d6e0508817be84d131655c502",
+      "draftAfter": "e6db5e15b5e16d276fe4394caee9f0180376f7fe093f680a69d6fd8bbdc05381",
+      "composedAfter": "c24d4cd80cb0db508b0f1acdafe37b2d9bdf6238fb0fbc63446d147f6a77b44f"
+    },
+    "chrome/browser/ui/aux/method_registry.cc": {
+      "before": "84e27b6c4851c1176f67a92c9ed4c13dcebc33748e8c0d1423076f26a1638d6b",
+      "draftAfter": "7b0ca43f7967e5ce651ebc1924cb25be74d641fbcde9dedb4ff3bdc5dbd949fc",
+      "composedAfter": "98ebb8f3e40f0b8bce189b32e01d8466cd617d7f6593185c15de0318354d9b2d"
+    },
+    "chrome/browser/ui/webui_browser/webui_browser_ui.h": {
+      "before": "ab13b8eeb796fc6effbd7b5f888a4bd20d53c44f025558da04ea1f3404ada067",
+      "draftAfter": "6a682de471a403f4b24065470f40d5c09c1af27a2106d6b3371e398fba1f24bd",
+      "composedAfter": "e79baddf989beea310b69abff619d4e8e402d303b06c70b4f2b1c44fc249c07c"
+    },
+    "chrome/browser/ui/webui_browser/webui_browser_ui.cc": {
+      "before": "c35b3e20a3c2f56debc153d5a173b6e95a6de4aeb33435de5ea1e015261007a7",
+      "draftAfter": "67573ce781401e777b67185072ecdd28a02636110b6e3f7be7c1ef29926bfc4e",
+      "composedAfter": "d39736a29c69de72ef698d2ae7ef44c699b0f388a69a4614bbd7e47d6cc26f0d"
+    },
+    "chrome/browser/ui/aux/native_shell_memory.cc": {
+      "before": "cb229f5bf3bfc1cf4f319a91e28d9a3158ce43bf883da78128aecc64b46b8126",
+      "draftAfter": "570fd933dd5e13a99cdefec1fd0a9485560f746abc62e5eaddc7a4e99077893f",
+      "composedAfter": "570fd933dd5e13a99cdefec1fd0a9485560f746abc62e5eaddc7a4e99077893f"
+    }
+  },
+  "resolvedConflicts": [
+    "chrome/browser/ui/aux/native_performance_mailbox.cc",
+    "chrome/browser/ui/aux/method_registry.cc"
+  ],
+  "resolution": "Union both independent closed opcodes; preserve original Little/guest/organization producer/version/status/owner refusals.",
+  "draftWorktree": "/tmp/aux-root-native-0261-b690",
+  "draftRequest": "0261-PROCESS-MEMORY-DRAFT.request.patch",
+  "draftRequestSha256": "173ff674ba930e33309e3247a8f77bb3ce46b698f7e4b2aed97e6252f5f2b4c1",
+  "runtimeCheckpointNativeMirrors": "restored all306 exact b690 mirrors; native draft remains isolated/unadopted, not in series"
+}

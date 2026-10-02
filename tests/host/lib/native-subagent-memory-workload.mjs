@@ -5,6 +5,24 @@ export const subagentMemoryCode = 'globalThis.memoryWorkload = new Uint8Array(8 
 const unique = (values, count, message) => { assert.equal(values.length, count, message); assert.equal(new Set(values).size, count, message); };
 const id = value => assert.ok(typeof value === 'string' && value.length > 0 && value.length <= 128, 'Missing native workload identity');
 
+export function assertParentPreparation(receipt, parent, idlePageIds) {
+  assert.equal(receipt?.producer, 'aux-runtime-subagent-preparation'); assert.equal(receipt.version, 1); assert.equal(receipt.status, 'ready');
+  assert.equal(receipt.parentRunId, parent.runId); assert.equal(receipt.taskId, parent.config.taskId);
+  assert.equal(receipt.taskRevision, parent.config.taskRevision); assert.equal(receipt.workspaceId, parent.config.contextWorkspaceId);
+  assert.ok(Number.isSafeInteger(receipt.observedAt) && receipt.observedAt > 0);
+  assert.ok(Number.isSafeInteger(receipt.deadlineAt) && receipt.deadlineAt > receipt.observedAt);
+  unique(receipt.pages?.map(page => page.pageId) ?? [], 5, 'Five genuine protected parent copies required');
+  unique(receipt.pages.map(page => page.sourcePageId), 5, 'Five distinct genuine original sources required');
+  for (const page of receipt.pages) {
+    assert.ok(parent.pageIds.includes(page.pageId)); assert.ok(idlePageIds.includes(page.sourcePageId));
+    assert.ok(parent.config.isolatedPageSources.some(source => source.pageId === page.pageId && source.sourcePageId === page.sourcePageId));
+    id(page.sessionId); id(page.sourceSessionId);
+    assert.ok(Number.isSafeInteger(page.documentEpoch) && page.documentEpoch >= 0);
+    assert.ok(Number.isSafeInteger(page.sourceDocumentEpoch) && page.sourceDocumentEpoch >= 0);
+  }
+  return receipt;
+}
+
 /** Validate ORIGINAL native runtime evidence, never cached tool output or group state. */
 export function assertExecutingSubagentReceipt(receipt, expected) {
   assert.equal(receipt?.producer, 'aux-runtime-subagent-workload');
@@ -17,6 +35,7 @@ export function assertExecutingSubagentReceipt(receipt, expected) {
   unique(receipt.children.map(child => child.cellId), 5, 'Five genuine VM cells required');
   for (const child of receipt.children) {
     for (const value of [child.agentId, child.runId, child.cellId, child.pageId, child.sessionId, child.requestedPageId, child.requestedSessionId, child.sourcePageId, child.sourceSessionId]) id(value);
+    for (const epoch of [child.documentEpoch, child.requestedDocumentEpoch, child.sourceDocumentEpoch]) assert.ok(Number.isSafeInteger(epoch) && epoch >= 0, "Current document epoch required");
     const actual = expected.children.find(item => item.runId === child.runId);
     assert.ok(actual, 'Foreign run in native workload');
     assert.equal(child.agentId, actual.agentId); assert.equal(child.requestedPageId, actual.pageIds[0]);
@@ -33,7 +52,7 @@ export function assertSubagentMemoryBracket(record, expected) {
   const before = assertExecutingSubagentReceipt(record.workloadBefore, expected);
   const after = assertExecutingSubagentReceipt(record.workloadAfter, expected);
   assert.ok(after.observedAt >= before.observedAt, 'Workload observation order');
-  const identity = value => value.children.map(child => [child.runId, child.agentId, child.cellId, child.pageId, child.sessionId, child.sourcePageId, child.sourceSessionId, child.requestedPageId, child.requestedSessionId, child.deadlineAt]).sort();
+  const identity = value => value.children.map(child => [child.runId, child.agentId, child.cellId, child.pageId, child.sessionId, child.sourcePageId, child.sourceSessionId, child.requestedPageId, child.requestedSessionId, child.documentEpoch, child.requestedDocumentEpoch, child.sourceDocumentEpoch, child.deadlineAt]).sort();
   assert.deepEqual(identity(after), identity(before), 'Execution/attachment changed during memory sample');
   return { before, after };
 }
@@ -74,8 +93,12 @@ export async function collectSubagentMemoryTrials({ workload, sampleNative, read
  * workspace connection and a real parent with five person-approved resources.
  * This helper cannot create a connection, approve a task or override a lease.
  */
-export async function startSubagentMemoryWorkload({ scopedRpc, model, parent, idlePageIds, signal }) {
+export async function startSubagentMemoryWorkload({ scopedRpc, model, parent, idlePageIds, signal, parentHold, readNativePreparation, until }) {
   assert.equal(typeof scopedRpc, 'function'); assert.ok(model?.respond && model?.holdText);
+  assert.equal(typeof parentHold?.release, 'function', 'Actual held parent model response required');
+  assert.equal(typeof parentHold?.cancel, 'function');
+  assert.equal(typeof readNativePreparation, 'function', 'Native preparation producer required');
+  assert.equal(typeof until, 'function', 'Journey global-deadline predicate required');
   assert.ok(signal instanceof AbortSignal && !signal.aborted);
   unique(parent.pageIds, 5, 'Parent must own five distinct approved resources');
   unique(idlePageIds, 10, 'Ten real idle fixture tabs required');
@@ -104,6 +127,7 @@ export async function startSubagentMemoryWorkload({ scopedRpc, model, parent, id
   });
   let group;
   const cleanup = async () => {
+    parentHold.cancel();
     for (const hold of holds) hold.cancel();
     const results = await Promise.allSettled(children.map(child => scopedRpc('subagents.cancel', { agentId: child.agentId })));
     const failures = results.filter(result => result.status === 'rejected');
@@ -112,7 +136,14 @@ export async function startSubagentMemoryWorkload({ scopedRpc, model, parent, id
   try {
     await scopedRpc('runs.pause', { runId: parent.runId });
     const paused = await scopedRpc('runs.get', { runId: parent.runId });
-    assert.equal(paused.run.status, 'paused', 'Parent lease release must be acknowledged');
+    assert.equal(paused.run.status, 'paused', 'Actual parent pause must be acknowledged');
+    parentHold.release();
+    const preparation = await until('parent reaches the actual no-page-ownership paused boundary', async () => {
+      const value = await readNativePreparation();
+      assert.equal(value?.producer, 'aux-runtime-subagent-preparation'); assert.equal(value.version, 1);
+      if (value.status === 'refused') return false;
+      assertParentPreparation(value, parent, idlePageIds); return value;
+    });
     group = await scopedRpc('subagents.createGroup', { parentRunId: parent.runId, tokenBudget: 250000, costBudgetUsd: 5, timeBudgetMs: 180000 });
     for (let index = 0; index < 5; index++) {
       assert.ok(!signal.aborted);
@@ -122,6 +153,6 @@ export async function startSubagentMemoryWorkload({ scopedRpc, model, parent, id
       children.push(child);
     }
     unique(children.map(child => child.runId), 5, 'Service must launch five actual runs');
-    return { expected: { groupId: group.groupId, parentRunId: parent.runId, workspaceId: group.workspaceId, children, idlePageIds: [...idlePageIds] }, idlePageIds: [...idlePageIds], cleanup };
+    return { expected: { groupId: group.groupId, parentRunId: parent.runId, workspaceId: group.workspaceId, children, idlePageIds: [...idlePageIds] }, preparation, idlePageIds: [...idlePageIds], cleanup };
   } catch (error) { try { await cleanup(); } catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Workload launch and cleanup failed'); } throw error; }
 }

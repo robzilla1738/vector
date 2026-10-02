@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ReplPool, type ReplHostDeps } from "@aux/runtime";
 import {
   currentPerformanceExecutions,
+  observePerformanceExecutions,
   registerPerformanceReplPool,
 } from "../../apps/runtime/dist/agent/loop/performance-executions.js";
 
@@ -39,6 +40,7 @@ describe("native performance actual REPL evidence", () => {
     });
     try {
       expect(currentPerformanceExecutions()).toBeUndefined();
+      expect(observePerformanceExecutions()).toEqual([]);
       const outputs = await Promise.all(
         pools.map((pool, index) =>
           pool.eval(
@@ -57,11 +59,13 @@ describe("native performance actual REPL evidence", () => {
       );
       await expect.poll(() => currentPerformanceExecutions()?.length).toBe(5);
       const cells = currentPerformanceExecutions()!;
+      expect(observePerformanceExecutions()).toHaveLength(5);
       expect(cells.every((cell) => cell.memoryLimitBytes === 128 * 1024 * 1024)).toBe(true);
       expect(new Set(cells.map((cell) => cell.cellId)).size).toBe(5);
       expect(pools[0]!.performanceExecutions(Number.MAX_SAFE_INTEGER)).toEqual([]);
       abort.abort();
       expect(currentPerformanceExecutions()).toBeUndefined();
+      expect(observePerformanceExecutions()).toBeUndefined();
       const result = outputs[1]!;
       expect(result).toHaveProperty("output");
       const cellId = (result as { output: { cellId: string } }).output.cellId;
@@ -77,6 +81,99 @@ describe("native performance actual REPL evidence", () => {
       release();
       for (const off of unregister) off();
       for (const pool of pools) pool.disposeAll();
+    }
+  });
+
+  it("refuses five eligible cells while a sixth unregistered aborted eval still executes", async () => {
+    const pools = Array.from({ length: 5 }, () => new ReplPool()),
+      extra = new ReplPool();
+    const off = pools.map((pool) => registerPerformanceReplPool(pool));
+    const abort = new AbortController();
+    let release!: () => void, releaseExtra!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const heldExtra = new Promise<void>((resolve) => {
+      releaseExtra = resolve;
+    });
+    const code = 'page.waitFor({kind:"selector",selector:"#ready",state:"visible",timeoutMs:1000})';
+    try {
+      await Promise.all(
+        pools.map((pool, index) =>
+          pool.eval(
+            deps(`eligible-${index}`, async () => {
+              await held;
+              return { output: {} };
+            }),
+            code,
+            { pageId: "p", yieldTimeMs: 0 },
+          ),
+        ),
+      );
+      await expect.poll(() => currentPerformanceExecutions()?.length).toBe(5);
+      await extra.eval(
+        deps(
+          "unregistered-sixth",
+          async () => {
+            await heldExtra;
+            return { output: {} };
+          },
+          abort.signal,
+        ),
+        code,
+        { pageId: "p", yieldTimeMs: 0 },
+      );
+      await expect.poll(() => extra.performanceExecutions().length).toBe(1);
+      expect(pools.map((pool) => pool.performanceExecutions().length)).toEqual([1, 1, 1, 1, 1]);
+      expect(currentPerformanceExecutions()).toBeUndefined();
+      abort.abort();
+      extra.disposeAll();
+      expect(currentPerformanceExecutions()).toBeUndefined();
+      expect(observePerformanceExecutions()).toBeUndefined();
+      releaseExtra();
+      await expect.poll(() => currentPerformanceExecutions()?.length).toBe(5);
+    } finally {
+      releaseExtra();
+      release();
+      for (const unregister of off) unregister();
+      extra.disposeAll();
+      for (const pool of pools) pool.disposeAll();
+    }
+  });
+
+  it("does not attest idle while an aborted detached VM still awaits its real bridge", async () => {
+    const pool = new ReplPool(),
+      abort = new AbortController();
+    const off = registerPerformanceReplPool(pool);
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    try {
+      await pool.eval(
+        deps(
+          "detached-child",
+          async () => {
+            await held;
+            return { output: {} };
+          },
+          abort.signal,
+        ),
+        'page.waitFor({kind:"selector",selector:"#ready",state:"visible",timeoutMs:1000})',
+        { pageId: "p", yieldTimeMs: 0 },
+      );
+      await expect.poll(() => observePerformanceExecutions()?.length).toBe(1);
+      abort.abort();
+      expect(observePerformanceExecutions()).toBeUndefined();
+      off();
+      pool.disposeAll();
+      expect(observePerformanceExecutions()).toBeUndefined();
+      release();
+      await expect.poll(() => observePerformanceExecutions()).toEqual([]);
+    } finally {
+      release();
+      off();
+      pool.disposeAll();
     }
   });
 

@@ -1,6 +1,9 @@
 import { AuxError, type RpcChannel } from "@aux/contracts";
 import { z } from "zod";
-import { currentPerformanceExecutions } from "../agent/loop/performance-executions.js";
+import {
+  currentPerformanceExecutions,
+  observePerformanceExecutions,
+} from "../agent/loop/performance-executions.js";
 import type { Repo } from "../store/repo.js";
 import type { RunService } from "./runs.js";
 import type { SubagentService } from "./subagents.js";
@@ -16,6 +19,38 @@ export function readNativeSubagentWorkload(deps: {
   pages: PageService;
 }) {
   const refused = () => ({ producer: "aux-runtime-subagent-workload", version: 1, status: "refused" });
+  const observed = observePerformanceExecutions();
+  if (!observed) return refused();
+  if (observed.length === 0) {
+    // A refused/partial workload is never idle. Consult current durable work as
+    // well as real coordinator controls before attesting an empty VM inventory.
+    if (
+      deps.repo.db
+        .prepare("SELECT 1 FROM runs WHERE status IN ('queued','planning','running','needs_input') LIMIT 1")
+        .get()
+    )
+      return refused();
+    const controls = [...deps.runs.coordinator.controls];
+    if (
+      controls.length > 64 ||
+      controls.some(
+        ([runId, control]) =>
+          !control.paused ||
+          control.abort.signal.aborted ||
+          control.deadlineHit ||
+          deps.runs.coordinator.ownsPages(runId) ||
+          deps.repo.getRun(runId)?.status !== "paused",
+      )
+    )
+      return refused();
+    return {
+      producer: "aux-runtime-subagent-workload",
+      version: 1,
+      status: "idle",
+      observedAt: Date.now(),
+      activeExecutions: 0,
+    };
+  }
   const cells = currentPerformanceExecutions();
   if (!cells) return refused();
   try {
@@ -96,6 +131,15 @@ export function readNativeSubagentWorkload(deps: {
         !page.sessionId ||
         !requested.sessionId ||
         !human.sessionId ||
+        typeof page.documentEpoch !== "number" ||
+        !Number.isSafeInteger(page.documentEpoch) ||
+        page.documentEpoch < 0 ||
+        typeof requested.documentEpoch !== "number" ||
+        !Number.isSafeInteger(requested.documentEpoch) ||
+        requested.documentEpoch < 0 ||
+        typeof human.documentEpoch !== "number" ||
+        !Number.isSafeInteger(human.documentEpoch) ||
+        human.documentEpoch < 0 ||
         !deps.pages.isAttached(pageId) ||
         !deps.pages.isAttached(requestedPageId) ||
         !deps.pages.isAttached(human.pageId) ||
@@ -108,10 +152,13 @@ export function readNativeSubagentWorkload(deps: {
         sourceRunId: parent.runId,
         sourcePageId: human.pageId,
         sourceSessionId: human.sessionId,
+        sourceDocumentEpoch: human.documentEpoch,
         requestedPageId,
         requestedSessionId: requested.sessionId,
+        requestedDocumentEpoch: requested.documentEpoch,
         pageId,
         sessionId: page.sessionId,
+        documentEpoch: page.documentEpoch,
       };
     });
     const observedAt = Date.now();

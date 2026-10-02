@@ -348,6 +348,11 @@ Object.freeze(page);
 delete globalThis.__aux_call;
 `;
 
+// Actual eval lifetime also covers aborted/detached sessions awaiting a bridge.
+// Empty eligible-cell inventory must never attest idle before this finally runs.
+const executingSessions = new Set<ReplSession>();
+export function executingReplSessionCount(): number { return executingSessions.size; }
+
 class ReplSession {
   private queue: Promise<void> = Promise.resolve();
   deadline = 0;
@@ -579,6 +584,7 @@ class ReplSession {
     this.touchedAt = started;
     this.finished = undefined;
     this.executing = true;
+    executingSessions.add(this);
     try {
       if (!scoped && declared.length) {
         // Syntax-invalid cells allocate no bindings. Validate with the same engine,
@@ -657,6 +663,7 @@ class ReplSession {
       throw error instanceof AuxError ? error : new AuxError("invalid_params", `REPL failed: ${message}`);
     } finally {
       this.executing = false;
+      executingSessions.delete(this);
       release();
     }
   }

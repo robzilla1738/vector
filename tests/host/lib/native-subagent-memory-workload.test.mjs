@@ -8,7 +8,7 @@ function fixture() {
   const receipt = { producer: 'aux-runtime-subagent-workload', version: 1, status: 'executing', observedAt: 1000,
     parentRunId: 'parent', workspaceId: 'workspace', groupId: 'group', children: children.map((child, index) => ({
       runId: child.runId, agentId: child.agentId, pageId: `copy-${index}`, requestedPageId: child.pageIds[0], requestedSessionId: `requested-${index}`, sourcePageId: `human-${index}`, sourceSessionId: `human-session-${index}`, sourceRunId: 'parent',
-      cellId: `cell-${index}`, sessionId: `attachment-${index}`, deadlineAt: 2000, memoryLimitBytes: 128 * 1024 * 1024 })) };
+      documentEpoch: 1, requestedDocumentEpoch: 1, sourceDocumentEpoch: 1, cellId: `cell-${index}`, sessionId: `attachment-${index}`, deadlineAt: 2000, memoryLimitBytes: 128 * 1024 * 1024 })) };
   return { expected, record: { workloadBefore: receipt, workloadAfter: structuredClone(receipt) } };
 }
 
@@ -29,6 +29,12 @@ for (const [name, change] of [
   ['attachment replacement', record => { record.workloadAfter.children[0].sessionId = 'replacement'; }],
   ['new cell replacing sampled execution', record => { record.workloadAfter.children[0].cellId = 'new-cell'; }],
   ['deadline expired', record => { record.workloadAfter.children[0].deadlineAt = 1000; }],
+  ['same-URL child document replacement', record => { record.workloadAfter.children[0].documentEpoch++; }],
+  ['same-URL protected parent document replacement', record => { record.workloadAfter.children[0].requestedDocumentEpoch++; }],
+  ['same-URL original human document replacement', record => { record.workloadAfter.children[0].sourceDocumentEpoch++; }],
+  ['missing child epoch', record => { delete record.workloadAfter.children[0].documentEpoch; }],
+  ['negative parent epoch', record => { record.workloadAfter.children[0].requestedDocumentEpoch = -1; }],
+  ['fractional human epoch', record => { record.workloadAfter.children[0].sourceDocumentEpoch = 1.5; }],
   ['wrong memory cap', record => { record.workloadAfter.children[0].memoryLimitBytes = 256 * 1024 * 1024; }],
 ]) test(`refuses ${name}`, () => {
   const { expected, record } = fixture(); change(record);
@@ -38,7 +44,7 @@ for (const [name, change] of [
 test('unapproved parent fails before any service call or model response override', async () => {
   let calls = 0;
   await assert.rejects(startSubagentMemoryWorkload({ scopedRpc: async () => { calls++; },
-    model: { respond() { calls++; }, holdText() {} }, signal: new AbortController().signal,
+    model: { respond() { calls++; }, holdText() {} }, parentHold: { release() {}, cancel() {} }, readNativePreparation: async () => {}, until: async () => {}, signal: new AbortController().signal,
     parent: { runId: 'parent', pageIds: Array.from({ length: 5 }, (_, i) => `page-${i}`), config: {} },
     idlePageIds: Array.from({ length: 10 }, (_, i) => `idle-${i}`) }));
   assert.equal(calls, 0);
@@ -64,4 +70,37 @@ test('missing fresh VM evidence fails the first sample and still releases the he
     signal: new AbortController().signal, readPages: async () => idlePageIds.map(pageId => ({ pageId, sessionId: `attachment-${pageId}`, url: 'https://fixture.test/idle' })),
     readPair: async () => ({ runtime: { dirty: false, commit: 'a'.repeat(40) }, native: { sourceCommit: 'a'.repeat(40), manifestHash: 'b'.repeat(64) } }), readPower: async () => "Now drawing from 'AC Power'", sampleNative: async () => { samples++; return { producer: 'aux-native-process-memory', status: 'sampled' }; } }));
   assert.equal(samples, 1); assert.equal(cleanup, 1);
+});
+
+function preparationFixture() {
+  const idlePageIds = Array.from({ length: 10 }, (_, i) => `human-${i}`);
+  const sources = Array.from({ length: 5 }, (_, i) => ({ pageId: `protected-${i}`, sourcePageId: idlePageIds[i] }));
+  const parent = { runId: 'parent', pageIds: sources.map(source => source.pageId), config: { taskId: 'task', taskRevision: 3, contextWorkspaceId: 'workspace', isolatedPageSources: sources, maxTokens: 250000, maxCostUsd: 5, deadlineMs: 180000 } };
+  const ready = { producer: 'aux-runtime-subagent-preparation', version: 1, status: 'ready', observedAt: 100, deadlineAt: 1000, parentRunId: 'parent', taskId: 'task', taskRevision: 3, workspaceId: 'workspace', pages: sources.map(source => ({ ...source, sessionId: `s-${source.pageId}`, sourceSessionId: `s-${source.sourcePageId}`, documentEpoch: 1, sourceDocumentEpoch: 1 })) };
+  return { parent, idlePageIds, ready };
+}
+
+test('actual parent response release and genuine readiness precede every child launch', async () => {
+  const { parent, idlePageIds, ready } = preparationFixture();
+  const calls = []; let released = false, proved = false, count = 0;
+  const workload = await startSubagentMemoryWorkload({ parent, idlePageIds, signal: new AbortController().signal,
+    parentHold: { release() { released = true; calls.push('release'); }, cancel() { calls.push('cancel-parent'); } },
+    model: { respond() {}, holdText() {} },
+    readNativePreparation: async () => { assert.equal(released, true); calls.push('read'); return proved ? ready : { producer: ready.producer, version: 1, status: 'refused' }; },
+    until: async (_label, predicate) => { assert.equal(await predicate(), false); assert.deepEqual(calls, ['runs.pause', 'runs.get', 'release', 'read']); proved = true; return predicate(); },
+    scopedRpc: async method => { calls.push(method); if (method === 'runs.get') return { run: { status: 'paused' } }; if (method === 'subagents.createGroup') { assert.equal(proved, true); return { groupId: 'group', workspaceId: 'workspace' }; } if (method === 'subagents.spawn') return { agentId: `a-${count}`, runId: `r-${count++}`, pageIds: [parent.pageIds[count - 1]] }; },
+  });
+  assert.equal(count, 5); assert.equal(workload.preparation, ready);
+  await workload.cleanup(); assert.equal(calls.filter(method => method === 'subagents.cancel').length, 5);
+});
+
+test('deadline before genuine pause readiness cancels the real parent hold and creates no children', async () => {
+  const { parent, idlePageIds, ready } = preparationFixture(); let canceled = 0, launches = 0;
+  await assert.rejects(startSubagentMemoryWorkload({ parent, idlePageIds, signal: new AbortController().signal,
+    parentHold: { release() {}, cancel() { canceled++; } }, model: { respond() {}, holdText() {} },
+    readNativePreparation: async () => ({ producer: ready.producer, version: 1, status: 'refused' }),
+    until: async (_label, predicate) => { assert.equal(await predicate(), false); throw new Error('Original global deadline'); },
+    scopedRpc: async method => { if (method === 'runs.get') return { run: { status: 'paused' } }; if (method.startsWith('subagents.')) launches++; },
+  }), /Original global deadline/);
+  assert.equal(canceled, 1); assert.equal(launches, 0);
 });

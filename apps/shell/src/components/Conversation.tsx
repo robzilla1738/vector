@@ -1,3 +1,4 @@
+import { useInteractiveComposer } from "../use-interactive-composer";
 import { NightRunOverflow } from "../features/morning-review/NightRunOverflow";
 import { runCommand } from "../commands";
 import type { MentionRef } from "@aux/contracts";
@@ -124,6 +125,7 @@ function isCalendarCitation(url: string): boolean {
 export function Conversation({ chatId, embedded = false, home = false, entryControls, onChatCreated, composerRef, findReturnRef }: { chatId?: string | null; embedded?: boolean; home?: boolean; entryControls?: ReactNode; onChatCreated?: (chatId: string) => void; composerRef?: RefObject<HTMLTextAreaElement | null>; findReturnRef?: RefObject<HTMLDivElement | null> } = {}) {
   const ownComposerRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = composerRef ?? ownComposerRef;
+  useInteractiveComposer(home, textareaRef);
   const fullPageId = useStore(s => s.conversationId);
   const id = chatId === undefined ? fullPageId : chatId;
   const scrolling = useConversationScroll(id);
