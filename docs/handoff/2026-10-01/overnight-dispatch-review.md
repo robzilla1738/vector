@@ -1,0 +1,11 @@
+# Overnight dispatch boundary — unadopted source request
+
+Current actual root-complete five-file baselines are in OVERNIGHT-DISPATCH-BASELINES.json. Apply overnight-dispatch-boundary.patch only after independent review. The isolated mirror is release/overnight-dispatch-review. No root, stable Chromium or frozen native packet leaves were edited.
+
+Reachable defect: main derives standingOnly from the durable run marker, but NativePermissionController previously allowed exact-origin standing permission after the overnight window closed before scheduler reconciliation. Removing only the new post-Gate assertion reproduced the real regression: after-window decision was ALLOW while DENY was expected, with both queue and run still running. The corrected test uses actual protected Repo, NightShiftService person queue and reserved run, ApprovalStore/Gate, BrowserEgress authority and permission controller.
+
+Native correction: mandatory assertDispatch dependency is wired by main to existing checkNightShiftDispatch. Invoke it only after the actual Gate would allow, then recheck the exact batch/lease/source fence. Do not invoke it before every pending retry: parked queue status deliberately fails effect authorization but an unanswered actual pending approval must remain pending for person-present Apply. The test retains that pending response through parked and window-closed needs_review. This correction grants no foreground/session permission and leaves exact standingOnly floors intact.
+
+Page correction: actual ProgramExecutor rechecks existing overnight authority before every step authorization and after awaited authorization/target resolution, before final mention/task/source checks. A real PageService program regression crosses the window in its first wait and refuses its second wait before dispatch. No marker means existing foreground behavior.
+
+Validation: cold workspace rebuild PASS; incremental rebuild PASS; scoped oxlint PASS. Corrected controller 27 tests PASS individually. Initial combined run 52/53 PASS: new PageService test mixed source installNightShift with package dist PageService, creating separate module WeakMaps; its import was corrected to actual source PageService. Final already-running combined suites outcome is recorded in PAUSE-CHECKPOINT.md. No native effect execution or qualification claim.

@@ -1,8 +1,8 @@
 ## New-agent handoff — 2026-10-01
 
-User requested documentation for handoff; the existing goal is paused at this saved checkpoint. See [authoritative handoff checkpoint](HANDOFF-CHECKPOINT-2026-10-01.md) for saved commits, verified deliverables, outstanding requirements and exact resume order. Implementation/design/trust lanes are frozen for transfer; only the existing e496 native build continues, with queued staging blocked. Read its process/slot instructions before operating native. Full roadmap remains incomplete; main unchanged.
+User requested documentation for handoff; the existing goal is paused at this saved checkpoint. See [authoritative handoff checkpoint](HANDOFF-CHECKPOINT-2026-10-01.md) for saved commits, verified deliverables, outstanding requirements and exact resume order. Implementation/design/trust lanes are frozen for transfer; the e496 build has finished with a Broker unit-test compile failure; no staging occurred, and sole-builder processes/slot are cleaned up. Read its process/slot instructions before operating native. Full roadmap remains incomplete; main unchanged.
 
-## Current coherent throughput checkpoint
+## Historical coherent throughput checkpoint (superseded by handoff above)
 
 Actual trust enforcement, unified command history causality, native journey readiness corrections and stable-surface design polish are integrated in the isolated root candidate. The complete rebuilt unit suite passes455 files/2424 cases; subsequent permission wrapping/error action/Settings focus changes pass17 relevant renderer cases and typecheck/lint376/format. Final fixture-only corrections preserve assertions and pass syntax/registry/format. Source logs are pinned in `docs/lane-requests/root-observer/COHERENT-SOURCE-GATES.json`; these are not native qualifications.
 
