@@ -1,3 +1,7 @@
+## RESUMED — 2026-10-02
+
+Owner explicitly resumed the full roadmap until complete. Flight pause restrictions are superseded; the historical pause checkpoint remains the source of exact refs and preserved drafts. Sole builder resumes the cached bc9 mandatory native graph after process/slot/pin verification. Root validates the committed context followup; design completes 0252 private measurement caller, and L10 completes the NightSettings save/readback draft in independent worktrees. No launch of the mixed installed app until full compilation/staging and independent byte/pair audit. All safety, performance, F21, qualification and merge-order requirements remain.
+
 ## PAUSED for owner’s flight — 2026-10-02
 
 Owner explicitly requested a pausing point. The exact clean source refs, safely interrupted native build, preserved drafts, remaining verification and resume order are recorded in [FLIGHT-PAUSE-2026-10-02.md](FLIGHT-PAUSE-2026-10-02.md). Do not continue or launch the mixed installed application until the owner resumes. No completion, native compile pass or new qualification is claimed.
