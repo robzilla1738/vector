@@ -270,3 +270,4 @@ aux/runtime/0295-download-fixture-delegate-shutdown.patch
 aux/runtime/0296-reflected-fill-fixture-geometry.patch
 aux/runtime/0297-result-preview-header-csp.patch
 aux/runtime/0298-retired-surface-guest-attachment.patch
+aux/runtime/0299-pip-service-fixture-pipe-lifetime.patch
