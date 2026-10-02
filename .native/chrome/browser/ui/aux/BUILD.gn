@@ -58,6 +58,8 @@ source_set("runtime") {
     "native_performance_input_mac.mm",
     "native_pip_appearance_registry.h",
     "native_pip_appearance_registry.cc",
+    "native_pip_video_backing.h",
+    "native_pip_video_backing.cc",
     "native_pip_window_appearance_mac.mm",
     "native_command_presentation_session.h",
     "native_command_presentation_session.cc",

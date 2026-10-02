@@ -1,0 +1,29 @@
+{
+  "status": "Rootindependent nineactualbaseline/result pins and contextualforward/reverse PASS; nativeuncompiled",
+  "packetSha256": "672487e5bec9be50dc6c1ad20f46157abc49b1cd8c850a984eac1feb8f9f5229",
+  "review": "Actualinstalled solidcontentmode, realview/layer/currentregisteredowner, fullframe ancestorscope andbeforeafter pairednative facts reviewed. No whole-documentbacking/themecell/hardware claims.",
+  "fullReplay": "89ordered/284exactmirrors/190actualbaselines PASS",
+  "sourceVerification": {
+    "build": {
+      "log": "/tmp/aux-root-pip-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASS"
+    },
+    "bridge": {
+      "log": "/tmp/aux-root-pip-bridge.log",
+      "sha256": "54befd1123551f8e2f0c983459b4bbb6760198805940fde7236b51b22d31111e",
+      "status": "PASS"
+    },
+    "inventory": {
+      "log": "/tmp/aux-root-pip-inventory.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASS"
+    },
+    "assets": {
+      "log": "/tmp/aux-root-pip-assets.log",
+      "sha256": "5947ccfbaa6d36a3fc96288bc69d148c3954d9b2e9e2b498d5be12aaadd7afcd",
+      "status": "PASS"
+    }
+  },
+  "unchangedSourceGates": "Same compiled TS/productrenderer as3b; rootfull474files/2566 sourcegates carriedforunchangedTS only; native compile/tests stillpending"
+}

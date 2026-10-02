@@ -230,3 +230,4 @@ aux/runtime/0255-blink-witness-vector-adapters.patch
 aux/runtime/0252-private-performance-mailbox.patch
 aux/runtime/0257-native-owned-shell-memory.patch
 aux/runtime/0256-native-compiler-lifetime-adapters.patch
+aux/runtime/0259-native-pip-solid-backing.patch

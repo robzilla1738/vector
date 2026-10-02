@@ -1,0 +1,327 @@
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_pip_video_backing.h
+@@ -0,0 +1,22 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PIP_VIDEO_BACKING_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PIP_VIDEO_BACKING_H_
++#include <cstdint>
++#include <optional>
++#include "ui/gfx/geometry/rect.h"
++#include "third_party/skia/include/core/SkColor.h"
++namespace views { class Widget; class View; }
++namespace aux {
++// Private installed-layer readback, not caller authority or hardware paint proof.
++// Object identities stay in-process and are never emitted in capture metadata.
++struct NativePipSolidBacking {
++  uintptr_t view_identity = 0;
++  uintptr_t layer_identity = 0;
++  gfx::Rect frame;
++  SkColor4f color;
++  bool operator==(const NativePipSolidBacking&) const = default;
++};
++std::optional<NativePipSolidBacking> ReadNativePipSolidBackingView(
++    views::Widget* widget, views::View* background);
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_pip_video_backing.cc
+@@ -0,0 +1,40 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_pip_video_backing.h"
++#include <cmath>
++#include "ui/compositor/layer.h"
++#include "ui/compositor/layer_solid_color.h"
++#include "ui/views/view.h"
++#include "ui/views/widget/widget.h"
++namespace aux {
++std::optional<NativePipSolidBacking> ReadNativePipSolidBackingView(
++    views::Widget* widget, views::View* background) {
++  if (!widget || !widget->IsVisible() || !background || background->GetWidget() != widget ||
++      !background->IsDrawn() || !background->layer()) return std::nullopt;
++  const gfx::Rect frame = widget->GetWindowBoundsInScreen();
++  if (frame.IsEmpty() || background->GetBoundsInScreen() != frame) return std::nullopt;
++  auto* solid = background->layer()->AsSolidColor();
++  if (!solid || !solid->IsShowingSolidColorContent() ||
++      solid->bounds() != gfx::Rect(background->size())) return std::nullopt;
++  const auto color = solid->background_color();
++  if (!std::isfinite(color.fR) || !std::isfinite(color.fG) || !std::isfinite(color.fB) ||
++      color.fR < 0 || color.fR > 1 || color.fG < 0 || color.fG > 1 ||
++      color.fB < 0 || color.fB > 1 || color.fA != 1) return std::nullopt;
++  // Every compositor ancestor must actually preserve the full installed fill.
++  // Never infer solid material from opacity, a default color, a gradient, or a
++  // reflected subtree. Unknown masks/transforms/clips remain diagnostic-only.
++  bool root = false;
++  unsigned depth = 0;
++  for (const ui::Layer* layer = solid; layer && depth++ < 64; layer = layer->parent()) {
++    if (!layer->visible() || layer->opacity() != 1 || !layer->transform().IsIdentity() ||
++        layer->layer_mask_layer() || !layer->gradient_mask().IsEmpty() ||
++        !layer->rounded_corner_radii().IsEmpty() ||
++        (!layer->clip_rect().IsEmpty() && !layer->clip_rect().Contains(gfx::Rect(frame.size())))) return std::nullopt;
++    if (layer->bounds().width() < frame.width() || layer->bounds().height() < frame.height()) return std::nullopt;
++    if (layer == widget->GetLayer()) { root = true; break; }
++    if (!layer->bounds().origin().IsOrigin()) return std::nullopt;
++  }
++  if (!root) return std::nullopt;
++  return NativePipSolidBacking{reinterpret_cast<uintptr_t>(background),
++      reinterpret_cast<uintptr_t>(solid), frame, color};
++}
++}  // namespace aux
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_pip_video_backing_unittest.cc
+@@ -0,0 +1,75 @@
++// Copyright 2026 The Aux Authors
++// Real installed Views/layer facts; never capture or hardware qualification.
++#include "chrome/browser/ui/aux/native_pip_video_backing.h"
++#include <memory>
++#include "base/memory/raw_ptr.h"
++#include "chrome/test/views/chrome_views_test_base.h"
++#include "testing/gtest/include/gtest/gtest.h"
++#include "ui/compositor/layer.h"
++#include "ui/compositor/layer_solid_color.h"
++#include "ui/views/background.h"
++#include "ui/views/view.h"
++#include "ui/views/widget/widget.h"
++namespace aux {
++class NativePipSolidBackingTest : public ChromeViewsTestBase {
++ public:
++  NativePipSolidBackingTest();
++  ~NativePipSolidBackingTest() override;
++  void SetUp() override {
++    ChromeViewsTestBase::SetUp();
++    widget_ = CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
++    auto view = std::make_unique<views::View>();
++    view->SetBackground(views::CreateLayerBasedSolidBackground(SK_ColorBLACK));
++    background_ = widget_->SetContentsView(std::move(view));
++    widget_->SetBounds(gfx::Rect(40, 40, 400, 300));
++    widget_->Show();
++    ASSERT_TRUE(background_->layer());
++    ASSERT_TRUE(background_->layer()->AsSolidColor());
++  }
++  void TearDown() override {
++    background_ = nullptr; widget_.reset();
++    ChromeViewsTestBase::TearDown();
++  }
++  std::optional<NativePipSolidBacking> Read() { return ReadNativePipSolidBackingView(widget_.get(), background_); }
++  std::unique_ptr<views::Widget> widget_;
++  raw_ptr<views::View> background_ = nullptr;
++};
++NativePipSolidBackingTest::NativePipSolidBackingTest() = default;
++NativePipSolidBackingTest::~NativePipSolidBackingTest() = default;
++TEST_F(NativePipSolidBackingTest, ActualInstalledSolidIsPositiveAndStable) {
++  auto before = Read(); ASSERT_TRUE(before); auto after = Read(); ASSERT_TRUE(after);
++  EXPECT_EQ(*before, *after); EXPECT_EQ(before->frame, widget_->GetWindowBoundsInScreen());
++  EXPECT_EQ(before->color, SkColors::kBlack);
++}
++TEST_F(NativePipSolidBackingTest, ReflectedSubtreeIsNotSolidEvenWithBlackBackgroundColor) {
++  ui::Layer reflected(ui::LAYER_NOT_DRAWN);
++  auto* layer = background_->layer()->AsSolidColor();
++  ASSERT_TRUE(layer->IsShowingSolidColorContent());
++  layer->SetShowReflectedLayerSubtree(&reflected);
++  EXPECT_FALSE(layer->IsShowingSolidColorContent()); EXPECT_FALSE(Read());
++  layer->SetShowSolidColorContent(); layer->SetColor(SkColors::kBlack);
++  EXPECT_TRUE(layer->IsShowingSolidColorContent()); EXPECT_TRUE(Read());
++}
++TEST_F(NativePipSolidBackingTest, PartialTransformedOrClippedFillIsUnknown) {
++  ASSERT_TRUE(Read());
++  auto* layer = background_->layer(); const auto bounds = layer->bounds();
++  layer->SetBounds(gfx::Rect(0, 0, bounds.width() - 1, bounds.height())); EXPECT_FALSE(Read());
++  layer->SetBounds(bounds);
++  layer->SetClipRect(gfx::Rect(1, 1, bounds.width() - 1, bounds.height() - 1)); EXPECT_FALSE(Read());
++  layer->SetClipRect(gfx::Rect());
++  gfx::Transform translated; translated.Translate(1, 0); layer->SetTransform(translated); EXPECT_FALSE(Read());
++  layer->SetTransform(gfx::Transform()); EXPECT_TRUE(Read());
++}
++TEST_F(NativePipSolidBackingTest, TransparencyOrUnknownMaskIsNotAnOpaqueSolidBacking) {
++  ASSERT_TRUE(Read()); auto* layer = background_->layer()->AsSolidColor();
++  layer->SetColor(SkColor4f{0, 0, 0, 0.5f}); EXPECT_FALSE(Read());
++  layer->SetColor(SkColors::kBlack); layer->SetOpacity(0.5f); EXPECT_FALSE(Read());
++  layer->SetOpacity(1); layer->SetRoundedCornerRadius(gfx::RoundedCornersF(6)); EXPECT_FALSE(Read());
++}
++TEST_F(NativePipSolidBackingTest, AColorOnTexturedOrForeignViewCannotProveSolidMode) {
++  ASSERT_TRUE(Read());
++  background_->SetPaintToLayer(ui::LAYER_TEXTURED); EXPECT_FALSE(Read());
++  auto other = CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
++  other->Show(); EXPECT_FALSE(ReadNativePipSolidBackingView(other.get(), background_));
++}
++}  // namespace aux
+--- a/ui/compositor/layer_solid_color.h
++++ b/ui/compositor/layer_solid_color.h
+@@ -52,6 +52,12 @@
+   SkColor4f GetTargetColor() const;
+   SkColor4f background_color() const;
+ 
++  // Actual installed content mode; background_color alone also exists while
++  // this layer mirrors another subtree and cannot establish a solid fill.
++  bool IsShowingSolidColorContent() const {
++    return solid_color_layer_.get() && !mirror_layer_.get() && !subtree_reflected_layer_;
++  }
++
+   // Layer:
+   std::unique_ptr<Layer> Clone() const override;
+   bool ShouldSchedulePaint() const override;
+--- a/chrome/browser/ui/aux/native_pip_appearance_registry.h
++++ b/chrome/browser/ui/aux/native_pip_appearance_registry.h
+@@ -12,6 +12,7 @@
+ #include "base/sequence_checker.h"
+ #include "content/public/browser/weak_document_ptr.h"
+ #include "ui/views/widget/widget_observer.h"
++#include "chrome/browser/ui/aux/native_pip_video_backing.h"
+ class Profile;
+ class BrowserWindowInterface;
+ class DocumentPipHost;
+@@ -31,6 +32,7 @@
+ // PID/window ID, caller label or bounds lookup. Hooks are MAC/test-fixture only.
+ class NativePipAppearanceRegistry final : public views::WidgetObserver {
+  public:
++  using SolidBackingReader = base::RepeatingCallback<std::optional<NativePipSolidBacking>()>;
+   using OwnerReader = base::RepeatingCallback<std::optional<NativePipOwner>()>;
+   using ControllerReader = base::RepeatingCallback<content::PictureInPictureWindowController*()>;
+   using OpenerMatcher = base::RepeatingCallback<bool(content::WebContents*)>;
+@@ -56,8 +58,9 @@
+     content::WeakDocumentPtr child_document;
+     OwnerReader read_current;
+     uint64_t registration_generation = 0;
++    SolidBackingReader read_backing;
+   };
+-  bool Register(views::Widget* widget, NativePipSurfaceKind kind, OwnerReader read_current);
++  bool Register(views::Widget* widget, NativePipSurfaceKind kind, OwnerReader read_current, SolidBackingReader read_backing = {});
+   bool Stable(const Entry& entry) const;
+   std::map<views::Widget*, Entry> entries_;
+   std::map<views::Widget*, base::WeakPtr<views::Widget>> pending_registrations_;
+@@ -68,6 +71,7 @@
+ // Real current child's NSWindow/theme/ColorProvider/material/frame only. No Aux
+ // WebUI theme/material is copied. Missing remote NSWindow yields no snapshot.
+ std::optional<base::DictValue> ReadNativePipWindowAppearance(
+-    views::Widget* widget, NativePipSurfaceKind kind);
++    views::Widget* widget, NativePipSurfaceKind kind,
++    NativePipAppearanceRegistry::SolidBackingReader read_backing = {});
+ }  // namespace aux
+ #endif
+--- a/chrome/browser/ui/aux/native_pip_appearance_registry.cc
++++ b/chrome/browser/ui/aux/native_pip_appearance_registry.cc
+@@ -67,7 +67,11 @@
+         if (!opener || opener->IsBeingDestroyed()) return std::nullopt;
+         return NativePipOwner{Profile::FromBrowserContext(opener->GetBrowserContext()),
+                               opener, controller->GetChildWebContents(), controller};
+-      }, weak, base::Unretained(window), std::move(read_current)));
++      }, weak, base::Unretained(window), std::move(read_current)),
++      base::BindRepeating([](base::WeakPtr<views::Widget> weak, VideoOverlayWindowViews* window) -> std::optional<NativePipSolidBacking> {
++        if (!NativePipAppearanceObservationEnabled() || !weak || weak.get() != window) return std::nullopt;
++        return ReadNativePipSolidBackingView(window, window->GetWindowBackgroundView());
++      }, weak, base::Unretained(window)));
+ }
+ bool NativePipAppearanceRegistry::RegisterDocumentHost(DocumentPipHost* host,
+                                                        ControllerReader read_current) {
+@@ -91,7 +95,7 @@
+   return Register(widget, NativePipSurfaceKind::kDocument, std::move(read_current));
+ }
+ bool NativePipAppearanceRegistry::Register(views::Widget* widget,
+-    NativePipSurfaceKind kind, OwnerReader read_current) {
++    NativePipSurfaceKind kind, OwnerReader read_current, SolidBackingReader read_backing) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   if (!NativePipAppearanceObservationEnabled() || !widget || !widget->IsVisible() ||
+       read_current.is_null() || pending_registrations_.contains(widget) || pending_registrations_.size() >= 8 || entries_.contains(widget) || entries_.size() >= 8 ||
+@@ -118,7 +122,7 @@
+   Entry entry{kind, widget->GetWeakPtr(), *owner,
+       owner->opener->GetPrimaryMainFrame()->GetWeakDocumentPtr(),
+       owner->child ? owner->child->GetPrimaryMainFrame()->GetWeakDocumentPtr() : content::WeakDocumentPtr(),
+-      std::move(read_current), next_registration_generation_++};
++      std::move(read_current), next_registration_generation_++, std::move(read_backing)};
+   entries_.emplace(widget, std::move(entry)); widget->AddObserver(this); return true;
+ }
+ void NativePipAppearanceRegistry::Unregister(views::Widget* widget) {
+@@ -178,7 +182,7 @@
+     selected = entry;
+   }
+   if (!selected || !registered(*selected)) return std::nullopt;
+-  auto result = ReadNativePipWindowAppearance(selected->widget.get(), selected->kind);
++  auto result = ReadNativePipWindowAppearance(selected->widget.get(), selected->kind, selected->read_backing);
+   if (!self || !result) return std::nullopt;
+   const bool stable = Stable(*selected);
+   if (!self || !stable) return std::nullopt;
+--- a/chrome/browser/ui/aux/native_pip_window_appearance_mac.mm
++++ b/chrome/browser/ui/aux/native_pip_window_appearance_mac.mm
+@@ -38,14 +38,21 @@
+ }
+ }  // namespace
+ std::optional<base::DictValue> ReadNativePipWindowAppearance(
+-    views::Widget* widget, NativePipSurfaceKind kind) {
++    views::Widget* widget, NativePipSurfaceKind kind,
++    NativePipAppearanceRegistry::SolidBackingReader read_backing) {
+   if (!NativePipAppearanceObservationEnabled() || !widget || !widget->IsVisible()) return std::nullopt;
++  const auto weak_widget = widget->GetWeakPtr();
+   NSWindow* window = widget->GetNativeWindow().GetNativeNSWindow();
+   if (!window || !window.visible || window.windowNumber <= 0 ||
+       window.windowNumber > std::numeric_limits<int>::max()) return std::nullopt;
+   const CGWindowID id = static_cast<CGWindowID>(window.windowNumber);
+   const auto before = ReadOwnedWindow(id);
+   if (!before) return std::nullopt;
++  const auto before_solid = kind == NativePipSurfaceKind::kVideo && !read_backing.is_null() ? read_backing.Run() : std::nullopt;
++  if (!weak_widget || widget->GetNativeWindow().GetNativeNSWindow() != window) return std::nullopt;
++  if (before_solid && (before_solid->frame.x() != before->frame.origin.x ||
++      before_solid->frame.y() != before->frame.origin.y || before_solid->frame.width() != before->frame.size.width ||
++      before_solid->frame.height() != before->frame.size.height)) return std::nullopt;
+   base::DictValue record, frame;
+   record.Set("producer", "aux-native-pip-appearance"); record.Set("version", 1);
+   record.Set("pid", base::GetCurrentProcId()); record.Set("windowId", static_cast<int>(id));
+@@ -74,7 +81,18 @@
+     if ([view isKindOfClass:[NSVisualEffectView class]] ||
+         [view isKindOfClass:NSClassFromString(@"NSGlassEffectView")]) { ++effects; candidate = view; }
+   }
+-  if (effects == 1) {
++  const CGFloat effect_alpha = candidate ? candidate.alphaValue : 0;
++  const NSRect effect_frame = candidate ? candidate.frame : NSZeroRect;
++  const NSInteger effect_material = [candidate isKindOfClass:[NSVisualEffectView class]] ?
++      ((NSVisualEffectView*)candidate).material : -1;
++  const NSInteger effect_state = [candidate isKindOfClass:[NSVisualEffectView class]] ?
++      ((NSVisualEffectView*)candidate).state : -1;
++  const NSInteger effect_blending = [candidate isKindOfClass:[NSVisualEffectView class]] ?
++      ((NSVisualEffectView*)candidate).blendingMode : -1;
++  if (before_solid && effects == 0) {
++    // Exact registered video-owned compositor fill, not window opacity.
++    backing = "solid"; material = "solid";
++  } else if (!before_solid && effects == 1) {
+     if ([candidate isKindOfClass:NSClassFromString(@"NSGlassEffectView")]) {
+       backing = "liquid-glass"; material = "liquid-glass";
+     } else if ([candidate isKindOfClass:[NSVisualEffectView class]]) {
+@@ -91,6 +109,19 @@
+   record.Set("material", material ? base::Value(material) : base::Value());
+   record.Set("nativeReduceTransparency", static_cast<bool>(NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency));
+   record.Set("nativeReduceMotion", static_cast<bool>(NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion));
++  const auto after_solid = kind == NativePipSurfaceKind::kVideo && !read_backing.is_null() ? read_backing.Run() : std::nullopt;
++  if (!weak_widget || before_solid != after_solid) return std::nullopt;
++  NSView* final_effect = nil; unsigned final_effects = 0;
++  for (NSView* view in window.contentView.subviews) {
++    if (view.hidden || view.alphaValue <= 0 || !NSContainsRect(view.frame, window.contentView.bounds)) continue;
++    if ([view isKindOfClass:[NSVisualEffectView class]] ||
++        [view isKindOfClass:NSClassFromString(@"NSGlassEffectView")]) { ++final_effects; final_effect = view; }
++  }
++  if (final_effects != effects || final_effect != candidate ||
++      (candidate && (candidate.alphaValue != effect_alpha || !NSEqualRects(candidate.frame, effect_frame)))) return std::nullopt;
++  if ([candidate isKindOfClass:[NSVisualEffectView class]] &&
++      (((NSVisualEffectView*)candidate).material != effect_material || ((NSVisualEffectView*)candidate).state != effect_state ||
++       ((NSVisualEffectView*)candidate).blendingMode != effect_blending)) return std::nullopt;
+   const auto after = ReadOwnedWindow(id);
+   NSString* final_theme = [window.effectiveAppearance bestMatchFromAppearancesWithNames:
+       @[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -58,6 +58,8 @@
+     "native_performance_input_mac.mm",
+     "native_pip_appearance_registry.h",
+     "native_pip_appearance_registry.cc",
++    "native_pip_video_backing.h",
++    "native_pip_video_backing.cc",
+     "native_pip_window_appearance_mac.mm",
+     "native_command_presentation_session.h",
+     "native_command_presentation_session.cc",
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -8062,6 +8062,7 @@
+       "../browser/ui/aux/permission_broker_unittest.cc",
+       "../browser/ui/aux/native_performance_observer_unittest.cc",
+       "../browser/ui/aux/native_pip_appearance_registry_unittest.cc",
++      "../browser/ui/aux/native_pip_video_backing_unittest.cc",
+       "../browser/ui/aux/native_command_presentation_session_unittest.cc",
+       "../browser/ui/aux/native_guest_presentation_fixture_unittest.cc",
+       "../browser/ui/aux/native_performance_mailbox_unittest.cc",

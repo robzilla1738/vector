@@ -1,0 +1,53 @@
+{
+  "rootHead": "3b763da8737214de93991f0d4f28b18f84a338bc",
+  "patchSha256": "672487e5bec9be50dc6c1ad20f46157abc49b1cd8c850a984eac1feb8f9f5229",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux/native_pip_video_backing.h",
+      "beforeSha256": null,
+      "afterSha256": "6b83f365793f1f9896ff4bb4847c08f82927435baa8fcd219972470e166de5ac"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_pip_video_backing.cc",
+      "beforeSha256": null,
+      "afterSha256": "ad967485f78343bf31b3a4d88bc757abd9c6033fc4f008cdd741a597a7f5150a"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_pip_video_backing_unittest.cc",
+      "beforeSha256": null,
+      "afterSha256": "e9609454045de714775354a6d59aa39f3e3c3247cf39f30a589340211b47f24e"
+    },
+    {
+      "path": "ui/compositor/layer_solid_color.h",
+      "beforeSha256": "7dc9ddb56720f8bf9a90971e292f25d4daddc7bd2c1ff78672999e73c7ef5b4c",
+      "afterSha256": "1c952fe64d38efcfc419ac24106f68532b78839aff9c8c97e382dc0069ae5127"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_pip_appearance_registry.h",
+      "beforeSha256": "2b8d96d3d1bf2e8476230f8b47cc548d12d0d3d8def601423631a99269cef27a",
+      "afterSha256": "499a9efdfab528cd42218dd3df8daeae1297b27a2db5b9f65e0905697b8d4f52"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_pip_appearance_registry.cc",
+      "beforeSha256": "98f1aadceabbeae12b4a57a001238b51e47fdea73f440ee09d036977e604e449",
+      "afterSha256": "79758d8fe4ad8a5de9b7a455014345cec4de046b4b940cab0037fcbb65a92a0e"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_pip_window_appearance_mac.mm",
+      "beforeSha256": "34faae0316c18dbccbb6a8a8522bb1a5211dc5931eb57a1c2c8feeebc40a9a47",
+      "afterSha256": "1ea3966e6fbeed7f856761fe6f0ce268f91d8619967cc2b199151109e2e1c123"
+    },
+    {
+      "path": "chrome/browser/ui/aux/BUILD.gn",
+      "beforeSha256": "18631b2afc242ddde23aa90be0da7c5ad2c718a091c2a2dddacfb7b939d8e1ea",
+      "afterSha256": "7f00b9c30afd62537fa35adc3b5c548235febe1f64d96470c562c39bb2309313"
+    },
+    {
+      "path": "chrome/test/BUILD.gn",
+      "beforeSha256": "73cf8937148bd5a24ac31e14f1fdbc531a6d59688964d919f4a4fabe76f8e8d7",
+      "afterSha256": "688ce2dc1276e732a80b4f04079b177f6a88ff3b069942adbee81b12cfdd61c1"
+    }
+  ],
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-native-0259-replay-7_5h0bx3",
+  "status": "SOURCE DRAFT; exact replay PASS; native compile/tests/capture pending"
+}

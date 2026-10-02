@@ -1,6 +1,6 @@
 {
-  "status": "88 ordered packets full reverse/actual baselines/forward exact mirrors PASS; native compilation pending",
-  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-authority-88-replay-em8fc8vc",
+  "status": "89 ordered packets full reverse/actual baselines/forward exact mirrors PASS; native compilation pending",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-authority-89-replay-nw6cdhbo",
   "orderedPatches": [
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch",
     "chromium/patches/aux/runtime/0150-little-window-controller.patch",
@@ -89,7 +89,8 @@
     "chromium/patches/aux/runtime/0255-blink-witness-vector-adapters.patch",
     "chromium/patches/aux/runtime/0252-private-performance-mailbox.patch",
     "chromium/patches/aux/runtime/0257-native-owned-shell-memory.patch",
-    "chromium/patches/aux/runtime/0256-native-compiler-lifetime-adapters.patch"
+    "chromium/patches/aux/runtime/0256-native-compiler-lifetime-adapters.patch",
+    "chromium/patches/aux/runtime/0259-native-pip-solid-backing.patch"
   ],
   "packetDigests": {
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch": "8a7337726222a33aa306fd3f35e3485a60b59d4c0d036a1fda9bc98dce8c4e93",
@@ -179,7 +180,8 @@
     "chromium/patches/aux/runtime/0255-blink-witness-vector-adapters.patch": "b7ce8fee40dd31018d7573bd7857cd96a26bed956f0859b2bf29bab940fcd714",
     "chromium/patches/aux/runtime/0252-private-performance-mailbox.patch": "bc3815963500d292ae4e77c22e9f20901ff58a954e52a2e319c6cf704cbdfb5d",
     "chromium/patches/aux/runtime/0257-native-owned-shell-memory.patch": "9000d3a40b27c6d4b1f47545013960183353b1361c0509c89c3e65f77c7cec18",
-    "chromium/patches/aux/runtime/0256-native-compiler-lifetime-adapters.patch": "c488be830580f135d957ea31c006dc7457a69853856e4d87c9681492c4ec6a88"
+    "chromium/patches/aux/runtime/0256-native-compiler-lifetime-adapters.patch": "c488be830580f135d957ea31c006dc7457a69853856e4d87c9681492c4ec6a88",
+    "chromium/patches/aux/runtime/0259-native-pip-solid-backing.patch": "672487e5bec9be50dc6c1ad20f46157abc49b1cd8c850a984eac1feb8f9f5229"
   },
   "baselineVerification": {
     "cc/BUILD.gn": "2b1b3c86ec12fcd5dd95bb5c94fcc42f49f8530359e682c1903a019268bdba06",
@@ -286,6 +288,9 @@
     "chrome/browser/ui/aux/native_pip_appearance_registry.cc": null,
     "chrome/browser/ui/aux/native_pip_appearance_registry.h": null,
     "chrome/browser/ui/aux/native_pip_appearance_registry_unittest.cc": null,
+    "chrome/browser/ui/aux/native_pip_video_backing.cc": null,
+    "chrome/browser/ui/aux/native_pip_video_backing.h": null,
+    "chrome/browser/ui/aux/native_pip_video_backing_unittest.cc": null,
     "chrome/browser/ui/aux/native_pip_window_appearance_mac.mm": null,
     "chrome/browser/ui/aux/native_shell_memory.cc": null,
     "chrome/browser/ui/aux/native_shell_memory.h": null,
@@ -461,6 +466,7 @@
     "tools/gritsettings/resource_ids.spec": "781f4acfbb9097e8410d22380a5e1313e89f829cad4985b98fe0c3bec4782879",
     "ui/compositor/compositor.cc": "8780d06653a1a5dcbfca11a69caa0483c484971b4136696b33e8a3afb319003c",
     "ui/compositor/compositor.h": "62a68380af3b78038a957a4532f51292f04210a8b551a7155bd4078f383adfea",
+    "ui/compositor/layer_solid_color.h": "7dc9ddb56720f8bf9a90971e292f25d4daddc7bd2c1ff78672999e73c7ef5b4c",
     "ui/compositor/test/in_process_context_factory.cc": "dc445e42cb0474076fd11bcea74250bd92ad4734cc925ddcde7947d5c198c786"
   },
   "exactNativeFiles": {
@@ -506,7 +512,7 @@
     "chrome/browser/prefs/browser_prefs.cc": "42cf35820b7b01a22e9fb1d45b4497d3d184e96006a7e68d34e023bd74e66b9b",
     "chrome/browser/profiles/profile.cc": "4d080b6481a87f89ad71e4cc915ba26322704a127902433145d1d0117d4c48c7",
     "chrome/browser/resources/aux_host/aux_host_bootstrap.ts": "95d8334f28670faf7e485022919e346ae15e721890ade7004a404c56300092a2",
-    "chrome/browser/ui/aux/BUILD.gn": "18631b2afc242ddde23aa90be0da7c5ad2c718a091c2a2dddacfb7b939d8e1ea",
+    "chrome/browser/ui/aux/BUILD.gn": "7f00b9c30afd62537fa35adc3b5c548235febe1f64d96470c562c39bb2309313",
     "chrome/browser/ui/aux/auto_pip_site_policy.h": "dd7fb9c6266d980756d36277261be561d5c2ca01559bbfc58e0da9272ae7a989",
     "chrome/browser/ui/aux/auto_pip_site_policy_unittest.cc": "07e01bfb556596b2074238ae89e44369245f57dc83fbdf8d15c63aa4837a9d55",
     "chrome/browser/ui/aux/download_naming.cc": "d2ca941127173cd27ef076ed1db2f37c4094827934aa011a7d7d28b479e3c22c",
@@ -565,10 +571,13 @@
     "chrome/browser/ui/aux/native_performance_observer.cc": "96a34c01966d837fa713b86a671e5fd313cd9b6f46cfd410bab3d8268d187548",
     "chrome/browser/ui/aux/native_performance_observer.h": "a8955c6a511e0615542e2ab493c1d08ecf3c54b703f2b75849b597b53f82a991",
     "chrome/browser/ui/aux/native_performance_observer_unittest.cc": "4a53a9c3182aadee06a0ec4fc49cd90a5e118e042f729b3de178f069c47b6109",
-    "chrome/browser/ui/aux/native_pip_appearance_registry.cc": "98f1aadceabbeae12b4a57a001238b51e47fdea73f440ee09d036977e604e449",
-    "chrome/browser/ui/aux/native_pip_appearance_registry.h": "2b8d96d3d1bf2e8476230f8b47cc548d12d0d3d8def601423631a99269cef27a",
+    "chrome/browser/ui/aux/native_pip_appearance_registry.cc": "79758d8fe4ad8a5de9b7a455014345cec4de046b4b940cab0037fcbb65a92a0e",
+    "chrome/browser/ui/aux/native_pip_appearance_registry.h": "499a9efdfab528cd42218dd3df8daeae1297b27a2db5b9f65e0905697b8d4f52",
     "chrome/browser/ui/aux/native_pip_appearance_registry_unittest.cc": "aed632e09f9470f8730bf9c58d3d295e879fb39fada0851890c4cfc2f269a6c4",
-    "chrome/browser/ui/aux/native_pip_window_appearance_mac.mm": "34faae0316c18dbccbb6a8a8522bb1a5211dc5931eb57a1c2c8feeebc40a9a47",
+    "chrome/browser/ui/aux/native_pip_video_backing.cc": "ad967485f78343bf31b3a4d88bc757abd9c6033fc4f008cdd741a597a7f5150a",
+    "chrome/browser/ui/aux/native_pip_video_backing.h": "6b83f365793f1f9896ff4bb4847c08f82927435baa8fcd219972470e166de5ac",
+    "chrome/browser/ui/aux/native_pip_video_backing_unittest.cc": "e9609454045de714775354a6d59aa39f3e3c3247cf39f30a589340211b47f24e",
+    "chrome/browser/ui/aux/native_pip_window_appearance_mac.mm": "1ea3966e6fbeed7f856761fe6f0ce268f91d8619967cc2b199151109e2e1c123",
     "chrome/browser/ui/aux/native_shell_memory.cc": "cb229f5bf3bfc1cf4f319a91e28d9a3158ce43bf883da78128aecc64b46b8126",
     "chrome/browser/ui/aux/native_shell_memory.h": "c03d2928d2a4bd11093c9863d11e6c89ce32a2cdd5ef732a97c696a908202458",
     "chrome/browser/ui/aux/organization_store.cc": "577e96470cb60a775e1474be11857a38c76fa59ed895e747caf6c348d1cce0ec",
@@ -624,7 +633,7 @@
     "chrome/browser/ui/webui_browser/webui_browser_window.cc": "04660b841ec36fb8711d21025d483a93176420f2dbecd28b552059465c205c3d",
     "chrome/browser/ui/webui_browser/webui_browser_window.h": "f3fc833c15da4f0b4e90727c648aac15155c34816526789e1c2f4e33e717a77a",
     "chrome/browser/ui/webui_browser/webui_browser_window_mac.mm": "1caae480aa8ddc796522dbd7e6bcc6d878a75d6c7f790f3acb9583a97bd90fd8",
-    "chrome/test/BUILD.gn": "73cf8937148bd5a24ac31e14f1fdbc531a6d59688964d919f4a4fabe76f8e8d7",
+    "chrome/test/BUILD.gn": "688ce2dc1276e732a80b4f04079b177f6a88ff3b069942adbee81b12cfdd61c1",
     "components/download/internal/common/download_item_impl.cc": "38817525ecb3038e137c80747a72bf61a24eb0c90bfda342f31407ac2f583152",
     "components/download/public/common/download_item.h": "4804864132d1a221e4e2ba5cab361a8d1be6fa50039b4f684c835f272e4a77fc",
     "components/download/public/common/download_item_impl.h": "c96ebf05b8ac362fa43069fc0f0336be8543e55f5e7c5e03759024b80e24ed9b",
@@ -743,6 +752,7 @@
     "tools/gritsettings/resource_ids.spec": "46bb8fbb1992a6668288b1fa9d3dfe47ee5b3082cb4ffc3dd4115627f3c4e86e",
     "ui/compositor/compositor.cc": "926dfb793ef4644a5820e97ad8bcd7405b90b23556f1cdbc2bdd60ea7cd8dc47",
     "ui/compositor/compositor.h": "dd7f970cfa7a021afa5c6823d3b62d0fb6f2da3fa8f98abdc9f9dd2700fcece6",
+    "ui/compositor/layer_solid_color.h": "1c952fe64d38efcfc419ac24106f68532b78839aff9c8c97e382dc0069ae5127",
     "ui/compositor/test/in_process_context_factory.cc": "50e274783152081a7c23ba26a224db3c371ed72b58547286fee40926139edbbf"
   }
 }
