@@ -48,7 +48,7 @@ export default function ReviewRecording() {
         finalWait: { id: "recording-success", op: "waitFor" as const, condition: { kind: "selector" as const, selector: oracle, state: "visible" as const } } };
       void executeCommand("save-demonstration", { payload: { demonstration: { recordingId: demo.id, taskId, expectedTaskRevision: task!.revision, title, review } } });
     }}>Save as Skill</button>
-    <button className="btn ghost" disabled={busy} onClick={() => void executeCommand("export-demonstration")}>Export demonstration</button>
+    <button className="btn ghost" disabled={busy} onClick={() => void executeCommand("export-demonstration").catch(() => {})}>Export demonstration</button>
     <button className="btn ghost" disabled={busy} onClick={() => void executeCommand("discard-demonstration")}>Discard</button>
     {exported && <><output>Skill saved. Open the saved task to run its replay test.</output><label>SKILL.md<textarea readOnly value={exported} rows={8}/></label></>}
     {(error || loadError) && <p role="alert">{error || loadError}</p>}

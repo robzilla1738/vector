@@ -2,89 +2,74 @@
   "sourceOnly": true,
   "nativeCompiled": false,
   "nativeJourneyPassed": false,
-  "base": "fb5c70fb516fa40558a35d1003315ceb40a16bd3",
-  "fullUnit": "482 files /2622 tests PASS; original full log retained",
-  "runtimeRebuiltBeforeTests": true,
+  "base": "675962874544a31d67f9340ffd7b6c1b4ba349d6",
+  "fullUnit": "Prior675 actual482files2622tests PASS; changed extension/export focused5files14tests PASS after fresh workspace build. Final integration full suite remains required.",
+  "nativeReplay": "119packets/197originals/336mirrors PASS",
   "lint": {
     "actualWarnings": 380,
     "maxWarnings": 390
   },
-  "nativeReplay": "118packets/197originals/336mirrors PASS",
-  "shellDigest": "7267e39c64b8565b2fedca5ca9c469cfc782ded1c743a1df6d1f9bf43b02d8fb",
-  "sourceChangeAfterGates": "Native fixture-only0289 public window accessor/direct header; native full replay rerun. No runtime/shell/harness changes after successful source gates.",
+  "shellDigest": "87c975c15a9d80ff3fcafcd0f3f5c8b88d5b7f869de6bdc51878832a747ef4e0",
   "logs": {
-    "build": {
-      "path": "/tmp/aux-root-native-successor-build.log",
+    "build-final": {
+      "path": "/tmp/aux-root-functional-build-final.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
-    "full-unit": {
-      "path": "/tmp/aux-root-native-successor-full-unit.log",
-      "sha256": "c7194a353746e093e4d1a3d3a6404c44db1fa76103c00a3c938acc7b77c5776e"
+    "focused-final": {
+      "path": "/tmp/aux-root-functional-focused-final.log",
+      "sha256": "ebc480a4f959c0fba69df30781cc0e7d9a25a96e1a2c5bdab71af7ed98bee4dc"
     },
-    "typecheck": {
-      "path": "/tmp/aux-root-native-successor-typecheck.log",
+    "typecheck-final": {
+      "path": "/tmp/aux-root-functional-typecheck-final.log",
       "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
     },
-    "lint": {
-      "path": "/tmp/aux-root-native-successor-lint.log",
-      "sha256": "c1b0329b0a93845a8a1c56336dcd21a8dd78a054c171d0208299445ad5481430"
+    "lint-final": {
+      "path": "/tmp/aux-root-functional-lint-final.log",
+      "sha256": "843b66468df6984554d5aac1db1f5232504a1d84b9013e33df05c0c2d697a077"
     },
-    "format": {
-      "path": "/tmp/aux-root-native-successor-format.log",
+    "format-final": {
+      "path": "/tmp/aux-root-functional-format-final.log",
       "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
     },
     "bindings": {
-      "path": "/tmp/aux-root-native-successor-bindings.log",
-      "sha256": "c2635bc1ad9062801fd9ce3c8ad8a74b577439116d3d850581070a87f4533591"
+      "path": "/tmp/aux-root-functional-bindings.log",
+      "sha256": "242dc5735d61fd21d8d0d2e604d73a0fd701e32b857042477ef027c150c014ac"
     },
     "bridge-final": {
-      "path": "/tmp/aux-root-native-successor-bridge-final.log",
+      "path": "/tmp/aux-root-functional-bridge-final.log",
       "sha256": "b902406e71432dcc601710f7966314f27c06f12c1aec31900d24c1d64fe886b6"
     },
-    "inventory": {
-      "path": "/tmp/aux-root-native-successor-inventory.log",
+    "inventory-final": {
+      "path": "/tmp/aux-root-functional-inventory-final.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
-    "journeys-final": {
-      "path": "/tmp/aux-root-native-successor-journeys-final.log",
+    "journeys": {
+      "path": "/tmp/aux-root-functional-journeys.log",
       "sha256": "4b10e449edc1397c9026a41a813b448986362c446092aafa21db5002483b7d4c"
     },
     "renderer-final": {
-      "path": "/tmp/aux-root-native-successor-renderer-final.log",
-      "sha256": "c7fa84e340e7962855e7e82c777dabc2e8e59a6f122a1c91112d24063f60ded4"
+      "path": "/tmp/aux-root-functional-renderer-final.log",
+      "sha256": "447086dd65a304ce846a742e466a67f0880548836e5be1dc940f07a0367b3423"
     },
     "assets-final": {
-      "path": "/tmp/aux-root-native-successor-assets-final.log",
-      "sha256": "44be44304b1ee5a677d6099f36e6964431f0f5a2234a7b58d82fb3741df22aed"
+      "path": "/tmp/aux-root-functional-assets-final.log",
+      "sha256": "0122c9e2838c6342912e4015691cb1c216a0933f888fb2c82062b01d25e79417"
     },
     "budgets-final": {
-      "path": "/tmp/aux-root-native-successor-budgets-final.log",
-      "sha256": "b1b2c851248ddde6a8f418156c441c86c22e00b920497a071543f1a45bf904ca"
+      "path": "/tmp/aux-root-functional-budgets-final.log",
+      "sha256": "28f3b54e5f4e4c324b985f9430bad451aa7061505dce1d697bedb7175a56fb7f"
     },
-    "protocol": {
-      "path": "/tmp/aux-root-native-successor-protocol.log",
-      "sha256": "15de49d9c85c55d9400b10f03dd1bda8a242b7aa52fb1c516cd4cc970892a83d"
-    },
-    "full-replay-118": {
-      "path": "/tmp/aux-root-native-successor-full-replay-118.log",
-      "sha256": "0ec10483142337890436d9ca6f5a637587a383ade3a8743c6289aa147b4633a4"
+    "full-replay": {
+      "path": "/tmp/aux-root-functional-full-replay.log",
+      "sha256": "d09d4a73e80506830136e079b17e6d5f85d68be9c72d20c448c5070ee029224e"
     }
   },
-  "retainedInitialOrderingFailures": {
-    "renderer": {
-      "path": "/tmp/aux-root-native-successor-renderer.log",
-      "sha256": "df0f4f0c03150f0d4f95d41c300edfdc7662ead0c730c0917c83e0113f5b32a0",
-      "reason": "Fresh contracts dist absent before workspace compile; dependent checks repeated after actual build."
-    },
-    "bridge": {
-      "path": "/tmp/aux-root-native-successor-bridge.log",
-      "sha256": "8183421ed4682c0b78bcc9fc9b252014d441782982e7443d52fe3cba7a2b8ba2",
-      "reason": "Fresh contracts dist absent before workspace compile; dependent checks repeated after actual build."
-    },
-    "journeys": {
-      "path": "/tmp/aux-root-native-successor-journeys.log",
-      "sha256": "b280e4f423d1339f63fa62d54b19c82030abf23d4502ff2d51e018019ec1b3e2",
-      "reason": "Fresh contracts dist absent before workspace compile; dependent checks repeated after actual build."
-    }
+  "retainedPreparationErrors": [
+    "Initial native inventory invocation used wrong scripts path and failed MODULE_NOT_FOUND; corrected tests/host/native-port-inventory.mjs actual --check PASS.",
+    "Initial renderer build omitted AUX_CHROMIUM_SHELL_BUILD; capture correctly refused object-src none. Original pinned assets unchanged by refusal. Correct Chromium env rebuild and final capture passed; no gate changed."
+  ],
+  "functionalEvidence": {
+    "extensions": "Actual CE install-step AX shows fixtureDisabled+Enable, while failure action menu is empty. Journey explicitly presses existing Enable then requires scopedDisable and absentEnable. Pin accessible name uniquely identifies extension; actual Mac kMenuItemCheckBox maps AXMenuItem. Fresh native journey required.",
+    "demonstration": "Actual second export AXPress ACK then no visible native sheet; review visible and first secret export succeeded. No root cause claimed. Export retains actual native acknowledgement/busy duplicate exclusion and inline failure/retry; different recording while held refuses file dialog. Actual second native export remains required."
   }
 }

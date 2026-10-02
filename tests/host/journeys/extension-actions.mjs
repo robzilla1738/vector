@@ -20,13 +20,20 @@ export async function run(t) {
     await t.ax.press(control('Install unpacked extension…'));
     await t.ax.openPanel(resolve(import.meta.dirname, '../fixtures/extension-actions'), { button: 'Select' });
     await t.ax.waitFor(control(fixtureName, 'AXStaticText'));
+    const installed = { role: 'AXGroup', name: fixtureName, match: 'exact', scope: 'shell' };
+    const enable = { ...control('Enable'), within: installed };
+    // Unpacked installation can finish disabled; enable only through the real
+    // reviewed Settings action before expecting an active Chromium action.
+    if ((await t.ax.query(enable)).length) await t.ax.press(enable);
+    await t.ax.waitFor({ ...control('Disable'), within: installed });
+    t.assert.deepEqual(await t.ax.query(enable), [], 'The installed extension is actually enabled');
     await t.capture('extension-unpacked-installed');
     return { ax: await t.ax.dump({ scope: 'shell' }), rpc: await t.rpc('pages.list') };
   });
   await t.ax.key('escape', 'hid');
   await t.step('pin the unpacked action and verify the native popup anchor within forty pixels', { kind: 'ui', features: ['extensions'] }, async () => {
     await t.ax.press(control('Extensions', 'AXPopUpButton'));
-    await t.ax.press(control(`Pin ${fixtureName}`));
+    await t.ax.press(control(`Pin ${fixtureName}`, 'AXMenuItem'));
     await t.ax.key('escape', 'hid');
     await t.ax.waitFor(action);
     const [button] = await t.ax.query(action);

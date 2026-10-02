@@ -1,10 +1,9 @@
 import { createElement, lazy, Suspense } from "react";
-import { bridge } from "../../bridge";
 import { call, useStore } from "../../store";
 import { useRecording } from "./state";
 import type { FeatureMount } from "../registry";
 import { RecordButton, RecorderBanner } from "./RecorderControls";
-import { bootRecorder, recorderAction, recordingGeneration } from "./state";
+import { bootRecorder, recorderAction, recordingGeneration, exportDemonstration } from "./state";
 const ReviewRecording = lazy(() => import("./ReviewRecording"));
 function RecorderReview() {
   const review = useRecording(state => state.review);
@@ -13,14 +12,7 @@ function RecorderReview() {
 export const mount: FeatureMount = {
   feature: "demonstrationSkills", boot: bootRecorder, sidebarItems: [RecordButton], overlays: [RecorderBanner, RecorderReview],
   commands: {
-    "export-demonstration": async () => {
-      const demo = useRecording.getState().demonstration, life = recordingGeneration();
-      if (!demo || demo.state !== "stopped") throw new Error("Stop and review this demonstration before exporting.");
-      const current = await call("recorder.get", { recordingId: demo.id });
-      if (recordingGeneration() !== life || useRecording.getState().demonstration?.id !== demo.id) throw new Error("This Profile changed before export.");
-      if (current.state !== "stopped") throw new Error("Stop the current demonstration before export.");
-      return bridge.saveFile("aux-demonstration.json", JSON.stringify(current, null, 2));
-    },
+    "export-demonstration": () => exportDemonstration(),
     "record-demonstration": (context, invocation) => recorderAction("start", invocation.payload && "pageId" in invocation.payload ? invocation.payload.pageId : context.activePageId ?? undefined),
     "pause-demonstration": () => recorderAction("pause"), "resume-demonstration": () => recorderAction("resume"),
     "propose-skill-repair": (_context, invocation) => {

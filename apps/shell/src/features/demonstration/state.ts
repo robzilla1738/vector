@@ -44,3 +44,24 @@ export async function recorderAction(action: "start" | "pause" | "resume" | "sto
   } catch (error) { if (life === generation) useRecording.setState({ error: error instanceof Error ? error.message : String(error) }); throw error; }
   finally { if (life === generation) useRecording.setState({ busy: false }); }
 }
+
+export async function exportDemonstration() {
+  if (useRecording.getState().busy) throw new Error("A demonstration operation is still running.");
+  const demo = useRecording.getState().demonstration, life = generation;
+  if (!demo || demo.state !== "stopped") throw new Error("Stop and review this demonstration before exporting.");
+  useRecording.setState({ busy: true, error: "" });
+  try {
+    const current = await call("recorder.get", { recordingId: demo.id });
+    if (generation !== life || useRecording.getState().demonstration?.id !== demo.id)
+      throw new Error("This Profile changed before export.");
+    if (current.state !== "stopped") throw new Error("Stop the current demonstration before export.");
+    return await bridge.saveFile("aux-demonstration.json", JSON.stringify(current, null, 2));
+  } catch (error) {
+    if (generation === life && useRecording.getState().demonstration?.id === demo.id)
+      useRecording.setState({ error: error instanceof Error ? error.message : String(error) });
+    throw error;
+  } finally {
+    if (generation === life && useRecording.getState().demonstration?.id === demo.id)
+      useRecording.setState({ busy: false });
+  }
+}

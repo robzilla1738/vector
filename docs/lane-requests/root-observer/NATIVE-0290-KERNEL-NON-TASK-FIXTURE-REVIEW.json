@@ -1,0 +1,45 @@
+{
+  "reservation": "0290",
+  "scope": "fixture-only",
+  "candidateBaseline": "ce77c017833d09b975db01fd33d7312b3f3e3476",
+  "path": "content/browser/child_process_task_port_provider_mac_unittest.cc",
+  "beforeSha256": "95dd029a8e34c18fe67c35bd25dbf7993b3b10c980575c85ae23561f3713fe89",
+  "afterSha256": "e267afecd5d15331250b751ef54c9919d9e3c611ee1ef70af7a7d5ba5aa82edf",
+  "patchSha256": "97c386e7906340ca1ef9960b8e3d779398f787403c5047faa5c8e0862e02d4e2",
+  "apiPins": [
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/base/apple/scoped_mach_port.h",
+      "sha256": "e31d6f25a892a1de6de18ad763b800dfa399eba64ebaa2f5435668dcb5cf8e4a"
+    },
+    {
+      "path": "/Applications/Xcode-beta.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/include/mach/mach_init.h",
+      "sha256": "2949d3efe703ff1d0111d1158e2af328d3828c5403441467c5199506576aa3fe"
+    },
+    {
+      "path": "/Applications/Xcode-beta.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/include/mach/task.h",
+      "sha256": "9c9681b124d2bd26f896de2d138ec47b12897b9d775c8a7308d007cf5e15a82b"
+    },
+    {
+      "path": "/Applications/Xcode-beta.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk/usr/include/mach/mach_types.h",
+      "sha256": "2a5241cad8a10fccd42b0c9ae58f0d4af698bdc279ed80d7d427969157f819a7"
+    }
+  ],
+  "actualApi": {
+    "mach_thread_self": "mach_init.h75 kernel-related thread control port",
+    "task_info": "task.h146 target_task typed task_name_t",
+    "ownedSendRight": "ScopedMachSendRight owns one send reference; provider original RetainMachSendRight unchanged"
+  },
+  "setupAssertionChanged": "ASSERT_TRUE(CreateMachPort(...)) -> ASSERT_TRUE(send.is_valid())",
+  "originalRefusalAssertionsByteExact": true,
+  "wholeOriginalRestored": true,
+  "forwardCheck": true,
+  "reverseCheck": true,
+  "productionChanged": false,
+  "compiled": false,
+  "executed": false,
+  "recordedCrashCauseEstablished": false,
+  "expectedKernelRefusalRequiresActualTest": true,
+  "rootIndependentlyReviewed": true,
+  "reviewRequestSha256": "030468ddb66851483b4845441d71679bf81665b11cca40a8c0440a7cfd89adbf",
+  "nativeCompiled": false
+}

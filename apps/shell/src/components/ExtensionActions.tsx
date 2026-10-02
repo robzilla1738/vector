@@ -96,6 +96,7 @@ export function ExtensionActions() {
                 type="button"
                 role="menuitemcheckbox"
                 aria-checked={item.pinned}
+                aria-label={`${item.pinned ? "Unpin" : "Pin"} ${item.name}`}
                 className="menu-item extension-pin"
                 data-command-id="pin-extension-action"
                 onClick={() =>
