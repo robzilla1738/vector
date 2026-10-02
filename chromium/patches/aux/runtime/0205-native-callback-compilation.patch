@@ -1,0 +1,282 @@
+diff --git a/chrome/browser/ui/aux/owner_mutation_fence.cc b/chrome/browser/ui/aux/owner_mutation_fence.cc
+index e3c14e2a34170c51e74a6707506e9c5a78f3eb47..93ed51061827a15f73d4e48d311f38a402572e7a 100644
+--- a/chrome/browser/ui/aux/owner_mutation_fence.cc
++++ b/chrome/browser/ui/aux/owner_mutation_fence.cc
+@@ -6,6 +6,8 @@
+ #include "base/unguessable_token.h"
+ 
+ namespace aux {
++OwnerMutationFence::OwnerMutationFence() = default;
++OwnerMutationFence::~OwnerMutationFence() = default;
+ std::optional<std::string> OwnerMutationFence::Begin() {
+   if (pending_.size() >= 256 || failure_epoch_ == std::numeric_limits<uint64_t>::max())
+     return std::nullopt;
+diff --git a/chrome/browser/ui/aux/owner_mutation_fence.h b/chrome/browser/ui/aux/owner_mutation_fence.h
+index 48d789e53550b3e0274786aecfcbc9abf54ead93..e9b4bafbbae6f974892bee3c53e4257e06715c14 100644
+--- a/chrome/browser/ui/aux/owner_mutation_fence.h
++++ b/chrome/browser/ui/aux/owner_mutation_fence.h
+@@ -14,6 +14,8 @@ namespace aux {
+ // an already queued agent permission answer may cause a native effect.
+ class OwnerMutationFence {
+  public:
++  OwnerMutationFence();
++  ~OwnerMutationFence();
+   std::optional<std::string> Begin();
+   bool End(const std::string& token, bool success);
+   bool pending() const { return !pending_.empty(); }
+diff --git a/chrome/browser/ui/aux/owner_mutation_fence_unittest.cc b/chrome/browser/ui/aux/owner_mutation_fence_unittest.cc
+index ebd83a01d5fd2f82125efe3117f2ba333ad185fc..10b71ab7157efc48d903861e2296557da61e6675 100644
+--- a/chrome/browser/ui/aux/owner_mutation_fence_unittest.cc
++++ b/chrome/browser/ui/aux/owner_mutation_fence_unittest.cc
+@@ -27,9 +27,9 @@ TEST(OwnerMutationFenceTest, FailureRetiresTheAnswerEpochBeforeNotification) {
+   auto first = fence.Begin();
+   auto second = fence.Begin();
+   bool observed_failure_while_pending = false;
+-  auto subscription = fence.Observe(base::BindRepeating([&] {
+-    observed_failure_while_pending = fence.pending() && fence.failure_epoch() == 1;
+-  }));
++  auto subscription = fence.Observe(base::BindRepeating([](OwnerMutationFence* fence, bool* observed) {
++    *observed = fence->pending() && fence->failure_epoch() == 1;
++  }, base::Unretained(&fence), base::Unretained(&observed_failure_while_pending)));
+   ASSERT_TRUE(first);
+   ASSERT_TRUE(second);
+   EXPECT_TRUE(fence.End(*first, false));
+@@ -67,9 +67,9 @@ TEST(OwnerMutationFenceTest, ReceiptObserverMayBeginAnotherMutation) {
+   auto token = fence.Begin();
+   ASSERT_TRUE(token);
+   std::optional<std::string> reentrant;
+-  auto subscription = fence.Observe(base::BindRepeating([&] {
+-    if (!fence.pending()) reentrant = fence.Begin();
+-  }));
++  auto subscription = fence.Observe(base::BindRepeating([](OwnerMutationFence* fence, std::optional<std::string>* reentrant) {
++    if (!fence->pending()) *reentrant = fence->Begin();
++  }, base::Unretained(&fence), base::Unretained(&reentrant)));
+   EXPECT_TRUE(fence.End(*token, true));
+   ASSERT_TRUE(reentrant);
+   EXPECT_TRUE(fence.pending());
+diff --git a/chrome/browser/ui/aux/permission_broker_unittest.cc b/chrome/browser/ui/aux/permission_broker_unittest.cc
+index 0993a39978a5970c6d346ab6e9cc971eb79f89ac..8048307b32da1f9ad0a1435bd529eef3e297b742 100644
+--- a/chrome/browser/ui/aux/permission_broker_unittest.cc
++++ b/chrome/browser/ui/aux/permission_broker_unittest.cc
+@@ -121,6 +121,25 @@ class PermissionBrokerTest : public BrowserWithTestWindowTest {
+     EXPECT_EQ(*at, std::floor(*at));
+     Reply("permission.request", true, base::DictValue().Set("batchId", *batch).Set("decision", "allow"), drain);
+   }
++  void DestroyPage() {
++    auto contents = browser()->tab_strip_model()->DetachWebContentsAtForInsertion(
++        browser()->tab_strip_model()->GetIndexOfWebContents(page_));
++    page_ = nullptr; manager_ = nullptr; contents.reset();
++  }
++  void RevokeLease() { controller_->Revoke(base::DictValue().Set("leaseId", "lease")); }
++  bool RevokeAndCheckAuthority() {
++    RevokeLease();
++    return !controller_->PermissionAuthority(page_->GetPrimaryMainFrame()).empty();
++  }
++  bool ReplaceAndCheckAuthority() {
++    NavigateAndCommit(page_, origin_);
++    return !controller_->PermissionAuthority(page_->GetPrimaryMainFrame()).empty();
++  }
++  bool DestroyAndCheckDocument(content::WeakDocumentPtr document) {
++    DestroyPage();
++    return document.AsRenderFrameHostIfValid() &&
++        !controller_->PermissionAuthority(document.AsRenderFrameHostIfValid()).empty();
++  }
+   void Mutate(const std::string& method = "safety.originPolicies.set", bool internal = false) {
+     auto done = base::BindOnce([](AuxRuntimeHost::Response) {});
+     if (internal) host_->CallInternal(method, "{}", std::move(done));
+@@ -309,10 +328,7 @@ TEST_F(PermissionBrokerTest, ResolverFinalBoundaryRejectsActualLeaseRevocation)
+   Prompt();
+   std::vector<const permissions::PermissionRequest*> batch;
+   for (const auto& request : manager_->Requests()) batch.push_back(request.get());
+-  EXPECT_FALSE(manager_->ResolveRequestsFromBrowser(batch, true, base::BindRepeating([this] {
+-    controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
+-    return !controller_->PermissionAuthority(page_->GetPrimaryMainFrame()).empty();
+-  })));
++  EXPECT_FALSE(manager_->ResolveRequestsFromBrowser(batch, true, base::BindRepeating(&PermissionBrokerTest::RevokeAndCheckAuthority, base::Unretained(this))));
+   EXPECT_FALSE(state_.granted); EXPECT_TRUE(manager_->IsRequestInProgress());
+   EXPECT_NE(Find("permission.invalidate"), nullptr);
+ }
+@@ -320,10 +336,7 @@ TEST_F(PermissionBrokerTest, ResolverFinalBoundaryRejectsActualDocumentReplaceme
+   Prompt();
+   std::vector<const permissions::PermissionRequest*> batch;
+   for (const auto& request : manager_->Requests()) batch.push_back(request.get());
+-  EXPECT_FALSE(manager_->ResolveRequestsFromBrowser(batch, true, base::BindRepeating([this] {
+-    NavigateAndCommit(page_, origin_);
+-    return !controller_->PermissionAuthority(page_->GetPrimaryMainFrame()).empty();
+-  })));
++  EXPECT_FALSE(manager_->ResolveRequestsFromBrowser(batch, true, base::BindRepeating(&PermissionBrokerTest::ReplaceAndCheckAuthority, base::Unretained(this))));
+   EXPECT_FALSE(state_.granted); EXPECT_NE(Find("permission.invalidate"), nullptr);
+ }
+ TEST_F(PermissionBrokerTest, ResolverFinalBoundarySurvivesActualManagerDestruction) {
+@@ -332,23 +345,13 @@ TEST_F(PermissionBrokerTest, ResolverFinalBoundarySurvivesActualManagerDestructi
+   for (const auto& request : manager_->Requests()) batch.push_back(request.get());
+   const auto document = page_->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+   auto* manager = manager_.get();
+-  EXPECT_FALSE(manager->ResolveRequestsFromBrowser(batch, true, base::BindRepeating([this, document] {
+-    auto contents = browser()->tab_strip_model()->DetachWebContentsAtForInsertion(
+-        browser()->tab_strip_model()->GetIndexOfWebContents(page_));
+-    page_ = nullptr; manager_ = nullptr; contents.reset();
+-    return document.AsRenderFrameHostIfValid() &&
+-        !controller_->PermissionAuthority(document.AsRenderFrameHostIfValid()).empty();
+-  })));
++  EXPECT_FALSE(manager->ResolveRequestsFromBrowser(batch, true, base::BindRepeating(&PermissionBrokerTest::DestroyAndCheckDocument, base::Unretained(this), document)));
+   EXPECT_FALSE(state_.granted); EXPECT_TRUE(state_.finished);
+ }
+ TEST_F(PermissionBrokerTest, ActualGrantCallbackCanDestroyManagerWithoutPostEffectAccess) {
+   auto request = std::make_unique<permissions::MockPermissionRequest>(
+       origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr());
+-  request->RegisterOnPermissionDecidedCallback(base::BindOnce([this] {
+-    auto contents = browser()->tab_strip_model()->DetachWebContentsAtForInsertion(
+-        browser()->tab_strip_model()->GetIndexOfWebContents(page_));
+-    page_ = nullptr; manager_ = nullptr; contents.reset();
+-  }));
++  request->RegisterOnPermissionDecidedCallback(base::BindOnce(&PermissionBrokerTest::DestroyPage, base::Unretained(this)));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(request));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+   ASSERT_NE(Find("permission.request"), nullptr); Allow();
+@@ -357,11 +360,7 @@ TEST_F(PermissionBrokerTest, ActualGrantCallbackCanDestroyManagerWithoutPostEffe
+ TEST_F(PermissionBrokerTest, ActualDenyCallbackCanDestroyManagerWithoutPostEffectAccess) {
+   auto request = std::make_unique<permissions::MockPermissionRequest>(
+       origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr());
+-  request->RegisterOnPermissionDecidedCallback(base::BindOnce([this] {
+-    auto contents = browser()->tab_strip_model()->DetachWebContentsAtForInsertion(
+-        browser()->tab_strip_model()->GetIndexOfWebContents(page_));
+-    page_ = nullptr; manager_ = nullptr; contents.reset();
+-  }));
++  request->RegisterOnPermissionDecidedCallback(base::BindOnce(&PermissionBrokerTest::DestroyPage, base::Unretained(this)));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(request));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+   auto* call = Find("permission.request"); ASSERT_TRUE(call);
+@@ -375,7 +374,7 @@ TEST_F(PermissionBrokerTest, OriginalDecisionMutationCancelsUntouchedDuplicateWi
+   auto request = std::make_unique<permissions::MockPermissionRequest>(
+       origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr());
+   auto duplicate = request->CreateDuplicateRequest(duplicate_state.GetWeakPtr());
+-  request->RegisterOnPermissionDecidedCallback(base::BindOnce([this] { Mutate(); }));
++  request->RegisterOnPermissionDecidedCallback(base::BindOnce(&PermissionBrokerTest::Mutate, base::Unretained(this), std::string("safety.originPolicies.set"), false));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(request));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(duplicate));
+   manager_->DocumentOnLoadCompletedInPrimaryMainFrame(); base::RunLoop().RunUntilIdle();
+@@ -392,9 +391,7 @@ TEST_F(PermissionBrokerTest, DuplicateDecisionRevocationCancelsLaterDuplicateWit
+       origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr());
+   auto first = request->CreateDuplicateRequest(first_duplicate.GetWeakPtr());
+   auto later = request->CreateDuplicateRequest(later_duplicate.GetWeakPtr());
+-  first->RegisterOnPermissionDecidedCallback(base::BindOnce([this] {
+-    controller_->Revoke(base::DictValue().Set("leaseId", "lease"));
+-  }));
++  first->RegisterOnPermissionDecidedCallback(base::BindOnce(&PermissionBrokerTest::RevokeLease, base::Unretained(this)));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(request));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(first));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(later));
+@@ -412,11 +409,7 @@ TEST_F(PermissionBrokerTest, ActualDuplicateCallbackDestructionCannotGrantLaterD
+       origin_, permissions::RequestType::kNotifications, state_.GetWeakPtr());
+   auto first = request->CreateDuplicateRequest(first_duplicate.GetWeakPtr());
+   auto later = request->CreateDuplicateRequest(later_duplicate.GetWeakPtr());
+-  first->RegisterOnPermissionDecidedCallback(base::BindOnce([this] {
+-    auto contents = browser()->tab_strip_model()->DetachWebContentsAtForInsertion(
+-        browser()->tab_strip_model()->GetIndexOfWebContents(page_));
+-    page_ = nullptr; manager_ = nullptr; contents.reset();
+-  }));
++  first->RegisterOnPermissionDecidedCallback(base::BindOnce(&PermissionBrokerTest::DestroyPage, base::Unretained(this)));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(request));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(first));
+   manager_->AddRequest(page_->GetPrimaryMainFrame(), std::move(later));
+diff --git a/components/permissions/permission_request_manager.cc b/components/permissions/permission_request_manager.cc
+index 766f15f0df2eafb0247dc7e874469d4412c9bb80..3608927283a63b2aeab114f62ebd0dd649fb1130 100644
+--- a/components/permissions/permission_request_manager.cc
++++ b/components/permissions/permission_request_manager.cc
+@@ -651,33 +651,40 @@ bool PermissionRequestManager::IsCurrentBatch(
+     if (!expected[i] || expected[i].get() != requests_[i].get()) return false;
+   return true;
+ }
++bool PermissionRequestManager::IsCurrentBrowserBatch(
++    const std::vector<const PermissionRequest*>& expected) const {
++  if (ignore_callbacks_from_prompt_ || expected.empty() || expected.size() != requests_.size() || !current_request_ui_to_use_ ||
++      embedded_prompt_flow_model_ ||
++      web_contents()->HasUncommittedNavigationInPrimaryMainFrame()) return false;
++  for (size_t i = 0; i < requests_.size(); ++i) {
++    if (expected[i] != requests_[i].get() ||
++        requests_[i]->IsEmbeddedPermissionElementInitiated()) return false;
++  }
++  return true;
++}
+ bool PermissionRequestManager::ResolveRequestsFromBrowser(
+     const std::vector<const PermissionRequest*>& expected_requests, bool allow,
+     base::RepeatingCallback<bool()> before_effect) {
+-  const auto current = [&] {
+-    if (ignore_callbacks_from_prompt_ || expected_requests.empty() || expected_requests.size() != requests_.size() || !current_request_ui_to_use_ ||
+-        embedded_prompt_flow_model_ ||
+-        web_contents()->HasUncommittedNavigationInPrimaryMainFrame()) return false;
+-    for (size_t i = 0; i < requests_.size(); ++i) {
+-      if (expected_requests[i] != requests_[i].get() ||
+-          requests_[i]->IsEmbeddedPermissionElementInitiated()) return false;
+-    }
+-    return true;
+-  };
+-  if (!current() || !before_effect) return false;
++  if (!IsCurrentBrowserBatch(expected_requests) || !before_effect) return false;
+   const auto self = weak_factory_.GetWeakPtr();
+   const auto lifetimes = CurrentRequestLifetimes();
+   SetCurrentRequestsInitialStatuses();
+-  if (!self || !IsCurrentBatch(lifetimes) || !current() ||
++  if (!self || !IsCurrentBatch(lifetimes) || !IsCurrentBrowserBatch(expected_requests) ||
+       current_requests_initial_statuses_.size() != lifetimes.size()) return false;
+-  if (!before_effect.Run() || !self || !IsCurrentBatch(lifetimes) || !current()) return false;
++  if (!before_effect.Run() || !self || !IsCurrentBatch(lifetimes) || !IsCurrentBrowserBatch(expected_requests)) return false;
+   bool retired = false;
+   if (allow) AcceptCurrentRequests(std::monostate(), base::BindRepeating(
+-      [&] {
+-        if (retired) return false;
+-        retired = !self || !IsCurrentBatch(lifetimes) || !current() || !before_effect.Run();
+-        return !retired && self && IsCurrentBatch(lifetimes) && current();
+-      }));
++      [](base::WeakPtr<PermissionRequestManager> manager,
++         const std::vector<base::WeakPtr<PermissionRequest>>& lifetimes,
++         const std::vector<const PermissionRequest*>& expected,
++         const base::RepeatingCallback<bool()>& before_effect, bool* retired) {
++        if (*retired) return false;
++        *retired = !manager || !manager->IsCurrentBatch(lifetimes) ||
++            !manager->IsCurrentBrowserBatch(expected) || !before_effect.Run();
++        return !*retired && manager && manager->IsCurrentBatch(lifetimes) &&
++            manager->IsCurrentBrowserBatch(expected);
++      }, self, lifetimes, expected_requests, before_effect,
++      base::Unretained(&retired)));
+   else DenyCurrentRequests(std::monostate());
+   // Effects/observers may destroy the manager; do not access it again.
+   return true;
+@@ -1680,14 +1687,19 @@ bool PermissionRequestManager::PermissionGrantedIncludingDuplicates(
+   else request->Cancelled();
+   if (!self || !request_lifetime || !RequestExistsExactlyOnce(request, pending_permission_requests_, requests_)) return false;
+   VisitDuplicateRequests(base::BindRepeating(
+-      [&](const std::unique_ptr<PermissionRequest>& duplicate) {
++      [](base::WeakPtr<PermissionRequestManager> manager,
++         base::WeakPtr<PermissionRequest> original,
++         const PromptOptions& options, bool is_one_time,
++         const base::RepeatingCallback<bool()>& before_grant, bool* all_granted,
++         const std::unique_ptr<PermissionRequest>& duplicate) {
+         const auto lifetime = duplicate->GetWeakPtr();
+         const bool grant = !before_grant || before_grant.Run();
+-        if (!self || !lifetime || !request_lifetime) return;
+-        all_granted &= grant;
+-        if (grant) duplicate->PermissionGranted(prompt_options, is_one_time);
++        if (!manager || !lifetime || !original) return;
++        *all_granted &= grant;
++        if (grant) duplicate->PermissionGranted(options, is_one_time);
+         else duplicate->Cancelled();
+-      }), request);
++      }, self, request_lifetime, prompt_options, is_one_time, before_grant,
++      base::Unretained(&all_granted)), request);
+   return all_granted;
+ }
+ 
+diff --git a/components/permissions/permission_request_manager.h b/components/permissions/permission_request_manager.h
+index 5ef9a5cc63d5b649891713f299189ad3b7196dd2..9d650564ed93c919df582988c702b57e9741053c 100644
+--- a/components/permissions/permission_request_manager.h
++++ b/components/permissions/permission_request_manager.h
+@@ -412,6 +412,7 @@ class PermissionRequestManager
+ 
+   std::vector<base::WeakPtr<PermissionRequest>> CurrentRequestLifetimes() const;
+   bool IsCurrentBatch(const std::vector<base::WeakPtr<PermissionRequest>>& expected) const;
++  bool IsCurrentBrowserBatch(const std::vector<const PermissionRequest*>& expected) const;
+   void AcceptCurrentRequests(const PromptOptions& prompt_options,
+       base::RepeatingCallback<bool()> before_grant = {});
+   void DenyCurrentRequests(const PromptOptions& prompt_options);

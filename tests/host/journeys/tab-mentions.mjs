@@ -15,7 +15,10 @@ export async function run(t) {
   let turns = 0;
   t.model.respond(async payload => {
     if (!payload.tools?.length) return { content: 'Aux mention A summary' };
-    if (++turns === 1) {
+    if (++turns === 1) return tool('snapshot', {}, 'l10-a-only-snapshot');
+    if (turns === 2) {
+      t.assert.match(JSON.stringify(payload.messages), /violet-271/, 'The explicit A mention must provide real A evidence while B is selected');
+      t.assert.ok(!JSON.stringify(payload.messages).includes('amber-839'), 'The first snapshot must not expose B content');
       await held;
       return tool('goal_program', { code: 'const observed = snapshot(); if (observed.status === "unavailable") { display(observed); submitResult("The mentioned page is unavailable after its document changed."); } else { throw new Error("The person-replaced document was incorrectly readable"); }', answerLabel: '' }, 'l10-drift-snapshot');
     }
@@ -28,7 +31,7 @@ export async function run(t) {
     t.assert.deepEqual(run.pageIds, [a.pageId]);
     t.assert.equal(run.config.mentions.length, 1);
     t.assert.equal(run.config.mentions[0].pageId, a.pageId);
-    await t.until('the model is waiting on its first real turn', async () => t.model.calls.filter(call => call.tools?.length).length === 1);
+    await t.until('the model has read A and is waiting on its second real turn', async () => t.model.calls.filter(call => call.tools?.length).length === 2);
     await t.capture('mention-a-selected');
     return { ax: await t.ax.dump(), rpc: { run } };
   });

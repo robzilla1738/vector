@@ -1,0 +1,18 @@
+{
+  "actualRootTests": 26,
+  "status": "PASS",
+  "runtimeSourceUnchangedSinceActualRebuild": true,
+  "nativeBuildPending": true,
+  "logs": [
+    {
+      "path": "/tmp/aux-root-permission-retry-tests.log",
+      "sha256": "baec288fa77a01a4b9c58f1a25e02c787b909ef6a3e210e17fedc97068e285f6",
+      "bytes": 326
+    },
+    {
+      "path": "/tmp/aux-root-bind-correction-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562",
+      "bytes": 142
+    }
+  ]
+}

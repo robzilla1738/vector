@@ -176,3 +176,4 @@ aux/runtime/0200-native-owner-mutation-fence.patch
 aux/runtime/0203-native-test-interface-contracts.patch
 aux/runtime/0204-appkit-command-registry.patch
 aux/runtime/0202-native-permission-lifecycle.patch
+aux/runtime/0205-native-callback-compilation.patch

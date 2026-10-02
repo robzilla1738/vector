@@ -1,0 +1,58 @@
+{
+  "packet": "/tmp/aux-browser-runtime-root-complete/chromium/patches/aux/runtime/0205-native-callback-compilation.patch",
+  "sha256": "b95eabc665619d51074e7b8d90772db8ceeca67360ce3b9183bcf0b17662bbe0",
+  "baselines": [
+    {
+      "path": "chrome/browser/ui/aux/owner_mutation_fence.h",
+      "sha256": "1072c720cc8693265d3eec56debb32fc8fd82dc62792fb0528c2afb955b7ea75"
+    },
+    {
+      "path": "chrome/browser/ui/aux/owner_mutation_fence.cc",
+      "sha256": "22e3afdb2d2cd2e78143019b99807dc1e8cca65bf2a9a61052a80c0b415b8886"
+    },
+    {
+      "path": "chrome/browser/ui/aux/owner_mutation_fence_unittest.cc",
+      "sha256": "4e8ad254a0f39f2e2fc69df8499a0be39b3e7135b689b0ec3a7fe53cec78c864"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.h",
+      "sha256": "bfb25c6f0c1f5a6a85cd069db87b7f60d65dc6a7346e6213b153daabcc7e4841"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.cc",
+      "sha256": "6c7e53c30cb25866b87a71eb1b3b8acc68024fded2ce7d90de1e403c091aac8d"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_broker_unittest.cc",
+      "sha256": "15f0446036b0e64fea73f72149f4c7febab24f544afce9496f2e78c88a79fb12"
+    }
+  ],
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux/owner_mutation_fence.h",
+      "sha256": "001ce5108fd1235109c024688b9395543d57e209f0757dbac9f922ce43271a93"
+    },
+    {
+      "path": "chrome/browser/ui/aux/owner_mutation_fence.cc",
+      "sha256": "b502e11a965bfb279cd6e6383d3b163587665d7c7a964b4b8ae713b11b7620b9"
+    },
+    {
+      "path": "chrome/browser/ui/aux/owner_mutation_fence_unittest.cc",
+      "sha256": "8062744830c6c68cf9540065d5bbea849bd7aa114b71d96c027a582e5df430b7"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.h",
+      "sha256": "b94c0a94be75b0c7727b70beab1c7ef0ca209f7b3d92400e48e5ebdd7ddb86a6"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.cc",
+      "sha256": "3d337636a92bde3a7ce7f845c370582677d9320fe81b19aab320049dd9a518c4"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_broker_unittest.cc",
+      "sha256": "2a6a2047d6fdbbcedbdb6ad791b2d8f82830aeb13d7c951bc57834f481a8145a"
+    }
+  ],
+  "compiled": false,
+  "reason": "Actual Chromium complex-class and stateless Bind compilation requirements; all effect and lifecycle assertions preserved"
+}

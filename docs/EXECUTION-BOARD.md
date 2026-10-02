@@ -1,4 +1,6 @@
 # Browser-runtime execution board
+Latest native compilation correction: solebuilder0b3e caught actual Chromium complex-class ctor/dtor and stateless Bind violations. Root0205 composes all six affected fence/manager/test leaves with explicit out-of-line lifecycle and noncapturing bound arguments; all31 Broker and five fence assertions remain intact. Fresh full ordered reversal/replay34packets/108mirrors/73baselines passes against independently pinned0b3e baselines (stable now legitimately includes the prior packets). Root independently passes26 actual runtime permission producer cases, including concurrent pending-ID deduplication, one-use consent/replay denial and hidden exact standing grant. F16 journey now proves affirmative A-only violet-271 access before navigation drift and excludes B amber-839. Native compilation/effects still pending; no gate waiver.
+
 
 ## Current coherent throughput checkpoint
 

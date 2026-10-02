@@ -337,3 +337,41 @@ it("revoking an origin grant retires a permission lease across scopes and cancel
   expect(finalCheck).toThrow();
   expect(f.approvals.pending("other").map(item => item.approvalId)).toContain(otherId);
 });
+
+
+it("immutable native retries retain one exact pending approval until person consent", async () => {
+  const f = await fixture();
+  const serialized = JSON.stringify(f.request);
+  const first = await f.controller.request(f.request);
+  expect(first).toMatchObject({ decision: "pending", approvalId: expect.any(String) });
+  for (let retry = 0; retry < 3; retry++)
+    expect(await f.controller.request(JSON.parse(serialized))).toEqual(first);
+  expect(f.approvals.pending("run").map(item => item.approvalId)).toEqual([first.approvalId]);
+  expect(JSON.stringify(f.request)).toBe(serialized);
+  f.approvals.decideLocal({ decision: "accept", approvalId: first.approvalId! }, "run");
+  expect(await f.controller.request(JSON.parse(serialized))).toEqual({ batchId: f.request.batchId, decision: "allow" });
+  expect(await f.controller.request(JSON.parse(serialized))).toEqual({ batchId: f.request.batchId, decision: "deny" });
+});
+
+it("simultaneous identical native requests share the real pending approval rather than competing IDs", async () => {
+  const f = await fixture();
+  const responses = await Promise.all([f.controller.request(f.request), f.controller.request(f.request), f.controller.request(f.request)]);
+  expect(responses[0]).toMatchObject({ decision: "pending", approvalId: expect.any(String) });
+  expect(responses[1]).toEqual(responses[0]);
+  expect(responses[2]).toEqual(responses[0]);
+  expect(f.approvals.pending("run").map(item => item.approvalId)).toEqual([responses[0]!.approvalId]);
+  f.controller.invalidate(f.request.batchId);
+  expect(f.approvals.pending("run")).toEqual([]);
+  expect(await f.controller.request(f.request)).toMatchObject({ decision: "deny" });
+});
+
+it("a hidden overnight permission uses only its exact standing grant and remains one-use", async () => {
+  const f = await fixture();
+  const pending = await f.controller.request(f.request);
+  f.approvals.decideLocal({ decision: "acceptForOrigin", approvalId: pending.approvalId! }, "run");
+  f.page.viewStatus = "hidden";
+  f.overnight();
+  expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "allow" });
+  expect(await f.controller.request(f.request)).toEqual({ batchId: f.request.batchId, decision: "deny" });
+  expect(f.mentions.ownedPages("run")).toEqual([]);
+});
