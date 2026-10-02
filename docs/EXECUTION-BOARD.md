@@ -1,3 +1,7 @@
+## Requested pause — 2026-10-01
+
+User requested a resumable pausing point. See [pause checkpoint](PAUSE-CHECKPOINT-2026-10-01.md) for exact saved candidates, verified deliverables, unadopted work and resume order. Only the existing e496 native build may finish; no new implementation, staging or journeys. Full roadmap remains incomplete; main unchanged.
+
 # Browser-runtime execution board
 
 ## Current coherent throughput checkpoint

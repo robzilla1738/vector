@@ -1,3 +1,7 @@
+## Requested pause — 2026-10-01
+
+User requested a resumable pausing point. See [pause checkpoint](PAUSE-CHECKPOINT-2026-10-01.md) for exact saved candidates, verified deliverables, unadopted work and resume order. Only the existing e496 native build may finish; no new implementation, staging or journeys. Full roadmap remains incomplete; main unchanged.
+
 ## Current coherent throughput checkpoint
 
 Actual trust enforcement, unified command history causality, native journey readiness corrections and stable-surface design polish are integrated in the isolated root candidate. The complete rebuilt unit suite passes455 files/2424 cases; subsequent permission wrapping/error action/Settings focus changes pass17 relevant renderer cases and typecheck/lint376/format. Final fixture-only corrections preserve assertions and pass syntax/registry/format. Source logs are pinned in `docs/lane-requests/root-observer/COHERENT-SOURCE-GATES.json`; these are not native qualifications.
