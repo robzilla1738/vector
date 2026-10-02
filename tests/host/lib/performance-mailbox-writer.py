@@ -6,7 +6,7 @@ import stat
 import sys
 
 OPERATIONS = {
-    "sampleShellMemory", "sampleProcessMemory", "prepareSubagentMemoryWorkload",
+    "sampleShellMemory", "sampleProcessMemory", "sampleStockProcessMemory", "prepareSubagentMemoryWorkload",
     "prepareLittleWindowPresentation", "completeLittleWindowPresentation",
     "prepareOrganizationAutoArchiveWork", "prepareOrganizationLiveFolderWork", "completeOrganizationWork",
     "prepareGuestSplitDropPresentation", "prepareGuestDividerFramePresentation",

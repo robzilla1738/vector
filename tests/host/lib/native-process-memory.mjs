@@ -56,8 +56,10 @@ export function validateNativeProcessMemory(raw, browserPid) {
   const row = JSON.parse(raw);
   assert.equal(row.producer, 'aux-native-process-memory'); assert.equal(row.version, 1);
   assert.equal(row.status, 'sampled', 'Native process memory refused');
-  assert.deepEqual(Object.keys(row).sort(), ['producer', 'version', 'status', 'windowId', 'widgetRoutingId',
+  assert.deepEqual(Object.keys(row).sort(), ['producer', 'version', 'status', 'chromiumVersion', 'chromiumLastChange', 'windowId', 'widgetRoutingId',
     'requestNonce', 'sampleSequence', 'sampleStartUs', 'sampleEndUs', 'processes', 'workload', 'workloadObservedAt', 'workloadRequestTimes'].sort());
+  assert.match(row.chromiumVersion, /^\d+\.\d+\.\d+\.\d+$/, 'Missing actual compiled Chromium version');
+  assert.ok(typeof row.chromiumLastChange === 'string' && /^[\x21-\x7e]{1,160}$/.test(row.chromiumLastChange), 'Missing actual compiled Chromium revision');
   const workload = workloadBracket(row);
   pid(browserPid); pid(row.windowId); pid(row.widgetRoutingId); uuid(row.requestNonce);
   u64(row.sampleSequence);
@@ -160,7 +162,7 @@ export function createNativeProcessMemoryReader({ transport, browserPid, candida
   readPower = () => execFileSync('/usr/bin/pmset', ['-g', 'batt'], { encoding: 'utf8', timeout: 5000 }) }) {
   validateAppearanceCandidate(candidate); pid(browserPid);
   assert.ok(typeof transport?.invoke === 'function' && typeof readIdentity === 'function');
-  let busy = false, receiptSequence = 0n, sampleSequence = 0n, previousEnd = 0n, scope, childGeneration;
+  let busy = false, receiptSequence = 0n, sampleSequence = 0n, previousEnd = 0n, scope, childGeneration, compiledChromium;
   const verify = async () => {
     const identity = await readIdentity(); assert.deepEqual(identity.runtime, candidate.productIdentity);
     for (const key of ['sourceCommit', 'buildId', 'manifestHash']) assert.equal(identity.native?.[key], candidate.native[key]);
@@ -189,6 +191,11 @@ export function createNativeProcessMemoryReader({ transport, browserPid, candida
       else childGeneration = receipt.generation;
       const decoded = preparing ? undefined : validateNativeProcessMemory(observation.raw, browserPid);
       const row = preparing ? validateNativeSubagentPreparation(observation.raw) : decoded.row;
+      if (decoded) {
+        const tag = { version: row.chromiumVersion, lastChange: row.chromiumLastChange };
+        if (compiledChromium) assert.deepEqual(tag, compiledChromium, 'Compiled Chromium source changed within native series');
+        else compiledChromium = tag;
+      }
       if (row.status !== 'refused') {
         assert.equal(wrapper.windowId, row.windowId);
         const runtime = decoded?.processes.find(process => process.role === 'runtime');

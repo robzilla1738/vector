@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { validateNativeProcessMemory, validateNativeSubagentPreparation, createNativeProcessMemoryReader } from './native-process-memory.mjs';
 const record = () => {
   const readings = [['100', '5', '10'], ['105', '20', '30'], ['103', '60', '70'], ['102', '80', '90']];
-  const row = { producer: 'aux-native-process-memory', version: 1, status: 'sampled', windowId: 1, widgetRoutingId: 2,
+  const row = { producer: 'aux-native-process-memory', version: 1, status: 'sampled', chromiumVersion: '145.0.7579.0', chromiumLastChange: 'actual-upstream-revision', windowId: 1, widgetRoutingId: 2,
     requestNonce: 'a'.repeat(32), sampleSequence: '1', sampleStartUs: '1000000', sampleEndUs: '1000100', workload: { producer: 'aux-runtime-subagent-workload', version: 1, status: 'idle', activeExecutions: 0 },
     workloadObservedAt: [1000, 1001], workloadRequestTimes: ['0', '3', '91', '95'], processes: [
       [100, 'browser', 2, [], 'b'.repeat(32), '300', structuredClone(readings)],
@@ -249,4 +249,17 @@ test('fresh wrapper and native sequence cannot hide overlapping original prepara
   const f = readerFixture(), reader = createNativeProcessMemoryReader(f.options);
   await reader.readPreparation();
   await assert.rejects(reader.readPreparation(), /Native observations overlap/);
+});
+
+test('native reader retains compiled source from original private receipt, not public build label', async () => {
+  const f = readerFixture(), reader = createNativeProcessMemoryReader(f.options);
+  const observation = await reader.sample();
+  assert.equal(observation.native.chromiumVersion, '145.0.7579.0');
+  assert.equal(observation.native.chromiumLastChange, 'actual-upstream-revision');
+  assert.equal(JSON.parse(observation.raw).chromiumLastChange, observation.native.chromiumLastChange);
+});
+for (const field of ['chromiumVersion', 'chromiumLastChange']) test(`native reader refuses changed compiled ${field} inside one series`, async () => {
+  const f = readerFixture(), reader = createNativeProcessMemoryReader(f.options); await reader.sample();
+  f.mutate = row => { row[field] = field === 'chromiumVersion' ? '146.0.0.0' : 'foreign-source'; return row; };
+  await assert.rejects(reader.sample(), /Compiled Chromium source changed/);
 });

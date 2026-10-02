@@ -1,0 +1,697 @@
+diff --git a/content/browser/child_process_task_port_provider_mac.h b/content/browser/child_process_task_port_provider_mac.h
+--- a/content/browser/child_process_task_port_provider_mac.h
++++ b/content/browser/child_process_task_port_provider_mac.h
+@@ -6,7 +6,6 @@
+ #define CONTENT_BROWSER_CHILD_PROCESS_TASK_PORT_PROVIDER_MAC_H_
+ 
+ #include <map>
+-#include <array>
+ #include <optional>
+ #include <stdint.h>
+ 
+@@ -19,6 +18,7 @@
+ #include "base/thread_annotations.h"
+ #include "content/common/child_process.mojom-forward.h"
+ #include "content/common/content_export.h"
++#include "content/public/browser/child_process_task_identity_mac.h"
+ #include "mojo/public/cpp/platform/platform_handle.h"
+ 
+ namespace content {
+@@ -35,23 +35,10 @@
+   ChildProcessTaskPortProvider& operator=(const ChildProcessTaskPortProvider&) =
+       delete;
+ 
+-  enum class OwnedHostKind { kRenderer, kBrowserChild };
+-  struct OwnedHost {
+-    OwnedHostKind kind;
+-    int id;
+-    bool operator==(const OwnedHost&) const = default;
+-  };
+-  struct OwnedTaskIdentity {
+-    OwnedHost host;
+-    uint64_t launch_generation;
+-    std::array<uint32_t, 8> audit_token;
+-    int pid_version;
+-    bool operator==(const OwnedTaskIdentity&) const = default;
+-  };
+   // A fresh kernel audit of the exact native host's original task port. Null
+   // for a pending/replaced/dead task or a generic unowned association.
+-  std::optional<OwnedTaskIdentity> ReadOwnedTaskIdentity(
+-      base::ProcessHandle process_handle, OwnedHost host) const;
++  std::optional<OwnedChildProcessTaskIdentity> ReadOwnedTaskIdentity(
++      base::ProcessHandle process_handle, ChildProcessTaskHost host) const;
+ 
+   // Called by BrowserChildProcessHostImpl and RenderProcessHostImpl when a new
+   // child is launched. Invokes `GetTaskPort()` on `child_process` and stores
+@@ -62,7 +49,7 @@
+   // removed.
+   void OnChildProcessLaunched(base::ProcessHandle process_handle,
+                               mojom::ChildProcess* child_process,
+-                              std::optional<OwnedHost> owner = std::nullopt);
++                              std::optional<ChildProcessTaskHost> owner = std::nullopt);
+ 
+   // base::PortProvider:
+   mach_port_t TaskForHandle(base::ProcessHandle process_handle) const override;
+@@ -97,7 +84,7 @@
+   // Maps a process handle to the corresponding task port.
+   struct TaskPortEntry {
+     base::apple::ScopedMachSendRight port;
+-    std::optional<OwnedHost> owner;
++    std::optional<ChildProcessTaskHost> owner;
+     uint64_t launch_generation = 0;
+     uint64_t installed_generation = 0;
+   };
+diff --git a/content/browser/child_process_task_port_provider_mac.cc b/content/browser/child_process_task_port_provider_mac.cc
+--- a/content/browser/child_process_task_port_provider_mac.cc
++++ b/content/browser/child_process_task_port_provider_mac.cc
+@@ -34,7 +34,7 @@
+ 
+ void ChildProcessTaskPortProvider::OnChildProcessLaunched(
+     base::ProcessHandle process_handle,
+-    mojom::ChildProcess* child_process, std::optional<OwnedHost> owner) {
++    mojom::ChildProcess* child_process, std::optional<ChildProcessTaskHost> owner) {
+   if (!ShouldRequestTaskPorts())
+     return;
+ 
+@@ -62,9 +62,16 @@
+   return it->second.port.get();
+ }
+ 
+-std::optional<ChildProcessTaskPortProvider::OwnedTaskIdentity>
++std::optional<OwnedChildProcessTaskIdentity>
++ReadOwnedChildProcessTaskIdentity(base::ProcessHandle process_handle,
++                                 ChildProcessTaskHost host) {
++  return ChildProcessTaskPortProvider::GetInstance()->ReadOwnedTaskIdentity(
++      process_handle, host);
++}
++
++std::optional<OwnedChildProcessTaskIdentity>
+ ChildProcessTaskPortProvider::ReadOwnedTaskIdentity(
+-    base::ProcessHandle process_handle, OwnedHost host) const {
++    base::ProcessHandle process_handle, ChildProcessTaskHost host) const {
+   if (process_handle <= 0 || host.id <= 0) return std::nullopt;
+   base::AutoLock lock(lock_);
+   const auto it = handle_to_task_port_.find(process_handle);
+@@ -85,7 +92,7 @@
+   if (task_info(it->second.port.get(), TASK_VM_INFO,
+       reinterpret_cast<task_info_t>(&vm), &count) != KERN_SUCCESS ||
+       count != TASK_VM_INFO_COUNT || !vm.virtual_size) return std::nullopt;
+-  OwnedTaskIdentity result{host, it->second.launch_generation, {}, audit_token_to_pidversion(token)};
++  OwnedChildProcessTaskIdentity result{host, it->second.launch_generation, {}, audit_token_to_pidversion(token)};
+   std::copy(std::begin(token.val), std::end(token.val), result.audit_token.begin());
+   return result;
+ }
+diff --git a/content/browser/child_process_task_port_provider_mac_unittest.cc b/content/browser/child_process_task_port_provider_mac_unittest.cc
+--- a/content/browser/child_process_task_port_provider_mac_unittest.cc
++++ b/content/browser/child_process_task_port_provider_mac_unittest.cc
+@@ -302,8 +302,8 @@
+ 
+ TEST_F(ChildProcessTaskPortProviderTest, OwnedAuditUsesRealKernelTaskAndExactHost) {
+   const auto pid = getpid();
+-  const ChildProcessTaskPortProvider::OwnedHost owner{
+-      ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, 901};
++  const ChildProcessTaskHost owner{
++      ChildProcessTaskHostKind::kRenderer, 901};
+   MockChildProcess child;
+   EXPECT_CALL(child, GetTaskPort(_)).WillOnce([](auto callback) {
+     std::move(callback).Run(mojo::PlatformHandle(
+@@ -316,18 +316,18 @@
+   EXPECT_GT(audit->pid_version, 0);
+   EXPECT_EQ(audit->host, owner);
+   EXPECT_FALSE(provider()->ReadOwnedTaskIdentity(pid,
+-      {ChildProcessTaskPortProvider::OwnedHostKind::kBrowserChild, 901}));
++      {ChildProcessTaskHostKind::kBrowserChild, 901}));
+   EXPECT_FALSE(provider()->ReadOwnedTaskIdentity(pid,
+-      {ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, 902}));
++      {ChildProcessTaskHostKind::kRenderer, 902}));
+   EXPECT_EQ(provider()->TaskForHandle(pid), mach_task_self());
+ }
+ 
+ TEST_F(ChildProcessTaskPortProviderTest, LatePortReplyCannotRelabelNewHost) {
+   const auto pid = getpid();
+-  const ChildProcessTaskPortProvider::OwnedHost old_owner{
+-      ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, 911};
+-  const ChildProcessTaskPortProvider::OwnedHost new_owner{
+-      ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, 912};
++  const ChildProcessTaskHost old_owner{
++      ChildProcessTaskHostKind::kRenderer, 911};
++  const ChildProcessTaskHost new_owner{
++      ChildProcessTaskHostKind::kRenderer, 912};
+   mojom::ChildProcess::GetTaskPortCallback old_reply, new_reply;
+   MockChildProcess old_child, new_child;
+   EXPECT_CALL(old_child, GetTaskPort(_)).WillOnce([&old_reply](auto callback) { old_reply = std::move(callback); });
+@@ -347,8 +347,8 @@
+ 
+ TEST_F(ChildProcessTaskPortProviderTest, GenericAndNonTaskPortsNeverMintOwnedAudit) {
+   const auto pid = getpid();
+-  const ChildProcessTaskPortProvider::OwnedHost owner{
+-      ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, 921};
++  const ChildProcessTaskHost owner{
++      ChildProcessTaskHostKind::kRenderer, 921};
+   MockChildProcess generic;
+   EXPECT_CALL(generic, GetTaskPort(_)).WillOnce([](auto callback) {
+     std::move(callback).Run(mojo::PlatformHandle(base::apple::RetainMachSendRight(mach_task_self())));
+@@ -370,4 +370,8 @@
+   EXPECT_EQ(provider()->TaskForHandle(pid), send.get());
+ }
+ 
++TEST_F(ChildProcessTaskPortProviderTest, PublicOwnedIdentityRejectsInvalidNativeIdentity) {
++  EXPECT_FALSE(ReadOwnedChildProcessTaskIdentity(-1, {ChildProcessTaskHostKind::kRenderer, 901}));
++  EXPECT_FALSE(ReadOwnedChildProcessTaskIdentity(base::GetCurrentProcId(), {ChildProcessTaskHostKind::kRenderer, 0}));
++}
+ }  // namespace content
+diff --git a/content/browser/browser_child_process_host_impl.cc b/content/browser/browser_child_process_host_impl.cc
+--- a/content/browser/browser_child_process_host_impl.cc
++++ b/content/browser/browser_child_process_host_impl.cc
+@@ -652,8 +652,8 @@
+       process.Pid(),
+       static_cast<ChildProcessHostImpl*>(child_process_host_.get())
+           ->child_process(),
+-      ChildProcessTaskPortProvider::OwnedHost{
+-          ChildProcessTaskPortProvider::OwnedHostKind::kBrowserChild, data_.GetChildProcessId().value()});
++      ChildProcessTaskHost{
++          ChildProcessTaskHostKind::kBrowserChild, data_.GetChildProcessId().value()});
+ #endif
+ 
+ #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+diff --git a/content/browser/renderer_host/render_process_host_impl.cc b/content/browser/renderer_host/render_process_host_impl.cc
+--- a/content/browser/renderer_host/render_process_host_impl.cc
++++ b/content/browser/renderer_host/render_process_host_impl.cc
+@@ -4320,8 +4320,8 @@
+ #if BUILDFLAG(IS_MAC)
+   ChildProcessTaskPortProvider::GetInstance()->OnChildProcessLaunched(
+       peer_pid, child_process_.get(),
+-      ChildProcessTaskPortProvider::OwnedHost{
+-          ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, GetID().value()});
++      ChildProcessTaskHost{
++          ChildProcessTaskHostKind::kRenderer, GetID().value()});
+ #endif
+ 
+   if (IsReady()) {
+diff --git a/chrome/browser/ui/aux/native_browser_memory_inventory.h b/chrome/browser/ui/aux/native_browser_memory_inventory.h
+--- a/chrome/browser/ui/aux/native_browser_memory_inventory.h
++++ b/chrome/browser/ui/aux/native_browser_memory_inventory.h
+@@ -9,7 +9,7 @@
+ #include <string>
+ #include <vector>
+ #include "base/memory/weak_ptr.h"
+-#include "content/browser/child_process_task_port_provider_mac.h"
++#include "content/public/browser/child_process_task_identity_mac.h"
+ #include "chrome/browser/ui/aux/native_guest_stage_owner.h"
+ #include "chrome/browser/ui/aux/native_process_footprint.h"
+ class WebUIBrowserUI;
+@@ -18,7 +18,7 @@
+   std::string role;
+   std::vector<int> host_ids;
+   int process_type = 0;
+-  std::map<int, content::ChildProcessTaskPortProvider::OwnedTaskIdentity> host_tasks;
++  std::map<int, content::OwnedChildProcessTaskIdentity> host_tasks;
+   bool operator==(const NativeMemoryProcessOwner&) const = default;
+ };
+ struct NativeBrowserMemoryInventory {
+diff --git a/chrome/browser/ui/aux/native_browser_memory_inventory.cc b/chrome/browser/ui/aux/native_browser_memory_inventory.cc
+--- a/chrome/browser/ui/aux/native_browser_memory_inventory.cc
++++ b/chrome/browser/ui/aux/native_browser_memory_inventory.cc
+@@ -39,8 +39,8 @@
+         NativeMemoryProcessOwner{role, {}, content::PROCESS_TYPE_RENDERER, {}}).first;
+     if (position->second.role != role || position->second.process_type != content::PROCESS_TYPE_RENDERER)
+       return std::nullopt;
+-    const auto task = content::ChildProcessTaskPortProvider::GetInstance()->ReadOwnedTaskIdentity(
+-        pid, {content::ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, id});
++    const auto task = content::ReadOwnedChildProcessTaskIdentity(
++        pid, {content::ChildProcessTaskHostKind::kRenderer, id});
+     if (!task || !position->second.host_tasks.emplace(id, *task).second) return std::nullopt;
+     position->second.host_ids.push_back(id);
+   }
+@@ -58,8 +58,8 @@
+     const bool gpu = data.process_type == content::PROCESS_TYPE_GPU;
+     if (++host_count > 128 || inventory.processes.size() >= 32 ||
+         (gpu && ++gpu_count > 1)) return std::nullopt;
+-    const auto task = content::ChildProcessTaskPortProvider::GetInstance()->ReadOwnedTaskIdentity(
+-        pid, {content::ChildProcessTaskPortProvider::OwnedHostKind::kBrowserChild, id});
++    const auto task = content::ReadOwnedChildProcessTaskIdentity(
++        pid, {content::ChildProcessTaskHostKind::kBrowserChild, id});
+     if (!task) return std::nullopt;
+     inventory.processes.emplace(pid, NativeMemoryProcessOwner{
+         gpu ? "gpu" : "browser-child", {id}, data.process_type, {{id, *task}}});
+diff --git a/content/public/browser/BUILD.gn b/content/public/browser/BUILD.gn
+--- a/content/public/browser/BUILD.gn
++++ b/content/public/browser/BUILD.gn
+@@ -711,6 +711,7 @@
+   if (is_mac) {
+     sources += [
+       "ax_inspect_factory_mac.mm",
++      "child_process_task_identity_mac.h",
+       "native_event_processor_mac.h",
+       "native_event_processor_observer_mac.h",
+       "native_event_processor_observer_mac.mm",
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h b/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h
+--- a/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h
++++ b/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h
+@@ -12,7 +12,7 @@
+ #include "base/memory/weak_ptr.h"
+ #include "base/unguessable_token.h"
+ #include "base/values.h"
+-#include "content/browser/child_process_task_port_provider_mac.h"
++#include "content/public/browser/child_process_task_identity_mac.h"
+ #include "content/public/browser/weak_document_ptr.h"
+ class BrowserWindowInterface;
+ class Profile;
+@@ -38,7 +38,7 @@
+     std::string role;
+     int type;
+     std::vector<int> hosts;
+-    std::map<int, content::ChildProcessTaskPortProvider::OwnedTaskIdentity> tasks;
++    std::map<int, content::OwnedChildProcessTaskIdentity> tasks;
+     bool operator==(const Process&) const = default;
+   };
+   using Inventory = std::map<int, Process>;
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.cc b/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.cc
+--- a/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.cc
++++ b/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.cc
+@@ -105,8 +105,8 @@
+     if (pid <= 0 || id <= 0 || pid == browser_pid || ++hosts > 128 ||
+         (!result.contains(pid) && result.size() >= 32)) return std::nullopt;
+     auto& process = result.try_emplace(pid, Process{"renderer", content::PROCESS_TYPE_RENDERER, {}, {}}).first->second;
+-    const auto task = content::ChildProcessTaskPortProvider::GetInstance()->ReadOwnedTaskIdentity(pid,
+-        {content::ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, id});
++    const auto task = content::ReadOwnedChildProcessTaskIdentity(pid,
++        {content::ChildProcessTaskHostKind::kRenderer, id});
+     if (!task || process.role != "renderer" || !process.tasks.emplace(id, *task).second) return std::nullopt;
+     process.hosts.push_back(id);
+   }
+@@ -118,8 +118,8 @@
+         child.process_type == content::PROCESS_TYPE_BROWSER || child.process_type == content::PROCESS_TYPE_RENDERER) return std::nullopt;
+     const bool gpu = child.process_type == content::PROCESS_TYPE_GPU;
+     if (gpu && ++gpus > 1) return std::nullopt;
+-    const auto task = content::ChildProcessTaskPortProvider::GetInstance()->ReadOwnedTaskIdentity(pid,
+-        {content::ChildProcessTaskPortProvider::OwnedHostKind::kBrowserChild, id});
++    const auto task = content::ReadOwnedChildProcessTaskIdentity(pid,
++        {content::ChildProcessTaskHostKind::kBrowserChild, id});
+     if (!task) return std::nullopt;
+     result.emplace(pid, Process{gpu ? "gpu" : "browser-child", child.process_type, {id}, {{id, *task}}});
+   }
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.cc b/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.cc
+--- a/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.cc
++++ b/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.cc
+@@ -1,8 +1,6 @@
+ // Copyright 2026 The Aux Authors
+ #include "chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.h"
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
+-#include <cerrno>
+-#include <fcntl.h>
+ #include <sys/stat.h>
+ #include <unistd.h>
+ #include <cstdio>
+@@ -10,55 +8,26 @@
+ #include "base/command_line.h"
+ #include "base/files/file_path_watcher.h"
+ #include "base/functional/bind.h"
+-#include "base/json/json_reader.h"
+ #include "base/json/json_writer.h"
+-#include "base/posix/eintr_wrapper.h"
+ #include "base/strings/string_number_conversions.h"
+ #include "base/task/bind_post_task.h"
+ #include "base/task/thread_pool.h"
+ #include "base/threading/sequence_bound.h"
+-#include "base/timer/timer.h"
+ #include "chrome/browser/ui/aux/journey_fixture_path.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h"
++#include "chrome/browser/ui/stock_measurement/native_stock_measurement_request.h"
+ #include "content/public/browser/browser_thread.h"
+ #include "components/sessions/core/session_id.h"
+ namespace aux {
+ namespace {
+ constexpr char kRequest[] = "performance-request.json";
+ constexpr char kOperation[] = "sampleStockProcessMemory";
+-using RequestReply = base::OnceCallback<void(std::optional<base::DictValue>)>;
++using RequestReply = base::OnceCallback<void(std::optional<NativeStockMeasurementRequest>)>;
+ bool Directory(const base::FilePath& path, uint64_t device, uint64_t inode) {
+   struct stat info;
+   return lstat(path.value().c_str(), &info) == 0 && S_ISDIR(info.st_mode) && info.st_uid == geteuid() &&
+       (info.st_mode & 0777) == 0700 && static_cast<uint64_t>(info.st_dev) == device && static_cast<uint64_t>(info.st_ino) == inode;
+-}
+-std::optional<base::DictValue> ReadRequest(base::FilePath root, uint64_t device, uint64_t inode, uint64_t sequence) {
+-  if (!OwnedJourneyFixtureRoot(root.value()) || !Directory(root, device, inode)) return base::DictValue();
+-  const int dir = HANDLE_EINTR(open(root.value().c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
+-  struct stat directory{};
+-  if (dir < 0) return base::DictValue();
+-  const bool owned = fstat(dir, &directory) == 0 && static_cast<uint64_t>(directory.st_dev) == device && static_cast<uint64_t>(directory.st_ino) == inode;
+-  const int fd = owned ? HANDLE_EINTR(openat(dir, kRequest, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)) : -1;
+-  const int error = errno; close(dir);
+-  if (fd < 0) return owned && error == ENOENT ? std::nullopt : std::optional(base::DictValue());
+-  struct stat before{}, after{}; char bytes[513];
+-  const bool admitted = fstat(fd, &before) == 0 && S_ISREG(before.st_mode) && before.st_uid == geteuid() &&
+-      (before.st_mode & 0777) == 0600 && before.st_nlink == 1 && before.st_size > 0 && before.st_size <= 512;
+-  const auto size = admitted ? HANDLE_EINTR(read(fd, bytes, sizeof(bytes))) : -1;
+-  const bool stable = admitted && size == before.st_size && fstat(fd, &after) == 0 &&
+-      before.st_dev == after.st_dev && before.st_ino == after.st_ino && before.st_size == after.st_size &&
+-      before.st_mode == after.st_mode && before.st_uid == after.st_uid && before.st_nlink == after.st_nlink &&
+-      before.st_ctimespec.tv_sec == after.st_ctimespec.tv_sec && before.st_ctimespec.tv_nsec == after.st_ctimespec.tv_nsec &&
+-      before.st_mtimespec.tv_sec == after.st_mtimespec.tv_sec && before.st_mtimespec.tv_nsec == after.st_mtimespec.tv_nsec;
+-  close(fd); if (!stable) return base::DictValue();
+-  auto row = base::JSONReader::ReadDict(std::string_view(bytes, size), base::JSON_PARSE_RFC);
+-  const auto* operation = row ? row->FindString("operation") : nullptr;
+-  const auto* raw_sequence = row ? row->FindString("sequence") : nullptr; uint64_t next = 0;
+-  if (!row || row->size() != 2 || !operation || *operation != kOperation || !raw_sequence ||
+-      !base::StringToUint64(*raw_sequence, &next) || *raw_sequence != base::NumberToString(next) || next == 0 || next > 4000 ||
+-      next < sequence || next > sequence + 1) return base::DictValue();
+-  return next == sequence ? std::nullopt : std::move(row);
+ }
+ }  // namespace
+ class NativeStockMeasurementExtraParts::Fixture {
+@@ -78,31 +47,31 @@
+    public:
+     void Wait(base::FilePath root, uint64_t device, uint64_t inode, uint64_t sequence, RequestReply reply) {
+       DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
+-      if (pending_) { std::move(reply).Run(base::DictValue()); return; }
++      if (pending_) { std::move(reply).Run(std::nullopt); return; }
+       root_ = std::move(root); device_ = device; inode_ = inode; sequence_ = sequence; pending_ = std::move(reply);
+       if (!watcher_) {
+         watcher_ = std::make_unique<base::FilePathWatcher>();
+         if (!watcher_->Watch(root_.AppendASCII(kRequest), base::FilePathWatcher::Type::kNonRecursive,
+             base::BindRepeating(&Watch::Changed, weak_factory_.GetWeakPtr()))) {
+-          std::move(pending_).Run(base::DictValue()); return;
++          std::move(pending_).Run(std::nullopt); return;
+         }
+       }
+       Read();
+     }
+    private:
+     void Changed(const base::FilePath&, bool error) {
+-      if (error) { failed_ = true; if (pending_) std::move(pending_).Run(base::DictValue()); return; }
++      if (error) { failed_ = true; if (pending_) std::move(pending_).Run(std::nullopt); return; }
+       if (reading_) { dirty_ = true; return; } Read();
+     }
+     void Read() {
+       if (!pending_ || reading_) return;
+-      if (failed_) { std::move(pending_).Run(base::DictValue()); return; }
++      if (failed_) { std::move(pending_).Run(std::nullopt); return; }
+       reading_ = true;
+       base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},
+-          base::BindOnce(&ReadRequest, root_, device_, inode_, sequence_),
++          base::BindOnce(&NativeStockMeasurementRequest::Read, root_, device_, inode_, sequence_),
+           base::BindOnce(&Watch::ReadDone, weak_factory_.GetWeakPtr()));
+     }
+-    void ReadDone(std::optional<base::DictValue> value) {
++    void ReadDone(std::optional<NativeStockMeasurementRequest> value) {
+       reading_ = false;
+       if (pending_ && value) { std::move(pending_).Run(std::move(value)); dirty_ = false; }
+       else if (std::exchange(dirty_, false)) Read();
+@@ -112,12 +81,12 @@
+     std::unique_ptr<base::FilePathWatcher> watcher_;
+     base::WeakPtrFactory<Watch> weak_factory_{this};
+   };
+-  void Received(std::optional<base::DictValue> request) {
++  void Received(std::optional<NativeStockMeasurementRequest> request) {
+     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+     if (failed_) return;
+-    const auto* operation = request ? request->FindString("operation") : nullptr;
+-    const auto* raw_sequence = request ? request->FindString("sequence") : nullptr; uint64_t next = 0;
+-    if (!request || !operation || *operation != kOperation || !raw_sequence ||
++    const auto* operation = request ? request->record().FindString("operation") : nullptr;
++    const auto* raw_sequence = request ? request->record().FindString("sequence") : nullptr; uint64_t next = 0;
++    if (!request || !request->Current() || !operation || *operation != kOperation || !raw_sequence ||
+         !base::StringToUint64(*raw_sequence, &next) || next != sequence_ + 1 ||
+         !Directory(root_, root_device_, root_inode_) || !Directory(profile_, profile_device_, profile_inode_)) { Refuse(); return; }
+     sequence_ = next;
+@@ -125,7 +94,7 @@
+     if (!browser || (owner_selected_ && owner_ != browser)) { Refuse(); return; }
+     owner_ = browser; owner_selected_ = true;
+     const auto record = sampler_.Sample();
+-    if (!owner_ || ReadNativeStockMeasurementOwner() != owner_ ||
++    if (!request->Current() || !owner_ || ReadNativeStockMeasurementOwner() != owner_ ||
+         !Directory(root_, root_device_, root_inode_) || !Directory(profile_, profile_device_, profile_inode_)) { Refuse(); return; }
+     const auto json = base::WriteJson(base::DictValue().Set("producer", "aux-native-fixture-reply").Set("version", 1)
+         .Set("pid", static_cast<int>(getpid())).Set("windowId", owner_->GetSessionID().id())
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -2004,6 +2004,8 @@
+       "ui/stock_measurement/native_stock_memory_sampler.h",
+       "ui/stock_measurement/native_stock_measurement_fixture.cc",
+       "ui/stock_measurement/native_stock_measurement_fixture.h",
++      "ui/stock_measurement/native_stock_measurement_request.cc",
++      "ui/stock_measurement/native_stock_measurement_request.h",
+       "ui/aux/native_process_footprint.cc",
+       "ui/aux/native_process_footprint.h",
+     ]
+diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -8063,6 +8063,9 @@
+   if (!is_android) {
+     deps += [ "//chrome/browser/ui:accelerator_table" ]
+   }
++  if (is_mac && aux_allow_remote_debugging_for_tests && !enable_aux_shell) {
++    sources += [ "../browser/ui/stock_measurement/native_stock_measurement_request_unittest.cc" ]
++  }
+   if (enable_aux_shell && is_mac) {
+     sources += [
+       "../browser/ui/aux/download_naming_unittest.cc",
+diff --git a/content/public/browser/child_process_task_identity_mac.h b/content/public/browser/child_process_task_identity_mac.h
+new file mode 100644
+--- /dev/null
++++ b/content/public/browser/child_process_task_identity_mac.h
+@@ -0,0 +1,33 @@
++// Copyright 2026 The Aux Authors
++#ifndef CONTENT_PUBLIC_BROWSER_CHILD_PROCESS_TASK_IDENTITY_MAC_H_
++#define CONTENT_PUBLIC_BROWSER_CHILD_PROCESS_TASK_IDENTITY_MAC_H_
++#include "build/build_config.h"
++#if BUILDFLAG(IS_MAC)
++#include <array>
++#include <cstdint>
++#include <optional>
++#include "base/process/process_handle.h"
++#include "content/common/content_export.h"
++namespace content {
++enum class ChildProcessTaskHostKind { kRenderer, kBrowserChild };
++struct ChildProcessTaskHost {
++  ChildProcessTaskHostKind kind;
++  int id;
++  bool operator==(const ChildProcessTaskHost&) const = default;
++};
++struct OwnedChildProcessTaskIdentity {
++  ChildProcessTaskHost host;
++  uint64_t launch_generation;
++  std::array<uint32_t, 8> audit_token;
++  int pid_version;
++  bool operator==(const OwnedChildProcessTaskIdentity&) const = default;
++};
++// Freshly audits the original native host's retained task port. Refuses a
++// pending/replaced/dead/unowned association; never returns a raw task port.
++// Host IDs must come from the browser's actual native host inventory.
++CONTENT_EXPORT std::optional<OwnedChildProcessTaskIdentity>
++ReadOwnedChildProcessTaskIdentity(base::ProcessHandle process_handle,
++                                 ChildProcessTaskHost host);
++}  // namespace content
++#endif
++#endif
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_measurement_request.h b/chrome/browser/ui/stock_measurement/native_stock_measurement_request.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/stock_measurement/native_stock_measurement_request.h
+@@ -0,0 +1,36 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_STOCK_MEASUREMENT_NATIVE_STOCK_MEASUREMENT_REQUEST_H_
++#define CHROME_BROWSER_UI_STOCK_MEASUREMENT_NATIVE_STOCK_MEASUREMENT_REQUEST_H_
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++#include <sys/stat.h>
++#include <cstdint>
++#include <optional>
++#include <string>
++#include "base/files/file_path.h"
++#include "base/files/scoped_file.h"
++#include "base/values.h"
++namespace aux {
++// Retains the actual opened root/request descriptors through UI dispatch. An
++// invalid object is a refusal sentinel; only Current() admits its fixed record.
++class NativeStockMeasurementRequest final {
++ public:
++  NativeStockMeasurementRequest(NativeStockMeasurementRequest&&) = default;
++  NativeStockMeasurementRequest& operator=(NativeStockMeasurementRequest&&) = default;
++  static std::optional<NativeStockMeasurementRequest> Read(
++      base::FilePath root, uint64_t device, uint64_t inode, uint64_t sequence);
++  bool Current() const;
++  const base::DictValue& record() const { return record_; }
++ private:
++  NativeStockMeasurementRequest() = default;
++  base::FilePath root_;
++  uint64_t device_ = 0, inode_ = 0;
++  struct stat original_{};
++  std::string original_bytes_;
++  base::ScopedFD directory_, file_;
++  base::DictValue record_;
++};
++}  // namespace aux
++#endif
++#endif
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_measurement_request.cc b/chrome/browser/ui/stock_measurement/native_stock_measurement_request.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/stock_measurement/native_stock_measurement_request.cc
+@@ -0,0 +1,72 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/stock_measurement/native_stock_measurement_request.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++#include <cerrno>
++#include <fcntl.h>
++#include <unistd.h>
++#include <utility>
++#include <string_view>
++#include "base/json/json_reader.h"
++#include "base/posix/eintr_wrapper.h"
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/ui/aux/journey_fixture_path.h"
++namespace aux {
++namespace {
++constexpr char kRequest[] = "performance-request.json";
++bool SameFile(const struct stat& a, const struct stat& b) {
++  return a.st_dev == b.st_dev && a.st_ino == b.st_ino && a.st_size == b.st_size &&
++      a.st_mode == b.st_mode && a.st_uid == b.st_uid && a.st_nlink == b.st_nlink &&
++      a.st_ctimespec.tv_sec == b.st_ctimespec.tv_sec && a.st_ctimespec.tv_nsec == b.st_ctimespec.tv_nsec &&
++      a.st_mtimespec.tv_sec == b.st_mtimespec.tv_sec && a.st_mtimespec.tv_nsec == b.st_mtimespec.tv_nsec;
++}
++bool Directory(const struct stat& value, uint64_t device, uint64_t inode) {
++  return S_ISDIR(value.st_mode) && value.st_uid == geteuid() && (value.st_mode & 0777) == 0700 &&
++      static_cast<uint64_t>(value.st_dev) == device && static_cast<uint64_t>(value.st_ino) == inode;
++}
++}  // namespace
++std::optional<NativeStockMeasurementRequest> NativeStockMeasurementRequest::Read(
++    base::FilePath root, uint64_t device, uint64_t inode, uint64_t sequence) {
++  if (!OwnedJourneyFixtureRoot(root.value())) return NativeStockMeasurementRequest();
++  base::ScopedFD directory(HANDLE_EINTR(open(root.value().c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)));
++  struct stat info{};
++  if (!directory.is_valid() || fstat(directory.get(), &info) != 0 || !Directory(info, device, inode))
++    return NativeStockMeasurementRequest();
++  base::ScopedFD file(HANDLE_EINTR(openat(directory.get(), kRequest, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)));
++  if (!file.is_valid()) {
++    if (errno == ENOENT) return std::nullopt;
++    return NativeStockMeasurementRequest();
++  }
++  struct stat before{}; char bytes[513];
++  if (fstat(file.get(), &before) != 0 || !S_ISREG(before.st_mode) || before.st_uid != geteuid() ||
++      (before.st_mode & 0777) != 0600 || before.st_nlink != 1 || before.st_size <= 0 || before.st_size > 512)
++    return NativeStockMeasurementRequest();
++  const auto size = HANDLE_EINTR(read(file.get(), bytes, sizeof(bytes)));
++  if (size != before.st_size) return NativeStockMeasurementRequest();
++  auto row = base::JSONReader::ReadDict(std::string_view(bytes, size), base::JSON_PARSE_RFC);
++  const auto* operation = row ? row->FindString("operation") : nullptr;
++  const auto* raw_sequence = row ? row->FindString("sequence") : nullptr; uint64_t next = 0;
++  if (!row || row->size() != 2 || !operation || *operation != "sampleStockProcessMemory" || !raw_sequence ||
++      !base::StringToUint64(*raw_sequence, &next) || *raw_sequence != base::NumberToString(next) ||
++      next == 0 || next > 4000 || next < sequence || next > sequence + 1)
++    return NativeStockMeasurementRequest();
++  NativeStockMeasurementRequest result;
++  result.root_ = std::move(root); result.device_ = device; result.inode_ = inode; result.original_ = before; result.original_bytes_.assign(bytes, size);
++  result.directory_ = std::move(directory); result.file_ = std::move(file); result.record_ = std::move(*row);
++  if (!result.Current()) return NativeStockMeasurementRequest();
++  return next == sequence ? std::nullopt : std::make_optional(std::move(result));
++}
++bool NativeStockMeasurementRequest::Current() const {
++  struct stat directory{}, path{}, opened{}, named{}; char bytes[513];
++  return directory_.is_valid() && file_.is_valid() && OwnedJourneyFixtureRoot(root_.value()) &&
++      fstat(directory_.get(), &directory) == 0 && Directory(directory, device_, inode_) &&
++      lstat(root_.value().c_str(), &path) == 0 && Directory(path, device_, inode_) &&
++      fstat(file_.get(), &opened) == 0 && SameFile(opened, original_) &&
++      fstatat(directory_.get(), kRequest, &named, AT_SYMLINK_NOFOLLOW) == 0 && SameFile(named, original_) &&
++      HANDLE_EINTR(pread(file_.get(), bytes, sizeof(bytes), 0)) == original_.st_size &&
++      std::string_view(bytes, original_.st_size) == original_bytes_ &&
++      fstat(file_.get(), &opened) == 0 && SameFile(opened, original_) &&
++      fstatat(directory_.get(), kRequest, &named, AT_SYMLINK_NOFOLLOW) == 0 && SameFile(named, original_) &&
++      lstat(root_.value().c_str(), &path) == 0 && Directory(path, device_, inode_);
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_measurement_request_unittest.cc b/chrome/browser/ui/stock_measurement/native_stock_measurement_request_unittest.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/stock_measurement/native_stock_measurement_request_unittest.cc
+@@ -0,0 +1,84 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/stock_measurement/native_stock_measurement_request.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++#include <cstdlib>
++#include <cstdio>
++#include <unistd.h>
++#include "base/files/file_util.h"
++#include "base/files/scoped_temp_dir.h"
++#include "testing/gtest/include/gtest/gtest.h"
++namespace aux {
++class NativeStockMeasurementRequestTest : public testing::Test {
++ protected:
++  void SetUp() override {
++    char path[] = "/private/tmp/aux-native-journey-stock-request-XXXXXX";
++    ASSERT_NE(mkdtemp(path), nullptr);
++    ASSERT_TRUE(root_.Set(base::FilePath(path)));
++    ASSERT_EQ(lstat(root_.GetPath().value().c_str(), &pin_), 0);
++    Write();
++  }
++  void Write(const char* bytes = "{\"operation\":\"sampleStockProcessMemory\",\"sequence\":\"1\"}") {
++    ASSERT_TRUE(base::WriteFile(path(), bytes));
++    ASSERT_EQ(chmod(path().value().c_str(), 0600), 0);
++  }
++  base::FilePath path() { return root_.GetPath().AppendASCII("performance-request.json"); }
++  std::optional<NativeStockMeasurementRequest> Read(uint64_t sequence = 0) {
++    return NativeStockMeasurementRequest::Read(root_.GetPath(), pin_.st_dev, pin_.st_ino, sequence);
++  }
++  base::ScopedTempDir root_;
++  struct stat pin_{};
++};
++TEST_F(NativeStockMeasurementRequestTest, CurrentOriginalDescriptorsAndConsumedRequest) {
++  auto request = Read(); ASSERT_TRUE(request);
++  ASSERT_TRUE(request->Current());
++  ASSERT_NE(request->record().FindString("operation"), nullptr);
++  EXPECT_EQ(*request->record().FindString("operation"), "sampleStockProcessMemory");
++  EXPECT_FALSE(Read(1));
++}
++TEST_F(NativeStockMeasurementRequestTest, NamedReplacementWithIdenticalBytesRefusesOriginalDescriptor) {
++  auto request = Read(); ASSERT_TRUE(request); ASSERT_TRUE(request->Current());
++  ASSERT_EQ(rename(path().value().c_str(), root_.GetPath().AppendASCII("retired.json").value().c_str()), 0);
++  Write();
++  EXPECT_FALSE(request->Current());
++  auto fresh = Read(); ASSERT_TRUE(fresh); EXPECT_TRUE(fresh->Current());
++}
++TEST_F(NativeStockMeasurementRequestTest, RootReplacementRefusesRetainedOriginalDirectory) {
++  auto request = Read(); ASSERT_TRUE(request); ASSERT_TRUE(request->Current());
++  const auto original = root_.Take(), retired_path = original.AddExtensionASCII("retired");
++  ASSERT_TRUE(base::Move(original, retired_path));
++  base::ScopedTempDir retired; ASSERT_TRUE(retired.Set(retired_path));
++  ASSERT_TRUE(base::CreateDirectory(original)); ASSERT_EQ(chmod(original.value().c_str(), 0700), 0);
++  ASSERT_TRUE(root_.Set(original)); Write();
++  EXPECT_FALSE(request->Current());
++  auto replay = Read(); ASSERT_TRUE(replay); EXPECT_FALSE(replay->Current());
++}
++TEST_F(NativeStockMeasurementRequestTest, SymlinkReplacementRefusesWithoutFollowingTarget) {
++  auto request = Read(); ASSERT_TRUE(request); ASSERT_TRUE(request->Current());
++  const auto target = root_.GetPath().AppendASCII("target.json");
++  ASSERT_TRUE(base::Move(path(), target)); ASSERT_EQ(symlink(target.value().c_str(), path().value().c_str()), 0);
++  EXPECT_FALSE(request->Current());
++  auto replaced = Read(); ASSERT_TRUE(replaced); EXPECT_FALSE(replaced->Current());
++}
++TEST_F(NativeStockMeasurementRequestTest, PermissionOrHardlinkChangeRefuses) {
++  auto request = Read(); ASSERT_TRUE(request); ASSERT_TRUE(request->Current());
++  ASSERT_EQ(chmod(path().value().c_str(), 0644), 0); EXPECT_FALSE(request->Current());
++  ASSERT_EQ(chmod(path().value().c_str(), 0600), 0);
++  auto fresh = Read(); ASSERT_TRUE(fresh); ASSERT_TRUE(fresh->Current());
++  ASSERT_EQ(link(path().value().c_str(), root_.GetPath().AppendASCII("linked.json").value().c_str()), 0);
++  EXPECT_FALSE(fresh->Current());
++}
++TEST_F(NativeStockMeasurementRequestTest, MutationBeforeUiDispatchRefusesEvenOnSameInode) {
++  auto request = Read(); ASSERT_TRUE(request); ASSERT_TRUE(request->Current());
++  Write("{\"operation\":\"sampleStockProcessMemory\",\"sequence\":\"2\"}");
++  EXPECT_FALSE(request->Current());
++}
++TEST_F(NativeStockMeasurementRequestTest, ClosedOperationAndSequenceCannotCarrySelectors) {
++  for (const auto* bytes : {"{\"operation\":\"pages.open\",\"sequence\":\"1\"}",
++      "{\"operation\":\"sampleStockProcessMemory\",\"sequence\":\"1\",\"pid\":1}",
++      "{\"operation\":\"sampleStockProcessMemory\",\"sequence\":\"01\"}",
++      "{\"operation\":\"sampleStockProcessMemory\",\"sequence\":\"2\"}"}) {
++    Write(bytes); auto request = Read(); ASSERT_TRUE(request); EXPECT_FALSE(request->Current());
++  }
++}
++}  // namespace aux
++#endif

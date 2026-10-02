@@ -31,7 +31,7 @@ function fixture(mode = 'idle') {
       ? { producer: 'aux-native-subagent-preparation', version: 1, status: 'ready', windowId: 1, widgetRoutingId: 2, requestNonce: 'a'.repeat(32), sampleSequence: String(sequence), runtimePid: 103, runtimeConnectionGeneration: '7', issuedUs: String(start), receivedUs: String(start + 100),
         preparation: { producer: 'aux-runtime-subagent-preparation', version: 1, status: 'ready', observedAt: 1000, deadlineAt: 1000000, parentRunId: 'parent', taskId: 'task', taskRevision: 1, workspaceId: 'workspace',
           pages: children.map((child, i) => ({ pageId: child.pageIds[0], sessionId: `protected-session-${i}`, documentEpoch: 1, sourcePageId: idlePageIds[i], sourceSessionId: `session-${idlePageIds[i]}`, sourceDocumentEpoch: 1 })) } }
-      : { producer: 'aux-native-process-memory', version: 1, status: 'sampled', windowId: 1, widgetRoutingId: 2, requestNonce: 'a'.repeat(32), sampleSequence: String(sequence), sampleStartUs: String(start), sampleEndUs: String(start + 100),
+      : { producer: 'aux-native-process-memory', version: 1, status: 'sampled', chromiumVersion: '145.0.7579.0', chromiumLastChange: 'actual-upstream-revision', windowId: 1, widgetRoutingId: 2, requestNonce: 'a'.repeat(32), sampleSequence: String(sequence), sampleStartUs: String(start), sampleEndUs: String(start + 100),
         workload, workloadObservedAt: [1000 + sequence * 2, 1001 + sequence * 2], workloadRequestTimes: ['0', '3', '91', '95'], processes: [
           [100, 'browser', 2, [], 'b'.repeat(32), '300', structuredClone(readings)],
           [101, 'shell', 3, [1], 'b'.repeat(32), '301', structuredClone(readings)],

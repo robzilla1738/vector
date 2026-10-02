@@ -243,3 +243,7 @@ aux/runtime/0263-native-owned-process-identity.patch
 aux/runtime/0269-organization-work-native-api-adapters.patch
 aux/runtime/0271-organization-work-browser-mojo-include.patch
 aux/runtime/0272-native-fixture-api-includes.patch
+aux/runtime/0270-stock-memory-boundary.patch
+aux/runtime/0273-native-memory-compiled-tag.patch
+aux/runtime/0274-stock-memory-public-identity-boundary.patch
+aux/runtime/0275-organization-runtime-test-dict-index.patch

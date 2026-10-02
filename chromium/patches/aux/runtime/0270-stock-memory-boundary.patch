@@ -1,0 +1,595 @@
+diff --git a/chrome/browser/chrome_browser_main.cc b/chrome/browser/chrome_browser_main.cc
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -3,6 +3,10 @@
+ // found in the LICENSE file.
+ 
+ #include "chrome/browser/chrome_browser_main.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.h"
++#endif
+ 
+ #include <memory>
+ #include <string>
+@@ -790,6 +794,10 @@
+ #error "Unimplemented platform"
+ #endif
+ 
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++  main_parts->AddParts(std::make_unique<aux::NativeStockMeasurementExtraParts>());
++#endif
++
+   main_parts->AddParts(
+       std::make_unique<ChromeBrowserMainExtraPartsThreadNotifier>(
+           std::move(threads_ready_closure)));
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -1998,6 +1998,17 @@
+     deps += [ "//chrome/browser/ui/aux:runtime" ]
+   }
+ 
++  if (is_mac && aux_allow_remote_debugging_for_tests && !enable_aux_shell) {
++    sources += [
++      "ui/stock_measurement/native_stock_memory_sampler.cc",
++      "ui/stock_measurement/native_stock_memory_sampler.h",
++      "ui/stock_measurement/native_stock_measurement_fixture.cc",
++      "ui/stock_measurement/native_stock_measurement_fixture.h",
++      "ui/aux/native_process_footprint.cc",
++      "ui/aux/native_process_footprint.h",
++    ]
++  }
++
+   if (is_chrome_for_testing) {
+     deps += [ "//chrome/browser/chrome_for_testing:browser" ]
+   }
+diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -3101,6 +3101,10 @@
+       "data/webui/mojo/mojo_js_interface_broker_browsertest.cc",
+       "data/webui/mojo/mojo_web_ui_controller_browsertest.cc",
+     ]
++    if (is_mac && aux_allow_remote_debugging_for_tests && !enable_aux_shell) {
++      sources += [ "../browser/ui/stock_measurement/native_stock_memory_sampler_browsertest.cc" ]
++    }
++
+     if (enable_aux_shell) {
+       sources += [
+         "../browser/ui/aux/tab_catalog_browsertest.cc",
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.cc b/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.cc
+@@ -0,0 +1,164 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++#include <cerrno>
++#include <fcntl.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <cstdio>
++#include <utility>
++#include "base/command_line.h"
++#include "base/files/file_path_watcher.h"
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/posix/eintr_wrapper.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/task/bind_post_task.h"
++#include "base/task/thread_pool.h"
++#include "base/threading/sequence_bound.h"
++#include "base/timer/timer.h"
++#include "chrome/browser/ui/aux/journey_fixture_path.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h"
++#include "content/public/browser/browser_thread.h"
++#include "components/sessions/core/session_id.h"
++namespace aux {
++namespace {
++constexpr char kRequest[] = "performance-request.json";
++constexpr char kOperation[] = "sampleStockProcessMemory";
++using RequestReply = base::OnceCallback<void(std::optional<base::DictValue>)>;
++bool Directory(const base::FilePath& path, uint64_t device, uint64_t inode) {
++  struct stat info;
++  return lstat(path.value().c_str(), &info) == 0 && S_ISDIR(info.st_mode) && info.st_uid == geteuid() &&
++      (info.st_mode & 0777) == 0700 && static_cast<uint64_t>(info.st_dev) == device && static_cast<uint64_t>(info.st_ino) == inode;
++}
++std::optional<base::DictValue> ReadRequest(base::FilePath root, uint64_t device, uint64_t inode, uint64_t sequence) {
++  if (!OwnedJourneyFixtureRoot(root.value()) || !Directory(root, device, inode)) return base::DictValue();
++  const int dir = HANDLE_EINTR(open(root.value().c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
++  struct stat directory{};
++  if (dir < 0) return base::DictValue();
++  const bool owned = fstat(dir, &directory) == 0 && static_cast<uint64_t>(directory.st_dev) == device && static_cast<uint64_t>(directory.st_ino) == inode;
++  const int fd = owned ? HANDLE_EINTR(openat(dir, kRequest, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)) : -1;
++  const int error = errno; close(dir);
++  if (fd < 0) return owned && error == ENOENT ? std::nullopt : std::optional(base::DictValue());
++  struct stat before{}, after{}; char bytes[513];
++  const bool admitted = fstat(fd, &before) == 0 && S_ISREG(before.st_mode) && before.st_uid == geteuid() &&
++      (before.st_mode & 0777) == 0600 && before.st_nlink == 1 && before.st_size > 0 && before.st_size <= 512;
++  const auto size = admitted ? HANDLE_EINTR(read(fd, bytes, sizeof(bytes))) : -1;
++  const bool stable = admitted && size == before.st_size && fstat(fd, &after) == 0 &&
++      before.st_dev == after.st_dev && before.st_ino == after.st_ino && before.st_size == after.st_size &&
++      before.st_mode == after.st_mode && before.st_uid == after.st_uid && before.st_nlink == after.st_nlink &&
++      before.st_ctimespec.tv_sec == after.st_ctimespec.tv_sec && before.st_ctimespec.tv_nsec == after.st_ctimespec.tv_nsec &&
++      before.st_mtimespec.tv_sec == after.st_mtimespec.tv_sec && before.st_mtimespec.tv_nsec == after.st_mtimespec.tv_nsec;
++  close(fd); if (!stable) return base::DictValue();
++  auto row = base::JSONReader::ReadDict(std::string_view(bytes, size), base::JSON_PARSE_RFC);
++  const auto* operation = row ? row->FindString("operation") : nullptr;
++  const auto* raw_sequence = row ? row->FindString("sequence") : nullptr; uint64_t next = 0;
++  if (!row || row->size() != 2 || !operation || *operation != kOperation || !raw_sequence ||
++      !base::StringToUint64(*raw_sequence, &next) || *raw_sequence != base::NumberToString(next) || next == 0 || next > 4000 ||
++      next < sequence || next > sequence + 1) return base::DictValue();
++  return next == sequence ? std::nullopt : std::move(row);
++}
++}  // namespace
++class NativeStockMeasurementExtraParts::Fixture {
++ public:
++  Fixture(base::FilePath profile, uint64_t root_device, uint64_t root_inode, uint64_t profile_device, uint64_t profile_inode)
++      : root_(profile.DirName()), profile_(std::move(profile)), root_device_(root_device), root_inode_(root_inode),
++        profile_device_(profile_device), profile_inode_(profile_inode), watch_(content::GetIOThreadTaskRunner({})) {}
++  ~Fixture() { weak_factory_.InvalidateWeakPtrs(); }
++  void Next() {
++    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++    if (failed_ || sequence_ >= 4000) return;
++    watch_.AsyncCall(&Watch::Wait).WithArgs(root_, root_device_, root_inode_, sequence_,
++        base::BindPostTaskToCurrentDefault(base::BindOnce(&Fixture::Received, weak_factory_.GetWeakPtr())));
++  }
++ private:
++  class Watch {
++   public:
++    void Wait(base::FilePath root, uint64_t device, uint64_t inode, uint64_t sequence, RequestReply reply) {
++      DCHECK_CURRENTLY_ON(content::BrowserThread::IO);
++      if (pending_) { std::move(reply).Run(base::DictValue()); return; }
++      root_ = std::move(root); device_ = device; inode_ = inode; sequence_ = sequence; pending_ = std::move(reply);
++      if (!watcher_) {
++        watcher_ = std::make_unique<base::FilePathWatcher>();
++        if (!watcher_->Watch(root_.AppendASCII(kRequest), base::FilePathWatcher::Type::kNonRecursive,
++            base::BindRepeating(&Watch::Changed, weak_factory_.GetWeakPtr()))) {
++          std::move(pending_).Run(base::DictValue()); return;
++        }
++      }
++      Read();
++    }
++   private:
++    void Changed(const base::FilePath&, bool error) {
++      if (error) { failed_ = true; if (pending_) std::move(pending_).Run(base::DictValue()); return; }
++      if (reading_) { dirty_ = true; return; } Read();
++    }
++    void Read() {
++      if (!pending_ || reading_) return;
++      if (failed_) { std::move(pending_).Run(base::DictValue()); return; }
++      reading_ = true;
++      base::ThreadPool::PostTaskAndReplyWithResult(FROM_HERE, {base::MayBlock()},
++          base::BindOnce(&ReadRequest, root_, device_, inode_, sequence_),
++          base::BindOnce(&Watch::ReadDone, weak_factory_.GetWeakPtr()));
++    }
++    void ReadDone(std::optional<base::DictValue> value) {
++      reading_ = false;
++      if (pending_ && value) { std::move(pending_).Run(std::move(value)); dirty_ = false; }
++      else if (std::exchange(dirty_, false)) Read();
++    }
++    base::FilePath root_; uint64_t device_ = 0, inode_ = 0, sequence_ = 0;
++    RequestReply pending_; bool reading_ = false, dirty_ = false, failed_ = false;
++    std::unique_ptr<base::FilePathWatcher> watcher_;
++    base::WeakPtrFactory<Watch> weak_factory_{this};
++  };
++  void Received(std::optional<base::DictValue> request) {
++    DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++    if (failed_) return;
++    const auto* operation = request ? request->FindString("operation") : nullptr;
++    const auto* raw_sequence = request ? request->FindString("sequence") : nullptr; uint64_t next = 0;
++    if (!request || !operation || *operation != kOperation || !raw_sequence ||
++        !base::StringToUint64(*raw_sequence, &next) || next != sequence_ + 1 ||
++        !Directory(root_, root_device_, root_inode_) || !Directory(profile_, profile_device_, profile_inode_)) { Refuse(); return; }
++    sequence_ = next;
++    const auto browser = ReadNativeStockMeasurementOwner();
++    if (!browser || (owner_selected_ && owner_ != browser)) { Refuse(); return; }
++    owner_ = browser; owner_selected_ = true;
++    const auto record = sampler_.Sample();
++    if (!owner_ || ReadNativeStockMeasurementOwner() != owner_ ||
++        !Directory(root_, root_device_, root_inode_) || !Directory(profile_, profile_device_, profile_inode_)) { Refuse(); return; }
++    const auto json = base::WriteJson(base::DictValue().Set("producer", "aux-native-fixture-reply").Set("version", 1)
++        .Set("pid", static_cast<int>(getpid())).Set("windowId", owner_->GetSessionID().id())
++        .Set("sequence", base::NumberToString(sequence_)).Set("operation", kOperation).Set("record", record.Clone()));
++    if (!json || json->size() > 16 * 1024) { Refuse(); return; }
++    fprintf(stderr, "AUX_NATIVE_FIXTURE_REPLY_V1 %s\n", json->c_str()); fflush(stderr); Next();
++  }
++  void Refuse() {
++    failed_ = true;
++    const auto json = base::WriteJson(base::DictValue().Set("producer", "aux-native-fixture-refusal").Set("version", 1)
++        .Set("pid", static_cast<int>(getpid())).Set("status", "refused").Set("reason", "invalid_private_mailbox"));
++    if (json) { fprintf(stderr, "AUX_NATIVE_FIXTURE_REFUSAL_V1 %s\n", json->c_str()); fflush(stderr); }
++  }
++  base::FilePath root_, profile_; const uint64_t root_device_, root_inode_, profile_device_, profile_inode_;
++  base::WeakPtr<BrowserWindowInterface> owner_; NativeStockMemorySampler sampler_;
++  uint64_t sequence_ = 0; bool failed_ = false, owner_selected_ = false;
++  base::SequenceBound<Watch> watch_;
++  base::WeakPtrFactory<Fixture> weak_factory_{this};
++};
++NativeStockMeasurementExtraParts::NativeStockMeasurementExtraParts() = default;
++NativeStockMeasurementExtraParts::~NativeStockMeasurementExtraParts() = default;
++void NativeStockMeasurementExtraParts::PreBrowserStart() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  const auto& command = *base::CommandLine::ForCurrentProcess();
++  const base::FilePath profile(command.GetSwitchValueASCII("user-data-dir")); const auto root = profile.DirName();
++  struct stat root_info{}, profile_info{};
++  if (!command.HasSwitch("aux-native-stock-measurement-observer") || profile.BaseName().value() != "profile" ||
++      !OwnedJourneyFixtureRoot(root.value()) || lstat(root.value().c_str(), &root_info) != 0 ||
++      lstat(profile.value().c_str(), &profile_info) != 0 || !S_ISDIR(profile_info.st_mode) || profile_info.st_uid != geteuid() ||
++      (profile_info.st_mode & 0777) != 0700) return;
++  fixture_ = std::make_unique<Fixture>(profile, root_info.st_dev, root_info.st_ino, profile_info.st_dev, profile_info.st_ino);
++  fixture_->Next();
++}
++void NativeStockMeasurementExtraParts::PostMainMessageLoopRun() { fixture_.reset(); }
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.h b/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.h
+@@ -0,0 +1,24 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_STOCK_MEASUREMENT_NATIVE_STOCK_MEASUREMENT_FIXTURE_H_
++#define CHROME_BROWSER_UI_STOCK_MEASUREMENT_NATIVE_STOCK_MEASUREMENT_FIXTURE_H_
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++#include <memory>
++#include "chrome/browser/chrome_browser_main_extra_parts.h"
++namespace aux {
++// One transport/fixture owner shared by stock memory and later genuine startup
++// instrumentation. Only implemented closed phases may be advertised.
++class NativeStockMeasurementExtraParts final : public ChromeBrowserMainExtraParts {
++ public:
++  NativeStockMeasurementExtraParts();
++  ~NativeStockMeasurementExtraParts() override;
++  void PreBrowserStart() override;
++  void PostMainMessageLoopRun() override;
++ private:
++  class Fixture;
++  std::unique_ptr<Fixture> fixture_;
++};
++}  // namespace aux
++#endif
++#endif
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.cc b/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.cc
+@@ -0,0 +1,169 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++#include <algorithm>
++#include <set>
++#include <utility>
++#include "base/command_line.h"
++#include "base/files/file_path.h"
++#include "base/json/json_writer.h"
++#include "base/process/process_handle.h"
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/native_process_footprint.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "components/version_info/version_info.h"
++#include "components/sessions/core/session_id.h"
++#include "url/gurl.h"
++#include "content/public/browser/browser_child_process_host_iterator.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/child_process_data.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/common/process_type.h"
++namespace aux {
++namespace {
++base::DictValue Refused() {
++  return base::DictValue().Set("producer", "aux-native-stock-process-memory")
++      .Set("version", 1).Set("status", "refused");
++}
++BrowserWindowInterface* UniqueBrowser() {
++  BrowserWindowInterface* result = nullptr; bool ambiguous = false;
++  const base::FilePath path(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("user-data-dir"));
++  ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
++      [&result, &ambiguous](BrowserWindowInterface* browser) {
++        // A second regular/OTR/other-Profile window makes this fixture ambiguous,
++        // even if it is not the one carrying the benchmark tabs.
++        if (result) ambiguous = true; else result = browser;
++        return true;
++      });
++  if (ambiguous || !result || result->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      !result->GetProfile() || result->GetProfile()->IsOffTheRecord() ||
++      result->GetProfile()->GetPath().DirName() != path) return nullptr;
++  return result;
++}
++base::ListValue Reading(const NativeProcessFootprint& value, base::TimeTicks origin) {
++  return base::ListValue().Append(base::NumberToString(value.physical_bytes))
++      .Append(base::NumberToString((value.sample_start - origin).InMicroseconds()))
++      .Append(base::NumberToString((value.sample_end - origin).InMicroseconds()));
++}
++}  // namespace
++base::WeakPtr<BrowserWindowInterface> ReadNativeStockMeasurementOwner() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto* browser = UniqueBrowser();
++  return browser ? browser->GetWeakPtr() : base::WeakPtr<BrowserWindowInterface>();
++}
++NativeStockMemorySampler::NativeStockMemorySampler() = default;
++NativeStockMemorySampler::~NativeStockMemorySampler() = default;
++bool NativeStockMemorySampler::Capture() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (captured_) return false;
++  auto* browser = UniqueBrowser();
++  auto* strip = browser ? browser->GetTabStripModel() : nullptr;
++  if (!browser || !strip || strip->count() != 10) return false;
++  std::vector<Tab> tabs; std::set<content::WebContents*> contents_seen;
++  for (int index = 0; index < 10; ++index) {
++    auto* contents = strip->GetWebContentsAt(index);
++    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++    const auto url = contents ? contents->GetLastCommittedURL() : GURL();
++    if (!contents || !frame || frame->IsErrorDocument() || contents->IsLoading() ||
++        contents->GetBrowserContext() != browser->GetProfile() ||
++        !url.SchemeIsHTTPOrHTTPS() || url.spec().size() > 512 || !contents_seen.insert(contents).second) return false;
++    tabs.push_back(Tab{contents->GetWeakPtr(), frame->GetWeakDocumentPtr(),
++        base::UnguessableToken::Create(), url.spec()});
++  }
++  browser_ = browser->GetWeakPtr(); tabs_ = std::move(tabs); captured_ = true;
++  return Current();
++}
++bool NativeStockMemorySampler::Current() const {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!browser_ || UniqueBrowser() != browser_.get()) return false;
++  auto* strip = browser_->GetTabStripModel();
++  if (!strip || strip->count() != 10 || tabs_.size() != 10) return false;
++  for (int index = 0; index < 10; ++index) {
++    const auto& tab = tabs_[index];
++    auto* frame = tab.document.AsRenderFrameHostIfValid();
++    if (!tab.contents || !frame || strip->GetWebContentsAt(index) != tab.contents.get() ||
++        tab.contents->GetPrimaryMainFrame() != frame || frame->IsErrorDocument() ||
++        tab.contents->IsLoading() || tab.contents->GetLastCommittedURL().spec() != tab.url ||
++        tab.contents->GetBrowserContext() != browser_->GetProfile()) return false;
++  }
++  return true;
++}
++std::optional<NativeStockMemorySampler::Inventory> NativeStockMemorySampler::ReadInventory() const {
++  if (!Current()) return std::nullopt;
++  Inventory result; const int browser_pid = base::GetCurrentProcId();
++  result.emplace(browser_pid, Process{"browser", content::PROCESS_TYPE_BROWSER, {}, {}});
++  size_t hosts = 0;
++  for (auto it = content::RenderProcessHost::AllHostsIterator(); !it.IsAtEnd(); it.Advance()) {
++    auto* host = it.GetCurrentValue();
++    if (!host || host->GetBrowserContext() != browser_->GetProfile() || !host->GetProcess().IsValid()) continue;
++    const int pid = host->GetProcess().Pid(), id = host->GetID().value();
++    if (pid <= 0 || id <= 0 || pid == browser_pid || ++hosts > 128 ||
++        (!result.contains(pid) && result.size() >= 32)) return std::nullopt;
++    auto& process = result.try_emplace(pid, Process{"renderer", content::PROCESS_TYPE_RENDERER, {}, {}}).first->second;
++    const auto task = content::ChildProcessTaskPortProvider::GetInstance()->ReadOwnedTaskIdentity(pid,
++        {content::ChildProcessTaskPortProvider::OwnedHostKind::kRenderer, id});
++    if (!task || process.role != "renderer" || !process.tasks.emplace(id, *task).second) return std::nullopt;
++    process.hosts.push_back(id);
++  }
++  unsigned gpus = 0;
++  for (content::BrowserChildProcessHostIterator it; !it.Done(); ++it) {
++    const auto& child = it.GetData(); if (!child.GetProcess().IsValid()) continue;
++    const int pid = child.GetProcess().Pid(), id = child.GetChildProcessId().value();
++    if (pid <= 0 || id <= 0 || result.contains(pid) || ++hosts > 128 || result.size() >= 32 ||
++        child.process_type == content::PROCESS_TYPE_BROWSER || child.process_type == content::PROCESS_TYPE_RENDERER) return std::nullopt;
++    const bool gpu = child.process_type == content::PROCESS_TYPE_GPU;
++    if (gpu && ++gpus > 1) return std::nullopt;
++    const auto task = content::ChildProcessTaskPortProvider::GetInstance()->ReadOwnedTaskIdentity(pid,
++        {content::ChildProcessTaskPortProvider::OwnedHostKind::kBrowserChild, id});
++    if (!task) return std::nullopt;
++    result.emplace(pid, Process{gpu ? "gpu" : "browser-child", child.process_type, {id}, {{id, *task}}});
++  }
++  if (gpus != 1) return std::nullopt;
++  for (auto& [pid, process] : result) std::ranges::sort(process.hosts);
++  for (const auto& tab : tabs_) {
++    auto* frame = tab.document.AsRenderFrameHostIfValid();
++    if (!frame || !result.contains(frame->GetProcess()->GetProcess().Pid())) return std::nullopt;
++  }
++  return Current() ? std::make_optional(std::move(result)) : std::nullopt;
++}
++base::DictValue NativeStockMemorySampler::Sample() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (++sequence_ > 4000 || (!captured_ && !Capture()) || !Current()) return Refused();
++  const auto started = base::TimeTicks::Now();
++  const auto inventory = ReadInventory(); if (!inventory) return Refused();
++  std::map<int, NativeProcessFootprint> before, after;
++  for (const auto& [pid, owner] : *inventory) {
++    const auto reading = ReadNativeProcessFootprint(pid); if (!reading) return Refused(); before.emplace(pid, *reading);
++  }
++  if (ReadInventory() != inventory) return Refused();
++  for (const auto& [pid, owner] : *inventory) {
++    const auto reading = ReadNativeProcessFootprint(pid); const auto& first = before.at(pid);
++    if (!reading || reading->process_uuid != first.process_uuid || reading->process_start_absolute != first.process_start_absolute ||
++        reading->sample_start < first.sample_end) return Refused();
++    after.emplace(pid, *reading);
++  }
++  if (ReadInventory() != inventory || !Current() || base::TimeTicks::Now() - started > base::Seconds(5)) return Refused();
++  base::ListValue processes, tabs;
++  for (const auto& [pid, owner] : *inventory) {
++    base::ListValue hosts; for (int id : owner.hosts) hosts.Append(id);
++    processes.Append(base::ListValue().Append(pid).Append(owner.role).Append(owner.type).Append(std::move(hosts))
++        .Append(before.at(pid).process_uuid).Append(base::NumberToString(before.at(pid).process_start_absolute))
++        .Append(base::ListValue().Append(Reading(before.at(pid), started)).Append(Reading(after.at(pid), started))));
++  }
++  for (const auto& tab : tabs_) tabs.Append(base::DictValue().Set("documentReceipt", tab.receipt.ToString()).Set("url", tab.url));
++  auto record = base::DictValue().Set("producer", "aux-native-stock-process-memory").Set("version", 1).Set("status", "sampled")
++      .Set("auxShellEnabled", false).Set("chromiumVersion", std::string(version_info::GetVersionNumber())).Set("chromiumLastChange", std::string(version_info::GetLastChange()))
++      .Set("windowId", browser_->GetSessionID().id()).Set("requestNonce", nonce_.ToString()).Set("sampleSequence", base::NumberToString(sequence_))
++      .Set("sampleStartUs", base::NumberToString(started.since_origin().InMicroseconds()))
++      .Set("sampleEndUs", base::NumberToString(base::TimeTicks::Now().since_origin().InMicroseconds()))
++      .Set("tabs", std::move(tabs)).Set("processes", std::move(processes));
++  const auto json = base::WriteJson(record);
++  return json && json->size() <= 12 * 1024 ? std::move(record) : Refused();
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h b/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h
+@@ -0,0 +1,56 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_STOCK_MEASUREMENT_NATIVE_STOCK_MEMORY_SAMPLER_H_
++#define CHROME_BROWSER_UI_STOCK_MEASUREMENT_NATIVE_STOCK_MEMORY_SAMPLER_H_
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++#include <cstdint>
++#include <map>
++#include <optional>
++#include <string>
++#include <vector>
++#include "base/memory/weak_ptr.h"
++#include "base/unguessable_token.h"
++#include "base/values.h"
++#include "content/browser/child_process_task_port_provider_mac.h"
++#include "content/public/browser/weak_document_ptr.h"
++class BrowserWindowInterface;
++class Profile;
++namespace content { class WebContents; }
++namespace aux {
++base::WeakPtr<BrowserWindowInterface> ReadNativeStockMeasurementOwner();
++// The browser/window/Profile and ten current documents come from the native
++// owner inventory only; callers cannot supply process, page or Profile IDs.
++class NativeStockMemorySampler final {
++ public:
++  NativeStockMemorySampler();
++  ~NativeStockMemorySampler();
++  base::DictValue Sample();
++ private:
++  friend class NativeStockMemorySamplerTestPeer;
++  struct Tab {
++    base::WeakPtr<content::WebContents> contents;
++    content::WeakDocumentPtr document;
++    base::UnguessableToken receipt = base::UnguessableToken::Create();
++    std::string url;
++  };
++  struct Process {
++    std::string role;
++    int type;
++    std::vector<int> hosts;
++    std::map<int, content::ChildProcessTaskPortProvider::OwnedTaskIdentity> tasks;
++    bool operator==(const Process&) const = default;
++  };
++  using Inventory = std::map<int, Process>;
++  bool Capture();
++  bool Current() const;
++  std::optional<Inventory> ReadInventory() const;
++  base::WeakPtr<BrowserWindowInterface> browser_;
++  std::vector<Tab> tabs_;
++  const base::UnguessableToken nonce_ = base::UnguessableToken::Create();
++  uint64_t sequence_ = 0;
++  bool captured_ = false;
++};
++}  // namespace aux
++#endif
++#endif
+diff --git a/chrome/browser/ui/stock_measurement/native_stock_memory_sampler_browsertest.cc b/chrome/browser/ui/stock_measurement/native_stock_memory_sampler_browsertest.cc
+new file mode 100644
+--- /dev/null
++++ b/chrome/browser/ui/stock_measurement/native_stock_memory_sampler_browsertest.cc
+@@ -0,0 +1,97 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/stock_measurement/native_stock_memory_sampler.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/test/base/in_process_browser_test.h"
++#include "chrome/test/base/ui_test_utils.h"
++#include "content/public/test/browser_test.h"
++#include "net/test/embedded_test_server/embedded_test_server.h"
++#include "ui/base/page_transition_types.h"
++namespace aux {
++class NativeStockMemorySamplerTestPeer {
++ public:
++  static bool Capture(NativeStockMemorySampler& sampler) { return sampler.Capture(); }
++  static bool Current(const NativeStockMemorySampler& sampler) { return sampler.Current(); }
++};
++class NativeStockMemorySamplerBrowserTest : public InProcessBrowserTest {
++ protected:
++  void SetUpOnMainThread() override {
++    ASSERT_TRUE(embedded_test_server()->Start());
++    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url()));
++    for (int index = 1; index < 10; ++index)
++      ASSERT_TRUE(AddTabAtIndex(index, url(), ui::PAGE_TRANSITION_TYPED));
++    ASSERT_EQ(browser()->GetTabStripModel()->count(), 10);
++  }
++  GURL url() { return embedded_test_server()->GetURL("/title1.html"); }
++};
++// These exercise real Chrome Browser/Profile/ten-tab/document ownership only.
++// They do not claim successful kernel sampling or the twenty-trial stock gate.
++IN_PROC_BROWSER_TEST_F(NativeStockMemorySamplerBrowserTest, TenCurrentDocumentsAndOneShotCapture) {
++  NativeStockMemorySampler sampler;
++  ASSERT_TRUE(NativeStockMemorySamplerTestPeer::Capture(sampler));
++  EXPECT_TRUE(NativeStockMemorySamplerTestPeer::Current(sampler));
++  EXPECT_FALSE(NativeStockMemorySamplerTestPeer::Capture(sampler));
++  EXPECT_TRUE(NativeStockMemorySamplerTestPeer::Current(sampler));
++}
++IN_PROC_BROWSER_TEST_F(NativeStockMemorySamplerBrowserTest, SameUrlDocumentReplacementRetiresOriginalCapture) {
++  NativeStockMemorySampler sampler;
++  ASSERT_TRUE(NativeStockMemorySamplerTestPeer::Capture(sampler));
++  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), embedded_test_server()->GetURL("/title2.html")));
++  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url()));
++  EXPECT_FALSE(NativeStockMemorySamplerTestPeer::Current(sampler));
++  EXPECT_FALSE(NativeStockMemorySamplerTestPeer::Capture(sampler));
++  const auto record = sampler.Sample();
++  ASSERT_NE(record.FindString("status"), nullptr);
++  EXPECT_EQ(*record.FindString("status"), "refused");
++}
++IN_PROC_BROWSER_TEST_F(NativeStockMemorySamplerBrowserTest, EleventhTabRetiresOriginalCapture) {
++  NativeStockMemorySampler sampler;
++  ASSERT_TRUE(NativeStockMemorySamplerTestPeer::Capture(sampler));
++  ASSERT_TRUE(AddTabAtIndex(10, url(), ui::PAGE_TRANSITION_TYPED));
++  EXPECT_FALSE(NativeStockMemorySamplerTestPeer::Current(sampler));
++  const auto record = sampler.Sample();
++  ASSERT_NE(record.FindString("status"), nullptr);
++  EXPECT_EQ(*record.FindString("status"), "refused");
++}
++IN_PROC_BROWSER_TEST_F(NativeStockMemorySamplerBrowserTest, ReorderRetiresExactTenTabIdentity) {
++  NativeStockMemorySampler sampler;
++  ASSERT_TRUE(NativeStockMemorySamplerTestPeer::Capture(sampler));
++  browser()->GetTabStripModel()->MoveWebContentsAt(0, 1, false);
++  EXPECT_FALSE(NativeStockMemorySamplerTestPeer::Current(sampler));
++}
++IN_PROC_BROWSER_TEST_F(NativeStockMemorySamplerBrowserTest, SecondNormalBrowserRefusesWithoutSelectingWindow) {
++  NativeStockMemorySampler sampler;
++  ASSERT_TRUE(NativeStockMemorySamplerTestPeer::Capture(sampler));
++  auto* second = CreateBrowser(browser()->GetProfile());
++  ASSERT_NE(second, nullptr);
++  EXPECT_FALSE(ReadNativeStockMeasurementOwner());
++  EXPECT_FALSE(NativeStockMemorySamplerTestPeer::Current(sampler));
++  NativeStockMemorySampler other;
++  EXPECT_FALSE(NativeStockMemorySamplerTestPeer::Capture(other));
++  CloseBrowserSynchronously(second);
++}
++IN_PROC_BROWSER_TEST_F(NativeStockMemorySamplerBrowserTest, ClosedOwnerCannotRecaptureReplacementBrowser) {
++  NativeStockMemorySampler sampler;
++  ASSERT_TRUE(NativeStockMemorySamplerTestPeer::Capture(sampler));
++  auto original = browser()->GetWeakPtr();
++  auto* replacement = CreateBrowser(browser()->GetProfile());
++  ASSERT_NE(replacement, nullptr);
++  ASSERT_TRUE(ui_test_utils::NavigateToURL(replacement, url()));
++  for (int index = 1; index < 10; ++index)
++    ASSERT_TRUE(AddTabAtIndexToBrowser(replacement, index, url(), ui::PAGE_TRANSITION_TYPED));
++  SetBrowser(replacement);
++  CloseBrowserSynchronously(original.get());
++  ASSERT_FALSE(original);
++  ASSERT_EQ(ReadNativeStockMeasurementOwner().get(), replacement);
++  EXPECT_FALSE(NativeStockMemorySamplerTestPeer::Current(sampler));
++  EXPECT_FALSE(NativeStockMemorySamplerTestPeer::Capture(sampler));
++  const auto record = sampler.Sample();
++  ASSERT_NE(record.FindString("status"), nullptr);
++  EXPECT_EQ(*record.FindString("status"), "refused");
++  NativeStockMemorySampler fresh;
++  EXPECT_TRUE(NativeStockMemorySamplerTestPeer::Capture(fresh));
++}
++}  // namespace aux
++#endif

@@ -1,0 +1,13 @@
+{
+  "status": "independent source review PASS; native uncompiled",
+  "patchSha256": "be9d399207ceb895e70745655199279b2375321a3a43640738e6d85b81ed6c70",
+  "exact17BeforeAfterForwardReverse": true,
+  "wholeProviderRestorationAfterOnlyTypeMoveAndPublicGetter": true,
+  "singleAuthoritativeOriginalMapAndPredicates": true,
+  "chromeInventoriesPublicBoundaryOnly": true,
+  "publicGnHeaderOnlyNoVisibilityWidening": true,
+  "retainedOriginalRequestRootFdFileFdNameAndBytesValidatedBeforeAfterDispatch": true,
+  "stockBrowserTestsActualSupportedBaseApisReviewed": true,
+  "newNativeTestsAuthored": 8,
+  "nativeCompiled": false
+}
