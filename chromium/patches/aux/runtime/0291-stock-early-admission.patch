@@ -1,0 +1,231 @@
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -2000,6 +2000,8 @@
+ 
+   if (is_mac && aux_allow_remote_debugging_for_tests && !enable_aux_shell) {
+     sources += [
++      "ui/aux/journey_fixture_path.cc",
++      "ui/aux/journey_fixture_path.h",
+       "ui/stock_measurement/native_stock_memory_sampler.cc",
+       "ui/stock_measurement/native_stock_memory_sampler.h",
+       "ui/stock_measurement/native_stock_measurement_fixture.cc",
+--- a/chrome/browser/chrome_browser_main.cc
++++ b/chrome/browser/chrome_browser_main.cc
+@@ -4,7 +4,7 @@
+ 
+ #include "chrome/browser/chrome_browser_main.h"
+ #include "chrome/browser/buildflags.h"
+-#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+ #include "chrome/browser/ui/aux/journey_fixture_path.h"
+ #endif
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
+@@ -1127,7 +1127,7 @@
+   // should be deferred to PreMainMessageLoopRunImpl.
+ 
+   TRACE_EVENT0("startup", "ChromeBrowserMainParts::PreCreateThreads");
+-#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+   aux::InitializeNativeObservationMetadata(*base::CommandLine::ForCurrentProcess());
+ #endif
+   result_code_ = PreCreateThreadsImpl();
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -365,6 +365,7 @@
+ test("journey_fixture_path_unittests") {
+   sources = [ "journey_fixture_path_unittest.cc", "journey_fixture_path.cc" ]
+   deps = [
++    "//chrome/browser:buildflags",
+     "//base",
+     "//testing/gtest",
+     "//base/test:run_all_unittests",
+--- a/chrome/browser/ui/aux/journey_fixture_path.cc
++++ b/chrome/browser/ui/aux/journey_fixture_path.cc
+@@ -1,6 +1,8 @@
+ // Copyright 2026 The Aux Authors
+ // Use of this source code is governed by a BSD-style license in the LICENSE file.
+ #include "chrome/browser/ui/aux/journey_fixture_path.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include <fcntl.h>
+ #include <limits>
+ #include <utility>
+@@ -40,7 +42,12 @@
+     const base::CommandLine& command) {
+   const bool appearance = command.HasSwitch("aux-native-appearance-observer");
+   const bool performance = command.HasSwitch("aux-native-performance-observer");
+-  if (!appearance && !performance) return nullptr;
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++  const bool stock = command.HasSwitch("aux-native-stock-measurement-observer");
++#else
++  const bool stock = false;
++#endif
++  if (!appearance && !performance && !stock) return nullptr;
+   const base::FilePath profile(command.GetSwitchValueASCII("user-data-dir"));
+   if (profile.BaseName().value() != "profile" ||
+       !OwnedJourneyFixtureRoot(profile.DirName().value())) return nullptr;
+@@ -60,11 +67,17 @@
+     return nullptr;
+   result->appearance_ = appearance;
+   result->performance_ = performance;
++  result->stock_ = stock;
+   return result;
+ }
+ bool NativeObservationMetadata::Enabled(bool appearance) const {
+-  return (appearance ? appearance_ : performance_) &&
+-      CurrentDirectory(root_.get(), root_path_, root_identity_) &&
++  return (appearance ? appearance_ : performance_) && CurrentDirectories();
++}
++bool NativeObservationMetadata::StockEnabled() const {
++  return stock_ && CurrentDirectories();
++}
++bool NativeObservationMetadata::CurrentDirectories() const {
++  return CurrentDirectory(root_.get(), root_path_, root_identity_) &&
+       CurrentDirectory(profile_.get(), profile_path_, profile_identity_);
+ }
+ void InitializeNativeObservationMetadata(const base::CommandLine& command) {
+@@ -105,4 +118,8 @@
+   const auto& state = State();
+   return state.metadata && state.metadata->Enabled(false);
+ }
++bool NativeStockObservationMetadataEnabled() {
++  const auto& state = State();
++  return state.metadata && state.metadata->StockEnabled();
++}
+ }  // namespace aux
+--- a/chrome/browser/ui/aux/journey_fixture_path.h
++++ b/chrome/browser/ui/aux/journey_fixture_path.h
+@@ -52,12 +52,14 @@
+       const base::CommandLine& command);
+   ~NativeObservationMetadata();
+   bool Enabled(bool appearance) const;
++  bool StockEnabled() const;
+  private:
+   NativeObservationMetadata();
++  bool CurrentDirectories() const;
+   std::string root_path_, profile_path_;
+   base::ScopedFD root_, profile_;
+   struct stat root_identity_ {}, profile_identity_ {};
+-  bool appearance_ = false, performance_ = false;
++  bool appearance_ = false, performance_ = false, stock_ = false;
+ };
+ // Test-only scoped installation captures the same real directory receipt and
+ // restores prior process admission. It cannot turn invalid metadata into true.
+@@ -75,5 +77,6 @@
+ void InitializeNativeObservationMetadata(const base::CommandLine& command);
+ bool NativeAppearanceObservationEnabled();
+ bool NativePerformanceObservationMetadataEnabled();
++bool NativeStockObservationMetadataEnabled();
+ }  // namespace aux
+ #endif
+--- a/chrome/browser/ui/aux/journey_fixture_path_unittest.cc
++++ b/chrome/browser/ui/aux/journey_fixture_path_unittest.cc
+@@ -2,6 +2,8 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ #include "chrome/browser/ui/aux/journey_fixture_path.h"
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
+ #include "base/files/scoped_temp_dir.h"
+ #include "base/threading/thread_restrictions.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+@@ -160,4 +162,48 @@
+   EXPECT_EQ(original_appearance, NativeAppearanceObservationEnabled());
+   EXPECT_EQ(original_performance, NativePerformanceObservationMetadataEnabled());
+ }
++TEST(JourneyFixturePathTest, StockAdmissionCannotBorrowAuxFlags) {
++  base::FilePath path;
++  ASSERT_TRUE(base::CreateTemporaryDirInDir(base::FilePath("/private/tmp"), "aux-native-journey-", &path));
++  base::ScopedTempDir root; ASSERT_TRUE(root.Set(path)); ASSERT_EQ(chmod(path.value().c_str(), 0700), 0);
++  const auto profile = path.AppendASCII("profile");
++  ASSERT_TRUE(base::CreateDirectory(profile)); ASSERT_EQ(chmod(profile.value().c_str(), 0700), 0);
++  base::CommandLine command(base::CommandLine::NO_PROGRAM);
++  command.AppendSwitchPath("user-data-dir", profile);
++  command.AppendSwitch("aux-native-appearance-observer"); command.AppendSwitch("aux-native-performance-observer");
++  ScopedNativeObservationMetadataForTesting admission(command);
++  base::ScopedDisallowBlocking no_ui_resolution;
++  EXPECT_TRUE(NativeAppearanceObservationEnabled()); EXPECT_TRUE(NativePerformanceObservationMetadataEnabled());
++  EXPECT_FALSE(NativeStockObservationMetadataEnabled());
++}
++TEST(JourneyFixturePathTest, DedicatedStockCacheUsesHeldProfileWithoutUIResolution) {
++  base::FilePath path;
++  ASSERT_TRUE(base::CreateTemporaryDirInDir(base::FilePath("/private/tmp"), "aux-native-journey-", &path));
++  base::ScopedTempDir root; ASSERT_TRUE(root.Set(path)); ASSERT_EQ(chmod(path.value().c_str(), 0700), 0);
++  const auto profile = path.AppendASCII("profile");
++  ASSERT_TRUE(base::CreateDirectory(profile)); ASSERT_EQ(chmod(profile.value().c_str(), 0700), 0);
++  base::CommandLine command(base::CommandLine::NO_PROGRAM);
++  command.AppendSwitchPath("user-data-dir", profile); command.AppendSwitch("aux-native-stock-measurement-observer");
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
++  const bool original = NativeStockObservationMetadataEnabled();
++  {
++    ScopedNativeObservationMetadataForTesting admission(command);
++    {
++      base::ScopedDisallowBlocking no_ui_resolution;
++      EXPECT_TRUE(NativeStockObservationMetadataEnabled());
++      EXPECT_FALSE(NativeAppearanceObservationEnabled()); EXPECT_FALSE(NativePerformanceObservationMetadataEnabled());
++    }
++    ASSERT_EQ(chmod(profile.value().c_str(), 0750), 0); EXPECT_FALSE(NativeStockObservationMetadataEnabled());
++    ASSERT_EQ(chmod(profile.value().c_str(), 0700), 0); EXPECT_TRUE(NativeStockObservationMetadataEnabled());
++    const auto old = path.AppendASCII("old-profile"); ASSERT_TRUE(base::Move(profile, old));
++    ASSERT_TRUE(base::CreateDirectory(profile)); ASSERT_EQ(chmod(profile.value().c_str(), 0700), 0);
++    EXPECT_FALSE(NativeStockObservationMetadataEnabled());
++    ASSERT_TRUE(base::DeletePathRecursively(profile)); ASSERT_TRUE(base::CreateSymbolicLink(old, profile));
++    EXPECT_FALSE(NativeStockObservationMetadataEnabled());
++  }
++  EXPECT_EQ(original, NativeStockObservationMetadataEnabled());
++#else
++  EXPECT_FALSE(NativeObservationMetadata::Capture(command));
++#endif
++}
+ }  // namespace aux
+--- a/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.cc
++++ b/chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.cc
+@@ -39,6 +39,7 @@
+   void Next() {
+     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+     if (failed_ || sequence_ >= 4000) return;
++    if (!NativeStockObservationMetadataEnabled()) { Refuse(); return; }
+     watch_.AsyncCall(&Watch::Wait).WithArgs(root_, root_device_, root_inode_, sequence_,
+         base::BindPostTaskToCurrentDefault(base::BindOnce(&Fixture::Received, weak_factory_.GetWeakPtr())));
+   }
+@@ -86,7 +87,7 @@
+     if (failed_) return;
+     const auto* operation = request ? request->record().FindString("operation") : nullptr;
+     const auto* raw_sequence = request ? request->record().FindString("sequence") : nullptr; uint64_t next = 0;
+-    if (!request || !request->Current() || !operation || *operation != kOperation || !raw_sequence ||
++    if (!NativeStockObservationMetadataEnabled() || !request || !request->Current() || !operation || *operation != kOperation || !raw_sequence ||
+         !base::StringToUint64(*raw_sequence, &next) || next != sequence_ + 1 ||
+         !Directory(root_, root_device_, root_inode_) || !Directory(profile_, profile_device_, profile_inode_)) { Refuse(); return; }
+     sequence_ = next;
+@@ -94,7 +95,7 @@
+     if (!browser || (owner_selected_ && owner_ != browser)) { Refuse(); return; }
+     owner_ = browser; owner_selected_ = true;
+     const auto record = sampler_.Sample();
+-    if (!request->Current() || !owner_ || ReadNativeStockMeasurementOwner() != owner_ ||
++    if (!NativeStockObservationMetadataEnabled() || !request->Current() || !owner_ || ReadNativeStockMeasurementOwner() != owner_ ||
+         !Directory(root_, root_device_, root_inode_) || !Directory(profile_, profile_device_, profile_inode_)) { Refuse(); return; }
+     const auto json = base::WriteJson(base::DictValue().Set("producer", "aux-native-fixture-reply").Set("version", 1)
+         .Set("pid", static_cast<int>(getpid())).Set("windowId", owner_->GetSessionID().id())
+@@ -122,9 +123,10 @@
+   const base::FilePath profile(command.GetSwitchValueASCII("user-data-dir")); const auto root = profile.DirName();
+   struct stat root_info{}, profile_info{};
+   if (!command.HasSwitch("aux-native-stock-measurement-observer") || profile.BaseName().value() != "profile" ||
+-      !OwnedJourneyFixtureRoot(root.value()) || lstat(root.value().c_str(), &root_info) != 0 ||
++      !NativeStockObservationMetadataEnabled() || lstat(root.value().c_str(), &root_info) != 0 ||
+       lstat(profile.value().c_str(), &profile_info) != 0 || !S_ISDIR(profile_info.st_mode) || profile_info.st_uid != geteuid() ||
+       (profile_info.st_mode & 0777) != 0700) return;
++  if (!NativeStockObservationMetadataEnabled()) return;
+   fixture_ = std::make_unique<Fixture>(profile, root_info.st_dev, root_info.st_ino, profile_info.st_dev, profile_info.st_ino);
+   fixture_->Next();
+ }
+--- a/chrome/browser/ui/stock_measurement/native_stock_measurement_request.cc
++++ b/chrome/browser/ui/stock_measurement/native_stock_measurement_request.cc
+@@ -57,7 +57,7 @@
+ }
+ bool NativeStockMeasurementRequest::Current() const {
+   struct stat directory{}, path{}, opened{}, named{}; char bytes[513];
+-  return directory_.is_valid() && file_.is_valid() && OwnedJourneyFixtureRoot(root_.value()) &&
++  return directory_.is_valid() && file_.is_valid() && NativeStockObservationMetadataEnabled() &&
+       fstat(directory_.get(), &directory) == 0 && Directory(directory, device_, inode_) &&
+       lstat(root_.value().c_str(), &path) == 0 && Directory(path, device_, inode_) &&
+       fstat(file_.get(), &opened) == 0 && SameFile(opened, original_) &&

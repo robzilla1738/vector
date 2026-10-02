@@ -4,7 +4,7 @@
 
 #include "chrome/browser/chrome_browser_main.h"
 #include "chrome/browser/buildflags.h"
-#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
 #endif
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
@@ -1127,7 +1127,7 @@ int ChromeBrowserMainParts::PreCreateThreads() {
   // should be deferred to PreMainMessageLoopRunImpl.
 
   TRACE_EVENT0("startup", "ChromeBrowserMainParts::PreCreateThreads");
-#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
   aux::InitializeNativeObservationMetadata(*base::CommandLine::ForCurrentProcess());
 #endif
   result_code_ = PreCreateThreadsImpl();

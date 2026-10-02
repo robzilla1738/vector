@@ -262,3 +262,7 @@ aux/runtime/0287-auto-pip-fixture-bound-observer.patch
 aux/runtime/0288-observation-metadata-check-dependency.patch
 aux/runtime/0289-media-dialog-window-interface-accessor.patch
 aux/runtime/0290-provider-kernel-thread-port-fixture.patch
+aux/runtime/0291-stock-early-admission.patch
+aux/runtime/0265-early-startup-hardware.patch
+aux/runtime/0292-startup-authenticated-hello.patch
+aux/runtime/0293-startup-absolute-deadline.patch

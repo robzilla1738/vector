@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
+#include "build/build_config.h"
+#include "chrome/browser/buildflags.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/threading/thread_restrictions.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -159,5 +161,49 @@ TEST(JourneyFixturePathTest, ScopedRealMetadataDrivesDefaultGettersAndRestoresAd
   }
   EXPECT_EQ(original_appearance, NativeAppearanceObservationEnabled());
   EXPECT_EQ(original_performance, NativePerformanceObservationMetadataEnabled());
+}
+TEST(JourneyFixturePathTest, StockAdmissionCannotBorrowAuxFlags) {
+  base::FilePath path;
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(base::FilePath("/private/tmp"), "aux-native-journey-", &path));
+  base::ScopedTempDir root; ASSERT_TRUE(root.Set(path)); ASSERT_EQ(chmod(path.value().c_str(), 0700), 0);
+  const auto profile = path.AppendASCII("profile");
+  ASSERT_TRUE(base::CreateDirectory(profile)); ASSERT_EQ(chmod(profile.value().c_str(), 0700), 0);
+  base::CommandLine command(base::CommandLine::NO_PROGRAM);
+  command.AppendSwitchPath("user-data-dir", profile);
+  command.AppendSwitch("aux-native-appearance-observer"); command.AppendSwitch("aux-native-performance-observer");
+  ScopedNativeObservationMetadataForTesting admission(command);
+  base::ScopedDisallowBlocking no_ui_resolution;
+  EXPECT_TRUE(NativeAppearanceObservationEnabled()); EXPECT_TRUE(NativePerformanceObservationMetadataEnabled());
+  EXPECT_FALSE(NativeStockObservationMetadataEnabled());
+}
+TEST(JourneyFixturePathTest, DedicatedStockCacheUsesHeldProfileWithoutUIResolution) {
+  base::FilePath path;
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(base::FilePath("/private/tmp"), "aux-native-journey-", &path));
+  base::ScopedTempDir root; ASSERT_TRUE(root.Set(path)); ASSERT_EQ(chmod(path.value().c_str(), 0700), 0);
+  const auto profile = path.AppendASCII("profile");
+  ASSERT_TRUE(base::CreateDirectory(profile)); ASSERT_EQ(chmod(profile.value().c_str(), 0700), 0);
+  base::CommandLine command(base::CommandLine::NO_PROGRAM);
+  command.AppendSwitchPath("user-data-dir", profile); command.AppendSwitch("aux-native-stock-measurement-observer");
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
+  const bool original = NativeStockObservationMetadataEnabled();
+  {
+    ScopedNativeObservationMetadataForTesting admission(command);
+    {
+      base::ScopedDisallowBlocking no_ui_resolution;
+      EXPECT_TRUE(NativeStockObservationMetadataEnabled());
+      EXPECT_FALSE(NativeAppearanceObservationEnabled()); EXPECT_FALSE(NativePerformanceObservationMetadataEnabled());
+    }
+    ASSERT_EQ(chmod(profile.value().c_str(), 0750), 0); EXPECT_FALSE(NativeStockObservationMetadataEnabled());
+    ASSERT_EQ(chmod(profile.value().c_str(), 0700), 0); EXPECT_TRUE(NativeStockObservationMetadataEnabled());
+    const auto old = path.AppendASCII("old-profile"); ASSERT_TRUE(base::Move(profile, old));
+    ASSERT_TRUE(base::CreateDirectory(profile)); ASSERT_EQ(chmod(profile.value().c_str(), 0700), 0);
+    EXPECT_FALSE(NativeStockObservationMetadataEnabled());
+    ASSERT_TRUE(base::DeletePathRecursively(profile)); ASSERT_TRUE(base::CreateSymbolicLink(old, profile));
+    EXPECT_FALSE(NativeStockObservationMetadataEnabled());
+  }
+  EXPECT_EQ(original, NativeStockObservationMetadataEnabled());
+#else
+  EXPECT_FALSE(NativeObservationMetadata::Capture(command));
+#endif
 }
 }  // namespace aux

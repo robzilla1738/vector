@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/aux/runtime_host.h"
+#include "chrome/browser/ui/aux/native_startup_admission_waiter.h"
 #include "chrome/browser/ui/aux/power_activity_mac.h"
 
 #include "base/task/thread_pool.h"
@@ -135,6 +136,37 @@ AuxRuntimeHost* AuxRuntimeHost::ForProfile(Profile* profile) {
   }
   return host;
 }
+
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+base::WeakPtr<AuxRuntimeHost> AuxRuntimeHost::ExistingForStartup(Profile* profile) {
+  if (!aux::NativeStartupObservationEnabled() || !profile || profile->IsOffTheRecord() ||
+      !profile->GetWeakPtr()) return {};
+  auto* host = static_cast<AuxRuntimeHost*>(profile->GetUserData(&kAuxRuntimeHostKey));
+  if (!host || host->profile_ != profile || host->test_dispatch_ || host->shutting_down_) return {};
+  return host->weak_factory_.GetWeakPtr();
+}
+void AuxRuntimeHost::StartupHelloPublished(base::TimeTicks acknowledged, uint64_t generation,
+    aux::NativeRuntimePeerIdentity peer) {
+  if (ExistingForStartup(profile_).get() != this) return;
+  aux::NativeStartupRuntimeHelloStore::Published(profile_,
+      {acknowledged, generation, peer, weak_factory_.GetWeakPtr()});
+}
+void AuxRuntimeHost::ConfirmStartupHello(uint64_t generation, aux::NativeRuntimePeerIdentity peer, base::TimeTicks deadline,
+    base::OnceCallback<void(std::optional<base::TimeTicks>)> reply) {
+  if (deadline.is_null() || base::TimeTicks::Now() > deadline || ExistingForStartup(profile_).get() != this) { std::move(reply).Run(std::nullopt); return; }
+  worker_.AsyncCall(&Worker::ConfirmStartupHello).WithArgs(generation, peer, deadline).Then(std::move(reply));
+}
+std::optional<base::TimeTicks> AuxRuntimeHost::Worker::ConfirmStartupHello(uint64_t generation, aux::NativeRuntimePeerIdentity peer, base::TimeTicks deadline) {
+  if (deadline.is_null() || base::TimeTicks::Now() > deadline || generation != 1 || connection_generation_ != generation || connection_fd_ < 0 ||
+      !process_.IsValid() || static_cast<int>(process_.Pid()) != peer.pid ||
+      aux::ReadNativeRuntimePeerIdentity(connection_fd_, peer.pid) != peer) return std::nullopt;
+  const auto confirmed = base::TimeTicks::Now();
+  return confirmed <= deadline ? std::optional<base::TimeTicks>(confirmed) : std::nullopt;
+}
+void AuxRuntimeHost::StartupHelloRetired(uint64_t generation) {
+  aux::NativeStartupRuntimeHelloStore::Retired(profile_, weak_factory_.GetWeakPtr(), generation);
+}
+#endif
 
 AuxRuntimeHost* AuxRuntimeHost::InstallTestDispatch(Profile* profile, TestDispatch dispatch) {
   CHECK(!profile->GetUserData(&kAuxRuntimeHostKey));
@@ -713,19 +745,38 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
   ack.Set("protocol", "aux-host-v1");
   ack.Set("nonce", *nonce);
   ack.Set("generation", expected_generation);
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  const bool startup_observed = aux::NativeStartupObservationEnabled();
+#endif
   const auto ack_json = base::WriteJson(ack);
   if (!ack_json || !SendFrame(*ack_json)) {
     *error = "Cannot acknowledge the Aux Runtime connection";
     Disconnect();
     return false;
   }
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  // Original authenticated ACK endpoint; UI delivery latency is not measured.
+  const auto acknowledged = startup_observed ? base::TimeTicks::Now() : base::TimeTicks();
+#endif
   close(listener_fd_);
   listener_fd_ = -1;
   ++connection_generation_;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  if (startup_observed && aux::NativeStartupObservationEnabled()) {
+    const auto peer = aux::ReadNativeRuntimePeerIdentity(connection_fd_, static_cast<int>(process_.Pid()));
+    if (peer) ui_runner_->PostTask(FROM_HERE, base::BindOnce(
+        &AuxRuntimeHost::StartupHelloPublished, owner_, acknowledged, connection_generation_, *peer));
+  }
+#endif
   return true;
 }
 
 void AuxRuntimeHost::Worker::Disconnect() {
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  if (connection_fd_ >= 0 && connection_generation_ && aux::NativeStartupObservationEnabled())
+    ui_runner_->PostTask(FROM_HERE, base::BindOnce(
+        &AuxRuntimeHost::StartupHelloRetired, owner_, connection_generation_));
+#endif
   if (connection_fd_ >= 0) {
     close(connection_fd_);
     connection_fd_ = -1;

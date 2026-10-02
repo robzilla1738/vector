@@ -62,6 +62,16 @@ source_set("runtime") {
     "native_runtime_peer_identity.h",
     "native_process_memory_sampler.cc",
     "native_process_memory_sampler.h",
+    "native_startup_runtime_hello.h",
+    "native_startup_runtime_hello.cc",
+    "native_startup_launch_receipt.h",
+    "native_startup_launch_receipt.cc",
+    "native_startup_admission_waiter.h",
+    "native_startup_admission_waiter.cc",
+    "native_startup_presentation_session.h",
+    "native_startup_presentation_session.cc",
+    "native_startup_viewport.h",
+    "native_startup_viewport.cc",
     "native_guest_presentation_owner.h",
     "native_guest_presentation_owner.cc",
     "native_guest_stage_owner.h",
@@ -365,6 +375,7 @@ test("profile_spaces_unittests") {
 test("journey_fixture_path_unittests") {
   sources = [ "journey_fixture_path_unittest.cc", "journey_fixture_path.cc" ]
   deps = [
+    "//chrome/browser:buildflags",
     "//base",
     "//testing/gtest",
     "//base/test:run_all_unittests",

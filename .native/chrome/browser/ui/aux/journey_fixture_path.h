@@ -52,12 +52,14 @@ class NativeObservationMetadata {
       const base::CommandLine& command);
   ~NativeObservationMetadata();
   bool Enabled(bool appearance) const;
+  bool StockEnabled() const;
  private:
   NativeObservationMetadata();
+  bool CurrentDirectories() const;
   std::string root_path_, profile_path_;
   base::ScopedFD root_, profile_;
   struct stat root_identity_ {}, profile_identity_ {};
-  bool appearance_ = false, performance_ = false;
+  bool appearance_ = false, performance_ = false, stock_ = false;
 };
 // Test-only scoped installation captures the same real directory receipt and
 // restores prior process admission. It cannot turn invalid metadata into true.
@@ -75,5 +77,6 @@ class ScopedNativeObservationMetadataForTesting {
 void InitializeNativeObservationMetadata(const base::CommandLine& command);
 bool NativeAppearanceObservationEnabled();
 bool NativePerformanceObservationMetadataEnabled();
+bool NativeStockObservationMetadataEnabled();
 }  // namespace aux
 #endif

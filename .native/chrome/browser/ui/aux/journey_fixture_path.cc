@@ -1,6 +1,8 @@
 // Copyright 2026 The Aux Authors
 // Use of this source code is governed by a BSD-style license in the LICENSE file.
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
+#include "build/build_config.h"
+#include "chrome/browser/buildflags.h"
 #include <fcntl.h>
 #include <limits>
 #include <utility>
@@ -40,7 +42,12 @@ std::unique_ptr<NativeObservationMetadata> NativeObservationMetadata::Capture(
     const base::CommandLine& command) {
   const bool appearance = command.HasSwitch("aux-native-appearance-observer");
   const bool performance = command.HasSwitch("aux-native-performance-observer");
-  if (!appearance && !performance) return nullptr;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && !BUILDFLAG(ENABLE_AUX_SHELL)
+  const bool stock = command.HasSwitch("aux-native-stock-measurement-observer");
+#else
+  const bool stock = false;
+#endif
+  if (!appearance && !performance && !stock) return nullptr;
   const base::FilePath profile(command.GetSwitchValueASCII("user-data-dir"));
   if (profile.BaseName().value() != "profile" ||
       !OwnedJourneyFixtureRoot(profile.DirName().value())) return nullptr;
@@ -60,11 +67,17 @@ std::unique_ptr<NativeObservationMetadata> NativeObservationMetadata::Capture(
     return nullptr;
   result->appearance_ = appearance;
   result->performance_ = performance;
+  result->stock_ = stock;
   return result;
 }
 bool NativeObservationMetadata::Enabled(bool appearance) const {
-  return (appearance ? appearance_ : performance_) &&
-      CurrentDirectory(root_.get(), root_path_, root_identity_) &&
+  return (appearance ? appearance_ : performance_) && CurrentDirectories();
+}
+bool NativeObservationMetadata::StockEnabled() const {
+  return stock_ && CurrentDirectories();
+}
+bool NativeObservationMetadata::CurrentDirectories() const {
+  return CurrentDirectory(root_.get(), root_path_, root_identity_) &&
       CurrentDirectory(profile_.get(), profile_path_, profile_identity_);
 }
 void InitializeNativeObservationMetadata(const base::CommandLine& command) {
@@ -104,5 +117,9 @@ bool NativeAppearanceObservationEnabled() {
 bool NativePerformanceObservationMetadataEnabled() {
   const auto& state = State();
   return state.metadata && state.metadata->Enabled(false);
+}
+bool NativeStockObservationMetadataEnabled() {
+  const auto& state = State();
+  return state.metadata && state.metadata->StockEnabled();
 }
 }  // namespace aux
