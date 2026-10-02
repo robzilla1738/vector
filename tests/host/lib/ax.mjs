@@ -108,7 +108,7 @@ export async function createAxClient(pid, { timeoutMs = 65_000 } = {}) {
     menu: path => request('menu', { path }),
     contextMenu: selector => request('contextMenu', { selector }),
     savePanel: path => request('savePanel', { path }),
-    openPanel: path => request('openPanel', { path }),
+    openPanel: (path, { button = 'Open' } = {}) => request('openPanel', { path, button }),
     waitFor: (selector, state = 'present', waitTimeoutMs = 5000) => request('waitFor', { selector, state, timeoutMs: waitTimeoutMs }),
     windows: () => request('windows'),
     trusted: () => request('trusted'),

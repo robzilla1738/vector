@@ -1,3 +1,4 @@
+import { revealSettingsControl } from "../lib/settings-control.mjs";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -83,6 +84,7 @@ export async function run(t) {
       await t.ax.key("end", "hid");
       await t.ax.key("return", "hid");
     }
+    await revealSettingsControl(t, shell("Save naming preferences"), "Downloads settings");
     await t.ax.press(shell("Save naming preferences"));
     await t.until("person naming preferences saved", async () => {
       const current = (await t.rpc("settings.get", {})).downloadNaming;

@@ -18,7 +18,7 @@ export async function run(t) {
     await t.ax.waitFor(control('Extensions'), 'visible');
     await t.ax.press(control('Extensions'));
     await t.ax.press(control('Install unpacked extension…'));
-    await t.ax.openPanel(resolve(import.meta.dirname, '../fixtures/extension-actions'));
+    await t.ax.openPanel(resolve(import.meta.dirname, '../fixtures/extension-actions'), { button: 'Select' });
     await t.ax.waitFor(control(fixtureName, 'AXStaticText'));
     await t.capture('extension-unpacked-installed');
     return { ax: await t.ax.dump({ scope: 'shell' }), rpc: await t.rpc('pages.list') };

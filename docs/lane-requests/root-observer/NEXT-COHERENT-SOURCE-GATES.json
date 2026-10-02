@@ -1,0 +1,75 @@
+{
+  "status": "source gates pass; native execution pending",
+  "base": "fe77a837210e9c20cb31f9bfb655ef1b621727ff",
+  "deliverables": [
+    "Settings snapshots include persisted roadmap preferences",
+    "Actual nonsecure AX values and secure-subrole selectors",
+    "Visible Settings control readiness and actual chooser/search labels",
+    "DR008 single command-field focus contour",
+    "Genuine empty Zap fixture with weak binder lifetime"
+  ],
+  "runtimeFocused": {
+    "files": 3,
+    "tests": 42
+  },
+  "rendererFocused": {
+    "files": 3,
+    "tests": 14
+  },
+  "bindings": 208,
+  "events": 26,
+  "rendererDigest": "3d5afa6640670fdc2888dcef7696b42e7bb73d82618d9431543dcfdfa64dfe17",
+  "budgetsKb": {
+    "startup": 482,
+    "css": 175,
+    "total": 1786
+  },
+  "nativeReplay": {
+    "packets": 36,
+    "mirrors": 108,
+    "baselines": 73,
+    "compiled": false
+  },
+  "logs": [
+    {
+      "path": "/tmp/aux-root-next-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f",
+      "bytes": 90
+    },
+    {
+      "path": "/tmp/aux-root-next-lint.log",
+      "sha256": "bbf9b5f555a764bad8f3bc2ff75512b9603d10cbe3cf3c2b13e907c7b37243fc",
+      "bytes": 128307
+    },
+    {
+      "path": "/tmp/aux-root-next-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562",
+      "bytes": 142
+    },
+    {
+      "path": "/tmp/aux-root-next-focused.log",
+      "sha256": "f5d8e95cf634c20524310f6d31915d6d179cc9d5492803b58a50ec4d555153b3",
+      "bytes": 541
+    },
+    {
+      "path": "/tmp/aux-root-next-renderer-tests.log",
+      "sha256": "4c2060e40b4d14c38a23dad42e5275a2d15773cf8e657e49f5bb1e34ad213264",
+      "bytes": 1011
+    },
+    {
+      "path": "/tmp/aux-root-next-shell.log",
+      "sha256": "6032c6870ca155d570039316dae557572a1fcfa199dcf22d94716c94fe87500e",
+      "bytes": 53209
+    },
+    {
+      "path": "/tmp/aux-root-next-capture.log",
+      "sha256": "94427ef0d8f29191b85678f5fcfb2f2fba0e90e404b6506baf6ed3b5c5deaad2",
+      "bytes": 116
+    },
+    {
+      "path": "/tmp/aux-root-next-budgets.log",
+      "sha256": "501b2b63533a28edca29922f17293d317663d83970c92f9a6da3dfef8e3a9302",
+      "bytes": 404
+    }
+  ]
+}

@@ -847,6 +847,7 @@ func protocolNames(_ element: AXUIElement) -> [String] {
 }
 func selectorMatches(_ element: AXUIElement, _ selector: [String: Any]) throws -> Bool {
   if let role = selector["role"] as? String, axString(element, kAXRoleAttribute) != role { return false }
+  if let subrole = selector["subrole"] as? String, axString(element, kAXSubroleAttribute) != subrole { return false }
   if let enabled = selector["enabled"] as? Bool,
      (axAttribute(element, kAXEnabledAttribute) as? Bool ?? false) != enabled { return false }
   if let name = selector["name"] as? String {
@@ -903,9 +904,16 @@ func elementRecord(_ element: AXUIElement, depth: Int) -> [String: Any] {
     "name": protocolNames(element).first(where: { !$0.isEmpty }) ?? "", "names": protocolNames(element),
     "enabled": axAttribute(element, kAXEnabledAttribute) as? Bool ?? false,
     "focused": axAttribute(element, kAXFocusedAttribute) as? Bool ?? false, "depth": depth]
+  let subrole = axString(element, kAXSubroleAttribute)
+  if !subrole.isEmpty { result["subrole"] = subrole }
   if ["AXCheckBox", "AXRadioButton"].contains(axString(element, kAXRoleAttribute)),
      let value = axAttribute(element, kAXValueAttribute) as? NSNumber {
     result["checked"] = value.boolValue
+  }
+  if ["AXTextField", "AXTextArea", "AXComboBox"].contains(axString(element, kAXRoleAttribute)),
+     axString(element, kAXSubroleAttribute) != "AXSecureTextField",
+     let value = axAttribute(element, kAXValueAttribute) as? String {
+    result["value"] = value
   }
   if axString(element, kAXRoleAttribute) == "AXTextField",
      axString(element, kAXSubroleAttribute) != "AXSecureTextField" {

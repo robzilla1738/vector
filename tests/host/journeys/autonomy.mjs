@@ -1,3 +1,4 @@
+import { revealSettingsControl } from '../lib/settings-control.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -121,10 +122,10 @@ async function demonstration(t) {
   t.assert.ok(workspace);
   await t.step('trusted isolated recording filters synthetic secrets and exposes ambiguity without taking browser control', { kind: 'ui', features: ['demonstrationSkills'] }, async () => {
     const opened = await t.rpc('pages.open', { url: `${t.fixture.url}/demo-secret`, activate: true });
-    await t.ax.waitFor(page('Fixture password', 'AXSecureTextField'));
+    await t.ax.waitFor({ ...page('Fixture password'), subrole: 'AXSecureTextField' });
     const before = (await t.rpc('pages.list')).find(item => item.pageId === opened.pageId);
     await t.ax.press(shell('Record a demonstration'));
-    for (const [name, role, text] of [['Fixture password', 'AXSecureTextField', 'synthetic-password-931'], ['Fixture OTP', 'AXTextField', 'synthetic-otp-822'], ['Fixture card', 'AXTextField', 'synthetic-card-744']]) await t.ax.type(text, page(name, role));
+    for (const [name, role, text] of [['Fixture password', 'AXTextField', 'synthetic-password-931'], ['Fixture OTP', 'AXTextField', 'synthetic-otp-822'], ['Fixture card', 'AXTextField', 'synthetic-card-744']]) await t.ax.type(text, { ...page(name, role), ...(name === 'Fixture password' ? { subrole: 'AXSecureTextField' } : {}) });
     await t.ax.click(page('Ambiguous', 'AXButton'));
     await t.ax.press(shell('Stop'));
     const exported = await exportRecording(t, 'aux-secret-filter');
@@ -215,8 +216,8 @@ async function overnight(t) {
   await t.ax.key('command+,', 'hid');
   await t.ax.press(shell('General'));
   const background = shell('Keep Aux running after closing all windows', 'AXCheckBox');
-  await t.ax.waitFor(background);
-  if (!Number((await t.ax.query(background))[0].value)) await t.ax.press(background);
+  const backgroundControl = await revealSettingsControl(t, background, 'General settings');
+  if (!backgroundControl.checked) await t.ax.press(background);
   await t.ax.key('escape', 'hid');
   t.assert.match(execFileSync('/usr/bin/pmset', ['-g', 'batt'], { encoding: 'utf8' }), /AC Power/, 'Native overnight power proof requires AC power');
   const powerBefore = execFileSync('/usr/bin/pmset', ['-g', 'assertions'], { encoding: 'utf8' });

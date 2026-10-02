@@ -8,7 +8,9 @@
   .command-surface .search-result-icon { width: 20px; height: 20px; border-radius: var(--r-sm); }
   .command-surface .search-result-icon :is(img, svg), .command-surface .search-result-icon .site-tile .tile-face { width: 20px; height: 20px; }
   .command-surface { animation: command-surface-appear var(--t-popup, 82ms) var(--ease-in-out) both; }
-  .command-surface :is(input, button):focus-visible { outline: 2px solid var(--focus-line); outline-offset: 2px; }
+  .command-surface .cmdbar:has(input:focus-visible) { outline: 2px solid var(--focus-line); outline-offset: -2px; }
+  .command-surface .cmdbar input:focus-visible { outline: none; }
+  .command-surface button:focus-visible { outline: 2px solid var(--focus-line); outline-offset: 2px; }
   @keyframes command-surface-appear { from { opacity: 0; } to { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .command-surface { animation: none; } }
   @media (prefers-reduced-transparency: reduce) { .command-surface { background: var(--surface-menu); backdrop-filter: none; } }

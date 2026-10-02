@@ -1,8 +1,17 @@
 // Copyright 2026 The Aux Authors
 #include "chrome/browser/ui/aux/permission_broker.h"
 #include <cmath>
+#include "pdf/buildflags.h"
+#include "components/actor/core/shared_types.h"
+#include "chrome/common/chrome_render_frame.mojom.h"
+#include "content/public/browser/web_contents_observer.h"
+#include "mojo/public/cpp/bindings/associated_receiver_set.h"
+#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+#include "url/origin.h"
+
 #include "chrome/browser/ui/browser.h"
 #include "base/functional/bind.h"
+#include "base/memory/weak_ptr.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
 #include "base/run_loop.h"
@@ -22,8 +31,9 @@
 #include "content/public/test/web_contents_tester.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-// The only seam is transport. Production owner BEGIN/receipt/teardown and
-// Broker serialization/Current/Answer/manager effects execute unchanged.
+// Transport and the exact empty synthetic Profile stylesheet renderer are
+// fixture producers. Production commit conditions, owner BEGIN/receipts,
+// Broker Current/Answer and actual manager permission effects run unchanged.
 class AuxRuntimeHostTestPeer {
  public:
   static AuxRuntimeHost* Install(Profile* profile, AuxRuntimeHost::TestDispatch dispatch) {
@@ -34,6 +44,109 @@ class AuxRuntimeHostTestPeer {
 };
 
 namespace aux {
+class PermissionFixtureRenderFrame : public chrome::mojom::ChromeRenderFrame {
+ public:
+  PermissionFixtureRenderFrame() = default;
+  ~PermissionFixtureRenderFrame() override = default;
+
+  void OverrideBinder(content::RenderFrameHost* rfh) {
+    blink::AssociatedInterfaceProvider* remote_interfaces =
+        rfh->GetRemoteAssociatedInterfaces();
+    remote_interfaces->OverrideBinderForTesting(
+        chrome::mojom::ChromeRenderFrame::Name_,
+        base::BindRepeating(&PermissionFixtureRenderFrame::Bind,
+                            weak_factory_.GetWeakPtr()));
+  }
+
+  // chrome::mojom::ChromeRenderFrame:
+  void SetAuxZapStylesheet(const std::string& origin,
+                           uint64_t sequence,
+                           const std::string& stylesheet,
+                           SetAuxZapStylesheetCallback callback) override {
+    const GURL url(origin);
+    const bool exact_empty = url.is_valid() && url.SchemeIsHTTPOrHTTPS() &&
+        url::Origin::Create(url).Serialize() == origin && sequence == 0 && stylesheet.empty();
+    EXPECT_TRUE(exact_empty) << "Only the synthetic empty Profile policy is implemented";
+    std::move(callback).Run(exact_empty, false);
+  }
+  void SetWindowFeatures(
+      blink::mojom::WindowFeaturesPtr window_features) override {}
+  void RequestReloadImageForContextNode() override {}
+  void RequestBitmapForContextNode(
+      RequestBitmapForContextNodeCallback callback) override {}
+  void RequestBitmapForContextNodeWithBoundsHint(
+      RequestBitmapForContextNodeWithBoundsHintCallback callback) override {}
+  void RequestBoundsHintForAllImages(
+      RequestBoundsHintForAllImagesCallback callback) override {}
+  void RequestImageForContextNode(
+      int32_t image_min_area_pixels,
+      const gfx::Size& image_max_size_pixels,
+      chrome::mojom::ImageFormat image_format,
+      int32_t quality,
+      RequestImageForContextNodeCallback callback) override {}
+  void ExecuteWebUIJavaScript(const std::u16string& javascript) override {}
+  void GetMediaFeedURL(GetMediaFeedURLCallback callback) override {}
+  void LoadBlockedPlugins(const std::string& identifier) override {}
+  void SetShouldDeferMediaLoad(bool should_defer) override {}
+
+  void InitializeTool(actor::mojom::ToolInvocationPtr request,
+                      InitializeToolCallback callback) override {
+    std::move(callback).Run(
+        nullptr);
+  }
+  void ExecuteTool(const actor::TaskId& task_id,
+                   ExecuteToolCallback callback) override {
+    std::move(callback).Run(nullptr);
+  }
+  void InvokeTool(actor::mojom::ToolInvocationPtr request,
+                  InvokeToolCallback callback) override {
+    std::move(callback).Run(nullptr);
+  }
+  void StartActorJournal(
+      mojo::PendingAssociatedRemote<actor::mojom::JournalClient> client)
+      override {}
+  void CreatePageStabilityMonitor(
+      mojo::PendingReceiver<
+          page_content_annotations::mojom::PageStabilityMonitor> monitor,
+      const actor::TaskId& task_id,
+      bool supports_paint_stability) override {}
+  void CancelTool(const actor::TaskId& task_id) override {}
+  void GetCrossDocumentScriptToolResult(
+      const base::UnguessableToken& execution_id,
+      GetCrossDocumentScriptToolResultCallback callback) override {
+    std::move(callback).Run("");
+  }
+#if BUILDFLAG(IS_ANDROID)
+  void SetCCTClientHeader(const std::string& header) override {}
+#endif
+#if BUILDFLAG(ENABLE_PDF)
+  void PdfPageCaptured(const std::u16string& contents,
+                       const std::string& pdf_lang,
+                       const GURL& page_url) override {}
+#endif
+
+ private:
+  void Bind(mojo::ScopedInterfaceEndpointHandle handle) {
+    receivers_.Add(
+        this, mojo::PendingAssociatedReceiver<chrome::mojom::ChromeRenderFrame>(
+                  std::move(handle)));
+  }
+
+  mojo::AssociatedReceiverSet<chrome::mojom::ChromeRenderFrame> receivers_;
+  base::WeakPtrFactory<PermissionFixtureRenderFrame> weak_factory_{this};
+};
+
+
+class PermissionFixtureFrameBindings : public content::WebContentsObserver {
+ public:
+  explicit PermissionFixtureFrameBindings(content::WebContents* page) : content::WebContentsObserver(page) {
+    renderer_.OverrideBinder(page->GetPrimaryMainFrame());
+  }
+  void RenderFrameCreated(content::RenderFrameHost* frame) override { renderer_.OverrideBinder(frame); }
+ private:
+  PermissionFixtureRenderFrame renderer_;
+};
+
 class PermissionBrokerTest : public BrowserWithTestWindowTest {
  public:
   PermissionBrokerTest() : BrowserWithTestWindowTest(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
@@ -51,6 +164,15 @@ class PermissionBrokerTest : public BrowserWithTestWindowTest {
            std::string json, AuxRuntimeHost::ResponseCallback reply) {
           auto params = base::JSONReader::ReadDict(json, base::JSON_PARSE_RFC);
           CHECK(params);
+          if (method == "zap.snapshot") {
+            EXPECT_TRUE(internal);
+            EXPECT_EQ(params->FindString("profileId") ? *params->FindString("profileId") : "",
+                self->profile()->GetPath().BaseName().AsUTF8Unsafe());
+            // This fixture Profile has no saved Zap rules. Keep the real
+            // commit condition and renderer acknowledgement pipeline active.
+            std::move(reply).Run({true, "[]", "", ""});
+            return;
+          }
           self->calls_.push_back({internal, std::move(method), std::move(*params), std::move(reply)});
         }, base::Unretained(this)));
     auto [id, partition] = controller_->ReserveIsolation("run", "task", 4);
@@ -59,6 +181,7 @@ class PermissionBrokerTest : public BrowserWithTestWindowTest {
     auto contents = content::WebContentsTester::CreateTestWebContents(profile(), instance);
     page_ = contents.get();
     browser()->tab_strip_model()->AppendWebContents(std::move(contents), true);
+    frame_bindings_ = std::make_unique<PermissionFixtureFrameBindings>(page_);
     NavigateAndCommit(page_, origin_);
     page_->WasShown();
     ASSERT_TRUE(controller_->RegisterIsolation(page_, id, "run", "task", 4));
@@ -85,6 +208,7 @@ class PermissionBrokerTest : public BrowserWithTestWindowTest {
   }
   void TearDown() override {
     prompts_.reset();
+    frame_bindings_.reset();
     host_ = nullptr;
     AuxRuntimeHostTestPeer::Destroy(profile());
     calls_.clear();
@@ -156,6 +280,7 @@ class PermissionBrokerTest : public BrowserWithTestWindowTest {
   raw_ptr<content::WebContents> page_ = nullptr;
   raw_ptr<permissions::PermissionRequestManager> manager_ = nullptr;
   std::unique_ptr<permissions::MockPermissionPromptFactory> prompts_;
+  std::unique_ptr<PermissionFixtureFrameBindings> frame_bindings_;
   permissions::MockPermissionRequest::MockPermissionRequestState state_;
   GURL origin_{"https://agent.test/"};
   std::string isolation_id_, page_id_;

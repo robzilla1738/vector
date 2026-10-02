@@ -60,7 +60,7 @@ export async function run(t) {
     await t.ax.key('command+,', 'hid'); const search = selector('Search settings', 'shell', 'AXTextField');
     await t.ax.waitFor(search, 'visible');
     await t.ax.type('Automatic picture in picture', search);
-    await t.ax.press(selector('Automatic picture in picture', 'shell', 'AXButton'));
+    await t.ax.press(selector('General Automatic picture in picture Control whether sites may open floating video automatically. Manual picture in picture remains available.', 'shell', 'AXButton'));
     await t.ax.press(selector('Automatic picture in picture', 'shell', 'AXPopUpButton'));
     await t.ax.press(selector('Allow on all sites', 'any')); await t.ax.press(selector('Close settings', 'shell', 'AXButton'));
     return { ax: await t.ax.dump(), rpc: await t.rpc('workspace.get') };
