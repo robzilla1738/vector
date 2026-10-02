@@ -1,3 +1,4 @@
+import { registerPerformanceReplPool } from "./performance-executions.js";
 import { AnswerDeltaEmitter } from "../answer-delta.js";
 import { MentionUnavailable } from "../turn-mentions.js";
 import { ObservationScopeSchema, AuxError, type Observation, type Run, type StepOutcome } from "@aux/contracts";
@@ -555,6 +556,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
 
   // ---- code-mode REPL (S5 deliverable 3) ----
   const replPool = new ReplPool();
+  const unregisterPerformanceRepl = registerPerformanceReplPool(replPool);
   let beforeModalClickText: string | undefined;
   /** Tabs this run opened via openTab — pageId → ownership release. */
   const openedTabs = new Map<string, () => void>();
@@ -1107,6 +1109,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       await self.finish(runId, "failed", undefined, error instanceof Error ? error.message : String(error));
     }
   } finally {
+    unregisterPerformanceRepl();
     if (c.deadlineHit && !TERMINAL_STATUSES.has(self.get(runId).status)) {
       await self.finish(runId, "failed", undefined, `run deadline exceeded (${run.config?.deadlineMs}ms)`, "Ran out of time");
     }

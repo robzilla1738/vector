@@ -1,0 +1,86 @@
+{
+  "status": "independent source adoption; native and physical proof pending",
+  "sourceCommit": "97da705f1b53f13f2f93c059746d457e02b405f9",
+  "patchSha256": "4a4485f0a8fd89d9e21b5e4fdc12102c167dfa8ea84bd4608efe3efbbf454736",
+  "leaves": [
+    {
+      "path": "apps/runtime/src/agent/loop/host.ts",
+      "beforeSha256": "eedb4dc17fddc0e12873587ee1cf84b9066e66a99341807727ce812963d13d2b",
+      "afterSha256": "ef701eb7a90ac65c031e27e1db74c5d2b9218f1db6075ae0bd0d2e75a2b78e85"
+    },
+    {
+      "path": "apps/runtime/src/agent/loop/performance-executions.ts",
+      "beforeSha256": null,
+      "afterSha256": "f45f062b41bb5c352563d9cf0e13c1558f719b11dd96a0ceec07f403f5243f42"
+    },
+    {
+      "path": "apps/runtime/src/agent/loop/repl.ts",
+      "beforeSha256": "3c42c7c566b6cc396502a261e25fba2ac0db0f7f02721cd103991f69f6b1347f",
+      "afterSha256": "02bbe8452b6f06dc157e91f56d000a9873f4748d96ed9e1abd59f01bdc3b1076"
+    },
+    {
+      "path": "apps/runtime/src/main.ts",
+      "beforeSha256": "b2720eb048ca5d9a372c2edaa3985580a0bfaa5cdd92ad5d546c82d1b023d71e",
+      "afterSha256": "d231004e198444225cb32140bb38b5225c6421d7a4209199febfc67d6e666a91"
+    },
+    {
+      "path": "apps/runtime/src/services/native-subagent-workload.ts",
+      "beforeSha256": null,
+      "afterSha256": "c47f5370cadfbaffeef1471aca9445287adb128b973194fc294e4d43767a5f8c"
+    },
+    {
+      "path": "tests/host/lib/native-subagent-memory-workload.mjs",
+      "beforeSha256": null,
+      "afterSha256": "e7dd67d0dd1b5d7fed694aaa10b0a7ed0f722acf7b7448191953ad771bbc97fa"
+    },
+    {
+      "path": "tests/host/lib/native-subagent-memory-workload.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "f402a5b99f280fa620c88cb9ff4c7df136933c089ea9610f67d84d7d48d92fd7"
+    },
+    {
+      "path": "tests/unit/native-subagent-executions.test.ts",
+      "beforeSha256": null,
+      "afterSha256": "67b7b37293bcc3d5776479d32ffad2269cffb02fe2411222e2a15b0c5ce9b79f"
+    }
+  ],
+  "beforeAfterAndForwardReverseCheck": "PASS",
+  "parentSafePausedReadiness": "open",
+  "nativeFreshKernelBracket": "open",
+  "independentChecks": {
+    "rebuild": {
+      "log": "/tmp/aux-root-five-vm-rebuild.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "unit": {
+      "log": "/tmp/aux-root-five-vm-unit.log",
+      "sha256": "ee6cad1beabb8cf6c71b4df9cf1468adfa55180ee81b9f5884a7a9b3d895c4b0"
+    },
+    "existing-repl": {
+      "log": "/tmp/aux-root-five-vm-existing-repl.log",
+      "sha256": "adc709cfeb73d7f37b4f23da1f90f3826562fd4be64ddc19370351170df5326a"
+    },
+    "authority": {
+      "log": "/tmp/aux-root-five-vm-authority.log",
+      "sha256": "43c21cc14a6aa333c6615608caabe2b0d92e8585dab6b92ef8140af0745bedcc"
+    },
+    "caller": {
+      "log": "/tmp/aux-root-five-vm-caller.log",
+      "sha256": "5860abcfd74905abc0414d31bb38d54d5f41273bc243ee7f0d550c14268c94d2"
+    },
+    "typecheck": {
+      "log": "/tmp/aux-root-five-vm-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    "lint": {
+      "log": "/tmp/aux-root-five-vm-lint.log",
+      "sha256": "0811ec9dbd8a3b18135663adeadad94548c6cfb74a59c83d1a168c8200ac1df7"
+    },
+    "format": {
+      "log": "/tmp/aux-root-five-vm-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    }
+  },
+  "rootSuccessor": "Actual source reader also refuses a paused parent that still owns pages;12 authority/channel regressions pass. Rebuilt real2new+42existingQuickJS cases and12caller cases pass. Fulltype/lint<=390/format pass; final whole suite remains open.",
+  "sourceOnly": true
+}

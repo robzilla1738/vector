@@ -1,3 +1,4 @@
+import { registerNativeSubagentWorkload } from "./services/native-subagent-workload.js";
 import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
 import { overnightRoot } from "./services/run-lineage.js";
@@ -1515,6 +1516,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   );
   if (channel) {
     registerNativeReceiptChannel(channel, repo, () => pages.list());
+    registerNativeSubagentWorkload(channel, { repo, runs, subagents, pages, tasks: new TaskService(repo, events) });
     registerNativeCommandRanking(channel, pages, new CommandRankingStore(repo, services.featureProfileId ?? "default"));
   }
   // Native notification/page-change/Calendar adapters submit provenance here;

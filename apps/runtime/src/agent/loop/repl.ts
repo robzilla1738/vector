@@ -356,6 +356,13 @@ class ReplSession {
   private finished?: Record<string, unknown>;
   private readonly lexicals = new Set<string>();
   private cancelled = false;
+  private executing = false;
+
+  performanceExecution(now: number) {
+    return this.executing && !this.cancelled && !this.deps.signal?.aborted && now < this.deadline
+      ? { runId: this.deps.runId, deadlineAt: this.deadline, memoryLimitBytes: MAX_HEAP_BYTES }
+      : undefined;
+  }
 
   private constructor(
     private context: QuickJSAsyncContext,
@@ -571,6 +578,7 @@ class ReplSession {
     this.deadline = started + Math.min(deadlineMs ?? REPL_MAX_DEADLINE_MS, REPL_MAX_DEADLINE_MS);
     this.touchedAt = started;
     this.finished = undefined;
+    this.executing = true;
     try {
       if (!scoped && declared.length) {
         // Syntax-invalid cells allocate no bindings. Validate with the same engine,
@@ -648,6 +656,7 @@ class ReplSession {
       if (this.deps.signal?.aborted) throw new AuxError("cancelled", "run aborted during REPL eval");
       throw error instanceof AuxError ? error : new AuxError("invalid_params", `REPL failed: ${message}`);
     } finally {
+      this.executing = false;
       release();
     }
   }
@@ -684,6 +693,15 @@ export class ReplPool {
 
   hasOpen(runId: string): boolean {
     return [...this.cells.values()].some((cell) => cell.runId === runId);
+  }
+
+  /** Native performance evidence only; settled-but-unconsumed cells are excluded. */
+  performanceExecutions(now = Date.now()) {
+    return [...this.cells].flatMap(([cellId, cell]) => {
+      if (cell.settled || cell.terminated) return [];
+      const current = this.sessions.get(cell.runId)?.performanceExecution(now);
+      return current ? [{ cellId, ...current }] : [];
+    });
   }
 
   async eval(
