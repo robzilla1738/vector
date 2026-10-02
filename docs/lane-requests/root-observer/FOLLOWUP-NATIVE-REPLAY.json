@@ -1,6 +1,6 @@
 {
   "status": "PASS source replay only; native compilation pending",
-  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-followup-45-replay-bgfzvhdg",
+  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-followup-46-replay-0srxl9wc",
   "baseProofSha256": "3c9488741c2896feb692d8748e0e00ffdfb95e204b1a41e785f1efb646ad3f84",
   "orderedPatches": [
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch",
@@ -47,7 +47,8 @@
     "chromium/patches/aux/runtime/0214-default-largest-auto-pip.patch",
     "chromium/patches/aux/runtime/0215-native-receipt-cancellation.patch",
     "chromium/patches/aux/runtime/0216-fast-download-completion.patch",
-    "chromium/patches/aux/runtime/0217-auto-pip-selection-fixture.patch"
+    "chromium/patches/aux/runtime/0217-auto-pip-selection-fixture.patch",
+    "chromium/patches/aux/runtime/0218-auto-pip-mojo-callback.patch"
   ],
   "baselineVerification": [
     {
@@ -977,7 +978,7 @@
     },
     {
       "path": "content/browser/media/session/media_session_controller.cc",
-      "sha256": "0e0036934a295c7d661887cb589970bca411b3e3a5f23a4a3c3b3c74a68febb8"
+      "sha256": "2bae1672fe8d243011c1a231a164ceb65160a11bc402e5ebab5835852fbe3bbb"
     },
     {
       "path": "content/browser/media/session/media_session_controller.h",
@@ -1236,7 +1237,11 @@
     {
       "path": "chromium/patches/aux/runtime/0217-auto-pip-selection-fixture.patch",
       "sha256": "e8fc4a31250dd09aed46e4b04051660e9760cedb673afa9a4f934069664a1f2d"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0218-auto-pip-mojo-callback.patch",
+      "sha256": "362514099c39c92e32af12b5ba4539f2f8cf95bbf7bb6c0983dadf19a7c8c4f1"
     }
   ],
-  "priorProofSha256": "b4d16ec12af917a310aceecc4b0043792e22d3a87a0408a87398f9c3d1e7067f"
+  "priorProofSha256": "c8a3d88f17c8607fd9946a226a58c745681f96e88245a532957e119ac69c4f89"
 }
