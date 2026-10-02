@@ -2,78 +2,89 @@
   "sourceOnly": true,
   "nativeCompiled": false,
   "nativeJourneyPassed": false,
-  "base": "5ab6962fd7e9bcc53e4a798c0b12f596212c271b",
-  "fullUnit": "482 files /2620 tests PASS; original full log retained",
-  "nativeReplay": "115packets/197originals/336mirrors PASS",
-  "shellDigest": "67d5698109b2bf0cff8869b158a2ff1de2d6b95170d523c60b68a37bf548ab1a",
+  "base": "fb5c70fb516fa40558a35d1003315ceb40a16bd3",
+  "fullUnit": "482 files /2622 tests PASS; original full log retained",
+  "runtimeRebuiltBeforeTests": true,
+  "lint": {
+    "actualWarnings": 380,
+    "maxWarnings": 390
+  },
+  "nativeReplay": "118packets/197originals/336mirrors PASS",
+  "shellDigest": "7267e39c64b8565b2fedca5ca9c469cfc782ded1c743a1df6d1f9bf43b02d8fb",
+  "sourceChangeAfterGates": "Native fixture-only0289 public window accessor/direct header; native full replay rerun. No runtime/shell/harness changes after successful source gates.",
   "logs": {
-    "download-build": {
-      "path": "/tmp/aux-root-native-lifecycle-download-build.log",
+    "build": {
+      "path": "/tmp/aux-root-native-successor-build.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
-    "download": {
-      "path": "/tmp/aux-root-native-lifecycle-download.log",
-      "sha256": "e30a7c4cbfc53a0f9c452c5aacbdd5e2e5fcbaca3ac9caf9bddfd6236b0c8201"
+    "full-unit": {
+      "path": "/tmp/aux-root-native-successor-full-unit.log",
+      "sha256": "c7194a353746e093e4d1a3d3a6404c44db1fa76103c00a3c938acc7b77c5776e"
     },
-    "ui": {
-      "path": "/tmp/aux-root-native-lifecycle-ui.log",
-      "sha256": "0948c72ae5fd1ec43b2ca2e6eeb51a732db608f53d883bc494845b7ce601c79f"
-    },
-    "setup": {
-      "path": "/tmp/aux-root-native-lifecycle-setup.log",
-      "sha256": "3de4469147e0c310014f1bce82c5ab02eac7aaf6af32366241c0f54f2108f9db"
-    },
-    "typecheck-final": {
-      "path": "/tmp/aux-root-native-lifecycle-typecheck-final.log",
+    "typecheck": {
+      "path": "/tmp/aux-root-native-successor-typecheck.log",
       "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
     },
-    "lint-final": {
-      "path": "/tmp/aux-root-native-lifecycle-lint-final.log",
-      "sha256": "8aa1d06dcb9581c2ca9c354a2933bd24fe9c1b6d0eb1e73165d166a98f416812"
+    "lint": {
+      "path": "/tmp/aux-root-native-successor-lint.log",
+      "sha256": "c1b0329b0a93845a8a1c56336dcd21a8dd78a054c171d0208299445ad5481430"
     },
-    "format-final": {
-      "path": "/tmp/aux-root-native-lifecycle-format-final.log",
+    "format": {
+      "path": "/tmp/aux-root-native-successor-format.log",
       "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
     },
-    "full-unit-final": {
-      "path": "/tmp/aux-root-native-lifecycle-full-unit-final.log",
-      "sha256": "791c8a23e472f12c2d8c935972f963e332447bb364246b1d30f412bfc1e24db7"
-    },
-    "renderer-final": {
-      "path": "/tmp/aux-root-native-lifecycle-renderer-final.log",
-      "sha256": "7b0a3f06fca3eef842b29c671091b2636713748cf5a96cd9aedd2f3ab0174b95"
-    },
-    "assets-final": {
-      "path": "/tmp/aux-root-native-lifecycle-assets-final.log",
-      "sha256": "d4069832d65c13e58d20a4649b4612f40bdd125f13a0e4ca7112b669ad329bbc"
-    },
-    "budgets-final": {
-      "path": "/tmp/aux-root-native-lifecycle-budgets-final.log",
-      "sha256": "f0ff6eea154c62bc5a70a7a0f7d6b48707f18e73a4c80b0c075170c0623aca71"
-    },
-    "bindings-final": {
-      "path": "/tmp/aux-root-native-lifecycle-bindings-final.log",
+    "bindings": {
+      "path": "/tmp/aux-root-native-successor-bindings.log",
       "sha256": "c2635bc1ad9062801fd9ce3c8ad8a74b577439116d3d850581070a87f4533591"
     },
     "bridge-final": {
-      "path": "/tmp/aux-root-native-lifecycle-bridge-final.log",
+      "path": "/tmp/aux-root-native-successor-bridge-final.log",
       "sha256": "b902406e71432dcc601710f7966314f27c06f12c1aec31900d24c1d64fe886b6"
     },
-    "inventory-final": {
-      "path": "/tmp/aux-root-native-lifecycle-inventory-final.log",
+    "inventory": {
+      "path": "/tmp/aux-root-native-successor-inventory.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     "journeys-final": {
-      "path": "/tmp/aux-root-native-lifecycle-journeys-final.log",
+      "path": "/tmp/aux-root-native-successor-journeys-final.log",
       "sha256": "4b10e449edc1397c9026a41a813b448986362c446092aafa21db5002483b7d4c"
     },
-    "protocol-final": {
-      "path": "/tmp/aux-root-native-lifecycle-protocol-final.log",
-      "sha256": "b9eb8003522447400f594ba34ee5c700824bdbe476f788aadea8d4b7086c3273"
+    "renderer-final": {
+      "path": "/tmp/aux-root-native-successor-renderer-final.log",
+      "sha256": "c7fa84e340e7962855e7e82c777dabc2e8e59a6f122a1c91112d24063f60ded4"
     },
-    "full-replay-final": {
-      "path": "/tmp/aux-root-native-lifecycle-full-replay-final.log",
-      "sha256": "78ed7247868cc936545d29566071690d1c611e43f4c53601e87d2b5b44a70014"
+    "assets-final": {
+      "path": "/tmp/aux-root-native-successor-assets-final.log",
+      "sha256": "44be44304b1ee5a677d6099f36e6964431f0f5a2234a7b58d82fb3741df22aed"
+    },
+    "budgets-final": {
+      "path": "/tmp/aux-root-native-successor-budgets-final.log",
+      "sha256": "b1b2c851248ddde6a8f418156c441c86c22e00b920497a071543f1a45bf904ca"
+    },
+    "protocol": {
+      "path": "/tmp/aux-root-native-successor-protocol.log",
+      "sha256": "15de49d9c85c55d9400b10f03dd1bda8a242b7aa52fb1c516cd4cc970892a83d"
+    },
+    "full-replay-118": {
+      "path": "/tmp/aux-root-native-successor-full-replay-118.log",
+      "sha256": "0ec10483142337890436d9ca6f5a637587a383ade3a8743c6289aa147b4633a4"
+    }
+  },
+  "retainedInitialOrderingFailures": {
+    "renderer": {
+      "path": "/tmp/aux-root-native-successor-renderer.log",
+      "sha256": "df0f4f0c03150f0d4f95d41c300edfdc7662ead0c730c0917c83e0113f5b32a0",
+      "reason": "Fresh contracts dist absent before workspace compile; dependent checks repeated after actual build."
+    },
+    "bridge": {
+      "path": "/tmp/aux-root-native-successor-bridge.log",
+      "sha256": "8183421ed4682c0b78bcc9fc9b252014d441782982e7443d52fe3cba7a2b8ba2",
+      "reason": "Fresh contracts dist absent before workspace compile; dependent checks repeated after actual build."
+    },
+    "journeys": {
+      "path": "/tmp/aux-root-native-successor-journeys.log",
+      "sha256": "b280e4f423d1339f63fa62d54b19c82030abf23d4502ff2d51e018019ec1b3e2",
+      "reason": "Fresh contracts dist absent before workspace compile; dependent checks repeated after actual build."
     }
   }
 }

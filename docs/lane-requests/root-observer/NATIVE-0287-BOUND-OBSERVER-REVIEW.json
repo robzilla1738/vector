@@ -1,0 +1,60 @@
+{
+  "scope": "fixture-only originalCE source, uncompiled/unrun; no production changes",
+  "path": "content/browser/picture_in_picture/picture_in_picture_service_impl_unittest.cc",
+  "beforeSha256": "50e98807d744b8c7d01744165bf8e81c1924580b44e5b715cb842632a6094c69",
+  "afterSha256": "ed90a7ac653c4c8e2b81f183b5b9150aec3e8f44e446ec9559255e63f600aa2f",
+  "patchSha256": "26d95723189da82fff97a83e47282ab64a8a2a825f0cd6c94073d2163bcccda9",
+  "apiHashes": {
+    "mojo/public/cpp/bindings/receiver_set.h": "226df9fc1de3d7740f9db237d28db7359e951521e8e6ec78106a931185448b9e",
+    "content/browser/picture_in_picture/picture_in_picture_session.cc": "b35889ebf9006837467ed8a03eb5de7cbff79730ee723fd3ed47913eb4030c6d"
+  },
+  "diagnostic": {
+    "path": "/tmp/aux-browser-runtime-builder-ce77c017/release/test-artifacts/builder-ce77-assertion-batch/native/content_unittests/stderr.log",
+    "sha256": "86c69517c6fea28234b70b9d169b1d6c1d9a43d3900f0ec017be82c3cb5b831f",
+    "ownedChildPid": 95239,
+    "cause": "unbound observer Remote in real session Shutdown during RFH teardown"
+  },
+  "checks": [
+    {
+      "args": [
+        "git",
+        "apply",
+        "--check",
+        "/tmp/aux-builder-native-0287/0287-auto-pip-fixture-bound-observer.patch"
+      ],
+      "exitCode": 0
+    },
+    {
+      "args": [
+        "git",
+        "apply",
+        "/tmp/aux-builder-native-0287/0287-auto-pip-fixture-bound-observer.patch"
+      ],
+      "exitCode": 0
+    },
+    {
+      "args": [
+        "git",
+        "apply",
+        "--reverse",
+        "--check",
+        "/tmp/aux-builder-native-0287/0287-auto-pip-fixture-bound-observer.patch"
+      ],
+      "exitCode": 0
+    },
+    {
+      "args": [
+        "git",
+        "apply",
+        "--reverse",
+        "/tmp/aux-builder-native-0287/0287-auto-pip-fixture-bound-observer.patch"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "wholeOriginalReverseRestored": true,
+  "allOriginalAssertionsPreserved": true,
+  "rootIndependentReview": true,
+  "sourceOnly": true,
+  "nativeReverificationRequired": true
+}

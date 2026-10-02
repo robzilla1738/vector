@@ -1,0 +1,38 @@
+{
+  "reservation": "0289",
+  "scope": "fixture-only",
+  "candidateBaseline": "ce77c017833d09b975db01fd33d7312b3f3e3476",
+  "path": "chrome/browser/ui/views/global_media_controls/media_dialog_view_interactive_browsertest.cc",
+  "beforeSha256": "3e4ec2c14bd21abec550eb1f44fde0940b9c57d8d4ea99c3196b60a1a8c33487",
+  "afterSha256": "2bb39f6d53242d9c42ac82da753ebd588c67d9afab2d53cafc461e8bf028390a",
+  "patchSha256": "f02018df3ad38d396a78912a001f4730e37a98668688d17af4063155261a5eb4",
+  "exactSubstitution": {
+    "before": "browser()->window()->GetNativeWindow()",
+    "after": "browser()->GetWindow()->GetNativeWindow()"
+  },
+  "apiPins": [
+    {
+      "path": "chrome/browser/ui/browser_window/public/browser_window_interface.h",
+      "sha256": "2de4cbfb18d143631663b77d1267a188d36cece682ea65411e319c28608eed5f"
+    },
+    {
+      "path": "ui/base/base_window.h",
+      "sha256": "ff1fa34347d9844e69a782a2a5cb8c73e49c48135c06ce272ec2c32b6cf1d46f"
+    }
+  ],
+  "assertionsPreserved": true,
+  "wholeOriginalRestored": true,
+  "forwardCheck": true,
+  "reverseCheck": true,
+  "compiled": false,
+  "stableChanged": false,
+  "directInclude": "ui/base/base_window.h",
+  "allowedCorrections": [
+    "window() -> GetWindow()",
+    "direct BaseWindow definition include"
+  ],
+  "rootIndependentlyReviewed": true,
+  "reviewRequestSha256": "b2527d8c7b0cb4827b1a6adcbcaed69b8951781363371ca27d9873b5fadc72f1",
+  "nativeCompiled": false,
+  "semantics": "Preserves original two Views-input assertions and real event path. Public GetWindow accessor and direct BaseWindow definition repair the actual compile failure; the accessor expression within EXPECT_FALSE changes."
+}

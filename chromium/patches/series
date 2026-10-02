@@ -258,3 +258,6 @@ aux/runtime/0283-result-preview-native-endpoint-fixture.patch
 aux/runtime/0284-widget-compositor-valid-mojo-fixtures.patch
 aux/runtime/0285-registered-pip-action-fixture.patch
 aux/runtime/0286-early-owned-observation-metadata.patch
+aux/runtime/0287-auto-pip-fixture-bound-observer.patch
+aux/runtime/0288-observation-metadata-check-dependency.patch
+aux/runtime/0289-media-dialog-window-interface-accessor.patch

@@ -20,6 +20,10 @@ export function SearchResultRow({ id, title, detail, icon, selected, query, trai
   return <div id={id} ref={elementRef} role="option" aria-selected={selected}
     data-command-result-source={resultSource} data-command-result-generation={resultGeneration}
     className={`search-result-row ${selected ? "sel" : ""} ${className}`}
+    onMouseDown={event => {
+      // The combobox owns focus; a result must survive until its click lands.
+      if (event.button === 0) event.preventDefault();
+    }}
     onMouseMove={onHover} onClick={onSelect}>
     <span className="search-result-icon">{icon}</span>
     <span className="search-result-copy">

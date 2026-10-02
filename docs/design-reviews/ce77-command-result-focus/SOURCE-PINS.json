@@ -1,0 +1,21 @@
+{
+  "baselineWorktree": "/tmp/aux-browser-runtime-root-native-test-lifecycle",
+  "baselineCommit": "fb5c70fb516fa40558a35d1003315ceb40a16bd3",
+  "files": [
+    {
+      "path": "apps/shell/src/components/SearchResultRow.tsx",
+      "beforeSha256": "95762c0efa3eb0ea16c1ca1119ba78158197d17818cff00a88b33d3fac11d46b",
+      "afterSha256": "23cf54d32a358094589eecfd10f68f6ec4ad2644e61399c6f35ba1b6e635318c"
+    },
+    {
+      "path": "apps/shell/src/components/SearchResultRow.test.tsx",
+      "beforeSha256": "ef6194bb4b28bebadbe9fce70465f3e735d476bdb06eeed89b1ee5241f969770",
+      "afterSha256": "f9503b869d5235fe33a05e7e9e4399407de282eb810a758d1beb36257cd92ef7"
+    }
+  ],
+  "patchSha256": "525413c498a89f3f6302d425c43d008c447d73bc3924e34e6ddfd75a0887ce58",
+  "checks": {
+    "sourceDomTests": 4,
+    "nativeVerified": false
+  }
+}
