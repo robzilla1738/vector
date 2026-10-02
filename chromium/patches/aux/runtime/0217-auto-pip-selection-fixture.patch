@@ -1,0 +1,13 @@
+--- a/content/browser/media/session/media_session_impl_unittest.cc
++++ b/content/browser/media/session/media_session_impl_unittest.cc
+@@ -1894,9 +1894,8 @@
+     }
+   }
+   void OnEnterPictureInPicture(int player_id,
+-      const std::optional<gfx::Size>& min_size) override {
++      const std::optional<gfx::Size>& /*min_size*/) override {
+     chosen.push_back(player_id);
+-    MockMediaSessionPlayerObserver::OnEnterPictureInPicture(player_id, min_size);
+   }
+   void Reply() {
+     auto replies = std::move(pending);

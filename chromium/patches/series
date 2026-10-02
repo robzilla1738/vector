@@ -187,3 +187,4 @@ aux/runtime/0213-permission-retirement-dispatch-registration.patch
 aux/runtime/0214-default-largest-auto-pip.patch
 aux/runtime/0215-native-receipt-cancellation.patch
 aux/runtime/0216-fast-download-completion.patch
+aux/runtime/0217-auto-pip-selection-fixture.patch

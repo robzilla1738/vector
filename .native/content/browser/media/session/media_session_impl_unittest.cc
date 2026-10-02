@@ -1894,9 +1894,8 @@ class AutoPipSizeObserver final : public MockMediaSessionPlayerObserver {
     }
   }
   void OnEnterPictureInPicture(int player_id,
-      const std::optional<gfx::Size>& min_size) override {
+      const std::optional<gfx::Size>& /*min_size*/) override {
     chosen.push_back(player_id);
-    MockMediaSessionPlayerObserver::OnEnterPictureInPicture(player_id, min_size);
   }
   void Reply() {
     auto replies = std::move(pending);
