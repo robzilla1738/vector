@@ -6,6 +6,7 @@ module media.mojom;
 
 import "media/mojo/mojom/media_types.mojom";
 import "mojo/public/mojom/base/time.mojom";
+import "mojo/public/mojom/base/unguessable_token.mojom";
 import "services/media_session/public/mojom/media_session.mojom";
 import "ui/gfx/geometry/mojom/geometry.mojom";
 
@@ -31,6 +32,10 @@ interface MediaPlayer {
   // enforcing a minimum visual size constraint in the viewport (in DIPs,
   // accounting for transforms and zoom).
   RequestEnterPictureInPicture(gfx.mojom.Size? min_size);
+
+  // Automatic entry requires the browser-selected, one-use document ticket.
+  RequestEnterAutomaticPictureInPicture(
+      mojo_base.mojom.UnguessableToken ticket, gfx.mojom.Size min_size);
 
   // Requests the media player to mute or unmute.
   RequestMute(bool mute);

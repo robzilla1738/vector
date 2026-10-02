@@ -56,6 +56,14 @@ class StubPictureInPictureController : public PictureInPictureController {
   void EnterPictureInPicture(
       HTMLVideoElement*,
       ScriptPromiseResolver<PictureInPictureWindow>*) override {}
+  void EnterAutomaticPictureInPicture(
+      HTMLVideoElement*, const base::UnguessableToken&,
+      ScriptPromiseResolver<PictureInPictureWindow>*) override {}
+  void SetAutomaticPictureInPictureContext(const base::UnguessableToken&) override {}
+  void ClearAutomaticPictureInPictureContext() override {}
+  std::optional<base::UnguessableToken> AutomaticPictureInPictureContext() const override {
+    return std::nullopt;
+  }
   void EnterPictureInPictureImmersive(
       HTMLVideoElement& video_element) override {
     enter_immersive_called_ = true;

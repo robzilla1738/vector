@@ -2,6 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/test/task_environment.h"
+#include "media/base/media_content_type.h"
+#include "third_party/blink/public/common/features.h"
+#include "base/test/scoped_feature_list.h"
+#include "content/browser/media/session/mock_media_session_player_observer.h"
+#include "content/browser/media/session/media_session_impl.h"
 #include "content/browser/picture_in_picture/picture_in_picture_service_impl.h"
 
 #include <memory>
@@ -183,6 +189,9 @@ class PictureInPictureMediaPlayerReceiver : public media::mojom::MediaPlayer {
       RequestAutoPictureInPictureSizeCallback callback) override {
     std::move(callback).Run(gfx::Size());
   }
+  void RequestEnterAutomaticPictureInPicture(
+      const base::UnguessableToken& /*ticket*/,
+      const gfx::Size& /*min_size*/) override {}
   void RequestEnterPictureInPicture(
       const std::optional<gfx::Size>& min_size) override {}
   void RequestMute(bool mute) override {}
@@ -792,6 +801,110 @@ TEST_F(PictureInPictureServiceImplTest,
   EXPECT_TRUE(first_callback_called);
   EXPECT_FALSE(first_callback_remote_is_valid);
   EXPECT_FALSE(first_session_remote);
+}
+
+namespace {
+class SelectedAutomaticPlayer : public MockMediaSessionPlayerObserver {
+ public:
+  explicit SelectedAutomaticPlayer(RenderFrameHost* frame)
+      : MockMediaSessionPlayerObserver(frame, media::MediaContentType::kPersistent) {}
+  void OnRequestAutoPictureInPictureSize(
+      int, AutoPictureInPictureSizeCallback callback) override {
+    std::move(callback).Run(gfx::Size(640, 360));
+  }
+  void OnEnterAutomaticPictureInPicture(
+      int id, const base::UnguessableToken& token, const gfx::Size&) override {
+    selected_id = id;
+    ticket = token;
+  }
+  int selected_id = -1;
+  base::UnguessableToken ticket;
+};
+}  // namespace
+
+class AutomaticPictureInPictureEffectTest : public PictureInPictureServiceImplTest {
+ public:
+  AutomaticPictureInPictureEffectTest() {
+    features_.InitAndEnableFeature(
+        blink::features::kBrowserInitiatedAutomaticPictureInPicture);
+  }
+  void SetUp() override {
+    PictureInPictureServiceImplTest::SetUp();
+    player_ = std::make_unique<SelectedAutomaticPlayer>(main_test_rfh());
+    selected_id_ = player_->StartNewPlayer();
+    player_->SetHasVideo(selected_id_, true);
+    player_->SetIsPictureInPictureAvailable(selected_id_, true);
+    ASSERT_TRUE(MediaSessionImpl::Get(contents())->AddPlayer(player_.get(), selected_id_));
+  }
+  void TearDown() override {
+    MediaSessionImpl::Get(contents())->RemovePlayers(player_.get());
+    player_.reset();
+    PictureInPictureServiceImplTest::TearDown();
+  }
+  void Select() {
+    MediaSessionImpl::Get(contents())->EnterAutoPictureInPictureWithEligibility(
+        base::BindRepeating([](bool* eligible) { return *eligible; }, &eligible_));
+    ASSERT_EQ(player_->selected_id, selected_id_);
+    ASSERT_FALSE(player_->ticket.is_empty());
+  }
+  void Dispatch(const base::UnguessableToken& token) {
+    service().StartAutomaticSession(token, selected_id_,
+        BindMediaPlayerReceiverAndPassRemote(), surface_id(), window_size(),
+        show_play_pause_button(), {}, source_bounds(), spatial_format(),
+        BindSession(session_out_, size_out_));
+  }
+  bool eligible_ = true;
+  int selected_id_;
+  std::unique_ptr<SelectedAutomaticPlayer> player_;
+  mojo::Remote<blink::mojom::PictureInPictureSession> session_out_;
+  gfx::Size size_out_;
+ private:
+  base::test::ScopedFeatureList features_;
+};
+
+TEST_F(AutomaticPictureInPictureEffectTest, QueuedAutomaticSessionCannotUseRetiredOwner) {
+  ASSERT_NO_FATAL_FAILURE(Select());
+  eligible_ = false;
+  EXPECT_CALL(delegate(), EnterPictureInPicture(contents())).Times(0);
+  Dispatch(player_->ticket);
+  EXPECT_FALSE(session_out_);
+  EXPECT_FALSE(GetController()->active_session_for_testing());
+}
+TEST_F(AutomaticPictureInPictureEffectTest, RefusalDuringNativeDelegateQueryPrecedesWindowEffect) {
+  ASSERT_NO_FATAL_FAILURE(Select());
+  EXPECT_CALL(delegate(), IsPictureInPictureEnabled())
+      .WillOnce(testing::Invoke([this] { eligible_ = false; return true; }));
+  EXPECT_CALL(delegate(), EnterPictureInPicture(contents())).Times(0);
+  Dispatch(player_->ticket);
+  EXPECT_FALSE(session_out_);
+  EXPECT_FALSE(GetController()->active_session_for_testing());
+}
+TEST_F(AutomaticPictureInPictureEffectTest, ForgedAutomaticTicketCannotEnterManualPath) {
+  EXPECT_CALL(delegate(), EnterPictureInPicture(contents())).Times(0);
+  Dispatch(base::UnguessableToken::Create());
+  EXPECT_FALSE(session_out_);
+  EXPECT_FALSE(GetController()->active_session_for_testing());
+}
+TEST_F(AutomaticPictureInPictureEffectTest, MatchingAutomaticTicketEntersOriginalControllerOnce) {
+  ASSERT_NO_FATAL_FAILURE(Select());
+  EXPECT_CALL(delegate(), IsPictureInPictureEnabled()).WillOnce(testing::Return(true));
+  EXPECT_CALL(delegate(), EnterPictureInPicture(contents()))
+      .Times(1).WillOnce(testing::Return(PictureInPictureResult::kSuccess));
+  Dispatch(player_->ticket);
+  ASSERT_TRUE(session_out_);
+  EXPECT_TRUE(GetController()->active_session_for_testing());
+  session_out_.reset();
+  Dispatch(player_->ticket);
+  EXPECT_FALSE(session_out_);
+}
+
+TEST_F(AutomaticPictureInPictureEffectTest, QueuedAutomaticSessionCannotExtendSelectionDeadline) {
+  ASSERT_NO_FATAL_FAILURE(Select());
+  task_environment()->FastForwardBy(base::Seconds(2));
+  EXPECT_CALL(delegate(), EnterPictureInPicture(contents())).Times(0);
+  Dispatch(player_->ticket);
+  EXPECT_FALSE(session_out_);
+  EXPECT_FALSE(GetController()->active_session_for_testing());
 }
 
 }  // namespace content

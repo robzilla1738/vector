@@ -5,6 +5,7 @@
 #ifndef CONTENT_BROWSER_MEDIA_SESSION_MEDIA_SESSION_IMPL_H_
 #define CONTENT_BROWSER_MEDIA_SESSION_MEDIA_SESSION_IMPL_H_
 
+#include "base/unguessable_token.h"
 #include <stddef.h>
 
 #include <cstdint>
@@ -288,6 +289,10 @@ class MediaSessionImpl : public MediaSession,
 
   // Enter picture-in-picture.
   void EnterPictureInPicture() override;
+  // Browser-owned receipt arm/refresh; pending document provenance survives
+  // navigation and refusal so queued native control cannot fall back.
+  void RecordPictureInPictureUserInvocation(RenderFrameHost& frame,
+                                            bool only_if_pending);
 
   // Exit picture-in-picture.
   void ExitPictureInPicture() override;
@@ -297,6 +302,12 @@ class MediaSessionImpl : public MediaSession,
   void EnterAutoPictureInPicture() override;
   void EnterAutoPictureInPictureWithEligibility(
       base::RepeatingCallback<bool()> eligible) override;
+
+  // Consumes only the matching automatic ticket. The returned check must run
+  // at the native effect boundary, after any queued renderer work.
+  CONTENT_EXPORT base::OnceCallback<bool()> TakeAutoPictureInPictureAuthority(
+      const base::UnguessableToken& token, RenderFrameHost* frame,
+      uint32_t player_id);
 
   // Save the current video frame.
   void SaveVideoFrame() override;
@@ -602,6 +613,20 @@ class MediaSessionImpl : public MediaSession,
       base::RepeatingCallback<bool()> eligible,
       PlayerIdentifier player, gfx::Size expected_size, gfx::Size current_size);
   void CancelAutoPipSelection(uint64_t generation);
+  struct AutoPipAuthority {
+    base::UnguessableToken token;
+    std::optional<PlayerIdentifier> player;
+    bool registered_handler;
+    WeakDocumentPtr document;
+    uint64_t generation;
+    base::TimeTicks deadline;
+    base::RepeatingCallback<bool()> eligible;
+  };
+  bool CheckAutoPipAuthority(const AutoPipAuthority& authority);
+  bool IsAutoPipAuthorityPlayerCurrent(const AutoPipAuthority& authority) const;
+  std::optional<AutoPipAuthority> auto_pip_authority_;
+  std::optional<WeakDocumentPtr> user_pip_invocation_document_;
+  base::TimeTicks auto_pip_selection_deadline_;
   uint64_t auto_pip_generation_ = 0;
   base::OneShotTimer auto_pip_selection_timer_;
 

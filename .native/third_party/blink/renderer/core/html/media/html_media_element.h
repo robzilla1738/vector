@@ -667,6 +667,9 @@ class CORE_EXPORT HTMLMediaElement
   void RequestSeekForward(base::TimeDelta seek_time) override;
   void RequestSeekBackward(base::TimeDelta seek_time) override;
   void RequestSeekTo(base::TimeDelta seek_time) override;
+  void RequestEnterAutomaticPictureInPicture(
+      const base::UnguessableToken& /*ticket*/,
+      const gfx::Size& /*min_size*/) override {}
   void RequestEnterPictureInPicture(
       const std::optional<gfx::Size>& min_size) override {}
   void RequestAutoPictureInPictureSize(

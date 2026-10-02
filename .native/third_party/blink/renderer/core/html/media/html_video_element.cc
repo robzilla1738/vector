@@ -736,6 +736,15 @@ void HTMLVideoElement::RequestEnterPictureInPicture(
       .EnterPictureInPicture(this, /*promise=*/nullptr);
 }
 
+void HTMLVideoElement::RequestEnterAutomaticPictureInPicture(
+    const base::UnguessableToken& ticket, const gfx::Size& min_size) {
+  const auto size = AutoPictureInPictureSize();
+  if (ticket.is_empty() || size.IsEmpty() ||
+      size.width() < min_size.width() || size.height() < min_size.height()) return;
+  PictureInPictureController::From(GetDocument())
+      .EnterAutomaticPictureInPicture(this, ticket);
+}
+
 gfx::Size HTMLVideoElement::AutoPictureInPictureSize() const {
   auto* frame = GetDocument().GetFrame();
   auto* layout = GetLayoutObject();

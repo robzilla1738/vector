@@ -30,6 +30,7 @@ source_set("runtime") {
     "permission_effect_receipt.h",
     "permission_broker.cc",
     "permission_broker.h",
+    "picture_in_picture_user_input.h",
     "egress_projection.cc",
     "egress_projection.h",
     "egress_url_loader.cc",

@@ -1,0 +1,1115 @@
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
+@@ -3,6 +3,12 @@
+ // found in the LICENSE file.
+ 
+ #include "third_party/blink/public/common/frame/user_activation_state.h"
++#include "content/public/browser/picture_in_picture_user_authority.h"
++#include "content/public/test/browser_test_utils.h"
++#include "components/input/native_web_keyboard_event.h"
++#include "ui/events/keycodes/dom/dom_code.h"
++#include "ui/events/keycodes/dom/dom_key.h"
++#include "ui/events/keycodes/keyboard_codes.h"
+ #include "content/browser/picture_in_picture/picture_in_picture_service_impl.h"
+ #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
+ 
+@@ -4159,6 +4165,13 @@
+ class AuxOrdinaryAutoPictureInPictureBrowserTest
+     : public BrowserInitiatedAutoPictureInPictureBrowserTest {
+  public:
++  void SendActualBrowserInput() {
++    SwitchToExistingTab(page);
++    content::InputEventAckWaiter ack(page->GetPrimaryMainFrame()->GetRenderWidgetHost(),
++        blink::WebInputEvent::Type::kRawKeyDown);
++    content::SimulateCharTyped(page, u'a');
++    ack.Wait();
++  }
+   void PrepareOrdinaryVideo() {
+     LoadNotRegisteredPage(browser());
+     page = browser()->GetTabStripModel()->GetActiveWebContents();
+@@ -4281,12 +4294,112 @@
+   ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+   test_clock().Advance(blink::kActivationLifespan);
+   ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+-  // The actual person API remains a separate legitimate manual producer.
++  // Actual browser input, rather than ExecJs's synthetic userGesture flag,
++  // supplies the newer person receipt through the production input route.
++  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
+   ASSERT_EQ(true, content::EvalJs(page,
+       "document.querySelector('video').requestPictureInPicture().then("
+-      "() => document.pictureInPictureElement === document.querySelector('video'))"));
++      "() => document.pictureInPictureElement === document.querySelector('video'))",
++      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+   EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), page);
+ }
++IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
++                       NewDevToolsActivationCannotEraseAutomaticNativeContext) {
++  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
++  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
++  test_clock().Advance(blink::kActivationLifespan);
++  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
++  SwitchToExistingTab(page);
++  // EvalJs's normal userGesture=true reaches the real DevTools activation
++  // producer. It is intentionally not a browser input receipt.
++  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
++      "document.querySelector('video').requestPictureInPicture()"
++      ".then(() => 'entered', error => error.name)"));
++  EXPECT_FALSE(page->HasPictureInPictureVideo());
++  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
++  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
++  EXPECT_EQ(true, content::EvalJs(page,
++      "document.querySelector('video').requestPictureInPicture().then(() => true)",
++      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
++  EXPECT_TRUE(page->HasPictureInPictureVideo());
++}
++IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
++                       ExtensionActivationCannotMintNativeManualReceipt) {
++  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
++  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
++  test_clock().Advance(blink::kActivationLifespan);
++  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
++  SwitchToExistingTab(page);
++  page->GetPrimaryMainFrame()->NotifyUserActivation(
++      blink::mojom::UserActivationNotificationType::kExtensionEvent);
++  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
++      "document.querySelector('video').requestPictureInPicture()"
++      ".then(() => 'entered', error => error.name)",
++      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
++  EXPECT_FALSE(page->HasPictureInPictureVideo());
++  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
++}
++IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
++                       DebuggerInputRoutingDoesNotCreateAPersonReceipt) {
++  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
++  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
++  test_clock().Advance(blink::kActivationLifespan);
++  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
++  SwitchToExistingTab(page);
++  auto* host = page->GetPrimaryMainFrame()->GetRenderWidgetHost();
++  content::InputEventAckWaiter ack(host, blink::WebInputEvent::Type::kRawKeyDown);
++  input::NativeWebKeyboardEvent injected(blink::WebInputEvent::Type::kRawKeyDown,
++      blink::WebInputEvent::kFromDebugger, base::TimeTicks::Now());
++  injected.dom_key = ui::DomKey::FromCharacter('a');
++  injected.dom_code = static_cast<int>(ui::DomCode::US_A);
++  injected.windows_key_code = ui::VKEY_A;
++  host->ForwardKeyboardEvent(injected);
++  ack.Wait();
++  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
++      "document.querySelector('video').requestPictureInPicture()"
++      ".then(() => 'entered', error => error.name)",
++      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
++  EXPECT_FALSE(page->HasPictureInPictureVideo());
++  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
++}
++IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
++                       GenuineLaterInputReceiptCannotReplayAfterManualEffect) {
++  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
++  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
++  test_clock().Advance(blink::kActivationLifespan);
++  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
++  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
++  EXPECT_EQ(true, content::EvalJs(page,
++      "document.querySelector('video').requestPictureInPicture().then(() => true)",
++      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
++  EXPECT_TRUE(page->HasPictureInPictureVideo());
++  ASSERT_EQ(true, content::EvalJs(page,
++      "document.exitPictureInPicture().then(() => true)",
++      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
++  // A new DevTools activation does not resurrect the consumed person receipt.
++  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
++      "document.querySelector('video').requestPictureInPicture()"
++      ".then(() => 'entered', error => error.name)"));
++  EXPECT_FALSE(page->HasPictureInPictureVideo());
++  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
++}
++IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
++                       DevToolsActivationCannotEraseAutomaticDocumentPiPLineage) {
++  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
++  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
++  test_clock().Advance(blink::kActivationLifespan);
++  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
++  SwitchToExistingTab(page);
++  EXPECT_EQ("InvalidStateError", content::EvalJs(page,
++      "documentPictureInPicture.requestWindow()"
++      ".then(() => 'entered', error => error.name)"));
++  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
++  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
++  EXPECT_EQ(true, content::EvalJs(page,
++      "documentPictureInPicture.requestWindow().then(w => { w.close(); return true; })",
++      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
++}
++
+ IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                        ReplacedDocumentRefusesHeldAutomaticPayload) {
+   ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+@@ -4456,9 +4569,10 @@
+       "window.auxAutomaticDocumentDone", content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+   EXPECT_FALSE(page->HasPictureInPictureDocument());
+   EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
+-  SwitchToExistingTab(page);
++  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
+   EXPECT_EQ(true, content::EvalJs(page,
+-      "documentPictureInPicture.requestWindow().then(window => !!window)"));
++      "documentPictureInPicture.requestWindow().then(window => !!window)",
++      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+   EXPECT_TRUE(page->HasPictureInPictureDocument());
+ }
+ 
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -30,6 +30,7 @@
+     "permission_effect_receipt.h",
+     "permission_broker.cc",
+     "permission_broker.h",
++    "picture_in_picture_user_input.h",
+     "egress_projection.cc",
+     "egress_projection.h",
+     "egress_url_loader.cc",
+--- a/chrome/browser/ui/aux/methods/surfaces_methods.cc
++++ b/chrome/browser/ui/aux/methods/surfaces_methods.cc
+@@ -23,6 +23,7 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/common/chrome_isolated_world_ids.h"
+ #include "content/public/browser/media_session.h"
++#include "content/public/browser/picture_in_picture_user_authority.h"
+ #include "content/public/browser/render_frame_host.h"
+ #include "content/public/browser/web_contents.h"
+ #include "content/public/browser/weak_document_ptr.h"
+@@ -182,5 +183,14 @@
+     std::move(callback).Run(false, "", "forbidden", "This page does not own the PiP window");
+     return;
+   }
++  if (enter) {
++    auto* source = web_ui()->GetWebContents()->GetPrimaryMainFrame();
++    if (!source || !content::TransferPictureInPictureUserInput(
++            *source, *contents->GetPrimaryMainFrame())) {
++      std::move(callback).Run(false, "", "forbidden",
++          "Use the browser controls to request picture-in-picture again");
++      return;
++    }
++  }
+   std::make_shared<PictureInPictureRequest>(contents, enter, std::move(callback))->Start();
+ }
+--- /dev/null
++++ b/chrome/browser/ui/aux/picture_in_picture_user_input.h
+@@ -0,0 +1,15 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CHROME_BROWSER_UI_AUX_PICTURE_IN_PICTURE_USER_INPUT_H_
++#define CHROME_BROWSER_UI_AUX_PICTURE_IN_PICTURE_USER_INPUT_H_
++#include "ui/gfx/native_ui_types.h"
++namespace ui { class Event; }
++namespace content { class RenderFrameHost; }
++namespace aux {
++// Actual synchronous native Views dispatch only; no renderer/UI-origin waiver.
++bool RecordPictureInPictureViewsInput(content::RenderFrameHost& target,
++                                     const ui::Event& event,
++                                     gfx::NativeWindow source_window);
++}
++#endif
+--- a/chrome/browser/ui/global_media_controls/media_notification_service.cc
++++ b/chrome/browser/ui/global_media_controls/media_notification_service.cc
+@@ -26,6 +26,10 @@
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+ #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
+ #include "chrome/common/buildflags.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux/picture_in_picture_user_input.h"
++#endif
+ #include "components/feature_engagement/public/feature_constants.h"
+ #include "components/feature_engagement/public/tracker.h"
+ #include "components/global_media_controls/public/media_dialog_delegate.h"
+@@ -368,6 +372,19 @@
+   ukm::builders::Media_GlobalMediaControls_ActionButtonPressed(source_id)
+       .SetMediaSessionAction(static_cast<int64_t>(action))
+       .Record(recorder);
++}
++
++void MediaNotificationService::OnMediaSessionActionButtonPressedWithUserInput(
++    const std::string& id, media_session::mojom::MediaSessionAction action,
++    const ui::Event& event, gfx::NativeWindow source_window) {
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++  if (action != media_session::mojom::MediaSessionAction::kEnterPictureInPicture)
++    return;
++  auto* contents = content::MediaSession::GetWebContentsFromRequestId(id);
++  if (!contents || contents->GetBrowserContext() != profile_) return;
++  auto* frame = contents->GetPrimaryMainFrame();
++  if (frame) aux::RecordPictureInPictureViewsInput(*frame, event, source_window);
++#endif
+ }
+ 
+ void MediaNotificationService::OnMediaSessionInfoChanged(
+--- a/chrome/browser/ui/global_media_controls/media_notification_service.h
++++ b/chrome/browser/ui/global_media_controls/media_notification_service.h
+@@ -95,6 +95,10 @@
+   void OnMediaSessionActionButtonPressed(
+       const std::string& id,
+       media_session::mojom::MediaSessionAction action) override;
++  void OnMediaSessionActionButtonPressedWithUserInput(
++      const std::string& id,
++      media_session::mojom::MediaSessionAction action,
++      const ui::Event& event, gfx::NativeWindow source_window) override;
+   void OnMediaSessionInfoChanged(
+       const std::string& id,
+       const media_session::mojom::MediaSessionInfoPtr& session_info) override;
+--- a/chrome/browser/ui/views/global_media_controls/media_dialog_view_interactive_browsertest.cc
++++ b/chrome/browser/ui/views/global_media_controls/media_dialog_view_interactive_browsertest.cc
+@@ -13,6 +13,13 @@
+ #include "base/test/bind.h"
+ #include "base/test/scoped_feature_list.h"
+ #include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#include "content/public/browser/picture_in_picture_user_authority.h"
++#include "content/public/browser/render_frame_host.h"
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++#include "chrome/browser/ui/aux/picture_in_picture_user_input.h"
++#endif
++#include "ui/events/event.h"
+ #include "chrome/browser/media/router/chrome_media_router_factory.h"
+ #include "chrome/browser/media/router/media_router_feature.h"
+ #include "chrome/browser/profiles/profile.h"
+@@ -1207,3 +1214,57 @@
+   EXPECT_NE(content::RenderFrameHost::LifecycleState::kInBackForwardCache,
+             rfh2->GetLifecycleState());
+ }
++
++#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
++IN_PROC_BROWSER_TEST_F(MediaDialogViewBrowserTest,
++                       ActualNativeViewsClickRetainsManualPiPAfterAutomaticContext) {
++  OpenTestURL();
++  StartPlayback();
++  WaitForStart();
++  auto* page = GetActiveWebContents();
++  ASSERT_NE(page, nullptr);
++  // Install the negative native automatic lineage, not a fabricated permission.
++  // Ordinary page/registered-handler automatic entry is covered by its actual
++  // queued-effect fixtures; this case isolates the real global-media producer.
++  content::MarkAutomaticPictureInPictureDocument(*page->GetPrimaryMainFrame());
++  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
++      "document.querySelector('video').requestPictureInPicture()"
++      ".then(() => 'entered', error => error.name)"));
++  EXPECT_FALSE(page->HasPictureInPictureVideo());
++  ASSERT_TRUE(ui_.WaitForToolbarIconShown());
++  ui_.ClickToolbarIcon();
++  ASSERT_TRUE(ui_.WaitForDialogOpened());
++  ASSERT_TRUE(ui_.IsDialogVisible());
++  // ui_controls sends actual platform input through Views. The real item,
++  // producer, Chrome observer and session request ID all participate.
++  ClickEnterPictureInPictureButtonOnDialog();
++  WaitForEnterPictureInPicture();
++  EXPECT_TRUE(page->HasPictureInPictureVideo());
++  ClickExitPictureInPictureButtonOnDialog();
++  WaitForExitPictureInPicture();
++  EXPECT_FALSE(page->HasPictureInPictureVideo());
++  // A fresh DevTools activation cannot replay the consumed native UI receipt.
++  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
++      "document.querySelector('video').requestPictureInPicture()"
++      ".then(() => 'entered', error => error.name)"));
++  EXPECT_FALSE(page->HasPictureInPictureVideo());
++}
++
++IN_PROC_BROWSER_TEST_F(MediaDialogViewBrowserTest,
++                       SyntheticViewsEventCannotMintManualPiPAuthority) {
++  OpenTestURL();
++  StartPlayback();
++  WaitForStart();
++  auto* page = GetActiveWebContents();
++  ASSERT_NE(page, nullptr);
++  auto* frame = page->GetPrimaryMainFrame();
++  content::MarkAutomaticPictureInPictureDocument(*frame);
++  ui::KeyEvent synthetic(ui::EventType::kKeyPressed, ui::VKEY_RETURN, 0);
++  EXPECT_FALSE(aux::RecordPictureInPictureViewsInput(
++      *frame, synthetic, browser()->window()->GetNativeWindow()));
++  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
++      "document.querySelector('video').requestPictureInPicture()"
++      ".then(() => 'entered', error => error.name)"));
++  EXPECT_FALSE(page->HasPictureInPictureVideo());
++}
++#endif
+--- a/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
++++ b/chrome/browser/ui/webui_browser/webui_browser_window_mac.mm
+@@ -22,6 +22,9 @@
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/appearance_prefs.h"
++#include "chrome/browser/ui/aux/picture_in_picture_user_input.h"
++#include "ui/events/event.h"
++#include "ui/events/keycodes/dom/keycode_converter.h"
+ #include "chrome/browser/ui/aux/methods/shortcuts_methods.h"
+ #include "chrome/browser/ui/aux/quick_ask_controller.h"
+ #include "components/prefs/pref_service.h"
+@@ -66,6 +69,38 @@
+ @implementation AuxVisualEffectBackgroundView
+ - (NSView*)hitTest:(NSPoint)point { return nil; }
+ @end
++#endif
++
++#include "content/public/browser/picture_in_picture_user_authority.h"
++
++#if BUILDFLAG(ENABLE_AUX_SHELL)
++namespace aux {
++bool RecordPictureInPictureViewsInput(content::RenderFrameHost& target,
++                                     const ui::Event& event,
++                                     gfx::NativeWindow source_window) {
++  NSEvent* native = event.native_event().Get();
++  NSWindow* window = source_window.GetNativeNSWindow();
++  if (!event.HasNativeEvent() || !native || native != NSApp.currentEvent ||
++      !window || native.window != window || !window.visible ||
++      (event.flags() & ui::EF_IS_SYNTHESIZED)) return false;
++  // A non-activating browser bubble may belong to the current key window.
++  NSWindow* owner = window;
++  for (int depth = 0; owner && owner != NSApp.keyWindow && depth < 8; ++depth)
++    owner = owner.parentWindow;
++  if (owner != NSApp.keyWindow) return false;
++  const bool mouse = event.IsMouseEvent() &&
++      (native.type == NSEventTypeLeftMouseDown ||
++       native.type == NSEventTypeLeftMouseUp);
++  const bool key = event.IsKeyEvent() &&
++      (native.type == NSEventTypeKeyDown || native.type == NSEventTypeKeyUp) &&
++      !native.isARepeat && !ui::KeycodeConverter::IsDomKeyForModifier(event.AsKeyEvent()->GetDomKey()) &&
++      event.AsKeyEvent()->key_code() != ui::VKEY_ESCAPE;
++  if (!mouse && !key) return false;
++  // The Chrome observer has already resolved this exact session request ID to
++  // its current Profile document. No activation enum participates in authority.
++  return content::RecordPictureInPictureBrowserUIInput(target);
++}
++}  // namespace aux
+ #endif
+ 
+ namespace {
+@@ -268,6 +303,19 @@
+   auto* shell = GetWebUIBrowserUI();
+   if (!shell) return false;
+   const std::string& id = found->second.first;
++  // Record only this genuine registered physical input before the shortcut
++  // hands control to asynchronous shell JS. WebUI origin is not authority.
++  if (native_down && native_down == NSApp.currentEvent &&
++      native_down.type == NSEventTypeKeyDown && !native_down.isARepeat &&
++      native_down.window == GetNativeWindow().GetNativeNSWindow() &&
++      native_down.window == NSApp.keyWindow) {
++    input::NativeWebKeyboardEvent physical{base::apple::OwnedNSEvent(native_down)};
++    if (ui::GetAcceleratorFromNativeWebKeyboardEvent(physical) == accelerator &&
++        !(physical.GetModifiers() & blink::WebInputEvent::kFromDebugger)) {
++      auto* source = shell->web_ui()->GetWebContents()->GetPrimaryMainFrame();
++      if (source) content::RecordPictureInPictureUserInput(*source, physical);
++    }
++  }
+   if (native_down && native_down.isARepeat)
+     return shell->DispatchAuxShortcut(id, found->second.second);
+   auto* contents = FocusedAuxWebsite(browser_.get());
+--- a/components/global_media_controls/public/media_session_item_producer.cc
++++ b/components/global_media_controls/public/media_session_item_producer.cc
+@@ -412,6 +412,15 @@
+     observer.OnMediaSessionActionButtonPressed(id, action);
+ }
+ 
++void MediaSessionItemProducer::LogMediaSessionActionButtonPressedWithUserInput(
++    const std::string& id, media_session::mojom::MediaSessionAction action,
++    const ui::Event& event, gfx::NativeWindow source_window) {
++  for (auto& observer : observers_) {
++    observer.OnMediaSessionActionButtonPressedWithUserInput(
++        id, action, event, source_window);
++  }
++}
++
+ void MediaSessionItemProducer::SetAudioSinkId(const std::string& id,
+                                               const std::string& sink_id) {
+   auto it = sessions_.find(id);
+--- a/components/global_media_controls/public/media_session_item_producer.h
++++ b/components/global_media_controls/public/media_session_item_producer.h
+@@ -18,6 +18,10 @@
+ #include "services/media_session/public/cpp/media_position.h"
+ #include "services/media_session/public/mojom/audio_focus.mojom.h"
+ #include "services/media_session/public/mojom/media_controller.mojom.h"
++
++#include "ui/gfx/native_ui_types.h"
++
++namespace ui { class Event; }
+ 
+ namespace global_media_controls {
+ 
+@@ -70,6 +74,10 @@
+   void LogMediaSessionActionButtonPressed(
+       const std::string& id,
+       media_session::mojom::MediaSessionAction action) override;
++  void LogMediaSessionActionButtonPressedWithUserInput(
++      const std::string& id,
++      media_session::mojom::MediaSessionAction action,
++      const ui::Event& event, gfx::NativeWindow source_window) override;
+ 
+   // media_session::mojom::AudioFocusObserver:
+   void OnFocusGained(
+--- a/components/global_media_controls/public/media_session_item_producer_observer.h
++++ b/components/global_media_controls/public/media_session_item_producer_observer.h
+@@ -13,6 +13,10 @@
+ #include "services/media_session/public/cpp/media_position.h"
+ #include "services/media_session/public/mojom/media_session.mojom.h"
+ 
++#include "ui/gfx/native_ui_types.h"
++
++namespace ui { class Event; }
++
+ namespace global_media_controls {
+ 
+ class MediaSessionItemProducerObserver : public base::CheckedObserver {
+@@ -20,6 +24,10 @@
+   virtual void OnMediaSessionActionButtonPressed(
+       const std::string& id,
+       media_session::mojom::MediaSessionAction action) = 0;
++  virtual void OnMediaSessionActionButtonPressedWithUserInput(
++      const std::string& id,
++      media_session::mojom::MediaSessionAction action,
++      const ui::Event& event, gfx::NativeWindow source_window) {}
+   virtual void OnMediaSessionInfoChanged(
+       const std::string& id,
+       const media_session::mojom::MediaSessionInfoPtr& session_info) {}
+--- a/components/global_media_controls/public/media_session_notification_item.cc
++++ b/components/global_media_controls/public/media_session_notification_item.cc
+@@ -237,6 +237,19 @@
+   media_session::PerformMediaSessionAction(action, media_controller_remote_);
+ }
+ 
++void MediaSessionNotificationItem::OnMediaSessionActionButtonPressedWithUserInput(
++    MediaSessionAction action, const ui::Event& event,
++    gfx::NativeWindow source_window) {
++  if (!frozen_) {
++    // Producer observers run synchronously before the original IPC action.
++    auto weak = weak_ptr_factory_.GetWeakPtr();
++    delegate_->LogMediaSessionActionButtonPressedWithUserInput(
++        request_id_, action, event, source_window);
++    if (!weak) return;
++  }
++  OnMediaSessionActionButtonPressed(action);
++}
++
+ void MediaSessionNotificationItem::SeekTo(base::TimeDelta time) {
+   if (!frozen_)
+     media_controller_remote_->SeekTo(time);
+--- a/components/global_media_controls/public/media_session_notification_item.h
++++ b/components/global_media_controls/public/media_session_notification_item.h
+@@ -23,6 +23,10 @@
+ #include "ui/gfx/image/image_skia.h"
+ #include "url/origin.h"
+ 
++#include "ui/gfx/native_ui_types.h"
++
++namespace ui { class Event; }
++
+ namespace media_message_center {
+ class MediaNotificationView;
+ }  // namespace media_message_center
+@@ -56,6 +60,11 @@
+     virtual void LogMediaSessionActionButtonPressed(
+         const std::string& id,
+         media_session::mojom::MediaSessionAction action) = 0;
++
++    virtual void LogMediaSessionActionButtonPressedWithUserInput(
++        const std::string& id,
++        media_session::mojom::MediaSessionAction action,
++        const ui::Event& event, gfx::NativeWindow source_window) {}
+ 
+    protected:
+     virtual ~Delegate() = default;
+@@ -113,6 +122,9 @@
+   void SetView(media_message_center::MediaNotificationView* view) override;
+   void OnMediaSessionActionButtonPressed(
+       media_session::mojom::MediaSessionAction action) override;
++  void OnMediaSessionActionButtonPressedWithUserInput(
++      media_session::mojom::MediaSessionAction action,
++      const ui::Event& event, gfx::NativeWindow source_window) override;
+   void SeekTo(base::TimeDelta time) override;
+   // This will stop the media session associated with this item. The item will
+   // then call |MediaNotificationController::RemoveItem()| to ensure removal.
+--- a/components/global_media_controls/public/media_session_notification_item_unittest.cc
++++ b/components/global_media_controls/public/media_session_notification_item_unittest.cc
+@@ -19,6 +19,8 @@
+ #include "services/media_session/public/mojom/media_session.mojom.h"
+ #include "testing/gmock/include/gmock/gmock.h"
+ #include "testing/gtest/include/gtest/gtest.h"
++#include "ui/events/event.h"
++#include "base/run_loop.h"
+ 
+ using media_session::mojom::MediaSessionAction;
+ using testing::_;
+@@ -62,6 +64,8 @@
+   media_session::test::TestMediaController& controller() { return controller_; }
+ 
+   MediaSessionNotificationItem& item() { return *item_; }
++
++  void DestroyItemForTesting() { item_.reset(); }
+ 
+   base::UnguessableToken source_id() { return source_id_; }
+ 
+@@ -592,4 +596,50 @@
+   EXPECT_FALSE(item2->ShouldShowNotification());
+ }
+ 
++TEST_F(MediaSessionNotificationItemTest, ActualInputDelegationPrecedesControllerIPC) {
++  ui::KeyEvent event(ui::EventType::kKeyPressed, ui::VKEY_RETURN, 0);
++  bool observed = false;
++  EXPECT_CALL(delegate(), LogMediaSessionActionButtonPressedWithUserInput(
++      kRequestId, MediaSessionAction::kEnterPictureInPicture, _, _))
++      .WillOnce([&](const std::string&, MediaSessionAction, const ui::Event& input,
++                    gfx::NativeWindow) {
++        EXPECT_EQ(&input, &event);
++        EXPECT_EQ(0, controller().enter_picture_in_picture_count());
++        observed = true;
++      });
++  EXPECT_CALL(delegate(), LogMediaSessionActionButtonPressed(
++      kRequestId, MediaSessionAction::kEnterPictureInPicture));
++  item().OnMediaSessionActionButtonPressedWithUserInput(
++      MediaSessionAction::kEnterPictureInPicture, event, gfx::NativeWindow());
++  EXPECT_TRUE(observed);
++  item().FlushForTesting();
++  EXPECT_EQ(1, controller().enter_picture_in_picture_count());
++}
++
++TEST_F(MediaSessionNotificationItemTest, ReentrantInputObserverMayDestroyItem) {
++  ui::KeyEvent event(ui::EventType::kKeyPressed, ui::VKEY_RETURN, 0);
++  EXPECT_CALL(delegate(), LogMediaSessionActionButtonPressedWithUserInput(
++      _, _, _, _)).WillOnce([&](const std::string&, MediaSessionAction,
++                                 const ui::Event&, gfx::NativeWindow) {
++        DestroyItemForTesting();
++      });
++  EXPECT_CALL(delegate(), LogMediaSessionActionButtonPressed(_, _)).Times(0);
++  item().OnMediaSessionActionButtonPressedWithUserInput(
++      MediaSessionAction::kEnterPictureInPicture, event, gfx::NativeWindow());
++  base::RunLoop().RunUntilIdle();
++  EXPECT_EQ(0, controller().enter_picture_in_picture_count());
++}
++
++TEST_F(MediaSessionNotificationItemTest, FrozenItemCannotPublishInputOrSendAction) {
++  ui::KeyEvent event(ui::EventType::kKeyPressed, ui::VKEY_RETURN, 0);
++  item().Freeze(base::DoNothing());
++  EXPECT_CALL(delegate(), LogMediaSessionActionButtonPressedWithUserInput(
++      _, _, _, _)).Times(0);
++  EXPECT_CALL(delegate(), LogMediaSessionActionButtonPressed(_, _)).Times(0);
++  item().OnMediaSessionActionButtonPressedWithUserInput(
++      MediaSessionAction::kEnterPictureInPicture, event, gfx::NativeWindow());
++  item().FlushForTesting();
++  EXPECT_EQ(0, controller().enter_picture_in_picture_count());
++}
++
+ }  // namespace global_media_controls
+--- a/components/global_media_controls/public/test/mock_media_session_notification_item_delegate.h
++++ b/components/global_media_controls/public/test/mock_media_session_notification_item_delegate.h
+@@ -27,6 +27,9 @@
+   MOCK_METHOD(void,
+               LogMediaSessionActionButtonPressed,
+               (const std::string&, media_session::mojom::MediaSessionAction));
++  MOCK_METHOD(void, LogMediaSessionActionButtonPressedWithUserInput,
++              (const std::string&, media_session::mojom::MediaSessionAction,
++               const ui::Event&, gfx::NativeWindow), (override));
+ };
+ }  // namespace global_media_controls::test
+ 
+--- a/components/global_media_controls/public/views/media_item_ui_detailed_view.cc
++++ b/components/global_media_controls/public/views/media_item_ui_detailed_view.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "components/global_media_controls/public/views/media_item_ui_detailed_view.h"
++
++#include "ui/views/widget/widget.h"
+ 
+ #include <memory>
+ 
+@@ -661,7 +663,8 @@
+   }
+ }
+ 
+-void MediaItemUIDetailedView::MediaActionButtonPressed(views::Button* button) {
++void MediaItemUIDetailedView::MediaActionButtonPressed(views::Button* button,
++                                                const ui::Event& event) {
+   const auto action = static_cast<MediaSessionAction>(button->GetID());
+ 
+ #if BUILDFLAG(IS_CHROMEOS)
+@@ -688,7 +691,9 @@
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+   if (item_) {
+-    item_->OnMediaSessionActionButtonPressed(action);
++    item_->OnMediaSessionActionButtonPressedWithUserInput(
++        action, event, GetWidget() ? GetWidget()->GetNativeWindow()
++                                  : gfx::NativeWindow());
+   } else {
+     // LockScreenMediaView does not have MediaNotificationItem and will handle
+     // the action itself.
+--- a/components/global_media_controls/public/views/media_item_ui_detailed_view.h
++++ b/components/global_media_controls/public/views/media_item_ui_detailed_view.h
+@@ -19,6 +19,8 @@
+ #if BUILDFLAG(IS_CHROMEOS)
+ #include "components/global_media_controls/public/views/chapter_item_view.h"
+ #endif
++
++namespace ui { class Event; }
+ 
+ namespace views {
+ class BoxLayoutView;
+@@ -150,7 +152,7 @@
+   void UpdateActionButtonsVisibility();
+ 
+   // Callback for a media action button being pressed.
+-  void MediaActionButtonPressed(views::Button* button);
++  void MediaActionButtonPressed(views::Button* button, const ui::Event& event);
+ 
+   // Callback for when the user starts or ends dragging the progress view, and
+   // the media is playing before dragging starts. The media should be
+--- a/components/global_media_controls/public/views/media_item_ui_updated_view.cc
++++ b/components/global_media_controls/public/views/media_item_ui_updated_view.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "components/global_media_controls/public/views/media_item_ui_updated_view.h"
++
++#include "ui/views/widget/widget.h"
+ 
+ #include <algorithm>
+ 
+@@ -605,7 +607,8 @@
+   return button_ptr;
+ }
+ 
+-void MediaItemUIUpdatedView::MediaActionButtonPressed(views::Button* button) {
++void MediaItemUIUpdatedView::MediaActionButtonPressed(views::Button* button,
++                                                const ui::Event& event) {
+   switch (static_cast<MediaSessionAction>(button->GetID())) {
+     case MediaSessionAction::kPlay:
+     case MediaSessionAction::kPause:
+@@ -653,8 +656,9 @@
+         std::min(position_.GetPosition() + kSeekTime, position_.duration()));
+     return;
+   }
+-  item_->OnMediaSessionActionButtonPressed(
+-      static_cast<MediaSessionAction>(button->GetID()));
++  item_->OnMediaSessionActionButtonPressedWithUserInput(
++      static_cast<MediaSessionAction>(button->GetID()), event,
++      GetWidget() ? GetWidget()->GetNativeWindow() : gfx::NativeWindow());
+ }
+ 
+ void MediaItemUIUpdatedView::UpdateMediaActionButtonsVisibility() {
+--- a/components/global_media_controls/public/views/media_item_ui_updated_view.h
++++ b/components/global_media_controls/public/views/media_item_ui_updated_view.h
+@@ -17,6 +17,8 @@
+ #include "components/media_message_center/media_notification_view.h"
+ #include "components/media_message_center/notification_theme.h"
+ #include "ui/base/metadata/metadata_header_macros.h"
++
++namespace ui { class Event; }
+ 
+ namespace media_message_center {
+ class MediaNotificationItem;
+@@ -144,7 +146,7 @@
+                                              int tooltip_text_id);
+ 
+   // Callback for a media action button being pressed.
+-  void MediaActionButtonPressed(views::Button* button);
++  void MediaActionButtonPressed(views::Button* button, const ui::Event& event);
+ 
+   // Update the visibility of media action buttons based on which media session
+   // actions are enabled.
+--- a/components/media_message_center/media_notification_item.h
++++ b/components/media_message_center/media_notification_item.h
+@@ -10,6 +10,10 @@
+ #include "base/component_export.h"
+ #include "base/time/time.h"
+ #include "services/media_session/public/mojom/media_session.mojom.h"
++
++#include "ui/gfx/native_ui_types.h"
++
++namespace ui { class Event; }
+ 
+ namespace base {
+ class UnguessableToken;
+@@ -67,6 +71,14 @@
+   virtual void OnMediaSessionActionButtonPressed(
+       media_session::mojom::MediaSessionAction action) = 0;
+ 
++  // Synchronous actual Views event transit. Non-session items retain their
++  // original action and do not create person authority.
++  virtual void OnMediaSessionActionButtonPressedWithUserInput(
++      media_session::mojom::MediaSessionAction action,
++      const ui::Event& event, gfx::NativeWindow source_window) {
++    OnMediaSessionActionButtonPressed(action);
++  }
++
+   // Called by MediaNotificationView when progress bar is clicked to seek.
+   virtual void SeekTo(base::TimeDelta time) = 0;
+ 
+--- a/content/browser/media/session/media_session_impl.cc
++++ b/content/browser/media/session/media_session_impl.cc
+@@ -2,7 +2,6 @@
+ // Use of this source code is governed by a BSD-style license that can be
+ // found in the LICENSE file.
+ 
+-#include "third_party/blink/public/common/frame/user_activation_state.h"
+ #include "content/browser/media/session/media_session_impl.h"
+ 
+ #include <algorithm>
+@@ -56,7 +55,125 @@
+ #include "content/browser/media/session/media_session_android.h"
+ #endif  // BUILDFLAG(IS_ANDROID)
+ 
++#include "content/public/browser/document_user_data.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/picture_in_picture_user_authority.h"
++#include "third_party/blink/public/common/input/web_keyboard_event.h"
++#include "third_party/blink/public/common/frame/user_activation_state.h"
++#include "ui/events/keycodes/dom/keycode_converter.h"
++
+ namespace content {
++namespace {
++// UI-thread sequence establishes order across source-shell and target-page
++// documents, including equal clock ticks. DocumentUserData survives BFCache.
++uint64_t pip_input_sequence = 0;
++class PictureInPictureUserAuthority final
++    : public DocumentUserData<PictureInPictureUserAuthority> {
++ public:
++  ~PictureInPictureUserAuthority() override = default;
++  uint64_t automatic_sequence = 0;
++  uint64_t input_sequence = 0;
++  uint64_t consumed_sequence = 0;
++  bool requires_ui_receipt = false;
++  base::TimeTicks input_at;
++ private:
++  explicit PictureInPictureUserAuthority(RenderFrameHost* frame)
++      : DocumentUserData(frame) {}
++  friend DocumentUserData<PictureInPictureUserAuthority>;
++  DOCUMENT_USER_DATA_KEY_DECL();
++};
++DOCUMENT_USER_DATA_KEY_IMPL(PictureInPictureUserAuthority);
++bool CurrentPictureInPictureDocument(RenderFrameHost& frame) {
++  auto* contents = WebContents::FromRenderFrameHost(&frame);
++  return frame.IsActive() && frame.IsRenderFrameLive() && contents &&
++         contents->GetPrimaryMainFrame() == &frame;
++}
++bool HasLaterPictureInPictureInput(const PictureInPictureUserAuthority& state,
++                                  uint64_t automatic_sequence) {
++  return state.input_sequence > automatic_sequence &&
++         state.input_sequence > state.consumed_sequence &&
++         !state.input_at.is_null() &&
++         base::TimeTicks::Now() < state.input_at + blink::kActivationLifespan;
++}
++}  // namespace
++
++void RecordPictureInPictureUserInput(RenderFrameHost& frame,
++                                    const blink::WebInputEvent& event) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!CurrentPictureInPictureDocument(frame) ||
++      (event.GetModifiers() & blink::WebInputEvent::kFromDebugger)) return;
++  bool meaningful = event.GetType() == blink::WebInputEvent::Type::kMouseDown;
++  if (event.GetType() == blink::WebInputEvent::Type::kRawKeyDown) {
++    const auto& key = static_cast<const blink::WebKeyboardEvent&>(event);
++    meaningful = key.dom_key != ui::DomKey::ESCAPE &&
++        !ui::KeycodeConverter::IsDomKeyForModifier(ui::DomKey(key.dom_key));
++  }
++  if (!meaningful) return;
++  auto* state = PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame);
++  state->input_sequence = ++pip_input_sequence;
++  state->input_at = base::TimeTicks::Now();
++  auto* contents = WebContents::FromRenderFrameHost(&frame);
++  if (auto* session = MediaSessionImpl::FromWebContents(contents))
++    session->RecordPictureInPictureUserInvocation(frame, true);
++}
++bool RecordPictureInPictureBrowserUIInput(RenderFrameHost& frame) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!CurrentPictureInPictureDocument(frame)) return false;
++  auto* state = PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame);
++  state->input_sequence = ++pip_input_sequence;
++  state->input_at = base::TimeTicks::Now();
++  MediaSessionImpl::Get(WebContents::FromRenderFrameHost(&frame))
++      ->RecordPictureInPictureUserInvocation(frame, false);
++  return true;
++}
++void MarkAutomaticPictureInPictureDocument(RenderFrameHost& frame) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!CurrentPictureInPictureDocument(frame)) return;
++  auto* state = PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame);
++  state->automatic_sequence = ++pip_input_sequence;
++}
++bool TransferPictureInPictureUserInput(RenderFrameHost& source,
++                                      RenderFrameHost& target) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (!CurrentPictureInPictureDocument(source) ||
++      !CurrentPictureInPictureDocument(target) ||
++      source.GetBrowserContext() != target.GetBrowserContext()) return false;
++  auto* target_state =
++      PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&target);
++  auto* source_state = PictureInPictureUserAuthority::GetForCurrentDocument(&source);
++  if (!source_state || !HasLaterPictureInPictureInput(*source_state,
++          target_state->automatic_sequence)) return false;
++  if (&source == &target) {
++    MediaSessionImpl::Get(WebContents::FromRenderFrameHost(&target))
++        ->RecordPictureInPictureUserInvocation(target, false);
++    return true;
++  }
++  const auto sequence = source_state->input_sequence;
++  const auto at = source_state->input_at;
++  source_state->consumed_sequence = sequence;
++  target_state->input_sequence = sequence;
++  target_state->input_at = at;
++  MediaSessionImpl::Get(WebContents::FromRenderFrameHost(&target))
++      ->RecordPictureInPictureUserInvocation(target, false);
++  return true;
++}
++bool ConsumePictureInPictureUserInput(RenderFrameHost& frame) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  auto* contents = WebContents::FromRenderFrameHost(&frame);
++  if (!frame.IsActive() || !frame.IsRenderFrameLive() || !contents) return false;
++  auto* primary = contents->GetPrimaryMainFrame();
++  if (!primary || frame.GetMainFrame() != primary ||
++      !CurrentPictureInPictureDocument(*primary)) return false;
++  // Same primary document lineage applies to child players too. A handler
++  // cannot escape its automatic provenance by requesting from an iframe.
++  auto* state = PictureInPictureUserAuthority::GetForCurrentDocument(primary);
++  if (!state || (!state->automatic_sequence && !state->requires_ui_receipt))
++    return true;
++  if (!HasLaterPictureInPictureInput(*state, state->automatic_sequence)) return false;
++  state->consumed_sequence = state->input_sequence;
++  return true;
++}
++
+ 
+ using blink::mojom::MediaSessionPlaybackState;
+ using media_session::mojom::MediaAudioVideoState;
+@@ -1314,7 +1431,26 @@
+     it.first.observer->OnSeekTo(it.first.player_id, seek_time);
+ }
+ 
++void MediaSessionImpl::RecordPictureInPictureUserInvocation(
++    RenderFrameHost& frame, bool only_if_pending) {
++  DCHECK_CURRENTLY_ON(BrowserThread::UI);
++  if (only_if_pending && !user_pip_invocation_document_) return;
++  if (!CurrentPictureInPictureDocument(frame) ||
++      WebContents::FromRenderFrameHost(&frame) != web_contents()) return;
++  user_pip_invocation_document_ = frame.GetWeakDocumentPtr();
++  PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame)
++      ->requires_ui_receipt = true;
++}
++
+ void MediaSessionImpl::EnterPictureInPicture() {
++  if (user_pip_invocation_document_) {
++    auto* frame = user_pip_invocation_document_->AsRenderFrameHostIfValid();
++    if (!frame || !CurrentPictureInPictureDocument(*frame)) return;
++    auto* state = PictureInPictureUserAuthority::GetForCurrentDocument(frame);
++    if (!state || !HasLaterPictureInPictureInput(*state,
++                                                state->automatic_sequence))
++      return;
++  }
+   if (ShouldRouteAction(
+           media_session::mojom::MediaSessionAction::kEnterPictureInPicture)) {
+     DidReceiveAction(
+@@ -1350,6 +1486,8 @@
+     return;
+   }
+ 
++  if (GetContentClient()->browser()->RequiresCurrentAutoPictureInPictureAuthority())
++    MarkAutomaticPictureInPictureDocument(*web_contents()->GetPrimaryMainFrame());
+   DidReceiveAction(
+       media_session::mojom::MediaSessionAction::kEnterPictureInPicture,
+       blink::mojom::MediaSessionActionDetails::NewEnterPictureInPicture(
+@@ -1372,6 +1510,8 @@
+     if (frame != web_contents()->GetPrimaryMainFrame() || normal_players_.size() > 64) return;
+     const auto token = base::UnguessableToken::Create();
+     auto_pip_selection_timer_.Stop();
++    if (GetContentClient()->browser()->RequiresCurrentAutoPictureInPictureAuthority())
++      MarkAutomaticPictureInPictureDocument(*frame);
+     auto_pip_authority_.emplace(AutoPipAuthority{
+         token, std::nullopt, true, frame->GetWeakDocumentPtr(),
+         ++auto_pip_generation_, base::TimeTicks::Now() + blink::kActivationLifespan,
+@@ -1472,6 +1612,8 @@
+       !CanEnterBrowserInitiatedAutomaticPictureInPicture()) return;
+   auto_pip_selection_timer_.Stop();
+   const auto token = base::UnguessableToken::Create();
++  if (GetContentClient()->browser()->RequiresCurrentAutoPictureInPictureAuthority())
++    MarkAutomaticPictureInPictureDocument(*web_contents()->GetPrimaryMainFrame());
+   auto_pip_authority_.emplace(AutoPipAuthority{
+       token, player, false, document, ++auto_pip_generation_,
+       auto_pip_selection_deadline_, std::move(eligible)});
+--- a/content/browser/media/session/media_session_impl.h
++++ b/content/browser/media/session/media_session_impl.h
+@@ -289,6 +289,10 @@
+ 
+   // Enter picture-in-picture.
+   void EnterPictureInPicture() override;
++  // Browser-owned receipt arm/refresh; pending document provenance survives
++  // navigation and refusal so queued native control cannot fall back.
++  void RecordPictureInPictureUserInvocation(RenderFrameHost& frame,
++                                            bool only_if_pending);
+ 
+   // Exit picture-in-picture.
+   void ExitPictureInPicture() override;
+@@ -621,6 +625,7 @@
+   bool CheckAutoPipAuthority(const AutoPipAuthority& authority);
+   bool IsAutoPipAuthorityPlayerCurrent(const AutoPipAuthority& authority) const;
+   std::optional<AutoPipAuthority> auto_pip_authority_;
++  std::optional<WeakDocumentPtr> user_pip_invocation_document_;
+   base::TimeTicks auto_pip_selection_deadline_;
+   uint64_t auto_pip_generation_ = 0;
+   base::OneShotTimer auto_pip_selection_timer_;
+--- a/content/browser/media/session/media_session_impl_unittest.cc
++++ b/content/browser/media/session/media_session_impl_unittest.cc
+@@ -3,6 +3,8 @@
+ // found in the LICENSE file.
+ 
+ #include "content/browser/media/session/media_session_impl.h"
++#include "content/public/browser/picture_in_picture_user_authority.h"
++#include "third_party/blink/public/common/frame/user_activation_state.h"
+ 
+ #include <memory>
+ 
+@@ -2123,3 +2125,46 @@
+ }
+ 
+ }  // namespace content
++
++namespace content {
++TEST_F(MediaSessionImplTest, ExactNativeUIReceiptExpiresBeforeManualInvocation) {
++  NavigateAndCommit(GURL("https://receipt.test"));
++  StartNewPlayer();
++  // Exercise the real trusted-C++ receipt store; actual platform provenance is
++  // covered separately by the Chrome Views/browser routed-input tests.
++  ASSERT_TRUE(RecordPictureInPictureBrowserUIInput(*main_rfh()));
++  task_environment()->FastForwardBy(blink::kActivationLifespan);
++  GetMediaSession()->EnterPictureInPicture();
++  EXPECT_EQ(0, player_observer_->received_enter_picture_in_picture_calls());
++  EXPECT_FALSE(ConsumePictureInPictureUserInput(*main_rfh()));
++}
++
++TEST_F(MediaSessionImplTest, NativeUIReceiptCannotFallBackAfterDocumentReplacement) {
++  NavigateAndCommit(GURL("https://receipt.test"));
++  StartNewPlayer();
++  ASSERT_TRUE(RecordPictureInPictureBrowserUIInput(*main_rfh()));
++  RemoveAllPlayers();
++  NavigateAndCommit(GURL("https://replacement.test"));
++  player_observer_ = std::make_unique<MockMediaSessionPlayerObserver>(
++      main_rfh(), media::MediaContentType::kPersistent);
++  StartNewPlayer();
++  GetMediaSession()->EnterPictureInPicture();
++  EXPECT_EQ(0, player_observer_->received_enter_picture_in_picture_calls());
++  // Exact new trusted UI input refreshes the new document, never the old one.
++  ASSERT_TRUE(RecordPictureInPictureBrowserUIInput(*main_rfh()));
++  GetMediaSession()->EnterPictureInPicture();
++  EXPECT_EQ(1, player_observer_->received_enter_picture_in_picture_calls());
++}
++
++TEST_F(MediaSessionImplTest, NativeUIReceiptIsOneUseAtFinalManualEffect) {
++  NavigateAndCommit(GURL("https://receipt.test"));
++  StartNewPlayer();
++  ASSERT_TRUE(RecordPictureInPictureBrowserUIInput(*main_rfh()));
++  GetMediaSession()->EnterPictureInPicture();
++  EXPECT_EQ(1, player_observer_->received_enter_picture_in_picture_calls());
++  ASSERT_TRUE(ConsumePictureInPictureUserInput(*main_rfh()));
++  EXPECT_FALSE(ConsumePictureInPictureUserInput(*main_rfh()));
++  GetMediaSession()->EnterPictureInPicture();
++  EXPECT_EQ(1, player_observer_->received_enter_picture_in_picture_calls());
++}
++}  // namespace content
+--- a/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
++++ b/content/browser/picture_in_picture/picture_in_picture_service_impl.cc
+@@ -14,6 +14,8 @@
+ #include "content/public/browser/web_contents_delegate.h"
+ #include "media/base/video_spatial_format.h"
+ #include "mojo/public/cpp/bindings/callback_helpers.h"
++
++#include "content/public/browser/picture_in_picture_user_authority.h"
+ 
+ namespace content {
+ 
+@@ -142,6 +144,13 @@
+     std::unique_ptr<PictureInPictureServiceImpl::PendingSession>
+         pending_session,
+     std::optional<ImmersiveOptions> immersive_options) {
++  if (!pending_session->automatic_authority) {
++    pending_session->automatic_authority = base::BindOnce(
++        [](WeakDocumentPtr document) {
++          auto* frame = document.AsRenderFrameHostIfValid();
++          return frame && ConsumePictureInPictureUserInput(*frame);
++        }, render_frame_host().GetWeakDocumentPtr());
++  }
+   gfx::Size window_size;
+   mojo::PendingRemote<blink::mojom::PictureInPictureSession> session_remote;
+ 
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -396,6 +396,8 @@
+              base::FEATURE_ENABLED_BY_DEFAULT);
+ }  // namespace features
+ 
++#include "content/public/browser/picture_in_picture_user_authority.h"
++
+ namespace content {
+ 
+ class RenderFrameHostOrProxy {
+@@ -10652,6 +10654,14 @@
+     return;
+   }
+ 
++  // Automatic provenance survives consumed/expired renderer activation and
++  // BFCache. A synthetic newer activation cannot turn it into attended PiP.
++  if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE &&
++      !ConsumePictureInPictureUserInput(*this)) {
++    std::move(callback).Run(mojom::CreateNewWindowStatus::kBlocked, nullptr);
++    return;
++  }
++
+   // Otherwise, consume user activation before we proceed. In particular, it is
+   // important to do this before we return from the |opener_suppressed| case
+   // below.
+--- a/content/browser/web_contents/web_contents_impl.cc
++++ b/content/browser/web_contents/web_contents_impl.cc
+@@ -287,6 +287,8 @@
+ #include "content/browser/ios/nfc_host.h"
+ #endif
+ 
++#include "content/public/browser/picture_in_picture_user_authority.h"
++
+ namespace content {
+ 
+ namespace {
+@@ -11152,6 +11154,7 @@
+     last_interaction_time_ = ui::EventTimeForNow();
+   }
+ 
++  RecordPictureInPictureUserInput(*GetPrimaryMainFrame(), event);
+   observers_.NotifyObservers(&WebContentsObserver::DidGetUserInteraction,
+                              event);
+ }
+--- a/content/public/browser/BUILD.gn
++++ b/content/public/browser/BUILD.gn
+@@ -317,6 +317,7 @@
+     "permission_result.h",
+     "permission_status_subscription.cc",
+     "permission_status_subscription.h",
++    "picture_in_picture_user_authority.h",
+     "picture_in_picture_window_controller.h",
+     "platform_notification_context.h",
+     "platform_notification_service.h",
+--- /dev/null
++++ b/content/public/browser/picture_in_picture_user_authority.h
+@@ -0,0 +1,23 @@
++// Copyright 2026 The Aux Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++#ifndef CONTENT_PUBLIC_BROWSER_PICTURE_IN_PICTURE_USER_AUTHORITY_H_
++#define CONTENT_PUBLIC_BROWSER_PICTURE_IN_PICTURE_USER_AUTHORITY_H_
++#include "content/common/content_export.h"
++namespace blink { class WebInputEvent; }
++namespace content {
++class RenderFrameHost;
++// Browser input routing only: renderer activation notifications are not input.
++CONTENT_EXPORT void RecordPictureInPictureUserInput(RenderFrameHost& frame,
++                                                   const blink::WebInputEvent& event);
++// Browser embedding UI must validate actual native dispatch before calling.
++CONTENT_EXPORT bool RecordPictureInPictureBrowserUIInput(RenderFrameHost& frame);
++CONTENT_EXPORT void MarkAutomaticPictureInPictureDocument(RenderFrameHost& frame);
++// Transfer one actual later source input to an exact target document. A trusted
++// WebUI origin alone is never a receipt. Normal page manual entry keeps its
++// upstream behavior; an explicit browser UI action retains document provenance.
++CONTENT_EXPORT bool TransferPictureInPictureUserInput(RenderFrameHost& source,
++                                                     RenderFrameHost& target);
++CONTENT_EXPORT bool ConsumePictureInPictureUserInput(RenderFrameHost& frame);
++}  // namespace content
++#endif

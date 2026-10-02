@@ -240,6 +240,8 @@ class CORE_EXPORT HTMLVideoElement final
   // interface, fully implemented in the parent class HTMLMediaElement.
   void RequestEnterPictureInPicture(
       const std::optional<gfx::Size>& min_size) final;
+  void RequestEnterAutomaticPictureInPicture(
+      const base::UnguessableToken& ticket, const gfx::Size& min_size) final;
   void RequestAutoPictureInPictureSize(
       RequestAutoPictureInPictureSizeCallback callback) final;
   void RequestMediaRemoting() final;

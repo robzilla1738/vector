@@ -2,6 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "third_party/blink/public/common/frame/user_activation_state.h"
+#include "content/public/browser/picture_in_picture_user_authority.h"
+#include "content/public/test/browser_test_utils.h"
+#include "components/input/native_web_keyboard_event.h"
+#include "ui/events/keycodes/dom/dom_code.h"
+#include "ui/events/keycodes/dom/dom_key.h"
+#include "ui/events/keycodes/keyboard_codes.h"
+#include "content/browser/picture_in_picture/picture_in_picture_service_impl.h"
 #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
 
 #include <memory>
@@ -18,6 +26,7 @@
 #include "content/public/browser/site_instance.h"
 #include "base/scoped_observation.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/run_until.h"
 #include "base/test/simple_test_tick_clock.h"
 #include "base/test/test_future.h"
 #include "build/build_config.h"
@@ -4137,9 +4146,32 @@ INSTANTIATE_TEST_SUITE_P(
             .prompt_result = AutoPipSettingHelper::PromptResult::kIgnored}));
 
 #if BUILDFLAG(ENABLE_AUX_SHELL)
+namespace content {
+class AutomaticPictureInPictureTestPeer {
+ public:
+  static void Hold(WeakDocumentPtr document,
+                   base::OnceCallback<void(base::OnceClosure)> transport) {
+    CHECK(!PictureInPictureServiceImpl::automatic_test_transport_);
+    PictureInPictureServiceImpl::automatic_test_document_ = document;
+    PictureInPictureServiceImpl::automatic_test_transport_ = std::move(transport);
+  }
+  static void Reset() {
+    PictureInPictureServiceImpl::automatic_test_transport_.Reset();
+    PictureInPictureServiceImpl::automatic_test_document_ = {};
+  }
+};
+}  // namespace content
+
 class AuxOrdinaryAutoPictureInPictureBrowserTest
     : public BrowserInitiatedAutoPictureInPictureBrowserTest {
  public:
+  void SendActualBrowserInput() {
+    SwitchToExistingTab(page);
+    content::InputEventAckWaiter ack(page->GetPrimaryMainFrame()->GetRenderWidgetHost(),
+        blink::WebInputEvent::Type::kRawKeyDown);
+    content::SimulateCharTyped(page, u'a');
+    ack.Wait();
+  }
   void PrepareOrdinaryVideo() {
     LoadNotRegisteredPage(browser());
     page = browser()->GetTabStripModel()->GetActiveWebContents();
@@ -4164,7 +4196,7 @@ IN_PROC_BROWSER_TEST_F(AuxOrdinaryAutoPictureInPictureBrowserTest,
 IN_PROC_BROWSER_TEST_F(AuxOrdinaryAutoPictureInPictureBrowserTest,
                        LargestVisibleOrdinaryPlayerWins) {
   ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
-  ASSERT_TRUE(content::ExecJs(page, R"(
+  ASSERT_TRUE(content::ExecJs(page, R"((async () => {
     const small = document.querySelector('video');
     small.id = 'aux-small';
     small.style.cssText = 'position:fixed;left:0;top:0;width:160px;height:120px';
@@ -4175,11 +4207,389 @@ IN_PROC_BROWSER_TEST_F(AuxOrdinaryAutoPictureInPictureBrowserTest,
     large.style.cssText = 'position:fixed;left:180px;top:0;width:640px;height:360px';
     document.body.append(large);
     await large.play();
-  )"));
+  })())"));
   SwitchToNewTabAndWaitForAutoPip();
   ASSERT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), page);
   EXPECT_EQ("aux-large", content::EvalJs(page, "document.pictureInPictureElement.id"));
   SwitchBackToOpenerAndWaitForPipToClose();
+}
+
+class AuxQueuedAutomaticPictureInPictureBrowserTest
+    : public AuxOrdinaryAutoPictureInPictureBrowserTest {
+ public:
+  void HoldActualAutomaticSession() {
+    ASSERT_TRUE(content::GetContentClient()->browser()
+        ->RequiresCurrentAutoPictureInPictureAuthority());
+    auto* helper = AutoPictureInPictureTabHelper::FromWebContents(page);
+    ASSERT_NE(helper, nullptr);
+    helper->set_clock_for_testing(&test_clock());
+    content::AutomaticPictureInPictureTestPeer::Hold(
+        page->GetPrimaryMainFrame()->GetWeakDocumentPtr(), held_.GetCallback());
+    OpenNewTab(browser());
+    ASSERT_TRUE(held_.Wait());
+    ASSERT_FALSE(page->HasPictureInPictureVideo());
+    ASSERT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
+  }
+  void ReleaseAndExpectNoWindow() {
+    auto dispatch = held_.Take();
+    ASSERT_TRUE(dispatch);
+    std::move(dispatch).Run();
+    EXPECT_FALSE(page->HasPictureInPictureVideo());
+    EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
+    EXPECT_EQ(true, content::EvalJs(page, "document.pictureInPictureElement === null",
+        content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  }
+  void TearDownOnMainThread() override {
+    content::AutomaticPictureInPictureTestPeer::Reset();
+    aux::SetStageVisible(browser(), {});
+    AuxOrdinaryAutoPictureInPictureBrowserTest::TearDownOnMainThread();
+  }
+  base::test::TestFuture<base::OnceClosure> held_;
+};
+
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       CurrentAllowedOwnerCompletesActualQueuedAutomaticSession) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  auto dispatch = held_.Take();
+  ASSERT_TRUE(dispatch);
+  std::move(dispatch).Run();
+  ASSERT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), page);
+  EXPECT_EQ(true, content::EvalJs(page,
+      "document.pictureInPictureElement === document.querySelector('video')",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  SwitchBackToOpenerAndWaitForPipToClose();
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       SiteAskRevocationBeforeActualAutomaticEffectRefusesWindow) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  SetContentSetting(page, CONTENT_SETTING_ASK);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       SiteBlockBeforeActualAutomaticEffectRefusesWindow) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  SetContentSetting(page, CONTENT_SETTING_BLOCK);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       VisibleStageBeforeActualAutomaticEffectRefusesWindow) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  aux::SetStageVisible(browser(), {page});
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       RuntimeOwnershipBeforeActualAutomaticEffectRefusesWindow) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  aux::PageIdentity::MarkRuntimeOwned(browser()->GetProfile(), page);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       ExpiredAutomaticActivationCannotBecomeManualEntry) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  test_clock().Advance(blink::kActivationLifespan);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+  // Actual browser input, rather than ExecJs's synthetic userGesture flag,
+  // supplies the newer person receipt through the production input route.
+  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
+  ASSERT_EQ(true, content::EvalJs(page,
+      "document.querySelector('video').requestPictureInPicture().then("
+      "() => document.pictureInPictureElement === document.querySelector('video'))",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), page);
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       NewDevToolsActivationCannotEraseAutomaticNativeContext) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  test_clock().Advance(blink::kActivationLifespan);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+  SwitchToExistingTab(page);
+  // EvalJs's normal userGesture=true reaches the real DevTools activation
+  // producer. It is intentionally not a browser input receipt.
+  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
+      "document.querySelector('video').requestPictureInPicture()"
+      ".then(() => 'entered', error => error.name)"));
+  EXPECT_FALSE(page->HasPictureInPictureVideo());
+  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
+  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
+  EXPECT_EQ(true, content::EvalJs(page,
+      "document.querySelector('video').requestPictureInPicture().then(() => true)",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_TRUE(page->HasPictureInPictureVideo());
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       ExtensionActivationCannotMintNativeManualReceipt) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  test_clock().Advance(blink::kActivationLifespan);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+  SwitchToExistingTab(page);
+  page->GetPrimaryMainFrame()->NotifyUserActivation(
+      blink::mojom::UserActivationNotificationType::kExtensionEvent);
+  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
+      "document.querySelector('video').requestPictureInPicture()"
+      ".then(() => 'entered', error => error.name)",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_FALSE(page->HasPictureInPictureVideo());
+  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       DebuggerInputRoutingDoesNotCreateAPersonReceipt) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  test_clock().Advance(blink::kActivationLifespan);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+  SwitchToExistingTab(page);
+  auto* host = page->GetPrimaryMainFrame()->GetRenderWidgetHost();
+  content::InputEventAckWaiter ack(host, blink::WebInputEvent::Type::kRawKeyDown);
+  input::NativeWebKeyboardEvent injected(blink::WebInputEvent::Type::kRawKeyDown,
+      blink::WebInputEvent::kFromDebugger, base::TimeTicks::Now());
+  injected.dom_key = ui::DomKey::FromCharacter('a');
+  injected.dom_code = static_cast<int>(ui::DomCode::US_A);
+  injected.windows_key_code = ui::VKEY_A;
+  host->ForwardKeyboardEvent(injected);
+  ack.Wait();
+  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
+      "document.querySelector('video').requestPictureInPicture()"
+      ".then(() => 'entered', error => error.name)",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_FALSE(page->HasPictureInPictureVideo());
+  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       GenuineLaterInputReceiptCannotReplayAfterManualEffect) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  test_clock().Advance(blink::kActivationLifespan);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
+  EXPECT_EQ(true, content::EvalJs(page,
+      "document.querySelector('video').requestPictureInPicture().then(() => true)",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_TRUE(page->HasPictureInPictureVideo());
+  ASSERT_EQ(true, content::EvalJs(page,
+      "document.exitPictureInPicture().then(() => true)",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  // A new DevTools activation does not resurrect the consumed person receipt.
+  EXPECT_EQ("NotSupportedError", content::EvalJs(page,
+      "document.querySelector('video').requestPictureInPicture()"
+      ".then(() => 'entered', error => error.name)"));
+  EXPECT_FALSE(page->HasPictureInPictureVideo());
+  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       DevToolsActivationCannotEraseAutomaticDocumentPiPLineage) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  test_clock().Advance(blink::kActivationLifespan);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+  SwitchToExistingTab(page);
+  EXPECT_EQ("InvalidStateError", content::EvalJs(page,
+      "documentPictureInPicture.requestWindow()"
+      ".then(() => 'entered', error => error.name)"));
+  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
+  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
+  EXPECT_EQ(true, content::EvalJs(page,
+      "documentPictureInPicture.requestWindow().then(w => { w.close(); return true; })",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+}
+
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       ReplacedDocumentRefusesHeldAutomaticPayload) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  ASSERT_TRUE(content::NavigateToURL(page, embedded_test_server()->GetURL("/title1.html")));
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       CurrentActiveOwnerRefusesHeldAutomaticPayload) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  SwitchToExistingTab(page);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+}
+
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       PausedPlayerBeforeActualAutomaticEffectRefusesWindow) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  PauseVideo(page);
+  WaitForMediaSessionPaused(page);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       NativeSecurityScopeBeforeActualAutomaticEffectRefusesWindow) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  ScopedDisallowPictureInPicture disallow;
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       DroppedActualAutomaticPayloadRefusesWithoutWindow) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  auto dispatch = held_.Take();
+  ASSERT_TRUE(dispatch);
+  dispatch.Reset();
+  EXPECT_EQ(true, content::EvalJs(page, "document.pictureInPictureElement === null",
+        content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_FALSE(page->HasPictureInPictureVideo());
+  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
+}
+
+IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                       NativeProtectionInstalledBeforeActualAutomaticEffectRefusesWindow) {
+  auto* profile = browser()->GetProfile();
+  auto* controller = aux::EgressController::ForProfile(profile);
+  const auto run = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  const auto task = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  auto [isolation_id, partition] = controller->ReserveIsolation(run, task, 1);
+  const auto url = chrome_test_utils::GetTestUrl(
+      base::FilePath(base::FilePath::kCurrentDirectory),
+      base::FilePath(kNotRegisteredPage));
+  auto site = content::SiteInstance::CreateForFixedStoragePartition(profile, url, partition);
+  browser()->GetTabStripModel()->AppendWebContents(
+      content::WebContents::Create(content::WebContents::CreateParams(profile, site)), true);
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  ASSERT_TRUE(controller->RegisterIsolation(page, isolation_id, run, task, 1));
+  const auto page_id = aux::PageIdentity::GetOrCreate(profile, page);
+  const auto expected_url = page->GetLastCommittedURL().spec();
+  auto response = controller->Context(base::DictValue().Set("tabId", page_id)
+      .Set("expectedUrl", expected_url));
+  auto* context = response.FindDict("result");
+  ASSERT_NE(context, nullptr);
+  auto lease = context->Clone();
+  lease.Remove("isolation");
+  const double now = base::Time::Now().InMillisecondsFSinceUnixEpoch();
+  lease.Set("leaseId", base::Uuid::GenerateRandomV4().AsLowercaseString());
+  lease.Set("runId", run);
+  lease.Set("taskId", task);
+  lease.Set("taskRevision", 1);
+  lease.Set("isolationId", isolation_id);
+  lease.Set("documentEpoch", 1);
+  lease.Set("issuedAt", now);
+  lease.Set("expiresAt", now + 30000);
+  auto installed = controller->Install(base::DictValue().Set("lease", std::move(lease))
+      .Set("expectedUrl", expected_url));
+  ASSERT_NE(installed.FindDict("result"), nullptr);
+  aux::EgressRequestContext protected_context;
+  protected_context.page_id = page_id;
+  protected_context.document = page->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+  ASSERT_TRUE(controller->IsProtected(protected_context));
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+}
+
+class AuxQueuedRegisteredAutoPictureInPictureBrowserTest
+    : public AuxQueuedAutomaticPictureInPictureBrowserTest {
+ public:
+  void RegisterAsyncVideoHandler() {
+    ASSERT_TRUE(content::ExecJs(page, R"(
+      window.auxAutomaticDone = new Promise(resolve => window.auxResolveAutomatic = resolve);
+      navigator.mediaSession.setActionHandler('enterpictureinpicture', async details => {
+        window.auxAutomaticReason = details.reason;
+        await Promise.resolve();
+        window.auxAutomaticResult = await document.querySelector('video')
+          .requestPictureInPicture().then(() => 'entered', error => error.name);
+        window.auxResolveAutomatic(window.auxAutomaticResult);
+      });
+    )"));
+    WaitForMediaSessionActionRegistered(page);
+  }
+};
+IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
+                       CurrentAsyncRegisteredHandlerUsesExactAutomaticAuthority) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(RegisterAsyncVideoHandler());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  auto dispatch = held_.Take();
+  ASSERT_TRUE(dispatch);
+  std::move(dispatch).Run();
+  ASSERT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), page);
+  EXPECT_EQ("entered", content::EvalJs(page, "window.auxAutomaticDone",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_EQ(true, content::EvalJs(page,
+      "document.pictureInPictureElement === document.querySelector('video')",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  SwitchBackToOpenerAndWaitForPipToClose();
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
+                       AsyncRegisteredHandlerSiteRevocationCannotUseManualEntry) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(RegisterAsyncVideoHandler());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  SetContentSetting(page, CONTENT_SETTING_BLOCK);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+  EXPECT_EQ("NotSupportedError", content::EvalJs(page, "window.auxAutomaticDone",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
+                       AsyncRegisteredHandlerExpiryCannotBecomeManualEntry) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(RegisterAsyncVideoHandler());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  test_clock().Advance(blink::kActivationLifespan);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+  EXPECT_EQ("NotSupportedError", content::EvalJs(page, "window.auxAutomaticDone",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
+                       AsyncRegisteredActionRemovalRetiresHeldAutomaticAuthority) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(RegisterAsyncVideoHandler());
+  ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+  ASSERT_TRUE(content::ExecJs(page,
+      "navigator.mediaSession.setActionHandler('enterpictureinpicture', null)"));
+  WaitForMediaSessionActionUnregistered(page);
+  ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+  EXPECT_EQ("NotSupportedError", content::EvalJs(page, "window.auxAutomaticDone",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+}
+IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
+                       AutomaticDocumentHandlerRefusesButRealManualDocumentPipWorks) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_TRUE(content::ExecJs(page, R"(
+    window.auxAutomaticDocumentDone = new Promise(resolve => window.auxResolveDocument = resolve);
+    navigator.mediaSession.setActionHandler('enterpictureinpicture', async () => {
+      await Promise.resolve();
+      window.auxAutomaticDocumentResult = await documentPictureInPicture.requestWindow()
+        .then(() => 'entered', error => error.name);
+      window.auxResolveDocument(window.auxAutomaticDocumentResult);
+    });
+  )"));
+  WaitForMediaSessionActionRegistered(page);
+  OpenNewTab(browser());
+  EXPECT_EQ("NotAllowedError", content::EvalJs(page,
+      "window.auxAutomaticDocumentDone", content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_FALSE(page->HasPictureInPictureDocument());
+  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
+  ASSERT_NO_FATAL_FAILURE(SendActualBrowserInput());
+  EXPECT_EQ(true, content::EvalJs(page,
+      "documentPictureInPicture.requestWindow().then(window => !!window)",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_TRUE(page->HasPictureInPictureDocument());
+}
+
+IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
+                       LegacyMissingTicketCannotEnterVideoOrMintManualActivation) {
+  ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+  ASSERT_NO_FATAL_FAILURE(RegisterAsyncVideoHandler());
+  SetContentSetting(page, CONTENT_SETTING_BLOCK);
+  OpenNewTab(browser());
+  ASSERT_TRUE(content::GetContentClient()->browser()
+      ->RequiresCurrentAutoPictureInPictureAuthority());
+  content::MediaSession::Get(page)->EnterAutoPictureInPicture();
+  EXPECT_EQ("NotSupportedError", content::EvalJs(page, "window.auxAutomaticDone",
+      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+  EXPECT_FALSE(page->HasPictureInPictureVideo());
+  EXPECT_FALSE(page->HasPictureInPictureDocument());
+  EXPECT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
 }
 
 class AuxAutoPictureInPictureEligibilityBrowserTest
@@ -4188,20 +4598,28 @@ class AuxAutoPictureInPictureEligibilityBrowserTest
   void PrepareOwnedVideo() {
     LoadAutoVideoPipPage(browser());
     page = browser()->GetTabStripModel()->GetActiveWebContents();
+    WaitForMediaSessionActionRegistered(page);
     PlayVideo(page);
     WaitForAudioFocusGained();
     WaitForMediaSessionPlaying(page);
     WaitForWasRecentlyAudible(page);
     SetExpectedHasHighEngagement(true);
     aux::PageIdentity::GetOrCreate(browser()->GetProfile(), page);
-    // A genuine site refusal prevents entry while the real owner switches tabs.
-    SetContentSetting(page, CONTENT_SETTING_BLOCK);
+    // Keep this genuine visible pane ineligible while the real asynchronous
+    // URL-safety and media-session metadata checks complete after tab switching.
+    SetContentSetting(page, CONTENT_SETTING_ALLOW);
+    aux::SetStageVisible(browser(), {page});
     OpenNewTab(browser());
     ASSERT_NE(browser()->GetTabStripModel()->GetActiveWebContents(), page);
     ASSERT_EQ(PictureInPictureWindowManager::GetInstance()->GetWebContents(), nullptr);
-    SetContentSetting(page, CONTENT_SETTING_ALLOW);
     helper = AutoPictureInPictureTabHelper::FromWebContents(page);
     ASSERT_NE(helper, nullptr);
+    ASSERT_TRUE(base::test::RunUntil([this] {
+      const auto info = helper->GetAutoPipInfo();
+      return info.has_safe_url && info.has_audio_focus && info.is_playing &&
+             info.was_recently_audible && info.meets_media_engagement_conditions;
+    }));
+    aux::SetStageVisible(browser(), {});
   }
   void TearDownOnMainThread() override {
     aux::SetStageVisible(browser(), {});

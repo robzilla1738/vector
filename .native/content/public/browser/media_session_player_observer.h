@@ -5,6 +5,7 @@
 #ifndef CONTENT_PUBLIC_BROWSER_MEDIA_SESSION_PLAYER_OBSERVER_H_
 #define CONTENT_PUBLIC_BROWSER_MEDIA_SESSION_PLAYER_OBSERVER_H_
 
+#include "base/unguessable_token.h"
 #include <optional>
 #include <string>
 
@@ -56,6 +57,11 @@ class CONTENT_EXPORT MediaSessionPlayerObserver {
   virtual void OnEnterPictureInPicture(
       int player_id,
       const std::optional<gfx::Size>& min_size) {}
+
+  // Unsupported observers refuse automatic entry rather than invoking manual PiP.
+  virtual void OnEnterAutomaticPictureInPicture(
+      int player_id, const base::UnguessableToken& ticket,
+      const gfx::Size& min_size) {}
 
   // The given |player_id| has been requested to save the current video frame.
   virtual void OnSaveVideoFrame(int player_id) {}

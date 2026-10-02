@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "content/browser/media/session/media_session_impl.h"
+#include "content/public/browser/picture_in_picture_user_authority.h"
+#include "third_party/blink/public/common/frame/user_activation_state.h"
 
 #include <memory>
 
@@ -1893,9 +1895,11 @@ class AutoPipSizeObserver final : public MockMediaSessionPlayerObserver {
       std::move(callback).Run(sizes[player_id]);
     }
   }
-  void OnEnterPictureInPicture(int player_id,
-      const std::optional<gfx::Size>& /*min_size*/) override {
+  void OnEnterAutomaticPictureInPicture(
+      int player_id, const base::UnguessableToken& ticket,
+      const gfx::Size& /*min_size*/) override {
     chosen.push_back(player_id);
+    tickets.push_back(ticket);
   }
   void Reply() {
     auto replies = std::move(pending);
@@ -1906,6 +1910,7 @@ class AutoPipSizeObserver final : public MockMediaSessionPlayerObserver {
   std::map<int, gfx::Size> sizes;
   std::vector<std::pair<int, AutoPictureInPictureSizeCallback>> pending;
   std::vector<int> chosen;
+  std::vector<base::UnguessableToken> tickets;
 };
 }
 
@@ -2028,4 +2033,138 @@ TEST_F(MediaSessionAutoPipSelectionTest, RegisteredSiteHandlerRetainsOriginalDis
   EXPECT_TRUE(observer->chosen.empty());
 }
 
+TEST_F(MediaSessionAutoPipSelectionTest, AutomaticTicketHasOneUse) {
+  const int id = Add(gfx::Size(640, 360));
+  Enter();
+  ASSERT_EQ(observer->tickets.size(), 1u);
+  auto check = GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.front(), main_rfh(), id);
+  ASSERT_TRUE(check);
+  EXPECT_FALSE(GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.front(), main_rfh(), id));
+  EXPECT_TRUE(std::move(check).Run());
+}
+TEST_F(MediaSessionAutoPipSelectionTest, ForeignTicketCannotConsumeSelectedTicket) {
+  const int id = Add(gfx::Size(640, 360));
+  Enter();
+  ASSERT_EQ(observer->tickets.size(), 1u);
+  EXPECT_FALSE(GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      base::UnguessableToken::Create(), main_rfh(), id));
+  auto check = GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.front(), main_rfh(), id);
+  ASSERT_TRUE(check);
+  EXPECT_TRUE(std::move(check).Run());
+}
+TEST_F(MediaSessionAutoPipSelectionTest, TicketCannotAuthorizeAnotherPlayer) {
+  const int id = Add(gfx::Size(640, 360));
+  const int other = Add(gfx::Size(160, 120));
+  Enter();
+  ASSERT_EQ(observer->tickets.size(), 1u);
+  EXPECT_FALSE(GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.front(), main_rfh(), other));
+  EXPECT_FALSE(GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.front(), main_rfh(), id));
+}
+TEST_F(MediaSessionAutoPipSelectionTest, CurrentOwnerRefusalAfterTakeBlocksEffect) {
+  const int id = Add(gfx::Size(640, 360));
+  bool eligible = true;
+  GetMediaSession()->EnterAutoPictureInPictureWithEligibility(
+      base::BindRepeating([](bool* value) { return *value; }, &eligible));
+  ASSERT_EQ(observer->tickets.size(), 1u);
+  auto check = GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.front(), main_rfh(), id);
+  ASSERT_TRUE(check);
+  eligible = false;
+  EXPECT_FALSE(std::move(check).Run());
+}
+TEST_F(MediaSessionAutoPipSelectionTest, OriginalSelectionDeadlineBoundsQueuedEffect) {
+  const int id = Add(gfx::Size(640, 360));
+  Enter();
+  ASSERT_EQ(observer->tickets.size(), 1u);
+  auto check = GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.front(), main_rfh(), id);
+  ASSERT_TRUE(check);
+  task_environment()->FastForwardBy(base::Seconds(2));
+  EXPECT_FALSE(std::move(check).Run());
+}
+TEST_F(MediaSessionAutoPipSelectionTest, LaterSelectionInvalidatesTakenTicket) {
+  const int id = Add(gfx::Size(640, 360));
+  Enter();
+  ASSERT_EQ(observer->tickets.size(), 1u);
+  auto check = GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.front(), main_rfh(), id);
+  ASSERT_TRUE(check);
+  Enter();
+  ASSERT_EQ(observer->tickets.size(), 2u);
+  EXPECT_FALSE(std::move(check).Run());
+  auto current = GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.back(), main_rfh(), id);
+  ASSERT_TRUE(current);
+  EXPECT_TRUE(std::move(current).Run());
+}
+TEST_F(MediaSessionAutoPipSelectionTest, RemovedSelectedPlayerBlocksTakenTicket) {
+  const int id = Add(gfx::Size(640, 360));
+  Enter();
+  ASSERT_EQ(observer->tickets.size(), 1u);
+  auto check = GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.front(), main_rfh(), id);
+  ASSERT_TRUE(check);
+  GetMediaSession()->RemovePlayer(observer.get(), id);
+  EXPECT_FALSE(std::move(check).Run());
+}
+
+TEST_F(MediaSessionAutoPipSelectionTest, TakenTicketCannotSurviveDocumentReplacement) {
+  const int id = Add(gfx::Size(640, 360));
+  Enter();
+  ASSERT_EQ(observer->tickets.size(), 1u);
+  auto check = GetMediaSession()->TakeAutoPictureInPictureAuthority(
+      observer->tickets.front(), main_rfh(), id);
+  ASSERT_TRUE(check);
+  NavigateAndCommit(GURL("https://replacement.test"));
+  EXPECT_FALSE(std::move(check).Run());
+}
+
+}  // namespace content
+
+namespace content {
+TEST_F(MediaSessionImplTest, ExactNativeUIReceiptExpiresBeforeManualInvocation) {
+  NavigateAndCommit(GURL("https://receipt.test"));
+  StartNewPlayer();
+  // Exercise the real trusted-C++ receipt store; actual platform provenance is
+  // covered separately by the Chrome Views/browser routed-input tests.
+  ASSERT_TRUE(RecordPictureInPictureBrowserUIInput(*main_rfh()));
+  task_environment()->FastForwardBy(blink::kActivationLifespan);
+  GetMediaSession()->EnterPictureInPicture();
+  EXPECT_EQ(0, player_observer_->received_enter_picture_in_picture_calls());
+  EXPECT_FALSE(ConsumePictureInPictureUserInput(*main_rfh()));
+}
+
+TEST_F(MediaSessionImplTest, NativeUIReceiptCannotFallBackAfterDocumentReplacement) {
+  NavigateAndCommit(GURL("https://receipt.test"));
+  StartNewPlayer();
+  ASSERT_TRUE(RecordPictureInPictureBrowserUIInput(*main_rfh()));
+  RemoveAllPlayers();
+  NavigateAndCommit(GURL("https://replacement.test"));
+  player_observer_ = std::make_unique<MockMediaSessionPlayerObserver>(
+      main_rfh(), media::MediaContentType::kPersistent);
+  StartNewPlayer();
+  GetMediaSession()->EnterPictureInPicture();
+  EXPECT_EQ(0, player_observer_->received_enter_picture_in_picture_calls());
+  // Exact new trusted UI input refreshes the new document, never the old one.
+  ASSERT_TRUE(RecordPictureInPictureBrowserUIInput(*main_rfh()));
+  GetMediaSession()->EnterPictureInPicture();
+  EXPECT_EQ(1, player_observer_->received_enter_picture_in_picture_calls());
+}
+
+TEST_F(MediaSessionImplTest, NativeUIReceiptIsOneUseAtFinalManualEffect) {
+  NavigateAndCommit(GURL("https://receipt.test"));
+  StartNewPlayer();
+  ASSERT_TRUE(RecordPictureInPictureBrowserUIInput(*main_rfh()));
+  GetMediaSession()->EnterPictureInPicture();
+  EXPECT_EQ(1, player_observer_->received_enter_picture_in_picture_calls());
+  ASSERT_TRUE(ConsumePictureInPictureUserInput(*main_rfh()));
+  EXPECT_FALSE(ConsumePictureInPictureUserInput(*main_rfh()));
+  GetMediaSession()->EnterPictureInPicture();
+  EXPECT_EQ(1, player_observer_->received_enter_picture_in_picture_calls());
+}
 }  // namespace content

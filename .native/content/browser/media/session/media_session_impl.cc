@@ -55,7 +55,125 @@
 #include "content/browser/media/session/media_session_android.h"
 #endif  // BUILDFLAG(IS_ANDROID)
 
+#include "content/public/browser/document_user_data.h"
+#include "content/public/browser/browser_thread.h"
+#include "content/public/browser/picture_in_picture_user_authority.h"
+#include "third_party/blink/public/common/input/web_keyboard_event.h"
+#include "third_party/blink/public/common/frame/user_activation_state.h"
+#include "ui/events/keycodes/dom/keycode_converter.h"
+
 namespace content {
+namespace {
+// UI-thread sequence establishes order across source-shell and target-page
+// documents, including equal clock ticks. DocumentUserData survives BFCache.
+uint64_t pip_input_sequence = 0;
+class PictureInPictureUserAuthority final
+    : public DocumentUserData<PictureInPictureUserAuthority> {
+ public:
+  ~PictureInPictureUserAuthority() override = default;
+  uint64_t automatic_sequence = 0;
+  uint64_t input_sequence = 0;
+  uint64_t consumed_sequence = 0;
+  bool requires_ui_receipt = false;
+  base::TimeTicks input_at;
+ private:
+  explicit PictureInPictureUserAuthority(RenderFrameHost* frame)
+      : DocumentUserData(frame) {}
+  friend DocumentUserData<PictureInPictureUserAuthority>;
+  DOCUMENT_USER_DATA_KEY_DECL();
+};
+DOCUMENT_USER_DATA_KEY_IMPL(PictureInPictureUserAuthority);
+bool CurrentPictureInPictureDocument(RenderFrameHost& frame) {
+  auto* contents = WebContents::FromRenderFrameHost(&frame);
+  return frame.IsActive() && frame.IsRenderFrameLive() && contents &&
+         contents->GetPrimaryMainFrame() == &frame;
+}
+bool HasLaterPictureInPictureInput(const PictureInPictureUserAuthority& state,
+                                  uint64_t automatic_sequence) {
+  return state.input_sequence > automatic_sequence &&
+         state.input_sequence > state.consumed_sequence &&
+         !state.input_at.is_null() &&
+         base::TimeTicks::Now() < state.input_at + blink::kActivationLifespan;
+}
+}  // namespace
+
+void RecordPictureInPictureUserInput(RenderFrameHost& frame,
+                                    const blink::WebInputEvent& event) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (!CurrentPictureInPictureDocument(frame) ||
+      (event.GetModifiers() & blink::WebInputEvent::kFromDebugger)) return;
+  bool meaningful = event.GetType() == blink::WebInputEvent::Type::kMouseDown;
+  if (event.GetType() == blink::WebInputEvent::Type::kRawKeyDown) {
+    const auto& key = static_cast<const blink::WebKeyboardEvent&>(event);
+    meaningful = key.dom_key != ui::DomKey::ESCAPE &&
+        !ui::KeycodeConverter::IsDomKeyForModifier(ui::DomKey(key.dom_key));
+  }
+  if (!meaningful) return;
+  auto* state = PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame);
+  state->input_sequence = ++pip_input_sequence;
+  state->input_at = base::TimeTicks::Now();
+  auto* contents = WebContents::FromRenderFrameHost(&frame);
+  if (auto* session = MediaSessionImpl::FromWebContents(contents))
+    session->RecordPictureInPictureUserInvocation(frame, true);
+}
+bool RecordPictureInPictureBrowserUIInput(RenderFrameHost& frame) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (!CurrentPictureInPictureDocument(frame)) return false;
+  auto* state = PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame);
+  state->input_sequence = ++pip_input_sequence;
+  state->input_at = base::TimeTicks::Now();
+  MediaSessionImpl::Get(WebContents::FromRenderFrameHost(&frame))
+      ->RecordPictureInPictureUserInvocation(frame, false);
+  return true;
+}
+void MarkAutomaticPictureInPictureDocument(RenderFrameHost& frame) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (!CurrentPictureInPictureDocument(frame)) return;
+  auto* state = PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame);
+  state->automatic_sequence = ++pip_input_sequence;
+}
+bool TransferPictureInPictureUserInput(RenderFrameHost& source,
+                                      RenderFrameHost& target) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (!CurrentPictureInPictureDocument(source) ||
+      !CurrentPictureInPictureDocument(target) ||
+      source.GetBrowserContext() != target.GetBrowserContext()) return false;
+  auto* target_state =
+      PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&target);
+  auto* source_state = PictureInPictureUserAuthority::GetForCurrentDocument(&source);
+  if (!source_state || !HasLaterPictureInPictureInput(*source_state,
+          target_state->automatic_sequence)) return false;
+  if (&source == &target) {
+    MediaSessionImpl::Get(WebContents::FromRenderFrameHost(&target))
+        ->RecordPictureInPictureUserInvocation(target, false);
+    return true;
+  }
+  const auto sequence = source_state->input_sequence;
+  const auto at = source_state->input_at;
+  source_state->consumed_sequence = sequence;
+  target_state->input_sequence = sequence;
+  target_state->input_at = at;
+  MediaSessionImpl::Get(WebContents::FromRenderFrameHost(&target))
+      ->RecordPictureInPictureUserInvocation(target, false);
+  return true;
+}
+bool ConsumePictureInPictureUserInput(RenderFrameHost& frame) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  auto* contents = WebContents::FromRenderFrameHost(&frame);
+  if (!frame.IsActive() || !frame.IsRenderFrameLive() || !contents) return false;
+  auto* primary = contents->GetPrimaryMainFrame();
+  if (!primary || frame.GetMainFrame() != primary ||
+      !CurrentPictureInPictureDocument(*primary)) return false;
+  // Same primary document lineage applies to child players too. A handler
+  // cannot escape its automatic provenance by requesting from an iframe.
+  auto* state = PictureInPictureUserAuthority::GetForCurrentDocument(primary);
+  if (!state || (!state->automatic_sequence && !state->requires_ui_receipt))
+    return true;
+  if (!HasLaterPictureInPictureInput(*state, state->automatic_sequence)) return false;
+  state->consumed_sequence = state->input_sequence;
+  return true;
+}
+
 
 using blink::mojom::MediaSessionPlaybackState;
 using media_session::mojom::MediaAudioVideoState;
@@ -1313,7 +1431,26 @@ void MediaSessionImpl::ScrubTo(base::TimeDelta seek_time) {
     it.first.observer->OnSeekTo(it.first.player_id, seek_time);
 }
 
+void MediaSessionImpl::RecordPictureInPictureUserInvocation(
+    RenderFrameHost& frame, bool only_if_pending) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (only_if_pending && !user_pip_invocation_document_) return;
+  if (!CurrentPictureInPictureDocument(frame) ||
+      WebContents::FromRenderFrameHost(&frame) != web_contents()) return;
+  user_pip_invocation_document_ = frame.GetWeakDocumentPtr();
+  PictureInPictureUserAuthority::GetOrCreateForCurrentDocument(&frame)
+      ->requires_ui_receipt = true;
+}
+
 void MediaSessionImpl::EnterPictureInPicture() {
+  if (user_pip_invocation_document_) {
+    auto* frame = user_pip_invocation_document_->AsRenderFrameHostIfValid();
+    if (!frame || !CurrentPictureInPictureDocument(*frame)) return;
+    auto* state = PictureInPictureUserAuthority::GetForCurrentDocument(frame);
+    if (!state || !HasLaterPictureInPictureInput(*state,
+                                                state->automatic_sequence))
+      return;
+  }
   if (ShouldRouteAction(
           media_session::mojom::MediaSessionAction::kEnterPictureInPicture)) {
     DidReceiveAction(
@@ -1321,7 +1458,7 @@ void MediaSessionImpl::EnterPictureInPicture() {
         blink::mojom::MediaSessionActionDetails::NewEnterPictureInPicture(
             blink::mojom::MediaSessionEnterPictureInPictureDetails::New(
                 blink::mojom::MediaSessionEnterPictureInPictureReason::
-                    kUserAction)));
+                    kUserAction, std::nullopt, false)));
     uma_helper_.RecordEnterPictureInPicture(
         MediaSessionUmaHelper::EnterPictureInPictureType::kRegisteredManual);
     return;
@@ -1349,12 +1486,15 @@ void MediaSessionImpl::EnterAutoPictureInPicture() {
     return;
   }
 
+  if (GetContentClient()->browser()->RequiresCurrentAutoPictureInPictureAuthority())
+    MarkAutomaticPictureInPictureDocument(*web_contents()->GetPrimaryMainFrame());
   DidReceiveAction(
       media_session::mojom::MediaSessionAction::kEnterPictureInPicture,
       blink::mojom::MediaSessionActionDetails::NewEnterPictureInPicture(
           blink::mojom::MediaSessionEnterPictureInPictureDetails::New(
               blink::mojom::MediaSessionEnterPictureInPictureReason::
-                  kContentOccluded)));
+                  kContentOccluded, std::nullopt,
+              GetContentClient()->browser()->RequiresCurrentAutoPictureInPictureAuthority())));
   uma_helper_.RecordEnterPictureInPicture(
       MediaSessionUmaHelper::EnterPictureInPictureType::kRegisteredAutomatic);
   ReportAutoPictureInPictureInfoChanged();
@@ -1366,7 +1506,26 @@ void MediaSessionImpl::EnterAutoPictureInPictureWithEligibility(
   if (!eligible || !eligible.Run() || !weak) return;
   if (ShouldRouteAction(
           media_session::mojom::MediaSessionAction::kEnterPictureInPicture)) {
-    EnterAutoPictureInPicture();
+    auto* frame = routed_service_->GetRenderFrameHost();
+    if (frame != web_contents()->GetPrimaryMainFrame() || normal_players_.size() > 64) return;
+    const auto token = base::UnguessableToken::Create();
+    auto_pip_selection_timer_.Stop();
+    if (GetContentClient()->browser()->RequiresCurrentAutoPictureInPictureAuthority())
+      MarkAutomaticPictureInPictureDocument(*frame);
+    auto_pip_authority_.emplace(AutoPipAuthority{
+        token, std::nullopt, true, frame->GetWeakDocumentPtr(),
+        ++auto_pip_generation_, base::TimeTicks::Now() + blink::kActivationLifespan,
+        std::move(eligible)});
+    DidReceiveAction(
+        media_session::mojom::MediaSessionAction::kEnterPictureInPicture,
+        blink::mojom::MediaSessionActionDetails::NewEnterPictureInPicture(
+            blink::mojom::MediaSessionEnterPictureInPictureDetails::New(
+                blink::mojom::MediaSessionEnterPictureInPictureReason::kContentOccluded,
+                token, true)));
+    if (!weak) return;
+    uma_helper_.RecordEnterPictureInPicture(
+        MediaSessionUmaHelper::EnterPictureInPictureType::kRegisteredAutomatic);
+    ReportAutoPictureInPictureInfoChanged();
     return;
   }
   SelectAutoPipPlayer(std::move(eligible));
@@ -1391,7 +1550,9 @@ void MediaSessionImpl::SelectAutoPipPlayer(
   for (const auto& item : normal_players_)
     if (IsAutoPipPlayerEligible(item.first)) players.push_back(item.first);
   if (players.empty() || players.size() > 64) return;
+  auto_pip_authority_.reset();
   const auto generation = ++auto_pip_generation_;
+  auto_pip_selection_deadline_ = base::TimeTicks::Now() + base::Seconds(2);
   auto_pip_selection_timer_.Start(FROM_HERE, base::Seconds(2),
       base::BindOnce(&MediaSessionImpl::CancelAutoPipSelection,
                     weak_factory_.GetWeakPtr(), generation));
@@ -1450,8 +1611,14 @@ void MediaSessionImpl::AutoPipPlayerRevalidated(
       !IsAutoPipPlayerEligible(player) ||
       !CanEnterBrowserInitiatedAutomaticPictureInPicture()) return;
   auto_pip_selection_timer_.Stop();
-  ++auto_pip_generation_;
-  player.observer->OnEnterPictureInPicture(player.player_id, current_size);
+  const auto token = base::UnguessableToken::Create();
+  if (GetContentClient()->browser()->RequiresCurrentAutoPictureInPictureAuthority())
+    MarkAutomaticPictureInPictureDocument(*web_contents()->GetPrimaryMainFrame());
+  auto_pip_authority_.emplace(AutoPipAuthority{
+      token, player, false, document, ++auto_pip_generation_,
+      auto_pip_selection_deadline_, std::move(eligible)});
+  player.observer->OnEnterAutomaticPictureInPicture(
+      player.player_id, token, current_size);
   if (!weak) return;
   RecordBrowserInitiatedAutomaticPictureInPictureUkm(false);
   uma_helper_.RecordEnterPictureInPicture(
@@ -1460,6 +1627,58 @@ void MediaSessionImpl::AutoPipPlayerRevalidated(
 
 void MediaSessionImpl::CancelAutoPipSelection(uint64_t generation) {
   if (generation == auto_pip_generation_) ++auto_pip_generation_;
+}
+
+bool MediaSessionImpl::CheckAutoPipAuthority(
+    const AutoPipAuthority& authority) {
+  auto weak = weak_factory_.GetWeakPtr();
+  if (!authority.eligible || !authority.eligible.Run() || !weak) return false;
+  return authority.generation == auto_pip_generation_ &&
+      base::TimeTicks::Now() < authority.deadline &&
+      authority.document.AsRenderFrameHostIfValid() ==
+          web_contents()->GetPrimaryMainFrame() &&
+      IsAutoPipAuthorityPlayerCurrent(authority) &&
+      (authority.registered_handler
+          ? (ShouldRouteAction(media_session::mojom::MediaSessionAction::kEnterPictureInPicture) &&
+             routed_service_->GetRenderFrameHost() == web_contents()->GetPrimaryMainFrame())
+          : CanEnterBrowserInitiatedAutomaticPictureInPicture());
+}
+
+bool MediaSessionImpl::IsAutoPipAuthorityPlayerCurrent(
+    const AutoPipAuthority& authority) const {
+  if (!authority.player) return authority.registered_handler;
+  const auto& player = *authority.player;
+  if (!normal_players_.contains(player)) return false;
+  auto* frame = player.observer->render_frame_host();
+  return frame && frame == authority.document.AsRenderFrameHostIfValid() &&
+      frame == web_contents()->GetPrimaryMainFrame() &&
+      player.observer->IsPictureInPictureAvailable(player.player_id) &&
+      (authority.registered_handler || !player.observer->IsPaused(player.player_id));
+}
+
+base::OnceCallback<bool()> MediaSessionImpl::TakeAutoPictureInPictureAuthority(
+    const base::UnguessableToken& token, RenderFrameHost* frame,
+    uint32_t player_id) {
+  auto weak = weak_factory_.GetWeakPtr();
+  if (!auto_pip_authority_ || auto_pip_authority_->token != token) return {};
+  auto authority = std::move(*auto_pip_authority_);
+  auto_pip_authority_.reset();
+  if (authority.registered_handler && !authority.player) {
+    for (const auto& [player, focus] : normal_players_) {
+      if (player.player_id == static_cast<int>(player_id) &&
+          player.observer->render_frame_host() == frame) {
+        authority.player = player;
+        break;
+      }
+    }
+  }
+  if (authority.document.AsRenderFrameHostIfValid() != frame ||
+      !authority.player || authority.player->player_id != static_cast<int>(player_id) ||
+      !CheckAutoPipAuthority(authority) || !weak) return {};
+  return base::BindOnce(
+      [](base::WeakPtr<MediaSessionImpl> session, AutoPipAuthority authority) {
+        return session && session->CheckAutoPipAuthority(authority);
+      }, weak, std::move(authority));
 }
 
 void MediaSessionImpl::SaveVideoFrame() {
@@ -2436,6 +2655,14 @@ void MediaSessionImpl::MaybeEnterBrowserInitiatedAutomaticPictureInPicture() {
   if (!CanEnterBrowserInitiatedAutomaticPictureInPicture()) {
     return;
   }
+
+  // Aux has no owner/site receipt on this legacy route. Never turn its
+  // automatic request into the upstream manual renderer entry. Dry-run
+  // telemetry and other embedders retain their original behavior.
+  if (base::FeatureList::IsEnabled(
+          blink::features::kBrowserInitiatedAutomaticPictureInPicture) &&
+      GetContentClient()->browser()->RequiresCurrentAutoPictureInPictureAuthority())
+    return;
 
   // There should be one and only one player when we could enter browser
   // initiated automatic picture-in-picture.

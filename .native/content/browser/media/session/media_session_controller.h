@@ -68,6 +68,9 @@ class CONTENT_EXPORT MediaSessionController
   void OnEnterPictureInPicture(
       int player_id,
       const std::optional<gfx::Size>& min_size) override;
+  void OnEnterAutomaticPictureInPicture(
+      int player_id, const base::UnguessableToken& ticket,
+      const gfx::Size& min_size) override;
   void OnSaveVideoFrame(int player_id) override;
   void OnSetAudioSinkId(int player_id,
                         const std::string& raw_device_id) override;

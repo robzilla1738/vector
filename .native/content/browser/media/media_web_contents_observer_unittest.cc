@@ -38,6 +38,9 @@ class TestMediaPlayer final : public media::mojom::MediaPlayer {
       RequestAutoPictureInPictureSizeCallback callback) override {
     std::move(callback).Run(gfx::Size());
   }
+  void RequestEnterAutomaticPictureInPicture(
+      const base::UnguessableToken& /*ticket*/,
+      const gfx::Size& /*min_size*/) override {}
   void RequestEnterPictureInPicture(
       const std::optional<gfx::Size>& min_size) override {}
   void RequestMute(bool mute) override {}

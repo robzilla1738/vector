@@ -108,6 +108,14 @@ void MediaSessionController::OnEnterPictureInPicture(
       ->RequestEnterPictureInPicture(min_size);
 }
 
+void MediaSessionController::OnEnterAutomaticPictureInPicture(
+    int player_id, const base::UnguessableToken& ticket,
+    const gfx::Size& min_size) {
+  DCHECK_EQ(player_id_, player_id);
+  web_contents_->media_web_contents_observer()->GetMediaPlayerRemote(id_)
+      ->RequestEnterAutomaticPictureInPicture(ticket, min_size);
+}
+
 void MediaSessionController::OnSaveVideoFrame(int player_id) {
   DCHECK_EQ(player_id_, player_id);
 
