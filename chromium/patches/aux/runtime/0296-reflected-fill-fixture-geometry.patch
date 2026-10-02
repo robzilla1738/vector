@@ -1,0 +1,15 @@
+diff --git a/chrome/browser/ui/aux/native_pip_video_backing_unittest.cc b/chrome/browser/ui/aux/native_pip_video_backing_unittest.cc
+index b5da79a7..8c0568fc 100644
+--- a/chrome/browser/ui/aux/native_pip_video_backing_unittest.cc
++++ b/chrome/browser/ui/aux/native_pip_video_backing_unittest.cc
+@@ -46,6 +46,10 @@ TEST_F(NativePipSolidBackingTest, ReflectedSubtreeIsNotSolidEvenWithBlackBackgro
+   ui::LayerNotDrawn reflected;
+   auto* layer = background_->layer()->AsSolidColor();
+   ASSERT_TRUE(layer->IsShowingSolidColorContent());
++  // Reflection must be refused for content mode, even at the exact fill size.
++  // SetShowReflectedLayerSubtree matches the source geometry; an empty source
++  // would also shrink the backing and invalidate the restored-solid control.
++  reflected.SetBounds(layer->bounds());
+   layer->SetShowReflectedLayerSubtree(&reflected);
+   EXPECT_FALSE(layer->IsShowingSolidColorContent()); EXPECT_FALSE(Read());
+   layer->SetShowSolidColorContent(); layer->SetColor(SkColors::kBlack);

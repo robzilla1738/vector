@@ -714,6 +714,11 @@ class FastDownloadSignalFixture {
   ~FastDownloadSignalFixture() {
     observer_->ManagerGoingDown(manager_);
     AuxRuntimeHostTestPeer::Destroy(&profile_);
+    // The mock manager does not deliver the real delegate Shutdown callback.
+    // The supported setter shuts down the original delegate before destroying
+    // it, while this fixture's manager and download items are still alive.
+    DownloadCoreServiceFactory::GetForBrowserContext(&profile_)
+        ->SetDownloadManagerDelegateForTesting(nullptr);
   }
   void Configure(download::MockDownloadItem& item, const std::string& guid,
                  const base::FilePath& path) {

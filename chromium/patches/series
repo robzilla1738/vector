@@ -266,3 +266,5 @@ aux/runtime/0291-stock-early-admission.patch
 aux/runtime/0265-early-startup-hardware.patch
 aux/runtime/0292-startup-authenticated-hello.patch
 aux/runtime/0293-startup-absolute-deadline.patch
+aux/runtime/0295-download-fixture-delegate-shutdown.patch
+aux/runtime/0296-reflected-fill-fixture-geometry.patch

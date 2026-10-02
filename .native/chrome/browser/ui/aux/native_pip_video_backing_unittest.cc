@@ -46,6 +46,10 @@ TEST_F(NativePipSolidBackingTest, ReflectedSubtreeIsNotSolidEvenWithBlackBackgro
   ui::LayerNotDrawn reflected;
   auto* layer = background_->layer()->AsSolidColor();
   ASSERT_TRUE(layer->IsShowingSolidColorContent());
+  // Reflection must be refused for content mode, even at the exact fill size.
+  // SetShowReflectedLayerSubtree matches the source geometry; an empty source
+  // would also shrink the backing and invalidate the restored-solid control.
+  reflected.SetBounds(layer->bounds());
   layer->SetShowReflectedLayerSubtree(&reflected);
   EXPECT_FALSE(layer->IsShowingSolidColorContent()); EXPECT_FALSE(Read());
   layer->SetShowSolidColorContent(); layer->SetColor(SkColors::kBlack);
