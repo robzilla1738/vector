@@ -1,0 +1,22 @@
+{
+  "sourceOnly": true,
+  "actualNativeMemoryQualification": false,
+  "parentFrozenCheckpoint": "65b89a6e49304eb2299bccdaba02e789cca1fd07",
+  "nativeMirrorsUnchanged": 324,
+  "orderedNativePacketsUnchanged": 101,
+  "unchangedReportLimitBytes": 1048576,
+  "sourceRegression": "original executing20 report1293781 bytes exceeded existing1MB; repeated parsed clones omitted while all original native/raw envelopes/identities/power/tab snapshots/failures remain",
+  "serializedSyntheticControlsBytes": {
+    "idle20": 174503,
+    "executing20": 309068,
+    "executing32Processes20": 592989
+  },
+  "fullBoundedInventoryControl": "20 trials each32 processes/128 actual host identifiers/126 original kernel readings retained; unchanged1MB assertion PASS",
+  "protocolControls": 104,
+  "protocolLog": {
+    "path": "/tmp/aux-root-memory-report-protocol.log",
+    "sha256": "a8098ade50bf41ad0cde396d1c82ef67cf71ac3069348e4999f5051441376ccb"
+  },
+  "preparationReportFailure": "Cancel actual prepared workload before relinquishing its cleanup capability when evidence persistence fails; retain primary/persistence/cancellation errors together",
+  "remaining": "actual native compilation and every original journey/performance/design/qualification gate"
+}

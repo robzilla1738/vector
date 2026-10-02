@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createNativeProcessMemoryReader } from './native-process-memory.mjs';
+import { createNativeProcessMemoryReader, validateNativeProcessMemory } from './native-process-memory.mjs';
 import { createNativeWorkloadPreparationAdapter, collectNativeMemoryWorkloadTrials } from './native-memory-workload-collector.mjs';
 import { collectNativeMemoryBudget } from './native-memory-budget.mjs';
 
@@ -149,7 +149,16 @@ for (const mode of ['idle', 'executing']) test(`${mode} exact byte budget bounda
   assert.equal(report.status, 'measured'); assert.equal(report.attempts.length, 20);
   assert.deepEqual(report.maximumBytes, { shell: '150000000', runtime: String(runtimeLimit), allProcesses: String(150_000_000 + runtimeLimit + 210) });
   assert.match(report.stockComparison, /required separately/);
-  for (const attempt of report.attempts) assert.equal(JSON.stringify(attempt.decoded.row), attempt.observation.raw);
+  for (const attempt of report.attempts) {
+    const original = attempt.observation;
+    assert.equal(original.receipt.recordRaw, original.raw);
+    assert.equal(JSON.stringify(JSON.parse(original.receipt.raw.slice('AUX_NATIVE_FIXTURE_REPLY_V1 '.length)).record), original.raw);
+    const parsed = validateNativeProcessMemory(original.raw, 100);
+    assert.equal(parsed.processes.reduce((sum, process) => sum + process.readings.length, 0), 14);
+    assert.equal(parsed.workload.before.status, mode);
+    assert.deepEqual(attempt.idleBefore, attempt.idleAfter);
+  }
+  assert.ok(Buffer.byteLength(JSON.stringify(report, null, 2)) <= 1048576, 'Twenty original trials must fit the unchanged report gate');
   assert.doesNotThrow(() => JSON.stringify(report));
 });
 
@@ -179,4 +188,25 @@ test('memory report cannot relabel original native observations to a different b
   await assert.rejects(collectNativeMemoryBudget(f.options, candidate), error => {
     assert.equal(error.report.attempts.length, 20); assert.match(error.message, /Report candidate/); return true;
   });
+});
+
+test('twenty full bounded process inventories retain every original reading within the report gate', async () => {
+  const f = fixture('executing');
+  f.change = row => {
+    for (let index = 0; index < 28; index++) row.processes.push([200 + index, 'renderer', 3,
+      Array.from({ length: 4 }, (_, host) => 200 + index * 4 + host), 'e'.repeat(32), String(400 + index), structuredClone(row.processes[1][6])]);
+    row.processes[4][3].push(...Array.from({ length: 14 }, (_, index) => 400 + index));
+    return row;
+  };
+  const report = await collectNativeMemoryBudget(f.options, f.candidate);
+  assert.equal(report.attempts.length, 20);
+  for (const attempt of report.attempts) {
+    const parsed = validateNativeProcessMemory(attempt.observation.raw, 100);
+    assert.equal(parsed.processes.length, 32);
+    assert.equal(parsed.processes.reduce((sum, process) => sum + process.readings.length, 0), 126);
+    assert.equal(parsed.row.processes.reduce((sum, process) => sum + process[3].length, 0), 128);
+    assert.equal(attempt.observation.receipt.recordRaw, attempt.observation.raw);
+  }
+  assert.ok(Buffer.byteLength(JSON.stringify(report, null, 2)) <= 1048576);
+  assert.equal(f.cleanups(), 1);
 });

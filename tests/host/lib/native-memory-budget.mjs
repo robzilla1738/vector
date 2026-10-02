@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import { collectNativeMemoryWorkloadTrials } from './native-memory-workload-collector.mjs';
 import { validateAppearanceCandidate } from './appearance-provenance.mjs';
 
-// Only derived BigInts change representation. Original native strings, raw
-// direct-child envelopes and every failed observation remain byte-for-byte.
-const serializable = value => JSON.parse(JSON.stringify(value, (_key, field) =>
-  typeof field === 'bigint' ? field.toString() : field));
+// Retain every original byte and observation. Parsed kernels/workloads are
+// reproducible from those bytes; persisting their repeated copies exceeds the
+// bounded report even for an ordinary five-VM workload.
+const originalEvidence = trials => trials.map(({ decoded: _decoded, bracket: _bracket, observation, ...trial }) => {
+  if (!observation) return trial;
+  const { decoded: _parsed, native: _native, ...original } = observation;
+  return { ...trial, observation: original };
+});
 
 export async function collectNativeMemoryBudget(options, candidate) {
   const report = { schema: 1, metric: 'process-memory',
@@ -15,7 +19,7 @@ export async function collectNativeMemoryBudget(options, candidate) {
   try {
     validateAppearanceCandidate(candidate);
     const collection = await collectNativeMemoryWorkloadTrials(options);
-    report.attempts = serializable(collection.trials);
+    report.attempts = originalEvidence(collection.trials);
     for (const trial of collection.trials) {
       assert.deepEqual(trial.observation.before.identity.runtime, candidate.productIdentity);
       for (const field of ['sourceCommit', 'buildId', 'manifestHash'])
@@ -31,7 +35,7 @@ export async function collectNativeMemoryBudget(options, candidate) {
       `${field} physical footprint exceeds its ${options.mode} budget`);
     report.status = 'measured'; return report;
   } catch (error) {
-    if (error.trials) report.attempts = serializable(error.trials);
+    if (error.trials) report.attempts = originalEvidence(error.trials);
     if (error.cleanupFailure) report.cleanupFailure = error.cleanupFailure.message;
     report.status = 'failed'; report.error = error.message;
     const failure = new Error(`Native memory budget failed: ${error.message}`, { cause: error });

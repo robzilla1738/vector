@@ -152,12 +152,20 @@ async function execute() {
       const report = { schema: 1, metric: 'subagent-preparation', candidate: memoryCandidate(),
         endpoint: 'original authenticated native paused-parent preparation', attempts: preparation.observations, status: 'running' };
       signal.throwIfAborted();
+      let workload, failure;
       try {
-        const workload = await startSubagentMemoryWorkload({ scopedRpc, model, parent, idlePageIds, parentHold,
+        workload = await startSubagentMemoryWorkload({ scopedRpc, model, parent, idlePageIds, parentHold,
           signal, until, readNativePreparation: preparation.readNativePreparation });
-        report.status = 'prepared'; return workload;
-      } catch (error) { report.status = 'failed'; report.error = error.message; throw error; }
-      finally { savePerformanceReport('performance', report); }
+        report.status = 'prepared';
+      } catch (error) { failure = error; report.status = 'failed'; report.error = error.message; }
+      try { savePerformanceReport('performance', report); }
+      catch (error) {
+        const errors = [failure, error].filter(Boolean);
+        if (workload) try { await workload.cleanup(); } catch (cleanupError) { errors.push(cleanupError); }
+        throw new AggregateError(errors, 'Native workload preparation report could not be retained');
+      }
+      if (failure) throw failure;
+      return workload;
     },
     async measureProcessMemory({ mode, workload, idlePageIds }) {
       const { collectNativeMemoryBudget } = await import('./lib/native-memory-budget.mjs');
