@@ -1,0 +1,10 @@
+{
+  "status": "independently-reviewed-source-metadata-proposal",
+  "proposalSha256": "38583065500adec807a4732e7381774afd08e8a38504aa92008820f617b482af",
+  "actualOriginalMetadataPins": "PASS",
+  "exactAuxArgsAdditions": "PASS",
+  "upstreamTagAndHead": "PASS",
+  "realRevisionGnOnlyApproved": true,
+  "generatedAndBinaryAuditRequiredBeforeLaunch": true,
+  "compiled": false
+}
