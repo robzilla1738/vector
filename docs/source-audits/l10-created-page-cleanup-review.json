@@ -1,0 +1,39 @@
+{
+  "sourceOnly": true,
+  "adopted": false,
+  "request": "/tmp/aux-browser-runtime-l10-m4-control-adapter/docs/lane-requests/l10/0280-created-page-cleanup-DRAFT/source.request.patch",
+  "sha256": "b81683a85aeaac38703c0f1ceb4a94dedc3c1dcf31726af4f7b3a49187f60f54",
+  "freeze": "72e975b8",
+  "actualFrozenResultsVerified": [
+    {
+      "path": "apps/runtime/src/agent/coordinator.ts",
+      "beforeSha256": "fc467fb68a2efb3ac050ae2ade404a9fc4436465489466db8cc6c97adbde694f",
+      "afterSha256": "97f4382d3a27015a50355115a3944ee65eee82780738b98d6177a6531dc68e23"
+    },
+    {
+      "path": "apps/runtime/src/services/runs.ts",
+      "beforeSha256": "3b971ba077de6600c1ee67785a82b17927b3b39b7fbc0511b4c92f45ead80596",
+      "afterSha256": "4dc8219cec77192eb71fca6b813da601da6eb331cef061935518218699b86857"
+    },
+    {
+      "path": "apps/runtime/src/services/close-created-page.ts",
+      "beforeSha256": null,
+      "afterSha256": "dc9824276da5a7155febfb492a89f5211d115fef9898b93f8e60b0285fa31516"
+    },
+    {
+      "path": "tests/unit/agent-isolation-flow.test.ts",
+      "beforeSha256": "5901504f6daa5b56c312303cbc650ec4dceae593a921e8d737d6d85fe0907a90",
+      "afterSha256": "5fd603c89e09434fedc8f3c0d924c8e79a6d6a4d3914018d04dc867258d4b864"
+    },
+    {
+      "path": "tests/unit/close-created-page.test.ts",
+      "beforeSha256": null,
+      "afterSha256": "f26a19fb2b2aca42ec49c4acf625d3c16b2f1897bbabcaef8769ba833aa206c8"
+    }
+  ],
+  "rootFullSourceReview": true,
+  "verifiedBehaviorBySource": "snapshot returned attachment before ownPage; missing/human/replaced target refusal; absorb cleanup lookup/close errors and preserve primary error while continuing other originals",
+  "testClaimsIndependentlyExecutedByRoot": false,
+  "remainingFinding": "runtime metadata check precedes asynchronous pageId-only native tabCommand.close; whole0280 requires exact native creator/document/controller-generation admission at final effect after possible person takeover",
+  "full0280Ready": false
+}
