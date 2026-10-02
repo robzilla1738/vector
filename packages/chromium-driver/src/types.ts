@@ -40,6 +40,10 @@ export interface DriverPageEvents {
   /** passive response capture — fired for every completed HTTP response. */
   onResponse?: (info: {
     requestId: string;
+    /** Document identity captured at request initiation, before response body awaits. */
+    documentEpoch?: number;
+    documentUrl?: string;
+    sessionId?: string;
     url: string;
     method: string;
     status: number;

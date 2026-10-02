@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it } from "vitest";
 import type { BrowserDriver, DriverPage, DriverPageEvents } from "@aux/chromium-driver";
 import type { PageTarget } from "@aux/contracts";
@@ -30,7 +31,7 @@ function page(initialTitle: string | Promise<string> = "Current") {
 function registry(next: () => DriverPage, recoverPage = async () => ({ ok: true })) {
   const repo = new Repo(openDb(":memory:")); repos.push(repo);
   const driver = { attach: async () => next() } as unknown as BrowserDriver;
-  return new PageRegistry({ repo, events: new EventBus(repo),
+  return new PageRegistry({ turnMentions: fixtureTurnMentions(pageId => repo.getPage(pageId)), repo, events: new EventBus(repo),
     native: { available: () => true, recoverPage } as unknown as NativeBridge,
     drivers: () => ({ aux: driver, chrome: null }) });
 }

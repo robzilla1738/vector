@@ -1,5 +1,7 @@
 import { NightRunOverflow } from "../features/morning-review/NightRunOverflow";
 import { runCommand } from "../commands";
+import type { MentionRef } from "@aux/contracts";
+import { submittedMentions, mentionComposerId, clearMentionDraft } from "../mentions/drafts";
 import { FeatureComposer } from "../features/registry";
 import { Popover } from "../ui/popover";
 import { RunControls } from "./RunControls";
@@ -44,14 +46,14 @@ const NO_SOURCES: ConversationSource[] = [];
 
 type DraftState = ReturnType<typeof useStore.getState>;
 const QUEUE_ATTEMPT_PREFIX = "aux.pending-queue-message.v1:";
-type QueueAttempt = { messageId: string; runId: string; text: string; mode: "queue" | "steer" };
-function queueAttempt(chatId: string, runId: string, text: string, mode: QueueAttempt["mode"], inWindow: QueueAttempt | null): QueueAttempt {
-  if (inWindow?.runId === runId && inWindow.text === text && inWindow.mode === mode) return inWindow;
+type QueueAttempt = { mentions: MentionRef[]; messageId: string; runId: string; text: string; mode: "queue" | "steer" };
+function queueAttempt(chatId: string, runId: string, text: string, mode: QueueAttempt["mode"], mentions: MentionRef[], inWindow: QueueAttempt | null): QueueAttempt {
+  if (inWindow?.runId === runId && inWindow.text === text && inWindow.mode === mode && JSON.stringify(inWindow.mentions) === JSON.stringify(mentions)) return inWindow;
   try {
     const saved = JSON.parse(localStorage.getItem(`${QUEUE_ATTEMPT_PREFIX}${chatId}`) ?? "null") as QueueAttempt | null;
-    if (saved?.runId === runId && saved.text === text && (saved.mode ?? "queue") === mode && /^[\da-f-]{36}$/i.test(saved.messageId)) return { ...saved, mode };
+    if (saved?.runId === runId && saved.text === text && (saved.mode ?? "queue") === mode && JSON.stringify(saved.mentions ?? []) === JSON.stringify(mentions) && /^[\da-f-]{36}$/i.test(saved.messageId)) return { ...saved, mode, mentions };
   } catch { /* The composer still keeps its in-window attempt. */ }
-  const attempt = { messageId: crypto.randomUUID(), runId, text, mode };
+  const attempt = { messageId: crypto.randomUUID(), runId, text, mode, mentions };
   try { localStorage.setItem(`${QUEUE_ATTEMPT_PREFIX}${chatId}`, JSON.stringify(attempt)); } catch { /* Optional persistence. */ }
   return attempt;
 }
@@ -62,14 +64,14 @@ const draftText = (s: DraftState, id: string | null | undefined, answerRunId?: s
 };
 
 /** Owns the draft subscription so typing re-renders the input, never the thread. */
-const ComposerInput = memo(function ComposerInput({ id, answerRunId, answerQuestion, disabled, sendDisabled, placeholder, maxLength, inputProps, onChange, onSend, children, footer, modes, textareaRef }: {
-  id: string | null | undefined; answerRunId?: string; answerQuestion?: string; disabled: boolean; sendDisabled: boolean; placeholder: string; maxLength?: number;
+const ComposerInput = memo(function ComposerInput({ id, answerRunId, answerQuestion, disabled, sendDisabled, placeholder, maxLength, inputProps, onChange, onSend, children, footer, modes, textareaRef, workspaceId }: {
+  workspaceId?: string; id: string | null | undefined; answerRunId?: string; answerQuestion?: string; disabled: boolean; sendDisabled: boolean; placeholder: string; maxLength?: number;
   inputProps: Pick<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "onPaste" | "onDragOver" | "onDrop">; onChange(value: string): void; onSend(): void; children?: ReactNode; footer?: ReactNode; modes?: ReactNode; textareaRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
   const text = useStore(s => draftText(s, id, answerRunId, answerQuestion));
   const ownInput = useRef<HTMLTextAreaElement>(null);
   const inputRef = textareaRef ?? ownInput;
-  return <div className="conversation-input"><FeatureComposer textareaRef={inputRef} value={text} onChange={onChange} disabled={disabled} /><textarea ref={inputRef} {...inputProps} maxLength={maxLength} disabled={disabled} aria-label="Reply to conversation" placeholder={placeholder} value={text} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); onSend(); } }}/><div className="composer-footer"><div className="composer-footer-context">{footer}{modes}</div><div className="composer-send-actions">{children}<button className="icon-btn" aria-label="Send message" disabled={sendDisabled || !text.trim()} onClick={onSend}>{shellIconSend}</button></div></div></div>;
+  return <div className="conversation-input"><FeatureComposer composerId={mentionComposerId(id, answerRunId)} workspaceId={workspaceId} textareaRef={inputRef} value={text} onChange={onChange} disabled={disabled} /><textarea ref={inputRef} {...inputProps} maxLength={maxLength} disabled={disabled} aria-label="Reply to conversation" placeholder={placeholder} value={text} onChange={e => onChange(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) { e.preventDefault(); onSend(); } }}/><div className="composer-footer"><div className="composer-footer-context">{footer}{modes}</div><div className="composer-send-actions">{children}<button className="icon-btn" aria-label="Send message" disabled={sendDisabled || !text.trim()} onClick={onSend}>{shellIconSend}</button></div></div></div>;
 });
 
 type ConversationSpaceContext = { workspace: Workspace | null; memory: WorkspaceMemory | null; assigned?: boolean; taskId?: string; memoryPreview?: string; browsingPreview?: string };
@@ -516,33 +518,36 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
   };
   const send = async () => {
     const text = readText();
+    const composerId = mentionComposerId(id, answerRunId);
     if (archived || !connected || !text.trim() || sendPending.current || answerPending) return;
     if (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length)) || historyLoading || historyError || contextLoading || contextError || (taskBound && last?.status !== "needs_input"))) return;
     sendPending.current = true;
     setSending(true); setSendError("");
     try {
+      const mentions = await submittedMentions(composerId, text);
       if (answering && last && suspension && effectiveLiveMode === "answer") {
-        await useStore.getState().answerRun(last.runId,text.trim(),last.statusMessage ?? "",suspension.suspensionId);
+        await useStore.getState().answerRun(last.runId,text.trim(),last.statusMessage ?? "",suspension.suspensionId,mentions);
         scrolling.jumpToLatest();
       } else if (live && last && id) {
         const mode = effectiveLiveMode === "answer" ? "steer" : effectiveLiveMode;
-        const attempt = queueAttempt(id, last.runId, text.trim(), mode, queueAttemptRef.current);
+        const attempt = queueAttempt(id, last.runId, text.trim(), mode, mentions, queueAttemptRef.current);
         queueAttemptRef.current = attempt;
         const resends = resendOf.current;
         const message = await call(mode === "steer" ? "runs.steer" : "runs.queue", { messageId: attempt.messageId, runId: last.runId, chatId: id,
-          text: attempt.text, pageIds: last.pageIds, contextPageRefs: last.config?.contextPageRefs ?? [],
+          text: attempt.text, mentions: attempt.mentions, pageIds: last.pageIds, contextPageRefs: last.config?.contextPageRefs ?? [],
           expectedRevision: last.config?.messageRevision ?? 0, expectedTurnId: last.runId,
           ...(mode === "steer" ? { clientUserMessageId: attempt.messageId } : {}),
           ...(resends ? { resendsMessageId: resends } : {}) });
         setQueuedMessages(items => items.some(item => item.messageId === message.messageId) ? items : [...items, message]);
-        if (readText() === text) setText("");
+        if (readText() === text) { setText(""); clearMentionDraft(composerId); }
         queueAttemptRef.current = null;
         resendOf.current = null;
         try { localStorage.removeItem(`${QUEUE_ATTEMPT_PREFIX}${id}`); } catch { /* Already acknowledged in runtime. */ }
         scrolling.jumpToLatest();
       } else {
-        const selectedPageIds = [...new Set([...(selectedContext ? [selectedContext.pageId] : []), ...browserSources.map(source => source.pageId)])];
-        let primaryForRun = selectedContext;
+        const mentionedPageIds = mentions.flatMap(ref => ref.kind === "tab" ? [ref.pageId] : ref.kind === "group" ? ref.members.map(member => member.pageId) : []);
+        const selectedPageIds = [...new Set(mentionedPageIds.length ? mentionedPageIds : [...(selectedContext ? [selectedContext.pageId] : []), ...browserSources.map(source => source.pageId)])];
+        let primaryForRun = mentionedPageIds.length ? useStore.getState().pages.find(page => page.pageId === mentionedPageIds[0]) : selectedContext;
         if (selectedPageIds.length) {
           const pending = (await call("browser.recovery.list", {})).filter(tab => selectedPageIds.includes(tab.pageId));
           for (const tab of pending) await call("browser.recovery.retry", { pageId: tab.pageId });
@@ -555,7 +560,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
             if (selectedContext) primaryForRun = restored.find(page => page.pageId === selectedContext.pageId);
           }
         }
-        if (selectedContext && !primaryForRun) { setSendError("The selected tab is unavailable. Open it or choose another tab."); return; }
+        if (selectedPageIds.length && !primaryForRun) { setSendError("The selected tab is unavailable. Open it or choose another tab."); return; }
         // Optimistic: the message leaves the composer and joins the thread now;
         // a failed start puts it back unless something new was typed meanwhile.
         const chatId = id ?? crypto.randomUUID();
@@ -564,12 +569,12 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
           useStore.getState().setConversationBrowserSources(chatId, browserSources);
         }
         const pageIds = selectedPageIds;
-        const contextPageRefs = [...(primaryForRun ? [browserSources.find(source => source.pageId === primaryForRun.pageId) ?? sourceRef(primaryForRun)] : []), ...browserSources.filter(source => source.pageId !== primaryForRun?.pageId)];
+        const contextPageRefs = [...(primaryForRun ? [browserSources.find(source => source.pageId === primaryForRun.pageId) ?? sourceRef(primaryForRun)] : []), ...browserSources.filter(source => source.pageId !== primaryForRun?.pageId)].filter(source => pageIds.includes(source.pageId));
         setSendingChat(chatId);
         setText("");
         if (activeChat.current === id) scrolling.jumpToLatest();
-        const run = await useStore.getState().startRun(text, { chatId, pageId: selectedContext?.pageId ?? null, pageIds, contextPageRefs, scope: selectedContext ? "page" : "new", presentation: embedded && !home ? "rail" : "conversation", ownsDraft: true });
-        if (run) { try { localStorage.removeItem(PENDING_CHAT_KEY); if(localStorage.getItem(HOME_DRAFT_CHAT_KEY)===chatId)localStorage.removeItem(HOME_DRAFT_CHAT_KEY); } catch { /* storage is optional */ } if (!id) { useStore.getState().setConversationContext(null, ""); useStore.getState().setConversationBrowserSources(null, []); } if (activeChat.current === id) scrolling.jumpToLatest(); }
+        const run = await useStore.getState().startRun(text, { chatId, pageId: primaryForRun?.pageId ?? null, pageIds, contextPageRefs, mentions, scope: primaryForRun ? "page" : "new", presentation: embedded && !home ? "rail" : "conversation", ownsDraft: true });
+        if (run) { clearMentionDraft(composerId); try { localStorage.removeItem(PENDING_CHAT_KEY); if(localStorage.getItem(HOME_DRAFT_CHAT_KEY)===chatId)localStorage.removeItem(HOME_DRAFT_CHAT_KEY); } catch { /* storage is optional */ } if (!id) { useStore.getState().setConversationContext(null, ""); useStore.getState().setConversationBrowserSources(null, []); } if (activeChat.current === id) scrolling.jumpToLatest(); }
         else if (!readText()) setText(text);
       }
     } catch (error) { setSendError(error instanceof Error ? error.message : String(error)); }
@@ -738,14 +743,14 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
 
       {contextLoading && <output className="hint" data-block>Loading saved context…</output>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
-      {answering && <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={20000} disabled={archived || sending || answerPending} placeholder="Answer Aux’s question…" sendDisabled={archived || !connected || sending || answerPending} onChange={setText} onSend={() => void send()} textareaRef={textareaRef} />}
+      {answering && <ComposerInput workspaceId={workspaceContext.workspace?.workspaceId} id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={20000} disabled={archived || sending || answerPending} placeholder="Answer Aux’s question…" sendDisabled={archived || !connected || sending || answerPending} onChange={setText} onSend={() => void send()} textareaRef={textareaRef} />}
       </> : <>
       {contextLoading && <output className="hint" data-block>Loading saved context…</output>}
       {contextError && <p className="field-error" role="alert">Saved context could not be loaded. {contextError} <button className="btn sm" onClick={() => setContextRefresh(value => value + 1)}>Retry</button></p>}
       {missingContext && !closedPage && <output className="field-error" data-block>The selected tab is unavailable. Choose another browser context before sending.</output>}
       {changedBrowserSources.length > 0 && !closedPage && <output className="field-error" data-block>A selected tab changed or closed. Update or remove it before sending.</output>}
 
-      <ComposerInput id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={live ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={effectiveLiveMode === "answer" && answering ? "Answer Aux’s question…" : live ? effectiveLiveMode === "queue" ? "Send when Aux finishes…" : "Correct Aux while it works…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : home ? "Ask Aux…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length > 0)) || historyLoading || !!historyError || contextLoading || !!contextError))} onChange={setText} onSend={() => void send()} footer={composerFooter} modes={composerModes} textareaRef={textareaRef}>{home ? null : dictation}</ComposerInput>
+      <ComposerInput workspaceId={workspaceContext.workspace?.workspaceId} id={id} answerRunId={answerRunId} answerQuestion={answerQuestion} inputProps={imageInput} maxLength={live ? 20000 : undefined} disabled={archived || sending || answerPending} placeholder={effectiveLiveMode === "answer" && answering ? "Answer Aux’s question…" : live ? effectiveLiveMode === "queue" ? "Send when Aux finishes…" : "Correct Aux while it works…" : turns.length ? "Reply, or give Aux a task…" : selectedContext && selectedContext.url !== "about:blank" ? "Ask about this page…" : home ? "Ask Aux…" : "Ask Aux a question or give it a task…"} sendDisabled={archived || !connected || sending || answerPending || (!answering && (attachmentSaving || historySaving || (!live && (missingContext || changedBrowserSources.length > 0)) || historyLoading || !!historyError || contextLoading || !!contextError))} onChange={setText} onSend={() => void send()} footer={composerFooter} modes={composerModes} textareaRef={textareaRef}>{home ? null : dictation}</ComposerInput>
       </>}
 
       </ComposerFrame>

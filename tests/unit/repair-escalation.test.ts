@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import {
   openDb,
@@ -62,7 +63,7 @@ function harness(readOnly = false) {
 
   let executeCalls = 0;
   const pages = {
-    get: () => ({ controller: "none" }),
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/", 1),  controller: "none"  }),
     observe: vi.fn(async () => obs()),
     execute: vi.fn(async () => {
       executeCalls += 1;
@@ -75,7 +76,7 @@ function harness(readOnly = false) {
     capture: vi.fn(async () => ({ dataUrl: "data:image/png;base64,AAAA", width: 100, height: 100, scale: 1 })),
   };
 
-  const coordinator = new RunCoordinator({
+  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
     repo,
     events,
     pages: pages as never,

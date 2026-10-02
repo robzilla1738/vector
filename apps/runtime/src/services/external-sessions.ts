@@ -32,6 +32,7 @@ export class ExternalSessionService {
   constructor(
     private repo: Repo,
     private events: EventBus,
+    private turnMentions: import("./turn-mention-service.js").TurnMentionService,
   ) {}
 
   private connectionRow(connectionId: string): ConnectionRow | undefined {
@@ -135,6 +136,7 @@ export class ExternalSessionService {
     const mappedRun = mapped ? this.repo.getRun(mapped) : undefined;
     const run = mappedRun && ACTIVE.has(mappedRun.status) ? mappedRun : this.liveRun(connectionId);
     if (!run) return;
+    this.turnMentions.end(run.runId);
     const updated: Run = {
       ...run,
       status,

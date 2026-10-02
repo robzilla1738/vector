@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { randomUUID } from "node:crypto";
 import { afterEach, expect, it } from "vitest";
 import { EventBus, openDb, Repo } from "@aux/runtime";
@@ -10,7 +11,7 @@ const repos: Repo[] = [];
 afterEach(() => { for (const repo of repos.splice(0)) repo.close(); });
 function fixture() {
   const repo = new Repo(openDb(":memory:")); repos.push(repo);
-  const registry = new PageRegistry({ repo, events: new EventBus(repo), native: { available: () => false } as NativeBridge, drivers: () => ({ aux: null, chrome: null }) });
+  const registry = new PageRegistry({ turnMentions: fixtureTurnMentions(pageId => repo.getPage(pageId)), repo, events: new EventBus(repo), native: { available: () => false } as NativeBridge, drivers: () => ({ aux: null, chrome: null }) });
   const page = PageTargetSchema.parse({ pageId: "page", windowId: "window", windowKind: "normal", backend: "aux", targetId: "target", url: "https://example.com/link?utm_source=fixture#part", title: "Link", documentEpoch: 1, lastRevision: 0, viewStatus: "visible", controller: "human", ownedByRuntime: false, createdAt: 1, lastActiveAt: 1 });
   registry.addLive(page, null);
   const ranking = new CommandRankingStore(repo, "profile", () => 1000);

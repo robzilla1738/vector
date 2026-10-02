@@ -1,4 +1,4 @@
-import { GenerateResultParamsSchema, GeneratedResultSpecSchema, type GeneratedResult, type GeneratedResultSpec } from "@aux/contracts";
+import { AuxError, GenerateResultParamsSchema, GeneratedResultSpecSchema, type GeneratedResult, type GeneratedResultSpec } from "@aux/contracts";
 import { HostMethods } from "@aux/contracts/host-methods";
 import { createMockHost } from "../host/mock.generated";
 import { workFixtures } from "./work";
@@ -260,7 +260,14 @@ export function installMockBridge(q: URLSearchParams) {
     scenario === "connectors");
   const githubAccounts = new Map<string, { id: string; name: string; login: string; connected: boolean }>();
   const liveFolderRows = new Map<string, import("@aux/contracts").LiveFolderItem[]>();
+  const nativeTrustUnavailable: MockHandler = async () => {
+    throw new AuxError("capability_unsupported", "Agent access and site permissions require Aux desktop. Open Aux to review or change access.");
+  };
   const handlers = {
+    "safety.grants.list": nativeTrustUnavailable,
+    "safety.grants.revoke": nativeTrustUnavailable,
+    "safety.originPolicies.list": nativeTrustUnavailable,
+    "safety.originPolicies.set": nativeTrustUnavailable,
     "github.connections.list": async () => [...githubAccounts.values()],
     "github.connections.connect": async (p: Record<string, unknown>) => {
       const account = { id: crypto.randomUUID(), name: String(p.name), login: "aux-preview", connected: true };

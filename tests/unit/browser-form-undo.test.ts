@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { expect, it } from "vitest";
 import { EventBus, NullNativeBridge, PageService, Repo, openDb } from "@aux/runtime";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
@@ -12,7 +13,7 @@ it("restores only a form control whose page identity and resulting value still m
     fieldState: async () => ({ value }), fill: async (_target: string, next: string) => { value = next; },
     dispose: async () => {} } as unknown as DriverPage;
   const driver = { attach: async () => page } as unknown as BrowserDriver;
-  const pages = new PageService({ repo, events: new EventBus(repo), native: new NullNativeBridge(),
+  const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, events: new EventBus(repo), native: new NullNativeBridge(),
     drivers: () => ({ aux: driver, chrome: null }) });
   try {
     await pages.registerExternal({ pageId: "p1", marker: "t1", url, backend: "aux" });
@@ -39,7 +40,7 @@ it("closes only an unused background tab owned by the runtime", async () => {
     setEvents: () => {}, navigate: async () => {}, dispose: async () => {} } as unknown as DriverPage;
   const driver = { isConnected: () => true, createTarget: async () => "target",
     attach: async () => page } as unknown as BrowserDriver;
-  const pages = new PageService({ repo, events: new EventBus(repo), native: new NullNativeBridge(),
+  const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, events: new EventBus(repo), native: new NullNativeBridge(),
     drivers: () => ({ aux: driver, chrome: null }) });
   try {
     const owned = await pages.open({ url: "https://fixture.test/", background: true, ownedByRuntime: true });

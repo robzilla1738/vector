@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-complete-full-order-p6gte7ui",
+  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-complete-full-order-j9mixnn1",
   "baseReplay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-unified-native-replay-vz0wmha8",
   "baseProofSha256": "d36444c4b8b7658d62ffd28fe04b8fa30a29e82785d2f7815dd3b242892d90b1",
   "orderedPatches": [
@@ -32,13 +32,21 @@
     "0170-committed-link-frecency.patch",
     "0184-native-appearance-snapshot.patch",
     "0197-native-appearance-observer-transport.patch",
-    "chromium/patches/aux/runtime/0199-shell-resource-allocation.patch"
+    "chromium/patches/aux/runtime/0199-shell-resource-allocation.patch",
+    "0200-native-owner-mutation-fence.patch",
+    "0203-native-test-interface-contracts.patch",
+    "0204-appkit-command-registry.patch",
+    "chromium/patches/aux/runtime/0202-native-permission-lifecycle.patch"
   ],
   "revised0196": "aefc4a9c2dcb9f7a17680ea566ecd00bc71f1f510a954d58fa4cd8de90fe9770",
   "exactNativeFiles": [
     {
       "path": "chrome/app/app-Info.plist",
       "sha256": "905effecbc0900df953f1362a7a4bb06d3077f098df22dcfe6d0c380ca64b446"
+    },
+    {
+      "path": "chrome/browser/actor/execution_engine_unittest.cc",
+      "sha256": "527b7d7972a0846180151dd4386a7cec7a96c6599e33b22a963d7502fd5ac81f"
     },
     {
       "path": "chrome/browser/app_controller_mac.mm",
@@ -59,6 +67,14 @@
     {
       "path": "chrome/browser/metrics/chrome_feature_list_creator.cc",
       "sha256": "4e8c575ed314ae13be093ebd8e1a49fad9f6f009123e743d08dfa5470940f3e8"
+    },
+    {
+      "path": "chrome/browser/password_manager/actor_login/internal/actor_login_siwg_controller_unittest.cc",
+      "sha256": "f610980c82f70ddc6b38ee7e22a013da96c93e071a053bb04e12a59398e7ab39"
+    },
+    {
+      "path": "chrome/browser/password_manager/password_change/password_change_page_stability_waiter_unittest.cc",
+      "sha256": "91abd1e53cc1737804ca758c4546de560805e3e59292018d027c60333b752285"
     },
     {
       "path": "chrome/browser/picture_in_picture/BUILD.gn",
@@ -86,7 +102,7 @@
     },
     {
       "path": "chrome/browser/ui/aux/BUILD.gn",
-      "sha256": "993321057af457d3e9d981ffcd4172753e30f5a0aa60aebe7aa8e08016f80dd1"
+      "sha256": "471b7f831ff500dbc1edbaf6ce6c4f95e2291815240319b2f68f24351a5a154d"
     },
     {
       "path": "chrome/browser/ui/aux/auto_pip_site_policy.h",
@@ -118,7 +134,7 @@
     },
     {
       "path": "chrome/browser/ui/aux/egress_controller.h",
-      "sha256": "cf4cb184542f4d692f75ba1f8648a2c2371ba28b3cd9baf68841060e85202ccb"
+      "sha256": "155a0dfa5e0934b407245631fab7c6796e5b5b60701c5cc35ea55c7af0aa8963"
     },
     {
       "path": "chrome/browser/ui/aux/journey_fixture_path.h",
@@ -241,12 +257,28 @@
       "sha256": "18e883b4167cd32370cd6f703663e62cf81d9bc488275b3f9a92addf6b417c15"
     },
     {
+      "path": "chrome/browser/ui/aux/owner_mutation_fence.cc",
+      "sha256": "22e3afdb2d2cd2e78143019b99807dc1e8cca65bf2a9a61052a80c0b415b8886"
+    },
+    {
+      "path": "chrome/browser/ui/aux/owner_mutation_fence.h",
+      "sha256": "1072c720cc8693265d3eec56debb32fc8fd82dc62792fb0528c2afb955b7ea75"
+    },
+    {
+      "path": "chrome/browser/ui/aux/owner_mutation_fence_unittest.cc",
+      "sha256": "4e8ad254a0f39f2e2fc69df8499a0be39b3e7135b689b0ec3a7fe53cec78c864"
+    },
+    {
       "path": "chrome/browser/ui/aux/permission_broker.cc",
-      "sha256": "17cc01c12308c1c3ced8774db9f42ead9872373d77ebb1466d4a1244301fe23f"
+      "sha256": "8f0aa0625448d8d70f1eaf7115daaaba78a0dd7318d508638821bb6f703dde17"
     },
     {
       "path": "chrome/browser/ui/aux/permission_broker.h",
-      "sha256": "26509dc7bd5f70c430b5f0506096c8cba432246f880a7ff2c008cec96e0c90e5"
+      "sha256": "6d88e63d258562d6d13e77532788221fe3c7fa10e23dceff95a1ccaff9cbbad4"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_broker_unittest.cc",
+      "sha256": "15f0446036b0e64fea73f72149f4c7febab24f544afce9496f2e78c88a79fb12"
     },
     {
       "path": "chrome/browser/ui/aux/power_activity_mac.h",
@@ -278,11 +310,11 @@
     },
     {
       "path": "chrome/browser/ui/aux/runtime_host.cc",
-      "sha256": "5db102fa6f3fba0e6bae21c978fd98dd1f2ed2f287cffc0c963228ed81b815aa"
+      "sha256": "3054e319352d256fd07155aea338bd345165323337be72458625970fb72e7d6f"
     },
     {
       "path": "chrome/browser/ui/aux/runtime_host.h",
-      "sha256": "b036e69d65d7b0edc75d2aa407ca7287ae9d63876ad9b24d752eef2b78b9c391"
+      "sha256": "ca2b583605f974d5c205a161c9becc531d93bb9ff886a86cc6426cc20b733f5d"
     },
     {
       "path": "chrome/browser/ui/aux/shell_events.cc",
@@ -390,15 +422,15 @@
     },
     {
       "path": "chrome/browser/ui/webui_browser/webui_browser_window.h",
-      "sha256": "9fcf06656c7eb9d128ea60582edc886e4545ec4ac542baa2cf24983b0387309a"
+      "sha256": "f3fc833c15da4f0b4e90727c648aac15155c34816526789e1c2f4e33e717a77a"
     },
     {
       "path": "chrome/browser/ui/webui_browser/webui_browser_window_mac.mm",
-      "sha256": "cd9ac9be1b6497d0a4b859eec0624d6b36cb5f07caa51e4b0f7ef5a9790a6719"
+      "sha256": "07091abc20f8b54b135aa8889cc1b72ae870c98c73207b9d49a91a56fe23f67e"
     },
     {
       "path": "chrome/test/BUILD.gn",
-      "sha256": "031756ac08a66c09c59ba9850ddd02c08597df98a3f2145b918b75a546c8ebf0"
+      "sha256": "6e2a9c8803e6cb0266fcd44ed34b141c2dbbd0908d64b27def22c4b89cb70200"
     },
     {
       "path": "components/download/internal/common/download_item_impl.cc",
@@ -417,6 +449,26 @@
       "sha256": "1c3f624482074327c8005d27aadba8abaaeccf5ac0ab192100954db98fce1c09"
     },
     {
+      "path": "components/permissions/permission_request.h",
+      "sha256": "84cfeff030a91943b5587a61082cbf4db260c70740f3b23e888e0d2ecbcd4f87"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.cc",
+      "sha256": "6c7e53c30cb25866b87a71eb1b3b8acc68024fded2ce7d90de1e403c091aac8d"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.h",
+      "sha256": "bfb25c6f0c1f5a6a85cd069db87b7f60d65dc6a7346e6213b153daabcc7e4841"
+    },
+    {
+      "path": "content/public/test/fake_download_item.cc",
+      "sha256": "e564dce0eb63a144d3cb3983dbc811e34a528d0b48b5edf06f29ffe971c4bcaa"
+    },
+    {
+      "path": "content/public/test/fake_download_item.h",
+      "sha256": "3b0df026f7e75e82129c96c9b3029674bfe55cd6b9896d10c72a6682c349b451"
+    },
+    {
       "path": "tools/gritsettings/resource_ids.spec",
       "sha256": "46bb8fbb1992a6668288b1fa9d3dfe47ee5b3082cb4ffc3dd4115627f3c4e86e"
     }
@@ -429,6 +481,11 @@
       "path": "chrome/app/app-Info.plist",
       "sha256": "b9086affccae0673758bbf886e836ad637e4bc9b37849498498a06f69c8edba5",
       "authority": "reviewed-native-baseline"
+    },
+    {
+      "path": "chrome/browser/actor/execution_engine_unittest.cc",
+      "sha256": "9a0708f61e82d2b8408d9a53ac751692a01e5c4b8fb318d5abeea72a8fa47aa6",
+      "authority": "unchanged-stable-source"
     },
     {
       "path": "chrome/browser/app_controller_mac.mm",
@@ -456,6 +513,16 @@
       "authority": "reviewed-native-baseline"
     },
     {
+      "path": "chrome/browser/password_manager/actor_login/internal/actor_login_siwg_controller_unittest.cc",
+      "sha256": "26ef5700843a9b499a3c9337638262affd875572459633af7440e468537e3fb6",
+      "authority": "unchanged-stable-source"
+    },
+    {
+      "path": "chrome/browser/password_manager/password_change/password_change_page_stability_waiter_unittest.cc",
+      "sha256": "a2c8428cc3de7f013ffaa8a2a77ab2fef9c4a35ec0c8f84c692e8a73240a0df6",
+      "authority": "unchanged-stable-source"
+    },
+    {
       "path": "chrome/browser/picture_in_picture/BUILD.gn",
       "sha256": "afc6009d187b53021ca1fb1b89f9537bb6316feb393d4340cb271d63c9c19773",
       "authority": "reviewed-native-baseline"
@@ -478,7 +545,7 @@
     {
       "path": "chrome/browser/profiles/profile.cc",
       "sha256": "bbe2337d87d015c75e205185d2fdc856a9b33536e8e6c0bf5fd1bcfdafc87ced",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "chrome/browser/resources/aux_host/aux_host_bootstrap.ts",
@@ -493,12 +560,12 @@
     {
       "path": "chrome/browser/ui/aux/egress_controller.cc",
       "sha256": "8fb6e41cbf1e813c8b96d65e9e313409e9bac83cab13b8039171655f9b77e3ea",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/egress_controller.h",
       "sha256": "4268eb48b41614deb608bf943597713c68ba39691e518cd782d402c19c78f60a",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/method_registry.cc",
@@ -513,7 +580,7 @@
     {
       "path": "chrome/browser/ui/aux/methods/downloads_ai_methods.cc",
       "sha256": "8ef5f2a030393a221ce6e0999031bb424c4caa4f59eafc298b1f22bb234c6a05",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/methods/extensions_methods.cc",
@@ -538,7 +605,7 @@
     {
       "path": "chrome/browser/ui/aux/methods/power_methods.cc",
       "sha256": "efbeeb9d41f7338c8ef212830fe5de0c81c2f2c35516b3824ace3d7f3794ecd1",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/methods/profile_methods.cc",
@@ -598,17 +665,17 @@
     {
       "path": "chrome/browser/ui/aux/result_preview_browsertest.cc",
       "sha256": "6cd2a39f72811abd6a7feb28c3c3057e70f2d4acd9f20d68386b2aef58b05457",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/runtime_host.cc",
       "sha256": "0edfe5e01e3f8845814bb1d0888408140c6563cfae611edef143d702f38f8f30",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/runtime_host.h",
       "sha256": "60fad59691f448d67a1384c83bab0df3e3d463c6d60a3bcbbacc5db1066769a3",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "chrome/browser/ui/aux/shell_events.cc",
@@ -673,7 +740,7 @@
     {
       "path": "chrome/browser/ui/tab_helpers.cc",
       "sha256": "465221d8b2f12af5d7987f8d781327e3c6d575d70b1c8c82423f5eeb4e26d1ad",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.cc",
@@ -728,27 +795,52 @@
     {
       "path": "components/download/internal/common/download_item_impl.cc",
       "sha256": "87b784203f347cabae4b8928d615ab1218c18dadd2224a8ec8a13794503de66a",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "components/download/public/common/download_item.h",
       "sha256": "331654852c822268159c948c1b0b00d603cb8906e815c4f572acfad26ac85aa2",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "components/download/public/common/download_item_impl.h",
       "sha256": "76b168cf7f27405fa491bb5c300959ec937b7d58c06802a12f48f176585505f1",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
     },
     {
       "path": "components/download/public/common/mock_download_item.h",
       "sha256": "21f4f851ba3b624e4b932539f8ceb4cff4f94dd2229be740f9df6bdf88770086",
-      "authority": "independently-verified-5a719-baseline"
+      "authority": "independently-verified-de90-baseline"
+    },
+    {
+      "path": "components/permissions/permission_request.h",
+      "sha256": "6985be46d89e49cd3f95322f9185737399574c21c5179feff56da9224ed98388",
+      "authority": "unchanged-stable-source"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.cc",
+      "sha256": "6d7a5a484559881272d24bdc2a07f6a765b024fcbbe66374c8d7bfd24cbca8cd",
+      "authority": "unchanged-stable-source"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.h",
+      "sha256": "7e126ddbecf92f0f11907180358a95bc716908fbed7ed04bd5c677ac8b847af1",
+      "authority": "unchanged-stable-source"
+    },
+    {
+      "path": "content/public/test/fake_download_item.cc",
+      "sha256": "751c0585aa75282785a336fca012755e54273aca291b8d7539b982b37efbdb04",
+      "authority": "unchanged-stable-source"
+    },
+    {
+      "path": "content/public/test/fake_download_item.h",
+      "sha256": "9b806dc7e6b517bf3f8dcc06bdd51975b36e0333ea413020327dd10cf545d440",
+      "authority": "unchanged-stable-source"
     },
     {
       "path": "tools/gritsettings/resource_ids.spec",
       "sha256": "781f4acfbb9097e8410d22380a5e1313e89f829cad4985b98fe0c3bec4782879",
-      "authority": "unchanged-stable-source"
+      "authority": "independently-verified-de90-baseline"
     }
   ],
   "packetDigests": [
@@ -867,8 +959,24 @@
     {
       "path": "chromium/patches/aux/runtime/0199-shell-resource-allocation.patch",
       "sha256": "35df0ed7d4e6f1bb91a305b15d0e1b3362fe781db4c65286a8d56f8315582311"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0200-native-owner-mutation-fence.patch",
+      "sha256": "c6086815eecce6cae6b5734f7f7e94f87eed9812e10a35a64a3ba0c417d95fca"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0203-native-test-interface-contracts.patch",
+      "sha256": "64683af48df6468d0f62a42a844a4211de32a34baf39270c46e87681471e936e"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0204-appkit-command-registry.patch",
+      "sha256": "073173f5c91c38ca5db454f93b89209b29298bf5993b2f62e7c8ad7602cd715a"
+    },
+    {
+      "path": "chromium/patches/aux/runtime/0202-native-permission-lifecycle.patch",
+      "sha256": "eda1f1bb35918a51532bafbea89f8ec437738b3016876abcd51b47bb5d1cc9a2"
     }
   ],
-  "audit": "All29 reversed to independently verified baseline then reapplied in required dependency order; all96 exact mirrors compared",
+  "audit": "All33 reversed to independently verified baseline then reapplied in required dependency order; all108 exact mirrors compared",
   "resourceAllocationPatchSha256": "35df0ed7d4e6f1bb91a305b15d0e1b3362fe781db4c65286a8d56f8315582311"
 }

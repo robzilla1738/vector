@@ -1,3 +1,5 @@
+import { SafetyAuthorityRevocation } from "./safety/authority-revocation.js";
+import { z } from "zod";
 import { createClock } from "@aux/contracts";
 import { bootRuntimeFeatures } from "./features/registry.js";
 import type { Services } from "./api/methods/context.js";
@@ -69,6 +71,9 @@ import { ChannelNativeBridge, NullNativeBridge, type NativeBridge } from "./nati
 import { featureStagesFor } from "./api/feature-stages.generated.js";
 import { NativeCdpBroker } from "./native-cdp-broker.js";
 import { PageService, type DriverSet } from "./services/pages.js";
+import { TurnMentionService } from "./services/turn-mention-service.js";
+import { NativePermissionController } from "./safety/native-permission.js";
+import { ConnectorCatalogService } from "./services/connectors.js";
 import { RoutineService } from "./services/routines.js";
 import { SetService } from "./services/sets.js";
 import { RunService } from "./services/runs.js";
@@ -305,12 +310,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     settingsGrants: () => settings.effectGrants(),
     audit: (event) => safetyAudit.record({ ...event }),
   };
-  const safetyGate = env.AUX_HOST_SOCKET
-    ? new SafetyDispatchGate({
+  const safetyGate = new SafetyDispatchGate({
         ...decideDeps,
         suspensions,
         onConfirmation: (confirmation) => events.emit("safety.confirmation", confirmation),
-        judge: createGuardianJudge({
+        ...(env.AUX_HOST_SOCKET ? { judge: createGuardianJudge({
           model: () => settings.model(),
           modelId: () => settings.plannerModel(),
           recordAttempt: (attempt, modelId, error) =>
@@ -326,9 +330,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
               ...(error ? { error } : {}),
               createdAt: Date.now(),
             }),
-        }),
-      })
-    : undefined;
+        }) } : {}),
+      });
   /**
    * Runtime-side egress (operation session requests) goes through the same
    * decide() boundary as page effects. There is no approval UI mid-request,
@@ -581,8 +584,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       : undefined;
   // pages↔operations are mutually dependent — late-bind via a lazy ref
   let operations!: OperationService;
+  let turnMentions!: TurnMentionService;
   let browserEgress: BrowserEgress | undefined;
   const pages = new PageService({
+    get turnMentions() { return turnMentions; },
     repo,
     profileId: env.AUX_BROWSER_PROFILE_ID,
     events,
@@ -794,6 +799,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     translateSteps,
     durableWrites,
     calendar,
+    authorizeConnector: (runId, connectorId, tool, dispatch) => turnMentions.useConnector(runId, connectorId, tool, dispatch),
     decideEgress,
     grants: () => settings.effectGrants(),
     egressAllowlist: () =>
@@ -1118,7 +1124,89 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       }
     });
   }
+  const mentionRoutines = new RoutineService(repo, events);
+  const mentionConnectors = new ConnectorCatalogService({ repo, tasks: new TaskService(repo, events), settings, calendar, mcp: outboundMcp });
+  turnMentions = new TurnMentionService({
+    authorizeRead: (runId, pageId, taskRead) => pages.authorizeAgentRead(runId, pageId, "page.read", taskRead),
+    page: pageId => {
+      try { return pages.get(pageId); }
+      catch (error) { if (error instanceof AuxError && error.code === "not_found") return undefined; throw error; }
+    },
+    organization: async () => {
+      if (!native.organizationSnapshot) throw new AuxError("backend_unavailable", "Profile source authority is unavailable.");
+      return native.organizationSnapshot();
+    },
+    routine: routineId => {
+      try { return mentionRoutines.get(routineId).routine; }
+      catch (error) { if (error instanceof AuxError && error.code === "not_found") return undefined; throw error; }
+    },
+    connectors: context => {
+      if (!context.workspaceId) throw new AuxError("permission_denied", "Connector mentions require a current Space.");
+      return mentionConnectors.list({ workspaceId: context.workspaceId, taskId: context.taskId, expectedRevision: context.taskRevision });
+    },
+  });
+  let nativePermissions: NativePermissionController | undefined;
+  if (channel && browserEgress && env.AUX_BROWSER_PROFILE_ID) {
+    nativePermissions = new NativePermissionController({
+      profileId: env.AUX_BROWSER_PROFILE_ID,
+      gate: safetyGate,
+      approvals,
+      egress: browserEgress,
+      mentions: turnMentions,
+      run: runId => repo.getRun(runId),
+      page: pageId => pages.get(pageId),
+      standingOnly: runId => !!repo.getRun(runId)?.config?.nightShiftItemId,
+      requiresTurn: (run, pageId) => run.config?.implementation !== "external-agent" ||
+        !!run.config?.mentions?.length || turnMentions.ownedPages(run.runId).includes(pageId),
+      sourceCheck: (runId, pageId) => {
+        const before = repo.getRun(runId);
+        const claim = pageClaims.activeForPage(pageId);
+        const taskId = before?.config?.taskId;
+        const taskRevision = before?.config?.taskRevision;
+        const task = taskId ? new TaskService(repo, events).get(taskId) : undefined;
+        const check = () => {
+          const current = repo.getRun(runId);
+          const currentClaim = pageClaims.activeForPage(pageId);
+          if (!before || !current || !claim || claim.runId !== runId ||
+              currentClaim?.claimId !== claim.claimId || currentClaim?.runId !== runId ||
+              current.config?.taskId !== taskId || current.config?.taskRevision !== taskRevision ||
+              current.config?.messageRevision !== before.config?.messageRevision ||
+              !["running", "planning", "needs_input"].includes(current.status))
+            throw new AuxError("permission_denied", "This browser permission source claim changed.");
+          if (taskId) {
+            const currentTask = new TaskService(repo, events).get(taskId);
+            if (!task || task.revision !== taskRevision || currentTask.revision !== taskRevision ||
+                currentTask.state !== "open" || currentTask.sourceOrigin !== task.sourceOrigin)
+              throw new AuxError("permission_denied", "This browser permission task approval changed.");
+          }
+        };
+        check();
+        return check;
+      },
+    });
+    channel.onMethod("permission.request", params => nativePermissions!.request(params));
+    channel.onMethod("permission.invalidate", params => {
+      const input = z.object({ batchId: z.string().min(1).max(160) }).strict().parse(params);
+      nativePermissions!.invalidate(input.batchId);
+      return { batchId: input.batchId, decision: "deny" };
+    });
+  }
+  const safetyAuthority = new SafetyAuthorityRevocation({
+    profileId: env.AUX_BROWSER_PROFILE_ID ?? "default",
+    runScope: runId => {
+      const run = repo.getRun(runId);
+      if (!run) return undefined;
+      return run.config?.taskId ? { kind: "task", id: run.config.taskId }
+        : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" };
+    },
+    invalidate: matches => {
+      nativePermissions?.invalidateAuthority(matches);
+      return browserEgress ? browserEgress.invalidateAuthority(matches) : Promise.resolve();
+    },
+  });
   const runs = new RunService({
+    turnMentions,
+    taskSource: taskId => { const task = new TaskService(repo, events).get(taskId); return { revision: task.revision, state: task.state, sourceOrigin: task.sourceOrigin }; },
     repo,
     events,
     pages,
@@ -1239,7 +1327,14 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // user (recipient-scoped decide()), then lands through the routines API —
   // workspace-scoped to the run and optimistic-concurrency protected.
   agentLoop.routineUpdate = async (input, ctx) => {
+    const requireMentionedSkill = () => {
+      const result = turnMentions.requireSkill(ctx.runId, input.routineId);
+      if (result.status === "unavailable") throw new AuxError("permission_denied", result.reason);
+    };
     const run = repo.getRun(ctx.runId);
+    const messageRevision = run?.config?.messageRevision;
+    const mentionTurn = run?.config?.mentions?.length ? turnMentions.capture(ctx.runId) : undefined;
+    if (mentionTurn) requireMentionedSkill();
     const current = (await invoke("routines.get", { routineId: input.routineId }, { external: false })) as {
       workspaceId: string;
       revision: number;
@@ -1260,6 +1355,10 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       digestParts: ["agent.routine.update", input.routineId, expectedRevision, patch],
     });
     if (gated !== "allow") return gated;
+    if (repo.getRun(ctx.runId)?.config?.messageRevision !== messageRevision ||
+      mentionTurn && turnMentions.capture(ctx.runId) !== mentionTurn)
+      throw new AuxError("permission_denied", "This routine update belongs to a replaced person turn.");
+    if (mentionTurn) requireMentionedSkill();
     const updated = await invoke(
       "routines.update",
       { routineId: input.routineId, expectedRevision, ...patch },
@@ -1335,7 +1434,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   const chromeTabs = async () => drivers.chrome?.listTargets() ?? [];
   const cookies = new CookieService({ drivers: () => drivers, native });
   agentConnections = new AgentConnectionService(repo);
-  const externalSessions = new ExternalSessionService(repo, events);
+  const externalSessions = new ExternalSessionService(repo, events, turnMentions);
   channel?.onMethod("agent.connections", () => agentConnections!.list());
   channel?.onMethod("agent.clients", () => nativeAgentClients());
   channel?.onMethod("agent.config", (params) => nativeAgentConfig(agentConnections!, params, config.dataDir));
@@ -1367,6 +1466,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     workspaceFolders,
     mcpOAuth,
     checkpointDeletedData: () => privacyCheckpoint.request(),
+    safetyAuthority,
+    turnMentions,
     pages,
     sets,
     runs,

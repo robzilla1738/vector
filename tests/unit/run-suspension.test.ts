@@ -35,9 +35,9 @@ describe("durable run suspension view and answer guard", () => {
 
   it("includes the typed record in runs.get and refuses an unsafe answer before waking the coordinator", async () => {
     let record = suspension({ kind: "approval", request: { kind: "approval", approvalId: "a1", instruction: "Approve?", guidance: "Review it." } });
-    const answer = vi.fn();
-    const context = (params: Record<string, unknown>) => ({ params,
-      s: { runs: { coordinator: { get: () => run(), answer } }, repo: { listModelCalls: () => [], listSteps: () => [] }, artifacts: { list: () => [] } },
+    const answer = vi.fn(async (_runId: string, _text: string, _mentions: unknown[], recheck: () => void) => recheck());
+    const context = (params: Record<string, unknown>) => ({ params, client: { external: false },
+      s: { runs: { coordinator: { get: () => run(), answerWithMentions: answer } }, repo: { listModelCalls: () => [], listSteps: () => [] }, artifacts: { list: () => [] } },
       suspensions: { pending: () => record },
     }) as unknown as MethodCtx;
     const detail = await runsMethods["runs.get"]!(context({ runId: "r1" })) as { suspension: Suspension };
@@ -50,6 +50,8 @@ describe("durable run suspension view and answer guard", () => {
       .rejects.toThrow(/changed/);
     expect(answer).not.toHaveBeenCalled();
     await runsMethods["runs.answer"]!(context({ runId: "r1", answer: "Work", expectedSuspensionId: "s2" }));
-    expect(answer).toHaveBeenCalledExactlyOnceWith("r1", "Work");
+    expect(answer).toHaveBeenCalledExactlyOnceWith("r1", "Work", [], expect.any(Function));
+    record = suspension({ suspensionId: "replacement" });
+    expect(() => answer.mock.calls[0]![3]()).toThrow(/changed/);
   });
 });

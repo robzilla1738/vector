@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { CalendarConnectionService } from "../../apps/runtime/src/services/calendar-connections.js";
 import { openDb } from "../../apps/runtime/src/store/db.js";
@@ -336,8 +337,9 @@ describe("outbound Google Calendar connection", () => {
           : { status: "done", message: "Brief ready", result: { report: `- Meeting alice [source](${eventUrl})` } };
         return { object: options.schema.parse(object), durationMs: 1 };
       }, generateText: async () => ({ text: "", durationMs: 1 }), listModels: async () => [] };
-      const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
-        pages: { get: () => ({ controller: "none" }), observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
+      const coordinatorFixturePages1 = { get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "https://notes.example.test/", 1),  controller: "none"  }), observe: async () => observation };
+    const coordinator = new RunCoordinator({ taskSource: taskId => { const task = new TaskService(setup.repo, setup.events).get(taskId); return { revision: task.revision, state: task.state, sourceOrigin: task.sourceOrigin }; }, turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages1.get(pageId)), repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
+        pages: coordinatorFixturePages1 as never, model: () => model, defaultModel: () => "fixture",
         recoveryModel: () => undefined, recordModelCall: () => {} });
       const run = await coordinator.start({ goal: "Prepare a sourced meeting brief", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision, calendarGrantIds: [grant.grantId] });
       for (let attempt = 0; attempt < 200 && !["completed", "failed", "partially_completed"].includes(setup.repo.getRun(run.runId)!.status); attempt++)
@@ -380,8 +382,9 @@ describe("outbound Google Calendar connection", () => {
         }
         return { object: options.schema.parse({ status: "done", message: "No source read", result: { answer: "No new account was read." } }), durationMs: 1 };
       }, generateText: async () => ({ text: "", durationMs: 1 }), listModels: async () => [] };
-      const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
-        pages: { get: () => ({ controller: "none" }), observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
+      const coordinatorFixturePages2 = { get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "https://notes.example.test/", 1),  controller: "none"  }), observe: async () => observation };
+    const coordinator = new RunCoordinator({ taskSource: taskId => { const task = new TaskService(setup.repo, setup.events).get(taskId); return { revision: task.revision, state: task.state, sourceOrigin: task.sourceOrigin }; }, turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages2.get(pageId)), repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
+        pages: coordinatorFixturePages2 as never, model: () => model, defaultModel: () => "fixture",
         recoveryModel: () => undefined, recordModelCall: () => {} });
       const run = await coordinator.start({ goal: "Read granted Calendar", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision });
       for (let attempt = 0; attempt < 200 && !["completed", "failed", "partially_completed"].includes(setup.repo.getRun(run.runId)!.status); attempt++)
@@ -413,8 +416,9 @@ describe("outbound Google Calendar connection", () => {
       const model: ModelClient = { generateStructured: async options => ({ object: options.schema.parse({ status: "source", message: "Reading Calendar",
         sourceRequest: { kind: "calendar.events.list", grantId: grant.grantId, timeMin: "2026-09-24T00:00:00Z", timeMax: "2026-09-30T00:00:00Z" } }), durationMs: 1 }),
         generateText: async () => ({ text: "", durationMs: 1 }), listModels: async () => [] };
-      const coordinator = new RunCoordinator({ repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
-        pages: { get: () => ({ controller: "none" }), observe: async () => observation } as never, model: () => model, defaultModel: () => "fixture",
+      const coordinatorFixturePages3 = { get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "https://notes.example.test/", 1),  controller: "none"  }), observe: async () => observation };
+    const coordinator = new RunCoordinator({ taskSource: taskId => { const task = new TaskService(setup.repo, setup.events).get(taskId); return { revision: task.revision, state: task.state, sourceOrigin: task.sourceOrigin }; }, turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages3.get(pageId)), repo: setup.repo, events: setup.events, calendar: setup.service, operations: setup.operations,
+        pages: coordinatorFixturePages3 as never, model: () => model, defaultModel: () => "fixture",
         recoveryModel: () => undefined, recordModelCall: () => {} });
       const run = await coordinator.start({ goal: "Read Calendar", pageIds: ["p1"], taskId: task.taskId, taskRevision: task.revision });
       await begun;

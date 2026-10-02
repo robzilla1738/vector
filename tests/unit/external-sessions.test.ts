@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -45,7 +46,7 @@ it("gives one scoped connection one session run, then a new run after that one e
   });
   const client = { external: true as const, connectionId: created.connection.connectionId, scope: created.connection.scope };
   const executed: { runId?: string }[] = [];
-  const sessions = new ExternalSessionService(repo, events);
+  const sessions = new ExternalSessionService(repo, events, fixtureTurnMentions((pageId: string) => repo.getPage(pageId)));
   const invoke = sessionInvoker(repo, events, connections, sessions, executed);
 
   await invoke("pages.list", {}, client);
@@ -54,7 +55,7 @@ it("gives one scoped connection one session run, then a new run after that one e
   expect(first.map((run) => run.status)).toEqual(["running"]);
   const runId = first[0]!.runId;
 
-  const resumed = new ExternalSessionService(repo, events);
+  const resumed = new ExternalSessionService(repo, events, fixtureTurnMentions((pageId: string) => repo.getPage(pageId)));
   const resumeInvoke = sessionInvoker(repo, events, connections, resumed, executed);
   await resumeInvoke("pages.list", {}, client);
   expect(thread(repo, created.connection.connectionId).map((run) => run.runId)).toEqual([runId]);
@@ -175,7 +176,7 @@ it("lets the unscoped loopback owner mint and revoke connections and refuses a s
     criteria: [{ criterionId: "held", description: "Stay running", verification: "manual" }],
   });
   const connections = new AgentConnectionService(repo);
-  const sessions = new ExternalSessionService(repo, events);
+  const sessions = new ExternalSessionService(repo, events, fixtureTurnMentions((pageId: string) => repo.getPage(pageId)));
   const invoke = sessionInvoker(repo, events, connections, sessions, []);
   const scope = { kind: "task" as const, workspaceId: workspace.workspaceId, taskId: task.taskId };
   const params = { name: "Trust peer", client: "codex", scope };
@@ -209,7 +210,7 @@ function sessionInvoker(
 ) {
   const pages = {
     list: () => [],
-    get: () => ({ controller: "none" as const }),
+    get: (pageId: string) => fixturePage(pageId, "https://fixture.test/", 1),
     execute: async (_program: unknown, opts: { runId?: string }) => {
       executed.push(opts);
       return { steps: [] };
@@ -224,6 +225,7 @@ function sessionInvoker(
     safetyCeiling: () => "ask" as const,
   };
   return makeInvoker({
+    turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
     repo,
     events,
     pages,

@@ -1,3 +1,5 @@
+import { AuxError, PageTargetSchema } from "@aux/contracts";
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -26,6 +28,27 @@ import {
 } from "@aux/runtime";
 import type { ObservationContent, Program, SetMember, Step } from "@aux/contracts";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
+
+const memberAuthorities = new WeakMap<PageService, ReturnType<typeof fixtureTurnMentions>>();
+async function memberAuthority(pages: PageService, runId: string) {
+  let turnMentions = memberAuthorities.get(pages);
+  if (!turnMentions) {
+    turnMentions = fixtureTurnMentions(id => pages.get(id));
+    memberAuthorities.set(pages, turnMentions);
+  }
+  const source = pages.get("p1");
+  if (!turnMentions.has(runId)) await turnMentions.begin(runId, [], []);
+  return { turnMentions, checkSource: () => {
+    const current = pages.get("p1");
+    if (current.pageId !== source.pageId || current.sessionId !== source.sessionId || current.url !== source.url ||
+        current.documentEpoch !== source.documentEpoch)
+      throw new AuxError("ref_stale", "The synthetic member source lease changed.");
+  } };
+}
+const memberPage = (documentEpoch: number) => PageTargetSchema.parse({ pageId: "p1", targetId: "fixture-target",
+  backend: "aux", windowId: "main", url: "https://app.test/form", title: "Fixture", documentEpoch,
+  sessionId: "synthetic-member-attachment", lastRevision: 0, viewStatus: "visible", lifecycle: "live",
+  controller: "none", controllerEpoch: 0, ownedByRuntime: false, createdAt: 1, lastActiveAt: 1 });
 
 const obs = (opts?: { ref?: string; name?: string; url?: string }): ObservationContent =>
   ({
@@ -95,13 +118,13 @@ describe("Gate F page query and action compiler", () => {
       steps: [{ id: "c", op: "click", target: "r9" }],
     }));
     const deniedPages = {
-      get: () => ({ pageId: "p1", url: "https://app.test/form", documentEpoch: 2 }),
+      get: () => memberPage(2),
       observe: async () => ({ pageId: "p1", documentEpoch: 2, content: obs() }),
       execute: async () => {
         throw new Error("pages.execute must not run when write is not granted");
       },
     } as unknown as PageService;
-    const denied = await runMemberAgent({
+    const denied = await runMemberAgent({ ...await memberAuthority(deniedPages, "run-deny"),
       member,
       pageId: "p1",
       goal: "click save",
@@ -117,13 +140,13 @@ describe("Gate F page query and action compiler", () => {
     expect(denied.executedSteps).toEqual([]);
 
     const stalePages = {
-      get: () => ({ pageId: "p1", url: "https://app.test/form", documentEpoch: 3 }),
+      get: () => memberPage(3),
       observe: async () => ({ pageId: "p1", documentEpoch: 2, content: obs() }),
       execute: async () => {
         throw new Error("pages.execute must not run on a stale document epoch");
       },
     } as unknown as PageService;
-    const stale = await runMemberAgent({
+    const stale = await runMemberAgent({ ...await memberAuthority(stalePages, "run-stale"),
       member,
       pageId: "p1",
       goal: "click save",
@@ -142,7 +165,7 @@ describe("Gate F page query and action compiler", () => {
   it("member-agent persist-before-dispatch skips a duplicate write", async () => {
     let executes = 0;
     const pages = {
-      get: () => ({ pageId: "p1", url: "https://app.test/form", documentEpoch: 2 }),
+      get: () => memberPage(2),
       observe: async () => ({ pageId: "p1", documentEpoch: 2, content: obs() }),
       execute: async () => {
         executes++;
@@ -155,7 +178,7 @@ describe("Gate F page query and action compiler", () => {
       () => ({ status: "continue", message: "click save", steps: [{ id: "c", op: "click", target: "r9" }] }),
       () => ({ status: "done", message: "done", result: { ok: true } }),
     ]);
-    const first = await runMemberAgent({
+    const first = await runMemberAgent({ ...await memberAuthority(pages, "run-dup"),
       member,
       pageId: "p1",
       goal: "click save",
@@ -173,7 +196,7 @@ describe("Gate F page query and action compiler", () => {
       () => ({ status: "continue", message: "click save", steps: [{ id: "c", op: "click", target: "r9" }] }),
       () => ({ status: "done", message: "done", result: { ok: true } }),
     ]);
-    const replay = await runMemberAgent({
+    const replay = await runMemberAgent({ ...await memberAuthority(pages, "run-dup"),
       member,
       pageId: "p1",
       goal: "click save",
@@ -297,7 +320,8 @@ describe("Gate D permissions and durable writes", () => {
       attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/form"),
     };
     const repo = new Repo(openDb(":memory:"));
-    const pages = new PageService({
+    const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
+  const pages = new PageService({ turnMentions: pagesTurnMentions,
       repo,
       events: new EventBus(repo),
       native: new NullNativeBridge(),
@@ -374,7 +398,8 @@ describe("Gate D permissions and durable writes", () => {
       attach: async (_targetId, pageId) => makePage(pageId, "https://app.test/counter"),
     };
     const repo = new Repo(openDb(":memory:"));
-    const pages = new PageService({
+    const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
+  const pages = new PageService({ turnMentions: pagesTurnMentions,
       repo,
       events: new EventBus(repo),
       native: new NullNativeBridge(),
@@ -389,6 +414,7 @@ describe("Gate D permissions and durable writes", () => {
         steps: [{ id: "c", op: "click", target: "r9" }],
       }),
     ).rejects.toMatchObject({ code: "permission_denied", message: /effect:write/ });
+    await pagesTurnMentions.begin("run_user_started", [{ kind: "tab", pageId: opened.pageId, title: opened.title, url: opened.url, documentEpoch: opened.documentEpoch, sessionId: opened.sessionId!, access: "act" }], []);
     const run = await pages.execute(
       { pageId: opened.pageId, steps: [{ id: "c", op: "click", target: "r9" }] },
       { runId: "run_user_started" },

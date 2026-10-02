@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { EventBus, NullNativeBridge, PageService, Repo, openDb } from "@aux/runtime";
@@ -28,7 +29,7 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
     localCeiling: () => "always",
     audit: () => {},
     judge,
-    onConfirmation: value => confirmations.push(value.approvalId),
+    onConfirmation: value => { if (!value.approvalId) throw new Error("Expected an actual approval"); confirmations.push(value.approvalId); },
   });
   const driver: BrowserDriver = {
     backend: "aux", connect: async () => {}, disconnect: async () => {}, isConnected: () => true,
@@ -45,7 +46,7 @@ function fixture(judge?: SafetyDispatchDeps["judge"]) {
       setEvents: (value: DriverPageEvents) => { driverEvents = value; }, dispose: async () => {},
     }) as unknown as DriverPage,
   };
-  const pages = new PageService({ repo, events, native: new NullNativeBridge(),
+  const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, events, native: new NullNativeBridge(),
     drivers: () => ({ aux: driver, chrome: null }), grants: ["effect:read", "effect:write"],
     profileId: "profile-1", safetyGate: gate });
   return { pages, calls, approvals, gate, confirmations, setAccess: (value: "allow" | "deny") => { access = value; },
@@ -62,7 +63,7 @@ describe("B5 live dispatch gate", () => {
     const gate = new SafetyDispatchGate({
       approvals, journal: new DecisionJournal(db), managedRules: () => [], userRules: () => [],
       localCeiling: () => "ask", audit: () => {},
-      onConfirmation: (confirmation) => confirmations.push(confirmation.approvalId),
+      onConfirmation: (confirmation) => { if (!confirmation.approvalId) throw new Error("Expected an actual approval"); confirmations.push(confirmation.approvalId); },
     });
     const driver: BrowserDriver = {
       backend: "aux", connect: async () => {}, disconnect: async () => {}, isConnected: () => true,
@@ -78,7 +79,7 @@ describe("B5 live dispatch gate", () => {
         setEvents: () => {}, dispose: async () => {},
       }) as unknown as DriverPage,
     };
-    const pages = new PageService({ repo, events: new EventBus(repo), native: new NullNativeBridge(),
+    const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, events: new EventBus(repo), native: new NullNativeBridge(),
       drivers: () => ({ aux: driver, chrome: null }), grants: ["effect:read", "effect:write"],
       profileId: "profile-1", safetyGate: gate });
     const page = await pages.open({ url: "https://shop.test/form", background: true, ownedByRuntime: true });

@@ -168,7 +168,7 @@ export class PageRegistry {
           this.deps.events.emit(EventTypes.DownloadStarted, { pageId: lp.target.pageId, ...info });
         }
       },
-      onResponse: response ? info => { if (current()) return response(info); } : undefined,
+      onResponse: response ? info => { if (current()) return response({ ...info, sessionId }); } : undefined,
     });
   }
 

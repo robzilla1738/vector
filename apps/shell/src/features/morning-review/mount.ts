@@ -41,7 +41,9 @@ export const mount: FeatureMount = {
         const approval = pending.find(entry => entry.approvalId === detail.suspension!.request.approvalId && entry.action.turnId === item.runId);
         if (generation !== nightReviewGeneration()) return;
         if (!approval || useStore.getState().runs.find(run => run.runId === item.runId)?.config?.nightShiftItemId) return;
+        if (!approval.action.category || !approval.action.confirmation) throw new Error("The pending action has no verified confirmation category. Refresh the review before continuing.");
         useStore.setState({ confirmation: { approvalId: approval.approvalId, turnId: approval.action.turnId,
+          threadId: approval.action.threadId, category: approval.action.category, confirmation: approval.action.confirmation,
           instruction: detail.suspension.request.instruction, action: approval.action.action, origin: approval.action.origin ?? "" } });
       }
     },

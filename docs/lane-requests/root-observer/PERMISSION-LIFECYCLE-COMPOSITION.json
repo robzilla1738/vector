@@ -1,0 +1,88 @@
+{
+  "replay": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-permission-lifecycle-whu9x4_r",
+  "packet": "/tmp/aux-browser-runtime-root-complete/chromium/patches/aux/runtime/0202-native-permission-lifecycle.patch",
+  "sha256": "eda1f1bb35918a51532bafbea89f8ec437738b3016876abcd51b47bb5d1cc9a2",
+  "baselines": [
+    {
+      "path": "chrome/browser/ui/aux/permission_broker.cc",
+      "sha256": "9976475a08a74b84e6382d6a6ef01ea4403015c455f5cf56db0c14bba5fdb3d0",
+      "source": "/tmp/aux-browser-runtime-root-complete/.native/chrome/browser/ui/aux/permission_broker.cc"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_broker.h",
+      "sha256": "de9ab7f2ab8daecfca5938853865818abd4e4da7ec7ecef6331392fafe2e00af",
+      "source": "/tmp/aux-browser-runtime-root-complete/.native/chrome/browser/ui/aux/permission_broker.h"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.cc",
+      "sha256": "e5cc6265aeadfa1197decc77f47c6efa2481a5323d40f2a8e6ca6fae9028c09e",
+      "source": "/tmp/aux-browser-runtime-root-complete/.native/chrome/browser/ui/aux/runtime_host.cc"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.h",
+      "sha256": "d96c08bf9891763f502d26113befc45d51a307b7f6c6d9b6d66cfd53ea3e0a14",
+      "source": "/tmp/aux-browser-runtime-root-complete/.native/chrome/browser/ui/aux/runtime_host.h"
+    },
+    {
+      "path": "chrome/test/BUILD.gn",
+      "sha256": "031756ac08a66c09c59ba9850ddd02c08597df98a3f2145b918b75a546c8ebf0",
+      "source": "/tmp/aux-browser-runtime-root-complete/.native/chrome/test/BUILD.gn"
+    },
+    {
+      "path": "components/permissions/permission_request.h",
+      "sha256": "6985be46d89e49cd3f95322f9185737399574c21c5179feff56da9224ed98388",
+      "source": "/Users/rcourson/aux-chromium-stable/chromium/src/components/permissions/permission_request.h"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.cc",
+      "sha256": "6d7a5a484559881272d24bdc2a07f6a765b024fcbbe66374c8d7bfd24cbca8cd",
+      "source": "/Users/rcourson/aux-chromium-stable/chromium/src/components/permissions/permission_request_manager.cc"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.h",
+      "sha256": "7e126ddbecf92f0f11907180358a95bc716908fbed7ed04bd5c677ac8b847af1",
+      "source": "/Users/rcourson/aux-chromium-stable/chromium/src/components/permissions/permission_request_manager.h"
+    }
+  ],
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux/permission_broker.cc",
+      "sha256": "8f0aa0625448d8d70f1eaf7115daaaba78a0dd7318d508638821bb6f703dde17"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_broker.h",
+      "sha256": "6d88e63d258562d6d13e77532788221fe3c7fa10e23dceff95a1ccaff9cbbad4"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_broker_unittest.cc",
+      "sha256": "15f0446036b0e64fea73f72149f4c7febab24f544afce9496f2e78c88a79fb12"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.cc",
+      "sha256": "3054e319352d256fd07155aea338bd345165323337be72458625970fb72e7d6f"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.h",
+      "sha256": "ca2b583605f974d5c205a161c9becc531d93bb9ff886a86cc6426cc20b733f5d"
+    },
+    {
+      "path": "chrome/test/BUILD.gn",
+      "sha256": "6e2a9c8803e6cb0266fcd44ed34b141c2dbbd0908d64b27def22c4b89cb70200"
+    },
+    {
+      "path": "components/permissions/permission_request.h",
+      "sha256": "84cfeff030a91943b5587a61082cbf4db260c70740f3b23e888e0d2ecbcd4f87"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.cc",
+      "sha256": "6c7e53c30cb25866b87a71eb1b3b8acc68024fded2ce7d90de1e403c091aac8d"
+    },
+    {
+      "path": "components/permissions/permission_request_manager.h",
+      "sha256": "bfb25c6f0c1f5a6a85cd069db87b7f60d65dc6a7346e6213b153daabcc7e4841"
+    }
+  ],
+  "compiled": false,
+  "tests": 31,
+  "laneCommit": "75640179"
+}

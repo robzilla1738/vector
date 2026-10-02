@@ -107,6 +107,8 @@
   }
   .site-permission-compact > span:first-child {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
     color: var(--ink-1);
     font-size: var(--fs-sm);
   }
@@ -138,6 +140,8 @@
   }
   .site-controls-error {
     display: flex;
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);

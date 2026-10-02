@@ -10,6 +10,8 @@ import {
   shellIconLock,
   shellIconShield,
 } from "./icons";
+import { SiteAgentAccess } from "../features/trust/SiteAgentAccess";
+import { useFeature } from "../use-feature";
 import { PageZoom } from "./PageZoom";
 import { siteControlsOpener } from "../site-controls-opener";
 import { Dialog } from "../ui";
@@ -33,6 +35,7 @@ function blockedRequestsLabel(count: number) {
 }
 
 export function SiteControls() {
+  const agentPermissions = useFeature("agentSitePermissions");
   const page = useStore((state) => state.pages.find((page) => page.pageId === state.activePageId));
   const pageId = page?.pageId;
   const setOverlay = useStore((state) => state.setOverlay);
@@ -306,6 +309,9 @@ export function SiteControls() {
               </p>
             )}
           </section>
+          {agentPermissions && !bridge.privateMode && /^https?:\/\//.test(info.origin) && (
+            <SiteAgentAccess origin={`${new URL(info.origin).origin}/`} />
+          )}
           {!bridge.privateMode && page?.backend !== "chrome" && /^https?:\/\//.test(info.origin) && (
             <section className="site-controls-group" aria-label="Page customization">
               <div>

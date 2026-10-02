@@ -128,6 +128,12 @@ export async function runCoordinatorLoop(self: CoordinatorLoopHost, runId: strin
         }
         const revision = latest.config?.messageRevision ?? 0;
         if (revision !== s.appliedRevision) {
+          await self.deps.turnMentions.begin(runId, latest.config?.mentions ?? [], self.ownedPages(runId), {
+            workspaceId: latest.config?.contextWorkspaceId, taskId: latest.config?.taskId, taskRevision: latest.config?.taskRevision,
+          });
+          const selected = await self.refreshPageSelection(runId);
+          s.activePageId = selected.includes(s.activePageId ?? "") ? s.activePageId : selected[0];
+          s.observedPages.clear();
           s.appliedRevision = revision;
           s.steers = self.deps.repo.listRunSteers(runId).map(message => message.text);
           s.notes = undefined;

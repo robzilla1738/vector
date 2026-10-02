@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { openDb, Repo, RunCoordinator } from "@aux/runtime";
 import { EventBus } from "@aux/runtime";
@@ -75,7 +76,7 @@ function harness(opts: {
   } as unknown as ModelClient;
 
   const pages = {
-    get: () => ({ controller: "none" }),
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/", 1),  controller: "none"  }),
     observe: vi.fn(async () => opts.observeOverride ?? obs()),
     execute: vi.fn(async (program: { steps: { id: string; op: string }[] }, ctx: { onStep?: (o: StepOutcome, s: unknown) => void }) => {
       executeCalls.push({ steps: program.steps.length });
@@ -88,7 +89,7 @@ function harness(opts: {
     capture: vi.fn(async () => ({ dataUrl: "data:image/png;base64,AAAA", width: 100, height: 100, scale: 1 })),
   };
 
-  const coordinator = new RunCoordinator({
+  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
     repo,
     events,
     pages: pages as never,
@@ -150,7 +151,7 @@ describe("vision fallback", () => {
       visionText: "",
     });
     const recorded: { obsArtifactId?: string }[] = [];
-    const coord = new RunCoordinator({
+    const coord = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => h.pages.get(pageId)),
       repo: h.repo,
       events: new EventBus(h.repo),
       pages: h.pages as never,
@@ -176,7 +177,7 @@ describe("vision fallback", () => {
       thenPlans: [{ status: "done", message: "ok", result: { ok: true } }],
       visionText: `{"status":"done","message":"via vision","result":{"note":"vision"}}`,
     });
-    const coord = new RunCoordinator({
+    const coord = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => h.pages.get(pageId)),
       repo: h.repo,
       events: new EventBus(h.repo),
       pages: h.pages as never,

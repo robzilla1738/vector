@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { expect, it } from "vitest";
 import { EventBus, PageService, Repo, openDb } from "@aux/runtime";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
@@ -25,7 +26,7 @@ it("restores only the foreground tab when the native catalog starts empty", asyn
   const native = { available: () => true, listPages: async () => ({ pages: [] }),
     tabCommand: async () => ({ commandId: "", status: "applied" as const, catalogVersion: 0 }),
     focusPage: async () => ({ ok: true }) } as unknown as ConstructorParameters<typeof PageService>[0]["native"];
-  const pages = new PageService({ repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
+  const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
   try {
     await pages.restoreTabs();
     expect(recovered).toEqual(["blue"]);
@@ -46,7 +47,7 @@ it("registers restored background placeholders without attaching until activatio
     { pageId: "red", windowId: "main", marker: "atab-red", url: "https://example.test/red", title: "Red", active: false, lifecycle: "placeholder" },
     { pageId: "blue", windowId: "main", marker: "atab-blue", url: "https://example.test/blue", title: "Blue", active: true, lifecycle: "live" },
   ] }), focusPage: async () => ({ ok: true }) } as unknown as ConstructorParameters<typeof PageService>[0]["native"];
-  const pages = new PageService({ repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
+  const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
   try {
     await pages.restoreTabs();
     expect(attached).toEqual(["blue"]);
@@ -73,7 +74,7 @@ it("waits for a late native placeholder instead of reopening its saved URL", asy
   const native = { available: () => true, listPages: async () => ({ pages: [
     { pageId: "blue", windowId: "main", marker: "atab-blue", url: "https://example.test/blue", title: "Blue", active: true, lifecycle: "live" },
   ] }), focusPage: async () => ({ ok: true }) } as unknown as ConstructorParameters<typeof PageService>[0]["native"];
-  const pages = new PageService({ repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
+  const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
   try {
     await pages.restoreTabs();
     expect(attached).toEqual(["blue"]);
@@ -102,7 +103,7 @@ it("keeps failed session tabs through later browsing and retries the same durabl
   };
   const driver={isConnected:()=>true,attach:async(targetId:string,pageId:string)=>page(targetId,pageId),recoverPage:async(targetId:string,pageId:string)=>{if(failing)throw new Error("Browser temporarily unavailable");return page(targetId,pageId);}} as unknown as BrowserDriver;
   const native={available:()=>true,listPages:async()=>({pages:[]}),tabCommand:async(env:{command:{kind:string;pageId?:string}})=>({commandId:"",status:"applied" as const,catalogVersion:0,pageId:env.command.pageId}),createPage:async()=>({ok:true}),closePage:async()=>({ok:true}),focusPage:async()=>{nativeFocusCalls++;return {ok:true};}} as unknown as ConstructorParameters<typeof PageService>[0]["native"];
-  const pages=new PageService({repo,native,drivers:()=>({aux:driver,chrome:null}),events:new EventBus(repo)});
+  const pages=new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)),repo,native,drivers:()=>({aux:driver,chrome:null}),events:new EventBus(repo)});
   try {
     await pages.restoreTabs();
     expect(pages.recoveryTabs()).toEqual([expect.objectContaining({pageId:original.pageId,error:"Browser temporarily unavailable"})]);
@@ -154,7 +155,7 @@ it("reloads a tab that still had a renderer and leaves a discarded tab asleep", 
     { pageId: "red", windowId: "main", marker: "atab-red", url: red.url, title: "red", active: false, lifecycle: "placeholder" as const },
   ] }), recoverPage: async (pageId: string) => { reloaded.push(pageId); return { ok: true }; },
     focusPage: async () => { throw new Error("awake restore must not steal activation"); } } as unknown as ConstructorParameters<typeof PageService>[0]["native"];
-  const pages = new PageService({ repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
+  const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
   try {
     await pages.restoreTabs();
     expect(reloaded).toEqual(["dirty"]);
@@ -188,7 +189,7 @@ it("keeps document epochs monotonic when a native catalog event wins the restore
       title: async () => previous.title, isAttached: () => true, setEvents: () => {}, dispose: async () => {} } as unknown as DriverPage;
   } } as unknown as BrowserDriver;
   const native = { available: () => true } as unknown as ConstructorParameters<typeof PageService>[0]["native"];
-  const pages = new PageService({ repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
+  const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, native, drivers: () => ({ aux: driver, chrome: null }), events: new EventBus(repo) });
   try {
     const restored = await pages.registerExternal({ pageId: previous.pageId, marker: "new-target", url: previous.url, backend: "aux" });
     expect(restored.documentEpoch).toBe(8);

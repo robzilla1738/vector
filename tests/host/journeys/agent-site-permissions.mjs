@@ -65,6 +65,8 @@ export async function run(t) {
     await t.ax.key('command+,', 'hid');
     await t.ax.waitFor({ role: 'AXButton', name: 'Agents', match: 'exact', scope: 'shell', index: 0 });
     await t.ax.press({ role: 'AXButton', name: 'Agents', match: 'exact', scope: 'shell', index: 0 });
+    const site = { name: new URL(t.fixture.url).origin, match: 'exact', scope: 'shell', index: 0 };
+    await t.ax.waitFor(site); await t.ax.press(site);
     const revoke = { role: 'AXButton', name: `Revoke login on ${new URL(t.fixture.url).origin}`, match: 'exact', scope: 'shell', index: 0 };
     await t.ax.waitFor(revoke); await t.ax.press(revoke); await t.ax.waitFor(revoke, 'absent');
     await t.capture('site-login-revoked'); await t.ax.key('escape', 'hid');

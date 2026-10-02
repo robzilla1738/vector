@@ -1,3 +1,4 @@
+import { EFFECT_CATEGORIES, CONFIRMATION_LEVELS } from "@aux/contracts";
 import type { AuxEvent, BrowserSession, BrowserSpace, CompactObservation, Download, ModelCall, PageSet, PageTarget, ResultRecord, Run, SetMember, StepRecord } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { setDictationDraft } from "../dictation-drafts";
@@ -21,12 +22,19 @@ const upsertBy = <T, K extends keyof T>(items: T[], item: T, key: K) =>
 export const reduceRunEvent: Reducer = (state, e) => {
   switch (e.type) {
     case "safety.confirmation": {
-      const { approvalId, turnId, instruction, action, origin } = e.payload;
+      const { approvalId, turnId, threadId, instruction, action, origin, category, confirmation, pageId } = e.payload;
       if (state.runs.find(run => run.runId === turnId)?.config?.nightShiftItemId) return {};
-      if (typeof approvalId !== "string" || typeof turnId !== "string" || typeof instruction !== "string") return {};
+      if ((approvalId !== undefined && typeof approvalId !== "string") || typeof turnId !== "string" || typeof threadId !== "string" || typeof instruction !== "string") return {};
+      const parsedCategory = EFFECT_CATEGORIES.find(value => value === category);
+      const parsedConfirmation = CONFIRMATION_LEVELS.find(value => value === confirmation);
+      if (!parsedCategory || !parsedConfirmation || (!approvalId && parsedConfirmation !== "handoff")) return {};
       return {
         confirmation: {
-          approvalId,
+          ...(typeof approvalId === "string" ? { approvalId } : {}),
+          threadId,
+          category: parsedCategory,
+          confirmation: parsedConfirmation,
+          ...(typeof pageId === "string" ? { pageId } : {}),
           turnId,
           instruction,
           action: typeof action === "string" ? action : "action",

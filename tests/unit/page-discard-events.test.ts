@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it } from "vitest";
 import type { DriverPage, DriverPageEvents } from "@aux/chromium-driver";
 import { EventTypes, type PageTarget } from "@aux/contracts";
@@ -39,7 +40,7 @@ function closeTarget(native: boolean, backend: PageTarget["backend"], reason: "c
   events.subscribe((event) => {
     seen.push({ type: event.type, payload: event.payload });
   });
-  const registry = new PageRegistry({
+  const registry = new PageRegistry({ turnMentions: fixtureTurnMentions(pageId => repo.getPage(pageId)),
     repo,
     events,
     native: { available: () => native } as NativeBridge,

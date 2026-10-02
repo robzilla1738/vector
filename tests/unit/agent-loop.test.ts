@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { AuxError } from "@aux/contracts";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -574,10 +575,10 @@ function coordinatorHarness(
     execute: vi.fn(async (program: { steps: PlanStep[] }, ctx?: { runId?: string; onStep?: (o: StepOutcome, s: PlanStep) => void }) =>
       execute?.(program, ctx) ?? { status: "completed", steps: [] }),
     livePageIds: () => ["p1"],
-    get: () => ({ viewStatus: "visible", documentEpoch: 1, url: "http://x.test/order" }),
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/order", 1),  viewStatus: "visible", documentEpoch: 1, url: "http://x.test/order"  }),
   };
   const modelCalls: { role: string; modelId: string; error?: string }[] = [];
-  const coordinator = new RunCoordinator({
+  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
     repo, events, pages: pages as never,
     model: () => model,
     defaultModel: () => "test/agent",

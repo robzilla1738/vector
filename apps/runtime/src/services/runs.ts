@@ -591,6 +591,8 @@ export class RunService {
     artifacts: ArtifactStore;
     translateSteps: (pageId: string, steps: Step[]) => Step[];
     nativeAvailable: () => boolean;
+    turnMentions: import("./turn-mention-service.js").TurnMentionService;
+    taskSource?: (taskId: string) => { revision: number; state: string; sourceOrigin?: string };
     vault?: import("./vault.js").VaultService;
     calendar?: import("./calendar-connections.js").CalendarConnectionService;
     contentMemory?: import("./content-memory.js").ContentMemoryStore;
@@ -625,6 +627,8 @@ export class RunService {
       repo: deps.repo,
       events: deps.events,
       pages: deps.pages,
+      turnMentions: deps.turnMentions,
+      taskSource: deps.taskSource,
       imageReferences: run => this.images.forRun(run),
       memoryReferences: async run => {
         const ids = run.config?.contextMemoryIds ?? [];
@@ -701,6 +705,7 @@ export class RunService {
       pages: deps.pages,
       sets: deps.sets,
       pool: this.pool,
+      turnMentions: deps.turnMentions,
       nativeAvailable: deps.nativeAvailable,
       controlledPage: deps.browserEgress ? (runId, url, sourcePageId) => this.openControlledPage(runId, url, sourcePageId) : undefined,
       translateSteps: deps.translateSteps,
@@ -724,7 +729,7 @@ export class RunService {
         deps.repo.saveProgram(program);
         return program.programId;
       },
-      runAgentForMember: async (member: SetMember, pageId: string, goal: string, ctx: { runId: string; signal: AbortSignal; budget?: ResearchBudget;modelId?:string }) => {
+      runAgentForMember: async (member: SetMember, pageId: string, goal: string, ctx: { runId: string; signal: AbortSignal; budget?: ResearchBudget;modelId?:string; checkSource: () => void }) => {
         const model = deps.settings.model();
         if (!model)
           return {
@@ -747,6 +752,8 @@ export class RunService {
           goal,
           runId: ctx.runId,
           pages: deps.pages,
+          turnMentions: deps.turnMentions,
+          checkSource: ctx.checkSource,
           model,
           modelId,
           // the set-run's own signal — runs.cancel stops member model calls
@@ -787,6 +794,7 @@ export class RunService {
       chatId: message.chatId,
       pageIds: message.pageIds,
       contextPageRefs: message.contextPageRefs,
+      mentions: message.mentions,
       ...(prepared ? { accountLabels: target.config.accountLabels ?? [], calendarGrantIds: target.config.calendarGrantIds ?? [] } : {}),
     });
   }
@@ -848,14 +856,18 @@ export class RunService {
     this.deps.events.emit(EventTypes.RunUpdated, { run }, run.runId);
     const control = new SetRunControl();
     this.setRunControls.set(run.runId, control);
-    void this.setRunner
-      .map({
+    void this.deps.turnMentions.begin(run.runId, run.config?.mentions ?? [], [], {
+      workspaceId: run.config?.contextWorkspaceId, taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
+    }).then(() => {
+      if (control.abort.signal.aborted) throw new AuxError("cancelled", "This Set run was cancelled before acquiring its sources.");
+      return this.setRunner.map({
         ...mapOpts,
         runId: run.runId,
         signal: control.abort.signal,
         waitIfPaused: signal => control.waitIfPaused(signal),
         isPaused: () => control.isPaused(),
-      })
+      });
+    })
       .then(() => this.finishSetRun(run.runId))
       .catch((e) => {
         const r = this.deps.repo.getRun(run.runId);
@@ -867,7 +879,7 @@ export class RunService {
           this.deps.events.emit(EventTypes.RunUpdated, { run: r }, run.runId);
         }
       })
-      .finally(() => { this.setRunControls.delete(run.runId); releaseClaim(); });
+      .finally(() => { this.deps.turnMentions.end(run.runId); this.setRunControls.delete(run.runId); releaseClaim(); });
   }
 
   async start(opts: {
@@ -902,6 +914,7 @@ export class RunService {
     contextImageArtifactIds?: string[];
     contextMemoryIds?: string[];
     contextPageRefs?: PageContextRef[];
+    mentions?: import("@aux/contracts").MentionRef[];
     contextWorkspaceId?: string;
     contextWorkspaceRevision?: number;
     contextBrowsingMemory?: boolean;
@@ -1035,6 +1048,7 @@ export class RunService {
       contextImageArtifactIds,
       contextMemoryIds,
       contextPageRefs: opts.contextPageRefs,
+      mentions: opts.mentions,
       contextWorkspaceId,
       contextWorkspaceRevision,
       contextBrowsingMemory,
@@ -1231,7 +1245,7 @@ export class RunService {
     const run = this.deps.repo.getRun(runId);
     if (run?.config?.chatId && ["queued", "planning", "running", "paused", "needs_input"].includes(run.status)) this.messages.cancelForChat(run.config.chatId);
     const sc = this.setRunControls.get(runId);
-    if (sc) sc.cancel();
+    if (sc) { this.deps.turnMentions.end(runId); sc.cancel(); }
     return this.coordinator.cancel(runId, reason);
   }
 

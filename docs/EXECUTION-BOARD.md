@@ -1,5 +1,17 @@
 # Browser-runtime execution board
 
+## Current coherent throughput checkpoint
+
+Actual trust enforcement, unified command history causality, native journey readiness corrections and stable-surface design polish are integrated in the isolated root candidate. The complete rebuilt unit suite passes455 files/2424 cases; subsequent permission wrapping/error action/Settings focus changes pass17 relevant renderer cases and typecheck/lint376/format. Final fixture-only corrections preserve assertions and pass syntax/registry/format. Source logs are pinned in `docs/lane-requests/root-observer/COHERENT-SOURCE-GATES.json`; these are not native qualifications.
+
+Native source-only replay independently reverses33 ordered packets to73 verified baselines, reapplies them and compares108 exact mirrors. Root0200 provides queued owner mutation fencing and supported Profile test initialization;0202 adds genuine hidden-tab permission resolution, authority checks before each original/duplicate grant, monotonic cancellation after retirement, and31 real manager/Broker lifecycle cases;0203 repairs all four observed/proactive native test-interface gaps with honest unsupported behavior;0204 routes actual focused AppKit key events through the registered Aux command map. Compilation and physical effect proof for these corrections remain pending. No gate or native assertion is weakened.
+
+The captured actual Chromium renderer contains174 independently byte-verified assets, digest418f98f64efba1a340dc2bbc57e88eec6aff8180a13ecb6cb1c60f8aa059b58c. Bundle budgets pass482KB startup/175KB CSS/1786KB total. All command result generation witnesses are present in the actual built modules. The design pass uses the130MB capture `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/`, indexed in `06_COPYABLE-SURFACES.md` §§8–8c, while retaining Aux branding/logo/name. Narrow permission actions/labels wrap, error actions remain visible, and the Settings rail uses the shared focus ring.
+
+All nine immutable de90 functional journeys failed overall; root verified49 independent artifact facts. Four PiP behavior steps and actual split dwell/drop passed, but the split PNG contains blank panes and is a P1 unresolved paint/capture discrepancy. The capture precedes pane observation; AX metadata cannot establish painted pixels or150ms presentation. CmdT actually opened an AXGroup command surface; corrected selector is integrated. Minimal UI's AppKit bypass is a concrete source finding, with physical closure pending. Genuine private presentation measurements, owned PiP child capture, all metric producers and L/D/LR/DR/RM/narrow visual closure remain in the design lane.
+
+All four slots stay occupied: root integration/review, sole native builder collecting broad de90 compilation failures, L10 trust journey/source preparation and design/presentation implementation. No qualified feature merge, main fast-forward, new qualification or performance/visual pass is claimed. Required merge order,43 feature coverage,22 legacy requalifications,≥20 AC trials for every performance budget, no P0–P2 design findings, owner final signoff, WaveQ all-on without dev acceptance and final gates remain mandatory. No push/sign/release/setup/credential/session/keychain reads.
+
 Objective: complete every requirement in [BROWSER-RUNTIME-PLAN.md](BROWSER-RUNTIME-PLAN.md), including Wave Q. This board records evidence, not self-reported completion.
 
 ## Integration state

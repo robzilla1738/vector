@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { AuxError, EventTypes, memoryTransportPair, RpcChannel, type PageTarget } from "@aux/contracts";
 import { ApiServer, EventBus, openDb, Repo, RunService, SetService } from "@aux/runtime";
@@ -18,7 +19,7 @@ afterEach(() => {
 function fixture() {
   const repo = new Repo(openDb(":memory:")),
     events = new EventBus(repo);
-  const registry = new PageRegistry({
+  const registry = new PageRegistry({ turnMentions: fixtureTurnMentions(pageId => repo.getPage(pageId)),
     repo,
     events,
     native: { available: () => false } as NativeBridge,
@@ -49,7 +50,7 @@ function fixture() {
     takeover: control.takeover.bind(control),
   };
   const service = pages as PageService;
-  const runs = new RunService({
+  const runs = new RunService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => service.get(pageId)),
     repo,
     events,
     pages: service,

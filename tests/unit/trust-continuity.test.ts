@@ -1,3 +1,7 @@
+import { SafetyDispatchGate } from "../../apps/runtime/src/safety/dispatch.js";
+import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
+import { DecisionJournal } from "../../apps/runtime/src/safety/decide.js";
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -706,7 +710,9 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
     createTarget: async () => "t",
     attach: async () => driverPage,
   } as unknown as BrowserDriver;
-  const pages = new PageService({
+  const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
+  const pages = new PageService({ turnMentions: pagesTurnMentions,
+    safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(db), journal: new DecisionJournal(db), managedRules: () => [], userRules: () => [], localCeiling: () => "ask", settingsGrants: () => [], audit: () => {} }),
     repo,
     events,
     native: new NullNativeBridge(),
@@ -723,7 +729,7 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
     resources: [{ resourceId: "page", kind: "page", locator: opened.pageId, label: "Tab" }],
   });
   const connections = new AgentConnectionService(repo);
-  const sessions = new ExternalSessionService(repo, events);
+  const sessions = new ExternalSessionService(repo, events, pagesTurnMentions);
   const gate = makeInvoker({
     repo,
     events,
@@ -732,6 +738,7 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
     settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
     agentConnections: connections,
     externalSessions: sessions,
+    turnMentions: pagesTurnMentions,
   } as unknown as Services) as Gate;
   cleanup.push(() => void gate.dispose());
   const server = new ApiServer({
@@ -787,7 +794,7 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
   await expect(gate("pages.list", {}, client)).rejects.toMatchObject({ code: "permission_denied" });
   expect(repo.getRun(runId)).toMatchObject({ status: "completed", statusMessage: "Connection expired" });
   held.release();
-  await expect(inflight).resolves.toEqual({ steps: [] });
+  await expect(inflight).rejects.toMatchObject({ code: "permission_denied" });
 
   const revoked = connections.create({
     name: "Later",
@@ -814,7 +821,7 @@ it("keeps browsing usable when the runtime is not ready and when an external ses
   await gate("pages.navigate", { pageId: opened.pageId, url: "https://example.com/after-revoke" }, owner);
   expect(pages.get(opened.pageId).url).toBe("https://example.com/after-revoke");
   again.release();
-  await expect(second).resolves.toEqual({ steps: [] });
+  await expect(second).rejects.toMatchObject({ code: "permission_denied" });
 });
 
 it("lets the unscoped loopback owner navigate while an external program holds the tab", async () => {
@@ -850,7 +857,9 @@ it("lets the unscoped loopback owner navigate while an external program holds th
       return driverPage as unknown as DriverPage;
     },
   } as unknown as BrowserDriver;
-  const pages = new PageService({
+  const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
+  const pages = new PageService({ turnMentions: pagesTurnMentions,
+    safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(db), journal: new DecisionJournal(db), managedRules: () => [], userRules: () => [], localCeiling: () => "ask", settingsGrants: () => [], audit: () => {} }),
     repo, events, native: new NullNativeBridge(),
     drivers: () => ({ aux: driver, chrome: null }),
   });
@@ -863,7 +872,7 @@ it("lets the unscoped loopback owner navigate while an external program holds th
     resources: [{ resourceId: "page", kind: "page", locator: opened.pageId, label: "Tab" }],
   });
   const connections = new AgentConnectionService(repo);
-  const sessions = new ExternalSessionService(repo, events);
+  const sessions = new ExternalSessionService(repo, events, pagesTurnMentions);
   const pageOwnership = new PageOwnership();
   const gate = makeInvoker({
     repo, events, pages,
@@ -871,6 +880,7 @@ it("lets the unscoped loopback owner navigate while an external program holds th
     settings: { effectGrants: () => [], originPolicies: () => [], safetyCeiling: () => "ask" },
     agentConnections: connections,
     externalSessions: sessions,
+    turnMentions: pagesTurnMentions,
   } as unknown as Services) as Gate;
   const created = connections.create({
     name: "Codex", client: "codex",
@@ -891,6 +901,8 @@ it("lets the unscoped loopback owner navigate while an external program holds th
     await inflight;
     throw new Error("the external program never reached its wait");
   }
+  const reads = db.prepare("SELECT request_json AS requestJson, decision_json AS decisionJson FROM safety_decisions").all().map(row => ({ request: JSON.parse(String(row.requestJson)), decision: JSON.parse(String(row.decisionJson)) }));
+  expect(reads).toContainEqual(expect.objectContaining({ request: expect.objectContaining({ action: "waitFor", actor: "external_token", category: "read" }), decision: expect.objectContaining({ status: "allow", authorizedBy: expect.objectContaining({ authorizedBy: "task_resource", taskId: task.taskId, taskRevision: task.revision }) }) }));
   try {
     const navigated = Promise.race([
       gate("pages.navigate", { pageId: opened.pageId, url: "https://example.com/during-activity" }, { external: true }),
@@ -902,7 +914,7 @@ it("lets the unscoped loopback owner navigate while an external program holds th
     expect(pageOwnership.snapshot()[opened.pageId]).toMatchObject({ actor: "external", connectionId: created.connection.connectionId });
   } finally {
     releaseWait();
-    await inflight;
+    await expect(inflight).rejects.toMatchObject({ code: "ref_stale" });
   }
 });
 
@@ -954,7 +966,9 @@ it("loads an owner address through the native tab command instead of page.goto",
       };
     },
   };
-  const pages = new PageService({
+  const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
+  const pages = new PageService({ turnMentions: pagesTurnMentions,
+    safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(db), journal: new DecisionJournal(db), managedRules: () => [], userRules: () => [], localCeiling: () => "ask", settingsGrants: () => [], audit: () => {} }),
     repo, events, native: native as never,
     drivers: () => ({ aux: driver, chrome: null }),
   });

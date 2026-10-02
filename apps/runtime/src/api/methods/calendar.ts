@@ -51,7 +51,7 @@ async function h_calendar_taskEvents_list(ctx: MethodCtx): Promise<unknown> {
   if (client.external && !scope)
     throw new AuxError("permission_denied", "Calendar task reads require a scoped connection.");
   if (!s.operations) throw new AuxError("backend_unavailable", "Calendar operations are unavailable.");
-  return (await s.operations.invokeCalendarTaskEvents(params)).result;
+  return (await s.operations.invokeCalendarTaskEvents(params, { runId: ctx.externalRunId })).result;
 }
 
 export const calendarMethods: Partial<Record<MethodName, MethodHandler>> = {

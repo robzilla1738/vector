@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CONFIRMATION_LEVELS, EFFECT_CATEGORIES } from "./safety-vocabulary.js";
 
 const id = z.string().trim().min(1).max(200);
 const origin = z.string().url().refine(value => {
@@ -10,7 +11,7 @@ export const EffectSchema = z.enum(["read", "write", "destructive", "egress", "c
 export type Effect = z.infer<typeof EffectSchema>;
 export const OriginAccessSchema = z.enum(["deny", "ask", "allow"]);
 export type OriginAccess = z.infer<typeof OriginAccessSchema>;
-export const ConfirmationLevelSchema = z.enum(["handoff", "action", "preapprovable", "none"]);
+export const ConfirmationLevelSchema = z.enum(CONFIRMATION_LEVELS);
 export type ConfirmationLevel = z.infer<typeof ConfirmationLevelSchema>;
 
 export const OriginRuleSchema = z.object({
@@ -24,11 +25,7 @@ export const OriginRuleSchema = z.object({
 export type OriginRule = z.infer<typeof OriginRuleSchema>;
 
 /** Semantic category; `submit` also covers send/post/purchase/delete/account/security consequences. */
-export const EffectCategorySchema = z.enum([
-  "read", "navigate", "input", "interact", "submit", "send", "post", "purchase", "delete",
-  "account", "security", "login", "permission", "cookie", "install",
-  "password_change", "two_factor", "captcha", "bot_block", "paywall_bypass", "download", "upload", "credential", "payment", "evaluate", "external_tool", "dialog",
-]);
+export const EffectCategorySchema = z.enum(EFFECT_CATEGORIES);
 export type EffectCategory = z.infer<typeof EffectCategorySchema>;
 
 export const SafetyActionSchema = z.object({
@@ -73,7 +70,28 @@ export const ApprovalDecisionSchema = z.discriminatedUnion("decision", [
 ]);
 export type ApprovalDecision = z.infer<typeof ApprovalDecisionSchema>;
 
+export const TaskReadProvenanceSchema = z.object({
+  authorizedBy: z.literal("task_resource"),
+  taskId: id,
+  taskRevision: z.number().int().nonnegative(),
+  pageId: id,
+  sessionId: id,
+  documentEpoch: z.number().int().nonnegative(),
+  sourceOrigin: z.enum(["external", "conversation"]).optional(),
+  source: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("resource"), resourceId: id }).strict(),
+    z.object({ kind: z.literal("task_run"), runId: id }).strict(),
+    z.object({ kind: z.literal("preview"), connectionId: id }).strict(),
+  ]),
+}).strict();
+export type TaskReadProvenance = z.infer<typeof TaskReadProvenanceSchema>;
+/** Only a validated runtime scope producer supplies this synchronous source fence. */
+export interface ValidatedTaskRead {
+  provenance: TaskReadProvenance;
+  check(): void;
+}
 export const AuthorizationProvenanceSchema = z.discriminatedUnion("authorizedBy", [
+  TaskReadProvenanceSchema,
   z.object({ authorizedBy: z.literal("standing"), grantId: id }).strict(),
   z.object({ authorizedBy: z.literal("approval"), approvalId: id }).strict(),
   z.object({ authorizedBy: z.literal("policy"), policySource: z.enum(["managed", "user", "default"]) }).strict(),

@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -197,7 +198,7 @@ describe("downloads into session storage (S4)", () => {
     const driver = { backend: "aux", isConnected: () => true, createTarget: async () => "t", attach: async () => page } as unknown as BrowserDriver;
     const repo = new Repo(openDb(":memory:"));
     cleanup.push(() => repo.db.close());
-    const pages = new PageService({
+    const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)),
       repo, events: new EventBus(repo), native: new NullNativeBridge(),
       drivers: () => ({ aux: driver, chrome: null }),
       downloadsDir: "/tmp/aux-downloads",
@@ -228,7 +229,7 @@ describe("sinceRevision delta size gate (S4)", () => {
     const driver = { backend: "aux", isConnected: () => true, createTarget: async () => "t", attach: async () => page } as unknown as BrowserDriver;
     const repo = new Repo(openDb(":memory:"));
     cleanup.push(() => repo.db.close());
-    const pages = new PageService({ repo, events: new EventBus(repo), native: new NullNativeBridge(), drivers: () => ({ aux: driver, chrome: null }) });
+    const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, events: new EventBus(repo), native: new NullNativeBridge(), drivers: () => ({ aux: driver, chrome: null }) });
     return { pages, set: (c: ObservationContent) => { current = c; } };
   }
 

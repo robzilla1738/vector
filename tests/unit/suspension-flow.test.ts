@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, expect, it, vi } from "vitest";
 import type { DatabaseSync } from "node:sqlite";
 import type { Observation, PlanStep, StepOutcome } from "@aux/contracts";
@@ -67,9 +68,9 @@ function harness(model: ModelClient, onExecute: (runId: string, step: PlanStep |
       onExecute(ctx?.runId ?? "", program.steps[0])),
     capture: vi.fn(async () => ({ dataUrl: undefined, width: 0, height: 0, scale: 1 })),
     livePageIds: () => ["p1"],
-    get: () => ({ viewStatus: "visible", documentEpoch: 1, url: "http://x.test/order" }),
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/order", 1),  viewStatus: "visible", documentEpoch: 1, url: "http://x.test/order"  }),
   };
-  const coordinator = new RunCoordinator({
+  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
     repo, events, pages: pages as never,
     model: () => model,
     defaultModel: () => "test/planner",

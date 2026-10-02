@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -39,7 +40,8 @@ it("awaits a real XLSX artifact before marking a plain-chat planner turn complet
       const file=CompletedGeneratedFileSchema.parse(raw);
       return new GeneratedResults(repo,files).generate({...file,chatId:run.config!.chatId!,runId:run.runId});
     });
-    const coordinator=new RunCoordinator({repo,events,pages:{observe:async()=>page,execute:vi.fn(),capture:vi.fn(),livePageIds:()=>["page-1"],get:()=>({viewStatus:"visible"})} as never,
+    const coordinatorFixturePages1 = {observe:async()=>page,execute:vi.fn(),capture:vi.fn(),livePageIds:()=>["page-1"],get:(fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "https://example.test/report", 1), viewStatus:"visible" })};
+    const coordinator=new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages1.get(pageId)),repo,events,pages:coordinatorFixturePages1 as never,
       model,defaultModel:()=>"fixture",recoveryModel:()=>undefined,recordModelCall:()=>{},saveCompletedGenerated:save});
     const run=await coordinator.start({goal:"Make a workbook from the observed revenue",pageIds:["page-1"],chatId:"chat-file"});
     expect(await waitForTurn(repo,run.runId)).toBe("completed");
@@ -58,7 +60,8 @@ it("awaits a real XLSX artifact before marking a plain-chat planner turn complet
 it("does not mark a turn complete when the verified file cannot be stored",async()=>{
   const db=openDb(":memory:"),repo=new Repo(db),events=new EventBus(repo);
   try{
-    const coordinator=new RunCoordinator({repo,events,pages:{observe:async()=>page,execute:vi.fn(),capture:vi.fn(),livePageIds:()=>["page-1"],get:()=>({viewStatus:"visible"})} as never,
+    const coordinatorFixturePages2 = {observe:async()=>page,execute:vi.fn(),capture:vi.fn(),livePageIds:()=>["page-1"],get:(fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "https://example.test/report", 1), viewStatus:"visible" })};
+    const coordinator=new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages2.get(pageId)),repo,events,pages:coordinatorFixturePages2 as never,
       model,defaultModel:()=>"fixture",recoveryModel:()=>undefined,recordModelCall:()=>{},saveCompletedGenerated:async()=>{throw new Error("disk full");}});
     const run=await coordinator.start({goal:"Make a workbook",pageIds:["page-1"],chatId:"chat-file-failed"});
     expect(await waitForTurn(repo,run.runId)).toBe("partially_completed");

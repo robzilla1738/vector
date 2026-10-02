@@ -117,7 +117,8 @@ async function testAndActivate(t, routineId, workspaceId, value) {
 }
 async function demonstration(t) {
   const fixture = fixtureRoutes(t);
-  const workspace = (await t.rpc('workspaces.list'))[0]; t.assert.ok(workspace);
+  const workspace = (await t.rpc('workspaces.list'))[0] ?? await t.rpc('workspaces.create', { name: 'Aux demonstration fixture' });
+  t.assert.ok(workspace);
   await t.step('trusted isolated recording filters synthetic secrets and exposes ambiguity without taking browser control', { kind: 'ui', features: ['demonstrationSkills'] }, async () => {
     const opened = await t.rpc('pages.open', { url: `${t.fixture.url}/demo-secret`, activate: true });
     await t.ax.waitFor(page('Fixture password', 'AXSecureTextField'));
@@ -206,7 +207,7 @@ async function nightSettingsUI(t, { enabled = true, nightly = '0.01', task = '0.
   await t.ax.key('escape', 'hid');
 }
 async function overnight(t) {
-  const workspace = (await t.rpc('workspaces.list'))[0];
+  const workspace = (await t.rpc('workspaces.list'))[0] ?? await t.rpc('workspaces.create', { name: 'Aux overnight fixture' });
   t.assert.ok(workspace);
   t.fixture.route('/night-read', '<!doctype html><title>Aux overnight fixture</title><h1 id="ready">Synthetic overnight read</h1>');
   const opened = await t.rpc('pages.open', { url: `${t.fixture.url}/night-read`, activate: true });

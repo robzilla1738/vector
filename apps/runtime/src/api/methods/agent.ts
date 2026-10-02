@@ -9,6 +9,15 @@ import { proposeTabTidy } from "../../agent/tidy.js";
 import { suggestTabName } from "../../agent/tab-name.js";
 import { evaluateOriginPolicy } from "../../safety/origin-policy.js";
 
+async function h_agent_tabs_list(ctx: MethodCtx): Promise<unknown> {
+  if (!ctx.externalRunId) throw new AuxError("permission_denied", "A live authorized agent turn is required.");
+  const run = ctx.s.repo.getRun(ctx.externalRunId);
+  if (run?.config?.mentions?.length) return ctx.s.turnMentions.list(ctx.externalRunId, ctx.s.pages.list());
+  if (!ctx.scope) throw new AuxError("permission_denied", "A current task scope is required.");
+  const allowed = ctx.scopedPageIds(ctx.scope, ctx.client.connectionId);
+  return ctx.s.pages.list().filter(page => allowed.has(page.pageId))
+    .map(({ pageId, title, url }) => ({ pageId, title, url }));
+}
 async function h_agent_js_run(ctx: MethodCtx): Promise<unknown> {
   const { client, codeMode, params } = ctx;
   return codeMode.run(params, client);
@@ -184,7 +193,11 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
   let release: (() => void) | undefined;
   let revoke: (() => void) | undefined;
   try {
-    return await turnTabs.open({
+    if (ctx.externalRunId && !s.turnMentions.has(ctx.externalRunId))
+      await s.turnMentions.begin(ctx.externalRunId, [], [], {
+        workspaceId: task.workspaceId, taskId: task.taskId, taskRevision: task.revision,
+      });
+    const opened = await turnTabs.open({
       connectionId: client.connectionId ?? (client.external ? "owner" : "internal"),
       taskId: params.taskId,
       turnId: params.turnId,
@@ -198,10 +211,13 @@ async function h_agent_turn_open(ctx: MethodCtx): Promise<unknown> {
         revoke = await s.runs.acquireBrowserEgress?.(ctx.externalRunId!, page.pageId, url.href);
       } } : {}),
     });
+    if (ctx.externalRunId) s.turnMentions.created(ctx.externalRunId, opened.pageId);
+    return opened;
   } finally { revoke?.(); release?.(); }
 }
 async function h_agent_turn_end(ctx: MethodCtx): Promise<unknown> {
-  const { client, params, turnTabs } = ctx;
+  const { client, params, turnTabs, s } = ctx;
+  if (ctx.externalRunId) s.turnMentions.end(ctx.externalRunId);
   return turnTabs.end(
     client.connectionId ?? (client.external ? "owner" : "internal"),
     params.taskId,
@@ -250,6 +266,7 @@ async function h_agent_turn_clipboard_paste(ctx: MethodCtx): Promise<unknown> {
 }
 
 export const agentMethods: Partial<Record<MethodName, MethodHandler>> = {
+  "agent.tabs.list": h_agent_tabs_list,
   "agent.js.run": h_agent_js_run,
   "agent.js.reset": h_agent_js_reset,
   "agent.tidy.propose": h_agent_tidy_propose,

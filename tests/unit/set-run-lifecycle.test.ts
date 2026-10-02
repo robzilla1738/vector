@@ -1,3 +1,4 @@
+import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
 import { describe, it, expect, vi } from "vitest";
 import { DurableWriteLedger, EventBus, openDb, Repo, RunService, SetService, TaskService, WorkerPool } from "@aux/runtime";
 import { EventTypes, taskConversationId } from "@aux/contracts";
@@ -33,7 +34,7 @@ function fakePages(opts: { execMs: number }) {
   const pages = {
     open: async ({ url }: { url: string }) => {
       const pageId = `p${++n}`;
-      const t = { pageId, url, documentEpoch: 1, ownedByRuntime: true, backend: "aux", targetId: pageId } as unknown as PageTarget;
+      const t = { pageId, url, documentEpoch: 1, ownedByRuntime: true, backend: "aux", targetId: pageId, sessionId: `fixture-attachment-${pageId}`, viewStatus: "visible" } as unknown as PageTarget;
       targets.set(pageId, t);
       return t;
     },
@@ -101,12 +102,16 @@ function harness(opts: { execMs?: number; maxWorkers?: number; model?: ModelClie
     },
     removeFiles: (paths: string[]) => removedArtifacts.push(...paths),
   } as unknown as ArtifactStore;
+  const turnMentions = new TurnMentionService({
+    page: id => targets.get(id), organization: async () => ({ revision: 0, shared: null }),
+    routine: () => undefined, connectors: () => ({ entries: [], access: [] }),
+  });
   const runs = new RunService({
-    repo, events, pages, sets, settings, artifacts,
+    repo, events, pages, sets, settings, artifacts, turnMentions,
     translateSteps: (_pid, steps) => steps,
     nativeAvailable: () => false,
   });
-  return { repo, events, pages, sets, settings, runs, state, removedArtifacts, artifactContents, targets };
+  return { repo, events, pages, sets, settings, runs, state, removedArtifacts, artifactContents, targets, turnMentions };
 }
 
 const TERMINAL = new Set<Run["status"]>(["completed", "partially_completed", "failed", "cancelled", "interrupted"]);
@@ -998,4 +1003,43 @@ it("excludes paused Space notes from new model context while retaining saved mem
   h.repo.setSetting("conversationWorkspace:enabled-memory-chat","memory-space");
   const enabled=await h.runs.start({goal:"Hello",pageIds:["p1"],chatId:"enabled-memory-chat"});
   expect(enabled.config?.instructions).toContain("Private project preference fixture");
+});
+
+
+it("borrowed Set members retain actual canonical source and lease access without becoming created mentions", async () => {
+  const h = harness({ execMs: 1 });
+  const page = await h.pages.open({ url: "https://set-source.test/a", backend: "aux", background: true, ownedByRuntime: false });
+  const set = await h.sets.create({ name: "Borrowed", source: "tabs", pageIds: [page.pageId] });
+  const ownedDuringRead: string[][] = [];
+  const observe = h.pages.observe.bind(h.pages);
+  vi.spyOn(h.pages, "observe").mockImplementation(async (pageId, request) => {
+    const active = h.repo.listRuns(20).find(run => run.setId === set.setId && run.status === "running");
+    if (active) ownedDuringRead.push(h.turnMentions.ownedPages(active.runId));
+    return observe(pageId, request);
+  });
+  const { runId } = await h.runs.mapSet({ setId: set.setId, program });
+  const run = await untilTerminal(h.repo, runId);
+  expect(run.status).toBe("completed");
+  expect(h.state.executed).toBe(1);
+  expect(ownedDuringRead).toEqual([[]]);
+  expect(h.turnMentions.has(runId)).toBe(false);
+  expect(h.targets.has(page.pageId)).toBe(true);
+});
+
+it("a Set source edit during observation withholds the document before any effect dispatch", async () => {
+  const h = harness({ execMs: 1 });
+  const page = await h.pages.open({ url: "https://set-source.test/a", backend: "aux", background: true, ownedByRuntime: false });
+  const set = await h.sets.create({ name: "Borrowed", source: "tabs", pageIds: [page.pageId] });
+  const observe = h.pages.observe.bind(h.pages);
+  vi.spyOn(h.pages, "observe").mockImplementation(async (pageId, request) => {
+    const result = await observe(pageId, request);
+    const member = h.repo.listMembers(set.setId)[0]!;
+    h.sets.updateMember({ ...member, pageId: "replacement-member-page" });
+    return result;
+  });
+  const { runId } = await h.runs.mapSet({ setId: set.setId, program });
+  await untilTerminal(h.repo, runId);
+  expect(h.state.executed).toBe(0);
+  expect(h.repo.listMembers(set.setId)[0]?.error).toMatch(/approved source changed/);
+  expect(h.turnMentions.has(runId)).toBe(false);
 });

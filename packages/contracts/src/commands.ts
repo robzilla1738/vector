@@ -15,6 +15,17 @@ const B = (key: string, options: Omit<ShortcutBinding, "key"> = {}): ShortcutBin
 const Numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export const COMMANDS = [
+  { id: "set-site-agent-access", label: "Change site agent access", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "delete-site-agent-rule", label: "Remove site agent access rule", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "revoke-site-agent-grant", label: "Revoke site agent grant", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "approve-agent-action", label: "Allow agent action once", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "allow-agent-action-for-origin", label: "Always allow agent action on this site", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "deny-agent-action", label: "Deny agent action", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "take-over-agent-action", label: "Take over agent action", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "set-agent-effect-grants", label: "Change agent effect grants", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "mention-insert", label: "Mention source", section: "Agent", handler: "shell", feature: "tabMentions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "mention-remove", label: "Remove source mention", section: "Agent", handler: "shell", feature: "tabMentions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+
   { id: "command-tabs", label: "Search open tabs", section: "Application", handler: "shell", focusShell: true, bindings: [] },
   { id: "command-observe", label: "Inspect what the agent sees", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },
   { id: "command-inline-assist", label: "Assist writing in this field…", section: "Application", handler: "shell", windows: ["normal"], focusShell: true, bindings: [] },

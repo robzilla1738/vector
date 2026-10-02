@@ -18,6 +18,13 @@ import { useStore } from "./store";
 };
 Element.prototype.scrollIntoView ??= () => {};
 
+async function enterQuery(input: HTMLInputElement, value: string) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
 const host = document.createElement("div");
 document.body.append(host);
 let root: ReturnType<typeof createRoot>;
@@ -25,6 +32,74 @@ afterEach(async () => {
   await act(async () => root.unmount());
   vi.restoreAllMocks();
   host.replaceChildren();
+});
+
+it("requires the current native reply when a query returns to an earlier value", async () => {
+  useStore.setState({
+    pages: [],
+    activePageId: null,
+    bookmarks: [],
+    closedTabs: [],
+    runs: [],
+    programs: [],
+    settings: {},
+  } as never);
+  const replies: Array<(rows: Awaited<ReturnType<typeof bridge.autocomplete>>) => void> = [];
+  vi.spyOn(bridge, "autocomplete").mockImplementation(() => new Promise((resolve) => replies.push(resolve)));
+  vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+  root = createRoot(host);
+  await act(async () => root.render(<CommandBar />));
+  const input = host.querySelector<HTMLInputElement>('input[role="combobox"]')!;
+  await act(async () => input.focus());
+  await enterQuery(input, "alpha");
+  await act(async () =>
+    replies[0]!([{ id: "old", type: "history", title: "Old alpha", url: "https://old.example/" }]),
+  );
+  expect(host.textContent).toContain("Old alpha");
+  const firstGeneration = input.dataset.commandValueGeneration;
+  await enterQuery(input, "beta");
+  await enterQuery(input, "alpha");
+  expect(input.dataset.commandValueGeneration).not.toBe(firstGeneration);
+  expect(host.textContent).not.toContain("Old alpha");
+  expect(host.querySelector('[data-command-result-source="history"]')).toBeNull();
+  await act(async () =>
+    replies[1]!([{ id: "late", type: "history", title: "Late beta", url: "https://late.example/" }]),
+  );
+  expect(host.textContent).not.toContain("Late beta");
+  expect(host.querySelector('[data-command-result-source="history"]')).toBeNull();
+  await act(async () =>
+    replies[2]!([
+      { id: "current", type: "history", title: "Current alpha", url: "https://current.example/" },
+    ]),
+  );
+  const row = host.querySelector<HTMLElement>('[role="option"][data-command-result-source="history"]')!;
+  expect(row.textContent).toContain("Current alpha");
+  expect(row.dataset.commandResultGeneration).toBe(input.dataset.commandValueGeneration);
+  expect(host.querySelector<HTMLElement>('[role="listbox"]')!.dataset.commandResultsGeneration).toBe(
+    input.dataset.commandValueGeneration,
+  );
+});
+
+it("does not mark a failed native search as presented history", async () => {
+  useStore.setState({
+    pages: [],
+    activePageId: null,
+    bookmarks: [],
+    closedTabs: [],
+    runs: [],
+    programs: [],
+    settings: {},
+  } as never);
+  vi.spyOn(bridge, "autocomplete").mockRejectedValue(new Error("History is unavailable"));
+  vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+  root = createRoot(host);
+  await act(async () => root.render(<CommandBar />));
+  const input = host.querySelector<HTMLInputElement>('input[role="combobox"]')!;
+  await act(async () => input.focus());
+  await enterQuery(input, "alpha");
+  expect(host.textContent).toContain("History is unavailable");
+  expect(host.querySelector('[data-command-result-source="history"]')).toBeNull();
+  expect(host.querySelector("[data-command-results-generation]")).toBeNull();
 });
 
 it("preserves Chromium order while a scoped tab survives title-and-host dedup", async () => {

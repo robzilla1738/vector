@@ -1,3 +1,4 @@
+import { fixtureSafetyAuthority, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -91,7 +92,8 @@ beforeAll(() => {
     set: () => ({ ok: true as const }),
   } as unknown as SettingsService;
   const artifacts = new ArtifactStore(dir, repo, events);
-  const runs = new RunService({
+  const turnMentions = fixtureTurnMentions(pageId => pages.get(pageId));
+  const runs = new RunService({ turnMentions,
     repo,
     events,
     pages,
@@ -101,7 +103,7 @@ beforeAll(() => {
     translateSteps: (_p, s) => s,
     nativeAvailable: () => false,
   });
-  const services: Services = {
+  const services: Services = { safetyAuthority: fixtureSafetyAuthority(repo), turnMentions,
     pages,
     sets,
     runs,

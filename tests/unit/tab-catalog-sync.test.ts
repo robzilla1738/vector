@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, expect, it } from "vitest";
 import {
   EventBus,
@@ -69,7 +70,7 @@ function harness(native: NullNativeBridge = new NullNativeBridge()) {
     },
   };
   const drivers: DriverSet = { aux: driver, chrome: null };
-  const pages = new PageService({
+  const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)),
     repo,
     events,
     native,

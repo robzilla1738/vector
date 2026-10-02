@@ -89,14 +89,20 @@ export async function createAxClient(pid, { timeoutMs = 65_000 } = {}) {
     async close() { if (!closed) child.stdin.end(); await exited; },
     query: selector => request('query', { selector }),
     dump: (selector = {}) => request('dump', { selector }),
-    press: selector => request('press', { selector }),
+    async press(selector) {
+      await request('waitFor', { selector, state: 'visible', timeoutMs: 5000 });
+      return request('press', { selector });
+    },
     focus: selector => request('focus', { selector }),
     click: (selector, options = {}) => request('click', { selector, ...options }),
     hover: selector => request('hover', { selector }),
     key: (chord, via = 'pid', phase = 'press') => request('key', { chord, via, phase }),
     measureKey: (chord, selector, expectedName, timeoutMs = 500) => request('measureKey', { chord, selector, expectedName, timeoutMs }),
     measureKeyHidden: (chord, selector, timeoutMs = 500) => request('measureKey', { chord, selector, expectedVisible: false, timeoutMs }),
-    type: (text, selector) => request('type', { text, ...(selector ? { selector } : {}) }),
+    async type(text, selector) {
+      if (selector) await request('waitFor', { selector, state: 'visible', timeoutMs: 5000 });
+      return request('type', { text, ...(selector ? { selector } : {}) });
+    },
     drag: (from, to, options = {}) => request('drag', { from, to, ...options }),
     scroll: (selector, dy, dx = 0) => request('scroll', { selector, dy, dx }),
     menu: path => request('menu', { path }),

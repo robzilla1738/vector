@@ -1,14 +1,18 @@
+import { errToast } from "../../store";
+import { executeCommand } from "../../commands";
+import { useFeature } from "../../use-feature";
+import { SiteRulesTable } from "../../features/trust/SiteRulesTable";
 import { SettingsField, SettingsSection } from "../primitives";
 
 export function AgentsSettings({
   active,
   settings,
-  onSave,
 }: {
   active: boolean;
   settings: Record<string, unknown>;
   onSave: (patch: Record<string, unknown>) => Promise<boolean>;
 }) {
+  const sitePermissions = useFeature("agentSitePermissions");
   const grants = (settings.effectGrants as string[] | undefined) ?? ["effect:read"];
   return (
     <SettingsSection name="Agent permissions" hidden={!active}>
@@ -31,13 +35,14 @@ export function AgentsSettings({
                 aria-pressed={on}
                 className={on ? "on" : ""}
                 disabled={locked}
+                data-command-id="set-agent-effect-grants"
                 onClick={() => {
                   if (locked) return;
                   const next = new Set(grants.filter(grant => grant !== "effect:*"));
                   next.add("effect:read");
                   if (on) next.delete(key);
                   else next.add(key);
-                  void onSave({ effectGrants: [...next] });
+                  void executeCommand("set-agent-effect-grants", { payload: { effectGrants: [...next] } }).catch(errToast);
                 }}
               >
                 {label}
@@ -46,6 +51,7 @@ export function AgentsSettings({
           })}
         </div>
       </SettingsField>
+      {active && sitePermissions && <SiteRulesTable />}
     </SettingsSection>
   );
 }

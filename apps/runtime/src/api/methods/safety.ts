@@ -53,7 +53,12 @@ async function h_safety_grants_list(ctx: MethodCtx): Promise<unknown> {
 async function h_safety_grants_revoke(ctx: MethodCtx): Promise<unknown> {
   const { approvals, client, params } = ctx;
   if (client.external) throw new AuxError("permission_denied", "Safety grants are managed in Aux.");
-  return { revoked: approvals.revoke(params) };
+  const grants = approvals.listGrants(params.profileId).filter(grant =>
+    (!params.scope || grant.scope.kind === params.scope.kind && grant.scope.id === params.scope.id) &&
+    (!params.effect || grant.effect === params.effect) && (!params.grantId || grant.grantId === params.grantId));
+  const revoked = approvals.revoke(params);
+  await ctx.s.safetyAuthority.grants(grants);
+  return { revoked };
 }
 
 export const safetyMethods: Partial<Record<MethodName, MethodHandler>> = {

@@ -59,7 +59,7 @@ export function evaluateOriginPolicy(input: {
 }): OriginPolicyDecision {
   const normalized = exactOrigin(input.url);
   const matching = (rules?: readonly OriginRule[]) => normalized
-    ? rules?.map(rule => OriginRuleSchema.parse(rule)).filter(rule => rule.origin === `${normalized}/`) ?? [] : [];
+    ? rules?.map(rule => OriginRuleSchema.parse(rule)).filter(rule => exactOrigin(rule.origin) === normalized) ?? [] : [];
   const managed = matching(input.managed);
   const user = matching(input.user);
   const accessFor = (rules: readonly OriginRule[]) => rules.reduce<OriginAccess | undefined>(

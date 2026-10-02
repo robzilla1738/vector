@@ -93,6 +93,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       const pageIds = [...new Set([...(pageId ? [pageId] : []), ...(opts.pageIds ?? [])])];
       const run = await call("runs.start", { goal: g, pageIds: pageIds.length ? pageIds : undefined,
         contextPageRefs: opts.contextPageRefs,
+        mentions: opts.mentions,
         contextMemoryIds: opts.memorySource ? [opts.memorySource.memoryId] : undefined,
         maxModelCalls: budget, chatId: opts.chatId,
         defaultWorkspaceId: bridge.privateMode ? undefined : opts.memorySource?.workspaceId ?? before.layout.spaces.find(space => space.id === before.layout.activeSpaceId)?.workspaceId });
@@ -136,7 +137,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     }
   },
 
-  answerRun: async (runId, answer, displayedQuestion, expectedSuspensionId) => {
+  answerRun: async (runId, answer, displayedQuestion, expectedSuspensionId, mentions) => {
     if(get().runAnswerPending[runId])return;
     const prompt = get().prompt;
     const draft = get().runAnswerDrafts[runId];
@@ -150,7 +151,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
           suspension.turnId !== runId || suspension.state !== "pending" ||
           (suspension.kind !== "ask-user-question" && suspension.kind !== "handoff"))
         throw new Error("This request changed. Review the latest question before sending.");
-      await call("runs.answer", { runId, answer, expectedSuspensionId });
+      await call("runs.answer", { runId, answer, expectedSuspensionId, mentions });
       try { clearSubmittedRunAnswer(bridge.privateMode ? null : storage,runId,draft); }
       catch { toast("Your answer was sent, but its saved draft could not be cleared.","error"); }
       set(state=>{

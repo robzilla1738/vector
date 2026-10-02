@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { APICallError, JSONParseError, NoObjectGeneratedError, TypeValidationError } from "ai";
 import { EventBus, openDb, Repo, RunCoordinator } from "@aux/runtime";
@@ -69,9 +70,9 @@ function harness(model: ModelClient) {
     })),
     capture: vi.fn(async () => ({ dataUrl: undefined, width: 0, height: 0, scale: 1 })),
     livePageIds: () => ["p1"],
-    get: () => ({ viewStatus: "visible" }),
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/", 1),  viewStatus: "visible"  }),
   };
-  const coordinator = new RunCoordinator({
+  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
     repo, events, pages: pages as never,
     model: () => model,
     defaultModel: () => "test/planner",

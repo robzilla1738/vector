@@ -24,6 +24,7 @@ export const RuntimeMethodFeatures = {
   "nightShift.summary": "overnightReview",
   "nightShift.list": "overnightReview",
   "nightShift.review": "overnightReview",
+  "agent.tabs.list": "tabMentions",
   "agent.tidy.propose": "aiTidy",
   "agent.tabName.suggest": "aiTabNaming",
   "agent.inlineAssist.capture": "inlineAssist",

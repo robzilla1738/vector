@@ -1,3 +1,4 @@
+import { AuxError, TaskReadProvenanceSchema, type ValidatedTaskRead } from "@aux/contracts";
 /**
  * One effect decision function (S3/D4): every actor's consequential call flows
  * through `decide`, which composes managed policy, user rules, the origin
@@ -19,6 +20,7 @@ import {
   type SafetyAction,
   type Step,
 } from "@aux/contracts";
+import { observedCategory, type ObservedActionTarget } from "./observed-target.js";
 import { classifyStep, grantAllows, isConsequential, parseGrant, resolveGrants, type EffectClass, type GrantInput } from "../agent/permissions.js";
 import { ApprovalStore, type LocalCeiling } from "./approval.js";
 import { confirmationLevelForAction, confirmationTierFor, stricterConfirmation, decideConfirmation } from "./confirmation.js";
@@ -95,7 +97,7 @@ export interface DecideDeps {
 }
 
 export interface DecideContext {
-  standingOnly?: boolean;
+  taskRead?: ValidatedTaskRead;
   phase: "preflight" | "dispatch";
   sessionId?: string;
   approvalId?: string;
@@ -106,6 +108,8 @@ export interface DecideContext {
   untrusted?: readonly UntrustedOutput[];
   /** No UI is attached: any `ask` collapses to a deny-with-refusal. */
   headless?: boolean;
+  /** Actual Night Shift producer: confirmation may use durable category grants only. */
+  standingOnly?: boolean;
   /** The program came from a trusted source (runtime-authored). Only this
    * unlocks `evaluate` — model and MCP callers can never reach page JS. */
   trustedEval?: boolean;
@@ -146,9 +150,10 @@ export function effectRequestForStep(input: {
   runId?: string;
   actor?: EffectRequest["actor"];
   digest: string;
+  observedTarget?: ObservedActionTarget;
   at?: number;
 }): EffectRequest {
-  const category = categoryForOp(input.step.op);
+  const category = input.observedTarget ? observedCategory(input.step, input.observedTarget) ?? categoryForOp(input.step.op) : categoryForOp(input.step.op);
   const dataClasses: EffectRequest["dataClasses"] = [];
   if (sensitiveStep(input.step)) dataClasses.push("sensitive");
   if (input.step.op === "fillCredential") dataClasses.push("credential");
@@ -156,7 +161,7 @@ export function effectRequestForStep(input: {
   return EffectRequestSchema.parse({
     profileId: input.profileId, scope: input.scope,
     actor: input.actor ?? "builtin_agent",
-    effect: input.step.op === "fillCredential" ? "credential" : classifyStep(input.step.op),
+    effect: input.step.op === "fillCredential" || category === "credential" ? "credential" : classifyStep(input.step.op),
     category, action: input.step.op,
     origin: input.origin,
     dataClasses, provenance: "page",
@@ -166,7 +171,7 @@ export function effectRequestForStep(input: {
   });
 }
 
-function actionFor(request: EffectRequest, normalizedOrigin?: string): SafetyAction {
+export function actionFor(request: EffectRequest, normalizedOrigin?: string): SafetyAction {
   return SafetyActionSchema.parse({
     profileId: request.profileId, scope: request.scope, effect: request.effect,
     action: request.action, category: request.category, invocationDigest: request.invocationDigest,
@@ -244,6 +249,15 @@ export async function decide(request: EffectRequest, deps: DecideDeps, context: 
       approvalOnly, standingOnly: context.standingOnly,
       sessionId: context.sessionId, approvalId: suppliedApprovalId, consume, now: at,
     });
+    if (result.status === "ask" && context.taskRead && parsed.effect === "read" && parsed.category === "read" &&
+        action.confirmation === "none" && !requiresApproval && !approvalOnly && policy.access === "allow" &&
+        deps.localCeiling(action) !== "never") {
+      const source = TaskReadProvenanceSchema.parse(context.taskRead.provenance);
+      if (action.scope.kind !== "task" || action.scope.id !== source.taskId)
+        throw new AuxError("permission_denied", "The read action belongs to another task source.");
+      context.taskRead.check();
+      return { status: "authorized" as const, provenance: source };
+    }
     // Session-level effect grants are standing consent: they authorize only
     // what ApprovalStore could not, and never substitute for action-time
     // confirmation (approvalOnly stays exclusive to review artifacts).

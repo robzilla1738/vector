@@ -3,6 +3,7 @@ export * from "./environment.js";
 export * from "./errors.js";
 export * from "./refusals.js";
 export * from "./safety.js";
+export * from "./safety-vocabulary.js";
 export * from "./egress.js";
 export * from "./webmcp.js";
 export * from "./aux-features.js";

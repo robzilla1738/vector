@@ -51,6 +51,10 @@ export class ProgramExecutor {
    */
   async execute(program: Program, ctx: ExecContext = {}, opts: { returnObservation?: ObserveReq } = {}): Promise<ExecuteResult> {
     const pageId = program.pageId;
+    ctx.sourcePageCheck?.();
+    const sourceRun = ctx.runId ? this.pages.deps.repo.getRun(ctx.runId) : undefined;
+    const restrictMentions = !!ctx.runId && ((sourceRun?.config?.implementation !== "external-agent" && !ctx.sourcePageCheck) || !!sourceRun?.config?.mentions?.length || this.pages.deps.turnMentions.ownedPages(ctx.runId).includes(pageId));
+    const mentionTurn = restrictMentions ? this.pages.deps.turnMentions.capture(ctx.runId!) : undefined;
     return this.lanes.withKeys(program.conflicts, () =>
       this.lanes.enqueue(pageId, async () => {
       const lp = this.pages.live.get(pageId);
@@ -77,6 +81,10 @@ export class ProgramExecutor {
       if (ctx.runId && allSteps.some(step => classifyStep(step.op) !== "read"))
         await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
       const authorize = async (step: Step, projectedOrigin?: string, phase: "preflight" | "dispatch" = "dispatch") => {
+        ctx.taskRead?.check();
+        ctx.sourcePageCheck?.();
+        const access = classifyStep(step.op) === "read" ? "read" : "act";
+        if (mentionTurn && ctx.runId) await this.pages.deps.turnMentions.assert(ctx.runId, pageId, access, mentionTurn);
         const documentEpoch = lp.target.documentEpoch;
         const topOrigin = liveOrigin();
         const targets = ["target" in step && typeof step.target === "string" ? step.target : undefined,
@@ -91,15 +99,23 @@ export class ProgramExecutor {
         for (const actionOrigin of origins) {
           const auth = authorizeProgram([step], grants, actionOrigin);
           if (!auth.ok) throw new AuxError("permission_denied", auth.denied);
-          if (this.pages.deps.safetyGate && classifyStep(step.op) !== "read") {
+          if (this.pages.deps.safetyGate && (ctx.runId || classifyStep(step.op) !== "read")) {
             const destination = step.op === "navigate"
               ? (() => { try { return new URL(step.url, lp.driver!.url()).origin; } catch { return ""; } })()
               : actionOrigin;
             const metadata = ctx.safety?.steps?.[step.id];
+            const observedTarget = targets.length === 1 && lp.driver!.actionTarget
+              ? await lp.driver!.actionTarget(targets[0]!) : undefined;
+            if (lp.target.documentEpoch !== documentEpoch || liveOrigin() !== topOrigin)
+              throw new AuxError("ref_stale", "The document changed while reading the action target.");
             const taskId = ctx.taskId ?? run?.config?.taskId;
             const provenance = await this.pages.deps.safetyGate.check({
               step, origin: destination, phase,
               context: {
+                taskRead: ctx.taskRead,
+                pageId,
+                observedTarget,
+                actor: run?.config?.implementation === "external-agent" ? "external_token" : "builtin_agent",
                 profileId: this.pages.deps.profileId ?? "default",
                 scope: taskId ? { kind: "task", id: taskId } : { kind: "workspace", id: run?.config?.contextWorkspaceId ?? "default" },
                 ...(ctx.runId ? { runId: ctx.runId } : {}),
@@ -130,6 +146,9 @@ export class ProgramExecutor {
               throw new AuxError("ref_stale", "The target frame changed while authorizing this action. Observe it again.");
           }
         }
+        if (mentionTurn && ctx.runId) await this.pages.deps.turnMentions.assert(ctx.runId, pageId, access, mentionTurn);
+        ctx.taskRead?.check();
+        ctx.sourcePageCheck?.();
         return authorized;
       };
       // Fail fast while the current document is knowable. A write can navigate
@@ -244,6 +263,20 @@ export class ProgramExecutor {
             ctx.checkValid?.();
           },
           authorizeStep: step => authorize(step),
+          navigate: ctx.runId ? async (url, timeoutMs) => {
+            const driver = lp.driver;
+            const sessionId = lp.target.sessionId;
+            if (!driver?.navigateWithReceipt || !sessionId) throw new AuxError("capability_unsupported", "This attachment cannot produce a navigation receipt.");
+            const commanded = async () => {
+              const receipt = await driver.navigateWithReceipt!(url, timeoutMs);
+              if (this.pages.live.get(pageId) !== lp || lp.driver !== driver || lp.target.sessionId !== sessionId || lp.target.documentEpoch !== receipt.documentEpoch || lp.target.url !== receipt.url)
+                throw new AuxError("ref_stale", "The navigation receipt belongs to a replaced attachment.");
+              return { result: undefined, page: { pageId, url: receipt.url, documentEpoch: receipt.documentEpoch, sessionId } };
+            };
+            // Existing task-source access has no mention snapshot to advance.
+            if (mentionTurn) await this.pages.deps.turnMentions.navigateUse(ctx.runId!, pageId, commanded);
+            else await commanded();
+          } : ctx.navigate,
           checkpoint: ctx.checkpoint ?? ((name, env) => this.pages.deps.repo.saveCheckpoint(pageId, name, env)),
           loadCheckpoint: ctx.loadCheckpoint ?? ((name) => this.pages.deps.repo.loadCheckpoint(pageId, name)),
           onArtifact: ctx.onArtifact ?? ((label, buffer, mediaType) =>

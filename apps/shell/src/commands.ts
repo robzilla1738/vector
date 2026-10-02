@@ -77,6 +77,17 @@ function bookmarkAll(st: StoreState) {
   );
 }
 export const COMMAND_ACTIONS = {
+  "set-site-agent-access": (st, context) => featureCommand("set-site-agent-access", st, context),
+  "delete-site-agent-rule": (st, context) => featureCommand("delete-site-agent-rule", st, context),
+  "revoke-site-agent-grant": (st, context) => featureCommand("revoke-site-agent-grant", st, context),
+  "approve-agent-action": (st, context) => featureCommand("approve-agent-action", st, context),
+  "allow-agent-action-for-origin": (st, context) => featureCommand("allow-agent-action-for-origin", st, context),
+  "deny-agent-action": (st, context) => featureCommand("deny-agent-action", st, context),
+  "take-over-agent-action": (st, context) => featureCommand("take-over-agent-action", st, context),
+  "set-agent-effect-grants": (st, context) => featureCommand("set-agent-effect-grants", st, context),
+  "mention-insert": (st, context) => featureCommand("mention-insert", st, context),
+  "mention-remove": (st, context) => featureCommand("mention-remove", st, context),
+
   ...COMMAND_SURFACE_ACTIONS,
   "command-switch-space": (st, context) => {
     const spaceId = context.payload && "spaceId" in context.payload ? context.payload.spaceId : undefined;

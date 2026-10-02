@@ -20,6 +20,8 @@ async function setting(t, label, key, value) {
   const search = shell('Search settings', 'AXTextField');
   await t.ax.waitFor(search, 'visible');
   await t.ax.type(label, search);
+  const result = { name: `^Appearance ${label}(?: |$)`, role: 'AXButton', match: 'regex', scope: 'shell', index: 0 };
+  await t.ax.press(result);
   const control = shell(label, 'AXCheckBox');
   await t.ax.waitFor(control, 'visible');
   if ((await t.rpc('settings.get'))[key] !== value) await t.ax.press(control);

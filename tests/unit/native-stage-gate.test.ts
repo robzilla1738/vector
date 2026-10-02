@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, expect, it } from "vitest";
 import { EventBus, NullNativeBridge, PageService, Repo, openDb, type NativeBridge } from "@aux/runtime";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
@@ -31,7 +32,7 @@ describe("native interactive stage", () => {
       }),
     } as unknown as BrowserDriver;
     const repo = new Repo(openDb(":memory:"));
-    const pages = new PageService({
+    const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)),
       repo, events: new EventBus(repo), native,
       grants: ["effect:read", "effect:write"],
       drivers: () => ({ aux: driver, chrome: null }),

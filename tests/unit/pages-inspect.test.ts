@@ -1,3 +1,4 @@
+import { fixtureSafetyAuthority, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 /**
  * H2-C7: pages.extract / waitFor / console / dialog / network are real RPCs.
  */
@@ -120,7 +121,8 @@ function harness(grants: string[] = ["effect:read"]) {
   const chromium = fakeChromium();
   const drivers: DriverSet = { aux: chromium.driver, chrome: null };
   const responses = new ResponseStore({ repo, events, flushDelayMs: 0 });
-  const pages = new PageService({
+  const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
+  const pages = new PageService({ turnMentions: pagesTurnMentions,
     repo,
     events,
     native: new NullNativeBridge(),
@@ -128,7 +130,7 @@ function harness(grants: string[] = ["effect:read"]) {
     responses,
     grants,
   });
-  return { pages, repo, events, responses, chromium };
+  return { pages, repo, events, responses, chromium, turnMentions: pagesTurnMentions };
 }
 
 describe("H2-C7 pages inspect RPCs", () => {
@@ -200,9 +202,9 @@ describe("H2-C7 pages inspect RPCs", () => {
   });
 
   it("MethodSchemas dispatch through makeInvoker", async () => {
-    const { pages, repo, events, responses } = harness();
+    const { pages, repo, events, responses, turnMentions } = harness();
     const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: true });
-    const invoke = makeInvoker({
+    const invoke = makeInvoker({ safetyAuthority: fixtureSafetyAuthority(repo), turnMentions,
       pages,
       sets: { create: async () => ({}), get: () => ({}), list: () => [], results: () => [] } as unknown as SetService,
       runs: {

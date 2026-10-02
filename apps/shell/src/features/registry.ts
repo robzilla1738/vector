@@ -31,9 +31,16 @@ export interface CommandInvocation {
     | { revision: number; linkRoutes: import("@aux/contracts").LinkRoutes }
     | { url: string; source: import("@aux/contracts").HostMethodArgs<"testLinkRoute">[1] }
     | { promptId: string; destination: import("@aux/contracts").LinkRouteDestination; remember: boolean }
+    | { origin: string; effect: import("@aux/contracts").Effect; access: import("@aux/contracts").OriginAccess; expectedRevision: number }
+    | { origin: string; expectedRevision: number } | { grantId: string; profileId: string }
+    | { approvalId: string; turnId: string } | { pageId: string; turnId: string }
+    | { turnId: string } | { effectGrants: string[] }
+    | { composerId: string; candidateId: string } | { composerId: string; tokenStart: number }
     | { enabled: boolean };
 }
 export interface ComposerPluginProps {
+  composerId: string;
+  workspaceId?: string;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   value: string;
   onChange: (value: string) => void;

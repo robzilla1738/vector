@@ -1,3 +1,7 @@
+import { SafetyDispatchGate } from "../../apps/runtime/src/safety/dispatch.js";
+import { ApprovalStore } from "../../apps/runtime/src/safety/approval.js";
+import { DecisionJournal } from "../../apps/runtime/src/safety/decide.js";
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { AgentConnectionService, EventBus, ExternalSessionService, makeInvoker, NullNativeBridge, openDb, PageService, Repo, TaskService, type Services } from "@aux/runtime";
 import type { BrowserDriver, DriverPage, DriverPageEvents } from "@aux/chromium-driver";
@@ -48,8 +52,9 @@ function pageFixture(extra: {
   } as unknown as DriverPage;
   const driver = { backend: "aux", isConnected: () => true, attach: async () => driverPage } as unknown as BrowserDriver;
   const record = vi.fn();
-  const pages = new PageService({ repo, events, native, drivers: () => ({ aux: driver, chrome: null }), recordAgentObservation: record, ...extra });
-  return { pages, trace, record, observe, dispose, nativeClose, native, driverPage };
+  const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
+  const pages = new PageService({ turnMentions: pagesTurnMentions, repo, events, native, drivers: () => ({ aux: driver, chrome: null }), recordAgentObservation: record, ...extra });
+  return { pages, turnMentions: pagesTurnMentions, trace, record, observe, dispose, nativeClose, native, driverPage };
 }
 
 it("claims the actual blank document before first navigation and records even cached observations", async () => {
@@ -91,14 +96,20 @@ function scopedDispatch() {
   const connection = agentConnections.create({ name: "Fixture", client: "codex",
     scope: { kind: "task", workspaceId: workspace.workspaceId, taskId: task.taskId },
   }).connection;
-  const externalSessions = new ExternalSessionService(repo, events);
+  const turnMentions = fixtureTurnMentions((pageId: string) => repo.getPage(pageId));
+  const externalSessions = new ExternalSessionService(repo, events, turnMentions);
+  const pages = new PageService({ repo, events, turnMentions, native: new NullNativeBridge(),
+    drivers: () => ({ aux: null, chrome: null }),
+    safetyGate: new SafetyDispatchGate({ approvals: new ApprovalStore(repo.db), journal: new DecisionJournal(repo.db), managedRules: () => [], userRules: () => [], localCeiling: () => "ask", settingsGrants: () => [], audit: () => {} }),
+  });
+  repo.upsertPage(fixturePage("p1", "https://fixture.test/", 1));
+  pages.execute = async () => { trace.push("dispatch"); throw new Error("driver failed"); };
   const pageOwnership = new PageOwnership();
   const trace: string[] = [];
   let boundRun: string | undefined;
   const revoke = vi.fn(() => { expect(pageOwnership.snapshot().p1).toBeDefined(); trace.push("revoke"); });
   const invoke = makeInvoker({ repo, events, agentConnections, externalSessions,
-    pages: { get: () => ({ controller: "none" }), list: () => [],
-      execute: async () => { trace.push("dispatch"); throw new Error("driver failed"); } },
+    turnMentions, pages,
     runs: { pageOwnership, acquireBrowserEgress: async (runId: string) => {
       boundRun = runId;
       expect(pageOwnership.snapshot().p1).toMatchObject({ runId });
@@ -141,6 +152,7 @@ it("installs transmission protection for a write program and not for a read", as
   });
   const page = await f.pages.open({ url: "https://source.test/read", background: true, ownedByRuntime: true });
   (f.driverPage.identity as { pageId: string }).pageId = page.pageId;
+  for (const runId of ["run-read", "run-write"]) await f.turnMentions.begin(runId, [{ kind: "tab", pageId: page.pageId, title: page.title, url: page.url, documentEpoch: page.documentEpoch, sessionId: page.sessionId!, access: "act" }], []);
   await f.pages.execute({
     pageId: page.pageId,
     steps: [{ id: "wait", op: "waitFor", condition: { kind: "selector", selector: "#x", state: "visible" } }],

@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { isScrimOverlay } from "../chrome";
-import { call, useStore } from "../store";
+import { executeCommand } from "../commands";
+import type { TrustConfirmation } from "../features/trust/confirmation";
+import { useStore } from "../store";
 import { bridge } from "../bridge";
 import { Dialog } from "../ui";
 
 /** The person confirms a page action. Allow decides the approval once. */
 export function ActionConfirmation() {
   const confirmation = useStore(s => s.confirmation);
-  return confirmation ? <Confirm key={confirmation.approvalId} confirmation={confirmation} /> : null;
+  return confirmation ? <Confirm key={`${confirmation.turnId}:${confirmation.approvalId ?? confirmation.pageId}`} confirmation={confirmation} /> : null;
 }
 
-function Confirm({ confirmation }: { confirmation: NonNullable<ReturnType<typeof useStore.getState>["confirmation"]> }) {
+function Confirm({ confirmation }: { confirmation: TrustConfirmation }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const decline = useRef<HTMLButtonElement>(null);
@@ -25,20 +27,23 @@ function Confirm({ confirmation }: { confirmation: NonNullable<ReturnType<typeof
       void bridge.overlay(isScrimOverlay(useStore.getState().overlay));
     };
   }, []);
-  async function decide(accept: boolean) {
+  async function decide(decision: "accept" | "acceptForOrigin" | "decline" | "takeover") {
     if (deciding.current) return;
     deciding.current = true;
     setBusy(true);
     setError("");
     try {
-      await call("safety.approvals.decide", {
-        decision: accept
-          ? { decision: "accept", approvalId: confirmation.approvalId }
-          : { decision: "decline", approvalId: confirmation.approvalId },
-        expectedTurnId: confirmation.turnId,
-      });
-      if (useStore.getState().confirmation?.approvalId === confirmation.approvalId) {
-        useStore.setState({ confirmation: null });
+      if (decision === "takeover") {
+        if (!confirmation.pageId) throw new Error("The requested page is unavailable.");
+        await executeCommand("take-over-agent-action", { payload: { pageId: confirmation.pageId, turnId: confirmation.turnId } });
+      } else {
+        if (!confirmation.approvalId) {
+          if (decision !== "decline") throw new Error("This action requires you to take over.");
+          await executeCommand("deny-agent-action", { payload: { turnId: confirmation.turnId } });
+          return;
+        }
+        await executeCommand(decision === "accept" ? "approve-agent-action" : decision === "acceptForOrigin" ? "allow-agent-action-for-origin" : "deny-agent-action",
+          { payload: { approvalId: confirmation.approvalId, turnId: confirmation.turnId } });
       }
     } catch (reason) {
       deciding.current = false;
@@ -47,18 +52,21 @@ function Confirm({ confirmation }: { confirmation: NonNullable<ReturnType<typeof
     }
   }
   const site = confirmation.origin.replace(/^https?:\/\//, "");
+  const handoff = confirmation.confirmation === "handoff";
+  const preapprovable = confirmation.confirmation === "preapprovable" && ["login", "upload", "permission"].includes(confirmation.category);
   return (
-    <Dialog label="Allow this action" onClose={() => void decide(false)} initialFocusRef={decline} className="aux-dialog-surface http-auth-prompt">
+    <Dialog label={handoff ? "Take over this action" : "Allow this action"} onClose={() => void decide("decline")} initialFocusRef={decline} className="aux-dialog-surface http-auth-prompt">
       <form
-        onSubmit={event => { event.preventDefault(); void decide(true); }}
-        onKeyDown={event => event.stopPropagation()}>
-        <h3 id="action-confirm-title">Allow this action</h3>
+        onSubmit={event => { event.preventDefault(); void decide(handoff ? "takeover" : "accept"); }}>
+        <h3 id="action-confirm-title">{handoff ? "Take over this action" : "Allow this action"}</h3>
         <p>{confirmation.instruction}</p>
         {site && <p className="hint">{site}</p>}
         {error && <p role="alert">{error}</p>}
         <div className="sheet-acts">
-          <button ref={decline} type="button" className="btn" disabled={busy} onClick={() => void decide(false)}>Don't allow</button>
-          <button type="submit" className="btn primary" disabled={busy} aria-label="Allow" onClick={() => void decide(true)}>Allow</button>
+          <button ref={decline} type="button" className="btn" disabled={busy} data-command-id="deny-agent-action" onClick={() => void decide("decline")}>{handoff ? "Close" : "Deny"}</button>
+          {preapprovable && <button type="button" className="btn" disabled={busy} data-command-id="allow-agent-action-for-origin" onClick={() => void decide("acceptForOrigin")}>Always allow on {site.replace(/\/$/, "")}</button>}
+          <button type="submit" className="btn primary" disabled={busy || (handoff && !confirmation.pageId)}
+            data-command-id={handoff ? "take-over-agent-action" : "approve-agent-action"} aria-label={handoff ? "Take over" : "Allow once"}>{handoff ? "Take over" : "Allow once"}</button>
         </div>
       </form>
     </Dialog>

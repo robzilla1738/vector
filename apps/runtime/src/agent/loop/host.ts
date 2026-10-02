@@ -1,4 +1,5 @@
-import { AuxError, type Observation, type Run, type StepOutcome } from "@aux/contracts";
+import { MentionUnavailable } from "../turn-mentions.js";
+import { ObservationScopeSchema, AuxError, type Observation, type Run, type StepOutcome } from "@aux/contracts";
 import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve, sep } from "node:path";
 import type { CoordinatorLoopHost } from "../coordinator-verify.js";
@@ -114,7 +115,13 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
   const transcript = new TranscriptStore(self.deps.repo.db);
   const threadId = run.config?.chatId ?? runId;
   const goalRun = !!self.deps.repo.db.prepare("SELECT 1 FROM goals WHERE run_id=?").get(runId);
-  if (!transcript.count(runId)) transcript.append(runId, [taskMessage(run,
+  const initialTranscript = !transcript.count(runId);
+  let skillTurn = self.deps.turnMentions.capture(runId);
+  const mentionedSkills = self.deps.turnMentions.skills(runId);
+  if (mentionedSkills.length) transcript.append(runId, [{ role: "user", content:
+    "Current person-mentioned skills (turn lifetime only; no site, plugin or connector permission is implied):\n" +
+    mentionedSkills.map(skill => JSON.stringify({ routineId: skill.routineId, revision: skill.revision, title: skill.title, objective: skill.objective, description: skill.description })).join("\n") }]);
+  if (initialTranscript) transcript.append(runId, [taskMessage(run,
     run.config?.contextWorkspaceId ? self.deps.agentLoop?.workspaceContext?.(run.config.contextWorkspaceId) : "")]);
 
   let activePageId = run.pageIds[0];
@@ -151,25 +158,9 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     && obs.content.elements.some((element) => !element.occluded && element.role === "button"
       && /^(close|dismiss|cancel|done)$/i.test((element.name ?? "").trim()));
 
-  /** observe with the same detached-target fallback the planner loop uses. */
-  const observePage = async (pageId: string, req: { scope?: import("@aux/contracts").ObservationScope; subtreeRef?: string }): Promise<Observation> => {
-    try {
-      return await self.deps.pages.observe(pageId, req);
-    } catch (error) {
-      if (error instanceof AuxError && error.code === "target_detached") {
-        const next = run.pageIds.find((candidate) => {
-          if (candidate === pageId || !self.deps.pages.livePageIds().includes(candidate)) return false;
-          const status = self.deps.pages.get(candidate).viewStatus;
-          return status !== "detached" && status !== "crashed";
-        });
-        if (!next) throw error;
-        activePageId = next;
-        self.setStatus(runId, "running", `Page detached — moved to ${next}`);
-        return await self.deps.pages.observe(next, req);
-      }
-      throw error;
-    }
-  };
+  /** Never substitute a different tab when an explicitly targeted attachment is unavailable. */
+  const observePage = (pageId: string, req: { scope?: import("@aux/contracts").ObservationScope; subtreeRef?: string }): Promise<Observation> =>
+    self.usePage(runId, pageId, "read", () => self.deps.pages.observe(pageId, req));
 
   /** Snapshot bookkeeping — every rendered observation gets a durable, citable handle. */
   const recordObs = (obs: Observation) => {
@@ -203,6 +194,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       return recordObs(obs);
     },
     act: async ({ pageId, steps }): Promise<LoopToolResult> => {
+      await self.assertPage(runId, pageId, "act");
       const obs = lastObs.get(pageId) ?? (lastObs.set(pageId, await observePage(pageId, {})), lastObs.get(pageId)!);
       const safeObs = redactObservation(obs);
       // Selecting an unchecked native radio/checkbox is a state-setting
@@ -254,7 +246,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
           taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
           isCurrent: () => !steerPending() && !signal.aborted,
           exec: {
-            runId, taskId: run.config?.taskId, signal,
+            runId, taskId: run.config?.taskId, signal, sourcePageCheck: self.pageSourceCheck(runId, pageId),
             onStep: (outcome, step) => {
               outcomes.push(outcome);
               writeDispatches.set(outcome.stepId, { pageId, revision: obs.revision });
@@ -598,7 +590,9 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     runId,
     signal,
     outputDir: self.deps.agentLoop?.repl?.outputDir,
-    tabs: async () => [...new Set([...run.pageIds, ...openedTabs.keys()])].map(replTab),
+    tabs: async () => run.config?.mentions?.length
+      ? self.deps.turnMentions.list(runId, self.deps.pages.list({}))
+      : [...new Set([...self.get(runId).pageIds, ...self.ownedPages(runId)])].map(replTab),
     openTab: async (url) => {
       const destination = permittedWebUrl(url).href;
       const gate = self.deps.agentLoop?.repl?.openTab;
@@ -615,6 +609,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
             claimedPageId = target.pageId;
           },
         });
+        self.ownPage(runId, target.pageId);
         recordRunTabChange(self.deps.repo, runId, target, "tab.open");
         return { output: replTab(target.pageId) };
       } catch (error) {
@@ -625,6 +620,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     closeTab: async (pageId) => {
       const release = openedTabs.get(pageId);
       if (!release) throw new AuxError("permission_denied", "closeTab only closes tabs this run opened.");
+      await self.assertPage(runId, pageId, "act");
       const target = self.deps.pages.get(pageId);
       const closed = await self.deps.pages.close(pageId);
       recordRunTabChange(self.deps.repo, runId, target, "tab.close", closed.ok ? "ok" : "failed");
@@ -633,22 +629,25 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       release();
     },
     bookmark: async (pageId) => {
-      if (!run.pageIds.includes(pageId) && !openedTabs.has(pageId))
-        throw new AuxError("permission_denied", "Bookmarking requires a tab claimed by this run.");
+      await self.assertPage(runId, pageId, "act");
       const gate = self.deps.agentLoop?.repl?.bookmark;
       if (!gate) throw new AuxError("capability_unsupported", "Bookmarking is unavailable in this browser.");
       return gate(pageId, { runId, threadId, turnId: runId });
     },
     useTab: async (pageId) => {
-      if (!run.pageIds.includes(pageId) && !openedTabs.has(pageId))
-        throw new AuxError("permission_denied", "The REPL can only use tabs the run claims or opened.");
+      await self.assertPage(runId, pageId, "read");
       return replTab(pageId);
     },
-    observe: async (pageId, scope) =>
-      deps.observe!({ pageId, scope: scope as import("@aux/contracts").ObservationScope | undefined }),
+    observe: async (pageId, scope) => {
+      let observed: Observation;
+      try { observed = await self.usePage(runId, pageId, "read", () => self.deps.pages.observe(pageId, {
+        scope: scope === undefined ? undefined : ObservationScopeSchema.parse(scope),
+      })); }
+      catch (error) { if (error instanceof MentionUnavailable) return error.unavailable; throw error; }
+      return recordObs(observed);
+    },
     findRef: async (pageId, name, role) => {
-      if (!run.pageIds.includes(pageId) && !openedTabs.has(pageId))
-        throw new AuxError("permission_denied", "Named control lookup requires a tab claimed by this run.");
+      await self.assertPage(runId, pageId, "read");
       const wanted = name.trim().toLocaleLowerCase();
       if (!wanted) throw new AuxError("invalid_params", "A control name is required.");
       const observation = await observePage(pageId, {});
@@ -677,8 +676,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       return { ref: target.ref };
     },
     findRoute: async (pageId, targetId) => {
-      if (!run.pageIds.includes(pageId) && !openedTabs.has(pageId))
-        throw new AuxError("permission_denied", "Route matching requires a tab claimed by this run.");
+      await self.assertPage(runId, pageId, "read");
       const obs = lastObs.get(pageId) ?? await observePage(pageId, {});
       const hrefs = [...obs.content.elements.flatMap((element) => element.href ? [element.href] : []),
         ...obs.content.links.map((link) => link.href)];
@@ -687,7 +685,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       return { url };
     },
     capture: async (pageId) => {
-      const shot = await self.deps.pages.capture(pageId);
+      const shot = await self.usePage(runId, pageId, "read", () => self.deps.pages.capture(pageId));
       const elements = (lastObs.get(pageId)?.content.elements ?? [])
         .filter((el) => el.rect)
         .map((el) => ({ ref: el.ref, name: el.name ?? el.text?.slice(0, 80), rect: el.rect }));
@@ -740,11 +738,13 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       const gate = self.deps.agentLoop?.repl?.webmcp;
       if (!gate) throw new AuxError("capability_unsupported", "WebMCP is not exposed for this page.");
       const request = action && typeof action === "object" ? (action as { op?: string; name?: string; input?: unknown }) : {};
+      await self.assertPage(runId, pageId, request.op === "call" ? "act" : "read");
       const outcome = await gate(
         pageId,
         request.op === "call" ? { op: "call", name: String(request.name ?? ""), input: request.input } : { op: "tools" },
         { runId, threadId, turnId: runId },
       );
+      await self.assertPage(runId, pageId, request.op === "call" ? "act" : "read");
       if (outcome.status === "ask") {
         return {
           park: {
@@ -815,7 +815,16 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       pageExposesWebmcp = false;
     }
   }
-  const makeOpts = (): AgentLoopOptions => ({
+  const makeOpts = (): AgentLoopOptions => {
+      const currentSkillTurn = self.deps.turnMentions.capture(runId);
+      const currentSkills = self.deps.turnMentions.skills(runId);
+      if (currentSkillTurn !== skillTurn) {
+        transcript.append(runId, [{ role: "user", content:
+          "Current person-mentioned skills for this turn supersede all previous mention selections. No site, plugin or connector permission is implied:\n" +
+          JSON.stringify(currentSkills.map(skill => ({ routineId: skill.routineId, revision: skill.revision, title: skill.title, objective: skill.objective, description: skill.description }))) }]);
+        skillTurn = currentSkillTurn;
+      }
+    return ({
     model,
     modelId: modelId(),
     tools: (() => {
@@ -834,6 +843,7 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     maxSteps: Math.max(1, maxModelCalls - modelCalls),
     steerCheck: steerPending,
     beforeModelCall: async request => {
+      self.deps.turnMentions.skills(runId);
       await self.deps.checkBudget?.({ runId });
       if (goalRun && !self.deps.agentLoop?.goalBudget)
         throw new AuxError("capability_unsupported", "Goal funding is unavailable; no model call was sent.");
@@ -885,7 +895,8 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
     },
     providerOptions: self.deps.agentLoop?.providerOptions,
     webmcp: pageExposesWebmcp,
-  });
+    });
+  };
 
   try {
     let resumeAnswer: unknown;
@@ -919,6 +930,12 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
         }
         else {
           const latest = self.get(runId);
+          await self.deps.turnMentions.begin(runId, latest.config?.mentions ?? [], self.ownedPages(runId), {
+            workspaceId: latest.config?.contextWorkspaceId, taskId: latest.config?.taskId, taskRevision: latest.config?.taskRevision,
+          });
+          const selected = await self.refreshPageSelection(runId);
+          activePageId = selected.includes(activePageId ?? "") ? activePageId : selected[0];
+          lastObs.clear();
           applied = latest.config?.messageRevision ?? applied;
           const steers = self.deps.repo.listRunSteers(runId).map(message => message.text);
           const fresh = steers.slice(steerCursor);
@@ -1058,6 +1075,12 @@ export async function runToolLoop(self: CoordinatorLoopHost, runId: string): Pro
       }
       if (outcome.kind === "steered") {
         const latest = self.get(runId);
+        await self.deps.turnMentions.begin(runId, latest.config?.mentions ?? [], self.ownedPages(runId), {
+          workspaceId: latest.config?.contextWorkspaceId, taskId: latest.config?.taskId, taskRevision: latest.config?.taskRevision,
+        });
+        const selected = await self.refreshPageSelection(runId);
+        activePageId = selected.includes(activePageId ?? "") ? activePageId : selected[0];
+        lastObs.clear();
         applied = latest.config?.messageRevision ?? applied;
         const steers = self.deps.repo.listRunSteers(runId).map((message) => message.text);
         const fresh = steers.slice(steerCursor);

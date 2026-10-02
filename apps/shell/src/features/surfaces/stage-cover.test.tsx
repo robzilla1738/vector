@@ -29,6 +29,7 @@ it("keeps selected native split membership through drag and picker covers, resto
   fixture.state = { pages: [page("one"), page("two")], activePageId: "one", mode: "focus", layout, settings: {}, overlay: null, confirmation: null };
   useStore.setState(fixture.state as never, true);
   fixture.visible.mockClear(); fixture.resolve.mockClear();
+  await import("../../components/SplitStage");
   const node = document.createElement("div"); document.body.append(node);
   const root = createRoot(node);
   const render = () => root.render(<Stage />);

@@ -2,7 +2,7 @@ import type { AuxEvent, BrowserSession, BrowserSpace, CompactObservation, Downlo
 import type { SpaceTheme } from "@aux/contracts/spaces";
 import type { StateCreator } from "zustand";
 import type { ClosedTab } from "../closed-tabs";
-import type { PageContextRef } from "@aux/contracts";
+import type { MentionRef, PageContextRef } from "@aux/contracts";
 import type { RunAnswerDraft } from "../run-answer-drafts";
 import type { SidebarMode } from "../sidebar-mode";
 import type { Layout, Pin, SpaceColor } from "../workspace";
@@ -69,7 +69,7 @@ export interface Workspace {
   previewVersion: number;
   prompt: { runId: string; question: string } | null;
   /** A page action waiting for the person at the browser. */
-  confirmation: { approvalId: string; turnId: string; instruction: string; action: string; origin: string } | null;
+  confirmation: import("../features/trust/confirmation").TrustConfirmation | null;
   runAnswerDrafts: Record<string, RunAnswerDraft>;
   setRunAnswerDraft(runId:string,question:string,text:string):void;
   runAnswerPending: Record<string, boolean>;
@@ -136,13 +136,13 @@ export interface Workspace {
   closeTabs(pageIds: string[], options?: { shouldStop?(): boolean; onClosed?(pageId: string, count: number): void }): Promise<boolean>;
   reopenClosedTab(pageId?: string, group?: boolean): Promise<void>;
   /** `ownsDraft`: the caller already cleared its composer and restores it on failure. */
-  startRun(goal: string, opts?: { pageId?: string | null; pageIds?: string[]; contextPageRefs?: PageContextRef[]; memorySource?: { workspaceId: string; memoryId: string }; scope?: "page" | "new"; chatId?: string; presentation?: "rail" | "conversation"; ownsDraft?: boolean }): Promise<Run | null>;
+  startRun(goal: string, opts?: { pageId?: string | null; pageIds?: string[]; contextPageRefs?: PageContextRef[]; mentions?: import("@aux/contracts").MentionRef[]; memorySource?: { workspaceId: string; memoryId: string }; scope?: "page" | "new"; chatId?: string; presentation?: "rail" | "conversation"; ownsDraft?: boolean }): Promise<Run | null>;
   /** Messages shown in the thread while their run is still being created. */
   pendingTurns: { id: string; chatId: string | null; goal: string; createdAt: number }[];
   /** Live answer text streamed by `run.answer.delta`, dropped once the run settles. */
   answerStreams: Record<string, string>;
   retryRun(runId: string, pageId?: string): Promise<Run | null>;
-  answerRun(runId: string, answer: string, displayedQuestion: string, expectedSuspensionId: string): Promise<void>;
+  answerRun(runId: string, answer: string, displayedQuestion: string, expectedSuspensionId: string, mentions?: MentionRef[]): Promise<void>;
   returnControl(pageId: string): Promise<void>;
   loadRun(runId: string): Promise<void>;
 

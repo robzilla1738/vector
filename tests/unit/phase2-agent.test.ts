@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -294,9 +295,9 @@ function harness(model: ModelClient, opts: { text?: string; extracted?: Record<s
     }),
     capture: vi.fn(async () => ({ dataUrl: undefined, width: 0, height: 0, scale: 1 })),
     livePageIds: () => ["p1"],
-    get: () => ({ viewStatus: "visible", documentEpoch: 1, url: "http://x.test/order" }),
+    get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/order", 1),  viewStatus: "visible", documentEpoch: 1, url: "http://x.test/order"  }),
   };
-  const coordinator = new RunCoordinator({
+  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => pages.get(pageId)),
     repo, events, pages: pages as never,
     model: () => model,
     defaultModel: () => "test/planner",

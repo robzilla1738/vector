@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ModelClient, Services } from "@aux/runtime";
 import { EventBus, makeInvoker, openDb, Repo, RunCoordinator, steerMessage } from "@aux/runtime";
@@ -22,8 +23,9 @@ function harness(model: ModelClient, execute = vi.fn(async () => ({ status: "com
   const repo = new Repo(db);
   const events = new EventBus(repo);
   const pageOwnership = new PageOwnership();
-  const coordinator = new RunCoordinator({ repo, events,
-    pages: { observe: vi.fn(async () => observation()), execute, livePageIds: () => ["page"], get: () => ({ viewStatus: "visible" }) } as never,
+  const coordinatorFixturePages1 = { observe: vi.fn(async () => observation()), execute, livePageIds: () => ["page"], get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "https://example.test/", 1),  viewStatus: "visible"  }) };
+    const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages1.get(pageId)), repo, events,
+    pages: coordinatorFixturePages1 as never,
     model: () => model, defaultModel: () => "fixture", recoveryModel: () => undefined, recordModelCall: () => {},
     grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     pageOwnership,

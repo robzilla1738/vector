@@ -1,0 +1,3 @@
+function h(a,d){const r=a.replace(/^\uFEFF/,"");let o=[],t="",i=!1,l=!1,f=0,s=0;const c=()=>{o.push(t),t="",l=!1},u=()=>{c(),s=Math.max(s,o.length),f++,d(o,f),o=[]};for(let n=0;n<r.length;n++){const e=r[n];if(i){e==='"'?r[n+1]==='"'?(t+='"',n++):(i=!1,l=!0):t+=e;continue}if(e===","){c();continue}if(e==="\r"||e===`
+`){u(),e==="\r"&&r[n+1]===`
+`&&n++;continue}if(l)throw new Error("Unexpected text after a quoted field.");if(e==='"'){if(t)throw new Error("Unexpected quote inside a field.");i=!0}else t+=e}if(i)throw new Error("A quoted field is not closed.");return(t||o.length||l)&&u(),{rowCount:f,columnCount:s}}export{h as r};

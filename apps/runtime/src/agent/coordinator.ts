@@ -43,6 +43,8 @@ export interface RunControl {
 }
 
 export interface CoordinatorDeps {
+  taskSource?: (taskId: string) => { revision: number; state: string; sourceOrigin?: string };
+  turnMentions: import("../services/turn-mention-service.js").TurnMentionService;
   repo: Repo;
   events: EventBus;
   pages: PageService;
@@ -94,6 +96,7 @@ export interface CoordinatorDeps {
 export class RunCoordinator {
   controls = new Map<string, RunControl>();
   answers = new Map<string, string>();
+  private createdPages = new Map<string, Set<string>>();
   skills: CompiledSkill[] = [];
   unresolvedByRun = new Map<string, string[]>();
   durable: DurableWriteLedger;
@@ -157,6 +160,7 @@ export class RunCoordinator {
     contextImageArtifactIds?: string[];
     contextMemoryIds?: string[];
     contextPageRefs?: import("@aux/contracts").PageContextRef[];
+    mentions?: import("@aux/contracts").MentionRef[];
     contextWorkspaceId?: string;
     contextWorkspaceRevision?: number;
     contextBrowsingMemory?: boolean;
@@ -210,6 +214,7 @@ export class RunCoordinator {
         contextImageArtifactIds: opts.contextImageArtifactIds,
         contextMemoryIds: opts.contextMemoryIds,
         contextPageRefs: opts.contextPageRefs,
+        mentions: opts.mentions,
         messageRevision: 0,
         messageId: opts.messageId,
         contextWorkspaceId: opts.contextWorkspaceId,
@@ -302,13 +307,90 @@ export class RunCoordinator {
     return this.get(runId);
   }
 
+  async refreshPageSelection(runId: string): Promise<string[]> {
+    const token = this.deps.turnMentions.capture(runId);
+    const run = this.get(runId);
+    this.releasePages(runId);
+    if (run.config?.mentions?.length) run.pageIds = this.deps.turnMentions.selectedPages(runId);
+    else {
+      const steer = this.deps.repo.listRunSteers(runId).at(-1);
+      if (steer) run.pageIds = [...steer.pageIds];
+    }
+    run.config = { ...run.config, isolatedPageSources: undefined };
+    this.deps.repo.saveRun(run);
+    await this.acquirePages(runId);
+    if (!this.deps.turnMentions.has(runId) || this.deps.turnMentions.capture(runId) !== token) {
+      this.releasePages(runId);
+      throw new AuxError("conflict", "This turn changed while acquiring its newly selected pages.");
+    }
+    return [...this.get(runId).pageIds];
+  }
+
+  pageSourceCheck(runId: string, pageId: string): () => void {
+    const before = this.get(runId);
+    const revision = before.config?.messageRevision;
+    const taskId = before.config?.taskId;
+    const taskRevision = before.config?.taskRevision;
+    const source = taskId ? this.deps.taskSource?.(taskId) : undefined;
+    if (taskId && (!source || source.revision !== taskRevision))
+      throw new AuxError("permission_denied", "The saved task source revision is unavailable.");
+    return () => {
+      const run = this.get(runId);
+      const control = this.controls.get(runId);
+      const owner = this.pageOwnership.snapshot()[pageId];
+      if (!control || control.abort.signal.aborted || !owner || owner.actor !== "coordinator" || owner.runId !== runId ||
+        (!run.pageIds.includes(pageId) && !this.ownedPages(runId).includes(pageId)) ||
+        run.config?.messageRevision !== revision || run.config?.taskId !== taskId || run.config?.taskRevision !== taskRevision)
+        throw new AuxError("permission_denied", "This run's approved source or page lease changed.");
+      if (taskId) {
+        const current = this.deps.taskSource?.(taskId);
+        if (!current || current.state !== "open" || current.revision !== taskRevision || current.sourceOrigin !== source?.sourceOrigin)
+          throw new AuxError("permission_denied", "This task's current source approval changed.");
+      }
+    };
+  }
+
+  usePage<T>(runId: string, pageId: string, access: "read" | "act", dispatch: () => Promise<T>): Promise<T> {
+    return this.deps.turnMentions.useSourcePage(runId, pageId, access, this.pageSourceCheck(runId, pageId), dispatch);
+  }
+
+  assertPage(runId: string, pageId: string, access: "read" | "act"): Promise<void> {
+    return this.usePage(runId, pageId, access, async () => undefined);
+  }
+
+  ownedPages(runId: string): string[] {
+    return [...(this.createdPages.get(runId) ?? [])];
+  }
+
+  ownPage(runId: string, pageId: string): void {
+    this.deps.turnMentions.created(runId, pageId);
+    const pages = this.createdPages.get(runId) ?? new Set<string>();
+    pages.add(pageId);
+    this.createdPages.set(runId, pages);
+  }
+
   /** An acknowledged correction revokes the current plan without cancelling the run. */
   steer(runId: string): void {
+    this.deps.turnMentions.end(runId);
     const c = this.controls.get(runId);
     if (!c || c.abort.signal.aborted) return;
     c.interruptPlanning?.();
     c.dispatchAbort?.abort();
     c.answerWaiter?.resolve("");
+  }
+
+  async answerWithMentions(runId: string, answer: string, mentions: readonly import("@aux/contracts").MentionRef[], recheck: () => void): Promise<Run> {
+    const run = this.get(runId);
+    const owned = this.ownedPages(runId);
+    return this.deps.turnMentions.acknowledge(runId, mentions, owned, {
+      workspaceId: run.config?.contextWorkspaceId, taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
+    }, validated => {
+      recheck();
+      const current = this.get(runId);
+      current.config = { ...current.config, mentions: [...validated], messageRevision: (current.config?.messageRevision ?? 0) + 1 };
+      this.deps.repo.saveRun(current);
+      return this.answer(runId, answer);
+    });
   }
 
   answer(runId: string, answer: string): Run {
@@ -354,6 +436,8 @@ export class RunCoordinator {
   }
 
   finish(runId: string, status: Run["status"], result?: Record<string, unknown>, error?: string, message?: string, failure?: Run["failure"]) {
+    this.deps.turnMentions.end(runId);
+    this.createdPages.delete(runId);
     const run = this.get(runId);
     if (run.status === "cancelled") return;
     const unresolved = this.durable.unresolved(runId);
@@ -458,10 +542,19 @@ export class RunCoordinator {
    */
   private async loop(runId: string) {
     try {
+      const run = this.get(runId);
+      await this.deps.turnMentions.begin(runId, run.config?.mentions ?? [], this.ownedPages(runId), {
+        workspaceId: run.config?.contextWorkspaceId, taskId: run.config?.taskId, taskRevision: run.config?.taskRevision,
+      });
+      if (run.config?.mentions?.length) {
+        run.pageIds = this.deps.turnMentions.selectedPages(runId);
+        this.deps.repo.saveRun(run);
+      }
       await this.acquirePages(runId);
       if (this.get(runId).config?.implementation === "agent-loop") await runToolLoop(this, runId);
       else await runCoordinatorLoop(this, runId);
     } finally {
+      this.deps.turnMentions.end(runId);
       this.releasePages(runId);
     }
   }
@@ -481,7 +574,7 @@ export class RunCoordinator {
         if (run.config?.contextWorkspaceId && run.config.instructions)
           this.deps.browserEgress.protect(runId, run.config.instructions, "memory");
       }
-      if (this.deps.browserEgress && !run.config?.isolatedPageSources) {
+      if (this.deps.browserEgress && !run.config?.isolatedPageSources && !(run.config?.mentions?.length)) {
         const sources: NonNullable<NonNullable<Run["config"]>["isolatedPageSources"]> = [];
         for (const sourcePageId of run.pageIds) {
           if (control.abort.signal.aborted) throw new AuxError("cancelled", "Run cancelled before opening its temporary tab.");
@@ -494,6 +587,7 @@ export class RunCoordinator {
             windowId: source.windowId, background: true, ownedByRuntime: true, agentScope,
             beforeNavigate: async target => { releases.push(await this.claimPage(runId, target.pageId, agentScope.source!.expectedUrl)); },
           });
+          this.ownPage(runId, copy.pageId);
           opened.push(copy.pageId);
           sources.push({ sourcePageId, pageId: copy.pageId, url: agentScope.source!.expectedUrl });
         }

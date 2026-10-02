@@ -4,6 +4,8 @@ import {
   newRunId,
   taskConversationId,
   type PageContextRef,
+  MentionRefsSchema,
+  type MentionRef,
   type Run,
   type RunMessage,
 } from "@aux/contracts";
@@ -21,6 +23,7 @@ export type QueueMessageInput = {
   text: string;
   pageIds: string[];
   contextPageRefs: PageContextRef[];
+  mentions?: MentionRef[];
   expectedRevision: number;
   /** This send supersedes an earlier message id — the nonce chain (04-A). */
   resendsMessageId?: string;
@@ -60,6 +63,7 @@ export class RunMessageQueue {
   }
 
   queue(input: QueueMessageInput): RunMessage {
+    const mentions = MentionRefsSchema.parse(input.mentions ?? []);
     const message = this.repo.transaction(() => {
       const previous = this.repo.getRunMessage(input.messageId);
       if (previous) {
@@ -71,7 +75,8 @@ export class RunMessageQueue {
           previous.expectedRevision !== input.expectedRevision ||
           previous.resendsNonce !== input.resendsMessageId ||
           JSON.stringify(previous.pageIds) !== JSON.stringify(input.pageIds) ||
-          JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs)
+          JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs) ||
+          JSON.stringify(previous.mentions ?? []) !== JSON.stringify(mentions)
         ) {
           throw new AuxError("conflict", "This message ID already belongs to another follow-up.");
         }
@@ -139,6 +144,7 @@ export class RunMessageQueue {
         text: input.text,
         pageIds: input.pageIds,
         contextPageRefs: input.contextPageRefs,
+        mentions,
         expectedRevision: input.expectedRevision,
         ...(input.resendsMessageId ? { resendsNonce: input.resendsMessageId } : {}),
         createdAt: at,
@@ -151,6 +157,7 @@ export class RunMessageQueue {
   }
 
   steer(input: QueueMessageInput): RunMessage {
+    const mentions = MentionRefsSchema.parse(input.mentions ?? []);
     const { message, created } = this.repo.transaction(() => {
       const previous = this.repo.getRunMessage(input.messageId);
       if (previous) {
@@ -162,7 +169,8 @@ export class RunMessageQueue {
           previous.expectedRevision !== input.expectedRevision ||
           previous.resendsNonce !== input.resendsMessageId ||
           JSON.stringify(previous.pageIds) !== JSON.stringify(input.pageIds) ||
-          JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs)
+          JSON.stringify(previous.contextPageRefs) !== JSON.stringify(input.contextPageRefs) ||
+          JSON.stringify(previous.mentions ?? []) !== JSON.stringify(mentions)
         ) {
           throw new AuxError("conflict", "This message ID already belongs to another correction.");
         }
@@ -225,12 +233,13 @@ export class RunMessageQueue {
         text: input.text,
         pageIds: input.pageIds,
         contextPageRefs: input.contextPageRefs,
+        mentions,
         expectedRevision: input.expectedRevision,
         ...(input.resendsMessageId ? { resendsNonce: input.resendsMessageId } : {}),
         createdAt: at,
         updatedAt: at,
       });
-      target.config = { ...target.config, messageRevision: input.expectedRevision + 1 };
+      target.config = { ...target.config, messageRevision: input.expectedRevision + 1, mentions };
       this.repo.saveRun(target);
       return { message: inserted, created: true };
     });

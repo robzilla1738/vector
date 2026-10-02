@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -87,7 +88,7 @@ it("cannot report completion while the persistent journal contains an unresolved
   const repo = new Repo(f.db);
   repo.saveRun({ runId: "run", goal: "submit", status: "running", pageIds: ["page"], createdAt: Date.now() });
   f.ledger.begin(action);
-  const coordinator = new RunCoordinator({ repo, events: new EventBus(repo), pages: {} as never,
+  const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => repo.getPage(pageId)), repo, events: new EventBus(repo), pages: {} as never,
     model: () => null, defaultModel: () => "test", recoveryModel: () => undefined, recordModelCall: () => {} });
   coordinator.finish("run", "completed", { sent: true });
   const run = repo.getRun("run")!;

@@ -14,6 +14,8 @@ import { runWebmcp, webmcpTurn } from "../../agent/webmcp.js";
 
 async function h_pages_list(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s, scope, scopedPageIds } = ctx;
+  if (ctx.externalRunId && s.repo.getRun(ctx.externalRunId)?.config?.mentions?.length)
+    throw new AuxError("permission_denied", "Use agent.tabs.list for this turn's title and URL catalog.");
   return scope
     ? s.pages
         .list(params as never)
@@ -153,6 +155,8 @@ async function h_pages_execute(ctx: MethodCtx): Promise<unknown> {
           allowEval: !scope && !client.codeMode,
           taskId: p.taskId,
           taskRevision: p.expectedRevision,
+          taskRead: ctx.taskRead,
+          sourcePageCheck: validateDuringExecution,
           ...(ctx.externalRunId ? { runId: ctx.externalRunId } : {}),
           safety: p.safety,
           beforeJournal: validateBeforeJournal,
@@ -322,10 +326,15 @@ async function h_pages_dialog(ctx: MethodCtx): Promise<unknown> {
 async function h_pages_network(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;
   const p = params as { pageId: string; since?: number; urlIncludes?: string; limit?: number };
-  if (s.pages.network) return s.pages.network(p.pageId, p);
+  if (!ctx.externalRunId && s.pages.network) return s.pages.network(p.pageId, p);
   if (!s.responses) throw new AuxError("backend_unavailable", "response capture not wired");
   await s.responses.flush();
-  return s.responses.list(p.pageId, p);
+  if (!ctx.externalRunId) return s.responses.list(p.pageId, p);
+  const records = s.responses.listForDocument(s.pages.get(p.pageId), p);
+  const checks: Array<() => void> = [];
+  for (const record of records) checks.push(await s.pages.authorizeAgentResponseRead(ctx.externalRunId, record.requestId, ctx.taskRead));
+  checks.forEach(check => check());
+  return records;
 }
 async function h_pages_capture(ctx: MethodCtx): Promise<unknown> {
   const { params, s } = ctx;

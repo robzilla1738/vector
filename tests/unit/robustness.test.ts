@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { applyMigrations, EventBus, executeProgram, openDb, Repo, RunCoordinator } from "@aux/runtime";
@@ -103,9 +104,9 @@ describe("RunCoordinator.failActive (P1-10)", () => {
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
     };
-    const coordinator = new RunCoordinator({
+    const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => fixturePage(pageId, obs().content.url, obs().documentEpoch)),
       repo, events,
-      pages: { observe: vi.fn(async () => obs()), execute: vi.fn(), capture: vi.fn(), livePageIds: () => ["p1"], get: () => ({ viewStatus: "visible" }) } as never,
+      pages: { observe: vi.fn(async () => obs()), execute: vi.fn(), capture: vi.fn(), livePageIds: () => ["p1"], get: (pageId: string) => fixturePage(pageId, obs().content.url, obs().documentEpoch) } as never,
       model: () => model, defaultModel: () => "m", recoveryModel: () => undefined, recordModelCall: () => {},
       grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     });

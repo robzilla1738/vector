@@ -496,7 +496,7 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: var(--r-pill); }
 .settings-nav input:focus-visible { outline: none; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink-0) 16%, transparent); }
 .settings-nav button:hover { background: color-mix(in srgb, var(--ink-0) 5%, transparent); color: var(--ink-0); }
 .settings-nav button[aria-current="page"] { background: var(--surface-primary); color: var(--ink-0); box-shadow: none; }
-.settings-nav button:focus-visible { outline: 2px solid color-mix(in srgb, var(--ink-0) 28%, transparent); outline-offset: 2px; box-shadow: none; }
+.settings-nav button:focus-visible { outline: 2px solid var(--focus-line); outline-offset: -2px; box-shadow: none; }
 .settings-nav button[aria-current="page"] .settings-category-icon,
 .settings-nav button:hover .settings-category-icon { color: var(--ink-0); }
 .settings-content h3 { font-size: var(--fs-2xl); font-weight: var(--fw-strong); letter-spacing: -0.03em; }

@@ -1,3 +1,4 @@
+import { MentionUnavailable } from "../turn-mentions.js";
 import { AuxError } from "@aux/contracts";
 import { z } from "zod";
 import type { ModelClient, ToolCallStepResult } from "../model-client.js";
@@ -147,6 +148,7 @@ async function executeOne(
     return await tool.execute(call.input, ctx);
   } catch (error) {
     if (ctx.signal?.aborted) throw error;
+    if (error instanceof MentionUnavailable) return { output: error.unavailable };
     return { output: error instanceof Error ? error : new Error(String(error)) };
   }
 }

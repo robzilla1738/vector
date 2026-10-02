@@ -272,7 +272,8 @@ export async function tryFinalDecision(
         recentOutcomes: s.outcomes,
         reason,
         context: s.run.config?.context,
-        instructions: userInstructions(s),
+        instructions: [userInstructions(s), ...s.self.deps.turnMentions.skills(s.runId).map(skill =>
+      `Mentioned skill ${skill.title} (revision ${skill.revision}):\n${skill.objective}\n${skill.description ?? ""}`)].filter(Boolean).join("\n\n"),
         notes: s.notes,
       }),
       schema: FinalDecisionSchema,
@@ -291,7 +292,7 @@ export async function tryFinalDecision(
       s.self.finish(s.runId, "partially_completed", partial, reason, d.message || "Couldn't fully finish — here's what I found");
       return "done";
     }
-    const verifyObs = await s.self.deps.pages.observe(s.activePageId, { sinceRevision: obs.revision, format: "full" });
+    const verifyObs = await s.self.usePage(s.runId, s.activePageId, "read", () => s.self.deps.pages.observe(s.activePageId!, { sinceRevision: obs.revision, format: "full" }));
     if (hasNewSteer(s)) return "input";
     s.observedPages.set(verifyObs.pageId, verifyObs);
     const memoryEvidence = s.run.config?.contextMemoryIds?.length ? await s.self.deps.memoryReferences?.(s.run) : undefined;
@@ -311,33 +312,18 @@ export async function tryFinalDecision(
 export async function observeActivePage(s: TurnState): Promise<Observation> {
   const obsReq = s.pendingObs ?? {};
   s.pendingObs = undefined;
-  try {
-    if (s.carriedObs && s.carriedObs.pageId === s.activePageId) {
-      const obs = s.carriedObs;
-      s.carriedObs = undefined;
-      s.observedPages.set(obs.pageId, obs);
-      return obs;
-    }
+  const pageId = s.activePageId!;
+  await s.self.assertPage(s.runId, pageId, "read");
+  if (s.carriedObs && s.carriedObs.pageId === pageId) {
+    const obs = s.carriedObs;
     s.carriedObs = undefined;
-    const obs = await s.self.deps.pages.observe(s.activePageId!, obsReq);
     s.observedPages.set(obs.pageId, obs);
     return obs;
-  } catch (e) {
-    if (e instanceof AuxError && e.code === "target_detached") {
-      const next = s.run.pageIds.find((p) => {
-        if (p === s.activePageId || !s.self.deps.pages.livePageIds().includes(p)) return false;
-        const vs = s.self.deps.pages.get(p).viewStatus;
-        return vs !== "detached" && vs !== "crashed";
-      });
-      if (!next) throw e;
-      s.activePageId = next;
-      s.self.setStatus(s.runId, "planning", `Page detached — moved to ${next}`);
-      const obs = await s.self.deps.pages.observe(next, obsReq);
-      s.observedPages.set(obs.pageId, obs);
-      return obs;
-    }
-    throw e;
   }
+  s.carriedObs = undefined;
+  const obs = await s.self.usePage(s.runId, pageId, "read", () => s.self.deps.pages.observe(pageId, obsReq));
+  s.observedPages.set(obs.pageId, obs);
+  return obs;
 }
 
 /** The fresh active page plus earlier pages observed within this run's scope. */
@@ -402,7 +388,8 @@ function plannerPrompt(s: TurnState, obs: Observation): string {
     pageSources: s.run.config?.contextPageRefs,
     repairNote: s.lastError,
     context: s.run.config?.context,
-    instructions: userInstructions(s),
+    instructions: [userInstructions(s), ...s.self.deps.turnMentions.skills(s.runId).map(skill =>
+      `Mentioned skill ${skill.title} (revision ${skill.revision}):\n${skill.objective}\n${skill.description ?? ""}`)].filter(Boolean).join("\n\n"),
     notes: s.notes,
     budget: { tokens: 3000 },
     calendarGrants: calendarGrantsFor(s),
@@ -429,8 +416,11 @@ function dispatchOpts(s: TurnState, obs: Observation, steps: Step[], extra: Part
     taskId: s.run.config?.taskId,
     taskRevision: s.run.config?.taskRevision,
     isCurrent: () => !hasNewSteer(s) && !actionSignal(s).aborted,
-    exec: { runId: s.runId, taskId: s.run.config?.taskId, signal: actionSignal(s) },
     ...extra,
+    exec: {
+      runId: s.runId, taskId: s.run.config?.taskId, signal: actionSignal(s), ...extra.exec,
+      sourcePageCheck: s.self.pageSourceCheck(s.runId, s.activePageId!),
+    },
   };
 }
 
@@ -533,7 +523,8 @@ export async function planTurn(
           modelId: visionId,
           signal: planSignal,
           onModelCall: () => s.modelCalls++,
-          instructions: userInstructions(s),
+          instructions: [userInstructions(s), ...s.self.deps.turnMentions.skills(s.runId).map(skill =>
+      `Mentioned skill ${skill.title} (revision ${skill.revision}):\n${skill.objective}\n${skill.description ?? ""}`)].filter(Boolean).join("\n\n"),
           notes: s.notes,
         });
         if (v) {
@@ -751,7 +742,7 @@ export async function settleDonePlan(
   }
   let verifyObs = obs;
   try {
-    verifyObs = await s.self.deps.pages.observe(s.activePageId!, { sinceRevision: obs.revision, format: "full" });
+    verifyObs = await s.self.usePage(s.runId, s.activePageId!, "read", () => s.self.deps.pages.observe(s.activePageId!, { sinceRevision: obs.revision, format: "full" }));
   } catch {
     verifyObs = obs;
   }
@@ -862,7 +853,7 @@ export async function dispatchPlan(
   );
   s.self.persistCheckpoint(s.self.get(s.runId));
   if ("skill" in reuse && result.status !== "failed" && result.status !== "cancelled") {
-    const after = s.carriedObs ?? (await s.self.deps.pages.observe(s.activePageId!, {}));
+    const after = s.carriedObs ?? (await s.self.usePage(s.runId, s.activePageId!, "read", () => s.self.deps.pages.observe(s.activePageId!, {})));
     if (!verifySkillPostconditions(reuse.skill, after.content, after.content.url, after.documentEpoch)) {
       markSkillFailed(reuse.skill);
       s.lastError = `skill ${reuse.skill.id} postconditions failed`;
@@ -915,7 +906,7 @@ async function recoverFailedChunk(s: TurnState, error: string | undefined): Prom
   }
   const recoveryModelId = s.self.deps.recoveryModel();
   if (decision.recover && recoveryModelId) {
-    const fresh = await s.self.deps.pages.observe(s.activePageId!, {});
+    const fresh = await s.self.usePage(s.runId, s.activePageId!, "read", () => s.self.deps.pages.observe(s.activePageId!, {}));
     const repair = await structuredCall<RepairChunk>(s, "repair", {
       modelId: recoveryModelId,
       system: `${PLANNER_SYSTEM}\n\nYou are the recovery model. A chunk failed: ${s.lastError}. Produce a corrected bounded chunk.`,

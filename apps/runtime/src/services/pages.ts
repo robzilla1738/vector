@@ -1,3 +1,4 @@
+import type { ValidatedTaskRead } from "@aux/contracts";
 import { ActivationPolicy } from "./pages/activation.js";
 import { ControlAuthority } from "./pages/control.js";
 import { PageDiagnostics } from "./pages/diagnostics.js";
@@ -49,6 +50,67 @@ export class PageService {
     this.executor = new ProgramExecutor(this.pages, this.lanes, this.observation, this.control);
     this.diagnostics = new PageDiagnostics(this.pages, this.observation, this.executor);
     this.inlineAssist = new InlineAssist(this.pages, this.lanes);
+  }
+
+  /** Actual agent read producer; person shell reads continue to use the ordinary page facade. */
+  async authorizeAgentRead(runId: string, pageId: string, action = "page.read", taskRead?: ValidatedTaskRead): Promise<() => void> {
+    const run = this.pages.deps.repo.getRun(runId);
+    const page = this.pages.get(pageId);
+    if (!run || !["queued", "running", "planning", "needs_input", "paused"].includes(run.status))
+      throw new AuxError("permission_denied", "This agent read turn has ended.");
+    if (!page.sessionId || page.viewStatus === "detached" || page.viewStatus === "crashed")
+      throw new AuxError("target_detached", "The agent read attachment is unavailable.");
+    if (!this.pages.deps.safetyGate) throw new AuxError("capability_unsupported", "Site agent read policy is unavailable for this runtime.");
+    const taskId = run.config?.taskId;
+    return this.pages.deps.safetyGate.checkRead({
+      action, origin: new URL(page.url).origin,
+      document: { pageId, sessionId: page.sessionId, documentEpoch: page.documentEpoch, url: page.url },
+      context: {
+        taskRead,
+        profileId: this.pages.deps.profileId ?? "default",
+        scope: taskId ? { kind: "task", id: taskId } : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
+        actor: run.config?.implementation === "external-agent" ? "external_token" : "builtin_agent",
+        runId, pageId, turnId: runId, threadId: run.config?.chatId ?? runId, sessionId: page.sessionId,
+      },
+    });
+  }
+
+  /** A captured cross-origin response retains its initiating page fence and its own actual site policy. */
+  async authorizeAgentResponseRead(runId: string, requestId: string, taskRead?: ValidatedTaskRead): Promise<() => void> {
+    const record = this.pages.deps.repo.getResponse(requestId);
+    if (!record) throw new AuxError("not_found", "The captured response is unavailable.");
+    const page = this.pages.get(record.pageId);
+    if (!page.sessionId || record.sessionId !== page.sessionId || record.documentEpoch !== page.documentEpoch ||
+        record.documentUrl !== page.url)
+      throw new AuxError("ref_stale", "This response belongs to another initiating document.");
+    const pagePolicy = await this.authorizeAgentRead(runId, page.pageId, "responses.read", taskRead);
+    const run = this.pages.deps.repo.getRun(runId);
+    if (!run || !this.pages.deps.safetyGate)
+      throw new AuxError("permission_denied", "This response read turn has ended.");
+    const taskId = run.config?.taskId;
+    const responsePolicy = await this.pages.deps.safetyGate.checkRead({
+      action: "responses.read", origin: new URL(record.url).origin,
+      document: { pageId: page.pageId, sessionId: page.sessionId, documentEpoch: page.documentEpoch, url: page.url },
+      context: {
+        taskRead,
+        profileId: this.pages.deps.profileId ?? "default",
+        scope: taskId ? { kind: "task", id: taskId } : { kind: "workspace", id: run.config?.contextWorkspaceId ?? "default" },
+        actor: run.config?.implementation === "external-agent" ? "external_token" : "builtin_agent",
+        runId, pageId: page.pageId, turnId: runId, threadId: run.config?.chatId ?? runId, sessionId: page.sessionId,
+      },
+    });
+    const check = () => {
+      pagePolicy();
+      responsePolicy();
+      const current = this.pages.get(page.pageId);
+      const saved = this.pages.deps.repo.getResponse(requestId);
+      if (current.sessionId !== page.sessionId || current.documentEpoch !== page.documentEpoch || current.url !== page.url ||
+          saved?.url !== record.url || saved.sessionId !== page.sessionId || saved.documentEpoch !== page.documentEpoch ||
+          saved.documentUrl !== page.url)
+        throw new AuxError("ref_stale", "The response or initiating attachment changed.");
+    };
+    check();
+    return check;
   }
 
   shuttingDown() {

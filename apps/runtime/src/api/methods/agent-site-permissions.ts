@@ -12,7 +12,10 @@ async function h_safety_originPolicies_list(ctx: MethodCtx) {
 }
 
 async function h_safety_originPolicies_set(ctx: MethodCtx) {
-  const saved = owner(ctx).set(ctx.params);
+  const store = owner(ctx);
+  const before = store.list();
+  const saved = store.set(ctx.params);
+  await ctx.s.safetyAuthority.policies(before.rules, saved.rules);
   ctx.s.events.emit(EventTypes.SettingsChanged, { settings: ctx.s.settings.all() });
   return saved;
 }

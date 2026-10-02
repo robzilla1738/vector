@@ -33,6 +33,11 @@ async function h_mcp_servers_register(ctx: MethodCtx): Promise<unknown> {
   if (method === "mcp.grants.create") return outboundMcp.grant(params);
   if (method === "mcp.grants.list") return outboundMcp.grants(params.serverId);
   if (method === "mcp.grants.revoke") return outboundMcp.revokeGrant(params.grantId);
+  if (ctx.externalRunId && s.repo.getRun(ctx.externalRunId)?.config?.mentions?.length) {
+    const grant = outboundMcp.getGrant(params.grantId);
+    return s.turnMentions.useConnector(ctx.externalRunId, `mcp:${grant.serverId}`, grant.toolName,
+      () => outboundMcp.callTool(params.grantId, params.arguments, params.context));
+  }
   return outboundMcp.callTool(params.grantId, params.arguments, params.context);
 }
 

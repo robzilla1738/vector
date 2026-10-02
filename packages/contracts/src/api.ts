@@ -509,7 +509,7 @@ export const RunsEventsParams = z.object({
   /** Stream identity the cursor was issued against — a mismatch answers `resync` (D9). */
   streamId: z.string().optional(),
 });
-export const RunsAnswerParams = z.object({ runId: id, answer: z.string(), expectedSuspensionId: id.optional() });
+export const RunsAnswerParams = z.object({ runId: id, answer: z.string(), expectedSuspensionId: id.optional(), mentions: MentionRefsSchema.optional() });
 export const RunsQueueParams = z.object({
   mentions: MentionRefsSchema.optional(),
   messageId: z.string().uuid(),
@@ -1048,6 +1048,7 @@ export * from "./import.js";
 
 export const MethodSchemas = {
   ...BrowserRuntimeMethodSchemas,
+  "agent.tabs.list": z.object({ taskId: id, expectedRevision: z.number().int().positive() }).strict(),
   "agent.js.run": AgentJsRunParams,
   "agent.js.reset": AgentJsResetParams,
   "agent.tidy.propose": TidyProposalParamsSchema,
@@ -1749,6 +1750,7 @@ export const MethodDefinitions = Object.fromEntries(
 /** Wire shapes for the result column — used for typing, validated server-side. */
 export const ResultSchemas = {
   ...BrowserRuntimeResultSchemas,
+  "agent.tabs.list": z.array(z.object({ pageId: id, title: z.string(), url: z.string() }).strict()),
   "agent.js.run": AgentJsResult,
   "agent.js.reset": z.object({ reset: z.literal(true) }),
   "agent.tidy.propose": TidyProposalSchema,

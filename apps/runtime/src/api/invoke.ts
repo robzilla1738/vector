@@ -1,8 +1,9 @@
 import type { AgentConnectionScope, AuxEvent, MethodName } from "@aux/contracts";
-import { AuxError, MethodSchemas, requireAuxMethod } from "@aux/contracts";
+import { AuxError, MethodSchemas, ResponseRecordSchema, requireAuxMethod } from "@aux/contracts";
 import { RuntimeAuthorization } from "./authorization.generated.js";
 import { buildMethodDeps } from "./methods/context.js";
 import type { MethodCtx, Services } from "./methods/context.js";
+import { pageToolTarget } from "../safety/page-tool-access.js";
 import { METHODS } from "./methods/index.js";
 export type { Services } from "./methods/context.js";
 
@@ -91,6 +92,7 @@ export function makeInvoker(s: Services) {
       } else if (
         method === "agent.web.fetch" ||
         method === "agent.web.search" ||
+        method === "agent.tabs.list" ||
         method === "agent.images.generate" ||
         method === "agent.turn.open" ||
         method === "agent.turn.end" ||
@@ -289,7 +291,67 @@ export function makeInvoker(s: Services) {
       return result;
     }
 
-    return tracked(() => METHODS[method as MethodName](ctx));
+    return tracked(async () => {
+      let target = pageToolTarget(ctx.method, params);
+      if (externalRunId && ctx.method === "responses.body") {
+        if (!s.responses) throw new AuxError("backend_unavailable", "Response capture is unavailable.");
+        await s.responses.flush();
+        const record = s.repo.getResponse(params.requestId);
+        if (!record) throw new AuxError("not_found", "The captured response is unavailable.");
+        target = { pageId: ResponseRecordSchema.parse(record).pageId, access: "read" };
+      }
+      if (!externalRunId || !target) return METHODS[ctx.method](ctx);
+      const run = s.repo.getRun(externalRunId);
+      const explicit = !!run?.config?.mentions?.length;
+      const created = s.turnMentions.ownedPages(externalRunId).includes(target.pageId);
+      if (explicit || created) {
+        const taskRead = target.access === "read" && scope
+          ? deps.captureScopedTaskRead(scope, target.pageId, externalRunId, client.connectionId) : undefined;
+        ctx.taskRead = taskRead;
+        const policy = target.access === "read" ? await s.pages.authorizeAgentRead(externalRunId, target.pageId, ctx.method, taskRead) : undefined;
+        return s.turnMentions.use(externalRunId, target.pageId, target.access, async () => {
+          policy?.();
+          const result = await METHODS[ctx.method](ctx);
+          policy?.();
+          return result;
+        }, taskRead);
+      }
+      // Source-task authorization remains the prior person-approved path.
+      // A task resource is never relabelled as a run-created page or mention.
+      if (!scope) throw new AuxError("permission_denied", "A current task page scope is required.");
+      requireScopedPage(scope, target.pageId, client.connectionId);
+      const recheckSource = deps.captureScopedPageSource(scope, target.pageId, client.connectionId);
+      const before = s.pages.get(target.pageId);
+      const identity = { sessionId: before.sessionId, documentEpoch: before.documentEpoch, url: before.url };
+      if (!identity.sessionId || before.viewStatus === "detached" || before.viewStatus === "crashed")
+        throw new AuxError("target_detached", "The authorized task attachment is unavailable.");
+      const taskRead = target.access === "read" ? deps.captureScopedTaskRead(scope, target.pageId, externalRunId, client.connectionId) : undefined;
+      const recheckReadPolicy = target.access === "read" ? await s.pages.authorizeAgentRead(externalRunId, target.pageId, ctx.method, taskRead) : undefined;
+      ctx.taskRead = taskRead;
+      recheckSource();
+      const ready = s.pages.get(target.pageId);
+      if (ready.sessionId !== identity.sessionId || ready.viewStatus === "detached" || ready.viewStatus === "crashed" ||
+        (target.access === "read" && (ready.documentEpoch !== identity.documentEpoch || ready.url !== identity.url)))
+        throw new AuxError("ref_stale", "The approved source changed while authorizing its read.");
+      recheckReadPolicy?.();
+      const result = await METHODS[ctx.method](ctx);
+      recheckReadPolicy?.();
+      requireScopedPage(scope, target.pageId, client.connectionId);
+      recheckSource();
+      const currentRun = s.repo.getRun(externalRunId);
+      if (!currentRun || !["running", "planning", "needs_input"].includes(currentRun.status) ||
+        currentRun.config?.externalConnectionId !== client.connectionId ||
+        currentRun.config?.taskRevision !== run?.config?.taskRevision ||
+        currentRun.config?.messageRevision !== run?.config?.messageRevision)
+        throw new AuxError("permission_denied", "This external tool turn ended or changed while using its source.");
+      if (client.connectionId && s.agentConnections && !s.agentConnections.isLive({ external: true, connectionId: client.connectionId, scope }))
+        throw new AuxError("permission_denied", "This connection changed during the tool call.");
+      const current = s.pages.get(target.pageId);
+      if (current.sessionId !== identity.sessionId || current.viewStatus === "detached" || current.viewStatus === "crashed" ||
+          (target.access === "read" && (current.documentEpoch !== identity.documentEpoch || current.url !== identity.url)))
+        throw new AuxError("ref_stale", "The authorized task document changed while using it.");
+      return result;
+    });
   }
   return Object.assign(invoke, {
     eventVisible: (scope: AgentConnectionScope, connectionId: string | undefined, event: AuxEvent) =>

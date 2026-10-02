@@ -157,7 +157,7 @@ export function CommandSurface({ request, executeCommand }: CommandSurfaceProps)
     return () => { dialog.removeEventListener("keydown", keyboard); };
   }, []);
   return <div role="presentation" className="command-surface-scrim" onMouseDown={event => { if (event.target === event.currentTarget) close(); }}>
-    <dialog open className="command-surface" aria-modal="true" aria-label="Command surface" data-mode={request.mode} style={placement ? { ...placement, transform: "none" } : undefined}
+    <dialog open className="command-surface" aria-modal="true" aria-label="Command surface" data-mode={request.mode} data-command-surface-sequence={request.sequence} style={placement ? { ...placement, transform: "none" } : undefined}
       ref={dialogRef}>
       {picker && <button className="btn sm ghost" onClick={() => { setPicker(null); setRevision(value => value + 1); }}>Back to commands</button>}
       <CommandBar key={`${request.sequence}:${revision}`} surfaceMode={picker ? "command" : request.mode} seed={picker ? "" : request.seed}

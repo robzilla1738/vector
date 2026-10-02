@@ -20,6 +20,7 @@ import { WorkerPool } from "./pool.js";
 import { ResearchBudget, type ResearchLimits } from "./research-budget.js";
 
 export interface SetRunnerDeps {
+  turnMentions: import("../services/turn-mention-service.js").TurnMentionService;
   repo: Repo;
   events: EventBus;
   pages: PageService;
@@ -34,7 +35,7 @@ export interface SetRunnerDeps {
     member: SetMember,
     pageId: string,
     goal: string,
-    ctx: { runId: string; signal: AbortSignal; budget?: ResearchBudget; modelId?: string },
+    ctx: { runId: string; signal: AbortSignal; budget?: ResearchBudget; modelId?: string; checkSource: () => void },
   ) => Promise<{ result: ResultRecord; executedSteps?: Step[] }>;
   /** look up a saved program to replay */
   getProgram: (programId: string) => { stepsJson: string; siteKey: string } | undefined;
@@ -310,6 +311,7 @@ export class SetRunner {
     if (this.deps.controlledPage) {
       const page = await this.deps.controlledPage(opts.runId, url, pageId && this.deps.pages.isAttached(pageId) ? pageId : undefined);
       pageId = page.pageId;
+      this.deps.turnMentions.created(opts.runId, pageId);
       setWorker(pageId, page.release);
     } else if (!pageId || !this.deps.pages.isAttached(pageId)) {
       const page = await this.deps.pages.open({
@@ -319,14 +321,30 @@ export class SetRunner {
         ownedByRuntime: true,
       });
       pageId = page.pageId;
-      setWorker(pageId);
+      const release = await this.deps.pool.ownership.acquire({ pageId, actor: "set_member", runId: opts.runId, memberId: m.memberId }, opts.signal);
+      setWorker(pageId, release);
+      this.deps.turnMentions.created(opts.runId, pageId);
     }
     if (this.deps.pages.get(pageId).controller === "human")
       throw new AuxError("conflict", "A person controls this tab; return control before mapping the set");
 
+    const source = { memberId: m.memberId, setId: m.setId, pageId: m.pageId, url: m.url, recordKey: m.recordKey };
+    const checkSource = () => {
+      if (opts.signal.aborted) throw new AuxError("cancelled", "This Set member was cancelled.");
+      const current = this.deps.sets.get(source.setId);
+      const member = current.members.find(item => item.memberId === source.memberId);
+      if (!current.set.memberIds.includes(source.memberId) || !member || member.pageId !== source.pageId || member.url !== source.url || member.recordKey !== source.recordKey)
+        throw new AuxError("permission_denied", "This Set member's approved source changed.");
+      const owner = this.deps.pool.ownership.snapshot()[pageId];
+      if (!owner || owner.runId !== opts.runId ||
+        (owner.actor !== "coordinator" && !(owner.actor === "set_member" && owner.memberId === source.memberId)))
+        throw new AuxError("permission_denied", "This Set run no longer owns its source page lease.");
+    };
+    const scopedOpts = { ...opts, checkSource };
+    checkSource();
     // replay a validated program when the member's site matches its key
     if (learned && (learned.siteKey === "*" || siteKeyOf(url) === learned.siteKey)) {
-      const replay = await this.replayLearned(learned, pageId, url, opts);
+      const replay = await this.replayLearned(learned, pageId, url, scopedOpts);
       if ("res" in replay) {
         // a completed replay is the result; so is any outcome when there is no
         // agent to fall through to (re-running the same program would only
@@ -340,12 +358,12 @@ export class SetRunner {
       }
     }
     if (opts.goal) {
-      const agentRes = await this.deps.runAgentForMember(m, pageId, opts.goal, { runId: opts.runId, signal: opts.signal,budget:opts.budget,modelId:opts.modelId });
+      const agentRes = await this.deps.runAgentForMember(m, pageId, opts.goal, { runId: opts.runId, signal: opts.signal,budget:opts.budget,modelId:opts.modelId, checkSource });
       return { result: agentRes.result, executedSteps: agentRes.executedSteps };
     }
     if (learned) {
       // site key did not match and no goal: replay anyway rather than fail silently
-      const replay = await this.replayLearned(learned, pageId, url, opts);
+      const replay = await this.replayLearned(learned, pageId, url, scopedOpts);
       if ("res" in replay) return { result: this.resultOf(m, pageId, replay.res) };
       return { result: this.resultOf(m, pageId, { status: "failed", error: replay.blocked }) };
     }
@@ -361,9 +379,9 @@ export class SetRunner {
     learned: Learned,
     pageId: string,
     url: string,
-    opts: { runId: string; signal: AbortSignal },
+    opts: { runId: string; signal: AbortSignal; checkSource: () => void },
   ): Promise<{ res: { status: string; extracted?: Record<string, unknown>; error?: string } } | { blocked: string }> {
-    const obs = await this.deps.pages.observe(pageId, {});
+    const obs = await this.deps.turnMentions.useSourcePage(opts.runId, pageId, "read", opts.checkSource, () => this.deps.pages.observe(pageId, {}));
     const live = this.deps.pages.get(pageId);
     const origin = originOfSiteKey(learned.siteKey);
     const href = live.url ?? obs.content.url ?? url;
@@ -396,13 +414,14 @@ export class SetRunner {
       steps: collectProgramSteps(program),
     });
     if (write.skip) return { blocked: write.reason! };
-    const res = await this.deps.pages.execute(program, {
+    const res = await this.deps.turnMentions.useSourcePage(opts.runId, pageId, "act", opts.checkSource, () => this.deps.pages.execute(program, {
       runId: opts.runId,
       journaled: true,
       journalIntentId: write.intentId,
       signal: opts.signal,
       allowEval: learned.trusted,
-    });
+      sourcePageCheck: opts.checkSource,
+    }));
     settleWrite(this.deps.durableWrites, write.intentId, res);
     return { res };
   }

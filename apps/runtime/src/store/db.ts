@@ -66,7 +66,7 @@ CREATE TABLE run_messages(
   delivery_run_id TEXT NOT NULL UNIQUE,
   mode TEXT NOT NULL CHECK(mode IN ('queue','steer')),
   status TEXT NOT NULL CHECK(status IN ('accepted','delivering','delivered','needs_attention','cancelled')),
-  text TEXT NOT NULL, page_ids TEXT NOT NULL DEFAULT '[]', context_page_refs TEXT NOT NULL DEFAULT '[]',
+  text TEXT NOT NULL, page_ids TEXT NOT NULL DEFAULT '[]', context_page_refs TEXT NOT NULL DEFAULT '[]', mentions TEXT NOT NULL DEFAULT '[]',
   expected_revision INTEGER NOT NULL DEFAULT 0,
   resends_nonce TEXT,
   error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
@@ -138,6 +138,7 @@ CREATE TABLE spans(
   started_at REAL NOT NULL, ended_at REAL, duration_ms REAL, outcome TEXT, attrs TEXT NOT NULL DEFAULT '{}');
 CREATE INDEX idx_spans_run ON spans(run_id, started_at);
 CREATE TABLE response_metadata(
+  session_id TEXT, document_epoch INTEGER, document_url TEXT,
   request_id TEXT PRIMARY KEY, page_id TEXT NOT NULL, url TEXT NOT NULL, method TEXT NOT NULL,
   status INTEGER, content_type TEXT, started_at REAL NOT NULL, ended_at REAL, duration_ms REAL,
   body_artifact_id TEXT, body_bytes INTEGER,

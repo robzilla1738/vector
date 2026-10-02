@@ -1,0 +1,6 @@
+export const CONFIRMATION_LEVELS = ["handoff", "action", "preapprovable", "none"] as const;
+export const EFFECT_CATEGORIES = [
+  "read", "navigate", "input", "interact", "submit", "send", "post", "purchase", "delete",
+  "account", "security", "login", "permission", "cookie", "install",
+  "password_change", "two_factor", "captcha", "bot_block", "paywall_bypass", "download", "upload", "credential", "payment", "evaluate", "external_tool", "dialog",
+] as const;

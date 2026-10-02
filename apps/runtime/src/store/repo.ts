@@ -1,3 +1,4 @@
+import { MentionRefsSchema } from "@aux/contracts";
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync, StatementSync } from "node:sqlite";
 import type {
@@ -514,6 +515,8 @@ export class Repo {
   }
 
   private rowToRunMessage(row: Record<string, unknown>): RunMessage {
+    const mentions = this.revealField("run_messages", row.message_id as string, "mentions", row.mentions as string);
+    if (mentions === null) throw new Error("The run message mention snapshot is unavailable.");
     return {
       messageId: row.message_id as string,
       chatId: row.chat_id as string,
@@ -525,6 +528,7 @@ export class Repo {
       pageIds: P(row.page_ids as string, [] as string[]),
       contextPageRefs: P(this.revealField("run_messages", row.message_id as string,
         "context_page_refs", row.context_page_refs as string), [] as RunMessage["contextPageRefs"]),
+      mentions: MentionRefsSchema.parse(JSON.parse(mentions)),
       expectedRevision: row.expected_revision as number,
       ...(row.resends_nonce ? { resendsNonce: row.resends_nonce as string } : {}),
       ...(row.error ? { error: this.revealField("run_messages", row.message_id as string,
@@ -535,12 +539,13 @@ export class Repo {
   }
 
   insertRunMessage(message: RunMessage): RunMessage {
-    this.q(`INSERT OR IGNORE INTO run_messages(message_id,chat_id,target_run_id,delivery_run_id,mode,status,text,page_ids,context_page_refs,expected_revision,resends_nonce,error,created_at,updated_at)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(message.messageId, message.chatId, message.targetRunId, message.deliveryRunId,
+    this.q(`INSERT OR IGNORE INTO run_messages(message_id,chat_id,target_run_id,delivery_run_id,mode,status,text,page_ids,context_page_refs,mentions,expected_revision,resends_nonce,error,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(message.messageId, message.chatId, message.targetRunId, message.deliveryRunId,
       message.mode, message.status,
       this.protectField("run_messages", message.messageId, "text", message.text),
       J(message.pageIds),
       this.protectField("run_messages", message.messageId, "context_page_refs", J(message.contextPageRefs)),
+      this.protectField("run_messages", message.messageId, "mentions", J(message.mentions ?? [])),
       message.expectedRevision, message.resendsNonce ?? null,
       this.protectField("run_messages", message.messageId, "error", message.error ?? null),
       message.createdAt, message.updatedAt);
@@ -1318,6 +1323,9 @@ export class Repo {
 
   // ---- response capture (§8) ----
   saveResponse(r: {
+    sessionId?: string;
+    documentEpoch?: number;
+    documentUrl?: string;
     requestId: string;
     pageId: string;
     url: string;
@@ -1333,8 +1341,8 @@ export class Repo {
     runId?: string;
   }) {
     this.q(
-        `INSERT INTO response_metadata(request_id,page_id,url,method,status,content_type,started_at,ended_at,duration_ms,body_artifact_id,body_bytes,truncated,run_id)
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `INSERT INTO response_metadata(request_id,page_id,url,method,status,content_type,started_at,ended_at,duration_ms,body_artifact_id,body_bytes,truncated,run_id,session_id,document_epoch,document_url)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
          ON CONFLICT(request_id) DO UPDATE SET status=excluded.status,ended_at=excluded.ended_at,
            duration_ms=excluded.duration_ms,body_artifact_id=excluded.body_artifact_id,
            body_bytes=excluded.body_bytes,truncated=excluded.truncated`,
@@ -1346,7 +1354,8 @@ export class Repo {
         r.status ?? null,
         this.protectField("response_metadata", r.requestId, "content_type", r.contentType ?? null),
         r.startedAt, r.endedAt ?? null, r.durationMs ?? null, r.bodyArtifactId ?? null,
-        r.bodyBytes ?? null, r.truncated ?? 0, r.runId ?? null,
+        r.bodyBytes ?? null, r.truncated ?? 0, r.runId ?? null, r.sessionId ?? null, r.documentEpoch ?? null,
+        this.protectField("response_metadata", r.requestId, "document_url", r.documentUrl ?? null),
       );
   }
   getResponse(requestId: string) {
@@ -1386,6 +1395,9 @@ export class Repo {
   private responseRow(r: any) {
     return {
       requestId: r.request_id as string,
+      sessionId: r.session_id ?? undefined,
+      documentEpoch: r.document_epoch ?? undefined,
+      documentUrl: this.revealField("response_metadata", r.request_id, "document_url", r.document_url) ?? undefined,
       pageId: r.page_id as string,
       url: this.revealField("response_metadata", r.request_id, "url", r.url)!,
       method: this.revealField("response_metadata", r.request_id, "method", r.method)!,

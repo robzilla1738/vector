@@ -29,6 +29,8 @@ export async function runMemberAgent(opts: {
   goal: string;
   runId: string;
   pages: PageService;
+  turnMentions: import("../services/turn-mention-service.js").TurnMentionService;
+  checkSource: () => void;
   model: ModelClient;
   modelId: string;
   signal: AbortSignal;
@@ -48,7 +50,7 @@ export async function runMemberAgent(opts: {
   let notes: string | undefined;
   for (let calls = 0, stepsRun = 0; calls < MEMBER_MAX_CALLS && stepsRun < MEMBER_MAX_STEPS; ) {
     if (signal.aborted || opts.budget?.signal.aborted) break;
-    const obs = await pages.observe(pageId, {});
+    const obs = await opts.turnMentions.useSourcePage(runId, pageId, "read", opts.checkSource, () => pages.observe(pageId, {}));
     const prompt = buildPlannerPrompt({ goal: memberGoal, observations: [obs], recentOutcomes: outcomes, pageIds: [pageId], notes, budget: { tokens: 3000 } });
     const permit=opts.budget?.reserveModel(modelId,prompt,PLANNER_SYSTEM,8192);
     if(permit&&"reason" in permit)return err(member,pageId,obs.content.url,permit.reason,executed);
@@ -95,17 +97,18 @@ export async function runMemberAgent(opts: {
     }
     if(stepsRun+plan.steps.length>MEMBER_MAX_STEPS)return err(member,pageId,obs.content.url,"member step budget exhausted",executed);
     const live = pages.get(pageId);
-    const g = await guardedExecute({ pages, durable: opts.durable, grants: opts.grants }, {
+    const stepsToExecute = plan.steps;
+    const g = await opts.turnMentions.useSourcePage(runId, pageId, "act", opts.checkSource, () => guardedExecute({ pages, durable: opts.durable, grants: opts.grants }, {
       runId,
       pageId,
-      steps: plan.steps,
+      steps: stepsToExecute,
       observation: obs.content,
       url: live.url ?? obs.content.url,
       documentEpoch: live.documentEpoch ?? obs.documentEpoch,
       observedEpoch: obs.documentEpoch,
       revision: obs.revision,
-      exec: { runId, signal:opts.budget?.signal??signal },
-    });
+      exec: { runId, signal:opts.budget?.signal??signal, sourcePageCheck: opts.checkSource },
+    }));
     if (g.kind !== "ran") return err(member, pageId, obs.content.url, g.reason, executed);
     const steps = g.program.steps ?? plan.steps;
     executed.push(...steps);

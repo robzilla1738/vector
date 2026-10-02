@@ -1,3 +1,4 @@
+import type { ValidatedTaskRead } from "@aux/contracts";
 import {
   AuxError,
   type AuthorizationProvenance,
@@ -52,8 +53,13 @@ export interface ExecContext {
   checkValid?: () => void;
   /** Recheck task authority after lane waits, immediately before journaling and dispatch. */
   beforeJournal?: () => void;
+  /** Internal actual task/Set page-lease producer; never parsed from tool input. */
+  sourcePageCheck?: () => void;
+  /** Internal current TaskService read proof; never accepted from program input. */
+  taskRead?: ValidatedTaskRead;
   /** Recheck live target origin and current grants immediately before dispatch. */
   authorizeStep?: (step: Step) => Promise<AuthorizationProvenance | void>;
+  navigate?: (url: string, timeoutMs?: number) => Promise<void>;
   /** Roots an `upload` step may read files from — session storage, attachments, workspace roots. */
   uploadRoots?: string[];
   safety?: { turnId?: string; threadId?: string; turnToolCallCount?: number;
@@ -113,7 +119,7 @@ const RETRYABLE_RESOLUTION_CODES = new Set(["target_detached"]);
 
 async function runStep(page: DriverPage, s: Step, ctx: ExecContext = {}): Promise<Record<string, unknown> | undefined> {
   switch (s.op) {
-    case "navigate": return void (await page.navigate(s.url, s.timeoutMs));
+    case "navigate": return void (await (ctx.navigate ? ctx.navigate(s.url, s.timeoutMs) : page.navigate(s.url, s.timeoutMs)));
     case "back": return void (await page.back(s.timeoutMs));
     case "forward": return void (await page.forward(s.timeoutMs));
     case "reload": return void (await page.reload(s.timeoutMs));

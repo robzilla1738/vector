@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, it, expect, vi } from "vitest";
 import { EventBus, openDb, Repo, RunCoordinator } from "@aux/runtime";
 import { EarlyDispatcher, PlanStreamParser } from "@aux/runtime";
@@ -168,9 +169,10 @@ describe("RunCoordinator streams plans (A5)", () => {
       for (const s of program.steps) ctx.onStep?.({ stepId: s.id, op: s.op, status: "ok", startedAt: Date.now(), durationMs: 1, effect: "observed" }, s);
       return { status: "completed", steps: program.steps.map((s) => ({ stepId: s.id, op: s.op, status: "ok", startedAt: 0, durationMs: 1, effect: "observed" })) };
     });
-    const coordinator = new RunCoordinator({
+    const coordinatorFixturePages1 = { observe: vi.fn(async () => obs()), execute, capture: vi.fn(), livePageIds: () => ["p1"], get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/", 1),  viewStatus: "visible"  }) };
+    const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages1.get(pageId)),
       repo, events,
-      pages: { observe: vi.fn(async () => obs()), execute, capture: vi.fn(), livePageIds: () => ["p1"], get: () => ({ viewStatus: "visible" }) } as never,
+      pages: coordinatorFixturePages1 as never,
       model: () => model, defaultModel: () => "m", recoveryModel: () => undefined, recordModelCall: () => {},
       grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     });
@@ -222,8 +224,9 @@ describe("RunCoordinator streams plans (A5)", () => {
       steps.forEach((outcome, index) => ctx.onStep?.(outcome, program.steps[index]));
       return { status: "completed" as const, steps };
     });
-    const coordinator = new RunCoordinator({ repo, events,
-      pages: { observe: vi.fn(async () => obs()), execute, capture: vi.fn(), livePageIds: () => ["p1"], get: () => ({ viewStatus: "visible" }) } as never,
+    const coordinatorFixturePages2 = { observe: vi.fn(async () => obs()), execute, capture: vi.fn(), livePageIds: () => ["p1"], get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/", 1),  viewStatus: "visible"  }) };
+    const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages2.get(pageId)), repo, events,
+      pages: coordinatorFixturePages2 as never,
       model: () => model, defaultModel: () => "m", recoveryModel: () => undefined, recordModelCall: () => {},
       grants: ["effect:read", "effect:write", "effect:destructive", "effect:egress"],
     });

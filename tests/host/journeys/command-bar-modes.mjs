@@ -1,4 +1,4 @@
-const dialog = { role: 'AXDialog', name: 'Command surface', scope: 'shell' };
+const dialog = { role: 'AXGroup', name: 'Command surface', scope: 'shell' };
 const field = { role: 'AXComboBox', name: 'Address, search, and agent prompt', scope: 'shell', within: dialog, index: 0 };
 export const journey = {
   id: 'command-bar-modes', title: 'One command surface for new pages, addresses and commands',

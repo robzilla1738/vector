@@ -158,15 +158,24 @@ export function CommandBar({
         : null;
   const [editing, setEditing] = useState(!!surfaceMode);
   const [submitting, setSubmitting] = useState(false);
-  const [val, setVal] = useState(
-    seed
+  const [queryState, setQueryState] = useState({
+    value: seed
       ? initialPrefix && seed.startsWith(initialPrefix)
         ? seed.slice(1)
         : seed
       : surfaceMode === "edit"
         ? pageAddress
         : "",
-  );
+    generation: 0,
+  });
+  const val = queryState.value;
+  const queryGeneration = queryState.generation;
+  const setVal = useCallback((value: string) => {
+    setQueryState(current => current.value === value ? current : {
+      value,
+      generation: current.generation + Number(current.value.trim() !== value.trim()),
+    });
+  }, []);
   const [scopePrefix, setScopePrefix] = useState<"@" | "/" | ">" | "?" | null>(initialPrefix);
   const [routeFlip, setRouteFlip] = useState<"search" | "ask" | null>(null);
   const [preferSearchOffer, setPreferSearchOffer] = useState(false);
@@ -190,9 +199,10 @@ export function CommandBar({
   const [autocompleteRetry, setAutocompleteRetry] = useState(0);
   const [browserResult, setBrowserResult] = useState<{
     query: string;
+    generation: number;
     items: AutocompleteMatch[];
     error: string | null;
-  }>({ query: "", items: [], error: null });
+  }>({ query: "", generation: 0, items: [], error: null });
   const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
     if (!hero || bridge.privateMode) return "search";
     if (settings.homeEntryMode === "ask" || settings.homeEntryMode === "search")
@@ -331,7 +341,7 @@ export function CommandBar({
       setScopeFlip(false);
       inputRef.current?.blur();
     }
-  }, [pageAddress, editing, val]);
+  }, [pageAddress, editing, val, setVal]);
 
   // a new tab starts empty; otherwise seed with the URL and select it
   const onFocus = () => {
@@ -452,12 +462,13 @@ export function CommandBar({
     void bridge
       .autocomplete(raw)
       .then((items) => {
-        if (live) setBrowserResult({ query: raw, items, error: null });
+        if (live) setBrowserResult({ query: raw, generation: queryGeneration, items, error: null });
       })
       .catch((error) => {
         if (live)
           setBrowserResult({
             query: raw,
+            generation: queryGeneration,
             items: [],
             error: error instanceof Error ? error.message : String(error),
           });
@@ -465,9 +476,10 @@ export function CommandBar({
     return () => {
       live = false;
     };
-  }, [browserAutocomplete, typedSomething, raw, intent.kind, autocompleteRetry]);
-  const browserMatches = browserResult.query === raw ? browserResult.items : EMPTY_BROWSER;
-  const browserError = browserResult.query === raw ? browserResult.error : null;
+  }, [browserAutocomplete, typedSomething, raw, queryGeneration, intent.kind, autocompleteRetry]);
+  const currentBrowserResult = browserResult.query === raw && browserResult.generation === queryGeneration;
+  const browserMatches = currentBrowserResult ? browserResult.items : EMPTY_BROWSER;
+  const browserError = currentBrowserResult ? browserResult.error : null;
 
   // The local indexed query is cheap; dispatch it immediately and only display
   // a response that belongs to the exact text still in the field.
@@ -912,6 +924,13 @@ export function CommandBar({
     return mergeCommandResults(providerScope === "all" ? intentRows : [], [...mergedRows.rows, ...supplemental]).rows;
   }, [typedSomething, intentRows, mergedRows, providerScope, intent, commandRows, providerRows, raw]);
 
+  // The native fixture reads only generations and a fixed source label. These
+  // are committed with the actual visible rows, never input echo or old results.
+  const resultSource = typedSomething && intent.kind === "command" && commandRows
+    && suggestions.some(row => "commandId" in row && !!row.commandId) ? "registry"
+    : typedSomething && browserAutocomplete && currentBrowserResult && !browserError
+      && suggestions.some(row => row.section === "history") ? "history" : undefined;
+
   const runSuggestion = async (suggestion: Suggestion) => {
     await suggestion.run();
     if (bridge.privateMode || suggestion.section === "intent" || !raw) return;
@@ -1102,6 +1121,7 @@ export function CommandBar({
   return (
     <div
       ref={barRef}
+      data-command-query-generation={queryGeneration}
       onBlurCapture={onBlur}
       className={`cmdbar ${compact ? "compact" : ""} ${hero ? "hero" : ""} ${editing ? "editing" : ""} ${showIntent ? `intent-${intent.kind}` : ""}`}
     >
@@ -1192,6 +1212,7 @@ export function CommandBar({
               ? `${entryMode === "search" ? "Search or address" : "Ask Aux"}. Press Tab to switch mode.`
               : "Address, search, and agent prompt"
           }
+          data-command-value-generation={queryGeneration}
           aria-expanded={suggestions.length > 0}
           aria-haspopup="listbox"
           aria-autocomplete="list"
@@ -1407,7 +1428,8 @@ export function CommandBar({
               edit the query.
             </p>
           )}
-          <div role="listbox" id={listId}>
+          <div role="listbox" id={listId} data-command-results-source={resultSource}
+            data-command-results-generation={resultSource ? queryGeneration : undefined}>
             {suggestions.map((s, i) => {
               const first = i === 0 || suggestions[i - 1]!.section !== s.section;
               return (
@@ -1420,6 +1442,8 @@ export function CommandBar({
                   {first && s.section !== "intent" && <div className="cb-section">{SECTION[s.section]}</div>}
                   <SearchResultRow
                     id={`${listId}-opt-${i}`}
+                    resultSource={resultSource && (resultSource === "registry" ? "commandId" in s : s.section === "history") ? resultSource : undefined}
+                    resultGeneration={resultSource && (resultSource === "registry" ? "commandId" in s : s.section === "history") ? queryGeneration : undefined}
                     selected={i === sel}
                     className={`cb-opt ${s.section}`}
                     title={s.title}

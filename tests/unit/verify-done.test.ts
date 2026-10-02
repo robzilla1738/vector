@@ -1,3 +1,4 @@
+import { fixturePage, fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, expect, it, vi } from "vitest";
 import { EventBus, openDb, Repo, RunCoordinator, verifyDoneAgainstObservation } from "@aux/runtime";
 import type { ModelClient } from "@aux/runtime";
@@ -144,8 +145,9 @@ describe("verifyDoneAgainstObservation", () => {
 it("saves completed report and HTML results once and keeps failed outputs out of saved results", () => {
   const repo = new Repo(openDb(":memory:"));
   const saved: string[] = [], htmlSaved:string[]=[];
-  const coordinator = new RunCoordinator({
-    repo, events: new EventBus(repo), pages: {} as never,
+  const coordinatorFixturePages1 = {};
+    const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => repo.getPage(pageId)),
+    repo, events: new EventBus(repo), pages: coordinatorFixturePages1 as never,
     model: () => null, defaultModel: () => "m", recoveryModel: () => undefined,
     recordModelCall: () => {}, saveCompletedReport: (_run, markdown) => saved.push(markdown),
     saveCompletedHtml: (_run, html) => htmlSaved.push(html),
@@ -179,16 +181,17 @@ describe("lying model cannot complete a run", () => {
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
     };
-    const coordinator = new RunCoordinator({
-      repo,
-      events,
-      pages: {
+    const coordinatorFixturePages2 = {
         observe: vi.fn(async () => obs()),
         execute: vi.fn(async (_program: { steps: PlanStep[] }) => ({ status: "completed", steps: [] })),
         capture: vi.fn(),
         livePageIds: () => ["p1"],
-        get: () => ({ viewStatus: "visible" }),
-      } as never,
+        get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/", 1),  viewStatus: "visible"  }),
+      };
+    const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages2.get(pageId)),
+      repo,
+      events,
+      pages: coordinatorFixturePages2 as never,
       model: () => model,
       defaultModel: () => "m",
       recoveryModel: () => undefined,
@@ -216,13 +219,14 @@ it("verifies a comparison against both pages actually observed in the run", asyn
     generateText: async () => ({ text: "", durationMs: 0 }),
     listModels: async () => [],
   };
-  const coordinator = new RunCoordinator({
-    repo, events,
-    pages: {
+  const coordinatorFixturePages3 = {
       observe: async (pageId: string) => ({ ...obs(pageId === "p1" ? "Alpha evidence" : "Beta evidence"), pageId }),
       execute: vi.fn(), capture: vi.fn(), livePageIds: () => ["p1", "p2"],
-      get: () => ({ viewStatus: "visible" }),
-    } as never,
+      get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/", 1),  viewStatus: "visible"  }),
+    };
+    const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages3.get(pageId)),
+    repo, events,
+    pages: coordinatorFixturePages3 as never,
     model: () => model, defaultModel: () => "m", recoveryModel: () => undefined, recordModelCall: () => {},
   });
   const run = await coordinator.start({ goal: "Compare both pages", pageIds: ["p1", "p2"] });
@@ -262,10 +266,7 @@ describe("successful click repeats still dispatch", () => {
       generateText: async () => ({ text: "", durationMs: 0 }),
       listModels: async () => [],
     };
-    const coordinator = new RunCoordinator({
-      repo,
-      events,
-      pages: {
+    const coordinatorFixturePages4 = {
         observe: async () => {
           const o = obs(`Count: ${count}`);
           o.revision = count + 1;
@@ -287,8 +288,12 @@ describe("successful click repeats still dispatch", () => {
         },
         capture: async () => ({ dataUrl: "data:image/png;base64,AA", width: 1, height: 1, scale: 1 }),
         livePageIds: () => ["p1"],
-        get: () => ({ viewStatus: "visible", documentEpoch: 1, url: "http://x.test/" }),
-      } as never,
+        get: (fixturePageId: string): import("@aux/contracts").PageTarget => ({ ...fixturePage(fixturePageId, "http://x.test/", 1),  viewStatus: "visible", documentEpoch: 1, url: "http://x.test/"  }),
+      };
+    const coordinator = new RunCoordinator({ turnMentions: fixtureTurnMentions(pageId => coordinatorFixturePages4.get(pageId)),
+      repo,
+      events,
+      pages: coordinatorFixturePages4 as never,
       model: () => model,
       defaultModel: () => "m",
       recoveryModel: () => undefined,

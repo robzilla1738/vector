@@ -1,10 +1,14 @@
 import type { DriverPageEvents } from "@aux/chromium-driver";
 import type { Repo } from "../store/repo.js";
 import type { ArtifactStore } from "./artifacts.js";
+import { AuxError, type PageTarget } from "@aux/contracts";
 import type { EventBus } from "../events.js";
 
 export interface ResponseRecord {
   requestId: string;
+  sessionId?: string;
+  documentEpoch?: number;
+  documentUrl?: string;
   pageId: string;
   url: string;
   method: string;
@@ -104,6 +108,9 @@ export class ResponseStore {
       for (const { pageId, info } of batch) {
         this.deps.repo.saveResponse({
           requestId: info.requestId,
+          sessionId: info.sessionId,
+          documentEpoch: info.documentEpoch,
+          documentUrl: info.documentUrl,
           pageId,
           url: info.url,
           method: info.method,
@@ -126,6 +133,23 @@ export class ResponseStore {
 
   list(pageId: string, opts?: { since?: number; urlIncludes?: string; limit?: number }): ResponseRecord[] {
     return this.deps.repo.listResponses(pageId, opts);
+  }
+
+  /** Agent reads require the actual captured attachment and initiating document. */
+  private matchesDocument(record: ResponseRecord, page: PageTarget): boolean {
+    return !!page.sessionId && page.viewStatus !== "detached" && page.viewStatus !== "crashed" &&
+      record.sessionId === page.sessionId && record.documentEpoch === page.documentEpoch && record.documentUrl === page.url;
+  }
+
+  listForDocument(page: PageTarget, opts?: { since?: number; urlIncludes?: string; limit?: number }): ResponseRecord[] {
+    return this.list(page.pageId, opts).filter(record => this.matchesDocument(record, page));
+  }
+
+  bodyForDocument(requestId: string, page: PageTarget): { buffer: Buffer; mediaType: string } | undefined {
+    const record = this.deps.repo.getResponse(requestId);
+    if (!record || record.pageId !== page.pageId || !this.matchesDocument(record, page))
+      throw new AuxError("ref_stale", "This response belongs to another attachment or initiating document.");
+    return this.body(requestId);
   }
 
   /** Body of a captured response, when one was stored. */

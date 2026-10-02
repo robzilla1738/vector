@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { expect, it } from "vitest";
 import {
   AgentConnectionService,
@@ -24,7 +25,7 @@ it("denies an expired or revoked scoped bearer and leaves an unknown bearer unau
     criteria: [{ criterionId: "c", description: "Read", verification: "manual" }],
   });
   const connections = new AgentConnectionService(repo);
-  const sessions = new ExternalSessionService(repo, events);
+  const sessions = new ExternalSessionService(repo, events, fixtureTurnMentions((pageId: string) => repo.getPage(pageId)));
   const invoke = makeInvoker({
     repo,
     events,

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { extractElements } from "./extract-script.js";
 import type { BrowserContext, ConsoleMessage, Dialog, Download, ElementHandle, Frame, Locator, Page, Request, Response } from "playwright-core";
 import {
@@ -176,6 +177,7 @@ export class PlaywrightDriverPage implements DriverPage {
     };
     this.on("request", (request: Request) => {
       this.requests.started(request);
+      this.responseDocuments.set(request, { documentEpoch: this.documentEpoch, documentUrl: this.page.url() });
       try {
         if (!request.isNavigationRequest() || request.frame() !== this.page.mainFrame()) return;
       } catch {
@@ -251,7 +253,7 @@ export class PlaywrightDriverPage implements DriverPage {
     }
   }
 
-  private responseSeq = 0;
+  private responseDocuments = new WeakMap<Request, { documentEpoch: number; documentUrl: string }>();
 
   /**
    * Passive response capture (§8): every completed response reports metadata;
@@ -270,7 +272,8 @@ export class PlaywrightDriverPage implements DriverPage {
     const contentType = headers["content-type"];
     const resourceType = req.resourceType();
     const info: Parameters<NonNullable<DriverPageEvents["onResponse"]>>[0] = {
-      requestId: `rq_${this.identity.pageId}_${++this.responseSeq}`,
+      requestId: `rq_${this.identity.pageId}_${randomUUID()}`,
+      ...this.responseDocuments.get(req),
       url: response.url(),
       method: req.method(),
       status: response.status(),

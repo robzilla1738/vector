@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MentionRefsSchema } from "./mentions.js";
 import { AgentPageIsolationSchema } from "./egress.js";
 import { WindowKindSchema } from "./window-sync.js";
 import { StepOutcomeSchema } from "./program.js";
@@ -72,6 +73,9 @@ export type PageContextRef = z.infer<typeof PageContextRefSchema>;
 /** Metadata captured for one completed page response. Response bodies stay in the artifact store. */
 export const ResponseRecordSchema = z.object({
   requestId: z.string(),
+  sessionId: z.string().min(1).optional(),
+  documentEpoch: z.number().int().nonnegative().optional(),
+  documentUrl: z.string().optional(),
   pageId: z.string(),
   url: z.string(),
   method: z.string(),
@@ -155,6 +159,7 @@ export const RunSchema = z.object({
       isolatedPageSources: z.array(z.object({ sourcePageId: z.string(), pageId: z.string(), url: z.string() }).strict()).optional(),
       /** Live pages explicitly selected for this turn; their identity was checked before launch. */
       contextPageRefs: z.array(PageContextRefSchema).max(9).optional(),
+      mentions: MentionRefsSchema.optional(),
       /** Accepted human steering revision for this run. */
       messageRevision: z.number().int().nonnegative().optional(),
       /** Queued user message that started this run, if any. */
@@ -220,6 +225,7 @@ export const RunMessageSchema = z.object({
   text: z.string().min(1).max(20_000),
   pageIds: z.array(z.string().min(1)).max(9),
   contextPageRefs: z.array(PageContextRefSchema).max(9),
+  mentions: MentionRefsSchema.optional(),
   expectedRevision: z.number().int().nonnegative(),
   /** This message supersedes an earlier message id (resend nonce chain). */
   resendsNonce: z.string().min(1).optional(),

@@ -453,6 +453,9 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--ink-1); }
 .http-auth-scrim { z-index: 1000; }
 .http-auth-prompt { width: min(420px, calc(100vw - 40px)); }
 .http-auth-prompt form { display: flex; flex-direction: column; gap: var(--space-4); }
+.http-auth-prompt form > p { min-width: 0; overflow-wrap: anywhere; }
+.http-auth-prompt .sheet-acts { flex-wrap: wrap; }
+.http-auth-prompt .sheet-acts .btn { max-width: 100%; min-width: 0; height: auto; min-height: var(--control-h); padding-block: var(--space-2); white-space: normal; overflow-wrap: anywhere; }
 .http-auth-prompt label { display: grid; gap: var(--space-optical); margin: 0; }
 .http-auth-origin { overflow-wrap: anywhere; font-weight: var(--fw-medium); }
 

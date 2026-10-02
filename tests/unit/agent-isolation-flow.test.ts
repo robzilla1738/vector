@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { EventBus, NullNativeBridge, openDb, Repo, RunService, SetService, type ArtifactStore, type ModelClient, type PageService, type SettingsService } from "@aux/runtime";
 import type { AgentPageCreate, EgressLease, Observation, PageTarget, Program } from "@aux/contracts";
@@ -8,7 +9,7 @@ afterEach(() => { for (const dispose of disposers.splice(0)) dispose(); });
 function harness(url = "https://source.test/") {
   const db = openDb(":memory:"), repo = new Repo(db), events = new EventBus(repo);
   const targets = new Map<string, PageTarget>();
-  targets.set("owner", { pageId: "owner", url, backend: "aux", targetId: "owner-target", title: "Source", documentEpoch: 1,
+  targets.set("owner", { pageId: "owner", url, backend: "aux", targetId: "owner-target", title: "Source", documentEpoch: 1, sessionId: "synthetic-owner-attachment",
     lastRevision: 0, controller: "none", controllerEpoch: 0, ownedByRuntime: false, viewStatus: "visible", createdAt: 1, lastActiveAt: 1 });
   const trace: string[] = [];
   const created: AgentPageCreate[] = [];
@@ -44,7 +45,7 @@ function harness(url = "https://source.test/") {
       if (!opts.agentScope) throw new Error("ordinary open must not occur");
       const created = await native.createAgentPage({ ...opts.agentScope, windowId: "main", background: true });
       const page: PageTarget = { ...targets.get("owner")!, pageId: created.pageId, targetId: created.targetId,
-        url: "about:blank", documentEpoch: 0, ownedByRuntime: true, viewStatus: "background", agentIsolation: created.isolation };
+        url: "about:blank", documentEpoch: 0, sessionId: "synthetic-controlled-attachment:" + created.pageId, ownedByRuntime: true, viewStatus: "background", agentIsolation: created.isolation };
       targets.set(page.pageId, page);
       await opts.beforeNavigate!(page);
       trace.push(`navigate:${page.pageId}`); page.url = opts.url; page.documentEpoch++;
@@ -62,7 +63,7 @@ function harness(url = "https://source.test/") {
     effectGrantsForRun: () => ["effect:read", "effect:write", "effect:egress"], agentRoute: () => ({ modelId: "fixture", reasoning: "medium" }),
   } as unknown as SettingsService;
   const sets = new SetService(repo, events, pages);
-  runs = new RunService({ repo, events, pages, sets, settings, browserEgress: egress,
+  runs = new RunService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, events, pages, sets, settings, browserEgress: egress,
     artifacts: { save: () => ({ artifactId: "fixture" }) } as unknown as ArtifactStore,
     translateSteps: (_id, steps) => steps, nativeAvailable: () => true });
   disposers.push(() => { egress.close(); repo.flush(); db.close(); });

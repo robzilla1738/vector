@@ -35,7 +35,7 @@ export function observations(payload) {
   });
 }
 export async function configureModel(t) {
-  await t.rpc('settings.set', { modelProvider: 'openai-compatible', compatibleEndpoint: t.model.endpoint, plannerModel: t.model.model, effectGrants: ['read', `write@${new URL(t.fixture.url).origin}`, `egress@${new URL(t.fixture.url).origin}`] });
+  await t.rpc('settings.set', { modelProvider: 'openai-compatible', compatibleEndpoint: t.model.endpoint, plannerModel: t.model.model, effectGrants: ['effect:read', { effect: 'write', origin: new URL(t.fixture.url).origin }, { effect: 'egress', origin: new URL(t.fixture.url).origin }] });
 }
 export async function newChat(t) {
   const create = { role: 'AXButton', name: 'New chat', match: 'exact', scope: 'shell', index: 0 };

@@ -6,6 +6,7 @@ import { projectRunTranscript } from "../../services/run-transcript.js";
 import { assertRunAnswerable, currentRunSuspension } from "../../services/run-suspension.js";
 
 async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.client.external && ctx.params.mentions?.length) throw new AuxError("permission_denied", "Mention sources through the Aux composer.");
   const { client, params, s } = ctx;
   if (client.external && params.contextMemoryIds?.length)
     throw new AuxError(
@@ -68,12 +69,14 @@ async function h_runs_cancel(ctx: MethodCtx): Promise<unknown> {
   return s.runs.cancel(params.runId);
 }
 async function h_runs_answer(ctx: MethodCtx): Promise<unknown> {
-  const { params, s, suspensions } = ctx;
-  const p = params as { runId: string; answer: string; expectedSuspensionId?: string };
+  const { client, params: p, s, suspensions } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Answers and mentions must come from the Aux composer.");
   const run = s.runs.coordinator.get(p.runId);
   const pending = suspensions.pending(p.runId);
   assertRunAnswerable(run, pending, p.expectedSuspensionId);
-  return s.runs.coordinator.answer(p.runId, p.answer);
+  return s.runs.coordinator.answerWithMentions(p.runId, p.answer, p.mentions ?? [], () => {
+    assertRunAnswerable(s.runs.coordinator.get(p.runId), suspensions.pending(p.runId), p.expectedSuspensionId);
+  });
 }
 async function h_runs_queue(ctx: MethodCtx): Promise<unknown> {
   const { client, params, s } = ctx;

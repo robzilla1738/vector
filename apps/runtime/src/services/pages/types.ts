@@ -46,6 +46,7 @@ export interface ObservedRevision {
 }
 
 export interface PageServiceDeps {
+  turnMentions: import("../turn-mention-service.js").TurnMentionService;
   repo: Repo;
   profileId?: string;
   events: EventBus;

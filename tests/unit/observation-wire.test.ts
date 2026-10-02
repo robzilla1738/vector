@@ -1,3 +1,4 @@
+import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { describe, expect, it } from "vitest";
 import { EventBus, NullNativeBridge, PageService, Repo, StateService, openDb } from "@aux/runtime";
 import { slimObservation, wireObservation } from "../../apps/runtime/src/services/observation-wire";
@@ -65,7 +66,7 @@ describe("sinceRevision deltas", () => {
     } as unknown as DriverPage;
     const driver = { backend: "aux", isConnected: () => true, createTarget: async () => "t", attach: async () => page } as unknown as BrowserDriver;
     const repo = new Repo(openDb(":memory:"));
-    const pages = new PageService({ repo, events: new EventBus(repo), native: new NullNativeBridge(), drivers: () => ({ aux: driver, chrome: null }) });
+    const pages = new PageService({ turnMentions: fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId)), repo, events: new EventBus(repo), native: new NullNativeBridge(), drivers: () => ({ aux: driver, chrome: null }) });
     return { pages, repo, set: (c: ObservationContent) => { current = c; }, navigated: (epoch: number) => onNavigated?.("https://a.test/next", epoch) };
   }
 

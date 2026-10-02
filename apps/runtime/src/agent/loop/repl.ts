@@ -40,7 +40,8 @@ export interface ReplHostDeps {
   signal?: AbortSignal;
   /** Session storage dir for screenshot/overflow artifacts. */
   outputDir?: string;
-  tabs(): Promise<ReplTab[]>;
+  /** Metadata discovery does not grant page access, including the special @Tabs catalog. */
+  tabs(): Promise<Array<Pick<ReplTab, "pageId" | "title" | "url">>>;
   /** decide() first; parks like webFetch on `ask`. */
   openTab(url: string): Promise<LoopToolResult>;
   closeTab(pageId: string): Promise<void>;

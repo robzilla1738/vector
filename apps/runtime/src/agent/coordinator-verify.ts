@@ -314,7 +314,7 @@ export async function tryVisionPlan(self: CoordinatorLoopHost, args: {
 }): Promise<PlanChunk | null> {
   const started = Date.now();
   try {
-    const shot = await self.deps.pages.capture(args.pageId, { format: "dataUrl" });
+    const shot = await self.usePage(args.runId, args.pageId, "read", () => self.deps.pages.capture(args.pageId, { format: "dataUrl" }));
     if (!shot.dataUrl) return null;
     const run = self.get(args.runId);
     if (run.config?.contextImageArtifactIds?.length && !self.deps.imageReferences) throw new AuxError("capability_unsupported", "Image context is unavailable for this run.");
@@ -381,6 +381,12 @@ export interface CoordinatorLoopHost {
   waitIfPaused(c: { abort: AbortController; paused: boolean }, runId: string): Promise<void>;
   waitForAnswer(c: { answerWaiter?: { resolve: (answer: string) => void } }, runId: string): Promise<string>;
   ownsPages(runId: string): boolean;
+  usePage<T>(runId: string, pageId: string, access: "read" | "act", dispatch: () => Promise<T>): Promise<T>;
+  assertPage(runId: string, pageId: string, access: "read" | "act"): Promise<void>;
+  refreshPageSelection(runId: string): Promise<string[]>;
+  pageSourceCheck(runId: string, pageId: string): () => void;
+  ownPage(runId: string, pageId: string): void;
+  ownedPages(runId: string): string[];
   tryVisionPlan(args: Parameters<typeof tryVisionPlan>[1]): ReturnType<typeof tryVisionPlan>;
   assertTargetAlive(obs: Observation): void;
 }

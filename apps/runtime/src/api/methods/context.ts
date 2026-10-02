@@ -1,3 +1,4 @@
+import { TaskReadProvenanceSchema, type ValidatedTaskRead } from "@aux/contracts";
 import { AgentCodeMode } from "../../agent/code-mode.js";
 import type { AgentConnectionScope, AuxEvent, AuxFeatureHost, AuxFeatureOverrides } from "@aux/contracts";
 import type { AgentConnectionService } from "../../services/agent-connections.js";
@@ -49,6 +50,8 @@ import type { MethodName } from "@aux/contracts";
 import type { McpOAuthService } from "../../services/mcp-oauth.js";
 
 export interface Services {
+  safetyAuthority: import("../../safety/authority-revocation.js").SafetyAuthorityRevocation;
+  turnMentions: import("../../services/turn-mention-service.js").TurnMentionService;
   budgets?: import("../../services/budgets.js").BudgetsService;
   clock?: import("@aux/contracts").Clock;
   featureHost?: AuxFeatureHost;
@@ -125,6 +128,7 @@ export type InvokeFn = (method: string, params: unknown, client?: ClientCtx) => 
 export type MethodDeps = ReturnType<typeof buildMethodDeps>;
 
 export interface MethodCtx extends MethodDeps {
+  taskRead?: ValidatedTaskRead;
   method: MethodName;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params: any;
@@ -465,6 +469,64 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     if (!scopedPageIds(scope, connectionId).has(pageId))
       throw new AuxError("permission_denied", "Attach this page to the authorized task before using it");
   };
+  const captureScopedPageSource = (scope: AgentConnectionScope, pageId: string, connectionId?: string) => {
+    requireScopedPage(scope, pageId, connectionId);
+    const sources = scopedTasks(scope).filter(task => task.state === "open").flatMap(task => {
+      const preview = !!connectionId && turnTabs.owns(connectionId, task.taskId, pageId);
+      const attached = task.resources.some(resource => resource.kind === "page" && resource.locator === pageId) ||
+        tasks.details(task.taskId).runs.some(item => item.currentRevision && item.run.pageIds.includes(pageId));
+      return attached || preview ? [{ taskId: task.taskId, revision: task.revision, sourceOrigin: task.sourceOrigin, preview }] : [];
+    });
+    const session = scope.kind === "session" && sessionPageIds(scope.sessionId).has(pageId);
+    if (!sources.length && !session) throw new AuxError("permission_denied", "The person-approved source page is no longer authorized.");
+    return () => {
+      requireScopedPage(scope, pageId, connectionId);
+      if (session && scope.kind === "session" && sessionPageIds(scope.sessionId).has(pageId)) return;
+      const current = sources.some(source => {
+        const task = tasks.get(source.taskId);
+        if (task.revision !== source.revision || task.sourceOrigin !== source.sourceOrigin || task.state !== "open") return false;
+        const preview = source.preview && !!connectionId && turnTabs.owns(connectionId, task.taskId, pageId);
+        try { tasks.preparePageAccess(task.taskId, source.revision, pageId, false, preview); return true; }
+        catch (error) { if (error instanceof AuxError && (error.code === "permission_denied" || error.code === "conflict")) return false; throw error; }
+      });
+      if (!current) throw new AuxError("permission_denied", "The source task revision or page approval changed during this tool call.");
+    };
+  };
+  const captureScopedTaskRead = (scope: AgentConnectionScope, pageId: string, runId: string, connectionId?: string): ValidatedTaskRead | undefined => {
+    const run = s.repo.getRun(runId);
+    const taskId = run?.config?.taskId;
+    if (!taskId || run.config?.implementation !== "external-agent") return undefined;
+    const task = tasks.get(taskId);
+    if (task.state !== "open" || task.revision !== run.config.taskRevision) return undefined;
+    const page = s.pages.get(pageId);
+    if (!page.sessionId) throw new AuxError("target_detached", "The task read attachment is unavailable.");
+    const resource = task.resources.find(item => item.kind === "page" && item.locator === pageId);
+    const preview = !!connectionId && turnTabs.owns(connectionId, taskId, pageId);
+    const taskRun = !resource && !preview ? tasks.details(taskId).runs.find(item => item.currentRevision && item.run.pageIds.includes(pageId)) : undefined;
+    if (!resource && !preview && !taskRun) return undefined;
+    const provenance = TaskReadProvenanceSchema.parse({ authorizedBy: "task_resource", taskId, taskRevision: task.revision,
+      pageId, sessionId: page.sessionId, documentEpoch: page.documentEpoch, sourceOrigin: task.sourceOrigin,
+      source: resource ? { kind: "resource", resourceId: resource.resourceId }
+        : preview ? { kind: "preview", connectionId } : { kind: "task_run", runId: taskRun!.run.runId },
+    });
+    const sourceCheck = captureScopedPageSource(scope, pageId, connectionId);
+    const check = () => {
+      sourceCheck();
+      const current = tasks.get(taskId), currentRun = s.repo.getRun(runId), currentPage = s.pages.get(pageId);
+      if (!currentRun || !["running", "planning", "needs_input"].includes(currentRun.status) ||
+          currentRun.config?.taskId !== taskId || currentRun.config?.taskRevision !== provenance.taskRevision ||
+          current.revision !== provenance.taskRevision || current.state !== "open" || current.sourceOrigin !== provenance.sourceOrigin ||
+          currentPage.sessionId !== provenance.sessionId || currentPage.documentEpoch !== provenance.documentEpoch || currentPage.url !== page.url)
+        throw new AuxError("permission_denied", "The person-approved task read source changed.");
+      const source = provenance.source;
+      const exists = source.kind === "resource" ? current.resources.some(item => item.resourceId === source.resourceId && item.kind === "page" && item.locator === pageId)
+        : source.kind === "preview" ? turnTabs.owns(source.connectionId, taskId, pageId)
+        : tasks.details(taskId).runs.some(item => item.currentRevision && item.run.runId === source.runId && item.run.pageIds.includes(pageId));
+      if (!exists) throw new AuxError("permission_denied", "This task read resource was revoked.");
+    };
+    check();
+    return { provenance, check };
+  };
   const codeMode = new AgentCodeMode((method, params, client) =>
     invoke(
       method,
@@ -510,6 +572,8 @@ export function buildMethodDeps(s: Services, invoke: InvokeFn) {
     runScopeRefs,
     eventVisible,
     requireScopedPage,
+    captureScopedPageSource,
+    captureScopedTaskRead,
     turnTabs,
     codeMode,
     historyProjection,

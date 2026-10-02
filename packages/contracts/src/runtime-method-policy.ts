@@ -8,6 +8,7 @@ export type RuntimeMethodPolicyEntry = { feature: AuxFeature | "core"; auth: Run
 /** Exhaustive API ownership; handler-guarded methods retain parameter checks. */
 export const RuntimeMethodPolicy = {
   ...BrowserRuntimeMethodPolicy,
+  "agent.tabs.list": { feature: "tabMentions", auth: "handler-guarded" },
   "agent.js.run": { feature: "core", auth: "standard" },
   "agent.js.reset": { feature: "core", auth: "standard" },
   "agent.tidy.propose": { feature: "aiTidy", auth: "handler-guarded" },

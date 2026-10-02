@@ -363,15 +363,17 @@ it("protects queued and steered run messages while preserving queue status queri
     const old = { messageId: "message-old", chatId: "run", targetRunId: "run", deliveryRunId: "delivery-old",
       mode: "queue" as const, status: "accepted" as const, text: "private message maroon", pageIds: ["page"],
       contextPageRefs: [{ pageId: "page", url: "https://private.example/maroon", documentEpoch: 1 }],
+      mentions: [{ kind: "tab" as const, pageId: "page", url: "https://private-mention.example/maroon", title: "Private mention maroon", documentEpoch: 1, sessionId: "synthetic-message-attachment", access: "read" as const }],
       expectedRevision: 0, error: "private queue error maroon", createdAt: 1, updatedAt: 1 };
     legacy.insertRunMessage(old);
     db.prepare("VACUUM INTO ?").run(oldBackup);
     const cipher = await SqliteColumnCipher.create(secrets.secrets, "profile-one", false);
-    expect(migrateSensitiveTable(db, cipher, "run_messages")).toBe(3);
+    expect(migrateSensitiveTable(db, cipher, "run_messages")).toBe(4);
     const protectedRepo = new Repo(db, cipher);
     expect(protectedRepo.nextRunMessage("run")?.text).toBe("private message maroon");
     expect(protectedRepo.getRunMessage("message-old")?.contextPageRefs[0]?.url)
       .toBe("https://private.example/maroon");
+    expect(protectedRepo.getRunMessage("message-old")?.mentions?.[0]).toMatchObject({ title: "Private mention maroon", sessionId: "synthetic-message-attachment" });
     const steered = protectedRepo.insertRunMessage({ ...old, messageId: "message-steer",
       deliveryRunId: "delivery-steer", mode: "steer", status: "delivered", text: "private steer silver",
       error: undefined, createdAt: 2, updatedAt: 2 });
@@ -385,6 +387,7 @@ it("protects queued and steered run messages while preserving queue status queri
     expect(readFileSync(oldBackup).includes("private message maroon")).toBe(true);
     for (const path of [file, newBackup, `${file}-wal`]) {
       expect(!existsSync(path) || !readFileSync(path).includes("private message maroon")).toBe(true);
+      expect(!existsSync(path) || !readFileSync(path).includes("private-mention.example")).toBe(true);
     }
     db.close();
     db = openDb(file);
