@@ -98,14 +98,25 @@ async function minimalUi(t) {
   for (const layout of ['vertical', 'horizontal']) {
     await setTabLayout(t, layout, tab);
     const window = await mainWindow(t);
+    await setting(t, 'Auto-hide toolbar', 'toolbarAutoHide', false);
     await t.step(`${layout} Minimal UI fills the window and restores edge controls`, { kind: 'ui', features: ['minimalUi'] }, async () => {
       await centerPointer(t, window);
       const addressTarget = { ...address }, tabsTarget = { ...tabs(layout) };
       delete addressTarget.index; delete tabsTarget.index;
-      const timing = await t.ax.request('measureKey', {
-        chord: 'command+shift+b', selector: addressTarget, expectedVisible: false,
-        additionalHiddenSelectors: [tabsTarget], timeoutMs: 250,
+      const performanceReport = await t.measureNativeKeyEffects({
+        metric: 'minimal-toggle', chord: 'command+shift+b', selector: addressTarget,
+        effect: { expectedVisible: false }, additionalHiddenSelectors: [tabsTarget],
+        async prepareTrial() {
+          if ((await t.rpc('settings.get')).minimalUi) {
+            await t.ax.key('command+shift+b', 'hid');
+            await t.until('Minimal UI exits before the next actual trial', async () => !(await t.rpc('settings.get')).minimalUi);
+          }
+          await centerPointer(t, window);
+          await t.ax.waitFor(addressTarget, 'visible');
+          await t.ax.waitFor(tabsTarget, 'visible');
+        },
       });
+      const timing = performanceReport.measurements.at(-1);
       await t.until('Minimal UI saved', async () => (await t.rpc('settings.get')).minimalUi === true);
       await t.until('Minimal UI removes tab and address controls', async () => !visible(await t.ax.query(tabs(layout)), window).length && !visible(await t.ax.query(address), window).length);
       t.assert.equal(timing.via, 'hid');
@@ -132,11 +143,11 @@ async function minimalUi(t) {
       await t.until('Minimal UI exits', async () => (await t.rpc('settings.get')).minimalUi === false);
       const rpc = await t.rpc('workspace.get');
       t.assert.equal(rpc.activePageId, red.pageId);
-      return { ax, rpc: { workspace: rpc, settings: await t.rpc('settings.get'), coverage, elapsedMs, timing } };
+      return { ax, rpc: { workspace: rpc, settings: await t.rpc('settings.get'), coverage, elapsedMs, timing, performanceReport } };
     });
   }
 }
 export const journeys = [
   { journey: { id: 'sidebar-modes', title: 'Persist toolbar visibility, edge reveal and sidebar snap and command behavior', features: ['floatingSidebar', 'autoHideToolbar', 'layouts'], devAcceptance: ['floatingSidebar', 'autoHideToolbar', 'layouts', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none', launch: {}, timeoutMs: 120000, owner: 'L2' }, run: sidebarModes },
-  { journey: { id: 'minimal-ui', title: 'Minimal UI geometry and edge reveal in both tab layouts', features: ['minimalUi'], devAcceptance: ['minimalUi', 'floatingSidebar', 'autoHideToolbar', 'layouts', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none', launch: {}, timeoutMs: 120000, owner: 'L2' }, run: minimalUi },
+  { journey: { id: 'minimal-ui', title: 'Minimal UI geometry and edge reveal in both tab layouts', features: ['minimalUi'], devAcceptance: ['minimalUi', 'floatingSidebar', 'autoHideToolbar', 'layouts', 'spaces'], needs: ['accessibility', 'screen-recording'], model: 'none', launch: { perf: true }, timeoutMs: 120000, owner: 'L2' }, run: minimalUi },
 ];

@@ -27,7 +27,8 @@ function fixture() {
   };
   const ax = { pid: 42, helperSource, helperExecutable,
     measureKey: async (...args) => { f.calls.push(args); return measure(); },
-    request: async (command, request) => { assert.equal(command, 'measureKey'); f.calls.push(request); return { ...measure(), expectedVisible: false, selector: request.selector, visibleElements: [] }; } };
+    request: async (command, request) => { assert.equal(command, 'measureKey'); f.calls.push(request); const row = measure(); return { ...row, expectedVisible: false, selector: request.selector, visibleElements: [],
+      ...(request.additionalHiddenSelectors ? { hiddenSelectors: [request.selector, ...request.additionalHiddenSelectors], effectConfirmedAtNs: row.observedAtNs } : {}) }; } };
   f.options = { ax, candidate, readIdentity: async () => ({ native: candidate.native, runtime: candidate.productIdentity }),
     prepareTrial: async () => {}, chord: 'command+s', selector, effect: { expectedName: 'After' }, readPower: async () => ac };
   f.close = () => rmSync(directory, { recursive: true, force: true }); return f;
@@ -78,9 +79,26 @@ test('runtime identity and helper bytes changes refuse', () => run(async f => {
   await assert.rejects(collectNativeKeyEffects(f.options), /Helper bytes/);
 }));
 test('minimal disappearance uses real existing raw helper request and250ms max gate', () => run(async f => {
-  const options = { ...f.options, metric: 'minimal-toggle', effect: { expectedVisible: false } };
+  const options = { ...f.options, metric: 'minimal-toggle', additionalHiddenSelectors: [{ role: 'AXTabGroup', name: 'Tabs', scope: 'shell' }], effect: { expectedVisible: false } };
   const report = await collectNativeKeyEffects(options); assert.equal(report.budgetMs, 250); assert.equal(report.gatedMs, 10);
   assert.equal(f.calls[0].expectedVisible, false);
   f.duration = 250.000001;
   await assert.rejects(collectNativeKeyEffects(options), /exceeds 250/);
+}));
+
+test('minimal refuses one-control proof before input', () => run(async f => {
+  await assert.rejects(collectNativeKeyEffects({ ...f.options, metric: 'minimal-toggle', effect: { expectedVisible: false } }), /both address and tab/);
+  assert.equal(f.calls.length, 0);
+}));
+test('combined confirmation traversal remains inside the strict250ms interval', () => run(async f => {
+  const extra = [{ role: 'AXTabGroup', name: 'Tabs', scope: 'shell' }];
+  f.options.ax.request = async (_command, request) => {
+    f.calls.push(request);
+    const start = BigInt(f.calls.length) * 1000000000n;
+    return { via: 'hid', postedAtNs: String(start), observedAtNs: String(start + 100000000n), effectConfirmedAtNs: String(start + 250000001n),
+      elapsedMs: 250.000001, notification: 'AXLayoutChanged', expectedVisible: false,
+      selector, hiddenSelectors: [selector, ...extra], visibleElements: [] };
+  };
+  await assert.rejects(collectNativeKeyEffects({ ...f.options, metric: 'minimal-toggle', additionalHiddenSelectors: extra,
+    effect: { expectedVisible: false } }), error => error.report.measurements.length === 20 && error.report.maxMs > 250 && /exceeds 250/.test(error.message));
 }));

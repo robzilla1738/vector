@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
 import { createUntil } from './lib/until.mjs';
 import { createClock } from "../../packages/contracts/dist/clock.js";
 import assert from 'node:assert/strict';
@@ -116,6 +117,31 @@ async function execute() {
   const actual = await app.identity();
   const clock = createClock(actual.native.testClockScale);
   const context = { app, rpc, fixture, model, ax: observedAx, assert, until, visual: createVisual(outputDir),
+    async measureNativeKeyEffects(options) {
+      signal.throwIfAborted();
+      assert.ok(!values.appearance, 'Performance trials cannot include appearance sampling');
+      const { metric, chord, selector, effect, additionalHiddenSelectors, prepareTrial } = options;
+      const candidate = { productIdentity: identity,
+        native: { sourceCommit: actual.native.sourceCommit, buildId: actual.native.buildId, manifestHash: actual.native.manifestHash },
+        shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
+      let report;
+      try {
+        report = await collectNativeKeyEffects({ metric, chord, selector, effect, additionalHiddenSelectors, prepareTrial,
+          trials: 20, candidate, ax: observedAx, readIdentity: () => app.identity() });
+        return report;
+      } catch (error) { report = error.report; throw error; }
+      finally {
+        if (report) {
+          const records = manifest.performance ??= [];
+          assert.ok(records.length < 8, 'Performance report count exceeded');
+          const filename = `performance-${metric}-${records.length + 1}.json`;
+          const bytes = Buffer.from(JSON.stringify(report, null, 2) + '\n');
+          assert.ok(bytes.length <= 1048576, 'Performance report exceeds bound');
+          writeFileSync(join(outputDir, filename), bytes, { flag: 'wx' });
+          records.push({ filename, bytes: bytes.length, sha256: sha256(bytes), status: report.status });
+        }
+      }
+    },
     async restart(options) {
       signal.throwIfAborted();
       appearance = undefined; pipAppearance = undefined;
