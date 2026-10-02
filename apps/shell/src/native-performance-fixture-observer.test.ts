@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { startNativePerformanceFixtureObserver } from "./native-performance-fixture-observer";
 const flush = async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); };
 describe("private native performance fixture observer", () => {
-  for (const operation of ["prepareGuestTabSwitchPresentation", "sampleShellMemory"]) it(`uses native long poll then fixed zero-argument ${operation} in sequence`, async () => {
+  for (const operation of ["prepareGuestTabSwitchPresentation", "sampleShellMemory", "prepareLittleWindowPresentation", "completeLittleWindowPresentation"]) it(`uses native long poll then fixed zero-argument ${operation} in sequence`, async () => {
     const calls: string[] = [];
     const stop = startNativePerformanceFixtureObserver(async method => {
       calls.push(method);

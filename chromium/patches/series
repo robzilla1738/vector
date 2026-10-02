@@ -233,3 +233,5 @@ aux/runtime/0256-native-compiler-lifetime-adapters.patch
 aux/runtime/0259-native-pip-solid-backing.patch
 aux/runtime/0258-native-organization-work.patch
 aux/runtime/0262-browser-view-buildflags.patch
+aux/runtime/0260-native-little-hardware-upperbound.patch
+aux/runtime/0264-pip-solid-backing-test-layer.patch

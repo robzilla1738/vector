@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
@@ -16,8 +17,14 @@
 #include "chrome/browser/ui/aux/native_guest_stage_owner.h"
 #include "content/public/browser/weak_document_ptr.h"
 class WebUIBrowserUI;
+class BrowserWindowInterface;
 namespace aux {
 // No caller path, selector or effect. Reads only fixed owned-fixture metadata.
+// Pure native inventory comparison; caller must obtain permitted target from
+// the existing fixture creation ticket. This does not create/grant authority.
+bool NativePerformanceOwnerInventoryMatches(BrowserWindowInterface* origin,
+    base::WeakPtr<BrowserWindowInterface> permitted_little,
+    const std::vector<BrowserWindowInterface*>& observed);
 bool IsNativePerformanceMailboxOperation(const std::string& operation);
 std::optional<base::DictValue> ReadNativePerformanceMailboxFile(
     const base::FilePath& root, uint64_t last_sequence, uint64_t root_device, uint64_t root_inode);

@@ -21,6 +21,8 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
 #include "chrome/browser/ui/aux/native_performance_observer.h"
+#include "chrome/browser/ui/aux/little_window_controller.h"
+#include "chrome/browser/ui/aux/quick_ask_controller.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
@@ -60,23 +62,44 @@ std::optional<NativeGuestStageOwnedSnapshot> UniqueOwner(base::WeakPtr<WebUIBrow
   auto* profile = Profile::FromWebUI(ui->web_ui());
   if (!profile || profile->IsOffTheRecord()) return std::nullopt;
   const base::FilePath selected(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("user-data-dir"));
-  size_t count = 0;
+  auto* origin = ui->browser();
+  const auto permitted_little = ui->NativeLittleCleanupWindowForTesting();
+  std::vector<BrowserWindowInterface*> observed;
   ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
-      [&count, selected](BrowserWindowInterface* browser) {
+      [&observed, selected](BrowserWindowInterface* browser) {
         if (browser->GetProfile() && browser->GetProfile()->GetPath().DirName() == selected) {
           auto* window = WebUIBrowserWindow::FromBrowser(browser);
-          if (window && window->GetWebUIBrowserUI()) ++count;
+          if (window && window->GetWebUIBrowserUI()) observed.push_back(browser);
         }
         return true;
       });
-  return count == 1 && ui && ReadNativeGuestStageShellOwner(ui) == owner ? owner : std::nullopt;
+  return NativePerformanceOwnerInventoryMatches(origin, permitted_little, observed) &&
+      ui && ReadNativeGuestStageShellOwner(ui) == owner ? owner : std::nullopt;
 }
 }  // namespace
+bool NativePerformanceOwnerInventoryMatches(BrowserWindowInterface* origin,
+    base::WeakPtr<BrowserWindowInterface> permitted_little,
+    const std::vector<BrowserWindowInterface*>& observed) {
+  auto* profile = origin ? origin->GetProfile() : nullptr;
+  if (!profile || profile->IsOffTheRecord() || IsLittleWindow(origin) || IsQuickAskWindow(origin) ||
+      origin->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
+      (permitted_little && (permitted_little.get() == origin ||
+          permitted_little->GetProfile() != profile || !IsLittleWindow(permitted_little.get())))) return false;
+  unsigned ordinary = 0, created = 0;
+  for (auto* window : observed) {
+    if (window == origin) ++ordinary;
+    else if (permitted_little && window == permitted_little.get()) ++created;
+    else return false;
+    if (ordinary > 1 || created > 1) return false;
+  }
+  return ordinary == 1;
+}
 bool IsNativePerformanceMailboxOperation(const std::string& operation) {
   return operation == "prepareGuestSplitDropPresentation" ||
       operation == "prepareGuestDividerFramePresentation" ||
       operation == "prepareGuestTabSwitchPresentation" || operation == "completeGuestPresentation" ||
       operation == "sampleShellMemory" ||
+      operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation" ||
       operation == "prepareOrganizationAutoArchiveWork" ||
       operation == "prepareOrganizationLiveFolderWork" || operation == "completeOrganizationWork";
 }
@@ -195,21 +218,25 @@ void NativePerformanceMailbox::Received(std::optional<base::DictValue> request) 
   std::move(pending_).Run(std::move(request));
 }
 std::optional<uint64_t> NativePerformanceMailbox::TakeExpected(const std::string& operation) {
-  if (!Stable() || !expected_ || *expected_ != operation || running_ ||
+  const auto cleanup = ui_ ? ui_->NativeLittleCleanupWindowForTesting() : base::WeakPtr<BrowserWindowInterface>();
+  if ((cleanup && operation != "completeLittleWindowPresentation") || !Stable() || !expected_ || *expected_ != operation || running_ ||
       (sample_completion_ ? operation != *sample_completion_ :
-          (operation == "completeGuestPresentation" || operation == "completeOrganizationWork"))) { Refuse(); return std::nullopt; }
+          (operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
+           operation == "completeLittleWindowPresentation"))) { Refuse(); return std::nullopt; }
   running_ = std::move(expected_); expected_.reset(); return sequence_;
 }
 bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& operation, const base::DictValue& record) {
   if (!Stable() || !running_ || *running_ != operation || sequence != sequence_) { Refuse(); return false; }
   const auto* producer = record.FindString("producer");
   const auto* status = record.FindString("status");
+  const bool little = operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation";
   const bool memory = operation == "sampleShellMemory";
   const bool prepare_work = operation == "prepareOrganizationAutoArchiveWork" ||
       operation == "prepareOrganizationLiveFolderWork";
   const bool organization = prepare_work || operation == "completeOrganizationWork";
   if (!producer || *producer != (memory ? "aux-native-shell-memory" :
-          organization ? "aux-native-organization-work-v1" : "aux-native-guest-presentation") ||
+          organization ? "aux-native-organization-work-v1" :
+          little ? "aux-native-little-presentation-upperbound" : "aux-native-guest-presentation") ||
       record.FindInt("version") != 1 || !status ||
       (memory ? (*status != "sampled" && *status != "refused") :
           (*status != "ready" && *status != "measured" && *status != "refused")) ||
@@ -233,9 +260,11 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
   const auto json = base::WriteJson(wrapper);
   if (!json || json->size() > 16000 || !AdmitRecord()) { Refuse(); return false; }
   if (memory || operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
+      operation == "completeLittleWindowPresentation" ||
       *status == "refused") { sample_completion_.reset(); sample_scope_.reset(); }
   else {
-    sample_completion_ = organization ? "completeOrganizationWork" : "completeGuestPresentation";
+    sample_completion_ = organization ? "completeOrganizationWork" :
+        little ? "completeLittleWindowPresentation" : "completeGuestPresentation";
     if (organization) sample_scope_ = record.FindDict("scope")->Clone();
   }
   running_.reset(); fprintf(stderr, "AUX_NATIVE_FIXTURE_REPLY_V1 %s\n", json->c_str()); fflush(stderr); return true;

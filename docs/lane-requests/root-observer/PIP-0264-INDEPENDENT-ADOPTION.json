@@ -1,0 +1,23 @@
+{
+  "base": "d565d969f1de9dd0a718994da1fe7982a83e5d32",
+  "path": "chrome/browser/ui/aux/native_pip_video_backing_unittest.cc",
+  "patch": "/tmp/aux-builder-native-0264/chromium/patches/aux/runtime/0264-pip-solid-backing-test-layer.patch",
+  "patchSha256": "4f272cc439ef7665c3dc80828b57e9b22f12860249a5c72e5631e46b058dd42d",
+  "beforeSha256": "e9609454045de714775354a6d59aa39f3e3c3247cf39f30a589340211b47f24e",
+  "afterSha256": "4a81c0e21fcbe0c0a29fa72607f65e304f70a9445143a399fee414c039bb2352",
+  "apiHeader": "/Users/rcourson/aux-chromium-stable/chromium/src/ui/compositor/layer_not_drawn.h",
+  "apiHeaderSha256": "41aa94ea93e7ed4ae955ad340976f995f3a7cf0e6f441433d5fa481edbffe313",
+  "checks": {
+    "frozenReplayBaseline": true,
+    "forwardCheck": true,
+    "exactResult": true,
+    "reverseCheck": true,
+    "exactRestoration": true,
+    "allOtherBytesIncludingAssertionsUnchanged": true
+  },
+  "stableWrites": false,
+  "productionChanges": false,
+  "reason": "ui::Layer is abstract; concrete LayerNotDrawn preserves original LAYER_NOT_DRAWN container semantics",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-0264-check-1c9ozond",
+  "status": "rootindependentactualAPI/baseline/after/forward/reverse/assertions PASS; sourceonly native uncompiled"
+}

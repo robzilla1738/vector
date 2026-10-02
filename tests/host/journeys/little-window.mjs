@@ -4,7 +4,7 @@ import { fixturePage } from '../lib/fixture.mjs';
 export const journey = {
   id: 'little-window', title: 'Open, inspect and promote real Little windows through external links and keyboard commands',
   features: ['littleWindow'], devAcceptance: ['littleWindow', 'windowSync', 'spaces', 'commandRegistry'],
-  needs: ['accessibility', 'screen-recording'], model: 'none', launch: {}, timeoutMs: 240_000, owner: 'L4',
+  needs: ['accessibility', 'screen-recording'], model: 'none', launch: ({ appearance }) => ({ args: appearance ? [] : ['--aux-native-performance-observer'] }), timeoutMs: 240_000, owner: 'L4',
 };
 const button = name => ({ role: 'AXButton', name, match: 'exact', scope: 'shell', index: 0 });
 const promote = button('Open in Aux');
@@ -109,20 +109,33 @@ export async function run(t) {
     const power = execFileSync('/usr/bin/pmset', ['-g', 'batt'], { encoding: 'utf8' });
     t.assert.match(power, /AC Power/, 'Performance trials require AC power');
     const trials = [];
-    for (let trial = 0; trial < 20; trial++) {
+    let page;
+    const setup = async () => {
+        t.assert.equal((await normalWindows(t)).length, before.length, 'No prior utility target survives into native Arm');
+    };
+    const input = async trial => {
       const url = `${t.fixture.url}/little-fixture?trial=${trial}`;
       const start = performance.now();
       await t.app.openExternal(url);
       await t.ax.waitFor({ role: 'AXWebArea', name: `Aux Little trial ${trial}`, match: 'exact', index: 0 }, 'visible');
-      const page = await littlePage(t, url);
+      page = await littlePage(t, url);
       trials.push(performance.now() - start);
+    };
+    const cleanup = async (_trial, result) => {
+      if (result) t.assert.ok((await normalWindows(t)).some(window => window.id === result.measured.target.windowId), 'Genuine measured creation target is still present before promotion');
       await t.ax.press(promote);
-      await t.until('trial utility window closed', async () => (await normalWindows(t)).length === before.length, { intervalMs: 10 });
+      await t.until('trial utility window closed' , async () => (await normalWindows(t)).length === before.length, { intervalMs: 10 });
       await t.rpc('pages.close', { pageId: page.pageId });
-    }
+    };
+    let hardware;
+    if (t.appearanceEnabled) {
+      // Appearance captures are diagnostic; timed native qualification runs separately.
+      for (let trial = 0; trial < 20; trial++) { await setup(); await input(trial); await cleanup(trial); }
+      hardware = { status: 'not_measured', reason: 'appearance diagnostic run' };
+    } else hardware = await t.measureGuestPresentations({ metric: 'little-window', setup, input, cleanup });
     const p95 = [...trials].sort((a, b) => a - b)[18];
     t.assert.ok(p95 <= 600, `Warm first-paint p95 ${p95.toFixed(1)} ms exceeds 600 ms`);
-    return { ax: await t.ax.dump(), rpc: { pages: await t.rpc('pages.list'), performance: { power: 'AC', trials, p95 } } };
+    return { ax: await t.ax.dump(), rpc: { pages: await t.rpc('pages.list'), performance: { power: 'AC', trials, p95, diagnosticEndpoint: 'Node trigger→AX/readiness; original assertion retained', hardware } } };
   });
   await t.step('cold external launch starts a normal window and shows Little above it without restoring old utility windows', { kind: 'ui', features: ['littleWindow'] }, async () => {
     const url = `${t.fixture.url}/little-fixture?cold=1`;

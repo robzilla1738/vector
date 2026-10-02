@@ -1,0 +1,2261 @@
+diff --git a/chrome/browser/app_controller_mac.mm b/chrome/browser/app_controller_mac.mm
+index e9d7461..11fde82 100644
+--- a/chrome/browser/app_controller_mac.mm
++++ b/chrome/browser/app_controller_mac.mm
+@@ -48,6 +48,7 @@
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
+ #include "chrome/browser/ui/aux/little_window_controller.h"
+ #include "chrome/browser/ui/aux/link_router.h"
++#include "chrome/browser/ui/aux/native_little_presentation_fixture.h"
+ #endif
+ #include "chrome/browser/browser_process_platform_part.h"
+ #include "chrome/browser/command_updater_impl.h"
+@@ -2770,8 +2771,26 @@ void OpenStartupTabsInBrowserWithProfile(const StartupTabs& requested_tabs,
+   if (!profile->IsOffTheRecord()) {
+     StartupTabs remaining;
+     for (const auto& tab : tabs) {
++      aux::LinkRouter::LittleCreationObservation little_observation;
++#if BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++      if (tab.is_untrusted_launch && tab.url.SchemeIsHTTPOrHTTPS()) {
++        const auto ticket = aux::ObserveLittleExternalRoute(profile);
++        if (ticket) {
++          little_observation.created = base::BindRepeating(
++              [](aux::NativeLittleRouteObservation ticket, BrowserWindowInterface* window) {
++                if (ticket.fixture) ticket.fixture->Created(ticket.nonce, window);
++              }, *ticket);
++          little_observation.delivered = base::BindRepeating(
++              [](aux::NativeLittleRouteObservation ticket, content::WebContents* contents,
++                 base::WeakPtr<content::NavigationHandle> navigation) {
++                if (ticket.fixture) ticket.fixture->Delivered(ticket.nonce, contents, navigation);
++              }, *ticket);
++        }
++      }
++#endif
+       const bool routed = tab.url.SchemeIs("aux") ? aux::LinkRouter::OpenScheme(profile, tab.url) :
+-          tab.is_untrusted_launch && tab.url.SchemeIsHTTPOrHTTPS() && aux::LinkRouter::Open(profile, tab.url, "external", tab.sender_app);
++          tab.is_untrusted_launch && tab.url.SchemeIsHTTPOrHTTPS() && aux::LinkRouter::Open(profile, tab.url, "external", tab.sender_app,
++              std::nullopt, false, {}, {}, "", false, std::move(little_observation));
+       if (!routed) remaining.push_back(tab);
+     }
+     tabs = std::move(remaining);
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 87921c0..ef2026c 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -40,6 +40,12 @@ source_set("runtime") {
+     "method_registry.h",
+     "native_guest_presentation_fixture.h",
+     "native_guest_presentation_fixture.cc",
++    "native_little_creation_ticket.h",
++    "native_little_creation_ticket.cc",
++    "native_little_presentation_fixture.h",
++    "native_little_presentation_fixture.cc",
++    "native_presentation_record_codec.h",
++    "native_presentation_record_codec.cc",
+     "native_organization_work_fixture.h",
+     "native_organization_work_fixture.cc",
+     "native_performance_mailbox.h",
+diff --git a/chrome/browser/ui/aux/link_router.cc b/chrome/browser/ui/aux/link_router.cc
+index 454a7c2..7ff588f 100644
+--- a/chrome/browser/ui/aux/link_router.cc
++++ b/chrome/browser/ui/aux/link_router.cc
+@@ -147,7 +147,7 @@ base::DictValue LinkRouter::Test(const GURL& url, std::string_view source, std::
+   return value;
+ }
+ bool LinkRouter::Deliver(BrowserWindowInterface* window, const GURL& url, const base::DictValue& destination,
+-                         const std::string& rule, bool background, bool untrusted, const std::string& fallback_reason) {
++                         const std::string& rule, bool background, bool untrusted, const std::string& fallback_reason, LittleCreationObservation observation) {
+   if (!Eligible(window, profile_) || !WebUrl(url) || receipts_.size() >= kCapacity) return false;
+   std::string error;
+   auto snapshot = OrganizationStore::Snapshot(profile_, WindowId(window), &error);
+@@ -169,17 +169,25 @@ bool LinkRouter::Deliver(BrowserWindowInterface* window, const GURL& url, const
+     if (!OrganizationStore::Commit(profile_, WindowId(window), snapshot->FindInt("revision").value(), *layout, &error)) return false;
+   } else if (destination.FindString("spaceId")) return false;
+   content::WebContents* contents = nullptr;
++  base::WeakPtr<content::NavigationHandle> observed_navigation;
+   {
+     NavigateParams navigation(window, url, ui::PAGE_TRANSITION_LINK);
+     navigation.original_user_gesture = false;
+     navigation.disposition = IsLittleWindow(window) ? WindowOpenDisposition::CURRENT_TAB :
+         background ? WindowOpenDisposition::NEW_BACKGROUND_TAB : WindowOpenDisposition::NEW_FOREGROUND_TAB;
+     if (untrusted) navigation.initiator_origin = url::Origin();
+-    Navigate(&navigation);
++    observed_navigation = Navigate(&navigation);
+     contents = navigation.navigated_or_inserted_contents;
+   }
+   if (!contents) return false;
+   const auto id = PageIdentity::GetOrCreate(profile_, contents);
++  if (IsLittleWindow(window) && observation.delivered) {
++    const auto self = weak_factory_.GetWeakPtr();
++    const auto held_window = window->GetWeakPtr();
++    const auto held_contents = contents->GetWeakPtr();
++    observation.delivered.Run(contents, observed_navigation);
++    if (!self || !held_window || !held_contents) return false;
++  }
+   if (!space.empty()) TabCatalog::GetForProfile(profile_)->BindSpace(id, space, workspace);
+   base::DictValue payload;
+   payload.Set("pageId", id); payload.Set("profileId", Id(profile_));
+@@ -195,7 +203,7 @@ bool LinkRouter::Deliver(BrowserWindowInterface* window, const GURL& url, const
+ bool LinkRouter::Open(Profile* source_profile, const GURL& url, std::string source, std::string sender,
+                       std::optional<base::DictValue> explicit_destination, bool background,
+                       base::OnceCallback<void(bool)> done, base::RepeatingCallback<bool()> authorized,
+-                      std::string fallback_reason, bool fallback_attempt) {
++                      std::string fallback_reason, bool fallback_attempt, LittleCreationObservation observation) {
+   auto refuse = [&done]() { if (done) std::move(done).Run(false); return false; };
+   if (!source_profile || source_profile->IsOffTheRecord() || !WebUrl(url) ||
+       !ValidLinkRoutes(Config()) || (authorized && !authorized.Run())) return refuse();
+@@ -233,7 +241,7 @@ bool LinkRouter::Open(Profile* source_profile, const GURL& url, std::string sour
+   g_browser_process->profile_manager()->CreateProfileAsync(entry->GetPath(), base::BindOnce(
+     [](GURL url, base::DictValue destination, std::string rule, bool background, bool untrusted,
+        std::string fallback_reason, base::OnceCallback<void(bool, bool)> completion,
+-       base::RepeatingCallback<bool()> authorized, Profile* profile) {
++       base::RepeatingCallback<bool()> authorized, LittleCreationObservation observation, Profile* profile) {
+       if (authorized && !authorized.Run()) { std::move(completion).Run(false, false); return; }
+       if (!profile || !Available(Id(profile))) { std::move(completion).Run(false, true); return; }
+       auto* router = ForProfile(profile);
+@@ -242,15 +250,20 @@ bool LinkRouter::Open(Profile* source_profile, const GURL& url, std::string sour
+       auto complete = base::BindOnce([](base::WeakPtr<LinkRouter> router, GURL url,
+           base::DictValue destination, std::string rule, bool background, bool untrusted,
+           std::string fallback_reason, base::OnceCallback<void(bool, bool)> completion,
+-          base::RepeatingCallback<bool()> authorized, BrowserWindowInterface* window) {
++          base::RepeatingCallback<bool()> authorized, LittleCreationObservation observation, BrowserWindowInterface* window) {
+         if (router) --router->reserved_;
++        if (window && IsLittleWindow(window) && observation.created) {
++          const auto held_window = window->GetWeakPtr();
++          observation.created.Run(window);
++          window = held_window.get();
++        }
+         const bool unavailable = window && !Available(Id(window->GetProfile()));
+         const bool ok = router && window && (!authorized || authorized.Run()) && !unavailable &&
+-            router->Deliver(window, url, destination, rule, background, untrusted, fallback_reason);
++            router->Deliver(window, url, destination, rule, background, untrusted, fallback_reason, std::move(observation));
+         if (!ok && window && IsLittleWindow(window)) CloseLittleWindow(window);
+         std::move(completion).Run(ok, unavailable);
+       }, router->weak_factory_.GetWeakPtr(), url, destination.Clone(), rule, background, untrusted,
+-          fallback_reason, std::move(completion), std::move(authorized));
++          fallback_reason, std::move(completion), std::move(authorized), std::move(observation));
+       const auto* kind = destination.FindString("window");
+       if (kind && *kind == "little") {
+         std::move(complete).Run(OpenLittleWindow(profile, GURL(), untrusted, !background));
+@@ -264,7 +277,7 @@ bool LinkRouter::Open(Profile* source_profile, const GURL& url, std::string sour
+         profiles::OpenBrowserWindowForProfile(std::move(complete), true, false, false, profile);
+       }
+     }, url, destination.Clone(), rule, background, source != "in-app", fallback_reason,
+-        std::move(completion), std::move(authorized)));
++        std::move(completion), std::move(authorized), std::move(observation)));
+   return true;
+ }
+ 
+diff --git a/chrome/browser/ui/aux/link_router.h b/chrome/browser/ui/aux/link_router.h
+index 03ab3ea..e9f1281 100644
+--- a/chrome/browser/ui/aux/link_router.h
++++ b/chrome/browser/ui/aux/link_router.h
+@@ -21,11 +21,17 @@
+ class BrowserWindowInterface;
+ class Profile;
+ class ProfileBrowserCollection;
++namespace content { class WebContents; class NavigationHandle; }
+ namespace aux {
+ bool HandleLinkRoutingRequest(BrowserWindowInterface* caller, const std::string& method, const base::ListValue& args, aux::mojom::ShellHost::RequestCallback callback);
+ bool IsLinkRoutingMethod(std::string_view method);
+ class LinkRouter final : public base::SupportsUserData::Data, public BrowserCollectionObserver, public ProfileObserver {
+  public:
++  // Internal readonly observation, never a routing destination or authorization.
++  struct LittleCreationObservation {
++    base::RepeatingCallback<void(BrowserWindowInterface*)> created;
++    base::RepeatingCallback<void(content::WebContents*, base::WeakPtr<content::NavigationHandle>)> delivered;
++  };
+   static LinkRouter* ForProfile(Profile* profile);
+   static base::DictValue Config();
+   static std::optional<base::DictValue> SetConfig(int expected_revision, const base::DictValue& config, std::string* error);
+@@ -35,7 +41,8 @@ class LinkRouter final : public base::SupportsUserData::Data, public BrowserColl
+                    std::optional<base::DictValue> explicit_destination = std::nullopt,
+                    bool background = false, base::OnceCallback<void(bool)> done = {},
+                    base::RepeatingCallback<bool()> authorized = {},
+-                   std::string fallback_reason = "", bool fallback_attempt = false);
++                   std::string fallback_reason = "", bool fallback_attempt = false,
++                   LittleCreationObservation observation = {});
+   static void RecordHit(const std::string& id);
+   static bool OpenScheme(Profile* source_profile, const GURL& url);
+   explicit LinkRouter(Profile* profile);
+@@ -55,7 +62,8 @@ class LinkRouter final : public base::SupportsUserData::Data, public BrowserColl
+   bool PromptLive(const std::string& id);
+   size_t reserved_ = 0;
+   bool Deliver(BrowserWindowInterface* window, const GURL& url, const base::DictValue& destination,
+-               const std::string& rule_id, bool background, bool untrusted, const std::string& fallback_reason);
++               const std::string& rule_id, bool background, bool untrusted, const std::string& fallback_reason,
++               LittleCreationObservation observation = {});
+   bool Ask(BrowserWindowInterface* window, const GURL& url);
+   void Expire();
+   void ScheduleExpiry();
+diff --git a/chrome/browser/ui/aux/method_registry.cc b/chrome/browser/ui/aux/method_registry.cc
+index 27ae744..8d172f5 100644
+--- a/chrome/browser/ui/aux/method_registry.cc
++++ b/chrome/browser/ui/aux/method_registry.cc
+@@ -45,7 +45,8 @@ AuxMethodRegistry::AuxMethodRegistry() {
+     register_shell(AuxShellMethodGroup::kWindow,
+         {"commandPresentationSnapshot", "prepareGuestSplitDropPresentation",
+          "prepareGuestDividerFramePresentation", "prepareGuestTabSwitchPresentation",
+-         "completeGuestPresentation", "performanceFixtureNextRequest", "sampleShellMemory",
++         "completeGuestPresentation", "prepareLittleWindowPresentation", "completeLittleWindowPresentation",
++         "performanceFixtureNextRequest", "sampleShellMemory",
+          "prepareOrganizationAutoArchiveWork", "prepareOrganizationLiveFolderWork", "completeOrganizationWork"});
+ #endif
+   register_shell(AuxShellMethodGroup::kContent,
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+index 06a421b..0487e58 100644
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -35,6 +35,7 @@
+ #include "chrome/browser/ui/aux/journey_fixture_path.h"
+ #include "chrome/browser/ui/aux/native_command_presentation_session.h"
+ #include "chrome/browser/ui/aux/native_guest_presentation_fixture.h"
++#include "chrome/browser/ui/aux/native_little_presentation_fixture.h"
+ #include "chrome/browser/ui/aux/native_performance_mailbox.h"
+ #include "chrome/browser/ui/aux/native_organization_work_fixture.h"
+ #include "chrome/browser/ui/aux/native_shell_memory.h"
+@@ -387,6 +388,40 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+         }, GetWeakPtr(), frame->GetWeakDocumentPtr(), std::move(callback)));
+     return;
+   }
++  if (method == "prepareLittleWindowPresentation" || method == "completeLittleWindowPresentation") {
++    auto* contents = web_ui() ? web_ui()->GetWebContents() : nullptr;
++    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
++    if (!args.empty() || !aux::NativePerformanceObservationEnabled() || !IsAuthorizedAuxDocument() ||
++        !frame || frame != web_ui()->GetRenderFrameHost()) {
++      std::move(callback).Run(false, "", "forbidden", "Little presentation fixture requires its current owner and no arguments"); return;
++    }
++    const auto sequence = performance_mailbox_ ? performance_mailbox_->TakeExpected(method) : std::nullopt;
++    if (!sequence) {
++      std::move(callback).Run(false, "", "forbidden", "Little presentation fixture requires its owned mailbox operation"); return;
++    }
++    if (!little_presentation_fixture_)
++      little_presentation_fixture_ = std::make_unique<aux::NativeLittlePresentationFixture>(GetWeakPtr());
++    auto reply = base::BindOnce([](base::WeakPtr<WebUIBrowserUI> ui,
++        content::WeakDocumentPtr document, uint64_t sequence, std::string operation,
++        RequestCallback callback, base::DictValue record) {
++      auto* frame = document.AsRenderFrameHostIfValid();
++      if (!ui || !aux::NativePerformanceObservationEnabled() || !ui->IsAuthorizedAuxDocument() ||
++          !ui->web_ui() || !ui->web_ui()->GetWebContents() || !frame ||
++          frame != ui->web_ui()->GetRenderFrameHost() ||
++          frame != ui->web_ui()->GetWebContents()->GetPrimaryMainFrame()) {
++        std::move(callback).Run(false, "", "forbidden", "Little presentation fixture owner changed"); return;
++      }
++      if (!ui->performance_mailbox_ || !ui->performance_mailbox_->EmitReply(sequence, operation, record)) {
++        std::move(callback).Run(false, "", "forbidden", "Little presentation fixture reply changed"); return;
++      }
++      const auto json = base::WriteJson(record);
++      std::move(callback).Run(json && json->size() <= 16384, json.value_or(""),
++          json ? "" : "unavailable", json ? "" : "Little presentation fixture unavailable");
++    }, GetWeakPtr(), frame->GetWeakDocumentPtr(), *sequence, method, std::move(callback));
++    if (method == "completeLittleWindowPresentation") little_presentation_fixture_->Complete(std::move(reply));
++    else little_presentation_fixture_->Prepare(std::move(reply));
++    return;
++  }
+   if (method == "prepareOrganizationAutoArchiveWork" ||
+       method == "prepareOrganizationLiveFolderWork" || method == "completeOrganizationWork") {
+     auto* contents = web_ui() ? web_ui()->GetWebContents() : nullptr;
+@@ -1370,3 +1405,10 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+                           "Unsupported Aux shell method: " + method);
+ }
+ #endif
++
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++base::WeakPtr<BrowserWindowInterface> WebUIBrowserUI::NativeLittleCleanupWindowForTesting() const {
++  return little_presentation_fixture_ ? little_presentation_fixture_->CleanupWindowForMailbox() :
++      base::WeakPtr<BrowserWindowInterface>();
++}
++#endif
+diff --git a/chrome/browser/ui/aux/native_guest_presentation_fixture.cc b/chrome/browser/ui/aux/native_guest_presentation_fixture.cc
+index 5de9818..8676a3d 100644
+--- a/chrome/browser/ui/aux/native_guest_presentation_fixture.cc
++++ b/chrome/browser/ui/aux/native_guest_presentation_fixture.cc
+@@ -1,5 +1,6 @@
+ // Copyright 2026 The Aux Authors
+ #include "chrome/browser/ui/aux/native_guest_presentation_fixture.h"
++#include "chrome/browser/ui/aux/native_presentation_record_codec.h"
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+ #include <iostream>
+ #include <string_view>
+@@ -22,10 +23,6 @@ const char* Metric(blink::mojom::NativeGuestStageMetric metric) {
+   }
+   return nullptr;
+ }
+-base::DictValue Sink(const viz::FrameSinkId& sink) {
+-  return base::DictValue().Set("clientId", static_cast<double>(sink.client_id()))
+-      .Set("sinkId", static_cast<double>(sink.sink_id()));
+-}
+ bool ValidScope(const blink::mojom::NativeGuestStageScope* scope) {
+   return scope && Metric(scope->metric) && !scope->request_nonce.is_empty() &&
+       scope->sample_sequence && scope->window_id > 0 && scope->shell_widget_routing_id > 0 &&
+@@ -43,14 +40,10 @@ base::DictValue Record(const char* status, const char* reason,
+     record.Set("windowId", scope->window_id); record.Set("widgetRoutingId", scope->shell_widget_routing_id);
+     record.Set("rendererPid", scope->shell_renderer_pid);
+     record.Set("nativeDocumentGeneration", base::NumberToString(scope->native_document_generation));
+-    record.Set("shellSink", Sink(scope->shell_sink)); record.Set("displaySink", Sink(scope->display_sink));
++    record.Set("shellSink", EncodeNativePresentationSink(scope->shell_sink)); record.Set("displaySink", EncodeNativePresentationSink(scope->display_sink));
+   }
+   return record;
+ }
+-void Tick(base::DictValue& record, const char* key, base::TimeTicks value) {
+-  if (value.is_null()) record.Set(key, base::Value());
+-  else record.Set(key, base::NumberToString(value.since_origin().InMicroseconds()));
+-}
+ void Emit(const char* prefix, const base::DictValue& record) {
+   // Fixed records only; no URLs, text, document tokens or caller JSON. Private
+   // owned-fixture transport is bounded and absent from production advertising.
+@@ -77,7 +70,7 @@ base::DictValue EncodeGuestPresentationComplete(const blink::mojom::NativeGuestS
+     const char* kind = input->kind == PerformanceInputKind::kKeyDown ? "keydown" :
+         input->kind == PerformanceInputKind::kLeftMouseUp ? "left-up" : "left-drag";
+     record.Set("originalInputKind", kind); record.Set("sourcePid", input->source_pid);
+-    Tick(record, "nativeInputUs", input->event_ticks); Tick(record, "nativeObservedUs", input->observed_ticks);
++    AppendNativePresentationTick(record, "nativeInputUs", input->event_ticks); AppendNativePresentationTick(record, "nativeObservedUs", input->observed_ticks);
+   }
+   if (!ValidScope(scope) || !submission || !submission->scope || !submission->mutation_witness ||
+       !presentation || !presentation->scope || !input ||
+@@ -112,26 +105,14 @@ base::DictValue EncodeGuestPresentationComplete(const blink::mojom::NativeGuestS
+       presentation->swap.swap_end < presentation->swap.swap_start ||
+       presentation->feedback.timestamp < presentation->swap.swap_end) return record;
+   record.Set("status", "measured"); record.Set("measured", true); record.Set("reason", "measured");
+-  Tick(record, "rendererInputUs", submission->input); Tick(record, "mutationUs", submission->mutation);
+-  Tick(record, "commitUs", submission->commit); Tick(record, "submittedUs", submission->submitted_at);
+-  Tick(record, "drawUs", presentation->draw); Tick(record, "swapStartUs", presentation->swap.swap_start);
+-  Tick(record, "swapEndUs", presentation->swap.swap_end); Tick(record, "presentedUs", presentation->feedback.timestamp);
++  AppendNativePresentationTick(record, "rendererInputUs", submission->input); AppendNativePresentationTick(record, "mutationUs", submission->mutation);
++  AppendNativePresentationTick(record, "commitUs", submission->commit); AppendNativePresentationTick(record, "submittedUs", submission->submitted_at);
++  AppendNativePresentationTick(record, "drawUs", presentation->draw); AppendNativePresentationTick(record, "swapStartUs", presentation->swap.swap_start);
++  AppendNativePresentationTick(record, "swapEndUs", presentation->swap.swap_end); AppendNativePresentationTick(record, "presentedUs", presentation->feedback.timestamp);
+   record.Set("shellFrameToken", static_cast<double>(submission->shell_frame_token));
+   record.Set("feedbackFlags", static_cast<double>(presentation->feedback.flags));
+   record.Set("elapsedUs", base::NumberToString(elapsed->InMicroseconds()));
+-  base::ListValue drawn;
+-  for (const auto& frame : presentation->drawn) {
+-    if (!frame) continue;
+-    auto surface = base::DictValue().Set("frameSink", Sink(frame->surface.frame_sink_id()))
+-        .Set("parentSequenceNumber", static_cast<double>(frame->surface.local_surface_id().parent_sequence_number()))
+-        .Set("childSequenceNumber", static_cast<double>(frame->surface.local_surface_id().child_sequence_number()))
+-        .Set("embedToken", frame->surface.local_surface_id().embed_token().ToString());
+-    drawn.Append(base::DictValue().Set("surface", std::move(surface)).Set("token", static_cast<double>(frame->token))
+-        .Set("surfaceSize", base::DictValue().Set("width", frame->surface_size.width()).Set("height", frame->surface_size.height()))
+-        .Set("visibleBounds", base::DictValue().Set("x", frame->visible_bounds.x()).Set("y", frame->visible_bounds.y())
+-          .Set("width", frame->visible_bounds.width()).Set("height", frame->visible_bounds.height())));
+-  }
+-  record.Set("drawn", std::move(drawn)); return record;
++  record.Set("drawn", EncodeNativePresentationDrawn(presentation->drawn)); return record;
+ }
+ NativeGuestPresentationFixture::NativeGuestPresentationFixture(base::WeakPtr<WebUIBrowserUI> ui)
+     : ui_(ui), session_(ui) {}
+diff --git a/chrome/browser/ui/aux/native_little_creation_ticket.cc b/chrome/browser/ui/aux/native_little_creation_ticket.cc
+new file mode 100644
+index 0000000..7a5794b
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_little_creation_ticket.cc
+@@ -0,0 +1,189 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_little_creation_ticket.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include <algorithm>
++#include <cmath>
++#include "ui/gfx/geometry/point_conversions.h"
++#include "ui/gfx/geometry/size_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_ui.h"
++namespace aux {
++std::optional<base::TimeDelta> ValidateLittleHardwareUpperBound(
++    base::TimeTicks armed, base::TimeTicks committed,
++    const NativeGuestPresentationOwner& owner,
++    const viz::mojom::NativeGuestInclusionResult& actual, base::TimeTicks observed) {
++  if (!actual.scope) return std::nullopt;
++  const auto& scope = *actual.scope;
++  const auto guest = std::ranges::find_if(actual.drawn, [&](const auto& item) {
++    return item && item->surface == owner.guest_surface;
++  });
++  const auto shell = std::ranges::find_if(actual.drawn, [&](const auto& item) {
++    return item && item->surface.frame_sink_id() == owner.shell_sink &&
++        item->token == scope.mutation_shell_token;
++  });
++  if (armed.is_null() || committed.is_null() || committed < armed ||
++      !actual.measured || !actual.elapsed || scope.input != armed ||
++      scope.mutation < committed || scope.shell_submission < scope.mutation ||
++      actual.draw < scope.shell_submission || actual.swap.is_null() ||
++      actual.swap.swap_start < actual.draw || actual.swap.swap_end < actual.swap.swap_start ||
++      actual.feedback.timestamp < actual.swap.swap_end ||
++      observed < actual.feedback.timestamp || observed - armed > base::Seconds(5) ||
++      !(actual.feedback.flags & gfx::PresentationFeedback::kHWCompletion) ||
++      (actual.feedback.flags & gfx::PresentationFeedback::kFailure) ||
++      !scope.mutation_shell_token || scope.shell_sink != owner.shell_sink ||
++      scope.display_sink != owner.display_sink || !owner.guest_surface.is_valid() ||
++      !actual.display_surface.is_valid() ||
++      actual.display_surface.frame_sink_id() != owner.display_sink ||
++      scope.guests.size() != 1 || scope.guests.front() != owner.guest_surface ||
++      actual.drawn.size() != 2 || guest == actual.drawn.end() || shell == actual.drawn.end() ||
++      !(*guest)->token || (*guest)->visible_bounds.IsEmpty() || (*shell)->visible_bounds.IsEmpty() ||
++      (*shell)->surface_size.IsEmpty() || owner.native_frame_size_in_pixels.IsEmpty() ||
++      (*guest)->surface_size != owner.native_frame_size_in_pixels ||
++      scope.shapes.size() != 1 || !scope.shapes.front() ||
++      scope.shapes.front()->surface != owner.guest_surface ||
++      scope.shapes.front()->radius != 0 ||
++      scope.shapes.front()->pane_in_shell_pixels != gfx::RectF(scope.shapes.front()->inner_in_shell_pixels) ||
++      !std::isfinite(owner.device_scale_factor) || owner.device_scale_factor <= 0 ||
++      scope.shapes.front()->inner_in_shell_pixels.size() != owner.native_frame_size_in_pixels ||
++      actual.elapsed != actual.feedback.timestamp - armed) return std::nullopt;
++  const auto& pixels = scope.shapes.front()->inner_in_shell_pixels;
++  const float inverse = 1 / owner.device_scale_factor;
++  if (gfx::Rect(gfx::ScaleToFlooredPoint(pixels.origin(), inverse),
++          gfx::ScaleToCeiledSize(pixels.size(), inverse)) != owner.native_bounds_in_parent_dip)
++    return std::nullopt;
++  // NativeGuestInclusionReceipt measured only with authenticated complete shape
++  // coverage in this exact aggregation/group. No AX endpoint or next-frame guess.
++  return actual.feedback.timestamp - armed;
++}
++
++NativeLittleCreationTicket::NativeLittleCreationTicket(base::WeakPtr<WebUIBrowserUI> source)
++    : source_(source) {}
++NativeLittleCreationTicket::~NativeLittleCreationTicket() {
++  weak_factory_.InvalidateWeakPtrs(); Cancel();
++}
++std::optional<base::UnguessableToken> NativeLittleCreationTicket::Arm() {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!nonce_.is_empty()) { Cancel(); return std::nullopt; }
++  const auto owner = ReadNativeGuestStageShellOwner(source_);
++  auto* web_ui = source_ ? source_->web_ui() : nullptr;
++  auto* frame = web_ui ? web_ui->GetRenderFrameHost() : nullptr;
++  auto* profile = web_ui ? Profile::FromWebUI(web_ui) : nullptr;
++  auto* browser = source_ ? source_->browser() : nullptr;
++  if (!owner || !frame || !profile || profile->IsOffTheRecord() || !browser ||
++      browser->GetProfile() != profile || browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      IsLittleWindow(browser) || IsQuickAskWindow(browser)) return std::nullopt;
++  source_owner_ = owner;
++  profile_ = profile->GetWeakPtr();
++  source_document_ = frame->GetWeakDocumentPtr();
++  nonce_ = base::UnguessableToken::Create();
++  armed_at_ = base::TimeTicks::Now();
++  if (!StableSource()) { Cancel(); return std::nullopt; }
++  return nonce_;
++}
++bool NativeLittleCreationTicket::StableSource() const {
++  return StableOwner() && base::TimeTicks::Now() - armed_at_ <= base::Seconds(5);
++}
++bool NativeLittleCreationTicket::StableOwner() const {
++  if (nonce_.is_empty() || !profile_ || profile_->IsOffTheRecord() ||
++      !source_document_.AsRenderFrameHostIfValid() || armed_at_.is_null()) return false;
++  const auto current = ReadNativeGuestStageShellOwner(source_);
++  return current && source_owner_ && *current == *source_owner_ && source_ &&
++      source_->browser() && source_->browser()->GetProfile() == profile_.get();
++}
++std::optional<base::UnguessableToken> NativeLittleCreationTicket::BeginExternalRoute(Profile* source) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!StableSource() || source != profile_.get() || route_claimed_) {
++    Cancel(); return std::nullopt;
++  }
++  route_claimed_ = true;
++  return nonce_;
++}
++bool NativeLittleCreationTicket::Created(const base::UnguessableToken& route,
++    BrowserWindowInterface* created) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!StableSource() || !route_claimed_ || route != nonce_ || target_browser_ ||
++      !created || created->GetProfile() != profile_.get() || !IsLittleWindow(created) ||
++      created == source_->browser()) { Cancel(); return false; }
++  target_browser_ = created->GetWeakPtr();
++  return true;
++}
++bool NativeLittleCreationTicket::Delivered(const base::UnguessableToken& route,
++    content::WebContents* actual_guest,
++    base::WeakPtr<content::NavigationHandle> actual_navigation) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!StableSource() || route != nonce_ || !target_browser_ || navigation_id_ != 0 || delivered_ ||
++      !actual_guest || actual_guest->IsBeingDestroyed() || !actual_navigation ||
++      actual_navigation->GetWebContents() != actual_guest ||
++      !actual_navigation->IsInPrimaryMainFrame() || actual_navigation->IsSameDocument() ||
++      actual_navigation->GetNavigationId() <= 0 ||
++      actual_guest->GetBrowserContext() != profile_.get() ||
++      !target_browser_->GetTabStripModel() ||
++      target_browser_->GetTabStripModel()->GetActiveWebContents() != actual_guest) {
++    Cancel(); return false;
++  }
++  target_guest_ = actual_guest->GetWeakPtr();
++  navigation_id_ = actual_navigation->GetNavigationId();
++  Observe(actual_guest);
++  return true;
++}
++void NativeLittleCreationTicket::DidFinishNavigation(content::NavigationHandle* navigation) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!navigation || !navigation->IsInPrimaryMainFrame()) return;
++  if (!StableSource() || !target_guest_ || navigation->GetWebContents() != target_guest_.get() ||
++      navigation->GetNavigationId() != navigation_id_ || delivered_ ||
++      !navigation->HasCommitted() || navigation->IsErrorPage() || navigation->IsSameDocument()) {
++    Cancel(); return;
++  }
++  auto* frame = navigation->GetRenderFrameHost();
++  if (!frame || frame != target_guest_->GetPrimaryMainFrame() || !frame->IsRenderFrameLive() ||
++      frame->IsErrorDocument() ||
++      !frame->IsInLifecycleState(content::RenderFrameHost::LifecycleState::kActive)) {
++    Cancel(); return;
++  }
++  target_document_ = frame->GetWeakDocumentPtr();
++  committed_at_ = base::TimeTicks::Now();
++  delivered_ = true;
++  if (on_committed_) on_committed_.Run();
++}
++void NativeLittleCreationTicket::WebContentsDestroyed() { Cancel(); }
++std::optional<NativeGuestPresentationOwner> NativeLittleCreationTicket::ReadTarget(
++    base::WeakPtr<WebUIBrowserUI> target) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!StableSource() || !delivered_ || !target_browser_ || !target_guest_ || !target ||
++      target->browser() != target_browser_.get() ||
++      target_browser_->GetProfile() != profile_.get() || !IsLittleWindow(target_browser_.get()) ||
++      !target_document_.AsRenderFrameHostIfValid() ||
++      target_document_.AsRenderFrameHostIfValid() != target_guest_->GetPrimaryMainFrame() ||
++      !target_browser_->GetTabStripModel() ||
++      target_browser_->GetTabStripModel()->GetActiveWebContents() != target_guest_.get()) {
++    Cancel(); return std::nullopt;
++  }
++  const auto actual = ReadNativeGuestPresentationOwner(target, target_guest_);
++  if (!StableSource() || !target_browser_ || !target_guest_ ||
++      !target_document_.AsRenderFrameHostIfValid() ||
++      target_document_.AsRenderFrameHostIfValid() != target_guest_->GetPrimaryMainFrame() ||
++      target_browser_->GetProfile() != profile_.get() || !target ||
++      target->browser() != target_browser_.get()) { Cancel(); return std::nullopt; }
++  return actual;
++}
++base::WeakPtr<BrowserWindowInterface> NativeLittleCreationTicket::CreatedBrowserForOwner() const {
++  return StableOwner() && target_browser_ && IsLittleWindow(target_browser_.get()) &&
++      target_browser_->GetProfile() == profile_.get() ? target_browser_ : base::WeakPtr<BrowserWindowInterface>();
++}
++void NativeLittleCreationTicket::Cancel() {
++  Observe(nullptr); navigation_id_ = 0;
++  nonce_ = {}; armed_at_ = {}; committed_at_ = {}; profile_.reset(); source_owner_.reset();
++  source_document_ = {}; target_browser_.reset(); target_guest_.reset();
++  target_document_ = {}; route_claimed_ = false; delivered_ = false;
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_little_creation_ticket.h b/chrome/browser/ui/aux/native_little_creation_ticket.h
+new file mode 100644
+index 0000000..67fa012
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_little_creation_ticket.h
+@@ -0,0 +1,76 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_LITTLE_CREATION_TICKET_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_LITTLE_CREATION_TICKET_H_
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include <optional>
++#include <utility>
++#include "base/memory/weak_ptr.h"
++#include "base/functional/callback.h"
++#include "base/time/time.h"
++#include "base/unguessable_token.h"
++#include "chrome/browser/ui/aux/native_guest_stage_owner.h"
++#include "services/viz/privileged/mojom/compositing/display_private.mojom.h"
++#include "content/public/browser/weak_document_ptr.h"
++#include "content/public/browser/web_contents_observer.h"
++class BrowserWindowInterface;
++class Profile;
++class WebUIBrowserUI;
++namespace content { class WebContents; class NavigationHandle; }
++namespace aux {
++// Pure fixed-clock/SurfaceId pairing only. It grants no authority; native caller
++// must still revalidate creation ticket, current documents and activated guest
++// frame metadata lease. A matching later HW frame is an upperbound on first
++// content, never a claim that this was the earliest frame.
++std::optional<base::TimeDelta> ValidateLittleHardwareUpperBound(
++    base::TimeTicks armed, base::TimeTicks committed,
++    const NativeGuestPresentationOwner& owner,
++    const viz::mojom::NativeGuestInclusionResult& actual, base::TimeTicks observed);
++
++// Internal instrumentation ticket. It observes an existing policy-approved
++// route; it never creates/authorizes a window, selects a URL, or grants access.
++// Arm precedes the external OS trigger. Its clock is a conservative upperbound
++// start, not an invented NSEvent timestamp.
++class NativeLittleCreationTicket final : public content::WebContentsObserver {
++ public:
++  explicit NativeLittleCreationTicket(base::WeakPtr<WebUIBrowserUI> source);
++  ~NativeLittleCreationTicket() override;
++  base::WeakPtr<NativeLittleCreationTicket> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
++  void SetCommittedCallback(base::RepeatingClosure callback) { on_committed_ = std::move(callback); }
++  base::WeakPtr<BrowserWindowInterface> CreatedBrowserForOwner() const;
++  std::optional<base::UnguessableToken> Arm();
++  // Actual native external routing entry only. The returned nonce must travel
++  // through that exact async route's callbacks, not be looked up at creation.
++  std::optional<base::UnguessableToken> BeginExternalRoute(Profile* source);
++  bool Created(const base::UnguessableToken& route, BrowserWindowInterface* created);
++  bool Delivered(const base::UnguessableToken& route, content::WebContents* actual_guest,
++      base::WeakPtr<content::NavigationHandle> actual_navigation);
++  void DidFinishNavigation(content::NavigationHandle* actual_navigation) override;
++  void WebContentsDestroyed() override;
++  std::optional<NativeGuestPresentationOwner> ReadTarget(base::WeakPtr<WebUIBrowserUI> target);
++  base::TimeTicks armed_at() const { return armed_at_; }
++  base::TimeTicks committed_at() const { return committed_at_; }
++  void Cancel();
++ private:
++  bool StableSource() const;
++  bool StableOwner() const;
++  base::WeakPtr<WebUIBrowserUI> source_;
++  base::WeakPtr<Profile> profile_;
++  content::WeakDocumentPtr source_document_;
++  std::optional<NativeGuestStageOwnedSnapshot> source_owner_;
++  base::WeakPtr<BrowserWindowInterface> target_browser_;
++  base::WeakPtr<content::WebContents> target_guest_;
++  content::WeakDocumentPtr target_document_;
++  base::UnguessableToken nonce_;
++  base::TimeTicks armed_at_;
++  base::TimeTicks committed_at_;
++  bool route_claimed_ = false;
++  bool delivered_ = false;
++  int64_t navigation_id_ = 0;
++  base::RepeatingClosure on_committed_;
++  base::WeakPtrFactory<NativeLittleCreationTicket> weak_factory_{this};
++};
++}  // namespace aux
++#endif
++#endif
+diff --git a/chrome/browser/ui/aux/native_little_creation_ticket_unittest.cc b/chrome/browser/ui/aux/native_little_creation_ticket_unittest.cc
+new file mode 100644
+index 0000000..753c33f
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_little_creation_ticket_unittest.cc
+@@ -0,0 +1,82 @@
++// Copyright 2026 The Aux Authors
++// Synthetic pairing tests only, never native presentation trials.
++#include "chrome/browser/ui/aux/native_little_creation_ticket.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include "components/viz/common/surfaces/local_surface_id.h"
++#include "testing/gtest/include/gtest/gtest.h"
++namespace aux {
++namespace {
++struct Pair {
++  base::TimeTicks arm = base::TimeTicks() + base::Seconds(1);
++  NativeGuestPresentationOwner owner;
++  viz::mojom::NativeGuestInclusionResultPtr sample;
++  Pair();
++  ~Pair();
++};
++Pair::Pair() {
++  owner.shell_sink = viz::FrameSinkId(1, 1); owner.display_sink = viz::FrameSinkId(2, 2);
++  owner.guest_surface = viz::SurfaceId(viz::FrameSinkId(3, 3),
++      viz::LocalSurfaceId(1, base::UnguessableToken::Create()));
++  owner.device_scale_factor = 1;
++  owner.native_bounds_in_parent_dip = gfx::Rect(0, 50, 400, 300);
++  owner.native_frame_size_in_pixels = gfx::Size(400, 300);
++  sample = viz::mojom::NativeGuestInclusionResult::New();
++  sample->scope = viz::mojom::NativeGuestInclusionScope::New();
++  sample->scope->display_sink = owner.display_sink; sample->scope->shell_sink = owner.shell_sink;
++  sample->scope->mutation_shell_token = 7; sample->scope->input = arm;
++  sample->scope->mutation = arm + base::Milliseconds(200);
++  sample->scope->shell_submission = arm + base::Milliseconds(210);
++  sample->scope->guests = {owner.guest_surface};
++  sample->scope->shapes.push_back(viz::mojom::NativeGuestExpectedShape::New(
++      owner.guest_surface, owner.native_bounds_in_parent_dip,
++      gfx::RectF(owner.native_bounds_in_parent_dip), 0));
++  sample->drawn.push_back(viz::mojom::NativeDrawnGuest::New(
++      viz::SurfaceId(owner.shell_sink, viz::LocalSurfaceId(1, base::UnguessableToken::Create())),
++      7, gfx::Rect(0, 0, 400, 350), gfx::Size(400, 350)));
++  sample->drawn.push_back(viz::mojom::NativeDrawnGuest::New(owner.guest_surface, 9,
++      owner.native_bounds_in_parent_dip, owner.native_frame_size_in_pixels));
++  sample->display_surface = viz::SurfaceId(owner.display_sink,
++      viz::LocalSurfaceId(1, base::UnguessableToken::Create()));
++  sample->draw = arm + base::Milliseconds(220);
++  sample->swap.swap_start = arm + base::Milliseconds(221);
++  sample->swap.swap_end = arm + base::Milliseconds(222);
++  sample->feedback = gfx::PresentationFeedback(arm + base::Milliseconds(450),
++      base::Microseconds(16667), gfx::PresentationFeedback::kHWCompletion);
++  sample->elapsed = base::Milliseconds(450); sample->measured = true;
++}
++Pair::~Pair() = default;
++TEST(NativeLittleHardwareUpperBound, PositiveRetainsWholeTriggerDuration) {
++  Pair p;
++  EXPECT_EQ(ValidateLittleHardwareUpperBound(p.arm, p.arm + base::Milliseconds(180),
++      p.owner, *p.sample, p.arm + base::Milliseconds(460)), base::Milliseconds(450));
++  // No transport/setup/mutation subtraction to manufacture a smaller metric.
++  EXPECT_FALSE(ValidateLittleHardwareUpperBound(p.arm + base::Milliseconds(100),
++      p.arm + base::Milliseconds(180), p.owner, *p.sample, p.arm + base::Milliseconds(460)));
++}
++TEST(NativeLittleHardwareUpperBound, MissingHardwareOrCausalOrderCannotMeasure) {
++  Pair p; const auto committed = p.arm + base::Milliseconds(180), observed = p.arm + base::Milliseconds(460);
++  p.sample->feedback.flags = 0;
++  EXPECT_FALSE(ValidateLittleHardwareUpperBound(p.arm, committed, p.owner, *p.sample, observed));
++  p.sample->feedback.flags = gfx::PresentationFeedback::kHWCompletion;
++  p.sample->scope->shell_submission = p.arm + base::Milliseconds(170);
++  EXPECT_FALSE(ValidateLittleHardwareUpperBound(p.arm, committed, p.owner, *p.sample, observed));
++  p.sample->scope->shell_submission = p.arm + base::Milliseconds(210);
++  p.sample->swap.swap_end = p.arm + base::Milliseconds(219);
++  EXPECT_FALSE(ValidateLittleHardwareUpperBound(p.arm, committed, p.owner, *p.sample, observed));
++}
++TEST(NativeLittleHardwareUpperBound, ForeignSurfacePartialShapeAndWrongRootAreRefused) {
++  Pair p; const auto committed = p.arm + base::Milliseconds(180), observed = p.arm + base::Milliseconds(460);
++  const auto surface = p.owner.guest_surface;
++  p.owner.guest_surface = viz::SurfaceId(viz::FrameSinkId(3, 3),
++      viz::LocalSurfaceId(2, base::UnguessableToken::Create()));
++  EXPECT_FALSE(ValidateLittleHardwareUpperBound(p.arm, committed, p.owner, *p.sample, observed));
++  p.owner.guest_surface = surface;
++  p.sample->scope->shapes.front()->inner_in_shell_pixels.set_width(1);
++  EXPECT_FALSE(ValidateLittleHardwareUpperBound(p.arm, committed, p.owner, *p.sample, observed));
++  p.sample->scope->shapes.front()->inner_in_shell_pixels = p.owner.native_bounds_in_parent_dip;
++  p.sample->drawn.front()->token = 8;
++  EXPECT_FALSE(ValidateLittleHardwareUpperBound(p.arm, committed, p.owner, *p.sample, observed));
++}
++}  // namespace
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_little_presentation_fixture.cc b/chrome/browser/ui/aux/native_little_presentation_fixture.cc
+new file mode 100644
+index 0000000..e7bf949
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_little_presentation_fixture.cc
+@@ -0,0 +1,260 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_little_presentation_fixture.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include <limits>
++#include "base/functional/bind.h"
++#include "base/no_destructor.h"
++#include "base/strings/string_number_conversions.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/native_guest_stage_session.h"
++#include "chrome/browser/ui/aux/native_presentation_record_codec.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "components/guest_contents/browser/guest_contents_handle.h"
++#include "content/browser/renderer_host/render_frame_host_impl.h"
++#include "content/browser/renderer_host/render_widget_host_impl.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/render_process_host.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_ui.h"
++#include "ui/compositor/compositor.h"
++#include "ui/views/widget/widget.h"
++namespace aux {
++namespace {
++base::WeakPtr<NativeLittlePresentationFixture>& ActiveFixture() {
++  static base::NoDestructor<base::WeakPtr<NativeLittlePresentationFixture>> active;
++  return *active;
++}
++}  // namespace
++std::optional<NativeLittleRouteObservation> ObserveLittleExternalRoute(Profile* profile) {
++  return ActiveFixture() ? ActiveFixture()->BeginExternalRoute(profile) : std::nullopt;
++}
++NativeLittlePresentationFixture::NativeLittlePresentationFixture(base::WeakPtr<WebUIBrowserUI> source)
++    : source_(source), ticket_(source) {}
++NativeLittlePresentationFixture::~NativeLittlePresentationFixture() {
++  if (ActiveFixture().get() == this) ActiveFixture().reset();
++  weak_factory_.InvalidateWeakPtrs(); timeout_.Stop(); guest_lease_.reset(); readiness_.reset();
++}
++bool NativeLittlePresentationFixture::StableSource() const {
++  return source_owner_ && ReadNativeGuestStageShellOwner(source_) == source_owner_;
++}
++base::DictValue NativeLittlePresentationFixture::Record(const char* status, const char* reason) const {
++  auto record = base::DictValue().Set("producer", "aux-native-little-presentation-upperbound")
++      .Set("version", 1).Set("status", status).Set("reason", reason).Set("measured", false);
++  if (source_owner_ && !nonce_.is_empty()) {
++    record.Set("metric", "little-window"); record.Set("startKind", "native-arm-upperbound");
++    record.Set("earliestPresentationProven", false);
++    record.Set("requestNonce", nonce_.ToString()); record.Set("sampleSequence", base::NumberToString(sequence_));
++    record.Set("windowId", source_owner_->window_id); record.Set("widgetRoutingId", source_owner_->shell_widget_routing_id);
++    record.Set("rendererPid", source_owner_->shell_renderer_pid);
++    record.Set("nativeDocumentGeneration", base::NumberToString(source_document_generation_));
++    record.Set("shellSink", EncodeNativePresentationSink(source_owner_->shell_sink));
++    record.Set("displaySink", EncodeNativePresentationSink(source_owner_->display_sink));
++    AppendNativePresentationTick(record, "armedUs", ticket_.armed_at());
++  }
++  return record;
++}
++void NativeLittlePresentationFixture::Prepare(Reply ready) {
++  if (active_ || record_ || completed_ || (ActiveFixture() && ActiveFixture().get() != this) ||
++      ticket_.CreatedBrowserForOwner() || sequence_ >= 4000) {
++    std::move(ready).Run(Record("refused", "prior_sample_unconsumed")); return;
++  }
++  ticket_.Cancel();
++  ticket_.SetCommittedCallback(base::BindRepeating(
++      &NativeLittlePresentationFixture::TryStart, weak_factory_.GetWeakPtr()));
++  source_owner_ = ReadNativeGuestStageShellOwner(source_);
++  const auto nonce = source_owner_ ? ticket_.Arm() : std::nullopt;
++  if (!nonce || !StableSource()) {
++    source_owner_.reset(); std::move(ready).Run(Record("refused", "unavailable_owned_source")); return;
++  }
++  if (last_source_document_ != source_owner_->shell_document) {
++    if (source_document_generation_ == std::numeric_limits<uint64_t>::max()) {
++      ticket_.Cancel(); std::move(ready).Run(Record("refused", "document_generation_exhausted")); return;
++    }
++    last_source_document_ = source_owner_->shell_document; ++source_document_generation_;
++  }
++  ++sequence_; nonce_ = *nonce; consumed_ = false; active_ = true;
++  record_.reset(); target_owner_.reset(); scope_.reset(); submission_.reset(); target_.reset();
++  ActiveFixture() = weak_factory_.GetWeakPtr();
++  timeout_.Start(FROM_HERE, base::Seconds(5), base::BindOnce(
++      &NativeLittlePresentationFixture::Refuse, weak_factory_.GetWeakPtr(), "creation_presentation_timeout"));
++  std::move(ready).Run(Record("ready", "ready"));
++}
++void NativeLittlePresentationFixture::Complete(Reply completed) {
++  if (completed_ || consumed_ || (!active_ && !record_)) {
++    std::move(completed).Run(Record("refused", "no_prepared_sample")); return;
++  }
++  if (record_) {
++    auto record = std::move(*record_); record_.reset(); consumed_ = true;
++    std::move(completed).Run(std::move(record)); return;
++  }
++  completed_ = std::move(completed); TryStart();
++}
++std::optional<NativeLittleRouteObservation> NativeLittlePresentationFixture::BeginExternalRoute(Profile* source) {
++  if (!active_ || !StableSource()) return std::nullopt;
++  const auto nonce = ticket_.BeginExternalRoute(source);
++  if (!nonce) { Refuse("ambiguous_or_foreign_external_route"); return std::nullopt; }
++  return NativeLittleRouteObservation{weak_factory_.GetWeakPtr(), *nonce};
++}
++void NativeLittlePresentationFixture::Created(const base::UnguessableToken& nonce, BrowserWindowInterface* window) {
++  if (!active_ || !ticket_.Created(nonce, window)) Refuse("invalid_created_little_owner");
++}
++void NativeLittlePresentationFixture::Delivered(const base::UnguessableToken& nonce,
++    content::WebContents* guest, base::WeakPtr<content::NavigationHandle> navigation) {
++  if (!active_ || !ticket_.Delivered(nonce, guest, navigation)) Refuse("invalid_delivered_navigation");
++}
++base::WeakPtr<BrowserWindowInterface> NativeLittlePresentationFixture::CleanupWindowForMailbox() const {
++  return StableSource() ? ticket_.CreatedBrowserForOwner() : base::WeakPtr<BrowserWindowInterface>();
++}
++std::optional<NativeGuestStageOwnedSnapshot> NativeLittlePresentationFixture::CurrentTarget() {
++  if (!StableSource() || !target_ || !guest_ || !guest_document_.AsRenderFrameHostIfValid() ||
++      guest_document_.AsRenderFrameHostIfValid() != guest_->GetPrimaryMainFrame()) return std::nullopt;
++  const auto actual = ticket_.ReadTarget(target_);
++  const auto* identity = PageIdentity::FromWebContents(guest_.get());
++  const auto* handle = guest_contents::GuestContentsHandle::FromWebContents(guest_.get());
++  if (!actual || !identity || identity->runtime_owned() || !handle) return std::nullopt;
++  return ReadNativeGuestStageOwnedSnapshot(target_, {{identity->id(), handle->id().ToString()}});
++}
++void NativeLittlePresentationFixture::TryStart() {
++  if (!active_ || !completed_ || starting_) return;
++  const auto browser = ticket_.CreatedBrowserForOwner();
++  if (!browser) return;  // Genuine creation/commit callback or bounded timeout completes this wait.
++  auto* window = WebUIBrowserWindow::FromBrowser(browser.get());
++  auto* ui = window ? window->GetWebUIBrowserUI() : nullptr;
++  auto* guest = browser->GetTabStripModel() ? browser->GetTabStripModel()->GetActiveWebContents() : nullptr;
++  auto* frame = guest ? guest->GetPrimaryMainFrame() : nullptr;
++  if (!ui || !guest || !frame || !ticket_.ReadTarget(ui->GetWeakPtr())) return;
++  target_ = ui->GetWeakPtr(); guest_ = guest->GetWeakPtr(); guest_document_ = frame->GetWeakDocumentPtr();
++  target_owner_ = CurrentTarget();
++  if (!target_owner_ || target_owner_->guests.size() != 1) { Refuse("unavailable_current_target_geometry"); return; }
++  if (last_target_document_ != target_owner_->shell_document) {
++    if (target_document_generation_ == std::numeric_limits<uint64_t>::max()) {
++      Refuse("document_generation_exhausted"); return;
++    }
++    last_target_document_ = target_owner_->shell_document; ++target_document_generation_;
++  }
++  starting_ = true;
++  scope_ = blink::mojom::NativeCreatedGuestFrameScope::New();
++  scope_->surface_kind = blink::mojom::NativeCreatedGuestSurfaceKind::kLittleWindow;
++  scope_->request_nonce = nonce_; scope_->sample_sequence = sequence_;
++  scope_->window_id = target_owner_->window_id; scope_->shell_widget_routing_id = target_owner_->shell_widget_routing_id;
++  scope_->shell_renderer_pid = target_owner_->shell_renderer_pid; scope_->native_document_generation = target_document_generation_;
++  scope_->shell_document = target_owner_->shell_document; scope_->shell_sink = target_owner_->shell_sink;
++  scope_->display_sink = target_owner_->display_sink; scope_->external_arm = ticket_.armed_at();
++  auto grant = blink::mojom::NativeGuestDocumentFrameScope::New();
++  grant->document = static_cast<content::RenderFrameHostImpl*>(frame)->GetDocumentToken();
++  grant->request_nonce = nonce_; grant->widget_routing_id = frame->GetRenderWidgetHost()->GetRoutingID();
++  grant->renderer_pid = frame->GetProcess()->GetProcess().Pid();
++  grant->frame_sink = target_owner_->guests.front().guest_surface.frame_sink_id();
++  auto* widget = static_cast<content::RenderWidgetHostImpl*>(frame->GetRenderWidgetHost());
++  widget->BeginNativeGuestDocumentFrameForTesting(std::move(grant), guest_lease_.BindNewPipeAndPassReceiver(),
++      base::BindOnce(&NativeLittlePresentationFixture::GuestArmed, weak_factory_.GetWeakPtr()));
++}
++void NativeLittlePresentationFixture::GuestArmed(bool accepted) {
++  if (!active_ || !accepted || !scope_ || CurrentTarget() != target_owner_) {
++    Refuse("unavailable_current_guest_lease"); return;
++  }
++  guest_lease_.set_disconnect_handler(base::BindOnce(
++      &NativeLittlePresentationFixture::Refuse, weak_factory_.GetWeakPtr(), "guest_lease_disconnected"));
++  auto* frame = target_->web_ui()->GetRenderFrameHost();
++  auto* widget = static_cast<content::RenderWidgetHostImpl*>(frame->GetRenderWidgetHost());
++  widget->MeasureCreatedGuestFrameForTesting(scope_->Clone(), readiness_.BindNewPipeAndPassRemote(),
++      base::BindOnce(&NativeLittlePresentationFixture::Submitted, weak_factory_.GetWeakPtr()));
++}
++void NativeLittlePresentationFixture::Ready(blink::mojom::NativeCreatedGuestFrameScopePtr scope,
++    blink::mojom::NativeGuestStageWitnessPtr witness, ReadyCallback accepted) {
++  const auto current = CurrentTarget();
++  const bool valid = active_ && scope_ && scope && scope->Equals(*scope_) && witness &&
++      current && current == target_owner_ && witness->document == scope_->shell_document &&
++      !witness->dragging && !witness->split_instance && witness->pages.size() == 1 &&
++      NativeGuestStageGeometryMatches(*witness, *current);
++  const auto self = weak_factory_.GetWeakPtr();
++  std::move(accepted).Run(valid);
++  if (self && !valid) Refuse("invalid_created_guest_ready");
++}
++void NativeLittlePresentationFixture::Submitted(blink::mojom::NativeCreatedGuestFrameSubmissionPtr actual) {
++  const auto current = CurrentTarget();
++  if (!active_ || !scope_ || !current || current != target_owner_ || !actual || !actual->scope ||
++      !actual->scope->Equals(*scope_) || !actual->witness || !actual->submitted || !actual->activated ||
++      !actual->submitted_frame || actual->submission_failure >= 0 || !actual->shell_frame_token ||
++      actual->witness->document != scope_->shell_document || actual->witness->pages.size() != 1 ||
++      actual->witness->split_instance || actual->witness->dragging ||
++      !NativeGuestStageGeometryMatches(*actual->witness, *current) ||
++      actual->witness_observed.is_null() || scope_->external_arm > actual->witness_observed ||
++      actual->witness_observed > actual->commit || actual->commit > actual->submitted_at) {
++    Refuse("invalid_created_guest_submission"); return;
++  }
++  submission_ = std::move(actual);
++  auto request = viz::mojom::NativeGuestInclusionScope::New();
++  request->display_sink = scope_->display_sink; request->shell_sink = scope_->shell_sink;
++  request->mutation_shell_token = submission_->shell_frame_token; request->input = scope_->external_arm;
++  request->mutation = submission_->witness_observed; request->shell_submission = submission_->submitted_at;
++  const auto& page = submission_->witness->pages.front();
++  const auto& owner = target_owner_->guests.front();
++  request->guests = {owner.guest_surface};
++  request->shapes.push_back(viz::mojom::NativeGuestExpectedShape::New(owner.guest_surface,
++      *page->plugin_bounds_in_parent_pixels, page->pane_bounds, page->pane_radius));
++  auto* window = WebUIBrowserWindow::FromBrowser(target_->browser());
++  if (!window || !window->widget() || !window->widget()->GetCompositor()) { Refuse("unavailable_target_display"); return; }
++  window->widget()->GetCompositor()->MeasureNativeGuestInclusion(std::move(request), base::BindOnce(
++      &NativeLittlePresentationFixture::Presented, weak_factory_.GetWeakPtr()));
++}
++void NativeLittlePresentationFixture::Presented(viz::mojom::NativeGuestInclusionResultPtr actual) {
++  const auto current = CurrentTarget();
++  const auto now = base::TimeTicks::Now();
++  const auto elapsed = actual && current && current->guests.size() == 1 ?
++      ValidateLittleHardwareUpperBound(ticket_.armed_at(), ticket_.committed_at(),
++          current->guests.front(), *actual, now) : std::nullopt;
++  if (!active_ || !scope_ || !submission_ || !current || current != target_owner_ || !actual || !actual->scope ||
++      !elapsed || actual->scope->mutation_shell_token != submission_->shell_frame_token ||
++      actual->scope->mutation != submission_->witness_observed || actual->scope->shell_submission != submission_->submitted_at) {
++    Refuse("invalid_created_guest_hardware_pair"); return;
++  }
++  bool leased_frame = false;
++  for (const auto& drawn : actual->drawn)
++    leased_frame |= drawn && drawn->surface == current->guests.front().guest_surface &&
++        HasNativeGuestDocumentFrameForTesting(target_, guest_, nonce_, drawn->surface, drawn->token, drawn->surface_size);
++  if (!leased_frame) { Refuse("created_guest_document_frame_not_included"); return; }
++  auto record = Record("measured", "measured-upperbound"); record.Set("measured", true);
++  auto target = base::DictValue().Set("windowId", scope_->window_id)
++      .Set("widgetRoutingId", scope_->shell_widget_routing_id).Set("rendererPid", scope_->shell_renderer_pid)
++      .Set("nativeDocumentGeneration", base::NumberToString(scope_->native_document_generation))
++      .Set("shellSink", EncodeNativePresentationSink(scope_->shell_sink))
++      .Set("displaySink", EncodeNativePresentationSink(scope_->display_sink));
++  record.Set("target", std::move(target));
++  AppendNativePresentationTick(record, "guestCommittedUs", ticket_.committed_at());
++  AppendNativePresentationTick(record, "witnessObservedUs", submission_->witness_observed);
++  AppendNativePresentationTick(record, "commitUs", submission_->commit);
++  AppendNativePresentationTick(record, "submittedUs", submission_->submitted_at);
++  AppendNativePresentationTick(record, "drawUs", actual->draw);
++  AppendNativePresentationTick(record, "swapStartUs", actual->swap.swap_start);
++  AppendNativePresentationTick(record, "swapEndUs", actual->swap.swap_end);
++  AppendNativePresentationTick(record, "presentedUs", actual->feedback.timestamp);
++  AppendNativePresentationTick(record, "observedUs", now);
++  record.Set("elapsedUs", base::NumberToString(elapsed->InMicroseconds()));
++  record.Set("shellFrameToken", static_cast<double>(submission_->shell_frame_token));
++  record.Set("feedbackFlags", static_cast<double>(actual->feedback.flags));
++  record.Set("drawn", EncodeNativePresentationDrawn(actual->drawn));
++  Finish(std::move(record));
++}
++void NativeLittlePresentationFixture::Refuse(const char* reason) {
++  if (active_) Finish(Record("refused", reason));
++}
++void NativeLittlePresentationFixture::Finish(base::DictValue record) {
++  // Retire every asynchronous callback before releasing leases or replying.
++  if (ActiveFixture().get() == this) ActiveFixture().reset();
++  weak_factory_.InvalidateWeakPtrs();
++  timeout_.Stop(); readiness_.reset(); guest_lease_.reset(); starting_ = false; active_ = false;
++  record_ = std::move(record);
++  // Keep the exact creation ticket through reply/Next until target destruction.
++  // It grants cleanup continuity only, never another operation/effect.
++  if (completed_) {
++    auto reply = std::move(completed_); auto value = std::move(*record_); record_.reset(); consumed_ = true;
++    std::move(reply).Run(std::move(value));
++  }
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_little_presentation_fixture.h b/chrome/browser/ui/aux/native_little_presentation_fixture.h
+new file mode 100644
+index 0000000..ef6bb89
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_little_presentation_fixture.h
+@@ -0,0 +1,73 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_LITTLE_PRESENTATION_FIXTURE_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_LITTLE_PRESENTATION_FIXTURE_H_
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include <optional>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "chrome/browser/ui/aux/native_little_creation_ticket.h"
++#include "mojo/public/cpp/bindings/receiver.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom.h"
++namespace aux {
++class NativeLittlePresentationFixture;
++struct NativeLittleRouteObservation {
++  base::WeakPtr<NativeLittlePresentationFixture> fixture;
++  base::UnguessableToken nonce;
++};
++// Invoked only by actual trusted native external receipt code. Observation is
++// optional and must never change actual routing success, destinations or grants.
++std::optional<NativeLittleRouteObservation> ObserveLittleExternalRoute(Profile* source);
++class NativeLittlePresentationFixture final : public blink::mojom::NativeCreatedGuestFrameReadiness {
++ public:
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  explicit NativeLittlePresentationFixture(base::WeakPtr<WebUIBrowserUI> source);
++  ~NativeLittlePresentationFixture() override;
++  void Prepare(Reply ready);
++  void Complete(Reply completed);
++  std::optional<NativeLittleRouteObservation> BeginExternalRoute(Profile* source);
++  void Created(const base::UnguessableToken& nonce, BrowserWindowInterface* window);
++  void Delivered(const base::UnguessableToken& nonce, content::WebContents* guest,
++      base::WeakPtr<content::NavigationHandle> navigation);
++  base::WeakPtr<BrowserWindowInterface> CleanupWindowForMailbox() const;
++  void Ready(blink::mojom::NativeCreatedGuestFrameScopePtr scope,
++      blink::mojom::NativeGuestStageWitnessPtr witness, ReadyCallback accepted) override;
++ private:
++  friend class NativeLittlePresentationFixtureLifetimeTest;
++  bool StableSource() const;
++  std::optional<NativeGuestStageOwnedSnapshot> CurrentTarget();
++  void TryStart();
++  void GuestArmed(bool accepted);
++  void Submitted(blink::mojom::NativeCreatedGuestFrameSubmissionPtr actual);
++  void Presented(viz::mojom::NativeGuestInclusionResultPtr actual);
++  void Refuse(const char* reason);
++  void Finish(base::DictValue record);
++  base::DictValue Record(const char* status, const char* reason) const;
++  base::WeakPtr<WebUIBrowserUI> source_;
++  base::WeakPtr<WebUIBrowserUI> target_;
++  NativeLittleCreationTicket ticket_;
++  std::optional<NativeGuestStageOwnedSnapshot> source_owner_;
++  std::optional<NativeGuestStageOwnedSnapshot> target_owner_;
++  blink::mojom::NativeCreatedGuestFrameScopePtr scope_;
++  blink::mojom::NativeCreatedGuestFrameSubmissionPtr submission_;
++  content::WeakDocumentPtr guest_document_;
++  base::WeakPtr<content::WebContents> guest_;
++  mojo::Remote<blink::mojom::NativeGuestDocumentFrameLease> guest_lease_;
++  mojo::Receiver<blink::mojom::NativeCreatedGuestFrameReadiness> readiness_{this};
++  uint64_t sequence_ = 0, source_document_generation_ = 0, target_document_generation_ = 0;
++  std::optional<blink::DocumentToken> last_source_document_;
++  std::optional<blink::DocumentToken> last_target_document_;
++  base::UnguessableToken nonce_;
++  bool active_ = false, starting_ = false, consumed_ = false;
++  std::optional<base::DictValue> record_;
++  Reply completed_;
++  base::OneShotTimer timeout_;
++  base::WeakPtrFactory<NativeLittlePresentationFixture> weak_factory_{this};
++};
++}  // namespace aux
++#endif
++#endif
+diff --git a/chrome/browser/ui/aux/native_little_presentation_fixture_unittest.cc b/chrome/browser/ui/aux/native_little_presentation_fixture_unittest.cc
+new file mode 100644
+index 0000000..87bffdb
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_little_presentation_fixture_unittest.cc
+@@ -0,0 +1,70 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_little_presentation_fixture.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include <memory>
++#include "base/functional/bind.h"
++#include "content/public/test/browser_task_environment.h"
++#include "testing/gtest/include/gtest/gtest.h"
++namespace aux {
++// Tests callback generations directly; this does not fabricate a native owner.
++class NativeLittlePresentationFixtureLifetimeTest : public testing::Test {
++ protected:
++  void CheckRearm() {
++    NativeLittlePresentationFixture fixture{base::WeakPtr<WebUIBrowserUI>()};
++    fixture.active_ = true;
++    auto old_guest = base::BindOnce(&NativeLittlePresentationFixture::GuestArmed,
++        fixture.weak_factory_.GetWeakPtr());
++    auto old_submission = base::BindOnce(&NativeLittlePresentationFixture::Submitted,
++        fixture.weak_factory_.GetWeakPtr());
++    auto old_presentation = base::BindOnce(&NativeLittlePresentationFixture::Presented,
++        fixture.weak_factory_.GetWeakPtr());
++    auto old_commit = base::BindRepeating(&NativeLittlePresentationFixture::TryStart,
++        fixture.weak_factory_.GetWeakPtr());
++    fixture.Finish(fixture.Record("refused", "old_finished"));
++    fixture.record_.reset(); fixture.active_ = true;
++    std::move(old_guest).Run(false);
++    std::move(old_submission).Run(nullptr);
++    std::move(old_presentation).Run(nullptr);
++    old_commit.Run();
++    EXPECT_TRUE(fixture.active_); EXPECT_FALSE(fixture.record_);
++    // A fresh callback remains operative and refuses this genuinely missing scope.
++    auto fresh_guest = base::BindOnce(&NativeLittlePresentationFixture::GuestArmed,
++        fixture.weak_factory_.GetWeakPtr());
++    std::move(fresh_guest).Run(false);
++    EXPECT_FALSE(fixture.active_); ASSERT_TRUE(fixture.record_);
++    EXPECT_EQ(*fixture.record_->FindString("reason"), "unavailable_current_guest_lease");
++  }
++  content::BrowserTaskEnvironment environment_;
++};
++TEST_F(NativeLittlePresentationFixtureLifetimeTest, OldCallbacksCannotRefuseRearmedSample) {
++  CheckRearm();
++}
++TEST(NativeLittlePresentationFixtureTest, MissingSourceNeverInventsReadyOrMeasuredIdentity) {
++  content::BrowserTaskEnvironment environment;
++  NativeLittlePresentationFixture fixture{base::WeakPtr<WebUIBrowserUI>()};
++  unsigned replies = 0;
++  fixture.Prepare(base::BindOnce([](unsigned* count, base::DictValue record) {
++    ++*count; EXPECT_EQ(record.FindBool("measured"), false);
++    ASSERT_TRUE(record.FindString("status")); EXPECT_EQ(*record.FindString("status"), "refused");
++    EXPECT_FALSE(record.contains("windowId")); EXPECT_FALSE(record.contains("requestNonce"));
++    EXPECT_FALSE(record.contains("target")); EXPECT_FALSE(record.contains("elapsedUs"));
++  }, &replies));
++  fixture.Complete(base::BindOnce([](unsigned* count, base::DictValue record) {
++    ++*count; ASSERT_TRUE(record.FindString("reason"));
++    EXPECT_EQ(*record.FindString("reason"), "no_prepared_sample");
++    EXPECT_EQ(record.FindBool("measured"), false); EXPECT_FALSE(record.contains("windowId"));
++  }, &replies));
++  EXPECT_EQ(replies, 2u);
++}
++TEST(NativeLittlePresentationFixtureTest, ReentrantReadyRefusalCanDestroyOwnerWithoutAnotherReply) {
++  content::BrowserTaskEnvironment environment;
++  auto fixture = std::make_unique<NativeLittlePresentationFixture>(base::WeakPtr<WebUIBrowserUI>());
++  unsigned replies = 0;
++  fixture->Prepare(base::BindOnce([](std::unique_ptr<NativeLittlePresentationFixture>* owner,
++      unsigned* count, base::DictValue record) {
++    ++*count; EXPECT_EQ(record.FindBool("measured"), false); owner->reset();
++  }, &fixture, &replies));
++  environment.RunUntilIdle(); EXPECT_FALSE(fixture); EXPECT_EQ(replies, 1u);
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_performance_mailbox.cc b/chrome/browser/ui/aux/native_performance_mailbox.cc
+index e95ed27..b2f992b 100644
+--- a/chrome/browser/ui/aux/native_performance_mailbox.cc
++++ b/chrome/browser/ui/aux/native_performance_mailbox.cc
+@@ -21,6 +21,8 @@
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/ui/aux/journey_fixture_path.h"
+ #include "chrome/browser/ui/aux/native_performance_observer.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+ #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
+@@ -60,23 +62,44 @@ std::optional<NativeGuestStageOwnedSnapshot> UniqueOwner(base::WeakPtr<WebUIBrow
+   auto* profile = Profile::FromWebUI(ui->web_ui());
+   if (!profile || profile->IsOffTheRecord()) return std::nullopt;
+   const base::FilePath selected(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("user-data-dir"));
+-  size_t count = 0;
++  auto* origin = ui->browser();
++  const auto permitted_little = ui->NativeLittleCleanupWindowForTesting();
++  std::vector<BrowserWindowInterface*> observed;
+   ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
+-      [&count, selected](BrowserWindowInterface* browser) {
++      [&observed, selected](BrowserWindowInterface* browser) {
+         if (browser->GetProfile() && browser->GetProfile()->GetPath().DirName() == selected) {
+           auto* window = WebUIBrowserWindow::FromBrowser(browser);
+-          if (window && window->GetWebUIBrowserUI()) ++count;
++          if (window && window->GetWebUIBrowserUI()) observed.push_back(browser);
+         }
+         return true;
+       });
+-  return count == 1 && ui && ReadNativeGuestStageShellOwner(ui) == owner ? owner : std::nullopt;
++  return NativePerformanceOwnerInventoryMatches(origin, permitted_little, observed) &&
++      ui && ReadNativeGuestStageShellOwner(ui) == owner ? owner : std::nullopt;
+ }
+ }  // namespace
++bool NativePerformanceOwnerInventoryMatches(BrowserWindowInterface* origin,
++    base::WeakPtr<BrowserWindowInterface> permitted_little,
++    const std::vector<BrowserWindowInterface*>& observed) {
++  auto* profile = origin ? origin->GetProfile() : nullptr;
++  if (!profile || profile->IsOffTheRecord() || IsLittleWindow(origin) || IsQuickAskWindow(origin) ||
++      origin->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      (permitted_little && (permitted_little.get() == origin ||
++          permitted_little->GetProfile() != profile || !IsLittleWindow(permitted_little.get())))) return false;
++  unsigned ordinary = 0, created = 0;
++  for (auto* window : observed) {
++    if (window == origin) ++ordinary;
++    else if (permitted_little && window == permitted_little.get()) ++created;
++    else return false;
++    if (ordinary > 1 || created > 1) return false;
++  }
++  return ordinary == 1;
++}
+ bool IsNativePerformanceMailboxOperation(const std::string& operation) {
+   return operation == "prepareGuestSplitDropPresentation" ||
+       operation == "prepareGuestDividerFramePresentation" ||
+       operation == "prepareGuestTabSwitchPresentation" || operation == "completeGuestPresentation" ||
+       operation == "sampleShellMemory" ||
++      operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation" ||
+       operation == "prepareOrganizationAutoArchiveWork" ||
+       operation == "prepareOrganizationLiveFolderWork" || operation == "completeOrganizationWork";
+ }
+@@ -195,21 +218,25 @@ void NativePerformanceMailbox::Received(std::optional<base::DictValue> request)
+   std::move(pending_).Run(std::move(request));
+ }
+ std::optional<uint64_t> NativePerformanceMailbox::TakeExpected(const std::string& operation) {
+-  if (!Stable() || !expected_ || *expected_ != operation || running_ ||
++  const auto cleanup = ui_ ? ui_->NativeLittleCleanupWindowForTesting() : base::WeakPtr<BrowserWindowInterface>();
++  if ((cleanup && operation != "completeLittleWindowPresentation") || !Stable() || !expected_ || *expected_ != operation || running_ ||
+       (sample_completion_ ? operation != *sample_completion_ :
+-          (operation == "completeGuestPresentation" || operation == "completeOrganizationWork"))) { Refuse(); return std::nullopt; }
++          (operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
++           operation == "completeLittleWindowPresentation"))) { Refuse(); return std::nullopt; }
+   running_ = std::move(expected_); expected_.reset(); return sequence_;
+ }
+ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& operation, const base::DictValue& record) {
+   if (!Stable() || !running_ || *running_ != operation || sequence != sequence_) { Refuse(); return false; }
+   const auto* producer = record.FindString("producer");
+   const auto* status = record.FindString("status");
++  const bool little = operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation";
+   const bool memory = operation == "sampleShellMemory";
+   const bool prepare_work = operation == "prepareOrganizationAutoArchiveWork" ||
+       operation == "prepareOrganizationLiveFolderWork";
+   const bool organization = prepare_work || operation == "completeOrganizationWork";
+   if (!producer || *producer != (memory ? "aux-native-shell-memory" :
+-          organization ? "aux-native-organization-work-v1" : "aux-native-guest-presentation") ||
++          organization ? "aux-native-organization-work-v1" :
++          little ? "aux-native-little-presentation-upperbound" : "aux-native-guest-presentation") ||
+       record.FindInt("version") != 1 || !status ||
+       (memory ? (*status != "sampled" && *status != "refused") :
+           (*status != "ready" && *status != "measured" && *status != "refused")) ||
+@@ -233,9 +260,11 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
+   const auto json = base::WriteJson(wrapper);
+   if (!json || json->size() > 16000 || !AdmitRecord()) { Refuse(); return false; }
+   if (memory || operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
++      operation == "completeLittleWindowPresentation" ||
+       *status == "refused") { sample_completion_.reset(); sample_scope_.reset(); }
+   else {
+-    sample_completion_ = organization ? "completeOrganizationWork" : "completeGuestPresentation";
++    sample_completion_ = organization ? "completeOrganizationWork" :
++        little ? "completeLittleWindowPresentation" : "completeGuestPresentation";
+     if (organization) sample_scope_ = record.FindDict("scope")->Clone();
+   }
+   running_.reset(); fprintf(stderr, "AUX_NATIVE_FIXTURE_REPLY_V1 %s\n", json->c_str()); fflush(stderr); return true;
+diff --git a/chrome/browser/ui/aux/native_performance_mailbox.h b/chrome/browser/ui/aux/native_performance_mailbox.h
+index 516184b..4409aef 100644
+--- a/chrome/browser/ui/aux/native_performance_mailbox.h
++++ b/chrome/browser/ui/aux/native_performance_mailbox.h
+@@ -7,6 +7,7 @@
+ #include <cstdint>
+ #include <optional>
+ #include <string>
++#include <vector>
+ #include "base/files/file_path.h"
+ #include "base/functional/callback.h"
+ #include "base/memory/weak_ptr.h"
+@@ -16,8 +17,14 @@
+ #include "chrome/browser/ui/aux/native_guest_stage_owner.h"
+ #include "content/public/browser/weak_document_ptr.h"
+ class WebUIBrowserUI;
++class BrowserWindowInterface;
+ namespace aux {
+ // No caller path, selector or effect. Reads only fixed owned-fixture metadata.
++// Pure native inventory comparison; caller must obtain permitted target from
++// the existing fixture creation ticket. This does not create/grant authority.
++bool NativePerformanceOwnerInventoryMatches(BrowserWindowInterface* origin,
++    base::WeakPtr<BrowserWindowInterface> permitted_little,
++    const std::vector<BrowserWindowInterface*>& observed);
+ bool IsNativePerformanceMailboxOperation(const std::string& operation);
+ std::optional<base::DictValue> ReadNativePerformanceMailboxFile(
+     const base::FilePath& root, uint64_t last_sequence, uint64_t root_device, uint64_t root_inode);
+diff --git a/chrome/browser/ui/aux/native_performance_mailbox_browsertest.cc b/chrome/browser/ui/aux/native_performance_mailbox_browsertest.cc
+new file mode 100644
+index 0000000..7b4c747
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_performance_mailbox_browsertest.cc
+@@ -0,0 +1,32 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_performance_mailbox.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/browser.h"
++#include "chrome/test/base/in_process_browser_test.h"
++#include "content/public/test/browser_test.h"
++#include "url/gurl.h"
++namespace aux {
++class NativePerformanceMailboxBrowserTest : public InProcessBrowserTest {};
++IN_PROC_BROWSER_TEST_F(NativePerformanceMailboxBrowserTest, OnlyExactCreatedLittleCanCoexistWithOrigin) {
++  auto* origin = browser();
++  auto* little = OpenLittleWindow(origin->GetProfile(), GURL(), false, false);
++  ASSERT_TRUE(little); ASSERT_TRUE(IsLittleWindow(little));
++  EXPECT_TRUE(NativePerformanceOwnerInventoryMatches(origin, {}, {origin}));
++  EXPECT_FALSE(NativePerformanceOwnerInventoryMatches(origin, {}, {origin, little}));
++  EXPECT_TRUE(NativePerformanceOwnerInventoryMatches(origin, little->GetWeakPtr(), {origin, little}));
++  EXPECT_FALSE(NativePerformanceOwnerInventoryMatches(origin, little->GetWeakPtr(), {origin, little, little}));
++  EXPECT_FALSE(NativePerformanceOwnerInventoryMatches(little, {}, {little}));
++}
++IN_PROC_BROWSER_TEST_F(NativePerformanceMailboxBrowserTest, ForeignNormalAndOtherLittleNeverBorrowCleanupPermit) {
++  auto* origin = browser();
++  auto* little = OpenLittleWindow(origin->GetProfile(), GURL(), false, false);
++  auto* other_little = OpenLittleWindow(origin->GetProfile(), GURL(), false, false);
++  auto* foreign_normal = CreateBrowser(origin->GetProfile());
++  ASSERT_TRUE(little); ASSERT_TRUE(other_little); ASSERT_TRUE(foreign_normal);
++  EXPECT_FALSE(NativePerformanceOwnerInventoryMatches(origin, little->GetWeakPtr(), {origin, little, foreign_normal}));
++  EXPECT_FALSE(NativePerformanceOwnerInventoryMatches(origin, little->GetWeakPtr(), {origin, little, other_little}));
++  EXPECT_FALSE(NativePerformanceOwnerInventoryMatches(origin, foreign_normal->GetWeakPtr(), {origin, foreign_normal}));
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_performance_mailbox_unittest.cc b/chrome/browser/ui/aux/native_performance_mailbox_unittest.cc
+index 8753cd7..c19dd46 100644
+--- a/chrome/browser/ui/aux/native_performance_mailbox_unittest.cc
++++ b/chrome/browser/ui/aux/native_performance_mailbox_unittest.cc
+@@ -42,6 +42,18 @@ TEST_F(NativePerformanceMailboxFileTest, MemoryOperationCannotCarryAProcessSelec
+   auto refusal = Read(); ASSERT_TRUE(refusal);
+   EXPECT_EQ("refused", *refusal->FindString("status"));
+ }
++TEST_F(NativePerformanceMailboxFileTest, LittleFixedOperationsCannotSelectWindowOrNavigation) {
++  Write(R"({"sequence":"1","operation":"prepareLittleWindowPresentation"})");
++  auto ready = Read(); ASSERT_TRUE(ready);
++  EXPECT_EQ("prepareLittleWindowPresentation", *ready->FindString("operation"));
++  Write(R"({"sequence":"2","operation":"completeLittleWindowPresentation"})");
++  auto complete = Read(1); ASSERT_TRUE(complete);
++  EXPECT_EQ("completeLittleWindowPresentation", *complete->FindString("operation"));
++  Write(R"({"sequence":"2","operation":"completeLittleWindowPresentation","windowId":99})");
++  auto refused = Read(1); ASSERT_TRUE(refused); EXPECT_EQ("refused", *refused->FindString("status"));
++  Write(R"({"sequence":"2","operation":"completeLittleWindowPresentation","url":"https://example.invalid"})");
++  refused = Read(1); ASSERT_TRUE(refused); EXPECT_EQ("refused", *refused->FindString("status"));
++}
+ TEST_F(NativePerformanceMailboxFileTest, ExtraSelectorOrSkippedSequenceRefuses) {
+   Write(R"({"sequence":"1","operation":"prepareGuestTabSwitchPresentation","windowId":7})");
+   auto refusal = Read(); ASSERT_TRUE(refusal); EXPECT_EQ("refused", *refusal->FindString("status"));
+diff --git a/chrome/browser/ui/aux/native_presentation_record_codec.cc b/chrome/browser/ui/aux/native_presentation_record_codec.cc
+new file mode 100644
+index 0000000..5f78e6d
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_presentation_record_codec.cc
+@@ -0,0 +1,32 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_presentation_record_codec.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include <utility>
++#include "base/strings/string_number_conversions.h"
++namespace aux {
++base::DictValue EncodeNativePresentationSink(const viz::FrameSinkId& sink) {
++  return base::DictValue().Set("clientId", static_cast<double>(sink.client_id()))
++      .Set("sinkId", static_cast<double>(sink.sink_id()));
++}
++void AppendNativePresentationTick(base::DictValue& record, const char* key, base::TimeTicks value) {
++  if (value.is_null()) record.Set(key, base::Value());
++  else record.Set(key, base::NumberToString(value.since_origin().InMicroseconds()));
++}
++base::ListValue EncodeNativePresentationDrawn(
++    const std::vector<viz::mojom::NativeDrawnGuestPtr>& frames) {
++  base::ListValue drawn;
++  for (const auto& frame : frames) {
++    if (!frame) continue;
++    auto surface = base::DictValue().Set("frameSink", EncodeNativePresentationSink(frame->surface.frame_sink_id()))
++        .Set("parentSequenceNumber", static_cast<double>(frame->surface.local_surface_id().parent_sequence_number()))
++        .Set("childSequenceNumber", static_cast<double>(frame->surface.local_surface_id().child_sequence_number()))
++        .Set("embedToken", frame->surface.local_surface_id().embed_token().ToString());
++    drawn.Append(base::DictValue().Set("surface", std::move(surface)).Set("token", static_cast<double>(frame->token))
++        .Set("surfaceSize", base::DictValue().Set("width", frame->surface_size.width()).Set("height", frame->surface_size.height()))
++        .Set("visibleBounds", base::DictValue().Set("x", frame->visible_bounds.x()).Set("y", frame->visible_bounds.y())
++          .Set("width", frame->visible_bounds.width()).Set("height", frame->visible_bounds.height())));
++  }
++  return drawn;
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_presentation_record_codec.h b/chrome/browser/ui/aux/native_presentation_record_codec.h
+new file mode 100644
+index 0000000..e3bfafc
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_presentation_record_codec.h
+@@ -0,0 +1,19 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PRESENTATION_RECORD_CODEC_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PRESENTATION_RECORD_CODEC_H_
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include <vector>
++#include "base/values.h"
++#include "base/time/time.h"
++#include "services/viz/privileged/mojom/compositing/display_private.mojom.h"
++namespace aux {
++// Pure fixed native record fields. No producers, selectors, clocks or authority.
++base::DictValue EncodeNativePresentationSink(const viz::FrameSinkId& sink);
++void AppendNativePresentationTick(base::DictValue& record, const char* key, base::TimeTicks value);
++base::ListValue EncodeNativePresentationDrawn(
++    const std::vector<viz::mojom::NativeDrawnGuestPtr>& frames);
++}  // namespace aux
++#endif
++#endif
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.cc b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+index 8588899..0b88b63 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -6,6 +6,7 @@
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+ #include "chrome/browser/ui/aux/native_command_presentation_session.h"
+ #include "chrome/browser/ui/aux/native_guest_presentation_fixture.h"
++#include "chrome/browser/ui/aux/native_little_presentation_fixture.h"
+ #include "chrome/browser/ui/aux/native_performance_mailbox.h"
+ #include "chrome/browser/ui/aux/native_organization_work_fixture.h"
+ #include "chrome/browser/ui/aux/native_shell_memory.h"
+diff --git a/chrome/browser/ui/webui_browser/webui_browser_ui.h b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+index 4666b0d..a5bd9a8 100644
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.h
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.h
+@@ -75,6 +75,7 @@ namespace aux {
+ class DictationMac;
+ class NativeCommandPresentationSession;
+ class NativeGuestPresentationFixture;
++class NativeLittlePresentationFixture;
+ class NativeOrganizationWorkFixture;
+ class NativePerformanceMailbox;
+ class NativeShellMemorySampler;
+@@ -154,6 +155,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+ 
+   base::WeakPtr<WebUIBrowserUI> GetWeakPtr();
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++  base::WeakPtr<BrowserWindowInterface> NativeLittleCleanupWindowForTesting() const;
+   void ObserveAuxPerformanceInput(const gfx::NativeEvent& event);
+   bool DeferAuxGuestTabSwitchForTesting(const gfx::NativeEvent& event,
+       base::OnceClosure registered_effect);
+@@ -347,6 +349,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+   std::unique_ptr<aux::NativeCommandPresentationSession> command_presentation_session_;
+   std::unique_ptr<aux::NativeGuestPresentationFixture> guest_presentation_fixture_;
++  std::unique_ptr<aux::NativeLittlePresentationFixture> little_presentation_fixture_;
+   std::unique_ptr<aux::NativePerformanceMailbox> performance_mailbox_;
+   std::unique_ptr<aux::NativeOrganizationWorkFixture> organization_work_fixture_;
+   std::unique_ptr<aux::NativeShellMemorySampler> shell_memory_sampler_;
+diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
+index 3ba3996..08d733d 100644
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -3497,7 +3497,10 @@ if (!is_android) {
+ 
+     if (is_mac) {
+       if (enable_aux_shell) {
+-        sources += [ "../browser/ui/aux/link_router_browsertest.cc" ]
++        sources += [
++          "../browser/ui/aux/link_router_browsertest.cc",
++          "../browser/ui/aux/native_performance_mailbox_browsertest.cc",
++        ]
+         deps += [ "//chrome/browser/ui/aux:runtime" ]
+       }
+       deps += [ "//chrome/browser/apps/app_shim:browser_tests" ]
+@@ -8065,6 +8068,8 @@ test("unit_tests") {
+       "../browser/ui/aux/native_pip_video_backing_unittest.cc",
+       "../browser/ui/aux/native_command_presentation_session_unittest.cc",
+       "../browser/ui/aux/native_guest_presentation_fixture_unittest.cc",
++      "../browser/ui/aux/native_little_creation_ticket_unittest.cc",
++      "../browser/ui/aux/native_little_presentation_fixture_unittest.cc",
+       "../browser/ui/aux/native_performance_mailbox_unittest.cc",
+       "../browser/ui/aux/native_organization_runtime_unittest.cc",
+     ]
+diff --git a/content/browser/renderer_host/render_widget_host_impl.cc b/content/browser/renderer_host/render_widget_host_impl.cc
+index 0c8725d..56e1819 100644
+--- a/content/browser/renderer_host/render_widget_host_impl.cc
++++ b/content/browser/renderer_host/render_widget_host_impl.cc
+@@ -2201,6 +2201,34 @@ void RenderWidgetHostImpl::BeginNativeOrganizationWorkForTesting(
+             expected->widget_routing_id == self->GetRoutingID());
+       }, weak_factory_.GetWeakPtr(), std::move(expected), std::move(reply)));
+ }
++void RenderWidgetHostImpl::MeasureCreatedGuestFrameForTesting(
++    blink::mojom::NativeCreatedGuestFrameScopePtr scope,
++    mojo::PendingRemote<blink::mojom::NativeCreatedGuestFrameReadiness> readiness,
++    base::OnceCallback<void(blink::mojom::NativeCreatedGuestFrameSubmissionPtr)> callback) {
++  auto reply = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      std::move(callback), blink::mojom::NativeCreatedGuestFrameSubmissionPtr());
++  if (!scope || !readiness.is_valid() || !blink_frame_widget_ ||
++      !GetProcess() || !GetProcess()->GetProcess().IsValid() ||
++      scope->shell_widget_routing_id != GetRoutingID() || scope->shell_sink != GetFrameSinkId() ||
++      scope->shell_renderer_pid != GetProcess()->GetProcess().Pid()) return;
++  if (!widget_compositor_) blink_frame_widget_->BindWidgetCompositor(
++      widget_compositor_.BindNewPipeAndPassReceiver(
++          GetUIThreadTaskRunner({BrowserTaskType::kUserInput})));
++  auto expected = scope->Clone();
++  widget_compositor_->MeasureCreatedGuestFrame(std::move(scope), std::move(readiness),
++      base::BindOnce(
++          [](base::WeakPtr<RenderWidgetHostImpl> self,
++             blink::mojom::NativeCreatedGuestFrameScopePtr expected,
++             base::OnceCallback<void(blink::mojom::NativeCreatedGuestFrameSubmissionPtr)> reply,
++             blink::mojom::NativeCreatedGuestFrameSubmissionPtr result) {
++            if (!self || !self->GetProcess() || !self->GetProcess()->GetProcess().IsValid() ||
++                expected->shell_renderer_pid != self->GetProcess()->GetProcess().Pid() ||
++                expected->shell_widget_routing_id != self->GetRoutingID() ||
++                expected->shell_sink != self->GetFrameSinkId() || !result || !result->scope ||
++                !result->scope->Equals(*expected)) result.reset();
++            std::move(reply).Run(std::move(result));
++          }, weak_factory_.GetWeakPtr(), std::move(expected), std::move(reply)));
++}
+ void RenderWidgetHostImpl::MeasureNativeGuestStageForTesting(
+     blink::mojom::NativeGuestStageScopePtr scope,
+     mojo::PendingRemote<blink::mojom::NativeGuestStageReadiness> readiness,
+diff --git a/content/browser/renderer_host/render_widget_host_impl.h b/content/browser/renderer_host/render_widget_host_impl.h
+index f7386e7..41cbab5 100644
+--- a/content/browser/renderer_host/render_widget_host_impl.h
++++ b/content/browser/renderer_host/render_widget_host_impl.h
+@@ -352,6 +352,10 @@ class CONTENT_EXPORT RenderWidgetHostImpl
+       blink::mojom::NativeOrganizationWorkScopePtr scope,
+       mojo::PendingReceiver<blink::mojom::NativeOrganizationWorkLease> lease,
+       base::OnceCallback<void(bool)> callback);
++  void MeasureCreatedGuestFrameForTesting(
++      blink::mojom::NativeCreatedGuestFrameScopePtr scope,
++      mojo::PendingRemote<blink::mojom::NativeCreatedGuestFrameReadiness> readiness,
++        base::OnceCallback<void(blink::mojom::NativeCreatedGuestFrameSubmissionPtr)> callback);
+   void MeasureNativeGuestStageForTesting(
+       blink::mojom::NativeGuestStageScopePtr scope,
+       mojo::PendingRemote<blink::mojom::NativeGuestStageReadiness> readiness,
+diff --git a/third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom b/third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom
+index 71e2fac..c8f4391 100644
+--- a/third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom
++++ b/third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom
+@@ -84,3 +84,37 @@ struct NativeGuestDocumentFrameScope {
+ interface NativeGuestDocumentFrameLease {
+   Stop();
+ };
++
++// Private native-created target observation. The native external Arm timestamp
++// precedes creation and is explicitly an upperbound start, never an input event.
++// Identities assert continuity on this already-bound target widget; no selectors.
++enum NativeCreatedGuestSurfaceKind { kLittleWindow };
++struct NativeCreatedGuestFrameScope {
++  NativeCreatedGuestSurfaceKind surface_kind;
++  mojo_base.mojom.UnguessableToken request_nonce;
++  uint64 sample_sequence;
++  int32 window_id;
++  int32 shell_widget_routing_id;
++  int32 shell_renderer_pid;
++  uint64 native_document_generation;
++  DocumentToken shell_document;
++  viz.mojom.FrameSinkId shell_sink;
++  viz.mojom.FrameSinkId display_sink;
++  mojo_base.mojom.TimeTicks external_arm;
++};
++struct NativeCreatedGuestFrameSubmission {
++  NativeCreatedGuestFrameScope scope;
++  NativeGuestStageWitness witness;
++  mojo_base.mojom.TimeTicks witness_observed;
++  mojo_base.mojom.TimeTicks commit;
++  mojo_base.mojom.TimeTicks submitted_at;
++  uint32 shell_frame_token;
++  bool activated;
++  bool submitted_frame;
++  int32 submission_failure;
++  bool submitted;
++};
++interface NativeCreatedGuestFrameReadiness {
++  Ready(NativeCreatedGuestFrameScope scope, NativeGuestStageWitness witness)
++      => (bool accepted);
++};
+diff --git a/third_party/blink/public/mojom/widget/platform_widget.mojom b/third_party/blink/public/mojom/widget/platform_widget.mojom
+index a9dbfb6..c4d9fa9 100644
+--- a/third_party/blink/public/mojom/widget/platform_widget.mojom
++++ b/third_party/blink/public/mojom/widget/platform_widget.mojom
+@@ -75,6 +75,10 @@ interface WidgetCompositor {
+   // after. Returned input must pair with genuine native input in one clock.
+   BeginNativeOrganizationWork(NativeOrganizationWorkScope scope,
+       pending_receiver<NativeOrganizationWorkLease> lease) => (bool armed);
++  // Bound target widget only; browser owns the exact native creation ticket.
++  MeasureCreatedGuestFrame(NativeCreatedGuestFrameScope scope,
++      pending_remote<NativeCreatedGuestFrameReadiness> readiness)
++      => (NativeCreatedGuestFrameSubmission? result);
+   MeasureNativeGuestStage(NativeGuestStageScope scope,
+       pending_remote<NativeGuestStageReadiness> readiness,
+       pending_receiver<NativeGuestStageInput> input)
+diff --git a/third_party/blink/renderer/core/frame/build.gni b/third_party/blink/renderer/core/frame/build.gni
+index c4ecfc7..b081384 100644
+--- a/third_party/blink/renderer/core/frame/build.gni
++++ b/third_party/blink/renderer/core/frame/build.gni
+@@ -15,6 +15,10 @@ blink_core_sources_frame = [
+   "native_organization_work_witness.cc",
+   "native_guest_stage_controller.h",
+   "native_guest_stage_controller.cc",
++  "native_created_guest_frame.h",
++  "native_created_guest_frame.cc",
++  "native_created_guest_controller.h",
++  "native_created_guest_controller.cc",
+   "native_guest_document_frame_stamp.h",
+   "native_guest_document_frame_stamp.cc",
+   "native_command_results_witness.h",
+diff --git a/third_party/blink/renderer/core/frame/native_created_guest_controller.cc b/third_party/blink/renderer/core/frame/native_created_guest_controller.cc
+new file mode 100644
+index 0000000..ac89ee3
+--- /dev/null
++++ b/third_party/blink/renderer/core/frame/native_created_guest_controller.cc
+@@ -0,0 +1,56 @@
++// Copyright 2026 The Aux Authors
++#include "third_party/blink/renderer/core/frame/native_created_guest_controller.h"
++#include <utility>
++#include "base/functional/bind.h"
++#include "third_party/blink/renderer/core/frame/native_guest_stage_controller.h"
++namespace blink {
++NativeCreatedGuestController::NativeCreatedGuestController(WidgetBase* widget,
++    NativeCreatedGuestFrame::ScopeReader scope, NativeCreatedGuestFrame::WitnessReader witness)
++    : read_witness_(witness), measurement_(widget, std::move(scope), std::move(witness)) {}
++NativeCreatedGuestController::~NativeCreatedGuestController() {
++  weak_factory_.InvalidateWeakPtrs(); Cancel();
++}
++bool NativeCreatedGuestController::Prepare(mojom::blink::NativeCreatedGuestFrameScopePtr scope,
++    mojo::PendingRemote<mojom::blink::NativeCreatedGuestFrameReadiness> readiness, Result result) {
++  if (scope_ || result_ || !scope ||
++      scope->surface_kind != mojom::blink::NativeCreatedGuestSurfaceKind::kLittleWindow || scope->request_nonce.is_empty() || scope->external_arm.is_null() ||
++      !readiness.is_valid() || result.is_null() || read_witness_.is_null()) return false;
++  const auto self = weak_factory_.GetWeakPtr();
++  const auto witness = read_witness_.Run();
++  if (!self) return false;
++  if (scope_ || result_ || !witness || witness->document != scope->shell_document) return false;
++  scope_ = std::move(scope); result_ = std::move(result);
++  const bool prepared = measurement_.Prepare(scope_->external_arm, base::BindOnce(
++      &NativeCreatedGuestController::Complete, weak_factory_.GetWeakPtr()));
++  if (!self) return false;
++  if (!prepared) {
++    scope_.reset(); result_.Reset(); return false;
++  }
++  readiness_.Bind(std::move(readiness));
++  readiness_.set_disconnect_handler(base::BindOnce(
++      &NativeCreatedGuestController::Cancel, weak_factory_.GetWeakPtr()));
++  readiness_->Ready(scope_->Clone(), EncodeNativeGuestStageWitness(*witness), base::BindOnce(
++      &NativeCreatedGuestController::Accepted, weak_factory_.GetWeakPtr()));
++  return true;
++}
++void NativeCreatedGuestController::Accepted(bool accepted) {
++  if (!result_) return;
++  if (!accepted) { Cancel(); return; }
++  ready_ = true;
++  readiness_.reset();
++  measurement_.Accepted();
++}
++void NativeCreatedGuestController::Complete(CreatedGuestFrameSubmission sample) {
++  if (!result_ || !scope_) return;
++  auto out = mojom::blink::NativeCreatedGuestFrameSubmission::New();
++  out->scope = scope_->Clone(); out->witness = EncodeNativeGuestStageWitness(sample.witness);
++  out->witness_observed = sample.witness_observed;
++  out->commit = sample.submission.commit; out->submitted_at = sample.submission.submitted;
++  out->shell_frame_token = sample.submission.frame_token;
++  out->activated = sample.submission.activated; out->submitted_frame = sample.submission.submitted_frame;
++  out->submission_failure = sample.submission.failure_reason; out->submitted = ready_ && sample.submitted;
++  ready_ = false; readiness_.reset(); scope_.reset();
++  std::move(result_).Run(std::move(out));
++}
++void NativeCreatedGuestController::Cancel() { measurement_.Cancel(); }
++}  // namespace blink
+diff --git a/third_party/blink/renderer/core/frame/native_created_guest_controller.h b/third_party/blink/renderer/core/frame/native_created_guest_controller.h
+new file mode 100644
+index 0000000..fa7925f
+--- /dev/null
++++ b/third_party/blink/renderer/core/frame/native_created_guest_controller.h
+@@ -0,0 +1,30 @@
++// Copyright 2026 The Aux Authors
++#ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_CREATED_GUEST_CONTROLLER_H_
++#define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_CREATED_GUEST_CONTROLLER_H_
++#include "base/memory/weak_ptr.h"
++#include "mojo/public/cpp/bindings/remote.h"
++#include "third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom-blink.h"
++#include "third_party/blink/renderer/core/frame/native_created_guest_frame.h"
++namespace blink {
++class CORE_EXPORT NativeCreatedGuestController final {
++ public:
++  using Result = base::OnceCallback<void(mojom::blink::NativeCreatedGuestFrameSubmissionPtr)>;
++  NativeCreatedGuestController(WidgetBase* widget, NativeCreatedGuestFrame::ScopeReader scope,
++      NativeCreatedGuestFrame::WitnessReader witness);
++  ~NativeCreatedGuestController();
++  bool Prepare(mojom::blink::NativeCreatedGuestFrameScopePtr scope,
++      mojo::PendingRemote<mojom::blink::NativeCreatedGuestFrameReadiness> readiness, Result result);
++ private:
++  void Accepted(bool accepted);
++  void Complete(CreatedGuestFrameSubmission sample);
++  void Cancel();
++  NativeCreatedGuestFrame::WitnessReader read_witness_;
++  NativeCreatedGuestFrame measurement_;
++  mojom::blink::NativeCreatedGuestFrameScopePtr scope_;
++  mojo::Remote<mojom::blink::NativeCreatedGuestFrameReadiness> readiness_;
++  Result result_;
++  bool ready_ = false;
++  base::WeakPtrFactory<NativeCreatedGuestController> weak_factory_{this};
++};
++}  // namespace blink
++#endif
+diff --git a/third_party/blink/renderer/core/frame/native_created_guest_frame.cc b/third_party/blink/renderer/core/frame/native_created_guest_frame.cc
+new file mode 100644
+index 0000000..f15ad8f
+--- /dev/null
++++ b/third_party/blink/renderer/core/frame/native_created_guest_frame.cc
+@@ -0,0 +1,106 @@
++// Copyright 2026 The Aux Authors
++#include "third_party/blink/renderer/core/frame/native_created_guest_frame.h"
++#include <memory>
++#include <utility>
++#include "base/functional/bind.h"
++#include "base/task/single_thread_task_runner.h"
++#include "cc/trees/layer_tree_host.h"
++#include "third_party/blink/renderer/platform/widget/widget_base.h"
++namespace blink {
++namespace {
++bool SameVisibleWitness(const NativeGuestStageWitness& a, const NativeGuestStageWitness& b) {
++  return a.document == b.document && a.stage_instance == b.stage_instance &&
++      a.selection_generation == b.selection_generation &&
++      a.geometry_generation == b.geometry_generation && !a.split_instance && !b.split_instance &&
++      !a.dragging && !b.dragging && a.pages.size() == 1 && a.pages == b.pages;
++}
++}  // namespace
++NativeCreatedGuestFrame::NativeCreatedGuestFrame(WidgetBase* widget, ScopeReader scope, WitnessReader witness)
++    : widget_(widget ? widget->GetWeakPtr() : base::WeakPtr<WidgetBase>()),
++      read_scope_(std::move(scope)), read_witness_(std::move(witness)) {
++  if (widget_) widget_->SetPerformanceLifecycleCallbackForTesting(base::BindRepeating(
++      &NativeCreatedGuestFrame::Lifecycle, weak_factory_.GetWeakPtr()));
++}
++NativeCreatedGuestFrame::~NativeCreatedGuestFrame() {
++  weak_factory_.InvalidateWeakPtrs();
++  if (widget_) widget_->SetPerformanceLifecycleCallbackForTesting({});
++  Cancel();
++}
++bool NativeCreatedGuestFrame::Stable() {
++  if (!sample_ || !widget_ || widget_->WillBeDestroyed() || !widget_->LayerTreeHost() ||
++      read_scope_.is_null() || read_witness_.is_null()) return false;
++  const auto self = weak_factory_.GetWeakPtr();
++  const auto scope = read_scope_.Run();
++  if (!self) return false;
++  return widget_ && !widget_->WillBeDestroyed() && widget_->LayerTreeHost() &&
++      sample_ && scope && *scope == sample_->scope &&
++      base::TimeTicks::Now() - sample_->external_arm <= base::Seconds(5);
++}
++bool NativeCreatedGuestFrame::Prepare(base::TimeTicks external_arm, Result result) {
++  const auto now = base::TimeTicks::Now();
++  if (sample_ || result.is_null() || !widget_ || widget_->WillBeDestroyed() ||
++      !widget_->LayerTreeHost() || read_scope_.is_null() || read_witness_.is_null() ||
++      !base::TimeTicks::IsConsistentAcrossProcesses() || external_arm.is_null() ||
++      external_arm > now || now - external_arm > base::Seconds(5)) return false;
++  const auto self = weak_factory_.GetWeakPtr();
++  const auto scope = read_scope_.Run();
++  if (!self) return false;
++  const auto witness = read_witness_.Run();
++  if (!self) return false;
++  if (sample_ || !widget_ || widget_->WillBeDestroyed() || !widget_->LayerTreeHost() || !scope || !witness ||
++      witness->dragging || witness->split_instance || witness->pages.size() != 1 || !witness->stage_instance ||
++      base::TimeTicks::Now() - external_arm >= base::Seconds(5))
++    return false;
++  sample_.emplace(); sample_->scope = *scope; sample_->witness = *witness;
++  sample_->external_arm = external_arm; result_ = std::move(result);
++  timeout_.Start(FROM_HERE, base::Seconds(5) - (base::TimeTicks::Now() - external_arm), base::BindOnce(
++      &NativeCreatedGuestFrame::Cancel, weak_factory_.GetWeakPtr()));
++  return true;
++}
++bool NativeCreatedGuestFrame::Accepted() {
++  const auto self = weak_factory_.GetWeakPtr();
++  const bool stable = !accepted_ && Stable();
++  if (!self) return false;
++  if (!stable) { Cancel(); return false; }
++  accepted_ = true;
++  // The swap promise records the exact subsequent actual commit/submission.
++  // Browser verifies its emitted frame token in the root/guest inclusion group.
++  widget_->LayerTreeHost()->SetNeedsCommit();
++  return true;
++}
++void NativeCreatedGuestFrame::Lifecycle() {
++  if (!accepted_ || !sample_ || !sample_->witness_observed.is_null()) return;
++  const auto self = weak_factory_.GetWeakPtr();
++  if (!Stable()) { if (self) Cancel(); return; }
++  const auto witness = read_witness_.Run();
++  if (!self) return;
++  if (!sample_ || !widget_ || widget_->WillBeDestroyed() || !widget_->LayerTreeHost() || !witness ||
++      !SameVisibleWitness(sample_->witness, *witness)) { Cancel(); return; }
++  sample_->witness_observed = base::TimeTicks::Now();
++  widget_->LayerTreeHost()->QueueSwapPromise(std::make_unique<aux::NativePerformanceSwapPromise>(
++      base::SingleThreadTaskRunner::GetCurrentDefault(), base::BindOnce(
++          &NativeCreatedGuestFrame::Submitted, weak_factory_.GetWeakPtr())));
++}
++void NativeCreatedGuestFrame::Submitted(aux::NativePerformanceSwapPromise::Submission actual) {
++  if (!sample_) return;
++  const auto self = weak_factory_.GetWeakPtr();
++  if (!Stable()) { if (self) Cancel(); return; }
++  const auto witness = read_witness_.Run();
++  if (!self) return;
++  if (!sample_) return;
++  sample_->submission = actual;
++  const bool valid = widget_ && !widget_->WillBeDestroyed() && witness &&
++      SameVisibleWitness(sample_->witness, *witness) && actual.activated && actual.submitted_frame &&
++      actual.frame_token && actual.failure_reason < 0 && !actual.commit.is_null() && !actual.submitted.is_null() &&
++      sample_->external_arm <= sample_->witness_observed && sample_->witness_observed <= actual.commit &&
++      actual.commit <= actual.submitted;
++  Finish(valid);
++}
++void NativeCreatedGuestFrame::Finish(bool submitted) {
++  if (!sample_) return;
++  timeout_.Stop(); accepted_ = false; sample_->submitted = submitted;
++  auto sample = std::move(*sample_); sample_.reset();
++  if (result_) std::move(result_).Run(std::move(sample));
++}
++void NativeCreatedGuestFrame::Cancel() { Finish(false); }
++}  // namespace blink
+diff --git a/third_party/blink/renderer/core/frame/native_created_guest_frame.h b/third_party/blink/renderer/core/frame/native_created_guest_frame.h
+new file mode 100644
+index 0000000..6a897cf
+--- /dev/null
++++ b/third_party/blink/renderer/core/frame/native_created_guest_frame.h
+@@ -0,0 +1,51 @@
++// Copyright 2026 The Aux Authors
++#ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_CREATED_GUEST_FRAME_H_
++#define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_CREATED_GUEST_FRAME_H_
++#include <optional>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "cc/trees/aux_performance_content_frame.h"
++#include "third_party/blink/renderer/core/core_export.h"
++#include "third_party/blink/renderer/core/frame/native_guest_stage_witness.h"
++namespace blink {
++class WidgetBase;
++struct CreatedGuestFrameSubmission {
++  aux::ContentPerformanceScope scope;
++  NativeGuestStageWitness witness;
++  base::TimeTicks external_arm;
++  base::TimeTicks witness_observed;
++  aux::NativePerformanceSwapPromise::Submission submission;
++  bool submitted = false;
++};
++// Native-owned creation observer only. It requests an actual commit carrying the
++// already committed target document/visible-embed witness. This is an observed
++// qualifying frame upperbound, never native input or first-ever-frame proof.
++class CORE_EXPORT NativeCreatedGuestFrame final {
++ public:
++  using ScopeReader = aux::NativeContentFrameMeasurement::ScopeReader;
++  using WitnessReader = base::RepeatingCallback<std::optional<NativeGuestStageWitness>()>;
++  using Result = base::OnceCallback<void(CreatedGuestFrameSubmission)>;
++  NativeCreatedGuestFrame(WidgetBase* widget, ScopeReader scope, WitnessReader witness);
++  ~NativeCreatedGuestFrame();
++  bool Prepare(base::TimeTicks actual_external_arm, Result result);
++  // Called only after native validates current target document, visible page,
++  // connector geometry and genuine guest document frame leases on this widget.
++  bool Accepted();
++  void Cancel();
++ private:
++  bool Stable();
++  void Lifecycle();
++  void Submitted(aux::NativePerformanceSwapPromise::Submission actual);
++  void Finish(bool submitted);
++  base::WeakPtr<WidgetBase> widget_;
++  ScopeReader read_scope_;
++  WitnessReader read_witness_;
++  std::optional<CreatedGuestFrameSubmission> sample_;
++  Result result_;
++  bool accepted_ = false;
++  base::OneShotTimer timeout_;
++  base::WeakPtrFactory<NativeCreatedGuestFrame> weak_factory_{this};
++};
++}  // namespace blink
++#endif
+diff --git a/third_party/blink/renderer/core/frame/native_guest_stage_controller.cc b/third_party/blink/renderer/core/frame/native_guest_stage_controller.cc
+index 8efc017..d6305ff 100644
+--- a/third_party/blink/renderer/core/frame/native_guest_stage_controller.cc
++++ b/third_party/blink/renderer/core/frame/native_guest_stage_controller.cc
+@@ -4,8 +4,7 @@
+ #include "base/functional/bind.h"
+ #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+ namespace blink {
+-namespace {
+-mojom::blink::NativeGuestStageWitnessPtr Witness(const NativeGuestStageWitness& sample) {
++mojom::blink::NativeGuestStageWitnessPtr EncodeNativeGuestStageWitness(const NativeGuestStageWitness& sample) {
+   auto out = mojom::blink::NativeGuestStageWitness::New();
+   out->document = sample.document; out->selection_generation = sample.selection_generation;
+   out->geometry_generation = sample.geometry_generation; out->stage_instance = sample.stage_instance;
+@@ -21,7 +20,6 @@ mojom::blink::NativeGuestStageWitnessPtr Witness(const NativeGuestStageWitness&
+   }
+   return out;
+ }
+-}  // namespace
+ NativeGuestStageController::NativeGuestStageController(WidgetBase* widget,
+     aux::NativeContentFrameMeasurement::ScopeReader read_scope,
+     NativeGuestStageMeasurement::WitnessReader read_witness)
+@@ -50,7 +48,7 @@ bool NativeGuestStageController::Prepare(mojom::blink::NativeGuestStageScopePtr
+   readiness_.set_disconnect_handler(base::BindOnce(
+       [](base::WeakPtr<NativeGuestStageController> self) { if (self && !self->ready_) self->Cancel(); },
+       weak_factory_.GetWeakPtr()));
+-  readiness_->Ready(scope_->Clone(), Witness(*baseline), base::BindOnce(
++  readiness_->Ready(scope_->Clone(), EncodeNativeGuestStageWitness(*baseline), base::BindOnce(
+       &NativeGuestStageController::Accepted, weak_factory_.GetWeakPtr()));
+   return true;
+ }
+@@ -69,9 +67,9 @@ void NativeGuestStageController::ArmConsumedNativeInput(const base::UnguessableT
+ void NativeGuestStageController::Complete(NativeGuestStageSubmission sample) {
+   if (!result_) return;
+   auto out = mojom::blink::NativeGuestStageSubmission::New();
+-  out->scope = scope_->Clone(); out->baseline = Witness(sample.baseline);
++  out->scope = scope_->Clone(); out->baseline = EncodeNativeGuestStageWitness(sample.baseline);
+   if (!sample.mutation.is_null())
+-    out->mutation_witness = Witness(sample.mutation_witness);
++    out->mutation_witness = EncodeNativeGuestStageWitness(sample.mutation_witness);
+   out->submitted = ready_ && sample.submitted;
+   out->input = sample.input; out->mutation = sample.mutation;
+   out->commit = sample.submission.commit; out->submitted_at = sample.submission.submitted;
+diff --git a/third_party/blink/renderer/core/frame/native_guest_stage_controller.h b/third_party/blink/renderer/core/frame/native_guest_stage_controller.h
+index c6ac893..94f32c6 100644
+--- a/third_party/blink/renderer/core/frame/native_guest_stage_controller.h
++++ b/third_party/blink/renderer/core/frame/native_guest_stage_controller.h
+@@ -8,6 +8,8 @@
+ #include "third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom-blink.h"
+ #include "third_party/blink/renderer/core/frame/native_guest_stage_measurement.h"
+ namespace blink {
++CORE_EXPORT mojom::blink::NativeGuestStageWitnessPtr EncodeNativeGuestStageWitness(
++    const NativeGuestStageWitness& sample);
+ // Created only by the actual top-most WebFrameWidget owner after fixed current
+ // chrome://aux document/widget/sink scope validation. No script receiver.
+ class CORE_EXPORT NativeGuestStageController final : public mojom::blink::NativeGuestStageInput {
+diff --git a/third_party/blink/renderer/core/frame/native_guest_stage_witness.cc b/third_party/blink/renderer/core/frame/native_guest_stage_witness.cc
+index 0839f37..1836f91 100644
+--- a/third_party/blink/renderer/core/frame/native_guest_stage_witness.cc
++++ b/third_party/blink/renderer/core/frame/native_guest_stage_witness.cc
+@@ -71,9 +71,10 @@ bool SamePages(const NativeGuestStageWitness& a, const NativeGuestStageWitness&
+   return true;
+ }
+ }  // namespace
+-std::optional<NativeGuestStageWitness> ReadNativeGuestStageWitness(Document& document) {
++std::optional<NativeGuestStageWitness> ReadNativeGuestStageWitness(Document& document, NativeGuestWitnessSurface surface) {
++  if (surface != NativeGuestWitnessSurface::kStage && surface != NativeGuestWitnessSurface::kLittleWindow) return std::nullopt;
+   if (!document.View() || document.Lifecycle().GetState() != DocumentLifecycle::kPaintClean) return std::nullopt;
+-  auto* stages = document.QuerySelectorAll(AtomicString("#stage[data-stage-instance][data-stage-selection-generation][data-stage-dragging]"));
++  auto* stages = document.QuerySelectorAll(AtomicString(surface == NativeGuestWitnessSurface::kStage ? "#stage[data-stage-instance][data-stage-selection-generation][data-stage-dragging]" : "main.little-window > section.little-page[data-little-stage][data-stage-instance][data-stage-selection-generation][data-stage-dragging]"));
+   if (!stages || stages->length() != 1 || !Visible(*stages->item(0))) return std::nullopt;
+   auto* stage = stages->item(0);
+   const auto selection = Generation(*stage, "data-stage-selection-generation");
+diff --git a/third_party/blink/renderer/core/frame/native_guest_stage_witness.h b/third_party/blink/renderer/core/frame/native_guest_stage_witness.h
+index 4ea2a64..2566f03 100644
+--- a/third_party/blink/renderer/core/frame/native_guest_stage_witness.h
++++ b/third_party/blink/renderer/core/frame/native_guest_stage_witness.h
+@@ -10,6 +10,7 @@
+ #include "ui/gfx/geometry/rect.h"
+ namespace blink {
+ class Document;
++enum class NativeGuestWitnessSurface { kStage, kLittleWindow };
+ enum class NativeGuestStageMetric { kSplitDrop, kDividerFrame, kTabSwitch };
+ struct NativeGuestStagePage {
+   std::string page_id;
+@@ -34,7 +35,8 @@ struct NativeGuestStageWitness {
+ // Fixed actual product DOM, read at paint-clean without triggering a lifecycle.
+ // Opaque identities are sent only over the browser-owned private pipe. They are
+ // NOT authority: native must resolve/revalidate actual owner/document/connector.
+-CORE_EXPORT std::optional<NativeGuestStageWitness> ReadNativeGuestStageWitness(Document& document);
++CORE_EXPORT std::optional<NativeGuestStageWitness> ReadNativeGuestStageWitness(
++    Document& document, NativeGuestWitnessSurface surface = NativeGuestWitnessSurface::kStage);
+ CORE_EXPORT bool NativeGuestStageMatchesInput(NativeGuestStageMetric metric,
+     const NativeGuestStageWitness& before, const NativeGuestStageWitness& after);
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/core/frame/native_guest_stage_witness_test.cc b/third_party/blink/renderer/core/frame/native_guest_stage_witness_test.cc
+index c203d66..48ff921 100644
+--- a/third_party/blink/renderer/core/frame/native_guest_stage_witness_test.cc
++++ b/third_party/blink/renderer/core/frame/native_guest_stage_witness_test.cc
+@@ -69,4 +69,19 @@ TEST_F(NativeGuestStageWitnessTest, CanonicalRoundedPaneAndInnerGuestAreDistinct
+   UpdateAllLifecyclePhasesForTest();
+   EXPECT_FALSE(ReadNativeGuestStageWitness(GetDocument()));
+ }
++TEST_F(NativeGuestStageWitnessTest, LittleRequiresExplicitNativeSurfaceKindAndRealCommittedIdentities) {
++  SetBodyInnerHTML(R"HTML(<main class=little-window><section class=little-page data-little-stage data-stage-instance=19 data-stage-selection-generation=2 data-stage-dragging=false style="width:400px;height:200px">
++    <embed class="page-surface webium" type="application/x-chromium-surface-embed" data-page-id=A data-content-id=OpaqueNativeHandle data-document-epoch=3 style="width:100px;height:100px">
++  </section></main>)HTML");
++  UpdateAllLifecyclePhasesForTest();
++  EXPECT_FALSE(ReadNativeGuestStageWitness(GetDocument()));
++  const auto little = ReadNativeGuestStageWitness(GetDocument(), NativeGuestWitnessSurface::kLittleWindow);
++  ASSERT_TRUE(little); EXPECT_EQ(little->stage_instance, 19u); EXPECT_EQ(little->selection_generation, 2u);
++  ASSERT_EQ(little->pages.size(), 1u); EXPECT_EQ(little->pages.front().document_epoch, 3u);
++  // Synthetic DOM identity does not manufacture an actual plugin/native paint.
++  EXPECT_FALSE(little->pages.front().plugin_bounds_in_parent_pixels);
++  auto* section = GetDocument().QuerySelector(AtomicString(".little-page")); ASSERT_TRUE(section);
++  section->removeAttribute(AtomicString("data-stage-instance")); UpdateAllLifecyclePhasesForTest();
++  EXPECT_FALSE(ReadNativeGuestStageWitness(GetDocument(), NativeGuestWitnessSurface::kLittleWindow));
++}
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+index ac0cb72..c63f378 100644
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.cc
+@@ -550,7 +550,7 @@ void WebFrameWidgetImpl::BeginNativeOrganizationWork(
+       !local_root_ || !ForTopMostMainFrame() || !local_root_->GetFrame() ||
+       !local_root_->GetFrame()->GetDocument() || scope->renderer_pid != base::GetCurrentProcId() ||
+       scope->widget_routing_id <= 0 || scope->nonce.is_empty() ||
+-      native_command_measurement_pending_ || native_guest_stage_pending_ ||
++      native_command_measurement_pending_ || native_guest_stage_pending_ || native_created_guest_pending_ ||
+       (native_organization_work_ && native_organization_work_->armed())) return;
+   auto* document = local_root_->GetFrame()->GetDocument();
+   if (document->Token() != scope->document || document->Url().Protocol() != "chrome" ||
+@@ -559,6 +559,65 @@ void WebFrameWidgetImpl::BeginNativeOrganizationWork(
+       *document, std::move(scope), std::move(lease));
+   std::move(reply).Run(native_organization_work_->armed());
+ }
++void WebFrameWidgetImpl::MeasureCreatedGuestFrame(
++    mojom::blink::NativeCreatedGuestFrameScopePtr scope,
++    mojo::PendingRemote<mojom::blink::NativeCreatedGuestFrameReadiness> readiness,
++    NativeCreatedGuestCallback callback) {
++  auto reply = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
++      std::move(callback), mojom::blink::NativeCreatedGuestFrameSubmissionPtr());
++  if (!scope || !readiness.is_valid() || !widget_base_ ||
++      widget_base_->WillBeDestroyed() || !local_root_ || !ForTopMostMainFrame() ||
++      !local_root_->GetFrame() || !local_root_->GetFrame()->GetDocument() ||
++      scope->surface_kind != mojom::blink::NativeCreatedGuestSurfaceKind::kLittleWindow ||
++      scope->external_arm.is_null() || scope->request_nonce.is_empty() || !scope->sample_sequence || scope->window_id <= 0 ||
++      scope->shell_widget_routing_id <= 0 || !scope->native_document_generation ||
++      scope->shell_renderer_pid != base::GetCurrentProcId() || scope->shell_sink != frame_sink_id_ ||
++      !scope->shell_sink.is_valid() || !scope->display_sink.is_valid() ||
++      native_command_measurement_pending_ || native_guest_stage_pending_ || native_created_guest_pending_ ||
++      (native_organization_work_ && native_organization_work_->armed()) ||
++      (native_guest_document_stamp_ && native_guest_document_stamp_->armed())) return;
++  Document* document = local_root_->GetFrame()->GetDocument();
++  if (document->Url().Protocol() != "chrome" || document->Url().Host() != "aux" ||
++      document->Token() != scope->shell_document || !ReadNativeGuestStageWitness(*document, NativeGuestWitnessSurface::kLittleWindow)) return;
++  native_created_guest_measurement_.reset(); native_guest_stage_measurement_.reset(); native_command_measurement_.reset();
++  native_guest_document_stamp_.reset();
++  const aux::ContentPerformanceScope actual{scope->window_id, scope->shell_widget_routing_id,
++      scope->shell_renderer_pid, scope->native_document_generation, scope->shell_sink};
++  auto reader = base::BindRepeating(
++      [](WeakPersistent<WebFrameWidgetImpl> self, WeakPersistent<Document> held)
++          -> std::optional<NativeGuestStageWitness> {
++        if (!self || !held || !self->widget_base_ || self->widget_base_->WillBeDestroyed() ||
++            !self->local_root_ || !self->local_root_->GetFrame() ||
++            self->local_root_->GetFrame()->GetDocument() != held.Get()) return std::nullopt;
++        return ReadNativeGuestStageWitness(*held, NativeGuestWitnessSurface::kLittleWindow);
++      }, WrapWeakPersistent(this), WrapWeakPersistent(document));
++  auto scope_reader = base::BindRepeating(
++      [](WeakPersistent<WebFrameWidgetImpl> self, DocumentToken document,
++         aux::ContentPerformanceScope actual) -> std::optional<aux::ContentPerformanceScope> {
++        if (!self || !self->widget_base_ || self->widget_base_->WillBeDestroyed() ||
++            !self->local_root_ || !self->local_root_->GetFrame() ||
++            !self->local_root_->GetFrame()->GetDocument() ||
++            self->local_root_->GetFrame()->GetDocument()->Token() != document ||
++            self->frame_sink_id_ != actual.frame_sink) return std::nullopt;
++        return actual;
++      }, WrapWeakPersistent(this), document->Token(), actual);
++  native_created_guest_measurement_ = std::make_unique<NativeCreatedGuestController>(
++      widget_base_.get(), std::move(scope_reader), std::move(reader));
++  native_created_guest_pending_ = true;
++  const bool armed = native_created_guest_measurement_->Prepare(std::move(scope),
++      std::move(readiness), base::BindOnce(
++          [](WeakPersistent<WebFrameWidgetImpl> self, NativeCreatedGuestCallback reply,
++             mojom::blink::NativeCreatedGuestFrameSubmissionPtr sample) {
++            if (self) self->native_created_guest_pending_ = false;
++            if (!self || !self->widget_base_ || self->widget_base_->WillBeDestroyed() ||
++                !self->local_root_ || !self->local_root_->GetFrame() ||
++                !self->local_root_->GetFrame()->GetDocument() || !sample || !sample->scope ||
++                self->local_root_->GetFrame()->GetDocument()->Token() != sample->scope->shell_document ||
++                self->frame_sink_id_ != sample->scope->shell_sink) sample.reset();
++            std::move(reply).Run(std::move(sample));
++          }, WrapWeakPersistent(this), std::move(reply)));
++  if (!armed) native_created_guest_pending_ = false;
++}
+ void WebFrameWidgetImpl::MeasureNativeGuestStage(
+     mojom::blink::NativeGuestStageScopePtr scope,
+     mojo::PendingRemote<mojom::blink::NativeGuestStageReadiness> readiness,
+@@ -573,12 +632,12 @@ void WebFrameWidgetImpl::MeasureNativeGuestStage(
+       scope->shell_widget_routing_id <= 0 || !scope->native_document_generation ||
+       scope->shell_renderer_pid != base::GetCurrentProcId() || scope->shell_sink != frame_sink_id_ ||
+       !scope->shell_sink.is_valid() || !scope->display_sink.is_valid() ||
+-      native_command_measurement_pending_ || native_guest_stage_pending_ ||
++      native_command_measurement_pending_ || native_guest_stage_pending_ || native_created_guest_pending_ ||
+       (native_guest_document_stamp_ && native_guest_document_stamp_->armed())) return;
+   Document* document = local_root_->GetFrame()->GetDocument();
+   if (document->Url().Protocol() != "chrome" || document->Url().Host() != "aux" ||
+       document->Token() != scope->shell_document || !ReadNativeGuestStageWitness(*document)) return;
+-  native_guest_stage_measurement_.reset(); native_command_measurement_.reset();
++  native_created_guest_measurement_.reset(); native_guest_stage_measurement_.reset(); native_command_measurement_.reset();
+   native_guest_document_stamp_.reset();
+   const aux::ContentPerformanceScope actual{scope->window_id, scope->shell_widget_routing_id,
+       scope->shell_renderer_pid, scope->native_document_generation, scope->shell_sink};
+@@ -627,11 +686,11 @@ void WebFrameWidgetImpl::BeginNativeGuestDocumentFrame(
+       scope->frame_sink != frame_sink_id_ || !lease.is_valid() || !widget_base_ ||
+       widget_base_->WillBeDestroyed() || !local_root_ || !ForMainFrame() ||
+       !local_root_->GetFrame() || !local_root_->GetFrame()->GetDocument() ||
+-      native_command_measurement_pending_ || native_guest_stage_pending_ ||
++      native_command_measurement_pending_ || native_guest_stage_pending_ || native_created_guest_pending_ ||
+       (native_guest_document_stamp_ && native_guest_document_stamp_->armed())) return;
+   Document* document = local_root_->GetFrame()->GetDocument();
+   if (document->Token() != scope->document) return;
+-  native_guest_document_stamp_.reset(); native_guest_stage_measurement_.reset();
++  native_created_guest_measurement_.reset(); native_guest_document_stamp_.reset(); native_guest_stage_measurement_.reset();
+   native_command_measurement_.reset();
+   auto reader = base::BindRepeating(
+       [](WeakPersistent<WebFrameWidgetImpl> self, WeakPersistent<Document> held)
+@@ -684,7 +743,7 @@ void WebFrameWidgetImpl::MeasureNativeCommandPresentation(
+       return;
+   }
+   // Never replace an armed request. Completed instances may be released.
+-  if (native_command_measurement_pending_ || native_guest_stage_pending_ ||
++  if (native_command_measurement_pending_ || native_guest_stage_pending_ || native_created_guest_pending_ ||
+       (native_guest_document_stamp_ && native_guest_document_stamp_->armed()))
+     return;
+   native_guest_stage_measurement_.reset();
+@@ -791,6 +850,8 @@ void WebFrameWidgetImpl::Close(DetachReason detach_reason) {
+     animation_frame_timing_monitor_.Clear();
+   }
+ 
++  native_created_guest_pending_ = false;
++  native_created_guest_measurement_.reset();
+   native_guest_stage_pending_ = false;
+   native_guest_stage_measurement_.reset();
+   native_guest_document_stamp_.reset();
+diff --git a/third_party/blink/renderer/core/frame/web_frame_widget_impl.h b/third_party/blink/renderer/core/frame/web_frame_widget_impl.h
+index 112ba87..38a990a 100644
+--- a/third_party/blink/renderer/core/frame/web_frame_widget_impl.h
++++ b/third_party/blink/renderer/core/frame/web_frame_widget_impl.h
+@@ -93,6 +93,7 @@
+ #include "third_party/blink/renderer/platform/widget/widget_base_client.h"
+ #include "third_party/blink/renderer/platform/widget/compositing/native_performance_widget_measurement.h"
+ #include "third_party/blink/renderer/core/frame/native_guest_stage_controller.h"
++#include "third_party/blink/renderer/core/frame/native_created_guest_controller.h"
+ #include "third_party/blink/renderer/core/frame/native_organization_work_controller.h"
+ #include "third_party/blink/renderer/core/frame/native_guest_document_frame_stamp.h"
+ #include "third_party/blink/renderer/platform/wtf/casting.h"
+@@ -519,6 +520,10 @@ class CORE_EXPORT WebFrameWidgetImpl
+       mojom::blink::NativeOrganizationWorkScopePtr scope,
+       mojo::PendingReceiver<mojom::blink::NativeOrganizationWorkLease> lease,
+       base::OnceCallback<void(bool)> callback) override;
++  void MeasureCreatedGuestFrame(
++      mojom::blink::NativeCreatedGuestFrameScopePtr scope,
++      mojo::PendingRemote<mojom::blink::NativeCreatedGuestFrameReadiness> readiness,
++        NativeCreatedGuestCallback callback) override;
+   void MeasureNativeGuestStage(
+       mojom::blink::NativeGuestStageScopePtr scope,
+       mojo::PendingRemote<mojom::blink::NativeGuestStageReadiness> readiness,
+@@ -1247,6 +1252,8 @@ class CORE_EXPORT WebFrameWidgetImpl
+   std::unique_ptr<NativeGuestStageController> native_guest_stage_measurement_;
+   std::unique_ptr<NativeOrganizationWorkController> native_organization_work_;
+   bool native_guest_stage_pending_ = false;
++  std::unique_ptr<NativeCreatedGuestController> native_created_guest_measurement_;
++  bool native_created_guest_pending_ = false;
+   std::unique_ptr<NativeGuestDocumentFrameStamp> native_guest_document_stamp_;
+ 
+   // Compositing scale factor for all frames attached to this widget sent from
+diff --git a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
+index 0257262..ab20848 100644
+--- a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
++++ b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc
+@@ -116,6 +116,38 @@ void WidgetCompositor::NativeOrganizationWorkResponse(
+   }
+   if (receiver_.is_bound()) std::move(callback).Run(armed);
+ }
++void WidgetCompositor::MeasureCreatedGuestFrame(
++    mojom::blink::NativeCreatedGuestFrameScopePtr scope,
++    mojo::PendingRemote<mojom::blink::NativeCreatedGuestFrameReadiness> readiness,
++    MeasureCreatedGuestFrameCallback callback) {
++  DCHECK(CalledOnValidCompositorThread());
++  main_task_runner_->PostTask(FROM_HERE, base::BindOnce(
++      &WidgetCompositor::MeasureCreatedGuestFrameOnMain, base::RetainedRef(this),
++      std::move(scope), std::move(readiness), std::move(callback)));
++}
++void WidgetCompositor::MeasureCreatedGuestFrameOnMain(
++    mojom::blink::NativeCreatedGuestFrameScopePtr scope,
++    mojo::PendingRemote<mojom::blink::NativeCreatedGuestFrameReadiness> readiness,
++    MeasureCreatedGuestFrameCallback callback) {
++  DCHECK(main_task_runner_->BelongsToCurrentThread());
++  auto respond = base::BindOnce(&WidgetCompositor::CreatedGuestFrameResponse,
++                               base::RetainedRef(this), std::move(callback));
++  if (!widget_base_ || widget_base_->WillBeDestroyed() || !widget_base_->client() ||
++      !scope || !readiness.is_valid()) {
++    std::move(respond).Run(nullptr); return;
++  }
++  widget_base_->client()->MeasureCreatedGuestFrame(std::move(scope),
++      std::move(readiness), std::move(respond));
++}
++void WidgetCompositor::CreatedGuestFrameResponse(MeasureCreatedGuestFrameCallback callback,
++    mojom::blink::NativeCreatedGuestFrameSubmissionPtr result) {
++  if (!CalledOnValidCompositorThread()) {
++    compositor_task_runner_->PostTask(FROM_HERE, base::BindOnce(
++        &WidgetCompositor::CreatedGuestFrameResponse, base::RetainedRef(this),
++        std::move(callback), std::move(result))); return;
++  }
++  if (receiver_.is_bound()) std::move(callback).Run(std::move(result));
++}
+ void WidgetCompositor::MeasureNativeGuestStage(
+     mojom::blink::NativeGuestStageScopePtr scope,
+     mojo::PendingRemote<mojom::blink::NativeGuestStageReadiness> readiness,
+diff --git a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h
+index 8b9d084..c30a4cb 100644
+--- a/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h
++++ b/third_party/blink/renderer/platform/widget/compositing/widget_compositor.h
+@@ -59,6 +59,10 @@ class PLATFORM_EXPORT WidgetCompositor
+       mojom::blink::NativeOrganizationWorkScopePtr scope,
+       mojo::PendingReceiver<mojom::blink::NativeOrganizationWorkLease> lease,
+       BeginNativeOrganizationWorkCallback callback) override;
++  void MeasureCreatedGuestFrame(
++      mojom::blink::NativeCreatedGuestFrameScopePtr scope,
++      mojo::PendingRemote<mojom::blink::NativeCreatedGuestFrameReadiness> readiness,
++        MeasureCreatedGuestFrameCallback callback) override;
+   void MeasureNativeGuestStage(
+       mojom::blink::NativeGuestStageScopePtr scope,
+       mojo::PendingRemote<mojom::blink::NativeGuestStageReadiness> readiness,
+@@ -89,6 +93,12 @@ class PLATFORM_EXPORT WidgetCompositor
+       mojo::PendingReceiver<mojom::blink::NativeOrganizationWorkLease> lease,
+       BeginNativeOrganizationWorkCallback callback);
+   void NativeOrganizationWorkResponse(BeginNativeOrganizationWorkCallback callback, bool armed);
++  void MeasureCreatedGuestFrameOnMain(
++      mojom::blink::NativeCreatedGuestFrameScopePtr scope,
++      mojo::PendingRemote<mojom::blink::NativeCreatedGuestFrameReadiness> readiness,
++        MeasureCreatedGuestFrameCallback callback);
++  void CreatedGuestFrameResponse(MeasureCreatedGuestFrameCallback callback,
++      mojom::blink::NativeCreatedGuestFrameSubmissionPtr result);
+   void MeasureNativeGuestStageOnMain(
+       mojom::blink::NativeGuestStageScopePtr scope,
+       mojo::PendingRemote<mojom::blink::NativeGuestStageReadiness> readiness,
+diff --git a/third_party/blink/renderer/platform/widget/compositing/widget_compositor_unittest.cc b/third_party/blink/renderer/platform/widget/compositing/widget_compositor_unittest.cc
+index 0891b8b..e32ba65 100644
+--- a/third_party/blink/renderer/platform/widget/compositing/widget_compositor_unittest.cc
++++ b/third_party/blink/renderer/platform/widget/compositing/widget_compositor_unittest.cc
+@@ -275,4 +275,43 @@ TEST(WidgetCompositorNativeGuestTest, UnsupportedClientCannotArmOrClaimReadiness
+   compositor->Shutdown(); remote.reset(); widget.reset(); environment.RunUntilIdle();
+ }
+ 
++class NativeCreatedReadinessRefusalWitness final : public mojom::blink::NativeCreatedGuestFrameReadiness {
++ public:
++  NativeCreatedReadinessRefusalWitness();
++  ~NativeCreatedReadinessRefusalWitness() override;
++  void Ready(mojom::blink::NativeCreatedGuestFrameScopePtr,
++      mojom::blink::NativeGuestStageWitnessPtr, ReadyCallback callback) override {
++    ++ready_count; std::move(callback).Run(false);
++  }
++  mojo::Receiver<mojom::blink::NativeCreatedGuestFrameReadiness> receiver{this};
++  unsigned ready_count = 0;
++};
++NativeCreatedReadinessRefusalWitness::NativeCreatedReadinessRefusalWitness() = default;
++NativeCreatedReadinessRefusalWitness::~NativeCreatedReadinessRefusalWitness() = default;
++
++TEST(WidgetCompositorNativeCreatedTest, MissingOrUnsupportedActualWidgetNeverClaimsReady) {
++  base::test::SingleThreadTaskEnvironment environment;
++  for (const bool supported_widget_object : {false, true}) {
++    StubWidgetBaseClient client;
++    mojo::AssociatedRemote<mojom::blink::Widget> widget_remote;
++    mojo::AssociatedRemote<mojom::blink::WidgetHost> host_remote;
++    std::ignore = host_remote.BindNewEndpointAndPassDedicatedReceiver();
++    std::unique_ptr<WidgetBase> widget;
++    if (supported_widget_object) widget = std::make_unique<WidgetBase>(&client, host_remote.Unbind(),
++        widget_remote.BindNewEndpointAndPassDedicatedReceiver(),
++        scheduler::GetSingleThreadTaskRunnerForTesting(), false, false, false, true);
++    mojo::Remote<mojom::blink::WidgetCompositor> remote;
++    auto compositor = WidgetCompositor::Create(widget ? widget->GetWeakPtr() : base::WeakPtr<WidgetBase>(),
++        base::SingleThreadTaskRunner::GetCurrentDefault(), nullptr, remote.BindNewPipeAndPassReceiver());
++    NativeCreatedReadinessRefusalWitness readiness;
++    unsigned replies = 0;
++    remote->MeasureCreatedGuestFrame(mojom::blink::NativeCreatedGuestFrameScope::New(),
++        readiness.receiver.BindNewPipeAndPassRemote(), base::BindOnce(
++            [](unsigned* count, mojom::blink::NativeCreatedGuestFrameSubmissionPtr result) {
++              ++*count; EXPECT_FALSE(result);
++            }, base::Unretained(&replies)));
++    environment.RunUntilIdle(); EXPECT_EQ(replies, 1u); EXPECT_EQ(readiness.ready_count, 0u);
++    compositor->Shutdown(); remote.reset(); widget.reset(); environment.RunUntilIdle();
++  }
++}
+ }  // namespace blink
+diff --git a/third_party/blink/renderer/platform/widget/widget_base_client.h b/third_party/blink/renderer/platform/widget/widget_base_client.h
+index 8e64221..38cf4a6 100644
+--- a/third_party/blink/renderer/platform/widget/widget_base_client.h
++++ b/third_party/blink/renderer/platform/widget/widget_base_client.h
+@@ -49,6 +49,14 @@ class WidgetBaseClient {
+     // Subclasses without an actual owned shell document cannot measure work.
+     std::move(callback).Run(false);
+   }
++  using NativeCreatedGuestCallback = base::OnceCallback<void(
++      mojom::blink::NativeCreatedGuestFrameSubmissionPtr)>;
++  virtual void MeasureCreatedGuestFrame(
++      mojom::blink::NativeCreatedGuestFrameScopePtr scope,
++      mojo::PendingRemote<mojom::blink::NativeCreatedGuestFrameReadiness> readiness,
++        NativeCreatedGuestCallback callback) {
++    std::move(callback).Run(nullptr);
++  }
+   virtual void MeasureNativeGuestStage(
+       mojom::blink::NativeGuestStageScopePtr scope,
+       mojo::PendingRemote<mojom::blink::NativeGuestStageReadiness> readiness,

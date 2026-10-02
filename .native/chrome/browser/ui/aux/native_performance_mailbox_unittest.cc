@@ -42,6 +42,18 @@ TEST_F(NativePerformanceMailboxFileTest, MemoryOperationCannotCarryAProcessSelec
   auto refusal = Read(); ASSERT_TRUE(refusal);
   EXPECT_EQ("refused", *refusal->FindString("status"));
 }
+TEST_F(NativePerformanceMailboxFileTest, LittleFixedOperationsCannotSelectWindowOrNavigation) {
+  Write(R"({"sequence":"1","operation":"prepareLittleWindowPresentation"})");
+  auto ready = Read(); ASSERT_TRUE(ready);
+  EXPECT_EQ("prepareLittleWindowPresentation", *ready->FindString("operation"));
+  Write(R"({"sequence":"2","operation":"completeLittleWindowPresentation"})");
+  auto complete = Read(1); ASSERT_TRUE(complete);
+  EXPECT_EQ("completeLittleWindowPresentation", *complete->FindString("operation"));
+  Write(R"({"sequence":"2","operation":"completeLittleWindowPresentation","windowId":99})");
+  auto refused = Read(1); ASSERT_TRUE(refused); EXPECT_EQ("refused", *refused->FindString("status"));
+  Write(R"({"sequence":"2","operation":"completeLittleWindowPresentation","url":"https://example.invalid"})");
+  refused = Read(1); ASSERT_TRUE(refused); EXPECT_EQ("refused", *refused->FindString("status"));
+}
 TEST_F(NativePerformanceMailboxFileTest, ExtraSelectorOrSkippedSequenceRefuses) {
   Write(R"({"sequence":"1","operation":"prepareGuestTabSwitchPresentation","windowId":7})");
   auto refusal = Read(); ASSERT_TRUE(refusal); EXPECT_EQ("refused", *refusal->FindString("status"));
