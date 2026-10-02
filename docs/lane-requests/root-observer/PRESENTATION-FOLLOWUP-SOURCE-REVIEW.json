@@ -1,0 +1,49 @@
+{
+  "scope": "Source-only independent verification. Packaged native journeys, performance and visual qualification remain pending.",
+  "commit": "10f52760f45a6d4cbe90476f4fb35938578ee113",
+  "deliverables": [
+    "Onboarding keeps every disclosure visible until acknowledgement and collapses identical text afterward.",
+    "Missing-model Ask preserves command prompt/focus and allows existing fourth-question Profile search fallback.",
+    "Native download fixture uses actual item notifier and manager observer teardown; assertions unchanged."
+  ],
+  "verification": {
+    "rebuild": "PASS",
+    "onboarding": "20 source regressions PASS",
+    "commandAndIntent": "37 source regressions PASS",
+    "beforeFix": "Actual React/store regression failed because Settings opened.",
+    "typecheck": "PASS",
+    "focusedLint": "PASS; existing warnings unchanged",
+    "format": "PASS",
+    "nativeFixture": "Exact baseline/result/patch hashes and assertions independently verified; not compiled"
+  },
+  "logs": [
+    {
+      "path": "/tmp/aux-root-presentation-tsc.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-root-command-preflight-red.log",
+      "sha256": "a1d6586348c80117d844c81fb36a5a8c1f49596eb2812b11cc37691a56a77992"
+    },
+    {
+      "path": "/tmp/aux-root-command-preflight-green.log",
+      "sha256": "eb7a21901e06c5b22d832917075f31641426f49da11a9ad1afc24e404b260c26"
+    },
+    {
+      "path": "/tmp/aux-root-onboarding-polish.log",
+      "sha256": "75d248bfee95cd13599b41beb4856e65fcede1730c2ce5ccce585fa5cbad9c29"
+    },
+    {
+      "path": "/tmp/aux-root-presentation-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    {
+      "path": "/tmp/aux-root-presentation-focused-lint.log",
+      "sha256": "a9c0a22ef9d1b11b52777b9375af5a23b97abeda18f9c9e5d7e10483000c0d20"
+    },
+    {
+      "path": "/tmp/aux-root-presentation-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    }
+  ]
+}
