@@ -12,7 +12,7 @@ export default function QueueTonight({ active = true }: { active?: boolean }) {
   const [parameters, setParameters] = useState<Record<string, string>>({});
   const skill = skills.find(item => item.routineId === id);
   const missingVariables = kind === "routine" && skill?.parameters.some(item => !(parameters[item.name] ?? item.value ?? "").trim());
-  const [budgetUsd, setBudget] = useState(DEFAULT_NIGHT_SHIFT.perTaskUsd), [error, setError] = useState("");
+  const [budgetUsd, setBudget] = useState(DEFAULT_NIGHT_SHIFT.perTaskUsd), [error, setError] = useState(""), [pending, setPending] = useState(false);
   useEffect(() => { if (!active) return; let live = true; void call("workspaces.list", {}).then(items => { if (live) { setSpaces(items); setWorkspaceId(current => current || items[0]?.workspaceId || ""); } }).catch(reason => { if (live) setError(String(reason)); }); return () => { live = false; }; }, [active]);
   useEffect(() => {
     let live = true; if (!active || !workspaceId) return;
@@ -31,10 +31,14 @@ export default function QueueTonight({ active = true }: { active?: boolean }) {
     {kind === "routine" && <label>Skill<select value={id} onChange={event => { setId(event.target.value); setParameters({}); }}><option value="">Choose a ready Skill</option>{skills.map(skill => <option key={skill.routineId} value={skill.routineId}>{skill.title}</option>)}</select></label>}
     {kind === "routine" && skill?.parameters.map(parameter => <label key={parameter.name}>{parameter.name}<input aria-label={`Overnight value for ${parameter.name}`} value={parameters[parameter.name] ?? parameter.value ?? ""} onChange={event => setParameters(prior => ({ ...prior, [parameter.name]: event.target.value }))}/></label>)}
     <label>Task limit ($)<input type="number" min="0.01" step="0.01" value={budgetUsd} onChange={event => setBudget(event.target.valueAsNumber)}/></label>
-    <button className="btn" disabled={!!missingVariables || !workspaceId || (kind === "goal" || kind === "routine") && !id || !Number.isFinite(budgetUsd) || budgetUsd <= 0} onClick={() => {
+    <button className="btn" disabled={pending || !!missingVariables || !workspaceId || (kind === "goal" || kind === "routine") && !id || !Number.isFinite(budgetUsd) || budgetUsd <= 0} onClick={async () => {
+      if (pending) return;
+      setPending(true); setError("");
       const skill = skills.find(skill => skill.routineId === id);
       const payload = kind === "goal" ? { kind, goalId: id } : kind === "routine" ? { kind, routineId: id, revision: skill!.revision, parameters } : { kind, workspaceId };
-      void executeCommand("queue-for-tonight", { payload: { queue: { payload, budgetUsd } } });
+      try { await executeCommand("queue-for-tonight", { payload: { queue: { payload, budgetUsd } } }); }
+      catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+      finally { setPending(false); }
     }}>Queue for tonight</button>{error && <p role="alert">{error}</p>}
   </Dialog>;
 }

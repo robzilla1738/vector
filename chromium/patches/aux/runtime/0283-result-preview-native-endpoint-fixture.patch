@@ -1,0 +1,27 @@
+--- a/chrome/browser/ui/aux/result_preview_browsertest.cc
++++ b/chrome/browser/ui/aux/result_preview_browsertest.cc
+@@ -69,10 +69,13 @@
+       content::EvalJs(shell,
+                       "typeof window.aux?.createResultPreview === 'function'")
+           .ExtractBool());
++  // Exercise the real authorized native endpoint before feature qualification.
++  // The generated product client deliberately refuses unqualified previews;
++  // no development-acceptance or qualification state is changed by this test.
+   const std::string url =
+       content::EvalJs(shell,
+-                      base::StrCat({"window.aux.createResultPreview(",
+-                                    *base::WriteJson(base::Value(html)), ")"}))
++                      base::StrCat({"window.auxChromiumHost.request(\"createResultPreview\", [",
++                                    *base::WriteJson(base::Value(html)), "])"}))
+           .ExtractString();
+   ASSERT_TRUE(ResultPreviewStore::IsValidURL(GURL(url)));
+   EXPECT_TRUE(url::Origin::Create(GURL(url)).opaque());
+@@ -110,7 +113,7 @@
+   EXPECT_FALSE(escape.last_navigation_succeeded());
+   EXPECT_TRUE(
+       content::EvalJs(
+-          shell, base::StrCat({"window.aux.releaseResultPreview('", url, "')"}))
++          shell, base::StrCat({"window.auxChromiumHost.request(\"releaseResultPreview\", ['", url, "'])"}))
+           .ExtractBool());
+   EXPECT_FALSE(ResultPreviewStore::Read(shell, GURL(url)));
+ }

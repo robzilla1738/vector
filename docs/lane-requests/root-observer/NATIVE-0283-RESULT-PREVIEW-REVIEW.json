@@ -1,0 +1,11 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "path": "chrome/browser/ui/aux/result_preview_browsertest.cc",
+  "before": "993ae44dec5f497ce1a53493ba3f390de3c51fa419be0b32164b981705e064d6",
+  "after": "a5d5d35e8b1a44fd135906aa0683f8e0df9eaf7b7019ec84671f03f0ec4c5a2c",
+  "patchSha256": "1199d51a911d7a915740ac496793b318a41664d505a30227bba4bcdfcd5941d8",
+  "cause": "generated product client refuses activeHtml preview before sandbox test can create native result",
+  "review": "Actual trusted bootstrap remote.request retains native IsAuthorizedAuxDocument, registry Validate, regular-Profile and original ResultPreviewStore. All sandbox assertions/expected values preserved. Creation/release call real original native methods without changing production client or feature stages. Native activeHtml qualification and client all-on verification remain required.",
+  "replay": "forward/result/reverse PASS"
+}

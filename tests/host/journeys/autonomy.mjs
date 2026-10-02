@@ -195,6 +195,7 @@ function readNight(t, query) {
 }
 const queueRows = t => readNight(t, db => db.prepare('SELECT id,kind,status,created_by,run_id,window_end,foreground FROM night_queue ORDER BY created_at,id').all());
 async function queueUI(t, kind, name, limit = '0.5', parameters = {}) {
+  const existing = new Set(queueRows(t).map(item => item.id));
   await command(t, 'Queue for tonight');
   await t.ax.waitFor(shell('Queue for tonight'));
   await choose(t, 'Work', kind);
@@ -202,6 +203,15 @@ async function queueUI(t, kind, name, limit = '0.5', parameters = {}) {
   for (const [name, value] of Object.entries(parameters)) await replace(t, `Overnight value for ${name}`, value);
   await replace(t, 'Task limit ($)', limit, 0, 'AXIncrementor');
   await t.ax.press(shell('Queue for tonight'));
+  const expectedKind = { Goal: 'goal', Skill: 'routine', 'Consolidate Space memory': 'memory.consolidate', 'Reindex Space memory': 'memory.reindex' }[kind];
+  await t.until('person queue acknowledgement persisted exactly one new selected work item', async () => {
+    const added = queueRows(t).filter(item => !existing.has(item.id));
+    t.assert.ok(added.length <= 1, 'One person submission must not queue duplicate work.');
+    if (!added.length) return false;
+    t.assert.equal(added[0].created_by, 'person');
+    t.assert.equal(added[0].kind, expectedKind);
+    return true;
+  });
 }
 const localMinute = minutes => {
   const date = new Date(Date.now() + minutes * 60_000);

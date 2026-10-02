@@ -1,0 +1,41 @@
+{
+  "sourceOnly": true,
+  "path": "cc/trees/aux_performance_swap_promise_unittest.cc",
+  "beforeSha256": "06353ce3486e934a37e347218bb55a45063c561ae28e83a838f51e2602a7fe16",
+  "afterSha256": "4577410ae9edee73be17a99de35f6a7c9f313aa6362d53bb30c39e958491353d",
+  "patchSha256": "0563f73e1551c97363e6f25727c0708bbfdb5eca7bf258f52fc21ae778e690f4",
+  "actualCause": "cc CCTestSuite::Initialize already installs TaskEnvironment; test-local environments crash before assertions",
+  "review": "Explicit standalone TestSimpleTaskRunner owns only the promise callback queue. Existing suite RunLoop supplies original100ms delay before draining queue; no second delegate or clock override. All assertion bytes and production behavior unchanged.",
+  "nativeCompiled": false,
+  "sourceBase": "5ab6962f",
+  "observedNativeCrash": "ce77 native cc_unittests first original test;7 NOTRUN retained",
+  "actualForwardResultReverseOriginalBytes": "PASS all4actualoriginals/results",
+  "allOriginalAssertionsByteExact": true,
+  "pins": [
+    {
+      "path": "chrome/browser/ui/aux/native_performance_observer_unittest.cc",
+      "beforeSha256": "4a53a9c3182aadee06a0ec4fc49cd90a5e118e042f729b3de178f069c47b6109",
+      "afterSha256": "f3970e78df4667907d8d8e175ad8bba571d643601cb08d4ab755fe3ba235a586"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_guest_presentation_fixture_unittest.cc",
+      "beforeSha256": "ce6e2669a73103faf9b96a00464769d9b4aeace176d7c7b3f3b58464eb860ed9",
+      "afterSha256": "2cd31b13a340891db3e6f103607c0cf9f2f598e58bd18db7fe392d85094874a9"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_broker_unittest.cc",
+      "beforeSha256": "6676673600430dc886743dcad071fe47ae5ce7836b1ee812ccf5a5863cc9c948",
+      "afterSha256": "e54b06e6af0cd26dfb9ed752392ebdcda20e87468492e586454ef5e15ae991fa"
+    },
+    {
+      "path": "cc/trees/aux_performance_swap_promise_unittest.cc",
+      "beforeSha256": "06353ce3486e934a37e347218bb55a45063c561ae28e83a838f51e2602a7fe16",
+      "afterSha256": "4577410ae9edee73be17a99de35f6a7c9f313aa6362d53bb30c39e958491353d"
+    }
+  ],
+  "additionalRootCauses": [
+    "positive swap-promise fixture omitted real WillSubmit producer; now invokes existing exact-token/current-clock hook before DidSwap",
+    "guest fixture called browser UI owner reader under plain TaskEnvironment; supported BrowserTaskEnvironment registers Chrome_UIThread",
+    "download fixture initialized unrelated absent history through implicit GetDownloadManagerDelegate; supported SetDownloadManagerDelegateForTesting installs actual Chrome delegate/DownloadPrefs before exact DownloadSignals observer capture"
+  ]
+}

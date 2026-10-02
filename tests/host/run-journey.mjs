@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
+import { dismissFreshSetup } from './lib/dismiss-fresh-setup.mjs';
 import { createUntil } from './lib/until.mjs';
 import { createClock } from "../../packages/contracts/dist/clock.js";
 import assert from 'node:assert/strict';
@@ -266,13 +267,7 @@ async function execute() {
   manifest.native = actual.native;
   manifest.runtime = actual.runtime;
   assertJourneyIdentity(actual, identity);
-  const finishLater = { role: 'AXButton', name: 'Finish later', match: 'exact', scope: 'shell', index: 0 };
-  await observedAx.waitFor(finishLater, 'present', 15_000);
-  await context.step('dismiss optional fresh-profile setup', { kind: 'ui', features: [] }, async () => {
-    await observedAx.press(finishLater);
-    await observedAx.waitFor(finishLater, 'absent');
-    return { ax: await observedAx.dump(), rpc: await rpc('workspace.get') };
-  });
+  await dismissFreshSetup(context);
   await run(context);
   manifest.captures = evidence.captures;
   assert.ok(manifest.steps.length && manifest.steps.every(step => step.status === 'passed'), 'Journey did not prove any behavior');

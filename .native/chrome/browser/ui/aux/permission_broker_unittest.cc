@@ -23,6 +23,9 @@
 #include "chrome/browser/ui/aux/egress_controller.h"
 #include "chrome/browser/ui/aux/shell_events.h"
 #include "chrome/browser/ui/aux/download_naming.h"
+#include "chrome/browser/download/chrome_download_manager_delegate.h"
+#include "chrome/browser/download/download_core_service.h"
+#include "chrome/browser/download/download_core_service_factory.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "content/public/test/mock_download_manager.h"
@@ -688,8 +691,13 @@ class FastDownloadSignalFixture {
         [this, restore_complete](content::DownloadManager::DownloadVector* items) {
           if (restore_complete) items->push_back(&restored_);
         });
-    EXPECT_CALL(*manager_, AddObserver(testing::_)).WillOnce(testing::SaveArg<0>(&observer_));
     profile_.SetDownloadManagerForTesting(std::move(owned_manager));
+    // Keep the real download preferences/delegate while avoiding unrelated
+    // history-service initialization on this standalone TestingProfile.
+    DownloadCoreServiceFactory::GetForBrowserContext(&profile_)
+        ->SetDownloadManagerDelegateForTesting(
+            std::make_unique<ChromeDownloadManagerDelegate>(&profile_));
+    EXPECT_CALL(*manager_, AddObserver(testing::_)).WillOnce(testing::SaveArg<0>(&observer_));
     AuxRuntimeHostTestPeer::Install(&profile_, base::BindRepeating(
         [](std::vector<base::DictValue>* calls, bool internal, std::string method,
            std::string json, AuxRuntimeHost::ResponseCallback reply) {

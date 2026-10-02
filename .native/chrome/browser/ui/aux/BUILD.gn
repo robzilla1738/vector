@@ -70,6 +70,8 @@ source_set("runtime") {
     "native_guest_stage_session.cc",
     "native_guest_stage_input_mac.h",
     "native_guest_stage_input_mac.mm",
+    "journey_fixture_path.cc",
+    "journey_fixture_path.h",
     "native_performance_observer.h",
     "native_performance_observer.cc",
     "native_performance_input_mac.h",
@@ -361,11 +363,11 @@ test("profile_spaces_unittests") {
 }
 
 test("journey_fixture_path_unittests") {
-  sources = [ "journey_fixture_path_unittest.cc" ]
+  sources = [ "journey_fixture_path_unittest.cc", "journey_fixture_path.cc" ]
   deps = [
     "//base",
     "//testing/gtest",
-    "//testing/gtest:gtest_main",
+    "//base/test:run_all_unittests",
   ]
 }
 

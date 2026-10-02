@@ -10,6 +10,7 @@
 #include "ui/events/keycodes/dom/dom_key.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "content/browser/picture_in_picture/picture_in_picture_service_impl.h"
+#include "content/browser/media/session/media_session_impl.h"
 #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
 
 #include <memory>
@@ -4489,6 +4490,21 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
 class AuxQueuedRegisteredAutoPictureInPictureBrowserTest
     : public AuxQueuedAutomaticPictureInPictureBrowserTest {
  public:
+  void WaitForCurrentRegisteredHandler() {
+    // Playback controls remain available on a playing session. Wait for the
+    // actual website route, not an exact three-action aggregate inventory.
+    ASSERT_TRUE(base::test::RunUntil([this] {
+      return content::MediaSessionImpl::Get(page)->ShouldRouteAction(
+          MediaSessionAction::kEnterPictureInPicture);
+    }));
+    const auto actions = content::MediaSession::Get(page)->GetMediaSessionActionsSync();
+    for (const auto required : {MediaSessionAction::kEnterPictureInPicture,
+                               MediaSessionAction::kEnterAutoPictureInPicture,
+                               MediaSessionAction::kExitPictureInPicture}) {
+      EXPECT_NE(std::ranges::find(actions, required), actions.end());
+    }
+    content::MediaSession::FlushObserversForTesting(page);
+  }
   void RegisterAsyncVideoHandler() {
     ASSERT_TRUE(content::ExecJs(page, R"(
       window.auxAutomaticDone = new Promise(resolve => window.auxResolveAutomatic = resolve);
@@ -4500,7 +4516,7 @@ class AuxQueuedRegisteredAutoPictureInPictureBrowserTest
         window.auxResolveAutomatic(window.auxAutomaticResult);
       });
     )"));
-    WaitForMediaSessionActionRegistered(page);
+    WaitForCurrentRegisteredHandler();
   }
 };
 IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
@@ -4546,7 +4562,12 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
   ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
   ASSERT_TRUE(content::ExecJs(page,
       "navigator.mediaSession.setActionHandler('enterpictureinpicture', null)"));
-  WaitForMediaSessionActionUnregistered(page);
+  // Removing the website handler leaves genuine browser playback actions.
+  ASSERT_TRUE(base::test::RunUntil([this] {
+    return !content::MediaSessionImpl::Get(page)->ShouldRouteAction(
+        MediaSessionAction::kEnterPictureInPicture);
+  }));
+  content::MediaSession::FlushObserversForTesting(page);
   ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
   EXPECT_EQ("NotSupportedError", content::EvalJs(page, "window.auxAutomaticDone",
       content::EXECUTE_SCRIPT_NO_USER_GESTURE));
@@ -4563,7 +4584,7 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedRegisteredAutoPictureInPictureBrowserTest,
       window.auxResolveDocument(window.auxAutomaticDocumentResult);
     });
   )"));
-  WaitForMediaSessionActionRegistered(page);
+  WaitForCurrentRegisteredHandler();
   OpenNewTab(browser());
   EXPECT_EQ("NotAllowedError", content::EvalJs(page,
       "window.auxAutomaticDocumentDone", content::EXECUTE_SCRIPT_NO_USER_GESTURE));

@@ -1,0 +1,38 @@
+{
+  "sourceOnly": true,
+  "nativeRerun": false,
+  "baselineWorktree": "/tmp/aux-browser-runtime-root-native-api-fixes",
+  "baselineCommit": "ce77c017833d09b975db01fd33d7312b3f3e3476",
+  "path": "chrome/browser/ui/aux/native_pip_appearance_registry_unittest.cc",
+  "before": "aed632e09f9470f8730bf9c58d3d295e879fb39fada0851890c4cfc2f269a6c4",
+  "after": "4530507c4928d1d2f7812e060c315db3c4ef73c4584dcef1ba5f7710a367d126",
+  "patchSha256": "0320debee2b44aba5c3cbfac138e66ef5a4589c9cb4da06235ece8d7ef24119b",
+  "diagnostics": {
+    "stdout.log": {
+      "path": "/tmp/aux-browser-runtime-builder-ce77c017/release/test-artifacts/builder-ce77-assertion-batch/native/unit_tests/stdout.log",
+      "sha256": "b6e80949a5a76747e0f1576d1ae87e23708ef612388e26729c06e10a84d73c0f"
+    },
+    "stderr.log": {
+      "path": "/tmp/aux-browser-runtime-builder-ce77c017/release/test-artifacts/builder-ce77-assertion-batch/native/unit_tests/stderr.log",
+      "sha256": "8099f18a5dfdca708e5141c2f08854ff843c819d0960cf9242e529b1f6584a97"
+    },
+    "launcher-summary.json": {
+      "path": "/tmp/aux-browser-runtime-builder-ce77c017/release/test-artifacts/builder-ce77-assertion-batch/native/unit_tests/launcher-summary.json",
+      "sha256": "aa867829607bb27e7ec9301161bc993913389c89b101d29a261a790c7ab053bc"
+    },
+    "assertion-validation.json": {
+      "path": "/tmp/aux-browser-runtime-builder-ce77c017/release/test-artifacts/builder-ce77-assertion-batch/native/unit_tests/assertion-validation.json",
+      "sha256": "07afc3a7fd815bbb11444df4af5664356809166e5c3333112f66182b69cbbdf0"
+    }
+  },
+  "replay": {
+    "forward": true,
+    "resultBytes": true,
+    "reverse": true
+  },
+  "rootIndependent": true,
+  "originalAssertionsByteExact": true,
+  "actualReplay": "forward/result/reverse PASS",
+  "nativeCompiled": false,
+  "review": "Real committed blank document retains registry widget/Profile/controller lifetime scope and skips only unrelated HTTP-specific authenticated Zap readiness. Actual timeout cause remains source-supported until corrected native run."
+}

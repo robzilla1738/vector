@@ -43,7 +43,9 @@ export async function newChat(t) {
     const sidebar = { role: 'AXButton', name: 'Show sidebar', match: 'exact', scope: 'shell', index: 0 };
     if ((await t.ax.query(sidebar)).length) await t.ax.press(sidebar);
     const chats = { role: 'AXButton', name: 'Chats', match: 'exact', scope: 'shell', index: 0 };
-    await t.ax.waitFor(chats); await t.ax.press(chats);
+    // The home sidebar exposes New chat directly; only vertical browser
+    // sections need their actual Chats disclosure opened first.
+    if ((await t.ax.query(chats)).length) await t.ax.press(chats);
   }
   await t.ax.waitFor(create); await t.ax.press(create);
   await t.ax.waitFor({ name: 'Reply to conversation', match: 'exact', scope: 'shell', index: 0 });

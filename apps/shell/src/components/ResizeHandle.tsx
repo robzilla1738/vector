@@ -53,6 +53,7 @@ export function ResizeHandle({
       panel?.style.setProperty(cssVar, `${width}px`);
       if (onCollapse) panel?.closest<HTMLElement>(".app")?.style.setProperty(cssVar, `${width}px`);
     };
+    const pointerId = e.pointerId;
     const startX = e.clientX;
     const startW = value;
     const releaseLock = side === "left" ? acquireFloatingSidebarLock("keep-current") : null;
@@ -78,14 +79,26 @@ export function ResizeHandle({
       releaseLock?.();
       cleanup.current = null;
     };
-    const release = () => done();
-    const cancel = () => done(false);
-    const move = (ev: PointerEvent) => {
-      if (!(ev.buttons & 1)) return done(); // released outside the window
-      const d = side === "left" ? ev.clientX - startX : startX - ev.clientX;
+    const position = (clientX: number) => {
+      const d = side === "left" ? clientX - startX : startX - clientX;
       const raw = startW + d;
       collapsed = !!onCollapse && raw < min - 15;
       width = onCollapse && Math.abs(raw - reset) <= 15 ? reset : snapResizeWidth(raw, min, max, reset);
+    };
+    const release = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      // Coalesced movement may omit the last drag position. The matching
+      // release is the actual final position, independent of the paint frame.
+      if (Number.isFinite(ev.clientX)) position(ev.clientX);
+      done();
+    };
+    const cancel = (ev: PointerEvent) => {
+      if (ev.pointerId === pointerId) done(false);
+    };
+    const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      if (!(ev.buttons & 1)) return done(); // released outside the window
+      position(ev.clientX);
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
@@ -96,7 +109,7 @@ export function ResizeHandle({
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", cancel);
-    cleanup.current = cancel;
+    cleanup.current = () => done(false);
   };
   return (
     <div

@@ -190,6 +190,7 @@ aux/runtime/0216-fast-download-completion.patch
 aux/runtime/0217-auto-pip-selection-fixture.patch
 aux/runtime/0218-auto-pip-mojo-callback.patch
 aux/runtime/0219-auto-pip-blink-fixture.patch
+aux/runtime/0221-download-observer-fixture.patch
 aux/runtime/0222-download-fixture-profile-context.patch
 aux/runtime/0198-native-performance-observer.patch
 aux/runtime/0201-native-pip-appearance-registry.patch
@@ -251,3 +252,9 @@ aux/runtime/0276-browser-widget-owned-pointer.patch
 aux/runtime/0277-organization-work-weak-identity-storage.patch
 aux/runtime/0278-worker-fixture-bounded-socket-path.patch
 aux/runtime/0279-organization-work-fixture-gc-callback.patch
+aux/runtime/0281-native-fixture-task-and-producer-lifecycle.patch
+aux/runtime/0282-pip-registry-committed-lifetime-fixture.patch
+aux/runtime/0283-result-preview-native-endpoint-fixture.patch
+aux/runtime/0284-widget-compositor-valid-mojo-fixtures.patch
+aux/runtime/0285-registered-pip-action-fixture.patch
+aux/runtime/0286-early-owned-observation-metadata.patch

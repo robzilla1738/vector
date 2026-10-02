@@ -1,0 +1,14 @@
+{
+  "sourceOnly": true,
+  "nativeRun": false,
+  "shared": {
+    "path": "tests/host/run-journey.mjs",
+    "before": "52681691ad767e59453f8694c630e2f25967a54cd06786d5a6adad94aa5f338f",
+    "after": "bccd9be264d7a24bca2ef9ba790763a4b89a848a8a7648ae5e384ce95169f315",
+    "patchSha256": "34f05c029bc82297f62f296cd11cdcaabffc9c8dc4b13129979cc08c9c9c550e"
+  },
+  "newFiles": {
+    "tests/host/lib/dismiss-fresh-setup.mjs": "88606ce3c5ebbcd25e535b0e40085362170922fd36444e7a2ac88606bd959979",
+    "tests/tools/dismiss-fresh-setup.test.mjs": "f58a11b06f614ec612ff0d1ed813ec77d9fb60ac4a5f7a38c6e3a7f8828909c7"
+  }
+}

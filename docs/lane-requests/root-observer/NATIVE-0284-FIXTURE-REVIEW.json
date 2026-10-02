@@ -1,0 +1,61 @@
+{
+  "scope": "fixture-only; no production changes or compile/run",
+  "path": "third_party/blink/renderer/platform/widget/compositing/widget_compositor_unittest.cc",
+  "beforeSha256": "3958740590b3b2a1c1a50023e4c479d51c327c6de77ee44ed4f7614d1587114b",
+  "afterSha256": "146ae95fc0e1cb8213a05e9f7cbf9d9f2a02dcf5472b0e5731f25012daf8c3cc",
+  "patchSha256": "5088534dd43511f45b5e6a948b62fd5b20b4181d94cd9f50d423f9b047d29003",
+  "apiHashes": {
+    "base/types/token_type.h": "1b45b7e3ecaf6f1531f1097135d221a577283fcb096903f3ab1b2ff8b9ea203d",
+    "base/unguessable_token.h": "8480a87fd7ad7856d2799890a7ba03f470b80746ee6e66a2a170fab2773b14fb",
+    "services/viz/public/cpp/compositing/frame_sink_id_mojom_traits.h": "278636cd1b01866d4b72a746386666a9a2a0cac30246ba446252b3ed21bd8b39",
+    "third_party/blink/public/mojom/widget/platform_widget.mojom": "ec6d5c7f6da6519b47786c914e80d7d0de24bc9c3aeadaa835e4612ed3ec7fa3",
+    "third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom": "8087178e14b906f4bb062ce966294f630f7c34ad13573b721544fdc737129078",
+    "third_party/blink/renderer/platform/widget/compositing/widget_compositor.cc": "ac03cfcce04607ef6c5c37a70f28bcd55c5c567e2267c211d73cf7f42b32f5ac"
+  },
+  "checks": [
+    {
+      "args": [
+        "git",
+        "apply",
+        "--check",
+        "/tmp/aux-builder-native-0284/0284-widget-compositor-valid-mojo-fixtures.patch"
+      ],
+      "exitCode": 0
+    },
+    {
+      "args": [
+        "git",
+        "apply",
+        "/tmp/aux-builder-native-0284/0284-widget-compositor-valid-mojo-fixtures.patch"
+      ],
+      "exitCode": 0
+    },
+    {
+      "args": [
+        "git",
+        "apply",
+        "--reverse",
+        "--check",
+        "/tmp/aux-builder-native-0284/0284-widget-compositor-valid-mojo-fixtures.patch"
+      ],
+      "exitCode": 0
+    },
+    {
+      "args": [
+        "git",
+        "apply",
+        "--reverse",
+        "/tmp/aux-builder-native-0284/0284-widget-compositor-valid-mojo-fixtures.patch"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "wholeOriginalRestored": true,
+  "allOriginalAssertionsPreserved": true,
+  "diagnostic": {
+    "stderrPath": "/tmp/aux-browser-runtime-builder-ce77c017/release/test-artifacts/builder-ce77-assertion-batch/native/blink_platform_unittests/stderr.log",
+    "stderrSha256": "da8873a8fcde1e94d962cfe0c51c15550f43cedf9962571d89c3cfb2849af955"
+  },
+  "rootIndependentForwardResultReverse": true,
+  "nativeCompiled": false
+}

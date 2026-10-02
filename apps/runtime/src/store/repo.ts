@@ -1275,7 +1275,7 @@ export class Repo {
   }) {
     this.q(
         `INSERT INTO downloads(id,page_id,filename,path,state,size,total_bytes,started_at,ended_at) VALUES(?,?,?,?,?,?,?,?,?)
-         ON CONFLICT(id) DO UPDATE SET state=excluded.state,size=excluded.size,total_bytes=excluded.total_bytes,ended_at=excluded.ended_at`,
+         ON CONFLICT(id) DO UPDATE SET filename=excluded.filename,path=excluded.path,state=excluded.state,size=excluded.size,total_bytes=excluded.total_bytes,ended_at=excluded.ended_at`,
       )
       .run(d.id, d.pageId ?? null, d.filename, d.path, d.state, d.size, d.totalBytes ?? null, d.startedAt, d.endedAt ?? null);
     if(d.sourceUrl)this.setKvJson(`download-source:${d.id}`, d.sourceUrl);

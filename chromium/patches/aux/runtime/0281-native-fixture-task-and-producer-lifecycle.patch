@@ -1,0 +1,118 @@
+--- a/chrome/browser/ui/aux/native_performance_observer_unittest.cc
++++ b/chrome/browser/ui/aux/native_performance_observer_unittest.cc
+@@ -51,7 +51,8 @@
+   NativePerformanceSwapPromise promise(base::SingleThreadTaskRunner::GetCurrentDefault(), future.GetCallback());
+   viz::CompositorFrameMetadata metadata;
+   metadata.frame_token = 73;
+-  promise.OnCommit(); promise.DidActivate(); promise.WillSwap(&metadata); promise.DidSwap();
++  promise.OnCommit(); promise.DidActivate(); promise.WillSwap(&metadata);
++  promise.WillSubmit(metadata.frame_token, base::TimeTicks::Now()); promise.DidSwap();
+   const auto result = future.Get();
+   if (base::TimeTicks::IsConsistentAcrossProcesses()) {
+     EXPECT_TRUE(result.submitted_frame); EXPECT_EQ(result.frame_token, 73U);
+--- a/chrome/browser/ui/aux/native_guest_presentation_fixture_unittest.cc
++++ b/chrome/browser/ui/aux/native_guest_presentation_fixture_unittest.cc
+@@ -3,7 +3,7 @@
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+ #include <limits>
+ #include "base/functional/bind.h"
+-#include "base/test/task_environment.h"
++#include "content/public/test/browser_task_environment.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ namespace aux {
+ namespace {
+@@ -51,7 +51,7 @@
+   EXPECT_EQ(*record.FindString("reason"), "stale_guest_document_lease");
+ }
+ TEST(NativeGuestPresentationFixtureTest, MissingOwnerFailureMustBeConsumedBeforeAnotherSample) {
+-  base::test::TaskEnvironment environment;
++  content::BrowserTaskEnvironment environment;
+   NativeGuestPresentationFixture fixture{base::WeakPtr<WebUIBrowserUI>()};
+   std::optional<base::DictValue> first, blocked, completion, duplicate;
+   fixture.Prepare(blink::mojom::NativeGuestStageMetric::kTabSwitch,
+--- a/chrome/browser/ui/aux/permission_broker_unittest.cc
++++ b/chrome/browser/ui/aux/permission_broker_unittest.cc
+@@ -23,6 +23,9 @@
+ #include "chrome/browser/ui/aux/egress_controller.h"
+ #include "chrome/browser/ui/aux/shell_events.h"
+ #include "chrome/browser/ui/aux/download_naming.h"
++#include "chrome/browser/download/chrome_download_manager_delegate.h"
++#include "chrome/browser/download/download_core_service.h"
++#include "chrome/browser/download/download_core_service_factory.h"
+ #include "base/files/file_util.h"
+ #include "base/files/scoped_temp_dir.h"
+ #include "content/public/test/mock_download_manager.h"
+@@ -688,8 +691,13 @@
+         [this, restore_complete](content::DownloadManager::DownloadVector* items) {
+           if (restore_complete) items->push_back(&restored_);
+         });
++    profile_.SetDownloadManagerForTesting(std::move(owned_manager));
++    // Keep the real download preferences/delegate while avoiding unrelated
++    // history-service initialization on this standalone TestingProfile.
++    DownloadCoreServiceFactory::GetForBrowserContext(&profile_)
++        ->SetDownloadManagerDelegateForTesting(
++            std::make_unique<ChromeDownloadManagerDelegate>(&profile_));
+     EXPECT_CALL(*manager_, AddObserver(testing::_)).WillOnce(testing::SaveArg<0>(&observer_));
+-    profile_.SetDownloadManagerForTesting(std::move(owned_manager));
+     AuxRuntimeHostTestPeer::Install(&profile_, base::BindRepeating(
+         [](std::vector<base::DictValue>* calls, bool internal, std::string method,
+            std::string json, AuxRuntimeHost::ResponseCallback reply) {
+--- a/cc/trees/aux_performance_swap_promise_unittest.cc
++++ b/cc/trees/aux_performance_swap_promise_unittest.cc
+@@ -4,7 +4,9 @@
+ #include <optional>
+ #include <utility>
+ #include "base/functional/bind.h"
+-#include "base/test/task_environment.h"
++#include "base/location.h"
++#include "base/run_loop.h"
++#include "base/test/test_simple_task_runner.h"
+ #include "components/viz/common/quads/compositor_frame_metadata.h"
+ #include "testing/gtest/include/gtest/gtest.h"
+ namespace aux {
+@@ -22,30 +24,36 @@
+   promise.WillSwap(&metadata);
+ }
+ TEST(NativePerformanceSwapPromiseTest, MetadataPreparationWithoutActualSubmissionRefuses) {
+-  base::test::TaskEnvironment environment;
++  auto runner = base::MakeRefCounted<base::TestSimpleTaskRunner>();
+   std::optional<NativePerformanceSwapPromise::Submission> result;
+-  NativePerformanceSwapPromise promise{base::SingleThreadTaskRunner::GetCurrentDefault(), Capture(&result)};
+-  Prepare(promise); promise.DidSwap(); environment.RunUntilIdle();
++  NativePerformanceSwapPromise promise{runner, Capture(&result)};
++  Prepare(promise); promise.DidSwap(); runner->RunUntilIdle();
+   ASSERT_TRUE(result); EXPECT_FALSE(result->submitted_frame); EXPECT_TRUE(result->submitted.is_null());
+ }
+ TEST(NativePerformanceSwapPromiseTest, ExactSubmitTimestampSurvivesDelayedCallback) {
+-  base::test::TaskEnvironment environment{base::test::TaskEnvironment::TimeSource::MOCK_TIME};
++  auto runner = base::MakeRefCounted<base::TestSimpleTaskRunner>();
+   std::optional<NativePerformanceSwapPromise::Submission> result;
+-  NativePerformanceSwapPromise promise{base::SingleThreadTaskRunner::GetCurrentDefault(), Capture(&result)};
++  NativePerformanceSwapPromise promise{runner, Capture(&result)};
+   Prepare(promise); const auto actual_submit = base::TimeTicks::Now();
+   promise.WillSubmit(7, actual_submit); promise.DidSwap();
+-  environment.AdvanceClock(base::Milliseconds(100)); environment.RunUntilIdle();
++  // cc_unittests already owns the thread TaskEnvironment. Hold the callback
++  // on its explicit queue while the existing loop advances the real clock.
++  base::RunLoop delayed;
++  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
++      FROM_HERE, delayed.QuitClosure(), base::Milliseconds(100));
++  delayed.Run();
++  runner->RunUntilIdle();
+   ASSERT_TRUE(result);
+   if (!base::TimeTicks::IsConsistentAcrossProcesses()) { EXPECT_FALSE(result->submitted_frame); return; }
+   EXPECT_TRUE(result->submitted_frame); EXPECT_EQ(result->submitted, actual_submit);
+   EXPECT_LT(result->submitted, base::TimeTicks::Now());
+ }
+ TEST(NativePerformanceSwapPromiseTest, ForeignFrameTokenNeverGetsSubmissionEvidence) {
+-  base::test::TaskEnvironment environment;
++  auto runner = base::MakeRefCounted<base::TestSimpleTaskRunner>();
+   std::optional<NativePerformanceSwapPromise::Submission> result;
+-  NativePerformanceSwapPromise promise{base::SingleThreadTaskRunner::GetCurrentDefault(), Capture(&result)};
++  NativePerformanceSwapPromise promise{runner, Capture(&result)};
+   Prepare(promise); promise.WillSubmit(8, base::TimeTicks::Now());
+-  promise.DidSwap(); environment.RunUntilIdle();
++  promise.DidSwap(); runner->RunUntilIdle();
+   ASSERT_TRUE(result); EXPECT_FALSE(result->submitted_frame); EXPECT_TRUE(result->submitted.is_null());
+ }
+ }  // namespace

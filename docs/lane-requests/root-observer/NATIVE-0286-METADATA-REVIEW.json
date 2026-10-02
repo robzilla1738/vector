@@ -1,0 +1,102 @@
+{
+  "scope": "isolated uncompiled source; PiP fixture baseline actual after0282 parent mirror",
+  "files": {
+    "chrome/browser/chrome_browser_main.cc": {
+      "beforeSha256": "c44d2979cb44599f68d6c16499936a15105f072648667ba33fbac8c6c1c2b2ee",
+      "afterSha256": "691f9fe8236f8b875d5a177582dc3e449994512496a8e52af83ce409df43c574"
+    },
+    "chrome/browser/ui/aux/BUILD.gn": {
+      "beforeSha256": "ba62bb2e4d296a58d39eabc0b441dbf2109793b8070d0d4637ae38dd5d6de3fc",
+      "afterSha256": "dd3062b10e42e4bbee6810230032604cca04c072e3d4c8e42b07eb7b6f7e7aea"
+    },
+    "chrome/browser/ui/aux/journey_fixture_path.cc": {
+      "beforeSha256": null,
+      "afterSha256": "20e8ff19991347584c6d08d8b28bb9307ab455c6eb7e5045950724f785256239"
+    },
+    "chrome/browser/ui/aux/journey_fixture_path.h": {
+      "beforeSha256": "be6db046c2c61d4566ae0d8e0011e9ee7f357ea3c7c045347fa6e8a0f7309fee",
+      "afterSha256": "7fc8764a5ac3866d5b407d77f6825ded69c42c2033428eba722f3d31100cc596"
+    },
+    "chrome/browser/ui/aux/journey_fixture_path_unittest.cc": {
+      "beforeSha256": "6bdd3af6fae94e4d3163bf2e5e9a14d5603a4527e80b7a4a625664b316895661",
+      "afterSha256": "b2678b1b3089d09ba818594ad61d425d67a9ab2c505704b32e6bd92fd620fafb"
+    },
+    "chrome/browser/ui/aux/native_performance_observer.cc": {
+      "beforeSha256": "96a34c01966d837fa713b86a671e5fd313cd9b6f46cfd410bab3d8268d187548",
+      "afterSha256": "92d199f8aa6921c834bf93b8dd7f83e9de9a89fa8226295bd1d5e9f8f9531023"
+    },
+    "chrome/browser/ui/aux/native_pip_appearance_registry_unittest.cc": {
+      "beforeSha256": "4530507c4928d1d2f7812e060c315db3c4ef73c4584dcef1ba5f7710a367d126",
+      "afterSha256": "61c9368a6e43689686d205a7f141b24eda3c912408cf227089062974f8f36d36"
+    }
+  },
+  "patchSha256": "ec34cd1c37cfc0b4f9c16e5105e4e3278beed5e89d2d3045fea99ee48549807e",
+  "checks": [
+    {
+      "args": [
+        "git",
+        "apply",
+        "--check",
+        "/tmp/aux-builder-native-0286/0286-early-owned-observation-metadata.patch"
+      ],
+      "exitCode": 0
+    },
+    {
+      "args": [
+        "git",
+        "apply",
+        "/tmp/aux-builder-native-0286/0286-early-owned-observation-metadata.patch"
+      ],
+      "exitCode": 0
+    },
+    {
+      "args": [
+        "git",
+        "apply",
+        "--reverse",
+        "--check",
+        "/tmp/aux-builder-native-0286/0286-early-owned-observation-metadata.patch"
+      ],
+      "exitCode": 0
+    },
+    {
+      "args": [
+        "git",
+        "apply",
+        "--reverse",
+        "/tmp/aux-builder-native-0286/0286-early-owned-observation-metadata.patch"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "wholeOriginalForwardReverse": true,
+  "originalTestBytesPreserved": true,
+  "apiHashes": {
+    "base/files/scoped_file.h": "4df827293317e03713e7350adf0dcefa19d38de24e21654a7f8ad22cf4528a9b",
+    "base/threading/thread_restrictions.h": "491e0d637d89d91d045b84ed96f00a394835905d01376a52dd4822b6b88154c9",
+    "chrome/browser/chrome_browser_main_extra_parts.h": "a378a6661c2af455e70130cfe32083fdc261fb558378e1fba9ff2fa0b60487ed",
+    "base/files/file_util.h": "008da08c7df521695e33a3164b471e17ac1e55a64e38b0d82a9ab1c61fe2e8e2",
+    "base/check_is_test.h": "28ceb2d1a2c80df9aa67f9485abcb507a5c9f098af7a0ccc1f4ec41179e5387b",
+    "base/test/launcher/unit_test_launcher.cc": "d8371484b401911a827249c3d778ecc5a2a13bd333860ad9375acb8b62194efb",
+    "base/test/run_all_unittests.cc": "2a0682e3da1f59804631fe10f864c2004a974f56d64e1468393bda6844f6bdfd"
+  },
+  "sourceChecks": {
+    "earlyBeforeThreads": true,
+    "noScopedAllowBlocking": true,
+    "getterNoPathResolution": true
+  },
+  "overlap": "unadopted design0265 journey_fixture_path.h declaration and BUILD.gn; compose by root, not copied",
+  "scopedTestReceipt": {
+    "CHECK_IS_TEST": true,
+    "genuineCapture": true,
+    "exactPriorStateRestored": true,
+    "nestingGenerationEnforced": true,
+    "standardStandaloneTestLauncher": true,
+    "noProductionGetterFallback": true
+  },
+  "rootIndependentReview": true,
+  "sourceOnly": true,
+  "compiled": false,
+  "defaultGettersNoFallback": true,
+  "productionInitializationOneShot": true
+}

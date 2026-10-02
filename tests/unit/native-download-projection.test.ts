@@ -3,6 +3,30 @@ import { EventBus, makeInvoker, openDb, PageClaimStore, Repo, TaskService,
   type Services } from "@aux/runtime";
 import type { PageTarget } from "@aux/contracts";
 
+it("retains native rename and undo metadata across completed download projections", async () => {
+  const db = openDb(":memory:");
+  try {
+    const repo = new Repo(db), events = new EventBus(repo);
+    const finished = vi.fn(async (pageId: string | undefined, info: Parameters<Repo["saveDownload"]>[0]) => repo.saveDownload({ ...info, pageId }));
+    const invoke = makeInvoker({ repo, events, featureHost: "chromium-fork",
+      pages: { list: () => [], onNativeDownloadStarted: (pageId: string | undefined, info: Parameters<Repo["saveDownload"]>[0]) =>
+        repo.saveDownload({ ...info, pageId, state: "started" }), onNativeDownload: finished },
+    } as unknown as Services);
+    const input = { id: "renamed", filename: "download.pdf", path: "/tmp/download.pdf",
+      size: 587, state: "completed", startedAt: 100, endedAt: 200,
+      tabUrl: "https://fixture.test/invoice", downloadRoot: "/tmp" };
+    await invoke("downloads.projectNative", input, { external: false });
+    await invoke("downloads.projectNative", { ...input, filename: "Invoice 4471.pdf",
+      path: "/tmp/Invoice 4471.pdf" }, { external: false });
+    expect(repo.listDownloads()).toEqual([expect.objectContaining({ id: input.id,
+      filename: "Invoice 4471.pdf", path: "/tmp/Invoice 4471.pdf", state: "completed",
+      startedAt: 100, endedAt: 200, size: 587 })]);
+    await invoke("downloads.projectNative", input, { external: false });
+    expect(repo.listDownloads()).toEqual([expect.objectContaining({ id: input.id,
+      filename: "download.pdf", path: "/tmp/download.pdf" })]);
+  } finally { db.close(); }
+});
+
 it("projects only an unambiguous current native tab into an active run", async () => {
   const db = openDb(":memory:");
   try {

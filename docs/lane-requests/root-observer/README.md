@@ -1,0 +1,7 @@
+# Coherent native lifecycle and functional successor
+
+Source only; no native execution, journey qualification or promotion claimed. Base5ab6962f retains rebuilt M4 prerequisites. Independently reviewed0281–0286 correct native test lifecycle, authorized preview fixture ingress, PiP action/lifetime fixtures and pre-thread retained-FD observation metadata. Canonical series restores original0221 (already compiled in CE proof); full115selectedpackets reverse197originals and replay336exact mirrors.
+
+Functional source: native catalog filename/path updates after actual rename/undo; acknowledged Night Shift submission with duplicate prevention and inline refusal; matching final sidebar pointer release; actual optional Chats/Newchat journey entry; selector-bound genuine setup HID dismissal with actual saved later status. Original failed CE diagnostics are retained. No budgets, assertions, qualification identity, feature acceptance or permission authority were relaxed.
+
+Current renderer175assets and bundle487/175/1798KB remain within original gates. Runtime rebuilt before complete source suite. SOURCE-GATES.json pins original check logs; NATIVE-LIFECYCLE-FULL-REPLAY.json pins every native mirror/packet/original baseline. Native336includes newjourney_fixture_path.cc with original nullbaseline. Sole builder must independently audit immutable candidate/source/runtime/helper byte pair and execute native cases/fresh journeys. Native0280and actual startup/hello/hardware source remain separate incomplete lanes.

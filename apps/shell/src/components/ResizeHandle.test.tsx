@@ -33,7 +33,7 @@ it("focuses a dragged divider so keyboard resizing and reset remain available", 
     act(() => divider.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Home" })));
     expect(onResize).toHaveBeenLastCalledWith(280);
     act(() => window.dispatchEvent(new MouseEvent("pointermove", { buttons: 1, clientX: 295 })));
-    act(() => window.dispatchEvent(new MouseEvent("pointerup")));
+    act(() => window.dispatchEvent(new MouseEvent("pointerup", { clientX: 295 })));
     expect(onResize).toHaveBeenLastCalledWith(295);
     expect(container.style.getPropertyValue("--sb-w")).toBe("295px");
   } finally {
@@ -156,3 +156,52 @@ it("announces the sidebar keyboard's 50 pixel step", () => {
     vi.unstubAllGlobals();
   }
 });
+
+it.each([
+  [110, 1, []],
+  [111, 0, [[126]]],
+])(
+  "commits the matching final pointer position %i after coalesced movement",
+  (target, collapses, resized) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const panel = document.createElement("aside");
+    document.body.append(panel);
+    const root = createRoot(panel),
+      onResize = vi.fn(),
+      onCollapse = vi.fn();
+    const pointer = (type: string, clientX: number, pointerId: number, buttons = 0) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, buttons });
+      Object.defineProperty(event, "pointerId", { value: pointerId });
+      return event;
+    };
+    try {
+      act(() =>
+        root.render(
+          <ResizeHandle
+            side="left"
+            value={280}
+            min={126}
+            max={400}
+            reset={280}
+            onResize={onResize}
+            onCollapse={onCollapse}
+          />,
+        ),
+      );
+      const handle = panel.querySelector<HTMLElement>('[role="separator"]')!;
+      act(() => handle.dispatchEvent(pointer("pointerdown", 280, 7, 1)));
+      act(() => window.dispatchEvent(pointer("pointermove", 160, 7, 1)));
+      act(() => window.dispatchEvent(pointer("pointermove", 100, 8, 1)));
+      act(() => window.dispatchEvent(pointer("pointerup", 100, 8)));
+      expect(onResize).not.toHaveBeenCalled();
+      expect(onCollapse).not.toHaveBeenCalled();
+      act(() => window.dispatchEvent(pointer("pointerup", target, 7)));
+      expect(onCollapse).toHaveBeenCalledTimes(collapses);
+      expect(onResize.mock.calls).toEqual(resized);
+    } finally {
+      act(() => root.unmount());
+      panel.remove();
+      vi.unstubAllGlobals();
+    }
+  },
+);

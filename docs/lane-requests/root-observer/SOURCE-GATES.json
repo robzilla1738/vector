@@ -1,0 +1,79 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeJourneyPassed": false,
+  "base": "5ab6962fd7e9bcc53e4a798c0b12f596212c271b",
+  "fullUnit": "482 files /2620 tests PASS; original full log retained",
+  "nativeReplay": "115packets/197originals/336mirrors PASS",
+  "shellDigest": "67d5698109b2bf0cff8869b158a2ff1de2d6b95170d523c60b68a37bf548ab1a",
+  "logs": {
+    "download-build": {
+      "path": "/tmp/aux-root-native-lifecycle-download-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "download": {
+      "path": "/tmp/aux-root-native-lifecycle-download.log",
+      "sha256": "e30a7c4cbfc53a0f9c452c5aacbdd5e2e5fcbaca3ac9caf9bddfd6236b0c8201"
+    },
+    "ui": {
+      "path": "/tmp/aux-root-native-lifecycle-ui.log",
+      "sha256": "0948c72ae5fd1ec43b2ca2e6eeb51a732db608f53d883bc494845b7ce601c79f"
+    },
+    "setup": {
+      "path": "/tmp/aux-root-native-lifecycle-setup.log",
+      "sha256": "3de4469147e0c310014f1bce82c5ab02eac7aaf6af32366241c0f54f2108f9db"
+    },
+    "typecheck-final": {
+      "path": "/tmp/aux-root-native-lifecycle-typecheck-final.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    "lint-final": {
+      "path": "/tmp/aux-root-native-lifecycle-lint-final.log",
+      "sha256": "8aa1d06dcb9581c2ca9c354a2933bd24fe9c1b6d0eb1e73165d166a98f416812"
+    },
+    "format-final": {
+      "path": "/tmp/aux-root-native-lifecycle-format-final.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    "full-unit-final": {
+      "path": "/tmp/aux-root-native-lifecycle-full-unit-final.log",
+      "sha256": "791c8a23e472f12c2d8c935972f963e332447bb364246b1d30f412bfc1e24db7"
+    },
+    "renderer-final": {
+      "path": "/tmp/aux-root-native-lifecycle-renderer-final.log",
+      "sha256": "7b0a3f06fca3eef842b29c671091b2636713748cf5a96cd9aedd2f3ab0174b95"
+    },
+    "assets-final": {
+      "path": "/tmp/aux-root-native-lifecycle-assets-final.log",
+      "sha256": "d4069832d65c13e58d20a4649b4612f40bdd125f13a0e4ca7112b669ad329bbc"
+    },
+    "budgets-final": {
+      "path": "/tmp/aux-root-native-lifecycle-budgets-final.log",
+      "sha256": "f0ff6eea154c62bc5a70a7a0f7d6b48707f18e73a4c80b0c075170c0623aca71"
+    },
+    "bindings-final": {
+      "path": "/tmp/aux-root-native-lifecycle-bindings-final.log",
+      "sha256": "c2635bc1ad9062801fd9ce3c8ad8a74b577439116d3d850581070a87f4533591"
+    },
+    "bridge-final": {
+      "path": "/tmp/aux-root-native-lifecycle-bridge-final.log",
+      "sha256": "b902406e71432dcc601710f7966314f27c06f12c1aec31900d24c1d64fe886b6"
+    },
+    "inventory-final": {
+      "path": "/tmp/aux-root-native-lifecycle-inventory-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "journeys-final": {
+      "path": "/tmp/aux-root-native-lifecycle-journeys-final.log",
+      "sha256": "4b10e449edc1397c9026a41a813b448986362c446092aafa21db5002483b7d4c"
+    },
+    "protocol-final": {
+      "path": "/tmp/aux-root-native-lifecycle-protocol-final.log",
+      "sha256": "b9eb8003522447400f594ba34ee5c700824bdbe476f788aadea8d4b7086c3273"
+    },
+    "full-replay-final": {
+      "path": "/tmp/aux-root-native-lifecycle-full-replay-final.log",
+      "sha256": "78ed7247868cc936545d29566071690d1c611e43f4c53601e87d2b5b44a70014"
+    }
+  }
+}
