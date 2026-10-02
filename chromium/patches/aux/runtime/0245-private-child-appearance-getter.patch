@@ -1,0 +1,91 @@
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -74,6 +74,8 @@
+ #include "chrome/browser/ui/aux/methods/layout_methods.h"
+ #include "chrome/browser/ui/aux/result_preview.h"
+ #include "chrome/browser/ui/aux/tab_catalog.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
+ #include "chrome/browser/ui/aux/zap_controller.h"
+ #include "components/guest_contents/browser/guest_contents_handle.h"
+ #include "components/prefs/pref_change_registrar.h"
+@@ -429,6 +431,79 @@
+         }, GetWeakPtr(), std::move(callback)));
+     return;
+   }
++  if (method == "pipAppearanceSnapshot") {
++    if (!args.empty()) {
++      std::move(callback).Run(false, "", "invalid_argument", "PiP appearance snapshot takes no arguments");
++      return;
++    }
++    if (!aux::NativeAppearanceObservationEnabled() || !IsAuthorizedAuxDocument()) {
++      std::move(callback).Run(false, "", "forbidden", "PiP appearance requires the authorized test shell");
++      return;
++    }
++    auto* contents = web_ui()->GetWebContents();
++    auto* frame = contents->GetPrimaryMainFrame();
++    auto* window = WebUIBrowserWindow::FromWebShellWebContents(contents);
++    auto* profile = Profile::FromWebUI(web_ui());
++    if (!frame || frame != web_ui()->GetRenderFrameHost() || !window ||
++        window->browser() != browser_ || browser_->GetProfile() != profile) {
++      std::move(callback).Run(false, "", "unavailable", "PiP appearance owner is unavailable");
++      return;
++    }
++    const auto document = frame->GetWeakDocumentPtr();
++    const auto self = weak_factory_.GetWeakPtr();
++    const auto shell_contents = contents->GetWeakPtr();
++    const auto before = window->GetAuxAppearanceSnapshot();
++    if (!self || !shell_contents || !document.AsRenderFrameHostIfValid() ||
++        window != WebUIBrowserWindow::FromWebShellWebContents(shell_contents.get())) {
++      std::move(callback).Run(false, "", "unavailable", "PiP appearance shell changed"); return;
++    }
++    auto owns_opener = base::BindRepeating(
++        [](base::WeakPtr<WebUIBrowserUI> ui, content::WebContents* opener) {
++          if (!ui || !aux::NativeAppearanceObservationEnabled() || !ui->IsAuthorizedAuxDocument() ||
++              !opener || opener->IsBeingDestroyed()) return false;
++          auto* shell = ui->web_ui()->GetWebContents();
++          auto* window = WebUIBrowserWindow::FromWebShellWebContents(shell);
++          auto* profile = Profile::FromWebUI(ui->web_ui());
++          auto* identity = aux::PageIdentity::FromWebContents(opener);
++          auto* catalog = aux::TabCatalog::GetForProfile(profile);
++          BrowserWindowInterface* owner = nullptr;
++          return window && window->browser() == ui->browser_ && catalog && identity &&
++              opener->GetBrowserContext() == profile &&
++              catalog->FindPage(identity->id(), &owner) == opener && owner == window->browser();
++        }, weak_factory_.GetWeakPtr());
++    auto result = PictureInPictureWindowManager::GetInstance()->SnapshotNativePipAppearanceForTesting(
++        profile, std::move(owns_opener));
++    if (!self || !shell_contents) {
++      std::move(callback).Run(false, "", "unavailable", "PiP appearance shell was destroyed"); return;
++    }
++    auto* current = document.AsRenderFrameHostIfValid();
++    auto* after_window = WebUIBrowserWindow::FromWebShellWebContents(contents);
++    const auto after = after_window ? after_window->GetAuxAppearanceSnapshot() : base::DictValue();
++    if (!self || !shell_contents) {
++      std::move(callback).Run(false, "", "unavailable", "PiP appearance shell was destroyed"); return;
++    }
++    const auto same = [&](const char* key) {
++      const auto* lhs = before.Find(key); const auto* rhs = after.Find(key);
++      return lhs && rhs && *lhs == *rhs;
++    };
++    if (!aux::NativeAppearanceObservationEnabled() || !IsAuthorizedAuxDocument() ||
++        !current || current != contents->GetPrimaryMainFrame() || current != web_ui()->GetRenderFrameHost() ||
++        after_window != window || Profile::FromWebUI(web_ui()) != profile ||
++        !same("pid") || !same("windowId") || !same("frame") || !result) {
++      std::move(callback).Run(false, "", "unavailable", "PiP appearance owner changed or is absent");
++      return;
++    }
++    const auto json = base::WriteJson(base::Value(std::move(*result)));
++    static size_t emitted = 0;
++    if (!json || json->size() > 4096 || emitted >= 4000) {
++      std::move(callback).Run(false, "", "unavailable", "PiP appearance observation is unavailable");
++      return;
++    }
++    ++emitted;
++    std::fprintf(stderr, "AUX_NATIVE_PIP_APPEARANCE_V1 %s\n", json->c_str());
++    std::move(callback).Run(true, *json, "", "");
++    return;
++  }
+   if (method == "appearanceSnapshot") {
+     if (!args.empty()) {
+       std::move(callback).Run(false, "", "invalid_argument", "Appearance snapshot takes no arguments");

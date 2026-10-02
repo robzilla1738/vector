@@ -1,0 +1,170 @@
+--- a/chrome/browser/ui/aux/native_pip_appearance_registry.h
++++ b/chrome/browser/ui/aux/native_pip_appearance_registry.h
+@@ -2,6 +2,7 @@
+ // Use of this source code is governed by a BSD-style license in the LICENSE file.
+ #ifndef CHROME_BROWSER_UI_AUX_NATIVE_PIP_APPEARANCE_REGISTRY_H_
+ #define CHROME_BROWSER_UI_AUX_NATIVE_PIP_APPEARANCE_REGISTRY_H_
++#include <stdint.h>
+ #include <map>
+ #include <optional>
+ #include "base/functional/callback.h"
+@@ -53,11 +54,15 @@
+     content::WeakDocumentPtr opener_document;
+     content::WeakDocumentPtr child_document;
+     OwnerReader read_current;
++    uint64_t registration_generation = 0;
+   };
+   bool Register(views::Widget* widget, NativePipSurfaceKind kind, OwnerReader read_current);
+   bool Stable(const Entry& entry) const;
+   std::map<views::Widget*, Entry> entries_;
++  std::map<views::Widget*, base::WeakPtr<views::Widget>> pending_registrations_;
++  uint64_t next_registration_generation_ = 1;
+   SEQUENCE_CHECKER(sequence_checker_);
++  base::WeakPtrFactory<NativePipAppearanceRegistry> weak_factory_{this};
+ };
+ // Real current child's NSWindow/theme/ColorProvider/material/frame only. No Aux
+ // WebUI theme/material is copied. Missing remote NSWindow yields no snapshot.
+--- a/chrome/browser/ui/aux/native_pip_appearance_registry.cc
++++ b/chrome/browser/ui/aux/native_pip_appearance_registry.cc
+@@ -2,7 +2,11 @@
+ // Use of this source code is governed by a BSD-style license in the LICENSE file.
+ #include "chrome/browser/ui/aux/native_pip_appearance_registry.h"
+ #include <utility>
++#include <limits>
++#include <vector>
++#include "base/strings/string_number_conversions.h"
+ #include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "chrome/browser/profiles/profile.h"
+ #include "chrome/browser/buildflags.h"
+ #include "chrome/browser/ui/aux/journey_fixture_path.h"
+@@ -45,6 +49,7 @@
+ NativePipAppearanceRegistry::NativePipAppearanceRegistry() = default;
+ NativePipAppearanceRegistry::~NativePipAppearanceRegistry() {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  weak_factory_.InvalidateWeakPtrs();
+   while (!entries_.empty()) Unregister(entries_.begin()->first);
+ }
+ bool NativePipAppearanceRegistry::RegisterVideo(VideoOverlayWindowViews* window, ControllerReader read_current) {
+@@ -55,7 +60,8 @@
+       base::BindRepeating([](base::WeakPtr<views::Widget> weak, VideoOverlayWindowViews* window, ControllerReader read_current) -> std::optional<NativePipOwner> {
+         if (!weak || weak.get() != window) return std::nullopt;
+         auto* controller = window->GetController();
+-        if (!controller || read_current.Run() != controller) return std::nullopt;
++        if (!controller || read_current.Run() != controller || !weak ||
++            window->GetController() != controller) return std::nullopt;
+         auto* opener = controller->GetWebContents();
+         if (!opener || opener->IsBeingDestroyed()) return std::nullopt;
+         return NativePipOwner{Profile::FromBrowserContext(opener->GetBrowserContext()),
+@@ -71,7 +77,7 @@
+       base::BindRepeating([](base::WeakPtr<DocumentPipHost> weak, ControllerReader read_current) -> std::optional<NativePipOwner> {
+         if (!weak) return std::nullopt;
+         auto* controller = read_current.Run();
+-        if (!controller) return std::nullopt;
++        if (!weak || !controller) return std::nullopt;
+         return NativePipOwner{weak->GetProfile(), weak->GetOpenerWebContents(),
+                               weak->GetChildWebContents(), controller};
+       }, weak, std::move(read_current)));
+@@ -87,17 +93,36 @@
+     NativePipSurfaceKind kind, OwnerReader read_current) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   if (!NativePipAppearanceObservationEnabled() || !widget || !widget->IsVisible() ||
+-      read_current.is_null() || entries_.contains(widget) || entries_.size() >= 8) return false;
++      read_current.is_null() || pending_registrations_.contains(widget) || pending_registrations_.size() >= 8 || entries_.contains(widget) || entries_.size() >= 8 ||
++      next_registration_generation_ == std::numeric_limits<uint64_t>::max()) return false;
++  // Reader callbacks may destroy the registry/widget or cancel this attempt.
++  const auto self = weak_factory_.GetWeakPtr();
++  const auto weak_widget = widget->GetWeakPtr();
++  pending_registrations_.emplace(widget, weak_widget);
++  base::ScopedClosureRunner clear_pending(base::BindOnce(
++      [](base::WeakPtr<NativePipAppearanceRegistry> registry, base::WeakPtr<views::Widget> key) {
++        if (!registry) return;
++        // No dangling bound raw pointer is invoked when the callback destroys it.
++        std::erase_if(registry->pending_registrations_, [](const auto& pending) {
++          return !pending.second;
++        });
++        if (key) registry->pending_registrations_.erase(key.get());
++      }, self, weak_widget));
+   const auto owner = read_current.Run();
+-  if (!owner || !ValidOwner(*owner, kind)) return false;
++  if (!self || !weak_widget) return false;
++  if (!pending_registrations_.contains(widget) || pending_registrations_.size() >= 8 || entries_.contains(widget) ||
++      !weak_widget->IsVisible() || entries_.size() >= 8 ||
++      next_registration_generation_ == std::numeric_limits<uint64_t>::max() ||
++      !owner || !ValidOwner(*owner, kind)) return false;
+   Entry entry{kind, widget->GetWeakPtr(), *owner,
+       owner->opener->GetPrimaryMainFrame()->GetWeakDocumentPtr(),
+       owner->child ? owner->child->GetPrimaryMainFrame()->GetWeakDocumentPtr() : content::WeakDocumentPtr(),
+-      std::move(read_current)};
++      std::move(read_current), next_registration_generation_++};
+   entries_.emplace(widget, std::move(entry)); widget->AddObserver(this); return true;
+ }
+ void NativePipAppearanceRegistry::Unregister(views::Widget* widget) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
++  pending_registrations_.erase(widget);
+   const auto found = entries_.find(widget);
+   if (found == entries_.end()) return;
+   if (found->second.widget) widget->RemoveObserver(this);
+@@ -113,24 +138,53 @@
+     if (!child || content::WebContents::FromRenderFrameHost(child) != entry.owner.child) return false;
+   }
+   const auto current = entry.read_current.Run();
++  // Recheck weak lifetime fences after the owner callback before raw owner use.
++  if (!entry.widget || !entry.widget->IsVisible()) return false;
++  auto* after_opener = entry.opener_document.AsRenderFrameHostIfValid();
++  if (!after_opener || content::WebContents::FromRenderFrameHost(after_opener) != entry.owner.opener) return false;
++  if (entry.owner.child) {
++    auto* after_child = entry.child_document.AsRenderFrameHostIfValid();
++    if (!after_child || content::WebContents::FromRenderFrameHost(after_child) != entry.owner.child) return false;
++  }
+   return current == entry.owner && ValidOwner(*current, entry.kind);
+ }
+ std::optional<base::DictValue> NativePipAppearanceRegistry::SnapshotFor(
+     Profile* current_profile, OpenerMatcher owns_opener) {
+   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+   if (!NativePipAppearanceObservationEnabled() || !current_profile || owns_opener.is_null()) return std::nullopt;
+-  Entry* selected = nullptr;
+-  for (auto it = entries_.begin(); it != entries_.end();) {
+-    auto& entry = it->second;
+-    if (!Stable(entry)) { auto* widget = it->first; ++it; Unregister(widget); continue; }
+-    ++it;
+-    if (entry.owner.profile != current_profile || !owns_opener.Run(entry.owner.opener)) continue;
++  // Native view readback and owner callbacks may reenter widget lifecycle.
++  // Never retain map references/iterators across those calls.
++  const auto self = weak_factory_.GetWeakPtr();
++  std::vector<Entry> candidates;
++  for (const auto& [widget, entry] : entries_) candidates.push_back(entry);
++  const auto registered = [&](const Entry& entry) {
++    if (!entry.widget) return false;
++    const auto current = entries_.find(entry.widget.get());
++    return current != entries_.end() &&
++        current->second.registration_generation == entry.registration_generation;
++  };
++  std::optional<Entry> selected;
++  for (const auto& entry : candidates) {
++    const bool stable = Stable(entry);
++    if (!self) return std::nullopt;
++    if (!registered(entry)) continue;
++    if (!stable) { Unregister(entry.widget.get()); continue; }
++    if (entry.owner.profile != current_profile) continue;
++    const bool owned = owns_opener.Run(entry.owner.opener);
++    if (!self) return std::nullopt;
++    if (!owned || !registered(entry)) continue;
+     if (selected) return std::nullopt;
+-    selected = &entry;
++    selected = entry;
+   }
+-  if (!selected) return std::nullopt;
++  if (!selected || !registered(*selected)) return std::nullopt;
+   auto result = ReadNativePipWindowAppearance(selected->widget.get(), selected->kind);
+-  if (!result || !Stable(*selected) || !owns_opener.Run(selected->owner.opener)) return std::nullopt;
++  if (!self || !result) return std::nullopt;
++  const bool stable = Stable(*selected);
++  if (!self || !stable) return std::nullopt;
++  const bool owned = owns_opener.Run(selected->owner.opener);
++  if (!self || !owned || !registered(*selected)) return std::nullopt;
++  // Decimal uint64 avoids JS precision loss and binds paired capture brackets.
++  result->Set("registrationGeneration", base::NumberToString(selected->registration_generation));
+   return result;
+ }
+ void NativePipAppearanceRegistry::OnWidgetVisibilityChanged(views::Widget* widget, bool visible) {

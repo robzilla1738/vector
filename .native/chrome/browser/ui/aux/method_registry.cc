@@ -20,6 +20,7 @@
 #include "url/gurl.h"
 #if BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
+#include "chrome/browser/ui/aux/native_performance_observer.h"
 #endif
 
 namespace aux {
@@ -39,7 +40,12 @@ AuxMethodRegistry::AuxMethodRegistry() {
   };
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
   if (NativeAppearanceObservationEnabled())
-    register_shell(AuxShellMethodGroup::kWindow, {"appearanceSnapshot"});
+    register_shell(AuxShellMethodGroup::kWindow, {"appearanceSnapshot", "pipAppearanceSnapshot"});
+  if (NativePerformanceObservationEnabled())
+    register_shell(AuxShellMethodGroup::kWindow,
+        {"commandPresentationSnapshot", "prepareGuestSplitDropPresentation",
+         "prepareGuestDividerFramePresentation", "prepareGuestTabSwitchPresentation",
+         "completeGuestPresentation"});
 #endif
   register_shell(AuxShellMethodGroup::kContent,
                  {"preview", "readArticle", "siteZoom", "privatePageZoom", "siteInfo", "setSiteTrackers", "sitePermissions",

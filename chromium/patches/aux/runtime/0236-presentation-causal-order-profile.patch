@@ -1,0 +1,47 @@
+--- a/chrome/browser/ui/aux/native_command_presentation_session.cc
++++ b/chrome/browser/ui/aux/native_command_presentation_session.cc
+@@ -78,7 +78,7 @@
+       !result.frame_token || !result.activated || !result.submitted_frame ||
+       result.submission_failure >= 0 || result.mutation > result.commit ||
+       result.commit > result.submitted || result.timing.received_compositor_frame_timestamp.is_null() ||
+-      result.commit > result.timing.received_compositor_frame_timestamp ||
++      result.submitted > result.timing.received_compositor_frame_timestamp ||
+       result.timing.received_compositor_frame_timestamp > result.timing.embedded_frame_timestamp ||
+       result.timing.embedded_frame_timestamp > result.timing.draw_start_timestamp ||
+       result.timing.draw_start_timestamp > result.timing.presentation_feedback.timestamp)
+@@ -103,7 +103,7 @@
+       frame->GetLastCommittedURL().spec() != "chrome://aux/" || !window->browser()) return nullptr;
+   Profile* profile = Profile::FromWebUI(web_ui);
+   const base::FilePath selected(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("user-data-dir"));
+-  if (!profile || profile != window->browser()->GetProfile() ||
++  if (!profile || profile->IsOffTheRecord() || profile != window->browser()->GetProfile() ||
+       profile->GetPath().DirName() != selected) return nullptr;
+   const auto native = window->GetAuxAppearanceSnapshot();
+   const auto window_id = native.FindInt("windowId");
+--- a/cc/trees/aux_performance_content_frame.cc
++++ b/cc/trees/aux_performance_content_frame.cc
+@@ -47,7 +47,7 @@
+   const auto& actual_feedback = actual_timing.presentation_feedback;
+   if (!Stable() || actual_timing.received_compositor_frame_timestamp.is_null() ||
+       actual_timing.embedded_frame_timestamp.is_null() || actual_timing.draw_start_timestamp.is_null() ||
+-      actual_timing.received_compositor_frame_timestamp < sample_->submission.commit ||
++      actual_timing.received_compositor_frame_timestamp < sample_->submission.submitted ||
+       actual_timing.embedded_frame_timestamp < actual_timing.received_compositor_frame_timestamp ||
+       actual_timing.draw_start_timestamp < actual_timing.embedded_frame_timestamp ||
+       actual_feedback.timestamp < actual_timing.draw_start_timestamp || actual_feedback.failed() ||
+--- a/chrome/browser/ui/aux/native_command_presentation_session_unittest.cc
++++ b/chrome/browser/ui/aux/native_command_presentation_session_unittest.cc
+@@ -61,6 +61,13 @@
+   input = Input(*sample); input.event_ticks += base::Microseconds(1);
+   EXPECT_FALSE(ValidateCommandPresentationPair(*sample, input, sample->timing.presentation_feedback.timestamp));
+ }
++TEST(NativeCommandPresentationPair, RefusesReceiptEarlierThanActualSubmissionEvenBeforeHardwareFeedback) {
++  auto sample = Sample(); auto input = Input(*sample);
++  // Every older check still passes: mutation <= commit <= submitted and
++  // commit <= receipt <= embed <= draw <= HW. Only this real causal link fails.
++  sample->submitted = sample->timing.received_compositor_frame_timestamp + base::Microseconds(1);
++  EXPECT_FALSE(ValidateCommandPresentationPair(*sample, input, sample->timing.presentation_feedback.timestamp));
++}
+ TEST(NativeCommandPresentationPair, RefusesMissingInclusionAndFailedSubmission) {
+   auto sample = Sample(); auto input = Input(*sample);
+   sample->timing.embedded_frame_timestamp = base::TimeTicks();

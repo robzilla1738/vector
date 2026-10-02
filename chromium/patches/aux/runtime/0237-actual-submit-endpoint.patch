@@ -1,0 +1,82 @@
+--- a/cc/trees/swap_promise.h
++++ b/cc/trees/swap_promise.h
+@@ -63,6 +63,9 @@
+ 
+   virtual void DidActivate() = 0;
+   virtual void WillSwap(viz::CompositorFrameMetadata* metadata) = 0;
++  // Optional timestamp of the exact frame submission, not metadata preparation.
++  // Existing promises do not observe it; private measurement overrides it.
++  virtual void WillSubmit(uint32_t, base::TimeTicks) {}
+   virtual void DidSwap() = 0;
+ 
+   // Return `DidNotSwapAction::KEEP_ACTIVE` if this promise should remain active
+--- a/cc/trees/layer_tree_impl.h
++++ b/cc/trees/layer_tree_impl.h
+@@ -598,6 +598,7 @@
+   void AppendSwapPromises(
+       std::vector<std::unique_ptr<SwapPromise>> new_swap_promises);
+   void FinishSwapPromises(viz::CompositorFrameMetadata* metadata);
++  void WillSubmitSwapPromises(uint32_t frame_token, base::TimeTicks submit_time);
+   void ClearSwapPromises();
+   void BreakSwapPromises(SwapPromise::DidNotSwapReason reason);
+ 
+--- a/cc/trees/layer_tree_impl.cc
++++ b/cc/trees/layer_tree_impl.cc
+@@ -2333,6 +2333,11 @@
+     swap_promise->WillSwap(metadata);
+ }
+ 
++void LayerTreeImpl::WillSubmitSwapPromises(uint32_t frame_token, base::TimeTicks submit_time) {
++  for (const auto& promise : swap_promise_list_) promise->WillSubmit(frame_token, submit_time);
++  for (const auto& promise : pinned_swap_promise_list_) promise->WillSubmit(frame_token, submit_time);
++}
++
+ void LayerTreeImpl::ClearSwapPromises() {
+   for (const auto& swap_promise : swap_promise_list_)
+     swap_promise->DidSwap();
+--- a/cc/trees/layer_tree_host_impl.cc
++++ b/cc/trees/layer_tree_host_impl.cc
+@@ -2939,6 +2939,10 @@
+       compositor_frame.metadata.trees_in_viz_timing_details
+           .submit_compositor_frame = submit_time;
+     }
++    // Exact ordinary compositor-frame submission endpoint. TreesInViz paths
++    // without this frame/token event remain unknown to private measurement.
++    const base::TimeTicks actual_submit_time = base::TimeTicks::Now();
++    active_tree()->WillSubmitSwapPromises(frame_token, actual_submit_time);
+     layer_tree_frame_sink_->SubmitCompositorFrame(
+         std::move(compositor_frame),
+         /*hit_test_data_changed=*/false);
+--- a/cc/trees/aux_performance_swap_promise.h
++++ b/cc/trees/aux_performance_swap_promise.h
+@@ -30,6 +30,7 @@
+   void OnCommit() override;
+   void DidActivate() override;
+   void WillSwap(viz::CompositorFrameMetadata* metadata) override;
++  void WillSubmit(uint32_t frame_token, base::TimeTicks submit_time) override;
+   void DidSwap() override;
+   DidNotSwapAction DidNotSwap(DidNotSwapReason reason, base::TimeTicks timestamp) override;
+   int64_t GetTraceId() const override;
+--- a/cc/trees/aux_performance_swap_promise.cc
++++ b/cc/trees/aux_performance_swap_promise.cc
+@@ -25,10 +25,18 @@
+     Complete(); return;
+   }
+   submission_.frame_token = metadata->frame_token;
+-  submission_.submitted = base::TimeTicks::Now();
++  // Only the actual frame submission hook may fill submitted.
++}
++void NativePerformanceSwapPromise::WillSubmit(uint32_t frame_token, base::TimeTicks submit_time) {
++  if (!submission_.activated || !submission_.frame_token || frame_token != submission_.frame_token ||
++      submission_.commit.is_null() || submit_time.is_null() || submit_time < submission_.commit ||
++      !submission_.submitted.is_null() || !base::TimeTicks::IsConsistentAcrossProcesses()) {
++    Complete(); return;
++  }
++  submission_.submitted = submit_time;
+ }
+ void NativePerformanceSwapPromise::DidSwap() {
+-  submission_.submitted_frame = submission_.frame_token != 0;
++  submission_.submitted_frame = submission_.frame_token != 0 && !submission_.submitted.is_null();
+   Complete();
+ }
+ cc::SwapPromise::DidNotSwapAction NativePerformanceSwapPromise::DidNotSwap(

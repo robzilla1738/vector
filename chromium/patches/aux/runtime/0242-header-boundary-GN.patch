@@ -1,0 +1,52 @@
+--- a/chrome/browser/picture_in_picture/picture_in_picture_window_manager.h
++++ b/chrome/browser/picture_in_picture/picture_in_picture_window_manager.h
+@@ -17,7 +17,9 @@
+ #include "build/build_config.h"
+ #include "chrome/browser/buildflags.h"
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+-#include "chrome/browser/ui/aux/native_pip_appearance_registry.h"
++#include "base/functional/callback_forward.h"
++#include "base/values.h"
++namespace aux { class NativePipAppearanceRegistry; }
+ class BrowserWindowInterface;
+ class VideoOverlayWindowViews;
+ #endif
+@@ -287,7 +289,7 @@
+   void RegisterNativeBrowserDocumentAppearanceForTesting(BrowserWindowInterface* browser,
+                                                          views::Widget* widget);
+   std::optional<base::DictValue> SnapshotNativePipAppearanceForTesting(
+-      Profile* profile, aux::NativePipAppearanceRegistry::OpenerMatcher owns_opener);
++      Profile* profile, base::RepeatingCallback<bool(content::WebContents*)> owns_opener);
+ #endif
+ 
+   void set_window_controller_for_testing(
+--- a/chrome/browser/picture_in_picture/picture_in_picture_window_manager.cc
++++ b/chrome/browser/picture_in_picture/picture_in_picture_window_manager.cc
+@@ -7,6 +7,7 @@
+ #include "base/memory/raw_ptr.h"
+ #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+ #include "base/functional/bind.h"
++#include "chrome/browser/ui/aux/native_pip_appearance_registry.h"
+ #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+ #include "chrome/browser/ui/browser_window.h"
+ #include "chrome/browser/ui/tabs/tab_strip_model.h"
+--- a/chrome/browser/picture_in_picture/BUILD.gn
++++ b/chrome/browser/picture_in_picture/BUILD.gn
+@@ -30,6 +30,7 @@
+   ]
+   public_deps = [
+     "//base",
++    "//chrome/browser:buildflags",
+     "//chrome/browser/profiles:profile",
+     "//components/safe_browsing/core/browser/db:database_manager",
+     "//components/safe_browsing/core/browser/db:util",
+@@ -122,6 +123,9 @@
+ 
+   if (enable_aux_shell) {
+     deps += [ "//chrome/browser/ui/aux:surface_headers" ]
++    if (is_mac && aux_allow_remote_debugging_for_tests) {
++      deps += [ "//chrome/browser/ui/aux:runtime" ]
++    }
+   }
+ 
+   if (enable_extensions_core) {

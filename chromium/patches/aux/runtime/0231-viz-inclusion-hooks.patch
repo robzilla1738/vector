@@ -1,0 +1,265 @@
+--- a/components/viz/service/display/surface_aggregator.h
++++ b/components/viz/service/display/surface_aggregator.h
+@@ -25,6 +25,7 @@
+ #include "components/viz/common/surfaces/surface_range.h"
+ #include "components/viz/common/surfaces/tracked_element_rects.h"
+ #include "components/viz/service/display/aggregated_frame.h"
++#include "components/viz/service/display/native_guest_inclusion_receipt.h"
+ #include "components/viz/service/display/resolved_frame_data.h"
+ #include "components/viz/service/surfaces/surface_observer.h"
+ #include "components/viz/service/viz_service_export.h"
+@@ -94,6 +95,13 @@
+                             const gfx::Rect& target_damage = gfx::Rect(),
+                             int64_t display_trace_id = -1);
+ 
++  // Internal native fixture transport only. Caller owns authority fencing.
++  void SetNativeGuestInclusionScope(NativeGuestInclusionScope scope) {
++    native_guest_receipt_ = std::make_unique<NativeGuestInclusionReceipt>(std::move(scope));
++  }
++  std::unique_ptr<NativeGuestInclusionReceipt> TakeNativeGuestInclusionReceipt() {
++    return std::move(native_guest_receipt_);
++  }
+   // Returns latest frame data after previous Aggregate() call. This only valid
+   // until next CompositorFrame is processed, so should be called directly after
+   // Aggregate() to make sure no CompositorFrame did arrive between the calls.
+@@ -386,6 +394,7 @@
+   // detect cycles.
+   base::flat_set<SurfaceId> referenced_surfaces_;
+ 
++  std::unique_ptr<NativeGuestInclusionReceipt> native_guest_receipt_;
+   SurfaceId root_surface_id_;
+   gfx::Transform root_surface_transform_;
+ 
+--- a/components/viz/service/display/surface_aggregator.cc
++++ b/components/viz/service/display/surface_aggregator.cc
+@@ -1037,6 +1037,7 @@
+       std::ranges::any_of(dest_pass_list_->back()->quad_list,
+                           &OverlayCandidate::RequiresOverlay);
+ 
++  bool native_content_emitted = false;
+   if (merge_pass || force_merge_pass) {
+     // Compute a clip rect in |dest_pass| coordinate space to ensure merged
+     // surface cannot draw outside where a non-merged surface would draw. An
+@@ -1048,12 +1049,14 @@
+         target_transform);
+ 
+     // UpdatePersistentPassDataMergeState() has been called earlier.
++    const size_t native_before_quads = dest_pass->quad_list.size();
+     CopyQuadsToPass(resolved_frame, resolved_root_pass, dest_pass,
+                     resolved_frame.device_scale_factor(), combined_transform,
+                     surface_quad_clip, dest_root_target_clip_rect,
+                     mask_filter_info,
+                     surface_quad->override_child_filter_quality,
+                     surface_quad->override_child_dynamic_range_limit);
++    native_content_emitted = dest_pass->quad_list.size() > native_before_quads;
+   } else {
+     auto* shared_quad_state = CopyAndScaleSharedQuadState(
+         surface_quad_sqs, embedder_client_namespace_id,
+@@ -1100,6 +1103,7 @@
+     } else {
+       auto* quad =
+           dest_pass->CreateAndAppendDrawQuad<AggregatedRenderPassDrawQuad>();
++      native_content_emitted = true;
+       quad->SetNew(shared_quad_state, quad_rect, quad_visible_rect,
+                    remapped_pass_id, kInvalidResourceId, gfx::RectF(),
+                    gfx::Size(), /*force_anti_aliasing_off=*/false);
+@@ -1112,6 +1116,33 @@
+     }
+   }
+ 
++  // Without an exact opacity/mask ancestry proof, an intermediate render pass
++  // cannot count as fully visible. Refuse that topology instead of assuming the
++  // parent's later composition preserves the child's alpha or coverage.
++  const auto* native_display_root = native_guest_receipt_ ? GetResolvedFrame(root_surface_id_) : nullptr;
++  if (native_guest_receipt_ && native_display_root && native_content_emitted &&
++      dest_pass->id == native_display_root->GetRootRenderPassData().remapped_id() &&
++      resolved_root_pass.aggregation().will_draw &&
++      surface_quad_sqs->opacity == 1.0f) {
++    // Use the REAL child render-pass area and actual aggregation transforms.
++    // A root clip rectangle is only a constraint; it is never emitted content.
++    const gfx::Rect full_child = resolved_root_pass.render_pass().output_rect;
++    gfx::Rect visible_child = gfx::ScaleToEnclosingRect(
++        surface_quad->visible_rect, inverse_extra_content_scale_x,
++        inverse_extra_content_scale_y);
++    visible_child.Intersect(full_child);
++    const gfx::Transform child_to_root =
++        dest_pass->transform_to_root_target * combined_transform;
++    std::optional<gfx::Rect> additional_root_clip;
++    if (added_clip_rect) additional_root_clip = cc::MathUtil::MapEnclosingClippedRect(
++        dest_pass->transform_to_root_target, *added_clip_rect);
++    const auto coverage = NativeGuestFullCoverage(full_child, visible_child, child_to_root,
++        dest_root_target_clip_rect, additional_root_clip,
++        !mask_filter_info.mask_filter_info.IsEmpty() || !surface_quad_sqs->mask_filter_info.IsEmpty());
++    if (coverage) native_guest_receipt_->RecordEmittedSurface(surface_id,
++        surface->GetActiveFrameMetadata().frame_token, *coverage,
++        surface_quad_sqs->opacity, full_child.size());
++  }
+   referenced_surfaces_.erase(surface_id);
+ }
+ 
+@@ -2048,8 +2079,12 @@
+   // them too.
+   surface->TakeCopyOutputRequestsFromClient();
+ 
+-  if (root_resolved_pass.aggregation().will_draw)
++  if (root_resolved_pass.aggregation().will_draw) {
++    if (native_guest_receipt_)
++      native_guest_receipt_->RecordDrawnSurface(surface->surface_id(),
++          surface->GetActiveFrameMetadata().frame_token);
+     surface->OnWillBeDrawn();
++  }
+ 
+   const auto& frame_metadata = resolved_frame.GetMetadata();
+   for (const SurfaceRange& surface_range : frame_metadata.referenced_surfaces) {
+--- a/components/viz/service/display/display.h
++++ b/components/viz/service/display/display.h
+@@ -13,6 +13,8 @@
+ #include "base/containers/circular_deque.h"
+ #include "base/containers/flat_set.h"
+ #include "base/functional/callback_helpers.h"
++#include "base/functional/callback.h"
++#include "components/viz/service/display/native_guest_inclusion_receipt.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/observer_list.h"
+ #include "base/observer_list_types.h"
+@@ -153,6 +155,9 @@
+ 
+   // DisplaySchedulerClient implementation.
+   bool DrawAndSwap(const DrawAndSwapParams& params) override;
++  // Internal privileged owner route only; never renderer/public debug API.
++  bool RequestNativeGuestInclusion(NativeGuestInclusionScope scope,
++      base::OnceCallback<void(NativeGuestInclusionResult)> result);
+   void DidFinishFrame(const BeginFrameId& frame_id,
+                       DisplaySchedulerDrawResult result) override;
+   int GetCurrentAllocatedBuffers() const override;
+@@ -255,6 +260,11 @@
+     void OnSwap(gfx::SwapTimings timings, DisplaySchedulerBase* scheduler);
+     bool HasSwapped() const { return !swap_timings_.is_null(); }
+     void OnPresent(const gfx::PresentationFeedback& feedback);
++    void SetNativeGuestInclusion(std::unique_ptr<NativeGuestInclusionReceipt> receipt,
++        SurfaceId display, base::OnceCallback<void(NativeGuestInclusionResult)> result) {
++      native_guest_receipt_ = std::move(receipt); native_guest_display_ = display;
++      native_guest_result_ = std::move(result);
++    }
+ 
+     base::TimeTicks frame_time() const { return frame_time_; }
+     base::TimeDelta interval() const { return interval_; }
+@@ -269,6 +279,9 @@
+     }
+ 
+    private:
++    std::unique_ptr<NativeGuestInclusionReceipt> native_guest_receipt_;
++    SurfaceId native_guest_display_;
++    base::OnceCallback<void(NativeGuestInclusionResult)> native_guest_result_;
+     base::TimeTicks frame_time_;
+     base::TimeDelta interval_;
+     base::TimeTicks draw_start_timestamp_;
+@@ -283,6 +296,8 @@
+     std::optional<PossibleDeadline> selected_deadline_;
+   };
+ 
++  std::optional<NativeGuestInclusionScope> native_guest_scope_;
++  base::OnceCallback<void(NativeGuestInclusionResult)> native_guest_result_;
+   void InitializeRenderer();
+ 
+   // ContextLostObserver implementation.
+--- a/components/viz/service/display/display.cc
++++ b/components/viz/service/display/display.cc
+@@ -3,6 +3,7 @@
+ // found in the LICENSE file.
+ 
+ #include "components/viz/service/display/display.h"
++#include "base/functional/bind.h"
+ 
+ #include <stddef.h>
+ 
+@@ -231,7 +232,11 @@
+ Display::PresentationGroupTiming::PresentationGroupTiming(
+     Display::PresentationGroupTiming&& other) = default;
+ 
+-Display::PresentationGroupTiming::~PresentationGroupTiming() = default;
++Display::PresentationGroupTiming::~PresentationGroupTiming() {
++  if (native_guest_receipt_ && native_guest_result_)
++    std::move(native_guest_result_).Run(native_guest_receipt_->Present(native_guest_display_,
++        draw_start_timestamp_, swap_timings_, gfx::PresentationFeedback::Failure(), base::TimeTicks::Now()));
++}
+ 
+ void Display::PresentationGroupTiming::AddPresentationHelper(
+     std::unique_ptr<Surface::PresentationHelper> helper) {
+@@ -286,6 +291,9 @@
+     presentation_helper->DidPresent(draw_start_timestamp_, swap_timings_,
+                                     feedback);
+   }
++  if (native_guest_receipt_ && native_guest_result_)
++    std::move(native_guest_result_).Run(native_guest_receipt_->Present(native_guest_display_,
++        draw_start_timestamp_, swap_timings_, feedback, base::TimeTicks::Now()));
+ }
+ 
+ Display::Display(
+@@ -328,6 +336,11 @@
+ }
+ 
+ Display::~Display() {
++  if (native_guest_scope_ && native_guest_result_) {
++    NativeGuestInclusionReceipt refusal(std::move(*native_guest_scope_));
++    std::move(native_guest_result_).Run(refusal.Present(current_surface_id_, base::TimeTicks(),
++        gfx::SwapTimings(), gfx::PresentationFeedback::Failure(), base::TimeTicks::Now()));
++  }
+ #if DCHECK_IS_ON()
+   allow_schedule_gpu_task_during_destruction_.reset(
+       new gpu::ScopedAllowScheduleGpuTask);
+@@ -751,7 +764,34 @@
+   return renderer_ ? renderer_->GetCurrentAllocatedBuffers() : 0;
+ }
+ 
++bool Display::RequestNativeGuestInclusion(NativeGuestInclusionScope scope,
++    base::OnceCallback<void(NativeGuestInclusionResult)> result) {
++  if (result.is_null()) return false;
++  if (native_guest_scope_ || scope.display_sink != frame_sink_id_) {
++    NativeGuestInclusionReceipt refusal(std::move(scope));
++    std::move(result).Run(refusal.Present(current_surface_id_, base::TimeTicks(),
++        gfx::SwapTimings(), gfx::PresentationFeedback::Failure(), base::TimeTicks::Now()));
++    return false;
++  }
++  native_guest_scope_ = std::move(scope); native_guest_result_ = std::move(result);
++  return true;
++}
++
+ bool Display::DrawAndSwap(const DrawAndSwapParams& params) {
++  auto native_scope = std::move(native_guest_scope_);
++  native_guest_scope_.reset();
++  auto native_result = std::move(native_guest_result_);
++  base::ScopedClosureRunner refuse_native(base::BindOnce(
++      [](std::optional<NativeGuestInclusionScope>* scope,
++         base::OnceCallback<void(NativeGuestInclusionResult)>* callback,
++         SurfaceId display) {
++        if (*scope && *callback) {
++          NativeGuestInclusionReceipt refusal(**scope);
++          std::move(*callback).Run(refusal.Present(display, base::TimeTicks(),
++              gfx::SwapTimings(), gfx::PresentationFeedback::Failure(), base::TimeTicks::Now()));
++        }
++      }, base::Unretained(&native_scope), base::Unretained(&native_result), current_surface_id_));
++
+   TRACE_EVENT0("viz", "Display::DrawAndSwap");
+ #if !BUILDFLAG(IS_APPLE)
+   RecordFDUsageUMA();
+@@ -844,6 +884,8 @@
+     // aggregated again so that the trail exists for a single frame.
+     target_damage_bounding_rect.Union(
+         renderer_->GetDelegatedInkTrailDamageRect());
++    if (native_scope)
++      aggregator_->SetNativeGuestInclusionScope(*native_scope);
+     frame = aggregator_->Aggregate(
+         current_surface_id_, params.expected_display_time,
+         current_display_transform, target_damage_bounding_rect,
+@@ -1042,6 +1084,10 @@
+         params.choreographer_vsync_id.value_or(0), display_trace_id,
+         params.selected_deadline);
+ 
++    if (native_result)
++      presentation_group_timing.SetNativeGuestInclusion(
++          aggregator_->TakeNativeGuestInclusionReceipt(), current_surface_id_,
++          std::move(native_result));
+     bool has_interactive_frame = false;
+     bool has_animated_frame = false;
+     for (const auto& surface_id : aggregator_->previous_contained_surfaces()) {
