@@ -1,0 +1,16 @@
+{
+  "status": "Root independent stage/preflight byteaudit PASS; compile notyetcomplete",
+  "candidate": "e708a3b43e48b44e92a867d0a12198e767f527e7",
+  "productTree": "191c854ed13f32b7a985f46de683b52ecfe05a7e",
+  "nativePaths": 306,
+  "orderedPackets": 96,
+  "existingBaselines": 190,
+  "rendererAssets": 175,
+  "rendererDigest": "88b95907e36108db0df194f290eddf33d4f419c98bdd727b4df4b68abfeb4673",
+  "generatedHeaderSha256": "42e514dc841575e98886bad443fbaafca35de36ce03c09967a5f207056f32ae0",
+  "proofSha256": "65417373adc561b9f87a5328b3098775663ecdb07bcf8b95006818f340b8b064",
+  "watcherSha256": "482a680db2fd98a1ee592bac72c4c15f1d5fdc59a78445d0026f3c07669bb1c6",
+  "rootWatcherSelfTestLogSha256": "fd1bc90735a23d18b6c22d9f3fc7a2de00150b03a23d339ce33f49fa2dfa9a67",
+  "watchEventSha256": "aec476db086e97dae15efe8b354117f0345551fc81df7301365f4017e731ffd9",
+  "qualified": false
+}

@@ -1,0 +1,30 @@
+{
+  "candidate": "d565d969f1de9dd0a718994da1fe7982a83e5d32",
+  "terminalUtc": "2026-10-02T17:17:34.232672+00:00",
+  "exitCode": 1,
+  "done": 4374,
+  "failed": 5,
+  "remainingBlocked": 1464,
+  "elapsed": "2h29m40.48s",
+  "nativeSourcePathsMatch": 284,
+  "generatedPathsMatch": 3,
+  "watcherExitCode": 0,
+  "driftEvents": 0,
+  "ownedPidsAbsent": [
+    71295,
+    71308,
+    71319,
+    71320,
+    71410,
+    71412
+  ],
+  "slotAbsent": true,
+  "runtimeStaged": false,
+  "helperCompiled": false,
+  "physicalExecution": false,
+  "log": "/tmp/aux-root-d565d969-build.log",
+  "logSha256": "9c52ef785b14687b289af1c642ff7c44b39a97a563c906c830180248a7bff7e4",
+  "copiedLog": "/tmp/aux-browser-runtime-builder-d565d969/release/test-artifacts/builder-d565-native-build/build.log",
+  "errorLedger": "/tmp/aux-browser-runtime-builder-d565d969/release/test-artifacts/builder-d565-native-build/terminal-errors.json",
+  "errorLedgerSha256": "e866723b8ac960073b4881e6d95229652875312188d023ed0aa2ac2059b1724e"
+}
