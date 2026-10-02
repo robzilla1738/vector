@@ -1,6 +1,7 @@
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { afterEach, expect, it, vi } from "vitest";
 import { EventBus, NullNativeBridge, openDb, Repo, RunService, SetService, type ArtifactStore, type ModelClient, type PageService, type SettingsService } from "@aux/runtime";
+import { AuxError } from "@aux/contracts";
 import type { AgentPageCreate, EgressLease, Observation, PageTarget, Program } from "@aux/contracts";
 import { BrowserEgress } from "../../apps/runtime/src/safety/browser-egress.js";
 
@@ -32,7 +33,7 @@ function harness(url = "https://source.test/") {
   const egress = new BrowserEgress({ profileId: "profile", native,
     run: runId => { const run = repo.getRun(runId); return run && ["queued", "running", "planning", "needs_input"].includes(run.status)
       ? { taskRevision: 0, threadId: runId } : null; },
-    page: pageId => targets.get(pageId)!, ownsPage: (runId, pageId) => runs.pageOwnership.snapshot()[pageId]?.runId === runId,
+    page: pageId => { const page = targets.get(pageId); if (!page) throw new AuxError("not_found", `no page ${pageId}`); return page; }, ownsPage: (runId, pageId) => runs.pageOwnership.snapshot()[pageId]?.runId === runId,
     audit: vi.fn(), approve: async () => false,
   });
   const execute = vi.fn(async (program: Program, ctx: { runId: string }) => {
@@ -40,7 +41,7 @@ function harness(url = "https://source.test/") {
     return { status: "completed" as const, steps: [], extracted: { answer: "Read controlled copy" } };
   });
   const pages = {
-    get: (id: string) => targets.get(id)!, list: () => [...targets.values()], livePageIds: () => [...targets.keys()], isAttached: (id: string) => targets.has(id),
+    get: (id: string) => { const page = targets.get(id); if (!page) throw new AuxError("not_found", `no page ${id}`); return page; }, list: () => [...targets.values()], livePageIds: () => [...targets.keys()], isAttached: (id: string) => targets.has(id),
     open: async (opts: Parameters<PageService["open"]>[0]) => {
       if (!opts.agentScope) throw new Error("ordinary open must not occur");
       const created = await native.createAgentPage({ ...opts.agentScope, windowId: "main", background: true });
@@ -117,4 +118,67 @@ it("set replay uses an isolated worker and releases its authority before closing
   expect(f.native.egressRevoke).toHaveBeenCalled(); expect(f.trace).toContain("close:controlled-1");
   expect(f.targets.has("owner")).toBe(true); expect(f.trace).not.toContain("execute:owner");
   expect(f.runs.pageOwnership.snapshot()).toEqual({});
+});
+
+it("a closed explicit source rejects start without substituting another page or persisting a run", async () => {
+  const f = harness();
+  const ref = { pageId: "owner", url: "https://source.test/", documentEpoch: 1, sessionId: "synthetic-owner-attachment" };
+  f.targets.delete("owner");
+  await expect(f.runs.start({ goal: "Read this selected source", pageIds: ["owner"], contextPageRefs: [ref] }))
+    .rejects.toMatchObject({ code: "not_found", message: "The selected browser tab is no longer available. Choose another tab or remove its browser context before trying again." });
+  expect(f.repo.listRuns(10)).toEqual([]);
+  expect(f.created).toEqual([]);
+  expect(f.model.generateStructured).not.toHaveBeenCalled();
+});
+
+it("a selected source closed during queued turn setup fails actionably before copying or model observation", async () => {
+  const f = harness();
+  let resume!: () => void;
+  const held = new Promise<void>(resolve => { resume = resolve; });
+  const begin = f.runs.coordinator.deps.turnMentions.begin.bind(f.runs.coordinator.deps.turnMentions);
+  vi.spyOn(f.runs.coordinator.deps.turnMentions, "begin").mockImplementation(async (...args) => { await held; return begin(...args); });
+  const run = await f.runs.coordinator.start({ goal: "Read this selected source", pageIds: ["owner"] });
+  f.targets.delete("owner");
+  resume();
+  await until(() => f.repo.getRun(run.runId)?.status === "failed");
+  expect(f.repo.getRun(run.runId)?.error).toBe("The selected browser tab is no longer available. Choose another tab or remove its browser context before trying again.");
+  expect(f.repo.getRun(run.runId)?.pageIds).toEqual(["owner"]);
+  expect(f.created).toEqual([]);
+  expect(f.trace).toEqual([]);
+  expect(f.model.generateStructured).not.toHaveBeenCalled();
+});
+
+it("unexpected page lookup failures retain their original error instead of masquerading as a closed tab", async () => {
+  const f = harness();
+  const error = new AuxError("permission_denied", "Source authority revoked");
+  vi.spyOn(f.pages, "get").mockImplementation(() => { throw error; });
+  await expect(f.runs.start({ goal: "Read", pageIds: ["owner"], contextPageRefs: [{ pageId: "owner", url: "https://source.test/", documentEpoch: 1 }] }))
+    .rejects.toBe(error);
+  expect(f.repo.listRuns(10)).toEqual([]);
+});
+
+it("a selected tab closed while native source context is held cannot copy or replace its context", async () => {
+  const f = harness();
+  let resume!: () => void;
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const held = new Promise<void>(resolve => { resume = resolve; });
+  const context = f.native.egressContext.getMockImplementation()!;
+  f.native.egressContext.mockImplementation(async input => {
+    const receipt = await context(input);
+    entered();
+    await held;
+    return receipt;
+  });
+  const run = await f.runs.coordinator.start({ goal: "Read selected website", pageIds: ["owner"] });
+  try {
+    await started;
+    f.targets.delete("owner");
+  } finally { resume(); }
+  await until(() => f.repo.getRun(run.runId)?.status === "failed");
+  expect(f.repo.getRun(run.runId)?.error).toBe("The selected browser tab is no longer available. Choose another tab or remove its browser context before trying again.");
+  expect(f.repo.getRun(run.runId)?.pageIds).toEqual(["owner"]);
+  expect(f.created).toEqual([]);
+  expect(f.trace).toEqual([]);
+  expect(f.model.generateStructured).not.toHaveBeenCalled();
 });

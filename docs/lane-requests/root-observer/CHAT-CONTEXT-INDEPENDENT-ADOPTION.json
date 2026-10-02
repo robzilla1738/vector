@@ -1,0 +1,54 @@
+{
+  "base": "7ec4792f9a0941d815d5eee0b0d7cd15c07a0b32",
+  "patchSha256": "afa5682a1f84af04656bdafc93adc795ed20e1487d28e73c3ef70afe91708d0d",
+  "leaves": [
+    {
+      "path": "apps/runtime/src/agent/coordinator.ts",
+      "baselineSha256": "c557f72b5f9182b434e4f0f975887e08d832a6aa7445e8f4785a55d8a7f5e37c",
+      "resultSha256": "9dd2dfc8e67deb3d27e95e2226e95046eded824c4e46bef4c3d256199cd08338"
+    },
+    {
+      "path": "apps/runtime/src/safety/browser-egress.ts",
+      "baselineSha256": "cc4e92bd889b1a8fb4af4074d4835434c55092d40c5407cc8f164bd78f737458",
+      "resultSha256": "ad69694d25e67dd560c6f9d6e9d54d9a243ec1ed3954c8a420ed8b5f937a6f4c"
+    },
+    {
+      "path": "apps/runtime/src/services/runs.ts",
+      "baselineSha256": "3f0efaaa5217a86e930c7137111ee8fd6475e3d0c16891b0aeb0942cdd64d51e",
+      "resultSha256": "eaf053afdfa8f2cd0211da9fda4e833bd680a1665069f92d881a0f3ac18ea384"
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextPicker.test.tsx",
+      "baselineSha256": null,
+      "resultSha256": "24a1015d906225794d8df96ada7676e1668150adf70137bcc7f9d0a0c7bdf6ab"
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextPicker.tsx",
+      "baselineSha256": "ab6910f204114cbd660f3b9cb83aa182407aec585d47236aca6c77138a1a511e",
+      "resultSha256": "e2622e91ea850be72151464b8ad39f164ad24b88d6f78a146bcd6695bd533210"
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextTray.tsx",
+      "baselineSha256": "4940461b6193cd0eb2b0f536261df3d28452852c95a2b8a7944c75cff9259279",
+      "resultSha256": "35bddcf399d2876b8c727b87a9d91a132ffd1d7723ce7cd16e838b0fc77a41fb"
+    },
+    {
+      "path": "apps/shell/src/conversation-page.test.ts",
+      "baselineSha256": "71223070a26148419aeab3cfcbb1110c6bf04142be4576dd15d3aa9449468364",
+      "resultSha256": "57040ba9c845b76a22fedbf7e4c0d3a4c52ff84deb84118ba78b2d337a9e5a0d"
+    },
+    {
+      "path": "apps/shell/src/conversation-page.ts",
+      "baselineSha256": "f4a5e4a68bd1a4466d48a9593ec78d9411d8a9195724c04dcb8fd11785ea6f4d",
+      "resultSha256": "79adf78ba36797c4b0c1c0ada2088c30da0e66c75542b7364094d4481bcd8ad6"
+    },
+    {
+      "path": "tests/unit/agent-isolation-flow.test.ts",
+      "baselineSha256": "5e497b581971f67ea2d7fe259ba0168970264a10423084498bba1ca412cb0de8",
+      "resultSha256": "e5224f51aff2273f2b5ea06645e80e725c054cc2e5dd0cf23f2180403f2b64c4"
+    }
+  ],
+  "rootIndependentReview": "All9 actual before/after pins and contextual forward/reverse PASS. Broker HTTP(S) boundary shared by picker/tray/default; exact expected not_found translated; closed explicit draft/context retained and no silent substitute. Native screenshot recapture pending.",
+  "rootComposition": "Expected missing-page translation centralized in contracts-only generic browserContextPage helper; current source rebuild pending, focused runtime/renderer checks required on resume.",
+  "pausedAtUserRequest": true
+}

@@ -1,3 +1,4 @@
+import { browserContextPage } from "../services/browser-context-page.js";
 import { createHash } from "node:crypto";
 import {
   AuxError, EgressContextSchema, EgressRequestSchema,
@@ -62,14 +63,15 @@ export class BrowserEgress {
       throw new AuxError("capability_unsupported", "This browser cannot open a protected temporary tab. Update Aux before continuing.");
     const identity = { profileId: this.deps.profileId, runId, taskId: run.taskId, taskRevision: run.taskRevision };
     if (!sourcePageId) return identity;
-    const page = { ...this.deps.page(sourcePageId) };
+    const sourcePage = () => browserContextPage(() => this.deps.page(sourcePageId));
+    const page = { ...sourcePage() };
     const url = new URL(page.url);
     if (!["http:", "https:"].includes(url.protocol) || url.username || url.password)
       throw new AuxError("permission_denied", "Choose a website to open in a separate signed-out tab.");
     if (!this.deps.native.egressContext)
       throw new AuxError("capability_unsupported", "The source document cannot be verified.");
     const context = EgressContextSchema.parse(await this.deps.native.egressContext({ tabId: sourcePageId, expectedUrl: page.url }));
-    const after = this.deps.page(sourcePageId), currentRun = this.deps.run(runId);
+    const after = sourcePage(), currentRun = this.deps.run(runId);
     if (context.profileId !== identity.profileId || context.tabId !== sourcePageId || context.sourceOrigin !== url.origin
       || !currentRun || currentRun.taskId !== run.taskId || currentRun.taskRevision !== run.taskRevision
       || after.url !== page.url || after.documentEpoch !== page.documentEpoch

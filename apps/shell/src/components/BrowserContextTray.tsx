@@ -2,7 +2,7 @@ import { memo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageContextRef, PageTarget } from "@aux/contracts";
 import { sourceRef, sourceStatus } from "../browser-context-sources";
-import { conversationPage } from "../conversation-page";
+import { availableConversationPage, conversationPage } from "../conversation-page";
 import { useStore, call, errToast } from "../store";
 import { hostOf } from "../workspace";
 import { BrowserContextPicker } from "./BrowserContextPicker";
@@ -11,8 +11,7 @@ import "./ContextPicker.css";
 import { Checkbox } from "../ui";
 import { shellIconClose, shellIconGlobe, shellIconReload } from "./icons";
 
-const availableSource = (page: PageTarget, primaryPageId?: string) => !page.ownedByRuntime && !page.loading
-  && !["crashed", "detached"].includes(page.viewStatus ?? "") && page.url.length <= 8192
+const availableSource = (page: PageTarget, primaryPageId?: string) => availableConversationPage(page) && !page.loading && page.url.length <= 8192
   && page.pageId !== primaryPageId;
 
 const AdditionalTabChoice = memo(function AdditionalTabChoice({ pageId, selected, disabled, onToggle }: {
@@ -66,7 +65,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
     const pending = await call("browser.recovery.list", {});
     if (pending.some(tab => tab.pageId === pageId)) await call("browser.recovery.retry", { pageId });
     const live = (await call("pages.list", {})).find(item => item.pageId === pageId);
-    if (!live || live.ownedByRuntime || live.viewStatus === "detached" || live.viewStatus === "crashed") throw new Error("This browser tab is unavailable.");
+    if (!live || !availableSource(live)) throw new Error("This browser tab is unavailable.");
     return sourceRef(live);
   };
   const toggle = async (pageId: string) => {

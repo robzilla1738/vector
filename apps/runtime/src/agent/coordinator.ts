@@ -1,3 +1,4 @@
+import { browserContextPage } from "../services/browser-context-page.js";
 import { withRunAuthorityMutation } from "../services/overnight-authority.js";
 import {
   EventTypes,
@@ -595,7 +596,7 @@ export class RunCoordinator {
         const sources: NonNullable<NonNullable<Run["config"]>["isolatedPageSources"]> = [];
         for (const sourcePageId of run.pageIds) {
           if (control.abort.signal.aborted) throw new AuxError("cancelled", "Run cancelled before opening its temporary tab.");
-          const source = this.deps.pages.get(sourcePageId);
+          const source = browserContextPage(() => this.deps.pages.get(sourcePageId));
           // An empty tab grants no destination. The tool loop must choose an
           // exact HTTP(S) URL before openTab creates any actionable document.
           if (source.url === "about:blank") continue;

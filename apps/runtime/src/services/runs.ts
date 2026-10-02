@@ -1,3 +1,4 @@
+import { browserContextPage } from "./browser-context-page.js";
 import { withRunAuthorityMutation } from "./overnight-authority.js";
 import { saveAuthorizedModelCall } from "./model-call-authority.js";
 import { checkNightShiftDispatch } from "../features/overnight-review/service.js";
@@ -1001,7 +1002,7 @@ export class RunService {
       for (const ref of opts.contextPageRefs) {
         if (!allowed.has(ref.pageId) || seen.has(ref.pageId)) throw new AuxError("invalid_params", "Selected browser context must contain distinct run pages.");
         seen.add(ref.pageId);
-        const page = this.deps.pages.get(ref.pageId);
+        const page = browserContextPage(() => this.deps.pages.get(ref.pageId));
         if (page.ownedByRuntime || page.viewStatus === "detached" || page.viewStatus === "crashed"
           || page.documentEpoch !== ref.documentEpoch || page.url !== ref.url || page.sessionId !== ref.sessionId) {
           throw new AuxError("conflict", "A selected browser tab changed. Review its context before sending.");
