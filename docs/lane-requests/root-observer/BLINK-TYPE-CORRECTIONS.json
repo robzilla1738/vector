@@ -1,0 +1,25 @@
+{
+  "patch": "chromium/patches/aux/runtime/0253-blink-native-guest-type-corrections.patch",
+  "patchSha256": "73233a3453bbf8d0e19c00cfdce1deaa5aefd3fce51a75020b9e655cbf3622e7",
+  "actualCompilerLog": "/tmp/aux-root-f802cc20-build.log",
+  "nativeCompiled": false,
+  "files": {
+    "third_party/blink/renderer/platform/widget/widget_base_client.h": {
+      "before": "2f89a7eb3fca1405f9417b74441522bbcf1baf3b0c4bb8b80088ec25d333daff",
+      "after": "f7dd9a6a0c94edcf20c12b60a6fa5583e8aa155743d3fd3ae943ab9feccd2dd1"
+    },
+    "third_party/blink/renderer/core/frame/native_guest_stage_witness.h": {
+      "before": "19b21d77de88655c8f7e5b4cb867bd5f5f92d8cbb1c36694707b989536099b88",
+      "after": "680e21633a20f2650a30513535f84a21c24b8555f8c80feab9683d4e218e4889"
+    },
+    "third_party/blink/renderer/core/frame/native_guest_stage_controller.cc": {
+      "before": "53a4329f85ab6d0c5f2a9d3103e61cbce61366257cb4318c58e37be9ccdd7863",
+      "after": "9c2eca35bf585f188ec24c856a259dd0ff1d5b39007fef99695e7967e62795eb"
+    }
+  },
+  "corrections": [
+    "Full generated Mojo definition for inline callback destruction",
+    "Blink Vector for witness pages; unchanged collection semantics",
+    "Actual supported String::FromUtf8(std::string_view), no fallback"
+  ]
+}

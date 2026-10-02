@@ -1,6 +1,6 @@
 {
-  "status": "81 ordered packets full reverse/actual baselines/forward exact mirrors PASS; native compilation pending",
-  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-authority-81-replay-dfy7v99x",
+  "status": "82 ordered packets full reverse/actual baselines/forward exact mirrors PASS; native compilation pending",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-authority-82-replay-94tatx0p",
   "orderedPatches": [
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch",
     "chromium/patches/aux/runtime/0150-little-window-controller.patch",
@@ -82,7 +82,8 @@
     "chromium/patches/aux/runtime/0248-pip-actual-owner-window.patch",
     "chromium/patches/aux/runtime/0249-pip-actual-owner-page.patch",
     "chromium/patches/aux/runtime/0250-content-public-browser-dependency.patch",
-    "chromium/patches/aux/runtime/0251-platform-widget-mojo-import-order.patch"
+    "chromium/patches/aux/runtime/0251-platform-widget-mojo-import-order.patch",
+    "chromium/patches/aux/runtime/0253-blink-native-guest-type-corrections.patch"
   ],
   "packetDigests": {
     "chromium/patches/aux/runtime/0148-cross-window-claim.patch": "8a7337726222a33aa306fd3f35e3485a60b59d4c0d036a1fda9bc98dce8c4e93",
@@ -165,7 +166,8 @@
     "chromium/patches/aux/runtime/0248-pip-actual-owner-window.patch": "d17b46dde29fcf143c878643e62f34f645d8d5982178a8aa83973e538d2716d4",
     "chromium/patches/aux/runtime/0249-pip-actual-owner-page.patch": "519878caee094b31bea262a0a73097fef6f79a90f16b4abc497d2695553b2459",
     "chromium/patches/aux/runtime/0250-content-public-browser-dependency.patch": "bfb6b64f09b39430e3a6f9b512affb2bc03feaca783ea8e10241b3ab0f4d61f6",
-    "chromium/patches/aux/runtime/0251-platform-widget-mojo-import-order.patch": "9bfa20f22dee827b8475acb42cca6bb1a0804dcab8da690baa18bcc497d9db90"
+    "chromium/patches/aux/runtime/0251-platform-widget-mojo-import-order.patch": "9bfa20f22dee827b8475acb42cca6bb1a0804dcab8da690baa18bcc497d9db90",
+    "chromium/patches/aux/runtime/0253-blink-native-guest-type-corrections.patch": "73233a3453bbf8d0e19c00cfdce1deaa5aefd3fce51a75020b9e655cbf3622e7"
   },
   "baselineVerification": {
     "cc/BUILD.gn": "2b1b3c86ec12fcd5dd95bb5c94fcc42f49f8530359e682c1903a019268bdba06",
@@ -600,12 +602,12 @@
     "third_party/blink/renderer/core/frame/native_command_results_witness_test.cc": "b95e3248849fae2a2c18b427887d708f37a8cb03a077c5f173850bc8f0684b35",
     "third_party/blink/renderer/core/frame/native_guest_document_frame_stamp.cc": "0f059fe3f2c0e991d592f6e701593d6a6fc56cd4c64a4c0ecf2a48b48af059c7",
     "third_party/blink/renderer/core/frame/native_guest_document_frame_stamp.h": "2d081288cf54043439760c8969444e7cd8bf36d89799d3c96343d7c7b316bc9a",
-    "third_party/blink/renderer/core/frame/native_guest_stage_controller.cc": "53a4329f85ab6d0c5f2a9d3103e61cbce61366257cb4318c58e37be9ccdd7863",
+    "third_party/blink/renderer/core/frame/native_guest_stage_controller.cc": "9c2eca35bf585f188ec24c856a259dd0ff1d5b39007fef99695e7967e62795eb",
     "third_party/blink/renderer/core/frame/native_guest_stage_controller.h": "54da8c4436ddbd7fb28673073a3d586bf4842f5c0838cec556770f5de34e09c4",
     "third_party/blink/renderer/core/frame/native_guest_stage_measurement.cc": "ae5dd94be089cac27cffbbe2bdf0dcbb4303b85efe5f367e29c65354c82266b9",
     "third_party/blink/renderer/core/frame/native_guest_stage_measurement.h": "2684651ea8553886e59c455b27ae187297722143af1c862d3c8dbeecc2b5d14d",
     "third_party/blink/renderer/core/frame/native_guest_stage_witness.cc": "2a17a2052395f1738ddf941e9194231d58a07bf4e7f051ada7a218a7845c047e",
-    "third_party/blink/renderer/core/frame/native_guest_stage_witness.h": "19b21d77de88655c8f7e5b4cb867bd5f5f92d8cbb1c36694707b989536099b88",
+    "third_party/blink/renderer/core/frame/native_guest_stage_witness.h": "680e21633a20f2650a30513535f84a21c24b8555f8c80feab9683d4e218e4889",
     "third_party/blink/renderer/core/frame/native_guest_stage_witness_test.cc": "ffc24a11d4b0aa40b0be6011d63f0600d140eec2783656c4f3a669d8c1325557",
     "third_party/blink/renderer/core/frame/web_frame_widget_impl.cc": "4643e2a4e66ff35330680f46c79ebc1404562cf2978ba59daa0ffea7bf9b3116",
     "third_party/blink/renderer/core/frame/web_frame_widget_impl.h": "1bb62a806cdf5d270132919e901467ed68ac476af05c0acc0066924988b42fad",
@@ -627,7 +629,7 @@
     "third_party/blink/renderer/platform/widget/input/widget_base_input_handler.cc": "539af6b02fbdd9757f32cc17b458744ac4fbb6a48502e71933f49e0528aaf604",
     "third_party/blink/renderer/platform/widget/widget_base.cc": "534f0dd750d09b70f44da515f4863a48a4b8bddf964894b2cc39c4b5cbd1a8ec",
     "third_party/blink/renderer/platform/widget/widget_base.h": "cd451a791edf660a6656b3e97fce2aa50b9ecea651b34300eb89814aba42e1fa",
-    "third_party/blink/renderer/platform/widget/widget_base_client.h": "2f89a7eb3fca1405f9417b74441522bbcf1baf3b0c4bb8b80088ec25d333daff",
+    "third_party/blink/renderer/platform/widget/widget_base_client.h": "f7dd9a6a0c94edcf20c12b60a6fa5583e8aa155743d3fd3ae943ab9feccd2dd1",
     "tools/gritsettings/resource_ids.spec": "46bb8fbb1992a6668288b1fa9d3dfe47ee5b3082cb4ffc3dd4115627f3c4e86e",
     "ui/compositor/compositor.cc": "926dfb793ef4644a5820e97ad8bcd7405b90b23556f1cdbc2bdd60ea7cd8dc47",
     "ui/compositor/compositor.h": "dd7f970cfa7a021afa5c6823d3b62d0fb6f2da3fa8f98abdc9f9dd2700fcece6",

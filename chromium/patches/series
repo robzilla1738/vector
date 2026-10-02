@@ -223,3 +223,4 @@ aux/runtime/0248-pip-actual-owner-window.patch
 aux/runtime/0249-pip-actual-owner-page.patch
 aux/runtime/0250-content-public-browser-dependency.patch
 aux/runtime/0251-platform-widget-mojo-import-order.patch
+aux/runtime/0253-blink-native-guest-type-corrections.patch

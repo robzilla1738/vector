@@ -1,0 +1,44 @@
+--- a/third_party/blink/renderer/platform/widget/widget_base_client.h
++++ b/third_party/blink/renderer/platform/widget/widget_base_client.h
+@@ -5,7 +5,7 @@
+ #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_WIDGET_WIDGET_BASE_CLIENT_H_
+ #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_WIDGET_WIDGET_BASE_CLIENT_H_
+ 
+-#include <vector>
++#include "third_party/blink/public/mojom/widget/native_guest_stage_measurement.mojom-blink.h"
+ #include "third_party/blink/public/mojom/widget/platform_widget.mojom-blink.h"
+ 
+ #include "base/time/time.h"
+--- a/third_party/blink/renderer/core/frame/native_guest_stage_witness.h
++++ b/third_party/blink/renderer/core/frame/native_guest_stage_witness.h
+@@ -3,9 +3,9 @@
+ #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_NATIVE_GUEST_STAGE_WITNESS_H_
+ #include <optional>
+ #include <string>
+-#include <vector>
+ #include "third_party/blink/public/common/tokens/tokens.h"
+ #include "third_party/blink/renderer/core/core_export.h"
++#include "third_party/blink/renderer/platform/wtf/vector.h"
+ #include "ui/gfx/geometry/rect_f.h"
+ #include "ui/gfx/geometry/rect.h"
+ namespace blink {
+@@ -27,7 +27,7 @@
+   uint64_t geometry_generation = 0;
+   bool dragging = false;
+   bool focused_divider = false;
+-  std::vector<NativeGuestStagePage> pages;
++  Vector<NativeGuestStagePage> pages;
+   uint64_t stage_instance = 0;
+   uint64_t split_instance = 0;
+ };
+--- a/third_party/blink/renderer/core/frame/native_guest_stage_controller.cc
++++ b/third_party/blink/renderer/core/frame/native_guest_stage_controller.cc
+@@ -13,7 +13,7 @@
+   out->focused_divider = sample.focused_divider;
+   for (const auto& page : sample.pages) {
+     auto item = mojom::blink::NativeGuestStagePage::New();
+-    item->page_id = String::FromUTF8(page.page_id); item->content_id = String::FromUTF8(page.content_id);
++    item->page_id = String::FromUtf8(page.page_id); item->content_id = String::FromUtf8(page.content_id);
+     item->document_epoch = page.document_epoch; item->bounds = page.bounds;
+     item->pane_bounds = page.pane_bounds; item->pane_radius = page.pane_radius;
+     item->plugin_bounds_in_parent_pixels = page.plugin_bounds_in_parent_pixels;
