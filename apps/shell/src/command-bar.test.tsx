@@ -9,6 +9,7 @@ vi.mock("./bridge", async importOriginal => ({
 }));
 import { bridge } from "./bridge";
 import { CommandBar } from "./components/CommandBar";
+import { Toasts } from "./components/Toasts";
 import { useStore } from "./store";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -389,5 +390,35 @@ it("records typed frecency only after navigation succeeds", async () => {
   expect(close).not.toHaveBeenCalled();
   await act(async () => key(input, "Enter"));
   expect(invoke).toHaveBeenCalledWith("command.ranking.record", expect.objectContaining({ pickOrigin: "typed", candidateKey: "https://example.com/typed" }));
+  expect(close).toHaveBeenCalledOnce();
+});
+
+it("keeps missing-model Ask refusals in the command surface and searches after three failures", async () => {
+  useStore.setState({ settings: { modelConfigured: false, commandRouting: "automatic" }, overlay: null, toasts: [] } as never);
+  const start = vi.spyOn(useStore.getState(), "startRun");
+  const create = vi.spyOn(useStore.getState(), "newTab").mockResolvedValue(page as never);
+  vi.spyOn(bridge, "invoke").mockResolvedValue([] as never);
+  const search = vi.spyOn(bridge, "resolveSearch").mockResolvedValue("https://example.com/profile-search");
+  const question = "What is the local fixture showing?";
+  const close = vi.fn();
+  await act(async () => root.render(<><CommandBar surfaceMode="new-tab" onClose={close} /><Toasts /></>));
+  const input = host.querySelector("input")!;
+  await act(async () => input.focus());
+  await act(async () => type(input, question));
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await act(async () => key(input, "Enter"));
+    expect(input.value).toBe(question);
+    expect(host.textContent).toContain("Ask is unavailable");
+    expect(useStore.getState().overlay).toBeNull();
+    expect(document.activeElement).toBe(input);
+    expect(close).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  }
+  expect(start).not.toHaveBeenCalled();
+  expect(host.textContent).toContain("searching");
+  await act(async () => key(input, "Enter"));
+  expect(search).toHaveBeenCalledWith(question);
+  expect(create).toHaveBeenCalledWith("https://example.com/profile-search");
+  expect(create).toHaveBeenCalledOnce();
   expect(close).toHaveBeenCalledOnce();
 });

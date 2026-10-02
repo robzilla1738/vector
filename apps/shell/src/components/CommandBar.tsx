@@ -655,6 +655,8 @@ export function CommandBar({
             );
           let timer: ReturnType<typeof setTimeout> | undefined;
           try {
+            if (useStore.getState().settings.modelConfigured === false)
+              throw new Error("Ask is unavailable. Connect a model in Settings; your prompt is kept.");
             const request = hero
               ? startRun(i.goal, { scope: "new", chatId: crypto.randomUUID(), presentation: "conversation" })
               : startRun(i.goal, { scope: alt ? "new" : i.scope });
