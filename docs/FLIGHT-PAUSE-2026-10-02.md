@@ -1,0 +1,22 @@
+# Flight pause checkpoint — 2026-10-02
+
+Paused explicitly at the owner’s request before boarding. Do not continue or launch the installed app until the owner resumes. Work is preserved; nothing is pushed, signed or released. Main remains unchanged. Read this section, `docs/EXECUTION-BOARD.md`, the full goal objective and canonical plan before resuming.
+
+## Exact root sources
+
+- Frozen native candidate: `/tmp/aux-browser-runtime-root-person-lineage-followup`, clean HEAD `bc9bd8a5200c0404a69b2c5cd31136c9b4f05792`; product `678c33d54720a93f17969916eb2b4dda8a78ec8b`, tree `e8c77feb254eb49dc35bdb9ffd6be1d14531f8aa`, renderer `0d2279fb43d311b47bfd241f8bd04fd9a2f82194bd5771357d0a69b7bf4916c9`. All source gates passed after rebuilding. Native replay: 85 packets / 274 exact mirrors / 188 existing baselines. Source proof: `docs/lane-requests/root-observer/PERSON-LINEAGE-SOURCE-GATES.json`.
+- New editable continuation: `/tmp/aux-browser-runtime-root-context-followup`, branch `codex/browser-runtime-context-followup`, clean HEAD `8bb15a442438237e271344dae2b1e56f2c56fbb0`. Command search failure copy and retry preserve query; focused checks pass. Screenshot-tied chat context packet independently pinned/adopted; HTTP(S) context eligibility is shared by defaults/picker/tray, closed explicit selections return actionable errors, and expected lookup translation is centralized in a generic contracts-only helper. Actual `npx tsc -b` passed after correcting the helper’s type to preserve both PageTarget and PageIdentity. Root focused context runtime/renderer tests, typecheck, refreshed Chromium renderer and full gates remain required on resume. Do not treat the preceding frozen renderer as these new edits.
+- Frozen source exports retained: `/tmp/aux-browser-runtime-l10-chat-context` HEAD `aa8e3c1d` (chat context), `/tmp/aux-browser-runtime-l10` HEAD `f326e4cb` (PiP lineage), `/tmp/aux-browser-runtime-l10-split` `5305b650` + `978bcc11` (split race). Their independent root adoption proofs are committed. Do not edit frozen bytes.
+
+## Native pause and resume
+
+Only `/root/builder` writes/builds/runs `/Users/rcourson/aux-chromium-stable/chromium/src`. The owned bc9 ten-target incremental build was stopped gracefully for the flight: 13m32.88 elapsed, 627 actions completed, zero failed actions, 11,650 remained; interruption is not a compile pass. Compiler outputs and raw logs remain. No runtime/helper staging or physical journeys ran. The slot and owned processes must be confirmed released in the builder checkpoint before resuming. Last actual successfully paired physical product remains 4ac12400. The installed application is mixed with the newer header/assets and old executable/runtime: do not launch or show it as the new build.
+
+Resume by finishing/adopting coherent design 0252 and NightSettings save/readback source work, completing focused context checks and refreshed renderer/full source gates, freezing the next coherent candidate, independently replaying every native packet/mirror, then asking the sole builder to continue the incremental graph. Do not rerun setup or unchanged builds. Stage runtime/helper only after the complete mandatory graph succeeds; root independently verifies actual bytes and identity before native assertions/journeys. Preserve every native assertion, true input/current document safety fence and hardware presentation gate.
+
+## Remaining requirements
+
+Design 0252 private mailbox/caller is an unfinished source lane; preserve its draft/checkpoint and read its exact remaining hooks. NightSettings save/readback is an unfinished source lane; preserve the draft/checkpoint. Complete actual native compilation, changed functional journeys, genuine automatic PiP/manual controls, at least 20 AC trials for every performance budget, full F21 light/dark/reduced-transparency/reduced-motion/narrow capture matrix and no P0–P2 findings, owner final visual signoff, all 43 feature qualifications plus 22 legacy requalifications, prescribed lane merge order, all-on Wave Q without development acceptance, final gates and local main fast-forward. Only qualify.mjs writes schema-2 records. No completion or qualification is claimed from source tests.
+
+Keep Aux branding/logo/name. Design reference remains the 130 MB installed capture `/Users/rcourson/AI Blueprints/06/assets/live-1.0.928/`, indexed by `06_COPYABLE-SURFACES.md` §§8–8c. No credential/session/keychain reads, push, signing, release or setup.
+

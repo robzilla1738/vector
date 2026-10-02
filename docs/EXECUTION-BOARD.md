@@ -1,3 +1,7 @@
+## PAUSED for owner’s flight — 2026-10-02
+
+Owner explicitly requested a pausing point. The exact clean source refs, safely interrupted native build, preserved drafts, remaining verification and resume order are recorded in [FLIGHT-PAUSE-2026-10-02.md](FLIGHT-PAUSE-2026-10-02.md). Do not continue or launch the mixed installed application until the owner resumes. No completion, native compile pass or new qualification is claimed.
+
 ## Active coherent build: genuine input and split restoration — 2026-10-02
 
 Sole builder is authorized to rotate to frozen `/tmp/aux-browser-runtime-root-person-lineage-followup`, clean HEAD `bc9bd8a5200c0404a69b2c5cd31136c9b4f05792`, product `678c33d54720a93f17969916eb2b4dda8a78ec8b`, tree `e8c77feb254eb49dc35bdb9ffd6be1d14531f8aa`, renderer `0d2279fb43d311b47bfd241f8bd04fd9a2f82194bd5771357d0a69b7bf4916c9`. Independent source verification reverses all 85 ordered packets, preserves 188 existing baselines and exactly restores all 274 native mirrors. Full rebuilt source gates pass, including typecheck, lint at the 390 ratchet, formatting, generated bindings, native bridge/inventory, 45 journeys covering 43 features and renderer bundle budgets. Native compilation and qualification are still pending.
