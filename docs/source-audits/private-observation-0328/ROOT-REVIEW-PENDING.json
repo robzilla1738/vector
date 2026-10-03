@@ -18,5 +18,9 @@
   "successorRequested": true,
   "sourceAdopted": false,
   "nativeCompiled": false,
-  "actionArtifactCaptureOrF21Admitted": false
+  "actionArtifactCaptureOrF21Admitted": false,
+  "independentCallerAndNativeForwardReverseForward": true,
+  "actualCallerReplayLeaves": 35,
+  "actualNativeReplayLeaves": 1,
+  "ownedReplayScratch": "/tmp/aux-root-0328-request-replay-mbwxgicm"
 }
