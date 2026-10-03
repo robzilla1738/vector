@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <libproc.h>
 #include <sys/resource.h>
+#include <sys/file.h>
 #include <unistd.h>
 #include <algorithm>
 #include <utility>
@@ -70,7 +71,8 @@ class NativeAppearanceFileChannel::State : public base::RefCountedThreadSafe<Sta
     signing_key_.emplace(crypto::keypair::PrivateKey::GenerateEd25519());
     fd_.reset(openat(lease_.root_.get(), kName,
         O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600));
-    if (!fd_.is_valid() || fstat(fd_.get(), &file_identity_) != 0 || !CurrentFile()) return false;
+    if (!fd_.is_valid() || flock(fd_.get(), LOCK_EX | LOCK_NB) != 0 ||
+        fstat(fd_.get(), &file_identity_) != 0 || !CurrentFile()) return false;
     auto capabilities = AuxMethodRegistry::Get().Capabilities();
     const auto* build = capabilities.FindString("buildId");
     const auto* source = capabilities.FindString("sourceCommit");

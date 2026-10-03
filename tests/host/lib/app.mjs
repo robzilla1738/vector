@@ -156,9 +156,10 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     performanceDetach?.(); performanceDetach = undefined;
     performanceMailbox?.dispose(); performanceMailbox = undefined;
   }
-  function disposeAppearance() {
+  function disposeAppearance(keepOriginalChannel = false) {
     ++appearanceConfiguration;
-    fileAppearance?.retire(); fileAppearance = undefined;
+    if (keepOriginalChannel) fileAppearance?.stopObserving();
+    else { fileAppearance?.retire(); fileAppearance = undefined; }
     appearanceDetach?.(); appearanceDetach = undefined;
     appearanceStream?.dispose(); appearanceStream = undefined;
     pipAppearanceStream?.dispose(); pipAppearanceStream = undefined;
@@ -411,7 +412,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     catch (error) { launchQuarantine?.retire(); throw error; }
   }
   async function quitOwned() {
-    disposeAppearance(); disposePerformance();
+    disposeAppearance(Boolean(fileAppearance && externalPid)); disposePerformance();
     if (privatePair) {
       privateOwner?.retire(new Error('Original private observation stopping'));
       if (child && !privateCloseReceipt) {
@@ -445,6 +446,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
         } else while (running()) await delay(50);
       }
     }
+    if (fileAppearance) { await fileAppearance.removeAfterOriginalRetirement(); fileAppearance = undefined; }
     if (launchQuarantine) { await launchQuarantine.clearAfterOriginalRetirement(); launchQuarantine = undefined; }
     slot?.release(); slot = undefined;
   }
@@ -510,7 +512,15 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
         assertLive() {
           appearanceArtifact.validate();
           if (!running() || child || externalPid !== observedPid || generation !== observedGeneration || externalGeneration !== observedExternalGeneration || appearanceConfiguration !== configuration) throw new Error('Original LS appearance owner retired');
-        }, readIdentity: () => api.identity() });
+        }, readIdentity: () => api.identity(),
+        async confirmRetirement() {
+          appearanceArtifact.validate();
+          const same = () => !child && externalPid === observedPid && generation === observedGeneration && externalGeneration === observedExternalGeneration && !launchUncertain;
+          if (!same() || running()) throw new Error('Original LS generation retirement unverified');
+          appearanceArtifact.validate();
+          if (!same() || running()) throw new Error('Original LS generation changed during retirement');
+          return true;
+        } });
       const owner = await createLaunchServicesAppearanceOwner({ original, pair: appearancePair, helper, candidate });
       try { original.assertLive(); fileAppearance = owner; }
       catch (error) { owner.retire(); throw error; }

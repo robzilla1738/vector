@@ -3,6 +3,9 @@
 #include "chrome/browser/ui/aux/native_appearance_file_channel.h"
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
 #include <vector>
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
 #include "base/containers/span.h"
 #include "base/command_line.h"
 #include "base/files/file_util.h"
@@ -77,6 +80,17 @@ TEST_F(NativeAppearanceFileChannelTest, QueuedOriginalRecordsRetainCapabilitiesA
     const auto record = base::JSONReader::ReadDict(*payload, base::JSON_PARSE_RFC); ASSERT_TRUE(record);
     EXPECT_EQ(record->FindInt("sequence"), sequence);
   }
+}
+TEST_F(NativeAppearanceFileChannelTest, KernelWriterLeaseOutlivesLogicalRetirementAndEndsWithOriginalState) {
+  const int reader = open(File().value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+  ASSERT_GE(reader, 0);
+  EXPECT_NE(flock(reader, LOCK_EX | LOCK_NB), 0);
+  channel_->Retire();
+  EXPECT_NE(flock(reader, LOCK_EX | LOCK_NB), 0);
+  channel_.reset();
+  EXPECT_EQ(flock(reader, LOCK_EX | LOCK_NB), 0);
+  EXPECT_EQ(flock(reader, LOCK_UN), 0);
+  EXPECT_EQ(close(reader), 0);
 }
 TEST_F(NativeAppearanceFileChannelTest, ForeignProfileAndRetirementCannotPublish) {
   auto foreign = TestingProfile::Builder().SetPath(root_.GetPath().AppendASCII("foreign")).Build();

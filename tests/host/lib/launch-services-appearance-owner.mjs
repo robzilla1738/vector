@@ -63,7 +63,18 @@ export async function createLaunchServicesAppearanceOwner({ original, pair, help
     async observe(selection) { return select(selection, false); },
     async discoverUtility(selection) { return select(selection, true); },
     proof(raw) { current(); assert.ok(proofs.has(raw), 'No original signed appearance receipt'); return proofs.get(raw); },
-    retire() { if (retired) return; retired = true; reader.retire(); proofs.clear(); },
+    stopObserving() { retired = true; reader.seal(); proofs.clear(); },
+    async removeAfterOriginalRetirement() {
+      assert.ok(retired, 'Original observation must stop before cleanup');
+      const confirm = async () => {
+        artifact.validate(); admitted.compilerArtifact.validate();
+        assert.equal(original.pid, pid); assert.equal(original.generation, generation);
+        assert.equal(await original.confirmRetirement(), true);
+        artifact.validate(); admitted.compilerArtifact.validate(); return true;
+      };
+      return await reader.removeAfterOriginalRetirement(confirm);
+    },
+    retire() { retired = true; reader.retire(); proofs.clear(); },
   });
   async function select({ windowId, browserWindowId, windowKind, notBefore, timeoutMs = 5000 }, utility) {
       current(); assert.ok(!busy, 'Concurrent original LaunchServices appearance observation');

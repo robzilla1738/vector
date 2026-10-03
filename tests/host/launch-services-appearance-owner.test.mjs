@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { readFileSync, mkdtempSync, mkdirSync, chmodSync, writeFileSync, appendFileSync, statSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, chmodSync, writeFileSync, appendFileSync, statSync, rmSync, existsSync } from 'node:fs';
 import { generateKeyPairSync, createHash, sign } from 'node:crypto';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -27,7 +27,7 @@ function fixture(t) {
   const bytes = Buffer.from(JSON.stringify(header) + '\n'); writeFileSync(file, bytes);
   const receipt = { ...header, headerSha256: createHash('sha256').update(bytes).digest('hex') };
   const kernel = { producer: 'aux-native-warm-window-identity', version: 1, targetPid: 42, helperPid: 43, targetProcessUuid: header.processUuid, targetProcessStartMachTicks: '9', helperProcessUuid: 'c'.repeat(32), helperProcessStartMachTicks: '10' };
-  const state = { live: true, runtime: product, calls: 0, append: false, kernel, hold: null };
+  const state = { live: true, runtime: product, calls: 0, append: false, kernel, hold: null, processRetired: false };
   const raw = () => JSON.stringify({ producer: 'aux-native-appearance-snapshot', version: 1, pid: 42, windowId: 7, windowKind: 'little', frame: { x: 0, y: 0, width: 960, height: 720 }, observedAtUnixMs: Date.now(), nativeTheme: 'dark', backing: null, material: null, shell: { theme: 'dark', layout: 'vertical', sidebarAppearance: 'solid', systemDark: true, reduceMotion: false, reduceTransparency: false }, utilityOwnership: { producer: 'aux-native-utility-appearance-owner', version: 1, windowId: 7, browserWindowId: '12', windowKind: 'little', shellDocumentToken: 'A'.repeat(32), pages: [{ pageId: 'p_fixture', documentToken: 'B'.repeat(32), selected: true }] } });
   const publish = () => { const payload = JSON.stringify({ producer: 'aux-native-appearance-file-record', version: 1, nonce: header.nonce, sequence: 1, raw: raw() }); appendFileSync(file, JSON.stringify({ payload, signatureHex: sign(null, Buffer.from(`AUX_NATIVE_APPEARANCE_FILE_V1\n${payload}`), privateKey).toString('hex') }) + '\n'); };
   const pair = {}, artifact = { productIdentity: product, native, shellDigest: candidate.shellDigest, image: { imageUuid: header.processUuid }, helper: { manifest: { output: { uuid: kernel.helperProcessUuid } } }, validate() { assert.ok(state.live, 'Byte lease retired'); } };
@@ -40,7 +40,7 @@ function fixture(t) {
     readPackagedRuntimePair: value => { assert.equal(value, pair); return { compilerArtifact }; },
     readNativeWindowCompilerExecutable: (value, path) => { assert.equal(value, compilerArtifact); assert.equal(path, '/controlled/native-window.swift'); compilerArtifact.validate(); return compilerArtifact.executablePath; },
   });
-  const original = { pid: 42, generation: 123, root, assertLive() { assert.ok(state.live, 'Owner retired'); }, async readIdentity() {
+  const original = { pid: 42, generation: 123, root, assertLive() { assert.ok(state.live, 'Owner retired'); }, async confirmRetirement() { return state.processRetired; }, async readIdentity() {
     ++state.calls; if (state.hold) await state.hold;
     if (state.append && state.calls === 8) publish();
     return { native: { ...native, nativeAppearanceFileChannel: receipt }, runtime: state.runtime };
@@ -52,7 +52,7 @@ function fixture(t) {
     readPackagedRuntimePairBytes: value => { assert.equal(value, pair); artifact.validate(); return artifact; },
     readPackagedRuntimePair: value => { assert.equal(value, pair); return { compilerArtifact }; },
   });
-  return { state, pair, original, verify: proof => proofApi.verify(proof, { pair, candidate, targetPid: 42, helperSha256: '1'.repeat(64), helperSourceSha256: '2'.repeat(64) }), create: () => api.create({ original, pair, helper, candidate }) };
+  return { state, pair, original, file, verify: proof => proofApi.verify(proof, { pair, candidate, targetPid: 42, helperSha256: '1'.repeat(64), helperSourceSha256: '2'.repeat(64) }), create: () => api.create({ original, pair, helper, candidate }) };
 }
 test('actual owner joins active identities and retains original signed raw receipt', async t => {
   const f = fixture(t), owner = await f.create(); t.after(() => owner.retire()); f.state.append = true;
@@ -74,4 +74,20 @@ test('held original identity retirement and concurrent observation do not admit 
   const reading = owner.observe({ windowId: 7, notBefore: new Date().toISOString() });
   await assert.rejects(owner.observe({ windowId: 7, notBefore: new Date().toISOString() }), /Concurrent/);
   owner.retire(); release(); await assert.rejects(reading, /retired/);
+});
+
+test('sealed authentic owner retains original file until original process retirement and then removes it', async t => {
+  const f = fixture(t), owner = await f.create(); t.after(() => owner.retire());
+  owner.stopObserving();
+  await assert.rejects(owner.observe({ windowId: 7, notBefore: new Date().toISOString() }), /retired/);
+  await assert.rejects(owner.removeAfterOriginalRetirement()); assert.ok(existsSync(f.file));
+  f.state.processRetired = true;
+  assert.equal((await owner.removeAfterOriginalRetirement()).removed, true); assert.equal(existsSync(f.file), false);
+});
+test('original generation and byte lease drift refuse sealed cleanup without deleting channel', async t => {
+  for (const kind of ['generation', 'lease']) {
+    const f = fixture(t), owner = await f.create(); t.after(() => owner.retire()); owner.stopObserving(); f.state.processRetired = true;
+    if (kind === 'generation') f.original.generation++; else f.state.live = false;
+    await assert.rejects(owner.removeAfterOriginalRetirement()); assert.ok(existsSync(f.file));
+  }
 });
