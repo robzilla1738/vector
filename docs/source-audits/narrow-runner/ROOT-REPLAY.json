@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "patchSha256": "d5f865865cac3d197b814ccd0453124b1539989ffe1066ec818db24825219424",
+  "files": [
+    {
+      "path": "tests/host/lib/narrow-window.mjs",
+      "beforeSha256": "f522b8a5ae5c187429d8519e92b712143b5d9a0f22c371e651136709e4190392",
+      "afterSha256": "36fe05c10a92f4a7520749450002a292f35d79b9073027a431f3b51621306ed8"
+    },
+    {
+      "path": "tests/host/narrow-window.test.mjs",
+      "beforeSha256": "4603b8df26520cac8ec37b26313397c8b19e6ba6df8f9e1bf5877a69bef68d3f",
+      "afterSha256": "e3948c101c698934e3737dda9df373d2134448ee675b8164d285ba4437cba178"
+    },
+    {
+      "path": "tests/host/run-journey.mjs",
+      "beforeSha256": "963e83c7ddd1b552df33536ecb63638f29e6b031fedadf939927142728c26a41",
+      "afterSha256": "974c36decbcde5000da31a78ca11e72b0e00535431e984fd26e93a9d58b4a10d"
+    }
+  ],
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-narrow-runner-ppbuys2z",
+  "forwardReverseForward": true,
+  "fullOriginalRunnerContextReviewed": true,
+  "nativeExecuted": false,
+  "visualQualified": false,
+  "multiGenerationNarrowStatesSupported": false,
+  "actualControlledCasesPassed": 11,
+  "wholeLintWithin390": true,
+  "formatRatchetPassed": true,
+  "ordinaryAndPerformanceResize": false
+}

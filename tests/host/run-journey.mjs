@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createNarrowWindowPreparation } from './lib/narrow-window.mjs';
 import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
 import { dismissObservedSetup } from './lib/dismiss-observed-setup.mjs';
 import { createUntil } from './lib/until.mjs';
@@ -25,8 +26,9 @@ import { acquireNativeSlot } from '../../scripts/native-slot.mjs';
 const root = resolve(import.meta.dirname, '../..');
 const { values } = parseArgs({ options: {
   journey: { type: 'string' }, app: { type: 'string' }, output: { type: 'string' },
-  attempt: { type: 'string', default: '1' }, attended: { type: 'boolean' }, appearance: { type: 'boolean' },
+  attempt: { type: 'string', default: '1' }, attended: { type: 'boolean' }, appearance: { type: 'boolean' }, narrow: { type: 'boolean' },
 } });
+assert.ok(!values.narrow || values.appearance, '--narrow requires --appearance');
 assert.ok(values.journey && values.app && values.output, 'Usage: run-journey --journey <id> --app <Aux.app> --output <dir>');
 if (!process.env.AUX_NATIVE_SLOT_TOKEN) {
   const result = spawnSync(process.execPath, [join(root, 'scripts/native-slot.mjs'), '--', process.execPath,
@@ -49,7 +51,7 @@ const manifest = { schema: 2, id: journey.id, features: journey.features, needs:
   productIdentity: identity, shellDigest: JSON.parse(readFileSync(join(root, 'chromium/shell-assets/manifest.json'), 'utf8')).sha256,
   attempt: Number(values.attempt), startedAt: new Date().toISOString(), steps: [], captures: [],
 };
-let app, ax, fixture, evidence, appearance, pipAppearance;
+let app, ax, fixture, evidence, appearance, pipAppearance, narrowPreparation;
 async function configureAppearance() {
   if (!values.appearance) return;
   const actual = await app.identity();
@@ -204,6 +206,7 @@ async function execute() {
         additionalHiddenSelectors, prepareTrial, trials: 20, candidate, ax: observedAx, readIdentity: () => app.identity() }));
     },
     async restart(options) {
+      assert.ok(!values.narrow, 'Narrow appearance run cannot replace its original launch owner');
       signal.throwIfAborted();
       appearance = undefined; pipAppearance = undefined;
       await ax.close();
@@ -215,6 +218,7 @@ async function execute() {
       signal.throwIfAborted();
     },
     async openAux(url, options) {
+      assert.ok(!values.narrow || !options?.cold, 'Narrow appearance run cannot replace its original launch owner');
       signal.throwIfAborted();
       if (options?.cold) { appearance = undefined; pipAppearance = undefined; await ax.close(); ax = undefined; }
       const receipt = await app.openAux(url, options);
@@ -268,6 +272,11 @@ async function execute() {
   manifest.runtime = actual.runtime;
   assertJourneyIdentity(actual, identity);
   await dismissObservedSetup(context, appearance ? windowId => appearance.observeWindowKind(windowId) : undefined);
+  if (values.narrow) {
+    narrowPreparation = createNarrowWindowPreparation({ app, ax, appearanceEnabled: true, signal });
+    manifest.narrowPreparation = await narrowPreparation.prepare();
+    signal.throwIfAborted();
+  }
   await run(context);
   manifest.captures = evidence.captures;
   assert.ok(manifest.steps.length && manifest.steps.every(step => step.status === 'passed'), 'Journey did not prove any behavior');
@@ -295,6 +304,13 @@ try {
 } finally {
   clearTimeout(deadline);
   controller.abort(new Error('Journey has finished'));
+  if (narrowPreparation) {
+    try { manifest.narrowRestoration = await narrowPreparation.restore(); }
+    catch (error) {
+      (manifest.cleanupErrors ??= []).push({ name: 'narrow-window', error: error.stack ?? String(error) });
+      process.exitCode = 1;
+    } finally { manifest.narrowPreparation ??= narrowPreparation.record; }
+  }
   for (const [name, cleanup] of [['ax', () => ax?.close()], ['app', () => app?.quit()], ['fixture', () => fixture?.close()]]) {
     try { await cleanup(); } catch (error) {
       (manifest.cleanupErrors ??= []).push({ name, error: error.message });

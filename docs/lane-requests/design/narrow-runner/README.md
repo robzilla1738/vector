@@ -1,0 +1,9 @@
+# Narrow appearance runner lifecycle
+
+Replaces the unwired one-shot helper with one owned preparation/restoration session; no compatibility shim remains. --narrow requires --appearance before native slot acquisition. It prepares after mandatory observed setup dismissal and before the selected journey. Ordinary and performance runs are not resized. Native owner replacement through restart/cold open is refused before effect in this optional narrow mode; those cells need a separately reviewed multi-generation preparation instead of borrowing the old owner.
+
+Fixed810 point target within720–900 remains a test target. Existing733 HID corner drag is bracketed by actual kernel-generation readback and sole original CG window/frame. Settling has an absolute two-second admission bound and requires two identical observed frames matching target/original geometry within two-point rounding. It never infers success from requested width.
+
+Cleanup debt is reserved before drag; even a partial HID failure/cancellation retains its original caller error and gets original-owner restoration. Cleanup waits for preparation to retire, ignores the cancelled journey signal only for this bounded restoration, revalidates kernel identity before new input, refuses foreign/moved/replaced windows, and joins concurrent cleanup onto one original effect/receipt. Runner records preparation/restoration or separate cleanupErrors with exitCode1, then closes helper/app/fixture in their original order. Existing primary manifest.error is unchanged.
+
+Eleven controlled cases; original ten pass, then five changed cleanup cases including new concurrent-restoration control pass. Syntax/scoped lint/diff and exact forward/reverse/forward pins pass. Removing only additive runner branches restores every original byte. No native run/helper source733/950 change or F21 approval. Actual resize hit, responsive pixels/focus/long labels and full appearance matrix remain required.
