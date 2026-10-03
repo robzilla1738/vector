@@ -1,0 +1,29 @@
+{
+  "sourceOnly": true,
+  "backendObservedAtRuntime": false,
+  "nativeCompiled": false,
+  "graphiteMeasurementImplemented": false,
+  "actualLocalSourcePins": {
+    "gpu/config/gpu_finch_features.cc": "4c603fd5702a552f039fc9b2be7d556df99bab73186835a51bc5cc3c7cf611e3",
+    "gpu/command_buffer/service/graphite_shared_context.h": "0250b12c02cbdf8ee51d61ec7c39cb4e72f9485402d1772313557412815e2f8a",
+    "gpu/command_buffer/service/graphite_shared_context.cc": "0d0697a27fbf37601e2d452c63d063783994c0176153b08ef26d38e54cd3a48c",
+    "gpu/command_buffer/service/shared_image/shared_image_representation.h": "f09ed86cb22ecc8a4f9e02daa105723040ce6845f3a737c886ca4505aa31d1d4",
+    "third_party/skia/include/gpu/graphite/Image.h": "1f17e10ca68622382dfbdc42c82da2f3d662712b34776f030c1a148a138924b3",
+    "components/viz/test/test_gpu_service_holder.cc": "44ab6737a846d793b63c587a19ebe146aa451161d1e48fcbf84765467f2e4d99"
+  },
+  "findings": [
+    "Apple kSkiaGraphite is enabled by default; device/runtime check still required",
+    "Graphite callback readback is supported by actual shared context API; AndSubmit synchronizes CPU and its cost is actual measurement overhead",
+    "Original SharedImage access exposes Graphite backend texture; alpha-bearing original texture interpretation must not inherit opaque metadata hints",
+    "Scope/acquire/draw/context/original frame group lifetime must survive actual readback completion; no ended access or later frame may qualify",
+    "Current Ganesh-only producer must keep its refusal until a coherent genuine Graphite proof exists"
+  ],
+  "required": [
+    "Actual backend evidence",
+    "Actual original texture/acquisition/draw proof",
+    "Bounded stored-alpha readback",
+    "Retained original access and context through callback",
+    "Original first hardware retention",
+    "Matched Aux/Stock instrumentation overhead and20 actual AC trials"
+  ]
+}
