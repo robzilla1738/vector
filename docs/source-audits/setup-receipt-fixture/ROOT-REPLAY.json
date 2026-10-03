@@ -1,0 +1,18 @@
+{
+  "sourceOnly": true,
+  "nativeVerified": false,
+  "requestSha256": "6eb9f598879331cc39bdd6071bcd03b7dc31872bf7d2f0bb42c7291357eee05f",
+  "file": {
+    "path": "tests/tools/dismiss-fresh-setup.test.mjs",
+    "beforeSha256": "f58a11b06f614ec612ff0d1ed813ec77d9fb60ac4a5f7a38c6e3a7f8828909c7",
+    "afterSha256": "a7c4f44e8fa52b1b36a96fd727abb4c052b8a9f616ab837c88a22b57f95ffe19"
+  },
+  "productionHelperUnchanged": "03d40492271c4749f06761716dcada33d77d75d6a99df71eeae3d9c85d713145",
+  "exactForwardReverseForward": true,
+  "controls": {
+    "log": "/tmp/aux-root-setup-fixture-controls.log",
+    "sha256": "83ac4d07ea2d91f1ee167e8e9f6aa7261a9c568939e8d6cc3828a21b69107214",
+    "exit": 0
+  },
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-setup-fixture-5f9ssb0a"
+}
