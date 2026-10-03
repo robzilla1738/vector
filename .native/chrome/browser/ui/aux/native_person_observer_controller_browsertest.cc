@@ -22,6 +22,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/referrer.h"
+#include "content/public/test/browser_test.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "net/http/http_status_code.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"

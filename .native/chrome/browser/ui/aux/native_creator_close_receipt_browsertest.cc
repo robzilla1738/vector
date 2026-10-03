@@ -30,6 +30,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/javascript_dialog_manager.h"
+#include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 
 // The connection generation is deliberately synthetic. This peer invokes the
