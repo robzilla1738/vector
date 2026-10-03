@@ -1,0 +1,43 @@
+{
+  "sourceOnly": true,
+  "controllerSha256": "88bbbd816a5b8a553b8fc1d60fdd96a9b6fc45fb3963e82037998d23e8254da4",
+  "launcherSha256": "beeeec0e2ae26f8511a01a3e9dfccea244eaa5253a82743ddc3a6ffce3c043cb",
+  "wholeOriginalControllerRestoredWithOnlyTupleAndFreshOutputReversal": true,
+  "originalFailedTerminalSha256": "f7711a39d436a38275649cb19a102fbfdc7ff3fd1bedbba178d3d6bddd812ee6",
+  "actualOriginal1076ChildrenAnd2190ArtifactHashesChecked": true,
+  "actualOriginalProcessesGroupsAndSlotAbsent": true,
+  "originalMaterializationCommandsAbsent": true,
+  "actualOriginalCorruptControls": [
+    {
+      "root": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/eigen3/src",
+      "case": "original",
+      "actualOid": "22cf346576d03a1f3c3ee250d5da8674da128875",
+      "indexUnchanged": true
+    },
+    {
+      "root": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/eigen3/src",
+      "case": "corrupt",
+      "actualOid": "24b964f905141762043c680682c9ab29fd7080b5",
+      "indexUnchanged": true
+    },
+    {
+      "root": "/Users/rcourson/aux-chromium-stock-measurement/chromium/src/third_party/eigen3/src",
+      "case": "original",
+      "actualOid": "22cf346576d03a1f3c3ee250d5da8674da128875",
+      "indexUnchanged": true
+    },
+    {
+      "root": "/Users/rcourson/aux-chromium-stock-measurement/chromium/src/third_party/eigen3/src",
+      "case": "corrupt",
+      "actualOid": "24b964f905141762043c680682c9ab29fd7080b5",
+      "indexUnchanged": true
+    }
+  ],
+  "actualInstalledGitAttributeSemanticsMatched": true,
+  "sameWorkingBytesAndModePreserved": true,
+  "fullSourceReady": false,
+  "missingLfsObjects": 23,
+  "gnBuildLaunchApproved": false,
+  "sourceDispatchReviewed": true,
+  "reviewScriptCorrection": "Installed man page uses roff font escapes; literal plain-text search refused, then actual line180 was inspected and unchanged hash/semantic wording verified."
+}
