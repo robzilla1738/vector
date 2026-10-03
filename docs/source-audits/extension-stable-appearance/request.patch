@@ -1,0 +1,47 @@
+diff --git a/tests/host/journeys/extension-actions.mjs b/tests/host/journeys/extension-actions.mjs
+index 8bf95d83..e3eefd1d 100644
+--- a/tests/host/journeys/extension-actions.mjs
++++ b/tests/host/journeys/extension-actions.mjs
+@@ -1,5 +1,6 @@
+ import { resolve } from 'node:path';
+ import { setTabLayout } from '../lib/tab-layout.mjs';
++import { captureHomeJourneyState } from '../lib/home-capture.mjs';
+ 
+ export const journey = {
+   id: 'extension-actions', title: 'Use unpacked Chromium actions, shortcuts and a native side panel',
+@@ -28,7 +29,7 @@ export async function run(t) {
+     if ((await t.ax.query(enable)).length) await t.ax.press(enable);
+     await t.ax.waitFor({ ...control('Disable'), within: installed });
+     t.assert.deepEqual(await t.ax.query(enable), [], 'The installed extension is actually enabled');
+-    await t.capture('extension-unpacked-installed');
++    await captureHomeJourneyState(t, 'extension-unpacked-installed', 'extension-settings-installed-enabled');
+     return { ax: await t.ax.dump({ scope: 'shell' }), rpc: await t.rpc('pages.list') };
+   });
+   await t.ax.key('escape', 'hid');
+@@ -89,7 +90,7 @@ export async function run(t) {
+     await t.ax.waitFor(control('Aux fixture side panel', 'AXHeading', 'any'));
+     await t.ax.press(control('Wake service worker', 'AXButton', 'any'));
+     await t.until('native extension guest received worker reply', async () => /Aux loopback/.test(JSON.stringify(await t.ax.dump({ scope: 'any' }))));
+-    await t.capture('extension-side-panel-guest');
++    await captureHomeJourneyState(t, 'extension-side-panel-guest', 'extension-embedded-side-panel-worker-reply');
+     const ax = await t.ax.dump({ scope: 'any' });
+     await t.ax.press(control('Close Aux extension fixture side panel'));
+     await t.ax.waitFor(control('Aux fixture side panel', 'AXHeading', 'any'), 'absent');
+@@ -162,7 +163,7 @@ export async function run(t) {
+       const value = await t.rpc('workspace.get'); return value.activePageId === created.at(-1).pageId && value;
+     });
+     await t.ax.waitFor(control('Aux extension Space A'));
+-    await t.capture('extension-native-space-activation');
++    await captureHomeJourneyState(t, 'extension-native-space-activation', 'extension-created-tab-original-space-activation');
+     return { ax: await t.ax.dump({ scope: 'shell' }), rpc: { created, workspace, spaceA, spaceB } };
+   });
+   await t.step('give an Aux intercept chord precedence over the same extension chord in guest and shell fields', { kind: 'ui', features: ['extensions'] }, async () => {
+@@ -178,7 +179,7 @@ export async function run(t) {
+       await t.ax.key('command+k', 'hid');
+       await t.ax.waitFor(control('Command palette', 'AXTextField'));
+       t.assert.deepEqual(await t.ax.query(popup), [], 'Extension must not supersede the Aux intercept command');
+-      await t.capture(`extension-aux-intercept-${location}`);
++      await captureHomeJourneyState(t, `extension-aux-intercept-${location}`, `extension-aux-intercept-${location}-palette`);
+       await t.ax.key('escape', 'hid');
+     }
+     await t.rpc('pages.activate', { pageId: page.pageId });
