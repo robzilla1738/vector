@@ -1,0 +1,10 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "originalNativeFailure": "Manual Document-PiP JS window promise returns true but immediate native HasPictureInPictureDocument assertion sees false. Native enter ordering remains under verification.",
+  "patchSha256": "30f4735d36efd0272eb0d904c998498b46b1a7e30c2dfcf54e8f91362f59b812",
+  "before": "e0cf48d2ce9388149c2fd68a74bb1988d043ac1e9e8ad014832fd544544e7b2f",
+  "result": "ca42d64be4f54c466259b12c4aa650b90f5fc40b86d230800d933be3a7e6f6c0",
+  "preserved": "Existing real browser input, JS success, automatic refusal and native document presence assertions remain. Use original Chromium MediaStartStopObserver before the action and wait for actual browser PiP entry; timeout fails. No production change or proxy readiness.",
+  "remaining": "Actual native assertion after fresh build"
+}
