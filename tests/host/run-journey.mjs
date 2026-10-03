@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
-import { dismissFreshSetup } from './lib/dismiss-fresh-setup.mjs';
+import { dismissObservedSetup } from './lib/dismiss-observed-setup.mjs';
 import { createUntil } from './lib/until.mjs';
 import { createClock } from "../../packages/contracts/dist/clock.js";
 import assert from 'node:assert/strict';
@@ -267,7 +267,7 @@ async function execute() {
   manifest.native = actual.native;
   manifest.runtime = actual.runtime;
   assertJourneyIdentity(actual, identity);
-  await dismissFreshSetup(context);
+  await dismissObservedSetup(context, appearance ? windowId => appearance.observeWindowKind(windowId) : undefined);
   await run(context);
   manifest.captures = evidence.captures;
   assert.ok(manifest.steps.length && manifest.steps.every(step => step.status === 'passed'), 'Journey did not prove any behavior');

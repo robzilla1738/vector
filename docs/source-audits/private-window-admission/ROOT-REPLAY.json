@@ -1,0 +1,37 @@
+{
+  "sourceOnly": true,
+  "nativeVerified": false,
+  "packets": [
+    {
+      "path": "/tmp/aux-browser-runtime-design-private-home/docs/design-reviews/private-home-admission/request.patch",
+      "sha256": "d86246af391ca3283d12b9946cd5ee014c89139256bf1dcabadc7ea03c668cd3"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-design-chat-captures/docs/design-reviews/private-kind-observation-step/request.patch",
+      "sha256": "25226ce0eec5a4655a69624bed9971d86d7c47f54267030b909b048a4e990eca"
+    }
+  ],
+  "before": {
+    "tests/host/lib/appearance-provenance.mjs": "198e3ea462aea942d13b7a59d6267529cf4fef1f8e5b46efbd390f617f7326b8",
+    "tests/host/run-journey.mjs": "bccd9be264d7a24bca2ef9ba790763a4b89a848a8a7648ae5e384ce95169f315",
+    "tests/host/lib/dismiss-observed-setup.mjs": null,
+    "tests/host/setup-window-kind.test.mjs": null
+  },
+  "after": {
+    "tests/host/lib/appearance-provenance.mjs": "e1bd24d16dd0ac75a4fc2f44ae6d963c6b05e4440aed22b88be2d7e89aeb5a7c",
+    "tests/host/run-journey.mjs": "963e83c7ddd1b552df33536ecb63638f29e6b031fedadf939927142728c26a41",
+    "tests/host/lib/dismiss-observed-setup.mjs": "1e81d4f24e871528b8fa5813cec1b704440a5026b74e8e412b502707d08d65f2",
+    "tests/host/setup-window-kind.test.mjs": "44560e2d79bbe53fa3f350c6e027357d763dfddf5a6a2f0d7e5e19c436c6e096"
+  },
+  "exactForwardReverseForward": true,
+  "controls": {
+    "log": "/tmp/aux-root-private-admission-controls.log",
+    "sha256": "f0eb89691cbd4ddbc3d4d9e5d454b546c5837781552ec4f1c516a7fc465bfa23",
+    "exit": 0
+  },
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-private-admission-s0zu84w9",
+  "noPrivateRuntimeEnabled": true,
+  "actualPrivateStartTransportStillOpen": true,
+  "ordinarySetupUnchanged": true,
+  "noFabricatedInputOrRuntimeReply": true
+}

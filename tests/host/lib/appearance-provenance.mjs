@@ -134,6 +134,15 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
     return { window, system, rawJson, rawSystem, startedAt, completedAt };
   }
   return { pins,
+    async observeWindowKind(windowId) {
+      const before = await sample(windowId), after = await sample(windowId);
+      assert.equal(before.window.pid, after.window.pid, 'Setup window PID changed');
+      assert.equal(before.window.windowKind, after.window.windowKind, 'Setup window kind changed');
+      assert.deepEqual(before.window.frame, after.window.frame, 'Setup window frame changed');
+      for (const key of ['accessibility', 'screenRecording', 'reduceMotion', 'reduceTransparency'])
+        assert.equal(before.system[key], after.system[key], 'Setup system preference changed');
+      return { before, after };
+    },
     async before(windowId, expectedOwner) {
       const value = await sample(windowId), ticket = Object.freeze({ windowId, ...(child ? { windowLayer: value.window.windowLayer, surfaceKind: value.window.surfaceKind, registrationGeneration: value.window.registrationGeneration } : {}) });
       if (child) {
