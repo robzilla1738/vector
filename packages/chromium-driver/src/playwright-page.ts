@@ -16,6 +16,7 @@ import { parseTarget, RefRegistry } from "./ref-registry.js";
 import { locatorAttempts, selectUniqueLocator } from "./locator-resolve.js";
 import { bodyCapturePolicy, defaultResponseCaptureOptions, type ResponseCaptureOptions } from "./response-capture.js";
 import { READINESS_POLICIES, RequestTracker, SETTLED_CONDITION_MS, settledProbe, type ReadinessPolicy } from "./readiness.js";
+import { ScriptRecorderObserver } from "./recorder-observer.js";
 import { AuxWorld } from "./aux-world.js";
 import type { ObservedActionTarget, DriverPage, DriverPageEvents, PageIdentity, ScreenshotResult, WaitOutcome } from "./types.js";
 
@@ -113,19 +114,7 @@ export class PlaywrightDriverPage implements DriverPage {
   async openRecorderObserver() {
     if (!this.isAttached()) throw new AuxError("target_detached", "The recording tab detached.");
     const session = await this.context.newCDPSession(this.page);
-    const allowed = new Set(["Runtime.enable", "Runtime.addBinding", "Runtime.removeBinding", "Runtime.evaluate", "Page.enable",
-      "Page.addScriptToEvaluateOnNewDocument", "Page.removeScriptToEvaluateOnNewDocument", "Page.getFrameTree", "Page.createIsolatedWorld"]);
-    return {
-      send: async (method: string, params: Record<string, unknown> = {}) => {
-        if (!allowed.has(method)) throw new AuxError("permission_denied", "Recording cannot dispatch browser actions.");
-        return await session.send(method as never, params as never) as Record<string, unknown>;
-      },
-      on: (event: string, listener: (params: Record<string, unknown>) => void) => {
-        session.on(event as never, listener as never);
-        return () => session.off(event as never, listener as never);
-      },
-      close: () => session.detach(),
-    };
+    return new ScriptRecorderObserver(session, () => this.isAttached());
   }
 
   private on(event: string, fn: (...args: never[]) => void) {

@@ -83,3 +83,7 @@ export * from "./zap.js";
 export * from "./selection-capture.js";
 
 export { createClock, type Clock } from "./clock.js";
+
+export * from "./native-recorder.js";
+
+export * from "./native-cdp.js";

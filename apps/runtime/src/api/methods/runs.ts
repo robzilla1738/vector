@@ -1,6 +1,6 @@
 import type { MethodCtx, MethodHandler } from "./context.js";
 import type { MethodName } from "@aux/contracts";
-import { AuxError, MethodSchemas } from "@aux/contracts";
+import { AuxError, MethodSchemas, HostMethods } from "@aux/contracts";
 import { summarizeModelUsage } from "../../services/model-usage.js";
 import { projectRunTranscript } from "../../services/run-transcript.js";
 import { assertRunAnswerable, currentRunSuspension } from "../../services/run-suspension.js";
@@ -61,7 +61,27 @@ async function h_runs_pause(ctx: MethodCtx): Promise<unknown> {
   return s.runs.pause(params.runId);
 }
 async function h_runs_resume(ctx: MethodCtx): Promise<unknown> {
-  const { params, s } = ctx;
+  const { params, s, client } = ctx;
+  if (client.nativeRunResume) {
+    if (client.external || client.codeMode)
+      throw new AuxError("permission_denied", "Run control must come from the Aux owner interface.");
+    const original = structuredClone(s.runs.coordinator.get(params.runId));
+    if (original.status !== "paused")
+      throw new AuxError("ref_stale", "This original run is no longer paused.");
+    if (!s.native?.egressResumeRun)
+      throw new AuxError("capability_unsupported", "Native run control is unavailable.");
+    HostMethods["native.egressResumeRun"].result.parse(await s.native.egressResumeRun({ runId: original.runId, ticketId: client.nativeRunResume }));
+    const current = s.runs.coordinator.get(original.runId);
+    if (current.status !== "paused" || JSON.stringify(current) !== JSON.stringify(original))
+      throw new AuxError("ref_stale", "This paused run changed while returning control.");
+  } else if (s.native) {
+    if (!s.native.egressCheckRunResume)
+      throw new AuxError("capability_unsupported", "Native run control is unavailable.");
+    const original = structuredClone(s.runs.coordinator.get(params.runId));
+    HostMethods["native.egressCheckRunResume"].result.parse(await s.native.egressCheckRunResume({ runId: original.runId }));
+    if (JSON.stringify(s.runs.coordinator.get(original.runId)) !== JSON.stringify(original))
+      throw new AuxError("ref_stale", "This run changed while checking its native control.");
+  }
   return s.runs.resume(params.runId);
 }
 async function h_runs_cancel(ctx: MethodCtx): Promise<unknown> {

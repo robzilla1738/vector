@@ -1,0 +1,24 @@
+{
+  "sourceOnly": true,
+  "originalSnapshot": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-shared-contract-primitives-ipntphlq",
+  "files": [
+    {
+      "path": "packages/contracts/src/api.ts",
+      "beforeSha256": "17a4a5554724f1d8a2ce22581699cf0e35d1265a1886a4ea51f9f23db15df484",
+      "afterSha256": "c9a358f724373cf1aa1d34c763001a4492d1dfd168e66c8d3d471244b55e6dfb",
+      "primitiveConstructorsReused": 753,
+      "exactInverseToOriginal": true
+    },
+    {
+      "path": "packages/contracts/src/entities.ts",
+      "beforeSha256": "79f7522886bfee86b4ac91aed459d0d46c5bfabe1530cd043976d1c14a3da524",
+      "afterSha256": "f8ebf612df634e0ee4094177e542f43a6fea71409c9e7bc05ae2a9bba45a99f0",
+      "primitiveConstructorsReused": 239,
+      "exactInverseToOriginal": true
+    }
+  ],
+  "validationChainsUnchanged": true,
+  "rootApplied": false,
+  "revertedToOriginal": true,
+  "reason": "Actual renderer savings463 bytes insufficient; API schemas not included in packaged renderer. No budget gate waived."
+}

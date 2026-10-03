@@ -1,0 +1,49 @@
+{
+  "producer": "root-stock006-gn-controller-preaudit/v1",
+  "passed": true,
+  "controllerSha256": "7bd1edcbed41c8703643d4128191fb2cb23cde5027652bfbffd83ee36acf4337",
+  "requestSha256": "851716f463998cd953787dcb90ef3188c6ea69058e3376cea4aa97a293996f0f",
+  "inspectionSha256": "431c325097a1b1574d5c3a7d2a8022801ec9c0fb03c3023cc7ef13a6d9e9fb36",
+  "rootExecutedExactReadOnlyActualLLVMGuard": {
+    "originalWholeInventorySha256": "c4a5c2483dcb3a6811c71a9b7a9e05a7e97ac2b5590ab54a7b6a0309a3fb407b",
+    "actualEntryCount": 404,
+    "installedAlias": false,
+    "originalDanglingInternalAliases": [
+      {
+        "kind": "symlink",
+        "mode": 493,
+        "path": "Release+Asserts/lib/clang/24/lib/aarch64-cros-linux-gnu",
+        "resolvedPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/llvm-build/Release+Asserts/lib/clang/24/lib/aarch64-unknown-linux-gnu",
+        "target": "aarch64-unknown-linux-gnu",
+        "targetExists": false,
+        "uid": 502
+      },
+      {
+        "kind": "symlink",
+        "mode": 493,
+        "path": "Release+Asserts/lib/clang/24/lib/armv7a-cros-linux-gnueabihf",
+        "resolvedPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/llvm-build/Release+Asserts/lib/clang/24/lib/armv7-unknown-linux-gnueabihf",
+        "target": "armv7-unknown-linux-gnueabihf",
+        "targetExists": false,
+        "uid": 502
+      },
+      {
+        "kind": "symlink",
+        "mode": 493,
+        "path": "Release+Asserts/lib/clang/24/lib/x86_64-cros-linux-gnu",
+        "resolvedPath": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/llvm-build/Release+Asserts/lib/clang/24/lib/x86_64-unknown-linux-gnu",
+        "target": "x86_64-unknown-linux-gnu",
+        "targetExists": false,
+        "uid": 502
+      }
+    ],
+    "compilerExecuted": false
+  },
+  "wholeControllerSourceAndDiffReviewed": true,
+  "fourTargetsSevenFlagsSeventeenEnvironmentRetained": true,
+  "originalCommittimeReused": true,
+  "nativeCompiled": false,
+  "launched": false,
+  "exclusiveLocalAliasAndGNOnly": true,
+  "executionDeferredToPrioritizeAuxFreeze": true
+}

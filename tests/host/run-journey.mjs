@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { createNarrowWindowPreparation } from './lib/narrow-window.mjs';
+import { createNarrowWindowGenerations } from './lib/narrow-window.mjs';
 import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
 import { dismissObservedSetup } from './lib/dismiss-observed-setup.mjs';
 import { createUntil } from './lib/until.mjs';
@@ -51,7 +51,7 @@ const manifest = { schema: 2, id: journey.id, features: journey.features, needs:
   productIdentity: identity, shellDigest: JSON.parse(readFileSync(join(root, 'chromium/shell-assets/manifest.json'), 'utf8')).sha256,
   attempt: Number(values.attempt), startedAt: new Date().toISOString(), steps: [], captures: [],
 };
-let app, ax, fixture, evidence, appearance, pipAppearance, narrowPreparation;
+let app, ax, fixture, evidence, appearance, pipAppearance;
 async function configureAppearance() {
   if (!values.appearance) return;
   const actual = await app.identity();
@@ -64,6 +64,7 @@ async function configureAppearance() {
 }
 const controller = new AbortController();
 const { signal } = controller;
+const narrowGenerations = values.narrow ? createNarrowWindowGenerations(() => ({ app, ax, appearanceEnabled: true, signal }), manifest) : undefined;
 let deadline;
 const inputs = [];
 const inputCommands = new Set(['press', 'click', 'focus', 'key', 'type', 'drag', 'scroll', 'menu', 'contextMenu', 'savePanel', 'openPanel']);
@@ -206,7 +207,7 @@ async function execute() {
         additionalHiddenSelectors, prepareTrial, trials: 20, candidate, ax: observedAx, readIdentity: () => app.identity() }));
     },
     async restart(options) {
-      assert.ok(!values.narrow, 'Narrow appearance run cannot replace its original launch owner');
+      if (narrowGenerations) await narrowGenerations.restore();
       signal.throwIfAborted();
       appearance = undefined; pipAppearance = undefined;
       await ax.close();
@@ -215,10 +216,11 @@ async function execute() {
       ax = await createAxClient(app.pid);
       assertJourneyIdentity(await app.identity(), identity);
       await configureAppearance();
+      if (narrowGenerations) await narrowGenerations.prepare();
       signal.throwIfAborted();
     },
     async openAux(url, options) {
-      assert.ok(!values.narrow || !options?.cold, 'Narrow appearance run cannot replace its original launch owner');
+      if (options?.cold && narrowGenerations) await narrowGenerations.restore();
       signal.throwIfAborted();
       if (options?.cold) { appearance = undefined; pipAppearance = undefined; await ax.close(); ax = undefined; }
       const receipt = await app.openAux(url, options);
@@ -226,6 +228,7 @@ async function execute() {
         ax = await createAxClient(app.pid);
         assertJourneyIdentity(await app.identity(), identity);
         await configureAppearance();
+        if (narrowGenerations) await narrowGenerations.prepare();
       }
       signal.throwIfAborted();
       return receipt;
@@ -272,9 +275,8 @@ async function execute() {
   manifest.runtime = actual.runtime;
   assertJourneyIdentity(actual, identity);
   await dismissObservedSetup(context, appearance ? windowId => appearance.observeWindowKind(windowId) : undefined);
-  if (values.narrow) {
-    narrowPreparation = createNarrowWindowPreparation({ app, ax, appearanceEnabled: true, signal });
-    manifest.narrowPreparation = await narrowPreparation.prepare();
+  if (narrowGenerations) {
+    await narrowGenerations.prepare();
     signal.throwIfAborted();
   }
   await run(context);
@@ -304,12 +306,9 @@ try {
 } finally {
   clearTimeout(deadline);
   controller.abort(new Error('Journey has finished'));
-  if (narrowPreparation) {
-    try { manifest.narrowRestoration = await narrowPreparation.restore(); }
-    catch (error) {
-      (manifest.cleanupErrors ??= []).push({ name: 'narrow-window', error: error.stack ?? String(error) });
-      process.exitCode = 1;
-    } finally { manifest.narrowPreparation ??= narrowPreparation.record; }
+  if (narrowGenerations) {
+    try { await narrowGenerations.restore(); }
+    catch { process.exitCode = 1; } // The original generation retains its actual cleanup error.
   }
   for (const [name, cleanup] of [['ax', () => ax?.close()], ['app', () => app?.quit()], ['fixture', () => fixture?.close()]]) {
     try { await cleanup(); } catch (error) {

@@ -111,6 +111,9 @@
 
 namespace content {
 
+void ContentBrowserClient::WillDispatchNativeInput(
+    const NativePlatformInputAdmission& admission) {}
+
 std::unique_ptr<BrowserMainParts> ContentBrowserClient::CreateBrowserMainParts(
     bool /* is_integration_test */) {
   return nullptr;

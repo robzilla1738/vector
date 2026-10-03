@@ -1,3 +1,4 @@
+import { closeCreatedPage } from "./close-created-page.js";
 import { browserContextPage } from "./browser-context-page.js";
 import { withRunAuthorityMutation, withRunDispatchMutation } from "./overnight-authority.js";
 import { saveAuthorizedModelCall } from "./model-call-authority.js";
@@ -550,23 +551,26 @@ export class RunService {
     };
   }
 
-  private async openControlledPage(runId: string, url: string, sourcePageId?: string) {
+  private async openControlledPage(runId: string, url: string, sourcePageId?: string, signal?: AbortSignal) {
     const egress = this.deps.browserEgress;
     if (!egress) throw new AuxError("capability_unsupported", "Protected temporary tabs are unavailable.");
     const agentScope = await egress.creationScope(runId, sourcePageId);
     let release: (() => void) | undefined, revoke: (() => void) | undefined;
     try {
-      const page = await this.deps.pages.open({ url, background: true, ownedByRuntime: true, agentScope,
+      const page = await this.deps.pages.open({ url, background: true, ownedByRuntime: true, agentScope, signal,
         beforeNavigate: async target => {
           release = this.pageOwnership.tryAcquire({ pageId: target.pageId, actor: "coordinator", runId });
           revoke = await egress.acquire(runId, target.pageId, url);
         },
       });
+      const original = structuredClone(page);
       const current = this.deps.repo.getRun(runId);
       if (!current || TERMINAL_RUN_STATUSES.has(current.status)) {
         revoke?.(); release?.();
-        await this.deps.pages.close(page.pageId).catch(() => {});
-        throw new AuxError("cancelled", "The run ended while opening its temporary tab.");
+        const failure = new AuxError("cancelled", "The run ended while opening its temporary tab.");
+        try { await closeCreatedPage(this.deps.pages, original, runId); }
+        catch (cleanup) { throw new AggregateError([failure, cleanup], "The run ended and original temporary-page cleanup remains unresolved."); }
+        throw failure;
       }
       if (sourcePageId) {
         current.config = { ...current.config, isolatedPageSources: [...(current.config?.isolatedPageSources ?? []),
@@ -711,7 +715,7 @@ export class RunService {
       pool: this.pool,
       turnMentions: deps.turnMentions,
       nativeAvailable: deps.nativeAvailable,
-      controlledPage: deps.browserEgress ? (runId, url, sourcePageId) => this.openControlledPage(runId, url, sourcePageId) : undefined,
+      controlledPage: deps.browserEgress ? (runId, url, sourcePageId, signal) => this.openControlledPage(runId, url, sourcePageId, signal) : undefined,
       translateSteps: deps.translateSteps,
       grants: () => deps.settings.effectGrantsForRun?.() ?? USER_RUN_GRANTS,
       durableWrites,
@@ -1266,7 +1270,7 @@ export class RunService {
   async pauseForTakeover(runId: string): Promise<Run> {
     const run = this.deps.repo.getRun(runId);
     if (!run) throw new AuxError("not_found", `no run ${runId}`);
-    if (run.status !== "running" && run.status !== "planning") return run;
+    if (run.status !== "queued" && run.status !== "running" && run.status !== "planning") return run;
     const paused = await this.pause(runId);
     if (paused.status === "paused") {
       this.coordinator.interruptForTakeover(runId);

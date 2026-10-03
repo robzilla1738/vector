@@ -1,6 +1,8 @@
 import type { DownloadNamingNative, CompletedDownload } from "./services/download-naming.js";
 import {
+  NativeCreatorClosedSchema, NativeCreatorCleanupProofSchema, NativeCreatorCleanupParamsSchema, NativeCreatorCloseParamsSchema, type NativeCreatorCleanupProof,
   ProfileOrganizationSnapshotSchema,
+  NativeRecorderStartedSchema, NativeRecorderDrainSchema, NativeRecorderStoppedSchema,
   HostMethods,
   type HostMethodResult,
   type ProfileOrganizationSnapshot,
@@ -97,11 +99,20 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
   powerStatus?(): Promise<HostMethodResult<"native.powerStatus">>;
   powerActivity?(input: { reason: string; durationSec: number }): Promise<HostMethodResult<"native.powerActivity">>;
   organizationSnapshot?(): Promise<ProfileOrganizationSnapshot>;
+  recorderStart?(input: { pageId: string }): Promise<HostMethodResult<"native.recorderStart">>;
+  recorderDrain?(input: { pageId: string; recorderId: string }): Promise<HostMethodResult<"native.recorderDrain">>;
+  recorderStop?(input: { pageId: string; recorderId: string }): Promise<HostMethodResult<"native.recorderStop">>;
   createAgentPage?(input: AgentPageCreate): Promise<AgentPageCreated>;
+  creatorCleanupProof?(input: { pageId: string; creationId: string }): Promise<NativeCreatorCleanupProof>;
+  closeCreatedPage?(input: { proof: NativeCreatorCleanupProof }): Promise<{ closed: true }>;
+  egressRunTerminal?(input: { runId: string }): Promise<HostMethodResult<"native.egressRunTerminal">>;
+  egressCheckRunResume?(input: { runId: string }): Promise<HostMethodResult<"native.egressCheckRunResume">>;
+  egressResumeRun?(input: { runId: string; ticketId: string }): Promise<HostMethodResult<"native.egressResumeRun">>;
+  egressResumePerson?(input: { pageId: string; ticketId: string }): Promise<HostMethodResult<"native.egressResumePerson">>;
   egressContext?(input: { tabId: string; expectedUrl: string }): Promise<EgressContext>;
-  egressInstall?(input: { lease: EgressLease; expectedUrl: string }): Promise<{ accepted: true }>;
+  egressInstall?(input: { lease: EgressLease; expectedUrl: string; navigationTransitionId?: string }): Promise<{ accepted: true }>;
   permissionRetire(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }>;
-  egressRevoke?(input: { leaseId: string }): Promise<{ accepted: true }>;
+  egressRevoke?(input: { lease: EgressLease }): Promise<{ accepted: true }>;
   capabilities?(): Promise<HostCapabilities>;
   /** Chromium BookmarkModel owns the tree; the runtime only keeps offline article bodies. */
   bookmarksInvoke?(method: string, params: unknown): Promise<unknown>;
@@ -192,19 +203,48 @@ export interface NativeBridge extends Partial<DownloadNamingNative> {
 
 export class ChannelNativeBridge implements NativeBridge {
   constructor(private channel: RpcChannel) {}
+  async recorderStart(input: { pageId: string }): Promise<HostMethodResult<"native.recorderStart">> {
+    return NativeRecorderStartedSchema.parse(await this.channel.call("native.recorderStart", input));
+  }
+  async recorderDrain(input: { pageId: string; recorderId: string }): Promise<HostMethodResult<"native.recorderDrain">> {
+    return NativeRecorderDrainSchema.parse(await this.channel.call("native.recorderDrain", input));
+  }
+  async recorderStop(input: { pageId: string; recorderId: string }): Promise<HostMethodResult<"native.recorderStop">> {
+    return NativeRecorderStoppedSchema.parse(await this.channel.call("native.recorderStop", input));
+  }
+  async creatorCleanupProof(input: { pageId: string; creationId: string }): Promise<NativeCreatorCleanupProof> {
+    return NativeCreatorCleanupProofSchema.parse(await this.channel.call(
+      "native.creatorCleanupProof", NativeCreatorCleanupParamsSchema.parse(input)));
+  }
+  async closeCreatedPage(input: { proof: NativeCreatorCleanupProof }): Promise<{ closed: true }> {
+    return NativeCreatorClosedSchema.parse(await this.channel.call(
+      "native.closeCreatedPage", NativeCreatorCloseParamsSchema.parse(input), 55_000));
+  }
   async createAgentPage(input: AgentPageCreate): Promise<AgentPageCreated> {
     return AgentPageCreatedSchema.parse(await this.channel.call("native.createAgentPage", input, 55_000));
+  }
+  async egressRunTerminal(input: { runId: string }): Promise<HostMethodResult<"native.egressRunTerminal">> {
+    return HostMethods["native.egressRunTerminal"].result.parse(await this.channel.call("native.egressRunTerminal", input));
+  }
+  async egressCheckRunResume(input: { runId: string }): Promise<HostMethodResult<"native.egressCheckRunResume">> {
+    return HostMethods["native.egressCheckRunResume"].result.parse(await this.channel.call("native.egressCheckRunResume", input));
+  }
+  async egressResumeRun(input: { runId: string; ticketId: string }): Promise<HostMethodResult<"native.egressResumeRun">> {
+    return HostMethods["native.egressResumeRun"].result.parse(await this.channel.call("native.egressResumeRun", input));
+  }
+  async egressResumePerson(input: { pageId: string; ticketId: string }): Promise<HostMethodResult<"native.egressResumePerson">> {
+    return HostMethods["native.egressResumePerson"].result.parse(await this.channel.call("native.egressResumePerson", input));
   }
   async egressContext(input: { tabId: string; expectedUrl: string }): Promise<EgressContext> {
     return EgressContextSchema.parse(await this.channel.call("native.egressContext", input));
   }
-  egressInstall(input: { lease: EgressLease; expectedUrl: string }): Promise<{ accepted: true }> {
+  egressInstall(input: { lease: EgressLease; expectedUrl: string; navigationTransitionId?: string }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressInstall", input);
   }
   permissionRetire(input: { tabId: string; batchId: string; reservationId: string }): Promise<{ accepted: true }> {
     return this.channel.call("native.permissionRetire", input);
   }
-  egressRevoke(input: { leaseId: string }): Promise<{ accepted: true }> {
+  egressRevoke(input: { lease: EgressLease }): Promise<{ accepted: true }> {
     return this.channel.call("native.egressRevoke", input);
   }
   async personReadContext(pageId: string): Promise<NativePersonReadContext> {

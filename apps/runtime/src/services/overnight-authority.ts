@@ -24,13 +24,23 @@ export async function withOvernightAuthorityMutation<T>(repo: Repo, mutation: ()
 
 /** Actual controller-owned lifecycle and Profile budget mutation boundary. */
 export async function withRunAuthorityMutation<T>(repo: Repo, mutation: () => Promise<T>, runId?: string): Promise<T> {
+  const mutate = async () => {
+    const result = await mutation();
+    const browser = browserControllers.get(repo);
+    if (browser && runId) {
+      const terminal = new Set(["completed", "partially_completed", "failed", "cancelled", "interrupted"]);
+      const family = lineageRuns(repo, runId).filter(id => terminal.has(repo.getRun(id)?.status ?? "missing"));
+      await browser.retireTerminalRegistrations(family);
+    }
+    return result;
+  };
   const controller = controllers.get(repo);
   if (!controller) {
     // Ordinary nonnative tasks have no native permission producer or receipt.
     // Overnight authority still requires its actual controller, never a fallback.
-    return withOvernightAuthorityMutation(repo, mutation, runId);
+    return withOvernightAuthorityMutation(repo, mutate, runId);
   }
-  return controller.withAuthorityMutation(id => !runId || lineageRuns(repo, runId).includes(id), mutation);
+  return controller.withAuthorityMutation(id => !runId || lineageRuns(repo, runId).includes(id), mutate);
 }
 
 /** Task mutations retire only that actual source's parent family, after caller scope checks. */

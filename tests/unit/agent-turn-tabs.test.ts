@@ -52,7 +52,7 @@ it("never reuses a same-URL turn tab from an older run or task revision", async 
   const turns = new AgentTurnTabs(service);
   try {
     const input = { connectionId: "c", taskId: "t", turnId: "turn", url: "https://source.test/", skipIfActive: true,
-      agentScope: { profileId: "profile", runId: "first", taskId: "t", taskRevision: 1 } };
+      agentScope: { profileId: "profile", runId: "first", ancestry: ["first"], taskId: "t", taskRevision: 1 } };
     const first = await turns.open(input);
     expect((await turns.open(input)).pageId).toBe(first.pageId);
     const next = await turns.open({ ...input, agentScope: { ...input.agentScope, runId: "second" } });

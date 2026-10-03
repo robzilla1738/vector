@@ -221,6 +221,9 @@
 #if BUILDFLAG(ENABLE_AUX_SHELL)
 #include "chrome/browser/ui/aux/content_blocking_controller.h"
 #include "chrome/browser/ui/aux/egress_controller.h"
+#if BUILDFLAG(IS_MAC)
+#include "chrome/browser/ui/aux/native_cdp_input_mac.h"
+#endif
 #include "chrome/browser/ui/aux/result_preview.h"
 #include "chrome/browser/ui/aux/zap_controller.h"
 #endif
@@ -7442,6 +7445,15 @@ ChromeContentBrowserClient::GetAdmittedNonNetworkOpaqueOrigin(
   return aux::GetAdmittedResultPreviewOrigin(navigation);
 #else
   return std::nullopt;
+#endif
+}
+
+void ChromeContentBrowserClient::WillDispatchNativeInput(
+    const content::NativePlatformInputAdmission& admission) {
+#if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
+  // Retirement is synchronous and precedes forwarding the original input.
+  if (auto input = aux::RetireForNativeCdpPersonInput(admission))
+    aux::PublishNativeCdpPersonTakeover(*input);
 #endif
 }
 

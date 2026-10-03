@@ -372,8 +372,10 @@ async function h_pages_pickElement(ctx: MethodCtx): Promise<unknown> {
   return s.pages.pickElement(params.pageId, { timeoutMs: params.timeoutMs });
 }
 async function h_pages_resume(ctx: MethodCtx): Promise<unknown> {
-  const { params, s } = ctx;
-  return s.pages.resume(params.pageId);
+  const { client, params, s } = ctx;
+  if (client.external || client.codeMode)
+    throw new AuxError("permission_denied", "Return control through the Aux browser interface.");
+  return s.pages.resume(params.pageId, client.nativePersonResume);
 }
 async function h_pages_openLive(ctx: MethodCtx): Promise<unknown> {
   const { params, s, withExternalPage } = ctx;

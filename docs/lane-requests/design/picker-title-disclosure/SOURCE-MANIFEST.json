@@ -1,0 +1,28 @@
+{
+  "sourceOnly": true,
+  "baselineCommit": "b55295c4825944a777669792eb1cfd65b251f875",
+  "patchSha256": "144691aac48e17950f5882efba619fcefe109bd6c5647169155af6ae280cbb87",
+  "files": [
+    {
+      "path": "apps/shell/src/components/BrowserContextPicker.tsx",
+      "beforeSha256": "e2622e91ea850be72151464b8ad39f164ad24b88d6f78a146bcd6695bd533210",
+      "afterSha256": "6be82a15e93be3485db67036f9ab48a126ec681f9d2bd9b0ccd05189536870fe"
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextPicker.disclosure.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "10f77dc673d1af43aed15ebfb26d0d89f5b2b4ac6e89a2da141976d9db6b9c45"
+    }
+  ],
+  "checks": {
+    "actualComponentCases": 6,
+    "originalPickerTestsUnchanged": true,
+    "shellTypecheck": true,
+    "scopedLint": true,
+    "diffCheck": true,
+    "forwardReverseForward": true
+  },
+  "replayScratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-picker-disclosure-replay-or7ywvuv",
+  "nativeExecution": false,
+  "visualClosure": false
+}

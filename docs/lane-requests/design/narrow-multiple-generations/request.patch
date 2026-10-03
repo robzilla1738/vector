@@ -1,0 +1,199 @@
+diff --git a/tests/host/lib/narrow-window.mjs b/tests/host/lib/narrow-window.mjs
+index faf2b84cf..37897bc1a 100644
+--- a/tests/host/lib/narrow-window.mjs
++++ b/tests/host/lib/narrow-window.mjs
+@@ -98,3 +98,39 @@ export function createNarrowWindowPreparation(t) {
+     get record() { return record ?? Object.freeze({ pid, identity, before, effectStarted, restored, visualApproval: false }); },
+   });
+ }
++
++/** Each restarted launch owns a new session; old receipts never authorize it. */
++export function createNarrowWindowGenerations(readContext, manifest) {
++  assert.equal(typeof readContext, 'function', 'Original runner context reader required');
++  assert.equal(manifest.narrowGenerations, undefined, 'Narrow generation inventory already exists');
++  const generations = manifest.narrowGenerations = [];
++  let current;
++  return Object.freeze({
++    async prepare() {
++      assert.equal(current, undefined, 'Original narrow generation must retire before replacement');
++      const session = createNarrowWindowPreparation(readContext());
++      const entry = { ordinal: generations.length + 1 };
++      current = { session, entry }; generations.push(entry);
++      try { entry.preparation = await session.prepare(); return entry.preparation; }
++      catch (error) { entry.preparationError = error.stack ?? String(error); throw error; }
++      finally { entry.preparation ??= session.record; }
++    },
++    restore() {
++      if (!current) return;
++      const original = current;
++      return original.restoring ??= (async () => {
++        try {
++          original.entry.restoration = await original.session.restore();
++          assert.equal(current, original, 'Narrow cleanup owner replaced');
++          current = undefined;
++        } catch (error) {
++          if (!original.entry.cleanupError) {
++            original.entry.cleanupError = error.stack ?? String(error);
++            (manifest.cleanupErrors ??= []).push({ name: 'narrow-window', ordinal: original.entry.ordinal, error: original.entry.cleanupError });
++          }
++          throw error;
++        }
++      })();
++    },
++  });
++}
+diff --git a/tests/host/narrow-window.test.mjs b/tests/host/narrow-window.test.mjs
+index 8c640ebba..d7d38389f 100644
+--- a/tests/host/narrow-window.test.mjs
++++ b/tests/host/narrow-window.test.mjs
+@@ -1,6 +1,6 @@
+ import assert from 'node:assert/strict';
+ import { test } from 'node:test';
+-import { createNarrowWindowPreparation } from './lib/narrow-window.mjs';
++import { createNarrowWindowPreparation, createNarrowWindowGenerations } from './lib/narrow-window.mjs';
+ function fixture() {
+   const before = { id: 71, layer: 0, x: 20, y: 30, width: 1200, height: 700 };
+   const after = { ...before, width: 810 };
+@@ -104,3 +104,56 @@ test('concurrent cleanup joins one original restoration effect and receipt', asy
+   while (!release) await new Promise(resolve => setImmediate(resolve));
+   release(); const record = await first; assert.equal(inputs, 2); assert.equal(await second, record);
+ });
++
++
++test('actual restored old geometry retires before fresh native helper/PID admission', async () => {
++  const manifest = {}, original = fixture(); let current = original.t;
++  let width = original.before.width;
++  original.t.ax.windows = async () => [{ ...original.before, width }];
++  original.t.ax.drag = async (_from, to) => { width = to.x - original.before.x + 1; };
++  const generations = createNarrowWindowGenerations(() => current, manifest);
++  await generations.prepare();
++  await assert.rejects(generations.prepare(), /retire before replacement/);
++  await generations.restore(); assert.equal(width, original.before.width);
++  const fresh = fixture(); fresh.t.app.pid = fresh.t.ax.pid = 202; fresh.t.ax.helperPid = 302;
++  fresh.identity.targetPid = 202; fresh.identity.helperPid = 302; fresh.identity.targetProcessStartMachTicks = '9';
++  let freshWidth = 1200;
++  fresh.t.ax.windows = async () => [{ ...fresh.before, id: 72, width: freshWidth }];
++  fresh.t.ax.drag = async (_from, to) => { freshWidth = to.x - fresh.before.x + 1; };
++  current = fresh.t; await generations.prepare(); await generations.restore();
++  assert.equal(manifest.narrowGenerations.length, 2);
++  assert.equal(manifest.narrowGenerations[0].preparation.pid, 201);
++  assert.equal(manifest.narrowGenerations[1].preparation.pid, 202);
++  assert.equal(manifest.narrowGenerations[1].preparation.windowId, 72);
++  assert.equal(manifest.narrowGenerations[1].restoration.observed.width, 1200);
++  assert.equal(manifest.cleanupErrors, undefined);
++});
++test('old cleanup refusal prevents new generation and records original debt only once', async () => {
++  const manifest = {}, f = fixture(); const generations = createNarrowWindowGenerations(() => f.t, manifest);
++  await generations.prepare(); f.t.app.pid = 202;
++  await assert.rejects(generations.restore(), /owner retired/);
++  await assert.rejects(generations.restore(), /owner retired/);
++  await assert.rejects(generations.prepare(), /retire before replacement/);
++  assert.equal(manifest.cleanupErrors.length, 1); assert.equal(manifest.cleanupErrors[0].ordinal, 1);
++  assert.equal(manifest.narrowGenerations.length, 1); assert.ok(manifest.narrowGenerations[0].cleanupError);
++});
++test('fresh generation preparation error retains its own original partial-input cleanup debt', async () => {
++  const manifest = {}, f = fixture(), primary = new Error('New generation input refused'), cleanup = new Error('New generation cleanup refused');
++  let width = f.before.width, inputs = 0;
++  f.t.ax.windows = async () => [{ ...f.before, width }];
++  f.t.ax.drag = async () => { width = 810; throw ++inputs === 1 ? primary : cleanup; };
++  const generations = createNarrowWindowGenerations(() => f.t, manifest);
++  await assert.rejects(generations.prepare(), error => error === primary);
++  await assert.rejects(generations.restore(), error => error === cleanup);
++  assert.match(manifest.narrowGenerations[0].preparationError, /New generation input refused/);
++  assert.match(manifest.cleanupErrors[0].error, /New generation cleanup refused/);
++});
++test('concurrent generation cleanup joins original retirement without false debt', async () => {
++  const manifest = {}, f = fixture(); let width = f.before.width, count = 0, release;
++  f.t.ax.windows = async () => [{ ...f.before, width }];
++  f.t.ax.drag = async () => { if (++count === 1) width = 810; else { await new Promise(resolve => { release = resolve; }); width = f.before.width; } };
++  const generations = createNarrowWindowGenerations(() => f.t, manifest); await generations.prepare();
++  const first = generations.restore(), second = generations.restore(); assert.equal(first, second);
++  while (!release) await new Promise(resolve => setImmediate(resolve));
++  release(); await Promise.all([first, second]); assert.equal(count, 2); assert.equal(manifest.cleanupErrors, undefined);
++});
+diff --git a/tests/host/run-journey.mjs b/tests/host/run-journey.mjs
+index 49092a4c8..ab6ab886a 100644
+--- a/tests/host/run-journey.mjs
++++ b/tests/host/run-journey.mjs
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env node
+-import { createNarrowWindowPreparation } from './lib/narrow-window.mjs';
++import { createNarrowWindowGenerations } from './lib/narrow-window.mjs';
+ import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
+ import { dismissObservedSetup } from './lib/dismiss-observed-setup.mjs';
+ import { createUntil } from './lib/until.mjs';
+@@ -51,7 +51,7 @@ const manifest = { schema: 2, id: journey.id, features: journey.features, needs:
+   productIdentity: identity, shellDigest: JSON.parse(readFileSync(join(root, 'chromium/shell-assets/manifest.json'), 'utf8')).sha256,
+   attempt: Number(values.attempt), startedAt: new Date().toISOString(), steps: [], captures: [],
+ };
+-let app, ax, fixture, evidence, appearance, pipAppearance, narrowPreparation;
++let app, ax, fixture, evidence, appearance, pipAppearance;
+ async function configureAppearance() {
+   if (!values.appearance) return;
+   const actual = await app.identity();
+@@ -64,6 +64,7 @@ async function configureAppearance() {
+ }
+ const controller = new AbortController();
+ const { signal } = controller;
++const narrowGenerations = values.narrow ? createNarrowWindowGenerations(() => ({ app, ax, appearanceEnabled: true, signal }), manifest) : undefined;
+ let deadline;
+ const inputs = [];
+ const inputCommands = new Set(['press', 'click', 'focus', 'key', 'type', 'drag', 'scroll', 'menu', 'contextMenu', 'savePanel', 'openPanel']);
+@@ -206,7 +207,7 @@ async function execute() {
+         additionalHiddenSelectors, prepareTrial, trials: 20, candidate, ax: observedAx, readIdentity: () => app.identity() }));
+     },
+     async restart(options) {
+-      assert.ok(!values.narrow, 'Narrow appearance run cannot replace its original launch owner');
++      if (narrowGenerations) await narrowGenerations.restore();
+       signal.throwIfAborted();
+       appearance = undefined; pipAppearance = undefined;
+       await ax.close();
+@@ -215,10 +216,11 @@ async function execute() {
+       ax = await createAxClient(app.pid);
+       assertJourneyIdentity(await app.identity(), identity);
+       await configureAppearance();
++      if (narrowGenerations) await narrowGenerations.prepare();
+       signal.throwIfAborted();
+     },
+     async openAux(url, options) {
+-      assert.ok(!values.narrow || !options?.cold, 'Narrow appearance run cannot replace its original launch owner');
++      if (options?.cold && narrowGenerations) await narrowGenerations.restore();
+       signal.throwIfAborted();
+       if (options?.cold) { appearance = undefined; pipAppearance = undefined; await ax.close(); ax = undefined; }
+       const receipt = await app.openAux(url, options);
+@@ -226,6 +228,7 @@ async function execute() {
+         ax = await createAxClient(app.pid);
+         assertJourneyIdentity(await app.identity(), identity);
+         await configureAppearance();
++        if (narrowGenerations) await narrowGenerations.prepare();
+       }
+       signal.throwIfAborted();
+       return receipt;
+@@ -272,9 +275,8 @@ async function execute() {
+   manifest.runtime = actual.runtime;
+   assertJourneyIdentity(actual, identity);
+   await dismissObservedSetup(context, appearance ? windowId => appearance.observeWindowKind(windowId) : undefined);
+-  if (values.narrow) {
+-    narrowPreparation = createNarrowWindowPreparation({ app, ax, appearanceEnabled: true, signal });
+-    manifest.narrowPreparation = await narrowPreparation.prepare();
++  if (narrowGenerations) {
++    await narrowGenerations.prepare();
+     signal.throwIfAborted();
+   }
+   await run(context);
+@@ -304,12 +306,9 @@ try {
+ } finally {
+   clearTimeout(deadline);
+   controller.abort(new Error('Journey has finished'));
+-  if (narrowPreparation) {
+-    try { manifest.narrowRestoration = await narrowPreparation.restore(); }
+-    catch (error) {
+-      (manifest.cleanupErrors ??= []).push({ name: 'narrow-window', error: error.stack ?? String(error) });
+-      process.exitCode = 1;
+-    } finally { manifest.narrowPreparation ??= narrowPreparation.record; }
++  if (narrowGenerations) {
++    try { await narrowGenerations.restore(); }
++    catch { process.exitCode = 1; } // The original generation retains its actual cleanup error.
+   }
+   for (const [name, cleanup] of [['ax', () => ax?.close()], ['app', () => app?.quit()], ['fixture', () => fixture?.close()]]) {
+     try { await cleanup(); } catch (error) {

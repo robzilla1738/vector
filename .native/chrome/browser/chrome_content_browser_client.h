@@ -833,6 +833,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   std::optional<url::Origin> GetAdmittedNonNetworkOpaqueOrigin(
       content::NavigationHandle& navigation) override;
   bool RequiresCurrentAutoPictureInPictureAuthority() const override;
+  void WillDispatchNativeInput(
+      const content::NativePlatformInputAdmission& admission) override;
   void OnNativeManualDocumentPictureInPicture(
       content::RenderFrameHost& frame) override;
   media::PictureInPictureEventsInfo::AutoPipInfo GetAutoPipInfo(

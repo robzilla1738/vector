@@ -80,9 +80,9 @@ export interface ObservedActionTarget {
   challenge?: "captcha" | "bot_block";
 }
 
+/** Fixed person-only capture; callers cannot submit a browser method or script. */
 export interface RecorderObserver {
-  send(method: string, params?: Record<string, unknown>): Promise<Record<string, unknown>>;
-  on(event: string, listener: (params: Record<string, unknown>) => void): () => void;
+  start(onStep: (step: unknown) => void, onFault?: (error: unknown) => void): Promise<void>;
   close(): Promise<void>;
 }
 

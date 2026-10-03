@@ -293,25 +293,47 @@ export class NativePermissionController {
     const barrier = (runId: string) => matches(runId);
     this.authorityMutations.add(barrier);
     this.captureRetirementDebt(matches);
+    try { return await this.withMutationTurn(() => this.retireDebt(matches), mutation); }
+    finally { this.authorityMutations.delete(barrier); }
+  }
+
+  /** Native control must recheck its original binding inside the existing turn
+   * BEFORE retiring receipts. A queued old input cannot retire a replacement.
+   */
+  async withValidatedAuthorityMutation<T>(
+    matches: (runId: string) => boolean,
+    validate: () => Promise<void>,
+    mutation: () => Promise<T>,
+  ): Promise<T> {
+    await validate();
+    const barrier = (runId: string) => matches(runId);
+    this.authorityMutations.add(barrier);
+    try {
+      return await this.withMutationTurn(async () => {
+        await validate();
+        this.captureRetirementDebt(matches);
+        await this.retireDebt(matches);
+        await validate();
+      }, mutation);
+    } finally { this.authorityMutations.delete(barrier); }
+  }
+
+  private async withMutationTurn<T>(prepare: () => Promise<void>, mutation: () => Promise<T>): Promise<T> {
     if (this.mutationContext.getStore()?.active) {
-      // A caller may compose Runs.cancel → coordinator.finish within an already
-      // acknowledged mutation. Retire any newly covered scope without deadlocking.
-      try { await this.retireDebt(matches); return await mutation(); }
-      finally { this.authorityMutations.delete(barrier); }
+      // Nested lifecycle work shares its acknowledged actual controller turn.
+      await prepare();
+      return mutation();
     }
     const previous = this.mutationTail;
     let release!: () => void;
     this.mutationTail = new Promise<void>(resolve => { release = resolve; });
     try {
       await previous;
-      await this.retireDebt(matches);
+      await prepare();
       const context = { active: true };
       try { return await this.mutationContext.run(context, mutation); }
       finally { context.active = false; }
-    } finally {
-      this.authorityMutations.delete(barrier);
-      release();
-    }
+    } finally { release(); }
   }
 
   /** Authenticated native-only fresh effect check; never consumes consent again. */

@@ -1,0 +1,13 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "scratch": "/tmp/aux-l10-0280-coherent-replay-zjvu_hyr",
+  "phases": [
+    "forward",
+    "reverse",
+    "forward"
+  ],
+  "files": 136,
+  "allHashesMatched": true
+}

@@ -1,3 +1,4 @@
+import { consumeControlledAttachmentNavigation, retireControlledAttachmentNavigation, type ControlledAttachmentNavigationReceipt } from "../services/pages/controlled-navigation.js";
 import { AuxError, MentionRefsSchema, type MentionRef } from "@aux/contracts";
 
 type TabMention = Extract<MentionRef, { kind: "tab" }>;
@@ -108,6 +109,61 @@ export class TurnMentions {
         turn.pages.set(pageId, { ...snapshot, ...page });
       }
       return result;
+    } finally { if (turn.navigation.get(pageId) === token) turn.navigation.delete(pageId); }
+  }
+
+  /** A real native command may replace its driver incarnation. Caller-shaped
+   * page/session objects cannot advance this path: only the private completed
+   * continuation token can be consumed against the original turn snapshot. */
+  async navigateAttachment<T>(runId: string, pageId: string,
+    dispatch: (mentionAuthority: () => void) => Promise<{ result: T; receipt: ControlledAttachmentNavigationReceipt }>): Promise<T | Extract<MentionAvailability, { status: "unavailable" }>> {
+    const access = this.require(runId, pageId, "act");
+    if (access.status === "unavailable") return access;
+    const turn = this.turns.get(runId)!;
+    const original = this.page(pageId);
+    if (!original || turn.navigation.has(pageId))
+      return { status: "unavailable", reason: "The original navigation attachment is unavailable or busy." };
+    const before = { ...original };
+    const token = Symbol();
+    turn.navigation.set(pageId, token);
+    const mentionAuthority = () => {
+      const snapshot = turn.pages.get(pageId);
+      if (this.turns.get(runId) !== turn || turn.navigation.get(pageId) !== token
+        || snapshot && (snapshot.url !== before.url || snapshot.sessionId !== before.sessionId
+          || snapshot.documentEpoch !== before.documentEpoch))
+        throw new MentionUnavailable("The original mentioned turn or snapshot changed during native navigation.");
+    };
+    let originalReceipt: ControlledAttachmentNavigationReceipt | undefined;
+    const refuse = async (reason: string): Promise<Extract<MentionAvailability, { status: "unavailable" }>> => {
+      if (originalReceipt) await retireControlledAttachmentNavigation(originalReceipt);
+      return { status: "unavailable", reason };
+    };
+    try {
+      const { result, receipt } = await dispatch(mentionAuthority);
+      originalReceipt = receipt;
+      if (this.turns.get(runId) !== turn || turn.navigation.get(pageId) !== token)
+        return await refuse("The turn changed during native navigation.");
+      const page = consumeControlledAttachmentNavigation(receipt, runId, pageId, before, mentionAuthority);
+      const current = this.page(pageId);
+      if (!page || !current || page.sessionId === before.sessionId
+        || page.documentEpoch !== before.documentEpoch + 1
+        || current.url !== page.url || current.sessionId !== page.sessionId
+        || current.documentEpoch !== page.documentEpoch)
+        return await refuse("Native navigation did not produce its original fresh attachment receipt.");
+      const snapshot = turn.pages.get(pageId);
+      if (snapshot) {
+        if (snapshot.url !== before.url || snapshot.sessionId !== before.sessionId
+          || snapshot.documentEpoch !== before.documentEpoch)
+          return await refuse("The original mention snapshot changed during navigation.");
+        turn.pages.set(pageId, { ...snapshot, ...page });
+      }
+      return result;
+    } catch (error) {
+      if (originalReceipt) {
+        try { await retireControlledAttachmentNavigation(originalReceipt); }
+        catch (cleanupError) { throw new AggregateError([error, cleanupError], "Original mention attachment and retirement failed", { cause: error }); }
+      }
+      throw error;
     } finally { if (turn.navigation.get(pageId) === token) turn.navigation.delete(pageId); }
   }
 

@@ -1,3 +1,4 @@
+import { closeCreatedPage } from "../services/close-created-page.js";
 import { browserContextPage } from "../services/browser-context-page.js";
 import { withRunAuthorityMutation, withRunDispatchMutation } from "../services/overnight-authority.js";
 import {
@@ -5,6 +6,7 @@ import {
   newRunId,
   AuxError,
   type Observation,
+  type PageTarget,
   type PlanChunk,
   type Run,
   type Step,
@@ -265,7 +267,7 @@ export class RunCoordinator {
   async pause(runId: string): Promise<Run> {
     const c = this.controls.get(runId);
     const run = this.get(runId);
-    if (c && (run.status === "running" || run.status === "planning")) {
+    if (c && (run.status === "queued" || run.status === "running" || run.status === "planning")) {
       c.paused = true;
       await this.setStatus(runId, "paused", "Paused");
     }
@@ -570,6 +572,9 @@ export class RunCoordinator {
         this.deps.repo.saveRun(run);
       }
       await this.acquirePages(runId);
+      const control = this.controls.get(runId);
+      if (!control) throw new AuxError("cancelled", "Run ended while preparing its pages.");
+      await this.waitIfPaused(control, runId);
       if (this.get(runId).config?.implementation === "agent-loop") await runToolLoop(this, runId);
       else await runCoordinatorLoop(this, runId);
     } finally {
@@ -583,7 +588,7 @@ export class RunCoordinator {
     const control = this.controls.get(runId);
     if (!control) throw new AuxError("cancelled", "run has ended");
     const releases: Array<() => void> = [];
-    const opened: string[] = [];
+    const opened: PageTarget[] = [];
     try {
       const run = this.get(runId);
       if (this.deps.browserEgress) {
@@ -604,19 +609,26 @@ export class RunCoordinator {
           const agentScope = await this.deps.browserEgress.creationScope(runId, sourcePageId);
           const copy = await this.deps.pages.open({ url: agentScope.source!.expectedUrl,
             windowId: source.windowId, background: true, ownedByRuntime: true, agentScope,
+            signal: control.abort.signal,
             beforeNavigate: async target => { releases.push(await this.claimPage(runId, target.pageId, agentScope.source!.expectedUrl)); },
           });
+          opened.push(structuredClone(copy));
           this.ownPage(runId, copy.pageId);
-          opened.push(copy.pageId);
           sources.push({ sourcePageId, pageId: copy.pageId, url: agentScope.source!.expectedUrl });
         }
         if (control.abort.signal.aborted) throw new AuxError("cancelled", "Run cancelled while opening its temporary tab.");
         if (!sources.length && run.config?.implementation !== "agent-loop")
           throw new AuxError("capability_unsupported", "This planner needs a website to open in a protected temporary tab. Choose a website before starting.");
-        run.pageIds = sources.map(source => source.pageId);
-        run.config = { ...run.config, isolatedPageSources: sources };
-        this.deps.repo.saveRun(run);
-        this.deps.events.emit(EventTypes.RunUpdated, { run }, runId);
+        const current = this.get(runId);
+        if (this.controls.get(runId) !== control || TERMINAL_STATUSES.has(current.status)
+          || current.config?.taskId !== run.config?.taskId || current.config?.taskRevision !== run.config?.taskRevision
+          || current.config?.messageRevision !== run.config?.messageRevision
+          || JSON.stringify(current.pageIds) !== JSON.stringify(run.pageIds))
+          throw new AuxError("ref_stale", "The original run changed while opening its temporary tabs.");
+        current.pageIds = sources.map(source => source.pageId);
+        current.config = { ...current.config, isolatedPageSources: sources };
+        this.deps.repo.saveRun(current);
+        this.deps.events.emit(EventTypes.RunUpdated, { run: current }, runId);
       } else {
         releases.push(await this.pageOwnership.acquireMany(run.pageIds,
           { actor: "coordinator", runId }, control.abort.signal));
@@ -629,7 +641,12 @@ export class RunCoordinator {
     } catch (error) {
       this.deps.browserEgress?.revokeRun(runId);
       for (const release of releases.reverse()) release();
-      for (const pageId of opened) await this.deps.pages.close(pageId).catch(() => {});
+      const cleanupErrors: unknown[] = [];
+      for (const page of opened) {
+        try { await closeCreatedPage(this.deps.pages, page, runId); }
+        catch (cleanup) { cleanupErrors.push(cleanup); }
+      }
+      if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], "Page acquisition failed and original native cleanup remains unresolved.");
       throw error;
     }
   }

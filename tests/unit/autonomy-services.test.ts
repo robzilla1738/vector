@@ -5,7 +5,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import { openDb, Repo } from "@aux/runtime";
 import { createClock } from "@aux/contracts";
 import { SqliteColumnCipher } from "../../apps/runtime/src/store/sqlite-protection.js";
-import { DemoRecorder, RECORDER_SOURCE, type RecorderObserver } from "../../apps/runtime/src/services/demo-recorder.js";
+import { RECORDER_SOURCE, type RecorderObserver } from "@aux/chromium-driver";
+import { DemoRecorder } from "../../apps/runtime/src/services/demo-recorder.js";
 import { NightShiftService, nightWindow, type NightShiftRuntime } from "../../apps/runtime/src/services/night-shift.js";
 import { BudgetsService } from "../../apps/runtime/src/services/budgets.js";
 import { compileDemonstration } from "../../apps/runtime/src/services/skill-replay.js";
@@ -28,27 +29,25 @@ async function fixture() {
 }
 it("encrypts actual recorder rows, excludes detached callbacks and removes observer listeners", async () => {
   const { db, repo } = await fixture();
-  const listeners = new Map<string, (params: Record<string, unknown>) => void>();
-  const sent: string[] = []; let closed = false;
+  let onStep: ((raw: unknown) => void) | undefined;
+  let closed = false;
   const observer: RecorderObserver = {
-    send: async method => { sent.push(method); return method === "Page.getFrameTree" ? { frameTree: { frame: { id: "main" } } }
-      : method === "Page.createIsolatedWorld" ? { executionContextId: 4 } : { identifier: "script" }; },
-    on: (event, listener) => { listeners.set(event, listener); return () => { listeners.delete(event); }; },
-    close: async () => { closed = true; },
+    start: async listener => { onStep = listener; },
+    close: async () => { closed = true; onStep = undefined; },
   };
   let sessionId = "attachment-one";
   const recorder = new DemoRecorder(repo, () => ({ attached: true, sessionId, ownedByRuntime: false, url: "https://fixture.test/one" }), async () => observer, () => {});
   const demo = await recorder.start("page");
   const target = { candidates: [{ selector: "label:Company", matches: 1 }] };
-  listeners.get("Runtime.bindingCalled")!({ name: "__auxRec", executionContextId: 4, payload: JSON.stringify({ kind: "input", control: "text", value: "Acme", label: "Company", target }) });
-  listeners.get("Page.frameNavigated")!({ frame: { id: "main", url: "https://fixture.test/two" } });
+  onStep!({ kind: "input", control: "text", value: "Acme", label: "Company", target });
+  onStep!({ kind: "navigate", url: "https://fixture.test/two" });
   expect(recorder.get(demo.id).steps).toHaveLength(3);
   expect(JSON.stringify(db.prepare("SELECT payload FROM demonstrations").get())).not.toMatch(/Acme|Company|fixture.test/);
   sessionId = "replacement";
-  listeners.get("Runtime.bindingCalled")!({ name: "__auxRec", executionContextId: 4, payload: JSON.stringify({ kind: "input", control: "text", value: "Wrong", label: "Company", target }) });
+  onStep!({ kind: "input", control: "text", value: "Wrong", label: "Company", target });
   expect(recorder.get(demo.id).steps).toHaveLength(3);
   await recorder.control(demo.id, "stopped");
-  expect(sent).toContain("Page.removeScriptToEvaluateOnNewDocument"); expect(closed).toBe(true); expect(listeners.size).toBe(0);
+  expect(closed).toBe(true); expect(onStep).toBeUndefined();
   await recorder.discard(demo.id); expect(() => recorder.get(demo.id)).toThrow(/unavailable/);
 });
 it("compiles multi-page reviewed variables with fixed origins and a final oracle", () => {
@@ -496,4 +495,39 @@ it("refuses subsequent overnight dispatch and another queued item when an actual
   await withRunAuthorityMutation(repo, async () => { repo.saveRun({ ...repo.getRun(runId)!, status: "failed" }); }, runId);
   await service.tick();
   expect(launches).toBe(1); expect(service.get(next.id).status).toBe("queued");
+});
+
+it("stops only the exact recording on terminal capture failure and retains cleanup errors", async () => {
+  const { repo } = await fixture();
+  const capture = new Error("original capture failed"), cleanup = new Error("original cleanup failed");
+  let onFault: ((error: unknown) => void) | undefined;
+  const observer: RecorderObserver = { start: async (_step, fault) => { onFault = fault; }, close: async () => { throw cleanup; } };
+  const emitted: Array<{ id: string; failure?: unknown }> = [];
+  const recorder = new DemoRecorder(repo, () => ({ attached: true, sessionId: "original", ownedByRuntime: false, url: "https://fixture.test/" }),
+    async () => observer, (demo, failure) => { emitted.push({ id: demo.id, failure }); });
+  const demo = await recorder.start("page");
+  onFault!(capture);
+  await vi.waitFor(() => { expect(emitted.at(-1)?.failure).toBeInstanceOf(AggregateError); });
+  expect(recorder.get(demo.id).state).toBe("stopped");
+  const failure = emitted.at(-1)!.failure as AggregateError;
+  expect(failure.errors).toEqual([capture, cleanup]);
+  await expect(recorder.control(demo.id, "stopped")).rejects.toBe(failure);
+  await recorder.discard(demo.id);
+  expect(() => recorder.get(demo.id)).toThrow(/unavailable/);
+});
+it("retains startup terminal failure and closes the exact observer before publishing", async () => {
+  const { repo } = await fixture(); const original = new Error("original startup fault"); const close = vi.fn(async () => {}); const emitted = vi.fn();
+  const observer: RecorderObserver = { start: async (_step, fault) => { fault!(original); }, close };
+  const recorder = new DemoRecorder(repo, () => ({ attached: true, sessionId: "original", ownedByRuntime: false, url: "https://fixture.test/" }), async () => observer, emitted);
+  await expect(recorder.start("page")).rejects.toBe(original);
+  expect(close).toHaveBeenCalledTimes(1); expect(emitted).not.toHaveBeenCalled();
+});
+it("ignores a stopped recording's late failure after a different recording starts", async () => {
+  const { repo } = await fixture(); const faults: Array<(error: unknown) => void> = [];
+  const observer: RecorderObserver = { start: async (_step, fault) => { faults.push(fault!); }, close: async () => {} };
+  const recorder = new DemoRecorder(repo, () => ({ attached: true, sessionId: "original", ownedByRuntime: false, url: "https://fixture.test/" }), async () => observer, () => {});
+  const original = await recorder.start("page"); await recorder.control(original.id, "stopped");
+  const replacement = await recorder.start("page"); expect(faults).toHaveLength(2); faults[0]!(new Error("old capture"));
+  expect(recorder.get(replacement.id).state).toBe("recording");
+  await recorder.control(replacement.id, "stopped");
 });

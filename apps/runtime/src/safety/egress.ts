@@ -22,10 +22,10 @@ export interface EgressAuditEvidence {
   method: EgressRequestEvidence["method"]; byteCount: number; destinationOrigin?: string;
 }
 
-interface Specimen { value: string; dataClass: ProtectedClass }
+interface Specimen { value: string; dataClass: ProtectedClass; sourceOrigin: string }
 interface ActiveLease {
   lease: EgressLease; specimens: Specimen[];
-  memoryFingerprints: Set<string>; revoked: boolean; initialNavigationStarted: boolean;
+  memoryFingerprints: Set<string>; revoked: boolean; runRetired: boolean; initialNavigationStarted: boolean;
 }
 
 function exactOrigin(raw: string): string | null {
@@ -47,14 +47,14 @@ function variants(value: string): string[] {
     Buffer.from(value, "utf8").toString("base64url")];
 }
 
-function overlap(specimens: readonly Specimen[], outbound: string): ProtectedClass | null {
+function overlap(specimens: readonly Specimen[], outbound: string): Specimen | null {
   const representations = [outbound];
   for (let depth = 0; depth < 2; depth++) {
     try { representations.push(decodeURIComponent(representations.at(-1)!.replace(/\+/g, "%20"))); }
     catch { break; }
   }
   for (const specimen of specimens) {
-    if (representations.some(request => variants(specimen.value).some(value => request.includes(value)))) return specimen.dataClass;
+    if (representations.some(request => variants(specimen.value).some(value => request.includes(value)))) return specimen;
   }
   return null;
 }
@@ -90,8 +90,45 @@ export class AgentEgressGuard {
     });
     const memoryFingerprints = this.memoryByRun.get(lease.runId) ?? new Set<string>();
     this.memoryByRun.set(lease.runId, memoryFingerprints);
-    this.leases.set(lease.leaseId, { lease, specimens: [], memoryFingerprints, revoked: false, initialNavigationStarted: false });
+    this.leases.set(lease.leaseId, { lease, specimens: [], memoryFingerprints, revoked: false, runRetired: false, initialNavigationStarted: false });
     return lease;
+  }
+
+  /** Private original-document protection snapshot. Native transition and
+   * retirement ACK remain the BrowserEgress producer's responsibility. */
+  captureDocumentContinuation(originalLeaseId: string) {
+    const original = this.leases.get(originalLeaseId);
+    if (!original || original.revoked || original.lease.expiresAt <= this.authority.now())
+      throw new Error("Controlled navigation needs current original document protection.");
+    const specimens = original.specimens.map(specimen => ({ ...specimen }));
+    let consumed = false;
+    const issue = (input: Omit<EgressLease, "leaseId" | "issuedAt">): EgressLease => {
+      const alreadyConsumed = consumed;
+      consumed = true;
+      try {
+        if (alreadyConsumed || !original.revoked || input.recipientOrigins.length || input.initialDestination
+          || original.runRetired
+          || !Number.isSafeInteger(input.expiresAt) || input.expiresAt <= this.authority.now()
+          || input.expiresAt > original.lease.expiresAt
+          || input.documentToken === original.lease.documentToken
+          || input.documentEpoch !== original.lease.documentEpoch + 1
+          || (["profileId", "runId", "taskId", "taskRevision", "tabId", "isolationId"] as const)
+            .some(field => input[field] !== original.lease[field]))
+          throw new Error("Controlled navigation needs the retired original task and document protection.");
+        const { expiresAt, ...identity } = input;
+        const lease = this.issue({ ...identity, durationMs: expiresAt - this.authority.now() });
+        // The original acknowledged absolute deadline never moves while the
+        // clock advances between synchronous producer checks.
+        lease.expiresAt = Math.min(lease.expiresAt, expiresAt);
+        if (lease.expiresAt <= this.authority.now()) {
+          this.revoke(lease.leaseId);
+          throw new Error("Controlled navigation needs the retired original task and document protection.");
+        }
+        this.leases.get(lease.leaseId)!.specimens = specimens.map(specimen => ({ ...specimen }));
+        return lease;
+      } finally { specimens.length = 0; }
+    };
+    return Object.freeze({ issue, discard: () => { consumed = true; specimens.length = 0; } });
   }
 
   /** Renewal never changes identity or recipients; the owner rechecks its claim. */
@@ -158,7 +195,7 @@ export class AgentEgressGuard {
       this.revoke(leaseId);
       throw new Error("Protected value is outside the inspectable request bound.");
     }
-    active.specimens.push({ value, dataClass });
+    active.specimens.push({ value, dataClass, sourceOrigin: active.lease.sourceOrigin });
   }
 
   revoke(leaseId: string): void {
@@ -169,7 +206,10 @@ export class AgentEgressGuard {
   }
 
   revokeRun(runId: string): void {
-    for (const [id, active] of this.leases) if (active.lease.runId === runId) this.revoke(id);
+    for (const [id, active] of this.leases) if (active.lease.runId === runId) {
+      active.runRetired = true;
+      this.revoke(id);
+    }
     this.memoryByRun.get(runId)?.clear();
     this.memoryByRun.delete(runId);
     this.pageTextByRun.delete(runId);
@@ -217,13 +257,14 @@ export class AgentEgressGuard {
       const inspected = projection ? [] : inspectableText(outbound);
       const hashes = new Set(projection?.textHashes ?? inspected.flatMap(text => [...textFingerprints(text)]));
       const memoryOverlap = [...hashes].some(hash => active.memoryFingerprints.has(hash));
+      const protectedForDestination = active.specimens.filter(specimen => specimen.sourceOrigin !== dest);
       const found = projection
-        ? active.specimens.find(specimen => [...textFingerprints(specimen.value)].some(hash => hashes.has(hash)))?.dataClass ?? null
-        : overlap(active.specimens, outbound);
+        ? protectedForDestination.find(specimen => [...textFingerprints(specimen.value)].some(hash => hashes.has(hash))) ?? null
+        : overlap(protectedForDestination, outbound);
       const outboundPhrases = new Set(projection?.phraseHashes ?? inspected.flatMap(text => [...phraseHashes(text)]));
       const pageSource = [...(this.pageTextByRun.get(evidence.runId) ?? [])].find(([origin, hashes]) =>
         origin !== dest && [...outboundPhrases].some(hash => hashes.has(hash)))?.[0];
-      if (memoryOverlap || found && dest !== source) decision = deny("protected_overlap", memoryOverlap ? "memory" : found!);
+      if (memoryOverlap || found) decision = deny("protected_overlap", memoryOverlap ? "memory" : found!.dataClass);
       else if (projection?.phase === "preflight")
         decision = { status: "inspected", reason: "preflight_only", leaseId: evidence.leaseId, sourceOrigin: source, destinationOrigin: dest };
       else if (!approvedRequest && pageSource) decision = { ...deny("page_content_overlap"), sourceOrigin: pageSource };

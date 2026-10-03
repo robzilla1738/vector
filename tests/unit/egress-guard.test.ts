@@ -12,6 +12,7 @@ function fixture() {
     audit: (decision) => audits.push(decision),
   });
   const lease = guard.issue({
+    controlGeneration: "fixture-native-generation",
     isolationId: "isolated-run", profileId: "p1", runId: "r1", taskRevision: 4, tabId: "tab-1", frameId: "main",
     documentEpoch: 3, documentToken: "native-document-1", sourceOrigin: "https://source.test", recipientOrigins: ["https://api.test"],
   });
@@ -30,6 +31,65 @@ function fixture() {
 }
 
 describe("agent request-path egress guard", () => {
+  it("retains credential protection through original document continuation without inheriting recipient approval", () => {
+    const f = fixture();
+    f.guard.taint(f.lease.leaseId, "synthetic-document-secret", "credential");
+    const continueDocument = f.guard.captureDocumentContinuation(f.lease.leaseId);
+    f.guard.revoke(f.lease.leaseId);
+    const { leaseId: _id, issuedAt: _issued, expiresAt: _expires, ...original } = f.lease;
+    const next = continueDocument.issue({ ...original, expiresAt: 2000,
+      controlGeneration: "next-original-native-generation", documentEpoch: 4,
+      documentToken: "next-original-native-document", sourceOrigin: "https://next.test", recipientOrigins: [] });
+    const send = (body: string, destination = "https://next.test") => f.guard.decide({
+      leaseId: next.leaseId, isolationId: next.isolationId, profileId: next.profileId,
+      runId: next.runId, taskRevision: next.taskRevision, tabId: next.tabId,
+      frameId: next.frameId, documentEpoch: next.documentEpoch, documentToken: next.documentToken,
+      destination, kind: "fetch", method: "POST", byteCount: Buffer.byteLength(body),
+      bodyComplete: true, observedAt: 1000,
+    }, body);
+    expect(send("synthetic-document-secret")).toMatchObject({ status: "deny", reason: "protected_overlap", protectedClass: "credential" });
+    expect(send("public", "https://api.test")).toMatchObject({ status: "deny", reason: "recipient_denied" });
+    expect(send("public")).toMatchObject({ status: "allow", reason: "same_origin" });
+    expect(JSON.stringify(f.audits)).not.toContain("synthetic-document-secret");
+  });
+
+  it.each(["active", "foreign", "epoch", "recipient", "run-retired", "expired", "extended"])("refuses %s document protection continuation", kind => {
+    const f = fixture();
+    const { leaseId: _id, issuedAt: _issued, expiresAt: _expires, ...original } = f.lease;
+    const continueDocument = f.guard.captureDocumentContinuation(f.lease.leaseId);
+    const next = { ...original, expiresAt: 2000, documentEpoch: 4,
+      documentToken: "new-document", recipientOrigins: [] as string[] };
+    if (kind !== "active") f.guard.revoke(f.lease.leaseId);
+    if (kind === "foreign") next.runId = "foreign";
+    if (kind === "epoch") next.documentEpoch = 5;
+    if (kind === "recipient") next.recipientOrigins = ["https://api.test"];
+    if (kind === "run-retired") f.guard.revokeRun("r1");
+    if (kind === "expired") f.setNow(f.lease.expiresAt);
+    if (kind === "extended") next.expiresAt = f.lease.expiresAt + 1;
+    expect(() => continueDocument.issue(next)).toThrow("retired original");
+  });
+
+  it("discards captured protection when the original command is cancelled", () => {
+    const f = fixture();
+    const { leaseId: _id, issuedAt: _issued, expiresAt: _expires, ...original } = f.lease;
+    const continuation = f.guard.captureDocumentContinuation(f.lease.leaseId);
+    continuation.discard();
+    f.guard.revoke(f.lease.leaseId);
+    expect(() => continuation.issue({ ...original, expiresAt: 2000, documentEpoch: 4,
+      documentToken: "new-document", recipientOrigins: [] })).toThrow("retired original");
+  });
+
+  it("consumes original document protection only once", () => {
+    const f = fixture();
+    const { leaseId: _id, issuedAt: _issued, expiresAt: _expires, ...original } = f.lease;
+    const continueDocument = f.guard.captureDocumentContinuation(f.lease.leaseId);
+    f.guard.revoke(f.lease.leaseId);
+    const next = { ...original, expiresAt: 2000, documentEpoch: 4,
+      documentToken: "new-document", recipientOrigins: [] };
+    expect(continueDocument.issue(next).documentToken).toBe("new-document");
+    expect(() => continueDocument.issue(next)).toThrow("retired original");
+  });
+
   it("allows authorized same-origin and public recipient traffic", () => {
     const f = fixture();
     expect(f.send("https://source.test/next")).toMatchObject({ status: "allow", reason: "same_origin" });

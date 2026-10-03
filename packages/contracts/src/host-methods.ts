@@ -1,3 +1,5 @@
+import { NativeCdpCatalogSchema, NativeCdpAttachSchema, NativeCdpAttachedSchema, NativeCdpDispatchSchema, NativeCdpStartNavigationSchema, NativeCdpNavigationStartedSchema, NativeCdpNavigationRequestSchema, NativeCdpNavigationReceiptSchema } from "./native-cdp.js";
+import { NativeRecorderStartSchema, NativeRecorderReceiptSchema, NativeRecorderStartedSchema, NativeRecorderDrainSchema, NativeRecorderStoppedSchema } from "./native-recorder.js";
 import { z } from "zod";
 import { NativePersonReadParamsSchema, NativePersonReadReceiptSchema, NativePersonReadContextParamsSchema, NativePersonReadContextSchema } from "./native-person-read.js";
 import { LiveFolderSchema } from "./live-folders.js";
@@ -19,7 +21,7 @@ import { LinkRoutesSchema, LinkRouteSourceSchema, LinkRouteDestinationSchema } f
 import { RenameDownloadSchema, DownloadCompletedNativeSchema, DownloadRenameReceiptSchema } from "./download-naming.js";
 import { PowerActivitySchema } from "./night-shift.js";
 import { SpaceColorSchema } from "./spaces.js";
-import { AgentPageCreateSchema, AgentPageCreatedSchema, EgressContextRequestSchema, EgressContextSchema, EgressInstallSchema, EgressRevokeSchema } from "./egress.js";
+import { NativeCreatorClosedSchema, NativeCreatorCleanupProofSchema, NativeCreatorCleanupParamsSchema, NativeCreatorCloseParamsSchema, AgentPageCreateSchema, AgentPageCreatedSchema, EgressContextRequestSchema, EgressContextSchema, EgressInstallSchema, EgressRevokeSchema } from "./egress.js";
 
 type Owner = "browser" | "runtime";
 type Trust = "aux-webui" | "authenticated-runtime";
@@ -351,7 +353,16 @@ export const HostMethods = {
   "native.powerRelease": runtime("overnightReview", z.object({}).strict(), z.object({ active: z.literal(false) }).strict()),
   "native.powerStatus": runtime("overnightReview", z.object({}).strict(), z.object({ onAC: bool, backgroundEnabled: bool, active: bool, loginItem: z.enum(["unavailable", "not_registered", "enabled", "requires_approval", "not_found"]) }).strict()),
   "native.powerActivity": runtime("overnightReview", PowerActivitySchema, z.object({ active: bool, reason: str.optional() }).strict()),
+  "native.creatorCleanupProof": runtime("core", NativeCreatorCleanupParamsSchema, NativeCreatorCleanupProofSchema),
+  "native.closeCreatedPage": runtime("core", NativeCreatorCloseParamsSchema, NativeCreatorClosedSchema),
   "native.createAgentPage": runtime("core", AgentPageCreateSchema, AgentPageCreatedSchema),
+  "native.recorderStart": runtime("demonstrationSkills", NativeRecorderStartSchema, NativeRecorderStartedSchema),
+  "native.recorderDrain": runtime("demonstrationSkills", NativeRecorderReceiptSchema, NativeRecorderDrainSchema),
+  "native.recorderStop": runtime("demonstrationSkills", NativeRecorderReceiptSchema, NativeRecorderStoppedSchema),
+  "native.egressRunTerminal": runtime("core", z.object({ runId: str.min(1).max(160) }).strict(), z.object({ accepted: z.literal(true) }).strict()),
+  "native.egressCheckRunResume": runtime("core", z.object({ runId: str.min(1).max(160) }).strict(), z.object({ accepted: z.literal(true) }).strict()),
+  "native.egressResumeRun": runtime("core", z.object({ runId: str.min(1).max(160), ticketId: str.min(1).max(128) }).strict(), z.object({ accepted: z.literal(true) }).strict()),
+  "native.egressResumePerson": runtime("core", z.object({ pageId: str, ticketId: str.min(1).max(128) }).strict(), z.object({ accepted: z.literal(true), context: EgressContextSchema, expiresAt: z.number().int().positive().safe() }).strict()),
   "native.egressContext": runtime("core", EgressContextRequestSchema, EgressContextSchema),
   "native.egressInstall": runtime("core", EgressInstallSchema, accepted),
   "native.permissionRetire": runtime("core", z.object({ tabId: z.string().min(1).max(160), batchId: z.string().min(1).max(160), reservationId: z.string().uuid() }).strict(), accepted),
@@ -393,7 +404,11 @@ export const HostMethods = {
   "native.captureReadablePage": runtime("reader", NativeMethods["native.captureReadablePage"], z.object({ url: str, title: str, text: str }).strict()),
   "native.fillSavedPassword": runtime("passwordManager", CredentialHandoffRequestSchema, CredentialHandoffResultSchema),
   "native.cdpReset": runtime("fourLayerTabApi", z.object({}).strict(), z.unknown()),
-  "native.cdpDispatch": runtime("fourLayerTabApi", z.object({ pageId: str, message: str }).strict(), z.unknown()),
+  "native.cdpCatalog": runtime("fourLayerTabApi", z.object({}).strict(), NativeCdpCatalogSchema),
+  "native.cdpAttach": runtime("fourLayerTabApi", NativeCdpAttachSchema, NativeCdpAttachedSchema),
+  "native.cdpStartNavigation": runtime("fourLayerTabApi", NativeCdpStartNavigationSchema, NativeCdpNavigationStartedSchema),
+  "native.cdpTakeNavigationReceipt": runtime("fourLayerTabApi", NativeCdpNavigationRequestSchema, NativeCdpNavigationReceiptSchema),
+  "native.cdpDispatch": runtime("fourLayerTabApi", NativeCdpDispatchSchema, z.unknown()),
   "native.cdpVersion": runtime("fourLayerTabApi", z.object({}).strict(), z.object({ version: str }).strict()),
   "native.webmcpList": runtime("core", z.object({ pageId: str }).strict(), z.object({ tools: z.array(WebmcpToolSchema) }).strict()),
   "native.webmcpCall": runtime("core", z.object({ pageId: str, name: str, input: str }).strict(), WebmcpCallResultSchema),

@@ -1,3 +1,4 @@
+import { captureTemporaryAppearanceState, replaceAppearanceField } from '../lib/appearance-temporary-state.mjs';
 import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -95,6 +96,31 @@ async function tabName(t) {
     t.assert.equal(rpc.find(item => item.pageId === page.pageId).title, 'Aux native Red');
     const ax = await t.ax.dump({ scope: 'shell' });
     await captureLegacyState(t, 'tab-name-applied', 'tab-name-applied');
+    if (t.appearanceEnabled) {
+      const longName = 'Planning weekend museum visits and dinner with friends';
+      const originalLabel = organization()?.shared.tabNames?.[page.pageId];
+      t.assert.deepEqual(originalLabel, { title: 'Red research', url: page.url });
+      const rename = async (owned, next) => {
+        const currentName = organization()?.shared.tabNames?.[page.pageId]?.title;
+        t.assert.ok(currentName === 'Red research' || currentName === longName, 'Only the original owned tab label may be edited');
+        if ((await owned(() => t.ax.query(shell('Tab label', 'AXTextField')))).length === 0) {
+          await owned(() => t.ax.contextMenu(tab(currentName)));
+          await owned(() => press(t, shell('Name tab…', 'AXMenuItem')));
+        }
+        await replaceAppearanceField(t, owned, shell('Tab label', 'AXTextField'), next);
+        await owned(() => press(t, shell('Save tab label', 'AXMenuItem')));
+        await owned(() => t.until('actual owned tab label persisted', () => organization()?.shared.tabNames?.[page.pageId]?.title === next));
+        t.assert.deepEqual(organization()?.shared.tabNames?.[page.pageId], { ...originalLabel, title: next });
+        await owned(() => t.ax.waitFor(tab(next)));
+        const pages = await owned(() => t.rpc('pages.list'));
+        const nativePage = pages.find(item => item.pageId === page.pageId);
+        t.assert.equal(nativePage?.title, 'Aux native Red');
+        t.assert.equal(nativePage?.url, page.url);
+        t.assert.equal(t.model.calls.length, 1, 'Manual appearance labels must not call the model');
+      };
+      await captureTemporaryAppearanceState(t, { name: 'tab-long-label', state: 'tab-long-manual-label',
+        prepare: owned => rename(owned, longName), restore: owned => rename(owned, 'Red research') });
+    }
     return { ax, rpc };
   });
   await t.restart();

@@ -1,3 +1,6 @@
+import { captureTemporaryAppearanceState } from '../lib/appearance-temporary-state.mjs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { captureAppearanceTextState } from '../lib/appearance-text-state.mjs';
 import { configureModel, finished, observations } from '../lib/l10-trust-fixtures.mjs';
 import { captureHomeJourneyState } from '../lib/home-capture.mjs';
@@ -55,6 +58,43 @@ export async function run(t) {
     t.assert.equal((await t.ax.query(search))[0]?.focused, true, 'Nested picker must accept genuine native keyboard focus');
     await t.ax.waitFor({ name: 'No browser context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
     await captureHomeJourneyState(t, 'home-context-picker', 'home-context-picker-focused');
+    if (t.appearanceEnabled) {
+      const title = 'Weekend museum visits and a relaxed dinner with friends';
+      const url = `${t.fixture.url}/home-long-context-title`;
+      t.fixture.route('/home-long-context-title', `<!doctype html><title>${title}</title><main>Owned optional context fixture.</main>`);
+      const activeSpace = () => JSON.parse(readFileSync(join(t.app.userDataDir, 'Default/Preferences'), 'utf8')).aux?.organization?.v2?.window?.activeSpaceId;
+      const originalSpace = activeSpace(), originalWorkspace = await t.rpc('workspace.get'), originalRuns = await t.rpc('runs.list');
+      t.assert.equal(typeof originalSpace, 'string', 'Actual original active Space required');
+      t.assert.deepEqual(originalWorkspace.pages, []);
+      let pageId;
+      await captureTemporaryAppearanceState(t, { name: 'home-long-context-picker', state: 'home-long-context-picker-owned-fixture',
+        prepare: async owned => {
+          await owned(async () => {
+            const page = await t.rpc('pages.open', { url, background: true, activate: false });
+            pageId = page.pageId; // Retain exact cleanup identity before any subsequent await or owner recheck.
+            t.assert.ok(typeof pageId === 'string' && pageId.length > 0);
+          });
+          await owned(() => t.until('owned loopback context title is genuinely loaded', async () =>
+            (await t.rpc('pages.list')).some(page => page.pageId === pageId && page.url === url && page.title === title && !page.loading)));
+          await owned(() => t.ax.waitFor({ name: title, role: 'AXButton', match: 'contains', scope: 'shell', index: 0 }));
+          t.assert.equal(activeSpace(), originalSpace);
+          t.assert.equal((await owned(() => t.rpc('workspace.get'))).activePageId, originalWorkspace.activePageId);
+          t.assert.deepEqual(await owned(() => t.rpc('runs.list')), originalRuns);
+        },
+        restore: async owned => {
+          if (pageId) {
+            const page = (await owned(() => t.rpc('pages.list'))).find(item => item.pageId === pageId);
+            t.assert.ok(page && page.url === url, 'Exact temporary page identity must remain owned before cleanup');
+            await owned(() => t.rpc('pages.close', { pageId }));
+          }
+          await owned(() => t.until('temporary context page removed', async () => (await t.rpc('pages.list')).length === 0));
+          t.assert.equal(activeSpace(), originalSpace);
+          t.assert.equal((await owned(() => t.rpc('workspace.get'))).activePageId, originalWorkspace.activePageId);
+          t.assert.deepEqual(await owned(() => t.rpc('runs.list')), originalRuns);
+          t.assert.equal((await owned(() => t.ax.query(composer)))[0]?.value, draft);
+          await owned(() => t.ax.waitFor(search));
+        } });
+    }
     await t.ax.key('escape', 'hid');
     await t.ax.waitFor(search, 'absent');
     t.assert.equal((await t.ax.query(shell('Browser context', 'AXButton')))[0]?.focused, true, 'Escape from child must return to the parent trigger');

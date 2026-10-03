@@ -1,3 +1,4 @@
+import { NativeRecorderObserver } from "./native-recorder-observer.js";
 import type { ValidatedTaskRead } from "@aux/contracts";
 import { ActivationPolicy } from "./pages/activation.js";
 import { ControlAuthority } from "./pages/control.js";
@@ -135,6 +136,22 @@ export class PageService {
   async recorderObserver(pageId: string) {
     const page = this.get(pageId);
     if (page.ownedByRuntime || page.controller === "agent" || page.controller === "external") throw new AuxError("permission_denied", "Recording needs a person-controlled tab.");
+    const native = this.pages.deps.native;
+    if (native.available()) {
+      if (!native.recorderStart || !native.recorderDrain || !native.recorderStop)
+        throw new AuxError("backend_unavailable", "Native recording is unavailable in this build.");
+      const originalPage = this.pages.live.get(pageId);
+      const current = () => {
+        const next = this.pages.live.get(pageId);
+        // Native UUID/document receipts own capture; a driver session cannot
+        // authorize this closed producer or substitute for native attachment.
+        return !this.pages.closing && !!originalPage && next === originalPage &&
+          next.target.backend === "aux" && !next.target.ownedByRuntime &&
+          next.target.controller !== "agent" && next.target.controller !== "external";
+      };
+      return new NativeRecorderObserver({ start: native.recorderStart.bind(native),
+        drain: native.recorderDrain.bind(native), stop: native.recorderStop.bind(native) }, pageId, current);
+    }
     const driver = this.pages.driverPageLenient(pageId);
     if (!driver.openRecorderObserver) throw new AuxError("feature_unavailable", "This page cannot record demonstrations.");
     return driver.openRecorderObserver();
@@ -162,6 +179,9 @@ export class PageService {
   activate: ActivationPolicy["activate"] = (...args) => this.activation.activate(...args);
   onNativeWindowFocused: ActivationPolicy["onNativeWindowFocused"] = (...args) => this.activation.onNativeWindowFocused(...args);
 
+  closeCreated(original: import("@aux/contracts").PageTarget, runId: string): Promise<void> {
+    return this.pages.closeCreator(original, runId);
+  }
   close: PageNavigation["close"] = (...args) => this.navigation.close(...args);
   moveToWindow: PageNavigation["moveToWindow"] = (...args) => this.navigation.moveToWindow(...args);
   navigate: PageNavigation["navigate"] = (...args) => this.navigation.navigate(...args);
@@ -217,8 +237,8 @@ export class PageService {
   waitFor: ProgramExecutor["waitFor"] = (...args) => this.executor.waitFor(...args);
 
   takeover: ControlAuthority["takeover"] = (...args) => this.control.takeover(...args);
+  takeoverFromNative: ControlAuthority["takeoverFromNative"] = (...args) => this.control.takeoverFromNative(...args);
   resume: ControlAuthority["resume"] = (...args) => this.control.resume(...args);
-  onNativeTakeover: ControlAuthority["onNativeTakeover"] = (...args) => this.control.onNativeTakeover(...args);
   releaseAgent: ControlAuthority["releaseAgent"] = (...args) => this.control.releaseAgent(...args);
 
   pickElement: PageDiagnostics["pickElement"] = (...args) => this.diagnostics.pickElement(...args);

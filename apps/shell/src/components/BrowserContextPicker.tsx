@@ -12,7 +12,7 @@ const availablePage = availableConversationPage;
 const BrowserContextChoice = memo(function BrowserContextChoice({ pageId, value, onSelect }: { pageId: string; value: string; onSelect(value: string): void }) {
   const page = useStore(state => state.pages.find(item => item.pageId === pageId && availablePage(item)));
   if (!page) return null;
-  return <button type="button" className="context-choice" aria-pressed={value === pageId} onClick={() => onSelect(pageId)}>
+  return <button type="button" className="context-choice" title={page.title ? `${page.title}\n${page.url}` : page.url} aria-pressed={value === pageId} onClick={() => onSelect(pageId)}>
     <span><strong>{page.title || page.url}</strong><small>{hostOf(page.url)}</small></span>{value === pageId && shellIconCheck}
   </button>;
 });
@@ -30,7 +30,7 @@ export function BrowserContextPicker({ value, onChange, linkedPageId, disabled =
     && `${page.title} ${page.url}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).map(page => page.pageId)));
   return <Popover label="Browser context" disabled={disabled} className="browser-context-trigger" trigger={<>{shellIconGlobe}<span title={label}>{label}</span>{shellIconDown}</>}>{close => {
     const select = (next: string) => { onChange(next); setQuery(""); close(); };
-    const choice = (key: string, title: string, subtitle?: string) => <button type="button" key={key} className="context-choice" aria-pressed={value === key} onClick={() => select(key)}><span><strong>{title}</strong>{subtitle && <small>{subtitle}</small>}</span>{value === key && shellIconCheck}</button>;
+    const choice = (key: string, title: string, subtitle?: string) => <button type="button" key={key} className="context-choice" title={subtitle ? `${title}\n${subtitle}` : title} aria-pressed={value === key} onClick={() => select(key)}><span><strong>{title}</strong>{subtitle && <small>{subtitle}</small>}</span>{value === key && shellIconCheck}</button>;
     return <><input type="search" aria-label="Find browser context" placeholder="Find a tab…" value={query} onChange={event => setQuery(event.target.value)}/>
       {!query && <>{allowNew && choice("none", "No browser context", "Chat without attaching a tab")}{choice("active", "Current tab", active?.title || "No website open")}{(linked || value === "linked") && choice("linked", "Conversation tab", linked?.title || "Unavailable")}</>}
       <section className="context-picker-group" aria-label="Open browser tabs"><p>Open tabs</p>{matches.map(pageId => <BrowserContextChoice key={pageId} pageId={pageId} value={value} onSelect={select} />)}{!matches.length && <p>No matching available tabs.</p>}</section>

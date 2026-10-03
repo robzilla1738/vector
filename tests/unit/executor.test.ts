@@ -56,6 +56,36 @@ function fakePage(failOn: Record<string, unknown> = {}) {
 }
 
 describe("executeProgram", () => {
+  it("uses only the explicitly readmitted real driver after native navigation", async () => {
+    const old = fakePage(), next = fakePage();
+    const result = await executeProgram(old.page, { pageId: "p1", steps: [
+      { id: "nav", op: "navigate", url: "https://next.test/" },
+      { id: "click", op: "click", target: "r1" },
+    ] }, { navigateAndReadmit: async () => {
+      old.page.isAttached = () => false;
+      return next.page;
+    } });
+    expect(result.status).toBe("completed");
+    expect(old.calls).toEqual([]);
+    expect(next.calls).toEqual(["click:r1"]);
+  });
+
+  it.each(["same", "foreign", "detached"])("refuses %s navigation readmission without retrying a dispatched command", async kind => {
+    const old = fakePage(), next = fakePage();
+    if (kind === "foreign") next.page.identity.pageId = "foreign";
+    if (kind === "detached") next.page.isAttached = () => false;
+    let starts = 0;
+    const result = await executeProgram(old.page, { pageId: "p1", steps: [
+      { id: "nav", op: "navigate", url: "https://next.test/" },
+      { id: "click", op: "click", target: "r1" },
+    ] }, { navigateAndReadmit: async () => { starts++; return kind === "same" ? old.page : next.page; } });
+    expect(result.status).toBe("failed");
+    expect(result.steps[0]?.error?.code).toBe("ref_stale");
+    expect(starts).toBe(1);
+    expect(old.calls).toEqual([]);
+    expect(next.calls).toEqual([]);
+  });
+
   it.each(["fill", "type"] as const)("rejects %s on a select before input dispatch", async (op) => {
     const { page, calls } = fakePage();
     page.fieldState = async () => ({ selected: "archived" });

@@ -1,5 +1,5 @@
 import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BrowserDriver, DriverPage, DriverPageEvents } from "@aux/chromium-driver";
 import type { PageTarget } from "@aux/contracts";
 import { EventBus, openDb, Repo } from "@aux/runtime";
@@ -37,6 +37,86 @@ function registry(next: () => DriverPage, recoverPage = async () => ({ ok: true 
 }
 
 describe("real PageRegistry attachment identity", () => {
+  it("keeps catalog identity while retiring a controlled driver and admits only the fresh attachment", async () => {
+    const first = page(), next = page("Fresh");
+    next.setUrl("https://session.test/next");
+    let attaches = 0;
+    const pages = registry(() => { attaches++; return next.driver; });
+    const live = pages.addLive({ ...target(), controller: "agent" }, first.driver);
+    const oldSession = live.target.sessionId;
+    const transition = pages.beginControlledTransition(live.target.pageId);
+    first.events().onNavigated?.("https://foreign.test/", 90);
+    expect(live.target.url).toBe("https://session.test/start");
+    first.events().onDestroyed?.("closed");
+    expect(live.driver).toBeNull();
+    expect(live.target.sessionId).toBeUndefined();
+    expect(live.target.controller).toBe("agent");
+    await pages.attachVisible(live.target.pageId);
+    expect(attaches).toBe(0);
+    const admitted = await transition.attach({ url: "https://session.test/next", documentEpoch: 2 }, () => {});
+    expect(admitted).toBe(next.driver);
+    expect(attaches).toBe(1);
+    expect(live.target.sessionId).not.toBe(oldSession);
+    expect(live.target).toMatchObject({ pageId: "session-tab", controller: "agent", documentEpoch: 2, url: "https://session.test/next" });
+    first.events().onDestroyed?.("crashed");
+    expect(live.driver).toBe(next.driver);
+  });
+
+  it("refuses same-URL document replacement while the original command is pending", async () => {
+    const first = page(), next = page();
+    let attaches = 0;
+    const pages = registry(() => { attaches++; return next.driver; });
+    const live = pages.addLive({ ...target(), controller: "agent" }, first.driver);
+    const transition = pages.beginControlledTransition(live.target.pageId);
+    first.events().onDestroyed?.("closed");
+    live.target.documentEpoch++;
+    expect(transition.current()).toBe(false);
+    await expect(transition.attach({ url: live.target.url, documentEpoch: 3 }, () => {}))
+      .rejects.toMatchObject({ code: "ref_stale" });
+    expect(attaches).toBe(0);
+    await transition.cancel();
+    expect(live.driver).toBeNull();
+    expect(live.target.sessionId).toBeUndefined();
+  });
+
+  it("refuses a fresh attachment when takeover happens during its actual attach wait", async () => {
+    const first = page(), next = page();
+    let release!: () => void;
+    let entered!: () => void;
+    const waiting = new Promise<void>(resolve => { entered = resolve; });
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const pages = registry(() => next.driver);
+    pages.deps.drivers = () => ({ aux: { attach: async () => { entered(); await held; return next.driver; } } as unknown as BrowserDriver, chrome: null });
+    const live = pages.addLive({ ...target(), controller: "agent" }, first.driver);
+    const transition = pages.beginControlledTransition(live.target.pageId);
+    first.events().onDestroyed?.("closed");
+    const attaching = transition.attach({ url: "https://session.test/next", documentEpoch: 2 }, () => {});
+    await waiting;
+    live.target.controller = "human";
+    live.target.controllerEpoch++;
+    release();
+    await expect(attaching).rejects.toMatchObject({ code: "ref_stale" });
+    await transition.cancel();
+    expect(live.driver).toBeNull();
+    expect(live.target.sessionId).toBeUndefined();
+    expect(live.target.documentEpoch).toBe(1);
+    expect(live.target.controller).toBe("human");
+  });
+
+  it("refuses a fresh driver that still reports the prior document URL", async () => {
+    const first = page(), next = page();
+    const pages = registry(() => next.driver);
+    const live = pages.addLive({ ...target(), controller: "agent" }, first.driver);
+    const transition = pages.beginControlledTransition(live.target.pageId);
+    first.events().onDestroyed?.("closed");
+    await expect(transition.attach({ url: "https://session.test/next", documentEpoch: 2 }, () => {}))
+      .rejects.toMatchObject({ code: "ref_stale" });
+    await transition.cancel();
+    expect(live.driver).toBeNull();
+    expect(live.target.sessionId).toBeUndefined();
+    expect(live.target.documentEpoch).toBe(1);
+  });
+
   it("mints a real attachment identity and removes persisted identity from restored placeholders", async () => {
     const attached = page();
     const pages = registry(() => attached.driver);
@@ -150,4 +230,74 @@ describe("real PageRegistry attachment identity", () => {
     expect(current.target.sessionId).toBe(session);
   });
 
+});
+
+
+it("retires a partially published fresh driver when its event binding throws", async () => {
+  const first = page(), next = page("Fresh");
+  next.setUrl("https://session.test/next");
+  const failure = new Error("fresh event binding refused");
+  const dispose = vi.fn(async () => {});
+  Object.assign(next.driver, { setEvents: () => { throw failure; }, dispose });
+  const pages = registry(() => next.driver);
+  const live = pages.addLive({ ...target(), controller: "agent" }, first.driver);
+  const transition = pages.beginControlledTransition(live.target.pageId);
+  first.events().onDestroyed?.("closed");
+  await expect(transition.attach({ url: "https://session.test/next", documentEpoch: 2 }, () => {})).rejects.toBe(failure);
+  expect(dispose).toHaveBeenCalledTimes(1);
+  expect(live.driver).toBeNull();
+  expect(live.target.sessionId).toBeUndefined();
+  await transition.cancel();
+  expect(live.target.controller).toBe("none");
+});
+
+
+it("retains the original binding error and driver disposal error together", async () => {
+  const first = page(), next = page("Fresh");
+  next.setUrl("https://session.test/next");
+  const binding = new Error("fresh binding refused"), disposal = new Error("fresh disposal refused");
+  Object.assign(next.driver, { setEvents: () => { throw binding; }, dispose: async () => { throw disposal; } });
+  const pages = registry(() => next.driver);
+  const live = pages.addLive({ ...target(), controller: "agent" }, first.driver);
+  const transition = pages.beginControlledTransition(live.target.pageId);
+  first.events().onDestroyed?.("closed");
+  const error = await transition.attach({ url: "https://session.test/next", documentEpoch: 2 }, () => {}).then(() => null, failure => failure);
+  expect(error).toBeInstanceOf(AggregateError);
+  expect(error.errors).toEqual([binding, disposal]);
+  expect(live.driver).toBeNull();
+  expect(live.target.sessionId).toBeUndefined();
+});
+
+it("preserves a foreign replacement row when the original fresh binding reenters and throws", async () => {
+  const first = page(), next = page("Fresh"), foreign = page("Person replacement");
+  next.setUrl("https://session.test/next");
+  const failure = new Error("original binding refused");
+  const pages = registry(() => next.driver);
+  const live = pages.addLive({ ...target(), controller: "agent" }, first.driver);
+  const transition = pages.beginControlledTransition(live.target.pageId);
+  first.events().onDestroyed?.("closed");
+  let replacement: ReturnType<PageRegistry["addLive"]> | undefined;
+  Object.assign(next.driver, { setEvents: () => { replacement = pages.addLive(target(), foreign.driver); throw failure; } });
+  await expect(transition.attach({ url: "https://session.test/next", documentEpoch: 2 }, () => {})).rejects.toBe(failure);
+  expect(pages.live.get(live.target.pageId)).toBe(replacement);
+  expect(replacement?.driver).toBe(foreign.driver);
+  expect(replacement?.target.controller).toBe("human");
+  expect(replacement?.target.sessionId).toMatch(/^[0-9a-f-]{36}$/);
+});
+
+it("preserves person control when a fresh binding takes over the original row and fails", async () => {
+  const first = page(), next = page("Fresh");
+  next.setUrl("https://session.test/next");
+  const failure = new Error("binding lost person control");
+  const pages = registry(() => next.driver);
+  const live = pages.addLive({ ...target(), controller: "agent" }, first.driver);
+  const transition = pages.beginControlledTransition(live.target.pageId);
+  first.events().onDestroyed?.("closed");
+  Object.assign(next.driver, { setEvents: () => { live.target.controller = "human"; live.target.controllerEpoch++; throw failure; } });
+  await expect(transition.attach({ url: "https://session.test/next", documentEpoch: 2 }, () => {})).rejects.toBe(failure);
+  await transition.cancel();
+  expect(live.target.controller).toBe("human");
+  expect(live.target.controllerEpoch).toBe(1);
+  expect(live.driver).toBeNull();
+  expect(live.target.sessionId).toBeUndefined();
 });

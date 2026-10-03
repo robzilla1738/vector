@@ -1,5 +1,7 @@
 // Copyright 2026 The Aux Authors
 #include "chrome/browser/ui/aux/egress_controller.h"
+#include <limits>
+#include <cmath>
 
 #include <algorithm>
 #include <cctype>
@@ -13,15 +15,22 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/unguessable_token.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/aux/egress_projection.h"
+#include "chrome/browser/ui/aux/native_creator_close_receipt.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
+#include "content/public/browser/navigation_handle.h"
 #include "chrome/browser/ui/aux/page_identity.h"
 #include "chrome/browser/ui/aux/runtime_host.h"
 #include "chrome/browser/ui/aux/tab_catalog.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/document_user_data.h"
 #include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/security_principal.h"
 #include "content/public/browser/site_instance.h"
@@ -124,18 +133,101 @@ NativePersonReadReceipt& NativePersonReadReceipt::operator=(
 NativePersonReadReceipt::~NativePersonReadReceipt() = default;
 struct EgressController::PageState {
   bool guarded = false;
-  // Native-only read incarnation; never serialized into the task lease protocol.
+  bool person_controlled = false;
   std::string control_generation = base::UnguessableToken::Create().ToString();
   content::WeakDocumentPtr document;
   base::DictValue lease;
+  base::DictValue acknowledged_context;
+  std::string installed_document_token;
+  std::string navigation_transition_id;
+  content::WeakDocumentPtr navigation_transition_document;
+  double navigation_transition_expiry = 0;
+  base::TimeTicks navigation_transition_deadline;
+  std::string dispatched_lease_id;
+  uint64_t cdp_dispatch_count = 0;
+  base::TimeTicks last_cdp_dispatch_ticks;
+  std::optional<NativeCdpRetirementReceipt> cdp_retirement_receipt;
+};
+struct EgressController::PersonResume {
+  std::string runtime_owner_incarnation;
+  std::string page_id;
+  content::WeakDocumentPtr document;
+  std::string retired_generation;
+  std::string authorized_generation;
+  std::string owner_generation;
+  uint64_t connection_generation = 0;
+  base::TimeTicks deadline;
+  bool consumed = false;
+};
+struct EgressController::RunIntent {
+  std::string runtime_owner_incarnation;
+  uint64_t generation = 0;
+  std::string token;
+  bool stopped = true;
+};
+struct EgressController::RunResume {
+  std::string runtime_owner_incarnation;
+  std::string run_id;
+  std::string intent_token;
+  std::string owner_generation;
+  uint64_t generation = 0;
+  base::TimeTicks deadline;
+  bool consumed = false;
 };
 struct EgressController::Isolation {
+  std::string runtime_owner_incarnation;
   std::string id;
   std::string run_id;
   std::string task_id;
   int task_revision;
   content::StoragePartitionConfig config;
+  std::vector<std::string> ancestry;
+  std::set<std::string> terminal_ancestors;
+  std::vector<base::WeakPtr<content::WebContents>> registered_pages;
+  uint64_t connection_generation = 0;
 };
+struct EgressController::CreatorState {
+  std::string runtime_owner_incarnation;
+  std::string creation_id = base::UnguessableToken::Create().ToString();
+  uint64_t connection_generation = 0;
+  int64_t blank_navigation_id = 0;
+  int64_t early_blank_navigation_id = 0;
+  content::WeakDocumentPtr early_blank_document;
+  bool early_blank_ambiguous = false;
+  content::WeakDocumentPtr document;
+  content::WeakDocumentPtr source_document;
+  bool has_source = false;
+  base::WeakPtr<BrowserWindowInterface> original_owner;
+  base::WeakPtr<content::WebContents> page;
+  base::DictValue proof;
+  std::string control_generation;
+  base::TimeTicks deadline;
+  bool installed = false;
+  bool consumed = false;
+  bool closing = false;
+  bool blank_committed = false;
+  base::OnceCallback<void(bool)> ready;
+  base::OneShotTimer ready_timer;
+};
+namespace {
+const char kCreatorNavigationObserverKey = 0;
+class CreatorNavigationObserver final : public content::WebContentsObserver,
+                                        public base::SupportsUserData::Data {
+ public:
+  CreatorNavigationObserver(content::WebContents* page,
+      base::WeakPtr<EgressController> controller, std::string page_id)
+      : content::WebContentsObserver(page), controller_(controller), page_id_(std::move(page_id)) {}
+  void DidFinishNavigation(content::NavigationHandle* handle) override {
+    if (controller_ && handle->HasCommitted() && handle->IsInPrimaryMainFrame() &&
+        !handle->IsSameDocument())
+      controller_->CreatorBlankCommitted(page_id_, handle->GetNavigationId(),
+          handle->GetRenderFrameHost()->GetWeakDocumentPtr());
+  }
+ private:
+  base::WeakPtr<EgressController> controller_;
+  const std::string page_id_;
+};
+}  // namespace
 struct EgressController::Credential {
   std::string origin;
   size_t length;
@@ -210,7 +302,14 @@ bool EgressController::RegisterIsolation(content::WebContents* page,
                                          const std::string& isolation_id,
                                          const std::string& run_id,
                                          const std::string& task_id,
-                                         int task_revision) {
+                                         int task_revision,
+                                         const std::vector<std::string>& ancestry,
+                                         uint64_t connection_generation) {
+  if (!connection_generation || connection_generation != admitted_runtime_generation_ || ancestry.empty() || ancestry.size() > 32 ||
+      ancestry.front() != run_id ||
+      std::set<std::string>(ancestry.begin(), ancestry.end()).size() != ancestry.size() ||
+      std::ranges::any_of(ancestry, [](const auto& id) { return id.empty() || id.size() > 160; }))
+    return false;
   auto* frame = page ? page->GetPrimaryMainFrame() : nullptr;
   if (!frame || isolation_id.empty() || run_id.empty()) {
     LOG(ERROR) << "AUX_ISOLATION_DIAG reason=missing_frame_or_scope";
@@ -245,18 +344,28 @@ bool EgressController::RegisterIsolation(content::WebContents* page,
     isolation->task_id = task_id;
     isolation->task_revision = task_revision;
     isolation->config = expected;
+    isolation->ancestry = ancestry;
+    isolation->connection_generation = connection_generation;
+    isolation->runtime_owner_incarnation = runtime_owner_incarnation_;
+    if (!RunIntentCurrent(*isolation)) return false;
     it = isolations_by_run_.emplace(run_id, std::move(isolation)).first;
   } else if (it->second->id != isolation_id ||
              it->second->task_id != task_id ||
-             it->second->task_revision != task_revision) {
+             it->second->task_revision != task_revision ||
+             it->second->ancestry != ancestry ||
+             it->second->connection_generation != connection_generation ||
+             it->second->runtime_owner_incarnation != runtime_owner_incarnation_) {
     LOG(ERROR) << "AUX_ISOLATION_DIAG reason=run_scope_mismatch";
     return false;
   }
+  if (!RunIntentCurrent(*it->second)) return false;
   const std::string page_id = PageIdentity::GetOrCreate(profile_, page);
   if (isolation_run_by_page_.contains(page_id)) {
     LOG(ERROR) << "AUX_ISOLATION_DIAG reason=duplicate_page";
     return false;
   }
+  std::erase_if(it->second->registered_pages, [](const auto& original) { return !original; });
+  it->second->registered_pages.push_back(page->GetWeakPtr());
   isolation_run_by_page_[page_id] = run_id;
   auto& state = pages_[page_id];
   if (!state) {
@@ -267,6 +376,283 @@ bool EgressController::RegisterIsolation(content::WebContents* page,
                     std::make_unique<IsolationObserver>(page, GetWeakPtr(), page_id));
   authority_observers_.Notify();
   return true;
+}
+base::DictValue EgressController::RegisterCreatorPage(
+    content::WebContents* page, int64_t navigation_id,
+    uint64_t connection_generation, const base::DictValue* source,
+    BrowserWindowInterface* unpublished_owner) {
+  if (!page || page->GetBrowserContext() != profile_ || !connection_generation ||
+      connection_generation != admitted_runtime_generation_ ||
+      (navigation_id <= 0 && (!unpublished_owner || navigation_id != 0)) ||
+      connection_generation > 9007199254740991ULL || creators_.size() >= 128 || !page->GetPrimaryMainFrame())
+    return Fault("Original native creation identity is unavailable");
+  const std::string page_id = PageIdentity::GetOrCreate(profile_, page);
+  const auto* isolation = IsolationForPage(page_id, page->GetPrimaryMainFrame());
+  auto state = pages_.find(page_id);
+  if (!isolation || state == pages_.end() || state->second->person_controlled ||
+      creators_.contains(page_id) || !state->second->lease.empty())
+    return Fault("Original native creation scope changed");
+  auto creator = std::make_unique<CreatorState>();
+  BrowserWindowInterface* original_owner = unpublished_owner;
+  if ((!unpublished_owner &&
+       TabCatalog::GetForProfile(profile_)->FindPage(page_id, &original_owner) != page) ||
+      !original_owner || original_owner->GetProfile() != profile_ ||
+      !PageIdentity::FromWebContents(page)->runtime_owned())
+    return Fault("Original creation owner changed");
+  creator->original_owner = original_owner->GetWeakPtr();
+  creator->page = page->GetWeakPtr();
+  creator->connection_generation = connection_generation;
+  creator->runtime_owner_incarnation = runtime_owner_incarnation_;
+  creator->blank_navigation_id = navigation_id;
+  creator->document = page->GetPrimaryMainFrame()->GetWeakDocumentPtr();
+  creator->control_generation = state->second->control_generation;
+  if (source) {
+    auto* source_page = TabCatalog::GetForProfile(profile_)->FindPage(String(*source, "tabId"));
+    auto* source_frame = source_page ? source_page->GetPrimaryMainFrame() : nullptr;
+    if (!LiveFrame(source_frame) || source_page->GetLastCommittedURL().spec() != String(*source, "expectedUrl") ||
+        EgressDocument::GetOrCreateForCurrentDocument(source_frame)->token != String(*source, "documentToken"))
+      return Fault("Original selected creation source changed");
+    creator->source_document = source_frame->GetWeakDocumentPtr();
+    creator->has_source = true;
+  }
+  const std::string creation_id = creator->creation_id;
+  creators_[page_id] = std::move(creator);
+  page->SetUserData(&kCreatorNavigationObserverKey,
+      std::make_unique<CreatorNavigationObserver>(page, GetWeakPtr(), page_id));
+  RefreshCreatorProof(page_id, "creation", page->GetPrimaryMainFrame()->GetWeakDocumentPtr(),
+      static_cast<double>(base::Time::Now().InMillisecondsSinceUnixEpoch() + 8000),
+      base::TimeTicks::Now() + base::Seconds(8));
+  return Result(base::DictValue().Set("creationId", creation_id));
+}
+bool EgressController::BindCreatorBlankNavigation(const std::string& page_id,
+    const std::string& creation_id, uint64_t generation, int64_t navigation_id) {
+  auto it = creators_.find(page_id);
+  if (it == creators_.end() || navigation_id <= 0 ||
+      it->second->creation_id != creation_id || it->second->blank_navigation_id != 0 ||
+      it->second->connection_generation != generation ||
+      it->second->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+      generation != admitted_runtime_generation_ || it->second->early_blank_ambiguous)
+    return false;
+  const int64_t early_id = it->second->early_blank_navigation_id;
+  if (early_id && early_id != navigation_id) return false;
+  if (!early_id && !CurrentCreator(page_id, String(it->second->proof, "receiptId"), generation))
+    return false;
+  it->second->blank_navigation_id = navigation_id;
+  const auto weak = GetWeakPtr();
+  if (early_id) {
+    const auto early_document = it->second->early_blank_document;
+    CreatorBlankCommitted(page_id, navigation_id, early_document);
+  }
+  // Ready completion is external and may synchronously retire this exact
+  // creator or controller. Never reuse its original iterator afterward.
+  if (!weak) return false;
+  const auto current = weak->creators_.find(page_id);
+  if (current == weak->creators_.end() || current->second->creation_id != creation_id)
+    return false;
+  return weak->CurrentCreator(page_id, String(current->second->proof, "receiptId"), generation);
+}
+void EgressController::RefreshCreatorProof(const std::string& page_id,
+    const std::string& phase, const content::WeakDocumentPtr& document, double expires_at,
+    base::TimeTicks original_deadline) {
+  auto it = creators_.find(page_id);
+  auto state = pages_.find(page_id);
+  auto* frame = document.AsRenderFrameHostIfValid();
+  const auto* isolation = frame ? IsolationForPage(page_id, frame) : nullptr;
+  if (it != creators_.end()) it->second->proof.clear();
+  if (it == creators_.end() || state == pages_.end() || !isolation ||
+      (!frame || !frame->IsActive()) || !std::isfinite(expires_at) || std::floor(expires_at) != expires_at) return;
+  auto& creator = *it->second;
+  creator.document = document;
+  creator.control_generation = state->second->control_generation;
+  creator.deadline = original_deadline;
+  creator.proof = base::DictValue().Set("creationId", creator.creation_id)
+      .Set("receiptId", base::UnguessableToken::Create().ToString()).Set("phase", phase)
+      .Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe()).Set("pageId", page_id)
+      .Set("documentToken", EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
+      .Set("runId", isolation->run_id).Set("taskRevision", isolation->task_revision)
+      .Set("isolationId", isolation->id).Set("controlGeneration", creator.control_generation)
+      .Set("connectionGeneration", static_cast<double>(creator.connection_generation))
+      .Set("expiresAt", expires_at);
+  if (!isolation->task_id.empty()) creator.proof.Set("taskId", isolation->task_id);
+}
+void EgressController::WaitCreatorReady(const std::string& page_id,
+    const std::string& creation_id, uint64_t generation, base::OnceCallback<void(bool)> done) {
+  auto it = creators_.find(page_id);
+  if (it == creators_.end() || it->second->creation_id != creation_id || it->second->ready ||
+      !CurrentCreator(page_id, String(it->second->proof, "receiptId"), generation)) {
+    std::move(done).Run(false); return;
+  }
+  if (it->second->blank_committed) { std::move(done).Run(true); return; }
+  it->second->ready = std::move(done);
+  it->second->ready_timer.Start(FROM_HERE,
+      std::max(base::TimeDelta(), it->second->deadline - base::TimeTicks::Now()),
+      base::BindOnce([](base::WeakPtr<EgressController> controller, std::string page_id, std::string creation_id) {
+        if (!controller) return;
+        auto it = controller->creators_.find(page_id);
+        if (it == controller->creators_.end() || it->second->creation_id != creation_id) return;
+        auto done = std::move(it->second->ready);
+        it->second->proof.clear();
+        if (done) std::move(done).Run(false);
+      }, GetWeakPtr(), page_id, creation_id));
+}
+void EgressController::CreatorBlankCommitted(const std::string& page_id,
+    int64_t navigation_id, const content::WeakDocumentPtr& document) {
+  auto it = creators_.find(page_id);
+  if (it == creators_.end() || it->second->installed || it->second->consumed ||
+      (it->second->blank_navigation_id && navigation_id != it->second->blank_navigation_id)) return;
+  auto* frame = document.AsRenderFrameHostIfValid();
+  if (!it->second->blank_navigation_id) {
+    if (it->second->early_blank_navigation_id) {
+      it->second->early_blank_ambiguous = true;
+      it->second->proof.clear();
+      return;
+    }
+    it->second->early_blank_navigation_id = navigation_id;
+    it->second->early_blank_document = document;
+    return;
+  }
+  const auto state = pages_.find(page_id);
+  if (state == pages_.end() || state->second->person_controlled ||
+      state->second->control_generation != it->second->control_generation ||
+      !LiveFrame(frame) || !frame->GetLastCommittedURL().IsAboutBlank() ||
+      content::WebContents::FromRenderFrameHost(frame) != it->second->page.get()) {
+    it->second->proof.clear(); return;
+  }
+  const double expires = it->second->proof.FindDouble("expiresAt").value_or(0);
+  RefreshCreatorProof(page_id, "creation", document, expires, it->second->deadline);
+  it->second->blank_committed = true;
+  it->second->ready_timer.Stop();
+  const bool current = CurrentCreator(page_id, String(it->second->proof, "receiptId"), it->second->connection_generation);
+  auto done = std::move(it->second->ready);
+  if (done) std::move(done).Run(current);
+}
+bool EgressController::CurrentCreator(const std::string& page_id,
+    const std::string& receipt_id, uint64_t generation) {
+  auto it = creators_.find(page_id); auto state = pages_.find(page_id);
+  if (it == creators_.end() || state == pages_.end() || owner_mutations_.pending()) return false;
+  const auto& creator = *it->second;
+  auto* page = creator.page.get(); auto* frame = creator.document.AsRenderFrameHostIfValid();
+  BrowserWindowInterface* owner = nullptr;
+  auto* catalog = TabCatalog::GetForProfile(profile_);
+  auto* identity = page ? PageIdentity::FromWebContents(page) : nullptr;
+  if (creator.consumed || creator.proof.empty() || creator.connection_generation != generation ||
+      generation != admitted_runtime_generation_ ||
+      creator.runtime_owner_incarnation != runtime_owner_incarnation_ ||
+      String(creator.proof, "receiptId") != receipt_id || state->second->person_controlled ||
+      state->second->control_generation != creator.control_generation || !state->second->lease.empty() ||
+      creator.deadline.is_null() || base::TimeTicks::Now() >= creator.deadline ||
+      creator.proof.FindDouble("expiresAt").value_or(0) <= base::Time::Now().InMillisecondsFSinceUnixEpoch() ||
+      !page || !frame || !frame->IsActive() ||
+      (creator.blank_committed && !LiveFrame(frame)) || page->GetPrimaryMainFrame() != frame || !identity || !identity->runtime_owned() ||
+      !catalog || catalog->FindPage(page_id, &owner) != page || !owner || owner != creator.original_owner.get() || owner->GetProfile() != profile_ ||
+      !IsolationForPage(page_id, frame)) return false;
+  if (creator.has_source) {
+    auto* source_frame = creator.source_document.AsRenderFrameHostIfValid();
+    auto* source_page = source_frame ? content::WebContents::FromRenderFrameHost(source_frame) : nullptr;
+    if (!LiveFrame(source_frame) || !source_page || source_page->GetBrowserContext() != profile_ ||
+        source_page->GetPrimaryMainFrame() != source_frame) return false;
+  }
+  const auto* isolation = IsolationForPage(page_id, frame);
+  if (!RunIntentCurrent(*isolation, true) || String(creator.proof, "runId") != isolation->run_id ||
+      String(creator.proof, "taskId") != isolation->task_id ||
+      creator.proof.FindInt("taskRevision").value_or(-1) != isolation->task_revision ||
+      String(creator.proof, "isolationId") != isolation->id ||
+      String(creator.proof, "documentToken") != EgressDocument::GetOrCreateForCurrentDocument(frame)->token ||
+      (String(creator.proof, "phase") == "creation" && !page->GetLastCommittedURL().IsAboutBlank() &&
+          (creator.blank_committed || !page->GetLastCommittedURL().is_empty()))) return false;
+  auto* model = owner->GetTabStripModel(); const int index = model->GetIndexOfWebContents(page);
+  return index != TabStripModel::kNoTab && !model->GetSplitForTab(index) && !model->GetTabGroupForTab(index);
+}
+base::DictValue EgressController::CreatorCleanupProof(const base::DictValue& params,
+    uint64_t generation) {
+  const std::string page_id = String(params, "pageId"); auto it = creators_.find(page_id);
+  if (params.size() != 2 || it == creators_.end() ||
+      String(params, "creationId") != it->second->creation_id ||
+      !CurrentCreator(page_id, String(it->second->proof, "receiptId"), generation))
+    return Fault("The original temporary-page cleanup authority is unavailable");
+  return Result(it->second->proof.Clone());
+}
+void EgressController::CloseCreatorPage(const base::DictValue& params,
+    uint64_t generation, std::shared_ptr<std::atomic_bool> cancelled,
+    base::OnceCallback<void(base::DictValue)> done) {
+  const auto* proof = params.FindDict("proof");
+  const std::string page_id = proof ? String(*proof, "pageId") : "";
+  auto it = creators_.find(page_id);
+  if (cancelled->load() || params.size() != 1 || !proof || it == creators_.end() || it->second->proof != *proof ||
+      !CurrentCreator(page_id, String(*proof, "receiptId"), generation)) {
+    std::move(done).Run(Fault("Original native creator cleanup was retired")); return;
+  }
+  auto* page = it->second->page.get(); BrowserWindowInterface* owner = nullptr;
+  TabCatalog::GetForProfile(profile_)->FindPage(page_id, &owner);
+  if (!owner || NativeCreatorCloseReceipt::FromWebContents(page)) {
+    std::move(done).Run(Fault("Original native close invocation is already pending")); return;
+  }
+  const auto receipt_id = String(*proof, "receiptId");
+  it->second->closing = true;
+  NativeCreatorCloseReceipt::CreateForWebContents(page, it->second->deadline,
+      base::BindRepeating([](base::WeakPtr<EgressController> controller,
+          std::string page_id, std::string receipt_id, uint64_t generation,
+          std::shared_ptr<std::atomic_bool> cancelled,
+          base::WeakPtr<content::WebContents> original_page,
+          content::WeakDocumentPtr original_document) {
+        auto* view = original_page ? original_page->GetRenderWidgetHostView() : nullptr;
+        return !cancelled->load() && controller &&
+            controller->CurrentCreator(page_id, receipt_id, generation) && view &&
+            view->HasNativeInputAdmissionForDocument(original_document);
+      }, GetWeakPtr(), page_id, receipt_id, generation, cancelled,
+          page->GetWeakPtr(), it->second->document),
+      base::BindOnce([](base::WeakPtr<EgressController> controller, std::string page_id,
+          std::string receipt_id, base::OnceCallback<void(base::DictValue)> done, bool closed) {
+        if (controller) {
+          auto it = controller->creators_.find(page_id);
+          if (it != controller->creators_.end() && String(it->second->proof, "receiptId") == receipt_id)
+            { it->second->consumed = true; it->second->closing = false; }
+        }
+        std::move(done).Run(closed ? Result(base::DictValue().Set("closed", true))
+            : Fault("Original temporary-page close did not complete"));
+      }, GetWeakPtr(), page_id, receipt_id, std::move(done)));
+  auto* receipt = NativeCreatorCloseReceipt::FromWebContents(page);
+  auto weak_receipt = receipt->GetWeakPtr();
+  const auto invocation = receipt->token();
+  receipt->authority_subscription_ = ObserveAuthority(base::BindRepeating(
+      [](base::WeakPtr<EgressController> controller,
+         base::WeakPtr<NativeCreatorCloseReceipt> receipt,
+         std::string page_id, std::string receipt_id, uint64_t generation,
+         base::UnguessableToken invocation) {
+        if (receipt && (!controller ||
+            !controller->CurrentCreator(page_id, receipt_id, generation)))
+          receipt->Refuse(invocation);
+      }, GetWeakPtr(), weak_receipt, page_id, receipt_id, generation, invocation));
+  const auto original_document = it->second->document;
+  auto original_page = page->GetWeakPtr();
+  auto original_model = owner->GetTabStripModel()->GetWeakPtrForCreatorCleanup();
+  auto* view = page->GetRenderWidgetHostView();
+  if (!view) { weak_receipt->Refuse(invocation); return; }
+  // Arm the original close deadline before waiting for actual associated
+  // document binding. A late acknowledgement cannot extend this receipt.
+  view->AwaitNativeInputAdmissionForDocument(original_document, base::BindOnce(
+      [](base::WeakPtr<EgressController> controller,
+          base::WeakPtr<NativeCreatorCloseReceipt> receipt,
+          base::WeakPtr<TabStripModel> model,
+          base::WeakPtr<content::WebContents> page,
+          content::WeakDocumentPtr document, std::string page_id,
+          std::string receipt_id, uint64_t generation,
+          base::UnguessableToken invocation, bool ready) {
+        if (!receipt) return;
+        auto* view = page ? page->GetRenderWidgetHostView() : nullptr;
+        if (!ready || !controller || !model || !page ||
+            NativeCreatorCloseReceipt::FromWebContents(page.get()) != receipt.get() ||
+            document.AsRenderFrameHostIfValid() != page->GetPrimaryMainFrame() ||
+            !view || !view->HasNativeInputAdmissionForDocument(document) ||
+            !controller->CurrentCreator(page_id, receipt_id, generation)) {
+          receipt->Refuse(invocation);
+          return;
+        }
+        if (!model->CloseWebContentsForCreatorCleanup(page.get(), TabCloseTypes::CLOSE_NONE,
+                invocation) && receipt)
+          receipt->Refuse(invocation);
+      }, GetWeakPtr(), weak_receipt, original_model, original_page,
+          original_document, page_id, receipt_id, generation, invocation));
 }
 void EgressController::IsolationReceipt(const std::string& event,
                                         const std::string& run_id,
@@ -291,7 +677,183 @@ void EgressController::IsolationReceipt(const std::string& event,
              << " partition=" << partition
              << " reason=" << ReceiptField(reason);
 }
+bool EgressController::RunIntentCurrent(const Isolation& isolation, bool cleanup_only) const {
+  if (!cleanup_only && !isolation.terminal_ancestors.empty()) return false;
+  if (!admitted_runtime_generation_ || isolation.connection_generation != admitted_runtime_generation_ ||
+      isolation.runtime_owner_incarnation != runtime_owner_incarnation_) return false;
+  for (const auto& ancestor : isolation.ancestry) {
+    auto it = run_intents_.find(ancestor);
+    if (it == run_intents_.end() || it->second->generation != isolation.connection_generation ||
+        it->second->runtime_owner_incarnation != runtime_owner_incarnation_)
+      continue;
+    if (it->second->stopped) return false;
+    for (const auto& [id, resume] : run_resumes_) {
+      if (resume->run_id == ancestor && resume->consumed &&
+          (resume->deadline <= base::TimeTicks::Now() ||
+           resume->owner_generation != person_read_retirement_generation_)) return false;
+    }
+  }
+  return true;
+}
+base::DictValue EgressController::RetireTerminalRun(const std::string& run_id,
+    uint64_t generation) {
+  if (!generation || generation != admitted_runtime_generation_ || run_id.empty() ||
+      run_id.size() > 160 || profile_->IsOffTheRecord())
+    return Fault("Original terminal run connection is unavailable");
+  for (auto& [id, isolation] : isolations_by_run_) {
+    if (isolation->connection_generation == generation &&
+        isolation->runtime_owner_incarnation == runtime_owner_incarnation_ &&
+        std::ranges::find(isolation->ancestry, run_id) != isolation->ancestry.end())
+      isolation->terminal_ancestors.insert(run_id);
+  }
+  PruneTerminalRegistrations();
+  return Result(base::DictValue().Set("accepted", true));
+}
+void EgressController::PruneTerminalRegistrations() {
+  std::set<std::string> roots;
+  for (const auto& [id, isolation] : isolations_by_run_) {
+    if (isolation->connection_generation == admitted_runtime_generation_ &&
+        isolation->runtime_owner_incarnation == runtime_owner_incarnation_ && !isolation->ancestry.empty())
+      roots.insert(isolation->ancestry.back());
+  }
+  for (const auto& root : roots) {
+    std::set<std::string> family;
+    bool complete = true;
+    for (const auto& [id, isolation] : isolations_by_run_) {
+      if (isolation->connection_generation != admitted_runtime_generation_ ||
+          isolation->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+          isolation->ancestry.empty() || isolation->ancestry.back() != root) continue;
+      family.insert(id);
+      if (isolation->terminal_ancestors.size() != isolation->ancestry.size() ||
+          std::ranges::any_of(isolation->registered_pages, [](const auto& original) { return !!original; })) complete = false;
+    }
+    for (const auto& [page, run] : isolation_run_by_page_) if (family.contains(run)) complete = false;
+    for (const auto& [id, resume] : run_resumes_) if (resume->run_id == root || family.contains(resume->run_id)) complete = false;
+    if (!complete) continue;
+    for (const auto& id : family) { isolations_by_run_.erase(id); run_intents_.erase(id); }
+    run_intents_.erase(root);
+  }
+}
+base::DictValue EgressController::CheckRunResume(const std::string& run_id,
+    uint64_t generation) const {
+  if (!generation || generation != admitted_runtime_generation_ || run_id.empty() ||
+      run_id.size() > 160 || profile_->IsOffTheRecord() || owner_mutations_.pending() ||
+      HasStoppedRunIntent(run_id, generation))
+    return Fault("Original local-person run resume is required");
+  for (const auto& [id, isolation] : isolations_by_run_) {
+    if (isolation->run_id == run_id && isolation->connection_generation == generation &&
+        isolation->runtime_owner_incarnation == runtime_owner_incarnation_ &&
+        !RunIntentCurrent(*isolation))
+      return Fault("Original ancestor run control remains stopped");
+  }
+  for (const auto& [id, resume] : run_resumes_) {
+    if (resume->run_id == run_id && resume->generation == generation &&
+        (!resume->consumed || resume->deadline <= base::TimeTicks::Now() ||
+         resume->owner_generation != person_read_retirement_generation_))
+      return Fault("Original run resume has not completed");
+  }
+  return base::DictValue().Set("result", base::DictValue().Set("accepted", true));
+}
+bool EgressController::HasStoppedRunIntent(const std::string& run_id,
+    uint64_t generation) const {
+  const auto it = run_intents_.find(run_id);
+  return it != run_intents_.end() && it->second->generation == generation &&
+      it->second->runtime_owner_incarnation == runtime_owner_incarnation_ && it->second->stopped;
+}
+bool EgressController::RetireRegisteredRun(const std::string& run_id,
+    uint64_t generation) {
+  if (!generation || generation != admitted_runtime_generation_ || run_id.empty() || run_id.size() > 160 || profile_->IsOffTheRecord() ||
+      (!run_intents_.contains(run_id) && run_intents_.size() >= 256)) return false;
+  auto intent = std::make_unique<RunIntent>();
+  intent->generation = generation;
+  intent->runtime_owner_incarnation = runtime_owner_incarnation_;
+  intent->token = base::UnguessableToken::Create().ToString();
+  run_intents_[run_id] = std::move(intent);
+  std::set<std::string> retired;
+  for (const auto& [page_id, child_id] : isolation_run_by_page_) {
+    const auto isolation = isolations_by_run_.find(child_id);
+    if (isolation == isolations_by_run_.end() || isolation->second->connection_generation != generation ||
+        isolation->second->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+        std::ranges::find(isolation->second->ancestry, run_id) == isolation->second->ancestry.end()) continue;
+    const auto state = pages_.find(page_id);
+    if (state == pages_.end()) continue;
+    retired.insert(page_id);
+    state->second->control_generation = base::UnguessableToken::Create().ToString();
+    state->second->acknowledged_context.clear();
+    state->second->lease.clear();
+    state->second->navigation_transition_id.clear();
+    state->second->navigation_transition_document = {};
+    state->second->navigation_transition_expiry = 0;
+    state->second->navigation_transition_deadline = {};
+    auto creator = creators_.find(page_id);
+    if (creator != creators_.end()) creator->second->proof.clear();
+  }
+  auto weak = weak_factory_.GetWeakPtr();
+  CancelChecks(retired, false);
+  if (weak) authority_observers_.Notify();
+  return true;
+}
+std::optional<std::string> EgressController::PrepareRunResume(
+    const std::string& run_id, uint64_t generation) {
+  const auto now = base::TimeTicks::Now();
+  std::erase_if(run_resumes_, [now](const auto& row) { return !row.second->consumed && row.second->deadline <= now; });
+  const auto intent = run_intents_.find(run_id);
+  if (!HasStoppedRunIntent(run_id, generation) || owner_mutations_.pending() ||
+      run_resumes_.size() >= 256) return std::nullopt;
+  for (const auto& [id, prior] : run_resumes_) if (prior->run_id == run_id) return std::nullopt;
+  auto resume = std::make_unique<RunResume>();
+  resume->run_id = run_id;
+  resume->intent_token = intent->second->token;
+  resume->owner_generation = person_read_retirement_generation_;
+  resume->generation = generation;
+  resume->runtime_owner_incarnation = runtime_owner_incarnation_;
+  resume->deadline = now + base::Seconds(8);
+  const auto id = base::UnguessableToken::Create().ToString();
+  run_resumes_.emplace(id, std::move(resume));
+  return id;
+}
+base::DictValue EgressController::ConsumeRunResume(const std::string& run_id,
+    const std::string& ticket_id, uint64_t generation) {
+  auto resume = run_resumes_.find(ticket_id);
+  auto intent = run_intents_.find(run_id);
+  if (resume == run_resumes_.end() || intent == run_intents_.end() ||
+      resume->second->run_id != run_id || resume->second->generation != generation ||
+      resume->second->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+      resume->second->consumed || resume->second->deadline <= base::TimeTicks::Now() ||
+      resume->second->owner_generation != person_read_retirement_generation_ || owner_mutations_.pending() ||
+      intent->second->generation != generation || intent->second->runtime_owner_incarnation != runtime_owner_incarnation_ || !intent->second->stopped ||
+      intent->second->token != resume->second->intent_token)
+    return Fault("Original local-person run resume is unavailable");
+  resume->second->consumed = true;
+  intent->second->stopped = false;
+  return Result(base::DictValue().Set("accepted", true));
+}
+bool EgressController::FinishRunResume(const std::string& ticket_id, bool success) {
+  auto found = run_resumes_.find(ticket_id);
+  if (found == run_resumes_.end()) return false;
+  auto resume = std::move(found->second);
+  run_resumes_.erase(found);
+  auto intent = run_intents_.find(resume->run_id);
+  if (intent == run_intents_.end() || intent->second->generation != resume->generation ||
+      resume->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+      intent->second->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+      intent->second->token != resume->intent_token) return false;
+  if (success && resume->consumed && resume->deadline > base::TimeTicks::Now() &&
+      resume->owner_generation == person_read_retirement_generation_ && !owner_mutations_.pending()) return true;
+  RetireRegisteredRun(resume->run_id, resume->generation);
+  return false;
+}
 void EgressController::ReleaseIsolation(const std::string& page_id) {
+  auto creator = creators_.find(page_id);
+  base::OnceCallback<void(bool)> creator_ready;
+  if (creator != creators_.end()) {
+    creator->second->ready_timer.Stop();
+    creator_ready = std::move(creator->second->ready);
+    creators_.erase(creator);
+  }
+  base::ScopedClosureRunner complete_creator(base::BindOnce(
+      [](base::OnceCallback<void(bool)> done) { if (done) std::move(done).Run(false); },
+      std::move(creator_ready)));
   const auto owner = isolation_run_by_page_.find(page_id);
   if (owner == isolation_run_by_page_.end()) return;
   const std::string run_id = owner->second;
@@ -300,8 +862,11 @@ void EgressController::ReleaseIsolation(const std::string& page_id) {
   auto it = isolations_by_run_.find(run_id);
   if (it == isolations_by_run_.end()) return;
   const std::string isolation_id = it->second->id;
-  CancelChecks({page_id}, false);
+  const auto config = it->second->config;
   pages_.erase(page_id);
+  auto weak = weak_factory_.GetWeakPtr();
+  CancelChecks({page_id}, false);
+  if (!weak) return;
   if (std::any_of(isolation_run_by_page_.begin(),
                   isolation_run_by_page_.end(),
                   [&run_id](const auto& entry) {
@@ -311,10 +876,14 @@ void EgressController::ReleaseIsolation(const std::string& page_id) {
                      "shared_partition_retained");
     return;
   }
-  const auto config = it->second->config;
-  isolations_by_run_.erase(it);
+  // Keep the original bounded registration for historical owner Stop ancestry.
+  // Its last page and all partition data are retired independently below.
   credentials_by_run_.erase(run_id);
+  PruneTerminalRegistrations();
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+      base::BindOnce(&EgressController::PruneTerminalRegistrations, weak));
   authority_observers_.Notify();
+  if (!weak) return;
   auto* partition = profile_->GetStoragePartition(config, false);
   if (!partition) {
     IsolationReceipt("released", run_id, page_id, isolation_id, nullptr,
@@ -364,7 +933,10 @@ bool EgressController::PersonReadPage(content::WebContents* page) {
     return false;
   const auto it = pages_.find(identity->id());
   return it == pages_.end() ||
-      (!it->second->guarded && it->second->lease.empty());
+      (!it->second->guarded && !it->second->person_controlled &&
+       it->second->lease.empty() &&
+       it->second->navigation_transition_id.empty() &&
+       !it->second->acknowledged_context.FindDict("isolation"));
 }
 std::optional<NativePersonReadReceipt> EgressController::CapturePersonRead(
     content::WebContents* page) {
@@ -425,8 +997,13 @@ base::DictValue EgressController::Context(const base::DictValue& params) {
   if (isolation_run_by_page_.contains(page_id) && !isolation) {
     return Fault("The task tab left its native isolated partition");
   }
+  auto& state = pages_[page_id];
+  if (!state)
+    state = std::make_unique<PageState>();
   base::DictValue context =
       base::DictValue()
+          .Set("controlGeneration", state->control_generation)
+          .Set("personControlled", state->person_controlled)
           .Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe())
           .Set("tabId", page_id)
           .Set("frameId", FrameId(frame))
@@ -450,6 +1027,11 @@ base::DictValue EgressController::Context(const base::DictValue& params) {
     scope.Set("cookies", "empty");
     context.Set("isolation", std::move(scope));
   }
+  if (isolation && !state->acknowledged_context.empty() &&
+      state->acknowledged_context != context) {
+    return Fault("Document transition needs original navigation authority");
+  }
+  state->acknowledged_context = context.Clone();
   return Result(std::move(context));
 }
 base::DictValue EgressController::Install(const base::DictValue& params) {
@@ -464,13 +1046,35 @@ base::DictValue EgressController::Install(const base::DictValue& params) {
   if (!LiveFrame(frame)) {
     return Fault("The native document is unavailable");
   }
+  const auto existing = pages_.find(page_id);
+  if (existing == pages_.end() || existing->second->person_controlled ||
+      String(*lease, "controlGeneration") != existing->second->control_generation)
+    return Fault("The native control generation was retired or not acknowledged");
+  for (const auto& [id, resume] : person_resumes_) {
+    if (resume->page_id == page_id && resume->consumed &&
+        (resume->deadline <= base::TimeTicks::Now() ||
+         resume->owner_generation != person_read_retirement_generation_))
+      return Fault("Original person resume deadline or owner authority expired");
+  }
   const Isolation* isolation = IsolationForPage(page_id, frame);
-  if (!isolation || String(*lease, "isolationId") != isolation->id ||
+  if (!isolation || !RunIntentCurrent(*isolation) || String(*lease, "isolationId") != isolation->id ||
       String(*lease, "runId") != isolation->run_id ||
       String(*lease, "taskId") != isolation->task_id ||
       lease->FindInt("taskRevision").value_or(-1) !=
           isolation->task_revision) {
     return Fault("Browser request lease is not bound to this native task partition");
+  }
+  auto original_creator = creators_.find(page_id);
+  if (original_creator != creators_.end()) {
+    const auto& creator = *original_creator->second;
+    auto* source_frame = creator.source_document.AsRenderFrameHostIfValid();
+    auto* source_page = source_frame ? content::WebContents::FromRenderFrameHost(source_frame) : nullptr;
+    if (creator.closing || creator.consumed || !creator.blank_committed ||
+        (creator.has_source && (!LiveFrame(source_frame) || !source_page ||
+            source_page->GetPrimaryMainFrame() != source_frame)) ||
+        (existing->second->lease.empty() &&
+            !CurrentCreator(page_id, String(creator.proof, "receiptId"), creator.connection_generation)))
+      return Fault("Original creator/source cleanup or publication authority changed");
   }
   auto* document = EgressDocument::GetOrCreateForCurrentDocument(frame);
   const double now = base::Time::Now().InMillisecondsFSinceUnixEpoch();
@@ -485,6 +1089,22 @@ base::DictValue EgressController::Install(const base::DictValue& params) {
       expires <= now || expires > now + 31000 || issued > now + 1000 ||
       page->GetLastCommittedURL().spec() != String(params, "expectedUrl")) {
     return Fault("Native browser request identity or expiry mismatch");
+  }
+  auto& admission = *existing->second;
+  const std::string transition = String(params, "navigationTransitionId");
+  const bool replacing_document = !admission.installed_document_token.empty() &&
+      admission.installed_document_token != document->token;
+  if (replacing_document || !admission.navigation_transition_id.empty()) {
+    if (transition.empty() || transition != admission.navigation_transition_id ||
+        admission.navigation_transition_document.AsRenderFrameHostIfValid() != frame ||
+        admission.navigation_transition_expiry <= now ||
+        admission.navigation_transition_deadline.is_null() ||
+        base::TimeTicks::Now() >= admission.navigation_transition_deadline ||
+        expires > admission.navigation_transition_expiry) {
+      return Fault("New document requires its exact original navigation transition");
+    }
+  } else if (!transition.empty()) {
+    return Fault("No navigation transition is waiting for this document");
   }
   if (!document->credential_run_id.empty() &&
       document->credential_run_id != String(*lease, "runId")) {
@@ -540,31 +1160,467 @@ base::DictValue EgressController::Install(const base::DictValue& params) {
   document->protected_document = true;
   state->document = frame->GetWeakDocumentPtr();
   state->lease = lease->Clone();
+  state->installed_document_token = document->token;
+  auto creator = creators_.find(page_id);
+  if (creator != creators_.end()) {
+    creator->second->installed = true;
+    creator->second->document = frame->GetWeakDocumentPtr();
+    creator->second->control_generation = state->control_generation;
+    creator->second->proof.clear();
+    const auto installed_deadline = base::TimeTicks::Now() + base::Milliseconds(expires - now);
+    // An initial replacement Install is not private runtime publication. Its
+    // ACK/binding/cleanup remains bounded by the original START deadline.
+    // Only a subsequent same-original renewal after actual publication may
+    // use its genuinely installed lease deadline, when no transition remains.
+    creator->second->deadline = state->navigation_transition_deadline.is_null()
+        ? installed_deadline
+        : std::min(installed_deadline, state->navigation_transition_deadline);
+  }
+  state->navigation_transition_id.clear();
+  state->navigation_transition_document = {};
+  state->navigation_transition_expiry = 0;
+  state->navigation_transition_deadline = {};
   authority_observers_.Notify();
   RetryPending();
   return Result(base::DictValue().Set("accepted", true));
 }
 base::DictValue EgressController::Revoke(const base::DictValue& params) {
-  std::set<std::string> affected;
-  const std::string lease_id = String(params, "leaseId");
-  for (auto& [id, state] : pages_) {
-    if (!lease_id.empty() && String(state->lease, "leaseId") == lease_id) {
-      state->lease.clear();
-      affected.insert(id);
-    }
+  const auto* lease = params.FindDict("lease");
+  if (!lease || String(*lease, "leaseId").empty() ||
+      String(*lease, "controlGeneration").empty() ||
+      String(*lease, "profileId") !=
+          profile_->GetPath().BaseName().AsUTF8Unsafe()) {
+    return Fault("Missing exact original browser authority retirement");
   }
-  CancelChecks(affected, false, lease_id);
-  authority_observers_.Notify();
+  const std::string page_id = String(*lease, "tabId");
+  auto it = pages_.find(page_id);
+  if (it == pages_.end()) {
+    // A destroyed page cannot accept the queued original Install.
+    return Result(base::DictValue().Set("accepted", true));
+  }
+  auto& state = *it->second;
+  if (String(*lease, "controlGeneration") != state.control_generation) {
+    // A retired generation can never Install again. Debt repayment must not
+    // rotate or cancel a replacement generation's authority or requests.
+    return Result(base::DictValue().Set("accepted", true));
+  }
+  const auto& context = state.acknowledged_context;
+  const auto* isolation = context.FindDict("isolation");
+  if (!isolation || String(*lease, "isolationId") != String(*isolation, "isolationId") ||
+      String(*lease, "runId") != String(*isolation, "runId") ||
+      String(*lease, "taskId") != String(*isolation, "taskId") ||
+      lease->FindInt("taskRevision") != isolation->FindInt("taskRevision") ||
+      String(*lease, "frameId") != String(context, "frameId") ||
+      String(*lease, "documentToken") != String(context, "documentToken") ||
+      String(*lease, "sourceOrigin") != String(context, "sourceOrigin")) {
+    return Fault("Original native retirement scope changed");
+  }
+  if (!state.lease.empty()) {
+    auto expected = lease->Clone();
+    auto installed = state.lease.Clone();
+    expected.Remove("expiresAt");
+    installed.Remove("expiresAt");
+    if (expected != installed)
+      return Fault("Retirement cannot replace another installed authority");
+  }
+  // Context is already native-owned even before the worker's Install reaches
+  // this sequence. Retire its generation before callbacks, so an acknowledged
+  // mutation cannot be undone by that queued first Install.
+  const std::string lease_id = String(*lease, "leaseId");
+  auto creator = creators_.find(page_id);
+  const bool actually_installed = !state.lease.empty();
+  const double cleanup_expiry = actually_installed ? state.lease.FindDouble("expiresAt").value_or(0)
+      : creator != creators_.end() ? creator->second->proof.FindDouble("expiresAt").value_or(0) : 0;
+  const std::string cleanup_phase = actually_installed ? "installed_revoke"
+      : creator != creators_.end() ? String(creator->second->proof, "phase") : "";
+  state.control_generation = base::UnguessableToken::Create().ToString();
+  state.acknowledged_context.clear();
+  state.navigation_transition_id.clear();
+  state.navigation_transition_document = {};
+  state.navigation_transition_expiry = 0;
+  state.navigation_transition_deadline = {};
+  state.lease.clear();
+  if (creator != creators_.end() && !cleanup_phase.empty())
+    RefreshCreatorProof(page_id, cleanup_phase, creator->second->document,
+        cleanup_expiry, creator->second->deadline);
+  auto weak = weak_factory_.GetWeakPtr();
+  CancelChecks({page_id}, false, lease_id);
+  if (weak)
+    authority_observers_.Notify();
   return Result(base::DictValue().Set("accepted", true));
 }
+std::optional<NativeCdpRetirementReceipt>
+EgressController::RetireForNativePersonInput(
+    content::WebContents* page, const content::WeakDocumentPtr& document,
+    base::TimeTicks original_event_ticks, base::TimeTicks admitted_ticks,
+    bool original_clock_valid) {
+  auto* frame = document.AsRenderFrameHostIfValid();
+  if (!page || page->GetBrowserContext() != profile_ || !LiveFrame(frame) ||
+      page->GetPrimaryMainFrame() != frame)
+    return std::nullopt;
+  const auto page_id = PageIdentity::GetOrCreate(profile_, page);
+  const auto* isolation = IsolationForPage(page_id, frame);
+  if (!isolation)
+    return std::nullopt;
+  auto& state = pages_[page_id];
+  if (!state)
+    state = std::make_unique<PageState>();
+  if (state->person_controlled)
+    return std::nullopt;
+  NativeCdpRetirementReceipt receipt;
+  receipt.original_lease = state->lease.Clone();
+  const auto retired_generation = base::UnguessableToken::Create().ToString();
+  receipt.original_scope = base::DictValue()
+      .Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe())
+      .Set("tabId", page_id)
+      .Set("isolationId", isolation->id)
+      .Set("runId", isolation->run_id)
+      .Set("taskRevision", isolation->task_revision)
+      .Set("frameId", FrameId(frame))
+      .Set("documentToken", EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
+      .Set("sourceOrigin", Origin(frame))
+      .Set("controlGeneration", state->control_generation)
+      .Set("retiredControlGeneration", retired_generation);
+  if (!isolation->task_id.empty())
+    receipt.original_scope.Set("taskId", isolation->task_id);
+  receipt.original_event_ticks = original_event_ticks;
+  receipt.admitted_ticks = admitted_ticks;
+  receipt.original_clock_valid = original_clock_valid;
+  if (state->dispatched_lease_id == String(state->lease, "leaseId")) {
+    receipt.last_dispatch_ticks = state->last_cdp_dispatch_ticks;
+    receipt.dispatch_count = state->cdp_dispatch_count;
+  }
+  state->cdp_retirement_receipt = NativeCdpRetirementReceipt{
+      receipt.original_lease.Clone(), receipt.original_scope.Clone(),
+      receipt.original_event_ticks,
+      receipt.admitted_ticks, receipt.last_dispatch_ticks,
+      receipt.dispatch_count, receipt.original_clock_valid};
+  const std::string lease_id = String(state->lease, "leaseId");
+  state->guarded = true;
+  state->person_controlled = true;
+  state->control_generation = retired_generation;
+  state->acknowledged_context.clear();
+  state->navigation_transition_id.clear();
+  state->navigation_transition_document = {};
+  state->navigation_transition_expiry = 0;
+  state->navigation_transition_deadline = {};
+  state->lease.clear();
+  state->document = document;
+  // State and generation retire synchronously before a native request callback
+  // or runtime notification can reenter. No new Context grants rearm authority.
+  auto weak = weak_factory_.GetWeakPtr();
+  CancelChecks({page_id}, false, lease_id);
+  if (weak)
+    authority_observers_.Notify();
+  return receipt;
+}
+
+std::optional<std::string> EgressController::PreparePersonResume(
+    const std::string& page_id, uint64_t connection_generation) {
+  const auto now = base::TimeTicks::Now();
+  std::erase_if(person_resumes_, [now](const auto& row) {
+    return !row.second->consumed && row.second->deadline <= now;
+  });
+  const auto it = pages_.find(page_id);
+  if (!connection_generation || profile_->IsOffTheRecord() || owner_mutations_.pending() ||
+      person_resumes_.size() >= 256 || it == pages_.end() ||
+      !it->second->person_controlled || !it->second->lease.empty() ||
+      !it->second->cdp_retirement_receipt)
+    return std::nullopt;
+  for (const auto& [id, ticket] : person_resumes_)
+    if (ticket->page_id == page_id) return std::nullopt;
+  auto* frame = it->second->document.AsRenderFrameHostIfValid();
+  auto* page = frame ? content::WebContents::FromRenderFrameHost(frame) : nullptr;
+  auto* catalog = TabCatalog::GetForProfile(profile_);
+  const auto* isolation = frame ? IsolationForPage(page_id, frame) : nullptr;
+  const auto& scope = it->second->cdp_retirement_receipt->original_scope;
+  if (!page || !LiveFrame(frame) || page->GetPrimaryMainFrame() != frame ||
+      page->GetBrowserContext() != profile_ || !catalog ||
+      catalog->FindPage(page_id) != page || !isolation || isolation->connection_generation != connection_generation ||
+      isolation->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+      String(scope, "isolationId") != isolation->id ||
+      String(scope, "runId") != isolation->run_id || String(scope, "taskId") != isolation->task_id ||
+      scope.FindInt("taskRevision") != isolation->task_revision ||
+      String(scope, "frameId") != FrameId(frame) ||
+      String(scope, "documentToken") != EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
+    return std::nullopt;
+  auto ticket = std::make_unique<PersonResume>();
+  ticket->page_id = page_id;
+  ticket->document = it->second->document;
+  ticket->retired_generation = it->second->control_generation;
+  ticket->owner_generation = person_read_retirement_generation_;
+  ticket->connection_generation = connection_generation;
+  ticket->runtime_owner_incarnation = runtime_owner_incarnation_;
+  ticket->deadline = now + base::Seconds(8);
+  const auto id = base::UnguessableToken::Create().ToString();
+  person_resumes_.emplace(id, std::move(ticket));
+  return id;
+}
+
+base::DictValue EgressController::ConsumePersonResume(
+    const std::string& page_id, const std::string& ticket_id,
+    uint64_t connection_generation) {
+  auto ticket = person_resumes_.find(ticket_id);
+  auto state = pages_.find(page_id);
+  if (ticket == person_resumes_.end() || ticket->second->page_id != page_id || state == pages_.end() ||
+      !connection_generation || profile_->IsOffTheRecord() || owner_mutations_.pending() ||
+      ticket->second->consumed || ticket->second->deadline <= base::TimeTicks::Now() ||
+      ticket->second->connection_generation != connection_generation ||
+      ticket->second->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+      ticket->second->owner_generation != person_read_retirement_generation_ ||
+      !state->second->person_controlled || !state->second->lease.empty() ||
+      state->second->control_generation != ticket->second->retired_generation)
+    return Fault("Original person resume authority is unavailable");
+  auto* frame = ticket->second->document.AsRenderFrameHostIfValid();
+  auto* page = frame ? content::WebContents::FromRenderFrameHost(frame) : nullptr;
+  auto* catalog = TabCatalog::GetForProfile(profile_);
+  const auto* isolation = frame ? IsolationForPage(page_id, frame) : nullptr;
+  if (!page || !LiveFrame(frame) || page->GetPrimaryMainFrame() != frame ||
+      page->GetBrowserContext() != profile_ || !catalog ||
+      catalog->FindPage(page_id) != page || !isolation || isolation->connection_generation != connection_generation ||
+      isolation->runtime_owner_incarnation != runtime_owner_incarnation_ ||
+      state->second->document.AsRenderFrameHostIfValid() != frame ||
+      !state->second->cdp_retirement_receipt)
+    return Fault("Original person resume document changed");
+  const auto& scope = state->second->cdp_retirement_receipt->original_scope;
+  if (String(scope, "isolationId") != isolation->id ||
+      String(scope, "runId") != isolation->run_id || String(scope, "taskId") != isolation->task_id ||
+      scope.FindInt("taskRevision") != isolation->task_revision ||
+      String(scope, "frameId") != FrameId(frame) ||
+      String(scope, "documentToken") != EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
+    return Fault("Original person resume task changed");
+  // Consume before publishing. No lease is installed by returning control.
+  ticket->second->consumed = true;
+  state->second->person_controlled = false;
+  state->second->control_generation = base::UnguessableToken::Create().ToString();
+  ticket->second->authorized_generation = state->second->control_generation;
+  state->second->acknowledged_context.clear();
+  auto context = Context(base::DictValue().Set("tabId", page_id)
+      .Set("expectedUrl", page->GetLastCommittedURL().spec()));
+  auto* value = context.FindDict("result");
+  if (!value) {
+    state->second->person_controlled = true;
+    state->second->control_generation = base::UnguessableToken::Create().ToString();
+    return context;
+  }
+  const auto remaining = ticket->second->deadline - base::TimeTicks::Now();
+  const auto expires_at = base::Time::Now().InMillisecondsSinceUnixEpoch() + remaining.InMilliseconds();
+  auto result = Result(base::DictValue().Set("accepted", true).Set("context", value->Clone())
+      .Set("expiresAt", static_cast<double>(expires_at)));
+  authority_observers_.Notify();
+  return result;
+}
+
+bool EgressController::FinishPersonResume(const std::string& id, bool success) {
+  auto it = person_resumes_.find(id);
+  if (it == person_resumes_.end()) return false;
+  auto original = std::move(it->second);
+  person_resumes_.erase(it);
+  if (!original->consumed || original->connection_generation != admitted_runtime_generation_ ||
+      original->runtime_owner_incarnation != runtime_owner_incarnation_) return false;
+  auto state = pages_.find(original->page_id);
+  auto* frame = original->document.AsRenderFrameHostIfValid();
+  if (state == pages_.end() || !frame ||
+      state->second->document.AsRenderFrameHostIfValid() != frame ||
+      state->second->control_generation != original->authorized_generation)
+    return false;
+  if (success && original->deadline > base::TimeTicks::Now() &&
+      original->owner_generation == person_read_retirement_generation_ &&
+      !owner_mutations_.pending() && !state->second->person_controlled) return true;
+  const auto lease_id = String(state->second->lease, "leaseId");
+  state->second->person_controlled = true;
+  state->second->control_generation = base::UnguessableToken::Create().ToString();
+  state->second->acknowledged_context.clear();
+  state->second->lease.clear();
+  auto weak = weak_factory_.GetWeakPtr();
+  CancelChecks({original->page_id}, false, lease_id);
+  if (weak) authority_observers_.Notify();
+  return false;
+}
+
+bool EgressController::RecordFinalCdpDispatch(
+    const EgressRequestContext& context, const base::DictValue& original_lease) {
+  if (owner_mutations_.pending() || !Current(context, original_lease))
+    return false;
+  auto it = pages_.find(context.page_id);
+  if (it == pages_.end())
+    return false;
+  const auto creator = creators_.find(context.page_id);
+  if (creator != creators_.end() && creator->second->has_source) {
+    auto* source_frame = creator->second->source_document.AsRenderFrameHostIfValid();
+    auto* source_page = source_frame
+        ? content::WebContents::FromRenderFrameHost(source_frame) : nullptr;
+    if (!LiveFrame(source_frame) || !source_page ||
+        source_page->GetBrowserContext() != profile_ ||
+        source_page->GetPrimaryMainFrame() != source_frame)
+      return false;
+  }
+  auto expected = original_lease.Clone();
+  auto installed = it->second->lease.Clone();
+  expected.Remove("expiresAt");
+  installed.Remove("expiresAt");
+  if (expected != installed)
+    return false;
+  auto& state = *it->second;
+  const auto lease_id = String(original_lease, "leaseId");
+  if (state.dispatched_lease_id != lease_id) {
+    state.dispatched_lease_id = lease_id;
+    state.cdp_dispatch_count = 0;
+    state.last_cdp_dispatch_ticks = {};
+  }
+  // Refuse overflow rather than wrap a qualification counter.
+  if (state.cdp_dispatch_count == std::numeric_limits<uint64_t>::max())
+    return false;
+  ++state.cdp_dispatch_count;
+  state.last_cdp_dispatch_ticks = base::TimeTicks::Now();
+  return true;
+}
+
+bool EgressController::HasOriginalCdpNavigationAuthority(
+    const base::DictValue& original_lease,
+    const content::WeakDocumentPtr& current_document) const {
+  auto* frame = current_document.AsRenderFrameHostIfValid();
+  if (!LiveFrame(frame) || owner_mutations_.pending() ||
+      String(original_lease, "profileId") !=
+          profile_->GetPath().BaseName().AsUTF8Unsafe())
+    return false;
+  const std::string page_id = String(original_lease, "tabId");
+  auto* catalog = TabCatalog::GetForProfile(profile_);
+  auto* page = catalog ? catalog->FindPage(page_id) : nullptr;
+  auto it = pages_.find(page_id);
+  const Isolation* isolation = IsolationForPage(page_id, frame);
+  if (!page || page->GetBrowserContext() != profile_ ||
+      page->GetPrimaryMainFrame() != frame || it == pages_.end() ||
+      !isolation || !RunIntentCurrent(*isolation) || it->second->person_controlled ||
+      String(original_lease, "controlGeneration") != it->second->control_generation ||
+      String(original_lease, "isolationId") != isolation->id ||
+      String(original_lease, "runId") != isolation->run_id ||
+      String(original_lease, "taskId") != isolation->task_id ||
+      original_lease.FindInt("taskRevision").value_or(-1) != isolation->task_revision ||
+      it->second->lease.FindDouble("expiresAt").value_or(0) <=
+          base::Time::Now().InMillisecondsFSinceUnixEpoch())
+    return false;
+  const auto creator = creators_.find(page_id);
+  if (creator != creators_.end() && creator->second->has_source) {
+    auto* source_frame = creator->second->source_document.AsRenderFrameHostIfValid();
+    auto* source_page = source_frame
+        ? content::WebContents::FromRenderFrameHost(source_frame) : nullptr;
+    if (!LiveFrame(source_frame) || !source_page ||
+        source_page->GetBrowserContext() != profile_ ||
+        source_page->GetPrimaryMainFrame() != source_frame)
+      return false;
+  }
+  auto expected = original_lease.Clone();
+  auto installed = it->second->lease.Clone();
+  expected.Remove("expiresAt");
+  installed.Remove("expiresAt");
+  return !installed.empty() && expected == installed;
+}
+
+base::DictValue EgressController::RetireCdpNavigation(
+    const base::DictValue& original_lease,
+    const content::WeakDocumentPtr& committed_document,
+    double acknowledged_expires_at, base::TimeTicks original_command_deadline) {
+  if (original_command_deadline.is_null() ||
+      base::TimeTicks::Now() >= original_command_deadline ||
+      !std::isfinite(acknowledged_expires_at) ||
+      acknowledged_expires_at <= base::Time::Now().InMillisecondsFSinceUnixEpoch() ||
+      acknowledged_expires_at > 9007199254740991.0 ||
+      std::floor(acknowledged_expires_at) != acknowledged_expires_at ||
+      !HasOriginalCdpNavigationAuthority(original_lease, committed_document))
+    return Fault("Original navigation authority was retired before its receipt");
+  auto* frame = committed_document.AsRenderFrameHostIfValid();
+  auto* page = content::WebContents::FromRenderFrameHost(frame);
+  auto* document = EgressDocument::GetOrCreateForCurrentDocument(frame);
+  if (String(original_lease, "documentToken") == document->token)
+    return Fault("Navigation has no committed replacement document");
+  const std::string page_id = String(original_lease, "tabId");
+  auto& state = *pages_.find(page_id)->second;
+  const std::string original_lease_id = String(original_lease, "leaseId");
+  const double installed_expiry = state.lease.FindDouble("expiresAt").value_or(0);
+  if (acknowledged_expires_at > installed_expiry)
+    return Fault("Original navigation acknowledgement exceeds installed authority");
+  state.navigation_transition_id = base::UnguessableToken::Create().ToString();
+  state.navigation_transition_document = committed_document;
+  state.navigation_transition_expiry = acknowledged_expires_at;
+  state.navigation_transition_deadline = original_command_deadline;
+  state.control_generation = base::UnguessableToken::Create().ToString();
+  state.lease.clear();
+  state.acknowledged_context.clear();
+  auto context = Context(base::DictValue().Set("tabId", page_id)
+      .Set("expectedUrl", page->GetLastCommittedURL().spec()));
+  auto* admitted = context.FindDict("result");
+  if (!admitted) {
+    state.navigation_transition_id.clear();
+    state.navigation_transition_document = {};
+    state.navigation_transition_expiry = 0;
+    state.navigation_transition_deadline = {};
+    return context;
+  }
+  auto creator = creators_.find(page_id);
+  if (creator != creators_.end())
+    RefreshCreatorProof(page_id, "committed_transition", committed_document,
+        acknowledged_expires_at, std::min({creator->second->deadline,
+            original_command_deadline,
+            base::TimeTicks::Now() + base::Milliseconds(acknowledged_expires_at -
+                base::Time::Now().InMillisecondsFSinceUnixEpoch())}));
+  auto result = base::DictValue().Set("navigationTransitionId", state.navigation_transition_id)
+      .Set("url", page->GetLastCommittedURL().spec())
+      .Set("context", admitted->Clone());
+  auto weak = weak_factory_.GetWeakPtr();
+  CancelChecks({page_id}, false, original_lease_id);
+  if (weak)
+    authority_observers_.Notify();
+  return Result(std::move(result));
+}
+
+bool EgressController::AdmitRuntimeConnection(uint64_t generation,
+    const std::string& owner_incarnation) {
+  if (!generation || generation > 9007199254740991ULL || owner_incarnation.empty() ||
+      admitted_runtime_generation_ ||
+      (owner_incarnation == runtime_owner_incarnation_ && generation <= retired_runtime_generation_)) return false;
+  if (owner_incarnation != runtime_owner_incarnation_) {
+    runtime_owner_incarnation_ = owner_incarnation;
+    retired_runtime_generation_ = 0;
+    std::erase_if(isolations_by_run_, [](const auto& row) {
+      return std::ranges::none_of(row.second->registered_pages, [](const auto& original) { return !!original; });
+    });
+  }
+  admitted_runtime_generation_ = generation;
+  return true;
+}
 void EgressController::Disconnect() {
+  retired_runtime_generation_ = std::max(retired_runtime_generation_, admitted_runtime_generation_);
+  admitted_runtime_generation_ = 0;
+  person_resumes_.clear();
+  run_resumes_.clear();
+  run_intents_.clear();
+  std::vector<base::OnceCallback<void(bool)>> creator_ready;
+  for (auto& [id, creator] : creators_) {
+    creator->proof.clear();
+    creator->connection_generation = 0;
+    creator->ready_timer.Stop();
+    if (creator->ready) creator_ready.push_back(std::move(creator->ready));
+  }
+  base::ScopedClosureRunner complete_creator(base::BindOnce(
+      [](std::vector<base::OnceCallback<void(bool)>> callbacks) {
+        for (auto& done : callbacks) std::move(done).Run(false);
+      }, std::move(creator_ready)));
   person_read_retirement_generation_ =
       base::UnguessableToken::Create().ToString();
   for (auto& [id, state] : pages_) {
+    state->control_generation = base::UnguessableToken::Create().ToString();
+    state->acknowledged_context.clear();
+    state->navigation_transition_id.clear();
+    state->navigation_transition_document = {};
+    state->navigation_transition_expiry = 0;
+    state->navigation_transition_deadline = {};
     state->lease.clear();
   }
+  auto weak = weak_factory_.GetWeakPtr();
   CancelChecks({}, true);
-  authority_observers_.Notify();
+  if (weak)
+    authority_observers_.Notify();
 }
 void EgressController::CancelChecks(const std::set<std::string>& page_ids,
                                     bool all,
@@ -729,7 +1785,9 @@ bool EgressController::Current(const EgressRequestContext& context,
   auto it = pages_.find(context.page_id);
   const Isolation* isolation = IsolationForPage(context.page_id, frame);
   if (!page || page->GetPrimaryMainFrame() != frame || it == pages_.end() ||
-      !isolation || String(lease, "isolationId") != isolation->id ||
+      it->second->person_controlled ||
+      String(lease, "controlGeneration") != it->second->control_generation ||
+      !isolation || !RunIntentCurrent(*isolation) || String(lease, "isolationId") != isolation->id ||
       String(lease, "runId") != isolation->run_id ||
       String(lease, "taskId") != isolation->task_id ||
       lease.FindInt("taskRevision").value_or(-1) !=

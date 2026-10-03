@@ -47,7 +47,7 @@ export interface SetRunnerDeps {
    */
   translateSteps: (pageId: string, steps: Step[]) => Step[];
   nativeAvailable?: () => boolean;
-  controlledPage?: (runId: string, url: string, sourcePageId?: string) => Promise<{ pageId: string; release: () => void }>;
+  controlledPage?: (runId: string, url: string, sourcePageId: string | undefined, signal: AbortSignal) => Promise<{ pageId: string; release: () => void }>;
   /** Privilege-independent grants for learned replay (Finding 5 / Gate F). */
   grants?: GrantSource;
   /** Shared persist-before-dispatch ledger (Gate D). */
@@ -309,7 +309,7 @@ export class SetRunner {
     if (pageId && this.deps.pages.isAttached(pageId) && m.url && this.deps.pages.get(pageId).url !== m.url)
       throw new AuxError("conflict", "Set member page changed since it was added; refresh the set before running it");
     if (this.deps.controlledPage) {
-      const page = await this.deps.controlledPage(opts.runId, url, pageId && this.deps.pages.isAttached(pageId) ? pageId : undefined);
+      const page = await this.deps.controlledPage(opts.runId, url, pageId && this.deps.pages.isAttached(pageId) ? pageId : undefined, opts.signal);
       pageId = page.pageId;
       this.deps.turnMentions.created(opts.runId, pageId);
       setWorker(pageId, page.release);

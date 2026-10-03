@@ -4,9 +4,11 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
-import type { RpcChannel } from "@aux/contracts";
+import { NativeCdpCatalogSchema, NativeCdpAttachedSchema, NativeCdpStartNavigationSchema, NativeCdpNavigationStartedSchema, NativeCdpNavigationStateSchema, NativeCdpNavigationReceiptSchema, type NativeCdpNavigationReceipt, type EgressLease, type RpcChannel } from "@aux/contracts";
+import type { BrowserEgress } from "./safety/browser-egress.js";
+type CdpAuthority = ReturnType<BrowserEgress["captureCdpAuthority"]>;
+type AuthorityFactory = (pageId: string, lease: EgressLease) => CdpAuthority;
 
-type Page = { pageId: string; cdpTargetId?: string; url: string; title: string; active: boolean };
 type Target = {
   targetId: string;
   type: "page";
@@ -16,7 +18,14 @@ type Target = {
   browserContextId: string;
 };
 type Request = { id: number; method: string; params: Record<string, unknown>; sessionId?: string };
-type Pending = { id: number; sessionId: string; pageId: string };
+type Pending = { id: number; sessionId: string; pageId: string; attachmentId: string; autoAttach?: { targetId: string; enabled: boolean; events: unknown[] } };
+type Navigation = {
+  pageId: string; attachmentId: string; leaseId: string; commandId: number;
+  expiresAt: number; deadlineAt: number; started: boolean; ready: boolean; taking: boolean;
+  signal: AbortSignal; timer: ReturnType<typeof setTimeout>; abort: () => void;
+  resolve: (receipt: NativeCdpNavigationReceipt) => void; reject: (error: Error) => void;
+};
+type Attachment = { id: string; authority: CdpAuthority };
 
 const CONTEXT_ID = "aux-profile";
 const MAX_MESSAGE_BYTES = 1024 * 1024;
@@ -52,7 +61,7 @@ function pageMethodAllowed(method: string): boolean {
 /**
  * Playwright's local CDP facade. The Unix socket is inside Chromium's private
  * Profile directory, with a separate unguessable WebSocket path. Every target
- * comes from native.listPages; native.cdpDispatch repeats ownership checks.
+ * comes from native.cdpCatalog; native.cdpDispatch repeats original lease checks.
  */
 export class NativeCdpBroker {
   private readonly socketDirectory: string;
@@ -65,22 +74,27 @@ export class NativeCdpBroker {
     path: this.path,
     maxPayload: MAX_MESSAGE_BYTES,
   });
-  private readonly targets = new Map<string, { pageId: string; info: Target }>();
+  private readonly targets = new Map<string, { pageId: string; lease: EgressLease; info: Target }>();
   private readonly sessions = new Map<string, string>();
+  private readonly attachments = new Map<string, Attachment>();
   private readonly childOwners = new Map<string, string>();
   private readonly autoAttachSessions = new Map<string, string>();
   private readonly browserSessions = new Set<string>();
   private readonly pending = new Map<number, Pending>();
+  private readonly navigationDeadlines = new WeakMap<NativeCdpNavigationReceipt, number>();
+  private readonly navigations = new Map<number, Navigation>();
   private nextNativeId = 1;
   private client: WebSocket | null = null;
   private nativeReset: Promise<void> = Promise.resolve();
   private refreshQueue: Promise<void> = Promise.resolve();
+  private attachmentQueue: Promise<void> = Promise.resolve();
   private autoAttach = false;
   private discover = false;
   private closed = false;
 
   private constructor(
     private readonly channel: RpcChannel,
+    private readonly authorityFactory: AuthorityFactory,
     socketDirectory?: string,
   ) {
     this.ownsSocketDirectory = !socketDirectory;
@@ -88,8 +102,9 @@ export class NativeCdpBroker {
     chmodSync(this.socketDirectory, 0o700);
     this.socketPath = join(this.socketDirectory, `c-${randomBytes(4).toString("hex")}.s`);
     channel.onNotify((type, payload) => {
+      if (type === "native.cdpNavigationState") this.navigationState(payload);
       if (type === "native.cdpMessage") this.forwardNative(payload);
-      if (type === "native.tabsChanged") {
+      if (type === "native.tabsChanged" || type === "native.cdpAuthorityChanged") {
         void this.refresh().catch((error: unknown) => {
           console.error("Aux CDP target catalog refresh failed:", error);
         });
@@ -97,8 +112,8 @@ export class NativeCdpBroker {
     });
   }
 
-  static async start(channel: RpcChannel, socketDirectory?: string): Promise<NativeCdpBroker> {
-    const broker = new NativeCdpBroker(channel, socketDirectory);
+  static async start(channel: RpcChannel, authorityFactory: AuthorityFactory, socketDirectory?: string): Promise<NativeCdpBroker> {
+    const broker = new NativeCdpBroker(channel, authorityFactory, socketDirectory);
     broker.ws.on("connection", broker.onConnection);
     try {
       await new Promise<void>((resolve, reject) => {
@@ -138,10 +153,12 @@ export class NativeCdpBroker {
     socket.once("close", () => {
       if (this.client !== socket) return;
       this.client = null;
+      this.refuseNavigations("Original CDP connection closed");
       if (!this.closed) void this.resetNativeSessions().catch(() => {
         // A later connection retries the reset before accepting any command.
       });
       this.sessions.clear();
+      this.attachments.clear();
       this.childOwners.clear();
       this.autoAttachSessions.clear();
       this.browserSessions.clear();
@@ -151,6 +168,99 @@ export class NativeCdpBroker {
       this.discover = false;
     });
   };
+
+  /** Fixed native navigation; a returned receipt does not authorize the replacement driver. */
+  async navigateControlled(pageId: string, url: string, signal: AbortSignal): Promise<NativeCdpNavigationReceipt> {
+    if (this.closed || signal.aborted || !this.client) throw new Error("Original navigation caller is unavailable");
+    if (this.navigations.size >= 128 || [...this.navigations.values()].some(value => value.pageId === pageId))
+      throw new Error("Original page navigation is already pending");
+    const session = [...this.sessions].find(([id, target]) => !this.childOwners.has(id)
+      && this.targets.get(target)?.pageId === pageId && this.attachments.get(id)?.authority.current());
+    const attachment = session ? this.attachments.get(session[0]) : undefined;
+    if (!attachment || !attachment.authority.current()) throw new Error("Original acknowledged page attachment is unavailable");
+    const commandId = this.nextNativeId++;
+    const expiresAt = attachment.authority.acknowledgedExpiresAt();
+    const request = NativeCdpStartNavigationSchema.parse({ pageId, url, commandId,
+      attachmentId: attachment.id, acknowledgedExpiresAt: expiresAt });
+    if (expiresAt <= Date.now()) throw new Error("Original navigation acknowledgement expired");
+    const deadlineAt = Math.min(Date.now() + 8000, expiresAt);
+    return new Promise<NativeCdpNavigationReceipt>((resolve, reject) => {
+      const abort = () => this.finishNavigation(commandId, new Error("Original navigation caller aborted"));
+      const timer = setTimeout(() => this.finishNavigation(commandId,
+        new Error("Original navigation receipt deadline expired")), Math.max(0, deadlineAt - Date.now()));
+      const pending: Navigation = { pageId, attachmentId: attachment.id,
+        leaseId: attachment.authority.lease.leaseId, commandId, expiresAt, deadlineAt, signal, timer, abort,
+        started: false, ready: false, taking: false, resolve, reject };
+      this.navigations.set(commandId, pending);
+      signal.addEventListener("abort", abort, { once: true });
+      if (signal.aborted) { abort(); return; }
+      // START returns only dispatch ACK. Waiting here leaves the native Worker free
+      // to process the real egress/approval RPC that permits the navigation.
+      void this.channel.call("native.cdpStartNavigation", request, 8000).then(result => {
+        NativeCdpNavigationStartedSchema.parse(result);
+        if (this.navigations.get(commandId) !== pending) return;
+        pending.started = true;
+        this.takeNavigation(pending);
+      }).catch((error: unknown) => this.finishNavigation(commandId,
+        error instanceof Error ? error : new Error("Original native navigation start failed")));
+    });
+  }
+
+  private navigationState(payload: unknown): void {
+    const parsed = NativeCdpNavigationStateSchema.safeParse(payload);
+    if (!parsed.success) return;
+    const state = parsed.data, pending = this.navigations.get(state.commandId);
+    if (!pending || pending.pageId !== state.pageId || pending.attachmentId !== state.attachmentId
+      || pending.leaseId !== state.leaseId) return;
+    if (state.state === "refused") {
+      this.finishNavigation(state.commandId, new Error("Original native navigation authority retired"));
+      return;
+    }
+    pending.ready = true;
+    this.takeNavigation(pending);
+  }
+
+  private takeNavigation(pending: Navigation): void {
+    if (!pending.started || !pending.ready || pending.taking
+      || this.navigations.get(pending.commandId) !== pending) return;
+    pending.taking = true;
+    void this.channel.call("native.cdpTakeNavigationReceipt", {
+      pageId: pending.pageId, attachmentId: pending.attachmentId, commandId: pending.commandId,
+    }, 8000).then(result => {
+      const receipt = NativeCdpNavigationReceiptSchema.parse(result);
+      if (receipt.originalAttachmentId !== pending.attachmentId || receipt.originalLeaseId !== pending.leaseId
+        || receipt.commandId !== pending.commandId || receipt.context.tabId !== pending.pageId)
+        throw new Error("Native navigation receipt does not match the original command");
+      this.finishNavigation(pending.commandId, undefined, receipt);
+    }).catch((error: unknown) => this.finishNavigation(pending.commandId,
+      error instanceof Error ? error : new Error("Original native navigation receipt failed")));
+  }
+
+  private finishNavigation(commandId: number, error?: Error, receipt?: NativeCdpNavigationReceipt): void {
+    const pending = this.navigations.get(commandId);
+    if (!pending) return;
+    this.navigations.delete(commandId);
+    clearTimeout(pending.timer);
+    pending.signal.removeEventListener("abort", pending.abort);
+    if (error || !receipt || this.closed || pending.signal.aborted || Math.min(pending.expiresAt, pending.deadlineAt) <= Date.now())
+      pending.reject(error ?? new Error("Original navigation receipt expired or retired"));
+    else {
+      this.navigationDeadlines.set(receipt, pending.deadlineAt);
+      pending.resolve(receipt);
+    }
+  }
+
+  navigationDeadline(receipt: NativeCdpNavigationReceipt): number {
+    const deadline = this.navigationDeadlines.get(receipt);
+    this.navigationDeadlines.delete(receipt);
+    if (deadline === undefined || deadline <= Date.now())
+      throw new Error("Original navigation receipt deadline is unavailable or expired");
+    return deadline;
+  }
+
+  private refuseNavigations(reason: string): void {
+    for (const id of this.navigations.keys()) this.finishNavigation(id, new Error(reason));
+  }
 
   private resetNativeSessions(): Promise<void> {
     this.nativeReset = this.nativeReset.catch(() => {}).then(async () => {
@@ -184,13 +294,13 @@ export class NativeCdpBroker {
       const client = this.client;
       if (!client || this.closed) return;
       const previous = new Set(this.targets.keys());
-      const snapshot = await this.channel.call<{ pages: Page[] }>("native.listPages", {}, 10_000);
+      const snapshot = NativeCdpCatalogSchema.parse(await this.channel.call("native.cdpCatalog", {}, 10_000));
       if (this.client !== client || this.closed) return;
-      const next = new Map<string, { pageId: string; info: Target }>();
+      const next = new Map<string, { pageId: string; lease: EgressLease; info: Target }>();
       for (const page of snapshot.pages) {
         if (!page.cdpTargetId || !/^(https?:|about:blank$)/.test(page.url)) continue;
         next.set(page.cdpTargetId, {
-          pageId: page.pageId,
+          pageId: page.pageId, lease: page.lease,
           info: {
             targetId: page.cdpTargetId,
             type: "page",
@@ -202,13 +312,18 @@ export class NativeCdpBroker {
         });
       }
       for (const [id, old] of this.targets)
-        if (!next.has(id)) {
+        if (!next.has(id) || old.lease.leaseId !== next.get(id)?.lease.leaseId
+          || [...this.sessions].some(([session, target]) => target === id && !this.attachments.get(session)?.authority.current())) {
           for (const [sessionId, targetId] of this.sessions)
             if (targetId === id) {
               this.sessions.delete(sessionId);
+              this.attachments.delete(sessionId);
               if (!this.childOwners.delete(sessionId))
                 this.notify("Target.detachedFromTarget", { sessionId, targetId: id });
             }
+          previous.delete(id);
+          const replacement = next.get(id);
+          if (replacement) replacement.info.attached = false;
           this.autoAttachSessions.delete(id);
           if (this.discover) this.notify("Target.targetDestroyed", { targetId: id });
           for (const [nativeId, pending] of this.pending)
@@ -219,7 +334,7 @@ export class NativeCdpBroker {
       for (const [id, value] of next)
         if (!previous.has(id)) {
           if (this.discover) this.notify("Target.targetCreated", { targetInfo: value.info });
-          if (this.autoAttach) this.attach(id, true);
+          if (this.autoAttach) await this.attach(id, true);
         }
     });
     this.refreshQueue = work.catch(() => {});
@@ -230,10 +345,28 @@ export class NativeCdpBroker {
     return [...this.sessions.values()].includes(targetId);
   }
 
-  private attach(targetId: string, automatic: boolean): string {
+  private attach(targetId: string, automatic: boolean): Promise<string> {
+    const work = this.attachmentQueue.then(() => this.attachAcknowledged(targetId, automatic));
+    this.attachmentQueue = work.then(() => {}, () => {});
+    return work;
+  }
+
+  private async attachAcknowledged(targetId: string, automatic: boolean): Promise<string> {
     const target = this.targets.get(targetId);
     if (!target) throw new Error("Target is not an Aux tab in this Profile");
+    const authority = this.authorityFactory(target.pageId, target.lease);
+    const client = this.client;
+    const existing = [...this.sessions].find(([session, id]) => id === targetId && !this.childOwners.has(session)
+      && this.attachments.get(session)?.authority.current());
+    const original = existing ? this.attachments.get(existing[0]) : undefined;
+    const { attachmentId } = original ? { attachmentId: original.id } : NativeCdpAttachedSchema.parse(await this.channel.call("native.cdpAttach", {
+      pageId: target.pageId, leaseId: authority.lease.leaseId,
+      acknowledgedExpiresAt: authority.acknowledgedExpiresAt(),
+    }, 10_000));
+    if (this.closed || !client || client !== this.client || this.targets.get(targetId) !== target || !authority.current())
+      throw new Error("Original CDP attachment authority changed during native acknowledgement");
     const sessionId = `aux-page-${randomUUID()}`;
+    this.attachments.set(sessionId, { id: attachmentId, authority: original?.authority ?? authority });
     this.sessions.set(sessionId, targetId);
     target.info.attached = true;
     if (automatic)
@@ -260,10 +393,20 @@ export class NativeCdpBroker {
     } catch {
       return;
     }
+    const attachmentId = message.auxAttachmentId;
+    if (typeof attachmentId !== "string") return;
+    delete message.auxAttachmentId;
+    delete message.auxNavigationCommandId;
     if (typeof message.id === "number") {
       const pending = this.pending.get(message.id);
-      if (!pending || pending.pageId !== event.pageId || !this.sessions.has(pending.sessionId)) return;
+      if (!pending || pending.pageId !== event.pageId || pending.attachmentId !== attachmentId
+        || !this.attachments.get(pending.sessionId)?.authority.current()) return;
       this.pending.delete(message.id);
+      if (pending.autoAttach && !message.error) {
+        if (pending.autoAttach.enabled) this.autoAttachSessions.set(pending.autoAttach.targetId, pending.sessionId);
+        else this.autoAttachSessions.delete(pending.autoAttach.targetId);
+        for (const event of pending.autoAttach.events) this.forwardNative(event);
+      }
       this.send({ ...message, id: pending.id, sessionId: pending.sessionId });
       return;
     }
@@ -273,8 +416,19 @@ export class NativeCdpBroker {
       const child = params?.sessionId;
       const targetId = [...this.targets].find(([, value]) => value.pageId === event.pageId)?.[0];
       const parent = nativeSession ?? (targetId ? this.autoAttachSessions.get(targetId) : undefined);
-      if (typeof child !== "string" || !targetId || !parent || !this.sessions.has(parent)) return;
+      if (typeof child !== "string" || !targetId) return;
+      const admitting = [...this.pending.values()].find(pending => pending.attachmentId === attachmentId
+        && pending.pageId === event.pageId && pending.autoAttach?.targetId === targetId && pending.autoAttach.enabled);
+      if (admitting?.autoAttach) {
+        if (admitting.autoAttach.events.length >= 128) return;
+        admitting.autoAttach.events.push(payload);
+        return;
+      }
+      if (!parent || !this.sessions.has(parent)) return;
+      const attachment = this.attachments.get(parent);
+      if (!attachment || attachment.id !== attachmentId || !attachment.authority.current()) return;
       this.sessions.set(child, targetId);
+      this.attachments.set(child, attachment);
       this.childOwners.set(child, parent);
       this.send({ ...message, sessionId: parent });
       return;
@@ -284,17 +438,21 @@ export class NativeCdpBroker {
       const child = params?.sessionId;
       if (typeof child !== "string") return;
       const parent = nativeSession ?? this.childOwners.get(child);
+      if (this.attachments.get(child)?.id !== attachmentId) return;
       this.sessions.delete(child);
+      this.attachments.delete(child);
       this.childOwners.delete(child);
       if (parent && this.sessions.has(parent)) this.send({ ...message, sessionId: parent });
       return;
     }
     if (nativeSession) {
-      if (this.childOwners.has(nativeSession)) this.send(message);
+      const attachment = this.attachments.get(nativeSession);
+      if (this.childOwners.has(nativeSession) && attachment?.id === attachmentId && attachment.authority.current()) this.send(message);
       return;
     }
     for (const [sessionId, targetId] of this.sessions) {
-      if (!this.childOwners.has(sessionId) && this.targets.get(targetId)?.pageId === event.pageId)
+      if (!this.childOwners.has(sessionId) && this.targets.get(targetId)?.pageId === event.pageId
+        && this.attachments.get(sessionId)?.id === attachmentId && this.attachments.get(sessionId)?.authority.current())
         this.send({ ...message, sessionId });
     }
   }
@@ -349,21 +507,25 @@ export class NativeCdpBroker {
         if (params.targetId && params.targetId !== targetId) throw new Error("Target is not an Aux tab");
         return { targetInfo: target.info };
       }
-      const previousAutoAttach = this.autoAttachSessions.get(targetId);
+      const attachment = this.attachments.get(sessionId);
+      if (!attachment?.authority.current()) throw new Error("Original CDP attachment authority retired");
       if (method === "Target.setAutoAttach") {
-        if (params.autoAttach === true) this.autoAttachSessions.set(targetId, sessionId);
-        else this.autoAttachSessions.delete(targetId);
+        if ([...this.pending.values()].some(pending => pending.attachmentId === attachment.id && pending.autoAttach))
+          throw new Error("Original CDP auto-attachment acknowledgement is pending");
       } else if (method === "Target.detachFromTarget") {
         if (typeof params.sessionId !== "string" || this.childOwners.get(params.sessionId) !== sessionId)
           throw new Error("Iframe session is not owned by this page");
       } else if (!pageMethodAllowed(method)) throw new Error("CDP method is not page scoped");
       const nativeId = this.nextNativeId++;
-      this.pending.set(nativeId, { id: request.id, sessionId, pageId: target.pageId });
+      this.pending.set(nativeId, { id: request.id, sessionId, pageId: target.pageId, attachmentId: attachment.id,
+        ...(method === "Target.setAutoAttach" ? { autoAttach: { targetId, enabled: params.autoAttach === true, events: [] } } : {}),
+      });
       try {
         await this.channel.call(
           "native.cdpDispatch",
           {
-            pageId: target.pageId,
+            pageId: target.pageId, attachmentId: attachment.id,
+            acknowledgedExpiresAt: attachment.authority.acknowledgedExpiresAt(),
             message: JSON.stringify({
               id: nativeId,
               method,
@@ -375,10 +537,6 @@ export class NativeCdpBroker {
         );
       } catch (error) {
         this.pending.delete(nativeId);
-        if (method === "Target.setAutoAttach") {
-          if (previousAutoAttach) this.autoAttachSessions.set(targetId, previousAutoAttach);
-          else this.autoAttachSessions.delete(targetId);
-        }
         throw error;
       }
       return null; // Native protocol response arrives as native.cdpMessage.
@@ -428,13 +586,13 @@ export class NativeCdpBroker {
       this.autoAttach = params.autoAttach === true;
       await refreshCurrent();
       if (this.autoAttach)
-        for (const id of this.targets.keys()) if (!this.sessionsHasTarget(id)) this.attach(id, true);
+        for (const id of this.targets.keys()) if (!this.sessionsHasTarget(id)) await this.attach(id, true);
       return {};
     }
     if (method === "Target.attachToTarget") {
       await refreshCurrent();
       if (typeof params.targetId !== "string") throw new Error("Target ID required");
-      return { sessionId: this.attach(params.targetId, false) };
+      return { sessionId: await this.attach(params.targetId, false) };
     }
     if (method === "Target.detachFromTarget") {
       if (typeof params.sessionId !== "string") throw new Error("Target session required");
@@ -442,6 +600,7 @@ export class NativeCdpBroker {
       const targetId = this.sessions.get(params.sessionId);
       if (!targetId) throw new Error("Unknown target session");
       this.sessions.delete(params.sessionId);
+      this.attachments.delete(params.sessionId);
       this.childOwners.delete(params.sessionId);
       if (this.autoAttachSessions.get(targetId) === params.sessionId)
         this.autoAttachSessions.delete(targetId);
@@ -467,6 +626,7 @@ export class NativeCdpBroker {
   async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
+    this.refuseNavigations("Original CDP broker closed");
     this.client?.terminate();
     this.ws.close();
     if (this.server.listening) await new Promise<void>((resolve) => this.server.close(() => resolve()));

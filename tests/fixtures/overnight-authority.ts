@@ -15,7 +15,7 @@ export function fixtureEmptyOvernightAuthority(repo: Repo): void {
   const native = new NullNativeBridge();
   const page = (id: string) => { const value = repo.getPage(id); if (!value) throw new AuxError("not_found", "No fixture native page"); return value; };
   const approvals = new ApprovalStore(repo.db, () => {}, repo.columnCipher);
-  const egress = new BrowserEgress({ profileId: "fixture", native, run: () => null, page,
+  const egress = new BrowserEgress({ runAncestry: runId => [runId], profileId: "fixture", native, run: () => null, page,
     ownsPage: () => false, audit: () => {}, approve: async () => false });
   const gate = new SafetyDispatchGate({ approvals, journal: new DecisionJournal(repo.db), managedRules: () => [], userRules: () => [],
     localCeiling: () => "ask", audit: () => {} });

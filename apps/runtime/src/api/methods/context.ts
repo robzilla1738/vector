@@ -118,6 +118,10 @@ export function browserImporter(s: Services): BrowserImporter {
 
 export interface ClientCtx {
   external: boolean;
+  /** Original native local-person invocation; supplied only by authenticated api.invoke. */
+  nativePersonResume?: string;
+  /** Private original local native owner intent; never API params. */
+  nativeRunResume?: string;
   connectionId?: string;
   scope?: AgentConnectionScope;
   codeMode?: true;

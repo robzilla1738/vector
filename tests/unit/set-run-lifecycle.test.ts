@@ -1,6 +1,6 @@
 import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
 import { describe, it, expect, vi } from "vitest";
-import { DurableWriteLedger, MockModelClient, EventBus, openDb, Repo, RunService, SetService, TaskService, WorkerPool } from "@aux/runtime";
+import { DurableWriteLedger, MockModelClient, EventBus, openDb, Repo, RunService, SetService, SetRunner, TaskService, WorkerPool } from "@aux/runtime";
 import { EventTypes, taskConversationId } from "@aux/contracts";
 import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@aux/runtime";
 import type { Observation, PageTarget, Program, Run } from "@aux/contracts";
@@ -1069,4 +1069,39 @@ it("answers and retries a page-free chat without reading or creating a browser p
     expect((await untilTerminal(h.repo, retried.runId)).status).toBe("completed");
     expect(open).not.toHaveBeenCalled(); expect(read).not.toHaveBeenCalled(); expect(observe).not.toHaveBeenCalled();
   } finally { h.repo.db.close(); }
+});
+
+
+it("cancels a held protected Set-member opening with the original run signal", async () => {
+  const h = harness();
+  const set = await h.sets.create({ name: "held protected opening", source: "urls", urls: ["https://source.test/selected"] });
+  const control = new AbortController();
+  let openingSignal: AbortSignal | undefined;
+  let entered!: () => void;
+  const opening = new Promise<void>(resolve => { entered = resolve; });
+  const agent = vi.fn();
+  const runner = new SetRunner({
+    repo: h.repo, events: h.events, pages: h.pages, sets: h.sets,
+    turnMentions: h.turnMentions, pool: new WorkerPool({ maxWorkers: 1, perOrigin: 1 }),
+    getProgram: () => undefined, saveProgram: () => "unused", translateSteps: (_id, steps) => steps,
+    runAgentForMember: agent,
+    controlledPage: async (_runId, _url, sourcePageId, signal) => {
+      expect(sourcePageId).toBeUndefined();
+      openingSignal = signal;
+      entered();
+      await new Promise<void>((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      });
+      throw new Error("The original canceled opening must not publish a page.");
+    },
+  });
+  const mapped = runner.map({ setId: set.setId, runId: "held-opening", goal: "Read selected source", signal: control.signal });
+  await opening;
+  expect(openingSignal).toBe(control.signal);
+  control.abort(new Error("Original run canceled"));
+  await mapped;
+  expect(openingSignal?.aborted).toBe(true);
+  expect(agent).not.toHaveBeenCalled();
+  expect(h.sets.get(set.setId).members[0]).toBeDefined();
+  expect(h.sets.get(set.setId).members[0]?.status).toBe("skipped");
 });

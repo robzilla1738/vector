@@ -1,0 +1,48 @@
+diff --git a/.native/chrome/browser/ui/aux/methods/native_tabs_methods.cc b/.native/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+--- a/.native/chrome/browser/ui/aux/methods/native_tabs_methods.cc
++++ b/.native/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+@@ -260,7 +260,7 @@
+     auto* current_catalog = aux::TabCatalog::GetForProfile(original_host->profile_);
+     BrowserWindowInterface* current_owner = nullptr;
+     const auto* current_identity = aux::PageIdentity::FromWebContents(original_page.get());
+-    if (!current_identity || !current_frame || current_catalog->FindPage(page_id, &current_owner) != original_page.get() ||
++    if (!current_identity || !current_frame || !current_catalog || current_catalog->FindPage(page_id, &current_owner) != original_page.get() ||
+         current_owner != original_owner.get() || original_owner->GetProfile() != original_host->profile_ ||
+         original_page->GetBrowserContext() != original_host->profile_ ||
+         original_page->GetPrimaryMainFrame() != current_frame ||
+@@ -305,9 +305,23 @@
+     if (!original_host || !original_owner || !original_controller || !original_page || !target ||
+         original_document.AsRenderFrameHostIfValid() != original_page->GetPrimaryMainFrame() ||
+         original_host->admitted_native_generation_ != connection_generation ||
++        original_host->retired_native_generation_ >= connection_generation ||
+         original_host->shutting_down_ || target->GetWebContents() != original_page.get() ||
+         target->GetBrowserContext() != original_host->profile_)
+       return NativeFault("ref_stale", "Original task target changed during publication");
++    BrowserWindowInterface* final_owner = nullptr;
++    auto* final_catalog = aux::TabCatalog::GetForProfile(original_host->profile_);
++    const auto* final_identity = aux::PageIdentity::FromWebContents(original_page.get());
++    if (!final_catalog || final_catalog != current_catalog ||
++        final_catalog->FindPage(page_id, &final_owner) != original_page.get() ||
++        final_owner != original_owner.get() || !final_identity ||
++        final_identity != current_identity || !final_identity->runtime_owned())
++      return NativeFault("ref_stale", "Original task catalog changed during target publication");
++    auto final_cleanup = original_controller->CreatorCleanupProof(base::DictValue()
++        .Set("pageId", page_id).Set("creationId", creation_id), connection_generation);
++    const auto* final_proof = final_cleanup.FindDict("result");
++    if (!final_proof || *final_proof != *current_proof)
++      return NativeFault("ref_stale", "Original task creation scope changed during target publication");
+     result.Set("targetId", target->GetId());
+     result.Set("isolation", std::move(scope));
+     if (source) result.Set("source", source->Clone());
+diff --git a/.native/chrome/browser/ui/aux/egress_controller.cc b/.native/chrome/browser/ui/aux/egress_controller.cc
+--- a/.native/chrome/browser/ui/aux/egress_controller.cc
++++ b/.native/chrome/browser/ui/aux/egress_controller.cc
+@@ -544,7 +544,7 @@
+       creator.proof.FindDouble("expiresAt").value_or(0) <= base::Time::Now().InMillisecondsFSinceUnixEpoch() ||
+       !page || !frame || !frame->IsActive() ||
+       (creator.blank_committed && !LiveFrame(frame)) || page->GetPrimaryMainFrame() != frame || !identity || !identity->runtime_owned() ||
+-      catalog->FindPage(page_id, &owner) != page || !owner || owner != creator.original_owner.get() || owner->GetProfile() != profile_ ||
++      !catalog || catalog->FindPage(page_id, &owner) != page || !owner || owner != creator.original_owner.get() || owner->GetProfile() != profile_ ||
+       !IsolationForPage(page_id, frame)) return false;
+   if (creator.has_source) {
+     auto* source_frame = creator.source_document.AsRenderFrameHostIfValid();

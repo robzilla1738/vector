@@ -1,0 +1,38 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "qualificationComplete": false,
+  "rootBase": "1131a696e29604e699d546ddacdf6d36c2799389",
+  "rootTree": "76109a947e2a982d35a6c8dcc17c039656b6f5c7",
+  "nativeChangedLeaves": 56,
+  "runtimeChangedLeaves": 80,
+  "unit": {
+    "files": 509,
+    "cases": 2907,
+    "passed": true,
+    "log": "/tmp/aux-l10-0280-current-context-final-unit.log",
+    "sha256": "2b861be6255296ad5be9429152d04141b9d9a56e7607424857a580e16824f2dd"
+  },
+  "checks": [
+    "rebuild",
+    "full unit",
+    "typecheck",
+    "lint390",
+    "format ratchet",
+    "generated224/26/5a32635d3dbe",
+    "136-leaf exact forward/reverse/forward"
+  ],
+  "pending": [
+    "independent root semantic review and ordered-series composition",
+    "native coherent compilation and genuine effect assertions",
+    "20 AC M4 genuine native original-input/last-final-dispatch measurement caller and execution"
+  ],
+  "exports": {
+    "runtime.request.patch": "8f12734ba4c7d4714dc2162cafda49a297ad2094c055e7d80718660227b16472",
+    "native.request.patch": "a48f018ff728106a7577d1df20c6e295e82c53b3ad35b40f264c16930ccc646a",
+    "NATIVE-PINS.json": "725ad07b49f1bc98b435e738c6d19bf3a732ce4987d8c20fe1c4e42cd275bd31",
+    "RUNTIME-PINS.json": "18e71371206ed060d092edc505676574a32122b695d1e9ce70ba82768b9b623b",
+    "REPLAY.json": "383c10bcc2975a44c9acbe29b0f7bdbee34ad09a57ce4f0ed193e2c127930bc5"
+  }
+}

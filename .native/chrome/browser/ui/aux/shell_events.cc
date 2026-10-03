@@ -173,42 +173,6 @@ class PageSignals : public content::WebContentsObserver,
   void DidStartLoading() override { PublishLoading(); }
   void DidStopLoading() override { PublishLoading(); }
   void OnAudioStateChanged(bool audible) override { PublishAudio(audible); }
-  void DidGetUserInteraction(const blink::WebInputEvent& event) override {
-    // Agent input enters through the private DevTools broker and carries the
-    // debugger bit. An unmarked interaction on this guest page asks the
-    // runtime to hand control to the person. This observer runs before the
-    // event is dispatched to the renderer.
-    if (!profile_ || profile_->IsOffTheRecord() || page_id_.empty() ||
-        (event.GetModifiers() & blink::WebInputEvent::kFromDebugger))
-      return;
-    const base::TimeTicks now = base::TimeTicks::Now();
-    if (!last_physical_takeover_.is_null() &&
-        now - last_physical_takeover_ < base::Milliseconds(100))
-      return;
-    auto* runtime = AuxRuntimeHost::ForProfile(profile_);
-    if (!runtime)
-      return;
-    base::DictValue payload;
-    payload.Set("pageId", page_id_);
-    if (auto json = base::WriteJson(payload)) {
-      last_physical_takeover_ = now;
-      runtime->CallInternal("view.takeover", std::move(*json),
-                            base::BindOnce([](AuxRuntimeHost::Response response) {
-                              if (!response.ok) {
-                                LOG(WARNING) << "Aux physical takeover refused: "
-                                             << response.error_code;
-                                return;
-                              }
-                              auto result = base::JSONReader::Read(
-                                  response.result_json, base::JSON_PARSE_RFC);
-                              const base::DictValue* dict =
-                                  result ? result->GetIfDict() : nullptr;
-                              if (dict && dict->FindBool("accepted").value_or(false)) {
-                                LOG(INFO) << "Aux physical takeover accepted";
-                              }
-                            }));
-    }
-  }
   void PrimaryMainFrameRenderProcessGone(base::TerminationStatus status) override {
     if (status == base::TERMINATION_STATUS_PROCESS_CRASHED ||
         status == base::TERMINATION_STATUS_ABNORMAL_TERMINATION ||
@@ -485,7 +449,6 @@ class PageSignals : public content::WebContentsObserver,
 
   raw_ptr<Profile> profile_;
   std::string page_id_;
-  base::TimeTicks last_physical_takeover_;
   bool auth_prompt_ = false;
   int navigation_generation_ = 0;
   std::string page_change_url_;

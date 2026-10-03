@@ -63,6 +63,16 @@ export class ProgramExecutor {
       if (!lp?.driver?.isAttached()) throw new AuxError("target_detached", `page ${pageId} is not attached`);
       if (lp.target.controller === "human")
         throw new AuxError("conflict", `page ${pageId} is under human control`);
+      let admittedDriver = lp.driver;
+      let admittedSession = lp.target.sessionId;
+      const expectedEpoch = lp.target.controllerEpoch;
+      const checkIncarnation = () => {
+        if (this.pages.live.get(pageId) !== lp || lp.driver !== admittedDriver ||
+            lp.target.sessionId !== admittedSession || !admittedDriver.isAttached())
+          throw new AuxError("ref_stale", "This browser attachment changed while preparing the action. Observe the tab again.");
+        if (lp.target.controllerEpoch !== expectedEpoch)
+          throw new AuxError("conflict", `page ${pageId} changed controller mid-run (takeover)`);
+      };
       const allSteps = collectProgramSteps(program);
       const grants = ctx.runId
         ? (this.pages.deps.grantsForRun ?? this.pages.deps.grants ?? DEFAULT_GRANTS)
@@ -83,11 +93,13 @@ export class ProgramExecutor {
       if (ctx.runId && allSteps.some(step => classifyStep(step.op) !== "read"))
         await this.pages.deps.prepareAgentEgress?.(ctx.runId, pageId);
       const authorize = async (step: Step, projectedOrigin?: string, phase: "preflight" | "dispatch" = "dispatch") => {
+        checkIncarnation();
         if (ctx.runId) await checkNightShiftDispatch(this.pages.deps.repo, ctx.runId);
         ctx.taskRead?.check();
         ctx.sourcePageCheck?.();
         const access = classifyStep(step.op) === "read" ? "read" : "act";
         if (mentionTurn && ctx.runId) await this.pages.deps.turnMentions.assert(ctx.runId, pageId, access, mentionTurn);
+        checkIncarnation();
         const documentEpoch = lp.target.documentEpoch;
         const topOrigin = liveOrigin();
         const targets = ["target" in step && typeof step.target === "string" ? step.target : undefined,
@@ -98,6 +110,7 @@ export class ProgramExecutor {
           ? await Promise.all(targets.map(target => projectedOrigin !== undefined && !isElementRef(target)
             ? projectedOrigin : lp.driver!.originForTarget?.(target) ?? Promise.resolve(fallbackOrigin)))
           : [fallbackOrigin];
+        checkIncarnation();
         let authorized: Awaited<ReturnType<NonNullable<ExecContext["authorizeStep"]>>> = undefined;
         for (const actionOrigin of origins) {
           const auth = authorizeProgram([step], grants, actionOrigin);
@@ -109,6 +122,7 @@ export class ProgramExecutor {
             const metadata = ctx.safety?.steps?.[step.id];
             const observedTarget = targets.length === 1 && lp.driver!.actionTarget
               ? await lp.driver!.actionTarget(targets[0]!) : undefined;
+            checkIncarnation();
             if (lp.target.documentEpoch !== documentEpoch || liveOrigin() !== topOrigin)
               throw new AuxError("ref_stale", "The document changed while reading the action target.");
             const taskId = ctx.taskId ?? run?.config?.taskId;
@@ -134,6 +148,7 @@ export class ProgramExecutor {
                 trustedEval: ctx.allowEval === true,
               },
             });
+            checkIncarnation();
             if (provenance) authorized = provenance;
           }
         }
@@ -153,6 +168,7 @@ export class ProgramExecutor {
         if (mentionTurn && ctx.runId) await this.pages.deps.turnMentions.assert(ctx.runId, pageId, access, mentionTurn);
         ctx.taskRead?.check();
         ctx.sourcePageCheck?.();
+        checkIncarnation();
         return authorized;
       };
       // Fail fast while the current document is knowable. A write can navigate
@@ -212,7 +228,6 @@ export class ProgramExecutor {
       }
       // takeover epoch: a human claiming the page mid-run must abort in-flight
       // programs rather than fight for the input lane
-      const expectedEpoch = lp.target.controllerEpoch;
       const span = this.pages.deps.tracer?.start("program.execute", {
         runId: ctx.runId,
         pageId,
@@ -262,11 +277,53 @@ export class ProgramExecutor {
           callOperation: ctx.callOperation ??
             (this.pages.deps.callOperation ? (n, a) => this.pages.deps.callOperation!(n, a, pageId) : undefined),
           checkValid: () => {
-            if (lp.target.controllerEpoch !== expectedEpoch)
-              throw new AuxError("conflict", `page ${pageId} changed controller mid-run (takeover)`);
+            checkIncarnation();
             ctx.checkValid?.();
           },
           authorizeStep: step => authorize(step),
+          navigateAndReadmit: ctx.runId && lp.target.backend === "aux" && this.pages.deps.native.available()
+            ? async url => {
+                const runId = ctx.runId!;
+                const producer = this.pages.deps.navigateControlled;
+                if (!producer) throw new AuxError("capability_unsupported", "Native controlled navigation is unavailable.");
+                const originalRun = this.pages.deps.repo.getRun(runId);
+                if (!originalRun) throw new AuxError("permission_denied", "The original navigation run is unavailable.");
+                const revision = originalRun.config?.messageRevision;
+                const taskId = originalRun.config?.taskId;
+                const taskRevision = originalRun.config?.taskRevision;
+                const signal = ctx.signal ?? new AbortController().signal;
+                const validateSource = () => {
+                  const currentRun = this.pages.deps.repo.getRun(runId);
+                  if (signal.aborted || this.pages.live.get(pageId) !== lp
+                    || lp.target.controller === "human" || lp.target.controllerEpoch !== expectedEpoch
+                    || !currentRun || !["running", "planning", "queued"].includes(currentRun.status)
+                    || currentRun.config?.messageRevision !== revision || currentRun.config?.taskId !== taskId
+                    || currentRun.config?.taskRevision !== taskRevision)
+                    throw new AuxError("ref_stale", "The original navigation run or controller changed.");
+                  ctx.sourcePageCheck?.();
+                  ctx.checkValid?.();
+                  if (mentionTurn && this.pages.deps.turnMentions.capture(runId) !== mentionTurn)
+                    throw new AuxError("ref_stale", "The original mentioned turn changed during navigation.");
+                };
+                validateSource();
+                const commanded = async (mentionAuthority?: () => void, revalidateMentionSource?: () => Promise<void>) => {
+                  const admitted = await producer({ runId, pageId, url, signal, validateSource, mentionAuthority, revalidateMentionSource }, this.pages);
+                  validateSource();
+                  return { result: admitted.driver, receipt: admitted.receipt };
+                };
+                const replacement = mentionTurn
+                  ? await this.pages.deps.turnMentions.navigateAttachmentUse(runId, pageId, commanded)
+                  : (await commanded()).result;
+                validateSource();
+                if (this.pages.live.get(pageId) !== lp || lp.driver !== replacement
+                  || !lp.target.sessionId || replacement === admittedDriver || !replacement.isAttached())
+                  throw new AuxError("ref_stale", "The native navigation driver changed before executor admission.");
+                admittedDriver = replacement;
+                admittedSession = lp.target.sessionId;
+                checkIncarnation();
+                return replacement;
+              }
+            : undefined,
           navigate: ctx.runId ? async (url, timeoutMs) => {
             const driver = lp.driver;
             const sessionId = lp.target.sessionId;
@@ -302,7 +359,7 @@ export class ProgramExecutor {
             ctx.onStep?.(outcome, step);
           },
         };
-        result = await executeProgram(lp.driver, program, execCtx);
+        result = await executeProgram(admittedDriver, program, execCtx);
         if (
           result.status === "failed" &&
           result.steps.some((s) => s.error?.code === "conflict" && (s.error.message.includes("takeover") || s.error.message.includes("controller")))

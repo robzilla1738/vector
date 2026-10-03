@@ -2,7 +2,7 @@ import { fixtureSafetyAuthority, fixtureTurnMentions } from "../fixtures/turn-me
 /**
  * H2-C7: pages.extract / waitFor / console / dialog / network are real RPCs.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   EventBus,
   NullNativeBridge,
@@ -122,15 +122,16 @@ function harness(grants: string[] = ["effect:read"]) {
   const drivers: DriverSet = { aux: chromium.driver, chrome: null };
   const responses = new ResponseStore({ repo, events, flushDelayMs: 0 });
   const pagesTurnMentions = fixtureTurnMentions((pageId: string): import("@aux/contracts").PageTarget | undefined => pages.get(pageId));
+  const native = new NullNativeBridge();
   const pages = new PageService({ turnMentions: pagesTurnMentions,
     repo,
     events,
-    native: new NullNativeBridge(),
+    native,
     drivers: () => drivers,
     responses,
     grants,
   });
-  return { pages, repo, events, responses, chromium, turnMentions: pagesTurnMentions };
+  return { pages, repo, events, responses, chromium, native, turnMentions: pagesTurnMentions };
 }
 
 describe("H2-C7 pages inspect RPCs", () => {
@@ -264,5 +265,41 @@ describe("external page attachment lifecycle", () => {
     await expect(pending).rejects.toMatchObject({ code: "not_found" });
     expect(disposed).toBe(true);
     expect(pages.list({ includeDetached: true })).toEqual([]);
+  });
+});
+
+
+describe("native recorder PageService admission", () => {
+  it("refuses an installed native backend without fixed recorder producers", async () => {
+    const { pages, native, chromium, repo } = harness();
+    try {
+      const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: false });
+      const callsBefore = [...chromium.calls];
+      vi.spyOn(native, "available").mockReturnValue(true);
+      await expect(pages.recorderObserver(page.pageId)).rejects.toMatchObject({ code: "backend_unavailable" });
+      expect(chromium.calls).toEqual(callsBefore);
+    } finally { repo.close(); }
+  });
+
+  it("retains original native attachment authority and cleans only its receipt after detach", async () => {
+    const { pages, native, repo } = harness();
+    const recorderId = "35120a93-910a-451a-bbbd-e1daf3368f60";
+    const { createHash } = await import("node:crypto");
+    const { RECORDER_SOURCE } = await import("@aux/chromium-driver");
+    const start = vi.fn(async () => ({ recorderId, documentGeneration: "1", producerSha256: createHash("sha256").update(RECORDER_SOURCE).digest("hex") }));
+    const drain = vi.fn(async () => ({ recorderId, documentGeneration: "1", events: [] }));
+    const stop = vi.fn(async () => ({ stopped: true }));
+    Object.assign(native, { recorderStart: start, recorderDrain: drain, recorderStop: stop });
+    try {
+      const page = await pages.open({ url: "https://a.test/", background: true, ownedByRuntime: false });
+      vi.spyOn(native, "available").mockReturnValue(true);
+      const observer = await pages.recorderObserver(page.pageId);
+      await observer.start(() => {}, () => {});
+      expect(start).toHaveBeenCalledWith({ pageId: page.pageId });
+      pages.onNativeRemoved(page.pageId, false);
+      await observer.close();
+      expect(stop).toHaveBeenCalledWith({ pageId: page.pageId, recorderId });
+      expect(drain).not.toHaveBeenCalled();
+    } finally { repo.close(); }
   });
 });

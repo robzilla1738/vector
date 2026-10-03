@@ -175,6 +175,7 @@ class PermissionBrokerTest : public BrowserWithTestWindowTest {
   void SetUp() override {
     BrowserWithTestWindowTest::SetUp();
     controller_ = EgressController::ForProfile(profile());
+    ASSERT_TRUE(controller_->AdmitRuntimeConnection(1, "synthetic-fixture-native-host"));
     host_ = AuxRuntimeHostTestPeer::Install(profile(), base::BindRepeating(
         [](PermissionBrokerTest* self, bool internal, std::string method,
            std::string json, AuxRuntimeHost::ResponseCallback reply) {
@@ -201,7 +202,7 @@ class PermissionBrokerTest : public BrowserWithTestWindowTest {
         std::make_unique<PermissionFixtureFrameBindings>(page_));
     NavigateAndCommit(page_, origin_);
     page_->WasShown();
-    ASSERT_TRUE(controller_->RegisterIsolation(page_, id, "run", "task", 4));
+    ASSERT_TRUE(controller_->RegisterIsolation(page_, id, "run", "task", 4, {"run"}, 1));
     page_id_ = PageIdentity::GetOrCreate(profile(), page_);
     ASSERT_EQ(TabCatalog::GetForProfile(profile())->FindPage(page_id_), page_);
     auto context_reply = controller_->Context(base::DictValue().Set("tabId", page_id_).Set("expectedUrl", origin_.spec()));
@@ -406,7 +407,7 @@ TEST_F(PermissionBrokerTest, PersonReadRefusesRegisteredIsolationBeforeInstall) 
       std::make_unique<PermissionFixtureFrameBindings>(preparing));
   browser()->tab_strip_model()->AppendWebContents(std::move(contents), true);
   NavigateAndCommit(preparing, origin_);
-  ASSERT_TRUE(controller_->RegisterIsolation(preparing, id, "read-preparing", "task", 4));
+  ASSERT_TRUE(controller_->RegisterIsolation(preparing, id, "read-preparing", "task", 4, {"read-preparing"}, 1));
   EXPECT_TRUE(controller_->PermissionAuthority(preparing->GetPrimaryMainFrame()).empty());
   EXPECT_FALSE(controller_->CapturePersonRead(preparing));
 }

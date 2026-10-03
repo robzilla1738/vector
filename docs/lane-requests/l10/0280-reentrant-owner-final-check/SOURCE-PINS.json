@@ -1,0 +1,22 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "base": "e12ce400",
+  "files": [
+    {
+      "path": ".native/chrome/browser/ui/aux/methods/native_tabs_methods.cc",
+      "beforeSha256": "000db0fd6caf472c4627799a8256f002e084d3e1daab93c70715f51c87f32430",
+      "afterSha256": "93347348617c9cc36e8e1150e05779e6ab06a6c8383a10ca6701f4ea8aed2ba4",
+      "requestOnly": true
+    },
+    {
+      "path": ".native/chrome/browser/ui/aux/egress_controller.cc",
+      "beforeSha256": "47cc94a55a3f49d3f182dce2ba774af206bb17c493762f2cec11b7e716e93578",
+      "afterSha256": "41cd5bd06daabe936ef217fcecf2e268af6fa3ba82b7126c79ccc5cc06bd5b1b",
+      "requestOnly": true
+    }
+  ],
+  "patchSha256": "104ba19c985a547121c3813986d55066792def473d305e440252c4b5764fc361",
+  "replay": "two actual leaves forward/reverse/forward PASS"
+}

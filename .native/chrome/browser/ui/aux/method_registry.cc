@@ -140,20 +140,20 @@ AuxMethodRegistry::AuxMethodRegistry() {
                     "native.searchSuggestionsGet", "native.searchSuggestionsSet",
                     "native.bookmarksInvoke", "native.organizationSnapshot", "native.liveFolderSources"});
   register_runtime(AuxRuntimeMethodGroup::kBlocking,
-                   {"native.permissionRetire", "native.egressContext", "native.egressInstall", "native.egressRevoke",
+                   {"native.permissionRetire", "native.egressResumePerson", "native.egressResumeRun", "native.egressCheckRunResume", "native.egressRunTerminal", "native.egressContext", "native.egressInstall", "native.egressRevoke",
                     "native.contentBlockBegin", "native.contentBlockAppend",
                     "native.cosmeticBegin", "native.cosmeticAppend"});
   register_runtime(AuxRuntimeMethodGroup::kPower, {"native.powerActivity", "native.powerStatus", "native.powerRelease"});
   register_runtime(AuxRuntimeMethodGroup::kCdp,
-                   {"native.cdpReset", "native.cdpDispatch", "native.cdpVersion"});
+                   {"native.cdpReset", "native.cdpCatalog", "native.cdpStartNavigation", "native.cdpDispatch", "native.cdpVersion"});
   register_runtime(AuxRuntimeMethodGroup::kTabs,
-                   {"native.listPages", "native.createAgentPage", "native.tabCommand", "native.movePage",
+                   {"native.listPages", "native.createAgentPage", "native.creatorCleanupProof", "native.tabCommand", "native.movePage",
                     "native.focusPage", "native.stopPage", "native.recoverPage",
                     "native.acquireStage", "native.releaseStage"});
   register_runtime(AuxRuntimeMethodGroup::kPageControls,
                    {"native.stopFind", "native.setZoom"});
   register_runtime(AuxRuntimeMethodGroup::kAsync,
-                   {"native.personReadContext", "native.personRead", "native.recorderStart", "native.recorderDrain", "native.recorderStop"});
+                   {"native.cdpAttach", "native.cdpTakeNavigationReceipt", "native.closeCreatedPage", "native.personReadContext", "native.personRead", "native.recorderStart", "native.recorderDrain", "native.recorderStop"});
   register_runtime(AuxRuntimeMethodGroup::kAsync,
                    {"native.downloadRenameReceipts", "native.downloadNamingCandidate", "native.downloadPreviewText",
                     "native.renameDownload", "native.undoDownloadRename",

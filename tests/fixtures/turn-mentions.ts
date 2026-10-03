@@ -18,7 +18,7 @@ export function fixturePage(pageId: string, url: string, documentEpoch: number):
 
 /** Real empty transport authority for fixtures that have no installed native browser leases. */
 export function fixtureSafetyAuthority(repo: import("../../apps/runtime/src/store/repo.js").Repo) {
- const egress = new BrowserEgress({ profileId: "default", native: new NullNativeBridge(),
+ const egress = new BrowserEgress({ runAncestry: runId => [runId], profileId: "default", native: new NullNativeBridge(),
   run: () => null, page: pageId => repo.getPage(pageId)!, ownsPage: () => false, audit: () => {}, approve: async () => false });
  return new SafetyAuthorityRevocation({ profileId: "default", runScope: runId => {
   const run = repo.getRun(runId); return run ? run.config?.taskId ? { kind: "task", id: run.config.taskId }

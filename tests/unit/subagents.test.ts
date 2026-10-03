@@ -1,4 +1,4 @@
-import { lineageRuns, overnightRoot, runRoot } from "../../apps/runtime/src/services/run-lineage.js";
+import { lineageRuns, overnightRoot, runRoot, runAncestry } from "../../apps/runtime/src/services/run-lineage.js";
 import { expect, it, vi } from "vitest";
 import { authorizeProgram, EventBus, openDb, Repo, SubagentService, subagentGrants, TaskService } from "@aux/runtime";
 import { EventTypes, type Run } from "@aux/contracts";
@@ -196,9 +196,12 @@ it("persists trusted child lineage before launch without fabricating a child nig
     };
     const child = await f.service.spawn({ groupId: group.groupId, goal: "Child", pageIds: ["one"], profile: "read_only", tokenAllocation: 1000, costAllocationUsd: 0.2 });
     expect(runRoot(f.repo, child.runId!)).toBe(f.parent.runId);
+    expect(runAncestry(f.repo, child.runId!, true)).toEqual([child.runId, f.parent.runId]);
     expect(lineageRuns(f.repo, f.parent.runId)).toEqual([f.parent.runId, child.runId]);
     f.db.prepare("UPDATE subagent_groups SET state='closed' WHERE group_id=?").run(group.groupId);
     expect(() => overnightRoot(f.repo, child.runId!)).toThrow(/no longer active/);
+    expect(runAncestry(f.repo, child.runId!)).toEqual([child.runId, f.parent.runId]);
+    expect(() => runAncestry(f.repo, child.runId!, true)).toThrow(/no longer active/);
     expect(lineageRuns(f.repo, f.parent.runId)).toContain(child.runId);
   } finally { f.close(); }
 });

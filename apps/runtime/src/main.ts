@@ -1,8 +1,9 @@
+import { navigateControlledPage } from "./services/pages/controlled-navigation.js";
 import { registerNativeSubagentPreparation } from "./services/native-subagent-preparation.js";
 import { registerNativeSubagentWorkload } from "./services/native-subagent-workload.js";
 import { runtimeShutdown, RuntimeShutdownAdmission } from "./services/runtime-shutdown.js";
 import { withRunAuthorityMutation } from "./services/overnight-authority.js";
-import { overnightRoot } from "./services/run-lineage.js";
+import { overnightRoot, runAncestry } from "./services/run-lineage.js";
 import { saveAuthorizedModelCall } from "./services/model-call-authority.js";
 import { installBrowserAuthority, installOvernightAuthority } from "./services/overnight-authority.js";
 import { checkNightShiftDispatch, nightShiftEffectAuthority } from "./features/overnight-review/service.js";
@@ -92,6 +93,7 @@ import { SubagentService } from "./services/subagents.js";
 import { BudgetsService } from "./services/budgets.js";
 import { handlePageTakeover } from "./services/page-takeover.js";
 import { registerNativeControlChannel } from "./services/native-control-channel.js";
+import { applyNativePageTakeover } from "./services/native-page-takeover.js";
 import { ArtifactStore } from "./services/artifacts.js";
 import { artifactExportDescriptor, renderWorkbookForNativeExport } from "./services/native-file-export.js";
 import { minimizeLegacyObservationArtifacts } from "./services/observation-artifact-migration.js";
@@ -242,6 +244,8 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       external: boolean;
       connectionId?: string;
       scope?: import("@aux/contracts").AgentConnectionScope;
+      nativePersonResume?: string;
+      nativeRunResume?: string;
     },
   ) => Promise<unknown>;
   let resolveInvoker: (fn: InvokeFn) => void;
@@ -492,8 +496,18 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // Register api.invoke immediately — the renderer can call before services
   // finish booting; calls wait on the invoker promise instead of failing.
   channel?.onMethod("api.invoke", (p) => {
-    const { method, params, desktopUser } = p as { method: string; params: unknown; desktopUser?: boolean };
-    return invokerReady.then((fn) => fn(method, params, { external: desktopUser !== true }));
+    const { method, params, desktopUser, nativePersonResume, nativeRunResume } = p as {
+      method: string; params: unknown; desktopUser?: boolean; nativePersonResume?: unknown; nativeRunResume?: unknown;
+    };
+    const receipt = method === "pages.resume" && desktopUser === true &&
+      typeof nativePersonResume === "string" && nativePersonResume.length > 0 && nativePersonResume.length <= 128
+      ? nativePersonResume : undefined;
+    const runReceipt = method === "runs.resume" && desktopUser === true &&
+      typeof nativeRunResume === "string" && nativeRunResume.length > 0 && nativeRunResume.length <= 128
+      ? nativeRunResume : undefined;
+    return invokerReady.then((fn) => fn(method, params, { external: desktopUser !== true,
+      ...(receipt ? { nativePersonResume: receipt } : {}),
+      ...(runReceipt ? { nativeRunResume: runReceipt } : {}) }));
   });
   if (channel) registerDownloadNamingChannel(channel, invokerReady);
   await settings.initializeCredentials();
@@ -521,7 +535,11 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
       events.emit("session.changed", { backend: d.backend, status: "connected" });
     };
   };
-  const nativeCdp = env.AUX_HOST_SOCKET && channel ? await NativeCdpBroker.start(channel) : null;
+  let browserEgress: BrowserEgress | undefined;
+  const nativeCdp = env.AUX_HOST_SOCKET && channel ? await NativeCdpBroker.start(channel, (pageId, lease) => {
+    if (!browserEgress) throw new AuxError("permission_denied", "Browser authority is not initialized.");
+    return browserEgress.captureCdpAuthority(pageId, lease);
+  }) : null;
   let auxRecovery: ConnectionRecovery | undefined;
   const hostCdp =
     nativeCdp?.endpoint() ??
@@ -599,7 +617,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   // pages↔operations are mutually dependent — late-bind via a lazy ref
   let operations!: OperationService;
   let turnMentions!: TurnMentionService;
-  let browserEgress: BrowserEgress | undefined;
+
   const pages = new PageService({
     get turnMentions() { return turnMentions; },
     repo,
@@ -614,6 +632,15 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
     durableWrites,
     safetyGate,
     prepareAgentEgress: (runId, pageId) => browserEgress?.ensure(runId, pageId) ?? Promise.resolve(),
+    retireCreatedPage: (runId, pageId) => {
+      if (!browserEgress) throw new AuxError("capability_unsupported", "Authenticated native cleanup is unavailable.");
+      return browserEgress.retireCreatorPage(runId, pageId);
+    },
+    navigateControlled: (input, registry) => {
+      if (!browserEgress || !nativeCdp)
+        throw new AuxError("capability_unsupported", "Authenticated native navigation is unavailable.");
+      return navigateControlledPage(input, registry, browserEgress, nativeCdp);
+    },
     recordAgentObservation: (pageId, url, text) => {
       const runId = pageClaims.activeForPage(pageId)?.runId;
       // Owner/API reads can hold a short page claim without an agent run.
@@ -1089,6 +1116,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
 
   if (env.AUX_HOST_SOCKET && env.AUX_BROWSER_PROFILE_ID) {
     browserEgress = new BrowserEgress({
+      runAncestry: runId => runAncestry(repo, runId, true),
       profileId: env.AUX_BROWSER_PROFILE_ID,
       native,
       run: runId => {
@@ -1406,7 +1434,7 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   });
 
   events.subscribe((e) => {
-    if (e.type !== EventTypes.PageTakeover) return;
+    if (e.type !== EventTypes.PageTakeover || typeof e.payload.nativeRunId === "string") return;
     const pageId = e.payload.pageId;
     const controller = e.payload.controller;
     if (typeof pageId !== "string" || typeof controller !== "string") return;
@@ -1568,8 +1596,16 @@ export async function startRuntime(processEnv = process.env): Promise<RuntimeHan
   dueTimer.unref?.();
   // forward the event stream so the shell renderer can subscribe over IPC
   events.subscribe((e) => channel?.notify("event", e));
-  if (channel) registerNativeControlChannel(channel, pages, code =>
-    console.error("Native takeover notification failed", code));
+  if (channel) registerNativeControlChannel(channel, input => {
+    if (!browserEgress || !nativePermissions)
+      throw new AuxError("permission_denied", "Native control retirement is unavailable.");
+    return applyNativePageTakeover(input, {
+      egress: browserEgress, permissions: nativePermissions,
+      page: pageId => pages.get(pageId),
+      takeover: (pageId, runId) => pages.takeoverFromNative(pageId, runId),
+      interrupt: (pageId, runId) => handlePageTakeover(pageId, "human", repo, runs, runId),
+    });
+  }, code => console.error("Native takeover notification failed", code));
   channel?.onNotify((type, payload) => {
     const pl = (payload ?? {}) as Record<string, unknown>;
     const str = (v: unknown) => (v === undefined || v === null ? undefined : String(v));

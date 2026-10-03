@@ -296,3 +296,5 @@ aux/runtime/0325-viz-readback-and-refcounted-callback-api.patch
 aux/runtime/0326-capability-local-and-warm-buildflag-api.patch
 aux/runtime/0327-shared-standalone-mock-time.patch
 aux/runtime/0328-private-window-compiled-identity.patch
+aux/runtime/0329-current-context-creator-close-and-owner-incarnation.patch
+aux/runtime/0330-original-owner-revalidation-after-native-callbacks.patch

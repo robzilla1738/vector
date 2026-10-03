@@ -113,6 +113,12 @@ beforeAll(() => {
     repo,
     native: {
       available: () => true,
+      // Schema boundary fixture has no registered native run family. The
+      // actual stopped-family refusal is exercised by native-run-resume.
+      egressCheckRunResume: async ({ runId }) => {
+        if (runId !== "run_x") throw new Error("No native run fixture for this identity");
+        return { accepted: true as const };
+      },
       permissionRetire: async () => { throw new Error("This fixture does not support native permission retirement"); },
       tabCommand: async () => ({ commandId: "", status: "applied" as const, catalogVersion: 0 }),
       focusPage: async () => ({ ok: true }),

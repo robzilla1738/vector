@@ -1,6 +1,6 @@
 import { RuntimeShutdownAdmission } from "../../apps/runtime/src/services/runtime-shutdown.js";
 import { SafetyAuthorityRevocation } from "../../apps/runtime/src/safety/authority-revocation.js";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { AuxError, PageTargetSchema, RunSchema, type EgressLease, type OriginRule } from "@aux/contracts";
 import { openDb } from "@aux/runtime";
 import { NullNativeBridge } from "../../apps/runtime/src/native.js";
@@ -66,7 +66,7 @@ async function fixture(readOnly = false, external = false, assertDispatch: (runI
   const leases: EgressLease[] = [];
   const native = Object.assign(new NullNativeBridge(), {
     egressContext: async () => ({
-      profileId: "profile",
+      controlGeneration: "fixture-native-generation", personControlled: false, profileId: "profile",
       tabId: page.pageId,
       frameId: "process:frame",
       documentToken: "native-document",
@@ -84,10 +84,10 @@ async function fixture(readOnly = false, external = false, assertDispatch: (runI
       leases.push(lease);
       return { accepted: true as const };
     },
-    egressRevoke: async (_input: { leaseId: string }) => ({ accepted: true as const }),
+    egressRevoke: async (_input: { lease: EgressLease }) => ({ accepted: true as const }),
   });
   let owns = true;
-  const egress = new BrowserEgress({
+  const egress = new BrowserEgress({ runAncestry: runId => [runId],
     profileId: "profile",
     native,
     run: () => ({ taskId: run.config?.taskId, taskRevision: run.config?.taskRevision ?? 0, threadId: "run" }),
@@ -870,8 +870,8 @@ it("serializes lifecycle state changes behind the exact native browser retiremen
   const started = new Promise<void>(resolve => { entered = resolve; });
   let acknowledge!: (value: { accepted: true }) => void;
   const ack = new Promise<{ accepted: true }>(resolve => { acknowledge = resolve; });
-  f.native.egressRevoke = async ({ leaseId }: { leaseId: string }) => {
-    expect(leaseId).toBe(f.request.leaseId);
+  f.native.egressRevoke = async ({ lease }: { lease: EgressLease }) => {
+    expect(lease.leaseId).toBe(f.request.leaseId);
     trace.push("native-retire"); entered(); return ack;
   };
   const first = withRunDispatchMutation(repo, async () => { trace.push("pause"); }, "run");
@@ -897,8 +897,8 @@ it("retains a failed native browser retirement debt and requires its exact ACK o
   const started = new Promise<void>(resolve => { entered = resolve; });
   let acknowledge!: (value: { accepted: true }) => void;
   const ack = new Promise<{ accepted: true }>(resolve => { acknowledge = resolve; });
-  f.native.egressRevoke = async ({ leaseId }: { leaseId: string }) => {
-    expect(leaseId).toBe(f.request.leaseId); entered(); return ack;
+  f.native.egressRevoke = async ({ lease }: { lease: EgressLease }) => {
+    expect(lease.leaseId).toBe(f.request.leaseId); entered(); return ack;
   };
   const retry = withRunDispatchMutation(repo, async () => { mutations++; }, "run");
   await started;
@@ -923,4 +923,101 @@ it("does not retire a different run's browser lease or abort ordinary approval p
   await withRunDispatchMutation(repo, async () => {}, "run");
   expect(retirements).toBe(1);
   expect(() => f.egress.permissionAuthority(f.request)).toThrow("no current frame/document lease");
+});
+
+
+it("a queued native control rechecks its original document before retiring any receipt", async () => {
+  let retirements = 0;
+  const f = await fixture(false, false, async () => {}, "run", () => null, async () => {
+    retirements++; return { accepted: true };
+  });
+  const waiting = await f.controller.request(f.request);
+  f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
+  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow" });
+  let release!: () => void;
+  let entered = false;
+  const prior = f.controller.withAuthorityMutation(id => id === "unrelated", async () => {
+    entered = true; await new Promise<void>(resolve => { release = resolve; });
+  });
+  await import("vitest").then(({ vi }) => vi.waitFor(() => expect(entered).toBe(true)));
+  const originalEpoch = f.page.documentEpoch;
+  let checks = 0;
+  let transitions = 0;
+  const validate = async () => {
+    checks++;
+    if (f.page.documentEpoch !== originalEpoch) throw new AuxError("ref_stale", "Original native document replaced");
+  };
+  const input = f.controller.withValidatedAuthorityMutation(id => id === "run", validate, async () => { transitions++; });
+  const refused = input.catch(error => error);
+  await import("vitest").then(({ vi }) => vi.waitFor(() => expect(checks).toBe(1)));
+  f.page.documentEpoch++;
+  release(); await prior;
+  await expect(refused).resolves.toMatchObject({ code: "ref_stale", message: "Original native document replaced" });
+  expect(checks).toBe(2);
+  expect(retirements).toBe(0);
+  expect(transitions).toBe(0);
+});
+
+it("a native control rechecks after its original retirement ACK before changing control state", async () => {
+  let acknowledge!: () => void;
+  const receipts: unknown[] = [];
+  const f = await fixture(false, false, async () => {}, "run", () => null, async input => {
+    receipts.push(input); await new Promise<void>(resolve => { acknowledge = resolve; }); return { accepted: true };
+  });
+  const waiting = await f.controller.request(f.request);
+  f.approvals.decideLocal({ decision: "accept", approvalId: waiting.approvalId! }, "run");
+  expect(await f.controller.request(f.request)).toMatchObject({ decision: "allow" });
+  const originalEpoch = f.page.documentEpoch;
+  let transitions = 0;
+  const input = f.controller.withValidatedAuthorityMutation(id => id === "run", async () => {
+    if (f.page.documentEpoch !== originalEpoch) throw new AuxError("ref_stale", "Original native document replaced");
+  }, async () => { transitions++; });
+  const refused = input.catch(error => error);
+  await import("vitest").then(({ vi }) => vi.waitFor(() => expect(acknowledge).toBeTypeOf("function")));
+  expect(receipts).toHaveLength(1);
+  expect(transitions).toBe(0);
+  f.page.documentEpoch++;
+  acknowledge();
+  await expect(refused).resolves.toMatchObject({ code: "ref_stale", message: "Original native document replaced" });
+  expect(transitions).toBe(0);
+});
+
+
+it("terminal native registration retirement is produced only after a genuine terminal repository mutation and waits for its ACK", async () => {
+  const { Repo } = await import("@aux/runtime");
+  const { installBrowserAuthority, installOvernightAuthority, withRunAuthorityMutation } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const f = await fixture();
+  const repo = new Repo(f.db); repo.saveRun(f.run);
+  let release!: () => void;
+  const hold = new Promise<void>(resolve => { release = resolve; });
+  const terminal = vi.fn(async (_input: { runId: string }) => { await hold; return { accepted: true as const }; });
+  Object.assign(f.native, { egressRunTerminal: terminal });
+  installBrowserAuthority(repo, f.egress); installOvernightAuthority(repo, f.controller);
+  await withRunAuthorityMutation(repo, async () => { f.run.statusMessage = "Still working"; repo.saveRun(f.run); }, f.run.runId);
+  expect(terminal).not.toHaveBeenCalled();
+  let completed = false;
+  const pending = withRunAuthorityMutation(repo, async () => {
+    f.run.status = "completed"; repo.saveRun(f.run); return "original result";
+  }, f.run.runId).then(result => { completed = true; return result; });
+  await vi.waitFor(() => expect(terminal).toHaveBeenCalledExactlyOnceWith({ runId: f.run.runId }));
+  expect(completed).toBe(false);
+  expect(repo.getRun(f.run.runId)?.status).toBe("completed");
+  release();
+  await expect(pending).resolves.toBe("original result");
+});
+it("a refused terminal registration ACK retains the original failure and the next genuine lifecycle call retries retirement", async () => {
+  const { Repo } = await import("@aux/runtime");
+  const { installBrowserAuthority, installOvernightAuthority, withRunAuthorityMutation } = await import("../../apps/runtime/src/services/overnight-authority.js");
+  const f = await fixture();
+  const repo = new Repo(f.db); repo.saveRun(f.run);
+  const refusal = new AuxError("ref_stale", "Original native generation retired");
+  const terminal = vi.fn(async (_input: { runId: string }) => ({ accepted: true as const }));
+  terminal.mockRejectedValueOnce(refusal);
+  Object.assign(f.native, { egressRunTerminal: terminal });
+  installBrowserAuthority(repo, f.egress); installOvernightAuthority(repo, f.controller);
+  await expect(withRunAuthorityMutation(repo, async () => { f.run.status = "completed"; repo.saveRun(f.run); }, f.run.runId)).rejects.toBe(refusal);
+  expect(repo.getRun(f.run.runId)?.status).toBe("completed");
+  await withRunAuthorityMutation(repo, async () => {}, f.run.runId);
+  expect(terminal).toHaveBeenCalledTimes(2);
+  expect(terminal.mock.calls).toEqual([[{ runId: f.run.runId }], [{ runId: f.run.runId }]]);
 });

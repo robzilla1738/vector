@@ -3,7 +3,7 @@ import { EventTypes } from "@aux/contracts";
 import { ControlAuthority } from "../../apps/runtime/src/services/pages/control.js";
 import type { PageRegistry } from "../../apps/runtime/src/services/pages/registry.js";
 
-it("physical input takes an agent page even while its program is dispatching", async () => {
+it("validated native run takeover holds an agent page even while its program is dispatching", async () => {
   const emitted: Array<{ type: string; payload: Record<string, unknown> }> = [];
   const target = { pageId: "active", controller: "agent", controllerEpoch: 4 };
   const lp = { target };
@@ -15,13 +15,13 @@ it("physical input takes an agent page even while its program is dispatching", a
   } as unknown as PageRegistry;
   const control = new ControlAuthority(registry);
   control.programInflight.add("active");
-  control.onNativeTakeover("other");
+  await expect(control.takeoverFromNative("other", "original-run")).rejects.toMatchObject({ code: "not_found" });
   expect(target.controller).toBe("agent");
-  control.onNativeTakeover("active");
+  await control.takeoverFromNative("active", "original-run");
   expect(target).toMatchObject({ controller: "human", controllerEpoch: 5 });
   expect(emitted).toContainEqual({ type: EventTypes.PageTakeover,
-    payload: { pageId: "active", controller: "human", controllerEpoch: 5 } });
-  control.onNativeTakeover("active");
+    payload: { pageId: "active", controller: "human", controllerEpoch: 5, nativeRunId: "original-run" } });
+  await control.takeoverFromNative("active", "original-run");
   expect(persisted).toBe(1);
   await control.resume("active");
   expect(target).toMatchObject({ controller: "none", controllerEpoch: 6 });

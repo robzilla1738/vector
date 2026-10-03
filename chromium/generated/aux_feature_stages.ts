@@ -60,6 +60,9 @@ const requirements = {
   },
   "demonstrationSkills": {
     "requires": [
+      "native.recorderStart",
+      "native.recorderDrain",
+      "native.recorderStop",
       "recorder.get",
       "recorder.start",
       "recorder.pause",
@@ -335,6 +338,10 @@ const requirements = {
   "fourLayerTabApi": {
     "requires": [
       "native.cdpReset",
+      "native.cdpCatalog",
+      "native.cdpAttach",
+      "native.cdpStartNavigation",
+      "native.cdpTakeNavigationReceipt",
       "native.cdpDispatch",
       "native.cdpVersion"
     ],

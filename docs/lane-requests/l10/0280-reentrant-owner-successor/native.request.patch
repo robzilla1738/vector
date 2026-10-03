@@ -1,0 +1,198 @@
+diff --git a/.native/chrome/browser/ui/aux/cdp_broker.cc b/.native/chrome/browser/ui/aux/cdp_broker.cc
+--- a/.native/chrome/browser/ui/aux/cdp_broker.cc
++++ b/.native/chrome/browser/ui/aux/cdp_broker.cc
+@@ -705,10 +705,31 @@
+   if (!host || host->GetWebContents() != contents ||
+       host->GetBrowserContext() != profile_)
+     return Fault("permission_denied", "The target ownership changed");
++  const auto original_contents = contents->GetWeakPtr();
++  const auto original_document = frame->GetWeakDocumentPtr();
++  const auto original_controller = egress->GetWeakPtr();
++  const auto original_generation = connection_generation_;
+   RetireSession(page_id);
+   if (!weak) return Fault("target_detached", "Native CDP broker was retired");
+-  if (sessions_.contains(page_id))
++  if (sessions_.contains(page_id) || connection_generation_ != original_generation)
+     return Fault("ref_stale", "A new attachment replaced original retirement");
++  // Session retirement invokes original external callbacks. They may destroy
++  // the page or replace even a same-URL document without retiring this broker.
++  // Preserve the captured identity and reacquire no replacement authority.
++  auto* current_frame = original_document.AsRenderFrameHostIfValid();
++  auto* current_catalog = TabCatalog::GetForProfile(profile_);
++  if (!original_contents || !original_controller || !current_frame ||
++      current_catalog != catalog || current_catalog->FindPage(page_id) != original_contents.get() ||
++      original_contents->GetBrowserContext() != profile_ ||
++      original_contents->GetPrimaryMainFrame() != current_frame ||
++      host->GetWebContents() != original_contents.get() || host->GetBrowserContext() != profile_)
++    return Fault("ref_stale", "Original attachment document changed during retirement");
++  auto current_lease = original_controller->PermissionAuthority(current_frame);
++  auto original_identity = lease.Clone();
++  original_identity.Remove("expiresAt");
++  current_lease.Remove("expiresAt");
++  if (current_lease != original_identity)
++    return Fault("ref_stale", "Original attachment lease changed during retirement");
+   auto session = std::make_unique<Session>(
+       profile_, connection_generation_, page_id, scope, std::move(lease),
+       std::move(host), on_message_, on_navigation_);
+diff --git a/.native/chrome/browser/ui/aux/methods/native_tabs_methods.cc b/.native/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+--- a/.native/chrome/browser/ui/aux/methods/native_tabs_methods.cc
++++ b/.native/chrome/browser/ui/aux/methods/native_tabs_methods.cc
+@@ -246,13 +246,50 @@
+     auto navigation = original_page->GetController().LoadURLWithParams(blank);
+     if (!original_host || !original_owner || !original_controller || !original_page)
+       return NativeFault("ref_stale", "Original task tab was retired during navigation");
+-    if (!navigation || !egress->BindCreatorBlankNavigation(page_id, creation_id,
+-            connection_generation, navigation->GetNavigationId())) {
++    const auto original_document = original_page->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++    const bool bound = navigation && original_controller->BindCreatorBlankNavigation(
++        page_id, creation_id, connection_generation, navigation->GetNavigationId());
++    // Binding may synchronously complete Ready and destroy any original owner.
++    // Never dereference the pre-callback raw controller/page/model afterward.
++    if (!original_host || !original_owner || !original_controller || !original_page ||
++        original_host->shutting_down_ ||
++        original_host->admitted_native_generation_ != connection_generation ||
++        original_host->retired_native_generation_ >= connection_generation)
++      return NativeFault("ref_stale", "Original task owner was retired during blank binding");
++    auto* current_frame = original_document.AsRenderFrameHostIfValid();
++    auto* current_catalog = aux::TabCatalog::GetForProfile(original_host->profile_);
++    BrowserWindowInterface* current_owner = nullptr;
++    const auto* current_identity = aux::PageIdentity::FromWebContents(original_page.get());
++    if (!current_identity || !current_frame || current_catalog->FindPage(page_id, &current_owner) != original_page.get() ||
++        current_owner != original_owner.get() || original_owner->GetProfile() != original_host->profile_ ||
++        original_page->GetBrowserContext() != original_host->profile_ ||
++        original_page->GetPrimaryMainFrame() != current_frame ||
++        !current_identity->runtime_owned())
++      return NativeFault("ref_stale", "Original creation document changed during blank binding");
++    auto cleanup = original_controller->CreatorCleanupProof(base::DictValue()
++        .Set("pageId", page_id).Set("creationId", creation_id), connection_generation);
++    const auto* current_proof = cleanup.FindDict("result");
++    if (!bound || !current_proof || !current_proof->FindString("creationId") ||
++        *current_proof->FindString("creationId") != creation_id ||
++        current_proof->FindDouble("connectionGeneration") != static_cast<double>(connection_generation) ||
++        current_proof->FindInt("taskRevision") != revision ||
++        !current_proof->FindString("isolationId") || *current_proof->FindString("isolationId") != isolation_id ||
++        !current_proof->FindString("runId") || *current_proof->FindString("runId") != *run_id ||
++        (current_proof->FindString("taskId") ? *current_proof->FindString("taskId") : "") != task_id) {
+       auto failure = NativeFault("ref_stale", "Original blank navigation was unavailable");
+-      auto cleanup = egress->CreatorCleanupProof(base::DictValue()
+-          .Set("pageId", page_id).Set("creationId", creation_id), connection_generation);
+-      if (auto* proof = cleanup.FindDict("result")) failure.Set("_creatorCleanup", proof->Clone());
++      if (current_proof) failure.Set("_creatorCleanup", current_proof->Clone());
+       return failure;
++    }
++    if (source) {
++      auto source_now = original_controller->Context(*source);
++      const auto* source_value = source_now.FindDict("result");
++      const auto* current_token = source_value ? source_value->FindString("documentToken") : nullptr;
++      const auto* expected_token = source->FindString("documentToken");
++      if (!current_token || !expected_token || *current_token != *expected_token) {
++        auto failure = NativeFault("ref_stale", "Original selected source changed during blank binding");
++        failure.Set("_creatorCleanup", current_proof->Clone());
++        return failure;
++      }
+     }
+     base::DictValue scope;
+     scope.Set("isolationId", isolation_id);
+@@ -264,7 +301,14 @@
+     base::DictValue result;
+     result.Set("pageId", page_id);
+     result.Set("creationId", creation_id);
+-    result.Set("targetId", content::DevToolsAgentHost::GetOrCreateFor(raw)->GetId());
++    auto target = content::DevToolsAgentHost::GetOrCreateFor(original_page.get());
++    if (!original_host || !original_owner || !original_controller || !original_page || !target ||
++        original_document.AsRenderFrameHostIfValid() != original_page->GetPrimaryMainFrame() ||
++        original_host->admitted_native_generation_ != connection_generation ||
++        original_host->shutting_down_ || target->GetWebContents() != original_page.get() ||
++        target->GetBrowserContext() != original_host->profile_)
++      return NativeFault("ref_stale", "Original task target changed during publication");
++    result.Set("targetId", target->GetId());
+     result.Set("isolation", std::move(scope));
+     if (source) result.Set("source", source->Clone());
+     return NativeResult(base::Value(std::move(result)));
+diff --git a/.native/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc b/.native/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
+--- a/.native/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
++++ b/.native/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc
+@@ -244,6 +244,23 @@
+         .Set("attachmentId", attachment_id).Set("commandId", command_id)
+         .Set("leaseId", lease_id).Set("ready", ready));
+   }
++  void AttachOriginalWithoutNavigation(CdpBroker::NavigationCallback callback) {
++    native_lease_ = InstallOriginalLease();
++    ASSERT_FALSE(native_lease_.empty());
++    ASSERT_NE(native_lease_.FindString("leaseId"), nullptr);
++    const auto expiry = native_lease_.FindDouble("expiresAt");
++    ASSERT_TRUE(expiry);
++    native_expiry_ = *expiry;
++    broker_ = std::make_unique<CdpBroker>(profile_, base::BindRepeating(
++        [](uint64_t, const std::string&, const std::string&) {}), std::move(callback));
++    broker_->WaitForAttachment(page_id_, *native_lease_.FindString("leaseId"), native_expiry_,
++        generation_, base::BindRepeating(&AuxCreatorCloseBrowserTestPeer::Current,
++            host_->GetWeakPtr(), generation_), attached_.GetCallback());
++    const auto& attached = attached_.Get();
++    ASSERT_NE(attached.FindDict("result"), nullptr) << attached;
++    ASSERT_NE(attached.FindDict("result")->FindString("attachmentId"), nullptr);
++    native_attachment_id_ = *attached.FindDict("result")->FindString("attachmentId");
++  }
+   void StartReplacementNavigation() {
+     native_lease_ = InstallOriginalLease();
+     const auto& lease = native_lease_;
+@@ -308,6 +325,59 @@
+   std::string native_attachment_id_;
+   double native_expiry_ = 0;
+ };
++
++IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
++                       AttachRetirementCallbackDestroysOriginalWebContents) {
++  ASSERT_NO_FATAL_FAILURE(Create());
++  ASSERT_NO_FATAL_FAILURE(AttachOriginalWithoutNavigation(base::BindRepeating(
++      [](base::WeakPtr<BrowserWindowInterface> owner,
++         base::WeakPtr<content::WebContents> page, uint64_t,
++         const std::string&, const std::string&, int, const std::string&, bool ready) {
++        if (!ready && owner && page) {
++          auto* model = owner->GetTabStripModel();
++          const int index = model->GetIndexOfWebContents(page.get());
++          if (index >= 0) model->DetachAndDeleteWebContentsAt(index);
++        }
++      }, browser()->GetWeakPtr(), page_)));
++  content::TestNavigationManager navigation(page_.get(), GURL("about:blank"));
++  auto started = broker_->StartControlledNavigation(page_id_, native_attachment_id_, 71,
++      "about:blank", native_expiry_, generation_);
++  ASSERT_NE(started.FindDict("result"), nullptr) << started;
++  ASSERT_TRUE(navigation.WaitForRequestStart());
++  auto replacement = broker_->Attach(page_id_, "agent",
++      *native_lease_.FindString("leaseId"), native_expiry_, generation_);
++  EXPECT_NE(replacement.FindDict("error"), nullptr) << replacement;
++  EXPECT_FALSE(page_);
++  EXPECT_EQ(browser()->GetTabStripModel()->count(), original_count_);
++}
++
++IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
++                       AttachRetirementCallbackReplacesSameUrlDocument) {
++  ASSERT_NO_FATAL_FAILURE(Create());
++  ASSERT_NO_FATAL_FAILURE(AttachOriginalWithoutNavigation(base::BindRepeating(
++      [](base::WeakPtr<content::WebContents> page, uint64_t,
++         const std::string&, const std::string&, int, const std::string&, bool ready) {
++        if (!ready && page) {
++          page->Stop();
++          EXPECT_TRUE(content::NavigateToURL(page.get(), GURL("about:blank")));
++        }
++      }, page_)));
++  const auto original_document = page_->GetPrimaryMainFrame()->GetWeakDocumentPtr();
++  content::TestNavigationManager navigation(page_.get(), GURL("about:blank"));
++  auto started = broker_->StartControlledNavigation(page_id_, native_attachment_id_, 72,
++      "about:blank", native_expiry_, generation_);
++  ASSERT_NE(started.FindDict("result"), nullptr) << started;
++  ASSERT_TRUE(navigation.WaitForRequestStart());
++  auto replacement = broker_->Attach(page_id_, "agent",
++      *native_lease_.FindString("leaseId"), native_expiry_, generation_);
++  EXPECT_NE(replacement.FindDict("error"), nullptr) << replacement;
++  ASSERT_TRUE(page_);
++  EXPECT_FALSE(original_document.AsRenderFrameHostIfValid());
++  EXPECT_EQ(page_->GetLastCommittedURL(), GURL("about:blank"));
++  EXPECT_NE(broker_->Dispatch(page_id_, native_attachment_id_,
++      R"({"id":73,"method":"Runtime.evaluate","params":{"expression":"window.oldCallbackEffect=true"}})",
++      native_expiry_, generation_).FindDict("error"), nullptr);
++}
+ 
+ IN_PROC_BROWSER_TEST_F(NativeCreatorCloseReceiptBrowserTest,
+                        SameProfileHostRecreationRetiresOriginalAuthority) {

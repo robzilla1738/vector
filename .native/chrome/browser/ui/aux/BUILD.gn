@@ -11,6 +11,8 @@ source_set("runtime") {
   sources = [
     "cdp_broker.cc",
     "cdp_broker.h",
+    "native_cdp_input_mac.h",
+    "native_cdp_input_mac.mm",
     "content_blocking_controller.cc",
     "content_blocking_controller.h",
     "content_blocking_policy.cc",
@@ -24,6 +26,8 @@ source_set("runtime") {
     "credential_fill_prompt_mac.mm",
     "egress_controller.cc",
     "egress_controller.h",
+    "native_creator_close_receipt.cc",
+    "native_creator_close_receipt.h",
     "owner_mutation_fence.h",
     "owner_mutation_fence.cc",
     "permission_effect_receipt.cc",

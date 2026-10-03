@@ -6,12 +6,12 @@ const cleanup: Array<() => void> = [];
 afterEach(() => cleanup.splice(0).forEach(fn => fn()));
 function fixture() {
   const native = Object.assign(new NullNativeBridge(), {
-    egressContext: vi.fn(async () => ({ profileId: "profile", tabId: "tab", frameId: "frame", documentToken: "document",
+    egressContext: vi.fn(async () => ({ controlGeneration: "fixture-native-generation", personControlled: false, profileId: "profile", tabId: "tab", frameId: "frame", documentToken: "document",
       sourceOrigin: "https://source.test", isolation: { isolationId: "isolated", runId: "run", taskId: "task", taskRevision: 1, inMemory: true as const, cookies: "empty" as const } })),
     egressInstall: vi.fn(async (_input: { lease: EgressLease; expectedUrl: string }) => ({ accepted: true as const })),
-    egressRevoke: vi.fn(async (_input: { leaseId: string }) => ({ accepted: true as const })),
+    egressRevoke: vi.fn(async (_input: { lease: EgressLease }) => ({ accepted: true as const })),
   });
-  const service = new BrowserEgress({ profileId: "profile", native, run: () => ({ taskId: "task", taskRevision: 1, threadId: "thread" }),
+  const service = new BrowserEgress({ runAncestry: runId => [runId], profileId: "profile", native, run: () => ({ taskId: "task", taskRevision: 1, threadId: "thread" }),
     page: () => ({ url: "https://source.test/page", documentEpoch: 1 }), ownsPage: () => true, audit: () => {}, approve: async () => false });
   cleanup.push(() => service.close());
   return { service, native };
@@ -43,7 +43,8 @@ it("revocation during native installation refuses the late acknowledgement and r
   release();
   await expect(acquire).rejects.toMatchObject({ code: "ref_stale" });
   expect(finalCheck).toThrow();
-  expect(f.native.egressRevoke.mock.calls.every(([request]) => request.leaseId === lease.leaseId)).toBe(true);
+  expect(f.native.egressRevoke.mock.calls.every(([request]) => request.lease.leaseId === lease.leaseId)).toBe(true);
+  expect(f.native.egressRevoke.mock.calls.every(([request]) => JSON.stringify(request.lease) === JSON.stringify(lease))).toBe(true);
   expect(f.native.egressRevoke.mock.calls.length).toBeGreaterThanOrEqual(2);
 });
 it("an unrelated origin leaves the current exact document lease active", async () => {

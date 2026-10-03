@@ -1,0 +1,13 @@
+# Genuine long organization names — source request
+
+Three additional appearance-only states use existing UI and owned loopback actions. Ordinary functional/performance runs do not mutate temporary names or create the context fixture. The original three journey bodies are byte-restorable after removing only the new import and appearance branch.
+
+- Tab: the existing saved `Red research` label is replaced through Name tab… / Tab label / Save tab label. The actual durable label, exact page URL, unchanged native title and one original model request are checked; the original complete label entry is restored before restart.
+- Space: the exact created Space ID is renamed through its existing editor. Its complete native organization record must equal the original except for the temporary name; theme, grain, color and workspace identity remain intact. The original name is restored before restart/reset.
+- Home: the original empty picker capture comes first. A separately named `home-long-context-picker-owned-fixture` state opens an inactive, background, runtime-unowned loopback page with a real long document title. No context row is selected and no grant is issued. Cleanup closes only the exact returned page ID after URL ownership validation. Empty pages, active page, actual durable active Space, original runs, draft and picker presence must be restored. This state is not context-free Home.
+
+The original app/helper objects and positive PID are checked before and after each awaited effect. Partial preparation owes restoration. Primary failures remain the original error when restoration succeeds; primary and cleanup refusal are retained together otherwise. Original 733/950 helper/compiler sources are untouched. `background:true` is intentional: the existing native createSurface open command derives foreground activation from background, separately from the optional later `activate` flag.
+
+Source controls: 14 pass, including three controls running the actual Home journey callback with controlled AX/RPC records. They cover exact returned-ID cleanup, capture refusal, cleanup debt, owner retirement, partial effects and actual field focus/value admission. Syntax, scoped lint, diff check and exact forward/reverse/forward pass. No native execution or visual approval occurred. Actual row accessibility, background-page preservation of Home, responsive layout, theme/material, focus and hit pixels still require the approved native batch.
+
+The patch and exact before/after pins are in SOURCE-MANIFEST.json. All appearance cells, reduced-motion/transparency, narrow states and existing DR001–020 findings remain open until actual complete evidence proves closure.

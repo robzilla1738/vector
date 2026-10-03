@@ -1,0 +1,96 @@
+diff --git a/apps/shell/src/components/BrowserContextPicker.disclosure.test.tsx b/apps/shell/src/components/BrowserContextPicker.disclosure.test.tsx
+new file mode 100644
+index 000000000..5a06de13c
+--- /dev/null
++++ b/apps/shell/src/components/BrowserContextPicker.disclosure.test.tsx
+@@ -0,0 +1,68 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { useStore } from "../store";
++import { makePage } from "../mock/fixtures";
++import { BrowserContextPicker } from "./BrowserContextPicker";
++
++const initial = useStore.getState();
++let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
++beforeEach(() => {
++  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
++  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
++  useStore.setState({ pages: [], activePageId: null });
++});
++afterEach(async () => {
++  await act(async () => root.unmount()); host.remove(); useStore.setState(initial, true); vi.unstubAllGlobals();
++});
++async function open() {
++  const trigger = host.querySelector<HTMLButtonElement>('[aria-label="Browser context"]')!;
++  await act(async () => trigger.click());
++  return document.querySelector<HTMLDialogElement>('dialog[aria-label="Browser context"]')!;
++}
++it("discloses the full original long title and URL without changing the selected page identity", async () => {
++  const title = "Weekend museum visits and a relaxed dinner with friends and family";
++  const url = "https://example.test/planning/a-long-path?original=weekend";
++  const page = makePage(0, { pageId: "original-page", title, url });
++  useStore.setState({ pages: [page], activePageId: page.pageId });
++  const changed = vi.fn();
++  await act(async () => root.render(<BrowserContextPicker value="none" onChange={changed}/>));
++  const panel = await open();
++  const row = panel.querySelector<HTMLButtonElement>('.context-picker-group button')!;
++  expect(row.title).toBe(`${title}\n${url}`);
++  expect(row.querySelector("strong")!.textContent).toBe(title);
++  expect(row.getAttribute("aria-pressed")).toBe("false");
++  expect(changed).not.toHaveBeenCalled();
++  const current = [...panel.querySelectorAll<HTMLButtonElement>("button")].find(button => button.querySelector("strong")?.textContent === "Current tab")!;
++  expect(current.title).toBe(`Current tab\n${title}`);
++  await act(async () => row.click());
++  expect(changed).toHaveBeenCalledExactlyOnceWith(page.pageId);
++  expect(document.querySelector('dialog[aria-label="Browser context"]')).toBeNull();
++  expect(document.activeElement).toBe(host.querySelector('[aria-label="Browser context"]'));
++  expect(useStore.getState().pages[0]).toEqual(page);
++});
++it("discloses the complete URL for an untitled page and preserves no-context selection", async () => {
++  const url = "https://example.test/untitled/original";
++  useStore.setState({ pages: [makePage(0, { pageId: "untitled", title: "", url })] });
++  const changed = vi.fn();
++  await act(async () => root.render(<BrowserContextPicker value="untitled" onChange={changed}/>));
++  const panel = await open(), row = panel.querySelector<HTMLButtonElement>('.context-picker-group button')!;
++  expect(row.title).toBe(url); expect(row.querySelector("strong")!.textContent).toBe(url);
++  expect(row.getAttribute("aria-pressed")).toBe("true");
++  const none = [...panel.querySelectorAll<HTMLButtonElement>("button")].find(button => button.querySelector("strong")?.textContent === "No browser context")!;
++  await act(async () => none.click());
++  expect(changed).toHaveBeenCalledExactlyOnceWith("none");
++});
++it("keeps unavailable and protected pages excluded and disabled controls closed", async () => {
++  useStore.setState({ pages: [makePage(0, { pageId: "internal", title: "Internal", url: "chrome://settings" }),
++    makePage(1, { pageId: "runtime", title: "Worker", url: "https://example.test/worker", ownedByRuntime: true })] });
++  const changed = vi.fn();
++  await act(async () => root.render(<BrowserContextPicker value="none" disabled onChange={changed}/>));
++  expect(host.querySelector<HTMLButtonElement>("button")!.disabled).toBe(true);
++  await open(); expect(document.querySelector("dialog")).toBeNull();
++  await act(async () => root.render(<BrowserContextPicker value="none" onChange={changed}/>));
++  const panel = await open();
++  expect(panel.querySelector('.context-picker-group button')).toBeNull();
++  expect(panel.textContent).toContain("No matching available tabs."); expect(changed).not.toHaveBeenCalled();
++});
+diff --git a/apps/shell/src/components/BrowserContextPicker.tsx b/apps/shell/src/components/BrowserContextPicker.tsx
+index 22b404b6b..7ad8100b6 100644
+--- a/apps/shell/src/components/BrowserContextPicker.tsx
++++ b/apps/shell/src/components/BrowserContextPicker.tsx
+@@ -12,7 +12,7 @@ const availablePage = availableConversationPage;
+ const BrowserContextChoice = memo(function BrowserContextChoice({ pageId, value, onSelect }: { pageId: string; value: string; onSelect(value: string): void }) {
+   const page = useStore(state => state.pages.find(item => item.pageId === pageId && availablePage(item)));
+   if (!page) return null;
+-  return <button type="button" className="context-choice" aria-pressed={value === pageId} onClick={() => onSelect(pageId)}>
++  return <button type="button" className="context-choice" title={page.title ? `${page.title}\n${page.url}` : page.url} aria-pressed={value === pageId} onClick={() => onSelect(pageId)}>
+     <span><strong>{page.title || page.url}</strong><small>{hostOf(page.url)}</small></span>{value === pageId && shellIconCheck}
+   </button>;
+ });
+@@ -30,7 +30,7 @@ export function BrowserContextPicker({ value, onChange, linkedPageId, disabled =
+     && `${page.title} ${page.url}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).map(page => page.pageId)));
+   return <Popover label="Browser context" disabled={disabled} className="browser-context-trigger" trigger={<>{shellIconGlobe}<span title={label}>{label}</span>{shellIconDown}</>}>{close => {
+     const select = (next: string) => { onChange(next); setQuery(""); close(); };
+-    const choice = (key: string, title: string, subtitle?: string) => <button type="button" key={key} className="context-choice" aria-pressed={value === key} onClick={() => select(key)}><span><strong>{title}</strong>{subtitle && <small>{subtitle}</small>}</span>{value === key && shellIconCheck}</button>;
++    const choice = (key: string, title: string, subtitle?: string) => <button type="button" key={key} className="context-choice" title={subtitle ? `${title}\n${subtitle}` : title} aria-pressed={value === key} onClick={() => select(key)}><span><strong>{title}</strong>{subtitle && <small>{subtitle}</small>}</span>{value === key && shellIconCheck}</button>;
+     return <><input type="search" aria-label="Find browser context" placeholder="Find a tab…" value={query} onChange={event => setQuery(event.target.value)}/>
+       {!query && <>{allowNew && choice("none", "No browser context", "Chat without attaching a tab")}{choice("active", "Current tab", active?.title || "No website open")}{(linked || value === "linked") && choice("linked", "Conversation tab", linked?.title || "Unavailable")}</>}
+       <section className="context-picker-group" aria-label="Open browser tabs"><p>Open tabs</p>{matches.map(pageId => <BrowserContextChoice key={pageId} pageId={pageId} value={value} onSelect={select} />)}{!matches.length && <p>No matching available tabs.</p>}</section>

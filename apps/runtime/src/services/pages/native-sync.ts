@@ -16,7 +16,8 @@ export class NativeViewSync {
   private catalogQueue: Promise<unknown> = Promise.resolve();
 
   onNativeNavigated(pageId: string, url: string) {
-    if (url.startsWith("chrome-error://")) return;
+    // Legacy URL notifications are not the pending command's native receipt.
+    if (this.pages.hasControlledTransition(pageId) || url.startsWith("chrome-error://")) return;
     const lp = this.pages.live.get(pageId);
     if (!lp) return;
     lp.target.url = url;

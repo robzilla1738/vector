@@ -98,3 +98,39 @@ export function createNarrowWindowPreparation(t) {
     get record() { return record ?? Object.freeze({ pid, identity, before, effectStarted, restored, visualApproval: false }); },
   });
 }
+
+/** Each restarted launch owns a new session; old receipts never authorize it. */
+export function createNarrowWindowGenerations(readContext, manifest) {
+  assert.equal(typeof readContext, 'function', 'Original runner context reader required');
+  assert.equal(manifest.narrowGenerations, undefined, 'Narrow generation inventory already exists');
+  const generations = manifest.narrowGenerations = [];
+  let current;
+  return Object.freeze({
+    async prepare() {
+      assert.equal(current, undefined, 'Original narrow generation must retire before replacement');
+      const session = createNarrowWindowPreparation(readContext());
+      const entry = { ordinal: generations.length + 1 };
+      current = { session, entry }; generations.push(entry);
+      try { entry.preparation = await session.prepare(); return entry.preparation; }
+      catch (error) { entry.preparationError = error.stack ?? String(error); throw error; }
+      finally { entry.preparation ??= session.record; }
+    },
+    restore() {
+      if (!current) return;
+      const original = current;
+      return original.restoring ??= (async () => {
+        try {
+          original.entry.restoration = await original.session.restore();
+          assert.equal(current, original, 'Narrow cleanup owner replaced');
+          current = undefined;
+        } catch (error) {
+          if (!original.entry.cleanupError) {
+            original.entry.cleanupError = error.stack ?? String(error);
+            (manifest.cleanupErrors ??= []).push({ name: 'narrow-window', ordinal: original.entry.ordinal, error: original.entry.cleanupError });
+          }
+          throw error;
+        }
+      })();
+    },
+  });
+}

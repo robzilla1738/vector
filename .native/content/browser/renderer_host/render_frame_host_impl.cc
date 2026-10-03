@@ -7195,6 +7195,10 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
 
   bool showed_dialog = has_shown_beforeunload_dialog_;
 
+  const auto embedding_close_invocation = before_unload_embedding_close_invocation_;
+  const auto embedding_close_document = before_unload_embedding_close_document_;
+  before_unload_embedding_close_invocation_ = {};
+  before_unload_embedding_close_document_ = {};
   // Resets beforeunload waiting state.
   is_waiting_for_beforeunload_completion_ = false;
   has_shown_beforeunload_dialog_ = false;
@@ -7211,7 +7215,8 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
       [](base::WeakPtr<RenderFrameHostImpl> self,
          const base::TimeTicks& before_unload_end_time, bool proceed,
          bool unload_ack_is_for_navigation, bool for_legacy,
-         bool showed_dialog) {
+         bool showed_dialog, base::UnguessableToken embedding_close_invocation,
+         content::WeakDocumentPtr embedding_close_document) {
         if (!self) {
           return;
         }
@@ -7224,7 +7229,11 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
                                                    before_unload_end_time,
                                                    for_legacy, showed_dialog);
         } else {
-          frame->render_manager()->BeforeUnloadCompleted(proceed);
+          if (embedding_close_invocation.is_empty())
+            frame->render_manager()->BeforeUnloadCompleted(proceed);
+          else
+            frame->render_manager()->BeforeUnloadCompletedForEmbeddingClose(
+                proceed, embedding_close_document, embedding_close_invocation);
         }
       },
       // The overhead of the browser->renderer IPC may be non trivial. Account
@@ -7234,7 +7243,8 @@ void RenderFrameHostImpl::ProcessBeforeUnloadCompletedFromFrame(
       weak_ptr_factory_.GetWeakPtr(),
       before_unload_end_time - browser_to_renderer_ipc_time_delta, proceed,
       unload_ack_is_for_navigation_,
-      execution_mode == BeforeUnloadExecutionMode::kForLegacy, showed_dialog);
+      execution_mode == BeforeUnloadExecutionMode::kForLegacy, showed_dialog,
+      embedding_close_invocation, embedding_close_document);
 
   if (is_frame_being_destroyed) {
     CHECK(proceed);
@@ -7844,8 +7854,15 @@ bool RenderFrameHostImpl::HasStickyUserActivationForHistoryIntervention()
 }
 
 void RenderFrameHostImpl::ClosePage(
-    ClosePageSource source,
-    base::RepeatingClosure completion_callback) {
+    ClosePageSource source, base::RepeatingClosure completion_callback) {
+  ClosePageWithEmbeddingInvocation(source, completion_callback, {}, {});
+}
+
+void RenderFrameHostImpl::ClosePageWithEmbeddingInvocation(
+    ClosePageSource source, base::RepeatingClosure completion_callback,
+    base::UnguessableToken invocation, content::WeakDocumentPtr original_document) {
+  if (!invocation.is_empty() &&
+      original_document.AsRenderFrameHostIfValid() != this) return;
   // This path is taken when tab/window close is initiated by either the
   // browser process or via a window.close() call through a proxy. In both
   // cases, we need to tell the main frame's renderer process to run unload
@@ -7868,24 +7885,32 @@ void RenderFrameHostImpl::ClosePage(
 
   if (IsRenderFrameLive() && !IsPageReadyToBeClosed()) {
     close_timeout_ = std::make_unique<input::TimeoutMonitor>(
-        base::BindRepeating(&RenderFrameHostImpl::ClosePageTimeout,
+        base::BindRepeating(&RenderFrameHostImpl::ClosePageTimeoutWithEmbeddingInvocation,
                             weak_ptr_factory_.GetWeakPtr(), source,
-                            completion_callback),
+                            completion_callback, invocation, original_document),
         GetUIThreadTaskRunner({BrowserTaskType::kUserInput}));
     close_timeout_->Start(kUnloadTimeout);
     GetAssociatedLocalMainFrame()->ClosePage(base::BindOnce(
-        &RenderFrameHostImpl::ClosePageIgnoringUnloadEvents,
-        weak_ptr_factory_.GetWeakPtr(), source, completion_callback));
+        &RenderFrameHostImpl::ClosePageIgnoringUnloadEventsWithEmbeddingInvocation,
+        weak_ptr_factory_.GetWeakPtr(), source, completion_callback,
+        invocation, original_document));
   } else {
     // This RenderFrameHost doesn't have a live renderer (or has already run
     // unload handlers), so just skip the close event and close the page.
-    ClosePageIgnoringUnloadEvents(source, completion_callback);
+    ClosePageIgnoringUnloadEventsWithEmbeddingInvocation(source, completion_callback, invocation, original_document);
   }
 }
 
 void RenderFrameHostImpl::ClosePageIgnoringUnloadEvents(
-    ClosePageSource source,
-    base::RepeatingClosure completion_callback) {
+    ClosePageSource source, base::RepeatingClosure completion_callback) {
+  ClosePageIgnoringUnloadEventsWithEmbeddingInvocation(source, completion_callback, {}, {});
+}
+
+void RenderFrameHostImpl::ClosePageIgnoringUnloadEventsWithEmbeddingInvocation(
+    ClosePageSource source, base::RepeatingClosure completion_callback,
+    base::UnguessableToken invocation, content::WeakDocumentPtr original_document) {
+  if (!invocation.is_empty() &&
+      original_document.AsRenderFrameHostIfValid() != this) return;
   if (close_timeout_) {
     close_timeout_->Stop();
     close_timeout_.reset();
@@ -7921,7 +7946,8 @@ void RenderFrameHostImpl::ClosePageIgnoringUnloadEvents(
     return;
   }
 
-  delegate_->Close(this);
+  if (invocation.is_empty()) delegate_->Close(this);
+  else delegate_->CloseWithEmbeddingInvocation(this, invocation, original_document);
 }
 
 bool RenderFrameHostImpl::IsPageReadyToBeClosed() {
@@ -7937,13 +7963,20 @@ bool RenderFrameHostImpl::IsPageReadyToBeClosed() {
 }
 
 void RenderFrameHostImpl::ClosePageTimeout(
-    ClosePageSource source,
-    base::RepeatingClosure completion_callback) {
+    ClosePageSource source, base::RepeatingClosure completion_callback) {
+  ClosePageTimeoutWithEmbeddingInvocation(source, completion_callback, {}, {});
+}
+
+void RenderFrameHostImpl::ClosePageTimeoutWithEmbeddingInvocation(
+    ClosePageSource source, base::RepeatingClosure completion_callback,
+    base::UnguessableToken invocation, content::WeakDocumentPtr original_document) {
+  if (!invocation.is_empty() &&
+      original_document.AsRenderFrameHostIfValid() != this) return;
   if (source == ClosePageSource::kRenderer &&
       delegate_->ShouldIgnoreUnresponsiveRenderer()) {
     return;
   }
-  ClosePageIgnoringUnloadEvents(source, completion_callback);
+  ClosePageIgnoringUnloadEventsWithEmbeddingInvocation(source, completion_callback, invocation, original_document);
 }
 
 void RenderFrameHostImpl::SetWindowRect(const gfx::Rect& bounds,
@@ -12415,6 +12448,16 @@ void RenderFrameHostImpl::Stop() {
   GetAssociatedLocalFrame()->StopLoading();
 }
 
+bool RenderFrameHostImpl::DispatchBeforeUnloadForEmbeddingClose(
+    base::UnguessableToken invocation) {
+  if (invocation.is_empty() || !IsActive() || !IsOutermostMainFrame() ||
+      is_waiting_for_beforeunload_completion_) return false;
+  before_unload_embedding_close_invocation_ = invocation;
+  before_unload_embedding_close_document_ = GetWeakDocumentPtr();
+  DispatchBeforeUnload(BeforeUnloadType::TAB_CLOSE, false);
+  return true;
+}
+
 void RenderFrameHostImpl::DispatchBeforeUnload(BeforeUnloadType type,
                                                bool is_reload) {
   TRACE_EVENT("navigation", "RenderFrameHostImpl::DispatchBeforeUnload",
@@ -12457,9 +12500,12 @@ void RenderFrameHostImpl::DispatchBeforeUnload(BeforeUnloadType type,
     // Dispatch the ACK to prevent re-entrancy.
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
-        base::BindOnce(&RenderFrameHostManager::BeforeUnloadCompleted,
-                       owner_->GetRenderFrameHostManager().GetWeakPtr(),
-                       /*proceed=*/true));
+        base::BindOnce(&RenderFrameHostManager::BeforeUnloadCompletedForEmbeddingClose,
+                       owner_->GetRenderFrameHostManager().GetWeakPtr(), true,
+                       before_unload_embedding_close_document_,
+                       before_unload_embedding_close_invocation_));
+    before_unload_embedding_close_document_ = {};
+    before_unload_embedding_close_invocation_ = {};
     return;
   }
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AgentPageCreateSchema, type AgentPageIsolation, type EgressLease, type EgressRequest } from "@aux/contracts";
+import { AgentPageCreateSchema, type AgentPageIsolation, type EgressLease, type EgressRequest, NativePageTakeoverSchema, EgressRevokeSchema } from "@aux/contracts";
 import { projectEgressRequest } from "../../apps/runtime/src/safety/egress-projection.js";
 import { BrowserEgress, type BrowserEgressDeps } from "../../apps/runtime/src/safety/browser-egress.js";
 import { NullNativeBridge } from "../../apps/runtime/src/native.js";
@@ -9,17 +9,17 @@ afterEach(() => { for (const service of active.splice(0)) service.close(); vi.us
 
 function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
   let now = 1000, revision = 4, epoch = 3, token = "native-document-1", owns = true, alive = true;
-  let url = "https://source.test/page", controller = "none";
+  let url = "https://source.test/page", controller = "none", controlGeneration = "generation-original", personControlled = false;
   let isolation: AgentPageIsolation | undefined = { isolationId: "isolated-run", runId: "run", taskId: "task", taskRevision: 4, inMemory: true, cookies: "empty" };
   const leases: EgressLease[] = [];
-  const revoke = vi.fn(async (_input: { leaseId: string }) => ({ accepted: true as const }));
+  const revoke = vi.fn(async (_input: { lease: EgressLease }) => ({ accepted: true as const }));
   const consent = vi.fn(approve);
   const native = Object.assign(new NullNativeBridge(), {
-    egressContext: vi.fn(async () => ({ profileId: "profile", tabId: "tab", frameId: "process:frame", documentToken: token, sourceOrigin: url === "about:blank" ? "aux://blank" : new URL(url).origin, isolation })),
+    egressContext: vi.fn(async () => ({ profileId: "profile", tabId: "tab", controlGeneration, personControlled, frameId: "process:frame", documentToken: token, sourceOrigin: url === "about:blank" ? "aux://blank" : new URL(url).origin, isolation })),
     egressInstall: vi.fn(async ({ lease }: { lease: EgressLease }) => { leases.push(lease); return { accepted: true as const }; }),
     egressRevoke: revoke,
   });
-  const service = new BrowserEgress({
+  const service = new BrowserEgress({ runAncestry: runId => [runId],
     profileId: "profile", native, now: () => now,
     run: () => alive ? { taskId: "task", taskRevision: revision, threadId: "thread" } : null,
     page: () => ({ url, documentEpoch: epoch, controller }),
@@ -41,12 +41,68 @@ function fixture(approve: BrowserEgressDeps["approve"] = async () => true) {
   return { service, native, consent, request, leases,
     setIsolation: (value?: AgentPageIsolation) => { isolation = value; },
     navigate: (nextUrl?: string) => { epoch++; token = `native-document-${epoch}`; if (nextUrl) url = nextUrl; },
+    nativeTakeover: () => { controlGeneration = "generation-retired"; personControlled = true; },
     takeover: () => { controller = "human"; },
     staleTask: () => { revision++; }, relinquish: () => { owns = false; },
     stop: () => { alive = false; }, advance: (ms: number) => { now += ms; } };
 }
 
 describe("native browser egress authority", () => {
+  it("installs only the one-use native navigation continuation and retains original protection", async () => {
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    f.service.protect("run", "synthetic-navigation-credential", "credential");
+    const original = f.leases[0]!;
+    const continuation = f.service.captureControlledNavigation("run", "tab", () => {});
+    f.service.protect("run", "synthetic-late-navigation-credential", "credential");
+    const receipt = {
+      originalAttachmentId: "A".repeat(32), originalLeaseId: original.leaseId, commandId: 11,
+      navigationId: "17", navigationTransitionId: "B".repeat(32), url: "https://next.test/page",
+      context: { ...await f.native.egressContext(), documentToken: "native-next-document",
+        controlGeneration: "native-next-generation", sourceOrigin: "https://next.test" },
+    };
+    await continuation.install(receipt, document => { f.navigate(document.url); }, original.expiresAt);
+    continuation.complete();
+    continuation.publish(() => {});
+    expect(f.leases).toHaveLength(2);
+    expect(f.native.egressInstall).toHaveBeenLastCalledWith({ lease: f.leases[1],
+      expectedUrl: receipt.url, navigationTransitionId: receipt.navigationTransitionId });
+    expect(f.native.egressRevoke).toHaveBeenCalledWith({ lease: original });
+    expect((await f.service.request(f.request("https://next.test/save", "synthetic-navigation-credential"))).decision)
+      .toMatchObject({ status: "deny", reason: "protected_overlap", protectedClass: "credential" });
+    expect((await f.service.request(f.request("https://next.test/save", "synthetic-late-navigation-credential"))).decision)
+      .toMatchObject({ status: "deny", reason: "protected_overlap", protectedClass: "credential" });
+    expect(f.consent).not.toHaveBeenCalled();
+    await expect(continuation.install(receipt, () => {}, original.expiresAt)).rejects.toMatchObject({ code: "ref_stale" });
+  });
+
+  it("refuses navigation reinstallation when takeover occurs during the exact retirement ACK", async () => {
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const original = f.leases[0]!;
+    const continuation = f.service.captureControlledNavigation("run", "tab", () => {});
+    let release!: () => void;
+    let entered!: () => void;
+    const waiting = new Promise<void>(resolve => { entered = resolve; });
+    const held = new Promise<void>(resolve => { release = resolve; });
+    f.native.egressRevoke.mockImplementationOnce(async () => { entered(); await held; return { accepted: true }; });
+    const stage = vi.fn();
+    const install = continuation.install({
+      originalAttachmentId: "A".repeat(32), originalLeaseId: original.leaseId, commandId: 11,
+      navigationId: "17", navigationTransitionId: "B".repeat(32), url: "https://next.test/page",
+      context: { ...await f.native.egressContext(), documentToken: "native-next-document",
+        controlGeneration: "native-next-generation", sourceOrigin: "https://next.test" },
+    }, stage, original.expiresAt);
+    await waiting;
+    f.takeover();
+    release();
+    await expect(install).rejects.toMatchObject({ code: "ref_stale" });
+    await continuation.cancel();
+    expect(stage).not.toHaveBeenCalled();
+    expect(f.leases).toHaveLength(1);
+    expect(f.native.egressInstall).toHaveBeenCalledTimes(1);
+  });
+
   it("does not install authority when the task changes while reading native document identity", async () => {
     const f = fixture();
     const context = await f.native.egressContext();
@@ -63,7 +119,7 @@ describe("native browser egress authority", () => {
     expect(f.consent).not.toHaveBeenCalled();
     release();
     expect((await f.service.request(f.request("https://source.test/save"))).decision.status).toBe("deny");
-    expect(f.native.egressRevoke).toHaveBeenCalledWith({ leaseId: f.leases[0]!.leaseId });
+    expect(f.native.egressRevoke).toHaveBeenCalledWith({ lease: f.leases[0]! });
   });
 
   it("refuses an identical-URL reload, substituted frame and stale task revision", async () => {
@@ -301,7 +357,7 @@ it("obtains source URL authority from the current native document without transf
   Object.assign(f.native, { createAgentPage: vi.fn() });
   f.setIsolation(); // ordinary owner source can supply a URL, never an action lease
   const scope = await f.service.creationScope("run", "tab");
-  expect(scope).toEqual({ profileId: "profile", runId: "run", taskId: "task", taskRevision: 4,
+  expect(scope).toEqual({ profileId: "profile", runId: "run", taskId: "task", taskRevision: 4, ancestry: ["run"],
     source: { tabId: "tab", expectedUrl: "https://source.test/page", documentToken: "native-document-1" } });
   expect(f.native.egressInstall).not.toHaveBeenCalled();
   for (const extra of [{ pageId: "chosen" }, { partitionPath: "/owner" }, { cookies: [] }])
@@ -346,14 +402,13 @@ it("refuses a new page bind while exact browser retirement and its mutation are 
 it("retains a fire-and-forget lifecycle revoke failure for the acknowledged mutation", async () => {
   const f = fixture();
   await f.service.acquire("run", "tab");
-  const id = f.leases[0]!.leaseId;
   f.native.egressRevoke.mockRejectedValueOnce(new Error("disconnected"));
   f.service.revokeRun("run");
   await Promise.resolve();
   await f.service.withAuthorityMutation(runId => runId === "run", async () => {});
   expect(f.native.egressRevoke).toHaveBeenCalledTimes(2);
-  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(1, { leaseId: id });
-  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(2, { leaseId: id });
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(1, { lease: f.leases[0]! });
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(2, { lease: f.leases[0]! });
 });
 
 
@@ -377,7 +432,7 @@ it("retains a rejected installation's exact lease and both installation/retireme
   const retry = f.service.withAuthorityMutation(id => id === "run", async () => { mutations++; });
   await started;
   expect(mutations).toBe(0);
-  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(2, { leaseId: f.leases[0]!.leaseId });
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(2, { lease: f.leases[0]! });
   acknowledge({ accepted: true });
   await retry;
   expect(mutations).toBe(1);
@@ -392,15 +447,15 @@ it("keeps late install cleanup debt after the original active row was already re
   const started = new Promise<void>(resolve => { entered = resolve; });
   f.native.egressInstall.mockImplementationOnce(async input => { await install(input); entered(); return installAck; });
   const acquiring = f.service.acquire("run", "tab");
-  const rejected = expect(acquiring).rejects.toBeInstanceOf(AggregateError);
+  const rejected = acquiring.then(() => undefined, error => error);
   await started;
   await f.service.withAuthorityMutation(id => id === "run", async () => {});
   f.native.egressRevoke.mockRejectedValueOnce(new Error("late install retirement refused"));
   acknowledgeInstall({ accepted: true });
-  await rejected;
+  expect(await rejected).toBeInstanceOf(AggregateError);
   await f.service.withAuthorityMutation(id => id === "run", async () => {});
   expect(f.native.egressRevoke).toHaveBeenCalledTimes(3);
-  const identity = { leaseId: f.leases[0]!.leaseId };
+  const identity = { lease: f.leases[0]! };
   expect(f.native.egressRevoke).toHaveBeenNthCalledWith(1, identity);
   expect(f.native.egressRevoke).toHaveBeenNthCalledWith(2, identity);
   expect(f.native.egressRevoke).toHaveBeenNthCalledWith(3, identity);
@@ -427,7 +482,7 @@ it("retains late renewal cleanup debt even after the run's active page was remov
   await Promise.resolve();
   await f.service.withAuthorityMutation(id => id === "run", async () => {});
   expect(f.native.egressRevoke).toHaveBeenCalledTimes(3);
-  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(3, { leaseId: f.leases[0]!.leaseId });
+  expect(f.native.egressRevoke).toHaveBeenNthCalledWith(3, { lease: f.leases[0]! });
 });
 
 
@@ -457,8 +512,8 @@ it("late retired renewal preserves a replacement lease's held approval", async (
   await approving;
   let cleanupEntered!: () => void;
   const cleaning = new Promise<void>(resolve => { cleanupEntered = resolve; });
-  f.native.egressRevoke.mockImplementationOnce(async ({ leaseId }) => {
-    expect(leaseId).toBe(originalLeaseId); cleanupEntered(); return { accepted: true as const };
+  f.native.egressRevoke.mockImplementationOnce(async ({ lease }) => {
+    expect(lease.leaseId).toBe(originalLeaseId); cleanupEntered(); return { accepted: true as const };
   });
   acknowledgeRenewal({ accepted: true });
   await cleaning;
@@ -466,7 +521,132 @@ it("late retired renewal preserves a replacement lease's held approval", async (
   allow(true);
   expect((await request).decision.status).toBe("allow");
   expect(f.native.egressRevoke).toHaveBeenCalledTimes(2);
-  expect(f.native.egressRevoke).not.toHaveBeenCalledWith({ leaseId: replacementLeaseId });
+  expect(f.native.egressRevoke).not.toHaveBeenCalledWith({ lease: f.leases.find(lease => lease.leaseId === replacementLeaseId)! });
+});
+
+function nativeInput(f: ReturnType<typeof fixture>) {
+  const lease = f.leases.at(-1)!;
+  const input = NativePageTakeoverSchema.parse({ phase: "installed", lease, scope: {
+    profileId: lease.profileId, tabId: lease.tabId, isolationId: lease.isolationId,
+    runId: lease.runId, taskId: lease.taskId, taskRevision: lease.taskRevision,
+    frameId: lease.frameId, documentToken: lease.documentToken, sourceOrigin: lease.sourceOrigin,
+    controlGeneration: lease.controlGeneration, retiredControlGeneration: "generation-retired",
+  } });
+  if (input.phase !== "installed") throw new Error("Expected an actual installed fixture lease");
+  return input;
+}
+
+it("validates original native person retirement before and after exact browser ACK", async () => {
+  const f = fixture();
+  await f.service.acquire("run", "tab");
+  const validation = f.service.nativeTakeoverValidation(nativeInput(f));
+  await expect(validation.validate()).rejects.toThrow("original native input");
+  f.nativeTakeover();
+  await validation.validate();
+  await f.service.withAuthorityMutation(id => id === "run", async () => {
+    await validation.validateRetired();
+    f.takeover();
+  });
+  expect(f.native.egressRevoke).toHaveBeenCalledWith({ lease: f.leases[0]! });
+  expect((await f.service.request(f.request("https://source.test/"))).decision.status).toBe("deny");
+});
+
+it.each(["task", "same-url-document", "controller"])("rejects original native input after %s changes while its fresh native check is held", async drift => {
+  const f = fixture();
+  await f.service.acquire("run", "tab");
+  const validation = f.service.nativeTakeoverValidation(nativeInput(f));
+  f.nativeTakeover();
+  const context = await f.native.egressContext();
+  let release!: () => void;
+  f.native.egressContext.mockImplementationOnce(() => new Promise(resolve => { release = () => resolve(context); }));
+  const pending = validation.validate().catch(error => error);
+  if (drift === "task") f.staleTask();
+  else if (drift === "same-url-document") f.navigate();
+  else f.takeover();
+  release();
+  await expect(pending).resolves.toMatchObject({ code: "ref_stale" });
+  expect(f.native.egressRevoke).not.toHaveBeenCalled();
+});
+
+it("rejects changed document after exact retirement ACK instead of taking over its replacement", async () => {
+  const f = fixture();
+  await f.service.acquire("run", "tab");
+  const validation = f.service.nativeTakeoverValidation(nativeInput(f));
+  f.nativeTakeover();
+  await validation.validate();
+  let acknowledge!: () => void;
+  f.native.egressRevoke.mockImplementationOnce(() => new Promise(resolve => { acknowledge = () => resolve({ accepted: true }); }));
+  const transition = vi.fn();
+  const pending = f.service.withAuthorityMutation(id => id === "run", async () => {
+    await validation.validateRetired();
+    transition();
+  }).catch(error => error);
+  expect(f.native.egressRevoke).toHaveBeenCalledTimes(1);
+  f.navigate();
+  acknowledge();
+  await expect(pending).resolves.toMatchObject({ code: "ref_stale" });
+  expect(transition).not.toHaveBeenCalled();
+});
+
+it("rejects a lease-free preparing receipt when no actual binding is in flight", async () => {
+  const f = fixture();
+  await f.service.acquire("run", "tab");
+  const installed = nativeInput(f);
+  expect(() => f.service.nativeTakeoverValidation({ phase: "preparing", scope: installed.scope })).toThrow("original native input");
+});
+
+it("validates genuine pre-Install binding without inventing an installed lease", async () => {
+  const f = fixture();
+  const originalContext = await f.native.egressContext();
+  let completeInstall!: () => void;
+  const entered = new Promise<void>(resolve => {
+    f.native.egressInstall.mockImplementationOnce(({ lease }) => {
+      f.leases.push(lease);
+      resolve();
+      return new Promise(complete => { completeInstall = () => complete({ accepted: true }); });
+    });
+  });
+  const acquisition = f.service.acquire("run", "tab").catch(error => error);
+  await entered;
+  const validation = f.service.nativeTakeoverValidation(NativePageTakeoverSchema.parse({ phase: "preparing", scope: {
+    profileId: originalContext.profileId, tabId: originalContext.tabId, frameId: originalContext.frameId,
+    documentToken: originalContext.documentToken, sourceOrigin: originalContext.sourceOrigin,
+    isolationId: originalContext.isolation!.isolationId, runId: "run", taskId: "task", taskRevision: 4,
+    controlGeneration: originalContext.controlGeneration, retiredControlGeneration: "generation-retired",
+  } }));
+  f.nativeTakeover();
+  await validation.validate();
+  await f.service.withAuthorityMutation(id => id === "run", async () => {
+    await validation.validateRetired();
+    f.takeover();
+  });
+  completeInstall();
+  await expect(acquisition).resolves.toMatchObject({ code: "ref_stale" });
+  expect(f.leases).toHaveLength(1);
+  expect((await f.service.request(f.request("https://source.test/"))).decision.status).toBe("deny");
+});
+
+it("refuses native receipt lease substitution and unchanged control generations", async () => {
+  const f = fixture();
+  await f.service.acquire("run", "tab");
+  const receipt = nativeInput(f);
+  expect(NativePageTakeoverSchema.safeParse({ ...receipt, scope: { ...receipt.scope, runId: "replacement-run" } }).success).toBe(false);
+  expect(NativePageTakeoverSchema.safeParse({ ...receipt, scope: { ...receipt.scope, retiredControlGeneration: receipt.scope.controlGeneration } }).success).toBe(false);
+  expect(() => f.service.nativeTakeoverValidation({ ...receipt, lease: { ...receipt.lease, leaseId: "replacement-lease" } })).toThrow("original native input");
+  expect(f.native.egressRevoke).not.toHaveBeenCalled();
+});
+
+
+it("requires the complete original native scope for retirement, not only its lease ID", async () => {
+  const f = fixture();
+  await f.service.acquire("run", "tab");
+  const lease = f.leases[0]!;
+  expect(EgressRevokeSchema.safeParse({ leaseId: lease.leaseId }).success).toBe(false);
+  expect(EgressRevokeSchema.parse({ lease })).toEqual({ lease });
+  const { controlGeneration: _generation, ...incomplete } = lease;
+  expect(EgressRevokeSchema.safeParse({ lease: incomplete }).success).toBe(false);
+  await f.service.withAuthorityMutation(id => id === "run", async () => {});
+  expect(f.native.egressRevoke).toHaveBeenCalledWith({ lease });
 });
 
 describe("original acknowledged CDP attachment authority", () => {

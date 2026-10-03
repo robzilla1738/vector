@@ -54,6 +54,8 @@ export interface PageServiceDeps {
   profileId?: string;
   events: EventBus;
   native: NativeBridge;
+  /** Actual installed native debt, never a fresh Context for cleanup. */
+  retireCreatedPage?: (runId: string, pageId: string) => Promise<void>;
   /** Only the authenticated Chromium Profile host can handle saved passwords. */
   nativePasswordFillEnabled?: boolean;
   drivers: () => DriverSet;
@@ -91,6 +93,13 @@ export interface PageServiceDeps {
   safetyGate?: SafetyDispatchGate;
   /** Native request protection must be installed before an agent dispatch. */
   prepareAgentEgress?: (runId: string, pageId: string) => Promise<void>;
+  /** Private native continuation; no request/tool input may supply this producer. */
+  navigateControlled?: (input: {
+    runId: string; pageId: string; url: string; signal?: AbortSignal;
+    validateSource(): void;
+    mentionAuthority?: () => void;
+    revalidateMentionSource?: () => Promise<void>;
+  }, pages: import("./registry.js").PageRegistry) => Promise<import("./controlled-navigation.js").ControlledNavigationReadmission>;
   /** Record source text before any observation is returned to an agent. */
   recordAgentObservation?: (pageId: string, url: string, text: string) => void;
   /**

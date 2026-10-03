@@ -1,3 +1,4 @@
+import { retireControlledAttachmentNavigation, finalizeControlledAttachmentNavigation, type ControlledAttachmentNavigationReceipt } from "./pages/controlled-navigation.js";
 import type { ValidatedTaskRead } from "@aux/contracts";
 import {
   MentionRefsSchema,
@@ -343,6 +344,34 @@ export class TurnMentionService {
     });
     if ("status" in outcome) throw new MentionUnavailable(outcome.reason);
     return outcome.value;
+  }
+  async navigateAttachmentUse<T>(runId: string, pageId: string,
+    dispatch: (mentionAuthority: () => void, revalidateMentionSource: () => Promise<void>) => Promise<{ result: T; receipt: ControlledAttachmentNavigationReceipt }>): Promise<T> {
+    const active = await this.refresh(runId);
+    if (!active) throw new MentionUnavailable("This turn or its Space snapshot changed.");
+    const revalidateMentionSource = async () => {
+      if ((await this.refresh(runId)) !== active)
+        throw new MentionUnavailable("This turn or its Space snapshot changed before attachment publication.");
+    };
+    let originalReceipt: ControlledAttachmentNavigationReceipt | undefined;
+    try {
+      const outcome = await active.authority.navigateAttachment(runId, pageId, async mentionAuthority => {
+        const receipt = await dispatch(mentionAuthority, revalidateMentionSource);
+        originalReceipt = receipt.receipt;
+        await revalidateMentionSource();
+        return { result: { value: receipt.result }, receipt: receipt.receipt };
+      });
+      await revalidateMentionSource();
+      if ("status" in outcome) throw new MentionUnavailable(outcome.reason);
+      finalizeControlledAttachmentNavigation(originalReceipt!);
+      return outcome.value;
+    } catch (error) {
+      if (originalReceipt) {
+        try { await retireControlledAttachmentNavigation(originalReceipt); }
+        catch (cleanupError) { throw new AggregateError([error, cleanupError], "Original mention navigation and retirement failed", { cause: error }); }
+      }
+      throw error;
+    }
   }
   list(runId: string, pages: readonly { pageId: string; title: string; url: string }[]) {
     return this.turns.get(runId)?.authority.list(runId, pages) ?? [];

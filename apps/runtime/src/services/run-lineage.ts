@@ -22,7 +22,7 @@ function edge(repo: Repo, row: EdgeRow) {
 }
 
 /** Indexed trusted reservation lookup includes children before their run row exists. */
-export function runRoot(repo: Repo, runId: string, requireActive = false): string {
+export function runAncestry(repo: Repo, runId: string, requireActive = false): string[] {
   const visited = new Set<string>();
   let current = runId;
   for (let depth = 0; depth < MAX_LINEAGE; depth++) {
@@ -30,13 +30,18 @@ export function runRoot(repo: Repo, runId: string, requireActive = false): strin
     visited.add(current);
     const rows = repo.db.prepare(`${EDGE_SELECT} WHERE a.run_id=? OR a.reserved_run_id=? LIMIT 2`).all(current, current) as EdgeRow[];
     if (rows.length > 1) throw new AuxError("permission_denied", "Run lineage is ambiguous.");
-    if (!rows.length) return current;
+    if (!rows.length) return [...visited];
     const parent = edge(repo, rows[0]!);
     if (requireActive && (!parent.active || !ACTIVE.has(repo.getRun(parent.parentRunId)?.status ?? "missing")))
       throw new AuxError("permission_denied", "The parent run or subagent group is no longer active.");
     current = parent.parentRunId;
   }
   throw new AuxError("permission_denied", "Run lineage exceeds its depth limit.");
+}
+
+/** Original child-to-root chain from the existing authenticated reservation records. */
+export function runRoot(repo: Repo, runId: string, requireActive = false): string {
+  return runAncestry(repo, runId, requireActive).at(-1)!;
 }
 
 export function overnightRoot(repo: Repo, runId: string): string | undefined {

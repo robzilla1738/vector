@@ -1,0 +1,145 @@
+import type { MethodCtx, MethodHandler } from "./context.js";
+import type { MethodName } from "@aux/contracts";
+import { AuxError, MethodSchemas } from "@aux/contracts";
+import { summarizeModelUsage } from "../../services/model-usage.js";
+import { projectRunTranscript } from "../../services/run-transcript.js";
+import { assertRunAnswerable, currentRunSuspension } from "../../services/run-suspension.js";
+
+async function h_runs_start(ctx: MethodCtx): Promise<unknown> {
+  if (ctx.client.external && ctx.params.mentions?.length) throw new AuxError("permission_denied", "Mention sources through the Aux composer.");
+  const { client, params, s } = ctx;
+  if (client.external && params.contextMemoryIds?.length)
+    throw new AuxError(
+      "permission_denied",
+      "Protected article context can only be sent from the Aux window.",
+    );
+  if (client.external && params.defaultWorkspaceId)
+    throw new AuxError("permission_denied", "Conversation Space defaults are set through the Aux browser.");
+  return s.runs.start(params as never);
+}
+async function h_runs_retry(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s } = ctx;
+  if (client.external && s.runs.coordinator.get(params.runId).config?.contextMemoryIds?.length)
+    throw new AuxError(
+      "permission_denied",
+      "Protected article context can only be retried from the Aux window.",
+    );
+  return s.runs.retry(params.runId, params.pageId);
+}
+async function h_runs_get(ctx: MethodCtx): Promise<unknown> {
+  const { params, s, suspensions } = ctx;
+  const run = s.runs.coordinator.get(params.runId);
+  const calls = s.repo.listModelCalls(run.runId);
+  const steps = s.repo.listSteps(run.runId);
+  return {
+    run,
+    steps,
+    modelCalls: calls.length,
+    usage: summarizeModelUsage(calls),
+    transcript: projectRunTranscript(run, s.artifacts.list({ runId: run.runId }), steps),
+    suspension: currentRunSuspension(run, suspensions.pending(run.runId)),
+  };
+}
+async function h_runs_list(ctx: MethodCtx): Promise<unknown> {
+  const { params, s, scope, scopedTasks } = ctx;
+  const p = MethodSchemas["runs.list"].parse(params);
+  const listed = s.runs.coordinator.list(p.limit, p);
+  if (!scope) return listed;
+  const taskIds = new Set(scopedTasks(scope).map((task) => task.taskId));
+  return listed.filter((run) => !!run.config?.taskId && taskIds.has(run.config.taskId));
+}
+async function h_runs_context_get(ctx: MethodCtx): Promise<unknown> {
+  const { params, s } = ctx;
+  return s.runs.context(params.chatId);
+}
+async function h_runs_context_set(ctx: MethodCtx): Promise<unknown> {
+  const { params, s } = ctx;
+  return s.runs.setContext(params);
+}
+async function h_runs_pause(ctx: MethodCtx): Promise<unknown> {
+  const { params, s } = ctx;
+  return s.runs.pause(params.runId);
+}
+async function h_runs_resume(ctx: MethodCtx): Promise<unknown> {
+  const { params, s } = ctx;
+  return s.runs.resume(params.runId);
+}
+async function h_runs_cancel(ctx: MethodCtx): Promise<unknown> {
+  const { params, s } = ctx;
+  return s.runs.cancel(params.runId);
+}
+async function h_runs_answer(ctx: MethodCtx): Promise<unknown> {
+  const { client, params: p, s, suspensions } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Answers and mentions must come from the Aux composer.");
+  const run = s.runs.coordinator.get(p.runId);
+  const pending = suspensions.pending(p.runId);
+  assertRunAnswerable(run, pending, p.expectedSuspensionId);
+  return s.runs.coordinator.answerWithMentions(p.runId, p.answer, p.mentions ?? [], () => {
+    assertRunAnswerable(s.runs.coordinator.get(p.runId), suspensions.pending(p.runId), p.expectedSuspensionId);
+  });
+}
+async function h_runs_queue(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Queue conversation messages in Aux.");
+  return s.runs.messages.queue(params);
+}
+async function h_runs_steer(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Steer conversation runs in Aux.");
+  if (params.expectedTurnId !== params.runId)
+    throw new AuxError("conflict", "The active turn changed. Review it before steering.");
+  if (params.clientUserMessageId && params.clientUserMessageId !== params.messageId)
+    throw new AuxError("conflict", "clientUserMessageId must match the message id it sends.");
+  if (s.repo.getRun(params.runId)?.config?.subagentProfile)
+    throw new AuxError(
+      "conflict",
+      "Subagent turns take instructions through subagents.sendMessage, not user steering.",
+    );
+  return s.runs.messages.steer(params);
+}
+async function h_runs_messages_list(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Conversation messages are available in Aux.");
+  return s.runs.messages.list(params.chatId);
+}
+async function h_runs_messageStatus(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s } = ctx;
+  if (client.external)
+    throw new AuxError("permission_denied", "Message delivery status is available in Aux.");
+  return s.runs.messages.messageStatus(params.nonce) ?? null;
+}
+async function h_runs_message_cancel(ctx: MethodCtx): Promise<unknown> {
+  const { client, params, s } = ctx;
+  if (client.external) throw new AuxError("permission_denied", "Cancel queued messages in Aux.");
+  return s.runs.messages.cancel(params.messageId);
+}
+async function h_runs_events(ctx: MethodCtx): Promise<unknown> {
+  const { client, eventVisible, params, s, scope } = ctx;
+  const p = params as { runId?: string; sinceSeq: number; limit: number; streamId?: string };
+  const out = s.events.since(p.sinceSeq, p.limit, p.runId, p.streamId);
+  if (!scope || out.resync) return out;
+  // lastSeq still advances: filtered events were durably read and skipped.
+  return { ...out, events: out.events.filter((event) => eventVisible(scope, client.connectionId, event)) };
+
+  // artifacts
+}
+
+export const runsMethods: Partial<Record<MethodName, MethodHandler>> = {
+  "runs.start": h_runs_start,
+  "runs.retry": h_runs_retry,
+  "runs.get": h_runs_get,
+  "runs.list": h_runs_list,
+  "runs.context.get": h_runs_context_get,
+  "runs.context.set": h_runs_context_set,
+  "runs.pause": h_runs_pause,
+  "runs.resume": h_runs_resume,
+  "runs.cancel": h_runs_cancel,
+  "runs.answer": h_runs_answer,
+  "runs.queue": h_runs_queue,
+  "runs.steer": h_runs_steer,
+  "runs.messages.list": h_runs_messages_list,
+  "runs.messageStatus": h_runs_messageStatus,
+  "runs.message.cancel": h_runs_message_cancel,
+  "runs.events": h_runs_events,
+  "events.since": h_runs_events,
+};

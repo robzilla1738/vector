@@ -1,3 +1,4 @@
+import { captureTemporaryAppearanceState, replaceAppearanceField } from '../lib/appearance-temporary-state.mjs';
 import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -51,6 +52,30 @@ export async function run(t) {
     t.assert.doesNotMatch(JSON.stringify(ax), /Profile organization could not be saved/);
     await captureLegacyState(t, 'space-theme-reopened', 'space-theme-reopened');
     await press(t, shell('Cancel', 'AXButton'));
+    if (t.appearanceEnabled) {
+      const longName = 'Weekend museum visits and relaxed dinner plans with friends';
+      const savedSpace = () => JSON.parse(readFileSync(join(t.app.userDataDir, 'Default/Preferences'), 'utf8')).aux?.organization?.v2?.shared?.spaces?.find(space => space.id === native.id);
+      const rename = async (owned, next) => {
+        const current = savedSpace();
+        t.assert.ok(current?.name === name || current?.name === longName, 'Only the original owned Space may be edited');
+        if ((await owned(() => t.ax.query(shell('Edit space')))).length === 0) {
+          await owned(() => press(t, shell(current.name, 'AXPopUpButton')));
+          await owned(() => press(t, shell(`Edit ${current.name}`, 'AXMenuItem')));
+          await owned(() => t.ax.waitFor(shell('Edit space')));
+        }
+        const field = { role: 'AXTextField', scope: 'shell', index: 0 };
+        t.assert.equal((await owned(() => t.ax.query(field)))[0]?.placeholder, 'Name');
+        await replaceAppearanceField(t, owned, field, next);
+        await owned(() => press(t, shell('Save', 'AXButton')));
+        await owned(() => t.ax.waitFor(shell('Edit space'), 'absent'));
+        await owned(() => t.until('actual original Space name persisted', () => savedSpace()?.name === next));
+        t.assert.deepEqual(savedSpace(), { ...native, name: next }, 'Renaming must preserve the original Space theme and identity');
+        await owned(() => t.ax.waitFor(shell(next, 'AXPopUpButton')));
+        t.assert.ok((await owned(() => t.rpc('workspaces.list'))).some(workspace => workspace.name === next));
+      };
+      await captureTemporaryAppearanceState(t, { name: 'space-long-name', state: 'space-long-name-selected',
+        prepare: owned => rename(owned, longName), restore: owned => rename(owned, name) });
+    }
     return { ax, rpc: { workspaces: rpc, native } };
   });
   await t.restart();

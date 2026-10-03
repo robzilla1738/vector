@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createNarrowWindowPreparation } from './lib/narrow-window.mjs';
+import { createNarrowWindowPreparation, createNarrowWindowGenerations } from './lib/narrow-window.mjs';
 function fixture() {
   const before = { id: 71, layer: 0, x: 20, y: 30, width: 1200, height: 700 };
   const after = { ...before, width: 810 };
@@ -103,4 +103,57 @@ test('concurrent cleanup joins one original restoration effect and receipt', asy
   const first = session.restore(), second = session.restore(); assert.equal(first, second);
   while (!release) await new Promise(resolve => setImmediate(resolve));
   release(); const record = await first; assert.equal(inputs, 2); assert.equal(await second, record);
+});
+
+
+test('actual restored old geometry retires before fresh native helper/PID admission', async () => {
+  const manifest = {}, original = fixture(); let current = original.t;
+  let width = original.before.width;
+  original.t.ax.windows = async () => [{ ...original.before, width }];
+  original.t.ax.drag = async (_from, to) => { width = to.x - original.before.x + 1; };
+  const generations = createNarrowWindowGenerations(() => current, manifest);
+  await generations.prepare();
+  await assert.rejects(generations.prepare(), /retire before replacement/);
+  await generations.restore(); assert.equal(width, original.before.width);
+  const fresh = fixture(); fresh.t.app.pid = fresh.t.ax.pid = 202; fresh.t.ax.helperPid = 302;
+  fresh.identity.targetPid = 202; fresh.identity.helperPid = 302; fresh.identity.targetProcessStartMachTicks = '9';
+  let freshWidth = 1200;
+  fresh.t.ax.windows = async () => [{ ...fresh.before, id: 72, width: freshWidth }];
+  fresh.t.ax.drag = async (_from, to) => { freshWidth = to.x - fresh.before.x + 1; };
+  current = fresh.t; await generations.prepare(); await generations.restore();
+  assert.equal(manifest.narrowGenerations.length, 2);
+  assert.equal(manifest.narrowGenerations[0].preparation.pid, 201);
+  assert.equal(manifest.narrowGenerations[1].preparation.pid, 202);
+  assert.equal(manifest.narrowGenerations[1].preparation.windowId, 72);
+  assert.equal(manifest.narrowGenerations[1].restoration.observed.width, 1200);
+  assert.equal(manifest.cleanupErrors, undefined);
+});
+test('old cleanup refusal prevents new generation and records original debt only once', async () => {
+  const manifest = {}, f = fixture(); const generations = createNarrowWindowGenerations(() => f.t, manifest);
+  await generations.prepare(); f.t.app.pid = 202;
+  await assert.rejects(generations.restore(), /owner retired/);
+  await assert.rejects(generations.restore(), /owner retired/);
+  await assert.rejects(generations.prepare(), /retire before replacement/);
+  assert.equal(manifest.cleanupErrors.length, 1); assert.equal(manifest.cleanupErrors[0].ordinal, 1);
+  assert.equal(manifest.narrowGenerations.length, 1); assert.ok(manifest.narrowGenerations[0].cleanupError);
+});
+test('fresh generation preparation error retains its own original partial-input cleanup debt', async () => {
+  const manifest = {}, f = fixture(), primary = new Error('New generation input refused'), cleanup = new Error('New generation cleanup refused');
+  let width = f.before.width, inputs = 0;
+  f.t.ax.windows = async () => [{ ...f.before, width }];
+  f.t.ax.drag = async () => { width = 810; throw ++inputs === 1 ? primary : cleanup; };
+  const generations = createNarrowWindowGenerations(() => f.t, manifest);
+  await assert.rejects(generations.prepare(), error => error === primary);
+  await assert.rejects(generations.restore(), error => error === cleanup);
+  assert.match(manifest.narrowGenerations[0].preparationError, /New generation input refused/);
+  assert.match(manifest.cleanupErrors[0].error, /New generation cleanup refused/);
+});
+test('concurrent generation cleanup joins original retirement without false debt', async () => {
+  const manifest = {}, f = fixture(); let width = f.before.width, count = 0, release;
+  f.t.ax.windows = async () => [{ ...f.before, width }];
+  f.t.ax.drag = async () => { if (++count === 1) width = 810; else { await new Promise(resolve => { release = resolve; }); width = f.before.width; } };
+  const generations = createNarrowWindowGenerations(() => f.t, manifest); await generations.prepare();
+  const first = generations.restore(), second = generations.restore(); assert.equal(first, second);
+  while (!release) await new Promise(resolve => setImmediate(resolve));
+  release(); await Promise.all([first, second]); assert.equal(count, 2); assert.equal(manifest.cleanupErrors, undefined);
 });

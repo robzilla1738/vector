@@ -26,17 +26,32 @@ export const AgentPageSourceSchema = z.object({
 export const AgentPageCreateSchema = z.object({
   profileId: id, runId: id, taskId: id.optional(), taskRevision: z.number().int().nonnegative(),
   windowId: id, background: z.boolean(), source: AgentPageSourceSchema.optional(),
+  /** Private authenticated registration; original child-to-root durable chain. */
+  ancestry: z.array(id).min(1).max(32),
 }).strict();
 export type AgentPageCreate = z.infer<typeof AgentPageCreateSchema>;
 export const AgentPageCreatedSchema = z.object({
-  pageId: id, targetId: id, isolation: AgentPageIsolationSchema,
+  pageId: id, targetId: id, creationId: id, isolation: AgentPageIsolationSchema,
   source: AgentPageSourceSchema.optional(),
 }).strict();
 export type AgentPageCreated = z.infer<typeof AgentPageCreatedSchema>;
 
+/** Native-owned close-only proof. It never admits CDP, permission or read effects. */
+export const NativeCreatorCleanupProofSchema = z.object({
+  creationId: id, receiptId: id, phase: z.enum(["creation", "installed_revoke", "committed_transition"]),
+  profileId: id, pageId: id, documentToken: id, runId: id, taskId: id.optional(),
+  taskRevision: z.number().int().nonnegative(), isolationId: id, controlGeneration: id,
+  connectionGeneration: z.number().int().positive().safe(), expiresAt: z.number().int().positive().safe(),
+}).strict();
+export type NativeCreatorCleanupProof = z.infer<typeof NativeCreatorCleanupProofSchema>;
+export const NativeCreatorCleanupParamsSchema = z.object({ creationId: id, pageId: id }).strict();
+export const NativeCreatorClosedSchema = z.object({ closed: z.literal(true) }).strict();
+export const NativeCreatorCloseParamsSchema = z.object({ proof: NativeCreatorCleanupProofSchema }).strict();
+
 /** Opaque request authority. Native request interception must bind this to the actual frame and epoch. */
 export const EgressLeaseSchema = z.object({
   leaseId: id,
+  controlGeneration: id,
   isolationId: id,
   profileId: id,
   runId: id,
@@ -91,11 +106,37 @@ export type EgressDecision = z.infer<typeof EgressDecisionSchema>;
 export const EgressContextRequestSchema = z.object({ tabId: id, expectedUrl: origin }).strict();
 export const EgressContextSchema = z.object({
   profileId: id, tabId: id, frameId: id, documentToken: id, sourceOrigin: origin,
+  controlGeneration: id, personControlled: z.boolean(),
   isolation: AgentPageIsolationSchema.optional(),
 }).strict();
 export type EgressContext = z.infer<typeof EgressContextSchema>;
-export const EgressInstallSchema = z.object({ lease: EgressLeaseSchema, expectedUrl: origin }).strict();
-export const EgressRevokeSchema = z.object({ leaseId: id }).strict();
+
+/** Original browser-owned input scope, including registered pre-Install pages.
+ * This is authenticated host-only control evidence, never an effect grant.
+ */
+export const NativePageControlScopeSchema = z.object({
+  profileId: id, tabId: id, isolationId: id, runId: id,
+  taskId: id.optional(), taskRevision: z.number().int().nonnegative(),
+  frameId: id, documentToken: id, sourceOrigin: origin,
+  controlGeneration: id, retiredControlGeneration: id,
+}).strict().refine(scope => scope.controlGeneration !== scope.retiredControlGeneration,
+  "Native person retirement must replace the original control generation");
+const nativeControlBase = { scope: NativePageControlScopeSchema };
+export const NativePageTakeoverSchema = z.discriminatedUnion("phase", [
+  z.object({ phase: z.literal("installed"), ...nativeControlBase, lease: EgressLeaseSchema }).strict(),
+  z.object({ phase: z.literal("preparing"), ...nativeControlBase }).strict(),
+]).superRefine((input, ctx) => {
+  if (input.phase !== "installed") return;
+  const fields = ["profileId", "tabId", "isolationId", "runId", "taskId", "taskRevision",
+    "frameId", "documentToken", "sourceOrigin", "controlGeneration"] as const;
+  for (const field of fields) if (input.scope[field] !== input.lease[field])
+    ctx.addIssue({ code: "custom", path: ["lease", field], message: "Original native input and lease scope differ" });
+});
+export type NativePageTakeover = z.infer<typeof NativePageTakeoverSchema>;
+
+export const EgressInstallSchema = z.object({ lease: EgressLeaseSchema, expectedUrl: origin, navigationTransitionId: id.optional() }).strict();
+/** Exact original authority, including a Context whose Install is still queued. */
+export const EgressRevokeSchema = z.object({ lease: EgressLeaseSchema }).strict();
 /** Native computes this complete bounded projection; no raw outgoing data crosses IPC. */
 export const EgressProjectionSchema = z.object({
   version: z.literal(1),

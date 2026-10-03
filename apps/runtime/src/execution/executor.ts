@@ -60,6 +60,9 @@ export interface ExecContext {
   /** Recheck live target origin and current grants immediately before dispatch. */
   authorizeStep?: (step: Step) => Promise<AuthorizationProvenance | void>;
   navigate?: (url: string, timeoutMs?: number) => Promise<void>;
+  /** Private native navigation producer: returns only after original receipt,
+   * retirement and fresh native attachment/install ACKs. Never tool input. */
+  navigateAndReadmit?: (url: string, timeoutMs?: number) => Promise<DriverPage>;
   /** Roots an `upload` step may read files from — session storage, attachments, workspace roots. */
   uploadRoots?: string[];
   safety?: { turnId?: string; threadId?: string; turnToolCallCount?: number;
@@ -235,7 +238,20 @@ export function makeStepRunner(page: DriverPage, ctx: ExecContext = {}) {
         throw new AuxError("invalid_params", `step ${step.id}: use select for a select control`);
       ctx.checkValid?.();
       dispatched = true;
-      const detail = await runStep(page, step, ctx).catch(async (e) => {
+      const detail = step.op === "navigate" && ctx.navigateAndReadmit
+        ? await (async () => {
+            const original = page;
+            const replacement = await ctx.navigateAndReadmit!(step.url, step.timeoutMs);
+            if (ctx.signal?.aborted) throw new AuxError("cancelled", "Navigation was cancelled before admitting its new attachment.");
+            if (replacement === original || !replacement.isAttached()
+              || replacement.identity.pageId !== original.identity.pageId
+              || replacement.identity.backend !== original.identity.backend)
+              throw new AuxError("ref_stale", "Navigation did not produce a fresh attachment for this same page.");
+            ctx.checkValid?.();
+            page = replacement;
+            return undefined;
+          })()
+        : await runStep(page, step, ctx).catch(async (e) => {
         const code = e instanceof AuxError ? e.code : undefined;
         if (!code || !RETRYABLE_RESOLUTION_CODES.has(code) || ctx.signal?.aborted) throw e;
         await page.waitFor({ kind: "settled", policy: "interactive" }).catch(() => ({ ok: false, timedOut: false }));

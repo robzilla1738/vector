@@ -189,12 +189,16 @@ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
   CHECK(worker_thread_->Start());
   cdp_broker_ = std::make_unique<aux::CdpBroker>(
       profile, base::BindRepeating(&AuxRuntimeHost::OnCdpMessage,
-                                   weak_factory_.GetWeakPtr()));
+                                   weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&AuxRuntimeHost::OnCdpNavigationState,
+                         weak_factory_.GetWeakPtr()));
   worker_.emplace(worker_thread_->task_runner(),
                   profile->GetPath(),
                   profile->GetPath().BaseName().AsUTF8Unsafe(),
                   base::SequencedTaskRunner::GetCurrentDefault(),
                   weak_factory_.GetWeakPtr());
+  cdp_authority_subscription_ = aux::EgressController::ForProfile(profile_)->ObserveAuthority(
+      base::BindRepeating(&AuxRuntimeHost::OnCdpAuthorityChanged, weak_factory_.GetWeakPtr()));
   profile_library_ = std::make_unique<aux::ProfileLibrary>(
       profile,
       base::BindRepeating(
@@ -262,6 +266,80 @@ void AuxRuntimeHost::CallApi(std::string method,
     std::move(callback).Run(std::move(response));
     return;
   }
+  std::string person_resume;
+  if (method == "pages.resume") {
+    const auto params = base::JSONReader::ReadDict(params_json, base::JSON_PARSE_RFC);
+    const auto* page_id = params ? params->FindString("pageId") : nullptr;
+    auto* egress = aux::EgressController::ForProfile(profile_);
+    if (!params || params->size() != 1 || !page_id || page_id->empty()) {
+      std::move(callback).Run({false, "", "invalid_argument", "Original page identity is required"});
+      return;
+    }
+    auto* catalog = aux::TabCatalog::GetForProfile(profile_);
+    // Attached Chrome pages are runtime-owned rows outside this native catalog.
+    // Their original backend checks remain in ControlAuthority; absent tickets
+    // never admit Aux control there. A native row cannot take this path.
+    const bool native_page = catalog && catalog->FindPage(*page_id);
+    auto ticket = native_page && admitted_native_generation_
+        ? egress->PreparePersonResume(*page_id, admitted_native_generation_)
+        : std::nullopt;
+    if (native_page && !ticket) {
+      Response response;
+      response.error_code = "ref_stale";
+      response.error_message = "The original person-held page is unavailable. Refresh before returning control.";
+      std::move(callback).Run(std::move(response));
+      return;
+    }
+    if (ticket) person_resume = std::move(*ticket);
+  }
+  if (method == "pages.takeover") {
+    const auto params = base::JSONReader::ReadDict(params_json, base::JSON_PARSE_RFC);
+    const auto* page_id = params ? params->FindString("pageId") : nullptr;
+    auto* catalog = aux::TabCatalog::GetForProfile(profile_);
+    auto* page = params && params->size() == 1 && page_id && catalog ? catalog->FindPage(*page_id) : nullptr;
+    if (!params || params->size() != 1 || !page_id || page_id->empty()) {
+      std::move(callback).Run({false, "", "invalid_argument", "Original takeover page is required"});
+      return;
+    }
+    auto* egress = aux::EgressController::ForProfile(profile_);
+    if (page && egress->IsIsolatedPage(page)) {
+      auto* frame = page->GetPrimaryMainFrame();
+      // This is explicit local owner intent, not a platform-input receipt. An
+      // invalid original clock deliberately prevents hardware-latency claims.
+      if (!admitted_native_generation_ || !frame || !egress->RetireForNativePersonInput(page,
+          frame->GetWeakDocumentPtr(), {}, base::TimeTicks::Now(), false)) {
+        std::move(callback).Run({false, "", "ref_stale", "Original native takeover scope changed"});
+        return;
+      }
+    }
+  }
+  const bool run_release = method == "runs.resume";
+  if (method == "runs.pause" || method == "runs.cancel" || run_release) {
+    const auto params = base::JSONReader::ReadDict(params_json, base::JSON_PARSE_RFC);
+    const auto* run_id = params ? params->FindString("runId") : nullptr;
+    auto* egress = aux::EgressController::ForProfile(profile_);
+    if (!params || params->size() != 1 || !run_id || run_id->empty() || run_id->size() > 160 ||
+        !admitted_native_generation_) {
+      std::move(callback).Run({false, "", "ref_stale", "Original local run control is unavailable"});
+      return;
+    }
+    if (!run_release) {
+      // Synchronous native retirement precedes all worker forwarding. The
+      // authenticated registered ancestry resolves descendants, including
+      // completed groups; no runtime receipt or supplied child list is used.
+      if (!egress->RetireRegisteredRun(*run_id, admitted_native_generation_)) {
+        std::move(callback).Run({false, "", "resource_exhausted", "Run retirement could not be retained"});
+        return;
+      }
+    } else if (egress->HasStoppedRunIntent(*run_id, admitted_native_generation_)) {
+      auto ticket = egress->PrepareRunResume(*run_id, admitted_native_generation_);
+      if (!ticket) {
+        std::move(callback).Run({false, "", "ref_stale", "Original local run resume is unavailable"});
+        return;
+      }
+      person_resume = std::move(*ticket);
+    }
+  }
   std::string mutation_token;
   if (method == "safety.originPolicies.set" || method == "safety.grants.revoke") {
     auto* egress = aux::EgressController::ForProfile(profile_);
@@ -278,19 +356,27 @@ void AuxRuntimeHost::CallApi(std::string method,
     owner_mutation_tokens_.insert(mutation_token);
   }
   auto completion = base::BindPostTaskToCurrentDefault(base::BindOnce(
-      [](base::WeakPtr<AuxRuntimeHost> owner, std::string token, ResponseCallback callback,
+      [](base::WeakPtr<AuxRuntimeHost> owner, std::string token, std::string person_resume, bool run_release, ResponseCallback callback,
          Response response) {
         if (owner) owner->FinishOwnerMutation(token, response.ok);
+        if (owner && !person_resume.empty() &&
+            !(run_release ? aux::EgressController::ForProfile(owner->profile_)->FinishRunResume(person_resume, response.ok)
+                : aux::EgressController::ForProfile(owner->profile_)->FinishPersonResume(person_resume, response.ok)) && response.ok) {
+          response.ok = false;
+          response.result_json.clear();
+          response.error_code = "ref_stale";
+          response.error_message = "The original Return control receipt expired or changed. Refresh the page.";
+        }
         if (owner && response.ok)
           owner->profile_library_->OnRuntimeAvailable();
         std::move(callback).Run(std::move(response));
-      }, weak_factory_.GetWeakPtr(), std::move(mutation_token), std::move(callback)));
+      }, weak_factory_.GetWeakPtr(), std::move(mutation_token), person_resume, run_release, std::move(callback)));
   if (test_dispatch_) {
     test_dispatch_.Run(false, std::move(method), std::move(params_json), std::move(completion));
     return;
   }
   worker_.AsyncCall(&Worker::CallApi)
-      .WithArgs(std::move(method), std::move(params_json), std::move(completion));
+      .WithArgs(std::move(method), std::move(params_json), std::move(person_resume), std::move(completion));
   SchedulePump();
 }
 
@@ -446,6 +532,22 @@ void AuxRuntimeHost::OnCdpMessage(uint64_t connection_generation,
       .WithArgs(connection_generation, page_id, message);
 }
 
+void AuxRuntimeHost::OnCdpAuthorityChanged() {
+  if (shutting_down_ || !admitted_native_generation_ ||
+      admitted_native_generation_ <= retired_native_generation_) return;
+  worker_.AsyncCall(&Worker::SendCdpAuthorityChanged).WithArgs(admitted_native_generation_);
+  SchedulePump();
+}
+void AuxRuntimeHost::OnCdpNavigationState(uint64_t connection_generation,
+    const std::string& page_id, const std::string& attachment_id,
+    int command_id, const std::string& lease_id, bool ready) {
+  if (shutting_down_ || admitted_native_generation_ != connection_generation)
+    return;
+  worker_.AsyncCall(&Worker::SendCdpNavigationState).WithArgs(
+      connection_generation, page_id, attachment_id, command_id, lease_id, ready);
+}
+
+
 void AuxRuntimeHost::SchedulePump() {
   if (pump_scheduled_) {
     return;
@@ -475,6 +577,7 @@ void AuxRuntimeHost::NativeConnectionPublished(uint64_t generation) {
         generation <= retired_native_generation_)
       return;
   }
+  if (!aux::EgressController::ForProfile(profile_)->AdmitRuntimeConnection(generation, native_owner_incarnation_)) return;
   admitted_native_generation_ = generation;
   native_person_connection_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
 }
@@ -485,6 +588,9 @@ void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
   if (admitted_native_generation_ != generation)
     return;
   admitted_native_generation_ = 0;
+  const auto retirement_weak = weak_factory_.GetWeakPtr();
+  aux::EgressController::ForProfile(profile_)->Disconnect();
+  if (!retirement_weak) return;
   native_person_connection_id_.clear();
   ++native_recorder_session_generation_;
   auto recorder = native_recorder_;
@@ -571,6 +677,94 @@ void AuxRuntimeHost::HandleNativePersonReadCall(
         std::move(callback).Run(std::move(reply));
       }, weak_factory_.GetWeakPtr(), authority->GetWeakPtr(), std::move(*receipt),
       operation_id, *session_id, connection_generation, std::move(callback)));
+}
+void AuxRuntimeHost::FailNativeCreatorCreation(base::DictValue failure,
+    base::DictValue proof, uint64_t generation,
+    std::shared_ptr<std::atomic_bool> cancelled,
+    base::OnceCallback<void(base::DictValue)> done) {
+  if (proof.empty() || !generation || generation != admitted_native_generation_ ||
+      generation <= retired_native_generation_ || shutting_down_) {
+    auto* error = failure.FindDict("error");
+    if (error) {
+      const auto* primary = error->FindString("message");
+      error->Set("message", (primary ? *primary : "Original task creation failed") +
+          std::string("; original temporary-page cleanup remains unresolved."));
+    }
+    std::move(done).Run(std::move(failure));
+    return;
+  }
+  aux::EgressController::ForProfile(profile_)->CloseCreatorPage(
+      base::DictValue().Set("proof", std::move(proof)), generation, std::move(cancelled),
+      base::BindOnce([](base::DictValue original_failure,
+          base::OnceCallback<void(base::DictValue)> done, base::DictValue cleanup) {
+        const auto* result = cleanup.FindDict("result");
+        if (!result || !result->FindBool("closed").value_or(false)) {
+          auto* error = original_failure.FindDict("error");
+          if (error) {
+            const auto* primary = error->FindString("message");
+            const auto* cleanup_error = cleanup.FindDict("error");
+            const auto* cleanup_message = cleanup_error ? cleanup_error->FindString("message") : nullptr;
+            error->Set("message", (primary ? *primary : "Original task creation failed") +
+                std::string("; original temporary-page cleanup remains unresolved: ") +
+                (cleanup_message ? *cleanup_message : "native closure was not acknowledged"));
+            error->Set("cleanupFailure", std::move(cleanup));
+          }
+        }
+        std::move(done).Run(std::move(original_failure));
+      }, std::move(failure), std::move(done)));
+}
+void AuxRuntimeHost::HandleNativeCreatorCreateCall(const base::DictValue& params,
+    uint64_t generation, std::shared_ptr<std::atomic_bool> cancelled,
+    base::OnceCallback<void(base::DictValue)> done) {
+  if (cancelled->load() || shutting_down_ || !generation || generation != admitted_native_generation_ ||
+      generation <= retired_native_generation_) {
+    std::move(done).Run(NativeFault("ref_stale", "Original creation connection was retired")); return;
+  }
+  auto reply = HandleNativeTabsCall("native.createAgentPage", params, generation);
+  if (auto* cleanup = reply.FindDict("_creatorCleanup")) {
+    auto proof = cleanup->Clone();
+    reply.Remove("_creatorCleanup");
+    FailNativeCreatorCreation(std::move(reply), std::move(proof), generation,
+        std::move(cancelled), std::move(done));
+    return;
+  }
+  const auto* result = reply.FindDict("result");
+  const auto* page_id = result ? result->FindString("pageId") : nullptr;
+  const auto* creation_id = result ? result->FindString("creationId") : nullptr;
+  if (!page_id || !creation_id) { std::move(done).Run(std::move(reply)); return; }
+  aux::EgressController::ForProfile(profile_)->WaitCreatorReady(*page_id, *creation_id, generation,
+      base::BindOnce([](base::WeakPtr<AuxRuntimeHost> owner, uint64_t generation,
+          std::shared_ptr<std::atomic_bool> cancelled, base::DictValue original_reply,
+          base::OnceCallback<void(base::DictValue)> done, bool ready) {
+        if (!ready || !owner || cancelled->load() || owner->shutting_down_ ||
+            owner->admitted_native_generation_ != generation || generation <= owner->retired_native_generation_) {
+          auto failure = NativeFault("ref_stale", "Original blank creation did not commit under its authority");
+          if (owner) {
+            const auto* result = original_reply.FindDict("result");
+            const auto* page_id = result ? result->FindString("pageId") : nullptr;
+            const auto* creation_id = result ? result->FindString("creationId") : nullptr;
+            base::DictValue proof;
+            if (page_id && creation_id) {
+              auto cleanup = aux::EgressController::ForProfile(owner->profile_)->CreatorCleanupProof(
+                  base::DictValue().Set("pageId", *page_id).Set("creationId", *creation_id), generation);
+              if (const auto* value = cleanup.FindDict("result")) proof = value->Clone();
+            }
+            owner->FailNativeCreatorCreation(std::move(failure), std::move(proof), generation,
+                std::move(cancelled), std::move(done));
+          } else std::move(done).Run(std::move(failure));
+          return;
+        }
+        std::move(done).Run(std::move(original_reply));
+      }, weak_factory_.GetWeakPtr(), generation, std::move(cancelled), std::move(reply), std::move(done)));
+}
+void AuxRuntimeHost::HandleNativeCreatorCloseCall(const base::DictValue& params,
+    uint64_t generation, std::shared_ptr<std::atomic_bool> cancelled,
+    base::OnceCallback<void(base::DictValue)> done) {
+  if (cancelled->load() || shutting_down_ || !generation || generation != admitted_native_generation_ ||
+      generation <= retired_native_generation_) {
+    std::move(done).Run(NativeFault("ref_stale", "Original cleanup connection was retired")); return;
+  }
+  aux::EgressController::ForProfile(profile_)->CloseCreatorPage(params, generation, std::move(cancelled), std::move(done));
 }
 void AuxRuntimeHost::HandleNativeRecorderCall(
     const std::string& method, const base::DictValue& params,
@@ -666,6 +860,51 @@ void AuxRuntimeHost::HandleNativeRecorderCall(
     recorder->Stop(connection_generation, *recorder_id, std::move(done));
 }
 
+void AuxRuntimeHost::HandleNativeCdpAttachment(
+    const base::DictValue& params, uint64_t connection_generation,
+    std::shared_ptr<std::atomic_bool> cancelled,
+    base::OnceCallback<void(base::DictValue)> callback) {
+  const auto* page_id = params.FindString("pageId");
+  const auto* lease_id = params.FindString("leaseId");
+  const auto acknowledged_expiry = params.FindDouble("acknowledgedExpiresAt");
+  if (!acknowledged_expiry || !std::isfinite(*acknowledged_expiry) ||
+      *acknowledged_expiry <= 0 || *acknowledged_expiry > 9007199254740991.0 ||
+      std::floor(*acknowledged_expiry) != *acknowledged_expiry || shutting_down_ || cancelled->load() || !connection_generation ||
+      admitted_native_generation_ != connection_generation || params.size() != 3 ||
+      !page_id || page_id->empty() || !lease_id || lease_id->empty()) {
+    std::move(callback).Run(NativeFault("ref_stale", "Original attachment caller is unavailable"));
+    return;
+  }
+  cdp_broker_->WaitForAttachment(*page_id, *lease_id, *acknowledged_expiry, connection_generation,
+      base::BindRepeating([](base::WeakPtr<AuxRuntimeHost> host, uint64_t generation,
+                            std::shared_ptr<std::atomic_bool> cancelled) {
+        return host && !host->shutting_down_ && !cancelled->load() &&
+            host->admitted_native_generation_ == generation;
+      }, weak_factory_.GetWeakPtr(), connection_generation, std::move(cancelled)),
+      std::move(callback));
+}
+
+
+void AuxRuntimeHost::HandleNativeCdpNavigationReceipt(
+    const base::DictValue& params, uint64_t connection_generation,
+    std::shared_ptr<std::atomic_bool> cancelled,
+    base::OnceCallback<void(base::DictValue)> callback) {
+  const auto* page_id = params.FindString("pageId");
+  const auto* attachment_id = params.FindString("attachmentId");
+  const auto command_id = params.FindInt("commandId");
+  if (shutting_down_ || cancelled->load() || !connection_generation ||
+      admitted_native_generation_ != connection_generation ||
+      params.size() != 3 || !page_id || !attachment_id || !command_id || *command_id < 1) {
+    std::move(callback).Run(NativeFault("ref_stale", "Original navigation receipt caller is unavailable"));
+    return;
+  }
+  // Ready-only TAKE never blocks the Worker that processes egress/consent.
+  auto result = cdp_broker_->TakeReadyNavigationReceipt(*page_id, *attachment_id,
+      *command_id, connection_generation);
+  std::move(callback).Run(std::move(result));
+}
+
+
 void AuxRuntimeHost::OnPumpDone(bool connected) {
   if (runtime_connected_ != connected) {
     runtime_connected_ = connected;
@@ -701,6 +940,32 @@ base::DictValue AuxRuntimeHost::HandleNativeCall(
       if (broker) broker->RetireReservation(*batch, *reservation);
     }
     return base::DictValue().Set("result", base::DictValue().Set("accepted", true));
+  }
+  if (method == "native.egressRunTerminal") {
+    const auto* run_id = params.FindString("runId");
+    if (!run_id || params.size() != 1)
+      return NativeFault("invalid_argument", "An exact original terminal run is required");
+    return egress->RetireTerminalRun(*run_id, connection_generation);
+  }
+  if (method == "native.egressCheckRunResume") {
+    const auto* run_id = params.FindString("runId");
+    if (!run_id || params.size() != 1)
+      return NativeFault("invalid_argument", "An exact original run is required");
+    return egress->CheckRunResume(*run_id, connection_generation);
+  }
+  if (method == "native.egressResumeRun") {
+    const auto* run_id = params.FindString("runId");
+    const auto* ticket_id = params.FindString("ticketId");
+    if (!run_id || !ticket_id || params.size() != 2)
+      return NativeFault("invalid_argument", "Original run and local invocation are required");
+    return egress->ConsumeRunResume(*run_id, *ticket_id, connection_generation);
+  }
+  if (method == "native.egressResumePerson") {
+    const auto* page_id = params.FindString("pageId");
+    const auto* ticket_id = params.FindString("ticketId");
+    if (params.size() != 2 || !page_id || page_id->empty() || !ticket_id || ticket_id->empty())
+      return NativeFault("invalid_params", "An exact original held page and person invocation are required");
+    return egress->ConsumePersonResume(*page_id, *ticket_id, connection_generation);
   }
   if (method == "native.egressContext") return egress->Context(params);
   if (method == "native.egressInstall") return egress->Install(params);
@@ -1074,6 +1339,34 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
                         base::DictValue params,
                         uint64_t connection_generation,
                         std::shared_ptr<NativeReplyState> state) {
+                       if (owner && method == "native.cdpAttach") {
+                         owner->HandleNativeCdpAttachment(params, connection_generation, state->cancelled,
+                             base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
+                               state->reply = std::move(reply); state->ready.Signal();
+                             }, state));
+                         return;
+                       }
+                       if (owner && method == "native.cdpTakeNavigationReceipt") {
+                         owner->HandleNativeCdpNavigationReceipt(params, connection_generation, state->cancelled,
+                             base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
+                               state->reply = std::move(reply); state->ready.Signal();
+                             }, state));
+                         return;
+                       }
+                       if (owner && method == "native.createAgentPage") {
+                         owner->HandleNativeCreatorCreateCall(params, connection_generation, state->cancelled,
+                             base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
+                               state->reply = std::move(reply); state->ready.Signal();
+                             }, state));
+                         return;
+                       }
+                       if (owner && method == "native.closeCreatedPage") {
+                         owner->HandleNativeCreatorCloseCall(params, connection_generation, state->cancelled,
+                             base::BindOnce([](std::shared_ptr<NativeReplyState> state, base::DictValue reply) {
+                               state->reply = std::move(reply); state->ready.Signal();
+                             }, state));
+                         return;
+                       }
                        if (owner && (method == "native.personRead" || method == "native.personReadContext")) {
                          owner->HandleNativePersonReadCall(method, params, connection_generation,
                              base::BindOnce([](std::shared_ptr<NativeReplyState> state,
@@ -1357,6 +1650,35 @@ void AuxRuntimeHost::Worker::SendCdpMessage(uint64_t connection_generation,
   }
 }
 
+void AuxRuntimeHost::Worker::SendCdpAuthorityChanged(uint64_t generation) {
+  if (connection_fd_ < 0 || !generation || generation != connection_generation_) return;
+  // A fixed invalidation hint is never authority. The runtime obtains a fresh
+  // native catalog and checks every original attachment before publication.
+  base::DictValue note;
+  note.Set("kind", "note");
+  note.Set("type", "native.cdpAuthorityChanged");
+  note.Set("payload", base::DictValue());
+  const auto encoded = base::WriteJson(note);
+  if (!encoded || encoded->size() >= kMaxFrameBytes || !SendFrame(*encoded)) Disconnect();
+}
+void AuxRuntimeHost::Worker::SendCdpNavigationState(
+    uint64_t connection_generation, std::string page_id,
+    std::string attachment_id, int command_id, std::string lease_id,
+    bool ready) {
+  if (connection_fd_ < 0 || connection_generation != connection_generation_)
+    return;
+  auto note = base::DictValue().Set("kind", "note")
+      .Set("type", "native.cdpNavigationState")
+      .Set("payload", base::DictValue().Set("pageId", std::move(page_id))
+          .Set("attachmentId", std::move(attachment_id))
+          .Set("commandId", command_id).Set("leaseId", std::move(lease_id))
+          .Set("state", ready ? "ready" : "refused"));
+  const auto json = base::WriteJson(note);
+  if (!json || json->size() >= kMaxFrameBytes || !SendFrame(*json))
+    Disconnect();
+}
+
+
 void AuxRuntimeHost::Worker::SendBookmarkChanged() {
   if (connection_fd_ < 0) {
     return;
@@ -1500,18 +1822,18 @@ bool AuxRuntimeHost::Worker::Pump() {
 }
 
 void AuxRuntimeHost::Worker::CallApi(
-    std::string method, std::string params_json, ResponseCallback callback) {
-  CallRequest(std::move(method), std::move(params_json), true, std::move(callback));
+    std::string method, std::string params_json, std::string person_resume, ResponseCallback callback) {
+  CallRequest(std::move(method), std::move(params_json), true, std::move(person_resume), std::move(callback));
 }
 
 void AuxRuntimeHost::Worker::CallInternal(
     std::string method, std::string params_json, ResponseCallback callback) {
-  CallRequest(std::move(method), std::move(params_json), false, std::move(callback));
+  CallRequest(std::move(method), std::move(params_json), false, {}, std::move(callback));
 }
 
 void AuxRuntimeHost::Worker::CallRequest(
     std::string method, std::string params_json, bool desktop_api,
-    ResponseCallback callback) {
+    std::string person_resume, ResponseCallback callback) {
   const bool egress_request = !desktop_api && method == "egress.request";
   const bool live_refresh = desktop_api && method == "liveFolders.refresh";
   const bool backup_request = desktop_api &&
@@ -1543,9 +1865,13 @@ void AuxRuntimeHost::Worker::CallRequest(
   const uint32_t id = next_request_id_++;
   base::DictValue invocation;
   if (desktop_api) {
+    const bool person_release = method == "pages.resume";
+    const bool run_release = method == "runs.resume";
     invocation.Set("method", std::move(method));
     invocation.Set("params", params->Clone());
     invocation.Set("desktopUser", true);
+    if ((person_release || run_release) && !person_resume.empty())
+      invocation.Set(run_release ? "nativeRunResume" : "nativePersonResume", std::move(person_resume));
   }
   base::DictValue request;
   request.Set("kind", "req");

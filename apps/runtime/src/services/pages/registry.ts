@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
-import { AuxError, type Backend, EventTypes, type PageTarget, type NativePersonReadContext } from "@aux/contracts";
+import { AuxError, type Backend, EventTypes, type PageTarget, type NativePersonReadContext, type AgentPageCreated, NativeCreatorCleanupProofSchema } from "@aux/contracts";
 import type { Repo } from "../../store/repo.js";
 import { parsePersonReadContext } from "../native-person-reader.js";
 import type { LivePage, PageServiceDeps } from "./types.js";
@@ -13,10 +13,12 @@ export class PageRegistry {
   constructor(readonly deps: PageServiceDeps) {}
 
   live = new Map<string, LivePage>();
+  readonly creatorPages = new Map<string, AgentPageCreated>();
   /** Catalog events wait until native-minted controlled pages have their creator metadata. */
   agentCreations = new Set<Promise<void>>();
   pendingExternal = new Map<string, { removed: boolean; done?: Promise<PageTarget> }>();
   private driverAttaches = new Map<string, Promise<void>>();
+  private controlledTransitions = new Map<string, { live: LivePage; driver: DriverPage; sessionId: string; controllerEpoch: number; retired: boolean; retirementObservers: Set<() => void> }>();
   /** Suppress catalog reattachment while a native page open is awaiting its driver. */
   opening = new Set<string>();
   /** Foreground tabs/popups return to the tab that launched them when closed. */
@@ -54,6 +56,47 @@ export class PageRegistry {
     const row = this.deps.repo.getPage(pageId);
     if (!row) throw new AuxError("not_found", `no page ${pageId}`);
     return row;
+  }
+
+  async closeCreator(original: PageTarget, runId: string): Promise<void> {
+    const snapshot = structuredClone(original);
+    const creation = this.creatorPages.get(snapshot.pageId);
+    const current = this.live.get(snapshot.pageId);
+    const sameOriginal = () => !!creation && !!current
+      && this.creatorPages.get(snapshot.pageId) === creation
+      && this.live.get(snapshot.pageId) === current
+      && creation.isolation.runId === runId && snapshot.ownedByRuntime
+      && current.target.ownedByRuntime && current.target.controller !== "human"
+      && current.target.viewStatus !== "detached"
+      && current.target.backend === snapshot.backend && current.target.targetId === snapshot.targetId
+      && current.target.sessionId === snapshot.sessionId && current.target.documentEpoch === snapshot.documentEpoch
+      && current.target.controllerEpoch === snapshot.controllerEpoch && current.target.url === snapshot.url
+      && JSON.stringify(current.target.agentIsolation) === JSON.stringify(snapshot.agentIsolation)
+      && JSON.stringify(snapshot.agentIsolation) === JSON.stringify(creation.isolation);
+    if (!sameOriginal() || !creation || !current)
+      throw new AuxError("ref_stale", "The original temporary-page cleanup scope changed.");
+    if (!this.deps.retireCreatedPage || !this.deps.native.creatorCleanupProof || !this.deps.native.closeCreatedPage)
+      throw new AuxError("capability_unsupported", "Native temporary-page cleanup is unavailable.");
+    await this.deps.retireCreatedPage(runId, snapshot.pageId);
+    if (!sameOriginal()) throw new AuxError("ref_stale", "The original temporary page changed during retirement.");
+    const proof = NativeCreatorCleanupProofSchema.parse(await this.deps.native.creatorCleanupProof({
+      pageId: snapshot.pageId, creationId: creation.creationId,
+    }));
+    if (!sameOriginal()) throw new AuxError("ref_stale", "The original temporary page changed while obtaining cleanup authority.");
+    if (proof.creationId !== creation.creationId || proof.pageId !== creation.pageId ||
+        proof.runId !== runId || proof.isolationId !== creation.isolation.isolationId ||
+        proof.taskId !== creation.isolation.taskId || proof.taskRevision !== creation.isolation.taskRevision)
+      throw new AuxError("permission_denied", "Native cleanup returned another creator's authority.");
+    const reply = await this.deps.native.closeCreatedPage({ proof });
+    if (reply.closed !== true) throw new AuxError("backend_unavailable", "Original temporary-page closure was not acknowledged.");
+    if (this.creatorPages.get(snapshot.pageId) === creation) this.creatorPages.delete(snapshot.pageId);
+    if (this.live.get(snapshot.pageId) === current) {
+      this.live.delete(snapshot.pageId);
+      current.target.viewStatus = "detached";
+      this.persist(current);
+      await current.driver?.dispose();
+      this.deps.events.emit(EventTypes.PageRemoved, { pageId: snapshot.pageId });
+    }
   }
 
   driverFor(backend: Backend): BrowserDriver | null {
@@ -117,7 +160,7 @@ export class PageRegistry {
   /** Restored placeholders acquire a driver only after their native tab opens. */
   async attachVisible(pageId: string): Promise<void> {
     const lp = this.live.get(pageId);
-    if (!lp || lp.driver || lp.target.backend !== "aux") return;
+    if (!lp || lp.driver || lp.target.backend !== "aux" || this.controlledTransitions.has(pageId)) return;
     const pending = this.driverAttaches.get(pageId);
     if (pending) return pending;
     const work = (async () => {
@@ -139,23 +182,176 @@ export class PageRegistry {
     finally { this.driverAttaches.delete(pageId); }
   }
 
+  hasControlledTransition(pageId: string): boolean { return this.controlledTransitions.has(pageId); }
+
+  /** Internal producer used only while an original native command is pending.
+   * The caller must validate its native receipt and source authority before
+   * and after attachment. This token never authorizes a browser effect. */
+  beginControlledTransition(pageId: string) {
+    const live = this.live.get(pageId);
+    if (!live?.driver?.isAttached() || !live.target.sessionId || live.target.backend !== "aux"
+      || live.target.controller === "human" || this.closing || this.controlledTransitions.has(pageId))
+      throw new AuxError("ref_stale", "This original attachment cannot start a controlled navigation.");
+    const original = { live, driver: live.driver, sessionId: live.target.sessionId,
+      controllerEpoch: live.target.controllerEpoch, retired: false, retirementObservers: new Set<() => void>(),
+      url: live.target.url, documentEpoch: live.target.documentEpoch,
+      targetId: live.target.targetId, controller: live.target.controller };
+    this.controlledTransitions.set(pageId, original);
+    let committed: { url: string; documentEpoch: number } | undefined;
+    let published: { driver: DriverPage; sessionId: string } | undefined;
+    const current = () => this.controlledTransitions.get(pageId) === original
+      && this.live.get(pageId) === live && !this.closing
+      && live.target.controllerEpoch === original.controllerEpoch && live.target.controller !== "human"
+      && live.target.url === (committed?.url ?? original.url)
+      && live.target.documentEpoch === (committed?.documentEpoch ?? original.documentEpoch)
+      && live.target.targetId === original.targetId && live.target.controller === original.controller
+      && (original.retired ? live.driver === null && live.target.sessionId === undefined
+        : live.driver === original.driver && live.target.sessionId === original.sessionId);
+    const finish = () => {
+      if (this.controlledTransitions.get(pageId) === original) this.controlledTransitions.delete(pageId);
+      for (const observer of Array.from(original.retirementObservers)) observer();
+    };
+    return {
+      current,
+      waitRetired: (deadline: number, signal: AbortSignal, validate: () => void): Promise<void> => new Promise((resolve, reject) => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const cleanup = () => {
+          if (timer !== undefined) clearTimeout(timer);
+          original.retirementObservers.delete(check);
+          signal.removeEventListener("abort", check);
+        };
+        const check = () => {
+          try {
+            validate();
+            if (signal.aborted || !current() || !Number.isSafeInteger(deadline) || Date.now() >= deadline)
+              throw new AuxError("ref_stale", "The original navigation retirement deadline or source changed.");
+            if (!original.retired) return;
+            cleanup();
+            resolve();
+          } catch (error) { cleanup(); reject(error); }
+        };
+        original.retirementObservers.add(check);
+        signal.addEventListener("abort", check, { once: true });
+        timer = setTimeout(check, Math.max(0, deadline - Date.now()));
+        check();
+      }),
+      cancel: async () => {
+        finish();
+        if (published && this.live.get(pageId) === live && live.driver === published.driver
+          && live.target.sessionId === published.sessionId) {
+          const driver = published.driver;
+          live.driver = null;
+          delete live.target.sessionId;
+          live.target.viewStatus = "detached";
+          if (live.target.controllerEpoch === original.controllerEpoch && live.target.controller === original.controller)
+            live.target.controller = "none";
+          this.resetDocumentState(live);
+          this.persist(live);
+          await driver.dispose();
+          return;
+        }
+        if (this.live.get(pageId) === live && original.retired && !live.driver
+          && live.target.controllerEpoch === original.controllerEpoch && live.target.controller !== "human") {
+          live.target.controller = "none";
+          live.target.viewStatus = "detached";
+          this.persist(live);
+        }
+      },
+      stage: (receipt: { url: string; documentEpoch: number }, validate: () => void) => {
+        validate();
+        if (!current() || !original.retired || committed || !Number.isSafeInteger(receipt.documentEpoch)
+          || receipt.documentEpoch !== original.documentEpoch + 1)
+          throw new AuxError("ref_stale", "The original navigation attachment is not retired.");
+        committed = { ...receipt };
+        live.target.url = receipt.url;
+        live.target.documentEpoch = receipt.documentEpoch;
+        // This is native committed document metadata, not a driver/session.
+        // No page command can execute while its real driver remains absent.
+        live.target.viewStatus = "background";
+        this.resetDocumentState(live);
+        this.deps.repo.markDatasetsStale(pageId);
+        this.persist(live);
+      },
+      attach: async (receipt: { url: string; documentEpoch: number }, validate: () => void): Promise<DriverPage> => {
+        validate();
+        if (!current() || !original.retired || (committed
+          ? receipt.url !== committed.url || receipt.documentEpoch !== committed.documentEpoch
+          : receipt.documentEpoch !== original.documentEpoch + 1 || !Number.isSafeInteger(receipt.documentEpoch)))
+          throw new AuxError("ref_stale", "The original navigation attachment is not retired.");
+        const browser = this.driverFor("aux");
+        if (!browser) throw new AuxError("target_detached", "The browser driver is unavailable.");
+        const attached = await browser.attach(live.target.targetId, pageId, { initialDocumentEpoch: receipt.documentEpoch });
+        try {
+          validate();
+          if (!current() || !attached.isAttached() || attached === original.driver
+            || attached.identity.pageId !== pageId || attached.identity.backend !== "aux"
+            || attached.url() !== receipt.url)
+            throw new AuxError("ref_stale", "The navigation's fresh attachment changed before admission.");
+          live.target.url = receipt.url;
+          live.target.documentEpoch = receipt.documentEpoch;
+          live.target.viewStatus = "visible";
+          this.resetDocumentState(live);
+          this.deps.repo.markDatasetsStale(pageId);
+          finish();
+          const installedSession = this.installDriver(live, attached);
+          if (installedSession) published = { driver: attached, sessionId: installedSession };
+          if (this.live.get(pageId) !== live || live.driver !== attached || !installedSession
+            || live.target.sessionId !== installedSession || live.target.controllerEpoch !== original.controllerEpoch
+            || live.target.controller !== original.controller)
+            throw new AuxError("ref_stale", "The new attachment changed while publishing its incarnation.");
+          return attached;
+        } catch (error) {
+          const cleanupErrors: unknown[] = [];
+          // installDriver publishes identity before binding its callbacks. A
+          // binding failure must not leave that exact partial incarnation live.
+          if (published && this.live.get(pageId) === live && live.driver === attached
+            && live.target.sessionId === published.sessionId) {
+            live.driver = null;
+            delete live.target.sessionId;
+            live.target.viewStatus = "detached";
+            try { this.resetDocumentState(live); this.persist(live); }
+            catch (cleanupError) { cleanupErrors.push(cleanupError); }
+          }
+          try { await attached.dispose(); }
+          catch (cleanupError) { cleanupErrors.push(cleanupError); }
+          if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], "Navigation attachment admission and cleanup failed", { cause: error });
+          throw error;
+        }
+      },
+    };
+  }
+
   /** A real attachment, shared by fresh open, restore, discard recovery and crash reload. */
   installDriver(lp: LivePage, driver: DriverPage) {
     if (this.live.get(lp.target.pageId) !== lp || this.closing) throw new AuxError("target_detached", "This tab closed while attaching.");
-    if (lp.driver === driver) return;
+    if (lp.driver === driver) return lp.target.sessionId;
     if (lp.driver) throw new AuxError("conflict", "This tab already has a newer attachment.");
     lp.driver = driver;
-    lp.target.sessionId = randomUUID();
-    if (lp.target.backend === "aux" && this.deps.native.available()) driver.setNativeDownloadAuthority?.();
-    if (this.deps.downloadsDir) driver.setDownloadDir?.(this.deps.downloadsDir);
-    this.wireDriverEvents(lp);
-    this.persist(lp);
-    this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
+    const sessionId = randomUUID();
+    lp.target.sessionId = sessionId;
+    try {
+      if (lp.target.backend === "aux" && this.deps.native.available()) driver.setNativeDownloadAuthority?.();
+      if (this.deps.downloadsDir) driver.setDownloadDir?.(this.deps.downloadsDir);
+      this.wireDriverEvents(lp);
+      this.persist(lp);
+      this.deps.events.emit(EventTypes.PageUpdated, { page: lp.target });
+    } catch (error) {
+      if (this.live.get(lp.target.pageId) === lp && lp.driver === driver && lp.target.sessionId === sessionId) {
+        lp.driver = null;
+        delete lp.target.sessionId;
+        lp.target.viewStatus = "detached";
+        try { this.resetDocumentState(lp); this.persist(lp); }
+        catch (cleanupError) { throw new AggregateError([error, cleanupError], "Attachment binding and partial publication retirement failed", { cause: error }); }
+      }
+      throw error;
+    }
+    return sessionId;
   }
 
   wireDriverEvents(lp: LivePage) {
     const driver = lp.driver, sessionId = lp.target.sessionId;
-    const current = () => this.live.get(lp.target.pageId) === lp && lp.driver === driver && lp.target.sessionId === sessionId;
+    const identityCurrent = () => this.live.get(lp.target.pageId) === lp && lp.driver === driver && lp.target.sessionId === sessionId;
+    const current = () => identityCurrent() && this.controlledTransitions.get(lp.target.pageId)?.driver !== driver;
     const response = this.deps.responses?.record(lp.target.pageId);
     driver?.setEvents({
       onNavigated: (url, epoch) => {
@@ -169,13 +365,19 @@ export class PageRegistry {
         void this.refreshMeta(lp);
       },
       onDestroyed: (reason) => {
-        if (!current()) return;
+        if (!identityCurrent()) return;
+        const transition = this.controlledTransitions.get(lp.target.pageId);
+        const controlledRetirement = reason !== "crashed" && transition?.live === lp
+          && transition.driver === driver && transition.sessionId === sessionId;
+        if (controlledRetirement) transition.retired = true;
+        else if (transition?.live === lp) this.controlledTransitions.delete(lp.target.pageId);
         delete lp.target.sessionId;
         lp.driver = null;
         lp.target.viewStatus = reason === "crashed" ? "crashed" : "detached";
-        lp.target.controller = "none";
+        if (!controlledRetirement) lp.target.controller = "none";
         this.resetDocumentState(lp);
         this.persist(lp);
+        if (transition) for (const observer of Array.from(transition.retirementObservers)) observer();
         if (this.closing) return;
         if (reason === "crashed") {
           this.deps.events.emit(EventTypes.PageCrashed, { pageId: lp.target.pageId, reason });
@@ -271,7 +473,8 @@ export class PageRegistry {
     if (!driver?.isAttached()) return;
     try {
       const title = await driver.title();
-      if (this.live.get(lp.target.pageId) !== lp || lp.driver !== driver || lp.target.sessionId !== sessionId) return;
+      if (this.live.get(lp.target.pageId) !== lp || lp.driver !== driver || lp.target.sessionId !== sessionId
+        || this.controlledTransitions.get(lp.target.pageId)?.driver === driver) return;
       const url = driver.url();
       if (lp.target.navigationError || url.startsWith("chrome-error://")) return;
       lp.target.title = title;

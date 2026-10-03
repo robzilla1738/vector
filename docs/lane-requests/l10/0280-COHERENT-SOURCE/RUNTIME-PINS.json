@@ -1,0 +1,565 @@
+{
+  "rootBase": "1131a696e29604e699d546ddacdf6d36c2799389",
+  "files": [
+    {
+      "path": "apps/runtime/src/agent/coordinator.ts",
+      "beforeSha256": "71d99b2c072cab25d4427e379037192f12a4069994e34b1de8a00a6191fd7a15",
+      "afterSha256": "f73ec18dc7290c71fcc478d3845fec723803185c3709d03c1e6c2678458c1fa7",
+      "beforeBytes": 29697,
+      "afterBytes": 30878
+    },
+    {
+      "path": "apps/runtime/src/agent/loop/host.ts",
+      "beforeSha256": "ef701eb7a90ac65c031e27e1db74c5d2b9218f1db6075ae0bd0d2e75a2b78e85",
+      "afterSha256": "f7b3fd6b869ed62a2625a1c786eacad7fe2d744b1abbba91cb11986ee11403f7",
+      "beforeBytes": 63358,
+      "afterBytes": 63376
+    },
+    {
+      "path": "apps/runtime/src/agent/turn-mentions.ts",
+      "beforeSha256": "6de6d0d65a28635b0475d25023bb58115784d93bf59ee743c6ff14f5155f422b",
+      "afterSha256": "f210d7bb78ac9f03c7ec2327378fff72997ce1f471b254fce56ea816f7daa8fe",
+      "beforeBytes": 7787,
+      "afterBytes": 11272
+    },
+    {
+      "path": "apps/runtime/src/api/feature-stages.generated.ts",
+      "beforeSha256": "5de6e88176a4419bfb5bfd8e9f213277777e72d17d9a7f968e29cb72efc9d961",
+      "afterSha256": "e94aca1186033dea2ee1a5a7a6ea43dbab88f5a8743c655b7d33e35ae1735af7",
+      "beforeBytes": 18117,
+      "afterBytes": 18335
+    },
+    {
+      "path": "apps/runtime/src/api/methods/context.ts",
+      "beforeSha256": "c906442b337cc2afe3d141d2f270bfbf029737b87ef90573bd0af4995d78813c",
+      "afterSha256": "b909598954a56f1f43af4bb63ea1d895d9bdb394959b5f018b01f8256cef095d",
+      "beforeBytes": 28221,
+      "afterBytes": 28444
+    },
+    {
+      "path": "apps/runtime/src/api/methods/pages.ts",
+      "beforeSha256": "ea0c172458ee74d8e37e05d22f0f70dfc12dabd6dde9a6109b89e014f6415c96",
+      "afterSha256": "0f0ca8b7cb0808ea3f92538f21f22997356386c6ba3c3bf7eac15ba5442b1b86",
+      "beforeBytes": 18725,
+      "afterBytes": 18900
+    },
+    {
+      "path": "apps/runtime/src/api/methods/runs.ts",
+      "beforeSha256": "e833380ad589bac9f1c6130b8e50f380b9aa6dd953f1c40a81ef25c5a8a5f520",
+      "afterSha256": "16ce27572c7ef9f424a406724b2a1acd80a6d897e2d5ac6ae51c55d670adca87",
+      "beforeBytes": 6672,
+      "afterBytes": 8132
+    },
+    {
+      "path": "apps/runtime/src/execution/executor.ts",
+      "beforeSha256": "3d481b3c0317cbfc2b7052b97c1cb7c61ef82ac93320c5f6236752f563bfed0d",
+      "afterSha256": "6ebd9191b0255f6f512009107a75d4af0eb1ecfd89c470d95253483725c0fe19",
+      "beforeBytes": 23384,
+      "afterBytes": 24418
+    },
+    {
+      "path": "apps/runtime/src/features/demonstration/boot.ts",
+      "beforeSha256": "3cdc21bf718beb9347dde5ee0a08777a3d718af9fe9480a023134a3e4db493ce",
+      "afterSha256": "88d8993cdd6cedfe3abfa50cef20694d4d5a5875c3ddef8842b7c70b72987d98",
+      "beforeBytes": 763,
+      "afterBytes": 833
+    },
+    {
+      "path": "apps/runtime/src/main.ts",
+      "beforeSha256": "db73bab4d4f2d8b64c4e8c139bab43fe46474d75ea955065d1bc882a32b3fcb7",
+      "afterSha256": "a2a6cefe2a9a606532b0979e54309530a154c5c0a667d7483473b14f3487ede9",
+      "beforeBytes": 81537,
+      "afterBytes": 83724
+    },
+    {
+      "path": "apps/runtime/src/native-cdp-broker.ts",
+      "beforeSha256": "aa47119dbf14061345c0d27e453e6954daf50064e2fcd38270865f5de849b958",
+      "afterSha256": "48c35366b010fb705216465cc046221ffea4795c0ba70c6281835a62dd79f977",
+      "beforeBytes": 18756,
+      "afterBytes": 29348
+    },
+    {
+      "path": "apps/runtime/src/native.ts",
+      "beforeSha256": "5dfb8ef93fbeea7d1e0720bffd0d8d1426422211645d701be4991c76b4720b3c",
+      "afterSha256": "d41f8061b64db9cf6c7c9bb4221b991172f8a90930ec99f65d1e3c4738a825e2",
+      "beforeBytes": 19064,
+      "afterBytes": 22553
+    },
+    {
+      "path": "apps/runtime/src/safety/browser-egress.ts",
+      "beforeSha256": "45b1b32e5eab899f8a24b6fd2e512bf0950644064d6f0dc00c802cb32a3a042c",
+      "afterSha256": "1f4a5809ab6975c791e085dc8a800edc5b22b89c9f519706ffb8390a519ad34a",
+      "beforeBytes": 23255,
+      "afterBytes": 38690
+    },
+    {
+      "path": "apps/runtime/src/safety/egress.ts",
+      "beforeSha256": "cd0a6c9fd39ef826f0089ad02eddf02a709a7fef078851be7753783d0d1ace0d",
+      "afterSha256": "78201b06a55eb5b4202a7cb00ba1074462e87f5ad0255175e3a53f49b6f2dbf4",
+      "beforeBytes": 13253,
+      "afterBytes": 15734
+    },
+    {
+      "path": "apps/runtime/src/safety/native-permission.ts",
+      "beforeSha256": "71333a9c678102b9f9f5266d5e87e9b4c9b98c2410bc1d0650a1b428fe0a1a10",
+      "afterSha256": "43aeafea13be122390ec4fba0bedab1318a1b1f4d573f960066d17bda8dc0c1c",
+      "beforeBytes": 14995,
+      "afterBytes": 15752
+    },
+    {
+      "path": "apps/runtime/src/scheduler/set-runner.ts",
+      "beforeSha256": "ea2914d53e38b33c8346c662aa8717b72744becc0e6ed4e11afd740d17dc5d4e",
+      "afterSha256": "8c684951bc7f26e0a15bf8f315e0715e3300fc9c390effcedb55595f1d4aebd1",
+      "beforeBytes": 20854,
+      "afterBytes": 20899
+    },
+    {
+      "path": "apps/runtime/src/services/close-created-page.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "00384cdd0dd9523fb83adc9dc3fb3efa53092c05bce70e6d8675f37b1bf257ea",
+      "beforeBytes": 0,
+      "afterBytes": 1180
+    },
+    {
+      "path": "apps/runtime/src/services/demo-recorder.ts",
+      "beforeSha256": "ba60fef2e474bd12e1fc8c49245e121af931ac6c942cc8e8e56a83378c55b63f",
+      "afterSha256": "5b9e01d1e33a0c7217a27eee14af73535fa57213ef8c0cf6643999aaa8ff4ae8",
+      "beforeBytes": 13711,
+      "afterBytes": 7551
+    },
+    {
+      "path": "apps/runtime/src/services/native-control-channel.ts",
+      "beforeSha256": "c1030aae798223c467d5325146368144a2e3ebadb6f08f9c8962b72f778966fb",
+      "afterSha256": "9c7cf0ebe2f0a6dcd95a38b43b379924f3e3592452fc186510c2c766b76ea62b",
+      "beforeBytes": 2413,
+      "afterBytes": 930
+    },
+    {
+      "path": "apps/runtime/src/services/native-page-takeover.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "b1efa0915d26f38d7459703a810f264d7b78af9067ed4a822adc6f3bc406b104",
+      "beforeBytes": 0,
+      "afterBytes": 1703
+    },
+    {
+      "path": "apps/runtime/src/services/native-recorder-observer.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "3655be78efe20d231fe7e020a6458c0076a419308675a8e3b0bee2e92d6bcb27",
+      "beforeBytes": 0,
+      "afterBytes": 4841
+    },
+    {
+      "path": "apps/runtime/src/services/overnight-authority.ts",
+      "beforeSha256": "d8c69f28307d944fa9c636efe4f0ad9f6e3a63908806fa48e5ba20560a185d4c",
+      "afterSha256": "5600c2f4b54aee98e51837ec40014c6e93043898e796632dffe7ea03018eeb5f",
+      "beforeBytes": 4061,
+      "afterBytes": 4510
+    },
+    {
+      "path": "apps/runtime/src/services/page-takeover.ts",
+      "beforeSha256": "593d8178addfac08b08a2d9a0b0ee575b1272889e3ecd0ba53dbe8a71e0c35d0",
+      "afterSha256": "1f06c908e118fdf198ffcc5238e24072ec74bb437433d603a0c825255e40c53c",
+      "beforeBytes": 1444,
+      "afterBytes": 1557
+    },
+    {
+      "path": "apps/runtime/src/services/pages.ts",
+      "beforeSha256": "4d49a39fd20b59eebf915a5a75394b1f9b736e8fe9f9c4d53bc8bc6e7988a590",
+      "afterSha256": "967ea308d6cea4bd9437d0331da0bc37bc357dd4227ee9b48e4cafa3f37b7d24",
+      "beforeBytes": 16334,
+      "afterBytes": 17563
+    },
+    {
+      "path": "apps/runtime/src/services/pages/control.ts",
+      "beforeSha256": "b1f51991fe421bd6f4cd8c84b74f9e1786568e8734ed995ee85df5485d500d85",
+      "afterSha256": "313c4c4b2aa9a862ad2e62de9c6cd934ee0184261b876ef7d004bfb047f2ce6c",
+      "beforeBytes": 2497,
+      "afterBytes": 4684
+    },
+    {
+      "path": "apps/runtime/src/services/pages/controlled-navigation.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "7e1ec81182e850222f4349576f709ec02d933bd7b70f55f5ec95f252504cee88",
+      "beforeBytes": 0,
+      "afterBytes": 7665
+    },
+    {
+      "path": "apps/runtime/src/services/pages/executor.ts",
+      "beforeSha256": "c4d67911dbcfa2cd8f16e48fb4366ecb394f632735666b8d49bc2b51adfadf54",
+      "afterSha256": "fa979c14d370e743c1d9053095ae16e0045efb4efa03e76c03708caa24c73a64",
+      "beforeBytes": 21354,
+      "afterBytes": 25035
+    },
+    {
+      "path": "apps/runtime/src/services/pages/native-sync.ts",
+      "beforeSha256": "479fae1c0335c5939c5733ab04d530fe311678a77142bcbdd79c5a9231787f4d",
+      "afterSha256": "2218fc6041505d7ac048cbac7568e6d2e674db8a9f53f26d74ce89d458afc493",
+      "beforeBytes": 15339,
+      "afterBytes": 15463
+    },
+    {
+      "path": "apps/runtime/src/services/pages/opener.ts",
+      "beforeSha256": "f21ea4466c391bf7361d03b3945ebcc45ab6d4ce441d2168505834a818dabee8",
+      "afterSha256": "04187f7e2812e99d1db13227e3ad8e2d85a97879c01447617e7697c8db56e0ac",
+      "beforeBytes": 14821,
+      "afterBytes": 17590
+    },
+    {
+      "path": "apps/runtime/src/services/pages/registry.ts",
+      "beforeSha256": "ace3b238ffe828e88af64fe1ea7befc834d1a4e58f854d6b68c3250c3bc23e36",
+      "afterSha256": "6e2a1bf4aa0accc30575533824593b854d125078ed03cf6b68af1593f3a9bbbc",
+      "beforeBytes": 14371,
+      "afterBytes": 27068
+    },
+    {
+      "path": "apps/runtime/src/services/pages/types.ts",
+      "beforeSha256": "f1c5dc2e3e212a47cb5b790258329fc08b7f585007ba8fa4ee8e323941ce0dd2",
+      "afterSha256": "a254a80e243f2bb4c113389aa114c0486970736e23dbe5069eb732f05f48d7e0",
+      "beforeBytes": 5044,
+      "afterBytes": 5625
+    },
+    {
+      "path": "apps/runtime/src/services/run-lineage.ts",
+      "beforeSha256": "ccea64ab183fcfb18b8073a1b8682d80b0916b64c4923880a5e1422975a36fea",
+      "afterSha256": "99fdfa063e675cbfb362800ca78a751401c94eed9c87afd5752a3188d4736868",
+      "beforeBytes": 3920,
+      "afterBytes": 4165
+    },
+    {
+      "path": "apps/runtime/src/services/runs.ts",
+      "beforeSha256": "983041409bdacbf5db0633725f971ff002abcba0512fd260764b2490b9089062",
+      "afterSha256": "26bf31826a502a7e2b0a76d42b858926312b000e5acdd19b63d61da536c69363",
+      "beforeBytes": 78589,
+      "afterBytes": 78956
+    },
+    {
+      "path": "apps/runtime/src/services/turn-mention-service.ts",
+      "beforeSha256": "f1b3a7336043f82dcc8f0b17fa6c46d80c95c3ba5515f63bbe52d6ea5d40886e",
+      "afterSha256": "4ef3471a4a9f09fccdad51e0240c7d825b6755765cacaa53ca15449df08622fd",
+      "beforeBytes": 15244,
+      "afterBytes": 16993
+    },
+    {
+      "path": "apps/shell/src/host/mock.generated.ts",
+      "beforeSha256": "af863a3e110a6ce05eb27a7b6535f20515965854a3784eb62a6d9d911b22c0a7",
+      "afterSha256": "9bd5bd98c6bf4a537e1cee7842067a988f18f5704904312c390239a50e485c91",
+      "beforeBytes": 18369,
+      "afterBytes": 17866
+    },
+    {
+      "path": "apps/shell/src/mock/generated-host.test.ts",
+      "beforeSha256": "77f3fde0778a232a61ce166059a566979d51dba71ec6fb1b272330551bd18272",
+      "afterSha256": "92d4001429c8f1681e449268df742a25decedfe2124e549e74d3847150c33444",
+      "beforeBytes": 1753,
+      "afterBytes": 2732
+    },
+    {
+      "path": "chromium/generated/aux_feature_stages.ts",
+      "beforeSha256": "5de6e88176a4419bfb5bfd8e9f213277777e72d17d9a7f968e29cb72efc9d961",
+      "afterSha256": "e94aca1186033dea2ee1a5a7a6ea43dbab88f5a8743c655b7d33e35ae1735af7",
+      "beforeBytes": 18117,
+      "afterBytes": 18335
+    },
+    {
+      "path": "chromium/generated/aux_host_methods.cc",
+      "beforeSha256": "d51f87e3965b24bb3f90543b0f1fb20d83918c8439c434280ab557f9f47ba5a9",
+      "afterSha256": "584ae1be1cd39efde0d545dcf530c47eced7b49d36476c9a2a1c70dde3936a21",
+      "beforeBytes": 191097,
+      "afterBytes": 204218
+    },
+    {
+      "path": "chromium/generated/aux_host_methods.h",
+      "beforeSha256": "2118b32b198739990681ac2534b0a724ff1bb17130af07f09975a8d93f1fb69b",
+      "afterSha256": "721d5d49c4ea45363ce105a904eed7802ffd326edd2296bd39268d9cffd04579",
+      "beforeBytes": 5062,
+      "afterBytes": 5383
+    },
+    {
+      "path": "chromium/generated/aux_host_methods.sha256",
+      "beforeSha256": "b54bec511a76bda950c2e5637c77241e8010f03e4b07d9e31ef803c04f1354cc",
+      "afterSha256": "cd26ba7a4f2aa85668ad4279ce3b579c346fa0d560fbdb69113b380bc93fac55",
+      "beforeBytes": 65,
+      "afterBytes": 65
+    },
+    {
+      "path": "packages/chromium-driver/src/playwright-page.ts",
+      "beforeSha256": "76892f574090115c670f8eb9bd4e74e4d22e6dd2d52610d5ab301d497264d786",
+      "afterSha256": "817b0578f08ed3d16f7098f89e5a1cdf0be1ecdc881fc4fa630cae805feb9e03",
+      "beforeBytes": 63335,
+      "afterBytes": 62624
+    },
+    {
+      "path": "packages/chromium-driver/src/recorder-observer.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "6d1a826020d79c78fad889943d4d1088838e39f99b481a0e862e13964f2f0f3f",
+      "beforeBytes": 0,
+      "afterBytes": 5103
+    },
+    {
+      "path": "packages/chromium-driver/src/types.ts",
+      "beforeSha256": "627cd306746fee0471c46521bef59b4e8690a57ef496e05c27758f271feefa03",
+      "afterSha256": "89c4a5412dc363b4154364082d670d0184a282941ed9353592a58bcdf56180e0",
+      "beforeBytes": 10457,
+      "afterBytes": 10456
+    },
+    {
+      "path": "packages/contracts/src/egress.ts",
+      "beforeSha256": "279494f51252a5b01021c4f9cac0b239648b292e2fa5f854cce397ad3f7cd49a",
+      "afterSha256": "73a688e676696e3ac55a092b1f24eb904d712409425aa721bd7910127f68a9ee",
+      "beforeBytes": 6267,
+      "afterBytes": 9011
+    },
+    {
+      "path": "packages/contracts/src/host-methods.ts",
+      "beforeSha256": "57a81be76b98d0b6f0616cadd1c9cbf728bf90195e5c0d7dd975062a99771808",
+      "afterSha256": "c1848de6025a496a5a5ba7a70bad2f2267a84b37aa503ad6be6011efcb4e7a30",
+      "beforeBytes": 36085,
+      "afterBytes": 38367
+    },
+    {
+      "path": "packages/contracts/src/index.ts",
+      "beforeSha256": "d0044c889bd9aea3e1c902cf287ec08e0ea585485d597dc4f50e838a93250576",
+      "afterSha256": "94e6a41577fa61ebc8d2d7eb29a97a061313705a6e38a5fe893b00f420fb3d4c",
+      "beforeBytes": 2608,
+      "afterBytes": 2681
+    },
+    {
+      "path": "packages/contracts/src/native-cdp.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "cffebe36b2476177c6895d8208c30d56993185e56a31e6acabd43aee3964d490",
+      "beforeBytes": 0,
+      "afterBytes": 3114
+    },
+    {
+      "path": "packages/contracts/src/native-recorder.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "1cbe394fe470da496943f533d49fb7d52437002deb62f6e6c1de61542a94b679",
+      "beforeBytes": 0,
+      "afterBytes": 1048
+    },
+    {
+      "path": "scripts/gen-host-bindings.mjs",
+      "beforeSha256": "05602eaea5c73329f258b41eea482d0c2f25772687d3083ded456bf32b65a188",
+      "afterSha256": "0e067e6fd7ef0cc629b7ac3a9c07448cdf1051b87ce33c4d53806c10f31a4388",
+      "beforeBytes": 28000,
+      "afterBytes": 29825
+    },
+    {
+      "path": "tests/fixtures/overnight-authority.ts",
+      "beforeSha256": "009d65fdbd1f2569930d0ec9eb2f158319e459a27df7b58f786e3fe5b213183a",
+      "afterSha256": "43a85a30ffee9aa65feda8b272a1bfb2500b130f300f223b73dd00eaf5fb5e61",
+      "beforeBytes": 2303,
+      "afterBytes": 2334
+    },
+    {
+      "path": "tests/fixtures/turn-mentions.ts",
+      "beforeSha256": "1854e05a07256f3b3914eb5079094458bc04df6fc4a4349783a8608a9ef4a202",
+      "afterSha256": "84de23c045acb14e2301af77f7ab8da63e01e64d6b342f490d1d0b92b71388fd",
+      "beforeBytes": 2134,
+      "afterBytes": 2165
+    },
+    {
+      "path": "tests/unit/agent-isolation-flow.test.ts",
+      "beforeSha256": "e5224f51aff2273f2b5ea06645e80e725c054cc2e5dd0cf23f2180403f2b64c4",
+      "afterSha256": "4738ef6a02e43f5ce41ff92e7c08581f59ae254989ac8c5529a767fef9b22c47",
+      "beforeBytes": 12874,
+      "afterBytes": 17670
+    },
+    {
+      "path": "tests/unit/agent-turn-tabs.test.ts",
+      "beforeSha256": "6b5a2c4a920c6cb7765c9497c1ae7ab14646f1cabe4ef08f2649932474163011",
+      "afterSha256": "aaa4048772353d680fa1d74ff63b39770d6b3c2090817067b8f999a8ff3c8d76",
+      "beforeBytes": 3426,
+      "afterBytes": 3447
+    },
+    {
+      "path": "tests/unit/autonomy-services.test.ts",
+      "beforeSha256": "80d2197a1171b8dc55192b85dea6c9744162101d2e528beeeeba2e437515d1f4",
+      "afterSha256": "9f2e0daa4ddb48e182aebae3c51f7f35747455b465401f568d6eff25e6ae2119",
+      "beforeBytes": 39686,
+      "afterBytes": 41844
+    },
+    {
+      "path": "tests/unit/browser-egress-boundaries.test.ts",
+      "beforeSha256": "3fba978954ae7f266c3cc75b473c52dcc97d9a06bcc1a6e3248de00f942440a0",
+      "afterSha256": "d5f1f2520a318063f51c102b5e926e913b8ccc05461aa73eafde348cd3edf5f6",
+      "beforeBytes": 14684,
+      "afterBytes": 22613
+    },
+    {
+      "path": "tests/unit/browser-egress.test.ts",
+      "beforeSha256": "1a9a16865099b7b29bf2507d6d64e1b3cb42821fed6bf38bfa9504dbc31bf5bf",
+      "afterSha256": "a3d7c3a1efeb2c5b6a6930eaf0a8ef49d7498085ab9255c0fa898dda79512520",
+      "beforeBytes": 35839,
+      "afterBytes": 45815
+    },
+    {
+      "path": "tests/unit/close-created-page.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "59bd7b9f53ebb3ca5a47406e33af69d2a934f1a8520eb3ee1d6c264f697614f9",
+      "beforeBytes": 0,
+      "afterBytes": 3164
+    },
+    {
+      "path": "tests/unit/controlled-native-navigation.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "aa4695f238c22ebb4da43a0a7c0304f736239f5999f0ed8208a5ebbd478d2184",
+      "beforeBytes": 0,
+      "afterBytes": 27098
+    },
+    {
+      "path": "tests/unit/egress-guard.test.ts",
+      "beforeSha256": "0dfaa7f9e7bc98056ee65482057f8f985391b4d0a83fb8bbb77660110721713a",
+      "afterSha256": "46789f9dfc87541b03f22d87ad4315b9397568e86deb543cb79df62c9cba1596",
+      "beforeBytes": 4641,
+      "afterBytes": 8422
+    },
+    {
+      "path": "tests/unit/executor.test.ts",
+      "beforeSha256": "8bcbd58b9418b05317d92be59c64f0ff3199f55e33a1229feabb48b952955fee",
+      "afterSha256": "2ad39b327a7a1ad942fb66680fc9ba4b615708350978bae68d1771245670fafe",
+      "beforeBytes": 14220,
+      "afterBytes": 15641
+    },
+    {
+      "path": "tests/unit/handler-results.test.ts",
+      "beforeSha256": "4f60cf1b93d70764ddc927c6bd0d7e40cd72ce969aee1a54f20759cef3140460",
+      "afterSha256": "fc3eb734a3692cca0ee056f9dec1e7a41fbf94b5af93f62967f633993f8bdb8f",
+      "beforeBytes": 29959,
+      "afterBytes": 30302
+    },
+    {
+      "path": "tests/unit/native-authority-mock-refusal.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "5e4fedbc94d889fbc7c927a7a5fa87af060b8be8872a0635a6c079cf4dce67ef",
+      "beforeBytes": 0,
+      "afterBytes": 1996
+    },
+    {
+      "path": "tests/unit/native-cdp-broker.test.ts",
+      "beforeSha256": "cc37444ddae52efc1ab6325f700db3d3ca52c0ff5ba6a76431995b0bc4c13a85",
+      "afterSha256": "dbd4fb964d8aa1993aef86445abb2d811efd87b6b2a8e89386cf7bc194661684",
+      "beforeBytes": 12812,
+      "afterBytes": 27607
+    },
+    {
+      "path": "tests/unit/native-cdp-contract.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "8f14705efd8e2705c7251f2edcb2a94b05714a5cd6cb227d877dcb3323e77872",
+      "beforeBytes": 0,
+      "afterBytes": 5031
+    },
+    {
+      "path": "tests/unit/native-control-channel.test.ts",
+      "beforeSha256": "8cf9ceb2ee75b2529c9a311b74eb20bc4a411b71ebe330be8d85d66cc288a853",
+      "afterSha256": "cad6df4f299a5c5af2cae41c544e3fa781fa6bf48254c308f14f038f8ba52010",
+      "beforeBytes": 8383,
+      "afterBytes": 13928
+    },
+    {
+      "path": "tests/unit/native-permission-producer.test.ts",
+      "beforeSha256": "a8cfa41c5c747d0480cc371e87ab8dc1ff6ac1ef7d57796e55493f70b4cc2da8",
+      "afterSha256": "f4bd5e0477e3e70cab8a01febdbe146f849a8169b23700e1d15db46cb216f95e",
+      "beforeBytes": 56742,
+      "afterBytes": 62528
+    },
+    {
+      "path": "tests/unit/native-person-resume.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "14b8d6c8252f74960f143b4f64be34a7c6e004e78d4e3453288418fcf72fe1c5",
+      "beforeBytes": 0,
+      "afterBytes": 8042
+    },
+    {
+      "path": "tests/unit/native-recorder-channel.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "6176888e41604bbcab2b43d573142582b5216e6d383a5473104c787342a2aad5",
+      "beforeBytes": 0,
+      "afterBytes": 2667
+    },
+    {
+      "path": "tests/unit/native-recorder-observer.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "fc9e0946f6b687b322a6efb55baabbbd6896fe3f599dbfc6cbaf49795ecb960e",
+      "beforeBytes": 0,
+      "afterBytes": 4749
+    },
+    {
+      "path": "tests/unit/native-recorder-pages.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "15f47c8691fb53abde7d8a006b25f82014d2c17e4cea60f9b07ee7f61e4f2d32",
+      "beforeBytes": 0,
+      "afterBytes": 2909
+    },
+    {
+      "path": "tests/unit/native-run-resume.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "4d1d2d0dd4e78436954c75a050d7e47047734b42a63030fb129ba12ffc496b9d",
+      "beforeBytes": 0,
+      "afterBytes": 4847
+    },
+    {
+      "path": "tests/unit/page-attachment-session.test.ts",
+      "beforeSha256": "c50d1345c830c14d1ccb5a07c6b255cfb9c67338a27408a49eb75cedf6906a3e",
+      "afterSha256": "b0dde090b70813a298604d4d7b5235abf579c8ff9285c1b0f3614f6eb4714574",
+      "beforeBytes": 8160,
+      "afterBytes": 16295
+    },
+    {
+      "path": "tests/unit/page-execution-incarnation.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "0093645a4dc32c1c707faa8664e670496c8f31d6c978a5e8c48f36fa29a78089",
+      "beforeBytes": 0,
+      "afterBytes": 6098
+    },
+    {
+      "path": "tests/unit/pages-inspect.test.ts",
+      "beforeSha256": "920d6217b0e9dcc860f3fb26e63c689e42e0e62c5f625f44bc5ce8635df8687c",
+      "afterSha256": "cf25d9cccdf1d0b74438c9788f4fb3dca3b453903785ed1c76af350fadc22db3",
+      "beforeBytes": 11985,
+      "afterBytes": 13989
+    },
+    {
+      "path": "tests/unit/physical-takeover.test.ts",
+      "beforeSha256": "124307b81e712ea2150607e82dbb11daaa91d9a4c17e89bff029a96d868360c8",
+      "afterSha256": "1d0fea4e4b6be3f5b5eb8f4a1e8a0b8e0f9976fa1b12fb0e21300948bcf0059e",
+      "beforeBytes": 1497,
+      "afterBytes": 1666
+    },
+    {
+      "path": "tests/unit/protected-opener-admission.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "b2f36ad5386b25cc3512180f0044553a0ed90bb9fa62ceda657dba1c29ac8b17",
+      "beforeBytes": 0,
+      "afterBytes": 3548
+    },
+    {
+      "path": "tests/unit/recorder-fixed-boundary.test.ts",
+      "beforeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterSha256": "016a4a497efb909eb4a93b0e60e228352e5bddaadc33be70e270410cd63c8688",
+      "beforeBytes": 0,
+      "afterBytes": 6624
+    },
+    {
+      "path": "tests/unit/safety-authority-revocation.test.ts",
+      "beforeSha256": "a3491fcbf8a15f5bc7f4118c58d8b528f7bf45101b9324fd31ee6cbad01eaa24",
+      "afterSha256": "c4554ae109e98599a2f95c4055422a202e1f33ce2794329abc9460e29e09891d",
+      "beforeBytes": 3873,
+      "afterBytes": 4119
+    },
+    {
+      "path": "tests/unit/set-run-lifecycle.test.ts",
+      "beforeSha256": "8802c36416816bac76043c3b0edcb322d9ea7489df7e73b89464dbc2d900a8ca",
+      "afterSha256": "906101b1da07a38c049904ed7af52898d260950560292e9802e6b5d8edf3a726",
+      "beforeBytes": 68558,
+      "afterBytes": 70224
+    },
+    {
+      "path": "tests/unit/subagents.test.ts",
+      "beforeSha256": "45d8410548d04000da5fef374aa23c46b71aa78a548739a0e93bb27f2763c856",
+      "afterSha256": "99fc4d15d01a9b47876c735f3c61d339a7d9db649122c6d8c087f96f4bccf024",
+      "beforeBytes": 17734,
+      "afterBytes": 18012
+    }
+  ]
+}

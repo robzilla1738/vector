@@ -18,19 +18,19 @@ function harness(url = "https://source.test/") {
   const native = Object.assign(new NullNativeBridge(), {
     createAgentPage: vi.fn(async (input: AgentPageCreate) => {
       created.push(input);
-      return { pageId: `controlled-${++n}`, targetId: `target-${n}`, source: input.source,
+      return { pageId: `controlled-${++n}`, creationId: `synthetic-creation-${n}`, targetId: `target-${n}`, source: input.source,
         isolation: { isolationId: `partition-${input.runId}`, runId: input.runId, taskId: input.taskId,
           taskRevision: input.taskRevision, inMemory: true as const, cookies: "empty" as const } };
     }),
     egressContext: vi.fn(async ({ tabId }: { tabId: string }) => { const page = targets.get(tabId)!; return {
-      profileId: "profile", tabId, frameId: `frame-${tabId}`, documentToken: `${tabId}:${page.documentEpoch}`,
+      controlGeneration: "fixture-native-generation", personControlled: false, profileId: "profile", tabId, frameId: `frame-${tabId}`, documentToken: `${tabId}:${page.documentEpoch}`,
       sourceOrigin: page.url === "about:blank" ? "aux://blank" : new URL(page.url).origin, isolation: page.agentIsolation,
     }; }),
     egressInstall: vi.fn(async ({ lease }: { lease: EgressLease }) => { trace.push(`install:${lease.tabId}`); return { accepted: true as const }; }),
     egressRevoke: vi.fn(async () => ({ accepted: true as const })),
   });
   let runs: RunService;
-  const egress = new BrowserEgress({ profileId: "profile", native,
+  const egress = new BrowserEgress({ runAncestry: runId => [runId], profileId: "profile", native,
     run: runId => { const run = repo.getRun(runId); return run && ["queued", "running", "planning", "needs_input"].includes(run.status)
       ? { taskRevision: 0, threadId: runId } : null; },
     page: pageId => { const page = targets.get(pageId); if (!page) throw new AuxError("not_found", `no page ${pageId}`); return page; }, ownsPage: (runId, pageId) => runs.pageOwnership.snapshot()[pageId]?.runId === runId,
@@ -56,6 +56,7 @@ function harness(url = "https://source.test/") {
       content: { url: targets.get(pageId)!.url, title: "Source", text: "Separate sign-in is required.", headings: [], elements: [], formFields: [], links: [], tables: [], frames: [], dialogs: [],
         viewport: { width: 800, height: 600, scale: 1 }, scroll: { x: 0, y: 0, maxY: 0 }, truncated: false, stats: { elementsTotal: 0, elementsShown: 0, textChars: 28, approxTokens: 7 } },
     } satisfies Observation; },
+    closeCreated: async (original: PageTarget, _runId: string) => { trace.push(`close:${original.pageId}`); targets.delete(original.pageId); },
     execute, releaseAgent: vi.fn(), close: async (pageId: string) => { trace.push(`close:${pageId}`); targets.delete(pageId); return { ok: true }; },
   } as unknown as PageService;
   const model = { generateStructured: vi.fn(async () => ({ object: { status: "needs_input", message: "Separate sign-in", question: "Sign in on the temporary tab." }, inputTokens: 1, outputTokens: 1, durationMs: 1 })) } as unknown as ModelClient;
@@ -180,5 +181,98 @@ it("a selected tab closed while native source context is held cannot copy or rep
   expect(f.repo.getRun(run.runId)?.pageIds).toEqual(["owner"]);
   expect(f.created).toEqual([]);
   expect(f.trace).toEqual([]);
+  expect(f.model.generateStructured).not.toHaveBeenCalled();
+});
+
+it("preserves acknowledged takeover state and newer configuration when a protected open returns late", async () => {
+  const f = harness();
+  let entered!: () => void, release!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const open = f.pages.open.bind(f.pages);
+  vi.spyOn(f.pages, "open").mockImplementation(async options => {
+    const page = await open(options);
+    entered();
+    await held;
+    return page;
+  });
+  const run = await f.runs.coordinator.start({ goal: "Read selected website", pageIds: ["owner"] });
+  try {
+    await started;
+    f.targets.get("controlled-1")!.controller = "human";
+    expect(f.repo.getRun(run.runId)?.status).toBe("queued");
+    await f.runs.pauseForTakeover(run.runId);
+    expect(f.repo.getRun(run.runId)?.status).toBe("paused");
+    const current = f.repo.getRun(run.runId)!;
+    current.config = { ...current.config, instructions: "Newer person-authored instructions" };
+    f.repo.saveRun(current);
+    release();
+    await until(() => !!f.repo.getRun(run.runId)?.config?.isolatedPageSources?.length);
+    expect(f.repo.getRun(run.runId)).toMatchObject({ status: "paused", config: { instructions: "Newer person-authored instructions" } });
+    expect(f.targets.get("controlled-1")?.controller).toBe("human");
+    expect(f.trace).not.toContain("close:controlled-1");
+    expect(f.model.generateStructured).not.toHaveBeenCalled();
+  } finally {
+    release();
+    await f.runs.cancel(run.runId);
+    await until(() => !f.runs.coordinator.controls.has(run.runId));
+  }
+});
+
+it("does not close a person-held protected tab when its creator is cancelled before open returns", async () => {
+  const f = harness();
+  let entered!: () => void, release!: () => void, returned!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const completed = new Promise<void>(resolve => { returned = resolve; });
+  const open = f.pages.open.bind(f.pages);
+  vi.spyOn(f.pages, "open").mockImplementation(async options => {
+    const page = await open(options);
+    entered();
+    await held;
+    returned();
+    return page;
+  });
+  const run = await f.runs.coordinator.start({ goal: "Read selected website", pageIds: ["owner"] });
+  try {
+    await started;
+    f.targets.get("controlled-1")!.controller = "human";
+    await f.runs.cancel(run.runId);
+  } finally { release(); }
+  await completed;
+  await until(() => f.runs.pageOwnership.snapshot()["controlled-1"] === undefined);
+  expect(f.repo.getRun(run.runId)?.status).toBe("cancelled");
+  expect(f.targets.get("controlled-1")?.controller).toBe("human");
+  expect(f.trace).not.toContain("close:controlled-1");
+  expect(f.model.generateStructured).not.toHaveBeenCalled();
+});
+
+it("continues cancelled creator cleanup past a detached copy while preserving a person-held copy", async () => {
+  const f = harness();
+  for (const pageId of ["owner-2", "owner-3"])
+    f.targets.set(pageId, { ...f.targets.get("owner")!, pageId, targetId: `${pageId}-target`, sessionId: `${pageId}-attachment` });
+  let entered!: () => void, release!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const open = f.pages.open.bind(f.pages);
+  vi.spyOn(f.pages, "open").mockImplementation(async options => {
+    const page = await open(options);
+    if (page.pageId === "controlled-3") { entered(); await held; }
+    return page;
+  });
+  const run = await f.runs.coordinator.start({ goal: "Read selected websites", pageIds: ["owner", "owner-2", "owner-3"] });
+  try {
+    await started;
+    f.targets.get("controlled-1")!.controller = "human";
+    f.targets.delete("controlled-2");
+    await f.runs.cancel(run.runId);
+  } finally { release(); }
+  await until(() => f.trace.includes("close:controlled-3"));
+  expect(f.repo.getRun(run.runId)?.status).toBe("cancelled");
+  expect(f.targets.get("controlled-1")?.controller).toBe("human");
+  expect(f.trace.filter(entry => entry.startsWith("close:"))).toEqual(["close:controlled-3"]);
+  expect(f.runs.pageOwnership.snapshot()).not.toHaveProperty("controlled-1");
+  expect(f.runs.pageOwnership.snapshot()).not.toHaveProperty("controlled-2");
+  expect(f.runs.pageOwnership.snapshot()).not.toHaveProperty("controlled-3");
   expect(f.model.generateStructured).not.toHaveBeenCalled();
 });

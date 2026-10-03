@@ -1,0 +1,37 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "actualForwardReverseForward": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-reentrant-owner-_05vtx6d",
+  "requests": [
+    "0280-reentrant-owner-successor",
+    "0280-reentrant-owner-final-check"
+  ],
+  "canonicalPatch": "chromium/patches/aux/runtime/0330-original-owner-revalidation-after-native-callbacks.patch",
+  "canonicalPatchSha256": "1164781c0840e94d225b7c8f986a346912efaa0cb4ab2f876ff16ca09210cb8f",
+  "files": [
+    {
+      "path": ".native/chrome/browser/ui/aux/cdp_broker.cc",
+      "beforeSha256": "2c3e00c890bac6d5d05627e8b5b2248b80d75f4b901fd7f215188ec9478d6b01",
+      "afterSha256": "52f5b04c8922260deca30d3917484168aeba1169a6d8c5c7061027e2064feb2f"
+    },
+    {
+      "path": ".native/chrome/browser/ui/aux/egress_controller.cc",
+      "beforeSha256": "47cc94a55a3f49d3f182dce2ba774af206bb17c493762f2cec11b7e716e93578",
+      "afterSha256": "41cd5bd06daabe936ef217fcecf2e268af6fa3ba82b7126c79ccc5cc06bd5b1b"
+    },
+    {
+      "path": ".native/chrome/browser/ui/aux/methods/native_tabs_methods.cc",
+      "beforeSha256": "aaf158de2f46a5ae16caff3725e44f8830e79e85fb6a3e4c311cd0a3f8e2192e",
+      "afterSha256": "93347348617c9cc36e8e1150e05779e6ab06a6c8383a10ca6701f4ea8aed2ba4"
+    },
+    {
+      "path": ".native/chrome/browser/ui/aux/native_creator_close_receipt_browsertest.cc",
+      "beforeSha256": "c1698d77af6cfc1421847c8e5f622d776bd0a1363c5b33d3ee786c62625f75bd",
+      "afterSha256": "c1ae55733f5552d93e713516ee25121f25992e409d1789bfa2f870af86c44a82"
+    }
+  ],
+  "preReadySemanticsReviewed": true,
+  "rootApplied": true
+}

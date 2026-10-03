@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { AuxError } from "@aux/contracts";
 import { HostMethods, HostEvents } from "@aux/contracts/host-methods";
 import { createMockHost } from "../host/mock.generated";
 
@@ -24,11 +25,25 @@ it("returns parsed results and isolates callers from shared state", async () => 
 it("validates stub results against the live manifest schemas", async () => {
   const host = createMockHost() as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
   const failures: string[] = [];
+  const refused: Array<{ name: string; code: unknown }> = [];
   for (const [name, spec] of Object.entries(HostMethods)) {
-    const result = await host[name]!();
-    if (!spec.result.safeParse(result).success) failures.push(name);
+    try {
+      const result = await host[name]!();
+      if (!spec.result.safeParse(result).success) failures.push(name);
+    } catch (error) {
+      refused.push({ name, code: error instanceof AuxError ? error.code : undefined });
+    }
   }
   expect(failures).toEqual([]);
+  expect(refused.map(row => row.name).sort()).toEqual([
+    "native.cdpReset", "native.cdpCatalog", "native.cdpAttach", "native.cdpStartNavigation",
+    "native.cdpTakeNavigationReceipt", "native.cdpDispatch", "native.egressContext",
+    "native.egressInstall", "native.egressRevoke", "native.egressResumePerson", "native.egressResumeRun",
+    "native.egressCheckRunResume", "native.egressRunTerminal", "native.createAgentPage",
+    "native.creatorCleanupProof", "native.closeCreatedPage", "native.recorderStart", "native.recorderDrain",
+    "native.recorderStop", "native.personRead", "native.personReadContext", "native.permissionRetire",
+  ].sort());
+  expect(refused.map(row => row.code)).toEqual(refused.map(() => "backend_unavailable"));
 });
 
 it("routes emitted host events to registered listeners and unsubscribes", () => {

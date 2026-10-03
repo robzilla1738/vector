@@ -27,6 +27,7 @@
 #include "base/threading/sequence_bound.h"
 #include "base/threading/thread.h"
 #include "base/values.h"
+#include "base/unguessable_token.h"
 #include "base/time/time.h"
 #include "chrome/browser/ui/aux/native_process_footprint.h"
 #include "chrome/browser/ui/aux/native_runtime_peer_identity.h"
@@ -139,7 +140,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
            base::WeakPtr<AuxRuntimeHost> owner);
     ~Worker();
     void CallApi(std::string method, std::string params_json,
-                 ResponseCallback callback);
+                 std::string person_resume, ResponseCallback callback);
     void CallInternal(std::string method, std::string params_json,
                       ResponseCallback callback);
     void CallRequest(std::string method, std::string params_json,
@@ -155,6 +156,10 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
     void SendCdpMessage(uint64_t connection_generation,
                         std::string page_id,
                         std::string message);
+    void SendCdpAuthorityChanged(uint64_t connection_generation);
+    void SendCdpNavigationState(uint64_t connection_generation,
+        std::string page_id, std::string attachment_id, int command_id,
+        std::string lease_id, bool ready);
     void SendTabsChanged();
     void SendCatalogPatch(std::string payload_json);
     void SendNavigationError(std::string payload_json);
@@ -198,6 +203,8 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
 
   friend class AuxRuntimeHostTestPeer;
   friend class NativePersonReadHostTestPeer;
+  friend class AuxCreatorCloseBrowserTestPeer;
+  friend class AuxNativeInputAckBrowserTestPeer;
   using TestDispatch = base::RepeatingCallback<void(
       bool, std::string, std::string, ResponseCallback)>;
   static AuxRuntimeHost* InstallTestDispatch(Profile* profile, TestDispatch dispatch);
@@ -247,14 +254,36 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
   void OnCdpMessage(uint64_t connection_generation,
                     const std::string& page_id,
                     const std::string& message);
+  void OnCdpAuthorityChanged();
+  void OnCdpNavigationState(uint64_t connection_generation,
+      const std::string& page_id, const std::string& attachment_id,
+      int command_id, const std::string& lease_id, bool ready);
   void SchedulePump();
   void PumpOnce();
   void OnPumpDone(bool connected);
   void NativeConnectionPublished(uint64_t generation);
   void NativeConnectionRetired(uint64_t generation);
+  void HandleNativeCdpAttachment(
+      const base::DictValue& params, uint64_t connection_generation,
+      std::shared_ptr<std::atomic_bool> cancelled,
+      base::OnceCallback<void(base::DictValue)> callback);
+  void HandleNativeCdpNavigationReceipt(
+      const base::DictValue& params, uint64_t connection_generation,
+      std::shared_ptr<std::atomic_bool> cancelled,
+      base::OnceCallback<void(base::DictValue)> callback);
   void HandleNativePersonReadCall(
       const std::string& method, const base::DictValue& params, uint64_t connection_generation,
       base::OnceCallback<void(base::DictValue)> callback);
+  void FailNativeCreatorCreation(base::DictValue original_failure,
+      base::DictValue original_proof, uint64_t connection_generation,
+      std::shared_ptr<std::atomic_bool> cancelled,
+      base::OnceCallback<void(base::DictValue)> done);
+  void HandleNativeCreatorCreateCall(const base::DictValue& params,
+      uint64_t connection_generation, std::shared_ptr<std::atomic_bool> cancelled,
+      base::OnceCallback<void(base::DictValue)> done);
+  void HandleNativeCreatorCloseCall(const base::DictValue& params,
+      uint64_t connection_generation, std::shared_ptr<std::atomic_bool> cancelled,
+      base::OnceCallback<void(base::DictValue)> done);
   void HandleNativeRecorderCall(
       const std::string& method, const base::DictValue& params,
       uint64_t connection_generation,
@@ -267,6 +296,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
   std::unique_ptr<base::Thread> worker_thread_;
   base::SequenceBound<Worker> worker_;
   std::unique_ptr<aux::CdpBroker> cdp_broker_;
+  base::CallbackListSubscription cdp_authority_subscription_;
   std::unique_ptr<aux::ProfileLibrary> profile_library_;
   std::unique_ptr<aux::CredentialFill> credential_fill_;
   std::unique_ptr<aux::NativeFind> native_find_;
@@ -278,6 +308,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
       observers_;
   bool pump_scheduled_ = false;
   bool runtime_connected_ = false;
+  const std::string native_owner_incarnation_ = base::UnguessableToken::Create().ToString();
   uint64_t admitted_native_generation_ = 0;
   uint64_t retired_native_generation_ = 0;
   uint64_t native_recorder_session_generation_ = 0;

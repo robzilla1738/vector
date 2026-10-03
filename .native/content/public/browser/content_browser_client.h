@@ -25,6 +25,7 @@
 #include "base/time/time.h"
 #include "base/types/strong_alias.h"
 #include "base/values.h"
+#include "ui/gfx/native_ui_types.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
 #include "components/download/public/common/quarantine_connection.h"
@@ -51,6 +52,7 @@
 #include "content/public/browser/process_selection_deferring_condition.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/storage_partition_config.h"
+#include "content/public/browser/weak_document_ptr.h"
 #include "content/public/common/alternative_error_page_override_info.mojom-forward.h"
 #include "content/public/common/page_visibility_state.h"
 #include "content/public/common/window_container_type.mojom-forward.h"
@@ -236,6 +238,7 @@ class AnchorElementPreconnectDelegate;
 class BluetoothDelegate;
 class BrowserChildProcessHost;
 class BrowserContext;
+class NativePlatformInputAdmission;
 class BrowserMainParts;
 class BrowserURLHandler;
 class ClientCertificateDelegate;
@@ -348,6 +351,15 @@ class CONTENT_EXPORT ContentBrowserClient {
   // LINT.ThenChange(//tools/metrics/histograms/metadata/browser/enums.xml:SpareProcessRefusedByEmbedderReason)
 
   virtual ~ContentBrowserClient() = default;
+
+  // Called only by the native NSViewHost platform event admission path,
+  // before forwarding that original event to the renderer. Synthetic DevTools
+  // and synthetic-gesture helpers do not call this. The widget is the original
+  // focused keyboard widget or mouse guest receiver. Embedders must validate
+  // their current document and native event provenance before treating it as
+  // person input; this callback itself does not grant any authority.
+  virtual void WillDispatchNativeInput(
+      const NativePlatformInputAdmission& admission);
 
   // Allows the embedder to set any number of custom BrowserMainParts
   // implementations for the browser startup code. See comments in
