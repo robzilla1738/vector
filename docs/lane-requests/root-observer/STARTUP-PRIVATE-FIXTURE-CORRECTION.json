@@ -1,0 +1,11 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "rootReviewedWholePatch": true,
+  "patchSha256": "1d9314bc91e6ebcb24d5b40452d580a8216b813d3a734a922b334bb0264323e9",
+  "before": "38f7e95d811c0a61f8bac92f7b0366756209b16420436007f7f6c7d7042ceca0",
+  "result": "32d3a0bc13cdc52cde817bd422fe8fc40a591999ba8d8e03cf00681b170a2554",
+  "productionHeaderUnchanged": "d738e8ac001bde53c02287ffa5c1c1bc58c82ac70320a9566e50c856a8e6fce7",
+  "rootPreparationCorrection": "Initial git apply from a Git subdirectory skipped the outside-prefix patch; unchanged result pin refused. Explicit root --directory=.native applied actual exact result. No Stable mutation.",
+  "remaining": "Actual native compile and same original lifetime assertions"
+}

@@ -275,3 +275,5 @@ aux/runtime/0301-compositor-virtual-and-factory-order.patch
 aux/runtime/0302-startup-value-reader-weak-lifetime.patch
 aux/runtime/0303-startup-live-weak-owner-comparisons.patch
 aux/runtime/0304-pip-empty-automatic-ticket-refusal.patch
+aux/runtime/0305-startup-session-fixture-private-wrappers.patch
+aux/runtime/0306-pip-eligibility-native-setup-scope.patch
