@@ -1,0 +1,36 @@
+{
+  "sourceOnly": true,
+  "candidateRoot": "/private/tmp/aux-browser-runtime-builder-final-ce62aa89",
+  "identity": {
+    "commit": "ce62aa8920e9d4f26fb2a0b0407a2abbdb45a239",
+    "tree": "97a488f0039e05cb41aff0708aba832bcc7aa5b1",
+    "dirty": false,
+    "label": "ce62aa8920e9d4f26fb2a0b0407a2abbdb45a239"
+  },
+  "controllers": {
+    "stage": {
+      "path": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/stage-ce62-001-PROPOSAL.py",
+      "sha256": "1b46afa6a0606080570338c934e20d8c109455f332f4a8cc9b59e167ddc4780c",
+      "templatePath": "/private/tmp/aux-builder-final-0280-native-preparation/stage-final-0280-REQUEST-ONLY-TEMPLATE-003.py",
+      "templateSha256": "d13873a71dd53111acb42a1018e87c24a2aa391c24f9f84fd2507714e60da1d4"
+    },
+    "build": {
+      "path": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/build-ce62-001-PROPOSAL.py",
+      "sha256": "b738d88eab5461ed128b3204d082a4bb1c85fa5b1907addaf92d2a4193e374e8",
+      "templatePath": "/private/tmp/aux-builder-final-0280-native-preparation/build-final-0280-REQUEST-ONLY-TEMPLATE-003.py",
+      "templateSha256": "ac73140a525c474800cb9299854cf6bbabc6d0823431ee2c8acf1e3baf09f421"
+    }
+  },
+  "launcherSha256": "c8a0b5fecd67a862ea5545bdcece9b935a9869830759d3caeeaae64c8a4195d0",
+  "requestSha256": "fd126b73f1e057d6a7b0835dadccfd6295308a60224653eac1c464a83ef71d85",
+  "sourceProofSha256": "0eb2c155510d56ee54a2ba101c1160ebe6e038b598093632fe44a97313b8b188",
+  "literalOnlyControllerSuccessor": true,
+  "nativePacketsUnchanged": 300,
+  "nativeResultHashesVerified": 656,
+  "assetsVerified": 175,
+  "shellDigest": "2fea41c565c01c64a066c15a10cad48d710aef8a0b1a61ddc0ea2c91ca8ea4a0",
+  "priorRootTransitionProofUnchanged": true,
+  "stageAuthorizedOnce": true,
+  "buildHeldForActualStageAudit": true,
+  "runtimeHelperAppHeld": true
+}
