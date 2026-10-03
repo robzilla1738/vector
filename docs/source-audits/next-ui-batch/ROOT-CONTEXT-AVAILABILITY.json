@@ -1,0 +1,25 @@
+{
+  "source": "/tmp/aux-browser-runtime-design-context-unavailable/docs/lane-requests/design/context-unavailable-choices",
+  "patchSha256": "f8a9138fe281dc0e59cd2432dac83d1506129b6e2efd3ff4f974dac7fb26e68c",
+  "independentForwardReverseForward": "PASS",
+  "rows": [
+    {
+      "path": "apps/shell/src/components/BrowserContextPicker.tsx",
+      "beforeSha256": "6be82a15e93be3485db67036f9ab48a126ec681f9d2bd9b0ccd05189536870fe",
+      "afterSha256": "3656aed4358072d4f3d81a7f615729d910fad22c7631a4dad851b6c7732a0bff",
+      "beforeSnapshot": "docs/lane-requests/design/context-unavailable-choices/before/apps/shell/src/components/BrowserContextPicker.tsx",
+      "afterSnapshot": "docs/lane-requests/design/context-unavailable-choices/after/apps/shell/src/components/BrowserContextPicker.tsx"
+    },
+    {
+      "path": "apps/shell/src/components/BrowserContextPicker.disclosure.test.tsx",
+      "beforeSha256": "10f77dc673d1af43aed15ebfb26d0d89f5b2b4ac6e89a2da141976d9db6b9c45",
+      "afterSha256": "3a061506cfdb082bb88dba9bc9fffc68289659ad66778fe990ab2665a94d1f8d",
+      "beforeSnapshot": "docs/lane-requests/design/context-unavailable-choices/before/apps/shell/src/components/BrowserContextPicker.disclosure.test.tsx",
+      "afterSnapshot": "docs/lane-requests/design/context-unavailable-choices/after/apps/shell/src/components/BrowserContextPicker.disclosure.test.tsx"
+    }
+  ],
+  "nativeQualification": false,
+  "rootControls": "PASS",
+  "rootControlsLog": "/tmp/aux-root-retry-picker-controls.log",
+  "rebuildLog": "/tmp/aux-root-mentions-build.log"
+}

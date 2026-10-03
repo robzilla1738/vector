@@ -1,0 +1,25 @@
+{
+  "source": "/tmp/aux-browser-runtime-l10-retry-mentions/docs/lane-requests/l10/retry-mentions",
+  "patchSha256": "a8618625e99bf700f0046a13e248adacc825586643e2381d5f1d39ce6c02f24f",
+  "independentForwardReverseForward": "PASS",
+  "rows": [
+    {
+      "path": "apps/runtime/src/services/runs.ts",
+      "beforeSha256": "f361347e612ca479d99784bf3174d66ba0a4a334f29d211e2b3b54a215f7f46d",
+      "afterSha256": "f0e6229c4c7a76808a50ae28c7692af2c5c48bcc7827a6f0ff8eeb80b1730995",
+      "beforeBytes": 80269,
+      "afterBytes": 80309
+    },
+    {
+      "path": "tests/unit/set-run-lifecycle.test.ts",
+      "beforeSha256": "ff93a8ba767aaa1016eb3fd4bc188b0c5e7f706c520e826fec5fb887ded36ada",
+      "afterSha256": "7f8d78515b0d89f514689de1ce1368c188e9c2cbc0ca117fe2a9c253253fea98",
+      "beforeBytes": 74543,
+      "afterBytes": 79545
+    }
+  ],
+  "nativeQualification": false,
+  "rootControls": "PASS",
+  "rootControlsLog": "/tmp/aux-root-retry-picker-controls.log",
+  "rebuildLog": "/tmp/aux-root-mentions-build.log"
+}

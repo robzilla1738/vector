@@ -184,7 +184,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
   const page = usable(originalPages[0]) ? originalPages[0] : undefined;
   const missingOriginals = run.pageIds.filter((id, index) => !usable(originalPages[index]) || originalPages[index]?.pageId !== id);
   const multiTabBlocked = run.pageIds.length > 1 && missingOriginals.length > 0;
-  const retryPage = !page && !multiTabBlocked && run.pageIds.length <= 1 ? runPages.find(item => item.pageId === retryPageId && usable(item)) : undefined;
+  const retryPage = !page && !multiTabBlocked && run.pageIds.length === 1 ? runPages.find(item => item.pageId === retryPageId && usable(item)) : undefined;
   const humanHolds = runPages.some(page => run.pageIds.includes(page.pageId) && page.controller === "human");
   const asksMe = prompt?.runId === run.runId || run.status === "needs_input";
   const question = prompt?.runId === run.runId ? prompt.question : run.statusMessage;

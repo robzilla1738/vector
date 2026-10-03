@@ -595,6 +595,78 @@ describe("conversation turn retry", () => {
     expect(h.repo.listRuns(20)).toHaveLength(1);
   });
 
+  it("retains original tab and group mention snapshots through actual coordinator admission", async () => {
+    const h = harness();
+    const read = await h.pages.open({ url: "https://read.test", background: true, ownedByRuntime: false });
+    const act = await h.pages.open({ url: "https://act.test", background: true, ownedByRuntime: false });
+    const outsider = await h.pages.open({ url: "https://outsider.test", background: true, ownedByRuntime: false });
+    const mentions = [
+      { kind: "tab" as const, pageId: read.pageId, url: read.url, title: "Read source", documentEpoch: read.documentEpoch, sessionId: read.sessionId!, access: "read" as const },
+      { kind: "group" as const, groupId: "original-group", members: [{ pageId: act.pageId, url: act.url, title: "Act source", documentEpoch: act.documentEpoch, sessionId: act.sessionId!, access: "act" as const }] },
+    ];
+    h.repo.saveRun({ runId: "mentioned-original", goal: "Use exact sources", status: "completed", pageIds: [], createdAt: 10,
+      config: { chatId: "mentioned-chat", mentions } });
+    const begin = h.turnMentions.begin.bind(h.turnMentions);
+    let release!: () => void, entered!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const ready = new Promise<void>(resolve => { entered = resolve; });
+    const admission = vi.spyOn(h.turnMentions, "begin").mockImplementation(async (...args) => {
+      const result = await begin(...args);
+      entered();
+      await held;
+      return result;
+    });
+    const retried = await h.runs.retry("mentioned-original");
+    try {
+      await ready;
+      expect(retried.config?.mentions).toEqual(mentions);
+      expect(admission.mock.calls[0]?.[1]).toEqual(mentions);
+      expect(await h.turnMentions.require(retried.runId, read.pageId, "read")).toEqual({ status: "available" });
+      expect(await h.turnMentions.require(retried.runId, read.pageId, "act")).toMatchObject({ status: "unavailable" });
+      expect(await h.turnMentions.require(retried.runId, act.pageId, "act")).toEqual({ status: "available" });
+      expect(await h.turnMentions.require(retried.runId, outsider.pageId, "read")).toMatchObject({ status: "unavailable" });
+    } finally {
+      await h.runs.cancel(retried.runId);
+      release();
+    }
+  });
+
+  for (const [label, change] of [
+    ["same-URL document drift", (page: PageTarget) => { page.documentEpoch++; }],
+    ["session drift", (page: PageTarget) => { page.sessionId = "new-person-session"; }],
+    ["URL drift", (page: PageTarget) => { page.url = "https://new.test"; }],
+  ] as const) it(`keeps retry mentions unavailable after ${label}`, async () => {
+    const h = harness();
+    const page = await h.pages.open({ url: "https://original.test", background: true, ownedByRuntime: false });
+    const mentions = [{ kind: "tab" as const, pageId: page.pageId, url: page.url, title: "Original", documentEpoch: page.documentEpoch,
+      sessionId: page.sessionId!, access: "read" as const }];
+    h.repo.saveRun({ runId: "mention-drift", goal: "Read", status: "completed", pageIds: [], createdAt: 10, config: { mentions } });
+    const retried = await h.runs.retry("mention-drift");
+    await h.runs.cancel(retried.runId);
+    expect(retried.config?.mentions).toEqual(mentions);
+    change(page);
+    await h.turnMentions.begin(retried.runId, retried.config?.mentions ?? [], []);
+    expect(await h.turnMentions.require(retried.runId, page.pageId, "read")).toEqual({ status: "unavailable", reason: "This tab changed outside this turn. Mention it again to continue." });
+    h.turnMentions.end(retried.runId);
+  });
+
+  it("does not rebind original mentions to an explicitly selected replacement", async () => {
+    const h = harness();
+    const original = await h.pages.open({ url: "https://old.test", background: true, ownedByRuntime: false });
+    const replacement = await h.pages.open({ url: "https://replacement.test", background: true, ownedByRuntime: false });
+    const mentions = [{ kind: "tab" as const, pageId: original.pageId, url: original.url, title: "Original", documentEpoch: original.documentEpoch,
+      sessionId: original.sessionId!, access: "read" as const }];
+    h.repo.saveRun({ runId: "mention-replacement", goal: "Read", status: "completed", pageIds: [original.pageId], createdAt: 10, config: { mentions } });
+    await h.pages.close(original.pageId);
+    const retried = await h.runs.retry("mention-replacement", replacement.pageId);
+    await h.runs.cancel(retried.runId);
+    expect(retried.config?.mentions).toEqual(mentions);
+    await h.turnMentions.begin(retried.runId, retried.config?.mentions ?? [], []);
+    expect(await h.turnMentions.require(retried.runId, original.pageId, "read")).toEqual({ status: "unavailable", reason: "This tab is closed." });
+    expect(await h.turnMentions.require(retried.runId, replacement.pageId, "read")).toEqual({ status: "unavailable", reason: "Mention this tab before using it." });
+    h.turnMentions.end(retried.runId);
+  });
+
   it("keeps task runs in their revision-controlled task workflow", async () => {
     const h = harness();
     h.repo.saveRun({

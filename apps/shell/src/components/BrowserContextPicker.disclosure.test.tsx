@@ -66,3 +66,34 @@ it("keeps unavailable and protected pages excluded and disabled controls closed"
   expect(panel.querySelector('.context-picker-group button')).toBeNull();
   expect(panel.textContent).toContain("No matching available tabs."); expect(changed).not.toHaveBeenCalled();
 });
+
+it("keeps missing Current and Conversation tabs explanatory and non-selectable, with page-free recovery", async () => {
+  const changed = vi.fn();
+  await act(async () => root.render(<BrowserContextPicker value="linked" linkedPageId="missing" onChange={changed}/>));
+  const panel = await open();
+  const choice = (name: string) => [...panel.querySelectorAll<HTMLButtonElement>("button")].find(button => button.querySelector("strong")?.textContent === name)!;
+  const current = choice("Current tab"), linked = choice("Conversation tab");
+  expect(current.disabled).toBe(true); expect(current.title).toContain("No website open");
+  expect(linked.disabled).toBe(true); expect(linked.title).toContain("Unavailable");
+  await act(async () => { current.click(); linked.click(); });
+  expect(changed).not.toHaveBeenCalled(); expect(panel.isConnected).toBe(true);
+  await act(async () => choice("No browser context").click());
+  expect(changed).toHaveBeenCalledExactlyOnceWith("none");
+});
+it("updates genuine Current and Conversation availability while open and preserves explicit selection", async () => {
+  const page = makePage(0, { pageId: "actual-page", title: "Original website", url: "https://example.test/actual" });
+  const changed = vi.fn();
+  useStore.setState({ pages: [page], activePageId: page.pageId });
+  await act(async () => root.render(<BrowserContextPicker value="linked" linkedPageId={page.pageId} onChange={changed}/>));
+  const panel = await open();
+  const current = () => [...panel.querySelectorAll<HTMLButtonElement>("button")].find(button => button.querySelector("strong")?.textContent === "Current tab")!;
+  const linked = () => [...panel.querySelectorAll<HTMLButtonElement>("button")].find(button => button.querySelector("strong")?.textContent === "Conversation tab")!;
+  expect(current().disabled).toBe(false); expect(linked().disabled).toBe(false);
+  await act(async () => useStore.setState({ pages: [], activePageId: null }));
+  expect(current().disabled).toBe(true); expect(linked().disabled).toBe(true);
+  await act(async () => current().click()); expect(changed).not.toHaveBeenCalled();
+  await act(async () => useStore.setState({ pages: [page], activePageId: page.pageId }));
+  expect(linked().disabled).toBe(false);
+  await act(async () => linked().click()); expect(changed).toHaveBeenCalledExactlyOnceWith("linked");
+  expect(document.querySelector('dialog[aria-label="Browser context"]')).toBeNull();
+});

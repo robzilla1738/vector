@@ -1123,6 +1123,7 @@ export class RunService {
       goal: prior.goal,
       pageIds: replacementPageId ? [replacementPageId] : prior.pageIds,
       contextPageRefs,
+      mentions: prior.config?.mentions,
       modelId: prior.config?.modelId,
       engine: prior.config?.implementation === "agent-loop" ? "agent-loop" : undefined,
       maxSteps: prior.config?.maxSteps,
