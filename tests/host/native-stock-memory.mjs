@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { acquireNativeSlot } from '../../scripts/native-slot.mjs';
 import { fixturePage } from './lib/fixture.mjs';
@@ -146,7 +146,7 @@ export async function collectStockMemory({ manifestPath, manifestSha256, auxRepo
   }
   return report;
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   const [manifestPath, manifestSha256, auxReportPath, reportPath] = process.argv.slice(2); assert.ok(manifestPath && manifestSha256 && auxReportPath && reportPath && process.argv.length === 6);
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(new Error('Original 600s stock memory deadline')), 600_000);
   const stop = () => controller.abort(new Error('Original caller termination')); process.once('SIGINT', stop); process.once('SIGTERM', stop);

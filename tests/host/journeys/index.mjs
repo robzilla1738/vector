@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { AUX_FEATURES } from '../../../packages/contracts/dist/aux-features.js';
 
 export const FEATURE_JOURNEYS = {
@@ -57,7 +57,7 @@ export function checkJourneyRegistry(entries, targets = TARGET_FEATURES) {
   return { journeys: entries.length, features: targets.length };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   const entries = await journeyRegistry();
   if (process.argv.includes('--check')) {
     const root = resolve(import.meta.dirname, '../../..');

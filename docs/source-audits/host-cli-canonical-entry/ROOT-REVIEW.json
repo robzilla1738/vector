@@ -1,0 +1,30 @@
+{
+  "status": "source-cli-correction-not-native-qualification",
+  "files": [
+    {
+      "path": "tests/host/journeys/index.mjs",
+      "beforeSha256": "6d821731a4217d517819ebf31f0d82ce00599b3c927cf2cb5b39273afbbdd499",
+      "afterSha256": "c553ab7ce26ef646e3109723b3c01d931be1aba5742355e28093365af13e6f6f",
+      "originalBodyExactAfterUndoOnlyImportsAndGuard": true
+    },
+    {
+      "path": "tests/host/native-stock-memory.mjs",
+      "beforeSha256": "e232154eec290afca2ee2895b1428690bf5ba98f4d753a19b9ebf48651e4d63a",
+      "afterSha256": "d31d6757b1b536608919ac699985dff4e2b627cca484da297b5617d90f0df7a6",
+      "originalBodyExactAfterUndoOnlyImportsAndGuard": true
+    }
+  ],
+  "actualPreEditAbsoluteTmpAliasBothExit0EmptyOutput": true,
+  "actualControlledCases": {
+    "directoryAliasNormalAndPreservedMainJourneyOutput": {
+      "journeys": 48,
+      "features": 43
+    },
+    "directoryAliasNormalAndPreservedMainStockMissingArgs": "exit1 original assertion before collector and native slot",
+    "wrapperAndNonexistentEvalArgvImportsBothModules": "exit0 silent"
+  },
+  "scopedLint": "passed",
+  "diffCheck": "passed",
+  "nativeOperationExecuted": false,
+  "functionalAndPerformanceCollectorBodyChanged": false
+}
