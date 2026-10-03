@@ -1,0 +1,24 @@
+{
+  "initialReviewScriptFailure": "shellFiles is a list; original mirror/packet checks passed before shape correction",
+  "sourceOnly": true,
+  "sourceProofSha256": "c951a0edeaa16319a0ef918ff15e5da3a39c8501da3cb4124519cc8cd7411d1d",
+  "recipeSha256": "f5d4ab611583011bd6bf3fd700fa5a166e8c03b278c69aaf8457b3df96542e55",
+  "actualCleanSourceHead": "6909ff1ea3022245f8df052c130fb4a8c57200a9",
+  "actualIdentity": {
+    "commit": "3e12875843182031d2eac2602f287e15f59498aa",
+    "tree": "ad7b78ffbf221f448dbfde3cef6eded75a5e0048",
+    "dirty": false,
+    "label": "3e12875843182031d2eac2602f287e15f59498aa"
+  },
+  "wholeRootOwnedReplayMatchesActual468Mirrors": true,
+  "nativeLeaves": 468,
+  "packets": 152,
+  "shellAssets": 175,
+  "shellDigest": "7270ffb5375bf8cba678dd13fc09f183d9d2a6a98b2c234c1030c2c64edea12c",
+  "helperSourceSha256": "73338487fccbc093dd44b002e7981406e86d11960393eb509a90a6e322a04da9",
+  "actualTerminalReceiptSha256": "61abf6fa359ceeed9db185c340855bb12e7e5471f8b3716dcbda2cdfaf72c588",
+  "stageApproved": false,
+  "buildApproved": false,
+  "laterHarnessChangesRequireFreshCoherentSuccessor": true,
+  "trustAndPrivateSourceFreezeStillRequired": true
+}
