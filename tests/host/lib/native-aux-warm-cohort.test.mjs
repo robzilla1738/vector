@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
-const source = new URL('./native-aux-warm-cohort.mjs', import.meta.url);
+const source = new URL('./native-warm-cohort.mjs', import.meta.url);
 // Actual collector executed with controlled observations/children only. These
 // records never admit a native trial, real helper, AC power or hardware result.
 function fixture() {
@@ -28,8 +28,9 @@ function fixture() {
   vm.runInNewContext(script, { exports, structuredClone, AbortSignal,
     require(name) { if (name === 'node:assert/strict') return { default: assert };
       if (name === 'node:child_process') return { execFileSync() { throw new Error('Native producer forbidden'); } };
+      if (name === './native-stock-warm-observation.mjs') return {observeStockWarmWindow() {throw new Error('Aux cannot borrow Stock producer');}};
       assert.equal(name, './native-aux-warm-observation.mjs'); return { observeAuxWarmWindow: owner => observe(owner) }; } });
-  const rawCollect = exports.collectAuxWarmWindows;
+  const rawCollect = options => exports.collectWarmWindows('aux', options);
   const collect = options => rawCollect(options).catch(error => error.report);
   const options = { candidate, signal: new AbortController().signal, readPower: async () => "Now drawing from 'AC Power'",
     async openTrial(index) { opens++; calls.push(`open:${index}`);

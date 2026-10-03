@@ -1,0 +1,22 @@
+{
+  "stageProofSha256": "247cf6098cae51ea8f48782e9b14c6056ea1b9ec4f0068eaf8abce73229c7c98",
+  "terminalReceiptSha256": "57272b4c9593ba5e07ec52e5adba8f2a53048269ce8985fb8ea1654a7c22ae2d",
+  "actualNativeVerified": 465,
+  "actualPacketsVerified": 149,
+  "actualGeneratedVerified": 3,
+  "actualRendererAssetsVerified": 175,
+  "actualPartialCompiledUnchanged": 8801,
+  "actualRuntimeUnchanged": 91,
+  "actualHelperUnchanged": true,
+  "actualMetadataUnchanged": 8,
+  "actualStageArtifactsVerified": 22,
+  "actualOriginalRecordedPidsAbsent": 9,
+  "actualOriginalRecordedGroupsAbsent": 3,
+  "actualSlotAbsent": true,
+  "originalStageChildrenExit0AndGroupsAbsent": true,
+  "nativeCompiled": false,
+  "runtimeStaged": false,
+  "helperCompiled": false,
+  "mixedPairMayLaunch": false,
+  "approvedNextScope": "exact3aeb full17 incremental graph only underoriginal ownedslot; no helper/runtime/app"
+}

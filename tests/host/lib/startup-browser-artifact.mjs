@@ -3,12 +3,13 @@ import { createHash } from 'node:crypto';
 import { constants, closeSync, fstatSync, lstatSync, openSync, readSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { readStartupMachO } from './startup-helper-manifest.mjs';
-/** Only the fixed admitted Aux bundle executable. Hold it through original child
+/** Only the fixed admitted Aux or Stock bundle executable. Hold it through original child
  * cleanup; this byte lease alone does not prove the native build's compilation. */
-export function retainStartupBrowserArtifact(bundle, pins) {
+export function retainStartupBrowserArtifact(bundle, pins, kind = 'aux') {
+  assert.ok(kind === 'aux' || kind === 'stock', 'Closed startup executable kind required');
   assert.deepEqual(Object.keys(pins ?? {}).sort(), ['imageUuid', 'sha256']);
   assert.match(pins.sha256, /^[a-f0-9]{64}$/); assert.match(pins.imageUuid, /^[a-f0-9]{32}$/);
-  const path = join(bundle, 'Contents/MacOS/Aux'); assert.equal(realpathSync(path), path);
+  const path = join(bundle, kind === 'aux' ? 'Contents/MacOS/Aux' : 'Contents/MacOS/Chromium'); assert.equal(realpathSync(path), path);
   const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   let retired = false;
   try {
