@@ -1,0 +1,66 @@
+{
+  "sourceOnly": true,
+  "adopted": false,
+  "nativeCompiled": false,
+  "exactEightLeafForwardReverseForward": "PASS",
+  "requestSha256": "7af14de937ddaef60bfe4348989cd499f920f8f75f7c6f0aa281fadb38fc084f",
+  "originalPins": [
+    {
+      "path": "chrome/browser/ui/aux/native_warm_input.h",
+      "baseline": null,
+      "snapshot": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0316-warm-common-reader/chrome/browser/ui/aux/native_warm_input.h",
+      "beforeSha256": null,
+      "afterSha256": "c13a2a5bd410f33f3ba2bb3f51e404a66d2fcb4247ddc7ab9f49629b63c8a439"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_warm_input.mm",
+      "baseline": null,
+      "snapshot": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0316-warm-common-reader/chrome/browser/ui/aux/native_warm_input.mm",
+      "beforeSha256": null,
+      "afterSha256": "eb2a6dd98495e162152403c2a8614faf97aafbeb5b0a430464b73f2a84bee1ba"
+    },
+    {
+      "path": "chrome/browser/BUILD.gn",
+      "baseline": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0294-stock-warm-draft/shared-results/chrome/browser/BUILD.gn",
+      "snapshot": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0316-warm-common-reader/shared-results/chrome/browser/BUILD.gn",
+      "beforeSha256": "a8f4ea2b569c194cd3a2ce9cf83d4c973eda71f5f6307ff1a8a96a23efc9bc99",
+      "afterSha256": "e36f12f8c2f7efea69095fb495fd7ae83cb782f809189debb6d5ff5fe493c1fb"
+    },
+    {
+      "path": "chrome/browser/ui/aux/BUILD.gn",
+      "baseline": "/tmp/aux-browser-runtime-root-person-observer/.native/chrome/browser/ui/aux/BUILD.gn",
+      "snapshot": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0316-warm-common-reader/shared-results/chrome/browser/ui/aux/BUILD.gn",
+      "beforeSha256": "1a9b7adfaf063ad8b2d159fee38c0bbaa2748351ce2a469c7ce66c130f87b6a3",
+      "afterSha256": "b99d40b2c1a96247c8f05e6e0058961139c326ad87cca5fe9cc7327e7269c48d"
+    },
+    {
+      "path": "chrome/browser/ui/stock_measurement/native_stock_warm_creation_ticket.cc",
+      "baseline": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0294-stock-warm-construction-successor/chrome/browser/ui/stock_measurement/native_stock_warm_creation_ticket.cc",
+      "snapshot": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0316-warm-common-reader/shared-results/chrome/browser/ui/stock_measurement/native_stock_warm_creation_ticket.cc",
+      "beforeSha256": "8dcbbd54ee07f67224570a4712ed27a327c4a91403b9d5dc97c36288b6e2624e",
+      "afterSha256": "7a42a964a85854a92e6e0a8908177ce38223bde893b8d0784dfca3c372973629"
+    },
+    {
+      "path": "chrome/browser/ui/stock_measurement/native_stock_warm_creation_ticket.h",
+      "baseline": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0294-stock-warm-draft/chrome/browser/ui/stock_measurement/native_stock_warm_creation_ticket.h",
+      "snapshot": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0316-warm-common-reader/shared-results/chrome/browser/ui/stock_measurement/native_stock_warm_creation_ticket.h",
+      "beforeSha256": "d66205a291b57bf14912d8b0361266d783272f440db153d0c73716afa8adf98e",
+      "afterSha256": "be29fd5141cb149030a503b76eaa072cc258443e6f30b04206d4b5d0b0a22250"
+    },
+    {
+      "path": "chrome/browser/ui/stock_measurement/native_stock_warm_input.h",
+      "baseline": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0294-stock-warm-draft/chrome/browser/ui/stock_measurement/native_stock_warm_input.h",
+      "snapshot": null,
+      "beforeSha256": "d3b90c8551297ae55c4175fe6687b299af4e1377c4383a7428fed5c5bf952050",
+      "afterSha256": null
+    },
+    {
+      "path": "chrome/browser/ui/stock_measurement/native_stock_warm_input.mm",
+      "baseline": "/private/tmp/aux-browser-runtime-design-startup-lifecycle/native-source/0294-stock-warm-draft/chrome/browser/ui/stock_measurement/native_stock_warm_input.mm",
+      "snapshot": null,
+      "beforeSha256": "6e0bc4516ed41778f0d214ec2daf7b02fcf3772d1ff9882009a4f550399a1fdf",
+      "afterSha256": null
+    }
+  ],
+  "review": "Original actual AppKit/CG keydown, retained key native window, repeat/modifier/key checks, actual timestamps and final original-stability checks remain. Old Stock reader and GN references deleted. Weak ticket fence rechecked after reentrant owner callback; not input authorization or hardware/performance evidence."
+}
