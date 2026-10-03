@@ -28,6 +28,10 @@
     "recovery-controls": {
       "path": "/tmp/aux-root-b745-recovery-controls.log",
       "sha256": "97917cf855c7dcb355d992e404920ef0e3a3a3d8f176def97c7d3276aa4e1cbb"
+    },
+    "wholeUnitFinal": {
+      "path": "/tmp/aux-root-07f3-final-unit.log",
+      "sha256": "84f1a092839f69d86777f6dc8849135123dfb749c2e58d29c86af17a0ed23b2c"
     }
   },
   "workspaceBuild": "PASS",
@@ -37,7 +41,7 @@
   "bindingsBridgeNativeInventoryJourneys": "PASS",
   "wholeUnitInitial": "four failures limited to detached/layoutless older fixtures; all other tests passed",
   "affectedFixturesCorrected": "PASS; connected visible mount setup only, every original action assertion unchanged",
-  "wholeUnitFinalRequired": true,
+  "wholeUnitFinalRequired": false,
   "packagedAssets": {
     "count": 175,
     "digest": "3f98360e62022bab581d7d8c9504faf704a77e9f31bf183c46d69c0139e44967",
@@ -47,5 +51,6 @@
       1793
     ]
   },
-  "nativeCompiled": false
+  "nativeCompiled": false,
+  "wholeUnitFinal": "PASS"
 }

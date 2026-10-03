@@ -1,0 +1,32 @@
+{
+  "transitionPatchSha256": "3793b245ecb2b8a37c83fdc25ec88274a98739c44df320b68cbb73083f2f8639",
+  "producerProofSha256": "eba136e0f8fdbb3f5e45eecb14d3a9744e697799f400e51fbe68e2d6587c1373",
+  "actualChangedPaths": [
+    "chrome/browser/ui/aux/BUILD.gn",
+    "chrome/browser/ui/aux/methods/window_methods.cc",
+    "chrome/test/BUILD.gn",
+    "content/public/browser/BUILD.gn",
+    "content/browser/renderer_host/render_frame_host_manager.cc",
+    "content/browser/renderer_host/render_frame_host_manager.h",
+    "content/browser/renderer_host/render_widget_host_view_mac.mm",
+    "content/browser/web_contents/web_contents_view.h",
+    "content/public/browser/native_platform_input_admission.h",
+    "content/public/browser/render_widget_host_view.h",
+    "content/public/browser/web_contents.h",
+    "content/public/browser/web_contents_delegate.h",
+    "chrome/browser/ui/aux/native_utility_appearance_owner.cc",
+    "chrome/browser/ui/aux/native_utility_appearance_owner.h",
+    "chrome/browser/ui/aux/native_utility_appearance_owner_unittest.cc",
+    "content/public/browser/web_contents.cc",
+    "content/browser/renderer_host/render_widget_host_view_base.cc",
+    "content/public/browser/web_contents_delegate.cc",
+    "content/browser/web_contents/web_contents_view.cc",
+    "content/browser/BUILD.gn",
+    "content/public/browser/native_platform_input_admission.cc"
+  ],
+  "fullTransitionRead": true,
+  "actualStableBeforeAndContextForwardReverseForward": true,
+  "unchangedPrefixNotRepeated": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-302-transition-mql87xdh",
+  "compiled": false
+}
