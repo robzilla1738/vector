@@ -86,6 +86,7 @@ it("passes the original Stop click through the registered command during its dis
   const measured = vi.fn((event: Event, runId: string) => {
     expect(runId).toBe(run.runId);
     expect(event.target).toBe(stop);
+    expect(stop.dataset.nativeStopRun).toBe(run.runId);
     expect(event.currentTarget).not.toBeNull();
     expect(event.eventPhase).not.toBe(Event.NONE);
     return Promise.resolve();

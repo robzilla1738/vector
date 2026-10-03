@@ -21,14 +21,17 @@ export function invokeRunControlCommand(command: RunControlCommand, context: { p
   const visible = [...owners].filter(owner => owner.element.isConnected &&
     !owner.element.closest('[hidden], [inert], [aria-hidden="true"]') && owner.element.getClientRects().length > 0 &&
     (runId === undefined || owner.runId === runId));
+  const event = context.nativeInputEvent;
+  // A click belongs to its original controls even when another panel retains
+  // keyboard focus. Native code alone can admit a fixture measurement.
+  if (event) {
+    const target = event.target;
+    const clicked = target instanceof Node ? visible.filter(owner => owner.element.contains(target)) : [];
+    if (clicked.length !== 1) throw new Error("The run’s controls changed. Try again from its controls.");
+    return clicked[0]!.invoke(command, event);
+  }
   const focused = visible.filter(owner => owner.element.contains(document.activeElement));
   const candidates = focused.length ? focused : visible;
   if (candidates.length !== 1) throw new Error("Choose the run’s controls before using this command.");
-  const owner = candidates[0]!;
-  const event = context.nativeInputEvent;
-  // This only passes through the original event. Native code alone can admit a
-  // fixture measurement; keyboard and programmatic calls carry no event.
-  if (event && (!(event.target instanceof Node) || !owner.element.contains(event.target)))
-    throw new Error("The run’s controls changed. Try again from its controls.");
-  return owner.invoke(command, event);
+  return candidates[0]!.invoke(command, undefined);
 }

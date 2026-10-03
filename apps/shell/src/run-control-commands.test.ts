@@ -45,3 +45,25 @@ it("cannot borrow a different run’s actual click", () => {
   expect(String(caught)).toContain("controls changed");
   expect(first.invoke).not.toHaveBeenCalled(); expect(second.invoke).not.toHaveBeenCalled();
 });
+
+it("dispatches each same-run click to its original owner despite stale focus", () => {
+  const first = controls("same"), second = controls("same");
+  first.button.focus();
+  for (const owner of [first, second]) {
+    let original: Event | undefined, result: unknown;
+    const completion = Promise.resolve("original completion"); owner.invoke.mockReturnValue(completion);
+    owner.button.addEventListener("click", event => { original = event; result = invokeRunControlCommand("stop-run", { payload: { runId: "same" }, nativeInputEvent: event }); });
+    owner.button.click();
+    expect(result).toBe(completion);
+    expect(owner.invoke).toHaveBeenCalledExactlyOnceWith("stop-run", original);
+  }
+});
+it("refuses ambiguous nested event owners and an undispatched event", () => {
+  const outer = controls("same"), inner = controls("same"); outer.element.append(inner.element);
+  let caught: unknown;
+  inner.button.addEventListener("click", event => { try { invokeRunControlCommand("stop-run", { nativeInputEvent: event }); } catch (error) { caught = error; } });
+  inner.button.click();
+  expect(String(caught)).toContain("controls changed");
+  expect(() => invokeRunControlCommand("stop-run", { nativeInputEvent: new Event("click") })).toThrow("controls changed");
+  expect(outer.invoke).not.toHaveBeenCalled(); expect(inner.invoke).not.toHaveBeenCalled();
+});
