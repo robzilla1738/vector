@@ -217,3 +217,16 @@ it("starts document attachment from the plus portal and retains a picker error a
   expect(host.querySelector('textarea')).toBe(input);
   expect(input.value).toBe("Keep this question");
 });
+
+it("focuses a fresh full-window chat without stealing focus on unrelated updates", async () => {
+  vi.stubGlobal("localStorage", { getItem: vi.fn().mockReturnValue(null), setItem: vi.fn(), removeItem: vi.fn() });
+  useStore.setState({ conversationId: null, runs: [], pendingTurns: [], pages: [], connected: true });
+  vi.spyOn(bridge, "invoke").mockResolvedValue({ workspace: null, memory: null });
+  await act(async () => root.render(<Conversation chatId={null} />));
+  const input = host.querySelector<HTMLTextAreaElement>('[aria-label="Reply to conversation"]')!;
+  expect(document.activeElement).toBe(input);
+  const context = host.querySelector<HTMLButtonElement>('[aria-label="Add context"]')!;
+  context.focus();
+  await act(async () => useStore.setState({ pages: [makePage(0, { title: "Background tab changed" })] }));
+  expect(document.activeElement).toBe(context);
+});

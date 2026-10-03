@@ -666,6 +666,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
     finally { documentBusy.current = false; setAttachmentSaving(false); }
   };
   const newChat = !embedded && !turns.length && !pendingTurns.length && !historyLoading && !historyError && !taskBound;
+  useEffect(() => { if (newChat) textareaRef.current?.focus(); }, [newChat, textareaRef]);
   const imageTray = <ConversationImages detachedTools toolsTarget={contextTools} showAttachedImages={false} incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onDocument={() => void attachDocument()} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />;
   if (id === "history") return <ConversationHistory/>;
   const dictation = <Dictation draftKey={id ? draftKey(id) : "new"} key={`dictation-${id ?? "new"}`} disabled={archived || sending || answerPending} composerRef={textareaRef} onInsert={words => {
