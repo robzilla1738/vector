@@ -1,7 +1,7 @@
 import { TurnMentionService } from "../../apps/runtime/src/services/turn-mention-service.js";
 import { describe, it, expect, vi } from "vitest";
 import { DurableWriteLedger, MockModelClient, EventBus, openDb, Repo, RunService, SetService, SetRunner, TaskService, WorkerPool } from "@aux/runtime";
-import { EventTypes, taskConversationId } from "@aux/contracts";
+import { AuxError, EventTypes, taskConversationId } from "@aux/contracts";
 import type { ModelClient, PageService, SettingsService, ArtifactStore } from "@aux/runtime";
 import type { Observation, PageTarget, Program, Run } from "@aux/contracts";
 import { handlePageTakeover } from "../../apps/runtime/src/services/page-takeover.js";
@@ -32,15 +32,15 @@ function fakePages(opts: { execMs: number }) {
   let n = 0;
   const state = { active: 0, peak: 0, executed: 0 };
   const pages = {
-    open: async ({ url }: { url: string }) => {
+    open: async ({ url, ownedByRuntime = true }: { url: string; ownedByRuntime?: boolean }) => {
       const pageId = `p${++n}`;
-      const t = { pageId, url, documentEpoch: 1, ownedByRuntime: true, backend: "aux", targetId: pageId, sessionId: `fixture-attachment-${pageId}`, viewStatus: "visible" } as unknown as PageTarget;
+      const t = { pageId, url, documentEpoch: 1, ownedByRuntime, backend: "aux", targetId: pageId, sessionId: `fixture-attachment-${pageId}`, viewStatus: "visible" } as unknown as PageTarget;
       targets.set(pageId, t);
       return t;
     },
     get: (id: string) => {
       const t = targets.get(id);
-      if (!t) throw new Error(`no page ${id}`);
+      if (!t) throw new AuxError("not_found", `no page ${id}`);
       return t;
     },
     isAttached: (id: string) => targets.has(id),
@@ -248,6 +248,7 @@ describe("conversation turn retry", () => {
 
   it("scopes revisioned workspace memory to a conversation and preserves its retry snapshot", async () => {
     const h = harness();
+    await h.pages.open({ url: "https://example.com", background: true, ownedByRuntime: false });
     h.repo.db.prepare("INSERT INTO workspaces VALUES(?,?,?)").run("workspace-one", "Travel", 1);
     h.repo.setSetting("workspaceMemory:workspace-one", { workspaceId: "workspace-one", content: "Prefer offline-capable options.", revision: 2, updatedAt: 3,
       excludedOrigins: ["https://excluded.example"], items: [
@@ -278,6 +279,7 @@ describe("conversation turn retry", () => {
 
   it("reuses selected generated text artifacts with bounded exact provenance", async () => {
     const h = harness();
+    await h.pages.open({ url: "https://example.com", background: true, ownedByRuntime: false });
     h.repo.saveRun({ runId: "artifact-turn", goal: "Prepare the comparison", status: "completed", pageIds: ["p1"], config: { chatId: "artifact-chat" }, result: { answer: "Created report" }, createdAt: 1, endedAt: 2 });
     h.repo.saveArtifact({ artifactId: "report-artifact", runId: "artifact-turn", path: "/artifacts/report-artifact-comparison.md", mediaType: "text/markdown", size: 36, status: "complete", createdAt: 2 });
     h.artifactContents.set("report-artifact", "# Comparison\nOption A is more reliable.");
@@ -312,6 +314,7 @@ describe("conversation turn retry", () => {
 
   it("uses only an exact completed prior report as artifact completion evidence", async () => {
     const h = harness();
+    await h.pages.open({ url: "https://example.com", background: true, ownedByRuntime: false });
     const report = "# Report\nOption B has offline support.";
     h.repo.saveRun({runId:"source-turn",goal:"Write report",status:"completed",pageIds:["p1"],config:{chatId:"report-chat"},result:{report,automaticReportArtifactId:"verified-report"},createdAt:1,endedAt:2});
     h.repo.saveArtifact({artifactId:"verified-report",runId:"source-turn",path:"/artifacts/verified-report-report.md",mediaType:"text/markdown",size:Buffer.byteLength(report),status:"complete",createdAt:2});
@@ -385,6 +388,7 @@ describe("conversation turn retry", () => {
 
   it("persists bounded local-document context with exact provenance and no source path", async () => {
     const h = harness();
+    await h.pages.open({ url: "https://example.com", background: true, ownedByRuntime: false });
     h.repo.saveRun({ runId: "document-turn", goal: "Start research", status: "completed", pageIds: ["p1"], config: { chatId: "document-chat" }, result: { answer: "Initial result" }, createdAt: 1, endedAt: 2 });
     const added = h.runs.addAttachment({ chatId: "document-chat", filename: "brief.md", content: "# Private brief\nCompare option A and option B." });
     expect(added.attachments[0]).toMatchObject({ filename: "brief.md", included: true });
@@ -491,6 +495,7 @@ describe("conversation turn retry", () => {
 
   it("preserves the thread and exact scope while recording retry lineage", async () => {
     const h = harness();
+    await h.pages.open({ url: "https://example.com", background: true, ownedByRuntime: false });
     h.repo.saveRun({
       runId: "interrupted-turn", goal: "finish the lookup", status: "interrupted", pageIds: ["p1"],
       config: { chatId: "chat-one", modelId: "mock/planner", maxSteps: 7, maxModelCalls: 3, context: "earlier context" },
@@ -526,6 +531,68 @@ describe("conversation turn retry", () => {
     h.targets.set("only-crash", { pageId: "only-crash", url: "https://only.test", viewStatus: "crashed", ownedByRuntime: false } as PageTarget);
     h.repo.saveRun({ runId: "one-crash", goal: "Finish lookup", status: "interrupted", pageIds: ["only-crash"], createdAt: 21, config: { chatId: "one-crash-chat" } });
     await expect(h.runs.retry("one-crash")).rejects.toThrow(/Reopen or choose/);
+  });
+
+  it("retries the exact ordinary native person context without a DriverPage", async () => {
+    const h = harness();
+    const page = await h.pages.open({ url: "https://person.test", background: true, ownedByRuntime: false });
+    vi.spyOn(h.pages, "isAttached").mockReturnValue(false);
+    const refs = [{ pageId: page.pageId, url: page.url, documentEpoch: page.documentEpoch, sessionId: page.sessionId, selectedAt: 100 }];
+    h.repo.saveRun({ runId: "person-turn", goal: "Read the selected page", status: "completed", pageIds: [page.pageId],
+      createdAt: 10, config: { chatId: "person-chat", contextPageRefs: refs } });
+    const retried = await h.runs.retry("person-turn");
+    expect(retried.pageIds).toEqual([page.pageId]);
+    expect(retried.config?.contextPageRefs).toEqual(refs);
+    expect(retried.config?.retryOfRunId).toBe("person-turn");
+  });
+
+  for (const [label, change] of [
+    ["same-URL document replacement", (page: PageTarget) => { page.documentEpoch++; }],
+    ["person session replacement", (page: PageTarget) => { page.sessionId = "replacement"; }],
+    ["URL drift", (page: PageTarget) => { page.url = "https://replacement.test"; }],
+    ["runtime ownership replacement", (page: PageTarget) => { page.ownedByRuntime = true; }],
+  ] as const) it(`refuses retry after ${label} without publishing a new run`, async () => {
+    const h = harness();
+    const page = await h.pages.open({ url: "https://person.test", background: true, ownedByRuntime: false });
+    const refs = [{ pageId: page.pageId, url: page.url, documentEpoch: page.documentEpoch, sessionId: page.sessionId }];
+    h.repo.saveRun({ runId: "original", goal: "Read", status: "completed", pageIds: [page.pageId], createdAt: 10,
+      config: { chatId: "original-chat", contextPageRefs: refs } });
+    change(page);
+    await expect(h.runs.retry("original")).rejects.toThrow(/Reopen or choose/);
+    expect(h.repo.listRuns(20)).toHaveLength(1);
+  });
+
+  it("refuses a closed original and propagates unexpected lookup errors", async () => {
+    const h = harness();
+    h.repo.saveRun({ runId: "closed", goal: "Read", status: "completed", pageIds: ["closed-page"], createdAt: 10 });
+    await expect(h.runs.retry("closed")).rejects.toThrow(/Reopen or choose/);
+    const unexpected = new AuxError("internal", "Catalog transport failed");
+    vi.spyOn(h.pages, "get").mockImplementation(() => { throw unexpected; });
+    await expect(h.runs.retry("closed")).rejects.toBe(unexpected);
+    expect(h.repo.listRuns(20)).toHaveLength(1);
+  });
+
+  it("captures explicit replacement context and rechecks it after awaited snapshot work", async () => {
+    const h = harness();
+    const replacement = await h.pages.open({ url: "file:///disposable/source.html", background: true, ownedByRuntime: false });
+    const refs = [{ pageId: replacement.pageId, url: replacement.url, documentEpoch: replacement.documentEpoch, sessionId: replacement.sessionId }];
+    h.repo.saveRun({ runId: "lost", goal: "Read", status: "completed", pageIds: ["closed"], createdAt: 10, config: { chatId: "lost-chat" } });
+    const start = h.runs.start.bind(h.runs);
+    let release!: () => void, entered!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const ready = new Promise<void>(resolve => { entered = resolve; });
+    vi.spyOn(h.runs, "start").mockImplementation(async options => {
+      expect(options.contextPageRefs).toEqual(refs);
+      entered();
+      await held;
+      return start(options);
+    });
+    const retry = h.runs.retry("lost", replacement.pageId);
+    await ready;
+    replacement.documentEpoch++;
+    release();
+    await expect(retry).rejects.toThrow(/selected browser tab changed/);
+    expect(h.repo.listRuns(20)).toHaveLength(1);
   });
 
   it("keeps task runs in their revision-controlled task workflow", async () => {

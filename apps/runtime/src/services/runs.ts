@@ -1083,17 +1083,36 @@ export class RunService {
     const latest = this.deps.repo.listRuns(500, { chatId }).at(0);
     if (latest && latest.runId !== prior.runId) throw new AuxError("conflict", "A newer turn exists in this conversation. Retry it instead.");
     if (replacementPageId && prior.pageIds.length > 1) throw new AuxError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
-    if (replacementPageId) this.deps.pages.get(replacementPageId);
-    const usable = (pageId: string) => {
-      try {
-        const page = this.deps.pages.get(pageId);
-        if (typeof this.deps.pages.isAttached === "function" && !this.deps.pages.isAttached(pageId)) return false;
-        return page.viewStatus !== "crashed" && page.viewStatus !== "detached";
-      } catch {
-        return true;
+    const originalRefs = prior.config?.contextPageRefs ?? [];
+    const currentPage = (pageId: string) => {
+      try { return this.deps.pages.get(pageId); }
+      catch (error) {
+        if (error instanceof AuxError && error.code === "not_found") return undefined;
+        throw error;
       }
     };
-    if (!replacementPageId) {
+    const usable = (pageId: string) => {
+      const page = currentPage(pageId);
+      if (!page || page.viewStatus === "crashed" || page.viewStatus === "detached") return false;
+      const original = originalRefs.find(ref => ref.pageId === pageId);
+      if (original) {
+        // Ordinary native person reads have a browser-owned document/session,
+        // not a DriverPage attachment. Preserve that exact selected snapshot.
+        return !page.ownedByRuntime && page.url === original.url
+          && page.documentEpoch === original.documentEpoch && page.sessionId === original.sessionId;
+      }
+      return typeof this.deps.pages.isAttached !== "function" || this.deps.pages.isAttached(pageId);
+    };
+    let contextPageRefs: PageContextRef[] | undefined = prior.config?.contextPageRefs;
+    if (replacementPageId) {
+      const page = currentPage(replacementPageId);
+      if (!page || page.viewStatus === "crashed" || page.viewStatus === "detached")
+        throw new AuxError("conflict", "The selected browser tab is unavailable. Choose another tab before retrying this turn.");
+      // Explicit replacement captures the actual chosen page before start's
+      // awaited context work; start rechecks this snapshot before publication.
+      contextPageRefs = page.ownedByRuntime ? undefined : [{ pageId: page.pageId,
+        url: page.url, documentEpoch: page.documentEpoch, sessionId: page.sessionId }];
+    } else {
       const missing = prior.pageIds.filter(id => !usable(id));
       if (missing.length) {
         if (prior.pageIds.length > 1) throw new AuxError("conflict", "Restore the original tabs before retrying a multi-tab turn.");
@@ -1103,6 +1122,7 @@ export class RunService {
     return this.start({
       goal: prior.goal,
       pageIds: replacementPageId ? [replacementPageId] : prior.pageIds,
+      contextPageRefs,
       modelId: prior.config?.modelId,
       engine: prior.config?.implementation === "agent-loop" ? "agent-loop" : undefined,
       maxSteps: prior.config?.maxSteps,
