@@ -2,7 +2,7 @@ import { fixtureTurnMentions } from "../fixtures/turn-mentions.js";
 import { expect, it } from "vitest";
 import { EventBus, PageService, Repo, openDb } from "@aux/runtime";
 import type { BrowserDriver, DriverPage } from "@aux/chromium-driver";
-import type { PageTarget } from "@aux/contracts";
+import { ResultSchemas, type PageTarget } from "@aux/contracts";
 
 it("restores only the foreground tab when the native catalog starts empty", async () => {
   const repo = new Repo(openDb(":memory:"));
@@ -110,7 +110,14 @@ it("keeps failed session tabs through later browsing and retries the same durabl
     const fresh=await pages.open({url:"https://fresh.test/",background:false,ownedByRuntime:false});
     expect(repo.loadTabs().map(tab=>tab.page_id)).toEqual(expect.arrayContaining([original.pageId,fresh.pageId]));
     failing=false;
-    expect(await pages.retryRestore(original.pageId)).toEqual({ok:true,pageId:original.pageId});
+    const restored = await pages.retryRestore(original.pageId);
+    expect(restored).toEqual({ok:true,pageId:original.pageId,page:pages.get(original.pageId),restored:true});
+    expect(restored.page).toMatchObject({pageId:original.pageId,windowId:original.windowId,url:original.url,documentEpoch:5});
+    expect(restored.page.sessionId).toBe(pages.get(original.pageId).sessionId);
+    expect(restored.page).not.toBe(pages.get(original.pageId));
+    expect(ResultSchemas["browser.recovery.retry"].safeParse(restored).success).toBe(true);
+    expect(ResultSchemas["browser.recovery.retry"].safeParse({ok:true,pageId:original.pageId}).success).toBe(false);
+    expect(ResultSchemas["browser.recovery.retry"].safeParse({...restored,restored:undefined}).success).toBe(false);
     await Promise.resolve();
     expect(pages.recoveryTabs()).toEqual([]);
     expect(repo.getPage(original.pageId)?.documentEpoch).toBe(5);
@@ -196,4 +203,20 @@ it("keeps document epochs monotonic when a native catalog event wins the restore
     expect(initialEpoch).toBe(8);
     expect(repo.getPage(previous.pageId)?.documentEpoch).toBe(8);
   } finally { pages.shuttingDown(); db.close(); }
+});
+
+it("reports existing-live recovery honestly after an independent native registration", async()=> {
+ const db=openDb(":memory:"),repo=new Repo(db);
+ const original:PageTarget={pageId:"existing",windowId:"main",backend:"aux",targetId:"old",url:"https://saved.test/",title:"Saved",documentEpoch:4,lastRevision:0,viewStatus:"visible",controller:"none",controllerEpoch:2,ownedByRuntime:false,createdAt:1,lastActiveAt:2};
+ repo.upsertPage(original);repo.saveTabs([{...original,ordinal:0,active:true}]);let recoveryCalls=0;
+ const driver={isConnected:()=>true,recoverPage:async()=>{recoveryCalls++;throw new Error("not ready");},attach:async(targetId:string,pageId:string)=>({identity:{targetId,pageId,backend:"aux"},isAttached:()=>true,url:()=>"https://external.test/",title:async()=>"External",setEvents:()=>{},dispose:async()=>{}})} as unknown as BrowserDriver;
+ const native={available:()=>true,listPages:async()=>({pages:[]}),tabCommand:async()=>({commandId:"",status:"applied",catalogVersion:0}),focusPage:async()=>({ok:true})} as unknown as ConstructorParameters<typeof PageService>[0]["native"];
+ const pages:PageService=new PageService({turnMentions:fixtureTurnMentions((pageId:string)=>pages.get(pageId)),repo,native,drivers:()=>({aux:driver,chrome:null}),events:new EventBus(repo)});
+ try {
+  await pages.restoreTabs();expect(pages.recoveryTabs()).toHaveLength(1);
+  await pages.registerExternal({pageId:original.pageId,marker:"native-external",backend:"aux",windowId:"main",url:"https://external.test/",title:"External",restored:original});
+  const callsBefore=recoveryCalls;const result=await pages.retryRestore(original.pageId);
+  expect(result).toEqual({ok:true,pageId:original.pageId,page:pages.get(original.pageId),restored:false});
+  expect(result.page.url).toBe("https://external.test/");expect(recoveryCalls).toBe(callsBefore);expect(pages.recoveryTabs()).toEqual([]);
+ }finally{pages.shuttingDown();await Promise.resolve();db.close();}
 });

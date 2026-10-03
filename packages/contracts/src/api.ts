@@ -2321,7 +2321,7 @@ export const ResultSchemas = {
       retrying: z.boolean(),
     }),
   ),
-  "browser.recovery.retry": z.object({ ok: z.boolean(), pageId: id }),
+  "browser.recovery.retry": z.object({ ok: z.boolean(), pageId: id, page: PageTargetSchema, restored: z.boolean() }),
   "history.list": z.array(HistoryEntrySchema),
   "history.projectSnapshot": z.object({
     accepted: z.boolean(),

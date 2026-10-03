@@ -80,7 +80,7 @@ export class TabSessionRestore {
     try {
       for (const t of opening) {
         try {
-          const p = await this.restoreSavedTab(t.page_id);
+          const { page: p } = await this.restoreSavedTab(t.page_id);
           await this.activation.activate(p.pageId).catch(() => {});
         } catch (error) {
           this.pages.restoreErrors.set(t.page_id,error instanceof Error?error.message:String(error));
@@ -111,9 +111,9 @@ export class TabSessionRestore {
     if(this.pages.restoring||this.pages.retryingRestore.has(pageId))throw new AuxError("conflict","This session is already being restored.");
     this.pages.retryingRestore.add(pageId);
     try {
-      const page=await this.restoreSavedTab(pageId);
+      const {page,restored}=await this.restoreSavedTab(pageId);
       this.pages.saveTabsSnapshot();
-      return {ok:true,pageId:page.pageId};
+      return {ok:true,pageId:page.pageId,page:{...page},restored};
     } catch(error) {
       this.pages.restoreErrors.set(pageId,error instanceof Error?error.message:String(error));
       throw error;
@@ -123,16 +123,16 @@ export class TabSessionRestore {
     }
   }
 
-  private async restoreSavedTab(pageId:string):Promise<PageTarget> {
+  private async restoreSavedTab(pageId:string):Promise<{page:PageTarget;restored:boolean}> {
     const saved=this.pages.pendingRestore.get(pageId);
     if(!saved)throw new AuxError("not_found","This tab has already been restored.");
     const existing=this.pages.live.get(pageId);
-    if(existing){this.pages.pendingRestore.delete(pageId);this.pages.restoreErrors.delete(pageId);return existing.target;}
+    if(existing){this.pages.pendingRestore.delete(pageId);this.pages.restoreErrors.delete(pageId);return {page:existing.target,restored:false};}
     const previous=this.pages.deps.repo.getPage(pageId);
     if(!previous||!this.pages.driverFor("aux")?.recoverPage)throw new AuxError("backend_unavailable","The browser cannot restore this tab yet. Its saved address has been kept.");
     const page=await this.opener.openOn("aux",{url:saved.url||"about:blank",windowId:saved.window_id||"main",background:false,ownedByRuntime:false,activate:false},"session-restore",previous);
     this.pages.deps.repo.markDatasetsStale(page.pageId);
     this.pages.pendingRestore.delete(pageId);this.pages.restoreErrors.delete(pageId);
-    return page;
+    return {page,restored:true};
   }
 }

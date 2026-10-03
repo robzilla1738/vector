@@ -621,7 +621,7 @@ export function installMockBridge(q: URLSearchParams) {
       const page=makePage(pages.length,{...saved,backend:"aux",viewStatus:"visible"});pages.push(page);
       recoveryTabs=recoveryTabs.filter(tab=>tab.pageId!==p.pageId);
       emit("page.added",{page});emit("browser.recovery.changed",{});
-      return {ok:true,pageId:page.pageId};
+      return {ok:true,pageId:page.pageId,page:{...page},restored:true};
     },
     "bookmarks.folders.list": async () => {
       return bookmarkFolders;

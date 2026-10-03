@@ -112,12 +112,29 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
   const liveSource = async (pageId: string, scope: { active: boolean }, expected?: PageContextRef) => {
     const pending = await call("browser.recovery.list", {});
     if (!scope.active) return null;
-    if (pending.some(tab => tab.pageId === pageId)) await call("browser.recovery.retry", { pageId });
+    const original = useStore.getState().pages.find(page => page.pageId === pageId);
+    if (expected && (!original || sourceStatus(expected, [original]) !== "current"))
+      throw new Error("This browser tab changed while updating. Choose its current source again.");
+    let admitted = expected;
+    const recoveries = pending.filter(tab => tab.pageId === pageId);
+    if (recoveries.length > 1) throw new Error("This browser tab’s recovery is ambiguous.");
+    if (recoveries.length === 1) {
+      const recovery = recoveries[0]!;
+      if (!original || recovery.windowId !== original.windowId) throw new Error("This browser tab’s recovery owner changed.");
+      const restored = await call("browser.recovery.retry", { pageId });
+      if (!scope.active) return null;
+      if (!restored.ok || typeof restored.restored !== "boolean" || restored.pageId !== pageId || restored.page.pageId !== pageId
+        || restored.page.windowId !== recovery.windowId || restored.page.backend !== "aux" || !availableSource(restored.page))
+        throw new Error("This browser tab’s recovery was not confirmed.");
+      if (restored.restored) admitted = sourceRef(restored.page);
+      else if (!expected || sourceStatus(expected, [restored.page]) !== "current")
+        throw new Error("This browser tab was already changed outside this recovery. Choose its current source again.");
+    }
     if (!scope.active) return null;
     const live = (await call("pages.list", {})).find(item => item.pageId === pageId);
     if (!scope.active) return null;
-    if (!live || !availableSource(live)) throw new Error("This browser tab is unavailable.");
-    if (expected && sourceStatus(expected, [live]) !== "current") throw new Error("This browser tab changed while updating. Choose its current source again.");
+    if (!live || !availableSource(live) || live.windowId !== original?.windowId || live.backend !== original?.backend) throw new Error("This browser tab is unavailable.");
+    if (admitted && sourceStatus(admitted, [live]) !== "current") throw new Error("This browser tab changed while updating. Choose its current source again.");
     return sourceRef(live);
   };
   const update = async (pageId: string, apply: (source: PageContextRef) => PageContextRef[], expected?: PageContextRef) => {

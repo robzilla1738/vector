@@ -307,3 +307,4 @@ aux/runtime/0333-original-process-appearance-channel.patch
 aux/runtime/0338-browser-test-direct-macro-includes.patch
 aux/runtime/0337-original-appearance-channel-retirement.patch
 0339-native-appearance-dict-value-api.patch
+0340-native-appearance-declaration-and-measurement-dict-api.patch

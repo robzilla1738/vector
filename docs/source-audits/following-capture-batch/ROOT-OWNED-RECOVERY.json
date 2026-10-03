@@ -1,0 +1,39 @@
+{
+  "status": "ROOT ACTUAL SOURCE CONTROLS PASS; NATIVE PENDING",
+  "base": "abea75a5",
+  "recoveryRequest": "5215572a2793773bc1e57f930fc682047f8a44375373c9d60c33a9dc4d46f2b8",
+  "branchSuccessor": "130f776ab5ebf69ff4c9131bbb2a350312bb865538092239e4ad733de7756994",
+  "exactReplay": "six successor leaves exact, Composer contextual preserving root visible fixture; reverse check PASS",
+  "authority": "actual restoreSavedTab branch, restored Boolean required by schema; false ACK cannot advance original document",
+  "controls": "real runtime existing-live and restored branches, Tray exact ACK/scope/document, original Composer successful fresh-document selection",
+  "logs": {
+    "owned-recovery-build": {
+      "path": "/tmp/aux-root-owned-recovery-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exitCode": 0
+    },
+    "owned-recovery-controls": {
+      "path": "/tmp/aux-root-owned-recovery-controls.log",
+      "sha256": "b5c3d9301230b997077b799126f1b896ded4046e96ba03147e7e0e9949a002c3",
+      "exitCode": 0
+    },
+    "owned-recovery-shell-types": {
+      "path": "/tmp/aux-root-owned-recovery-shell-types.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exitCode": 0
+    },
+    "recovery-0340-lint": {
+      "path": "/tmp/aux-root-recovery-0340-lint.log",
+      "sha256": "eb8135ad3b71977445c15e8b7112c4a9ead9be135b4111c191cdb13dfeb2da9b",
+      "exitCode": 0
+    },
+    "recovery-0340-format": {
+      "path": "/tmp/aux-root-recovery-0340-format.log",
+      "sha256": "90f03bbd69b53a9f2b2207c26df5d08780f684f34bb66cfe1b44679db0d36909",
+      "exitCode": 0
+    }
+  },
+  "fullChangedSuite": "prior genuine failure preserved; corrected coherent full run pending next batch",
+  "nativeCompiled": false,
+  "acceptedNativeCells": []
+}

@@ -15,6 +15,7 @@
 #include "chrome/browser/ui/aux/native_aux_warm_fixture.h"
 #include "chrome/browser/ui/aux/native_private_fixture_methods.h"
 #if BUILDFLAG(ENABLE_AUX_SHELL)
+#include "chrome/browser/ui/aux/journey_fixture_path.h"
 #include "chrome/browser/ui/aux/native_cdp_measurement_producer.h"
 #include "chrome/browser/ui/aux/native_stop_input_endpoint.h"
 #include "chrome/browser/ui/aux/native_performance_observer.h"

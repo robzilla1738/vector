@@ -72,8 +72,9 @@ base::DictValue NativeCdpMeasurementProducer::Run(Operation operation) {
     armed_ = true;
     ++sequence_;
     auto record = controller_->ReadCdpRetirementMeasurementArm();
-    record.Set("sequence", base::NumberToString(sequence_)).Set("pid", base::GetCurrentProcId())
-        .Set("browserWindowId", owner_->GetSessionID().id());
+    record.Set("sequence", base::NumberToString(sequence_));
+    record.Set("pid", base::GetCurrentProcId());
+    record.Set("browserWindowId", owner_->GetSessionID().id());
     return record;
   }
   if (!armed_) return Refused();
@@ -81,9 +82,9 @@ base::DictValue NativeCdpMeasurementProducer::Run(Operation operation) {
   stop_input_.reset();
   auto record = controller_->CompleteCdpRetirementMeasurement();
   if (record.FindString("status") && *record.FindString("status") == "sampled") {
-    record.Set("sequence", base::NumberToString(sequence_))
-        .Set("pid", base::GetCurrentProcId())
-        .Set("browserWindowId", owner_->GetSessionID().id());
+    record.Set("sequence", base::NumberToString(sequence_));
+    record.Set("pid", base::GetCurrentProcId());
+    record.Set("browserWindowId", owner_->GetSessionID().id());
   }
   return record;
 }

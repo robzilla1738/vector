@@ -169,8 +169,8 @@ it("still retries a genuinely pending tab and selects its fresh live document", 
   const after = { ...before, url: "https://example.test/after", documentEpoch: 2 };
   useStore.setState({ pages: [before] });
   vi.mocked(bridge.invoke).mockImplementation(async method => {
-    if (method === "browser.recovery.list") return [{ pageId: before.pageId }];
-    if (method === "browser.recovery.retry") return {};
+    if (method === "browser.recovery.list") return [{ pageId: before.pageId, url: after.url, title: before.title, windowId: before.windowId, retrying: false }];
+    if (method === "browser.recovery.retry") return { ok: true, pageId: before.pageId, page: after, restored: true };
     if (method === "pages.list") return [after];
     throw new Error(method);
   });

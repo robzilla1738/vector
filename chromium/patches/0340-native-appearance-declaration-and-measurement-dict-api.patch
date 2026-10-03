@@ -1,0 +1,37 @@
+--- a/chrome/browser/ui/webui_browser/webui_browser_ui.cc
++++ b/chrome/browser/ui/webui_browser/webui_browser_ui.cc
+@@ -15,6 +15,7 @@
+ #include "chrome/browser/ui/aux/native_aux_warm_fixture.h"
+ #include "chrome/browser/ui/aux/native_private_fixture_methods.h"
+ #if BUILDFLAG(ENABLE_AUX_SHELL)
++#include "chrome/browser/ui/aux/journey_fixture_path.h"
+ #include "chrome/browser/ui/aux/native_cdp_measurement_producer.h"
+ #include "chrome/browser/ui/aux/native_stop_input_endpoint.h"
+ #include "chrome/browser/ui/aux/native_performance_observer.h"
+--- a/chrome/browser/ui/aux/native_cdp_measurement_producer.cc
++++ b/chrome/browser/ui/aux/native_cdp_measurement_producer.cc
+@@ -72,8 +72,9 @@
+     armed_ = true;
+     ++sequence_;
+     auto record = controller_->ReadCdpRetirementMeasurementArm();
+-    record.Set("sequence", base::NumberToString(sequence_)).Set("pid", base::GetCurrentProcId())
+-        .Set("browserWindowId", owner_->GetSessionID().id());
++    record.Set("sequence", base::NumberToString(sequence_));
++    record.Set("pid", base::GetCurrentProcId());
++    record.Set("browserWindowId", owner_->GetSessionID().id());
+     return record;
+   }
+   if (!armed_) return Refused();
+@@ -81,9 +82,9 @@
+   stop_input_.reset();
+   auto record = controller_->CompleteCdpRetirementMeasurement();
+   if (record.FindString("status") && *record.FindString("status") == "sampled") {
+-    record.Set("sequence", base::NumberToString(sequence_))
+-        .Set("pid", base::GetCurrentProcId())
+-        .Set("browserWindowId", owner_->GetSessionID().id());
++    record.Set("sequence", base::NumberToString(sequence_));
++    record.Set("pid", base::GetCurrentProcId());
++    record.Set("browserWindowId", owner_->GetSessionID().id());
+   }
+   return record;
+ }
