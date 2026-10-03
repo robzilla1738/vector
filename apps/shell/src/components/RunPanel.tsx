@@ -139,7 +139,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
 }
 
 /** `latest` lets a conversation that already ordered its turns skip the per-panel scan. */
-export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen, sources, questionInComposer = false, controlsInComposer = false, composerRef }: { controlsInComposer?: boolean; questionInComposer?: boolean; sources?: ConversationSource[]; runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean; composerRef?: RefObject<HTMLTextAreaElement | null> }) {
+export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen, sources, questionInComposer = false, controlsInComposer = false, composerRef }: { savedAnswerIds?: readonly string[]; controlsInComposer?: boolean; questionInComposer?: boolean; sources?: ConversationSource[]; runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean; composerRef?: RefObject<HTMLTextAreaElement | null> }) {
   const run = useStore((s) => s.runs.find((r) => r.runId === runId));
   const latestConversationTurn = useStore((s) => latest ?? isLatestTurn(s.runs, runId));
   const stream = useStore((s) => s.answerStreams[runId]);
@@ -243,7 +243,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
       {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
 
       <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || (!page && run.pageIds.length > 0) || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{shellIconReload}</button> : null} />
-      <RunTranscriptDetails run={run} question={question} readOnly={readOnly} answerInComposer={questionInComposer} />
+      <RunTranscriptDetails savedAnswerIds={savedAnswerIds} run={run} question={question} readOnly={readOnly} answerInComposer={questionInComposer} />
 
       {(calls != null || stats || !conversation) && <details className="run-provenance">
         <summary>Run details</summary>
@@ -279,7 +279,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
         </section>
       )}
 
-      {( !conversation || live || (steps?.length ?? 0) > 0) && <section className="run-section">
+      {(!conversation || (steps?.length ?? 0) > 0) && <section className="run-section">
         <button className="run-section-head toggle" aria-expanded={showSteps} onClick={() => setShowSteps((v) => !v)}>
           <span className={`chev ${showSteps ? "open" : ""}`}>{shellIconRight}</span>
           <span>{conversation ? "Work history" : "Steps"}</span>

@@ -142,8 +142,10 @@ export async function run(t) {
   await t.step('remove closed explicit context and send the preserved draft without a page', { kind: 'ui', features: ['electronMigration'] }, async () => {
     await newChat(t);
     const context = selector('Browser context', 'AXButton');
+    await t.ax.press(selector('Add context', 'AXButton'));
     await t.ax.press(context);
     await t.ax.press({ name: 'Aux first-chat optional context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
+    await t.ax.key('escape', 'hid');
     const draft = 'Keep this reply when the explicitly selected browser tab closes.';
     const composer = selector('Reply to conversation');
     await t.ax.type(draft, composer);
@@ -156,8 +158,10 @@ export async function run(t) {
     t.assert.equal(input?.value, draft, 'Closing explicit context must preserve the reply');
     t.assert.equal(submit?.enabled, false, 'Closed explicit context must not silently fall back to another page');
     await t.capture('first-chat-closed-context-kept-draft');
+    await t.ax.press(selector('Add context', 'AXButton'));
     await t.ax.press(context);
     await t.ax.press({ name: 'No browser context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
+    await t.ax.key('escape', 'hid');
     await t.ax.waitFor(selector('The selected tab is unavailable. Choose another browser context before sending.'), 'absent');
     t.assert.equal((await t.ax.query(composer))[0]?.value, draft);
     phase = 'retry';

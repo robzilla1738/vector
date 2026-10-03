@@ -34,10 +34,7 @@ it("keeps Stop available during pause and ignores the superseded pause error",as
   });
   try {
     await act(async()=>root.render(<RunPanel runId="controls" conversation/>));
-    const history=Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(button=>button.textContent?.includes("Work history"))!;
-    expect(history.getAttribute("aria-expanded")).toBe("false");
-    await act(async()=>history.click());
-    expect(history.getAttribute("aria-expanded")).toBe("true");
+    expect(Array.from(host.querySelectorAll<HTMLButtonElement>("button")).some(button=>button.textContent?.includes("Work history"))).toBe(false);
     const pause=host.querySelector<HTMLButtonElement>('[aria-label="Pause run"]')!;
     await act(async()=>{pause.click();pause.click();});
     expect(invoke.mock.calls.filter(([method])=>method==="runs.pause")).toHaveLength(1);

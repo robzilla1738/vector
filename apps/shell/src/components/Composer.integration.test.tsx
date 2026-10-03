@@ -135,6 +135,21 @@ it("keeps home context controls behind plus and preserves the draft while toggli
   expect(input.value).toBe("A clean home draft");
 });
 
+it("keeps full conversation context controls behind plus and preserves the draft while toggling them", async () => {
+  useStore.setState({agentDraft:"A clean home draft",railOpen:false,runs:[],pendingTurns:[],pages:[],connected:true,conversationId:null});
+  await act(async () => root.render(<Conversation/>));
+  const input = host.querySelector<HTMLTextAreaElement>('[aria-label="Reply to conversation"]')!;
+  expect(input.value).toBe("A clean home draft");
+  expect(host.querySelector('[aria-label="Browser context"]')).toBeNull();
+  const plus = host.querySelector<HTMLButtonElement>('[aria-label="Add context"]')!;
+  await act(async () => plus.click());
+  expect(document.querySelector('dialog[aria-label="Add context"] [aria-label="Browser context"]')).not.toBeNull();
+  await act(async () => document.querySelector('dialog[aria-label="Add context"]')!.dispatchEvent(new Event("cancel",{bubbles:false,cancelable:true})));
+  expect(host.querySelector('[aria-label="Browser context"]')).toBeNull();
+  expect(host.querySelector('textarea')).toBe(input);
+  expect(input.value).toBe("A clean home draft");
+});
+
 it("does not adopt another conversation into home but restores a home-owned attachment draft",async()=>{
   const data=new Map([[PENDING_CHAT_KEY,"old-result-chat"]]);
   vi.stubGlobal("localStorage",{getItem:(key:string)=>data.get(key)??null,setItem:(key:string,value:string)=>data.set(key,value),removeItem:(key:string)=>data.delete(key)});
@@ -180,4 +195,25 @@ it("retries a completed page-free answer through its visible control without add
   await act(async () => retry.click());
   expect(retryRun).toHaveBeenCalledExactlyOnceWith(run.runId);
   expect(useStore.getState().pages).toEqual([]);
+});
+
+
+it("starts document attachment from the plus portal and retains a picker error and draft after it closes", async () => {
+  useStore.setState({agentDraft:"Keep this question",railOpen:false,runs:[],pendingTurns:[],pages:[],connected:true,conversationId:null,toasts:[]});
+  let rejectPick!: (reason: Error) => void;
+  const pick = vi.spyOn(bridge, "pickEvidenceDocument").mockImplementation(() => new Promise((_resolve, reject) => { rejectPick = reject; }));
+  await act(async () => root.render(<Conversation/>));
+  const input = host.querySelector<HTMLTextAreaElement>('[aria-label="Reply to conversation"]')!;
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Add context"]')!.click());
+  const menu = document.querySelector('dialog[aria-label="Add context"]')!;
+  const documentAction = Array.from(menu.querySelectorAll<HTMLButtonElement>('button')).find(button => button.textContent === "Document")!;
+  expect(documentAction).not.toBeUndefined();
+  await act(async () => documentAction.click());
+  expect(pick).toHaveBeenCalledOnce();
+  expect(document.querySelector('dialog[aria-label="Add context"]')).toBeNull();
+  expect(input.value).toBe("Keep this question");
+  await act(async () => rejectPick(new Error("The document could not be read")));
+  expect(useStore.getState().toasts.some(item => item.kind === "error" && item.text === "The document could not be read")).toBe(true);
+  expect(host.querySelector('textarea')).toBe(input);
+  expect(input.value).toBe("Keep this question");
 });

@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "base": "21ebefdd1a80703ef060f20344070ae9c5a5bf7c",
+  "sourceCommit": "0136d494a3b96f422d9dc7bcd07ebc28719ed490",
+  "patchSha256": "d823f810ddadc9052e557c761b59ca07dc64be092aaf58786a0c3da97eaabfff",
+  "files": [
+    {
+      "path": "apps/shell/src/components/Composer.integration.test.tsx",
+      "beforeSha256": "48b9a6a8c130bb0e75ec0e6f81777fe481260a09244c227512cb00c791270053",
+      "afterSha256": "e9918dfbeac9516cda4318ffc9bb8debcdee5a136a0e0c5a393166fe63425941",
+      "bytes": 14804
+    },
+    {
+      "path": "apps/shell/src/components/Conversation.tsx",
+      "beforeSha256": "3e22cd86e56435e89f3497a031ff1895af51440b0a828598c2a6b7bfef6ac1e8",
+      "afterSha256": "d6c5abc42d1955d477a07718b74050ce4b1c06ee60c4687daa3d44435fd5e68b",
+      "bytes": 62589
+    },
+    {
+      "path": "apps/shell/src/components/ConversationContext.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "19dace286802a62081a9362582f305b2319a143fa3da501241f6eb2722b45eb3",
+      "bytes": 2235
+    },
+    {
+      "path": "apps/shell/src/components/ConversationContext.tsx",
+      "beforeSha256": "9dfc1730968ab1ce412ce4cebb1ab86953b36ba46d140fdab1d5ea873e170649",
+      "afterSha256": "11487c5120a0dd5ab645d209b8e1fc98f09a8fe1d444b597012e52ef350edd3a",
+      "bytes": 2392
+    },
+    {
+      "path": "apps/shell/src/components/ResultCard.css",
+      "beforeSha256": "89162010295509153a6fe1af096ddcbbb8fc1972d29f91ee24e30126613b64a6",
+      "afterSha256": "6f7b0f12c0f5da021bc8a3ac3ea7a6fc814b7da0a48a3516d4907dc537ab1824",
+      "bytes": 3179
+    },
+    {
+      "path": "apps/shell/src/components/ResultCard.tsx",
+      "beforeSha256": "de45e8dc6560a9a78854546173e461a76abf38424de2321864fc7698e4ececde",
+      "afterSha256": "cd207c4ffb90e0b4491bf75bf6f8a494d2be032f1dd732f10a4693037fd9158b",
+      "bytes": 2704
+    },
+    {
+      "path": "apps/shell/src/components/RunPanel.tsx",
+      "beforeSha256": "ec8996e798b5338fc814c026b041091b677bb84ad2b9e6a8d16fd37b304226bd",
+      "afterSha256": "08df4e49eee75fdfa25f29c162e7bb89c9d4486929ee01355b2ca05fd0fdf3cb",
+      "bytes": 20819
+    },
+    {
+      "path": "apps/shell/src/run-controls.test.tsx",
+      "beforeSha256": "5fa23c0ef2b2697f4691c717e80d518da7fdf373e8dd093fc834e0783856591e",
+      "afterSha256": "b130e8c6fb0d37e5947063f7ec171d4b8a12ec480e1727a94427649b65fb5f6c",
+      "bytes": 4482
+    },
+    {
+      "path": "apps/shell/src/transcript/RunTranscriptDetails.tsx",
+      "beforeSha256": "30a5daf86c7ade9bce651e1618a9c45dd27e77b5796c71013f970c9f585eb5d5",
+      "afterSha256": "9b3f55d0ebb39693de8da578ed52476d3c034eccf8988d6db34ace815e653442",
+      "bytes": 12729
+    },
+    {
+      "path": "apps/shell/src/transcript/run-transcript.test.tsx",
+      "beforeSha256": "cabcf3ddfe11abebcb52e74093b143acaefeb03ee1884835e7ae6a5391b6c693",
+      "afterSha256": "80fd584a67c786b7a6ded4457db825f84187028b5e0b4c8cadb74a823d7b3108",
+      "bytes": 13439
+    }
+  ],
+  "qualification": "source-only; native matrix and downstream renderer budgets pending"
+}

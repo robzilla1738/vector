@@ -28,6 +28,7 @@ export function ConversationContext({ chatId, revision, disabled, onBusy }: {
     catch (error) { errToast(error); }
     finally { setSaving(false); }
   };
+  if (!error && !context?.entries.length) return null;
   return <Popover label="Conversation context" trigger={<>{shellIconLayersSm}<span>Previous turns · {context?.entries.filter(entry => entry.included).length ?? 0}</span></>}>
     {() => <><header>Previous turns</header>{error && <p role="alert">Could not load conversation context. {error}</p>}
       {context && <><label className="context-choice"><Checkbox checked={context.historyEnabled} disabled={disabled || saving} onChange={event => void update({ historyEnabled: event.target.checked })}/><span>Use previous turns</span></label>

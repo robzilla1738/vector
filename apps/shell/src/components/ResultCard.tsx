@@ -21,8 +21,8 @@ export function ResultCard({result, revision, compact = false, onOpen}: {result:
   // The caller supplies verified automatic-report provenance. Filename alone
   // cannot decide whether an artifact is a redundant answer or a deliverable.
   if (compact) return <article className="result-card result-card-compact">
-    <header><span aria-hidden="true">{shellIconResult}</span><button onClick={onOpen} title={result.filename} aria-label={`Open ${result.filename}`}>{result.filename}</button><small>{kind} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB</small><span className="result-card-version">v{revision ?? result.revision ?? 1}</span><button className="btn sm ghost" onClick={onOpen}>Open {shellIconOpen}</button></header>
-    <details className="result-card-disclosure"><summary>Preview saved answer</summary><ResultExcerpt result={result}/></details>
+    <details className="result-card-disclosure"><summary><span>Saved answer</span><span className="result-card-version">v{revision ?? result.revision ?? 1}</span></summary><ResultExcerpt result={result}/></details>
+    <button className="btn sm ghost result-card-open" onClick={onOpen} title={result.filename} aria-label={`Open ${result.filename}`}>Open {shellIconOpen}</button>
   </article>;
   return <article className="result-card">
     <header><span aria-hidden="true">{shellIconResult}</span><button onClick={onOpen} title={result.filename}>{result.filename}</button><span className="result-card-version">v{revision ?? result.revision ?? 1}</span></header>

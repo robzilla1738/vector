@@ -1,0 +1,74 @@
+diff --git a/apps/shell/src/components/Conversation.css b/apps/shell/src/components/Conversation.css
+index e943eedf..cca5f549 100644
+--- a/apps/shell/src/components/Conversation.css
++++ b/apps/shell/src/components/Conversation.css
+@@ -47,7 +47,6 @@
+   .composer-footer .conversation-browser-context-controls { justify-content:flex-start; }
+   .composer-footer .browser-context-trigger { max-width:100%; }
+   .conversation-browser-context-controls > :not(.browser-context-trigger) { display:none; }
+-  .attachments-open .conversation-browser-context-controls > :not(.browser-context-trigger) { display:flex; }
+   .composer-send-actions .dictation-trigger { width:28px; height:28px; min-width:28px; padding:0; justify-content:center; font-size:0; gap:0; }
+ }
+ 
+@@ -118,5 +117,4 @@
+ .conversation-browser-sources svg { width: 13px; height: 13px; flex: none; }
+ .conversation-browser-sources small { font-size: var(--fs-2xs); }
+ .conversation-browser-sources button { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--r-xs); flex: none; }
+-.conversation.attachments-open .capture-triggers { display: flex; flex-wrap:wrap; gap: var(--space-1-5); padding-bottom: var(--space-2); }
+ }
+diff --git a/apps/shell/src/components/Conversation.tsx b/apps/shell/src/components/Conversation.tsx
+index 67866a60..8cf889aa 100644
+--- a/apps/shell/src/components/Conversation.tsx
++++ b/apps/shell/src/components/Conversation.tsx
+@@ -42,6 +42,7 @@ import { browserLinkUrl as answerUrl } from "../browser-links";
+ import { RunPanel } from "./RunPanel";
+ import { shellIconArrowDown, shellIconDownloadSm, shellIconGlobe, shellIconOpen, shellIconPlusSm, shellIconRail, shellIconSend, shellIconSplit } from "./icons";
+ import "./Conversation.css";
++import "./ConversationContextMenu.css";
+ 
+ const NO_SOURCES: ConversationSource[] = [];
+ 
+diff --git a/apps/shell/src/components/ConversationContextMenu.css b/apps/shell/src/components/ConversationContextMenu.css
+new file mode 100644
+index 00000000..0664d9eb
+--- /dev/null
++++ b/apps/shell/src/components/ConversationContextMenu.css
+@@ -0,0 +1,16 @@
++@layer components {
++.home-tools-trigger { margin-left:auto; }
++.home-tools-trigger > button { width:28px; height:28px; padding:0; justify-content:center; }
++.home-tools-menu .capture-triggers { display:grid; gap:var(--space-1); }
++.home-tools-menu .capture-triggers > button { justify-content:flex-start; width:100%; min-height:36px; padding:var(--space-2); text-align:left; background:transparent; box-shadow:none; border:0; }
++.home-tools-menu .capture-triggers > button:hover { background:var(--bg-hover); }
++.home-tools-context { padding:var(--space-2) 0; margin:var(--space-2) 0; border-block:var(--hairline) solid var(--line); }
++.home-tools-menu .conversation-browser-context { width:100%; justify-items:stretch; margin:0; }
++.home-tools-menu .conversation-browser-context-controls { flex-wrap:wrap; justify-content:flex-start; }
++.home-tools-menu .dictation-trigger { min-height:36px; padding:var(--space-2); }
++.home-context-summary { display:flex; align-items:center; gap:var(--space-2); max-width:100%; width:fit-content; padding:var(--space-2); border-radius:var(--r-pill); background:var(--bg-hover); color:var(--ink-2); font-size:var(--fs-xs); }
++.home-context-summary > span:not(.ci) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
++/* The same explicit context choices remain available in narrow menus. */
++.home-tools-menu .conversation-browser-context-controls > :not(.browser-context-trigger) { display:flex; }
++.conversation:not(.conversation-home) .home-tools-trigger > button { width:auto; min-width:28px; padding:var(--space-1) var(--space-2); gap:var(--space-1); }
++}
+diff --git a/apps/shell/src/components/HomeAsk.css b/apps/shell/src/components/HomeAsk.css
+index 4c6aa3a5..8ab10066 100644
+--- a/apps/shell/src/components/HomeAsk.css
++++ b/apps/shell/src/components/HomeAsk.css
+@@ -8,17 +8,6 @@
+ .home-ask .conversation-home .conversation-compose { padding:0; max-height:none; overflow:visible; }
+ .home-ask .conversation-home .conversation-scroll:not(:has(.conversation-empty)) { max-height:min(56vh, 560px); overscroll-behavior:contain; scrollbar-gutter:stable; }
+ .home-ask .conversation-home .new-chat-options { gap:var(--space-2); }
+-.home-tools-trigger { margin-left:auto; }
+-.home-tools-trigger > button { width:28px; height:28px; padding:0; justify-content:center; }
+-.home-tools-menu .capture-triggers { display:grid; gap:var(--space-1); }
+-.home-tools-menu .capture-triggers > button { justify-content:flex-start; width:100%; min-height:36px; padding:var(--space-2); text-align:left; background:transparent; box-shadow:none; border:0; }
+-.home-tools-menu .capture-triggers > button:hover { background:var(--bg-hover); }
+-.home-tools-context { padding:var(--space-2) 0; margin:var(--space-2) 0; border-block:var(--hairline) solid var(--line); }
+-.home-tools-menu .conversation-browser-context { width:100%; justify-items:stretch; margin:0; }
+-.home-tools-menu .conversation-browser-context-controls { flex-wrap:wrap; justify-content:flex-start; }
+-.home-tools-menu .dictation-trigger { min-height:36px; padding:var(--space-2); }
+-.home-context-summary { display:flex; align-items:center; gap:var(--space-2); max-width:100%; width:fit-content; padding:var(--space-2); border-radius:var(--r-pill); background:var(--bg-hover); color:var(--ink-2); font-size:var(--fs-xs); }
+-.home-context-summary > span:not(.ci) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .home-composer-mode { display:flex; align-items:center; gap:var(--space-1); }
+ .home-composer-mode button { padding:var(--space-1) var(--space-2); border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--ink-2); }
+ .home-composer-mode button[aria-pressed="true"] { background:var(--bg-hover); color:var(--ink-0); }

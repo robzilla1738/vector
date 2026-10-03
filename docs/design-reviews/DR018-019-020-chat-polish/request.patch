@@ -1,0 +1,265 @@
+diff --git a/apps/shell/src/components/Composer.integration.test.tsx b/apps/shell/src/components/Composer.integration.test.tsx
+index 282a7c57..30821cc2 100644
+--- a/apps/shell/src/components/Composer.integration.test.tsx
++++ b/apps/shell/src/components/Composer.integration.test.tsx
+@@ -135,6 +135,21 @@ it("keeps home context controls behind plus and preserves the draft while toggli
+   expect(input.value).toBe("A clean home draft");
+ });
+ 
++it("keeps full conversation context controls behind plus and preserves the draft while toggling them", async () => {
++  useStore.setState({agentDraft:"A clean home draft",railOpen:false,runs:[],pendingTurns:[],pages:[],connected:true,conversationId:null});
++  await act(async () => root.render(<Conversation/>));
++  const input = host.querySelector<HTMLTextAreaElement>('[aria-label="Reply to conversation"]')!;
++  expect(input.value).toBe("A clean home draft");
++  expect(host.querySelector('[aria-label="Browser context"]')).toBeNull();
++  const plus = host.querySelector<HTMLButtonElement>('[aria-label="Add context"]')!;
++  await act(async () => plus.click());
++  expect(document.querySelector('dialog[aria-label="Add context"] [aria-label="Browser context"]')).not.toBeNull();
++  await act(async () => document.querySelector('dialog[aria-label="Add context"]')!.dispatchEvent(new Event("cancel",{bubbles:false,cancelable:true})));
++  expect(host.querySelector('[aria-label="Browser context"]')).toBeNull();
++  expect(host.querySelector('textarea')).toBe(input);
++  expect(input.value).toBe("A clean home draft");
++});
++
+ it("does not adopt another conversation into home but restores a home-owned attachment draft",async()=>{
+   const data=new Map([[PENDING_CHAT_KEY,"old-result-chat"]]);
+   vi.stubGlobal("localStorage",{getItem:(key:string)=>data.get(key)??null,setItem:(key:string,value:string)=>data.set(key,value),removeItem:(key:string)=>data.delete(key)});
+diff --git a/apps/shell/src/components/Conversation.tsx b/apps/shell/src/components/Conversation.tsx
+index 511aba01..76efccfc 100644
+--- a/apps/shell/src/components/Conversation.tsx
++++ b/apps/shell/src/components/Conversation.tsx
+@@ -652,7 +652,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+     finally { documentBusy.current = false; setAttachmentSaving(false); }
+   };
+   const newChat = !embedded && !turns.length && !pendingTurns.length && !historyLoading && !historyError && !taskBound;
+-  const imageTray = <ConversationImages detachedTools={home} toolsTarget={homeTools} showAttachedImages={false} incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onDocument={() => void attachDocument()} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />;
++  const imageTray = <ConversationImages detachedTools toolsTarget={homeTools} showAttachedImages={false} incomingFile={incomingImage} onFileConsumed={file => setIncomingImage(current => current === file ? null : current)} chatId={id} page={selectedContext} images={images} disabled={contextLocked || attachmentSaving} ensureChatId={ensureChatId} onDocument={() => void attachDocument()} onBusy={busy => setImageOperations(count => Math.max(0, count + (busy ? 1 : -1)))} onChange={(chatId, value) => { if (activeChat.current === chatId) { setImages(value); setContextRefresh(current => current + 1); } }} />;
+   if (id === "history") return <ConversationHistory/>;
+   const dictation = <Dictation draftKey={id ? draftKey(id) : "new"} key={`dictation-${id ?? "new"}`} disabled={archived || sending || answerPending} composerRef={textareaRef} onInsert={words => {
+         const state = useStore.getState();
+@@ -661,9 +661,9 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+       }}/>;
+   const composerModes = live && <div className="conversation-live-actions" role="group" aria-label="Send while Aux is working">{answering && <button type="button" className={effectiveLiveMode === "answer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "answer"} onClick={() => setLiveSendMode("answer")}>Answer question</button>}<button type="button" className={effectiveLiveMode === "steer" ? "selected" : ""} aria-pressed={effectiveLiveMode === "steer"} onClick={() => setLiveSendMode("steer")}>Steer now</button><button type="button" className={effectiveLiveMode === "queue" ? "selected" : ""} aria-pressed={effectiveLiveMode === "queue"} onClick={() => setLiveSendMode("queue")}>Queue next</button></div>;
+   const browserContextControls = <BrowserContextTray primary={contextPage} onPrimary={setContextPage} linkedPageId={linked?.pageId} sources={browserSources} onSources={setBrowserSources} disabled={contextLocked}/>;
+-  const composerFooter = !taskBound && !answering && <div className="new-chat-options">{entryControls}{home ? <span className="home-tools-trigger"><Popover label="Add context" trigger={shellIconPlusSm}>
+-    {close => <div className="home-tools-menu"><header>Add to your question</header><div ref={setHomeTools} onClick={event => { if ((event.target as HTMLElement).closest('button')) close(); }}/><div className="home-tools-context">{browserContextControls}</div>{dictation}<button className="context-choice" onClick={() => { close(); useStore.getState().openConversationDraft(id ?? null); }}>{shellIconOpen}<span>Open full conversation</span></button></div>}
+-  </Popover></span> : <><button className="new-chat-attach" aria-label="Add context" aria-expanded={attachmentsOpen} onClick={() => setAttachmentsOpen(value => !value)}>{shellIconPlusSm}<span>Add context</span></button>{browserContextControls}</>}</div>;
++  const composerFooter = !taskBound && !answering && <div className="new-chat-options">{entryControls}{<span className="home-tools-trigger"><Popover label="Add context" trigger={<>{shellIconPlusSm}{!home && <span>Add context</span>}</>}>
++    {close => <div className="home-tools-menu"><header>Add to your question</header><div ref={setHomeTools} onClick={event => { if ((event.target as HTMLElement).closest('button')) close(); }}/><div className="home-tools-context">{browserContextControls}</div>{home && dictation}{home && <button className="context-choice" onClick={() => { close(); useStore.getState().openConversationDraft(id ?? null); }}>{shellIconOpen}<span>Open full conversation</span></button>}</div>}
++  </Popover></span>}</div>;
+ 
+   const attachmentItems: AttachmentItem[] = [
+     ...attachments.map(item => ({ key:`document:${item.attachmentId}`, name:item.filename, kind:"document" as const, included:item.included,
+@@ -722,7 +722,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+       {historyError && <p role="alert">{historyError} <button className="btn sm" onClick={() => void loadTurns(earlier ?? undefined)}>Try again</button></p>}
+       {earlier && !historyError && <button className="btn sm" disabled={historyLoading} onClick={() => void loadTurns(earlier)}>Load earlier messages</button>}
+       {!turns.length && !historyLoading && !historyError && <div className="conversation-empty"><AuxMark /><h1>What would you like to work on?</h1><p>Ask a question or give Aux a task in the browser.</p></div>}
+-      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last} questionInComposer={run === last && answering} controlsInComposer={run === last} composerRef={textareaRef} sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} onCitationOpen={openCitation}/><RunSources sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} profileNames={sourceProfileNames} onOpen={source => { setSourceDetail(source); setImagePreview(null); setDocumentPreview(null); useStore.setState({ resultPreview: null }); }}/>{generated.some(item=>item.runId===run.runId) && <div role="group" className="conversation-results" aria-label="Saved results">{generated.filter(item=>item.runId===run.runId).map(item=><ResultCard key={item.artifactId} compact={item.automaticReport === true} result={item} revision={item.revision ?? artifactVersions[item.artifactId]} onOpen={()=>{setSourceDetail(null);setImagePreview(null);setDocumentPreview(null);useStore.setState({resultPreview:item.artifactId});}}/>)}</div>}<RunImages runId={run.runId}/></article>)}
++      {turns.map(run => <article className="conversation-turn" data-turn-id={run.runId} key={run.runId}><time dateTime={new Date(run.createdAt).toISOString()} title={new Date(run.createdAt).toLocaleString()}>{new Date(run.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{run.goal}</div>{queuedMessages.filter(message => message.mode === "steer" && message.targetRunId === run.runId && message.status === "delivered").map(message => <div className="conversation-steer" key={message.messageId}><small>Changed task</small><div className="user-message">{message.text}</div></div>)}<RunPanel savedAnswerIds={generated.filter(item => item.runId === run.runId && item.automaticReport === true).map(item => item.artifactId)} runId={run.runId} conversation readOnly={archived} retryPageId={selectedContext?.pageId} latest={run === last} questionInComposer={run === last && answering} controlsInComposer={run === last} composerRef={textareaRef} sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} onCitationOpen={openCitation}/><RunSources sources={sourcesByRun.get(run.runId) ?? NO_SOURCES} profileNames={sourceProfileNames} onOpen={source => { setSourceDetail(source); setImagePreview(null); setDocumentPreview(null); useStore.setState({ resultPreview: null }); }}/>{generated.some(item=>item.runId===run.runId) && <div role="group" className="conversation-results" aria-label="Saved results">{generated.filter(item=>item.runId===run.runId).map(item=><ResultCard key={item.artifactId} compact={item.automaticReport === true} result={item} revision={item.revision ?? artifactVersions[item.artifactId]} onOpen={()=>{setSourceDetail(null);setImagePreview(null);setDocumentPreview(null);useStore.setState({resultPreview:item.artifactId});}}/>)}</div>}<RunImages runId={run.runId}/></article>)}
+       {pendingTurns.map(turn => <article className="conversation-turn pending" key={turn.id} aria-busy="true"><time dateTime={new Date(turn.createdAt).toISOString()}>{new Date(turn.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time><div className="user-message">{turn.goal}</div><output className="hint">Starting…</output></article>)}
+ 
+     </div></div>
+@@ -733,7 +733,7 @@ export function Conversation({ chatId, embedded = false, home = false, entryCont
+       {queued.length > 0 && <section className="composer-queue" aria-label="Queued follow-ups"><header>Up next <span className="count nums">{queued.length}</span></header><ol>{queued.map(message => <li key={message.messageId} data-message-id={message.messageId}><p>{message.text}</p><div className="queued-message-state"><span role={message.status === "needs_attention" ? "alert" : undefined}>{message.status === "needs_attention" ? message.error || "This follow-up needs attention." : message.status === "delivering" ? "Starting next…" : "Queued next"}</span>{message.status !== "delivering" && <><button type="button" disabled={archived || !!queueBusy} onClick={() => void cancelQueued(message, true)}>Edit</button><button type="button" disabled={archived || !!queueBusy} onClick={() => void cancelQueued(message)}>Remove</button></>}</div></li>)}</ol></section>}
+       <ComposerFrame notices={<>{last && <RunControls runId={last.runId}/>}{answering && <div className="composer-question" role="status"><strong>Aux needs your answer</strong><p>{suspension?.request.instruction}</p></div>}{last?.status === "needs_input" && !answering && suspension?.kind !== "handoff" && <div className="composer-question" role="status"><strong>{suspension ? "Decision needed" : suspensionLoaded ? "Current request unavailable" : "Loading current request"}</strong><p>{suspension ? "Review the approval prompt before Aux continues." : suspensionLoaded ? "Refresh the request before continuing." : "Checking the durable request…"}</p>{suspensionLoaded && !suspension && <button type="button" className="btn sm" onClick={() => setSuspensionRefresh(value => value + 1)}>Retry loading request</button>}</div>}</>}>
+       <div className="composer-context">
+-      {home && !attachmentsOpen && (selectedContext && selectedContext.url !== "about:blank" || browserSources.length > 0) && <button type="button" className="home-context-summary" onClick={() => conversationRoot.current?.querySelector<HTMLButtonElement>('.home-tools-trigger > button')?.click()}>{shellIconGlobe}<span>{selectedContext?.title || selectedContext?.url || "Selected browser context"}{browserSources.length ? ` · ${browserSources.length} saved ${browserSources.length === 1 ? "source" : "sources"}` : ""}</span></button>}
++      {!attachmentsOpen && (selectedContext && selectedContext.url !== "about:blank" || browserSources.length > 0) && <button type="button" className="home-context-summary" onClick={() => conversationRoot.current?.querySelector<HTMLButtonElement>('.home-tools-trigger > button')?.click()}>{shellIconGlobe}<span>{selectedContext?.title || selectedContext?.url || "Selected browser context"}{browserSources.length ? ` · ${browserSources.length} saved ${browserSources.length === 1 ? "source" : "sources"}` : ""}</span></button>}
+       <AttachmentTray items={attachmentItems} disabled={contextLocked} busy={attachmentSaving}/>
+       {id && turns.length > 0 && <ConversationContext key={id} chatId={id} revision={`${turns.length}:${last?.status}`} disabled={contextLocked || archived} onBusy={setHistorySaving}/>}
+       {imageTray}
+diff --git a/apps/shell/src/components/ConversationContext.test.tsx b/apps/shell/src/components/ConversationContext.test.tsx
+new file mode 100644
+index 00000000..605c4401
+--- /dev/null
++++ b/apps/shell/src/components/ConversationContext.test.tsx
+@@ -0,0 +1,28 @@
++// @vitest-environment jsdom
++import { act } from "react";
++import { createRoot } from "react-dom/client";
++import { afterEach, beforeEach, expect, it, vi } from "vitest";
++import { bridge } from "../bridge";
++import { ConversationContext } from "./ConversationContext";
++vi.mock("../ui/popover", () => ({ Popover: ({ trigger, children }: { trigger: React.ReactNode; children: (close: () => void) => React.ReactNode }) => <div>{trigger}{children(() => {})}</div> }));
++let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
++beforeEach(() => { vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); host = document.createElement("div"); root = createRoot(host); });
++afterEach(async () => { await act(async () => root.unmount()); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
++it("omits empty history after the real context request", async () => {
++  vi.spyOn(bridge, "invoke").mockResolvedValue({ entries: [], historyEnabled: true } as never);
++  await act(async () => root.render(<ConversationContext chatId="chat" revision="1" disabled={false} onBusy={() => {}} />));
++  expect(host.textContent).toBe("");
++});
++it("retains history controls when all existing turns are excluded", async () => {
++  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({ entries: [{ runId: "prior", goal: "Earlier request", included: false }], historyEnabled: true } as never);
++  await act(async () => root.render(<ConversationContext chatId="chat" revision="1" disabled={false} onBusy={() => {}} />));
++  expect(host.textContent).toContain("Previous turns · 0");
++  expect(host.textContent).toContain("Earlier request");
++  await act(async () => host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1]!.click());
++  expect(invoke).toHaveBeenCalledWith("runs.context.set", { chatId: "chat", runId: "prior", included: true });
++});
++it("keeps context load errors discoverable rather than treating them as empty history", async () => {
++  vi.spyOn(bridge, "invoke").mockRejectedValue(new Error("Unavailable"));
++  await act(async () => root.render(<ConversationContext chatId="chat" revision="1" disabled={false} onBusy={() => {}} />));
++  expect(host.querySelector('[role="alert"]')?.textContent).toContain("Could not load conversation context");
++});
+diff --git a/apps/shell/src/components/ConversationContext.tsx b/apps/shell/src/components/ConversationContext.tsx
+index 7a6ba8f1..be415d24 100644
+--- a/apps/shell/src/components/ConversationContext.tsx
++++ b/apps/shell/src/components/ConversationContext.tsx
+@@ -28,6 +28,7 @@ export function ConversationContext({ chatId, revision, disabled, onBusy }: {
+     catch (error) { errToast(error); }
+     finally { setSaving(false); }
+   };
++  if (!error && !context?.entries.length) return null;
+   return <Popover label="Conversation context" trigger={<>{shellIconLayersSm}<span>Previous turns · {context?.entries.filter(entry => entry.included).length ?? 0}</span></>}>
+     {() => <><header>Previous turns</header>{error && <p role="alert">Could not load conversation context. {error}</p>}
+       {context && <><label className="context-choice"><Checkbox checked={context.historyEnabled} disabled={disabled || saving} onChange={event => void update({ historyEnabled: event.target.checked })}/><span>Use previous turns</span></label>
+diff --git a/apps/shell/src/components/ResultCard.css b/apps/shell/src/components/ResultCard.css
+index ac8b9822..5b227f66 100644
+--- a/apps/shell/src/components/ResultCard.css
++++ b/apps/shell/src/components/ResultCard.css
+@@ -22,4 +22,11 @@
+ .result-card-disclosure > summary { padding:var(--space-2) var(--space-3); color:var(--ink-2); font-size:var(--fs-xs); cursor:pointer; }
+ .result-card-disclosure > summary:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--r-sm); }
+ .result-card-disclosure .result-card-preview { margin-bottom:var(--space-3); }
++
++.result-card-compact { display:flex; align-items:flex-start; gap:var(--space-2); border:0; background:transparent; }
++.result-card-compact .result-card-disclosure { flex:1; min-width:0; border:0; }
++.result-card-compact summary { display:flex; align-items:center; gap:var(--space-2); }
++.result-card-compact summary::before { content:"▸"; }
++.result-card-compact details[open] > summary::before { content:"▾"; }
++.result-card-compact .result-card-open { flex:none; margin-top:var(--space-2); }
+ }
+diff --git a/apps/shell/src/components/ResultCard.tsx b/apps/shell/src/components/ResultCard.tsx
+index 84632d71..5f60e238 100644
+--- a/apps/shell/src/components/ResultCard.tsx
++++ b/apps/shell/src/components/ResultCard.tsx
+@@ -21,8 +21,8 @@ export function ResultCard({result, revision, compact = false, onOpen}: {result:
+   // The caller supplies verified automatic-report provenance. Filename alone
+   // cannot decide whether an artifact is a redundant answer or a deliverable.
+   if (compact) return <article className="result-card result-card-compact">
+-    <header><span aria-hidden="true">{shellIconResult}</span><button onClick={onOpen} title={result.filename} aria-label={`Open ${result.filename}`}>{result.filename}</button><small>{kind} · {Math.max(1,Math.ceil(result.byteLength/1024))} KB</small><span className="result-card-version">v{revision ?? result.revision ?? 1}</span><button className="btn sm ghost" onClick={onOpen}>Open {shellIconOpen}</button></header>
+-    <details className="result-card-disclosure"><summary>Preview saved answer</summary><ResultExcerpt result={result}/></details>
++    <details className="result-card-disclosure"><summary><span>Saved answer</span><span className="result-card-version">v{revision ?? result.revision ?? 1}</span></summary><ResultExcerpt result={result}/></details>
++    <button className="btn sm ghost result-card-open" onClick={onOpen} title={result.filename} aria-label={`Open ${result.filename}`}>Open {shellIconOpen}</button>
+   </article>;
+   return <article className="result-card">
+     <header><span aria-hidden="true">{shellIconResult}</span><button onClick={onOpen} title={result.filename}>{result.filename}</button><span className="result-card-version">v{revision ?? result.revision ?? 1}</span></header>
+diff --git a/apps/shell/src/components/RunPanel.tsx b/apps/shell/src/components/RunPanel.tsx
+index d41f631d..c7aaf0c8 100644
+--- a/apps/shell/src/components/RunPanel.tsx
++++ b/apps/shell/src/components/RunPanel.tsx
+@@ -139,7 +139,7 @@ function Answer({ run, conversation = false, retry = null, stream, onCitationOpe
+ }
+ 
+ /** `latest` lets a conversation that already ordered its turns skip the per-panel scan. */
+-export const RunPanel = memo(function RunPanel({ runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen, sources, questionInComposer = false, controlsInComposer = false, composerRef }: { controlsInComposer?: boolean; questionInComposer?: boolean; sources?: ConversationSource[]; runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean; composerRef?: RefObject<HTMLTextAreaElement | null> }) {
++export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversation = false, readOnly = false, retryPageId, latest, onCitationOpen, sources, questionInComposer = false, controlsInComposer = false, composerRef }: { savedAnswerIds?: readonly string[]; controlsInComposer?: boolean; questionInComposer?: boolean; sources?: ConversationSource[]; runId: string; conversation?: boolean; readOnly?: boolean; retryPageId?: string; latest?: boolean; onCitationOpen?: (url:string,background:boolean,runId:string)=>boolean; composerRef?: RefObject<HTMLTextAreaElement | null> }) {
+   const run = useStore((s) => s.runs.find((r) => r.runId === runId));
+   const latestConversationTurn = useStore((s) => latest ?? isLatestTurn(s.runs, runId));
+   const stream = useStore((s) => s.answerStreams[runId]);
+@@ -243,7 +243,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
+       {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
+ 
+       <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || (!page && run.pageIds.length > 0) || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{shellIconReload}</button> : null} />
+-      <RunTranscriptDetails run={run} question={question} readOnly={readOnly} answerInComposer={questionInComposer} />
++      <RunTranscriptDetails savedAnswerIds={savedAnswerIds} run={run} question={question} readOnly={readOnly} answerInComposer={questionInComposer} />
+ 
+       {(calls != null || stats || !conversation) && <details className="run-provenance">
+         <summary>Run details</summary>
+@@ -279,7 +279,7 @@ export const RunPanel = memo(function RunPanel({ runId, conversation = false, re
+         </section>
+       )}
+ 
+-      {( !conversation || live || (steps?.length ?? 0) > 0) && <section className="run-section">
++      {(!conversation || (steps?.length ?? 0) > 0) && <section className="run-section">
+         <button className="run-section-head toggle" aria-expanded={showSteps} onClick={() => setShowSteps((v) => !v)}>
+           <span className={`chev ${showSteps ? "open" : ""}`}>{shellIconRight}</span>
+           <span>{conversation ? "Work history" : "Steps"}</span>
+diff --git a/apps/shell/src/run-controls.test.tsx b/apps/shell/src/run-controls.test.tsx
+index 59ebee9c..5205091b 100644
+--- a/apps/shell/src/run-controls.test.tsx
++++ b/apps/shell/src/run-controls.test.tsx
+@@ -34,10 +34,7 @@ it("keeps Stop available during pause and ignores the superseded pause error",as
+   });
+   try {
+     await act(async()=>root.render(<RunPanel runId="controls" conversation/>));
+-    const history=Array.from(host.querySelectorAll<HTMLButtonElement>("button")).find(button=>button.textContent?.includes("Work history"))!;
+-    expect(history.getAttribute("aria-expanded")).toBe("false");
+-    await act(async()=>history.click());
+-    expect(history.getAttribute("aria-expanded")).toBe("true");
++    expect(Array.from(host.querySelectorAll<HTMLButtonElement>("button")).some(button=>button.textContent?.includes("Work history"))).toBe(false);
+     const pause=host.querySelector<HTMLButtonElement>('[aria-label="Pause run"]')!;
+     await act(async()=>{pause.click();pause.click();});
+     expect(invoke.mock.calls.filter(([method])=>method==="runs.pause")).toHaveLength(1);
+diff --git a/apps/shell/src/transcript/RunTranscriptDetails.tsx b/apps/shell/src/transcript/RunTranscriptDetails.tsx
+index b3d6b113..97f37c3d 100644
+--- a/apps/shell/src/transcript/RunTranscriptDetails.tsx
++++ b/apps/shell/src/transcript/RunTranscriptDetails.tsx
+@@ -27,8 +27,8 @@ type CitationItem = Extract<RunTranscriptItem, { kind: "citation" }>;
+ type SourceRef = { pageId: string; url: string; documentEpoch: number };
+ 
+ /** Rehydrates from durable runs.get on mount and on status change. Stream deltas never grant citation trust. */
+-export function RunTranscriptDetails({ run, question, readOnly = false, answerInComposer = false }: {
+-  run: Run; question?: string; readOnly?: boolean; answerInComposer?: boolean;
++export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readOnly = false, answerInComposer = false }: {
++  savedAnswerIds?: readonly string[]; run: Run; question?: string; readOnly?: boolean; answerInComposer?: boolean;
+ }) {
+   const [projection, setProjection] = useState<RunTranscriptProjection | null>(null);
+   const [suspension, setSuspension] = useState<Suspension | null>(null);
+@@ -66,6 +66,9 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
+   const proposals = projection?.items.filter((item): item is Extract<RunTranscriptItem, { kind: "text-proposal" }> => item.kind === "text-proposal") ?? [];
+   const tools = projection?.items.filter((item): item is Extract<RunTranscriptItem, { kind: "tool" }> => item.kind === "tool") ?? [];
+   const toolSummary = projection?.items.find((item): item is Extract<RunTranscriptItem, { kind: "tool-summary" }> => item.kind === "tool-summary");
++  // Only verified automatic reports already rendered by the conversation are
++  // omitted from this duplicate list. Keep original artifacts for citations.
++  const listedArtifacts = artifacts.filter(item => !savedAnswerIds.includes(item.artifactId));
+   const waiting = projection?.items.find((item): item is Extract<RunTranscriptItem, { kind: "waiting" }> => item.kind === "waiting");
+   const errorItem = projection?.items.find((item): item is Extract<RunTranscriptItem, { kind: "error" }> => item.kind === "error");
+   const citations = projection?.items.filter((item) => item.kind === "citation") ?? [];
+@@ -146,7 +149,7 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
+     } finally { if (request === previewRequest.current) setOpeningSource(false); }
+   }
+ 
+-  if (!citations.length && !artifacts.length && !proposals.length && !tools.length && !recovery && !waiting && !errorItem && run.status !== "needs_input") return null;
++  if (!citations.length && !listedArtifacts.length && !proposals.length && !tools.length && !recovery && !waiting && !errorItem && run.status !== "needs_input") return null;
+   return <section className="run-section transcript-details" aria-label="Run evidence and recovery">
+     {waiting && waiting.state !== "needs_input" && <WaitingItem item={waiting} />}
+     {run.status === "needs_input" && <SuspensionPanel run={run} suspension={suspension} hydrated={hydrated} question={question} readOnly={readOnly} answerInComposer={answerInComposer} />}
+@@ -160,8 +163,8 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
+           <button className="btn sm ghost" onClick={() => void open(artifacts.find((artifact) => artifact.artifactId === item.artifactId)!, item)}>Inspect cited snapshot</button>}
+       </li>)}</ul>
+     </details>}
+-    {artifacts.length > 0 && <details className="transcript-artifacts"><summary>Saved artifacts · {artifacts.length}</summary>
+-      <ul>{artifacts.map((item) => <li key={item.artifactId}><button className="btn sm ghost" onClick={() => void open(item)}>
++    {listedArtifacts.length > 0 && <details className="transcript-artifacts"><summary>Saved artifacts · {listedArtifacts.length}</summary>
++      <ul>{listedArtifacts.map((item) => <li key={item.artifactId}><button className="btn sm ghost" onClick={() => void open(item)}>
+         {item.mediaType} · {Math.max(1, Math.ceil(item.size / 1024))} KB
+       </button></li>)}</ul>
+     </details>}
+diff --git a/apps/shell/src/transcript/run-transcript.test.tsx b/apps/shell/src/transcript/run-transcript.test.tsx
+index 3a8cc981..61622a15 100644
+--- a/apps/shell/src/transcript/run-transcript.test.tsx
++++ b/apps/shell/src/transcript/run-transcript.test.tsx
+@@ -197,3 +197,21 @@ it("shows one failure explanation with recorded technical detail collapsed", asy
+     expect(host.querySelector('.run-failure button')?.textContent).toBe("Model settings");
+   } finally { await act(async () => root.unmount());vi.restoreAllMocks();useStore.setState(original,true); }
+ });
++
++it("omits only verified saved-answer duplicates while preserving explicit artifact inspection", async () => {
++  const run = makeRun({ runId: "saved-answer", status: "completed", pageIds: [] });
++  const items = ["automatic", "explicit"].map(artifactId => ({ kind: "artifact", artifactId, mediaType: "text/plain", size: 5, status: "complete" }));
++  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async method => {
++    if (method === "runs.get") return { run, steps: [], modelCalls: 1, transcript: { runId: run.runId, items } } as never;
++    if (method === "artifacts.read") return { artifact: { artifactId: "explicit", runId: run.runId, mediaType: "text/plain", size: 5, status: "complete" }, dataBase64: btoa("hello") } as never;
++    return {} as never;
++  });
++  const host = document.createElement("div"), root = createRoot(host);
++  try {
++    await act(async () => root.render(<RunTranscriptDetails run={run} savedAnswerIds={["automatic"]} />));
++    expect(host.querySelector('.transcript-artifacts summary')?.textContent).toBe("Saved artifacts · 1");
++    await act(async () => host.querySelector<HTMLButtonElement>('.transcript-artifacts button')!.click());
++    expect(invoke).toHaveBeenCalledWith("artifacts.read", { artifactId: "explicit" });
++    expect(host.textContent).toContain("hello");
++  } finally { await act(async () => root.unmount()); vi.restoreAllMocks(); }
++});

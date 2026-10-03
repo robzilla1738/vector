@@ -47,7 +47,6 @@
   .composer-footer .conversation-browser-context-controls { justify-content:flex-start; }
   .composer-footer .browser-context-trigger { max-width:100%; }
   .conversation-browser-context-controls > :not(.browser-context-trigger) { display:none; }
-  .attachments-open .conversation-browser-context-controls > :not(.browser-context-trigger) { display:flex; }
   .composer-send-actions .dictation-trigger { width:28px; height:28px; min-width:28px; padding:0; justify-content:center; font-size:0; gap:0; }
 }
 
@@ -118,5 +117,4 @@
 .conversation-browser-sources svg { width: 13px; height: 13px; flex: none; }
 .conversation-browser-sources small { font-size: var(--fs-2xs); }
 .conversation-browser-sources button { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--r-xs); flex: none; }
-.conversation.attachments-open .capture-triggers { display: flex; flex-wrap:wrap; gap: var(--space-1-5); padding-bottom: var(--space-2); }
 }

@@ -27,8 +27,8 @@ type CitationItem = Extract<RunTranscriptItem, { kind: "citation" }>;
 type SourceRef = { pageId: string; url: string; documentEpoch: number };
 
 /** Rehydrates from durable runs.get on mount and on status change. Stream deltas never grant citation trust. */
-export function RunTranscriptDetails({ run, question, readOnly = false, answerInComposer = false }: {
-  run: Run; question?: string; readOnly?: boolean; answerInComposer?: boolean;
+export function RunTranscriptDetails({ savedAnswerIds = [], run, question, readOnly = false, answerInComposer = false }: {
+  savedAnswerIds?: readonly string[]; run: Run; question?: string; readOnly?: boolean; answerInComposer?: boolean;
 }) {
   const [projection, setProjection] = useState<RunTranscriptProjection | null>(null);
   const [suspension, setSuspension] = useState<Suspension | null>(null);
@@ -66,6 +66,9 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
   const proposals = projection?.items.filter((item): item is Extract<RunTranscriptItem, { kind: "text-proposal" }> => item.kind === "text-proposal") ?? [];
   const tools = projection?.items.filter((item): item is Extract<RunTranscriptItem, { kind: "tool" }> => item.kind === "tool") ?? [];
   const toolSummary = projection?.items.find((item): item is Extract<RunTranscriptItem, { kind: "tool-summary" }> => item.kind === "tool-summary");
+  // Only verified automatic reports already rendered by the conversation are
+  // omitted from this duplicate list. Keep original artifacts for citations.
+  const listedArtifacts = artifacts.filter(item => !savedAnswerIds.includes(item.artifactId));
   const waiting = projection?.items.find((item): item is Extract<RunTranscriptItem, { kind: "waiting" }> => item.kind === "waiting");
   const errorItem = projection?.items.find((item): item is Extract<RunTranscriptItem, { kind: "error" }> => item.kind === "error");
   const citations = projection?.items.filter((item) => item.kind === "citation") ?? [];
@@ -146,7 +149,7 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
     } finally { if (request === previewRequest.current) setOpeningSource(false); }
   }
 
-  if (!citations.length && !artifacts.length && !proposals.length && !tools.length && !recovery && !waiting && !errorItem && run.status !== "needs_input") return null;
+  if (!citations.length && !listedArtifacts.length && !proposals.length && !tools.length && !recovery && !waiting && !errorItem && run.status !== "needs_input") return null;
   return <section className="run-section transcript-details" aria-label="Run evidence and recovery">
     {waiting && waiting.state !== "needs_input" && <WaitingItem item={waiting} />}
     {run.status === "needs_input" && <SuspensionPanel run={run} suspension={suspension} hydrated={hydrated} question={question} readOnly={readOnly} answerInComposer={answerInComposer} />}
@@ -160,8 +163,8 @@ export function RunTranscriptDetails({ run, question, readOnly = false, answerIn
           <button className="btn sm ghost" onClick={() => void open(artifacts.find((artifact) => artifact.artifactId === item.artifactId)!, item)}>Inspect cited snapshot</button>}
       </li>)}</ul>
     </details>}
-    {artifacts.length > 0 && <details className="transcript-artifacts"><summary>Saved artifacts · {artifacts.length}</summary>
-      <ul>{artifacts.map((item) => <li key={item.artifactId}><button className="btn sm ghost" onClick={() => void open(item)}>
+    {listedArtifacts.length > 0 && <details className="transcript-artifacts"><summary>Saved artifacts · {listedArtifacts.length}</summary>
+      <ul>{listedArtifacts.map((item) => <li key={item.artifactId}><button className="btn sm ghost" onClick={() => void open(item)}>
         {item.mediaType} · {Math.max(1, Math.ceil(item.size / 1024))} KB
       </button></li>)}</ul>
     </details>}

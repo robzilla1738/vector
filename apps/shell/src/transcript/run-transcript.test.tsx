@@ -197,3 +197,21 @@ it("shows one failure explanation with recorded technical detail collapsed", asy
     expect(host.querySelector('.run-failure button')?.textContent).toBe("Model settings");
   } finally { await act(async () => root.unmount());vi.restoreAllMocks();useStore.setState(original,true); }
 });
+
+it("omits only verified saved-answer duplicates while preserving explicit artifact inspection", async () => {
+  const run = makeRun({ runId: "saved-answer", status: "completed", pageIds: [] });
+  const items = ["automatic", "explicit"].map(artifactId => ({ kind: "artifact", artifactId, mediaType: "text/plain", size: 5, status: "complete" }));
+  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(async method => {
+    if (method === "runs.get") return { run, steps: [], modelCalls: 1, transcript: { runId: run.runId, items } } as never;
+    if (method === "artifacts.read") return { artifact: { artifactId: "explicit", runId: run.runId, mediaType: "text/plain", size: 5, status: "complete" }, dataBase64: btoa("hello") } as never;
+    return {} as never;
+  });
+  const host = document.createElement("div"), root = createRoot(host);
+  try {
+    await act(async () => root.render(<RunTranscriptDetails run={run} savedAnswerIds={["automatic"]} />));
+    expect(host.querySelector('.transcript-artifacts summary')?.textContent).toBe("Saved artifacts · 1");
+    await act(async () => host.querySelector<HTMLButtonElement>('.transcript-artifacts button')!.click());
+    expect(invoke).toHaveBeenCalledWith("artifacts.read", { artifactId: "explicit" });
+    expect(host.textContent).toContain("hello");
+  } finally { await act(async () => root.unmount()); vi.restoreAllMocks(); }
+});
