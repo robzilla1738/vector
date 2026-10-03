@@ -13,6 +13,7 @@
 #include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "chrome/browser/ui/aux/native_appearance_file_channel.h"
 
 namespace aux {
 // Metadata only: this never opens a Profile, session, credential or Keychain file.
@@ -53,6 +54,9 @@ class NativeObservationMetadata {
   ~NativeObservationMetadata();
   bool Enabled(bool appearance) const;
   bool StockEnabled() const;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  std::optional<NativeAppearanceDirectoryLease> TakeAppearanceDirectoryLease();
+#endif
  private:
   NativeObservationMetadata();
   bool CurrentDirectories() const;
@@ -60,6 +64,7 @@ class NativeObservationMetadata {
   base::ScopedFD root_, profile_;
   struct stat root_identity_ {}, profile_identity_ {};
   bool appearance_ = false, performance_ = false, stock_ = false;
+  bool appearance_file_ = false, appearance_file_leased_ = false;
 };
 // Test-only scoped installation captures the same real directory receipt and
 // restores prior process admission. It cannot turn invalid metadata into true.

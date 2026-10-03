@@ -4,17 +4,28 @@ import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { acquireNativeSlot } from '../../../scripts/native-slot.mjs';
+import { acquireNativeSlot, quarantineLaunchServicesAppearanceSlot } from '../../../scripts/native-slot.mjs';
 import { createDevelopmentAcceptance, extendDevelopmentAcceptance, nativeProfileName, validateDisposableProfile } from './dev-acceptance.mjs';
 import { createRpc, validateDescriptor } from './rpc.mjs';
 import { createAppearanceStream, createPipAppearanceStream } from './appearance-stream.mjs';
 import { createPerformanceMailbox, preparePerformanceMailbox } from './performance-mailbox.mjs';
 import { createStartupTrace } from './startup-evidence.mjs';
-import { readPackagedRuntimePair } from './packaged-runtime-pair-artifact.mjs';
+import { createAxClient } from './ax.mjs';
+import { createLaunchServicesAppearanceOwner } from './launch-services-appearance-owner.mjs';
+import { readPackagedRuntimePair, readPackagedRuntimePairBytes } from './packaged-runtime-pair-artifact.mjs';
 import { createPrivateWindowStream } from './private-window-stream.mjs';
 import { createPrivateObservationOwner } from './private-observation-owner.mjs';
 
 const privateApps = new WeakMap();
+const fileApps = new WeakMap();
+export function readLaunchServicesQuarantineOwner(app, pair) {
+  if (fileApps.get(app) !== pair) throw new Error('Foreign LS quarantine App owner');
+  return app.launchServicesQuarantineOwner; // Refusal publication survives artifact damage; clearing still validates it.
+}
+export function readLaunchServicesAppObservation(app, pair) {
+  if (fileApps.get(app) !== pair) throw new Error("Foreign LS appearance App owner");
+  readPackagedRuntimePairBytes(pair); return app.fileObservation;
+}
 export function readPrivateAppObservation(app, pair) {
   if (privateApps.get(app) !== pair) throw new Error('Foreign private observation App owner');
   readPackagedRuntimePair(pair);
@@ -111,7 +122,9 @@ export function observeJourneyProcess({ child, externalPid, generation, spawnErr
     exitStatusAvailable: !externalPid && (child?.exitCode != null || child?.signalCode != null) };
 }
 
-export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRoot, admittedPair }) {
+export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRoot, admittedPair, appearancePair }) {
+  const appearanceArtifact = appearancePair === undefined ? null : readPackagedRuntimePairBytes(appearancePair);
+  if (appearanceArtifact && (admittedPair !== undefined || launch.perf || realpathSync(appPath) !== appearanceArtifact.bundle || (launch.profiles && (launch.profiles.length !== 1 || launch.profiles[0] !== "Default")))) throw new Error("File appearance requires the original regular Default artifact outside performance/private runs");
   const privatePair = admittedPair === undefined ? null : readPackagedRuntimePair(admittedPair);
   if (privatePair && (suppliedRoot !== undefined || Object.keys(launch).length || realpathSync(appPath) !== privatePair.bundle)) throw new Error('Private observation requires only its original fixed admitted bundle');
   const bundle = validateJourneyBundle(appPath);
@@ -136,13 +149,16 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     HOME: profileRoot, TMPDIR: profileRoot } : { ...process.env, ...launch.env, ...acceptance?.env };
   // Never inherit a developer token unless this launcher made its own marker.
   if (!acceptance) delete env.AUX_DEV_ACCEPTANCE_TOKEN;
-  let appearanceStream, pipAppearanceStream, appearanceDetach;
+  let appearanceStream, pipAppearanceStream, appearanceDetach, fileAppearance;
+  let appearanceConfiguration = 0;
   let performanceMailbox, performanceDetach;
   function disposePerformance() {
     performanceDetach?.(); performanceDetach = undefined;
     performanceMailbox?.dispose(); performanceMailbox = undefined;
   }
   function disposeAppearance() {
+    ++appearanceConfiguration;
+    fileAppearance?.retire(); fileAppearance = undefined;
     appearanceDetach?.(); appearanceDetach = undefined;
     appearanceStream?.dispose(); appearanceStream = undefined;
     pipAppearanceStream?.dispose(); pipAppearanceStream = undefined;
@@ -152,6 +168,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   let externalPid;
   let externalGeneration;
   let launchUncertain = false;
+  let appearanceLaunchAttempted = false, appearanceLaunchReserved = false, launchQuarantine, appearanceReservation;
   const launchSource = resolve(import.meta.dirname, "../launch-url.swift");
   const launchDigest = createHash("sha256").update(readFileSync(launchSource)).digest("hex").slice(0, 12);
   const launchCache = join(homedir(), "Library/Caches/dev.aux.journeys");
@@ -167,6 +184,25 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   async function launchUrl(url, args, expectedPid = null, aux = false, background = false) {
     const fixtureUrl = (aux ? validateAuxLaunch : validateExternalLaunch)(url, args, expectedPid ?? 0, userDataDir);
     ensureUrlLauncher();
+    const originalGeneration = generation, originalChild = child, originalExternalPid = externalPid;
+    let warmReservation;
+    if (appearanceArtifact && expectedPid) {
+      if (externalPid) {
+        if (externalPid !== expectedPid || !launchQuarantine || !appearanceReservation?.active) throw new Error("Foreign or retired LS warm owner");
+        warmReservation = launchQuarantine; warmReservation.assertReserved();
+      } else if (!child || child.pid !== expectedPid || child.exitCode !== null || child.signalCode !== null) throw new Error("Original child warm owner retired");
+    }
+    if (appearanceArtifact && !expectedPid) {
+      appearanceLaunchReserved = true;
+      const reservation = appearanceReservation = { active: true, generation, slot };
+      launchQuarantine = await quarantineLaunchServicesAppearanceSlot(api, appearancePair);
+      if (!launchQuarantine) throw new Error("Original LS reservation unavailable before dispatch");
+      if (appearanceReservation !== reservation || !reservation.active || generation !== reservation.generation || slot !== reservation.slot) {
+        launchQuarantine.retire();
+        throw new Error("Original LS reservation retired before dispatch");
+      }
+      appearanceLaunchAttempted = true;
+    }
     if (!expectedPid) launchUncertain = true;
     const stdout = await new Promise((resolveLaunch, rejectLaunch) => {
       const helper = spawn(urlLauncher, [bundle, fixtureUrl, JSON.stringify(args), String(expectedPid ?? 0), String(externalGeneration ?? 0), aux ? "aux" : "http", background ? "background" : "foreground"], { stdio: ["pipe", "pipe", "pipe"] });
@@ -183,6 +219,11 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       helper.stdin.on("error", error => { clearTimeout(timer); helper.kill(); rejectLaunch(error); });
       helper.stdin.end(JSON.stringify({ ...env, AUX_NATIVE_SLOT_TOKEN: slot.token }));
     });
+    if (appearanceArtifact && expectedPid) {
+      if (generation !== originalGeneration || child !== originalChild || externalPid !== originalExternalPid) throw new Error("Original warm owner changed");
+      if (warmReservation) warmReservation.assertReserved();
+      else if (child?.exitCode !== null || child?.signalCode !== null) throw new Error("Original child warm owner retired");
+    }
     const receipt = JSON.parse(stdout);
     if (!Number.isInteger(receipt.pid) || receipt.pid <= 0 || !Number.isFinite(receipt.generation) || receipt.generation <= 0 || (expectedPid && receipt.pid !== expectedPid) || (externalGeneration && externalGeneration !== receipt.generation))
       throw new Error("LaunchServices did not target the disposable Aux instance");
@@ -323,9 +364,11 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       '--enable-logging', `--log-file=${nativeLog}`,
       '--disable-background-networking', '--disable-component-update', '--disable-sync',
       ...(launch.perf ? [] : ['--force-renderer-accessibility']), ...launchArgs,
+      ...(appearanceArtifact && (externalUrl || auxUrl) ? ['--aux-native-appearance-file-observer'] : []),
     ];
     try {
       if (externalUrl || auxUrl) {
+        if (appearanceArtifact) { appearanceArtifact.validate(); if (activeProfile !== "Default" || launchArgs.filter(arg => arg === "--aux-native-appearance-observer").length !== 1) throw new Error("Owned file observation requires actual Default appearance opt-in"); }
         const receipt = await launchUrl(auxUrl ?? externalUrl, args, null, !!auxUrl, background);
         externalPid = receipt.pid;
         launchUncertain = false;
@@ -363,6 +406,11 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
   }
   async function quit() {
+    if (appearanceReservation) appearanceReservation.active = false;
+    try { return await quitOwned(); }
+    catch (error) { launchQuarantine?.retire(); throw error; }
+  }
+  async function quitOwned() {
     disposeAppearance(); disposePerformance();
     if (privatePair) {
       privateOwner?.retire(new Error('Original private observation stopping'));
@@ -390,9 +438,14 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       while (running() && Date.now() < deadline) await delay(50);
       if (running()) {
         if (externalPid) execFileSync(urlLauncher, ["force-terminate", bundle, String(externalPid), String(externalGeneration)], { timeout: 2000, stdio: "pipe" }); else child.kill('SIGKILL');
-        while (running()) await delay(50);
+        if (appearanceArtifact) {
+          const killDeadline = Date.now() + 5000;
+          while (running() && Date.now() < killDeadline) await delay(50);
+          if (running()) throw new Error("Original LS appearance process retirement unverified; slot and artifacts retained");
+        } else while (running()) await delay(50);
       }
     }
+    if (launchQuarantine) { await launchQuarantine.clearAfterOriginalRetirement(); launchQuarantine = undefined; }
     slot?.release(); slot = undefined;
   }
   const api = {
@@ -434,6 +487,62 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       performanceDetach = () => { observedChild.stderr.off('data', onData); observedChild.off('close', onExit); observedChild.off('error', onExit); };
       performanceMailbox = mailbox; return mailbox;
     },
+    async createAppearanceHelper() {
+      if (!appearanceArtifact || !running()) throw new Error('No original admitted appearance process');
+      const observedPid = api.pid, observedGeneration = generation;
+      appearanceArtifact.validate();
+      const helper = await createAxClient(observedPid, { compilerArtifact: readPackagedRuntimePair(appearancePair).compilerArtifact });
+      try {
+        appearanceArtifact.validate();
+        if (!running() || api.pid !== observedPid || generation !== observedGeneration) throw new Error('Original appearance process retired during helper creation');
+        return helper;
+      } catch (error) {
+        try { await helper.close(); } catch (cleanup) { throw new AggregateError([error, cleanup], 'Appearance helper admission and cleanup failed'); }
+        throw error;
+      }
+    },
+    async configureLaunchServicesAppearance(candidate, helper) {
+      disposeAppearance();
+      if (!appearanceArtifact || !externalPid || !running() || child || launch.perf || activeProfile !== 'Default') throw new Error('No admitted original LS appearance process');
+      const configuration = appearanceConfiguration;
+      const observedPid = externalPid, observedGeneration = generation, observedExternalGeneration = externalGeneration;
+      const original = Object.freeze({ pid: observedPid, generation: observedExternalGeneration, root: profileRoot,
+        assertLive() {
+          appearanceArtifact.validate();
+          if (!running() || child || externalPid !== observedPid || generation !== observedGeneration || externalGeneration !== observedExternalGeneration || appearanceConfiguration !== configuration) throw new Error('Original LS appearance owner retired');
+        }, readIdentity: () => api.identity() });
+      const owner = await createLaunchServicesAppearanceOwner({ original, pair: appearancePair, helper, candidate });
+      try { original.assertLive(); fileAppearance = owner; }
+      catch (error) { owner.retire(); throw error; }
+    },
+    get launchServicesQuarantineOwner() {
+      if (!appearanceArtifact || !appearanceLaunchReserved) return null;
+      const epoch = generation;
+      return Object.freeze({ pid: null, generation: null, async observeAbsent() {
+        appearanceArtifact.validate();
+        if (generation !== epoch || !appearanceLaunchAttempted || launchUncertain || !Number.isInteger(externalPid) || !Number.isFinite(externalGeneration)) throw new Error('Original LS generation unknown or replaced; retirement cannot be proven');
+        const pid = externalPid, launchGeneration = externalGeneration;
+        const absent = !running();
+        appearanceArtifact.validate();
+        if (generation !== epoch || externalPid !== pid || externalGeneration !== launchGeneration || launchUncertain) throw new Error('Original LS cleanup owner replaced');
+        return absent;
+      } });
+    },
+    get launchServicesQuarantineReceipt() {
+      if (!launchQuarantine) return null;
+      const { token: _token, ...receipt } = launchQuarantine.receipt;
+      return Object.freeze(receipt);
+    },
+    get fileObservation() {
+      if (!appearanceArtifact || !fileAppearance || !externalPid || !running()) throw new Error('No original admitted LS appearance owner');
+      appearanceArtifact.validate();
+      return Object.freeze({ pid: externalPid, observe: selection => fileAppearance.observe(selection),
+        discoverUtility: selection => fileAppearance.discoverUtility(selection), proof: raw => fileAppearance.proof(raw) });
+    },
+    appearanceFileProof(raw) {
+      if (!fileAppearance) throw new Error('No original signed file receipt');
+      return fileAppearance.proof(raw);
+    },
     configureAppearance(candidate) {
       disposeAppearance();
       if (!running() || externalPid || !child?.stderr || launch.perf ||
@@ -452,10 +561,12 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       appearanceStream = stream; pipAppearanceStream = pip;
     },
     observeAppearance(selection) {
+      if (fileAppearance) return fileAppearance.observe(selection);
       if (!running() || externalPid || !appearanceStream) return Promise.reject(new Error('No owned appearance stream for current child'));
       return appearanceStream.observe(selection);
     },
     async discoverUtilityAppearance(selection) {
+      if (fileAppearance) return fileAppearance.discoverUtility(selection);
       if (!running() || externalPid || !appearanceStream) throw new Error('No owned utility stream for current child');
       const originalChild = child, originalGeneration = generation, originalStream = appearanceStream;
       const raw = await originalStream.discoverUtility(selection);
@@ -528,5 +639,6 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     },
   };
   if (privatePair) privateApps.set(api, privatePair);
+  if (appearanceArtifact) fileApps.set(api, appearancePair);
   return api;
 }

@@ -1129,6 +1129,9 @@ int ChromeBrowserMainParts::PreCreateThreads() {
   TRACE_EVENT0("startup", "ChromeBrowserMainParts::PreCreateThreads");
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
   aux::InitializeNativeObservationMetadata(*base::CommandLine::ForCurrentProcess());
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  aux::InitializeNativeAppearanceFileChannel();
+#endif
 #endif
   result_code_ = PreCreateThreadsImpl();
 

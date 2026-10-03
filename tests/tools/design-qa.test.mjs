@@ -119,3 +119,13 @@ for (const missing of [false, true]) test(`unknown utility ownership ${missing ?
 }, f => {
   const result = buildContactSheets(f.input, f.output).features[0]; assert.equal(result.cells, 0); assert.equal(result.records[0].cell, null);
 }));
+
+test('signed LS provenance cannot count without separately admitted artifacts', () => run(undefined, f => {
+  const name = join(f.root, 'provenance.json'); const proof = JSON.parse(readFileSync(name, 'utf8'));
+  proof.transport = 'signed-launchservices-file';
+  const data = Buffer.from(JSON.stringify(proof)); writeFileSync(name, data);
+  const manifestPath = join(f.root, 'manifest.json'), manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  manifest.captures[0].provenance.sha256 = hash(data); const bytes = Buffer.from(JSON.stringify(manifest)); writeFileSync(manifestPath, bytes);
+  f.index.features[0].captures[0].provenance.sha256 = hash(data); f.index.features[0].captures[0].manifest.sha256 = hash(bytes); f.save();
+  assert.throws(() => buildContactSheets(f.input, f.output), /externally admitted/); assert.equal(existsSync(f.output), false);
+}));

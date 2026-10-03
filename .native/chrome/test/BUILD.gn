@@ -8083,6 +8083,7 @@ test("unit_tests") {
       "../browser/ui/aux/native_performance_observer_unittest.cc",
       "../browser/ui/aux/native_utility_appearance_owner_unittest.cc",
       "../browser/ui/aux/native_pip_appearance_registry_unittest.cc",
+      "../browser/ui/aux/native_appearance_file_channel_unittest.cc",
       "../browser/ui/aux/native_pip_video_backing_unittest.cc",
       "../browser/ui/aux/native_command_presentation_session_unittest.cc",
       "../browser/ui/aux/native_guest_presentation_fixture_unittest.cc",

@@ -1,3 +1,5 @@
+import { verifyAppearanceFileProof } from './appearance-file-proof.mjs';
+import { readLaunchServicesAppObservation } from './app.mjs';
 import assert from 'node:assert/strict';
 import { readUtilityAppearanceJson, decodeUtilityAppearanceOwner, assertUtilityAppearanceOwner } from './utility-appearance-owner.mjs';
 import { createHash } from 'node:crypto';
@@ -5,7 +7,7 @@ import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 
 import { basename, join, resolve } from 'node:path';
 import { PNG } from 'pngjs';
 import { readPrivateAppObservation } from './app.mjs';
-import { readPackagedRuntimePair } from './packaged-runtime-pair-artifact.mjs';
+import { readPackagedRuntimePair, readPackagedRuntimePairBytes } from './packaged-runtime-pair-artifact.mjs';
 import { normalizePrivateWindowObservation } from './private-window-observation.mjs';
 import { decodeWarmWindowHelperIdentity } from './native-warm-helper-identity.mjs';
 import { evidenceBytes } from '../../../scripts/lib/qualification.mjs';
@@ -131,7 +133,15 @@ export function createPrivateAppearanceProvenance({ outputDir, app, admittedPair
     }, readIdentity: validate }, false,
     { artifact: pair.artifact, normalize: normalizePrivateWindowObservation });
 }
-function createNativeProvenance({ outputDir, candidate, targetPid, helper, helperExecutable, helperSource, observeWindow, discoverUtilityWindow, readIdentity }, child, privateSource) {
+export function createLaunchServicesAppearanceProvenance({ app, pair, ...options }) {
+  const bytes = readPackagedRuntimePairBytes(pair);
+  const owner = () => readLaunchServicesAppObservation(app, pair);
+  return createNativeProvenance({ ...options, targetPid: owner().pid,
+    observeWindow: selection => owner().observe(selection),
+    discoverUtilityWindow: selection => owner().discoverUtility(selection), readIdentity: () => app.identity() }, false, undefined,
+    { artifact: bytes.artifact, proof: raw => owner().proof(raw), pair });
+}
+function createNativeProvenance({ outputDir, candidate, targetPid, helper, helperExecutable, helperSource, observeWindow, discoverUtilityWindow, readIdentity }, child, privateSource, fileSource) {
   validateAppearanceCandidate(candidate);
   candidate = structuredClone(candidate);
   assert.ok(Number.isInteger(targetPid) && targetPid > 0 && typeof observeWindow === 'function' && typeof readIdentity === 'function' && typeof helper?.trusted === 'function' && typeof helper.windows === 'function', 'Missing authorized appearance producer access');
@@ -160,6 +170,12 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
     // Transport selection only; the native shell getter still takes zero arguments.
     // A periodic observer must wait for a fresh record from this exact window.
     const rawJson = await observeWindow({ windowId, notBefore: startedAt });
+    const fileProof = fileSource && structuredClone(fileSource.proof(rawJson));
+    if (fileSource) {
+      assert.equal(verifyAppearanceFileProof(fileProof, { pair: fileSource.pair, candidate, targetPid,
+        helperSourceSha256: pins.helperSourceSha256, helperSha256: pins.helperSha256 }), rawJson);
+      assert.deepEqual(fileProof.activeIdentity.native.nativeAppearanceFileChannel, kernelBefore.native.nativeAppearanceFileChannel);
+    }
     const completedAt = new Date().toISOString();
     const options = { candidate, targetPid, windowId, startedAt, completedAt };
     const privateReceipt = privateSource?.normalize(rawJson, options);
@@ -178,7 +194,8 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
     const kernelAfter = await readIdentity();
     if (privateSource) assert.deepEqual(kernelBefore, kernelAfter, 'Private kernel identity changed during observation');
     else validateIdentity(kernelAfter, candidate);
-    return { window, system, rawJson, rawSystem, startedAt, completedAt, ...(privateSource ? { kernel: { before: kernelBefore, after: kernelAfter } } : {}) };
+    if (fileSource) assert.deepEqual(kernelAfter.native.nativeAppearanceFileChannel, fileProof.header, 'Original signed channel capability changed across observation');
+    return { window, system, rawJson, rawSystem, startedAt, completedAt, ...(fileSource ? { fileProof } : {}), ...(privateSource ? { kernel: { before: kernelBefore, after: kernelAfter } } : {}) };
   }
   return { pins,
     async discoverUtilityOwner({ browserWindowId, windowKind }) {
@@ -271,10 +288,11 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
           window: put(`${side}-window.json`, { ...value.window, rawReply: rawWindow, requestStartedAt: value.startedAt, requestCompletedAt: value.completedAt }),
           system: put(`${side}-system.json`, { ...value.system, rawReply: rawSystem }),
           ...(privateSource ? { kernel: put(`${side}-kernel.json`, value.kernel) } : {}),
+          ...(fileSource ? { fileTransport: put(`${side}-signed-file.json`, value.fileProof) } : {}),
         };
       }
       const record = { ...capture, state, capturedAt, captureCompletedAt, pixelDimensions: { width, height }, windowFrame: before.window.frame, provenanceObservationId: capture.name };
-      const provenance = put('provenance.json', { schema: 1, candidate, ...(privateSource ? { runtimeStatus: 'inactive-private', packagedRuntimeArtifact: privateSource.artifact } : {}), observations: [{ id: capture.name, capture: record, ...observations }] });
+      const provenance = put('provenance.json', { schema: 1, candidate, ...(privateSource ? { runtimeStatus: 'inactive-private', packagedRuntimeArtifact: privateSource.artifact } : {}), ...(fileSource ? { transport: 'signed-launchservices-file', packagedRuntimeArtifact: fileSource.artifact } : {}), observations: [{ id: capture.name, capture: record, ...observations }] });
       return { ...record, provenance: { ...provenance, path: `${name}/${provenance.path}` } };
     },
   };

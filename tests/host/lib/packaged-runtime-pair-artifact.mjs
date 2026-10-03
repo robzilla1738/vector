@@ -7,6 +7,7 @@ import { retainNativeWindowCompiler } from './native-window-compiler-artifact.mj
 import { readStartupMachO } from './startup-helper-manifest.mjs';
 import { requireClosureFile, verifyShellResourceReadback } from './shell-resource-readback.mjs';
 const admitted = new WeakSet();
+const byteViews = new WeakMap();
 const ref = value => ({ path: value.path, sha256: value.sha256 });
 const freeze = value => {
   if (value && typeof value === 'object') { for (const child of Object.values(value)) freeze(child); Object.freeze(value); }
@@ -70,4 +71,16 @@ export function retainPackagedRuntimePair(admission) {
 }
 export function readPackagedRuntimePair(lease) {
   assert.ok(admitted.has(lease), 'Foreign packaged pair artifact'); lease.validate(); return lease;
+}
+
+/** Original retained artifact bytes only. This is neither an active-runtime
+ * handshake nor a reinterpretation of the existing inactive-private status. */
+export function readPackagedRuntimePairBytes(lease) {
+  readPackagedRuntimePair(lease);
+  if (!byteViews.has(lease)) byteViews.set(lease, Object.freeze({
+    bundle: lease.bundle, native: lease.native, productIdentity: lease.productIdentity,
+    image: lease.image, shellDigest: lease.shellDigest, artifact: lease.artifact,
+    helper: freeze(structuredClone(lease.compilerArtifact.decoded)), validate: lease.validate,
+  }));
+  return byteViews.get(lease);
 }

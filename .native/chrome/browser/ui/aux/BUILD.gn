@@ -110,6 +110,8 @@ source_set("runtime") {
     "native_guest_stage_input_mac.mm",
     "journey_fixture_path.cc",
     "journey_fixture_path.h",
+    "native_appearance_file_channel.h",
+    "native_appearance_file_channel.cc",
     "native_performance_observer.h",
     "native_performance_observer.cc",
     "native_performance_input_mac.h",

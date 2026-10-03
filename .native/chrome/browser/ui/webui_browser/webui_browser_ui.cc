@@ -20,6 +20,7 @@
 #include "chrome/browser/ui/aux/native_performance_observer.h"
 #include "content/public/browser/native_platform_input_admission.h"
 #endif
+#include "chrome/browser/ui/aux/native_appearance_file_channel.h"
 #include <iostream>
 #endif
 #include "chrome/browser/ui/toolbar/back_forward_menu_model.h"
@@ -962,6 +963,29 @@ void WebUIBrowserUI::Request(const std::string& method,
         }
         return false;
       });
+    }
+#endif
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+    if (browser_ && aux::NativeAppearanceObservationEnabled() &&
+        IsAuthorizedAuxDocument() && !aux::IsQuickAskWindow(browser_)) {
+      const auto original_ui = GetWeakPtr();
+      auto* contents = web_ui()->GetWebContents();
+      auto* frame = contents->GetPrimaryMainFrame();
+      const auto original_contents = contents->GetWeakPtr();
+      const auto original_browser = browser_->GetWeakPtr();
+      if (frame && frame == web_ui()->GetRenderFrameHost()) {
+        const auto document = frame->GetWeakDocumentPtr();
+        auto receipt = aux::NativeAppearanceFileChannelReceipt(browser_->GetProfile());
+        if (receipt && original_ui && original_contents && original_browser &&
+            original_ui->browser_ == original_browser.get() &&
+            original_ui->web_ui()->GetWebContents() == original_contents.get() &&
+            document.AsRenderFrameHostIfValid() &&
+            document.AsRenderFrameHostIfValid() == original_contents->GetPrimaryMainFrame() &&
+            document.AsRenderFrameHostIfValid() == original_ui->web_ui()->GetRenderFrameHost() &&
+            original_ui->IsAuthorizedAuxDocument()) {
+          capabilities.Set("nativeAppearanceFileChannel", std::move(*receipt));
+        }
+      }
     }
 #endif
     std::move(callback).Run(true, *base::WriteJson(capabilities), "", "");

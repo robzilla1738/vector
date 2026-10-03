@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { retainPackagedRuntimePair } from './lib/packaged-runtime-pair-artifact.mjs';
+import { preflightAppearancePair } from './lib/appearance-pair-preflight.mjs';
+import { createLaunchServicesAppearanceProvenance } from './lib/appearance-provenance.mjs';
 import { createOwnedNarrowGenerations } from './lib/distinct-narrow-window.mjs';
 import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
 import { dismissObservedSetup } from './lib/dismiss-observed-setup.mjs';
@@ -29,9 +32,11 @@ const { values } = parseArgs({ options: {
   journey: { type: 'string' }, app: { type: 'string' }, output: { type: 'string' },
   'native-window-manifest': { type: 'string' }, 'native-window-manifest-sha': { type: 'string' },
   'native-window-audit': { type: 'string' }, 'native-window-audit-sha': { type: 'string' },
+  'appearance-pair': { type: 'string' },
   attempt: { type: 'string', default: '1' }, attended: { type: 'boolean' }, appearance: { type: 'boolean' }, narrow: { type: 'boolean' },
 } });
 assert.ok(!values.narrow || values.appearance, '--narrow requires --appearance');
+assert.ok(!values['appearance-pair'] || values.appearance, '--appearance-pair requires --appearance');
 assert.ok(values.journey && values.app && values.output, 'Usage: run-journey --journey <id> --app <Aux.app> --output <dir>');
 if (!process.env.AUX_NATIVE_SLOT_TOKEN) {
   const result = spawnSync(process.execPath, [join(root, 'scripts/native-slot.mjs'), '--', process.execPath,
@@ -59,12 +64,23 @@ assert.ok(helperValues.every(Boolean) || helperValues.every(value => value === u
 const helperAdmission = helperValues.every(Boolean) ? { manifestPath: resolve(helperValues[0]), manifestSha256: helperValues[1], auditPath: resolve(helperValues[2]), auditSha256: helperValues[3] } : undefined;
 assert.ok(journey.id !== 'cdp-retirement-performance' || helperAdmission, 'M4 requires externally approved original input-helper artifacts');
 const compilerArtifact = helperAdmission ? retainNativeWindowCompiler(helperAdmission) : undefined;
-let app, ax, fixture, evidence, appearance, pipAppearance;
+let app, ax, fixture, evidence, appearance, pipAppearance, appearancePair;
+if (values['appearance-pair']) appearancePair = retainPackagedRuntimePair(JSON.parse(readFileSync(resolve(values['appearance-pair']), 'utf8')));
+const appearanceHelper = () => appearancePair ? app.createAppearanceHelper() : createAxClient(app.pid, compilerArtifact === undefined ? {} : { compilerArtifact });
+assert.ok(!appearancePair || !helperAdmission, 'Appearance pair and standalone helper admissions are separate');
 async function configureAppearance() {
   if (!values.appearance) return;
   const actual = await app.identity();
   assertJourneyIdentity(actual, identity);
   const candidate = { productIdentity: identity, native: { sourceCommit: actual.native.sourceCommit, buildId: actual.native.buildId, manifestHash: actual.native.manifestHash }, shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
+  if (appearancePair && app.processObservation.launchKind === 'launch-services') {
+    await app.configureLaunchServicesAppearance(candidate, ax);
+    appearance = createLaunchServicesAppearanceProvenance({ app, pair: appearancePair, outputDir, candidate,
+      helper: ax, helperSource: ax.helperSource, helperExecutable: ax.helperExecutable });
+    pipAppearance = undefined;
+    manifest.provenanceProducers = appearance.pins;
+    return;
+  }
   app.configureAppearance(candidate);
   appearance = createAppearanceProvenance({ outputDir, candidate, targetPid: app.pid, helper: ax, helperSource: ax.helperSource, helperExecutable: ax.helperExecutable, observeWindow: selection => app.observeAppearance(selection), discoverUtilityWindow: selection => app.discoverUtilityAppearance(selection), readIdentity: () => app.identity() });
   pipAppearance = createPipAppearanceProvenance({ outputDir, candidate, targetPid: app.pid, helper: ax, helperSource: ax.helperSource, helperExecutable: ax.helperExecutable, observeWindow: selection => app.observePipAppearance(selection), readIdentity: () => app.identity() });
@@ -77,7 +93,7 @@ let deadline;
 const inputs = [];
 const inputCommands = new Set(['press', 'click', 'focus', 'key', 'type', 'drag', 'scroll', 'menu', 'contextMenu', 'savePanel', 'openPanel']);
 async function execute() {
-  const permissions = await preflight(compilerArtifact === undefined ? {} : { compilerArtifact });
+  const permissions = appearancePair ? preflightAppearancePair(appearancePair) : await preflight(compilerArtifact === undefined ? {} : { compilerArtifact });
   assert.ok(permissions.accessibility && permissions.screenRecording, 'Accessibility and Screen Recording are required');
   fixture = await createFixture({ tls: journey.fixture?.tls === true });
   let model;
@@ -87,7 +103,7 @@ async function execute() {
   }
   const launch = typeof journey.launch === 'function' ? journey.launch({ fixture, model, identity, appearance: Boolean(values.appearance) }) : journey.launch ?? {};
   assert.ok(!values.appearance || !launch.perf, 'Appearance sampling must not perturb a performance run');
-  app = createJourneyApp({ appPath: resolve(values.app), launch: {
+  app = createJourneyApp({ appPath: resolve(values.app), ...(appearancePair ? { appearancePair } : {}), launch: {
     ...launch,
     ...(values.appearance ? { args: [...(launch.args ?? []), '--aux-native-appearance-observer'] } : {}),
     ...(journey.devAcceptance?.length ? { devAcceptance: { features: journey.devAcceptance, sourceCommit: identity.label } } : {}),
@@ -99,7 +115,7 @@ async function execute() {
   }
   await app.start();
   signal.throwIfAborted();
-  ax = await createAxClient(app.pid, compilerArtifact === undefined ? {} : { compilerArtifact });
+  ax = await appearanceHelper();
   signal.throwIfAborted();
   const observedAx = new Proxy({}, { get(_target, property) {
     const member = ax[property];
@@ -229,7 +245,7 @@ async function execute() {
       await ax.close();
       ax = undefined;
       await app.restart(options);
-      ax = await createAxClient(app.pid, compilerArtifact === undefined ? {} : { compilerArtifact });
+      ax = await appearanceHelper();
       assertJourneyIdentity(await app.identity(), identity);
       await configureAppearance();
       if (narrowGenerations) await narrowGenerations.prepare();
@@ -241,7 +257,7 @@ async function execute() {
       if (options?.cold) { appearance = undefined; pipAppearance = undefined; await ax.close(); ax = undefined; }
       const receipt = await app.openAux(url, options);
       if (options?.cold) {
-        ax = await createAxClient(app.pid, compilerArtifact === undefined ? {} : { compilerArtifact });
+        ax = await appearanceHelper();
         assertJourneyIdentity(await app.identity(), identity);
         await configureAppearance();
         if (narrowGenerations) await narrowGenerations.prepare();
@@ -334,6 +350,10 @@ try {
       process.exitCode = 1;
     }
   }
+  if (appearancePair && app?.launchServicesQuarantineReceipt) manifest.nativeSlotQuarantine = app.launchServicesQuarantineReceipt;
+  if (appearancePair && !(manifest.cleanupErrors?.length)) appearancePair.release();
+  // A failed original helper/process cleanup retains admission and native slot
+  // debt; no caller cached PID is signalled or labelled reaped here.
   process.off('SIGINT', interrupted);
   process.off('SIGTERM', interrupted);
   manifest.captures = evidence?.captures ?? [];

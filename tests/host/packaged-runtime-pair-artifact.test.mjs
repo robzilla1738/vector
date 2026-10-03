@@ -41,7 +41,7 @@ function fixture() {
     './shell-resource-readback.mjs': { requireClosureFile, verifyShellResourceReadback() { if (state.refuseReadback) throw new Error('Actual175 carrier inclusion refused'); return { sourceDigest: 'f'.repeat(64), validate() {} }; } } };
   const exports = {}; vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true, target: ts.ScriptTarget.ES2022 } }).outputText,
     { exports, structuredClone, require(name) { assert.ok(dependencies[name], name); return dependencies[name]; } });
-  return { state, manifest, open: () => exports.retainPackagedRuntimePair(admission), read: exports.readPackagedRuntimePair };
+  return { state, manifest, open: () => exports.retainPackagedRuntimePair(admission), read: exports.readPackagedRuntimePair, readBytes: exports.readPackagedRuntimePairBytes };
 }
 test('actual join keeps all four closures/helper/compiled image and separate inactive runtime artifact immutable', () => {
   const f = fixture(), lease = f.open(); try {
@@ -56,4 +56,17 @@ test('actual join keeps all four closures/helper/compiled image and separate ina
 test('runtime App membership drift and independent carrier refusal release every partial original lease', () => {
   const f = fixture(); f.manifest.package.runtimeClosure.rows[0].sha256 = '0'.repeat(64); assert.throws(f.open, /Runtime closure differs/); assert.equal(f.state.released, 5);
   const g = fixture(); g.state.refuseReadback = true; assert.throws(g.open, /inclusion refused/); assert.equal(g.state.released, 6);
+});
+
+test('artifact-only observation retains original byte authority without runtime or cleanup claims', () => {
+  const f = fixture(), lease = f.open();
+  try {
+    const bytes = f.readBytes(lease); assert.equal(f.readBytes(lease), bytes);
+    for (const forbidden of ['runtime', 'runtimeStatus', 'privateRuntimeActive', 'qualification', 'release', 'compilerArtifact']) assert.equal(forbidden in bytes, false);
+    assert.equal(lease.runtimeStatus, 'inactive-private'); assert.equal(bytes.native, lease.native); assert.equal(bytes.artifact, lease.artifact);
+    assert.throws(() => { bytes.helper.manifest.source.path = '/foreign'; }, TypeError);
+    assert.throws(() => f.readBytes({ ...lease }), /Foreign packaged/);
+    f.state.live = false; assert.throws(() => bytes.validate(), /replaced/); assert.throws(() => f.readBytes(lease), /replaced/);
+  } finally { lease.release(); }
+  assert.throws(() => f.readBytes(lease), /Retired/); assert.equal(f.state.released, 6);
 });

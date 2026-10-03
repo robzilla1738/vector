@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { verifyAppearanceFileProof } from '../tests/host/lib/appearance-file-proof.mjs';
+import { readPackagedRuntimePairBytes } from '../tests/host/lib/packaged-runtime-pair-artifact.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync, mkdirSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
@@ -124,7 +126,7 @@ function observedCell(before, after, capture) {
   if (before.window.nativeTheme !== after.window.nativeTheme || before.window.viewTheme !== after.window.viewTheme || before.window.backing !== after.window.backing || before.window.material !== after.window.material || !isDeepStrictEqual(before.window.shell, after.window.shell)) reasons.push('Changed appearance during capture');
   return { cell: reasons.length ? null : (before.window.nativeTheme === 'light' ? 'L' : 'D') + (before.system.reduceTransparency ? 'R' : ''), reasons: [...new Set(reasons)], reduceMotion: before.system.reduceMotion, layout: before.window.shell?.layout ?? null };
 }
-function captureEntry(entry, feature, indexPath, expected, privatePair) {
+function captureEntry(entry, feature, indexPath, expected, privatePair, filePair) {
   require(!('cell' in entry) && !('appearanceEvidence' in entry), 'Caller appearance labels are not evidence');
   const manifestFile = artifact(entry.manifest, indexPath), manifest = manifestFile.json;
   require(manifest.features?.includes(feature.id), 'Manifest does not claim indexed feature');
@@ -184,10 +186,31 @@ function captureEntry(entry, feature, indexPath, expected, privatePair) {
     }
     privatePair.validate();
   }
+  const signedFile = provenance.transport === 'signed-launchservices-file';
+  require(provenance.transport === undefined || signedFile, 'Unknown capture transport');
+  if (signedFile) {
+    require(filePair && !privateCapture, 'Signed LS capture needs externally admitted byte artifacts and active runtime');
+    const bytes = readPackagedRuntimePairBytes(filePair);
+    same(provenance.packagedRuntimeArtifact, bytes.artifact, 'signed file packaged artifact');
+    const proofs = [];
+    for (const [name, side] of [['before', before], ['after', after]]) {
+      require(side.window.producer === 'aux-native-appearance-snapshot' && ['normal', 'little'].includes(side.window.windowKind), 'Signed LS scope cannot borrow private/PiP/Quick Ask');
+      const proof = artifact(observation[name].fileTransport, provenanceFile.path).json;
+      const raw = verifyAppearanceFileProof(proof, { pair: filePair, candidate, targetPid: side.window.pid,
+        helperSourceSha256: side.system.helperSourceSha256, helperSha256: side.system.helperSha256 });
+      same(raw, artifact(side.window.rawReply, referencePath(observation[name].window, provenanceFile.path), true).bytes.toString('utf8'), 'original signed getter bytes');
+      proofs.push(proof);
+    }
+    same(proofs[0].header, proofs[1].header, 'original signed native channel');
+    same(proofs[0].kernel, proofs[1].kernel, 'original LS kernel generation');
+    same(proofs[0].process, proofs[1].process, 'original LS receipt');
+    require(proofs[1].sequence > proofs[0].sequence, 'Signed observations must use distinct increasing original sequences');
+    filePair.validate();
+  } else require(observation.before.fileTransport === undefined && observation.after.fileTransport === undefined, 'Signed file metadata lacks distinct transport admission');
   const observed = observedCell(before, after, capture);
   return { ...observed, path, bytes, width, height, capture, manifestSha256: entry.manifest.sha256, functionalStatus: manifest.error || manifest.steps.some(step => step.status !== 'passed') ? 'failed diagnostic' : 'passed steps; qualification not inferred' };
 }
-function writeContactSheets(input, output, privatePair) {
+function writeContactSheets(input, output, privatePair, filePair) {
   const indexPath = resolve(input), indexBytes = readFileSync(indexPath), index = JSON.parse(indexBytes);
   require(index.schema === 2 && Array.isArray(index.features) && index.features.length > 0, 'Structured capture index schema2 required');
   const ledger = [], pages = [], features = new Set();
@@ -199,7 +222,7 @@ function writeContactSheets(input, output, privatePair) {
     const seen = new Set(), used = new Set(), cards = new Map([...cells, 'Unknown'].map(cell => [cell, []])), records = [];
     for (const entry of feature.captures) {
       require(inventory.states.includes(entry.state), 'Capture state is not in required inventory');
-      const record = captureEntry(entry, feature, indexPath, index.candidate, privatePair);
+      const record = captureEntry(entry, feature, indexPath, index.candidate, privatePair, filePair);
       const unique = `${entry.manifest.sha256}:${entry.captureName}`;
       require(!used.has(unique), 'Manifest capture reused'); used.add(unique);
       if (record.cell) {
@@ -218,16 +241,19 @@ function writeContactSheets(input, output, privatePair) {
   writeFileSync(join(destination, 'coverage.json'), `${JSON.stringify(coverage, null, 2)}\n`);
   return coverage;
 }
-export function buildContactSheets(input, output, { privateAdmission } = {}) {
+export function buildContactSheets(input, output, { privateAdmission, fileAdmission } = {}) {
   const pair = privateAdmission === undefined ? undefined : retainPackagedRuntimePair(privateAdmission);
-  try { return writeContactSheets(input, output, pair); }
-  finally { pair?.release(); }
+  let filePair;
+  try {
+    filePair = fileAdmission === undefined ? undefined : retainPackagedRuntimePair(fileAdmission);
+    return writeContactSheets(input, output, pair, filePair);
+  } finally { filePair?.release(); pair?.release(); }
 }
 if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
-  const [input, output, admissionPath, ...extra] = process.argv.slice(2);
+  const [input, output, admissionPath, fileAdmissionPath, ...extra] = process.argv.slice(2);
   require(!extra.length, 'Unexpected QA arguments');
   if (!input || !output) throw new Error('Usage: node scripts/design-qa.mjs <capture-index.json> <output-directory>');
-  const coverage = buildContactSheets(input, output, admissionPath ? { privateAdmission: JSON.parse(readFileSync(resolve(admissionPath), 'utf8')) } : {});
+  const coverage = buildContactSheets(input, output, { ...(admissionPath ? { privateAdmission: JSON.parse(readFileSync(resolve(admissionPath), 'utf8')) } : {}), ...(fileAdmissionPath ? { fileAdmission: JSON.parse(readFileSync(resolve(fileAdmissionPath), 'utf8')) } : {}) });
   console.log(`Wrote ${coverage.features.length} diagnostic feature sheets; final visual approval remains pending.`);
   if (coverage.features.some(feature => feature.missing.length)) process.exitCode = 1;
 }

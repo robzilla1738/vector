@@ -10,7 +10,7 @@ assert.ok(start > 0 && end > start);
 function fixture() {
   let complete, entered;
   const ready = new Promise(resolve => { entered = resolve; });
-  const context = { Promise, Error, child: { pid: 42, exitCode: null, signalCode: null }, generation: 1, externalPid: undefined,
+  const context = { Promise, Error, fileAppearance: undefined, child: { pid: 42, exitCode: null, signalCode: null }, generation: 1, externalPid: undefined,
     appearanceStream: { discoverUtility: selection => { context.selection = selection; entered(); return new Promise(resolve => { complete = resolve; }); } } };
   context.running = () => context.child.exitCode === null && context.child.signalCode === null;
   const owner = vm.runInNewContext(`({${source.slice(start, end)}})`, context);

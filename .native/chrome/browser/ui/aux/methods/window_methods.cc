@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
+#include "chrome/browser/ui/aux/native_appearance_file_channel.h"
 
 #include "base/base64.h"
 #include "base/command_line.h"
@@ -907,6 +908,11 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
           static size_t emitted = 0;
           if (emitted >= 4000) {
             std::move(callback).Run(false, "", "unavailable", "Appearance observation limit reached");
+            return;
+          }
+          if (utility_target && base::CommandLine::ForCurrentProcess()->HasSwitch("aux-native-appearance-file-observer") &&
+              !aux::PublishNativeAppearanceFileRecord(ui->browser_->GetProfile(), *json)) {
+            std::move(callback).Run(false, "", "unavailable", "Original native appearance file publication refused");
             return;
           }
           ++emitted;

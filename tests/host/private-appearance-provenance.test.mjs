@@ -45,7 +45,7 @@ function fixture() {
       return { producer: 'aux-native-warm-window-identity', version: 1, targetPid: 42, helperPid: 43, targetProcessUuid: state.uuid, targetProcessStartMachTicks: state.start, helperProcessUuid: '2'.repeat(32), helperProcessStartMachTicks: '124' }; },
     async windows() { return [{ id: 7, layer: 0, x: 0, y: 0, width: 100, height: 100 }, ...(state.ambiguous ? [{ id: 8, layer: 0 }] : [])]; },
     async trusted() { return { accessibility: true, screenRecording: true, reduceMotion: false, reduceTransparency: false }; } };
-  const imports = { './utility-appearance-owner.mjs': utilityOwner, 'node:assert/strict': { default: Object.assign((...args) => assert(...args), assert, { deepEqual: (a, b, message) => assert.deepEqual(structuredClone(a), structuredClone(b), message) }) }, 'node:crypto': crypto, 'node:fs': fs, 'node:path': path, pngjs: { PNG },
+  const imports = { './appearance-file-proof.mjs': { verifyAppearanceFileProof() { throw new Error('Private provenance must not use an LS file proof'); } }, './utility-appearance-owner.mjs': utilityOwner, 'node:assert/strict': { default: Object.assign((...args) => assert(...args), assert, { deepEqual: (a, b, message) => assert.deepEqual(structuredClone(a), structuredClone(b), message) }) }, 'node:crypto': crypto, 'node:fs': fs, 'node:path': path, pngjs: { PNG },
     '../../../scripts/lib/qualification.mjs': { evidenceBytes }, './app.mjs': { readPrivateAppObservation(value, artifact) { assert.equal(value, app); assert.equal(artifact, pair); pair.validate(); return owner; } },
     './packaged-runtime-pair-artifact.mjs': { readPackagedRuntimePair(value) { assert.equal(value, pair, 'Foreign artifact'); pair.validate(); return pair; } },
     './private-window-observation.mjs': { normalizePrivateWindowObservation }, './native-warm-helper-identity.mjs': { decodeWarmWindowHelperIdentity } };
@@ -68,7 +68,7 @@ function privateSheets(f, record, pins, { admitted = true, mutate = () => {} } =
   put('index.json', index);
   // Actual QA source with an explicitly controlled admission seam, not a real pair.
   const script = fs.readFileSync(new URL('../../scripts/design-qa.mjs', import.meta.url), 'utf8').replaceAll('import.meta.url', JSON.stringify(new URL('../../scripts/design-qa.mjs', import.meta.url).href)).replace(/\brequire\b/g, 'ensure');
-  const dependencies = { 'node:crypto': crypto, 'node:fs': fs, 'node:path': path, 'node:url': { fileURLToPath },
+  const dependencies = { '../tests/host/lib/appearance-file-proof.mjs': { verifyAppearanceFileProof() { throw new Error('Private QA must not use LS file proof'); } }, 'node:crypto': crypto, 'node:fs': fs, 'node:path': path, 'node:url': { fileURLToPath },
     'node:util': { isDeepStrictEqual: (a, b) => isDeepStrictEqual(structuredClone(a), structuredClone(b)) }, pngjs: { PNG },
     '../tests/host/lib/packaged-runtime-pair-artifact.mjs': { retainPackagedRuntimePair(value) { assert.equal(value.controlled, true); return { ...f.pair, release() {} }; } },
     '../tests/host/lib/private-window-observation.mjs': { normalizePrivateWindowObservation }, '../tests/host/lib/native-warm-helper-identity.mjs': { decodeWarmWindowHelperIdentity },

@@ -19,6 +19,8 @@ function fixture() {
  const descriptor={port:1234,token:'controlled-fixture-only',pid:555,instanceId:'controlled-instance',startedAt:1,version:{schema:2}};
  const dir=filename=>({dev:1,ino:filename===root?state.rootInode:2,uid:100,mode:0o40700,isSymbolicLink:()=>false,isDirectory:()=>true,isFile:()=>false});
  const imports={
+  './ax.mjs':{createAxClient(){throw new Error('Ordinary attachment must not create an appearance helper');}},
+  './launch-services-appearance-owner.mjs':{createLaunchServicesAppearanceOwner(){throw new Error('Ordinary attachment must not create an LS owner');}},
   'node:os':{homedir:()=>'/controlled'},'node:path':path,'node:crypto':crypto,
   'node:child_process':{execFileSync(command){assert.equal(command,'/usr/libexec/PlistBuddy');return 'dev.aux.browser\n';},spawn(){throw new Error('Native spawn forbidden');}},
   'node:fs':{existsSync:filename=>!filename.endsWith('_CodeSignature'),realpathSync:filename=>filename==='/tmp'?'/private/tmp':filename,
