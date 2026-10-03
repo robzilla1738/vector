@@ -1,0 +1,606 @@
+{
+  "producer": "aux-f21-source-dispatch-inventory",
+  "version": 1,
+  "sourceOnly": true,
+  "base": "c7ee0735",
+  "notQualificationData": true,
+  "nativeExecutionAuthorized": false,
+  "sourceStates": [
+    {
+      "group": "A",
+      "journey": "setup-appearance",
+      "captureName": "setup-welcome",
+      "semanticState": "setup-welcome-unreviewed",
+      "source": "tests/host/lib/setup-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "A",
+      "journey": "setup-appearance",
+      "captureName": "setup-welcome-tips-expanded",
+      "semanticState": "setup-welcome-tips-expanded",
+      "source": "tests/host/lib/setup-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "A",
+      "journey": "setup-appearance",
+      "captureName": "setup-welcome-tips-collapsed",
+      "semanticState": "setup-welcome-tips-collapsed",
+      "source": "tests/host/lib/setup-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "A",
+      "journey": "setup-appearance",
+      "captureName": "setup-model-data-unreviewed",
+      "semanticState": "setup-model-data-unreviewed",
+      "source": "tests/host/lib/setup-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "A",
+      "journey": "setup-appearance",
+      "captureName": "setup-permissions-ungranted",
+      "semanticState": "setup-permissions-ungranted",
+      "source": "tests/host/lib/setup-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "B",
+      "journey": "home-composer",
+      "captureName": "home-model-missing",
+      "semanticState": "home-model-missing",
+      "source": "tests/host/journeys/home-composer.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "B",
+      "journey": "home-composer",
+      "captureName": "home-draft-before-setup",
+      "semanticState": "home-draft-model-missing",
+      "source": "tests/host/journeys/home-composer.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "B",
+      "journey": "home-composer",
+      "captureName": "home-add-context",
+      "semanticState": "home-add-context-menu",
+      "source": "tests/host/journeys/home-composer.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "B",
+      "journey": "home-composer",
+      "captureName": "home-context-picker",
+      "semanticState": "home-context-picker-focused",
+      "source": "tests/host/journeys/home-composer.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "B",
+      "journey": "home-composer",
+      "captureName": "home-context-parent-focus-returned",
+      "semanticState": "home-context-parent-focus-returned",
+      "source": "tests/host/journeys/home-composer.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "B",
+      "journey": "home-composer",
+      "captureName": "home-context-trigger-focus-returned",
+      "semanticState": "home-context-trigger-focus-returned",
+      "source": "tests/host/journeys/home-composer.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "B",
+      "journey": "home-composer",
+      "captureName": "home-draft-remounted",
+      "semanticState": "home-draft-remounted",
+      "source": "tests/host/journeys/home-composer.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "B",
+      "journey": "home-composer",
+      "captureName": "home-submitted-page-free-answer",
+      "semanticState": "page-free-answer-after-home-submit",
+      "source": "tests/host/journeys/home-composer.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "B",
+      "journey": "home-composer",
+      "captureName": "home-image-native-rejection",
+      "semanticState": "home-image-native-chooser-rejection",
+      "source": "tests/host/lib/composer-image-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "B",
+      "journey": "home-composer",
+      "captureName": "home-image-cancelled-draft-focused",
+      "semanticState": "home-image-chooser-cancelled-draft-focused",
+      "source": "tests/host/lib/composer-image-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-held-partial-answer",
+      "semanticState": "first-chat-held-partial-answer",
+      "source": "tests/host/journeys/first-chat.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-page-free-answer",
+      "semanticState": "first-chat-page-free-answer",
+      "source": "tests/host/journeys/first-chat.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-explicit-tool-open",
+      "semanticState": "first-chat-explicit-tool-open",
+      "source": "tests/host/journeys/first-chat.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-optional-explicit-context",
+      "semanticState": "first-chat-optional-explicit-context",
+      "source": "tests/host/journeys/first-chat.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-closed-context-kept-draft",
+      "semanticState": "first-chat-closed-context-kept-draft",
+      "source": "tests/host/journeys/first-chat.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-closed-context-recovered",
+      "semanticState": "first-chat-closed-context-recovered",
+      "source": "tests/host/journeys/first-chat.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "failed-turn-error-details-collapsed",
+      "semanticState": "failed-turn-error-details-collapsed",
+      "source": "tests/host/lib/failed-turn-details-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "failed-turn-error-details-expanded-focused",
+      "semanticState": "failed-turn-error-details-expanded-focused",
+      "source": "tests/host/lib/failed-turn-details-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "failed-turn-error-details-collapsed-focused",
+      "semanticState": "failed-turn-error-details-collapsed-focused",
+      "source": "tests/host/lib/failed-turn-details-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-fresh-welcome-focused",
+      "semanticState": "full-chat-fresh-welcome-focused",
+      "source": "tests/host/lib/chat-settings-capture.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-fresh-queue-footer",
+      "semanticState": "full-chat-fresh-queue-footer",
+      "source": "tests/host/lib/chat-settings-capture.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-queue-unsubmitted",
+      "semanticState": "full-chat-queue-unsubmitted",
+      "source": "tests/host/lib/chat-settings-capture.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "C",
+      "journey": "first-chat",
+      "captureName": "first-chat-queue-focus-returned",
+      "semanticState": "full-chat-queue-focus-returned",
+      "source": "tests/host/lib/chat-settings-capture.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "D",
+      "journey": "sidebar-modes",
+      "captureName": "settings-${layout}-row-general-focused",
+      "semanticState": "settings-row-general-focused",
+      "source": "tests/host/lib/chat-settings-capture.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "D",
+      "journey": "sidebar-modes",
+      "captureName": "settings-${layout}-row-appearance-focused",
+      "semanticState": "settings-row-appearance-focused",
+      "source": "tests/host/lib/chat-settings-capture.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "D",
+      "journey": "sidebar-modes",
+      "captureName": "settings-${layout}-row-home-focused",
+      "semanticState": "settings-row-first-focused",
+      "source": "tests/host/lib/chat-settings-capture.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "F",
+      "journey": "setup-import-appearance",
+      "captureName": "setup-import-before-discovery",
+      "semanticState": "setup-import-no-consent",
+      "source": "tests/host/lib/setup-import-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "F",
+      "journey": "setup-import-appearance",
+      "captureName": "setup-import-source-review",
+      "semanticState": "setup-import-synthetic-source-unselected",
+      "source": "tests/host/lib/setup-import-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "F",
+      "journey": "setup-import-appearance",
+      "captureName": "setup-import-selected-before-confirmation",
+      "semanticState": "setup-import-two-selected-not-imported",
+      "source": "tests/host/lib/setup-import-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "F",
+      "journey": "setup-import-appearance",
+      "captureName": "setup-import-completed",
+      "semanticState": "setup-import-completed-one-bookmark-one-visit",
+      "source": "tests/host/lib/setup-import-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "F",
+      "journey": "setup-import-appearance",
+      "captureName": "setup-import-completed-revisited",
+      "semanticState": "setup-import-original-receipt-no-replay",
+      "source": "tests/host/lib/setup-import-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "F",
+      "journey": "setup-import-interruption-appearance",
+      "captureName": "setup-import-interruption-reviewed",
+      "semanticState": "setup-import-history-selected-no-consent",
+      "source": "tests/host/lib/setup-import-interruption.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "F",
+      "journey": "setup-import-interruption-appearance",
+      "captureName": "setup-import-cancelled-partial",
+      "semanticState": "setup-import-genuine-cancelled-partial",
+      "source": "tests/host/lib/setup-import-interruption.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "F",
+      "journey": "setup-import-interruption-appearance",
+      "captureName": "setup-import-retry-reviewed",
+      "semanticState": "setup-import-retry-selected-before-confirmation",
+      "source": "tests/host/lib/setup-import-interruption.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "F",
+      "journey": "setup-import-interruption-appearance",
+      "captureName": "setup-import-retry-merged",
+      "semanticState": "setup-import-reviewed-retry-exact-5001-no-duplicates",
+      "source": "tests/host/lib/setup-import-interruption.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "F",
+      "journey": "setup-import-interruption-appearance",
+      "captureName": "setup-import-retry-revisited",
+      "semanticState": "setup-import-original-two-receipts-no-replay",
+      "source": "tests/host/lib/setup-import-interruption.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "D",
+      "journey": "sidebar-modes",
+      "captureName": "settings-${layout}-row-end-focused",
+      "semanticState": "settings-row-last-focused",
+      "source": "tests/host/lib/settings-row-completion-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "D",
+      "journey": "sidebar-modes",
+      "captureName": "settings-${layout}-row-archived-activated",
+      "semanticState": "settings-row-last-category-activated",
+      "source": "tests/host/lib/settings-row-completion-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "D",
+      "journey": "sidebar-modes",
+      "captureName": "settings-${layout}-escape-dismissed",
+      "semanticState": "settings-row-escape-dismissed",
+      "source": "tests/host/lib/settings-row-completion-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "D",
+      "journey": "sidebar-modes",
+      "captureName": "settings-${layout}-reopened-search-focused",
+      "semanticState": "settings-row-reopened-original-category-search-focused",
+      "source": "tests/host/lib/settings-row-completion-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "mentions-appearance",
+      "captureName": "mentions-caret-listbox",
+      "semanticState": "mentions-caret-listbox",
+      "source": "tests/host/appearance-journeys/mentions-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "mentions-appearance",
+      "captureName": "mentions-available-focused",
+      "semanticState": "mentions-available-focused",
+      "source": "tests/host/appearance-journeys/mentions-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "mentions-appearance",
+      "captureName": "mentions-whole-token-deleted",
+      "semanticState": "mentions-whole-token-deleted",
+      "source": "tests/host/appearance-journeys/mentions-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "mentions-appearance",
+      "captureName": "mentions-changed-draft",
+      "semanticState": "mentions-changed-draft",
+      "source": "tests/host/appearance-journeys/mentions-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "mentions-appearance",
+      "captureName": "mentions-closed-draft",
+      "semanticState": "mentions-closed-draft",
+      "source": "tests/host/appearance-journeys/mentions-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "mentions-appearance",
+      "captureName": "mentions-removed-kept-draft",
+      "semanticState": "mentions-removed-kept-draft",
+      "source": "tests/host/appearance-journeys/mentions-appearance.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "agent-site-permissions",
+      "captureName": "site-login-first-approval",
+      "semanticState": "site-login-first-approval",
+      "source": "tests/host/journeys/agent-site-permissions.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "agent-site-permissions",
+      "captureName": "site-login-standing-consent",
+      "semanticState": "site-login-standing-consent",
+      "source": "tests/host/journeys/agent-site-permissions.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "agent-site-permissions",
+      "captureName": "site-delete-always-confirm",
+      "semanticState": "site-delete-always-confirm",
+      "source": "tests/host/journeys/agent-site-permissions.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "agent-site-permissions",
+      "captureName": "site-delete-denied-no-effect",
+      "semanticState": "site-delete-denied-no-effect",
+      "source": "tests/host/journeys/agent-site-permissions.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "agent-site-permissions",
+      "captureName": "site-login-revoked",
+      "semanticState": "site-login-revoked",
+      "source": "tests/host/journeys/agent-site-permissions.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    },
+    {
+      "group": "E",
+      "journey": "agent-site-permissions",
+      "captureName": "site-login-reapproval",
+      "semanticState": "site-login-reapproval",
+      "source": "tests/host/journeys/agent-site-permissions.mjs",
+      "status": "source-prepared",
+      "nativeCaptured": false,
+      "acceptedCells": []
+    }
+  ],
+  "requiredCellDimensions": {
+    "theme": [
+      "light",
+      "dark"
+    ],
+    "reduceTransparency": [
+      false,
+      true
+    ],
+    "reduceMotion": [
+      false,
+      true
+    ],
+    "geometry": [
+      "original normal frame",
+      "observed narrow720-900"
+    ],
+    "interaction": [
+      "actual keyboard focus",
+      "hover/press when applicable",
+      "long labels",
+      "original hit pixels"
+    ]
+  },
+  "note": "This first cohort is a subset. State names and source controls do not prove any cell. Full per-feature F21 matrix and final owner sign-off remain required.",
+  "unlistedDynamicStates": "Long-label helpers and conditional absent/column/feature gates require actual run receipts; this inventory is an explicit first subset, not a complete feature matrix."
+}

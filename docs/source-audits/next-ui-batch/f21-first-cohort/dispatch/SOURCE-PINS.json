@@ -1,0 +1,43 @@
+{
+  "base": "c7ee0735",
+  "sourcePins": {
+    "tests/host/run-journey.mjs": "f2e4d50432d5d05418964fa1d67bee042df4f0db4647fc5761bb577d7769f993",
+    "tests/host/journeys/index.mjs": "c553ab7ce26ef646e3109723b3c01d931be1aba5742355e28093365af13e6f6f",
+    "tests/host/lib/home-capture.mjs": "6fd157b411ea8c9ae5a974f07fe1be93b8d6caea0c90289267422a7a584a6a51",
+    "tests/host/lib/composer-image-appearance.mjs": "5f7a60228e4fad1c1bdd327ffa11a9eae4b292a762a53e79e876316e8209cdcc",
+    "tests/host/lib/failed-turn-details-appearance.mjs": "4ede27e48a8177025ed6b9613cbd8f4fa661983e465e7cbe55b81c81ff1f6bb8",
+    "tests/host/lib/chat-settings-capture.mjs": "2d77ede9a68a904f0ff15a997aa38451980a685f7d4b3c06526b7ece667bfbd0",
+    "tests/host/lib/permission-state-capture.mjs": "d83ca865c32b241118509e4d0906c625ce639c38bb4ad2cbfe5cffd52be0b7db",
+    "tests/host/journeys/agent-site-permissions.mjs": "52166ef00a1103593ce5a93b6e1850ea95f8d964f5aa662e344881b514d2ea55",
+    "tests/host/appearance-journeys/mentions-appearance.mjs": "9bd96e8de3753c679d661416a3f2d3f48932f5ab55a3b303eff7d6926f32d2f9",
+    "tests/host/lib/setup-appearance.mjs": "ec5753c6967ca050643f8956ba56943462407b2eaa91a8b3ace4c5ab50776ef7",
+    "tests/host/lib/setup-import-appearance.mjs": "d5c3c66c1739ed7c28f55bf057889372dec0a589d4ad80df6dedc490e580d8a0",
+    "tests/host/lib/setup-import-interruption.mjs": "86d2f88a213fd2adb83ab7a38d9376d9f4b428407ace4222bb517bf2e5c495b8",
+    "tests/host/journeys/home-composer.mjs": "cc9a17fec24c53e72fc9475388b4f28f8ddf45d367aa2e52276eaf1239a10cdb",
+    "tests/host/journeys/first-chat.mjs": "cbcce574639f06d578658646bbe0807cfaa066330bf718362ad022f63b976d00",
+    "tests/host/journeys/layout-modes.mjs": "1279a9106111666373c641863c8bd63042acf997b0b9fde0c215cf9dba0ef799",
+    "scripts/design-qa.mjs": "48231213bcf5dae2ccfbbb23eca92a62af526b9885b7c57d4efcd7141ca013b4",
+    "docs/BROWSER-RUNTIME-PLAN.md": "dee9d6a09a5c2a0cd8f4c5e0779f3655ed40dcdda30af78c563c12e0bc894112",
+    "docs/design/upstream-source-map.md": "38a9a6ae4368fe37cd9e24bab862ac869cb272256677a1cf831b4df953fa9e40",
+    "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/layout_constants.cc": "354a0a83efda3d2782c00285b900940ddc0e185393efd90807e8a0d2b2f1b6f8",
+    "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/color/chrome_color_mixer.cc": "00c98db4bce69f038b7dcb4fe0b29663807e1bcd1c7462ba28e6a5b8f43afcc7",
+    "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/views/omnibox/omnibox_popup_view_views.cc": "fe58f04826796348a5feaf0c502bded1a952b3f485ee5b381693a06148ce6692",
+    "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/views/omnibox/omnibox_result_view.cc": "6b5b0120b531097c68d9bd3636706a5e4883bc985ddb5f9d81c3254382d1b030",
+    "/Users/rcourson/AI Blueprints/06/assets/importer-webui.css": "6bc7c039ed9bb9cf2498748e57175cfd4059a2ec1e92a8e512beb903f8b81496",
+    "/Users/rcourson/AI Blueprints/06/assets/liquid-glass.css": "cfcc8d11ae8550fb1e85e25ddc7a088fc5b2f9518f0ef4740e878c79ca7d72b7",
+    "tests/host/lib/original-tab-mention.mjs": "6b40f2c5a2c3c6982819f59538e7e9c7d62c3f884cb1e474fb816420b03f977f",
+    "tests/host/lib/settings-row-completion-appearance.mjs": "05fc6a85272013be98bdeb1fd17473cb180e899173f3ea6601eb55deb48e7fad"
+  },
+  "incomingSettings": {
+    "commit": "824d5295",
+    "helperSha256": "05fc6a85272013be98bdeb1fd17473cb180e899173f3ea6601eb55deb48e7fad",
+    "packet": "/tmp/aux-browser-runtime-design-settings-row-completion/docs/lane-requests/design/settings-row-completion-appearance"
+  },
+  "incomingSdkControl": {
+    "commit": "153c3af7",
+    "packet": "/tmp/aux-browser-runtime-design-failed-turn-sdk/docs/lane-requests/design/failed-turn-sdk-transport",
+    "changesCaptureProducer": false
+  },
+  "compositionRule": "Root must pin actual integrated source and final approved pair. These review pins do not identify a compiled candidate.",
+  "reviewedIncomingPacketsIntegrated": true
+}
