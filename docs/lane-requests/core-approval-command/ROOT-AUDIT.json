@@ -1,0 +1,37 @@
+{
+  "nativeOriginalFailure": "21eb-first-chat Allow/Deny feature mount unavailable before runtime decision; exact original native artifact in ORIGINAL-REQUEST.json",
+  "base": "95d0ae16",
+  "sourceOnly": true,
+  "implementation": "Ordinary registered approve/deny/takeover core handlers preserve original approval/turn/pending handoff; origin-specific Always allow remains feature-gated and hidden until on. Runtime safety/approval/wake unchanged. Held original acceptance never clears newer confirmation.",
+  "controls": "8 native-preview/off-stage controls through real registry+command executor;4 original confirmation controls;3 invariant controls PASS",
+  "logs": [
+    {
+      "gate": "tests",
+      "path": "/tmp/aux-core-approval-tests.log",
+      "sha256": "05905031dc114e843d1e0abe7841f356a140977654cdfee22cb8d99d4c2d95ca"
+    },
+    {
+      "gate": "lint",
+      "path": "/tmp/aux-core-approval-lint.log",
+      "sha256": "66e374411d5e8a914541f3ba146c1a43dd6db5869cd02c802ed53031eb60511b"
+    },
+    {
+      "gate": "format",
+      "path": "/tmp/aux-core-approval-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    {
+      "gate": "renderer",
+      "path": "/tmp/aux-core-approval-renderer.log",
+      "sha256": "0cf7cd16b7f4a09fda6c032003c86a698bb6ec62e3a44f615b54dd632bb62cf6"
+    },
+    {
+      "gate": "budgets",
+      "path": "/tmp/aux-core-approval-budgets.log",
+      "sha256": "0572f21d18a15798093729dc9e37ec841a1ee2cadb30b7bc579aa59daf5544de"
+    }
+  ],
+  "sourceGates": "workspace/shell typecheck, bindings, bridge, native inventory,journey registry,lint/format,renderer budgets PASS",
+  "assetsDigest": "636343c880cb75448f5a5bb84654eb54d96dc45210cc79b96afe61675e527071",
+  "nativeFirstChat": "fresh native journey required after coherent pair"
+}

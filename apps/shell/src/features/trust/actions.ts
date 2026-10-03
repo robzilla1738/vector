@@ -1,4 +1,4 @@
-import type { ApprovalDecision, Effect, OriginAccess } from "@aux/contracts";
+import type { Effect, OriginAccess } from "@aux/contracts";
 import { call, useStore } from "../../store";
 
 /** Preserve the revision captured by the control; never overwrite a newer window's rule. */
@@ -37,19 +37,6 @@ export async function deleteSiteRule(input: { origin: string; expectedRevision: 
     expectedRevision: input.expectedRevision,
     rules: snapshot.rules.filter((rule) => rule.origin !== input.origin),
   });
-}
-export async function decideSiteAction(
-  input: { approvalId: string; turnId: string },
-  decision: ApprovalDecision["decision"],
-) {
-  if (decision !== "accept" && decision !== "acceptForOrigin" && decision !== "decline")
-    throw new Error("Unsupported action decision.");
-  await call("safety.approvals.decide", {
-    decision: { decision, approvalId: input.approvalId },
-    expectedTurnId: input.turnId,
-  });
-  if (useStore.getState().confirmation?.approvalId === input.approvalId)
-    useStore.setState({ confirmation: null });
 }
 export async function setEffectGrants(input: { effectGrants: string[] }) {
   const allowed = new Set(["effect:read", "effect:write", "effect:egress", "effect:destructive"]);

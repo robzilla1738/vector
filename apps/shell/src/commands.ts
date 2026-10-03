@@ -11,6 +11,7 @@ import { openCommandSurface, closeCommandSurface } from "./command-surface-state
 import { COMMAND_SURFACE_ACTIONS } from "./command-surface-actions";
 import { commandExecutor } from "./command-execution";
 import { bridge } from "./bridge";
+import { decideAgentAction, dismissAgentHandoff, takeOverAgentAction } from "./action-approval";
 import { useStore, call, errToast, tabCommand } from "./store";
 import { runFeatureCommand, type CommandInvocation } from "./features/registry";
 import { savePagePdf, printCurrentPage } from "./page-export";
@@ -80,10 +81,19 @@ export const COMMAND_ACTIONS = {
   "set-site-agent-access": (st, context) => featureCommand("set-site-agent-access", st, context),
   "delete-site-agent-rule": (st, context) => featureCommand("delete-site-agent-rule", st, context),
   "revoke-site-agent-grant": (st, context) => featureCommand("revoke-site-agent-grant", st, context),
-  "approve-agent-action": (st, context) => featureCommand("approve-agent-action", st, context),
+  "approve-agent-action": (_st, { payload }) => {
+    if (!payload || !("approvalId" in payload) || !("turnId" in payload)) throw new Error("This approval is unavailable.");
+    return decideAgentAction(payload, "accept");
+  },
   "allow-agent-action-for-origin": (st, context) => featureCommand("allow-agent-action-for-origin", st, context),
-  "deny-agent-action": (st, context) => featureCommand("deny-agent-action", st, context),
-  "take-over-agent-action": (st, context) => featureCommand("take-over-agent-action", st, context),
+  "deny-agent-action": (_st, { payload }) => {
+    if (!payload || !("turnId" in payload)) throw new Error("This approval is unavailable.");
+    return "approvalId" in payload ? decideAgentAction(payload, "decline") : dismissAgentHandoff(payload.turnId);
+  },
+  "take-over-agent-action": (st, { payload }) => {
+    if (!payload || !("pageId" in payload) || !("turnId" in payload)) throw new Error("The requested page is unavailable.");
+    return takeOverAgentAction(payload, id => st.activate(id));
+  },
   "set-agent-effect-grants": (st, context) => featureCommand("set-agent-effect-grants", st, context),
   "mention-insert": (st, context) => featureCommand("mention-insert", st, context),
   "mention-remove": (st, context) => featureCommand("mention-remove", st, context),

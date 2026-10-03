@@ -5,6 +5,7 @@ import type { TrustConfirmation } from "../features/trust/confirmation";
 import { useStore } from "../store";
 import { bridge } from "../bridge";
 import { Dialog } from "../ui";
+import { useFeature } from "../use-feature";
 
 /** The person confirms a page action. Allow decides the approval once. */
 export function ActionConfirmation() {
@@ -13,6 +14,7 @@ export function ActionConfirmation() {
 }
 
 function Confirm({ confirmation }: { confirmation: TrustConfirmation }) {
+  const sitePermissions = useFeature("agentSitePermissions");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const decline = useRef<HTMLButtonElement>(null);
@@ -64,7 +66,7 @@ function Confirm({ confirmation }: { confirmation: TrustConfirmation }) {
         {error && <p role="alert">{error}</p>}
         <div className="sheet-acts">
           <button ref={decline} type="button" className="btn" disabled={busy} data-command-id="deny-agent-action" onClick={() => void decide("decline")}>{handoff ? "Close" : "Deny"}</button>
-          {preapprovable && <button type="button" className="btn" disabled={busy} data-command-id="allow-agent-action-for-origin" onClick={() => void decide("acceptForOrigin")}>Always allow on {site.replace(/\/$/, "")}</button>}
+          {sitePermissions && preapprovable && <button type="button" className="btn" disabled={busy} data-command-id="allow-agent-action-for-origin" onClick={() => void decide("acceptForOrigin")}>Always allow on {site.replace(/\/$/, "")}</button>}
           <button type="submit" className="btn primary" disabled={busy || (handoff && !confirmation.pageId)}
             data-command-id={handoff ? "take-over-agent-action" : "approve-agent-action"} aria-label={handoff ? "Take over" : "Allow once"}>{handoff ? "Take over" : "Allow once"}</button>
         </div>

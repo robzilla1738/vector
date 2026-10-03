@@ -1,0 +1,32 @@
+{
+  "scope": "CONTRACT-REQUEST source-only; root owns contracts/integration. No code change or native operation.",
+  "candidate": "21ebefdd1a80703ef060f20344070ae9c5a5bf7c",
+  "cause": "Core approval commands live in agentSitePermissions mount. enabled(mount) requires featureStage(on); unaccepted preview returns handled:false. COMMAND_ACTIONS then calls unconditional featureCommand unavailable error. Runtime safety.approvals.decide is already core handler-guarded and not blocked by feature stage. Existing ActionConfirmation tests mock inMock=true, therefore all feature mounts on and never exercise genuine native-preview denial.",
+  "artifact": {
+    "path": "/tmp/aux-browser-runtime-builder-21ebefdd/release/test-artifacts/21eb-first-chat-attempt-1/failure-ax.json",
+    "sha256": "12ce6fe2af374f86cd90913dd33c757624a205c8738a33cf1d7d22b57978a245",
+    "actualAlert": "Deny agent action is unavailable in this window",
+    "allowOnceEnabled": true,
+    "runNeedsInput": true,
+    "nativeManifestSha256": "05e710bd0e49d3066e9e2373855787f2b09526a79264bddc55f90cd76f6601f5"
+  },
+  "requestedChanges": [
+    "Remove feature agentSitePermissions from ordinary approve-agent-action/deny-agent-action/take-over-agent-action command metadata; preserve normal window boundary and palette:false.",
+    "Implement those exact core handlers outside feature mount, preserving strict actual approvalId/turnId checks, safety.approvals.decide local-only endpoint and requested-page handoff. Remove duplicate mount handlers or delegate them to same core action; no gate fallback.",
+    "Keep allow-agent-action-for-origin, site-rule management and effect-grant configuration in gated per-site feature. ActionConfirmation should offer Always allow only when that feature is actually on and preapprovable tier permits; ordinary Allow once/Deny remains available.",
+    "Add meaningful page-free command controls with agentSitePermissions preview/off and actual runFeatureCommand enabled predicate, verifying one original accept/decline RPC (including double-click guard), requested-page takeover, stale payload refusal, and no Always allow/origin-rule RPC. Do not replace real command execution with a mocked handler."
+  ],
+  "runtimeWake": "Do not alter resume/grant consumption without further evidence; current actual unavailable command prevents decision before wake.",
+  "sourcePins": {
+    "packages/contracts/src/commands.ts": "f415456059981830bb4add97258d80c3e2176b290b01eb0204bfa43f64210e42",
+    "apps/shell/src/commands.ts": "319c2e9e023b9f6b9a7e5dd059791e91eee4046f56375489c58681d47ef12799",
+    "apps/shell/src/features/registry.ts": "dcf727b2a27fbb9ce40ff52181456f9da2b8c7f142268246152f39ef063b7060",
+    "apps/shell/src/features/trust/mount.ts": "b70f89a1457c887574f273adfd82695037db5b2d951441a98f76357c3270f83a",
+    "apps/shell/src/features/trust/actions.ts": "9253efc33060d0cc999080e0dcb3421d84ffc3ec0b89c78fddbb0c086d490e02",
+    "apps/shell/src/use-feature.ts": "d7b331551565d811fd40deadfee3816a2f335d8a6be6e9781621b92aeefff013",
+    "apps/runtime/src/api/authorization.generated.ts": "0a714a26502db4a6578a4b0c2b7ea3b4c6e6be2d0521c2ac13acb0552e0d3258",
+    "apps/runtime/src/api/methods/safety.ts": "1975fb269cd966d052092dd978d5bea55546f45dccdb79826cced77943622b0e",
+    "apps/shell/src/action-confirmation.test.tsx": "51b77373e54256c38144fd3c50de96b03202d31efad632c36c6ce4604ac6dd4b"
+  },
+  "validation": "source tests after actual edited command flow; changed native first-chat once after coherent product freeze/pair audit"
+}
