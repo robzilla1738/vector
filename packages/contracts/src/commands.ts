@@ -22,6 +22,7 @@ export const COMMANDS = [
   { id: "allow-agent-action-for-origin", label: "Always allow agent action on this site", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "deny-agent-action", label: "Deny agent action", section: "Agent", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "take-over-agent-action", label: "Take over agent action", section: "Agent", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "return-agent-control", label: "Return control to agent", section: "Agent", handler: "shell", focusShell: true, windows: ["normal"], bindings: [], intercept: true },
   { id: "set-agent-effect-grants", label: "Change agent effect grants", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "mention-insert", label: "Mention source", section: "Agent", handler: "shell", feature: "tabMentions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "mention-remove", label: "Remove source mention", section: "Agent", handler: "shell", feature: "tabMentions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },

@@ -1,3 +1,4 @@
+import { ReturnControlButton } from "./ReturnControlButton";
 import { runCommand } from "../commands";
 import { windowTabHint } from "../tab-window-transfer";
 import { FeatureSlots } from "../features/registry";
@@ -446,7 +447,6 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
   const sidebarWidth = useStore((s) => s.sidebarWidth);
   const setSidebarWidth = useStore((s) => s.setSidebarWidth);
   const setMode = useStore((s) => s.setMode);
-  const returnControl = useStore((s) => s.returnControl);
 
   const space = layout.spaces.find((s) => s.id === layout.activeSpaceId) ?? layout.spaces[0]!;
   const tabs = useMemo(() => tabsInSpace(layout, pages, space.id), [layout, pages, space.id]);
@@ -760,7 +760,7 @@ export const Sidebar = memo(function Sidebar({ minimal = false }: { minimal?: bo
         {bridge.privateMode ? <><span className="private-sidebar-label">Private</span><span className="sp" /><button onClick={() => setMode(mode === "overview" ? "focus" : "overview")} className="icon-btn" aria-label="Tab overview">{shellIconGrid}</button></> : <>
         <span className="sp" />
         <button className="icon-btn" title={withShortcut("Search", key("palette"))} aria-label="Search browser" data-command-id="palette" onClick={() => runCommand("palette")}>{shellIconSearch}</button>
-        {activeController === "human" && <button className="icon-btn" aria-label="Return control to agent" title="Return control to agent" onClick={() => void returnControl(activePageId!)}>{shellIconHandSm}</button>}
+        {activeController === "human" && <ReturnControlButton pageId={activePageId!} compact />}
         <button className={`icon-btn ${railOpenNow ? "on" : ""}`} title={withShortcut("Agent", key("agent-rail"))} aria-label="Toggle agent rail" aria-pressed={railOpenNow} onClick={toggleRail}>{shellIconAgent}</button>
         <div className="sb-more">
           <button ref={moreTrigger} className="icon-btn" aria-haspopup="menu" aria-expanded={moreOpen} aria-label="More" title="More" onClick={() => setMoreOpen(value => !value)}>{shellIconMore}</button>

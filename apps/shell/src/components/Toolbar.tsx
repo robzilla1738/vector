@@ -1,3 +1,4 @@
+import { ReturnControlButton } from "./ReturnControlButton";
 import {runCommand} from "../commands";
 import { FeatureSlots } from "../features/registry";
 import { memo, useRef, type CSSProperties } from "react";
@@ -6,7 +7,7 @@ import { bridge, inNativeHost } from "../bridge";
 import { useStore, call, errToast } from "../store";
 import { deferSurface } from "./DeferredSurface";
 const CommandBar = deferSurface<{ compact: boolean }>(async () => { const module = await import("./CommandBar"); return { default: module.CommandBar }; }, "Address field", true, true);
-import { shellIconAgent, shellIconAgentSm, shellIconBookmark, shellIconBookmarkFill, shellIconGear, shellIconGrid, shellIconHandSm, shellIconSidebarOpen } from "./icons";
+import { shellIconAgent, shellIconAgentSm, shellIconBookmark, shellIconBookmarkFill, shellIconGear, shellIconGrid, shellIconSidebarOpen } from "./icons";
 import { useShortcutLabels, withShortcut } from "../use-shortcut-label";
 
 export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: boolean }) {
@@ -17,7 +18,6 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
   const settingsRoute = useStore((s) => s.overlay === "settings");
   const mode = useStore((s) => s.mode);
   const railOpen = useStore((s) => s.railOpen);
-  const returnControl = useStore((s) => s.returnControl);
   const takingControl = useRef(false);
   const takeControl = async (pageId: string) => {
     if (takingControl.current) return;
@@ -50,13 +50,7 @@ export const Toolbar = memo(function Toolbar({ hidden = false }: { hidden?: bool
         <FeatureSlots slot="toolbarItems" />
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Library" aria-label="Library" onClick={() => useStore.getState().setOverlay("bookmarks")}>{shellIconBookmark}</button>}
         {!horizontal && sidebar === "hidden" && !bridge.privateMode && <button className="icon-btn" title="Settings" aria-label="Settings" data-command-id="settings" onClick={() => runCommand("settings")}>{shellIconGear}</button>}
-        {page?.controller === "human" && (
-          <button className="ctl-chip human" title="The agent is waiting while you use this page — hand it back when you're done" onClick={() => void returnControl(page.pageId)}>
-            {shellIconHandSm}
-            <span className="ctl-chip-label">You're in control</span>
-            <span className="ctl-return">Return</span>
-          </button>
-        )}
+        {page?.controller === "human" && <ReturnControlButton pageId={page.pageId} />}
         {page && (page.controller === "agent" || page.controller === "external") && (
           <button type="button" className="ctl-chip agent" title="Take control of this page" aria-label="Take control of this page" onClick={() => void takeControl(page.pageId)}>
             {shellIconAgentSm}
