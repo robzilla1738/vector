@@ -1,0 +1,95 @@
+diff --git a/tests/host/journeys/autonomy.mjs b/tests/host/journeys/autonomy.mjs
+index d377145c..37a35619 100644
+--- a/tests/host/journeys/autonomy.mjs
++++ b/tests/host/journeys/autonomy.mjs
+@@ -1,3 +1,4 @@
++import { captureHomeJourneyState } from '../lib/home-capture.mjs';
+ import { revealSettingsControl } from '../lib/settings-control.mjs';
+ import { existsSync, readFileSync } from 'node:fs';
+ import { join } from 'node:path';
+@@ -149,7 +150,7 @@ async function demonstration(t) {
+     const after = (await t.rpc('pages.list')).find(item => item.pageId === opened.pageId);
+     t.assert.equal(after.controller, before.controller); t.assert.equal(after.controllerEpoch, before.controllerEpoch);
+     await t.assert.rejects(t.rpc('recorder.get', { recordingId: exported.recording.id }), /permission_denied/);
+-    await t.capture('demonstration-secret-absence-ambiguity');
++    await captureHomeJourneyState(t, 'demonstration-secret-absence-ambiguity', 'demonstration-filtered-secret-ambiguity-review');
+     const ax = await t.ax.dump({ scope: 'shell' });
+     await t.ax.press(shell('Discard'));
+     return { ax, rpc: { before, after, filteredKinds: exported.recording.steps.map(step => step.kind) } };
+@@ -157,13 +158,13 @@ async function demonstration(t) {
+   let reviewed;
+   await t.step('record multi-page Acme form and save reviewed variables with a separate final oracle', { kind: 'ui', features: ['demonstrationSkills'] }, async () => {
+     reviewed = await recordAndReview(t, workspace.workspaceId, fixture);
+-    await t.capture('demonstration-reviewed-paused-skill');
++    await captureHomeJourneyState(t, 'demonstration-reviewed-paused-skill', 'demonstration-reviewed-paused-skill');
+     return { ax: await t.ax.dump({ scope: 'shell' }), rpc: { routine: reviewed.routine, actualPosts: [...fixture.posted] } };
+   });
+   await t.step('test Globex through governed approvals and observe exactly one real POST before activating', { kind: 'ui', features: ['demonstrationSkills', 'automations'] }, async () => {
+     const result = await testAndActivate(t, reviewed.routine.routineId, workspace.workspaceId, 'Globex');
+     t.assert.deepEqual(fixture.posted, ['Acme', 'Globex']);
+-    await t.capture('demonstration-globex-done-tested');
++    await captureHomeJourneyState(t, 'demonstration-globex-done-tested', 'demonstration-governed-test-completed');
+     return { ax: await t.ax.dump({ scope: 'shell' }), rpc: { ...result, actualPosts: [...fixture.posted] } };
+   });
+   await t.step('selector drift parks the actual Skill, proposes no work, and requires person diff approval and a fresh test', { kind: 'ui', features: ['demonstrationSkills', 'automations'] }, async () => {
+@@ -178,13 +179,13 @@ async function demonstration(t) {
+     await choose(t, 'Step to repair', reviewed.routine.replay.steps.find(step => step.op === 'click' && step.target === 'css:#continue').id);
+     await replace(t, 'Proposed selector', 'css:#continue-new'); await t.ax.press(shell('Propose target repair'));
+     t.assert.deepEqual(fixture.posted, postedBefore);
+-    await t.capture('demonstration-review-repair-diff');
++    await captureHomeJourneyState(t, 'demonstration-review-repair-diff', 'demonstration-selector-repair-diff');
+     await t.ax.press(shell('Approve this diff and require retest'));
+     const changed = (await t.rpc('routines.get', { routineId: reviewed.routine.routineId })).routine;
+     t.assert.equal(changed.paused, true); t.assert.equal(changed.replay.state, 'untested');
+     const tested = await testAndActivate(t, changed.routineId, workspace.workspaceId, 'Repaired');
+     t.assert.equal(fixture.posted.at(-1), 'Repaired');
+-    await t.capture('demonstration-repaired-retest');
++    await captureHomeJourneyState(t, 'demonstration-repaired-retest', 'demonstration-repair-retested');
+     return { ax: await t.ax.dump({ scope: 'shell' }), rpc: { occurrence, changed, tested, actualPosts: [...fixture.posted] } };
+   });
+ }
+@@ -277,7 +278,7 @@ async function overnight(t) {
+     for (const method of ['nightShift.queue', 'nightShift.propose']) await t.assert.rejects(t.rpc(method, { payload: { kind: 'memory.reindex', workspaceId: workspace.workspaceId }, budgetUsd: 0.5 }), /permission_denied/);
+     t.assert.deepEqual(queueRows(t), before);
+     await command(t, 'Review overnight');
+-    await t.capture('overnight-person-only-refusals');
++    await captureHomeJourneyState(t, 'overnight-person-only-refusals', 'overnight-inbox-person-only-refusals');
+     return { ax: await t.ax.dump({ scope: 'shell' }), rpc: { before, after: queueRows(t) } };
+   });
+   await t.step('person queues real leased Space memory work and observes its completed Inbox row', { kind: 'ui', features: ['overnightReview', 'memory'] }, async () => {
+@@ -288,7 +289,7 @@ async function overnight(t) {
+     await t.until('real memory consolidation finishes', async () => queueRows(t).find(item => item.id === before.at(-1).id)?.status === 'done');
+     await command(t, 'Review overnight');
+     await t.ax.waitFor(shell('done', 'AXStaticText'));
+-    await t.capture('overnight-memory-done');
++    await captureHomeJourneyState(t, 'overnight-memory-done', 'overnight-memory-work-completed');
+     return { ax: await t.ax.dump({ scope: 'shell' }), rpc: { before, after: queueRows(t), power: execFileSync('/usr/bin/pmset', ['-g', 'assertions'], { encoding: 'utf8' }) } };
+   });
+   await t.step('an actual always-confirm Skill action waits for morning, and person Apply opens its real foreground approval', { kind: 'ui', features: ['overnightReview', 'demonstrationSkills'] }, async () => {
+@@ -313,7 +314,7 @@ async function overnight(t) {
+     await t.until('closed current window requires review', async () => queueRows(t).find(row => row.id === item.id)?.status === 'needs_review');
+     t.assert.equal((await t.rpc('runs.get', { runId: parked.run_id })).run.status, 'needs_input');
+     await command(t, 'Review overnight'); await t.ax.waitFor(shell('Apply'));
+-    await t.capture('overnight-real-approval-waits');
++    await captureHomeJourneyState(t, 'overnight-real-approval-waits', 'overnight-morning-approval-awaiting-person');
+     const ax = await t.ax.dump({ scope: 'shell' });
+     await t.ax.press(shell('Apply')); await t.ax.waitFor(shell('Allow'));
+     const foreground = (await t.rpc('runs.get', { runId: parked.run_id })).run;
+@@ -321,7 +322,7 @@ async function overnight(t) {
+     await t.ax.press(shell('Allow'));
+     const completed = await settleReplay(t, parked.run_id); t.assert.equal(completed.status, 'completed');
+     t.assert.deepEqual(fixture.posted.slice(beforePosts), ['Morning']);
+-    await t.capture('overnight-person-applied-done');
++    await captureHomeJourneyState(t, 'overnight-person-applied-done', 'overnight-person-approved-completed');
+     return { ax, rpc: { parked, foreground, completed, actualPosts: fixture.posted, power: execFileSync('/usr/bin/pmset', ['-g', 'assertions'], { encoding: 'utf8' }) } };
+   });
+   await t.step('standard SDK usage creates an actual priced ledger call and nightly cap blocks the next model dispatch', { kind: 'ui', features: ['overnightReview', 'goals'] }, async () => {
+@@ -352,7 +353,7 @@ async function overnight(t) {
+     });
+     t.assert.equal(t.model.calls.length - callsBefore, 1);
+     await command(t, 'Review overnight');
+-    await t.capture('overnight-real-priced-cap');
++    await captureHomeJourneyState(t, 'overnight-real-priced-cap', 'overnight-priced-budget-refusal');
+     const scheduledAfter = execFileSync('/usr/bin/pmset', ['-g', 'sched'], { encoding: 'utf8' });
+     t.assert.equal(scheduledAfter, scheduledBefore);
+     return { ax: await t.ax.dump({ scope: 'shell' }), rpc: { queued, ledger, route: t.model.calls.at(-1).model, powerBefore, powerAfter: execFileSync('/usr/bin/pmset', ['-g', 'assertions'], { encoding: 'utf8' }), scheduledBefore, scheduledAfter } };

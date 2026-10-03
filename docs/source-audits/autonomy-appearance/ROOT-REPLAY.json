@@ -1,0 +1,29 @@
+{
+  "sourceOnly": true,
+  "patchSha256": "4e43499fddf7e6a5788d3e9743a48d0b1c499c4aef80c5787467e37d5ccdcf66",
+  "files": [
+    {
+      "path": "tests/host/journeys/autonomy.mjs",
+      "beforeSha256": "e9d6d944272d032c72177dede04922e0cab505f34bd392230423040cb1d5cd7f",
+      "afterSha256": "003774068bba44c1af94c01fe90880eaee15141763c4efa3e377d7f61e9f8587",
+      "states": {
+        "demonstration-secret-absence-ambiguity": "demonstration-filtered-secret-ambiguity-review",
+        "demonstration-reviewed-paused-skill": "demonstration-reviewed-paused-skill",
+        "demonstration-globex-done-tested": "demonstration-governed-test-completed",
+        "demonstration-review-repair-diff": "demonstration-selector-repair-diff",
+        "demonstration-repaired-retest": "demonstration-repair-retested",
+        "overnight-person-only-refusals": "overnight-inbox-person-only-refusals",
+        "overnight-memory-done": "overnight-memory-work-completed",
+        "overnight-real-approval-waits": "overnight-morning-approval-awaiting-person",
+        "overnight-person-applied-done": "overnight-person-approved-completed",
+        "overnight-real-priced-cap": "overnight-priced-budget-refusal"
+      },
+      "wholeOriginalRestoredByOnlyCaptureSubstitutions": true
+    }
+  ],
+  "exactContextualReverseForwardPassed": true,
+  "functionalAndPerformanceAssertionsUnchanged": true,
+  "nativeCapturesExecuted": false,
+  "f21Approved": false,
+  "strictOriginalPidSingleWindowAppearanceOnly": true
+}
