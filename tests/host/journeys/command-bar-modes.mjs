@@ -1,3 +1,4 @@
+import { captureAppearanceTextState } from '../lib/appearance-text-state.mjs';
 import { captureHomeJourneyState as captureCommandState } from '../lib/home-capture.mjs';
 
 const dialog = { role: 'AXGroup', name: 'Command surface', scope: 'shell' };
@@ -46,7 +47,16 @@ export async function run(t) {
     await t.ax.key('command+l', 'hid'); await t.ax.waitFor(dialog);
     const [input] = await t.ax.query(field); t.assert.equal(input.value, `${t.fixture.url}/blue`);
     const rpc = await t.rpc('workspace.get');
-    await captureCommandState(t, 'command-edit-url', 'command-edit-url'); await t.ax.key('escape', 'hid');
+    await captureCommandState(t, 'command-edit-url', 'command-edit-url');
+    const appearancePages = t.appearanceEnabled ? await t.rpc('pages.list') : undefined;
+    await captureAppearanceTextState(t, { selector: field,
+      text: `${t.fixture.url}/a-planned-weekend-with-friends/quiet-morning-walk-and-museum-visit?notes=keep-the-original-page-and-restore-this-edit-without-navigating`,
+      name: 'command-long-loopback-url-focused', state: 'command-long-loopback-url-focused' });
+    if (t.appearanceEnabled) {
+      t.assert.equal((await t.ax.query(field))[0]?.value, `${t.fixture.url}/blue`);
+      t.assert.deepEqual(await t.rpc('pages.list'), appearancePages, 'Appearance URL edit must not create or navigate a page');
+    }
+    await t.ax.key('escape', 'hid');
     return { ax: await t.ax.dump({ scope: 'shell' }), rpc };
   });
   await t.step('CmdK lists registered split commands and the split provider', { kind: 'ui', features: ['commandBar'] }, async () => {

@@ -1,3 +1,4 @@
+import { captureAppearanceTextState } from '../lib/appearance-text-state.mjs';
 import { captureHomeJourneyState as captureLayoutState } from '../lib/home-capture.mjs';
 import { performance } from 'node:perf_hooks';
 import { setTabLayout } from '../lib/tab-layout.mjs';
@@ -20,6 +21,18 @@ async function setting(t, label, key, value) {
   await t.ax.press(shell('Appearance', 'AXButton'));
   const search = shell('Search settings', 'AXTextField');
   await t.ax.waitFor(search, 'visible');
+  if (t.appearanceEnabled && label === 'Auto-hide toolbar' && value === false) {
+    const layout = (await t.rpc('settings.get')).tabLayout;
+    await t.ax.focus(search);
+    t.assert.equal((await t.ax.query(search))[0]?.focused, true, 'Settings search must own genuine focus');
+    await captureLayoutState(t, `settings-${layout}-search-focused`, 'settings-search-focused');
+    const originalPages = await t.rpc('pages.list');
+    await captureAppearanceTextState(t, { selector: search,
+      text: 'A quiet weekend museum itinerary with friends and dinner plans',
+      name: `settings-${layout}-long-search-no-results`, state: 'settings-long-search-no-results',
+      ready: () => t.ax.waitFor({ name: 'No settings found for', match: 'contains', scope: 'shell', index: 0 }) });
+    t.assert.deepEqual(await t.rpc('pages.list'), originalPages, 'Settings search must not create or navigate a page');
+  }
   await t.ax.type(label, search);
   const result = { name: `^Appearance ${label}(?: |$)`, role: 'AXButton', match: 'regex', scope: 'shell', index: 0 };
   await t.ax.press(result);

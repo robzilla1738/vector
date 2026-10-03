@@ -1,3 +1,4 @@
+import { captureAppearanceTextState } from '../lib/appearance-text-state.mjs';
 import { configureModel, finished, observations } from '../lib/l10-trust-fixtures.mjs';
 import { captureHomeJourneyState } from '../lib/home-capture.mjs';
 
@@ -30,6 +31,13 @@ export async function run(t) {
     t.assert.equal((await t.ax.query(composer))[0]?.value, draft);
     t.assert.deepEqual(await t.rpc('runs.list'), [], 'Draft typing must not start a run');
     await captureHomeJourneyState(t, 'home-draft-before-setup', 'home-draft-model-missing');
+    if (t.appearanceEnabled) {
+      await captureAppearanceTextState(t, { selector: composer,
+        text: 'Help me plan a thoughtful weekend: compare a quiet morning walk, a small museum visit, and a relaxed dinner, with enough detail to share the plan with friends.',
+        name: 'home-long-draft-focused', state: 'home-long-draft-focused' });
+      t.assert.equal((await t.ax.query(composer))[0]?.value, draft);
+      t.assert.deepEqual(await t.rpc('runs.list'), [], 'Appearance draft must not start a run');
+    }
     return { ax: await t.ax.dump(), rpc: { settings: await t.rpc('settings.get'), pages: await t.rpc('pages.list') } };
   });
   await configureModel(t);
@@ -50,9 +58,11 @@ export async function run(t) {
     await t.ax.key('escape', 'hid');
     await t.ax.waitFor(search, 'absent');
     t.assert.equal((await t.ax.query(shell('Browser context', 'AXButton')))[0]?.focused, true, 'Escape from child must return to the parent trigger');
+    if (t.appearanceEnabled) await captureHomeJourneyState(t, 'home-context-parent-focus-returned', 'home-context-parent-focus-returned');
     await t.ax.key('escape', 'hid');
     await t.ax.waitFor(shell('Browser context', 'AXButton'), 'absent');
     t.assert.equal((await t.ax.query(shell('Add context', 'AXButton')))[0]?.focused, true, 'Escape from parent must restore the composer context trigger');
+    if (t.appearanceEnabled) await captureHomeJourneyState(t, 'home-context-trigger-focus-returned', 'home-context-trigger-focus-returned');
     t.assert.equal((await t.ax.query(composer))[0]?.value, draft);
     t.assert.deepEqual(await t.rpc('pages.list'), [], 'Opening context controls must not manufacture a page');
     return { ax: await t.ax.dump(), rpc: { pages: await t.rpc('pages.list') } };
