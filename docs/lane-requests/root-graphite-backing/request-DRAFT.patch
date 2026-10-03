@@ -1,0 +1,210 @@
+--- a/components/viz/service/display/native_stock_backing_read.cc
++++ b/components/viz/service/display/native_stock_backing_read.cc
+@@ -2,13 +2,21 @@
+ #include "components/viz/service/display/native_stock_backing_read.h"
+ 
+ #include <cmath>
++#include <cstring>
++#include <limits>
++#include <memory>
+ #include <vector>
+ 
++#include "base/functional/bind.h"
++#include "base/task/single_thread_task_runner.h"
++#include "gpu/command_buffer/service/graphite_shared_context.h"
+ #include "gpu/command_buffer/service/shared_context_state.h"
+ #include "components/viz/common/resources/shared_image_format_utils.h"
+ #include "third_party/skia/include/core/SkImage.h"
+ #include "third_party/skia/include/core/SkImageInfo.h"
+ #include "third_party/skia/include/gpu/ganesh/SkImageGanesh.h"
++#include "third_party/skia/include/gpu/graphite/BackendTexture.h"
++#include "third_party/skia/include/gpu/graphite/Image.h"
+ #include "third_party/skia/include/private/chromium/GrPromiseImageTexture.h"
+ 
+ namespace viz {
+@@ -39,11 +47,15 @@
+       !gfx::Rect(original_size).Contains(executed_sample_bounds) ||
+       !actual->format().is_single_plane() ||
+       actual->format().PrefersExternalSampler()) return {};
+-  // This first producer is the real Ganesh original-texture path only.
+-  // Graphite/raw draw require their own supported executed-backing witness.
+-  if (!context.gr_context() || context.graphite_shared_context()) return {};
+-  auto* actual_texture = actual_access.promise_image_texture();
+-  if (!actual_texture || !actual_texture->backendTexture().isValid() ||
++  auto* graphite = context.graphite_shared_context();
++  auto* actual_texture = graphite ? nullptr : actual_access.promise_image_texture();
++  if (graphite) {
++    const auto& texture = actual_access.graphite_texture(0);
++    if (!context.gpu_main_graphite_recorder() || !texture.isValid() ||
++        texture.dimensions() != SkISize::Make(original_size.width(), original_size.height()) ||
++        !base::SingleThreadTaskRunner::HasCurrentDefault()) return {};
++  } else if (!context.gr_context() || !actual_texture ||
++      !actual_texture->backendTexture().isValid() ||
+       actual_texture->backendTexture().width() != original_size.width() ||
+       actual_texture->backendTexture().height() != original_size.height()) return {};
+   // The installed backing format plus the successfully acquired actual GPU
+@@ -67,16 +79,46 @@
+   // alpha=1 from that hint. Borrow the SAME acquired backend texture with its
+   // installed color format and an alpha-bearing interpretation instead.
+   // Premultiplication changes RGB interpretation, never the stored alpha.
+-  auto original = SkImages::BorrowTextureFrom(context.gr_context(),
+-      actual_texture->backendTexture(), actual->surface_origin(),
+-      ToClosestSkColorType(actual->format()), kPremul_SkAlphaType, nullptr);
++  auto original = graphite
++      ? SkImages::WrapTexture(context.gpu_main_graphite_recorder(),
++          actual_access.graphite_texture(0), kPremul_SkAlphaType, nullptr,
++          actual->surface_origin() == kTopLeft_GrSurfaceOrigin
++              ? skgpu::Origin::kTopLeft : skgpu::Origin::kBottomLeft)
++      : SkImages::BorrowTextureFrom(context.gr_context(),
++          actual_texture->backendTexture(), actual->surface_origin(),
++          ToClosestSkColorType(actual->format()), kPremul_SkAlphaType, nullptr);
+   if (context.context_lost() || !original || original->width() != original_size.width() ||
+       original->height() != original_size.height() ||
+       original->alphaType() != kPremul_SkAlphaType) return {false, false, true};
+   std::vector<float> pixels(width * height * 4);
+   const auto info = SkImageInfo::Make(executed_sample_bounds.width(), executed_sample_bounds.height(),
+       kRGBA_F32_SkColorType, kUnpremul_SkAlphaType, nullptr);
+-  if (!original->readPixels(context.gr_context(), info, pixels.data(),
++  if (graphite) {
++    struct Readback {
++      std::unique_ptr<const SkImage::AsyncReadResult> result;
++    };
++    // The callback owns heap state even when context loss drops it or a
++    // thread-safe context posts it later. Only a callback completed during
++    // this synchronous GPU submit can qualify the still-live original scope.
++    auto readback = std::make_shared<Readback>();
++    const bool submitted = graphite->asyncRescaleAndReadPixelsAndSubmit(
++        original.get(), info,
++        SkIRect::MakeXYWH(executed_sample_bounds.x(), executed_sample_bounds.y(),
++            executed_sample_bounds.width(), executed_sample_bounds.height()),
++        SkImage::RescaleGamma::kSrc, SkImage::RescaleMode::kNearest,
++        base::BindOnce([](std::shared_ptr<Readback> retained, void*,
++            std::unique_ptr<const SkImage::AsyncReadResult> result) {
++          retained->result = std::move(result);
++        }, readback), nullptr);
++    if (!submitted || context.context_lost() || !readback->result ||
++        readback->result->count() != 1 || !readback->result->data(0) ||
++        readback->result->rowBytes(0) < width * 4 * sizeof(float) ||
++        readback->result->rowBytes(0) > std::numeric_limits<size_t>::max() / height) return {false, false, true};
++    for (size_t row = 0; row < height; ++row)
++      std::memcpy(pixels.data() + row * width * 4,
++          static_cast<const unsigned char*>(readback->result->data(0)) +
++              row * readback->result->rowBytes(0), width * 4 * sizeof(float));
++  } else if (!original->readPixels(context.gr_context(), info, pixels.data(),
+       width * 4 * sizeof(float), executed_sample_bounds.x(),
+       executed_sample_bounds.y(), SkImage::kDisallow_CachingHint)) return {false, false, true};
+   // Retain exact read pixels, not inferred opacity from image metadata. This
+--- a/components/viz/service/display_embedder/skia_output_surface_impl_on_gpu.cc
++++ b/components/viz/service/display_embedder/skia_output_surface_impl_on_gpu.cc
+@@ -490,48 +490,10 @@
+     return;
+   }
+ 
+-  if (graphite_recording) {
+-    CHECK(return_release_fence_cb.is_null());
+-    promise_image_access_helper_.BeginAccess(std::move(image_contexts),
+-                                             /*begin_semaphores=*/nullptr,
+-                                             /*end_semaphores=*/nullptr);
+-    bool draw_success = scoped_output_device_paint_->Draw(
+-        context_state_->graphite_shared_context(),
+-        std::move(graphite_recording), std::move(on_finished));
+-    RecordInsertRenderPassRecording(draw_success);
+-    if (!draw_success) {
+-      draw_render_pass_failed_ = true;
+-    }
+-    return;
+-  }
+-
+-  {
+-    std::optional<gpu::raster::GrShaderCache::ScopedCacheUse> cache_use;
+-    if (dependency_->GetGrShaderCache()) {
+-      cache_use.emplace(dependency_->GetGrShaderCache(),
+-                        gpu::kDisplayCompositorClientId);
+-    }
+-    // TODO(crbug.com/40264581): Implement resource cleanup for Graphite.
+-    dependency_->ScheduleGrContextCleanup();
+-
+-    std::vector<raw_ptr<ImageContextImpl, VectorExperimental>> original_root_images;
+-    if (native_stock_draw) original_root_images = image_contexts;
+-    bool original_acquire_wait_succeeded = true;
+-    std::vector<GrBackendSemaphore> begin_semaphores;
+-    std::vector<GrBackendSemaphore> end_semaphores;
+-    promise_image_access_helper_.BeginAccess(
+-        std::move(image_contexts), &begin_semaphores, &end_semaphores);
+-    if (!begin_semaphores.empty()) {
+-      auto result = scoped_output_device_paint_->Wait(
+-          begin_semaphores.size(), begin_semaphores.data(),
+-          /*delete_semaphores_after_wait=*/false);
+-      original_acquire_wait_succeeded = result;
+-      DCHECK(result);
+-    }
+-
+-    // Draw will only fail if the SkSurface and SkDDL are incompatible.
+-    bool draw_success = scoped_output_device_paint_->Draw(ddl);
+-    DCHECK(draw_success);
++  std::vector<raw_ptr<ImageContextImpl, VectorExperimental>> original_root_images;
++  if (native_stock_draw) original_root_images = image_contexts;
++  const auto complete_original_draw = [&](bool draw_success,
++                                          bool original_acquire_wait_succeeded) {
+     if (native_stock_draw && original_acquire_wait_succeeded && draw_success &&
+         !context_is_lost_ && !context_state_->context_lost()) {
+       // Validate ALL original root paint images, including source-over
+@@ -552,9 +514,57 @@
+           [](gpu::SharedContextState* context) { return !context->context_lost(); },
+           context_state_.get()));
+     }
+-    // Graphite/context loss/acquire failure/drop leaves the private pack's
++    // Context loss/acquire failure/drop leaves the private pack's
+     // destructor to refuse its exact original group, never a later frame.
+     native_stock_draw.reset();
++
++  };
++
++  if (graphite_recording) {
++    CHECK(return_release_fence_cb.is_null());
++    promise_image_access_helper_.BeginAccess(std::move(image_contexts),
++                                             /*begin_semaphores=*/nullptr,
++                                             /*end_semaphores=*/nullptr);
++    bool draw_success = scoped_output_device_paint_->Draw(
++        context_state_->graphite_shared_context(),
++        std::move(graphite_recording), std::move(on_finished));
++    RecordInsertRenderPassRecording(draw_success);
++    if (!draw_success) {
++      draw_render_pass_failed_ = true;
++    }
++    // Original Graphite BeginAccess imports the backing's synchronization into
++    // this recording. A missing/fallback access cannot pass the common exact
++    // acquired-image checks; readback then synchronously submits this draw.
++    complete_original_draw(draw_success, true);
++    return;
++  }
++
++  {
++    std::optional<gpu::raster::GrShaderCache::ScopedCacheUse> cache_use;
++    if (dependency_->GetGrShaderCache()) {
++      cache_use.emplace(dependency_->GetGrShaderCache(),
++                        gpu::kDisplayCompositorClientId);
++    }
++    // TODO(crbug.com/40264581): Implement resource cleanup for Graphite.
++    dependency_->ScheduleGrContextCleanup();
++
++    bool original_acquire_wait_succeeded = true;
++    std::vector<GrBackendSemaphore> begin_semaphores;
++    std::vector<GrBackendSemaphore> end_semaphores;
++    promise_image_access_helper_.BeginAccess(
++        std::move(image_contexts), &begin_semaphores, &end_semaphores);
++    if (!begin_semaphores.empty()) {
++      auto result = scoped_output_device_paint_->Wait(
++          begin_semaphores.size(), begin_semaphores.data(),
++          /*delete_semaphores_after_wait=*/false);
++      original_acquire_wait_succeeded = result;
++      DCHECK(result);
++    }
++
++    // Draw will only fail if the SkSurface and SkDDL are incompatible.
++    bool draw_success = scoped_output_device_paint_->Draw(ddl);
++    DCHECK(draw_success);
++    complete_original_draw(draw_success, original_acquire_wait_succeeded);
+ 
+     destroy_after_swap_.emplace_back(std::move(ddl));
+ 
