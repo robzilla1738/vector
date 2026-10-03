@@ -1,3 +1,4 @@
+import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
 import { shell, loadedPage, press } from '../fixtures/legacy-ui.mjs';
 import { setTabLayout } from '../lib/tab-layout.mjs';
 
@@ -21,7 +22,7 @@ async function linkPeek(t) {
     promoted = await preview(t, `${t.fixture.url}/red`);
     t.assert.ok((await t.rpc('pages.list')).some(page => page.pageId === source.pageId));
     await t.ax.waitFor({ name: 'Red loopback fixture.', match: 'exact', scope: 'page' });
-    await t.capture('peek-bookmark');
+    await captureLegacyState(t, 'peek-bookmark', 'peek-bookmark');
     await press(t, shell('Open as tab', 'AXButton'));
     await t.ax.waitFor(shell('Open as tab', 'AXButton'), 'absent');
     const rpc = await t.until('same Peek page promoted', async () => {
@@ -29,7 +30,7 @@ async function linkPeek(t) {
       return state.activePageId === promoted.pageId && state;
     });
     const ax = await t.ax.dump({ scope: 'any' });
-    await t.capture('peek-promoted');
+    await captureLegacyState(t, 'peek-promoted', 'peek-promoted');
     return { ax, rpc };
   });
   await t.step('dismiss another Peek without changing the active tab', { kind: 'ui', features: ['peek'] }, async () => {
@@ -43,7 +44,7 @@ async function linkPeek(t) {
       return state.activePageId === promoted.pageId && !state.pages.some(page => page.pageId === temporary.pageId) && state;
     });
     const ax = await t.ax.dump({ scope: 'any' });
-    await t.capture('peek-dismissed');
+    await captureLegacyState(t, 'peek-dismissed', 'peek-dismissed');
     return { ax, rpc };
   });
 }
@@ -61,7 +62,7 @@ async function readerPeek(t) {
     await t.ax.key('alt+return', 'hid');
     keyboard = await preview(t, `${t.fixture.url}/red`);
     t.assert.ok((await t.rpc('pages.list')).some(page => page.pageId === source.pageId));
-    await t.capture('reader-peek-keyboard');
+    await captureLegacyState(t, 'reader-peek-keyboard', 'reader-peek-keyboard');
     await press(t, shell('Close preview', 'AXButton'));
     await t.ax.waitFor(shell('Close preview', 'AXButton'), 'absent');
     const rpc = await t.until('Reader temporary page closed', async () => {
@@ -76,7 +77,7 @@ async function readerPeek(t) {
     await t.ax.click(link, { modifiers: ['alt'] });
     const pointer = await preview(t, `${t.fixture.url}/red`, keyboard.pageId);
     t.assert.equal((await t.rpc('workspace.get')).activePageId, source.pageId);
-    await t.capture('reader-peek-pointer');
+    await captureLegacyState(t, 'reader-peek-pointer', 'reader-peek-pointer');
     await press(t, shell('Open as tab', 'AXButton'));
     await t.ax.waitFor(shell('Open as tab', 'AXButton'), 'absent');
     const rpc = await t.until('pointer Peek promoted', async () => {
@@ -84,7 +85,7 @@ async function readerPeek(t) {
       return state.activePageId === pointer.pageId && state.pages.some(page => page.pageId === pointer.pageId && page.url === `${t.fixture.url}/red`) && state;
     });
     const ax = await t.ax.dump({ scope: 'any' });
-    await t.capture('reader-peek-promoted');
+    await captureLegacyState(t, 'reader-peek-promoted', 'reader-peek-promoted');
     return { ax, rpc };
   });
 }

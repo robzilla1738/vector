@@ -1,0 +1,144 @@
+diff --git a/tests/host/journeys/legacy-peek.mjs b/tests/host/journeys/legacy-peek.mjs
+index 614d71922..7a47fdd0f 100644
+--- a/tests/host/journeys/legacy-peek.mjs
++++ b/tests/host/journeys/legacy-peek.mjs
+@@ -1,3 +1,4 @@
++import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
+ import { shell, loadedPage, press } from '../fixtures/legacy-ui.mjs';
+ import { setTabLayout } from '../lib/tab-layout.mjs';
+ 
+@@ -21,7 +22,7 @@ async function linkPeek(t) {
+     promoted = await preview(t, `${t.fixture.url}/red`);
+     t.assert.ok((await t.rpc('pages.list')).some(page => page.pageId === source.pageId));
+     await t.ax.waitFor({ name: 'Red loopback fixture.', match: 'exact', scope: 'page' });
+-    await t.capture('peek-bookmark');
++    await captureLegacyState(t, 'peek-bookmark', 'peek-bookmark');
+     await press(t, shell('Open as tab', 'AXButton'));
+     await t.ax.waitFor(shell('Open as tab', 'AXButton'), 'absent');
+     const rpc = await t.until('same Peek page promoted', async () => {
+@@ -29,7 +30,7 @@ async function linkPeek(t) {
+       return state.activePageId === promoted.pageId && state;
+     });
+     const ax = await t.ax.dump({ scope: 'any' });
+-    await t.capture('peek-promoted');
++    await captureLegacyState(t, 'peek-promoted', 'peek-promoted');
+     return { ax, rpc };
+   });
+   await t.step('dismiss another Peek without changing the active tab', { kind: 'ui', features: ['peek'] }, async () => {
+@@ -43,7 +44,7 @@ async function linkPeek(t) {
+       return state.activePageId === promoted.pageId && !state.pages.some(page => page.pageId === temporary.pageId) && state;
+     });
+     const ax = await t.ax.dump({ scope: 'any' });
+-    await t.capture('peek-dismissed');
++    await captureLegacyState(t, 'peek-dismissed', 'peek-dismissed');
+     return { ax, rpc };
+   });
+ }
+@@ -61,7 +62,7 @@ async function readerPeek(t) {
+     await t.ax.key('alt+return', 'hid');
+     keyboard = await preview(t, `${t.fixture.url}/red`);
+     t.assert.ok((await t.rpc('pages.list')).some(page => page.pageId === source.pageId));
+-    await t.capture('reader-peek-keyboard');
++    await captureLegacyState(t, 'reader-peek-keyboard', 'reader-peek-keyboard');
+     await press(t, shell('Close preview', 'AXButton'));
+     await t.ax.waitFor(shell('Close preview', 'AXButton'), 'absent');
+     const rpc = await t.until('Reader temporary page closed', async () => {
+@@ -76,7 +77,7 @@ async function readerPeek(t) {
+     await t.ax.click(link, { modifiers: ['alt'] });
+     const pointer = await preview(t, `${t.fixture.url}/red`, keyboard.pageId);
+     t.assert.equal((await t.rpc('workspace.get')).activePageId, source.pageId);
+-    await t.capture('reader-peek-pointer');
++    await captureLegacyState(t, 'reader-peek-pointer', 'reader-peek-pointer');
+     await press(t, shell('Open as tab', 'AXButton'));
+     await t.ax.waitFor(shell('Open as tab', 'AXButton'), 'absent');
+     const rpc = await t.until('pointer Peek promoted', async () => {
+@@ -84,7 +85,7 @@ async function readerPeek(t) {
+       return state.activePageId === pointer.pageId && state.pages.some(page => page.pageId === pointer.pageId && page.url === `${t.fixture.url}/red`) && state;
+     });
+     const ax = await t.ax.dump({ scope: 'any' });
+-    await t.capture('reader-peek-promoted');
++    await captureLegacyState(t, 'reader-peek-promoted', 'reader-peek-promoted');
+     return { ax, rpc };
+   });
+ }
+diff --git a/tests/host/journeys/legacy-spaces.mjs b/tests/host/journeys/legacy-spaces.mjs
+index 13d408457..f92de972f 100644
+--- a/tests/host/journeys/legacy-spaces.mjs
++++ b/tests/host/journeys/legacy-spaces.mjs
+@@ -1,3 +1,4 @@
++import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
+ import { readFileSync } from 'node:fs';
+ import { join } from 'node:path';
+ import { shell, loadedPage, press } from '../fixtures/legacy-ui.mjs';
+@@ -35,7 +36,7 @@ export async function run(t) {
+     await range('Intensity', 0, 80);
+     await press(t, { ...shell('Invert lightness', 'AXCheckBox'), match: 'contains' });
+     await press(t, shell('Cycle grain', 'AXButton'));
+-    await t.capture('space-theme-edit');
++    await captureLegacyState(t, 'space-theme-edit', 'space-theme-edit');
+     await press(t, shell('Create', 'AXButton'));
+     await t.ax.waitFor(shell('New space'), 'absent');
+     const native = await t.until('native organization saves advanced theme', () => {
+@@ -48,7 +49,7 @@ export async function run(t) {
+     const ax = await t.ax.dump({ scope: 'shell' });
+     for (const label of ['Color dial', 'Lightness', 'Intensity', 'Invert lightness', 'Grain']) t.assert.match(JSON.stringify(ax), new RegExp(label));
+     t.assert.doesNotMatch(JSON.stringify(ax), /Profile organization could not be saved/);
+-    await t.capture('space-theme-reopened');
++    await captureLegacyState(t, 'space-theme-reopened', 'space-theme-reopened');
+     await press(t, shell('Cancel', 'AXButton'));
+     return { ax, rpc: { workspaces: rpc, native } };
+   });
+@@ -69,7 +70,7 @@ export async function run(t) {
+     const ax = await t.ax.dump({ scope: 'shell' });
+     const rpc = await t.rpc('workspaces.list');
+     t.assert.ok(rpc.some(workspace => workspace.name === name));
+-    await t.capture('space-theme-reset');
++    await captureLegacyState(t, 'space-theme-reset', 'space-theme-reset');
+     await press(t, shell('Cancel', 'AXButton'));
+     return { ax, rpc: { workspaces: rpc, native } };
+   });
+diff --git a/tests/host/journeys/legacy.mjs b/tests/host/journeys/legacy.mjs
+index 9887b65e0..5b200fd33 100644
+--- a/tests/host/journeys/legacy.mjs
++++ b/tests/host/journeys/legacy.mjs
+@@ -1,3 +1,4 @@
++import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
+ /** Frozen-runner provenance for the 22 former claims. Ports replace these flags, never extend them. */
+ export const LEGACY_JOURNEY_FLAGS = {
+   sitePermissions: ['--site-controls'], reader: ['--reader'], inboundAgents: ['--agent-connections'],
+@@ -26,7 +27,7 @@ async function reader(t) {
+     const rpc = await t.rpc('pages.observe', { pageId: page.pageId });
+     t.assert.match(JSON.stringify(rpc), /Distinctive distilled article sentence/);
+     t.assert.doesNotMatch(JSON.stringify(ax), /Reader view isn.t available/);
+-    await t.capture('reader-article');
++    await captureLegacyState(t, 'reader-article', 'reader-article');
+     return { ax, rpc };
+   });
+   await t.step('navigate Reader contents and return to the original page', { kind: 'ui', features: ['reader'] }, async () => {
+@@ -44,7 +45,7 @@ async function reader(t) {
+     const rpc = await t.rpc('pages.list');
+     t.assert.ok(rpc.some(item => item.pageId === page.pageId && item.url === `${t.fixture.url}/reader`));
+     t.assert.match(JSON.stringify(ax), /Aux Reader fixture/);
+-    await t.capture('reader-returned');
++    await captureLegacyState(t, 'reader-returned', 'reader-returned');
+     return { ax, rpc };
+   });
+ }
+@@ -64,7 +65,7 @@ async function pageZoom(t) {
+     const ax = await t.ax.dump({ scope: 'shell' });
+     const rpc = await t.rpc('pages.zoom', { pageId: page.pageId });
+     t.assert.match(JSON.stringify(ax), /110%/);
+-    await t.capture('page-zoom-in');
++    await captureLegacyState(t, 'page-zoom-in', 'page-zoom-in');
+     await t.ax.press(selector('Close site controls', 'AXButton'));
+     return { ax, rpc };
+   });
+@@ -81,7 +82,7 @@ async function pageZoom(t) {
+     const ax = await t.ax.dump({ scope: 'shell' });
+     const rpc = await t.rpc('pages.zoom', { pageId: page.pageId });
+     t.assert.match(JSON.stringify(ax), /Website sizes/);
+-    await t.capture('page-zoom-reset');
++    await captureLegacyState(t, 'page-zoom-reset', 'page-zoom-reset');
+     return { ax, rpc };
+   });
+ }

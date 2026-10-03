@@ -1,3 +1,4 @@
+import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { shell, loadedPage, press } from '../fixtures/legacy-ui.mjs';
@@ -35,7 +36,7 @@ export async function run(t) {
     await range('Intensity', 0, 80);
     await press(t, { ...shell('Invert lightness', 'AXCheckBox'), match: 'contains' });
     await press(t, shell('Cycle grain', 'AXButton'));
-    await t.capture('space-theme-edit');
+    await captureLegacyState(t, 'space-theme-edit', 'space-theme-edit');
     await press(t, shell('Create', 'AXButton'));
     await t.ax.waitFor(shell('New space'), 'absent');
     const native = await t.until('native organization saves advanced theme', () => {
@@ -48,7 +49,7 @@ export async function run(t) {
     const ax = await t.ax.dump({ scope: 'shell' });
     for (const label of ['Color dial', 'Lightness', 'Intensity', 'Invert lightness', 'Grain']) t.assert.match(JSON.stringify(ax), new RegExp(label));
     t.assert.doesNotMatch(JSON.stringify(ax), /Profile organization could not be saved/);
-    await t.capture('space-theme-reopened');
+    await captureLegacyState(t, 'space-theme-reopened', 'space-theme-reopened');
     await press(t, shell('Cancel', 'AXButton'));
     return { ax, rpc: { workspaces: rpc, native } };
   });
@@ -69,7 +70,7 @@ export async function run(t) {
     const ax = await t.ax.dump({ scope: 'shell' });
     const rpc = await t.rpc('workspaces.list');
     t.assert.ok(rpc.some(workspace => workspace.name === name));
-    await t.capture('space-theme-reset');
+    await captureLegacyState(t, 'space-theme-reset', 'space-theme-reset');
     await press(t, shell('Cancel', 'AXButton'));
     return { ax, rpc: { workspaces: rpc, native } };
   });

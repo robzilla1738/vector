@@ -1,3 +1,4 @@
+import { captureHomeJourneyState as captureLegacyState } from '../lib/home-capture.mjs';
 /** Frozen-runner provenance for the 22 former claims. Ports replace these flags, never extend them. */
 export const LEGACY_JOURNEY_FLAGS = {
   sitePermissions: ['--site-controls'], reader: ['--reader'], inboundAgents: ['--agent-connections'],
@@ -26,7 +27,7 @@ async function reader(t) {
     const rpc = await t.rpc('pages.observe', { pageId: page.pageId });
     t.assert.match(JSON.stringify(rpc), /Distinctive distilled article sentence/);
     t.assert.doesNotMatch(JSON.stringify(ax), /Reader view isn.t available/);
-    await t.capture('reader-article');
+    await captureLegacyState(t, 'reader-article', 'reader-article');
     return { ax, rpc };
   });
   await t.step('navigate Reader contents and return to the original page', { kind: 'ui', features: ['reader'] }, async () => {
@@ -44,7 +45,7 @@ async function reader(t) {
     const rpc = await t.rpc('pages.list');
     t.assert.ok(rpc.some(item => item.pageId === page.pageId && item.url === `${t.fixture.url}/reader`));
     t.assert.match(JSON.stringify(ax), /Aux Reader fixture/);
-    await t.capture('reader-returned');
+    await captureLegacyState(t, 'reader-returned', 'reader-returned');
     return { ax, rpc };
   });
 }
@@ -64,7 +65,7 @@ async function pageZoom(t) {
     const ax = await t.ax.dump({ scope: 'shell' });
     const rpc = await t.rpc('pages.zoom', { pageId: page.pageId });
     t.assert.match(JSON.stringify(ax), /110%/);
-    await t.capture('page-zoom-in');
+    await captureLegacyState(t, 'page-zoom-in', 'page-zoom-in');
     await t.ax.press(selector('Close site controls', 'AXButton'));
     return { ax, rpc };
   });
@@ -81,7 +82,7 @@ async function pageZoom(t) {
     const ax = await t.ax.dump({ scope: 'shell' });
     const rpc = await t.rpc('pages.zoom', { pageId: page.pageId });
     t.assert.match(JSON.stringify(ax), /Website sizes/);
-    await t.capture('page-zoom-reset');
+    await captureLegacyState(t, 'page-zoom-reset', 'page-zoom-reset');
     return { ax, rpc };
   });
 }

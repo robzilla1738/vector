@@ -1,0 +1,20 @@
+{
+  "preflightRefusalSha256": "0cb160cd6560004f8b8e2dfae4724ce8cf186f3fc083a1834a1519a28c5940de",
+  "actualRefusalArtifactsVerified": true,
+  "slotAbsent": true,
+  "noOriginalGitOrGnChild": true,
+  "originalActualRustLinkReceipt": {
+    "path": "/Users/rcourson/aux-chromium-stock-measurement/chromium/src/third_party/rust-toolchain/VERSION",
+    "kind": "symlink",
+    "target": "/Users/rcourson/aux-chromium-stable/chromium/src/third_party/rust-toolchain/VERSION",
+    "linkUid": 502,
+    "linkMode": 493,
+    "targetUid": 502,
+    "targetMode": 420,
+    "targetSize": 140,
+    "targetSha256": "092a289f2db5f50b90a40d1f15b13d957b3519f2d56224a2c827f14b54eea4b0"
+  },
+  "genericSymlinkRefusalPreserved": true,
+  "gnOnlyApproved": true,
+  "compileOrLaunchApproved": false
+}
