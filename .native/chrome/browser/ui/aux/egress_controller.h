@@ -5,8 +5,6 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <cstdint>
-#include "base/time/time.h"
 #include <set>
 #include <string>
 #include <utility>
@@ -43,16 +41,6 @@ struct EgressRequestContext {
   std::string page_id;
   std::string kind;
   bool ambiguous = false;
-};
-struct NativeCdpRetirementReceipt {
-  base::DictValue original_lease;
-  // Native registered isolation/document scope exists even before first Install.
-  base::DictValue original_scope;
-  base::TimeTicks original_event_ticks;
-  base::TimeTicks admitted_ticks;
-  base::TimeTicks last_dispatch_ticks;
-  uint64_t dispatch_count = 0;
-  bool original_clock_valid = false;
 };
 // Browser-owned read admission; no runtime phase label or caller token can
 // construct one. The primary document and control generation stay original.
@@ -113,25 +101,6 @@ class EgressController final : public base::SupportsUserData::Data {
       content::WebContents* page);
   bool MayReadPerson(const NativePersonReadReceipt& receipt);
   void Disconnect();
-  // Only the native platform admission producer calls this with its original
-  // current document. Clears existing request authority before callbacks and
-  // latches control so an already queued Install cannot rearm the agent.
-  std::optional<NativeCdpRetirementReceipt> RetireForNativePersonInput(
-      content::WebContents* page, const content::WeakDocumentPtr& document,
-      base::TimeTicks original_event_ticks, base::TimeTicks admitted_ticks,
-      bool original_clock_valid);
-  // Called on UI immediately before the original protocol host dispatch.
-  // Revalidates the original attachment lease and counts no refused messages.
-  bool RecordFinalCdpDispatch(const EgressRequestContext& context,
-                              const base::DictValue& original_lease);
-  // Navigation may deliver only its original protocol receipt after commit.
-  // This validates retained authority; it never permits old-session effects.
-  bool HasOriginalCdpNavigationAuthority(
-      const base::DictValue& original_lease,
-      const content::WeakDocumentPtr& current_document) const;
-  base::DictValue RetireCdpNavigation(
-      const base::DictValue& original_lease,
-      const content::WeakDocumentPtr& committed_document);
   bool AllowUninspectable(content::RenderFrameHost* frame,
                           const std::string& kind);
   bool ProtectCredential(content::RenderFrameHost* frame,
@@ -157,13 +126,13 @@ class EgressController final : public base::SupportsUserData::Data {
                bool allowed);
 
  private:
+  bool PersonReadPage(content::WebContents* page);
+  void RetirePersonReads();
   struct PageState;
   struct Credential;
   struct Pending;
   struct InFlight;
   struct Isolation;
-  bool PersonReadPage(content::WebContents* page);
-  void RetirePersonReads();
   const Isolation* IsolationForPage(const std::string& page_id,
                                     content::RenderFrameHost* frame) const;
   void RetryPending();

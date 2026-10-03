@@ -1,6 +1,5 @@
 // Copyright 2026 The Aux Authors
 #include "chrome/browser/ui/aux/egress_controller.h"
-#include <limits>
 
 #include <algorithm>
 #include <cctype>
@@ -107,19 +106,10 @@ bool LiveFrame(content::RenderFrameHost* frame) {
 }  // namespace
 struct EgressController::PageState {
   bool guarded = false;
-  bool person_controlled = false;
+  // Native-only read incarnation; never serialized into the task lease protocol.
   std::string control_generation = base::UnguessableToken::Create().ToString();
   content::WeakDocumentPtr document;
   base::DictValue lease;
-  base::DictValue acknowledged_context;
-  std::string installed_document_token;
-  std::string navigation_transition_id;
-  content::WeakDocumentPtr navigation_transition_document;
-  double navigation_transition_expiry = 0;
-  std::string dispatched_lease_id;
-  uint64_t cdp_dispatch_count = 0;
-  base::TimeTicks last_cdp_dispatch_ticks;
-  std::optional<NativeCdpRetirementReceipt> cdp_retirement_receipt;
 };
 struct EgressController::Isolation {
   std::string id;
@@ -356,10 +346,7 @@ bool EgressController::PersonReadPage(content::WebContents* page) {
     return false;
   const auto it = pages_.find(identity->id());
   return it == pages_.end() ||
-      (!it->second->guarded && !it->second->person_controlled &&
-       it->second->lease.empty() &&
-       it->second->navigation_transition_id.empty() &&
-       !it->second->acknowledged_context.FindDict("isolation"));
+      (!it->second->guarded && it->second->lease.empty());
 }
 std::optional<NativePersonReadReceipt> EgressController::CapturePersonRead(
     content::WebContents* page) {
@@ -420,13 +407,8 @@ base::DictValue EgressController::Context(const base::DictValue& params) {
   if (isolation_run_by_page_.contains(page_id) && !isolation) {
     return Fault("The task tab left its native isolated partition");
   }
-  auto& state = pages_[page_id];
-  if (!state)
-    state = std::make_unique<PageState>();
   base::DictValue context =
       base::DictValue()
-          .Set("controlGeneration", state->control_generation)
-          .Set("personControlled", state->person_controlled)
           .Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe())
           .Set("tabId", page_id)
           .Set("frameId", FrameId(frame))
@@ -450,11 +432,6 @@ base::DictValue EgressController::Context(const base::DictValue& params) {
     scope.Set("cookies", "empty");
     context.Set("isolation", std::move(scope));
   }
-  if (isolation && !state->acknowledged_context.empty() &&
-      state->acknowledged_context != context) {
-    return Fault("Document transition needs original navigation authority");
-  }
-  state->acknowledged_context = context.Clone();
   return Result(std::move(context));
 }
 base::DictValue EgressController::Install(const base::DictValue& params) {
@@ -469,10 +446,6 @@ base::DictValue EgressController::Install(const base::DictValue& params) {
   if (!LiveFrame(frame)) {
     return Fault("The native document is unavailable");
   }
-  const auto existing = pages_.find(page_id);
-  if (existing == pages_.end() || existing->second->person_controlled ||
-      String(*lease, "controlGeneration") != existing->second->control_generation)
-    return Fault("The native control generation was retired or not acknowledged");
   const Isolation* isolation = IsolationForPage(page_id, frame);
   if (!isolation || String(*lease, "isolationId") != isolation->id ||
       String(*lease, "runId") != isolation->run_id ||
@@ -494,19 +467,6 @@ base::DictValue EgressController::Install(const base::DictValue& params) {
       expires <= now || expires > now + 31000 || issued > now + 1000 ||
       page->GetLastCommittedURL().spec() != String(params, "expectedUrl")) {
     return Fault("Native browser request identity or expiry mismatch");
-  }
-  auto& admission = *existing->second;
-  const std::string transition = String(params, "navigationTransitionId");
-  const bool replacing_document = !admission.installed_document_token.empty() &&
-      admission.installed_document_token != document->token;
-  if (replacing_document || !admission.navigation_transition_id.empty()) {
-    if (transition.empty() || transition != admission.navigation_transition_id ||
-        admission.navigation_transition_document.AsRenderFrameHostIfValid() != frame ||
-        admission.navigation_transition_expiry <= now) {
-      return Fault("New document requires its exact original navigation transition");
-    }
-  } else if (!transition.empty()) {
-    return Fault("No navigation transition is waiting for this document");
   }
   if (!document->credential_run_id.empty() &&
       document->credential_run_id != String(*lease, "runId")) {
@@ -562,245 +522,31 @@ base::DictValue EgressController::Install(const base::DictValue& params) {
   document->protected_document = true;
   state->document = frame->GetWeakDocumentPtr();
   state->lease = lease->Clone();
-  state->installed_document_token = document->token;
-  state->navigation_transition_id.clear();
-  state->navigation_transition_document = {};
-  state->navigation_transition_expiry = 0;
   authority_observers_.Notify();
   RetryPending();
   return Result(base::DictValue().Set("accepted", true));
 }
 base::DictValue EgressController::Revoke(const base::DictValue& params) {
-  const auto* lease = params.FindDict("lease");
-  if (!lease || String(*lease, "leaseId").empty() ||
-      String(*lease, "controlGeneration").empty() ||
-      String(*lease, "profileId") !=
-          profile_->GetPath().BaseName().AsUTF8Unsafe()) {
-    return Fault("Missing exact original browser authority retirement");
+  std::set<std::string> affected;
+  const std::string lease_id = String(params, "leaseId");
+  for (auto& [id, state] : pages_) {
+    if (!lease_id.empty() && String(state->lease, "leaseId") == lease_id) {
+      state->lease.clear();
+      affected.insert(id);
+    }
   }
-  const std::string page_id = String(*lease, "tabId");
-  auto it = pages_.find(page_id);
-  if (it == pages_.end()) {
-    // A destroyed page cannot accept the queued original Install.
-    return Result(base::DictValue().Set("accepted", true));
-  }
-  auto& state = *it->second;
-  if (String(*lease, "controlGeneration") != state.control_generation) {
-    // A retired generation can never Install again. Debt repayment must not
-    // rotate or cancel a replacement generation's authority or requests.
-    return Result(base::DictValue().Set("accepted", true));
-  }
-  const auto& context = state.acknowledged_context;
-  const auto* isolation = context.FindDict("isolation");
-  if (!isolation || String(*lease, "isolationId") != String(*isolation, "isolationId") ||
-      String(*lease, "runId") != String(*isolation, "runId") ||
-      String(*lease, "taskId") != String(*isolation, "taskId") ||
-      lease->FindInt("taskRevision") != isolation->FindInt("taskRevision") ||
-      String(*lease, "frameId") != String(context, "frameId") ||
-      String(*lease, "documentToken") != String(context, "documentToken") ||
-      String(*lease, "sourceOrigin") != String(context, "sourceOrigin")) {
-    return Fault("Original native retirement scope changed");
-  }
-  if (!state.lease.empty()) {
-    auto expected = lease->Clone();
-    auto installed = state.lease.Clone();
-    expected.Remove("expiresAt");
-    installed.Remove("expiresAt");
-    if (expected != installed)
-      return Fault("Retirement cannot replace another installed authority");
-  }
-  // Context is already native-owned even before the worker's Install reaches
-  // this sequence. Retire its generation before callbacks, so an acknowledged
-  // mutation cannot be undone by that queued first Install.
-  const std::string lease_id = String(*lease, "leaseId");
-  state.control_generation = base::UnguessableToken::Create().ToString();
-  state.acknowledged_context.clear();
-  state.navigation_transition_id.clear();
-  state.navigation_transition_document = {};
-  state.navigation_transition_expiry = 0;
-  state.lease.clear();
-  auto weak = weak_factory_.GetWeakPtr();
-  CancelChecks({page_id}, false, lease_id);
-  if (weak)
-    authority_observers_.Notify();
+  CancelChecks(affected, false, lease_id);
+  authority_observers_.Notify();
   return Result(base::DictValue().Set("accepted", true));
 }
-std::optional<NativeCdpRetirementReceipt>
-EgressController::RetireForNativePersonInput(
-    content::WebContents* page, const content::WeakDocumentPtr& document,
-    base::TimeTicks original_event_ticks, base::TimeTicks admitted_ticks,
-    bool original_clock_valid) {
-  auto* frame = document.AsRenderFrameHostIfValid();
-  if (!page || page->GetBrowserContext() != profile_ || !LiveFrame(frame) ||
-      page->GetPrimaryMainFrame() != frame)
-    return std::nullopt;
-  const auto page_id = PageIdentity::GetOrCreate(profile_, page);
-  const auto* isolation = IsolationForPage(page_id, frame);
-  if (!isolation)
-    return std::nullopt;
-  auto& state = pages_[page_id];
-  if (!state)
-    state = std::make_unique<PageState>();
-  if (state->person_controlled)
-    return std::nullopt;
-  NativeCdpRetirementReceipt receipt;
-  receipt.original_lease = state->lease.Clone();
-  const auto retired_generation = base::UnguessableToken::Create().ToString();
-  receipt.original_scope = base::DictValue()
-      .Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe())
-      .Set("tabId", page_id)
-      .Set("isolationId", isolation->id)
-      .Set("runId", isolation->run_id)
-      .Set("taskRevision", isolation->task_revision)
-      .Set("frameId", FrameId(frame))
-      .Set("documentToken", EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
-      .Set("sourceOrigin", Origin(frame))
-      .Set("controlGeneration", state->control_generation)
-      .Set("retiredControlGeneration", retired_generation);
-  if (!isolation->task_id.empty())
-    receipt.original_scope.Set("taskId", isolation->task_id);
-  receipt.original_event_ticks = original_event_ticks;
-  receipt.admitted_ticks = admitted_ticks;
-  receipt.original_clock_valid = original_clock_valid;
-  if (state->dispatched_lease_id == String(state->lease, "leaseId")) {
-    receipt.last_dispatch_ticks = state->last_cdp_dispatch_ticks;
-    receipt.dispatch_count = state->cdp_dispatch_count;
-  }
-  state->cdp_retirement_receipt = NativeCdpRetirementReceipt{
-      receipt.original_lease.Clone(), receipt.original_scope.Clone(),
-      receipt.original_event_ticks,
-      receipt.admitted_ticks, receipt.last_dispatch_ticks,
-      receipt.dispatch_count, receipt.original_clock_valid};
-  const std::string lease_id = String(state->lease, "leaseId");
-  state->guarded = true;
-  state->person_controlled = true;
-  state->control_generation = retired_generation;
-  state->acknowledged_context.clear();
-  state->navigation_transition_id.clear();
-  state->navigation_transition_document = {};
-  state->navigation_transition_expiry = 0;
-  state->lease.clear();
-  state->document = document;
-  // State and generation retire synchronously before a native request callback
-  // or runtime notification can reenter. No new Context grants rearm authority.
-  auto weak = weak_factory_.GetWeakPtr();
-  CancelChecks({page_id}, false, lease_id);
-  if (weak)
-    authority_observers_.Notify();
-  return receipt;
-}
-
-bool EgressController::RecordFinalCdpDispatch(
-    const EgressRequestContext& context, const base::DictValue& original_lease) {
-  if (owner_mutations_.pending() || !Current(context, original_lease))
-    return false;
-  auto it = pages_.find(context.page_id);
-  if (it == pages_.end())
-    return false;
-  auto expected = original_lease.Clone();
-  auto installed = it->second->lease.Clone();
-  expected.Remove("expiresAt");
-  installed.Remove("expiresAt");
-  if (expected != installed)
-    return false;
-  auto& state = *it->second;
-  const auto lease_id = String(original_lease, "leaseId");
-  if (state.dispatched_lease_id != lease_id) {
-    state.dispatched_lease_id = lease_id;
-    state.cdp_dispatch_count = 0;
-    state.last_cdp_dispatch_ticks = {};
-  }
-  // Refuse overflow rather than wrap a qualification counter.
-  if (state.cdp_dispatch_count == std::numeric_limits<uint64_t>::max())
-    return false;
-  ++state.cdp_dispatch_count;
-  state.last_cdp_dispatch_ticks = base::TimeTicks::Now();
-  return true;
-}
-
-bool EgressController::HasOriginalCdpNavigationAuthority(
-    const base::DictValue& original_lease,
-    const content::WeakDocumentPtr& current_document) const {
-  auto* frame = current_document.AsRenderFrameHostIfValid();
-  if (!LiveFrame(frame) || owner_mutations_.pending() ||
-      String(original_lease, "profileId") !=
-          profile_->GetPath().BaseName().AsUTF8Unsafe())
-    return false;
-  const std::string page_id = String(original_lease, "tabId");
-  auto* catalog = TabCatalog::GetForProfile(profile_);
-  auto* page = catalog ? catalog->FindPage(page_id) : nullptr;
-  auto it = pages_.find(page_id);
-  const Isolation* isolation = IsolationForPage(page_id, frame);
-  if (!page || page->GetBrowserContext() != profile_ ||
-      page->GetPrimaryMainFrame() != frame || it == pages_.end() ||
-      !isolation || it->second->person_controlled ||
-      String(original_lease, "controlGeneration") != it->second->control_generation ||
-      String(original_lease, "isolationId") != isolation->id ||
-      String(original_lease, "runId") != isolation->run_id ||
-      String(original_lease, "taskId") != isolation->task_id ||
-      original_lease.FindInt("taskRevision").value_or(-1) != isolation->task_revision ||
-      it->second->lease.FindDouble("expiresAt").value_or(0) <=
-          base::Time::Now().InMillisecondsFSinceUnixEpoch())
-    return false;
-  auto expected = original_lease.Clone();
-  auto installed = it->second->lease.Clone();
-  expected.Remove("expiresAt");
-  installed.Remove("expiresAt");
-  return !installed.empty() && expected == installed;
-}
-
-base::DictValue EgressController::RetireCdpNavigation(
-    const base::DictValue& original_lease,
-    const content::WeakDocumentPtr& committed_document) {
-  if (!HasOriginalCdpNavigationAuthority(original_lease, committed_document))
-    return Fault("Original navigation authority was retired before its receipt");
-  auto* frame = committed_document.AsRenderFrameHostIfValid();
-  auto* page = content::WebContents::FromRenderFrameHost(frame);
-  auto* document = EgressDocument::GetOrCreateForCurrentDocument(frame);
-  if (String(original_lease, "documentToken") == document->token)
-    return Fault("Navigation has no committed replacement document");
-  const std::string page_id = String(original_lease, "tabId");
-  auto& state = *pages_.find(page_id)->second;
-  const std::string original_lease_id = String(original_lease, "leaseId");
-  state.navigation_transition_id = base::UnguessableToken::Create().ToString();
-  state.navigation_transition_document = committed_document;
-  state.navigation_transition_expiry = state.lease.FindDouble("expiresAt").value_or(0);
-  state.control_generation = base::UnguessableToken::Create().ToString();
-  state.lease.clear();
-  state.acknowledged_context.clear();
-  auto context = Context(base::DictValue().Set("tabId", page_id)
-      .Set("expectedUrl", page->GetLastCommittedURL().spec()));
-  auto* admitted = context.FindDict("result");
-  if (!admitted) {
-    state.navigation_transition_id.clear();
-    state.navigation_transition_document = {};
-    state.navigation_transition_expiry = 0;
-    return context;
-  }
-  auto result = base::DictValue().Set("navigationTransitionId", state.navigation_transition_id)
-      .Set("context", admitted->Clone());
-  auto weak = weak_factory_.GetWeakPtr();
-  CancelChecks({page_id}, false, original_lease_id);
-  if (weak)
-    authority_observers_.Notify();
-  return Result(std::move(result));
-}
-
 void EgressController::Disconnect() {
   person_read_retirement_generation_ =
       base::UnguessableToken::Create().ToString();
   for (auto& [id, state] : pages_) {
-    state->control_generation = base::UnguessableToken::Create().ToString();
-    state->acknowledged_context.clear();
-    state->navigation_transition_id.clear();
-    state->navigation_transition_document = {};
-    state->navigation_transition_expiry = 0;
     state->lease.clear();
   }
-  auto weak = weak_factory_.GetWeakPtr();
   CancelChecks({}, true);
-  if (weak)
-    authority_observers_.Notify();
+  authority_observers_.Notify();
 }
 void EgressController::CancelChecks(const std::set<std::string>& page_ids,
                                     bool all,
@@ -965,8 +711,6 @@ bool EgressController::Current(const EgressRequestContext& context,
   auto it = pages_.find(context.page_id);
   const Isolation* isolation = IsolationForPage(context.page_id, frame);
   if (!page || page->GetPrimaryMainFrame() != frame || it == pages_.end() ||
-      it->second->person_controlled ||
-      String(lease, "controlGeneration") != it->second->control_generation ||
       !isolation || String(lease, "isolationId") != isolation->id ||
       String(lease, "runId") != isolation->run_id ||
       String(lease, "taskId") != isolation->task_id ||
