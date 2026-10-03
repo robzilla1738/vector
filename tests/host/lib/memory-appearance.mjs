@@ -49,7 +49,8 @@ export async function captureMemoryAppearance(t) {
   assert.deepEqual(pages, []); assert.deepEqual(runs, []);
   const windows = (await owned(() => ax.windows())).filter(window => window.layer === 0 && window.width > 0 && window.height > 0); assert.equal(windows.length, 1); const windowId = windows[0].id; assert.ok(Number.isInteger(windowId) && windowId > 0);
   let created, primary, creating = false, result; const debts = [];
-  const choices = name => ({ ...shell(name, 'AXButton'), match: 'contains', within: selection });
+  // Chromium exposes aria-pressed buttons as native AXCheckBox toggles.
+  const choices = name => ({ ...shell(name, 'AXCheckBox'), match: 'contains', within: selection });
   const menu = async name => { await owned(() => ax.waitFor(shell(name, 'AXPopUpButton'))); await owned(() => ax.press(shell(name, 'AXPopUpButton'))); };
   const inspect = () => {
     stable(); const current = read(); assert.equal(current.windowId, original.windowId);

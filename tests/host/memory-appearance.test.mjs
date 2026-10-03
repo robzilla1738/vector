@@ -21,6 +21,7 @@ function fixture() {
       if (selector.name === 'Search Space names and saved notes') return settingsOpen ? [{ value: query, focused: focused === selector.name }] : [];
       if (selector.name === 'Save notes') return [{ enabled: !saved }];
       if (selector.name === 'New space') return newSpace ? [{}] : [];
+      if (selector.within && selector.name === memoryFixtureName && selector.role !== 'AXCheckBox') return [];
       if (selector.within) return [{ checked: currentWorkspace === 'fixture', focused: focused === selector.name }];
       if (selector.role === 'AXTextField') return [{ placeholder: 'Name', value, focused: true }];
       return [{}];
@@ -33,7 +34,7 @@ function fixture() {
       if (selector.name === 'New space') { newSpace = true; value = ''; }
       if (selector.name === 'Create') { layout.shared.spaces.push(created); layout.windows.main.activeSpaceId = 'fixture'; newSpace = false; value = ''; save(); }
       if (selector.name === 'Save notes') saved = true;
-      if (selector.name === memoryFixtureName && selector.within) currentWorkspace = 'fixture';
+      if (selector.name === memoryFixtureName && selector.within) { assert.equal(selector.role, 'AXCheckBox', 'Chromium aria-pressed toggle exposes the native checkbox role'); currentWorkspace = 'fixture'; }
       if (selector.name === 'Personal' && selector.role !== 'AXPopUpButton') { layout.windows.main.activeSpaceId = 'original'; save(); }
       if (selector.name === `Archive ${memoryFixtureName}`) { layout.shared.spaces = layout.shared.spaces.filter(row => row.id !== 'fixture'); layout.shared.archivedSpaces.push({ ...created, archived: true }); save(); }
     },
