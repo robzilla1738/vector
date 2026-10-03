@@ -1,0 +1,36 @@
+{
+  "sourceOnly": true,
+  "nativeExecuted": false,
+  "results": [
+    {
+      "kind": "native",
+      "count": 26,
+      "packetSha256": "0ffb1370dd0d4e726d5f2b5c5dc50105033711aca4d9364062540b50825fd3cb",
+      "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-raster-native-w2n2bdb5",
+      "exactForwardReverseForward": true
+    },
+    {
+      "kind": "caller",
+      "count": 2,
+      "packetSha256": "458f998e47c7309e48547c42678c382a5e0d3a8b4f58cc026b9bcc8494782818",
+      "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-raster-caller-44k9b1qj",
+      "exactForwardReverseForward": true
+    }
+  ],
+  "actualReadOnlyApiPins": 12,
+  "adopted": false,
+  "dependencies": [
+    "c550bd37",
+    "90163874",
+    "8fbe6b28",
+    "9490c1e5"
+  ],
+  "backendLimitation": "Current Graphite branch refuses; actual default backend closure required",
+  "independentSyntheticDecoderControls": {
+    "command": "node --test tests/host/lib/native-stock-startup-protocol.test.mjs",
+    "workdir": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-raster-caller-44k9b1qj",
+    "passed": 10,
+    "failed": 0,
+    "nativeExecution": false
+  }
+}
