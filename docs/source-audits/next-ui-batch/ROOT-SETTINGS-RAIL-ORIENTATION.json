@@ -38,5 +38,27 @@
     "shellTypecheck": "PASS",
     "nativeExecution": "NOT RUN"
   },
-  "nativeExecution": "NOT RUN"
+  "nativeExecution": "NOT RUN",
+  "rootRendererObservation": {
+    "url": "http://127.0.0.1:5238/settings/general",
+    "sourceOnly": true,
+    "normalViewport": {
+      "width": 1248,
+      "railWidth": 204,
+      "direction": "column",
+      "key": "ArrowDown",
+      "focusAfter": "Appearance",
+      "categoryUnchanged": "General"
+    },
+    "narrowViewport": {
+      "width": 820,
+      "railWidth": 528,
+      "direction": "row",
+      "key": "ArrowRight",
+      "focusAfter": "Privacy & Security",
+      "categoryUnchanged": "General"
+    },
+    "temporaryViewportReset": true,
+    "nativePixelsVerified": false
+  }
 }
