@@ -100,3 +100,22 @@ test('corrupt PNG with plausible header refuses decoding', () => run(undefined, 
   f.index.features[0].captures[0].manifest.sha256 = put('manifest.json', manifest); f.save();
   assert.throws(() => buildContactSheets(f.input, f.output));
 }));
+
+const utilityOwner = () => ({ producer: 'aux-native-utility-appearance-owner', version: 1, windowId: 1, browserWindowId: '12', windowKind: 'normal', shellDocumentToken: 'A'.repeat(32), pages: [{ pageId: 'p_fixture', documentToken: 'B'.repeat(32), selected: true }] });
+test('actual producer-shaped stable utility ownership remains bound to the original capture', () => run(({ before, after }) => {
+  before.window.utilityOwnership = utilityOwner(); after.window.utilityOwnership = utilityOwner();
+}, f => assert.equal(buildContactSheets(f.input, f.output).features[0].records[0].cell, 'D')));
+for (const [name, change] of [
+  ['shell document', owner => { owner.shellDocumentToken = 'C'.repeat(32); }],
+  ['selected guest document', owner => { owner.pages[0].documentToken = 'C'.repeat(32); }],
+  ['native BWI', owner => { owner.browserWindowId = '13'; }],
+  ['OS window', owner => { owner.windowId = 2; }],
+]) test(`changed utility ${name} refuses appearance contribution`, () => run(({ before, after }) => {
+  before.window.utilityOwnership = utilityOwner(); after.window.utilityOwnership = utilityOwner(); change(after.window.utilityOwnership);
+}, f => assert.throws(() => buildContactSheets(f.input, f.output))));
+for (const missing of [false, true]) test(`unknown utility ownership ${missing ? 'missing' : 'null'} never contributes a cell`, () => run(({ before, after }) => {
+  before.window.utilityOwnership = null;
+  if (!missing) after.window.utilityOwnership = null;
+}, f => {
+  const result = buildContactSheets(f.input, f.output).features[0]; assert.equal(result.cells, 0); assert.equal(result.records[0].cell, null);
+}));

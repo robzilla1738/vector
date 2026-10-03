@@ -11,7 +11,7 @@ export function createEvidence(outputDir, ax, appearanceProvider, pipAppearanceP
   if (lstatSync(requested).isSymbolicLink()) throw new Error('Evidence output must not be a symlink');
   const directory = realpathSync(requested);
   const captures = [];
-  async function capture(name, { windowId, state, expectedOwner, expectedWindowKind } = {}, child = false) {
+  async function capture(name, { windowId, state, expectedOwner, expectedWindowKind, expectedUtilityOwnership } = {}, child = false) {
     if (typeof name !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,120}$/.test(name)) throw new Error('Capture needs a simple unique name');
     return withNativeSlot(async () => {
       const windows = await ax.windows();
@@ -21,13 +21,14 @@ export function createEvidence(outputDir, ax, appearanceProvider, pipAppearanceP
       if (child && (!appearance || windowId === undefined || typeof state !== "string" || !state)) throw new Error("Child capture requires its current registry producer, explicit window and state");
       if (expectedWindowKind !== undefined && (child || !['quick-ask', 'little'].includes(expectedWindowKind) || !appearance)) throw new Error('Expected Aux utility kind requires its current native appearance producer');
       if (!child && expectedOwner !== undefined) throw new Error('Normal capture cannot use child ownership');
+      if (expectedUtilityOwnership !== undefined && (child || !appearance)) throw new Error('Utility ownership requires current native shell provenance');
       const childTicket = child ? await appearance.before(windowId, expectedOwner) : undefined;
       const selected = child ? windows.filter(item => item.id === windowId && item.layer === childTicket.windowLayer && item.width > 0 && item.height > 0) : candidates;
       if (child && selected.length !== 1) throw new Error("Registered child is absent or ambiguous in owned helper inventory");
       const window = windowId === undefined ? candidates.sort((a, b) => b.width * b.height - a.width * a.height)[0] : selected.find(item => item.id === windowId);
       if (!window || !Number.isInteger(window.id) || window.id <= 0) throw new Error('No journey window available for capture');
       if (state !== undefined && (!appearance || windowId === undefined || typeof state !== 'string' || !state)) throw new Error('Appearance capture requires an explicit state, window and current producer');
-      const ticket = childTicket ?? (appearance ? await appearance.before(window.id, undefined, expectedWindowKind) : undefined);
+      const ticket = childTicket ?? (appearance ? await appearance.before(window.id, undefined, expectedWindowKind, expectedUtilityOwnership) : undefined);
       const path = `${name}.png`;
       const absolute = join(directory, path);
       if (existsSync(absolute)) throw new Error('Existing evidence must not be overwritten');

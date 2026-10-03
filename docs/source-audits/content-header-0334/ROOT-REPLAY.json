@@ -1,0 +1,11 @@
+{
+  "producer": "root-independent-0334-005-replay",
+  "result": "PASS",
+  "patchSha256": "8ac05606ad9a44fa463b69ea934e91040504e9477cbd1b092ad01e60e60fba09",
+  "allFifteenOriginalAndResultHashesExact": true,
+  "forwardReverseForwardExact": true,
+  "exportTailReviewed": true,
+  "realWeakOriginalHandles": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-0334-005-6eypshma",
+  "nativeCompiled": false
+}

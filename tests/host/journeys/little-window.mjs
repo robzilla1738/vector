@@ -53,6 +53,7 @@ export async function run(t) {
     geometry(t, window, ax);
     t.assert.notEqual(first.windowId, mainWindowId);
     await captureLittleState(t, 'little-window-external', 'little-window-external-draft', window.id);
+    if (t.narrowEnabled) await t.captureUtilityNarrowWindow(first, 'little-window-external-narrow', 'little-window-external-draft-narrow');
     return { ax, rpc: { pages: await t.rpc('pages.list'), window } };
   });
   await t.step('Space picker and the 280 px downloads tray restore focus on Escape', { kind: 'ui', features: ['littleWindow'] }, async () => {
@@ -148,6 +149,7 @@ export async function run(t) {
     const pages = await t.rpc('pages.list');
     t.assert.equal(pages.filter(item => item.windowKind === 'little').length, 1, 'Old Little windows are absent from session restore');
     t.assert.ok(pages.some(item => item.windowKind === 'normal'));
+    if (t.narrowEnabled) await t.captureDistinctNarrowGeneration('little-cold-owned', 'little-cold-functional-proof');
     await t.ax.press(promote);
     await t.until('cold page can be promoted safely', async () => (await t.rpc('pages.list')).some(item => item.pageId === page.pageId && item.windowKind === 'normal'));
     return { ax: await t.ax.dump(), rpc: { pages: await t.rpc('pages.list'), windows } };

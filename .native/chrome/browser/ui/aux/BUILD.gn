@@ -92,6 +92,8 @@ source_set("runtime") {
     "native_startup_viewport.cc",
     "native_guest_presentation_owner.h",
     "native_guest_presentation_owner.cc",
+    "native_utility_appearance_owner.h",
+    "native_utility_appearance_owner.cc",
     "native_guest_stage_owner.h",
     "native_guest_stage_owner.cc",
     "native_guest_stage_session.h",

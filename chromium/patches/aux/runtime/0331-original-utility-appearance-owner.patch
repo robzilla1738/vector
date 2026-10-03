@@ -1,0 +1,391 @@
+diff --git a/chrome/browser/ui/aux/BUILD.gn b/chrome/browser/ui/aux/BUILD.gn
+index 55de3e4..738ee84 100644
+--- a/chrome/browser/ui/aux/BUILD.gn
++++ b/chrome/browser/ui/aux/BUILD.gn
+@@ -92,6 +92,8 @@ source_set("runtime") {
+     "native_startup_viewport.cc",
+     "native_guest_presentation_owner.h",
+     "native_guest_presentation_owner.cc",
++    "native_utility_appearance_owner.h",
++    "native_utility_appearance_owner.cc",
+     "native_guest_stage_owner.h",
+     "native_guest_stage_owner.cc",
+     "native_guest_stage_session.h",
+diff --git a/chrome/browser/ui/aux/methods/window_methods.cc b/chrome/browser/ui/aux/methods/window_methods.cc
+index 2d8cec5..4d3284c 100644
+--- a/chrome/browser/ui/aux/methods/window_methods.cc
++++ b/chrome/browser/ui/aux/methods/window_methods.cc
+@@ -71,6 +71,7 @@
+ #include "ui/views/controls/menu/menu_model_adapter.h"
+ #include "ui/views/controls/menu/menu_runner.h"
+ #include "chrome/browser/ui/aux/appearance_prefs.h"
++#include "chrome/browser/ui/aux/native_utility_appearance_owner.h"
+ #include "chrome/browser/ui/aux/content_blocking_controller.h"
+ #include "chrome/browser/ui/aux/dictation_mac.h"
+ #include "chrome/browser/ui/aux/extension_bridge.h"
+@@ -682,8 +683,31 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+       std::move(callback).Run(false, "", "unavailable", "Appearance target is unavailable");
+       return;
+     }
++    const auto original_ui = GetWeakPtr();
++    const auto original_contents = contents->GetWeakPtr();
++    const auto original_document = frame->GetWeakDocumentPtr();
++    const auto original_browser = browser_->GetWeakPtr();
++    const auto still_original = [&]() {
++      return original_ui && original_contents && original_browser &&
++          original_ui->web_ui()->GetWebContents() == original_contents.get() &&
++          original_ui->browser_ == original_browser.get() &&
++          original_document.AsRenderFrameHostIfValid() &&
++          original_document.AsRenderFrameHostIfValid() == original_contents->GetPrimaryMainFrame() &&
++          original_document.AsRenderFrameHostIfValid() == original_ui->web_ui()->GetRenderFrameHost() &&
++          WebUIBrowserWindow::FromWebShellWebContents(original_contents.get()) == window &&
++          window->browser() == original_browser.get();
++    };
++    const bool utility_target = !browser_->GetProfile()->IsOffTheRecord() &&
++        !aux::IsQuickAskWindow(browser_);
++    auto before_utility = utility_target
++        ? aux::ReadNativeUtilityAppearanceOwner(GetWeakPtr()) : std::nullopt;
++    if (!still_original()) {
++      std::move(callback).Run(false, "", "unavailable", "Appearance owner changed during readback");
++      return;
++    }
+     auto before = window->GetAuxAppearanceSnapshot();
+-    if (before.empty()) {
++    if (!still_original() || before.empty() ||
++        (before_utility && before_utility->FindInt("windowId") != before.FindInt("windowId"))) {
+       std::move(callback).Run(false, "", "unavailable", "Native appearance is unavailable");
+       return;
+     }
+@@ -701,7 +725,9 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+         reduceTransparency: matchMedia('(prefers-reduced-transparency: reduce)').matches};
+     })())JS", base::BindOnce(
+         [](base::WeakPtr<WebUIBrowserUI> ui, content::WeakDocumentPtr document,
+-           base::DictValue before, RequestCallback callback, base::Value value) {
++           base::DictValue before, bool utility_target,
++           std::optional<base::DictValue> before_utility,
++           RequestCallback callback, base::Value value) {
+           if (!ui || !aux::NativeAppearanceObservationEnabled() || !ui->IsAuthorizedAuxDocument()) {
+             std::move(callback).Run(false, "", "forbidden", "Appearance shell changed");
+             return;
+@@ -714,7 +740,23 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+             std::move(callback).Run(false, "", "unavailable", "Appearance document changed");
+             return;
+           }
++          const auto shell_weak = contents->GetWeakPtr();
++          const auto browser_weak = ui->browser_->GetWeakPtr();
++          const auto still_original = [&]() {
++            return ui && shell_weak && browser_weak &&
++                ui->web_ui()->GetWebContents() == shell_weak.get() &&
++                ui->browser_ == browser_weak.get() &&
++                document.AsRenderFrameHostIfValid() &&
++                document.AsRenderFrameHostIfValid() == shell_weak->GetPrimaryMainFrame() &&
++                document.AsRenderFrameHostIfValid() == ui->web_ui()->GetRenderFrameHost() &&
++                WebUIBrowserWindow::FromWebShellWebContents(shell_weak.get()) == window &&
++                window->browser() == browser_weak.get();
++          };
+           auto result = window->GetAuxAppearanceSnapshot();
++          if (!still_original()) {
++            std::move(callback).Run(false, "", "unavailable", "Appearance owner changed during readback");
++            return;
++          }
+           const auto same = [&](const char* key) {
+             const auto* a = before.Find(key); const auto* b = result.Find(key);
+             return a && b && *a == *b;
+@@ -724,6 +766,19 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+             std::move(callback).Run(false, "", "unavailable", "Appearance window changed");
+             return;
+           }
++          if (utility_target) {
++            auto after_utility = aux::ReadNativeUtilityAppearanceOwner(ui);
++            if (!still_original() ||
++                (after_utility && after_utility->FindInt("windowId") != result.FindInt("windowId")) ||
++                before_utility.has_value() != after_utility.has_value() ||
++                (before_utility && !aux::NativeUtilityAppearanceOwnerMatches(
++                    *before_utility, *after_utility))) {
++              std::move(callback).Run(false, "", "unavailable", "Utility appearance owner changed");
++              return;
++            }
++            if (after_utility) result.Set("utilityOwnership", std::move(*after_utility));
++            else result.Set("utilityOwnership", base::Value());
++          }
+           const auto& observed = value.GetDict();
+           base::DictValue shell;
+           for (const char* key : {"theme", "layout", "sidebarAppearance"}) {
+@@ -793,7 +848,8 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
+           }
+           std::fflush(stderr);
+           std::move(callback).Run(true, *json, "", "");
+-        }, GetWeakPtr(), frame->GetWeakDocumentPtr(), std::move(before), std::move(callback)));
++        }, GetWeakPtr(), frame->GetWeakDocumentPtr(), std::move(before),
++           utility_target, std::move(before_utility), std::move(callback)));
+     return;
+   }
+ #endif
+diff --git a/chrome/browser/ui/aux/native_utility_appearance_owner.cc b/chrome/browser/ui/aux/native_utility_appearance_owner.cc
+new file mode 100644
+index 0000000..86ca8e1
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_utility_appearance_owner.cc
+@@ -0,0 +1,147 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_utility_appearance_owner.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include <set>
++#include "base/command_line.h"
++#include "base/files/file_path.h"
++#include "base/strings/string_number_conversions.h"
++#include "base/unguessable_token.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/browser/ui/aux/journey_fixture_path.h"
++#include "chrome/browser/ui/aux/little_window_controller.h"
++#include "chrome/browser/ui/aux/page_identity.h"
++#include "chrome/browser/ui/aux/quick_ask_controller.h"
++#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
++#include "chrome/browser/ui/tabs/tab_strip_model.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
++#include "chrome/browser/ui/webui_browser/webui_browser_window.h"
++#include "content/browser/renderer_host/render_frame_host_impl.h"
++#include "content/public/browser/browser_thread.h"
++#include "content/public/browser/web_contents.h"
++#include "content/public/browser/web_ui.h"
++#include "content/public/browser/weak_document_ptr.h"
++namespace aux {
++namespace {
++bool Token(const std::string* value) {
++  if (!value) return false;
++  const auto token = base::UnguessableToken::DeserializeFromString(*value);
++  return token && token->ToString() == *value;
++}
++bool ValidOwner(const base::DictValue& value) {
++  const auto* producer = value.FindString("producer");
++  const auto version = value.FindInt("version"), window = value.FindInt("windowId");
++  const auto* browser = value.FindString("browserWindowId");
++  const auto* kind = value.FindString("windowKind");
++  const auto* pages = value.FindList("pages");
++  int id = 0;
++  if (value.size() != 7 || !producer || *producer != "aux-native-utility-appearance-owner" ||
++      version != 1 || !window || *window <= 0 || !browser ||
++      !base::StringToInt(*browser, &id) || id <= 0 || base::NumberToString(id) != *browser ||
++      !kind || (*kind != "normal" && *kind != "little") ||
++      !Token(value.FindString("shellDocumentToken")) || !pages || pages->size() > 1 ||
++      (*kind == "little" && pages->size() != 1)) return false;
++  std::set<std::string> seen;
++  int selected_count = 0;
++  for (const auto& row : *pages) {
++    const auto* page = row.GetIfDict();
++    if (!page || page->size() != 3) return false;
++    const auto* page_id = page->FindString("pageId");
++    const auto selected = page->FindBool("selected");
++    if (!page_id || !PageIdentity::IsValid(*page_id) || !seen.insert(*page_id).second ||
++        !Token(page->FindString("documentToken")) || !selected.has_value()) return false;
++    selected_count += *selected ? 1 : 0;
++  }
++  return selected_count <= 1 && (*kind != "little" || selected_count == 1);
++}
++}  // namespace
++bool NativeUtilityAppearanceOwnerMatches(const base::DictValue& before,
++                                        const base::DictValue& after) {
++  return ValidOwner(before) && ValidOwner(after) && before == after;
++}
++std::optional<base::DictValue> ReadNativeUtilityAppearanceOwner(
++    base::WeakPtr<WebUIBrowserUI> ui) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  // Cached retained fixture metadata only. Never resolve filesystem paths here.
++  if (!ui || !NativeAppearanceObservationEnabled()) return std::nullopt;
++  auto* web_ui = ui->web_ui();
++  auto* shell = web_ui ? web_ui->GetWebContents() : nullptr;
++  auto* frame = shell ? shell->GetPrimaryMainFrame() : nullptr;
++  auto* window = shell ? WebUIBrowserWindow::FromWebShellWebContents(shell) : nullptr;
++  auto* browser = window ? window->browser() : nullptr;
++  auto* profile = web_ui ? Profile::FromWebUI(web_ui) : nullptr;
++  const base::FilePath selected(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("user-data-dir"));
++  if (!shell || shell->IsBeingDestroyed() || !frame || !browser || !profile ||
++      profile->IsOffTheRecord() || browser->GetProfile() != profile ||
++      profile->GetPath().DirName() != selected ||
++      browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      IsQuickAskWindow(browser) || frame != web_ui->GetRenderFrameHost() ||
++      !frame->IsRenderFrameLive() || frame->IsErrorDocument() ||
++      !frame->IsInLifecycleState(content::RenderFrameHost::LifecycleState::kActive) ||
++      frame->GetLastCommittedURL().spec() != "chrome://aux/" ||
++      browser->GetSessionID().id() <= 0) return std::nullopt;
++  const bool little = IsLittleWindow(browser);
++  auto* tabs = browser->GetTabStripModel();
++  if (!tabs || (little && tabs->count() != 1)) return std::nullopt;
++  auto* const original_window = window;
++  const auto shell_weak = shell->GetWeakPtr();
++  const auto document_weak = frame->GetWeakDocumentPtr();
++  const auto browser_weak = browser->GetWeakPtr();
++  // AppKit appearance readback may reenter. Never use a retained raw owner
++  // until the original UI, shell document and browser have been reacquired.
++  const auto native = window->GetAuxAppearanceSnapshot();
++  if (!ui || !shell_weak || !browser_weak ||
++      !NativeAppearanceObservationEnabled()) return std::nullopt;
++  web_ui = ui->web_ui();
++  shell = web_ui ? web_ui->GetWebContents() : nullptr;
++  frame = document_weak.AsRenderFrameHostIfValid();
++  window = shell ? WebUIBrowserWindow::FromWebShellWebContents(shell) : nullptr;
++  if (!shell || shell != shell_weak.get() || shell->IsBeingDestroyed() ||
++      !frame || frame != shell->GetPrimaryMainFrame() ||
++      frame != web_ui->GetRenderFrameHost() || !window || window != original_window ||
++      window->browser() != browser_weak.get()) return std::nullopt;
++  browser = browser_weak.get();
++  if (Profile::FromWebUI(web_ui) != profile || browser->GetProfile() != profile ||
++      profile->IsOffTheRecord() || profile->GetPath().DirName() != selected ||
++      browser->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
++      IsQuickAskWindow(browser) || IsLittleWindow(browser) != little ||
++      !frame->IsRenderFrameLive() || frame->IsErrorDocument() ||
++      !frame->IsInLifecycleState(content::RenderFrameHost::LifecycleState::kActive) ||
++      frame->GetLastCommittedURL().spec() != "chrome://aux/") return std::nullopt;
++  tabs = browser->GetTabStripModel();
++  if (!tabs || (little && tabs->count() != 1)) return std::nullopt;
++  const auto os_window = native.FindInt("windowId");
++  if (!os_window || *os_window <= 0) return std::nullopt;
++  base::ListValue pages;
++  // Only the actual selected native guest is disclosed. This is not an
++  // assertion of complete tab inventory and stays within the original 4 KiB
++  // appearance transport bound even when the browser has many background tabs.
++  if (auto* page = tabs->GetActiveWebContents()) {
++    auto* identity = page ? PageIdentity::FromWebContents(page) : nullptr;
++    auto* document = page ? page->GetPrimaryMainFrame() : nullptr;
++    // FindPage/GetOrCreate could create or persist identity. Read existing data
++    // directly from the exact current browser's native tab model instead.
++    if (!page || page->IsBeingDestroyed() || page->GetBrowserContext() != profile ||
++        !identity || !PageIdentity::IsValid(identity->id()) || identity->runtime_owned() ||
++        !document || !document->IsRenderFrameLive() ||
++        document->IsErrorDocument() ||
++        !document->IsInLifecycleState(content::RenderFrameHost::LifecycleState::kActive)) return std::nullopt;
++    base::DictValue item;
++    item.Set("pageId", identity->id());
++    item.Set("documentToken", static_cast<content::RenderFrameHostImpl*>(document)->GetDocumentToken().ToString());
++    item.Set("selected", true);
++    pages.Append(std::move(item));
++  }
++  if (little && tabs->GetActiveWebContents() != tabs->GetWebContentsAt(0)) return std::nullopt;
++  base::DictValue result;
++  result.Set("producer", "aux-native-utility-appearance-owner");
++  result.Set("version", 1);
++  result.Set("windowId", *os_window);
++  result.Set("browserWindowId", base::NumberToString(browser->GetSessionID().id()));
++  result.Set("windowKind", little ? "little" : "normal");
++  result.Set("shellDocumentToken", static_cast<content::RenderFrameHostImpl*>(frame)->GetDocumentToken().ToString());
++  result.Set("pages", std::move(pages));
++  if (!ValidOwner(result)) return std::nullopt;
++  return result;
++}
++}  // namespace aux
++#endif
+diff --git a/chrome/browser/ui/aux/native_utility_appearance_owner.h b/chrome/browser/ui/aux/native_utility_appearance_owner.h
+new file mode 100644
+index 0000000..f98f731
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_utility_appearance_owner.h
+@@ -0,0 +1,22 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_UTILITY_APPEARANCE_OWNER_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_UTILITY_APPEARANCE_OWNER_H_
++#include <optional>
++#include "build/build_config.h"
++#include "chrome/browser/buildflags.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include "base/memory/weak_ptr.h"
++#include "base/values.h"
++class WebUIBrowserUI;
++namespace aux {
++// Read-only actual current shell/BWI/page association. No caller selectors,
++// identity creation, window creation, native effects, or rendering claims.
++std::optional<base::DictValue> ReadNativeUtilityAppearanceOwner(
++    base::WeakPtr<WebUIBrowserUI> ui);
++// Equality also validates the closed native record; it cannot admit a caller
++// record in place of either actual producer read.
++bool NativeUtilityAppearanceOwnerMatches(const base::DictValue& before,
++                                        const base::DictValue& after);
++}  // namespace aux
++#endif
++#endif
+diff --git a/chrome/browser/ui/aux/native_utility_appearance_owner_unittest.cc b/chrome/browser/ui/aux/native_utility_appearance_owner_unittest.cc
+new file mode 100644
+index 0000000..cb40a2f
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_utility_appearance_owner_unittest.cc
+@@ -0,0 +1,69 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_utility_appearance_owner.h"
++#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
++#include "base/unguessable_token.h"
++#include "content/public/test/browser_task_environment.h"
++#include "testing/gtest/include/gtest/gtest.h"
++namespace aux {
++namespace {
++// Synthetic shape controls only. These do not supply native owner authority.
++base::DictValue Record(const char* kind = "normal") {
++  base::DictValue result;
++  result.Set("producer", "aux-native-utility-appearance-owner");
++  result.Set("version", 1); result.Set("windowId", 71);
++  result.Set("browserWindowId", "4"); result.Set("windowKind", kind);
++  result.Set("shellDocumentToken", base::UnguessableToken::Create().ToString());
++  base::DictValue page;
++  page.Set("pageId", "p_fixture");
++  page.Set("documentToken", base::UnguessableToken::Create().ToString());
++  page.Set("selected", true);
++  base::ListValue pages; pages.Append(std::move(page));
++  result.Set("pages", std::move(pages)); return result;
++}
++TEST(NativeUtilityAppearanceOwnerTest, MissingCurrentUiRefuses) {
++  content::BrowserTaskEnvironment environment;
++  EXPECT_FALSE(ReadNativeUtilityAppearanceOwner({}));
++}
++TEST(NativeUtilityAppearanceOwnerTest, SameClosedNormalAndLittleRecordsMatch) {
++  for (const char* kind : {"normal", "little"}) {
++    const auto record = Record(kind);
++    EXPECT_TRUE(NativeUtilityAppearanceOwnerMatches(record, record));
++  }
++}
++TEST(NativeUtilityAppearanceOwnerTest, ReplacementWindowOrDocumentRefuses) {
++  const auto original = Record("little");
++  auto changed = original.Clone(); changed.Set("windowId", 72);
++  EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(original, changed));
++  changed = original.Clone(); changed.Set("browserWindowId", "5");
++  EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(original, changed));
++  changed = original.Clone(); changed.Set("shellDocumentToken", base::UnguessableToken::Create().ToString());
++  EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(original, changed));
++  changed = original.Clone(); changed.FindList("pages")->front().GetDict().Set("documentToken", base::UnguessableToken::Create().ToString());
++  EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(original, changed));
++}
++TEST(NativeUtilityAppearanceOwnerTest, UnknownKindMissingAndNoncanonicalIdentityRefuse) {
++  for (const char* kind : {"private", "quick-ask", "requested-little"}) {
++    const auto record = Record(kind);
++    EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(record, record));
++  }
++  auto record = Record(); record.Set("browserWindowId", "04");
++  EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(record, record));
++  record = Record(); record.Set("shellDocumentToken", "unknown");
++  EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(record, record));
++  record = Record(); record.Set("callerLabel", "little");
++  EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(record, record));
++}
++TEST(NativeUtilityAppearanceOwnerTest, DuplicatePagesAndUnselectedLittleRefuse) {
++  auto record = Record(); auto* pages = record.FindList("pages");
++  pages->Append(pages->front().Clone());
++  EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(record, record));
++  record = Record("little"); record.FindList("pages")->front().GetDict().Set("selected", false);
++  EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(record, record));
++  record.Set("pages", base::ListValue());
++  EXPECT_FALSE(NativeUtilityAppearanceOwnerMatches(record, record));
++  record.Set("windowKind", "normal");
++  EXPECT_TRUE(NativeUtilityAppearanceOwnerMatches(record, record));
++}
++}  // namespace
++}  // namespace aux
++#endif
+diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
+index d02ae74..6f05aff 100644
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -8081,6 +8081,7 @@ test("unit_tests") {
+       "../browser/ui/aux/permission_broker_unittest.cc",
+       "../browser/ui/aux/native_creator_close_receipt_unittest.cc",
+       "../browser/ui/aux/native_performance_observer_unittest.cc",
++      "../browser/ui/aux/native_utility_appearance_owner_unittest.cc",
+       "../browser/ui/aux/native_pip_appearance_registry_unittest.cc",
+       "../browser/ui/aux/native_pip_video_backing_unittest.cc",
+       "../browser/ui/aux/native_command_presentation_session_unittest.cc",

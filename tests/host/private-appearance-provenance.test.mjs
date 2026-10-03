@@ -1,6 +1,7 @@
 // Controlled source/protocol fixtures only; no helper, browser or native slot.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import * as utilityOwner from './lib/utility-appearance-owner.mjs';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
@@ -44,7 +45,7 @@ function fixture() {
       return { producer: 'aux-native-warm-window-identity', version: 1, targetPid: 42, helperPid: 43, targetProcessUuid: state.uuid, targetProcessStartMachTicks: state.start, helperProcessUuid: '2'.repeat(32), helperProcessStartMachTicks: '124' }; },
     async windows() { return [{ id: 7, layer: 0, x: 0, y: 0, width: 100, height: 100 }, ...(state.ambiguous ? [{ id: 8, layer: 0 }] : [])]; },
     async trusted() { return { accessibility: true, screenRecording: true, reduceMotion: false, reduceTransparency: false }; } };
-  const imports = { 'node:assert/strict': { default: Object.assign((...args) => assert(...args), assert, { deepEqual: (a, b, message) => assert.deepEqual(structuredClone(a), structuredClone(b), message) }) }, 'node:crypto': crypto, 'node:fs': fs, 'node:path': path, pngjs: { PNG },
+  const imports = { './utility-appearance-owner.mjs': utilityOwner, 'node:assert/strict': { default: Object.assign((...args) => assert(...args), assert, { deepEqual: (a, b, message) => assert.deepEqual(structuredClone(a), structuredClone(b), message) }) }, 'node:crypto': crypto, 'node:fs': fs, 'node:path': path, pngjs: { PNG },
     '../../../scripts/lib/qualification.mjs': { evidenceBytes }, './app.mjs': { readPrivateAppObservation(value, artifact) { assert.equal(value, app); assert.equal(artifact, pair); pair.validate(); return owner; } },
     './packaged-runtime-pair-artifact.mjs': { readPackagedRuntimePair(value) { assert.equal(value, pair, 'Foreign artifact'); pair.validate(); return pair; } },
     './private-window-observation.mjs': { normalizePrivateWindowObservation }, './native-warm-helper-identity.mjs': { decodeWarmWindowHelperIdentity } };

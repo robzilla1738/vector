@@ -37,7 +37,9 @@ function createRecordStream({ pid, generation, candidate, maxRecords = 4000, max
     const waiter = pending.get(raw.windowId);
     const recordSequence = ++sequence;
     if (discovery && recordSequence > discovery.sequence && raw[timeKey] >= discovery.notBefore &&
-        raw.ownerPageId === discovery.ownerPageId && raw.surfaceKind === discovery.surfaceKind) {
+        (discovery.utility
+          ? raw.utilityOwnership?.browserWindowId === discovery.browserWindowId && raw.utilityOwnership?.windowKind === discovery.windowKind
+          : raw.ownerPageId === discovery.ownerPageId && raw.surfaceKind === discovery.surfaceKind)) {
       const ready = discovery; discovery = undefined; clearTimeout(ready.timer); ready.resolve(rawJson);
     }
     if (waiter && recordSequence > waiter.sequence && raw[timeKey] >= waiter.notBefore) {
@@ -86,6 +88,21 @@ function createRecordStream({ pid, generation, candidate, maxRecords = 4000, max
       return new Promise((resolve, reject) => {
         const waiter = { ownerPageId, surfaceKind, notBefore: Date.parse(notBefore), sequence, resolve, reject, timer: undefined };
         waiter.timer = setTimeout(() => { discovery = undefined; reject(new Error('No fresh owned child discovery record')); }, timeoutMs);
+        discovery = waiter;
+      });
+    },
+    discoverUtility({ browserWindowId, windowKind, notBefore, timeoutMs = 5000 }) {
+      if (failure || disposed) return Promise.reject(failure ?? new Error('Appearance stream disposed'));
+      try {
+        assert.equal(prefix, 'AUX_NATIVE_APPEARANCE_V1 ', 'Utility discovery requires original shell stream');
+        assert.ok(typeof browserWindowId === 'string' && /^[1-9][0-9]*$/.test(browserWindowId) && BigInt(browserWindowId) <= 2147483647n &&
+          ['normal', 'little'].includes(windowKind) && typeof notBefore === 'string' && Number.isFinite(Date.parse(notBefore)), 'Invalid native utility discovery');
+        assert.ok(Number.isInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 10000, 'Invalid utility discovery deadline');
+        assert.ok(!discovery && pending.size === 0, 'Concurrent utility discovery is ambiguous');
+      } catch (error) { return Promise.reject(error); }
+      return new Promise((resolve, reject) => {
+        const waiter = { utility: true, browserWindowId, windowKind, notBefore: Date.parse(notBefore), sequence, resolve, reject, timer: undefined };
+        waiter.timer = setTimeout(() => { discovery = undefined; reject(new Error('No fresh native utility ownership record')); }, timeoutMs);
         discovery = waiter;
       });
     },

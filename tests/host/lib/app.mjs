@@ -455,6 +455,14 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       if (!running() || externalPid || !appearanceStream) return Promise.reject(new Error('No owned appearance stream for current child'));
       return appearanceStream.observe(selection);
     },
+    async discoverUtilityAppearance(selection) {
+      if (!running() || externalPid || !appearanceStream) throw new Error('No owned utility stream for current child');
+      const originalChild = child, originalGeneration = generation, originalStream = appearanceStream;
+      const raw = await originalStream.discoverUtility(selection);
+      if (!running() || externalPid || child !== originalChild || generation !== originalGeneration || appearanceStream !== originalStream)
+        throw new Error('Original utility appearance child retired during discovery');
+      return raw;
+    },
     discoverPipAppearance(selection) {
       if (!running() || externalPid || !pipAppearanceStream) return Promise.reject(new Error('No current owned child discovery stream'));
       return pipAppearanceStream.discover(selection);

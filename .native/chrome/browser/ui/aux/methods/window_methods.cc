@@ -71,6 +71,7 @@
 #include "ui/views/controls/menu/menu_model_adapter.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "chrome/browser/ui/aux/appearance_prefs.h"
+#include "chrome/browser/ui/aux/native_utility_appearance_owner.h"
 #include "chrome/browser/ui/aux/content_blocking_controller.h"
 #include "chrome/browser/ui/aux/dictation_mac.h"
 #include "chrome/browser/ui/aux/extension_bridge.h"
@@ -682,8 +683,31 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
       std::move(callback).Run(false, "", "unavailable", "Appearance target is unavailable");
       return;
     }
+    const auto original_ui = GetWeakPtr();
+    const auto original_contents = contents->GetWeakPtr();
+    const auto original_document = frame->GetWeakDocumentPtr();
+    const auto original_browser = browser_->GetWeakPtr();
+    const auto still_original = [&]() {
+      return original_ui && original_contents && original_browser &&
+          original_ui->web_ui()->GetWebContents() == original_contents.get() &&
+          original_ui->browser_ == original_browser.get() &&
+          original_document.AsRenderFrameHostIfValid() &&
+          original_document.AsRenderFrameHostIfValid() == original_contents->GetPrimaryMainFrame() &&
+          original_document.AsRenderFrameHostIfValid() == original_ui->web_ui()->GetRenderFrameHost() &&
+          WebUIBrowserWindow::FromWebShellWebContents(original_contents.get()) == window &&
+          window->browser() == original_browser.get();
+    };
+    const bool utility_target = !browser_->GetProfile()->IsOffTheRecord() &&
+        !aux::IsQuickAskWindow(browser_);
+    auto before_utility = utility_target
+        ? aux::ReadNativeUtilityAppearanceOwner(GetWeakPtr()) : std::nullopt;
+    if (!still_original()) {
+      std::move(callback).Run(false, "", "unavailable", "Appearance owner changed during readback");
+      return;
+    }
     auto before = window->GetAuxAppearanceSnapshot();
-    if (before.empty()) {
+    if (!still_original() || before.empty() ||
+        (before_utility && before_utility->FindInt("windowId") != before.FindInt("windowId"))) {
       std::move(callback).Run(false, "", "unavailable", "Native appearance is unavailable");
       return;
     }
@@ -701,7 +725,9 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
         reduceTransparency: matchMedia('(prefers-reduced-transparency: reduce)').matches};
     })())JS", base::BindOnce(
         [](base::WeakPtr<WebUIBrowserUI> ui, content::WeakDocumentPtr document,
-           base::DictValue before, RequestCallback callback, base::Value value) {
+           base::DictValue before, bool utility_target,
+           std::optional<base::DictValue> before_utility,
+           RequestCallback callback, base::Value value) {
           if (!ui || !aux::NativeAppearanceObservationEnabled() || !ui->IsAuthorizedAuxDocument()) {
             std::move(callback).Run(false, "", "forbidden", "Appearance shell changed");
             return;
@@ -714,7 +740,23 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
             std::move(callback).Run(false, "", "unavailable", "Appearance document changed");
             return;
           }
+          const auto shell_weak = contents->GetWeakPtr();
+          const auto browser_weak = ui->browser_->GetWeakPtr();
+          const auto still_original = [&]() {
+            return ui && shell_weak && browser_weak &&
+                ui->web_ui()->GetWebContents() == shell_weak.get() &&
+                ui->browser_ == browser_weak.get() &&
+                document.AsRenderFrameHostIfValid() &&
+                document.AsRenderFrameHostIfValid() == shell_weak->GetPrimaryMainFrame() &&
+                document.AsRenderFrameHostIfValid() == ui->web_ui()->GetRenderFrameHost() &&
+                WebUIBrowserWindow::FromWebShellWebContents(shell_weak.get()) == window &&
+                window->browser() == browser_weak.get();
+          };
           auto result = window->GetAuxAppearanceSnapshot();
+          if (!still_original()) {
+            std::move(callback).Run(false, "", "unavailable", "Appearance owner changed during readback");
+            return;
+          }
           const auto same = [&](const char* key) {
             const auto* a = before.Find(key); const auto* b = result.Find(key);
             return a && b && *a == *b;
@@ -723,6 +765,19 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
               !same("nativeTheme") || !same("backing") || !same("material")) {
             std::move(callback).Run(false, "", "unavailable", "Appearance window changed");
             return;
+          }
+          if (utility_target) {
+            auto after_utility = aux::ReadNativeUtilityAppearanceOwner(ui);
+            if (!still_original() ||
+                (after_utility && after_utility->FindInt("windowId") != result.FindInt("windowId")) ||
+                before_utility.has_value() != after_utility.has_value() ||
+                (before_utility && !aux::NativeUtilityAppearanceOwnerMatches(
+                    *before_utility, *after_utility))) {
+              std::move(callback).Run(false, "", "unavailable", "Utility appearance owner changed");
+              return;
+            }
+            if (after_utility) result.Set("utilityOwnership", std::move(*after_utility));
+            else result.Set("utilityOwnership", base::Value());
           }
           const auto& observed = value.GetDict();
           base::DictValue shell;
@@ -793,7 +848,8 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
           }
           std::fflush(stderr);
           std::move(callback).Run(true, *json, "", "");
-        }, GetWeakPtr(), frame->GetWeakDocumentPtr(), std::move(before), std::move(callback)));
+        }, GetWeakPtr(), frame->GetWeakDocumentPtr(), std::move(before),
+           utility_target, std::move(before_utility), std::move(callback)));
     return;
   }
 #endif

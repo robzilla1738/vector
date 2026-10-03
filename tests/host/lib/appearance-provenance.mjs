@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readUtilityAppearanceJson, decodeUtilityAppearanceOwner, assertUtilityAppearanceOwner } from './utility-appearance-owner.mjs';
 import { createHash } from 'node:crypto';
 import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
@@ -34,7 +35,7 @@ function validateIdentity(actual, candidate) {
 export function normalizeNativeAppearance(rawJson, { candidate, targetPid, windowId, startedAt, completedAt }) {
   validateAppearanceCandidate(candidate);
   assert.equal(typeof rawJson, 'string', 'Missing raw native getter JSON');
-  const raw = JSON.parse(rawJson);
+  const raw = readUtilityAppearanceJson(rawJson);
   assert.equal(raw.producer, 'aux-native-appearance-snapshot', 'Wrong native appearance producer');
   assert.equal(raw.version, 1, 'Unknown native appearance version');
   assert.ok(Number.isInteger(targetPid) && targetPid > 0 && Number.isInteger(windowId) && windowId > 0, 'Missing owned appearance target');
@@ -46,11 +47,17 @@ export function normalizeNativeAppearance(rawJson, { candidate, targetPid, windo
   const shell = raw.shell;
   assert.ok(shell && ['light', 'dark', null].includes(shell.theme) && ['vertical', 'horizontal', null].includes(shell.layout) && ['translucent', 'solid', null].includes(shell.sidebarAppearance), 'Invalid actual Aux shell readback');
   for (const key of ['systemDark', 'reduceMotion', 'reduceTransparency']) assert.equal(typeof shell[key], 'boolean', `Missing observed shell ${key}`);
-  assert.deepEqual(Object.keys(raw).sort(), ['producer', 'version', 'pid', 'windowId', 'frame', 'nativeTheme', 'backing', 'material', 'observedAtUnixMs', 'shell', 'windowKind'].sort(), 'Unexpected native getter fields');
+  const ownerPresent = Object.hasOwn(raw, 'utilityOwnership');
+  if (ownerPresent) {
+    assert.ok(['normal', 'little'].includes(raw.windowKind), 'Foreign utility metadata kind');
+    if (raw.utilityOwnership !== null) decodeUtilityAppearanceOwner(raw.utilityOwnership, { windowId, windowKind: raw.windowKind });
+  }
+  assert.deepEqual(Object.keys(raw).sort(), ['producer', 'version', 'pid', 'windowId', 'frame', 'nativeTheme', 'backing', 'material', 'observedAtUnixMs', 'shell', 'windowKind', ...(ownerPresent ? ['utilityOwnership'] : [])].sort(), 'Unexpected native getter fields');
   assert.deepEqual(Object.keys(shell).sort(), ['theme', 'layout', 'sidebarAppearance', 'systemDark', 'reduceMotion', 'reduceTransparency'].sort(), 'Unexpected shell observation fields');
   return { producer: raw.producer, version: raw.version, candidate, pid: targetPid, windowId, windowKind: raw.windowKind,
     observedAt: new Date(raw.observedAtUnixMs).toISOString(), frame: frame(raw.frame), nativeTheme: raw.nativeTheme,
-    backing: raw.backing, material: raw.material, shell: structuredClone(shell) };
+    backing: raw.backing, material: raw.material, shell: structuredClone(shell),
+    ...(ownerPresent ? { utilityOwnership: raw.utilityOwnership === null ? null : decodeUtilityAppearanceOwner(raw.utilityOwnership, { windowId, windowKind: raw.windowKind }) } : {}) };
 }
 /** Only the actual registered child's distinct native stderr/getter record. */
 export function normalizePipAppearance(rawJson, { candidate, targetPid, windowId, startedAt, completedAt }) {
@@ -124,7 +131,7 @@ export function createPrivateAppearanceProvenance({ outputDir, app, admittedPair
     }, readIdentity: validate }, false,
     { artifact: pair.artifact, normalize: normalizePrivateWindowObservation });
 }
-function createNativeProvenance({ outputDir, candidate, targetPid, helper, helperExecutable, helperSource, observeWindow, readIdentity }, child, privateSource) {
+function createNativeProvenance({ outputDir, candidate, targetPid, helper, helperExecutable, helperSource, observeWindow, discoverUtilityWindow, readIdentity }, child, privateSource) {
   validateAppearanceCandidate(candidate);
   candidate = structuredClone(candidate);
   assert.ok(Number.isInteger(targetPid) && targetPid > 0 && typeof observeWindow === 'function' && typeof readIdentity === 'function' && typeof helper?.trusted === 'function' && typeof helper.windows === 'function', 'Missing authorized appearance producer access');
@@ -174,6 +181,31 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
     return { window, system, rawJson, rawSystem, startedAt, completedAt, ...(privateSource ? { kernel: { before: kernelBefore, after: kernelAfter } } : {}) };
   }
   return { pins,
+    async discoverUtilityOwner({ browserWindowId, windowKind }) {
+      assert.ok(!child && !privateSource && typeof discoverUtilityWindow === 'function', 'Missing original utility discovery producer');
+      const identity = await readIdentity(); validateIdentity(identity, candidate);
+      const startedAt = new Date().toISOString();
+      const rawJson = await discoverUtilityWindow({ browserWindowId, windowKind, notBefore: startedAt });
+      const raw = readUtilityAppearanceJson(rawJson);
+      const value = normalizeNativeAppearance(rawJson, { candidate, targetPid, windowId: raw.windowId, startedAt, completedAt: new Date().toISOString() });
+      const owner = decodeUtilityAppearanceOwner(value.utilityOwnership, { windowId: value.windowId, windowKind });
+      assert.equal(owner.browserWindowId, browserWindowId, 'Foreign returned browser window');
+      const before = await sample(owner.windowId), after = await sample(owner.windowId);
+      assertUtilityAppearanceOwner(before.window.utilityOwnership, owner);
+      assertUtilityAppearanceOwner(after.window.utilityOwnership, owner);
+      assert.deepEqual(before.window.frame, after.window.frame, 'Discovery native frame changed');
+      return Object.freeze({ owner, before, after, discoveryRawJson: rawJson });
+    },
+    async observeUtilityOwner(windowId, expected) {
+      assert.ok(!child && !privateSource, 'Utility ownership requires normal native provenance');
+      const original = decodeUtilityAppearanceOwner(expected, { windowId });
+      const before = await sample(windowId), after = await sample(windowId);
+      assertUtilityAppearanceOwner(before.window.utilityOwnership, original);
+      assertUtilityAppearanceOwner(after.window.utilityOwnership, original);
+      assert.deepEqual(before.window.frame, after.window.frame, 'Utility ownership frame changed');
+      assert.deepEqual(before.system, { ...after.system, observedAt: before.system.observedAt }, 'Utility ownership preferences changed');
+      return Object.freeze({ before, after, owner: original });
+    },
     async observeWindowKind(windowId) {
       const before = await sample(windowId), after = await sample(windowId);
       assert.equal(before.window.pid, after.window.pid, 'Setup window PID changed');
@@ -183,11 +215,16 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
         assert.equal(before.system[key], after.system[key], 'Setup system preference changed');
       return { before, after };
     },
-    async before(windowId, expectedOwner, expectedWindowKind) {
+    async before(windowId, expectedOwner, expectedWindowKind, expectedUtilityOwnership) {
       assert.ok(expectedWindowKind === undefined || (!child && !privateSource && ['quick-ask', 'little'].includes(expectedWindowKind)), 'Invalid expected native window kind');
       const value = await sample(windowId);
       if (expectedWindowKind !== undefined) assert.equal(value.window.windowKind, expectedWindowKind, 'Required native kind changed before capture');
-      const ticket = Object.freeze({ windowId, ...(expectedWindowKind === undefined ? {} : { expectedWindowKind }), ...(child ? { windowLayer: value.window.windowLayer, surfaceKind: value.window.surfaceKind, registrationGeneration: value.window.registrationGeneration } : {}) });
+      const utilityOwner = expectedUtilityOwnership === undefined ? undefined : decodeUtilityAppearanceOwner(expectedUtilityOwnership, { windowId });
+      if (utilityOwner) {
+        assert.ok(!child && !privateSource, 'Foreign utility capture scope');
+        assertUtilityAppearanceOwner(value.window.utilityOwnership, utilityOwner);
+      }
+      const ticket = Object.freeze({ windowId, ...(utilityOwner ? { utilityOwner } : {}), ...(expectedWindowKind === undefined ? {} : { expectedWindowKind }), ...(child ? { windowLayer: value.window.windowLayer, surfaceKind: value.window.surfaceKind, registrationGeneration: value.window.registrationGeneration } : {}) });
       if (child) {
         assert.deepEqual(Object.keys(expectedOwner ?? {}).sort(), ['ownerPageId', 'ownerWindowId', 'registrationGeneration', 'surfaceKind'].sort(), 'Child capture requires discovered ownership fences');
         for (const key of ['ownerPageId', 'ownerWindowId', 'registrationGeneration', 'surfaceKind'])
@@ -207,6 +244,10 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
       if (ticket.expectedWindowKind !== undefined) {
         assert.equal(before.window.windowKind, ticket.expectedWindowKind, 'Required native kind changed before capture');
         assert.equal(after.window.windowKind, ticket.expectedWindowKind, 'Required native kind changed after capture');
+      }
+      if (ticket.utilityOwner) {
+        assertUtilityAppearanceOwner(before.window.utilityOwnership, ticket.utilityOwner);
+        assertUtilityAppearanceOwner(after.window.utilityOwnership, ticket.utilityOwner);
       }
       if (child) for (const key of ['registrationGeneration', 'ownerWindowId', 'ownerPageId', 'surfaceKind', 'windowLayer'])
         assert.equal(before.window[key], after.window[key], `Capture child ${key} changed`);

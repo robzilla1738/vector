@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { createNarrowWindowGenerations } from './lib/narrow-window.mjs';
+import { createOwnedNarrowGenerations } from './lib/distinct-narrow-window.mjs';
 import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
 import { dismissObservedSetup } from './lib/dismiss-observed-setup.mjs';
 import { createUntil } from './lib/until.mjs';
@@ -58,13 +58,13 @@ async function configureAppearance() {
   assertJourneyIdentity(actual, identity);
   const candidate = { productIdentity: identity, native: { sourceCommit: actual.native.sourceCommit, buildId: actual.native.buildId, manifestHash: actual.native.manifestHash }, shellDigest: manifest.shellDigest, harnessCommit: manifest.harnessCommit, moduleSha256: manifest.moduleSha256 };
   app.configureAppearance(candidate);
-  appearance = createAppearanceProvenance({ outputDir, candidate, targetPid: app.pid, helper: ax, helperSource: ax.helperSource, helperExecutable: ax.helperExecutable, observeWindow: selection => app.observeAppearance(selection), readIdentity: () => app.identity() });
+  appearance = createAppearanceProvenance({ outputDir, candidate, targetPid: app.pid, helper: ax, helperSource: ax.helperSource, helperExecutable: ax.helperExecutable, observeWindow: selection => app.observeAppearance(selection), discoverUtilityWindow: selection => app.discoverUtilityAppearance(selection), readIdentity: () => app.identity() });
   pipAppearance = createPipAppearanceProvenance({ outputDir, candidate, targetPid: app.pid, helper: ax, helperSource: ax.helperSource, helperExecutable: ax.helperExecutable, observeWindow: selection => app.observePipAppearance(selection), readIdentity: () => app.identity() });
   manifest.provenanceProducers = appearance.pins;
 }
 const controller = new AbortController();
 const { signal } = controller;
-const narrowGenerations = values.narrow ? createNarrowWindowGenerations(() => ({ app, ax, appearanceEnabled: true, signal }), manifest) : undefined;
+const narrowGenerations = values.narrow ? createOwnedNarrowGenerations(() => ({ app, ax, appearanceEnabled: true, signal, provenance: appearance, readRuntimePages: async () => { const rpc = createRpc(() => app.descriptor()); return rpc('pages.list'); }, capture: (name, options) => evidence.capture(name, options) }), manifest) : undefined;
 let deadline;
 const inputs = [];
 const inputCommands = new Set(['press', 'click', 'focus', 'key', 'type', 'drag', 'scroll', 'menu', 'contextMenu', 'savePanel', 'openPanel']);
@@ -148,7 +148,7 @@ async function execute() {
     }
     return processMemoryReader;
   }
-  const context = { app, rpc, fixture, model, appearanceEnabled: Boolean(values.appearance), ax: observedAx, assert, until, visual: createVisual(outputDir),
+  const context = { app, rpc, fixture, model, appearanceEnabled: Boolean(values.appearance), narrowEnabled: Boolean(values.narrow), ax: observedAx, assert, until, visual: createVisual(outputDir),
     async startSubagentMemoryWorkload({ scopedRpc, parent, idlePageIds, parentHold }) {
       const { startSubagentMemoryWorkload } = await import('./lib/native-subagent-memory-workload.mjs');
       const { createNativeWorkloadPreparationAdapter } = await import('./lib/native-memory-workload-collector.mjs');
@@ -249,6 +249,8 @@ async function execute() {
       return app.discoverPipAppearance(selection);
     },
     capturePip: async (name, options) => { signal.throwIfAborted(); return evidence.capturePip(name, options); },
+    captureUtilityNarrowWindow: async (page, name, state) => { signal.throwIfAborted(); assert.ok(narrowGenerations); return narrowGenerations.captureUtility({ windowId: page.windowId, windowKind: page.windowKind }, name, state); },
+    captureDistinctNarrowGeneration: async (name, state) => { signal.throwIfAborted(); assert.ok(narrowGenerations); return narrowGenerations.captureDistinct(name, state); },
     capture: async (name, options) => { signal.throwIfAborted(); return evidence.capture(name, options); }, clock,
     async step(name, options, action) {
       signal.throwIfAborted();

@@ -8081,6 +8081,7 @@ test("unit_tests") {
       "../browser/ui/aux/permission_broker_unittest.cc",
       "../browser/ui/aux/native_creator_close_receipt_unittest.cc",
       "../browser/ui/aux/native_performance_observer_unittest.cc",
+      "../browser/ui/aux/native_utility_appearance_owner_unittest.cc",
       "../browser/ui/aux/native_pip_appearance_registry_unittest.cc",
       "../browser/ui/aux/native_pip_video_backing_unittest.cc",
       "../browser/ui/aux/native_command_presentation_session_unittest.cc",

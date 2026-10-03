@@ -99,6 +99,10 @@ function observedCell(before, after, capture) {
   if (child) {
     for (const key of ['surfaceKind', 'ownerWindowId', 'ownerPageId', 'registrationGeneration', 'windowLayer']) same(before.window[key], after.window[key], `child ${key} stability`);
   }
+  if (!child && [before, after].some(side => Object.hasOwn(side.window, 'utilityOwnership'))) {
+    if ([before, after].some(side => !side.window.utilityOwnership)) reasons.push('Unknown original utility ownership');
+    else same(before.window.utilityOwnership, after.window.utilityOwnership, 'utility owner document/window stability');
+  }
   same(before.window.windowKind, after.window.windowKind, 'window kind');
   require(child || ['normal', 'private', 'quick-ask', 'little'].includes(before.window.windowKind), 'Unknown normal window kind; child requires its distinct producer');
   for (const side of [before, after]) {
