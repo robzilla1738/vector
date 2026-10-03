@@ -203,35 +203,43 @@ export function CommandBar({
     items: AutocompleteMatch[];
     error: string | null;
   }>({ query: "", generation: 0, items: [], error: null });
+  const entryModeRequest = useRef(0);
   const [entryMode, setEntryModeState] = useState<"search" | "ask">(() => {
     if (!hero || bridge.privateMode) return "search";
     if (settings.homeEntryMode === "ask" || settings.homeEntryMode === "search")
       return settings.homeEntryMode;
     try {
-      return localStorage.getItem("aux.home.entry-mode.v1") === "ask" ? "ask" : "search";
+      const legacy = localStorage.getItem("aux.home.entry-mode.v1");
+      return legacy === "search" || legacy === "ask" ? legacy : "ask";
     } catch {
-      return "search";
+      return "ask";
     }
   });
   useEffect(() => {
     if (!hero || bridge.privateMode) return;
     if (settings.homeEntryMode === "ask" || settings.homeEntryMode === "search") {
+      ++entryModeRequest.current;
       setEntryModeState(settings.homeEntryMode);
       return;
     }
     if (!settings.dataDir) return;
     try {
       const legacy = localStorage.getItem("aux.home.entry-mode.v1");
-      if (legacy === "ask") {
-        void call("settings.set", { homeEntryMode: "ask" })
-          .then(() => localStorage.removeItem("aux.home.entry-mode.v1"))
+      if (legacy === "ask" || legacy === "search") {
+        void call("settings.set", { homeEntryMode: legacy })
+          .then(() => {
+            if (localStorage.getItem("aux.home.entry-mode.v1") === legacy)
+              localStorage.removeItem("aux.home.entry-mode.v1");
+          })
           .catch(errToast);
       } else if (legacy !== null) localStorage.removeItem("aux.home.entry-mode.v1");
     } catch {
-      /* Storage may be unavailable; Search remains the default. */
+      /* Optional legacy storage cannot block the fresh Ask entry. */
     }
   }, [hero, settings.dataDir, settings.homeEntryMode]);
   const setEntryMode = (next: "search" | "ask") => {
+    const previous = entryMode;
+    const request = ++entryModeRequest.current;
     setEntryModeState(next);
     if (!bridge.privateMode)
       void call("settings.set", { homeEntryMode: next })
@@ -243,7 +251,7 @@ export function CommandBar({
           }
         })
         .catch((error) => {
-          setEntryModeState(settings.homeEntryMode === "ask" ? "ask" : "search");
+          if (entryModeRequest.current === request) setEntryModeState(previous);
           errToast(error);
         });
   };

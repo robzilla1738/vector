@@ -12,6 +12,15 @@ it("restores only a bounded opaque pending conversation id", () => {
   expect(readPendingConversation({ getItem: () => "bad/id" })).toBeNull();
   expect(readPendingConversation({ getItem: () => "x".repeat(201) })).toBeNull();
 });
+it("ignores an unavailable pending pointer and preserves a later durable Home pointer", () => {
+  expect(readPendingConversation({ getItem: () => { throw Error("Storage unavailable"); } })).toBeNull();
+  expect(readPendingConversation(null)).toBeNull();
+  const key = "aux.home-draft-conversation.v1";
+  const storage = storageFixture();
+  storage.setItem(key, "original-chat-123");
+  expect(readPendingConversation(storage, key)).toBe("original-chat-123");
+  expect(storage.getItem(key)).toBe("original-chat-123");
+});
 it("restores bounded conversation context identifiers without storing page content",()=>{
   expect(readConversationContexts({getItem:()=>JSON.stringify({new:"page-1","chat:one":"page-2",other:"ignored","chat:long":"x".repeat(201)})})).toEqual({new:"page-1","chat:one":"page-2"});
   expect(readConversationContexts({getItem:()=>"broken"})).toEqual({});
