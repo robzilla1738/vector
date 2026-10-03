@@ -1,0 +1,55 @@
+{
+  "producer": "builder-ce62-stage-original-preflight-refusal",
+  "version": 1,
+  "controllerSha256": "1b46afa6a0606080570338c934e20d8c109455f332f4a8cc9b59e167ddc4780c",
+  "originalExitCode": 1,
+  "refusedAt": "previous generated guard line47 before watcher/child/transition/Stable writes",
+  "rawLog": {
+    "path": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/stage-ce62-execution-001.log",
+    "sha256": "af92f9d3af1857e40c8cf5963cdcb1a79332736a4744448b84f60f73e732aa09"
+  },
+  "generatedCurrent": [
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.h",
+      "expectedSha256": "8867d8e9b9933f69923ab16695699abc7e6d1272f6be0d691ddfc9c095ee844b",
+      "actualSha256": "060daf9990c6780074b071aa487083268858580111c81cae09f27771d3336fc8",
+      "mode": 33188,
+      "uid": 502,
+      "inode": 69380583,
+      "device": 16777233,
+      "size": 4196,
+      "mtimeNs": 1791030857258421431,
+      "capturedCopy": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/refusal-actual-aux_host_methods.h"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.cc",
+      "expectedSha256": "d51f87e3965b24bb3f90543b0f1fb20d83918c8439c434280ab557f9f47ba5a9",
+      "actualSha256": "8a6d710efea3e6385182af46545ee90e6fae32b116e468b6c75497f96c84faec",
+      "mode": 33188,
+      "uid": 502,
+      "inode": 69380584,
+      "device": 16777233,
+      "size": 138773,
+      "mtimeNs": 1791030857265152934,
+      "capturedCopy": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/refusal-actual-aux_host_methods.cc"
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux_host/aux_feature_stages.ts",
+      "expectedSha256": "5de6e88176a4419bfb5bfd8e9f213277777e72d17d9a7f968e29cb72efc9d961",
+      "actualSha256": "840cba45f14d3ce2d40ec0352a9ba77ee487efebc3f18ad0f340d45b671b9653",
+      "mode": 33188,
+      "uid": 502,
+      "inode": 69380585,
+      "device": 16777233,
+      "size": 16367,
+      "mtimeNs": 1791030857272660437,
+      "capturedCopy": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/refusal-actual-aux_feature_stages.ts"
+    }
+  ],
+  "slotAbsent": true,
+  "stableMutatedByThisAttempt": false,
+  "watcherStarted": false,
+  "stageChildStarted": false,
+  "actorAttribution": "unproved",
+  "timestampUtc": "2026-10-03T13:49:45Z"
+}

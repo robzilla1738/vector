@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/stage-ce62-001-PROPOSAL.py", line 47, in <module>
+    for p,v in previous['generated'].items():assert h(Path(p))==v,p
+                                                    ^^^^^^^^^^^^^
+AssertionError: /Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.h

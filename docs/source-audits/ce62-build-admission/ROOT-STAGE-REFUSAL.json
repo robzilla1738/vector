@@ -1,0 +1,12 @@
+{
+  "sourceOnly": true,
+  "originalRefusalSha256": "07209f389379395dd0ffe3739045c5188c7901a0508ec693124461b67af25e15",
+  "rawLogHashVerified": true,
+  "actualThreeGeneratedBytesVerified": true,
+  "originalMainTemplatesReconstructed": true,
+  "actorAttribution": "unproved",
+  "slotActuallyAbsent": true,
+  "stageHadNoChildrenOrStableWrites": true,
+  "repairPendingExactOriginalBytes": true,
+  "appHeld": true
+}
