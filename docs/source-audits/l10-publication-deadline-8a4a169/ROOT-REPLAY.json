@@ -1,0 +1,51 @@
+{
+  "sourceOnly": true,
+  "nativeExecuted": false,
+  "adopted": false,
+  "base": "4a278fbe0c6164b1a39dada35184af6c052d6ac1",
+  "successor": "8a4a1691",
+  "packetSha256": "8468878d9d074627f422feaf2be4c4137bd41889fbde17a8263fb0dd127cfca8",
+  "files": [
+    {
+      "path": "apps/runtime/src/safety/browser-egress.ts",
+      "beforeSha256": "68b21b85a109c55ad31d01d72568820b01d75a766de0c2e522f6d0f1319dda3d",
+      "afterSha256": "147c587eeeb3a3e3bb7bb51a7e22d5b88f3668b74701d90cd03473df3229b4c2"
+    },
+    {
+      "path": "apps/runtime/src/services/pages/controlled-navigation.ts",
+      "beforeSha256": "6b4a139d5d684276977ca8e9c27e9309cb16b7aeda0eddd5db6494f72d03cce2",
+      "afterSha256": "a168f1f32fc865a68654a02b1f9e8eb6f9044ff9b605d28fa2086a33a6426fd7"
+    },
+    {
+      "path": "apps/runtime/src/services/pages/registry.ts",
+      "beforeSha256": "6df89669b7af8973838463fe1fa4c3551fe26d8541af07a2483b652ba3ecbd24",
+      "afterSha256": "7709a701e2ea367fe61adbb9d11629d22c4c1e424dffd0b69e5f43384e1f5b96"
+    },
+    {
+      "path": "tests/unit/browser-egress.test.ts",
+      "beforeSha256": "4952ac014ffaf2ef31ebf35ed527e083ac89b3723f1bc47ab03897c94bc1681a",
+      "afterSha256": "d984cc093ea589bbd295539ca804aab3d4a1cb104683694368ae4e6411c81f22"
+    },
+    {
+      "path": "tests/unit/controlled-native-navigation.test.ts",
+      "beforeSha256": "c21efee26063653f3ee3c297982caab779e1174b2614cfb33e2c51f579b03f74",
+      "afterSha256": "b133af36f07b67f8192457d7f97e09075285b0b2278fc5c256013fc40b9c9863"
+    },
+    {
+      "path": "tests/unit/page-attachment-session.test.ts",
+      "beforeSha256": "20150a691e96a8c66b7a72d27f43761458e7053dc7ddd5e28167f87581f9211e",
+      "afterSha256": "b0dde090b70813a298604d4d7b5235abf579c8ff9285c1b0f3614f6eb4714574"
+    }
+  ],
+  "actualGitAndWorkingFilesMatch": true,
+  "exactForwardReverseForward": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-l10-publication-replay-q0lv_ek9",
+  "semanticReview": {
+    "partialPublicationCleanupBoundToActuallyMintedDriverSession": true,
+    "foreignOrHumanAuthorityPreserved": true,
+    "originalReceiptDeadlineCapsInstallAndPublication": true,
+    "renewalStartsOnlyAfterRealPublication": true,
+    "receiptDeadlineNotRenewed": true,
+    "wholeCompatibleNative0280AndEffectsRemainRequired": true
+  }
+}
