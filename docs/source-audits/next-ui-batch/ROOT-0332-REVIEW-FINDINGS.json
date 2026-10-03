@@ -1,0 +1,29 @@
+{
+  "status": "source review; frozen0332notadopted pending successor",
+  "requestRoot": "/tmp/aux-browser-runtime-l10-m4-collector/docs/lane-requests/l10/0332-FROZEN",
+  "reviewed": "Complete native2371-line patch and caller562-line patch; fixed associated endpoint, actual native input/Blink carrier, owner/directory/mailbox and Worker completion path. Nine untouched Blink originals independently match authentic a654 Git bytes.",
+  "openFindings": [
+    {
+      "finding": "Takeover Prepare always refuses because fresh-counter polling invokes Stop-only CurrentCdpMeasurementInput",
+      "required": "Mode-neutral original-page readiness predicate; keep Stop input wrapper Stop-only and actual takeover readiness control",
+      "assigned": "l10_trust"
+    },
+    {
+      "finding": "Decoder allows equality at strict original five-second deadline",
+      "required": "Strict less-than with equality refusal control",
+      "assigned": "l10_trust"
+    },
+    {
+      "finding": "External report evaluator accepts incomplete helper producer identities and lacks independent approved helper artifact joins",
+      "required": "Existing branded compiler/owned accessibility admission and original manifest/audit bytes; no fallback or self-reported approval",
+      "assigned": "l10_trust"
+    },
+    {
+      "finding": "Prepare failure before ownedTrial return can lose trial temporary-page cleanup handle",
+      "required": "Retain actual setup ownership and cleanup debt without replacing primary failure",
+      "assigned": "l10_trust"
+    }
+  ],
+  "stableMutation": false,
+  "nativeExecution": false
+}

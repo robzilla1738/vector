@@ -1,0 +1,50 @@
+{
+  "status": "source-only original hydration; future native request not adopted",
+  "rows": [
+    {
+      "path": "third_party/blink/common/input/web_coalesced_input_event_mojom_traits.cc",
+      "sha256": "1b6baf0fdcc8544947720a978a5f9b900d4bfd7f139bb8995c0d18cc19d5ae00",
+      "authenticBase": "a654841425914cbb703a2931e07b70a83aedbafd"
+    },
+    {
+      "path": "third_party/blink/public/common/input/web_coalesced_input_event_mojom_traits.h",
+      "sha256": "9547f15c2273887e200c795c1391f159f1a3d92de2fe61309ab967c6272f738d",
+      "authenticBase": "a654841425914cbb703a2931e07b70a83aedbafd"
+    },
+    {
+      "path": "third_party/blink/public/common/input/web_input_event.h",
+      "sha256": "9663b2b2ce23b69f26cb9f3c077a17b903d893953000113437f476fc2d93016b",
+      "authenticBase": "a654841425914cbb703a2931e07b70a83aedbafd"
+    },
+    {
+      "path": "third_party/blink/public/mojom/input/input_handler.mojom",
+      "sha256": "11f5dad3f10b46bfa69b2a710948d5735467063735ac7fb8fb7664510fb96e8e",
+      "authenticBase": "a654841425914cbb703a2931e07b70a83aedbafd"
+    },
+    {
+      "path": "third_party/blink/public/web/web_dom_event.h",
+      "sha256": "a6a5160774cdca76720976f0486b5aa48091bcced4628db1c6d1e0b46ead7882",
+      "authenticBase": "a654841425914cbb703a2931e07b70a83aedbafd"
+    },
+    {
+      "path": "third_party/blink/renderer/core/dom/events/event.h",
+      "sha256": "a484b7cf7ed87a2f484009d685f2c475402b553bb2c2920d2f3408998335466f",
+      "authenticBase": "a654841425914cbb703a2931e07b70a83aedbafd"
+    },
+    {
+      "path": "third_party/blink/renderer/core/exported/build.gni",
+      "sha256": "918b3952a8755dd2087e2935747fac57b367d2f259d1058ef145da3ce6715998",
+      "authenticBase": "a654841425914cbb703a2931e07b70a83aedbafd"
+    },
+    {
+      "path": "third_party/blink/renderer/core/exported/web_dom_event.cc",
+      "sha256": "2ae6a5a4ef9fb20e802b41fd7ac0cce38e4023b0683eadf5dc7383b19fd4df0d",
+      "authenticBase": "a654841425914cbb703a2931e07b70a83aedbafd"
+    },
+    {
+      "path": "third_party/blink/renderer/core/input/mouse_event_manager.cc",
+      "sha256": "0f049c6f18bf2cb5ef96acf2dc292a8555bbd6a5b4ad86d1a03c14a3497bc34e",
+      "authenticBase": "a654841425914cbb703a2931e07b70a83aedbafd"
+    }
+  ]
+}
