@@ -20,6 +20,8 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/aux/egress_projection.h"
 #include "chrome/browser/ui/aux/native_creator_close_receipt.h"
+#include "chrome/browser/ui/aux/native_cdp_retirement_measurement.h"
+#include "chrome/browser/ui/aux/native_cdp_measurement_producer.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
@@ -185,6 +187,27 @@ struct EgressController::Isolation {
   std::set<std::string> terminal_ancestors;
   std::vector<base::WeakPtr<content::WebContents>> registered_pages;
   uint64_t connection_generation = 0;
+};
+struct EgressController::CdpMeasurementOriginal final
+    : content::WebContentsObserver {
+  explicit CdpMeasurementOriginal(content::WebContents* original)
+      : content::WebContentsObserver(original),
+        document(original->GetPrimaryMainFrame()->GetWeakDocumentPtr()),
+        page(original->GetWeakPtr()) {}
+  void DidFinishNavigation(content::NavigationHandle* navigation) override {
+    if (navigation->HasCommitted() && navigation->IsInPrimaryMainFrame() &&
+        !navigation->IsSameDocument() &&
+        document.AsRenderFrameHostIfValid() != navigation->GetRenderFrameHost())
+      document_replaced = true;
+  }
+  void WebContentsDestroyed() override {
+    // A missing WeakPtr alone is never accepted as original destruction proof.
+    destroyed_ticks = base::TimeTicks::Now();
+  }
+  const content::WeakDocumentPtr document;
+  const base::WeakPtr<content::WebContents> page;
+  base::TimeTicks destroyed_ticks;
+  bool document_replaced = false;
 };
 struct EgressController::CreatorState {
   std::string runtime_owner_incarnation;
@@ -730,6 +753,17 @@ void EgressController::PruneTerminalRegistrations() {
     for (const auto& [page, run] : isolation_run_by_page_) if (family.contains(run)) complete = false;
     for (const auto& [id, resume] : run_resumes_) if (resume->run_id == root || family.contains(resume->run_id)) complete = false;
     if (!complete) continue;
+    if (cdp_measurement_ && cdp_measurement_->root_run() == root) {
+      const std::vector<std::string> retired_family(family.begin(), family.end());
+      if (cdp_measurement_->mode() == NativeCdpRetirementMeasurement::Mode::kStop &&
+          retired_family == cdp_measurement_->registered_runs() &&
+          cdp_measurement_->connection_generation() == admitted_runtime_generation_ &&
+          cdp_measurement_->owner_incarnation() == runtime_owner_incarnation_ &&
+          HasStoppedRunIntent(root, admitted_runtime_generation_))
+        cdp_measurement_terminal_family_ = true;
+      else
+        cdp_measurement_->Refuse();
+    }
     for (const auto& id : family) { isolations_by_run_.erase(id); run_intents_.erase(id); }
     run_intents_.erase(root);
   }
@@ -762,6 +796,26 @@ bool EgressController::HasStoppedRunIntent(const std::string& run_id,
 }
 bool EgressController::RetireRegisteredRun(const std::string& run_id,
     uint64_t generation) {
+  return RetireRegisteredRunImpl(run_id, generation, nullptr);
+}
+bool EgressController::RetireRegisteredRunForMeasuredStop(
+    const std::string& run_id, uint64_t generation,
+    const NativeStopInputReceipt& input) {
+  const bool original_input = CurrentCdpMeasurementInput() &&
+      input.controller_.get() == this && input.owner_ &&
+      input.owner_->GetProfile() == profile_ && input.run_id_ == run_id &&
+      input.connection_generation_ == generation &&
+      input.host_incarnation_ == runtime_owner_incarnation_ &&
+      !input.id_.is_empty() &&
+      input.shell_document_.AsRenderFrameHostIfValid() &&
+      base::TimeTicks::Now() < input.deadline_;
+  if (!original_input && cdp_measurement_) cdp_measurement_->Refuse();
+  // Measurement refusal must never suppress the unchanged ordinary Stop.
+  return RetireRegisteredRunImpl(run_id, generation,
+                                original_input ? &input : nullptr);
+}
+bool EgressController::RetireRegisteredRunImpl(const std::string& run_id,
+    uint64_t generation, const NativeStopInputReceipt* input) {
   if (!generation || generation != admitted_runtime_generation_ || run_id.empty() || run_id.size() > 160 || profile_->IsOffTheRecord() ||
       (!run_intents_.contains(run_id) && run_intents_.size() >= 256)) return false;
   auto intent = std::make_unique<RunIntent>();
@@ -778,7 +832,33 @@ bool EgressController::RetireRegisteredRun(const std::string& run_id,
     const auto state = pages_.find(page_id);
     if (state == pages_.end()) continue;
     retired.insert(page_id);
-    state->second->control_generation = base::UnguessableToken::Create().ToString();
+    const auto retired_generation = base::UnguessableToken::Create().ToString();
+    if (input && cdp_measurement_) {
+      auto* frame = state->second->document.AsRenderFrameHostIfValid();
+      if (!LiveFrame(frame)) {
+        cdp_measurement_->Refuse();
+      } else {
+        auto scope = base::DictValue()
+            .Set("profileId", profile_->GetPath().BaseName().AsUTF8Unsafe())
+            .Set("tabId", page_id).Set("isolationId", isolation->second->id)
+            .Set("runId", isolation->second->run_id)
+            .Set("taskRevision", isolation->second->task_revision)
+            .Set("frameId", FrameId(frame))
+            .Set("documentToken", EgressDocument::GetOrCreateForCurrentDocument(frame)->token)
+            .Set("sourceOrigin", Origin(frame))
+            .Set("controlGeneration", state->second->control_generation)
+            .Set("retiredControlGeneration", retired_generation);
+        if (!isolation->second->task_id.empty())
+          scope.Set("taskId", isolation->second->task_id);
+        const bool dispatched_original = state->second->dispatched_lease_id ==
+            String(state->second->lease, "leaseId");
+        cdp_measurement_->RetiredPage(page_id, state->second->lease, scope,
+            input->event_ticks_, input->admitted_ticks_,
+            dispatched_original ? state->second->last_cdp_dispatch_ticks : base::TimeTicks(),
+            dispatched_original ? state->second->cdp_dispatch_count : 0, true);
+      }
+    }
+    state->second->control_generation = retired_generation;
     state->second->acknowledged_context.clear();
     state->second->lease.clear();
     state->second->navigation_transition_id.clear();
@@ -1290,6 +1370,9 @@ EgressController::RetireForNativePersonInput(
     receipt.last_dispatch_ticks = state->last_cdp_dispatch_ticks;
     receipt.dispatch_count = state->cdp_dispatch_count;
   }
+  if (cdp_measurement_) cdp_measurement_->RetiredPage(page_id, receipt.original_lease,
+      receipt.original_scope, receipt.original_event_ticks, receipt.admitted_ticks,
+      receipt.last_dispatch_ticks, receipt.dispatch_count, receipt.original_clock_valid);
   state->cdp_retirement_receipt = NativeCdpRetirementReceipt{
       receipt.original_lease.Clone(), receipt.original_scope.Clone(),
       receipt.original_event_ticks,
@@ -1438,6 +1521,156 @@ bool EgressController::FinishPersonResume(const std::string& id, bool success) {
   return false;
 }
 
+EgressController* EgressController::ExistingForCdpMeasurement(Profile* profile) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  return profile ? static_cast<EgressController*>(profile->GetUserData(&kEgressKey)) : nullptr;
+}
+bool EgressController::BeginCdpRetirementMeasurement(bool stop_family) {
+  if (cdp_measurement_ || !admitted_runtime_generation_ || runtime_owner_incarnation_.empty() ||
+      profile_->IsOffTheRecord() || owner_mutations_.pending()) return false;
+  std::set<std::string> roots;
+  for (const auto& [page_id, state] : pages_) {
+    auto* frame = state->document.AsRenderFrameHostIfValid();
+    const auto* isolation = frame ? IsolationForPage(page_id, frame) : nullptr;
+    if (isolation && !state->lease.empty() && RunIntentCurrent(*isolation) &&
+        isolation->connection_generation == admitted_runtime_generation_ &&
+        isolation->runtime_owner_incarnation == runtime_owner_incarnation_ &&
+        !isolation->ancestry.empty()) roots.insert(isolation->ancestry.back());
+  }
+  if (roots.size() != 1) return false;
+  const auto root = *roots.begin();
+  std::vector<std::string> registrations;
+  for (const auto& [id, isolation] : isolations_by_run_) {
+    if (isolation->connection_generation == admitted_runtime_generation_ &&
+        isolation->runtime_owner_incarnation == runtime_owner_incarnation_ &&
+        !isolation->ancestry.empty() && isolation->ancestry.back() == root)
+      registrations.push_back(id);
+  }
+  std::map<std::string, NativeCdpRetirementMeasurement::OriginalPage> original;
+  std::map<std::string, std::unique_ptr<CdpMeasurementOriginal>> documents;
+  auto* catalog = TabCatalog::GetForProfile(profile_);
+  // Every original registered family page must be accounted. Preparing,
+  // detached, uninstalled, or changed pages are refusal, not empty workload.
+  for (const auto& [page_id, run] : isolation_run_by_page_) {
+    if (std::ranges::find(registrations, run) == registrations.end()) continue;
+    auto state = pages_.find(page_id);
+    auto* page = catalog ? catalog->FindPage(page_id) : nullptr;
+    auto* frame = page ? page->GetPrimaryMainFrame() : nullptr;
+    if (state == pages_.end() || !LiveFrame(frame) ||
+        !Current({frame->GetWeakDocumentPtr(), page_id, "cdp", false}, state->second->lease) ||
+        page->GetBrowserContext() != profile_ || !IsIsolatedPage(page)) return false;
+    auto identity = std::make_unique<CdpMeasurementOriginal>(page);
+    documents.emplace(page_id, std::move(identity));
+    const auto count = state->second->dispatched_lease_id == String(state->second->lease, "leaseId")
+        ? state->second->cdp_dispatch_count : 0;
+    original.emplace(page_id, NativeCdpRetirementMeasurement::OriginalPage{state->second->lease.Clone(), count});
+  }
+  if (original.empty() || original.size() > 20 || (!stop_family && original.size() != 1)) return false;
+  cdp_measurement_originals_ = std::move(documents);
+  cdp_measurement_terminal_family_ = false;
+  cdp_measurement_owner_retirement_ = person_read_retirement_generation_;
+  cdp_measurement_failure_epoch_ = owner_mutations_.failure_epoch();
+  cdp_measurement_ = std::make_unique<NativeCdpRetirementMeasurement>(stop_family
+      ? NativeCdpRetirementMeasurement::Mode::kStop : NativeCdpRetirementMeasurement::Mode::kTakeover,
+      root, runtime_owner_incarnation_, admitted_runtime_generation_, std::move(registrations), std::move(original));
+  return true;
+}
+bool EgressController::CurrentCdpMeasurementInput() const {
+  return cdp_measurement_ &&
+      cdp_measurement_->mode() == NativeCdpRetirementMeasurement::Mode::kStop &&
+      CurrentCdpMeasurementPages();
+}
+bool EgressController::CurrentCdpMeasurementPages() const {
+  if (!cdp_measurement_ || !cdp_measurement_->current() ||
+      owner_mutations_.pending() ||
+      cdp_measurement_->connection_generation() != admitted_runtime_generation_ ||
+      cdp_measurement_->owner_incarnation() != runtime_owner_incarnation_ ||
+      cdp_measurement_owner_retirement_ != person_read_retirement_generation_ ||
+      cdp_measurement_failure_epoch_ != owner_mutations_.failure_epoch())
+    return false;
+  auto* catalog = TabCatalog::GetForProfile(profile_);
+  for (const auto& [page_id, original] : cdp_measurement_->original_pages()) {
+    const auto state = pages_.find(page_id);
+    const auto document = cdp_measurement_originals_.find(page_id);
+    auto* page = catalog ? catalog->FindPage(page_id) : nullptr;
+    auto* frame = page ? page->GetPrimaryMainFrame() : nullptr;
+    if (state == pages_.end() || document == cdp_measurement_originals_.end() ||
+        document->second->document_replaced || !document->second->destroyed_ticks.is_null() ||
+        document->second->page.get() != page || !LiveFrame(frame) ||
+        document->second->document.AsRenderFrameHostIfValid() != frame)
+      return false;
+    auto expected = original.lease.Clone();
+    auto installed = state->second->lease.Clone();
+    expected.Remove("expiresAt");
+    installed.Remove("expiresAt");
+    if (expected != installed ||
+        !Current({frame->GetWeakDocumentPtr(), page_id, "cdp", false},
+                 state->second->lease))
+      return false;
+  }
+  return true;
+}
+base::DictValue EgressController::ReadCdpRetirementMeasurementArm() const {
+  return cdp_measurement_ ? cdp_measurement_->ArmedRecord()
+      : base::DictValue().Set("producer", "aux-native-cdp-retirement")
+          .Set("version", 1).Set("status", "refused");
+}
+base::DictValue EgressController::CompleteCdpRetirementMeasurement() {
+  if (!cdp_measurement_) return base::DictValue().Set("producer", "aux-native-cdp-retirement")
+      .Set("version", 1).Set("status", "refused");
+  auto original = std::move(cdp_measurement_);
+  auto documents = std::move(cdp_measurement_originals_);
+  bool current = admitted_runtime_generation_ == original->connection_generation() &&
+      runtime_owner_incarnation_ == original->owner_incarnation() && !owner_mutations_.pending() &&
+      cdp_measurement_owner_retirement_ == person_read_retirement_generation_ &&
+      cdp_measurement_failure_epoch_ == owner_mutations_.failure_epoch();
+  std::vector<std::string> registrations;
+  for (const auto& [id, isolation] : isolations_by_run_) {
+    if (isolation->connection_generation == admitted_runtime_generation_ &&
+        isolation->runtime_owner_incarnation == runtime_owner_incarnation_ &&
+        !isolation->ancestry.empty() && isolation->ancestry.back() == original->root_run())
+      registrations.push_back(id);
+  }
+  current &= cdp_measurement_terminal_family_
+      ? registrations.empty() : registrations == original->registered_runs();
+  auto* catalog = TabCatalog::GetForProfile(profile_);
+  std::set<std::string> current_pages;
+  for (const auto& [page_id, run] : isolation_run_by_page_) {
+    if (std::ranges::find(registrations, run) != registrations.end()) current_pages.insert(page_id);
+  }
+  // Teardown may remove original pages, but never admits an added/replaced one.
+  for (const auto& page_id : current_pages)
+    current &= documents.contains(page_id);
+  for (const auto& [page_id, identity] : documents) {
+    current &= !identity->document_replaced;
+    if (!identity->destroyed_ticks.is_null()) {
+      original->DocumentDestroyed(page_id, identity->destroyed_ticks);
+      current &= original->mode() == NativeCdpRetirementMeasurement::Mode::kStop &&
+          !identity->page && !current_pages.contains(page_id) &&
+          (!catalog || !catalog->FindPage(page_id)) && !pages_.contains(page_id) &&
+          (cdp_measurement_terminal_family_ ||
+              HasStoppedRunIntent(original->root_run(), admitted_runtime_generation_));
+      continue;
+    }
+    auto* frame = identity->document.AsRenderFrameHostIfValid();
+    const auto state = pages_.find(page_id);
+    const auto* isolation = frame ? IsolationForPage(page_id, frame) : nullptr;
+    current &= frame && identity->page && current_pages.contains(page_id) && catalog &&
+        catalog->FindPage(page_id) == identity->page.get() &&
+        identity->page->GetPrimaryMainFrame() == frame && identity->page->GetBrowserContext() == profile_ &&
+        isolation && isolation->connection_generation == admitted_runtime_generation_ &&
+        isolation->runtime_owner_incarnation == runtime_owner_incarnation_ &&
+        state != pages_.end() && state->second->lease.empty() &&
+        original->original_pages().at(page_id).lease.FindDouble("expiresAt").value_or(0) >
+            base::Time::Now().InMillisecondsFSinceUnixEpoch() &&
+        state->second->navigation_transition_id.empty() &&
+        (original->mode() == NativeCdpRetirementMeasurement::Mode::kStop
+            ? HasStoppedRunIntent(original->root_run(), admitted_runtime_generation_)
+            : state->second->person_controlled);
+  }
+  return original->Complete(current);
+}
+
 bool EgressController::RecordFinalCdpDispatch(
     const EgressRequestContext& context, const base::DictValue& original_lease) {
   if (owner_mutations_.pending() || !Current(context, original_lease))
@@ -1473,6 +1706,8 @@ bool EgressController::RecordFinalCdpDispatch(
     return false;
   ++state.cdp_dispatch_count;
   state.last_cdp_dispatch_ticks = base::TimeTicks::Now();
+  if (cdp_measurement_) cdp_measurement_->ApprovedDispatch(context.page_id, original_lease,
+      state.last_cdp_dispatch_ticks, state.cdp_dispatch_count);
   return true;
 }
 
@@ -1590,6 +1825,7 @@ bool EgressController::AdmitRuntimeConnection(uint64_t generation,
   return true;
 }
 void EgressController::Disconnect() {
+  if (cdp_measurement_) cdp_measurement_->Refuse();
   retired_runtime_generation_ = std::max(retired_runtime_generation_, admitted_runtime_generation_);
   admitted_runtime_generation_ = 0;
   person_resumes_.clear();

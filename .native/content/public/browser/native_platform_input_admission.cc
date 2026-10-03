@@ -20,4 +20,15 @@ NativePlatformInputAdmission::NativePlatformInputAdmission(
 
 NativePlatformInputAdmission::~NativePlatformInputAdmission() = default;
 
+bool NativePlatformInputAdmission::PublishMeasurementId(
+    const base::UnguessableToken& id) const {
+  if (!consumed_ || id.is_empty() || !measurement_id_.is_empty())
+    return false;
+  measurement_id_ = id;
+  return true;
+}
+const base::UnguessableToken& NativePlatformInputAdmission::measurement_id() const {
+  return measurement_id_;
+}
+
 }  // namespace content

@@ -2,6 +2,7 @@
 #include "chrome/browser/ui/aux/native_performance_mailbox.h"
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
 #include <fcntl.h>
+#include <cmath>
 #include <atomic>
 #include <cerrno>
 #include <memory>
@@ -19,6 +20,7 @@
 #include "base/task/bind_post_task.h"
 #include "base/task/thread_pool.h"
 #include "chrome/browser/profiles/profile.h"
+#include "components/sessions/core/session_id.h"
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
 #include "chrome/browser/ui/aux/native_performance_observer.h"
 #include "chrome/browser/ui/aux/little_window_controller.h"
@@ -119,7 +121,8 @@ bool NativePerformanceOwnerInventoryMatches(BrowserWindowInterface* origin,
   return ordinary == 1;
 }
 bool IsNativePerformanceMailboxOperation(const std::string& operation) {
-  return operation == "prepareGuestSplitDropPresentation" ||
+  return operation == "prepareCdpStopMeasurement" || operation == "prepareCdpTakeoverMeasurement" ||
+      operation == "completeCdpRetirementMeasurement" || operation == "prepareGuestSplitDropPresentation" ||
       operation == "prepareGuestDividerFramePresentation" ||
       operation == "prepareGuestTabSwitchPresentation" || operation == "completeGuestPresentation" ||
       operation == "sampleShellMemory" || operation == "sampleProcessMemory" ||
@@ -251,7 +254,7 @@ std::optional<uint64_t> NativePerformanceMailbox::TakeExpected(const std::string
 #endif
   if ((cleanup && operation != "completeLittleWindowPresentation") || !Stable() || !expected_ || *expected_ != operation || running_ ||
       (sample_completion_ ? operation != *sample_completion_ :
-          (operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
+          (operation == "completeCdpRetirementMeasurement" || operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
            operation == "completeLittleWindowPresentation" || operation == "completeAuxWarmWindow"))) { Refuse(); return std::nullopt; }
   running_ = std::move(expected_); expected_.reset(); return sequence_;
 }
@@ -259,6 +262,8 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
   if (!Stable() || !running_ || *running_ != operation || sequence != sequence_) { Refuse(); return false; }
   const auto* producer = record.FindString("producer");
   const auto* status = record.FindString("status");
+  const bool cdp_prepare = operation == "prepareCdpStopMeasurement" || operation == "prepareCdpTakeoverMeasurement";
+  const bool cdp = cdp_prepare || operation == "completeCdpRetirementMeasurement";
   const bool warm = operation == "prepareAuxWarmWindow" || operation == "completeAuxWarmWindow";
   const bool little = operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation";
   const bool preparation = operation == "prepareSubagentMemoryWorkload";
@@ -282,14 +287,40 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
     measured_window_id = child_owner->window_id;
   }
 #endif
-  if (!producer || *producer != (warm ? "aux-native-warm-window" : preparation ? "aux-native-subagent-preparation" : process_memory ? "aux-native-process-memory" : memory ? "aux-native-shell-memory" :
+  if (!producer || *producer != (cdp ? "aux-native-cdp-retirement" : warm ? "aux-native-warm-window" : preparation ? "aux-native-subagent-preparation" : process_memory ? "aux-native-process-memory" : memory ? "aux-native-shell-memory" :
           organization ? "aux-native-organization-work-v1" :
           little ? "aux-native-little-presentation-upperbound" : "aux-native-guest-presentation") ||
       record.FindInt("version") != 1 || !status ||
-      (preparation ? (*status != "ready" && *status != "refused") : memory ? (*status != "sampled" && *status != "refused") :
+      (cdp ? (*status != "armed" && *status != "sampled" && *status != "refused") : preparation ? (*status != "ready" && *status != "refused") : memory ? (*status != "sampled" && *status != "refused") :
           (*status != "ready" && *status != "measured" && *status != "refused")) ||
-      (*status != "refused" && record.FindInt("windowId") != measured_window_id)) {
+      (!cdp && *status != "refused" && record.FindInt("windowId") != measured_window_id)) {
     Refuse(); return false;
+  }
+  if (cdp && *status != "refused") {
+    const auto* mode = record.FindString("mode");
+    const auto* nonce = record.FindString("nonce");
+    const auto* family = record.FindList("registeredRuns");
+    const auto* pages = record.FindList("pages");
+    const auto* root = record.FindString("rootRunId");
+    const auto* incarnation = record.FindString("hostIncarnation");
+    const auto generation = record.FindDouble("connectionGeneration");
+    const auto* producer_sequence = record.FindString("sequence");
+    const auto* armed = record.FindString("armedUs");
+    if (record.FindInt("pid") != getpid() ||
+        record.FindInt("browserWindowId") != ui_->browser()->GetSessionID().id() ||
+        !mode || !nonce || nonce->empty() || !family || family->empty() || family->size() > 128 ||
+        !pages || pages->empty() || pages->size() > 20 || !root || root->empty() ||
+        !incarnation || incarnation->empty() || !generation || !std::isfinite(*generation) || *generation < 1 || std::floor(*generation) != *generation || !producer_sequence || !armed ||
+        (cdp_prepare ? (*status != "armed" || *mode !=
+            (operation == "prepareCdpStopMeasurement" ? "stop" : "takeover")) :
+            (*status != "sampled" || !sample_scope_))) { Refuse(); return false; }
+    auto identity = base::DictValue().Set("mode", *mode).Set("nonce", *nonce)
+        .Set("registeredRuns", family->Clone()).Set("rootRunId", *root)
+        .Set("hostIncarnation", *incarnation).Set("connectionGeneration", *generation)
+        .Set("sequence", *producer_sequence).Set("armedUs", *armed)
+        .Set("browserWindowId", *record.FindInt("browserWindowId"));
+    if (!cdp_prepare && identity != *sample_scope_) { Refuse(); return false; }
+    if (cdp_prepare) sample_scope_ = std::move(identity);
   }
   if (organization && *status != "refused") {
     const auto* scope = record.FindDict("scope");
@@ -312,11 +343,11 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
         base::JSONWriter::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION, &canonical)) json = std::move(canonical);
   } else json = base::WriteJson(wrapper);
   if (!json || json->size() > 16000 || !AdmitRecord()) { Refuse(); return false; }
-  if (preparation || memory || operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
+  if (preparation || memory || operation == "completeCdpRetirementMeasurement" || operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
       operation == "completeLittleWindowPresentation" || operation == "completeAuxWarmWindow" ||
       *status == "refused") { sample_completion_.reset(); sample_scope_.reset(); }
   else {
-    sample_completion_ = warm ? "completeAuxWarmWindow" : organization ? "completeOrganizationWork" :
+    sample_completion_ = cdp ? "completeCdpRetirementMeasurement" : warm ? "completeAuxWarmWindow" : organization ? "completeOrganizationWork" :
         little ? "completeLittleWindowPresentation" : "completeGuestPresentation";
     if (organization) sample_scope_ = record.FindDict("scope")->Clone();
   }

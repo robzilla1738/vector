@@ -1,4 +1,7 @@
 const operations = new Set([
+  "prepareCdpStopMeasurement",
+  "prepareCdpTakeoverMeasurement",
+  "completeCdpRetirementMeasurement",
   "prepareGuestSplitDropPresentation",
   "prepareGuestDividerFramePresentation",
   "prepareGuestTabSwitchPresentation",

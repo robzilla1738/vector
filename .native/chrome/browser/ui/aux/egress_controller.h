@@ -82,6 +82,9 @@ class NativePersonReadReceipt {
   std::string control_generation_;
   std::string retirement_generation_;
 };
+class NativeCdpRetirementMeasurement;
+class NativeCdpMeasurementProducer;
+class NativeStopInputReceipt;
 class EgressController final : public base::SupportsUserData::Data {
  public:
   static EgressController* ForProfile(Profile* profile);
@@ -195,6 +198,25 @@ class EgressController final : public base::SupportsUserData::Data {
                bool allowed);
 
  private:
+  friend class NativeCdpMeasurementProducer;
+  // Fixed private fixture producer only. These APIs collect evidence and do
+  // not mutate authority, select a caller run, or admit any CDP dispatch.
+  static EgressController* ExistingForCdpMeasurement(Profile* profile);
+  bool BeginCdpRetirementMeasurement(bool stop_family);
+  base::DictValue ReadCdpRetirementMeasurementArm() const;
+  bool CurrentCdpMeasurementInput() const;
+  bool CurrentCdpMeasurementPages() const;
+  bool RetireRegisteredRunForMeasuredStop(const std::string& run_id,
+      uint64_t generation, const NativeStopInputReceipt& original_input);
+  bool RetireRegisteredRunImpl(const std::string& run_id, uint64_t generation,
+      const NativeStopInputReceipt* measurement_input);
+  base::DictValue CompleteCdpRetirementMeasurement();
+  struct CdpMeasurementOriginal;
+  std::map<std::string, std::unique_ptr<CdpMeasurementOriginal>> cdp_measurement_originals_;
+  std::unique_ptr<NativeCdpRetirementMeasurement> cdp_measurement_;
+  std::string cdp_measurement_owner_retirement_;
+  uint64_t cdp_measurement_failure_epoch_ = 0;
+  bool cdp_measurement_terminal_family_ = false;
   friend class ::AuxRuntimeHost;
   friend class ::AuxCreatorCloseBrowserTestPeer;
   // Only the local person CallApi ingress creates these bounded one-use tickets.

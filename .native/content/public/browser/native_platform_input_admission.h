@@ -5,6 +5,7 @@
 #include "content/common/content_export.h"
 #include "content/public/browser/weak_document_ptr.h"
 #include "base/time/time.h"
+#include "base/unguessable_token.h"
 #include "ui/gfx/native_ui_types.h"
 namespace content {
 class WebContents;
@@ -29,8 +30,12 @@ class CONTENT_EXPORT NativePlatformInputAdmission final {
     consumed_ = true;
     return true;
   }
+  // Measurement-only opaque carrier; publication requires this admission's
+  // original one-use consumption and grants no effect authority.
+  bool PublishMeasurementId(const base::UnguessableToken& id) const;
  private:
   friend class RenderWidgetHostViewMac;
+  const base::UnguessableToken& measurement_id() const;
   NativePlatformInputAdmission(base::WeakPtr<WebContents> contents,
                                base::WeakPtr<RenderWidgetHost> widget,
                                const WeakDocumentPtr& document,
@@ -42,6 +47,7 @@ class CONTENT_EXPORT NativePlatformInputAdmission final {
   const gfx::NativeEvent event_;
   const base::TimeTicks admitted_ticks_;
   mutable bool consumed_ = false;
+  mutable base::UnguessableToken measurement_id_;
 };
 }
 #endif

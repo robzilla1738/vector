@@ -14,6 +14,12 @@
 #include "chrome/browser/ui/aux/native_startup_presentation_session.h"
 #include "chrome/browser/ui/aux/native_aux_warm_fixture.h"
 #include "chrome/browser/ui/aux/native_private_fixture_methods.h"
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+#include "chrome/browser/ui/aux/native_cdp_measurement_producer.h"
+#include "chrome/browser/ui/aux/native_stop_input_endpoint.h"
+#include "chrome/browser/ui/aux/native_performance_observer.h"
+#include "content/public/browser/native_platform_input_admission.h"
+#endif
 #include <iostream>
 #endif
 #include "chrome/browser/ui/toolbar/back_forward_menu_model.h"
@@ -445,6 +451,19 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
             base::Unretained(browser_)));
   }
 }
+
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
+bool WebUIBrowserUI::AdmitAuxNativeStopMeasurement(
+    const content::NativePlatformInputAdmission& admission) {
+  if (!aux::NativePerformanceObservationEnabled() || !cdp_measurement_producer_ ||
+      !stop_input_endpoint_ || !IsAuthorizedAuxDocument() || !web_ui() ||
+      !web_ui()->GetWebContents() ||
+      web_ui()->GetWebContents() != admission.contents() ||
+      web_ui()->GetRenderFrameHost() != admission.document().AsRenderFrameHostIfValid())
+    return false;
+  return cdp_measurement_producer_->AdmitStopInput(admission);
+}
+#endif
 
 WebUIBrowserUI::~WebUIBrowserUI() {
 #if BUILDFLAG(ENABLE_AUX_SHELL)

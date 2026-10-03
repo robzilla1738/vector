@@ -43,6 +43,8 @@
 #include "chrome/browser/ui/aux/native_guest_presentation_fixture.h"
 #include "chrome/browser/ui/aux/native_little_presentation_fixture.h"
 #include "chrome/browser/ui/aux/native_performance_mailbox.h"
+#include "chrome/browser/ui/aux/native_cdp_measurement_producer.h"
+#include "chrome/browser/ui/aux/native_stop_input_endpoint.h"
 #include "chrome/browser/ui/aux/native_organization_work_fixture.h"
 #include "chrome/browser/ui/aux/native_shell_memory.h"
 #include "chrome/browser/ui/aux/native_process_memory_sampler.h"
@@ -394,6 +396,73 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
           std::move(callback).Run(json && json->size() <= 512, json.value_or(""),
               json ? "" : "unavailable", json ? "" : "Private fixture mailbox unavailable");
         }, GetWeakPtr(), frame->GetWeakDocumentPtr(), std::move(callback)));
+    return;
+  }
+  if (method == "prepareCdpStopMeasurement" || method == "prepareCdpTakeoverMeasurement" ||
+      method == "completeCdpRetirementMeasurement") {
+    auto* contents = web_ui() ? web_ui()->GetWebContents() : nullptr;
+    auto* frame = contents ? contents->GetPrimaryMainFrame() : nullptr;
+    if (!args.empty() || !aux::NativePerformanceObservationEnabled() || !IsAuthorizedAuxDocument() ||
+        !frame || frame != web_ui()->GetRenderFrameHost()) {
+      std::move(callback).Run(false, "", "forbidden", "CDP measurement requires its original fixture owner"); return;
+    }
+    const auto sequence = performance_mailbox_ ? performance_mailbox_->TakeExpected(method) : std::nullopt;
+    if (!sequence) {
+      std::move(callback).Run(false, "", "forbidden", "CDP measurement requires its owned mailbox operation"); return;
+    }
+    if (!cdp_measurement_producer_)
+      cdp_measurement_producer_ = std::make_unique<aux::NativeCdpMeasurementProducer>(browser());
+    if (method == "prepareCdpTakeoverMeasurement") stop_input_endpoint_.reset();
+    const auto operation = method == "completeCdpRetirementMeasurement" ?
+        aux::NativeCdpMeasurementProducer::Operation::kComplete : method == "prepareCdpStopMeasurement" ?
+        aux::NativeCdpMeasurementProducer::Operation::kPrepareStop :
+        aux::NativeCdpMeasurementProducer::Operation::kPrepareTakeover;
+    auto record = operation == aux::NativeCdpMeasurementProducer::Operation::kComplete ?
+        base::DictValue() : cdp_measurement_producer_->Run(operation);
+    auto reply = base::BindOnce([](base::WeakPtr<WebUIBrowserUI> ui,
+        content::WeakDocumentPtr document, uint64_t sequence, std::string operation,
+        RequestCallback callback, base::DictValue record, bool ready) {
+      auto* frame = document.AsRenderFrameHostIfValid();
+      if (!ui || !aux::NativePerformanceObservationEnabled() || !ui->IsAuthorizedAuxDocument() ||
+          !ui->web_ui() || !ui->web_ui()->GetWebContents() || !frame ||
+          frame != ui->web_ui()->GetRenderFrameHost() ||
+          frame != ui->web_ui()->GetWebContents()->GetPrimaryMainFrame()) {
+        std::move(callback).Run(false, "", "forbidden", "CDP measurement owner changed"); return;
+      }
+      if (ready && operation == "completeCdpRetirementMeasurement") {
+        record = ui->cdp_measurement_producer_->Run(aux::NativeCdpMeasurementProducer::Operation::kComplete);
+        ui->stop_input_endpoint_.reset();
+      }
+      if (!ready) {
+        if (ui->cdp_measurement_producer_)
+          ui->cdp_measurement_producer_->Run(aux::NativeCdpMeasurementProducer::Operation::kComplete);
+        record = base::DictValue().Set("producer", "aux-native-cdp-retirement")
+            .Set("version", 1).Set("status", "refused");
+      }
+      if (!ui->performance_mailbox_ || !ui->performance_mailbox_->EmitReply(sequence, operation, record)) {
+        std::move(callback).Run(false, "", "forbidden", "CDP measurement reply changed"); return;
+      }
+      const auto json = base::WriteJson(record);
+      std::move(callback).Run(json && json->size() <= 16000, json.value_or(""),
+          json ? "" : "unavailable", json ? "" : "CDP measurement unavailable");
+    }, GetWeakPtr(), frame->GetWeakDocumentPtr(), *sequence, method,
+        std::move(callback), std::move(record));
+    if (method == "prepareCdpStopMeasurement") {
+      stop_input_endpoint_.reset();
+      stop_input_endpoint_ = std::make_unique<aux::NativeStopInputEndpoint>(frame, cdp_measurement_producer_.get());
+      stop_input_endpoint_->Prepare(base::BindOnce([](base::WeakPtr<WebUIBrowserUI> ui,
+          base::OnceCallback<void(bool)> reply, bool ready) {
+        if (!ready || !ui || !ui->cdp_measurement_producer_) {
+          std::move(reply).Run(false); return;
+        }
+        ui->cdp_measurement_producer_->WaitForFreshDispatches(std::move(reply));
+      }, GetWeakPtr(), std::move(reply)));
+    } else {
+      if (method == "completeCdpRetirementMeasurement") {
+        if (stop_input_endpoint_) stop_input_endpoint_->WaitForMeasuredCompletion(std::move(reply));
+        else std::move(reply).Run(true);
+      } else cdp_measurement_producer_->WaitForFreshDispatches(std::move(reply));
+    }
     return;
   }
   if (method == "prepareLittleWindowPresentation" || method == "completeLittleWindowPresentation") {

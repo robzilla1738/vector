@@ -28,8 +28,9 @@ export async function nativeWindowExecutable() {
   });
 }
 
-export async function preflight() {
-  const executable = await nativeWindowExecutable();
+export async function preflight({ compilerArtifact } = {}) {
+  const executable = compilerArtifact === undefined ? await nativeWindowExecutable() :
+    readNativeWindowCompilerExecutable(compilerArtifact, source);
   return withNativeSlot(() => JSON.parse(execFileSync(executable, ['trusted'], { encoding: 'utf8', timeout: 10_000 })));
 }
 

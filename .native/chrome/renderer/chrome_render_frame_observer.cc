@@ -4,6 +4,7 @@
 
 #include "chrome/renderer/chrome_render_frame_observer.h"
 #if defined(AUX_SHELL_ENABLED)
+#include "chrome/renderer/aux_stop_input_agent.h"
 #include "chrome/renderer/aux_recorder_agent.h"
 #include "chrome/renderer/aux_person_observer_agent.h"
 #endif
@@ -230,6 +231,7 @@ ChromeRenderFrameObserver::ChromeRenderFrameObserver(
 
 #if defined(AUX_SHELL_ENABLED)
   if (render_frame->IsMainFrame()) {
+    new chrome::AuxStopInputAgent(render_frame);
     new chrome::AuxRecorderAgent(render_frame);
     new chrome::AuxPersonObserverAgent(render_frame);
   }

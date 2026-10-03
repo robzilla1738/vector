@@ -91,6 +91,7 @@
 #include "ui/display/screen.h"
 #include "ui/events/blink/did_overscroll_params.h"
 #include "ui/events/cocoa/cocoa_event_utils.h"
+#include "ui/events/event_utils.h"
 #include "ui/events/gesture_detection/gesture_provider_config_helper.h"
 #include "ui/events/keycodes/dom/dom_code.h"
 #include "ui/events/keycodes/dom/dom_keyboard_layout_map.h"
@@ -2137,6 +2138,7 @@ void RenderWidgetHostViewMac::ForwardKeyboardEventWithCommands(
 void RenderWidgetHostViewMac::RouteOrProcessMouseEvent(
     const blink::WebMouseEvent& const_web_event) {
   blink::WebMouseEvent web_event = const_web_event;
+  ApplyNativeMouseMeasurement(web_event);
   ui::LatencyInfo latency_info;
   latency_info.AddLatencyNumber(ui::INPUT_EVENT_LATENCY_UI_COMPONENT);
   if (ShouldRouteEvents()) {
@@ -2191,10 +2193,25 @@ void RenderWidgetHostViewMac::RouteOrProcessWheelEvent(
   }
 }
 
+void RenderWidgetHostViewMac::ApplyNativeMouseMeasurement(blink::WebMouseEvent& event) {
+  auto measurement = std::move(native_mouse_measurement_);
+  native_mouse_measurement_.reset();
+  // Strip incoming IDs: only the immediately paired associated native
+  // admission can populate this carrier, before ordinary input routing.
+  event.SetNativeMeasurementInputId({});
+  if (measurement && event.GetType() == WebInputEvent::Type::kMouseUp &&
+      event.button == blink::WebMouseEvent::Button::kLeft &&
+      event.TimeStamp() == measurement->event_ticks &&
+      measurement->binding == native_input_binding_ &&
+      HasNativeInputAdmissionForDocument(measurement->document))
+    event.SetNativeMeasurementInputId(measurement->id);
+}
 void RenderWidgetHostViewMac::ForwardMouseEvent(
     const blink::WebMouseEvent& web_event) {
+  blink::WebMouseEvent forwarded(web_event);
+  ApplyNativeMouseMeasurement(forwarded);
   if (host())
-    host()->ForwardMouseEvent(web_event);
+    host()->ForwardMouseEvent(forwarded);
 
   if (web_event.GetType() == WebInputEvent::Type::kMouseLeave)
     SetTooltipText(std::u16string());
@@ -2548,6 +2565,7 @@ void RenderWidgetHostViewMac::SetRemoteAccessibilityWindowToken(
 // forward them to the RenderWidgetHostNSViewHostHelper implementation:
 
 void RenderWidgetHostViewMac::RetireNativeInputBinding() {
+  native_mouse_measurement_.reset();
   native_input_ready_ = false;
   native_input_binding_.clear();
   native_input_document_ = {};
@@ -2675,6 +2693,7 @@ void RenderWidgetHostViewMac::PublishNativeInputBinding() {
 void RenderWidgetHostViewMac::AdmitNativeInputEvent(
     const std::string& binding,
     const std::vector<uint8_t>& native_event_data) {
+  native_mouse_measurement_.reset();
   const auto admitted_ticks = base::TimeTicks::Now();
   if (binding.empty() || binding != native_input_binding_ ||
       !HasNativeInputAdmissionForDocument(native_input_document_) ||
@@ -2713,7 +2732,18 @@ void RenderWidgetHostViewMac::AdmitNativeInputEvent(
   const NativePlatformInputAdmission admission(
       contents->GetWeakPtr(), widget->GetWeakPtr(), document, native_event,
       admitted_ticks);
+  auto original_view = weak_factory_.GetWeakPtr();
   GetContentClient()->browser()->WillDispatchNativeInput(admission);
+  if (!original_view || admission.measurement_id().is_empty() ||
+      type != NSEventTypeLeftMouseUp || binding != native_input_binding_ ||
+      !HasNativeInputAdmissionForDocument(document))
+    return;
+  const auto original_ticks = ui::EventTimeStampFromSeconds(
+      [native_event.Get() timestamp]);
+  if (original_ticks.is_null() || original_ticks > admitted_ticks)
+    return;
+  native_mouse_measurement_ = NativeMouseMeasurement{
+      admission.measurement_id(), document, binding, original_ticks};
 }
 
 void RenderWidgetHostViewMac::ForwardKeyboardEventWithCommands(

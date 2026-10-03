@@ -61,6 +61,7 @@ class TrackedElementHandler;
 }  // namespace ui
 
 class RealboxHandler;
+namespace content { class NativePlatformInputAdmission; }
 class WebUIBrowserUI;
 namespace password_manager {
 class PasswordImporter;
@@ -81,6 +82,8 @@ class NativeOrganizationWorkFixture;
 class NativePerformanceMailbox;
 class NativeShellMemorySampler;
 class NativeProcessMemorySampler;
+class NativeCdpMeasurementProducer;
+class NativeStopInputEndpoint;
 #if BUILDFLAG(ENABLE_AUX_SHELL)
 class NativeStartupPresentationSession;
 class NativeAuxWarmFixture;
@@ -166,6 +169,9 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
   base::WeakPtr<BrowserWindowInterface> NativeWarmCleanupWindowForTesting() const;
 #endif
   void ObserveAuxPerformanceInput(const gfx::NativeEvent& event);
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  bool AdmitAuxNativeStopMeasurement(const content::NativePlatformInputAdmission& admission);
+#endif
   bool DeferAuxGuestTabSwitchForTesting(const gfx::NativeEvent& event,
       base::OnceClosure registered_effect);
 #endif
@@ -365,6 +371,8 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
   std::unique_ptr<aux::NativeShellMemorySampler> shell_memory_sampler_;
   std::unique_ptr<aux::NativeProcessMemorySampler> process_memory_sampler_;
 #if BUILDFLAG(ENABLE_AUX_SHELL)
+  std::unique_ptr<aux::NativeCdpMeasurementProducer> cdp_measurement_producer_;
+  std::unique_ptr<aux::NativeStopInputEndpoint> stop_input_endpoint_;
   std::unique_ptr<aux::NativeStartupPresentationSession> startup_presentation_session_;
   std::unique_ptr<aux::NativeAuxWarmFixture> warm_window_fixture_;
 #endif

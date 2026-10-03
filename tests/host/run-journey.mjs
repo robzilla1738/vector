@@ -16,6 +16,7 @@ import { journeyRegistry } from './journeys/index.mjs';
 import { createJourneyApp } from './lib/app.mjs';
 import { createRpc } from './lib/rpc.mjs';
 import { createAxClient, preflight } from './lib/ax.mjs';
+import { retainNativeWindowCompiler } from './lib/native-window-compiler-artifact.mjs';
 import { createFixture } from './lib/fixture.mjs';
 import { createAppearanceProvenance, createPipAppearanceProvenance } from './lib/appearance-provenance.mjs';
 import { createEvidence } from './lib/evidence.mjs';
@@ -26,6 +27,8 @@ import { acquireNativeSlot } from '../../scripts/native-slot.mjs';
 const root = resolve(import.meta.dirname, '../..');
 const { values } = parseArgs({ options: {
   journey: { type: 'string' }, app: { type: 'string' }, output: { type: 'string' },
+  'native-window-manifest': { type: 'string' }, 'native-window-manifest-sha': { type: 'string' },
+  'native-window-audit': { type: 'string' }, 'native-window-audit-sha': { type: 'string' },
   attempt: { type: 'string', default: '1' }, attended: { type: 'boolean' }, appearance: { type: 'boolean' }, narrow: { type: 'boolean' },
 } });
 assert.ok(!values.narrow || values.appearance, '--narrow requires --appearance');
@@ -51,6 +54,11 @@ const manifest = { schema: 2, id: journey.id, features: journey.features, needs:
   productIdentity: identity, shellDigest: JSON.parse(readFileSync(join(root, 'chromium/shell-assets/manifest.json'), 'utf8')).sha256,
   attempt: Number(values.attempt), startedAt: new Date().toISOString(), steps: [], captures: [],
 };
+const helperValues = ['native-window-manifest', 'native-window-manifest-sha', 'native-window-audit', 'native-window-audit-sha'].map(key => values[key]);
+assert.ok(helperValues.every(Boolean) || helperValues.every(value => value === undefined), 'All four externally approved helper pins are required together');
+const helperAdmission = helperValues.every(Boolean) ? { manifestPath: resolve(helperValues[0]), manifestSha256: helperValues[1], auditPath: resolve(helperValues[2]), auditSha256: helperValues[3] } : undefined;
+assert.ok(journey.id !== 'cdp-retirement-performance' || helperAdmission, 'M4 requires externally approved original input-helper artifacts');
+const compilerArtifact = helperAdmission ? retainNativeWindowCompiler(helperAdmission) : undefined;
 let app, ax, fixture, evidence, appearance, pipAppearance;
 async function configureAppearance() {
   if (!values.appearance) return;
@@ -69,7 +77,7 @@ let deadline;
 const inputs = [];
 const inputCommands = new Set(['press', 'click', 'focus', 'key', 'type', 'drag', 'scroll', 'menu', 'contextMenu', 'savePanel', 'openPanel']);
 async function execute() {
-  const permissions = await preflight();
+  const permissions = await preflight(compilerArtifact === undefined ? {} : { compilerArtifact });
   assert.ok(permissions.accessibility && permissions.screenRecording, 'Accessibility and Screen Recording are required');
   fixture = await createFixture({ tls: journey.fixture?.tls === true });
   let model;
@@ -91,7 +99,7 @@ async function execute() {
   }
   await app.start();
   signal.throwIfAborted();
-  ax = await createAxClient(app.pid);
+  ax = await createAxClient(app.pid, compilerArtifact === undefined ? {} : { compilerArtifact });
   signal.throwIfAborted();
   const observedAx = new Proxy({}, { get(_target, property) {
     const member = ax[property];
@@ -171,6 +179,14 @@ async function execute() {
       if (failure) throw failure;
       return workload;
     },
+    async measureCdpRetirement(options) {
+      const { collectNativeCdpRetirement } = await import('./lib/native-cdp-retirement-collector.mjs');
+      const { execFileSync } = await import('node:child_process');
+      return measurePerformance('performance', () => collectNativeCdpRetirement({ ...options,
+        app, mailbox: app.configurePerformanceMailbox(), signal, ax: observedAx, compilerArtifact, helperAdmission,
+        candidate: memoryCandidate(), readIdentity: () => app.identity(),
+        readPower: () => execFileSync('/usr/bin/pmset', ['-g', 'batt'], { encoding: 'utf8', timeout: 5000 }) }));
+    },
     async measureProcessMemory({ mode, workload, idlePageIds }) {
       const { collectNativeMemoryBudget } = await import('./lib/native-memory-budget.mjs');
       const reader = await ownedMemoryReader();
@@ -213,7 +229,7 @@ async function execute() {
       await ax.close();
       ax = undefined;
       await app.restart(options);
-      ax = await createAxClient(app.pid);
+      ax = await createAxClient(app.pid, compilerArtifact === undefined ? {} : { compilerArtifact });
       assertJourneyIdentity(await app.identity(), identity);
       await configureAppearance();
       if (narrowGenerations) await narrowGenerations.prepare();
@@ -225,7 +241,7 @@ async function execute() {
       if (options?.cold) { appearance = undefined; pipAppearance = undefined; await ax.close(); ax = undefined; }
       const receipt = await app.openAux(url, options);
       if (options?.cold) {
-        ax = await createAxClient(app.pid);
+        ax = await createAxClient(app.pid, compilerArtifact === undefined ? {} : { compilerArtifact });
         assertJourneyIdentity(await app.identity(), identity);
         await configureAppearance();
         if (narrowGenerations) await narrowGenerations.prepare();
@@ -313,7 +329,7 @@ try {
     catch { process.exitCode = 1; } // The original generation retains its actual cleanup error.
   }
   for (const [name, cleanup] of [['ax', () => ax?.close()], ['app', () => app?.quit()], ['fixture', () => fixture?.close()]]) {
-    try { await cleanup(); } catch (error) {
+    try { await cleanup(); if (name === 'ax') compilerArtifact?.release(); } catch (error) {
       (manifest.cleanupErrors ??= []).push({ name, error: error.message });
       process.exitCode = 1;
     }

@@ -223,6 +223,7 @@
 #include "chrome/browser/ui/aux/egress_controller.h"
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/ui/aux/native_cdp_input_mac.h"
+#include "chrome/browser/ui/aux/native_cdp_stop_input_mac.h"
 #endif
 #include "chrome/browser/ui/aux/result_preview.h"
 #include "chrome/browser/ui/aux/zap_controller.h"
@@ -7451,6 +7452,11 @@ ChromeContentBrowserClient::GetAdmittedNonNetworkOpaqueOrigin(
 void ChromeContentBrowserClient::WillDispatchNativeInput(
     const content::NativePlatformInputAdmission& admission) {
 #if BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(IS_MAC)
+#if BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  // The exact shell fixture admission pairs a measurement token with this
+  // original mouse-up. It does not grant or retire browser effect authority.
+  if (aux::AdmitNativeCdpStopMeasurementInput(admission)) return;
+#endif
   // Retirement is synchronous and precedes forwarding the original input.
   if (auto input = aux::RetireForNativeCdpPersonInput(admission))
     aux::PublishNativeCdpPersonTakeover(*input);

@@ -8093,6 +8093,7 @@ test("unit_tests") {
       "../browser/ui/aux/native_aux_warm_fixture_unittest.cc",
       "../browser/ui/aux/native_startup_presentation_session_unittest.cc",
       "../browser/ui/aux/native_startup_viewport_unittest.cc",
+      "../browser/ui/aux/native_cdp_retirement_measurement_unittest.cc",
       "../browser/ui/aux/native_performance_mailbox_unittest.cc",
       "../browser/ui/aux/native_process_footprint_unittest.cc",
       "../browser/ui/aux/native_runtime_peer_identity_unittest.cc",

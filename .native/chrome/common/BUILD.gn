@@ -691,6 +691,7 @@ mojom("mojo_bindings") {
   sources = [
     "actor.mojom",
     "chrome_render_frame.mojom",
+    "aux_stop_input.mojom",
     "aux_recorder.mojom",
     "aux_person_observer.mojom",
     "google_accounts_private_api_extension.mojom",

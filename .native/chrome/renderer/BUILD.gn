@@ -121,7 +121,8 @@ static_library("renderer") {
 
   defines = []
   if (enable_aux_shell) {
-    sources += [ "aux_recorder_agent.cc", "aux_recorder_agent.h",
+    sources += [ "aux_stop_input_agent.cc", "aux_stop_input_agent.h",
+                 "aux_recorder_agent.cc", "aux_recorder_agent.h",
                  "aux_person_observer_agent.cc", "aux_person_observer_agent.h" ]
     defines += [ "AUX_SHELL_ENABLED" ]
   }

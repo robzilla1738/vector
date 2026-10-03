@@ -47,6 +47,8 @@ class NativePersonObserverController;
 class CredentialFill;
 class NativeOrganizationWorkFixture;
 class NativeProcessMemorySampler;
+class NativeStopInputEndpoint;
+class NativeStopInputReceipt;
 }  // namespace aux
 
 // One authenticated runtime connection per regular Chromium Profile. The
@@ -86,6 +88,10 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
       base::OnceCallback<void(base::DictValue)> callback);
 
  private:
+  friend class aux::NativeStopInputEndpoint;
+  static base::WeakPtr<AuxRuntimeHost> ExistingForMeasuredStop(Profile* profile);
+  void CallApiWithMeasuredStop(std::string method, std::string params_json,
+      ResponseCallback callback, std::unique_ptr<aux::NativeStopInputReceipt> original_input);
   friend class aux::NativeOrganizationWorkFixture;
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
   friend class aux::NativeProcessMemorySampler;

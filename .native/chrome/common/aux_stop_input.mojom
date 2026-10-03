@@ -1,0 +1,15 @@
+// Copyright 2026 The Aux Authors
+module chrome.mojom;
+import "mojo/public/mojom/base/unguessable_token.mojom";
+
+// Browser-created fixed test fixture endpoint. No caller timestamp, command,
+// script, frame, page, or child-list selector exists. An absent token still
+// uses the ordinary local Stop path and cannot produce measurement evidence.
+interface AuxStopInputSink {
+  Stop(mojo_base.mojom.UnguessableToken? original_input, string run_id)
+      => (bool accepted, string original_result_json);
+};
+interface AuxStopInput {
+  Prepare(pending_associated_remote<AuxStopInputSink> sink) => (bool ready);
+  Retire();
+};

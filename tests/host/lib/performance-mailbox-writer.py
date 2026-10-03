@@ -6,6 +6,7 @@ import stat
 import sys
 
 OPERATIONS = {
+    "prepareCdpStopMeasurement", "prepareCdpTakeoverMeasurement", "completeCdpRetirementMeasurement",
     "sampleShellMemory", "sampleProcessMemory", "sampleStockProcessMemory", "prepareStockWarmWindow", "completeStockWarmWindow", "prepareAuxWarmWindow", "completeAuxWarmWindow", "prepareSubagentMemoryWorkload",
     "prepareLittleWindowPresentation", "completeLittleWindowPresentation",
     "prepareOrganizationAutoArchiveWork", "prepareOrganizationLiveFolderWork", "completeOrganizationWork",

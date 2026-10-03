@@ -52,6 +52,7 @@
 #include "chrome/browser/ui/aux/cdp_broker.h"
 #include "chrome/browser/ui/aux/content_blocking_controller.h"
 #include "chrome/browser/ui/aux/egress_controller.h"
+#include "chrome/browser/ui/aux/native_cdp_measurement_producer.h"
 #include "chrome/browser/ui/aux/cosmetic_controller.h"
 #include "chrome/browser/ui/aux/credential_fill.h"
 #include "chrome/browser/ui/aux/method_registry.h"
@@ -256,9 +257,22 @@ AuxRuntimeHost::~AuxRuntimeHost() {
                      std::move(worker_thread_)));
 }
 
+base::WeakPtr<AuxRuntimeHost> AuxRuntimeHost::ExistingForMeasuredStop(Profile* profile) {
+  auto* host = profile ? static_cast<AuxRuntimeHost*>(profile->GetUserData(&kAuxRuntimeHostKey)) : nullptr;
+  return host && profile && !profile->IsOffTheRecord() && host->profile_ == profile &&
+      !host->test_dispatch_ && !host->shutting_down_ && host->admitted_native_generation_
+      ? host->GetWeakPtr() : base::WeakPtr<AuxRuntimeHost>();
+}
 void AuxRuntimeHost::CallApi(std::string method,
                              std::string params_json,
                              ResponseCallback callback) {
+  CallApiWithMeasuredStop(std::move(method), std::move(params_json),
+                         std::move(callback), nullptr);
+}
+void AuxRuntimeHost::CallApiWithMeasuredStop(std::string method,
+                             std::string params_json,
+                             ResponseCallback callback,
+                             std::unique_ptr<aux::NativeStopInputReceipt> original_input) {
   if (shutting_down_) {
     Response response;
     response.error_code = "unavailable";
@@ -327,7 +341,11 @@ void AuxRuntimeHost::CallApi(std::string method,
       // Synchronous native retirement precedes all worker forwarding. The
       // authenticated registered ancestry resolves descendants, including
       // completed groups; no runtime receipt or supplied child list is used.
-      if (!egress->RetireRegisteredRun(*run_id, admitted_native_generation_)) {
+      const bool retired = method == "runs.cancel" && original_input
+          ? egress->RetireRegisteredRunForMeasuredStop(*run_id,
+                admitted_native_generation_, *original_input)
+          : egress->RetireRegisteredRun(*run_id, admitted_native_generation_);
+      if (!retired) {
         std::move(callback).Run({false, "", "resource_exhausted", "Run retirement could not be retained"});
         return;
       }
