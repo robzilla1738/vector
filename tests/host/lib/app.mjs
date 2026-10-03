@@ -10,6 +10,16 @@ import { createRpc, validateDescriptor } from './rpc.mjs';
 import { createAppearanceStream, createPipAppearanceStream } from './appearance-stream.mjs';
 import { createPerformanceMailbox, preparePerformanceMailbox } from './performance-mailbox.mjs';
 import { createStartupTrace } from './startup-evidence.mjs';
+import { readPackagedRuntimePair } from './packaged-runtime-pair-artifact.mjs';
+import { createPrivateWindowStream } from './private-window-stream.mjs';
+import { createPrivateObservationOwner } from './private-observation-owner.mjs';
+
+const privateApps = new WeakMap();
+export function readPrivateAppObservation(app, pair) {
+  if (privateApps.get(app) !== pair) throw new Error('Foreign private observation App owner');
+  readPackagedRuntimePair(pair);
+  return app.privateObservation;
+}
 
 function externalFixtureUrl(url) {
   const fixture = new URL(url);
@@ -101,8 +111,11 @@ export function observeJourneyProcess({ child, externalPid, generation, spawnErr
     exitStatusAvailable: !externalPid && (child?.exitCode != null || child?.signalCode != null) };
 }
 
-export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRoot }) {
+export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRoot, admittedPair }) {
+  const privatePair = admittedPair === undefined ? null : readPackagedRuntimePair(admittedPair);
+  if (privatePair && (suppliedRoot !== undefined || Object.keys(launch).length || realpathSync(appPath) !== privatePair.bundle)) throw new Error('Private observation requires only its original fixed admitted bundle');
   const bundle = validateJourneyBundle(appPath);
+  privatePair?.validate();
   const profileRoot = suppliedRoot ? resolve(suppliedRoot) : mkdtempSync('/tmp/aux-native-journey-');
   if (relative(realpathSync('/tmp'), realpathSync(profileRoot)).includes('/')) throw new Error('Journey root must be directly inside /tmp');
   const rootInfo = lstatSync(profileRoot);
@@ -119,7 +132,8 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   const launchArgs = launch.args ?? [];
   if (!Array.isArray(launchArgs) || launchArgs.some(arg => typeof arg !== 'string' || /^(--user-data-dir|--profile-directory|--remote-debugging|--password-store|--use-mock-keychain)/.test(arg)))
     throw new Error('Launch args must preserve disposable Profile and disabled public debugging');
-  const env = { ...process.env, ...launch.env, ...acceptance?.env };
+  const env = privatePair ? { PATH: '/usr/bin:/bin:/usr/sbin:/sbin', LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8',
+    HOME: profileRoot, TMPDIR: profileRoot } : { ...process.env, ...launch.env, ...acceptance?.env };
   // Never inherit a developer token unless this launcher made its own marker.
   if (!acceptance) delete env.AUX_DEV_ACCEPTANCE_TOKEN;
   let appearanceStream, pipAppearanceStream, appearanceDetach;
@@ -133,6 +147,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     appearanceStream?.dispose(); appearanceStream = undefined;
     pipAppearanceStream?.dispose(); pipAppearanceStream = undefined;
   }
+  let privateOwner, privateStream, privateStarted = false, privateWindowId, privateCloseReceipt, privateCaptureCandidate;
   let child;
   let externalPid;
   let externalGeneration;
@@ -203,6 +218,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     return child && child.exitCode === null && child.signalCode === null && !spawnError;
   }
   async function descriptor(name = activeProfile, { timeoutMs = 30_000 } = {}) {
+    if (privatePair) throw new Error('Private observation has an inactive runtime and no descriptor');
     nativeProfileName(name);
     if (startupAttachment && name !== "Default") throw new Error("Attached startup owns only its original Default Profile");
     const attachedOwner = startupOwner;
@@ -250,7 +266,45 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     }
     throw new Error(`Timed out waiting for disposable Profile runtime (${name}); browser stderr retained in launcher.log`);
   }
+  function spawnDirect(args) {
+    child = spawn(join(bundle, 'Contents/MacOS/Aux'), args, { env: { ...env, AUX_NATIVE_SLOT_TOKEN: slot.token }, stdio: ['ignore', 'ignore', 'pipe'] });
+    child.once('error', error => { spawnError = error; });
+    if (privatePair) {
+      const originalPid = child.pid ?? null, originalGeneration = generation;
+      child.once('close', (code, signal) => { privateCloseReceipt = Object.freeze({ pid: originalPid, generation: originalGeneration, code, signal }); });
+    }
+    child.stderr.on('data', bytes => { stderr = (stderr + bytes.toString()).slice(-65536); });
+  }
+  const privateCandidate = () => ({ productIdentity: privatePair.productIdentity, native: privatePair.native, shellDigest: privatePair.shellDigest,
+    harnessCommit: execFileSync('git', ['-C', resolve(import.meta.dirname, '../../..'), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+    moduleSha256: createHash('sha256').update(readFileSync(resolve(import.meta.dirname, '../private-home-capture.mjs'))).digest('hex') });
+  async function startPrivateObservation() {
+    if (arguments.length || !privatePair || privateStarted || startupAttachment || child || externalPid) throw new Error('Private observation is a fixed zero-argument one-use original launch');
+    privatePair.validate(); privateStarted = true;
+    try {
+      slot = await acquireNativeSlot(); privatePair.validate();
+      generation += 1; spawnError = undefined; stderr = ''; privateCaptureCandidate = privateCandidate();
+      spawnDirect([`--user-data-dir=${userDataDir}`, '--profile-directory=Default', '--incognito',
+        '--no-first-run', '--no-default-browser-check', '--use-mock-keychain', '--password-store=basic',
+        '--enable-logging', `--log-file=${nativeLog}`, '--disable-background-networking', '--disable-component-update', '--disable-sync',
+        '--force-renderer-accessibility', '--aux-native-appearance-observer']);
+      const observedChild = child, observedPid = child.pid, observedGeneration = generation;
+      privateStream = createPrivateWindowStream({ pid: observedPid, generation: observedGeneration, candidate: privateCaptureCandidate });
+      privateOwner = createPrivateObservationOwner({ child, generation, pair: privatePair, stream: privateStream });
+      const onData = bytes => privateStream.write(bytes, { pid: observedPid, generation: observedGeneration });
+      observedChild.stderr.on('data', onData);
+      observedChild.once('close', () => observedChild.stderr.off('data', onData));
+      const receipt = await privateOwner.discover(); privateWindowId = receipt.window.windowId;
+      privateOwner.assertLive();
+      if (existsSync(join(userDataDir, 'DevToolsActivePort'))) throw new Error('Private observation exposed a public debugging port');
+      return api;
+    } catch (error) {
+      try { await quit(); } catch (cleanup) { throw new AggregateError([error, cleanup], 'Private observation failed with original cleanup debt', { cause: error }); }
+      throw error;
+    }
+  }
   async function start({ externalUrl, auxUrl, background = false } = {}) {
+    if (privatePair) throw new Error('Private observation cannot use ordinary runtime startup');
     if (startupAttachment) throw new Error("Attached startup cannot use another launcher");
     if (running()) throw new Error('Journey Aux is already running');
     if (auxUrl) {
@@ -278,9 +332,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       }
       else {
         externalPid = undefined;
-        child = spawn(join(bundle, 'Contents/MacOS/Aux'), args, { env: { ...env, AUX_NATIVE_SLOT_TOKEN: slot.token }, stdio: ['ignore', 'ignore', 'pipe'] });
-        child.once('error', error => { spawnError = error; });
-        child.stderr.on('data', bytes => { stderr = (stderr + bytes.toString()).slice(-65536); });
+        spawnDirect(args);
       }
       const value = await descriptor();
       recordStartup('authenticated-descriptor-ready');
@@ -312,6 +364,21 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
   }
   async function quit() {
     disposeAppearance(); disposePerformance();
+    if (privatePair) {
+      privateOwner?.retire(new Error('Original private observation stopping'));
+      if (child && !privateCloseReceipt) {
+        if (Number.isInteger(child.pid) && child.pid > 0 && child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
+        const deadline = Date.now() + 5000;
+        while (!privateCloseReceipt && Date.now() < deadline) await delay(50);
+        if (!privateCloseReceipt) {
+          if (Number.isInteger(child.pid) && child.pid > 0 && child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+          const killDeadline = Date.now() + 5000;
+          while (!privateCloseReceipt && Date.now() < killDeadline) await delay(50);
+        }
+        if (!privateCloseReceipt) throw new Error('Original private child has no close receipt; native slot and artifact retained');
+      }
+      slot?.release(); slot = undefined; return privateCloseReceipt;
+    }
     if (startupAttachment) {
       startupRetired = true;
       return await startupAttachment.stop();
@@ -329,7 +396,17 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     slot?.release(); slot = undefined;
   }
   const api = {
+    startPrivateObservation,
+    get privateObservation() {
+      if (!privatePair || !privateOwner) throw new Error('No original private observation owner');
+      privateOwner.assertLive();
+      return Object.freeze({ pid: privateOwner.pid, generation: privateOwner.generation, windowId: privateWindowId,
+        candidate: structuredClone(privateCaptureCandidate), packagedRuntimeArtifact: privatePair.artifact, runtimeStatus: 'inactive-private',
+        observe: selection => { if (selection?.windowId !== privateWindowId) return Promise.reject(new Error('Foreign private observation window')); return privateOwner.observe(selection); },
+        assertLive: privateOwner.assertLive, closed: privateOwner.closed });
+    },
     async attachStartup(owner) {
+      if (privatePair) throw new Error('Private observation cannot borrow another startup owner');
       if (startupAttachment || child || externalPid || launchUncertain)
         throw new Error('App already has an original launch owner');
       const { readAuxStartupAttachment } = await import('./startup-helper-launch.mjs');
@@ -387,6 +464,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       return pipAppearanceStream.observe(selection);
     },
     prepareFixtureEnv(extra, fixtureUrl) {
+      if (privatePair) throw new Error('Private observation uses only its original fixed environment');
       if (running()) throw new Error('Fixture transport must be prepared before launch');
       validateFixtureEnv(extra, fixtureUrl, userDataDir);
       Object.assign(env, extra);
@@ -398,10 +476,10 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       acceptance.markers.push(...added.markers);
       return {profileId, restartRequired:true};
     },
-    start, async restart(options) { if (startupAttachment) throw new Error("Attached startup cannot use another launcher"); await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
-    async openExternal(url) { if (startupAttachment) throw new Error("Attached startup is observation-only"); if (!running()) throw new Error("Disposable Aux is not running"); return launchUrl(url, [], api.pid); },
+    start, async restart(options) { if (startupAttachment || privatePair) throw new Error("Attached startup cannot use another launcher"); await quit(); externalPid = undefined; externalGeneration = undefined; return start(options); }, quit, profileRoot, userDataDir,
+    async openExternal(url) { if (startupAttachment || privatePair) throw new Error("Attached startup is observation-only"); if (!running()) throw new Error("Disposable Aux is not running"); return launchUrl(url, [], api.pid); },
     async openAux(url, {cold = false, background = false} = {}) {
-      if (startupAttachment) throw new Error("Attached startup is observation-only");
+      if (startupAttachment || privatePair) throw new Error("Attached startup is observation-only");
       // Validate before quitting the existing owned generation.
       validateAuxEnvelope(url);
       if (cold) { await quit(); externalPid = undefined; externalGeneration = undefined; return start({auxUrl:url,background}); }
@@ -409,7 +487,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       return launchUrl(url, [], api.pid, true, background);
     },
     async appleScript(body) {
-      if (startupAttachment) throw new Error("Attached startup is observation-only");
+      if (startupAttachment || privatePair) throw new Error("Attached startup is observation-only");
       if (!running()) throw new Error("Disposable Aux is not running");
       ensureUrlLauncher();
       const pid = api.pid;
@@ -427,6 +505,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     get processObservation() { return observeJourneyProcess({ child, externalPid, generation, spawnError }); },
     get pid() { if (startupAttachment) { assertStartupAttachment(); return startupAttachment.browserPid; } return externalPid ?? child?.pid; }, get log() { return stderr + (existsSync(nativeLog) ? readFileSync(nativeLog, "utf8").slice(-65536) : ""); }, descriptor,
     async identity() {
+      if (privatePair) throw new Error('Private observation has no active runtime identity');
       const attachedOwner = startupOwner;
       if (startupAttachment) assertStartupAttachment();
       const describe = await createRpc(() => descriptor())('runtime.describe');
@@ -440,5 +519,6 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
       return { native: { ...describe.nativeIdentity, manifestHash }, runtime: describe.runtimeIdentity };
     },
   };
+  if (privatePair) privateApps.set(api, privatePair);
   return api;
 }

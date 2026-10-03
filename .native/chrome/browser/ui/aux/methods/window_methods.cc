@@ -8,6 +8,7 @@
 #include "base/command_line.h"
 #include <cmath>
 #include <cstdio>
+#include <optional>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -33,6 +34,7 @@
 #include "chrome/browser/buildflags.h"
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
+#include "chrome/browser/ui/aux/method_registry.h"
 #include "chrome/browser/ui/aux/native_aux_warm_fixture.h"
 #include "chrome/browser/ui/aux/native_aux_warm_owner.h"
 #include "chrome/browser/ui/aux/native_startup_presentation_session.h"
@@ -745,6 +747,34 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
               aux::IsQuickAskWindow(ui->browser_) ? "quick-ask" :
               aux::IsLittleWindow(ui->browser_) ? "little" : "normal");
           result.Set("producer", "aux-native-appearance-snapshot"); result.Set("version", 1);
+          // Private windows have no RuntimeHost. Read the actual compiled native
+          // identity at this same guarded document/window join, never a label
+          // supplied by the renderer or observation caller.
+          std::optional<std::string> private_identity_json;
+          if (ui->browser_->GetProfile()->IsOffTheRecord()) {
+            const auto capabilities = aux::AuxMethodRegistry::Get().Capabilities();
+            const auto* build_id = capabilities.FindString("buildId");
+            const auto* source_commit = capabilities.FindString("sourceCommit");
+            if (!build_id || !source_commit || build_id->empty() || source_commit->empty()) {
+              std::move(callback).Run(false, "", "unavailable", "Private native identity is unavailable");
+              return;
+            }
+            base::DictValue identity;
+            identity.Set("buildId", *build_id);
+            identity.Set("sourceCommit", *source_commit);
+            base::DictValue receipt;
+            receipt.Set("producer", "aux-native-private-window-observation");
+            receipt.Set("version", 1);
+            receipt.Set("native", std::move(identity));
+            receipt.Set("runtimeStatus", "inactive-private");
+            receipt.Set("appearance", result.Clone());
+            private_identity_json = base::WriteJsonWithOptions(base::Value(std::move(receipt)),
+                base::JsonOptions::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION);
+            if (!private_identity_json || private_identity_json->size() > 4096) {
+              std::move(callback).Run(false, "", "unavailable", "Private native identity is invalid");
+              return;
+            }
+          }
           const auto json = base::WriteJson(base::Value(std::move(result)));
           if (!json || json->size() > 4096) {
             std::move(callback).Run(false, "", "unavailable", "Appearance observation is invalid");
@@ -757,6 +787,10 @@ void WebUIBrowserUI::HandleAuxWindowRequest(
           }
           ++emitted;
           std::fprintf(stderr, "AUX_NATIVE_APPEARANCE_V1 %s\n", json->c_str());
+          if (private_identity_json) {
+            std::fprintf(stderr, "AUX_NATIVE_PRIVATE_WINDOW_V1 %s\n",
+                         private_identity_json->c_str());
+          }
           std::fflush(stderr);
           std::move(callback).Run(true, *json, "", "");
         }, GetWeakPtr(), frame->GetWeakDocumentPtr(), std::move(before), std::move(callback)));

@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "baseCommit": "b9c752c9e96155372a0a500132feff15964d1ed4",
+  "patchSha256": "c1b28b3e6128768a1dc855e8d2d98775f789319a54534b28a51166e8c3d49d93",
+  "files": [
+    {
+      "path": "tests/host/lib/shell-resolution-provenance.mjs",
+      "beforeSha256": "3dd19a4f2713b0bdb0575f903872e13d52b678d3eba51e86593fdcbd8e5b600b",
+      "afterSha256": "c6ef550587dfa8e280d40b6acce47efdeb36ff7e44cc417eeead7da7003e4bb0"
+    },
+    {
+      "path": "tests/host/shell-resolution-provenance.test.mjs",
+      "beforeSha256": "0828ea7627eff69afd6e7eed8ab0df122032b794448bb2985ab2f7c62db1794e",
+      "afterSha256": "8164cc9e15f4496f6ea27fe28709cb5b2dab4abb07a087d23bcd94d3f4fe141d"
+    }
+  ],
+  "controlledNodeCases": 4,
+  "scopedLint": "PASS",
+  "diffCheck": "PASS",
+  "forwardReverseForwardExactPins": "PASS",
+  "nativeOperation": false,
+  "artifactAdmission": false,
+  "f21Qualification": false
+}

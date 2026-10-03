@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "kind": "source-only-private-observation-successor",
+  "baseCommit": "41cf9af20faa5190d3a7abbc4a69e5b6fcdfed9a",
+  "patch": {
+    "path": "request.patch",
+    "sha256": "3efab91cd971a03ee97b8aae4260de05c680a3ec4aad3e515e06ae8c104c92af"
+  },
+  "files": [
+    {
+      "path": "tests/host/lib/app.mjs",
+      "beforeSha256": "1ce4877e85a2db3999f4079a5292ed0dd26f007d2f1ed51fc6f5e3707c60edfb",
+      "afterSha256": "08c33a3e9ad93bf7c85a7f72e41af7eb2a49398f4a6ef600351a2b554f2363c5"
+    },
+    {
+      "path": "tests/host/lib/appearance-provenance.mjs",
+      "beforeSha256": "cbf849263b0eb8eda19067a9f4b421ebc3cd9fa9ce1585cd233f578ae41bd16b",
+      "afterSha256": "b21fdd25374dd3c2fab499a2cdfb24cf85cd971b7f84c6cb06046227affd66e6"
+    },
+    {
+      "path": "tests/host/lib/packaged-runtime-pair-artifact.mjs",
+      "beforeSha256": "64cfe9c53fb3d00253b5afa0d570f2d4d7e36f7b34ac35275dd446c97270ac48",
+      "afterSha256": "6ec50596842b836e398c2a38c0f31f06e3dcdcdde3f88bf8b345de850d0a9181"
+    },
+    {
+      "path": "tests/host/lib/shell-import-input-closure.schema.json",
+      "beforeSha256": "25718146e6749ac12a8468226f18a3f54b0f360d7e01a407b032aeab5306735f",
+      "afterSha256": "e80ba8029fd71f09837eb58977a467ca294d5bd5f97a38da77313735de3b5896"
+    },
+    {
+      "path": "tests/host/lib/shell-resolution-contract.json",
+      "beforeSha256": null,
+      "afterSha256": "d27d66c5e67a3f73eff76a75483ebb81a26920c1abb4bc545c2796634156a902"
+    },
+    {
+      "path": "tests/host/lib/shell-resolution-provenance.mjs",
+      "beforeSha256": null,
+      "afterSha256": "3dd19a4f2713b0bdb0575f903872e13d52b678d3eba51e86593fdcbd8e5b600b"
+    },
+    {
+      "path": "tests/host/lib/shell-resource-index.mjs",
+      "beforeSha256": "6737e7d4f89da9fba7e9e3b7e5c2dcbe2b4320cc99f52667ffe75667368f9cae",
+      "afterSha256": "fc549109ad0b71ba44f4c4e1eea18088b8a5223b7e4387467fbb8b59fa9d7cfc"
+    },
+    {
+      "path": "tests/host/lib/shell-resource-readback.mjs",
+      "beforeSha256": "79b252e2e23c640bfe266b1c78f11c070a7eccbb1f1934b6282dc723d1624972",
+      "afterSha256": "3cd26cc691077b1d4e92e27bbecdbf16e3354c3e80aac908746aa2d5fb8de8bf"
+    },
+    {
+      "path": "tests/host/packaged-runtime-pair-artifact.test.mjs",
+      "beforeSha256": "1696ed0de977fb97009041fe0b842804c8824fbb7325ee41c213d8912e6f63ca",
+      "afterSha256": "70f9c6f4c5470acdec0940390a5b5e0273fbade7f1ea16e44a5f34ada507c28e"
+    },
+    {
+      "path": "tests/host/private-app-start.test.mjs",
+      "beforeSha256": "07dfc3e9eaa2599f0441de8012156868c27e783b6af8675258ea811c850a9cd7",
+      "afterSha256": "62f9a46404c05872148df492664429320a13ae48770654c8f0b7e245f57fa89d"
+    },
+    {
+      "path": "tests/host/private-appearance-provenance.test.mjs",
+      "beforeSha256": "c02128e39c57f18995685119cd4dd941f78ec2208443e76553a23fe071723223",
+      "afterSha256": "420ff549be6fc7ba284232551a796b0cc38c8d17f1eceac8b72d1c74e2fde687"
+    },
+    {
+      "path": "tests/host/shell-resolution-provenance.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "0828ea7627eff69afd6e7eed8ab0df122032b794448bb2985ab2f7c62db1794e"
+    },
+    {
+      "path": "tests/host/shell-resource-readback.test.mjs",
+      "beforeSha256": "26ebfff6cf1e14bea8b8813fac2db1e54b5b348f63d4c09371399536a6adfdba",
+      "afterSha256": "c64cb5e3c606dd6ab1d1ad4bb3510b75733733a5c73726fbb49e3db57aecf95f"
+    }
+  ],
+  "producerContract": {
+    "path": "/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/shell-resource-producer-input-contract-010-REQUEST-ONLY.json",
+    "sha256": "fc734460ed7344bbb1b97eda4fdbb2a5d9403b4cf109c2183028d83fe5dd510a"
+  },
+  "checks": {
+    "controlledNodeCases": 94,
+    "scopedLint": "PASS",
+    "formatRatchet": "PASS",
+    "diffCheck": "PASS",
+    "forwardReverseForwardExactPins": "PASS",
+    "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-private-resolution-replay-nunx7bwd"
+  },
+  "nativeCompiled": false,
+  "originalResolutionProbeExecuted": false,
+  "gritReplayExecuted": false,
+  "actualCarrierReadback": false,
+  "actualArtifactAdmitted": false,
+  "nativeCapture": false,
+  "f21Qualified": false
+}

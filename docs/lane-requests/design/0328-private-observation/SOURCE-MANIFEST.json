@@ -1,0 +1,236 @@
+{
+  "reservation": "0328",
+  "status": "frozen-source-for-independent-review",
+  "base": "fb852cecc1f199a6c953685f9a780f681ed6aff6",
+  "caller": [
+    {
+      "path": "scripts/design-qa.mjs",
+      "beforeSha256": "6cf78c256fa0c7753dbef5cb88f51978423367aaa232833a06131a7db4dafd7c",
+      "afterSha256": "88d3c2356d5a0f775c9a18da09efa1cab31c5968ded06a96585a4a98c3b3bad0"
+    },
+    {
+      "path": "tests/host/lib/app.mjs",
+      "beforeSha256": "55dfbbcb45fdb1bfc00352641d9d853f75b8439dfa96e46ec96457ea1a237ef6",
+      "afterSha256": "1ce4877e85a2db3999f4079a5292ed0dd26f007d2f1ed51fc6f5e3707c60edfb"
+    },
+    {
+      "path": "tests/host/lib/appearance-provenance.mjs",
+      "beforeSha256": "e1bd24d16dd0ac75a4fc2f44ae6d963c6b05e4440aed22b88be2d7e89aeb5a7c",
+      "afterSha256": "cbf849263b0eb8eda19067a9f4b421ebc3cd9fa9ce1585cd233f578ae41bd16b"
+    },
+    {
+      "path": "tests/host/lib/native-window-compiler-artifact.mjs",
+      "beforeSha256": "b67699e229ae1d094b003d609dba37210bc1d55e0e5fd53d68a235c66b1dbc04",
+      "afterSha256": "d8bf18f99bc864e8e700d6c13374d3ade95f97fe1a136cdac9c7543c34845f3b"
+    },
+    {
+      "path": "tests/host/lib/native-window-compiler-artifact.test.mjs",
+      "beforeSha256": "5658aea14be7f0f357dc004249535293701a0c563995feceb7b1fafe4832a95d",
+      "afterSha256": "324571176cc301e4b1d2707b53d832448d4f1ee7b647b3a4d506ec8b61a983f5"
+    },
+    {
+      "path": "tests/host/lib/packaged-runtime-closure.mjs",
+      "beforeSha256": null,
+      "afterSha256": "46125d92c15ffd166f35882647a3aeb03f70994555a5886e85d0cfeb8930e200"
+    },
+    {
+      "path": "tests/host/lib/packaged-runtime-files.mjs",
+      "beforeSha256": null,
+      "afterSha256": "243e62bf0ee851c79ef118dfe1281fdcbe6a769d4aa62eac79023cc8fbba365e"
+    },
+    {
+      "path": "tests/host/lib/packaged-runtime-pair-artifact.mjs",
+      "beforeSha256": null,
+      "afterSha256": "64cfe9c53fb3d00253b5afa0d570f2d4d7e36f7b34ac35275dd446c97270ac48"
+    },
+    {
+      "path": "tests/host/lib/packaged-runtime-pair-protocol.mjs",
+      "beforeSha256": null,
+      "afterSha256": "ab28dc37c384426722a5bbef75e88e79bf6099040bbd77bcf14ffe265b6248bc"
+    },
+    {
+      "path": "tests/host/lib/packaged-runtime-pair.schema.json",
+      "beforeSha256": null,
+      "afterSha256": "e8dea98f5aa49d27d31016522f98b2ba0632f90bf5e1c03e7643178df464fe53"
+    },
+    {
+      "path": "tests/host/lib/private-observation-owner.mjs",
+      "beforeSha256": null,
+      "afterSha256": "80ed59f8be3a404310d1f8061ccd91f0be78d90a04d49ff6ed692359ad1ffb96"
+    },
+    {
+      "path": "tests/host/lib/private-window-observation.mjs",
+      "beforeSha256": null,
+      "afterSha256": "44b6be2f51f6926fe8088bcb3abb4a99d77c06ebb721fc5a828116c4df70c9e2"
+    },
+    {
+      "path": "tests/host/lib/private-window-stream.mjs",
+      "beforeSha256": null,
+      "afterSha256": "febdf78442debbea433fad67ba940e0244cabde3eac94750dec09b32ad35854e"
+    },
+    {
+      "path": "tests/host/lib/shell-action-replay.schema.json",
+      "beforeSha256": null,
+      "afterSha256": "e4543321eb0fc0460b7b59ee56069e8b87d53bda02b54095a1f413ff4af89179"
+    },
+    {
+      "path": "tests/host/lib/shell-import-input-closure.schema.json",
+      "beforeSha256": null,
+      "afterSha256": "25718146e6749ac12a8468226f18a3f54b0f360d7e01a407b032aeab5306735f"
+    },
+    {
+      "path": "tests/host/lib/shell-resource-carrier.mjs",
+      "beforeSha256": null,
+      "afterSha256": "44c997880a6a2b7c28bda931e976e32ad6c7b83e156394c05ce6d28bbc9ac660"
+    },
+    {
+      "path": "tests/host/lib/shell-resource-index.mjs",
+      "beforeSha256": null,
+      "afterSha256": "6737e7d4f89da9fba7e9e3b7e5c2dcbe2b4320cc99f52667ffe75667368f9cae"
+    },
+    {
+      "path": "tests/host/lib/shell-resource-readback.mjs",
+      "beforeSha256": null,
+      "afterSha256": "79b252e2e23c640bfe266b1c78f11c070a7eccbb1f1934b6282dc723d1624972"
+    },
+    {
+      "path": "tests/host/lib/shell-resource-readback.schema.json",
+      "beforeSha256": null,
+      "afterSha256": "a2db7cdad2e450a7a4ed03f43e6a0f7fb82a965d1180d910bd6943af11cf9d0d"
+    },
+    {
+      "path": "tests/host/packaged-runtime-closure.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "a6edf0d96dd489c58c33370c26096f0a7a5e6edfebd51b15873a57987ad01732"
+    },
+    {
+      "path": "tests/host/packaged-runtime-files.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "48a51cf5d21886857e3398efa27e4d8b2e0881f91f99ecfbce3156b95f353744"
+    },
+    {
+      "path": "tests/host/packaged-runtime-pair-artifact.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "1696ed0de977fb97009041fe0b842804c8824fbb7325ee41c213d8912e6f63ca"
+    },
+    {
+      "path": "tests/host/packaged-runtime-pair-protocol.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "48f3694378ca9c029ea44aaf854ee5a5b22242188a7b96d8f5c3047e8a55242a"
+    },
+    {
+      "path": "tests/host/private-app-start.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "07dfc3e9eaa2599f0441de8012156868c27e783b6af8675258ea811c850a9cd7"
+    },
+    {
+      "path": "tests/host/private-appearance-provenance.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "c02128e39c57f18995685119cd4dd941f78ec2208443e76553a23fe071723223"
+    },
+    {
+      "path": "tests/host/private-home-capture.mjs",
+      "beforeSha256": null,
+      "afterSha256": "96f28af4056021debf21955e6eae9640e3fe02e488b288fee5b7920ba1432970"
+    },
+    {
+      "path": "tests/host/private-home-capture.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "1855b2529f80a9f850115160131ad33b408c4443a06849cd55d773409d3ab30e"
+    },
+    {
+      "path": "tests/host/private-observation-owner.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "926e89aed8ab7168e749438568c9e51d1d972f8186adfad0643b055fdd586d25"
+    },
+    {
+      "path": "tests/host/private-window-observation.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "2311d76df8db95c79cdb7885a1b2ce8191f07bada2864a0e022cc3950e20f355"
+    },
+    {
+      "path": "tests/host/private-window-stream.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "f2699f3a5331ee9439197062e6b9d9d23d4c9f3d92c8b3c511c56c0b9049d6e3"
+    },
+    {
+      "path": "tests/host/shell-resource-carrier.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "e1a70788adf5101efedd0cdae2066f0f5f9157272f5aedbbfc717f2160a093c5"
+    },
+    {
+      "path": "tests/host/shell-resource-index.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "4ccc4641bf1f96b1d14c220e876d919c0743867d8a4fada7e3131a0f53455861"
+    },
+    {
+      "path": "tests/host/shell-resource-readback.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "26ebfff6cf1e14bea8b8813fac2db1e54b5b348f63d4c09371399536a6adfdba"
+    },
+    {
+      "path": "tests/host/startup-app-attachment.test.mjs",
+      "beforeSha256": "69efe6427b36593b4eb05093293467795a9f83cb2104955adca15f4586cf5745",
+      "afterSha256": "462827a954eb7ccc58f6c9709412570d90ea2a042772b41ba443e08c7ed808bc"
+    },
+    {
+      "path": "tests/tools/design-qa-cli.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "f0ebaeabf7235cda194379b29087111eae1e3f5f0aeec5a620e7557669402e1a"
+    }
+  ],
+  "native": [
+    {
+      "path": "chrome/browser/ui/aux/methods/window_methods.cc",
+      "beforeSha256": "1cc08b056a51e72157aedeb490ac038f355a89ab4edae4f725a697710d372d10",
+      "afterSha256": "f7ab74594ed2a2a42b3890dd511a6c0081fa8000d784eebac984f82c2e0a7c46"
+    }
+  ],
+  "requests": {
+    "caller.request.patch": "e881f629ffa0a98e6279ea2b1ccc94ac08968efb67822f792b1f9580e3de38f2",
+    "native.request.patch": "794478994280e04baeac1dc98a01a226f9cee9178248a21490959608faaadb93"
+  },
+  "producerContracts": [
+    {
+      "path": "/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/packaged-runtime-pair-schema-fixed-003-REQUEST-ONLY.json",
+      "sha256": "8f30e40959f8d634b32208f2c29413993679043a62aff6ae8a62a43fc164da34"
+    },
+    {
+      "path": "/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/shell-resource-readback-schema-005-PRODUCER-REQUEST-ONLY.json",
+      "sha256": "a4c48c61e9231a679050a3975dda06337113a612ff634b1b18fc49a49a1c6bc3"
+    },
+    {
+      "path": "/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/shell-original-action-transform-replay-schema-002-PRODUCER-REQUEST-ONLY.json",
+      "sha256": "a75030d11b98cfce1adc49224284d268f4978d530a761725b92287c67d58e3fb"
+    },
+    {
+      "path": "/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/shell-resource-producer-input-contract-005-REQUEST-ONLY.json",
+      "sha256": "bbb4c5198c2b6d4ba7e7f0de8f1d865052d364a01f327adc9135bcdb3ed665aa"
+    }
+  ],
+  "checks": {
+    "controlledNodeCases": 88,
+    "passed": 88,
+    "scopedLint": true,
+    "formatRatchet": true,
+    "diffCheck": true
+  },
+  "evidence": {
+    "nativeCompiled": false,
+    "validCurrentPackagedPair": false,
+    "helperArtifactAdmitted": false,
+    "originalGritActionExecuted": false,
+    "actualCarrierAdmission": false,
+    "privateRuntimeActive": false,
+    "nativeCaptured": false,
+    "qualification": "none",
+    "F21Approval": false
+  },
+  "replay": {
+    "callerForwardReverseForward": true,
+    "callerLeaves": 35,
+    "nativeForwardReverseForward": true,
+    "nativeLeaves": 1,
+    "noNativeExecution": true
+  }
+}

@@ -29,7 +29,7 @@ function fixture() {
   '../../../scripts/native-slot.mjs':{acquireNativeSlot(){throw new Error('Native slot forbidden');}},
   './dev-acceptance.mjs':{nativeProfileName:name=>assert.equal(name,'Default'),validateDisposableProfile:filename=>assert.equal(filename,root+'/profile')},
   './rpc.mjs':{validateDescriptor:v=>v,createRpc:get=>async method=>{assert.equal(method,'runtime.describe');await get();return {nativeIdentity:{buildId:'controlled+'+'a'.repeat(64)},runtimeIdentity:{commit:'b'.repeat(40)}};}},
-  './appearance-stream.mjs':{},'./performance-mailbox.mjs':{},'./startup-evidence.mjs':{},
+  './packaged-runtime-pair-artifact.mjs':{},'./private-window-stream.mjs':{},'./private-observation-owner.mjs':{},'./appearance-stream.mjs':{},'./performance-mailbox.mjs':{},'./startup-evidence.mjs':{},
   './startup-helper-launch.mjs':{readAuxStartupAttachment:actual=>{assert.ok(owners.has(actual),'Foreign owner');const v=owners.get(actual);v.assertLive();return v;}},
  };
  const exports={},script=ts.transpileModule(readFileSync(source,'utf8').replaceAll('import.meta.dirname',"'/controlled'"),{

@@ -1,0 +1,547 @@
+{
+  "derivationInputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "producer",
+      "version",
+      "sourceRoot",
+      "sourceCommit",
+      "originalInterpreter",
+      "originalResolutionBaseline",
+      "resolutionTool",
+      "ownedActionTool",
+      "actionInputRefs",
+      "originalArgv",
+      "ownedScratchRoot"
+    ],
+    "properties": {
+      "producer": {
+        "const": "aux-shell-action-resolution-derivation-input"
+      },
+      "version": {
+        "const": 1
+      },
+      "sourceRoot": {
+        "const": "/Users/rcourson/aux-chromium-stable/chromium/src"
+      },
+      "sourceCommit": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{40}$"
+      },
+      "originalInterpreter": {
+        "$ref": "#/$defs/reference"
+      },
+      "originalResolutionBaseline": {
+        "$ref": "#/$defs/reference"
+      },
+      "resolutionTool": {
+        "$ref": "#/$defs/reference"
+      },
+      "ownedActionTool": {
+        "$ref": "#/$defs/reference"
+      },
+      "actionInputRefs": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "$ref": "#/$defs/reference"
+        }
+      },
+      "originalArgv": {
+        "type": "array",
+        "minItems": 101,
+        "maxItems": 101,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "ownedScratchRoot": {
+        "type": "string",
+        "pattern": "^/"
+      }
+    },
+    "$defs": {
+      "reference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "derivationPreauditSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "producer",
+      "version",
+      "passed",
+      "manifestSha256",
+      "controllerSha256",
+      "baselineSha256",
+      "resolutionTool",
+      "ownedActionTool"
+    ],
+    "properties": {
+      "producer": {
+        "const": "aux-shell-action-resolution-independent-preaudit"
+      },
+      "version": {
+        "const": 1
+      },
+      "passed": {
+        "const": true
+      },
+      "manifestSha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "controllerSha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "baselineSha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "resolutionTool": {
+        "$ref": "#/$defs/reference"
+      },
+      "ownedActionTool": {
+        "$ref": "#/$defs/reference"
+      }
+    },
+    "$defs": {
+      "reference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "normalStartupProbeReceiptSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "argv",
+      "originalPid",
+      "originalGroup",
+      "originalRows",
+      "exitCode",
+      "timedOut",
+      "deadlineSeconds",
+      "actualGroupRows",
+      "stdout",
+      "stderr"
+    ],
+    "properties": {
+      "argv": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "originalPid": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "originalGroup": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "originalRows": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string"
+        }
+      },
+      "exitCode": {
+        "const": 0
+      },
+      "timedOut": {
+        "const": false
+      },
+      "deadlineSeconds": {
+        "const": 300
+      },
+      "actualGroupRows": {
+        "type": "object",
+        "additionalProperties": false,
+        "maxProperties": 0
+      },
+      "stdout": {
+        "$ref": "#/$defs/reference"
+      },
+      "stderr": {
+        "$ref": "#/$defs/reference"
+      }
+    },
+    "$defs": {
+      "reference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "originalCleanupProofSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "originalGroup",
+      "actualRows",
+      "originalChildReaped",
+      "cleanupDebt"
+    ],
+    "properties": {
+      "originalGroup": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "actualRows": {
+        "type": "array",
+        "maxItems": 0
+      },
+      "originalChildReaped": {
+        "const": true
+      },
+      "cleanupDebt": {
+        "type": "null"
+      }
+    },
+    "$defs": {
+      "reference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "resolutionSourceTools": {
+    "support": {
+      "path": "/private/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/shell_action_resolution_closure_003.py",
+      "sha256": "90fd645ee2ce91e485adc700a7795ced7f3cb04cceec0ce2eb7e970ee9772565"
+    },
+    "baselineCapture": {
+      "path": "/private/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/capture-shell-action-resolution-baseline-003-PROPOSAL.py",
+      "sha256": "f67e1f56f0f33e257ca3e93f12e4698fe9c5c854e391dc0f270733cc5595f2b5"
+    },
+    "normalStartupDerivation": {
+      "path": "/private/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/derive-shell-action-resolution-closure-004-PROPOSAL.py",
+      "sha256": "d97027bfe7501f5b2a9edd5907af89adb71cc49e7b850fa3e2c1299e0e822e8a"
+    },
+    "syntheticBeforeActionControls": {
+      "path": "/private/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/action-resolution-source-controls-007.json",
+      "sha256": "d1fc02934005aaacec61eaddf2feaad777dace460a428003a745e632d1b8d128"
+    },
+    "canonicalProducerControls": {
+      "path": "/private/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/producer-canonical-shape-controls-008.json",
+      "sha256": "7f308a67c6caabf622c19e34b463848a20cd107b16666e7cf9246a87330ca4cb"
+    }
+  },
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "producer",
+      "version",
+      "sourceCommit",
+      "pins",
+      "originalArgv",
+      "originalRule",
+      "sourceRoot",
+      "buildRoot",
+      "sourceInputRoot",
+      "ownedScratchRoot",
+      "originalSuccessfulGraphProof",
+      "deployedClosureProof",
+      "producerInterpreter",
+      "originalInterpreter",
+      "generatedGrd",
+      "generatedHeader",
+      "generatedResourceMap",
+      "originalBuildPak",
+      "originalExpectedOutputs",
+      "toolchain",
+      "pinnedManifest",
+      "deployedCarriers",
+      "actionInputRefs",
+      "responseFiles",
+      "originalImportInputClosureProof"
+    ],
+    "properties": {
+      "producer": {
+        "const": "aux-shell-resource-replay-input"
+      },
+      "version": {
+        "const": 1
+      },
+      "sourceCommit": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{40}$"
+      },
+      "pins": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "originalArgv": {
+        "type": "array",
+        "minItems": 101,
+        "maxItems": 101,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "originalRule": {
+        "type": "string",
+        "pattern": "^rule "
+      },
+      "sourceRoot": {
+        "type": "string",
+        "pattern": "^/"
+      },
+      "buildRoot": {
+        "type": "string",
+        "pattern": "^/"
+      },
+      "sourceInputRoot": {
+        "type": "string",
+        "pattern": "^/"
+      },
+      "ownedScratchRoot": {
+        "type": "string",
+        "pattern": "^/"
+      },
+      "originalSuccessfulGraphProof": {
+        "$ref": "#/$defs/reference"
+      },
+      "deployedClosureProof": {
+        "$ref": "#/$defs/reference"
+      },
+      "producerInterpreter": {
+        "$ref": "#/$defs/reference"
+      },
+      "originalInterpreter": {
+        "$ref": "#/$defs/reference"
+      },
+      "generatedGrd": {
+        "$ref": "#/$defs/reference"
+      },
+      "generatedHeader": {
+        "$ref": "#/$defs/reference"
+      },
+      "generatedResourceMap": {
+        "$ref": "#/$defs/reference"
+      },
+      "originalBuildPak": {
+        "$ref": "#/$defs/reference"
+      },
+      "originalExpectedOutputs": {
+        "$ref": "#/$defs/reference"
+      },
+      "toolchain": {
+        "$ref": "#/$defs/reference"
+      },
+      "pinnedManifest": {
+        "$ref": "#/$defs/reference"
+      },
+      "deployedCarriers": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "$ref": "#/$defs/reference"
+        }
+      },
+      "actionInputRefs": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "$ref": "#/$defs/reference"
+        }
+      },
+      "responseFiles": {
+        "type": "array",
+        "minItems": 0,
+        "items": {
+          "$ref": "#/$defs/reference"
+        }
+      },
+      "originalImportInputClosureProof": {
+        "$ref": "#/$defs/reference"
+      }
+    },
+    "$defs": {
+      "reference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "externalPreauditSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "producer",
+      "version",
+      "passed",
+      "sourceCommit",
+      "deployedCarriers",
+      "manifestSha256",
+      "controllerSha256",
+      "originalGraphProofSha256",
+      "deployedClosureSha256",
+      "originalImportInputClosureProofSha256",
+      "fullResolutionBaselineSha256",
+      "resolutionToolSha256"
+    ],
+    "properties": {
+      "producer": {
+        "const": "aux-shell-resource-replay-independent-preaudit"
+      },
+      "version": {
+        "const": 1
+      },
+      "passed": {
+        "const": true
+      },
+      "sourceCommit": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{40}$"
+      },
+      "deployedCarriers": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "$ref": "#/$defs/reference"
+        }
+      },
+      "manifestSha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "controllerSha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "originalGraphProofSha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "deployedClosureSha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "originalImportInputClosureProofSha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "fullResolutionBaselineSha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "resolutionToolSha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "$defs": {
+      "reference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "producerSource": {
+    "path": "/private/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/replay-and-readback-shell-resources-008-PROPOSAL.py",
+    "sha256": "53266e1c6729f6c13bea6261a109ff9651ee75b632bd43db163e99cec917fbf2"
+  }
+}

@@ -1,0 +1,555 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "producer",
+    "version",
+    "sourceCommit",
+    "pinnedManifest",
+    "dimensionAwareDigest",
+    "generatedGrd",
+    "generatedHeader",
+    "generatedResourceMap",
+    "originalGraphProof",
+    "originalGritAction",
+    "originalBuildPak",
+    "deployedCarriers",
+    "parser",
+    "limits",
+    "rows",
+    "failures",
+    "passed",
+    "inputManifest",
+    "independentPreaudit",
+    "expectedReplayPak",
+    "originalActionReceipt",
+    "outputOnlyRelocation",
+    "decodedTotalBytes",
+    "carrierDecodedTotals",
+    "actualOwnedGroupsEmpty",
+    "finishedUtc",
+    "originalImportInputClosureProof"
+  ],
+  "properties": {
+    "producer": {
+      "const": "aux-shell-resource-readback"
+    },
+    "version": {
+      "const": 1
+    },
+    "sourceCommit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "pinnedManifest": {
+      "$ref": "#/$defs/reference"
+    },
+    "dimensionAwareDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "generatedGrd": {
+      "$ref": "#/$defs/reference"
+    },
+    "generatedHeader": {
+      "$ref": "#/$defs/reference"
+    },
+    "generatedResourceMap": {
+      "$ref": "#/$defs/reference"
+    },
+    "originalGraphProof": {
+      "$ref": "#/$defs/reference"
+    },
+    "originalGritAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "argv",
+        "responseFiles",
+        "exitCode",
+        "sourceAndToolRefs",
+        "stdout",
+        "stderr"
+      ],
+      "properties": {
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "responseFiles": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "exitCode": {
+          "const": 0
+        },
+        "sourceAndToolRefs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "stdout": {
+          "$ref": "#/$defs/reference"
+        },
+        "stderr": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    },
+    "originalBuildPak": {
+      "$ref": "#/$defs/reference"
+    },
+    "deployedCarriers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/reference"
+      }
+    },
+    "parser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceRefs",
+        "argv",
+        "exitCode",
+        "stdout",
+        "stderr",
+        "originalCleanupProof"
+      ],
+      "properties": {
+        "sourceRefs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "exitCode": {
+          "const": 0
+        },
+        "stdout": {
+          "$ref": "#/$defs/reference"
+        },
+        "stderr": {
+          "$ref": "#/$defs/reference"
+        },
+        "originalCleanupProof": {
+          "$ref": "#/$defs/reference"
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxDecodedResourceBytes",
+        "maxTotalDecodedBytes"
+      ],
+      "properties": {
+        "maxDecodedResourceBytes": {
+          "const": 16777216
+        },
+        "maxTotalDecodedBytes": {
+          "const": 67108864
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 175,
+      "maxItems": 175,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "resourcePath",
+          "sourceInput",
+          "sourceInputSize",
+          "resourceName",
+          "resourceId",
+          "selectedInclude",
+          "transform",
+          "originalBuildPayload",
+          "deployedPayloads",
+          "storedPayloadsEqual",
+          "decodedPayloadsEqual",
+          "expectedTransformedPayloadEqual",
+          "failures"
+        ],
+        "properties": {
+          "resourcePath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceInput": {
+            "$ref": "#/$defs/reference"
+          },
+          "sourceInputSize": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16777216
+          },
+          "resourceName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "resourceId": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "selectedInclude": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "file",
+              "resource_path",
+              "type",
+              "compress",
+              "flattenhtml",
+              "preprocess",
+              "allowexternalscript",
+              "use_base_dir"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "file": {
+                "type": "string",
+                "minLength": 1
+              },
+              "resource_path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "type": {
+                "enum": [
+                  "BINDATA",
+                  "chrome_html"
+                ]
+              },
+              "compress": {
+                "enum": [
+                  "default",
+                  "false",
+                  "gzip",
+                  "brotli"
+                ]
+              },
+              "flattenhtml": {
+                "enum": [
+                  "false",
+                  "true"
+                ]
+              },
+              "preprocess": {
+                "enum": [
+                  "false",
+                  "true"
+                ]
+              },
+              "allowexternalscript": {
+                "enum": [
+                  "false",
+                  "true"
+                ]
+              },
+              "use_base_dir": {
+                "enum": [
+                  "false",
+                  "true"
+                ]
+              }
+            }
+          },
+          "transform": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "actionEvidence",
+              "minifierConfigured",
+              "minifierArgv",
+              "expectedTransformedArtifact",
+              "expectedTransformedSize",
+              "expectedTransformedSha256",
+              "sourceEqualityProved"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "none-beyond-compression",
+                  "original-action-transform"
+                ]
+              },
+              "actionEvidence": {
+                "$ref": "#/$defs/reference"
+              },
+              "minifierConfigured": {
+                "type": "boolean"
+              },
+              "minifierArgv": {
+                "type": "array",
+                "minItems": 0,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "expectedTransformedArtifact": {
+                "$ref": "#/$defs/reference"
+              },
+              "expectedTransformedSize": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 16777216
+              },
+              "expectedTransformedSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "sourceEqualityProved": {
+                "type": "boolean"
+              }
+            }
+          },
+          "originalBuildPayload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "artifact",
+              "resourceId",
+              "aliasOf",
+              "storedSize",
+              "storedSha256",
+              "compression",
+              "decodedSize",
+              "decodedSha256",
+              "decodedEvidence"
+            ],
+            "properties": {
+              "artifact": {
+                "$ref": "#/$defs/reference"
+              },
+              "resourceId": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "aliasOf": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 65535
+              },
+              "storedSize": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 16777216
+              },
+              "storedSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "compression": {
+                "enum": [
+                  "literal",
+                  "gzip",
+                  "brotli"
+                ]
+              },
+              "decodedSize": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 16777216
+              },
+              "decodedSha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "decodedEvidence": {
+                "$ref": "#/$defs/reference"
+              }
+            }
+          },
+          "deployedPayloads": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "artifact",
+                "resourceId",
+                "aliasOf",
+                "storedSize",
+                "storedSha256",
+                "compression",
+                "decodedSize",
+                "decodedSha256",
+                "decodedEvidence"
+              ],
+              "properties": {
+                "artifact": {
+                  "$ref": "#/$defs/reference"
+                },
+                "resourceId": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                "aliasOf": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                "storedSize": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 16777216
+                },
+                "storedSha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "compression": {
+                  "enum": [
+                    "literal",
+                    "gzip",
+                    "brotli"
+                  ]
+                },
+                "decodedSize": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 16777216
+                },
+                "decodedSha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "decodedEvidence": {
+                  "$ref": "#/$defs/reference"
+                }
+              }
+            }
+          },
+          "storedPayloadsEqual": {
+            "type": "boolean"
+          },
+          "decodedPayloadsEqual": {
+            "type": "boolean"
+          },
+          "expectedTransformedPayloadEqual": {
+            "type": "boolean"
+          },
+          "failures": {
+            "type": "array",
+            "minItems": 0,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "failures": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "inputManifest": {
+      "$ref": "#/$defs/reference"
+    },
+    "independentPreaudit": {
+      "$ref": "#/$defs/reference"
+    },
+    "expectedReplayPak": {
+      "$ref": "#/$defs/reference"
+    },
+    "originalActionReceipt": {
+      "$ref": "#/$defs/reference"
+    },
+    "outputOnlyRelocation": {
+      "$ref": "#/$defs/reference"
+    },
+    "decodedTotalBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 67108864
+    },
+    "carrierDecodedTotals": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 67108864
+      }
+    },
+    "actualOwnedGroupsEmpty": {
+      "const": true
+    },
+    "finishedUtc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "originalImportInputClosureProof": {
+      "$ref": "#/$defs/reference"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  }
+}

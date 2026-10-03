@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { decodeNativeWindowCompiler } from './native-window-compiler-protocol.mjs';
 import { readStartupMachO } from './startup-helper-manifest.mjs';
 const admitted = new WeakSet();
+const freezeDocument = value => {
+  if (value && typeof value === 'object') { for (const child of Object.values(value)) freezeDocument(child); Object.freeze(value); }
+  return value;
+};
 const parserPath = fileURLToPath(new URL('./startup-helper-manifest.mjs', import.meta.url));
 const same = (a,b) => ['dev','ino','size','mtimeMs','ctimeMs','mode','uid'].every(key=>a[key]===b[key]);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -42,7 +46,7 @@ export function retainNativeWindowCompiler(admission) {
   try {
     const manifestRaw=hold(admission.manifestPath,admission.manifestSha256,65536).toString('utf8');
     const auditRaw=hold(admission.auditPath,admission.auditSha256,65536).toString('utf8');
-    const decoded=decodeNativeWindowCompiler(manifestRaw,auditRaw,admission),m=decoded.manifest;
+    const decoded=freezeDocument(decodeNativeWindowCompiler(manifestRaw,auditRaw,admission)),m=decoded.manifest;
     hold(m.source.path,m.source.sha256,4*1024*1024,{mode:m.source.mode,size:m.source.bytes});
     const binary=hold(m.output.path,m.output.sha256,64*1024*1024,{mode:m.output.mode,size:m.output.bytes});
     for(const tool of [m.compiler.launcher,m.compiler.frontend]) hold(tool.path,tool.sha256,512*1024*1024,{system:true});

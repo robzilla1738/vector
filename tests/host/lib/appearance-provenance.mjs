@@ -3,6 +3,10 @@ import { createHash } from 'node:crypto';
 import { lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { PNG } from 'pngjs';
+import { readPrivateAppObservation } from './app.mjs';
+import { readPackagedRuntimePair } from './packaged-runtime-pair-artifact.mjs';
+import { normalizePrivateWindowObservation } from './private-window-observation.mjs';
+import { decodeWarmWindowHelperIdentity } from './native-warm-helper-identity.mjs';
 import { evidenceBytes } from '../../../scripts/lib/qualification.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -91,7 +95,36 @@ export function normalizeTrustedPreferences(raw, { candidate, targetPid, windowI
 /** No debugger/RPC/settings fallback: the owner must supply a real authorized shell observer. */
 export function createAppearanceProvenance(options) { return createNativeProvenance(options, false); }
 export function createPipAppearanceProvenance(options) { return createNativeProvenance(options, true); }
-function createNativeProvenance({ outputDir, candidate, targetPid, helper, helperExecutable, helperSource, observeWindow, readIdentity }, child) {
+/** Private admission is separate from an active runtime handshake. */
+export function createPrivateAppearanceProvenance({ outputDir, app, admittedPair, helper }) {
+  const pair = readPackagedRuntimePair(admittedPair), owner = readPrivateAppObservation(app, pair);
+  pair.compilerArtifact.matchOriginalClient(helper);
+  assert.equal(helper.targetPid, owner.pid, 'Foreign private helper target');
+  let originalKernel;
+  const validate = async () => {
+    const current = readPrivateAppObservation(app, pair);
+    assert.equal(current.pid, owner.pid); assert.equal(current.generation, owner.generation);
+    assert.equal(current.windowId, owner.windowId); current.assertLive();
+    pair.compilerArtifact.matchOriginalClient(helper);
+    const raw = await helper.request('warmWindowIdentity');
+    decodeWarmWindowHelperIdentity(raw, { targetPid: owner.pid, helperPid: helper.helperPid, artifact: pair.compilerArtifact.artifact });
+    assert.equal(raw.targetProcessUuid, pair.image.imageUuid, 'Private browser kernel image differs from held bundle');
+    if (originalKernel) assert.deepEqual(raw, originalKernel, 'Original private process generation changed');
+    else originalKernel = structuredClone(raw);
+    readPrivateAppObservation(app, pair).assertLive(); pair.validate();
+    return raw;
+  };
+  return createNativeProvenance({ outputDir, candidate: owner.candidate, targetPid: owner.pid, helper,
+    helperExecutable: helper.helperExecutable, helperSource: helper.helperSource,
+    observeWindow: async selection => {
+      const receipt = await owner.observe(selection);
+      readPrivateAppObservation(app, pair).assertLive();
+      assert.equal(typeof receipt.raw?.line, 'string', 'Missing original private observation bytes');
+      return receipt.raw.line;
+    }, readIdentity: validate }, false,
+    { artifact: pair.artifact, normalize: normalizePrivateWindowObservation });
+}
+function createNativeProvenance({ outputDir, candidate, targetPid, helper, helperExecutable, helperSource, observeWindow, readIdentity }, child, privateSource) {
   validateAppearanceCandidate(candidate);
   candidate = structuredClone(candidate);
   assert.ok(Number.isInteger(targetPid) && targetPid > 0 && typeof observeWindow === 'function' && typeof readIdentity === 'function' && typeof helper?.trusted === 'function' && typeof helper.windows === 'function', 'Missing authorized appearance producer access');
@@ -114,14 +147,19 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
     }
     assert.equal(hash(readFileSync(helperSource)), pins.helperSourceSha256, 'Helper source changed');
     assert.equal(hash(readFileSync(helperExecutable)), pins.helperSha256, 'Helper executable changed');
-    validateIdentity(await readIdentity(), candidate);
+    const kernelBefore = await readIdentity();
+    if (!privateSource) validateIdentity(kernelBefore, candidate);
     const startedAt = new Date().toISOString();
     // Transport selection only; the native shell getter still takes zero arguments.
     // A periodic observer must wait for a fresh record from this exact window.
     const rawJson = await observeWindow({ windowId, notBefore: startedAt });
     const completedAt = new Date().toISOString();
-    const window = (child ? normalizePipAppearance : normalizeNativeAppearance)(rawJson, { candidate, targetPid, windowId, startedAt, completedAt });
-    const matches = (await helper.windows()).filter(item => item.id === windowId && item.layer === (child ? window.windowLayer : 0));
+    const options = { candidate, targetPid, windowId, startedAt, completedAt };
+    const privateReceipt = privateSource?.normalize(rawJson, options);
+    const window = privateReceipt ? { ...privateReceipt.window, runtimeStatus: privateReceipt.runtimeStatus, privateNativeIdentity: privateReceipt.native } : (child ? normalizePipAppearance : normalizeNativeAppearance)(rawJson, options);
+    const inventory = await helper.windows();
+    if (privateSource) assert.equal(inventory.filter(item => item.layer === 0).length, 1, 'Private capture requires sole original layer-zero window');
+    const matches = inventory.filter(item => item.id === windowId && item.layer === (child ? window.windowLayer : 0));
     assert.equal(matches.length, 1, 'Appearance window not in owned helper inventory');
     assert.deepEqual(frame(matches[0]), window.frame, 'Helper/native point frame mismatch');
     const rawSystem = structuredClone(await helper.trusted());
@@ -130,8 +168,10 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
       assert.equal(window.nativeReduceMotion, system.reduceMotion, "Child/helper motion preference mismatch");
       assert.equal(window.nativeReduceTransparency, system.reduceTransparency, "Child/helper transparency preference mismatch");
     }
-    validateIdentity(await readIdentity(), candidate);
-    return { window, system, rawJson, rawSystem, startedAt, completedAt };
+    const kernelAfter = await readIdentity();
+    if (privateSource) assert.deepEqual(kernelBefore, kernelAfter, 'Private kernel identity changed during observation');
+    else validateIdentity(kernelAfter, candidate);
+    return { window, system, rawJson, rawSystem, startedAt, completedAt, ...(privateSource ? { kernel: { before: kernelBefore, after: kernelAfter } } : {}) };
   }
   return { pins,
     async observeWindowKind(windowId) {
@@ -178,14 +218,15 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
       };
       const observations = {};
       for (const [side, value] of [['before', before], ['after', after]]) {
-        const rawWindow = put(`${side}-native-raw.json`, value.rawJson), rawSystem = put(`${side}-helper-raw.json`, value.rawSystem);
+        const rawWindow = put(`${side}-native-raw.${privateSource ? 'jsonl' : 'json'}`, value.rawJson), rawSystem = put(`${side}-helper-raw.json`, value.rawSystem);
         observations[side] = {
           window: put(`${side}-window.json`, { ...value.window, rawReply: rawWindow, requestStartedAt: value.startedAt, requestCompletedAt: value.completedAt }),
           system: put(`${side}-system.json`, { ...value.system, rawReply: rawSystem }),
+          ...(privateSource ? { kernel: put(`${side}-kernel.json`, value.kernel) } : {}),
         };
       }
       const record = { ...capture, state, capturedAt, captureCompletedAt, pixelDimensions: { width, height }, windowFrame: before.window.frame, provenanceObservationId: capture.name };
-      const provenance = put('provenance.json', { schema: 1, candidate, observations: [{ id: capture.name, capture: record, ...observations }] });
+      const provenance = put('provenance.json', { schema: 1, candidate, ...(privateSource ? { runtimeStatus: 'inactive-private', packagedRuntimeArtifact: privateSource.artifact } : {}), observations: [{ id: capture.name, capture: record, ...observations }] });
       return { ...record, provenance: { ...provenance, path: `${name}/${provenance.path}` } };
     },
   };

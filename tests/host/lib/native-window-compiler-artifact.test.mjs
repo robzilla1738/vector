@@ -49,3 +49,12 @@ for(const changed of ['source','output','tool','settings','compileLog','manifest
 test('same-byte atomic executable replacement refuses original inode continuity',()=>{const f=fixture();let lease;try{lease=f.open();const p=f.m.output.path,copy=p+'.replacement';fs.writeFileSync(copy,fs.readFileSync(p),{mode:0o755});fs.renameSync(copy,p);assert.throws(()=>lease.validate(),/replaced/);}finally{lease?.release();f.dispose();}});
 test('symlink manifest refuses before artifact admission',()=>{const f=fixture();try{fs.renameSync(f.admission.manifestPath,f.admission.manifestPath+'.original');fs.symlinkSync(f.admission.manifestPath+'.original',f.admission.manifestPath);assert.throws(f.open,/Symlink/);}finally{f.dispose();}});
 test('retained controls preserve raw Mach-O versions, client bytes and retirement',()=>{const f=fixture();let lease;try{lease=f.open();assert.equal(lease.image.sdkVersion,'26.1.0');assert.equal(lease.loadedHelperProven,false);assert.equal(lease.performanceQualified,false);lease.matchOriginalClient({helperExecutable:f.m.output.path,helperSource:f.m.source.path});lease.validate();lease.release();assert.throws(()=>lease.validate(),/Retired/);}finally{lease?.release();f.dispose();}});
+test('public documentary metadata cannot retarget the held original helper lease', () => {
+ const f=fixture();let lease;try {
+  lease=f.open();
+  assert.throws(()=>{lease.decoded.manifest.output.path='/foreign/replacement';},TypeError);
+  assert.throws(()=>{lease.decoded.manifest.compiler.argv.push('/foreign');},TypeError);
+  assert.throws(()=>{lease.decoded.audit.sourceSha256='0'.repeat(64);},TypeError);
+  lease.matchOriginalClient({helperExecutable:f.m.output.path,helperSource:f.m.source.path});lease.validate();
+ } finally {lease?.release();f.dispose();}
+});
