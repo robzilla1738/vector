@@ -1,0 +1,26 @@
+{
+  "requestOnly": true,
+  "controllerSha256": "e4717ac7019228b4131c2350f47114781eb96ba51156cafed5faf924190eecf8",
+  "schemaSha256": "950aa50ce29a4f560f82f49c8fa79db2f36087f5de59a113b7a2947ae59eb52f",
+  "actualControllerDiffAndSchemaAndMachOReaderReviewed": true,
+  "actualReaderSha256": "298418eef44015f0aa8fcc3aefc1341f90a5539cc1d65d525fbd704d87c5ec16",
+  "actualLauncherSha256": "c992f4d7c74fb8f31754a84a63155d4dc203dfe0ea1fd9a86fa67c43d4d3899e",
+  "singleOriginal733CompileRetained": true,
+  "actualReadbackRequires": [
+    "thin64 MachO",
+    "arm64",
+    "MH_EXECUTE",
+    "nonzero uniqueLC_UUID",
+    "actualmacOS LC_BUILD_VERSION/minimumOS/sdkVersion",
+    "LC_MAIN"
+  ],
+  "separateRootManifestAndAuditSHAsRequired": true,
+  "sidecarHelperExecutedFalseMeansAtCompileSidecarProduction": true,
+  "overallPairStillPerformsNonpromptingTrustedOnly": true,
+  "executionApproved": false,
+  "remaining": [
+    "successful full17 terminal and rootcompiledguard audit",
+    "exact ownedlaunch/guardSHA finalapproval",
+    "actual original733 compile/streams/PGabsence/MachO bytes and independentroot manifest+pair audit"
+  ]
+}
