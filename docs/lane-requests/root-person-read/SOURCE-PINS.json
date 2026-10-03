@@ -1,0 +1,20 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "patchSha256": "4382821fd740063355f77ae21a34ac63c3c01b8093e82b0212963a8e90b7246c",
+  "forwardReverseExact": true,
+  "files": {
+    "chrome/browser/ui/aux/egress_controller.h": {
+      "before": "aace675a9587640d16210801a51315f54347825e7717af3af34d103540e717c1",
+      "after": "7cbf8a46f0489741156aae7838a369a75a628c1c23a68f5b8b6fd8ef54f5b91b"
+    },
+    "chrome/browser/ui/aux/egress_controller.cc": {
+      "before": "74b0994ef0107b716decf144b281a37a5ce8a67d8d57fe9bd2dda604793f4490",
+      "after": "8a164f20a474fd6ce678268797def4e700ce46878a491cffda0956fca7ef3973"
+    },
+    "chrome/browser/ui/aux/permission_broker_unittest.cc": {
+      "before": "d7fc22563236fd7e86d91eec8686b0272a2e060405ed0e124062a44361e2077f",
+      "after": "652cb4784909a15ccd8f1cb0405d827ef84d9d63012ff2555a8d1e2b7695de5b"
+    }
+  }
+}

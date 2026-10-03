@@ -336,6 +336,80 @@ class PermissionBrokerTest : public BrowserWithTestWindowTest {
   base::DictValue lease_;
 };
 
+TEST_F(PermissionBrokerTest, PersonReadRetainsOriginalOrdinaryDocument) {
+  AddFixtureTab(GURL("https://person-read.test/start"));
+  auto* human = browser()->tab_strip_model()->GetWebContentsAt(0);
+  PageIdentity::GetOrCreate(profile(), human);
+  auto receipt = controller_->CapturePersonRead(human);
+  ASSERT_TRUE(receipt);
+  EXPECT_TRUE(controller_->MayReadPerson(*receipt));
+  EXPECT_EQ(receipt->document().AsRenderFrameHostIfValid(),
+            human->GetPrimaryMainFrame());
+  EXPECT_FALSE(controller_->CapturePersonRead(page_));
+  EXPECT_TRUE(controller_->PermissionAuthority(human->GetPrimaryMainFrame()).empty());
+  NavigateAndCommit(human, GURL("https://person-read.test/next"));
+  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
+  EXPECT_TRUE(controller_->CapturePersonRead(human));
+}
+TEST_F(PermissionBrokerTest, PersonReadCannotSurviveSettledOwnerMutation) {
+  AddFixtureTab(GURL("https://person-read.test/"));
+  auto* human = browser()->tab_strip_model()->GetWebContentsAt(0);
+  PageIdentity::GetOrCreate(profile(), human);
+  auto receipt = controller_->CapturePersonRead(human);
+  ASSERT_TRUE(receipt);
+  int retirements = 0;
+  auto subscription = controller_->ObserveAuthority(
+      base::BindRepeating([](int* count) { ++*count; }, &retirements));
+  auto token = controller_->owner_mutations().Begin();
+  ASSERT_TRUE(token);
+  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
+  EXPECT_FALSE(controller_->CapturePersonRead(human));
+  ASSERT_TRUE(controller_->owner_mutations().End(*token, true));
+  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
+  EXPECT_TRUE(controller_->CapturePersonRead(human));
+  EXPECT_EQ(retirements, 2);
+}
+TEST_F(PermissionBrokerTest, PersonReadDisconnectCannotReplayOriginalReceipt) {
+  AddFixtureTab(GURL("https://person-read.test/"));
+  auto* human = browser()->tab_strip_model()->GetWebContentsAt(0);
+  PageIdentity::GetOrCreate(profile(), human);
+  auto receipt = controller_->CapturePersonRead(human);
+  ASSERT_TRUE(receipt);
+  controller_->Disconnect();
+  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
+  auto replacement = controller_->CapturePersonRead(human);
+  ASSERT_TRUE(replacement);
+  EXPECT_TRUE(controller_->MayReadPerson(*replacement));
+  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
+}
+TEST_F(PermissionBrokerTest, PersonReadRefusesRuntimeOwnedAndForeignProfile) {
+  AddFixtureTab(GURL("https://person-read.test/"));
+  auto* human = browser()->tab_strip_model()->GetWebContentsAt(0);
+  PageIdentity::GetOrCreate(profile(), human);
+  auto receipt = controller_->CapturePersonRead(human);
+  ASSERT_TRUE(receipt);
+  TestingProfile other;
+  EXPECT_FALSE(EgressController::ForProfile(&other)->CapturePersonRead(human));
+  EXPECT_FALSE(EgressController::ForProfile(&other)->MayReadPerson(*receipt));
+  PageIdentity::MarkRuntimeOwned(profile(), human);
+  EXPECT_FALSE(controller_->CapturePersonRead(human));
+  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
+}
+TEST_F(PermissionBrokerTest, PersonReadRefusesRegisteredIsolationBeforeInstall) {
+  auto [id, partition] = controller_->ReserveIsolation("read-preparing", "task", 4);
+  ASSERT_FALSE(id.empty());
+  auto contents = content::WebContentsTester::CreateTestWebContents(
+      profile(), content::SiteInstance::CreateForFixedStoragePartition(
+          profile(), origin_, partition));
+  auto* preparing = contents.get();
+  frame_bindings_.push_back(
+      std::make_unique<PermissionFixtureFrameBindings>(preparing));
+  browser()->tab_strip_model()->AppendWebContents(std::move(contents), true);
+  NavigateAndCommit(preparing, origin_);
+  ASSERT_TRUE(controller_->RegisterIsolation(preparing, id, "read-preparing", "task", 4));
+  EXPECT_TRUE(controller_->PermissionAuthority(preparing->GetPrimaryMainFrame()).empty());
+  EXPECT_FALSE(controller_->CapturePersonRead(preparing));
+}
 TEST_F(PermissionBrokerTest, UnrelatedSuccessfulMutationResumesOnlyAfterReceipt) {
   Prompt(); Allow(false); Mutate(); base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(state_.granted); EXPECT_TRUE(controller_->owner_mutations().pending());

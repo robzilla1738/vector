@@ -1,0 +1,7 @@
+{
+  "source": "/tmp/aux-browser-runtime-l10-m4-native-authority/.native/chrome/browser/ui/aux",
+  "sha256": {
+    "egress_controller.h": "aace675a9587640d16210801a51315f54347825e7717af3af34d103540e717c1",
+    "egress_controller.cc": "74b0994ef0107b716decf144b281a37a5ce8a67d8d57fe9bd2dda604793f4490"
+  }
+}
