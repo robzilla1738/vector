@@ -1,0 +1,36 @@
+{
+  "baseCommit": "d56399005595c8a072bcdb2643c947ea07803048",
+  "patchSha256": "d369347b57c013e3dd7ba4551c67d55c2341df7a0727e43dcbb8169a0bf1fefd",
+  "files": [
+    {
+      "path": "tests/unit/browser-host-registry.test.ts",
+      "beforeSha256": "be070fb3bed472f26e3139857bbfa69135252d3daf76e60b525d465043bade4c",
+      "afterSha256": "19f2cf633c94510358b232c9188cf10b1178b0d9704ed80d7f2e6ecfc0c44003"
+    }
+  ],
+  "replay": "forward/reverse/forward PASS",
+  "verification": {
+    "tests": 4,
+    "scopedTypecheck": "PASS",
+    "scopedLint": "PASS",
+    "originalRegistrySha256": "fa75c457314c47a4b44e29bb7bd73ab1fe4f45a064c75d8e2eda04554b464c3d",
+    "currentRegistrySha256": "3e63f35655224a9d04a36203f25650af116c8658a6cf9bb85235164f53d886ac",
+    "originalMethods": 224,
+    "originalEvents": 26,
+    "legitimateChangedAdapters": [
+      "capabilities",
+      "native.capabilities"
+    ],
+    "soleAddedOptionalResultProperty": "nativeAppearanceFileChannel",
+    "descriptorSha256": "bed49294c7e5f04acf53bd53c1ab49a2b694ae8432274731dae77d0945081283"
+  },
+  "rootIndependentReplay": "PASS",
+  "rootControls": {
+    "status": "PASS",
+    "log": "/tmp/aux-root-registry-addition-controls.log",
+    "originalFingerprintUnchanged": true,
+    "onlyExplicitAddedCapabilitySeparatelyPinned": true,
+    "nativeExecution": "NOT RUN"
+  },
+  "nativeExecution": "NOT RUN"
+}

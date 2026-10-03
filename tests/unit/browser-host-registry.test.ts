@@ -22,9 +22,44 @@ describe("separate browser host registry", () => {
         trusted: spec.trusted, payload: jsonSchema(spec.payload),
       })),
     };
+    // 0333 adds one optional private appearance-channel descriptor to capabilities.
+    // Keep the pre-split fingerprint for every original schema/metadata/key-order byte.
+    for (const id of ["capabilities", "native.capabilities"]) {
+      const capabilities = record.methods.find(entry => entry.id === id)!;
+      const originalProperties = { ...capabilities.result.properties };
+      expect(Object.keys(originalProperties)).toEqual([
+        "buildId", "sourceCommit", "methods", "qualifiedFeatures", "nativeAppearanceFileChannel",
+        "developmentAcceptanceRequested", "testClockScale", "loopbackServicesUrl",
+      ]);
+      delete originalProperties.nativeAppearanceFileChannel;
+      capabilities.result = { ...capabilities.result, properties: originalProperties };
+    }
     // Captured from the original complete registry before its source was moved.
     expect(createHash("sha256").update(JSON.stringify(record)).digest("hex"))
       .toBe("fa75c457314c47a4b44e29bb7bd73ab1fe4f45a064c75d8e2eda04554b464c3d");
+  });
+
+  it("retains the exact additive 0333 channel descriptor and refuses foreign or malformed receipts", () => {
+    const capabilities = BrowserHostMethods.capabilities.result;
+    expect(RuntimeHostMethods["native.capabilities"].result).toBe(capabilities);
+    const descriptor = jsonSchema(capabilities).properties!.nativeAppearanceFileChannel;
+    expect(createHash("sha256").update(JSON.stringify(descriptor)).digest("hex"))
+      .toBe("bed49294c7e5f04acf53bd53c1ab49a2b694ae8432274731dae77d0945081283");
+    const original = { buildId: "original-build", sourceCommit: "a".repeat(40), methods: [], qualifiedFeatures: [] };
+    const channel = {
+      producer: "aux-native-appearance-file-channel", version: 1, pid: 733,
+      processUuid: "1".repeat(32), processStartMachTicks: "100", buildId: "original-build",
+      sourceCommit: "a".repeat(40), nonce: "2".repeat(32), basename: "native-appearance-channel.jsonl",
+      rootDevice: "1", rootInode: "2", profileName: "Default", profileDevice: "1", profileInode: "3",
+      fileDevice: "1", fileInode: "4", publicKeySpkiHex: "b".repeat(88), headerSha256: "c".repeat(64),
+    };
+    expect(capabilities.parse(original)).toEqual(original);
+    expect(capabilities.parse({ ...original, nativeAppearanceFileChannel: channel }))
+      .toEqual({ ...original, nativeAppearanceFileChannel: channel });
+    for (const change of [
+      { producer: "foreign" }, { processUuid: "0".repeat(32) }, { processStartMachTicks: "18446744073709551616" },
+      { pid: 2147483648 }, { basename: "foreign.jsonl" }, { nonce: "2".repeat(31) }, { unexpected: true },
+    ]) expect(capabilities.safeParse({ ...original, nativeAppearanceFileChannel: { ...channel, ...change } }).success).toBe(false);
   });
 
   it("combines the exact browser and runtime entries without aliases or replacements", () => {
