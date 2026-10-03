@@ -1,0 +1,27 @@
+{
+  "producer": "root-independent-native309-admission",
+  "candidate": "f0be591b296ddbb8763102f8ee7465af8453f20c",
+  "stageActualAudit": "PASS",
+  "stageCounts": {
+    "native": 690,
+    "generated": 3,
+    "assets": 175,
+    "compiledUnchanged": 8801,
+    "packets": 309
+  },
+  "originalStageProcessAbsence": "PASS",
+  "originalGraphStoppedAndDrained": "PASS",
+  "cachePreserved": true,
+  "sourceExportAndOwnDependenciesActualAudit": "PASS",
+  "stageProof": {
+    "path": "/private/tmp/aux-browser-runtime-builder-native309-f0be591b/release/test-artifacts/builder-native309-f0be-stage-preflight/prep-proof.json",
+    "sha256": "caa5b07cc1dbbfae6f6210b8b68f20adcaf8c369dac314b35cf84a478bc17f15"
+  },
+  "stageTerminalSha256": "8c526bd85e037f5b629305c16aa9a65987863339237c8e890cbba9106aa5b952",
+  "gnLauncherSha256": "c85f679beb5a1f6aa9911725f763ba196732f0e30a8f3ca889460d89953eabc3",
+  "gnActualInputPins": "PASS",
+  "gnDispatchAdmitted": true,
+  "buildDispatched": false,
+  "appLaunched": false,
+  "qualification": false
+}

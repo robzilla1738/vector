@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { MODEL_DISCOVERY_APPEARANCE_ID, requireModelDiscoveryAppearance } from './lib/model-discovery-appearance.mjs';
+import { MEMORY_APPEARANCE_ID, requireMemoryAppearance } from './lib/memory-appearance.mjs';
 import { MENTIONS_APPEARANCE_ID, requireMentionsAppearance } from './lib/mentions-appearance.mjs';
 import { retainPackagedRuntimePair } from './lib/packaged-runtime-pair-artifact.mjs';
 import { preflightAppearancePair } from './lib/appearance-pair-preflight.mjs';
@@ -51,7 +53,17 @@ const slot = await acquireNativeSlot();
 process.env.AUX_NATIVE_SLOT_TOKEN = slot.token;
 try {
 let entry;
-if (values.journey === MENTIONS_APPEARANCE_ID) {
+if (values.journey === MODEL_DISCOVERY_APPEARANCE_ID) {
+  requireModelDiscoveryAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/model-discovery-appearance.mjs');
+  const module = await import('./appearance-journeys/model-discovery-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === MEMORY_APPEARANCE_ID) {
+  requireMemoryAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/memory-appearance.mjs');
+  const module = await import('./appearance-journeys/memory-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === MENTIONS_APPEARANCE_ID) {
   requireMentionsAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
   const path = join(root, 'tests/host/appearance-journeys/mentions-appearance.mjs');
   const module = await import('./appearance-journeys/mentions-appearance.mjs');

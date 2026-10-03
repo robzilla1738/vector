@@ -10,6 +10,7 @@ import type { RefObject } from "react";
 import { openCommandSurface, closeCommandSurface } from "./command-surface-state";
 import { COMMAND_SURFACE_ACTIONS } from "./command-surface-actions";
 import { commandExecutor } from "./command-execution";
+import { invokeBrowserSourceUpdate } from "./browser-source-commands";
 import { RUN_CONTROL_COMMANDS, invokeRunControlCommand } from "./run-control-commands";
 import { bridge } from "./bridge";
 import { decideAgentAction, dismissAgentHandoff, takeOverAgentAction } from "./action-approval";
@@ -92,6 +93,7 @@ function bookmarkAll(st: StoreState) {
   );
 }
 export const COMMAND_ACTIONS = {
+  "update-browser-source": (_state: StoreState, context: CommandContext) => invokeBrowserSourceUpdate(context),
   ...Object.fromEntries(RUN_CONTROL_COMMANDS.map(id => [id, (_state: StoreState, context: CommandContext) => invokeRunControlCommand(id, context)])) as Record<(typeof RUN_CONTROL_COMMANDS)[number], CommandAction>,
   ...featureCommands(
     "set-site-agent-access",

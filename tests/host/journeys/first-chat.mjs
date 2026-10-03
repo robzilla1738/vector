@@ -1,3 +1,5 @@
+import { savedSourceUpdate } from '../lib/saved-source-update.mjs';
+import { savedSourceRecovery } from '../lib/saved-source-recovery.mjs';
 import { captureFailedTurnDetailsAppearance } from "../lib/failed-turn-details-appearance.mjs";
 import { captureFreshChat } from '../lib/chat-settings-capture.mjs';
 import { captureHomeJourneyState } from '../lib/home-capture.mjs';
@@ -179,5 +181,7 @@ export async function run(t) {
     await captureHomeJourneyState(t, 'first-chat-closed-context-recovered', 'first-chat-closed-context-recovered');
     return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), decisions } };
   });
+  if (t.appearanceEnabled) await t.step('Saved browser-source drift preserves the original draft until explicit removal', { kind: 'ui', features: ['electronMigration'] }, () => savedSourceRecovery(t));
+  if (t.appearanceEnabled) await t.step('Explicitly update the changed saved source before sending the kept draft', { kind: 'ui', features: ['electronMigration'] }, async () => { phase = 'updated-source'; contextTurns = 0; return savedSourceUpdate(t); });
   if (t.appearanceEnabled) await t.step("A real loopback provider failure keeps its failed turn and keyboard diagnostics", { kind: "ui", features: ["electronMigration"] }, () => captureFailedTurnDetailsAppearance(t));
 }

@@ -76,6 +76,7 @@
 .settings-content .drawer-head { align-items: flex-start; gap: var(--space-3); padding-bottom: var(--space-5); }
 .settings-content .drawer-head > .icon-btn { flex: none; }
 .settings-content .field > .hint { line-height: 1.6; }
+.settings-content :is([role="alert"], .hint) { min-width: 0; overflow-wrap: anywhere; }
 .settings-content .field :is(input:not([type="checkbox"]):not([type="range"]), select) { border-radius: var(--r-lg); }
 .settings-connection-tabs { overflow-x: auto; gap: var(--space-1); }
 .settings-connection-tabs button { flex: none; min-height: 32px; border-radius: var(--r-pill); }

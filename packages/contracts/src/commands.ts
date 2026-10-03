@@ -31,6 +31,7 @@ export const COMMANDS = [
   { id: "take-page-control", label: "Take control of this page", section: "Agent", handler: "shell", focusShell: true, windows: ["normal"], bindings: [], intercept: true },
   { id: "return-agent-control", label: "Return control to agent", section: "Agent", handler: "shell", focusShell: true, windows: ["normal"], bindings: [], intercept: true },
   { id: "set-agent-effect-grants", label: "Change agent effect grants", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
+  { id: "update-browser-source", label: "Use current browser source", section: "Agent", handler: "shell", focusShell: true, windows: ["normal"], bindings: [], intercept: true },
   { id: "mention-insert", label: "Mention source", section: "Agent", handler: "shell", feature: "tabMentions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "mention-remove", label: "Remove source mention", section: "Agent", handler: "shell", feature: "tabMentions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
 

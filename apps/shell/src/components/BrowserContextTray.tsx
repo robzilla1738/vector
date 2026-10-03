@@ -1,6 +1,9 @@
 import { memo, useLayoutEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageContextRef, PageTarget } from "@aux/contracts";
+import { useShortcutLabel, withShortcut } from "../use-shortcut-label";
+import { executeCommand } from "../commands";
+import { registerBrowserSourceUpdate } from "../browser-source-commands";
 import { sourceRef, sourceStatus } from "../browser-context-sources";
 import { availableConversationPage, conversationPage } from "../conversation-page";
 import { useStore, call, errToast } from "../store";
@@ -27,15 +30,27 @@ const AdditionalTabChoice = memo(function AdditionalTabChoice({ pageId, selected
 
 const SourceChip = memo(function SourceChip({ source, primaryPageId, disabled, busy, onRefresh, onRemove }: {
   source: PageContextRef; primaryPageId?: string; disabled: boolean; busy: boolean;
-  onRefresh(pageId: string): void; onRemove(pageId: string): void;
+  onRefresh(pageId: string): unknown; onRemove(pageId: string): void;
 }) {
   const page = useStore(state => state.pages.find(item => item.pageId === source.pageId));
   const status = useStore(state => sourceStatus(source, state.pages));
   const label = status === "missing" ? hostOf(source.url) : page?.title || hostOf(source.url);
+  const updateShortcut = useShortcutLabel("update-browser-source");
+  const updateButton = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    const element = updateButton.current;
+    if (!element || status !== "changed" || disabled || busy || !page || !availableSource(page)) return;
+    const original = sourceRef(page);
+    return registerBrowserSourceUpdate(element, source.pageId, () => {
+      const current = useStore.getState().pages.find(item => item.pageId === original.pageId);
+      if (!current || !availableSource(current) || sourceStatus(original, [current]) !== "current") throw new Error("This browser tab changed. Choose its current source again.");
+      return onRefresh(source.pageId);
+    });
+  }, [status, disabled, busy, page, source, onRefresh]);
   return <span className={status === "current" ? "" : "stale"}>
     {shellIconGlobe}<span title={source.url}>{source.pageId === primaryPageId ? `Captured source · ${label}` : label}</span>
     {status !== "current" && <small>{status === "changed" ? "Changed" : "Closed"}</small>}
-    {status === "changed" && <button type="button" disabled={disabled || busy || !!page?.loading} aria-label={`Use current ${label}`} title="Use this tab's current page" onClick={() => onRefresh(source.pageId)}>{shellIconReload}</button>}
+    {status === "changed" && <button ref={updateButton} type="button" data-command-id="update-browser-source" disabled={disabled || busy || !!page?.loading} aria-label={`Use current ${label}`} title={withShortcut("Use this tab's current page", updateShortcut)} onClick={event => { void executeCommand("update-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconReload}</button>}
     <button type="button" disabled={disabled || busy} aria-label={`Remove ${label}`} onClick={() => onRemove(source.pageId)}>{shellIconClose}</button>
   </span>;
 });
@@ -71,7 +86,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
     ? primaryPage.pageId === splitPageId ? activePageId : splitPageId
     : null;
   const splitCompanion = useStore(state => state.pages.find(page => page.pageId === splitCompanionId && availableSource(page, primaryPage?.pageId)));
-  const liveSource = async (pageId: string, scope: { active: boolean }) => {
+  const liveSource = async (pageId: string, scope: { active: boolean }, expected?: PageContextRef) => {
     const pending = await call("browser.recovery.list", {});
     if (!scope.active) return null;
     if (pending.some(tab => tab.pageId === pageId)) await call("browser.recovery.retry", { pageId });
@@ -79,15 +94,16 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
     const live = (await call("pages.list", {})).find(item => item.pageId === pageId);
     if (!scope.active) return null;
     if (!live || !availableSource(live)) throw new Error("This browser tab is unavailable.");
+    if (expected && sourceStatus(expected, [live]) !== "current") throw new Error("This browser tab changed while updating. Choose its current source again.");
     return sourceRef(live);
   };
-  const update = async (pageId: string, apply: (source: PageContextRef) => PageContextRef[]) => {
+  const update = async (pageId: string, apply: (source: PageContextRef) => PageContextRef[], expected?: PageContextRef) => {
     const scope = request.current;
     if (disabled || !scope.active || scope.pending) return;
     scope.pending = true;
     setBusy({ scope: inputScope, pageId });
     try {
-      const source = await liveSource(pageId, scope);
+      const source = await liveSource(pageId, scope, expected);
       if (source && scope.active) onSources(apply(source));
     }
     catch (error) { if (scope.active) errToast(error); }
@@ -106,8 +122,9 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
       return update(pageId, source => [...sources, source]);
   };
   const refresh = (pageId: string) => {
-    if (useStore.getState().pages.some(page => page.pageId === pageId))
-      return update(pageId, latest => sources.map(source => source.pageId === pageId ? latest : source));
+    const page = useStore.getState().pages.find(item => item.pageId === pageId);
+    if (page && availableConversationPage(page) && !page.loading)
+      return update(pageId, latest => sources.map(source => source.pageId === pageId ? latest : source), sourceRef(page));
   };
 
   return <div className="conversation-browser-context">
@@ -131,7 +148,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
     </div>
     {sources.length > 0 && <div role="group" className="conversation-browser-sources" aria-label="Selected browser tabs">
       {sources.map(source => <SourceChip key={source.pageId} source={source} primaryPageId={primaryPage?.pageId} disabled={disabled} busy={!!busyPageId}
-        onRefresh={id => void refresh(id)} onRemove={id => { onSources(sources.filter(item => item.pageId !== id)); if (id === primaryPage?.pageId) onPrimary("none"); }} />)}
+        onRefresh={refresh} onRemove={id => { onSources(sources.filter(item => item.pageId !== id)); if (id === primaryPage?.pageId) onPrimary("none"); }} />)}
     </div>}
   </div>;
 }

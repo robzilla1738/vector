@@ -1,0 +1,70 @@
+{
+  "producer": "root-source-review",
+  "packets": [
+    {
+      "packet": "/tmp/aux-browser-runtime-design-memory-appearance/docs/lane-requests/design/memory-appearance",
+      "patchSha256": "7db4185aa50232ad3355acc659ed8fcc94ddf76f0b46ad3d094cf16bfc00cd94",
+      "actualLeaves": {
+        "tests/host/run-journey.mjs": "8d6aeb032f5d73524c4aaea5759f136e343615b0918e5b1b186ebffe260bf807",
+        "tests/host/lib/memory-appearance.mjs": "58cc7a657e6275c9347558302e9e86f306f60398388728b1c423abc49ab159f5",
+        "tests/host/memory-appearance.test.mjs": "1a6b41df17a6eaede6b042db7a948199682dfb417016f104ed279fe6555c8902",
+        "tests/host/appearance-journeys/memory-appearance.mjs": "3c8262644df7333653ae619fb1698115a08694e2b311ffe922fb5c795e6feb68"
+      }
+    },
+    {
+      "packet": "/tmp/aux-browser-runtime-design-model-discovery-appearance/docs/lane-requests/design/model-discovery-appearance",
+      "patchSha256": "efcf0ebfc554b3e82ad84f4212ec607e5b122c5c0b9ec76f26138cec9eda9976",
+      "actualLeaves": {
+        "tests/host/lib/model-discovery-appearance.mjs": "89489187c0f12710f9d935cd1e029f6f293e3398de6e4b44161f2fda3b1f9a1c",
+        "tests/host/model-discovery-appearance.test.mjs": "7b76dc82e925487e198c213934e77376bbfcd01e47358037511a8b4930845d65",
+        "tests/host/appearance-journeys/model-discovery-appearance.mjs": "9326a63f7d2b25ca36bc40257e2bfa6435016f6e3254c031d87d43c642c6987f",
+        "tests/host/run-journey.mjs": "8d6aeb032f5d73524c4aaea5759f136e343615b0918e5b1b186ebffe260bf807"
+      }
+    },
+    {
+      "packet": "/tmp/aux-browser-runtime-l10-source-drift/docs/lane-requests/l10/saved-source-recovery",
+      "patchSha256": "8777fc07988e74ed586e7e0d6f50e0a78e03a8d9b688f4e107009de89a1cfaba",
+      "actualLeaves": {
+        "tests/host/lib/saved-source-recovery.mjs": "ad833858aca6a254a5cff7bca3403fb8add3f713baa60cbbbcdcce710d46f01c",
+        "tests/host/lib/saved-source-recovery.test.mjs": "b159e7625ebc21caded88f00ab6939af5e06f248d00bdef6a72b675a20891147",
+        "tests/host/journeys/first-chat.mjs": "32be210ace8477f663a226c7273127c5a42d246bc65d057258fe83b1fbc9a955"
+      }
+    },
+    {
+      "packet": "/tmp/aux-browser-runtime-l10-source-update/docs/lane-requests/l10/saved-source-update",
+      "patchSha256": "04c149ac369131f66bd46b33707c3ccac7c3629ae72d21d8f5e00651bfcdd464",
+      "actualLeaves": {
+        "tests/host/lib/saved-source-update.mjs": "64b2a4def72fcece804bada5da3ee38df1db2a1204bf9bf32e31d6696aade981",
+        "tests/host/lib/saved-source-update.test.mjs": "713dbe4b51e179a7d443656f42ccec41a252e8f830c7eeedaf2bcad1a2dde838",
+        "tests/host/journeys/first-chat.mjs": "32be210ace8477f663a226c7273127c5a42d246bc65d057258fe83b1fbc9a955"
+      }
+    },
+    {
+      "packet": "/tmp/aux-browser-runtime-l10-source-command/docs/lane-requests/l10/source-update-command",
+      "patchSha256": "b032cc89a1658abf7a9ddebd42f29f5f626ec9f42b0fb5d74eb77731fe62e6d8",
+      "actualLeaves": {
+        "apps/shell/src/browser-source-commands.ts": "1153ee09b672aaab6ffd1af8addc9e73ff067945e0014c63f1b4bfe9458832b8",
+        "apps/shell/src/browser-source-commands.test.ts": "5dd66adfbd35075d36a3c63690e9dac1514779c19463760e5b2feb55b6189303",
+        "apps/shell/src/components/BrowserContextTray.tsx": "3f7ac735c41932e7e2bae02682e176cc735dd5f50a5041c1be84588c97142660",
+        "apps/shell/src/components/BrowserContextTray.commands.test.tsx": "a8661da20ee2eec39a7858b5f9bf1470b8f554b7707ad046a47123db47b4c850",
+        "apps/shell/src/components/BrowserContextTray.pending.test.tsx": "8fae2d6d58b319a0bcec24ec69081c49a8b7a2e4c44f9349b3157ef7f76b8ef1",
+        "apps/shell/src/commands.ts": "54ca1bc2b841853a4a94326c1794601436b46c7930d7097ca751261d51141f13",
+        "packages/contracts/src/commands.ts": "68d63e3e7a28ecb14027ae41bb21e884b93aa0c4396e4d21f1df391a65b25a70"
+      }
+    }
+  ],
+  "independentExactForwardReverseForward": true,
+  "runJourneyComposition": "only additive closed Memory and discovery branches; original ordinary registry unchanged",
+  "functionalRegistry": {
+    "journeys": 49,
+    "features": 43
+  },
+  "realSourceControls": "PASS",
+  "ownRebuiltTypecheck": "PASS",
+  "nativeCaptured": false,
+  "qualification": false,
+  "modelUnknownAvailability": "unproven",
+  "nativeProductFreeze": "f0be591b296ddbb8763102f8ee7465af8453f20c",
+  "newProductCommand": "update-browser-source",
+  "nativeBuildNotDelayedForThisBatch": true
+}

@@ -15,6 +15,7 @@ const sources = vi.fn();
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList);
   useStore.setState({ pages, toasts: [] }); sources.mockReset();
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
 });
