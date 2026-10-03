@@ -1,0 +1,37 @@
+--- a/tests/host/native-window.swift
++++ b/tests/host/native-window.swift
+@@ -1289,6 +1289,26 @@
+         uuid != String(repeating: "0", count: 32) else { throw protocolError("Warm input kernel generation unavailable") }
+   return WarmWindowKernelGeneration(imageUuid: uuid, startMachTicks: usage.ri_proc_start_abstime)
+ }
++// Read-only original bound process identity. This does not prove compilation,
++// create input or change focus; caller must independently retain artifacts.
++func warmWindowIdentity(_ request: [String: Any]) throws -> [String: Any] {
++  guard Set(request.keys).isSubset(of: Set(["id", "command"])),
++        request["command"] as? String == "warmWindowIdentity" else {
++    throw protocolError("Invalid fixed warm identity request")
++  }
++  try requireLiveTarget()
++  let target = try warmWindowKernelGeneration(pid)
++  let helper = try warmWindowKernelGeneration(getpid())
++  try requireLiveTarget()
++  guard try warmWindowKernelGeneration(pid) == target,
++        try warmWindowKernelGeneration(getpid()) == helper else {
++    throw protocolError("Warm identity original generation changed")
++  }
++  return ["producer": "aux-native-stock-warm-identity", "version": 1,
++          "targetPid": Int(pid), "helperPid": Int(getpid()),
++          "targetProcessUuid": target.imageUuid, "targetProcessStartMachTicks": String(target.startMachTicks),
++          "helperProcessUuid": helper.imageUuid, "helperProcessStartMachTicks": String(helper.startMachTicks)]
++}
+ var warmWindowKeyReceiptUsed = false
+ func warmWindowKeyReceipt(_ request: [String: Any]) throws -> [String: Any] {
+   guard Set(request.keys).isSubset(of: Set(["id", "command"])),
+@@ -1358,6 +1378,7 @@
+ func protocolCommand(_ request: [String: Any]) throws -> Any {
+   guard let command = (request["command"] ?? request["cmd"]) as? String else { throw protocolError("command required") }
+   switch command {
++  case "warmWindowIdentity": return try warmWindowIdentity(request)
+   case "trusted": return trustedState()
+   case "windows": return windowInventory()
+   case "query", "dump":

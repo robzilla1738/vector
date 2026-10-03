@@ -4421,7 +4421,9 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
       // Fixed synthetic fixture only. Omit credentials, query and fragment,
       // cap each source path, and emit at most one original navigation record.
       auto bounded = [](const GURL& url) {
-        return url.scheme() + "://" + url.host() + url.path().substr(0, 200);
+        return url.scheme() + "://" + url.host() +
+               (url.has_port() ? ":" + url.port() : "") +
+               url.path().substr(0, 200);
       };
       const auto* current = web_contents()
           ? web_contents()->GetPrimaryMainFrame() : nullptr;

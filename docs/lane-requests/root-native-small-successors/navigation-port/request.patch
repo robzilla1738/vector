@@ -1,0 +1,13 @@
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
+@@ -4421,7 +4421,9 @@
+       // Fixed synthetic fixture only. Omit credentials, query and fragment,
+       // cap each source path, and emit at most one original navigation record.
+       auto bounded = [](const GURL& url) {
+-        return url.scheme() + "://" + url.host() + url.path().substr(0, 200);
++        return url.scheme() + "://" + url.host() +
++               (url.has_port() ? ":" + url.port() : "") +
++               url.path().substr(0, 200);
+       };
+       const auto* current = web_contents()
+           ? web_contents()->GetPrimaryMainFrame() : nullptr;

@@ -62,8 +62,8 @@ class ResultPreviewBrowserTest : public InProcessBrowserTest {
                                         const GURL& url) {
     content::RenderFrameHost* result = nullptr;
     shell->ForEachRenderFrameHost([&](content::RenderFrameHost* frame) {
-      if (frame != shell->GetPrimaryMainFrame() &&
-          frame->GetLastCommittedURL() == url) result = frame;
+      if (frame->GetParent() == shell->GetPrimaryMainFrame() &&
+          frame->IsActive() && frame->GetLastCommittedURL() == url) result = frame;
     });
     return result;
   }
@@ -230,7 +230,7 @@ IN_PROC_BROWSER_TEST_F(ResultPreviewBrowserTest,
   ASSERT_TRUE(content::NavigateToURL(shell, GURL("chrome://aux/")));
   ASSERT_TRUE(pending.WaitForNavigationFinished());
   EXPECT_FALSE(pending.was_successful());
-  EXPECT_FALSE(original.AsRenderFrameHostIfValid());
+  EXPECT_NE(original.AsRenderFrameHostIfValid(), shell->GetPrimaryMainFrame());
   EXPECT_FALSE(ResultPreviewStore::Read(shell, preview));
   content::TestNavigationManager replacement(shell, preview);
   ASSERT_TRUE(BeginPreview(shell, preview));

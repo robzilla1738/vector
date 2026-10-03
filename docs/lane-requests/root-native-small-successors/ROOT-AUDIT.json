@@ -1,0 +1,32 @@
+{
+  "base": "4f9f2a0d",
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "changes": [
+    {
+      "name": "preview-controls",
+      "request": "cc7ac69d53931367f3df20305d3f423c5f379f00184b64f6c61534fc99aff2d7",
+      "before": "80bab7debe32faf03d0944d8a77e12898db695918713fb41ce306f98fa6092be",
+      "after": "6cf122a5af964a35435c35dac53721ff7821d4851bf8942f968c6e9e1d1a9a29",
+      "canonical": "16015aa115d256a94b276620dd89354697738851c3e1a130c1686bcdc094b55f",
+      "forwardReverseRestoration": true
+    },
+    {
+      "name": "navigation-port",
+      "request": "23f0a42beac33f2942543e4fa4302862c2d058b54bb1394a6ccd4cbb8ef2c5a1",
+      "before": "d0c17668a52364b9dd4bea5416c05678c694e73571c200ae52497eaf063215b2",
+      "after": "9c70e3fb1ef8477c25bc03e1b95f7cc95328ebda7845b48b695fb0f42b159e54",
+      "canonical": "889f4390ceafa530c5b35ccaad537ccf1556ec7352161c2f11cf5eed0192b6e1",
+      "forwardReverseRestoration": true
+    },
+    {
+      "name": "warm-identity",
+      "request": "8fc906e077d02310d6cb9f5efdd40851166f8b440d4a07550a64ccb30b3c6d97",
+      "before": "584f7fc86d6c7aed85a7efe95cc8fcf1c929c1cd20b8090ab1d58b47e6c3c5e6",
+      "after": "ecfca9719ff84f2a56c272b797cbec705e470392448f105fd7c1cd6a5aeee364",
+      "canonical": null,
+      "forwardReverseRestoration": true
+    }
+  ]
+}
