@@ -1,3 +1,4 @@
+import { captureCommandRefusalAppearance } from "../lib/command-refusal-appearance.mjs";
 import { captureAppearanceTextState } from '../lib/appearance-text-state.mjs';
 import { captureHomeJourneyState as captureCommandState } from '../lib/home-capture.mjs';
 
@@ -93,6 +94,7 @@ export async function run(t) {
         return inputs[0]?.value === question && /Ask is unavailable/.test(JSON.stringify(tree)) ? tree : null;
       });
       t.assert.equal((await t.rpc('pages.list')).length, before.length);
+      if (attempt === 0) await captureCommandRefusalAppearance(t, { field, prompt: question, pages: before });
       await t.ax.key('escape', 'hid');
     }
     await t.ax.key('command+t', 'hid'); await t.ax.waitFor(dialog); await t.ax.type(question, field);
