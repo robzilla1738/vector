@@ -14,7 +14,6 @@
 #include "base/task/bind_post_task.h"
 #include "base/task/thread_pool.h"
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
-#include "chrome/browser/ui/aux/native_performance_observer.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 namespace aux {

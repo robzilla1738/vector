@@ -4,6 +4,11 @@
 #include <cmath>
 #include <cstdlib>
 #include <vector>
+#include "base/functional/function_ref.h"
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+#include "chrome/browser/ui/aux/native_aux_warm_creation_ticket.h"
+#include "chrome/browser/ui/aux/native_aux_warm_owner.h"
+#endif
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/aux/native_performance_mailbox.h"
 #include "chrome/browser/ui/aux/native_startup_launch_receipt.h"
@@ -44,14 +49,12 @@ std::optional<gfx::Rect> ValidateNativeStartupViewportGeometry(
     return std::nullopt;
   return pixels;
 }
-std::optional<NativeStartupViewport> ReadNativeStartupViewport(
-    base::WeakPtr<WebUIBrowserUI> ui) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  const auto owner = ReadNativeGuestStageShellOwner(ui);
-  if (!NativeStartupObservationEnabled() || !owner || !ui || !ui->web_ui()) return std::nullopt;
+namespace {
+bool ColdStartupScopeMatches(base::WeakPtr<WebUIBrowserUI> ui) {
+  if (!NativeStartupObservationEnabled() || !ui || !ui->web_ui() || !ui->browser()) return false;
   auto* profile = Profile::FromWebUI(ui->web_ui());
   auto* browser = ui->browser();
-  if (!profile || profile->IsOffTheRecord() || !browser) return std::nullopt;
+  if (!profile || profile->IsOffTheRecord()) return false;
   const auto browser_weak = browser->GetWeakPtr();
   const auto selected = profile->GetPath().DirName();
   std::vector<base::WeakPtr<BrowserWindowInterface>> inventory;
@@ -65,7 +68,19 @@ std::optional<NativeStartupViewport> ReadNativeStartupViewport(
   if (!ui || !browser_weak || inventory.size() != 1 || !inventory[0] ||
       inventory[0].get() != browser_weak.get() ||
       !NativePerformanceOwnerInventoryMatches(browser_weak.get(), {}, {browser_weak.get()}))
-    return std::nullopt;
+    return false;
+  return true;
+}
+std::optional<NativeStartupViewport> ReadStartupViewportForScope(
+    base::WeakPtr<WebUIBrowserUI> ui, base::FunctionRef<bool()> scope_matches) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  if (!scope_matches()) return std::nullopt;
+  const auto owner = ReadNativeGuestStageShellOwner(ui);
+  if (!NativeStartupObservationEnabled() || !owner || !ui || !ui->web_ui()) return std::nullopt;
+  auto* profile = Profile::FromWebUI(ui->web_ui());
+  auto* browser = ui->browser();
+  if (!profile || profile->IsOffTheRecord() || !browser) return std::nullopt;
+  const auto browser_weak = browser->GetWeakPtr();
   auto* shell = ui->web_ui()->GetWebContents();
   auto* frame = shell ? shell->GetPrimaryMainFrame() : nullptr;
   auto* window = shell ? WebUIBrowserWindow::FromWebShellWebContents(shell) : nullptr;
@@ -119,7 +134,25 @@ std::optional<NativeStartupViewport> ReadNativeStartupViewport(
       !document.AsRenderFrameHostIfValid() || !widget || !view ||
       document.AsRenderFrameHostIfValid()->GetRenderWidgetHost() != rwh || rwh->GetView() != view.get())
     return std::nullopt;
+  if (!scope_matches() || !ui || !browser_weak || !widget || !view ||
+      document.AsRenderFrameHostIfValid() != frame) return std::nullopt;
   return before;
 }
+}  // namespace
+std::optional<NativeStartupViewport> ReadNativeStartupViewport(
+    base::WeakPtr<WebUIBrowserUI> ui) {
+  // Cold admission still requires the original single-window inventory.
+  return ReadStartupViewportForScope(ui, [ui] { return ColdStartupScopeMatches(ui); });
+}
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+std::optional<NativeStartupViewport> ReadNativeWarmStartupViewport(
+    base::WeakPtr<WebUIBrowserUI> ui,
+    base::WeakPtr<NativeAuxWarmCreationTicket> ticket) {
+  return ReadStartupViewportForScope(ui, [ui, ticket] {
+    return ticket && ticket->Confirmed() && ticket->owner() &&
+        ticket->owner()->MatchesChild(ui);
+  });
+}
+#endif
 }  // namespace aux
 #endif

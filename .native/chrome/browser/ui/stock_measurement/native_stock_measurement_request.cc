@@ -45,7 +45,7 @@ std::optional<NativeStockMeasurementRequest> NativeStockMeasurementRequest::Read
   auto row = base::JSONReader::ReadDict(std::string_view(bytes, size), base::JSON_PARSE_RFC);
   const auto* operation = row ? row->FindString("operation") : nullptr;
   const auto* raw_sequence = row ? row->FindString("sequence") : nullptr; uint64_t next = 0;
-  if (!row || row->size() != 2 || !operation || *operation != "sampleStockProcessMemory" || !raw_sequence ||
+  if (!row || row->size() != 2 || !operation || (*operation != "sampleStockProcessMemory" && *operation != "prepareStockWarmWindow" && *operation != "completeStockWarmWindow") || !raw_sequence ||
       !base::StringToUint64(*raw_sequence, &next) || *raw_sequence != base::NumberToString(next) ||
       next == 0 || next > 4000 || next < sequence || next > sequence + 1)
     return NativeStockMeasurementRequest();

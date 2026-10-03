@@ -49,4 +49,48 @@ TEST_F(NativeStartupFrameMeasurementLifetimeTest, NoWidgetCannotAuthorizePrepara
   measurement.Cancel();
   EXPECT_FALSE(replied);
 }
+// Pure timestamp/purpose controls; no widget, native owner or paint authority.
+TEST(NativeStartupFrameTimingTest, ColdRequiresExactOriginalLaunchEndpoint) {
+  NativeStartupFrameScope scope;
+  scope.launch = base::TimeTicks() + base::Seconds(1);
+  scope.measurement_input = scope.launch;
+  scope.hardware_registration = scope.launch + base::Milliseconds(10);
+  const auto now = scope.hardware_registration + base::Milliseconds(1);
+  scope.purpose = NativeStartupFramePurpose::kAuxCold;
+  EXPECT_TRUE(ValidateNativeStartupFrameTiming(scope, now));
+  scope.measurement_input += base::Microseconds(1);
+  EXPECT_FALSE(ValidateNativeStartupFrameTiming(scope, now));
+}
+TEST(NativeStartupFrameTimingTest, MissingAndForeignPurposesRefuse) {
+  NativeStartupFrameScope scope;
+  scope.launch = base::TimeTicks() + base::Seconds(1);
+  scope.measurement_input = scope.launch;
+  scope.hardware_registration = scope.launch;
+  EXPECT_FALSE(ValidateNativeStartupFrameTiming(scope, scope.launch));
+  scope.purpose = static_cast<NativeStartupFramePurpose>(99);
+  EXPECT_FALSE(ValidateNativeStartupFrameTiming(scope, scope.launch));
+}
+TEST(NativeStartupFrameTimingTest, WarmMustBeLaterThanRetainedLaunch) {
+  NativeStartupFrameScope scope;
+  scope.launch = base::TimeTicks() + base::Seconds(1);
+  scope.purpose = NativeStartupFramePurpose::kAuxWarm;
+  scope.measurement_input = scope.launch;
+  scope.hardware_registration = scope.launch + base::Milliseconds(10);
+  const auto now = scope.hardware_registration;
+  EXPECT_FALSE(ValidateNativeStartupFrameTiming(scope, now));
+  scope.measurement_input = scope.launch - base::Microseconds(1);
+  EXPECT_FALSE(ValidateNativeStartupFrameTiming(scope, now));
+  scope.measurement_input = scope.launch + base::Microseconds(1);
+  EXPECT_TRUE(ValidateNativeStartupFrameTiming(scope, now));
+}
+TEST(NativeStartupFrameTimingTest, RegistrationCannotPrecedeInputOrBeFuture) {
+  NativeStartupFrameScope scope;
+  scope.launch = base::TimeTicks() + base::Seconds(1);
+  scope.purpose = NativeStartupFramePurpose::kAuxWarm;
+  scope.measurement_input = scope.launch + base::Milliseconds(10);
+  scope.hardware_registration = scope.measurement_input - base::Microseconds(1);
+  EXPECT_FALSE(ValidateNativeStartupFrameTiming(scope, scope.measurement_input));
+  scope.hardware_registration = scope.measurement_input + base::Microseconds(1);
+  EXPECT_FALSE(ValidateNativeStartupFrameTiming(scope, scope.measurement_input));
+}
 }  // namespace blink

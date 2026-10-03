@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "components/viz/service/display/surface_aggregator.h"
+#include "components/viz/service/display/native_stock_root_coverage.h"
 
 #include <stddef.h>
 
@@ -2236,6 +2237,7 @@ AggregatedFrame SurfaceAggregator::Aggregate(
   is_inside_aggregate_ = true;
 
   root_surface_id_ = surface_id;
+  native_stock_frame_.reset();
   tracked_element_rects_ = {};
 
   ResolvedFrameData* resolved_frame = GetResolvedFrame(surface_id);
@@ -2249,6 +2251,23 @@ AggregatedFrame SurfaceAggregator::Aggregate(
   expected_display_time_ = expected_display_time;
 
   const CompositorFrameMetadata& frame_metadata = resolved_frame->GetMetadata();
+  std::optional<NativeStockRootFrame> stock_root;
+  std::optional<AggregatedRenderPassId> stock_root_pass;
+  if (native_stock_observation_ && frame_metadata.native_stock_ready) {
+    const auto& marker = *frame_metadata.native_stock_ready;
+    const auto& root = resolved_frame->GetRootRenderPassData();
+    const auto& source = root.render_pass();
+    stock_root.emplace(); stock_root->nonce = marker.nonce;
+    stock_root->surface = surface_id; stock_root->token = frame_metadata.frame_token;
+    stock_root->output = source.output_rect;
+    stock_root->committed_client_bounds = marker.client_bounds;
+    stock_root->ready = marker.ready; stock_root->commit = marker.commit;
+    stock_root->submitted = marker.submitted;
+    // Full current source root only; unknown filters/transforms never count.
+    if (marker.frame_token == frame_metadata.frame_token &&
+        source.filters.IsEmpty() && source.backdrop_filters.IsEmpty())
+      stock_root_pass = root.remapped_id();
+  }
   flow_ids_for_resolved_frames_.insert(frame_metadata.begin_frame_ack.trace_id);
 
   TRACE_EVENT_BEGIN(
@@ -2419,6 +2438,18 @@ AggregatedFrame SurfaceAggregator::Aggregate(
     frame_annotator_->AnnotateAggregatedFrame(&frame);
 
   frame.tracked_element_rects = std::move(tracked_element_rects_);
+  if (stock_root) {
+    if (stock_root_pass && !frame.has_copy_requests && !frame.render_pass_list.empty()) {
+      const auto& actual = *frame.render_pass_list.back();
+      stock_root->entire_client_painted = actual.id == *stock_root_pass &&
+          actual.output_rect == stock_root->output &&
+          stock_root->output == stock_root->committed_client_bounds &&
+          NativeStockRootHasFullCoverage(actual);
+    }
+    // A marked partial/unknown first frame is retained as a refusal candidate,
+    // not silently skipped to recover a later redraw.
+    native_stock_frame_ = std::move(stock_root);
+  }
 
   return frame;
 }

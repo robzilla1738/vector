@@ -8066,7 +8066,12 @@ test("unit_tests") {
     deps += [ "//chrome/browser/ui:accelerator_table" ]
   }
   if (is_mac && aux_allow_remote_debugging_for_tests && !enable_aux_shell) {
-    sources += [ "../browser/ui/stock_measurement/native_stock_measurement_request_unittest.cc" ]
+    sources += [
+      "../browser/ui/stock_measurement/native_stock_measurement_request_unittest.cc",
+      "../browser/ui/stock_measurement/native_stock_warm_lifetime_unittest.cc",
+      "../browser/ui/stock_measurement/native_stock_startup_guard_unittest.cc",
+      "../browser/ui/stock_measurement/native_stock_startup_session_unittest.cc",
+    ]
   }
   if (enable_aux_shell && is_mac) {
     sources += [
@@ -8080,6 +8085,8 @@ test("unit_tests") {
       "../browser/ui/aux/native_little_creation_ticket_unittest.cc",
       "../browser/ui/aux/native_little_presentation_fixture_unittest.cc",
       "../browser/ui/aux/native_startup_launch_receipt_unittest.cc",
+      "../browser/ui/aux/native_private_fixture_methods_unittest.cc",
+      "../browser/ui/aux/native_aux_warm_fixture_unittest.cc",
       "../browser/ui/aux/native_startup_presentation_session_unittest.cc",
       "../browser/ui/aux/native_startup_viewport_unittest.cc",
       "../browser/ui/aux/native_performance_mailbox_unittest.cc",

@@ -5,6 +5,7 @@
 #include "chrome/browser/buildflags.h"
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
 #include <optional>
+#include <memory>
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
@@ -23,13 +24,21 @@ class WebUIBrowserUI;
 class BrowserWindowInterface;
 namespace views { class Widget; }
 namespace aux {
+class NativeAuxWarmOwner;
+class NativeAuxWarmCreationTicket;
 // One initial process launch, attached before shell renderer startup. This is
 // neither a renderer-invoked fixture nor a later-frame performance sampler.
 class NativeStartupPresentationSession final : public content::WebContentsObserver, public ui::CompositorObserver {
  public:
   using Reply = base::OnceCallback<void(base::DictValue)>;
   explicit NativeStartupPresentationSession(base::WeakPtr<WebUIBrowserUI> ui);
+  NativeStartupPresentationSession(base::WeakPtr<WebUIBrowserUI> ui,
+      base::WeakPtr<NativeAuxWarmCreationTicket> exact_warm_ticket);
   ~NativeStartupPresentationSession() override;
+  // Native-only one-use handoff after the original cold delivery. No JSON
+  // admission, selector, effect or fallback owner is created here.
+  std::unique_ptr<NativeAuxWarmOwner> TakeOriginalWarmOwner();
+  bool IsWarmObservation() const { return warm_mode_; }
   void Start(Reply reply);
   void PrimaryPageChanged(content::Page& page) override;
   void PrimaryMainFrameRenderProcessGone(base::TerminationStatus status) override;
@@ -43,6 +52,8 @@ class NativeStartupPresentationSession final : public content::WebContentsObserv
   bool Stable() const;
   bool WithinDeadline() const;
   bool UniqueRegularOwner() const;
+  const NativeStartupLaunchReceipt* OriginalLaunch() const;
+  std::optional<NativeStartupViewport> CurrentViewport() const;
   void Admitted(std::optional<NativeStartupLaunchReceipt> receipt);
   void HardwareObservationReady(std::optional<base::TimeTicks> registered);
   void Submitted(blink::mojom::NativeStartupFrameSubmissionPtr actual);
@@ -60,6 +71,10 @@ class NativeStartupPresentationSession final : public content::WebContentsObserv
   uint64_t display_generation_ = 0;
   NativeStartupAdmissionWaiter admission_;
   std::optional<NativeStartupLaunchReceipt> receipt_;
+  // The mode never reverts to cold when this weak ticket retires.
+  bool warm_mode_ = false;
+  base::WeakPtr<NativeAuxWarmCreationTicket> warm_ticket_;
+  std::unique_ptr<NativeAuxWarmOwner> original_warm_owner_;
   std::optional<NativeGuestStageOwnedSnapshot> owner_;
   std::optional<NativeStartupViewport> viewport_;
   content::WeakDocumentPtr document_;

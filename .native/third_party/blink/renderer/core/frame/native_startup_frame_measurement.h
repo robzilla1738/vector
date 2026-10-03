@@ -11,6 +11,7 @@
 #include "third_party/blink/renderer/core/frame/native_startup_interactive_witness.h"
 namespace blink {
 class WidgetBase;
+enum class NativeStartupFramePurpose { kUnspecified, kAuxCold, kAuxWarm };
 struct NativeStartupFrameScope {
   aux::ContentPerformanceScope widget;
   DocumentToken document;
@@ -19,8 +20,13 @@ struct NativeStartupFrameScope {
   // Only the browser-owned admitted actual native launcher receipt supplies it.
   base::TimeTicks launch;
   base::TimeTicks hardware_registration;
+  NativeStartupFramePurpose purpose = NativeStartupFramePurpose::kUnspecified;
+  base::TimeTicks measurement_input;
   bool operator==(const NativeStartupFrameScope&) const = default;
 };
+// Timing-shape validation only; it admits neither an owner nor paint evidence.
+CORE_EXPORT bool ValidateNativeStartupFrameTiming(const NativeStartupFrameScope& scope,
+                                                 base::TimeTicks now);
 struct NativeStartupFrameSubmission {
   NativeStartupFrameScope scope;
   NativeStartupInteractiveWitness witness;

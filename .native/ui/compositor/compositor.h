@@ -34,6 +34,8 @@
 #include "cc/trees/property_tree.h"
 #include "components/viz/common/frame_sinks/begin_frame_args.h"
 #include "components/viz/common/surfaces/frame_sink_id.h"
+#include "components/viz/common/surfaces/surface_id.h"
+#include "components/viz/common/quads/native_stock_ready_frame.h"
 #include "components/viz/common/surfaces/subtree_capture_id.h"
 #include "components/viz/host/host_frame_sink_client.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
@@ -191,12 +193,22 @@ class COMPOSITOR_EXPORT Compositor
   uint64_t native_startup_display_generation() const {
     return native_startup_display_generation_ == UINT64_MAX ? 0 : native_startup_display_generation_;
   }
+  void BeginNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce,
+      base::OnceCallback<void(std::optional<base::TimeTicks>)> reply);
+  void CompleteNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce,
+      viz::SurfaceId root, uint32_t token,
+      base::OnceCallback<void(viz::mojom::NativeStockRootPresentationPtr)> reply);
+  void CancelNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce);
   void BeginNativeStartupHardwareObservation(const base::UnguessableToken& nonce,
       const viz::FrameSinkId& shell, base::OnceCallback<void(std::optional<base::TimeTicks>)> reply);
   void CompleteNativeStartupHardwareObservation(const base::UnguessableToken& nonce,
       viz::mojom::NativeGuestInclusionScopePtr scope,
       base::OnceCallback<void(viz::mojom::NativeGuestInclusionResultPtr)> reply);
   void CancelNativeStartupHardwareObservation(const base::UnguessableToken& nonce);
+  // Native fixture session only, after real current BrowserView child paint.
+  // This queues on DidUpdateLayers for that same tree, never a later redraw.
+  void QueueNativeStockReadyPaint(viz::NativeStockReadyFrame actual_paint,
+      base::OnceCallback<void(std::optional<viz::NativeStockReadyFrame>)> reply);
   void MeasureNativeGuestInclusion(viz::mojom::NativeGuestInclusionScopePtr scope,
       base::OnceCallback<void(viz::mojom::NativeGuestInclusionResultPtr)> result);
 
@@ -750,6 +762,14 @@ class COMPOSITOR_EXPORT Compositor
 
   void AdvanceNativeStartupDisplayGeneration();
   uint64_t native_startup_display_generation_ = 1;
+  bool native_stock_ready_used_ = false;
+  bool native_stock_registration_used_ = false;
+  base::UnguessableToken native_stock_pending_nonce_;
+  base::OnceCallback<void(std::optional<base::TimeTicks>)>
+      native_stock_registration_reply_;
+  std::optional<viz::NativeStockReadyFrame> native_stock_ready_pending_;
+  base::OnceCallback<void(std::optional<viz::NativeStockReadyFrame>)>
+      native_stock_ready_reply_;
   base::WeakPtrFactory<Compositor> context_creation_weak_ptr_factory_{this};
   base::WeakPtrFactory<Compositor> weak_ptr_factory_{this};
 };

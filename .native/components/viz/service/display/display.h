@@ -16,6 +16,7 @@
 #include "base/functional/callback.h"
 #include "components/viz/service/display/native_guest_inclusion_receipt.h"
 #include "components/viz/service/display/native_startup_first_hardware_retention.h"
+#include "components/viz/service/display/native_stock_first_hardware_retention.h"
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "base/observer_list_types.h"
@@ -157,6 +158,11 @@ class VIZ_SERVICE_EXPORT Display : public DisplaySchedulerClient,
   // DisplaySchedulerClient implementation.
   bool DrawAndSwap(const DrawAndSwapParams& params) override;
   // Internal privileged owner route only; never renderer/public debug API.
+  std::optional<base::TimeTicks> BeginNativeStockStartupHardwareObservation(
+      const base::UnguessableToken& nonce);
+  void CompleteNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce,
+      SurfaceId root, uint32_t token, NativeStockFirstHardwareRetention::Reply reply);
+  void CancelNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce);
   std::optional<base::TimeTicks> BeginNativeStartupHardwareObservation(
       const base::UnguessableToken& nonce, FrameSinkId shell);
   void CompleteNativeStartupHardwareObservation(const base::UnguessableToken& nonce,
@@ -308,6 +314,7 @@ class VIZ_SERVICE_EXPORT Display : public DisplaySchedulerClient,
   };
 
   std::unique_ptr<NativeStartupFirstHardwareRetention> native_startup_retention_;
+  std::unique_ptr<NativeStockFirstHardwareRetention> native_stock_retention_;
   std::optional<NativeGuestInclusionScope> native_guest_scope_;
   base::OnceCallback<void(NativeGuestInclusionResult)> native_guest_result_;
   void InitializeRenderer();

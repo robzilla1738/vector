@@ -20,15 +20,26 @@
 #include "base/strings/string_util.h"
 #include "base/uuid.h"
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
-#include "chrome/browser/ui/aux/native_performance_observer.h"
 #include "chrome/browser/ui/aux/native_process_footprint.h"
 #include "crypto/hash.h"
 namespace aux {
 bool NativeStartupObservationEnabled() {
+#if BUILDFLAG(ENABLE_AUX_SHELL)
   return base::CommandLine::ForCurrentProcess()->HasSwitch("aux-native-startup-observer") &&
       NativePerformanceObservationMetadataEnabled();
+#else
+  // Distinct closed Stock startup flag plus original cached Stock fixture.
+  // Aux flags cannot admit this build kind; no caller-selected kind or path.
+  return base::CommandLine::ForCurrentProcess()->HasSwitch("aux-native-stock-startup-observer") &&
+      NativeStockObservationMetadataEnabled();
+#endif
 }
 namespace {
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+constexpr std::string_view kNativeStartupKind = "aux";
+#else
+constexpr std::string_view kNativeStartupKind = "stock";
+#endif
 bool Directory(const struct stat& s) {
   return S_ISDIR(s.st_mode) && s.st_uid == geteuid() && (s.st_mode & 0777) == 0700;
 }
@@ -172,7 +183,7 @@ std::optional<NativeStartupLaunchReceipt> ReadNativeStartupLaunchReceipt() {
       !text(*expected, "producer", "aux-native-startup-build") ||
       !text(*actual, "producer", "aux-native-startup-launch") ||
       expected->FindInt("version") != 1 || actual->FindInt("version") != 1 ||
-      !text(*expected, "kind", "aux") || !text(*actual, "kind", "aux") ||
+      !text(*expected, "kind", kNativeStartupKind) || !text(*actual, "kind", kNativeStartupKind) ||
       !text(*actual, "sequence", "1") || actual->FindInt("launcherPid") != getppid() ||
       actual->FindInt("browserPid") != getpid()) return std::nullopt;
   // Producers use compact sorted-key JSON. Exact canonical bytes reject

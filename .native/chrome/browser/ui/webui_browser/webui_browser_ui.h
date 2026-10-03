@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include "base/unguessable_token.h"
 #include <cstdint>
 #include <map>
 #include <string>
@@ -82,6 +83,7 @@ class NativeShellMemorySampler;
 class NativeProcessMemorySampler;
 #if BUILDFLAG(ENABLE_AUX_SHELL)
 class NativeStartupPresentationSession;
+class NativeAuxWarmFixture;
 #endif
 }
 #endif
@@ -160,13 +162,17 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
   base::WeakPtr<WebUIBrowserUI> GetWeakPtr();
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
   base::WeakPtr<BrowserWindowInterface> NativeLittleCleanupWindowForTesting() const;
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  base::WeakPtr<BrowserWindowInterface> NativeWarmCleanupWindowForTesting() const;
+#endif
   void ObserveAuxPerformanceInput(const gfx::NativeEvent& event);
   bool DeferAuxGuestTabSwitchForTesting(const gfx::NativeEvent& event,
       base::OnceClosure registered_effect);
 #endif
 #if BUILDFLAG(ENABLE_AUX_SHELL)
   bool DispatchAuxShortcut(const std::string& command_id, bool focus_shell = false,
-                           std::optional<bool> website_pass_through = std::nullopt);
+                           std::optional<bool> website_pass_through = std::nullopt,
+                           std::optional<base::UnguessableToken> warm_input_receipt = std::nullopt);
   bool IsCommandIdEnabled(int command_id) const override;
   void ExecuteCommand(int command_id, int event_flags) override;
 #endif
@@ -360,6 +366,7 @@ class WebUIBrowserUI : public ui::MojoWebUIController,
   std::unique_ptr<aux::NativeProcessMemorySampler> process_memory_sampler_;
 #if BUILDFLAG(ENABLE_AUX_SHELL)
   std::unique_ptr<aux::NativeStartupPresentationSession> startup_presentation_session_;
+  std::unique_ptr<aux::NativeAuxWarmFixture> warm_window_fixture_;
 #endif
 #endif
   base::WeakPtrFactory<WebUIBrowserUI> weak_factory_{this};

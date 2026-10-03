@@ -12,6 +12,7 @@
 #include "ui/gfx/geometry/size.h"
 class WebUIBrowserUI;
 namespace aux {
+class NativeAuxWarmCreationTicket;
 struct NativeStartupViewportGeometry {
   gfx::Rect shell_screen;
   gfx::Rect client_screen;
@@ -36,6 +37,12 @@ struct NativeStartupViewport {
 // foreign window selection, guest creation, or presentation inference.
 std::optional<NativeStartupViewport> ReadNativeStartupViewport(
     base::WeakPtr<WebUIBrowserUI> ui);
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+// Same full native geometry/readback, with exact confirmed warm ticket only.
+std::optional<NativeStartupViewport> ReadNativeWarmStartupViewport(
+    base::WeakPtr<WebUIBrowserUI> ui,
+    base::WeakPtr<NativeAuxWarmCreationTicket> ticket);
+#endif
 }  // namespace aux
 #endif
 #endif

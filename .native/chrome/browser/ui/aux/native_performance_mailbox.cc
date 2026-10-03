@@ -64,6 +64,9 @@ std::optional<NativeGuestStageOwnedSnapshot> UniqueOwner(base::WeakPtr<WebUIBrow
   const base::FilePath selected(base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("user-data-dir"));
   auto* origin = ui->browser();
   const auto permitted_little = ui->NativeLittleCleanupWindowForTesting();
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  const auto permitted_warm = ui->NativeWarmCleanupWindowForTesting();
+#endif
   std::vector<BrowserWindowInterface*> observed;
   ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
       [&observed, selected](BrowserWindowInterface* browser) {
@@ -73,6 +76,27 @@ std::optional<NativeGuestStageOwnedSnapshot> UniqueOwner(base::WeakPtr<WebUIBrow
         }
         return true;
       });
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  if (permitted_warm) {
+    // Only the native exact creation ticket can expose this capability. It
+    // cannot authorize another normal window or coexist with a Little lease.
+    if (permitted_little || observed.size() != 2 || !origin ||
+        origin == permitted_warm.get() || permitted_warm->GetProfile() != profile ||
+        origin->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
+        permitted_warm->GetType() != BrowserWindowInterface::TYPE_NORMAL ||
+        IsLittleWindow(origin) || IsQuickAskWindow(origin) ||
+        IsLittleWindow(permitted_warm.get()) || IsQuickAskWindow(permitted_warm.get())) return std::nullopt;
+    unsigned original_count = 0, child_count = 0;
+    for (auto* current : observed) {
+      if (current == origin) ++original_count;
+      else if (current == permitted_warm.get()) ++child_count;
+      else return std::nullopt;
+    }
+    return original_count == 1 && child_count == 1 && ui && permitted_warm &&
+        ui->NativeWarmCleanupWindowForTesting().get() == permitted_warm.get() &&
+        ReadNativeGuestStageShellOwner(ui) == owner ? owner : std::nullopt;
+  }
+#endif
   return NativePerformanceOwnerInventoryMatches(origin, permitted_little, observed) &&
       ui && ReadNativeGuestStageShellOwner(ui) == owner ? owner : std::nullopt;
 }
@@ -100,6 +124,7 @@ bool IsNativePerformanceMailboxOperation(const std::string& operation) {
       operation == "prepareGuestTabSwitchPresentation" || operation == "completeGuestPresentation" ||
       operation == "sampleShellMemory" || operation == "sampleProcessMemory" ||
       operation == "prepareSubagentMemoryWorkload" ||
+      operation == "prepareAuxWarmWindow" || operation == "completeAuxWarmWindow" ||
       operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation" ||
       operation == "prepareOrganizationAutoArchiveWork" ||
       operation == "prepareOrganizationLiveFolderWork" || operation == "completeOrganizationWork";
@@ -220,16 +245,21 @@ void NativePerformanceMailbox::Received(std::optional<base::DictValue> request) 
 }
 std::optional<uint64_t> NativePerformanceMailbox::TakeExpected(const std::string& operation) {
   const auto cleanup = ui_ ? ui_->NativeLittleCleanupWindowForTesting() : base::WeakPtr<BrowserWindowInterface>();
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  const auto warm_cleanup = ui_ ? ui_->NativeWarmCleanupWindowForTesting() : base::WeakPtr<BrowserWindowInterface>();
+  if (warm_cleanup && operation != "completeAuxWarmWindow") { Refuse(); return std::nullopt; }
+#endif
   if ((cleanup && operation != "completeLittleWindowPresentation") || !Stable() || !expected_ || *expected_ != operation || running_ ||
       (sample_completion_ ? operation != *sample_completion_ :
           (operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
-           operation == "completeLittleWindowPresentation"))) { Refuse(); return std::nullopt; }
+           operation == "completeLittleWindowPresentation" || operation == "completeAuxWarmWindow"))) { Refuse(); return std::nullopt; }
   running_ = std::move(expected_); expected_.reset(); return sequence_;
 }
 bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& operation, const base::DictValue& record) {
   if (!Stable() || !running_ || *running_ != operation || sequence != sequence_) { Refuse(); return false; }
   const auto* producer = record.FindString("producer");
   const auto* status = record.FindString("status");
+  const bool warm = operation == "prepareAuxWarmWindow" || operation == "completeAuxWarmWindow";
   const bool little = operation == "prepareLittleWindowPresentation" || operation == "completeLittleWindowPresentation";
   const bool preparation = operation == "prepareSubagentMemoryWorkload";
   const bool process_memory = operation == "sampleProcessMemory";
@@ -237,13 +267,28 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
   const bool prepare_work = operation == "prepareOrganizationAutoArchiveWork" ||
       operation == "prepareOrganizationLiveFolderWork";
   const bool organization = prepare_work || operation == "completeOrganizationWork";
-  if (!producer || *producer != (preparation ? "aux-native-subagent-preparation" : process_memory ? "aux-native-process-memory" : memory ? "aux-native-shell-memory" :
+  std::optional<int> measured_window_id = owner_->window_id;
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  if (warm && status && *status == "measured") {
+    const auto child = ui_->NativeWarmCleanupWindowForTesting();
+    auto* child_window = child ? WebUIBrowserWindow::FromBrowser(child.get()) : nullptr;
+    const auto child_ui = child_window && child_window->GetWebUIBrowserUI() ?
+        child_window->GetWebUIBrowserUI()->GetWeakPtr() : base::WeakPtr<WebUIBrowserUI>();
+    const auto child_owner = ReadNativeGuestStageShellOwner(child_ui);
+    if (!child || !child_owner || !ui_ || !child_ui ||
+        record.FindInt("preparedWindowId") != owner_->window_id ||
+        ui_->NativeWarmCleanupWindowForTesting().get() != child.get() ||
+        ReadNativeGuestStageShellOwner(child_ui) != child_owner) { Refuse(); return false; }
+    measured_window_id = child_owner->window_id;
+  }
+#endif
+  if (!producer || *producer != (warm ? "aux-native-warm-window" : preparation ? "aux-native-subagent-preparation" : process_memory ? "aux-native-process-memory" : memory ? "aux-native-shell-memory" :
           organization ? "aux-native-organization-work-v1" :
           little ? "aux-native-little-presentation-upperbound" : "aux-native-guest-presentation") ||
       record.FindInt("version") != 1 || !status ||
       (preparation ? (*status != "ready" && *status != "refused") : memory ? (*status != "sampled" && *status != "refused") :
           (*status != "ready" && *status != "measured" && *status != "refused")) ||
-      (*status != "refused" && record.FindInt("windowId") != owner_->window_id)) {
+      (*status != "refused" && record.FindInt("windowId") != measured_window_id)) {
     Refuse(); return false;
   }
   if (organization && *status != "refused") {
@@ -260,13 +305,18 @@ bool NativePerformanceMailbox::EmitReply(uint64_t sequence, const std::string& o
   auto wrapper = base::DictValue().Set("producer", "aux-native-fixture-reply").Set("version", 1)
       .Set("pid", static_cast<int>(getpid())).Set("windowId", owner_->window_id)
       .Set("sequence", base::NumberToString(sequence)).Set("operation", operation).Set("record", record.Clone());
-  const auto json = base::WriteJson(wrapper);
+  std::optional<std::string> json;
+  if (warm) {
+    std::string canonical;
+    if (base::JSONWriter::WriteWithOptions(wrapper,
+        base::JSONWriter::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION, &canonical)) json = std::move(canonical);
+  } else json = base::WriteJson(wrapper);
   if (!json || json->size() > 16000 || !AdmitRecord()) { Refuse(); return false; }
   if (preparation || memory || operation == "completeGuestPresentation" || operation == "completeOrganizationWork" ||
-      operation == "completeLittleWindowPresentation" ||
+      operation == "completeLittleWindowPresentation" || operation == "completeAuxWarmWindow" ||
       *status == "refused") { sample_completion_.reset(); sample_scope_.reset(); }
   else {
-    sample_completion_ = organization ? "completeOrganizationWork" :
+    sample_completion_ = warm ? "completeAuxWarmWindow" : organization ? "completeOrganizationWork" :
         little ? "completeLittleWindowPresentation" : "completeGuestPresentation";
     if (organization) sample_scope_ = record.FindDict("scope")->Clone();
   }

@@ -12,6 +12,8 @@
 #include "chrome/browser/ui/aux/native_shell_memory.h"
 #include "chrome/browser/ui/aux/native_process_memory_sampler.h"
 #include "chrome/browser/ui/aux/native_startup_presentation_session.h"
+#include "chrome/browser/ui/aux/native_aux_warm_fixture.h"
+#include "chrome/browser/ui/aux/native_private_fixture_methods.h"
 #include <iostream>
 #endif
 #include "chrome/browser/ui/toolbar/back_forward_menu_model.h"
@@ -62,6 +64,9 @@
 #include "chrome/browser/ui/aux/extension_bridge.h"
 #include "chrome/browser/ui/aux/migration_import.h"
 #include "chrome/browser/ui/aux/runtime_host.h"
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+#include "chrome/browser/ui/aux/native_aux_warm_creation_ticket.h"
+#endif
 #include "chrome/browser/ui/aux/organization_store.h"
 #include "chrome/browser/ui/aux/profile_search_engine.h"
 #include "chrome/browser/ui/aux/quick_ask_controller.h"
@@ -341,11 +346,21 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
   browser_ = webui_browser_window->browser();
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS) && BUILDFLAG(ENABLE_AUX_SHELL)
   if (aux::NativeStartupObservationEnabled()) {
-    startup_presentation_session_ = std::make_unique<aux::NativeStartupPresentationSession>(GetWeakPtr());
-    startup_presentation_session_->Start(base::BindOnce([](base::DictValue record) {
-      const auto json = base::WriteJson(record);
-      if (json && json->size() <= 16384) std::cerr << "AUX_NATIVE_STARTUP_V1 " << *json << std::endl;
-    }));
+    auto warm_ticket = aux::NativeAuxWarmCreationTicket::ForCreatedChild(browser_.get());
+    if (warm_ticket) {
+      startup_presentation_session_ = std::make_unique<aux::NativeStartupPresentationSession>(GetWeakPtr(), warm_ticket);
+      startup_presentation_session_->Start(base::BindOnce(
+          [](base::WeakPtr<WebUIBrowserUI> child,
+             base::WeakPtr<aux::NativeAuxWarmCreationTicket> ticket, base::DictValue record) {
+            if (ticket) ticket->Delivered(child, std::move(record));
+          }, GetWeakPtr(), warm_ticket));
+    } else {
+      startup_presentation_session_ = std::make_unique<aux::NativeStartupPresentationSession>(GetWeakPtr());
+      startup_presentation_session_->Start(base::BindOnce([](base::DictValue record) {
+        const auto json = base::WriteJson(record);
+        if (json && json->size() <= 16384) std::cerr << "AUX_NATIVE_STARTUP_V1 " << *json << std::endl;
+      }));
+    }
   }
 #endif
 
@@ -452,12 +467,17 @@ void WebUIBrowserUI::BindInterface(
 }
 
 bool WebUIBrowserUI::DispatchAuxShortcut(const std::string& command_id, bool focus_shell,
-                                           std::optional<bool> website_pass_through) {
+                                           std::optional<bool> website_pass_through,
+                                           std::optional<base::UnguessableToken> warm_input_receipt) {
   if (!IsAuthorizedAuxDocument() || !shell_host_client_.is_bound())
     return false;
   if (focus_shell) web_ui()->GetWebContents()->Focus();
   base::DictValue shortcut;
   shortcut.Set("commandId", command_id);
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  if (command_id == "new-window" && warm_input_receipt && !warm_input_receipt->is_empty())
+    shortcut.Set("warmInputReceipt", warm_input_receipt->ToString());
+#endif
   if (website_pass_through.has_value()) shortcut.Set("websitePassThrough", *website_pass_through);
   shortcut.Set("key", "");
   shortcut.Set("meta", false);
@@ -875,6 +895,27 @@ void WebUIBrowserUI::Request(const std::string& method,
   }
   const auto args = base::JSONReader::Read(args_json, base::JSON_PARSE_RFC);
   const base::ListValue* list = args ? args->GetIfList() : nullptr;
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  std::optional<base::UnguessableToken> warm_input_receipt;
+  if (const auto* envelope = args ? args->GetIfDict() : nullptr) {
+    const auto* receipt = envelope->FindString("warmInputReceipt");
+    const auto* original_args = envelope->FindList("args");
+    if (method != "dispatchCommand" || envelope->size() != 2 || !receipt ||
+        !original_args || original_args->size() != 1 ||
+        !(*original_args)[0].is_string() || (*original_args)[0].GetString() != "new-window" ||
+        base::WriteJson(*args) != std::optional(args_json)) {
+      std::move(callback).Run(false, "", "invalid_argument", "Invalid private warm invocation");
+      return;
+    }
+    warm_input_receipt = base::UnguessableToken::DeserializeFromString(*receipt);
+    if (!warm_input_receipt || warm_input_receipt->is_empty() ||
+        warm_input_receipt->ToString() != *receipt) {
+      std::move(callback).Run(false, "", "invalid_argument", "Invalid private warm receipt");
+      return;
+    }
+    list = original_args;
+  }
+#endif
   if (!list) {
     std::move(callback).Run(false, "", "invalid_argument",
                             "Aux shell arguments must be an array");
@@ -887,8 +928,24 @@ void WebUIBrowserUI::Request(const std::string& method,
                               "Capabilities take no arguments");
       return;
     }
-    std::move(callback).Run(true, *base::WriteJson(registry.Capabilities()),
-                            "", "");
+    auto capabilities = registry.Capabilities();
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+    // A secondary measurement window must not open a second mailbox consumer.
+    // Its startup session is already bound by the original native creation ticket.
+    if (aux::IsLittleWindow(browser_) || aux::IsQuickAskWindow(browser_) ||
+        (startup_presentation_session_ && startup_presentation_session_->IsWarmObservation())) {
+      auto* methods = capabilities.FindList("methods");
+      if (methods) methods->EraseIf([](const base::Value& value) {
+        if (!value.is_string()) return false;
+        for (const auto& fixture : aux::kNativePrivateFixtureMethods) {
+          if (fixture.name == value.GetString() &&
+              fixture.gate != aux::NativePrivateFixtureGate::kAppearance) return true;
+        }
+        return false;
+      });
+    }
+#endif
+    std::move(callback).Run(true, *base::WriteJson(capabilities), "", "");
     return;
   }
   std::string validation_error;
@@ -899,6 +956,21 @@ void WebUIBrowserUI::Request(const std::string& method,
     return;
   }
   const auto group = registry.ShellGroup(method);
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  base::ScopedClosureRunner finish_warm_dispatch;
+  if (warm_input_receipt) {
+    auto ticket = aux::NativeAuxWarmCreationTicket::PreparedTicket();
+    if (group != aux::AuxShellMethodGroup::kWindow || !ticket ||
+        !ticket->BeginActualCommand(GetWeakPtr(), *warm_input_receipt)) {
+      std::move(callback).Run(false, "", "forbidden", "Unmatched private warm invocation");
+      return;
+    }
+    finish_warm_dispatch.ReplaceClosure(base::BindOnce(
+        [](base::WeakPtr<aux::NativeAuxWarmCreationTicket> current) {
+          if (current) current->EndActualCommand();
+        }, ticket));
+  }
+#endif
   switch (group) {
     case aux::AuxShellMethodGroup::kContent:
       HandleAuxContentRequest(method, *list, std::move(callback));
@@ -1175,3 +1247,10 @@ WebUIBrowserUI::GetOrCreateContextualSessionHandle() {
 }
 
 WEB_UI_CONTROLLER_TYPE_IMPL(WebUIBrowserUI)
+
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+base::WeakPtr<BrowserWindowInterface> WebUIBrowserUI::NativeWarmCleanupWindowForTesting() const {
+  return warm_window_fixture_ ? warm_window_fixture_->CleanupWindow(weak_factory_.GetMutableWeakPtr()) :
+      base::WeakPtr<BrowserWindowInterface>();
+}
+#endif

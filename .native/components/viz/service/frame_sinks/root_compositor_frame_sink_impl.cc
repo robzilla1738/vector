@@ -355,6 +355,39 @@ const SurfaceId& RootCompositorFrameSinkImpl::CurrentSurfaceId() const {
   return display_->CurrentSurfaceId();
 }
 
+void RootCompositorFrameSinkImpl::BeginNativeStockStartupHardwareObservation(
+    const base::UnguessableToken& nonce,
+    BeginNativeStockStartupHardwareObservationCallback reply) {
+  std::move(reply).Run(display_ ? display_->BeginNativeStockStartupHardwareObservation(nonce) : std::nullopt);
+}
+void RootCompositorFrameSinkImpl::CancelNativeStockStartupHardwareObservation(
+    const base::UnguessableToken& nonce) {
+  if (display_) display_->CancelNativeStockStartupHardwareObservation(nonce);
+}
+void RootCompositorFrameSinkImpl::CompleteNativeStockStartupHardwareObservation(
+    const base::UnguessableToken& nonce, const SurfaceId& root, uint32_t token,
+    CompleteNativeStockStartupHardwareObservationCallback reply) {
+  if (!display_ || nonce.is_empty() || !root.is_valid() ||
+      root.frame_sink_id() != support_->frame_sink_id() || !token) {
+    if (display_) display_->CancelNativeStockStartupHardwareObservation(nonce);
+    std::move(reply).Run(nullptr); return;
+  }
+  display_->CompleteNativeStockStartupHardwareObservation(nonce, root, token, base::BindOnce(
+      [](CompleteNativeStockStartupHardwareObservationCallback reply,
+          std::optional<NativeStockRootPresentation> sample) {
+        if (!sample) { std::move(reply).Run(nullptr); return; }
+        auto wire = mojom::NativeStockRootPresentation::New();
+        wire->nonce = sample->frame.nonce; wire->root = sample->frame.surface;
+        wire->token = sample->frame.token; wire->output = sample->frame.output;
+        wire->committed_client_bounds = sample->frame.committed_client_bounds;
+        wire->ready = sample->frame.ready; wire->commit = sample->frame.commit;
+        wire->submitted = sample->frame.submitted; wire->draw = sample->draw;
+        wire->observed = sample->observed; wire->swap = sample->swap;
+        wire->feedback = sample->feedback;
+        wire->alpha_readback_attempted = sample->frame.alpha_readback_attempted;
+        std::move(reply).Run(std::move(wire));
+      }, std::move(reply)));
+}
 void RootCompositorFrameSinkImpl::BeginNativeStartupHardwareObservation(
     const base::UnguessableToken& nonce, const FrameSinkId& shell,
     BeginNativeStartupHardwareObservationCallback reply) {

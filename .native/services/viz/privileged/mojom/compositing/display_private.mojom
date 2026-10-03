@@ -76,8 +76,31 @@ struct NativeGuestInclusionResult {
   mojo_base.mojom.TimeDelta? elapsed;
 };
 
+// Native Stock Views root, distinct from the Aux child-inclusion witness.
+// This privileged route accepts no geometry or timestamp supplied by the browser.
+struct NativeStockRootPresentation {
+  mojo_base.mojom.UnguessableToken nonce;
+  SurfaceId root;
+  uint32 token;
+  gfx.mojom.Rect output;
+  gfx.mojom.Rect committed_client_bounds;
+  mojo_base.mojom.TimeTicks ready;
+  mojo_base.mojom.TimeTicks commit;
+  mojo_base.mojom.TimeTicks submitted;
+  mojo_base.mojom.TimeTicks draw;
+  mojo_base.mojom.TimeTicks observed;
+  gfx.mojom.SwapTimings swap;
+  gfx.mojom.PresentationFeedback feedback;
+  bool alpha_readback_attempted;
+};
+
 // The DisplayPrivate is used by privileged clients to talk to Display.
 interface DisplayPrivate {
+  BeginNativeStockStartupHardwareObservation(mojo_base.mojom.UnguessableToken nonce)
+      => (mojo_base.mojom.TimeTicks? registered_at);
+  CompleteNativeStockStartupHardwareObservation(mojo_base.mojom.UnguessableToken nonce,
+      SurfaceId root, uint32 token) => (NativeStockRootPresentation? result);
+  CancelNativeStockStartupHardwareObservation(mojo_base.mojom.UnguessableToken nonce);
   // Owner-bound fixture instrumentation only. Unknown/unbound scope refuses.
   // Actual private browser-owned root only; no JS/public receiver.
   BeginNativeStartupHardwareObservation(mojo_base.mojom.UnguessableToken nonce,

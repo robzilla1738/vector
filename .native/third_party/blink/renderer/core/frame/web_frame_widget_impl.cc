@@ -555,10 +555,16 @@ void WebFrameWidgetImpl::BeginNativeStartupFrame(
       (native_organization_work_ && native_organization_work_->armed()) ||
       (native_guest_document_stamp_ && native_guest_document_stamp_->armed())) return;
   auto* document = local_root_->GetFrame()->GetDocument();
-  if (scope->document != document->Token()) return;
+  if (scope->document != document->Token() ||
+      (scope->purpose != mojom::NativeStartupFramePurpose::kAuxCold &&
+       scope->purpose != mojom::NativeStartupFramePurpose::kAuxWarm)) return;
   const NativeStartupFrameScope expected{{scope->window_id, scope->widget_routing_id,
       scope->renderer_pid, scope->native_document_generation, scope->shell_sink},
-      scope->document, scope->request_nonce, scope->sample_sequence, scope->admitted_launch, scope->hardware_registration};
+      scope->document, scope->request_nonce, scope->sample_sequence, scope->admitted_launch, scope->hardware_registration,
+      scope->purpose == mojom::NativeStartupFramePurpose::kAuxCold ?
+          NativeStartupFramePurpose::kAuxCold : NativeStartupFramePurpose::kAuxWarm,
+      scope->measurement_input};
+  if (!ValidateNativeStartupFrameTiming(expected, base::TimeTicks::Now())) return;
   auto reader = base::BindRepeating(
       [](WeakPersistent<WebFrameWidgetImpl> self, WeakPersistent<Document> held,
          NativeStartupFrameScope expected) -> std::optional<NativeStartupFrameScope> {

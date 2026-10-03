@@ -291,3 +291,4 @@ aux/runtime/0319-original-navigation-diagnostic-string-views.patch
 aux/runtime/0321-isolated-world-bound-integral-comparison.patch
 aux/runtime/0322-person-read-receipt-out-of-line-members.patch
 aux/runtime/0323-recorder-fragment-component-api.patch
+aux/runtime/0324-causal-startup-warm-window-and-gpu-measurement.patch

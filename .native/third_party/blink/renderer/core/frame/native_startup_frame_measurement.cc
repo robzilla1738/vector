@@ -7,6 +7,22 @@
 #include "cc/trees/layer_tree_host.h"
 #include "third_party/blink/renderer/platform/widget/widget_base.h"
 namespace blink {
+bool ValidateNativeStartupFrameTiming(const NativeStartupFrameScope& scope,
+                                     base::TimeTicks now) {
+  if (scope.launch.is_null() || scope.measurement_input.is_null() ||
+      scope.hardware_registration.is_null() || scope.launch > scope.measurement_input ||
+      scope.measurement_input > scope.hardware_registration || scope.hardware_registration > now)
+    return false;
+  switch (scope.purpose) {
+    case NativeStartupFramePurpose::kAuxCold:
+      return scope.measurement_input == scope.launch;
+    case NativeStartupFramePurpose::kAuxWarm:
+      return scope.measurement_input > scope.launch;
+    case NativeStartupFramePurpose::kUnspecified:
+      return false;
+  }
+  return false;
+}
 NativeStartupFrameMeasurement::NativeStartupFrameMeasurement(
     WidgetBase* widget, ScopeReader scope, WitnessReader witness)
     : widget_(widget ? widget->GetWeakPtr() : base::WeakPtr<WidgetBase>()),
@@ -32,9 +48,8 @@ bool NativeStartupFrameMeasurement::Prepare(Result result) {
       scope->sequence <= last_sequence_ || scope->nonce == last_nonce_ ||
       scope->widget.window_id <= 0 || scope->widget.content_id <= 0 ||
       scope->widget.renderer_pid <= 0 || !scope->widget.document_generation ||
-      !scope->widget.frame_sink.is_valid() || scope->launch.is_null() ||
-      scope->hardware_registration.is_null() || scope->launch > scope->hardware_registration ||
-      scope->hardware_registration > base::TimeTicks::Now()) return false;
+      !scope->widget.frame_sink.is_valid() ||
+      !ValidateNativeStartupFrameTiming(*scope, base::TimeTicks::Now())) return false;
   sample_.emplace(); sample_->scope = *scope;
   last_sequence_ = scope->sequence; last_nonce_ = scope->nonce;
   result_ = std::move(result); queued_ = false;
@@ -54,7 +69,7 @@ void NativeStartupFrameMeasurement::Lifecycle() {
   if (!witness) return;
   if (!Stable()) { if (weak) Cancel(); return; }
   if (witness->document != sample_->scope.document || witness->composer_instance.empty() ||
-      witness->observed_typeable_at.is_null() || witness->observed_typeable_at < sample_->scope.launch ||
+      witness->observed_typeable_at.is_null() || witness->observed_typeable_at < sample_->scope.measurement_input ||
       witness->observed_typeable_at > base::TimeTicks::Now()) { Cancel(); return; }
   sample_->witness = *witness; queued_ = true;
   widget_->LayerTreeHost()->QueueSwapPromise(std::make_unique<aux::NativePerformanceSwapPromise>(
@@ -73,7 +88,7 @@ void NativeStartupFrameMeasurement::Submitted(aux::NativePerformanceSwapPromise:
       current->composer_instance != sample_->witness.composer_instance || !submission.activated ||
       !submission.submitted_frame || !submission.frame_token || submission.failure_reason >= 0 ||
       submission.commit.is_null() || submission.submitted.is_null() ||
-      sample_->scope.hardware_registration.is_null() || sample_->scope.launch > sample_->scope.hardware_registration ||
+      !ValidateNativeStartupFrameTiming(sample_->scope, base::TimeTicks::Now()) ||
       sample_->scope.hardware_registration > sample_->witness.observed_typeable_at ||
       sample_->witness.observed_typeable_at > submission.commit || submission.commit > submission.submitted ||
       submission.submitted > base::TimeTicks::Now()) { Cancel(); return; }

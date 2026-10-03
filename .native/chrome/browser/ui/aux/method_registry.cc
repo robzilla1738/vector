@@ -21,6 +21,10 @@
 #if BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
 #include "chrome/browser/ui/aux/journey_fixture_path.h"
 #include "chrome/browser/ui/aux/native_performance_observer.h"
+#include "chrome/browser/ui/aux/native_private_fixture_methods.h"
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_AUX_SHELL)
+#include "chrome/browser/ui/aux/native_startup_launch_receipt.h"
+#endif
 #endif
 
 namespace aux {
@@ -39,15 +43,17 @@ AuxMethodRegistry::AuxMethodRegistry() {
       shell_handlers_.emplace(name, group);
   };
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
-  if (NativeAppearanceObservationEnabled())
-    register_shell(AuxShellMethodGroup::kWindow, {"appearanceSnapshot", "pipAppearanceSnapshot"});
-  if (NativePerformanceObservationEnabled())
-    register_shell(AuxShellMethodGroup::kWindow,
-        {"commandPresentationSnapshot", "prepareGuestSplitDropPresentation",
-         "prepareGuestDividerFramePresentation", "prepareGuestTabSwitchPresentation",
-         "completeGuestPresentation", "prepareLittleWindowPresentation", "completeLittleWindowPresentation",
-         "performanceFixtureNextRequest", "sampleShellMemory", "sampleProcessMemory", "prepareSubagentMemoryWorkload",
-         "prepareOrganizationAutoArchiveWork", "prepareOrganizationLiveFolderWork", "completeOrganizationWork"});
+  const bool appearance = NativeAppearanceObservationEnabled();
+  const bool performance = NativePerformanceObservationEnabled();
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  const bool startup = NativeStartupObservationEnabled();
+#else
+  const bool startup = false;
+#endif
+  for (const auto& fixture : kNativePrivateFixtureMethods) {
+    if (NativePrivateFixtureMethodEnabled(fixture, appearance, performance, startup))
+      shell_handlers_.emplace(fixture.name, AuxShellMethodGroup::kWindow);
+  }
 #endif
   register_shell(AuxShellMethodGroup::kContent,
                  {"preview", "readArticle", "siteZoom", "privatePageZoom", "siteInfo", "setSiteTrackers", "sitePermissions",
@@ -184,6 +190,22 @@ bool AuxMethodRegistry::HasRuntimeHandler(std::string_view method) const {
 bool AuxMethodRegistry::Validate(std::string_view method,
                                  const base::Value& args,
                                  std::string* error) const {
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  for (const auto& fixture : kNativePrivateFixtureMethods) {
+    if (fixture.name != method) continue;
+    const bool appearance = NativeAppearanceObservationEnabled();
+    const bool performance = NativePerformanceObservationEnabled();
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+    const bool startup = NativeStartupObservationEnabled();
+#else
+    const bool startup = false;
+#endif
+    if (ShellGroup(method) == AuxShellMethodGroup::kWindow &&
+        NativePrivateFixtureMethodAccepts(method, args, appearance, performance, startup)) return true;
+    if (error) *error = "Private fixture requires its native opt-in and zero arguments";
+    return false;
+  }
+#endif
   const std::optional<generated::MethodId> id = generated::LookupMethod(method);
   if (!id) {
     if (error)
@@ -239,6 +261,20 @@ base::DictValue AuxMethodRegistry::Capabilities() const {
       methods.Append(std::string(info.name));
     }
   }
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
+  const bool appearance = NativeAppearanceObservationEnabled();
+  const bool performance = NativePerformanceObservationEnabled();
+#if BUILDFLAG(ENABLE_AUX_SHELL)
+  const bool startup = NativeStartupObservationEnabled();
+#else
+  const bool startup = false;
+#endif
+  for (const auto& fixture : kNativePrivateFixtureMethods) {
+    if (ShellGroup(fixture.name) == AuxShellMethodGroup::kWindow &&
+        NativePrivateFixtureMethodEnabled(fixture, appearance, performance, startup))
+      methods.Append(std::string(fixture.name));
+  }
+#endif
   result.Set("methods", std::move(methods));
   return result;
 }

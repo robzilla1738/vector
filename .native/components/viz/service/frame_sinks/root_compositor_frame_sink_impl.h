@@ -74,6 +74,12 @@ class VIZ_SERVICE_EXPORT RootCompositorFrameSinkImpl
   const SurfaceId& CurrentSurfaceId() const;
 
   // mojom::DisplayPrivate:
+  void BeginNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce,
+      BeginNativeStockStartupHardwareObservationCallback reply) override;
+  void CompleteNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce,
+      const SurfaceId& root, uint32_t token,
+      CompleteNativeStockStartupHardwareObservationCallback reply) override;
+  void CancelNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce) override;
   void BeginNativeStartupHardwareObservation(const base::UnguessableToken& nonce,
       const FrameSinkId& shell, BeginNativeStartupHardwareObservationCallback reply) override;
   void CompleteNativeStartupHardwareObservation(const base::UnguessableToken& nonce,

@@ -27,6 +27,7 @@
 #include "components/viz/service/display/aggregated_frame.h"
 #include "components/viz/service/display/native_guest_inclusion_receipt.h"
 #include "components/viz/service/display/native_startup_first_hardware_retention.h"
+#include "components/viz/service/display/native_stock_first_hardware_retention.h"
 #include "components/viz/service/display/resolved_frame_data.h"
 #include "components/viz/service/surfaces/surface_observer.h"
 #include "components/viz/service/viz_service_export.h"
@@ -96,6 +97,13 @@ class VIZ_SERVICE_EXPORT SurfaceAggregator : public SurfaceObserver {
                             const gfx::Rect& target_damage = gfx::Rect(),
                             int64_t display_trace_id = -1);
 
+  // Read-only exact native root metadata; Display owns the admitted scope.
+  void SetNativeStockRootObservation(base::UnguessableToken nonce) {
+    native_stock_observation_ = nonce;
+  }
+  std::optional<NativeStockRootFrame> TakeNativeStockRootFrame() {
+    return std::exchange(native_stock_frame_, std::nullopt);
+  }
   // Internal native fixture transport only. Caller owns authority fencing.
   void SetNativeStartupShellFootprint(FrameSinkId sink) {
     native_startup_footprint_ = std::make_unique<NativeStartupShellFootprint>(sink);
@@ -403,6 +411,8 @@ class VIZ_SERVICE_EXPORT SurfaceAggregator : public SurfaceObserver {
 
   std::unique_ptr<NativeGuestInclusionReceipt> native_guest_receipt_;
   std::unique_ptr<NativeStartupShellFootprint> native_startup_footprint_;
+  std::optional<base::UnguessableToken> native_stock_observation_;
+  std::optional<NativeStockRootFrame> native_stock_frame_;
   SurfaceId root_surface_id_;
   gfx::Transform root_surface_transform_;
 

@@ -8,6 +8,11 @@ import "third_party/blink/public/mojom/tokens/tokens.mojom";
 // Browser-owned continuity assertions on the already-bound original shell
 // widget. No URL/PID/window/document can be selected by a caller. The launch
 // stamp originates exclusively in admitted original helper/kernel evidence.
+enum NativeStartupFramePurpose {
+  kUnspecified,
+  kAuxCold,
+  kAuxWarm,
+};
 struct NativeStartupFrameScope {
   mojo_base.mojom.UnguessableToken request_nonce;
   uint64 sample_sequence;
@@ -18,7 +23,11 @@ struct NativeStartupFrameScope {
   DocumentToken document;
   viz.mojom.FrameSinkId shell_sink;
   viz.mojom.FrameSinkId display_sink;
+  // Original OS-launch stamp remains unchanged for both purposes.
   mojo_base.mojom.TimeTicks admitted_launch;
+  NativeStartupFramePurpose purpose;
+  // Cold: exact admitted_launch; warm: exact native registered input.
+  mojo_base.mojom.TimeTicks measurement_input;
   mojo_base.mojom.TimeTicks hardware_registration;
 };
 struct NativeStartupFrameSubmission {

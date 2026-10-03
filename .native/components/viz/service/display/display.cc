@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "components/viz/service/display/display.h"
+#include "components/viz/service/display/native_stock_raster_draw.h"
+#include "base/task/bind_post_task.h"
 #include "base/functional/bind.h"
 
 #include <stddef.h>
@@ -771,9 +773,27 @@ int Display::GetCurrentAllocatedBuffers() const {
   return renderer_ ? renderer_->GetCurrentAllocatedBuffers() : 0;
 }
 
+std::optional<base::TimeTicks> Display::BeginNativeStockStartupHardwareObservation(
+    const base::UnguessableToken& nonce) {
+  if (nonce.is_empty() || native_guest_scope_ || native_startup_retention_ || native_stock_retention_)
+    return std::nullopt;
+  native_stock_retention_ = std::make_unique<NativeStockFirstHardwareRetention>(nonce, frame_sink_id_);
+  return native_stock_retention_->active() ?
+      std::make_optional(native_stock_retention_->registered_at()) : std::nullopt;
+}
+void Display::CompleteNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce,
+    SurfaceId root, uint32_t token, NativeStockFirstHardwareRetention::Reply reply) {
+  if (reply.is_null()) return;
+  if (!native_stock_retention_) { std::move(reply).Run(std::nullopt); return; }
+  native_stock_retention_->Join(nonce, root, token, std::move(reply));
+}
+void Display::CancelNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce) {
+  if (native_stock_retention_ && native_stock_retention_->nonce() == nonce)
+    native_stock_retention_->Cancel();
+}
 std::optional<base::TimeTicks> Display::BeginNativeStartupHardwareObservation(
     const base::UnguessableToken& nonce, FrameSinkId shell) {
-  if (native_guest_scope_ || native_startup_retention_) return std::nullopt;
+  if (native_guest_scope_ || native_startup_retention_ || native_stock_retention_) return std::nullopt;
   native_startup_retention_ = std::make_unique<NativeStartupFirstHardwareRetention>(nonce, frame_sink_id_, shell);
   return native_startup_retention_->active() ?
       std::make_optional(native_startup_retention_->registered_at()) : std::nullopt;
@@ -790,7 +810,8 @@ void Display::CancelNativeStartupHardwareObservation(const base::UnguessableToke
 bool Display::RequestNativeGuestInclusion(NativeGuestInclusionScope scope,
     base::OnceCallback<void(NativeGuestInclusionResult)> result) {
   if (result.is_null()) return false;
-  if (native_guest_scope_ || (native_startup_retention_ && native_startup_retention_->active()) || scope.display_sink != frame_sink_id_) {
+  if (native_guest_scope_ || (native_startup_retention_ && native_startup_retention_->active()) ||
+      (native_stock_retention_ && native_stock_retention_->active()) || scope.display_sink != frame_sink_id_) {
     NativeGuestInclusionReceipt refusal(std::move(scope));
     std::move(result).Run(refusal.Present(current_surface_id_, base::TimeTicks(),
         gfx::SwapTimings(), gfx::PresentationFeedback::Failure(), base::TimeTicks::Now()));
@@ -911,6 +932,8 @@ bool Display::DrawAndSwap(const DrawAndSwapParams& params) {
       aggregator_->SetNativeGuestInclusionScope(*native_scope);
     if (native_startup_retention_ && native_startup_retention_->active())
       aggregator_->SetNativeStartupShellFootprint(native_startup_retention_->shell_sink());
+    if (native_stock_retention_ && native_stock_retention_->active())
+      aggregator_->SetNativeStockRootObservation(native_stock_retention_->nonce());
     frame = aggregator_->Aggregate(
         current_surface_id_, params.expected_display_time,
         current_display_transform, target_damage_bounding_rect,
@@ -1004,6 +1027,7 @@ bool Display::DrawAndSwap(const DrawAndSwapParams& params) {
   client_->DisplayWillDrawAndSwap(should_draw, &frame.render_pass_list);
 
   std::optional<base::ElapsedTimer> draw_timer;
+  std::optional<uint64_t> native_stock_original_group;
   if (should_draw) {
     TRACE_EVENT_BEGIN(
         "viz,benchmark", "Graphics.Pipeline.Draw",
@@ -1028,6 +1052,24 @@ bool Display::DrawAndSwap(const DrawAndSwapParams& params) {
     draw_timer.emplace();
     overlay_processor_->SetFrameSequenceNumber(frame_sequence_number_);
     overlay_processor_->SetIsPageFullscreen(frame.page_fullscreen_mode);
+    auto stock_root = aggregator_->TakeNativeStockRootFrame();
+    if (stock_root && native_stock_retention_ && native_stock_retention_->active()) {
+      // Reserve the original group before the GPU paint task can run. Every
+      // Stock positive result requires actual original draw/backing proof;
+      // aggregator geometry or an opaque flag cannot bypass that proof.
+      stock_root->requires_original_raster_draw = true;
+      const auto immutable = *stock_root;
+      native_stock_original_group = native_stock_retention_->RegisterFrame(
+          std::move(*stock_root), draw_timer->start_time());
+      if (native_stock_original_group) {
+        auto reply = base::BindPostTaskToCurrentDefault(base::BindOnce(
+            &NativeStockFirstHardwareRetention::RasterDrawCompleted,
+            native_stock_retention_->GetWeakPtr(), *native_stock_original_group,
+            immutable.nonce, immutable.surface, immutable.token));
+        renderer_->SetNativeStockRasterDraw(std::make_unique<NativeStockRasterDraw>(
+            immutable.output, std::move(reply)));
+      }
+    }
     renderer_->DrawFrame(&frame.render_pass_list, device_scale_factor_,
                          current_surface_size, display_color_spaces_,
                          std::move(frame.surface_damage_rect_list_),
@@ -1109,6 +1151,10 @@ bool Display::DrawAndSwap(const DrawAndSwapParams& params) {
         params.choreographer_vsync_id.value_or(0), display_trace_id,
         params.selected_deadline);
 
+    if (native_stock_original_group && native_stock_retention_ && native_stock_retention_->active())
+      presentation_group_timing.SetNativeStartupFeedback(base::BindOnce(
+          &NativeStockFirstHardwareRetention::Presented,
+          native_stock_retention_->GetWeakPtr(), *native_stock_original_group));
     auto startup_footprint = aggregator_->TakeNativeStartupShellFootprint();
     if (startup_footprint && native_startup_retention_ && native_startup_retention_->active()) {
       const auto ticket = native_startup_retention_->RegisterFrame(std::move(startup_footprint),

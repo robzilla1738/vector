@@ -45,12 +45,23 @@ bool NativeStartupFrameController::Begin(mojom::blink::NativeStartupFrameScopePt
       scope->widget_routing_id <= 0 || scope->renderer_pid <= 0 || !scope->native_document_generation ||
       scope->document != document_->Token() || !scope->shell_sink.is_valid() ||
       !scope->display_sink.is_valid() || scope->shell_sink == scope->display_sink ||
-      scope->admitted_launch.is_null() || scope->hardware_registration.is_null() ||
-      scope->admitted_launch > scope->hardware_registration || scope->hardware_registration > base::TimeTicks::Now()) return false;
+      scope->admitted_launch.is_null() || scope->measurement_input.is_null() ||
+      (scope->purpose != mojom::NativeStartupFramePurpose::kAuxCold &&
+       scope->purpose != mojom::NativeStartupFramePurpose::kAuxWarm) ||
+      (scope->purpose == mojom::NativeStartupFramePurpose::kAuxCold &&
+       scope->measurement_input != scope->admitted_launch) ||
+      (scope->purpose == mojom::NativeStartupFramePurpose::kAuxWarm &&
+       scope->measurement_input <= scope->admitted_launch) ||
+      scope->hardware_registration.is_null() ||
+      scope->admitted_launch > scope->measurement_input ||
+      scope->measurement_input > scope->hardware_registration || scope->hardware_registration > base::TimeTicks::Now()) return false;
   expected_ = NativeStartupFrameScope{
       {scope->window_id, scope->widget_routing_id, scope->renderer_pid,
        scope->native_document_generation, scope->shell_sink},
-      scope->document, scope->request_nonce, scope->sample_sequence, scope->admitted_launch, scope->hardware_registration};
+      scope->document, scope->request_nonce, scope->sample_sequence, scope->admitted_launch, scope->hardware_registration,
+      scope->purpose == mojom::NativeStartupFramePurpose::kAuxCold ?
+          NativeStartupFramePurpose::kAuxCold : NativeStartupFramePurpose::kAuxWarm,
+      scope->measurement_input};
   const auto weak = weak_factory_.GetWeakPtr();
   if (!CurrentScope()) { if (weak) expected_.reset(); return false; }
   if (!weak) return false;

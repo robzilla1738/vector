@@ -39,6 +39,8 @@
 #include "cc/metrics/frame_sequence_tracker.h"
 #include "cc/trees/clip_node.h"
 #include "cc/trees/layer_tree_host.h"
+#include "cc/trees/native_stock_ready_swap_promise.h"
+#include "base/task/bind_post_task.h"
 #include "cc/trees/layer_tree_settings.h"
 #include "cc/trees/property_ids.h"
 #include "cc/trees/property_tree.h"
@@ -300,6 +302,16 @@ Compositor::Compositor(const viz::FrameSinkId& frame_sink_id,
 }
 
 Compositor::~Compositor() {
+  if (native_stock_registration_reply_) {
+    auto refusal = base::BindPostTaskToCurrentDefault(std::move(native_stock_registration_reply_));
+    std::move(refusal).Run(std::nullopt);
+  }
+  native_stock_ready_pending_.reset();
+  if (native_stock_ready_reply_) {
+    // Post refusal instead of invoking an owner while Compositor is tearing down.
+    auto refusal = base::BindPostTaskToCurrentDefault(std::move(native_stock_ready_reply_));
+    std::move(refusal).Run(std::nullopt);
+  }
   TRACE_EVENT0("shutdown,viz", "Compositor::destructor");
   if (auto* power_monitor = base::PowerMonitor::GetInstance();
       power_monitor->IsInitialized()) {
@@ -360,6 +372,39 @@ void Compositor::RemoveChildFrameSink(const viz::FrameSinkId& frame_sink_id) {
 
 void Compositor::AdvanceNativeStartupDisplayGeneration() {
   if (native_startup_display_generation_ != UINT64_MAX) ++native_startup_display_generation_;
+}
+void Compositor::BeginNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce,
+    base::OnceCallback<void(std::optional<base::TimeTicks>)> reply) {
+  if (reply.is_null()) return;
+  if (native_stock_registration_used_ || nonce.is_empty() || !host_ || !host_->IsMainThread()) {
+    std::move(reply).Run(std::nullopt); return;
+  }
+  native_stock_registration_used_ = true;
+  if (!display_private_) {
+    // Initial native frame-sink creation only. This does not schedule/redraw or
+    // defer the first paint: a session seeing ready paint before ACK must refuse.
+    native_stock_pending_nonce_ = nonce;
+    native_stock_registration_reply_ = std::move(reply); return;
+  }
+  display_private_->BeginNativeStockStartupHardwareObservation(nonce, std::move(reply));
+}
+void Compositor::CompleteNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce,
+    viz::SurfaceId root, uint32_t token,
+    base::OnceCallback<void(viz::mojom::NativeStockRootPresentationPtr)> reply) {
+  if (reply.is_null()) return;
+  if (!display_private_ || nonce.is_empty() || !root.is_valid() ||
+      root.frame_sink_id() != frame_sink_id_ || !token) {
+    CancelNativeStockStartupHardwareObservation(nonce); std::move(reply).Run(nullptr); return;
+  }
+  display_private_->CompleteNativeStockStartupHardwareObservation(nonce, root, token, std::move(reply));
+}
+void Compositor::CancelNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce) {
+  if (native_stock_pending_nonce_ == nonce && native_stock_registration_reply_) {
+    native_stock_pending_nonce_ = base::UnguessableToken();
+    auto refusal = base::BindPostTaskToCurrentDefault(std::move(native_stock_registration_reply_));
+    std::move(refusal).Run(std::nullopt);
+  }
+  if (display_private_ && !nonce.is_empty()) display_private_->CancelNativeStockStartupHardwareObservation(nonce);
 }
 void Compositor::BeginNativeStartupHardwareObservation(const base::UnguessableToken& nonce,
     const viz::FrameSinkId& shell, base::OnceCallback<void(std::optional<base::TimeTicks>)> reply) {
@@ -422,6 +467,10 @@ void Compositor::SetLayerTreeFrameSink(
 #endif  // BUILDFLAG(IS_CHROMEOS)
   }
 
+  if (display_private_ && native_stock_registration_reply_) {
+    auto nonce = std::exchange(native_stock_pending_nonce_, base::UnguessableToken());
+    display_private_->BeginNativeStockStartupHardwareObservation(nonce, std::move(native_stock_registration_reply_));
+  }
   MaybeUpdateObserveBeginFrame();
 }
 
@@ -838,7 +887,35 @@ void Compositor::DidBeginMainFrame() {
   observer_list_.Notify(&CompositorObserver::OnDidBeginMainFrame, this);
 }
 
+void Compositor::QueueNativeStockReadyPaint(viz::NativeStockReadyFrame actual_paint,
+    base::OnceCallback<void(std::optional<viz::NativeStockReadyFrame>)> reply) {
+  if (reply.is_null()) return;
+  if (native_stock_ready_used_ || !host_ || !host_->IsMainThread() || !root_layer_ || actual_paint.nonce.is_empty() ||
+      actual_paint.ready.is_null() || actual_paint.ready > base::TimeTicks::Now() ||
+      !actual_paint.commit.is_null() || !actual_paint.submitted.is_null() || actual_paint.frame_token ||
+      actual_paint.client_bounds != gfx::Rect(size_) ||
+      host_->GetSettings().TreesInVizInClientProcess() || host_->GetSettings().trees_in_viz_in_viz_process) {
+    std::move(reply).Run(std::nullopt); return;
+  }
+  native_stock_ready_used_ = true;
+  native_stock_ready_pending_ = actual_paint;
+  native_stock_ready_reply_ = std::move(reply);
+}
+
 void Compositor::DidUpdateLayers() {
+  // Actual UpdateLayers has finished all native paint. The same main-thread
+  // pipeline next calls WillCommit; no ScheduleDraw/forced redraw is inserted.
+  if (native_stock_ready_pending_) {
+    auto actual = std::move(*native_stock_ready_pending_);
+    native_stock_ready_pending_.reset();
+    auto reply = std::move(native_stock_ready_reply_);
+    if (!host_ || !root_layer_ || actual.client_bounds != gfx::Rect(size_)) {
+      if (reply) std::move(reply).Run(std::nullopt);
+      return;
+    }
+    host_->QueueSwapPromise(std::make_unique<cc::NativeStockReadySwapPromise>(
+        actual, base::BindPostTaskToCurrentDefault(std::move(reply))));
+  }
   // Dump property trees and layers if run with:
   //   --vmodule=*ui/compositor*=3
   VLOG(3) << "After updating layers:\n"

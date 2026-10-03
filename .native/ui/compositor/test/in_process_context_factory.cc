@@ -123,6 +123,16 @@ class InProcessContextFactory::PerCompositorData
     : public viz::mojom::DisplayPrivate {
  public:
   // viz::mojom::DisplayPrivate implementation.
+  void BeginNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce,
+      BeginNativeStockStartupHardwareObservationCallback reply) override {
+    std::move(reply).Run(std::nullopt);
+  }
+  void CompleteNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce,
+      const viz::SurfaceId& root, uint32_t token,
+      CompleteNativeStockStartupHardwareObservationCallback reply) override {
+    std::move(reply).Run(nullptr);
+  }
+  void CancelNativeStockStartupHardwareObservation(const base::UnguessableToken& nonce) override {}
   void BeginNativeStartupHardwareObservation(const base::UnguessableToken& nonce,
       const viz::FrameSinkId& shell, BeginNativeStartupHardwareObservationCallback reply) override {
     std::move(reply).Run(std::nullopt);
