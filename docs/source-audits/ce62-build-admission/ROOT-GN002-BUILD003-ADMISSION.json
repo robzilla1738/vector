@@ -1,0 +1,36 @@
+{
+  "producer": "root-independent-GN-build-admission",
+  "result": "PASS",
+  "request": {
+    "producer": "builder-ce62-authenticated-real-GN-build-successor-request",
+    "version": 1,
+    "requestOnly": true,
+    "controller": {
+      "path": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/build-ce62-authenticated-GN-003-PROPOSAL.py",
+      "sha256": "ab413b6e0a7a9877a068d609805d60ae8c5f1edde331db3a3ee6255719b66f4b"
+    },
+    "diff": {
+      "path": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/build-restoredretry002-to-authenticatedGN003.diff",
+      "sha256": "3e03430e9fcb87a4916f311518848d7d7901d812d0dc8d1f2f130648bc494f44"
+    },
+    "originalBuildSha256": "4e5c73162836d513cdfa0a7fca404b98e9b9ff7f8de47249883a351e8cfc86a7",
+    "authenticatedGN": {
+      "path": "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-ce62-authentic-real-revision-gn-002/proof.json",
+      "sha256": "ceb64695fc546e352ba822f298eb00cf5a0d25a0374ede6b8c6c5b280fe5d608"
+    },
+    "terminal": {
+      "path": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/gn-ce62-real-revision-original-terminal-002.json",
+      "sha256": "3aa5cbe63f0bb2082e9c6f8e35bb5ce7daedf3e8163fa7f684c9aee092596fcf"
+    },
+    "launcher": {
+      "path": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/build-ce62-authenticated-GN-launch-003.json",
+      "sha256": "dba1494566aa7e50c0c830bfe0c6c59ea4619e3075e6b3ccba0f0d99e6817b83"
+    },
+    "scope": "Only authenticatedGNproof join replaces historical toolchain literal; full17targets/deadlines/cache/source/watcher/originalprocessdebt unchanged; actualversionheader naturally regenerated duringgraph"
+  },
+  "actualOriginalActionExact": true,
+  "actualChildStreamsExact": true,
+  "actualOriginalProcessesAbsent": true,
+  "full17ControllerRead": true,
+  "scope": "full17 cached build only; no runtime helper app qualification"
+}

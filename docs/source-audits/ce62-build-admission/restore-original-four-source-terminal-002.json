@@ -1,0 +1,29 @@
+{
+  "producer": "builder-original-four-source-restoration-terminal",
+  "version": 1,
+  "proof": {
+    "path": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/restore-original11db-four-source-files-execution-002/proof.json",
+    "sha256": "388e1a741ab7dc007f48f539c9a0a132653f70b6d12a5ab5a226f1d7ab18bd81"
+  },
+  "exitCode": 0,
+  "originalOwnerPid": 8094,
+  "originalControllerPid": 8104,
+  "originalPidsPresent": [],
+  "slotAbsent": true,
+  "rawLog": {
+    "path": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/restore-four-original-execution-002.log",
+    "sha256": "dd40c0dd872f7ca96353a35fbbab77a7899bc7308e3bda5ad3f3e067485b15f6"
+  },
+  "actualRestoredFiles": {
+    "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.h": "8867d8e9b9933f69923ab16695699abc7e6d1272f6be0d691ddfc9c095ee844b",
+    "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.cc": "d51f87e3965b24bb3f90543b0f1fb20d83918c8439c434280ab557f9f47ba5a9",
+    "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux_host/aux_feature_stages.ts": "5de6e88176a4419bfb5bfd8e9f213277777e72d17d9a7f968e29cb72efc9d961",
+    "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/args.gn": "36ea1577ba68f9c504263a0052c8a242f43cab8a2aed0f13b2f763d7131ee12e"
+  },
+  "retainedHistoricalDerivedFiles": {
+    "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/toolchain.ninja": "e5e0800320a527cb657bb80302e69589c3b35bd913146ea31836e7b366588247",
+    "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/gen/base/version_info/version_info_values.h": "da2bc6e94d9f867171d102c385ad41b6f938a70b61fa99f23489ea0513177c53",
+    "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/.ninja_log": "53c1dc0220e74ea5421363a547c2c9f286e531ae2144a0322ea645b446f48197"
+  },
+  "runtimeHelperAppLaunched": false
+}

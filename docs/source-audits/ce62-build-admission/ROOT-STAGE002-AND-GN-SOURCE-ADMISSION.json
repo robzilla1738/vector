@@ -1,0 +1,16 @@
+{
+  "sourceOnly": true,
+  "stageProofSha256": "f7ab77c181ccac05db17e58e4329d18e4a8e76189f48c5b4cde4aeedf74f6403",
+  "actualNativeHashesVerified": 656,
+  "actualGeneratedHashesVerified": 3,
+  "actualAssetHashesVerified": 175,
+  "transition300ProvenanceMatchesOriginalRootProof": true,
+  "rawThreeChildExit0StreamsVerified": true,
+  "actualOriginalRecordedPidsAndGroupsAbsent": true,
+  "actualSlotAbsent": true,
+  "GNRequestSha256": "24b32682974725ed6c37f559542ffac00b73101825c61224eb1d457f3135d3ca",
+  "GNControllerSha256": "6a846181891e63e2e53e690d581e5003557aa79c988f99e7ef055709e4b6b69a",
+  "GNInputAndNativeRealVersionToolPinsVerified": true,
+  "GNAuthorizedOncePendingPinnedLauncher": true,
+  "full17BuildRuntimeHelperAppHeld": true
+}

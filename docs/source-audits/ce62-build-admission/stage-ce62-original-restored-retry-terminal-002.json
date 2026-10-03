@@ -1,0 +1,141 @@
+{
+  "producer": "builder-ce62-stage002-original-terminal",
+  "version": 1,
+  "exitCode": 0,
+  "prepProof": {
+    "path": "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/prep-proof.json",
+    "sha256": "f7ab77c181ccac05db17e58e4329d18e4a8e76189f48c5b4cde4aeedf74f6403"
+  },
+  "originalKnownPids": [
+    8416,
+    8426,
+    9804,
+    9810,
+    9837,
+    9842,
+    9846,
+    9859,
+    9869,
+    10007,
+    10011
+  ],
+  "originalKnownChildGroups": [
+    9804,
+    9810,
+    9837
+  ],
+  "actualOriginalRowsPresent": [],
+  "children": [
+    {
+      "pid": 9804,
+      "pgid": 9804,
+      "argv": [
+        "node",
+        "chromium/stage-shell.mjs",
+        "verify"
+      ],
+      "stdout": "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/shell-verify.stdout.log",
+      "stderr": "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/shell-verify.stderr.log",
+      "deadlineSeconds": 900,
+      "originalStartRows": {
+        "9804": "9804  8426  9804 Sat Oct  3 09:14:21 2026     node"
+      },
+      "observedOriginalRows": {
+        "9804": "9804  8426  9804 Sat Oct  3 09:14:21 2026     node"
+      },
+      "exitCode": 0,
+      "originalGroupEmpty": true,
+      "stdoutSha256": "7626e74fc092bae07b10c2d41d9f0a46579e287d22f8d4ead700114be823407a",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "pid": 9810,
+      "pgid": 9810,
+      "argv": [
+        "node",
+        "chromium/stage-shell.mjs",
+        "install"
+      ],
+      "stdout": "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/shell-install.stdout.log",
+      "stderr": "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/shell-install.stderr.log",
+      "deadlineSeconds": 900,
+      "originalStartRows": {
+        "9810": "9810  8426  9810 Sat Oct  3 09:14:21 2026     node"
+      },
+      "observedOriginalRows": {
+        "9810": "9810  8426  9810 Sat Oct  3 09:14:21 2026     node"
+      },
+      "exitCode": 0,
+      "originalGroupEmpty": true,
+      "stdoutSha256": "1edacd2dbee0f8678da82442530ef69aa32bf1bed8ba4bb4b39aefd615c04174",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "pid": 9837,
+      "pgid": 9837,
+      "argv": [
+        "node",
+        "chromium/stage-host-bindings.mjs"
+      ],
+      "stdout": "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/bindings.stdout.log",
+      "stderr": "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/bindings.stderr.log",
+      "deadlineSeconds": 900,
+      "originalStartRows": {
+        "9837": "9837  8426  9837 Sat Oct  3 09:14:22 2026     node"
+      },
+      "observedOriginalRows": {
+        "9837": "9837  8426  9837 Sat Oct  3 09:14:22 2026     node",
+        "9842": "9842  9837  9837 Sat Oct  3 09:14:22 2026     node",
+        "9846": "9846  9842  9837 Sat Oct  3 09:14:22 2026     node",
+        "9859": "9859  9846  9837 Sat Oct  3 09:14:22 2026     node",
+        "9869": "9869  9859  9837 Sat Oct  3 09:14:23 2026     (node)",
+        "10007": "10007  9837  9837 Sat Oct  3 09:14:31 2026     git",
+        "10011": "10011  9837  9837 Sat Oct  3 09:14:31 2026     git"
+      },
+      "exitCode": 0,
+      "originalGroupEmpty": true,
+      "stdoutSha256": "9d7cd5c586734b139b96d36a348b0a73040fc3db276d390ccbf2f896389ba324",
+      "stderrSha256": "faeaa94bcf7012d86f91ca647580449f56a263fb7eaf572c54789764f60a9b8f"
+    }
+  ],
+  "watcherReapedByOriginalController": true,
+  "watcherExitCode": 0,
+  "watcherFinalEvent": {
+    "armed": true,
+    "incident": null,
+    "kind": "watch_finished",
+    "monotonicNs": 289129452341458,
+    "ownedSisoSignaled": false,
+    "utc": "2026-10-03T14:14:43.977555+00:00"
+  },
+  "slotAbsent": true,
+  "rawLog": {
+    "path": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/stage-ce62-restored-retry-execution-002.log",
+    "sha256": "b2f7aa2a5776218a9e84b57fda3476c889964a7f86dc3a166eabaacc1ac62afe"
+  },
+  "artifactHashes": {
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/shell-verify.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/watch.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/shell-install.stdout.log": "1edacd2dbee0f8678da82442530ef69aa32bf1bed8ba4bb4b39aefd615c04174",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/before-aux_host_methods.h": "8867d8e9b9933f69923ab16695699abc7e6d1272f6be0d691ddfc9c095ee844b",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/watch-arm": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/bindings.stderr.log": "faeaa94bcf7012d86f91ca647580449f56a263fb7eaf572c54789764f60a9b8f",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/watch-config.json": "fbfd6b20ba64497f9615c3a6624b2125b5184c2a1773184f854201a89abfdcbc",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/before-aux_host_methods.cc": "d51f87e3965b24bb3f90543b0f1fb20d83918c8439c434280ab557f9f47ba5a9",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/shell-verify.stdout.log": "7626e74fc092bae07b10c2d41d9f0a46579e287d22f8d4ead700114be823407a",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/shell-install.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/watch-done": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/watch.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/prestage-generated.json": "a88bbf17bd17bb39e6c28da54f078ebb724f4ea9a0676ad970e012214ed071a1",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/watch-ready": "e441f0a4d34f9d9ddde2b8dd1a61b8987c1854b9c4baf5c42aa9827b65c0dfee",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/bindings.stdout.log": "9d7cd5c586734b139b96d36a348b0a73040fc3db276d390ccbf2f896389ba324",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/prep-proof.json": "f7ab77c181ccac05db17e58e4329d18e4a8e76189f48c5b4cde4aeedf74f6403",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/before-aux_feature_stages.ts": "5de6e88176a4419bfb5bfd8e9f213277777e72d17d9a7f968e29cb72efc9d961",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/children.json": "4619acf844f2766626f9af051b9d98bd260d5e6e7bb74e943e494cf01d697f9d",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/expected/aux_host_methods.cc": "584ae1be1cd39efde0d545dcf530c47eced7b49d36476c9a2a1c70dde3936a21",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/expected/aux_feature_stages.ts": "e94aca1186033dea2ee1a5a7a6ea43dbab88f5a8743c655b7d33e35ae1735af7",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/expected/aux_host_methods.h": "b1a4b53d95d043beeb8a2f407a96475c746e3f44095c699fe3a90a0caf2ca3d4",
+    "/private/tmp/aux-browser-runtime-builder-final-ce62aa89/release/test-artifacts/builder-final-0280-stage-preflight-restored-retry-002/watch/events.jsonl": "be30199098b5ccc1034088015438393a600d7c42c53feeefa16ed5a2e948f4df"
+  },
+  "runtimeHelperAppLaunched": false
+}

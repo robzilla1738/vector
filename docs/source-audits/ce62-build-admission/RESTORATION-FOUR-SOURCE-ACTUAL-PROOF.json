@@ -1,0 +1,73 @@
+{
+  "producer": "builder-owned-original-generated-restoration",
+  "version": 1,
+  "requestSha256": "dcfef70bdd1bb8b66c0ae60bdeb69fa29909612b821627f5ce8a9671999f98af",
+  "originalOwnerPid": 8094,
+  "originalOwnerStartedAt": 1791036541687,
+  "originalControllerPid": 8104,
+  "children": [],
+  "writes": [
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.h",
+      "beforeSha256": "060daf9990c6780074b071aa487083268858580111c81cae09f27771d3336fc8",
+      "afterSha256": "8867d8e9b9933f69923ab16695699abc7e6d1272f6be0d691ddfc9c095ee844b",
+      "originalDevice": 16777233,
+      "originalInode": 69380583,
+      "mode": 420
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/ui/aux/generated/aux_host_methods.cc",
+      "beforeSha256": "8a6d710efea3e6385182af46545ee90e6fae32b116e468b6c75497f96c84faec",
+      "afterSha256": "d51f87e3965b24bb3f90543b0f1fb20d83918c8439c434280ab557f9f47ba5a9",
+      "originalDevice": 16777233,
+      "originalInode": 69380584,
+      "mode": 420
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/chrome/browser/resources/aux_host/aux_feature_stages.ts",
+      "beforeSha256": "840cba45f14d3ce2d40ec0352a9ba77ee487efebc3f18ad0f340d45b671b9653",
+      "afterSha256": "5de6e88176a4419bfb5bfd8e9f213277777e72d17d9a7f968e29cb72efc9d961",
+      "originalDevice": 16777233,
+      "originalInode": 69380585,
+      "mode": 420
+    },
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/args.gn",
+      "beforeSha256": "fddd19ff55bdf0bd1ba21baeb2eb924b5b6c528fda485c1c94dec4ac03f9b7bb",
+      "afterSha256": "36ea1577ba68f9c504263a0052c8a242f43cab8a2aed0f13b2f763d7131ee12e",
+      "originalDevice": 16777233,
+      "originalInode": 58948878,
+      "mode": 420
+    }
+  ],
+  "retainedDerivedDrift": {
+    "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/toolchain.ninja": {
+      "actualSha256": "e5e0800320a527cb657bb80302e69589c3b35bd913146ea31836e7b366588247",
+      "historicalOriginalSha256": "425dae28f5c98c1b128c62198ef5ed4818b21f95396f7b82e277fdbc95716d32",
+      "actualCopy": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/bounded-drift-actual-toolchain.ninja",
+      "currentMtimeNs": 1791030845281538212,
+      "policy": "retain historical input unchanged; unqualified; genuine GN/natural build regeneration separate approval required"
+    },
+    "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/gen/base/version_info/version_info_values.h": {
+      "actualSha256": "da2bc6e94d9f867171d102c385ad41b6f938a70b61fa99f23489ea0513177c53",
+      "historicalOriginalSha256": "8a1b98b8559fcd97efe9f89754ba77c90b9eb3fedd80611b7db532fd7db838ed",
+      "actualCopy": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/bounded-drift-actual-version_info_values.h",
+      "currentMtimeNs": 1791030870989616460,
+      "policy": "retain historical input unchanged; unqualified; genuine GN/natural build regeneration separate approval required"
+    },
+    "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/.ninja_log": {
+      "actualSha256": "53c1dc0220e74ea5421363a547c2c9f286e531ae2144a0322ea645b446f48197",
+      "historicalOriginalSha256": "8bf2d59df6cebd0499f60e5e17f81df76a256fd535c57306031a9dc5b0fa5480",
+      "actualCopy": "/private/tmp/aux-builder-final-0280-native-preparation/frozen-ce62-preparation-001/bounded-drift-actual-.ninja_log",
+      "currentMtimeNs": 1791030872353909668,
+      "policy": "retain historical input unchanged; unqualified; genuine GN/natural build regeneration separate approval required"
+    }
+  },
+  "historicalDerivedQualified": false,
+  "nativeCompiled": false,
+  "runtimeStaged": false,
+  "appLaunched": false,
+  "originalNativeCompiledRuntimeMetadataUnchanged": true,
+  "restorationExact": true,
+  "finishedUtc": "2026-10-03T14:09:06Z"
+}
