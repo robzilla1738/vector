@@ -74,3 +74,35 @@ it("loads saved page evidence only when opened and offers retry on failure",asyn
     expect(invoke.mock.calls.filter(([method])=>method==="artifacts.read")).toHaveLength(2);
   } finally {await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();useStore.setState(original,true);}
 });
+
+it("passes the original Stop click through the registered command during its dispatch", async () => {
+  const original = useStore.getState();
+  const run = makeRun({ runId: "dispatch-stop", status: "running", pageIds: [] });
+  useStore.setState({ runs: [run], steps: { [run.runId]: [] }, prompt: null });
+  const host = document.createElement("div"), root = createRoot(host);
+  document.body.append(host);
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({});
+  let stop!: HTMLButtonElement;
+  const measured = vi.fn((event: Event, runId: string) => {
+    expect(runId).toBe(run.runId);
+    expect(event.target).toBe(stop);
+    expect(event.currentTarget).not.toBeNull();
+    expect(event.eventPhase).not.toBe(Event.NONE);
+    return Promise.resolve();
+  });
+  // This checks synchronous event plumbing only; native code must independently
+  // admit real physical input before any responsiveness measurement is valid.
+  const priorBinding = window.__auxNativeMeasuredStop;
+  window.__auxNativeMeasuredStop = measured;
+  try {
+    await act(async () => root.render(<RunPanel runId={run.runId} conversation />));
+    stop = host.querySelector<HTMLButtonElement>('[data-command-id="stop-run"]')!;
+    await act(async () => stop.click());
+    expect(measured).toHaveBeenCalledOnce();
+    expect(invoke.mock.calls.some(([method]) => method === "runs.cancel")).toBe(false);
+  } finally {
+    window.__auxNativeMeasuredStop = priorBinding;
+    await act(async () => root.unmount());
+    host.remove(); vi.restoreAllMocks(); useStore.setState(original, true);
+  }
+});
