@@ -1,0 +1,23 @@
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
+@@ -14,6 +14,7 @@
+ #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
+ 
+ #include <memory>
++#include <string>
+ #include <utility>
+ #include "base/logging.h"
+ #include "content/public/browser/navigation_handle.h"
+@@ -4421,9 +4422,9 @@
+       // Fixed synthetic fixture only. Omit credentials, query and fragment,
+       // cap each source path, and emit at most one original navigation record.
+       auto bounded = [](const GURL& url) {
+-        return url.scheme() + "://" + url.host() +
+-               (url.has_port() ? ":" + url.port() : "") +
+-               url.path().substr(0, 200);
++        return std::string(url.scheme()) + "://" + std::string(url.host()) +
++               (url.has_port() ? ":" + std::string(url.port()) : "") +
++               std::string(url.path().substr(0, 200));
+       };
+       const auto* current = web_contents()
+           ? web_contents()->GetPrimaryMainFrame() : nullptr;
