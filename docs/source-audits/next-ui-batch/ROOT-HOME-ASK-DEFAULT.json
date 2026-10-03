@@ -51,5 +51,12 @@
     "shellTypecheck": "PASS",
     "typecheckLog": "/tmp/aux-root-home-ask-typecheck-002.log",
     "nativeExecution": "NOT RUN"
+  },
+  "followup": {
+    "generalSettingsFreshDefault": "Ask, matching actual Home",
+    "explicitHomeSearchControls": "PASS /tmp/aux-root-home-search-controls-002.log",
+    "generalSettingsControl": "PASS /tmp/aux-root-home-setting-controls.log",
+    "initialBroadSourceGate": "FAIL: stale Home Search fixtures and legitimate capability schema extension under investigation",
+    "fullNativeAcceptance": false
   }
 }

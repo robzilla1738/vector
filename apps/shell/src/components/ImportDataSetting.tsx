@@ -57,6 +57,7 @@ export function ImportDataSetting() {
   const jobRef = useRef<ImportJobStatus | null>(null);
   const alive = useRef(true);
   const busy = useRef(false);
+  const pendingCancels = useRef(new Set<string>());
 
   const apply = useCallback((next: ImportJobStatus) => {
     if (!alive.current) return;
@@ -66,6 +67,7 @@ export function ImportDataSetting() {
     jobRef.current = next;
     setJob(next);
     setProgressError("");
+    if (previous?.jobId !== next.jobId) setStopping(false);
     if (next.done) {
       setStopping(false);
       if (!previous || previous.jobId !== next.jobId || !previous.done) {
@@ -200,16 +202,19 @@ export function ImportDataSetting() {
 
   const cancel = async () => {
     const current = jobRef.current;
-    if (!current || current.done || stopping) return;
+    if (!current || current.done || pendingCancels.current.has(current.jobId)) return;
+    pendingCancels.current.add(current.jobId);
     setStopping(true);
     try {
       await call("import.cancel", { jobId: current.jobId });
       await syncProgress(current.jobId);
     } catch (reason) {
-      if (alive.current) {
+      if (alive.current && jobRef.current?.jobId === current.jobId && !jobRef.current.done) {
         setStopping(false);
         setError(reason instanceof Error ? reason.message : String(reason));
       }
+    } finally {
+      pendingCancels.current.delete(current.jobId);
     }
   };
 

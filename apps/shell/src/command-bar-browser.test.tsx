@@ -200,7 +200,7 @@ it.each(["chrome://version", "https://example.test/path"])(
       closedTabs: [],
       runs: [],
       programs: [],
-      settings: {},
+      settings: { homeEntryMode: "search" },
     } as never);
     const resolved = vi
       .spyOn(bridge as typeof bridge & { resolveSearch: (query: string) => Promise<string> }, "resolveSearch")
