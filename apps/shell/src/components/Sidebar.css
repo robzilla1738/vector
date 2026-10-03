@@ -71,4 +71,4 @@
 .archive-education h3 { margin: 0 0 8px; font-size: 12px; }
 .archive-education .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 
-.archive-education { position: static; inset: auto; width: auto; color: inherit; }
+.archive-education { position: static; inset: auto; width: auto; color: inherit; white-space: normal; }

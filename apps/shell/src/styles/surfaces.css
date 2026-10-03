@@ -360,8 +360,7 @@ button.icon-btn.sm, button.icon-btn.xs { border-radius: var(--r-pill); }
 .home-excerpt .answer-markdown ul, .home-excerpt .answer-markdown ol { padding-left: var(--space-4); }
 .home-mode kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 var(--space-2); border-radius: var(--r-md); corner-shape: superellipse(var(--squircle-factor)); background: var(--tabs-list); color: var(--ink-0); box-shadow: none; font-size: var(--fs-md); font-weight: var(--fw-medium); line-height: 1; }
 .conversation-scroll:has(.conversation-empty) { align-items: center; }
-.conversation-empty h1, .conversation-empty p { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.conversation-embedded .conversation-empty h1, .conversation-embedded .conversation-empty p { position: static; width: auto; height: auto; margin: var(--space-3) 0 0; overflow: visible; clip-path: none; white-space: normal; }
+.conversation-empty h1, .conversation-empty p { margin: var(--space-3) 0 0; }
 .conversation-embedded .conversation-scroll:has(.conversation-empty) { display: grid; place-items: center; }
 .conversation-embedded .conversation-empty { max-width: 280px; margin: auto; }
 .conversation-embedded .conversation-empty h1 { font-size: var(--fs-lg); }

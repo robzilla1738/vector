@@ -170,7 +170,7 @@ html, body, .app, .app.native-host, .app-body { background: transparent; }
 .tabs-horizontal .horizontal-chrome > .toolbar .icon-btn { width: 32px; height: 32px; }
 .tabs-horizontal .horizontal-chrome > .toolbar .tb-right { flex: none; }
 .tabs-horizontal .horizontal-chrome > .toolbar .tb-right [aria-label="Tab overview"] { display: none; }
-.chat-sidebar { position: relative; width: 0; flex: none; overflow: hidden; white-space: nowrap; background: var(--sb-bg); color: var(--sb-ink-1); transition: width var(--t-slow) var(--ease-out); }
+.chat-sidebar { position: relative; width: 0; flex: none; overflow: clip; white-space: nowrap; background: var(--sb-bg); color: var(--sb-ink-1); transition: width var(--t-slow) var(--ease-out); }
 .chat-sidebar.open { width: var(--sb-w, 280px); }
 .chat-sidebar-content { display: flex; flex-direction: column; width: var(--sb-w, 280px); height: 100%; min-height: 0; }
 .chat-sidebar-content > nav { flex: none; display: grid; gap: var(--space-1); padding: var(--space-2); }
