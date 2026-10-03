@@ -37,5 +37,7 @@
     "Whole predecessor composition/forward-reverse replay",
     "Actual default backend evidence and original first-hardware join",
     "Matched Aux/Stock instrumentation and20actualACtrials"
-  ]
+  ],
+  "exactForwardReverseForward": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-graphite-0320-replay-4orkxfq_"
 }
