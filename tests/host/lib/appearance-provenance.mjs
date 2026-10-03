@@ -183,8 +183,11 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
         assert.equal(before.system[key], after.system[key], 'Setup system preference changed');
       return { before, after };
     },
-    async before(windowId, expectedOwner) {
-      const value = await sample(windowId), ticket = Object.freeze({ windowId, ...(child ? { windowLayer: value.window.windowLayer, surfaceKind: value.window.surfaceKind, registrationGeneration: value.window.registrationGeneration } : {}) });
+    async before(windowId, expectedOwner, expectedWindowKind) {
+      assert.ok(expectedWindowKind === undefined || (!child && !privateSource && ['quick-ask', 'little'].includes(expectedWindowKind)), 'Invalid expected native window kind');
+      const value = await sample(windowId);
+      if (expectedWindowKind !== undefined) assert.equal(value.window.windowKind, expectedWindowKind, 'Required native kind changed before capture');
+      const ticket = Object.freeze({ windowId, ...(expectedWindowKind === undefined ? {} : { expectedWindowKind }), ...(child ? { windowLayer: value.window.windowLayer, surfaceKind: value.window.surfaceKind, registrationGeneration: value.window.registrationGeneration } : {}) });
       if (child) {
         assert.deepEqual(Object.keys(expectedOwner ?? {}).sort(), ['ownerPageId', 'ownerWindowId', 'registrationGeneration', 'surfaceKind'].sort(), 'Child capture requires discovered ownership fences');
         for (const key of ['ownerPageId', 'ownerWindowId', 'registrationGeneration', 'surfaceKind'])
@@ -201,6 +204,10 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
       const after = await sample(capture.windowId);
       assert.deepEqual(before.window.frame, after.window.frame, 'Capture point frame changed');
       assert.equal(before.window.windowKind, after.window.windowKind, 'Capture window kind changed');
+      if (ticket.expectedWindowKind !== undefined) {
+        assert.equal(before.window.windowKind, ticket.expectedWindowKind, 'Required native kind changed before capture');
+        assert.equal(after.window.windowKind, ticket.expectedWindowKind, 'Required native kind changed after capture');
+      }
       if (child) for (const key of ['registrationGeneration', 'ownerWindowId', 'ownerPageId', 'surfaceKind', 'windowLayer'])
         assert.equal(before.window[key], after.window[key], `Capture child ${key} changed`);
       const at = timestamp(capturedAt), end = timestamp(captureCompletedAt);

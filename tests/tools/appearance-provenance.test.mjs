@@ -167,3 +167,19 @@ test('child capture must be fully bracketed, including completion', () => run(as
   await assert.rejects(producer.finish(ticket, f.capture, { state: 'video', capturedAt,
     captureCompletedAt: new Date(Date.now() + 60000).toISOString() }), /bracket/);
 }));
+
+for (const kind of ['quick-ask', 'little']) test(`required ${kind} is enforced inside native capture bracket`, () => run(async f => {
+  const producer = createAppearanceProvenance(f.options);
+  await assert.rejects(producer.before(7, undefined, kind), /Required native kind/);
+  f.state.native = () => ({ ...raw(), windowKind: kind });
+  const ticket = await producer.before(7, undefined, kind), capturedAt = new Date().toISOString();
+  f.state.native = raw;
+  await assert.rejects(producer.finish(ticket, f.capture, { state: kind, capturedAt, captureCompletedAt: capturedAt }), /kind changed/);
+  assert.equal(existsSync(join(f.directory, '.appearance-synthetic')), false);
+}));
+test('actual Little bracket writes original samples; unknown material never becomes a counted cell', () => run(async f => {
+  f.state.native = () => ({ ...raw(), windowKind: 'little', backing: null, material: null });
+  const producer = createAppearanceProvenance(f.options), ticket = await producer.before(7, undefined, 'little'), capturedAt = new Date().toISOString();
+  const record = await producer.finish(ticket, f.capture, { state: 'little', capturedAt, captureCompletedAt: capturedAt });
+  assert.equal(sheets(f, record, producer.pins, 'little').cells, 0);
+}));

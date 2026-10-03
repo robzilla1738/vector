@@ -1,3 +1,4 @@
+import { captureLittleState } from '../lib/utility-window-capture.mjs';
 import { execFileSync } from 'node:child_process';
 import { fixturePage } from '../lib/fixture.mjs';
 
@@ -51,7 +52,7 @@ export async function run(t) {
     const ax = await t.ax.dump();
     geometry(t, window, ax);
     t.assert.notEqual(first.windowId, mainWindowId);
-    await t.capture('little-window-external', { windowId: window.id });
+    await captureLittleState(t, 'little-window-external', 'little-window-external-draft', window.id);
     return { ax, rpc: { pages: await t.rpc('pages.list'), window } };
   });
   await t.step('Space picker and the 280 px downloads tray restore focus on Escape', { kind: 'ui', features: ['littleWindow'] }, async () => {
@@ -95,7 +96,7 @@ export async function run(t) {
     await t.ax.key('command+option+n', 'hid');
     await t.ax.waitFor({ name: 'Take a quick look', match: 'exact', index: 0 });
     const empty = await newWindow(t, before);
-    await t.capture('little-window-empty', { windowId: empty.id });
+    await captureLittleState(t, 'little-window-empty', 'little-window-empty', empty.id);
     const emptyPage = (await t.rpc('pages.list')).find(page => page.windowKind === 'little');
     t.assert.ok(emptyPage, 'Empty Little owns one authoritative native page');
     await t.ax.key('command+t', 'hid');

@@ -1,0 +1,195 @@
+diff --git a/tests/host/journeys/legacy-browser.mjs b/tests/host/journeys/legacy-browser.mjs
+index 44b4b8fc7..33fd154a2 100644
+--- a/tests/host/journeys/legacy-browser.mjs
++++ b/tests/host/journeys/legacy-browser.mjs
+@@ -1,3 +1,4 @@
++import { captureQuickAskState } from '../lib/utility-window-capture.mjs';
+ import { mkdirSync, writeFileSync } from 'node:fs';
+ import { join } from 'node:path';
+ import { shell, settings, loadedPage, press } from '../fixtures/legacy-ui.mjs';
+@@ -74,7 +75,7 @@ async function quickAsk(t) {
+     const ax = await t.ax.dump({ scope: 'shell' });
+     const rpc = await t.rpc('workspace.get');
+     t.assert.ok(rpc.sessions.some(session => session.sessionId === 'aux' && session.status === 'connected'));
+-    await t.capture('quick-ask-focused', { windowId: compact[0].id });
++    await captureQuickAskState(t, 'quick-ask-focused', 'quick-ask-composer-focused', compact[0].id);
+     await t.ax.key('escape', 'hid');
+     await t.ax.waitFor(shell('Ask Aux'), 'absent');
+     await t.until('Quick Ask native window dismissed', async () => (await t.ax.windows()).filter(window => window.layer === 0).length === before.length);
+diff --git a/tests/host/journeys/little-window.mjs b/tests/host/journeys/little-window.mjs
+index ca3ebb784..0979710dc 100644
+--- a/tests/host/journeys/little-window.mjs
++++ b/tests/host/journeys/little-window.mjs
+@@ -1,3 +1,4 @@
++import { captureLittleState } from '../lib/utility-window-capture.mjs';
+ import { execFileSync } from 'node:child_process';
+ import { fixturePage } from '../lib/fixture.mjs';
+ 
+@@ -51,7 +52,7 @@ export async function run(t) {
+     const ax = await t.ax.dump();
+     geometry(t, window, ax);
+     t.assert.notEqual(first.windowId, mainWindowId);
+-    await t.capture('little-window-external', { windowId: window.id });
++    await captureLittleState(t, 'little-window-external', 'little-window-external-draft', window.id);
+     return { ax, rpc: { pages: await t.rpc('pages.list'), window } };
+   });
+   await t.step('Space picker and the 280 px downloads tray restore focus on Escape', { kind: 'ui', features: ['littleWindow'] }, async () => {
+@@ -95,7 +96,7 @@ export async function run(t) {
+     await t.ax.key('command+option+n', 'hid');
+     await t.ax.waitFor({ name: 'Take a quick look', match: 'exact', index: 0 });
+     const empty = await newWindow(t, before);
+-    await t.capture('little-window-empty', { windowId: empty.id });
++    await captureLittleState(t, 'little-window-empty', 'little-window-empty', empty.id);
+     const emptyPage = (await t.rpc('pages.list')).find(page => page.windowKind === 'little');
+     t.assert.ok(emptyPage, 'Empty Little owns one authoritative native page');
+     await t.ax.key('command+t', 'hid');
+diff --git a/tests/host/lib/appearance-provenance.mjs b/tests/host/lib/appearance-provenance.mjs
+index 6b3c6c715..6d2e45f34 100644
+--- a/tests/host/lib/appearance-provenance.mjs
++++ b/tests/host/lib/appearance-provenance.mjs
+@@ -183,8 +183,11 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
+         assert.equal(before.system[key], after.system[key], 'Setup system preference changed');
+       return { before, after };
+     },
+-    async before(windowId, expectedOwner) {
+-      const value = await sample(windowId), ticket = Object.freeze({ windowId, ...(child ? { windowLayer: value.window.windowLayer, surfaceKind: value.window.surfaceKind, registrationGeneration: value.window.registrationGeneration } : {}) });
++    async before(windowId, expectedOwner, expectedWindowKind) {
++      assert.ok(expectedWindowKind === undefined || (!child && !privateSource && ['quick-ask', 'little'].includes(expectedWindowKind)), 'Invalid expected native window kind');
++      const value = await sample(windowId);
++      if (expectedWindowKind !== undefined) assert.equal(value.window.windowKind, expectedWindowKind, 'Required native kind changed before capture');
++      const ticket = Object.freeze({ windowId, ...(expectedWindowKind === undefined ? {} : { expectedWindowKind }), ...(child ? { windowLayer: value.window.windowLayer, surfaceKind: value.window.surfaceKind, registrationGeneration: value.window.registrationGeneration } : {}) });
+       if (child) {
+         assert.deepEqual(Object.keys(expectedOwner ?? {}).sort(), ['ownerPageId', 'ownerWindowId', 'registrationGeneration', 'surfaceKind'].sort(), 'Child capture requires discovered ownership fences');
+         for (const key of ['ownerPageId', 'ownerWindowId', 'registrationGeneration', 'surfaceKind'])
+@@ -201,6 +204,10 @@ function createNativeProvenance({ outputDir, candidate, targetPid, helper, helpe
+       const after = await sample(capture.windowId);
+       assert.deepEqual(before.window.frame, after.window.frame, 'Capture point frame changed');
+       assert.equal(before.window.windowKind, after.window.windowKind, 'Capture window kind changed');
++      if (ticket.expectedWindowKind !== undefined) {
++        assert.equal(before.window.windowKind, ticket.expectedWindowKind, 'Required native kind changed before capture');
++        assert.equal(after.window.windowKind, ticket.expectedWindowKind, 'Required native kind changed after capture');
++      }
+       if (child) for (const key of ['registrationGeneration', 'ownerWindowId', 'ownerPageId', 'surfaceKind', 'windowLayer'])
+         assert.equal(before.window[key], after.window[key], `Capture child ${key} changed`);
+       const at = timestamp(capturedAt), end = timestamp(captureCompletedAt);
+diff --git a/tests/host/lib/evidence.mjs b/tests/host/lib/evidence.mjs
+index 3d636d4ee..a04447e57 100644
+--- a/tests/host/lib/evidence.mjs
++++ b/tests/host/lib/evidence.mjs
+@@ -11,7 +11,7 @@ export function createEvidence(outputDir, ax, appearanceProvider, pipAppearanceP
+   if (lstatSync(requested).isSymbolicLink()) throw new Error('Evidence output must not be a symlink');
+   const directory = realpathSync(requested);
+   const captures = [];
+-  async function capture(name, { windowId, state, expectedOwner } = {}, child = false) {
++  async function capture(name, { windowId, state, expectedOwner, expectedWindowKind } = {}, child = false) {
+     if (typeof name !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,120}$/.test(name)) throw new Error('Capture needs a simple unique name');
+     return withNativeSlot(async () => {
+       const windows = await ax.windows();
+@@ -19,6 +19,7 @@ export function createEvidence(outputDir, ax, appearanceProvider, pipAppearanceP
+       if (windowId !== undefined && (!Number.isInteger(windowId) || windowId <= 0)) throw new Error('Capture window ID must be positive');
+       const appearance = child ? pipAppearanceProvider?.() : state === undefined ? undefined : appearanceProvider?.();
+       if (child && (!appearance || windowId === undefined || typeof state !== "string" || !state)) throw new Error("Child capture requires its current registry producer, explicit window and state");
++      if (expectedWindowKind !== undefined && (child || !['quick-ask', 'little'].includes(expectedWindowKind) || !appearance)) throw new Error('Expected Aux utility kind requires its current native appearance producer');
+       if (!child && expectedOwner !== undefined) throw new Error('Normal capture cannot use child ownership');
+       const childTicket = child ? await appearance.before(windowId, expectedOwner) : undefined;
+       const selected = child ? windows.filter(item => item.id === windowId && item.layer === childTicket.windowLayer && item.width > 0 && item.height > 0) : candidates;
+@@ -26,7 +27,7 @@ export function createEvidence(outputDir, ax, appearanceProvider, pipAppearanceP
+       const window = windowId === undefined ? candidates.sort((a, b) => b.width * b.height - a.width * a.height)[0] : selected.find(item => item.id === windowId);
+       if (!window || !Number.isInteger(window.id) || window.id <= 0) throw new Error('No journey window available for capture');
+       if (state !== undefined && (!appearance || windowId === undefined || typeof state !== 'string' || !state)) throw new Error('Appearance capture requires an explicit state, window and current producer');
+-      const ticket = childTicket ?? (appearance ? await appearance.before(window.id) : undefined);
++      const ticket = childTicket ?? (appearance ? await appearance.before(window.id, undefined, expectedWindowKind) : undefined);
+       const path = `${name}.png`;
+       const absolute = join(directory, path);
+       if (existsSync(absolute)) throw new Error('Existing evidence must not be overwritten');
+diff --git a/tests/host/lib/utility-window-capture.mjs b/tests/host/lib/utility-window-capture.mjs
+new file mode 100644
+index 000000000..f6f35e81e
+--- /dev/null
++++ b/tests/host/lib/utility-window-capture.mjs
+@@ -0,0 +1,18 @@
++import assert from 'node:assert/strict';
++
++async function captureUtility(t, name, state, windowId, expectedWindowKind) {
++  if (!t.appearanceEnabled) return t.capture(name, { windowId });
++  const app = t.app, ax = t.ax, owner = app.pid;
++  const current = () => assert.ok(t.app === app && t.ax === ax && Number.isInteger(owner) && owner > 0 && app.pid === owner && ax.pid === owner,
++    'Original utility capture owner changed');
++  current();
++  assert.ok(Number.isInteger(windowId) && windowId > 0, 'Missing observed utility window');
++  const windows = await ax.windows(); current();
++  assert.equal(windows.filter(window => window.id === windowId && window.layer === 0 && window.width > 0 && window.height > 0).length, 1,
++    'Utility window absent or ambiguous in original helper inventory');
++  // Kind is enforced inside BOTH actual native capture samples, not by this selector.
++  const record = await t.capture(name, { windowId, state, expectedWindowKind }); current();
++  return record;
++}
++export const captureQuickAskState = (t, name, state, windowId) => captureUtility(t, name, state, windowId, 'quick-ask');
++export const captureLittleState = (t, name, state, windowId) => captureUtility(t, name, state, windowId, 'little');
+diff --git a/tests/host/utility-window-capture.test.mjs b/tests/host/utility-window-capture.test.mjs
+new file mode 100644
+index 000000000..52a7789ed
+--- /dev/null
++++ b/tests/host/utility-window-capture.test.mjs
+@@ -0,0 +1,37 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import { captureQuickAskState, captureLittleState } from './lib/utility-window-capture.mjs';
++function fixture() {
++  const calls = [];
++  const t = { appearanceEnabled: true, app: { pid: 201 }, ax: { pid: 201,
++    windows: async () => [{ id: 70, layer: 0, width: 1200, height: 800 }, { id: 71, layer: 0, width: 400, height: 300 }] },
++    capture: async (...args) => { calls.push(args); return args; } };
++  return { t, calls };
++}
++test('distinct kind is handed to actual capture bracket with original observed identity', async () => {
++  for (const [capture, expectedWindowKind] of [[captureQuickAskState, 'quick-ask'], [captureLittleState, 'little']]) {
++    const { t, calls } = fixture(); await capture(t, 'utility', 'focused', 71);
++    assert.deepEqual(calls, [['utility', { windowId: 71, state: 'focused', expectedWindowKind }]]);
++  }
++});
++test('ordinary diagnostics keep original exact window selection without appearance authority', async () => {
++  const { t, calls } = fixture(); t.appearanceEnabled = false;
++  t.ax.windows = async () => { throw new Error('No appearance read'); };
++  await captureLittleState(t, 'utility', 'ignored-diagnostic-state', 71);
++  assert.deepEqual(calls, [['utility', { windowId: 71 }]]);
++});
++test('absent, floating, duplicate and foreign owners refuse before capture', async () => {
++  for (const windows of [[], [{ id: 71, layer: 3, width: 400, height: 300 }],
++    [{ id: 71, layer: 0, width: 400, height: 300 }, { id: 71, layer: 0, width: 400, height: 300 }]]) {
++    const { t, calls } = fixture(); t.ax.windows = async () => windows;
++    await assert.rejects(captureQuickAskState(t, 'utility', 'focused', 71)); assert.equal(calls.length, 0);
++  }
++  const { t, calls } = fixture(); t.ax.pid = 202;
++  await assert.rejects(captureLittleState(t, 'utility', 'empty', 71)); assert.equal(calls.length, 0);
++});
++test('awaited owner retirement and original producer failure remain failures', async () => {
++  const { t, calls } = fixture(); t.ax.windows = async () => { t.app.pid = 202; return []; };
++  await assert.rejects(captureLittleState(t, 'utility', 'empty', 71), /owner changed/); assert.equal(calls.length, 0);
++  const f = fixture(), original = new Error('Native required kind refused'); f.t.capture = async () => { throw original; };
++  await assert.rejects(captureQuickAskState(f.t, 'utility', 'focused', 71), error => error === original);
++});
+diff --git a/tests/tools/appearance-provenance.test.mjs b/tests/tools/appearance-provenance.test.mjs
+index 4cd0708ca..16f6c378d 100644
+--- a/tests/tools/appearance-provenance.test.mjs
++++ b/tests/tools/appearance-provenance.test.mjs
+@@ -167,3 +167,19 @@ test('child capture must be fully bracketed, including completion', () => run(as
+   await assert.rejects(producer.finish(ticket, f.capture, { state: 'video', capturedAt,
+     captureCompletedAt: new Date(Date.now() + 60000).toISOString() }), /bracket/);
+ }));
++
++for (const kind of ['quick-ask', 'little']) test(`required ${kind} is enforced inside native capture bracket`, () => run(async f => {
++  const producer = createAppearanceProvenance(f.options);
++  await assert.rejects(producer.before(7, undefined, kind), /Required native kind/);
++  f.state.native = () => ({ ...raw(), windowKind: kind });
++  const ticket = await producer.before(7, undefined, kind), capturedAt = new Date().toISOString();
++  f.state.native = raw;
++  await assert.rejects(producer.finish(ticket, f.capture, { state: kind, capturedAt, captureCompletedAt: capturedAt }), /kind changed/);
++  assert.equal(existsSync(join(f.directory, '.appearance-synthetic')), false);
++}));
++test('actual Little bracket writes original samples; unknown material never becomes a counted cell', () => run(async f => {
++  f.state.native = () => ({ ...raw(), windowKind: 'little', backing: null, material: null });
++  const producer = createAppearanceProvenance(f.options), ticket = await producer.before(7, undefined, 'little'), capturedAt = new Date().toISOString();
++  const record = await producer.finish(ticket, f.capture, { state: 'little', capturedAt, captureCompletedAt: capturedAt });
++  assert.equal(sheets(f, record, producer.pins, 'little').cells, 0);
++}));

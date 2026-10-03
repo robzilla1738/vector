@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "kind": "source-only-distinct-window-capture-request",
+  "baseCommit": "ea7acd3b13fabb9a335e009ead12059668513042",
+  "patchSha256": "8592a83854f95874dfb81913a9269fc66b5150de425fdb830387326292caf25c",
+  "files": [
+    {
+      "path": "tests/host/journeys/legacy-browser.mjs",
+      "beforeSha256": "e7e7a91a99ef6db53cf18d6e994e175f94c975f3be9e66393d3b472357ad2840",
+      "afterSha256": "8c2b8181c82e78f0d7cda72d52df4e02a9649c0f9de62a63f41b98cab380ffb3"
+    },
+    {
+      "path": "tests/host/journeys/little-window.mjs",
+      "beforeSha256": "e49f02a4a57cfc25560007b089d32a62b6e71432e4b28b4b8b240f980f1a1d23",
+      "afterSha256": "c724e197d3e237e97fb5e5884afed121d99e7dd673831aaf4017ee3fd829cbe9"
+    },
+    {
+      "path": "tests/host/lib/appearance-provenance.mjs",
+      "beforeSha256": "b21fdd25374dd3c2fab499a2cdfb24cf85cd971b7f84c6cb06046227affd66e6",
+      "afterSha256": "bfaf898b0a1962584d1bf68a9ba57f667c4d15035970d4040146a205313c8c82"
+    },
+    {
+      "path": "tests/host/lib/evidence.mjs",
+      "beforeSha256": "50e726f9976b0719b39e5c25dbc052117af80568a63d3ea4750ff9f2aadbd468",
+      "afterSha256": "71a87a2fa13612d65c5b40bfdc9af52aefb4e87142941fb69463ddcc0a74d701"
+    },
+    {
+      "path": "tests/host/lib/utility-window-capture.mjs",
+      "beforeSha256": null,
+      "afterSha256": "78c6d95763929de6df0e6d50ed71e47ca84fe18781ca83c0b959158b22be5fa7"
+    },
+    {
+      "path": "tests/host/utility-window-capture.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "a38d1de459f8ad10f993f33cbf7c9fa962451b42d59e8c64725d053be2d6f267"
+    },
+    {
+      "path": "tests/tools/appearance-provenance.test.mjs",
+      "beforeSha256": "8a209a65cab24136d551987ba51248e7dfe5e67b2d5e88432206ca7232eff255",
+      "afterSha256": "36bfe131b2f89647fb6d909da37301ce1d750bc1d967f4fd65165f4dec1dd2c8"
+    }
+  ],
+  "controlledTests": 31,
+  "scopedLint": "PASS",
+  "forwardReverseForwardExactPins": "PASS",
+  "wholeJourneyOriginalRestoration": "PASS",
+  "states": [
+    "quick-ask-composer-focused",
+    "little-window-external-draft",
+    "little-window-empty"
+  ],
+  "nativeExecuted": false,
+  "visualApproval": false
+}

@@ -1,3 +1,4 @@
+import { captureQuickAskState } from '../lib/utility-window-capture.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { shell, settings, loadedPage, press } from '../fixtures/legacy-ui.mjs';
@@ -74,7 +75,7 @@ async function quickAsk(t) {
     const ax = await t.ax.dump({ scope: 'shell' });
     const rpc = await t.rpc('workspace.get');
     t.assert.ok(rpc.sessions.some(session => session.sessionId === 'aux' && session.status === 'connected'));
-    await t.capture('quick-ask-focused', { windowId: compact[0].id });
+    await captureQuickAskState(t, 'quick-ask-focused', 'quick-ask-composer-focused', compact[0].id);
     await t.ax.key('escape', 'hid');
     await t.ax.waitFor(shell('Ask Aux'), 'absent');
     await t.until('Quick Ask native window dismissed', async () => (await t.ax.windows()).filter(window => window.layer === 0).length === before.length);
