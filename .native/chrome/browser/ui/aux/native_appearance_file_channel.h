@@ -34,7 +34,7 @@ class NativeAppearanceFileChannel {
       NativeAppearanceDirectoryLease lease);
   ~NativeAppearanceFileChannel();
   // Called only by the guarded existing capability handler. No effect opcode.
-  std::optional<base::Value::Dict> Receipt(Profile* original_profile);
+  std::optional<base::DictValue> Receipt(Profile* original_profile);
   // Existing getter supplies original raw JSON after its WeakDocument checks.
   // Disk publication runs on one background sequence, never a UI blocking write.
   bool Publish(Profile* original_profile, std::string original_raw_json);
@@ -47,7 +47,7 @@ class NativeAppearanceFileChannel {
 // Shared metadata adapter supplies the original one-shot private lease.
 std::optional<NativeAppearanceDirectoryLease> TakeNativeAppearanceDirectoryLease();
 void InitializeNativeAppearanceFileChannel();
-std::optional<base::Value::Dict> NativeAppearanceFileChannelReceipt(Profile* original_profile);
+std::optional<base::DictValue> NativeAppearanceFileChannelReceipt(Profile* original_profile);
 bool PublishNativeAppearanceFileRecord(Profile* original_profile, std::string original_raw_json);
 #endif
 }  // namespace aux

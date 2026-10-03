@@ -1,0 +1,80 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile, writeFile, unlink, rmdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import { captureComposerImageRejection, createInvalidImageFixture } from './lib/composer-image-appearance.mjs';
+
+function context() {
+  const calls = [], paths = [], captures = [];
+  const snapshots = { 'pages.list': [], 'runs.list': [], 'workspace.get': { id: 'original' }, 'settings.get': { modelConfigured: false } };
+  const t = { appearanceEnabled: true, app: { pid: 881 }, signal: new AbortController().signal,
+    rpc: async method => structuredClone(snapshots[method]),
+    capture: async (name, options) => { captures.push([name, options]); },
+    ax: { pid: 881, query: async selector => selector.name === 'Reply to conversation' ? [{ value: 'Original unsent draft', focused: true }] : [{}],
+      click: async selector => calls.push(['click', selector.name]), waitFor: async (selector, state) => calls.push(['wait', selector.name ?? selector.role, state]),
+      openPanel: async path => { paths.push(path); assert.equal(await readFile(path, 'utf8'), 'Aux owned invalid image fixture\n'); },
+      key: async key => calls.push(['key', key]), focus: async selector => calls.push(['focus', selector.name]),
+      windows: async () => [{ id: 17, layer: 0, width: 800, height: 700 }], dump: async () => ({ original: true }),
+    },
+  };
+  return { t, calls, paths, captures, snapshots };
+}
+
+test('ordinary mode performs no chooser or filesystem work', async () => {
+  assert.deepEqual(await captureComposerImageRejection({ appearanceEnabled: false }), { status: 'not-requested' });
+});
+test('fixed owned file lacks native supported magic and exact cleanup removes it', async () => {
+  const fixture = await createInvalidImageFixture();
+  assert.equal(await readFile(fixture.path, 'utf8'), 'Aux owned invalid image fixture\n');
+  await fixture.validate(); await fixture.dispose();
+  await assert.rejects(readFile(fixture.path), { code: 'ENOENT' });
+});
+test('source sequence uses original chooser and owned Home captures, preserving draft/state', async () => {
+  const { t, calls, paths, captures } = context();
+  const result = await captureComposerImageRejection(t);
+  assert.equal(result.status, 'observed');
+  assert.equal(paths.length, 1);
+  assert.deepEqual(captures.map(row => row[1]), [
+    { windowId: 17, state: 'home-image-native-chooser-rejection' },
+    { windowId: 17, state: 'home-image-chooser-cancelled-draft-focused' },
+  ]);
+  assert.ok(calls.some(row => row[0] === 'wait' && row[1] === 'Unsupported or oversized evidence file'));
+  assert.equal(calls.filter(row => row[0] === 'key' && row[1] === 'escape').length, 2);
+  await assert.rejects(readFile(paths[0]), { code: 'ENOENT' });
+});
+test('retired original owner prevents capture while exact owned fixture cleanup remains possible', async () => {
+  const { t, paths, captures } = context();
+  t.ax.openPanel = async path => { paths.push(path); t.app = { pid: 881 }; };
+  await assert.rejects(captureComposerImageRejection(t), error => error.code === "ERR_ASSERTION");
+  assert.equal(captures.length, 0);
+  await assert.rejects(readFile(paths[0]), { code: 'ENOENT' });
+});
+test('changed original fixture refuses removal instead of hiding cleanup debt', async () => {
+  const fixture = await createInvalidImageFixture();
+  await writeFile(fixture.path, 'foreign bytes');
+  await assert.rejects(fixture.validate()); await assert.rejects(fixture.dispose());
+  assert.equal(await readFile(fixture.path, 'utf8'), 'foreign bytes');
+  await unlink(fixture.path); await rmdir(dirname(fixture.path));
+});
+
+test('original chooser failure and changed fixture preserve both failures', async () => {
+  const { t, paths } = context(); const primary = new Error('Original chooser refusal');
+  t.ax.openPanel = async path => { paths.push(path); await writeFile(path, 'changed original fixture'); throw primary; };
+  await assert.rejects(captureComposerImageRejection(t), error => error instanceof AggregateError && error.errors[0] === primary && error.errors.length === 2);
+  assert.equal(await readFile(paths[0], 'utf8'), 'changed original fixture');
+  await unlink(paths[0]); await rmdir(dirname(paths[0]));
+});
+
+test('same-PID replacement native window and changed state refuse before appearance capture', async () => {
+  for (const change of ['window', 'state']) {
+    const { t, captures, snapshots, paths } = context();
+    t.ax.openPanel = async path => {
+      paths.push(path);
+      if (change === 'window') t.ax.windows = async () => [{ id: 18, layer: 0, width: 800, height: 700 }];
+      else snapshots['runs.list'] = [{ runId: 'foreign-run' }];
+    };
+    await assert.rejects(captureComposerImageRejection(t));
+    assert.equal(captures.length, 0);
+    await assert.rejects(readFile(paths[0]), { code: 'ENOENT' });
+  }
+});

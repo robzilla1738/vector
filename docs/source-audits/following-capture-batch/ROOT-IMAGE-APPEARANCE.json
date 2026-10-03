@@ -1,0 +1,29 @@
+{
+  "sourceRequest": "/tmp/aux-browser-runtime-design-image-appearance/docs/lane-requests/design/composer-image-appearance",
+  "freezeSha256": "feec03bb0aa9723beead73deee49d9d25890cd06f7850321d4a333b87b2f1b19",
+  "requests": {
+    "request.patch": "d34625e0e7c4542d7c52c3342816ab11fa1829d9072861a130884410748d3577"
+  },
+  "files": [
+    {
+      "path": "tests/host/journeys/home-composer.mjs",
+      "beforeSha256": "9a40751e0a7d03753299e465a827cadea6f52ad7d1a8bfa410de12b0c278af63",
+      "afterSha256": "cc9a17fec24c53e72fc9475388b4f28f8ddf45d367aa2e52276eaf1239a10cdb"
+    },
+    {
+      "path": "tests/host/lib/composer-image-appearance.mjs",
+      "beforeSha256": null,
+      "afterSha256": "c7c1d4e62fd806bcef00df7d552961cfdfbee5629cf995c91c08481dc125a960"
+    },
+    {
+      "path": "tests/host/composer-image-appearance.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "e065bd2495e69857a384f6bc95f7a099069bcc9f938a3f878347cefc3a2c1e82"
+    }
+  ],
+  "rootExactOrderedReplay": "PASS",
+  "controlsLog": "/tmp/aux-root-following-image-interruption-controls.log",
+  "controlsLogSha256": "481e20743b91ba16a736aa45f93ba0b27671e76a2731025ce5a2c81e0d38913b",
+  "nativeExecuted": false,
+  "appearanceQualified": false
+}

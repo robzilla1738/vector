@@ -1,0 +1,65 @@
+{
+  "actualExitStatus": {
+    "/tmp/aux-following-batch-build.log": 0,
+    "/tmp/aux-following-typecheck.log": 0,
+    "/tmp/aux-following-bindings.log": 0,
+    "/tmp/aux-following-bridge.log": 0,
+    "/tmp/aux-following-inventory.log": 0,
+    "/tmp/aux-following-journeys.log": 0,
+    "/tmp/aux-following-budgets.log": 0,
+    "/tmp/aux-following-lint-final.log": 0,
+    "/tmp/aux-following-format-final.log": 0,
+    "/tmp/aux-following-batch-native-renderer.log": 0,
+    "/tmp/aux-following-shell-capture.log": 0
+  },
+  "artifacts": [
+    {
+      "path": "/tmp/aux-following-batch-build.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-following-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    {
+      "path": "/tmp/aux-following-bindings.log",
+      "sha256": "a2cb63db5f5420e9c7bbf8f290b5e486715916d23dcb2e729a3f0d630b3fdc0a"
+    },
+    {
+      "path": "/tmp/aux-following-bridge.log",
+      "sha256": "69858b75b7e0b804ca472fa2d9974a2f4d570cbd75f4cc5bf80dde9bda216d42"
+    },
+    {
+      "path": "/tmp/aux-following-inventory.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-following-journeys.log",
+      "sha256": "85f9d712b99132aec5d1ec7b0fa2e886971959e0a41282ccc4aa8efcc28d4362"
+    },
+    {
+      "path": "/tmp/aux-following-budgets.log",
+      "sha256": "c82d2589c785a1b8d9ed387f9f483e4516d3ab6ed946951959704c3620012e91"
+    },
+    {
+      "path": "/tmp/aux-following-lint-final.log",
+      "sha256": "f1731164858ea816f6aa9d083fe78a5d1b3738247166b8f73139fdf6819a4b4c"
+    },
+    {
+      "path": "/tmp/aux-following-format-final.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    {
+      "path": "/tmp/aux-following-batch-native-renderer.log",
+      "sha256": "93de2cb352581f79d009938cf6b9cd2cdb400d512b35698817594332b01a9da4"
+    },
+    {
+      "path": "/tmp/aux-following-shell-capture.log",
+      "sha256": "cbb4f95947933b085cb12e378e7febc135d5b7114fd57f0a704e0c1e643904b0"
+    }
+  ],
+  "fullUnit": "original full suite still running; not claimed",
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "qualified": false
+}

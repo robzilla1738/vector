@@ -5,6 +5,7 @@ import { createLaunchServicesAppearanceProvenance } from './lib/appearance-prove
 import { createOwnedNarrowGenerations } from './lib/distinct-narrow-window.mjs';
 import { collectNativeKeyEffects } from './lib/native-key-performance.mjs';
 import { dismissObservedSetup } from './lib/dismiss-observed-setup.mjs';
+import { SETUP_IMPORT_INTERRUPTION_ID, requireImportInterruptionAppearance } from './lib/setup-import-interruption.mjs';
 import { SETUP_IMPORT_APPEARANCE_ID, requireSetupImportAppearance, retirePreparedImportSource } from './lib/setup-import-appearance.mjs';
 import { SETUP_APPEARANCE_ID, requireSetupAppearance, setupDisposition } from './lib/setup-appearance.mjs';
 import { createUntil } from './lib/until.mjs';
@@ -49,7 +50,12 @@ const slot = await acquireNativeSlot();
 process.env.AUX_NATIVE_SLOT_TOKEN = slot.token;
 try {
 let entry;
-if (values.journey === SETUP_IMPORT_APPEARANCE_ID) {
+if (values.journey === SETUP_IMPORT_INTERRUPTION_ID) {
+  requireImportInterruptionAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
+  const path = join(root, 'tests/host/appearance-journeys/setup-import-interruption-appearance.mjs');
+  const module = await import('./appearance-journeys/setup-import-interruption-appearance.mjs');
+  entry = { ...module, path };
+} else if (values.journey === SETUP_IMPORT_APPEARANCE_ID) {
   requireSetupImportAppearance({ journeyId: values.journey, appearance: Boolean(values.appearance), pair: values['appearance-pair'] });
   const path = join(root, 'tests/host/appearance-journeys/setup-import-appearance.mjs');
   const module = await import('./appearance-journeys/setup-import-appearance.mjs');
@@ -127,8 +133,12 @@ async function execute() {
     if (prepared?.env) app.prepareFixtureEnv(prepared.env, fixture.url);
     signal.throwIfAborted();
   }
-  if (journey.id === SETUP_IMPORT_APPEARANCE_ID) {
-    try { app.prepareImportSourceHome(fixture.url); importSourcePrepared = true; }
+  if (journey.id === SETUP_IMPORT_APPEARANCE_ID || journey.id === SETUP_IMPORT_INTERRUPTION_ID) {
+    try {
+      if (journey.id === SETUP_IMPORT_INTERRUPTION_ID) app.prepareImportInterruptionSourceHome(fixture.url);
+      else app.prepareImportSourceHome(fixture.url);
+      importSourcePrepared = true;
+    }
     catch (error) { if (error.retainedSourceHome) manifest.importSourcePreparationFailure = error.retainedSourceHome; throw error; }
   }
   await app.start();
@@ -326,7 +336,7 @@ async function execute() {
   manifest.native = actual.native;
   manifest.runtime = actual.runtime;
   assertJourneyIdentity(actual, identity);
-  if (journey.id !== SETUP_IMPORT_APPEARANCE_ID && setupDisposition(journey.id, Boolean(values.appearance), appearancePair) === 'dismiss')
+  if (journey.id !== SETUP_IMPORT_APPEARANCE_ID && journey.id !== SETUP_IMPORT_INTERRUPTION_ID && setupDisposition(journey.id, Boolean(values.appearance), appearancePair) === 'dismiss')
     await dismissObservedSetup(context, appearance ? windowId => appearance.observeWindowKind(windowId) : undefined);
   if (narrowGenerations) {
     await narrowGenerations.prepare();

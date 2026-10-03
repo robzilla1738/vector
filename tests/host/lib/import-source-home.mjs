@@ -1,3 +1,4 @@
+import { IMPORT_INTERRUPTION_ROWS, writeFixedInterruptionHistory } from './import-interruption-source.mjs';
 import { constants, openSync, closeSync, fstatSync, lstatSync, realpathSync, mkdirSync, writeFileSync, readFileSync, readdirSync, unlinkSync, rmdirSync, chmodSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -47,7 +48,9 @@ export function createImportSourceOwner(userDataDir) {
   const rows = [root, userDataDir].map(path => ({ path, directory: true, realpath: realpathSync(path), identity: identity(path, true), children: null }));
   const owner = Object.freeze({}); owners.set(owner, { userDataDir, rows }); return owner;
 }
-export function createImportSourceHome(owner, fixtureUrl) {
+export function createImportSourceHome(owner, fixtureUrl) { return createSourceHome(owner, fixtureUrl, false); }
+export function createImportInterruptionSourceHome(owner, fixtureUrl) { return createSourceHome(owner, fixtureUrl, true); }
+function createSourceHome(owner, fixtureUrl, interruption) {
   const originalOwner = owners.get(owner);
   if (!originalOwner) throw new Error('Foreign import source owner');
   assertTree(originalOwner);
@@ -67,8 +70,11 @@ export function createImportSourceHome(owner, fixtureUrl) {
   const db = new DatabaseSync(join(home, files[1]));
   try {
     db.exec('CREATE TABLE urls(id INTEGER PRIMARY KEY,url TEXT,title TEXT); CREATE TABLE visits(id INTEGER PRIMARY KEY,url INTEGER,visit_time INTEGER);');
-    db.prepare('INSERT INTO urls VALUES(1,?,?)').run(historyUrl, 'Synthetic import history');
-    db.exec('INSERT INTO visits VALUES(1,1,13344473600000000);');
+    if (interruption) writeFixedInterruptionHistory(db, url);
+    else {
+      db.prepare('INSERT INTO urls VALUES(1,?,?)').run(historyUrl, 'Synthetic import history');
+      db.exec('INSERT INTO visits VALUES(1,1,13344473600000000);');
+    }
   } finally { db.close(); }
   chmodSync(join(home, files[1]), 0o600);
   const rows = [...originalRows, ...[...directories.map(dir => join(home, dir)), ...files.map(file => join(home, file))].map(path => {
@@ -76,7 +82,7 @@ export function createImportSourceHome(owner, fixtureUrl) {
     return { path, directory, realpath: realpathSync(path), identity: identity(path, directory), children: directory ? readdirSync(path).sort() : null };
   })];
   assertTree({ rows });
-  const receipt = Object.freeze({ source: 'chrome', profile: 'Default', categories: Object.freeze(['bookmarks', 'history']), counts: Object.freeze({ bookmarks: 1, history: 1 }), home, files: Object.freeze(rows.filter(row => !row.directory).map(row => Object.freeze({ path: row.path, ...row.identity }))) });
+  const receipt = Object.freeze({ source: 'chrome', profile: 'Default', categories: Object.freeze(['bookmarks', 'history']), counts: Object.freeze({ bookmarks: 1, history: interruption ? IMPORT_INTERRUPTION_ROWS : 1 }), ...(interruption ? { cohort: 'interruption-history-5001' } : {}), home, files: Object.freeze(rows.filter(row => !row.directory).map(row => Object.freeze({ path: row.path, ...row.identity }))) });
   const lease = Object.freeze({});
   leases.set(lease, { owner, home, rows, receipt, disposed: false });
   return lease;

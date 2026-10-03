@@ -1,3 +1,4 @@
+import { captureComposerImageRejection } from "../lib/composer-image-appearance.mjs";
 import { captureTemporaryAppearanceState } from '../lib/appearance-temporary-state.mjs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -43,6 +44,7 @@ export async function run(t) {
     }
     return { ax: await t.ax.dump(), rpc: { settings: await t.rpc('settings.get'), pages: await t.rpc('pages.list') } };
   });
+  if (t.appearanceEnabled) await t.step("Home native image rejection and cancellation preserve the page-free draft", { kind: "ui", features: ["electronMigration"] }, () => captureComposerImageRejection(t));
   await configureModel(t);
   await t.step('Home nested context picker keeps the original page-free draft and returns keyboard focus', { kind: 'ui', features: ['electronMigration'] }, async () => {
     await t.until('loopback model configuration becomes real', async () => (await t.rpc('settings.get')).modelConfigured === true);

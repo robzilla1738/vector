@@ -1,0 +1,26 @@
+{
+  "patch": "0339-native-appearance-dict-value-api.patch",
+  "sha256": "087f1e639624bdfca7cf2ecac9af01a93283d7455b2aea178de1173c5897dd1a",
+  "actualApiPins": {
+    "/Users/rcourson/aux-chromium-stable/chromium/src/base/values.h": "bc6ffad749e2e84ed10dbd296f604570bde6bf9bc1e41c11a3f8207ae9000f81"
+  },
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux/native_appearance_file_channel.h",
+      "beforeSha256": "1a75286b907fa9b66c64cb876c20a65e815511f2a307a41278794ece49aa8632",
+      "afterSha256": "0607099778766a9bea106d8d9d9308e63cefe134e4578ddd7dac5f6705a573ba",
+      "replacementCount": 2,
+      "wholeOriginalRestoredByInverseSpellingOnly": true
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_appearance_file_channel.cc",
+      "beforeSha256": "00f5d5bccaf25448043ad2c81c06d54dd8d8dc1fde9912a895dd054e68466996",
+      "afterSha256": "2184fd19c8e3265d07a8a3f1d4997b40f394626375268889ddba4db2a4a8c197",
+      "replacementCount": 6,
+      "wholeOriginalRestoredByInverseSpellingOnly": true
+    }
+  ],
+  "rootExactReplay": "PASS",
+  "wholeOriginalInverse": "PASS",
+  "nativeCompiled": false
+}

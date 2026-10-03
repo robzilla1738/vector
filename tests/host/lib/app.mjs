@@ -1,4 +1,4 @@
-import { createImportSourceOwner, createImportSourceHome, readImportSourceHome, disposeImportSourceHome, importSourceEnvironment } from './import-source-home.mjs';
+import { createImportSourceOwner, createImportSourceHome, createImportInterruptionSourceHome, readImportSourceHome, disposeImportSourceHome, importSourceEnvironment } from './import-source-home.mjs';
 import { homedir } from 'node:os';
 import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
@@ -629,6 +629,14 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     prepareImportSourceHome(fixtureUrl) {
       if (privatePair || startupAttachment || running() || importSourceLease || importSourcePreparationFailure) throw new Error('Import source must be prepared once before an owned regular launch');
       try { importSourceLease = createImportSourceHome(importSourceOwner, fixtureUrl); }
+      catch (error) { importSourcePreparationFailure = error; throw error; }
+      const receipt = readImportSourceHome(importSourceLease, importSourceOwner);
+      env.AUX_IMPORT_SOURCE_HOME = receipt.home;
+      return receipt;
+    },
+    prepareImportInterruptionSourceHome(fixtureUrl) {
+      if (privatePair || startupAttachment || running() || importSourceLease || importSourcePreparationFailure) throw new Error('Import source must be prepared once before an owned regular launch');
+      try { importSourceLease = createImportInterruptionSourceHome(importSourceOwner, fixtureUrl); }
       catch (error) { importSourcePreparationFailure = error; throw error; }
       const receipt = readImportSourceHome(importSourceLease, importSourceOwner);
       env.AUX_IMPORT_SOURCE_HOME = receipt.home;
