@@ -1,0 +1,57 @@
+{
+  "scope": "Root independent actual stage/GN admission, not full17 completion or native qualification",
+  "receipts": [
+    {
+      "path": "/private/tmp/aux-browser-runtime-builder-native308-8f81679f/release/test-artifacts/builder-native308-stage-continuation-002/prep-proof.json",
+      "sha256": "aac6e0af22e292008b9823c7040e9fe2d92939f1725a9ed39825a0da67a5fe7b"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/native308-stage-continuation-terminal-002.json",
+      "sha256": "4e2eedbf71874c114811fc2cde300d5b5f37ec3bd1b25115bea7c2d8397998cf"
+    },
+    {
+      "path": "/private/tmp/aux-browser-runtime-builder-native308-8f81679f/release/test-artifacts/builder-native308-authentic-real-revision-gn/proof.json",
+      "sha256": "bf175c56ff3a4f8f0013bdf92536f72fed6954e8c95866f754c070809c5f4e1a"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/native308-authentic-GN-terminal-002.json",
+      "sha256": "b2bc3bf45696c1a3bb79871dae30b6a73d7807945634f60c76537acce73907e1"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/gn-native308-after-continuation-launch-002.json",
+      "sha256": "fb40450d135329e5770782a15dbd03df5d4455d6bc97e184efc3b57a5c1a45f3"
+    },
+    {
+      "path": "/private/tmp/aux-builder-native308-preparation-001/build-native308-after-authentic-GN-launch-002.json",
+      "sha256": "c9052975ef35697c63a57d81a8f1077512af72fb6a5de1deb2892532a423659a"
+    }
+  ],
+  "sourceStage": {
+    "actualNative690": true,
+    "actualResource175SizesAndSha256": true,
+    "actualCompiled8801Unchanged": true,
+    "exactGenerated3CandidateTemplatesWith8fAndQualifiedEmpty": true,
+    "rawArtifacts": true,
+    "originalPidsGroupsAndSlotAbsent": true,
+    "remainingTemplateJoinCorrected": "Initial verifier looked in candidate chrome rather than chromium/generated; corrected only remaining template join after prior actual hashes completed."
+  },
+  "authenticGN": {
+    "actualRawArtifactsAndLauncherReceiptHashes": true,
+    "originalRealVersionActionExact": true,
+    "actualEightFlags": true,
+    "actualToolchainSha256": "504dceafdf66560fb06d20f47dd3348f21a7fd5c2b1b92d934e779df8ffad989",
+    "actual10CommandsExit0GroupsAbsent": true,
+    "original162Pids10GroupsAndSlotAbsent": true
+  },
+  "full17": {
+    "exactOriginalTargetsIndependentASTEquality": true,
+    "exactLauncher9Pins": true,
+    "approvedOnce": "c9052975ef35697c63a57d81a8f1077512af72fb6a5de1deb2892532a423659a",
+    "runningOriginalOwner": 24226,
+    "runningController": 24227,
+    "runningWatcher": 24235,
+    "graphOriginalGroup": 24236,
+    "requiredAssertionsNotExecuted": true,
+    "noRuntimeHelperOrAppUntilSuccessfulTerminalAndSeparateAdmission": true
+  }
+}
