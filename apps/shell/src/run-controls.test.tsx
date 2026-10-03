@@ -107,3 +107,24 @@ it("passes the original Stop click through the registered command during its dis
     host.remove(); vi.restoreAllMocks(); useStore.setState(original, true);
   }
 });
+
+it("stops from either mounted panel when the same run is visible twice", async () => {
+  const original = useStore.getState();
+  const run = makeRun({ runId: "shared-panels", status: "running", pageIds: [] });
+  useStore.setState({ runs: [run], steps: { [run.runId]: [] }, prompt: null });
+  const host = document.createElement("div"), root = createRoot(host);
+  document.body.append(host);
+  const invoke = vi.spyOn(bridge, "invoke").mockResolvedValue({});
+  try {
+    await act(async () => root.render(<><RunPanel runId={run.runId} conversation /><RunPanel runId={run.runId} conversation /></>));
+    const stops = host.querySelectorAll<HTMLButtonElement>('[data-command-id="stop-run"]');
+    expect(stops).toHaveLength(2);
+    stops[0]!.focus();
+    await act(async () => stops[1]!.click());
+    expect(invoke.mock.calls.filter(([method]) => method === "runs.cancel")).toEqual([["runs.cancel", { runId: run.runId }]]);
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove(); vi.restoreAllMocks(); useStore.setState(original, true);
+  }
+});
