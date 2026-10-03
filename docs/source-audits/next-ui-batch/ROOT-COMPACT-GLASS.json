@@ -1,0 +1,21 @@
+{
+  "reference": "/Users/rcourson/AI Blueprints/06/assets/liquid-glass.css",
+  "referenceSha256": "cfcc8d11ae8550fb1e85e25ddc7a088fc5b2f9518f0ef4740e878c79ca7d72b7",
+  "adoptedVariant": "alpha + noTopGlow for compact menus and popovers",
+  "branding": "Aux retained",
+  "sourcePreview": {
+    "appearance": "translucent",
+    "theme": "dark",
+    "panelWidth": 340,
+    "panelHeight": 267.5,
+    "left": 900,
+    "top": 528,
+    "backdropFilter": "blur(4px)",
+    "decorationFill": "rgba(0, 0, 0, 0.08)",
+    "decorationBlend": "normal",
+    "decorationShadow": "rgba(255, 255, 255, 0.1) 0px -40px 10px -40px inset",
+    "decorationPointerEvents": "none"
+  },
+  "nativeVisualQualification": false,
+  "remaining": "Required actual native F21 light/dark, transparency/motion, narrow, focus/hit contact sheets and owner acceptance"
+}
