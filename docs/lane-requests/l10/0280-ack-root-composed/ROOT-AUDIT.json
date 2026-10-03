@@ -1,0 +1,41 @@
+{
+  "base": "ce5ced3f",
+  "requestSha256": "62289a52537dc68d26bd83855f98a5a997d44d562869015683a6ae4d0c9f7f5d",
+  "sourceOnly": true,
+  "exactBeforeAfterReverseCheck": "PASS",
+  "runtimeRebuiltBeforeTests": true,
+  "affectedControls": "108 PASS across four unchanged-predicate suites",
+  "sourceGates": "typecheck/lint<=390/format/bindings/bridge/native inventory/47journey registry/unchanged renderer budgets PASS",
+  "nativeExecuted": false,
+  "whole0280Ready": false,
+  "logs": [
+    {
+      "path": "/tmp/aux-root-ack-rebuild.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/tmp/aux-root-ack-tests.log",
+      "sha256": "5cdaa0b6d180074ac4d884da5424ead1e7acffe39311cefd9a874260d1b09312"
+    },
+    {
+      "path": "/tmp/aux-root-ack-typecheck.log",
+      "sha256": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f"
+    },
+    {
+      "path": "/tmp/aux-root-ack-lint.log",
+      "sha256": "dc5c3b43e5781f5f3002df3ad5fcec7988efd04b6bff47370c857cded5a10b41"
+    },
+    {
+      "path": "/tmp/aux-root-ack-format.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    {
+      "path": "/tmp/aux-root-ack-registries.log",
+      "sha256": "08f6a5a7fa4da41a7251642c7e3076b8194d3e5b4dbd97a58d76a6487645e5ae"
+    },
+    {
+      "path": "/tmp/aux-root-ack-budgets.log",
+      "sha256": "0572f21d18a15798093729dc9e37ec841a1ee2cadb30b7bc579aa59daf5544de"
+    }
+  ]
+}

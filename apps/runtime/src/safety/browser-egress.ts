@@ -1,7 +1,7 @@
 import { browserContextPage } from "../services/browser-context-page.js";
 import { createHash } from "node:crypto";
 import {
-  AuxError, EgressContextSchema, EgressRequestSchema,
+  AuxError, EgressContextSchema, EgressLeaseSchema, EgressRequestSchema,
   type EgressDecision, type EgressLease, type EgressRequest, type AgentPageCreate, type AgentPageIsolation,
 } from "@aux/contracts";
 import type { NativeBridge } from "../native.js";
@@ -13,7 +13,7 @@ interface RunIdentity {
 interface PageIdentity { agentIsolation?: AgentPageIsolation; url: string; documentEpoch: number; controller?: string; viewStatus?: string }
 interface ActivePage {
   runId: string; pageId: string; url: string; epoch: number; lease: EgressLease;
-  timer?: ReturnType<typeof setInterval>; released: boolean;
+  timer?: ReturnType<typeof setInterval>; released: boolean; installed: boolean; acknowledgedExpiresAt: number; renewing?: boolean;
 }
 
 export interface BrowserEgressDeps {
@@ -148,12 +148,14 @@ export class BrowserEgress {
       documentEpoch: page.documentEpoch, recipientOrigins: [],
       ...(initialDestination ? { initialDestination } : {}),
     });
-    const active: ActivePage = { runId, pageId, url: page.url, epoch: page.documentEpoch, lease, released: false };
+    const active: ActivePage = { runId, pageId, url: page.url, epoch: page.documentEpoch, lease, released: false, installed: false, acknowledgedExpiresAt: 0 };
     this.pages.set(pageId, active);
     try {
       const installed = await egressInstall.call(this.deps.native, { lease, expectedUrl: page.url });
       if (installed?.accepted !== true) throw new AuxError("permission_denied", "Native browser request protection was not accepted.");
       if ((this.authorityVersions.get(pageId) ?? 0) !== authorityVersion || !this.current(active)) throw new AuxError("ref_stale", "The page changed while installing request protection.");
+      active.installed = true;
+      active.acknowledgedExpiresAt = lease.expiresAt;
       active.timer = setInterval(() => { void this.renew(active); }, 10_000);
       active.timer.unref();
     } catch (error) {
@@ -168,6 +170,30 @@ export class BrowserEgress {
     }
   }
 
+  /** Capture the original acknowledged lease for one native CDP attachment.
+   * The closure never adopts a replacement row or a receive-time run identity.
+   */
+  captureCdpAuthority(pageId: string, nativeLease: EgressLease): {
+    lease: Readonly<Omit<EgressLease, "recipientOrigins">> & { readonly recipientOrigins: readonly string[] };
+    current(): boolean;
+    acknowledgedExpiresAt(): number;
+  } {
+    const original = EgressLeaseSchema.parse(nativeLease);
+    const active = this.pages.get(pageId);
+    const matches = () => !!active && !this.closed && active.installed
+      && this.current(active) && active.acknowledgedExpiresAt > this.now()
+      && active.lease.expiresAt > this.now()
+      && ![...this.retirementDebt.values()].some(lease => lease.tabId === pageId)
+      && sameCdpLease(original, active.lease);
+    if (!matches())
+      throw new AuxError("permission_denied", "The original acknowledged browser attachment authority is unavailable.");
+    const lease = Object.freeze({ ...original, recipientOrigins: Object.freeze([...original.recipientOrigins]) });
+    return Object.freeze({ lease, current: matches, acknowledgedExpiresAt: () => {
+      if (!matches() || !active) throw new AuxError("permission_denied", "Original CDP acknowledged authority retired.");
+      return active.acknowledgedExpiresAt;
+    } });
+  }
+
   private current(active: ActivePage): boolean {
     if (this.blocked(active.runId) || active.released || this.pages.get(active.pageId) !== active
       || !this.deps.ownsPage(active.runId, active.pageId)) return false;
@@ -180,22 +206,34 @@ export class BrowserEgress {
   }
 
   private async renew(active: ActivePage): Promise<void> {
-    if (!this.current(active)) { this.revokePage(active.pageId, active.runId); return; }
+    if (active.renewing) return;
+    active.renewing = true;
     try {
-      active.lease = this.guard.renew(active.lease.leaseId);
-      const renewed = await this.deps.native.egressInstall!({ lease: active.lease, expectedUrl: active.url });
-      if (renewed?.accepted !== true) throw new AuxError("permission_denied", "Native browser request protection renewal was not accepted.");
-    } catch {
-      // A missing renewal reply does not prove that native omitted the effect.
-      this.owe(active);
-      void this.repay([active.lease]).catch(() => {});
-      return;
-    }
-    if (!this.current(active)) {
-      // A late renewal can reinstall after its old active row was retired.
-      this.owe(active);
-      await this.repay([active.lease]).catch(() => {});
-    }
+      if (!this.current(active)) {
+        this.owe(active);
+        await this.repay([active.lease]).catch(() => {});
+        return;
+      }
+      const previousAcknowledgedExpiry = active.acknowledgedExpiresAt;
+      let renewedLease: EgressLease;
+      try {
+        renewedLease = this.guard.renew(active.lease.leaseId);
+        active.lease = renewedLease;
+        const renewed = await this.deps.native.egressInstall!({ lease: renewedLease, expectedUrl: active.url });
+        if (renewed?.accepted !== true) throw new AuxError("permission_denied", "Native browser request protection renewal was not accepted.");
+      } catch {
+        this.owe(active);
+        await this.repay([active.lease]).catch(() => {});
+        return;
+      }
+      if (!this.current(active) || previousAcknowledgedExpiry <= this.now()) {
+        // An ACK cannot resurrect an expired or replaced original row.
+        this.owe(active);
+        await this.repay([active.lease]).catch(() => {});
+        return;
+      }
+      active.acknowledgedExpiresAt = renewedLease.expiresAt;
+    } finally { active.renewing = false; }
   }
 
   protect(runId: string, value: string, dataClass: ProtectedClass): void {
@@ -227,7 +265,9 @@ export class BrowserEgress {
     const active = this.pages.get(evidence.tabId);
     const fields = ["leaseId", "isolationId", "profileId", "runId", "taskId", "taskRevision", "tabId", "frameId", "documentToken", "documentEpoch"] as const;
     const check = () => {
-      if (!active || !this.current(active) || active.lease.expiresAt <= this.now() ||
+      if (this.closed || !active || !active.installed || !this.current(active) ||
+        active.acknowledgedExpiresAt <= this.now() || active.lease.expiresAt <= this.now() ||
+        [...this.retirementDebt.values()].some(lease => lease.tabId === evidence.tabId) ||
         fields.some(field => active.lease[field] !== evidence[field]))
         throw new AuxError("permission_denied", "This permission prompt has no current frame/document lease.");
     };
@@ -371,4 +411,11 @@ function requestDigest(request: EgressRequest): string {
   return createHash("sha256").update(JSON.stringify([
     request.requestId, request.evidence, request.projection,
   ])).digest("hex");
+}
+
+function sameCdpLease(original: EgressLease, current: EgressLease): boolean {
+  // Schema parsing supplies a stable field order and rejects unknown authority.
+  const { expiresAt: originalExpiry, ...left } = EgressLeaseSchema.parse(original);
+  const { expiresAt: currentExpiry, ...right } = EgressLeaseSchema.parse(current);
+  return originalExpiry > 0 && currentExpiry > 0 && JSON.stringify(left) === JSON.stringify(right);
 }

@@ -1,0 +1,41 @@
+{
+  "status": "FROZEN source-only two-leaf root-composed ACK constituent; not whole0280 or native qualification",
+  "base": "9ac619f8073c85681d73968ad1fd75f7f8bea9b4",
+  "supersedesCompositionOnly": [
+    "186799ae",
+    "f8de7e00",
+    "ad7fdaea"
+  ],
+  "files": [
+    {
+      "path": "apps/runtime/src/safety/browser-egress.ts",
+      "before": "eef9c9cceb3d5a4e84eb2d0d5b8bbe7ece22fbff61ae05e09ef4ab337b65ce9c",
+      "after": "45b1b32e5eab899f8a24b6fd2e512bf0950644064d6f0dc00c802cb32a3a042c"
+    },
+    {
+      "path": "tests/unit/browser-egress.test.ts",
+      "before": "a9cdaf43ae0aab8b6948559ff6ec3c0a93c5af1b039ccdc37931830518fcf63f",
+      "after": "1a9a16865099b7b29bf2507d6d64e1b3cb42821fed6bf38bfa9504dbc31bf5bf"
+    }
+  ],
+  "patchSha256": "62289a52537dc68d26bd83855f98a5a997d44d562869015683a6ae4d0c9f7f5d",
+  "checks": {
+    "rebuild": "npx tsc -b PASS completed before tests",
+    "baselineRED": "exact root original producer + original28 controls and3new permission controls:2FAILED/1PASS/28skipped",
+    "affectedGREEN": "108PASS across browser-egress43/browser-egress-approval6/browser-egress-boundaries11/native-permission-producer48",
+    "scopedLint": "0errors; original unchanged valid-expect warning line395 retained",
+    "replay": "two-leaf forward/reverse/forward exactSHA PASS"
+  },
+  "preservedRootSemantics": [
+    "original9ac source/access/document/claim checks",
+    "retained exact leaseId revoke debt ACK API",
+    "pending approval ActivePage/controller ownership",
+    "all28 original BrowserEgress controls untouched"
+  ],
+  "notIncluded": [
+    "native input take-over validation/controlGeneration prerequisite",
+    "native CDP/catalog/private host wiring",
+    "original namespace/associated recorder prerequisites",
+    "native physical20AC measurement or qualification"
+  ]
+}

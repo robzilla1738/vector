@@ -468,3 +468,205 @@ it("late retired renewal preserves a replacement lease's held approval", async (
   expect(f.native.egressRevoke).toHaveBeenCalledTimes(2);
   expect(f.native.egressRevoke).not.toHaveBeenCalledWith({ leaseId: replacementLeaseId });
 });
+
+describe("original acknowledged CDP attachment authority", () => {
+  it("refuses capture before the exact native Install ACK", async () => {
+    const f = fixture();
+    let release!: () => void;
+    let installed!: () => void;
+    const installing = new Promise<void>(resolve => { installed = resolve; });
+    f.native.egressInstall.mockImplementationOnce(async ({ lease }) => {
+      f.leases.push(lease);
+      installed();
+      await new Promise<void>(resolve => { release = resolve; });
+      return { accepted: true };
+    });
+    const acquiring = f.service.acquire("run", "tab");
+    await installing;
+    expect(() => f.service.captureCdpAuthority("tab", f.leases[0]!)).toThrow("acknowledged");
+    release();
+    await acquiring;
+    const authority = f.service.captureCdpAuthority("tab", f.leases[0]!);
+    expect(authority.current()).toBe(true);
+    expect(Object.isFrozen(authority.lease.recipientOrigins)).toBe(true);
+  });
+
+  it.each(["document", "task", "claim", "person", "stop"] as const)(
+    "retires an original attachment after %s replacement without receive-time adoption",
+    async change => {
+      const f = fixture();
+      await f.service.acquire("run", "tab");
+      const authority = f.service.captureCdpAuthority("tab", f.leases[0]!);
+      const changes = { document: f.navigate, task: f.staleTask, claim: f.relinquish, person: f.takeover, stop: f.stop };
+      changes[change]();
+      expect(authority.current()).toBe(false);
+      expect(() => f.service.captureCdpAuthority("tab", f.leases[0]!)).toThrow("acknowledged");
+    },
+  );
+
+  it("does not reuse old attachment authority after a replacement same-run lease", async () => {
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const original = f.leases[0]!;
+    const authority = f.service.captureCdpAuthority("tab", original);
+    await f.service.withAuthorityMutation(() => true, async () => {});
+    await f.service.acquire("run", "tab");
+    expect(authority.current()).toBe(false);
+    expect(() => f.service.captureCdpAuthority("tab", original)).toThrow("acknowledged");
+    expect(f.service.captureCdpAuthority("tab", f.leases.at(-1)!).current()).toBe(true);
+  });
+
+  it("refuses forged native lease identity and original lease expiry", async () => {
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const original = f.leases[0]!;
+    expect(() => f.service.captureCdpAuthority("tab", { ...original, runId: "other" })).toThrow("acknowledged");
+    const authority = f.service.captureCdpAuthority("tab", original);
+    f.advance(original.expiresAt - 1000);
+    expect(authority.current()).toBe(false);
+  });
+});
+
+describe("same-row acknowledged CDP renewal continuity", () => {
+  it("extends an original attachment only after a genuine same-row renewal ACK", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const original = f.leases[0]!;
+    const authority = f.service.captureCdpAuthority("tab", original);
+    f.advance(10_000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(authority.lease.leaseId).toBe(original.leaseId);
+    expect(authority.acknowledgedExpiresAt()).toBe(original.expiresAt + 10_000);
+    f.advance(20_000);
+    expect(authority.current()).toBe(true);
+  });
+
+  it("does not extend or resurrect expiry while the genuine renewal ACK is held", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const original = f.leases[0]!;
+    const authority = f.service.captureCdpAuthority("tab", original);
+    const install = f.native.egressInstall.getMockImplementation()!;
+    let release!: () => void;
+    f.native.egressInstall.mockImplementationOnce(async input => {
+      await install(input);
+      await new Promise<void>(resolve => { release = resolve; });
+      return { accepted: true };
+    });
+    try {
+      f.advance(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(authority.acknowledgedExpiresAt()).toBe(original.expiresAt);
+      f.advance(20_000);
+      expect(authority.current()).toBe(false);
+      release();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(authority.current()).toBe(false);
+      expect(() => authority.acknowledgedExpiresAt()).toThrow("retired");
+      expect(f.native.egressRevoke).toHaveBeenCalled();
+    } finally { release?.(); }
+  });
+
+  it("retains no renewal authority after a failed acknowledgement", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const authority = f.service.captureCdpAuthority("tab", f.leases[0]!);
+    f.native.egressInstall.mockRejectedValueOnce(new Error("renewal ACK lost"));
+    f.advance(10_000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(authority.current()).toBe(false);
+    expect(() => authority.acknowledgedExpiresAt()).toThrow("retired");
+    expect(f.native.egressRevoke).toHaveBeenCalled();
+  });
+
+  it("late old renewal ACK cannot publish expiry or retire a replacement same-run attachment", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const original = f.service.captureCdpAuthority("tab", f.leases[0]!);
+    const install = f.native.egressInstall.getMockImplementation()!;
+    let release!: () => void;
+    f.native.egressInstall.mockImplementationOnce(async input => {
+      await install(input);
+      await new Promise<void>(resolve => { release = resolve; });
+      return { accepted: true };
+    });
+    try {
+      f.advance(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await f.service.withAuthorityMutation(() => true, async () => {});
+      await f.service.acquire("run", "tab");
+      const replacement = f.service.captureCdpAuthority("tab", f.leases.at(-1)!);
+      const replacementExpiry = replacement.acknowledgedExpiresAt();
+      release();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(original.current()).toBe(false);
+      expect(replacement.current()).toBe(true);
+      expect(replacement.acknowledgedExpiresAt()).toBe(replacementExpiry);
+      expect(replacement.lease.leaseId).not.toBe(original.lease.leaseId);
+    } finally { release?.(); }
+  });
+});
+
+
+describe("native permission source acknowledged lease boundary", () => {
+  it("refuses borrowing an original native lease while initial Install ACK is held", async () => {
+    const f = fixture();
+    const install = f.native.egressInstall.getMockImplementation()!;
+    let release!: () => void;
+    let entered!: () => void;
+    const holding = new Promise<void>(resolve => { entered = resolve; });
+    f.native.egressInstall.mockImplementationOnce(async input => {
+      await install(input);
+      entered();
+      await new Promise<void>(resolve => { release = resolve; });
+      return { accepted: true };
+    });
+    const acquiring = f.service.acquire("run", "tab");
+    try {
+      await holding;
+      expect(() => f.service.permissionAuthority(f.leases[0]!)).toThrow("current frame/document lease");
+      release();
+      await acquiring;
+      expect(() => f.service.permissionAuthority(f.leases[0]!)()).not.toThrow();
+    } finally { release?.(); await acquiring; }
+  });
+
+  it("held renewal cannot extend permission authority beyond original acknowledged expiry", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const check = f.service.permissionAuthority(f.leases[0]!);
+    const install = f.native.egressInstall.getMockImplementation()!;
+    let release!: () => void;
+    f.native.egressInstall.mockImplementationOnce(async input => {
+      await install(input);
+      await new Promise<void>(resolve => { release = resolve; });
+      return { accepted: true };
+    });
+    try {
+      f.advance(10_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(check).not.toThrow();
+      f.advance(20_000);
+      expect(check).toThrow("current frame/document lease");
+      release();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(check).toThrow("current frame/document lease");
+    } finally { release?.(); }
+  });
+
+  it("a genuine same-original renewal ACK preserves permission source continuity", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    await f.service.acquire("run", "tab");
+    const check = f.service.permissionAuthority(f.leases[0]!);
+    f.advance(10_000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    f.advance(20_000);
+    expect(check).not.toThrow();
+  });
+});
