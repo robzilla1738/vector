@@ -1,0 +1,19 @@
+{
+  "sourceOnly": true,
+  "nativeVerified": false,
+  "requestSha256": "106608e89a9f8467f57820d22a915dee1fb9b2288686772f5f0ed3fd15cd05cf",
+  "file": {
+    "path": "tests/host/journeys/first-chat.mjs",
+    "beforeSha256": "2fc54b6c807703897995f60995589e0e6cc57923df1dff6712b9692570928609",
+    "afterSha256": "283eda569124e7b03c81ec4ddf3425cbcbc22ee4115ef33a0e1df8aa263f17ce"
+  },
+  "helperUnchanged": "6fd157b411ea8c9ae5a974f07fe1be93b8d6caea0c90289267422a7a584a6a51",
+  "wholeOriginalAfterUndoingOnlySixCapturesAndImport": true,
+  "exactForwardReverseForward": true,
+  "controls": {
+    "log": "/tmp/aux-root-firstchat-capture-controls.log",
+    "sha256": "6c30fee8e652fa513facebe29dbd5ebb3ad7405353b8148ff1c077b314169ac7",
+    "exit": 0
+  },
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-firstchat-capture-uvwjmcsw"
+}

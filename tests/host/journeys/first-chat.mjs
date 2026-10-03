@@ -1,3 +1,4 @@
+import { captureHomeJourneyState } from '../lib/home-capture.mjs';
 import { withFailureEvidence } from '../lib/journey-diagnostics.mjs';
 import { fixturePage } from '../lib/fixture.mjs';
 import { configureModel, finished, mentionedRun, newChat, observations, tool } from '../lib/l10-trust-fixtures.mjs';
@@ -67,14 +68,14 @@ export async function run(t) {
       t.assert.deepEqual(partial.run.pageIds, []);
       t.assert.deepEqual(await t.rpc('pages.list'), [], 'Incremental answer must remain page-free');
       t.assert.equal((await t.ax.query(selector('Page-free answer violet-271.'))).length, 0, 'The held suffix must not be visible yet');
-      await t.capture('first-chat-held-partial-answer');
+      await captureHomeJourneyState(t, 'first-chat-held-partial-answer', 'first-chat-held-partial-answer');
     } finally { heldAnswer.release(); }
     const details = await finished(t, first.runId);
     await t.ax.waitFor(selector('Page-free answer violet-271.'));
     t.assert.deepEqual(details.run.pageIds, []);
     t.assert.deepEqual(await t.rpc('pages.list'), [], 'Answering must not create any page');
     t.assert.ok(decisions.some(row => row.phase === 'answer' && row.stream));
-    await t.capture('first-chat-page-free-answer');
+    await captureHomeJourneyState(t, 'first-chat-page-free-answer', 'first-chat-page-free-answer');
     return { ax: await t.ax.dump(), rpc: { partial, details, pages: await t.rpc('pages.list'), decisions } };
   });
   await t.step('retry the same page-free run without manufacturing page context', { kind: 'ui', features: ['electronMigration'] }, async () => {
@@ -115,7 +116,7 @@ export async function run(t) {
     t.assert.equal(pages[0].ownedByRuntime, true);
     t.assert.ok(!pages.some(page => page.url === 'about:blank'));
     t.assert.equal(t.model.errors.length, 0);
-    await t.capture('first-chat-explicit-tool-open');
+    await captureHomeJourneyState(t, 'first-chat-explicit-tool-open', 'first-chat-explicit-tool-open');
     return { ax: await t.ax.dump(), rpc: { details, pages, decisions } };
   }, async () => {
     const details = requested ? await t.rpc('runs.get', { runId: requested.runId }) : null;
@@ -136,7 +137,7 @@ export async function run(t) {
     await t.ax.waitFor(selector('Optional context evidence: copper-467.'));
     t.assert.ok(decisions.filter(row => row.phase === 'context').every(row => row.observations.every(item => item.pageId === page.pageId)), 'Optional attachment must not read the runtime-owned tool page');
     t.assert.equal(t.model.errors.length, 0);
-    await t.capture('first-chat-optional-explicit-context');
+    await captureHomeJourneyState(t, 'first-chat-optional-explicit-context', 'first-chat-optional-explicit-context');
     return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), decisions } };
   });
   await t.step('remove closed explicit context and send the preserved draft without a page', { kind: 'ui', features: ['electronMigration'] }, async () => {
@@ -157,7 +158,7 @@ export async function run(t) {
     const [submit] = await t.ax.query(selector('Send message', 'AXButton'));
     t.assert.equal(input?.value, draft, 'Closing explicit context must preserve the reply');
     t.assert.equal(submit?.enabled, false, 'Closed explicit context must not silently fall back to another page');
-    await t.capture('first-chat-closed-context-kept-draft');
+    await captureHomeJourneyState(t, 'first-chat-closed-context-kept-draft', 'first-chat-closed-context-kept-draft');
     await t.ax.press(selector('Add context', 'AXButton'));
     await t.ax.press(context);
     await t.ax.press({ name: 'No browser context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
@@ -172,7 +173,7 @@ export async function run(t) {
     const details = await finished(t, requested.runId);
     t.assert.deepEqual(details.run.pageIds, []);
     await t.ax.waitFor(selector('Page-free retry amber-839.'));
-    await t.capture('first-chat-closed-context-recovered');
+    await captureHomeJourneyState(t, 'first-chat-closed-context-recovered', 'first-chat-closed-context-recovered');
     return { ax: await t.ax.dump(), rpc: { details, pages: await t.rpc('pages.list'), decisions } };
   });
 }
