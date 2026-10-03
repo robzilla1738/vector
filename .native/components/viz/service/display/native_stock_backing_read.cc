@@ -2,7 +2,6 @@
 #include "components/viz/service/display/native_stock_backing_read.h"
 
 #include <cmath>
-#include <cstring>
 #include <limits>
 #include <memory>
 #include <vector>
@@ -14,6 +13,7 @@
 #include "components/viz/common/resources/shared_image_format_utils.h"
 #include "third_party/skia/include/core/SkImage.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
+#include "third_party/skia/include/core/SkPixmap.h"
 #include "third_party/skia/include/gpu/ganesh/SkImageGanesh.h"
 #include "third_party/skia/include/gpu/graphite/BackendTexture.h"
 #include "third_party/skia/include/gpu/graphite/Image.h"
@@ -114,10 +114,10 @@ NativeStockBackingRead NativeStockReadOriginalBackingOpaque(
         readback->result->count() != 1 || !readback->result->data(0) ||
         readback->result->rowBytes(0) < width * 4 * sizeof(float) ||
         readback->result->rowBytes(0) > std::numeric_limits<size_t>::max() / height) return {false, false, true};
-    for (size_t row = 0; row < height; ++row)
-      std::memcpy(pixels.data() + row * width * 4,
-          static_cast<const unsigned char*>(readback->result->data(0)) +
-              row * readback->result->rowBytes(0), width * 4 * sizeof(float));
+    const SkPixmap original_pixels(info, readback->result->data(0),
+                                   readback->result->rowBytes(0));
+    if (!original_pixels.readPixels(info, pixels.data(), width * 4 * sizeof(float)))
+      return {false, false, true};
   } else if (!original->readPixels(context.gr_context(), info, pixels.data(),
       width * 4 * sizeof(float), executed_sample_bounds.x(),
       executed_sample_bounds.y(), SkImage::kDisallow_CachingHint)) return {false, false, true};

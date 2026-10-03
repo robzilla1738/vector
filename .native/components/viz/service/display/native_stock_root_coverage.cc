@@ -15,7 +15,7 @@ bool NativeStockRootHasFullCoverage(const AggregatedRenderPass& actual) {
   for (const auto* quad : actual.quad_list) {
     if (++seen > kMaxParts) return false;
     const auto* color = quad->DynamicCast<SolidColorDrawQuad>();
-    const auto* state = quad->shared_quad_state;
+    const auto* state = quad->shared_quad_state.get();
     // Unknown/destructive composition can erase previously counted backing.
     // Skipping such a foreground quad would turn a full bounding box into a
     // false full-root proof. Only ordinary source-over composition is admitted.

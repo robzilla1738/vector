@@ -503,16 +503,16 @@ void SkiaOutputSurfaceImplOnGpu::FinishPaintCurrentFrame(
         if (!actual->HasNativeStockOriginalReadAccess()) native_stock_draw->Invalidate();
       native_stock_draw->CompleteSuccessfulOriginalDraw(base::BindRepeating(
           [](const std::vector<raw_ptr<ImageContextImpl, VectorExperimental>>* originals,
-             gpu::SharedContextState* context, ExternalUseClient::ImageContext* requested,
+             scoped_refptr<gpu::SharedContextState> context, ExternalUseClient::ImageContext* requested,
              const gfx::Rect& executed_sample_bounds) -> NativeStockBackingRead {
             for (ImageContextImpl* actual : *originals) {
               if (actual == requested)
-                return actual->ReadNativeStockOriginalBackingOpaque(context, executed_sample_bounds);
+                return actual->ReadNativeStockOriginalBackingOpaque(context.get(), executed_sample_bounds);
             }
             return {};
-          }, &original_root_images, context_state_.get()), base::BindRepeating(
-          [](gpu::SharedContextState* context) { return !context->context_lost(); },
-          context_state_.get()));
+          }, &original_root_images, context_state_), base::BindRepeating(
+          [](scoped_refptr<gpu::SharedContextState> context) { return !context->context_lost(); },
+          context_state_));
     }
     // Context loss/acquire failure/drop leaves the private pack's
     // destructor to refuse its exact original group, never a later frame.
