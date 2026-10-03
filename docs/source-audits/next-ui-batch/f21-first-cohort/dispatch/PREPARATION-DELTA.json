@@ -23,7 +23,7 @@
     "tests/host/journeys/first-chat.mjs": "32be210ace8477f663a226c7273127c5a42d246bc65d057258fe83b1fbc9a955",
     "tests/host/journeys/layout-modes.mjs": "1279a9106111666373c641863c8bd63042acf997b0b9fde0c215cf9dba0ef799",
     "scripts/design-qa.mjs": "48231213bcf5dae2ccfbbb23eca92a62af526b9885b7c57d4efcd7141ca013b4",
-    "docs/BROWSER-RUNTIME-PLAN.md": "dee9d6a09a5c2a0cd8f4c5e0779f3655ed40dcdda30af78c563c12e0bc894112",
+    "docs/BROWSER-RUNTIME-PLAN.md": "832777b0b4c00cebe32e4537b6fc074e3fb80a92b46301d47fe0f6d825594364",
     "docs/design/upstream-source-map.md": "38a9a6ae4368fe37cd9e24bab862ac869cb272256677a1cf831b4df953fa9e40",
     "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/layout_constants.cc": "354a0a83efda3d2782c00285b900940ddc0e185393efd90807e8a0d2b2f1b6f8",
     "/Users/rcourson/AI Blueprints/06/assets/upstream-src/chrome/browser/ui/color/chrome_color_mixer.cc": "00c98db4bce69f038b7dcb4fe0b29663807e1bcd1c7462ba28e6a5b8f43afcc7",

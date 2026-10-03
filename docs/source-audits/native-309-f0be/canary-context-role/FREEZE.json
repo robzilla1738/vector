@@ -1,0 +1,25 @@
+{
+  "producer": "root-f0-context-role-caller-request",
+  "requestOnly": true,
+  "base": "f0be591b296ddbb8763102f8ee7465af8453f20c",
+  "productChanged": false,
+  "leaves": [
+    {
+      "path": "tests/host/journeys/home-composer.mjs",
+      "beforeSha256": "cc9a17fec24c53e72fc9475388b4f28f8ddf45d367aa2e52276eaf1239a10cdb",
+      "afterSha256": "1aa5f17107f6b954d7028d1e4453fb46421f3b620e3b727cfa141a11c6a324ba"
+    },
+    {
+      "path": "tests/host/journeys/first-chat.mjs",
+      "beforeSha256": "cbcce574639f06d578658646bbe0807cfaa066330bf718362ad022f63b976d00",
+      "afterSha256": "3a9ef90a8070eb7b557488d9cc23602ab457d544eaa03dc6550c65a19191888c"
+    }
+  ],
+  "patchSha256": "d6279e8eb0d314e6b3f83474b2b54076edc82b5010632525a9566ce312b8f700",
+  "exactForwardReverseForward": "PASS",
+  "actualRole": "aria-pressed kToggleButton maps AXCheckBox in actual Chromium Cocoa",
+  "originalHelper733Unchanged": true,
+  "nativeBuildExportMutated": false,
+  "appLaunched": false,
+  "requiredAdmission": "Separate exact f0-compatible test-only caller export/pins after full17 and independent pair audit"
+}

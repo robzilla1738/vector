@@ -150,7 +150,7 @@ export async function run(t) {
     const context = selector('Browser context', 'AXButton');
     await t.ax.press(selector('Add context', 'AXButton'));
     await t.ax.press(context);
-    await t.ax.press({ name: 'Aux first-chat optional context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
+    await t.ax.press({ name: 'Aux first-chat optional context', role: 'AXCheckBox', match: 'contains', scope: 'shell', index: 0 });
     await t.ax.key('escape', 'hid');
     const draft = 'Keep this reply when the explicitly selected browser tab closes.';
     const composer = selector('Reply to conversation');
@@ -166,7 +166,7 @@ export async function run(t) {
     await captureHomeJourneyState(t, 'first-chat-closed-context-kept-draft', 'first-chat-closed-context-kept-draft');
     await t.ax.press(selector('Add context', 'AXButton'));
     await t.ax.press(context);
-    await t.ax.press({ name: 'No browser context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
+    await t.ax.press({ name: 'No browser context', role: 'AXCheckBox', match: 'contains', scope: 'shell', index: 0 });
     await t.ax.key('escape', 'hid');
     await t.ax.waitFor(selector('The selected tab is unavailable. Choose another browser context before sending.'), 'absent');
     t.assert.equal((await t.ax.query(composer))[0]?.value, draft);

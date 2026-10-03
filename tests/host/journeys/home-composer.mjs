@@ -58,7 +58,7 @@ export async function run(t) {
     await t.ax.waitFor(search);
     await t.ax.focus(search);
     t.assert.equal((await t.ax.query(search))[0]?.focused, true, 'Nested picker must accept genuine native keyboard focus');
-    await t.ax.waitFor({ name: 'No browser context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
+    await t.ax.waitFor({ name: 'No browser context', role: 'AXCheckBox', match: 'contains', scope: 'shell', index: 0 });
     await captureHomeJourneyState(t, 'home-context-picker', 'home-context-picker-focused');
     if (t.appearanceEnabled) {
       const title = 'Weekend museum visits and a relaxed dinner with friends';

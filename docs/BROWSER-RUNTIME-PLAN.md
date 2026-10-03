@@ -968,6 +968,9 @@ Use `/Users/rcourson/AI Blueprints/06/assets/upstream-src/` as the primary actua
 - Floating-sidebar surfaces `#24272b` dark and `#f3f4f6` light.
 - Command bar row anatomy: height 32, icon 20 at 12 px from the left, font 14, radius h/2.
 
+
+**Documented compact-material adaptation (actual06 source, 2026-10-03):** compact menus/popovers/tab previews use the supplied `assets/liquid-glass.css` alpha/noTopGlow anatomy (SHA256 `cfcc8d11ae8550fb1e85e25ddc7a088fc5b2f9518f0ef4740e878c79ca7d72b7`): normal-blended `#00000014` fill and bottom `#ffffff1a` inset reflection, suppressing additive top glare that obscured text in the owner screenshots. Aux retains its specified3–4px blur, masked hairline, motion, semantic palette and hit/focus behavior; floating sidebar retains its additive material. The upstream vertical blur backdrop is a neutral clipped4px edge, not proof of native vibrancy. Opaque Reduce Transparency/forced-colors and Reduce Motion behavior remain required. This is a source-reviewed reference adaptation, with native light/dark/transparency contact-sheet acceptance still pending.
+
 **Covers:** empty states, focus rings, hover and press states, toasts, sheets, an icon audit at 14/16 px slots, both themes, reduced motion and reduced transparency.
 
 **`scripts/design-qa.mjs`:** builds per-feature contact sheets (light, dark, and with Reduce Transparency on and off) from the journey `t.capture` images. Reference images stay outside git, per `design-qa.md`. The design reviewer files P0–P2 findings, and the owner signs off on visuals at the end.

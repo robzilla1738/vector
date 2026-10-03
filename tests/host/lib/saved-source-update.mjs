@@ -39,7 +39,7 @@ export async function savedSourceUpdate(t) {
     await newChat(t);
     await t.ax.press(shell('Add context', 'AXButton'));
     await t.ax.press(shell('Browser context', 'AXButton'));
-    await t.ax.press({ name: 'No browser context', role: 'AXButton', match: 'contains', scope: 'shell' });
+    await t.ax.press({ name: 'No browser context', role: 'AXCheckBox', match: 'contains', scope: 'shell' });
     await t.ax.key('escape', 'hid');
     await t.ax.press(shell('Add context', 'AXButton'));
     await t.ax.press(shell('Add browser tabs', 'AXButton'));

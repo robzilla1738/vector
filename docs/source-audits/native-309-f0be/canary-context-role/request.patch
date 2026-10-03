@@ -1,0 +1,33 @@
+diff --git a/tests/host/journeys/home-composer.mjs b/tests/host/journeys/home-composer.mjs
+--- a/tests/host/journeys/home-composer.mjs
++++ b/tests/host/journeys/home-composer.mjs
+@@ -58,7 +58,7 @@
+     await t.ax.waitFor(search);
+     await t.ax.focus(search);
+     t.assert.equal((await t.ax.query(search))[0]?.focused, true, 'Nested picker must accept genuine native keyboard focus');
+-    await t.ax.waitFor({ name: 'No browser context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
++    await t.ax.waitFor({ name: 'No browser context', role: 'AXCheckBox', match: 'contains', scope: 'shell', index: 0 });
+     await captureHomeJourneyState(t, 'home-context-picker', 'home-context-picker-focused');
+     if (t.appearanceEnabled) {
+       const title = 'Weekend museum visits and a relaxed dinner with friends';
+diff --git a/tests/host/journeys/first-chat.mjs b/tests/host/journeys/first-chat.mjs
+--- a/tests/host/journeys/first-chat.mjs
++++ b/tests/host/journeys/first-chat.mjs
+@@ -148,7 +148,7 @@
+     const context = selector('Browser context', 'AXButton');
+     await t.ax.press(selector('Add context', 'AXButton'));
+     await t.ax.press(context);
+-    await t.ax.press({ name: 'Aux first-chat optional context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
++    await t.ax.press({ name: 'Aux first-chat optional context', role: 'AXCheckBox', match: 'contains', scope: 'shell', index: 0 });
+     await t.ax.key('escape', 'hid');
+     const draft = 'Keep this reply when the explicitly selected browser tab closes.';
+     const composer = selector('Reply to conversation');
+@@ -164,7 +164,7 @@
+     await captureHomeJourneyState(t, 'first-chat-closed-context-kept-draft', 'first-chat-closed-context-kept-draft');
+     await t.ax.press(selector('Add context', 'AXButton'));
+     await t.ax.press(context);
+-    await t.ax.press({ name: 'No browser context', role: 'AXButton', match: 'contains', scope: 'shell', index: 0 });
++    await t.ax.press({ name: 'No browser context', role: 'AXCheckBox', match: 'contains', scope: 'shell', index: 0 });
+     await t.ax.key('escape', 'hid');
+     await t.ax.waitFor(selector('The selected tab is unavailable. Choose another browser context before sending.'), 'absent');
+     t.assert.equal((await t.ax.query(composer))[0]?.value, draft);
