@@ -21,7 +21,7 @@
   "gnLauncherSha256": "c85f679beb5a1f6aa9911725f763ba196732f0e30a8f3ca889460d89953eabc3",
   "gnActualInputPins": "PASS",
   "gnDispatchAdmitted": true,
-  "buildDispatched": "await original builder launch receipt",
+  "buildDispatched": "original full17 owner 73942; running, mandatory terminal/assertions pending",
   "appLaunched": false,
   "qualification": false,
   "gnActualAudit": "PASS",
@@ -30,5 +30,11 @@
   "full17BuildControllerSha256": "083990298d94e633bb34be7bbbc63cb78117bb6d270cfbc0e47a1fa900a199d4",
   "full17BuildLauncherSha256": "0d4cb139ca4f325cba5940b2de639f16b010c6f408656f334446fc6c58c2cd52",
   "full17DispatchAdmitted": true,
-  "assertionsExecuted": false
+  "assertionsExecuted": false,
+  "buildOriginalLaunchReceipt": {
+    "path": "/private/tmp/aux-builder-native309-f0be-preparation-001/build-original-launch-001/original-launch.json",
+    "sha256": "c39a61940a43001ffb19e7d8357a1be2a57f3d85267823ff2baf74f5b3ada863",
+    "originalPid": 73942,
+    "originalGroup": 73942
+  }
 }
