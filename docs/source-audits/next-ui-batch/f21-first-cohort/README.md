@@ -23,3 +23,9 @@ Caller-only preparation a9520ada independently replays setup disclosures, fresh 
 ## Reference mapping
 
 Use upstream-source-map.md plus actual pinned layout_constants/chrome_color_mixer for geometry/control roles, importer-webui.css for onboarding typography/disclosure anatomy and decoded liquid-glass/tab-design recipes for materials/tab anatomy. Preserve Aux name/logo and Geist roles. Source color/blur recipes do not prove native vibrancy. Review live1.0.928 and full06 §§8–8c alongside actual contact sheets. No P0–P2 closure or owner sign-off is implied here.
+
+## Following coherent source preparation
+
+Following product44b93d0a/tree216c640a adds the exact Chromium154 DictValue API repair0339 with no predicate/assertion changes, and175 native-CSP renderer assets digest513f3c30159c1b4b7095b5d5ec7923102d55929a612f467767d0ad729de42c7b. Actual source suite, typecheck and budgets pass. These pins are source only; native admission must bind the final real compiled pair.
+
+Home now prepares actual invalid-image chooser rejection and real chooser cancellation with unchanged page-free draft/pages/runs/settings/workspace and returned focus. This is an image alert, and does not prove composer raw Details. Separate setup-import-appearance prepares original1+1 discovery, consent, terminal receipt and revisitation; setup-import-interruption-appearance prepares fixed5001 real partial Cancel, explicitly reviewed retry and exact unique destination merge. Both require the original admitted appearance pair and remain outside the functional registry. Command-bar-modes now prepares the existing genuine first Ask refusal with retained focused prompt and no newly created run. All actual native captures/matrix cells remain pending.

@@ -10,7 +10,10 @@
     "/tmp/aux-following-lint-final.log": 0,
     "/tmp/aux-following-format-final.log": 0,
     "/tmp/aux-following-batch-native-renderer.log": 0,
-    "/tmp/aux-following-shell-capture.log": 0
+    "/tmp/aux-following-shell-capture.log": 0,
+    "/tmp/aux-following-lint-composed.log": 0,
+    "/tmp/aux-following-format-composed.log": 0,
+    "/tmp/aux-following-journeys-composed.log": 0
   },
   "artifacts": [
     {
@@ -56,10 +59,41 @@
     {
       "path": "/tmp/aux-following-shell-capture.log",
       "sha256": "cbb4f95947933b085cb12e378e7febc135d5b7114fd57f0a704e0c1e643904b0"
+    },
+    {
+      "path": "/tmp/aux-following-lint-composed.log",
+      "sha256": "46a0a9c2be5cbc0b219cf5e371f489cf76b7e8da887f9a4050c659dfb2c8a247"
+    },
+    {
+      "path": "/tmp/aux-following-format-composed.log",
+      "sha256": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+    },
+    {
+      "path": "/tmp/aux-following-journeys-composed.log",
+      "sha256": "85f9d712b99132aec5d1ec7b0fa2e886971959e0a41282ccc4aa8efcc28d4362"
     }
   ],
-  "fullUnit": "original full suite still running; not claimed",
+  "fullUnit": {
+    "status": "PASS",
+    "exitCode": 0,
+    "log": "/tmp/aux-following-batch-full-unit.log",
+    "sha256": "21d9997445b5f7c231d3666c84272c4fe8dde90349a2d7b8e5be42e546e327cc",
+    "sourceWorkspaceDist": "rebuilt own following dist before run",
+    "nativeQualification": false
+  },
   "nativeCompiled": false,
   "nativeExecuted": false,
-  "qualified": false
+  "qualified": false,
+  "additionalNodeControls": [
+    {
+      "path": "/tmp/aux-root-following-image-interruption-controls.log",
+      "sha256": "481e20743b91ba16a736aa45f93ba0b27671e76a2731025ce5a2c81e0d38913b",
+      "exitCode": 0
+    },
+    {
+      "path": "/tmp/aux-root-command-refusal-controls.log",
+      "sha256": "c547dc59a9687c73070bfde7f720d671795be0d6cd93cac73a6330d405733d4f",
+      "exitCode": 0
+    }
+  ]
 }
