@@ -1,0 +1,41 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "packet": "6a6add331f0c0a1ac6c6bb1ef596601faa26a6e9c866e0b0c97918ea6169ef2c",
+  "constructorSuccessor": "ba2c15d195a8a8fed3523a9c5d28274913164446f42ca68310e8249ab512d370",
+  "originalLeafCount": 13,
+  "newLeafCount": 9,
+  "forwardReverseRestoration": true,
+  "combinedPins": {
+    "chrome/browser/ui/stock_measurement/native_stock_warm_creation_ticket.cc": "8dcbbd54ee07f67224570a4712ed27a327c4a91403b9d5dc97c36288b6e2624e",
+    "chrome/browser/ui/stock_measurement/native_stock_warm_creation_ticket.h": "d66205a291b57bf14912d8b0361266d783272f440db153d0c73716afa8adf98e",
+    "chrome/browser/ui/stock_measurement/native_stock_warm_input.h": "d3b90c8551297ae55c4175fe6687b299af4e1377c4383a7428fed5c5bf952050",
+    "chrome/browser/ui/stock_measurement/native_stock_warm_input.mm": "6e0bc4516ed41778f0d214ec2daf7b02fcf3772d1ff9882009a4f550399a1fdf",
+    "chrome/browser/ui/stock_measurement/native_stock_warm_lifetime_unittest.cc": "3253246caa6da71aedeec69560e95830bc78d04aa6ad9aa603bd4b87eec9ba89",
+    "chrome/browser/ui/stock_measurement/native_stock_warm_owner.cc": "2af9f6d342d6f15618811552592eec5e72620886878152e3b61411b29faf6189",
+    "chrome/browser/ui/stock_measurement/native_stock_warm_owner.h": "6157b33358b6ecd7ae84157b872d754d75281078949154b2734591f4e2545340",
+    "chrome/browser/ui/stock_measurement/native_stock_warm_session.cc": "2aa9b0297dda2234579d8266b48f46f75e7dd2cb9edc1661d0b43c1d76926935",
+    "chrome/browser/ui/stock_measurement/native_stock_warm_session.h": "b2eb49e1b5612d96541d023cd8ebef91d4e829abc41e6a30644918c026be10a8",
+    "chrome/browser/BUILD.gn": "a8f4ea2b569c194cd3a2ce9cf83d4c973eda71f5f6307ff1a8a96a23efc9bc99",
+    "chrome/browser/ui/browser_commands.cc": "5181a906f4c046fe7c259717dbce559224bc7c852d8c595d248d730853d62f2d",
+    "chrome/browser/ui/stock_measurement/native_stock_measurement_fixture.cc": "0ac1680a0a2e743dd009b3e1a78f9389fa5fbdea08f54a2289de8cfadb851ee9",
+    "chrome/browser/ui/stock_measurement/native_stock_measurement_request.cc": "508f00ec6dbeaabfeb8bee38b3e7b679ee79097ac2444f2b47510b022ce0e54d",
+    "chrome/browser/ui/stock_measurement/native_stock_startup_coordinator.cc": "c12616c41b71e4bf23b6eea0460fc4b29e2f7dc81428cf56a4b2830cfb4b933e",
+    "chrome/browser/ui/stock_measurement/native_stock_startup_coordinator.h": "90017e26f2276adf773baa73a3f6466478da4b12915f690b76c5f8f90d803930",
+    "chrome/browser/ui/stock_measurement/native_stock_startup_session.cc": "20e2c112d6fab279e886dd53a4994523d0fb9e19aa5996f6980ec91f68b8cc73",
+    "chrome/browser/ui/stock_measurement/native_stock_startup_session.h": "54691ceb1c0b9249d649bde147e4d3ff0f151d3cf8222339178ef8a83dd82dac",
+    "chrome/browser/ui/stock_measurement/native_stock_views_readiness.cc": "aaf7598f340232b0f9fd5381c5c2442e5f0dd168cb708f778669f688e14d7cd8",
+    "chrome/browser/ui/stock_measurement/native_stock_views_readiness.h": "62125f036969de448e038de91a79d93577f04f50f00f2ee310dfff3a0b75c375",
+    "chrome/browser/ui/views/frame/browser_native_widget_mac.mm": "31885981d36c9038c70d1f887f184a0819f7f8f274f9bf228fb16eda9cc89aa8",
+    "chrome/browser/ui/views/frame/browser_view.cc": "7a89d46a4b407e350916fea4e36866118ff7e89f8f89f789755c16885dccb3da",
+    "chrome/test/BUILD.gn": "a849a95bb3aebe487d3cfcc4a8114d903cd16ae7bfe572200c25e5dd733ab03c"
+  },
+  "adopted": false,
+  "remaining": [
+    "Complete semantic/API review of shared coordinator/mailbox/handoff and six lifetime cases",
+    "Actual upstream dependency and raster/GPU request composition",
+    "Native compilation and original physical input/GPU/HW joins",
+    "20 actual AC trials"
+  ]
+}

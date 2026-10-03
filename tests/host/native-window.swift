@@ -1304,7 +1304,7 @@ func warmWindowIdentity(_ request: [String: Any]) throws -> [String: Any] {
         try warmWindowKernelGeneration(getpid()) == helper else {
     throw protocolError("Warm identity original generation changed")
   }
-  return ["producer": "aux-native-stock-warm-identity", "version": 1,
+  return ["producer": "aux-native-warm-window-identity", "version": 1,
           "targetPid": Int(pid), "helperPid": Int(getpid()),
           "targetProcessUuid": target.imageUuid, "targetProcessStartMachTicks": String(target.startMachTicks),
           "helperProcessUuid": helper.imageUuid, "helperProcessStartMachTicks": String(helper.startMachTicks)]
@@ -1364,7 +1364,7 @@ func warmWindowKeyReceipt(_ request: [String: Any]) throws -> [String: Any] {
         postBeforeNs > 0, postReturnedNs >= postBeforeNs, releaseNs >= postReturnedNs else {
     throw protocolError("Warm input original process generation or native clock changed")
   }
-  return ["producer": "aux-native-stock-warm-input", "version": 1,
+  return ["producer": "aux-native-warm-window-input", "version": 1,
           "targetPid": Int(pid), "helperPid": Int(getpid()), "originalWindowNumber": originalWindow,
           "targetProcessUuid": targetBefore.imageUuid, "targetProcessStartMachTicks": String(targetBefore.startMachTicks),
           "helperProcessUuid": helperBefore.imageUuid, "helperProcessStartMachTicks": String(helperBefore.startMachTicks),
