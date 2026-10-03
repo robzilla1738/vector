@@ -1,0 +1,29 @@
+{
+  "sourceOnly": true,
+  "nativePixelsVerified": false,
+  "nativeTabSelectionCorrected": false,
+  "sourcePath": "apps/shell/src/components/SearchResultRow.css",
+  "sourceSha256": "3521f954a044d0e6533e98bebd91cf27f1fec40f25fd8823b516b029420ea243",
+  "cause": "Unlayered shared row declarations outrank the more specific CommandSurface rules in components layer",
+  "correction": "Move shared declarations into existing components layer; scoped32px/14px/12px rules regain cascade precedence",
+  "rebuiltRendererLogSha256": "42248d92b0f4c861bc6a6ac81c78ab8cd52599d3703732dfb2c91bcdc4fc2738",
+  "actualPinnedAssetCount": 175,
+  "actualShellDigest": "9fb28f0dbb727717dc7aca84112d1bbd25c856343628ce5d03d3851e4fd3b1b0",
+  "focusedBehaviorCasesPassed": 16,
+  "sourceGates": [
+    "npx tsc -b",
+    "npm run typecheck",
+    "npm run lint within390",
+    "npm run format:check",
+    "gen-host-bindings --check",
+    "check-bridge-coverage --check",
+    "native-port-inventory --check",
+    "journeys/index47 --check"
+  ],
+  "rebuiltRendererBudgetsKb": {
+    "startupJs": 487,
+    "startupCss": 175,
+    "totalJs": 1800
+  },
+  "nativeRequirement": "Next coherent matching pair and F21 native theme/transparency/motion/narrow pixels; currentaf2 build unchanged"
+}
