@@ -1,0 +1,73 @@
+{
+  "sourceOnly": true,
+  "packetSha256": "366d0884c39e7500490d7789f1857d140ee3968048a970305eab769816dfdb80",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-stock-caller-replay-xehjql31",
+  "exactForwardReverseForward": true,
+  "changes": [
+    {
+      "path": "tests/host/lib/native-stock-startup-protocol.mjs",
+      "beforeSha256": null,
+      "afterSha256": "ec9a6c973a89e36f960770e2df70612bc3a950639ed4234f3cae8329c7da4910"
+    },
+    {
+      "path": "tests/host/lib/native-stock-startup-protocol.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "b9df38b88c15dcb48884a96a31d8e1ba53ba27de25ee509808bce8c24fbb8b71"
+    },
+    {
+      "path": "tests/host/lib/native-stock-warm-observation.mjs",
+      "beforeSha256": null,
+      "afterSha256": "b08bb3ed18045ad745244ef43469c194c86933de14858d061bf00d7493a9c44b"
+    },
+    {
+      "path": "tests/host/lib/native-stock-warm-observation.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "e6766f66187113f2ab409349a78e1231d5bdf5e6f7e758d08bf4ed06a3d7a723"
+    },
+    {
+      "path": "tests/host/lib/native-stock-warm-protocol.mjs",
+      "beforeSha256": null,
+      "afterSha256": "b8aeb84edf862364d948506e8d63578d33e263411bad45432655da6f8603c0c6"
+    },
+    {
+      "path": "tests/host/lib/native-stock-warm-protocol.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "3030acc8824fcb08949d260e38fdfd0a6c8c3534696619b59430e060b9bdf05e"
+    },
+    {
+      "path": "tests/host/lib/startup-browser-artifact.mjs",
+      "beforeSha256": "035e74a427a60925f78db8f0e6c5c07495e41222a9dece9c2511491b43dae7a3",
+      "afterSha256": "f27e86ca622e6dfa9f94e7f3c5c84900ce408a46e7954df553fe2245fc9d9988"
+    },
+    {
+      "path": "tests/host/lib/startup-stock-helper-launch.mjs",
+      "beforeSha256": null,
+      "afterSha256": "af5499ef38f9d6e5efb53423371b9e75d5a1e486d4bde1a6549e0c2527509ba1"
+    },
+    {
+      "path": "tests/host/lib/startup-stock-native-stream.mjs",
+      "beforeSha256": null,
+      "afterSha256": "b8c8d3ec01be4646d43053a75430ee9e8f5b6382f6b6236eb43255df1227022e"
+    },
+    {
+      "path": "tests/host/lib/startup-stock-native-stream.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "fc89b99425357e199a530da3ccfdbd290a6f883c451fde53e190ad3e6d11090d"
+    },
+    {
+      "path": "tests/tools/startup-stock-browser-artifact.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "cc00c09c764541011dcafba05a4b44b4e8b109d6e633bb50870c9e71c91be277"
+    }
+  ],
+  "duplicatesActuallyAbsent": true,
+  "controls": {
+    "log": "/tmp/aux-root-stock-caller-controls.log",
+    "sha256": "17754b68c2ca6ba0cfa1a8a388a1587d494db90dcbb16f9cd023443b93673324",
+    "exit": 0
+  },
+  "adopted": false,
+  "factoryStillRequired": true,
+  "nativeOperations": false,
+  "qualified": false
+}

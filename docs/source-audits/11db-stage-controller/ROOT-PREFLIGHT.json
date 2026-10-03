@@ -1,0 +1,18 @@
+{
+  "sourceOnly": true,
+  "requestSha256": "be21a455a3525e98230dbac411869e35743600f7ffa6294cb9f2eebebf2214cb",
+  "stageControllerSha256": "8ed11b2bac8776f3ff5555dcb2f55f728fa8963db582ec081eafb805e0292ddb",
+  "buildControllerSha256": "3aebf6d954a5118ee6fa6f89d070793d38ce517082b993413fd7a4fe72775ffa",
+  "actualOldNativeVerified": 399,
+  "actualGeneratedVerified": 3,
+  "actualPartialCompiledVerified": 8801,
+  "actualRuntimeVerified": 91,
+  "actualHelperVerified": true,
+  "actualMetadataVerified": 8,
+  "new465NativeAnd149PacketsMatchIndependentReplay": true,
+  "original240BaselinesDeclared": true,
+  "additionalStableBaselinesReadVerified": true,
+  "stageScopeApproved": true,
+  "buildNeedsActualStageProofReview": true,
+  "nativeOperationsByRoot": false
+}
