@@ -48,7 +48,8 @@ static_assert(ISOLATED_WORLD_ID_AUX_TRANSLATION > ISOLATED_WORLD_ID_CHROME_INTER
 static_assert(ISOLATED_WORLD_ID_AUX_TRANSLATION > ISOLATED_WORLD_ID_APPLESCRIPT);
 #endif
 static_assert(ISOLATED_WORLD_ID_AUX_RECORDER < ISOLATED_WORLD_ID_EXTENSIONS);
-static_assert(ISOLATED_WORLD_ID_AUX_RECORDER <= content::ISOLATED_WORLD_ID_MAX);
+static_assert(static_cast<int>(ISOLATED_WORLD_ID_AUX_RECORDER) <=
+              static_cast<int>(content::ISOLATED_WORLD_ID_MAX));
 #endif
 // LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java)
 #endif  // CHROME_COMMON_CHROME_ISOLATED_WORLD_IDS_H_
