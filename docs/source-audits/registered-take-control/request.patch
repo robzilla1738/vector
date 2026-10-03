@@ -1,5 +1,5 @@
 diff --git a/apps/shell/src/commands.ts b/apps/shell/src/commands.ts
-index ce423598..b00c8ba3 100644
+index ce423598..5b69daaf 100644
 --- a/apps/shell/src/commands.ts
 +++ b/apps/shell/src/commands.ts
 @@ -30,8 +30,21 @@ export interface CommandContext extends CommandInvocation {
@@ -8,7 +8,7 @@ index ce423598..b00c8ba3 100644
  const defaultSwitcher = createTabSwitcher();
 -function featureCommand(id: ShellCommandId): CommandAction {
 -  return () => { throw new Error(`${COMMANDS.find(command => command.id === id)?.label ?? id} is unavailable in this window`); };
-+const takingPageControl = new Set<string>();
++const takingPageControl = new Map<string, Promise<unknown>>();
 +function controlledPage(st: StoreState, { payload }: CommandContext, returning: boolean): string {
 +  const pageId = payload && "pageId" in payload ? payload.pageId : st.activePageId;
 +  const page = st.pages.find(item => item.pageId === pageId);
@@ -146,7 +146,7 @@ index ce423598..b00c8ba3 100644
    "deny-agent-action": (_st, { payload }) => {
      if (!payload || !("turnId" in payload)) throw new Error("This approval is unavailable.");
      return "approvalId" in payload ? decideAgentAction(payload, "decline") : dismissAgentHandoff(payload.turnId);
-@@ -94,17 +208,13 @@ export const COMMAND_ACTIONS = {
+@@ -94,17 +208,15 @@ export const COMMAND_ACTIONS = {
      if (!payload || !("pageId" in payload) || !("turnId" in payload)) throw new Error("The requested page is unavailable.");
      return takeOverAgentAction(payload, id => st.activate(id));
    },
@@ -160,9 +160,11 @@ index ce423598..b00c8ba3 100644
 +  "return-agent-control": (st, context) => st.returnControl(controlledPage(st, context, true)),
 +  "take-page-control": (st, context) => {
 +    const pageId = controlledPage(st, context, false);
-+    if (takingPageControl.has(pageId)) return;
-+    takingPageControl.add(pageId);
-+    return call("pages.takeover", { pageId }).finally(() => takingPageControl.delete(pageId));
++    const pending = takingPageControl.get(pageId);
++    if (pending) return pending;
++    const operation = call("pages.takeover", { pageId }).finally(() => takingPageControl.delete(pageId));
++    takingPageControl.set(pageId, operation);
++    return operation;
    },
 -  "set-agent-effect-grants": featureCommand("set-agent-effect-grants"),
 -  "mention-insert": featureCommand("mention-insert"),
@@ -170,7 +172,7 @@ index ce423598..b00c8ba3 100644
  
    ...COMMAND_SURFACE_ACTIONS,
    "command-switch-space": (st, context) => {
-@@ -118,105 +228,15 @@ export const COMMAND_ACTIONS = {
+@@ -118,105 +230,15 @@ export const COMMAND_ACTIONS = {
      if (!value || !("targetId" in value) || !("url" in value)) throw new Error("Choose an attached Chrome tab.");
      return call("pages.open", { url: value.url, backend: "chrome", targetId: value.targetId, activate: true });
    },
@@ -276,7 +278,7 @@ index ce423598..b00c8ba3 100644
    "space-1": (st) => switchSpaceOrdinal(st, 1),
    "space-2": (st) => switchSpaceOrdinal(st, 2),
    "space-3": (st) => switchSpaceOrdinal(st, 3),
-@@ -231,12 +251,6 @@ export const COMMAND_ACTIONS = {
+@@ -231,12 +253,6 @@ export const COMMAND_ACTIONS = {
      if (page) return navigator.clipboard.writeText(page.url).then(() => st.toast("Link copied"));
    },
    "quick-ask": () => bridge.quickAsk("open"),
@@ -325,10 +327,10 @@ index 102b19ed..5af425d8 100644
              <span className="ctl-chip-label">Agent</span>
              <span className="ctl-take">Take over</span>
 diff --git a/apps/shell/src/features/commands/return-control.test.ts b/apps/shell/src/features/commands/return-control.test.ts
-index c3c8a094..9c44cc62 100644
+index c3c8a094..24411917 100644
 --- a/apps/shell/src/features/commands/return-control.test.ts
 +++ b/apps/shell/src/features/commands/return-control.test.ts
-@@ -40,7 +40,36 @@ it("refuses changed, missing, non-person and detached pages before the native op
+@@ -40,7 +40,40 @@ it("refuses changed, missing, non-person and detached pages before the native op
      { pages: [{ ...page, viewStatus: "crashed" as const }], activePageId: page.pageId },
    ]) {
      useStore.setState({ ...state, returnControl });
@@ -344,9 +346,13 @@ index c3c8a094..9c44cc62 100644
 +  const invoke = vi.spyOn(bridge, "invoke").mockImplementation(() => new Promise(resolve => { acknowledge = resolve; }));
 +  useStore.setState({ pages: [{ ...page, controller: "agent" }], activePageId: page.pageId });
 +  const operation = executeCommand("take-page-control", { payload: { pageId: page.pageId } });
-+  await executeCommand("take-page-control", { payload: { pageId: page.pageId } });
++  let duplicateCompleted = false;
++  const duplicate = executeCommand("take-page-control", { payload: { pageId: page.pageId } }).then(() => { duplicateCompleted = true; });
++  await Promise.resolve();
++  expect(duplicateCompleted).toBe(false);
 +  expect(invoke).toHaveBeenCalledExactlyOnceWith("pages.takeover", { pageId: page.pageId });
-+  acknowledge(page); await operation;
++  acknowledge(page); await Promise.all([operation, duplicate]);
++  expect(duplicateCompleted).toBe(true);
 +  invoke.mockResolvedValue(page);
 +  await executeCommand("take-page-control", { payload: { pageId: page.pageId } });
 +  expect(invoke).toHaveBeenCalledTimes(2);

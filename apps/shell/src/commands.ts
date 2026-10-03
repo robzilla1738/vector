@@ -30,7 +30,7 @@ export interface CommandContext extends CommandInvocation {
 }
 type CommandAction = (state: StoreState, context: CommandContext) => unknown;
 const defaultSwitcher = createTabSwitcher();
-const takingPageControl = new Set<string>();
+const takingPageControl = new Map<string, Promise<unknown>>();
 function controlledPage(st: StoreState, { payload }: CommandContext, returning: boolean): string {
   const pageId = payload && "pageId" in payload ? payload.pageId : st.activePageId;
   const page = st.pages.find(item => item.pageId === pageId);
@@ -211,9 +211,11 @@ export const COMMAND_ACTIONS = {
   "return-agent-control": (st, context) => st.returnControl(controlledPage(st, context, true)),
   "take-page-control": (st, context) => {
     const pageId = controlledPage(st, context, false);
-    if (takingPageControl.has(pageId)) return;
-    takingPageControl.add(pageId);
-    return call("pages.takeover", { pageId }).finally(() => takingPageControl.delete(pageId));
+    const pending = takingPageControl.get(pageId);
+    if (pending) return pending;
+    const operation = call("pages.takeover", { pageId }).finally(() => takingPageControl.delete(pageId));
+    takingPageControl.set(pageId, operation);
+    return operation;
   },
 
   ...COMMAND_SURFACE_ACTIONS,

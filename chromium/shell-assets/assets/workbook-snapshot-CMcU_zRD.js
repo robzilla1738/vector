@@ -1,1 +1,0 @@
-import{o,a,n as s,b as n,s as e,l as r}from"./schemas-BpooaJmP.js";const t=o({column:s().int().positive().max(16384),value:e(),hyperlink:e().max(2048).optional()}),l=o({format:r("aux.workbook.v1"),sheets:a(o({name:e(),hidden:n(),rows:a(o({number:s().int().positive(),cells:a(t)}))}))});export{l as W};

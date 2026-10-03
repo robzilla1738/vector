@@ -51,9 +51,13 @@ it("registers Take control and suppresses duplicate pending native requests", as
   const invoke = vi.spyOn(bridge, "invoke").mockImplementation(() => new Promise(resolve => { acknowledge = resolve; }));
   useStore.setState({ pages: [{ ...page, controller: "agent" }], activePageId: page.pageId });
   const operation = executeCommand("take-page-control", { payload: { pageId: page.pageId } });
-  await executeCommand("take-page-control", { payload: { pageId: page.pageId } });
+  let duplicateCompleted = false;
+  const duplicate = executeCommand("take-page-control", { payload: { pageId: page.pageId } }).then(() => { duplicateCompleted = true; });
+  await Promise.resolve();
+  expect(duplicateCompleted).toBe(false);
   expect(invoke).toHaveBeenCalledExactlyOnceWith("pages.takeover", { pageId: page.pageId });
-  acknowledge(page); await operation;
+  acknowledge(page); await Promise.all([operation, duplicate]);
+  expect(duplicateCompleted).toBe(true);
   invoke.mockResolvedValue(page);
   await executeCommand("take-page-control", { payload: { pageId: page.pageId } });
   expect(invoke).toHaveBeenCalledTimes(2);
