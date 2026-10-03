@@ -6,6 +6,7 @@
 #include <memory>
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
+#include "base/test/bind.h"
 #include "base/test/test_future.h"
 #include "base/uuid.h"
 #include "chrome/browser/profiles/profile.h"
@@ -321,7 +322,7 @@ IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
   uint64_t fresh_generation = 0;
   NativePersonReadHostTestPeer::Call(host, generation, "native.personRead",
       base::DictValue().Set("pageId", id).Set("request", Observe()),
-      base::BindOnce([&](base::DictValue result) {
+      base::BindLambdaForTesting([&](base::DictValue result) {
         original.SetValue(std::move(result));
         fresh_generation = NativePersonReadHostTestPeer::PublishNext(host);
         NativePersonReadHostTestPeer::Call(host, fresh_generation, "native.personRead",
