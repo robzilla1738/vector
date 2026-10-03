@@ -147,6 +147,8 @@ AuxMethodRegistry::AuxMethodRegistry() {
   register_runtime(AuxRuntimeMethodGroup::kPageControls,
                    {"native.stopFind", "native.setZoom"});
   register_runtime(AuxRuntimeMethodGroup::kAsync,
+                   {"native.personRead", "native.recorderStart", "native.recorderDrain", "native.recorderStop"});
+  register_runtime(AuxRuntimeMethodGroup::kAsync,
                    {"native.downloadRenameReceipts", "native.downloadNamingCandidate", "native.downloadPreviewText",
                     "native.renameDownload", "native.undoDownloadRename",
                     "native.setCookies", "native.captureReadablePage",

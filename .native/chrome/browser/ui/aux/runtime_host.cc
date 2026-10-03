@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ui/aux/runtime_host.h"
 #include "chrome/browser/ui/aux/native_startup_admission_waiter.h"
+#include "chrome/browser/ui/aux/native_recorder_controller.h"
+#include "chrome/browser/ui/aux/native_person_observer_controller.h"
 #include "chrome/browser/ui/aux/power_activity_mac.h"
 
 #include "base/task/thread_pool.h"
@@ -42,6 +44,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/time/time.h"
+#include "base/uuid.h"
 #include "base/task/bind_post_task.h"
 #include "base/timer/timer.h"
 #include "chrome/browser/profiles/profile.h"
@@ -232,6 +235,7 @@ AuxRuntimeHost::AuxRuntimeHost(Profile* profile) : profile_(profile) {
 
 AuxRuntimeHost::~AuxRuntimeHost() {
   shutting_down_ = true;
+  NativeConnectionRetired(admitted_native_generation_);
   FailOwnerMutations();
   if (recovery_authenticator_ && recovery_auth_pending_)
     recovery_authenticator_->Cancel();
@@ -458,6 +462,192 @@ void AuxRuntimeHost::PumpOnce() {
   worker_.AsyncCall(&Worker::Pump)
       .Then(base::BindOnce(&AuxRuntimeHost::OnPumpDone,
                            weak_factory_.GetWeakPtr()));
+}
+
+void AuxRuntimeHost::NativeConnectionPublished(uint64_t generation) {
+  if (shutting_down_ || !generation || generation <= retired_native_generation_ ||
+      generation <= admitted_native_generation_)
+    return;
+  if (admitted_native_generation_) {
+    const auto weak = weak_factory_.GetWeakPtr();
+    NativeConnectionRetired(admitted_native_generation_);
+    if (!weak || shutting_down_ || admitted_native_generation_ ||
+        generation <= retired_native_generation_)
+      return;
+  }
+  admitted_native_generation_ = generation;
+}
+void AuxRuntimeHost::NativeConnectionRetired(uint64_t generation) {
+  if (!generation)
+    return;
+  retired_native_generation_ = std::max(retired_native_generation_, generation);
+  if (admitted_native_generation_ != generation)
+    return;
+  admitted_native_generation_ = 0;
+  ++native_recorder_session_generation_;
+  auto recorder = native_recorder_;
+  native_recorder_.reset();
+  native_recorder_page_id_.clear();
+  auto reads = std::move(native_person_reads_);
+  native_person_reads_.clear();
+  const auto weak = weak_factory_.GetWeakPtr();
+  for (const auto& [id, reader] : reads) {
+    if (reader)
+      reader->Disconnect(generation);
+    if (!weak)
+      return;
+  }
+  if (recorder)
+    recorder->Disconnect(generation);
+}
+void AuxRuntimeHost::HandleNativePersonReadCall(
+    const base::DictValue& params, uint64_t connection_generation,
+    base::OnceCallback<void(base::DictValue)> callback) {
+  if (shutting_down_ || !connection_generation ||
+      admitted_native_generation_ != connection_generation ||
+      connection_generation <= retired_native_generation_) {
+    std::move(callback).Run(NativeFault("target_detached", "Page connection retired"));
+    return;
+  }
+  const auto* page_id = params.FindString("pageId");
+  const auto* request = params.FindDict("request");
+  if (params.size() != 2 || !page_id || !aux::PageIdentity::IsValid(*page_id) ||
+      !request) {
+    std::move(callback).Run(NativeFault("invalid_params", "Invalid fixed page read"));
+    return;
+  }
+  if (native_person_reads_.size() >= 8) {
+    std::move(callback).Run(NativeFault("conflict", "Too many pending page reads"));
+    return;
+  }
+  auto* catalog = aux::TabCatalog::GetForProfile(profile_);
+  auto* page = catalog ? catalog->FindPage(*page_id) : nullptr;
+  auto* authority = aux::EgressController::ForProfile(profile_);
+  auto receipt = page && authority ? authority->CapturePersonRead(page) : std::nullopt;
+  if (!receipt || receipt->page_id() != *page_id) {
+    std::move(callback).Run(NativeFault("permission_denied", "This page could not be read"));
+    return;
+  }
+  aux::NativePersonObserverController::CreateForWebContents(page);
+  auto reader = aux::NativePersonObserverController::FromWebContents(page)->GetWeakPtr();
+  // Private operation identity survives controller callback invalidation;
+  // a late original reply must never remove a replacement slot.
+  const auto operation_id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  native_person_reads_.emplace(operation_id, reader);
+  reader->Read(connection_generation, request->Clone(), base::BindOnce(
+      [](base::WeakPtr<AuxRuntimeHost> owner,
+         base::WeakPtr<aux::EgressController> authority,
+         aux::NativePersonReadReceipt receipt, std::string operation_id,
+         uint64_t generation, base::OnceCallback<void(base::DictValue)> callback,
+         base::DictValue reply) {
+        if (!owner) {
+          std::move(callback).Run(NativeFault("target_detached", "Page host closed"));
+          return;
+        }
+        const bool slot = owner->native_person_reads_.erase(operation_id) == 1;
+        if (!slot || owner->shutting_down_ ||
+            owner->admitted_native_generation_ != generation ||
+            generation <= owner->retired_native_generation_ ||
+            !authority || !authority->MayReadPerson(receipt)) {
+          std::move(callback).Run(NativeFault("target_detached", "Page read retired"));
+          return;
+        }
+        std::move(callback).Run(std::move(reply));
+      }, weak_factory_.GetWeakPtr(), authority->GetWeakPtr(), std::move(*receipt),
+      operation_id, connection_generation, std::move(callback)));
+}
+void AuxRuntimeHost::HandleNativeRecorderCall(
+    const std::string& method, const base::DictValue& params,
+    uint64_t connection_generation,
+    base::OnceCallback<void(base::DictValue)> callback) {
+  const auto* page_id = params.FindString("pageId");
+  const auto* recorder_id = params.FindString("recorderId");
+  const bool start = method == "native.recorderStart";
+  if (shutting_down_ || !connection_generation ||
+      admitted_native_generation_ != connection_generation ||
+      connection_generation <= retired_native_generation_) {
+    std::move(callback).Run(NativeFault("target_detached", "Recording connection retired"));
+    return;
+  }
+  if (!page_id || !aux::PageIdentity::IsValid(*page_id) ||
+      params.size() != (start ? 1u : 2u) ||
+      (!start && (!recorder_id || !base::Uuid::ParseLowercase(*recorder_id).is_valid())) ||
+      (!start && method != "native.recorderDrain" && method != "native.recorderStop")) {
+    std::move(callback).Run(NativeFault("invalid_params", "Invalid fixed recording request"));
+    return;
+  }
+  auto* catalog = aux::TabCatalog::GetForProfile(profile_);
+  auto* page = catalog ? catalog->FindPage(*page_id) : nullptr;
+  if (!page) {
+    std::move(callback).Run(NativeFault("target_detached", "Recording tab closed"));
+    return;
+  }
+  if (start) {
+    if (native_recorder_) {
+      std::move(callback).Run(NativeFault("conflict", "This Profile already records a tab"));
+      return;
+    }
+    aux::NativeRecorderController::CreateForWebContents(page);
+    native_recorder_ = aux::NativeRecorderController::FromWebContents(page)->GetWeakPtr();
+    native_recorder_page_id_ = *page_id;
+    ++native_recorder_session_generation_;
+  }
+  if (!native_recorder_ || native_recorder_page_id_ != *page_id ||
+      aux::NativeRecorderController::FromWebContents(page) != native_recorder_.get()) {
+    std::move(callback).Run(NativeFault("target_detached", "Recording receipt changed"));
+    return;
+  }
+  auto recorder = native_recorder_;
+  if (start) {
+    recorder->retired_callback_ = base::BindOnce(
+        [](base::WeakPtr<AuxRuntimeHost> owner,
+           base::WeakPtr<aux::NativeRecorderController> recorder,
+           uint64_t connection, uint64_t recording_generation) {
+          if (!owner || owner->admitted_native_generation_ != connection ||
+              owner->native_recorder_session_generation_ != recording_generation ||
+              owner->native_recorder_.get() != recorder.get()) return;
+          // No external callback here. A new recording increments the generation
+          // before installing, so its slot cannot be cleared by this receipt.
+          owner->native_recorder_.reset();
+          owner->native_recorder_page_id_.clear();
+        }, weak_factory_.GetWeakPtr(), recorder, connection_generation,
+        native_recorder_session_generation_);
+  }
+  auto done = base::BindOnce(
+      [](base::WeakPtr<AuxRuntimeHost> owner,
+         base::WeakPtr<aux::NativeRecorderController> recorder,
+         std::string page_id, uint64_t generation, uint64_t recording_generation, bool start, bool stop,
+         base::OnceCallback<void(base::DictValue)> callback,
+         base::DictValue reply) {
+        if (!owner || owner->shutting_down_ ||
+            owner->admitted_native_generation_ != generation ||
+            owner->native_recorder_session_generation_ != recording_generation) {
+          std::move(callback).Run(NativeFault("target_detached", "Recording connection changed"));
+          return;
+        }
+        const bool current = recorder && owner->native_recorder_.get() == recorder.get() &&
+                             owner->native_recorder_page_id_ == page_id;
+        const bool retired = !owner->native_recorder_ && owner->native_recorder_page_id_.empty();
+        if (!current && !(retired && (reply.Find("error") || stop))) {
+          std::move(callback).Run(NativeFault("target_detached", "Recording receipt changed"));
+          return;
+        }
+        if (!recorder || !recorder->BoundToConnection(generation) ||
+            (start && reply.Find("error")) || (stop && reply.Find("result"))) {
+          owner->native_recorder_.reset();
+          owner->native_recorder_page_id_.clear();
+          ++owner->native_recorder_session_generation_;
+        }
+        std::move(callback).Run(std::move(reply));
+      },
+      weak_factory_.GetWeakPtr(), recorder, *page_id, connection_generation,
+      native_recorder_session_generation_, start, method == "native.recorderStop", std::move(callback));
+  if (start)
+    recorder->Start(connection_generation, std::move(done));
+  else if (method == "native.recorderDrain")
+    recorder->Drain(connection_generation, *recorder_id, std::move(done));
+  else
+    recorder->Stop(connection_generation, *recorder_id, std::move(done));
 }
 
 void AuxRuntimeHost::OnPumpDone(bool connected) {
@@ -761,6 +951,9 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
   close(listener_fd_);
   listener_fd_ = -1;
   ++connection_generation_;
+  // Same sequenced UI endpoint: admission precedes every posted native request.
+  ui_runner_->PostTask(FROM_HERE, base::BindOnce(
+      &AuxRuntimeHost::NativeConnectionPublished, owner_, connection_generation_));
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
   if (startup_observed && aux::NativeStartupObservationEnabled()) {
     const auto peer = aux::ReadNativeRuntimePeerIdentity(connection_fd_, static_cast<int>(process_.Pid()));
@@ -772,6 +965,9 @@ bool AuxRuntimeHost::Worker::Connect(std::string* error) {
 }
 
 void AuxRuntimeHost::Worker::Disconnect() {
+  if (connection_fd_ >= 0 && connection_generation_)
+    ui_runner_->PostTask(FROM_HERE, base::BindOnce(
+        &AuxRuntimeHost::NativeConnectionRetired, owner_, connection_generation_));
 #if BUILDFLAG(IS_MAC) && BUILDFLAG(AUX_ALLOW_REMOTE_DEBUGGING_FOR_TESTS)
   if (connection_fd_ >= 0 && connection_generation_ && aux::NativeStartupObservationEnabled())
     ui_runner_->PostTask(FROM_HERE, base::BindOnce(
@@ -862,6 +1058,26 @@ base::DictValue AuxRuntimeHost::Worker::DispatchNative(
                         base::DictValue params,
                         uint64_t connection_generation,
                         std::shared_ptr<NativeReplyState> state) {
+                       if (owner && method == "native.personRead") {
+                         owner->HandleNativePersonReadCall(params, connection_generation,
+                             base::BindOnce([](std::shared_ptr<NativeReplyState> state,
+                                               base::DictValue reply) {
+                               state->reply = std::move(reply);
+                               state->ready.Signal();
+                             }, state));
+                         return;
+                       }
+                       if (owner && (method == "native.recorderStart" ||
+                                     method == "native.recorderDrain" ||
+                                     method == "native.recorderStop")) {
+                         owner->HandleNativeRecorderCall(method, params, connection_generation,
+                             base::BindOnce([](std::shared_ptr<NativeReplyState> state,
+                                               base::DictValue reply) {
+                               state->reply = std::move(reply);
+                               state->ready.Signal();
+                             }, state));
+                         return;
+                       }
                        if (owner && method == "native.setCookies") {
                          aux::ImportCookies(owner->profile_, params, base::BindOnce(
                              [](std::shared_ptr<NativeReplyState> state,

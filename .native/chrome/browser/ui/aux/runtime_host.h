@@ -41,6 +41,8 @@ class PowerActivityMac;
 class CdpBroker;
 class ProfileLibrary;
 class NativeFind;
+class NativeRecorderController;
+class NativePersonObserverController;
 class CredentialFill;
 class NativeOrganizationWorkFixture;
 class NativeProcessMemorySampler;
@@ -247,6 +249,15 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
   void SchedulePump();
   void PumpOnce();
   void OnPumpDone(bool connected);
+  void NativeConnectionPublished(uint64_t generation);
+  void NativeConnectionRetired(uint64_t generation);
+  void HandleNativePersonReadCall(
+      const base::DictValue& params, uint64_t connection_generation,
+      base::OnceCallback<void(base::DictValue)> callback);
+  void HandleNativeRecorderCall(
+      const std::string& method, const base::DictValue& params,
+      uint64_t connection_generation,
+      base::OnceCallback<void(base::DictValue)> callback);
   void FinishOwnerMutation(const std::string& token, bool success);
   void FailOwnerMutations();
 
@@ -266,6 +277,13 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
       observers_;
   bool pump_scheduled_ = false;
   bool runtime_connected_ = false;
+  uint64_t admitted_native_generation_ = 0;
+  uint64_t retired_native_generation_ = 0;
+  uint64_t native_recorder_session_generation_ = 0;
+  std::string native_recorder_page_id_;
+  base::WeakPtr<aux::NativeRecorderController> native_recorder_;
+  std::map<std::string, base::WeakPtr<aux::NativePersonObserverController>>
+      native_person_reads_;
   bool shutting_down_ = false;
   base::WeakPtr<aux::EgressController> owner_mutation_egress_;
   std::set<std::string> owner_mutation_tokens_;

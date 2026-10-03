@@ -3504,6 +3504,8 @@ if (!is_android) {
         sources += [
           "../browser/ui/aux/link_router_browsertest.cc",
           "../browser/ui/aux/native_performance_mailbox_browsertest.cc",
+          "../browser/ui/aux/native_person_observer_controller_browsertest.cc",
+          "../browser/ui/aux/native_recorder_controller_browsertest.cc",
         ]
         deps += [ "//chrome/browser/ui/aux:runtime" ]
       }

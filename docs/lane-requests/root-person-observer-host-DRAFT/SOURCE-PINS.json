@@ -1,0 +1,56 @@
+{
+  "patchSha256": "90c71e4036ea0e7c2f3109e679ef36dd3e92622ad83ebfd973402dc73f8115a7",
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.h",
+      "beforeSha256": "aa80195fdd8f335fa5703a65de5d49c125d9f155db5dd1bd091024a3dd316645",
+      "afterSha256": "d75bd5c2be8b684c99bbc535792a675c414324c96e1f429e9c4fc833f6ed9658"
+    },
+    {
+      "path": "chrome/browser/ui/aux/runtime_host.cc",
+      "beforeSha256": "bb23a54c1590aef686f9d04352031f77e91268abc59af6d89cc6f8c7037513a6",
+      "afterSha256": "0e9f728a61301798ee908af5da1e3e4aec5f7f850da9b4d0e8cdcbcc06999a3d"
+    },
+    {
+      "path": "chrome/browser/ui/aux/method_registry.cc",
+      "beforeSha256": "8d0f3db1940cbf71bbb0a45fa2dca1b6f9a2d6e5e7614f98e8f08e32a267fb48",
+      "afterSha256": "5f95c092780e30cb6b491db8fda6b0ce0535cf75dbd419eb927c4eea4e51aff6"
+    },
+    {
+      "path": "chrome/browser/ui/aux/BUILD.gn",
+      "beforeSha256": "07ca5a290125c9a835aab124d2792f0fbcdd0ee30fef84818b4c698704c955ba",
+      "afterSha256": "1a9b7adfaf063ad8b2d159fee38c0bbaa2748351ce2a469c7ce66c130f87b6a3"
+    },
+    {
+      "path": "chrome/test/BUILD.gn",
+      "beforeSha256": "71d87d148910b596f781f22ca18a109766e49458e1fe9d8c80b65db15370f713",
+      "afterSha256": "7f48031d2d38ea8104a03e87e9192a1ede301cbb1ecb98b8d046c782ee739661"
+    },
+    {
+      "path": "chrome/common/BUILD.gn",
+      "beforeSha256": "c7edc485860238eb6e580b4cd8c7d7eff6d945591850bbdf58308d767d623489",
+      "afterSha256": "864e25b8e3c687367e202d306a5435e7b0fcdfd9c3a93aae987996473559fca7"
+    },
+    {
+      "path": "chrome/renderer/BUILD.gn",
+      "beforeSha256": "ee3b54397fe55ddacac77feb76abdd26bd249192d7e3095bbbf2c4d29d3bb6fa",
+      "afterSha256": "bd9cc487f3a975ede8d1e83ba08ce4dfe0b087fa55b4c2f633a805ba75e0704a"
+    },
+    {
+      "path": "chrome/renderer/chrome_render_frame_observer.cc",
+      "beforeSha256": "6386446a36e876fe9e33594ae1fc304aaa40bfd118f221aa151f660f9d4177a7",
+      "afterSha256": "946e87ba4f631c6e8ff6e7ed35e6e6d7e7e291c5458f882c27d7cd6708354984"
+    },
+    {
+      "path": "chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc",
+      "beforeSha256": null,
+      "afterSha256": "456e328f0972865e281e4b0b63f4f8c2e2864566aee3d22bebb362f9900b8008"
+    }
+  ],
+  "exactForwardReverse": "PASS",
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-person-read-host-replay-qf8doai0",
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "stageReady": false
+}
