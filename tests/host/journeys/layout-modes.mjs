@@ -1,3 +1,4 @@
+import { captureHomeJourneyState as captureLayoutState } from '../lib/home-capture.mjs';
 import { performance } from 'node:perf_hooks';
 import { setTabLayout } from '../lib/tab-layout.mjs';
 
@@ -45,7 +46,7 @@ async function sidebarModes(t) {
     const rpc = await t.rpc('settings.get');
     t.assert.equal(rpc.toolbarAutoHide, false);
     t.assert.equal(rpc.tabLayout, 'vertical');
-    await t.capture('toolbar-always-visible');
+    await captureLayoutState(t, 'toolbar-always-visible', 'toolbar-always-visible');
     return { ax, rpc };
   });
   await t.step('hide the toolbar and reveal it from the top two pixels within 216ms', { kind: 'ui', features: ['autoHideToolbar'] }, async () => {
@@ -60,7 +61,7 @@ async function sidebarModes(t) {
     const ax = await t.ax.dump({ scope: 'shell' });
     const rpc = await t.rpc('settings.get');
     t.assert.equal(rpc.toolbarAutoHide, true);
-    await t.capture('toolbar-edge-reveal');
+    await captureLayoutState(t, 'toolbar-edge-reveal', 'toolbar-edge-reveal');
     return { ax, rpc: { settings: rpc, elapsedMs } };
   });
   await t.step('snap the sidebar below 111px to hidden and restore it with the registered chord', { kind: 'ui', features: ['floatingSidebar', 'layouts'] }, async () => {
@@ -76,7 +77,7 @@ async function sidebarModes(t) {
     await centerPointer(t, window);
     await t.ax.waitFor(show);
     t.assert.equal(visible(await t.ax.query(tabs('vertical')), window).length, 0);
-    await t.capture('sidebar-snapped-hidden');
+    await captureLayoutState(t, 'sidebar-snapped-hidden', 'sidebar-snapped-hidden');
     await t.ax.key('command+s', 'hid');
     await t.ax.waitFor(tabs('vertical'));
     t.assert.ok(visible(await t.ax.query(tabs('vertical')), window).length);
@@ -87,7 +88,7 @@ async function sidebarModes(t) {
     const ax = await t.ax.dump({ scope: 'shell' });
     const rpc = await t.rpc('workspace.get');
     t.assert.equal(rpc.activePageId, red.pageId);
-    await t.capture('sidebar-command-hidden');
+    await captureLayoutState(t, 'sidebar-command-hidden', 'sidebar-command-hidden');
     return { ax, rpc };
   });
 }
@@ -135,13 +136,13 @@ async function minimalUi(t) {
       t.assert.ok(page?.frame, 'Native page frame must be present');
       const coverage = page.frame.width * page.frame.height / (window.width * window.height);
       t.assert.ok(coverage >= .99, `Minimal UI page covers ${(coverage * 100).toFixed(2)}% of its window`);
-      await t.capture(`minimal-${layout}-edge-to-edge`);
+      await captureLayoutState(t, `minimal-${layout}-edge-to-edge`, `minimal-${layout}-edge-to-edge`);
       await t.ax.request('hover', { x: window.x + window.width / 2, y: window.y + 2 });
       await t.until('Minimal UI top edge reveals toolbar', async () => visible(await t.ax.query(address), window).length);
       await centerPointer(t, window);
       await t.ax.request('hover', { x: window.x + 2, y: window.y + window.height / 2 });
       await t.until('Minimal UI left edge reveals sidebar', async () => visible(await t.ax.query(tabs(layout)), window).length);
-      await t.capture(`minimal-${layout}-edge-controls`);
+      await captureLayoutState(t, `minimal-${layout}-edge-controls`, `minimal-${layout}-edge-controls`);
       await t.ax.key('command+shift+b', 'hid');
       await t.until('Minimal UI exits', async () => (await t.rpc('settings.get')).minimalUi === false);
       const rpc = await t.rpc('workspace.get');
