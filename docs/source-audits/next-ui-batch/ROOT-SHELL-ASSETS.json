@@ -880,15 +880,23 @@
     },
     {
       "path": "index.html",
-      "bytes": 1070,
-      "sha256": "1ce97abc9f0103ffa2729fd8087c43947513bc0383f73e34d6ce5e7a51dc18aa"
+      "bytes": 1155,
+      "sha256": "ece4279e91f97d7165c4f7dff6faec8c3b4013a787d4381bd87f2523ef2868ad"
     }
   ],
-  "filesSha256": "3753e894f9ae6830a4fb768a8c73250f506d1521f00b91769535fb76170cc678",
+  "filesSha256": "576a64e65f4c6558b33ed0fb783dae2d19e1ef81d3564f73dc719a7b43fe72f5",
   "budgets": {
     "startupJsKb": 487,
     "startupCssKb": 175,
     "totalJsKb": 1795
   },
-  "nativeAdmitted": false
+  "nativeAdmitted": false,
+  "nativeConfiguration": "AUX_CHROMIUM_SHELL_BUILD=1",
+  "nativeBuildLog": "/tmp/aux-next-native-shell-build.log",
+  "supersedes": "Generic production configuration; first capture refused missing native CSP before any source install",
+  "nativeResourceManifest": {
+    "path": "chromium/shell-assets/manifest.json",
+    "files": 175,
+    "digest": "c6ef47f2be7d68230e06c4ccb8d38372df504647d19c333a6ecbe50f26916e6d"
+  }
 }

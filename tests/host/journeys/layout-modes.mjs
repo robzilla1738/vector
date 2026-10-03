@@ -8,9 +8,12 @@ const address = shell('Address, search, and agent prompt', 'AXComboBox');
 const tabs = layout => shell(layout === 'vertical' ? 'Tabs' : 'Browser tabs', 'AXTabGroup');
 const visible = (rows, window) => rows.filter(({ frame, hidden }) => frame?.width > 0 && frame?.height > 0 && hidden !== true && frame.x < window.x + window.width && frame.y < window.y + window.height && frame.x + frame.width > window.x && frame.y + frame.height > window.y);
 async function mainWindow(t) {
-  const windows = (await t.ax.windows()).filter(window => window.layer === 0 && window.width >= 800);
+  const windows = (await t.ax.windows()).filter(window => window.layer === 0);
   t.assert.equal(windows.length, 1, 'Layout journey requires one normal fixture window');
-  return windows[0];
+  const window = windows[0];
+  t.assert.ok(['x', 'y', 'width', 'height'].every(key => Number.isFinite(window[key])) && window.width > 0 && window.height > 0,
+    'Layout journey requires an actual positive finite window frame');
+  return window;
 }
 async function centerPointer(t, window) {
   await t.ax.request('hover', { x: window.x + window.width / 2, y: window.y + window.height / 2 });
