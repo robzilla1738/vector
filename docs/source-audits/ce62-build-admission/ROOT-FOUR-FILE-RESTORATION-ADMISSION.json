@@ -1,0 +1,14 @@
+{
+  "sourceOnly": true,
+  "requestSha256": "dcfef70bdd1bb8b66c0ae60bdeb69fa29909612b821627f5ce8a9671999f98af",
+  "controllerSha256": "7fbd0726b62f863bbf3de0399e7d1e5997b1877734367c93870a0472c6bb720f",
+  "launcherSha256": "2b9065850bcf78d7625ef14f6fdbbbc3a840790fc2ab4ac120f81ffdb6b5db06",
+  "originalThreeRestoreRowsUnchanged": true,
+  "originalArgsAuthentic36ea": true,
+  "allOtherOriginalGuardRowsUnchanged": true,
+  "toolchainGuardRetainedExactHistoricalDrift": true,
+  "nativeBeforeUnchanged": 656,
+  "historicalDerivedDriftRetainedNotQualified": true,
+  "fourSourceWritesAuthorizedOnce": true,
+  "appHeld": true
+}

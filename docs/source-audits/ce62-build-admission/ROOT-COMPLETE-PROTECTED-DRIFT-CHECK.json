@@ -1,0 +1,14 @@
+{
+  "sourceOnly": true,
+  "actualProtectedFileHashesVerified": 8903,
+  "mismatches": [
+    {
+      "path": "/Users/rcourson/aux-chromium-stable/chromium/src/out/AuxDev/args.gn",
+      "expected": "36ea1577ba68f9c504263a0052c8a242f43cab8a2aed0f13b2f763d7131ee12e",
+      "actual": "fddd19ff55bdf0bd1ba21baeb2eb924b5b6c528fda485c1c94dec4ac03f9b7bb"
+    }
+  ],
+  "allOtherProtectedBytesOriginal": true,
+  "stableMutated": false,
+  "actorAttribution": "unproved"
+}
