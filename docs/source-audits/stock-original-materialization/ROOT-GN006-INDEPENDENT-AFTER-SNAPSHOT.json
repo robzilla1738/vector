@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "originalProofSha256": "b76e45dbdc68c33232a1a2a0624799a51746a5643470737796369617ad31a9b5",
+  "actualRawArtifactHashesVerified": 1094,
+  "originalCommandsExitZero": 547,
+  "actual136RepositoryBeforeAfterJoins": true,
+  "primaryBeforeAfterJoined": true,
+  "actualOriginalPidAndGroupRows": [],
+  "compiled": false,
+  "launched": false
+}
