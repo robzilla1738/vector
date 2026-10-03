@@ -3,6 +3,9 @@ import { useShallow } from "zustand/react/shallow";
 import { call, isLive, useStore } from "../store";
 import { STATUS_LABEL } from "../run-status";
 import { bridge } from "../bridge";
+import { executeCommand } from "../commands";
+import { registerRunControlCommands, type RunControlCommand } from "../run-control-commands";
+import { performStopWork } from "../features/native-cdp-measurement/stop";
 import { shellIconHand, shellIconHandSm, shellIconPause, shellIconPlay, shellIconSquare } from "./icons";
 import "./RunControls.css";
 
@@ -12,6 +15,7 @@ type Control = "take" | "return" | "stop" | "pause" | "resume" | "open";
 export function RunControls({ runId, compact = false }: { runId: string; compact?: boolean }) {
   const run = useStore(state => state.runs.find(item => item.runId === runId));
   const pages = useStore(useShallow(state => state.pages.filter(page => run?.pageIds.includes(page.pageId) || page.agentIsolation?.runId === runId)));
+  const commandRegistration = useRef<(() => void) | undefined>(undefined);
   const [busy, setBusy] = useState<Control | null>(null);
   const pending = useRef<{ kind: Control; token: symbol } | null>(null);
   const [error, setError] = useState("");
@@ -41,15 +45,37 @@ export function RunControls({ runId, compact = false }: { runId: string; compact
     const state = useStore.getState();
     if (current() && state.activePageId === before.activePageId && state.mode === before.mode && state.overlay === before.overlay && state.conversationId === before.conversationId && state.railOpen === before.railOpen && state.railView === before.railView) await state.activate(primary.pageId);
   });
-  return <section className={`run-controls${compact ? " compact" : ""}`} aria-label="Run controls">
+  const dispatch = (command: RunControlCommand, event: React.MouseEvent<HTMLButtonElement>) => {
+    void executeCommand(command, { payload: { runId }, nativeInputEvent: event.nativeEvent })
+      .catch(reason => setError(reason instanceof Error ? reason.message : String(reason)));
+  };
+  const registerControls = (element: HTMLElement | null) => {
+    commandRegistration.current?.();
+    commandRegistration.current = element ? registerRunControlCommands(element, runId, (command, originalEvent) => {
+      const state = useStore.getState();
+      const currentPages = state.pages.filter(page => run.pageIds.includes(page.pageId) || page.agentIsolation?.runId === runId);
+      if (state.runs.find(item => item.runId === runId) !== run || currentPages.length !== pages.length || !pages.every(page => currentPages.includes(page)))
+        throw new Error("The run’s controls changed. Try again from its controls.");
+      switch (command) {
+        case "pause-run": if (!busy && run.status === "running") return control("pause", () => call("runs.pause", { runId })); break;
+        case "resume-run": if (!busy && run.status === "paused" && !held.length) return control("resume", () => call("runs.resume", { runId })); break;
+        case "stop-run": if (busy !== "stop" && live) return control("stop", () => performStopWork(runId, originalEvent, () => call("runs.cancel", { runId }))); break;
+        case "take-run-control": if (!busy && live && primary && !held.length) return take(); break;
+        case "return-run-control": if (!busy && held.length) return control("return", () => call("pages.resume", { pageId: held[0]!.pageId })); break;
+        case "open-run-tab": if (!busy && temporaryHere) return control("open", () => state.activate(temporaryHere.pageId)); break;
+      }
+      throw new Error("This run control is unavailable right now.");
+    }) : undefined;
+  };
+  return <section ref={registerControls} className={`run-controls${compact ? " compact" : ""}`} aria-label="Run controls">
     <div className="run-controls-line"><span className={`run-state ${run.status}`}>{held.length ? "You’re in control" : STATUS_LABEL[run.status]}</span><span className="run-acts">
-      {run.status === "running" && <button className="icon-btn sm" disabled={!!busy} title="Pause" aria-label={busy === "pause" ? "Pausing run" : "Pause run"} onClick={() => void control("pause", () => call("runs.pause",{runId}))}>{shellIconPause}</button>}
-      {run.status === "paused" && !held.length && <button className="icon-btn sm" disabled={!!busy} title="Resume" aria-label={busy === "resume" ? "Resuming run" : "Resume run"} onClick={() => void control("resume", () => call("runs.resume",{runId}))}>{shellIconPlay}</button>}
-      {live && primary && !held.length && <button className="icon-btn sm" disabled={!!busy} title="Take control of browser tab" aria-label="Take control of browser tab" onClick={() => void take()}>{shellIconHandSm}</button>}
-      {live && <button className="icon-btn sm danger" disabled={busy === "stop"} title="Stop" aria-label={busy === "stop" ? "Stopping run" : "Stop run"} onClick={() => void control("stop", () => call("runs.cancel",{runId}))}>{shellIconSquare}</button>}
+      {run.status === "running" && <button className="icon-btn sm" disabled={!!busy} title="Pause" aria-label={busy === "pause" ? "Pausing run" : "Pause run"} data-command-id="pause-run" onClick={event => dispatch("pause-run", event)}>{shellIconPause}</button>}
+      {run.status === "paused" && !held.length && <button className="icon-btn sm" disabled={!!busy} title="Resume" aria-label={busy === "resume" ? "Resuming run" : "Resume run"} data-command-id="resume-run" onClick={event => dispatch("resume-run", event)}>{shellIconPlay}</button>}
+      {live && primary && !held.length && <button className="icon-btn sm" disabled={!!busy} title="Take control of browser tab" aria-label="Take control of browser tab" data-command-id="take-run-control" onClick={event => dispatch("take-run-control", event)}>{shellIconHandSm}</button>}
+      {live && <button className="icon-btn sm danger" disabled={busy === "stop"} title="Stop" aria-label={busy === "stop" ? "Stopping run" : "Stop run"} data-command-id="stop-run" onClick={event => dispatch("stop-run", event)}>{shellIconSquare}</button>}
     </span></div>
-    {!!isolated.length && <div className="run-held" role="note"><span>Aux uses separate temporary tabs for this run. Sign in there if needed. Existing cookies and saved sign-ins are not copied; cookie transfer is unavailable.</span><button className="btn sm" disabled={!!busy || !temporaryHere} title={!temporaryHere ? "Open this run’s temporary tab in its original browser window." : undefined} onClick={() => temporaryHere && void control("open", () => useStore.getState().activate(temporaryHere.pageId))}>Open temporary tab</button></div>}
-    {!!held.length && <div className="run-held" role="status">{shellIconHand}<span>{run.status === "interrupted" ? "This program stopped when you took control. Review its checkpoint before another run." : held.length > 1 ? `${held.length} pages are held. Return each page when you’re ready.` : "Aux is paused while you use this page."}{uncertain > 0 ? ` ${uncertain} action${uncertain === 1 ? "" : "s"} may have taken effect and need review.` : ""}</span><button className="btn sm" disabled={!!busy} onClick={() => void control("return", () => call("pages.resume",{pageId:held[0]!.pageId}))}>{busy === "return" ? "Returning…" : held.length > 1 ? "Return this page" : run.status === "interrupted" ? "Return page" : "Return and resume"}</button></div>}
+    {!!isolated.length && <div className="run-held" role="note"><span>Aux uses separate temporary tabs for this run. Sign in there if needed. Existing cookies and saved sign-ins are not copied; cookie transfer is unavailable.</span><button className="btn sm" disabled={!!busy || !temporaryHere} title={!temporaryHere ? "Open this run’s temporary tab in its original browser window." : undefined} data-command-id="open-run-tab" onClick={event => dispatch("open-run-tab", event)}>Open temporary tab</button></div>}
+    {!!held.length && <div className="run-held" role="status">{shellIconHand}<span>{run.status === "interrupted" ? "This program stopped when you took control. Review its checkpoint before another run." : held.length > 1 ? `${held.length} pages are held. Return each page when you’re ready.` : "Aux is paused while you use this page."}{uncertain > 0 ? ` ${uncertain} action${uncertain === 1 ? "" : "s"} may have taken effect and need review.` : ""}</span><button className="btn sm" disabled={!!busy} data-command-id="return-run-control" onClick={event => dispatch("return-run-control", event)}>{busy === "return" ? "Returning…" : held.length > 1 ? "Return this page" : run.status === "interrupted" ? "Return page" : "Return and resume"}</button></div>}
     {(!!held.length || takeoverCheckpoint) && run.config?.checkpoint && <details className="run-held-checkpoint"><summary>Takeover checkpoint</summary><p>{run.statusMessage ?? "The page is under your control."}</p><p>{uncertain ? `${uncertain} uncertain action${uncertain === 1 ? "" : "s"} ${uncertain === 1 ? "requires" : "require"} review before completion.` : run.status === "interrupted" ? "This stopped program will not replay when the page is returned." : "The next agent turn will inspect the page again before acting."}</p></details>}
     {error && <p className="field-error" role="alert">{error}</p>}
   </section>;

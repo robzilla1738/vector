@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { RunControls } from "./RunControls";
 import { bridge } from "../bridge";
+import { invokeRunControlCommand, type RunControlCommand } from "../run-control-commands";
+vi.mock("../commands", () => ({ executeCommand: (id: RunControlCommand, context: Parameters<typeof invokeRunControlCommand>[1]) => {
+  try { return Promise.resolve(invokeRunControlCommand(id, context)); } catch (error) { return Promise.reject(error); }
+} }));
 
 const mock = vi.hoisted(() => ({
   call: vi.fn(),
@@ -19,7 +23,11 @@ vi.mock("../store", () => ({
     { getState: () => mock.state }),
 }));
 
-beforeEach(() => { mock.call.mockReset(); mock.state.activate.mockReset(); });
+beforeEach(() => {
+  mock.call.mockReset(); mock.state.activate.mockReset();
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList);
+});
+afterEach(() => vi.restoreAllMocks());
 
 it("shows an inspectable takeover checkpoint and returns only the held page", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -79,4 +87,34 @@ it("explains separate sign-in and opens only this run’s controlled tab", async
     expect(mock.state.activate).toHaveBeenCalledWith("controlled");
     expect(mock.call).not.toHaveBeenCalled();
   } finally { act(() => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
+});
+
+
+it("registered Stop supersedes an original pending pause without losing its control owner", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  mock.state.runs = [{ runId: "run", status: "running", pageIds: [] }]; mock.state.pages = [];
+  let finishPause!: (value: unknown) => void, finishStop!: (value: unknown) => void;
+  mock.call.mockImplementation(method => new Promise(done => { if (method === "runs.pause") finishPause = done; else if (method === "runs.cancel") finishStop = done; }));
+  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+  try {
+    await act(async () => root.render(<RunControls runId="run" />));
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-command-id="pause-run"]')!.click());
+    await act(async () => host.querySelector<HTMLButtonElement>('[data-command-id="stop-run"]')!.click());
+    expect(mock.call.mock.calls.map(([method]) => method)).toEqual(["runs.pause", "runs.cancel"]);
+    expect(host.querySelector<HTMLButtonElement>('[data-command-id="stop-run"]')!.disabled).toBe(true);
+    await act(async () => finishPause({}));
+    expect(host.querySelector<HTMLButtonElement>('[data-command-id="stop-run"]')!.disabled).toBe(true);
+    await act(async () => finishStop({}));
+    expect(host.querySelector<HTMLButtonElement>('[data-command-id="stop-run"]')!.disabled).toBe(false);
+  } finally { act(() => root.unmount()); host.remove(); vi.unstubAllGlobals(); }
+});
+
+it("unmount retires registered run commands and cannot cancel a different run", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  mock.state.runs = [{ runId: "run", status: "running", pageIds: [] }]; mock.state.pages = [];
+  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+  await act(async () => root.render(<RunControls runId="run" />));
+  await act(async () => root.unmount()); host.remove();
+  expect(() => invokeRunControlCommand("stop-run", { payload: { runId: "run" } })).toThrow("Choose the run’s controls");
+  expect(mock.call).not.toHaveBeenCalled(); vi.unstubAllGlobals();
 });

@@ -6,6 +6,8 @@ import type { useStore } from "../store";
 
 export type CommandContext = ReturnType<typeof useStore.getState>;
 export interface CommandInvocation {
+  /** Original DOM input only; native fixture instrumentation owns its validation. */
+  nativeInputEvent?: Event;
   payload?: { targetId: string; url: string } | { queue: import("@aux/contracts").MethodParams<"nightShift.queue"> }
     | import("@aux/contracts").MethodParams<"nightShift.review">
     | { nightShift: import("zod").infer<typeof import("@aux/contracts").NightShiftSettingsSchema> }
@@ -36,7 +38,7 @@ export interface CommandInvocation {
     | { approvalId: string; turnId: string } | { pageId: string; turnId: string }
     | { turnId: string } | { effectGrants: string[] }
     | { composerId: string; candidateId: string } | { composerId: string; tokenStart: number }
-    | { enabled: boolean };
+    | { enabled: boolean } | { runId: string };
 }
 export interface ComposerPluginProps {
   composerId: string;
