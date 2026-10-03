@@ -1,0 +1,49 @@
+{
+  "sourceOnly": true,
+  "adopted": false,
+  "nativeExecuted": false,
+  "packetSha256": "f76c7329f830a46bea0efa673a324f43f43463a0a56996be9b4c23928af819dd",
+  "actualPinnedLeaves": 10,
+  "exactForwardReverseForward": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-compiled-factory-replay-d1al8vkm",
+  "unchangedDependencies": {
+    "tests/host/lib/startup-helper-manifest.mjs": "298418eef44015f0aa8fcc3aefc1341f90a5539cc1d65d525fbd704d87c5ec16"
+  },
+  "semanticReview": {
+    "originalApprovedDocumentsRequired": true,
+    "retainedDescriptorIdentityAndFullBytes": true,
+    "existingMachOReaderReused": true,
+    "brandedExecutableAdmissionNoFallback": true,
+    "originalStartupOwnerAndLoadedHelperJoined": true,
+    "cleanupQuarantineRetained": true,
+    "synchronousSpawnFailureSlotGapSuccessorRequested": false,
+    "asyncNoPidCloseReviewRequested": false,
+    "synchronousSpawnFailureReleasesOriginalSlot": true,
+    "asyncNoPidCloseRetainsOriginalFailureAndUnprovedReap": true
+  },
+  "controlsNotYetIndependentlyRun": false,
+  "spawnSuccessor": {
+    "sha256": "6f2a61b7dd54094b6cb7f1e8623c3618b0ce8feb76b2123f5c15c42cc98429db",
+    "exactForwardReverseForward": true,
+    "sourceOnly": true
+  },
+  "factoryFailureSuccessor": {
+    "sha256": "d2f8f363ac97d712d7b9f0508c393c033cb6d894d723d904c5c7d66c35f53b48",
+    "exactForwardReverseForward": true,
+    "originalOwnerlessFailureRetainedPrivately": true
+  },
+  "independentControls": {
+    "initialLog": "/tmp/aux-root-0316-factory-controls.log",
+    "initialLogSha256": "b5c27fea885bb1495d068f9be1de317a065bd0ab16ac16aaa4daaa8cf726fff2",
+    "initialActualPass": 94,
+    "note": "Initial command selected four ordinary lib tests instead of the four prior actual adapter tests at tests/host; all initial controls passed. Those missing original adapters and the changed factory successor are verified in a separate follow-up; no repeated unchanged checks.",
+    "followupActualPass": 32,
+    "followupLog": "/tmp/aux-root-0316-factory-followup-controls.log",
+    "followupLogSha256": "9548519e3faed0a1fe7c38042ae6409f421c6fae18edcd08eb868ab4592c6ea8",
+    "everyOriginal94NamedControlRetainedAndPassed": true,
+    "actualDistinctNamedControls": 120,
+    "failed": 0,
+    "cancelled": 0,
+    "nativeOperations": false
+  }
+}
