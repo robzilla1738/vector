@@ -197,6 +197,7 @@ class AuxRuntimeHost final : public base::SupportsUserData::Data {
   };
 
   friend class AuxRuntimeHostTestPeer;
+  friend class NativePersonReadHostTestPeer;
   using TestDispatch = base::RepeatingCallback<void(
       bool, std::string, std::string, ResponseCallback)>;
   static AuxRuntimeHost* InstallTestDispatch(Profile* profile, TestDispatch dispatch);

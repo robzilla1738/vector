@@ -1,6 +1,8 @@
 // Copyright 2026 The Aux Authors
 #include "chrome/browser/ui/aux/native_person_observer_controller.h"
 
+#include <algorithm>
+#include <array>
 #include <memory>
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
@@ -8,6 +10,7 @@
 #include "base/uuid.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/aux/page_identity.h"
+#include "chrome/browser/ui/aux/runtime_host.h"
 #include "chrome/browser/ui/aux/tab_catalog.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -24,6 +27,32 @@
 #include "net/test/embedded_test_server/http_response.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/page_transition_types.h"
+
+// This peer drives original host publication/retirement transitions. The
+// generation is synthetic; these cases do not qualify Worker socket/hello.
+class NativePersonReadHostTestPeer {
+ public:
+  static uint64_t PublishNext(AuxRuntimeHost* host) {
+    const uint64_t generation = std::max(host->admitted_native_generation_,
+                                        host->retired_native_generation_) + 1;
+    host->NativeConnectionPublished(generation);
+    return generation;
+  }
+  static void Publish(AuxRuntimeHost* host, uint64_t generation) {
+    host->NativeConnectionPublished(generation);
+  }
+  static void Retire(AuxRuntimeHost* host, uint64_t generation) {
+    host->NativeConnectionRetired(generation);
+  }
+  static size_t Pending(AuxRuntimeHost* host) {
+    return host->native_person_reads_.size();
+  }
+  static void Call(AuxRuntimeHost* host, uint64_t generation,
+                   std::string method, base::DictValue params,
+                   base::OnceCallback<void(base::DictValue)> reply) {
+    host->HandleNativePersonReadCall(method, params, generation, std::move(reply));
+  }
+};
 
 namespace aux {
 namespace {
@@ -198,5 +227,115 @@ IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
   ASSERT_NE(replacement.FindDict("result"), nullptr);
   ASSERT_NE(replacement.FindDict("result")->FindString("sessionId"), nullptr);
   EXPECT_NE(*replacement.FindDict("result")->FindString("sessionId"), original_session);
+}
+}  // namespace aux
+
+namespace aux {
+IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
+                       OriginalHostPublicationIsIdempotentAndRetiredGenerationRefuses) {
+  auto* host = AuxRuntimeHost::ForProfile(browser()->GetProfile());
+  ASSERT_NE(host, nullptr);
+  const auto generation = NativePersonReadHostTestPeer::PublishNext(host);
+  auto receipt = EgressController::ForProfile(browser()->GetProfile())->CapturePersonRead(page_);
+  ASSERT_TRUE(receipt);
+  const auto id = receipt->page_id();
+  auto describe = [&](uint64_t current) {
+    base::test::TestFuture<base::DictValue> reply;
+    NativePersonReadHostTestPeer::Call(host, current, "native.personReadContext",
+        base::DictValue().Set("pageId", id), reply.GetCallback());
+    return reply.Take();
+  };
+  auto first = describe(generation);
+  ASSERT_NE(first.FindDict("result"), nullptr);
+  ASSERT_NE(first.FindDict("result")->FindString("sessionId"), nullptr);
+  const auto session = *first.FindDict("result")->FindString("sessionId");
+  NativePersonReadHostTestPeer::Publish(host, generation);
+  auto duplicate = describe(generation);
+  ASSERT_NE(duplicate.FindDict("result"), nullptr);
+  ASSERT_NE(duplicate.FindDict("result")->FindString("sessionId"), nullptr);
+  EXPECT_EQ(*duplicate.FindDict("result")->FindString("sessionId"), session);
+  NativePersonReadHostTestPeer::Retire(host, generation);
+  EXPECT_NE(describe(generation).FindDict("error"), nullptr);
+  const auto replacement = NativePersonReadHostTestPeer::PublishNext(host);
+  NativePersonReadHostTestPeer::Retire(host, generation);
+  auto fresh = describe(replacement);
+  ASSERT_NE(fresh.FindDict("result"), nullptr);
+  ASSERT_NE(fresh.FindDict("result")->FindString("sessionId"), nullptr);
+  EXPECT_NE(*fresh.FindDict("result")->FindString("sessionId"), session);
+}
+
+IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
+                       ActualEightPendingHostReadsRefuseNinthAndRetirementClearsAll) {
+  std::array<std::string, 8> ids;
+  for (size_t index = 0; index < ids.size(); ++index) {
+    if (index) ASSERT_NE(ui_test_utils::NavigateToURLWithDisposition(browser(),
+        embedded_test_server()->GetURL("/ordinary-read"),
+        WindowOpenDisposition::NEW_FOREGROUND_TAB,
+        ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP), nullptr);
+    auto* page = browser()->tab_strip_model()->GetActiveWebContents();
+    PageIdentity::GetOrCreate(browser()->GetProfile(), page);
+    TabCatalog::GetForProfile(browser()->GetProfile())->Snapshot();
+    auto receipt = EgressController::ForProfile(browser()->GetProfile())->CapturePersonRead(page);
+    ASSERT_TRUE(receipt);
+    ids[index] = receipt->page_id();
+  }
+  auto* host = AuxRuntimeHost::ForProfile(browser()->GetProfile());
+  ASSERT_NE(host, nullptr);
+  const auto generation = NativePersonReadHostTestPeer::PublishNext(host);
+  std::array<base::test::TestFuture<base::DictValue>, 8> replies;
+  // No task drain: all actual renderer requests remain pending concurrently.
+  for (size_t index = 0; index < ids.size(); ++index) {
+    NativePersonReadHostTestPeer::Call(host, generation, "native.personRead",
+        base::DictValue().Set("pageId", ids[index]).Set("request", Observe()),
+        replies[index].GetCallback());
+    ASSERT_FALSE(replies[index].IsReady());
+  }
+  EXPECT_EQ(NativePersonReadHostTestPeer::Pending(host), 8u);
+  base::test::TestFuture<base::DictValue> ninth;
+  NativePersonReadHostTestPeer::Call(host, generation, "native.personRead",
+      base::DictValue().Set("pageId", ids[0]).Set("request", Observe()), ninth.GetCallback());
+  auto refused = ninth.Take();
+  ASSERT_NE(refused.FindDict("error"), nullptr);
+  ASSERT_NE(refused.FindDict("error")->FindString("code"), nullptr);
+  EXPECT_EQ(*refused.FindDict("error")->FindString("code"), "conflict");
+  NativePersonReadHostTestPeer::Retire(host, generation);
+  EXPECT_EQ(NativePersonReadHostTestPeer::Pending(host), 0u);
+  for (auto& reply : replies) {
+    auto result = reply.Take();
+    ASSERT_NE(result.FindDict("error"), nullptr);
+    ASSERT_NE(result.FindDict("error")->FindString("code"), nullptr);
+    EXPECT_EQ(*result.FindDict("error")->FindString("code"), "target_detached");
+    EXPECT_EQ(result.FindDict("result"), nullptr);
+  }
+}
+
+IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
+                       OriginalRetirementCallbackRetainsReentrantReplacementRead) {
+  auto* host = AuxRuntimeHost::ForProfile(browser()->GetProfile());
+  ASSERT_NE(host, nullptr);
+  auto receipt = EgressController::ForProfile(browser()->GetProfile())->CapturePersonRead(page_);
+  ASSERT_TRUE(receipt);
+  const auto id = receipt->page_id();
+  const auto generation = NativePersonReadHostTestPeer::PublishNext(host);
+  base::test::TestFuture<base::DictValue> original, replacement;
+  uint64_t fresh_generation = 0;
+  NativePersonReadHostTestPeer::Call(host, generation, "native.personRead",
+      base::DictValue().Set("pageId", id).Set("request", Observe()),
+      base::BindOnce([&](base::DictValue result) {
+        original.SetValue(std::move(result));
+        fresh_generation = NativePersonReadHostTestPeer::PublishNext(host);
+        NativePersonReadHostTestPeer::Call(host, fresh_generation, "native.personRead",
+            base::DictValue().Set("pageId", id).Set("request", Observe()), replacement.GetCallback());
+      }));
+  ASSERT_FALSE(original.IsReady());
+  NativePersonReadHostTestPeer::Retire(host, generation);
+  EXPECT_NE(original.Take().FindDict("error"), nullptr);
+  ASSERT_GT(fresh_generation, generation);
+  EXPECT_EQ(NativePersonReadHostTestPeer::Pending(host), 1u);
+  NativePersonReadHostTestPeer::Retire(host, generation);
+  auto fresh = replacement.Take();
+  ASSERT_NE(fresh.FindDict("result"), nullptr);
+  EXPECT_NE(fresh.FindDict("result")->FindString("sessionId"), nullptr);
+  EXPECT_EQ(NativePersonReadHostTestPeer::Pending(host), 0u);
 }
 }  // namespace aux
