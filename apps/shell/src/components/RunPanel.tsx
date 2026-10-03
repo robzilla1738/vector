@@ -40,6 +40,24 @@ export function isLatestTurn(runs: readonly Run[], runId: string): boolean {
   return latest?.runId === runId;
 }
 
+/** Display-only source resolution; retry still requires runtime authority. */
+function retrySourceIds(run: Run): string[] | null {
+  const refs = run.config?.contextPageRefs ?? [];
+  const copies = run.config?.isolatedPageSources;
+  let ids = run.pageIds;
+  if (copies?.length) {
+    const matches = run.pageIds.map(id => copies.filter(copy => copy.pageId === id));
+    if (copies.length !== ids.length || matches.some(rows => rows.length !== 1)) return null;
+    ids = matches.map(rows => rows[0]!.sourcePageId);
+    if (new Set(ids).size !== ids.length || refs.length !== ids.length || matches.some(rows => {
+      const copy = rows[0]!;
+      const sourceRefs = refs.filter(ref => ref.pageId === copy.sourcePageId);
+      return sourceRefs.length !== 1 || sourceRefs[0]!.url !== copy.url;
+    })) return null;
+  }
+  return refs.some(ref => !ids.includes(ref.pageId)) ? null : ids;
+}
+
 function fmtElapsed(ms: number): string {
   const s = Math.floor(ms / 1000);
   if (s < 60) return `${s}s`;
@@ -147,8 +165,9 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
   const stats = useStore((s) => s.modelStats[runId]);
   const obs = useStore((s) => s.observations[runId]);
   const prompt = useStore((s) => s.prompt);
-  // Only the pages this run can act on — unrelated tab churn does not re-render the panel.
-  const runPages = useStore(useShallow((s) => s.pages.filter((p) => (run?.pageIds ?? []).includes(p.pageId) || p.pageId === retryPageId)));
+  // Include retained original sources for retry availability, not authority.
+  const retryIds = run ? retrySourceIds(run) : [];
+  const runPages = useStore(useShallow((s) => s.pages.filter((p) => (run?.pageIds ?? []).includes(p.pageId) || retryIds?.includes(p.pageId) || p.pageId === retryPageId)));
   const activePageId = useStore((s) => s.activePageId);
   const loadRun = useStore((s) => s.loadRun);
   const startRun = useStore((s) => s.startRun);
@@ -182,9 +201,15 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
   const originalPages = run.pageIds.map(id => runPages.find(p => p.pageId === id));
   const usable = (item?: typeof runPages[number]) => !!item && !["crashed", "detached"].includes(item.viewStatus ?? "");
   const page = usable(originalPages[0]) ? originalPages[0] : undefined;
-  const missingOriginals = run.pageIds.filter((id, index) => !usable(originalPages[index]) || originalPages[index]?.pageId !== id);
-  const multiTabBlocked = run.pageIds.length > 1 && missingOriginals.length > 0;
-  const retryPage = !page && !multiTabBlocked && run.pageIds.length === 1 ? runPages.find(item => item.pageId === retryPageId && usable(item)) : undefined;
+  const retryAvailable = retryIds !== null && retryIds.every(id => {
+    const source = runPages.find(item => item.pageId === id);
+    if (!usable(source)) return false;
+    const ref = run.config?.contextPageRefs?.find(item => item.pageId === id);
+    return !ref || !source!.ownedByRuntime && source!.url === ref.url
+      && source!.documentEpoch === ref.documentEpoch && source!.sessionId === ref.sessionId;
+  });
+  const multiTabBlocked = run.pageIds.length > 1 && !retryAvailable;
+  const retryPage = !retryAvailable && !multiTabBlocked && run.pageIds.length === 1 ? runPages.find(item => item.pageId === retryPageId && usable(item)) : undefined;
   const humanHolds = runPages.some(page => run.pageIds.includes(page.pageId) && page.controller === "human");
   const asksMe = prompt?.runId === run.runId || run.status === "needs_input";
   const question = prompt?.runId === run.runId ? prompt.question : run.statusMessage;
@@ -231,7 +256,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
                 : null)}
         </span>
       </div>}
-      {!live && latestConversationTurn && !run.config?.taskId && !page && retryPage && (!run.failure || run.failure.retryable) && <section className="run-failure" role="status">
+      {!live && latestConversationTurn && !run.config?.taskId && !retryAvailable && retryPage && (!run.failure || run.failure.retryable) && <section className="run-failure" role="status">
         <div className="run-failure-copy"><strong>The original tab is unavailable</strong><p>Retry using {retryPage.title || retryPage.url}. The saved request and context stay the same; the browser page changes.</p></div>
         <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId, retryPage.pageId)}>{retrying ? "Retrying…" : "Retry in selected tab"}</button>
       </section>}
@@ -242,7 +267,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
 
       {live && run.statusMessage && !asksMe && !conversation && <p className="run-msg">{run.statusMessage}</p>}
 
-      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || (!page && run.pageIds.length > 0) || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{shellIconReload}</button> : null} />
+      <Answer run={run} sources={sources} conversation={conversation} stream={stream} onCitationOpen={onCitationOpen} retry={conversation && !live && latestConversationTurn && !run.failure && !run.config?.taskId ? <button className="icon-btn sm" title={retrying ? "Retrying…" : "Retry this turn"} aria-label={retrying ? "Retrying turn" : "Retry this turn"} disabled={readOnly || !retryAvailable || retrying || multiTabBlocked} onClick={() => void retryRun(run.runId)}>{shellIconReload}</button> : null} />
       <RunTranscriptDetails savedAnswerIds={savedAnswerIds} run={run} question={question} readOnly={readOnly} answerInComposer={questionInComposer} />
 
       {(calls != null || stats || !conversation) && <details className="run-provenance">
@@ -259,7 +284,7 @@ export const RunPanel = memo(function RunPanel({ savedAnswerIds, runId, conversa
             <strong>{run.failure.action === "model_settings" ? "Connection needs attention" : run.failure.action === "permission_settings" ? "Permission needed" : "This turn stopped"}</strong>
             <p>{run.failure.message}</p>
           </div>
-          {latestConversationTurn && !run.config?.taskId && ["retry", "permission_settings"].includes(run.failure.action) && (page || !run.pageIds.length) && (
+          {latestConversationTurn && !run.config?.taskId && ["retry", "permission_settings"].includes(run.failure.action) && retryAvailable && (
             <button className="btn sm" disabled={readOnly || retrying} onClick={() => void retryRun(run.runId)}>{shellIconReload}{retrying ? "Retrying…" : "Retry turn"}</button>
           )}
           {run.failure.action === "edit_request" && latestConversationTurn && <button className="btn sm" disabled={readOnly} onClick={() => {
