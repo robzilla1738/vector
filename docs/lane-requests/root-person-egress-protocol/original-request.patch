@@ -1,0 +1,306 @@
+--- a/chrome/browser/ui/aux/egress_controller.h
++++ b/chrome/browser/ui/aux/egress_controller.h
+@@ -2,10 +2,11 @@
+ #ifndef CHROME_BROWSER_UI_AUX_EGRESS_CONTROLLER_H_
+ #define CHROME_BROWSER_UI_AUX_EGRESS_CONTROLLER_H_
+ 
+ #include <map>
+ #include <memory>
++#include <optional>
+ #include <set>
+ #include <string>
+ #include <utility>
+ #include <vector>
+ 
+@@ -39,10 +40,33 @@
+   content::WeakDocumentPtr document;
+   std::string page_id;
+   std::string kind;
+   bool ambiguous = false;
+ };
++// Browser-owned read admission; no runtime phase label or caller token can
++// construct one. The primary document and control generation stay original.
++class NativePersonReadReceipt {
++ public:
++  const content::WeakDocumentPtr& document() const { return document_; }
++  const std::string& page_id() const { return page_id_; }
++
++ private:
++  friend class EgressController;
++  friend class NativePersonObserverController;
++  NativePersonReadReceipt(content::WeakDocumentPtr document,
++                          std::string page_id,
++                          std::string control_generation,
++                          std::string retirement_generation)
++      : document_(document),
++        page_id_(std::move(page_id)),
++        control_generation_(std::move(control_generation)),
++        retirement_generation_(std::move(retirement_generation)) {}
++  content::WeakDocumentPtr document_;
++  std::string page_id_;
++  std::string control_generation_;
++  std::string retirement_generation_;
++};
+ class EgressController final : public base::SupportsUserData::Data {
+  public:
+   static EgressController* ForProfile(Profile* profile);
+   static void ProxyFactory(
+       Profile* profile,
+@@ -71,10 +95,13 @@
+                         const std::string& page_id,
+                         const std::string& isolation_id,
+                         content::RenderFrameHost* frame,
+                         const std::string& reason);
+   bool IsIsolatedPage(content::WebContents* page) const;
++  std::optional<NativePersonReadReceipt> CapturePersonRead(
++      content::WebContents* page);
++  bool MayReadPerson(const NativePersonReadReceipt& receipt);
+   void Disconnect();
+   bool AllowUninspectable(content::RenderFrameHost* frame,
+                           const std::string& kind);
+   bool ProtectCredential(content::RenderFrameHost* frame,
+                          std::u16string_view username,
+@@ -97,10 +124,12 @@
+                const std::string& phase,
+                const std::string& reason,
+                bool allowed);
+ 
+  private:
++  bool PersonReadPage(content::WebContents* page);
++  void RetirePersonReads();
+   struct PageState;
+   struct Credential;
+   struct Pending;
+   struct InFlight;
+   struct Isolation;
+@@ -131,10 +160,12 @@
+   std::vector<std::unique_ptr<Pending>> pending_;
+   std::map<std::string, std::unique_ptr<InFlight>> in_flight_;
+   base::OneShotTimer pending_timer_;
+   base::RepeatingClosureList authority_observers_;
+   OwnerMutationFence owner_mutations_;
++  std::string person_read_retirement_generation_;
++  base::CallbackListSubscription person_read_mutation_subscription_;
+   size_t receipt_count_ = 0;
+   base::WeakPtrFactory<EgressController> weak_factory_{this};
+ };
+ }  // namespace aux
+ #endif
+--- a/chrome/browser/ui/aux/egress_controller.cc
++++ b/chrome/browser/ui/aux/egress_controller.cc
+@@ -104,10 +104,12 @@
+   return frame && frame->IsActive() && frame->IsRenderFrameLive();
+ }
+ }  // namespace
+ struct EgressController::PageState {
+   bool guarded = false;
++  // Native-only read incarnation; never serialized into the task lease protocol.
++  std::string control_generation = base::UnguessableToken::Create().ToString();
+   content::WeakDocumentPtr document;
+   base::DictValue lease;
+ };
+ struct EgressController::Isolation {
+   std::string id;
+@@ -149,11 +151,18 @@
+   auto owned = std::unique_ptr<EgressController>(new EgressController(profile));
+   auto* result = owned.get();
+   profile->SetUserData(&kEgressKey, std::move(owned));
+   return result;
+ }
+-EgressController::EgressController(Profile* profile) : profile_(profile) {}
++EgressController::EgressController(Profile* profile)
++    : profile_(profile),
++      person_read_retirement_generation_(
++          base::UnguessableToken::Create().ToString()) {
++  person_read_mutation_subscription_ = owner_mutations_.Observe(
++      base::BindRepeating(&EgressController::RetirePersonReads,
++                         weak_factory_.GetWeakPtr()));
++}
+ EgressController::~EgressController() {
+   weak_factory_.InvalidateWeakPtrs();
+   Disconnect();
+ }
+ base::WeakPtr<EgressController> EgressController::GetWeakPtr() {
+@@ -236,10 +245,11 @@
+     state = std::make_unique<PageState>();
+   }
+   state->guarded = true;
+   page->SetUserData(&kIsolationObserverKey,
+                     std::make_unique<IsolationObserver>(page, GetWeakPtr(), page_id));
++  authority_observers_.Notify();
+   return true;
+ }
+ void EgressController::IsolationReceipt(const std::string& event,
+                                         const std::string& run_id,
+                                         const std::string& page_id,
+@@ -305,10 +315,70 @@
+ }
+ bool EgressController::IsIsolatedPage(content::WebContents* page) const {
+   const auto* identity = page ? PageIdentity::FromWebContents(page) : nullptr;
+   return identity && isolation_run_by_page_.contains(identity->id());
+ }
++bool EgressController::PersonReadPage(content::WebContents* page) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  if (!page || page->GetBrowserContext() != profile_ ||
++      profile_->IsOffTheRecord() || owner_mutations_.pending())
++    return false;
++  const auto* identity = PageIdentity::FromWebContents(page);
++  auto* frame = page->GetPrimaryMainFrame();
++  auto* catalog = TabCatalog::GetForProfile(profile_);
++  if (!identity || identity->runtime_owned() || !LiveFrame(frame) ||
++      !catalog || catalog->FindPage(identity->id()) != page ||
++      isolation_run_by_page_.contains(identity->id()) ||
++      !page->GetLastCommittedURL().SchemeIsHTTPOrHTTPS() ||
++      IsProtected({frame->GetWeakDocumentPtr(), identity->id(), "person-read"}))
++    return false;
++  // An ordinary popup cannot borrow person admission from a task opener,
++  // including the interval before its first installed request lease.
++  auto* opener = page->GetFirstWebContentsInLiveOriginalOpenerChain();
++  for (size_t depth = 0; opener && depth < 64; ++depth) {
++    const auto* opener_identity = PageIdentity::FromWebContents(opener);
++    if (opener->GetBrowserContext() != profile_ || !opener_identity ||
++        opener_identity->runtime_owned() ||
++        isolation_run_by_page_.contains(opener_identity->id()))
++      return false;
++    opener = opener->GetFirstWebContentsInLiveOriginalOpenerChain();
++  }
++  if (opener)
++    return false;
++  const auto it = pages_.find(identity->id());
++  return it == pages_.end() ||
++      (!it->second->guarded && it->second->lease.empty());
++}
++std::optional<NativePersonReadReceipt> EgressController::CapturePersonRead(
++    content::WebContents* page) {
++  if (!PersonReadPage(page))
++    return std::nullopt;
++  const auto id = PageIdentity::FromWebContents(page)->id();
++  auto& state = pages_[id];
++  if (!state)
++    state = std::make_unique<PageState>();
++  return NativePersonReadReceipt(
++      page->GetPrimaryMainFrame()->GetWeakDocumentPtr(), id,
++      state->control_generation, person_read_retirement_generation_);
++}
++bool EgressController::MayReadPerson(const NativePersonReadReceipt& receipt) {
++  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
++  auto* frame = receipt.document_.AsRenderFrameHostIfValid();
++  auto* page = frame ? content::WebContents::FromRenderFrameHost(frame) : nullptr;
++  if (!PersonReadPage(page) || page->GetPrimaryMainFrame() != frame ||
++      PageIdentity::FromWebContents(page)->id() != receipt.page_id_ ||
++      person_read_retirement_generation_ != receipt.retirement_generation_)
++    return false;
++  const auto it = pages_.find(receipt.page_id_);
++  return it != pages_.end() &&
++      it->second->control_generation == receipt.control_generation_;
++}
++void EgressController::RetirePersonReads() {
++  person_read_retirement_generation_ =
++      base::UnguessableToken::Create().ToString();
++  authority_observers_.Notify();
++}
+ const EgressController::Isolation* EgressController::IsolationForPage(
+     const std::string& page_id,
+     content::RenderFrameHost* frame) const {
+   auto owner = isolation_run_by_page_.find(page_id);
+   if (owner == isolation_run_by_page_.end() || !frame ||
+@@ -468,10 +538,12 @@
+   CancelChecks(affected, false, lease_id);
+   authority_observers_.Notify();
+   return Result(base::DictValue().Set("accepted", true));
+ }
+ void EgressController::Disconnect() {
++  person_read_retirement_generation_ =
++      base::UnguessableToken::Create().ToString();
+   for (auto& [id, state] : pages_) {
+     state->lease.clear();
+   }
+   CancelChecks({}, true);
+   authority_observers_.Notify();
+--- a/chrome/browser/ui/aux/permission_broker_unittest.cc
++++ b/chrome/browser/ui/aux/permission_broker_unittest.cc
+@@ -334,10 +334,84 @@
+   bool auto_fresh_ = true;
+   std::string isolation_id_, page_id_;
+   base::DictValue lease_;
+ };
+ 
++TEST_F(PermissionBrokerTest, PersonReadRetainsOriginalOrdinaryDocument) {
++  AddFixtureTab(GURL("https://person-read.test/start"));
++  auto* human = browser()->tab_strip_model()->GetWebContentsAt(0);
++  PageIdentity::GetOrCreate(profile(), human);
++  auto receipt = controller_->CapturePersonRead(human);
++  ASSERT_TRUE(receipt);
++  EXPECT_TRUE(controller_->MayReadPerson(*receipt));
++  EXPECT_EQ(receipt->document().AsRenderFrameHostIfValid(),
++            human->GetPrimaryMainFrame());
++  EXPECT_FALSE(controller_->CapturePersonRead(page_));
++  EXPECT_TRUE(controller_->PermissionAuthority(human->GetPrimaryMainFrame()).empty());
++  NavigateAndCommit(human, GURL("https://person-read.test/next"));
++  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
++  EXPECT_TRUE(controller_->CapturePersonRead(human));
++}
++TEST_F(PermissionBrokerTest, PersonReadCannotSurviveSettledOwnerMutation) {
++  AddFixtureTab(GURL("https://person-read.test/"));
++  auto* human = browser()->tab_strip_model()->GetWebContentsAt(0);
++  PageIdentity::GetOrCreate(profile(), human);
++  auto receipt = controller_->CapturePersonRead(human);
++  ASSERT_TRUE(receipt);
++  int retirements = 0;
++  auto subscription = controller_->ObserveAuthority(
++      base::BindRepeating([](int* count) { ++*count; }, &retirements));
++  auto token = controller_->owner_mutations().Begin();
++  ASSERT_TRUE(token);
++  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
++  EXPECT_FALSE(controller_->CapturePersonRead(human));
++  ASSERT_TRUE(controller_->owner_mutations().End(*token, true));
++  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
++  EXPECT_TRUE(controller_->CapturePersonRead(human));
++  EXPECT_EQ(retirements, 2);
++}
++TEST_F(PermissionBrokerTest, PersonReadDisconnectCannotReplayOriginalReceipt) {
++  AddFixtureTab(GURL("https://person-read.test/"));
++  auto* human = browser()->tab_strip_model()->GetWebContentsAt(0);
++  PageIdentity::GetOrCreate(profile(), human);
++  auto receipt = controller_->CapturePersonRead(human);
++  ASSERT_TRUE(receipt);
++  controller_->Disconnect();
++  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
++  auto replacement = controller_->CapturePersonRead(human);
++  ASSERT_TRUE(replacement);
++  EXPECT_TRUE(controller_->MayReadPerson(*replacement));
++  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
++}
++TEST_F(PermissionBrokerTest, PersonReadRefusesRuntimeOwnedAndForeignProfile) {
++  AddFixtureTab(GURL("https://person-read.test/"));
++  auto* human = browser()->tab_strip_model()->GetWebContentsAt(0);
++  PageIdentity::GetOrCreate(profile(), human);
++  auto receipt = controller_->CapturePersonRead(human);
++  ASSERT_TRUE(receipt);
++  TestingProfile other;
++  EXPECT_FALSE(EgressController::ForProfile(&other)->CapturePersonRead(human));
++  EXPECT_FALSE(EgressController::ForProfile(&other)->MayReadPerson(*receipt));
++  PageIdentity::MarkRuntimeOwned(profile(), human);
++  EXPECT_FALSE(controller_->CapturePersonRead(human));
++  EXPECT_FALSE(controller_->MayReadPerson(*receipt));
++}
++TEST_F(PermissionBrokerTest, PersonReadRefusesRegisteredIsolationBeforeInstall) {
++  auto [id, partition] = controller_->ReserveIsolation("read-preparing", "task", 4);
++  ASSERT_FALSE(id.empty());
++  auto contents = content::WebContentsTester::CreateTestWebContents(
++      profile(), content::SiteInstance::CreateForFixedStoragePartition(
++          profile(), origin_, partition));
++  auto* preparing = contents.get();
++  frame_bindings_.push_back(
++      std::make_unique<PermissionFixtureFrameBindings>(preparing));
++  browser()->tab_strip_model()->AppendWebContents(std::move(contents), true);
++  NavigateAndCommit(preparing, origin_);
++  ASSERT_TRUE(controller_->RegisterIsolation(preparing, id, "read-preparing", "task", 4));
++  EXPECT_TRUE(controller_->PermissionAuthority(preparing->GetPrimaryMainFrame()).empty());
++  EXPECT_FALSE(controller_->CapturePersonRead(preparing));
++}
+ TEST_F(PermissionBrokerTest, UnrelatedSuccessfulMutationResumesOnlyAfterReceipt) {
+   Prompt(); Allow(false); Mutate(); base::RunLoop().RunUntilIdle();
+   EXPECT_FALSE(state_.granted); EXPECT_TRUE(controller_->owner_mutations().pending());
+   Reply("safety.originPolicies.set", true, base::DictValue());
+   EXPECT_TRUE(state_.granted); EXPECT_TRUE(state_.finished);

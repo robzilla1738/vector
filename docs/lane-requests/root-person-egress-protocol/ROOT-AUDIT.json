@@ -1,0 +1,40 @@
+{
+  "base": "0fb1c57d",
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "whole0280Ready": false,
+  "sourceRequest": "e55ccfdbcc7ca2949855c7df7deffc1b38bd69dfe74504bf3d4aa2743e676a28",
+  "derivedRequest": "d342fc5586d5ba111b3806594684655c99092766a046d64ec154d1e342da083a",
+  "actualOriginalResultReverseRestoration": true,
+  "taskMethodsByteExact": [
+    "Context",
+    "Install",
+    "Revoke",
+    "Current",
+    "Check",
+    "PermissionAuthority"
+  ],
+  "personNativeTestsByteExact": 5,
+  "files": [
+    {
+      "path": "chrome/browser/ui/aux/egress_controller.h",
+      "original": "155a0dfa5e0934b407245631fab7c6796e5b5b60701c5cc35ea55c7af0aa8963",
+      "unadoptedFoundation": "1f0cf1455720a69d1889d596d45df606adc135d2b15aa72466d624e2f98523cf",
+      "after": "79fd128dd3667ecd0539de6e4983a869851749dbf4f3d719a627aa787154fd3f"
+    },
+    {
+      "path": "chrome/browser/ui/aux/egress_controller.cc",
+      "original": "9333be98085491b6e7909f0be29b2ef409d31e48b9e9eb71ed557daff75ed246",
+      "unadoptedFoundation": "8a164f20a474fd6ce678268797def4e700ce46878a491cffda0956fca7ef3973",
+      "after": "87d9fa29b7d26d521226450bf3562ca5fdd77ab3b43772d9eaa35bfc7f5274d0"
+    },
+    {
+      "path": "chrome/browser/ui/aux/permission_broker_unittest.cc",
+      "original": "d7fc22563236fd7e86d91eec8686b0272a2e060405ed0e124062a44361e2077f",
+      "unadoptedFoundation": "652cb4784909a15ccd8f1cb0405d827ef84d9d63012ff2555a8d1e2b7695de5b",
+      "after": "652cb4784909a15ccd8f1cb0405d827ef84d9d63012ff2555a8d1e2b7695de5b"
+    }
+  ],
+  "scope": "Replace incompatible unadopted foundation Egress mirrors with native-only person lifecycle against actual21eb. Preserve every original task wire/authorization method; full strengthened CDP foundation remains separate pending coherent runtime schema/adapter and native transition closure."
+}
