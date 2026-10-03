@@ -1,4 +1,4 @@
-import { useCallback, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type RefObject, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { useCallback, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type HTMLAttributes, type InputHTMLAttributes, type ReactNode, type MouseEvent, type KeyboardEvent, type RefObject, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { shellIconClose, shellIconFolder, shellIconMore } from "../components/icons";
 import { Menu } from "./dialog";
 import "./ui.css";
@@ -123,25 +123,34 @@ export function Tabs<T extends string>({ label, value, onChange, items, panelId,
   </div>;
 }
 
-export type MenuAction = { label: string; icon?: ReactNode; onSelect(): void; disabled?: boolean; danger?: boolean; shortcut?: string };
-export function ActionMenu({ label, actions, children = shellIconMore, triggerRef }: { label: string; actions: MenuAction[]; children?: ReactNode; triggerRef?: (node: HTMLButtonElement | null) => void }) {
+export type MenuAction = { label: string; icon?: ReactNode; onSelect(event?: MouseEvent<HTMLButtonElement>): void; controlRef?: (node: HTMLButtonElement | null) => void; disabled?: boolean; danger?: boolean; shortcut?: string };
+export function ActionMenu({ label, actions, children = shellIconMore, triggerRef, triggerControl, onTrigger }: { label: string; actions: MenuAction[]; children?: ReactNode; triggerRef?: (node: HTMLButtonElement | null) => void; triggerControl?: (node: HTMLButtonElement | null, activate: () => void) => void; onTrigger?: (event: MouseEvent<HTMLButtonElement> | KeyboardEvent<HTMLButtonElement>) => void }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const openAtEnd = useRef(false);
   const id = useId();
+  const triggerMode = useRef<"toggle" | "first" | "last">("toggle");
+  const activate = useCallback(() => {
+    const mode=triggerMode.current;triggerMode.current="toggle";openAtEnd.current=mode==="last";
+    if(mode==="toggle")setOpen(value=>!value);else setOpen(true);
+  },[]);
+  const requestTrigger=(event:MouseEvent<HTMLButtonElement>|KeyboardEvent<HTMLButtonElement>,mode:"toggle"|"first"|"last")=>{
+    triggerMode.current=mode;
+    try { if(onTrigger)onTrigger(event);else activate(); } finally { triggerMode.current="toggle"; }
+  };
   const close = useCallback(() => setOpen(false), []);
   return <>
-    <button ref={node => { trigger.current = node; triggerRef?.(node); }} type="button" className="icon-btn ui-menu-trigger" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => { openAtEnd.current = false; setOpen(value => !value); }} onKeyDown={event => {
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); openAtEnd.current = event.key === "ArrowUp"; setOpen(true); }
+    <button ref={node => { trigger.current = node; triggerRef?.(node); triggerControl?.(node,activate); }} type="button" className="icon-btn ui-menu-trigger" aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} onClick={event => requestTrigger(event,"toggle")} onKeyDown={event => {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); requestTrigger(event,event.key === "ArrowUp"?"last":"first"); }
     }}>{children}</button>
-    {open && <Menu id={id} label={label} onClose={close} anchor={trigger} returnFocus={trigger} atEnd={openAtEnd.current} className="menu ctx-menu ui-action-menu">{actions.map(action => <button key={action.label} type="button" role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={() => { close(); trigger.current?.focus({ preventScroll: true }); action.onSelect(); }}>
+    {open && <Menu id={id} label={label} onClose={close} anchor={trigger} returnFocus={trigger} atEnd={openAtEnd.current} className="menu ctx-menu ui-action-menu">{actions.map(action => <button key={action.label} ref={action.controlRef} type="button" role="menuitem" className={`menu-item${action.danger ? " danger" : ""}`} disabled={action.disabled} onClick={event => { close(); trigger.current?.focus({ preventScroll: true }); action.onSelect(event); }}>
       <span className="menu-ico">{action.icon}</span><span className="t">{action.label}</span>{action.shortcut && <Kbd>{action.shortcut}</Kbd>}
     </button>)}</Menu>}
   </>;
 }
 
-export function ListRow({ title, description, leading, trailing, selected = false, disabled = false, onOpen }: { title: string; description?: ReactNode; leading?: ReactNode; trailing?: ReactNode; selected?: boolean; disabled?: boolean; onOpen(): void }) {
-  return <div className={`ui-list-row${selected ? " selected" : ""}`}><button type="button" className="ui-list-open" disabled={disabled} onClick={onOpen} aria-current={selected ? "true" : undefined} title={title}>
+export function ListRow({ title, description, leading, trailing, selected = false, disabled = false, onOpen, openRef }: { title: string; description?: ReactNode; leading?: ReactNode; trailing?: ReactNode; selected?: boolean; disabled?: boolean; onOpen(event?: MouseEvent<HTMLButtonElement>): void; openRef?: (node: HTMLButtonElement | null) => void }) {
+  return <div className={`ui-list-row${selected ? " selected" : ""}`}><button ref={openRef} type="button" className="ui-list-open" disabled={disabled} onClick={onOpen} aria-current={selected ? "true" : undefined} title={title}>
     {leading && <span className="ui-list-icon">{leading}</span>}<span className="ui-list-copy"><strong>{title}</strong>{description && <small>{description}</small>}</span>
   </button>{trailing && <div className="ui-list-actions">{trailing}</div>}</div>;
 }
@@ -154,8 +163,8 @@ export function EmptyState({ title, description, action, icon = shellIconFolder 
   return <div className="ui-empty"><span className="ui-empty-icon" aria-hidden="true">{icon}</span><strong>{title}</strong>{description && <p>{description}</p>}{action}</div>;
 }
 
-export function DetailPane({ title, metadata, actions, onClose, children, className = "", headingRef }: { title: string; metadata?: ReactNode; actions?: ReactNode; onClose?: () => void; children: ReactNode; className?: string; headingRef?: RefObject<HTMLElement | null> }) {
-  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button type="button" className="icon-btn" aria-label={`Close ${title}`} onClick={onClose}>{shellIconClose}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
+export function DetailPane({ title, metadata, actions, onClose, children, className = "", headingRef, closeRef }: { title: string; metadata?: ReactNode; actions?: ReactNode; onClose?: (event?: MouseEvent<HTMLButtonElement>) => void; closeRef?: (node: HTMLButtonElement | null) => void; children: ReactNode; className?: string; headingRef?: RefObject<HTMLElement | null> }) {
+  return <section className={`ui-detail-pane ${className}`} aria-label={title}><header><div><strong ref={headingRef} tabIndex={headingRef ? -1 : undefined}>{title}</strong>{metadata && <small>{metadata}</small>}</div><div className="ui-detail-actions">{actions}{onClose && <button ref={closeRef} type="button" className="icon-btn" aria-label={`Close ${title}`} onClick={onClose}>{shellIconClose}</button>}</div></header><div className="ui-detail-content">{children}</div></section>;
 }
 
 export function ComposerFrame({ context, notices, children }: { context?: ReactNode; notices?: ReactNode; children: ReactNode }) {
