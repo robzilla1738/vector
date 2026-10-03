@@ -1,5 +1,7 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { expect, it } from 'vitest';
 import { acquireNativeSlot, withNativeSlot } from '../../scripts/native-slot.mjs';
@@ -39,5 +41,29 @@ it('times out if a crashed reclaimer still holds the reclamation lock', async ()
     writeFileSync(join(path, 'owner.json'), JSON.stringify({ pid: 2147483647, token: 'dead' }));
     mkdirSync(`${path}.reclaim`);
     await expect(acquireNativeSlot({ path, timeoutMs: 20 })).rejects.toThrow(/Timed out/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+it('recognizes a symlinked CLI entrypoint without treating an imported module as a command', () => {
+  const root = mkdtempSync(join(tmpdir(), 'aux-native-slot-entry-'));
+  const entry = join(root, 'native-slot.mjs');
+  try {
+    symlinkSync(fileURLToPath(new URL('../../scripts/native-slot.mjs', import.meta.url)), entry);
+    for (const flags of [[], ['--preserve-symlinks-main']]) {
+      const cli = spawnSync(process.execPath, [...flags, entry], { encoding: 'utf8', timeout: 5_000 });
+      expect(cli.error).toBeUndefined();
+      expect(cli.status).toBe(1);
+      expect(cli.stderr).toContain('Usage: node scripts/native-slot.mjs');
+    }
+    const wrapper = join(root, 'import-slot.mjs');
+    writeFileSync(wrapper, `await import(${JSON.stringify(entry)});`);
+    for (const argv of [[wrapper], ['--input-type=module', '-e',
+      'await import(process.argv[2])', 'unused-module-argument', entry]]) {
+      const imported = spawnSync(process.execPath, argv, { encoding: 'utf8', timeout: 5_000 });
+      expect(imported.error).toBeUndefined();
+      expect(imported.status).toBe(0);
+      expect(imported.stdout).toBe('');
+      expect(imported.stderr).toBe('');
+    }
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

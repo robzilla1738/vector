@@ -1,0 +1,46 @@
+{
+  "sourceOnly": true,
+  "originalSourceSha256": "62b2ad5d505c2ac0fc255561fa3972f9fb2f201ee2dfca44e14c93c88563d3da",
+  "correctedSourceSha256": "8d0530f3dc08ef3ece9986f30f3e72d1de61a3cbbebc4c636f4a4a35358b3fbc",
+  "wholeSlotOwnershipAndChildHandlingBodyUnchanged": true,
+  "actualOriginalFalseSuccessReproduced": [
+    {
+      "source": "original",
+      "flags": [],
+      "actualExitCode": 0,
+      "actualStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "nativeSlotAcquired": false
+    },
+    {
+      "source": "original",
+      "flags": [
+        "--preserve-symlinks-main"
+      ],
+      "actualExitCode": 1,
+      "actualStderrSha256": "5ac6b0cf28efad772fce0f8979782e2090f2369fa8a51a0d8c87c23d2f88c5e5",
+      "nativeSlotAcquired": false
+    },
+    {
+      "source": "corrected",
+      "flags": [],
+      "actualExitCode": 1,
+      "actualStderrSha256": "664d3d6170f3df6114d131601bdb664db4c87927f12029a57979dab79ceab67b",
+      "nativeSlotAcquired": false
+    },
+    {
+      "source": "corrected",
+      "flags": [
+        "--preserve-symlinks-main"
+      ],
+      "actualExitCode": 1,
+      "actualStderrSha256": "ea95bf67fb7e90d5dee6b8a1ecc8b409e725c88c66f6e53212a390bcadb2646f",
+      "nativeSlotAcquired": false
+    }
+  ],
+  "actualCliAndQuietImportControlsPassed": true,
+  "affectedUnitFilePassed": 4,
+  "scopedLintPassed": true,
+  "initialControlFailure": "Eval caller incorrectly set argv1 to the imported module; corrected to genuine wrapper and nonexistent eval argument with an existence guard. Failure retained in original test output.",
+  "currentBuilderPinnedFilesUnchanged": true,
+  "nativeOperationExecuted": false
+}

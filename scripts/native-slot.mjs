@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 
 export const nativeSlotPath = join(homedir(), 'aux-chromium-stable', '.aux-native-slot');
@@ -72,7 +72,7 @@ export async function withNativeSlot(run, options) {
   finally { slot.release(); }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   const [command, ...args] = process.argv.slice(2).filter((arg, index) => index !== 0 || arg !== '--');
   if (!command) throw new Error('Usage: node scripts/native-slot.mjs -- <command> [args]');
   process.exitCode = await withNativeSlot(token => new Promise((resolve, reject) => {
