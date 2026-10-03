@@ -278,3 +278,4 @@ aux/runtime/0304-pip-empty-automatic-ticket-refusal.patch
 aux/runtime/0305-startup-session-fixture-private-wrappers.patch
 aux/runtime/0306-pip-eligibility-native-setup-scope.patch
 aux/runtime/0307-pip-manual-document-native-enter-observer.patch
+aux/runtime/0308-pip-ordinary-fixture-real-player-pause.patch

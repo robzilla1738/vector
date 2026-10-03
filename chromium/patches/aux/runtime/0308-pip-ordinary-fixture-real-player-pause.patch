@@ -1,0 +1,18 @@
+diff --git a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
+index 0486f0b..4b5d9d8 100644
+--- a/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
++++ b/chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper_browsertest.cc
+@@ -4420,7 +4420,12 @@ IN_PROC_BROWSER_TEST_F(AuxQueuedAutomaticPictureInPictureBrowserTest,
+                        PausedPlayerBeforeActualAutomaticEffectRefusesWindow) {
+   ASSERT_NO_FATAL_FAILURE(PrepareOrdinaryVideo());
+   ASSERT_NO_FATAL_FAILURE(HoldActualAutomaticSession());
+-  PauseVideo(page);
++  // The ordinary fixture has no pauseVideo() helper. Pause its real player
++  // before waiting for the corresponding native media-session state.
++  ASSERT_TRUE(content::ExecJs(page,
++      "document.querySelector('video').pause();"
++      "navigator.mediaSession.playbackState = 'paused'",
++      content::EXECUTE_SCRIPT_NO_USER_GESTURE));
+   WaitForMediaSessionPaused(page);
+   ASSERT_NO_FATAL_FAILURE(ReleaseAndExpectNoWindow());
+ }
