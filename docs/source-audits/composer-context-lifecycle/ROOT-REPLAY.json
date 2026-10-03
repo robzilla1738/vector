@@ -1,0 +1,33 @@
+{
+  "sourceOnly": true,
+  "nativeVerified": false,
+  "packets": [
+    {
+      "path": "/tmp/aux-browser-runtime-design-context/docs/design-reviews/composer-context-lifecycle/request.patch",
+      "sha256": "2854e4207c2825c44beca31dc77bb80cbd036f23deb58d4feb14187e07085d80"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-design-context-pending/docs/design-reviews/composer-context-pending/request.patch",
+      "sha256": "c01a92a5805a39c1595ca053de0da2f2e1b11b32e907f51287b7462436e3b17d"
+    }
+  ],
+  "before": {
+    "apps/shell/src/components/BrowserContextTray.tsx": "35bddcf399d2876b8c727b87a9d91a132ffd1d7723ce7cd16e838b0fc77a41fb",
+    "apps/shell/src/components/Conversation.tsx": "724ed03bd31599e71f5bf382d09eb3ccd281d27a63c4a7455fc2cbb014aeccb0",
+    "apps/shell/src/components/Composer.context-lifecycle.test.tsx": null,
+    "apps/shell/src/components/BrowserContextTray.pending.test.tsx": null
+  },
+  "after": {
+    "apps/shell/src/components/BrowserContextTray.tsx": "c37908cc4fca50ac77cc03d7f400822df53894a85c949d4690302069340b7f70",
+    "apps/shell/src/components/Conversation.tsx": "2576e6761d0db8b2c094e32add5c083b5055388b7c55b4d337f74ddce4cee517",
+    "apps/shell/src/components/Composer.context-lifecycle.test.tsx": "fd1f5508250e931539ec3c170af0eda74a9140296fd3c30bd76f891b9b0d1b07",
+    "apps/shell/src/components/BrowserContextTray.pending.test.tsx": "0b122138ecd0cb2ac32b10c8b34f912c843956b2e695d05e6d24dc1d36776405"
+  },
+  "exactForwardReverseForward": true,
+  "controls": {
+    "log": "/tmp/aux-root-context-controls-repaired.log",
+    "sha256": "316b0482cd3ffeac671188de849ba81ca20185f3c23b435ba17fd5a7617f7e12",
+    "exit": 0
+  },
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-context-replay-rlk6d92o"
+}

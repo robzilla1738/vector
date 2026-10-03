@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useLayoutEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import type { PageContextRef, PageTarget } from "@aux/contracts";
 import { sourceRef, sourceStatus } from "../browser-context-sources";
@@ -52,7 +52,19 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
   const activePageId = useStore(state => state.activePageId);
   const splitPageId = useStore(state => state.splitPageId);
   const [query, setQuery] = useState("");
-  const [busyPageId, setBusyPageId] = useState<string | null>(null);
+  const sourceScope = JSON.stringify(sources);
+  const inputScope = JSON.stringify([disabled, primary, linkedPageId, sourceScope]);
+  const [busy, setBusy] = useState<{ scope: string; pageId: string | null }>({ scope: inputScope, pageId: null });
+  const busyPageId = busy.scope === inputScope ? busy.pageId : null;
+  if (busy.scope !== inputScope) setBusy({ scope: inputScope, pageId: null });
+  const request = useRef({ active: false });
+  const operation = useRef<object | null>(null);
+  useLayoutEffect(() => {
+    const scope = { active: true };
+    request.current = scope;
+    operation.current = null;
+    return () => { scope.active = false; };
+  }, [disabled, primary, linkedPageId, sourceScope]);
   const primaryPage = useStore(state => conversationPage(state.pages, primary, activePageId, linkedPageId));
   const additionalSources = sources.filter(source => source.pageId !== primaryPage?.pageId);
   const matchingIds = useStore(useShallow(state => state.pages.filter(page => availableSource(page, primaryPage?.pageId)
@@ -61,15 +73,18 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
     ? primaryPage.pageId === splitPageId ? activePageId : splitPageId
     : null;
   const splitCompanion = useStore(state => state.pages.find(page => page.pageId === splitCompanionId && availableSource(page, primaryPage?.pageId)));
-  const liveSource = async (pageId: string) => {
+  const liveSource = async (pageId: string, scope: { active: boolean }) => {
     const pending = await call("browser.recovery.list", {});
+    if (!scope.active) return null;
     if (pending.some(tab => tab.pageId === pageId)) await call("browser.recovery.retry", { pageId });
+    if (!scope.active) return null;
     const live = (await call("pages.list", {})).find(item => item.pageId === pageId);
+    if (!scope.active) return null;
     if (!live || !availableSource(live)) throw new Error("This browser tab is unavailable.");
     return sourceRef(live);
   };
   const toggle = async (pageId: string) => {
-    if (disabled || busyPageId) return;
+    if (disabled || operation.current) return;
     if (sources.some(source => source.pageId === pageId)) {
       onSources(sources.filter(source => source.pageId !== pageId));
       return;
@@ -77,21 +92,34 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
     if (additionalSources.length >= 8) { errToast(new Error("Choose up to eight additional tabs.")); return; }
     const page = useStore.getState().pages.find(item => item.pageId === pageId && availableSource(item, primaryPage?.pageId));
     if (!page) return;
-    setBusyPageId(pageId);
-    try { onSources([...sources, await liveSource(pageId)]); }
-    catch (error) { errToast(error); }
-    finally { setBusyPageId(null); }
+    const owner = {};
+    operation.current = owner;
+    setBusy({ scope: inputScope, pageId });
+    const scope = request.current;
+    try {
+      const source = await liveSource(pageId, scope);
+      if (source && scope.active) onSources([...sources, source]);
+    }
+    catch (error) { if (scope.active) errToast(error); }
+    finally {
+      if (operation.current === owner) { operation.current = null; setBusy({ scope: inputScope, pageId: null }); }
+    }
   };
   const refresh = async (pageId: string) => {
     const page = useStore.getState().pages.find(item => item.pageId === pageId);
-    if (!page || disabled || busyPageId) return;
-    setBusyPageId(pageId);
+    if (!page || disabled || operation.current) return;
+    const owner = {};
+    operation.current = owner;
+    setBusy({ scope: inputScope, pageId });
+    const scope = request.current;
     try {
-      const latest = await liveSource(pageId);
-      onSources(sources.map(source => source.pageId === pageId ? latest : source));
+      const latest = await liveSource(pageId, scope);
+      if (latest && scope.active) onSources(sources.map(source => source.pageId === pageId ? latest : source));
     }
-    catch (error) { errToast(error); }
-    finally { setBusyPageId(null); }
+    catch (error) { if (scope.active) errToast(error); }
+    finally {
+      if (operation.current === owner) { operation.current = null; setBusy({ scope: inputScope, pageId: null }); }
+    }
   };
 
   return <div className="conversation-browser-context">
