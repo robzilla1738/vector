@@ -1,0 +1,13 @@
+{
+  "reviewedSourceHead": "a1fc755af1cc9b9b841a3b2e9863827aeb0c4349",
+  "retainedSourceInventorySha256": "9253cfdd80bda004cb533686f2fe87f04a33febf7b1003c1cf34ed6d47dd876d",
+  "independentlyCurrentUnchangedSources": 37,
+  "currentChangedSources": [
+    "tests/host/journeys/legacy-peek.mjs",
+    "tests/host/journeys/legacy-spaces.mjs",
+    "tests/host/journeys/legacy.mjs"
+  ],
+  "changedSourcesAudit": "docs/source-audits/reader-peek-space-appearance/ROOT-REPLAY.json",
+  "noActualImagesOrVisualApproval": true,
+  "reference": "06 full installed capture and COPYABLE-SURFACES sections8\u20138c; preserve Aux branding"
+}
