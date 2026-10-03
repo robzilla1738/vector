@@ -1,0 +1,11 @@
+--- a/chrome/browser/ui/aux/native_recorder_controller.cc
++++ b/chrome/browser/ui/aux/native_recorder_controller.cc
+@@ -65,7 +65,7 @@
+             query.GetKey(), base::UnescapeRule::NORMAL))))
+       return false;
+   }
+-  const auto fragment = base::ToLowerASCII(url.ref_piece());
++  const auto fragment = base::ToLowerASCII(url.ref());
+   return fragment.find('=') == std::string::npos || !SecretKey(fragment);
+ }
+ }  // namespace

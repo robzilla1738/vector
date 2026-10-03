@@ -65,7 +65,7 @@ bool SafeUrl(const GURL& url) {
             query.GetKey(), base::UnescapeRule::NORMAL))))
       return false;
   }
-  const auto fragment = base::ToLowerASCII(url.ref_piece());
+  const auto fragment = base::ToLowerASCII(url.ref());
   return fragment.find('=') == std::string::npos || !SecretKey(fragment);
 }
 }  // namespace

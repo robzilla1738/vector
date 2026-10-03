@@ -46,6 +46,11 @@ struct EgressRequestContext {
 // construct one. The primary document and control generation stay original.
 class NativePersonReadReceipt {
  public:
+  NativePersonReadReceipt(const NativePersonReadReceipt&);
+  NativePersonReadReceipt& operator=(const NativePersonReadReceipt&);
+  NativePersonReadReceipt(NativePersonReadReceipt&&);
+  NativePersonReadReceipt& operator=(NativePersonReadReceipt&&);
+  ~NativePersonReadReceipt();
   const content::WeakDocumentPtr& document() const { return document_; }
   const std::string& page_id() const { return page_id_; }
 
@@ -55,11 +60,7 @@ class NativePersonReadReceipt {
   NativePersonReadReceipt(content::WeakDocumentPtr document,
                           std::string page_id,
                           std::string control_generation,
-                          std::string retirement_generation)
-      : document_(document),
-        page_id_(std::move(page_id)),
-        control_generation_(std::move(control_generation)),
-        retirement_generation_(std::move(retirement_generation)) {}
+                          std::string retirement_generation);
   content::WeakDocumentPtr document_;
   std::string page_id_;
   std::string control_generation_;

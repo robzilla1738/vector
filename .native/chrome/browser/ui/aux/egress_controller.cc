@@ -104,6 +104,24 @@ bool LiveFrame(content::RenderFrameHost* frame) {
   return frame && frame->IsActive() && frame->IsRenderFrameLive();
 }
 }  // namespace
+NativePersonReadReceipt::NativePersonReadReceipt(
+    content::WeakDocumentPtr document,
+    std::string page_id,
+    std::string control_generation,
+    std::string retirement_generation)
+    : document_(document),
+      page_id_(std::move(page_id)),
+      control_generation_(std::move(control_generation)),
+      retirement_generation_(std::move(retirement_generation)) {}
+NativePersonReadReceipt::NativePersonReadReceipt(
+    const NativePersonReadReceipt&) = default;
+NativePersonReadReceipt& NativePersonReadReceipt::operator=(
+    const NativePersonReadReceipt&) = default;
+NativePersonReadReceipt::NativePersonReadReceipt(
+    NativePersonReadReceipt&&) = default;
+NativePersonReadReceipt& NativePersonReadReceipt::operator=(
+    NativePersonReadReceipt&&) = default;
+NativePersonReadReceipt::~NativePersonReadReceipt() = default;
 struct EgressController::PageState {
   bool guarded = false;
   // Native-only read incarnation; never serialized into the task lease protocol.

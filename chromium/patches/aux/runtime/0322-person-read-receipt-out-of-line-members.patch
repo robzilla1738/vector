@@ -1,0 +1,54 @@
+--- a/chrome/browser/ui/aux/egress_controller.h
++++ b/chrome/browser/ui/aux/egress_controller.h
+@@ -46,6 +46,11 @@
+ // construct one. The primary document and control generation stay original.
+ class NativePersonReadReceipt {
+  public:
++  NativePersonReadReceipt(const NativePersonReadReceipt&);
++  NativePersonReadReceipt& operator=(const NativePersonReadReceipt&);
++  NativePersonReadReceipt(NativePersonReadReceipt&&);
++  NativePersonReadReceipt& operator=(NativePersonReadReceipt&&);
++  ~NativePersonReadReceipt();
+   const content::WeakDocumentPtr& document() const { return document_; }
+   const std::string& page_id() const { return page_id_; }
+ 
+@@ -55,11 +60,7 @@
+   NativePersonReadReceipt(content::WeakDocumentPtr document,
+                           std::string page_id,
+                           std::string control_generation,
+-                          std::string retirement_generation)
+-      : document_(document),
+-        page_id_(std::move(page_id)),
+-        control_generation_(std::move(control_generation)),
+-        retirement_generation_(std::move(retirement_generation)) {}
++                          std::string retirement_generation);
+   content::WeakDocumentPtr document_;
+   std::string page_id_;
+   std::string control_generation_;
+--- a/chrome/browser/ui/aux/egress_controller.cc
++++ b/chrome/browser/ui/aux/egress_controller.cc
+@@ -104,6 +104,24 @@
+   return frame && frame->IsActive() && frame->IsRenderFrameLive();
+ }
+ }  // namespace
++NativePersonReadReceipt::NativePersonReadReceipt(
++    content::WeakDocumentPtr document,
++    std::string page_id,
++    std::string control_generation,
++    std::string retirement_generation)
++    : document_(document),
++      page_id_(std::move(page_id)),
++      control_generation_(std::move(control_generation)),
++      retirement_generation_(std::move(retirement_generation)) {}
++NativePersonReadReceipt::NativePersonReadReceipt(
++    const NativePersonReadReceipt&) = default;
++NativePersonReadReceipt& NativePersonReadReceipt::operator=(
++    const NativePersonReadReceipt&) = default;
++NativePersonReadReceipt::NativePersonReadReceipt(
++    NativePersonReadReceipt&&) = default;
++NativePersonReadReceipt& NativePersonReadReceipt::operator=(
++    NativePersonReadReceipt&&) = default;
++NativePersonReadReceipt::~NativePersonReadReceipt() = default;
+ struct EgressController::PageState {
+   bool guarded = false;
+   // Native-only read incarnation; never serialized into the task lease protocol.
