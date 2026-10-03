@@ -21,7 +21,14 @@
   "gnLauncherSha256": "c85f679beb5a1f6aa9911725f763ba196732f0e30a8f3ca889460d89953eabc3",
   "gnActualInputPins": "PASS",
   "gnDispatchAdmitted": true,
-  "buildDispatched": false,
+  "buildDispatched": "await original builder launch receipt",
   "appLaunched": false,
-  "qualification": false
+  "qualification": false,
+  "gnActualAudit": "PASS",
+  "gnProofSha256": "1e7fd8e25fe387c21addc7fbb2d6ca6a2ca0f451515cb4d385632382c7bfb57a",
+  "gnOriginal174Pids11GroupsAbsent": "PASS",
+  "full17BuildControllerSha256": "083990298d94e633bb34be7bbbc63cb78117bb6d270cfbc0e47a1fa900a199d4",
+  "full17BuildLauncherSha256": "0d4cb139ca4f325cba5940b2de639f16b010c6f408656f334446fc6c58c2cd52",
+  "full17DispatchAdmitted": true,
+  "assertionsExecuted": false
 }

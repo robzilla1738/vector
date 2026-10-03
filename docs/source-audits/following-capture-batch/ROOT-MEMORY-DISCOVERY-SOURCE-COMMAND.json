@@ -66,5 +66,21 @@
   "modelUnknownAvailability": "unproven",
   "nativeProductFreeze": "f0be591b296ddbb8763102f8ee7465af8453f20c",
   "newProductCommand": "update-browser-source",
-  "nativeBuildNotDelayedForThisBatch": true
+  "nativeBuildNotDelayedForThisBatch": true,
+  "settingsDiagnosticContainment": {
+    "patchSha256": "a7583a8c3d1c6122abd27037b5d3db28ebf26e4e4a11f046be34792bd83e1e6c",
+    "actualReferencePins": "PASS",
+    "exactReplay": "PASS",
+    "actualComponentControls": "PASS",
+    "nativePixels": "pending"
+  },
+  "logs": {
+    "/tmp/aux-root-context-command-typecheck.log": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f",
+    "/tmp/aux-root-source-command-controls.log": "d3320d8e6741e21b8065f8aad35fe7b3db7b2ff37b7118e4cec71f7b102b6d21",
+    "/tmp/aux-root-context-command-registry.log": "63e0750beb631b58a2ec843aec265b67f5484612e9601ec1940695c8c29871cd",
+    "/tmp/aux-root-memory-discovery-source-controls.log": "b1a745fb8a19fdb284e06a8ece1d93047c7badc83a373382ec4228d71e2313a4",
+    "/tmp/aux-root-settings-diagnostic-controls.log": "11c734c3cb0ddd578ebe1a0f65b097e9789eeb5f9c46f9069feb8bf6e035a641",
+    "/tmp/aux-root-context-batch-lint.log": "7260e96657fcd1a7fac883e6a22899575bb496c718548837ba0f63c907cf5214",
+    "/tmp/aux-root-context-batch-format.log": "aa044125e335917ab37ceb807d075d0537e6e0f18f2df7c77539081f61ae2562"
+  }
 }
