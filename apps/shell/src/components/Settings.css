@@ -29,6 +29,8 @@
 .settings-content .row .grow { min-width: 0; overflow-wrap: anywhere; }
 .settings-content .field:has(+ .settings-advanced) { border-radius: 0 0 var(--r-card) var(--r-card); border-bottom: 0; }
 .browser-profiles { width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2-5); }
+.browser-profiles > :is(section, output, p, [role="alert"]) { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.browser-profiles > section button { max-width: 100%; height: auto; white-space: normal; overflow-wrap: anywhere; text-align: left; }
 .browser-profile-item .ui-list-icon { width:30px; }
 .browser-profile-item .ui-list-open:disabled { opacity:1; }
 .browser-profile-item { width:100%; min-width:0; }

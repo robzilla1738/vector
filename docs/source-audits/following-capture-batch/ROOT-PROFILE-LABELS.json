@@ -1,0 +1,72 @@
+{
+  "scope": "Source-backed Profile containment and existing Settings36px Space control; native geometry/F21 pending",
+  "orderedPackets": [
+    {
+      "path": "/tmp/aux-browser-runtime-design-profile-labels/docs/lane-requests/design/profile-long-labels",
+      "patchSha256": "287379472673448bd35be168f093b51625015ecd4445d4c3e664e79d729a321a",
+      "files": [
+        {
+          "path": "apps/shell/src/components/Settings.css",
+          "beforeSha256": "7796f4e7fde97f217202ea2761fba4b82042bc1b5767ccda0a12610293fee2e3",
+          "afterSha256": "3967f9d1e2469788974677ae71791eab7a7f8ecd67cf23d082a07bf79484018d"
+        },
+        {
+          "path": "apps/shell/src/components/BrowserProfiles.test.tsx",
+          "beforeSha256": null,
+          "afterSha256": "9801e79c081b03b8f5bb6d40fdcfb1971510103aef0a378a20f02f617be28a48"
+        }
+      ],
+      "independentExactForwardReverseForward": true
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-design-profile-space-control/docs/lane-requests/design/profile-space-control",
+      "patchSha256": "f86781bb9900d4207ce9723e4a1ad5988ef1b83093f5a88571121246f91afd68",
+      "files": [
+        {
+          "path": "apps/shell/src/components/BrowserProfiles.tsx",
+          "beforeSha256": "4ee4bec8d2ca5e3d39ce0b623ffbb59dcf5c39653dbad1273141e23bc5ac4a1d",
+          "afterSha256": "c403fcaaad3f335d1f2a7e3442a83b69403149b895ac413fa67509a1027fa354"
+        },
+        {
+          "path": "apps/shell/src/components/BrowserProfiles.test.tsx",
+          "beforeSha256": "9801e79c081b03b8f5bb6d40fdcfb1971510103aef0a378a20f02f617be28a48",
+          "afterSha256": "473aeb7733055198dfa29c8a91c744f969f24663081e5f006dfc9e89e70e5913"
+        }
+      ],
+      "independentExactForwardReverseForward": true
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-design-profile-space-control/docs/lane-requests/design/profile-space-wrap",
+      "patchSha256": "0eb7418016b365f843aef908d26b56055b7a724b340694883e061ae48761cb4c",
+      "files": [
+        {
+          "path": "apps/shell/src/components/Settings.css",
+          "beforeSha256": "3967f9d1e2469788974677ae71791eab7a7f8ecd67cf23d082a07bf79484018d",
+          "afterSha256": "a84e4b18a3b37adf52ca48530d6ceec55235a16c2199d9eb03f3800e9108e98d"
+        },
+        {
+          "path": "apps/shell/src/components/BrowserProfiles.test.tsx",
+          "beforeSha256": "473aeb7733055198dfa29c8a91c744f969f24663081e5f006dfc9e89e70e5913",
+          "afterSha256": "59bdfc065375e309cdcdab81727942d288bdedeb24747da93005b62422203abf"
+        }
+      ],
+      "independentExactForwardReverseForward": true
+    }
+  ],
+  "actualComponentControls": {
+    "log": "/tmp/aux-root-profile-label-controls.log",
+    "passed": true
+  },
+  "preserved": [
+    "Original registered Space payload and native false refusal",
+    "Original held busy action prevents repeated clicks",
+    "Private Profile exclusion prevents native data load",
+    "Complete dynamic Space labels and original error/Refresh copy",
+    "Existing Settings36px minimum control height/font/focus/motion/RT",
+    "Scoped nowrap override+autoheight preserve wrapping after btn sm ghost class"
+  ],
+  "remaining": [
+    "Actual native L/D/RT/RM/narrow keyboardfocus and hit geometry",
+    "Final coherent renderer package/source gates and native qualification"
+  ]
+}
