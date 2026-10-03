@@ -8,7 +8,7 @@ export type CommandContext = ReturnType<typeof useStore.getState>;
 export interface CommandInvocation {
   /** Original DOM input only; native fixture instrumentation owns its validation. */
   nativeInputEvent?: Event;
-  payload?: { targetId: string; url: string } | { queue: import("@aux/contracts").MethodParams<"nightShift.queue"> }
+  payload?: { scopeId: string } | { targetId: string; url: string } | { queue: import("@aux/contracts").MethodParams<"nightShift.queue"> }
     | import("@aux/contracts").MethodParams<"nightShift.review">
     | { nightShift: import("zod").infer<typeof import("@aux/contracts").NightShiftSettingsSchema> }
     | { demonstration: { recordingId: string; taskId: string; expectedTaskRevision: number; title: string; review: import("zod").infer<typeof import("@aux/contracts").DemonstrationReviewSchema> } }

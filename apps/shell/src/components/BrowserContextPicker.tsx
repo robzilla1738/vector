@@ -2,7 +2,7 @@ import { memo, useState, useRef, useLayoutEffect, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { availableConversationPage } from "../conversation-page";
 import { executeCommand } from "../commands";
-import { registerBrowserContextCommand } from "../browser-context-commands";
+import { registerScopedControl } from "../scoped-control-commands";
 import { sourceRef, sourceStatus } from "../browser-context-sources";
 import { useShortcutLabel, withShortcut } from "../use-shortcut-label";
 import type { PageTarget } from "@aux/contracts";
@@ -24,7 +24,7 @@ function ContextChoice({ choice, page, currentPage, disabled = false, selected, 
     const element = button.current;
     if (!element || disabled) return;
     const original = page ? sourceRef(page) : undefined;
-    return registerBrowserContextCommand(element, "select-browser-context", choice, () => {
+    return registerScopedControl(element, "select-browser-context", choice, () => {
       if (original) {
         const current = currentPage?.();
         if (!current || !availablePage(current) || sourceStatus(original, [current]) !== "current")

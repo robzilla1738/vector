@@ -15,6 +15,9 @@ const B = (key: string, options: Omit<ShortcutBinding, "key"> = {}): ShortcutBin
 const Numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export const COMMANDS = [
+  { id: "select-memory-space", label: "Select Space memory", section: "Application", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [], intercept: true },
+  { id: "retry-memory-search", label: "Retry memory search", section: "Application", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [], intercept: true },
+  { id: "retry-memory-load", label: "Retry saved notes load", section: "Application", handler: "shell", focusShell: true, palette: false, windows: ["normal"], bindings: [], intercept: true },
   { id: "set-site-agent-access", label: "Change site agent access", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "delete-site-agent-rule", label: "Remove site agent access rule", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "revoke-site-agent-grant", label: "Revoke site agent grant", section: "Agent", handler: "shell", feature: "agentSitePermissions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
@@ -34,6 +37,13 @@ export const COMMANDS = [
   { id: "remove-browser-source", label: "Remove selected browser source", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
   { id: "toggle-browser-source", label: "Select additional browser source", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
   { id: "select-browser-context", label: "Choose browser context", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
+  { id: "save-space-memory", label: "Save Space notes", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
+  { id: "clear-space-memory-draft", label: "Clear Space notes draft", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
+  { id: "discard-space-memory-draft", label: "Discard Space notes draft", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
+  { id: "use-saved-space-memory", label: "Use saved Space notes", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
+  { id: "overwrite-space-memory", label: "Overwrite Space notes", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
+  { id: "toggle-space-memory-enabled", label: "Toggle Space memory", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
+  { id: "toggle-space-memory-overview", label: "Toggle Space overview", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
   { id: "update-browser-source", label: "Use current browser source", section: "Agent", handler: "shell", palette: false, focusShell: true, windows: ["normal"], bindings: [], intercept: true },
   { id: "mention-insert", label: "Mention source", section: "Agent", handler: "shell", feature: "tabMentions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },
   { id: "mention-remove", label: "Remove source mention", section: "Agent", handler: "shell", feature: "tabMentions", focusShell: true, palette: false, windows: ["normal"], bindings: [] },

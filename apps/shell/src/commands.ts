@@ -10,7 +10,7 @@ import type { RefObject } from "react";
 import { openCommandSurface, closeCommandSurface } from "./command-surface-state";
 import { COMMAND_SURFACE_ACTIONS } from "./command-surface-actions";
 import { commandExecutor } from "./command-execution";
-import { invokeBrowserContextCommand } from "./browser-context-commands";
+import { invokeScopedControl } from "./scoped-control-commands";
 import { RUN_CONTROL_COMMANDS, invokeRunControlCommand } from "./run-control-commands";
 import { bridge } from "./bridge";
 import { decideAgentAction, dismissAgentHandoff, takeOverAgentAction } from "./action-approval";
@@ -93,11 +93,21 @@ function bookmarkAll(st: StoreState) {
   );
 }
 export const COMMAND_ACTIONS = {
-  "remove-browser-source": (_state: StoreState, context: CommandContext) => invokeBrowserContextCommand("remove-browser-source", context),
-  "toggle-browser-source": (_state: StoreState, context: CommandContext) => invokeBrowserContextCommand("toggle-browser-source", context),
-  "select-browser-context": (_state: StoreState, context: CommandContext) => invokeBrowserContextCommand("select-browser-context", context),
+  "select-memory-space": (_state: StoreState, context: CommandContext) => invokeScopedControl("select-memory-space", context),
+  "retry-memory-search": (_state: StoreState, context: CommandContext) => invokeScopedControl("retry-memory-search", context),
+  "retry-memory-load": (_state: StoreState, context: CommandContext) => invokeScopedControl("retry-memory-load", context),
+  "save-space-memory": (_state: StoreState, context: CommandContext) => invokeScopedControl("save-space-memory", context),
+  "clear-space-memory-draft": (_state: StoreState, context: CommandContext) => invokeScopedControl("clear-space-memory-draft", context),
+  "discard-space-memory-draft": (_state: StoreState, context: CommandContext) => invokeScopedControl("discard-space-memory-draft", context),
+  "use-saved-space-memory": (_state: StoreState, context: CommandContext) => invokeScopedControl("use-saved-space-memory", context),
+  "overwrite-space-memory": (_state: StoreState, context: CommandContext) => invokeScopedControl("overwrite-space-memory", context),
+  "toggle-space-memory-enabled": (_state: StoreState, context: CommandContext) => invokeScopedControl("toggle-space-memory-enabled", context),
+  "toggle-space-memory-overview": (_state: StoreState, context: CommandContext) => invokeScopedControl("toggle-space-memory-overview", context),
+  "remove-browser-source": (_state: StoreState, context: CommandContext) => invokeScopedControl("remove-browser-source", context),
+  "toggle-browser-source": (_state: StoreState, context: CommandContext) => invokeScopedControl("toggle-browser-source", context),
+  "select-browser-context": (_state: StoreState, context: CommandContext) => invokeScopedControl("select-browser-context", context),
 
-  "update-browser-source": (_state: StoreState, context: CommandContext) => invokeBrowserContextCommand("update-browser-source", context),
+  "update-browser-source": (_state: StoreState, context: CommandContext) => invokeScopedControl("update-browser-source", context),
   ...Object.fromEntries(RUN_CONTROL_COMMANDS.map(id => [id, (_state: StoreState, context: CommandContext) => invokeRunControlCommand(id, context)])) as Record<(typeof RUN_CONTROL_COMMANDS)[number], CommandAction>,
   ...featureCommands(
     "set-site-agent-access",

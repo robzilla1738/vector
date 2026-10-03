@@ -8,6 +8,10 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MemorySettings } from "./MemorySettings";
 
 const mocks = vi.hoisted(() => ({ call: vi.fn(), privateMode: false, state: {} as Record<string, unknown> }));
+vi.mock("../commands", async () => {
+  const module = await import("../scoped-control-commands");
+  return { executeCommand: async (id: any, context: any) => module.invokeScopedControl(id, context) };
+});
 vi.mock("../bridge", () => ({
   bridge: {
     get privateMode() {
@@ -18,6 +22,7 @@ vi.mock("../bridge", () => ({
 }));
 vi.mock("../store", () => ({
   call: mocks.call,
+  errToast: vi.fn(),
   useStore: Object.assign((select: (state: unknown) => unknown) => select(mocks.state), {
     getState: () => mocks.state,
     setState: (value: unknown) => Object.assign(mocks.state, value),
@@ -34,6 +39,7 @@ let errors: ReturnType<typeof vi.spyOn>;
 const longName = "ResearchPlanningAndReview".repeat(30);
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
   mocks.privateMode = false;
   mocks.call.mockReset();
   errors = vi.spyOn(console, "error");
@@ -90,6 +96,7 @@ afterEach(async () => {
   host.remove();
   style.remove();
   errors.mockRestore();
+  vi.restoreAllMocks();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });

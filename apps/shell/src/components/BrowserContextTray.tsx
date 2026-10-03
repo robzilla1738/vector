@@ -3,7 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 import type { PageContextRef, PageTarget } from "@aux/contracts";
 import { useShortcutLabel, withShortcut } from "../use-shortcut-label";
 import { executeCommand } from "../commands";
-import { registerBrowserContextCommand } from "../browser-context-commands";
+import { registerScopedControl } from "../scoped-control-commands";
 import { sourceRef, sourceStatus } from "../browser-context-sources";
 import { availableConversationPage, conversationPage } from "../conversation-page";
 import { useStore, call, errToast } from "../store";
@@ -27,7 +27,7 @@ const AdditionalTabChoice = memo(function AdditionalTabChoice({ pageId, selected
     const element = choice.current?.querySelector<HTMLInputElement>('input');
     if (!element || !page || disabled) return;
     const original = sourceRef(page);
-    return registerBrowserContextCommand(element, "toggle-browser-source", pageId, () => {
+    return registerScopedControl(element, "toggle-browser-source", pageId, () => {
       const current = useStore.getState().pages.find(item => item.pageId === pageId);
       if (!current || !availableSource(current) || sourceStatus(original, [current]) !== "current") throw new Error("This browser source changed. Choose its current tab again.");
       return onToggle(pageId);
@@ -54,7 +54,7 @@ const SourceChip = memo(function SourceChip({ source, primaryPageId, disabled, b
     const element = removeButton.current;
     if (!element || disabled || busy) return;
     const original = JSON.stringify(source);
-    return registerBrowserContextCommand(element, "remove-browser-source", source.pageId, () => {
+    return registerScopedControl(element, "remove-browser-source", source.pageId, () => {
       if (JSON.stringify(source) !== original) throw new Error("The selected source changed. Choose its current Remove control.");
       return onRemove(source.pageId);
     });
@@ -64,7 +64,7 @@ const SourceChip = memo(function SourceChip({ source, primaryPageId, disabled, b
     const element = updateButton.current;
     if (!element || status !== "changed" || disabled || busy || !page || !availableSource(page)) return;
     const original = sourceRef(page);
-    return registerBrowserContextCommand(element, "update-browser-source", source.pageId, () => {
+    return registerScopedControl(element, "update-browser-source", source.pageId, () => {
       const current = useStore.getState().pages.find(item => item.pageId === original.pageId);
       if (!current || !availableSource(current) || sourceStatus(original, [current]) !== "current") throw new Error("This browser tab changed. Choose its current source again.");
       return onRefresh(source.pageId);
@@ -156,7 +156,7 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
     const element = splitButton.current;
     if (!element || disabled || busyPageId || !splitCompanion) return;
     const original = sourceRef(splitCompanion);
-    return registerBrowserContextCommand(element, "toggle-browser-source", original.pageId, () => {
+    return registerScopedControl(element, "toggle-browser-source", original.pageId, () => {
       const state = useStore.getState();
       const current = state.pages.find(page => page.pageId === original.pageId);
       if (state.activePageId !== activePageId || state.splitPageId !== splitPageId || !current || !availableSource(current) || sourceStatus(original, [current]) !== "current")
