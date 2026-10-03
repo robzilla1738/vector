@@ -6,7 +6,8 @@ import { WorkspacesSettings } from "./Workspaces";
 import { SpaceMemory } from "./SpaceMemory";
 
 const rpc = vi.hoisted(() => vi.fn());
-vi.mock("../../store", () => ({ call: rpc }));
+const state = vi.hoisted(() => ({ layout: { spaces: [{ id: "native-space", workspaceId: "space-1" }], archivedSpaces: [] } }));
+vi.mock("../../store", () => ({ call: rpc, errToast: vi.fn(), useStore: Object.assign((select: (value: typeof state) => unknown) => select(state), { getState: () => state }) }));
 let root: Root;
 let container: HTMLDivElement;
 beforeEach(() => {
@@ -15,8 +16,9 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   rpc.mockReset();
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
 });
-afterEach(() => { act(() => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
+afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function button(label: string) {
   const found = [...container.querySelectorAll("button")].find(item => item.textContent?.trim() === label);

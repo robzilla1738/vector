@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
-import type { MemoryClaim, MemoryPipelineOverview } from "@aux/contracts";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, useId, type ReactNode } from "react";
+import type { MemoryClaim, MemoryPipelineOverview, ShellCommandId } from "@aux/contracts";
 import { bridge } from "../../bridge";
-import { call } from "../../store";
+import { call, useStore } from "../../store";
+import { guardCommandCompletion, reportCommandCompletionFailure } from "../../command-completion";
+import { executeCommand } from "../../commands";
+import { registerScopedControl } from "../../scoped-control-commands";
 import { useConfirm } from "../../ui/confirm";
 import { SettingsField } from "../primitives";
 import { MemoryPasteImport } from "../../components/MemoryPasteImport";
@@ -10,112 +13,139 @@ import { MemoryRecoveryNotice } from "../../components/MemoryRecoveryNotice";
 type Source = { runId: string; goal: string; endedAt: number };
 type Revision = { revisionId: string; capturedAt: number; claimCount: number; summary: string; sourceRunIds: string[] };
 
+type PipelineSnapshot = { enabled: boolean; overview: MemoryPipelineOverview; sources: Source[]; inbox: MemoryClaim[]; claims: MemoryClaim[]; history: Revision[] };
+class PipelineScope {
+  constructor(readonly owner: unknown) {}
+  #active = true;
+  #request = 0;
+  #snapshot: PipelineSnapshot | null = null;
+  #pending: object | null = null;
+  get active() { return this.#active; }
+  retire() { this.#active = false; this.#pending = null; }
+  request() { return ++this.#request; }
+  isRequest(request: number) { return this.#active && this.#request === request; }
+  publish(request: number, snapshot: PipelineSnapshot) {
+    if (!this.#active || request !== this.#request || bridge.privateMode) return false;
+    this.#snapshot = snapshot; this.#pending = null; return true;
+  }
+  current(snapshot: PipelineSnapshot | null) { return this.#active && !bridge.privateMode && this.#snapshot === snapshot; }
+  begin(snapshot: PipelineSnapshot | null) { if (!this.current(snapshot) || this.#pending) return null; return this.#pending = {}; }
+  finish(operation: object) { if (!this.#active || this.#pending !== operation) return false; this.#pending = null; return true; }
+}
+function PipelineControl({ command, scopeId, action, onError, children, disabled = false, className = "btn sm", kind = "button", checked, value, inputId, expanded }: {
+  command: ShellCommandId; scopeId: string; action(element: HTMLElement): unknown; onError(reason: unknown): void; children?: ReactNode;
+  disabled?: boolean; className?: string; kind?: "button" | "checkbox" | "select" | "summary"; checked?: boolean; value?: string; inputId?: string; expanded?: boolean;
+}) {
+  const ref = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => { const element = ref.current; if (element) return registerScopedControl(element, command, scopeId, () => action(element)); });
+  const attach = (node: HTMLElement | null) => { ref.current = node; };
+  const invoke = (event: React.MouseEvent<HTMLElement> | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    if (kind === "summary") event.preventDefault();
+    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
+    void completion.catch(reason => reportCommandCompletionFailure(completion, reason, onError));
+  };
+  if (kind === "checkbox") return <input id={inputId} ref={attach} data-command-id={command} aria-label="Enable Space memory" type="checkbox" checked={checked} disabled={disabled} onChange={invoke}/>;
+  if (kind === "select") return <select ref={attach} data-command-id={command} aria-label="Completed run for memory" value={value} disabled={disabled} onChange={invoke}>{children}</select>;
+  if (kind === "summary") return <summary ref={attach} data-command-id={command} onClick={invoke}>{children}</summary>;
+  return <button type="button" aria-expanded={expanded} ref={attach} data-command-id={command} className={className} disabled={disabled} onClick={invoke}>{children}</button>;
+}
+class DecisionControls {
+  #retire = new Map<string, () => void>();
+  constructor(readonly scopeId: string) {}
+  attach(command: string, node: HTMLButtonElement | null, settle: () => void) {
+    this.#retire.get(command)?.(); this.#retire.delete(command);
+    if (!node) return;
+    node.dataset.commandId = command;
+    this.#retire.set(command, registerScopedControl(node, command, this.scopeId, settle));
+  }
+  retire() { for (const cleanup of this.#retire.values()) cleanup(); this.#retire.clear(); }
+}
 export function SpaceMemory({ workspaceId, includePasteImport = true }: { workspaceId: string; includePasteImport?: boolean }) {
-  const [enabled, setEnabled] = useState(false);
+  const layout = useStore(state => state.layout);
+  const owners = [...layout.spaces, ...(layout.archivedSpaces ?? [])].filter(space => space.workspaceId === workspaceId);
+  if (bridge.privateMode || owners.length !== 1) return <SettingsField label="Space memory"><p className="hint">Choose the original non-private Space to review its memory.</p></SettingsField>;
+  return <SpaceMemoryContent key={JSON.stringify([workspaceId, owners[0]!.id])} workspaceId={workspaceId} includePasteImport={includePasteImport}/>;
+}
+function SpaceMemoryContent({ workspaceId, includePasteImport }: { workspaceId: string; includePasteImport: boolean }) {
+  const layout = useStore(state => state.layout);
+  const ownerKey = JSON.stringify([...layout.spaces, ...(layout.archivedSpaces ?? [])].filter(space => space.workspaceId === workspaceId).map(space => space.id));
+  const privateMode = bridge.privateMode;
+  const ownsWorkspace = useCallback(() => { const current = useStore.getState().layout; const owners = [...current.spaces, ...(current.archivedSpaces ?? [])].filter(space => space.workspaceId === workspaceId); return owners.length === 1 && JSON.stringify(owners.map(space => space.id)) === ownerKey; }, [workspaceId, ownerKey]);
+  const scope = useMemo(() => new PipelineScope([workspaceId, privateMode, ownerKey]), [workspaceId, privateMode, ownerKey]);
+  useLayoutEffect(() => () => scope.retire(), [scope]);
+  const [snapshotState, setSnapshot] = useState<{scope: PipelineScope; value: PipelineSnapshot} | null>(null);
+  const snapshot = snapshotState?.scope === scope ? snapshotState.value : null;
+  const { enabled = false, overview = null, sources = [], inbox = [], claims = [], history = [] } = snapshot ?? {};
   const [showPasteImport, setShowPasteImport] = useState(false);
-  const [overview, setOverview] = useState<MemoryPipelineOverview | null>(null);
-  const [sources, setSources] = useState<Source[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [sourceId, setSourceId] = useState("");
-  const [inbox, setInbox] = useState<MemoryClaim[]>([]);
-  const [claims, setClaims] = useState<MemoryClaim[]>([]);
-  const [history, setHistory] = useState<Revision[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<{scope: PipelineScope; operation: object} | null>(null);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState(false);
   const [needsFreshBackup, setNeedsFreshBackup] = useState(false);
-  const { confirm, confirmation } = useConfirm();
-  const sourcesWithNotes = [...new Set([
-    ...inbox.map(note => note.sourceRunId),
-    ...claims.map(note => note.sourceRunId),
-    ...history.flatMap(revision => revision.sourceRunIds),
-  ])];
-
-  async function forget(request: { claimId?: string; sourceRunId?: string; all?: true }, description: string) {
-    if (!await confirm({ title: "Forget Space memory?", description: `${description} Notes derived from it are removed from current Memory and restorable revisions. Older Aux-managed backups will no longer restore. Copied offline recovery packages and their phrases remain usable; create a fresh package in General after Forget.`,
-      confirmLabel: "Forget permanently", cancelLabel: "Keep memory", danger: true })) return;
-    await act(async () => {
-      const result = await call("memory.pipeline.forget", { workspaceId, ...request });
-      if (result.forgotten) setNeedsFreshBackup(true);
-    });
-  }
-
-  async function refresh(id = workspaceId) {
-    const [policy, current, available, pending, accepted, revisions] = await Promise.all([
-      call("memory.pipeline.policy", { workspaceId: id }),
-      call("memory.pipeline.overview", { workspaceId: id }),
-      call("memory.pipeline.sources", { workspaceId: id }),
-      call("memory.pipeline.inbox", { workspaceId: id }),
-      call("memory.pipeline.claims", { workspaceId: id }),
-      call("memory.pipeline.history", { workspaceId: id }),
-    ]);
-    setEnabled(policy.enabled);
-    setOverview(current);
-    setSources(available);
-    setInbox(pending);
-    setClaims(accepted);
-    setHistory(revisions);
-    setSourceId(value => available.some(item => item.runId === value) ? value : available[0]?.runId ?? "");
-  }
-
+  const decisions = useMemo(() => new DecisionControls(workspaceId), [workspaceId]);
+  useLayoutEffect(() => () => decisions.retire(), [decisions]);
+  const invokeDecision = (command: ShellCommandId, event: React.MouseEvent<HTMLButtonElement>) => { void executeCommand(command, { payload: { scopeId: workspaceId }, nativeInputEvent: event.nativeEvent }).catch(report); };
+  const { confirm, confirmation } = useConfirm({
+    confirmControl: (node, settle) => decisions.attach("confirm-forget-space-memory", node, settle),
+    cancelControl: (node, settle) => decisions.attach("cancel-forget-space-memory", node, settle),
+    onConfirm: event => invokeDecision("confirm-forget-space-memory", event),
+    onCancel: event => invokeDecision("cancel-forget-space-memory", event),
+  });
+  const enabledId = useId();
+  const busy = pending?.scope === scope;
+  const current = () => !!workspaceId && ownsWorkspace() && scope.current(snapshot);
+  const assertCurrent = () => { if (!current()) throw new Error("This Space’s memory controls changed. Refresh before trying again."); };
+  function report(reason: unknown) { if (current()) setError(reason instanceof Error ? reason.message : String(reason)); }
+  const sourcesWithNotes = [...new Set([...inbox.map(note => note.sourceRunId), ...claims.map(note => note.sourceRunId), ...history.flatMap(revision => revision.sourceRunIds)])];
+  const refresh = useCallback(async () => {
+    if (!scope.active || !workspaceId || bridge.privateMode || !ownsWorkspace()) return;
+    const request = scope.request();
+    const result = await Promise.all([
+      call("memory.pipeline.policy", { workspaceId }), call("memory.pipeline.overview", { workspaceId }), call("memory.pipeline.sources", { workspaceId }),
+      call("memory.pipeline.inbox", { workspaceId }), call("memory.pipeline.claims", { workspaceId }), call("memory.pipeline.history", { workspaceId }),
+    ]).catch(reason => { if (scope.isRequest(request) && ownsWorkspace() && !bridge.privateMode) throw reason; return null; });
+    if (!result || !scope.isRequest(request) || bridge.privateMode || !ownsWorkspace()) return;
+    const [policy, overview, sources, inbox, claims, history] = result;
+    if (policy.workspaceId !== workspaceId || overview.workspaceId !== workspaceId) throw new Error("The Space memory response changed its original workspace.");
+    const next = { enabled: policy.enabled, overview, sources, inbox, claims, history };
+    if (!ownsWorkspace() || !scope.publish(request, next)) return;
+    setSnapshot({scope, value:next}); setPending(null); setError(""); setPreview(false);
+    setSourceId(value => sources.some(source => source.runId === value) ? value : sources[0]?.runId ?? "");
+  }, [scope, workspaceId, ownsWorkspace]);
   useEffect(() => {
-    if (!workspaceId) return;
-    let live = true;
-    void Promise.all([
-      call("memory.pipeline.policy", { workspaceId }),
-      call("memory.pipeline.overview", { workspaceId }),
-      call("memory.pipeline.sources", { workspaceId }),
-      call("memory.pipeline.inbox", { workspaceId }),
-      call("memory.pipeline.claims", { workspaceId }),
-      call("memory.pipeline.history", { workspaceId }),
-    ]).then(([policy, current, available, pending, accepted, revisions]) => {
-      if (!live) return;
-      setEnabled(policy.enabled);
-      setOverview(current);
-      setSources(available);
-      setInbox(pending);
-      setClaims(accepted);
-      setHistory(revisions);
-      setSourceId(available[0]?.runId ?? "");
-    }).catch(reason => {
-      if (!live) return;
-      if (/feature_unavailable|preview/.test(String(reason))) setPreview(true);
-      else setError(String(reason));
-    });
-    return () => { live = false; };
-  }, [workspaceId]);
-
-  useEffect(() => bridge.onEvent(event => {
-    if (event.type === "workspace.memory.updated" && event.payload.workspaceId === workspaceId)
-      void refresh();
-  }), [workspaceId]);
-
-  async function act(work: () => Promise<void>) {
-    setBusy(true);
-    setError("");
-    try { await work(); await refresh(); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { setBusy(false); }
+    void Promise.resolve().then(refresh).catch(reason => { if (!scope.active || bridge.privateMode || !ownsWorkspace()) return; if (/feature_unavailable|preview/.test(String(reason))) setPreview(true); else setError(String(reason)); });
+  }, [scope, refresh, ownsWorkspace]);
+  useEffect(() => bridge.onEvent(event => { if (event.type === "workspace.memory.updated" && event.payload.workspaceId === workspaceId) void refresh().catch(reason => { if (scope.active && !bridge.privateMode && ownsWorkspace()) setError(String(reason)); }); }), [workspaceId, scope, refresh, ownsWorkspace]);
+  function act(work: () => Promise<unknown>) {
+    assertCurrent(); const operation = scope.begin(snapshot); if (!operation) return;
+    setPending({scope,operation}); setError("");
+    return guardCommandCompletion((async () => {
+      try { const result = await work(); if (current()) await refresh(); return result; }
+      finally { if (scope.finish(operation)) setPending(null); }
+    })(), current);
   }
-
+  function forget(request: { claimId?: string; sourceRunId?: string; all?: true }, description: string) {
+    assertCurrent();
+    return guardCommandCompletion((async () => {
+    if (!await confirm({ title: "Forget Space memory?", description: `${description} Notes derived from it are removed from current Memory and restorable revisions. Older Aux-managed backups will no longer restore. Copied offline recovery packages and their phrases remain usable; create a fresh package in General after Forget.`, confirmLabel: "Forget permanently", cancelLabel: "Keep memory", danger: true })) return;
+    assertCurrent();
+    return act(async () => { const result = await call("memory.pipeline.forget", { workspaceId, ...request }); if (current() && result.forgotten) setNeedsFreshBackup(true); return result; });
+    })(), current);
+  }
   return <SettingsField label="Space memory" hint="Eligible completed runs produce encrypted notes for your review. Only accepted notes appear in later runs. Memory is off by default.">
     {preview ? <p className="hint">Space memory is in preview in this build.</p> : <>
     {error && <p role="alert">{error}</p>}
-    <label><input aria-label="Enable Space memory" type="checkbox" checked={enabled} disabled={!workspaceId || busy}
-      onChange={event => void act(async () => {
-        await call("memory.pipeline.setPolicy", { workspaceId, enabled: event.target.checked });
-      })} /> Enable memory for this Space</label>
-    {includePasteImport && <><button className="btn sm ghost" aria-expanded={showPasteImport}
-      onClick={() => setShowPasteImport(!showPasteImport)}>Import pasted assistant notes</button>
+    <label htmlFor={enabledId}><PipelineControl inputId={enabledId} command="toggle-space-memory-pipeline" scopeId={workspaceId} kind="checkbox" checked={enabled} disabled={!snapshot || busy || bridge.privateMode} onError={report} action={() => act(() => call("memory.pipeline.setPolicy", { workspaceId, enabled: !enabled }))}/> Enable memory for this Space</label>
+    {includePasteImport && <><PipelineControl command="toggle-space-memory-import" expanded={showPasteImport} scopeId={workspaceId} className="btn sm ghost" disabled={!snapshot || bridge.privateMode} onError={report} action={() => { assertCurrent(); setShowPasteImport(value => !value); }}>Import pasted assistant notes</PipelineControl>
       {showPasteImport && <MemoryPasteImport workspaceId={workspaceId} />}</>}
     {enabled && <>
       <div className="row">
-        <select aria-label="Completed run for memory" value={sourceId} onChange={event => setSourceId(event.target.value)}>
+        <PipelineControl command="select-space-memory-source" scopeId={workspaceId} kind="select" value={sourceId} disabled={busy} onError={report} action={element => { assertCurrent(); if (!(element instanceof HTMLSelectElement) || sources.filter(source => source.runId === element.value).length !== 1) throw new Error("Choose the current completed run."); setSourceId(element.value); }}>
           {sources.map(source => <option key={source.runId} value={source.runId}>{source.goal} · {source.runId}</option>)}
-        </select>
-        <button className="btn sm" disabled={busy || !sourceId} onClick={() => void act(async () => {
-          await call("memory.pipeline.extractRun", { workspaceId, runId: sourceId });
-        })}>Create review notes</button>
-        <button className="btn sm" disabled={busy} onClick={() => void act(async () => {})}>Refresh memory</button>
+        </PipelineControl>
+        <PipelineControl command="extract-space-memory-source" scopeId={workspaceId} disabled={busy || !sourceId} onError={report} action={() => { assertCurrent(); if (sources.filter(source => source.runId === sourceId).length !== 1) throw new Error("The completed run changed."); return act(() => call("memory.pipeline.extractRun", { workspaceId, runId: sourceId })); }}>Create review notes</PipelineControl>
+        <PipelineControl command="refresh-space-memory-pipeline" scopeId={workspaceId} disabled={busy} onError={report} action={() => act(async () => {})}>Refresh memory</PipelineControl>
       </div>
       {!sources.length && <p className="hint">No eligible completed runs are available for extraction. Sensitive, excluded, stale, or uncited page sources and runs using inherited Memory are omitted.</p>}
       <p className="hint">Page notes require a verified run citation and the same live document. Review the report quote before accepting; a changed or missing source is withheld from recall.</p>
@@ -129,40 +159,34 @@ export function SpaceMemory({ workspaceId, includePasteImport = true }: { worksp
           : <>Source run: <code>{note.sourceRunId}</code>{note.source && <> · Exact report quote <code>{note.source.quoteSha256.slice(0, 12)}</code></>} · Source must still verify when accepted</>}
         </p>
         <div className="row">
-          <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
-            await call("memory.pipeline.review", { workspaceId, claimId: note.claimId, decision: "accept" });
-          })}>{note.source?.kind === "owner-paste" ? "Accept as personal context" : "Accept note"}</button>
-          <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
-            await call("memory.pipeline.review", { workspaceId, claimId: note.claimId, decision: "discard" });
-          })}>Discard note</button>
+          <PipelineControl command="accept-space-memory-note" scopeId={`${workspaceId}:${note.claimId}`} disabled={busy} onError={report} action={() => act(() => call("memory.pipeline.review", { workspaceId, claimId: note.claimId, decision: "accept" }))}>{note.source?.kind === "owner-paste" ? "Accept as personal context" : "Accept note"}</PipelineControl>
+          <PipelineControl command="discard-space-memory-note" scopeId={`${workspaceId}:${note.claimId}`} disabled={busy} onError={report} action={() => act(() => call("memory.pipeline.review", { workspaceId, claimId: note.claimId, decision: "discard" }))}>Discard note</PipelineControl>
         </div>
       </fieldset>)}
       <p className="hint">Approved summary used in later runs</p>
       <pre>{overview?.summary || "No approved notes yet."}</pre>
       {!!sourcesWithNotes.length && <div className="row">
         <span className="hint">Remove notes from one source and restorable revisions.</span>
-        {sourcesWithNotes.map(runId => <button className="btn sm danger" key={runId} disabled={busy}
-          onClick={() => void forget({ sourceRunId: runId }, `All notes from ${runId.startsWith("paste:") ? `pasted import ${runId.slice(6, 14)}` : `run ${runId}`} will be removed from current memory and every restorable revision. This cannot be undone.`)}>
+        {sourcesWithNotes.map(runId => <PipelineControl command="forget-space-memory-source" scopeId={`${workspaceId}:${runId}`} onError={report} className="btn sm danger" key={runId} disabled={busy}
+          action={() => forget({ sourceRunId: runId }, `All notes from ${runId.startsWith("paste:") ? `pasted import ${runId.slice(6, 14)}` : `run ${runId}`} will be removed from current memory and every restorable revision. This cannot be undone.`)}>
           {runId.startsWith("paste:") ? `Forget pasted import ${runId.slice(6, 14)}` : `Forget run ${runId}`}
-        </button>)}
+        </PipelineControl>)}
       </div>}
       {claims.map(claim => <div className="row" key={claim.claimId}>
         <span className="grow">{claim.text} <span className="hint">[{claim.source?.kind === "owner-paste" ? `pasted import ${claim.source.importId.slice(0, 8)} · unverified` : `run:${claim.sourceRunId}${claim.source ? `#${claim.source.quoteSha256.slice(0, 12)}` : ""}`}]</span></span>
-        <button className="btn sm" disabled={busy} onClick={() => void forget({ claimId: claim.claimId },
-          "This note will be removed from current memory and every restorable revision. This cannot be undone.")}>Forget note</button>
+        <PipelineControl command="forget-space-memory-note" scopeId={`${workspaceId}:${claim.claimId}`} onError={report} disabled={busy} action={() => forget({ claimId: claim.claimId },
+          "This note will be removed from current memory and every restorable revision. This cannot be undone.")}>Forget note</PipelineControl>
       </div>)}
       {(claims.length > 0 || inbox.length > 0 || history.some(revision => revision.claimCount > 0)) &&
-        <button className="btn sm danger" disabled={busy} onClick={() => void forget({ all: true },
+        <PipelineControl command="forget-all-space-memory" scopeId={workspaceId} onError={report} className="btn sm danger" disabled={busy} action={() => forget({ all: true },
           "All pending and approved notes, including copies in restorable revisions, will be removed. This cannot be undone.")}>
           Forget all Space memory
-        </button>}
-      <details><summary>Memory history · {history.length} revisions</summary>
+        </PipelineControl>}
+      <details open={historyOpen}><PipelineControl command="toggle-space-memory-history" scopeId={workspaceId} kind="summary" onError={report} action={() => { assertCurrent(); setHistoryOpen(value => !value); }}>Memory history · {history.length} revisions</PipelineControl>
         {history.map(revision => <div className="field" key={revision.revisionId}>
           <p>{new Date(revision.capturedAt).toLocaleString()} · {revision.claimCount} notes</p>
           <pre>{revision.summary || "No approved notes."}</pre>
-          <button className="btn sm" disabled={busy} onClick={() => void act(async () => {
-            await call("memory.pipeline.revert", { workspaceId, revisionId: revision.revisionId });
-          })}>Restore this revision</button>
+          <PipelineControl command="restore-space-memory-revision" scopeId={`${workspaceId}:${revision.revisionId}`} disabled={busy} onError={report} action={() => act(() => call("memory.pipeline.revert", { workspaceId, revisionId: revision.revisionId }))}>Restore this revision</PipelineControl>
         </div>)}
       </details>
     </>}

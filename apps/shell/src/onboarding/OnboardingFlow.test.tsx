@@ -29,6 +29,7 @@ vi.mock("../bridge", () => ({ inNativeHost: true, bridge: native }));
 vi.mock("../store", () => ({
   call: rpc,
   toast: vi.fn(),
+  errToast: vi.fn(),
   useStore: Object.assign((selector: (state: any) => unknown) => selector(workspace), {
     getState: () => workspace,
     setState: (update: any) => {

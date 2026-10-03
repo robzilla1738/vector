@@ -95,10 +95,10 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
       const reveal = stayed();
       settle(state => state.runs.some(item => item.runId === run.runId) ? state.runs : [run, ...state.runs]);
       if (!opts.ownsDraft && !existingChat && !hasChatDraft && get().agentDraft === before.agentDraft) get().setAgentDraft("");
-      if (reveal) {
+      if (opts.reveal !== false && reveal) {
         if (opts.presentation === "conversation") get().openConversation(run.runId);
         else set({ railOpen: true, railView: { kind: "run", runId: run.runId } });
-      } else toast("Started in the background. Find it in Chats.");
+      } else if (opts.reveal !== false) toast("Started in the background. Find it in Chats.");
       return run;
     } catch (error) {
       settle();

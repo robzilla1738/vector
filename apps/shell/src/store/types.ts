@@ -135,8 +135,8 @@ export interface Workspace {
   closingTabs: boolean;
   closeTabs(pageIds: string[], options?: { shouldStop?(): boolean; onClosed?(pageId: string, count: number): void }): Promise<boolean>;
   reopenClosedTab(pageId?: string, group?: boolean): Promise<void>;
-  /** `ownsDraft`: the caller already cleared its composer and restores it on failure. */
-  startRun(goal: string, opts?: { pageId?: string | null; pageIds?: string[]; contextPageRefs?: PageContextRef[]; mentions?: import("@aux/contracts").MentionRef[]; memorySource?: { workspaceId: string; memoryId: string }; scope?: "page" | "new"; chatId?: string; presentation?: "rail" | "conversation"; ownsDraft?: boolean }): Promise<Run | null>;
+  /** `ownsDraft`: the caller owns draft recovery. `reveal: false`: it also owns presentation after the ACK. */
+  startRun(goal: string, opts?: { pageId?: string | null; pageIds?: string[]; contextPageRefs?: PageContextRef[]; mentions?: import("@aux/contracts").MentionRef[]; memorySource?: { workspaceId: string; memoryId: string }; scope?: "page" | "new"; chatId?: string; presentation?: "rail" | "conversation"; ownsDraft?: boolean; reveal?: boolean }): Promise<Run | null>;
   /** Messages shown in the thread while their run is still being created. */
   pendingTurns: { id: string; chatId: string | null; goal: string; createdAt: number }[];
   /** Live answer text streamed by `run.answer.delta`, dropped once the run settles. */

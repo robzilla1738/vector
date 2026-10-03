@@ -69,14 +69,14 @@ export function SettingsGroup({ title, children }: { title: string; children: Re
 export function Switch(props: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "role">) {
   return <input {...props} type="checkbox" role="switch" className={`ui-switch ${props.className ?? ""}`} />;
 }
-export function Checkbox(props: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
-  return <input {...props} type="checkbox" className={`ui-checkbox ${props.className ?? ""}`} />;
+export function Checkbox({controlRef,...props}: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {controlRef?:(node:HTMLInputElement|null)=>void}) {
+  return <input {...props} ref={controlRef} type="checkbox" className={`ui-checkbox ${props.className ?? ""}`} />;
 }
 export function TextField(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`ui-text-field ${props.className ?? ""}`} />;
 }
-export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`ui-select ${props.className ?? ""}`} />;
+export function Select({controlRef,...props}: SelectHTMLAttributes<HTMLSelectElement> & {controlRef?:(node:HTMLSelectElement|null)=>void}) {
+  return <select {...props} ref={controlRef} className={`ui-select ${props.className ?? ""}`} />;
 }
 
 export function RadioCard({ name, value, checked, onChange, children, className = "", disabled = false }: {

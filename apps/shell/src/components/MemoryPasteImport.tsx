@@ -1,8 +1,151 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { MEMORY_PASTE_MAX_BYTES, type MemoryPastePreview, type MemoryPasteStatus } from "@aux/contracts";
+import { useEffect, useLayoutEffect, useMemo, useCallback, useRef, useState, type ReactNode } from "react";
+import {
+  MEMORY_PASTE_MAX_BYTES,
+  type MemoryPastePreview,
+  type MemoryPasteStatus,
+  type ShellCommandId,
+} from "@aux/contracts";
 import { bridge } from "../bridge";
 import { call, useStore } from "../store";
+import { executeCommand } from "../commands";
+import { registerScopedControl } from "../scoped-control-commands";
+import { guardCommandCompletion, reportCommandCompletionFailure } from "../command-completion";
 
+class PasteOwner {
+  readonly workspaceId: string | null;
+  readonly destinationId: string;
+  readonly nativeId: string | null;
+  constructor(
+    readonly key: string,
+    readonly snapshot?: object,
+  ) {
+    const [workspaceId, destinationId, nativeId] = key
+      ? (JSON.parse(key) as [string | null, string, string | null, boolean])
+      : [null, "", null];
+    this.workspaceId = workspaceId;
+    this.destinationId = destinationId;
+    this.nativeId = nativeId;
+  }
+  current() {
+    const actual = useStore
+      .getState()
+      .layout.spaces.filter((space) => space.workspaceId === this.destinationId);
+    return (
+      this.#active &&
+      !bridge.privateMode &&
+      !!this.destinationId &&
+      actual.length === 1 &&
+      actual[0]?.id === this.nativeId &&
+      (!this.workspaceId || this.workspaceId === this.destinationId)
+    );
+  }
+  nextRequest() {
+    return ++this.#request;
+  }
+  begin() {
+    if (this.#pending) return null;
+    const operation = {};
+    this.#pending = operation;
+    return operation;
+  }
+  finish(operation: object) {
+    if (this.#pending !== operation) return false;
+    this.#pending = null;
+    return true;
+  }
+  #active = true;
+  #request = 0;
+  #receiptRequest = 0;
+  nextReceiptRequest() {
+    return ++this.#receiptRequest;
+  }
+  currentReceiptRequest(request: number) {
+    return this.current() && this.#receiptRequest === request;
+  }
+  #pending: object | null = null;
+  get active() {
+    return this.#active;
+  }
+  get request() {
+    return this.#request;
+  }
+  retire() {
+    this.#active = false;
+  }
+}
+function PasteControl({
+  command,
+  scopeId,
+  kind = "button",
+  action,
+  current,
+  report,
+  children,
+  disabled,
+  checked,
+  value,
+  className,
+}: {
+  command: ShellCommandId;
+  scopeId: string;
+  kind?: "button" | "select" | "checkbox";
+  action(element: HTMLElement): unknown;
+  current(): boolean;
+  report(reason: unknown): void;
+  children?: ReactNode;
+  disabled?: boolean;
+  checked?: boolean;
+  value?: string;
+  className?: string;
+}) {
+  const ref = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (element)
+      return registerScopedControl(element, command, scopeId, () => {
+        if (!current()) throw new Error("The original Memory import controls changed.");
+        return action(element);
+      });
+  });
+  const attach = (node: HTMLElement | null) => {
+    ref.current = node;
+  };
+  const run = (
+    event: React.MouseEvent<HTMLElement> | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const completion = executeCommand(command, { payload: { scopeId }, nativeInputEvent: event.nativeEvent });
+    void completion.catch((reason) => reportCommandCompletionFailure(completion, reason, report));
+  };
+  if (kind === "checkbox")
+    return (
+      <input
+        type="checkbox"
+        ref={attach}
+        data-command-id={command}
+        checked={checked}
+        disabled={disabled}
+        onChange={run}
+      />
+    );
+  if (kind === "select")
+    return (
+      <select ref={attach} data-command-id={command} value={value} disabled={disabled} onChange={run}>
+        {children}
+      </select>
+    );
+  return (
+    <button
+      type="button"
+      ref={attach}
+      data-command-id={command}
+      className={className}
+      disabled={disabled}
+      onClick={run}
+    >
+      {children}
+    </button>
+  );
+}
 /** Pasted drafts live only in this mounted form. Preview and commit are separate owner actions. */
 export function MemoryPasteImport({
   workspaceId,
@@ -16,76 +159,110 @@ export function MemoryPasteImport({
     (space) => space.workspaceId && (!workspaceId || workspaceId === space.workspaceId),
   );
   const [selectedSpace, setSelectedSpace] = useState("");
-  const destination = destinations.find((space) => space.workspaceId === selectedSpace);
+  const matches = destinations.filter((space) => space.workspaceId === selectedSpace);
+  const destination = matches.length === 1 ? matches[0] : undefined;
   const destinationId = destination?.workspaceId ?? "";
   const [text, setText] = useState("");
-  const [preview, setPreview] = useState<MemoryPastePreview | null>(null);
+  const [previewState, publishPreview] = useState<{ owner: PasteOwner; value: MemoryPastePreview } | null>(
+    null,
+  );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [enabled, setEnabled] = useState(false);
-  const [receipts, setReceipts] = useState<MemoryPasteStatus[]>([]);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  const busyRef = useRef(false),
-    alive = useRef(true),
-    scope = useRef(destinationId);
-  useLayoutEffect(() => {
-    scope.current = destinationId;
-  }, [destinationId]);
+  const [policy, setPolicy] = useState<{ owner: PasteOwner; request: number; enabled: boolean } | null>(null);
+  const [receiptState, publishReceipts] = useState<{ owner: PasteOwner; value: MemoryPasteStatus[] } | null>(
+    null,
+  );
+  const [pendingState, setPendingState] = useState<{ owner: PasteOwner; operation: object } | null>(null);
+  const [errorState, publishError] = useState<{ owner: PasteOwner; value: string } | null>(null);
+  const privateMode = bridge.privateMode,
+    nativeId = destination?.id;
+  const ownerKey = String(JSON.stringify([workspaceId, destinationId, nativeId, privateMode]));
+  const owner = useMemo(() => new PasteOwner(ownerKey), [ownerKey]);
+  const preview = previewState?.owner === owner ? previewState.value : null;
+  const receipts = receiptState?.owner === owner ? receiptState.value : [];
+  const busy = pendingState?.owner === owner;
+  const error = errorState?.owner === owner ? errorState.value : "";
+  const setPreview = (value: MemoryPastePreview | null) => publishPreview(value ? { owner, value } : null);
+  const setReceipts = (value: MemoryPasteStatus[]) => publishReceipts({ owner, value });
+  const setError = (value: string) => publishError({ owner, value });
+  const draft = useMemo(
+    () => new PasteOwner("", { owner, text, preview, selectedIds, onReview }),
+    [owner, text, preview, selectedIds, onReview],
+  );
+  useLayoutEffect(() => () => owner.retire(), [owner]);
+  useLayoutEffect(() => () => draft.retire(), [draft]);
+  const current = useCallback(() => owner.current(), [owner]);
+  const controlCurrent = () => owner.active && !bridge.privateMode && (!destinationId || current());
+  const enabled = policy?.owner === owner && policy.request === owner.request && policy.enabled;
   const bytes = new TextEncoder().encode(text).byteLength;
+  const report = useCallback(
+    (cause: unknown) => {
+      if (current())
+        publishError({
+          owner,
+          value:
+            cause instanceof Error
+              ? cause.message
+              : "Memory import could not finish. Check its receipts before retrying.",
+        });
+    },
+    [current, owner],
+  );
   useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
-  useEffect(() => {
-    if (!destinationId || bridge.privateMode) return;
-    let live = true;
-    const load = () =>
-      void Promise.all([
+    if (!current()) return;
+    const load = () => {
+      const request = owner.nextRequest();
+      const receiptRequest = owner.nextReceiptRequest();
+      void Promise.allSettled([
         call("memory.pipeline.policy", { workspaceId: destinationId }),
         call("memory.paste.status", { workspaceId: destinationId }),
-      ])
-        .then(([policy, status]) => {
-          if (!live) return;
-          setEnabled(policy.enabled);
-          setReceipts(status);
-        })
-        .catch((cause) => {
-          if (live) setError(cause instanceof Error ? cause.message : "Memory is unavailable in this build.");
-        });
+      ]).then(([policyReply, receiptReply]) => {
+        if (current() && owner.request === request) {
+          if (policyReply.status === "rejected") report(policyReply.reason);
+          else if (policyReply.value.workspaceId !== destinationId)
+            report(new Error("Memory returned a different destination Space."));
+          else setPolicy({ owner, request, enabled: policyReply.value.enabled });
+        }
+        if (owner.currentReceiptRequest(receiptRequest)) {
+          if (receiptReply.status === "rejected") report(receiptReply.reason);
+          else publishReceipts({ owner, value: receiptReply.value });
+        }
+      });
+    };
     load();
-    const unsubscribe = bridge.onEvent((event) => {
+    return bridge.onEvent((event) => {
       if (event.type === "workspace.memory.updated" && event.payload.workspaceId === destinationId) load();
     });
-    return () => {
-      live = false;
-      unsubscribe();
-    };
-  }, [destinationId]);
+  }, [owner, current, report, destinationId]);
   function invalidate() {
     setPreview(null);
     setSelectedIds([]);
   }
-  async function work(action: (id: string) => Promise<void>) {
-    if (busyRef.current || !destinationId) return;
-    busyRef.current = true;
-    setBusy(true);
+  function work(action: (id: string, valid: () => boolean) => Promise<unknown>) {
+    if (!current()) throw new Error("Choose the original current destination Space.");
+    const original = owner.begin();
+    if (!original) return;
+    setPendingState({ owner, operation: original });
     setError("");
-    try {
-      await action(destinationId);
-    } catch (cause) {
-      if (alive.current)
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "Memory import could not finish. Check its receipts before retrying.",
-        );
-    } finally {
-      busyRef.current = false;
-      if (alive.current) setBusy(false);
-    }
+    const valid = () => current() && draft.active;
+    return guardCommandCompletion(
+      (async () => {
+        try {
+          return await action(destinationId, valid);
+        } finally {
+          if (owner.finish(original) && current())
+            setPendingState((currentPending) =>
+              currentPending?.operation === original ? null : currentPending,
+            );
+        }
+      })(),
+      valid,
+    );
   }
+  const props = {
+    scopeId: destinationId || "destination",
+    current: () => controlCurrent() && draft.active,
+    report,
+  };
   if (bridge.privateMode) return <p>Memory import is unavailable in private browsing.</p>;
   return (
     <section aria-label="Import pasted assistant notes">
@@ -100,14 +277,17 @@ export function MemoryPasteImport({
       </p>
       <label>
         Destination Space
-        <select
+        <PasteControl
+          {...props}
+          command="select-memory-import-space"
+          kind="select"
           value={destinationId}
           disabled={busy}
-          onChange={(event) => {
-            setSelectedSpace(event.target.value);
+          action={(element) => {
+            setSelectedSpace((element as HTMLSelectElement).value);
             onReview?.(null);
             invalidate();
-            setEnabled(false);
+            setPolicy(null);
             setReceipts([]);
             setError("");
           }}
@@ -118,7 +298,7 @@ export function MemoryPasteImport({
               {space.name}
             </option>
           ))}
-        </select>
+        </PasteControl>
       </label>
       {!destinations.length && <p>Create or restore an active Space before importing notes.</p>}
       <label>
@@ -141,30 +321,37 @@ export function MemoryPasteImport({
         not restored after closing this form or restarting Aux.
       </p>
       <div className="row">
-        <button
+        <PasteControl
+          {...props}
+          command="preview-memory-import"
           className="btn sm"
           disabled={busy || !destinationId || !text.trim() || bytes > MEMORY_PASTE_MAX_BYTES}
-          onClick={() =>
-            void work(async (id) => {
+          action={() =>
+            work(async (id, valid) => {
               const result = await call("memory.paste.preview", { workspaceId: id, text });
-              if (!alive.current || scope.current !== id) return;
+              if (!valid()) return result;
+              if (result.workspaceId !== id)
+                throw new Error("Memory returned a different preview destination.");
               setPreview(result);
               setSelectedIds([]);
+              return result;
             })
           }
         >
           Preview pasted notes
-        </button>
-        <button
+        </PasteControl>
+        <PasteControl
+          {...props}
+          command="clear-memory-import-draft"
           className="btn sm ghost"
           disabled={busy || (!text && !preview)}
-          onClick={() => {
+          action={() => {
             setText("");
             invalidate();
           }}
         >
           Clear pasted draft
-        </button>
+        </PasteControl>
       </div>
       {error && <p role="alert">{error}</p>}
       {preview?.workspaceId === destinationId &&
@@ -179,13 +366,16 @@ export function MemoryPasteImport({
             </p>
             {preview.candidates.map((candidate) => (
               <label key={candidate.candidateId} className="field">
-                <input
-                  type="checkbox"
+                <PasteControl
+                  {...props}
+                  command="select-memory-import-note"
+                  scopeId={`${destinationId}:${candidate.candidateId}`}
+                  kind="checkbox"
                   checked={selectedIds.includes(candidate.candidateId)}
                   disabled={candidate.duplicate}
-                  onChange={(event) =>
+                  action={() =>
                     setSelectedIds((ids) =>
-                      event.target.checked
+                      !selectedIds.includes(candidate.candidateId)
                         ? [...ids, candidate.candidateId]
                         : ids.filter((id) => id !== candidate.candidateId),
                     )
@@ -201,54 +391,76 @@ export function MemoryPasteImport({
             ))}
             {!enabled && (
               <label>
-                <input
-                  type="checkbox"
+                <PasteControl
+                  {...props}
+                  command="enable-memory-import"
+                  kind="checkbox"
                   checked={false}
                   disabled={busy}
-                  onChange={(event) => {
-                    if (!event.target.checked) return;
-                    void work(async (id) => {
-                      await call("memory.pipeline.setPolicy", { workspaceId: id, enabled: true });
-                      if (alive.current && scope.current === id) setEnabled(true);
+                  action={() => {
+                    return work(async (id, valid) => {
+                      const request = owner.nextRequest();
+                      const result = await call("memory.pipeline.setPolicy", {
+                        workspaceId: id,
+                        enabled: true,
+                      });
+                      if (valid() && owner.request === request) {
+                        if (result.workspaceId !== id)
+                          throw new Error("Memory returned a different policy destination.");
+                        setPolicy({ owner, request: owner.request, enabled: result.enabled });
+                      }
+                      return result;
                     });
                   }}
                 />
                 Enable Memory for {destination?.name}. Only notes I later accept can be used as context.
               </label>
             )}
-            <button
+            <PasteControl
+              {...props}
+              command="commit-memory-import"
               className="btn sm"
               disabled={busy || !enabled || !selectedIds.length}
-              onClick={() =>
-                void work(async (id) => {
+              action={() =>
+                work(async (id, valid) => {
+                  if (policy?.owner !== owner || policy.request !== owner.request || !policy.enabled)
+                    throw new Error("Wait for the current Memory policy before adding notes.");
+                  const receiptRequest = owner.nextReceiptRequest();
                   const result = await call("memory.paste.commit", {
                     workspaceId: id,
                     previewId: preview.previewId,
                     selectedIds,
                   });
-                  if (!alive.current || scope.current !== id) return;
-                  setReceipts((items) =>
-                    [result, ...items.filter((item) => item.importId !== result.importId)].slice(0, 20),
-                  );
+                  if (!valid()) return result;
+                  if (result.importId !== preview.previewId)
+                    throw new Error("Memory returned a different import receipt.");
+                  if (owner.currentReceiptRequest(receiptRequest))
+                    setReceipts(
+                      [result, ...receipts.filter((item) => item.importId !== result.importId)].slice(0, 20),
+                    );
                   setText("");
                   invalidate();
                   onReview?.(id);
+                  return result;
                 })
               }
             >
               Add {selectedIds.length} {selectedIds.length === 1 ? "note" : "notes"} to Memory review
-            </button>
+            </PasteControl>
           </fieldset>
         ))}
       {destinationId && (
         <>
-          <button
+          <PasteControl
+            {...props}
+            command="refresh-memory-import-receipts"
             className="btn sm ghost"
             disabled={busy}
-            onClick={() =>
-              void work(async (id) => {
+            action={() =>
+              work(async (id, valid) => {
+                const receiptRequest = owner.nextReceiptRequest();
                 const status = await call("memory.paste.status", { workspaceId: id });
-                if (alive.current && scope.current === id) {
+                if (valid() && owner.currentReceiptRequest(receiptRequest)) {
                   setReceipts(status);
                   if (
                     preview?.status === "ready" &&
@@ -258,15 +470,16 @@ export function MemoryPasteImport({
                     invalidate();
                   }
                 }
+                return status;
               })
             }
           >
             Refresh import receipts
-          </button>
+          </PasteControl>
         </>
       )}
       {!!receipts.length && (
-        <div role="region" aria-label="Pasted Memory import receipts">
+        <section aria-label="Pasted Memory import receipts">
           <h4>Recent pasted imports</h4>
           {receipts.map((receipt) => (
             <p key={receipt.importId} data-import-id={receipt.importId}>
@@ -281,11 +494,17 @@ export function MemoryPasteImport({
             separately after Forget.
           </p>
           {onReview && (
-            <button className="btn sm" disabled={busy} onClick={() => onReview(destinationId)}>
+            <PasteControl
+              {...props}
+              command="review-memory-import-space"
+              className="btn sm"
+              disabled={busy}
+              action={() => onReview(destinationId)}
+            >
               Review this Space’s memory
-            </button>
+            </PasteControl>
           )}
-        </div>
+        </section>
       )}
     </section>
   );

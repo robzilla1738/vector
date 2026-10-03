@@ -4,10 +4,11 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { WorkspaceMemory } from '@aux/contracts';
 import { bridge } from '../bridge';
+import { useStore } from '../store';
 import { MemoryItems } from './MemoryItems';
-let host: HTMLDivElement, root: ReturnType<typeof createRoot>;
-beforeEach(()=>{vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);host=document.createElement('div');document.body.append(host);root=createRoot(host);});
-afterEach(async()=>{await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();vi.unstubAllGlobals();});
+let host: HTMLDivElement, root: ReturnType<typeof createRoot>, priorLayout: ReturnType<typeof useStore.getState>["layout"];
+beforeEach(()=>{vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT',true);priorLayout=useStore.getState().layout;host=document.createElement('div');document.body.append(host);root=createRoot(host);vi.spyOn(HTMLElement.prototype,"getClientRects").mockReturnValue([{}] as unknown as DOMRectList);});
+afterEach(async()=>{await act(async()=>root.unmount());host.remove();useStore.setState({layout:priorLayout});vi.restoreAllMocks();vi.unstubAllGlobals();});
 it('inspects recorded provenance, filters excluded notes and saves the exact note revision',async()=>{
   const memory:WorkspaceMemory={workspaceId:'space-a',revision:7,content:'Overview',excludedOrigins:['https://excluded.example'],items:[
     {itemId:'one',content:'Keep explanations concise',sourceUrl:'https://source.example/article',enabled:true,createdAt:1,updatedAt:2},
@@ -17,6 +18,7 @@ it('inspects recorded provenance, filters excluded notes and saves the exact not
     if(method!=='workspaces.memory.set')throw new Error(`Unexpected ${method}`);
     return {...memory,items:(params as {items:WorkspaceMemory['items']}).items,revision:8} as never;
   });
+  useStore.setState({layout:{...priorLayout,spaces:[...priorLayout.spaces,{id:"owned-fixture",workspaceId:"space-a"} as never]}});
   function Harness(){const[value,setValue]=useState(memory);return <MemoryItems memory={value} disabled={false} onSaved={setValue}/>;}
   await act(async()=>root.render(<Harness/>));
   await act(async()=>[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.includes('Keep explanations concise'))!.click());

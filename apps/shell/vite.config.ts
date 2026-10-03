@@ -1,3 +1,5 @@
+import { realpathSync } from "node:fs";
+import { contractSchemaPurityPlugin } from "../../scripts/contract-schema-purity.mjs";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { join } from "node:path";
@@ -66,7 +68,7 @@ export default defineConfig({
     // Emitted .js siblings must not shadow the TypeScript the typechecker ships.
     extensions: [".mjs", ".mts", ".ts", ".tsx", ".jsx", ".js", ".json"],
   },
-  plugins: [react(), chromiumHostBootstrap(), shellCsp(), preloadApp()],
+  plugins: [react(), chromiumHostBootstrap(), shellCsp(), preloadApp(), contractSchemaPurityPlugin(realpathSync(join(import.meta.dirname, "../../packages/contracts/dist")))],
   build: {
     outDir: join(import.meta.dirname, "dist"),
     emptyOutDir: true,
