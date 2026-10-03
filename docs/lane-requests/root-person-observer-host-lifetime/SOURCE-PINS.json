@@ -1,0 +1,10 @@
+{
+  "base": "7f8216d0",
+  "path": "chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc",
+  "before": "7632e7014494b93c7f7f0d3d129668a4d03a87229c4a6bc53abd660d6463c9ee",
+  "after": "cc714b09d80683fd1bdd9c5d2a32dfe4639386cbd7dc386281424013fb89f969",
+  "patchSha256": "eec7119479b224d7a225b1bc320ffb325e1e5910e25d667544d48af0118fa1af",
+  "forwardReverseRestoration": true,
+  "scope": "Scoped original+replacement retirement before captured locals destruction; callback/body/assertions unchanged; actual native execution pending.",
+  "nativeCompiled": false
+}

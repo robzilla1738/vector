@@ -1,0 +1,26 @@
+diff --git a/chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc b/chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc
+index 20214d29..47130366 100644
+--- a/chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc
++++ b/chrome/browser/ui/aux/native_person_observer_controller_browsertest.cc
+@@ -5,6 +5,7 @@
+ #include <array>
+ #include <memory>
+ #include "base/functional/bind.h"
++#include "base/functional/callback_helpers.h"
+ #include "base/memory/raw_ptr.h"
+ #include "base/test/bind.h"
+ #include "base/test/test_future.h"
+@@ -320,6 +321,13 @@ IN_PROC_BROWSER_TEST_F(NativePersonObserverControllerBrowserTest,
+   const auto generation = NativePersonReadHostTestPeer::PublishNext(host);
+   base::test::TestFuture<base::DictValue> original, replacement;
+   uint64_t fresh_generation = 0;
++  // Retire pending continuations while every captured local is still alive,
++  // including an early ASSERT return before the explicit retirement below.
++  base::ScopedClosureRunner retire_pending(base::BindLambdaForTesting([&] {
++    NativePersonReadHostTestPeer::Retire(host, generation);
++    if (fresh_generation)
++      NativePersonReadHostTestPeer::Retire(host, fresh_generation);
++  }));
+   NativePersonReadHostTestPeer::Call(host, generation, "native.personRead",
+       base::DictValue().Set("pageId", id).Set("request", Observe()),
+       base::BindLambdaForTesting([&](base::DictValue result) {
