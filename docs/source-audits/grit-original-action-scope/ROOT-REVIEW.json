@@ -1,0 +1,29 @@
+{
+  "status": "historical-failed-11db-source-api-review-only",
+  "proposal": "/tmp/aux-builder-packaged-runtime-pair-attestation-proposal/shell-original-action-output-relocation-API-PROPOSAL.json",
+  "proposalSha256": "8a8423dac974a5928d04ed9e270cdb9c2f1d0733da5b1f384ffe3c4f8089ba90",
+  "actualReferencesHashChecked": 9,
+  "uniqueActualToolchainArgvEqualsProposal": true,
+  "argvCount": 101,
+  "onlyChangedOperandIndices": [
+    6,
+    10,
+    100
+  ],
+  "exactOriginalExpectedOutputsPrefixMapping": 4,
+  "actualApisRead": [
+    "tools/grit/grit/tool/build.py CheckAssertedOutputFiles/GenerateDepfile",
+    "tools/grit/grit/node/base.py CompressDataIfNeeded",
+    "tools/grit/grit/format/gzip_string.py GzipString",
+    "tools/grit/grit/gather/chrome_html.py GetImageList/ProcessImageSets"
+  ],
+  "implementationFindings": [
+    "Actual --depend-on-stamp touches output stamp before MakeDirectoriesTo; owned controller must safely precreate exact scratch depfile parent.",
+    "Original gzip uses empty filename,mtime=0,level9; expected stored-byte source replay must retain exact original pipeline/tool.",
+    "Actual builtin gzip/Brotli decode accepts trailing zeros; source carrier decoder needs consumed-input equality. Design lane reports narrow fix plus actual positive/refusal controls; complete freeze review remains pending."
+  ],
+  "operationExecuted": false,
+  "sourceReplayExecuted": false,
+  "nativeAdmissionApproved": false,
+  "packagedArtifactAdmitted": false
+}
