@@ -3,7 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 import type { PageContextRef, PageTarget } from "@aux/contracts";
 import { useShortcutLabel, withShortcut } from "../use-shortcut-label";
 import { executeCommand } from "../commands";
-import { registerBrowserSourceUpdate } from "../browser-source-commands";
+import { registerBrowserContextCommand } from "../browser-context-commands";
 import { sourceRef, sourceStatus } from "../browser-context-sources";
 import { availableConversationPage, conversationPage } from "../conversation-page";
 import { useStore, call, errToast } from "../store";
@@ -18,12 +18,24 @@ const availableSource = (page: PageTarget, primaryPageId?: string) => availableC
   && page.pageId !== primaryPageId;
 
 const AdditionalTabChoice = memo(function AdditionalTabChoice({ pageId, selected, disabled, onToggle }: {
-  pageId: string; selected: boolean; disabled: boolean; onToggle(pageId: string): void;
+  pageId: string; selected: boolean; disabled: boolean; onToggle(pageId: string): unknown;
 }) {
   const page = useStore(state => state.pages.find(item => item.pageId === pageId));
+  const choice = useRef<HTMLLabelElement>(null);
+  const shortcut = useShortcutLabel("toggle-browser-source");
+  useLayoutEffect(() => {
+    const element = choice.current?.querySelector<HTMLInputElement>('input');
+    if (!element || !page || disabled) return;
+    const original = sourceRef(page);
+    return registerBrowserContextCommand(element, "toggle-browser-source", pageId, () => {
+      const current = useStore.getState().pages.find(item => item.pageId === pageId);
+      if (!current || !availableSource(current) || sourceStatus(original, [current]) !== "current") throw new Error("This browser source changed. Choose its current tab again.");
+      return onToggle(pageId);
+    });
+  }, [page, pageId, disabled, selected, onToggle]);
   if (!page) return null;
-  return <label className="context-choice">
-    <Checkbox checked={selected} disabled={disabled} onChange={() => onToggle(pageId)} />
+  return <label ref={choice} className="context-choice" title={withShortcut("Select additional browser source", shortcut)}>
+    <Checkbox checked={selected} disabled={disabled} data-command-id="toggle-browser-source" onChange={event => { void executeCommand("toggle-browser-source", { payload: { pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }} />
     <span title={page.url}><strong>{page.title || hostOf(page.url)}</strong><small>{hostOf(page.url)}</small></span>
   </label>;
 });
@@ -36,12 +48,23 @@ const SourceChip = memo(function SourceChip({ source, primaryPageId, disabled, b
   const status = useStore(state => sourceStatus(source, state.pages));
   const label = status === "missing" ? hostOf(source.url) : page?.title || hostOf(source.url);
   const updateShortcut = useShortcutLabel("update-browser-source");
+  const removeShortcut = useShortcutLabel("remove-browser-source");
+  const removeButton = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    const element = removeButton.current;
+    if (!element || disabled || busy) return;
+    const original = JSON.stringify(source);
+    return registerBrowserContextCommand(element, "remove-browser-source", source.pageId, () => {
+      if (JSON.stringify(source) !== original) throw new Error("The selected source changed. Choose its current Remove control.");
+      return onRemove(source.pageId);
+    });
+  }, [source, disabled, busy, onRemove]);
   const updateButton = useRef<HTMLButtonElement>(null);
   useLayoutEffect(() => {
     const element = updateButton.current;
     if (!element || status !== "changed" || disabled || busy || !page || !availableSource(page)) return;
     const original = sourceRef(page);
-    return registerBrowserSourceUpdate(element, source.pageId, () => {
+    return registerBrowserContextCommand(element, "update-browser-source", source.pageId, () => {
       const current = useStore.getState().pages.find(item => item.pageId === original.pageId);
       if (!current || !availableSource(current) || sourceStatus(original, [current]) !== "current") throw new Error("This browser tab changed. Choose its current source again.");
       return onRefresh(source.pageId);
@@ -51,7 +74,7 @@ const SourceChip = memo(function SourceChip({ source, primaryPageId, disabled, b
     {shellIconGlobe}<span title={source.url}>{source.pageId === primaryPageId ? `Captured source · ${label}` : label}</span>
     {status !== "current" && <small>{status === "changed" ? "Changed" : "Closed"}</small>}
     {status === "changed" && <button ref={updateButton} type="button" data-command-id="update-browser-source" disabled={disabled || busy || !!page?.loading} aria-label={`Use current ${label}`} title={withShortcut("Use this tab's current page", updateShortcut)} onClick={event => { void executeCommand("update-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconReload}</button>}
-    <button type="button" disabled={disabled || busy} aria-label={`Remove ${label}`} onClick={() => onRemove(source.pageId)}>{shellIconClose}</button>
+    <button ref={removeButton} type="button" data-command-id="remove-browser-source" title={withShortcut("Remove selected browser source", removeShortcut)} disabled={disabled || busy} aria-label={`Remove ${label}`} onClick={event => { void executeCommand("remove-browser-source", { payload: { pageId: source.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>{shellIconClose}</button>
   </span>;
 });
 
@@ -118,14 +141,29 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
       return;
     }
     if (additionalSources.length >= 8) { errToast(new Error("Choose up to eight additional tabs.")); return; }
-    if (useStore.getState().pages.some(page => page.pageId === pageId && availableSource(page, primaryPage?.pageId)))
-      return update(pageId, source => [...sources, source]);
+    const page = useStore.getState().pages.find(page => page.pageId === pageId && availableSource(page, primaryPage?.pageId));
+    if (page) return update(pageId, source => [...sources, source], sourceRef(page));
   };
   const refresh = (pageId: string) => {
     const page = useStore.getState().pages.find(item => item.pageId === pageId);
     if (page && availableConversationPage(page) && !page.loading)
       return update(pageId, latest => sources.map(source => source.pageId === pageId ? latest : source), sourceRef(page));
   };
+
+  const splitButton = useRef<HTMLButtonElement>(null);
+  const splitShortcut = useShortcutLabel("toggle-browser-source");
+  useLayoutEffect(() => {
+    const element = splitButton.current;
+    if (!element || disabled || busyPageId || !splitCompanion) return;
+    const original = sourceRef(splitCompanion);
+    return registerBrowserContextCommand(element, "toggle-browser-source", original.pageId, () => {
+      const state = useStore.getState();
+      const current = state.pages.find(page => page.pageId === original.pageId);
+      if (state.activePageId !== activePageId || state.splitPageId !== splitPageId || !current || !availableSource(current) || sourceStatus(original, [current]) !== "current")
+        throw new Error("The split browser source changed. Choose its current tab again.");
+      return toggle(original.pageId);
+    });
+  });
 
   return <div className="conversation-browser-context">
     <div className="conversation-browser-context-controls">
@@ -135,14 +173,14 @@ export function BrowserContextTray({ primary, linkedPageId, sources, onPrimary, 
         if (chosen && sources.some(source => source.pageId === chosen.pageId)) onSources(sources.filter(source => source.pageId !== chosen.pageId));
       }} linkedPageId={linkedPageId} disabled={disabled} />
       {splitCompanion && !sources.some(source => source.pageId === splitCompanion.pageId) &&
-        <button type="button" className="btn sm ghost" disabled={disabled || !!busyPageId || additionalSources.length >= 8}
-          title={`Include ${splitCompanion.title || hostOf(splitCompanion.url)} from the current split`}
-          onClick={() => void toggle(splitCompanion.pageId)}>Add split tab</button>}
+        <button ref={splitButton} type="button" data-command-id="toggle-browser-source" className="btn sm ghost" disabled={disabled || !!busyPageId || additionalSources.length >= 8}
+          title={withShortcut(`Include ${splitCompanion.title || hostOf(splitCompanion.url)} from the current split`, splitShortcut)}
+          onClick={event => { void executeCommand("toggle-browser-source", { payload: { pageId: splitCompanion.pageId }, nativeInputEvent: event.nativeEvent }).catch(errToast); }}>Add split tab</button>}
       <Popover label="Add browser tabs" disabled={disabled} trigger={<span>{busyPageId ? "Loading tab…" : `Add tabs${additionalSources.length ? ` · ${additionalSources.length}` : ""}`}</span>}>
         {() => <><input type="search" aria-label="Search browser context" placeholder="Find a tab…" value={query} onChange={event => setQuery(event.target.value)}/>
           <div role="group" aria-label="Additional browser tabs">{matchingIds.map(pageId => {
             const selected = sources.some(source => source.pageId === pageId);
-            return <AdditionalTabChoice key={pageId} pageId={pageId} selected={selected} disabled={disabled || !!busyPageId || (additionalSources.length >= 8 && !selected)} onToggle={id => void toggle(id)} />;
+            return <AdditionalTabChoice key={pageId} pageId={pageId} selected={selected} disabled={disabled || !!busyPageId || (additionalSources.length >= 8 && !selected)} onToggle={toggle} />;
           })}{!matchingIds.length && <p className="hint">No matching available tabs.</p>}</div></>}
       </Popover>
     </div>

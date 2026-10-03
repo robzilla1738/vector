@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { PageTarget } from "@aux/contracts";
 import { useStore } from "../store";
 import { BrowserContextPicker } from "./BrowserContextPicker";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+beforeEach(() => { vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList); });
+afterEach(() => { vi.restoreAllMocks(); });
 
 function page(pageId: string, url: string): PageTarget {
   return { pageId, backend: "aux", targetId: pageId, url, title: pageId, documentEpoch: 1, lastRevision: 0,

@@ -6,6 +6,7 @@
 .composer-queue li p { margin:0 0 var(--space-1); white-space:pre-wrap; overflow-wrap:anywhere; }
 .composer-queue .queued-message-state { flex-wrap:wrap; justify-content:flex-start; }
 .composer-queue .queued-message-state > span { margin-right:auto; }
+.composer-queue .queued-message-state > span[role="alert"] { min-width:0; overflow-wrap:anywhere; }
 .queued-message-state { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); color: var(--ink-2); font-size: var(--fs-xs); }
 .queued-message-state button { padding: var(--space-1) var(--space-1-5); border-radius: var(--r-md); color: var(--ink-2); }
 .queued-message-state button:hover { background: var(--bg-hover); color: var(--ink-0); }
@@ -28,7 +29,7 @@
 .composer-frame .conversation-images { margin:0; }
 .composer-frame-wrap .field-error { margin:var(--space-1) var(--space-2); }
 .composer-question { padding:var(--space-3); margin-bottom:var(--space-2); border:var(--hairline) solid var(--line); border-radius:var(--r-xl); background:var(--surface-secondary); }
-.composer-question p { margin:var(--space-1) 0 0; white-space:pre-wrap; }
+.composer-question p { margin:var(--space-1) 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
 .conversation-body:has(> .supporting-chip) .conversation-scroll { padding-top:48px; }
 
 .composer-footer .browser-context-trigger { max-width:min(240px, 100%); min-height:32px; }

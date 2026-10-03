@@ -16,6 +16,7 @@ let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
 const initial = useStore.getState();
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList);
   vi.stubGlobal("ResizeObserver", class { observe(){} disconnect(){} });
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { callback(0); return 1; });
   vi.stubGlobal("cancelAnimationFrame", () => {});

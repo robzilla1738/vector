@@ -13,11 +13,12 @@ const initial = useStore.getState();
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement;
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList);
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   useStore.setState({ pages: [], activePageId: null });
 });
 afterEach(async () => {
-  await act(async () => root.unmount()); host.remove(); useStore.setState(initial, true); vi.unstubAllGlobals();
+  await act(async () => root.unmount()); host.remove(); useStore.setState(initial, true); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 async function open() {
   const trigger = host.querySelector<HTMLButtonElement>('[aria-label="Browser context"]')!;

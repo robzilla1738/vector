@@ -1,0 +1,72 @@
+{
+  "producer": "root-independent-source-review",
+  "packets": [
+    {
+      "path": "/tmp/aux-browser-runtime-l10-context-commands/docs/lane-requests/l10/context-action-commands-final",
+      "patchSha256": "47062acba770e08710bc967fda92a3b3fc18c10eadb25051281c008a5b7ec355",
+      "exactForwardReverseForward": "PASS"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-l10-context-cleanup/docs/lane-requests/l10/context-command-cleanup",
+      "patchSha256": "5a16e4135c5f9174204e96b36b9759389bfff986d692beb9ea6d56644eaa846c",
+      "exactForwardReverseForward": "PASS"
+    },
+    {
+      "path": "/tmp/aux-browser-runtime-design-composer-notice-wrap/docs/lane-requests/design/composer-notice-containment",
+      "patchSha256": "3224ba3e3255a0024ce3f882f897ed7911d89276aeb16c2ab6a876a8fb02bc8d",
+      "exactForwardReverseForward": "PASS"
+    }
+  ],
+  "actualLeaves": {
+    "apps/shell/src/browser-context-commands.ts": "db2bb497b74c535ed2cc0c369650e7ee77f3590926fc47e22e4e05a3c835c172",
+    "apps/shell/src/browser-context-commands.test.ts": "102a3e55f350508c6412aedbbe7f891ea55f0dbbc32234cc8d1f2b7ab4b33f05",
+    "apps/shell/src/browser-source-commands.test.ts": "6fb8547067635956838a8aecfae12f4294ec9d06b8c4ec1c00c884611f0f0677",
+    "apps/shell/src/commands.ts": "3d4ad391f99f9cc8821d3ad8c9dbcbeedc1df126f43b2653fbca5481ec76fcbd",
+    "packages/contracts/src/commands.ts": "0e4b0541b7acba579d9d023ff9dc29ae44a6c06545c650e523712cb2060c9185",
+    "apps/shell/src/components/BrowserContextPicker.tsx": "a6d46cc9c1affc414c1a9214b37ba526f4c8886f2aec987ee56b23a416580321",
+    "apps/shell/src/components/BrowserContextTray.tsx": "e9071e267c07fd42f2ca1a85b7acccc70c70fc3c19a3e7062b3df37de458f4d1",
+    "apps/shell/src/components/BrowserContextActions.commands.test.tsx": "b9ea526e0d7517781f5a43515da2eddab08d2de5ad840b881c0df75973bcf908",
+    "apps/shell/src/components/Conversation.css": "1de4a79242932837c96cff061edbfecb8e94b04ab8c5ee5a0a88640ff7cee5a3",
+    "apps/shell/src/components/Composer.notice-wrap.test.tsx": "5c5db9b385141cd0992590e3343bcecc6b0b00c83f83f9b91b1868cbabd4682b"
+  },
+  "deleted": [
+    "apps/shell/src/browser-source-commands.ts"
+  ],
+  "registeredActions": [
+    "update-browser-source",
+    "remove-browser-source",
+    "toggle-browser-source",
+    "select-browser-context"
+  ],
+  "ownerChecks": "original mounted visible enabled control, original input target or unique focus; page URL/session/document rechecked after genuine async lookup",
+  "palette": false,
+  "componentAndRegistryControls": "PASS; focused original controls plus real Conversation notices",
+  "ownWorkspaceRebuiltTypecheck": "PASS",
+  "lint": "PASS at unchanged 390 maximum",
+  "formatRatchet": "PASS",
+  "registry": "PASS 49 journeys / 43 features",
+  "logs": {
+    "/tmp/aux-root-context-final-controls.log": "85103374306f322ab2b03b3ae56c5b9b90f7e2df9790b71084fd9305f00a2993",
+    "/tmp/aux-root-context-cleanup-typecheck.log": "536677b2f3bb120ccb22323e11a5364fb10fba2fabea5cdff0255c19dcdf730f",
+    "/tmp/aux-root-composer-notice-controls.log": "b329ae9c557053fa1d17398ce0a7a951138b971b331047394f7f278dca4e95bb",
+    "/tmp/aux-root-context-cleanup-lint-corrected.log": "615e424fe7dd6ceeaefc479f8c73518b748d340cc91394c8a9bfdb6791e3e702",
+    "/tmp/aux-root-context-cleanup-format-corrected.log": "90f03bbd69b53a9f2b2207c26df5d08780f684f34bb66cfe1b44679db0d36909",
+    "/tmp/aux-root-context-cleanup-registry.log": "85f9d712b99132aec5d1ec7b0fa2e886971959e0a41282ccc4aa8efcc28d4362"
+  },
+  "fullChangedSourceSuite": "running; /tmp/aux-root-context-cleanup-controls-corrected.log",
+  "commandWrapperRemoved": true,
+  "designReference": {
+    "path": "/Users/rcourson/AI Blueprints/06/assets/extension/assets_globals-D6PBr-GP.css",
+    "sha256": "2c2b198d715f3894d41c96b88ef9a32a4f61404891baf954d7e4e5a33d976e79",
+    "recipe": ".wrap-anywhere{overflow-wrap:anywhere}",
+    "branding": "Aux preserved"
+  },
+  "nativeCaptured": false,
+  "qualification": false,
+  "nativeFrozenCandidateUnchanged": "f0be591b296ddbb8763102f8ee7465af8453f20c",
+  "limitations": [
+    "native context journeys and pixel/focus acceptance pending",
+    "current full17 native compile remains independent",
+    "full changed source suite and coherent asset packaging pending"
+  ]
+}
