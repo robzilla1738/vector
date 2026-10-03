@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "patchSha256": "495220b3867dcb31d89d40fc01264a543253eafae50bc1f00572b93823ae7b41",
+  "files": [
+    {
+      "path": "tests/host/lib/narrow-window.mjs",
+      "beforeSha256": null,
+      "afterSha256": "f522b8a5ae5c187429d8519e92b712143b5d9a0f22c371e651136709e4190392"
+    },
+    {
+      "path": "tests/host/narrow-window.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "4603b8df26520cac8ec37b26313397c8b19e6ba6df8f9e1bf5877a69bef68d3f"
+    }
+  ],
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-narrow-window-m4aw07sg",
+  "forwardReverseForward": true,
+  "actualAxAdapterAndSwiftIdentityDragReviewed": true,
+  "controlledTests": 6,
+  "nativeExecuted": false,
+  "wired": false,
+  "visualQualified": false
+}
