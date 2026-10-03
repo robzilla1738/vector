@@ -1,0 +1,24 @@
+{
+  "status": "ROOT ACTUAL SOURCE EXPORT/OWN DEPENDENCIES/DELTA/LAUNCHER PASS; ONE STAGE ADMITTED",
+  "candidate": "d137826a5b956eacaadfddece8d090645d6fcc6d",
+  "identity": {
+    "commit": "d137826a5b956eacaadfddece8d090645d6fcc6d",
+    "tree": "4c2345a7ef1e8fba5ec76bbf822413dc5292c066",
+    "dirty": false,
+    "label": "d137826a5b956eacaadfddece8d090645d6fcc6d"
+  },
+  "sourceProofSha256": "3ad273f6049a5a9f48f19b9231db36a758bc542a808e24ba827ea31623073c05",
+  "nativeLeaves": 690,
+  "orderedPackets": 310,
+  "unchangedPrefixJoined": 309,
+  "newSourceLeaves": 2,
+  "assets": 175,
+  "shellDigest": "77ecd37d4f2e477a21789728358f8f81e3515e856e4c515d959f96722f7d8b85",
+  "ownDependencyPlan": 286,
+  "workspaceJoins": 75,
+  "sourceViewBeforeAfter": 121,
+  "stageControllerSha256": "5fd0b0a45ffe430d3c8d3d5db3e83c8db51df5d5d8f9ef1baf12fbb97d467055",
+  "stageRequestSha256": "63def4a36cce7cc8b7730183bc32ac8597b34b0176b9a9c7e1fa04b8ac5a5082",
+  "stageLauncherSha256": "1ea0064428cafd1c561d56d96be45bd23e1abb2fca3e4507e53614e71fa7bce8",
+  "gnOrBuildOrRuntimeHelperAppAdmitted": false
+}

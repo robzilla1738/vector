@@ -1,0 +1,16 @@
+{
+  "status": "ROOT ACTUAL POST-DRAIN COMPILED/CACHE RECEIPT PASS; FAILED GRAPH UNLAUNCHABLE",
+  "receiptSha256": "2aa6e79d10cd3eeacec8a93f5941e9bf7fcb7aab589c36dddfb6ecb7a46f257f",
+  "compiledOutputsHashed": 8801,
+  "exactDylibPakSet": 8784,
+  "actualArtifacts": 18,
+  "runtimeLeaves": 91,
+  "cacheHashAndSizeAndMtime": "PASS",
+  "oldHelperHash": "PASS unlaunchable old733 pairing",
+  "originalPidsAbsent": 31,
+  "originalGroupsAbsent": 19,
+  "slotAbsent": true,
+  "successfulFull17": "pending",
+  "requiredAssertions": "pending",
+  "nativeStageAdmitted": false
+}
