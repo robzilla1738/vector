@@ -955,6 +955,10 @@ Use the installed-build capture at `/Users/rcourson/AI Blueprints/06/assets/live
 - Record the exact reference files and applicable build/version for each material design change and contact-sheet comparison. Extracted class names and token names identify reference surfaces; establish actual geometry, colors and behavior from their concrete assets and captured output before claiming fidelity. Document any deliberate deviations in this plan.
 - Keep the reference capture outside Git. Continue using real Aux journey captures for light/dark, Reduce Transparency on/off, reduced motion, focus, narrow-window and long-label review. The full P0–P2 closure and final owner visual sign-off requirements remain unchanged.
 
+**Native review preparation (2026-10-03)**
+- Narrow normal-window review targets an observed native width of 720–900 points, requesting 810 points with at most 2 points rounding. This defines the review workload; it does not assert a native minimum-size policy or approve a responsive layout. Use genuine existing helper HID input, retain original process/window/kernel identity and before/after geometry, and refuse unchanged, clamped, moved, replaced or unsupported windows. Appearance-only runner wiring must restore the original observed geometry and retain cleanup failures; ordinary functional/performance runs are not resized.
+- Quick Ask and Little window review requires the expected kind to match both actual native samples bracketing each original screenshot. Window titles, compact size, creation selectors and a prior kind read are insufficient. Unknown theme/material remains diagnostic. The same compiled/source/runtime/helper pairing, actual system preferences, per-state pixel/focus/hit/long-label review and owner signoff requirements continue to apply.
+
 **Tokens (`tokens.css`)** aligned to the 06 measurements:
 - Radii use a squircle factor of 1.4 (8.4, 11.2, 16.8).
 - 4 px spacing grid and .5 px hairlines.
