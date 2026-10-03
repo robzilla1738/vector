@@ -1,3 +1,4 @@
+import { originalTabMention, openOriginalTabMention, selectOriginalTabMention } from '../lib/original-tab-mention.mjs';
 import assert from 'node:assert/strict';
 import { installTrustPages, newChat } from '../lib/l10-trust-fixtures.mjs';
 import { captureHomeState } from '../lib/home-capture.mjs';
@@ -36,14 +37,15 @@ export async function run(t) {
     const b = await t.rpc('pages.open', { url: urlB, activate: true }); originals.set(b.pageId, b);
     await t.until('B original person document ready', async () => (await t.rpc('pages.list')).some(p => p.pageId === b.pageId && p.sessionId && !p.loading));
     originals.set(b.pageId, retainMentionPage(await t.rpc('pages.list'), b.pageId, urlB));
+    const selection = originalTabMention(await t.rpc('pages.list'), 'Aux mention A');
     await newChat(t);
     await t.step('open the actual caret mention listbox with B selected', { kind: 'ui', features: ['tabMentions'] }, async () => {
-      await t.ax.type('@Aux mention A', mentionComposer);
+      await openOriginalTabMention(t, selection);
       await t.ax.waitFor(shell('Mention a source'));
-      return capture('mentions-caret-listbox', 'mentions-caret-listbox', '@Aux mention A', true);
+      return capture('mentions-caret-listbox', 'mentions-caret-listbox', selection.query, true);
     });
     await t.step('select the available source and delete its whole token', { kind: 'ui', features: ['tabMentions'] }, async () => {
-      await t.ax.key('enter', 'hid');
+      await selectOriginalTabMention(t, selection);
       await t.ax.waitFor(shell('Mention a source'), 'absent');
       await t.ax.waitFor(shell('Remove @Aux mention A'));
       assert.equal((await t.ax.query(shell('Changed'))).length, 0);
@@ -56,9 +58,9 @@ export async function run(t) {
       await unchanged();
       return available;
     });
-    await t.ax.type('@Aux mention A', mentionComposer);
+    await openOriginalTabMention(t, selection);
     await t.ax.waitFor(shell('Mention a source'));
-    await t.ax.key('enter', 'hid');
+    await selectOriginalTabMention(t, selection);
     await t.ax.waitFor(shell('Mention a source'), 'absent');
     await t.ax.type('Keep this unsent draft.', mentionComposer);
     const draft = '@Aux mention A Keep this unsent draft.';

@@ -31,7 +31,29 @@ export async function createInvalidImageFixture() {
       assert.equal(read.bytesRead, bytes.length); assert.equal(digest(content), digest(bytes));
     };
     await validate();
-    return Object.freeze({ path, validate, async dispose() { try { await validate(); await unlink(path); await rmdir(directory); } finally { await file.close(); file = null; } } });
+    let phase = 'live';
+    const validateRemainingDirectory = async () => {
+      const dir = await lstat(directory);
+      assert.ok(dir.isDirectory() && !dir.isSymbolicLink());
+      for (const key of ['dev', 'ino', 'uid', 'mode']) assert.equal(dir[key], parent[key], `Owned image directory ${key} changed`);
+      assert.deepEqual(await readdir(directory), [], 'Unknown image cleanup entry remains');
+      const held = await file.stat();
+      assert.equal(held.ino, original.ino); assert.equal(held.dev, original.dev);
+    };
+    const lease = Object.freeze({ path, validate, async dispose() {
+      if (phase === 'disposed') return;
+      try {
+        if (phase === 'live') { await validate(); await unlink(path); phase = 'file-removed'; }
+        if (phase === 'file-removed') { await validateRemainingDirectory(); await rmdir(directory); phase = 'tree-removed'; }
+        await file.close(); file = null; phase = 'disposed';
+      } catch (error) {
+        // Keep the original FD/closure; never reopen a replacement inode or
+        // discard the lease merely because validation/partial cleanup refused.
+        throw Object.assign(new AggregateError([error], 'Original image fixture cleanup is unresolved', { cause: error }),
+          { ownedImageFixture: lease, cleanupPhase: phase });
+      }
+    } });
+    return lease;
   } catch (error) {
     // Unknown file/tree identity is retained as cleanup debt, never blindly removed.
     if (file) await file.close().catch(() => {});

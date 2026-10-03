@@ -1,0 +1,101 @@
+{
+  "base": "89eda7edde804ad1761d7578e05f0a84d9aefbf2",
+  "scope": "source-only capture readiness and fixture recovery",
+  "packets": [
+    {
+      "packet": "/tmp/aux-browser-runtime-l10-mention-selection/docs/lane-requests/l10/mention-selection",
+      "patchSha256": "11b2e4971346aa4b2c86202b8f3de70493793cbd7d7d03e7a07b8622716490c6",
+      "leaves": [
+        {
+          "path": "tests/host/lib/l10-trust-fixtures.mjs",
+          "beforeSha256": "01907633e6c8faa119e8841b2af22c0fc9ab148b13d0748b52c78b3cab75a165",
+          "afterSha256": "3eb11ec8236620f6f94dfc9da18cada37e430273f7a1ba23a6772c310dc2d85c"
+        },
+        {
+          "path": "tests/host/appearance-journeys/mentions-appearance.mjs",
+          "beforeSha256": "2ae22d166a2a48140b8ad0c210d10b1f97d856e7c0b05f706c1a1c9f81c5e59a",
+          "afterSha256": "9bd96e8de3753c679d661416a3f2d3f48932f5ab55a3b303eff7d6926f32d2f9"
+        },
+        {
+          "path": "tests/host/lib/original-tab-mention.mjs",
+          "beforeSha256": null,
+          "afterSha256": "6b40f2c5a2c3c6982819f59538e7e9c7d62c3f884cb1e474fb816420b03f977f"
+        },
+        {
+          "path": "tests/host/lib/original-tab-mention.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "3bb7f9f235d3c544263e98b31d6b53a3d05bfccee070e206092b6946ca077405"
+        },
+        {
+          "path": "tests/unit/original-tab-mention.test.ts",
+          "beforeSha256": null,
+          "afterSha256": "8b303ef2c7fde5a691295abff7b9bcf80d5d6c7b2a70ef653695d84f39f8145b"
+        }
+      ],
+      "rootExactForwardReverseForward": true,
+      "actualSourcePinsVerified": true
+    },
+    {
+      "packet": "/tmp/aux-browser-runtime-design-settings-row-completion/docs/lane-requests/design/settings-row-completion-appearance",
+      "patchSha256": "5c36d30fc80d70680b63e9dd7ad26597577e379f8edb6893e2c0635602aa1345",
+      "leaves": [
+        {
+          "path": "tests/host/journeys/layout-modes.mjs",
+          "beforeSha256": "aee694393552b521c943da7632fe9a55d9ed4d1f2dc4cfb787a95f5143d9de7a",
+          "afterSha256": "1279a9106111666373c641863c8bd63042acf997b0b9fde0c215cf9dba0ef799"
+        },
+        {
+          "path": "tests/host/lib/settings-row-completion-appearance.mjs",
+          "beforeSha256": null,
+          "afterSha256": "05fc6a85272013be98bdeb1fd17473cb180e899173f3ea6601eb55deb48e7fad"
+        },
+        {
+          "path": "tests/host/settings-row-completion-appearance.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "77e3e3e05af82b86f15db390390145246ad96f804fa4d377d76d1441136d271c"
+        }
+      ],
+      "rootExactForwardReverseForward": true,
+      "actualSourcePinsVerified": true
+    },
+    {
+      "packet": "/tmp/aux-browser-runtime-design-failed-turn-sdk/docs/lane-requests/design/failed-turn-sdk-transport",
+      "patchSha256": "641a42044aa09f067ac733dca5fd3fa56634831167fcbbc0c95157fe591e7313",
+      "leaves": [
+        {
+          "path": "tests/host/failed-turn-details-appearance.test.mjs",
+          "beforeSha256": "40ea0a5bf0e93e5bac0c06cc8f174644bc943550039be0368ae48adb319a53ef",
+          "afterSha256": "40bd1e00bf02cb77596869ec53226aa65306205bdc4c6fe835f2299f6720f1c3"
+        }
+      ],
+      "rootExactForwardReverseForward": true,
+      "actualSourcePinsVerified": true
+    },
+    {
+      "packet": "/tmp/aux-browser-runtime-l10-image-cleanup/docs/lane-requests/l10/image-cleanup-lease",
+      "patchSha256": "7b6f088a27338317dd955ba0b0e08e26b9153a7a5c1fabc13d52b2c99621ebc9",
+      "leaves": [
+        {
+          "path": "tests/host/lib/composer-image-appearance.mjs",
+          "beforeSha256": "c7c1d4e62fd806bcef00df7d552961cfdfbee5629cf995c91c08481dc125a960",
+          "afterSha256": "5f7a60228e4fad1c1bdd327ffa11a9eae4b292a762a53e79e876316e8209cdcc"
+        },
+        {
+          "path": "tests/host/lib/composer-image-cleanup.test.mjs",
+          "beforeSha256": null,
+          "afterSha256": "6b4f70c406bd59307baf635855d67202bc804547cbd5477bc4b85e8591c6bcfd"
+        }
+      ],
+      "rootExactForwardReverseForward": true,
+      "actualSourcePinsVerified": true
+    }
+  ],
+  "nativeExecuted": false,
+  "qualified": false,
+  "sourceControlsLog": "/tmp/aux-root-following-capture-recovery-controls.log",
+  "sourceControlsSha256": "e2de34c0e14869dcb6aab4bb56657ace7e42d5b44ae84dbdd3f9006db4d73643",
+  "remainingNativeGates": "actual matching build/helper/runtime/resources, genuine original-owner journeys, F21 full matrix and owner signoff",
+  "actualProductParserControlsLog": "/tmp/aux-root-original-mention-product-controls.log",
+  "actualProductParserControlsSha256": "31f4472f1873df3e348804e30165945e37ba078c5b08fc399216da6b5c3e464e",
+  "actualProductParserControlsExit": 0
+}

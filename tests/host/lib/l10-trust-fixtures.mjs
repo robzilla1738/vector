@@ -1,3 +1,4 @@
+import { originalTabMention, openOriginalTabMention, selectOriginalTabMention, requireOriginalMention, requireMentionReference } from './original-tab-mention.mjs';
 import assert from 'node:assert/strict';
 import { fixturePage } from './fixture.mjs';
 
@@ -52,15 +53,18 @@ export async function newChat(t) {
 }
 export async function mentionedRun(t, title, text, interact = false) {
   const old = new Set((await t.rpc('runs.list')).map(run => run.runId));
+  const original = originalTabMention(await t.rpc('pages.list'), title, interact);
   await newChat(t);
   const composer = { name: 'Reply to conversation', match: 'exact', scope: 'shell', index: 0 };
-  await t.ax.type(`@${title}${interact ? ' · interact' : ''}`, composer);
-  await t.ax.waitFor({ name: 'Mention a source', match: 'exact', scope: 'shell', index: 0 });
-  await t.ax.key('enter', 'hid');
-  await t.ax.waitFor({ name: 'Mention a source', match: 'exact', scope: 'shell', index: 0 }, 'absent');
+  await openOriginalTabMention(t, original);
+  await selectOriginalTabMention(t, original);
   await t.ax.type(` ${text}`, composer);
+  requireOriginalMention(await t.rpc('pages.list'), original);
   await t.ax.press({ role: 'AXButton', name: 'Send message', match: 'exact', scope: 'shell', index: 0 });
-  return t.until('the mentioned run exists', async () => (await t.rpc('runs.list')).find(run => !old.has(run.runId)), 30_000);
+  const run = await t.until('the mentioned run exists', async () => (await t.rpc('runs.list')).find(run => !old.has(run.runId)), 30_000);
+  assert.equal(run.config.mentions.length, 1);
+  requireMentionReference(run.config.mentions[0], original);
+  return run;
 }
 export async function finished(t, runId) {
   return t.until('the real run completes', async () => {

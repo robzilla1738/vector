@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
+import { createRequire } from 'node:module';
 import { createFixture } from './lib/fixture.mjs';
 import { captureFailedTurnDetailsAppearance, installFailedTurnHttpRoute } from './lib/failed-turn-details-appearance.mjs';
 const question = 'Explain the owned loopback provider availability without reading or opening a page.';
@@ -17,6 +18,36 @@ test('fixed owned route really returns HTTP503 JSON and records original request
     http.remove();
     assert.equal((await fetch(`${http.endpoint}/chat/completions`, { method: 'POST' })).status, 404);
   } finally { await fixture.close(); }
+});
+test('installed compatible-provider SDK preserves the original question on real HTTP503 transport', async () => {
+  const runtimeRequire = createRequire(new URL('../../apps/runtime/package.json', import.meta.url));
+  const { createOpenAI } = await import(runtimeRequire.resolve('@ai-sdk/openai'));
+  const { generateText, streamText } = await import(runtimeRequire.resolve('ai'));
+  const fixture = await createFixture();
+  const http = installFailedTurnHttpRoute(fixture);
+  try {
+    const provider = createOpenAI({ apiKey: 'synthetic-loopback-only', baseURL: http.endpoint, name: 'openai-compatible' });
+    for (const content of [question, [{ type: 'text', text: question }], `Task: ${question}`]) {
+      const request = { model: provider.chat('fixture-model'), messages: [{ role: 'user', content }], maxRetries: 0 };
+      await assert.rejects(generateText(request), error => error.statusCode === 503);
+      const stream = streamText({ ...request, onError: () => {} });
+      let failure;
+      for await (const part of stream.fullStream) if (part.type === 'error') failure = part.error;
+      assert.equal(failure?.statusCode, 503);
+    }
+    assert.equal(http.receipts.length, 6);
+    for (const receipt of http.receipts) {
+      assert.equal(receipt.method, 'POST');
+      assert.equal(receipt.path, '/appearance-provider-failure/v1/chat/completions');
+      assert.equal(receipt.status, 503);
+      assert.equal(receipt.request.messages.length, 1);
+      const message = receipt.request.messages[0];
+      assert.equal(message.role, 'user');
+      assert.equal(typeof message.content, 'string');
+      assert.ok(message.content === question || message.content === `Task: ${question}`);
+      assert.ok(message.content.includes(question));
+    }
+  } finally { http.remove(); await fixture.close(); }
 });
 test('ordinary journey never adds a failed turn or changes model settings', async () => {
   assert.deepEqual(await captureFailedTurnDetailsAppearance({ appearanceEnabled: false }), { status: 'not-requested' });

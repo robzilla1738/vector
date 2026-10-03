@@ -1,3 +1,4 @@
+import { captureSettingsRowCompletion } from "../lib/settings-row-completion-appearance.mjs";
 import { captureSettingsRail } from '../lib/chat-settings-capture.mjs';
 import { captureAppearanceTextState } from '../lib/appearance-text-state.mjs';
 import { captureHomeJourneyState as captureLayoutState } from '../lib/home-capture.mjs';
@@ -37,6 +38,7 @@ async function setting(t, label, key, value) {
       ready: () => t.ax.waitFor({ name: 'No settings found for', match: 'contains', scope: 'shell', index: 0 }) });
     t.assert.deepEqual(await t.rpc('pages.list'), originalPages, 'Settings search must not create or navigate a page');
     await captureSettingsRail(t, layout);
+    await captureSettingsRowCompletion(t, layout);
   }
   await t.ax.type(label, search);
   const result = { name: `^Appearance ${label}(?: |$)`, role: 'AXButton', match: 'regex', scope: 'shell', index: 0 };
