@@ -1,0 +1,9 @@
+// Copyright 2026 The Aux Authors
+module chrome.mojom;
+
+// Browser-only, fixed primary-document reader in AUX_OBSERVER. Prepare's ACK
+// joins the document-scoped renderer receiver to the retained browser WeakDoc.
+interface AuxPersonObserver {
+  Prepare(string read_id) => (bool ready);
+  Read(string read_id, string request_json) => (bool accepted, string result_json);
+};

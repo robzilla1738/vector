@@ -1,0 +1,839 @@
+--- /dev/null
++++ b/packages/chromium-driver/src/person-observer-script.ts
+@@ -0,0 +1,153 @@
++import type { ObserveScriptResult } from "./observe-script.js";
++
++export type PersonReadRequest =
++  | { operation: "observe"; maxElements: number; maxTextChars: number }
++  | { operation: "extract"; fields: Array<{ name: string; selector?: string; attribute?: string; all?: boolean }> };
++
++/** Fixed isolated-world reader. Arguments are data; no scripts or actuation. */
++export function readPersonDocument(request: PersonReadRequest): ObserveScriptResult | Record<string, unknown> {
++  const fail = () => { throw new Error("This page cannot be read safely."); };
++  const secretIdentity = /password|passphrase|secret|api[-_ ]?key|(?:access|refresh|id|auth|authorization|session|bearer)[-_ ]?token|card[-_ ]?number|credit[-_ ]?card|security[-_ ]?code|\bcvv\b|\bcvc\b|\bcsc\b/i;
++  const secretAutocomplete = /^(current-password|new-password|one-time-code|cc-number|cc-csc|cc-exp|cc-exp-month|cc-exp-year)$/;
++  if (!request || !["observe", "extract"].includes(request.operation)) fail();
++  if (request.operation === "observe" &&
++      (!Number.isInteger(request.maxElements) || request.maxElements < 1 || request.maxElements > 200 ||
++       !Number.isInteger(request.maxTextChars) || request.maxTextChars < 1 || request.maxTextChars > 16000)) fail();
++  if (request.operation === "extract" && (!Array.isArray(request.fields) || request.fields.length < 1 || request.fields.length > 20)) fail();
++
++  const roots: Array<Document | ShadowRoot> = [document];
++  const elements: Element[] = [];
++  // Finish metadata admission before touching text, title or field properties.
++  // Refuse protected forms as a whole, including echoes elsewhere in the DOM,
++  // rather than reading a secret in order to redact it afterwards.
++  for (let index = 0; index < roots.length; index++) {
++    if (roots.length > 64) fail();
++    const walker = document.createTreeWalker(roots[index]!, 1);
++    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
++      if (elements.length >= 10000) fail();
++      const element = node as Element;
++      const type = (element.getAttribute("type") ?? "").toLowerCase();
++      const identity = ["name", "id", "aria-label", "placeholder"].map(key => element.getAttribute(key) ?? "").join(" ");
++      const autocomplete = (element.getAttribute("autocomplete") ?? "").toLowerCase().split(/\s+/);
++      if (type === "password" || autocomplete.some(token => secretAutocomplete.test(token)) ||
++          secretIdentity.test(identity) || element.hasAttribute("contenteditable")) fail();
++      elements.push(element);
++      if (element.shadowRoot) roots.push(element.shadowRoot);
++    }
++  }
++  const safeUrl = (raw: string): string => {
++    const url = new URL(raw, location.href);
++    if (!["https:", "http:"].includes(url.protocol) || url.username || url.password ||
++        [...url.searchParams.keys()].some(key => secretIdentity.test(key) || /^(?:code|token|key|session|cookie|authorization|credential|client_secret)$/i.test(key)) ||
++        secretIdentity.test(decodeURIComponent(url.hash))) fail();
++    return url.href;
++  };
++  const pageUrl = safeUrl(location.href);
++  const ignored = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "INPUT", "TEXTAREA", "SELECT"]);
++  const textOf = (root: Node, limit: number): string => {
++    let text = "";
++    let visited = 0;
++    const walk = (node: Node, depth: number) => {
++      if (++visited > 10000 || depth > 128) fail();
++      if (text.length >= limit) return;
++      if (node.nodeType === 3) { text += (node.nodeValue ?? "").slice(0, limit - text.length); return; }
++      if (node.nodeType === 1) {
++        const element = node as HTMLElement;
++        if (ignored.has(element.tagName) || element.hidden || element.getAttribute("aria-hidden") === "true") return;
++        const style = getComputedStyle(element);
++        if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") return;
++      }
++      for (let child = node.firstChild; child && text.length < limit; child = child.nextSibling) {
++        if (child.nodeType === 1 && text.length) text += " ";
++        walk(child, depth + 1);
++      }
++      if (node.nodeType === 1 && (node as Element).shadowRoot && text.length < limit)
++        walk((node as Element).shadowRoot!, depth + 1);
++    };
++    walk(root, 0);
++    return text.replace(/\s+/g, " ").trim().slice(0, limit);
++  };
++  if (request.operation === "extract") {
++    const output: Record<string, unknown> = Object.create(null);
++    let outputChars = 0;
++    const bounded = (value: string): string => {
++      outputChars += value.length;
++      if (outputChars > 65536) fail();
++      return value;
++    };
++    const attributes = new Set(["href", "title", "alt", "aria-label", "name", "id", "role"]);
++    for (const field of request.fields) {
++      if (!field || typeof field.name !== "string" || !/^[A-Za-z][\w-]{0,63}$/.test(field.name) ||
++          Object.hasOwn(output, field.name) || (field.all !== undefined && typeof field.all !== "boolean") ||
++          (field.attribute !== undefined && !attributes.has(field.attribute))) fail();
++      if (field.selector === undefined) {
++        if (field.attribute !== undefined || field.all !== undefined) fail();
++        output[field.name] = bounded(field.name === "url" ? pageUrl : field.name === "title" ? document.title.slice(0, 512) : textOf(document.body, 4000));
++        continue;
++      }
++      if (typeof field.selector !== "string" || !field.selector.length || field.selector.length > 512) fail();
++      const selected: Element[] = [];
++      for (const root of roots) {
++        for (const element of root.querySelectorAll(field.selector)) {
++          if (selected.length >= 200) fail();
++          selected.push(element);
++          if (!field.all) break;
++        }
++        if (!field.all && selected.length) break;
++      }
++      const values = selected.map(element => bounded(field.attribute
++        ? field.attribute === "href" ? safeUrl(element.getAttribute("href") ?? "") : (element.getAttribute(field.attribute) ?? "").slice(0, 4000)
++        : textOf(element, 4000)));
++      output[field.name] = field.all ? values : values[0] ?? null;
++    }
++    return output;
++  }
++  const state = globalThis as typeof globalThis & { __auxPersonRefs?: { ids: WeakMap<Element, number>; next: number } };
++  const refs = state.__auxPersonRefs ??= { ids: new WeakMap(), next: 1 };
++  const interactive = "a[href],button,input:not([type=hidden]),select,textarea,summary,[role],[tabindex]";
++  const candidates = elements.filter(element => element.matches(interactive));
++  const entries = [];
++  for (const element of candidates) {
++    if (entries.length >= request.maxElements) break;
++    const rect = element.getBoundingClientRect();
++    const style = getComputedStyle(element);
++    if (!rect.width || !rect.height || style.display === "none" || style.visibility !== "visible") continue;
++    let id = refs.ids.get(element);
++    if (id === undefined) { id = refs.next++; refs.ids.set(element, id); }
++    if (!Number.isSafeInteger(refs.next)) fail();
++    const tag = element.tagName.toLowerCase();
++    const label = element.getAttribute("id") ? elements.find(candidate => candidate.tagName === "LABEL" && candidate.getAttribute("for") === element.id) : undefined;
++    const name = (element.getAttribute("aria-label") || (label ? textOf(label, 120) : "") ||
++      element.getAttribute("placeholder") || textOf(element, 120) || element.getAttribute("name") || "").slice(0, 120);
++    entries.push({ ref: `r${id}`, frame: "main", tag, name,
++      role: element.getAttribute("role") ?? (tag === "button" ? "button" : tag === "a" ? "link" : undefined),
++      rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
++      selector: {},
++      ...(tag === "input" ? { type: element.getAttribute("type") ?? "text" } : {}),
++      ...(tag === "a" ? { href: safeUrl(element.getAttribute("href") ?? "") } : {}),
++    });
++  }
++  const formFields = entries.filter(entry => ["input", "select", "textarea"].includes(entry.tag))
++    .map(entry => ({ ref: entry.ref, label: entry.name, type: entry.type ?? entry.tag }));
++  const tables = elements.filter(element => element.tagName === "TABLE").slice(0, 6).map((table, index) => {
++    const rows = [...table.querySelectorAll("tr")];
++    const header = rows.find(row => row.querySelector("th"));
++    const body = rows.filter(row => row !== header);
++    const cells = (row: Element) => [...row.querySelectorAll("th,td")].slice(0, 20).map(cell => textOf(cell, 120));
++    return { ref: `t${index + 1}`, caption: table.querySelector("caption") ? textOf(table.querySelector("caption")!, 80) : undefined,
++      columns: header ? cells(header) : [], rows: body.slice(0, 12).map(cells), totalRows: body.length, truncated: body.length > 12 };
++  });
++  const dialogs = elements.filter(element => element.matches('dialog[open],[role="dialog"],[role="alertdialog"]'))
++    .slice(0, 8).map(element => ({ type: element.getAttribute("role") ?? "dialog", message: textOf(element, 512) }));
++  const text = textOf(document.body, request.maxTextChars + 1);
++  return { url: pageUrl, title: document.title.slice(0, 512),
++    viewport: { width: innerWidth, height: innerHeight, scale: devicePixelRatio || 1 },
++    scroll: { x: Math.round(scrollX), y: Math.round(scrollY), maxY: Math.max(0, document.documentElement.scrollHeight - innerHeight) },
++    text: text.slice(0, request.maxTextChars),
++    headings: elements.filter(element => /^H[1-3]$/.test(element.tagName)).slice(0, 12).map(element => textOf(element, 140)),
++    elements: entries, formFields, tables, links: entries.filter(element => element.href).map(element => ({ ref: element.ref, text: element.name, href: element.href })),
++    dialogs, truncated: candidates.length > entries.length || text.length > request.maxTextChars,
++    elementsTotal: candidates.length, nextRef: refs.next };
++}
++
++export const PERSON_OBSERVER_SOURCE = `(${readPersonDocument.toString()})`;
+--- /dev/null
++++ b/packages/chromium-driver/scripts/gen-native-person-observer.mjs
+@@ -0,0 +1,23 @@
++import { createHash } from 'node:crypto';
++import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
++import { dirname, resolve } from 'node:path';
++import { PERSON_OBSERVER_SOURCE } from '../dist/person-observer-script.js';
++
++const output = resolve(import.meta.dirname, '../../../.native/chrome/common/native_person_observer_script.h');
++const source = `((request) => JSON.stringify(${PERSON_OBSERVER_SOURCE}(request)))`;
++if (source.includes(')AUX_READ"')) throw new Error('Fixed observer literal delimiter collision');
++const header = `// Generated from the fixed person observer; run gen-native-person-observer.mjs.
++#ifndef CHROME_COMMON_NATIVE_PERSON_OBSERVER_SCRIPT_H_
++#define CHROME_COMMON_NATIVE_PERSON_OBSERVER_SCRIPT_H_
++namespace aux::person_observer_script {
++inline constexpr char kProducerSha256[] = "${createHash('sha256').update(source).digest('hex')}";
++inline constexpr char16_t kRead[] = uR"AUX_READ(${source})AUX_READ";
++}  // namespace aux::person_observer_script
++#endif
++`;
++if (process.argv.includes('--check')) {
++  if (readFileSync(output, 'utf8') !== header) throw new Error('Fixed native person observer is stale');
++} else {
++  mkdirSync(dirname(output), { recursive: true });
++  writeFileSync(output, header);
++}
+--- /dev/null
++++ b/tests/unit/person-observer-script.test.ts
+@@ -0,0 +1,69 @@
++import { readFileSync } from "node:fs";
++import { JSDOM } from "jsdom";
++import { expect, it } from "vitest";
++
++const header = readFileSync(new URL("../../.native/chrome/common/native_person_observer_script.h", import.meta.url), "utf8");
++const source = /kRead\[\] = uR"AUX_READ\(([\s\S]*?)\)AUX_READ";/.exec(header)![1]!;
++function page(html: string) {
++  const dom = new JSDOM(html, { url: "https://person-read.test/", runScripts: "outside-only", pretendToBeVisual: true });
++  const { window } = dom;
++  window.Element.prototype.getBoundingClientRect = () => ({ x: 0, y: 0, width: 40, height: 20, top: 0, bottom: 20, left: 0, right: 40, toJSON: () => ({}) });
++  const forbidden = () => { throw new Error("Forbidden page actuation or field read"); };
++  window.HTMLInputElement.prototype.checkValidity = forbidden;
++  window.HTMLElement.prototype.click = forbidden;
++  window.EventTarget.prototype.dispatchEvent = forbidden;
++  for (const prototype of [window.HTMLInputElement.prototype, window.HTMLTextAreaElement.prototype]) {
++    Object.defineProperty(prototype, "value", { get: forbidden });
++    Object.defineProperty(prototype, "defaultValue", { get: forbidden });
++  }
++  const read = window.eval(source) as (request: unknown) => string;
++  return { window, dom, read: (request: unknown) => JSON.parse(read(request)) };
++}
++const observe = { operation: "observe", maxElements: 20, maxTextChars: 1000 };
++
++it("reads real structure without field getters, validation events or clicks", () => {
++  const f = page('<title>Workspace</title><h1>Plan</h1><p>Ready to work.</p><input name="company"><button>Continue</button><table><tr><th>Item</th></tr><tr><td>Draft</td></tr></table><dialog open>Review</dialog>');
++  const result = f.read(observe);
++  expect(result).toMatchObject({ title: "Workspace", headings: ["Plan"], formFields: [{ type: "text", label: "company" }], tables: [{ columns: ["Item"], rows: [["Draft"]] }], dialogs: [{ message: "Review" }] });
++  expect(result.text).toContain("Ready to work.");
++  expect(result.elements.some((element: { name: string }) => element.name === "Continue")).toBe(true);
++  f.dom.window.close();
++});
++it.each(['type="password"', 'autocomplete="one-time-code"', 'name="access_token"', 'id="credit-card"'])("refuses protected document before reading even echoed content: %s", attribute => {
++  const f = page(`<input ${attribute}><p>Synthetic secret echo</p>`);
++  Object.defineProperty(f.window.document, "title", { get: () => { throw new Error("Forbidden title read"); } });
++  expect(() => f.read(observe)).toThrow("This page cannot be read safely.");
++  expect(() => f.read({ operation: "extract", fields: [{ name: "text" }] })).toThrow("This page cannot be read safely.");
++  f.dom.window.close();
++});
++it("admits metadata in every open shadow root before collecting text", () => {
++  const f = page('<div id="host"></div><p>Synthetic secret echo</p>');
++  f.window.document.getElementById("host")!.attachShadow({ mode: "open" }).innerHTML = '<input autocomplete="cc-number">';
++  expect(() => f.read(observe)).toThrow("This page cannot be read safely.");
++  f.dom.window.close();
++});
++it("uses bounded fixed extraction data and refuses script, value and malformed requests", () => {
++  const f = page('<p class="item">One</p><p class="item">Two</p><a href="/next">Next</a>');
++  expect(f.read({ operation: "extract", fields: [{ name: "items", selector: ".item", all: true }, { name: "destination", selector: "a", attribute: "href" }] })).toEqual({ items: ["One", "Two"], destination: "https://person-read.test/next" });
++  for (const request of [{ operation: "evaluate", script: "alert(1)" }, { ...observe, maxElements: 201 }, { ...observe, maxTextChars: 16001 }, { operation: "extract", fields: [{ name: "secret", selector: "p", attribute: "value" }] }])
++    expect(() => f.read(request)).toThrow("This page cannot be read safely.");
++  f.dom.window.close();
++});
++it("keeps original refs stable across repeated reads and never reissues removed ids", () => {
++  const f = page("<button>Original</button>");
++  const original = f.read(observe).elements[0].ref;
++  expect(f.read(observe).elements[0].ref).toBe(original);
++  f.window.document.querySelector("button")!.remove();
++  f.window.document.body.innerHTML = "<button>Replacement</button>";
++  expect(f.read(observe).elements[0].ref).not.toBe(original);
++  f.dom.window.close();
++});
++it("refuses secret-bearing destination metadata and excessive tree or extraction output", () => {
++  const f = page('<a href="/next?access_token=synthetic">Next</a>');
++  expect(() => f.read(observe)).toThrow("This page cannot be read safely.");
++  f.window.document.body.innerHTML = "<p></p>".repeat(10001);
++  expect(() => f.read(observe)).toThrow("This page cannot be read safely.");
++  f.window.document.body.innerHTML = `<p>${"x".repeat(4000)}</p>`.repeat(20);
++  expect(() => f.read({ operation: "extract", fields: [{ name: "text", selector: "p", all: true }] })).toThrow("This page cannot be read safely.");
++  f.dom.window.close();
++});
+--- /dev/null
++++ b/chrome/common/aux_person_observer.mojom
+@@ -0,0 +1,9 @@
++// Copyright 2026 The Aux Authors
++module chrome.mojom;
++
++// Browser-only, fixed primary-document reader in AUX_OBSERVER. Prepare's ACK
++// joins the document-scoped renderer receiver to the retained browser WeakDoc.
++interface AuxPersonObserver {
++  Prepare(string read_id) => (bool ready);
++  Read(string read_id, string request_json) => (bool accepted, string result_json);
++};
+--- /dev/null
++++ b/chrome/common/native_person_observer_script.h
+@@ -0,0 +1,179 @@
++// Generated from the fixed person observer; run gen-native-person-observer.mjs.
++#ifndef CHROME_COMMON_NATIVE_PERSON_OBSERVER_SCRIPT_H_
++#define CHROME_COMMON_NATIVE_PERSON_OBSERVER_SCRIPT_H_
++namespace aux::person_observer_script {
++inline constexpr char kProducerSha256[] = "e582918e6ed13b859cf9e3615fcaa691bb6db7b4581c9af52415b4adc19f96a4";
++inline constexpr char16_t kRead[] = uR"AUX_READ(((request) => JSON.stringify((function readPersonDocument(request) {
++    const fail = () => { throw new Error("This page cannot be read safely."); };
++    const secretIdentity = /password|passphrase|secret|api[-_ ]?key|(?:access|refresh|id|auth|authorization|session|bearer)[-_ ]?token|card[-_ ]?number|credit[-_ ]?card|security[-_ ]?code|\bcvv\b|\bcvc\b|\bcsc\b/i;
++    const secretAutocomplete = /^(current-password|new-password|one-time-code|cc-number|cc-csc|cc-exp|cc-exp-month|cc-exp-year)$/;
++    if (!request || !["observe", "extract"].includes(request.operation))
++        fail();
++    if (request.operation === "observe" &&
++        (!Number.isInteger(request.maxElements) || request.maxElements < 1 || request.maxElements > 200 ||
++            !Number.isInteger(request.maxTextChars) || request.maxTextChars < 1 || request.maxTextChars > 16000))
++        fail();
++    if (request.operation === "extract" && (!Array.isArray(request.fields) || request.fields.length < 1 || request.fields.length > 20))
++        fail();
++    const roots = [document];
++    const elements = [];
++    // Finish metadata admission before touching text, title or field properties.
++    // Refuse protected forms as a whole, including echoes elsewhere in the DOM,
++    // rather than reading a secret in order to redact it afterwards.
++    for (let index = 0; index < roots.length; index++) {
++        if (roots.length > 64)
++            fail();
++        const walker = document.createTreeWalker(roots[index], 1);
++        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
++            if (elements.length >= 10000)
++                fail();
++            const element = node;
++            const type = (element.getAttribute("type") ?? "").toLowerCase();
++            const identity = ["name", "id", "aria-label", "placeholder"].map(key => element.getAttribute(key) ?? "").join(" ");
++            const autocomplete = (element.getAttribute("autocomplete") ?? "").toLowerCase().split(/\s+/);
++            if (type === "password" || autocomplete.some(token => secretAutocomplete.test(token)) ||
++                secretIdentity.test(identity) || element.hasAttribute("contenteditable"))
++                fail();
++            elements.push(element);
++            if (element.shadowRoot)
++                roots.push(element.shadowRoot);
++        }
++    }
++    const safeUrl = (raw) => {
++        const url = new URL(raw, location.href);
++        if (!["https:", "http:"].includes(url.protocol) || url.username || url.password ||
++            [...url.searchParams.keys()].some(key => secretIdentity.test(key) || /^(?:code|token|key|session|cookie|authorization|credential|client_secret)$/i.test(key)) ||
++            secretIdentity.test(decodeURIComponent(url.hash)))
++            fail();
++        return url.href;
++    };
++    const pageUrl = safeUrl(location.href);
++    const ignored = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "INPUT", "TEXTAREA", "SELECT"]);
++    const textOf = (root, limit) => {
++        let text = "";
++        let visited = 0;
++        const walk = (node, depth) => {
++            if (++visited > 10000 || depth > 128)
++                fail();
++            if (text.length >= limit)
++                return;
++            if (node.nodeType === 3) {
++                text += (node.nodeValue ?? "").slice(0, limit - text.length);
++                return;
++            }
++            if (node.nodeType === 1) {
++                const element = node;
++                if (ignored.has(element.tagName) || element.hidden || element.getAttribute("aria-hidden") === "true")
++                    return;
++                const style = getComputedStyle(element);
++                if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse")
++                    return;
++            }
++            for (let child = node.firstChild; child && text.length < limit; child = child.nextSibling) {
++                if (child.nodeType === 1 && text.length)
++                    text += " ";
++                walk(child, depth + 1);
++            }
++            if (node.nodeType === 1 && node.shadowRoot && text.length < limit)
++                walk(node.shadowRoot, depth + 1);
++        };
++        walk(root, 0);
++        return text.replace(/\s+/g, " ").trim().slice(0, limit);
++    };
++    if (request.operation === "extract") {
++        const output = Object.create(null);
++        let outputChars = 0;
++        const bounded = (value) => {
++            outputChars += value.length;
++            if (outputChars > 65536)
++                fail();
++            return value;
++        };
++        const attributes = new Set(["href", "title", "alt", "aria-label", "name", "id", "role"]);
++        for (const field of request.fields) {
++            if (!field || typeof field.name !== "string" || !/^[A-Za-z][\w-]{0,63}$/.test(field.name) ||
++                Object.hasOwn(output, field.name) || (field.all !== undefined && typeof field.all !== "boolean") ||
++                (field.attribute !== undefined && !attributes.has(field.attribute)))
++                fail();
++            if (field.selector === undefined) {
++                if (field.attribute !== undefined || field.all !== undefined)
++                    fail();
++                output[field.name] = bounded(field.name === "url" ? pageUrl : field.name === "title" ? document.title.slice(0, 512) : textOf(document.body, 4000));
++                continue;
++            }
++            if (typeof field.selector !== "string" || !field.selector.length || field.selector.length > 512)
++                fail();
++            const selected = [];
++            for (const root of roots) {
++                for (const element of root.querySelectorAll(field.selector)) {
++                    if (selected.length >= 200)
++                        fail();
++                    selected.push(element);
++                    if (!field.all)
++                        break;
++                }
++                if (!field.all && selected.length)
++                    break;
++            }
++            const values = selected.map(element => bounded(field.attribute
++                ? field.attribute === "href" ? safeUrl(element.getAttribute("href") ?? "") : (element.getAttribute(field.attribute) ?? "").slice(0, 4000)
++                : textOf(element, 4000)));
++            output[field.name] = field.all ? values : values[0] ?? null;
++        }
++        return output;
++    }
++    const state = globalThis;
++    const refs = state.__auxPersonRefs ??= { ids: new WeakMap(), next: 1 };
++    const interactive = "a[href],button,input:not([type=hidden]),select,textarea,summary,[role],[tabindex]";
++    const candidates = elements.filter(element => element.matches(interactive));
++    const entries = [];
++    for (const element of candidates) {
++        if (entries.length >= request.maxElements)
++            break;
++        const rect = element.getBoundingClientRect();
++        const style = getComputedStyle(element);
++        if (!rect.width || !rect.height || style.display === "none" || style.visibility !== "visible")
++            continue;
++        let id = refs.ids.get(element);
++        if (id === undefined) {
++            id = refs.next++;
++            refs.ids.set(element, id);
++        }
++        if (!Number.isSafeInteger(refs.next))
++            fail();
++        const tag = element.tagName.toLowerCase();
++        const label = element.getAttribute("id") ? elements.find(candidate => candidate.tagName === "LABEL" && candidate.getAttribute("for") === element.id) : undefined;
++        const name = (element.getAttribute("aria-label") || (label ? textOf(label, 120) : "") ||
++            element.getAttribute("placeholder") || textOf(element, 120) || element.getAttribute("name") || "").slice(0, 120);
++        entries.push({ ref: `r${id}`, frame: "main", tag, name,
++            role: element.getAttribute("role") ?? (tag === "button" ? "button" : tag === "a" ? "link" : undefined),
++            rect: { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) },
++            selector: {},
++            ...(tag === "input" ? { type: element.getAttribute("type") ?? "text" } : {}),
++            ...(tag === "a" ? { href: safeUrl(element.getAttribute("href") ?? "") } : {}),
++        });
++    }
++    const formFields = entries.filter(entry => ["input", "select", "textarea"].includes(entry.tag))
++        .map(entry => ({ ref: entry.ref, label: entry.name, type: entry.type ?? entry.tag }));
++    const tables = elements.filter(element => element.tagName === "TABLE").slice(0, 6).map((table, index) => {
++        const rows = [...table.querySelectorAll("tr")];
++        const header = rows.find(row => row.querySelector("th"));
++        const body = rows.filter(row => row !== header);
++        const cells = (row) => [...row.querySelectorAll("th,td")].slice(0, 20).map(cell => textOf(cell, 120));
++        return { ref: `t${index + 1}`, caption: table.querySelector("caption") ? textOf(table.querySelector("caption"), 80) : undefined,
++            columns: header ? cells(header) : [], rows: body.slice(0, 12).map(cells), totalRows: body.length, truncated: body.length > 12 };
++    });
++    const dialogs = elements.filter(element => element.matches('dialog[open],[role="dialog"],[role="alertdialog"]'))
++        .slice(0, 8).map(element => ({ type: element.getAttribute("role") ?? "dialog", message: textOf(element, 512) }));
++    const text = textOf(document.body, request.maxTextChars + 1);
++    return { url: pageUrl, title: document.title.slice(0, 512),
++        viewport: { width: innerWidth, height: innerHeight, scale: devicePixelRatio || 1 },
++        scroll: { x: Math.round(scrollX), y: Math.round(scrollY), maxY: Math.max(0, document.documentElement.scrollHeight - innerHeight) },
++        text: text.slice(0, request.maxTextChars),
++        headings: elements.filter(element => /^H[1-3]$/.test(element.tagName)).slice(0, 12).map(element => textOf(element, 140)),
++        elements: entries, formFields, tables, links: entries.filter(element => element.href).map(element => ({ ref: element.ref, text: element.name, href: element.href })),
++        dialogs, truncated: candidates.length > entries.length || text.length > request.maxTextChars,
++        elementsTotal: candidates.length, nextRef: refs.next };
++})(request))))AUX_READ";
++}  // namespace aux::person_observer_script
++#endif
+--- /dev/null
++++ b/chrome/renderer/aux_person_observer_agent.h
+@@ -0,0 +1,37 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_RENDERER_AUX_PERSON_OBSERVER_AGENT_H_
++#define CHROME_RENDERER_AUX_PERSON_OBSERVER_AGENT_H_
++
++#include <memory>
++#include <string>
++#include "base/memory/weak_ptr.h"
++#include "chrome/common/aux_person_observer.mojom.h"
++#include "content/public/renderer/render_frame_observer.h"
++#include "mojo/public/cpp/bindings/associated_receiver_set.h"
++#include "third_party/blink/public/common/tokens/tokens.h"
++
++namespace chrome {
++class AuxPersonObserverAgent final : public content::RenderFrameObserver,
++                                     public mojom::AuxPersonObserver {
++ public:
++  explicit AuxPersonObserverAgent(content::RenderFrame* frame);
++  ~AuxPersonObserverAgent() override;
++ private:
++  struct Scope {
++    explicit Scope(blink::DocumentToken token) : document(token) {}
++    const blink::DocumentToken document;
++    std::string prepared_id;
++  };
++  void Bind(mojo::PendingAssociatedReceiver<mojom::AuxPersonObserver> receiver);
++  bool Current(const blink::DocumentToken& document) const;
++  void Prepare(const std::string& read_id, PrepareCallback callback) override;
++  void Read(const std::string& read_id, const std::string& request_json,
++            ReadCallback callback) override;
++  void DidCreateNewDocument() override;
++  void WillDetach(blink::DetachReason reason) override;
++  void OnDestruct() override;
++  mojo::AssociatedReceiverSet<mojom::AuxPersonObserver, std::shared_ptr<Scope>> receivers_;
++  base::WeakPtrFactory<AuxPersonObserverAgent> weak_factory_{this};
++};
++}  // namespace chrome
++#endif
+--- /dev/null
++++ b/chrome/renderer/aux_person_observer_agent.cc
+@@ -0,0 +1,97 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/renderer/aux_person_observer_agent.h"
++
++#include <optional>
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/utf_string_conversions.h"
++#include "base/uuid.h"
++#include "chrome/common/chrome_isolated_world_ids.h"
++#include "chrome/common/native_person_observer_script.h"
++#include "content/public/renderer/render_frame.h"
++#include "gin/converter.h"
++#include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
++#include "third_party/blink/public/platform/scheduler/web_agent_group_scheduler.h"
++#include "third_party/blink/public/web/web_document.h"
++#include "third_party/blink/public/web/web_local_frame.h"
++#include "third_party/blink/public/web/web_script_source.h"
++#include "v8/include/v8-primitive.h"
++
++namespace chrome {
++AuxPersonObserverAgent::AuxPersonObserverAgent(content::RenderFrame* frame)
++    : content::RenderFrameObserver(frame) {
++  frame->GetAssociatedInterfaceRegistry()->AddInterface<mojom::AuxPersonObserver>(
++      base::BindRepeating(&AuxPersonObserverAgent::Bind,
++                         weak_factory_.GetWeakPtr()));
++}
++AuxPersonObserverAgent::~AuxPersonObserverAgent() = default;
++bool AuxPersonObserverAgent::Current(const blink::DocumentToken& document) const {
++  auto* frame = render_frame()->GetWebFrame();
++  return frame && render_frame()->IsMainFrame() &&
++         frame->GetDocument().Token() == document;
++}
++void AuxPersonObserverAgent::Bind(
++    mojo::PendingAssociatedReceiver<mojom::AuxPersonObserver> receiver) {
++  auto* frame = render_frame()->GetWebFrame();
++  if (!frame || !render_frame()->IsMainFrame() || receivers_.size() >= 4)
++    return;
++  receivers_.Add(this, std::move(receiver),
++                 std::make_shared<Scope>(frame->GetDocument().Token()));
++}
++void AuxPersonObserverAgent::Prepare(const std::string& read_id,
++                                    PrepareCallback callback) {
++  const auto scope = receivers_.current_context();
++  const bool ready = Current(scope->document) && scope->prepared_id.empty() &&
++                    base::Uuid::ParseLowercase(read_id).is_valid();
++  if (ready)
++    scope->prepared_id = read_id;
++  std::move(callback).Run(ready);
++}
++void AuxPersonObserverAgent::Read(const std::string& read_id,
++                                 const std::string& request_json,
++                                 ReadCallback callback) {
++  const auto scope = receivers_.current_context();
++  const bool admitted = Current(scope->document) &&
++                        !read_id.empty() && scope->prepared_id == read_id;
++  scope->prepared_id.clear();
++  if (!admitted || request_json.size() > 16384) {
++    std::move(callback).Run(false, "");
++    return;
++  }
++  auto request = base::JSONReader::ReadDict(request_json, base::JSON_PARSE_RFC);
++  auto canonical = request ? base::WriteJson(*request) : std::nullopt;
++  if (!canonical) {
++    std::move(callback).Run(false, "");
++    return;
++  }
++  const auto document = scope->document;
++  const auto weak = weak_factory_.GetWeakPtr();
++  auto* frame = render_frame()->GetWebFrame();
++  auto* isolate = frame->GetAgentGroupScheduler()->Isolate();
++  v8::HandleScope handle_scope(isolate);
++  if (!Current(document)) {
++    std::move(callback).Run(false, "");
++    return;
++  }
++  const std::u16string script =
++      std::u16string(aux::person_observer_script::kRead) + u"(" +
++      base::UTF8ToUTF16(*canonical) + u")";
++  auto result = frame->ExecuteScriptInIsolatedWorldAndReturnValue(
++      ISOLATED_WORLD_ID_AUX_OBSERVER,
++      blink::WebScriptSource(blink::WebString(script)),
++      blink::BackForwardCacheAware::kAllow);
++  if (!weak || !Current(document) || result.IsEmpty() || !result->IsString() ||
++      result.As<v8::String>()->Length() > 131072) {
++    std::move(callback).Run(false, "");
++    return;
++  }
++  std::string raw;
++  const bool accepted = gin::ConvertFromV8(isolate, result, &raw) &&
++                        raw.size() <= 131072 && Current(document);
++  std::move(callback).Run(accepted, accepted ? raw : "");
++}
++void AuxPersonObserverAgent::DidCreateNewDocument() { receivers_.Clear(); }
++void AuxPersonObserverAgent::WillDetach(blink::DetachReason) { receivers_.Clear(); }
++void AuxPersonObserverAgent::OnDestruct() { delete this; }
++}  // namespace chrome
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_person_observer_controller.h
+@@ -0,0 +1,56 @@
++// Copyright 2026 The Aux Authors
++#ifndef CHROME_BROWSER_UI_AUX_NATIVE_PERSON_OBSERVER_CONTROLLER_H_
++#define CHROME_BROWSER_UI_AUX_NATIVE_PERSON_OBSERVER_CONTROLLER_H_
++
++#include <cstdint>
++#include <optional>
++#include <string>
++#include "base/functional/callback.h"
++#include "base/memory/weak_ptr.h"
++#include "base/timer/timer.h"
++#include "base/values.h"
++#include "chrome/browser/ui/aux/egress_controller.h"
++#include "chrome/common/aux_person_observer.mojom.h"
++#include "content/public/browser/web_contents_observer.h"
++#include "content/public/browser/web_contents_user_data.h"
++#include "mojo/public/cpp/bindings/associated_remote.h"
++
++namespace aux {
++class NativePersonObserverController final
++    : public content::WebContentsObserver,
++      public content::WebContentsUserData<NativePersonObserverController> {
++ public:
++  using Reply = base::OnceCallback<void(base::DictValue)>;
++  ~NativePersonObserverController() override;
++  base::WeakPtr<NativePersonObserverController> GetWeakPtr() {
++    return weak_factory_.GetWeakPtr();
++  }
++  void Read(uint64_t connection_generation, base::DictValue request, Reply reply);
++  void Disconnect(uint64_t connection_generation);
++
++ private:
++  friend class content::WebContentsUserData<NativePersonObserverController>;
++  explicit NativePersonObserverController(content::WebContents* contents);
++  bool Current() const;
++  void Prepared(std::string request_json, bool ready);
++  void Received(bool accepted, const std::string& result_json);
++  void AuthorityChanged();
++  void Refuse();
++  void Finish(base::DictValue result);
++  void DidStartNavigation(content::NavigationHandle* navigation) override;
++  void WebContentsDestroyed() override;
++  uint64_t connection_generation_ = 0;
++  bool closing_ = false;
++  std::string read_id_;
++  std::string document_id_;
++  std::optional<NativePersonReadReceipt> receipt_;
++  base::WeakPtr<EgressController> authority_;
++  base::CallbackListSubscription authority_subscription_;
++  mojo::AssociatedRemote<chrome::mojom::AuxPersonObserver> remote_;
++  base::OneShotTimer deadline_;
++  Reply reply_;
++  base::WeakPtrFactory<NativePersonObserverController> weak_factory_{this};
++  WEB_CONTENTS_USER_DATA_KEY_DECL();
++};
++}  // namespace aux
++#endif
+--- /dev/null
++++ b/chrome/browser/ui/aux/native_person_observer_controller.cc
+@@ -0,0 +1,189 @@
++// Copyright 2026 The Aux Authors
++#include "chrome/browser/ui/aux/native_person_observer_controller.h"
++
++#include <set>
++#include <string_view>
++#include <utility>
++#include "base/functional/bind.h"
++#include "base/json/json_reader.h"
++#include "base/json/json_writer.h"
++#include "base/strings/string_util.h"
++#include "base/uuid.h"
++#include "chrome/browser/profiles/profile.h"
++#include "chrome/common/native_person_observer_script.h"
++#include "content/public/browser/navigation_handle.h"
++#include "content/public/browser/document_user_data.h"
++#include "content/public/browser/render_frame_host.h"
++#include "content/public/browser/web_contents.h"
++#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
++
++namespace aux {
++namespace {
++class PersonReadDocument : public content::DocumentUserData<PersonReadDocument> {
++ public:
++  const std::string id = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  ~PersonReadDocument() override = default;
++ private:
++  explicit PersonReadDocument(content::RenderFrameHost* frame)
++      : DocumentUserData(frame) {}
++  friend class content::DocumentUserData<PersonReadDocument>;
++  DOCUMENT_USER_DATA_KEY_DECL();
++};
++DOCUMENT_USER_DATA_KEY_IMPL(PersonReadDocument);
++base::DictValue Fault(const char* code) {
++  return base::DictValue().Set("error", base::DictValue()
++      .Set("code", code).Set("message", "This page could not be read. Try again."));
++}
++bool OnlyKeys(const base::DictValue& value,
++              const std::set<std::string_view>& allowed) {
++  for (const auto [key, field] : value) {
++    if (!allowed.contains(key)) return false;
++  }
++  return true;
++}
++bool ValidRequest(const base::DictValue& request) {
++  const auto* operation = request.FindString("operation");
++  if (!operation) return false;
++  if (*operation == "observe") {
++    const auto elements = request.FindInt("maxElements");
++    const auto text = request.FindInt("maxTextChars");
++    return OnlyKeys(request, {"operation", "maxElements", "maxTextChars"}) &&
++           elements && *elements >= 1 && *elements <= 200 &&
++           text && *text >= 1 && *text <= 16000;
++  }
++  if (*operation != "extract" || !OnlyKeys(request, {"operation", "fields"}))
++    return false;
++  const auto* fields = request.FindList("fields");
++  if (!fields || fields->empty() || fields->size() > 20) return false;
++  std::set<std::string> names;
++  const std::set<std::string_view> attributes = {
++      "href", "title", "alt", "aria-label", "name", "id", "role"};
++  for (const auto& entry : *fields) {
++    const auto* field = entry.GetIfDict();
++    if (!field || !OnlyKeys(*field, {"name", "selector", "attribute", "all"}))
++      return false;
++    const auto* name = field->FindString("name");
++    if (!name || name->empty() || name->size() > 64 ||
++        !base::IsAsciiAlpha((*name)[0]) || !names.insert(*name).second)
++      return false;
++    for (const char c : *name) {
++      if (!base::IsAsciiAlphaNumeric(c) && c != '_' && c != '-') return false;
++    }
++    const auto* selector = field->FindString("selector");
++    if (field->contains("selector") &&
++        (!selector || selector->empty() || selector->size() > 512)) return false;
++    const auto* attribute = field->FindString("attribute");
++    if (field->contains("attribute") &&
++        (!selector || !attribute || !attributes.contains(*attribute))) return false;
++    if (field->contains("all") && (!selector || !field->FindBool("all")))
++      return false;
++  }
++  return true;
++}
++}  // namespace
++WEB_CONTENTS_USER_DATA_KEY_IMPL(NativePersonObserverController);
++NativePersonObserverController::NativePersonObserverController(
++    content::WebContents* contents)
++    : content::WebContentsObserver(contents),
++      content::WebContentsUserData<NativePersonObserverController>(*contents) {}
++NativePersonObserverController::~NativePersonObserverController() {
++  closing_ = true;
++  Refuse();
++}
++bool NativePersonObserverController::Current() const {
++  return reply_ && authority_ && receipt_ &&
++         authority_->MayReadPerson(*receipt_) &&
++         receipt_->document().AsRenderFrameHostIfValid() ==
++             web_contents()->GetPrimaryMainFrame();
++}
++void NativePersonObserverController::Read(uint64_t connection_generation,
++                                         base::DictValue request, Reply reply) {
++  if (reply_) {
++    std::move(reply).Run(Fault("conflict"));
++    return;
++  }
++  if (closing_) {
++    std::move(reply).Run(Fault("not_found"));
++    return;
++  }
++  auto raw = ValidRequest(request) ? base::WriteJson(request) : std::nullopt;
++  if (!connection_generation || !raw || raw->size() > 16384) {
++    std::move(reply).Run(Fault("invalid_params"));
++    return;
++  }
++  auto* profile = Profile::FromBrowserContext(web_contents()->GetBrowserContext());
++  auto* authority = EgressController::ForProfile(profile);
++  auto receipt = authority ? authority->CapturePersonRead(web_contents()) : std::nullopt;
++  if (!receipt) {
++    std::move(reply).Run(Fault("permission_denied"));
++    return;
++  }
++  connection_generation_ = connection_generation;
++  read_id_ = base::Uuid::GenerateRandomV4().AsLowercaseString();
++  receipt_ = std::move(receipt);
++  authority_ = authority->GetWeakPtr();
++  reply_ = std::move(reply);
++  authority_subscription_ = authority->ObserveAuthority(base::BindRepeating(
++      &NativePersonObserverController::AuthorityChanged, weak_factory_.GetWeakPtr()));
++  deadline_.Start(FROM_HERE, base::Seconds(8), base::BindOnce(
++      &NativePersonObserverController::Refuse, weak_factory_.GetWeakPtr()));
++  auto* frame = receipt_->document().AsRenderFrameHostIfValid();
++  document_id_ = PersonReadDocument::GetOrCreateForCurrentDocument(frame)->id;
++  frame->GetRemoteAssociatedInterfaces()->GetInterface(
++      remote_.BindNewEndpointAndPassReceiver());
++  remote_.set_disconnect_handler(base::BindOnce(
++      &NativePersonObserverController::Refuse, weak_factory_.GetWeakPtr()));
++  if (!Current()) { Refuse(); return; }
++  remote_->Prepare(read_id_, base::BindOnce(
++      &NativePersonObserverController::Prepared, weak_factory_.GetWeakPtr(),
++      std::move(*raw)));
++}
++void NativePersonObserverController::Prepared(std::string request_json,
++                                             bool ready) {
++  if (!ready || !Current()) { Refuse(); return; }
++  remote_->Read(read_id_, request_json, base::BindOnce(
++      &NativePersonObserverController::Received, weak_factory_.GetWeakPtr()));
++}
++void NativePersonObserverController::Received(bool accepted,
++                                             const std::string& result_json) {
++  if (!accepted || !Current() || result_json.size() > 131072) { Refuse(); return; }
++  auto result = base::JSONReader::ReadDict(result_json, base::JSON_PARSE_RFC);
++  if (!result || !Current()) { Refuse(); return; }
++  auto value = base::DictValue().Set("readId", read_id_)
++      .Set("documentId", document_id_)
++      .Set("pageId", receipt_->page_id())
++      .Set("producerSha256", person_observer_script::kProducerSha256)
++      .Set("value", std::move(*result));
++  Finish(base::DictValue().Set("result", std::move(value)));
++}
++void NativePersonObserverController::AuthorityChanged() {
++  if (reply_ && !Current()) Refuse();
++}
++void NativePersonObserverController::Disconnect(uint64_t connection_generation) {
++  if (reply_ && connection_generation_ == connection_generation) Refuse();
++}
++void NativePersonObserverController::Refuse() {
++  if (reply_) Finish(Fault("permission_denied"));
++}
++void NativePersonObserverController::Finish(base::DictValue result) {
++  auto reply = std::move(reply_);
++  deadline_.Stop();
++  authority_subscription_ = {};
++  remote_.reset();
++  receipt_.reset();
++  authority_.reset();
++  read_id_.clear();
++  document_id_.clear();
++  connection_generation_ = 0;
++  weak_factory_.InvalidateWeakPtrs();
++  std::move(reply).Run(std::move(result));
++}
++void NativePersonObserverController::DidStartNavigation(
++    content::NavigationHandle* navigation) {
++  if (navigation->IsInPrimaryMainFrame() && !navigation->IsSameDocument()) Refuse();
++}
++void NativePersonObserverController::WebContentsDestroyed() {
++  closing_ = true;
++  Refuse();
++}
++}  // namespace aux
