@@ -103,6 +103,7 @@ export const createRunsSlice: Slice<RunKeys> = (set, get) => ({
     } catch (error) {
       settle();
       preserveDraft();
+      if (opts.ownsDraft) throw error;
       errToast(error);
       return null;
     }

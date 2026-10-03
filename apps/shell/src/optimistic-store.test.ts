@@ -70,8 +70,9 @@ it("shows a sent message at once and returns it to the composer if the run canno
   useStore.setState({ activePageId: "p", settings: { modelConfigured: true } });
   const starting = useStore.getState().startRun("Summarize", { chatId: "chat", pageId: "p", ownsDraft: true });
   expect(useStore.getState().pendingTurns).toMatchObject([{ chatId: "chat", goal: "Summarize" }]);
-  fail(new Error("offline"));
-  expect(await starting).toBeNull();
+  const error = new Error("offline");
+  fail(error);
+  await expect(starting).rejects.toBe(error);
   expect(useStore.getState().pendingTurns).toEqual([]);
   expect(useStore.getState().conversationDrafts["chat:chat"]).toBeUndefined();
 });
