@@ -1,0 +1,11 @@
+{
+  "base": "da6dfc3b",
+  "sourceOnly": true,
+  "actualApiAndOriginalResultPins": true,
+  "exactOriginalForwardReverseRestoration": true,
+  "combinedNativePiPTestSha256": "d0c17668a52364b9dd4bea5416c05678c694e73571c200ae52497eaf063215b2",
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "causeAttributed": false,
+  "scope": "One actual primary navigation finish diagnostic in original next mandatory test; all original navigation/timing/assertions remain."
+}
