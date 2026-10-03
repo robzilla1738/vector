@@ -1,3 +1,7 @@
+## Current product follow-up — 2026-10-03
+
+Root source successor7d96995f corrects the shared search-row cascade: unlayered36px/default-type declarations previously outranked the scoped CommandSurface32px/14px/12px geometry. Shared styles now use the existing components layer. Fresh175 packaged renderer assets are pinned/verified at digest9fb28f0dbb727717dc7aca84112d1bbd25c856343628ce5d03d3851e4fd3b1b0; rebuilt budgets487/175/1800KB and focused behavior/source gates pass. Evidence: /tmp/aux-browser-runtime-root-person-observer/docs/source-audits/command-row-cascade/ROOT-RESULT.json. Native pixel geometry/F21 review and failed Red-selection behavior remain unverified. Activeaf2 is unchanged; preparedf909 stays frozen, and7d assets join only the next coherent0316/full0280 batch. Native143-packet/person-prefix bytes are unchanged. Goal ACTIVE; continue all recorded final requirements.
+
 ## Current review checkpoint — 2026-10-02
 
 Goal ACTIVE. Native af2 graph remains running under sole builder; no matching runtime/helper launch until terminal17-target success and independent pair audit. Fixed person/recorder product remainsf909b475; later root checkpoint e0125721 is docs-only. Root independently verified future342-case proposal retains every320 af2 case plus22 exact source cases; actual future GN ownership, compiled lists and assertions remain required. Evidence: /tmp/aux-browser-runtime-root-person-observer/docs/source-audits/native-coverage-followup/.
