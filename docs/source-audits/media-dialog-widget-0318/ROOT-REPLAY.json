@@ -1,0 +1,24 @@
+{
+  "sourceOnly": true,
+  "stableMutated": false,
+  "nativeCompiled": false,
+  "nativeAssertionsExecuted": false,
+  "patchSha256": "c311440ecb57928e11eeaf6560b953f94d87c1376550ec37f21cb15decdfcee1",
+  "before": {
+    "chrome/browser/ui/views/global_media_controls/media_dialog_view_interactive_browsertest.cc": "8c39f357e3098dc6c3711c856eee341e68cc517d1c7e9ccaa7bb5f7880ea83b0"
+  },
+  "after": {
+    "chrome/browser/ui/views/global_media_controls/media_dialog_view_interactive_browsertest.cc": "7948163cbd45cb3a0c45a9eb636da74adb17b2fcc87036afa5824441da4905f9"
+  },
+  "actualApiPinsIndependentlyVerified": {
+    "ui/views/widget/widget.h": "a92bb4a39d751e7d5e4342441d26eb67c5913ccb3dfd161a87ad7bb60e6cf0e2",
+    "ui/views/widget/widget.cc": "19ff4081b56c5fff42768b67e02fee24bc11a4e98f7e38932387368d21d9cfb5",
+    "ui/gfx/native_ui_types.h": "24a0b53bf57294c1703d09d5c56a8d4487098edcee496425b21387372747375d",
+    "chrome/browser/ui/webui_browser/webui_browser_window.cc": "04660b841ec36fb8711d21025d483a93176420f2dbecd28b552059465c205c3d",
+    "ui/views/widget/native_widget_private.h": "c6731fcd9f9c832ed7f50bc3252081068353c4b414e43e9b9e75254c525542ce"
+  },
+  "exactForwardReverseForward": true,
+  "supportedApi": "InitParams(CLIENT_OWNS_WIDGET,Type), original window GetWidgetForNativeWindow and GetNativeView",
+  "lifetime": "Client-owned stack toolbar; original close/reset cleanup retained before destruction",
+  "nativeRequirement": "Whole mandatory17-target incremental closure and actual original native PiP assertions"
+}

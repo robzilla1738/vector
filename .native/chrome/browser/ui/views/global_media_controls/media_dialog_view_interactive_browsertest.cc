@@ -1224,10 +1224,16 @@ IN_PROC_BROWSER_TEST_F(MediaDialogViewBrowserTest,
   // Aux's production window has no BrowserView toolbar. Install the genuine
   // media controller/button in an owned native child of that same browser.
   views::Widget toolbar_widget;
-  views::Widget::InitParams params(views::Widget::InitParams::TYPE_WINDOW_FRAMELESS);
-  params.ownership = views::Widget::InitParams::WIDGET_OWNS_NATIVE_WIDGET;
+  views::Widget::InitParams params(
+      views::Widget::InitParams::CLIENT_OWNS_WIDGET,
+      views::Widget::InitParams::TYPE_WINDOW_FRAMELESS);
   params.activatable = views::Widget::InitParams::Activatable::kNo;
-  params.parent = browser()->GetWindow()->GetNativeWindow();
+  auto* parent_widget = views::Widget::GetWidgetForNativeWindow(
+      browser()->GetWindow()->GetNativeWindow());
+  ASSERT_TRUE(parent_widget);
+  ASSERT_EQ(parent_widget->GetNativeWindow(),
+            browser()->GetWindow()->GetNativeWindow());
+  params.parent = parent_widget->GetNativeView();
   const gfx::Rect browser_bounds = browser()->GetWindow()->GetBounds();
   params.bounds = gfx::Rect(browser_bounds.right() - 64, browser_bounds.y() + 64, 48, 48);
   toolbar_widget.Init(std::move(params));
