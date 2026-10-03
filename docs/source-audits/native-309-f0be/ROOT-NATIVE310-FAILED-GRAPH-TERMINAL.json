@@ -1,0 +1,8 @@
+{
+  "receiptSha256": "e3828cd88bc081cac6f1981c21cceda95a715d685b76d611405f9706090854e0",
+  "ledgerSha256": "c7fc37fcede6d8cca98f13f65df40e955056538a712893889f345859067bfb54",
+  "actualHashJoins": "PASS",
+  "processGroupSlotAbsence": "PASS",
+  "failedGraphNotLaunchable": true,
+  "qualification": false
+}
