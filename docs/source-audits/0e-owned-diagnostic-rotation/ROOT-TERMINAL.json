@@ -1,0 +1,36 @@
+{
+  "originalTerminalProofSha256": "d458872158fa5e0f8c5df6b02eed5ff5a07f343ce7c398024d6a2ce3d8666b6c",
+  "actualOriginalPidCount": 28,
+  "actualOriginalGroupsAbsent": [
+    17391,
+    17411,
+    17450,
+    57365,
+    57423,
+    57457,
+    57498,
+    57501,
+    57504,
+    57511,
+    57518,
+    59610,
+    59625,
+    59647,
+    59650,
+    59660,
+    59661,
+    59664,
+    59679
+  ],
+  "actualSlotAbsent": true,
+  "actual829OriginalGuardsUnchanged": true,
+  "graphPassed": false,
+  "pendingFourMustCompileOnSuccessor": [
+    "obj/chrome/test/browser_tests/native_recorder_controller_browsertest.o",
+    "obj/chrome/test/unit_tests/permission_broker_unittest.o",
+    "obj/chrome/browser/ui/views/global_media_controls/interactive_ui_tests/media_dialog_view_interactive_browsertest.o",
+    "obj/chrome/browser/picture_in_picture/browser_tests/auto_picture_in_picture_tab_helper_browsertest.o"
+  ],
+  "cachePreservedByScopedController": true,
+  "rootSentSignals": false
+}

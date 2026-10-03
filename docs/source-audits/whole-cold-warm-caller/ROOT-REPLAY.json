@@ -1088,5 +1088,15 @@
     "nativeMode": "AUX_CHROMIUM_SHELL_BUILD=1",
     "logSha256": "806f7c3d81c10688cd03b7826ad1e5244c5a55321330ccbce1ccbb6cc64dfe9b",
     "earlierDefaultBuildCaptureRefused": "default shell CSP; refused before asset mutation"
+  },
+  "additionalCoupledControls": {
+    "mailbox": {
+      "logSha256": "5c864563a860bec18b62ee2e0c0e436430657838d9bcb5fbb93c8baa7ff6c86e",
+      "exit": 0
+    },
+    "renderer": {
+      "logSha256": "d8d874b80f25cd5d0262d7028ae2ea1c4464da4753ff0b838b281f9fd450e666",
+      "exit": 0
+    }
   }
 }
