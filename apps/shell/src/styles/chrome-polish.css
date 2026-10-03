@@ -69,7 +69,7 @@
   position: absolute; z-index: var(--z-peek); inset: 48px auto var(--space-2) var(--space-2);
   width: var(--sb-w, 280px); min-width: 0; max-width: calc(100% - 16px);
   margin: 0; border: 0; border-radius: var(--r-peek); overflow: clip;
-  background: var(--floating-glass-tint, color-mix(in srgb, var(--floating-sidebar-surface) 78%, transparent));
+  background: var(--floating-glass-tint, color-mix(in srgb, var(--floating-sidebar-surface) 80%, transparent));
   backdrop-filter: var(--floating-glass-filter, blur(var(--blur-glass-floating)) saturate(1.15));
   -webkit-backdrop-filter: var(--floating-glass-filter, blur(var(--blur-glass-floating)) saturate(1.15));
   box-shadow: 0 8px 30px rgb(0 0 0 / .16), inset 0 1px rgb(255 255 255 / .06);
