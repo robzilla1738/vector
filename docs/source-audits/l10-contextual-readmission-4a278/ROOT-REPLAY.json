@@ -1,0 +1,17 @@
+{
+  "sourceOnly": true,
+  "sourceCommit": "4a278fbe",
+  "base": "0e22337676662bc7f34aa6e00a6e0110a30bfe2a",
+  "patchSha256": "eb8d78da9fc2949f2250f2957783e087fcf9ef5eb9b49d97766b08909d72fe4c",
+  "actualGitBeforeAfterAndWorkingBytesMatched": 55,
+  "forwardReverseForwardExact": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-l10-context-55-nmxyimzh",
+  "adopted": false,
+  "nativeCompiled": false,
+  "remaining": [
+    "semantic review",
+    "mandatory compatible whole native0280",
+    "independent rebuilt integrated gates",
+    "actual native effects/refusals/journeys"
+  ]
+}
