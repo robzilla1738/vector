@@ -1,10 +1,10 @@
 // Controlled owned temporary files and Python kernel locks only. No app/native channel execution.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, openSync, closeSync, statSync, rmSync, chmodSync, symlinkSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, openSync, closeSync, statSync, rmSync, chmodSync, symlinkSync, existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
 import { removeOriginalAppearanceChannel } from './lib/appearance-channel-retire.mjs';
 function fixture(t) {
@@ -48,4 +48,18 @@ test('foreign inode, extra path/operation input, modified bytes and unprotected 
     if (kind === 'mode') chmodSync(f.profile, 0o755);
     assert.throws(() => removeOriginalAppearanceChannel(f.fds, pins)); assert.ok(existsSync(f.file));
   }
+});
+
+test('actual fixed bootstrap verifies held source SHA before dispatching controlled source', t => {
+  const f = fixture(t), source = join(f.root, 'controlled-cleanup-source.py');
+  const original = "print('controlled original source executed')\n";
+  writeFileSync(source, original, { mode: 0o600 }); const fd = openSync(source, 'r'); t.after(() => closeSync(fd));
+  const implementation = readFileSync(new URL('./lib/appearance-channel-retire.mjs', import.meta.url), 'utf8');
+  const literal = implementation.match(/const cleanupBootstrap = (".*");/); assert.ok(literal);
+  const bootstrap = JSON.parse(literal[1]), sha = createHash('sha256').update(original).digest('hex');
+  const invoke = () => execFileSync('/usr/bin/python3', ['-I', '-c', bootstrap, sha], { stdio: ['ignore', 'pipe', 'pipe', 'ignore', 'ignore', 'ignore', fd], timeout: 5000, maxBuffer: 4096,
+    env: { PATH: '/usr/bin:/bin', LANG: 'C', LC_ALL: 'C' } });
+  assert.equal(invoke().toString(), 'controlled original source executed\n');
+  writeFileSync(source, "print('modified source must never execute')\n");
+  assert.throws(invoke, error => error.stdout.length === 0 && error.stderr.toString().includes('changed before execution'));
 });

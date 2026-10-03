@@ -149,7 +149,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     HOME: profileRoot, TMPDIR: profileRoot } : { ...process.env, ...launch.env, ...acceptance?.env };
   // Never inherit a developer token unless this launcher made its own marker.
   if (!acceptance) delete env.AUX_DEV_ACCEPTANCE_TOKEN;
-  let appearanceStream, pipAppearanceStream, appearanceDetach, fileAppearance;
+  let appearanceStream, pipAppearanceStream, appearanceDetach, fileAppearance, appearanceOwnerFailure, appearanceChannelRetirement;
   let appearanceConfiguration = 0;
   let performanceMailbox, performanceDetach;
   function disposePerformance() {
@@ -325,7 +325,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     privatePair.validate(); privateStarted = true;
     try {
       slot = await acquireNativeSlot(); privatePair.validate();
-      generation += 1; spawnError = undefined; stderr = ''; privateCaptureCandidate = privateCandidate();
+      generation += 1; appearanceChannelRetirement = undefined; appearanceOwnerFailure = undefined; spawnError = undefined; stderr = ''; privateCaptureCandidate = privateCandidate();
       spawnDirect([`--user-data-dir=${userDataDir}`, '--profile-directory=Default', '--incognito',
         '--no-first-run', '--no-default-browser-check', '--use-mock-keychain', '--password-store=basic',
         '--enable-logging', `--log-file=${nativeLog}`, '--disable-background-networking', '--disable-component-update', '--disable-sync',
@@ -357,7 +357,7 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
     if (launchArgs.includes("--aux-native-performance-observer")) preparePerformanceMailbox(userDataDir);
     slot = await acquireNativeSlot();
     disposeAppearance(); disposePerformance();
-    generation += 1; spawnError = undefined; stderr = '';
+    generation += 1; appearanceChannelRetirement = undefined; appearanceOwnerFailure = undefined; spawnError = undefined; stderr = '';
     startupTrace = createStartupTrace();
     const args = [
       `--user-data-dir=${userDataDir}`, `--profile-directory=${activeProfile}`,
@@ -446,7 +446,21 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
         } else while (running()) await delay(50);
       }
     }
-    if (fileAppearance) { await fileAppearance.removeAfterOriginalRetirement(); fileAppearance = undefined; }
+    const retiredOriginalChannel = appearanceChannelRetirement?.pid === externalPid &&
+      appearanceChannelRetirement?.externalGeneration === externalGeneration &&
+      appearanceChannelRetirement?.generation === generation && appearanceChannelRetirement?.receipt.removed === true;
+    if (retiredOriginalChannel) appearanceArtifact.validate();
+    if (appearanceArtifact && externalPid && !fileAppearance && !retiredOriginalChannel) {
+      throw new AggregateError(appearanceOwnerFailure ? [appearanceOwnerFailure] : [],
+        'Original LS appearance channel cleanup unowned; guardian and slot retained', { cause: appearanceOwnerFailure });
+    }
+    if (fileAppearance) {
+      const original = { pid: externalPid, externalGeneration, generation };
+      const receipt = await fileAppearance.removeAfterOriginalRetirement();
+      if (externalPid !== original.pid || externalGeneration !== original.externalGeneration || generation !== original.generation || receipt?.removed !== true)
+        throw new Error('Original channel retirement identity changed; guardian and slot retained');
+      appearanceChannelRetirement = Object.freeze({ ...original, receipt }); fileAppearance = undefined;
+    }
     if (launchQuarantine) { await launchQuarantine.clearAfterOriginalRetirement(); launchQuarantine = undefined; }
     slot?.release(); slot = undefined;
   }
@@ -521,9 +535,15 @@ export function createJourneyApp({ appPath, launch = {}, profileRoot: suppliedRo
           if (!same() || running()) throw new Error('Original LS generation changed during retirement');
           return true;
         } });
-      const owner = await createLaunchServicesAppearanceOwner({ original, pair: appearancePair, helper, candidate });
-      try { original.assertLive(); fileAppearance = owner; }
-      catch (error) { owner.retire(); throw error; }
+      let owner;
+      try {
+        owner = await createLaunchServicesAppearanceOwner({ original, pair: appearancePair, helper, candidate });
+        original.assertLive(); fileAppearance = owner; appearanceOwnerFailure = undefined;
+      } catch (error) {
+        appearanceOwnerFailure ??= error;
+        try { owner?.retire(); } catch (cleanup) { throw new AggregateError([error, cleanup], 'Original appearance authentication and cleanup failed'); }
+        throw error;
+      }
     },
     get launchServicesQuarantineOwner() {
       if (!appearanceArtifact || !appearanceLaunchReserved) return null;

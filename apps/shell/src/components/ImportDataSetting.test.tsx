@@ -327,3 +327,31 @@ it("requires a fresh unchecked four-browser review after interruption and explai
     await act(async () => root.unmount());
   }
 });
+
+it("keeps import consent and exclusions visible with optional folder and system-access details", async () => {
+  rpc.mockReset();
+  rpc.mockRejectedValue(new Error("No previous import"));
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<ImportDataSetting />));
+    const descriptions = [...host.querySelectorAll(":scope > .import-setting > p")];
+    expect(descriptions).toHaveLength(2);
+    expect(descriptions[0]!.textContent).toContain("Nothing is imported until you confirm.");
+    expect(descriptions[1]!.textContent).toContain("Passwords, cookies, extensions and agent permissions are not imported");
+    const details = [...host.querySelectorAll("details")];
+    expect(details.map(item => item.querySelector("summary")!.textContent)).toEqual(["Folders and retries", "Keychain and macOS access"]);
+    expect(details.every(item => !item.open)).toBe(true);
+    expect(details[0]!.textContent).toContain("Arc Spaces and pinned pages become bookmark folders");
+    expect(details[0]!.textContent).toContain("Existing bookmarks keep their titles and");
+    expect(details[0]!.textContent).toContain("history visits are skipped on retry");
+    expect(details[1]!.textContent).toContain("does not ask for browser Keychain passwords");
+    expect(details[1]!.textContent).toContain("you can cancel it");
+    expect(details[1]!.textContent).toContain("Full Disk Access");
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("import.status", {});
+    expect(host.querySelector('input[type="checkbox"]')).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+  }
+});

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const source = fileURLToPath(new URL('./appearance-channel-retire.py', import.meta.url));
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const cleanupBootstrap = "import hashlib,os,sys\nsource=os.pread(6,1048576,0)\nif hashlib.sha256(source).hexdigest()!=sys.argv[1]: raise RuntimeError('Held original cleanup source changed before execution')\nexec(compile(source, '<held-original-appearance-cleanup>', 'exec'))";
 // Internal only. Original retained FDs, not caller paths or process selectors.
 export function removeOriginalAppearanceChannel(descriptors, pins) {
   assert.equal(descriptors.length, 3);
@@ -32,7 +33,7 @@ export function removeOriginalAppearanceChannel(descriptors, pins) {
       }
     };
     validate();
-    const result = execFileSync(interpreter, ['-I', '-c', "import os; exec(compile(os.pread(6, 1048576, 0), '<held-original-appearance-cleanup>', 'exec'))"], {
+    const result = execFileSync(interpreter, ['-I', '-c', cleanupBootstrap, tool.sha256], {
       input: JSON.stringify(pins), timeout: 5000, maxBuffer: 4096,
       env: { PATH: '/usr/bin:/bin', LANG: 'C', LC_ALL: 'C' },
       stdio: ['pipe', 'pipe', 'pipe', ...descriptors, toolFd],

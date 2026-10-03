@@ -1,0 +1,42 @@
+{
+  "baseCommit": "484d296c917911beb5f65079bbb557d408e26df9",
+  "status": "source-only keyboard focus follows actual responsive Settings rail orientation",
+  "patchSha256": "1678a7ae4ca2a9f04e854ed30187e76c49f91b0f0065ff23a78c553f500a4b39",
+  "files": [
+    {
+      "path": "apps/shell/src/settings/SettingsNav.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "df9a6d3609cc46c03e74fda06c6bb0a1a2872c5d3ab02b1b491c426e09449da4",
+      "beforeSnapshot": null,
+      "afterSnapshot": "docs/lane-requests/design/settings-rail-orientation/after/apps/shell/src/settings/SettingsNav.test.tsx"
+    },
+    {
+      "path": "apps/shell/src/settings/SettingsNav.tsx",
+      "beforeSha256": "ee754e3a10292cf4c2cd36a94b2f221f6384f859c48a0947841b4fc582cc468c",
+      "afterSha256": "a5caef6a5c836c04c581364e934c8078ff734c6d65e215f0c7dad6ab8b9c8090",
+      "beforeSnapshot": "docs/lane-requests/design/settings-rail-orientation/before/apps/shell/src/settings/SettingsNav.tsx",
+      "afterSnapshot": "docs/lane-requests/design/settings-rail-orientation/after/apps/shell/src/settings/SettingsNav.tsx"
+    }
+  ],
+  "replay": {
+    "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-settings-rail-orientation-replay-ce5yidp7",
+    "forwardReverseForward": true,
+    "everyHashMatches": true
+  },
+  "affectedComponentCases": 3,
+  "shellTypecheckPassed": true,
+  "scopedLintPassed": true,
+  "retainedExistingWarnings": 1,
+  "nativePixelsVerified": false,
+  "rootIndependentReplay": "PASS",
+  "rootControls": {
+    "status": "PASS source-only",
+    "logs": [
+      "/tmp/aux-root-settings-import-controls.log",
+      "/tmp/aux-root-settings-sectionrail.log"
+    ],
+    "shellTypecheck": "PASS",
+    "nativeExecution": "NOT RUN"
+  },
+  "nativeExecution": "NOT RUN"
+}

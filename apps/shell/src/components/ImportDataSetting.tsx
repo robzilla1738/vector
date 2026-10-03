@@ -216,13 +216,19 @@ export function ImportDataSetting() {
   return (
     <div className="import-setting">
       <p className="hint">
-        Choose bookmarks and history from Chrome, Arc, Safari or Firefox. Arc Spaces and pinned pages become
-        bookmark folders. Live tabs are available from an attached Chrome.
+        Choose bookmarks and history from Chrome, Arc, Safari or Firefox, or live tabs from an attached
+        Chrome. Nothing is imported until you confirm.
       </p>
       <p className="hint">
-        Existing bookmarks keep their titles and folders. Matching bookmark URLs and history visits are
-        skipped on retry. Passwords, cookies, extensions and agent permissions are not imported here.
+        Passwords, cookies, extensions and agent permissions are not imported here.
       </p>
+      <details>
+        <summary>Folders and retries</summary>
+        <p className="hint">
+          Arc Spaces and pinned pages become bookmark folders. Existing bookmarks keep their titles and
+          folders. Matching bookmark URLs and history visits are skipped on retry.
+        </p>
+      </details>
       <details>
         <summary>Keychain and macOS access</summary>
         <p className="hint">

@@ -321,9 +321,6 @@ export function OnboardingFlow({
           )}
           {step === "import" && (
             <>
-              <p>
-                Choose what to bring from your other browser. Nothing is imported until you confirm.
-              </p>
               <ImportDataSetting />
               <p className="hint">
                 Imports keep running if you leave this step. Check progress here before retrying.

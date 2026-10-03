@@ -49,7 +49,14 @@ export function SettingsNav({
     <nav
       className="settings-nav"
       aria-label="Settings categories"
-      onKeyDown={event => moveListFocus(event, "button[data-category]")}
+      onKeyDown={(event) => {
+        const rail = event.currentTarget.querySelector(".settings-category-list");
+        moveListFocus(
+          event,
+          "button[data-category]",
+          !rail || getComputedStyle(rail).flexDirection !== "row",
+        );
+      }}
     >
       <div className="settings-search-box">
         {shellIconSearch}
