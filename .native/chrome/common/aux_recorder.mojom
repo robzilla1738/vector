@@ -1,0 +1,18 @@
+// Copyright 2026 The Aux Authors
+module chrome.mojom;
+
+// This associated endpoint shares the RenderFrame's ordered interface group.
+// Browser-created receipt and sink bind one exact primary document; page script
+// cannot select a source, world, frame, method or sink.
+interface AuxRecorderSink {
+  Event(uint64 sequence, string step_json) => (bool accepted);
+  Overflow();
+  DocumentEnded();
+};
+interface AuxRecorder {
+  // No script runs. This receiver is invalidated on document replacement.
+  Prepare() => (bool ready);
+  Start(string recorder_id, uint64 document_generation,
+        pending_associated_remote<AuxRecorderSink> sink) => (bool accepted);
+  Stop(string recorder_id, uint64 document_generation) => (bool stopped);
+};

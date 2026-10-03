@@ -1,0 +1,8 @@
+{
+  "sourceOnly": true,
+  "nativeExecuted": false,
+  "path": ".native/chrome/browser/ui/aux/native_recorder_controller.cc",
+  "beforeSha256": "9b0aae268b9055ed8cfc182ea4d12f2ddd81d54dd3830c96f130d02c0d6f5f28",
+  "afterSha256": "805150bf6f796d97c7b80b7ab9aad2118c39436c462b0284e4bf3cb56a7802a9",
+  "reason": "Reject oversized renderer JSON before parsing; sequence, event count, cumulative byte caps and rejection retirement preserved"
+}

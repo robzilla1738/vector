@@ -34,12 +34,15 @@ it("revocation during native installation refuses the late acknowledgement and r
   const acquire = f.service.acquire("run", "tab");
   await started;
   const lease = f.native.egressInstall.mock.calls[0]![0].lease;
-  const finalCheck = f.service.permissionAuthority(lease);
+  // A waiting Install has no acknowledged permission authority to capture.
+  const finalCheck = () => f.service.permissionAuthority(lease)();
+  expect(finalCheck).toThrow();
   const retired = f.service.invalidateAuthority(() => true);
   expect(finalCheck).toThrow();
   await retired;
   release();
   await expect(acquire).rejects.toMatchObject({ code: "ref_stale" });
+  expect(finalCheck).toThrow();
   expect(f.native.egressRevoke.mock.calls.every(([request]) => request.leaseId === lease.leaseId)).toBe(true);
   expect(f.native.egressRevoke.mock.calls.length).toBeGreaterThanOrEqual(2);
 });

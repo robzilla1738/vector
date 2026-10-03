@@ -57,7 +57,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_contents_user_data.h"
-#include "content/public/common/isolated_world_ids.h"
+#include "chrome/common/chrome_isolated_world_ids.h"
 #include "net/base/net_errors.h"
 #include "crypto/hash.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
@@ -75,7 +75,7 @@ const char kDownloadsKey = 0;
 const char kNotificationsKey = 0;
 const char kRunAttentionKey = 0;
 const char kPasswordOfferKey = 0;
-constexpr int kPageChangeWorld = content::ISOLATED_WORLD_ID_CONTENT_END + 10;
+constexpr int kPageChangeWorld = ISOLATED_WORLD_ID_AUX_PAGE_CHANGE;
 constexpr size_t kPageChangeMaxTextBytes = 64 * 1024;
 constexpr char16_t kPageChangeScript[] = uR"JS((() => {
   if (document.visibilityState !== 'visible' || document.readyState === 'loading') return null;

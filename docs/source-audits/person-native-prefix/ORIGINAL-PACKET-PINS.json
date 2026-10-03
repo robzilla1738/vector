@@ -1,0 +1,72 @@
+{
+  "sourceOnly": true,
+  "stageApproved": false,
+  "originalPackets": [
+    {
+      "name": "0300 reserved worlds",
+      "patch": "e075d129d2c8b824426a2c035073ba022f1f684cdfc1baf31837860d3efdefad",
+      "manifest": "821368f00df4c253bef7bfa27b416286f71ed73879d0487997242761215061aa"
+    },
+    {
+      "name": "6b generated fixed recorder source",
+      "patch": "c77fd3e589b1f54c7e889658d697d29aa1f754c0c9995f6b4134c8b3be37b567",
+      "manifest": "793970b17adb2a5eb056a703a08ec2ac6a5a6e45161634bcddd7354cb84fa74a"
+    },
+    {
+      "name": "0b recorder controller and real Worker connection generation",
+      "patch": "959d7a777c1d1e2417cd00a3f79fdff4145723d563f734ea5b0908f413e3fb8e",
+      "manifest": "8fb594cb7f1ae42480f044ddfc4cd06a4c5a711a31dd95088c88d9bb862dc0b9"
+    },
+    {
+      "name": "6220 fixed associated stream script",
+      "patch": "6220ffb49e2043591ef4a2c04d98f1632fde49c23677124e4d169e4d5a6f7e4c",
+      "manifest": "18c72b8e2962ef6a40919dd09ccf1348c7a953a4f1dd01f84d332d99eeaa3353"
+    },
+    {
+      "name": "72c associated recorder Mojo/renderer/controller",
+      "patch": "72c74d8508ff6836ba17bb4321664d780a7932682c75913d0986ff83969bc2d6",
+      "manifest": "ce5532a60e2dc26dfd0ea0d57cab172cf5dbb11dc19b6e0dd498a678c50a2c3d"
+    },
+    {
+      "name": "person receipt CE wire backport replaces incompatible f0fd foundation baseline",
+      "patch": "e55ccfdbcc7ca2949855c7df7deffc1b38bd69dfe74504bf3d4aa2743e676a28",
+      "manifest": "2fe107d9f803f4935f79de065251d89a4fa6f12d193a3aaf1382b417ccbcd435"
+    },
+    {
+      "name": "e9dd recorder genuine person receipt consumer",
+      "patch": "1d0fb7a275f6240fe694526c2752c45d089da59250ab6e2a9a6a750f8cbdb2fc",
+      "manifest": "b153de33ce167b7cde14df327f6dfcfd57ae0225d9d10c7ac3dcbf964e97f7de"
+    },
+    {
+      "name": "root-person-observer-DRAFT",
+      "patch": "8a5868346e5c274b82f486b30f2cdccbd1e19a7c24730948519cc1e6cd150fc3",
+      "manifest": "78c35181b066895853f738b58dff8f044543ab95503875200905c7566636bf87"
+    },
+    {
+      "name": "root-person-observer-host-DRAFT",
+      "patch": "90c71e4036ea0e7c2f3109e679ef36dd3e92622ad83ebfd973402dc73f8115a7",
+      "manifest": "b5f70ba0d6198f1b92a91a680430b17e7cedccf26d5490d0ecdcfa6eca5afd31"
+    },
+    {
+      "name": "root-person-observer-context",
+      "patch": "9a0a0e023ef6cf1ec1cee5cf64c9fb3bbf43f35dd61f92e3bff3d211e7f85982",
+      "manifest": "a7c9d94946b414c1c6bbf57e2f0c931eaf75c864307e7021e3fb4a61fdce6a08"
+    },
+    {
+      "name": "root-person-observer-host-controls",
+      "patch": "bc3606b3bfd2c1dee8ae7ab9f41913f0856f8ae228c066ad154b5401cfd87e8a",
+      "manifest": "712acd7a6878db79186ca4f05608b2cbe6d3b5591b03eb093bd0987ab918ff95"
+    },
+    {
+      "name": "root-person-observer-host-controls-successor",
+      "patch": "7596a91e6df96bfd913e2cf789ae5efaf2f3d21da18e30b43fd275148be048cb",
+      "manifest": "fe1a55f773891865c9931494ff258d01a7068cd35d8045226d921afd85181b86"
+    },
+    {
+      "name": "root-person-observer-host-lifetime",
+      "patch": "eec7119479b224d7a225b1bc320ffb325e1e5910e25d667544d48af0118fa1af",
+      "manifest": "d3fe3fb755cfaefc8039ea39ef30d39d3327b868b18959efe007b288271962d4"
+    }
+  ],
+  "compatibility": "Use root compatible native-only Egress backport, never incompatible f0fd foundation. Context friend-only hunk already present."
+}

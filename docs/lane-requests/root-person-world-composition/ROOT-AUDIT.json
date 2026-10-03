@@ -1,0 +1,62 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "packet": "e075d129d2c8b824426a2c035073ba022f1f684cdfc1baf31837860d3efdefad",
+  "currentOriginalContextualForwardReverseRestoration": true,
+  "changed": [
+    {
+      "path": "chrome/android/java/src/org/chromium/chrome/browser/common/ChromeIsolatedWorldIds.java",
+      "before": "fac8c3f2c9c3603068452fb14892e5f2df510375441a95cede80d118c9a4d12b",
+      "after": "1f8be0c55794e9f03ada7bc26affddc76e0d58e0b35f5c8cf28a7a3ed3023f78"
+    },
+    {
+      "path": "chrome/browser/ui/aux/credential_fill.cc",
+      "before": "e6f7b4703c36deade3faf15472df22a49209b982d256780949f7b6f08fc908bb",
+      "after": "564ec5de8a5bc3430f110dab181cbbee1fd8cbb1d9b7b960da4cbc3af0cf50a7"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/content_methods.cc",
+      "before": "4ef29d214b67dacc50fd16f740fd65539fd7d3c7a5cac3f5ba80d96757c23db4",
+      "after": "c3c270a8b0c7c02d608b0e2d7962aefae1dee9cbf9d6709a52387cac8456e0c4"
+    },
+    {
+      "path": "chrome/browser/ui/aux/methods/tabs_methods.cc",
+      "before": "621944f8bd88a08208cfb3190f3c2c83c8663ed93012de30c282d392b12d0c6f",
+      "after": "059ab005bec1585a6fd8cffa414bdc6a6a9b19a8833655580eb6848b6cab5fcc"
+    },
+    {
+      "path": "chrome/browser/ui/aux/readable_capture.cc",
+      "before": "f81584bdf49052a29d48852eaf6769e0d99675e8c31657a0d4e5d2527e492e6f",
+      "after": "257847c60a7fd95700466ad2b9841de106a3a635b144c27e1f2e3b6e6c8442f0"
+    },
+    {
+      "path": "chrome/browser/ui/aux/shell_events.cc",
+      "before": "08ee900f2fec301103513d229b263106cf5f341554a5896ccd40257625678502",
+      "after": "da4ae26010bce33f42a4bddb644371115577cbd88dce2a88a54684cc2712ef53"
+    },
+    {
+      "path": "chrome/common/chrome_isolated_world_ids.h",
+      "before": "6b5384da3ab0cb04ff100b19b8981e8846d51d0d405acf595ccbaf048d1e219a",
+      "after": "dc3fe4f3eb12096b99432b0991d11334d0f9eb08b10ba833836aa2f1e36caa03"
+    },
+    {
+      "path": "content/public/android/java/src/org/chromium/content_public/common/IsolatedWorldIds.java",
+      "before": "6f1b3af8d5160a8d2040b7bdfa38c82a9296dececdd41b0ab5d2cfe347dcbf14",
+      "after": "0a680c58849df12cd09e70b602b519501763302505026526ea32e117777e2f9e"
+    },
+    {
+      "path": "content/public/common/isolated_world_ids.h",
+      "before": "f03dfef8dbeb378dc875170d6330c94822e89aceaeae349b67997cffd8cd8f94",
+      "after": "091d6cd048cffab55bc43825439197759d7cc5aa5604ef8f55e1f9ea569e63d3"
+    }
+  ],
+  "alreadyExact": [
+    {
+      "path": "chrome/common/BUILD.gn",
+      "sha256": "864e25b8e3c687367e202d306a5435e7b0fcdfd9c3a93aae987996473559fca7",
+      "scope": "World buildflag already present; existing recorder/person GN additions preserved."
+    }
+  ],
+  "stageReady": false
+}

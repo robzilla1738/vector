@@ -1,0 +1,23 @@
+{
+  "sourceOnly": true,
+  "nativeCompiled": false,
+  "nativeExecuted": false,
+  "orderedSourcePackets": [
+    "c77fd3e589b1f54c7e889658d697d29aa1f754c0c9995f6b4134c8b3be37b567",
+    "959d7a777c1d1e2417cd00a3f79fdff4145723d563f734ea5b0908f413e3fb8e",
+    "6220ffb49e2043591ef4a2c04d98f1632fde49c23677124e4d169e4d5a6f7e4c",
+    "72c74d8508ff6836ba17bb4321664d780a7932682c75913d0986ff83969bc2d6",
+    "1d0fb7a275f6240fe694526c2752c45d089da59250ab6e2a9a6a750f8cbdb2fc"
+  ],
+  "newExports": {
+    "chrome/browser/ui/aux/native_recorder_controller.cc": "9b0aae268b9055ed8cfc182ea4d12f2ddd81d54dd3830c96f130d02c0d6f5f28",
+    "chrome/browser/ui/aux/native_recorder_controller.h": "cfe1d69f0056c170ac60f2dde1f1ff10298e40ac8703a18972ee013ca56a5504",
+    "chrome/browser/ui/aux/native_recorder_controller_browsertest.cc": "7d51351c56f2130fada6f0257200901dd51a48c278e38d25b6c64756e179a80a",
+    "chrome/browser/ui/aux/native_recorder_script.h": "31ebadbd29bdbd63c358ace2f28aa252c2c38e032195be47fb1401a5e175ff1a",
+    "chrome/common/aux_recorder.mojom": "ffe9c3932f43c4b48acf3944d300f082c22ac92399aee7bfcd866edc32cbda08",
+    "chrome/common/native_recorder_script.h": "92868cf6a5febaf9cd239fe7707e0dda38cfee9d97462d5f03d8d661c8c775ad",
+    "chrome/renderer/aux_recorder_agent.cc": "f9783d0d06ac6482a7881625cfb4f118879ef0cfbe8fc11f32f8d885bf99abf6",
+    "chrome/renderer/aux_recorder_agent.h": "e1745ecc7bf2b60669ab529c4379fe44c83ab6710f880af996dfea683eed8db8"
+  },
+  "remaining": "Full semantic/API review and original shared world/GN/host composition; not stage ready."
+}
