@@ -36,7 +36,7 @@
 .session-empty[role="status"] { min-height: 34px; }
 @media (prefers-reduced-motion: reduce) {
   :root { --hover-in: 0ms; --hover-out: 0ms; --disclosure-duration: 0ms; }
-  .menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview { animation: none; }
+  .menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview { animation: none; }
   .spin, .skeleton-row, .stage-progress::after, .dl-bar span.indeterminate { animation: none; }
   .stage-progress::after { width: 100%; opacity: .5; }
 }
@@ -153,19 +153,19 @@ input::placeholder, textarea::placeholder { color: var(--ink-2); opacity: 1; }
     }
   }
   @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
-    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview),
+    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview),
     :root .app.tabs-vertical:not(.layout-expanded) .sidebar {
       backdrop-filter: none; -webkit-backdrop-filter: none;
     }
-    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview) { background: var(--surface-menu); border-color: var(--line); box-shadow: var(--shadow-pop); }
+    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview) { background: var(--surface-menu); border-color: var(--line); box-shadow: var(--shadow-pop); }
     :root .app.tabs-vertical:not(.layout-expanded) .sidebar { background: var(--floating-sidebar-surface); }
-    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview)::before,
-    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview)::after,
+    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview)::before,
+    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview)::after,
     :root .app.tabs-vertical:not(.layout-expanded) .sidebar::before,
     :root .app.tabs-vertical:not(.layout-expanded) .sidebar::after { content: none; }
   }
   @media (forced-colors: active) {
-    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .tab-preview),
+    :root :is(.menu, .history-menu, .cb-pop, .sb-more-menu, .anchored-panel, .tab-preview),
     :root .app.tabs-vertical:not(.layout-expanded) .sidebar {
       background: Canvas; color: CanvasText; border: var(--hairline) solid CanvasText; box-shadow: none;
     }

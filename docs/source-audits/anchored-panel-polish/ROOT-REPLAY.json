@@ -1,0 +1,51 @@
+{
+  "sourceOnly": true,
+  "requestSha256": "8954b273d754785b0cf5647bd483f9752c9a56129b8426f8ae0cddd92aeea9fe",
+  "exactForwardReverseForward": true,
+  "scratch": "/var/folders/1j/bkszg0h10ng2tfhcbdk94cpm0000gp/T/aux-root-anchored-replay-18lte2vj",
+  "changes": [
+    {
+      "path": "apps/shell/src/styles/surfaces.css",
+      "beforeSha256": "6ddf5733f733a5f9385787c3d212620c392ab164d5f55bd4909c1f23aee8e80b",
+      "afterSha256": "948a4f5a64acfaac76eb52ab55544dae157d0f2b8d700c99e07f723d2f24667a"
+    },
+    {
+      "path": "apps/shell/src/styles/chrome-polish.css",
+      "beforeSha256": "86800de47556d6a77e324a9d7774857d4a84a91b8030053b0c768386327a6010",
+      "afterSha256": "b10fba59a4f3eabe28437e9f12124fbc84215e5d3fed0c7aab8fc2b301a3ad3f"
+    },
+    {
+      "path": "apps/shell/src/ui/popover-lifecycle.test.tsx",
+      "beforeSha256": null,
+      "afterSha256": "bdb28f1fca13a629dbe1d1bc9670a735502a3efe5a45464016a3712ad1d0163a"
+    }
+  ],
+  "nativePixelsVerified": false,
+  "nativeBuild11dbUnchanged": true,
+  "genericPopoverControlsNotActualComposerImageEvidence": true,
+  "checks": {
+    "actualVitePostcssSyntax": "PASS",
+    "initialDirectPostcssImport": "Failed dependency resolution; rerun via installed Vite dependency passed",
+    "rendererLog": {
+      "path": "/tmp/aux-root-anchored-controls.log",
+      "sha256": "0284a67e360248caff7aadc4474f85d8509170aeb99696158d22c6a4c6134b8a",
+      "pass": 5
+    },
+    "nativeRendererBuild": {
+      "path": "/tmp/aux-root-anchored-renderer-build.log",
+      "sha256": "7486f1a07808f4578c161b2356cbb1ae48c49a9b4b13ad1aed4d8281a32d323d",
+      "passed": true
+    },
+    "assetDigest": "8615cc7e95e3121d8bbcc09764d298e5dfa6d7fbcc1c81bf6efdb0675f86b5ca",
+    "assetFiles": 175,
+    "budgetsKb": {
+      "startupJs": 487,
+      "startupCss": 175,
+      "totalJs": 1800
+    },
+    "nativeAppearanceQualified": false,
+    "shellTypecheck": "PASS incremental false",
+    "formatRatchet": "PASS",
+    "diffCheck": "PASS"
+  }
+}
