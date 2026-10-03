@@ -1,0 +1,30 @@
+{
+  "freezeSha256": "5ce48ddeba18f01fade57ca88d5ec68d038df4a5e25f0d6aa1095bb286c00fad",
+  "patchSha256": "0b8f9da11f8efa8d13f9364f8d0c0141879955568df2d992d0eada49efdbaf64",
+  "files": [
+    {
+      "path": "tests/host/journeys/agent-site-permissions.mjs",
+      "beforeSha256": "8a52d6cfb50b380e747ca2e5fe67ab4bdcd81555cd691b13beab43f2c877a60c",
+      "afterSha256": "52166ef00a1103593ce5a93b6e1850ea95f8d964f5aa662e344881b514d2ea55"
+    },
+    {
+      "path": "tests/host/lib/permission-state-capture.mjs",
+      "beforeSha256": null,
+      "afterSha256": "d83ca865c32b241118509e4d0906c625ce639c38bb4ad2cbfe5cffd52be0b7db"
+    },
+    {
+      "path": "tests/host/lib/permission-state-capture.test.mjs",
+      "beforeSha256": null,
+      "afterSha256": "211bc02a4aee4ea0de3ed7dd03e2c93fbea524c09791616983708c005d045943"
+    }
+  ],
+  "exactReplay": "PASS",
+  "sourcePins": "actual verified",
+  "nativeExecuted": false,
+  "qualified": false,
+  "controls": {
+    "exitCode": 0,
+    "path": "/tmp/aux-root-permission-failed-turn-controls.log",
+    "sha256": "2659c7c443610f62e3aa4ea4a25dd442fa697fed3c6841206a9a43176b980be5"
+  }
+}
