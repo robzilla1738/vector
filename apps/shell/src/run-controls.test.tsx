@@ -1,24 +1,28 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it, vi } from "vitest";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { RunPanel } from "./components/RunPanel";
 import { bridge } from "./bridge";
 import { makeRun, makeSteps } from "./mock/fixtures";
 import { useStore } from "./store";
 (globalThis as {IS_REACT_ACT_ENVIRONMENT?:boolean}).IS_REACT_ACT_ENVIRONMENT=true;
+// jsdom has no layout; model the mounted visible controls explicitly.
+beforeEach(() => { vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList); });
+afterEach(() => vi.restoreAllMocks());
 it.each(["completed", "partially_completed"] as const)("keeps %s chat output concise without hiding partial results", async status => {
   const original=useStore.getState();
   const run=makeRun({runId:"concise",status,pageIds:[],statusMessage:"Done — 3 modes compared",result:{answer:"## Checkout modes\nThe comparison."}});
   useStore.setState({runs:[run],steps:{concise:[]},prompt:null});
   const host=document.createElement("div"),root=createRoot(host);
+  document.body.append(host);
   try {
     await act(async()=>root.render(<RunPanel runId="concise" conversation/>));
     expect(host.querySelectorAll(".answer h2")).toHaveLength(1);
     expect(host.querySelector(".answer")?.textContent?.includes(run.statusMessage!)).toBe(status!=="completed");
     expect(host.querySelector(".run-state")!==null).toBe(status!=="completed");
     expect(host.querySelector('[aria-label="Copy answer"]')).not.toBeNull();
-  } finally { await act(async()=>root.unmount());useStore.setState(original,true); }
+  } finally { await act(async()=>root.unmount());host.remove();useStore.setState(original,true); }
 });
 
 it("keeps Stop available during pause and ignores the superseded pause error",async()=>{
@@ -26,6 +30,7 @@ it("keeps Stop available during pause and ignores the superseded pause error",as
   const run=makeRun({runId:"controls",status:"running",pageIds:[]});
   useStore.setState({runs:[run],steps:{controls:[]},prompt:null});
   const host=document.createElement("div"),root=createRoot(host);
+  document.body.append(host);
   let failPause!:(reason:Error)=>void;
   const invoke=vi.spyOn(bridge,"invoke").mockImplementation(async method=>{
     if(method==="runs.pause")return new Promise((_resolve,reject)=>{failPause=reject;});
@@ -44,7 +49,7 @@ it("keeps Stop available during pause and ignores the superseded pause error",as
     expect(host.querySelector('[role="alert"]')?.textContent).toContain("Stop wasn’t confirmed");
     await act(async()=>failPause(new Error("Late pause error")));
     expect(host.querySelector('[role="alert"]')?.textContent).not.toContain("Late pause error");
-  } finally { await act(async()=>root.unmount());vi.restoreAllMocks();useStore.setState(original,true); }
+  } finally { await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();useStore.setState(original,true); }
 });
 
 it("loads saved page evidence only when opened and offers retry on failure",async()=>{
@@ -54,6 +59,7 @@ it("loads saved page evidence only when opened and offers retry on failure",asyn
   steps[0]!.inputs={obsArtifactId:"saved-page"};
   useStore.setState({runs:[run],steps:{evidence:steps},observations:{},prompt:null});
   const host=document.createElement("div"),root=createRoot(host);
+  document.body.append(host);
   const invoke=vi.spyOn(bridge,"invoke").mockRejectedValue(new Error("Snapshot unavailable"));
   try {
     await act(async()=>root.render(<RunPanel runId="evidence" conversation/>));
@@ -66,5 +72,5 @@ it("loads saved page evidence only when opened and offers retry on failure",asyn
     expect(host.querySelector('[role="alert"]')?.textContent).toContain("Snapshot unavailable");
     await act(async()=>button("Retry").click());
     expect(invoke.mock.calls.filter(([method])=>method==="artifacts.read")).toHaveLength(2);
-  } finally {await act(async()=>root.unmount());vi.restoreAllMocks();useStore.setState(original,true);}
+  } finally {await act(async()=>root.unmount());host.remove();vi.restoreAllMocks();useStore.setState(original,true);}
 });

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Suspension, SuspensionKind } from "@aux/contracts";
 import { bridge } from "../bridge";
 import { RunPanel } from "../components/RunPanel";
@@ -10,6 +10,8 @@ import { useStore } from "../store";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const original = useStore.getState();
+// jsdom has no layout; model the mounted visible controls explicitly.
+beforeEach(() => { vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 100, height: 30 }] as unknown as DOMRectList); });
 afterEach(() => { vi.restoreAllMocks(); useStore.setState(original, true); });
 
 const run = makeRun({ runId: "parked", status: "needs_input", statusMessage: "Which account?", pageIds: [] });
@@ -30,9 +32,10 @@ async function mount(kind: SuspensionKind, onGet?: () => Suspension) {
   });
   useStore.setState({ runs: [run], pages: [], steps: { [run.runId]: [] }, prompt: null, runAnswerDrafts: {} });
   const host = document.createElement("div");
+  document.body.append(host);
   const root = createRoot(host);
   await act(async () => root.render(<RunPanel runId={run.runId} conversation={false} />));
-  return { host, invoke, unmount: async () => act(async () => root.unmount()) };
+  return { host, invoke, unmount: async () => { await act(async () => root.unmount()); host.remove(); } };
 }
 
 it("binds a question answer to the displayed suspension and prevents a duplicate send", async () => {
