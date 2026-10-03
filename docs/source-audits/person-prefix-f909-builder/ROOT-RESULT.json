@@ -1,0 +1,15 @@
+{
+  "sourceOnly": true,
+  "stableMutated": false,
+  "nativeCompiled": false,
+  "sourceCandidate": "f909b475979587a33c496e296c2143af766132f8",
+  "proofSha256": "0e1fe9a7f851e44f2365a5693745fb0e4777f4e22c068e17bfc00e656d42b213",
+  "independentRootAuditMapsMatch": true,
+  "actualBuilderAndScratchMirrors": 399,
+  "actualPacketBytes": 143,
+  "actualAssets": 175,
+  "actualHelperSource": true,
+  "originalBaselines": 217,
+  "stageApproved": false,
+  "whole0280Ready": false
+}
