@@ -1,0 +1,38 @@
+{
+  "sourceOnly": true,
+  "patchSha256": "940372c2c1eb925d2df77233f99f7f970c4cd491f5a251957538411531d2f96b",
+  "files": [
+    {
+      "path": "tests/host/journeys/pinned-live.mjs",
+      "beforeSha256": "5ab9d7c3380172223bfa1c8416b24c8cba623163ef9e24b6aac805f0306beebf",
+      "afterSha256": "d16ece71422f08b522117d32bf34535743b1ff457987cdaa313bbddbc932a4ab",
+      "states": {
+        "pinned-reset": "pinned-bound-tab-reset",
+        "pin-keep-awake": "pinned-tab-keep-awake",
+        "rss-read-dot": "live-rss-read-unread-rows",
+        "github-calendar-live": "live-github-calendar-rows",
+        "pinned-live-restarted": "live-and-pinned-restarted"
+      },
+      "wholeOriginalRestoredByOnlyCaptureSubstitutions": true
+    },
+    {
+      "path": "tests/host/journeys/smart-download-rename.mjs",
+      "beforeSha256": "f64b878b2d872b21651e30aecbf92b44c3486759cced2ebf4a0f25aab8185f83",
+      "afterSha256": "0f83572729ebb67721bc7344faf3bb2693905884e091fbc0d52f6075f936fbd1",
+      "states": {
+        "download-renamed": "download-renamed-toast",
+        "download-undo": "downloads-row-undo",
+        "download-template-fallback": "download-template-fallback-toast",
+        "download-save-dialog-refusal": "download-person-filename-preserved"
+      },
+      "wholeOriginalRestoredByOnlyCaptureSubstitutions": true
+    }
+  ],
+  "exactContextualReverseForwardPassed": true,
+  "functionalAndPerformanceAssertionsUnchanged": true,
+  "nativeCapturesExecuted": false,
+  "f21Approved": false,
+  "strictOriginalPidSingleWindowAppearanceOnly": true,
+  "affectedStrictHelperControlsPassed": 5,
+  "scopedLintAndDiffCheckPassed": true
+}

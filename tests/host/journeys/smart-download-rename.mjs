@@ -1,3 +1,4 @@
+import { captureHomeJourneyState } from '../lib/home-capture.mjs';
 import { withFailureEvidence } from '../lib/journey-diagnostics.mjs';
 import { revealSettingsControl } from "../lib/settings-control.mjs";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
@@ -125,7 +126,7 @@ export async function run(t) {
         join(downloads, receipt.filename),
       ]);
       t.assert.ok(attributes.stdout.trim(), "The same-directory rename must preserve quarantine");
-      await t.capture("download-renamed");
+      await captureHomeJourneyState(t, "download-renamed", "download-renamed-toast");
       return {
         ax: await t.ax.dump(),
         rpc: {
@@ -161,7 +162,7 @@ export async function run(t) {
       await access(join(downloads, "download.pdf"));
       t.assert.equal(await readFile(join(downloads, "download.pdf"), "utf8"), invoicePdf().toString());
       await t.ax.waitFor({ role: "AXStaticText", name: "download.pdf", scope: "shell", index: 0 });
-      await t.capture("download-undo");
+      await captureHomeJourneyState(t, "download-undo", "downloads-row-undo");
       return {
         ax: await t.ax.dump(),
         rpc: {
@@ -197,7 +198,7 @@ export async function run(t) {
         scope: "shell",
         index: 0,
       });
-      await t.capture("download-template-fallback");
+      await captureHomeJourneyState(t, "download-template-fallback", "download-template-fallback-toast");
       return {
         ax: await t.ax.dump(),
         rpc: { receipt: fallback, modelErrors: t.model.errors, downloads: await t.rpc("downloads.list") },
@@ -234,7 +235,7 @@ export async function run(t) {
       t.assert.equal(after.length, before.length + 1, "One person-selected file must complete without a second naming operation");
       t.assert.equal(t.model.calls.length, modelCalls);
       await access(join(downloads, "person-chosen.pdf"));
-      await t.capture("download-save-dialog-refusal");
+      await captureHomeJourneyState(t, "download-save-dialog-refusal", "download-person-filename-preserved");
       return {
         ax: await t.ax.dump(),
         rpc: { unchangedPriorDownloads: before, downloads: await t.rpc("downloads.list"), modelCalls },

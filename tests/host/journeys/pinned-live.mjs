@@ -1,3 +1,4 @@
+import { captureHomeJourneyState } from '../lib/home-capture.mjs';
 import { organizationFixtures } from '../lib/organization-fixtures.mjs';
 
 const s = (name, role = 'AXButton') => ({ name, role, match: 'exact', scope: 'shell', index: 0 });
@@ -32,7 +33,7 @@ export async function run(t) {
     const pages = await t.until('same bound tab returned to Red', async () => {
       const list = await t.rpc('pages.list'); return list.some(page => page.pageId === red.pageId && page.url === `${t.fixture.url}/red` && !page.loading) && list;
     });
-    await t.capture('pinned-reset'); return { ax: await t.ax.dump(), rpc: { pages } };
+    await captureHomeJourneyState(t, 'pinned-reset', 'pinned-bound-tab-reset'); return { ax: await t.ax.dump(), rpc: { pages } };
   });
   await t.step('Cmd W unloads a pin and reopening retains its page ID', { kind: 'ui', features: ['pinnedApps'] }, async () => {
     await t.ax.key('command+w', 'hid');
@@ -40,7 +41,7 @@ export async function run(t) {
     await t.ax.press(s('Aux native Red'));
     const pages = await t.until('pin materialized with same ID', async () => { const pages = await t.rpc('pages.list'); return pages.some(page => page.pageId === red.pageId) && pages; });
     await t.ax.contextMenu(s('Aux native Red')); await t.ax.press(s('Keep awake', 'AXMenuItem'));
-    await t.capture('pin-keep-awake'); return { ax: await t.ax.dump(), rpc: { pages } };
+    await captureHomeJourneyState(t, 'pin-keep-awake', 'pinned-tab-keep-awake'); return { ax: await t.ax.dump(), rpc: { pages } };
   });
   await t.step('RSS rows open into their folder and read dots survive refresh', { kind: 'ui', features: ['liveFolders', 'folders', 'tabSections'] }, async () => {
     await makeFolder(t, 'RSS test', 'RSS or Atom', () => t.ax.type(`${t.fixture.url}/organization/feed`, s('Feed URL', 'AXTextField')));
@@ -48,7 +49,7 @@ export async function run(t) {
     await t.ax.press(s('Read Red, unread')); await showSidebar(t); await t.ax.waitFor(s('Read Red'));
     await t.ax.press(s('Refresh live folder')); await t.ax.waitFor(s('Read Red')); await t.ax.waitFor(s('Read Blue, unread'));
     const pages = await t.rpc('pages.list'); t.assert.ok(pages.some(page => page.pageId !== red.pageId && page.url === `${t.fixture.url}/red`));
-    await t.capture('rss-read-dot'); return { ax: await t.ax.dump(), rpc: { pages } };
+    await captureHomeJourneyState(t, 'rss-read-dot', 'live-rss-read-unread-rows'); return { ax: await t.ax.dump(), rpc: { pages } };
   });
   if (!t.appearanceEnabled) {
     await t.step('20 AC source refreshes through actual committed RSS rows', { kind: 'ui', features: ['liveFolders'] }, async () => {
@@ -82,12 +83,12 @@ export async function run(t) {
     await makeFolder(t, 'GitHub test', 'GitHub', () => choose(t, 'Account', 'Fixture GitHub'));
     await t.ax.waitFor(s('Review Aux work, unread'));
     await makeFolder(t, 'Calendar test', "Today's Calendar events with links", () => choose(t, 'Account', 'Aux Calendar fixture'));
-    await t.ax.waitFor(s('Review the browser, unread')); await t.capture('github-calendar-live');
+    await t.ax.waitFor(s('Review the browser, unread')); await captureHomeJourneyState(t, 'github-calendar-live', 'live-github-calendar-rows');
     return { ax: await t.ax.dump(), githubAccount: github, rpc: { calendar: await t.rpc('calendar.connections.list') } };
   });
   await t.step('restart retains live rows and read state', { kind: 'ui', features: ['liveFolders', 'pinnedApps'] }, async () => {
     await t.restart(); await showSidebar(t); await t.ax.waitFor(s('Read Red')); await t.ax.waitFor(s('Read Blue, unread'));
     await t.ax.waitFor(s('Review Aux work, unread')); await t.ax.waitFor(s('Review the browser, unread')); await t.ax.waitFor(s('Aux native Red'));
-    await t.capture('pinned-live-restarted'); return { ax: await t.ax.dump(), rpc: { pages: await t.rpc('pages.list') } };
+    await captureHomeJourneyState(t, 'pinned-live-restarted', 'live-and-pinned-restarted'); return { ax: await t.ax.dump(), rpc: { pages: await t.rpc('pages.list') } };
   });
 }
